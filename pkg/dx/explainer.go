@@ -165,7 +165,7 @@ func (e *Explainer) buildDescription(elem interface{}) string {
 		if v.Description != nil {
 			sb.WriteString(fmt.Sprintf("%s\n\n", *v.Description))
 		}
-		sb.WriteString(fmt.Sprintf("This is a container application within a system. "))
+		sb.WriteString("This is a container application within a system. ")
 		if len(v.Components) > 0 {
 			sb.WriteString(fmt.Sprintf("It contains %d component(s). ", len(v.Components)))
 		}
@@ -175,17 +175,17 @@ func (e *Explainer) buildDescription(elem interface{}) string {
 		if v.Description != nil {
 			sb.WriteString(fmt.Sprintf("%s\n\n", *v.Description))
 		}
-		sb.WriteString(fmt.Sprintf("This is a component that provides specific functionality. "))
+		sb.WriteString("This is a component that provides specific functionality. ")
 		if v.Technology != nil {
 			sb.WriteString(fmt.Sprintf("It uses %s technology. ", *v.Technology))
 		}
 
 	case *language.Person:
 		sb.WriteString(fmt.Sprintf("**Person: %s**\n\n", v.Label))
-		sb.WriteString(fmt.Sprintf("This represents a person who interacts with the architecture. "))
+		sb.WriteString("This represents a person who interacts with the architecture. ")
 
 	default:
-		sb.WriteString(fmt.Sprintf("This is an architecture element. "))
+		sb.WriteString("This is an architecture element. ")
 	}
 
 	return sb.String()

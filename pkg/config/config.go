@@ -10,18 +10,18 @@ import (
 
 // Config represents the Sruja configuration file structure.
 type Config struct {
-	Diagrams *DiagramsConfig `json:"diagrams,omitempty"`
-	Plugins  []string        `json:"plugins,omitempty"`
+	Diagrams   *DiagramsConfig   `json:"diagrams,omitempty"`
+	Plugins    []string          `json:"plugins,omitempty"`
 	Validation *ValidationConfig `json:"validation,omitempty"`
-	LSP       *LSPConfig     `json:"lsp,omitempty"`
+	LSP        *LSPConfig        `json:"lsp,omitempty"`
 }
 
 // DiagramsConfig configures diagram generation.
 type DiagramsConfig struct {
-	Theme        string   `json:"theme,omitempty"`
-	ShowMetadata []string `json:"showMetadata,omitempty"`
-	DefaultFormat string  `json:"defaultFormat,omitempty"`
-	Layout       string   `json:"layout,omitempty"`
+	Theme         string   `json:"theme,omitempty"`
+	ShowMetadata  []string `json:"showMetadata,omitempty"`
+	DefaultFormat string   `json:"defaultFormat,omitempty"`
+	Layout        string   `json:"layout,omitempty"`
 }
 
 // ValidationConfig configures validation rules.
@@ -45,14 +45,14 @@ func LoadConfig(configPath string) (*Config, error) {
 		if err != nil {
 			return DefaultConfig(), nil
 		}
-		
+
 		for {
 			candidate := filepath.Join(dir, "sruja.config.json")
 			if _, err := os.Stat(candidate); err == nil {
 				configPath = candidate
 				break
 			}
-			
+
 			parent := filepath.Dir(dir)
 			if parent == dir {
 				break // Reached root
@@ -166,4 +166,3 @@ func (c *Config) Merge(other *Config) {
 		c.Plugins = other.Plugins
 	}
 }
-

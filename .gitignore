@@ -1,7 +1,6 @@
 # Binaries
 # sruja binary
 /bin/sruja
-sruja
 sruja-lsp
 *.exe
 *.exe~
@@ -61,3 +60,8 @@ visual.json
 
 # Bun
 .bun/
+.trae
+
+# Hugo
+docs/public/
+docs/resources/

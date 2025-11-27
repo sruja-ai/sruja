@@ -58,10 +58,10 @@ func (e *Exporter) Export(arch *language.Architecture) (string, error) {
 }
 
 func (e *Exporter) writeSystem(sb *strings.Builder, sys *language.System) {
-	sb.WriteString(fmt.Sprintf("%s: %s {\n", sys.ID, quote(sys.Label)))
+	fmt.Fprintf(sb, "%s: %s {\n", sys.ID, quote(sys.Label))
 	sb.WriteString("  shape: package\n")
 	if sys.Description != nil {
-		sb.WriteString(fmt.Sprintf("  tooltip: %s\n", quote(*sys.Description)))
+		fmt.Fprintf(sb, "  tooltip: %s\n", quote(*sys.Description))
 	}
 
 	// Containers
@@ -88,10 +88,10 @@ func (e *Exporter) writeSystem(sb *strings.Builder, sys *language.System) {
 }
 
 func (e *Exporter) writeContainer(sb *strings.Builder, cont *language.Container) {
-	sb.WriteString(fmt.Sprintf("  %s: %s {\n", cont.ID, quote(cont.Label)))
+	fmt.Fprintf(sb, "  %s: %s {\n", cont.ID, quote(cont.Label))
 	sb.WriteString("    shape: package\n") // D2 doesn't have explicit container shape, using package
 	if cont.Description != nil {
-		sb.WriteString(fmt.Sprintf("    tooltip: %s\n", quote(*cont.Description)))
+		fmt.Fprintf(sb, "    tooltip: %s\n", quote(*cont.Description))
 	}
 
 	// Technology as icon or label suffix? For now, just a comment or custom field if D2 supports it
@@ -111,34 +111,34 @@ func (e *Exporter) writeContainer(sb *strings.Builder, cont *language.Container)
 }
 
 func (e *Exporter) writeComponent(sb *strings.Builder, comp *language.Component) {
-	sb.WriteString(fmt.Sprintf("    %s: %s {\n", comp.ID, quote(comp.Label)))
+	fmt.Fprintf(sb, "    %s: %s {\n", comp.ID, quote(comp.Label))
 	sb.WriteString("      shape: class\n")
 	if comp.Description != nil {
-		sb.WriteString(fmt.Sprintf("      tooltip: %s\n", quote(*comp.Description)))
+		fmt.Fprintf(sb, "      tooltip: %s\n", quote(*comp.Description))
 	}
 	sb.WriteString("    }\n")
 }
 
 func (e *Exporter) writeDataStore(sb *strings.Builder, ds *language.DataStore) {
-	sb.WriteString(fmt.Sprintf("  %s: %s {\n", ds.ID, quote(ds.Label)))
+	fmt.Fprintf(sb, "  %s: %s {\n", ds.ID, quote(ds.Label))
 	sb.WriteString("    shape: cylinder\n")
 	if ds.Description != nil {
-		sb.WriteString(fmt.Sprintf("    tooltip: %s\n", quote(*ds.Description)))
+		fmt.Fprintf(sb, "    tooltip: %s\n", quote(*ds.Description))
 	}
 	sb.WriteString("  }\n")
 }
 
 func (e *Exporter) writeQueue(sb *strings.Builder, q *language.Queue) {
-	sb.WriteString(fmt.Sprintf("  %s: %s {\n", q.ID, quote(q.Label)))
+	fmt.Fprintf(sb, "  %s: %s {\n", q.ID, quote(q.Label))
 	sb.WriteString("    shape: queue\n")
 	if q.Description != nil {
-		sb.WriteString(fmt.Sprintf("    tooltip: %s\n", quote(*q.Description)))
+		fmt.Fprintf(sb, "    tooltip: %s\n", quote(*q.Description))
 	}
 	sb.WriteString("  }\n")
 }
 
 func (e *Exporter) writePerson(sb *strings.Builder, p *language.Person) {
-	sb.WriteString(fmt.Sprintf("%s: %s {\n", p.ID, quote(p.Label)))
+	fmt.Fprintf(sb, "%s: %s {\n", p.ID, quote(p.Label))
 	sb.WriteString("  shape: person\n")
 	sb.WriteString("}\n\n")
 }
@@ -158,17 +158,17 @@ func (e *Exporter) writeRelation(sb *strings.Builder, rel *language.Relation) {
 	}
 
 	if label != "" {
-		sb.WriteString(fmt.Sprintf("%s -> %s: %s\n", rel.From, rel.To, quote(label)))
+		fmt.Fprintf(sb, "%s -> %s: %s\n", rel.From, rel.To, quote(label))
 	} else {
-		sb.WriteString(fmt.Sprintf("%s -> %s\n", rel.From, rel.To))
+		fmt.Fprintf(sb, "%s -> %s\n", rel.From, rel.To)
 	}
 }
 
 func (e *Exporter) writeDeploymentNode(sb *strings.Builder, node *language.DeploymentNode) {
-	sb.WriteString(fmt.Sprintf("%s: %s {\n", node.ID, quote(node.Label)))
+	fmt.Fprintf(sb, "%s: %s {\n", node.ID, quote(node.Label))
 	// Deployment nodes are usually nested boxes
 	if node.Description != nil {
-		sb.WriteString(fmt.Sprintf("  tooltip: %s\n", quote(*node.Description)))
+		fmt.Fprintf(sb, "  tooltip: %s\n", quote(*node.Description))
 	}
 
 	// Children
@@ -178,10 +178,10 @@ func (e *Exporter) writeDeploymentNode(sb *strings.Builder, node *language.Deplo
 
 	// Infrastructure
 	for _, infra := range node.Infrastructure {
-		sb.WriteString(fmt.Sprintf("  %s: %s {\n", infra.ID, quote(infra.Label)))
+		fmt.Fprintf(sb, "  %s: %s {\n", infra.ID, quote(infra.Label))
 		sb.WriteString("    shape: queue\n") // Using queue/cylinder/class as generic infra for now
 		if infra.Description != nil {
-			sb.WriteString(fmt.Sprintf("    tooltip: %s\n", quote(*infra.Description)))
+			fmt.Fprintf(sb, "    tooltip: %s\n", quote(*infra.Description))
 		}
 		sb.WriteString("  }\n")
 	}
@@ -196,15 +196,15 @@ func (e *Exporter) writeDeploymentNode(sb *strings.Builder, node *language.Deplo
 		} else {
 			id = fmt.Sprintf("%s_Instance", id)
 		}
-		sb.WriteString(fmt.Sprintf("  %s: %s\n", id, instance.ContainerID)) // Alias to original container name?
+		fmt.Fprintf(sb, "  %s: %s\n", id, instance.ContainerID) // Alias to original container name?
 		// Or better:
 		// %s: {
 		//   near: %s
 		// }
 		// But "near" isn't "inside".
 		// Let's just create a node with the same label.
-		sb.WriteString(fmt.Sprintf("  %s: {\n", id))
-		sb.WriteString(fmt.Sprintf("    label: %s\n", instance.ContainerID)) // Ideally look up the container label
+		fmt.Fprintf(sb, "  %s: {\n", id)
+		fmt.Fprintf(sb, "    label: %s\n", instance.ContainerID) // Ideally look up the container label
 		sb.WriteString("  }\n")
 	}
 
@@ -212,7 +212,7 @@ func (e *Exporter) writeDeploymentNode(sb *strings.Builder, node *language.Deplo
 }
 
 func (e *Exporter) writeDynamicView(sb *strings.Builder, view *language.DynamicView) {
-	sb.WriteString(fmt.Sprintf("scenario: %s {\n", quote(view.Title)))
+	fmt.Fprintf(sb, "scenario: %s {\n", quote(view.Title))
 	for i, step := range view.Steps {
 		// D2 scenarios use step references or just connections.
 		// But scenarios in D2 are about state changes.
@@ -228,7 +228,7 @@ func (e *Exporter) writeDynamicView(sb *strings.Builder, view *language.DynamicV
 		} else {
 			label = fmt.Sprintf("%d", i+1)
 		}
-		sb.WriteString(fmt.Sprintf("  %s -> %s: %s\n", step.From, step.To, quote(label)))
+		fmt.Fprintf(sb, "  %s -> %s: %s\n", step.From, step.To, quote(label))
 	}
 	sb.WriteString("}\n\n")
 }

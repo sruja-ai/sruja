@@ -4,11 +4,14 @@
 
 > **⚠️ Alpha Release (v0.1.0)**: Sruja is under active development. APIs may change. See [ROADMAP.md](ROADMAP.md) for the path to v1.0.0.
 
+## Documentation
+
+**[Read the full documentation at sruja-ai.github.io/sruja](https://sruja-ai.github.io/sruja/)**
+
 ## Features
 
 - 🎯 **Architecture DSL**: Define systems, containers, components, and relations
 - ✅ **Validation Engine**: Cycle detection, orphan detection, unique IDs, valid references
-- 📝 **Requirements & ADRs**: First-class language support
 - 📊 **D2 Export**: Export to D2 diagrams for rendering
 - 🎨 **Code Formatter**: Auto-format your architecture with `sruja fmt`
 - 🌳 **Tree View**: Visualize hierarchy with `sruja tree`
@@ -28,6 +31,16 @@ sruja/
 
 ## Installation
 
+### Automated Install (Recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
+```
+
+### Manual Download
+
+Download the latest release from [GitHub Releases](https://github.com/sruja-ai/sruja/releases).
+
 ### From Source
 
 ```bash
@@ -38,26 +51,15 @@ go install github.com/sruja-ai/sruja/cmd/sruja@latest
 
 **Create `example.sruja`:**
 ```sruja
-workspace {
-  model {
-    system User "User"
-    system API "API Service" {
-      container WebApp "Web Application"
-      container Database "Database"
+architecture "My System" {
+    system App "My App" {
+        container Web "Web Server"
+        datastore DB "Database"
     }
-    
-    User -> WebApp "Uses"
-    WebApp -> Database "Reads/Writes"
-  }
-  
-  requirements {
-    R1: functional "Must handle 10k RPS"
-    R2: constraint "Must use PostgreSQL"
-  }
-  
-  adrs {
-    ADR001: "Use microservices architecture"
-  }
+    person User "User"
+
+    User -> Web "Visits"
+    Web -> DB "Reads/Writes"
 }
 ```
 

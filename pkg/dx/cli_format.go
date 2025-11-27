@@ -158,7 +158,7 @@ func Table(rows [][]string) string {
 		if len(row) > 1 {
 			second := row[1]
 			padding := strings.Repeat(" ", maxWidth-len(first))
-			
+
 			if useColor {
 				sb.WriteString(fmt.Sprintf("%s%s %s%s\n",
 					Colorize(ColorCyan, first, useColor),
@@ -184,7 +184,7 @@ func ProgressBar(current, total int, label string) string {
 
 	useColor := SupportsColor()
 	percentage := int((float64(current) / float64(total)) * 100)
-	
+
 	if useColor {
 		return fmt.Sprintf("%s [%d%%] %s", Colorize(ColorCyan, "⏳", useColor), percentage, label)
 	}
@@ -200,4 +200,3 @@ func Separator() string {
 	}
 	return line
 }
-

@@ -183,24 +183,3 @@ func baseName(filename string) string {
 //
 // This helper converts participle's Position type to our SourceLocation type.
 // Used internally when building AST nodes from parsed tokens.
-func extractLocation(pos lexer.Position) SourceLocation {
-	return SourceLocation{
-		File:   pos.Filename,
-		Line:   pos.Line,
-		Column: pos.Column,
-		Offset: pos.Offset,
-		Length: 0, // Will be calculated during parsing
-	}
-}
-
-// trimQuotes removes surrounding quotes from a string literal.
-//
-// Participle can be configured to unquote strings automatically, but this helper
-// is available if manual unquoting is needed.
-func trimQuotes(s string) string {
-	s = strings.TrimSpace(s)
-	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
-		return s[1 : len(s)-1]
-	}
-	return s
-}
