@@ -1,0 +1,255 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #0d1117;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+}
+
+.header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #f0f6fc;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.example-select {
+  padding: 0.5rem 1rem;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.example-select:hover {
+  background: #30363d;
+}
+
+.status {
+  color: #7c3aed;
+  font-size: 0.875rem;
+}
+
+.main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.editor-panel,
+.preview-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #30363d;
+}
+
+.preview-panel {
+  border-right: none;
+}
+
+.panel-header {
+  padding: 0.75rem 1rem;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: #f0f6fc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.collapse-btn {
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  font-size: 0.75rem;
+}
+
+.collapse-btn:hover {
+  background: #21262d;
+  color: #f0f6fc;
+}
+
+.editor-panel.collapsed,
+.preview-panel.collapsed {
+  flex: 0 0 50px;
+  min-width: 50px;
+  max-width: 50px;
+  overflow: hidden;
+}
+
+.editor-panel.collapsed .panel-header,
+.preview-panel.collapsed .panel-header {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  padding: 1rem 0.5rem;
+  justify-content: center;
+}
+
+.editor-panel.collapsed .panel-title,
+.preview-panel.collapsed .panel-title {
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.error-badge {
+  background: #da3633;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.editor-panel > div:last-child {
+  flex: 1;
+}
+
+.errors {
+  padding: 1rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.error-item {
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: #21262d;
+  border-left: 3px solid #da3633;
+  border-radius: 4px;
+  color: #f85149;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+}
+
+.controls-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.zoom-btn {
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  color: #c9d1d9;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.zoom-btn:hover {
+  background: #30363d;
+  border-color: #484f58;
+  color: #f0f6fc;
+}
+
+.zoom-btn:active {
+  background: #1c2128;
+  transform: scale(0.95);
+}
+
+.zoom-btn.reset {
+  font-size: 1rem;
+  margin-left: 0.25rem;
+}
+
+.zoom-level {
+  min-width: 50px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #8b949e;
+}
+
+.diagram-container {
+  flex: 1;
+  overflow: hidden;
+  padding: 2rem;
+  background: #0d1117;
+  position: relative;
+  user-select: none;
+  touch-action: none;
+}
+
+.diagram-wrapper {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  transition: transform 0.1s ease-out;
+  will-change: transform;
+}
+
+.diagram {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: inline-block;
+}
+
+.diagram svg {
+  max-width: 100%;
+  height: auto;
+  background: transparent;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    flex-direction: column;
+  }
+
+  .editor-panel {
+    border-right: none;
+    border-bottom: 1px solid #30363d;
+  }
+}
+

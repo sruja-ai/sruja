@@ -1,0 +1,7 @@
+architecture "External Violation Example" {
+  system App "Application" {
+    container API "API" {
+    }
+  }
+  API -> App depends "Depends"
+}

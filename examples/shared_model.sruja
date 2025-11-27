@@ -1,0 +1,5 @@
+architecture "Shared Model" {
+  system Shared "Shared" {
+    datastore SharedDB "Shared DB"
+  }
+}

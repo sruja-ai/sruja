@@ -1,0 +1,12 @@
+{
+  "name": "@sruja/kernel",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "go build -o ../../bin/sruja-kernel ./main.go",
+    "dev": "go run ./main.go",
+    "test": "go test ../../pkg/kernel/...",
+    "clean": "rm -f ../../bin/sruja-kernel"
+  }
+}
+

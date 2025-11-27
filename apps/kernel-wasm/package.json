@@ -1,0 +1,11 @@
+{
+  "name": "@sruja/kernel-wasm",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "GOOS=js GOARCH=wasm go build -o ../../build/wasm/kernel.wasm ./main.go",
+    "test": "go test ../../pkg/kernel/...",
+    "clean": "rm -f ../../build/wasm/kernel.wasm"
+  }
+}
+

@@ -1,0 +1,11 @@
+architecture "Components Relations Example" {
+  system Shop "Shop" {
+    container Web "Web App" {
+      component Cart "Cart" {
+      }
+      component Auth "Auth" {
+      }
+    }
+    Cart -> Auth uses "Uses"
+  }
+}

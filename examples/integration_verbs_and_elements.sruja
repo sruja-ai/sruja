@@ -1,0 +1,13 @@
+architecture "Integration Verbs and Elements Example" {
+  person User "User"
+  system App "Application" {
+    container API "API" {
+    }
+    datastore DB "PostgreSQL"
+    queue MQ "Events"
+  }
+  User -> API uses "Uses"
+  API -> DB reads "Reads data"
+  API -> DB writes "Writes data"
+  App -> MQ publishes "Publishes events"
+}

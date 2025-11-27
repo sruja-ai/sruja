@@ -1,0 +1,6 @@
+architecture "Invalid Example" {
+  system User "User"
+  system User "Duplicate User"
+  
+  User -> Unknown "Uses"
+}

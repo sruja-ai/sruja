@@ -1,0 +1,30 @@
+architecture "Full MVP Example" {
+  person Customer "Customer"
+
+  system App "Application" {
+    container API "HTTP API" {
+      tags ["http", "public"]
+    }
+    datastore DB "PostgreSQL"
+    queue MQ "Events"
+    container Web "Web App" {
+      technology "React"
+      component Cart "Cart" {
+      }
+      component Auth "Auth" {
+      }
+      Cart -> Auth uses "Uses"
+    }
+  }
+
+  Customer -> API uses "Uses"
+  API -> DB reads "Reads data"
+  API -> DB writes "Writes data"
+  App -> MQ publishes "Publishes events"
+
+  requirement R1 functional "Persist user data"
+  requirement R2 constraint "Expose public API"
+  requirement R3 performance "Fast checkout"
+
+  adr ADR001 "Adopt Stripe for payments"
+}

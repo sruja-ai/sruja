@@ -1,0 +1,64 @@
+//go:build legacy
+
+package engine_test
+
+import (
+	"testing"
+
+	"github.com/sruja-ai/sruja/pkg/engine"
+	"github.com/sruja-ai/sruja/pkg/language"
+)
+
+func parse2(t *testing.T, dsl string) *language.Program {
+	p, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("parser: %v", err)
+	}
+	prog, err := p.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	return prog
+}
+
+func TestValidReferences_NewElements(t *testing.T) {
+	dsl := `
+architecture "Test" {
+  model {
+    system App "App" {
+      datastore Store "DB"
+      queue Bus "Queue"
+      external Pay "Payments"
+    }
+    person User "User"
+    User -> Store reads
+    App -> Bus publishes
+    App -> Pay depends
+  }
+}`
+	prog := parse2(t, dsl)
+	errs := (&engine.ValidReferenceRule{}).Validate(prog)
+	if len(errs) != 0 {
+		t.Fatalf("expected 0 reference errors, got %d", len(errs))
+	}
+}
+
+func TestOrphanDetection_NewElementsUsage(t *testing.T) {
+	dsl := `
+architecture "Test" {
+  model {
+    system App "App" {
+      datastore Store "DB"
+    }
+    person User "User"
+    User -> Store reads
+  }
+}`
+	prog := parse2(t, dsl)
+	errs := (&engine.OrphanDetectionRule{}).Validate(prog)
+	for _, e := range errs {
+		if e.Message == "Orphan element 'App' is defined but never used in any relation." {
+			t.Fatalf("App should be marked used when Store is used")
+		}
+	}
+}

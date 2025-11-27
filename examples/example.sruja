@@ -1,0 +1,12 @@
+architecture "Basic Example" {
+  person User "User"
+  system SoftwareSystem "Software System" {
+    container WebApp "Web Application" {
+    }
+    container Database "Database" {
+    }
+  }
+
+  User -> WebApp "Uses"
+  WebApp -> Database "Reads/Writes"
+}
