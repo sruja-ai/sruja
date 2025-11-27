@@ -31,6 +31,18 @@ func main() {
 
 	switch os.Args[1] {
 
+	case "compile":
+		compileCmd := flag.NewFlagSet("compile", flag.ExitOnError)
+		if err := compileCmd.Parse(os.Args[2:]); err != nil {
+			fmt.Println(dx.Error(fmt.Sprintf("Error parsing compile flags: %v", err)))
+			os.Exit(1)
+		}
+		if compileCmd.NArg() < 1 {
+			fmt.Println("expected file path")
+			os.Exit(1)
+		}
+		runCompile(compileCmd.Arg(0))
+
 	case "lint":
 		if err := lintCmd.Parse(os.Args[2:]); err != nil {
 			fmt.Println(dx.Error(fmt.Sprintf("Error parsing lint flags: %v", err)))
@@ -181,4 +193,46 @@ func runExport(format, filePath string) {
 	}
 
 	fmt.Println(output)
+}
+
+func runCompile(filePath string) {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		fmt.Println(dx.Error(fmt.Sprintf("Error reading file: %v", err)))
+		os.Exit(1)
+	}
+
+	p, err := language.NewParser()
+	if err != nil {
+		fmt.Println(dx.Error(fmt.Sprintf("Error creating parser: %v", err)))
+		os.Exit(1)
+	}
+
+	program, err := p.Parse(filePath, string(content))
+	if err != nil {
+		fmt.Println(dx.Error(fmt.Sprintf("Parser Error: %v", err)))
+		os.Exit(1)
+	}
+
+	// Validation
+	validator := engine.NewValidator()
+	validator.RegisterRule(&engine.UniqueIDRule{})
+	validator.RegisterRule(&engine.ValidReferenceRule{})
+	validator.RegisterRule(&engine.CycleDetectionRule{})
+	validator.RegisterRule(&engine.OrphanDetectionRule{})
+
+	validationErrors := validator.Validate(program)
+	if len(validationErrors) > 0 {
+		// Enhance errors with suggestions and context
+		enhancer := dx.NewErrorEnhancer(filePath, strings.Split(string(content), "\n"), program)
+		enhancedErrors := make([]*dx.EnhancedError, 0, len(validationErrors))
+		for _, err := range validationErrors {
+			enhancedErrors = append(enhancedErrors, enhancer.Enhance(err))
+		}
+
+		fmt.Print(dx.FormatErrors(enhancedErrors, dx.SupportsColor()))
+		os.Exit(1)
+	} else {
+		fmt.Println(dx.Success("Compilation successful."))
+	}
 }
