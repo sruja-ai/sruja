@@ -1,0 +1,274 @@
+{
+  "version": "1.0",
+  "generatedAt": "2025-11-26T20:41:18.181309+05:30",
+  "workspace": {
+    "elements": [
+      {
+        "type": "Person",
+        "id": "Customer",
+        "name": "Customer",
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "type": "System",
+        "id": "App",
+        "name": "Application",
+        "technology": "Go",
+        "tags": [
+          "core",
+          "backend"
+        ],
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "type": "DataStore",
+        "id": "DB",
+        "name": "PostgreSQL",
+        "technology": "PostgreSQL 14",
+        "tags": [
+          "storage"
+        ],
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "type": "Queue",
+        "id": "MQ",
+        "name": "Events",
+        "tags": [
+          "async"
+        ],
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "type": "ExternalService",
+        "id": "Payments",
+        "name": "Stripe",
+        "tags": [
+          "third-party"
+        ],
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "type": "Container",
+        "id": "API",
+        "name": "HTTP API",
+        "tags": [
+          "http",
+          "public"
+        ],
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "type": "DataStore",
+        "id": "DB",
+        "name": "PostgreSQL",
+        "technology": "PostgreSQL 14",
+        "tags": [
+          "storage"
+        ],
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "type": "Queue",
+        "id": "MQ",
+        "name": "Events",
+        "tags": [
+          "async"
+        ],
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "type": "ExternalService",
+        "id": "Payments",
+        "name": "Stripe",
+        "tags": [
+          "third-party"
+        ],
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "type": "Container",
+        "id": "Web",
+        "name": "Web App",
+        "technology": "React",
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "type": "Component",
+        "id": "Cart",
+        "name": "Cart",
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "type": "Component",
+        "id": "Auth",
+        "name": "Auth",
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      }
+    ],
+    "relations": [
+      {
+        "from": "Customer",
+        "to": "API",
+        "type": "Uses",
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "from": "API",
+        "to": "DB",
+        "type": "Reads",
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "from": "API",
+        "to": "DB",
+        "type": "Writes",
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "from": "App",
+        "to": "MQ",
+        "type": "Publishes",
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "from": "App",
+        "to": "Payments",
+        "type": "DependsOn",
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "from": "Cart",
+        "to": "Auth",
+        "type": "Uses",
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      }
+    ],
+    "requirements": [
+      {
+        "id": "R1",
+        "type": "functional",
+        "description": "Persist user data",
+        "implements": [
+          "DB"
+        ],
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "id": "R2",
+        "type": "constraint",
+        "description": "Expose public API",
+        "implements": [
+          "API"
+        ],
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      },
+      {
+        "id": "R3",
+        "type": "performance",
+        "description": "Fast checkout",
+        "implements": [
+          "Cart"
+        ],
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      }
+    ],
+    "adrs": [
+      {
+        "id": "ADR001",
+        "title": "Adopt Stripe for payments",
+        "decision": "",
+        "status": "proposed",
+        "location": {
+          "file": "",
+          "line": 0,
+          "column": 0
+        }
+      }
+    ]
+  }
+}

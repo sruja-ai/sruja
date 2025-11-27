@@ -1,0 +1,10 @@
+architecture "Person to Component Example" {
+  person User "User"
+  system App "App" {
+    container Web "Web" {
+      component Checkout "Checkout" {
+      }
+    }
+  }
+  User -> Checkout uses "Uses"
+}

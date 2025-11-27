@@ -1,0 +1,13 @@
+{
+  "name": "@sruja/playground-server",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "go build -o ../../bin/playground-server ./main.go",
+    "dev": "bash dev.sh",
+    "dev:air": "air",
+    "dev:simple": "go run ./main.go",
+    "test": "go test ./...",
+    "clean": "rm -f ../../bin/playground-server && rm -rf tmp"
+  }
+}

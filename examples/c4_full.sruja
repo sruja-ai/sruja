@@ -1,0 +1,27 @@
+architecture "C4 Complete Example" {
+
+  person User "End User"
+  system WebApp "Web Application" {
+    container API "API Service"
+    container DB "Database"
+  }
+
+  // New Deployment View
+  deployment Prod "Production" {
+    node AWS "AWS" {
+      node USEast1 "US-East-1" {
+         infrastructure LB "Load Balancer"
+         containerInstance API
+      }
+      node RDS "RDS" {
+         containerInstance DB
+      }
+    }
+  }
+
+  // New Dynamic View
+  dynamic LoginFlow "Login Flow" {
+     User -> API "Credentials"
+     API -> DB "Validate User"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "iconDefinitions": {
+    "sruja": {
+      "iconPath": "../.vscode-extension/icons/sruja.svg"
+    }
+  },
+  "fileExtensions": {
+    "sruja": "sruja"
+  },
+  "languageIds": {
+    "sruja": "sruja"
+  }
+}
+

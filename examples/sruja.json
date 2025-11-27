@@ -1,0 +1,8 @@
+{
+    "name": "my-architecture",
+    "version": "1.0.0",
+    "type": "project",
+    "imports": {
+        "aws-rules": "github.com/example/sruja-aws-rules@v1.0.0"
+    }
+}

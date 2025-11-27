@@ -1,0 +1,24 @@
+{
+  "languages": [
+    {
+      "id": "sruja",
+      "name": "Sruja",
+      "extensions": [
+        ".sruja"
+      ],
+      "filePatterns": [
+        "**/*.sruja"
+      ],
+      "server": {
+        "command": "go",
+        "args": [
+          "run",
+          "/Users/dilipkola/Workspace/sruja/cmd/sruja-lsp/main.go"
+        ],
+        "transport": "stdio",
+        "cwd": "/Users/dilipkola/Workspace/sruja",
+        "env": {}
+      }
+    }
+  ]
+}

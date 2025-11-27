@@ -1,0 +1,55 @@
+# Makefile.wasm
+# Build targets for WebAssembly compilation
+
+.PHONY: wasm build-wasm clean-wasm copy-wasm-exec test-wasm
+
+WASM_OUT_DIR = dist/wasm
+WASM_BUILD_DIR = build/wasm
+GO_WASM_EXEC = $(shell go env GOROOT)/misc/wasm/wasm_exec.js
+
+# Build WASM kernel
+wasm: build-wasm copy-wasm-exec
+
+build-wasm:
+	@echo "Building Sruja Kernel WASM..."
+	@mkdir -p $(WASM_BUILD_DIR)
+	@GOOS=js GOARCH=wasm go build -o $(WASM_BUILD_DIR)/kernel.wasm ./apps/kernel-wasm
+	@echo "✅ WASM build complete: $(WASM_BUILD_DIR)/kernel.wasm"
+
+# Copy wasm_exec.js from Go installation
+copy-wasm-exec:
+	@if [ -f "$(GO_WASM_EXEC)" ]; then \
+		mkdir -p $(WASM_BUILD_DIR); \
+		cp $(GO_WASM_EXEC) $(WASM_BUILD_DIR)/wasm_exec.js; \
+		echo "✅ Copied wasm_exec.js to $(WASM_BUILD_DIR)/wasm_exec.js"; \
+	else \
+		echo "⚠️  Warning: wasm_exec.js not found at $(GO_WASM_EXEC)"; \
+		echo "   Download from: https://github.com/golang/go/blob/master/misc/wasm/wasm_exec.js"; \
+	fi
+
+# Prepare distribution directory
+dist-wasm: wasm
+	@mkdir -p $(WASM_OUT_DIR)
+	@cp $(WASM_BUILD_DIR)/kernel.wasm $(WASM_OUT_DIR)/
+	@cp $(WASM_BUILD_DIR)/wasm_exec.js $(WASM_OUT_DIR)/
+	@cp pkg/kernel/wasm/wasm_loader.js $(WASM_OUT_DIR)/
+	@echo "✅ Distribution files ready in $(WASM_OUT_DIR)"
+
+# Clean WASM build artifacts
+clean-wasm:
+	@rm -rf $(WASM_BUILD_DIR)
+	@rm -rf $(WASM_OUT_DIR)
+	@echo "✅ Cleaned WASM build artifacts"
+
+# Test WASM compilation (just verify it builds)
+test-wasm:
+	@echo "Testing WASM compilation..."
+	@GOOS=js GOARCH=wasm go build -o /tmp/test-kernel.wasm ./apps/kernel-wasm
+	@if [ -f "/tmp/test-kernel.wasm" ]; then \
+		echo "✅ WASM compilation test passed"; \
+		rm /tmp/test-kernel.wasm; \
+	else \
+		echo "❌ WASM compilation test failed"; \
+		exit 1; \
+	fi
+

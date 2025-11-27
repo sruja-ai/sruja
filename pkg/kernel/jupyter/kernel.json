@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "/Users/dilipkola/Workspace/sruja/bin/sruja-kernel",
+    "-f",
+    "{connection_file}",
+    "-log",
+    "/tmp/sruja-kernel.log"
+  ],
+  "display_name": "Sruja Architecture",
+  "language": "sruja",
+  "interrupt_mode": "message",
+  "env": {},
+  "metadata": {
+    "debugger": false,
+    "kernel_protocol_version": "5.3",
+    "ws_protocol": "v1"
+  }
+}

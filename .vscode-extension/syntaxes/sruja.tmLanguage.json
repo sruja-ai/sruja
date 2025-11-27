@@ -1,0 +1,92 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Sruja",
+    "scopeName": "source.sruja",
+    "patterns": [
+        {
+            "include": "#comments"
+        },
+        {
+            "include": "#keywords"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#identifiers"
+        },
+        {
+            "include": "#operators"
+        }
+    ],
+    "repository": {
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.line.double-slash.sruja",
+                    "match": "//.*$"
+                },
+                {
+                    "name": "comment.block.sruja",
+                    "begin": "/\\*",
+                    "end": "\\*/"
+                }
+            ]
+        },
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.sruja",
+                    "match": "\\b(workspace|model|views|import)\\b"
+                },
+                {
+                    "name": "storage.type.sruja",
+                    "match": "\\b(system|container|component|person)\\b"
+                },
+                {
+                    "name": "keyword.other.sruja",
+                    "match": "\\b(requirements|adrs|functional|nonfunctional|constraint)\\b"
+                }
+            ]
+        },
+        "strings": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.sruja",
+                    "begin": "\"",
+                    "end": "\"",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.sruja",
+                            "match": "\\\\."
+                        }
+                    ]
+                }
+            ]
+        },
+        "identifiers": {
+            "patterns": [
+                {
+                    "name": "variable.other.sruja",
+                    "match": "\\b[A-Z][a-zA-Z0-9_]*\\b"
+                },
+                {
+                    "name": "entity.name.tag.sruja",
+                    "match": "\\b[A-Z][A-Z0-9_]*\\b"
+                }
+            ]
+        },
+        "operators": {
+            "patterns": [
+                {
+                    "name": "keyword.operator.arrow.sruja",
+                    "match": "->"
+                },
+                {
+                    "name": "punctuation.separator.colon.sruja",
+                    "match": ":"
+                }
+            ]
+        }
+    }
+}

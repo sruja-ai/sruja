@@ -1,0 +1,60 @@
+# Binaries
+sruja
+sruja-lsp
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+vendor/
+node_modules/
+
+# Go workspace file
+go.work
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+.next/
+.turbo/
+bin/
+*.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Playground
+apps/playground-web/dist/
+apps/playground-web/.vite/
+apps/playground-server/tmp/
+apps/playground-server/build-errors.log
+
+# Architecture cache
+.architecture/cache/
+index.json
+visual.json
+
+# Bun
+.bun/

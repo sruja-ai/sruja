@@ -1,0 +1,9 @@
+IMPORTANT: After updating the extension, you MUST reload VS Code:
+
+1. Press Cmd+Shift+P (Mac) or Ctrl+Shift+P (Windows/Linux)
+2. Type "Developer: Reload Window"
+3. Press Enter
+
+Then try the command again:
+- Press Cmd+Shift+P
+- Type "Sruja: Show Diagram Preview"

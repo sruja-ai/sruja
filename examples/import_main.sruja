@@ -1,0 +1,11 @@
+architecture "Import Main Example" {
+  system Shared "Shared" {
+    datastore SharedDB "Shared DB"
+  }
+  system App "App" {
+    container API "API" {
+    }
+  }
+  App -> Shared uses "Uses"
+  API -> SharedDB reads "Reads data"
+}

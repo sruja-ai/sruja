@@ -1,0 +1,4 @@
+architecture "Requirements Implements Invalid Example" {
+  system API "API"
+  requirement R1 functional "Unknown impl"
+}
