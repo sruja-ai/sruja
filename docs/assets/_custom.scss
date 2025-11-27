@@ -4,8 +4,10 @@
     --color-primary: #6A00FF;
 }
 
-.book-menu-content {
-    background-color: #fcfcfc;
+@media (prefers-color-scheme: light) {
+    .book-menu-content {
+        background-color: #fcfcfc;
+    }
 }
 
 .book-brand {
