@@ -29,7 +29,7 @@ title = 'Sruja Documentation'
   BookTheme = 'auto'
   BookSection = '*'
   BookLogo = 'sruja-logo.svg'
-  BookFavicon = 'sruja-logo.svg'
+  BookFavicon = '/sruja-logo.svg'
   BookMenuBundle = '/menu'
 
 [markup]
