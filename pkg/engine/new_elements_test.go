@@ -1,5 +1,3 @@
-//go:build legacy
-
 package engine_test
 
 import (
@@ -24,17 +22,15 @@ func parse2(t *testing.T, dsl string) *language.Program {
 func TestValidReferences_NewElements(t *testing.T) {
 	dsl := `
 architecture "Test" {
-  model {
     system App "App" {
       datastore Store "DB"
       queue Bus "Queue"
-      external Pay "Payments"
+      container Pay "Payments"
     }
     person User "User"
-    User -> Store reads
-    App -> Bus publishes
-    App -> Pay depends
-  }
+    User -> Store "reads"
+    App -> Bus "publishes"
+    App -> Pay "depends"
 }`
 	prog := parse2(t, dsl)
 	errs := (&engine.ValidReferenceRule{}).Validate(prog)
@@ -46,14 +42,13 @@ architecture "Test" {
 func TestOrphanDetection_NewElementsUsage(t *testing.T) {
 	dsl := `
 architecture "Test" {
-  model {
     system App "App" {
       datastore Store "DB"
     }
     person User "User"
-    User -> Store reads
-  }
-}`
+    User -> Store "reads"
+}
+`
 	prog := parse2(t, dsl)
 	errs := (&engine.OrphanDetectionRule{}).Validate(prog)
 	for _, e := range errs {

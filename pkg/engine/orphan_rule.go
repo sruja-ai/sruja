@@ -22,28 +22,37 @@ func (r *OrphanDetectionRule) Validate(program *language.Program) []ValidationEr
 		return errors
 	}
 
+	parent := map[string]string{}
+
 	for _, sys := range arch.Systems {
 		defined[sys.ID] = sys.Location()
 		for _, cont := range sys.Containers {
 			defined[cont.ID] = cont.Location()
+			parent[cont.ID] = sys.ID
 			for _, comp := range cont.Components {
 				defined[comp.ID] = comp.Location()
+				parent[comp.ID] = cont.ID
 			}
 			for _, ds := range cont.DataStores {
 				defined[ds.ID] = ds.Location()
+				parent[ds.ID] = cont.ID
 			}
 			for _, q := range cont.Queues {
 				defined[q.ID] = q.Location()
+				parent[q.ID] = cont.ID
 			}
 		}
 		for _, comp := range sys.Components {
 			defined[comp.ID] = comp.Location()
+			parent[comp.ID] = sys.ID
 		}
 		for _, ds := range sys.DataStores {
 			defined[ds.ID] = ds.Location()
+			parent[ds.ID] = sys.ID
 		}
 		for _, q := range sys.Queues {
 			defined[q.ID] = q.Location()
+			parent[q.ID] = sys.ID
 		}
 	}
 	for _, p := range arch.Persons {
@@ -66,6 +75,19 @@ func (r *OrphanDetectionRule) Validate(program *language.Program) []ValidationEr
 		for _, comp := range s.Components {
 			for _, r := range comp.Relations {
 				markRel(r.From, r.To)
+			}
+		}
+	}
+
+	// Propagate usage to parents
+	// Iterate multiple times or just ensure we cover the depth (max 3: Component -> Container -> System)
+	// Simple loop over defined elements to propagate
+	for i := 0; i < 3; i++ {
+		for id := range defined {
+			if used[id] {
+				if pID, ok := parent[id]; ok {
+					used[pID] = true
+				}
 			}
 		}
 	}

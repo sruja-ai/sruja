@@ -36,33 +36,41 @@ graph TD
 
 ## 2. Technology Description
 
-- **Frontend**: Next.js@14 with TypeScript, Tailwind CSS@3
-- **Static Site Generator**: Next.js SSG with ISR (Incremental Static Regeneration)
-- **Search Engine**: Lunr.js for client-side search indexing
-- **Content Format**: Markdown with frontmatter YAML
-- **Syntax Highlighting**: Prism.js with language-specific themes
-- **Build Tool**: Next.js build system with custom webpack configuration
-- **Content Management**: Git-based workflow with markdown files
-- **Deployment**: Static hosting (Vercel/Netlify compatible)
+* **Frontend**: Next.js\@14 with TypeScript, Tailwind CSS\@3
+
+* **Static Site Generator**: Next.js SSG with ISR (Incremental Static Regeneration)
+
+* **Search Engine**: Lunr.js for client-side search indexing
+
+* **Content Format**: Markdown with frontmatter YAML
+
+* **Syntax Highlighting**: Prism.js with language-specific themes
+
+* **Build Tool**: Next.js build system with custom webpack configuration
+
+* **Content Management**: Git-based workflow with markdown files
+
+* **Deployment**: Static hosting (Vercel/Netlify compatible)
 
 ## 3. Route definitions
 
-| Route | Purpose |
-|-------|---------|
-| / | Homepage with search and featured content |
-| /docs/[...slug] | Documentation pages with hierarchical routing |
-| /tutorials | Tutorial listing with filters and categories |
-| /tutorials/[slug] | Individual tutorial pages with step-by-step content |
-| /blog | Blog post listings with pagination |
-| /blog/[slug] | Individual blog post pages |
-| /blog/category/[category] | Category-filtered blog posts |
-| /blog/tag/[tag] | Tag-filtered blog posts |
-| /search | Search interface with advanced filters |
-| /about | Project information and contribution guidelines |
+| Route                      | Purpose                                             |
+| -------------------------- | --------------------------------------------------- |
+| /                          | Homepage with search and featured content           |
+| /docs/\[...slug]           | Documentation pages with hierarchical routing       |
+| /tutorials                 | Tutorial listing with filters and categories        |
+| /tutorials/\[slug]         | Individual tutorial pages with step-by-step content |
+| /blog                      | Blog post listings with pagination                  |
+| /blog/\[slug]              | Individual blog post pages                          |
+| /blog/category/\[category] | Category-filtered blog posts                        |
+| /blog/tag/\[tag]           | Tag-filtered blog posts                             |
+| /search                    | Search interface with advanced filters              |
+| /about                     | Project information and contribution guidelines     |
 
 ## 4. Content Structure
 
 ### 4.1 Documentation Structure
+
 ```
 content/
 ├── docs/
@@ -96,6 +104,7 @@ content/
 ```
 
 ### 4.2 Frontmatter Schema
+
 ```yaml
 ---
 title: "JavaScript Fundamentals"
@@ -114,6 +123,7 @@ prerequisites: ["html-basics", "css-basics"]
 ## 5. Search Implementation
 
 ### 5.1 Search Index Structure
+
 ```javascript
 interface SearchDocument {
   id: string;
@@ -136,6 +146,7 @@ interface SearchIndex {
 ```
 
 ### 5.2 Build-time Search Generation
+
 ```javascript
 // scripts/build-search-index.js
 import { buildSearchIndex } from './search-builder';
@@ -156,28 +167,43 @@ export async function generateSearchIndex() {
 ## 6. Performance Optimization
 
 ### 6.1 Static Generation Strategy
-- **Pre-rendering**: All pages pre-built at build time
-- **Incremental Static Regeneration**: Update content without full rebuild
-- **Code Splitting**: Automatic chunking for optimal loading
-- **Image Optimization**: Next.js Image component with lazy loading
-- **Font Optimization**: Subset fonts with fallback strategies
+
+* **Pre-rendering**: All pages pre-built at build time
+
+* **Incremental Static Regeneration**: Update content without full rebuild
+
+* **Code Splitting**: Automatic chunking for optimal loading
+
+* **Image Optimization**: Next.js Image component with lazy loading
+
+* **Font Optimization**: Subset fonts with fallback strategies
 
 ### 6.2 Search Performance
-- **Client-side Index**: Lunr.js index loaded once per session
-- **Progressive Enhancement**: Search works offline after initial load
-- **Debounced Input**: 300ms debounce on search input
-- **Result Caching**: Cache search results in memory
-- **Virtual Scrolling**: For large result sets
+
+* **Client-side Index**: Lunr.js index loaded once per session
+
+* **Progressive Enhancement**: Search works offline after initial load
+
+* **Debounced Input**: 300ms debounce on search input
+
+* **Result Caching**: Cache search results in memory
+
+* **Virtual Scrolling**: For large result sets
 
 ### 6.3 Bundle Size Optimization
-- **Tree Shaking**: Remove unused code automatically
-- **Dynamic Imports**: Load components on demand
-- **Asset Optimization**: Minify CSS, JS, and HTML
-- **Compression**: Gzip/Brotli compression for all assets
+
+* **Tree Shaking**: Remove unused code automatically
+
+* **Dynamic Imports**: Load components on demand
+
+* **Asset Optimization**: Minify CSS, JS, and HTML
+
+* **Compression**: Gzip/Brotli compression for all assets
 
 ## 7. Development Workflow
 
 ### 7.1 Content Creation Process
+
 1. Content creators write markdown files with proper frontmatter
 2. Files committed to git repository
 3. Build process triggered (CI/CD)
@@ -185,6 +211,7 @@ export async function generateSearchIndex() {
 5. New content deployed to CDN
 
 ### 7.2 Local Development
+
 ```bash
 # Install dependencies
 npm install
@@ -203,20 +230,29 @@ npm run start
 ```
 
 ### 7.3 Content Validation
-- **Frontmatter validation**: Ensure required fields are present
-- **Markdown linting**: Consistent formatting across content
-- **Link validation**: Verify internal and external links
-- **Image optimization**: Compress and optimize images during build
+
+* **Frontmatter validation**: Ensure required fields are present
+
+* **Markdown linting**: Consistent formatting across content
+
+* **Link validation**: Verify internal and external links
+
+* **Image optimization**: Compress and optimize images during build
 
 ## 8. Deployment Architecture
 
 ### 8.1 Static Hosting Configuration
-- **CDN Distribution**: Global edge locations for fast access
-- **Cache Headers**: Optimal caching strategies for different asset types
-- **Custom Domain**: Domain configuration with SSL/TLS
-- **Environment Variables**: Build-time configuration injection
+
+* **CDN Distribution**: Global edge locations for fast access
+
+* **Cache Headers**: Optimal caching strategies for different asset types
+
+* **Custom Domain**: Domain configuration with SSL/TLS
+
+* **Environment Variables**: Build-time configuration injection
 
 ### 8.2 CI/CD Pipeline
+
 ```yaml
 # .github/workflows/deploy.yml
 name: Deploy Language Learning App
@@ -248,14 +284,24 @@ jobs:
 ## 9. Monitoring and Analytics
 
 ### 9.1 Performance Monitoring
-- **Core Web Vitals**: LCP, FID, CLS tracking
-- **Search Analytics**: Track popular queries and zero-result searches
-- **Error Tracking**: Client-side error monitoring
-- **Usage Analytics**: Page views, time on page, bounce rate
+
+* **Core Web Vitals**: LCP, FID, CLS tracking
+
+* **Search Analytics**: Track popular queries and zero-result searches
+
+* **Error Tracking**: Client-side error monitoring
+
+* **Usage Analytics**: Page views, time on page, bounce rate
 
 ### 9.2 SEO Optimization
-- **Meta Tags**: Dynamic meta tags for each page
-- **Structured Data**: JSON-LD schema markup
-- **Sitemap Generation**: Automatic XML sitemap
-- **RSS Feeds**: RSS feed for blog content
-- **Social Sharing**: Open Graph and Twitter Card meta tags
+
+* **Meta Tags**: Dynamic meta tags for each page
+
+* **Structured Data**: JSON-LD schema markup
+
+* **Sitemap Generation**: Automatic XML sitemap
+
+* **RSS Feeds**: RSS feed for blog content
+
+* **Social Sharing**: Open Graph and Twitter Card meta tags
+

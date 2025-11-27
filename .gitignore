@@ -1,4 +1,6 @@
 # Binaries
+# sruja binary
+/bin/sruja
 sruja
 sruja-lsp
 *.exe
@@ -13,6 +15,7 @@ bin/
 
 # Output of the go coverage tool
 *.out
+*.html
 
 # Dependency directories
 vendor/
