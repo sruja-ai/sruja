@@ -41,7 +41,7 @@ func (e *EnhancedError) Format(useColor bool) string {
 	// Context
 	if e.Context != "" {
 		if useColor {
-			sb.WriteString(fmt.Sprintf("\033[90m  Context:\033[0m\n"))
+			sb.WriteString("\033[90m  Context:\033[0m\n")
 		} else {
 			sb.WriteString("  Context:\n")
 		}
@@ -58,7 +58,7 @@ func (e *EnhancedError) Format(useColor bool) string {
 	// Suggestions
 	if len(e.Suggestions) > 0 {
 		if useColor {
-			sb.WriteString(fmt.Sprintf("\033[33m  Suggestions:\033[0m\n"))
+			sb.WriteString("\033[33m  Suggestions:\033[0m\n")
 		} else {
 			sb.WriteString("  Suggestions:\n")
 		}

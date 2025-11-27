@@ -1,0 +1,31 @@
+:root {
+    --color-link: #6A00FF;
+    --color-visited: #FF00AA;
+    --color-primary: #6A00FF;
+}
+
+.book-menu-content {
+    background-color: #fcfcfc;
+}
+
+.book-brand {
+    color: #6A00FF !important;
+}
+
+a {
+    color: #6A00FF;
+}
+
+a:hover {
+    color: #00E0FF;
+}
+
+.book-btn {
+    color: #6A00FF;
+    border-color: #6A00FF;
+}
+
+.book-btn:hover {
+    color: #00E0FF;
+    border-color: #00E0FF;
+}

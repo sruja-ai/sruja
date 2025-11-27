@@ -11,24 +11,23 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Detect OS and architecture
-OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+OS="$(uname -s)"
 ARCH="$(uname -m)"
 
+case "$OS" in
+    Linux) OS="Linux" ;;
+    Darwin) OS="Darwin" ;;
+    *) echo -e "${RED}Unsupported OS: $OS${NC}"; exit 1 ;;
+esac
+
 case "$ARCH" in
-    x86_64) ARCH="amd64" ;;
+    x86_64) ARCH="x86_64" ;;
     arm64|aarch64) ARCH="arm64" ;;
     *) echo -e "${RED}Unsupported architecture: $ARCH${NC}"; exit 1 ;;
 esac
 
-case "$OS" in
-    linux) ;;
-    darwin) OS="darwin" ;;
-    *) echo -e "${RED}Unsupported OS: $OS${NC}"; exit 1 ;;
-esac
-
 # Version and download URL
 VERSION="${SRUJA_VERSION:-latest}"
-BINARY_NAME="sruja-${OS}-${ARCH}"
 INSTALL_DIR="${SRUJA_INSTALL_DIR:-/usr/local/bin}"
 BINARY_PATH="${INSTALL_DIR}/sruja"
 
@@ -39,17 +38,19 @@ API_URL="https://api.github.com/repos/${REPO}/releases"
 echo -e "${GREEN}Installing Sruja DSL...${NC}"
 echo -e "OS: ${OS}"
 echo -e "Architecture: ${ARCH}"
-echo -e "Version: ${VERSION}"
+
+# Construct archive name based on GoReleaser template: sruja_Linux_x86_64.tar.gz
+ARCHIVE_NAME="sruja_${OS}_${ARCH}.tar.gz"
 
 # Get latest release
 if [ "$VERSION" = "latest" ]; then
-    DOWNLOAD_URL=$(curl -s "${API_URL}/latest" | grep "browser_download_url.*${BINARY_NAME}" | cut -d '"' -f 4)
+    DOWNLOAD_URL=$(curl -s "${API_URL}/latest" | grep "browser_download_url.*${ARCHIVE_NAME}" | cut -d '"' -f 4)
 else
-    DOWNLOAD_URL=$(curl -s "${API_URL}/tags/${VERSION}" | grep "browser_download_url.*${BINARY_NAME}" | cut -d '"' -f 4)
+    DOWNLOAD_URL=$(curl -s "${API_URL}/tags/${VERSION}" | grep "browser_download_url.*${ARCHIVE_NAME}" | cut -d '"' -f 4)
 fi
 
 if [ -z "$DOWNLOAD_URL" ]; then
-    echo -e "${RED}Error: Could not find download URL for ${BINARY_NAME}${NC}"
+    echo -e "${RED}Error: Could not find download URL for ${ARCHIVE_NAME}${NC}"
     exit 1
 fi
 
@@ -59,11 +60,14 @@ echo -e "${YELLOW}Downloading from: ${DOWNLOAD_URL}${NC}"
 TMP_DIR=$(mktemp -d)
 trap "rm -rf $TMP_DIR" EXIT
 
-# Download binary
-curl -L -o "${TMP_DIR}/sruja" "$DOWNLOAD_URL"
+# Download archive
+curl -L -o "${TMP_DIR}/${ARCHIVE_NAME}" "$DOWNLOAD_URL"
+
+# Extract archive
+tar -xzf "${TMP_DIR}/${ARCHIVE_NAME}" -C "$TMP_DIR"
 
 if [ ! -f "${TMP_DIR}/sruja" ]; then
-    echo -e "${RED}Error: Download failed${NC}"
+    echo -e "${RED}Error: Extraction failed or binary not found in archive${NC}"
     exit 1
 fi
 
@@ -87,11 +91,9 @@ if command -v sruja >/dev/null 2>&1; then
     echo -e "${GREEN}Version: ${INSTALLED_VERSION}${NC}"
     echo ""
     echo -e "Next steps:"
-    echo -e "  1. Run: ${YELLOW}sruja init${NC} to create your first project"
-    echo -e "  2. Run: ${YELLOW}sruja --help${NC} to see all commands"
-    echo -e "  3. Read: https://sruja.dev/docs/quickstart"
+    echo -e "  1. Run: ${YELLOW}sruja --help${NC} to see all commands"
+    echo -e "  2. Read: https://sruja-ai.github.io/sruja/docs/getting-started/"
 else
     echo -e "${YELLOW}Warning: Binary installed but not found in PATH${NC}"
     echo -e "Make sure ${INSTALL_DIR} is in your PATH"
 fi
-

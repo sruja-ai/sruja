@@ -966,18 +966,7 @@ func (c *Component) PostProcess() {
 		if item.Metadata != nil {
 			c.Metadata = append(c.Metadata, item.Metadata.Entries...)
 		}
-		if item.Behavior != nil {
-			// Behavior could be used by validators; collected via metadata-like map? omitted
-		}
-		if item.ContractsBlock != nil {
-			// Attach component-level contracts (behavior/api/event/data)
-		}
-		if item.ConstraintsBlock != nil {
-			// Extendable: collect constraints
-		}
-		if item.ConventionsBlock != nil {
-			// Extendable: collect conventions
-		}
+
 	}
 }
 

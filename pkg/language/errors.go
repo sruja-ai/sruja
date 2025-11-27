@@ -191,4 +191,3 @@ func NewCompilationError(loc SourceLocation, msg string) *CompilationError {
 		Severity: ErrorSeverityError,
 	}
 }
-
