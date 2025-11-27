@@ -1,14 +1,14 @@
 {
   "name": "Sruja Documentation",
   "short_name": "Sruja Documentation",
-  "start_url": "/sruja/",
-  "scope": "/sruja/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
   "icons": [
     {
-      "src": "/sruja/favicon.svg",
+      "src": "/favicon.svg",
       "sizes": "512x512"
     }
   ]
