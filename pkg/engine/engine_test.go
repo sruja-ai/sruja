@@ -1,5 +1,3 @@
-//go:build legacy
-
 package engine_test
 
 import (
@@ -24,17 +22,13 @@ func parse(t *testing.T, dsl string) *language.Program {
 func TestValidReferences_PersonContainer(t *testing.T) {
 	dsl := `
 architecture "Test" {
-  model {
     person Customer "Customer"
     system Order "Order System" {
-      container API "Order API" {
-        component Checkout "Checkout"
-      }
+      container API "Order API"
     }
     Customer -> API "Uses"
-    API -> Checkout "Calls"
-  }
-}`
+}
+`
 	program := parse(t, dsl)
 
 	rule := &engine.ValidReferenceRule{}
@@ -46,15 +40,14 @@ architecture "Test" {
 
 func TestOrphanDetection_ParentSystemMarkedUsed(t *testing.T) {
 	dsl := `
-workspace {
-  model {
+architecture "Test" {
     system Order "Order System" {
       container API "Order API"
     }
     person Customer "Customer"
     Customer -> API "Uses"
-  }
-}`
+}
+`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
@@ -68,12 +61,11 @@ workspace {
 
 func TestUniqueIDRule_DuplicateIDs(t *testing.T) {
 	dsl := `
-workspace {
-  model {
+architecture "Test" {
     system A "System A" { container X "X" }
     system B "System B" { container X "X Duplicate" }
-  }
-}`
+}
+`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}

@@ -1,8 +1,0 @@
-# Bun configuration
-[install]
-# Use workspace protocol for local packages
-workspace = true
-
-# Auto-install peer dependencies
-auto = true
-

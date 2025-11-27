@@ -9,47 +9,24 @@
 - 🎯 **Architecture DSL**: Define systems, containers, components, and relations
 - ✅ **Validation Engine**: Cycle detection, orphan detection, unique IDs, valid references
 - 📝 **Requirements & ADRs**: First-class language support
-- 📊 **Compiler**: Transpile to Mermaid C4 diagrams (extensible)
+- 📊 **D2 Export**: Export to D2 diagrams for rendering
 - 🎨 **Code Formatter**: Auto-format your architecture with `sruja fmt`
-- 📓 **Notebook Experience**: Jupyter-like Markdown integration
-- 🤖 **MCP Integration**: AI agents can read and validate your architecture
-- 📦 **Extension System**: Git-based packages (like Deno/Go)
-- 🎮 **Playground**: Interactive web playground for trying Sruja
+- 🌳 **Tree View**: Visualize hierarchy with `sruja tree`
 
-## Monorepo Structure
-
-This is a Turborepo monorepo with the following structure:
+## Project Structure
 
 ```
 sruja/
-├── apps/
-│   ├── cli/              # Main CLI tool (Go)
-│   ├── playground-server/ # Playground API server (Go)
-│   └── playground-web/    # Playground frontend (React/Vite)
-├── pkg/                   # Shared Go packages
-│   ├── compiler/          # Compiler backends
-│   ├── engine/            # Validation engine
-│   ├── language/          # Parser, AST, lexer
-│   └── ...
-└── packages/              # Shared packages (future)
+├── cmd/
+│   └── sruja/            # Main CLI tool
+├── pkg/                  # Shared Go packages
+│   ├── engine/           # Validation engine
+│   ├── language/         # Parser, AST, lexer
+│   └── export/           # Exporters (D2, etc.)
+└── examples/             # Example .sruja files
 ```
 
 ## Installation
-
-### Download Pre-built Binary
-
-Download the latest release for your platform from [GitHub Releases](https://github.com/sruja-ai/sruja/releases):
-
-```bash
-# Linux (AMD64)
-curl -L https://github.com/sruja-ai/sruja/releases/latest/download/sruja-v0.1.0-linux-amd64.tar.gz | tar xz
-
-# macOS (Apple Silicon)
-curl -L https://github.com/sruja-ai/sruja/releases/latest/download/sruja-v0.1.0-darwin-arm64.tar.gz | tar xz
-
-# Move to PATH
-sudo mv sruja /usr/local/bin/
-```
 
 ### From Source
 
@@ -84,9 +61,9 @@ workspace {
 }
 ```
 
-**Compile to Mermaid:**
+**Export to D2:**
 ```bash
-sruja compile example.sruja
+sruja export d2 example.sruja
 ```
 
 **Lint your code:**
@@ -99,129 +76,26 @@ sruja lint example.sruja
 sruja fmt example.sruja
 ```
 
-### Initialize a project
-
+**View hierarchy:**
+```bash
+sruja tree --file example.sruja
 ```
-sruja init
-```
-
-- Scaffolds `architecture.sruja`, `.architecture/` with `config.json`, and `adrs/`.
-- Adds `.gitignore` entries for `.architecture/cache/`, `index.json`, and optional `visual.json`.
 
 ## Development
 
 ### Prerequisites
 
 - Go 1.25+
-- Bun 1.3+ (includes Node.js runtime)
 
 ### Setup
 
 ```bash
-# Install Bun if not already installed
-curl -fsSL https://bun.sh/install | bash
-
 # Install dependencies
-bun install
+go mod download
 
-# Build all apps
-bun build
-
-# Run development mode
-bun dev
+# Build CLI
+make build
 ```
-
-### Individual Apps
-
-```bash
-# CLI
-cd apps/cli
-go run ./cmd
-
-# Playground Server
-cd apps/playground-server
-go run main.go
-
-# Playground Web
-cd apps/playground-web
-bun dev
-```
-
-### Using Turborepo
-
-```bash
-# Run all apps in dev mode
-bun dev
-
-# Build all apps
-bun build
-
-# Run tests
-bun test
-
-# Clean build artifacts
-bun clean
-```
-
-## Extension System
-
-Create custom validation rules and compilers as Git packages.
-
-**Create `sruja.json`:**
-```json
-{
-  "name": "my-architecture",
-  "version": "1.0.0",
-  "type": "project",
-  "imports": {
-    "aws-rules": "github.com/myorg/sruja-aws-rules@v1.0.0"
-  }
-}
-```
-
-**Install dependencies:**
-```bash
-sruja install
-```
-
-Works with both public and private repositories (uses your git credentials/SSH keys).
-
-### Supported Extension Modalities (Go CLI)
-
-- Go-native plugins loaded in-process via stable interfaces.
-- Optional JS plugins executed via subprocess (Bun/Node) with JSON I/O.
-- Optional WASM modules with a stable ABI for rule evaluation.
-
-Use `sruja.json` to declare imports and pin versions. The Go CLI resolves and executes plugins according to modality.
-
-## MCP Integration
-
-Start the MCP server for AI integration:
-```bash
-sruja mcp
-```
-
-This exposes tools (`validate`, `compile`) and resources (your `.sruja` files) to AI agents.
-
-## VS Code Extension
-
-Install syntax highlighting:
-```bash
-cp -r .vscode-extension ~/.vscode/extensions/sruja
-# Reload VS Code
-```
-
-## Project Structure
-
-- `apps/cli`: CLI tool
-- `apps/playground-server`: Playground API server
-- `apps/playground-web`: Playground web UI
-- `pkg/language`: Lexer, Parser, AST
-- `pkg/compiler`: Compiler backends (Mermaid, etc.)
-- `pkg/engine`: Validation rules
-- `pkg/extensions`: Extension/package system
-- `pkg/notebook`: Markdown notebook runner
-- `pkg/mcp`: Model Context Protocol server
 
 ## License
 

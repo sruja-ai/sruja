@@ -269,9 +269,7 @@ type System struct {
 	ID          string       `parser:"'system' @Ident"`
 	Label       string       `parser:"@String"`
 	Description *string      `parser:"( @String )?"`
-	LBrace      *string      `parser:"( '{' )?"`
-	Items       []SystemItem `parser:"@@*"`
-	RBrace      *string      `parser:"( '}' )?"`
+	Items       []SystemItem `parser:"( '{' @@* '}' )?"`
 
 	// Post-processed fields
 	Containers   []*Container
@@ -333,9 +331,7 @@ type Container struct {
 	ID          string          `parser:"'container' @Ident"`
 	Label       string          `parser:"@String"`
 	Description *string         `parser:"( @String )?"`
-	LBrace      *string         `parser:"( '{' )?"`
-	Items       []ContainerItem `parser:"@@*"`
-	RBrace      *string         `parser:"( '}' )?"`
+	Items       []ContainerItem `parser:"( '{' @@* '}' )?"`
 
 	// Post-processed fields
 	Components   []*Component
@@ -396,9 +392,7 @@ type Component struct {
 	Label       string          `parser:"@String"`
 	Description *string         `parser:"( @String )?"`
 	Technology  *string         `parser:"( 'technology' @String )?"`
-	LBrace      *string         `parser:"( '{' )?"`
-	Items       []ComponentItem `parser:"@@*"`
-	RBrace      *string         `parser:"( '}' )?"`
+	Items       []ComponentItem `parser:"( '{' @@* '}' )?"`
 
 	// Post-processed fields
 	Requirements []*Requirement
@@ -440,9 +434,7 @@ type DataStore struct {
 	ID          string          `parser:"'datastore' @Ident"`
 	Label       string          `parser:"@String"`
 	Description *string         `parser:"( @String )?"`
-	LBrace      *string         `parser:"( '{' )?"`
-	Items       []DataStoreItem `parser:"@@*"`
-	RBrace      *string         `parser:"( '}' )?"`
+	Items       []DataStoreItem `parser:"( '{' @@* '}' )?"`
 
 	Metadata []*MetaEntry
 }
@@ -463,9 +455,7 @@ type Queue struct {
 	ID          string      `parser:"'queue' @Ident"`
 	Label       string      `parser:"@String"`
 	Description *string     `parser:"( @String )?"`
-	LBrace      *string     `parser:"( '{' )?"`
-	Items       []QueueItem `parser:"@@*"`
-	RBrace      *string     `parser:"( '}' )?"`
+	Items       []QueueItem `parser:"( '{' @@* '}' )?"`
 
 	Metadata []*MetaEntry
 }
@@ -484,11 +474,9 @@ func (q *Queue) Location() SourceLocation { return SourceLocation{} }
 //
 //	person User "End User"
 type Person struct {
-	ID     string       `parser:"'person' @Ident"`
-	Label  string       `parser:"@String"`
-	LBrace *string      `parser:"( '{' )?"`
-	Items  []PersonItem `parser:"@@*"`
-	RBrace *string      `parser:"( '}' )?"`
+	ID    string       `parser:"'person' @Ident"`
+	Label string       `parser:"@String"`
+	Items []PersonItem `parser:"( '{' @@* '}' )?"`
 
 	Metadata []*MetaEntry
 }
@@ -699,9 +687,7 @@ type DeploymentNode struct {
 	ID          string               `parser:"@Ident"`
 	Label       string               `parser:"@String"`
 	Description *string              `parser:"( @String )?"`
-	LBrace      string               `parser:"'{'"`
-	Items       []DeploymentNodeItem `parser:"@@*"`
-	RBrace      string               `parser:"'}'"`
+	Items       []DeploymentNodeItem `parser:"( '{' @@* '}' )?"`
 
 	// Post-processed
 	Children           []*DeploymentNode
@@ -765,9 +751,7 @@ type DynamicView struct {
 	ID          string            `parser:"'dynamic' @Ident"` // Optional ID? Usually dynamic views have titles. Let's use ID as title/name for now.
 	Title       string            `parser:"@String"`
 	Description *string           `parser:"( @String )?"`
-	LBrace      string            `parser:"'{'"`
-	Items       []DynamicViewItem `parser:"@@*"`
-	RBrace      string            `parser:"'}'"`
+	Items       []DynamicViewItem `parser:"( '{' @@* '}' )?"`
 
 	// Post-processed
 	Steps []*DynamicViewStep

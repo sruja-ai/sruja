@@ -2,7 +2,7 @@
 
 ## Current Version: v0.1.0 (Alpha)
 
-The initial release provides core functionality for architecture-as-code with basic validation and tooling.
+The initial release provides core functionality for architecture-as-code with basic validation and D2 export.
 
 ## Path to v1.0.0
 
@@ -15,39 +15,23 @@ The initial release provides core functionality for architecture-as-code with ba
 - [ ] Metadata/tags support for elements
 
 ### Compiler Enhancements
-- [ ] PlantUML backend
-- [ ] D2 backend
-- [ ] Structurizr DSL export
+- [ ] D2 backend improvements (themes, classes)
 - [ ] JSON/YAML export for programmatic access
-- [ ] Diagram customization (themes, colors, layouts)
 
 ### Validation Engine
 - [ ] Dependency depth analysis
 - [ ] Naming convention rules
 - [ ] Custom rule templates
 - [ ] Severity levels (error, warning, info)
-- [ ] Rule configuration via manifest
-
-### Extension System
-- [ ] Extension loader implementation (currently only manifest defined)
-- [ ] Plugin API documentation
-- [ ] Example extension packages
-- [ ] Extension marketplace/registry
-- [ ] Sandboxing for untrusted extensions
 
 ### Developer Experience
-- [ ] Language Server Protocol (LSP)
-- [ ] VS Code: Go to definition, find references
-- [ ] VS Code: Inline diagnostics
-- [ ] VS Code: Diagram preview
 - [ ] CLI autocomplete (bash, zsh, fish)
 - [ ] Better error messages with suggestions
+- [ ] VS Code Extension (Syntax Highlighting)
 
 ### Documentation
 - [ ] Comprehensive language reference
-- [ ] Extension development guide
 - [ ] Architecture patterns library
-- [ ] Video tutorials
 - [ ] API documentation
 
 ### Testing & Quality
@@ -55,27 +39,11 @@ The initial release provides core functionality for architecture-as-code with ba
 - [ ] Fuzz testing
 - [ ] Performance benchmarks
 - [ ] Example real-world architectures
-- [ ] Migration guides
-
-### Ecosystem
-- [ ] Official extension repository
-- [ ] Homebrew formula
-- [ ] Docker image
-- [ ] npm wrapper for JS/TS projects
-- [ ] GitHub Action
-- [ ] Pre-commit hooks
-
-### MCP Enhancements
-- [ ] Prompts for common architecture patterns
-- [ ] Sampling support for large diagrams
-- [ ] Extension tool exposure via MCP
-- [ ] Collaborative editing support
 
 ## Version Strategy
 
 - **v0.1.x**: Alpha releases, core functionality, breaking changes expected
-- **v0.2.x**: Beta releases, stable language spec, extensions working
-- **v0.9.x**: Release candidates, feature complete, polish
+- **v0.2.x**: Beta releases, stable language spec
 - **v1.0.0**: Production ready, stable API, comprehensive docs
 
 ## Contributing
