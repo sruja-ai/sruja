@@ -8,7 +8,7 @@ type: docs
 **Sruja** is the developer-friendly language for defining, visualizing, and validating software architecture.
 
 <div class="buttons">
-<a class="button" href="/sruja/docs/getting-started/">Get Started</a>
+<a class="button" href="/docs/getting-started/">Get Started</a>
 <a class="button" href="https://github.com/sruja-ai/sruja">View on GitHub</a>
 </div>
 
