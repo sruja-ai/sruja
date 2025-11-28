@@ -1,3 +1,4 @@
+// SKIP_ORPHAN_CHECK: Intentionally showcases metadata for various elements without relations
 architecture "Metadata Showcase Example" {
   system BillingAPI {
     metadata {

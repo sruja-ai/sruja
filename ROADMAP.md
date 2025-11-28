@@ -9,7 +9,6 @@ The initial release provides core functionality for architecture-as-code with ba
 ### Language Refinements
 - [ ] **Strict C4 Model Alignment**: Ensure all C4 elements (Context, Container, Component, Code) are first-class citizens.
 - [ ] **Deployment Views**: Add support for Deployment Nodes and Infrastructure.
-- [ ] **Dynamic Views**: Add support for Dynamic diagrams (runtime flows).
 - [ ] Formal grammar specification (EBNF)
 - [ ] Import statement implementation
 - [ ] Metadata/tags support for elements

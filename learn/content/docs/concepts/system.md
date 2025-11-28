@@ -13,6 +13,10 @@ A **System** represents a software system, which is the highest level of abstrac
 ```sruja
 system ID "Label/Name" {
     description "Optional description"
+    
+    // Link to ADRs
+    adr ADR001
+
     // ... contains containers
 }
 ```

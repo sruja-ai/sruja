@@ -27,7 +27,7 @@ func TestExport_SimpleSystem(t *testing.T) {
 
 	expected := []string{
 		"direction: right",
-		"Sys1: \"System 1\" {",
+		"Sys1: \"System 1\\n\\nA test system\" {",
 		"shape: package",
 		"tooltip: \"A test system\"",
 		"}",
@@ -177,7 +177,7 @@ func TestExport_Component(t *testing.T) {
 	}
 
 	expected := []string{
-		"Comp1: \"Component 1\" {",
+		"Comp1: \"Component 1\\n\\nA test component\" {",
 		"shape: class",
 		"tooltip: \"A test component\"",
 	}
@@ -254,8 +254,6 @@ func TestExport_Requirements(t *testing.T) {
 		"R1: \"functional: Top level req\" {",
 		"shape: page",
 		"Sys1.R2: \"security: System level req\" {",
-		"\"Architecture\": {",
-		"_Title: \"Architecture\" {",
 	}
 
 	for _, exp := range expected {

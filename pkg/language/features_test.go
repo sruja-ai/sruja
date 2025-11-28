@@ -104,15 +104,9 @@ func Test_Feature_Relation_Verb_Label(t *testing.T) {
 }
 
 func Test_Feature_Journey_Bidirectional(t *testing.T) {
-	dsl := `architecture "A" { journey checkout { title "Checkout" } }`
-	p, _ := language.NewParser()
-	prog, err := p.Parse("a.sruja", dsl)
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	if prog.Architecture.Journeys[0].Title != "Checkout" {
-		t.Fatalf("journey title not parsed")
-	}
+	// Journey feature removed - test placeholder
+	// This test can be removed or updated when journey feature is re-implemented
+	t.Skip("Journey feature removed")
 }
 
 func Test_Feature_Requirements_Types(t *testing.T) {

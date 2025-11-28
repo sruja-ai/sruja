@@ -1,3 +1,4 @@
+// EXPECTED_FAILURE: Container depends on parent system (violates external dependency rule)
 architecture "External Violation Example" {
   system App "Application" {
     container API "API" {

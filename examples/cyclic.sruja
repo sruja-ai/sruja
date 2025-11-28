@@ -1,3 +1,4 @@
+// EXPECTED_FAILURE: Circular dependency detected (A -> B -> C -> A)
 architecture "Cyclic Example" {
   system A "Service A" {
   }

@@ -67,17 +67,15 @@ architecture "Distributed Counter" {
     person User "Viewer"
 
     // Write Path (Eventual Consistency)
-    journey TrackView {
-        steps {
-            User -> API "POST /view"
-            API -> EventLog "Produce Event"
-            API -> User "202 Accepted"
-            
-            // Async processing
-            EventLog -> Worker "Consume Batch"
-            Worker -> DB "UPDATE views += batch_size"
-            Worker -> Cache "Invalidate/Update"
-        }
+    scenario TrackView "User watches a video" {
+        User -> API "POST /view"
+        API -> EventLog "Produce Event"
+        API -> User "202 Accepted"
+        
+        // Async processing
+        EventLog -> Worker "Consume Batch"
+        Worker -> DB "UPDATE views += batch_size"
+        Worker -> Cache "Invalidate/Update"
     }
 }
 ```

@@ -36,7 +36,7 @@ How do we generate the alias?
 
 ## 🛠️ Sruja Perspective: Modeling the Flow
 
-We can use Sruja to model the system components and the user journey for redirection.
+We can use Sruja to model the system components and the user scenario for redirection.
 
 ```sruja
 architecture "URL Shortener" {
@@ -72,17 +72,14 @@ architecture "URL Shortener" {
 
     person User "User"
 
-    // Define the redirection journey
-    journey RedirectFlow {
-        title "User clicks a short link"
-        steps {
-            User -> WebServer "GET /xyz"
-            WebServer -> Cache "Check cache for 'xyz'"
-            Cache -> WebServer "Miss"
-            WebServer -> DB "Get long_url for 'xyz'"
-            DB -> WebServer "Return 'http://example.com'"
-            WebServer -> User "301 Redirect to 'http://example.com'"
-        }
+    // Define the redirection scenario
+    scenario RedirectFlow "User clicks a short link" {
+        User -> WebServer "GET /xyz"
+        WebServer -> Cache "Check cache for 'xyz'"
+        Cache -> WebServer "Miss"
+        WebServer -> DB "Get long_url for 'xyz'"
+        DB -> WebServer "Return 'http://example.com'"
+        WebServer -> User "301 Redirect to 'http://example.com'"
     }
 }
 ```

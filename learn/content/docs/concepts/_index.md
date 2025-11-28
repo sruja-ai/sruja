@@ -23,5 +23,4 @@ Sruja is built around the **[C4 Model](https://c4model.com/)** for visualizing s
 -   **[Queue]({{< relref "queue" >}})**
 -   **[Relations]({{< relref "relations" >}})**
 -   **[Deployment]({{< relref "deployment" >}})**
--   **[Dynamic Views]({{< relref "dynamic-view" >}})**
-
+   

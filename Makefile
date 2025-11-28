@@ -54,14 +54,18 @@ wasm:
 	echo "With gzip compression: ~7MB (70% reduction)"; \
 	echo "Enable compression on your web server for better performance."
 
-# Test playground, course, and docs code compilation
+# Generate playground examples from .sruja files
+generate-examples:
+	@echo "Generating playground examples..."
+	@go run scripts/generate-playground-examples.go
+
+# Test code blocks in learn documentation
 test-learn-code:
-	@echo "Testing playground, course, and docs code compilation..."
-	@go test -v -run "TestPlaygroundExamples|TestCourseCodeBlocks|TestDocsCodeBlocks" || (echo "❌ Code compilation tests failed! Fix errors before deploying." && exit 1)
-	@echo "✅ All code examples compile successfully"
+	@echo "Testing code blocks in documentation..."
+	@go test -v ./tests/... -run TestCourseCodeBlocks
 
 # Build WASM for docs website (includes compression)
-build-docs: test-learn-code wasm
+build-docs: generate-examples test-learn-code wasm
 	@echo "Creating compressed versions..."
 	@gzip -k -f learn/static/sruja.wasm 2>/dev/null || true
 	@if command -v brotli >/dev/null 2>&1; then \

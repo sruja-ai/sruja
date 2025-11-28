@@ -1,0 +1,8 @@
+// Example: Top-level system without architecture wrapper
+system API "API Service" {
+  container WebApp "Web Application" {
+    component Controller "Controller"
+  }
+  datastore DB "Database"
+}
+

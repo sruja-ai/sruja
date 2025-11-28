@@ -75,13 +75,68 @@ type ASTNode interface {
 }
 
 // ============================================================================
+// File (Physical Root)
+// ============================================================================
+
+// File represents the physical structure of a parsed Sruja DSL file.
+//
+// It contains a list of items that can appear at the top level.
+// Files can contain elements at any level (system, container, component) without
+// requiring an architecture wrapper. These elements can be imported and reused
+// in other Sruja files.
+//
+// Example DSL (without architecture block):
+//
+//	system API "API Service" { ... }
+//	container WebApp "Web Application" { ... }
+//
+// Example DSL (with architecture block):
+//
+//	architecture "My System" {
+//	  system API "API Service" { ... }
+//	}
+type File struct {
+	Items []FileItem `parser:"@@*"`
+}
+
+func (f *File) Location() SourceLocation { return SourceLocation{} }
+
+// FileItem is a union type for items that can appear at the top level of a file.
+type FileItem struct {
+	Architecture     *Architecture     `parser:"@@"`
+	Import           *ImportSpec       `parser:"| @@"`
+	System           *System           `parser:"| @@"`
+	Container        *Container        `parser:"| @@"`
+	Component        *Component        `parser:"| @@"`
+	DataStore        *DataStore        `parser:"| @@"`
+	Queue            *Queue            `parser:"| @@"`
+	Person           *Person           `parser:"| @@"`
+	Relation         *Relation         `parser:"| @@"`
+	Requirement      *Requirement      `parser:"| @@"`
+	ADR              *ADR              `parser:"| @@"`
+	SharedArtifact   *SharedArtifact   `parser:"| @@"`
+	Library          *Library          `parser:"| @@"`
+	Metadata         *MetadataBlock    `parser:"| @@"`
+	ContractsBlock   *ContractsBlock   `parser:"| 'contracts' '{' @@ '}'"`
+	ConstraintsBlock *ConstraintsBlock `parser:"| 'constraints' '{' @@* '}'"`
+	ConventionsBlock *ConventionsBlock `parser:"| 'conventions' '{' @@* '}'"`
+	EntitiesBlock    *EntitiesBlock    `parser:"| 'entities' '{' @@ '}'"`
+	Domain           *DomainBlock      `parser:"| @@"`
+	DeploymentNode   *DeploymentNode   `parser:"| @@"`
+	Scenario         *Scenario         `parser:"| @@"`
+	Properties       *PropertiesBlock  `parser:"| @@"`
+	Style            *StyleBlock       `parser:"| @@"`
+	Description      *string           `parser:"| 'description' @String"`
+}
+
+// ============================================================================
 // Architecture (Top-Level)
 // ============================================================================
 
 // Architecture is the top-level root of a document.
 //
 // An architecture contains all the elements that make up the system architecture:
-// systems, persons, relations, requirements, ADRs, shared artifacts, libraries, and journeys.
+// systems, persons, relations, requirements, ADRs, shared artifacts, libraries, and scenarios.
 //
 // Example DSL:
 //
@@ -97,16 +152,20 @@ type Architecture struct {
 	RBrace string             `parser:"'}'"`
 
 	// Post-processed fields
+	// Post-processed fields
 	Imports         []*ImportSpec
 	ResolvedImports []*ImportedArchitecture
 	Systems         []*System
+	Containers      []*Container
+	Components      []*Component
+	DataStores      []*DataStore
+	Queues          []*Queue
 	Persons         []*Person
 	Relations       []*Relation
 	Requirements    []*Requirement
 	ADRs            []*ADR
 	SharedArtifacts []*SharedArtifact
 	Libraries       []*Library
-	Journeys        []*Journey
 	Metadata        []*MetaEntry // Metadata from metadata blocks
 	Contracts       []*Contract
 	Constraints     []*ConstraintEntry
@@ -115,6 +174,9 @@ type Architecture struct {
 	Events          []*DomainEvent
 	DeploymentNodes []*DeploymentNode
 	Scenarios       []*Scenario
+	Properties      map[string]string
+	Style           map[string]string
+	Description     *string
 }
 
 func (a *Architecture) Location() SourceLocation { return SourceLocation{} }
@@ -123,13 +185,16 @@ func (a *Architecture) Location() SourceLocation { return SourceLocation{} }
 type ArchitectureItem struct {
 	Import           *ImportSpec       `parser:"@@"`
 	System           *System           `parser:"| @@"`
+	Container        *Container        `parser:"| @@"`
+	Component        *Component        `parser:"| @@"`
+	DataStore        *DataStore        `parser:"| @@"`
+	Queue            *Queue            `parser:"| @@"`
 	Person           *Person           `parser:"| @@"`
 	Relation         *Relation         `parser:"| @@"`
 	Requirement      *Requirement      `parser:"| @@"`
 	ADR              *ADR              `parser:"| @@"`
 	SharedArtifact   *SharedArtifact   `parser:"| @@"`
 	Library          *Library          `parser:"| @@"`
-	Journey          *Journey          `parser:"| @@"`
 	Metadata         *MetadataBlock    `parser:"| @@"`
 	ContractsBlock   *ContractsBlock   `parser:"| 'contracts' '{' @@ '}'"`
 	ConstraintsBlock *ConstraintsBlock `parser:"| 'constraints' '{' @@* '}'"`
@@ -138,6 +203,9 @@ type ArchitectureItem struct {
 	Domain           *DomainBlock      `parser:"| @@"`
 	DeploymentNode   *DeploymentNode   `parser:"| @@"`
 	Scenario         *Scenario         `parser:"| @@"`
+	Properties       *PropertiesBlock  `parser:"| @@"`
+	Style            *StyleBlock       `parser:"| @@"`
+	Description      *string           `parser:"| 'description' @String"`
 }
 
 // MetadataBlock represents a metadata block.
@@ -328,7 +396,7 @@ type ImportedArchitecture struct {
 //	}
 type System struct {
 	ID          string       `parser:"'system' @Ident"`
-	Label       string       `parser:"@String"`
+	Label       string       `parser:"( @String )?"`
 	Description *string      `parser:"( @String )?"`
 	Items       []SystemItem `parser:"( '{' @@* '}' )?"`
 
@@ -395,7 +463,7 @@ type SystemItem struct {
 //	}
 type Container struct {
 	ID          string          `parser:"'container' @Ident"`
-	Label       string          `parser:"@String"`
+	Label       string          `parser:"( @String )?"`
 	Description *string         `parser:"( @String )?"`
 	Items       []ContainerItem `parser:"( '{' @@* '}' )?"`
 
@@ -462,7 +530,7 @@ type ContainerItem struct {
 //	}
 type Component struct {
 	ID          string          `parser:"'component' @Ident"`
-	Label       string          `parser:"@String"`
+	Label       string          `parser:"( @String )?"`
 	Description *string         `parser:"( @String )?"`
 	Items       []ComponentItem `parser:"( '{' @@* '}' )?"`
 
@@ -513,14 +581,16 @@ type ComponentItem struct {
 //	datastore DB "PostgreSQL Database" "Main application database"
 type DataStore struct {
 	ID          string          `parser:"'datastore' @Ident"`
-	Label       string          `parser:"@String"`
+	Label       string          `parser:"( @String )?"`
 	Description *string         `parser:"( @String )?"`
 	Items       []DataStoreItem `parser:"( '{' @@* '}' )?"`
 
+	// Post-processed fields
+	Technology *string
+	Relations  []*Relation
 	Metadata   []*MetaEntry
 	Properties map[string]string
 	Style      map[string]string
-	Technology *string
 }
 
 func (d *DataStore) Location() SourceLocation { return SourceLocation{} }
@@ -537,14 +607,16 @@ func (d *DataStore) Location() SourceLocation { return SourceLocation{} }
 //	queue Events "Event Queue" "Handles async events"
 type Queue struct {
 	ID          string      `parser:"'queue' @Ident"`
-	Label       string      `parser:"@String"`
+	Label       string      `parser:"( @String )?"`
 	Description *string     `parser:"( @String )?"`
 	Items       []QueueItem `parser:"( '{' @@* '}' )?"`
 
+	// Post-processed fields
+	Technology *string
+	Relations  []*Relation
 	Metadata   []*MetaEntry
 	Properties map[string]string
 	Style      map[string]string
-	Technology *string
 }
 
 func (q *Queue) Location() SourceLocation { return SourceLocation{} }
@@ -562,7 +634,7 @@ func (q *Queue) Location() SourceLocation { return SourceLocation{} }
 //	person User "End User"
 type Person struct {
 	ID    string       `parser:"'person' @Ident"`
-	Label string       `parser:"@String"`
+	Label string       `parser:"( @String )?"`
 	Items []PersonItem `parser:"( '{' @@* '}' )?"`
 
 	// Post-processed fields
@@ -732,67 +804,6 @@ type Library struct {
 }
 
 func (l *Library) Location() SourceLocation { return SourceLocation{} }
-
-// ============================================================================
-// Journeys & Journey Steps
-// ============================================================================
-
-// Journey represents a user journey declaration.
-//
-// A journey describes a flow across architecture elements, showing how users
-// or systems interact with the architecture through a sequence of steps.
-//
-// Example DSL:
-//
-//	journey login {
-//	  title "User logs into the system"
-//	  steps {
-//	    user -> ui "enters username/password"
-//	    ui -> api "POST /login"
-//	  }
-//	}
-type Journey struct {
-	ID     string        `parser:"'journey' @Ident"`
-	LBrace string        `parser:"'{'"`
-	Items  []JourneyItem `parser:"@@*"`
-	RBrace string        `parser:"'}'"`
-
-	// Post-processed fields
-	Title string
-	Steps []*JourneyStep
-}
-
-func (j *Journey) Location() SourceLocation { return SourceLocation{} }
-
-// JourneyItem is a union type for items that can appear in a journey.
-type JourneyItem struct {
-	Title *string       `parser:"'title' @String"`
-	Steps *JourneySteps `parser:"| 'steps' '{' @@ '}'"`
-}
-
-// JourneySteps represents a collection of journey steps.
-type JourneySteps struct {
-	Items []*JourneyStep `parser:"@@*"`
-}
-
-// JourneyStep represents a single step in a journey.
-//
-// Steps can use different arrow directions:
-//   - "->": Forward direction
-//   - "<-": Reverse direction
-//   - "<->": Bidirectional
-type JourneyStep struct {
-	From  string  `parser:"@Ident"`
-	Arrow string  `parser:"@( '->' | '<-' | '<->' )"`
-	To    string  `parser:"@Ident"`
-	Label *string `parser:"( @String )?"`
-
-	// Resolved references after PostProcess
-	ResolvedFrom Element
-	ResolvedTo   Element
-}
-
-func (s *JourneyStep) Location() SourceLocation { return SourceLocation{} }
 
 // ============================================================================
 // Deployment View

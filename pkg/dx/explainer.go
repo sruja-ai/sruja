@@ -51,7 +51,7 @@ func (e *Explainer) ExplainElement(elementID string) (*ElementExplanation, error
 	explanation.Relations = e.findRelations(elementID)
 	explanation.Metadata = e.extractMetadata(elem)
 	explanation.ADRs = e.findRelatedADRs(elementID)
-	explanation.Journeys = e.findRelatedJourneys(elementID)
+	explanation.Scenarios = e.findRelatedScenarios(elementID)
 	explanation.Dependencies = e.findDependencies(elementID)
 
 	return explanation, nil
@@ -65,7 +65,7 @@ type ElementExplanation struct {
 	Relations    RelationsInfo
 	Metadata     map[string]string
 	ADRs         []*language.ADR
-	Journeys     []*JourneyInfo
+	Scenarios    []*ScenarioInfo
 	Dependencies []string
 }
 
@@ -84,8 +84,8 @@ type RelationInfo struct {
 	Direction string
 }
 
-// JourneyInfo describes journey participation.
-type JourneyInfo struct {
+// ScenarioInfo describes scenario participation.
+type ScenarioInfo struct {
 	ID    string
 	Label string
 	Role  string // "actor", "system", "step"
@@ -299,17 +299,17 @@ func (e *Explainer) findRelatedADRs(elementID string) []*language.ADR {
 	return related
 }
 
-// findRelatedJourneys finds journeys that involve the element.
-func (e *Explainer) findRelatedJourneys(elementID string) []*JourneyInfo {
-	var related []*JourneyInfo
+// findRelatedScenarios finds scenarios that involve the element.
+func (e *Explainer) findRelatedScenarios(elementID string) []*ScenarioInfo {
+	var related []*ScenarioInfo
 	arch := e.program.Architecture
 
-	for _, journey := range arch.Journeys {
-		for _, step := range journey.Steps {
+	for _, scenario := range arch.Scenarios {
+		for _, step := range scenario.Steps {
 			if step.From == elementID || step.To == elementID {
-				related = append(related, &JourneyInfo{
-					ID:    journey.ID,
-					Label: journey.Title,
+				related = append(related, &ScenarioInfo{
+					ID:    scenario.Title, // Use title as ID since scenario ID is optional
+					Label: scenario.Title,
 					Role:  "participant",
 				})
 				break
@@ -404,11 +404,11 @@ func (exp *ElementExplanation) Format() string {
 		sb.WriteString("\n")
 	}
 
-	// Journeys
-	if len(exp.Journeys) > 0 {
-		sb.WriteString("## Related Journeys\n\n")
-		for _, journey := range exp.Journeys {
-			sb.WriteString(fmt.Sprintf("- **%s**: %s\n", journey.ID, journey.Label))
+	// Scenarios
+	if len(exp.Scenarios) > 0 {
+		sb.WriteString("## Related Scenarios\n\n")
+		for _, scenario := range exp.Scenarios {
+			sb.WriteString(fmt.Sprintf("- **%s**: %s\n", scenario.ID, scenario.Label))
 		}
 		sb.WriteString("\n")
 	}

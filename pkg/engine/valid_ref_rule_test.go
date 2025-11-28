@@ -143,4 +143,3 @@ architecture "Test" {
 		t.Errorf("Expected 0 errors for valid component-level relations, got %d", len(errs))
 	}
 }
-

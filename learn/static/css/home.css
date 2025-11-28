@@ -51,7 +51,6 @@ label[for="menu-control"] {
 .home-hero .subtitle {
     font-size: 1.25em;
     color: rgba(255, 255, 255, 0.9);
-    max-width: 700px;
     margin: 0 auto 40px;
     line-height: 1.6;
 }

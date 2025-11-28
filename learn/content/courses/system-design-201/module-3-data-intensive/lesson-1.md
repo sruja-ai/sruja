@@ -89,26 +89,22 @@ architecture "Video Streaming" {
     person User "Viewer"
 
     // Streaming Flow
-    journey WatchVideo {
-        steps {
-            User -> WebApp "Get Video Page"
-            WebApp -> API "Get Metadata (Title, URL)"
-            API -> MetadataDB "Query"
-            API -> User "Return Video Manifest URL"
-            User -> CDN "Request Video Chunk (1080p)"
-            CDN -> User "Stream Chunk"
-        }
+    scenario WatchVideo "User watches a video" {
+        User -> WebApp "Get Video Page"
+        WebApp -> API "Get Metadata (Title, URL)"
+        API -> MetadataDB "Query"
+        API -> User "Return Video Manifest URL"
+        User -> CDN "Request Video Chunk (1080p)"
+        CDN -> User "Stream Chunk"
     }
 
     // Upload Flow
-    journey UploadVideo {
-        steps {
-            User -> API "Upload Raw Video"
-            API -> S3 "Store Raw Video"
-            API -> Transcoder "Trigger Transcoding Job"
-            Transcoder -> S3 "Read Raw / Write HLS"
-            Transcoder -> MetadataDB "Update Video Status"
-        }
+    scenario UploadVideo "Creator uploads a video" {
+        User -> API "Upload Raw Video"
+        API -> S3 "Store Raw Video"
+        API -> Transcoder "Trigger Transcoding Job"
+        Transcoder -> S3 "Read Raw / Write HLS"
+        Transcoder -> MetadataDB "Update Video Status"
     }
 }
 ```

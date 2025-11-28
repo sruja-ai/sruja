@@ -147,38 +147,6 @@ func TestFindRelatedADRs(t *testing.T) {
 	}
 }
 
-func TestFindRelatedJourneys(t *testing.T) {
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{ID: "API", Label: "API"},
-			},
-			Journeys: []*language.Journey{
-				{
-					ID:    "login",
-					Title: "Login Journey",
-					Steps: []*language.JourneyStep{
-						{
-							From: "User",
-							To:   "API",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	explainer := NewExplainer(prog)
-	explanation, err := explainer.ExplainElement("API")
-	if err != nil {
-		t.Fatalf("ExplainElement failed: %v", err)
-	}
-	if len(explanation.Journeys) == 0 {
-		t.Error("Should find related journeys")
-	}
-}
-
 func TestFindDependencies(t *testing.T) {
 	prog := &language.Program{
 		Architecture: &language.Architecture{

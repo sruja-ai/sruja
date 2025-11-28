@@ -38,8 +38,6 @@ func TestLocation_Methods(t *testing.T) {
 		{"ADR", &language.ADR{}},
 		{"SharedArtifact", &language.SharedArtifact{}},
 		{"Library", &language.Library{}},
-		{"Journey", &language.Journey{}},
-		{"JourneyStep", &language.JourneyStep{}},
 		{"DeploymentNode", &language.DeploymentNode{}},
 		{"ContainerInstance", &language.ContainerInstance{}},
 		{"InfrastructureNode", &language.InfrastructureNode{}},

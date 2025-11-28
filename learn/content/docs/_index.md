@@ -34,8 +34,8 @@ Ensure your architecture follows best practices with built-in validation rules. 
 The Sruja DSL is designed to be easy to read and write. It uses a familiar C-style syntax with braces for grouping.
 
 ```sruja
-system "MySystem" {
-    container "WebApp" {
+system MySystem {
+    container WebApp {
         technology "Go"
     }
 }

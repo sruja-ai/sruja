@@ -35,28 +35,24 @@ sruja --version
 ```
 
 ## Your First Project
+**Create a file**: Create a new file named `architecture.sruja`.
 
-1.  **Create a file**: Create a new file named `architecture.sruja`.
+**Write your model**:
+```sruja
+system App "My App" {
+    container Web "Web Server"
+    datastore DB "Database"
+}
+person User "User"
 
-2.  **Write your model**:
+User -> Web "Visits"
+Web -> DB "Reads/Writes"
+```
 
-    {{< playground >}}
-    architecture "My System" {
-        system App "My App" {
-            container Web "Web Server"
-            datastore DB "Database"
-        }
-        person User "User"
+**Visualize**: Export to D2 to see the diagram.
 
-        User -> Web "Visits"
-        Web -> DB "Reads/Writes"
-    }
-    {{< /playground >}}
+```bash
+sruja export d2 architecture.sruja > architecture.d2
+```
 
-3.  **Visualize**: Export to D2 to see the diagram.
-
-    ```bash
-    sruja export d2 architecture.sruja > architecture.d2
-    ```
-
-    You can then render `architecture.d2` using the [D2 CLI](https://d2lang.com/) or online playground.
+You can then render `architecture.d2` using the [D2 CLI](https://d2lang.com/) or online playground.

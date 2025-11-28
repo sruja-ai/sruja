@@ -173,4 +173,3 @@ architecture "Test" {
 		t.Error("Expected duplicate ID error for cross-level duplicates")
 	}
 }
-

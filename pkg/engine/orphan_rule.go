@@ -79,13 +79,6 @@ func (r *OrphanDetectionRule) Validate(program *language.Program) []ValidationEr
 		}
 	}
 
-	// Check Journeys
-	for _, j := range arch.Journeys {
-		for _, step := range j.Steps {
-			markRel(step.From, step.To)
-		}
-	}
-
 	// Check Scenarios
 	for _, s := range arch.Scenarios {
 		for _, step := range s.Steps {

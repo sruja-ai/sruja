@@ -559,6 +559,35 @@ body.dark [id^="quiz-"] label {
     border-radius: 8px;
     padding: 6px;
     backdrop-filter: blur(6px);
+    width: fit-content;
+    flex-shrink: 0;
+    transition: none;
+}
+
+.sruja-code-toolbar.is-fixed {
+    position: fixed;
+    z-index: 2000;
+    top: var(--toolbar-fixed-top, 72px);
+    left: var(--toolbar-fixed-left, auto);
+    right: auto;
+    width: var(--toolbar-width, fit-content);
+    min-width: var(--toolbar-width, fit-content);
+    max-width: var(--toolbar-width, fit-content);
+    height: var(--toolbar-height, auto);
+}
+
+.sruja-code-toolbar-spacer {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    pointer-events: none;
+    visibility: hidden;
+    width: var(--toolbar-width, 0);
+    height: var(--toolbar-height, 0);
+}
+
+.sruja-code-toolbar-spacer.is-visible {
+    visibility: visible;
 }
 
 .sruja-btn {

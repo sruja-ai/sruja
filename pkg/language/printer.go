@@ -69,11 +69,6 @@ func (p *Printer) printArchitecture(sb *strings.Builder, arch *Architecture) {
 		p.printADR(sb, adr)
 	}
 
-	// Print journeys
-	for _, journey := range arch.Journeys {
-		p.printJourney(sb, journey)
-	}
-
 	// Print shared artifacts
 	for _, sa := range arch.SharedArtifacts {
 		p.printSharedArtifact(sb, sa)
@@ -375,44 +370,6 @@ func (p *Printer) printADR(sb *strings.Builder, adr *ADR) {
 	} else {
 		sb.WriteString("\n")
 	}
-}
-
-// printJourney prints a journey node.
-func (p *Printer) printJourney(sb *strings.Builder, journey *Journey) {
-	indent := p.indent()
-	fmt.Fprintf(sb, "%sjourney %s {\n", indent, journey.ID)
-	p.IndentLevel++
-
-	if journey.Title != "" {
-		indent = p.indent()
-		fmt.Fprintf(sb, "%stitle %q\n", indent, journey.Title)
-	}
-
-	if len(journey.Steps) > 0 {
-		indent = p.indent()
-		sb.WriteString(indent + "steps {\n")
-		p.IndentLevel++
-		for _, step := range journey.Steps {
-			p.printJourneyStep(sb, step)
-		}
-		p.IndentLevel--
-		indent = p.indent()
-		sb.WriteString(indent + "}\n")
-	}
-
-	p.IndentLevel--
-	indent = p.indent()
-	sb.WriteString(indent + "}\n")
-}
-
-// printJourneyStep prints a journey step node.
-func (p *Printer) printJourneyStep(sb *strings.Builder, step *JourneyStep) {
-	indent := p.indent()
-	fmt.Fprintf(sb, "%s%s %s %s", indent, step.From, step.Arrow, step.To)
-	if step.Label != nil && *step.Label != "" {
-		fmt.Fprintf(sb, " %q", *step.Label)
-	}
-	sb.WriteString("\n")
 }
 
 // printSharedArtifact prints a shared artifact node.

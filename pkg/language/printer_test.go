@@ -92,41 +92,6 @@ func TestPrinter_PrintADR(t *testing.T) {
 	}
 }
 
-func TestPrinter_PrintJourney(t *testing.T) {
-	arch := &language.Architecture{
-		Name: "Test",
-		Journeys: []*language.Journey{
-			{
-				ID:    "login",
-				Title: "Login Journey",
-				Steps: []*language.JourneyStep{
-					{From: "User", Arrow: "->", To: "API"},
-					{From: "API", Arrow: "->", To: "DB", Label: stringPtr("Query")},
-				},
-			},
-		},
-	}
-	prog := &language.Program{Architecture: arch}
-	printer := language.NewPrinter()
-	output := printer.Print(prog)
-
-	if !strings.Contains(output, "journey login {") {
-		t.Error("Should print journey declaration")
-	}
-	if !strings.Contains(output, `title "Login Journey"`) {
-		t.Error("Should print journey title")
-	}
-	if !strings.Contains(output, "steps {") {
-		t.Error("Should print journey steps block")
-	}
-	if !strings.Contains(output, "User -> API") {
-		t.Error("Should print journey step")
-	}
-	if !strings.Contains(output, `API -> DB "Query"`) {
-		t.Error("Should print journey step with label")
-	}
-}
-
 func TestPrinter_PrintSharedArtifact(t *testing.T) {
 	arch := &language.Architecture{
 		Name: "Test",

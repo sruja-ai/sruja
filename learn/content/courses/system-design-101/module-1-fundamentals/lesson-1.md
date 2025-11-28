@@ -44,18 +44,16 @@ While Sruja is primarily for modeling architecture, it is also an excellent plac
 In Sruja, you can use the `description` field or comments to document high-level requirements.
 
 ```sruja
-architecture "Twitter Clone" {
-    // Native Requirement Support
-    requirement R1 functional "Users can post tweets"
-    requirement R2 performance "Must handle 10k writes/second"
-    
-    system Twitter "Social Media Platform" {
-        description "Allows users to post short messages and follow others."
-    }
+// Native Requirement Support
+requirement R1 functional "Users can post tweets"
+requirement R2 performance "Must handle 10k writes/second"
 
-    person User "User"
-    User -> Twitter "Posts tweets"
+system Twitter "Social Media Platform" {
+    description "Allows users to post short messages and follow others."
 }
+
+person User "User"
+User -> Twitter "Posts tweets"
 ```
 
 By using the `requirement` keyword, you make requirements a first-class citizen of your architecture. These can be validated and tracked by the Sruja CLI.

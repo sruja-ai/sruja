@@ -3,20 +3,20 @@ package main
 
 import (
 	"fmt"
-	"os"
+	"io"
 )
 
 const Version = "0.1.0"
 const BuildDate = "unknown"
 const GitCommit = "unknown"
 
-func runVersion() {
-	fmt.Printf("sruja version %s\n", Version)
+func runVersion(stdout io.Writer) int {
+	_, _ = fmt.Fprintf(stdout, "sruja version %s\n", Version)
 	if BuildDate != "unknown" {
-		fmt.Printf("Build date: %s\n", BuildDate)
+		_, _ = fmt.Fprintf(stdout, "Build date: %s\n", BuildDate)
 	}
 	if GitCommit != "unknown" {
-		fmt.Printf("Git commit: %s\n", GitCommit)
+		_, _ = fmt.Fprintf(stdout, "Git commit: %s\n", GitCommit)
 	}
-	os.Exit(0)
+	return 0
 }

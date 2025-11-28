@@ -224,4 +224,3 @@ func TestFindElement_ComponentInSystem(t *testing.T) {
 		t.Errorf("Expected ID 'Comp', got '%s'", explanation.ID)
 	}
 }
-
