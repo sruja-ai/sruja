@@ -4,6 +4,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -11,20 +12,21 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-func runDiff() {
-	diffCmd := flag.NewFlagSet("diff", flag.ExitOnError)
+func runDiff(stdout, stderr io.Writer) int {
+	diffCmd := flag.NewFlagSet("diff", flag.ContinueOnError)
+	diffCmd.SetOutput(stderr)
 	diffJSON := diffCmd.Bool("json", false, "output as JSON")
 	diffFormat := diffCmd.String("format", "text", "output format: text, json")
 
 	if err := diffCmd.Parse(os.Args[2:]); err != nil {
-		fmt.Println(dx.Error(fmt.Sprintf("Error parsing diff flags: %v", err)))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing diff flags: %v", err)))
+		return 1
 	}
 
 	if diffCmd.NArg() < 2 {
-		fmt.Println(dx.Error("Usage: sruja diff <file1> <file2>"))
-		fmt.Println(dx.Info("Example: sruja diff architecture-v1.sruja architecture-v2.sruja"))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error("Usage: sruja diff <file1> <file2>"))
+		_, _ = fmt.Fprintln(stderr, dx.Info("Example: sruja diff architecture-v1.sruja architecture-v2.sruja"))
+		return 1
 	}
 
 	file1 := diffCmd.Arg(0)
@@ -33,14 +35,14 @@ func runDiff() {
 	// Parse both files
 	program1, err := parseFile(file1)
 	if err != nil {
-		fmt.Println(dx.Error(fmt.Sprintf("Error parsing %s: %v", file1, err)))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing %s: %v", file1, err)))
+		return 1
 	}
 
 	program2, err := parseFile(file2)
 	if err != nil {
-		fmt.Println(dx.Error(fmt.Sprintf("Error parsing %s: %v", file2, err)))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing %s: %v", file2, err)))
+		return 1
 	}
 
 	// Generate diff
@@ -48,10 +50,11 @@ func runDiff() {
 
 	// Output diff
 	if *diffJSON || *diffFormat == "json" {
-		outputDiffJSON(diff)
+		outputDiffJSON(diff, stdout)
 	} else {
-		outputDiffText(diff)
+		outputDiffText(diff, stdout)
 	}
+	return 0
 }
 
 type Diff struct {
@@ -197,13 +200,13 @@ func appendIfNotExists(slice []string, item string) []string {
 	return append(slice, item)
 }
 
-func outputDiffText(diff *Diff) {
-	fmt.Println(dx.Header("Architecture Diff"))
+func outputDiffText(diff *Diff, w io.Writer) {
+	_, _ = fmt.Fprintln(w, dx.Header("Architecture Diff"))
 
 	if len(diff.AddedSystems) == 0 && len(diff.RemovedSystems) == 0 &&
 		len(diff.AddedContainers) == 0 && len(diff.RemovedContainers) == 0 &&
 		len(diff.AddedComponents) == 0 && len(diff.RemovedComponents) == 0 {
-		fmt.Println(dx.Success("No differences found. Architectures are identical."))
+		_, _ = fmt.Fprintln(w, dx.Success("No differences found. Architectures are identical."))
 		return
 	}
 
@@ -211,39 +214,39 @@ func outputDiffText(diff *Diff) {
 
 	// Added systems
 	if len(diff.AddedSystems) > 0 {
-		fmt.Println(dx.Section("Added Systems"))
+		_, _ = fmt.Fprintln(w, dx.Section("Added Systems"))
 		for _, sys := range diff.AddedSystems {
-			fmt.Printf("  %s %s\n", dx.Colorize(dx.ColorGreen, "+", useColor), dx.Colorize(dx.ColorBold, sys, useColor))
+			_, _ = fmt.Fprintf(w, "  %s %s\n", dx.Colorize(dx.ColorGreen, "+", useColor), dx.Colorize(dx.ColorBold, sys, useColor))
 		}
-		fmt.Println()
+		_, _ = fmt.Fprintln(w)
 	}
 
 	// Removed systems
 	if len(diff.RemovedSystems) > 0 {
-		fmt.Println(dx.Section("Removed Systems"))
+		_, _ = fmt.Fprintln(w, dx.Section("Removed Systems"))
 		for _, sys := range diff.RemovedSystems {
-			fmt.Printf("  %s %s\n", dx.Colorize(dx.ColorRed, "-", useColor), dx.Colorize(dx.ColorBold, sys, useColor))
+			_, _ = fmt.Fprintf(w, "  %s %s\n", dx.Colorize(dx.ColorRed, "-", useColor), dx.Colorize(dx.ColorBold, sys, useColor))
 		}
-		fmt.Println()
+		_, _ = fmt.Fprintln(w)
 	}
 
 	// Modified systems
 	if len(diff.ModifiedSystems) > 0 {
-		fmt.Println(dx.Section("Modified Systems"))
+		_, _ = fmt.Fprintln(w, dx.Section("Modified Systems"))
 		for _, sys := range diff.ModifiedSystems {
-			fmt.Printf("  %s %s\n", dx.Colorize(dx.ColorYellow, "~", useColor), dx.Colorize(dx.ColorBold, sys, useColor))
+			_, _ = fmt.Fprintf(w, "  %s %s\n", dx.Colorize(dx.ColorYellow, "~", useColor), dx.Colorize(dx.ColorBold, sys, useColor))
 
 			// Added containers
 			if containers, ok := diff.AddedContainers[sys]; ok && len(containers) > 0 {
 				for _, cont := range containers {
-					fmt.Printf("    %s container %s\n", dx.Colorize(dx.ColorGreen, "+", useColor), cont)
+					_, _ = fmt.Fprintf(w, "    %s container %s\n", dx.Colorize(dx.ColorGreen, "+", useColor), cont)
 				}
 			}
 
 			// Removed containers
 			if containers, ok := diff.RemovedContainers[sys]; ok && len(containers) > 0 {
 				for _, cont := range containers {
-					fmt.Printf("    %s container %s\n", dx.Colorize(dx.ColorRed, "-", useColor), cont)
+					_, _ = fmt.Fprintf(w, "    %s container %s\n", dx.Colorize(dx.ColorRed, "-", useColor), cont)
 				}
 			}
 
@@ -252,7 +255,7 @@ func outputDiffText(diff *Diff) {
 				if strings.HasPrefix(key, sys+".") {
 					cont := strings.TrimPrefix(key, sys+".")
 					for _, comp := range components {
-						fmt.Printf("    %s component %s.%s\n", dx.Colorize(dx.ColorGreen, "+", useColor), cont, comp)
+						_, _ = fmt.Fprintf(w, "    %s component %s.%s\n", dx.Colorize(dx.ColorGreen, "+", useColor), cont, comp)
 					}
 				}
 			}
@@ -262,43 +265,43 @@ func outputDiffText(diff *Diff) {
 				if strings.HasPrefix(key, sys+".") {
 					cont := strings.TrimPrefix(key, sys+".")
 					for _, comp := range components {
-						fmt.Printf("    %s component %s.%s\n", dx.Colorize(dx.ColorRed, "-", useColor), cont, comp)
+						_, _ = fmt.Fprintf(w, "    %s component %s.%s\n", dx.Colorize(dx.ColorRed, "-", useColor), cont, comp)
 					}
 				}
 			}
 		}
-		fmt.Println()
+		_, _ = fmt.Fprintln(w)
 	}
 }
 
-func outputDiffJSON(diff *Diff) {
-	fmt.Println("{")
-	fmt.Println("  \"added_systems\": [")
+func outputDiffJSON(diff *Diff, w io.Writer) {
+	_, _ = fmt.Fprintln(w, "{")
+	_, _ = fmt.Fprintln(w, "  \"added_systems\": [")
 	for i, sys := range diff.AddedSystems {
-		fmt.Printf("    \"%s\"", sys)
+		_, _ = fmt.Fprintf(w, "    \"%s\"", sys)
 		if i < len(diff.AddedSystems)-1 {
-			fmt.Print(",")
+			_, _ = fmt.Fprint(w, ",")
 		}
-		fmt.Println()
+		_, _ = fmt.Fprintln(w)
 	}
-	fmt.Println("  ],")
-	fmt.Println("  \"removed_systems\": [")
+	_, _ = fmt.Fprintln(w, "  ],")
+	_, _ = fmt.Fprintln(w, "  \"removed_systems\": [")
 	for i, sys := range diff.RemovedSystems {
-		fmt.Printf("    \"%s\"", sys)
+		_, _ = fmt.Fprintf(w, "    \"%s\"", sys)
 		if i < len(diff.RemovedSystems)-1 {
-			fmt.Print(",")
+			_, _ = fmt.Fprint(w, ",")
 		}
-		fmt.Println()
+		_, _ = fmt.Fprintln(w)
 	}
-	fmt.Println("  ],")
-	fmt.Println("  \"modified_systems\": [")
+	_, _ = fmt.Fprintln(w, "  ],")
+	_, _ = fmt.Fprintln(w, "  \"modified_systems\": [")
 	for i, sys := range diff.ModifiedSystems {
-		fmt.Printf("    \"%s\"", sys)
+		_, _ = fmt.Fprintf(w, "    \"%s\"", sys)
 		if i < len(diff.ModifiedSystems)-1 {
-			fmt.Print(",")
+			_, _ = fmt.Fprint(w, ",")
 		}
-		fmt.Println()
+		_, _ = fmt.Fprintln(w)
 	}
-	fmt.Println("  ]")
-	fmt.Println("}")
+	_, _ = fmt.Fprintln(w, "  ]")
+	_, _ = fmt.Fprintln(w, "}")
 }

@@ -169,4 +169,3 @@ func TestCycleDetectionRule_EmptyFromTo(t *testing.T) {
 	// Should not panic, empty strings should be handled
 	_ = errs
 }
-

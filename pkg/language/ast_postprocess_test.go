@@ -290,33 +290,6 @@ func TestComponent_PostProcess_Style(t *testing.T) {
 	}
 }
 
-func TestJourney_PostProcess(t *testing.T) {
-	j := &language.Journey{
-		ID: "login",
-		Items: []language.JourneyItem{
-			{
-				Title: stringPtr("Login Journey"),
-			},
-			{
-				Steps: &language.JourneySteps{
-					Items: []*language.JourneyStep{
-						{From: "User", Arrow: "->", To: "API"},
-					},
-				},
-			},
-		},
-	}
-
-	j.PostProcess()
-
-	if j.Title != "Login Journey" {
-		t.Errorf("Expected title 'Login Journey', got %q", j.Title)
-	}
-	if len(j.Steps) != 1 {
-		t.Errorf("Expected 1 step, got %d", len(j.Steps))
-	}
-}
-
 func TestContainer_PostProcess(t *testing.T) {
 	cont := &language.Container{
 		ID:    "Cont",
@@ -545,11 +518,6 @@ func TestArchitecture_PostProcess(t *testing.T) {
 				},
 			},
 			{
-				Journey: &language.Journey{
-					ID: "login",
-				},
-			},
-			{
 				Metadata: &language.MetadataBlock{
 					Entries: []*language.MetaEntry{
 						{Key: "level", Value: "arch"},
@@ -584,9 +552,6 @@ func TestArchitecture_PostProcess(t *testing.T) {
 	}
 	if len(arch.Libraries) != 1 {
 		t.Errorf("Expected 1 library, got %d", len(arch.Libraries))
-	}
-	if len(arch.Journeys) != 1 {
-		t.Errorf("Expected 1 journey, got %d", len(arch.Journeys))
 	}
 	if len(arch.Metadata) != 1 {
 		t.Errorf("Expected 1 metadata entry, got %d", len(arch.Metadata))

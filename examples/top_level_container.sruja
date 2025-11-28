@@ -1,0 +1,6 @@
+// Example: Top-level container without architecture wrapper
+container WebApp "Web Application" {
+  component Frontend "Frontend"
+  component Backend "Backend"
+}
+

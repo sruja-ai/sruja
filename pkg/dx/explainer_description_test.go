@@ -127,4 +127,3 @@ func TestBuildDescription_ContainerWithComponents(t *testing.T) {
 		t.Error("Should mention components in container description")
 	}
 }
-

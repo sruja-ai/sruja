@@ -181,7 +181,7 @@ func TestExport_DeploymentNode_WithInfrastructure(t *testing.T) {
 		t.Fatalf("Export failed: %v", err)
 	}
 
-	if !strings.Contains(output, "LB: \"Load Balancer\"") {
+	if !strings.Contains(output, "LB: \"Load Balancer\\n\\nMain LB\"") {
 		t.Error("Should export infrastructure nodes")
 	}
 	if !strings.Contains(output, "tooltip: \"Main LB\"") {

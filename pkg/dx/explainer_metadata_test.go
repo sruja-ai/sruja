@@ -103,4 +103,3 @@ func TestExtractMetadata_Person(t *testing.T) {
 	// but we can test that it doesn't crash
 	_ = explanation
 }
-

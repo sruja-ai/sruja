@@ -4,6 +4,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -11,15 +12,16 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-func runTree() {
-	treeCmd := flag.NewFlagSet("tree", flag.ExitOnError)
+func runTree(stdout, stderr io.Writer) int {
+	treeCmd := flag.NewFlagSet("tree", flag.ContinueOnError)
+	treeCmd.SetOutput(stderr)
 	treeFile := treeCmd.String("file", "", "architecture file path")
 	treeSystem := treeCmd.String("system", "", "show tree for specific system only")
 	treeJSON := treeCmd.Bool("json", false, "output as JSON")
 
 	if err := treeCmd.Parse(os.Args[2:]); err != nil {
-		fmt.Println(dx.Error(fmt.Sprintf("Error parsing tree flags: %v", err)))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing tree flags: %v", err)))
+		return 1
 	}
 
 	filePath := *treeFile
@@ -37,32 +39,32 @@ func runTree() {
 	}
 
 	if filePath == "" {
-		fmt.Println(dx.Error("No architecture file found. Use --file to specify."))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error("No architecture file found. Use --file to specify."))
+		return 1
 	}
 
 	// Parse the architecture file
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		fmt.Println(dx.Error(fmt.Sprintf("Error reading file: %v", err)))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error reading file: %v", err)))
+		return 1
 	}
 
 	p, err := language.NewParser()
 	if err != nil {
-		fmt.Println(dx.Error(fmt.Sprintf("Error creating parser: %v", err)))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error creating parser: %v", err)))
+		return 1
 	}
 
 	program, err := p.Parse(filePath, string(content))
 	if err != nil {
-		fmt.Println(dx.Error(fmt.Sprintf("Parser Error: %v", err)))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Parser Error: %v", err)))
+		return 1
 	}
 
 	if program.Architecture == nil {
-		fmt.Println(dx.Error("No architecture found in file"))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error("No architecture found in file"))
+		return 1
 	}
 
 	arch := program.Architecture
@@ -77,56 +79,57 @@ func runTree() {
 			}
 		}
 		if found == nil {
-			fmt.Println(dx.Error(fmt.Sprintf("System '%s' not found", *treeSystem)))
-			os.Exit(1)
+			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("System '%s' not found", *treeSystem)))
+			return 1
 		}
-		printSystemTree(found, *treeJSON, 0)
+		printSystemTree(found, *treeJSON, 0, stdout)
 	} else {
 		// Show tree for entire architecture
-		fmt.Println(dx.Header(fmt.Sprintf("Architecture: %s", arch.Name)))
+		_, _ = fmt.Fprintln(stdout, dx.Header(fmt.Sprintf("Architecture: %s", arch.Name)))
 		for i, sys := range arch.Systems {
-			printSystemTree(sys, *treeJSON, 0)
+			printSystemTree(sys, *treeJSON, 0, stdout)
 			if i < len(arch.Systems)-1 {
-				fmt.Println()
+				_, _ = fmt.Fprintln(stdout)
 			}
 		}
 	}
+	return 0
 }
 
-func printSystemTree(sys *language.System, jsonOutput bool, indent int) {
+func printSystemTree(sys *language.System, jsonOutput bool, indent int, w io.Writer) {
 	indentStr := strings.Repeat("  ", indent)
 
 	if jsonOutput {
 		// JSON output
-		fmt.Printf("%s{\n", indentStr)
-		fmt.Printf("%s  \"type\": \"system\",\n", indentStr)
-		fmt.Printf("%s  \"id\": \"%s\",\n", indentStr, sys.ID)
-		fmt.Printf("%s  \"label\": \"%s\",\n", indentStr, sys.Label)
-		fmt.Printf("%s  \"containers\": [\n", indentStr)
+		_, _ = fmt.Fprintf(w, "%s{\n", indentStr)
+		_, _ = fmt.Fprintf(w, "%s  \"type\": \"system\",\n", indentStr)
+		_, _ = fmt.Fprintf(w, "%s  \"id\": \"%s\",\n", indentStr, sys.ID)
+		_, _ = fmt.Fprintf(w, "%s  \"label\": \"%s\",\n", indentStr, sys.Label)
+		_, _ = fmt.Fprintf(w, "%s  \"containers\": [\n", indentStr)
 		for i, cont := range sys.Containers {
-			fmt.Printf("%s    {\n", indentStr)
-			fmt.Printf("%s      \"type\": \"container\",\n", indentStr)
-			fmt.Printf("%s      \"id\": \"%s\",\n", indentStr, cont.ID)
-			fmt.Printf("%s      \"label\": \"%s\",\n", indentStr, cont.Label)
-			fmt.Printf("%s      \"components\": [\n", indentStr)
+			_, _ = fmt.Fprintf(w, "%s    {\n", indentStr)
+			_, _ = fmt.Fprintf(w, "%s      \"type\": \"container\",\n", indentStr)
+			_, _ = fmt.Fprintf(w, "%s      \"id\": \"%s\",\n", indentStr, cont.ID)
+			_, _ = fmt.Fprintf(w, "%s      \"label\": \"%s\",\n", indentStr, cont.Label)
+			_, _ = fmt.Fprintf(w, "%s      \"components\": [\n", indentStr)
 			for j, comp := range cont.Components {
-				fmt.Printf("%s        {\"type\": \"component\", \"id\": \"%s\", \"label\": \"%s\"}", indentStr, comp.ID, comp.Label)
+				_, _ = fmt.Fprintf(w, "%s        {\"type\": \"component\", \"id\": \"%s\", \"label\": \"%s\"}", indentStr, comp.ID, comp.Label)
 				if j < len(cont.Components)-1 {
-					fmt.Print(",")
+					_, _ = fmt.Fprint(w, ",")
 				}
-				fmt.Println()
+				_, _ = fmt.Fprintln(w)
 			}
-			fmt.Printf("%s      ]\n", indentStr)
-			fmt.Printf("%s    }", indentStr)
+			_, _ = fmt.Fprintf(w, "%s      ]\n", indentStr)
+			_, _ = fmt.Fprintf(w, "%s    }", indentStr)
 			if i < len(sys.Containers)-1 {
-				fmt.Print(",")
+				_, _ = fmt.Fprint(w, ",")
 			}
-			fmt.Println()
+			_, _ = fmt.Fprintln(w)
 		}
-		fmt.Printf("%s  ]\n", indentStr)
-		fmt.Printf("%s}", indentStr)
+		_, _ = fmt.Fprintf(w, "%s  ]\n", indentStr)
+		_, _ = fmt.Fprintf(w, "%s}", indentStr)
 		if indent == 0 {
-			fmt.Println()
+			_, _ = fmt.Fprintln(w)
 		}
 	} else {
 		// Human-readable tree output
@@ -138,7 +141,7 @@ func printSystemTree(sys *language.System, jsonOutput bool, indent int) {
 		if sys.Label != sys.ID {
 			sysLine += " \"" + sys.Label + "\""
 		}
-		fmt.Println(sysLine)
+		_, _ = fmt.Fprintln(w, sysLine)
 
 		// Containers
 		for i, cont := range sys.Containers {
@@ -153,7 +156,7 @@ func printSystemTree(sys *language.System, jsonOutput bool, indent int) {
 			if cont.Label != cont.ID {
 				contLine += " \"" + cont.Label + "\""
 			}
-			fmt.Println(contLine)
+			_, _ = fmt.Fprintln(w, contLine)
 
 			// Components in container
 			totalItems := len(cont.Components) + len(cont.DataStores) + len(cont.Queues)
@@ -170,7 +173,7 @@ func printSystemTree(sys *language.System, jsonOutput bool, indent int) {
 				if comp.Label != comp.ID {
 					compLine += " \"" + comp.Label + "\""
 				}
-				fmt.Println(compLine)
+				_, _ = fmt.Fprintln(w, compLine)
 			}
 
 			// Data stores in container
@@ -186,7 +189,7 @@ func printSystemTree(sys *language.System, jsonOutput bool, indent int) {
 				if ds.Label != ds.ID {
 					dsLine += " \"" + ds.Label + "\""
 				}
-				fmt.Println(dsLine)
+				_, _ = fmt.Fprintln(w, dsLine)
 			}
 
 			// Queues in container
@@ -202,7 +205,7 @@ func printSystemTree(sys *language.System, jsonOutput bool, indent int) {
 				if q.Label != q.ID {
 					qLine += " \"" + q.Label + "\""
 				}
-				fmt.Println(qLine)
+				_, _ = fmt.Fprintln(w, qLine)
 			}
 		}
 
@@ -219,7 +222,7 @@ func printSystemTree(sys *language.System, jsonOutput bool, indent int) {
 				if comp.Label != comp.ID {
 					compLine += " \"" + comp.Label + "\""
 				}
-				fmt.Println(compLine)
+				_, _ = fmt.Fprintln(w, compLine)
 			}
 		}
 
@@ -236,7 +239,7 @@ func printSystemTree(sys *language.System, jsonOutput bool, indent int) {
 				if ds.Label != ds.ID {
 					dsLine += " \"" + ds.Label + "\""
 				}
-				fmt.Println(dsLine)
+				_, _ = fmt.Fprintln(w, dsLine)
 			}
 		}
 
@@ -253,7 +256,7 @@ func printSystemTree(sys *language.System, jsonOutput bool, indent int) {
 				if q.Label != q.ID {
 					qLine += " \"" + q.Label + "\""
 				}
-				fmt.Println(qLine)
+				_, _ = fmt.Fprintln(w, qLine)
 			}
 		}
 	}

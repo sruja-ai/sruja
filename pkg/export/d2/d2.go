@@ -10,15 +10,22 @@ import (
 // Exporter handles exporting Sruja AST to D2 format.
 type Exporter struct {
 	// Options for export (e.g., styling, layout)
+	// Map of element ID to its fully qualified path in D2
+	elementPaths map[string]string
 }
 
 // NewExporter creates a new D2 exporter.
 func NewExporter() *Exporter {
-	return &Exporter{}
+	return &Exporter{
+		elementPaths: make(map[string]string),
+	}
 }
 
 // Export converts a Sruja architecture to D2 string.
 func (e *Exporter) Export(arch *language.Architecture) (string, error) {
+	// Build element paths map first
+	e.buildElementPaths(arch)
+
 	var sb strings.Builder
 
 	// Write header/config
@@ -37,14 +44,11 @@ func (e *Exporter) Export(arch *language.Architecture) (string, error) {
 	}
 
 	// Layers configuration
-	hasLayers := hasRequirements || len(arch.Journeys) > 0 || len(arch.Scenarios) > 0
+	hasLayers := hasRequirements || len(arch.Scenarios) > 0
 	if hasLayers {
 		sb.WriteString("layers: {\n")
 		if hasRequirements {
 			sb.WriteString("  \"Requirements\"\n")
-		}
-		for _, j := range arch.Journeys {
-			fmt.Fprintf(&sb, "  %s\n", quote(j.Title))
 		}
 		for _, s := range arch.Scenarios {
 			fmt.Fprintf(&sb, "  %s\n", quote(s.Title))
@@ -65,7 +69,7 @@ func (e *Exporter) Export(arch *language.Architecture) (string, error) {
 
 	// 3. Relations (Top-level)
 	for _, rel := range arch.Relations {
-		e.writeRelation(&sb, rel)
+		e.writeRelation(&sb, rel, "")
 	}
 
 	// 4. Deployment Nodes
@@ -78,34 +82,24 @@ func (e *Exporter) Export(arch *language.Architecture) (string, error) {
 		e.writeRequirementsLayer(&sb, arch)
 	}
 
-	// 6. Journeys (as layers)
-	for _, j := range arch.Journeys {
-		e.writeJourney(&sb, j)
-	}
-
-	// 8. Scenarios (as layers)
+	// 6. Scenarios (as layers)
 	for _, s := range arch.Scenarios {
 		e.writeScenario(&sb, s)
 	}
 
 	// 9. Architecture Layer (Static View)
-	if hasLayers {
-		sb.WriteString("\"Architecture\": {\n")
-		sb.WriteString("  _Title: \"Architecture\" {\n")
-		sb.WriteString("    shape: text\n")
-		sb.WriteString("    style: {\n")
-		sb.WriteString("      font-size: 20\n")
-		sb.WriteString("      bold: true\n")
-		sb.WriteString("    }\n")
-		sb.WriteString("  }\n")
-		sb.WriteString("}\n\n")
-	}
+	// We don't need to explicitly define the Architecture layer block if it's empty.
+	// Global elements (Systems, Persons) are automatically included.
 
 	return sb.String(), nil
 }
 
 func (e *Exporter) writeSystem(sb *strings.Builder, sys *language.System) {
-	fmt.Fprintf(sb, "%s: %s {\n", sys.ID, quote(sys.Label))
+	label := sys.Label
+	if sys.Description != nil {
+		label = fmt.Sprintf("%s\n\n%s", label, *sys.Description)
+	}
+	fmt.Fprintf(sb, "%s: %s {\n", sys.ID, quote(label))
 	sb.WriteString("  shape: package\n")
 	if sys.Description != nil {
 		fmt.Fprintf(sb, "  tooltip: %s\n", quote(*sys.Description))
@@ -113,7 +107,7 @@ func (e *Exporter) writeSystem(sb *strings.Builder, sys *language.System) {
 
 	// Containers
 	for _, cont := range sys.Containers {
-		e.writeContainer(sb, cont)
+		e.writeContainer(sb, cont, sys.ID)
 	}
 
 	// DataStores
@@ -128,14 +122,18 @@ func (e *Exporter) writeSystem(sb *strings.Builder, sys *language.System) {
 
 	// Internal Relations
 	for _, rel := range sys.Relations {
-		e.writeRelation(sb, rel)
+		e.writeRelation(sb, rel, sys.ID)
 	}
 
 	sb.WriteString("}\n\n")
 }
 
-func (e *Exporter) writeContainer(sb *strings.Builder, cont *language.Container) {
-	fmt.Fprintf(sb, "  %s: %s {\n", cont.ID, quote(cont.Label))
+func (e *Exporter) writeContainer(sb *strings.Builder, cont *language.Container, parentPath string) {
+	label := cont.Label
+	if cont.Description != nil {
+		label = fmt.Sprintf("%s\n\n%s", label, *cont.Description)
+	}
+	fmt.Fprintf(sb, "  %s: %s {\n", cont.ID, quote(label))
 	sb.WriteString("    shape: package\n") // D2 doesn't have explicit container shape, using package
 	if cont.Description != nil {
 		fmt.Fprintf(sb, "    tooltip: %s\n", quote(*cont.Description))
@@ -150,15 +148,20 @@ func (e *Exporter) writeContainer(sb *strings.Builder, cont *language.Container)
 	}
 
 	// Internal Relations
+	// Use system scope for container relations so sibling containers resolve correctly
 	for _, rel := range cont.Relations {
-		e.writeRelation(sb, rel)
+		e.writeRelation(sb, rel, parentPath)
 	}
 
 	sb.WriteString("  }\n")
 }
 
 func (e *Exporter) writeComponent(sb *strings.Builder, comp *language.Component) {
-	fmt.Fprintf(sb, "    %s: %s {\n", comp.ID, quote(comp.Label))
+	label := comp.Label
+	if comp.Description != nil {
+		label = fmt.Sprintf("%s\n\n%s", label, *comp.Description)
+	}
+	fmt.Fprintf(sb, "    %s: %s {\n", comp.ID, quote(label))
 	sb.WriteString("      shape: class\n")
 	if comp.Description != nil {
 		fmt.Fprintf(sb, "      tooltip: %s\n", quote(*comp.Description))
@@ -167,7 +170,11 @@ func (e *Exporter) writeComponent(sb *strings.Builder, comp *language.Component)
 }
 
 func (e *Exporter) writeDataStore(sb *strings.Builder, ds *language.DataStore) {
-	fmt.Fprintf(sb, "  %s: %s {\n", ds.ID, quote(ds.Label))
+	label := ds.Label
+	if ds.Description != nil {
+		label = fmt.Sprintf("%s\n\n%s", label, *ds.Description)
+	}
+	fmt.Fprintf(sb, "  %s: %s {\n", ds.ID, quote(label))
 	sb.WriteString("    shape: cylinder\n")
 	if ds.Description != nil {
 		fmt.Fprintf(sb, "    tooltip: %s\n", quote(*ds.Description))
@@ -176,7 +183,11 @@ func (e *Exporter) writeDataStore(sb *strings.Builder, ds *language.DataStore) {
 }
 
 func (e *Exporter) writeQueue(sb *strings.Builder, q *language.Queue) {
-	fmt.Fprintf(sb, "  %s: %s {\n", q.ID, quote(q.Label))
+	label := q.Label
+	if q.Description != nil {
+		label = fmt.Sprintf("%s\n\n%s", label, *q.Description)
+	}
+	fmt.Fprintf(sb, "  %s: %s {\n", q.ID, quote(label))
 	sb.WriteString("    shape: queue\n")
 	if q.Description != nil {
 		fmt.Fprintf(sb, "    tooltip: %s\n", quote(*q.Description))
@@ -190,7 +201,7 @@ func (e *Exporter) writePerson(sb *strings.Builder, p *language.Person) {
 	sb.WriteString("}\n\n")
 }
 
-func (e *Exporter) writeRelation(sb *strings.Builder, rel *language.Relation) {
+func (e *Exporter) writeRelation(sb *strings.Builder, rel *language.Relation, scope string) {
 	// D2 relation: From -> To: Label
 	label := ""
 	if rel.Verb != nil {
@@ -204,15 +215,37 @@ func (e *Exporter) writeRelation(sb *strings.Builder, rel *language.Relation) {
 		}
 	}
 
+	// Resolve From/To using element paths if available
+	from := rel.From
+	if path, ok := e.elementPaths[from]; ok {
+		from = path
+	}
+
+	to := rel.To
+	if path, ok := e.elementPaths[to]; ok {
+		to = path
+	}
+
+	// If scope is provided, try to make paths relative
+	if scope != "" {
+		prefix := scope + "."
+		from = strings.TrimPrefix(from, prefix)
+		to = strings.TrimPrefix(to, prefix)
+	}
+
 	if label != "" {
-		fmt.Fprintf(sb, "%s -> %s: %s\n", rel.From, rel.To, quote(label))
+		fmt.Fprintf(sb, "%s -> %s: %s\n", from, to, quote(label))
 	} else {
-		fmt.Fprintf(sb, "%s -> %s\n", rel.From, rel.To)
+		fmt.Fprintf(sb, "%s -> %s\n", from, to)
 	}
 }
 
 func (e *Exporter) writeDeploymentNode(sb *strings.Builder, node *language.DeploymentNode) {
-	fmt.Fprintf(sb, "%s: %s {\n", node.ID, quote(node.Label))
+	label := node.Label
+	if node.Description != nil {
+		label = fmt.Sprintf("%s\n\n%s", label, *node.Description)
+	}
+	fmt.Fprintf(sb, "%s: %s {\n", node.ID, quote(label))
 	// Deployment nodes are usually nested boxes
 	if node.Description != nil {
 		fmt.Fprintf(sb, "  tooltip: %s\n", quote(*node.Description))
@@ -225,7 +258,11 @@ func (e *Exporter) writeDeploymentNode(sb *strings.Builder, node *language.Deplo
 
 	// Infrastructure
 	for _, infra := range node.Infrastructure {
-		fmt.Fprintf(sb, "  %s: %s {\n", infra.ID, quote(infra.Label))
+		label := infra.Label
+		if infra.Description != nil {
+			label = fmt.Sprintf("%s\n\n%s", label, *infra.Description)
+		}
+		fmt.Fprintf(sb, "  %s: %s {\n", infra.ID, quote(label))
 		sb.WriteString("    shape: queue\n") // Using queue/cylinder/class as generic infra for now
 		if infra.Description != nil {
 			fmt.Fprintf(sb, "    tooltip: %s\n", quote(*infra.Description))
@@ -283,29 +320,6 @@ func (e *Exporter) writeRequirementsLayer(sb *strings.Builder, arch *language.Ar
 	sb.WriteString("}\n\n")
 }
 
-func (e *Exporter) writeJourney(sb *strings.Builder, j *language.Journey) {
-	fmt.Fprintf(sb, "%s: {\n", quote(j.Title))
-	// Add title as a text shape
-	fmt.Fprintf(sb, "  _Title: %s {\n", quote(j.Title))
-	sb.WriteString("    shape: text\n")
-	sb.WriteString("    style: {\n")
-	sb.WriteString("      font-size: 20\n")
-	sb.WriteString("      bold: true\n")
-	sb.WriteString("    }\n")
-	sb.WriteString("  }\n")
-
-	for i, step := range j.Steps {
-		label := ""
-		if step.Label != nil {
-			label = fmt.Sprintf("%d. %s", i+1, *step.Label)
-		} else {
-			label = fmt.Sprintf("%d", i+1)
-		}
-		fmt.Fprintf(sb, "  %s -> %s: %s\n", step.From, step.To, quote(label))
-	}
-	sb.WriteString("}\n\n")
-}
-
 func quote(s string) string {
 	return fmt.Sprintf("%q", s)
 }
@@ -328,7 +342,59 @@ func (e *Exporter) writeScenario(sb *strings.Builder, s *language.Scenario) {
 		} else {
 			label = fmt.Sprintf("%d", i+1)
 		}
-		fmt.Fprintf(sb, "  %s -> %s: %s\n", step.From, step.To, quote(label))
+
+		// Resolve From/To using element paths
+		from := step.From
+		if path, ok := e.elementPaths[from]; ok {
+			from = path
+		}
+
+		to := step.To
+		if path, ok := e.elementPaths[to]; ok {
+			to = path
+		}
+
+		fmt.Fprintf(sb, "  %s -> %s: %s\n", from, to, quote(label))
 	}
 	sb.WriteString("}\n\n")
+}
+
+func (e *Exporter) buildElementPaths(arch *language.Architecture) {
+	// Persons
+	for _, p := range arch.Persons {
+		e.elementPaths[p.ID] = p.ID
+	}
+
+	// Systems
+	for _, s := range arch.Systems {
+		e.elementPaths[s.ID] = s.ID
+
+		// Containers
+		for _, c := range s.Containers {
+			path := fmt.Sprintf("%s.%s", s.ID, c.ID)
+			e.elementPaths[c.ID] = path
+
+			// Components in Containers
+			for _, comp := range c.Components {
+				compPath := fmt.Sprintf("%s.%s", path, comp.ID)
+				e.elementPaths[comp.ID] = compPath
+			}
+		}
+
+		// Components in Systems (direct)
+		for _, comp := range s.Components {
+			compPath := fmt.Sprintf("%s.%s", s.ID, comp.ID)
+			e.elementPaths[comp.ID] = compPath
+		}
+
+		// DataStores
+		for _, d := range s.DataStores {
+			e.elementPaths[d.ID] = fmt.Sprintf("%s.%s", s.ID, d.ID)
+		}
+
+		// Queues
+		for _, q := range s.Queues {
+			e.elementPaths[q.ID] = fmt.Sprintf("%s.%s", s.ID, q.ID)
+		}
+	}
 }

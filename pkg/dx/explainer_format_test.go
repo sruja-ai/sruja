@@ -27,8 +27,8 @@ func TestFormat(t *testing.T) {
 		ADRs: []*language.ADR{
 			{ID: "ADR001", Title: stringPtr("Test ADR")},
 		},
-		Journeys: []*JourneyInfo{
-			{ID: "journey1", Label: "Test Journey"},
+		Scenarios: []*ScenarioInfo{
+			{ID: "scenario1", Label: "Test Scenario"},
 		},
 	}
 
@@ -48,7 +48,7 @@ func TestFormat(t *testing.T) {
 	if !strings.Contains(formatted, "Related ADRs") {
 		t.Error("Format should contain ADRs section")
 	}
-	if !strings.Contains(formatted, "Related Journeys") {
-		t.Error("Format should contain journeys section")
+	if !strings.Contains(formatted, "Related Scenarios") {
+		t.Error("Format should contain scenarios section")
 	}
 }

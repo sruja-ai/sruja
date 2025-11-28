@@ -1,0 +1,180 @@
+{
+  "examples": [
+    {
+      "file": "simple.sruja",
+      "name": "Quick Start",
+      "order": 1,
+      "category": "basic",
+      "description": "Simple architecture with person, system, container, and datastore"
+    },
+    {
+      "file": "example.sruja",
+      "name": "Basic Example",
+      "order": 2,
+      "category": "basic",
+      "description": "Basic architecture example"
+    },
+    {
+      "file": "person.sruja",
+      "name": "Person & Relations",
+      "order": 3,
+      "category": "basic",
+      "description": "Person interacting with system components"
+    },
+    {
+      "file": "components_relations.sruja",
+      "name": "Components",
+      "order": 4,
+      "category": "intermediate",
+      "description": "Component-level relations within containers"
+    },
+    {
+      "file": "person_to_component.sruja",
+      "name": "Person to Component",
+      "order": 5,
+      "category": "intermediate",
+      "description": "Direct person to component relations"
+    },
+    {
+      "file": "queues_and_datastore.sruja",
+      "name": "Queues & DataStore",
+      "order": 6,
+      "category": "intermediate",
+      "description": "Using queues and datastores with different relation verbs"
+    },
+    {
+      "file": "tags_showcase.sruja",
+      "name": "Tags",
+      "order": 7,
+      "category": "intermediate",
+      "description": "Using tags for categorization"
+    },
+    {
+      "file": "requirements_implements.sruja",
+      "name": "Requirements",
+      "order": 8,
+      "category": "advanced",
+      "description": "Defining and implementing requirements"
+    },
+    {
+      "file": "integration_verbs_and_elements.sruja",
+      "name": "Integration Verbs",
+      "order": 9,
+      "category": "intermediate",
+      "description": "Different relation verbs (uses, reads, writes, publishes)"
+    },
+    {
+      "file": "external_ok.sruja",
+      "name": "External Systems",
+      "order": 10,
+      "category": "intermediate",
+      "description": "External system dependencies"
+    },
+    {
+      "file": "full_features.sruja",
+      "name": "Full Features",
+      "order": 11,
+      "category": "advanced",
+      "description": "Comprehensive example with requirements and ADRs"
+    },
+    {
+      "file": "full_mvp.sruja",
+      "name": "E‑Commerce",
+      "order": 12,
+      "category": "advanced",
+      "description": "Complete e-commerce MVP architecture"
+    },
+    {
+      "file": "c4_full.sruja",
+      "name": "C4 Complete",
+      "order": 13,
+      "category": "advanced",
+      "description": "Complete C4 model example with deployment views"
+    },
+    {
+      "file": "top_level_system.sruja",
+      "name": "Top-Level System",
+      "order": 14,
+      "category": "intermediate",
+      "description": "System defined without architecture wrapper",
+      "skipOrphanCheck": true
+    },
+    {
+      "file": "top_level_container.sruja",
+      "name": "Top-Level Container",
+      "order": 15,
+      "category": "intermediate",
+      "description": "Container defined without architecture wrapper",
+      "skipOrphanCheck": true
+    },
+    {
+      "file": "top_level_component.sruja",
+      "name": "Top-Level Component",
+      "order": 16,
+      "category": "intermediate",
+      "description": "Component defined without architecture wrapper",
+      "skipOrphanCheck": true
+    },
+    {
+      "file": "metadata_showcase.sruja",
+      "name": "Metadata",
+      "order": 17,
+      "category": "intermediate",
+      "description": "Metadata for all element types",
+      "skipOrphanCheck": true
+    },
+    {
+      "file": "import_main.sruja",
+      "name": "Imports",
+      "order": 18,
+      "category": "advanced",
+      "description": "Using imports to compose architectures"
+    },
+    {
+      "file": "invalid.sruja",
+      "name": "Invalid Example",
+      "order": 99,
+      "category": "testing",
+      "description": "Example with validation errors",
+      "expectedFailure": "Duplicate system definition and unknown reference",
+      "skipPlayground": true
+    },
+    {
+      "file": "external_violation.sruja",
+      "name": "External Violation",
+      "order": 99,
+      "category": "testing",
+      "description": "Container depends on parent system",
+      "expectedFailure": "Container depends on parent system (violates external dependency rule)",
+      "skipPlayground": true
+    },
+    {
+      "file": "cyclic.sruja",
+      "name": "Cyclic Dependency",
+      "order": 99,
+      "category": "testing",
+      "description": "Circular dependency example",
+      "expectedFailure": "Circular dependency detected (A -> B -> C -> A)",
+      "skipPlayground": true
+    },
+    {
+      "file": "requirements_implements_invalid.sruja",
+      "name": "Invalid Requirements",
+      "order": 99,
+      "category": "testing",
+      "description": "Invalid requirement implementation",
+      "expectedFailure": "Invalid requirement implementation reference",
+      "skipPlayground": true
+    },
+    {
+      "file": "shared_model.sruja",
+      "name": "Shared Model",
+      "order": 99,
+      "category": "testing",
+      "description": "Standalone elements without relations",
+      "skipOrphanCheck": true,
+      "skipPlayground": true
+    }
+  ]
+}
+

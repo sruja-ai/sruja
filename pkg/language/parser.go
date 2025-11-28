@@ -32,7 +32,7 @@ import (
 //
 //	workspace := program.Workspace
 type Parser struct {
-	parser *participle.Parser[Architecture] // The participle parser instance
+	parser *participle.Parser[File] // The participle parser instance
 }
 
 // NewParser creates a new parser instance.
@@ -66,7 +66,7 @@ func NewParser() (*Parser, error) {
 		{Name: "Whitespace", Pattern: `\s+`},
 	})
 
-	parser, err := participle.Build[Architecture](
+	parser, err := participle.Build[File](
 		participle.Lexer(srujaLexer),
 		participle.Unquote("String"),
 		participle.Elide("Whitespace"),
@@ -84,56 +84,135 @@ func NewParser() (*Parser, error) {
 //
 // Parameters:
 //   - filename: Name of the file (used for error reporting)
-//   - text: The DSL text to parse (must start with "architecture {")
+//   - text: The DSL text to parse
 //
 // Returns:
 //   - *Program: The parsed program (root of AST)
 //   - error: Parse error if syntax is invalid
 //
-// Example:
+// The parser supports flexible file structures:
+//   - Files can contain top-level elements (system, container, component) without architecture wrapper
+//   - Files can contain an explicit architecture block
+//   - Top-level elements are automatically wrapped in an Architecture for compatibility
+//
+// Example (without architecture):
 //
 //	parser, _ := language.NewParser()
-//	program, err := parser.Parse("example.sruja", `architecture "My System" { system API "API Service" }`)
-//	if err != nil {
-//	    log.Fatal(err)
-//	}
+//	program, err := parser.Parse("api.sruja", `system API "API Service" { ... }`)
+//
+// Example (with architecture):
+//
+//	parser, _ := language.NewParser()
+//	program, err := parser.Parse("system.sruja", `architecture "My System" { system API "API Service" }`)
 func (p *Parser) Parse(filename, text string) (*Program, error) {
-	// Allow files without explicit 'architecture' wrapper
-	src := strings.TrimSpace(text)
-	if !strings.HasPrefix(src, "workspace") && !strings.HasPrefix(src, "architecture") {
-		// Wrap bare statements into architecture block
-		src = "architecture \"" + baseName(filename) + "\" { " + src + " }"
-	} else {
-		// Root present: if header name missing between keyword and first '{', inject default
-		// Find keyword and first '{'
-		// Accept forms: "architecture \"Name\" {" or "workspace \"Name\" {"
-		// If no quoted string before '{', add one.
-		prefix := "architecture"
-		if strings.HasPrefix(src, "workspace") {
-			prefix = "workspace"
-			// Replace workspace with architecture for compatibility
-			src = strings.Replace(src, "workspace", "architecture", 1)
-		}
-		// index of first '{'
-		braceIdx := strings.Index(src, "{")
-		if braceIdx > len(prefix) {
-			header := strings.TrimSpace(src[len(prefix):braceIdx])
-			hasHeaderName := strings.Contains(header, "\"")
-			if !hasHeaderName {
-				src = prefix + " \"" + baseName(filename) + "\" " + src[braceIdx:]
-			}
-		}
-	}
-
-	arch, err := p.parser.ParseString(filename, src)
+	file, err := p.parser.ParseString(filename, text)
 	if err != nil {
 		return nil, fmt.Errorf("parse error: %w", err)
+	}
+
+	// Convert File to Program (Logical Model)
+	// Top-level elements are automatically wrapped in an Architecture for compatibility
+	arch := &Architecture{
+		Name: baseName(filename), // Default name from filename
+	}
+
+	// Merge items from File into Architecture
+	for _, item := range file.Items {
+		if item.Architecture != nil {
+			// Merge explicit architecture block
+			if item.Architecture.Name != "" {
+				arch.Name = item.Architecture.Name
+			}
+			// Add items from explicit architecture block
+			arch.Items = append(arch.Items, item.Architecture.Items...)
+		} else {
+			// Convert top-level FileItem (system, container, component, etc.) to ArchitectureItem
+			// This allows files to define elements at any level without requiring architecture wrapper
+			archItem := convertFileItemToArchitectureItem(item)
+			if archItem != nil {
+				arch.Items = append(arch.Items, *archItem)
+			}
+		}
 	}
 
 	// Populate convenience fields
 	arch.PostProcess()
 
 	return &Program{Architecture: arch}, nil
+}
+
+func convertFileItemToArchitectureItem(item FileItem) *ArchitectureItem {
+	if item.Import != nil {
+		return &ArchitectureItem{Import: item.Import}
+	}
+	if item.System != nil {
+		return &ArchitectureItem{System: item.System}
+	}
+	if item.Person != nil {
+		return &ArchitectureItem{Person: item.Person}
+	}
+	if item.Relation != nil {
+		return &ArchitectureItem{Relation: item.Relation}
+	}
+	if item.Requirement != nil {
+		return &ArchitectureItem{Requirement: item.Requirement}
+	}
+	if item.ADR != nil {
+		return &ArchitectureItem{ADR: item.ADR}
+	}
+	if item.SharedArtifact != nil {
+		return &ArchitectureItem{SharedArtifact: item.SharedArtifact}
+	}
+	if item.Library != nil {
+		return &ArchitectureItem{Library: item.Library}
+	}
+	if item.Metadata != nil {
+		return &ArchitectureItem{Metadata: item.Metadata}
+	}
+	if item.ContractsBlock != nil {
+		return &ArchitectureItem{ContractsBlock: item.ContractsBlock}
+	}
+	if item.ConstraintsBlock != nil {
+		return &ArchitectureItem{ConstraintsBlock: item.ConstraintsBlock}
+	}
+	if item.ConventionsBlock != nil {
+		return &ArchitectureItem{ConventionsBlock: item.ConventionsBlock}
+	}
+	if item.EntitiesBlock != nil {
+		return &ArchitectureItem{EntitiesBlock: item.EntitiesBlock}
+	}
+	if item.Domain != nil {
+		return &ArchitectureItem{Domain: item.Domain}
+	}
+	if item.DeploymentNode != nil {
+		return &ArchitectureItem{DeploymentNode: item.DeploymentNode}
+	}
+	if item.Scenario != nil {
+		return &ArchitectureItem{Scenario: item.Scenario}
+	}
+	if item.Container != nil {
+		return &ArchitectureItem{Container: item.Container}
+	}
+	if item.Component != nil {
+		return &ArchitectureItem{Component: item.Component}
+	}
+	if item.DataStore != nil {
+		return &ArchitectureItem{DataStore: item.DataStore}
+	}
+	if item.Queue != nil {
+		return &ArchitectureItem{Queue: item.Queue}
+	}
+	if item.Properties != nil {
+		return &ArchitectureItem{Properties: item.Properties}
+	}
+	if item.Style != nil {
+		return &ArchitectureItem{Style: item.Style}
+	}
+	if item.Description != nil {
+		return &ArchitectureItem{Description: item.Description}
+	}
+
+	return nil
 }
 
 // ParseFile parses a DSL file into an AST.

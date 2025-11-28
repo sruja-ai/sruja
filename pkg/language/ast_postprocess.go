@@ -16,6 +16,22 @@ func (a *Architecture) PostProcess() {
 			item.System.PostProcess()
 			a.Systems = append(a.Systems, item.System)
 		}
+		if item.Container != nil {
+			item.Container.PostProcess()
+			a.Containers = append(a.Containers, item.Container)
+		}
+		if item.Component != nil {
+			item.Component.PostProcess()
+			a.Components = append(a.Components, item.Component)
+		}
+		if item.DataStore != nil {
+			item.DataStore.PostProcess()
+			a.DataStores = append(a.DataStores, item.DataStore)
+		}
+		if item.Queue != nil {
+			item.Queue.PostProcess()
+			a.Queues = append(a.Queues, item.Queue)
+		}
 		if item.Person != nil {
 			item.Person.PostProcess()
 			a.Persons = append(a.Persons, item.Person)
@@ -34,10 +50,6 @@ func (a *Architecture) PostProcess() {
 		}
 		if item.Library != nil {
 			a.Libraries = append(a.Libraries, item.Library)
-		}
-		if item.Journey != nil {
-			item.Journey.PostProcess()
-			a.Journeys = append(a.Journeys, item.Journey)
 		}
 		if item.Metadata != nil {
 			a.Metadata = append(a.Metadata, item.Metadata.Entries...)
@@ -67,6 +79,25 @@ func (a *Architecture) PostProcess() {
 		if item.Scenario != nil {
 			item.Scenario.PostProcess()
 			a.Scenarios = append(a.Scenarios, item.Scenario)
+		}
+		if item.Properties != nil {
+			if a.Properties == nil {
+				a.Properties = make(map[string]string)
+			}
+			for _, entry := range item.Properties.Entries {
+				a.Properties[entry.Key] = entry.Value
+			}
+		}
+		if item.Style != nil {
+			if a.Style == nil {
+				a.Style = make(map[string]string)
+			}
+			for _, entry := range item.Style.Entries {
+				a.Style[entry.Key] = entry.Value
+			}
+		}
+		if item.Description != nil {
+			a.Description = item.Description
 		}
 	}
 }
@@ -245,18 +276,6 @@ func (c *Component) PostProcess() {
 		}
 		if item.Scale != nil {
 			c.Scale = item.Scale
-		}
-	}
-}
-
-// PostProcess populates convenience fields from journey items.
-func (j *Journey) PostProcess() {
-	for _, item := range j.Items {
-		if item.Title != nil {
-			j.Title = *item.Title
-		}
-		if item.Steps != nil {
-			j.Steps = append(j.Steps, item.Steps.Items...)
 		}
 	}
 }

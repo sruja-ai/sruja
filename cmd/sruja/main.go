@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"io"
+
 	"github.com/sruja-ai/sruja/pkg/dx"
 	"github.com/sruja-ai/sruja/pkg/engine"
 	"github.com/sruja-ai/sruja/pkg/export/d2"
@@ -13,113 +15,118 @@ import (
 )
 
 func main() {
+	os.Exit(Run(os.Args, os.Stdout, os.Stderr))
+}
 
-	lintCmd := flag.NewFlagSet("lint", flag.ExitOnError)
-	fmtCmd := flag.NewFlagSet("fmt", flag.ExitOnError)
-	exportCmd := flag.NewFlagSet("export", flag.ExitOnError)
+func Run(args []string, stdout, stderr io.Writer) int {
+	lintCmd := flag.NewFlagSet("lint", flag.ContinueOnError)
+	lintCmd.SetOutput(stderr)
+	fmtCmd := flag.NewFlagSet("fmt", flag.ContinueOnError)
+	fmtCmd.SetOutput(stderr)
+	exportCmd := flag.NewFlagSet("export", flag.ContinueOnError)
+	exportCmd.SetOutput(stderr)
 
-	if len(os.Args) < 2 {
-		fmt.Println("expected 'compile', 'lint', 'fmt', 'export', 'explain', 'list', 'init', 'tree', 'diff', or 'version' subcommands")
-		fmt.Println("Run 'sruja <command> --help' for usage information")
-		os.Exit(1)
+	if len(args) < 2 {
+		_, _ = fmt.Fprintln(stderr, "expected 'compile', 'lint', 'fmt', 'export', 'explain', 'list', 'init', 'tree', 'diff', or 'version' subcommands")
+		_, _ = fmt.Fprintln(stderr, "Run 'sruja <command> --help' for usage information")
+		return 1
 	}
 
 	// Handle version flag globally
-	if len(os.Args) >= 2 && (os.Args[1] == "--version" || os.Args[1] == "-v" || os.Args[1] == "version") {
-		runVersion()
+	if len(args) >= 2 && (args[1] == "--version" || args[1] == "-v" || args[1] == "version") {
+		return runVersion(stdout)
 	}
 
-	switch os.Args[1] {
+	switch args[1] {
 
 	case "compile":
-		compileCmd := flag.NewFlagSet("compile", flag.ExitOnError)
-		if err := compileCmd.Parse(os.Args[2:]); err != nil {
-			fmt.Println(dx.Error(fmt.Sprintf("Error parsing compile flags: %v", err)))
-			os.Exit(1)
+		compileCmd := flag.NewFlagSet("compile", flag.ContinueOnError)
+		compileCmd.SetOutput(stderr)
+		if err := compileCmd.Parse(args[2:]); err != nil {
+			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing compile flags: %v", err)))
+			return 1
 		}
 		if compileCmd.NArg() < 1 {
-			fmt.Println("expected file path")
-			os.Exit(1)
+			_, _ = fmt.Fprintln(stderr, "expected file path")
+			return 1
 		}
-		runCompile(compileCmd.Arg(0))
+		return runCompile(compileCmd.Arg(0), stdout, stderr)
 
 	case "lint":
-		if err := lintCmd.Parse(os.Args[2:]); err != nil {
-			fmt.Println(dx.Error(fmt.Sprintf("Error parsing lint flags: %v", err)))
-			os.Exit(1)
+		if err := lintCmd.Parse(args[2:]); err != nil {
+			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing lint flags: %v", err)))
+			return 1
 		}
 		if lintCmd.NArg() < 1 {
-			fmt.Println("expected file path")
-			os.Exit(1)
+			_, _ = fmt.Fprintln(stderr, "expected file path")
+			return 1
 		}
-		runLint(lintCmd.Arg(0))
+		return runLint(lintCmd.Arg(0), stdout, stderr)
 	case "fmt":
-		if err := fmtCmd.Parse(os.Args[2:]); err != nil {
-			fmt.Println(dx.Error(fmt.Sprintf("Error parsing fmt flags: %v", err)))
-			os.Exit(1)
+		if err := fmtCmd.Parse(args[2:]); err != nil {
+			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing fmt flags: %v", err)))
+			return 1
 		}
 		if fmtCmd.NArg() < 1 {
-			fmt.Println("expected file path")
-			os.Exit(1)
+			_, _ = fmt.Fprintln(stderr, "expected file path")
+			return 1
 		}
-		runFmt(fmtCmd.Arg(0))
+		return runFmt(fmtCmd.Arg(0), stdout, stderr)
 
 	case "export":
-		if err := exportCmd.Parse(os.Args[2:]); err != nil {
-			fmt.Println(dx.Error(fmt.Sprintf("Error parsing export flags: %v", err)))
-			os.Exit(1)
+		if err := exportCmd.Parse(args[2:]); err != nil {
+			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing export flags: %v", err)))
+			return 1
 		}
 		if exportCmd.NArg() < 2 {
-			fmt.Println("expected format and file path (e.g., 'sruja export d2 example.sruja')")
-			os.Exit(1)
+			_, _ = fmt.Fprintln(stderr, "expected format and file path (e.g., 'sruja export d2 example.sruja')")
+			return 1
 		}
-		runExport(exportCmd.Arg(0), exportCmd.Arg(1))
+		return runExport(exportCmd.Arg(0), exportCmd.Arg(1), stdout, stderr)
 
 	case "explain":
-		runExplain()
+		return runExplain(stdout, stderr)
 	case "list":
-		runList()
+		return runList(stdout, stderr)
 
 	case "tree":
-		runTree()
+		return runTree(stdout, stderr)
 	case "diff":
-		runDiff()
+		return runDiff(stdout, stderr)
 	case "version", "--version", "-v":
-		runVersion()
+		return runVersion(stdout)
 	default:
-		fmt.Println("expected 'compile', 'lint', 'fmt', 'export', 'explain', 'list', 'init', 'tree', 'diff', or 'version' subcommands")
-		fmt.Println("Run 'sruja <command> --help' for usage information")
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, "expected 'compile', 'lint', 'fmt', 'export', 'explain', 'list', 'init', 'tree', 'diff', or 'version' subcommands")
+		_, _ = fmt.Fprintln(stderr, "Run 'sruja <command> --help' for usage information")
+		return 1
 	}
 }
 
-func runLint(filePath string) {
+func runLint(filePath string, stdout, stderr io.Writer) int {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		fmt.Println(dx.Error(fmt.Sprintf("Error reading file: %v", err)))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error reading file: %v", err)))
+		return 1
 	}
 
 	p, err := language.NewParser()
 	if err != nil {
-		fmt.Println(dx.Error(fmt.Sprintf("Error creating parser: %v", err)))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error creating parser: %v", err)))
+		return 1
 	}
 
 	program, err := p.Parse(filePath, string(content))
 	if err != nil {
-		fmt.Println(dx.Error(fmt.Sprintf("Parser Error: %v", err)))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Parser Error: %v", err)))
+		return 1
 	}
 
 	// Validation
 	validator := engine.NewValidator()
 	validator.RegisterRule(&engine.UniqueIDRule{})
 	validator.RegisterRule(&engine.ValidReferenceRule{})
-	validator.RegisterRule(&engine.ValidReferenceRule{})
 	validator.RegisterRule(&engine.CycleDetectionRule{})
 	validator.RegisterRule(&engine.OrphanDetectionRule{})
-	validator.RegisterRule(&engine.UniqueIDRule{})
 
 	validationErrors := validator.Validate(program)
 	if len(validationErrors) > 0 {
@@ -130,88 +137,91 @@ func runLint(filePath string) {
 			enhancedErrors = append(enhancedErrors, enhancer.Enhance(err))
 		}
 
-		fmt.Print(dx.FormatErrors(enhancedErrors, dx.SupportsColor()))
-		os.Exit(1)
+		_, _ = fmt.Fprint(stderr, dx.FormatErrors(enhancedErrors, dx.SupportsColor()))
+		return 1
 	} else {
-		fmt.Println(dx.Success("No linting errors found."))
+		_, _ = fmt.Fprintln(stdout, dx.Success("No linting errors found."))
+		return 0
 	}
 }
 
-func runFmt(filePath string) {
+func runFmt(filePath string, stdout, stderr io.Writer) int {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		fmt.Printf("Error reading file: %v\n", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "Error reading file: %v\n", err)
+		return 1
 	}
 
 	p, err := language.NewParser()
 	if err != nil {
-		fmt.Printf("Error creating parser: %v\n", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "Error creating parser: %v\n", err)
+		return 1
 	}
 
 	program, err := p.Parse(filePath, string(content))
 	if err != nil {
-		fmt.Printf("Parser Error: %v\n", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "Parser Error: %v\n", err)
+		return 1
 	}
 
 	printer := &language.Printer{}
 	formatted := printer.Print(program)
-	fmt.Print(formatted)
+	_, _ = fmt.Fprint(stdout, formatted)
+	return 0
 }
 
-func runExport(format, filePath string) {
+func runExport(format, filePath string, stdout, stderr io.Writer) int {
 	if format != "d2" {
-		fmt.Printf("Unsupported export format: %s. Only 'd2' is currently supported.\n", format)
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "Unsupported export format: %s. Only 'd2' is currently supported.\n", format)
+		return 1
 	}
 
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		fmt.Printf("Error reading file: %v\n", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "Error reading file: %v\n", err)
+		return 1
 	}
 
 	p, err := language.NewParser()
 	if err != nil {
-		fmt.Printf("Error creating parser: %v\n", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "Error creating parser: %v\n", err)
+		return 1
 	}
 
 	program, err := p.Parse(filePath, string(content))
 	if err != nil {
-		fmt.Printf("Parser Error: %v\n", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "Parser Error: %v\n", err)
+		return 1
 	}
 
 	exporter := d2.NewExporter()
 	output, err := exporter.Export(program.Architecture)
 	if err != nil {
-		fmt.Printf("Export Error: %v\n", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "Export Error: %v\n", err)
+		return 1
 	}
 
-	fmt.Println(output)
+	_, _ = fmt.Fprintln(stdout, output)
+	return 0
 }
 
-func runCompile(filePath string) {
+func runCompile(filePath string, stdout, stderr io.Writer) int {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		fmt.Println(dx.Error(fmt.Sprintf("Error reading file: %v", err)))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error reading file: %v", err)))
+		return 1
 	}
 
 	p, err := language.NewParser()
 	if err != nil {
-		fmt.Println(dx.Error(fmt.Sprintf("Error creating parser: %v", err)))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error creating parser: %v", err)))
+		return 1
 	}
 
 	program, err := p.Parse(filePath, string(content))
 	if err != nil {
-		fmt.Println(dx.Error(fmt.Sprintf("Parser Error: %v", err)))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Parser Error: %v", err)))
+		return 1
 	}
 
 	// Validation
@@ -230,9 +240,10 @@ func runCompile(filePath string) {
 			enhancedErrors = append(enhancedErrors, enhancer.Enhance(err))
 		}
 
-		fmt.Print(dx.FormatErrors(enhancedErrors, dx.SupportsColor()))
-		os.Exit(1)
+		_, _ = fmt.Fprint(stderr, dx.FormatErrors(enhancedErrors, dx.SupportsColor()))
+		return 1
 	} else {
-		fmt.Println(dx.Success("Compilation successful."))
+		_, _ = fmt.Fprintln(stdout, dx.Success("Compilation successful."))
+		return 0
 	}
 }

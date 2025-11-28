@@ -4,6 +4,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -11,21 +12,22 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-func runList() {
-	listCmd := flag.NewFlagSet("list", flag.ExitOnError)
+func runList(stdout, stderr io.Writer) int {
+	listCmd := flag.NewFlagSet("list", flag.ContinueOnError)
+	listCmd.SetOutput(stderr)
 	listJSON := listCmd.Bool("json", false, "output as JSON")
 	listFile := listCmd.String("file", "", "architecture file path")
 
 	if err := listCmd.Parse(os.Args[2:]); err != nil {
-		fmt.Println(dx.Error(fmt.Sprintf("Error parsing list flags: %v", err)))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing list flags: %v", err)))
+		return 1
 	}
 
 	if listCmd.NArg() < 1 {
-		fmt.Println("Usage: sruja list <type> [--file <path>] [--json]")
-		fmt.Println("Types: systems, containers, components, persons, datastores, queues, journeys, adrs, entities, events")
-		fmt.Println("Example: sruja list systems --file architecture.sruja")
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, "Usage: sruja list <type> [--file <path>] [--json]")
+		_, _ = fmt.Fprintln(stderr, "Types: systems, containers, components, persons, datastores, queues, scenarios, adrs, entities, events")
+		_, _ = fmt.Fprintln(stderr, "Example: sruja list systems --file architecture.sruja")
+		return 1
 	}
 
 	elementType := strings.ToLower(listCmd.Arg(0))
@@ -45,120 +47,121 @@ func runList() {
 	}
 
 	if filePath == "" {
-		fmt.Println("Error: no architecture file found. Use --file to specify.")
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, "Error: no architecture file found. Use --file to specify.")
+		return 1
 	}
 
 	// Parse the architecture file
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		fmt.Printf("Error reading file: %v\n", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "Error reading file: %v\n", err)
+		return 1
 	}
 
 	p, err := language.NewParser()
 	if err != nil {
-		fmt.Printf("Error creating parser: %v\n", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "Error creating parser: %v\n", err)
+		return 1
 	}
 
 	program, err := p.Parse(filePath, string(content))
 	if err != nil {
-		fmt.Printf("Parser Error: %v\n", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "Parser Error: %v\n", err)
+		return 1
 	}
 
 	if program.Architecture == nil {
-		fmt.Println("Error: no architecture found in file")
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, "Error: no architecture found in file")
+		return 1
 	}
 
 	arch := program.Architecture
 
 	switch elementType {
 	case "systems":
-		listSystems(arch, *listJSON)
+		listSystems(arch, *listJSON, stdout)
 	case "containers":
-		listContainers(arch, *listJSON)
+		listContainers(arch, *listJSON, stdout)
 	case "components":
-		listComponents(arch, *listJSON)
+		listComponents(arch, *listJSON, stdout)
 	case "persons":
-		listPersons(arch, *listJSON)
+		listPersons(arch, *listJSON, stdout)
 	case "datastores":
-		listDataStores(arch, *listJSON)
+		listDataStores(arch, *listJSON, stdout)
 	case "queues":
-		listQueues(arch, *listJSON)
-	case "journeys":
-		listJourneys(arch, *listJSON)
+		listQueues(arch, *listJSON, stdout)
+	case "scenarios":
+		listScenarios(arch, *listJSON, stdout)
 	case "adrs":
-		listADRs(arch, *listJSON)
+		listADRs(arch, *listJSON, stdout)
 	case "entities":
-		listEntities(arch, *listJSON)
+		listEntities(arch, *listJSON, stdout)
 	case "events":
-		listEvents(arch, *listJSON)
+		listEvents(arch, *listJSON, stdout)
 	default:
-		fmt.Printf("Error: unknown type '%s'\n", elementType)
-		fmt.Println("Types: systems, containers, components, persons, datastores, queues, journeys, adrs, entities, events")
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "Error: unknown type '%s'\n", elementType)
+		_, _ = fmt.Fprintln(stderr, "Types: systems, containers, components, persons, datastores, queues, scenarios, adrs, entities, events")
+		return 1
 	}
+	return 0
 }
 
-func listSystems(arch *language.Architecture, jsonOutput bool) {
+func listSystems(arch *language.Architecture, jsonOutput bool, w io.Writer) {
 	if jsonOutput {
-		fmt.Print("[")
+		_, _ = fmt.Fprint(w, "[")
 		for i, sys := range arch.Systems {
 			if i > 0 {
-				fmt.Print(", ")
+				_, _ = fmt.Fprint(w, ", ")
 			}
-			fmt.Printf(`{"id": "%s", "label": "%s"}`, sys.ID, sys.Label)
+			_, _ = fmt.Fprintf(w, `{"id": "%s", "label": "%s"}`, sys.ID, sys.Label)
 		}
-		fmt.Println("]")
+		_, _ = fmt.Fprintln(w, "]")
 	} else {
-		fmt.Printf("Systems (%d):\n\n", len(arch.Systems))
+		_, _ = fmt.Fprintf(w, "Systems (%d):\n\n", len(arch.Systems))
 		for _, sys := range arch.Systems {
 			desc := ""
 			if sys.Description != nil {
 				desc = fmt.Sprintf(" - %s", *sys.Description)
 			}
-			fmt.Printf("  • %s: %s%s\n", sys.ID, sys.Label, desc)
+			_, _ = fmt.Fprintf(w, "  • %s: %s%s\n", sys.ID, sys.Label, desc)
 		}
 	}
 }
 
-func listContainers(arch *language.Architecture, jsonOutput bool) {
+func listContainers(arch *language.Architecture, jsonOutput bool, w io.Writer) {
 	count := 0
 	for _, sys := range arch.Systems {
 		count += len(sys.Containers)
 	}
 
 	if jsonOutput {
-		fmt.Print("[")
+		_, _ = fmt.Fprint(w, "[")
 		first := true
 		for _, sys := range arch.Systems {
 			for _, cont := range sys.Containers {
 				if !first {
-					fmt.Print(", ")
+					_, _ = fmt.Fprint(w, ", ")
 				}
 				first = false
-				fmt.Printf(`{"id": "%s", "label": "%s", "system": "%s"}`, cont.ID, cont.Label, sys.ID)
+				_, _ = fmt.Fprintf(w, `{"id": "%s", "label": "%s", "system": "%s"}`, cont.ID, cont.Label, sys.ID)
 			}
 		}
-		fmt.Println("]")
+		_, _ = fmt.Fprintln(w, "]")
 	} else {
-		fmt.Printf("Containers (%d):\n\n", count)
+		_, _ = fmt.Fprintf(w, "Containers (%d):\n\n", count)
 		for _, sys := range arch.Systems {
 			for _, cont := range sys.Containers {
 				desc := ""
 				if cont.Description != nil {
 					desc = fmt.Sprintf(" - %s", *cont.Description)
 				}
-				fmt.Printf("  • %s.%s: %s%s\n", sys.ID, cont.ID, cont.Label, desc)
+				_, _ = fmt.Fprintf(w, "  • %s.%s: %s%s\n", sys.ID, cont.ID, cont.Label, desc)
 			}
 		}
 	}
 }
 
-func listComponents(arch *language.Architecture, jsonOutput bool) {
+func listComponents(arch *language.Architecture, jsonOutput bool, w io.Writer) {
 	count := 0
 	for _, sys := range arch.Systems {
 		count += len(sys.Components)
@@ -168,36 +171,36 @@ func listComponents(arch *language.Architecture, jsonOutput bool) {
 	}
 
 	if jsonOutput {
-		fmt.Print("[")
+		_, _ = fmt.Fprint(w, "[")
 		first := true
 		for _, sys := range arch.Systems {
 			for _, comp := range sys.Components {
 				if !first {
-					fmt.Print(", ")
+					_, _ = fmt.Fprint(w, ", ")
 				}
 				first = false
-				fmt.Printf(`{"id": "%s", "label": "%s", "system": "%s"}`, comp.ID, comp.Label, sys.ID)
+				_, _ = fmt.Fprintf(w, `{"id": "%s", "label": "%s", "system": "%s"}`, comp.ID, comp.Label, sys.ID)
 			}
 			for _, cont := range sys.Containers {
 				for _, comp := range cont.Components {
 					if !first {
-						fmt.Print(", ")
+						_, _ = fmt.Fprint(w, ", ")
 					}
 					first = false
-					fmt.Printf(`{"id": "%s", "label": "%s", "system": "%s", "container": "%s"}`, comp.ID, comp.Label, sys.ID, cont.ID)
+					_, _ = fmt.Fprintf(w, `{"id": "%s", "label": "%s", "system": "%s", "container": "%s"}`, comp.ID, comp.Label, sys.ID, cont.ID)
 				}
 			}
 		}
-		fmt.Println("]")
+		_, _ = fmt.Fprintln(w, "]")
 	} else {
-		fmt.Printf("Components (%d):\n\n", count)
+		_, _ = fmt.Fprintf(w, "Components (%d):\n\n", count)
 		for _, sys := range arch.Systems {
 			for _, comp := range sys.Components {
 				desc := ""
 				if comp.Description != nil {
 					desc = fmt.Sprintf(" - %s", *comp.Description)
 				}
-				fmt.Printf("  • %s.%s: %s%s\n", sys.ID, comp.ID, comp.Label, desc)
+				_, _ = fmt.Fprintf(w, "  • %s.%s: %s%s\n", sys.ID, comp.ID, comp.Label, desc)
 			}
 			for _, cont := range sys.Containers {
 				for _, comp := range cont.Components {
@@ -205,134 +208,150 @@ func listComponents(arch *language.Architecture, jsonOutput bool) {
 					if comp.Description != nil {
 						desc = fmt.Sprintf(" - %s", *comp.Description)
 					}
-					fmt.Printf("  • %s.%s.%s: %s%s\n", sys.ID, cont.ID, comp.ID, comp.Label, desc)
+					_, _ = fmt.Fprintf(w, "  • %s.%s.%s: %s%s\n", sys.ID, cont.ID, comp.ID, comp.Label, desc)
 				}
 			}
 		}
 	}
 }
 
-func listPersons(arch *language.Architecture, jsonOutput bool) {
+func listPersons(arch *language.Architecture, jsonOutput bool, w io.Writer) {
 	if jsonOutput {
-		fmt.Print("[")
+		_, _ = fmt.Fprint(w, "[")
 		for i, person := range arch.Persons {
 			if i > 0 {
-				fmt.Print(", ")
+				_, _ = fmt.Fprint(w, ", ")
 			}
-			fmt.Printf(`{"id": "%s", "label": "%s"}`, person.ID, person.Label)
+			_, _ = fmt.Fprintf(w, `{"id": "%s", "label": "%s"}`, person.ID, person.Label)
 		}
-		fmt.Println("]")
+		_, _ = fmt.Fprintln(w, "]")
 	} else {
-		fmt.Printf("Persons (%d):\n\n", len(arch.Persons))
+		_, _ = fmt.Fprintf(w, "Persons (%d):\n\n", len(arch.Persons))
 		for _, person := range arch.Persons {
-			fmt.Printf("  • %s: %s\n", person.ID, person.Label)
+			_, _ = fmt.Fprintf(w, "  • %s: %s\n", person.ID, person.Label)
 		}
 	}
 }
 
-func listDataStores(arch *language.Architecture, jsonOutput bool) {
+func listDataStores(arch *language.Architecture, jsonOutput bool, w io.Writer) {
 	count := 0
 	for _, sys := range arch.Systems {
 		count += len(sys.DataStores)
 	}
 
 	if jsonOutput {
-		fmt.Print("[")
+		_, _ = fmt.Fprint(w, "[")
 		first := true
 		for _, sys := range arch.Systems {
 			for _, ds := range sys.DataStores {
 				if !first {
-					fmt.Print(", ")
+					_, _ = fmt.Fprint(w, ", ")
 				}
 				first = false
-				fmt.Printf(`{"id": "%s", "label": "%s", "system": "%s"}`, ds.ID, ds.Label, sys.ID)
+				_, _ = fmt.Fprintf(w, `{"id": "%s", "label": "%s", "system": "%s"}`, ds.ID, ds.Label, sys.ID)
 			}
 		}
-		fmt.Println("]")
+		_, _ = fmt.Fprintln(w, "]")
 	} else {
-		fmt.Printf("Data Stores (%d):\n\n", count)
+		_, _ = fmt.Fprintf(w, "Data Stores (%d):\n\n", count)
 		for _, sys := range arch.Systems {
 			for _, ds := range sys.DataStores {
 				desc := ""
 				if ds.Description != nil {
 					desc = fmt.Sprintf(" - %s", *ds.Description)
 				}
-				fmt.Printf("  • %s.%s: %s%s\n", sys.ID, ds.ID, ds.Label, desc)
+				_, _ = fmt.Fprintf(w, "  • %s.%s: %s%s\n", sys.ID, ds.ID, ds.Label, desc)
 			}
 		}
 	}
 }
 
-func listQueues(arch *language.Architecture, jsonOutput bool) {
+func listQueues(arch *language.Architecture, jsonOutput bool, w io.Writer) {
 	count := 0
 	for _, sys := range arch.Systems {
 		count += len(sys.Queues)
 	}
 
 	if jsonOutput {
-		fmt.Print("[")
+		_, _ = fmt.Fprint(w, "[")
 		first := true
 		for _, sys := range arch.Systems {
 			for _, q := range sys.Queues {
 				if !first {
-					fmt.Print(", ")
+					_, _ = fmt.Fprint(w, ", ")
 				}
 				first = false
-				fmt.Printf(`{"id": "%s", "label": "%s", "system": "%s"}`, q.ID, q.Label, sys.ID)
+				_, _ = fmt.Fprintf(w, `{"id": "%s", "label": "%s", "system": "%s"}`, q.ID, q.Label, sys.ID)
 			}
 		}
-		fmt.Println("]")
+		_, _ = fmt.Fprintln(w, "]")
 	} else {
-		fmt.Printf("Queues (%d):\n\n", count)
+		_, _ = fmt.Fprintf(w, "Queues (%d):\n\n", count)
 		for _, sys := range arch.Systems {
 			for _, q := range sys.Queues {
 				desc := ""
 				if q.Description != nil {
 					desc = fmt.Sprintf(" - %s", *q.Description)
 				}
-				fmt.Printf("  • %s.%s: %s%s\n", sys.ID, q.ID, q.Label, desc)
+				_, _ = fmt.Fprintf(w, "  • %s.%s: %s%s\n", sys.ID, q.ID, q.Label, desc)
 			}
 		}
 	}
 }
 
-func listJourneys(arch *language.Architecture, jsonOutput bool) {
+func listScenarios(arch *language.Architecture, jsonOutput bool, w io.Writer) {
 	if jsonOutput {
-		fmt.Print("[")
-		for i, journey := range arch.Journeys {
+		_, _ = fmt.Fprint(w, "[")
+		for i, scenario := range arch.Scenarios {
 			if i > 0 {
-				fmt.Print(", ")
+				_, _ = fmt.Fprint(w, ", ")
 			}
-			fmt.Printf(`{"id": "%s", "title": "%s", "steps": %d}`, journey.ID, journey.Title, len(journey.Steps))
+			id := scenario.ID
+			if id == "" {
+				id = "unnamed"
+			}
+			_, _ = fmt.Fprintf(w, `{"id": "%s", "title": "%s", "steps": %d}`, id, scenario.Title, len(scenario.Steps))
 		}
-		fmt.Println("]")
+		_, _ = fmt.Fprintln(w, "]")
 	} else {
-		fmt.Printf("Journeys (%d):\n\n", len(arch.Journeys))
-		for _, journey := range arch.Journeys {
-			fmt.Printf("  • %s: %s (%d steps)\n", journey.ID, journey.Title, len(journey.Steps))
+		_, _ = fmt.Fprintf(w, "Scenarios (%d):\n\n", len(arch.Scenarios))
+		for _, scenario := range arch.Scenarios {
+			id := scenario.ID
+			if id == "" {
+				id = "unnamed"
+			}
+			_, _ = fmt.Fprintf(w, "  • %s: %s (%d steps)\n", id, scenario.Title, len(scenario.Steps))
 		}
 	}
 }
 
-func listADRs(arch *language.Architecture, jsonOutput bool) {
+func listADRs(arch *language.Architecture, jsonOutput bool, w io.Writer) {
 	if jsonOutput {
-		fmt.Print("[")
+		_, _ = fmt.Fprint(w, "[")
 		for i, adr := range arch.ADRs {
 			if i > 0 {
-				fmt.Print(", ")
+				_, _ = fmt.Fprint(w, ", ")
 			}
-			fmt.Printf(`{"id": "%s", "title": "%s"}`, adr.ID, adr.Title)
+			title := ""
+			if adr.Title != nil {
+				title = *adr.Title
+			}
+			_, _ = fmt.Fprintf(w, `{"id": "%s", "title": "%s"}`, adr.ID, title)
 		}
-		fmt.Println("]")
+		_, _ = fmt.Fprintln(w, "]")
 	} else {
-		fmt.Printf("ADRs (%d):\n\n", len(arch.ADRs))
+		_, _ = fmt.Fprintf(w, "ADRs (%d):\n\n", len(arch.ADRs))
 		for _, adr := range arch.ADRs {
-			fmt.Printf("  • %s: %s\n", adr.ID, adr.Title)
+			title := ""
+			if adr.Title != nil {
+				title = *adr.Title
+			}
+			_, _ = fmt.Fprintf(w, "  • %s: %s\n", adr.ID, title)
 		}
 	}
 }
 
-func listEntities(arch *language.Architecture, jsonOutput bool) {
+func listEntities(arch *language.Architecture, jsonOutput bool, w io.Writer) {
 	// Collect all entities from architecture and systems/containers
 	var entities []*language.Entity
 	entities = append(entities, arch.Entities...)
@@ -343,23 +362,23 @@ func listEntities(arch *language.Architecture, jsonOutput bool) {
 		}
 	}
 	if jsonOutput {
-		fmt.Print("[")
+		_, _ = fmt.Fprint(w, "[")
 		for i, e := range entities {
 			if i > 0 {
-				fmt.Print(", ")
+				_, _ = fmt.Fprint(w, ", ")
 			}
-			fmt.Printf(`{"name": "%s"}`, e.Name)
+			_, _ = fmt.Fprintf(w, `{"name": "%s"}`, e.Name)
 		}
-		fmt.Println("]")
+		_, _ = fmt.Fprintln(w, "]")
 	} else {
-		fmt.Printf("Entities (%d):\n\n", len(entities))
+		_, _ = fmt.Fprintf(w, "Entities (%d):\n\n", len(entities))
 		for _, e := range entities {
-			fmt.Printf("  • %s\n", e.Name)
+			_, _ = fmt.Fprintf(w, "  • %s\n", e.Name)
 		}
 	}
 }
 
-func listEvents(arch *language.Architecture, jsonOutput bool) {
+func listEvents(arch *language.Architecture, jsonOutput bool, w io.Writer) {
 	// Collect events from architecture and systems/containers
 	var events []*language.DomainEvent
 	events = append(events, arch.Events...)
@@ -370,26 +389,26 @@ func listEvents(arch *language.Architecture, jsonOutput bool) {
 		}
 	}
 	if jsonOutput {
-		fmt.Print("[")
+		_, _ = fmt.Fprint(w, "[")
 		for i, ev := range events {
 			if i > 0 {
-				fmt.Print(", ")
+				_, _ = fmt.Fprint(w, ", ")
 			}
 			ver := ""
 			if ev.Body != nil && ev.Body.Version != nil {
 				ver = *ev.Body.Version
 			}
-			fmt.Printf(`{"name": "%s", "version": "%s"}`, ev.Name, ver)
+			_, _ = fmt.Fprintf(w, `{"name": "%s", "version": "%s"}`, ev.Name, ver)
 		}
-		fmt.Println("]")
+		_, _ = fmt.Fprintln(w, "]")
 	} else {
-		fmt.Printf("Events (%d):\n\n", len(events))
+		_, _ = fmt.Fprintf(w, "Events (%d):\n\n", len(events))
 		for _, ev := range events {
 			extra := ""
 			if ev.Body != nil && ev.Body.Version != nil {
 				extra = fmt.Sprintf(" v%s", *ev.Body.Version)
 			}
-			fmt.Printf("  • %s%s\n", ev.Name, extra)
+			_, _ = fmt.Fprintf(w, "  • %s%s\n", ev.Name, extra)
 		}
 	}
 }

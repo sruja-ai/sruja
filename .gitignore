@@ -59,6 +59,7 @@ apps/playground-server/build-errors.log
 index.json
 visual.json
 
+learn/public/
 # Bun
 .bun/
 .trae
@@ -66,6 +67,7 @@ visual.json
 # Hugo
 docs/public/
 docs/resources/
+public/
 
 # WASM build artifacts (generated during build)
 *.wasm

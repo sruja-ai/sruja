@@ -1,9 +1,11 @@
 // learn_test.go
 // Tests for Sruja code compilation in playground and course content
-package main
+package tests
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -22,28 +24,162 @@ import (
 	"oss.terrastruct.com/d2/lib/textmeasure"
 )
 
-// extractPlaygroundExamples extracts Sruja code examples from playground.html
-func extractPlaygroundExamples() (map[string]string, error) {
-	content, err := os.ReadFile("learn/layouts/shortcodes/playground.html")
+// ExampleMetadata holds metadata about an example from manifest
+type ExampleMetadata struct {
+	SkipTest        bool
+	SkipOrphanCheck bool
+	SkipSVGRender   bool
+	ExpectedFailure string
+	Reason          string
+}
+
+// ManifestEntry represents an entry in the examples manifest
+type ManifestEntry struct {
+	File            string `json:"file"`
+	Name            string `json:"name"`
+	Order           int    `json:"order"`
+	Category        string `json:"category,omitempty"`
+	Description     string `json:"description,omitempty"`
+	SkipPlayground  bool   `json:"skipPlayground,omitempty"`
+	SkipOrphanCheck bool   `json:"skipOrphanCheck,omitempty"`
+	ExpectedFailure string `json:"expectedFailure,omitempty"`
+}
+
+// Manifest represents the examples manifest
+type Manifest struct {
+	Examples []ManifestEntry `json:"examples"`
+}
+
+// extractPlaygroundExamples extracts Sruja code examples from examples/ directory
+// Uses examples/manifest/examples.json as the source of truth for metadata
+func extractPlaygroundExamples() (map[string]string, map[string]ExampleMetadata, error) {
+	manifestPath := "../examples/manifest.json"
+	examplesDir := "../examples"
+	examples := make(map[string]string)
+	metadata := make(map[string]ExampleMetadata)
+
+	// Read manifest
+	manifestData, err := os.ReadFile(manifestPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, fmt.Errorf("failed to read manifest: %w", err)
 	}
 
-	examples := make(map[string]string)
+	var manifest Manifest
+	if err := json.Unmarshal(manifestData, &manifest); err != nil {
+		return nil, nil, fmt.Errorf("failed to parse manifest: %w", err)
+	}
 
-	// Match: "Example Name": `code here`
-	re := regexp.MustCompile(`"([^"]+)":\s*` + "`([^`]+)`")
-	matches := re.FindAllStringSubmatch(string(content), -1)
+	// Build map of files to metadata
+	manifestMap := make(map[string]ManifestEntry)
+	for _, entry := range manifest.Examples {
+		manifestMap[entry.File] = entry
+	}
 
-	for _, match := range matches {
-		if len(match) == 3 {
-			name := match[1]
-			code := strings.ReplaceAll(match[2], "\\n", "\n")
-			examples[name] = code
+	// Read all .sruja files and apply metadata from manifest
+	err = filepath.Walk(examplesDir, buildExampleWalker(examples, metadata, manifestMap))
+
+	return examples, metadata, err
+}
+
+// buildExampleWalker creates a filepath.WalkFunc that processes .sruja files
+func buildExampleWalker(examples map[string]string, metadata map[string]ExampleMetadata, manifestMap map[string]ManifestEntry) filepath.WalkFunc {
+	return func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			if filepath.Base(path) == "course" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		if !strings.HasSuffix(path, ".sruja") {
+			return nil
+		}
+
+		return processExampleFile(path, examples, metadata, manifestMap)
+	}
+}
+
+// processExampleFile processes a single .sruja file and adds it to examples/metadata maps
+func processExampleFile(path string, examples map[string]string, metadata map[string]ExampleMetadata, manifestMap map[string]ManifestEntry) error {
+	filename := filepath.Base(path)
+	entry, hasManifest := manifestMap[filename]
+
+	if hasManifest && entry.SkipPlayground {
+		return nil
+	}
+
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	contentStr := string(content)
+	name := strings.TrimSuffix(filename, ".sruja")
+	meta := buildMetadata(entry, hasManifest, contentStr)
+
+	if meta.SkipTest {
+		return nil
+	}
+
+	examples[name] = contentStr
+	metadata[name] = meta
+	return nil
+}
+
+// buildMetadata constructs ExampleMetadata from manifest entry and legacy comments
+func buildMetadata(entry ManifestEntry, hasManifest bool, content string) ExampleMetadata {
+	meta := ExampleMetadata{}
+	if hasManifest {
+		meta.SkipOrphanCheck = entry.SkipOrphanCheck
+		meta.ExpectedFailure = entry.ExpectedFailure
+		if entry.ExpectedFailure != "" {
+			meta.Reason = entry.ExpectedFailure
 		}
 	}
 
-	return examples, nil
+	legacyMeta := parseLegacyComments(content)
+	if legacyMeta.SkipTest {
+		meta.SkipTest = true
+	}
+	if legacyMeta.SkipOrphanCheck {
+		meta.SkipOrphanCheck = true
+	}
+	if legacyMeta.ExpectedFailure != "" && meta.ExpectedFailure == "" {
+		meta.ExpectedFailure = legacyMeta.ExpectedFailure
+	}
+
+	return meta
+}
+
+// parseLegacyComments extracts metadata from special comment tags (for backward compatibility)
+func parseLegacyComments(content string) ExampleMetadata {
+	meta := ExampleMetadata{}
+	lines := strings.Split(content, "\n")
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		checkLegacyComment(trimmed, &meta)
+	}
+
+	return meta
+}
+
+// checkLegacyComment checks a single line for legacy comment tags
+func checkLegacyComment(trimmed string, meta *ExampleMetadata) {
+	switch {
+	case strings.HasPrefix(trimmed, "// SKIP_TEST:") || trimmed == "// SKIP_TEST":
+		meta.SkipTest = true
+	case strings.HasPrefix(trimmed, "// SKIP_ORPHAN_CHECK:") || trimmed == "// SKIP_ORPHAN_CHECK":
+		meta.SkipOrphanCheck = true
+	case strings.HasPrefix(trimmed, "// SKIP_SVG_RENDER:") || trimmed == "// SKIP_SVG_RENDER":
+		meta.SkipSVGRender = true
+	case strings.HasPrefix(trimmed, "// EXPECTED_FAILURE:"):
+		meta.ExpectedFailure = strings.TrimSpace(strings.TrimPrefix(trimmed, "// EXPECTED_FAILURE:"))
+	}
 }
 
 // isSyntaxExample checks if code is a syntax example (not runnable)
@@ -79,7 +215,7 @@ func isStandaloneElement(code string) bool {
 	standalonePatterns := []string{
 		"^container ", "^component ", "^datastore ", "^queue ",
 		"^person ", "^system ", "^deployment ", "^node ",
-		"^containerInstance ", "^dynamic ",
+		"^containerInstance ", "^scenario ",
 	}
 	for _, pattern := range standalonePatterns {
 		if matched, _ := regexp.MatchString(pattern, trimmed); matched {
@@ -184,6 +320,7 @@ func validateSrujaCode(program *language.Program, skipOrphanCheck bool) error {
 	validator.RegisterRule(&engine.UniqueIDRule{})
 	validator.RegisterRule(&engine.ValidReferenceRule{})
 	validator.RegisterRule(&engine.CycleDetectionRule{})
+	validator.RegisterRule(&engine.ExternalDependencyRule{})
 	if !skipOrphanCheck {
 		validator.RegisterRule(&engine.OrphanDetectionRule{})
 	}
@@ -245,7 +382,7 @@ func (e *CompilationError) Error() string {
 }
 
 func TestPlaygroundExamples(t *testing.T) {
-	examples, err := extractPlaygroundExamples()
+	examples, metadata, err := extractPlaygroundExamples()
 	if err != nil {
 		t.Fatalf("Failed to extract playground examples: %v", err)
 	}
@@ -257,17 +394,33 @@ func TestPlaygroundExamples(t *testing.T) {
 	t.Logf("Found %d playground examples", len(examples))
 
 	for name, code := range examples {
+		meta := metadata[name]
 		t.Run(name, func(t *testing.T) {
-			// Playground examples must generate SVG (full pipeline test)
-			if err := compileCode("playground-"+name, code, false, false); err != nil {
-				t.Errorf("Playground example '%s' failed to compile: %v\nCode:\n%s", name, err, code)
+			// Playground examples must generate SVG (full pipeline test) unless marked otherwise
+			skipSVGRender := meta.SkipSVGRender
+			skipOrphan := meta.SkipOrphanCheck
+
+			err := compileCode("playground-"+name, code, skipOrphan, skipSVGRender)
+
+			if meta.ExpectedFailure != "" {
+				// This example is expected to fail
+				if err == nil {
+					t.Errorf("Playground example '%s' was expected to fail (%s) but compiled successfully", name, meta.ExpectedFailure)
+				} else {
+					t.Logf("Playground example '%s' failed as expected: %s - %v", name, meta.ExpectedFailure, err)
+				}
+			} else {
+				// This example should compile successfully
+				if err != nil {
+					t.Errorf("Playground example '%s' failed to compile: %v\nCode:\n%s", name, err, code)
+				}
 			}
 		})
 	}
 }
 
 func TestCourseCodeBlocks(t *testing.T) {
-	courseDir := "learn/content/courses"
+	courseDir := "../learn/content/courses"
 
 	// Check if directory exists
 	if _, err := os.Stat(courseDir); os.IsNotExist(err) {
@@ -297,7 +450,7 @@ func TestCourseCodeBlocks(t *testing.T) {
 }
 
 func TestDocsCodeBlocks(t *testing.T) {
-	docsDir := "learn/content/docs"
+	docsDir := "../learn/content/docs"
 
 	// Check if directory exists
 	if _, err := os.Stat(docsDir); os.IsNotExist(err) {
