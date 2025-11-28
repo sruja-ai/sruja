@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & Discussions
+    url: https://github.com/sruja-ai/sruja/discussions
+    about: Ask questions, propose ideas, or request guidance

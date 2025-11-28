@@ -48,9 +48,11 @@ func LoadConfig(configPath string) (*Config, error) {
 
 		for {
 			candidate := filepath.Join(dir, "sruja.config.json")
-			if _, err := os.Stat(candidate); err == nil {
-				configPath = candidate
-				break
+			if fi, err := os.Lstat(candidate); err == nil {
+				if fi.Mode().IsRegular() && (fi.Mode()&os.ModeSymlink) == 0 {
+					configPath = candidate
+					break
+				}
 			}
 
 			parent := filepath.Dir(dir)
@@ -65,7 +67,20 @@ func LoadConfig(configPath string) (*Config, error) {
 		return DefaultConfig(), nil
 	}
 
-	data, err := os.ReadFile(configPath)
+	// sanitize and validate the resolved path
+	cleanPath := filepath.Clean(configPath)
+	fi, statErr := os.Lstat(cleanPath)
+	if statErr != nil {
+		if os.IsNotExist(statErr) {
+			return DefaultConfig(), nil
+		}
+		return nil, fmt.Errorf("error accessing config file: %w", statErr)
+	}
+	if !fi.Mode().IsRegular() || (fi.Mode()&os.ModeSymlink) != 0 {
+		return nil, fmt.Errorf("invalid config file type: %s", cleanPath)
+	}
+
+	data, err := os.ReadFile(cleanPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return DefaultConfig(), nil
@@ -92,8 +107,22 @@ func SaveConfig(config *Config, configPath string) error {
 		return fmt.Errorf("error serializing config: %w", err)
 	}
 
-	if err := os.WriteFile(configPath, data, 0644); err != nil {
-		return fmt.Errorf("error writing config file: %w", err)
+	// sanitize target path
+	target := filepath.Clean(configPath)
+
+	// ensure directory exists
+	dir := filepath.Dir(target)
+	if mkErr := os.MkdirAll(dir, 0700); mkErr != nil {
+		return fmt.Errorf("error ensuring config directory: %w", mkErr)
+	}
+
+	// atomic write: write to temp file then rename
+	tmp := target + ".tmp"
+	if wErr := os.WriteFile(tmp, data, 0600); wErr != nil {
+		return fmt.Errorf("error writing temp config file: %w", wErr)
+	}
+	if rErr := os.Rename(tmp, target); rErr != nil {
+		return fmt.Errorf("error finalizing config file: %w", rErr)
 	}
 
 	return nil

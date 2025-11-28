@@ -66,3 +66,8 @@ visual.json
 # Hugo
 docs/public/
 docs/resources/
+
+#Ignore cursor AI rules
+.cursor/rules/codacy.mdc
+
+snippet_*

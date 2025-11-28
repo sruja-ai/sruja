@@ -114,7 +114,7 @@ type Architecture struct {
 	Entities        []*Entity
 	Events          []*DomainEvent
 	DeploymentNodes []*DeploymentNode
-	DynamicViews    []*DynamicView
+	Scenarios       []*Scenario
 }
 
 func (a *Architecture) Location() SourceLocation { return SourceLocation{} }
@@ -137,7 +137,7 @@ type ArchitectureItem struct {
 	EntitiesBlock    *EntitiesBlock    `parser:"| 'entities' '{' @@ '}'"`
 	Domain           *DomainBlock      `parser:"| @@"`
 	DeploymentNode   *DeploymentNode   `parser:"| @@"`
-	DynamicView      *DynamicView      `parser:"| @@"`
+	Scenario         *Scenario         `parser:"| @@"`
 }
 
 // MetadataBlock represents a metadata block.
@@ -155,6 +155,67 @@ type MetadataBlock struct {
 }
 
 func (m *MetadataBlock) Location() SourceLocation { return SourceLocation{} }
+
+// PropertiesBlock represents a generic key-value properties block.
+//
+// Example DSL:
+//
+//	properties {
+//	    "qps": "1000"
+//	    "latency": "50ms"
+//	}
+type PropertiesBlock struct {
+	LBrace  string           `parser:"'properties' '{'"`
+	Entries []*PropertyEntry `parser:"@@*"`
+	RBrace  string           `parser:"'}'"`
+}
+
+type PropertyEntry struct {
+	Key   string `parser:"@String ':'"`
+	Value string `parser:"@String"`
+}
+
+func (p *PropertiesBlock) Location() SourceLocation { return SourceLocation{} }
+
+// StyleBlock represents a style block for customizing appearance.
+//
+// Example DSL:
+//
+//	style {
+//	    shape: "cylinder"
+//	    color: "#ff0000"
+//	}
+type StyleBlock struct {
+	LBrace  string        `parser:"'style' '{'"`
+	Entries []*StyleEntry `parser:"@@*"`
+	RBrace  string        `parser:"'}'"`
+}
+
+type StyleEntry struct {
+	Key   string `parser:"@Ident ':'"`
+	Value string `parser:"@String"`
+}
+
+func (s *StyleBlock) Location() SourceLocation { return SourceLocation{} }
+
+// ScaleBlock represents a scalability block.
+//
+// Example DSL:
+//
+//	scale {
+//	    min 3
+//	    max 10
+//	    metric "cpu > 80%"
+//	}
+type ScaleBlock struct {
+	LBrace string  `parser:"'scale' '{'"`
+	Min    *int    `parser:"( 'min' @Int )?"`
+	Max    *int    `parser:"( 'max' @Int )?"`
+	Metric *string `parser:"( 'metric' @String )?"`
+	RBrace string  `parser:"'}'"`
+}
+
+func (s *ScaleBlock) Location() SourceLocation { return SourceLocation{} }
 
 // ============================================================================
 // Contracts, Constraints, Conventions
@@ -278,7 +339,7 @@ type System struct {
 	Persons      []*Person
 	Components   []*Component
 	Requirements []*Requirement
-	ADRs         []*ADR
+	ADRRefs      []*ADRRef
 	Relations    []*Relation
 	Metadata     []*MetaEntry // Metadata from metadata blocks
 	Contracts    []*Contract
@@ -286,6 +347,8 @@ type System struct {
 	Conventions  []*ConventionEntry
 	Entities     []*Entity
 	Events       []*DomainEvent
+	Properties   map[string]string
+	Style        map[string]string
 }
 
 func (s *System) Location() SourceLocation { return SourceLocation{} }
@@ -298,13 +361,16 @@ type SystemItem struct {
 	Person           *Person           `parser:"| @@"`
 	Relation         *Relation         `parser:"| @@"`
 	Requirement      *Requirement      `parser:"| @@"`
-	ADR              *ADR              `parser:"| @@"`
+	ADR              *ADRRef           `parser:"| @@"`
 	Metadata         *MetadataBlock    `parser:"| @@"`
 	ContractsBlock   *ContractsBlock   `parser:"| 'contracts' '{' @@ '}'"`
 	ConstraintsBlock *ConstraintsBlock `parser:"| 'constraints' '{' @@* '}'"`
 	ConventionsBlock *ConventionsBlock `parser:"| 'conventions' '{' @@* '}'"`
 	EntitiesBlock    *EntitiesBlock    `parser:"| 'entities' '{' @@ '}'"`
 	EventsBlock      *EventsBlock      `parser:"| 'events' '{' @@ '}'"`
+	Properties       *PropertiesBlock  `parser:"| @@"`
+	Style            *StyleBlock       `parser:"| @@"`
+	Description      *string           `parser:"| 'description' @String"`
 }
 
 // ============================================================================
@@ -347,6 +413,9 @@ type Container struct {
 	Version      *string
 	Entities     []*Entity
 	Events       []*DomainEvent
+	Properties   map[string]string
+	Style        map[string]string
+	Scale        *ScaleBlock
 }
 
 func (c *Container) Location() SourceLocation { return SourceLocation{} }
@@ -361,13 +430,17 @@ type ContainerItem struct {
 	Queue            *Queue            `parser:"| @@"`
 	Relation         *Relation         `parser:"| @@"`
 	Requirement      *Requirement      `parser:"| @@"`
-	ADR              *ADR              `parser:"| @@"`
+	ADR              *ADRRef           `parser:"| @@"`
 	Metadata         *MetadataBlock    `parser:"| @@"`
 	ContractsBlock   *ContractsBlock   `parser:"| 'contracts' '{' @@ '}'"`
 	ConstraintsBlock *ConstraintsBlock `parser:"| 'constraints' '{' @@* '}'"`
 	ConventionsBlock *ConventionsBlock `parser:"| 'conventions' '{' @@* '}'"`
 	EntitiesBlock    *EntitiesBlock    `parser:"| 'entities' '{' @@ '}'"`
 	EventsBlock      *EventsBlock      `parser:"| 'events' '{' @@ '}'"`
+	Properties       *PropertiesBlock  `parser:"| @@"`
+	Style            *StyleBlock       `parser:"| @@"`
+	Scale            *ScaleBlock       `parser:"| @@"`
+	Description      *string           `parser:"| 'description' @String"`
 }
 
 // ============================================================================
@@ -391,29 +464,37 @@ type Component struct {
 	ID          string          `parser:"'component' @Ident"`
 	Label       string          `parser:"@String"`
 	Description *string         `parser:"( @String )?"`
-	Technology  *string         `parser:"( 'technology' @String )?"`
 	Items       []ComponentItem `parser:"( '{' @@* '}' )?"`
 
 	// Post-processed fields
+	Technology   *string
 	Requirements []*Requirement
 	ADRs         []*ADR
 	Relations    []*Relation
 	Metadata     []*MetaEntry // Metadata from metadata blocks
+	Properties   map[string]string
+	Style        map[string]string
+	Scale        *ScaleBlock
 }
 
 func (c *Component) Location() SourceLocation { return SourceLocation{} }
 
 // ComponentItem is a union type for items that can appear in a component.
 type ComponentItem struct {
-	Requirement      *Requirement      `parser:"@@"`
-	ADR              *ADR              `parser:"| @@"`
-	Relation         *Relation         `parser:"| @@"`
-	Metadata         *MetadataBlock    `parser:"| @@"`
-	Behavior         *BehaviorBlock    `parser:"| 'behavior' '{' @@* '}'"`
-	ContractsBlock   *ContractsBlock   `parser:"| 'contracts' '{' @@ '}'"`
-	ConstraintsBlock *ConstraintsBlock `parser:"| 'constraints' '{' @@* '}'"`
-	ConventionsBlock *ConventionsBlock `parser:"| 'conventions' '{' @@* '}'"`
-	DependsOn        *string           `parser:"| 'depends_on' @Ident"`
+	Technology       *string           `parser:"'technology' @String |"`
+	Requirement      *Requirement      `parser:"@@ |"`
+	ADR              *ADRRef           `parser:"@@ |"`
+	Relation         *Relation         `parser:"@@ |"`
+	Metadata         *MetadataBlock    `parser:"@@ |"`
+	Behavior         *BehaviorBlock    `parser:"'behavior' '{' @@* '}' |"`
+	ContractsBlock   *ContractsBlock   `parser:"'contracts' '{' @@ '}' |"`
+	ConstraintsBlock *ConstraintsBlock `parser:"'constraints' '{' @@* '}' |"`
+	ConventionsBlock *ConventionsBlock `parser:"'conventions' '{' @@* '}' |"`
+	DependsOn        *string           `parser:"'depends_on' @Ident |"`
+	Properties       *PropertiesBlock  `parser:"@@ |"`
+	Style            *StyleBlock       `parser:"@@ |"`
+	Scale            *ScaleBlock       `parser:"@@ |"`
+	Description      *string           `parser:"'description' @String"`
 }
 
 // ============================================================================
@@ -436,7 +517,10 @@ type DataStore struct {
 	Description *string         `parser:"( @String )?"`
 	Items       []DataStoreItem `parser:"( '{' @@* '}' )?"`
 
-	Metadata []*MetaEntry
+	Metadata   []*MetaEntry
+	Properties map[string]string
+	Style      map[string]string
+	Technology *string
 }
 
 func (d *DataStore) Location() SourceLocation { return SourceLocation{} }
@@ -457,7 +541,10 @@ type Queue struct {
 	Description *string     `parser:"( @String )?"`
 	Items       []QueueItem `parser:"( '{' @@* '}' )?"`
 
-	Metadata []*MetaEntry
+	Metadata   []*MetaEntry
+	Properties map[string]string
+	Style      map[string]string
+	Technology *string
 }
 
 func (q *Queue) Location() SourceLocation { return SourceLocation{} }
@@ -478,10 +565,38 @@ type Person struct {
 	Label string       `parser:"@String"`
 	Items []PersonItem `parser:"( '{' @@* '}' )?"`
 
-	Metadata []*MetaEntry
+	// Post-processed fields
+	Description *string
+	Metadata    []*MetaEntry
+	Properties  map[string]string
+	Style       map[string]string
 }
 
 func (p *Person) Location() SourceLocation { return SourceLocation{} }
+
+// Element item unions for metadata blocks
+type DataStoreItem struct {
+	Technology  *string          `parser:"'technology' @String |"`
+	Description *string          `parser:"'description' @String |"`
+	Metadata    *MetadataBlock   `parser:"@@ |"`
+	Properties  *PropertiesBlock `parser:"@@ |"`
+	Style       *StyleBlock      `parser:"@@"`
+}
+
+type QueueItem struct {
+	Technology  *string          `parser:"'technology' @String |"`
+	Description *string          `parser:"'description' @String |"`
+	Metadata    *MetadataBlock   `parser:"@@ |"`
+	Properties  *PropertiesBlock `parser:"@@ |"`
+	Style       *StyleBlock      `parser:"@@"`
+}
+
+type PersonItem struct {
+	Description *string          `parser:"'description' @String |"`
+	Metadata    *MetadataBlock   `parser:"@@ |"`
+	Properties  *PropertiesBlock `parser:"@@ |"`
+	Style       *StyleBlock      `parser:"@@"`
+}
 
 // ============================================================================
 // Relations + Qualified References
@@ -564,8 +679,20 @@ func (r *Requirement) Location() SourceLocation { return SourceLocation{} }
 //
 //	adr ADR001 "Use microservices architecture for scalability"
 type ADR struct {
-	ID    string `parser:"'adr' @Ident"`
-	Title string `parser:"@String"`
+	ID    string   `parser:"'adr' @Ident"`
+	Title string   `parser:"@String"`
+	Body  *ADRBody `parser:"( '{' @@ '}' )?"`
+}
+
+type ADRRef struct {
+	ID string `parser:"'adr' @Ident"`
+}
+
+type ADRBody struct {
+	Status       *string `parser:"( 'status' @String )?"`
+	Context      *string `parser:"( 'context' @String )?"`
+	Decision     *string `parser:"( 'decision' @String )?"`
+	Consequences *string `parser:"( 'consequences' @String )?"`
 }
 
 func (a *ADR) Location() SourceLocation { return SourceLocation{} }
@@ -640,7 +767,7 @@ func (j *Journey) Location() SourceLocation { return SourceLocation{} }
 // JourneyItem is a union type for items that can appear in a journey.
 type JourneyItem struct {
 	Title *string       `parser:"'title' @String"`
-	Steps *JourneySteps `parser:"| 'steps' '{' @@* '}'"`
+	Steps *JourneySteps `parser:"| 'steps' '{' @@ '}'"`
 }
 
 // JourneySteps represents a collection of journey steps.
@@ -720,66 +847,47 @@ type InfrastructureNode struct {
 
 func (i *InfrastructureNode) Location() SourceLocation { return SourceLocation{} }
 
-func (d *DeploymentNode) PostProcess() {
-	for _, item := range d.Items {
-		if item.Node != nil {
-			item.Node.PostProcess()
-			d.Children = append(d.Children, item.Node)
-		}
-		if item.ContainerInstance != nil {
-			d.ContainerInstances = append(d.ContainerInstances, item.ContainerInstance)
-		}
-		if item.Infrastructure != nil {
-			d.Infrastructure = append(d.Infrastructure, item.Infrastructure)
-		}
-	}
-}
-
 // ============================================================================
-// Dynamic View
+// Scenario (D2 Scenario Mapping)
 // ============================================================================
 
-// DynamicView represents a dynamic view (runtime flow).
+// Scenario represents a D2 scenario (layer).
 //
 // Example DSL:
 //
-//	dynamic "Login Flow" {
+//	scenario "Login Flow" {
 //	   User -> WebApp "Credentials"
 //	   WebApp -> DB "Verify"
 //	}
-type DynamicView struct {
-	ID          string            `parser:"'dynamic' @Ident"` // Optional ID? Usually dynamic views have titles. Let's use ID as title/name for now.
-	Title       string            `parser:"@String"`
-	Description *string           `parser:"( @String )?"`
-	Items       []DynamicViewItem `parser:"( '{' @@* '}' )?"`
+//
+//	scenario AuthFlow "Authentication" "Handles OAuth2" { ... }
+type Scenario struct {
+	ID          string          `parser:"'scenario' ( @Ident )?"`
+	Title       string          `parser:"@String"`
+	Description *string         `parser:"( @String )?"`
+	LBrace      string          `parser:"'{'"`
+	Items       []*ScenarioItem `parser:"@@*"`
+	RBrace      string          `parser:"'}'"`
 
 	// Post-processed
-	Steps []*DynamicViewStep
+	Steps []*ScenarioStep
 }
 
-func (d *DynamicView) Location() SourceLocation { return SourceLocation{} }
+func (s *Scenario) Location() SourceLocation { return SourceLocation{} }
 
-type DynamicViewItem struct {
-	Step *DynamicViewStep `parser:"@@"`
+type ScenarioItem struct {
+	Step *ScenarioStep `parser:"@@"`
 }
 
-type DynamicViewStep struct {
+type ScenarioStep struct {
 	From        string  `parser:"@Ident"`
 	Arrow       string  `parser:"'->'"`
 	To          string  `parser:"@Ident"`
-	Description *string `parser:"( @String )?"`         // Description of the interaction in this specific context
+	Description *string `parser:"( @String )?"`
 	Order       *string `parser:"( 'order' @String )?"` // Explicit ordering if needed
 }
 
-func (s *DynamicViewStep) Location() SourceLocation { return SourceLocation{} }
-
-func (d *DynamicView) PostProcess() {
-	for _, item := range d.Items {
-		if item.Step != nil {
-			d.Steps = append(d.Steps, item.Step)
-		}
-	}
-}
+func (s *ScenarioStep) Location() SourceLocation { return SourceLocation{} }
 
 // Program represents the complete parsed program
 type Program struct {
@@ -787,314 +895,73 @@ type Program struct {
 }
 
 // ============================================================================
-// Post-Processing Methods
-// ============================================================================
-
-// PostProcess populates convenience fields from parsed items.
-func (a *Architecture) PostProcess() {
-	for _, item := range a.Items {
-		if item.Import != nil {
-			a.Imports = append(a.Imports, item.Import)
-		}
-		if item.System != nil {
-			item.System.PostProcess()
-			a.Systems = append(a.Systems, item.System)
-		}
-		if item.Person != nil {
-			item.Person.PostProcess()
-			a.Persons = append(a.Persons, item.Person)
-		}
-		if item.Relation != nil {
-			a.Relations = append(a.Relations, item.Relation)
-		}
-		if item.Requirement != nil {
-			a.Requirements = append(a.Requirements, item.Requirement)
-		}
-		if item.ADR != nil {
-			a.ADRs = append(a.ADRs, item.ADR)
-		}
-		if item.SharedArtifact != nil {
-			a.SharedArtifacts = append(a.SharedArtifacts, item.SharedArtifact)
-		}
-		if item.Library != nil {
-			a.Libraries = append(a.Libraries, item.Library)
-		}
-		if item.Journey != nil {
-			item.Journey.PostProcess()
-			a.Journeys = append(a.Journeys, item.Journey)
-		}
-		if item.Metadata != nil {
-			a.Metadata = append(a.Metadata, item.Metadata.Entries...)
-		}
-		if item.ContractsBlock != nil {
-			a.Contracts = append(a.Contracts, item.ContractsBlock.Contracts...)
-		}
-		if item.ConstraintsBlock != nil {
-			a.Constraints = append(a.Constraints, item.ConstraintsBlock.Entries...)
-		}
-		if item.ConventionsBlock != nil {
-			a.Conventions = append(a.Conventions, item.ConventionsBlock.Entries...)
-		}
-		if item.EntitiesBlock != nil {
-			a.Entities = append(a.Entities, item.EntitiesBlock.Entities...)
-		}
-		if item.Domain != nil && item.Domain.EntitiesBlock != nil {
-			a.Entities = append(a.Entities, item.Domain.EntitiesBlock.Entities...)
-		}
-		if item.Domain != nil && item.Domain.EventsBlock != nil {
-			a.Events = append(a.Events, item.Domain.EventsBlock.Events...)
-		}
-		if item.DeploymentNode != nil {
-			item.DeploymentNode.PostProcess()
-			a.DeploymentNodes = append(a.DeploymentNodes, item.DeploymentNode)
-		}
-		if item.DynamicView != nil {
-			item.DynamicView.PostProcess()
-			a.DynamicViews = append(a.DynamicViews, item.DynamicView)
-		}
-	}
-}
-
-// PostProcess populates convenience fields from system items.
-func (s *System) PostProcess() {
-	for _, item := range s.Items {
-		if item.Container != nil {
-			item.Container.PostProcess()
-			s.Containers = append(s.Containers, item.Container)
-			// Collect components from containers
-			s.Components = append(s.Components, item.Container.Components...)
-		}
-		if item.DataStore != nil {
-			item.DataStore.PostProcess()
-			s.DataStores = append(s.DataStores, item.DataStore)
-		}
-		if item.Queue != nil {
-			item.Queue.PostProcess()
-			s.Queues = append(s.Queues, item.Queue)
-		}
-		if item.Person != nil {
-			item.Person.PostProcess()
-			s.Persons = append(s.Persons, item.Person)
-		}
-		if item.Requirement != nil {
-			s.Requirements = append(s.Requirements, item.Requirement)
-		}
-		if item.ADR != nil {
-			s.ADRs = append(s.ADRs, item.ADR)
-		}
-		if item.Relation != nil {
-			s.Relations = append(s.Relations, item.Relation)
-		}
-		if item.Metadata != nil {
-			s.Metadata = append(s.Metadata, item.Metadata.Entries...)
-		}
-		if item.ContractsBlock != nil {
-			s.Contracts = append(s.Contracts, item.ContractsBlock.Contracts...)
-		}
-		if item.ConstraintsBlock != nil {
-			s.Constraints = append(s.Constraints, item.ConstraintsBlock.Entries...)
-		}
-		if item.ConventionsBlock != nil {
-			s.Conventions = append(s.Conventions, item.ConventionsBlock.Entries...)
-		}
-		if item.EntitiesBlock != nil {
-			s.Entities = append(s.Entities, item.EntitiesBlock.Entities...)
-		}
-		if item.EventsBlock != nil {
-			s.Events = append(s.Events, item.EventsBlock.Events...)
-		}
-	}
-}
-
-// PostProcess populates convenience fields from container items.
-func (c *Container) PostProcess() {
-	for _, item := range c.Items {
-		if item.Component != nil {
-			item.Component.PostProcess()
-			c.Components = append(c.Components, item.Component)
-		}
-		if item.DataStore != nil {
-			item.DataStore.PostProcess()
-			c.DataStores = append(c.DataStores, item.DataStore)
-		}
-		if item.Queue != nil {
-			item.Queue.PostProcess()
-			c.Queues = append(c.Queues, item.Queue)
-		}
-		if item.Requirement != nil {
-			c.Requirements = append(c.Requirements, item.Requirement)
-		}
-		if item.ADR != nil {
-			c.ADRs = append(c.ADRs, item.ADR)
-		}
-		if item.Relation != nil {
-			c.Relations = append(c.Relations, item.Relation)
-		}
-		if item.Metadata != nil {
-			c.Metadata = append(c.Metadata, item.Metadata.Entries...)
-		}
-		if item.ContractsBlock != nil {
-			c.Contracts = append(c.Contracts, item.ContractsBlock.Contracts...)
-		}
-		if item.ConstraintsBlock != nil {
-			c.Constraints = append(c.Constraints, item.ConstraintsBlock.Entries...)
-		}
-		if item.ConventionsBlock != nil {
-			c.Conventions = append(c.Conventions, item.ConventionsBlock.Entries...)
-		}
-		if item.EntitiesBlock != nil {
-			c.Entities = append(c.Entities, item.EntitiesBlock.Entities...)
-		}
-		if item.EventsBlock != nil {
-			c.Events = append(c.Events, item.EventsBlock.Events...)
-		}
-	}
-}
-
-// PostProcess populates convenience fields from component items.
-func (c *Component) PostProcess() {
-	for _, item := range c.Items {
-		if item.Requirement != nil {
-			c.Requirements = append(c.Requirements, item.Requirement)
-		}
-		if item.ADR != nil {
-			c.ADRs = append(c.ADRs, item.ADR)
-		}
-		if item.Relation != nil {
-			c.Relations = append(c.Relations, item.Relation)
-		}
-		if item.Metadata != nil {
-			c.Metadata = append(c.Metadata, item.Metadata.Entries...)
-		}
-
-	}
-}
-
-// PostProcess populates convenience fields from journey items.
-func (j *Journey) PostProcess() {
-	for _, item := range j.Items {
-		if item.Title != nil {
-			j.Title = *item.Title
-		}
-		if item.Steps != nil {
-			j.Steps = append(j.Steps, item.Steps.Items...)
-		}
-	}
-}
-
-// Element item unions for metadata blocks
-type DataStoreItem struct {
-	Metadata *MetadataBlock `parser:"@@"`
-}
-
-type QueueItem struct {
-	Metadata *MetadataBlock `parser:"@@"`
-}
-
-type PersonItem struct {
-	Metadata *MetadataBlock `parser:"@@"`
-}
-
-// PostProcess populates metadata from inline blocks for DataStore.
-func (d *DataStore) PostProcess() {
-	for _, it := range d.Items {
-		if it.Metadata != nil {
-			d.Metadata = append(d.Metadata, it.Metadata.Entries...)
-		}
-	}
-}
-
-// PostProcess populates metadata from inline blocks for Queue.
-func (q *Queue) PostProcess() {
-	for _, it := range q.Items {
-		if it.Metadata != nil {
-			q.Metadata = append(q.Metadata, it.Metadata.Entries...)
-		}
-	}
-}
-
-// PostProcess populates metadata from inline blocks for Person.
-func (p *Person) PostProcess() {
-	for _, it := range p.Items {
-		if it.Metadata != nil {
-			p.Metadata = append(p.Metadata, it.Metadata.Entries...)
-		}
-	}
-}
-
-// ============================================================================
 // Metadata Helper Methods
 // ============================================================================
+
+// metaString is a helper function that searches metadata for a key.
+func metaString(metadata []*MetaEntry, key string) (string, bool) {
+	for _, meta := range metadata {
+		if meta.Key == key {
+			return meta.Value, true
+		}
+	}
+	return "", false
+}
+
+// metaAll is a helper function that converts metadata to a map.
+func metaAll(metadata []*MetaEntry) map[string]string {
+	result := make(map[string]string, len(metadata))
+	for _, meta := range metadata {
+		result[meta.Key] = meta.Value
+	}
+	return result
+}
+
+// metaMap is a helper function that returns metadata entries with a given prefix.
+func metaMap(metadata []*MetaEntry, prefix string) map[string]string {
+	result := make(map[string]string)
+	for _, meta := range metadata {
+		if len(meta.Key) >= len(prefix) && meta.Key[:len(prefix)] == prefix {
+			result[meta.Key] = meta.Value
+		}
+	}
+	return result
+}
 
 // MetaString returns a metadata value as a string.
 // Returns the value and true if the key exists, empty string and false otherwise.
 func (s *System) MetaString(key string) (string, bool) {
-	for _, meta := range s.Metadata {
-		if meta.Key == key {
-			return meta.Value, true
-		}
-	}
-	return "", false
+	return metaString(s.Metadata, key)
 }
 
 // MetaString returns a metadata value as a string.
 func (c *Container) MetaString(key string) (string, bool) {
-	for _, meta := range c.Metadata {
-		if meta.Key == key {
-			return meta.Value, true
-		}
-	}
-	return "", false
+	return metaString(c.Metadata, key)
 }
 
 // MetaString returns a metadata value as a string.
 func (c *Component) MetaString(key string) (string, bool) {
-	for _, meta := range c.Metadata {
-		if meta.Key == key {
-			return meta.Value, true
-		}
-	}
-	return "", false
+	return metaString(c.Metadata, key)
 }
 
 // MetaString returns a metadata value as a string.
 func (d *DataStore) MetaString(key string) (string, bool) {
-	for _, meta := range d.Metadata {
-		if meta.Key == key {
-			return meta.Value, true
-		}
-	}
-	return "", false
+	return metaString(d.Metadata, key)
 }
 
 // MetaString returns a metadata value as a string.
 func (q *Queue) MetaString(key string) (string, bool) {
-	for _, meta := range q.Metadata {
-		if meta.Key == key {
-			return meta.Value, true
-		}
-	}
-	return "", false
+	return metaString(q.Metadata, key)
 }
 
 // MetaString returns a metadata value as a string.
 func (p *Person) MetaString(key string) (string, bool) {
-	for _, meta := range p.Metadata {
-		if meta.Key == key {
-			return meta.Value, true
-		}
-	}
-	return "", false
+	return metaString(p.Metadata, key)
 }
 
 // MetaString returns a metadata value as a string.
 func (a *Architecture) MetaString(key string) (string, bool) {
-	for _, meta := range a.Metadata {
-		if meta.Key == key {
-			return meta.Value, true
-		}
-	}
-	return "", false
+	return metaString(a.Metadata, key)
 }
 
 // HasMeta checks if a metadata key exists.
@@ -1141,98 +1008,52 @@ func (a *Architecture) HasMeta(key string) bool {
 
 // AllMetadata returns all metadata as a map.
 func (s *System) AllMetadata() map[string]string {
-	result := make(map[string]string)
-	for _, meta := range s.Metadata {
-		result[meta.Key] = meta.Value
-	}
-	return result
+	return metaAll(s.Metadata)
 }
 
 // AllMetadata returns all metadata as a map.
 func (c *Container) AllMetadata() map[string]string {
-	result := make(map[string]string)
-	for _, meta := range c.Metadata {
-		result[meta.Key] = meta.Value
-	}
-	return result
+	return metaAll(c.Metadata)
 }
 
 // AllMetadata returns all metadata as a map.
 func (c *Component) AllMetadata() map[string]string {
-	result := make(map[string]string)
-	for _, meta := range c.Metadata {
-		result[meta.Key] = meta.Value
-	}
-	return result
+	return metaAll(c.Metadata)
 }
 
 // AllMetadata returns all metadata as a map.
 func (d *DataStore) AllMetadata() map[string]string {
-	result := make(map[string]string)
-	for _, meta := range d.Metadata {
-		result[meta.Key] = meta.Value
-	}
-	return result
+	return metaAll(d.Metadata)
 }
 
 // AllMetadata returns all metadata as a map.
 func (q *Queue) AllMetadata() map[string]string {
-	result := make(map[string]string)
-	for _, meta := range q.Metadata {
-		result[meta.Key] = meta.Value
-	}
-	return result
+	return metaAll(q.Metadata)
 }
 
 // AllMetadata returns all metadata as a map.
 func (p *Person) AllMetadata() map[string]string {
-	result := make(map[string]string)
-	for _, meta := range p.Metadata {
-		result[meta.Key] = meta.Value
-	}
-	return result
+	return metaAll(p.Metadata)
 }
 
 // AllMetadata returns all metadata as a map.
 func (a *Architecture) AllMetadata() map[string]string {
-	result := make(map[string]string)
-	for _, meta := range a.Metadata {
-		result[meta.Key] = meta.Value
-	}
-	return result
+	return metaAll(a.Metadata)
 }
 
 // MetaMap returns all metadata entries with a given prefix.
 func (s *System) MetaMap(prefix string) map[string]string {
-	result := make(map[string]string)
-	for _, meta := range s.Metadata {
-		if len(meta.Key) >= len(prefix) && meta.Key[:len(prefix)] == prefix {
-			result[meta.Key] = meta.Value
-		}
-	}
-	return result
+	return metaMap(s.Metadata, prefix)
 }
 
 // MetaMap returns all metadata entries with a given prefix.
 func (c *Container) MetaMap(prefix string) map[string]string {
-	result := make(map[string]string)
-	for _, meta := range c.Metadata {
-		if len(meta.Key) >= len(prefix) && meta.Key[:len(prefix)] == prefix {
-			result[meta.Key] = meta.Value
-		}
-	}
-	return result
+	return metaMap(c.Metadata, prefix)
 }
 
 // MetaMap returns all metadata entries with a given prefix.
 func (c *Component) MetaMap(prefix string) map[string]string {
-	result := make(map[string]string)
-	for _, meta := range c.Metadata {
-		if len(meta.Key) >= len(prefix) && meta.Key[:len(prefix)] == prefix {
-			result[meta.Key] = meta.Value
-		}
-	}
-	return result
+	return metaMap(c.Metadata, prefix)
 }
 
 type TypeSpec struct {

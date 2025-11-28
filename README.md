@@ -6,7 +6,7 @@
 
 ## Documentation
 
-**[Read the full documentation at sruja-ai.github.io/sruja](https://sruja-ai.github.io/sruja/)**
+https://sruja.ai
 
 ## Features
 
@@ -98,6 +98,20 @@ go mod download
 # Build CLI
 make build
 ```
+
+## Contributing
+
+We welcome contributions of all sizes — from small doc fixes to core features.
+
+- Start with issues and "good first issues": https://github.com/sruja-ai/sruja/labels/good%20first%20issue
+- Read the [contribution guide](./docs/CONTRIBUTING.md)
+
+### Pull Request Checklist
+
+- Run local checks: `make test`, `make fmt`, `make lint`
+- Add/update tests for new behavior
+- Keep changes focused and well‑scoped
+- Use Conventional Commits (e.g., `feat: …`, `fix: …`, `docs: …`)
 
 ## License
 

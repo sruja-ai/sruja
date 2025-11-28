@@ -57,7 +57,8 @@ func (r *CycleDetectionRule) Validate(program *language.Program) []ValidationErr
 			if !visited[v] {
 				dfs(v, path)
 			} else if recStack[v] {
-				cyclePath := []string{}
+				// Found a cycle - construct the cycle path efficiently
+				cyclePath := make([]string, 0, len(path)+1)
 				startIdx := -1
 				for i, node := range path {
 					if node == v {
@@ -68,7 +69,11 @@ func (r *CycleDetectionRule) Validate(program *language.Program) []ValidationErr
 				if startIdx != -1 {
 					cyclePath = append(cyclePath, path[startIdx:]...)
 					cyclePath = append(cyclePath, v)
-					errors = append(errors, ValidationError{Message: fmt.Sprintf("Cycle detected: %s", strings.Join(cyclePath, " -> ")), Line: 0, Column: 0})
+					errors = append(errors, ValidationError{
+						Message: fmt.Sprintf("Cycle detected: %s", strings.Join(cyclePath, " -> ")),
+						Line:    0,
+						Column:  0,
+					})
 				}
 			}
 		}

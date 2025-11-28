@@ -79,6 +79,20 @@ func (r *OrphanDetectionRule) Validate(program *language.Program) []ValidationEr
 		}
 	}
 
+	// Check Journeys
+	for _, j := range arch.Journeys {
+		for _, step := range j.Steps {
+			markRel(step.From, step.To)
+		}
+	}
+
+	// Check Scenarios
+	for _, s := range arch.Scenarios {
+		for _, step := range s.Steps {
+			markRel(step.From, step.To)
+		}
+	}
+
 	// Propagate usage to parents
 	// Iterate multiple times or just ensure we cover the depth (max 3: Component -> Container -> System)
 	// Simple loop over defined elements to propagate
