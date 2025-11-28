@@ -339,7 +339,7 @@ type System struct {
 	Persons      []*Person
 	Components   []*Component
 	Requirements []*Requirement
-	ADRRefs      []*ADRRef
+	ADRs         []*ADR
 	Relations    []*Relation
 	Metadata     []*MetaEntry // Metadata from metadata blocks
 	Contracts    []*Contract
@@ -361,7 +361,7 @@ type SystemItem struct {
 	Person           *Person           `parser:"| @@"`
 	Relation         *Relation         `parser:"| @@"`
 	Requirement      *Requirement      `parser:"| @@"`
-	ADR              *ADRRef           `parser:"| @@"`
+	ADR              *ADR              `parser:"| @@"`
 	Metadata         *MetadataBlock    `parser:"| @@"`
 	ContractsBlock   *ContractsBlock   `parser:"| 'contracts' '{' @@ '}'"`
 	ConstraintsBlock *ConstraintsBlock `parser:"| 'constraints' '{' @@* '}'"`
@@ -430,7 +430,7 @@ type ContainerItem struct {
 	Queue            *Queue            `parser:"| @@"`
 	Relation         *Relation         `parser:"| @@"`
 	Requirement      *Requirement      `parser:"| @@"`
-	ADR              *ADRRef           `parser:"| @@"`
+	ADR              *ADR              `parser:"| @@"`
 	Metadata         *MetadataBlock    `parser:"| @@"`
 	ContractsBlock   *ContractsBlock   `parser:"| 'contracts' '{' @@ '}'"`
 	ConstraintsBlock *ConstraintsBlock `parser:"| 'constraints' '{' @@* '}'"`
@@ -483,7 +483,7 @@ func (c *Component) Location() SourceLocation { return SourceLocation{} }
 type ComponentItem struct {
 	Technology       *string           `parser:"'technology' @String |"`
 	Requirement      *Requirement      `parser:"@@ |"`
-	ADR              *ADRRef           `parser:"@@ |"`
+	ADR              *ADR              `parser:"@@ |"`
 	Relation         *Relation         `parser:"@@ |"`
 	Metadata         *MetadataBlock    `parser:"@@ |"`
 	Behavior         *BehaviorBlock    `parser:"'behavior' '{' @@* '}' |"`
@@ -680,7 +680,7 @@ func (r *Requirement) Location() SourceLocation { return SourceLocation{} }
 //	adr ADR001 "Use microservices architecture for scalability"
 type ADR struct {
 	ID    string   `parser:"'adr' @Ident"`
-	Title string   `parser:"@String"`
+	Title *string  `parser:"( @String )?"`
 	Body  *ADRBody `parser:"( '{' @@ '}' )?"`
 }
 

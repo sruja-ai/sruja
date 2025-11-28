@@ -95,9 +95,29 @@ sruja tree --file example.sruja
 # Install dependencies
 go mod download
 
+# Setup git hooks (recommended)
+make setup-hooks
+
 # Build CLI
 make build
 ```
+
+### Git Hooks
+
+A pre-commit hook automatically tests code compilation when you commit changes to the `learn/` directory. This prevents broken code from being committed.
+
+**Setup:**
+```bash
+make setup-hooks
+```
+
+The hook will:
+- Test playground examples compile correctly
+- Test course code blocks compile correctly  
+- Test docs code blocks compile correctly
+- Block commits if any code fails to compile
+
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for more details.
 
 ## Contributing
 

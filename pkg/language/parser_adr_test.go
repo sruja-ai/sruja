@@ -15,7 +15,7 @@ func TestParser_ADR(t *testing.T) {
 			input: `adr ADR001 "Simple Decision"`,
 			expected: &ADR{
 				ID:    "ADR001",
-				Title: "Simple Decision",
+				Title: stringPtr("Simple Decision"),
 			},
 		},
 		{
@@ -28,13 +28,21 @@ func TestParser_ADR(t *testing.T) {
 			}`,
 			expected: &ADR{
 				ID:    "ADR002",
-				Title: "Complex Decision",
+				Title: stringPtr("Complex Decision"),
 				Body: &ADRBody{
 					Status:       stringPtr("Accepted"),
 					Context:      stringPtr("We need X"),
 					Decision:     stringPtr("We chose Y"),
 					Consequences: stringPtr("Z happened"),
 				},
+			},
+		},
+		{
+			name:  "Reference ADR",
+			input: `adr ADR003`,
+			expected: &ADR{
+				ID:    "ADR003",
+				Title: nil,
 			},
 		},
 	}
@@ -72,8 +80,16 @@ func TestParser_ADR(t *testing.T) {
 			if foundADR.ID != tt.expected.ID {
 				t.Errorf("Expected ID %q, got %q", tt.expected.ID, foundADR.ID)
 			}
-			if foundADR.Title != tt.expected.Title {
-				t.Errorf("Expected Title %q, got %q", tt.expected.Title, foundADR.Title)
+			if tt.expected.Title == nil {
+				if foundADR.Title != nil {
+					t.Errorf("Expected nil Title, got %q", *foundADR.Title)
+				}
+			} else {
+				if foundADR.Title == nil {
+					t.Errorf("Expected Title %q, got nil", *tt.expected.Title)
+				} else if *foundADR.Title != *tt.expected.Title {
+					t.Errorf("Expected Title %q, got %q", *tt.expected.Title, *foundADR.Title)
+				}
 			}
 
 			if tt.expected.Body == nil {

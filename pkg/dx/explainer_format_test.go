@@ -25,7 +25,7 @@ func TestFormat(t *testing.T) {
 		},
 		Dependencies: []string{"DB"},
 		ADRs: []*language.ADR{
-			{ID: "ADR001", Title: "Test ADR"},
+			{ID: "ADR001", Title: stringPtr("Test ADR")},
 		},
 		Journeys: []*JourneyInfo{
 			{ID: "journey1", Label: "Test Journey"},
@@ -52,4 +52,3 @@ func TestFormat(t *testing.T) {
 		t.Error("Format should contain journeys section")
 	}
 }
-
