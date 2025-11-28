@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Config represents the Sruja configuration file structure.
@@ -69,6 +70,10 @@ func LoadConfig(configPath string) (*Config, error) {
 
 	// sanitize and validate the resolved path
 	cleanPath := filepath.Clean(configPath)
+	// Prevent directory traversal attacks: ensure path doesn't contain ".." after cleaning
+	if strings.Contains(cleanPath, "..") {
+		return nil, fmt.Errorf("invalid config file path: %s", cleanPath)
+	}
 	fi, statErr := os.Lstat(cleanPath)
 	if statErr != nil {
 		if os.IsNotExist(statErr) {

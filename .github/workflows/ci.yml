@@ -27,7 +27,13 @@ jobs:
       run: go build -v ./...
     
     - name: Run tests
-      run: go test -v ./...
+      run: go test -v -coverprofile=coverage.out ./...
+    
+    - name: Run Codacy Coverage Reporter
+      uses: codacy/codacy-coverage-reporter-action@v1
+      with:
+        project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+        coverage-reports: coverage.out
     
     - name: Run linter
       uses: golangci/golangci-lint-action@v9

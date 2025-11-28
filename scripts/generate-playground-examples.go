@@ -65,10 +65,22 @@ func main() {
 	sb.WriteString("export const EXAMPLES: PlaygroundExample[] = [\n")
 
 	for i, entry := range playgroundExamples {
+		// Validate file name to prevent directory traversal
+		if strings.Contains(entry.File, "..") || filepath.IsAbs(entry.File) {
+			fmt.Fprintf(os.Stderr, "Warning: Skipping invalid file path: %s\n", entry.File)
+			continue
+		}
 		filePath := filepath.Join(examplesDir, entry.File)
-		content, err := os.ReadFile(filePath)
+		// Clean and validate the final path
+		cleanPath := filepath.Clean(filePath)
+		// Ensure the cleaned path is still within examplesDir
+		if !strings.HasPrefix(cleanPath, examplesDir) {
+			fmt.Fprintf(os.Stderr, "Warning: Skipping file outside examples directory: %s\n", entry.File)
+			continue
+		}
+		content, err := os.ReadFile(cleanPath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: Could not read %s: %v\n", filePath, err)
+			fmt.Fprintf(os.Stderr, "Warning: Could not read %s: %v\n", cleanPath, err)
 			continue
 		}
 
