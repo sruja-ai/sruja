@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Module 2: Building Blocks on Sruja Documentation</title>
+    <link>https://sruja.ai/course/module-2-building-blocks/</link>
+    <description>Recent content in Module 2: Building Blocks on Sruja Documentation</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <atom:link href="https://sruja.ai/course/module-2-building-blocks/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>3. Containers</title>
+      <link>https://sruja.ai/course/module-2-building-blocks/lesson-1/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://sruja.ai/course/module-2-building-blocks/lesson-1/</guid>
+      <description>Zooming in to applications and data stores.</description>
+    </item>
+    <item>
+      <title>4. Components</title>
+      <link>https://sruja.ai/course/module-2-building-blocks/lesson-2/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://sruja.ai/course/module-2-building-blocks/lesson-2/</guid>
+      <description>Decomposing containers into components.</description>
+    </item>
+  </channel>
+</rss>

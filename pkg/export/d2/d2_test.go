@@ -121,14 +121,6 @@ func TestExport_FullFeatures(t *testing.T) {
 				},
 			},
 		},
-		DynamicViews: []*language.DynamicView{
-			{
-				Title: "Login",
-				Steps: []*language.DynamicViewStep{
-					{From: "User", To: "Sys1", Description: stringPtr("Logins")},
-				},
-			},
-		},
 	}
 
 	exporter := NewExporter()
@@ -147,8 +139,123 @@ func TestExport_FullFeatures(t *testing.T) {
 		"Prod: \"Production\" {",
 		"Server: \"Server\" {",
 		"Sys1.DB_Instance: {",
-		"scenario: \"Login\" {",
-		"User -> Sys1: \"1. Logins\"",
+	}
+
+	for _, exp := range expected {
+		if !strings.Contains(output, exp) {
+			t.Errorf("Expected output to contain %q, but it didn't.\nOutput:\n%s", exp, output)
+		}
+	}
+}
+
+func TestExport_Component(t *testing.T) {
+	arch := &language.Architecture{
+		Name: "TestArch",
+		Systems: []*language.System{
+			{
+				ID: "Sys1",
+				Containers: []*language.Container{
+					{
+						ID: "Cont1",
+						Components: []*language.Component{
+							{
+								ID:          "Comp1",
+								Label:       "Component 1",
+								Description: stringPtr("A test component"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	exporter := NewExporter()
+	output, err := exporter.Export(arch)
+	if err != nil {
+		t.Fatalf("Export failed: %v", err)
+	}
+
+	expected := []string{
+		"Comp1: \"Component 1\" {",
+		"shape: class",
+		"tooltip: \"A test component\"",
+	}
+
+	for _, exp := range expected {
+		if !strings.Contains(output, exp) {
+			t.Errorf("Expected output to contain %q, but it didn't.\nOutput:\n%s", exp, output)
+		}
+	}
+}
+
+func TestExport_Component_NoDescription(t *testing.T) {
+	arch := &language.Architecture{
+		Name: "TestArch",
+		Systems: []*language.System{
+			{
+				ID: "Sys1",
+				Containers: []*language.Container{
+					{
+						ID: "Cont1",
+						Components: []*language.Component{
+							{
+								ID:    "Comp1",
+								Label: "Component 1",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	exporter := NewExporter()
+	output, err := exporter.Export(arch)
+	if err != nil {
+		t.Fatalf("Export failed: %v", err)
+	}
+
+	if !strings.Contains(output, "Comp1: \"Component 1\"") {
+		t.Error("Should export component without description")
+	}
+	if strings.Contains(output, "tooltip") {
+		t.Error("Should not include tooltip when description is nil")
+	}
+}
+
+func TestExport_Requirements(t *testing.T) {
+	arch := &language.Architecture{
+		Name: "ReqArch",
+		Requirements: []*language.Requirement{
+			{ID: "R1", Type: "functional", Description: "Top level req"},
+		},
+		Systems: []*language.System{
+			{
+				ID: "Sys1",
+				Requirements: []*language.Requirement{
+					{ID: "R2", Type: "security", Description: "System level req"},
+				},
+			},
+		},
+	}
+
+	exporter := NewExporter()
+	output, err := exporter.Export(arch)
+	if err != nil {
+		t.Fatalf("Export failed: %v", err)
+	}
+
+	expected := []string{
+		"layers: {",
+		"\"Requirements\"",
+		"}",
+		"\"Requirements\": {",
+		"R1: \"functional: Top level req\" {",
+		"shape: page",
+		"Sys1.R2: \"security: System level req\" {",
+		"\"Architecture\": {",
+		"_Title: \"Architecture\" {",
 	}
 
 	for _, exp := range expected {
@@ -160,4 +267,98 @@ func TestExport_FullFeatures(t *testing.T) {
 
 func stringPtr(s string) *string {
 	return &s
+}
+
+func TestExport_Scenario(t *testing.T) {
+	dsl := `
+architecture "Scenario Test" {
+	system Sys1 "System 1"
+	person User "User"
+
+	scenario "Login Flow" {
+		User -> Sys1 "Credentials"
+	}
+}
+`
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+
+	program, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	program.Architecture.PostProcess()
+
+	exporter := NewExporter()
+	output, err := exporter.Export(program.Architecture)
+	if err != nil {
+		t.Fatalf("Export failed: %v", err)
+	}
+
+	expected := []string{
+		"layers: {",
+		"\"Login Flow\"",
+		"\"Architecture\"",
+		"}",
+		"\"Login Flow\": {",
+		"_Title: \"Login Flow\" {",
+		"shape: text",
+		"User -> Sys1: \"1. Credentials\"",
+	}
+
+	for _, exp := range expected {
+		if !strings.Contains(output, exp) {
+			t.Errorf("Expected output to contain:\n%s\nBut got:\n%s", exp, output)
+		}
+	}
+}
+
+func TestExport_Scenario_WithIDAndDescription(t *testing.T) {
+	dsl := `
+architecture "Scenario Test" {
+	system Sys1 "System 1"
+	person User "User"
+
+	scenario AuthFlow "Authentication" "Handles OAuth2" {
+		User -> Sys1 "Credentials"
+	}
+}
+`
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+
+	program, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	program.Architecture.PostProcess()
+
+	exporter := NewExporter()
+	output, err := exporter.Export(program.Architecture)
+	if err != nil {
+		t.Fatalf("Export failed: %v", err)
+	}
+
+	expected := []string{
+		"layers: {",
+		"\"Authentication\"",
+		"\"Architecture\"",
+		"}",
+		"\"Authentication\": {",
+		"_Title: \"Authentication\" {",
+		"shape: text",
+		"User -> Sys1: \"1. Credentials\"",
+	}
+
+	for _, exp := range expected {
+		if !strings.Contains(output, exp) {
+			t.Errorf("Expected output to contain:\n%s\nBut got:\n%s", exp, output)
+		}
+	}
 }

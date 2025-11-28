@@ -1,0 +1,95 @@
+architecture "E-Commerce System" {
+
+    // Module 2: Context
+    person Customer "Online Customer" {
+        description "Browses and buys products."
+    }
+
+    system PaymentGateway "Stripe"
+    system EmailService "SendGrid"
+
+    system ECommerce "E-Commerce Platform" {
+        description "Allows customers to buy products online."
+
+        // Module 3: Containers
+        container WebApp "Storefront" {
+            technology "React"
+            tags ["frontend"]
+            
+            // Module 7: Properties & Styles
+            properties {
+                "framework": "Next.js"
+                "hosting": "Vercel"
+            }
+            style {
+                shape: "browser"
+            }
+        }
+
+        container API "Product API" {
+            technology "Go"
+            tags ["backend"]
+
+            // Module 4: Components
+            component ProductController "Product Controller" {
+                technology "Gin"
+            }
+            component ProductService "Product Service"
+            component ProductRepo "Product Repository"
+
+            ProductController -> ProductService "Uses"
+            ProductService -> ProductRepo "Uses"
+        }
+
+        datastore DB "Product Database" {
+            technology "PostgreSQL"
+            properties {
+                "version": "15"
+                "storage": "100GB"
+            }
+        }
+
+        queue Events "Order Events" {
+            technology "Kafka"
+        }
+
+        // Internal Relations
+        WebApp -> API "Fetches Data"
+        API -> DB "Reads/Writes"
+        API -> Events "Publishes"
+    }
+
+    // Context Relations
+    Customer -> WebApp "Browses"
+    API -> PaymentGateway "Process Payments"
+    API -> EmailService "Send Emails"
+
+    // Module 5: Scenarios
+    scenario CheckoutFlow "Checkout Flow" "User checkout process" {
+        Customer -> WebApp "Clicks Checkout"
+        WebApp -> API "POST /checkout"
+        API -> DB "Save Order"
+        API -> PaymentGateway "Charge Card"
+        API -> Events "Order Created"
+    }
+
+    // Module 6: Deployment
+    // Module 6: Deployment
+    deployment Production "Production" {
+        node AWS "AWS" {
+            node USEast1 "US-East-1" {
+                node EKS "EKS" {
+                    containerInstance API
+                    containerInstance WebApp
+                }
+                node RDS "RDS" {
+                    containerInstance DB
+                }
+            }
+        }
+    }
+
+    // Module 7: NFRs
+    requirement R1 performance "API latency < 100ms"
+    adr ADR001 "Use Microservices"
+}

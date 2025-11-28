@@ -1,42 +1,106 @@
-//go:build legacy
-
-// pkg/language/parser_adr_test.go
-// Package language_test provides tests for ADR parsing.
-package language_test
+package language
 
 import (
 	"testing"
-
-	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-func TestParser_ADRs(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system API "API Service"
-    adr ADR001 "Use microservices architecture for scalability"
-    adr ADR002 "Use PostgreSQL for data persistence"
+func TestParser_ADR(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected *ADR
+	}{
+		{
+			name:  "Simple ADR",
+			input: `adr ADR001 "Simple Decision"`,
+			expected: &ADR{
+				ID:    "ADR001",
+				Title: "Simple Decision",
+			},
+		},
+		{
+			name: "Full ADR",
+			input: `adr ADR002 "Complex Decision" {
+				status "Accepted"
+				context "We need X"
+				decision "We chose Y"
+				consequences "Z happened"
+			}`,
+			expected: &ADR{
+				ID:    "ADR002",
+				Title: "Complex Decision",
+				Body: &ADRBody{
+					Status:       stringPtr("Accepted"),
+					Context:      stringPtr("We need X"),
+					Decision:     stringPtr("We chose Y"),
+					Consequences: stringPtr("Z happened"),
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Wrap in architecture for parsing
+			dsl := "architecture \"Test\" {\n" + tt.input + "\n}"
+			parser, err := NewParser()
+			if err != nil {
+				t.Fatalf("Failed to create parser: %v", err)
+			}
+
+			program, err := parser.Parse("test.sruja", dsl)
+			if err != nil {
+				t.Fatalf("Failed to parse DSL: %v", err)
+			}
+
+			// Find the ADR in items (since PostProcess might move them to .ADRs, but we check raw items first or check .ADRs if PostProcess ran)
+			// The parser populates Items.
+			// Let's check Items first.
+
+			var foundADR *ADR
+			for _, item := range program.Architecture.Items {
+				if item.ADR != nil {
+					foundADR = item.ADR
+					break
+				}
+			}
+
+			if foundADR == nil {
+				t.Fatalf("Expected ADR in items, got nil")
+			}
+
+			if foundADR.ID != tt.expected.ID {
+				t.Errorf("Expected ID %q, got %q", tt.expected.ID, foundADR.ID)
+			}
+			if foundADR.Title != tt.expected.Title {
+				t.Errorf("Expected Title %q, got %q", tt.expected.Title, foundADR.Title)
+			}
+
+			if tt.expected.Body == nil {
+				if foundADR.Body != nil {
+					t.Errorf("Expected nil Body, got %v", foundADR.Body)
+				}
+			} else {
+				if foundADR.Body == nil {
+					t.Fatalf("Expected Body, got nil")
+				}
+				if *foundADR.Body.Status != *tt.expected.Body.Status {
+					t.Errorf("Expected Status %q, got %q", *tt.expected.Body.Status, *foundADR.Body.Status)
+				}
+				if *foundADR.Body.Context != *tt.expected.Body.Context {
+					t.Errorf("Expected Context %q, got %q", *tt.expected.Body.Context, *foundADR.Body.Context)
+				}
+				if *foundADR.Body.Decision != *tt.expected.Body.Decision {
+					t.Errorf("Expected Decision %q, got %q", *tt.expected.Body.Decision, *foundADR.Body.Decision)
+				}
+				if *foundADR.Body.Consequences != *tt.expected.Body.Consequences {
+					t.Errorf("Expected Consequences %q, got %q", *tt.expected.Body.Consequences, *foundADR.Body.Consequences)
+				}
+			}
+		})
+	}
 }
-`
-	parser, err := language.NewParser()
-	if err != nil {
-		t.Fatalf("Failed to create parser: %v", err)
-	}
 
-	program, err := parser.Parse("test.sruja", dsl)
-	if err != nil {
-		t.Fatalf("Failed to parse ADRs: %v", err)
-	}
-
-	if len(program.Architecture.ADRs) != 2 {
-		t.Fatalf("Expected 2 ADRs, got %d", len(program.Architecture.ADRs))
-	}
-
-	adr1 := program.Architecture.ADRs[0]
-	if adr1.ID != "ADR001" {
-		t.Errorf("Expected ADR ID 'ADR001', got '%s'", adr1.ID)
-	}
-	if adr1.Title != "Use microservices architecture for scalability" {
-		t.Errorf("Expected title 'Use microservices architecture for scalability', got '%s'", adr1.Title)
-	}
+func stringPtr(s string) *string {
+	return &s
 }

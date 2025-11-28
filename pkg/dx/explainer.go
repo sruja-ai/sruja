@@ -202,6 +202,33 @@ func extractRelationInfo(rel *language.Relation) (label, verb string) {
 	return label, verb
 }
 
+// processRelation processes a relation and adds it to the RelationsInfo if it matches the elementID.
+func processRelation(rel *language.Relation, elementID string, info *RelationsInfo) {
+	fromID := rel.From
+	toID := rel.To
+
+	if fromID == elementID {
+		label, verb := extractRelationInfo(rel)
+		info.Outgoing = append(info.Outgoing, &RelationInfo{
+			From:      fromID,
+			To:        toID,
+			Label:     label,
+			Type:      verb,
+			Direction: "outgoing",
+		})
+	}
+	if toID == elementID {
+		label, verb := extractRelationInfo(rel)
+		info.Incoming = append(info.Incoming, &RelationInfo{
+			From:      fromID,
+			To:        toID,
+			Label:     label,
+			Type:      verb,
+			Direction: "incoming",
+		})
+	}
+}
+
 // findRelations finds all relations involving an element.
 func (e *Explainer) findRelations(elementID string) RelationsInfo {
 	var info RelationsInfo
@@ -209,129 +236,27 @@ func (e *Explainer) findRelations(elementID string) RelationsInfo {
 
 	for _, sys := range arch.Systems {
 		for _, rel := range sys.Relations {
-			fromID := rel.From
-			toID := rel.To
-
-			if fromID == elementID {
-				label := ""
-				if rel.Label != nil {
-					label = *rel.Label
-				}
-				verb := ""
-				if rel.Verb != nil {
-					verb = *rel.Verb
-				}
-				info.Outgoing = append(info.Outgoing, &RelationInfo{
-					From:      fromID,
-					To:        toID,
-					Label:     label,
-					Type:      verb,
-					Direction: "outgoing",
-				})
-			}
-			if toID == elementID {
-				label := ""
-				if rel.Label != nil {
-					label = *rel.Label
-				}
-				verb := ""
-				if rel.Verb != nil {
-					verb = *rel.Verb
-				}
-				info.Incoming = append(info.Incoming, &RelationInfo{
-					From:      fromID,
-					To:        toID,
-					Label:     label,
-					Type:      verb,
-					Direction: "incoming",
-				})
-			}
+			processRelation(rel, elementID, &info)
 		}
 
 		// Check containers
 		for _, cont := range sys.Containers {
 			for _, rel := range cont.Relations {
-				fromID := rel.From
-				toID := rel.To
-
-				if fromID == elementID {
-					label, verb := extractRelationInfo(rel)
-					info.Outgoing = append(info.Outgoing, &RelationInfo{
-						From:      fromID,
-						To:        toID,
-						Label:     label,
-						Type:      verb,
-						Direction: "outgoing",
-					})
-				}
-				if toID == elementID {
-					label, verb := extractRelationInfo(rel)
-					info.Incoming = append(info.Incoming, &RelationInfo{
-						From:      fromID,
-						To:        toID,
-						Label:     label,
-						Type:      verb,
-						Direction: "incoming",
-					})
-				}
+				processRelation(rel, elementID, &info)
 			}
 		}
 
 		// Check components
 		for _, comp := range sys.Components {
 			for _, rel := range comp.Relations {
-				fromID := rel.From
-				toID := rel.To
-
-				if fromID == elementID {
-					label, verb := extractRelationInfo(rel)
-					info.Outgoing = append(info.Outgoing, &RelationInfo{
-						From:      fromID,
-						To:        toID,
-						Label:     label,
-						Type:      verb,
-						Direction: "outgoing",
-					})
-				}
-				if toID == elementID {
-					label, verb := extractRelationInfo(rel)
-					info.Incoming = append(info.Incoming, &RelationInfo{
-						From:      fromID,
-						To:        toID,
-						Label:     label,
-						Type:      verb,
-						Direction: "incoming",
-					})
-				}
+				processRelation(rel, elementID, &info)
 			}
 		}
 	}
 
 	// Check architecture-level relations
 	for _, rel := range arch.Relations {
-		fromID := rel.From
-		toID := rel.To
-
-		if fromID == elementID {
-			label, verb := extractRelationInfo(rel)
-			info.Outgoing = append(info.Outgoing, &RelationInfo{
-				From:      fromID,
-				To:        toID,
-				Label:     label,
-				Type:      verb,
-				Direction: "outgoing",
-			})
-		}
-		if toID == elementID {
-			label, verb := extractRelationInfo(rel)
-			info.Incoming = append(info.Incoming, &RelationInfo{
-				From:      fromID,
-				To:        toID,
-				Label:     label,
-				Type:      verb,
-				Direction: "incoming",
-			})
-		}
+		processRelation(rel, elementID, &info)
 	}
 
 	return info

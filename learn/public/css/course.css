@@ -1,0 +1,145 @@
+/* Mobile-friendly styles for Sruja Course */
+
+/* Quiz Container */
+[id^="quiz-"] {
+    background-color: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+/* Quiz Questions */
+[id^="quiz-"] p strong {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+}
+
+/* Radio Buttons & Labels */
+[id^="quiz-"] input[type="radio"] {
+    transform: scale(1.2);
+    /* Make radio buttons bigger */
+    margin-right: 10px;
+}
+
+[id^="quiz-"] label {
+    font-size: 1em;
+    padding: 5px 0;
+    display: inline-block;
+    cursor: pointer;
+}
+
+[id^="quiz-"] div>div {
+    margin-bottom: 15px;
+    /* Spacing between options */
+}
+
+/* Buttons */
+button {
+    background-color: #4F46E5;
+    /* Indigo */
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    font-size: 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    width: 100%;
+    /* Full width on mobile */
+    max-width: 200px;
+    /* Limit width on desktop */
+}
+
+button:hover {
+    background-color: #4338CA;
+}
+
+/* Resume Course Button */
+#resume-course-container {
+    margin: 20px 0;
+}
+
+#resume-course-container .btn {
+    display: inline-block;
+    background-color: #28a745;
+    color: white;
+    padding: 12px 24px;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: bold;
+    text-align: center;
+    width: 100%;
+    max-width: 200px;
+}
+
+#resume-course-container .btn:hover {
+    background-color: #218838;
+}
+
+/* Visited Links in Sidebar (if we can target them) */
+a.visited::after {
+    content: " ✓";
+    color: green;
+    font-weight: bold;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    [id^="quiz-"] {
+        padding: 15px;
+    }
+
+    button {
+        width: 100%;
+        max-width: none;
+        /* Full width buttons on small screens */
+    }
+
+    #resume-course-container .btn {
+        width: 100%;
+        max-width: none;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    body:not(.light) [id^="quiz-"] {
+        background-color: #1e1e1e;
+        border-color: #444;
+        color: #f0f0f0;
+    }
+
+    body:not(.light) [id^="quiz-"] label {
+        color: #ddd;
+    }
+
+    body:not(.light) button {
+        background-color: #4F46E5;
+    }
+
+    body:not(.light) button:hover {
+        background-color: #4338CA;
+    }
+}
+
+/* Explicit Dark Class */
+body.dark [id^="quiz-"] {
+    background-color: #1e1e1e;
+    border-color: #444;
+    color: #f0f0f0;
+}
+
+body.dark [id^="quiz-"] label {
+    color: #ddd;
+}
+
+body.dark button {
+    background-color: #4F46E5;
+}
+
+body.dark button:hover {
+    background-color: #4338CA;
+}

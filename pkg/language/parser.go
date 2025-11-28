@@ -49,6 +49,7 @@ func NewParser() (*Parser, error) {
 	srujaLexer := lexer.MustSimple([]lexer.SimpleRule{
 		{Name: "Comment", Pattern: `//.*|/\*.*?\*/`},
 		{Name: "String", Pattern: `"(\\"|[^"])*"`},
+		{Name: "Int", Pattern: `\d+`},
 		{Name: "Number", Pattern: `\d+(?:\.\d+)?`},
 		{Name: "Ident", Pattern: `[a-zA-Z_][a-zA-Z0-9_]*`},
 		{Name: "Dot", Pattern: `\.`},

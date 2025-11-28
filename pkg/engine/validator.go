@@ -16,6 +16,10 @@ func (e ValidationError) String() string {
 	return fmt.Sprintf("Error at line %d, col %d: %s", e.Line, e.Column, e.Message)
 }
 
+func (e ValidationError) Error() string {
+	return e.String()
+}
+
 type Rule interface {
 	Name() string
 	Validate(program *language.Program) []ValidationError

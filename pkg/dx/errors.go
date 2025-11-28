@@ -226,7 +226,7 @@ func extractRuleName(msg string) string {
 	if strings.Contains(msg, "unknown") || strings.Contains(msg, "invalid reference") {
 		return "Valid References"
 	}
-	if strings.Contains(msg, "cycle") {
+	if strings.Contains(msg, "cycle") || strings.Contains(msg, "circular") {
 		return "Cycle Detection"
 	}
 	if strings.Contains(msg, "orphan") {

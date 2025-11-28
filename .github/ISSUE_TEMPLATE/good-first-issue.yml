@@ -1,0 +1,74 @@
+name: "Good First Issue"
+description: "Low-complexity task suitable for first-time contributors"
+labels:
+  - good first issue
+  - help wanted
+title: "[GFI] <short title>"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing! This template is for small, well-scoped tasks.
+        Please keep the scope tight and list clear acceptance criteria.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What needs to be done and why?
+      placeholder: e.g., "Add filename prefixes to WASM validation errors for better guidance"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Suggested Steps
+      description: Outline small steps to complete the task
+      placeholder: |
+        - Update function X to include filename in error
+        - Add unit test covering parse/validation failure cases
+        - Verify in docs code blocks
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: Define measurable outcomes
+      placeholder: |
+        - Error messages include filename
+        - Tests pass locally and in CI
+        - No regressions in existing features
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - language/parser
+        - wasm/runtime
+        - docs/site
+        - tooling/cli
+        - examples
+    validations:
+      required: true
+
+  - type: input
+    id: difficulty
+    attributes:
+      label: Difficulty
+      description: Choose an approximate level
+      placeholder: "easy"
+
+  - type: checkboxes
+    id: notes
+    attributes:
+      label: Notes
+      options:
+        - label: I can add tests
+        - label: I’d like mentoring/guidance
+

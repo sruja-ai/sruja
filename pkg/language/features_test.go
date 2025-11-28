@@ -55,13 +55,13 @@ func Test_Feature_Container_Tech_Tags_Version_Metadata(t *testing.T) {
 }
 
 func Test_Feature_Component_Technology_Metadata(t *testing.T) {
-	dsl := `architecture "A" { system S "S" { container C "C" { component X "X" technology "React" { metadata { critical: "true" } } } } }`
+	dsl := `architecture "A" { system S "S" { container C "C" { component X "X" { technology "React" metadata { critical: "true" } } } } }`
 	p, _ := language.NewParser()
 	prog, err := p.Parse("a.sruja", dsl)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	comp := prog.Architecture.Systems[0].Components[0]
+	comp := prog.Architecture.Systems[0].Containers[0].Components[0]
 	if !comp.HasMeta("critical") {
 		t.Fatalf("component metadata not parsed")
 	}

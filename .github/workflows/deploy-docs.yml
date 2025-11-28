@@ -28,22 +28,36 @@ jobs:
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v3
         with:
-          hugo-version: 'latest'
+          hugo-version: '0.152.2'
           extended: true
 
       - name: Install Dart Sass
         run: sudo snap install dart-sass
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Test playground, course, and docs code compilation
+        run: make test-learn-code
+
+      - name: Build WASM for docs
+        run: make build-docs
+
       - name: Build site
         run: |
-          cd docs
+          cd learn
           hugo --minify
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@373f7f263a76c20808c831209c920827a82a2847
         if: github.ref == 'refs/heads/main'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/public
+          publish_dir: ./learn/public
           cname: sruja.ai
           keep_files: false

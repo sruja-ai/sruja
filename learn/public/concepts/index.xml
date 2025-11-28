@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Core Concepts on Sruja Documentation</title><link>http://localhost:1313/sruja/concepts/</link><description>Recent content in Core Concepts on Sruja Documentation</description><generator>Hugo</generator><language>en-us</language><atom:link href="http://localhost:1313/sruja/concepts/index.xml" rel="self" type="application/rss+xml"/><item><title>Architecture</title><link>http://localhost:1313/sruja/concepts/architecture/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>http://localhost:1313/sruja/concepts/architecture/</guid><description>&lt;h1 id="architecture"&gt;Architecture&lt;a class="anchor" href="#architecture"&gt;#&lt;/a&gt;&lt;/h1&gt;
+&lt;p&gt;The &lt;code&gt;architecture&lt;/code&gt; block is the root element of any Sruja model. It represents the entire scope of what you are modeling.&lt;/p&gt;
+&lt;h2 id="syntax"&gt;Syntax&lt;a class="anchor" href="#syntax"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;architecture &amp;#34;My System Name&amp;#34; {
+ // ... define systems, persons, etc. here
+}&lt;/code&gt;&lt;/pre&gt;&lt;h2 id="purpose"&gt;Purpose&lt;a class="anchor" href="#purpose"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Scope Boundary&lt;/strong&gt;: Everything inside is part of the model.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Naming&lt;/strong&gt;: Gives a name to the overall architecture.&lt;/li&gt;
+&lt;/ul&gt;</description></item><item><title>System</title><link>http://localhost:1313/sruja/concepts/system/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>http://localhost:1313/sruja/concepts/system/</guid><description>&lt;h1 id="system"&gt;System&lt;a class="anchor" href="#system"&gt;#&lt;/a&gt;&lt;/h1&gt;
+&lt;p&gt;A &lt;strong&gt;System&lt;/strong&gt; represents a software system, which is the highest level of abstraction in the C4 model. A system delivers value to its users, whether they are human or other systems.&lt;/p&gt;
+&lt;h2 id="syntax"&gt;Syntax&lt;a class="anchor" href="#syntax"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;system ID &amp;#34;Label/Name&amp;#34; {
+ description &amp;#34;Optional description&amp;#34;
+ // ... contains containers
+}&lt;/code&gt;&lt;/pre&gt;&lt;h2 id="example"&gt;Example&lt;a class="anchor" href="#example"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;system BankingSystem &amp;#34;Internet Banking System&amp;#34; {
+ description &amp;#34;Allows customers to view accounts and make payments.&amp;#34;
+}&lt;/code&gt;&lt;/pre&gt;</description></item><item><title>Container</title><link>http://localhost:1313/sruja/concepts/container/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>http://localhost:1313/sruja/concepts/container/</guid><description>&lt;h1 id="container"&gt;Container&lt;a class="anchor" href="#container"&gt;#&lt;/a&gt;&lt;/h1&gt;
+&lt;p&gt;A &lt;strong&gt;Container&lt;/strong&gt; represents an application or a data store. It is something that needs to be running in order for the overall software system to work.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Note&lt;/strong&gt;: In C4, &amp;ldquo;Container&amp;rdquo; does &lt;em&gt;not&lt;/em&gt; mean a Docker container. It means a deployable unit like:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Server-side web application (e.g., Java Spring, ASP.NET Core)&lt;/li&gt;
+&lt;li&gt;Client-side web application (e.g., React, Angular)&lt;/li&gt;
+&lt;li&gt;Mobile app&lt;/li&gt;
+&lt;li&gt;Database schema&lt;/li&gt;
+&lt;li&gt;File system&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id="syntax"&gt;Syntax&lt;a class="anchor" href="#syntax"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;container ID &amp;#34;Label/Name&amp;#34; {
+ technology &amp;#34;Technology Stack&amp;#34;
+ tags [&amp;#34;tag1&amp;#34;, &amp;#34;tag2&amp;#34;]
+ // ... contains components
+}&lt;/code&gt;&lt;/pre&gt;&lt;h2 id="example"&gt;Example&lt;a class="anchor" href="#example"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;container WebApp &amp;#34;Web Application&amp;#34; {
+ technology &amp;#34;Java and Spring MVC&amp;#34;
+ tags [&amp;#34;web&amp;#34;, &amp;#34;frontend&amp;#34;]
+}&lt;/code&gt;&lt;/pre&gt;</description></item><item><title>Component</title><link>http://localhost:1313/sruja/concepts/component/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>http://localhost:1313/sruja/concepts/component/</guid><description>&lt;h1 id="component"&gt;Component&lt;a class="anchor" href="#component"&gt;#&lt;/a&gt;&lt;/h1&gt;
+&lt;p&gt;A &lt;strong&gt;Component&lt;/strong&gt; is a grouping of related functionality encapsulated behind a well-defined interface. Components reside inside Containers.&lt;/p&gt;
+&lt;h2 id="syntax"&gt;Syntax&lt;a class="anchor" href="#syntax"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;component ID &amp;#34;Label/Name&amp;#34; {
+ technology &amp;#34;Technology&amp;#34;
+ description &amp;#34;Description&amp;#34;
+}&lt;/code&gt;&lt;/pre&gt;&lt;h2 id="example"&gt;Example&lt;a class="anchor" href="#example"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;component AuthController &amp;#34;Authentication Controller&amp;#34; {
+ technology &amp;#34;Spring MVC Rest Controller&amp;#34;
+ description &amp;#34;Handles user login and registration.&amp;#34;
+}&lt;/code&gt;&lt;/pre&gt;</description></item><item><title>Relations</title><link>http://localhost:1313/sruja/concepts/relations/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>http://localhost:1313/sruja/concepts/relations/</guid><description>&lt;h1 id="relations"&gt;Relations&lt;a class="anchor" href="#relations"&gt;#&lt;/a&gt;&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;Relations&lt;/strong&gt; describe how elements interact with each other. They are the lines connecting the boxes in your diagram.&lt;/p&gt;
+&lt;h2 id="syntax"&gt;Syntax&lt;a class="anchor" href="#syntax"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;Source -&amp;gt; Destination &amp;#34;Label&amp;#34;&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;Or with a technology/protocol:&lt;/p&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;Source -&amp;gt; Destination &amp;#34;Label&amp;#34; {
+ technology &amp;#34;HTTPS/JSON&amp;#34;
+}&lt;/code&gt;&lt;/pre&gt;&lt;h2 id="example"&gt;Example&lt;a class="anchor" href="#example"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;User -&amp;gt; WebApp &amp;#34;Visits&amp;#34;
+WebApp -&amp;gt; DB &amp;#34;Reads Data&amp;#34;&lt;/code&gt;&lt;/pre&gt;</description></item><item><title>Person</title><link>http://localhost:1313/sruja/concepts/person/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>http://localhost:1313/sruja/concepts/person/</guid><description>&lt;h1 id="person"&gt;Person&lt;a class="anchor" href="#person"&gt;#&lt;/a&gt;&lt;/h1&gt;
+&lt;p&gt;A &lt;strong&gt;Person&lt;/strong&gt; represents a human user of your software system (e.g., &amp;ldquo;Customer&amp;rdquo;, &amp;ldquo;Admin&amp;rdquo;, &amp;ldquo;Employee&amp;rdquo;).&lt;/p&gt;
+&lt;h2 id="syntax"&gt;Syntax&lt;a class="anchor" href="#syntax"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;person ID &amp;#34;Label/Name&amp;#34; {
+ description &amp;#34;Optional description&amp;#34;
+ tags [&amp;#34;tag1&amp;#34;, &amp;#34;tag2&amp;#34;]
+}&lt;/code&gt;&lt;/pre&gt;&lt;h2 id="example"&gt;Example&lt;a class="anchor" href="#example"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;person Customer &amp;#34;Bank Customer&amp;#34; {
+ description &amp;#34;A customer of the bank with a personal bank account.&amp;#34;
+}&lt;/code&gt;&lt;/pre&gt;</description></item><item><title>DataStore</title><link>http://localhost:1313/sruja/concepts/datastore/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>http://localhost:1313/sruja/concepts/datastore/</guid><description>&lt;h1 id="datastore"&gt;DataStore&lt;a class="anchor" href="#datastore"&gt;#&lt;/a&gt;&lt;/h1&gt;
+&lt;p&gt;A &lt;strong&gt;DataStore&lt;/strong&gt; represents a database, file system, or any other system that stores data. It is a specialized type of Container.&lt;/p&gt;
+&lt;h2 id="syntax"&gt;Syntax&lt;a class="anchor" href="#syntax"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;datastore ID &amp;#34;Label/Name&amp;#34; {
+ technology &amp;#34;Technology&amp;#34;
+ description &amp;#34;Description&amp;#34;
+ tags [&amp;#34;tag1&amp;#34;, &amp;#34;tag2&amp;#34;]
+}&lt;/code&gt;&lt;/pre&gt;&lt;h2 id="example"&gt;Example&lt;a class="anchor" href="#example"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;datastore MainDB &amp;#34;Main Database&amp;#34; {
+ technology &amp;#34;PostgreSQL&amp;#34;
+ description &amp;#34;Stores all user and transaction data.&amp;#34;
+}&lt;/code&gt;&lt;/pre&gt;</description></item><item><title>Queue</title><link>http://localhost:1313/sruja/concepts/queue/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>http://localhost:1313/sruja/concepts/queue/</guid><description>&lt;h1 id="queue"&gt;Queue&lt;a class="anchor" href="#queue"&gt;#&lt;/a&gt;&lt;/h1&gt;
+&lt;p&gt;A &lt;strong&gt;Queue&lt;/strong&gt; represents a message queue, topic, or event stream. It is a specialized type of Container used for asynchronous communication.&lt;/p&gt;
+&lt;h2 id="syntax"&gt;Syntax&lt;a class="anchor" href="#syntax"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;queue ID &amp;#34;Label/Name&amp;#34; {
+ technology &amp;#34;Technology&amp;#34;
+ description &amp;#34;Description&amp;#34;
+ tags [&amp;#34;tag1&amp;#34;, &amp;#34;tag2&amp;#34;]
+}&lt;/code&gt;&lt;/pre&gt;&lt;h2 id="example"&gt;Example&lt;a class="anchor" href="#example"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;queue Events &amp;#34;Event Bus&amp;#34; {
+ technology &amp;#34;Kafka&amp;#34;
+ description &amp;#34;Handles domain events.&amp;#34;
+}&lt;/code&gt;&lt;/pre&gt;</description></item><item><title>Deployment</title><link>http://localhost:1313/sruja/concepts/deployment/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>http://localhost:1313/sruja/concepts/deployment/</guid><description>&lt;h1 id="deployment"&gt;Deployment&lt;a class="anchor" href="#deployment"&gt;#&lt;/a&gt;&lt;/h1&gt;
+&lt;p&gt;The &lt;strong&gt;Deployment&lt;/strong&gt; view allows you to map your software containers to infrastructure. This corresponds to the C4 Deployment Diagram.&lt;/p&gt;
+&lt;h2 id="deployment-node"&gt;Deployment Node&lt;a class="anchor" href="#deployment-node"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;p&gt;A &lt;strong&gt;Deployment Node&lt;/strong&gt; is something like physical hardware, a virtual machine, a Docker container, a Kubernetes pod, etc. Nodes can be nested.&lt;/p&gt;
+&lt;h3 id="syntax"&gt;Syntax&lt;a class="anchor" href="#syntax"&gt;#&lt;/a&gt;&lt;/h3&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;deployment &amp;#34;Environment&amp;#34; {
+ node &amp;#34;Region&amp;#34; {
+ node &amp;#34;Server&amp;#34; {
+ // ...
+ }
+ }
+}&lt;/code&gt;&lt;/pre&gt;&lt;h2 id="infrastructure-node"&gt;Infrastructure Node&lt;a class="anchor" href="#infrastructure-node"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;p&gt;An &lt;strong&gt;Infrastructure Node&lt;/strong&gt; represents infrastructure software that isn&amp;rsquo;t one of your containers (e.g., DNS, Load Balancer, External Database Service).&lt;/p&gt;</description></item><item><title>Dynamic Views</title><link>http://localhost:1313/sruja/concepts/dynamic-view/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>http://localhost:1313/sruja/concepts/dynamic-view/</guid><description>&lt;h1 id="dynamic-views"&gt;Dynamic Views&lt;a class="anchor" href="#dynamic-views"&gt;#&lt;/a&gt;&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;Dynamic Views&lt;/strong&gt; describe how elements (Containers, Components) interact at runtime to implement a specific user story or feature. This corresponds to the C4 Dynamic Diagram.&lt;/p&gt;
+&lt;h2 id="syntax"&gt;Syntax&lt;a class="anchor" href="#syntax"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;dynamic &amp;#34;View Title&amp;#34; {
+ description &amp;#34;Optional description&amp;#34;
+ 
+ Source -&amp;gt; Destination &amp;#34;Description of interaction&amp;#34;
+ // or
+ Source -&amp;gt; Destination &amp;#34;Description&amp;#34; {
+ order &amp;#34;1&amp;#34; // Explicit ordering
+ }
+}&lt;/code&gt;&lt;/pre&gt;&lt;h2 id="example"&gt;Example&lt;a class="anchor" href="#example"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;dynamic &amp;#34;Login Flow&amp;#34; {
+ User -&amp;gt; WebApp &amp;#34;Submits credentials&amp;#34;
+ WebApp -&amp;gt; AuthComponent &amp;#34;Validates credentials&amp;#34;
+ AuthComponent -&amp;gt; DB &amp;#34;Checks user record&amp;#34;
+ DB -&amp;gt; AuthComponent &amp;#34;Returns user data&amp;#34;
+ AuthComponent -&amp;gt; WebApp &amp;#34;Returns token&amp;#34;
+ WebApp -&amp;gt; User &amp;#34;Redirects to dashboard&amp;#34;
+}&lt;/code&gt;&lt;/pre&gt;</description></item><item><title>Metadata &amp; Tags</title><link>http://localhost:1313/sruja/concepts/metadata-and-tags/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>http://localhost:1313/sruja/concepts/metadata-and-tags/</guid><description>&lt;h1 id="metadata--tags"&gt;Metadata &amp;amp; Tags&lt;a class="anchor" href="#metadata--tags"&gt;#&lt;/a&gt;&lt;/h1&gt;
+&lt;p&gt;Sruja allows you to attach additional information to your elements using Metadata and Tags.&lt;/p&gt;
+&lt;h2 id="tags"&gt;Tags&lt;a class="anchor" href="#tags"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;p&gt;Tags are simple string labels that can be used for filtering, styling, or categorization.&lt;/p&gt;
+&lt;h3 id="syntax"&gt;Syntax&lt;a class="anchor" href="#syntax"&gt;#&lt;/a&gt;&lt;/h3&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;tags [&amp;#34;tag1&amp;#34;, &amp;#34;tag2&amp;#34;]&lt;/code&gt;&lt;/pre&gt;&lt;h2 id="metadata"&gt;Metadata&lt;a class="anchor" href="#metadata"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;p&gt;Metadata allows you to attach key-value pairs to elements. This is useful for storing information like team ownership, cost centers, links to other docs, etc.&lt;/p&gt;
+&lt;h3 id="syntax-1"&gt;Syntax&lt;a class="anchor" href="#syntax-1"&gt;#&lt;/a&gt;&lt;/h3&gt;
+&lt;pre tabindex="0"&gt;&lt;code class="language-sruja" data-lang="sruja"&gt;metadata {
+ &amp;#34;Owner&amp;#34; &amp;#34;Team A&amp;#34;
+ &amp;#34;CostCenter&amp;#34; &amp;#34;1234&amp;#34;
+ &amp;#34;Repo&amp;#34; &amp;#34;github.com/org/repo&amp;#34;
+}&lt;/code&gt;&lt;/pre&gt;&lt;h2 id="technology"&gt;Technology&lt;a class="anchor" href="#technology"&gt;#&lt;/a&gt;&lt;/h2&gt;
+&lt;p&gt;Most elements (Container, Component, etc.) support a &lt;code&gt;technology&lt;/code&gt; field to specify the tech stack.&lt;/p&gt;</description></item></channel></rss>
