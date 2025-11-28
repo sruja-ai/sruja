@@ -123,7 +123,7 @@ func TestFindRelatedADRs(t *testing.T) {
 			ADRs: []*language.ADR{
 				{
 					ID:    "ADR001",
-					Title: "Use API for authentication",
+					Title: stringPtr("Use API for authentication"),
 				},
 			},
 		},
@@ -240,4 +240,3 @@ func TestExtractRelationInfo_WithNeither(t *testing.T) {
 		t.Errorf("Expected empty verb, got '%s'", verb)
 	}
 }
-

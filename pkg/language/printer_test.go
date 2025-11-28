@@ -76,8 +76,8 @@ func TestPrinter_PrintADR(t *testing.T) {
 	arch := &language.Architecture{
 		Name: "Test",
 		ADRs: []*language.ADR{
-			{ID: "ADR001", Title: "Use JWT"},
-			{ID: "ADR002", Title: "Use PostgreSQL"},
+			{ID: "ADR001", Title: stringPtr("Use JWT")},
+			{ID: "ADR002", Title: stringPtr("Use PostgreSQL")},
 		},
 	}
 	prog := &language.Program{Architecture: arch}
@@ -242,7 +242,7 @@ func TestPrinter_PrintADR_InSystem(t *testing.T) {
 					{
 						ADR: &language.ADR{
 							ID:    "ADR001",
-							Title: "Use JWT",
+							Title: stringPtr("Use JWT"),
 						},
 					},
 				},
@@ -326,7 +326,7 @@ func TestPrinter_PrintADR_InComponent(t *testing.T) {
 											{
 												ADR: &language.ADR{
 													ID:    "ADR001",
-													Title: "Component ADR",
+													Title: stringPtr("Component ADR"),
 												},
 											},
 										},

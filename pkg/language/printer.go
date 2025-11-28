@@ -345,7 +345,11 @@ func (p *Printer) printRequirement(sb *strings.Builder, req *Requirement) {
 // printADR prints an ADR node.
 func (p *Printer) printADR(sb *strings.Builder, adr *ADR) {
 	indent := p.indent()
-	fmt.Fprintf(sb, "%sadr %s %q", indent, adr.ID, adr.Title)
+	if adr.Title != nil {
+		fmt.Fprintf(sb, "%sadr %s %q", indent, adr.ID, *adr.Title)
+	} else {
+		fmt.Fprintf(sb, "%sadr %s", indent, adr.ID)
+	}
 
 	if adr.Body != nil {
 		sb.WriteString(" {\n")

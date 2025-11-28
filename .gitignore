@@ -67,7 +67,16 @@ visual.json
 docs/public/
 docs/resources/
 
+# WASM build artifacts (generated during build)
+*.wasm
+*.wasm.gz
+*.wasm.br
+wasm_exec.js
+
 #Ignore cursor AI rules
 .cursor/rules/codacy.mdc
 
 snippet_*
+
+.playwright-mcp/
+.codacy/

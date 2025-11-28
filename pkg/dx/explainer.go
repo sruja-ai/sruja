@@ -291,7 +291,7 @@ func (e *Explainer) findRelatedADRs(elementID string) []*language.ADR {
 
 	for _, adr := range arch.ADRs {
 		// Simple check: if ADR title mentions the element ID
-		if strings.Contains(adr.Title, elementID) {
+		if adr.Title != nil && strings.Contains(*adr.Title, elementID) {
 			related = append(related, adr)
 		}
 	}
@@ -395,7 +395,11 @@ func (exp *ElementExplanation) Format() string {
 	if len(exp.ADRs) > 0 {
 		sb.WriteString("## Related ADRs\n\n")
 		for _, adr := range exp.ADRs {
-			sb.WriteString(fmt.Sprintf("- **%s**: %s\n", adr.ID, adr.Title))
+			title := ""
+			if adr.Title != nil {
+				title = *adr.Title
+			}
+			sb.WriteString(fmt.Sprintf("- **%s**: %s\n", adr.ID, title))
 		}
 		sb.WriteString("\n")
 	}

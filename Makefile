@@ -40,14 +40,15 @@ install:
 # Build WASM
 wasm:
 	@echo "Building WASM..."
-	@GOOS=js GOARCH=wasm go build -ldflags="-s -w" -trimpath -o docs/static/sruja.wasm ./cmd/wasm
-	@cp $$(go env GOROOT)/lib/wasm/wasm_exec.js docs/static/
+	@mkdir -p learn/static
+	@GOOS=js GOARCH=wasm go build -ldflags="-s -w" -trimpath -o learn/static/sruja.wasm ./cmd/wasm
+	@cp $$(go env GOROOT)/lib/wasm/wasm_exec.js learn/static/
 	@if command -v wasm-opt >/dev/null 2>&1; then \
 		echo "Optimizing WASM with wasm-opt..."; \
-		wasm-opt -Oz docs/static/sruja.wasm -o docs/static/sruja.wasm; \
+		wasm-opt -Oz learn/static/sruja.wasm -o learn/static/sruja.wasm; \
 	fi
-	@SIZE=$$(ls -lh docs/static/sruja.wasm | awk '{print $$5}'); \
-	echo "WASM built successfully: docs/static/sruja.wasm ($$SIZE)"; \
+	@SIZE=$$(ls -lh learn/static/sruja.wasm | awk '{print $$5}'); \
+	echo "WASM built successfully: learn/static/sruja.wasm ($$SIZE)"; \
 	echo ""; \
 	echo "Note: Large file size (~23MB) is due to D2 rendering library dependencies."; \
 	echo "With gzip compression: ~7MB (70% reduction)"; \
@@ -62,14 +63,14 @@ test-learn-code:
 # Build WASM for docs website (includes compression)
 build-docs: test-learn-code wasm
 	@echo "Creating compressed versions..."
-	@gzip -k -f docs/static/sruja.wasm 2>/dev/null || true
+	@gzip -k -f learn/static/sruja.wasm 2>/dev/null || true
 	@if command -v brotli >/dev/null 2>&1; then \
-		brotli -k -f docs/static/sruja.wasm 2>/dev/null || true; \
+		brotli -k -f learn/static/sruja.wasm 2>/dev/null || true; \
 	fi
 	@echo "WASM ready for docs website"
 	@echo ""
 	@echo "Files created:"
-	@ls -lh docs/static/sruja.wasm* 2>/dev/null | awk '{print "  " $$9 " (" $$5 ")"}'
+	@ls -lh learn/static/sruja.wasm* 2>/dev/null | awk '{print "  " $$9 " (" $$5 ")"}'
 	@echo ""
 	@echo "Optimization tips:"
 	@echo "  - Configure web server to serve .wasm.gz with Content-Encoding: gzip"

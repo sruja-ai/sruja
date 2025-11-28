@@ -195,7 +195,7 @@ func TestComponent_PostProcess(t *testing.T) {
 			{
 				ADR: &language.ADR{
 					ID:    "ADR001",
-					Title: "Use JWT",
+					Title: stringPtr("Use JWT"),
 				},
 			},
 			{
@@ -353,7 +353,7 @@ func TestContainer_PostProcess(t *testing.T) {
 			{
 				ADR: &language.ADR{
 					ID:    "ADR001",
-					Title: "Use JWT",
+					Title: stringPtr("Use JWT"),
 				},
 			},
 			{
@@ -442,7 +442,7 @@ func TestSystem_PostProcess(t *testing.T) {
 			{
 				ADR: &language.ADR{
 					ID:    "ADR001",
-					Title: "Use JWT",
+					Title: stringPtr("Use JWT"),
 				},
 			},
 			{
@@ -529,7 +529,7 @@ func TestArchitecture_PostProcess(t *testing.T) {
 			{
 				ADR: &language.ADR{
 					ID:    "ADR001",
-					Title: "Use JWT",
+					Title: stringPtr("Use JWT"),
 				},
 			},
 			{
