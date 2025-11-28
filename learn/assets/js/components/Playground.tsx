@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 // import types if needed
 import { initSrujaWasm, compileSrujaCode } from '../utils/wasm';
+import { sanitizeSvg } from '../utils/sanitize';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import {
@@ -159,7 +160,8 @@ export function Playground({ initialCode = '' }: PlaygroundProps) {
       cloneSvg.removeAttribute('height');
       cloneSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
       cloneSvg.classList.add('modal-svg');
-      return cloneSvg.outerHTML;
+      const svgString = cloneSvg.outerHTML;
+      return sanitizeSvg(svgString);
     }
     const img = outputRef.current?.querySelector('img');
     if (img) {
@@ -167,6 +169,12 @@ export function Playground({ initialCode = '' }: PlaygroundProps) {
       cloneImg.classList.add('modal-svg');
       cloneImg.style.maxWidth = '100%';
       cloneImg.style.height = 'auto';
+      // Remove any event handlers
+      Array.from(cloneImg.attributes).forEach(attr => {
+        if (attr.name.startsWith('on')) {
+          cloneImg.removeAttribute(attr.name);
+        }
+      });
       return cloneImg.outerHTML;
     }
     return '';
@@ -237,7 +245,7 @@ export function Playground({ initialCode = '' }: PlaygroundProps) {
                   </Button>
                   <DialogContent className="max-w-[90vw] max-h-[90vh] p-0">
                     <div className="p-6">
-                      <div dangerouslySetInnerHTML={{ __html: getSvgForDialog() }} />
+                      <div dangerouslySetInnerHTML={{ __html: sanitizeSvg(getSvgForDialog()) }} />
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -245,7 +253,7 @@ export function Playground({ initialCode = '' }: PlaygroundProps) {
             )}
             {visualOutput && (
               <div ref={zoomContainerRef} className="zoom-container block w-full h-full">
-                <div dangerouslySetInnerHTML={{ __html: visualOutput }} />
+                <div dangerouslySetInnerHTML={{ __html: sanitizeSvg(visualOutput) }} />
               </div>
             )}
           </div>

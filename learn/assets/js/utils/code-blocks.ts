@@ -1,5 +1,6 @@
 // Code block enhancement utilities
 import { initSrujaWasm, compileSrujaCode } from './wasm';
+import { sanitizeSvg } from './sanitize';
 
 function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'snippet';
@@ -22,17 +23,17 @@ export function enhanceSrujaBlocks(): void {
     const btnCopy = document.createElement('button');
     btnCopy.className = 'sruja-btn sruja-btn-copy';
     btnCopy.title = 'Copy';
-    btnCopy.innerHTML = '📋';
+    btnCopy.textContent = '📋';
 
     const btnEdit = document.createElement('button');
     btnEdit.className = 'sruja-btn sruja-btn-edit';
     btnEdit.title = 'Edit';
-    btnEdit.innerHTML = '✏️';
+    btnEdit.textContent = '✏️';
 
     const btnRun = document.createElement('button');
     btnRun.className = 'sruja-btn sruja-btn-run';
     btnRun.title = 'Run';
-    btnRun.innerHTML = '▶';
+    btnRun.textContent = '▶';
 
     const output = document.createElement('div');
     output.className = 'sruja-run-output';
@@ -88,7 +89,12 @@ export function enhanceSrujaBlocks(): void {
         if (result?.error) {
           output.innerText = result.error;
         } else if (result?.svg) {
-          output.innerHTML = result.svg;
+          const sanitized = sanitizeSvg(result.svg);
+          if (sanitized) {
+            output.innerHTML = sanitized;
+          } else {
+            output.innerText = 'Invalid SVG output';
+          }
         } else {
           output.innerText = 'No output';
         }

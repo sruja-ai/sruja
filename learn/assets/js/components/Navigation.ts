@@ -1,17 +1,19 @@
 // Navigation injection
 import { getSection, globalLinksHTML } from '../utils/navigation';
+import { escapeHtml } from '../utils/sanitize';
 
 export function injectTopNav(): void {
   const section = getSection();
   if (section === 'playground') {
     document.body.classList.add('playground-full');
   }
+  const sectionLabel = section === 'docs' ? 'Sruja Docs' : section === 'courses' ? 'Sruja Courses' : section === 'resources' ? 'Sruja Resources' : 'Sruja';
   const navHTML = `
     <nav class="site-top-nav">
       <div class="nav-container">
         <a href="/" class="nav-brand">
           <img src="/sruja-logo.svg" alt="Sruja Logo" class="nav-logo">
-          <span>${section === 'docs' ? 'Sruja Docs' : section === 'courses' ? 'Sruja Courses' : section === 'resources' ? 'Sruja Resources' : 'Sruja'}</span>
+          <span>${escapeHtml(sectionLabel)}</span>
         </a>
         <div class="nav-search-center"></div>
         <div class="nav-links">
@@ -50,7 +52,7 @@ export function injectTopNav(): void {
   if (navLinks) {
     const anchors = navLinks.querySelectorAll('a[href]');
     if (anchors.length < 3) {
-      navLinks.innerHTML = `${globalLinksHTML(section)}<a href="https://github.com/sruja-ai/sruja" target="_blank" class="nav-github">GitHub</a>`;
+      navLinks.innerHTML = `${globalLinksHTML(section)}<a href="https://github.com/sruja-ai/sruja" target="_blank" rel="noopener noreferrer" class="nav-github">GitHub</a>`;
     }
     const setActive = (sel: string) => {
       const a = navLinks.querySelector(sel);
@@ -141,15 +143,26 @@ export function filterSidebarBySection(): void {
     if (content && !document.querySelector('.book-menu-fallback')) {
       const fb = document.createElement('div');
       fb.className = 'book-menu-fallback';
-      fb.innerHTML = `
-        <ul class="fallback-links">
-          <li><a href="/about/">About</a></li>
-          <li><a href="/docs/">Docs</a></li>
-          <li><a href="/courses/">Courses</a></li>
-          <li><a href="/community/">Community</a></li>
-          <li><a href="/tutorials/">Tutorials</a></li>
-          <li><a href="/blogs/">Blogs</a></li>
-        </ul>`;
+      // Use safe HTML construction instead of innerHTML
+      const ul = document.createElement('ul');
+      ul.className = 'fallback-links';
+      const links = [
+        { href: '/about/', text: 'About' },
+        { href: '/docs/', text: 'Docs' },
+        { href: '/courses/', text: 'Courses' },
+        { href: '/community/', text: 'Community' },
+        { href: '/tutorials/', text: 'Tutorials' },
+        { href: '/blogs/', text: 'Blogs' }
+      ];
+      links.forEach(link => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = link.href;
+        a.textContent = link.text;
+        li.appendChild(a);
+        ul.appendChild(li);
+      });
+      fb.appendChild(ul);
       content.insertBefore(fb, content.firstChild);
       const originalUL = content.querySelector('nav > ul');
       if (originalUL) originalUL.classList.add('fallback-hidden');

@@ -1,5 +1,6 @@
 // Course state management using localStorage
 import type { CourseState } from '../types';
+import { createSafeAnchor } from './sanitize';
 
 const COURSE_KEY = 'sruja_course_state';
 
@@ -46,7 +47,9 @@ function updateProgressUI(): void {
 
   const resumeContainer = document.getElementById('resume-course-container');
   if (resumeContainer && state.lastVisited) {
-    resumeContainer.innerHTML = `<a href="${state.lastVisited}" class="btn btn-primary">Resume Course</a>`;
+    resumeContainer.textContent = ''; // Clear existing content
+    const link = createSafeAnchor(state.lastVisited, 'Resume Course', 'btn btn-primary');
+    resumeContainer.appendChild(link);
   }
 }
 

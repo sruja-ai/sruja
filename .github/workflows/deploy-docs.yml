@@ -34,6 +34,18 @@ jobs:
       - name: Install Dart Sass
         run: sudo snap install dart-sass
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: learn/package-lock.json
+
+      - name: Install npm dependencies
+        run: |
+          cd learn
+          npm ci
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -47,6 +59,12 @@ jobs:
 
       - name: Build WASM for docs
         run: make build-docs
+
+      - name: Initialize Hugo modules
+        run: |
+          cd learn
+          hugo mod get -u
+          hugo mod tidy
 
       - name: Build site
         run: |

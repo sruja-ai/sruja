@@ -1,0 +1,29 @@
+<div id="sruja-app-root"></div>
+
+{{ $sec := .Section }}
+{{ if or (eq $sec "docs") (eq $sec "courses") (eq $sec "tutorials") (eq $sec "blogs") }}
+<nav class="sruja-breadcrumbs" aria-label="Breadcrumb">
+  <ol>
+    {{ range .Ancestors.Reverse }}
+      {{ if not .IsHome }}
+      <li><a href="{{ .RelPermalink }}">{{ .Title }}</a></li>
+      {{ end }}
+    {{ end }}
+    <li class="current" aria-current="page">{{ .Title }}</li>
+  </ol>
+  <style>
+    .sruja-breadcrumbs { margin: 0 0 12px 0; font-size: 0.9em; color: #666; }
+    .sruja-breadcrumbs ol { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .sruja-breadcrumbs li { display: inline-flex; align-items: center; gap: 8px; }
+    .sruja-breadcrumbs li::after { content: '/'; opacity: 0.35; margin: 0 4px; }
+    .sruja-breadcrumbs li:last-child::after { content: ''; }
+    .sruja-breadcrumbs a { color: var(--color-link); text-decoration: none; }
+    .sruja-breadcrumbs a:hover { text-decoration: underline; }
+    .sruja-breadcrumbs .current { color: #999; }
+    @media (prefers-color-scheme: dark) {
+      .sruja-breadcrumbs { color: #aaa; }
+      .sruja-breadcrumbs .current { color: #bbb; }
+    }
+  </style>
+</nav>
+{{ end }}

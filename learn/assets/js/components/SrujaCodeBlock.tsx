@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { Textarea } from './ui/textarea';
 import { initSrujaWasm, compileSrujaCode } from '../utils/wasm';
+import { sanitizeSvg } from '../utils/sanitize';
 
 // Simple icon components with centered layout
 const IconWrap = ({ children }: { children: React.ReactNode }) => (
@@ -264,7 +265,7 @@ export function SrujaCodeBlock({ code: initialCode, filename }: SrujaCodeBlockPr
                 </Button>
                 <DialogContent className="max-w-[90vw] max-h-[90vh] p-0">
                   <div className="p-6">
-                    <div dangerouslySetInnerHTML={{ __html: getOutputForDialog() }} />
+                    <div dangerouslySetInnerHTML={{ __html: sanitizeSvg(getOutputForDialog()) }} />
                   </div>
                 </DialogContent>
               </Dialog>
@@ -279,7 +280,7 @@ export function SrujaCodeBlock({ code: initialCode, filename }: SrujaCodeBlockPr
           {error ? (
             <div className="text-red-600 dark:text-red-400 whitespace-pre-wrap">{error}</div>
           ) : (
-            <div dangerouslySetInnerHTML={{ __html: output || '' }} />
+            <div dangerouslySetInnerHTML={{ __html: output ? sanitizeSvg(output) : '' }} />
           )}
         </div>
       )}
@@ -323,7 +324,9 @@ function getOutputForDialog(): string {
     cloneSvg.removeAttribute('height');
     cloneSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     cloneSvg.classList.add('modal-svg');
-    return cloneSvg.outerHTML;
+    // Remove any event handlers and scripts for safety
+    const svgString = cloneSvg.outerHTML;
+    return sanitizeSvg(svgString);
   }
   const img = container?.querySelector('img');
   if (img) {
@@ -331,6 +334,12 @@ function getOutputForDialog(): string {
     cloneImg.classList.add('modal-svg');
     cloneImg.style.maxWidth = '100%';
     cloneImg.style.height = 'auto';
+    // Remove any event handlers
+    Array.from(cloneImg.attributes).forEach(attr => {
+      if (attr.name.startsWith('on')) {
+        cloneImg.removeAttribute(attr.name);
+      }
+    });
     return cloneImg.outerHTML;
   }
   return '';

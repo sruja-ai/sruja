@@ -45,7 +45,11 @@ export function linksFor(section: Section): NavLink[] {
 
 export function navLinksHTML(section: Section): string {
   const links = linksFor(section);
-  return links.map(l => `<a href="${l.href}">${l.label}</a>`).join('');
+  return links.map(l => {
+    const href = l.href.replace(/"/g, '&quot;');
+    const label = l.label.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<a href="${href}">${label}</a>`;
+  }).join('');
 }
 
 export function globalLinksHTML(section: Section): string {
