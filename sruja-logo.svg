@@ -1,13 +1,13 @@
 <svg width="32" height="32" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="infGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6A00FF"/>
-      <stop offset="100%" stop-color="#00E0FF"/>
+      <stop offset="0%" stop-color="#7C3AED"/> <!-- Violet 600 -->
+      <stop offset="100%" stop-color="#2563EB"/> <!-- Blue 600 -->
     </linearGradient>
 
     <linearGradient id="sGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#FF00AA"/>
-      <stop offset="100%" stop-color="#FF66FF"/>
+      <stop offset="0%" stop-color="#DB2777"/> <!-- Pink 600 -->
+      <stop offset="100%" stop-color="#F472B6"/> <!-- Pink 400 -->
     </linearGradient>
   </defs>
 
@@ -44,5 +44,6 @@
   " fill="none" stroke="url(#sGrad)" stroke-width="18" stroke-linecap="round"/>
 
   <!-- Center white circle (scaled down) -->
+  <circle cx="150" cy="150" r="12" fill="#2563EB"/>
   <circle cx="150" cy="150" r="10" fill="white"/>
 </svg>

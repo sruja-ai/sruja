@@ -1,0 +1,80 @@
+<!doctype html><html lang=en-us dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="YouTube: Transcoding, CDNs, Adaptive Streaming."><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://sruja.ai/courses/system-design-201/module-3-data-intensive/lesson-1/"><meta property="og:title" content="Lesson 1: Design a Video Streaming Service"><meta property="og:description" content="YouTube: Transcoding, CDNs, Adaptive Streaming."><meta property="og:locale" content="en_us"><meta property="og:type" content="article"><meta property="article:section" content="courses"><meta itemprop=name content="Lesson 1: Design a Video Streaming Service"><meta itemprop=description content="YouTube: Transcoding, CDNs, Adaptive Streaming."><meta itemprop=wordCount content="400"><title>Lesson 1: Design a Video Streaming Service |</title><link rel=icon href=/sruja-logo.svg><link rel=manifest href=/manifest.json><link rel=canonical href=https://sruja.ai/courses/system-design-201/module-3-data-intensive/lesson-1/><link rel=stylesheet href=/book.min.a6b55c732b87d220d7aa4de91ff96a682c6cb111fdaf3341c98ad4f216faed49.css integrity="sha256-prVccyuH0iDXqk3pH/lqaCxssRH9rzNByYrU8hb67Uk=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.099dd819348203fad0e754f388e53293e801d8a0c782c085d83c5f33150c7019.js integrity="sha256-CZ3YGTSCA/rQ51TziOUyk+gB2KDHgsCF2DxfMxUMcBk=" crossorigin=anonymous></script><script>(function(){var e,n=location.hostname,s=/^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/.test(n);if(s){window["ga-disable-G-SC9EM616YS"]=!0;return}window.dataLayer=window.dataLayer||[];function t(){dataLayer.push(arguments)}e=document.createElement("script"),e.async=!0,e.src="https://www.googletagmanager.com/gtag/js?id=G-SC9EM616YS",e.onload=function(){t("js",new Date),t("config","G-SC9EM616YS")},document.head.appendChild(e)})()</script><script>(function(){var e,n=location.hostname,s=/^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/.test(n);if(s){window["ga-disable-G-SC9EM616YS"]=!0;return}window.dataLayer=window.dataLayer||[];function t(){dataLayer.push(arguments)}e=document.createElement("script"),e.async=!0,e.src="https://www.googletagmanager.com/gtag/js?id=G-SC9EM616YS",e.onload=function(){t("js",new Date),t("config","G-SC9EM616YS")},document.head.appendChild(e)})()</script>
+  
+  
+  
+    
+      
+        <link rel="stylesheet" href="/css/main.238788db8acec0dca2eabc574a25eb240df987ac1840cdb484ffae596e1e8714.css" integrity="sha256-I4eI24rOwNyi6rxXSiXrJA35h6wYQM20hP&#43;uWW4ehxQ=" crossorigin="anonymous">
+      
+    
+  
+
+
+
+
+<script src=/js/main.js defer></script></head><body dir=ltr class="book-kind-page book-type-courses"><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><span></span></a></h2><div class="book-search hidden"><input id=book-search-input type=text placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><a href=/resources/>Resources</a><ul></ul></li><li><a href=/community/>Community</a><ul></ul></li><li><a href=/playground/>Playground</a><ul></ul></li><li><a href=/about/>About</a><ul></ul></li><li><a href=/blogs/>Blog</a><ul></ul></li><li><a href=/courses/>Courses</a><ul><li><a href=/courses/system-design-101/>System Design 101</a><ul><li><a href=/courses/system-design-101/module-1-fundamentals/>Module 1: Fundamentals</a><ul><li><a href=/courses/system-design-101/module-1-fundamentals/lesson-1/>Lesson 1: What is System Design?</a></li><li><a href=/courses/system-design-101/module-1-fundamentals/lesson-2/>Lesson 2: Scalability & Performance</a></li><li><a href=/courses/system-design-101/module-1-fundamentals/lesson-3/>Lesson 3: Availability & Reliability</a></li><li><a href=/courses/system-design-101/module-1-fundamentals/lesson-4/>Lesson 4: CAP Theorem & Consistency</a></li><li><a href=/courses/system-design-101/module-1-fundamentals/lesson-5/>Lesson 5: User Scenarios</a></li></ul></li><li><a href=/courses/system-design-101/module-2-building-blocks/>Module 2: Building Blocks</a><ul><li><a href=/courses/system-design-101/module-2-building-blocks/lesson-1/>Lesson 1: Load Balancers</a></li><li><a href=/courses/system-design-101/module-2-building-blocks/lesson-2/>Lesson 2: Databases</a></li><li><a href=/courses/system-design-101/module-2-building-blocks/lesson-3/>Lesson 3: Caching</a></li></ul></li><li><a href=/courses/system-design-101/module-3-advanced-modeling/>Module 3: Advanced Modeling</a><ul><li><a href=/courses/system-design-101/module-3-advanced-modeling/lesson-1/>Lesson 1: Microservices Architecture</a></li><li><a href=/courses/system-design-101/module-3-advanced-modeling/lesson-2/>Lesson 2: Event-Driven Architecture</a></li><li><a href=/courses/system-design-101/module-3-advanced-modeling/lesson-3/>Lesson 3: Advanced Scenarios</a></li></ul></li><li><a href=/courses/system-design-101/module-4-production-readiness/>Module 4: Production Readiness</a><ul><li><a href=/courses/system-design-101/module-4-production-readiness/lesson-1/>Lesson 1: Documenting Decisions (ADRs)</a></li><li><a href=/courses/system-design-101/module-4-production-readiness/lesson-2/>Lesson 2: Deployment Architecture</a></li></ul></li></ul></li><li><a href=/courses/system-design-201/>System Design 201: Real-World Architectures</a><ul><li><a href=/courses/system-design-201/module-1-high-throughput/>Module 1: High-Throughput Systems</a><ul><li><a href=/courses/system-design-201/module-1-high-throughput/lesson-1/>Lesson 1: Design a URL Shortener</a></li><li><a href=/courses/system-design-201/module-1-high-throughput/lesson-2/>Lesson 2: Design a Rate Limiter</a></li></ul></li><li><a href=/courses/system-design-201/module-2-real-time/>Module 2: Real-Time Systems</a><ul><li><a href=/courses/system-design-201/module-2-real-time/lesson-1/>Lesson 1: Design a Chat Application</a></li></ul></li><li><a href=/courses/system-design-201/module-3-data-intensive/>Module 3: Data-Intensive Systems</a><ul><li><a href=/courses/system-design-201/module-3-data-intensive/lesson-1/ class=active>Lesson 1: Design a Video Streaming Service</a></li></ul></li><li><a href=/courses/system-design-201/module-4-consistency/>Module 4: Distributed Consistency</a><ul><li><a href=/courses/system-design-201/module-4-consistency/lesson-1/>Lesson 1: Design a Distributed Counter</a></li></ul></li></ul></li></ul></li><li><a href=/docs/>Introduction</a><ul><li><a href=/docs/getting-started/>Getting Started</a></li><li><a href=/docs/concepts/>Core Concepts</a><ul><li><a href=/docs/concepts/architecture/>Architecture</a></li><li><a href=/docs/concepts/system/>System</a></li><li><a href=/docs/concepts/container/>Container</a></li><li><a href=/docs/concepts/component/>Component</a></li><li><a href=/docs/concepts/relations/>Relations</a></li><li><a href=/docs/concepts/person/>Person</a></li><li><a href=/docs/concepts/datastore/>DataStore</a></li><li><a href=/docs/concepts/queue/>Queue</a></li><li><a href=/docs/concepts/deployment/>Deployment</a></li><li><a href=/docs/concepts/adr/>Architecture Decision Records (ADR)</a></li><li><a href=/docs/concepts/metadata-and-tags/>Metadata & Tags</a></li></ul></li><li><a href=/docs/reference/>DSL Reference</a><ul></ul></li><li><a href=/docs/cli/>CLI Guide</a></li><li><a href=/docs/examples/>Examples</a></li></ul></li><li><a href=/tutorials/>Tutorials</a><ul></ul></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class="book-header hidden"><div class="flex align-center justify-between"><label for=menu-control><img src=/icons/menu.svg class=book-icon alt=Menu></label><h3>Lesson 1: Design a Video Streaming Service</h3><label for=toc-control><img src=/icons/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class=hidden><nav id=TableOfContents><ul><li><a href=#requirements>Requirements</a><ul><li><a href=#functional>Functional</a></li><li><a href=#non-functional>Non-Functional</a></li></ul></li><li><a href=#core-design>Core Design</a><ul><li><a href=#1-storage-blob-store>1. Storage (Blob Store)</a></li><li><a href=#2-processing-transcoding>2. Processing (Transcoding)</a></li><li><a href=#3-delivery-cdn>3. Delivery (CDN)</a></li><li><a href=#4-adaptive-bitrate-streaming-hlsdash>4. Adaptive Bitrate Streaming (HLS/DASH)</a></li></ul></li><li><a href=#-sruja-perspective-modeling-infrastructure>🛠️ Sruja Perspective: Modeling Infrastructure</a></li></ul></nav></aside></header><div id=sruja-app-root></div><article class="markdown book-article"><h1 id=lesson-1-design-a-video-streaming-service>Lesson 1: Design a Video Streaming Service<a class=anchor href=#lesson-1-design-a-video-streaming-service>#</a></h1><p><strong>Goal:</strong> Design a video sharing platform like YouTube or Netflix where users can upload and watch videos.</p><h2 id=requirements>Requirements<a class=anchor href=#requirements>#</a></h2><h3 id=functional>Functional<a class=anchor href=#functional>#</a></h3><ul><li>Upload videos.</li><li>Watch videos (streaming).</li><li>Support multiple resolutions (360p, 720p, 1080p).</li></ul><h3 id=non-functional>Non-Functional<a class=anchor href=#non-functional>#</a></h3><ul><li><strong>Reliability:</strong> No buffering.</li><li><strong>Availability:</strong> Videos are always accessible.</li><li><strong>Scalability:</strong> Handle millions of concurrent viewers.</li></ul><h2 id=core-design>Core Design<a class=anchor href=#core-design>#</a></h2><h3 id=1-storage-blob-store>1. Storage (Blob Store)<a class=anchor href=#1-storage-blob-store>#</a></h3><p>Videos are large binary files (BLOBs). Databases are bad for this.</p><ul><li><strong>Object Storage:</strong> AWS S3, Google Cloud Storage.</li><li><strong>Metadata:</strong> Store title, description, and S3 URL in a SQL/NoSQL DB.</li></ul><h3 id=2-processing-transcoding>2. Processing (Transcoding)<a class=anchor href=#2-processing-transcoding>#</a></h3><p>Raw uploads are huge. We need to convert them into different formats and resolutions.</p><ul><li><strong>Transcoding Service:</strong> Breaks video into chunks and encodes them (H.264, VP9).</li></ul><h3 id=3-delivery-cdn>3. Delivery (CDN)<a class=anchor href=#3-delivery-cdn>#</a></h3><p>Serving video from a single server is too slow for global users.</p><ul><li><strong>Content Delivery Network (CDN):</strong> Caches video chunks in edge servers close to the user.</li></ul><h3 id=4-adaptive-bitrate-streaming-hlsdash>4. Adaptive Bitrate Streaming (HLS/DASH)<a class=anchor href=#4-adaptive-bitrate-streaming-hlsdash>#</a></h3><p>The player automatically switches quality based on the user&rsquo;s internet speed.</p><hr><h2 id=-sruja-perspective-modeling-infrastructure>🛠️ Sruja Perspective: Modeling Infrastructure<a class=anchor href=#-sruja-perspective-modeling-infrastructure>#</a></h2><p>We can use Sruja&rsquo;s <code>deployment</code> nodes to visualize the global distribution of content.</p><pre tabindex=0><code class=language-sruja data-lang=sruja>architecture &#34;Video Streaming&#34; {
+    system YouTube &#34;Video Platform&#34; {
+        container WebApp &#34;Web App&#34;
+        container API &#34;API Server&#34;
+        
+        container Transcoder &#34;Transcoding Service&#34; {
+            description &#34;Converts raw video to HLS format&#34;
+            scale { min 50 }
+        }
+        
+        datastore S3 &#34;Blob Storage&#34; {
+            description &#34;Stores raw and processed video files&#34;
+        }
+        
+        datastore MetadataDB &#34;Metadata DB&#34;
+
+        WebApp -&gt; API &#34;HTTPS&#34;
+        API -&gt; MetadataDB &#34;Reads/Writes&#34;
+        API -&gt; S3 &#34;Uploads&#34;
+        API -&gt; Transcoder &#34;Triggers&#34;
+        Transcoder -&gt; S3 &#34;Reads/Writes&#34;
+        Transcoder -&gt; MetadataDB &#34;Updates status&#34;
+    }
+
+    // Deployment View
+    deployment GlobalInfra &#34;Global Infrastructure&#34; {
+        node OriginDC &#34;Origin Data Center&#34; {
+            containerInstance WebApp
+            containerInstance API
+            containerInstance Transcoder
+            containerInstance S3
+        }
+        
+        node CDN &#34;CDN (Edge Locations)&#34; &#34;Cloudflare / Akamai&#34; {
+            // Represents cached content
+            node USEast &#34;US-East Edge&#34;
+            node Europe &#34;Europe Edge&#34;
+            node Asia &#34;Asia Edge&#34;
+        }
+    }
+
+    person User &#34;Viewer&#34;
+
+    // Streaming Flow
+    scenario WatchVideo &#34;User watches a video&#34; {
+        User -&gt; WebApp &#34;Get Video Page&#34;
+        WebApp -&gt; API &#34;Get Metadata (Title, URL)&#34;
+        API -&gt; MetadataDB &#34;Query&#34;
+        API -&gt; User &#34;Return Video Manifest URL&#34;
+        User -&gt; CDN &#34;Request Video Chunk (1080p)&#34;
+        CDN -&gt; User &#34;Stream Chunk&#34;
+    }
+
+    // Upload Flow
+    scenario UploadVideo &#34;Creator uploads a video&#34; {
+        User -&gt; API &#34;Upload Raw Video&#34;
+        API -&gt; S3 &#34;Store Raw Video&#34;
+        API -&gt; Transcoder &#34;Trigger Transcoding Job&#34;
+        Transcoder -&gt; S3 &#34;Read Raw / Write HLS&#34;
+        Transcoder -&gt; MetadataDB &#34;Update Video Status&#34;
+    }
+}</code></pre></article><footer class=book-footer><div class="flex flex-wrap justify-between"><div></div><div></div></div><div class="flex flex-wrap justify-between"><span><a href=/courses/system-design-201/module-3-data-intensive/ class="flex align-center"><img src=/icons/backward.svg class=book-icon alt=Backward>
+<span>Module 3: Data-Intensive Systems</span>
+</a></span><span><a href=/courses/system-design-201/module-4-consistency/ class="flex align-center"><span>Module 4: Distributed Consistency</span>
+<img src=/icons/forward.svg class=book-icon alt=Forward></a></span></div><div class=book-comments></div><script>(function(){document.querySelectorAll("pre:has(code)").forEach(e=>{e.addEventListener("click",e.focus),e.addEventListener("copy",function(t){if(t.preventDefault(),navigator.clipboard){const t=window.getSelection().toString()||e.textContent;navigator.clipboard.writeText(t)}})})})()</script></footer><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#requirements>Requirements</a><ul><li><a href=#functional>Functional</a></li><li><a href=#non-functional>Non-Functional</a></li></ul></li><li><a href=#core-design>Core Design</a><ul><li><a href=#1-storage-blob-store>1. Storage (Blob Store)</a></li><li><a href=#2-processing-transcoding>2. Processing (Transcoding)</a></li><li><a href=#3-delivery-cdn>3. Delivery (CDN)</a></li><li><a href=#4-adaptive-bitrate-streaming-hlsdash>4. Adaptive Bitrate Streaming (HLS/DASH)</a></li></ul></li><li><a href=#-sruja-perspective-modeling-infrastructure>🛠️ Sruja Perspective: Modeling Infrastructure</a></li></ul></nav></div></aside></main></body></html>
