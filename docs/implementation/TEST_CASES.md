@@ -396,8 +396,8 @@ change "001-add-api" {
   status "approved"
   
   metadata {
-    owner "alice@example.com"
-    stakeholders ["bob@example.com"]
+    owner: "alice@example.com"
+    stakeholders: ["bob@example.com"]
   }
   
   add {
@@ -439,8 +439,8 @@ change "002-modify-webapp" {
   status "approved"
   
   metadata {
-    owner "charlie@example.com"
-    stakeholders ["alice@example.com"]
+    owner: "charlie@example.com"
+    stakeholders: ["alice@example.com"]
   }
   
   modify {
@@ -471,8 +471,8 @@ change "003-remove-api" {
   status "approved"
   
   metadata {
-    owner "dave@example.com"
-    stakeholders []
+    owner: "dave@example.com"
+    stakeholders: []
   }
   
   remove {
@@ -528,8 +528,8 @@ change "001-add-analytics" {
   status "approved"
   
   metadata {
-    owner "analytics-team@example.com"
-    stakeholders ["platform-team@example.com", "product-team@example.com"]
+    owner: "analytics-team@example.com"
+    stakeholders: ["platform-team@example.com", "product-team@example.com"]
   }
   
   add {
@@ -565,8 +565,8 @@ change "002-add-payment" {
   status "approved"
   
   metadata {
-    owner "payment-team@example.com"
-    stakeholders ["platform-team@example.com", "security-team@example.com"]
+    owner: "payment-team@example.com"
+    stakeholders: ["platform-team@example.com", "security-team@example.com"]
   }
   
   add {
@@ -607,8 +607,8 @@ change "003-enhance-api" {
   status "approved"
   
   metadata {
-    owner "api-team@example.com"
-    stakeholders ["platform-team@example.com"]
+    owner: "api-team@example.com"
+    stakeholders: ["platform-team@example.com"]
   }
   
   modify {
@@ -668,8 +668,8 @@ change "001-add-integration" {
   status "approved"
   
   metadata {
-    owner "integration-team@example.com"
-    stakeholders ["shop-team@example.com", "inventory-team@example.com", "shipping-team@example.com"]
+    owner: "integration-team@example.com"
+    stakeholders: ["shop-team@example.com", "inventory-team@example.com", "shipping-team@example.com"]
   }
   
   add {
@@ -716,8 +716,8 @@ change "004-add-cache" {
   status "pending"  // Not ready to apply
   
   metadata {
-    owner "cache-team@example.com"
-    stakeholders []
+    owner: "cache-team@example.com"
+    stakeholders: []
   }
   
   add {
@@ -744,8 +744,8 @@ change "005-add-search" {
   status "in-progress"  // Not ready to apply
   
   metadata {
-    owner "search-team@example.com"
-    stakeholders ["product-team@example.com"]
+    owner: "search-team@example.com"
+    stakeholders: ["product-team@example.com"]
   }
   
   add {
@@ -784,8 +784,8 @@ change "006-microservices" {
   status "approved"
   
   metadata {
-    owner "arch-team@example.com"
-    stakeholders []
+    owner: "arch-team@example.com"
+    stakeholders: []
   }
   
   add {
@@ -815,8 +815,8 @@ change "007-add-auth" {
   status "approved"
   
   metadata {
-    owner "auth-team@example.com"
-    stakeholders []
+    owner: "auth-team@example.com"
+    stakeholders: []
   }
   
   add {
@@ -837,8 +837,8 @@ change "008-add-security" {
   status "approved"
   
   metadata {
-    owner "security-team@example.com"
-    stakeholders []
+    owner: "security-team@example.com"
+    stakeholders: []
   }
   
   add {
@@ -1067,8 +1067,8 @@ change "016-metadata" {
   status "approved"
   
   metadata {
-    owner "team@example.com"
-    stakeholders ["stakeholder1@example.com", "stakeholder2@example.com"]
+    owner: "team@example.com"
+    stakeholders: ["stakeholder1@example.com", "stakeholder2@example.com"]
   }
   
   add {}
