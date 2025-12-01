@@ -476,4 +476,6 @@ sruja rollback <version>
 * [ ] Round-trip: change → snapshot → change works
 * [ ] Error handling follows [Error Reporting Strategy](../ERROR_REPORTING_STRATEGY.md)
 * [ ] Validation errors include clear messages and suggestions
+* [ ] **Manual testing**: Test change workflow end-to-end with real scenarios
+* [ ] **MCP-based testing**: Verify change semantics are preserved correctly
 
