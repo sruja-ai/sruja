@@ -84,8 +84,8 @@ change "003-add-analytics" {
   status "in-progress"   // Can be in-progress while other teams work
   
   metadata {
-    owner "alice@example.com"  // Change owner
-    stakeholders ["Analytics Team", "bob@example.com"]  // Stakeholders
+    owner: "alice@example.com"  // Change owner
+    stakeholders: ["Analytics Team", "bob@example.com"]  // Stakeholders
   }
   
   add {

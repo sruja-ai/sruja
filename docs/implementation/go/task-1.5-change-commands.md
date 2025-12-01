@@ -33,8 +33,8 @@ change "003-add-analytics" {
   status "pending"  // pending, in-progress, approved, deferred
   
   metadata {
-    owner "alice@example.com"  // Change owner (single person/team)
-    stakeholders ["bob@example.com", "charlie@example.com", "Platform Team"]  // Stakeholders (list)
+    owner: "alice@example.com"  // Change owner (single person/team)
+    stakeholders: ["bob@example.com", "charlie@example.com", "Platform Team"]  // Stakeholders (list)
   }
   
   add {

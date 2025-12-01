@@ -58,8 +58,8 @@ change "001-add-analytics" {
   adr "ADR-001"
   
   metadata {
-    owner "alice@example.com"
-    stakeholders ["bob@example.com", "charlie@example.com", "Platform Team"]
+    owner: "alice@example.com"
+    stakeholders: ["bob@example.com", "charlie@example.com", "Platform Team"]
   }
   
   add {
