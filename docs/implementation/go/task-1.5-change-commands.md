@@ -1,4 +1,8 @@
-# Task 1.5: Change Commands and Snapshot Management
+# Task 1.5: Change Commands
+
+**Note**: Metadata syntax uses no colon (consistent with constraints/conventions):
+- `owner "value"` (not `owner: "value"`)
+- See `PROPOSED_METADATA_SYNTAX_CHANGE.md` for details and Snapshot Management
 
 **Priority**: 🟡 High (Enables change tracking)
 **Technology**: Go
@@ -33,8 +37,8 @@ change "003-add-analytics" {
   status "pending"  // pending, in-progress, approved, deferred
   
   metadata {
-    owner: "alice@example.com"  // Change owner (single person/team)
-    stakeholders: ["bob@example.com", "charlie@example.com", "Platform Team"]  // Stakeholders (list)
+    owner "alice@example.com"  // Change owner (single person/team)
+    stakeholders ["bob@example.com", "charlie@example.com", "Platform Team"]  // Stakeholders (list)
   }
   
   add {

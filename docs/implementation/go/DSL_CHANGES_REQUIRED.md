@@ -20,8 +20,8 @@ change "<change-id>" {
   status "<status>"  // pending, in-progress, approved, deferred
   
   metadata {
-    owner: "<owner>"  // Single owner (person/team)
-    stakeholders: ["<stakeholder1>", "<stakeholder2>", ...]  // List of stakeholders
+    owner "<owner>"  // Single owner (person/team)
+    stakeholders ["<stakeholder1>", "<stakeholder2>", ...]  // List of stakeholders
   }
   
   add {
@@ -79,8 +79,8 @@ change "003-add-analytics" {
   status "approved"
   
   metadata {
-    owner: "alice@example.com"
-    stakeholders: ["bob@example.com", "charlie@example.com", "Platform Team"]
+    owner "alice@example.com"
+    stakeholders ["bob@example.com", "charlie@example.com", "Platform Team"]
   }
   
   add {
@@ -108,8 +108,8 @@ change "003-add-analytics" {
 
 ```sruja
 metadata {
-  owner: "<owner>"
-  stakeholders: ["<stakeholder1>", "<stakeholder2>", ...]
+  owner "<owner>"
+  stakeholders ["<stakeholder1>", "<stakeholder2>", ...]
 }
 ```
 
@@ -285,7 +285,7 @@ snapshot "preview-<name>" {
 **Changes**:
 - Add `printChangeBlock()` function
 - Print `change` block with all fields
-- Print `metadata` block with `owner` and `stakeholders`
+- Print `metadata` block with `owner` and `stakeholders` (no colon syntax)
 - Print `add`, `modify`, `remove` blocks
 
 ### 2. Snapshot Block Printer
