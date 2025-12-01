@@ -82,3 +82,8 @@ snippet_*
 
 .playwright-mcp/
 .codacy/
+
+# Internal docs (track only guide.md)
+internal-docs/*
+!internal-docs/guide.md
+!internal-docs/.gitignore

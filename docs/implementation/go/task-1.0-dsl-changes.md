@@ -412,7 +412,9 @@ func ValidateChangeForApply(change *ChangeBlock, adrs []*ADR) error {
 
 ## Blocks
 
+- **Task 1.1** (JSON Exporter) - Needs updated parser/printer for metadata arrays
 - **Task 1.5** (Change Commands) - Cannot implement change commands without parser support
+- **All tasks** that use parser/printer - Foundation for all DSL operations
 
 ## Notes
 

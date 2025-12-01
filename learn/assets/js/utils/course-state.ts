@@ -1,23 +1,22 @@
 // Course state management using localStorage
 import type { CourseState } from '../types';
 import { createSafeAnchor } from './sanitize';
+import { getStorageJSON, setStorageJSON } from './storage';
 
 const COURSE_KEY = 'sruja_course_state';
 
+const DEFAULT_STATE: CourseState = {
+  visited: [],
+  quizResults: {},
+  lastVisited: null
+};
+
 export function getCourseState(): CourseState {
-  const state = localStorage.getItem(COURSE_KEY);
-  if (state) {
-    return JSON.parse(state);
-  }
-  return {
-    visited: [],
-    quizResults: {},
-    lastVisited: null
-  };
+  return getStorageJSON<CourseState>(COURSE_KEY, DEFAULT_STATE) || DEFAULT_STATE;
 }
 
 export function saveCourseState(state: CourseState): void {
-  localStorage.setItem(COURSE_KEY, JSON.stringify(state));
+  setStorageJSON(COURSE_KEY, state);
 }
 
 export function trackPageVisit(): void {

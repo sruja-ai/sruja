@@ -34,7 +34,20 @@ architecture "Payment System" {
     adr ADR001 "Use Stripe for Payments" {
         status "Accepted"
         context "We need a reliable payment processor that supports global currencies."
-        decision "We will use Stripe as our primary payment gateway."
+        
+        // Document alternatives considered
+        option "PayPal" {
+            pros "Easy setup"
+            cons "Higher fees"
+        }
+        
+        option "Stripe" {
+            pros "Developer friendly, good API"
+            cons "Complex verification"
+        }
+
+        decision "Stripe"
+        reason "Better developer experience and lower fees at scale."
         consequences "Vendor lock-in, but faster time to market."
     }
 

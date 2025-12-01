@@ -7,7 +7,7 @@ export function injectTopNav(): void {
   if (section === 'playground') {
     document.body.classList.add('playground-full');
   }
-  const sectionLabel = section === 'docs' ? 'Sruja Docs' : section === 'courses' ? 'Sruja Courses' : section === 'resources' ? 'Sruja Resources' : 'Sruja';
+  const sectionLabel = section === 'docs' ? 'Sruja Docs' : section === 'courses' ? 'Sruja Courses' : section === 'learn' ? 'Sruja Learn' : 'Sruja';
   const navHTML = `
     <nav class="site-top-nav">
       <div class="nav-container">
@@ -43,7 +43,9 @@ export function injectTopNav(): void {
     });
   }
 
-  if (window.srujaWasmInitializing) {
+  // Check namespaced API first, fallback to legacy
+  const isInitializing = window.sruja?.wasmInitializing || window.srujaWasmInitializing;
+  if (isInitializing) {
     const logo = document.querySelector('.nav-logo');
     if (logo) logo.classList.add('spin');
   }
@@ -58,7 +60,7 @@ export function injectTopNav(): void {
       const a = navLinks.querySelector(sel);
       if (a) a.classList.add('active');
     };
-    if (section === 'resources') setActive('a[href="/resources/"]');
+    if (section === 'learn') setActive('a[href="/learn/"]');
     if (section === 'community') setActive('a[href="/community/"]');
     if (section === 'about') setActive('a[href="/about/"]');
     if (section === 'playground') setActive('a[href="/playground/"]');
@@ -106,11 +108,11 @@ export function injectTopNav(): void {
     }
   }
 
-  const resourcesLink = document.querySelector('.nav-item.dropdown > a[href="/resources/"]');
-  if (resourcesLink) {
-    resourcesLink.addEventListener('click', (e) => {
+  const learnLink = document.querySelector('.nav-item.dropdown > a[href="/learn/"]');
+  if (learnLink) {
+    learnLink.addEventListener('click', (e) => {
       e.preventDefault();
-      window.location.href = '/resources/';
+      window.location.href = '/learn/';
     });
   }
 }
@@ -118,32 +120,11 @@ export function injectTopNav(): void {
 export function filterSidebarBySection(): void {
   const section = getSection();
   if (section === 'home') return;
-  const prefixMap: Record<string, string[] | string> = {
-    resources: ['/resources/', '/docs/', '/courses/', '/tutorials/', '/blogs/'],
-    community: '/community/'
-  };
-  const prefixes = Array.isArray(prefixMap[section]) ? prefixMap[section] as string[] : [prefixMap[section] as string];
-  const topItems = document.querySelectorAll('.book-menu nav > ul > li');
-  topItems.forEach(li => {
-    const a = li.querySelector('a[href]');
-    if (!a) return;
-    const href = a.getAttribute('href');
-    if (!href) return;
-    if (!prefixes.some(pre => href.startsWith(pre))) {
-      li.classList.add('hidden');
-    } else {
-      li.classList.remove('hidden');
-    }
-  });
-
-  const visible = Array.from(document.querySelectorAll('.book-menu nav > ul > li'))
-    .filter(li => !li.classList.contains('hidden'));
-  if (visible.length <= 1) {
+  if (section === 'learn') {
     const content = document.querySelector('.book-menu .book-menu-content');
     if (content && !document.querySelector('.book-menu-fallback')) {
       const fb = document.createElement('div');
       fb.className = 'book-menu-fallback';
-      // Use safe HTML construction instead of innerHTML
       const ul = document.createElement('ul');
       ul.className = 'fallback-links';
       const links = [
@@ -166,21 +147,95 @@ export function filterSidebarBySection(): void {
       content.insertBefore(fb, content.firstChild);
       const originalUL = content.querySelector('nav > ul');
       if (originalUL) originalUL.classList.add('fallback-hidden');
-      const activeHref = section === 'resources' ? '/resources/' : `/${section}/`;
+      const activeHref = section === 'learn' ? '/learn/' : `/${section}/`;
       const active = fb.querySelector(`a[href="${activeHref}"]`);
       if (active) active.classList.add('active');
     }
+    return;
+  }
+  // Tutorials section: show only tutorial links
+  if (section === 'tutorials') {
+    const topItems = document.querySelectorAll('.book-menu nav > ul > li');
+    topItems.forEach(li => {
+      const a = li.querySelector('a[href]');
+      const href = a?.getAttribute('href') || '';
+      if (href.startsWith('/tutorials/')) {
+        li.classList.remove('hidden');
+      } else {
+        li.classList.add('hidden');
+      }
+    });
+    return;
+  }
+  // Blogs section: show only blog links
+  if (section === 'blogs') {
+    const topItems = document.querySelectorAll('.book-menu nav > ul > li');
+    topItems.forEach(li => {
+      const a = li.querySelector('a[href]');
+      const href = a?.getAttribute('href') || '';
+      if (href.startsWith('/blogs/')) {
+        li.classList.remove('hidden');
+      } else {
+        li.classList.add('hidden');
+      }
+    });
+    return;
+  }
+  // Docs section: show only docs-related links
+  if (section === 'docs') {
+    const topItems = document.querySelectorAll('.book-menu nav > ul > li');
+    topItems.forEach(li => {
+      const a = li.querySelector('a[href]');
+      const href = a?.getAttribute('href') || '';
+      if (href.startsWith('/docs/')) {
+        li.classList.remove('hidden');
+      } else {
+        li.classList.add('hidden');
+      }
+    });
+    return;
+  }
+  // Courses section: on /courses/ show full; on specific course restrict nav to that course
+  if (section === 'courses') {
+    const path = window.location.pathname;
+    if (path === '/courses/' || path === '/courses/index.html') return;
+    const m = path.match(/^\/courses\/([^\/]+)\//);
+    if (!m) return;
+    const courseBase = `/courses/${m[1]}/`;
+    const topItems = document.querySelectorAll('.book-menu nav > ul > li');
+    topItems.forEach(li => {
+      const withinCourse = !!li.querySelector(`a[href^="${courseBase}"]`);
+      if (withinCourse) {
+        li.classList.remove('hidden');
+      } else {
+        li.classList.add('hidden');
+      }
+    });
   }
 }
 
 export function setupCollapsibleSidebar(): void {
   const isLanding = (p: string) => ['/', '/index.html', '/docs/', '/courses/', '/tutorials/', '/blogs/', '/community/'].includes(p);
   const path = window.location.pathname;
-  const nodes = document.querySelectorAll('.book-menu nav li li');
+  if (path.startsWith('/learn/') || path.startsWith('/docs/') || path.startsWith('/blogs/') || path.startsWith('/tutorials/')) return;
+  const nodes = document.querySelectorAll('.book-menu nav > ul > li, .book-menu nav li li');
+  const isMobile = window.matchMedia('(max-width: 640px)').matches;
   nodes.forEach(li => {
-    const hasChildren = !!li.querySelector(':scope > ul');
-    if (!hasChildren) return;
+    const childList = li.querySelector(':scope > ul');
+    const hasChildren = !!(childList && childList.children && childList.children.length > 0);
+    if (!hasChildren) {
+      li.classList.remove('collapsible', 'expanded');
+      const existingToggle = li.querySelector(':scope > .sruja-collapse-toggle');
+      if (existingToggle) existingToggle.remove();
+      return;
+    }
     li.classList.add('collapsible');
+    if (isMobile) {
+      li.classList.add('expanded');
+      const existingToggle = li.querySelector(':scope > .sruja-collapse-toggle');
+      if (existingToggle) existingToggle.remove();
+      return;
+    }
     li.classList.remove('expanded');
     if (!li.querySelector(':scope > .sruja-collapse-toggle')) {
       const anchor = li.querySelector(':scope > a, :scope > span');

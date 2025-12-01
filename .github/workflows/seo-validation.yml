@@ -1,0 +1,251 @@
+name: SEO Validation
+
+on:
+  pull_request:
+    paths:
+      - 'learn/content/**'
+      - 'learn/layouts/**'
+      - 'learn/hugo.toml'
+      - '.github/workflows/seo-validation.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'learn/content/**'
+      - 'learn/layouts/**'
+      - 'learn/hugo.toml'
+  workflow_dispatch:
+
+jobs:
+  validate-seo:
+    name: Validate SEO
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@75d2e84710de30f6ff7268e08f310b60ef14033f
+        with:
+          hugo-version: '0.152.2'
+          extended: true
+
+      - name: Setup Node.js (for learn app)
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: learn/package-lock.json
+
+      - name: Install learn app dependencies
+        working-directory: learn
+        run: npm ci
+
+      - name: Build WASM for learn
+        run: make build-learn
+
+      - name: Initialize Hugo modules
+        working-directory: learn
+        run: |
+          hugo mod get -u
+          hugo mod tidy
+
+      - name: Build Hugo site
+        working-directory: learn
+        run: hugo --minify
+
+      - name: Check for missing descriptions
+        id: missing-descriptions
+        working-directory: learn
+        run: |
+          echo "=== Checking for pages without descriptions ==="
+          missing=$(find content -name "*.md" -type f | while read file; do
+            if ! grep -q "^description:" "$file" && ! grep -q "^summary:" "$file"; then
+              echo "$file"
+            fi
+          done | wc -l)
+          
+          if [ "$missing" -gt 0 ]; then
+            echo "Found $missing pages without descriptions"
+            echo "missing_count=$missing" >> $GITHUB_OUTPUT
+            find content -name "*.md" -type f | while read file; do
+              if ! grep -q "^description:" "$file" && ! grep -q "^summary:" "$file"; then
+                title=$(grep -m1 "^title:" "$file" 2>/dev/null | sed 's/title: *//' | tr -d '"' || echo "(no title)")
+                echo "  - $file ($title)"
+              fi
+            done
+          else
+            echo "✓ All pages have descriptions"
+            echo "missing_count=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate SEO tags in HTML
+        id: validate-seo-tags
+        working-directory: learn
+        run: |
+          echo "=== Validating SEO tags ==="
+          errors=0
+          
+          # Check for Open Graph tags
+          og_count=$(grep -r "property=\"og:title\"" public/*.html 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$og_count" -eq 0 ]; then
+            echo "❌ No Open Graph tags found!"
+            errors=$((errors + 1))
+          else
+            echo "✓ Found Open Graph tags in $og_count pages"
+          fi
+          
+          # Check for Twitter Card tags
+          twitter_count=$(grep -r "name=\"twitter:card\"" public/*.html 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$twitter_count" -eq 0 ]; then
+            echo "❌ No Twitter Card tags found!"
+            errors=$((errors + 1))
+          else
+            echo "✓ Found Twitter Card tags in $twitter_count pages"
+          fi
+          
+          # Check for canonical URLs
+          canonical_count=$(grep -r 'rel="canonical"' public/*.html 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$canonical_count" -eq 0 ]; then
+            echo "❌ No canonical URLs found!"
+            errors=$((errors + 1))
+          else
+            echo "✓ Found canonical URLs in $canonical_count pages"
+          fi
+          
+          # Check for meta descriptions
+          desc_count=$(grep -r 'name="description"' public/*.html 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$desc_count" -eq 0 ]; then
+            echo "❌ No meta descriptions found!"
+            errors=$((errors + 1))
+          else
+            echo "✓ Found meta descriptions in $desc_count pages"
+          fi
+          
+          echo "seo_errors=$errors" >> $GITHUB_OUTPUT
+
+      - name: Validate structured data
+        id: validate-structured-data
+        working-directory: learn
+        run: |
+          echo "=== Validating Structured Data (JSON-LD) ==="
+          errors=0
+          
+          # Check for JSON-LD scripts
+          jsonld_count=$(grep -r "application/ld+json" public/*.html 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$jsonld_count" -eq 0 ]; then
+            echo "❌ No JSON-LD structured data found!"
+            errors=$((errors + 1))
+          else
+            echo "✓ Found JSON-LD in $jsonld_count pages"
+            
+            # Check for key schemas
+            org_schema=$(grep -r '"@type":\s*"Organization"' public/*.html 2>/dev/null | wc -l | tr -d ' ')
+            if [ "$org_schema" -gt 0 ]; then
+              echo "✓ Organization schema found"
+            fi
+            
+            breadcrumb_schema=$(grep -r '"@type":\s*"BreadcrumbList"' public/*.html 2>/dev/null | wc -l | tr -d ' ')
+            if [ "$breadcrumb_schema" -gt 0 ]; then
+              echo "✓ BreadcrumbList schema found"
+            fi
+          fi
+          
+          # Validate JSON syntax (basic check)
+          echo "Validating JSON-LD syntax..."
+          invalid_json=0
+          grep -r "application/ld+json" public/*.html 2>/dev/null | sed 's/.*<script[^>]*>//;s/<\/script>.*//' | while read json; do
+            if ! echo "$json" | python3 -m json.tool >/dev/null 2>&1; then
+              invalid_json=$((invalid_json + 1))
+            fi
+          done || true
+          
+          if [ "$invalid_json" -gt 0 ]; then
+            echo "❌ Found $invalid_json invalid JSON-LD blocks"
+            errors=$((errors + 1))
+          else
+            echo "✓ All JSON-LD syntax is valid"
+          fi
+          
+          echo "structured_data_errors=$errors" >> $GITHUB_OUTPUT
+
+      - name: Check sitemap
+        id: check-sitemap
+        working-directory: learn
+        run: |
+          echo "=== Checking sitemap ==="
+          errors=0
+          
+          if [ ! -f "public/sitemap.xml" ]; then
+            echo "❌ sitemap.xml not found!"
+            errors=$((errors + 1))
+          else
+            echo "✓ sitemap.xml exists"
+            url_count=$(grep -c "<loc>" public/sitemap.xml 2>/dev/null || echo "0")
+            echo "  - Contains $url_count URLs"
+            
+            if [ "$url_count" -eq 0 ]; then
+              echo "❌ Sitemap is empty!"
+              errors=$((errors + 1))
+            fi
+          fi
+          
+          echo "sitemap_errors=$errors" >> $GITHUB_OUTPUT
+
+      - name: Check robots.txt
+        id: check-robots
+        working-directory: learn
+        run: |
+          echo "=== Checking robots.txt ==="
+          errors=0
+          
+          if [ ! -f "public/robots.txt" ]; then
+            echo "❌ robots.txt not found!"
+            errors=$((errors + 1))
+          else
+            echo "✓ robots.txt exists"
+            if ! grep -q "Sitemap" public/robots.txt; then
+              echo "⚠️  Warning: robots.txt doesn't reference sitemap"
+            else
+              echo "✓ robots.txt references sitemap"
+            fi
+          fi
+          
+          echo "robots_errors=$errors" >> $GITHUB_OUTPUT
+
+      - name: Summary
+        run: |
+          echo "## SEO Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Results:" >> $GITHUB_STEP_SUMMARY
+          echo "- Missing descriptions: ${{ steps.missing-descriptions.outputs.missing_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- SEO tag errors: ${{ steps.validate-seo-tags.outputs.seo_errors }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Structured data errors: ${{ steps.validate-structured-data.outputs.structured_data_errors }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Sitemap errors: ${{ steps.check-sitemap.outputs.sitemap_errors }}" >> $GITHUB_STEP_SUMMARY
+          echo "- robots.txt errors: ${{ steps.check-robots.outputs.robots_errors }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          total_errors=$(( ${{ steps.validate-seo-tags.outputs.seo_errors }} + ${{ steps.validate-structured-data.outputs.structured_data_errors }} + ${{ steps.check-sitemap.outputs.sitemap_errors }} + ${{ steps.check-robots.outputs.robots_errors }} ))
+          
+          if [ "$total_errors" -eq 0 ]; then
+            echo "✅ **All critical SEO checks passed!**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Found $total_errors critical SEO issues**" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ steps.missing-descriptions.outputs.missing_count }}" -gt 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️  **Note**: ${{ steps.missing-descriptions.outputs.missing_count }} pages are missing descriptions. This is not a blocker but should be addressed." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Fail if critical errors
+        if: |
+          steps.validate-seo-tags.outputs.seo_errors != '0' ||
+          steps.validate-structured-data.outputs.structured_data_errors != '0' ||
+          steps.check-sitemap.outputs.sitemap_errors != '0' ||
+          steps.check-robots.outputs.robots_errors != '0'
+        run: |
+          echo "❌ SEO validation failed. Please fix the errors above."
+          exit 1
+

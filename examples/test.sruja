@@ -1,0 +1,14 @@
+architecture "Test" {
+  import "shared.sruja"
+  import "billing.sruja" as Billing
+
+  person Customer "Customer"
+
+  system API "API Service" {
+    container Web "Web"
+    datastore DB "Database"
+  }
+
+  Customer -> API "Uses"
+  // Relations between nested elements not supported in parser currently
+}

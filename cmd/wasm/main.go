@@ -6,11 +6,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"syscall/js"
 
 	"github.com/sruja-ai/sruja/pkg/engine"
 	"github.com/sruja-ai/sruja/pkg/export/d2"
+	"github.com/sruja-ai/sruja/pkg/export/svg"
 	"github.com/sruja-ai/sruja/pkg/language"
 	"oss.terrastruct.com/d2/d2graph"
 	"oss.terrastruct.com/d2/d2layouts/d2dagrelayout"
@@ -42,10 +44,17 @@ func doCompile(args []js.Value) interface{} {
 	}
 	input := args[0].String()
 	filename := "playground.sruja"
+	format := "svg" // Default format (Sruja format for interactive architecture diagrams)
 	if len(args) >= 2 {
 		fn := args[1].String()
 		if fn != "" {
 			filename = fn
+		}
+	}
+	if len(args) >= 3 {
+		format = args[2].String()
+		if format == "" {
+			format = "svg"
 		}
 	}
 
@@ -64,16 +73,39 @@ func doCompile(args []js.Value) interface{} {
 	validator.RegisterRule(&engine.ValidReferenceRule{})
 	validator.RegisterRule(&engine.CycleDetectionRule{})
 	validator.RegisterRule(&engine.OrphanDetectionRule{})
+	validator.RegisterRule(&engine.SimplicityRule{})
 
 	errs := validator.Validate(program)
 	if len(errs) > 0 {
-		msg := ""
+		// Filter out informational cycle messages (cycles are valid in many architectures)
+		var blockingErrors []engine.ValidationError
 		for _, e := range errs {
-			msg += filename + ": " + e.Error() + "\n"
+			// Skip informational cycle detection messages (cycles are valid patterns)
+			if strings.Contains(e.Message, "Cycle detected") && strings.Contains(e.Message, "valid") {
+				continue // Cycles are valid - skip informational messages
+			}
+			blockingErrors = append(blockingErrors, e)
 		}
-		return result(nil, fmt.Errorf("Validation errors:\n%s", msg))
+		if len(blockingErrors) > 0 {
+			msg := ""
+			for _, e := range blockingErrors {
+				msg += filename + ": " + e.Error() + "\n"
+			}
+			return result(nil, fmt.Errorf("Validation errors:\n%s", msg))
+		}
 	}
 
+	// Handle SVG export format
+	if format == "svg" {
+		exporter := svg.NewExporter()
+		svgOutput, err := exporter.Export(program.Architecture)
+		if err != nil {
+			return result(nil, err)
+		}
+		return result(&svgOutput, nil)
+	}
+
+	// Default: D2 export
 	exporter := d2.NewExporter()
 	d2Script, err := exporter.Export(program.Architecture)
 	if err != nil {

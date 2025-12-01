@@ -7,6 +7,11 @@ import (
 	"testing"
 )
 
+const (
+	testCodeSnippet = "code snippet"
+	testLinkText    = "link text"
+)
+
 func TestSupportsColor(t *testing.T) {
 	// Test that SupportsColor returns a boolean (actual result depends on environment)
 	result := SupportsColor()
@@ -109,7 +114,7 @@ func TestListItem(t *testing.T) {
 }
 
 func TestCode(t *testing.T) {
-	text := "code snippet"
+	text := testCodeSnippet
 	result := Code(text)
 	if !strings.Contains(result, text) {
 		t.Error("Code should contain original text")
@@ -117,7 +122,7 @@ func TestCode(t *testing.T) {
 }
 
 func TestLink(t *testing.T) {
-	text := "link text"
+	text := testLinkText
 	result := Link(text)
 	if !strings.Contains(result, text) {
 		t.Error("Link should contain original text")
@@ -238,7 +243,7 @@ func TestSection_WithColor(t *testing.T) {
 }
 
 func TestCode_WithColor(t *testing.T) {
-	text := "code snippet"
+	text := testCodeSnippet
 	result := Code(text)
 	if !strings.Contains(result, text) {
 		t.Error("Code should contain text")
@@ -246,7 +251,7 @@ func TestCode_WithColor(t *testing.T) {
 }
 
 func TestLink_WithColor(t *testing.T) {
-	text := "link text"
+	text := testLinkText
 	result := Link(text)
 	if !strings.Contains(result, text) {
 		t.Error("Link should contain text")
@@ -316,7 +321,7 @@ func TestCode_NoColor(t *testing.T) {
 	}()
 	_ = os.Setenv("NO_COLOR", "1")
 
-	text := "code snippet"
+	text := testCodeSnippet
 	result := Code(text)
 	if result != text {
 		t.Errorf("Code should return original text without color, got '%s'", result)
@@ -330,7 +335,7 @@ func TestLink_NoColor(t *testing.T) {
 	}()
 	_ = os.Setenv("NO_COLOR", "1")
 
-	text := "link text"
+	text := testLinkText
 	result := Link(text)
 	if result != text {
 		t.Errorf("Link should return original text without color, got '%s'", result)

@@ -229,13 +229,100 @@ label[for="menu-control"] {
 }
 
 /* Responsive */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
+    .home-hero {
+        padding: 80px 16px 60px;
+        margin-bottom: 40px;
+    }
+
     .home-hero h1 {
         font-size: 2.5em;
+        margin-bottom: 16px;
+    }
+
+    .home-hero .subtitle {
+        font-size: 1.125em;
+        margin-bottom: 32px;
+        padding: 0 8px;
     }
 
     .buttons {
         flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+        max-width: 300px;
+        margin: 0 auto;
+    }
+
+    .button {
+        width: 100%;
+        padding: 12px 24px;
+    }
+
+    .home-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+        margin-bottom: 60px;
+        padding: 0 16px;
+    }
+
+    .card {
+        padding: 32px 24px;
+    }
+
+    .card .icon {
+        font-size: 3em;
+        margin-bottom: 20px;
+    }
+
+    .home-features {
+        margin: 60px auto;
+        padding: 0 16px;
+    }
+
+    .home-features h2 {
+        font-size: 2em;
+        margin-bottom: 40px;
+    }
+
+    .features-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    .home-hero {
+        padding: 60px 12px 40px;
+    }
+
+    .home-hero h1 {
+        font-size: 2em;
+    }
+
+    .home-hero .subtitle {
+        font-size: 1em;
+    }
+
+    .buttons {
+        max-width: 100%;
+    }
+
+    .home-grid,
+    .home-features {
+        padding: 0 12px;
+    }
+
+    .card {
+        padding: 24px 20px;
+    }
+
+    .card .icon {
+        font-size: 2.5em;
+    }
+
+    .card h3 {
+        font-size: 1.25em;
     }
 }
 

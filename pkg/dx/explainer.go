@@ -306,7 +306,7 @@ func (e *Explainer) findRelatedScenarios(elementID string) []*ScenarioInfo {
 
 	for _, scenario := range arch.Scenarios {
 		for _, step := range scenario.Steps {
-			if step.From == elementID || step.To == elementID {
+			if step.From == elementID || (step.To != nil && *step.To == elementID) {
 				related = append(related, &ScenarioInfo{
 					ID:    scenario.Title, // Use title as ID since scenario ID is optional
 					Label: scenario.Title,
@@ -346,72 +346,88 @@ func (exp *ElementExplanation) Format() string {
 	sb.WriteString(exp.Description)
 	sb.WriteString("\n")
 
-	// Metadata
-	if len(exp.Metadata) > 0 {
-		sb.WriteString("\n## Metadata\n\n")
-		for key, value := range exp.Metadata {
-			sb.WriteString(fmt.Sprintf("- **%s**: %s\n", key, value))
-		}
-		sb.WriteString("\n")
-	}
-
-	// Relations
-	if len(exp.Relations.Incoming) > 0 || len(exp.Relations.Outgoing) > 0 {
-		sb.WriteString("## Relations\n\n")
-		if len(exp.Relations.Incoming) > 0 {
-			sb.WriteString("### Incoming\n\n")
-			for _, rel := range exp.Relations.Incoming {
-				sb.WriteString(fmt.Sprintf("- **%s** → %s", rel.From, exp.ID))
-				if rel.Label != "" {
-					sb.WriteString(fmt.Sprintf(" (%s)", rel.Label))
-				}
-				sb.WriteString("\n")
-			}
-			sb.WriteString("\n")
-		}
-		if len(exp.Relations.Outgoing) > 0 {
-			sb.WriteString("### Outgoing\n\n")
-			for _, rel := range exp.Relations.Outgoing {
-				sb.WriteString(fmt.Sprintf("- %s → **%s**", exp.ID, rel.To))
-				if rel.Label != "" {
-					sb.WriteString(fmt.Sprintf(" (%s)", rel.Label))
-				}
-				sb.WriteString("\n")
-			}
-			sb.WriteString("\n")
-		}
-	}
-
-	// Dependencies
-	if len(exp.Dependencies) > 0 {
-		sb.WriteString("## Dependencies\n\n")
-		for _, dep := range exp.Dependencies {
-			sb.WriteString(fmt.Sprintf("- %s\n", dep))
-		}
-		sb.WriteString("\n")
-	}
-
-	// ADRs
-	if len(exp.ADRs) > 0 {
-		sb.WriteString("## Related ADRs\n\n")
-		for _, adr := range exp.ADRs {
-			title := ""
-			if adr.Title != nil {
-				title = *adr.Title
-			}
-			sb.WriteString(fmt.Sprintf("- **%s**: %s\n", adr.ID, title))
-		}
-		sb.WriteString("\n")
-	}
-
-	// Scenarios
-	if len(exp.Scenarios) > 0 {
-		sb.WriteString("## Related Scenarios\n\n")
-		for _, scenario := range exp.Scenarios {
-			sb.WriteString(fmt.Sprintf("- **%s**: %s\n", scenario.ID, scenario.Label))
-		}
-		sb.WriteString("\n")
-	}
+	exp.formatMetadata(&sb)
+	exp.formatRelations(&sb)
+	exp.formatDependencies(&sb)
+	exp.formatADRs(&sb)
+	exp.formatScenarios(&sb)
 
 	return sb.String()
+}
+
+func (exp *ElementExplanation) formatMetadata(sb *strings.Builder) {
+	if len(exp.Metadata) == 0 {
+		return
+	}
+	sb.WriteString("\n## Metadata\n\n")
+	for key, value := range exp.Metadata {
+		fmt.Fprintf(sb, "- **%s**: %s\n", key, value)
+	}
+	sb.WriteString("\n")
+}
+
+func (exp *ElementExplanation) formatRelations(sb *strings.Builder) {
+	if len(exp.Relations.Incoming) == 0 && len(exp.Relations.Outgoing) == 0 {
+		return
+	}
+	sb.WriteString("## Relations\n\n")
+	if len(exp.Relations.Incoming) > 0 {
+		sb.WriteString("### Incoming\n\n")
+		for _, rel := range exp.Relations.Incoming {
+			fmt.Fprintf(sb, "- **%s** → %s", rel.From, exp.ID)
+			if rel.Label != "" {
+				fmt.Fprintf(sb, " (%s)", rel.Label)
+			}
+			sb.WriteString("\n")
+		}
+		sb.WriteString("\n")
+	}
+	if len(exp.Relations.Outgoing) > 0 {
+		sb.WriteString("### Outgoing\n\n")
+		for _, rel := range exp.Relations.Outgoing {
+			fmt.Fprintf(sb, "- %s → **%s**", exp.ID, rel.To)
+			if rel.Label != "" {
+				fmt.Fprintf(sb, " (%s)", rel.Label)
+			}
+			sb.WriteString("\n")
+		}
+		sb.WriteString("\n")
+	}
+}
+
+func (exp *ElementExplanation) formatDependencies(sb *strings.Builder) {
+	if len(exp.Dependencies) == 0 {
+		return
+	}
+	sb.WriteString("## Dependencies\n\n")
+	for _, dep := range exp.Dependencies {
+		fmt.Fprintf(sb, "- %s\n", dep)
+	}
+	sb.WriteString("\n")
+}
+
+func (exp *ElementExplanation) formatADRs(sb *strings.Builder) {
+	if len(exp.ADRs) == 0 {
+		return
+	}
+	sb.WriteString("## Related ADRs\n\n")
+	for _, adr := range exp.ADRs {
+		title := ""
+		if adr.Title != nil {
+			title = *adr.Title
+		}
+		fmt.Fprintf(sb, "- **%s**: %s\n", adr.ID, title)
+	}
+	sb.WriteString("\n")
+}
+
+func (exp *ElementExplanation) formatScenarios(sb *strings.Builder) {
+	if len(exp.Scenarios) == 0 {
+		return
+	}
+	sb.WriteString("## Related Scenarios\n\n")
+	for _, scenario := range exp.Scenarios {
+		fmt.Fprintf(sb, "- **%s**: %s\n", scenario.ID, scenario.Label)
+	}
+	sb.WriteString("\n")
 }

@@ -1,0 +1,30 @@
+architecture "E-Commerce Platform" {
+    person Customer "Online Shopper"
+    person Admin "System Administrator"
+    
+    system WebApp "Web Application" {
+        container Frontend "React Frontend" {
+            component ShoppingCart "Shopping Cart Component"
+            component ProductCatalog "Product Catalog Component"
+        }
+        
+        container API "REST API" {
+            component OrderService "Order Management"
+            component PaymentService "Payment Processing"
+        }
+        
+        datastore DB "PostgreSQL Database"
+        queue Events "Event Queue"
+    }
+    
+    system PaymentGateway "External Payment Gateway" {
+        external
+    }
+    
+    Customer -> WebApp "Browses products"
+    WebApp -> PaymentGateway "Processes payments"
+    Admin -> WebApp "Manages inventory"
+}
+
+
+

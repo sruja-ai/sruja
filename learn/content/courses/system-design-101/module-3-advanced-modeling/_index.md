@@ -14,5 +14,5 @@ As systems grow, they often evolve from simple monoliths into complex distribute
     *   Decomposing monoliths into independent services.
 2.  [Event-Driven Architecture]({{< relref "lesson-2" >}})
     *   Decoupling services with asynchronous messaging.
-3.  [Scenarios vs User Journeys]({{< relref "lesson-3" >}})
-    *   Runtime views via scenarios vs High-level user stories.
+3.  [Scenarios and Flows]({{< relref "lesson-3" >}})
+    *   Modeling user journeys with scenarios/stories and data flows with flow keyword.

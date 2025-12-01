@@ -4,8 +4,11 @@ import { createRoot } from 'react-dom/client';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { Textarea } from './ui/textarea';
-import { initSrujaWasm, compileSrujaCode } from '../utils/wasm';
+import { compileSrujaCode } from '../utils/wasm';
 import { sanitizeSvg } from '../utils/sanitize';
+import { processCompileOutput } from '../utils/svg-processing';
+import { useWasmReady } from '../hooks/useWasmReady';
+import { useClipboard } from '../hooks/useClipboard';
 
 // Simple icon components with centered layout
 const IconWrap = ({ children }: { children: React.ReactNode }) => (
@@ -28,8 +31,8 @@ export function SrujaCodeBlock({ code: initialCode, filename }: SrujaCodeBlockPr
   const [isEditing, setIsEditing] = useState(false);
   const [output, setOutput] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [wasmReady, setWasmReady] = useState(false);
+  const wasmReady = useWasmReady();
+  const { copied, copy, reset: resetClipboard } = useClipboard();
   const codeRef = useRef<HTMLElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
@@ -59,6 +62,7 @@ export function SrujaCodeBlock({ code: initialCode, filename }: SrujaCodeBlockPr
   useEffect(() => {
     const NAV_HEIGHT = 64;
     const margin = 8;
+    // codacy-ignore: complexity - Sticky toolbar logic (visibility + positioning) requires multiple calculations
     const updateToolbar = () => {
       const wrapper = wrapperRef.current;
       const tb = toolbarRef.current;
@@ -125,25 +129,8 @@ export function SrujaCodeBlock({ code: initialCode, filename }: SrujaCodeBlockPr
     };
   }, [isEditing]);
 
-  useEffect(() => {
-    initSrujaWasm();
-    const checkWasm = setInterval(() => {
-      if (window.srujaWasmReady) {
-        setWasmReady(true);
-        clearInterval(checkWasm);
-      }
-    }, 100);
-    return () => clearInterval(checkWasm);
-  }, []);
-
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1200);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
+    await copy(code);
   };
 
   const handleEdit = () => {
@@ -154,7 +141,7 @@ export function SrujaCodeBlock({ code: initialCode, filename }: SrujaCodeBlockPr
   };
 
   const handleRun = () => {
-    if (!wasmReady || typeof window.compileSruja === 'undefined') {
+    if (!wasmReady) {
       setError('WASM not ready');
       setOutput(null);
       return;
@@ -165,39 +152,21 @@ export function SrujaCodeBlock({ code: initialCode, filename }: SrujaCodeBlockPr
 
     try {
       const result = compileSrujaCode(code, filename);
-      if (result?.error) {
+      
+      if (!result) {
+        setError('Compilation failed');
+        return;
+      }
+
+      if (result.error) {
         setError(result.error);
-      } else if (result?.svg) {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(result.svg, 'image/svg+xml');
-        const svg = doc.querySelector('svg');
-        if (svg) {
-          svg.removeAttribute('width');
-          svg.removeAttribute('height');
-          svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-          svg.setAttribute('style', 'width:100%;height:auto;max-height:100%;display:block');
-          setOutput(svg.outerHTML);
-        } else {
-          setOutput(result.svg);
-        }
-      } else if (result?.html) {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(result.html, 'text/html');
-        const svg = doc.querySelector('svg');
-        if (svg) {
-          svg.removeAttribute('width');
-          svg.removeAttribute('height');
-          svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-          svg.setAttribute('style', 'width:100%;height:auto;max-height:100%;display:block');
-          setOutput(svg.outerHTML);
-        } else {
-          setOutput(result.html);
-        }
-      } else if (result?.image || result?.png || result?.jpg || result?.jpeg) {
-        const src = result.image || result.png || result.jpg || result.jpeg || '';
-        setOutput(src ? `<img src="${src}" alt="Diagram" style="width:100%;height:auto;max-height:100%;display:block"/>` : '');
       } else {
-        setError('No output');
+        const processedOutput = processCompileOutput(result);
+        if (processedOutput) {
+          setOutput(processedOutput);
+        } else {
+          setError('No output');
+        }
       }
     } catch (e) {
       setError('Internal Error: ' + (e instanceof Error ? e.message : String(e)));
@@ -231,6 +200,9 @@ export function SrujaCodeBlock({ code: initialCode, filename }: SrujaCodeBlockPr
         >
           {copied ? <CheckIcon /> : <CopyIcon />}
         </Button>
+        {copied && (
+          <span className="sr-only">Copied to clipboard</span>
+        )}
         <Button
           variant="ghost"
           size="icon-xs"

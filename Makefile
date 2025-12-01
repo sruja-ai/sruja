@@ -1,4 +1,4 @@
-.PHONY: build test test-coverage test-coverage-html clean install lint fmt wasm build-docs setup-hooks
+.PHONY: build test test-coverage test-coverage-html test-coverage-check clean install lint fmt wasm build-learn setup-hooks generate-svgs security-scan lint-security
 
 GOLANGCI_LINT_VERSION = v2.6.2
 GOLANGCI = $(shell go env GOPATH)/bin/golangci-lint
@@ -64,14 +64,14 @@ test-learn-code:
 	@echo "Testing code blocks in documentation..."
 	@go test -v ./tests/... -run TestCourseCodeBlocks
 
-# Build WASM for docs website (includes compression)
-build-docs: generate-examples test-learn-code wasm
+# Build WASM for learn website (includes compression)
+build-learn: generate-examples test-learn-code wasm
 	@echo "Creating compressed versions..."
 	@gzip -k -f learn/static/sruja.wasm 2>/dev/null || true
 	@if command -v brotli >/dev/null 2>&1; then \
 		brotli -k -f learn/static/sruja.wasm 2>/dev/null || true; \
 	fi
-	@echo "WASM ready for docs website"
+	@echo "WASM ready for learn website"
 	@echo ""
 	@echo "Files created:"
 	@ls -lh learn/static/sruja.wasm* 2>/dev/null | awk '{print "  " $$9 " (" $$5 ")"}'
@@ -102,3 +102,65 @@ fmt:
 setup-hooks:
 	@echo "Setting up git hooks..."
 	@./scripts/setup-git-hooks.sh
+
+# Content management commands
+content-course:
+	@go run scripts/content-generator/main.go course $(NAME)
+
+content-module:
+	@go run scripts/content-generator/main.go module $(COURSE) $(NAME)
+
+content-lesson:
+	@go run scripts/content-generator/main.go lesson $(COURSE) $(MODULE) $(NAME)
+
+content-tutorial:
+	@go run scripts/content-generator/main.go tutorial $(NAME)
+
+content-blog:
+	@go run scripts/content-generator/main.go blog $(NAME)
+
+content-doc:
+	@go run scripts/content-generator/main.go doc $(NAME)
+
+content-validate:
+	@echo "Validating content..."
+	@go run scripts/content-validator/main.go
+
+# Check test coverage meets threshold (80%)
+test-coverage-check: test-coverage
+	@echo "Checking coverage threshold..."
+	@COVERAGE=$$(go tool cover -func=coverage.out | tail -1 | awk '{print $$3}' | sed 's/%//'); \
+	THRESHOLD=80; \
+	if [ $$(echo "$$COVERAGE < $$THRESHOLD" | bc) -eq 1 ]; then \
+		echo "❌ Coverage $$COVERAGE% is below threshold $$THRESHOLD%"; \
+		exit 1; \
+	else \
+		echo "✅ Coverage $$COVERAGE% meets threshold $$THRESHOLD%"; \
+	fi
+
+# Run security vulnerability scan
+security-scan:
+	@echo "Running security vulnerability scan..."
+	@command -v govulncheck > /dev/null 2>&1 || { \
+		echo "govulncheck not found. Installing..."; \
+		go install golang.org/x/vuln/cmd/govulncheck@latest; \
+	}
+	@govulncheck ./...
+
+# Run security linter (gosec)
+lint-security:
+	@echo "Running security linter..."
+	@command -v gosec > /dev/null 2>&1 || { \
+		echo "gosec not found. Installing..."; \
+		go install github.com/securego/gosec/v2/cmd/gosec@latest; \
+	}
+	@gosec -quiet ./...
+
+# Run all quality checks
+quality: lint test-coverage-check security-scan
+	@echo "✅ All quality checks passed!"
+
+# Generate SVG files for all example .sruja files
+generate-svgs: build
+	@echo "Generating SVGs for all example files..."
+	@./bin/sruja export-folder examples test-outputs

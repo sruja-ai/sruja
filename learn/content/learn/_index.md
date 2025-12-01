@@ -1,12 +1,15 @@
 ---
-title: Resources
-description: One place to find all Sruja learning and documentation links
+title: Learn
+description: Explore Sruja — courses, docs, tutorials, and blogs.
 weight: 2
+aliases: ["/resources/"]
 ---
 
-# Resources
+# Learn
 
-Browse all learning materials and documentation.
+## Get Started
+
+- [Getting Started](/docs/getting-started/)
 
 ## Documentation
 
@@ -38,3 +41,4 @@ Browse all learning materials and documentation.
 - [Community Home](/community/)
 - [Discussions](https://github.com/sruja-ai/sruja/discussions)
 - [Discord](https://discord.gg/QMCsquJq)
+

@@ -29,6 +29,11 @@ sruja/
 └── examples/             # Example .sruja files
 ```
 
+### Developer Documentation
+
+- Architecture & Code Organization: `docs/ARCHITECTURE.md`
+- Internal Guide: `internal-docs/guide.md`
+
 ## Installation
 
 ### Automated Install (Recommended)

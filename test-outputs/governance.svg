@@ -1,0 +1,602 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    version="1.1"
+    width="100%"
+    height="100%"
+    viewBox="0 0 2400 1600">
+    <!-- Styles -->
+    <style type="text/css">
+        text { font-family: 'Segoe UI', 'Arial', sans-serif; fill: #2c3e50; }
+        .title { font-size: 42px; font-weight: bold; fill: #2c3e50; }
+        .subtitle { font-size: 20px; fill: #7f8c8d; }
+        .section-header { font-size: 26px; font-weight: bold; fill: #34495e; text-decoration: underline; }
+        .doc-text { font-size: 16px; line-height: 1.4; }
+        .doc-list-item { font-size: 15px; line-height: 1.5; }
+        .system-boundary { fill: none; stroke: #95a5a6; stroke-width: 3; stroke-dasharray: 10 5; }
+        .container-boundary { fill: none; stroke: #bdc3c7; stroke-width: 2; stroke-dasharray: 5 3; }
+        .system-box { fill: #3498db; stroke: #2980b9; stroke-width: 4; cursor: pointer; }
+        .container-box { fill: #f1c40f; stroke: #f39c12; stroke-width: 3; cursor: pointer; }
+        .component-box { fill: #9b59b6; stroke: #8e44ad; stroke-width: 2; cursor: pointer; }
+        .person-box { fill: #2ecc71; stroke: #27ae60; stroke-width: 4; cursor: pointer; }
+        .db-box { fill: #e74c3c; stroke: #c0392b; stroke-width: 3; cursor: pointer; }
+        .queue-box { fill: #e67e22; stroke: #d35400; stroke-width: 3; cursor: pointer; }
+        .external-box { fill: #95a5a6; stroke: #7f8c8d; stroke-width: 3; cursor: pointer; }
+        .interactive:hover { opacity: 0.85; transform: scale(1.02); }
+        .selected { stroke-width: 6 !important; opacity: 0.95; filter: drop-shadow(0 0 8px rgba(52, 152, 219, 0.6)); }
+        .button { fill: #ecf0f1; stroke: #bdc3c7; stroke-width: 2; cursor: pointer; rx: 5; }
+        .button:hover { fill: #dfe6e9; stroke: #3498db; stroke-width: 2.5; }
+        .button-active { fill: #3498db; stroke: #2980b9; }
+        .button-text { font-size: 16px; font-weight: bold; text-anchor: middle; alignment-baseline: central; fill: #2c3e50; pointer-events: none; }
+        .button-text-active { fill: #ffffff; }
+        #docPanel { fill: #ffffff; stroke: #bdc3c7; stroke-width: 2; rx: 8; }
+        .filter-button { fill: #ecf0f1; stroke: #bdc3c7; stroke-width: 1.5; cursor: pointer; rx: 3; }
+        .filter-button:hover { fill: #d5dbdb; }
+        .filter-button-active { fill: #3498db; stroke: #2980b9; }
+        .filter-text { font-size: 13px; text-anchor: middle; alignment-baseline: central; fill: #2c3e50; pointer-events: none; }
+        .filter-text-active { fill: #ffffff; }
+    </style>
+
+    <defs>
+        <g id="data-1" style="display:none;">
+            <text x="0" y="0" class="section-header">Architecture Overview</text>
+            <text x="0" y="40" class="subtitle">E-Commerce</text>
+        </g>
+        <g id="data-2" style="display:none;">
+            <text x="0" y="0" class="section-header">System</text>
+            <text x="0" y="40" class="subtitle"></text>
+            <text x="0" y="120" class="section-header">Requirements</text>
+            <text x="0" y="160" class="doc-list-item">- Audit (policy): Keep logs for 1 year</text>
+        </g>
+        <g id="data-3" style="display:none;">
+            <text x="0" y="0" class="section-header">All Requirements</text>
+            <text x="0" y="40" class="subtitle">Functional, Constraint, and Performance Requirements</text>
+            <text x="0" y="80" class="doc-text">Security (policy): Must encrypt data</text>
+            <text x="0" y="110" class="doc-text">Shop.Audit (policy): Keep logs for 1 year</text>
+        </g>
+    </defs>
+
+    <g id="diagramArea">
+        <g id="level1" data-level="1" style="display:block;">
+            <svg viewBox="0 0 319 319" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+<rect x="-101.000000" y="-118.000000" width="319.000000" height="319.000000" rx="0.000000" fill="#FFFFFF" class=" fill-N7" stroke-width="0" /><style type="text/css"><![CDATA[
+.appendix-icon {
+	filter: drop-shadow(0px 0px 32px rgba(31, 36, 58, 0.1));
+}]]></style><style type="text/css"><![CDATA[.shape {
+  shape-rendering: geometricPrecision;
+  stroke-linejoin: round;
+}
+.connection {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.blend {
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+}
+
+		.d2-1602280495 .fill-N1{fill:#0A0F25;}
+		.d2-1602280495 .fill-N2{fill:#676C7E;}
+		.d2-1602280495 .fill-N3{fill:#9499AB;}
+		.d2-1602280495 .fill-N4{fill:#CFD2DD;}
+		.d2-1602280495 .fill-N5{fill:#DEE1EB;}
+		.d2-1602280495 .fill-N6{fill:#EEF1F8;}
+		.d2-1602280495 .fill-N7{fill:#FFFFFF;}
+		.d2-1602280495 .fill-B1{fill:#170034;}
+		.d2-1602280495 .fill-B2{fill:#7639C5;}
+		.d2-1602280495 .fill-B3{fill:#8F70D1;}
+		.d2-1602280495 .fill-B4{fill:#C1A2F3;}
+		.d2-1602280495 .fill-B5{fill:#DACEFB;}
+		.d2-1602280495 .fill-B6{fill:#F2EDFF;}
+		.d2-1602280495 .fill-AA2{fill:#0F66B7;}
+		.d2-1602280495 .fill-AA4{fill:#87BFF3;}
+		.d2-1602280495 .fill-AA5{fill:#BCDDFB;}
+		.d2-1602280495 .fill-AB4{fill:#EA99C6;}
+		.d2-1602280495 .fill-AB5{fill:#FFDAEF;}
+		.d2-1602280495 .stroke-N1{stroke:#0A0F25;}
+		.d2-1602280495 .stroke-N2{stroke:#676C7E;}
+		.d2-1602280495 .stroke-N3{stroke:#9499AB;}
+		.d2-1602280495 .stroke-N4{stroke:#CFD2DD;}
+		.d2-1602280495 .stroke-N5{stroke:#DEE1EB;}
+		.d2-1602280495 .stroke-N6{stroke:#EEF1F8;}
+		.d2-1602280495 .stroke-N7{stroke:#FFFFFF;}
+		.d2-1602280495 .stroke-B1{stroke:#170034;}
+		.d2-1602280495 .stroke-B2{stroke:#7639C5;}
+		.d2-1602280495 .stroke-B3{stroke:#8F70D1;}
+		.d2-1602280495 .stroke-B4{stroke:#C1A2F3;}
+		.d2-1602280495 .stroke-B5{stroke:#DACEFB;}
+		.d2-1602280495 .stroke-B6{stroke:#F2EDFF;}
+		.d2-1602280495 .stroke-AA2{stroke:#0F66B7;}
+		.d2-1602280495 .stroke-AA4{stroke:#87BFF3;}
+		.d2-1602280495 .stroke-AA5{stroke:#BCDDFB;}
+		.d2-1602280495 .stroke-AB4{stroke:#EA99C6;}
+		.d2-1602280495 .stroke-AB5{stroke:#FFDAEF;}
+		.d2-1602280495 .background-color-N1{background-color:#0A0F25;}
+		.d2-1602280495 .background-color-N2{background-color:#676C7E;}
+		.d2-1602280495 .background-color-N3{background-color:#9499AB;}
+		.d2-1602280495 .background-color-N4{background-color:#CFD2DD;}
+		.d2-1602280495 .background-color-N5{background-color:#DEE1EB;}
+		.d2-1602280495 .background-color-N6{background-color:#EEF1F8;}
+		.d2-1602280495 .background-color-N7{background-color:#FFFFFF;}
+		.d2-1602280495 .background-color-B1{background-color:#170034;}
+		.d2-1602280495 .background-color-B2{background-color:#7639C5;}
+		.d2-1602280495 .background-color-B3{background-color:#8F70D1;}
+		.d2-1602280495 .background-color-B4{background-color:#C1A2F3;}
+		.d2-1602280495 .background-color-B5{background-color:#DACEFB;}
+		.d2-1602280495 .background-color-B6{background-color:#F2EDFF;}
+		.d2-1602280495 .background-color-AA2{background-color:#0F66B7;}
+		.d2-1602280495 .background-color-AA4{background-color:#87BFF3;}
+		.d2-1602280495 .background-color-AA5{background-color:#BCDDFB;}
+		.d2-1602280495 .background-color-AB4{background-color:#EA99C6;}
+		.d2-1602280495 .background-color-AB5{background-color:#FFDAEF;}
+		.d2-1602280495 .color-N1{color:#0A0F25;}
+		.d2-1602280495 .color-N2{color:#676C7E;}
+		.d2-1602280495 .color-N3{color:#9499AB;}
+		.d2-1602280495 .color-N4{color:#CFD2DD;}
+		.d2-1602280495 .color-N5{color:#DEE1EB;}
+		.d2-1602280495 .color-N6{color:#EEF1F8;}
+		.d2-1602280495 .color-N7{color:#FFFFFF;}
+		.d2-1602280495 .color-B1{color:#170034;}
+		.d2-1602280495 .color-B2{color:#7639C5;}
+		.d2-1602280495 .color-B3{color:#8F70D1;}
+		.d2-1602280495 .color-B4{color:#C1A2F3;}
+		.d2-1602280495 .color-B5{color:#DACEFB;}
+		.d2-1602280495 .color-B6{color:#F2EDFF;}
+		.d2-1602280495 .color-AA2{color:#0F66B7;}
+		.d2-1602280495 .color-AA4{color:#87BFF3;}
+		.d2-1602280495 .color-AA5{color:#BCDDFB;}
+		.d2-1602280495 .color-AB4{color:#EA99C6;}
+		.d2-1602280495 .color-AB5{color:#FFDAEF;}.appendix text.text{fill:#0A0F25}.md{--color-fg-default:#0A0F25;--color-fg-muted:#676C7E;--color-fg-subtle:#9499AB;--color-canvas-default:#FFFFFF;--color-canvas-subtle:#EEF1F8;--color-border-default:#170034;--color-border-muted:#7639C5;--color-neutral-muted:#EEF1F8;--color-accent-fg:#7639C5;--color-accent-emphasis:#7639C5;--color-attention-subtle:#676C7E;--color-danger-fg:red;}.sketch-overlay-B1{fill:url(#streaks-darker-d2-1602280495);mix-blend-mode:lighten}.sketch-overlay-B2{fill:url(#streaks-dark-d2-1602280495);mix-blend-mode:overlay}.sketch-overlay-B3{fill:url(#streaks-dark-d2-1602280495);mix-blend-mode:overlay}.sketch-overlay-B4{fill:url(#streaks-normal-d2-1602280495);mix-blend-mode:color-burn}.sketch-overlay-B5{fill:url(#streaks-normal-d2-1602280495);mix-blend-mode:color-burn}.sketch-overlay-B6{fill:url(#streaks-bright-d2-1602280495);mix-blend-mode:darken}.sketch-overlay-AA2{fill:url(#streaks-dark-d2-1602280495);mix-blend-mode:overlay}.sketch-overlay-AA4{fill:url(#streaks-normal-d2-1602280495);mix-blend-mode:color-burn}.sketch-overlay-AA5{fill:url(#streaks-normal-d2-1602280495);mix-blend-mode:color-burn}.sketch-overlay-AB4{fill:url(#streaks-normal-d2-1602280495);mix-blend-mode:color-burn}.sketch-overlay-AB5{fill:url(#streaks-bright-d2-1602280495);mix-blend-mode:darken}.sketch-overlay-N1{fill:url(#streaks-darker-d2-1602280495);mix-blend-mode:lighten}.sketch-overlay-N2{fill:url(#streaks-dark-d2-1602280495);mix-blend-mode:overlay}.sketch-overlay-N3{fill:url(#streaks-normal-d2-1602280495);mix-blend-mode:color-burn}.sketch-overlay-N4{fill:url(#streaks-normal-d2-1602280495);mix-blend-mode:color-burn}.sketch-overlay-N5{fill:url(#streaks-bright-d2-1602280495);mix-blend-mode:darken}.sketch-overlay-N6{fill:url(#streaks-bright-d2-1602280495);mix-blend-mode:darken}.sketch-overlay-N7{fill:url(#streaks-bright-d2-1602280495);mix-blend-mode:darken}.light-code{display: block}.dark-code{display: none}]]></style><g class="U2hvcA=="><g class="shape" ><path d="M 0 0 L 50 0 L 50 20 L 100 20 L 100 100 L 0 100 Z" stroke="#170034" fill="#87BFF3" class=" stroke-B1 fill-AA4" style="stroke-width:2;" /></g><title>SRUJA_ID:Shop</title></g><g id="Shop" class="appendix-icon interactive" data-content-id="Shop_data" transform="translate(84 4)" >
+<g clip-path="url(#clip0_3427_35082111-d2-1602280495-KNUG64A)">
+<path d="M16 31.1109C24.3456 31.1109 31.1111 24.3454 31.1111 15.9998C31.1111 7.65415 24.3456 0.888672 16 0.888672C7.65436 0.888672 0.888885 7.65415 0.888885 15.9998C0.888885 24.3454 7.65436 31.1109 16 31.1109Z" fill="white" stroke="#DEE1EB"/>
+<path d="M16 26C21.5228 26 26 21.5228 26 16C26 10.4772 21.5228 6 16 6C10.4772 6 6 10.4772 6 16C6 21.5228 10.4772 26 16 26Z" stroke="#2E3346" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M16 19.998V15.998" stroke="#2E3346" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M16 12H16.0098" stroke="#2E3346" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<clipPath id="clip0_3427_35082111-d2-1602280495-KNUG64A">
+<rect width="32" height="32" fill="white"/>
+</clipPath>
+</defs>
+
+</g><mask id="d2-1602280495" maskUnits="userSpaceOnUse" x="-101" y="-118" width="319" height="319">
+<rect x="-101" y="-118" width="319" height="319" fill="white"></rect>
+
+</mask>            </svg>
+        </g>
+        <g id="view-requirements" data-level="0" data-view-type="requirements" style="display:none;">
+            <svg viewBox="0 0 556 800" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+<rect x="-61.000000" y="-118.000000" width="556.000000" height="800.000000" rx="0.000000" fill="#FFFFFF" class=" fill-N7" stroke-width="0" /><style type="text/css"><![CDATA[
+.d2-2909063352 .text {
+	font-family: "d2-2909063352-font-regular";
+}
+@font-face {
+	font-family: d2-2909063352-font-regular;
+	src: url("data:application/font-woff;base64,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");
+}
+.appendix-icon {
+	filter: drop-shadow(0px 0px 32px rgba(31, 36, 58, 0.1));
+}
+.d2-2909063352 .text-bold {
+	font-family: "d2-2909063352-font-bold";
+}
+@font-face {
+	font-family: d2-2909063352-font-bold;
+	src: url("data:application/font-woff;base64,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");
+}]]></style><style type="text/css"><![CDATA[.shape {
+  shape-rendering: geometricPrecision;
+  stroke-linejoin: round;
+}
+.connection {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.blend {
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+}
+
+		.d2-2909063352 .fill-N1{fill:#0A0F25;}
+		.d2-2909063352 .fill-N2{fill:#676C7E;}
+		.d2-2909063352 .fill-N3{fill:#9499AB;}
+		.d2-2909063352 .fill-N4{fill:#CFD2DD;}
+		.d2-2909063352 .fill-N5{fill:#DEE1EB;}
+		.d2-2909063352 .fill-N6{fill:#EEF1F8;}
+		.d2-2909063352 .fill-N7{fill:#FFFFFF;}
+		.d2-2909063352 .fill-B1{fill:#170034;}
+		.d2-2909063352 .fill-B2{fill:#7639C5;}
+		.d2-2909063352 .fill-B3{fill:#8F70D1;}
+		.d2-2909063352 .fill-B4{fill:#C1A2F3;}
+		.d2-2909063352 .fill-B5{fill:#DACEFB;}
+		.d2-2909063352 .fill-B6{fill:#F2EDFF;}
+		.d2-2909063352 .fill-AA2{fill:#0F66B7;}
+		.d2-2909063352 .fill-AA4{fill:#87BFF3;}
+		.d2-2909063352 .fill-AA5{fill:#BCDDFB;}
+		.d2-2909063352 .fill-AB4{fill:#EA99C6;}
+		.d2-2909063352 .fill-AB5{fill:#FFDAEF;}
+		.d2-2909063352 .stroke-N1{stroke:#0A0F25;}
+		.d2-2909063352 .stroke-N2{stroke:#676C7E;}
+		.d2-2909063352 .stroke-N3{stroke:#9499AB;}
+		.d2-2909063352 .stroke-N4{stroke:#CFD2DD;}
+		.d2-2909063352 .stroke-N5{stroke:#DEE1EB;}
+		.d2-2909063352 .stroke-N6{stroke:#EEF1F8;}
+		.d2-2909063352 .stroke-N7{stroke:#FFFFFF;}
+		.d2-2909063352 .stroke-B1{stroke:#170034;}
+		.d2-2909063352 .stroke-B2{stroke:#7639C5;}
+		.d2-2909063352 .stroke-B3{stroke:#8F70D1;}
+		.d2-2909063352 .stroke-B4{stroke:#C1A2F3;}
+		.d2-2909063352 .stroke-B5{stroke:#DACEFB;}
+		.d2-2909063352 .stroke-B6{stroke:#F2EDFF;}
+		.d2-2909063352 .stroke-AA2{stroke:#0F66B7;}
+		.d2-2909063352 .stroke-AA4{stroke:#87BFF3;}
+		.d2-2909063352 .stroke-AA5{stroke:#BCDDFB;}
+		.d2-2909063352 .stroke-AB4{stroke:#EA99C6;}
+		.d2-2909063352 .stroke-AB5{stroke:#FFDAEF;}
+		.d2-2909063352 .background-color-N1{background-color:#0A0F25;}
+		.d2-2909063352 .background-color-N2{background-color:#676C7E;}
+		.d2-2909063352 .background-color-N3{background-color:#9499AB;}
+		.d2-2909063352 .background-color-N4{background-color:#CFD2DD;}
+		.d2-2909063352 .background-color-N5{background-color:#DEE1EB;}
+		.d2-2909063352 .background-color-N6{background-color:#EEF1F8;}
+		.d2-2909063352 .background-color-N7{background-color:#FFFFFF;}
+		.d2-2909063352 .background-color-B1{background-color:#170034;}
+		.d2-2909063352 .background-color-B2{background-color:#7639C5;}
+		.d2-2909063352 .background-color-B3{background-color:#8F70D1;}
+		.d2-2909063352 .background-color-B4{background-color:#C1A2F3;}
+		.d2-2909063352 .background-color-B5{background-color:#DACEFB;}
+		.d2-2909063352 .background-color-B6{background-color:#F2EDFF;}
+		.d2-2909063352 .background-color-AA2{background-color:#0F66B7;}
+		.d2-2909063352 .background-color-AA4{background-color:#87BFF3;}
+		.d2-2909063352 .background-color-AA5{background-color:#BCDDFB;}
+		.d2-2909063352 .background-color-AB4{background-color:#EA99C6;}
+		.d2-2909063352 .background-color-AB5{background-color:#FFDAEF;}
+		.d2-2909063352 .color-N1{color:#0A0F25;}
+		.d2-2909063352 .color-N2{color:#676C7E;}
+		.d2-2909063352 .color-N3{color:#9499AB;}
+		.d2-2909063352 .color-N4{color:#CFD2DD;}
+		.d2-2909063352 .color-N5{color:#DEE1EB;}
+		.d2-2909063352 .color-N6{color:#EEF1F8;}
+		.d2-2909063352 .color-N7{color:#FFFFFF;}
+		.d2-2909063352 .color-B1{color:#170034;}
+		.d2-2909063352 .color-B2{color:#7639C5;}
+		.d2-2909063352 .color-B3{color:#8F70D1;}
+		.d2-2909063352 .color-B4{color:#C1A2F3;}
+		.d2-2909063352 .color-B5{color:#DACEFB;}
+		.d2-2909063352 .color-B6{color:#F2EDFF;}
+		.d2-2909063352 .color-AA2{color:#0F66B7;}
+		.d2-2909063352 .color-AA4{color:#87BFF3;}
+		.d2-2909063352 .color-AA5{color:#BCDDFB;}
+		.d2-2909063352 .color-AB4{color:#EA99C6;}
+		.d2-2909063352 .color-AB5{color:#FFDAEF;}.appendix text.text{fill:#0A0F25}.md{--color-fg-default:#0A0F25;--color-fg-muted:#676C7E;--color-fg-subtle:#9499AB;--color-canvas-default:#FFFFFF;--color-canvas-subtle:#EEF1F8;--color-border-default:#170034;--color-border-muted:#7639C5;--color-neutral-muted:#EEF1F8;--color-accent-fg:#7639C5;--color-accent-emphasis:#7639C5;--color-attention-subtle:#676C7E;--color-danger-fg:red;}.sketch-overlay-B1{fill:url(#streaks-darker-d2-2909063352);mix-blend-mode:lighten}.sketch-overlay-B2{fill:url(#streaks-dark-d2-2909063352);mix-blend-mode:overlay}.sketch-overlay-B3{fill:url(#streaks-dark-d2-2909063352);mix-blend-mode:overlay}.sketch-overlay-B4{fill:url(#streaks-normal-d2-2909063352);mix-blend-mode:color-burn}.sketch-overlay-B5{fill:url(#streaks-normal-d2-2909063352);mix-blend-mode:color-burn}.sketch-overlay-B6{fill:url(#streaks-bright-d2-2909063352);mix-blend-mode:darken}.sketch-overlay-AA2{fill:url(#streaks-dark-d2-2909063352);mix-blend-mode:overlay}.sketch-overlay-AA4{fill:url(#streaks-normal-d2-2909063352);mix-blend-mode:color-burn}.sketch-overlay-AA5{fill:url(#streaks-normal-d2-2909063352);mix-blend-mode:color-burn}.sketch-overlay-AB4{fill:url(#streaks-normal-d2-2909063352);mix-blend-mode:color-burn}.sketch-overlay-AB5{fill:url(#streaks-bright-d2-2909063352);mix-blend-mode:darken}.sketch-overlay-N1{fill:url(#streaks-darker-d2-2909063352);mix-blend-mode:lighten}.sketch-overlay-N2{fill:url(#streaks-dark-d2-2909063352);mix-blend-mode:overlay}.sketch-overlay-N3{fill:url(#streaks-normal-d2-2909063352);mix-blend-mode:color-burn}.sketch-overlay-N4{fill:url(#streaks-normal-d2-2909063352);mix-blend-mode:color-burn}.sketch-overlay-N5{fill:url(#streaks-bright-d2-2909063352);mix-blend-mode:darken}.sketch-overlay-N6{fill:url(#streaks-bright-d2-2909063352);mix-blend-mode:darken}.sketch-overlay-N7{fill:url(#streaks-bright-d2-2909063352);mix-blend-mode:darken}.light-code{display: block}.dark-code{display: none}]]></style><g class="U2hvcA=="><g class="shape" ><path d="M 167 0 L 217 0 L 217 20 L 267 20 L 267 100 L 167 100 Z" stroke="#170034" fill="#87BFF3" class=" stroke-B1 fill-AA4" style="stroke-width:2;" /></g><title>SRUJA_ID:Shop</title></g><g class="UmVxdWlyZW1lbnRz"><g class="shape" ><rect x="40.000000" y="196.000000" width="354.000000" height="385.000000" stroke="#170034" fill="#C1A2F3" class=" stroke-B1 fill-B4" style="stroke-width:2;" /></g><text x="217.000000" y="183.000000" fill="#0A0F25" class="text fill-N1" style="text-anchor:middle;font-size:28px">Requirements</text></g><g class="UmVxdWlyZW1lbnRzLlNlY3VyaXR5"><g class="shape" ><path d="M 107 226 H 308 C 309 226 310 226 311 227 L 328 243 C 329 244 329 245 329 246 V 313 C 329 313 329 313 329 313 H 107 C 106 313 106 313 106 313 V 227 C 106 226 106 226 107 226 Z" stroke="#170034" fill="#FFDAEF" class=" stroke-B1 fill-AB5" style="stroke-width:2;" /><path d="M 328 313 H 107 C 106 313 106 313 106 312 V 227 C 106 226 106 226 107 226 H 307 C 308 226 308 226 308 227 V 244 C 308 245 309 246 310 246 H 328 C 329 246 329 246 329 247 V 312 C 328 313 329 313 328 313 Z" stroke="#170034" fill="#FFDAEF" class=" stroke-B1 fill-AB5" style="stroke-width:2;" /></g><text x="217.500000" y="275.000000" fill="#0A0F25" class="text-bold fill-N1" style="text-anchor:middle;font-size:16px">policy: Must encrypt data</text></g><g class="UmVxdWlyZW1lbnRzLlNob3A="><g class="shape" ><rect x="70.000000" y="404.000000" width="294.000000" height="147.000000" stroke="#170034" fill="#DACEFB" class=" stroke-B1 fill-B5" style="stroke-width:2;" /></g><text x="217.000000" y="392.000000" fill="#0A0F25" class="text fill-N1" style="text-anchor:middle;font-size:24px">Shop</text></g><g class="UmVxdWlyZW1lbnRzLlNob3AuQXVkaXQ="><g class="shape" ><path d="M 101 434 H 313 C 314 434 315 434 316 435 L 333 451 C 334 452 334 453 334 454 V 521 C 334 521 334 521 334 521 H 101 C 100 521 100 521 100 521 V 435 C 100 434 100 434 101 434 Z" stroke="#170034" fill="#FFDAEF" class=" stroke-B1 fill-AB5" style="stroke-width:2;" /><path d="M 333 521 H 101 C 100 521 100 521 100 520 V 435 C 100 434 100 434 101 434 H 312 C 313 434 313 434 313 435 V 452 C 313 453 314 454 315 454 H 333 C 334 454 334 454 334 455 V 520 C 333 521 334 521 333 521 Z" stroke="#170034" fill="#FFDAEF" class=" stroke-B1 fill-AB5" style="stroke-width:2;" /></g><text x="217.000000" y="483.000000" fill="#0A0F25" class="text-bold fill-N1" style="text-anchor:middle;font-size:16px">policy: Keep logs for 1 year</text></g><g id="Shop" class="appendix-icon interactive" data-content-id="Shop_data" transform="translate(251 4)" >
+<g clip-path="url(#clip0_3427_35082111-d2-2909063352-KNUG64A)">
+<path d="M16 31.1109C24.3456 31.1109 31.1111 24.3454 31.1111 15.9998C31.1111 7.65415 24.3456 0.888672 16 0.888672C7.65436 0.888672 0.888885 7.65415 0.888885 15.9998C0.888885 24.3454 7.65436 31.1109 16 31.1109Z" fill="white" stroke="#DEE1EB"/>
+<path d="M16 26C21.5228 26 26 21.5228 26 16C26 10.4772 21.5228 6 16 6C10.4772 6 6 10.4772 6 16C6 21.5228 10.4772 26 16 26Z" stroke="#2E3346" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M16 19.998V15.998" stroke="#2E3346" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M16 12H16.0098" stroke="#2E3346" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<clipPath id="clip0_3427_35082111-d2-2909063352-KNUG64A">
+<rect width="32" height="32" fill="white"/>
+</clipPath>
+</defs>
+
+</g><mask id="d2-2909063352" maskUnits="userSpaceOnUse" x="-61" y="-118" width="556" height="800">
+<rect x="-61" y="-118" width="556" height="800" fill="white"></rect>
+
+</mask>            </svg>
+        </g>
+    </g>
+
+    <!-- Header -->
+    <rect x="0" y="0" width="2400" height="100" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="2"/>
+    <text x="1200" y="40" class="title" text-anchor="middle">E-Commerce Architecture</text>
+    <text x="1200" y="70" class="subtitle" text-anchor="middle">Interactive C4 Model with Requirements, ADRs &amp; Technology Choices</text>
+
+    <!-- C4 Level Navigation -->
+    <g id="levelButtons">
+        <rect id="btnLevel1" x="50" y="120" width="180" height="40" class="button button-active" data-level="1"/>
+        <text x="140" y="145" class="button-text button-text-active">Level 1: System Context</text>
+        <rect id="btnLevel2" x="250" y="120" width="180" height="40" class="button" data-level="2"/>
+        <text x="340" y="145" class="button-text">Level 2: Containers</text>
+        <rect id="btnLevel3" x="450" y="120" width="180" height="40" class="button" data-level="3"/>
+        <text x="540" y="145" class="button-text">Level 3: Components</text>
+    </g>
+
+    <!-- Filter Buttons -->
+    <g id="filterButtons">
+        <rect id="btnAll" x="700" y="120" width="100" height="30" class="filter-button filter-button-active" data-filter="all"/>
+        <text x="750" y="138" class="filter-text filter-text-active">All</text>
+        <rect id="btnRequirements" x="820" y="120" width="120" height="30" class="filter-button" data-filter="requirements"/>
+        <text x="880" y="138" class="filter-text">Requirements</text>
+        <rect id="btnADRs" x="960" y="120" width="80" height="30" class="filter-button" data-filter="adrs"/>
+        <text x="1000" y="138" class="filter-text">ADRs</text>
+        <rect id="btnTech" x="1060" y="120" width="100" height="30" class="filter-button" data-filter="tech"/>
+        <text x="1110" y="138" class="filter-text">Technology</text>
+    </g>
+
+    <!-- Zoom Controls -->
+    <g id="zoomControls" transform="translate(20, 20)">
+        <rect id="btnZoomIn" x="0" y="0" width="30" height="30" class="button"/>
+        <text x="15" y="15" class="button-text" font-size="20">+</text>
+        <rect id="btnZoomOut" x="40" y="0" width="30" height="30" class="button"/>
+        <text x="55" y="15" class="button-text" font-size="20">-</text>
+        <rect id="btnReset" x="80" y="0" width="60" height="30" class="button"/>
+        <text x="110" y="15" class="button-text" font-size="14">Reset</text>
+    </g>
+
+    <!-- Search Input -->
+    <foreignObject x="200" y="20" width="300" height="40">
+        <body xmlns="http://www.w3.org/1999/xhtml">
+            <input type="text" id="searchInput" placeholder="Search components..." style="width: 100%; height: 30px; border-radius: 5px; border: 1px solid #bdc3c7; padding: 5px; font-family: sans-serif;"/>
+        </body>
+    </foreignObject>
+
+    <!-- Documentation Panel -->
+    <g id="docPanelContainer">
+        <rect id="docPanel" x="1200" y="180" width="1150" height="1200" rx="8" ry="8"/>
+
+        <g id="quickAccess">
+            <rect id="btnQuickReq" x="1250" y="200" width="140" height="35" class="filter-button" data-content-id="requirements_summary"/>
+            <text x="1320" y="220" class="filter-text" text-anchor="middle">All Requirements</text>
+        </g>
+
+        <g id="initialText">
+            <text x="1775" y="650" class="title" text-anchor="middle" fill="#bdc3c7">Click a component</text>
+            <text x="1775" y="700" class="subtitle" text-anchor="middle">to view its documentation</text>
+            <text x="1775" y="750" class="subtitle" text-anchor="middle">or use quick access buttons above</text>
+        </g>
+
+        <g id="contentInjection" transform="translate(1250, 260)">
+        </g>
+    </g>
+
+    <!-- JavaScript -->
+    <script type="text/ecmascript">
+    <![CDATA[
+        let currentView = 'level1';
+        let selectedElement = null;
+        let scale = 1;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+
+        function loadContent(dataId) {
+            const sourceGroup = document.getElementById(dataId);
+            const injectionArea = document.getElementById('contentInjection');
+            const initialText = document.getElementById('initialText');
+            if (!sourceGroup) { console.error('Content ID not found: ' + dataId); return; }
+            initialText.style.display = 'none';
+            injectionArea.innerHTML = '';
+            let yOffset = 0;
+            Array.from(sourceGroup.children).forEach(child => {
+                const clonedChild = child.cloneNode(true);
+                clonedChild.setAttribute('y', yOffset);
+                if (clonedChild.classList.contains('section-header')) { yOffset += 50; }
+                else if (clonedChild.classList.contains('doc-list-item')) { yOffset += 28; }
+                else { yOffset += 35; }
+                injectionArea.appendChild(clonedChild);
+            });
+        }
+
+        function switchView(viewId) {
+            // Hide all views
+            document.querySelectorAll('#diagramArea > g').forEach(view => {
+                view.style.display = 'none';
+            });
+            // Show the requested view
+            const targetView = document.getElementById(viewId === 'level1' ? 'level1' : 'view-' + viewId);
+            if (targetView) {
+                targetView.style.display = 'block';
+                currentView = viewId;
+                // Get level from view element's data-level attribute
+                const level = parseInt(targetView.getAttribute('data-level')) || 1;
+                // Update level button states
+                document.querySelectorAll('[data-level]').forEach(btn => {
+                    const btnLevel = parseInt(btn.getAttribute('data-level'));
+                    if (btnLevel === level) {
+                        btn.classList.add('button-active');
+                        const textEl = btn.querySelector('.button-text');
+                        if (textEl) textEl.classList.add('button-text-active');
+                    } else {
+                        btn.classList.remove('button-active');
+                        const textEl = btn.querySelector('.button-text');
+                        if (textEl) textEl.classList.remove('button-text-active');
+                    }
+                });
+            } else {
+                console.error('View not found: ' + viewId);
+            }
+            clearSelection();
+            resetZoom();
+        }
+
+        function switchLevel(level) {
+            if (level === 1) {
+                switchView('level1');
+            } else {
+                // For level 2/3, show the first available view of that level
+                const views = document.querySelectorAll('#diagramArea > g[data-level="' + level + '"]');
+                if (views.length > 0) {
+                    const firstView = views[0];
+                    const viewId = firstView.id === 'level1' ? 'level1' : firstView.id.replace('view-', '');
+                    switchView(viewId);
+                } else {
+                    // Fallback to level 1 if no view found for requested level
+                    switchView('level1');
+                }
+            }
+        }
+
+        function drillDown(elementId) {
+            // Check if there's a view for this element
+            const viewEl = document.getElementById('view-' + elementId);
+            if (viewEl) {
+                switchView(elementId);
+            } else {
+                console.log('No drill-down view available for: ' + elementId);
+            }
+        }
+
+        function selectElement(element) {
+            clearSelection();
+            selectedElement = element;
+            element.classList.add('selected');
+        }
+
+        function clearSelection() {
+            if (selectedElement) { selectedElement.classList.remove('selected'); }
+            selectedElement = null;
+            document.querySelectorAll('.interactive').forEach(el => el.classList.remove('selected'));
+        }
+
+        // Zoom and Pan
+        function updateTransform() {
+            const diagramArea = document.getElementById('diagramArea');
+            diagramArea.setAttribute('transform', `translate(${panX}, ${panY}) scale(${scale})`);
+        }
+
+        function zoomIn() {
+            scale *= 1.2;
+            updateTransform();
+        }
+
+        function zoomOut() {
+            scale /= 1.2;
+            updateTransform();
+        }
+
+        function resetZoom() {
+            scale = 1;
+            panX = 0;
+            panY = 0;
+            updateTransform();
+        }
+
+        function startDrag(evt) {
+            if (evt.target.classList.contains('interactive') || evt.target.closest('.interactive')) return;
+            isDragging = true;
+            startX = evt.clientX;
+            startY = evt.clientY;
+        }
+
+        function drag(evt) {
+            if (!isDragging) return;
+            evt.preventDefault();
+            const dx = evt.clientX - startX;
+            const dy = evt.clientY - startY;
+            panX += dx;
+            panY += dy;
+            startX = evt.clientX;
+            startY = evt.clientY;
+            updateTransform();
+        }
+
+        function endDrag() {
+            isDragging = false;
+        }
+
+        // Search
+        function search(query) {
+            if (!query) return;
+            query = query.toLowerCase();
+            const elements = document.querySelectorAll('.interactive');
+            let found = false;
+            elements.forEach(el => {
+                const text = el.textContent.toLowerCase(); // Simple text content search
+                // Better: search data-content-id or specific labels
+                // For now, let's search the text inside the element group/rect
+                // Actually, the rect doesn't have text inside it in DOM structure here, 
+                // text is sibling. We need a better way to link text to rect for search.
+                // But wait, the 'interactive' class is on the rect. The text is separate.
+                // We should probably search the data store or the visible text.
+                
+                // Let's search visible text elements that are siblings of interactive rects?
+                // Or just search all text elements and if match, highlight parent/sibling?
+                
+                // Simpler approach: Iterate all text elements in the current level.
+                if (el.nextElementSibling && el.nextElementSibling.textContent.toLowerCase().includes(query)) {
+                     selectElement(el);
+                     found = true;
+                     // Load content if found
+                     const dataId = el.getAttribute('data-content-id');
+                     if(dataId) loadContent(dataId);
+                }
+            });
+            if (!found) {
+                alert('No element found matching: ' + query);
+            }
+        }
+
+        function init() {
+            document.querySelectorAll('[data-level]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    switchLevel(parseInt(this.getAttribute('data-level')));
+                });
+            });
+            document.querySelectorAll('.interactive').forEach(element => {
+                const elementId = element.id;
+                const dataId = element.getAttribute('data-content-id');
+                const drillView = element.getAttribute('data-drill-view');
+                if (elementId) {
+                    element.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        // If drill-down is available, do that first
+                        if (drillView) {
+                            drillDown(drillView);
+                        } else if (document.getElementById('view-' + elementId)) {
+                            drillDown(elementId);
+                        }
+                        // Also load content if available
+                        if (dataId) {
+                            loadContent(dataId);
+                        }
+                        selectElement(this);
+                    });
+                }
+            });
+            document.querySelectorAll('#quickAccess [data-content-id]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    loadContent(this.getAttribute('data-content-id'));
+                    clearSelection();
+                });
+            });
+            
+            // Zoom/Pan Listeners
+            document.addEventListener('mousedown', startDrag);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('mouseleave', endDrag);
+            
+            // Zoom Buttons (to be added in UI)
+            const btnZoomIn = document.getElementById('btnZoomIn');
+            if(btnZoomIn) btnZoomIn.addEventListener('click', zoomIn);
+            
+            const btnZoomOut = document.getElementById('btnZoomOut');
+            if(btnZoomOut) btnZoomOut.addEventListener('click', zoomOut);
+            
+            const btnReset = document.getElementById('btnReset');
+            if(btnReset) btnReset.addEventListener('click', resetZoom);
+
+            // Search Input (to be added in UI)
+            const searchInput = document.getElementById('searchInput');
+            if(searchInput) {
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        search(this.value);
+                    }
+                });
+            }
+
+            switchLevel(1);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else { init(); }
+    ]]>
+    </script>
+
+</svg>

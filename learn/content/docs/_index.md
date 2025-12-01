@@ -4,6 +4,8 @@ type: docs
 cascade:
   BookSection: docs
 summary: "Sruja is a modern, developer-friendly language for defining software architecture."
+description: "Complete Sruja documentation: language reference, CLI commands, concepts, examples, and getting started guide. Learn how to define, visualize, and validate software architecture."
+keywords: ["sruja documentation", "architecture DSL", "C4 model", "architecture as code", "API reference"]
 ---
 
 # Sruja: Architecture as Code

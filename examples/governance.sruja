@@ -1,0 +1,27 @@
+// Governance (Global Policy)
+policy Security "Must encrypt data" {
+	rule Encryption "Data Encryption" {
+		check "tags contains 'encrypted'"
+	}
+}
+
+architecture "E-Commerce" follows Security {
+	system Shop {
+		// Policy in System (still allowed)
+		policy Audit "Keep logs for 1 year"
+
+		// Enhanced ADR
+		adr DB_Choice "Database Selection" {
+			status "Accepted"
+			option Postgres {
+				pro "Reliable"
+				con "Complex setup"
+			}
+			option Mongo {
+				pro "Flexible schema"
+			}
+			decision Postgres
+			reason "Relational data model fits best"
+		}
+	}
+}

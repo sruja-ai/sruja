@@ -1,0 +1,36 @@
+architecture "DDD Advanced" {
+    domain ECommerce "E-Commerce" {
+        context Orders {
+            aggregate Order {
+                // API Contract Mapping
+                metadata {
+                    api_path: "/orders"
+                    api_method: "POST"
+                }
+                
+                // Database Mapping
+                metadata {
+                    table_name: "orders"
+                    pk: "id"
+                }
+
+                entity OrderLineItem {
+                    // We can't put metadata on fields yet, so we define them here
+                    metadata {
+                        table_name: "order_items"
+                        fk: "order_id"
+                        
+                        // Field-level metadata workaround
+                        col_id_type: "UUID"
+                        col_quantity_check: "gt_0"
+                    }
+                    
+                    id string
+                    productId string
+                    quantity int
+                    price float
+                }
+            }
+        }
+    }
+}

@@ -5,7 +5,11 @@ export function getSection(): Section {
   const p = window.location.pathname;
   if (p.startsWith('/playground')) return 'playground';
   if (p.startsWith('/about')) return 'about';
-  if (p.startsWith('/resources/') || p.startsWith('/docs/') || p.startsWith('/courses/') || p.startsWith('/tutorials/') || p.startsWith('/blogs/')) return 'resources';
+  if (p.startsWith('/learn/')) return 'learn';
+  if (p.startsWith('/courses/')) return 'courses';
+  if (p.startsWith('/docs/')) return 'docs';
+  if (p.startsWith('/tutorials/')) return 'tutorials';
+  if (p.startsWith('/blogs/')) return 'blogs';
   if (p.startsWith('/community/')) return 'community';
   return 'home';
 }
@@ -53,11 +57,12 @@ export function navLinksHTML(section: Section): string {
 }
 
 export function globalLinksHTML(section: Section): string {
-  const resourcesActive = section === 'resources' ? ' class="active"' : '';
+  const links = linksFor(section);
+  const learnActive = section === 'learn' ? ' class="active"' : '';
   return `
     <a href="/playground/"${section === 'playground' ? ' class="active"' : ''}>Playground</a>
     <div class="nav-item dropdown">
-      <a href="/resources/"${resourcesActive}>Resources</a>
+      <a href="/learn/"${learnActive}>Learn</a>
       <div class="nav-dropdown">
         <a href="/docs/">Docs</a>
         <a href="/courses/">Courses</a>
@@ -69,4 +74,3 @@ export function globalLinksHTML(section: Section): string {
     <a href="/community/"${section === 'community' ? ' class="active"' : ''}>Community</a>
   `;
 }
-

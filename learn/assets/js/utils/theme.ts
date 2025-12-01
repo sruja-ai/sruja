@@ -1,6 +1,9 @@
 // Theme management utilities
+import { getStorageItem, setStorageItem } from './storage';
 
 export type Theme = 'dark' | 'light';
+
+const THEME_STORAGE_KEY = 'sruja_theme';
 
 export function applyTheme(theme: Theme): void {
   const rootEl = document.documentElement;
@@ -14,17 +17,23 @@ export function applyTheme(theme: Theme): void {
   rootEl.style.setProperty('--sruja-editor-bg', editorBg);
   rootEl.style.setProperty('--sruja-editor-fg', editorFg);
   rootEl.style.setProperty('--sruja-editor-border', editorBorder);
-  localStorage.setItem('sruja_theme', theme);
+  
+  // Use safe storage utility
+  setStorageItem(THEME_STORAGE_KEY, theme);
+  
   const btn = document.querySelector('.theme-toggle');
   if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
 }
 
 export function initTheme(): void {
-  const savedTheme = localStorage.getItem('sruja_theme') as Theme | null;
-  if (savedTheme) applyTheme(savedTheme);
+  const savedTheme = getStorageItem(THEME_STORAGE_KEY) as Theme | null;
+  if (savedTheme === 'dark' || savedTheme === 'light') {
+    applyTheme(savedTheme);
+  }
 }
 
 export function toggleTheme(): void {
-  const next: Theme = (localStorage.getItem('sruja_theme') === 'dark') ? 'light' : 'dark';
+  const current = getStorageItem(THEME_STORAGE_KEY);
+  const next: Theme = (current === 'dark') ? 'light' : 'dark';
   applyTheme(next);
 }

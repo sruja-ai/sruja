@@ -241,7 +241,7 @@ func TestLoadConfig_ReadFileError(t *testing.T) {
 func TestSaveConfig_WriteError(t *testing.T) {
 	// Try to save to a directory (should fail)
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir)
+	configPath := tmpDir
 
 	cfg := DefaultConfig()
 	err := SaveConfig(cfg, configPath)

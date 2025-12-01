@@ -1,0 +1,18 @@
+architecture "User Stories with Qualified Actors" {
+    
+    system ECommerce {
+        
+	story Checkout "User Checkout Flow" {
+		description "As a Customer, I want to checkout..."
+		
+		// 1. User interacts with UI (String Literal)
+		User -> "Cart Page" "adds item to cart"
+		
+		// 2. UI interacts with System
+		"Cart Page" -> ECommerce "clicks checkout"
+		
+		// 3. System interacts with external
+		ECommerce -> Inventory "Check Stock"
+	}
+    }
+}

@@ -1,0 +1,88 @@
+version: 2
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosec
+    - gocyclo
+    - funlen
+    - misspell
+    - unconvert
+    - unparam
+    - goconst
+    - gocritic
+  
+  disable:
+    - exhaustive  # Too strict for this codebase
+    - exhaustruct # Too strict for this codebase
+    - wrapcheck   # Too noisy for this codebase
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  
+  funlen:
+    lines: 100
+    statements: 60
+  
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  
+  gosec:
+    excludes:
+      - G404  # Use of weak random number generator (math/rand instead of crypto/rand)
+  
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+    disabled-checks:
+      - commentFormatting
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - funlen
+        - gosec
+    
+    # Exclude staticcheck SA1019 for deprecated D2 library usage
+    - linters:
+        - staticcheck
+      text: "SA1019:"
+      path: pkg/export/(d2|svg)/
+    
+    # Exclude gosec G304, G301, G306 for CLI tools (acceptable file operations)
+    - linters:
+        - gosec
+      source: "^cmd/"
+    - linters:
+        - gosec
+      source: "^scripts/"
+    - linters:
+        - gosec
+      source: "^tests/"
+    - linters:
+        - gosec
+      source: "^pkg/config/.*_test\\.go$"
+  
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true

@@ -29,3 +29,89 @@
 /* Legacy CSS that will be migrated to Tailwind gradually */
 /* Keeping existing CSS files for now, will migrate incrementally */
 
+/* Left navigation collapsible styling */
+.book-menu nav li.collapsible > a,
+.book-menu nav li.collapsible > span {
+  display: inline-flex;
+  align-items: center;
+}
+.book-menu nav li.collapsible > .sruja-collapse-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-left: 0.3rem;
+  border-radius: 0.25rem;
+  color: #64748B;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.book-menu nav li.collapsible > .sruja-collapse-toggle:hover {
+  background-color: rgba(100, 116, 139, 0.15);
+}
+.book-menu nav li.collapsible.expanded > .sruja-collapse-toggle {
+  color: var(--color-menu-active);
+}
+.book-menu nav li.collapsible > ul {
+  margin-left: 0.75rem;
+  padding-left: 0.5rem;
+  border-left: 1px solid #E5E7EB;
+}
+@media (prefers-color-scheme: dark) {
+  .book-menu nav li.collapsible > ul {
+    border-left-color: var(--border-color);
+  }
+}
+.book-menu nav li.collapsible:not(.expanded) > ul {
+  display: none;
+}
+
+/* Always expanded navigation on mobile */
+@media (max-width: 640px) {
+  .book-menu nav li.collapsible > ul {
+    display: block !important;
+  }
+  .book-menu nav li.collapsible > .sruja-collapse-toggle {
+    display: none !important;
+  }
+}
+
+/* Mobile Navigation Improvements */
+@media (max-width: 768px) {
+  .site-top-nav {
+    overflow: visible;
+  }
+  
+  .nav-container {
+    position: relative;
+  }
+  
+  /* Ensure brand name doesn't get cut off */
+  .nav-brand {
+    max-width: calc(100% - 60px);
+  }
+  
+  /* Prevent content from overlapping with nav */
+  body {
+    padding-top: var(--nav-height, 64px) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Tighten spacing on very small screens */
+  .nav-container {
+    gap: 8px;
+  }
+  
+  .nav-brand {
+    max-width: calc(100% - 52px);
+    font-size: 0.875rem !important;
+  }
+  
+  /* Ensure hamburger button is always visible */
+  .nav-toggle {
+    flex-shrink: 0 !important;
+    order: 999;
+  }
+}

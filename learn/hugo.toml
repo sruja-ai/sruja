@@ -1,6 +1,7 @@
 baseURL = 'https://sruja.ai/'
 languageCode = 'en-us'
-# title = 'Sruja Documentation'
+title = 'Sruja - Architecture as Code'
+description = 'Developer-friendly language for defining, visualizing, and validating software architecture'
 
 [build]
   noJSConfigInAssets = true
@@ -32,9 +33,9 @@ languageCode = 'en-us'
     name = 'Courses'
     url = '/courses/'
     weight = 1
-  [[menu.main]]
-    name = 'Resources'
-    url = '/resources/'
+[[menu.main]]
+    name = 'Learn'
+    url = '/learn/'
     weight = 2
   [[menu.main]]
     name = 'Docs'
@@ -63,6 +64,11 @@ languageCode = 'en-us'
   # BookLogo = 'sruja-logo.svg'
   BookFavicon = '/sruja-logo.svg'
   BookMenuBundle = '/menu'
+  # SEO
+  author = 'Sruja Team'
+  ogImage = '/sruja-logo.svg'
+  github = 'sruja-ai/sruja'
+  # twitter = '@sruja_ai'  # Uncomment when Twitter handle is available
 
 [markup]
   [markup.goldmark]

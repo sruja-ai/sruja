@@ -1,0 +1,139 @@
+{{/* Structured Data (JSON-LD) Partial */}}
+{{- $page := . }}
+{{- $site := .Site }}
+
+{{/* Organization Schema */}}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Sruja",
+  "url": "{{ $site.BaseURL }}",
+  "logo": "{{ $site.BaseURL }}sruja-logo.svg",
+  "description": "Developer-friendly language for defining, visualizing, and validating software architecture",
+  "sameAs": [
+    {{- if $site.Params.github }}"https://github.com/{{ $site.Params.github }}"{{ end }}
+    {{- if $site.Params.twitter }}{{ if $site.Params.github }},{{ end }}"https://twitter.com/{{ $site.Params.twitter | replaceRE "^@" "" }}"{{ end }}
+  ]
+}
+</script>
+
+{{/* SoftwareApplication Schema */}}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Sruja",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Cross-platform",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "5",
+    "ratingCount": "1"
+  }
+}
+</script>
+
+{{/* Article Schema for Blog Posts */}}
+{{- if eq .Section "blogs" }}
+{{- $author := .Params.author | default $site.Params.author | default "Sruja Team" }}
+{{- $publishedTime := "" }}
+{{- if .PublishDate }}
+  {{- $publishedTime = .PublishDate.Format "2006-01-02T15:04:05Z07:00" }}
+{{- end }}
+{{- $modifiedTime := "" }}
+{{- if .Lastmod }}
+  {{- $modifiedTime = .Lastmod.Format "2006-01-02T15:04:05Z07:00" }}
+{{- end }}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "{{ .Title }}",
+  "description": "{{ .Params.description | default .Params.summary | default .Summary | truncate 160 | plainify }}",
+  "image": "{{ if .Params.image }}{{ .Params.image | absURL }}{{ else }}{{ $site.BaseURL }}sruja-logo.svg{{ end }}",
+  "author": {
+    "@type": "Person",
+    "name": "{{ $author }}"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Sruja",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "{{ $site.BaseURL }}sruja-logo.svg"
+    }
+  },
+  {{- if $publishedTime }}
+  "datePublished": "{{ $publishedTime }}",
+  {{- end }}
+  {{- if $modifiedTime }}
+  "dateModified": "{{ $modifiedTime }}",
+  {{- end }}
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "{{ .Permalink }}"
+  }
+}
+</script>
+{{- end }}
+
+{{/* Course Schema for Course Pages */}}
+{{- if eq .Section "courses" }}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Course",
+  "name": "{{ .Title }}",
+  "description": "{{ .Params.description | default .Params.summary | default .Summary | truncate 200 | plainify }}",
+  "provider": {
+    "@type": "Organization",
+    "name": "Sruja",
+    "url": "{{ $site.BaseURL }}"
+  },
+  "courseCode": "{{ .File.LogicalName }}"
+}
+</script>
+{{- end }}
+
+{{/* BreadcrumbList Schema - Simplified for Hugo Book theme */}}
+{{- if ne .Kind "home" }}
+{{- $breadcrumbs := slice }}
+{{- $breadcrumbs = $breadcrumbs | append (dict "name" "Home" "url" $site.BaseURL "position" 1) }}
+{{- $position := 2 }}
+
+{{- if eq .Kind "section" }}
+  {{- $breadcrumbs = $breadcrumbs | append (dict "name" .Title "url" (.Permalink | absURL) "position" $position) }}
+{{- else if eq .Kind "page" }}
+  {{- if .Parent }}
+    {{- $breadcrumbs = $breadcrumbs | append (dict "name" .Parent.Title "url" (.Parent.Permalink | absURL) "position" $position) }}
+    {{- $position = add $position 1 }}
+  {{- end }}
+  {{- $breadcrumbs = $breadcrumbs | append (dict "name" .Title "url" (.Permalink | absURL) "position" $position) }}
+{{- end }}
+
+{{- if gt (len $breadcrumbs) 1 }}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {{- range $index, $crumb := $breadcrumbs }}
+    {
+      "@type": "ListItem",
+      "position": {{ $crumb.position }},
+      "name": "{{ $crumb.name | safeHTML }}",
+      "item": "{{ $crumb.url }}"
+    }{{ if ne $index (sub (len $breadcrumbs) 1) }},{{ end }}
+    {{- end }}
+  ]
+}
+</script>
+{{- end }}
+{{- end }}
+

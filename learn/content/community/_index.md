@@ -1,10 +1,8 @@
 ---
-title: Community
+title: Join the Sruja Community
 description: Join the Sruja community and help build the future of architecture-as-code
 weight: 5
 ---
-
-# Join the Sruja Community
 
 **Help us build a practical architecture-as-code tool.** Sruja is a new open‑source project led by a solo founder, currently in pre‑alpha. We favor small, honest steps and welcome early contributors who want to help shape the language and tools.
 

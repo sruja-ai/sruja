@@ -63,13 +63,13 @@ make lint
 ./bin/sruja lint examples/example.sruja
 ```
 
-### Build WebAssembly for docs playground
+### Build WebAssembly for learn playground
 
 ```bash
-make build-docs
+make build-learn
 ```
 
-Outputs go to `docs/static/` including compressed variants.
+Outputs go to `learn/static/` including compressed variants.
 
 For additional context, see `README.md` and `Makefile`.
 
@@ -148,6 +148,7 @@ Optional scope: `feat(language): …`
 - Maintain meaningful test coverage
 - Explicit error handling; avoid panics in library code
 - Keep dependencies minimal and pinned via `go.mod`
+- Follow the **[Design Philosophy](DESIGN_PHILOSOPHY.md)** when proposing language changes.
 
 ## Contributor Guide
 
@@ -173,6 +174,18 @@ Welcome! This section points you to key resources and principles.
 
 - GitHub Discussions
 - Discord: https://discord.gg/QMCsquJq
+
+## Contributing Content
+
+To add content to the Sruja Learn site (courses, tutorials, blog posts, etc.), see:
+
+**📖 [Content Contribution Guide](CONTENT_CONTRIBUTION_GUIDE.md)**
+
+This guide covers:
+- Creating courses, tutorials, blogs, and docs
+- Content structure and best practices
+- Validation and workflow
+- Troubleshooting
 
 ## Documentation Notes
 

@@ -57,8 +57,8 @@ jobs:
       - name: Test playground, course, and docs code compilation
         run: make test-learn-code
 
-      - name: Build WASM for docs
-        run: make build-docs
+      - name: Build WASM for learn
+        run: make build-learn
 
       - name: Initialize Hugo modules
         run: |

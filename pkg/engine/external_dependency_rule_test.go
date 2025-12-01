@@ -166,3 +166,5 @@ func TestExternalDependencyRule_SystemLevelRelation(t *testing.T) {
 func stringPtr(s string) *string {
 	return &s
 }
+
+

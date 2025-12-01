@@ -45,12 +45,10 @@
 }
 
 /* Light Mode Body Padding */
-/* Light Mode Body Padding */
 body {
     padding-top: var(--nav-height) !important;
 }
 
-/* Push Fixed Sidebar Down */
 /* Push Fixed Sidebar Down */
 .book-menu {
     top: 0 !important;
@@ -60,9 +58,47 @@ body {
     z-index: 900;
 }
 
+/* Corner banner doesn't affect sidebar positioning */
+
+/* Mobile sidebar handling */
+@media (max-width: 768px) {
+    /* Ensure sidebar doesn't cover nav and is properly positioned */
+    .book-menu {
+        top: var(--nav-height) !important;
+        height: calc(100vh - var(--nav-height)) !important;
+        z-index: 950 !important;
+    }
+
+    /* Prevent body scroll when sidebar is open */
+    input#menu-control:checked ~ body,
+    body:has(input#menu-control:checked) {
+        overflow: hidden;
+    }
+
+    /* Add overlay when sidebar is open on mobile - Hugo Book should provide this */
+    .book-menu-overlay {
+        position: fixed;
+        top: var(--nav-height);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 949;
+        display: none;
+    }
+
+    input#menu-control:checked ~ .book-menu-overlay,
+    input#menu-control:checked ~ main .book-menu-overlay,
+    body:has(input#menu-control:checked) .book-menu-overlay {
+        display: block;
+    }
+}
+
 .book-menu .book-menu-content {
     top: var(--nav-height) !important;
 }
+
+/* Corner banner doesn't affect menu content positioning */
 
 .book-menu li.hidden {
     display: none !important;
@@ -111,9 +147,47 @@ body {
     z-index: 900;
 }
 
+/* Corner banner doesn't affect TOC positioning */
+
+/* Mobile TOC handling */
+@media (max-width: 768px) {
+    /* Ensure TOC doesn't cover nav and is properly positioned */
+    .book-toc {
+        top: var(--nav-height) !important;
+        height: calc(100vh - var(--nav-height)) !important;
+        z-index: 950 !important;
+    }
+
+    /* Prevent body scroll when TOC is open */
+    input#toc-control:checked ~ body,
+    body:has(input#toc-control:checked) {
+        overflow: hidden;
+    }
+
+    /* Add overlay when TOC is open on mobile - Hugo Book should provide this */
+    .book-toc-overlay {
+        position: fixed;
+        top: var(--nav-height);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 949;
+        display: none;
+    }
+
+    input#toc-control:checked ~ .book-toc-overlay,
+    input#toc-control:checked ~ main .book-toc-overlay,
+    body:has(input#toc-control:checked) .book-toc-overlay {
+        display: block;
+    }
+}
+
 .book-toc .book-toc-content {
     top: var(--nav-height) !important;
 }
+
+/* Corner banner doesn't affect TOC content positioning */
 
 .playground-full .book-menu,
 .playground-full .book-toc,
@@ -132,11 +206,60 @@ body {
     padding: 6px 10px;
 }
 
-/* Push Mobile Header Down */
+/* Push Mobile Header Down - Fixed position to prevent scrolling */
 header.book-header {
     top: var(--nav-height) !important;
-    position: sticky !important;
+    position: fixed !important;
+    left: 0;
+    right: 0;
+    width: 100%;
     z-index: 900 !important;
+    background: inherit;
+    /* Prevent header from scrolling */
+    will-change: transform;
+}
+
+/* Desktop: keep header sticky but properly positioned */
+@media (min-width: 769px) {
+    header.book-header {
+        position: sticky !important;
+    }
+}
+
+/* Corner banner doesn't affect header positioning */
+
+@media (max-width: 768px) {
+    /* Ensure mobile menu toggle is visible and accessible */
+    header.book-header label[for="menu-control"],
+    header.book-header label[for="toc-control"] {
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 901;
+        position: relative;
+        pointer-events: auto;
+        touch-action: manipulation;
+    }
+
+    /* Better spacing for mobile header */
+    header.book-header {
+        padding: 0.5rem 0.75rem;
+        top: var(--nav-height) !important;
+        position: fixed !important;
+        /* Ensure header has background to prevent content showing through */
+        background-color: var(--bg-body, #ffffff);
+        backdrop-filter: blur(8px);
+    }
+
+    /* Dark mode header background */
+    @media (prefers-color-scheme: dark) {
+        header.book-header {
+            background-color: var(--bg-body, #0f172a);
+        }
+    }
 }
 
 /* =========================================
@@ -156,6 +279,7 @@ header.book-header {
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: top 0.3s ease;
 }
 
 .nav-container {
@@ -166,6 +290,8 @@ header.book-header {
     align-items: center;
     justify-content: space-between;
     height: 100%;
+    gap: 16px;
+    position: relative;
 }
 
 .nav-brand {
@@ -176,6 +302,61 @@ header.book-header {
     font-weight: 700;
     font-size: 1.25em;
     color: var(--color-brand-primary);
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.nav-brand .nav-logo {
+    flex-shrink: 0;
+}
+
+.pre-alpha-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: linear-gradient(135deg, #7C3AED 0%, #9333EA 100%);
+    color: white;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    border-radius: 9999px;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(124, 58, 237, 0.3);
+    margin-left: 6px;
+    line-height: 1;
+}
+
+.pre-alpha-badge span {
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    flex-shrink: 0;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Dark mode adjustments for badge */
+@media (prefers-color-scheme: dark) {
+    .pre-alpha-badge {
+        background: linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%);
+        box-shadow: 0 2px 6px rgba(139, 92, 246, 0.4);
+    }
+}
+
+.theme-dark .pre-alpha-badge {
+    background: linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%);
+    box-shadow: 0 2px 6px rgba(139, 92, 246, 0.4);
 }
 
 .nav-logo {
@@ -236,10 +417,18 @@ header.book-header {
     color: #64748b;
     box-shadow: none !important;
     /* Override generic button */
-    padding: 0 10px !important;
-    width: auto !important;
+    padding: 0 !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    width: 44px !important;
+    height: 44px !important;
     /* Override generic button */
     margin: 0 !important;
+    flex-shrink: 0;
+    z-index: 1100;
+    position: relative;
+    align-items: center;
+    justify-content: center;
 }
 
 .nav-toggle:hover {
@@ -250,9 +439,9 @@ header.book-header {
 
 .nav-mobile-menu {
     display: none;
-    /* Hidden by default */
-    position: absolute;
-    top: var(--nav-height);
+    /* Hidden by default - React will override with inline style when visible */
+    position: fixed;
+    top: var(--nav-height, 64px);
     left: 0;
     width: 100%;
     background: white;
@@ -260,7 +449,27 @@ header.book-header {
     flex-direction: column;
     padding: 10px 0;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    max-height: calc(100vh - var(--nav-height, 64px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    z-index: 1100;
 }
+
+/* Override for React-rendered mobile menu */
+.nav-mobile-menu[data-sruja-mobile-menu="true"] {
+    display: flex !important;
+}
+
+.nav-mobile-overlay {
+    z-index: 1050;
+    position: fixed;
+    top: var(--nav-height, 64px);
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* Corner banner doesn't affect mobile menu positioning */
 
 .nav-mobile-menu.active {
     display: flex;
@@ -280,7 +489,95 @@ header.book-header {
     }
 
     .nav-toggle {
-        display: block;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        z-index: 1100;
+        position: relative;
+    }
+
+    /* Hide search on very small screens */
+    .nav-search-center {
+        display: none;
+    }
+
+    /* Adjust nav container padding and spacing */
+    .nav-container {
+        padding: 0 12px;
+        gap: 12px;
+    }
+
+    /* Smaller logo on mobile */
+    .nav-brand {
+        font-size: 0.9375rem;
+        gap: 8px;
+        flex-shrink: 1;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .nav-brand span:not(.pre-alpha-badge) {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .nav-logo {
+        height: 24px;
+        width: 24px;
+        flex-shrink: 0;
+    }
+
+    /* Adjust pre-alpha badge on mobile */
+    .pre-alpha-badge {
+        font-size: 0.5rem;
+        padding: 3px 6px;
+        gap: 3px;
+        flex-shrink: 0;
+        margin-left: 4px;
+    }
+
+    .pre-alpha-badge span {
+        width: 4px;
+        height: 4px;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+    .nav-container {
+        padding: 0 8px;
+        gap: 8px;
+    }
+
+    /* Keep brand name visible but make it smaller */
+    .nav-brand {
+        font-size: 0.875rem;
+        gap: 6px;
+        min-width: auto;
+        flex-shrink: 1;
+        overflow: hidden;
+    }
+
+    .nav-brand span:not(.pre-alpha-badge) {
+        display: inline-block !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 120px;
+    }
+
+    .pre-alpha-badge {
+        font-size: 0.45rem;
+        padding: 2px 5px;
+        flex-shrink: 0;
+    }
+
+    /* Ensure hamburger menu button is visible and clickable */
+    .nav-toggle {
+        display: flex !important;
+        z-index: 1100;
+        position: relative;
     }
 }
 
@@ -328,6 +625,192 @@ header.book-header {
 
     .nav-toggle {
         color: #f1f5f9;
+    }
+}
+
+/* =========================================
+   Mobile Responsive Content Styles
+   ========================================= */
+
+/* Responsive content area */
+.book-page {
+    padding: 1rem;
+}
+
+@media (max-width: 768px) {
+    /* Ensure content starts below fixed nav and doesn't overflow */
+    body {
+        padding-top: var(--nav-height) !important;
+        overflow-x: hidden;
+    }
+
+    /* Ensure main content area doesn't overflow and accounts for fixed header */
+    main {
+        overflow-x: hidden;
+        max-width: 100%;
+        padding-top: calc(var(--nav-height) + 60px) !important;
+    }
+
+    .book-page {
+        padding: 1rem 0.75rem;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-height: calc(100vh - var(--nav-height) - 60px);
+    }
+
+    /* Ensure content doesn't overflow */
+    .book-page-inner {
+        max-width: 100%;
+        overflow-x: hidden; /* Prevent horizontal scroll on page level */
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    /* Allow code blocks and tables to scroll horizontally */
+    .book-page-inner pre,
+    .book-page-inner .highlight,
+    .book-page-inner table {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Responsive tables */
+    .book-page table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 1rem 0;
+        border-collapse: collapse;
+    }
+
+    /* Keep table structure but allow horizontal scroll */
+    .book-page table thead,
+    .book-page table tbody,
+    .book-page table tr {
+        display: table;
+        width: 100%;
+    }
+
+    /* Don't fix table layout on mobile - allow natural sizing */
+    .book-page table {
+        table-layout: auto;
+    }
+
+    /* Responsive images */
+    .book-page img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    /* Code blocks should scroll horizontally */
+    .book-page pre {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        font-size: 0.875rem;
+        padding: 0.75rem;
+        margin: 1rem 0;
+    }
+
+    .book-page pre code {
+        font-size: inherit;
+    }
+
+    /* Ensure code blocks don't break layout */
+    .book-page .highlight,
+    .book-page .chroma {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 1rem 0;
+    }
+
+    /* Responsive buttons */
+    button,
+    .btn {
+        min-width: 44px; /* Touch target size */
+        min-height: 44px;
+        padding: 12px 20px;
+    }
+
+    /* Better spacing for headings */
+    .book-page h1 {
+        font-size: 1.75rem;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .book-page h2 {
+        font-size: 1.5rem;
+        margin-top: 1.25rem;
+        margin-bottom: 0.875rem;
+    }
+
+    .book-page h3 {
+        font-size: 1.25rem;
+        margin-top: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    /* Better list spacing */
+    .book-page ul,
+    .book-page ol {
+        padding-left: 1.5rem;
+    }
+
+    /* Footer adjustments */
+    .site-footer {
+        padding: 1.5rem 1rem;
+    }
+
+    .footer-container {
+        padding: 0 1rem;
+    }
+
+    .footer-links {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+    .book-page {
+        padding: 0.75rem 0.5rem;
+    }
+
+    .book-page h1 {
+        font-size: 1.5rem;
+    }
+
+    .book-page h2 {
+        font-size: 1.25rem;
+    }
+
+    .book-page h3 {
+        font-size: 1.125rem;
+    }
+
+    .book-page pre {
+        font-size: 0.8125rem;
+        padding: 0.5rem;
+    }
+}
+
+/* Touch-friendly interactive elements */
+@media (hover: none) and (pointer: coarse) {
+    /* Increase touch targets on touch devices */
+    a, button, .book-btn {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Better spacing for links */
+    .book-page a {
+        padding: 2px 4px;
+        margin: -2px -4px;
     }
 }
 
@@ -435,13 +918,29 @@ a {
     align-items: center;
     gap: 16px;
     margin-top: 24px;
+    flex-wrap: wrap;
 }
+
+@media (max-width: 768px) {
+    .founder-section {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
 .founder-avatar {
     width: 96px;
     height: 96px;
     border-radius: 50%;
     border: 1px solid var(--border-color, #e2e8f0);
     object-fit: cover;
+}
+
+@media (max-width: 480px) {
+    .founder-avatar {
+        width: 80px;
+        height: 80px;
+    }
 }
 
 a:hover {
@@ -461,6 +960,15 @@ a:hover {
     margin-top: 24px;
     margin-bottom: 24px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+@media (max-width: 768px) {
+    [id^="quiz-"] {
+        padding: 16px;
+        margin-top: 16px;
+        margin-bottom: 16px;
+        border-radius: 8px;
+    }
 }
 
 /* Quiz Questions */
@@ -517,6 +1025,16 @@ button,
     /* Glow effect */
 }
 
+@media (max-width: 768px) {
+    button,
+    .btn {
+        min-height: 44px;
+        padding: 14px 24px;
+        font-size: 15px;
+        max-width: 100%;
+    }
+}
+
 button:hover,
 .btn:hover {
     background: var(--color-brand-gradient-hover);
@@ -562,6 +1080,20 @@ body.dark [id^="quiz-"] label {
     width: fit-content;
     flex-shrink: 0;
     transition: none;
+}
+
+@media (max-width: 768px) {
+    .sruja-code-toolbar {
+        top: 4px;
+        right: 4px;
+        padding: 4px;
+        gap: 4px;
+    }
+
+    .sruja-btn {
+        height: 32px;
+        width: 32px;
+    }
 }
 
 .sruja-code-toolbar.is-fixed {
@@ -659,6 +1191,20 @@ body.dark [id^="quiz-"] label {
     overflow: auto;
     position: relative;
 }
+
+@media (max-width: 768px) {
+    .sruja-modal-content {
+        max-width: 95vw;
+        max-height: 95vh;
+        padding: 8px;
+        border-radius: 8px;
+    }
+
+    .sruja-modal-content .modal-svg {
+        width: 95vw !important;
+        height: 85vh !important;
+    }
+}
 .sruja-modal-close {
     position: absolute;
     top: 6px;
@@ -736,6 +1282,12 @@ body.dark [id^="quiz-"] label {
     justify-content: center;
     position: relative;
 }
+
+@media (max-width: 768px) {
+    .nav-search-center {
+        display: none !important;
+    }
+}
 .site-top-nav .nav-search-center .book-search { margin-left: 0 !important; }
 .site-top-nav .book-search ul#book-search-results {
     position: absolute;
@@ -758,6 +1310,12 @@ body.dark [id^="quiz-"] label {
 .site-top-nav .book-search ul#book-search-results:not(:empty) { display: block; }
 @media (max-width: 768px) {
     .site-top-nav .book-search ul#book-search-results {
+        width: 90vw;
+        left: 5vw;
+        transform: none;
+    }
+
+    .nav-search-suggestions {
         width: 90vw;
         left: 5vw;
         transform: none;

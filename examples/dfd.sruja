@@ -1,0 +1,7 @@
+architecture "Order Processing DFD" {
+	system OrderSystem "Order Processing System" "Description" {
+		component OrderProcessor "Process Orders"
+		component Database "Order DB"
+		OrderProcessor -> Database "Store Order"
+	}
+}

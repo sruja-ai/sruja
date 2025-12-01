@@ -20,6 +20,11 @@
     .sruja-breadcrumbs a { color: var(--color-link); text-decoration: none; }
     .sruja-breadcrumbs a:hover { text-decoration: underline; }
     .sruja-breadcrumbs .current { color: #999; }
+    @media (max-width: 768px) {
+      .sruja-breadcrumbs { font-size: 0.8em; margin: 0 0 8px 0; }
+      .sruja-breadcrumbs ol { gap: 4px; }
+      .sruja-breadcrumbs li { gap: 4px; }
+    }
     @media (prefers-color-scheme: dark) {
       .sruja-breadcrumbs { color: #aaa; }
       .sruja-breadcrumbs .current { color: #bbb; }

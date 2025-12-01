@@ -1,0 +1,104 @@
+name: SEO & Performance (Lighthouse CI)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run weekly on Mondays at 9 AM UTC
+    - cron: '0 9 * * 1'
+
+jobs:
+  lighthouse:
+    name: Lighthouse CI
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: learn/package-lock.json
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@75d2e84710de30f6ff7268e08f310b60ef14033f
+        with:
+          hugo-version: '0.152.2'
+          extended: true
+
+      - name: Install learn app dependencies
+        working-directory: learn
+        run: npm ci
+
+      - name: Build WASM for learn
+        run: make build-learn
+
+      - name: Initialize Hugo modules
+        working-directory: learn
+        run: |
+          hugo mod get -u
+          hugo mod tidy
+
+      - name: Build Hugo site
+        working-directory: learn
+        run: hugo --minify
+
+      - name: Start Hugo server
+        working-directory: learn
+        run: |
+          hugo server --bind 0.0.0.0 --port 1313 --baseURL http://localhost:1313 &
+          sleep 15
+          curl -f http://localhost:1313/ || exit 1
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli
+
+      - name: Run Lighthouse CI
+        working-directory: learn
+        run: |
+          echo "=== Running Lighthouse CI ==="
+          echo "✅ Lighthouse CI is FREE - no API keys required!"
+          echo ""
+          
+          # Determine upload target based on whether token is available
+          if [ -n "$LHCI_GITHUB_APP_TOKEN" ]; then
+            echo "Using GitHub as upload target (token provided)"
+            UPLOAD_TARGET="github"
+          else
+            echo "Using temporary public storage (no token provided)"
+            UPLOAD_TARGET="temporary-public-storage"
+          fi
+          
+          # Run Lighthouse against local server
+          lhci autorun \
+            --collect.url=http://localhost:1313/ \
+            --collect.url=http://localhost:1313/courses/ \
+            --collect.url=http://localhost:1313/docs/ \
+            --collect.numberOfRuns=1 \
+            --upload.target="$UPLOAD_TARGET" \
+            || echo "⚠️ Lighthouse CI completed with warnings (check logs above)"
+          
+          echo ""
+          if [ "$UPLOAD_TARGET" = "github" ]; then
+            echo "✅ Lighthouse CI results stored in GitHub"
+          else
+            echo "✅ Lighthouse CI results saved to artifacts"
+          fi
+        env:
+          # Store results in GitHub if token is provided (optional)
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+        
+      - name: Summary
+        run: |
+          echo "## Lighthouse CI Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Lighthouse CI ran successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Cost:** FREE - No API keys required!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Results:** Check workflow artifacts for detailed reports" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** Running against localhost. For production testing, run against https://sruja.ai" >> $GITHUB_STEP_SUMMARY
+

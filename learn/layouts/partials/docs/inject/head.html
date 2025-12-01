@@ -1,23 +1,10 @@
-<script>
-  (function(){
-    var host = location.hostname;
-    var isLocal = /^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/.test(host);
-    if (isLocal) {
-      window['ga-disable-G-SC9EM616YS'] = true;
-      return;
-    }
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);} 
-    var s = document.createElement('script');
-    s.async = true;
-    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-SC9EM616YS';
-    s.onload = function(){
-      gtag('js', new Date());
-      gtag('config', 'G-SC9EM616YS');
-    };
-    document.head.appendChild(s);
-  })();
-</script>
+{{/* SEO Meta Tags */}}
+{{- partial "seo.html" . }}
+
+{{/* Structured Data (JSON-LD) */}}
+{{- partial "structured-data.html" . }}
+
+{{/* Google Analytics */}}
 <script>
   (function(){
     var host = location.hostname;

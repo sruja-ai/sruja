@@ -1,0 +1,104 @@
+{{/* SEO Meta Tags Partial */}}
+{{- $page := . }}
+{{- $site := .Site }}
+{{- $title := .Title }}
+{{- if not $title }}
+  {{- $title = .Site.Title }}
+{{- end }}
+
+{{- $description := "" }}
+{{- if .Params.description }}
+  {{- $description = .Params.description }}
+{{- else if .Params.summary }}
+  {{- $description = .Params.summary }}
+{{- else if .Summary }}
+  {{- $description = .Summary | truncate 160 }}
+{{- else }}
+  {{- $description = .Site.Params.description | default "Sruja is a developer-friendly language for defining, visualizing, and validating software architecture." }}
+{{- end }}
+{{- $description = $description | plainify | truncate 160 }}
+
+{{- $canonical := .Permalink }}
+{{- if .Params.canonical }}
+  {{- $canonical = .Params.canonical }}
+{{- end }}
+
+{{- $ogImage := "" }}
+{{- if .Params.image }}
+  {{- $ogImage = .Params.image | absURL }}
+{{- else if .Site.Params.ogImage }}
+  {{- $ogImage = .Site.Params.ogImage | absURL }}
+{{- else }}
+  {{- $ogImage = (printf "%s%s" $site.BaseURL "sruja-logo.svg") }}
+{{- end }}
+
+{{- $ogType := "website" }}
+{{- if eq .Section "blogs" }}
+  {{- $ogType = "article" }}
+{{- end }}
+
+{{- $publishedTime := "" }}
+{{- if .PublishDate }}
+  {{- $publishedTime = .PublishDate.Format "2006-01-02T15:04:05Z07:00" }}
+{{- end }}
+
+{{- $modifiedTime := "" }}
+{{- if .Lastmod }}
+  {{- $modifiedTime = .Lastmod.Format "2006-01-02T15:04:05Z07:00" }}
+{{- end }}
+
+{{- $author := .Params.author | default .Site.Params.author | default "Sruja Team" }}
+
+<!-- Primary Meta Tags -->
+<meta name="title" content="{{ $title }}">
+<meta name="description" content="{{ $description }}">
+{{- if .Params.keywords }}
+<meta name="keywords" content="{{ delimit .Params.keywords ", " }}">
+{{- end }}
+<link rel="canonical" href="{{ $canonical }}">
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="{{ $ogType }}">
+<meta property="og:url" content="{{ .Permalink }}">
+<meta property="og:title" content="{{ $title }}">
+<meta property="og:description" content="{{ $description }}">
+<meta property="og:image" content="{{ $ogImage }}">
+<meta property="og:site_name" content="{{ .Site.Title }}">
+
+{{- if eq $ogType "article" }}
+{{- if $publishedTime }}
+<meta property="article:published_time" content="{{ $publishedTime }}">
+{{- end }}
+{{- if $modifiedTime }}
+<meta property="article:modified_time" content="{{ $modifiedTime }}">
+{{- end }}
+{{- if .Params.author }}
+<meta property="article:author" content="{{ $author }}">
+{{- end }}
+{{- if .Params.tags }}
+{{- range .Params.tags }}
+<meta property="article:tag" content="{{ . }}">
+{{- end }}
+{{- end }}
+{{- end }}
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:url" content="{{ .Permalink }}">
+<meta name="twitter:title" content="{{ $title }}">
+<meta name="twitter:description" content="{{ $description }}">
+<meta name="twitter:image" content="{{ $ogImage }}">
+{{- if .Site.Params.twitter }}
+<meta name="twitter:site" content="{{ .Site.Params.twitter }}">
+<meta name="twitter:creator" content="{{ .Site.Params.twitter }}">
+{{- end }}
+
+<!-- Additional Meta -->
+<meta name="robots" content="{{ if .Params.robots }}{{ .Params.robots }}{{ else }}index, follow{{ end }}">
+{{- if .Params.author }}
+<meta name="author" content="{{ $author }}">
+{{- end }}
+{{- if $modifiedTime }}
+<meta name="revised" content="{{ $modifiedTime }}">
+{{- end }}
+

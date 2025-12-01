@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -11,96 +10,56 @@ import (
 	"github.com/sruja-ai/sruja/pkg/dx"
 	"github.com/sruja-ai/sruja/pkg/engine"
 	"github.com/sruja-ai/sruja/pkg/export/d2"
+    "github.com/sruja-ai/sruja/pkg/export/svg"
+    jexport "github.com/sruja-ai/sruja/pkg/export/json"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-func main() {
-	os.Exit(Run(os.Args, os.Stdout, os.Stderr))
+const srujaFileExt = ".sruja"
+
+// findSrujaFile finds a .sruja file in the current directory if filePath is empty
+func findSrujaFile(filePath string) string {
+	if filePath != "" {
+		return filePath
+	}
+	files, err := os.ReadDir(".")
+	if err != nil {
+		return ""
+	}
+	for _, file := range files {
+		if !file.IsDir() && len(file.Name()) > len(srujaFileExt) && file.Name()[len(file.Name())-len(srujaFileExt):] == srujaFileExt {
+			return file.Name()
+		}
+	}
+	return ""
 }
 
-func Run(args []string, stdout, stderr io.Writer) int {
-	lintCmd := flag.NewFlagSet("lint", flag.ContinueOnError)
-	lintCmd.SetOutput(stderr)
-	fmtCmd := flag.NewFlagSet("fmt", flag.ContinueOnError)
-	fmtCmd.SetOutput(stderr)
-	exportCmd := flag.NewFlagSet("export", flag.ContinueOnError)
-	exportCmd.SetOutput(stderr)
-
-	if len(args) < 2 {
-		_, _ = fmt.Fprintln(stderr, "expected 'compile', 'lint', 'fmt', 'export', 'explain', 'list', 'init', 'tree', 'diff', or 'version' subcommands")
-		_, _ = fmt.Fprintln(stderr, "Run 'sruja <command> --help' for usage information")
-		return 1
+// parseArchitectureFile parses an architecture file and returns the program
+func parseArchitectureFile(filePath string, stderr io.Writer) (*language.Program, error) {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "Error reading file: %v\n", err)
+		return nil, err
 	}
 
-	// Handle version flag globally
-	if len(args) >= 2 && (args[1] == "--version" || args[1] == "-v" || args[1] == "version") {
-		return runVersion(stdout)
+	p, err := language.NewParser()
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "Error creating parser: %v\n", err)
+		return nil, err
 	}
 
-	switch args[1] {
-
-	case "compile":
-		compileCmd := flag.NewFlagSet("compile", flag.ContinueOnError)
-		compileCmd.SetOutput(stderr)
-		if err := compileCmd.Parse(args[2:]); err != nil {
-			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing compile flags: %v", err)))
-			return 1
-		}
-		if compileCmd.NArg() < 1 {
-			_, _ = fmt.Fprintln(stderr, "expected file path")
-			return 1
-		}
-		return runCompile(compileCmd.Arg(0), stdout, stderr)
-
-	case "lint":
-		if err := lintCmd.Parse(args[2:]); err != nil {
-			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing lint flags: %v", err)))
-			return 1
-		}
-		if lintCmd.NArg() < 1 {
-			_, _ = fmt.Fprintln(stderr, "expected file path")
-			return 1
-		}
-		return runLint(lintCmd.Arg(0), stdout, stderr)
-	case "fmt":
-		if err := fmtCmd.Parse(args[2:]); err != nil {
-			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing fmt flags: %v", err)))
-			return 1
-		}
-		if fmtCmd.NArg() < 1 {
-			_, _ = fmt.Fprintln(stderr, "expected file path")
-			return 1
-		}
-		return runFmt(fmtCmd.Arg(0), stdout, stderr)
-
-	case "export":
-		if err := exportCmd.Parse(args[2:]); err != nil {
-			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing export flags: %v", err)))
-			return 1
-		}
-		if exportCmd.NArg() < 2 {
-			_, _ = fmt.Fprintln(stderr, "expected format and file path (e.g., 'sruja export d2 example.sruja')")
-			return 1
-		}
-		return runExport(exportCmd.Arg(0), exportCmd.Arg(1), stdout, stderr)
-
-	case "explain":
-		return runExplain(stdout, stderr)
-	case "list":
-		return runList(stdout, stderr)
-
-	case "tree":
-		return runTree(stdout, stderr)
-	case "diff":
-		return runDiff(stdout, stderr)
-	case "version", "--version", "-v":
-		return runVersion(stdout)
-	default:
-		_, _ = fmt.Fprintln(stderr, "expected 'compile', 'lint', 'fmt', 'export', 'explain', 'list', 'init', 'tree', 'diff', or 'version' subcommands")
-		_, _ = fmt.Fprintln(stderr, "Run 'sruja <command> --help' for usage information")
-		return 1
+	program, err := p.Parse(filePath, string(content))
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "Parser Error: %v\n", err)
+		return nil, err
 	}
+
+	return program, nil
 }
+
+func main() { os.Exit(Execute()) }
+
+func Run(_ []string, _ io.Writer, _ io.Writer) int { return Execute() }
 
 func runLint(filePath string, stdout, stderr io.Writer) int {
 	content, err := os.ReadFile(filePath)
@@ -127,8 +86,21 @@ func runLint(filePath string, stdout, stderr io.Writer) int {
 	validator.RegisterRule(&engine.ValidReferenceRule{})
 	validator.RegisterRule(&engine.CycleDetectionRule{})
 	validator.RegisterRule(&engine.OrphanDetectionRule{})
+	validator.RegisterRule(&engine.SimplicityRule{})
 
 	validationErrors := validator.Validate(program)
+	if len(validationErrors) > 0 {
+		// Filter out informational cycle messages (cycles are valid in many architectures)
+		var blockingErrors []engine.ValidationError
+		for _, e := range validationErrors {
+			// Skip informational cycle detection messages (cycles are valid patterns)
+			if strings.Contains(e.Message, "Cycle detected") && strings.Contains(e.Message, "valid") {
+				continue // Cycles are valid - skip informational messages
+			}
+			blockingErrors = append(blockingErrors, e)
+		}
+		validationErrors = blockingErrors
+	}
 	if len(validationErrors) > 0 {
 		// Enhance errors with suggestions and context
 		enhancer := dx.NewErrorEnhancer(filePath, strings.Split(string(content), "\n"), program)
@@ -171,11 +143,6 @@ func runFmt(filePath string, stdout, stderr io.Writer) int {
 }
 
 func runExport(format, filePath string, stdout, stderr io.Writer) int {
-	if format != "d2" {
-		_, _ = fmt.Fprintf(stderr, "Unsupported export format: %s. Only 'd2' is currently supported.\n", format)
-		return 1
-	}
-
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "Error reading file: %v\n", err)
@@ -194,14 +161,28 @@ func runExport(format, filePath string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	exporter := d2.NewExporter()
-	output, err := exporter.Export(program.Architecture)
+	var output string
+    switch format {
+    case "d2":
+        exporter := d2.NewExporter()
+        output, err = exporter.Export(program.Architecture)
+    case "svg":
+        exporter := svg.NewExporter()
+        output, err = exporter.Export(program.Architecture)
+    case "json":
+        exporter := jexport.NewExporter()
+        output, err = exporter.Export(program.Architecture)
+    default:
+        _, _ = fmt.Fprintf(stderr, "Unsupported export format: %s. Supported formats: d2, svg, json\n", format)
+        return 1
+    }
+
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "Export Error: %v\n", err)
 		return 1
 	}
 
-	_, _ = fmt.Fprintln(stdout, output)
+	_, _ = fmt.Fprint(stdout, output)
 	return 0
 }
 
@@ -230,8 +211,21 @@ func runCompile(filePath string, stdout, stderr io.Writer) int {
 	validator.RegisterRule(&engine.ValidReferenceRule{})
 	validator.RegisterRule(&engine.CycleDetectionRule{})
 	validator.RegisterRule(&engine.OrphanDetectionRule{})
+	validator.RegisterRule(&engine.SimplicityRule{})
 
 	validationErrors := validator.Validate(program)
+	if len(validationErrors) > 0 {
+		// Filter out informational cycle messages (cycles are valid in many architectures)
+		var blockingErrors []engine.ValidationError
+		for _, e := range validationErrors {
+			// Skip informational cycle detection messages (cycles are valid patterns)
+			if strings.Contains(e.Message, "Cycle detected") && strings.Contains(e.Message, "valid") {
+				continue // Cycles are valid - skip informational messages
+			}
+			blockingErrors = append(blockingErrors, e)
+		}
+		validationErrors = blockingErrors
+	}
 	if len(validationErrors) > 0 {
 		// Enhance errors with suggestions and context
 		enhancer := dx.NewErrorEnhancer(filePath, strings.Split(string(content), "\n"), program)

@@ -1,0 +1,20 @@
+architecture "Strategic Design" {
+    domain ECommerce "E-Commerce Domain" {
+        
+        context Sales "Sales Context" {
+            description "Responsible for taking orders and processing payments."
+        }
+        
+        context Shipping "Shipping Context" {
+            description "Responsible for shipping orders to customers."
+        }
+        
+        context Inventory "Inventory Context" {
+            description "Tracks product availability."
+        }
+        
+        // Context Mapping (using relations)
+        Sales -> Shipping "Notify to Ship"
+        Sales -> Inventory "Reserve Stock"
+    }
+}

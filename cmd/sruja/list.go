@@ -31,42 +31,15 @@ func runList(stdout, stderr io.Writer) int {
 	}
 
 	elementType := strings.ToLower(listCmd.Arg(0))
-	filePath := *listFile
-
-	if filePath == "" {
-		// Try to find .sruja files in current directory
-		files, err := os.ReadDir(".")
-		if err == nil {
-			for _, file := range files {
-				if !file.IsDir() && len(file.Name()) > 6 && file.Name()[len(file.Name())-6:] == ".sruja" {
-					filePath = file.Name()
-					break
-				}
-			}
-		}
-	}
+	filePath := findSrujaFile(*listFile)
 
 	if filePath == "" {
 		_, _ = fmt.Fprintln(stderr, "Error: no architecture file found. Use --file to specify.")
 		return 1
 	}
 
-	// Parse the architecture file
-	content, err := os.ReadFile(filePath)
+	program, err := parseArchitectureFile(filePath, stderr)
 	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "Error reading file: %v\n", err)
-		return 1
-	}
-
-	p, err := language.NewParser()
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "Error creating parser: %v\n", err)
-		return 1
-	}
-
-	program, err := p.Parse(filePath, string(content))
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "Parser Error: %v\n", err)
 		return 1
 	}
 
@@ -77,33 +50,40 @@ func runList(stdout, stderr io.Writer) int {
 
 	arch := program.Architecture
 
-	switch elementType {
-	case "systems":
-		listSystems(arch, *listJSON, stdout)
-	case "containers":
-		listContainers(arch, *listJSON, stdout)
-	case "components":
-		listComponents(arch, *listJSON, stdout)
-	case "persons":
-		listPersons(arch, *listJSON, stdout)
-	case "datastores":
-		listDataStores(arch, *listJSON, stdout)
-	case "queues":
-		listQueues(arch, *listJSON, stdout)
-	case "scenarios":
-		listScenarios(arch, *listJSON, stdout)
-	case "adrs":
-		listADRs(arch, *listJSON, stdout)
-	case "entities":
-		listEntities(arch, *listJSON, stdout)
-	case "events":
-		listEvents(arch, *listJSON, stdout)
-	default:
-		_, _ = fmt.Fprintf(stderr, "Error: unknown type '%s'\n", elementType)
-		_, _ = fmt.Fprintln(stderr, "Types: systems, containers, components, persons, datastores, queues, scenarios, adrs, entities, events")
+	if err := listElementType(arch, elementType, *listJSON, stdout, stderr); err != nil {
 		return 1
 	}
 	return 0
+}
+
+func listElementType(arch *language.Architecture, elementType string, jsonOutput bool, stdout, stderr io.Writer) error {
+	switch elementType {
+	case "systems":
+		listSystems(arch, jsonOutput, stdout)
+	case "containers":
+		listContainers(arch, jsonOutput, stdout)
+	case "components":
+		listComponents(arch, jsonOutput, stdout)
+	case "persons":
+		listPersons(arch, jsonOutput, stdout)
+	case "datastores":
+		listDataStores(arch, jsonOutput, stdout)
+	case "queues":
+		listQueues(arch, jsonOutput, stdout)
+	case "scenarios":
+		listScenarios(arch, jsonOutput, stdout)
+	case "adrs":
+		listADRs(arch, jsonOutput, stdout)
+	case "entities":
+		listEntities(arch, jsonOutput, stdout)
+	case "events":
+		listEvents(arch, jsonOutput, stdout)
+	default:
+		_, _ = fmt.Fprintf(stderr, "Error: unknown type '%s'\n", elementType)
+		_, _ = fmt.Fprintln(stderr, "Types: systems, containers, components, persons, datastores, queues, scenarios, adrs, entities, events")
+		return fmt.Errorf("unknown type: %s", elementType)
+	}
+	return nil
 }
 
 func listSystems(arch *language.Architecture, jsonOutput bool, w io.Writer) {
@@ -367,13 +347,13 @@ func listEntities(arch *language.Architecture, jsonOutput bool, w io.Writer) {
 			if i > 0 {
 				_, _ = fmt.Fprint(w, ", ")
 			}
-			_, _ = fmt.Fprintf(w, `{"name": "%s"}`, e.Name)
+			_, _ = fmt.Fprintf(w, `{"id": "%s", "label": "%s"}`, e.ID, e.Label)
 		}
 		_, _ = fmt.Fprintln(w, "]")
 	} else {
 		_, _ = fmt.Fprintf(w, "Entities (%d):\n\n", len(entities))
 		for _, e := range entities {
-			_, _ = fmt.Fprintf(w, "  • %s\n", e.Name)
+			_, _ = fmt.Fprintf(w, "  • %s: %s\n", e.ID, e.Label)
 		}
 	}
 }
@@ -394,21 +374,13 @@ func listEvents(arch *language.Architecture, jsonOutput bool, w io.Writer) {
 			if i > 0 {
 				_, _ = fmt.Fprint(w, ", ")
 			}
-			ver := ""
-			if ev.Body != nil && ev.Body.Version != nil {
-				ver = *ev.Body.Version
-			}
-			_, _ = fmt.Fprintf(w, `{"name": "%s", "version": "%s"}`, ev.Name, ver)
+			_, _ = fmt.Fprintf(w, `{"id": "%s", "label": "%s"}`, ev.ID, ev.Label)
 		}
 		_, _ = fmt.Fprintln(w, "]")
 	} else {
 		_, _ = fmt.Fprintf(w, "Events (%d):\n\n", len(events))
 		for _, ev := range events {
-			extra := ""
-			if ev.Body != nil && ev.Body.Version != nil {
-				extra = fmt.Sprintf(" v%s", *ev.Body.Version)
-			}
-			_, _ = fmt.Fprintf(w, "  • %s%s\n", ev.Name, extra)
+			_, _ = fmt.Fprintf(w, "  • %s: %s\n", ev.ID, ev.Label)
 		}
 	}
 }

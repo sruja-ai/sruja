@@ -78,6 +78,17 @@
     }
     .zoom-container { display: inline-block; }
     .zoom-container img { display: block; max-width: none; }
+    @media (max-width: 768px) {
+        .sruja-modal-content {
+            max-width: 95vw;
+            max-height: 95vh;
+            padding: 1rem;
+        }
+        .modal-svg {
+            width: 95vw !important;
+            height: 85vh !important;
+        }
+    }
     @media (prefers-color-scheme: dark) {
         .sruja-modal-content {
             background: #1e293b;

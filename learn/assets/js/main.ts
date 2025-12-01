@@ -7,9 +7,17 @@ import { initSrujaCodeBlocks } from './components/SrujaCodeBlock';
 import { initTheme } from './utils/theme';
 import { trackPageVisit } from './utils/course-state';
 
-// Initialize WASM state
+// Initialize WASM state (legacy globals for backward compatibility)
 window.srujaWasmReady = window.srujaWasmReady || false;
 window.srujaWasmInitializing = window.srujaWasmInitializing || false;
+
+// Initialize namespaced Sruja API
+if (!window.sruja) {
+  window.sruja = {
+    wasmReady: window.srujaWasmReady || false,
+    wasmInitializing: window.srujaWasmInitializing || false,
+  };
+}
 
 function init(): void {
   mountAppShell();

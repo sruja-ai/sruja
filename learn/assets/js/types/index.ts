@@ -5,7 +5,7 @@ export interface NavLink {
   label: string;
 }
 
-export type Section = 'playground' | 'about' | 'resources' | 'community' | 'home' | 'courses' | 'docs' | 'tutorials' | 'blogs';
+export type Section = 'playground' | 'about' | 'learn' | 'community' | 'home' | 'courses' | 'docs' | 'tutorials' | 'blogs';
 
 export interface CourseState {
   visited: string[];

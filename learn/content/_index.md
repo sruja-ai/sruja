@@ -1,6 +1,8 @@
 ---
 title: Home
 type: docs
+description: "Sruja - Architecture as Code. Developer-friendly language for defining, visualizing, and validating software architecture. Learn system design with courses, tutorials, and documentation."
+keywords: ["architecture as code", "system design", "C4 model", "software architecture", "diagrams as code", "architecture DSL"]
 ---
 
 <div class="home-hero">

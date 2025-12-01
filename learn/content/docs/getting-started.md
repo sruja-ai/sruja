@@ -16,6 +16,9 @@ This guide will help you install Sruja and create your first architecture model.
 curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
 ```
 
+Note for macOS (Apple Silicon): If the automated installer reports a missing
+Darwin arm64 binary, use one of the alternatives below (Manual Download or Go install).
+
 ### Manual Download
 
 Download the latest release for your operating system from the [GitHub Releases](https://github.com/sruja-ai/sruja/releases) page.
@@ -32,6 +35,12 @@ Verify the installation:
 
 ```bash
 sruja --version
+```
+
+If `sruja` is not found in your shell, add Go's `bin` directory to your `PATH`:
+
+```bash
+export PATH="$HOME/go/bin:$PATH"
 ```
 
 ## Your First Project
