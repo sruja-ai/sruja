@@ -190,6 +190,8 @@ tests/edge_cases/
 
 ## Test Data
 
+**See**: [Comprehensive Test Cases](TEST_CASES.md) for complete architecture examples with base + changes.
+
 ### Sample Architectures
 
 **Simple Architecture** (`testdata/simple/`):
@@ -206,6 +208,7 @@ architecture "Simple App" {
 - 20-30 containers
 - 50-100 components
 - 100+ relations
+- **Includes**: Base architecture + sequential changes (add analytics, add payment, enhance API)
 
 **Complex Architecture** (`testdata/complex/`):
 - 20+ systems
@@ -214,13 +217,16 @@ architecture "Simple App" {
 - 1000+ relations
 - Multiple files (split)
 - Shared elements
+- **Includes**: Multi-system architecture + integration layer changes
 
 **Change Test Data** (`testdata/changes/`):
-- Single change
+- Single change (add, modify, remove)
 - Multiple changes (sequential)
-- Conflicting changes
-- Changes with ADRs
-- Preview snapshots
+- Conflicting changes (overlapping elements, conflicting modifications)
+- Changes with ADRs (approved, pending, in-progress)
+- Preview snapshots (with in-progress changes)
+- Change states (pending, in-progress, approved, deferred)
+- Edge cases (empty changes, large changes, metadata-only)
 
 ### Test Fixtures
 
