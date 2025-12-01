@@ -8,6 +8,39 @@ This document verifies DSL syntax consistency across:
 - Documentation examples
 - Test cases
 
+## Quick Answer: Why Colon in Metadata?
+
+**Colon is REQUIRED** because the parser grammar defines it as:
+```go
+type MetaEntry struct {
+    Key   string `parser:"@Ident ':'"`  // Colon is a required token
+    Value string `parser:"@String"`
+}
+```
+
+The `':'` in the parser tag means the colon is a **required literal token** that must appear between the key and value.
+
+### Why Colon is Used
+
+1. **Clear Separation**: Colon clearly separates key (identifier) from value (string)
+2. **Consistency**: Other key-value structures also use colon:
+   - `StyleEntry`: `@Ident ':'` ✅ Uses colon
+   - `PropertyEntry`: `@String ':'` ✅ Uses colon
+3. **Parser Grammar**: The parser grammar requires it - without colon, parsing fails
+
+### Places Without Colon
+
+Some constructs **don't use colon** because they use different syntax:
+
+- **Constraints**: `@Ident @String` (no colon - just identifier followed by string)
+- **Conventions**: `@Ident @String` (no colon - just identifier followed by string)
+- **Requirements**: `requirement R1 functional "text"` (positional/keyword arguments)
+- **ADRs**: `adr ADR001 "title"` (positional arguments)
+- **Relations**: `A -> B "label"` (arrow operator)
+- **Scale**: `min 3` (keyword followed by value)
+
+**Note**: The inconsistency between `MetaEntry` (with colon) and `ConstraintEntry`/`ConventionEntry` (without colon) exists in the parser, but metadata **must** use colon because that's how it's defined.
+
 ## Current DSL Syntax (From Parser)
 
 ### Basic Elements
@@ -79,6 +112,43 @@ adr <ID> <Title> {
   consequences [<consequence1>, ...]
 }
 ```
+
+## Why Colon is Required in Metadata
+
+### Parser Grammar Requirement
+
+The parser grammar **requires** colon (`:`) for metadata because:
+
+1. **Parser Definition**: The `MetaEntry` struct uses `@Ident ':'` which means:
+   - `@Ident` - Match an identifier (key name)
+   - `':'` - **Must have a colon** (required token)
+   - `@String` - Match a string value
+
+```go
+type MetaEntry struct {
+    Key   string `parser:"@Ident ':'"`  // Colon is REQUIRED by parser
+    Value string `parser:"@String"`
+}
+```
+
+2. **Design Rationale**: Metadata uses key-value pairs, and the colon clearly separates:
+   - **Key** (identifier): `team`, `owner`, `tier`
+   - **Value** (string): `"Payments"`, `"alice@example.com"`
+
+3. **Consistency with Similar Constructs**: Other key-value structures also use colon:
+   - `StyleEntry`: `@Ident ':'` (uses colon)
+   - `PropertyEntry`: `@String ':'` (uses colon)
+
+### Why Other Constructs Don't Use Colon
+
+Other DSL constructs use different syntax patterns:
+
+- **Requirements**: `requirement R1 functional "text"` - Uses positional/keyword arguments
+- **ADRs**: `adr ADR001 "title"` - Uses positional arguments  
+- **Relations**: `A -> B "label"` - Uses arrow operator
+- **Scale**: `min 3` - Uses keyword followed by value (no colon needed)
+
+**Note**: `ConstraintEntry` and `ConventionEntry` use `@Ident @String` (no colon), but these are different from metadata - they're not key-value pairs in the same way.
 
 ## Inconsistencies Found
 
