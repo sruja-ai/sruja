@@ -10,6 +10,16 @@ Focus on solving real problems:
 3. ✅ Architecture evolution tracking (changes)
 4. ✅ Catch mistakes early (LSP)
 
+## DSL Changes Required
+
+**See**: [DSL Changes Required](go/DSL_CHANGES_REQUIRED.md) for complete syntax changes needed.
+
+**Summary**:
+- `change` block syntax (Sprint 5)
+- `metadata` block in changes (owner, stakeholders)
+- `snapshot` block syntax
+- ADR status validation enhancement
+
 ## Phase 1: Core Value (Weeks 1-8)
 
 ### Sprint 1: Foundation (Week 1-2)
