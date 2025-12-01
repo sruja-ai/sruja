@@ -7,6 +7,41 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
+func strPtr(s string) *string {
+	return &s
+}
+
+func TestArchitecture_PostProcess_Imports(t *testing.T) {
+	ds := &language.DataStore{
+		ID:    "DB",
+		Label: "Database",
+		Items: []language.DataStoreItem{
+			{
+				Description: stringPtr("Main database"),
+			},
+			{
+				Metadata: &language.MetadataBlock{
+					Entries: []*language.MetaEntry{
+						{Key: "engine", Value: "postgres"},
+					},
+				},
+			},
+		},
+	}
+
+	ds.PostProcess()
+
+	if ds.Description == nil || *ds.Description != "Main database" {
+		t.Error("Description should be populated from items")
+	}
+	if len(ds.Metadata) != 1 {
+		t.Errorf("Expected 1 metadata entry, got %d", len(ds.Metadata))
+	}
+	if ds.Metadata[0].Key != "engine" {
+		t.Errorf("Expected metadata key 'engine', got %q", ds.Metadata[0].Key)
+	}
+}
+
 func TestDataStore_PostProcess(t *testing.T) {
 	ds := &language.DataStore{
 		ID:    "DB",
@@ -188,8 +223,8 @@ func TestComponent_PostProcess(t *testing.T) {
 			{
 				Requirement: &language.Requirement{
 					ID:          "R1",
-					Type:        "performance",
-					Description: "Fast",
+					Type:        strPtr("performance"),
+					Description: strPtr("Fast"),
 				},
 			},
 			{
@@ -319,8 +354,8 @@ func TestContainer_PostProcess(t *testing.T) {
 			{
 				Requirement: &language.Requirement{
 					ID:          "R1",
-					Type:        "performance",
-					Description: "Fast",
+					Type:        strPtr("performance"),
+					Description: strPtr("Fast"),
 				},
 			},
 			{
@@ -408,8 +443,8 @@ func TestSystem_PostProcess(t *testing.T) {
 			{
 				Requirement: &language.Requirement{
 					ID:          "R1",
-					Type:        "security",
-					Description: "Secure",
+					Type:        strPtr("security"),
+					Description: strPtr("Must be secure"),
 				},
 			},
 			{
@@ -495,8 +530,8 @@ func TestArchitecture_PostProcess(t *testing.T) {
 			{
 				Requirement: &language.Requirement{
 					ID:          "R1",
-					Type:        "performance",
-					Description: "Fast",
+					Type:        strPtr("performance"),
+					Description: strPtr("Fast"),
 				},
 			},
 			{
@@ -596,26 +631,44 @@ func TestDeploymentNode_PostProcess(t *testing.T) {
 	}
 }
 
-func TestArchitecture_PostProcess_Domain(t *testing.T) {
+func TestArchitecture_PostProcess_DomainEntitiesAndEvents(t *testing.T) {
 	arch := &language.Architecture{
 		Name: "Test",
 		Items: []language.ArchitectureItem{
 			{
 				Domain: &language.DomainBlock{
-					Name: "UserDomain",
-					EntitiesBlock: &language.EntitiesBlock{
-						Entities: []*language.Entity{
-							{Name: "E1"},
+					ID: "UserDomain",
+					Items: []language.DomainItem{
+						{
+							Context: &language.ContextBlock{
+								ID: "UserContext",
+								Items: []language.ContextItem{
+									{
+										Entity: &language.Entity{
+											ID: "E1",
+										},
+									},
+								},
+							},
 						},
 					},
 				},
 			},
 			{
 				Domain: &language.DomainBlock{
-					Name: "EventDomain",
-					EventsBlock: &language.EventsBlock{
-						Events: []*language.DomainEvent{
-							{Name: "Ev1"},
+					ID: "EventDomain",
+					Items: []language.DomainItem{
+						{
+							Context: &language.ContextBlock{
+								ID: "EventContext",
+								Items: []language.ContextItem{
+									{
+										DomainEvent: &language.DomainEvent{
+											ID: "Ev1",
+										},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -625,11 +678,17 @@ func TestArchitecture_PostProcess_Domain(t *testing.T) {
 
 	arch.PostProcess()
 
-	if len(arch.Entities) != 1 {
-		t.Errorf("Expected 1 entity, got %d", len(arch.Entities))
+	// Check Contexts
+	if len(arch.Contexts) != 2 {
+		t.Errorf("Expected 2 contexts, got %d", len(arch.Contexts))
 	}
-	if len(arch.Events) != 1 {
-		t.Errorf("Expected 1 event, got %d", len(arch.Events))
+	// Check Entities inside Contexts
+	if len(arch.Contexts[0].Entities) != 1 {
+		t.Errorf("Expected 1 entity in first context, got %d", len(arch.Contexts[0].Entities))
+	}
+	// Check Events inside Contexts
+	if len(arch.Contexts[1].Events) != 1 {
+		t.Errorf("Expected 1 event in second context, got %d", len(arch.Contexts[1].Events))
 	}
 }
 
@@ -659,9 +718,14 @@ func TestArchitecture_PostProcess_ContractsAndConstraints(t *testing.T) {
 				},
 			},
 			{
-				EntitiesBlock: &language.EntitiesBlock{
-					Entities: []*language.Entity{
-						{Name: "E1"},
+				Context: &language.ContextBlock{
+					ID: "Ctx1",
+					Items: []language.ContextItem{
+						{
+							Entity: &language.Entity{
+								ID: "E1",
+							},
+						},
 					},
 				},
 			},
@@ -679,7 +743,10 @@ func TestArchitecture_PostProcess_ContractsAndConstraints(t *testing.T) {
 	if len(arch.Conventions) != 1 {
 		t.Errorf("Expected 1 convention, got %d", len(arch.Conventions))
 	}
-	if len(arch.Entities) != 1 {
-		t.Errorf("Expected 1 entity, got %d", len(arch.Entities))
+	if len(arch.Contexts) != 1 {
+		t.Errorf("Expected 1 context, got %d", len(arch.Contexts))
+	}
+	if len(arch.Contexts[0].Entities) != 1 {
+		t.Errorf("Expected 1 entity, got %d", len(arch.Contexts[0].Entities))
 	}
 }

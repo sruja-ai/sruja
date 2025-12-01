@@ -1,0 +1,38 @@
+architecture "DDD Shop" {
+    domain ECommerce "E-Commerce" {
+        description "Online shopping domain"
+        
+        context OrderManagement "Order Management" {
+            description "Handles order processing"
+            
+            aggregate Order {
+                entity OrderLineItem {
+                    name string
+                    quantity int
+                    price float
+                }
+                
+                valueObject ShippingAddress {
+                    street string
+                    city string
+                    zipCode string
+                }
+            }
+            
+            event OrderCreated {
+                description "Emitted when a new order is placed"
+                orderId string
+                customerId string
+            }
+        }
+    }
+    
+    system ShopAPI {
+        requirement Scalability "Must be scalable"
+        context Catalog {
+            aggregate Product {
+                entity ProductVariant
+            }
+        }
+    }
+}

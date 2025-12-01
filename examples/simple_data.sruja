@@ -1,0 +1,24 @@
+architecture "Simple Data Modeling" {
+    domain ECommerce "E-Commerce" {
+        
+        module Orders {
+            description "Order Management Module"
+            
+            data Order {
+                id string
+                total float
+                
+                // Using valueObject for nested structures without identity
+                valueObject Address {
+                    street string
+                    city string
+                }
+            }
+            
+            data Customer {
+                name string
+                email string
+            }
+        }
+    }
+}

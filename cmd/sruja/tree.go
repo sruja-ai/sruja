@@ -12,6 +12,11 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
+const (
+	treeConnectorMid = "├─"
+	treeConnectorEnd = "└─"
+)
+
 func runTree(stdout, stderr io.Writer) int {
 	treeCmd := flag.NewFlagSet("tree", flag.ContinueOnError)
 	treeCmd.SetOutput(stderr)
@@ -24,41 +29,14 @@ func runTree(stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	filePath := *treeFile
-	if filePath == "" {
-		// Try to find .sruja files in current directory
-		files, err := os.ReadDir(".")
-		if err == nil {
-			for _, file := range files {
-				if !file.IsDir() && len(file.Name()) > 6 && file.Name()[len(file.Name())-6:] == ".sruja" {
-					filePath = file.Name()
-					break
-				}
-			}
-		}
-	}
-
+	filePath := findSrujaFile(*treeFile)
 	if filePath == "" {
 		_, _ = fmt.Fprintln(stderr, dx.Error("No architecture file found. Use --file to specify."))
 		return 1
 	}
 
-	// Parse the architecture file
-	content, err := os.ReadFile(filePath)
+	program, err := parseArchitectureFile(filePath, stderr)
 	if err != nil {
-		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error reading file: %v", err)))
-		return 1
-	}
-
-	p, err := language.NewParser()
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error creating parser: %v", err)))
-		return 1
-	}
-
-	program, err := p.Parse(filePath, string(content))
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Parser Error: %v", err)))
 		return 1
 	}
 
@@ -146,9 +124,9 @@ func printSystemTree(sys *language.System, jsonOutput bool, indent int, w io.Wri
 		// Containers
 		for i, cont := range sys.Containers {
 			isLastContainer := i == len(sys.Containers)-1 && len(sys.Components) == 0 && len(sys.DataStores) == 0 && len(sys.Queues) == 0
-			connector := "├─"
+			connector := treeConnectorMid
 			if isLastContainer {
-				connector = "└─"
+				connector = treeConnectorEnd
 			}
 			contLine := fmt.Sprintf("%s  %s ", indentStr, connector)
 			contLine += dx.Code("container") + " "
@@ -164,9 +142,9 @@ func printSystemTree(sys *language.System, jsonOutput bool, indent int, w io.Wri
 			for _, comp := range cont.Components {
 				itemIdx++
 				isLast := itemIdx == totalItems
-				connector := "├─"
+				connector := treeConnectorMid
 				if isLast {
-					connector = "└─"
+					connector = treeConnectorEnd
 				}
 				compLine := fmt.Sprintf("%s    %s %s ", indentStr, connector, dx.Code("component"))
 				compLine += comp.ID
@@ -180,9 +158,9 @@ func printSystemTree(sys *language.System, jsonOutput bool, indent int, w io.Wri
 			for _, ds := range cont.DataStores {
 				itemIdx++
 				isLast := itemIdx == totalItems
-				connector := "├─"
+				connector := treeConnectorMid
 				if isLast {
-					connector = "└─"
+					connector = treeConnectorEnd
 				}
 				dsLine := fmt.Sprintf("%s    %s %s ", indentStr, connector, dx.Code("datastore"))
 				dsLine += ds.ID
@@ -196,9 +174,9 @@ func printSystemTree(sys *language.System, jsonOutput bool, indent int, w io.Wri
 			for _, q := range cont.Queues {
 				itemIdx++
 				isLast := itemIdx == totalItems
-				connector := "├─"
+				connector := treeConnectorMid
 				if isLast {
-					connector = "└─"
+					connector = treeConnectorEnd
 				}
 				qLine := fmt.Sprintf("%s    %s %s ", indentStr, connector, dx.Code("queue"))
 				qLine += q.ID
@@ -213,9 +191,9 @@ func printSystemTree(sys *language.System, jsonOutput bool, indent int, w io.Wri
 		if len(sys.Components) > 0 {
 			for i, comp := range sys.Components {
 				isLast := i == len(sys.Components)-1 && len(sys.DataStores) == 0 && len(sys.Queues) == 0
-				connector := "├─"
+				connector := treeConnectorMid
 				if isLast {
-					connector = "└─"
+					connector = treeConnectorEnd
 				}
 				compLine := fmt.Sprintf("%s  %s %s ", indentStr, connector, dx.Colorize(dx.ColorGreen, "component", useColor))
 				compLine += comp.ID
@@ -230,9 +208,9 @@ func printSystemTree(sys *language.System, jsonOutput bool, indent int, w io.Wri
 		if len(sys.DataStores) > 0 {
 			for i, ds := range sys.DataStores {
 				isLast := i == len(sys.DataStores)-1 && len(sys.Queues) == 0
-				connector := "├─"
+				connector := treeConnectorMid
 				if isLast {
-					connector = "└─"
+					connector = treeConnectorEnd
 				}
 				dsLine := fmt.Sprintf("%s  %s %s ", indentStr, connector, dx.Colorize(dx.ColorPurple, "datastore", useColor))
 				dsLine += ds.ID
@@ -247,9 +225,9 @@ func printSystemTree(sys *language.System, jsonOutput bool, indent int, w io.Wri
 		if len(sys.Queues) > 0 {
 			for i, q := range sys.Queues {
 				isLast := i == len(sys.Queues)-1
-				connector := "├─"
+				connector := treeConnectorMid
 				if isLast {
-					connector = "└─"
+					connector = treeConnectorEnd
 				}
 				qLine := fmt.Sprintf("%s  %s %s ", indentStr, connector, dx.Colorize(dx.ColorPurple, "queue", useColor))
 				qLine += q.ID

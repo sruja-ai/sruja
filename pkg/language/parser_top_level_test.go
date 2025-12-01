@@ -106,3 +106,5 @@ func TestParser_ArchitectureBlockStillWorks(t *testing.T) {
 		t.Fatalf("Expected 1 system, got %d", len(program.Architecture.Systems))
 	}
 }
+
+

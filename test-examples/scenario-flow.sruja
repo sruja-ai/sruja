@@ -1,0 +1,29 @@
+architecture "User Authentication System" {
+    person User "End User"
+    
+    system AuthSystem "Authentication System" {
+        container AuthAPI "Authentication API" {
+            component LoginService "Login Service"
+            component TokenService "Token Service"
+        }
+        
+        datastore UserDB "User Database"
+    }
+    
+    scenario "User Login Flow" {
+        User -> AuthAPI "Submits credentials"
+        AuthAPI -> UserDB "Validates user"
+        UserDB -> AuthAPI "Returns user data"
+        AuthAPI -> User "Returns JWT token"
+    }
+    
+    flow "Authentication Flow" {
+        User -> LoginService "POST /login"
+        LoginService -> UserDB "SELECT user"
+        LoginService -> TokenService "Generate token"
+        TokenService -> User "Return JWT"
+    }
+}
+
+
+

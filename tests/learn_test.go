@@ -15,6 +15,7 @@ import (
 
 	"github.com/sruja-ai/sruja/pkg/engine"
 	"github.com/sruja-ai/sruja/pkg/export/d2"
+	"github.com/sruja-ai/sruja/pkg/export/svg"
 	"github.com/sruja-ai/sruja/pkg/language"
 	"oss.terrastruct.com/d2/d2graph"
 	"oss.terrastruct.com/d2/d2layouts/d2dagrelayout"
@@ -290,9 +291,16 @@ func compileCode(name, code string, skipOrphanCheck bool, skipSVGRender bool) er
 	}
 
 	if err := validateSrujaCode(program, skipOrphanCheck); err != nil {
-		return err
+		// Filter out informational cycle messages (cycles are valid in many architectures)
+		if errStr := err.Error(); strings.Contains(errStr, "Cycle detected") && strings.Contains(errStr, "valid") {
+			// Cycles are valid - skip informational messages
+			// Continue with compilation
+		} else {
+			return err
+		}
 	}
 
+	// Test D2 export
 	d2Script, err := exportToD2(program)
 	if err != nil {
 		return err
@@ -300,6 +308,12 @@ func compileCode(name, code string, skipOrphanCheck bool, skipSVGRender bool) er
 
 	if skipSVGRender {
 		return nil
+	}
+
+	// Test SVG export (Sruja Format) as well
+	_, err = exportToSVG(program)
+	if err != nil {
+		return fmt.Errorf("SVG export failed: %w", err)
 	}
 
 	return renderD2ToSVG(d2Script)
@@ -321,6 +335,7 @@ func validateSrujaCode(program *language.Program, skipOrphanCheck bool) error {
 	validator.RegisterRule(&engine.ValidReferenceRule{})
 	validator.RegisterRule(&engine.CycleDetectionRule{})
 	validator.RegisterRule(&engine.ExternalDependencyRule{})
+	validator.RegisterRule(&engine.SimplicityRule{}) // Guide users toward appropriate syntax
 	if !skipOrphanCheck {
 		validator.RegisterRule(&engine.OrphanDetectionRule{})
 	}
@@ -330,8 +345,27 @@ func validateSrujaCode(program *language.Program, skipOrphanCheck bool) error {
 		return nil
 	}
 
-	var msgs []string
+	// Filter out informational messages (cycles are valid, simplicity warnings are guidance)
+	var blockingErrors []engine.ValidationError
 	for _, e := range errors {
+		// Skip informational cycle detection messages (cycles are valid patterns)
+		if strings.Contains(e.Message, "Cycle detected") && strings.Contains(e.Message, "valid") {
+			continue // Cycles are valid - skip informational messages
+		}
+		// Skip simplicity guidance warnings (they're suggestions, not errors)
+		// SimplicityRule messages contain "Consider using" and are guidance, not blocking
+		if strings.Contains(e.Message, "Consider using") {
+			continue // Simplicity warnings are guidance, not blocking errors
+		}
+		blockingErrors = append(blockingErrors, e)
+	}
+
+	if len(blockingErrors) == 0 {
+		return nil
+	}
+
+	var msgs []string
+	for _, e := range blockingErrors {
 		msgs = append(msgs, e.Error())
 	}
 	return &CompilationError{Message: strings.Join(msgs, "; ")}
@@ -340,6 +374,12 @@ func validateSrujaCode(program *language.Program, skipOrphanCheck bool) error {
 // exportToD2 exports the architecture to D2 script
 func exportToD2(program *language.Program) (string, error) {
 	exporter := d2.NewExporter()
+	return exporter.Export(program.Architecture)
+}
+
+// exportToSVG exports the architecture to SVG (Sruja Format)
+func exportToSVG(program *language.Program) (string, error) {
+	exporter := svg.NewExporter()
 	return exporter.Export(program.Architecture)
 }
 
@@ -474,6 +514,36 @@ func TestDocsCodeBlocks(t *testing.T) {
 			// They may be intentionally standalone and some features may have D2 rendering limitations
 			if err := compileCode(name, code, true, true); err != nil {
 				t.Errorf("Docs code block '%s' failed to compile: %v\nCode:\n%s", name, err, code)
+			}
+		})
+	}
+}
+
+func TestTutorialCodeBlocks(t *testing.T) {
+	tutorialsDir := "../learn/content/tutorials"
+
+	// Check if directory exists
+	if _, err := os.Stat(tutorialsDir); os.IsNotExist(err) {
+		t.Skipf("Tutorials directory %s does not exist, skipping", tutorialsDir)
+	}
+
+	codeBlocks, err := extractCodeBlocks(tutorialsDir)
+	if err != nil {
+		t.Fatalf("Failed to extract code blocks: %v", err)
+	}
+
+	if len(codeBlocks) == 0 {
+		t.Skip("No code blocks found in tutorial files")
+	}
+
+	t.Logf("Found %d code blocks in tutorial files", len(codeBlocks))
+
+	for name, code := range codeBlocks {
+		t.Run(name, func(t *testing.T) {
+			// Skip orphan check and SVG rendering for tutorial examples
+			// They may be intentionally standalone and some features may have D2 rendering limitations
+			if err := compileCode(name, code, true, true); err != nil {
+				t.Errorf("Tutorial code block '%s' failed to compile: %v\nCode:\n%s", name, err, code)
 			}
 		})
 	}

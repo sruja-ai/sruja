@@ -1,5 +1,7 @@
 # Development Guide
 
+This guide covers general development practices. For content creation, see [Content Contribution Guide](CONTENT_CONTRIBUTION_GUIDE.md).
+
 ## Git Hooks
 
 ### Pre-commit Hook

@@ -26,12 +26,21 @@ func (r *OrphanDetectionRule) Validate(program *language.Program) []ValidationEr
 
 	for _, sys := range arch.Systems {
 		defined[sys.ID] = sys.Location()
+		if len(sys.Requirements) > 0 || len(sys.ADRs) > 0 || len(sys.Contracts) > 0 {
+			used[sys.ID] = true
+		}
 		for _, cont := range sys.Containers {
 			defined[cont.ID] = cont.Location()
 			parent[cont.ID] = sys.ID
+			if len(cont.Requirements) > 0 || len(cont.ADRs) > 0 || len(cont.Contracts) > 0 {
+				used[cont.ID] = true
+			}
 			for _, comp := range cont.Components {
 				defined[comp.ID] = comp.Location()
 				parent[comp.ID] = cont.ID
+				if len(comp.Requirements) > 0 || len(comp.ADRs) > 0 {
+					used[comp.ID] = true
+				}
 			}
 			for _, ds := range cont.DataStores {
 				defined[ds.ID] = ds.Location()
@@ -45,6 +54,9 @@ func (r *OrphanDetectionRule) Validate(program *language.Program) []ValidationEr
 		for _, comp := range sys.Components {
 			defined[comp.ID] = comp.Location()
 			parent[comp.ID] = sys.ID
+			if len(comp.Requirements) > 0 || len(comp.ADRs) > 0 {
+				used[comp.ID] = true
+			}
 		}
 		for _, ds := range sys.DataStores {
 			defined[ds.ID] = ds.Location()
@@ -79,10 +91,42 @@ func (r *OrphanDetectionRule) Validate(program *language.Program) []ValidationEr
 		}
 	}
 
-	// Check Scenarios
-	for _, s := range arch.Scenarios {
-		for _, step := range s.Steps {
+	// Helper to check steps
+	checkSteps := func(steps []*language.ScenarioStep) {
+		for _, step := range steps {
+			if step.To != nil {
+				markRel(step.From, *step.To)
+			} else {
+				// Mark actor as used
+				used[step.From] = true
+			}
+		}
+	}
+
+	// Helper to check flow steps
+	checkFlowSteps := func(steps []*language.FlowStep) {
+		for _, step := range steps {
 			markRel(step.From, step.To)
+		}
+	}
+
+	// Check Scenarios (Top-level)
+	for _, s := range arch.Scenarios {
+		checkSteps(s.Steps)
+	}
+
+	// Check Flows (Top-level)
+	for _, f := range arch.Flows {
+		checkFlowSteps(f.Steps)
+	}
+
+	// Check Nested Scenarios and Flows
+	for _, sys := range arch.Systems {
+		for _, s := range sys.Scenarios {
+			checkSteps(s.Steps)
+		}
+		for _, f := range sys.Flows {
+			checkFlowSteps(f.Steps)
 		}
 	}
 

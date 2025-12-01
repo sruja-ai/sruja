@@ -228,13 +228,13 @@ func TestExport_Requirements(t *testing.T) {
 	arch := &language.Architecture{
 		Name: "ReqArch",
 		Requirements: []*language.Requirement{
-			{ID: "R1", Type: "functional", Description: "Top level req"},
+			{ID: "R1", Type: stringPtr("functional"), Description: stringPtr("Req 1")},
 		},
 		Systems: []*language.System{
 			{
 				ID: "Sys1",
 				Requirements: []*language.Requirement{
-					{ID: "R2", Type: "security", Description: "System level req"},
+					{ID: "R2", Type: stringPtr("security"), Description: stringPtr("Req 2")},
 				},
 			},
 		},
@@ -251,9 +251,9 @@ func TestExport_Requirements(t *testing.T) {
 		"\"Requirements\"",
 		"}",
 		"\"Requirements\": {",
-		"R1: \"functional: Top level req\" {",
+		"R1: \"functional: Req 1\" {",
 		"shape: page",
-		"Sys1.R2: \"security: System level req\" {",
+		"Sys1.R2: \"security: Req 2\" {",
 	}
 
 	for _, exp := range expected {

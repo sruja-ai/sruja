@@ -123,6 +123,9 @@ func (p *Parser) Parse(filename, text string) (*Program, error) {
 			if item.Architecture.Name != "" {
 				arch.Name = item.Architecture.Name
 			}
+			if len(item.Architecture.Follows) > 0 {
+				arch.Follows = append(arch.Follows, item.Architecture.Follows...)
+			}
 			// Add items from explicit architecture block
 			arch.Items = append(arch.Items, item.Architecture.Items...)
 		} else {
@@ -157,6 +160,9 @@ func convertFileItemToArchitectureItem(item FileItem) *ArchitectureItem {
 	if item.Requirement != nil {
 		return &ArchitectureItem{Requirement: item.Requirement}
 	}
+	if item.Policy != nil {
+		return &ArchitectureItem{Policy: item.Policy}
+	}
 	if item.ADR != nil {
 		return &ArchitectureItem{ADR: item.ADR}
 	}
@@ -178,8 +184,8 @@ func convertFileItemToArchitectureItem(item FileItem) *ArchitectureItem {
 	if item.ConventionsBlock != nil {
 		return &ArchitectureItem{ConventionsBlock: item.ConventionsBlock}
 	}
-	if item.EntitiesBlock != nil {
-		return &ArchitectureItem{EntitiesBlock: item.EntitiesBlock}
+	if item.Context != nil {
+		return &ArchitectureItem{Context: item.Context}
 	}
 	if item.Domain != nil {
 		return &ArchitectureItem{Domain: item.Domain}

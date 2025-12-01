@@ -116,7 +116,7 @@ func Test_Feature_Requirements_Types(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	got := []string{prog.Architecture.Requirements[0].Type, prog.Architecture.Requirements[1].Type, prog.Architecture.Requirements[2].Type}
+	got := []string{*prog.Architecture.Requirements[0].Type, *prog.Architecture.Requirements[1].Type, *prog.Architecture.Requirements[2].Type}
 	want1, want2, want3 := "performance", "security", "constraint"
 	if got[0] != want1 || got[1] != want2 || got[2] != want3 {
 		t.Fatalf("unexpected requirement types: %v", got)

@@ -8,6 +8,30 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
+func stringPtr(s string) *string {
+	return &s
+}
+
+func TestPrinter_Print_Full(t *testing.T) {
+	arch := &language.Architecture{
+		Name: "Test",
+		Imports: []*language.ImportSpec{
+			{Path: "other.sruja"},
+			{Path: "billing.sruja", Alias: stringPtr("Billing")},
+		},
+	}
+	prog := &language.Program{Architecture: arch}
+	printer := language.NewPrinter()
+	output := printer.Print(prog)
+
+	if !strings.Contains(output, `import "other.sruja"`) {
+		t.Error("Should print import without alias")
+	}
+	if !strings.Contains(output, `import "billing.sruja" as Billing`) {
+		t.Error("Should print import with alias")
+	}
+}
+
 func TestPrinter_PrintImport(t *testing.T) {
 	arch := &language.Architecture{
 		Name: "Test",
@@ -56,8 +80,8 @@ func TestPrinter_PrintRequirement(t *testing.T) {
 	arch := &language.Architecture{
 		Name: "Test",
 		Requirements: []*language.Requirement{
-			{ID: "R1", Type: "performance", Description: "p95<200ms"},
-			{ID: "R2", Type: "security", Description: "TLS1.3"},
+			{ID: "R1", Type: stringPtr("performance"), Description: stringPtr("p95<200ms")},
+			{ID: "R2", Type: stringPtr("security"), Description: stringPtr("TLS1.3")},
 		},
 	}
 	prog := &language.Program{Architecture: arch}
@@ -179,8 +203,8 @@ func TestPrinter_PrintRequirement_InSystem(t *testing.T) {
 					{
 						Requirement: &language.Requirement{
 							ID:          "R1",
-							Type:        "performance",
-							Description: "Fast",
+							Type:        stringPtr("performance"),
+							Description: stringPtr("Fast"),
 						},
 					},
 				},
@@ -244,8 +268,8 @@ func TestPrinter_PrintRequirement_InComponent(t *testing.T) {
 											{
 												Requirement: &language.Requirement{
 													ID:          "R1",
-													Type:        "security",
-													Description: "Secure",
+													Type:        stringPtr("security"),
+													Description: stringPtr("Secure"),
 												},
 											},
 										},
@@ -358,8 +382,4 @@ func TestPrinter_PrintRelation_InComponent(t *testing.T) {
 	if !strings.Contains(output, "Comp -> Other") {
 		t.Errorf("Should print relation within component. Output:\n%s", output)
 	}
-}
-
-func stringPtr(s string) *string {
-	return &s
 }

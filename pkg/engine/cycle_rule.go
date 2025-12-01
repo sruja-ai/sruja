@@ -69,8 +69,10 @@ func (r *CycleDetectionRule) Validate(program *language.Program) []ValidationErr
 				if startIdx != -1 {
 					cyclePath = append(cyclePath, path[startIdx:]...)
 					cyclePath = append(cyclePath, v)
+					// Cycles are valid in many architectures (feedback loops, event-driven, mutual dependencies)
+					// Report as informational message rather than error
 					errors = append(errors, ValidationError{
-						Message: fmt.Sprintf("Cycle detected: %s", strings.Join(cyclePath, " -> ")),
+						Message: fmt.Sprintf("ℹ️  Cycle detected: %s (this is valid for feedback loops, event-driven patterns, or mutual dependencies)", strings.Join(cyclePath, " -> ")),
 						Line:    0,
 						Column:  0,
 					})

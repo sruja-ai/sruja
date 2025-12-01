@@ -8,6 +8,8 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
+const expectedOrphanMessage = "Orphan element 'Orphan' is defined but never used in any relation."
+
 func TestOrphanDetectionRule_EmptyArchitecture(t *testing.T) {
 	program := &language.Program{
 		Architecture: nil,
@@ -49,7 +51,7 @@ architecture "Test" {
 	}
 	found := false
 	for _, e := range errs {
-		if e.Message == "Orphan element 'Orphan' is defined but never used in any relation." {
+		if e.Message == expectedOrphanMessage {
 			found = true
 			break
 		}
@@ -73,7 +75,7 @@ architecture "Test" {
 	errs := rule.Validate(program)
 	foundOrphan := false
 	for _, e := range errs {
-		if e.Message == "Orphan element 'Orphan' is defined but never used in any relation." {
+		if e.Message == expectedOrphanMessage {
 			foundOrphan = true
 			break
 		}
@@ -99,7 +101,7 @@ architecture "Test" {
 	errs := rule.Validate(program)
 	foundOrphan := false
 	for _, e := range errs {
-		if e.Message == "Orphan element 'Orphan' is defined but never used in any relation." {
+		if e.Message == expectedOrphanMessage {
 			foundOrphan = true
 			break
 		}
@@ -123,7 +125,7 @@ architecture "Test" {
 	errs := rule.Validate(program)
 	foundOrphan := false
 	for _, e := range errs {
-		if e.Message == "Orphan element 'Orphan' is defined but never used in any relation." {
+		if e.Message == expectedOrphanMessage {
 			foundOrphan = true
 			break
 		}
@@ -147,7 +149,7 @@ architecture "Test" {
 	errs := rule.Validate(program)
 	foundOrphan := false
 	for _, e := range errs {
-		if e.Message == "Orphan element 'Orphan' is defined but never used in any relation." {
+		if e.Message == expectedOrphanMessage {
 			foundOrphan = true
 			break
 		}
@@ -169,7 +171,7 @@ architecture "Test" {
 	errs := rule.Validate(program)
 	foundOrphan := false
 	for _, e := range errs {
-		if e.Message == "Orphan element 'Orphan' is defined but never used in any relation." {
+		if e.Message == expectedOrphanMessage {
 			foundOrphan = true
 			break
 		}
