@@ -72,14 +72,14 @@ Phase 4: Web Studio (TypeScript)
 
 Phase 5: Change Tracking
 ├── Task 1.5: Change Commands
-│   └── Depends on: Task 1.1, Task 1.2
+│   └── Depends on: Task 1.0, Task 1.1, Task 1.2 (needs DSL support, JSON, diff calculation)
 │
 └── Task 3.8: Change Visualization
     └── Depends on: Task 3.1, Task 1.5
 
 Phase 6: Developer Experience
 ├── Task 1.7: Language Server Protocol (LSP)
-│   └── Depends on: Task 1.1, Task 1.2, Task 1.5
+│   └── Depends on: Task 1.0, Task 1.1, Task 1.2, Task 1.5
 │
 └── Task 4.4: Studio Polish
     └── Depends on: Task 4.3, Task 4.5
@@ -107,7 +107,7 @@ Phase 8: Additional IDE Support (Deferred)
    * Sync when JSON structure is finalized
 
 2. **Task 1.3 (CLI Commands) + Task 1.4 (Modularization) + Task 1.5 (Change Commands)**
-   * All depend on Task 1.1 and 1.2
+   * All depend on Task 1.0, Task 1.1 and 1.2
    * Can be done in parallel once JSON round-trip works
 
 3. **Task 3.2 (Layouts) + Task 3.3 (Styling) + Task 3.4 (Views) + Task 3.5 (Interactions) + Task 3.7 (File Visualization)**
@@ -133,12 +133,16 @@ Phase 8: Additional IDE Support (Deferred)
 ### Sprint 1: Foundation (Week 1-2)
 **Goal**: Enable DSL ↔ JSON round-trip
 
-1. **Task 1.1: JSON Exporter** (2-3 days)
-   * Start immediately
+1. **Task 1.0: DSL Parser/Printer Changes** (3-4 days)
+   * Start immediately - Foundation for everything
+   * Must complete before other tasks
+   
+2. **Task 1.1: JSON Exporter** (2-3 days)
+   * Start after Task 1.0
    * Blocks everything else
 
-2. **Task 1.2: JSON to AST Converter** (2-3 days)
-   * Start after Task 1.1 JSON structure is defined
+3. **Task 1.2: JSON to AST Converter** (2-3 days)
+   * Start after Task 1.0 and Task 1.1 JSON structure is defined
    * Can start with basic structure, iterate
 
 3. **Task 1.3: CLI Commands** (1 day)
@@ -251,9 +255,10 @@ Phase 8: Additional IDE Support (Deferred)
 
 **Must be done in order:**
 
-1. Task 1.1 (JSON Exporter) - **BLOCKS EVERYTHING**
-2. Task 1.2 (JSON to AST) - Blocks reverse engineering
-3. Task 3.1 (Viewer Core) - Blocks HTML export and studio
+1. Task 1.0 (DSL Parser/Printer Changes) - **BLOCKS EVERYTHING** (Foundation)
+2. Task 1.1 (JSON Exporter) - Blocks JSON-dependent tasks
+3. Task 1.2 (JSON to AST) - Blocks reverse engineering
+4. Task 3.1 (Viewer Core) - Blocks HTML export and studio
 4. Task 4.1 (Studio Core) - Blocks studio features
 
 **Can be parallelized:**
