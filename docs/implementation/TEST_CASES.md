@@ -1,18 +1,379 @@
-# Comprehensive Test Cases: Architecture Examples with Base and Changes
+# Comprehensive Test Cases: Architecture Examples for All Features
 
 ## Overview
 
-This document provides comprehensive test cases with complete architecture examples (base initial state + changes) to test all features of Sruja.
+This document provides comprehensive test cases with complete architecture examples to test **all features** of Sruja:
+- JSON Export/Import (DSL ↔ JSON round-trip)
+- HTML Export
+- Viewer/Visualization
+- Studio (Visual Editor)
+- Change Tracking
+- LSP (Language Server Protocol)
+
+Each test case uses **simple architecture examples** for easy understanding and implementation.
 
 ## Test Case Structure
 
 Each test case includes:
-- **Base Architecture**: Initial state before changes
-- **Changes**: One or more change files
-- **Expected Result**: Final state after applying changes
+- **Input**: Architecture DSL or JSON
+- **Expected Output**: JSON, HTML, or behavior
 - **Test Scenarios**: What features this tests
 
 ## Test Case Categories
+
+### Part A: Core Features (JSON Export/Import, HTML Export, Viewer, Studio, LSP)
+
+#### A.1: JSON Export Test Cases
+
+##### Test Case A.1.1: Simple Architecture → JSON
+
+**Input DSL** (`testdata/json-export/simple.sruja`):
+```sruja
+architecture "Simple App" {
+  system WebApp {}
+  system Database {}
+  relation WebApp -> Database "Reads/Writes"
+}
+```
+
+**Expected JSON** (`testdata/json-export/simple-expected.json`):
+```json
+{
+  "metadata": {
+    "version": "1.0",
+    "rootArchitecture": "Simple App",
+    "sourceFiles": {
+      "simple.sruja": {
+        "architecture": "Simple App",
+        "elements": ["WebApp", "Database"]
+      }
+    }
+  },
+  "systems": [
+    {
+      "id": "WebApp",
+      "name": "WebApp",
+      "metadata": {
+        "sourceFile": "simple.sruja",
+        "architecture": "Simple App"
+      }
+    },
+    {
+      "id": "Database",
+      "name": "Database",
+      "metadata": {
+        "sourceFile": "simple.sruja",
+        "architecture": "Simple App"
+      }
+    }
+  ],
+  "relations": [
+    {
+      "from": "WebApp",
+      "to": "Database",
+      "label": "Reads/Writes",
+      "metadata": {
+        "sourceFile": "simple.sruja",
+        "architecture": "Simple App"
+      }
+    }
+  ]
+}
+```
+
+**Tests**:
+- ✅ System export
+- ✅ Relation export
+- ✅ Metadata preservation (sourceFile, architecture)
+- ✅ Root architecture identification
+
+##### Test Case A.1.2: Container with Components → JSON
+
+**Input DSL** (`testdata/json-export/container.sruja`):
+```sruja
+architecture "Shop System" {
+  system ShopSystem {
+    container WebApp "Web Application" {
+      component ShoppingCart {}
+      component ProductCatalog {}
+    }
+  }
+  relation ShopSystem.WebApp -> ShopSystem.WebApp.ShoppingCart "Uses"
+}
+```
+
+**Expected JSON**: Systems, containers, components, nested relations flattened with qualified names
+
+**Tests**:
+- ✅ Nested elements (container, components)
+- ✅ Qualified names (ShopSystem.WebApp.ShoppingCart)
+- ✅ Flattened relations
+- ✅ Scope preservation in metadata
+
+##### Test Case A.1.3: Multiple Files → JSON
+
+**Input Files**:
+- `main.sruja`: Architecture block
+- `services.sruja`: Additional containers (no architecture block)
+
+**Expected JSON**: All elements from both files, marked with sourceFile
+
+**Tests**:
+- ✅ Multiple files
+- ✅ File boundaries preserved
+- ✅ Shared elements marked
+
+#### A.2: JSON Import Test Cases
+
+##### Test Case A.2.1: JSON → DSL Round-Trip
+
+**Input JSON**: Output from Test Case A.1.1
+
+**Expected DSL**: Should match original input DSL
+
+**Tests**:
+- ✅ Round-trip preservation
+- ✅ File structure reconstructed
+- ✅ Qualified names preserved
+
+##### Test Case A.2.2: JSON → Multiple Files
+
+**Input JSON**: Complex architecture with multiple source files
+
+**Expected Output**: Multiple `.sruja` files matching original structure
+
+**Tests**:
+- ✅ File boundaries reconstructed
+- ✅ Import statements generated
+- ✅ Architecture blocks in correct files
+
+#### A.3: HTML Export Test Cases
+
+##### Test Case A.3.1: Simple Architecture → HTML
+
+**Input**: Test Case A.1.1 JSON
+
+**Expected HTML** (`testdata/html-export/simple.html`):
+- Contains viewer library
+- Loads JSON data
+- Renders interactive diagram
+- Has zoom/pan controls
+
+**Tests**:
+- ✅ HTML generation
+- ✅ JSON embedding
+- ✅ Viewer library included
+- ✅ Interactive features work
+
+##### Test Case A.3.2: HTML with Multiple Views
+
+**Input**: Architecture with multiple view types
+
+**Expected HTML**: 
+- View switcher
+- All view types render correctly
+- View switching works
+
+**Tests**:
+- ✅ Multiple views
+- ✅ View switching
+- ✅ All view types render
+
+#### A.4: Viewer Test Cases
+
+##### Test Case A.4.1: Load and Render Simple Architecture
+
+**Input JSON**: Test Case A.1.1 JSON
+
+**Expected Behavior**:
+- Diagram renders
+- Two nodes (WebApp, Database)
+- One edge (relation)
+- Clickable nodes
+- Hover shows details
+
+**Tests**:
+- ✅ JSON loading
+- ✅ Element rendering
+- ✅ Relation rendering
+- ✅ Interactivity (click, hover)
+
+##### Test Case A.4.2: Zoom and Pan
+
+**Input**: Any architecture
+
+**Expected Behavior**:
+- Zoom in/out works
+- Pan works
+- Fit to screen works
+
+**Tests**:
+- ✅ Zoom controls
+- ✅ Pan controls
+- ✅ Fit to screen
+
+##### Test Case A.4.3: View Switching
+
+**Input**: Architecture with multiple view types
+
+**Expected Behavior**:
+- Switch between views
+- Each view shows correct elements
+- Layout updates correctly
+
+**Tests**:
+- ✅ View switching
+- ✅ View-specific rendering
+- ✅ Layout updates
+
+#### A.5: Studio Test Cases
+
+##### Test Case A.5.1: Create Element Visually
+
+**Input**: Empty canvas
+
+**Action**: Drag system from palette, drop on canvas
+
+**Expected**: System created, appears in diagram
+
+**Tests**:
+- ✅ Drag-and-drop
+- ✅ Element creation
+- ✅ Visual feedback
+
+##### Test Case A.5.2: Edit Element Properties
+
+**Input**: Existing system
+
+**Action**: Click system, edit name/description
+
+**Expected**: Properties updated, diagram reflects changes
+
+**Tests**:
+- ✅ Property editing
+- ✅ Visual updates
+- ✅ Data persistence
+
+##### Test Case A.5.3: Create Relation
+
+**Input**: Two systems on canvas
+
+**Action**: Connect systems to create relation
+
+**Expected**: Relation created, edge appears
+
+**Tests**:
+- ✅ Relation creation
+- ✅ Visual connection
+- ✅ Label editing
+
+##### Test Case A.5.4: Export to DSL
+
+**Input**: Architecture created in Studio
+
+**Action**: Export to DSL
+
+**Expected**: Valid `.sruja` file generated
+
+**Tests**:
+- ✅ DSL export
+- ✅ Valid syntax
+- ✅ Round-trip (import exported DSL)
+
+##### Test Case A.5.5: Export to HTML
+
+**Input**: Architecture in Studio
+
+**Action**: Export to HTML
+
+**Expected**: HTML file generated, opens in browser
+
+**Tests**:
+- ✅ HTML export
+- ✅ Interactive diagram works
+- ✅ Can be shared
+
+#### A.6: LSP Test Cases
+
+##### Test Case A.6.1: Syntax Errors
+
+**Input DSL** (`testdata/lsp/invalid-syntax.sruja`):
+```sruja
+architecture "Test" {
+  system WebApp
+  // Missing closing brace
+}
+```
+
+**Expected**: LSP shows error at line 2, column 1
+
+**Tests**:
+- ✅ Error detection
+- ✅ Error location
+- ✅ Error message
+
+##### Test Case A.6.2: Invalid References
+
+**Input DSL** (`testdata/lsp/invalid-reference.sruja`):
+```sruja
+architecture "Test" {
+  system WebApp {}
+  relation WebApp -> NonExistent "Uses"
+}
+```
+
+**Expected**: LSP shows error - "NonExistent" not found
+
+**Tests**:
+- ✅ Reference validation
+- ✅ Error message
+- ✅ Quick fix suggestion
+
+##### Test Case A.6.3: Code Completion
+
+**Input DSL**:
+```sruja
+architecture "Test" {
+  system WebApp {}
+  relation WebApp -> 
+  // Cursor here, trigger completion
+}
+```
+
+**Expected**: LSP suggests available targets (WebApp, etc.)
+
+**Tests**:
+- ✅ Completion suggestions
+- ✅ Context-aware completion
+- ✅ Qualified names in suggestions
+
+##### Test Case A.6.4: Hover Information
+
+**Input DSL**: Any valid architecture
+
+**Action**: Hover over element
+
+**Expected**: Shows element details (type, description, etc.)
+
+**Tests**:
+- ✅ Hover information
+- ✅ Element details
+- ✅ Documentation display
+
+##### Test Case A.6.5: Go to Definition
+
+**Input DSL**: Architecture with qualified names
+
+**Action**: Go to definition on qualified name
+
+**Expected**: Jumps to element definition
+
+**Tests**:
+- ✅ Definition navigation
+- ✅ Qualified name resolution
+- ✅ Cross-file navigation
+
+### Part B: Change Tracking
 
 ### 1. Simple Architecture (Basic Features)
 
@@ -831,10 +1192,372 @@ testdata/
         └── future-state.sruja
 ```
 
+## Part A: Core Features (JSON Export/Import, HTML Export, Viewer)
+
+### A.1: JSON Export Test Cases
+
+#### Test Case A.1.1: Simple Architecture → JSON
+
+**Input DSL** (`testdata/json-export/simple.sruja`):
+```sruja
+architecture "Simple App" {
+  system WebApp {}
+  system Database {}
+  relation WebApp -> Database "Reads/Writes"
+}
+```
+
+**Expected JSON** (`testdata/json-export/simple-expected.json`):
+```json
+{
+  "metadata": {
+    "version": "1.0",
+    "rootArchitecture": "Simple App",
+    "sourceFiles": {
+      "simple.sruja": {
+        "architecture": "Simple App",
+        "elements": ["WebApp", "Database"]
+      }
+    }
+  },
+  "systems": [
+    {
+      "id": "WebApp",
+      "name": "WebApp",
+      "metadata": {
+        "sourceFile": "simple.sruja",
+        "architecture": "Simple App"
+      }
+    },
+    {
+      "id": "Database",
+      "name": "Database",
+      "metadata": {
+        "sourceFile": "simple.sruja",
+        "architecture": "Simple App"
+      }
+    }
+  ],
+  "relations": [
+    {
+      "from": "WebApp",
+      "to": "Database",
+      "label": "Reads/Writes",
+      "metadata": {
+        "sourceFile": "simple.sruja",
+        "architecture": "Simple App"
+      }
+    }
+  ]
+}
+```
+
+**Tests**:
+- ✅ System export
+- ✅ Relation export
+- ✅ Metadata preservation (sourceFile, architecture)
+- ✅ Root architecture identification
+
+#### Test Case A.1.2: Container with Components → JSON
+
+**Input DSL** (`testdata/json-export/container.sruja`):
+```sruja
+architecture "Shop System" {
+  system ShopSystem {
+    container WebApp "Web Application" {
+      component ShoppingCart {}
+      component ProductCatalog {}
+    }
+  }
+  relation ShopSystem.WebApp -> ShopSystem.WebApp.ShoppingCart "Uses"
+}
+```
+
+**Expected JSON**: Systems, containers, components, nested relations flattened
+
+**Tests**:
+- ✅ Nested elements (container, components)
+- ✅ Qualified names (ShopSystem.WebApp.ShoppingCart)
+- ✅ Flattened relations
+- ✅ Scope preservation in metadata
+
+#### Test Case A.1.3: Multiple Files → JSON
+
+**Input Files**:
+- `main.sruja`: Architecture block
+- `services.sruja`: Additional containers (no architecture block)
+
+**Expected JSON**: All elements from both files, marked with sourceFile
+
+**Tests**:
+- ✅ Multiple files
+- ✅ File boundaries preserved
+- ✅ Shared elements marked
+
+### A.2: JSON Import Test Cases
+
+#### Test Case A.2.1: JSON → DSL Round-Trip
+
+**Input JSON**: Output from Test Case A.1.1
+
+**Expected DSL**: Should match original input DSL
+
+**Tests**:
+- ✅ Round-trip preservation
+- ✅ File structure reconstructed
+- ✅ Qualified names preserved
+
+#### Test Case A.2.2: JSON → Multiple Files
+
+**Input JSON**: Complex architecture with multiple source files
+
+**Expected Output**: Multiple `.sruja` files matching original structure
+
+**Tests**:
+- ✅ File boundaries reconstructed
+- ✅ Import statements generated
+- ✅ Architecture blocks in correct files
+
+### A.3: HTML Export Test Cases
+
+#### Test Case A.3.1: Simple Architecture → HTML
+
+**Input**: Test Case A.1.1 JSON
+
+**Expected HTML** (`testdata/html-export/simple.html`):
+- Contains viewer library
+- Loads JSON data
+- Renders interactive diagram
+- Has zoom/pan controls
+
+**Tests**:
+- ✅ HTML generation
+- ✅ JSON embedding
+- ✅ Viewer library included
+- ✅ Interactive features work
+
+#### Test Case A.3.2: HTML with Multiple Views
+
+**Input**: Architecture with multiple view types
+
+**Expected HTML**: 
+- View switcher
+- All view types render correctly
+- View switching works
+
+**Tests**:
+- ✅ Multiple views
+- ✅ View switching
+- ✅ All view types render
+
+### A.4: Viewer Test Cases
+
+#### Test Case A.4.1: Load and Render Simple Architecture
+
+**Input JSON**: Test Case A.1.1 JSON
+
+**Expected Behavior**:
+- Diagram renders
+- Two nodes (WebApp, Database)
+- One edge (relation)
+- Clickable nodes
+- Hover shows details
+
+**Tests**:
+- ✅ JSON loading
+- ✅ Element rendering
+- ✅ Relation rendering
+- ✅ Interactivity (click, hover)
+
+#### Test Case A.4.2: Zoom and Pan
+
+**Input**: Any architecture
+
+**Expected Behavior**:
+- Zoom in/out works
+- Pan works
+- Fit to screen works
+
+**Tests**:
+- ✅ Zoom controls
+- ✅ Pan controls
+- ✅ Fit to screen
+
+#### Test Case A.4.3: View Switching
+
+**Input**: Architecture with multiple view types
+
+**Expected Behavior**:
+- Switch between views
+- Each view shows correct elements
+- Layout updates correctly
+
+**Tests**:
+- ✅ View switching
+- ✅ View-specific rendering
+- ✅ Layout updates
+
+### A.5: Studio Test Cases
+
+#### Test Case A.5.1: Create Element Visually
+
+**Input**: Empty canvas
+
+**Action**: Drag system from palette, drop on canvas
+
+**Expected**: System created, appears in diagram
+
+**Tests**:
+- ✅ Drag-and-drop
+- ✅ Element creation
+- ✅ Visual feedback
+
+#### Test Case A.5.2: Edit Element Properties
+
+**Input**: Existing system
+
+**Action**: Click system, edit name/description
+
+**Expected**: Properties updated, diagram reflects changes
+
+**Tests**:
+- ✅ Property editing
+- ✅ Visual updates
+- ✅ Data persistence
+
+#### Test Case A.5.3: Create Relation
+
+**Input**: Two systems on canvas
+
+**Action**: Connect systems to create relation
+
+**Expected**: Relation created, edge appears
+
+**Tests**:
+- ✅ Relation creation
+- ✅ Visual connection
+- ✅ Label editing
+
+#### Test Case A.5.4: Export to DSL
+
+**Input**: Architecture created in Studio
+
+**Action**: Export to DSL
+
+**Expected**: Valid `.sruja` file generated
+
+**Tests**:
+- ✅ DSL export
+- ✅ Valid syntax
+- ✅ Round-trip (import exported DSL)
+
+#### Test Case A.5.5: Export to HTML
+
+**Input**: Architecture in Studio
+
+**Action**: Export to HTML
+
+**Expected**: HTML file generated, opens in browser
+
+**Tests**:
+- ✅ HTML export
+- ✅ Interactive diagram works
+- ✅ Can be shared
+
+### A.6: LSP Test Cases
+
+#### Test Case A.6.1: Syntax Errors
+
+**Input DSL** (`testdata/lsp/invalid-syntax.sruja`):
+```sruja
+architecture "Test" {
+  system WebApp
+  // Missing closing brace
+}
+```
+
+**Expected**: LSP shows error at line 2, column 1
+
+**Tests**:
+- ✅ Error detection
+- ✅ Error location
+- ✅ Error message
+
+#### Test Case A.6.2: Invalid References
+
+**Input DSL** (`testdata/lsp/invalid-reference.sruja`):
+```sruja
+architecture "Test" {
+  system WebApp {}
+  relation WebApp -> NonExistent "Uses"
+}
+```
+
+**Expected**: LSP shows error - "NonExistent" not found
+
+**Tests**:
+- ✅ Reference validation
+- ✅ Error message
+- ✅ Quick fix suggestion
+
+#### Test Case A.6.3: Code Completion
+
+**Input DSL**:
+```sruja
+architecture "Test" {
+  system WebApp {}
+  relation WebApp -> 
+  // Cursor here, trigger completion
+}
+```
+
+**Expected**: LSP suggests available targets (WebApp, etc.)
+
+**Tests**:
+- ✅ Completion suggestions
+- ✅ Context-aware completion
+- ✅ Qualified names in suggestions
+
+#### Test Case A.6.4: Hover Information
+
+**Input DSL**: Any valid architecture
+
+**Action**: Hover over element
+
+**Expected**: Shows element details (type, description, etc.)
+
+**Tests**:
+- ✅ Hover information
+- ✅ Element details
+- ✅ Documentation display
+
+#### Test Case A.6.5: Go to Definition
+
+**Input DSL**: Architecture with qualified names
+
+**Action**: Go to definition on qualified name
+
+**Expected**: Jumps to element definition
+
+**Tests**:
+- ✅ Definition navigation
+- ✅ Qualified name resolution
+- ✅ Cross-file navigation
+
+## Part B: Change Tracking (Previous Section)
+
+[Keep all existing change tracking test cases from sections 1-10]
+
 ## Test Coverage Matrix
 
 | Feature | Test Cases | Status |
 |---------|-----------|--------|
+| **JSON Export** | A.1.1-A.1.3 | ✅ Covered |
+| **JSON Import** | A.2.1-A.2.2 | ✅ Covered |
+| **HTML Export** | A.3.1-A.3.2 | ✅ Covered |
+| **Viewer** | A.4.1-A.4.3 | ✅ Covered |
+| **Studio** | A.5.1-A.5.5 | ✅ Covered |
+| **LSP** | A.6.1-A.6.5 | ✅ Covered |
 | **Basic Changes** | 1.1, 1.2, 1.3 | ✅ Covered |
 | **Real-World Scenarios** | 2.1-2.4 | ✅ Covered |
 | **Complex Architectures** | 3.1, 3.2 | ✅ Covered |
@@ -848,7 +1571,101 @@ testdata/
 
 ## Usage in Tests
 
-### Go Tests
+### JSON Export Tests
+
+```go
+// pkg/export/json/exporter_test.go
+func TestExportSimpleArchitecture(t *testing.T) {
+    input := loadTestFile("testdata/json-export/simple.sruja")
+    expected := loadTestFile("testdata/json-export/simple-expected.json")
+    
+    ast := parseDSL(input)
+    json := exportToJSON(ast)
+    
+    assert.JSONEq(t, expected, json)
+}
+```
+
+### JSON Import Tests
+
+```go
+// pkg/export/json/converter_test.go
+func TestImportJSONRoundTrip(t *testing.T) {
+    input := loadTestFile("testdata/json-export/simple.sruja")
+    
+    // DSL → JSON → DSL
+    ast1 := parseDSL(input)
+    json := exportToJSON(ast1)
+    ast2 := importFromJSON(json)
+    output := printDSL(ast2)
+    
+    assert.Equal(t, input, output)
+}
+```
+
+### HTML Export Tests
+
+```go
+// pkg/export/html/exporter_test.go
+func TestExportHTML(t *testing.T) {
+    json := loadTestFile("testdata/json-export/simple-expected.json")
+    html := exportToHTML(json)
+    
+    assert.Contains(t, html, "sruja-viewer")
+    assert.Contains(t, html, json)
+    assert.Contains(t, html, "<!DOCTYPE html>")
+}
+```
+
+### Viewer Tests
+
+```typescript
+// viewer/src/__tests__/viewer.test.ts
+describe('Viewer', () => {
+  it('loads and renders simple architecture', async () => {
+    const json = await loadTestFile('testdata/viewer/simple.json');
+    const viewer = new SrujaViewer({ container: document.body, data: json });
+    await viewer.init();
+    
+    expect(viewer.cy.nodes().length).toBe(2); // WebApp, Database
+    expect(viewer.cy.edges().length).toBe(1); // Relation
+  });
+});
+```
+
+### Studio Tests
+
+```typescript
+// local-studio/src/__tests__/studio.test.tsx
+describe('Studio', () => {
+  it('creates element via drag-and-drop', () => {
+    const studio = render(<Studio />);
+    const palette = screen.getByText('System');
+    const canvas = screen.getByTestId('canvas');
+    
+    fireEvent.dragStart(palette);
+    fireEvent.drop(canvas);
+    
+    expect(screen.getByText('System')).toBeInTheDocument();
+  });
+});
+```
+
+### LSP Tests
+
+```go
+// pkg/lsp/diagnostics_test.go
+func TestLSPSyntaxError(t *testing.T) {
+    content := loadTestFile("testdata/lsp/invalid-syntax.sruja")
+    diagnostics := validateDSL(content)
+    
+    assert.Len(t, diagnostics, 1)
+    assert.Equal(t, diagnostics[0].Severity, lsp.Error)
+    assert.Contains(t, diagnostics[0].Message, "missing")
+}
+```
+
+### Change Tracking Tests
 
 ```go
 // pkg/changes/apply_test.go
@@ -866,25 +1683,15 @@ func TestApplyChange(t *testing.T) {
 ### Integration Tests
 
 ```go
-// tests/integration/change_workflow_test.go
-func TestChangeWorkflow(t *testing.T) {
-    // Test Case 2.1-2.4: Sequential changes
-    base := loadTestFile("testdata/medium/ecommerce-base.sruja")
+// tests/integration/roundtrip_test.go
+func TestFullRoundTrip(t *testing.T) {
+    input := loadTestFile("testdata/json-export/simple.sruja")
     
-    changes := []string{
-        "testdata/medium/changes/001-add-analytics.sruja",
-        "testdata/medium/changes/002-add-payment.sruja",
-        "testdata/medium/changes/003-enhance-api.sruja",
-    }
+    // DSL → JSON → DSL
+    json := exportJSON(input)
+    output := importJSON(json)
     
-    result := base
-    for _, changeFile := range changes {
-        change := loadTestFile(changeFile)
-        result, _ = ApplyChange(result, change)
-    }
-    
-    expected := loadTestFile("testdata/medium/expected-v1.3.0.sruja")
-    assert.Equal(t, expected, result)
+    assert.Equal(t, input, output)
 }
 ```
 
