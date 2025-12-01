@@ -204,3 +204,5 @@ See [Qualified Names Specification](qualified-names.md) for complete naming rule
 * [ ] Round-trip tests pass (qualified names preserved)
 * [ ] Error handling follows [Error Reporting Strategy](../ERROR_REPORTING_STRATEGY.md)
 * [ ] All errors include location, code, message, and suggestions
+* [ ] **Manual testing**: Test with real-world architecture files
+* [ ] **MCP-based testing**: Verify semantic preservation in round-trip

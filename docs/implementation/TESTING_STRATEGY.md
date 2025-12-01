@@ -384,6 +384,95 @@ architecture "App" {
 
 **Test**: Verify change application produces expected result.
 
+### 6. Manual Testing
+
+**Purpose**: Human verification of functionality, usability, and edge cases that are difficult to automate.
+
+**Manual Test Scenarios**:
+
+**CLI Commands**:
+- [ ] Test all CLI commands with various inputs
+- [ ] Verify error messages are clear and helpful
+- [ ] Test command help text and examples
+- [ ] Verify file operations (read/write permissions)
+- [ ] Test with real-world architecture files
+
+**Studio (Visual Editor)**:
+- [ ] Create architecture visually (drag-and-drop)
+- [ ] Edit elements (rename, modify properties)
+- [ ] Create relations between elements
+- [ ] Export to DSL and verify output
+- [ ] Export to HTML and verify in browser
+- [ ] Export to PNG/SVG and verify quality
+- [ ] Test undo/redo functionality
+- [ ] Test keyboard shortcuts
+- [ ] Test with large architectures (performance)
+- [ ] Test on different browsers (Chrome, Firefox, Safari, Edge)
+
+**Change Management**:
+- [ ] Create change via CLI
+- [ ] Create change via Studio
+- [ ] Apply change and verify result
+- [ ] Test conflict detection with real scenarios
+- [ ] Test preview snapshots with in-progress changes
+- [ ] Verify ADR validation works correctly
+
+**HTML Export**:
+- [ ] Open HTML in browser
+- [ ] Test interactivity (zoom, pan, click)
+- [ ] Test on mobile devices
+- [ ] Test with different screen sizes
+- [ ] Verify all view types render correctly
+
+**Test Checklist**: `docs/testing/MANUAL_TEST_CHECKLIST.md`
+
+### 7. MCP-Based Testing (Model Context Protocol)
+
+**Purpose**: Use AI/LLM-based testing via Model Context Protocol for complex scenarios, edge cases, and validation that benefits from semantic understanding.
+
+**MCP Testing Scenarios**:
+
+**Semantic Validation**:
+- [ ] Verify architecture semantics make sense
+- [ ] Check for logical inconsistencies
+- [ ] Validate naming conventions
+- [ ] Verify architectural patterns are followed
+
+**Complex Scenarios**:
+- [ ] Test with domain-specific architectures (e-commerce, banking, etc.)
+- [ ] Verify DDD concepts are correctly modeled
+- [ ] Check that relations make logical sense
+- [ ] Validate that changes don't break architectural principles
+
+**Documentation Validation**:
+- [ ] Verify descriptions are clear and complete
+- [ ] Check that ADRs are properly linked
+- [ ] Validate that requirements are traceable
+- [ ] Ensure metadata is meaningful
+
+**Round-trip Validation**:
+- [ ] Use MCP to verify DSL → JSON → DSL preserves meaning
+- [ ] Check that semantic information is preserved
+- [ ] Validate that intent is maintained through transformations
+
+**MCP Test Framework**:
+- Use MCP servers for testing
+- Create test scenarios that require semantic understanding
+- Compare outputs for semantic equivalence (not just syntax)
+- Generate test cases based on architectural patterns
+
+**Test Location**: `tests/mcp/`
+
+**MCP Test Examples**:
+```go
+// tests/mcp/semantic_validation_test.go
+func TestArchitectureSemanticValidation(t *testing.T) {
+    // Use MCP to validate architecture makes sense
+    // Check for logical inconsistencies
+    // Verify patterns are followed
+}
+```
+
 ## Summary
 
 **Testing Strategy**:
@@ -393,6 +482,8 @@ architecture "App" {
 - ✅ Edge case tests for robustness
 - ✅ Performance benchmarks
 - ✅ CI/CD integration
+- ✅ **Manual testing for usability and real-world scenarios**
+- ✅ **MCP-based testing for semantic validation and complex scenarios**
 
 **Test Data**:
 - ✅ Simple, medium, complex architectures
@@ -401,4 +492,8 @@ architecture "App" {
 - ✅ Edge cases
 
 **Coverage**: 90%+ for critical paths
+
+**Manual Testing**: All user-facing features tested manually
+
+**MCP Testing**: Complex scenarios and semantic validation tested via MCP
 

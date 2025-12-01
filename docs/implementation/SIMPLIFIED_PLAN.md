@@ -192,20 +192,38 @@ local-studio/
 - Can export to DSL
 - Can export to HTML
 - Can export as PNG/SVG
+- **Tested manually** with real-world scenarios
+- **Tested via MCP** for semantic correctness
 
 ✅ **HTML Export works**
 - Generates interactive diagrams
 - Shareable links work
 - All view types render correctly
+- **Tested manually** in multiple browsers
+- **Tested via MCP** for semantic preservation
 
 ✅ **Change Tracking works**
 - Can create changes
 - Can apply changes
 - Can visualize diffs
+- **Tested manually** with real change scenarios
+- **Tested via MCP** for semantic preservation
 
 ✅ **LSP works**
 - Shows errors in IDE
 - Basic completion works
+- **Tested manually** in VS Code
+- **Tested via MCP** for semantic validation
+
+### Testing Requirements
+
+All features must include:
+- ✅ **Unit tests** (90%+ coverage)
+- ✅ **Integration tests** (all workflows)
+- ✅ **Manual testing** (real-world scenarios, usability)
+- ✅ **MCP-based testing** (semantic validation, complex scenarios)
+
+See [Testing Strategy](TESTING_STRATEGY.md) for details.
 
 ### Nice to Have (Phase 3)
 

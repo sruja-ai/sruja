@@ -136,3 +136,6 @@ window.SrujaViewer = SrujaViewer;
 * [ ] Interactions work (click, hover, zoom, pan)
 * [ ] Documentation panel works
 * [ ] Works in all modern browsers
+* [ ] **Manual testing**: Test in Chrome, Firefox, Safari, Edge
+* [ ] **Manual testing**: Test on mobile devices
+* [ ] **MCP-based testing**: Verify semantic correctness of rendered diagrams
