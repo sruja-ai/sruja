@@ -6,20 +6,24 @@
 
 ```
 Phase 1: Core Data Transformations (Go)
+├── Task 1.0: DSL Parser/Printer Changes
+│   └── No dependencies (uses existing parser/printer)
+│   └── Blocks: All other tasks (parser/printer foundation)
+│
 ├── Task 1.1: JSON Exporter (AST → JSON)
-│   └── No dependencies
+│   └── Depends on: Task 1.0 (needs updated parser/printer)
 │
 ├── Task 1.2: JSON to AST Converter (JSON → AST)
-│   └── Depends on: Task 1.1 (needs JSON structure)
+│   └── Depends on: Task 1.0, Task 1.1 (needs updated parser, JSON structure)
 │
 ├── Task 1.3: CLI Commands
-│   └── Depends on: Task 1.1, Task 1.2
+│   └── Depends on: Task 1.0, Task 1.1, Task 1.2
 │
-├── Task 1.4: Modularization Command
-│   └── Depends on: Task 1.1, Task 1.2 (needs JSON and JSON-to-AST)
+├── Task 1.4: Modularization Command (Optional)
+│   └── Depends on: Task 1.0, Task 1.1, Task 1.2 (needs updated parser, JSON and JSON-to-AST)
 │
 └── Task 1.5: Change Commands
-    └── Depends on: Task 1.1, Task 1.2 (needs JSON and diff calculation)
+    └── Depends on: Task 1.0, Task 1.1, Task 1.2 (needs DSL support, JSON, diff calculation)
 
 Phase 2: HTML Export (Go)
 ├── Task 2.1: HTML Exporter
