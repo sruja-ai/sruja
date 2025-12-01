@@ -8,7 +8,13 @@ This document verifies DSL syntax consistency across:
 - Documentation examples
 - Test cases
 
-## Quick Answer: Why Colon in Metadata?
+## Proposed Change: Remove Colon from Metadata
+
+**Status**: See `PROPOSED_METADATA_SYNTAX_CHANGE.md` for detailed proposal.
+
+**Summary**: Remove colon requirement from metadata to match `ConstraintEntry` and `ConventionEntry` syntax (no colon).
+
+## Quick Answer: Why Colon in Metadata? (Current State)
 
 **Colon is REQUIRED** because the parser grammar defines it as:
 ```go
