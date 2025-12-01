@@ -95,6 +95,7 @@ This implementation plan is organized by technology and responsibility:
 - [Playground Migration](PLAYGROUND_MIGRATION.md) - Migrating playground from learn app to Public Studio
 - [Value Assessment](VALUE_ASSESSMENT.md) - **Critical**: What actually helps developers vs over-engineering
 - [Simplified Plan](SIMPLIFIED_PLAN.md) - **Recommended**: Focused implementation plan prioritizing core value
+- [DSL Changes Required](go/DSL_CHANGES_REQUIRED.md) - **Required**: All DSL syntax changes needed for the simplified plan
 
 ## Key Principles
 
