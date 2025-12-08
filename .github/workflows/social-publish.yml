@@ -1,0 +1,145 @@
+name: Social Announcements
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  discussions: write
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        if: ${{ secrets.REDDIT_CLIENT_ID != '' || secrets.LINKEDIN_ACCESS_TOKEN != '' || secrets.MASTODON_ACCESS_TOKEN != '' || secrets.BLUESKY_IDENTIFIER != '' || github.token != '' }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22.20.0'
+
+      - name: Install dependencies
+        if: ${{ secrets.REDDIT_CLIENT_ID != '' || secrets.LINKEDIN_ACCESS_TOKEN != '' || secrets.MASTODON_ACCESS_TOKEN != '' || secrets.BLUESKY_IDENTIFIER != '' || github.token != '' }}
+        run: npm ci
+
+      - name: Post to Reddit
+        if: ${{ secrets.REDDIT_CLIENT_ID != '' }}
+        continue-on-error: true
+        env:
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
+          REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
+          REDDIT_USER_AGENT: sruja-lang-bot/1.0
+          REDDIT_SUBREDDIT: ${{ secrets.REDDIT_SUBREDDIT }}
+          POST_TITLE: ${{ github.event.release.name }}
+          POST_URL: ${{ github.event.release.html_url }}
+          POST_BODY: ${{ github.event.release.body }}
+        working-directory: apps/social-publish
+        run: |
+          npm run reddit
+
+      - name: Post to LinkedIn
+        if: ${{ secrets.LINKEDIN_ACCESS_TOKEN != '' }}
+        continue-on-error: true
+        env:
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          POST_TITLE: ${{ github.event.release.name }}
+          POST_URL: ${{ github.event.release.html_url }}
+          POST_BODY: ${{ github.event.release.body }}
+        working-directory: apps/social-publish
+        run: |
+          npm run linkedin
+
+      - name: Post to Mastodon
+        if: ${{ secrets.MASTODON_ACCESS_TOKEN != '' && secrets.MASTODON_INSTANCE_URL != '' }}
+        continue-on-error: true
+        env:
+          MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
+          MASTODON_INSTANCE_URL: ${{ secrets.MASTODON_INSTANCE_URL }}
+          POST_TITLE: ${{ github.event.release.name }}
+          POST_URL: ${{ github.event.release.html_url }}
+          POST_BODY: ${{ github.event.release.body }}
+        working-directory: apps/social-publish
+        run: |
+          npm run mastodon
+
+      - name: Post to Bluesky
+        if: ${{ secrets.BLUESKY_IDENTIFIER != '' && secrets.BLUESKY_PASSWORD != '' }}
+        continue-on-error: true
+        env:
+          BLUESKY_IDENTIFIER: ${{ secrets.BLUESKY_IDENTIFIER }}
+          BLUESKY_PASSWORD: ${{ secrets.BLUESKY_PASSWORD }}
+          POST_TITLE: ${{ github.event.release.name }}
+          POST_URL: ${{ github.event.release.html_url }}
+          POST_BODY: ${{ github.event.release.body }}
+        working-directory: apps/social-publish
+        run: |
+          npm run bluesky
+
+      - name: Create GitHub Discussion
+        if: ${{ github.token != '' }}
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_DISCUSSION_CATEGORY_ID: ${{ secrets.GITHUB_DISCUSSION_CATEGORY_ID || '1' }}
+          POST_TITLE: ${{ github.event.release.name }}
+          POST_URL: ${{ github.event.release.html_url }}
+          POST_BODY: ${{ github.event.release.body }}
+        working-directory: apps/social-publish
+        run: |
+          npm run github-discussion
+
+      - name: Create Product Hunt Review Issue
+        if: ${{ github.event.release.prerelease == false && github.token != '' }}
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          PH_SUBMIT_URL="https://www.producthunt.com/posts/new?name=${RELEASE_NAME// /%20}&tagline=Architecture-as-code%20language&url=${RELEASE_URL}"
+          
+          ISSUE_BODY=$(cat << 'EOF'
+          # Ready to post release {{RELEASE_TAG}} to Product Hunt?
+          
+          A new release is ready for Product Hunt submission!
+          
+          ## Release Details
+          - **Release**: [{{RELEASE_NAME}}]({{RELEASE_URL}})
+          - **Tag**: `{{RELEASE_TAG}}`
+          
+          ## Submit to Product Hunt
+          
+          Click the link below to submit to Product Hunt:
+          
+          [**Submit to Product Hunt**]({{PH_SUBMIT_URL}})
+          
+          ## Notes
+          - Best time to post: Tuesday-Thursday, 12:01 AM PST
+          - Category: Developer Tools
+          - Prepare screenshots and demo video
+          - Engage with early upvoters
+          
+          ---
+          
+          _This issue was automatically created when release {{RELEASE_TAG}} was published._
+          EOF
+          )
+          
+          ISSUE_BODY=$(echo "$ISSUE_BODY" | sed "s|{{RELEASE_TAG}}|${RELEASE_TAG}|g" | sed "s|{{RELEASE_NAME}}|${RELEASE_NAME}|g" | sed "s|{{RELEASE_URL}}|${RELEASE_URL}|g" | sed "s|{{PH_SUBMIT_URL}}|${PH_SUBMIT_URL}|g")
+          
+          curl -X POST \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            https://api.github.com/repos/${REPOSITORY}/issues \
+            -d "{\"title\":\"Ready to post release ${RELEASE_TAG} to Product Hunt?\",\"body\":$(echo "$ISSUE_BODY" | jq -Rs .),\"labels\":[\"product-hunt\",\"release\"]}" || echo "Failed to create Product Hunt issue"

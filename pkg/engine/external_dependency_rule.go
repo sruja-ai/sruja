@@ -3,7 +3,9 @@ package engine
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/sruja-ai/sruja/pkg/diagnostics"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
@@ -18,69 +20,134 @@ func (r *ExternalDependencyRule) Name() string {
 	return "ExternalDependency"
 }
 
-func (r *ExternalDependencyRule) Validate(program *language.Program) []ValidationError {
-	errors := []ValidationError{}
+//nolint:funlen,gocyclo // Validation logic is long and complex
+func (r *ExternalDependencyRule) Validate(program *language.Program) []diagnostics.Diagnostic {
+	var diags []diagnostics.Diagnostic
 
 	arch := program.Architecture
 	if arch == nil {
-		return errors
+		return diags
 	}
 
 	// Build parent map: child ID -> parent ID
 	parent := map[string]string{}
 
-	// Track all defined elements
-	defined := map[string]language.Element{}
+	// Build defined map for resolution (boolean map for quick lookup)
+	defined := map[string]bool{}
 
-	// Build parent relationships and element map
+	// Build parent relationships and defined elements map
 	for _, sys := range arch.Systems {
-		defined[sys.ID] = sys
+		defined[sys.ID] = true
 		for _, cont := range sys.Containers {
-			defined[cont.ID] = cont
-			parent[cont.ID] = sys.ID
+			contID := sys.ID + "." + cont.ID
+			defined[contID] = true
+			parent[contID] = sys.ID
 			for _, comp := range cont.Components {
-				defined[comp.ID] = comp
-				parent[comp.ID] = cont.ID
+				compID := contID + "." + comp.ID
+				defined[compID] = true
+				parent[compID] = contID
 			}
 			for _, ds := range cont.DataStores {
-				defined[ds.ID] = ds
-				parent[ds.ID] = cont.ID
+				dsID := contID + "." + ds.ID
+				defined[dsID] = true
+				parent[dsID] = contID
 			}
 			for _, q := range cont.Queues {
-				defined[q.ID] = q
-				parent[q.ID] = cont.ID
+				qID := contID + "." + q.ID
+				defined[qID] = true
+				parent[qID] = contID
 			}
 		}
 		for _, comp := range sys.Components {
-			defined[comp.ID] = comp
-			parent[comp.ID] = sys.ID
+			compID := sys.ID + "." + comp.ID
+			defined[compID] = true
+			parent[compID] = sys.ID
 		}
 		for _, ds := range sys.DataStores {
-			defined[ds.ID] = ds
-			parent[ds.ID] = sys.ID
+			dsID := sys.ID + "." + ds.ID
+			defined[dsID] = true
+			parent[dsID] = sys.ID
 		}
 		for _, q := range sys.Queues {
-			defined[q.ID] = q
-			parent[q.ID] = sys.ID
+			qID := sys.ID + "." + q.ID
+			defined[qID] = true
+			parent[qID] = sys.ID
 		}
+	}
+	for _, p := range arch.Persons {
+		defined[p.ID] = true
+	}
+
+	// Resolve unqualified ID to qualified ID within scope
+	resolve := func(ref, scope string) string {
+		refStr := ref
+		// 1. Try absolute/global match
+		if defined[refStr] {
+			return refStr
+		}
+
+		// 2. Try relative to scope, walking up
+		if scope != "" {
+			candidate := scope + "." + refStr
+			if defined[candidate] {
+				return candidate
+			}
+
+			parts := strings.Split(scope, ".")
+			for i := len(parts) - 1; i >= 0; i-- {
+				prefix := strings.Join(parts[:i], ".")
+				var candidate string
+				if prefix == "" {
+					candidate = refStr
+				} else {
+					candidate = prefix + "." + refStr
+				}
+				if defined[candidate] {
+					return candidate
+				}
+			}
+		}
+
+		// 3. For architecture-level relations (scope=""), search all defined elements
+		// to find matching IDs (e.g., "API" matches "App.API")
+		if scope == "" {
+			for id := range defined {
+				parts := strings.Split(id, ".")
+				if len(parts) > 0 && parts[len(parts)-1] == refStr {
+					return id
+				}
+			}
+		}
+
+		return refStr // Return original if not resolved
 	}
 
 	// Check all relations
-	checkRelation := func(rel *language.Relation, location language.SourceLocation) {
+	checkRelation := func(rel *language.Relation, location language.SourceLocation, scope string) {
 		if rel == nil {
 			return
 		}
 
-		fromID := rel.From
-		toID := rel.To
+		fromStr := rel.From.String()
+		toStr := rel.To.String()
+
+		// Resolve IDs to their fully qualified names
+		fromID := resolve(fromStr, scope)
+		toID := resolve(toStr, scope)
 
 		// Check if 'from' is a child and 'to' is its parent
 		if parentID, isChild := parent[fromID]; isChild {
 			if parentID == toID {
-				errors = append(errors, ValidationError{
-					Message: fmt.Sprintf("Element '%s' cannot depend on its parent '%s'. Dependencies must be external.", fromID, toID),
-					Line:    location.Line,
-					Column:  location.Column,
+				// Use original unqualified names for error message
+				diags = append(diags, diagnostics.Diagnostic{
+					Code:     diagnostics.CodeValidationRuleError,
+					Severity: diagnostics.SeverityError,
+					Message:  fmt.Sprintf("Element '%s' cannot depend on its parent '%s'. Dependencies must be external.", fromStr, toStr),
+					Location: diagnostics.SourceLocation{
+						File:   location.File,
+						Line:   location.Line,
+						Column: location.Column,
+					},
 				})
 			}
 		}
@@ -88,35 +155,36 @@ func (r *ExternalDependencyRule) Validate(program *language.Program) []Validatio
 
 	// Check architecture-level relations
 	for _, rel := range arch.Relations {
-		checkRelation(rel, rel.Location())
+		checkRelation(rel, rel.Location(), "")
 	}
 
 	// Check system-level relations
 	for _, sys := range arch.Systems {
 		for _, rel := range sys.Relations {
-			checkRelation(rel, rel.Location())
+			checkRelation(rel, rel.Location(), sys.ID)
 		}
 		// Check container relations
 		for _, cont := range sys.Containers {
+			contID := sys.ID + "." + cont.ID
 			for _, rel := range cont.Relations {
-				checkRelation(rel, rel.Location())
+				checkRelation(rel, rel.Location(), contID)
 			}
 			// Check component relations
 			for _, comp := range cont.Components {
+				compID := contID + "." + comp.ID
 				for _, rel := range comp.Relations {
-					checkRelation(rel, rel.Location())
+					checkRelation(rel, rel.Location(), compID)
 				}
 			}
 		}
 		// Check component relations at system level
 		for _, comp := range sys.Components {
+			compID := sys.ID + "." + comp.ID
 			for _, rel := range comp.Relations {
-				checkRelation(rel, rel.Location())
+				checkRelation(rel, rel.Location(), compID)
 			}
 		}
 	}
 
-	return errors
+	return diags
 }
-
-

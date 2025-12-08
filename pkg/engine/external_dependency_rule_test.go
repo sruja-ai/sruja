@@ -26,8 +26,8 @@ func TestExternalDependencyRule_ContainerToParentSystem(t *testing.T) {
 			},
 			Relations: []*language.Relation{
 				{
-					From: "API",
-					To:   "App",
+					From: language.QualifiedIdent{Parts: []string{"API"}},
+					To:   language.QualifiedIdent{Parts: []string{"App"}},
 					Verb: stringPtr("depends"),
 				},
 			},
@@ -69,8 +69,8 @@ func TestExternalDependencyRule_ComponentToParentContainer(t *testing.T) {
 			},
 			Relations: []*language.Relation{
 				{
-					From: "Controller",
-					To:   "API",
+					From: language.QualifiedIdent{Parts: []string{"Controller"}},
+					To:   language.QualifiedIdent{Parts: []string{"API"}},
 					Verb: stringPtr("uses"),
 				},
 			},
@@ -116,8 +116,8 @@ func TestExternalDependencyRule_ValidExternalDependency(t *testing.T) {
 			},
 			Relations: []*language.Relation{
 				{
-					From: "API1",
-					To:   "API2",
+					From: language.QualifiedIdent{Parts: []string{"API1"}},
+					To:   language.QualifiedIdent{Parts: []string{"API2"}},
 					Verb: stringPtr("calls"),
 				},
 			},
@@ -147,8 +147,8 @@ func TestExternalDependencyRule_SystemLevelRelation(t *testing.T) {
 					},
 					Relations: []*language.Relation{
 						{
-							From: "API",
-							To:   "App",
+							From: language.QualifiedIdent{Parts: []string{"API"}},
+							To:   language.QualifiedIdent{Parts: []string{"App"}},
 							Verb: stringPtr("depends"),
 						},
 					},
@@ -167,4 +167,75 @@ func stringPtr(s string) *string {
 	return &s
 }
 
+func TestExternalDependencyRule_RelativeResolution(t *testing.T) {
+	rule := &ExternalDependencyRule{}
 
+	program := &language.Program{
+		Architecture: &language.Architecture{
+			Systems: []*language.System{
+				{
+					ID:    "App",
+					Label: "Application",
+					Containers: []*language.Container{
+						{
+							ID:    "API",
+							Label: "API",
+							Components: []*language.Component{
+								{ID: "Comp1", Label: "Component 1"},
+								{ID: "Comp2", Label: "Component 2"},
+							},
+							Relations: []*language.Relation{
+								{
+									From: language.QualifiedIdent{Parts: []string{"Comp1"}}, // Relative to API
+									To:   language.QualifiedIdent{Parts: []string{"Comp2"}}, // Relative to API
+									Verb: stringPtr("calls"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	errors := rule.Validate(program)
+	if len(errors) != 0 {
+		t.Errorf("Expected no validation errors for relative resolution, got: %v", errors)
+	}
+}
+
+func TestExternalDependencyRule_SuffixResolution(t *testing.T) {
+	rule := &ExternalDependencyRule{}
+
+	program := &language.Program{
+		Architecture: &language.Architecture{
+			Systems: []*language.System{
+				{
+					ID:    "App",
+					Label: "Application",
+					Containers: []*language.Container{
+						{
+							ID:    "API",
+							Label: "API",
+						},
+					},
+				},
+			},
+			Relations: []*language.Relation{
+				{
+					From: language.QualifiedIdent{Parts: []string{"API"}}, // Suffix match for App.API
+					To:   language.QualifiedIdent{Parts: []string{"App"}},
+					Verb: stringPtr("depends"),
+				},
+			},
+		},
+	}
+
+	errors := rule.Validate(program)
+	if len(errors) == 0 {
+		t.Fatal("Expected validation error for suffix resolution dependency on parent")
+	}
+	if errors[0].Message != "Element 'API' cannot depend on its parent 'App'. Dependencies must be external." {
+		t.Errorf("Unexpected error message: %s", errors[0].Message)
+	}
+}

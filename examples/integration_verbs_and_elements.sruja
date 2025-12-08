@@ -6,8 +6,8 @@ architecture "Integration Verbs and Elements Example" {
     datastore DB "PostgreSQL"
     queue MQ "Events"
   }
-  User -> API uses "Uses"
-  API -> DB reads "Reads data"
-  API -> DB writes "Writes data"
-  App -> MQ publishes "Publishes events"
+  User -> App.API uses "Uses"
+  App.API -> App.DB reads "Reads data"
+  App.API -> App.DB writes "Writes data"
+  App -> App.MQ publishes "Publishes events"
 }

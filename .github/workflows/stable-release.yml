@@ -1,0 +1,187 @@
+name: Stable Release
+
+concurrency:
+  group: stable-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - release/*
+
+permissions:
+  contents: write
+
+jobs:
+  publish-stable:
+    runs-on: ubuntu-latest
+    outputs:
+      base: ${{ steps.base.outputs.base }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine base version from latest RC tag
+        id: base
+        run: |
+          # Extract release line (e.g., release/0.1.x -> 0.1.)
+          line="${GITHUB_REF_NAME}"
+          major_minor=$(echo "$line" | sed -E 's#^release/([0-9]+\.[0-9]+)\.x$#\1#')
+          if [[ -z "$major_minor" ]]; then
+            echo "Invalid release branch: $line" >&2; exit 1
+          fi
+          git fetch --tags
+          latest_rc=$(git tag --list | grep -E "^${major_minor}\.0-RC[0-9]+$" | sort -V | tail -n1)
+          if [[ -z "$latest_rc" ]]; then
+            echo "No RC tags found for ${major_minor}.0" >&2; exit 1
+          fi
+          base=${latest_rc%%-RC*}
+          echo "base=$base" >> $GITHUB_OUTPUT
+
+      - name: Pre-build checks
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.4'
+        run: |
+          go build -v ./...
+          go test -v ./pkg/... ./cmd/...
+
+      - name: Create stable tag
+        run: |
+          git tag -a "${{ steps.base.outputs.base }}" -m "Stable ${{ steps.base.outputs.base }}"
+          git push origin "${{ steps.base.outputs.base }}"
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.4'
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup stable tag on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete "${{ steps.base.outputs.base }}" -y || true
+          git tag -d "${{ steps.base.outputs.base }}" || true
+          git push --delete origin "${{ steps.base.outputs.base }}" || true
+
+      - name: Build VSCode extension
+        working-directory: apps/vscode-extension
+        run: |
+          npm ci
+          npm run build:vsix
+
+      - name: Publish VSCode extension (Marketplace)
+        if: ${{ secrets.VSCODE_MARKETPLACE_TOKEN != '' }}
+        working-directory: apps/vscode-extension
+        env:
+          VSCE_TOKEN: ${{ secrets.VSCODE_MARKETPLACE_TOKEN }}
+        run: |
+          ../../node_modules/.bin/vsce publish --pat "$VSCE_TOKEN"
+
+      - name: Build production website
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install root deps
+        run: npm ci
+
+      - name: Build Viewer + WASM
+        run: |
+          make build-embed-viewer
+          make wasm
+
+      - name: Build website (prod)
+        working-directory: apps/website
+        run: npm run build
+        env:
+          NODE_ENV: production
+          SITE_URL: https://sruja.ai
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
+          ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
+          ALGOLIA_SEARCH_API_KEY: ${{ secrets.ALGOLIA_SEARCH_API_KEY }}
+          ALGOLIA_INDEX_NAME: sruja_docs
+
+      - name: Prepare site artifact
+        run: |
+          mkdir -p _site
+          cp -r apps/website/dist/* _site/
+          touch _site/.nojekyll
+
+      - name: Upload site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-site-${{ steps.base.outputs.base }}
+          path: _site
+
+  deploy-website:
+    runs-on: ubuntu-latest
+    needs: publish-stable
+    environment: prod
+    steps:
+      - name: Download site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: prod-site-${{ needs.publish-stable.outputs.base }}
+          path: site
+
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SRUJA_WEBSITE_DEPLOY_APP_ID }}
+          private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
+          owner: sruja-ai
+          repositories: prod-website
+
+      - name: Get GitHub App User ID
+        id: get-user-id
+        run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Checkout target repo
+        uses: actions/checkout@v6
+        with:
+          repository: sruja-ai/prod-website
+          ref: gh-pages
+          token: ${{ steps.app-token.outputs.token }}
+          path: target
+          persist-credentials: false
+
+      - name: Copy site contents
+        run: rsync -a --delete site/ target/
+
+      - name: Configure git
+        run: |
+          cd target
+          git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
+          git config user.email "${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
+
+      - name: Commit and push
+        run: |
+          cd target
+          git add -A
+          if git diff --cached --quiet; then 
+            echo "No changes to deploy"
+          else 
+            COMMIT_MSG="Deploy production site (commit ${{ github.sha }})"
+            git commit -m "$COMMIT_MSG"
+            git push origin HEAD:gh-pages
+          fi

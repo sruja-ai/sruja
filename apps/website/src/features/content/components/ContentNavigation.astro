@@ -1,0 +1,196 @@
+---
+// apps/website/src/features/content/components/ContentNavigation.astro
+interface NavItem {
+  title: string;
+  href: string;
+}
+
+interface Props {
+  previous?: NavItem;
+  next?: NavItem;
+  basePath: string;
+}
+
+const { previous, next, basePath } = Astro.props;
+---
+
+{(previous || next) && (
+  <nav class="content-navigation">
+    {previous ? (
+      <a href={previous.href} class="nav-link nav-link-prev">
+        <div class="nav-link-label">Previous</div>
+        <div class="nav-link-title">{previous.title}</div>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="nav-link-icon"
+        >
+          <path d="m9 12-4-4 4-4" />
+        </svg>
+      </a>
+    ) : (
+      <div class="nav-link nav-link-placeholder"></div>
+    )}
+    
+    <a href={basePath} class="nav-link nav-link-all">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <rect x="2" y="2" width="12" height="12" rx="1" />
+        <path d="M6 8h4M8 6v4" />
+      </svg>
+      <span>View All</span>
+    </a>
+    
+    {next ? (
+      <a href={next.href} class="nav-link nav-link-next">
+        <div class="nav-link-label">Next</div>
+        <div class="nav-link-title">{next.title}</div>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="nav-link-icon"
+        >
+          <path d="m7 4 4 4-4 4" />
+        </svg>
+      </a>
+    ) : (
+      <div class="nav-link nav-link-placeholder"></div>
+    )}
+  </nav>
+)}
+
+<style>
+  .content-navigation {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 1rem;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-border, #e2e8f0);
+    transition: border-color 0.2s;
+  }
+
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 0.5rem;
+    text-decoration: none;
+    color: var(--color-text-secondary, #475569);
+    background: var(--color-background, #ffffff);
+    transition: all 0.2s;
+    font-size: 0.9375rem;
+  }
+
+
+  .nav-link:hover {
+    border-color: var(--color-primary, #3b82f6);
+    color: var(--color-text-primary, #0f172a);
+    background: var(--color-surface, #f8fafc);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  .nav-link:hover {
+    box-shadow: var(--shadow-md);
+  }
+
+  .nav-link-prev {
+    flex-direction: row;
+    text-align: left;
+  }
+
+  .nav-link-next {
+    flex-direction: row-reverse;
+    text-align: right;
+    margin-left: auto;
+  }
+
+  .nav-link-all {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    min-width: 100px;
+    justify-content: center;
+  }
+
+  .nav-link-placeholder {
+    visibility: hidden;
+  }
+
+  .nav-link-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-tertiary, #64748b);
+    transition: color 0.2s;
+  }
+
+  /* Dark mode handled via design tokens */
+
+  .nav-link:hover .nav-link-label {
+    color: var(--color-primary, #3b82f6);
+  }
+
+  .nav-link-title {
+    font-weight: 500;
+    color: inherit;
+    transition: color 0.2s;
+  }
+
+  .nav-link-icon {
+    flex-shrink: 0;
+    transition: transform 0.2s;
+  }
+
+  .nav-link-prev:hover .nav-link-icon {
+    transform: translateX(-2px);
+  }
+
+  .nav-link-next:hover .nav-link-icon {
+    transform: translateX(2px);
+  }
+
+  @media (max-width: 768px) {
+    .content-navigation {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    .nav-link-next {
+      margin-left: 0;
+    }
+
+    .nav-link-placeholder {
+      display: none;
+    }
+
+    .nav-link-all {
+      order: -1;
+    }
+  }
+</style>

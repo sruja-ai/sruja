@@ -13,14 +13,14 @@ architecture "Full MVP Example" {
       }
       component Auth "Auth" {
       }
-      Cart -> Auth uses "Uses"
+      Web.Cart -> Web.Auth uses "Uses"
     }
   }
 
-  Customer -> API uses "Uses"
-  API -> DB reads "Reads data"
-  API -> DB writes "Writes data"
-  App -> MQ publishes "Publishes events"
+  Customer -> App.API uses "Uses"
+  App.API -> App.DB reads "Reads data"
+  App.API -> App.DB writes "Writes data"
+  App -> App.MQ publishes "Publishes events"
 
   requirement R1 functional "Persist user data"
   requirement R2 constraint "Expose public API"

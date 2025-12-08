@@ -19,6 +19,9 @@ linters:
     - unparam
     - goconst
     - gocritic
+    - prealloc
+    - revive
+    - errorlint
   
   disable:
     - exhaustive  # Too strict for this codebase
@@ -83,6 +86,6 @@ issues:
   max-same-issues: 0
 
 output:
-  format: colored-line-number
+  formats: colored-line-number
   print-issued-lines: true
   print-linter-name: true

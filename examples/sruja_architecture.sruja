@@ -1,0 +1,70 @@
+architecture "Sruja Architecture Tooling" {
+  system CLI "Sruja CLI" "Command line interface for processing .sruja files" {
+    metadata {
+      language "Go 1.22"
+      distribution "Homebrew, Binary, Docker"
+    }
+    container Compiler "Compiler" "Parses and validates DSL files" {
+      technology "Go / Participle"
+      component Lexer "Lexer" "Tokenizes input" {
+      }
+      component Parser "Parser" "Builds AST" {
+      }
+      component Validator "Validator" "Runs semantic checks and rules" {
+      }
+      component Exporter "Exporter" "Generates JSON, Markdown, Mermaid" {
+      }
+    }
+    container LSP "Language Server" "LSP implementation for IDE support" {
+      technology "Go / Sourcegraph JSON-RPC"
+    }
+    metadata {
+      language "Go 1.22"
+      distribution "Homebrew, Binary, Docker"
+    }
+  }
+  system Studio "Sruja Studio" "Web-based visualizer and editor" {
+    metadata {
+      hosting "Vercel / AWS Amplify"
+      capacity "Client-side rendering (Scales with users)"
+    }
+    container Editor "Monaco Editor" "Code editor with syntax highlighting" {
+      technology "Monaco"
+    }
+    container Visualizer "Graph Visualizer" "Interactive architecture diagrams" {
+      technology "React Flow / Cytoscape"
+    }
+    metadata {
+      hosting "Vercel / AWS Amplify"
+      capacity "Client-side rendering (Scales with users)"
+    }
+  }
+  system VSCode "VS Code Extension" "Editor extension for Sruja DSL" {
+    metadata {
+      marketplace "Visual Studio Marketplace"
+    }
+    metadata {
+      marketplace "Visual Studio Marketplace"
+    }
+  }
+  person Developer "Developer"
+  person Architect "Software Architect"
+  Developer -> CLI "Compiles & Lints"
+  Developer -> VSCode "Writes code"
+  Architect -> Studio "Visualizes & Reviews"
+  VSCode -> CLI.LSP "Communicates via RPC"
+  Studio -> CLI.Compiler "Compiles DSL (WASM)"
+  metadata {
+    team "Sruja Core Team"
+    status "Active"
+    version "0.5.0"
+    scale "Local execution + Web (Client-side)"
+    availability "CLI: 100% (Offline), Studio: 99.9% (Static Hosting)"
+    cost "Low (Static hosting + Open Source)"
+    architecture "Client-heavy, Serverless, Offline-first"
+    dataRetention "No user data stored centrally. All data stays local or in git."
+    privacy "No tracking enabled by default."
+    projectedGrowth "Adoption growing in enterprise sector"
+    bottlenecks "Large graph layout performance in browser (WASM)"
+  }
+}

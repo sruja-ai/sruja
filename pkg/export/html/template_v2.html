@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture: {{.ArchName}}</title>
+
+    <!-- Cytoscape.js for smooth graph rendering -->
+    <!-- Cytoscape.js with Dagre layout for professional hierarchical rendering -->
+    <!-- Embedded Vendor Scripts for Offline Support -->
+    <script>{ {.VendorCytoscapeJS | safeJS } }</script>
+    <script>{ {.VendorDagreJS | safeJS } }</script>
+    <script>{ {.VendorCyDagreJS | safeJS } }</script>
+    <script>{ {.VendorElkJS | safeJS } }</script>
+    <script>{ {.VendorCyElkJS | safeJS } }</script>
+
+    <style>
+        {
+                {
+                .V2CSS | safeCSS
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay">
+            <div class="spinner"></div>
+            <div class="loading-text">Loading visualization...</div>
+        </div>
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <h1>{{.ArchName}}</h1>
+            <div class="toolbar-actions">
+                <div class="toolbar-group">
+                    <button onclick="fit()" title="Fit diagram to view">Fit View</button>
+                    <button onclick="reset()" title="Reset to System Context">Reset</button>
+                </div>
+                <div class="toolbar-group export-group">
+                    <span class="toolbar-label">Export:</span>
+                    <button onclick="exportPNG()" title="Export as PNG image">PNG</button>
+                    <button onclick="exportSVG()" title="Export as SVG vector">SVG</button>
+                    <button onclick="exportJSON()" title="Export architecture data">JSON</button>
+                </div>
+                <div class="toolbar-group">
+                    <button onclick="toggleTheme()" id="theme-toggle" title="Toggle dark/light theme">🌙 Dark</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Breadcrumb -->
+        <div class="breadcrumb" id="breadcrumb">
+            <span class="breadcrumb-item active" onclick="showSystemContext()">🏛️ System Context</span>
+        </div>
+
+        <!-- Main content -->
+        <div class="main-content">
+            <!-- Navigation Sidebar -->
+            <div class="sidebar" id="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-header">📍 Views</div>
+                    <div class="nav-item" id="nav-full" onclick="showFullArchitecture()">
+                        <span class="icon">🗺️</span>
+                        <span>Full Architecture</span>
+                    </div>
+                    <div class="nav-item active" id="nav-context" onclick="showSystemContext()">
+                        <span class="icon">🏛️</span>
+                        <span>System Context</span>
+                    </div>
+                </div>
+                <div class="sidebar-section">
+                    <div class="sidebar-header">📦 Systems</div>
+                    <div id="systems-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+                <div class="sidebar-section" id="containers-section" style="display:none;">
+                    <div class="sidebar-header">🔧 Containers</div>
+                    <div id="containers-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Diagram -->
+            <div id="cy"></div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-color" style="background:#6366f1"></div> Person
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background:#0f172a"></div> System
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background:#ffffff; border: 1px solid #334155;"></div> Container
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background:#f1f5f9; border: 1px solid #94a3b8;"></div> Component
+        </div>
+        <div class="tip">💡 Click system/container to drill down<br>Double-click to expand/collapse</div>
+    </div>
+
+    <!-- Documentation Panel Toggle -->
+    <button class="doc-panel-toggle" id="doc-toggle" onclick="toggleDocPanel()">
+        📋 Documentation
+    </button>
+
+    <!-- Documentation Panel -->
+    <div class="doc-panel" id="doc-panel">
+        <div class="doc-panel-header">
+            <span class="doc-panel-title">📚 Architecture Documentation</span>
+            <div class="doc-tabs">
+                <button class="doc-tab active" data-tab="adrs" onclick="showDocTab('adrs')">
+                    📝 ADRs <span class="badge" id="adr-count">0</span>
+                </button>
+                <button class="doc-tab" data-tab="requirements" onclick="showDocTab('requirements')">
+                    ✅ Requirements <span class="badge" id="req-count">0</span>
+                </button>
+                <button class="doc-tab" data-tab="policies" onclick="showDocTab('policies')">
+                    🔒 Policies <span class="badge" id="policy-count">0</span>
+                </button>
+                <button class="doc-tab" data-tab="metadata" onclick="showDocTab('metadata')">
+                    ℹ️ Metadata
+                </button>
+            </div>
+        </div>
+        <div class="doc-panel-content">
+            <!-- ADRs Section -->
+            <div class="doc-section active" id="doc-adrs">
+                <div id="adrs-content"></div>
+            </div>
+            <!-- Requirements Section -->
+            <div class="doc-section" id="doc-requirements">
+                <div id="requirements-content"></div>
+            </div>
+            <!-- Policies Section -->
+            <div class="doc-section" id="doc-policies">
+                <div id="policies-content"></div>
+            </div>
+            <!-- Metadata Section -->
+            <div class="doc-section" id="doc-metadata">
+                <div id="metadata-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Embedded Architecture Data -->
+    <script id="sruja-data" type="application/json">{{.JSONData | safeJS}}</script>
+
+    <!-- V2 Scripts -->
+    <script>{ { .V2JS | safeJS } }</script>
+</body>
+
+</html>

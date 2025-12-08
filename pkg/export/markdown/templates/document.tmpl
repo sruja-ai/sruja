@@ -1,0 +1,39 @@
+# {{.Architecture.Name}}
+{{if .Architecture.Description}}
+{{.Architecture.Description}}
+
+{{end}}
+{{template "toc" .}}
+{{template "executive_summary" .}}
+
+{{if or (hasSystems .Architecture) (hasPersons .Architecture)}}
+## Architecture Overview (C4 L1)
+
+```mermaid
+{{diagramSystem .Architecture .MermaidConfig}}
+```
+
+{{end}}
+{{template "systems" .}}
+{{template "deployments" .}}
+{{template "persons" .}}
+{{template "requirements" .}}
+{{template "adrs" .}}
+{{template "scenarios" .}}
+{{template "policies" .}}
+{{template "constraints" .}}
+{{template "conventions" .}}
+{{template "flows" .}}
+{{template "contracts" .}}
+{{template "data_consistency" .}}
+{{template "failure_modes" .}}
+{{template "domain_model" .}}
+{{template "relations" .}}
+{{template "quality_attributes" .}}
+{{template "security" .}}
+{{template "metadata" .}}
+{{template "glossary" .}}
+
+---
+
+*Powered by [Sruja](https://sruja.ai) - Architecture as Code*

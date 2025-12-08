@@ -66,11 +66,11 @@ architecture "E-Commerce System" {
 
     // Module 5: Scenarios
     scenario CheckoutFlow "Checkout Flow" "User checkout process" {
-        Customer -> WebApp "Clicks Checkout"
-        WebApp -> API "POST /checkout"
-        API -> DB "Save Order"
-        API -> PaymentGateway "Charge Card"
-        API -> Events "Order Created"
+        Customer -> ECommerce.WebApp "Clicks Checkout"
+        ECommerce.WebApp -> ECommerce.API "POST /checkout"
+        ECommerce.API -> ECommerce.DB "Save Order"
+        ECommerce.API -> PaymentGateway "Charge Card"
+        ECommerce.API -> ECommerce.Events "Order Created"
     }
 
     // Module 6: Deployment

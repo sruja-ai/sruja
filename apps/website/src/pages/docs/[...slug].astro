@@ -1,0 +1,79 @@
+---
+// apps/website/src/pages/docs/[...slug].astro
+import { getCollection, type CollectionEntry } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import ContentDetail from '@/features/content/components/ContentDetail.astro';
+import ContentNavigation from '@/features/content/components/ContentNavigation.astro';
+import { generateContentPaths } from '@/features/content/utils/paths';
+
+export async function getStaticPaths() {
+  const docs = await getCollection('docs');
+  // Exclude routes that have specific pages (courses, tutorials, index)
+  const excludedSlugs = ['courses', 'tutorials', 'index'];
+  const paths = generateContentPaths(
+    docs, 
+    '/docs', 
+    'weight',
+    (doc: CollectionEntry<'docs'>) => {
+      const slugParts = doc.slug.split('/');
+      return !excludedSlugs.includes(slugParts[0]);
+    }
+  );
+  
+  return paths.map(path => ({
+    params: path.params,
+    props: {
+      doc: path.props.entry,
+      previous: path.props.previous,
+      next: path.props.next,
+    },
+  }));
+}
+
+type Props = {
+  doc: CollectionEntry<'docs'>;
+  previous?: { title: string; href: string };
+  next?: { title: string; href: string };
+};
+
+const { doc, previous, next } = Astro.props as Props;
+const { Content } = await doc.render();
+---
+
+<Layout title={doc.data.title} description={doc.data.summary || doc.data.description}>
+  <div class="docs-page">
+    <ContentDetail
+      title={doc.data.title}
+      summary={doc.data.summary}
+      Content={Content}
+      standalone={true}
+    />
+    <ContentNavigation previous={previous || undefined} next={next || undefined} basePath="/docs" />
+  </div>
+</Layout>
+
+<style>
+  .docs-page {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  @media (max-width: 1024px) {
+    .docs-page {
+      padding: 1.5rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .docs-page {
+      padding: 1rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .docs-page {
+      padding: 0.75rem;
+    }
+  }
+</style>

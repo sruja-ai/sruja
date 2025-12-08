@@ -1,0 +1,425 @@
+Running security linter...
+Results:
+
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:106[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    105: 	col := idx + len(prefix)
+  > 106: 	addToken(data, line, uint32(col), uint32(end), ttype, 1 /* declaration */, prevLine) //nolint:gosec // safe conversion
+    107: }
+
+Autofix: 
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:106[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    105: 	col := idx + len(prefix)
+  > 106: 	addToken(data, line, uint32(col), uint32(end), ttype, 1 /* declaration */, prevLine) //nolint:gosec // safe conversion
+    107: }
+
+Autofix: 
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:77[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    76: 				// token from start to i+1
+  > 77: 				addToken(data, line, uint32(start), uint32(i-start+1), ttype, 0, prevLine) //nolint:gosec // safe conversion
+    78: 				start = -1
+
+Autofix: 
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:77[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    76: 				// token from start to i+1
+  > 77: 				addToken(data, line, uint32(start), uint32(i-start+1), ttype, 0, prevLine) //nolint:gosec // safe conversion
+    78: 				start = -1
+
+Autofix: 
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:64[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    63: 		markDeclID(&data, uint32(li), line, "queue ", ti["enum"], &prevLine)         //nolint:gosec // safe conversion
+  > 64: 		markDeclID(&data, uint32(li), line, "person ", ti["variable"], &prevLine)    //nolint:gosec // safe conversion
+    65: 	}
+
+Autofix: 
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:63[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    62: 		markDeclID(&data, uint32(li), line, "datastore ", ti["struct"], &prevLine)   //nolint:gosec // safe conversion
+  > 63: 		markDeclID(&data, uint32(li), line, "queue ", ti["enum"], &prevLine)         //nolint:gosec // safe conversion
+    64: 		markDeclID(&data, uint32(li), line, "person ", ti["variable"], &prevLine)    //nolint:gosec // safe conversion
+
+Autofix: 
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:62[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    61: 		markDeclID(&data, uint32(li), line, "component ", ti["function"], &prevLine) //nolint:gosec // safe conversion
+  > 62: 		markDeclID(&data, uint32(li), line, "datastore ", ti["struct"], &prevLine)   //nolint:gosec // safe conversion
+    63: 		markDeclID(&data, uint32(li), line, "queue ", ti["enum"], &prevLine)         //nolint:gosec // safe conversion
+
+Autofix: 
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:61[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    60: 		markDeclID(&data, uint32(li), line, "container ", ti["module"], &prevLine)   //nolint:gosec // safe conversion
+  > 61: 		markDeclID(&data, uint32(li), line, "component ", ti["function"], &prevLine) //nolint:gosec // safe conversion
+    62: 		markDeclID(&data, uint32(li), line, "datastore ", ti["struct"], &prevLine)   //nolint:gosec // safe conversion
+
+Autofix: 
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:60[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    59: 		markDeclID(&data, uint32(li), line, "system ", ti["class"], &prevLine)       //nolint:gosec // safe conversion
+  > 60: 		markDeclID(&data, uint32(li), line, "container ", ti["module"], &prevLine)   //nolint:gosec // safe conversion
+    61: 		markDeclID(&data, uint32(li), line, "component ", ti["function"], &prevLine) //nolint:gosec // safe conversion
+
+Autofix: 
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:59[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    58: 		// identifiers after declarations (mark as declaration kinds)
+  > 59: 		markDeclID(&data, uint32(li), line, "system ", ti["class"], &prevLine)       //nolint:gosec // safe conversion
+    60: 		markDeclID(&data, uint32(li), line, "container ", ti["module"], &prevLine)   //nolint:gosec // safe conversion
+
+Autofix: 
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:54[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    53: 				if isBoundary(line, wi, len(k)) {
+  > 54: 					addToken(&data, uint32(li), uint32(wi), uint32(len(k)), ti["keyword"], 0, &prevLine) //nolint:gosec // safe conversion
+    55: 				}
+
+Autofix: 
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:54[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    53: 				if isBoundary(line, wi, len(k)) {
+  > 54: 					addToken(&data, uint32(li), uint32(wi), uint32(len(k)), ti["keyword"], 0, &prevLine) //nolint:gosec // safe conversion
+    55: 				}
+
+Autofix: 
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:54[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    53: 				if isBoundary(line, wi, len(k)) {
+  > 54: 					addToken(&data, uint32(li), uint32(wi), uint32(len(k)), ti["keyword"], 0, &prevLine) //nolint:gosec // safe conversion
+    55: 				}
+
+Autofix: 
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:46[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    45: 		if idx >= 0 {
+  > 46: 			addToken(&data, uint32(li), uint32(idx), uint32(2), ti["operator"], 0, &prevLine) //nolint:gosec // safe conversion
+    47: 		}
+
+Autofix: 
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:46[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    45: 		if idx >= 0 {
+  > 46: 			addToken(&data, uint32(li), uint32(idx), uint32(2), ti["operator"], 0, &prevLine) //nolint:gosec // safe conversion
+    47: 		}
+
+Autofix: 
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:42[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    41: 		// strings
+  > 42: 		addQuotedStrings(&data, uint32(li), line, ti["string"], &prevLine)
+    43: 		// arrow operator
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/pkg/export/html/v2.go:32[0m] - G203 (CWE-79): The used method does not auto-escape HTML. This can potentially lead to 'Cross-site Scripting' vulnerabilities, in case the attacker controls the input. (Confidence: LOW, Severity: MEDIUM)
+    31: 		"safeCSS": func(s string) template.CSS {
+  > 32: 			return template.CSS(s) //nolint:gosec // trust generated CSS
+    33: 		},
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/pkg/export/html/v2.go:29[0m] - G203 (CWE-79): The used method does not auto-escape HTML. This can potentially lead to 'Cross-site Scripting' vulnerabilities, in case the attacker controls the input. (Confidence: LOW, Severity: MEDIUM)
+    28: 			safe := strings.ReplaceAll(s, "</script>", "<\\/script>")
+  > 29: 			return template.JS(safe) //nolint:gosec // safe substitution
+    30: 		},
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/pkg/export/html/html.go:351[0m] - G203 (CWE-79): The used method does not auto-escape HTML. This can potentially lead to 'Cross-site Scripting' vulnerabilities, in case the attacker controls the input. (Confidence: LOW, Severity: MEDIUM)
+    350: 			// For DSL content, return as-is without escaping (it's in a <pre> tag)
+  > 351: 			return template.HTML(s) //nolint:gosec // trust content in pre tag
+    352: 		}
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/pkg/export/html/html.go:341[0m] - G203 (CWE-79): The used method does not auto-escape HTML. This can potentially lead to 'Cross-site Scripting' vulnerabilities, in case the attacker controls the input. (Confidence: LOW, Severity: MEDIUM)
+    340: 			// For SVG content, we trust it since it's generated by our own exporter
+  > 341: 			return template.HTML(s) //nolint:gosec // trust generated SVG content
+    342: 		},
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/pkg/export/html/html.go:337[0m] - G203 (CWE-79): The used method does not auto-escape HTML. This can potentially lead to 'Cross-site Scripting' vulnerabilities, in case the attacker controls the input. (Confidence: LOW, Severity: MEDIUM)
+    336: 		"safeCSS": func(s string) template.CSS {
+  > 337: 			return template.CSS(s) //nolint:gosec // trust generated CSS
+    338: 		},
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/pkg/export/html/html.go:334[0m] - G203 (CWE-79): The used method does not auto-escape HTML. This can potentially lead to 'Cross-site Scripting' vulnerabilities, in case the attacker controls the input. (Confidence: LOW, Severity: MEDIUM)
+    333: 			safe := strings.ReplaceAll(s, "</script>", "<\\/script>")
+  > 334: 			return template.JS(safe) //nolint:gosec // safe substitution
+    335: 		},
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/pkg/export/html/html.go:302[0m] - G203 (CWE-79): The used method does not auto-escape HTML. This can potentially lead to 'Cross-site Scripting' vulnerabilities, in case the attacker controls the input. (Confidence: LOW, Severity: MEDIUM)
+    301: 			// For DSL content, return as-is without escaping (it's in a <pre> tag)
+  > 302: 			return template.HTML(s) //nolint:gosec // trust content in pre tag
+    303: 		},
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/pkg/export/html/html.go:294[0m] - G203 (CWE-79): The used method does not auto-escape HTML. This can potentially lead to 'Cross-site Scripting' vulnerabilities, in case the attacker controls the input. (Confidence: LOW, Severity: MEDIUM)
+    293: 			safe := strings.ReplaceAll(s, "</script>", "<\\/script>")
+  > 294: 			return template.JS(safe) //nolint:gosec // safe substitution
+    295: 		},
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/pkg/export/html/html.go:289[0m] - G203 (CWE-79): The used method does not auto-escape HTML. This can potentially lead to 'Cross-site Scripting' vulnerabilities, in case the attacker controls the input. (Confidence: LOW, Severity: MEDIUM)
+    288: 			// For SVG content, we trust it since it's generated by our own exporter
+  > 289: 			return template.HTML(s) //nolint:gosec // trust generated SVG content
+    290: 		},
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/icon-pack/main.go:39[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    38:     if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil { panic(err) }
+  > 39:     out, err := os.Create(outPath)
+    40:     if err != nil { panic(err) }
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/icon-pack/main.go:26[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    25:         if !strings.HasSuffix(path, ".svg") { return nil }
+  > 26:         b, err := os.ReadFile(path)
+    27:         if err != nil { return err }
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/content-validator/main.go:187[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    186: 
+  > 187: 	content, err := os.ReadFile(path)
+    188: 	if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/content-validator/main.go:76[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    75: 			// Check required fields
+  > 76: 			content, _ := os.ReadFile(path)
+    77: 			if !strings.Contains(string(content), "title:") {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/content-generator/main.go:411[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    410: func createBasicFile(outputPath string, meta ContentMeta) {
+  > 411: 	file, err := os.Create(outputPath)
+    412: 	if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/content-generator/main.go:391[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    390: 	// Create output file
+  > 391: 	file, err := os.Create(outputPath)
+    392: 	if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/content-generator/main.go:373[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    372: 	// Read template
+  > 373: 	tmplContent, err := os.ReadFile(templatePath)
+    374: 	if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/pkg/language/parser.go:183[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    182: func (p *Parser) ParseFile(filename string) (*Program, []diagnostics.Diagnostic, error) {
+  > 183: 	data, err := os.ReadFile(filename)
+    184: 	if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/pkg/export/html/html.go:492[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    491: 	for _, path := range possiblePaths {
+  > 492: 		if content, err := os.ReadFile(path); err == nil {
+    493: 			return string(content), nil
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/tree.go:28[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    27: 
+  > 28: 	content, err := os.ReadFile(filePath)
+    29: 	if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/main.go:34[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    33: func parseArchitectureFile(filePath string, stderr io.Writer) (*language.Program, error) {
+  > 34: 	content, err := os.ReadFile(filePath)
+    35: 	if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/lint.go:32[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    31: 
+  > 32: 	content, err := os.ReadFile(filePath)
+    33: 	if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/import.go:33[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    32: 
+  > 33: 	content, err := os.ReadFile(filePath)
+    34: 	if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/fmt.go:29[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    28: 
+  > 29: 	content, err := os.ReadFile(filePath)
+    30: 	if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/export_html_examples.go:70[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    69: 		for _, f := range files {
+  > 70: 			content, err := os.ReadFile(f)
+    71: 			if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/export_html.go:40[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    39: 		// Parse input file
+  > 40: 		content, err := os.ReadFile(inputFile)
+    41: 		if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/export.go:42[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    41: 
+  > 42: 	content, err := os.ReadFile(filePath)
+    43: 	if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/diff.go:71[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    70: func parseFile(filePath string) (*language.Program, error) {
+  > 71: 	content, err := os.ReadFile(filePath)
+    72: 	if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/compile.go:32[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    31: 
+  > 32: 	content, err := os.ReadFile(filePath)
+    33: 	if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/change.go:103[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    102: func runChangeValidate(changeFile string, stderr io.Writer) int {
+  > 103: 	content, err := os.ReadFile(changeFile)
+    104: 	if err != nil {
+
+Autofix: Consider using os.Root to scope file access under a fixed root (Go >=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal.
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/icon-pack/main.go:38[0m] - G301 (CWE-276): Expect directory permissions to be 0750 or less (Confidence: HIGH, Severity: MEDIUM)
+    37: 
+  > 38:     if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil { panic(err) }
+    39:     out, err := os.Create(outPath)
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/content-generator/main.go:148[0m] - G301 (CWE-276): Expect directory permissions to be 0750 or less (Confidence: HIGH, Severity: MEDIUM)
+    147: 	// Create directory
+  > 148: 	if err := os.MkdirAll(moduleDir, 0755); err != nil {
+    149: 		fmt.Printf("❌ Error creating module directory: %v\n", err)
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/content-generator/main.go:114[0m] - G301 (CWE-276): Expect directory permissions to be 0750 or less (Confidence: HIGH, Severity: MEDIUM)
+    113: 	// Create directory
+  > 114: 	if err := os.MkdirAll(courseDir, 0755); err != nil {
+    115: 		fmt.Printf("❌ Error creating course directory: %v\n", err)
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/init.go:27[0m] - G301 (CWE-276): Expect directory permissions to be 0750 or less (Confidence: HIGH, Severity: MEDIUM)
+    26: 	// Create project directory
+  > 27: 	if err := os.MkdirAll(projectName, 0755); err != nil {
+    28: 		return fmt.Errorf("failed to create project directory: %w", err)
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/import.go:50[0m] - G301 (CWE-276): Expect directory permissions to be 0750 or less (Confidence: HIGH, Severity: MEDIUM)
+    49: 		if *outDir != "" {
+  > 50: 			if err := os.MkdirAll(*outDir, 0755); err != nil {
+    51: 				_, _ = fmt.Fprintf(stderr, "Error creating output directory: %v\n", err)
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/export_html_examples.go:23[0m] - G301 (CWE-276): Expect directory permissions to be 0750 or less (Confidence: HIGH, Severity: MEDIUM)
+    22: 		// Ensure output directory exists
+  > 23: 		if err := os.MkdirAll(outDir, 0o755); err != nil {
+    24: 			return fmt.Errorf("failed to create output directory: %w", err)
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/change.go:19[0m] - G301 (CWE-276): Expect directory permissions to be 0750 or less (Confidence: HIGH, Severity: MEDIUM)
+    18: 	changesDir := "changes"
+  > 19: 	if err := os.MkdirAll(changesDir, 0755); err != nil {
+    20: 		_, _ = fmt.Fprintf(stderr, "Error creating changes directory: %v\n", err)
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/generate-playground-examples.go:121[0m] - G306 (CWE-276): Expect WriteFile permissions to be 0600 or less (Confidence: HIGH, Severity: MEDIUM)
+    120: 	// Write output
+  > 121: 	if err := os.WriteFile(outputPath, []byte(sb.String()), 0644); err != nil {
+    122: 		fmt.Fprintf(os.Stderr, "Error writing output: %v\n", err)
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/pkg/export/html/html.go:515[0m] - G306 (CWE-276): Expect WriteFile permissions to be 0600 or less (Confidence: HIGH, Severity: MEDIUM)
+    514: 
+  > 515: 	return os.WriteFile(outputPath, []byte(html), 0644)
+    516: }
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/init.go:67[0m] - G306 (CWE-276): Expect WriteFile permissions to be 0600 or less (Confidence: HIGH, Severity: MEDIUM)
+    66: `
+  > 67: 	if err := os.WriteFile(filepath.Join(projectName, ".gitignore"), []byte(gitignoreContent), 0644); err != nil {
+    68: 		return fmt.Errorf("failed to create .gitignore: %w", err)
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/init.go:54[0m] - G306 (CWE-276): Expect WriteFile permissions to be 0600 or less (Confidence: HIGH, Severity: MEDIUM)
+    53: `
+  > 54: 	if err := os.WriteFile(filepath.Join(projectName, "README.md"), []byte(readmeContent), 0644); err != nil {
+    55: 		return fmt.Errorf("failed to create README.md: %w", err)
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/init.go:39[0m] - G306 (CWE-276): Expect WriteFile permissions to be 0600 or less (Confidence: HIGH, Severity: MEDIUM)
+    38: `
+  > 39: 	if err := os.WriteFile(filepath.Join(projectName, "main.sruja"), []byte(mainContent), 0644); err != nil {
+    40: 		return fmt.Errorf("failed to create main.sruja: %w", err)
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/import.go:56[0m] - G306 (CWE-276): Expect WriteFile permissions to be 0600 or less (Confidence: HIGH, Severity: MEDIUM)
+    55: 				outPath := filepath.Join(*outDir, f.Path)
+  > 56: 				if err := os.WriteFile(outPath, []byte(f.Content), 0644); err != nil {
+    57: 					_, _ = fmt.Fprintf(stderr, "Error writing output file %s: %v\n", f.Path, err)
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/cmd/sruja/change.go:66[0m] - G306 (CWE-276): Expect WriteFile permissions to be 0600 or less (Confidence: HIGH, Severity: MEDIUM)
+    65: 	// Write file
+  > 66: 	if err := os.WriteFile(changeFile, []byte(sb.String()), 0644); err != nil {
+    67: 		_, _ = fmt.Fprintf(stderr, "Error writing change file: %v\n", err)
+
+Autofix: 
+
+[1;36mSummary:[0m
+  Gosec  : dev
+  Files  : 106
+  Lines  : 19533
+  Nosec  : 0
+  Issues : [1;31m59[0m
+
+make: *** [lint-security] Error 1

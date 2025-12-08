@@ -1,47 +1,84 @@
 package language
 
 import (
+	"fmt"
 	"testing"
+
+	"github.com/alecthomas/participle/v2"
+	"github.com/alecthomas/participle/v2/lexer"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestParser_Lesson1Snippet(t *testing.T) {
+func TestParser_ReproCycle(t *testing.T) {
 	dsl := `
-architecture "Payment System" {
-    // Define an ADR
-    adr ADR001 "Use Stripe for Payments" {
-        status "Accepted"
-        context "We need a reliable payment processor that supports global currencies."
-        decision "We will use Stripe as our primary payment gateway."
-        consequences "Vendor lock-in, but faster time to market."
-    }
+architecture "Cycle" {
+	container A "Service A" { description "A" }
+	container B "Service B" { description "B" }
+	A -> B
+	B -> A
+}`
+	p, err := NewParser()
+	require.NoError(t, err)
 
-    system PaymentService "Payment Service" {
-        // Link the ADR to the component it affects
-        adr ADR001 "Dummy Title"
-        description "Handles credit card processing."
-    }
+	prog, diags, err := p.Parse("repro.sruja", dsl)
+	if err != nil {
+		t.Logf("Parse error: %v", err)
+		for _, d := range diags {
+			t.Logf("Diag: %v", d)
+		}
+	}
+	require.NoError(t, err)
+	require.NotNil(t, prog)
+	require.NotNil(t, prog.Architecture)
+	assert.Len(t, prog.Architecture.Relations, 2)
 }
-`
-	parser, err := NewParser()
+
+type BacktrackTest struct {
+	First  string `parser:"@Ident"`
+	Second string `parser:"@Ident"`
+}
+
+type FailParser struct {
+	Value string
+}
+
+func (f *FailParser) Parse(lex *lexer.PeekingLexer) error {
+	_ = lex.Next() // Consume one token
+	return fmt.Errorf("intentional failure")
+}
+
+type BacktrackContainer struct {
+	Fail *FailParser    `parser:"@@?"`
+	Item *BacktrackTest `parser:"@@"`
+}
+
+func TestParser_Backtrack(t *testing.T) {
+	// Input: "A B"
+	// We want FailParser to consume "A" and fail.
+	// If backtracking works, Item should match "A" and "B".
+	// If not, Item will try to match "B" as First, and fail on EOF for Second.
+
+	dsl := `A B`
+
+	// We need a custom parser for this test
+	lexerDef := lexer.MustSimple([]lexer.SimpleRule{
+		{Name: "Ident", Pattern: `[a-zA-Z]+`},
+		{Name: "Whitespace", Pattern: `\s+`},
+	})
+
+	p, err := participle.Build[BacktrackContainer](
+		participle.Lexer(lexerDef),
+		participle.Elide("Whitespace"),
+	)
+	require.NoError(t, err)
+
+	container, err := p.ParseString("", dsl)
 	if err != nil {
-		t.Fatalf("Failed to create parser: %v", err)
+		t.Logf("Parse error: %v", err)
 	}
-
-	program, err := parser.Parse("lesson1.sruja", dsl)
-	if err != nil {
-		t.Fatalf("Failed to parse DSL: %v", err)
-	}
-
-	if len(program.Architecture.ADRs) != 1 {
-		t.Fatalf("Expected 1 ADR, got %d", len(program.Architecture.ADRs))
-	}
-
-	adr := program.Architecture.ADRs[0]
-	if adr.Body == nil {
-		t.Fatal("Expected ADR body, got nil")
-	}
-
-	if *adr.Body.Status != "Accepted" {
-		t.Errorf("Expected status 'Accepted', got %q", *adr.Body.Status)
-	}
+	require.NoError(t, err)
+	require.NotNil(t, container.Item)
+	assert.Equal(t, "A", container.Item.First)
+	assert.Equal(t, "B", container.Item.Second)
 }

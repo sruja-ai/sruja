@@ -7,6 +7,6 @@ architecture "Person Example" {
     }
   }
 
-  Customer -> API "Uses"
-  API -> Checkout "Calls"
+  Customer -> Order.API "Uses"
+  Order.API -> Order.API.Checkout "Calls"
 }

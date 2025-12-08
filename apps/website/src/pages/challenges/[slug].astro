@@ -1,0 +1,51 @@
+---
+import { getCollection } from 'astro:content'
+import Layout from '../../layouts/Layout.astro'
+import ContentPage from '@/features/content/components/ContentPage.astro'
+import ChallengeRunner from '@/features/challenges/components/ChallengeRunner'
+import ContentNavigation from '@/features/content/components/ContentNavigation.astro'
+
+export async function getStaticPaths() {
+  const raw = await getCollection('challenges')
+  const challenges = raw.sort((a: any, b: any) => a.data.slug.localeCompare(b.data.slug))
+  return challenges.map((entry: any, index: number) => {
+    const previous = index > 0 ? challenges[index - 1] : null
+    const next = index < challenges.length - 1 ? challenges[index + 1] : null
+    return {
+      params: { slug: entry.data.slug },
+      props: {
+        challenge: entry.data,
+        previous: previous ? { title: previous.data.title, href: `/challenges/${previous.data.slug}` } : null,
+        next: next ? { title: next.data.title, href: `/challenges/${next.data.slug}` } : null,
+      },
+    }
+  })
+}
+
+type Props = { challenge: any; previous?: { title: string; href: string } | null; next?: { title: string; href: string } | null }
+const { challenge, previous, next } = Astro.props as Props
+---
+
+<Layout title={challenge.title} description={challenge.summary || `Challenge: ${challenge.title}`}>
+  <ContentPage title={challenge.title} summary={challenge.summary}>
+    <div class="challenge-meta">
+      {challenge.difficulty && <span class={`pill ${challenge.difficulty}`}>{challenge.difficulty}</span>}
+      {challenge.topic && <span class="pill topic">{challenge.topic}</span>}
+      {challenge.estimatedTime && <span class="pill time">{challenge.estimatedTime}</span>}
+    </div>
+    <p><a class="back-link" href="/challenges">← Back to Challenges</a></p>
+    <ChallengeRunner client:only="react" challenge={challenge} />
+  </ContentPage>
+  <ContentNavigation previous={previous || undefined} next={next || undefined} basePath="/challenges" />
+  <style>
+    .back-link { color: var(--color-primary, #3b82f6); text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+    .challenge-meta { display: flex; gap: 6px; margin: 6px 0 12px; }
+    .pill { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--color-border, #e2e8f0); color: var(--color-text-secondary, #64748b); }
+    .pill.beginner { background: #ecfdf5; border-color: #22c55e; color: #166534; }
+    .pill.intermediate { background: #fff7ed; border-color: #f59e0b; color: #92400e; }
+    .pill.advanced { background: #fef2f2; border-color: #ef4444; color: #7f1d1d; }
+    .pill.topic { background: #f1f5f9; }
+    .pill.time { background: #eef2ff; }
+  </style>
+</Layout>

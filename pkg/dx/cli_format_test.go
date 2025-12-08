@@ -182,7 +182,7 @@ func TestProgressBar_ZeroTotal(t *testing.T) {
 
 func TestSeparator(t *testing.T) {
 	result := Separator()
-	if len(result) == 0 {
+	if result == "" {
 		t.Error("Separator should return a line")
 	}
 }
@@ -213,7 +213,7 @@ func TestSupportsColor_DumbTerm(t *testing.T) {
 	}
 }
 
-func TestSupportsColor_EmptyTerm(t *testing.T) {
+func TestSupportsColor_EmptyTerm(_ *testing.T) {
 	originalTerm := os.Getenv("TERM")
 	defer func() {
 		_ = os.Setenv("TERM", originalTerm)
@@ -267,7 +267,7 @@ func TestProgressBar_WithColor(t *testing.T) {
 
 func TestSeparator_WithColor(t *testing.T) {
 	result := Separator()
-	if len(result) == 0 {
+	if result == "" {
 		t.Error("Separator should return a line")
 	}
 }
@@ -379,7 +379,7 @@ func TestSeparator_NoColor(t *testing.T) {
 	_ = os.Setenv("NO_COLOR", "1")
 
 	result := Separator()
-	if len(result) == 0 {
+	if result == "" {
 		t.Error("Separator should work without color")
 	}
 }

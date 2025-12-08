@@ -5,18 +5,17 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/sruja-ai/sruja/pkg/dx"
 )
 
-func runExplain(stdout, stderr io.Writer) int {
+func runExplain(args []string, stdout, stderr io.Writer) int {
 	explainCmd := flag.NewFlagSet("explain", flag.ContinueOnError)
 	explainCmd.SetOutput(stderr)
 	explainJSON := explainCmd.Bool("json", false, "output as JSON")
 	explainFile := explainCmd.String("file", "", "architecture file path")
 
-	if err := explainCmd.Parse(os.Args[2:]); err != nil {
+	if err := explainCmd.Parse(args); err != nil {
 		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing explain flags: %v", err)))
 		return 1
 	}

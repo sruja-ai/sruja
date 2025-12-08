@@ -1,0 +1,63 @@
+---
+title: "Sruja Cheatsheet"
+weight: 1
+summary: "Quick syntax and common patterns for fast modeling."
+---
+
+import LiveSrujaBlockWrapper from '@/features/playground/components/LiveSrujaBlockWrapper.astro'
+
+# Sruja Cheatsheet
+
+## Elements
+
+```sruja
+architecture "Shop" {
+  person User
+  system App {
+    container Web
+    container API
+    datastore DB
+  }
+  User -> App.Web "Uses"
+  App.Web -> App.API "Calls"
+  App.API -> App.DB "Reads/Writes"
+}
+```
+
+## Component
+
+```sruja
+system App {
+  container Web {
+    component Cart
+  }
+}
+```
+
+## Scenario
+
+```sruja
+scenario Checkout {
+  User -> App.Web "adds items"
+  App.Web -> App.API "validates"
+  App.API -> App.DB "stores order"
+}
+```
+
+## Deployment
+
+```sruja
+deployment Prod {
+  node Cloud {
+    node Region {
+      node Service {
+        containerInstance Web
+      }
+    }
+  }
+}
+```
+
+## Try It Live
+
+<LiveSrujaBlockWrapper initialDsl={"architecture \"Shop\" {\n  person User\n  system App {\n    container Web\n    container API\n    datastore DB\n  }\n  User -> App.Web \"Uses\"\n  App.Web -> App.API \"Calls\"\n  App.API -> App.DB \"Reads/Writes\"\n}"} />

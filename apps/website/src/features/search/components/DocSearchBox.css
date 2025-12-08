@@ -1,0 +1,74 @@
+/* apps/website/src/components/DocSearchBox.css */
+.docsearch-wrapper {
+  min-width: 260px;
+  max-width: 400px;
+  flex: 1;
+}
+
+/* Customize DocSearch styling */
+:global(:root) {
+  --docsearch-primary-color: var(--color-primary);
+  --docsearch-text-color: var(--color-text-primary, #0f172a);
+  --docsearch-muted-color: var(--color-text-secondary, #475569);
+  --docsearch-container-background: var(--color-background, #ffffff);
+  --docsearch-modal-background: var(--color-background, #ffffff);
+  --docsearch-searchbox-background: var(--color-surface, #f1f5f9);
+  --docsearch-searchbox-focus-background: var(--color-background, #ffffff);
+  --docsearch-hit-color: var(--color-text-primary, #0f172a);
+  --docsearch-hit-active-color: var(--color-text-primary, #0f172a);
+  --docsearch-hit-background: var(--color-surface, #f1f5f9);
+  --docsearch-hit-shadow: var(--shadow-base);
+}
+
+/* Improve search button styling */
+:global(.DocSearch-Button) {
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--docsearch-searchbox-background);
+  transition: all 0.2s;
+  height: 2.5rem;
+  padding: 0 0.75rem;
+}
+
+
+:global(.DocSearch-Button:hover) {
+  border-color: var(--docsearch-primary-color);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+:global(.DocSearch-Button-Placeholder) {
+  color: var(--docsearch-muted-color);
+  font-size: 0.875rem;
+}
+
+:global(.DocSearch-Button-Keys) {
+  display: flex;
+  gap: 0.25rem;
+}
+
+:global(.DocSearch-Button-Key) {
+  background: var(--color-surface, #f1f5f9);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 0.25rem;
+  color: var(--docsearch-muted-color);
+  font-size: 0.75rem;
+  padding: 0.125rem 0.375rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+
+@media (max-width: 768px) {
+  .docsearch-wrapper {
+    min-width: 200px;
+    max-width: 300px;
+  }
+  
+  :global(.DocSearch-Button-Placeholder) {
+    display: none;
+  }
+  
+  :global(.DocSearch-Button-Keys) {
+    display: none;
+  }
+}
+

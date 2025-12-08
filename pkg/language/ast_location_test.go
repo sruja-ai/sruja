@@ -41,9 +41,6 @@ func TestLocation_Methods(t *testing.T) {
 		{"DeploymentNode", &language.DeploymentNode{}},
 		{"ContainerInstance", &language.ContainerInstance{}},
 		{"InfrastructureNode", &language.InfrastructureNode{}},
-
-		{"Entity", &language.Entity{}},
-		{"DomainEvent", &language.DomainEvent{}},
 	}
 
 	for _, tt := range tests {

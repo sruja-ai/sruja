@@ -7,6 +7,7 @@ architecture "Basic Example" {
     }
   }
 
-  User -> WebApp "Uses"
-  WebApp -> Database "Reads/Writes"
+  User -> SoftwareSystem "Uses"
+  User -> SoftwareSystem.WebApp "Uses"
+  SoftwareSystem.WebApp -> SoftwareSystem.Database "Reads/Writes"
 }

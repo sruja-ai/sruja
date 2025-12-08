@@ -1,0 +1,43 @@
+{
+  "name": "@sruja/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./lsp": "./src/lsp/index.ts",
+    "./utils/cssVars": "./src/utils/cssVars.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "clean": "rimraf dist",
+    "generate:icons": "ts-node ./src/scripts/generate-icons.ts"
+  },
+  "size-limit": [
+    {
+      "path": "dist/**/*.js",
+      "limit": "50 KB"
+    }
+  ],
+  "devDependencies": {
+    "@sruja/eslint-config": "*",
+    "@vitest/coverage-v8": "^4.0.15",
+    "eslint": "^9.39.1",
+    "jsdom": "^24.1.3",
+    "lucide": "^0.555.0",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "posthog-js": "^1.299.0",
+    "vitest": "^4.0.15"
+  }
+}

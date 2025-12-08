@@ -3,5 +3,5 @@ architecture "External OK Example" {
     container API "API" {
     }
   }
-  App -> API uses "Uses"
+  App -> App.API "Uses"
 }

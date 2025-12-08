@@ -11,8 +11,9 @@ architecture "Simple Example" {
     }
   }
   
-  User -> WebApp "Uses"
-  WebApp -> Database "Reads/Writes"
+  User -> API "Uses"
+  User -> API.WebApp "Uses"
+  API.WebApp -> API.Database "Reads/Writes"
   
   requirement R1 functional "Must handle 10k concurrent users"
   requirement R2 constraint "Must use PostgreSQL"

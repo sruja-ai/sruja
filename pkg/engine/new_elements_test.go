@@ -12,11 +12,11 @@ func parse2(t *testing.T, dsl string) *language.Program {
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}
-	prog, err := p.Parse("test.sruja", dsl)
+	program, _, err := p.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	return prog
+	return program
 }
 
 func TestValidReferences_NewElements(t *testing.T) {

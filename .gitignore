@@ -1,6 +1,8 @@
 # Binaries
 # sruja binary
 /bin/sruja
+/sruja
+_sruja
 sruja-lsp
 *.exe
 *.exe~
@@ -8,14 +10,18 @@ sruja-lsp
 *.so
 *.dylib
 bin/
+generate-playground-examples
 
 # Test binary, built with `go test -c`
 *.test
 
 # Output of the go coverage tool
 *.out
+coverage.txt
+coverage.html
 *.html
 !learn/layouts/**/*.html
+!pkg/export/html/*.html
 
 # Dependency directories
 vendor/
@@ -43,6 +49,17 @@ build/
 bin/
 *.log
 
+# Turborepo
+.turbo
+apps/*/dist
+apps/*/.next
+apps/*/build
+packages/*/dist
+packages/*/build
+
+# GitHub Pages deployment
+_site/
+
 # Environment
 .env
 .env.local
@@ -59,7 +76,7 @@ apps/playground-server/build-errors.log
 index.json
 visual.json
 
-learn/public/
+apps/website/public/
 # Bun
 .bun/
 .trae
@@ -80,6 +97,26 @@ wasm_exec.js
 
 snippet_*
 
+# Generated output directories
+examples-html/
+examples-svg/
+examples-markdown/
+test-outputs/
+
+# Generated SVG files in root
+*.svg
+!learn/static/sruja-logo.svg
+
+# Temporary files
+repro.js
+test_output.txt
+test.failures.txt
+final_output.md
+ull_features.sruja.md
+ecommerce_platform_*.md
+-
+cmd.out
+
 .playwright-mcp/
 .codacy/
 
@@ -87,3 +124,6 @@ snippet_*
 internal-docs/*
 !internal-docs/guide.md
 !internal-docs/.gitignore
+
+# Archive folder
+archive/

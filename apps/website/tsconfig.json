@@ -1,0 +1,24 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/features/*": ["./src/features/*"],
+      "@/shared/*": ["./src/shared/*"],
+      "@sruja/shared": ["../../packages/shared/src"],
+      "@sruja/viewer": ["../../packages/viewer/src"],
+      "@sruja/ui": ["../../packages/ui/src"],
+      "@sruja/studio-core": ["../../apps/studio-core/src"],
+      "@sruja/viewer-core": ["../../apps/viewer-core/app"],
+      "@sruja/viewer-core/*": ["../../apps/viewer-core/app/*"]
+    }
+  },
+  "include": ["src/**/*", "src/env.d.ts"],
+  "exclude": ["node_modules", "dist"]
+}
+
+
+

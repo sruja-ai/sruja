@@ -1,0 +1,7 @@
+---
+import LiveSrujaBlock from './LiveSrujaBlock'
+interface Props { initialDsl: string }
+const { initialDsl } = Astro.props as Props
+---
+<LiveSrujaBlock initialDsl={initialDsl} client:only="react" />
+

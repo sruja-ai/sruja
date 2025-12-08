@@ -154,12 +154,12 @@ architecture "Test" {
 	}
 }
 
-func TestCycleDetectionRule_EmptyFromTo(t *testing.T) {
+func TestCycleDetectionRule_EmptyFromTo(_ *testing.T) {
 	program := &language.Program{
 		Architecture: &language.Architecture{
 			Relations: []*language.Relation{
-				{From: "", To: "B"},
-				{From: "A", To: ""},
+				{From: language.QualifiedIdent{Parts: []string{}}, To: language.QualifiedIdent{Parts: []string{"B"}}},
+				{From: language.QualifiedIdent{Parts: []string{"A"}}, To: language.QualifiedIdent{Parts: []string{}}},
 			},
 		},
 	}

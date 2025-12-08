@@ -1,0 +1,280 @@
+---
+// apps/website/src/pages/learn/index.astro
+import { getCollection, type CollectionEntry } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import ContentPage from '@/features/content/components/ContentPage.astro';
+import ContentList from '@/features/content/components/ContentList.astro';
+
+const lessons = await getCollection('courses');
+const tutorials = await getCollection('tutorials');
+const posts = await getCollection('blog', ({ data }: { data: any }) => {
+  return true;
+});
+
+// Group by course name (first segment of slug)
+interface CourseSummary { name: string; title: string; modules: Set<string>; }
+const coursesMap = new Map<string, CourseSummary>();
+
+lessons.forEach((lesson: CollectionEntry<'courses'>) => {
+  const [courseName, moduleName] = lesson.slug.split('/');
+  if (!courseName) return;
+  if (!coursesMap.has(courseName)) {
+    coursesMap.set(courseName, {
+      name: courseName,
+      title: courseName.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+      modules: new Set<string>(),
+    });
+  }
+  const course = coursesMap.get(courseName)!;
+  if (moduleName) course.modules.add(moduleName);
+});
+
+// Sort courses: prioritize numbered (101, 201) then alphabetically
+const courseList = Array.from(coursesMap.values()).sort((a, b) => {
+  const getNum = (name: string) => {
+    const m = name.match(/(\d+)$/); return m ? parseInt(m[1], 10) : 999;
+  };
+  const na = getNum(a.name), nb = getNum(b.name);
+  if (na !== 999 && nb !== 999) return na - nb;
+  if (na !== 999) return -1;
+  if (nb !== 999) return 1;
+  return a.name.localeCompare(b.name);
+}).slice(0, 3);
+
+const sortedTutorials = tutorials.sort((a: any, b: any) => {
+  const weightA = a.data.weight ?? 999;
+  const weightB = b.data.weight ?? 999;
+  return weightA - weightB;
+}).slice(0, 3);
+
+const sortedPosts = posts.sort((a: any, b: any) => {
+  const dateA = a.data.pubDate 
+    ? (typeof a.data.pubDate === 'string' ? new Date(a.data.pubDate) : a.data.pubDate)
+    : new Date(0);
+  const dateB = b.data.pubDate 
+    ? (typeof b.data.pubDate === 'string' ? new Date(b.data.pubDate) : b.data.pubDate)
+    : new Date(0);
+  return dateB.getTime() - dateA.getTime();
+}).slice(0, 3);
+---
+
+<Layout title="Learn" description="Learn Sruja through courses, tutorials, and blog posts.">
+  <ContentPage title="Learn Sruja" summary="Explore our comprehensive learning resources including courses, step-by-step tutorials, and insightful blog posts.">
+    <div class="learn-sections">
+      <section class="learn-section">
+        <div class="learn-section-header">
+          <h2>Practice</h2>
+          <a href="/challenges" class="learn-section-link">Go to Challenges →</a>
+        </div>
+        <div class="learn-items">
+          <article class="learn-item">
+            <h3><a href="/challenges">Challenges</a></h3>
+            <p>Fix broken architectures by writing Sruja DSL.</p>
+          </article>
+          <article class="learn-item">
+            <h3><a href="/quizzes">Quizzes</a></h3>
+            <p>Test your understanding with quick multiple-choice quizzes.</p>
+          </article>
+        </div>
+      </section>
+      <section class="learn-section">
+        <div class="learn-section-header">
+          <h2>Courses</h2>
+          <a href="/courses" class="learn-section-link">View All Courses →</a>
+        </div>
+        {courseList.length > 0 ? (
+          <div class="learn-items">
+            {courseList.map((course) => (
+              <article class="learn-item">
+                <h3><a href={`/courses#course-${course.name}`}>{course.title}</a></h3>
+                <p>{course.modules.size} modules</p>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p class="learn-empty">No courses available yet. Check back soon!</p>
+        )}
+      </section>
+
+      <section class="learn-section">
+        <div class="learn-section-header">
+          <h2>Tutorials</h2>
+          <a href="/tutorials" class="learn-section-link">View All Tutorials →</a>
+        </div>
+        {sortedTutorials.length > 0 ? (
+          <div class="learn-items">
+            {sortedTutorials.map((tutorial: any) => (
+              <article class="learn-item">
+                <h3><a href={`/tutorials/${tutorial.slug}`}>{tutorial.data.title}</a></h3>
+                {tutorial.data.summary && <p>{tutorial.data.summary}</p>}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p class="learn-empty">No tutorials available yet. Check back soon!</p>
+        )}
+      </section>
+
+      <section class="learn-section">
+        <div class="learn-section-header">
+          <h2>Blogs</h2>
+          <a href="/blogs" class="learn-section-link">View All Blogs →</a>
+        </div>
+        {sortedPosts.length > 0 ? (
+          <div class="learn-items">
+            {sortedPosts.map((post: any) => {
+              const pubDate = post.data.pubDate 
+                ? (typeof post.data.pubDate === 'string' 
+                    ? new Date(post.data.pubDate).toLocaleDateString()
+                    : post.data.pubDate.toLocaleDateString())
+                : null;
+              return (
+                <article class="learn-item">
+                  <h3><a href={`/blogs/${post.slug}`}>{post.data.title}</a></h3>
+                  {pubDate && <time class="learn-date">{pubDate}</time>}
+                  {post.data.summary && <p>{post.data.summary}</p>}
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <p class="learn-empty">No blog posts available yet. Check back soon!</p>
+        )}
+      </section>
+    </div>
+  </ContentPage>
+</Layout>
+
+<style>
+  .learn-sections {
+    display: grid;
+    gap: 3rem;
+  }
+
+  .learn-section {
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-border, #e2e8f0);
+  }
+
+  :global(html.dark) .learn-section {
+    border-top-color: #334155;
+  }
+
+  .learn-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .learn-section-header h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-text-primary, #0f172a);
+    transition: color 0.2s;
+  }
+
+  :global(html.dark) .learn-section-header h2 {
+    color: #f1f5f9;
+  }
+
+  .learn-section-link {
+    color: var(--color-primary, #3b82f6);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9375rem;
+    transition: color 0.2s;
+  }
+
+  .learn-section-link:hover {
+    color: var(--color-primary-hover, #2563eb);
+    text-decoration: underline;
+  }
+
+  .learn-items {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .learn-item {
+    padding: 1.25rem;
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    background: var(--color-background, #ffffff);
+  }
+
+  :global(html.dark) .learn-item {
+    border-color: #334155;
+    background: #1e293b;
+  }
+
+  .learn-item:hover {
+    border-color: var(--color-primary, #3b82f6);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  :global(html.dark) .learn-item:hover {
+    border-color: var(--color-primary-hover, #60a5fa);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  }
+
+  .learn-item h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    color: var(--color-text-primary, #0f172a);
+    transition: color 0.2s;
+  }
+
+  :global(html.dark) .learn-item h3 {
+    color: #f1f5f9;
+  }
+
+  .learn-item h3 a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .learn-item h3 a:hover {
+    color: var(--color-primary, #3b82f6);
+  }
+
+  :global(html.dark) .learn-item h3 a:hover {
+    color: var(--color-primary-hover, #60a5fa);
+  }
+
+  .learn-date {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--color-text-tertiary, #64748b);
+    margin-bottom: 0.5rem;
+    transition: color 0.2s;
+  }
+
+  :global(html.dark) .learn-date {
+    color: #cbd5e1;
+  }
+
+  .learn-item p {
+    color: var(--color-text-secondary, #64748b);
+    margin: 0;
+    line-height: 1.6;
+    transition: color 0.2s;
+  }
+
+  :global(html.dark) .learn-item p {
+    color: #cbd5e1;
+  }
+
+  .learn-empty {
+    color: var(--color-text-tertiary, #64748b);
+    font-style: italic;
+    transition: color 0.2s;
+  }
+
+  :global(html.dark) .learn-empty {
+    color: #cbd5e1;
+  }
+</style>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architecture: {{.ArchName}}</title>
+  
+  {{if .EmbedViewerCSS}}
+  <style>{{.EmbedViewerCSS | safeCSS}}</style>
+  {{end}}
+  
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #sruja-app { 
+      width: 100%; 
+      height: 100%; 
+      overflow: hidden; 
+      font-family: system-ui, -apple-system, sans-serif; 
+    }
+  </style>
+</head>
+<body>
+  <div id="sruja-app"></div>
+  <script id="sruja-data" type="application/json">{{.JSONData | safeJS}}</script>
+  <!-- Embedded IIFE Viewer Bundle -->
+  {{if .EmbedViewerJS}}
+  <script>{{.EmbedViewerJS | safeJS}}</script>
+  <script>
+    (function() {
+      try {
+        const jsonData = JSON.parse(document.getElementById('sruja-data').textContent);
+        if (typeof window !== 'undefined' && window.SrujaViewer && window.SrujaViewer.mount) {
+          window.SrujaViewer.mount('#sruja-app', jsonData);
+        } else {
+          document.getElementById('sruja-app').innerHTML = '<div style="padding: 2rem; text-align: center; font-family: system-ui, sans-serif;"><h2>Viewer Not Available</h2><p>The Sruja Viewer JavaScript library is not loaded.</p></div>';
+        }
+      } catch (error) {
+        console.error('Error loading architecture:', error);
+        document.getElementById('sruja-app').innerHTML = '<div style="padding: 2rem; text-align: center; font-family: system-ui, sans-serif; color: #dc2626;"><h2>Error Loading Architecture</h2><p>' + error.message + '</p></div>';
+      }
+    })();
+  </script>
+  {{end}}
+</body>
+</html>

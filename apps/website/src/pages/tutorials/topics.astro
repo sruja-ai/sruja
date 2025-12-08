@@ -1,0 +1,75 @@
+---
+// apps/website/src/pages/tutorials/topics.astro
+import { getCollection, type CollectionEntry } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+
+const tutorials = await getCollection('tutorials');
+type TutorialEntry = CollectionEntry<'tutorials'>;
+const topicsMap = tutorials.reduce((acc: Record<string, TutorialEntry[]>, item: TutorialEntry) => {
+  const tags = Array.isArray(item.data.tags) ? item.data.tags : [];
+  tags.forEach((tag: string) => {
+    if (!acc[tag]) acc[tag] = [];
+    acc[tag].push(item);
+  });
+  return acc;
+}, {});
+
+const topicsEntries = Object.entries(topicsMap).sort(([a], [b]) => a.localeCompare(b));
+---
+
+<Layout title="Tutorial Topics" description="Tutorials organized by topic.">
+  <div class="container">
+    <h1>Tutorial Topics</h1>
+    {topicsEntries.map((entry) => {
+      const typedEntry = entry as [string, TutorialEntry[]];
+      const [tag, items] = typedEntry;
+      return (
+        <section>
+          <h2>{tag}</h2>
+          <ul>
+            {items.sort((a: TutorialEntry, b: TutorialEntry) => (a.data.weight || 999) - (b.data.weight || 999)).map((it: TutorialEntry) => (
+              <li>
+                <a href={`/tutorials/${it.slug}`}>{it.data.title}</a>
+                {it.data.summary && <span class="summary"> — {it.data.summary}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      );
+    })}
+  </div>
+</Layout>
+
+<style>
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  h1 {
+    margin: 0 0 1rem;
+  }
+  
+  section {
+    margin: 2rem 0;
+  }
+  
+  h2 {
+    margin: 0 0 0.75rem;
+  }
+  
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  li {
+    margin: 0.5rem 0;
+  }
+  
+  .summary {
+    color: #64748b;
+  }
+</style>

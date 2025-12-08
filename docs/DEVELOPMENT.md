@@ -6,7 +6,7 @@ This guide covers general development practices. For content creation, see [Cont
 
 ### Pre-commit Hook
 
-A pre-commit hook is set up to automatically test Sruja code compilation when you commit changes to the `learn/` directory.
+A pre-commit hook is set up to automatically test Sruja code compilation when you commit changes to the `examples/` directory.
 
 **What it does:**
 - Runs compilation tests for playground examples
@@ -25,7 +25,7 @@ make setup-hooks
 ```
 
 **How it works:**
-- Only runs when you commit files in `learn/` directory
+- Only runs when you commit files in `examples/` directory
 - Runs `go test` for compilation tests
 - Blocks commit if tests fail
 - Shows helpful error messages
@@ -45,14 +45,14 @@ git commit --no-verify
 
 ### Compilation Tests
 
-Test that all playground and course code compiles correctly:
+Test that all playground examples compile correctly:
 
 ```bash
-# Run all compilation tests
-make test-learn-code
+# Generate examples and test compilation
+make generate-examples
 
-# Or directly
-go test -v -run "TestPlaygroundExamples|TestCourseCodeBlocks|TestDocsCodeBlocks"
+# Or run tests directly
+go test -v -run "TestPlaygroundExamples"
 ```
 
 ### All Tests

@@ -1,0 +1,193 @@
+=== RUN   TestEngine_EdgeCases
+=== RUN   TestEngine_EdgeCases/SimplicityRule_ComplexNesting
+=== RUN   TestEngine_EdgeCases/OrphanDetectionRule_DisconnectedGraph
+=== RUN   TestEngine_EdgeCases/CycleDetectionRule_SelfCycle
+=== RUN   TestEngine_EdgeCases/UniqueIDRule_CaseSensitivity
+--- PASS: TestEngine_EdgeCases (0.00s)
+    --- PASS: TestEngine_EdgeCases/SimplicityRule_ComplexNesting (0.00s)
+    --- PASS: TestEngine_EdgeCases/OrphanDetectionRule_DisconnectedGraph (0.00s)
+    --- PASS: TestEngine_EdgeCases/CycleDetectionRule_SelfCycle (0.00s)
+    --- PASS: TestEngine_EdgeCases/UniqueIDRule_CaseSensitivity (0.00s)
+=== RUN   TestExternalDependencyRule_ContainerToParentSystem
+--- PASS: TestExternalDependencyRule_ContainerToParentSystem (0.00s)
+=== RUN   TestExternalDependencyRule_ComponentToParentContainer
+--- PASS: TestExternalDependencyRule_ComponentToParentContainer (0.00s)
+=== RUN   TestExternalDependencyRule_ValidExternalDependency
+--- PASS: TestExternalDependencyRule_ValidExternalDependency (0.00s)
+=== RUN   TestExternalDependencyRule_SystemLevelRelation
+--- PASS: TestExternalDependencyRule_SystemLevelRelation (0.00s)
+=== RUN   TestExternalDependencyRule_RelativeResolution
+--- PASS: TestExternalDependencyRule_RelativeResolution (0.00s)
+=== RUN   TestExternalDependencyRule_SuffixResolution
+--- PASS: TestExternalDependencyRule_SuffixResolution (0.00s)
+=== RUN   TestLayerViolationRule_Validate
+=== RUN   TestLayerViolationRule_Validate/Valid_Layering_(Web_->_API)
+=== RUN   TestLayerViolationRule_Validate/Invalid_Layering_(API_->_Web)
+=== RUN   TestLayerViolationRule_Validate/Valid_Layering_(Name_Convention)
+=== RUN   TestLayerViolationRule_Validate/Invalid_Layering_(Name_Convention)
+=== RUN   TestLayerViolationRule_Validate/Unknown_Layers_(Ignored)
+=== RUN   TestLayerViolationRule_Validate/Relaxed_Layering_(Web_->_Data)
+--- PASS: TestLayerViolationRule_Validate (0.02s)
+    --- PASS: TestLayerViolationRule_Validate/Valid_Layering_(Web_->_API) (0.00s)
+    --- PASS: TestLayerViolationRule_Validate/Invalid_Layering_(API_->_Web) (0.01s)
+    --- PASS: TestLayerViolationRule_Validate/Valid_Layering_(Name_Convention) (0.00s)
+    --- PASS: TestLayerViolationRule_Validate/Invalid_Layering_(Name_Convention) (0.00s)
+    --- PASS: TestLayerViolationRule_Validate/Unknown_Layers_(Ignored) (0.00s)
+    --- PASS: TestLayerViolationRule_Validate/Relaxed_Layering_(Web_->_Data) (0.00s)
+=== RUN   TestScorer_CalculateScore
+=== RUN   TestScorer_CalculateScore/Perfect_Score
+=== RUN   TestScorer_CalculateScore/Missing_Description
+=== RUN   TestScorer_CalculateScore/Orphan_Element
+=== RUN   TestScorer_CalculateScore/Layer_Violation
+=== RUN   TestScorer_CalculateScore/Cycle_Detection
+=== RUN   TestScorer_CalculateScore/Invalid_Reference
+=== RUN   TestScorer_CalculateScore/Multiple_Violations
+--- PASS: TestScorer_CalculateScore (0.02s)
+    --- PASS: TestScorer_CalculateScore/Perfect_Score (0.00s)
+    --- PASS: TestScorer_CalculateScore/Missing_Description (0.00s)
+    --- PASS: TestScorer_CalculateScore/Orphan_Element (0.00s)
+    --- PASS: TestScorer_CalculateScore/Layer_Violation (0.00s)
+    --- PASS: TestScorer_CalculateScore/Cycle_Detection (0.00s)
+    --- PASS: TestScorer_CalculateScore/Invalid_Reference (0.00s)
+    --- PASS: TestScorer_CalculateScore/Multiple_Violations (0.00s)
+=== RUN   TestSimplicityRule_DomainForDeployment
+    simplicity_rule_test.go:11: DDD features removed - deferred to Phase 2
+--- SKIP: TestSimplicityRule_DomainForDeployment (0.00s)
+=== RUN   TestSimplicityRule_SystemForDomain
+    simplicity_rule_test.go:33: DDD features removed - deferred to Phase 2
+--- SKIP: TestSimplicityRule_SystemForDomain (0.00s)
+=== RUN   TestSimplicityRule_ValidUsage
+--- PASS: TestSimplicityRule_ValidUsage (0.00s)
+=== RUN   TestSimplicityRule_NilArchitecture
+--- PASS: TestSimplicityRule_NilArchitecture (0.00s)
+=== RUN   TestSimplicityRule_EmptySystems
+--- PASS: TestSimplicityRule_EmptySystems (0.00s)
+=== RUN   TestSimplicityRule_SystemWithMultipleContainerTypes
+--- PASS: TestSimplicityRule_SystemWithMultipleContainerTypes (0.00s)
+=== RUN   TestSimplicityRule_Name
+--- PASS: TestSimplicityRule_Name (0.00s)
+=== RUN   TestNewValidator
+--- PASS: TestNewValidator (0.00s)
+=== RUN   TestValidator_RegisterRule
+--- PASS: TestValidator_RegisterRule (0.00s)
+=== RUN   TestValidator_Validate
+--- PASS: TestValidator_Validate (0.00s)
+=== RUN   TestValidator_Validate_MultipleRules
+--- PASS: TestValidator_Validate_MultipleRules (0.00s)
+=== RUN   TestCycleDetectionRule_Name
+--- PASS: TestCycleDetectionRule_Name (0.00s)
+=== RUN   TestCycleDetectionRule_Validate_NoCycle
+--- PASS: TestCycleDetectionRule_Validate_NoCycle (0.00s)
+=== RUN   TestCycleDetectionRule_Validate_Cycle
+--- PASS: TestCycleDetectionRule_Validate_Cycle (0.00s)
+=== RUN   TestCycleDetectionRule_Validate_NilArchitecture
+--- PASS: TestCycleDetectionRule_Validate_NilArchitecture (0.00s)
+=== RUN   TestCycleDetectionRule_Validate_SystemRelations
+--- PASS: TestCycleDetectionRule_Validate_SystemRelations (0.00s)
+=== RUN   TestUniqueIDRule_Name
+--- PASS: TestUniqueIDRule_Name (0.00s)
+=== RUN   TestValidReferenceRule_Name
+--- PASS: TestValidReferenceRule_Name (0.00s)
+=== RUN   TestOrphanDetectionRule_Name
+--- PASS: TestOrphanDetectionRule_Name (0.00s)
+=== RUN   TestCompletenessRule_MissingDescriptions
+    completeness_rule_test.go:37: Expected 3 suggestions, got 1
+    completeness_rule_test.go:39: Got: System 'Sys' has no description. Adding one helps context.
+--- FAIL: TestCompletenessRule_MissingDescriptions (0.00s)
+=== RUN   TestCompletenessRule_EmptySystem
+--- PASS: TestCompletenessRule_EmptySystem (0.00s)
+=== RUN   TestCompletenessRule_MissingTechnology
+    completeness_rule_test.go:92: Expected SUGGESTION_MISSING_TECH for container without technology
+--- FAIL: TestCompletenessRule_MissingTechnology (0.00s)
+=== RUN   TestCompletenessRule_EmptyContainer
+    completeness_rule_test.go:120: Expected SUGGESTION_EMPTY_CONTAINER for container without components
+--- FAIL: TestCompletenessRule_EmptyContainer (0.00s)
+=== RUN   TestCycleDetectionRule_EmptyArchitecture
+--- PASS: TestCycleDetectionRule_EmptyArchitecture (0.00s)
+=== RUN   TestCycleDetectionRule_SelfLoop
+--- PASS: TestCycleDetectionRule_SelfLoop (0.00s)
+=== RUN   TestCycleDetectionRule_SimpleCycle
+--- PASS: TestCycleDetectionRule_SimpleCycle (0.00s)
+=== RUN   TestCycleDetectionRule_ThreeNodeCycle
+--- PASS: TestCycleDetectionRule_ThreeNodeCycle (0.00s)
+=== RUN   TestCycleDetectionRule_NoCycle
+--- PASS: TestCycleDetectionRule_NoCycle (0.00s)
+=== RUN   TestCycleDetectionRule_SystemLevelRelations
+--- PASS: TestCycleDetectionRule_SystemLevelRelations (0.00s)
+=== RUN   TestCycleDetectionRule_ContainerLevelRelations
+--- PASS: TestCycleDetectionRule_ContainerLevelRelations (0.00s)
+=== RUN   TestCycleDetectionRule_ComponentLevelRelations
+--- PASS: TestCycleDetectionRule_ComponentLevelRelations (0.00s)
+=== RUN   TestCycleDetectionRule_EmptyFromTo
+--- PASS: TestCycleDetectionRule_EmptyFromTo (0.00s)
+=== RUN   TestValidReferences_PersonContainer
+--- PASS: TestValidReferences_PersonContainer (0.00s)
+=== RUN   TestRuleNames
+--- PASS: TestRuleNames (0.00s)
+=== RUN   TestOrphanDetection_ParentSystemMarkedUsed
+--- PASS: TestOrphanDetection_ParentSystemMarkedUsed (0.00s)
+=== RUN   TestUniqueIDRule_DuplicateIDs
+--- PASS: TestUniqueIDRule_DuplicateIDs (0.00s)
+=== RUN   TestValidReferences_NewElements
+--- PASS: TestValidReferences_NewElements (0.00s)
+=== RUN   TestOrphanDetection_NewElementsUsage
+--- PASS: TestOrphanDetection_NewElementsUsage (0.00s)
+=== RUN   TestOrphanDetectionRule_EmptyArchitecture
+--- PASS: TestOrphanDetectionRule_EmptyArchitecture (0.00s)
+=== RUN   TestOrphanDetectionRule_EmptySystems
+--- PASS: TestOrphanDetectionRule_EmptySystems (0.00s)
+=== RUN   TestOrphanDetectionRule_OrphanSystem
+--- PASS: TestOrphanDetectionRule_OrphanSystem (0.00s)
+=== RUN   TestOrphanDetectionRule_OrphanContainer
+--- PASS: TestOrphanDetectionRule_OrphanContainer (0.00s)
+=== RUN   TestOrphanDetectionRule_OrphanComponent
+--- PASS: TestOrphanDetectionRule_OrphanComponent (0.00s)
+=== RUN   TestOrphanDetectionRule_OrphanDataStore
+--- PASS: TestOrphanDetectionRule_OrphanDataStore (0.00s)
+=== RUN   TestOrphanDetectionRule_OrphanQueue
+--- PASS: TestOrphanDetectionRule_OrphanQueue (0.00s)
+=== RUN   TestOrphanDetectionRule_OrphanPerson
+--- PASS: TestOrphanDetectionRule_OrphanPerson (0.00s)
+=== RUN   TestOrphanDetectionRule_SystemLevelRelations
+--- PASS: TestOrphanDetectionRule_SystemLevelRelations (0.00s)
+=== RUN   TestOrphanDetectionRule_ContainerLevelRelations
+--- PASS: TestOrphanDetectionRule_ContainerLevelRelations (0.00s)
+=== RUN   TestOrphanDetectionRule_ComponentLevelRelations
+--- PASS: TestOrphanDetectionRule_ComponentLevelRelations (0.00s)
+=== RUN   TestUniqueIDRule_EmptyArchitecture
+--- PASS: TestUniqueIDRule_EmptyArchitecture (0.00s)
+=== RUN   TestUniqueIDRule_EmptyID
+--- PASS: TestUniqueIDRule_EmptyID (0.00s)
+=== RUN   TestUniqueIDRule_DuplicateSystems
+--- PASS: TestUniqueIDRule_DuplicateSystems (0.00s)
+=== RUN   TestUniqueIDRule_DuplicateComponents
+--- PASS: TestUniqueIDRule_DuplicateComponents (0.00s)
+=== RUN   TestUniqueIDRule_DuplicateDataStores
+--- PASS: TestUniqueIDRule_DuplicateDataStores (0.00s)
+=== RUN   TestUniqueIDRule_DuplicateQueues
+--- PASS: TestUniqueIDRule_DuplicateQueues (0.00s)
+=== RUN   TestUniqueIDRule_DuplicatePersons
+--- PASS: TestUniqueIDRule_DuplicatePersons (0.00s)
+=== RUN   TestUniqueIDRule_DuplicateRequirements
+--- PASS: TestUniqueIDRule_DuplicateRequirements (0.00s)
+=== RUN   TestUniqueIDRule_DuplicateADRs
+--- PASS: TestUniqueIDRule_DuplicateADRs (0.00s)
+=== RUN   TestUniqueIDRule_CrossLevelDuplicates
+--- PASS: TestUniqueIDRule_CrossLevelDuplicates (0.00s)
+=== RUN   TestValidReferenceRule_EmptyArchitecture
+--- PASS: TestValidReferenceRule_EmptyArchitecture (0.00s)
+=== RUN   TestValidReferenceRule_NilRelation
+--- PASS: TestValidReferenceRule_NilRelation (0.00s)
+=== RUN   TestValidReferenceRule_UndefinedFrom
+--- PASS: TestValidReferenceRule_UndefinedFrom (0.00s)
+=== RUN   TestValidReferenceRule_UndefinedTo
+--- PASS: TestValidReferenceRule_UndefinedTo (0.00s)
+=== RUN   TestValidReferenceRule_SystemLevelRelations
+--- PASS: TestValidReferenceRule_SystemLevelRelations (0.00s)
+=== RUN   TestValidReferenceRule_ContainerLevelRelations
+--- PASS: TestValidReferenceRule_ContainerLevelRelations (0.00s)
+=== RUN   TestValidReferenceRule_ComponentLevelRelations
+--- PASS: TestValidReferenceRule_ComponentLevelRelations (0.00s)
+FAIL
+FAIL	github.com/sruja-ai/sruja/pkg/engine	0.425s
+FAIL

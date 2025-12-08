@@ -1,45 +1,45 @@
-// SKIP_ORPHAN_CHECK: Intentionally showcases metadata for various elements without relations
+// SKIP_ORPHAN_CHECK Intentionally showcases metadata for various elements without relations
 architecture "Metadata Showcase Example" {
   system BillingAPI {
     metadata {
-      team: "Payments"
-      tier: "critical"
-      rate_limit_per_ip: "50/s"
-      error_budget: "99.5%"
-      cloud: "aws"
-      lambda_memory: "512MB"
-      tracing: "enabled"
+      team "Payments"
+      tier "critical"
+      rate_limit_per_ip "50/s"
+      error_budget "99.5%"
+      cloud "aws"
+      lambda_memory "512MB"
+      tracing "enabled"
     }
     container API {
       metadata {
-        rate_limit: "100/s"
-        auth: "jwt"
-        upstream: "BillingAPI"
+        rate_limit "100/s"
+        auth "jwt"
+        upstream "BillingAPI"
       }
     }
   }
   
   datastore InvoiceDB {
     metadata {
-      engine: "PostgreSQL"
-      version: "14"
-      encryption_at_rest: "AES-256"
-      compliance: "PCI-DSS"
+      engine "PostgreSQL"
+      version "14"
+      encryption_at_rest "AES-256"
+      compliance "PCI-DSS"
     }
   }
   
   queue Events {
     metadata {
-      provider: "RabbitMQ"
-      durable: "true"
-      prefetch: "10"
+      provider "RabbitMQ"
+      durable "true"
+      prefetch "10"
     }
   }
   
   person Customer {
     metadata {
-      persona: "end-user"
-      access_level: "standard"
+      persona "end-user"
+      access_level "standard"
     }
   }
 }

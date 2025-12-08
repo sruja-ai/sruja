@@ -1,0 +1,27 @@
+{{define "deployments"}}
+{{if hasDeployments .Architecture}}
+## Deployment Architecture
+
+{{range .Architecture.DeploymentNodes}}
+### {{.Label}}
+{{if .Description}}
+{{.Description}}
+
+{{end}}
+{{if or (gt (len .Children) 0) (gt (len .ContainerInstances) 0)}}
+```mermaid
+{{diagramDeployment . $.MermaidConfig}}
+```
+
+{{end}}
+{{if gt (len .ContainerInstances) 0}}
+#### Container Instances
+
+{{range .ContainerInstances}}
+- **{{.ContainerID}}{{if .InstanceID}}** (Instance: {{.InstanceID}}){{end}}
+{{end}}
+
+{{end}}
+{{end}}
+{{end}}
+

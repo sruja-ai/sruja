@@ -12,7 +12,7 @@ func parse(t *testing.T, dsl string) *language.Program {
 	if err != nil {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
-	program, err := parser.Parse("test.sruja", dsl)
+	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("Failed to parse DSL: %v", err)
 	}
@@ -35,6 +35,34 @@ architecture "Test" {
 	errs := rule.Validate(program)
 	if len(errs) != 0 {
 		t.Fatalf("Expected 0 reference errors, got %d: %+v", len(errs), errs)
+	}
+}
+
+func TestRuleNames(t *testing.T) {
+	rules := []engine.Rule{
+		&engine.ExternalDependencyRule{},
+		&engine.SimplicityRule{},
+		&engine.OrphanDetectionRule{}, // Corrected from OrphanRule
+		&engine.CycleDetectionRule{},  // Corrected from CycleRule
+		&engine.UniqueIDRule{},
+		&engine.ValidReferenceRule{},
+		&engine.CompletenessRule{},
+	}
+
+	expected := []string{
+		"ExternalDependency",
+		"SimplicityGuidance",
+		"OrphanDetection",
+		"CycleDetection",
+		"Unique IDs",
+		"Valid References",
+		"CompletenessCheck",
+	}
+
+	for i, r := range rules {
+		if r.Name() != expected[i] {
+			t.Errorf("Expected rule name %s, got %s", expected[i], r.Name())
+		}
 	}
 }
 

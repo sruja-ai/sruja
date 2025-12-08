@@ -1,0 +1,36 @@
+---
+import { getCollection } from 'astro:content'
+export async function getStaticPaths() {
+  const quizzes = await getCollection('quizzes')
+  return quizzes.map((q: any) => ({ params: { slug: q.data.slug } }))
+}
+import Quiz from '@/features/quizzes/components/Quiz'
+
+const { slug } = Astro.params
+const quizzes = await getCollection('quizzes')
+const entry = quizzes.find((q: any) => q.data.slug === slug)
+if (!entry) {
+  throw new Error(`Quiz not found: ${slug}`)
+}
+const quiz = entry.data
+---
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{quiz.title} | Sruja</title>
+  </head>
+  <body>
+    <div class="container">
+      <a href="/quizzes">← Back to Quizzes</a>
+      <Quiz client:only="react" quiz={quiz} />
+    </div>
+  </body>
+</html>
+
+<style>
+  .container { max-width: 720px; margin: 0 auto; padding: 2rem; }
+  a { color: #3b82f6; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>

@@ -22,7 +22,7 @@ func TestArchitecture_PostProcess_Imports(t *testing.T) {
 			{
 				Metadata: &language.MetadataBlock{
 					Entries: []*language.MetaEntry{
-						{Key: "engine", Value: "postgres"},
+						{Key: "engine", Value: strPtr("postgres")},
 					},
 				},
 			},
@@ -53,7 +53,7 @@ func TestDataStore_PostProcess(t *testing.T) {
 			{
 				Metadata: &language.MetadataBlock{
 					Entries: []*language.MetaEntry{
-						{Key: "engine", Value: "postgres"},
+						{Key: "engine", Value: strPtr("postgres")},
 					},
 				},
 			},
@@ -84,7 +84,7 @@ func TestQueue_PostProcess(t *testing.T) {
 			{
 				Metadata: &language.MetadataBlock{
 					Entries: []*language.MetaEntry{
-						{Key: "topic", Value: "events"},
+						{Key: "topic", Value: strPtr("events")},
 					},
 				},
 			},
@@ -112,7 +112,7 @@ func TestPerson_PostProcess(t *testing.T) {
 			{
 				Metadata: &language.MetadataBlock{
 					Entries: []*language.MetaEntry{
-						{Key: "persona", Value: "customer"},
+						{Key: "persona", Value: strPtr("customer")},
 					},
 				},
 			},
@@ -235,14 +235,14 @@ func TestComponent_PostProcess(t *testing.T) {
 			},
 			{
 				Relation: &language.Relation{
-					From: "Comp",
-					To:   "Other",
+					From: language.QualifiedIdent{Parts: []string{"Comp"}},
+					To:   language.QualifiedIdent{Parts: []string{"Other"}},
 				},
 			},
 			{
 				Metadata: &language.MetadataBlock{
 					Entries: []*language.MetaEntry{
-						{Key: "critical", Value: "true"},
+						{Key: "critical", Value: strPtr("true")},
 					},
 				},
 			},
@@ -366,14 +366,14 @@ func TestContainer_PostProcess(t *testing.T) {
 			},
 			{
 				Relation: &language.Relation{
-					From: "Cont",
-					To:   "Other",
+					From: language.QualifiedIdent{Parts: []string{"Cont"}},
+					To:   language.QualifiedIdent{Parts: []string{"Other"}},
 				},
 			},
 			{
 				Metadata: &language.MetadataBlock{
 					Entries: []*language.MetaEntry{
-						{Key: "tier", Value: "gold"},
+						{Key: "tier", Value: strPtr("gold")},
 					},
 				},
 			},
@@ -455,14 +455,14 @@ func TestSystem_PostProcess(t *testing.T) {
 			},
 			{
 				Relation: &language.Relation{
-					From: "Sys",
-					To:   "Other",
+					From: language.QualifiedIdent{Parts: []string{"Sys"}},
+					To:   language.QualifiedIdent{Parts: []string{"Other"}},
 				},
 			},
 			{
 				Metadata: &language.MetadataBlock{
 					Entries: []*language.MetaEntry{
-						{Key: "owner", Value: "team"},
+						{Key: "owner", Value: strPtr("team")},
 					},
 				},
 			},
@@ -523,8 +523,8 @@ func TestArchitecture_PostProcess(t *testing.T) {
 			},
 			{
 				Relation: &language.Relation{
-					From: "User",
-					To:   "Sys",
+					From: language.QualifiedIdent{Parts: []string{"User"}},
+					To:   language.QualifiedIdent{Parts: []string{"Sys"}},
 				},
 			},
 			{
@@ -555,7 +555,7 @@ func TestArchitecture_PostProcess(t *testing.T) {
 			{
 				Metadata: &language.MetadataBlock{
 					Entries: []*language.MetaEntry{
-						{Key: "level", Value: "arch"},
+						{Key: "level", Value: strPtr("arch")},
 					},
 				},
 			},
@@ -632,64 +632,51 @@ func TestDeploymentNode_PostProcess(t *testing.T) {
 }
 
 func TestArchitecture_PostProcess_DomainEntitiesAndEvents(t *testing.T) {
-	arch := &language.Architecture{
-		Name: "Test",
-		Items: []language.ArchitectureItem{
-			{
-				Domain: &language.DomainBlock{
-					ID: "UserDomain",
-					Items: []language.DomainItem{
-						{
-							Context: &language.ContextBlock{
-								ID: "UserContext",
-								Items: []language.ContextItem{
-									{
-										Entity: &language.Entity{
-											ID: "E1",
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			{
-				Domain: &language.DomainBlock{
-					ID: "EventDomain",
-					Items: []language.DomainItem{
-						{
-							Context: &language.ContextBlock{
-								ID: "EventContext",
-								Items: []language.ContextItem{
-									{
-										DomainEvent: &language.DomainEvent{
-											ID: "Ev1",
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	arch.PostProcess()
-
-	// Check Contexts
-	if len(arch.Contexts) != 2 {
-		t.Errorf("Expected 2 contexts, got %d", len(arch.Contexts))
-	}
-	// Check Entities inside Contexts
-	if len(arch.Contexts[0].Entities) != 1 {
-		t.Errorf("Expected 1 entity in first context, got %d", len(arch.Contexts[0].Entities))
-	}
-	// Check Events inside Contexts
-	if len(arch.Contexts[1].Events) != 1 {
-		t.Errorf("Expected 1 event in second context, got %d", len(arch.Contexts[1].Events))
-	}
+	// DDD features (DomainBlock, DomainItem, ContextBlock, ContextItem) removed - deferred to Phase 2
+	t.Skip("DDD features removed - deferred to Phase 2")
+	// 							Items: []language.ContextItem{
+	// 								{
+	// 									Entity: &language.Entity{
+	// 										ID: "E1",
+	// 									},
+	// 								},
+	// 							},
+	// 						},
+	// 					},
+	// 				},
+	// 			},
+	// 		},
+	// 		{
+	// 			Domain: &language.DomainBlock{
+	// 				ID: "EventDomain",
+	// 				Items: []language.DomainItem{
+	// 					{
+	// 						Context: &language.ContextBlock{
+	// 							ID: "EventContext",
+	// 							Items: []language.ContextItem{
+	// 								{
+	// 									DomainEvent: &language.DomainEvent{
+	// 										ID: "Ev1",
+	// 									},
+	// 								},
+	// 							},
+	// 						},
+	// 					},
+	// 				},
+	// 			},
+	// 		},
+	// 	},
+	// }
+	// arch.PostProcess()
+	// if len(arch.Contexts) != 2 {
+	// 	t.Errorf("Expected 2 contexts, got %d", len(arch.Contexts))
+	// }
+	// if len(arch.Contexts[0].Entities) != 1 {
+	// 	t.Errorf("Expected 1 entity in first context, got %d", len(arch.Contexts[0].Entities))
+	// }
+	// if len(arch.Contexts[1].Events) != 1 {
+	// 	t.Errorf("Expected 1 event in second context, got %d", len(arch.Contexts[1].Events))
+	// }
 }
 
 func TestArchitecture_PostProcess_ContractsAndConstraints(t *testing.T) {
@@ -717,18 +704,19 @@ func TestArchitecture_PostProcess_ContractsAndConstraints(t *testing.T) {
 					},
 				},
 			},
-			{
-				Context: &language.ContextBlock{
-					ID: "Ctx1",
-					Items: []language.ContextItem{
-						{
-							Entity: &language.Entity{
-								ID: "E1",
-							},
-						},
-					},
-				},
-			},
+			// ContextBlock removed - DDD feature, deferred to Phase 2
+			// {
+			// 	Context: &language.ContextBlock{
+			// 		ID: "Ctx1",
+			// 		Items: []language.ContextItem{
+			// 			{
+			// 				Entity: &language.Entity{
+			// 					Name: "E1",
+			// 				},
+			// 			},
+			// 		},
+			// 	},
+			// },
 		},
 	}
 
@@ -743,10 +731,11 @@ func TestArchitecture_PostProcess_ContractsAndConstraints(t *testing.T) {
 	if len(arch.Conventions) != 1 {
 		t.Errorf("Expected 1 convention, got %d", len(arch.Conventions))
 	}
-	if len(arch.Contexts) != 1 {
-		t.Errorf("Expected 1 context, got %d", len(arch.Contexts))
-	}
-	if len(arch.Contexts[0].Entities) != 1 {
-		t.Errorf("Expected 1 entity, got %d", len(arch.Contexts[0].Entities))
-	}
+	// Contexts removed - DDD feature, deferred to Phase 2
+	// if len(arch.Contexts) != 1 {
+	// 	t.Errorf("Expected 1 context, got %d", len(arch.Contexts))
+	// }
+	// if len(arch.Contexts[0].Entities) != 1 {
+	// 	t.Errorf("Expected 1 entity, got %d", len(arch.Contexts[0].Entities))
+	// }
 }

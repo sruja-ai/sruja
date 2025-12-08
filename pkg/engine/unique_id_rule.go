@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 
+	"github.com/sruja-ai/sruja/pkg/diagnostics"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
@@ -12,8 +13,8 @@ func (r *UniqueIDRule) Name() string {
 	return "Unique IDs"
 }
 
-func (r *UniqueIDRule) Validate(program *language.Program) []ValidationError {
-	errors := []ValidationError{}
+func (r *UniqueIDRule) Validate(program *language.Program) []diagnostics.Diagnostic {
+	var diags []diagnostics.Diagnostic
 	seenIDs := make(map[string]language.SourceLocation)
 
 	checkID := func(id string, loc language.SourceLocation) {
@@ -21,10 +22,15 @@ func (r *UniqueIDRule) Validate(program *language.Program) []ValidationError {
 			return
 		}
 		if existing, ok := seenIDs[id]; ok {
-			errors = append(errors, ValidationError{
-				Message: fmt.Sprintf("Duplicate identifier '%s'. Previously defined at line %d.", id, existing.Line),
-				Line:    loc.Line,
-				Column:  loc.Column,
+			diags = append(diags, diagnostics.Diagnostic{
+				Code:     diagnostics.CodeDuplicateIdentifier,
+				Severity: diagnostics.SeverityError,
+				Message:  fmt.Sprintf("Duplicate identifier '%s'. Previously defined at line %d.", id, existing.Line),
+				Location: diagnostics.SourceLocation{
+					File:   loc.File,
+					Line:   loc.Line,
+					Column: loc.Column,
+				},
 			})
 		} else {
 			seenIDs[id] = loc
@@ -33,7 +39,7 @@ func (r *UniqueIDRule) Validate(program *language.Program) []ValidationError {
 
 	arch := program.Architecture
 	if arch == nil {
-		return errors
+		return diags
 	}
 
 	for _, sys := range arch.Systems {
@@ -71,5 +77,5 @@ func (r *UniqueIDRule) Validate(program *language.Program) []ValidationError {
 		checkID(adr.ID, adr.Location())
 	}
 
-	return errors
+	return diags
 }

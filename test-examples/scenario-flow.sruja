@@ -11,19 +11,31 @@ architecture "User Authentication System" {
     }
     
     scenario "User Login Flow" {
-        User -> AuthAPI "Submits credentials"
-        AuthAPI -> UserDB "Validates user"
-        UserDB -> AuthAPI "Returns user data"
-        AuthAPI -> User "Returns JWT token"
+        User -> AuthSystem.AuthAPI "Submits credentials"
+        AuthSystem.AuthAPI -> AuthSystem.UserDB "Validates user"
+        AuthSystem.UserDB -> AuthSystem.AuthAPI "Returns user data"
+        AuthSystem.AuthAPI -> User "Returns JWT token"
     }
     
-    flow "Authentication Flow" {
-        User -> LoginService "POST /login"
-        LoginService -> UserDB "SELECT user"
-        LoginService -> TokenService "Generate token"
-        TokenService -> User "Return JWT"
+    scenario "Authentication Flow" {
+        User -> AuthSystem.AuthAPI.LoginService "POST /login"
+        AuthSystem.AuthAPI.LoginService -> AuthSystem.UserDB "SELECT user"
+        AuthSystem.AuthAPI.LoginService -> AuthSystem.AuthAPI.TokenService "Generate token"
+        AuthSystem.AuthAPI.TokenService -> User "Return JWT"
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

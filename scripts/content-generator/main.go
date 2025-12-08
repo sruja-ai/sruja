@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	contentDir   = "learn/content"
+	contentDir   = "apps/website/src/content"
 	templatesDir = "scripts/content-generator/templates"
 )
 
@@ -111,33 +111,18 @@ func createCourse(name string) {
 	}
 
 	// Create directory
-	if err := os.MkdirAll(courseDir, 0755); err != nil {
+	if err := os.MkdirAll(courseDir, 0o755); err != nil {
 		fmt.Printf("❌ Error creating course directory: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Get title and summary
+	// Get title
 	title := promptString("Course title", name)
-	summary := promptString("Course summary", "A comprehensive guide to "+title+".")
-
-	// Get weight
-	weight := promptInt("Weight (for ordering)", 10)
-
-	meta := ContentMeta{
-		Title:      title,
-		Summary:    summary,
-		Weight:     weight,
-		CourseName: slug,
-	}
-
-	// Create _index.md
-	indexPath := filepath.Join(courseDir, "_index.md")
-	createFromTemplate("course_index.md", indexPath, meta)
 
 	fmt.Printf("✅ Created course '%s' at %s\n", title, courseDir)
 	fmt.Printf("   Next steps:\n")
-	fmt.Printf("   1. Edit: %s\n", indexPath)
-	fmt.Printf("   2. Create modules: go run scripts/content-generator/main.go module %s <module-name>\n", slug)
+	fmt.Printf("   1. Create modules: go run scripts/content-generator/main.go module %s <module-name>\n", slug)
+	fmt.Printf("   Note: Courses don't need index files in Astro - modules are organized in subdirectories\n")
 }
 
 func createModule(course, name string) {
@@ -160,7 +145,7 @@ func createModule(course, name string) {
 	}
 
 	// Create directory
-	if err := os.MkdirAll(moduleDir, 0755); err != nil {
+	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
 		fmt.Printf("❌ Error creating module directory: %v\n", err)
 		os.Exit(1)
 	}
@@ -178,9 +163,9 @@ func createModule(course, name string) {
 		ModuleName: moduleSlug,
 	}
 
-	// Create _index.md
-	indexPath := filepath.Join(moduleDir, "_index.md")
-	createFromTemplate("module_index.md", indexPath, meta)
+	// Create module-overview.md
+	indexPath := filepath.Join(moduleDir, "module-overview.md")
+	createFromTemplate("module_index.md", indexPath, &meta)
 
 	fmt.Printf("✅ Created module '%s' at %s\n", title, moduleDir)
 	fmt.Printf("   Next steps:\n")
@@ -224,12 +209,12 @@ func createLesson(course, module, name string) {
 	}
 
 	// Create lesson.md
-	createFromTemplate("lesson.md", lessonFile, meta)
+	createFromTemplate("lesson.md", lessonFile, &meta)
 
 	fmt.Printf("✅ Created lesson '%s' at %s\n", title, lessonFile)
 	fmt.Printf("   Next steps:\n")
 	fmt.Printf("   1. Edit: %s\n", lessonFile)
-	fmt.Printf("   2. Update module _index.md to link to this lesson\n")
+	fmt.Printf("   2. Update module module-overview.md to link to this lesson\n")
 }
 
 func createTutorial(name string) {
@@ -254,7 +239,7 @@ func createTutorial(name string) {
 	}
 
 	// Create tutorial.md
-	createFromTemplate("tutorial.md", tutorialFile, meta)
+	createFromTemplate("tutorial.md", tutorialFile, &meta)
 
 	fmt.Printf("✅ Created tutorial '%s' at %s\n", title, tutorialFile)
 	fmt.Printf("   Next steps: Edit %s\n", tutorialFile)
@@ -284,7 +269,7 @@ func createBlog(name string) {
 	}
 
 	// Create blog.md
-	createFromTemplate("blog.md", blogFile, meta)
+	createFromTemplate("blog.md", blogFile, &meta)
 
 	fmt.Printf("✅ Created blog post '%s' at %s\n", title, blogFile)
 	fmt.Printf("   Next steps:\n")
@@ -314,7 +299,7 @@ func createDoc(name string) {
 	}
 
 	// Create doc.md
-	createFromTemplate("doc.md", docFile, meta)
+	createFromTemplate("doc.md", docFile, &meta)
 
 	fmt.Printf("✅ Created doc '%s' at %s\n", title, docFile)
 	fmt.Printf("   Next steps: Edit %s\n", docFile)
@@ -381,7 +366,7 @@ func promptBool(prompt string, defaultValue bool) bool {
 	return defaultValue
 }
 
-func createFromTemplate(templateName, outputPath string, meta ContentMeta) {
+func createFromTemplate(templateName, outputPath string, meta *ContentMeta) {
 	templatePath := filepath.Join(templatesDir, templateName)
 
 	// Read template
@@ -422,7 +407,7 @@ func createFromTemplate(templateName, outputPath string, meta ContentMeta) {
 	}
 }
 
-func createBasicFile(outputPath string, meta ContentMeta) {
+func createBasicFile(outputPath string, meta *ContentMeta) {
 	file, err := os.Create(outputPath)
 	if err != nil {
 		fmt.Printf("❌ Error creating file: %v\n", err)

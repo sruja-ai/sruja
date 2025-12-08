@@ -1,0 +1,27 @@
+architecture "BadArchitecture" {
+	// Missing description
+	container Web "Web App" {
+		technology "React"
+	}
+
+	// Missing technology
+	container API "API Service" {
+		description "Backend API"
+	}
+
+	// Orphan component
+	component Orphan "Orphan Component" {
+		technology "Go"
+		description "Does nothing"
+	}
+
+	// Layer violation (Web -> DB)
+	container DB "Database" {
+		technology "PostgreSQL"
+		description "Main DB"
+		metadata { layer "data" }
+	}
+	
+	// DB -> Web is a violation (Data -> Web)
+	DB -> Web
+}

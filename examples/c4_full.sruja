@@ -20,6 +20,7 @@ architecture "C4 Complete Example" {
   }
 
   // Login Flow Relations (dynamic view converted to relations)
-  User -> API "Credentials"
-  API -> DB "Validate User"
+  User -> WebApp "Uses"
+  User -> WebApp.API "Credentials"
+  WebApp.API -> WebApp.DB "Validate User"
 }

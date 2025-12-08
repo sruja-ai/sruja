@@ -20,7 +20,7 @@ func TestValidReferenceRule_EmptyArchitecture(t *testing.T) {
 	}
 }
 
-func TestValidReferenceRule_NilRelation(t *testing.T) {
+func TestValidReferenceRule_NilRelation(_ *testing.T) {
 	program := &language.Program{
 		Architecture: &language.Architecture{
 			Relations: []*language.Relation{nil},

@@ -1,0 +1,60 @@
+{
+  "name": "@sruja/studio-core",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "playwright test",
+    "test:unit": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "clean": "rimraf dist"
+  },
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./wasm": "./src/wasm.ts",
+    "./src/index.css": "./src/index.css",
+    "./components/LoadingScreen": "./src/components/LoadingScreen.tsx"
+  },
+  "dependencies": {
+    "@sruja/shared": "*",
+    "@sruja/ui": "*",
+    "@sruja/viewer": "*",
+    "jspdf": "^3.0.4",
+    "lucide-react": "^0.555.0",
+    "lz-string": "^1.5.0",
+    "mermaid": "^10.7.0",
+    "monaco-editor": "^0.52.0",
+    "react-markdown": "^9.0.1",
+    "remark-gfm": "^4.0.0",
+    "zustand": "^5.0.9"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@sruja/eslint-config": "*",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "@vitest/coverage-v8": "^4.0.15",
+    "eslint": "^9.39.1",
+    "jsdom": "^24.1.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.6.3",
+    "vitest": "^4.0.15"
+  }
+}

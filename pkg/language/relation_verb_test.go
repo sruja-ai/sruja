@@ -20,7 +20,7 @@ architecture "Test" {
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}
-	program, err := parser.Parse("test.sruja", dsl)
+	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -35,7 +35,7 @@ architecture "Test" {
 	if rel.Verb == nil {
 		t.Fatalf("expected verb to be present")
 	}
-	if *rel.Verb != "reads" {
-		t.Fatalf("expected verb 'reads', got '%s'", *rel.Verb)
+	if rel.Verb.Value != "reads" {
+		t.Fatalf("expected verb 'reads', got '%s'", rel.Verb.Value)
 	}
 }

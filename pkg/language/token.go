@@ -2,6 +2,7 @@ package language
 
 type TokenType string
 
+//nolint:revive // Token constants usage
 const (
 	TOKEN_EOF     TokenType = "EOF"
 	TOKEN_ILLEGAL TokenType = "ILLEGAL"
@@ -37,11 +38,13 @@ const (
 	TOKEN_FALSE     TokenType = "FALSE"
 
 	// New Phase 2 Tokens
+	TOKEN_LIBRARY       TokenType = "LIBRARY"
 	TOKEN_REQUIREMENTS  TokenType = "REQUIREMENTS"
 	TOKEN_ADRS          TokenType = "ADRS"
 	TOKEN_FUNCTIONAL    TokenType = "FUNCTIONAL"
 	TOKEN_NONFUNCTIONAL TokenType = "NONFUNCTIONAL"
 	TOKEN_CONSTRAINT    TokenType = "CONSTRAINT"
+	TOKEN_STORY         TokenType = "STORY"
 )
 
 type Token struct {
@@ -61,11 +64,13 @@ var keywords = map[string]TokenType{
 	"import":        TOKEN_IMPORT,
 	"true":          TOKEN_TRUE,
 	"false":         TOKEN_FALSE,
+	"library":       TOKEN_LIBRARY,
 	"requirements":  TOKEN_REQUIREMENTS,
 	"adrs":          TOKEN_ADRS,
 	"functional":    TOKEN_FUNCTIONAL,
 	"nonfunctional": TOKEN_NONFUNCTIONAL,
 	"constraint":    TOKEN_CONSTRAINT,
+	"story":         TOKEN_STORY,
 }
 
 func LookupIdent(ident string) TokenType {

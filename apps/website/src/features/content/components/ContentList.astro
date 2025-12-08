@@ -1,0 +1,56 @@
+---
+// apps/website/src/features/content/components/ContentList.astro
+import ContentCard from './ContentCard.astro';
+import EmptyState from '@/shared/components/ui/EmptyState.astro';
+
+interface Props {
+  items: Array<{
+    title: string;
+    href: string;
+    summary?: string;
+    tags?: string[];
+    date?: string;
+    linkText?: string;
+  }>;
+  emptyMessage?: string;
+}
+
+const { items, emptyMessage = 'No items available yet. Check back soon!' } = Astro.props;
+---
+
+{items.length > 0 ? (
+  <div class="content-list">
+    {items.map((item) => (
+      <ContentCard
+        title={item.title}
+        href={item.href}
+        summary={item.summary}
+        tags={item.tags}
+        date={item.date}
+        linkText={item.linkText}
+      />
+    ))}
+  </div>
+) : (
+  <EmptyState message={emptyMessage} />
+)}
+
+<style>
+  .content-list {
+    display: grid;
+    gap: 2rem;
+  }
+
+  @media (max-width: 768px) {
+    .content-list {
+      gap: 1.5rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .content-list {
+      gap: 1rem;
+    }
+  }
+</style>
+

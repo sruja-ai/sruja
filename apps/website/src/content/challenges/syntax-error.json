@@ -1,0 +1,20 @@
+{
+  "title": "Syntax Error Fix",
+  "slug": "syntax-error",
+  "summary": "Fix parsing errors and ensure key relations exist.",
+  "difficulty": "beginner",
+  "topic": "validation",
+  "estimatedTime": "5-8 min",
+  "initialDsl": "architecture \"Broken System\" {\n  person User \"End User\"\n\n  system App {\n    container WebApp \"Web Application\"\n    container API \"API Service\"  // Missing closing brace\n\n    datastore DB \"Database\"\n  }\n\n  User -> WebApp \"Uses\"\n  WebApp -> API Calls  // Missing quotes\n  API -> DB \"Reads/Writes\"\n}",
+  "checks": [
+    { "type": "noErrors", "message": "DSL parsed successfully" },
+    { "type": "relationExists", "source": "WebApp", "target": "API", "message": "Add relation WebApp -> API with proper syntax" },
+    { "type": "relationExists", "source": "API", "target": "DB", "message": "Add relation API -> DB" }
+  ],
+  "hints": [
+    "Close the API container block",
+    "Relation labels must be in quotes",
+    "Fix WebApp -> API label"
+  ],
+  "solution": "architecture \"Broken System\" {\n  person User \"End User\"\n\n  system App {\n    container WebApp \"Web Application\"\n    container API \"API Service\"\n\n    datastore DB \"Database\"\n  }\n\n  User -> WebApp \"Uses\"\n  WebApp -> API \"Calls\"\n  API -> DB \"Reads/Writes\"\n}"
+}

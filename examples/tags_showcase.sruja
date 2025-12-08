@@ -6,7 +6,7 @@ architecture "Tags Showcase Example" {
     datastore DB "PostgreSQL"
     queue MQ "Events"
   }
-  API -> DB reads "Reads data"
-  API -> DB writes "Writes data"
-  App -> MQ publishes "Publishes events"
+  App.API -> App.DB reads "Reads data"
+  App.API -> App.DB writes "Writes data"
+  App -> App.MQ publishes "Publishes events"
 }

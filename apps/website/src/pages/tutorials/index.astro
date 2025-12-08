@@ -1,0 +1,22 @@
+---
+// apps/website/src/pages/tutorials/index.astro
+import { getCollection } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import ContentPage from '@/features/content/components/ContentPage.astro';
+import ContentList from '@/features/content/components/ContentList.astro';
+import { sortByWeight } from '@/features/content/utils/sorting';
+import { transformToContentListItems } from '@/features/content/utils/transform';
+
+const tutorials = await getCollection('tutorials');
+const sortedTutorials = sortByWeight(tutorials);
+const items = transformToContentListItems(sortedTutorials, '/tutorials', {
+  linkText: 'Read Tutorial →',
+});
+---
+
+<Layout title="Tutorials" description="Step-by-step tutorials for learning Sruja.">
+  <ContentPage title="Tutorials" summary="Step-by-step guides to help you learn and master Sruja.">
+    <ContentList items={items} emptyMessage="No tutorials available yet. Check back soon!" />
+  </ContentPage>
+</Layout>
+

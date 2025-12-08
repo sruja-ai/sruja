@@ -1,10 +1,24 @@
-// Example: Top-level component without architecture wrapper
+// Example Top-level component without architecture wrapper
 component AuthService "Authentication Service" {
   metadata {
-    team: "Security"
-    critical: "true"
+    team "Security"
+    critical "true"
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

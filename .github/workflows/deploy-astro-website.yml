@@ -1,0 +1,184 @@
+name: Deploy Astro Website
+
+on:
+  push:
+    branches:
+      - dev
+      - staging
+      - prod
+  pull_request:
+    branches:
+      - dev
+      - staging
+      - prod
+    types: [closed]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  determine-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      env: ${{ steps.set-env.outputs.env }}
+      site_url: ${{ steps.set-env.outputs.site_url }}
+      public_env: ${{ steps.set-env.outputs.public_env }}
+      should_deploy: ${{ steps.set-env.outputs.should_deploy }}
+    steps:
+      - name: Determine environment
+        id: set-env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/dev" ]] || [[ "${{ github.event.pull_request.base_ref }}" == "dev" ]]; then
+            echo "env=dev" >> $GITHUB_OUTPUT
+            echo "public_env=development" >> $GITHUB_OUTPUT
+            echo "site_url=https://dev.sruja.ai" >> $GITHUB_OUTPUT
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]] || [[ "${{ github.event.pull_request.base_ref }}" == "staging" ]]; then
+            echo "env=staging" >> $GITHUB_OUTPUT
+            echo "public_env=staging" >> $GITHUB_OUTPUT
+            echo "site_url=https://staging.sruja.ai" >> $GITHUB_OUTPUT
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/prod" ]] || [[ "${{ github.event.pull_request.base_ref }}" == "prod" ]]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+            echo "public_env=production" >> $GITHUB_OUTPUT
+            echo "site_url=https://sruja.ai" >> $GITHUB_OUTPUT
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "env=unknown" >> $GITHUB_OUTPUT
+            echo "public_env=development" >> $GITHUB_OUTPUT
+            echo "site_url=" >> $GITHUB_OUTPUT
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Only deploy on merge (closed PRs that were merged, or direct pushes)
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            if [[ "${{ github.event.pull_request.merged }}" != "true" ]]; then
+              echo "should_deploy=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+  build:
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    if: needs.determine-environment.outputs.should_deploy == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build Astro website
+        working-directory: apps/website
+        run: |
+          if [[ "${{ needs.determine-environment.outputs.env }}" == "prod" ]]; then
+            npm run build:prod
+          elif [[ "${{ needs.determine-environment.outputs.env }}" == "staging" ]]; then
+            npm run build:staging
+          else
+            npm run build:dev
+          fi
+        env:
+          # Build scripts already set PUBLIC_ENV and SITE_URL, but we override SITE_URL
+          # to match the deployment target
+          SITE_URL: ${{ needs.determine-environment.outputs.site_url }}
+          # Algolia configuration - index name is auto-determined by env.ts based on PUBLIC_ENV
+          PUBLIC_ALGOLIA_APP_ID: ${{ secrets.PUBLIC_ALGOLIA_APP_ID }}
+          PUBLIC_ALGOLIA_SEARCH_API_KEY: ${{ secrets.PUBLIC_ALGOLIA_SEARCH_API_KEY }}
+          # Optional: Override index name if needed (otherwise uses default based on PUBLIC_ENV)
+          # PUBLIC_ALGOLIA_INDEX_NAME: ${{ needs.determine-environment.outputs.env == 'prod' && 'sruja_docs' || (needs.determine-environment.outputs.env == 'staging' && 'sruja_docs_staging' || 'sruja_docs_dev') }}
+          # PostHog configuration
+          PUBLIC_POSTHOG_API_KEY: ${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+          PUBLIC_POSTHOG_HOST: ${{ secrets.PUBLIC_POSTHOG_HOST }}
+
+      - name: Prepare deployment
+        run: |
+          mkdir -p _site
+          cp -r apps/website/dist/* _site/
+          touch _site/.nojekyll
+
+      - name: Upload site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: _site
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [determine-environment, build]
+    if: needs.determine-environment.outputs.should_deploy == 'true'
+    environment: ${{ needs.determine-environment.outputs.env }}
+    steps:
+      - name: Download site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: site
+
+      - name: Determine target repository
+        id: repo
+        run: |
+          ENV="${{ needs.determine-environment.outputs.env }}"
+          if [[ "$ENV" == "dev" ]]; then
+            echo "repo=sruja-ai/dev-website" >> $GITHUB_OUTPUT
+          elif [[ "$ENV" == "staging" ]]; then
+            echo "repo=sruja-ai/staging-website" >> $GITHUB_OUTPUT
+          elif [[ "$ENV" == "prod" ]]; then
+            echo "repo=sruja-ai/prod-website" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SRUJA_WEBSITE_DEPLOY_APP_ID }}
+          private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
+          owner: sruja-ai
+          repositories: ${{ steps.repo.outputs.repo == 'sruja-ai/dev-website' && 'dev-website' || steps.repo.outputs.repo == 'sruja-ai/staging-website' && 'staging-website' || 'prod-website' }}
+
+      - name: Get GitHub App User ID
+        id: get-user-id
+        run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Checkout target repo
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ steps.repo.outputs.repo }}
+          ref: gh-pages
+          token: ${{ steps.app-token.outputs.token }}
+          path: target
+          persist-credentials: false
+
+      - name: Copy site contents
+        run: rsync -a --delete site/ target/
+
+      - name: Configure git
+        run: |
+          cd target
+          git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
+          git config user.email "${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
+
+      - name: Commit and push
+        run: |
+          cd target
+          git add -A
+          if git diff --cached --quiet; then 
+            echo "No changes to deploy"
+          else 
+            COMMIT_MSG="Deploy Astro website from ${{ github.ref_name }} branch (commit ${{ github.sha }})"
+            git commit -m "$COMMIT_MSG"
+            git push origin HEAD:gh-pages
+          fi
+

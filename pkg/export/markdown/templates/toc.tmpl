@@ -1,0 +1,57 @@
+{{define "toc"}}
+## Table of Contents
+
+- [Executive Summary](#executive-summary)
+{{if or (hasSystems .Architecture) (hasPersons .Architecture)}}
+- [Architecture Overview (C4 L1)](#architecture-overview-c4-l1)
+{{end}}
+{{if hasSystems .Architecture}}
+- [Systems (C4 L2/L3)](#systems)
+{{end}}
+{{if hasDeployments .Architecture}}
+- [Deployment Architecture](#deployment-architecture)
+{{end}}
+{{if hasPersons .Architecture}}
+- [Persons](#persons)
+{{end}}
+{{if hasRequirements .Architecture}}
+- [Requirements](#requirements)
+{{end}}
+{{if hasPolicies .Architecture}}
+- [Policies](#policies)
+{{end}}
+{{if hasConstraints .Architecture}}
+- [Constraints](#constraints)
+{{end}}
+{{if hasConventions .Architecture}}
+- [Conventions](#conventions)
+{{end}}
+{{if hasContracts .Architecture}}
+- [Integration Contracts](#integration-contracts)
+{{end}}
+{{if hasScenarios .Architecture}}
+- [Scenarios](#scenarios)
+{{end}}
+{{if hasFlows .Architecture}}
+- [Flows](#flows)
+{{end}}
+{{if hasEntities .Architecture}}
+- [Domain Model](#domain-model)
+{{end}}
+{{if hasRelations .Architecture}}
+- [Relations](#relations)
+{{end}}
+- [Quality Attributes](#quality-attributes)
+- [Security](#security)
+- [Data Consistency Models](#data-consistency-models)
+- [Failure Modes and Recovery](#failure-modes-and-recovery)
+{{if hasADRs .Architecture}}
+- [Architecture Decision Records (ADRs)](#architecture-decision-records-adrs)
+{{end}}
+{{if hasMetadata .Architecture}}
+- [Document Metadata](#document-metadata)
+{{end}}
+- [Glossary](#glossary)
+
+{{end}}
+

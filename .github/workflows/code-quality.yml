@@ -9,18 +9,22 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: code-quality-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version-file: 'go.mod'
       
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -47,9 +51,9 @@ jobs:
         run: go vet ./...
       
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@v6
         with:
-          version: v2.6.2
+          version: v1.62.2
           args: --timeout=5m
       
       - name: Run tests with coverage
@@ -59,7 +63,7 @@ jobs:
         run: make test-coverage-check
       
       - name: Upload coverage to Codacy
-        uses: codacy/codacy-coverage-reporter-action@v1
+        uses: codacy/codacy-coverage-reporter-action@89d6c85cfafaec52c72b6c5e8b2878d33104c699 # v1
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: coverage.out
@@ -70,3 +74,15 @@ jobs:
       - name: Run security linter (gosec)
         run: make lint-security
         continue-on-error: true  # Don't fail on security warnings initially
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+      
+      - name: Install Node.js dependencies
+        run: npm ci
+      
+      - name: Run ESLint
+        run: npm run lint

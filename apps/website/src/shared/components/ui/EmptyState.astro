@@ -1,0 +1,38 @@
+---
+// apps/website/src/shared/components/ui/EmptyState.astro
+interface Props {
+  message: string;
+  className?: string;
+}
+
+const { message, className = '' } = Astro.props;
+---
+
+<div class={`empty-state ${className}`}>
+  <p>{message}</p>
+</div>
+
+<style>
+  .empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--color-text-secondary);
+    font-size: 1.125rem;
+    transition: color 0.2s;
+  }
+
+
+  @media (max-width: 768px) {
+    .empty-state {
+      padding: 2rem 1rem;
+      font-size: 1rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .empty-state {
+      padding: 1.5rem 0.75rem;
+      font-size: 0.9375rem;
+    }
+  }
+</style>

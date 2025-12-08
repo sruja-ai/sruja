@@ -16,7 +16,7 @@ Create a modeling language that empowers **all developers** - from students to e
 | Methodology | Core Concepts | Jargon Level | Student Intuition | Sruja Mapping |
 | :--- | :--- | :--- | :--- | :--- |
 | **C4** | System, Container, Component | Low | "Boxes and lines" - Easy to grasp. | `system`, `container`, `component` |
-| **DDD** | Bounded Context, Aggregate, Entity, Value Object, Domain Event | High | "Aggregate Root" is confusing. "Value Object" is abstract. | `module`/`context`, `aggregate`, `data`, `event` |
+| **DDD** | Bounded Context, Aggregate, Entity, Value Object, Domain Event | High | "Aggregate Root" is confusing. "Value Object" is abstract. | *Not currently supported* |
 | **ER (DB)** | Entity, Attribute, Relationship, Table, Column | Medium | "Entity" is standard. "Relationship" is clear. | `data`, `datastore`, `->` (relation) |
 | **API (OpenAPI)** | Path, Method, Schema, Property | Medium | "Endpoint" is clear. "Schema" is clear. | `api`, `data` (as schema) |
 | **DOD** | Data, Struct, Array, Transform | Low | "Data" and "Struct" are very familiar to coders. | `data`, `[]` (arrays) |
@@ -32,13 +32,11 @@ We need a set of keywords that map to these concepts without forcing the user to
 | Methodology | Term | Sruja Keyword | When to Use |
 | :--- | :--- | :--- | :--- |
 | C4 | Container | `container` | Technical deployment boundary (e.g., "Web Server", "Database") |
-| DDD | Bounded Context | `module` or `context` | Business domain boundary (e.g., "Orders", "Payments") |
 | General | Grouping | `module` | Generic logical grouping (most intuitive) |
 
 **Decision**: 
-- **`module`**: Primary keyword for logical grouping. Familiar to Python/JS/Go developers. Works for both DDD contexts and general grouping.
+- **`module`**: Primary keyword for logical grouping. Familiar to Python/JS/Go developers.
 - **`container`**: For C4-style technical containers (deployment units).
-- **`context`**: Optional alias for DDD practitioners (backward compatible).
 
 **Rationale**: `module` is the most universal term. Students learn "modules" in their first programming course.
 
@@ -48,8 +46,8 @@ We need a set of keywords that map to these concepts without forcing the user to
 
 | Methodology | Term | Sruja Keyword | Semantics |
 | :--- | :--- | :--- | :--- |
-| DDD | Entity | `data` (with `id`) | Has identity, mutable |
-| DDD | Value Object | `data` (no `id`) | Immutable, defined by values |
+| General | Entity/Struct | `data` (with `id`) | Has identity, mutable |
+| General | Value/Struct | `data` (no `id`) | Immutable, defined by values |
 | ER | Table/Entity | `data` or `datastore` | Persistent storage |
 | DOD | Struct | `data` | In-memory structure |
 | API | Schema | `data` | Request/response structure |
@@ -71,12 +69,12 @@ We need a set of keywords that map to these concepts without forcing the user to
 | Type | Sruja Keyword | Purpose | Example |
 | :--- | :--- | :--- | :--- |
 | API Endpoint | `api` | External interface | REST endpoint, GraphQL query |
-| Domain Event | `event` | Something that happened | OrderPlaced, PaymentProcessed |
+| Event | `event` | Something that happened | OrderPlaced, PaymentProcessed |
 | Function/Method | (implicit in component) | Internal behavior | Business logic in components |
 
 **Decision**: 
 - **`api`**: Explicit API endpoints (students understand "API")
-- **`event`**: Domain events (something that happened)
+- **`event`**: Events (something that happened)
 - Component behavior: Implicit (components contain behavior)
 
 **Rationale**: Students learn APIs early. Events are intuitive ("something happened").
@@ -87,9 +85,9 @@ We need a set of keywords that map to these concepts without forcing the user to
 
 **Decision**: Use arrow syntax `->` for relationships.
 
-```sruja
-User -> WebApp "Uses"
-WebApp -> Database "Reads/Writes"
+```
+User -> ShopAPI.WebApp "Uses"
+ShopAPI.WebApp -> ShopAPI.Database "Reads/Writes"
 Order -> Payment "Triggers"
 ```
 
@@ -112,8 +110,8 @@ architecture "E-Commerce" {
         }
     }
     
-    User -> WebApp "Uses"
-    WebApp -> Database "Reads/Writes"
+    User -> ShopAPI.WebApp "Uses"
+    ShopAPI.WebApp -> ShopAPI.Database "Reads/Writes"
 }
 ```
 
@@ -157,25 +155,24 @@ architecture "E-Commerce" {
 }
 ```
 
-### Level 3: Advanced (DDD Style)
+### Level 3: Advanced (Extended Features)
 ```sruja
 architecture "E-Commerce" {
-    domain ECommerce {
-        context OrderManagement {
-            aggregate Order {
-                entity OrderLineItem {
-                    name string
-                    quantity int
-                }
-                
-                valueObject ShippingAddress {
-                    street string
-                    city string
-                }
+    system ShopAPI {
+        module OrderManagement {
+            data Order {
+                id string
+                items OrderItem[]
+                status string
+            }
+            
+            data OrderItem {
+                product_id string
+                qty int
             }
             
             event OrderCreated {
-                orderId string
+                order_id string
             }
         }
     }
@@ -187,7 +184,7 @@ architecture "E-Commerce" {
 ### 1. Progressive Disclosure
 - **Beginner**: Start with `system`, `container`, `component` (C4)
 - **Intermediate**: Add `module`, `data`, `api`, `event` (Unified)
-- **Advanced**: Add `domain`, `context`, `aggregate`, `entity`, `valueObject` (DDD)
+- **Advanced**: Use all features together for complex architectures
 
 **Rationale**: Students can start simple and learn advanced concepts when needed.
 
@@ -197,9 +194,9 @@ Support `[]` syntax (e.g., `items OrderItem[]`) instead of just implied relation
 **Rationale**: Very familiar to programmers. Makes data structures explicit.
 
 ### 3. Unified `data` Keyword
-No need to distinguish `entity` vs `valueObject` explicitly unless needed. The presence of an `id` field implicitly makes it an Entity.
+The `data` keyword represents data structures. The presence of an `id` field indicates an entity with identity.
 
-**Rationale**: Reduces cognitive load. Students don't need to understand DDD theory to model data.
+**Rationale**: Reduces cognitive load. Students can model data structures without learning complex theory.
 
 ### 4. Explicit `api` Keyword
 Model APIs alongside data to connect "Backend" to "Database".
@@ -217,123 +214,32 @@ The same keyword (`data`) means different things in different contexts:
 
 ## Preventing Over-Engineering: Simplicity by Design
 
-### Understanding Different Perspectives
-
-**Important**: `system` and `domain` are **not alternatives** - they represent **different perspectives**:
-
-| Perspective | Keyword | Purpose | When to Use |
-| :--- | :--- | :--- | :--- |
-| **Physical/Deployment** | `system` | Technical architecture, deployment units | Modeling how the system is deployed and runs |
-| **Logical/Business** | `domain` | Business domain, bounded contexts | Modeling business logic and domain concepts |
-
-**They can coexist** in the same architecture:
-```sruja
-architecture "E-Commerce" {
-    // Physical view: How it's deployed
-    system ShopAPI {
-        container WebApp "Web Application"
-        container Database "PostgreSQL Database"
-    }
-    
-    // Logical view: Business domain
-    domain ECommerce {
-        context Orders {
-            aggregate Order {
-                entity OrderLineItem { }
-            }
-        }
-    }
-}
-```
-
-**Key Insight**: Use `system` when thinking about **deployment and technology**. Use `domain` when thinking about **business logic and domain modeling**. They complement each other, not replace each other.
-
-**For Larger Systems**: Both perspectives become increasingly valuable:
-- `system` helps teams understand **how** the system is deployed, scaled, and operated
-- `domain` helps teams understand **what** business concepts exist and how they relate
-- Together, they provide a complete picture: the business logic (`domain`) and its technical implementation (`system`)
-
 ### How Sruja Guides Toward Simplicity
 
-**1. Right Tool for Right Purpose**
+**1. Start Simple**
 - Use `system` for technical/deployment modeling (C4 style)
-- Use `domain` for business/domain modeling (DDD style)
-- You can have **only `system`**, **only `domain`**, or **both** - depending on what you're modeling
-- Don't use `domain` when you're only modeling deployment (use `system`)
-- Don't use `system` when you're only modeling business domain (use `domain`)
+- Use `module` for logical grouping when needed
+- Keep it simple - don't add complexity unless necessary
 
 **2. Progressive Disclosure**
-- Start with what you need: `system` for deployment, `domain` for business logic
-- Add the other perspective when you need both views
-- Both can coexist - they serve different purposes
+- Start with basic C4 concepts: `system`, `container`, `component`
+- Add `module`, `data`, `api`, `event` when you need more detail
+- Use only what you need for your use case
 
 **3. Natural Constraints**
-- `system` syntax is shorter for deployment modeling
-- `domain` syntax is appropriate for domain modeling
-- The language guides you to use the right perspective
+- `system` syntax is straightforward for deployment modeling
+- The language guides you to use the right level of detail
+- Simple designs are easier to write than complex ones
 
 **4. Validation & Guidance** (Future)
-- Warn if using `domain` for simple deployment modeling (suggest `system` instead)
-- Warn if using `system` to model business domain concepts (suggest `domain` instead)
-- Help users choose the right perspective based on their modeling goal
+- Warn if over-engineering simple systems
+- Help users choose the right level of detail
+- Guide toward simplicity
 
 **5. Clear Mental Models**
-- `system` = "How is this deployed?" (Physical)
-- `domain` = "What business concepts exist?" (Logical)
-- Both are valid, serve different purposes
-
-### Examples of Perspective Guidance
-
-**Physical View (Use `system`)**:
-```sruja
-architecture "E-Commerce" {
-    system ShopAPI {
-        container WebApp "Web Application"
-        container Database "PostgreSQL Database"
-    }
-}
-```
-**When**: You're modeling deployment, technology choices, infrastructure.
-
-**Logical View (Use `domain` only)**:
-```sruja
-architecture "E-Commerce" {
-    domain ECommerce {
-        context Orders {
-            aggregate Order {
-                entity OrderLineItem { }
-            }
-        }
-    }
-}
-```
-**When**: You're modeling business domain, bounded contexts, aggregates. **No `system` needed** - you're focusing purely on business logic.
-
-**Both Together (Complementary)**:
-```sruja
-architecture "E-Commerce" {
-    // Physical: How it's deployed
-    system ShopAPI {
-        container WebApp
-        container Database
-    }
-    
-    // Logical: Business domain
-    domain ECommerce {
-        context Orders {
-            aggregate Order { }
-        }
-    }
-}
-```
-**When**: You need both perspectives - deployment AND domain modeling.
-
-**Especially valuable for larger systems**:
-- Small systems: One perspective (`system` OR `domain`) may be sufficient
-- Medium systems: Both perspectives help different teams (devops vs developers)
-- Large systems: **Both are essential** - you need to understand both the business domain structure AND how it's deployed across multiple services/containers
-
-**The language guides you**: Use `system` for physical/deployment modeling. Use `domain` for logical/business modeling. They're complementary, not competing. For larger systems, use both to get a complete architectural picture.
+- `system` = "How is this deployed?" (Physical/Technical)
+- `module` = "How is this organized?" (Logical grouping)
+- Keep it focused on what you're actually modeling
 
 ## Missing Concepts & Future Considerations
 
@@ -368,20 +274,23 @@ system "E-Commerce System" {
 }
 ```
 
-### From DDD to Sruja:
+### From Data Modeling to Sruja:
 ```sruja
-// DDD: Bounded Context
+// Data structures
 module Orders {
-    // DDD: Aggregate
-    aggregate Order {
-        // DDD: Entity
-        data OrderLineItem {
-            id string
-        }
-        // DDD: Value Object
-        data ShippingAddress {
-            street string
-        }
+    data Order {
+        id string
+        items OrderItem[]
+    }
+    
+    data OrderItem {
+        product_id string
+        qty int
+    }
+    
+    data ShippingAddress {
+        street string
+        city string
     }
 }
 ```
@@ -423,7 +332,7 @@ system ShopAPI {
     container Database
 }
 
-WebApp -> Database "Reads/Writes"
+ShopAPI.WebApp -> ShopAPI.Database "Reads/Writes"
 ```
 **Simple Insight**: Just draw boxes and connect them with arrows. The relationships show how parts interact.
 
@@ -440,25 +349,24 @@ User -> ShopAPI "Uses"
 
 **3. Flows** (Built-In Flow Syntax)
 ```sruja
-// Data Flow Diagram (DFD) style
-flow OrderProcess "Order Processing" {
-    Customer -> Shop "Order Details"
-    Shop -> Database "Save Order"
-    Database -> Shop "Confirmation"
+// Data Flow Diagram (DFD) style — use scenario
+scenario OrderProcess "Order Processing" {
+    Customer -> Shop.WebApp "Order Details"
+    Shop.WebApp -> Shop.Database "Save Order"
+    Shop.Database -> Shop.WebApp "Confirmation"
 }
 
 // User Story/Scenario style
 story Checkout "User Checkout Flow" {
-    User -> "Cart Page" "adds item to cart"
-    "Cart Page" -> ECommerce "clicks checkout"
+    User -> ECommerce.CartPage "adds item to cart"
+    ECommerce.CartPage -> ECommerce "clicks checkout"
     ECommerce -> Inventory "Check Stock"
 }
 
-// Or using simple relationships
-User -> WebApp "Submits Order"
-WebApp -> OrderService "Processes"
-OrderService -> PaymentService "Charges"
-event OrderPlaced
+// Or using simple qualified relationships
+Customer -> Shop.WebApp "Submits Order"
+Shop.WebApp -> Shop.OrderService "Processes"
+Shop.OrderService -> Shop.PaymentService "Charges"
 ```
 **Simple Insight**: Use `flow` for data flows (DFD), `story`/`scenario` for user stories, or simple relationships for basic flows. Events show what happens: `event OrderPlaced`.
 
@@ -493,7 +401,9 @@ PaymentService -> OrderService "Confirms Payment"
 person Customer "End User"
 person Admin "System Administrator"
 
-external PaymentGateway "Third-party service"
+system PaymentGateway "Third-party service" {
+  tags ["external"]
+}
 
 Customer -> ShopAPI "Uses"
 ShopAPI -> PaymentGateway "Processes payments"
@@ -508,22 +418,21 @@ system MyApp {
     container Frontend
     container Backend
 }
-Frontend -> Backend "Calls"
+MyApp.Frontend -> MyApp.Backend "Calls"
 ```
 
 **Intermediate**: Add flows and events
 ```sruja
-// Simple flow using relationships
-User -> Frontend "Clicks"
-Frontend -> Backend "Sends request"
-Backend -> Database "Saves"
-event OrderCreated
+// Simple qualified relationships
+User -> MyApp.Frontend "Clicks"
+MyApp.Frontend -> MyApp.Backend "Sends request"
+MyApp.Backend -> MyApp.Database "Saves"
 
-// Or use flow syntax for data flows
-flow OrderFlow "Order Processing" {
-    User -> Frontend "Submits"
-    Frontend -> Backend "Processes"
-    Backend -> Database "Stores"
+// DFD-style — use scenario
+scenario OrderFlow "Order Processing" {
+    User -> MyApp.Frontend "Submits"
+    MyApp.Frontend -> MyApp.Backend "Processes"
+    MyApp.Backend -> MyApp.Database "Stores"
 }
 ```
 
@@ -531,18 +440,16 @@ flow OrderFlow "Order Processing" {
 ```sruja
 // Feedback loop: User action -> System response -> User sees result
 story CompleteOrder "Order Completion Flow" {
-    User -> System "Submits"
-    System -> Database "Stores"
-    System -> User "Confirms"
-    // The confirmation affects user's next action (feedback)
+    User -> Shop.System "Submits"
+    Shop.System -> Shop.Database "Stores"
+    Shop.System -> User "Confirms"
 }
 
-// Complex flow with multiple steps
-flow PaymentFlow "Payment Processing" {
-    OrderService -> PaymentGateway "Charge"
-    PaymentGateway -> OrderService "Confirms"
-    OrderService -> User "Notifies"
-    // Feedback: User sees result, may trigger next action
+// Complex flow with multiple steps — use scenario
+scenario PaymentFlow "Payment Processing" {
+    Orders.OrderService -> Orders.PaymentGateway "Charge"
+    Orders.PaymentGateway -> Orders.OrderService "Confirms"
+    Orders.OrderService -> User "Notifies"
 }
 ```
 
@@ -592,7 +499,7 @@ By using `system`, `module`, `data`, `api`, and `event`, we cover 90% of use cas
 **Key Success Metrics**:
 - ✅ Can a beginner model a simple system in 10 minutes? **Yes** (C4 style)
 - ✅ Can an intermediate model data + APIs? **Yes** (Unified style)
-- ✅ Can an advanced user model DDD concepts? **Yes** (DDD style)
+- ✅ Can an advanced user model complex architectures? **Yes** (Extended features)
 - ✅ Does it prevent over-engineering? **Yes** (simplicity by design)
 - ✅ Is it approachable for all developers? **Yes** (progressive disclosure)
 

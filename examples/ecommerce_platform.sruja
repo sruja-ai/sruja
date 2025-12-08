@@ -1,0 +1,367 @@
+architecture "E-Commerce Platform" {
+  system ECommerce "E-Commerce Platform" "Comprehensive platform for online retail operations handling browsing, ordering, and payments." {
+    metadata {
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+    }
+    container WebApp "Web Application" "React-based storefront for customers to browse and buy products." {
+      technology "React"
+      component ProductCatalog "Product Catalog"
+      component ShoppingCart "Shopping Cart"
+      component Checkout "Checkout"
+      component UserAuth "User Authentication"
+      ProductCatalog -> API "Queries products"
+      ShoppingCart -> API "Updates cart"
+      Checkout -> API "Calls checkout"
+      UserAuth -> API "Uses user authentication"
+    }
+    container API "REST API" "Core business logic API exposed to frontend and mobile clients." {
+      technology "Go"
+      component ProductService "Product Service"
+      component OrderService "Order Service"
+      component PaymentService "Payment Service"
+      component AuthService "Authentication Service"
+      component NotificationService "Notification Service"
+      component InventoryService "Inventory Service"
+      ProductService -> ProductDB "Reads products"
+      ProductService -> SearchEngine "Queries search index"
+      ProductService -> Redis "Reads cache"
+      OrderService -> OrderDB "Writes orders"
+      OrderService -> InventoryService "Updates inventory"
+      InventoryService -> ProductDB "Updates stock"
+      AuthService -> UserDB "Reads, Writes users"
+      NotificationService -> EmailService.SMTP "Sends emails"
+      PaymentService -> PaymentGateway.StripeAPI "Processes payments"
+    }
+    datastore ProductDB "Product Database"
+    datastore OrderDB "Order Database"
+    datastore UserDB "User Database"
+    queue EventQueue "Event Queue"
+    container AnalyticsService "Analytics Service" {
+      technology "Python"
+    }
+    container SearchEngine "Search Engine" {
+      technology "Elasticsearch"
+    }
+    container Redis "Cache" {
+      technology "Redis"
+    }
+    metadata {
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+    }
+    metadata {
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+    }
+    metadata {
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+    }
+    metadata {
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+      capacity "10M+ users, 1M+ requests/day"
+      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+      bottlenecks "Database write IOPS on OrderDB during flash sales"
+      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+    }
+  }
+  system PaymentGateway "Payment Gateway" "External service for securely processing customer payments." {
+    container StripeAPI "Stripe API" {
+      technology "Stripe"
+    }
+  }
+  system EmailService "Email Service" {
+    container SMTP "SMTP Server" {
+      technology "SendGrid"
+    }
+  }
+  system CDN "Content Delivery Network" "Global CDN for caching static assets and reducing latency." {
+    container CloudFront "CloudFront" "AWS CloudFront distribution serving static content." {
+      technology "AWS"
+    }
+    metadata {
+      sla "99.99%"
+      external "true"
+    }
+    metadata {
+      sla "99.99%"
+      external "true"
+    }
+    metadata {
+      sla "99.99%"
+      external "true"
+      sla "99.99%"
+      external "true"
+    }
+    metadata {
+      sla "99.99%"
+      external "true"
+      sla "99.99%"
+      external "true"
+      sla "99.99%"
+      external "true"
+      sla "99.99%"
+      external "true"
+    }
+    metadata {
+      sla "99.99%"
+      external "true"
+      sla "99.99%"
+      external "true"
+      sla "99.99%"
+      external "true"
+      sla "99.99%"
+      external "true"
+      sla "99.99%"
+      external "true"
+      sla "99.99%"
+      external "true"
+      sla "99.99%"
+      external "true"
+      sla "99.99%"
+      external "true"
+    }
+  }
+  person Customer "Customer"
+  person Admin "Administrator"
+  person SupportAgent "Support Agent"
+  Customer -> CDN.CloudFront "Uses Web App"
+  CDN.CloudFront -> ECommerce.WebApp "Sends content"
+  Customer -> ECommerce.WebApp "Reads products"
+  Customer -> ECommerce.WebApp "Creates orders"
+  Admin -> ECommerce.API "Updates products"
+  Admin -> ECommerce.API "Reads analytics"
+  SupportAgent -> ECommerce.API "Reads order data"
+  ECommerce.WebApp -> ECommerce.API "Calls API"
+  ECommerce.API -> ECommerce.ProductDB "Reads product data"
+  ECommerce.API -> ECommerce.OrderDB "Writes order data"
+  ECommerce.API -> ECommerce.UserDB "Reads user data"
+  ECommerce.API -> ECommerce.UserDB "Writes user data"
+  ECommerce.API -> ECommerce.EventQueue "Notifies events"
+  ECommerce.API -> PaymentGateway.StripeAPI "Processes payments"
+  ECommerce.API -> EmailService.SMTP "Sends emails"
+  ECommerce.EventQueue -> ECommerce.AnalyticsService "Sends analytics events"
+  ECommerce.API -> ECommerce.SearchEngine "Queries products"
+  ECommerce.API -> ECommerce.Redis "Reads, Writes cache"
+  requirement REQ001 functional "Users must be able to browse products by category"
+  requirement REQ002 functional "Users must be able to add products to shopping cart"
+  requirement REQ003 functional "Users must be able to complete checkout process"
+  requirement REQ004 functional "System must process payments securely"
+  requirement REQ005 functional "System must send order confirmation emails"
+  requirement REQ006 functional "Admins must be able to manage product inventory"
+  requirement REQ007 functional "Support agents must be able to view order details"
+  requirement REQ008 constraint "Must use PostgreSQL for all databases"
+  requirement REQ009 constraint "Must use Stripe for payment processing"
+  requirement REQ010 constraint "Must comply with PCI DSS Level 1"
+  requirement REQ011 constraint "Must comply with GDPR for EU customers"
+  requirement REQ012 performance "Product catalog page must load in under 2 seconds"
+  requirement REQ013 performance "Checkout process must complete in under 5 seconds"
+  requirement REQ014 performance "System must handle 10,000 concurrent users"
+  requirement REQ015 performance "API must respond within 200ms for 95% of requests"
+  requirement REQ016 security "All API endpoints must use HTTPS"
+  requirement REQ017 security "User passwords must be hashed using bcrypt"
+  requirement REQ018 security "Payment data must never be stored in plain text"
+  requirement REQ019 security "API must implement rate limiting"
+  requirement REQ020 reliability "System must have 99.9% uptime"
+  requirement REQ021 reliability "Database must have automated backups every 6 hours"
+  requirement REQ022 reliability "System must handle graceful degradation during peak load"
+  adr ADR001 "Use Microservices Architecture" {
+    status "Accepted"
+    context "Need to scale different parts of the system independently. Product catalog needs high read throughput, while order processing needs strong consistency."
+    decision "Adopt microservices architecture with service boundaries aligned to business capabilities (Product Service, Order Service, Payment Service, Auth Service)."
+    consequences "Gain: Independent scaling, team autonomy, technology flexibility. Trade-off: Increased operational complexity, network latency, distributed transaction challenges."
+  }
+  adr ADR002 "Adopt Stripe for Payment Processing" {
+    status "Accepted"
+    context "Need PCI DSS Level 1 compliant payment processing without building payment infrastructure in-house."
+    decision "Use Stripe as payment gateway for all payment processing. Store only payment method tokens, never full card numbers."
+    consequences "Gain: PCI compliance handled by Stripe, faster time to market, reduced security risk. Trade-off: Vendor lock-in, per-transaction fees, dependency on external service."
+  }
+  adr ADR003 "Use PostgreSQL for All Databases" {
+    status "Accepted"
+    context "Need ACID transactions for order processing, strong consistency for inventory, and relational data model for products."
+    decision "Use PostgreSQL for all databases (ProductDB, OrderDB, UserDB). Use read replicas for ProductDB to handle high read load."
+    consequences "Gain: ACID guarantees, strong consistency, mature ecosystem. Trade-off: Vertical scaling limits, single-region write latency."
+  }
+  adr ADR004 "Implement Event-Driven Architecture with RabbitMQ" {
+    status "Accepted"
+    context "Need to decouple analytics processing from order flow. Analytics can tolerate eventual consistency and delayed processing."
+    decision "Use RabbitMQ for event queue. Publish order events asynchronously. Analytics service consumes events independently."
+    consequences "Gain: Loose coupling, scalability, fault tolerance. Trade-off: Eventual consistency, message ordering complexity, additional infrastructure."
+  }
+  adr ADR005 "Use React for Frontend" {
+    status "Accepted"
+    context "Need interactive UI with real-time updates, large team familiar with React ecosystem."
+    decision "Use React with TypeScript for frontend. Use component-based architecture for reusability."
+    consequences "Gain: Large ecosystem, developer productivity, component reusability. Trade-off: Bundle size, client-side rendering complexity."
+  }
+  adr ADR006 "Use Go for Backend API" {
+    status "Accepted"
+    context "Need high performance, low latency API. Team has Go expertise. Need strong concurrency support."
+    decision "Use Go for all backend API services. Leverage goroutines for concurrent request handling."
+    consequences "Gain: High performance, excellent concurrency, single binary deployment. Trade-off: Smaller ecosystem than Java/Python, learning curve for some developers."
+  }
+  adr ADR007 "Deploy on AWS" {
+    status "Accepted"
+    context "Need cloud infrastructure with global reach, managed services, and compliance certifications (PCI DSS, SOC 2)."
+    decision "Deploy on AWS using ECS for containers, RDS for databases, S3 for static assets. Use multiple availability zones for high availability."
+    consequences "Gain: Managed services, global infrastructure, compliance certifications. Trade-off: Vendor lock-in, cost management complexity."
+  }
+  adr ADR008 "Use Docker for Containerization" {
+    status "Accepted"
+    context "Need consistent deployment across environments, easy scaling, and isolation between services."
+    decision "Containerize all services using Docker. Use multi-stage builds for smaller images. Deploy using ECS."
+    consequences "Gain: Environment consistency, easy scaling, resource isolation. Trade-off: Container orchestration complexity, image management."
+  }
+  adr ADR009 "Implement API Gateway Pattern" {
+    status "Accepted"
+    context "Need single entry point for API, centralized authentication, rate limiting, and request routing."
+    decision "Use AWS API Gateway or custom gateway service. Route requests to appropriate microservices. Centralize auth at gateway."
+    consequences "Gain: Centralized auth, rate limiting, request routing, API versioning. Trade-off: Additional hop, potential bottleneck, complexity."
+  }
+  adr ADR010 "Use JWT for Authentication" {
+    status "Accepted"
+    context "Need stateless authentication for microservices. Multiple services need to verify user identity without shared session store."
+    decision "Use JWT tokens issued by Auth Service. Tokens include user ID and permissions. Services verify tokens independently."
+    consequences "Gain: Stateless auth, scalability, service independence. Trade-off: Token revocation complexity, token size, security if compromised."
+  }
+  policy SecurityPolicy "Enforce TLS 1.3 for all external communications" category "security" enforcement "required"
+  policy DataRetentionPolicy "Retain order data for 7 years for tax compliance" category "compliance" enforcement "required"
+  policy PrivacyPolicy "GDPR: Delete user data upon request within 30 days" category "privacy" enforcement "required"
+  flow PaymentFlow "Payment processing flow" {
+    ECommerce.WebApp -> ECommerce.API "Payment request"
+    ECommerce.API.PaymentService -> PaymentGateway.StripeAPI "Process payment"
+    PaymentGateway.StripeAPI -> ECommerce.API.PaymentService "Payment confirmation"
+    ECommerce.API.PaymentService -> ECommerce.OrderDB "Update order status"
+    ECommerce.API.NotificationService -> ECommerce.EventQueue "Payment event"
+  }
+  flow OrderFulfillmentFlow "Order fulfillment flow" {
+    ECommerce.WebApp -> ECommerce.API "Order request"
+    ECommerce.API.OrderService -> ECommerce.OrderDB "Save order"
+    ECommerce.API.OrderService -> ECommerce.API.InventoryService "Check inventory"
+    ECommerce.API.InventoryService -> ECommerce.ProductDB "Reserve inventory"
+    ECommerce.API.OrderService -> ECommerce.EventQueue "Order event"
+    ECommerce.EventQueue -> ECommerce.AnalyticsService "Analytics data"
+  }
+  metadata {
+    team "E-Commerce Team"
+    owner "platform-team@example.com"
+    stakeholders ["product-team@example.com", "security-team@example.com"]
+    version "1.0.0"
+    status "production"
+    scale "10M+ users, 1M+ requests/day"
+    availability "99.99% uptime SLA"
+    performance "<200ms p95 latency"
+    cost "$15k/month operational cost"
+    architecture "Event-driven Microservices on AWS"
+    highRisk "Payment Gateway dependency (Single Point of Failure)"
+    pciDss "Level 1 Certified"
+    gdpr "Fully Compliant (eu-west-1 residency)"
+    dataRetention "7 years for financial records, 30 days for logs"
+    dataDeletion "Automated GDPR 'Right to be Forgotten' pipeline (30 day SLA)"
+    primaryRegion "us-east-1"
+    drRegion "us-west-2"
+    rto "1 hour"
+    rpo "15 minutes"
+  }
+}

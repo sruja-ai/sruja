@@ -1,0 +1,15 @@
+[
+  {
+    "path": "packages/shared/src/index.ts",
+    "limit": "100 KB",
+    "name": "@sruja/shared",
+    "ignore": ["fs/promises", "path", "monaco-editor"]
+  },
+  {
+    "path": "packages/ui/src/index.ts",
+    "limit": "500 KB",
+    "name": "@sruja/ui",
+    "ignore": ["monaco-editor"]
+  }
+]
+
