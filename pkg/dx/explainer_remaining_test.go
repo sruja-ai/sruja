@@ -15,7 +15,7 @@ func TestFindRelations_ArchitectureLevel(t *testing.T) {
 				{ID: "Sys2", Label: "System 2"},
 			},
 			Relations: []*language.Relation{
-				{From: "Sys1", To: "Sys2"},
+				{From: language.QualifiedIdent{Parts: []string{"Sys1"}}, To: language.QualifiedIdent{Parts: []string{"Sys2"}}},
 			},
 		},
 	}
@@ -39,7 +39,7 @@ func TestFindRelations_ArchitectureLevel_Incoming(t *testing.T) {
 				{ID: "Sys2", Label: "System 2"},
 			},
 			Relations: []*language.Relation{
-				{From: "Sys1", To: "Sys2"},
+				{From: language.QualifiedIdent{Parts: []string{"Sys1"}}, To: language.QualifiedIdent{Parts: []string{"Sys2"}}},
 			},
 		},
 	}

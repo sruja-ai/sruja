@@ -98,7 +98,7 @@ func TestPrinter_PrintContainer_WithMetadata(t *testing.T) {
 								ID:    "Cont1",
 								Label: "Container 1",
 								Metadata: []*language.MetaEntry{
-									{Key: "team", Value: "backend"},
+									{Key: "team", Value: stringPtr("backend")},
 								},
 							},
 						},
@@ -115,7 +115,7 @@ func TestPrinter_PrintContainer_WithMetadata(t *testing.T) {
 	if !strings.Contains(output, "metadata {") {
 		t.Errorf("Should print metadata block. Output: %s", output)
 	}
-	if !strings.Contains(output, `team: "backend"`) {
+	if !strings.Contains(output, `team "backend"`) {
 		t.Errorf("Should print metadata entry. Output: %s", output)
 	}
 }

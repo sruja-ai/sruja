@@ -18,7 +18,7 @@ func TestParser_EmptyArchitecture(t *testing.T) {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	_, err = parser.Parse("test.sruja", dsl)
+	_, _, err = parser.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("Failed to parse empty architecture: %v", err)
 	}
@@ -35,7 +35,7 @@ architecture "Test" {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	program, err := parser.Parse("test.sruja", dsl)
+	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("Failed to parse valid DSL: %v", err)
 	}
@@ -68,7 +68,7 @@ architecture "Test" {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	program, err := parser.Parse("test.sruja", dsl)
+	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("Failed to parse DSL with description: %v", err)
 	}
@@ -99,7 +99,7 @@ architecture "Test" {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	program, err := parser.Parse("test.sruja", dsl)
+	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("Failed to parse system with container: %v", err)
 	}
@@ -141,7 +141,7 @@ architecture "Test" {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	program, err := parser.Parse("test.sruja", dsl)
+	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("Failed to parse container with technology: %v", err)
 	}
@@ -176,7 +176,7 @@ architecture "Test" {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	program, err := parser.Parse("test.sruja", dsl)
+	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("Failed to parse relation: %v", err)
 	}
@@ -228,7 +228,7 @@ architecture "Test" {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	program, err := parser.Parse("test.sruja", dsl)
+	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("Failed to parse complex architecture: %v", err)
 	}

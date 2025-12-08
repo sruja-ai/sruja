@@ -4,7 +4,7 @@ This document provides a complete specification of the Sruja architecture-as-cod
 
 ## Overview
 
-Sruja is a domain-specific language (DSL) for defining software architecture models. It supports C4 model concepts (systems, containers, components), Domain-Driven Design (DDD), requirements, ADRs, and more.
+Sruja is a domain-specific language (DSL) for defining software architecture models. It supports C4 model concepts (systems, containers, components), requirements, ADRs, scenarios, flows, and more.
 
 ## Language Grammar
 
@@ -30,7 +30,8 @@ architecture "Name" {
 system ID "Label" {
     description "Optional description"
     metadata {
-        key: "value"
+        key "value"
+        tags ["tag1", "tag2"]
     }
     // Containers, components, etc.
 }
@@ -77,38 +78,16 @@ person ID "Label" {
 #### Relations
 ```sruja
 From -> To "Label"
+// When referring to nested elements, use dot notation:
+System.Container -> System.Container.Component "Label"
+// Or with verb
+From -> To verb "Label"
 // Or with technology
 From -> To "Label" {
     technology "Protocol"
 }
-```
-
-### Domain-Driven Design (DDD)
-
-#### Domains
-```sruja
-domain "Domain Name" {
-    context "Context Name" {
-        aggregate "Aggregate Name" {
-            entities {
-                "Entity1"
-                "Entity2"
-            }
-            valueObjects {
-                "ValueObject1"
-            }
-        }
-        entities {
-            "Entity1"
-        }
-        valueObjects {
-            "ValueObject1"
-        }
-        events {
-            "Event1"
-        }
-    }
-}
+// Or with tags
+From -> To "Label" [tag1, tag2]
 ```
 
 ### Requirements and ADRs
@@ -123,8 +102,10 @@ requirement ID constraint "Description"
 #### ADRs (Architectural Decision Records)
 ```sruja
 adr ID "Title" {
-    description "Decision description"
-    status "proposed" | "accepted" | "deprecated" | "superseded"
+    status "accepted"
+    context "What situation led to this decision"
+    decision "What was decided"
+    consequences "Trade-offs, gains, and losses"
 }
 ```
 
@@ -133,19 +114,24 @@ adr ID "Title" {
 #### Scenarios
 ```sruja
 scenario "Scenario Title" {
-    step 1 "First step"
-    step 2 "Second step"
-    // Steps reference elements: User -> API "Calls"
+    User -> System.WebApp "Credentials"
+    System.WebApp -> System.DB "Verify"
+}
+
+// Or with ID
+story Checkout "User Checkout Flow" {
+    User -> ECommerce.CartPage "adds item to cart"
+    ECommerce.CartPage -> ECommerce "clicks checkout"
 }
 ```
 
-#### Flows
+#### Flows (DFD-style data flows)
 ```sruja
-system API {
-    flow "Flow Name" {
-        step 1 "Step description"
-        step 2 "Next step"
-    }
+// Use scenario/story for DFD-style flows
+scenario OrderProcess "Order Processing" {
+    Customer -> Shop.WebApp "Order Details"
+    Shop.WebApp -> Shop.Database "Save Order"
+    Shop.Database -> Shop.WebApp "Confirmation"
 }
 ```
 
@@ -159,18 +145,20 @@ import "path/to/file.sruja"
 
 ```sruja
 metadata {
-    key: "value"
-    anotherKey: "another value"
+    key "value"
+    anotherKey "another value"
+    tags ["tag1", "tag2"]
 }
 ```
 
 ### Deployment
 
 ```sruja
-deployment "Environment Name" {
-    system API {
-        container WebApp {
-            instances 3
+deployment Prod "Production" {
+    node AWS "AWS" {
+        node USEast1 "US-East-1" {
+            infrastructure LB "Load Balancer"
+            containerInstance Shop.API
         }
     }
 }
@@ -232,23 +220,77 @@ architecture "E-commerce Platform" {
     
     adr ADR001 "Use microservices architecture" {
         status "accepted"
+        context "Need to scale different parts independently"
+        decision "Adopt microservices architecture"
+        consequences "Gain: Independent scaling. Trade-off: Increased complexity"
     }
     
     scenario "User purchases item" {
-        step 1 "Customer adds item to cart"
-        step 2 "Customer proceeds to checkout"
-        step 3 "Payment is processed"
+        Customer -> Shop.WebApp "Adds item to cart"
+        Shop.WebApp -> Shop.API "Submits order"
+        Shop.API -> Shop.DB "Saves order"
+    }
+    
+    scenario PaymentFlow "Payment processing" {
+        WebApp -> API "Validate payment method"
+        API -> PaymentGateway "Process payment"
+        PaymentGateway -> API "Update order status"
     }
 }
 ```
+
+## Views (Optional)
+
+Views are **optional** - if not specified, standard C4 views are automatically generated. Views block is only needed for customization.
+
+```sruja
+views {
+    container Shop "API Focus" {
+        include Shop.API Shop.DB
+        exclude Shop.WebApp
+        autolayout "lr"
+    }
+    
+    styles {
+        element "Database" {
+            shape "cylinder"
+            color "#ff0000"
+        }
+    }
+}
+```
+
+### View Types
+- `systemContext` - System context view (C4 L1)
+- `container` - Container view (C4 L2)
+- `component` - Component view (C4 L3)
+- `deployment` - Deployment view
+
+### View Expressions
+- `include *` - Include all elements in scope
+- `include Element1 Element2` - Include specific elements
+- `exclude Element1` - Exclude specific elements
+- `autolayout "lr"|"tb"|"auto"` - Layout direction hint
+
+## Implied Relationships
+
+Relationships are automatically inferred when child relationships exist:
+
+```sruja
+User -> API.WebApp "Uses"
+// Automatically infers: User -> API
+```
+
+This reduces boilerplate while maintaining clarity.
 
 ## Key Rules
 
 1. **IDs**: Must be unique within their scope
 2. **References**: Use dot notation (e.g., `System.Container`)
-3. **Relations**: Can be defined at any level
+3. **Relations**: Can be defined at any level (implied relationships are automatically inferred)
 4. **Metadata**: Freeform key-value pairs
 5. **Descriptions**: Optional string values
+6. **Views**: Optional - C4 views are automatically generated if not specified
 
 ## Common Patterns
 
@@ -257,14 +299,8 @@ architecture "E-commerce Platform" {
 - **Level 2 (Container)**: Containers within systems
 - **Level 3 (Component)**: Components within containers
 
-### DDD Modeling
-- Use `domain` for bounded contexts
-- Use `aggregate` for aggregate roots
-- Use `entities` and `valueObjects` for domain models
-
 ## Resources
 
 - Official Documentation: https://sruja.ai
 - Examples: `examples/` directory
 - Grammar: Defined in `pkg/language/ast.go`
-

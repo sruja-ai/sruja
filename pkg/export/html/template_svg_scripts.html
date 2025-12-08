@@ -1,0 +1,26 @@
+  <script id="sruja-data" type="application/json">{{.JSONData | safeJS}}</script>
+  <script>
+    // Load web components
+    {{if .ComponentsJS}}
+    {{.ComponentsJS | safeJS}}
+    {{end}}
+  </script>
+  <script>
+    // Initialize components when DOM is ready
+    (function() {
+      function init() {
+        // Components will auto-initialize via connectedCallback
+        const svgContainerAll = document.getElementById('svg-container-all');
+        if (svgContainerAll) {
+          svgContainerAll.classList.add('active');
+          svgContainerAll.style.display = 'flex';
+        }
+      }
+      
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+  </script>

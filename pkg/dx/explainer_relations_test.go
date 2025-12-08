@@ -16,8 +16,8 @@ func TestFindRelations(t *testing.T) {
 					ID: "Sys1",
 					Relations: []*language.Relation{
 						{
-							From: "Sys1",
-							To:   "Sys2",
+							From: language.QualifiedIdent{Parts: []string{"Sys1"}},
+							To:   language.QualifiedIdent{Parts: []string{"Sys2"}},
 							Verb: stringPtr("calls"),
 						},
 					},
@@ -25,8 +25,8 @@ func TestFindRelations(t *testing.T) {
 			},
 			Relations: []*language.Relation{
 				{
-					From:  "Sys2",
-					To:    "Sys1",
+					From:  language.QualifiedIdent{Parts: []string{"Sys2"}},
+					To:    language.QualifiedIdent{Parts: []string{"Sys1"}},
 					Label: stringPtr("HTTP"),
 				},
 			},
@@ -58,8 +58,8 @@ func TestFindRelations_ContainerRelations(t *testing.T) {
 							ID: "Cont",
 							Relations: []*language.Relation{
 								{
-									From: "Cont",
-									To:   "Other",
+									From: language.QualifiedIdent{Parts: []string{"Cont"}},
+									To:   language.QualifiedIdent{Parts: []string{"Other"}},
 									Verb: stringPtr("calls"),
 								},
 							},
@@ -95,8 +95,8 @@ func TestFindRelations_ComponentRelations(t *testing.T) {
 							Label: "Component",
 							Relations: []*language.Relation{
 								{
-									From: "Comp",
-									To:   "Other",
+									From: language.QualifiedIdent{Parts: []string{"Comp"}},
+									To:   language.QualifiedIdent{Parts: []string{"Other"}},
 								},
 							},
 						},
@@ -156,12 +156,12 @@ func TestFindDependencies(t *testing.T) {
 					ID: "Sys1",
 					Relations: []*language.Relation{
 						{
-							From: "Sys1",
-							To:   "Sys2",
+							From: language.QualifiedIdent{Parts: []string{"Sys1"}},
+							To:   language.QualifiedIdent{Parts: []string{"Sys2"}},
 						},
 						{
-							From: "Sys1",
-							To:   "Sys3",
+							From: language.QualifiedIdent{Parts: []string{"Sys1"}},
+							To:   language.QualifiedIdent{Parts: []string{"Sys3"}},
 						},
 					},
 				},
@@ -181,8 +181,8 @@ func TestFindDependencies(t *testing.T) {
 
 func TestExtractRelationInfo_WithBoth(t *testing.T) {
 	rel := &language.Relation{
-		From:  "A",
-		To:    "B",
+		From:  language.QualifiedIdent{Parts: []string{"A"}},
+		To:    language.QualifiedIdent{Parts: []string{"B"}},
 		Verb:  stringPtr("calls"),
 		Label: stringPtr("HTTP"),
 	}
@@ -197,8 +197,8 @@ func TestExtractRelationInfo_WithBoth(t *testing.T) {
 
 func TestExtractRelationInfo_WithNeither(t *testing.T) {
 	rel := &language.Relation{
-		From: "A",
-		To:   "B",
+		From: language.QualifiedIdent{Parts: []string{"A"}},
+		To:   language.QualifiedIdent{Parts: []string{"B"}},
 	}
 	label, verb := extractRelationInfo(rel)
 	if label != "" {

@@ -7,6 +7,10 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
+func stringPtrMeta(s string) *string {
+	return &s
+}
+
 func TestExtractMetadata_DataStore(t *testing.T) {
 	// extractMetadata only handles System, Container, Component
 	// DataStore metadata extraction is not implemented in extractMetadata
@@ -22,7 +26,7 @@ func TestExtractMetadata_DataStore(t *testing.T) {
 							ID:    "DB",
 							Label: "Database",
 							Metadata: []*language.MetaEntry{
-								{Key: "engine", Value: "postgres"},
+								{Key: "engine", Value: stringPtrMeta("postgres")},
 							},
 						},
 					},
@@ -58,7 +62,7 @@ func TestExtractMetadata_Queue(t *testing.T) {
 							ID:    "Q",
 							Label: "Queue",
 							Metadata: []*language.MetaEntry{
-								{Key: "topic", Value: "events"},
+								{Key: "topic", Value: stringPtrMeta("events")},
 							},
 						},
 					},
@@ -87,7 +91,7 @@ func TestExtractMetadata_Person(t *testing.T) {
 				{
 					ID: "User",
 					Metadata: []*language.MetaEntry{
-						{Key: "persona", Value: "customer"},
+						{Key: "persona", Value: stringPtrMeta("customer")},
 					},
 				},
 			},

@@ -1,0 +1,24 @@
+---
+// apps/website/src/pages/blogs/index.astro
+import { getCollection } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import ContentPage from '@/features/content/components/ContentPage.astro';
+import ContentList from '@/features/content/components/ContentList.astro';
+import { sortByDate } from '@/features/content/utils/sorting';
+import { transformToContentListItems } from '@/features/content/utils/transform';
+
+const posts = await getCollection('blog', ({ data }: { data: any }) => {
+  return true;
+});
+const sortedPosts = sortByDate(posts);
+const items = transformToContentListItems(sortedPosts, '/blogs', {
+  linkText: 'Read More →',
+  includeDate: true,
+});
+---
+
+<Layout title="Blogs" description="Latest news and updates from the Sruja team.">
+  <ContentPage title="Blogs" summary="Latest news, updates, and insights from the Sruja team.">
+    <ContentList items={items} emptyMessage="No blog posts available yet. Check back soon!" />
+  </ContentPage>
+</Layout>

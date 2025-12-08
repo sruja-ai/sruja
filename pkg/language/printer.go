@@ -1,11 +1,15 @@
 // pkg/language/printer.go
 // Package language provides DSL parsing and AST structures.
+//
+//nolint:gocritic // Printer logic triggers many style warnings (preferFprint, nestingReduce)
 package language
 
 import (
 	"fmt"
 	"strings"
 )
+
+//nolint:gocritic // Printer logic triggers many style warnings (preferFprint, nestingReduce)
 
 // Printer prints an AST back to DSL format.
 type Printer struct {
@@ -17,8 +21,20 @@ func NewPrinter() *Printer {
 	return &Printer{IndentLevel: 0}
 }
 
+// indentCache holds pre-computed indentation strings
+var indentCache = make([]string, 20)
+
+func init() {
+	for i := range indentCache {
+		indentCache[i] = strings.Repeat("  ", i)
+	}
+}
+
 // indent returns the indentation string for the current indent level.
 func (p *Printer) indent() string {
+	if p.IndentLevel < len(indentCache) {
+		return indentCache[p.IndentLevel]
+	}
 	return strings.Repeat("  ", p.IndentLevel)
 }
 
@@ -69,6 +85,16 @@ func (p *Printer) printArchitecture(sb *strings.Builder, arch *Architecture) {
 		p.printADR(sb, adr)
 	}
 
+	// Print Policies
+	for _, policy := range arch.Policies {
+		p.printPolicy(sb, policy)
+	}
+
+	// Print Flows
+	for _, flow := range arch.Flows {
+		p.printFlow(sb, flow)
+	}
+
 	// Print shared artifacts
 	for _, sa := range arch.SharedArtifacts {
 		p.printSharedArtifact(sb, sa)
@@ -84,6 +110,108 @@ func (p *Printer) printArchitecture(sb *strings.Builder, arch *Architecture) {
 		p.printMetadata(sb, arch.Metadata)
 	}
 
+	p.IndentLevel--
+	indent = p.indent()
+	sb.WriteString(indent + "}\n")
+}
+
+// printPolicy prints a policy node.
+func (p *Printer) printPolicy(sb *strings.Builder, policy *Policy) {
+	indent := p.indent()
+	sb.WriteString(fmt.Sprintf("%spolicy %s %q", indent, policy.ID, policy.Description))
+
+	if policy.Body != nil {
+		sb.WriteString(" {\n")
+		p.IndentLevel++
+		indent = p.indent()
+
+		if policy.Body.Category != nil {
+			sb.WriteString(fmt.Sprintf("%scategory %q\n", indent, *policy.Body.Category))
+		}
+		if policy.Body.Enforcement != nil {
+			sb.WriteString(fmt.Sprintf("%senforcement %q\n", indent, *policy.Body.Enforcement))
+		}
+		if policy.Body.Description != nil {
+			sb.WriteString(fmt.Sprintf("%sdescription %q\n", indent, *policy.Body.Description))
+		}
+		if policy.Body.Metadata != nil {
+			p.printMetadataBlock(sb, policy.Body.Metadata)
+		}
+
+		p.IndentLevel--
+		indent = p.indent()
+		sb.WriteString(indent + "}\n")
+	} else {
+		// Print inline fields if present
+		if policy.Category != nil {
+			sb.WriteString(fmt.Sprintf(" category %q", *policy.Category))
+		}
+		if policy.Enforcement != nil {
+			sb.WriteString(fmt.Sprintf(" enforcement %q", *policy.Enforcement))
+		}
+		sb.WriteString("\n")
+	}
+}
+
+// printFlow prints a flow node.
+func (p *Printer) printFlow(sb *strings.Builder, flow *Flow) {
+	// Flow is an alias to Scenario - use same printing logic
+	indent := p.indent()
+	sb.WriteString(fmt.Sprintf("%sflow %s %q {\n", indent, flow.ID, flow.Title))
+	p.IndentLevel++
+
+	if flow.Description != nil {
+		sb.WriteString(fmt.Sprintf("%sdescription %q\n", p.indent(), *flow.Description))
+	}
+
+	for _, item := range flow.Items {
+		if item.Step != nil {
+			// Flow uses ScenarioStep (DFD-style: From -> To "Description")
+			sb.WriteString(fmt.Sprintf("%s%s -> %s", p.indent(), item.Step.From, item.Step.To))
+			if item.Step.Description != nil {
+				sb.WriteString(fmt.Sprintf(" %q", *item.Step.Description))
+			}
+			if len(item.Step.Tags) > 0 {
+				sb.WriteString(" [")
+				for i, tag := range item.Step.Tags {
+					if i > 0 {
+						sb.WriteString(", ")
+					}
+					sb.WriteString(tag)
+				}
+				sb.WriteString("]")
+			}
+			if item.Step.Order != nil {
+				sb.WriteString(fmt.Sprintf(" order %q", *item.Step.Order))
+			}
+			sb.WriteString("\n")
+		}
+	}
+
+	p.IndentLevel--
+	sb.WriteString(indent + "}\n")
+}
+
+// printMetadataBlock prints a metadata block with support for arrays
+func (p *Printer) printMetadataBlock(sb *strings.Builder, block *MetadataBlock) {
+	if block == nil || len(block.Entries) == 0 {
+		return
+	}
+	indent := p.indent()
+	sb.WriteString(indent + "metadata {\n")
+	p.IndentLevel++
+	for _, entry := range block.Entries {
+		indent = p.indent()
+		if entry.Value != nil {
+			fmt.Fprintf(sb, "%s%s %q\n", indent, entry.Key, *entry.Value)
+		} else if len(entry.Array) > 0 {
+			quoted := make([]string, len(entry.Array))
+			for i, v := range entry.Array {
+				quoted[i] = fmt.Sprintf("%q", v)
+			}
+			fmt.Fprintf(sb, "%s%s [%s]\n", indent, entry.Key, strings.Join(quoted, ", "))
+		}
+	}
 	p.IndentLevel--
 	indent = p.indent()
 	sb.WriteString(indent + "}\n")
@@ -135,7 +263,7 @@ func (p *Printer) printSystem(sb *strings.Builder, sys *System) {
 				p.printADR(sb, item.ADR)
 			}
 			if item.Metadata != nil {
-				p.printMetadata(sb, item.Metadata.Entries)
+				p.printMetadataBlock(sb, item.Metadata)
 			}
 		}
 
@@ -152,6 +280,8 @@ func (p *Printer) printSystem(sb *strings.Builder, sys *System) {
 }
 
 // printContainer prints a container node.
+//
+//nolint:gocyclo // Printing logic is complex
 func (p *Printer) printContainer(sb *strings.Builder, cont *Container) {
 	indent := p.indent()
 	fmt.Fprintf(sb, "%scontainer %s %q", indent, cont.ID, cont.Label)
@@ -164,7 +294,9 @@ func (p *Printer) printContainer(sb *strings.Builder, cont *Container) {
 		sb.WriteString(" {\n")
 		p.IndentLevel++
 
-		for _, item := range cont.Items {
+		//nolint:gocyclo,gocritic // Logic is complex and verbose
+		for i := range cont.Items {
+			item := &cont.Items[i]
 			if item.Technology != nil {
 				indent = p.indent()
 				fmt.Fprintf(sb, "%stechnology %q\n", indent, *item.Technology)
@@ -203,7 +335,7 @@ func (p *Printer) printContainer(sb *strings.Builder, cont *Container) {
 				p.printADR(sb, item.ADR)
 			}
 			if item.Metadata != nil {
-				p.printMetadata(sb, item.Metadata.Entries)
+				p.printMetadataBlock(sb, item.Metadata)
 			}
 		}
 
@@ -248,7 +380,7 @@ func (p *Printer) printComponent(sb *strings.Builder, comp *Component) {
 				p.printRelation(sb, item.Relation)
 			}
 			if item.Metadata != nil {
-				p.printMetadata(sb, item.Metadata.Entries)
+				p.printMetadataBlock(sb, item.Metadata)
 			}
 		}
 
@@ -321,9 +453,23 @@ func (p *Printer) printPerson(sb *strings.Builder, person *Person) {
 // printRelation prints a relation node.
 func (p *Printer) printRelation(sb *strings.Builder, rel *Relation) {
 	indent := p.indent()
-	fmt.Fprintf(sb, "%s%s -> %s", indent, rel.From, rel.To)
+	fmt.Fprintf(sb, "%s%s -> %s", indent, strings.Join(rel.From.Parts, "."), strings.Join(rel.To.Parts, "."))
+	if len(rel.Tags) > 0 {
+		sb.WriteString(" [")
+		for i, tag := range rel.Tags {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(tag)
+		}
+		sb.WriteString("]")
+	}
 	if rel.Verb != nil {
-		fmt.Fprintf(sb, " %s", *rel.Verb)
+		if isIdent(*rel.Verb) {
+			fmt.Fprintf(sb, " %s", *rel.Verb)
+		} else {
+			fmt.Fprintf(sb, " %q", *rel.Verb)
+		}
 	}
 	if rel.Label != nil && *rel.Label != "" {
 		fmt.Fprintf(sb, " %q", *rel.Label)
@@ -334,7 +480,36 @@ func (p *Printer) printRelation(sb *strings.Builder, rel *Relation) {
 // printRequirement prints a requirement node.
 func (p *Printer) printRequirement(sb *strings.Builder, req *Requirement) {
 	indent := p.indent()
-	fmt.Fprintf(sb, "%srequirement %s %s %q\n", indent, req.ID, req.Type, req.Description)
+	fmt.Fprintf(sb, "%srequirement %s", indent, req.ID)
+
+	if req.Type != nil {
+		fmt.Fprintf(sb, " %s", *req.Type)
+	}
+	if req.Description != nil {
+		fmt.Fprintf(sb, " %q", *req.Description)
+	}
+
+	if req.Body != nil {
+		sb.WriteString(" {\n")
+		p.IndentLevel++
+		indent = p.indent()
+
+		if req.Body.Type != nil {
+			fmt.Fprintf(sb, "%stype %q\n", indent, *req.Body.Type)
+		}
+		if req.Body.Description != nil {
+			fmt.Fprintf(sb, "%sdescription %q\n", indent, *req.Body.Description)
+		}
+		if req.Body.Metadata != nil {
+			p.printMetadataBlock(sb, req.Body.Metadata)
+		}
+
+		p.IndentLevel--
+		indent = p.indent()
+		sb.WriteString(indent + "}\n")
+	} else {
+		sb.WriteString("\n")
+	}
 }
 
 // printADR prints an ADR node.
@@ -395,7 +570,33 @@ func (p *Printer) printLibrary(sb *strings.Builder, lib *Library) {
 	if lib.Owner != nil {
 		fmt.Fprintf(sb, " owner %q", *lib.Owner)
 	}
-	sb.WriteString("\n")
+
+	if len(lib.Items) > 0 {
+		sb.WriteString(" {\n")
+		p.IndentLevel++
+		indent = p.indent()
+
+		for _, item := range lib.Items {
+			if item.Description != nil {
+				fmt.Fprintf(sb, "%sdescription %q\n", indent, *item.Description)
+			}
+			if item.Policy != nil {
+				p.printPolicy(sb, item.Policy)
+			}
+			if item.Requirement != nil {
+				p.printRequirement(sb, item.Requirement)
+			}
+			if item.Metadata != nil {
+				p.printMetadataBlock(sb, item.Metadata)
+			}
+		}
+
+		p.IndentLevel--
+		indent = p.indent()
+		sb.WriteString(indent + "}\n")
+	} else {
+		sb.WriteString("\n")
+	}
 }
 
 // printMetadata prints a metadata block.
@@ -408,7 +609,18 @@ func (p *Printer) printMetadata(sb *strings.Builder, entries []*MetaEntry) {
 	p.IndentLevel++
 	for _, entry := range entries {
 		indent = p.indent()
-		fmt.Fprintf(sb, "%s%s: %q\n", indent, entry.Key, entry.Value)
+		if entry.Value != nil {
+			fmt.Fprintf(sb, "%s%s %q\n", indent, entry.Key, *entry.Value)
+		} else if len(entry.Array) > 0 {
+			fmt.Fprintf(sb, "%s%s [", indent, entry.Key)
+			for i, v := range entry.Array {
+				if i > 0 {
+					sb.WriteString(", ")
+				}
+				fmt.Fprintf(sb, "%q", v)
+			}
+			sb.WriteString("]\n")
+		}
 	}
 	p.IndentLevel--
 	indent = p.indent()

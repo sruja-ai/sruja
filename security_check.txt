@@ -1,0 +1,75 @@
+Running security linter...
+Results:
+
+
+[[97;41m/Users/dilipkola/Workspace/sruja-lang/pkg/lsp/semantics.go:42[0m] - G115 (CWE-190): integer overflow conversion int -> uint32 (Confidence: MEDIUM, Severity: HIGH)
+    41: 		// strings
+  > 42: 		addQuotedStrings(&data, uint32(li), line, ti["string"], &prevLine)
+    43: 		// arrow operator
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/content-validator/main.go:187[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    186: 
+  > 187: 	content, err := os.ReadFile(path)
+    188: 	if err != nil {
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/content-validator/main.go:76[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    75: 			// Check required fields
+  > 76: 			content, _ := os.ReadFile(path)
+    77: 			if !strings.Contains(string(content), "title:") {
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/content-generator/main.go:411[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    410: func createBasicFile(outputPath string, meta ContentMeta) {
+  > 411: 	file, err := os.Create(outputPath)
+    412: 	if err != nil {
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/content-generator/main.go:391[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    390: 	// Create output file
+  > 391: 	file, err := os.Create(outputPath)
+    392: 	if err != nil {
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/content-generator/main.go:373[0m] - G304 (CWE-22): Potential file inclusion via variable (Confidence: HIGH, Severity: MEDIUM)
+    372: 	// Read template
+  > 373: 	tmplContent, err := os.ReadFile(templatePath)
+    374: 	if err != nil {
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/content-generator/main.go:148[0m] - G301 (CWE-276): Expect directory permissions to be 0750 or less (Confidence: HIGH, Severity: MEDIUM)
+    147: 	// Create directory
+  > 148: 	if err := os.MkdirAll(moduleDir, 0755); err != nil {
+    149: 		fmt.Printf("❌ Error creating module directory: %v\n", err)
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/content-generator/main.go:114[0m] - G301 (CWE-276): Expect directory permissions to be 0750 or less (Confidence: HIGH, Severity: MEDIUM)
+    113: 	// Create directory
+  > 114: 	if err := os.MkdirAll(courseDir, 0755); err != nil {
+    115: 		fmt.Printf("❌ Error creating course directory: %v\n", err)
+
+Autofix: 
+
+[[30;43m/Users/dilipkola/Workspace/sruja-lang/scripts/generate-playground-examples.go:121[0m] - G306 (CWE-276): Expect WriteFile permissions to be 0600 or less (Confidence: HIGH, Severity: MEDIUM)
+    120: 	// Write output
+  > 121: 	if err := os.WriteFile(outputPath, []byte(sb.String()), 0644); err != nil {
+    122: 		fmt.Fprintf(os.Stderr, "Error writing output: %v\n", err)
+
+Autofix: 
+
+[1;36mSummary:[0m
+  Gosec  : dev
+  Files  : 85
+  Lines  : 16814
+  Nosec  : 14
+  Issues : [1;31m9[0m
+
+make: *** [lint-security] Error 1

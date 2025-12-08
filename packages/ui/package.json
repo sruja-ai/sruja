@@ -1,0 +1,59 @@
+{
+  "name": "@sruja/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./design-system": "./dist/design-system/index.js",
+    "./design-system/styles.css": "./src/design-system/styles.css",
+    "./components": "./dist/components/index.js"
+  },
+  "scripts": {
+    "build": "rimraf dist && tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "clean": "rimraf dist"
+  },
+  "size-limit": [
+    {
+      "path": "dist/**/*.js",
+      "limit": "200 KB"
+    }
+  ],
+  "dependencies": {
+    "@headlessui/react": "^2.2.9",
+    "@sruja/shared": "*",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss": "^4.1.17"
+  },
+  "devDependencies": {
+    "@sruja/eslint-config": "*",
+    "@testing-library/jest-dom": "^6.0.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.5.0",
+    "@types/node": "^22.7.9",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^2.1.9",
+    "eslint": "^9.39.1",
+    "jsdom": "^24.0.0",
+    "minimatch": "^9.0.5",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.0"
+  },
+  "peerDependencies": {
+    "lucide-react": "^0.555.0",
+    "monaco-editor": "^0.52.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  }
+}

@@ -7,33 +7,6 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-func TestValidationError_String(t *testing.T) {
-	err := ValidationError{
-		Message: "Test error",
-		Line:    10,
-		Column:  5,
-	}
-	str := err.String()
-	if str == "" {
-		t.Error("String() should return error message")
-	}
-	if !contains(str, "Test error") {
-		t.Error("String() should contain error message")
-	}
-}
-
-func TestValidationError_Error(t *testing.T) {
-	err := ValidationError{
-		Message: "Test error",
-		Line:    5,
-		Column:  3,
-	}
-	errStr := err.Error()
-	if errStr == "" {
-		t.Error("Error() should return error message")
-	}
-}
-
 func TestNewValidator(t *testing.T) {
 	v := NewValidator()
 	if v == nil {
@@ -75,7 +48,7 @@ func TestValidator_Validate(t *testing.T) {
 	}
 }
 
-func TestValidator_Validate_MultipleRules(t *testing.T) {
+func TestValidator_Validate_MultipleRules(_ *testing.T) {
 	v := NewValidator()
 	v.RegisterRule(&UniqueIDRule{})
 	v.RegisterRule(&ValidReferenceRule{})
@@ -107,8 +80,8 @@ func TestCycleDetectionRule_Validate_NoCycle(t *testing.T) {
 		Architecture: &language.Architecture{
 			Name: "Test",
 			Relations: []*language.Relation{
-				{From: "A", To: "B"},
-				{From: "B", To: "C"},
+				{From: language.QualifiedIdent{Parts: []string{"A"}}, To: language.QualifiedIdent{Parts: []string{"B"}}},
+				{From: language.QualifiedIdent{Parts: []string{"B"}}, To: language.QualifiedIdent{Parts: []string{"C"}}},
 			},
 		},
 	}
@@ -125,8 +98,8 @@ func TestCycleDetectionRule_Validate_Cycle(t *testing.T) {
 		Architecture: &language.Architecture{
 			Name: "Test",
 			Relations: []*language.Relation{
-				{From: "A", To: "B"},
-				{From: "B", To: "A"},
+				{From: language.QualifiedIdent{Parts: []string{"A"}}, To: language.QualifiedIdent{Parts: []string{"B"}}},
+				{From: language.QualifiedIdent{Parts: []string{"B"}}, To: language.QualifiedIdent{Parts: []string{"A"}}},
 			},
 		},
 	}
@@ -156,8 +129,8 @@ func TestCycleDetectionRule_Validate_SystemRelations(t *testing.T) {
 				{
 					ID: "Sys",
 					Relations: []*language.Relation{
-						{From: "A", To: "B"},
-						{From: "B", To: "A"},
+						{From: language.QualifiedIdent{Parts: []string{"A"}}, To: language.QualifiedIdent{Parts: []string{"B"}}},
+						{From: language.QualifiedIdent{Parts: []string{"B"}}, To: language.QualifiedIdent{Parts: []string{"A"}}},
 					},
 				},
 			},
@@ -189,20 +162,4 @@ func TestOrphanDetectionRule_Name(t *testing.T) {
 	if rule.Name() == "" {
 		t.Error("Name() should return rule name")
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > len(substr) && (s[:len(substr)] == substr ||
-			s[len(s)-len(substr):] == substr ||
-			containsMiddle(s, substr))))
-}
-
-func containsMiddle(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

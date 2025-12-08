@@ -1,0 +1,9 @@
+import{j as n}from"./iframe-CLHqt8sP.js";import{L as t,l as c,S as i,c as e,a as S,P as p,I as P,b as x,d as C}from"./c4-layout-BaP4Bnfv.js";import"./preload-helper-PPVm8Dsz.js";const w={title:"Examples/Layout Presets",component:t};function d(){const u={id:e("Sys"),label:"Sys",kind:"SoftwareSystem",level:"context",tags:new Set},l={id:e("User"),label:"User",kind:"Person",level:"context",tags:new Set},m={id:e("Payments"),label:"Payments",kind:"ExternalSystem",level:"context",tags:new Set},y=[{id:"User->Sys",from:l.id,to:u.id},{id:"Sys->Payments",from:u.id,to:m.id}];return S([u,l,m],y)}const s={render:()=>n.jsx(t,{result:c(d(),i(e("Sys")),p)})},r={render:()=>n.jsx(t,{result:c(d(),i(e("Sys")),P)})},a={render:()=>n.jsx(t,{result:c(d(),i(e("Sys")),x)})},o={render:()=>n.jsx(t,{result:c(d(),i(e("Sys")),C)})};s.parameters={...s.parameters,docs:{...s.parameters?.docs,source:{originalSource:`{
+  render: () => <LayoutSVG result={layout(build(), SystemContextView(createC4Id('Sys')), PublicationPreset)} />
+}`,...s.parameters?.docs?.source}}};r.parameters={...r.parameters,docs:{...r.parameters?.docs,source:{originalSource:`{
+  render: () => <LayoutSVG result={layout(build(), SystemContextView(createC4Id('Sys')), InteractivePreset)} />
+}`,...r.parameters?.docs?.source}}};a.parameters={...a.parameters,docs:{...a.parameters?.docs,source:{originalSource:`{
+  render: () => <LayoutSVG result={layout(build(), SystemContextView(createC4Id('Sys')), PresentationPreset)} />
+}`,...a.parameters?.docs?.source}}};o.parameters={...o.parameters,docs:{...o.parameters?.docs,source:{originalSource:`{
+  render: () => <LayoutSVG result={layout(build(), SystemContextView(createC4Id('Sys')), CompactPreset)} />
+}`,...o.parameters?.docs?.source}}};const f=["Publication","Interactive","Presentation","Compact"];export{o as Compact,r as Interactive,a as Presentation,s as Publication,f as __namedExportsOrder,w as default};

@@ -6,6 +6,6 @@ architecture "Components Relations Example" {
       component Auth "Auth" {
       }
     }
-    Cart -> Auth uses "Uses"
+    Web.Cart -> Web.Auth uses "Uses"
   }
 }

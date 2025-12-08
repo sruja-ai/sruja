@@ -1,0 +1,187 @@
+{
+    "Architecture": {
+        "prefix": "architecture",
+        "body": [
+            "architecture \"${1:Name}\" {",
+            "\t$0",
+            "}"
+        ],
+        "description": "Define a new architecture"
+    },
+    "System": {
+        "prefix": "system",
+        "body": [
+            "system ${1:ID} \"${2:Label}\" {",
+            "\t$0",
+            "}"
+        ],
+        "description": "Define a system"
+    },
+    "Container": {
+        "prefix": "container",
+        "body": [
+            "container ${1:ID} \"${2:Label}\" {",
+            "\ttechnology \"${3:Technology}\"",
+            "\t$0",
+            "}"
+        ],
+        "description": "Define a container"
+    },
+    "Component": {
+        "prefix": "component",
+        "body": [
+            "component ${1:ID} \"${2:Label}\" {",
+            "\ttechnology \"${3:Technology}\"",
+            "\t$0",
+            "}"
+        ],
+        "description": "Define a component"
+    },
+    "Person": {
+        "prefix": "person",
+        "body": [
+            "person ${1:ID} \"${2:Label}\""
+        ],
+        "description": "Define a person/actor"
+    },
+    "DataStore": {
+        "prefix": "datastore",
+        "body": [
+            "datastore ${1:ID} \"${2:Label}\" {",
+            "\ttechnology \"${3:Technology}\"",
+            "\t$0",
+            "}"
+        ],
+        "description": "Define a data store"
+    },
+    "Queue": {
+        "prefix": "queue",
+        "body": [
+            "queue ${1:ID} \"${2:Label}\" {",
+            "\ttechnology \"${3:Technology}\"",
+            "\t$0",
+            "}"
+        ],
+        "description": "Define a queue"
+    },
+    "Relation": {
+        "prefix": "rel",
+        "body": [
+            "${1:From} -> ${2:To} \"${3:Description}\""
+        ],
+        "description": "Define a relationship"
+    },
+    "Requirement": {
+        "prefix": "requirement",
+        "body": [
+            "requirement ${1:ID} ${2|functional,constraint,performance,security,reliability|} \"${3:Description}\""
+        ],
+        "description": "Define a requirement"
+    },
+    "ADR": {
+        "prefix": "adr",
+        "body": [
+            "adr ${1:ID} \"${2:Title}\" {",
+            "\tstatus \"${3|Proposed,Accepted,Rejected,Deprecated,Superseded|}\"",
+            "\tcontext \"${4:Context}\"",
+            "\tdecision \"${5:Decision}\"",
+            "\tconsequences \"${6:Consequences}\"",
+            "}"
+        ],
+        "description": "Define an Architecture Decision Record"
+    },
+    "Policy": {
+        "prefix": "policy",
+        "body": [
+            "policy ${1:ID} \"${2:Description}\" {",
+            "\tcategory \"${3:Category}\"",
+            "\tenforcement \"${4|required,recommended,optional|}\"",
+            "}"
+        ],
+        "description": "Define a policy"
+    },
+    "Scenario": {
+        "prefix": "scenario",
+        "body": [
+            "scenario \"${1:Title}\" {",
+            "\t$0",
+            "}"
+        ],
+        "description": "Define a scenario"
+    },
+    "Flow": {
+        "prefix": "flow",
+        "body": [
+            "flow ${1:ID} \"${2:Title}\" {",
+            "\tstep \"${3:Step 1}\"",
+            "\tstep \"${4:Step 2}\"",
+            "\t$0",
+            "}"
+        ],
+        "description": "Define a flow"
+    },
+    "Decision": {
+        "prefix": "decision",
+        "body": [
+            "decision ${1:ID} \"${2:Description}\" {",
+            "\tcondition \"${3:Condition}\"",
+            "\tyes -> ${4:TargetID}",
+            "\tno -> ${5:TargetID}",
+            "}"
+        ],
+        "description": "Define a decision point in a flow"
+    },
+    "Library": {
+        "prefix": "library",
+        "body": [
+            "library ${1:ID} \"${2:Label}\" {",
+            "\tdescription \"${3:Description}\"",
+            "\tmetadata {",
+            "\t\tversion \"${4:1.0.0}\"",
+            "\t}",
+            "\t$0",
+            "}"
+        ],
+        "description": "Define a library of reusable elements"
+    },
+    "Requirement Block": {
+        "prefix": "reqblock",
+        "body": [
+            "requirement ${1:ID} \"${2:Title}\" {",
+            "\ttype \"${3|functional,constraint,performance,security,reliability|}\"",
+            "\tdescription \"${4:Description}\"",
+            "}"
+        ],
+        "description": "Define a requirement with block syntax"
+    },
+    "Metadata": {
+        "prefix": "metadata",
+        "body": [
+            "metadata {",
+            "\t$0",
+            "}"
+        ],
+        "description": "Define metadata block"
+    },
+    "Layer": {
+        "prefix": "layer",
+        "body": [
+            "layer \"${1|web,api,service,data,database|}\""
+        ],
+        "description": "Define layer metadata"
+    },
+    "Technology": {
+        "prefix": "tech",
+        "body": [
+            "technology \"${1:Technology}\""
+        ],
+        "description": "Define technology"
+    },
+    "Description": {
+        "prefix": "desc",
+        "body": [
+            "description \"${1:Description}\""
+        ],
+        "description": "Define description"
+    }
+}

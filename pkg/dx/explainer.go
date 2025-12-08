@@ -204,8 +204,8 @@ func extractRelationInfo(rel *language.Relation) (label, verb string) {
 
 // processRelation processes a relation and adds it to the RelationsInfo if it matches the elementID.
 func processRelation(rel *language.Relation, elementID string, info *RelationsInfo) {
-	fromID := rel.From
-	toID := rel.To
+	fromID := rel.From.String()
+	toID := rel.To.String()
 
 	if fromID == elementID {
 		label, verb := extractRelationInfo(rel)
@@ -269,15 +269,21 @@ func (e *Explainer) extractMetadata(elem interface{}) map[string]string {
 	switch v := elem.(type) {
 	case *language.System:
 		for _, meta := range v.Metadata {
-			metadata[meta.Key] = meta.Value
+			if meta.Value != nil {
+				metadata[meta.Key] = *meta.Value
+			}
 		}
 	case *language.Container:
 		for _, meta := range v.Metadata {
-			metadata[meta.Key] = meta.Value
+			if meta.Value != nil {
+				metadata[meta.Key] = *meta.Value
+			}
 		}
 	case *language.Component:
 		for _, meta := range v.Metadata {
-			metadata[meta.Key] = meta.Value
+			if meta.Value != nil {
+				metadata[meta.Key] = *meta.Value
+			}
 		}
 	}
 
@@ -306,7 +312,8 @@ func (e *Explainer) findRelatedScenarios(elementID string) []*ScenarioInfo {
 
 	for _, scenario := range arch.Scenarios {
 		for _, step := range scenario.Steps {
-			if step.From == elementID || (step.To != nil && *step.To == elementID) {
+			// step.From and step.To are QualifiedIdent - use String() for comparison
+			if step.From.String() == elementID || step.To.String() == elementID {
 				related = append(related, &ScenarioInfo{
 					ID:    scenario.Title, // Use title as ID since scenario ID is optional
 					Label: scenario.Title,
@@ -330,7 +337,7 @@ func (e *Explainer) findDependencies(elementID string) []string {
 		deps[rel.To] = true
 	}
 
-	var result []string
+	result := make([]string, 0, len(deps))
 	for dep := range deps {
 		result = append(result, dep)
 	}

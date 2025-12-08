@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architecture: {{.ArchName}}</title>
+  <style>
+{{template "styles" .}}
+  </style>
+</head>
+<body>
+  <div class="layout">
+{{template "sidebar" .}}
+    <div id="container">
+{{template "views" .}}
+    </div>
+  </div>
+{{template "scripts" .}}
+</body>
+</html>

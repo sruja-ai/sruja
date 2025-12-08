@@ -1,0 +1,302 @@
+---
+// apps/website/src/pages/courses/index.astro
+import { getCollection, type CollectionEntry } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import ContentPage from '@/features/content/components/ContentPage.astro';
+import CoursesList from '@/features/courses/components/CoursesList';
+
+const allLessons = await getCollection('courses');
+
+// Group lessons by course and module
+interface Course {
+  name: string;
+  title: string;
+  modules: Module[];
+}
+
+interface Module {
+  name: string;
+  title: string;
+  lessons: Lesson[];
+}
+
+interface Lesson {
+  slug: string;
+  title: string;
+  summary?: string;
+  weight?: number;
+}
+
+const coursesMap = new Map<string, Course>();
+
+allLessons.forEach((lesson: CollectionEntry<'courses'>) => {
+  const slugParts = lesson.slug.split('/');
+  
+  if (slugParts.length >= 3) {
+    const courseName = slugParts[0];
+    const moduleName = slugParts[1];
+    const lessonName = slugParts[2];
+    
+    // Get or create course
+    if (!coursesMap.has(courseName)) {
+      coursesMap.set(courseName, {
+        name: courseName,
+        title: courseName.split('-').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+        modules: [],
+      });
+    }
+    
+    const course = coursesMap.get(courseName)!;
+    
+    // Get or create module
+    let module = course.modules.find(m => m.name === moduleName);
+    if (!module) {
+      module = {
+        name: moduleName,
+        title: moduleName.split('-').slice(1).map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+        lessons: [],
+      };
+      course.modules.push(module);
+    }
+    
+    // Add lesson
+    module.lessons.push({
+      slug: lesson.slug,
+      title: lesson.data.title,
+      summary: lesson.data.summary,
+      weight: lesson.data.weight,
+    });
+  }
+});
+
+// Sort courses from basic to advanced
+// Order: system-design-101, system-design-201, then others alphabetically
+const courses: Course[] = Array.from(coursesMap.values()).sort((a, b) => {
+  // Extract course number if it exists (e.g., "101" from "system-design-101")
+  const getCourseNumber = (name: string): number => {
+    const match = name.match(/(\d+)$/);
+    return match ? parseInt(match[1], 10) : 999;
+  };
+  
+  // Prioritize numbered courses (101, 201, etc.)
+  const numA = getCourseNumber(a.name);
+  const numB = getCourseNumber(b.name);
+  
+  // If both have numbers, sort by number
+  if (numA !== 999 && numB !== 999) {
+    return numA - numB;
+  }
+  
+  // If only one has a number, it comes first
+  if (numA !== 999) return -1;
+  if (numB !== 999) return 1;
+  
+  // Otherwise, sort alphabetically
+  return a.name.localeCompare(b.name);
+});
+
+courses.forEach(course => {
+  course.modules.sort((a, b) => {
+    // Extract module number for sorting
+    const numA = parseInt(a.name.match(/module-(\d+)/)?.[1] || '999');
+    const numB = parseInt(b.name.match(/module-(\d+)/)?.[1] || '999');
+    return numA - numB;
+  });
+  
+  course.modules.forEach(module => {
+    module.lessons.sort((a, b) => {
+      const weightA = a.weight ?? 999;
+      const weightB = b.weight ?? 999;
+      return weightA - weightB;
+    });
+  });
+});
+---
+
+<Layout title="Courses" description="Learn system design and architecture with Sruja courses.">
+  <ContentPage title="Courses" summary="Comprehensive courses on system design and software architecture using Sruja.">
+    <CoursesList client:load courses={courses} />
+  </ContentPage>
+</Layout>
+
+<style>
+  :global(.courses-list) {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  :global(.course-card) {
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 0.75rem;
+    background: var(--color-background, #ffffff);
+    transition: all 0.2s;
+    overflow: hidden;
+  }
+
+  :global(html.dark) .course-card {
+    border-color: #334155;
+    background: #1e293b;
+  }
+
+  :global(.course-card:hover) {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  :global(html.dark) .course-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  }
+
+  :global(.course-header) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+  }
+
+  :global(.course-header:hover) {
+    background: var(--color-surface, #f8fafc);
+  }
+
+  :global(html.dark) .course-header:hover {
+    background: #334155;
+  }
+
+  :global(.course-title) {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--color-text-primary, #0f172a);
+    transition: color 0.2s;
+  }
+
+  :global(html.dark) .course-title {
+    color: #f1f5f9;
+  }
+
+  :global(.expand-icon) {
+    flex-shrink: 0;
+    color: var(--color-text-secondary, #64748b);
+    transition: transform 0.2s, color 0.2s;
+  }
+
+  :global(.expand-icon.expanded) {
+    transform: rotate(180deg);
+  }
+
+  :global(html.dark) .expand-icon {
+    color: #cbd5e1;
+  }
+
+  :global(.course-modules) {
+    padding: 0 2rem 2rem 2rem;
+    display: grid;
+    gap: 2rem;
+    animation: slideDown 0.2s ease-out;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  :global(.module) {
+    padding: 1.5rem;
+    background: var(--color-surface, #f8fafc);
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+  }
+
+  :global(html.dark) .module {
+    background: #334155;
+  }
+
+  :global(.module-title) {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 1rem 0;
+    color: var(--color-text-primary, #0f172a);
+    transition: color 0.2s;
+  }
+
+  :global(html.dark) .module-title {
+    color: #f1f5f9;
+  }
+
+  :global(.lessons-list) {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  :global(.lesson-item) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  :global(.lesson-link) {
+    color: var(--color-primary, #3b82f6);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9375rem;
+    transition: color 0.2s;
+  }
+
+  :global(.lesson-link:hover) {
+    color: var(--color-primary-hover, #2563eb);
+    text-decoration: underline;
+  }
+
+  :global(.lesson-summary) {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary, #64748b);
+    line-height: 1.5;
+    transition: color 0.2s;
+  }
+
+  :global(html.dark) .lesson-summary {
+    color: #cbd5e1;
+  }
+
+  :global(.empty-state) {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--color-text-tertiary, #64748b);
+    font-size: 1.125rem;
+    transition: color 0.2s;
+  }
+
+  :global(html.dark) .empty-state {
+    color: #cbd5e1;
+  }
+
+  @media (max-width: 768px) {
+    :global(.course-header) {
+      padding: 1.25rem 1.5rem;
+    }
+
+    :global(.course-title) {
+      font-size: 1.25rem;
+    }
+
+    :global(.course-modules) {
+      padding: 0 1.5rem 1.5rem 1.5rem;
+    }
+
+    :global(.module) {
+      padding: 1rem;
+    }
+  }
+</style>
+

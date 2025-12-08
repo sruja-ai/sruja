@@ -1,0 +1,43 @@
+// examples/views_customization.sruja
+// Example demonstrating optional views block for customizing diagrams
+//
+// Views are OPTIONAL - if not specified, standard C4 views are automatically
+// generated. Views block is only needed for customization (filtering, styling, etc.)
+
+architecture "E-commerce Platform with Custom Views" {
+  person Customer "Customer"
+  
+  system Shop "E-commerce Shop" {
+    container WebApp "Web Application" {
+      technology "React"
+    }
+    
+    container API "API Gateway" {
+      technology "Node.js"
+    }
+    
+    datastore DB "PostgreSQL Database" {
+      technology "PostgreSQL 14"
+    }
+  }
+  
+  Customer -> Shop.WebApp "Uses"
+  Shop.WebApp -> Shop.API "Calls"
+  Shop.API -> Shop.DB "Reads/Writes"
+  
+  views {
+    container Shop "API Focus" {
+      include Shop.API Shop.DB
+      exclude Shop.WebApp
+    }
+    
+    styles {
+      element "Database" {
+        shape "cylinder"
+        color "#ff0000"
+      }
+    }
+  }
+  
+  requirement R1 functional "Must support 10k concurrent users"
+}

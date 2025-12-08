@@ -1,0 +1,486 @@
+---
+// apps/website/src/layouts/Layout.astro
+import Navbar from '@/shared/components/layout/Navbar';
+import '@sruja/ui/design-system/styles.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title = 'Sruja', description = 'Developer-friendly language for defining, visualizing, and validating software architecture' } = Astro.props;
+const fullTitle = title === 'Sruja' ? title : `${title} | Sruja`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content={description} />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/sruja-logo.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{fullTitle}</title>
+    <script is:inline>
+      (function() {
+        const applyTheme = () => {
+          const theme = localStorage.getItem('sruja-theme-mode') || 'system';
+          const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+            document.documentElement.setAttribute('data-theme', 'dark');
+          } else {
+            document.documentElement.classList.add('light');
+            document.documentElement.classList.remove('dark');
+            document.documentElement.setAttribute('data-theme', 'light');
+          }
+        };
+        applyTheme();
+        try {
+          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+          window.addEventListener('storage', applyTheme);
+          window.addEventListener('theme-change', applyTheme);
+          const mo = new MutationObserver(() => {
+            const isDark = document.documentElement.classList.contains('dark');
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+          });
+          mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        } catch {}
+      })();
+    </script>
+  </head>
+  <body>
+    <Navbar client:only="react" />
+    <main>
+      <slot />
+    </main>
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-section">
+          <h3>Docs</h3>
+          <ul>
+            <li><a href="/docs/intro">Introduction</a></li>
+            <li><a href="/courses">Courses</a></li>
+            <li><a href="/tutorials">Tutorials</a></li>
+          </ul>
+        </div>
+        <div class="footer-section">
+          <h3>Community</h3>
+          <ul>
+            <li><a href="https://github.com/sruja-ai/sruja" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          </ul>
+        </div>
+        <div class="footer-section">
+          <h3>More</h3>
+          <ul>
+            <li><a href="/blogs">Blogs</a></li>
+            <li><a href="/studio">Studio</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-copyright">
+        © {new Date().getFullYear()} Sruja. All rights reserved.
+      </div>
+    </footer>
+  </body>
+</html>
+
+<style>
+  :global(html) {
+    font-family: system-ui, sans-serif;
+    background: var(--color-background, #ffffff);
+    color: var(--color-text-primary, #0f172a);
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  :global(html.dark) {
+    background: #0f172a;
+    color: #f1f5f9;
+  }
+
+  :global(html.light) {
+    background: #ffffff;
+    color: #0f172a;
+  }
+  
+  :global(body) {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-background, #ffffff);
+    color: var(--color-text-primary, #0f172a);
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  :global(.navbar) {
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
+    background: var(--color-background, #ffffff);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+    transition: background-color 0.2s, border-color 0.2s;
+  }
+
+  :global(html.dark .navbar) {
+    border-bottom-color: #334155;
+    background: #0f172a;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+  }
+
+  :global(.nav-container) {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  :global(.nav-logo) {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: var(--color-text-primary, #0f172a);
+    font-weight: 700;
+    font-size: 1.25rem;
+    transition: opacity 0.2s, color 0.2s;
+    flex-shrink: 0;
+  }
+
+  :global(.nav-logo:hover) {
+    opacity: 0.8;
+  }
+
+  :global(.nav-logo span) {
+    background: var(--color-brand-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  :global(.nav-links) {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  :global(.nav-links a) {
+    text-decoration: none;
+    color: var(--color-text-secondary, #475569);
+    font-weight: 500;
+    font-size: 0.9375rem;
+    transition: color 0.2s;
+    position: relative;
+    padding: 0.5rem 0;
+  }
+
+  :global(.nav-links a::after) {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--color-brand-gradient);
+    transition: width 0.3s ease;
+  }
+
+  :global(.nav-links a:hover) {
+    color: var(--color-text-primary, #0f172a);
+  }
+
+  :global(html.dark .nav-links a:hover) {
+    color: #f1f5f9;
+  }
+
+  :global(.nav-links a:hover::after) {
+    width: 100%;
+  }
+
+  :global(.nav-dropdown) {
+    position: relative;
+  }
+
+  :global(.nav-dropdown-trigger) {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: var(--color-text-secondary, #475569);
+    font-weight: 500;
+    font-size: 0.9375rem;
+    transition: color 0.2s;
+    position: relative;
+    padding: 0.5rem 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  :global(.nav-dropdown-trigger:hover) {
+    color: var(--color-text-primary, #0f172a);
+  }
+
+  :global(html.dark .nav-dropdown-trigger:hover) {
+    color: #f1f5f9;
+  }
+
+  :global(.nav-dropdown-trigger::after) {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--color-brand-gradient);
+    transition: width 0.3s ease;
+  }
+
+  :global(.nav-dropdown-trigger:hover::after) {
+    width: 100%;
+  }
+
+  :global(.nav-dropdown-menu) {
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    background: var(--color-background, #ffffff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    min-width: 160px;
+    padding: 0.5rem 0;
+    z-index: 1000;
+    animation: fadeIn 0.15s ease-out;
+  }
+
+  /* Create invisible bridge area to prevent gap between trigger and menu */
+  :global(.nav-dropdown-menu::before) {
+    content: '';
+    position: absolute;
+    top: -0.5rem;
+    left: 0;
+    right: 0;
+    height: 0.5rem;
+    background: transparent;
+  }
+
+  :global(html.dark .nav-dropdown-menu) {
+    background: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  }
+
+  :global(.nav-dropdown-menu a) {
+    display: block;
+    padding: 0.5rem 1rem;
+    color: var(--color-text-secondary, #475569);
+    text-decoration: none;
+    font-size: 0.9375rem;
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  :global(.nav-dropdown-menu a:hover) {
+    background: var(--color-surface, #f1f5f9);
+    color: var(--color-text-primary, #0f172a);
+  }
+
+  :global(html.dark .nav-dropdown-menu a) {
+    color: #cbd5e1;
+  }
+
+  :global(html.dark .nav-dropdown-menu a:hover) {
+    background: #334155;
+    color: #f1f5f9;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (max-width: 1024px) {
+    :global(.nav-container) {
+      padding: 0.875rem 1.5rem;
+    }
+
+    :global(.nav-links) {
+      gap: 1.5rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    :global(.nav-container) {
+      padding: 0.875rem 1rem;
+      flex-wrap: wrap;
+    }
+
+    :global(.nav-logo span) {
+      font-size: 1.125rem;
+    }
+
+    :global(.nav-links) {
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    :global(.nav-links a) {
+      font-size: 0.875rem;
+    }
+
+    :global(.nav-dropdown-menu) {
+      right: 0;
+      left: auto;
+    }
+  }
+
+  @media (max-width: 640px) {
+    :global(.nav-container) {
+      padding: 0.75rem 1rem;
+    }
+
+    :global(.nav-logo) {
+      font-size: 1rem;
+    }
+
+    :global(.nav-links) {
+      gap: 0.75rem;
+    }
+
+    :global(.nav-links a) {
+      font-size: 0.8125rem;
+    }
+  }
+
+  main {
+    flex: 1;
+    background: var(--color-background, #ffffff);
+    color: var(--color-text-primary, #0f172a);
+    transition: background-color 0.2s, color 0.2s;
+    min-height: calc(100vh - 200px);
+  }
+
+  /* Responsive content styles */
+  :global(main .content-container) {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  @media (max-width: 1024px) {
+    :global(main .content-container) {
+      padding: 1.5rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    :global(main .content-container) {
+      padding: 1rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    :global(main .content-container) {
+      padding: 0.75rem;
+    }
+  }
+
+  .footer {
+    background: var(--color-surface, #0f172a);
+    color: var(--color-text-primary, #ffffff);
+    margin-top: auto;
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  :global(html.dark .footer) {
+    background: #1e293b;
+    color: #f1f5f9;
+  }
+
+  .footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 3rem 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+  }
+
+  @media (max-width: 768px) {
+    .footer-container {
+      padding: 2rem 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1.5rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .footer-container {
+      padding: 1.5rem 1rem;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+  }
+
+  .footer-section h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+  }
+
+  .footer-section ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .footer-section li {
+    margin-bottom: 0.5rem;
+  }
+
+  .footer-section a {
+    color: var(--color-text-secondary, #cbd5e1);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .footer-section a:hover {
+    color: var(--color-text-primary, #ffffff);
+  }
+
+  :global(html.dark .footer-section a) {
+    color: #cbd5e1;
+  }
+
+  :global(html.dark .footer-section a:hover) {
+    color: #f1f5f9;
+  }
+
+  .footer-copyright {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem 2rem;
+    border-top: 1px solid var(--color-border, #334155);
+    text-align: center;
+    color: var(--color-text-tertiary, #94a3b8);
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  :global(html.dark .footer-copyright) {
+    border-top-color: #334155;
+    color: #94a3b8;
+  }
+</style>

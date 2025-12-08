@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	contentDir = "learn/content"
-	indexFile  = "_index.md"
+	contentDir         = "apps/website/src/content"
+	indexFile          = "_index.md"
+	moduleOverviewFile = "module-overview.md"
 )
 
 type ValidationError struct {
@@ -64,8 +65,8 @@ func validateCourses() []ValidationError {
 			return err
 		}
 
-		// Check course _index.md files
-		if info.Name() == indexFile {
+		// Check module-overview.md files
+		if info.Name() == moduleOverviewFile {
 			relPath, _ := filepath.Rel(contentDir, path)
 			if errs := validateFrontmatter(path); len(errs) > 0 {
 				errors = append(errors, errs...)
@@ -87,8 +88,8 @@ func validateCourses() []ValidationError {
 			}
 		}
 
-		// Check lesson files
-		if strings.HasSuffix(info.Name(), ".md") && info.Name() != indexFile {
+		// Check lesson files (exclude module-overview.md)
+		if strings.HasSuffix(info.Name(), ".md") && info.Name() != moduleOverviewFile {
 
 			if errs := validateFrontmatter(path); len(errs) > 0 {
 				errors = append(errors, errs...)

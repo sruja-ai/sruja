@@ -35,7 +35,7 @@ architecture "Test System" {
 	parser, err := NewParser()
 	require.NoError(t, err)
 
-	program, err := parser.Parse("test.sruja", dsl)
+	program, _, err := parser.Parse("test.sruja", dsl)
 	require.NoError(t, err)
 
 	sys := program.Architecture.Systems[0]

@@ -1,0 +1,26 @@
+{
+  "name": "@sruja/social-publish",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "reddit": "tsx src/reddit_post.ts",
+    "linkedin": "tsx src/linkedin_post.ts",
+    "mastodon": "tsx src/mastodon_post.ts",
+    "bluesky": "tsx src/bluesky_post.ts",
+    "github-discussion": "tsx src/github_discussion.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "@sruja/shared": "*",
+    "snoowrap": "^1.23.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.6.3",
+    "@sruja/eslint-config": "*",
+    "eslint": "^9.39.1"
+  }
+}
+

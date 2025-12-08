@@ -1,8 +1,0 @@
-{{ $opts := dict
-  "minify" (not hugo.IsDevelopment)
-  "sourceMap" (cond hugo.IsDevelopment "external" "")
-  "jsx" "automatic"
-  "jsxImportSource" "react"
-}}
-{{ $js := resources.Get "js/main.ts" | js.Build $opts }}
-<script src="{{ $js.RelPermalink }}" defer></script>

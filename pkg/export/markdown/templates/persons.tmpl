@@ -1,0 +1,13 @@
+{{define "persons"}}
+{{if hasPersons .Architecture}}
+## Persons
+
+{{range .Architecture.Persons}}
+### {{.Label}}
+{{if .Description}}
+{{.Description}}
+
+{{end}}
+{{end}}
+{{end}}
+

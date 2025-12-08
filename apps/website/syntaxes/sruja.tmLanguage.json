@@ -1,0 +1,49 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Sruja",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#keywords" },
+    { "include": "#identifiers" },
+    { "include": "#relations" },
+    { "include": "#metadata" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        { "name": "comment.line.double-slash.sruja", "match": "//.*$" },
+        { "name": "comment.block.sruja", "begin": "/\\*", "end": "\\*/" }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        { "name": "string.quoted.double.sruja", "begin": "\"", "end": "\"", "patterns": [ { "name": "constant.character.escape.sruja", "match": "\\\\." } ] },
+        { "name": "string.quoted.single.sruja", "begin": "'", "end": "'", "patterns": [ { "name": "constant.character.escape.sruja", "match": "\\\\." } ] }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        { "name": "keyword.control.sruja", "match": "\\b(architecture|library|system|container|component|person|deployment|queue|datastore|external|import|implements|requires|policy|requirement|scenario|story|flow|decision|yes|no|condition|owner|description|metadata|properties|style|adr|contract|constraint|convention|technology|status|context|consequences|category|enforcement|layer|version|type|scale|tags|link|title|date|author)\\b" },
+        { "name": "storage.type.sruja", "match": "\\b(Database|Queue|Cache|FileSystem|API|Service|Web|Mobile|Desktop|IoT|Messaging|Stream|Function|Serverless)\\b" }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        { "name": "entity.name.type.sruja", "match": "\\b[A-Z][a-zA-Z0-9_]*\\b" },
+        { "name": "variable.other.sruja", "match": "\\b[a-z][a-zA-Z0-9_]*\\b" }
+      ]
+    },
+    "relations": {
+      "patterns": [ { "name": "keyword.operator.sruja", "match": "->|-->|<->|\\[\\]|\\(\\)|uses|calls|sends|receives|reads|writes|depends_on|connects_to" } ]
+    },
+    "metadata": {
+      "patterns": [
+        { "name": "entity.name.tag.sruja", "match": "\\b(layer|version|type|scale|tags|link|title|date|author)\\b" },
+        { "name": "constant.numeric.sruja", "match": "\\b\\d+(\\.\\d+)?\\b" },
+        { "name": "entity.name.tag.sruja", "match": "\\[[a-zA-Z0-9_, ]+\\]" }
+      ]
+    }
+  },
+  "scopeName": "source.sruja"
+}

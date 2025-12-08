@@ -1,6 +1,6 @@
 # Content Contribution Guide
 
-Complete guide for contributing content to the Sruja Learn site.
+Complete guide for contributing content to the Sruja website (Astro-based).
 
 ## Quick Start
 
@@ -65,17 +65,16 @@ go run scripts/content-validator/main.go
 ## Content Structure
 
 ```
-learn/content/
+apps/website/src/content/
 ├── courses/
 │   └── course-name/
-│       ├── _index.md          # Course landing page
 │       └── module-name/
-│           ├── _index.md      # Module landing page
-│           └── lesson-1.md    # Lesson content
+│           ├── module-overview.md  # Module landing page
+│           └── lesson-1.md         # Lesson content
 ├── tutorials/
 │   └── tutorial-name.md
-├── blogs/
-│   └── blog-post-name.md
+├── blog/
+│   └── YYYY-MM-DD-post-name.md
 └── docs/
     └── doc-name.md
 ```
@@ -113,27 +112,38 @@ make content-validate
 
 ## Frontmatter Guidelines
 
-All content files require frontmatter at the top:
+All content files require frontmatter at the top. Astro uses content collections with schema validation:
 
 ```yaml
 ---
 title: "Your Title"
-weight: 1
 summary: "Brief description (1-2 sentences)"
+weight: 1  # Optional: For menu ordering (lower = earlier)
 ---
 ```
 
 ### Required Fields
 
-- `title` - Human-readable title
-- `summary` - Brief description (1-2 sentences)
-- `weight` - For menu ordering (lower = earlier)
+- `title` - Human-readable title (required by Astro schema)
 
 ### Optional Fields
 
-- `date` - For blog posts (auto-set to current date by generator)
-- `draft` - Set to `true` for unpublished content
-- `type` - For special content types
+**For all content:**
+- `summary` - Brief description (1-2 sentences)
+- `weight` - For menu ordering (lower = earlier)
+- `description` - Extended description
+
+**For blog posts:**
+- `pubDate` - Publication date (auto-set to current date by generator)
+- `authors` - Array of author objects
+- `tags` - Array of tag strings
+
+**For courses/tutorials:**
+- `difficulty` - `beginner`, `intermediate`, or `advanced`
+- `topic` - Topic category
+- `estimatedTime` - Estimated reading time
+
+Note: Astro validates frontmatter against the schema defined in `apps/website/src/content/config.ts`
 
 ## Content Best Practices
 
@@ -172,12 +182,15 @@ summary: "Brief description (1-2 sentences)"
 
 ### Linking Content
 
-Use Hugo's `relref` shortcode for internal links:
+Use standard Markdown links for internal content:
 
 ```markdown
-[Link to lesson]({{< relref "lesson-1" >}})
-[Link to module]({{< relref "module-1-fundamentals" >}})
+[Link to lesson](/courses/course-name/module-name/lesson-1)
+[Link to module](/courses/course-name/module-name)
+[Link to tutorial](/tutorials/tutorial-name)
 ```
+
+Or use Astro's `getCollection` API in components for dynamic linking.
 
 ## Validation
 
@@ -234,13 +247,13 @@ Templates located at: `scripts/content-generator/templates/`
 
 1. Create content structure using Make commands
 2. Edit generated files and replace TODO placeholders
-3. Update parent `_index.md` files to link to new content
+3. Update parent `module-overview.md` files to link to new lessons (if needed)
 4. Validate with `make content-validate`
-5. Test locally with `cd learn && hugo server`
+5. Test locally with `cd apps/website && npm run dev`
 6. Commit and push
 
 ## Additional Resources
 
-- [Content Guidelines](../learn/content/docs/content-guidelines.md) - What belongs where
-- [Hugo Documentation](https://gohugo.io/) - Hugo features and shortcodes
+- [Astro Content Collections](https://docs.astro.build/en/guides/content-collections/) - Astro content management
+- [Astro Documentation](https://docs.astro.build/) - Astro features and APIs
 

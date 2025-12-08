@@ -7,5 +7,5 @@ architecture "Import Main Example" {
     }
   }
   App -> Shared uses "Uses"
-  API -> SharedDB reads "Reads data"
+  App.API -> Shared.SharedDB reads "Reads data"
 }

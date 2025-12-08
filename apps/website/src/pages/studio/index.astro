@@ -1,0 +1,101 @@
+---
+// apps/website/src/pages/studio/index.astro
+import StudioApp from '@/features/studio/components/StudioApp';
+import '@sruja/ui/design-system/styles.css';
+import '@sruja/studio-core/src/index.css';
+// Import studio-core CSS at page level to ensure immediate style application
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content="Interactive Sruja architecture modeling studio" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/sruja-logo.svg" />
+    <title>Studio | Sruja</title>
+    <script is:inline>
+      (function() {
+        const theme = localStorage.getItem('sruja-theme-mode') || 'system';
+        const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+          document.documentElement.classList.remove('light');
+          document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+          document.documentElement.classList.add('light');
+          document.documentElement.classList.remove('dark');
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="studio-container">
+      <StudioApp client:only="react" />
+    </div>
+  </body>
+</html>
+
+<style>
+  :global(html),
+  :global(body) {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: system-ui, sans-serif;
+    background: var(--color-background, #ffffff);
+    color: var(--color-text-primary, #0f172a);
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  :global(html.dark),
+  :global(html[data-theme='dark']) {
+    background: #0f172a;
+    color: #f1f5f9;
+  }
+
+  :global(html.light),
+  :global(html[data-theme='light']) {
+    background: #ffffff;
+    color: #0f172a;
+  }
+
+  .studio-container {
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-background, #ffffff);
+    color: var(--color-text-primary, #0f172a);
+    transition: background-color 0.2s, color 0.2s;
+    position: relative;
+  }
+
+  :global(html.dark) .studio-container,
+  :global(html[data-theme='dark']) .studio-container {
+    background: #0f172a;
+    color: #f1f5f9;
+  }
+
+  :global(#root) {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* Ensure studio app container takes full space */
+  :global(#root .app) {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+</style>

@@ -28,7 +28,7 @@ architecture "Test" {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	program, err := parser.Parse("test.sruja", dsl)
+	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("Failed to parse metadata: %v", err)
 	}
@@ -74,7 +74,7 @@ architecture "Test" {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	program, err := parser.Parse("test.sruja", dsl)
+	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("Failed to parse system with metadata: %v", err)
 	}
@@ -149,7 +149,7 @@ architecture "Test" {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	program, err := parser.Parse("test.sruja", dsl)
+	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("Failed to parse multiple metadata entries: %v", err)
 	}

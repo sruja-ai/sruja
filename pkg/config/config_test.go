@@ -52,7 +52,7 @@ func TestLoadConfig_WithFile(t *testing.T) {
   }
 }`
 
-	if err := os.WriteFile(configPath, []byte(configJSON), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(configJSON), 0o644); err != nil {
 		t.Fatalf("Failed to write test config: %v", err)
 	}
 
@@ -85,7 +85,7 @@ func TestLoadConfig_InvalidJSON(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "sruja.config.json")
 	invalidJSON := `{ invalid json }`
 
-	if err := os.WriteFile(configPath, []byte(invalidJSON), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(invalidJSON), 0o644); err != nil {
 		t.Fatalf("Failed to write test config: %v", err)
 	}
 
@@ -253,14 +253,14 @@ func TestSaveConfig_WriteError(t *testing.T) {
 func TestLoadConfig_ParentDirectorySearch(t *testing.T) {
 	tmpDir := t.TempDir()
 	subDir := filepath.Join(tmpDir, "sub", "dir")
-	if err := os.MkdirAll(subDir, 0755); err != nil {
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
 		t.Fatalf("Failed to create subdirectory: %v", err)
 	}
 
 	configPath := filepath.Join(tmpDir, "sruja.config.json")
 	configJSON := `{"diagrams": {"theme": "test"}}`
-	if err := os.WriteFile(configPath, []byte(configJSON), 0644); err != nil {
-		t.Fatalf("Failed to write config: %v", err)
+	if err := os.WriteFile(configPath, []byte(configJSON), 0o644); err != nil {
+		t.Fatalf("Failed to write config file: %v", err)
 	}
 
 	originalDir, _ := os.Getwd()

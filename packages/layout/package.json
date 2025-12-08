@@ -1,0 +1,43 @@
+{
+  "name": "@sruja/layout",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types.ts",
+    "./c4-model": "./src/c4-model.ts",
+    "./c4-view": "./src/c4-view.ts",
+    "./c4-layout": "./src/c4-layout.ts",
+    "./geometry/point": "./src/geometry/point.ts",
+    "./geometry/rect": "./src/geometry/rect.ts",
+    "./algorithms/sizing": "./src/algorithms/sizing.ts",
+    "./algorithms/flowLayout": "./src/algorithms/flowLayout.ts",
+    "./algorithms/hierarchy": "./src/algorithms/hierarchy.ts",
+    "./algorithms/coordinates": "./src/algorithms/coordinates.ts",
+    "./algorithms/edge-router": "./src/algorithms/edge-router.ts",
+    "./metrics": "./src/metrics.ts",
+    "./text": "./src/text/index.ts",
+    "./utils/validation": "./src/utils/validation.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "clean": "rimraf dist"
+  },
+  "devDependencies": {
+    "@sruja/eslint-config": "*",
+    "@vitest/coverage-v8": "^4.0.15",
+    "eslint": "^9.39.1",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.6.3",
+    "vitest": "^4.0.15"
+  }
+}

@@ -27,7 +27,7 @@ architecture "Test" {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	program, err := parser.Parse("test.sruja", dsl)
+	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("Failed to parse DSL: %v", err)
 	}

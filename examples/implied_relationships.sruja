@@ -1,0 +1,54 @@
+// examples/implied_relationships.sruja
+// Example demonstrating implied relationships feature
+//
+// With implied relationships enabled, you only need to define:
+//   User -> API.WebApp "Uses"
+//
+// The system automatically infers:
+//   User -> API (implied, because WebApp is inside API)
+//
+// This reduces boilerplate while maintaining clarity.
+
+architecture "E-commerce Platform with Implied Relationships" {
+  person Customer "Customer"
+  person Admin "Administrator"
+  
+  system Shop "E-commerce Shop" {
+    container WebApp "Web Application" {
+      technology "React"
+    }
+    
+    container API "API Gateway" {
+      technology "Node.js"
+    }
+    
+    datastore DB "PostgreSQL Database" {
+      technology "PostgreSQL 14"
+    }
+  }
+  
+  // Only need to define relationships to nested elements
+  // The system will automatically infer parent relationships
+  Customer -> Shop.WebApp "Uses"
+  Customer -> Shop.API "Calls"
+  Shop.WebApp -> Shop.API "Makes requests to"
+  Shop.API -> Shop.DB "Reads/Writes"
+  
+  // Explicit relationships are still supported and take precedence
+  Admin -> Shop "Manages"
+  
+  // The following relationships are automatically inferred:
+  //   Customer -> Shop (implied from Customer -> Shop.WebApp)
+  //   Customer -> Shop (implied from Customer -> Shop.API)
+  //   Shop -> Shop.DB (implied from Shop.API -> Shop.DB)
+  
+  requirement R1 functional "Must support 10k concurrent users"
+  requirement R2 constraint "Must use PostgreSQL"
+  
+  adr ADR001 "Use microservices architecture" {
+    status "accepted"
+    context "Need to scale different parts independently"
+    decision "Adopt microservices architecture"
+    consequences "Gain: Independent scaling. Trade-off: Increased complexity"
+  }
+}

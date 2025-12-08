@@ -1,0 +1,45 @@
+name: Create Hotfix
+
+on:
+  workflow_dispatch:
+    inputs:
+      patchVersion:
+        description: 'Hotfix Version (e.g., 0.1.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Locate latest production tag
+        id: latest
+        run: |
+          echo "tag=$(bash scripts/release.sh latest-stable)" >> $GITHUB_OUTPUT
+
+      - name: Create Hotfix Branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout "${{ steps.latest.outputs.tag }}"
+          git checkout -b hotfix/${{ inputs.patchVersion }}
+          git push origin hotfix/${{ inputs.patchVersion }}
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --base $(bash scripts/release.sh derive-release-line "${{ steps.latest.outputs.tag }}") \
+            --head hotfix/${{ inputs.patchVersion }} \
+            --title "Hotfix ${{ inputs.patchVersion }}" \
+            --body "Hotfix release for version ${{ inputs.patchVersion }} created from stable tag ${{ steps.latest.outputs.tag }}."

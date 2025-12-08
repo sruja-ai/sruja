@@ -22,22 +22,25 @@ architecture "Systems Thinking Example" {
     }
     
     // Events show what happens in the system (declared at architecture level via context)
-    context Events {
-        event OrderPlaced {
-            orderId string
-            customerId string
-            total float
-        }
-        
-        event PaymentProcessed {
-            orderId string
-            amount float
-            status string
-        }
-    }
+    // Events show what happens in the system (declared at architecture level via context)
+    // context Events {
+    //     event OrderPlaced {
+    //         orderId string
+    //         customerId string
+    //         total float
+    //     }
+    //     
+    //     event PaymentProcessed {
+    //         orderId string
+    //         amount float
+    //         status string
+    //     }
+    // }
     
     system PaymentGateway "Third-party Payment Service" {
-        external
+        metadata {
+            tags ["external"]
+        }
     }
     
     // Relationships show how parts interact
@@ -60,30 +63,32 @@ architecture "Systems Thinking Example" {
     // Flows show how information/data moves through the system
     
     // Data Flow Diagram (DFD) style
-    flow OrderProcess "Order Processing Flow" {
-        Customer -> WebApp "Submits Order"
-        WebApp -> API "Sends Order Data"
-        API -> Database "Saves Order"
-        API -> PaymentGateway "Charges Payment"
-        PaymentGateway -> API "Returns Confirmation"
-        API -> Database "Updates Order Status"
-        API -> WebApp "Returns Result"
-        WebApp -> Customer "Shows Confirmation"
-    }
+    // Data Flow Diagram (DFD) style
+    // flow OrderProcess "Order Processing Flow" {
+    //     Customer -> WebApp "Submits Order"
+    //     WebApp -> API "Sends Order Data"
+    //     API -> Database "Saves Order"
+    //     API -> PaymentGateway "Charges Payment"
+    //     PaymentGateway -> API "Returns Confirmation"
+    //     API -> Database "Updates Order Status"
+    //     API -> WebApp "Returns Result"
+    //     WebApp -> Customer "Shows Confirmation"
+    // }
     
     // User Story/Scenario style
-    story Checkout "User Checkout Flow" {
-        Customer -> "Cart Page" "adds items to cart"
-        "Cart Page" -> WebApp "clicks checkout"
-        WebApp -> API "validates cart"
-        API -> Database "checks inventory"
-        Database -> API "returns stock status"
-        API -> PaymentGateway "processes payment"
-        PaymentGateway -> API "confirms payment"
-        API -> Database "creates order"
-        API -> WebApp "returns order confirmation"
-        WebApp -> Customer "displays success message"
-    }
+    // User Story/Scenario style
+    // story Checkout "User Checkout Flow" {
+    //     Customer -> "Cart Page" "adds items to cart"
+    //     "Cart Page" -> WebApp "clicks checkout"
+    //     WebApp -> API "validates cart"
+    //     API -> Database "checks inventory"
+    //     Database -> API "returns stock status"
+    //     API -> PaymentGateway "processes payment"
+    //     PaymentGateway -> API "confirms payment"
+    //     API -> Database "creates order"
+    //     API -> WebApp "returns order confirmation"
+    //     WebApp -> Customer "displays success message"
+    // }
     
     // Simple relationship flow (unidirectional to avoid cycles)
     Customer -> WebApp "Browses Products"
@@ -122,11 +127,15 @@ architecture "Systems Thinking Example" {
     
     // Additional external systems show what the system depends on
     system EmailService "Email Notifications" {
-        external
+        metadata {
+            tags ["external"]
+        }
     }
     
     system AnalyticsService "Usage Analytics" {
-        external
+        metadata {
+            tags ["external"]
+        }
     }
     
     // Relationships show context interactions

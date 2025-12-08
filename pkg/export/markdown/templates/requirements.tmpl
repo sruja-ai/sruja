@@ -1,0 +1,25 @@
+{{define "requirements"}}
+{{if hasRequirements .Architecture}}
+## Requirements
+
+{{$reqs := .Architecture.Requirements}}
+{{$typeGroup := makeMap}}
+{{range $reqs}}
+{{$type := .Type}}
+{{if not (index $typeGroup $type)}}
+{{$typeGroup = set $typeGroup $type (makeSlice)}}
+{{end}}
+{{$typeGroup = set $typeGroup $type (append (index $typeGroup $type) .)}}
+{{end}}
+{{range $type := list "functional" "performance" "security" "constraint"}}
+{{if index $typeGroup $type}}
+### {{title $type}}
+
+{{range index $typeGroup $type}}
+- {{.ID}}: {{.Description}}
+{{end}}
+
+{{end}}
+{{end}}
+{{end}}
+

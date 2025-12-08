@@ -1,0 +1,41 @@
+---
+// apps/website/src/pages/courses/[...slug].astro
+import { getCollection, type CollectionEntry } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import ContentDetail from '@/features/content/components/ContentDetail.astro';
+import ContentNavigation from '@/features/content/components/ContentNavigation.astro';
+import { generateContentPaths } from '@/features/content/utils/paths';
+
+export async function getStaticPaths() {
+  const courses = await getCollection('courses');
+  const paths = generateContentPaths(courses, '/courses', 'weight');
+  
+  return paths.map(path => ({
+    params: path.params,
+    props: {
+      course: path.props.entry,
+      previous: path.props.previous,
+      next: path.props.next,
+    },
+  }));
+}
+
+type Props = {
+  course: CollectionEntry<'courses'>;
+  previous?: { title: string; href: string };
+  next?: { title: string; href: string };
+};
+
+const { course, previous, next } = Astro.props as Props;
+const { Content } = await course.render();
+---
+
+<Layout title={course.data.title} description={course.data.summary || course.data.description}>
+  <ContentDetail
+    title={course.data.title}
+    summary={course.data.summary}
+    Content={Content}
+    standalone={true}
+  />
+  <ContentNavigation previous={previous || undefined} next={next || undefined} basePath="/courses" />
+</Layout>

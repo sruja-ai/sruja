@@ -5,7 +5,7 @@ architecture "Requirements Implements Example" {
     container DB "Database" {
     }
   }
-  API -> DB reads "Reads data"
+  API -> App.DB reads "Reads data"
   App -> API uses "Uses"
   requirement R1 functional "Persist data"
   requirement R2 constraint "Expose API"

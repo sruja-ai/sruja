@@ -10,5 +10,5 @@ architecture "Test" {
   }
 
   Customer -> API "Uses"
-  // Relations between nested elements not supported in parser currently
+  API.Web -> API.DB "Reads"
 }

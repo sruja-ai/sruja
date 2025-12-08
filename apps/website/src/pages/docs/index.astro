@@ -1,0 +1,23 @@
+---
+// apps/website/src/pages/docs/index.astro
+import { getCollection } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import ContentPage from '@/features/content/components/ContentPage.astro';
+import ContentList from '@/features/content/components/ContentList.astro';
+import { sortByWeight } from '@/features/content/utils/sorting';
+import { transformToContentListItems } from '@/features/content/utils/transform';
+
+const docs = await getCollection('docs');
+const sortedDocs = sortByWeight(docs);
+const items = transformToContentListItems(sortedDocs, '/docs', {
+  linkText: 'Read More →',
+});
+---
+
+<Layout title="Documentation" description="Complete Sruja documentation and guides.">
+  <ContentPage title="Documentation" summary="Complete documentation for Sruja, including guides, concepts, and reference materials.">
+    <ContentList items={items} emptyMessage="No documentation available yet. Check back soon!" />
+  </ContentPage>
+</Layout>
+
+

@@ -1,18 +1,13 @@
 architecture "User Stories with Qualified Actors" {
+    person User "Customer"
+    system Inventory "Inventory System"
+    system ECommerce "E-Commerce System" {
+        container CartPage "Cart Page"
+    }
     
-    system ECommerce {
-        
-	story Checkout "User Checkout Flow" {
-		description "As a Customer, I want to checkout..."
-		
-		// 1. User interacts with UI (String Literal)
-		User -> "Cart Page" "adds item to cart"
-		
-		// 2. UI interacts with System
-		"Cart Page" -> ECommerce "clicks checkout"
-		
-		// 3. System interacts with external
-		ECommerce -> Inventory "Check Stock"
-	}
+    story Checkout "User Checkout Flow" {
+        User -> ECommerce.CartPage "adds item to cart"
+        ECommerce.CartPage -> ECommerce "clicks checkout"
+        ECommerce -> Inventory "Check Stock"
     }
 }

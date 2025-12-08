@@ -1,22 +1,26 @@
-// apps/cli/cmd/version.go
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 )
 
-const Version = "0.1.0"
-const BuildDate = "unknown"
-const GitCommit = "unknown"
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
 
-func runVersion(stdout io.Writer) int {
-	_, _ = fmt.Fprintf(stdout, "sruja version %s\n", Version)
-	if BuildDate != "unknown" {
-		_, _ = fmt.Fprintf(stdout, "Build date: %s\n", BuildDate)
+func runVersion(args []string, stdout, stderr io.Writer) int {
+	versionCmd := flag.NewFlagSet("version", flag.ContinueOnError)
+	versionCmd.SetOutput(stderr)
+
+	if err := versionCmd.Parse(args); err != nil {
+		_, _ = fmt.Fprintf(stderr, "Error parsing version flags: %v\n", err)
+		return 1
 	}
-	if GitCommit != "unknown" {
-		_, _ = fmt.Fprintf(stdout, "Git commit: %s\n", GitCommit)
-	}
+
+	fmt.Fprintf(stdout, "sruja version %s (commit: %s, date: %s)\n", version, commit, date)
 	return 0
 }

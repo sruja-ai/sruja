@@ -1,0 +1,39 @@
+---
+import InteractiveViewer from '@/features/viewer/components/InteractiveViewer'
+const initialDsl = `architecture "Playground" {
+  person User "Learner"
+
+  system Demo {
+    container WebApp "Web"
+    container API "API"
+    datastore DB "Database"
+  }
+
+  User -> WebApp "Uses"
+  WebApp -> API "Calls"
+  API -> DB "Reads/Writes"
+}`
+---
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Playground | Sruja</title>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Playground</h1>
+      <p class="lead">Experiment with Sruja DSL and see instant previews.</p>
+      <div class="viewer">
+        <InteractiveViewer client:only="react" initialDsl={initialDsl} />
+      </div>
+    </div>
+  </body>
+</html>
+
+<style>
+  .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+  .lead { color: #64748b; margin-bottom: 1rem; }
+  .viewer { height: 70vh; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+</style>

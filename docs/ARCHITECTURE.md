@@ -2,7 +2,7 @@
 
 ## Overview
 
-Sruja is a Go project composed of a CLI entrypoint, a language/AST and parser, a validation engine, exporters, and developer experience helpers. The docs site lives under `learn/` and is built with Hugo.
+Sruja is a Go project composed of a CLI entrypoint, a language/AST and parser, a validation engine, exporters, and developer experience helpers. The website lives under `apps/website/` and is built with Astro.
 
 ## Directory Layout
 
@@ -10,10 +10,19 @@ Sruja is a Go project composed of a CLI entrypoint, a language/AST and parser, a
 cmd/sruja            # CLI entrypoint (Cobra) and subcommands
 pkg/language         # DSL parser, AST, printer
 pkg/engine           # Validation engine and rules
-pkg/export           # Exporters (D2, …)
+pkg/export           # Exporters (D2, HTML, Markdown, SVG, JSON)
 pkg/dx               # Developer experience helpers (errors, formatting)
 examples             # Example .sruja models
-learn                # Hugo-based docs/learning site
+apps/                # Frontend applications
+  website/           # Astro-based website (docs, courses, tutorials, blog)
+  studio-core/       # Studio application (diagram editor)
+  viewer-core/       # Viewer application (architecture visualization)
+  vscode-extension/  # VS Code language support
+packages/            # Shared TypeScript packages
+  shared/            # Shared utilities and types
+  ui/                # UI component library
+  viewer/             # Viewer library
+  html-viewer/       # HTML viewer components
 .github/workflows    # CI and release pipelines
 scripts              # Installer and tooling scripts
 ```
@@ -47,7 +56,7 @@ scripts              # Installer and tooling scripts
 ## Language & AST (pkg/language)
 
 - The AST types and parser are defined in `pkg/language/ast.go:1` and `pkg/language/parser.go:143`.
-- Key types: `Architecture`, `System`, `Container`, `Component`, `Person`, `DataStore`, `Queue`, `Relation`, `Scenario`, `ADR`, domain modeling constructs (`Entity`, `ValueObject`, `DomainEvent`).
+- Key types: `Architecture`, `System`, `Container`, `Component`, `Person`, `DataStore`, `Queue`, `Relation`, `Scenario`, `ADR`.
 - Parser helpers convert top-level file items into architecture items: `pkg/language/parser.go:143`.
 - Example tests cover metadata, journeys, getters:
   - Metadata parsing: `pkg/language/metadata_parsing_test.go:1`
@@ -76,12 +85,12 @@ scripts              # Installer and tooling scripts
 - Enhanced error formatting and context: `pkg/dx/errors_test.go:95`, `pkg/dx/explainer.go:144`.
 - The `ErrorEnhancer` augments parser/validator errors with file and line context.
 
-## Docs & Learn Site (learn/)
+## Website (apps/website/)
 
-- Hugo configuration: `learn/hugo.toml:1`.
-- JS entrypoint initializes navigation, code blocks, theme, and tracking: `learn/assets/js/main.ts:1`.
-- Top navigation components: `learn/assets/js/components/TopNavigation.tsx:1` and utilities: `learn/assets/js/utils/navigation.ts:1`.
-- Learn content: Markdown/MD files in `learn/content/**` (e.g., Getting Started: `learn/content/docs/getting-started.md:1`).
+- Astro configuration: `apps/website/astro.config.mjs`.
+- Content: Markdown/MD files in `apps/website/src/content/**` organized by type (docs, courses, tutorials, blog).
+- Features: Studio app, viewer, playground with WASM support.
+- Build: Astro static site generator with TypeScript/React components.
 
 ## CI, Releases, and Installer
 

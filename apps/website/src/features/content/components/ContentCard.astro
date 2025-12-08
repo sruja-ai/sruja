@@ -1,0 +1,143 @@
+---
+// apps/website/src/features/content/components/ContentCard.astro
+import TagList from '@/shared/components/ui/TagList.astro';
+
+interface Props {
+  title: string;
+  href: string;
+  summary?: string;
+  tags?: string[];
+  date?: string;
+  linkText?: string;
+}
+
+const { title, href, summary, tags, date, linkText = 'Read More →' } = Astro.props;
+---
+
+<article class="content-card">
+  <h2>
+    <a href={href}>{title}</a>
+  </h2>
+  {date && <time class="content-date">{date}</time>}
+  {summary && <p class="content-summary">{summary}</p>}
+  {tags && tags.length > 0 && <TagList tags={tags} className="content-card-tags" />}
+  <a href={href} class="content-link">{linkText}</a>
+</article>
+
+<style>
+  .content-card {
+    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+  }
+
+  :global(html.dark) .content-card {
+    border-color: #334155;
+    background: #1e293b;
+  }
+
+  .content-card:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  :global(html.dark) .content-card:hover {
+    border-color: #60a5fa;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  }
+
+  .content-card h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    color: #0f172a;
+    transition: color 0.2s;
+  }
+
+  :global(html.dark) .content-card h2 {
+    color: #f1f5f9;
+  }
+
+  .content-card h2 a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .content-card h2 a:hover {
+    color: #3b82f6;
+  }
+
+  :global(html.dark) .content-card h2 a:hover {
+    color: #60a5fa;
+  }
+
+  .content-date {
+    display: block;
+    font-size: 0.875rem;
+    color: #64748b;
+    margin-bottom: 0.75rem;
+    transition: color 0.2s;
+  }
+
+  :global(html.dark) .content-date {
+    color: #cbd5e1;
+  }
+
+  .content-summary {
+    color: #64748b;
+    margin: 0 0 1rem 0;
+    line-height: 1.6;
+    transition: color 0.2s;
+  }
+
+  :global(html.dark) .content-summary {
+    color: #cbd5e1;
+  }
+
+  .content-card-tags {
+    margin-bottom: 1rem;
+  }
+
+  .content-link {
+    display: inline-block;
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+
+  .content-link:hover {
+    color: #2563eb;
+    text-decoration: underline;
+  }
+
+  @media (max-width: 768px) {
+    .content-card {
+      padding: 1.25rem;
+    }
+
+    .content-card h2 {
+      font-size: 1.25rem;
+    }
+
+    .content-summary {
+      font-size: 0.9375rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .content-card {
+      padding: 1rem;
+    }
+
+    .content-card h2 {
+      font-size: 1.125rem;
+    }
+
+    .content-date {
+      font-size: 0.8125rem;
+    }
+  }
+</style>
+

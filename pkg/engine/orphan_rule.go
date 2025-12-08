@@ -2,7 +2,9 @@ package engine
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/sruja-ai/sruja/pkg/diagnostics"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
@@ -12,123 +14,221 @@ func (r *OrphanDetectionRule) Name() string {
 	return "OrphanDetection"
 }
 
-func (r *OrphanDetectionRule) Validate(program *language.Program) []ValidationError {
-	errors := []ValidationError{}
-	defined := map[string]language.SourceLocation{}
+//nolint:funlen,gocyclo // Validation logic is long and complex
+func (r *OrphanDetectionRule) Validate(program *language.Program) []diagnostics.Diagnostic {
+	var diags []diagnostics.Diagnostic
+	definedLoc := map[string]language.SourceLocation{}
+	defined := map[string]bool{}
 	used := map[string]bool{}
 
+	if program == nil {
+		return diags
+	}
 	arch := program.Architecture
 	if arch == nil {
-		return errors
+		return diags
 	}
 
 	parent := map[string]string{}
 
 	for _, sys := range arch.Systems {
-		defined[sys.ID] = sys.Location()
+		defined[sys.ID] = true
+		definedLoc[sys.ID] = sys.Location()
 		if len(sys.Requirements) > 0 || len(sys.ADRs) > 0 || len(sys.Contracts) > 0 {
 			used[sys.ID] = true
 		}
 		for _, cont := range sys.Containers {
-			defined[cont.ID] = cont.Location()
-			parent[cont.ID] = sys.ID
+			contID := sys.ID + "." + cont.ID
+			defined[contID] = true
+			definedLoc[contID] = cont.Location()
+			parent[contID] = sys.ID
 			if len(cont.Requirements) > 0 || len(cont.ADRs) > 0 || len(cont.Contracts) > 0 {
-				used[cont.ID] = true
+				used[contID] = true
 			}
 			for _, comp := range cont.Components {
-				defined[comp.ID] = comp.Location()
-				parent[comp.ID] = cont.ID
+				compID := contID + "." + comp.ID
+				defined[compID] = true
+				definedLoc[compID] = comp.Location()
+				parent[compID] = contID
 				if len(comp.Requirements) > 0 || len(comp.ADRs) > 0 {
-					used[comp.ID] = true
+					used[compID] = true
 				}
 			}
 			for _, ds := range cont.DataStores {
-				defined[ds.ID] = ds.Location()
-				parent[ds.ID] = cont.ID
+				dsID := contID + "." + ds.ID
+				defined[dsID] = true
+				definedLoc[dsID] = ds.Location()
+				parent[dsID] = contID
 			}
 			for _, q := range cont.Queues {
-				defined[q.ID] = q.Location()
-				parent[q.ID] = cont.ID
+				qID := contID + "." + q.ID
+				defined[qID] = true
+				definedLoc[qID] = q.Location()
+				parent[qID] = contID
 			}
 		}
 		for _, comp := range sys.Components {
-			defined[comp.ID] = comp.Location()
-			parent[comp.ID] = sys.ID
+			compID := sys.ID + "." + comp.ID
+			defined[compID] = true
+			definedLoc[compID] = comp.Location()
+			parent[compID] = sys.ID
 			if len(comp.Requirements) > 0 || len(comp.ADRs) > 0 {
-				used[comp.ID] = true
+				used[compID] = true
 			}
 		}
 		for _, ds := range sys.DataStores {
-			defined[ds.ID] = ds.Location()
-			parent[ds.ID] = sys.ID
+			dsID := sys.ID + "." + ds.ID
+			defined[dsID] = true
+			definedLoc[dsID] = ds.Location()
+			parent[dsID] = sys.ID
 		}
 		for _, q := range sys.Queues {
-			defined[q.ID] = q.Location()
-			parent[q.ID] = sys.ID
+			qID := sys.ID + "." + q.ID
+			defined[qID] = true
+			definedLoc[qID] = q.Location()
+			parent[qID] = sys.ID
 		}
 	}
+	// Add top-level elements
+	for _, cont := range arch.Containers {
+		defined[cont.ID] = true
+		definedLoc[cont.ID] = cont.Location()
+		if len(cont.Requirements) > 0 || len(cont.ADRs) > 0 || len(cont.Contracts) > 0 {
+			used[cont.ID] = true
+		}
+		for _, comp := range cont.Components {
+			compID := cont.ID + "." + comp.ID
+			defined[compID] = true
+			definedLoc[compID] = comp.Location()
+			parent[compID] = cont.ID
+			if len(comp.Requirements) > 0 || len(comp.ADRs) > 0 {
+				used[compID] = true
+			}
+		}
+		for _, ds := range cont.DataStores {
+			dsID := cont.ID + "." + ds.ID
+			defined[dsID] = true
+			definedLoc[dsID] = ds.Location()
+			parent[dsID] = cont.ID
+		}
+		for _, q := range cont.Queues {
+			qID := cont.ID + "." + q.ID
+			defined[qID] = true
+			definedLoc[qID] = q.Location()
+			parent[qID] = cont.ID
+		}
+	}
+	for _, comp := range arch.Components {
+		defined[comp.ID] = true
+		definedLoc[comp.ID] = comp.Location()
+		if len(comp.Requirements) > 0 || len(comp.ADRs) > 0 {
+			used[comp.ID] = true
+		}
+	}
+	for _, ds := range arch.DataStores {
+		defined[ds.ID] = true
+		definedLoc[ds.ID] = ds.Location()
+	}
+	for _, q := range arch.Queues {
+		defined[q.ID] = true
+		definedLoc[q.ID] = q.Location()
+	}
 	for _, p := range arch.Persons {
-		defined[p.ID] = p.Location()
+		defined[p.ID] = true
+		definedLoc[p.ID] = p.Location()
 	}
 
-	markRel := func(from, to string) { used[from] = true; used[to] = true }
+	resolve := func(ref, scope string) string {
+		// 1. Try absolute/global match
+		if defined[ref] {
+			return ref
+		}
+
+		// 2. Try relative to scope, walking up
+		if scope != "" {
+			candidate := scope + "." + ref
+			if defined[candidate] {
+				return candidate
+			}
+
+			parts := strings.Split(scope, ".")
+			for i := len(parts) - 1; i >= 0; i-- {
+				prefix := strings.Join(parts[:i], ".")
+				var candidate string
+				if prefix == "" {
+					candidate = ref
+				} else {
+					candidate = prefix + "." + ref
+				}
+				if defined[candidate] {
+					return candidate
+				}
+			}
+		}
+
+		// 3. For architecture-level relations (scope=""), search all defined elements
+		// to find matching IDs (e.g., "API" matches "Order.API")
+		if scope == "" {
+			for id := range defined {
+				parts := strings.Split(id, ".")
+				if len(parts) > 0 && parts[len(parts)-1] == ref {
+					return id
+				}
+			}
+		}
+
+		return "" // Return empty if not resolved
+	}
+
+	markRel := func(from, to, scope string) {
+		resolvedFrom := resolve(from, scope)
+		if resolvedFrom != "" {
+			used[resolvedFrom] = true
+		}
+
+		resolvedTo := resolve(to, scope)
+		if resolvedTo != "" {
+			used[resolvedTo] = true
+		}
+	}
+
 	for _, r := range arch.Relations {
-		markRel(r.From, r.To)
+		markRel(r.From.String(), r.To.String(), "")
 	}
 	for _, s := range arch.Systems {
 		for _, r := range s.Relations {
-			markRel(r.From, r.To)
+			markRel(r.From.String(), r.To.String(), s.ID)
 		}
 		for _, c := range s.Containers {
+			contID := s.ID + "." + c.ID
 			for _, r := range c.Relations {
-				markRel(r.From, r.To)
+				markRel(r.From.String(), r.To.String(), contID)
 			}
 		}
 		for _, comp := range s.Components {
+			compID := s.ID + "." + comp.ID
 			for _, r := range comp.Relations {
-				markRel(r.From, r.To)
+				markRel(r.From.String(), r.To.String(), compID)
 			}
 		}
 	}
 
+	// Scenarios and Flows handling removed - Flow type not yet defined, Scenarios not in System
+	// TODO: Implement Flow type, then add Flow checking
+	// Scenarios are in Architecture - can be added back if needed
 	// Helper to check steps
-	checkSteps := func(steps []*language.ScenarioStep) {
-		for _, step := range steps {
-			if step.To != nil {
-				markRel(step.From, *step.To)
-			} else {
-				// Mark actor as used
-				used[step.From] = true
-			}
-		}
-	}
-
-	// Helper to check flow steps
-	checkFlowSteps := func(steps []*language.FlowStep) {
-		for _, step := range steps {
-			markRel(step.From, step.To)
-		}
-	}
-
-	// Check Scenarios (Top-level)
-	for _, s := range arch.Scenarios {
-		checkSteps(s.Steps)
-	}
-
-	// Check Flows (Top-level)
-	for _, f := range arch.Flows {
-		checkFlowSteps(f.Steps)
-	}
-
-	// Check Nested Scenarios and Flows
-	for _, sys := range arch.Systems {
-		for _, s := range sys.Scenarios {
-			checkSteps(s.Steps)
-		}
-		for _, f := range sys.Flows {
-			checkFlowSteps(f.Steps)
-		}
-	}
+	// checkSteps := func(steps []*language.ScenarioStep) {
+	// 	for _, step := range steps {
+	// 		if step.To != "" {
+	// 			markRel(step.From, step.To)
+	// 		} else {
+	// 			used[step.From] = true
+	// 		}
+	// 	}
+	// 	}
+	// for _, s := range arch.Scenarios {
+	// 	checkSteps(s.Steps)
+	// }
 
 	// Propagate usage to parents
 	// Iterate multiple times or just ensure we cover the depth (max 3: Component -> Container -> System)
@@ -143,10 +243,23 @@ func (r *OrphanDetectionRule) Validate(program *language.Program) []ValidationEr
 		}
 	}
 
-	for id, loc := range defined {
+	for id := range defined {
 		if !used[id] {
-			errors = append(errors, ValidationError{Message: fmt.Sprintf("Orphan element '%s' is defined but never used in any relation.", id), Line: loc.Line, Column: loc.Column})
+			loc := definedLoc[id]
+			// Extract short ID (last part) for error message
+			parts := strings.Split(id, ".")
+			shortID := parts[len(parts)-1]
+			diags = append(diags, diagnostics.Diagnostic{
+				Code:     diagnostics.CodeOrphanElement,
+				Severity: diagnostics.SeverityWarning,
+				Message:  fmt.Sprintf("Orphan element '%s' is defined but never used in any relation.", shortID),
+				Location: diagnostics.SourceLocation{
+					File:   loc.File,
+					Line:   loc.Line,
+					Column: loc.Column,
+				},
+			})
 		}
 	}
-	return errors
+	return diags
 }

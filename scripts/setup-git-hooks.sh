@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # scripts/setup-git-hooks.sh
 # Setup git hooks for Sruja development
 
@@ -29,18 +29,18 @@ NC='\033[0m' # No Color
 
 echo "${YELLOW}Running Sruja code compilation tests...${NC}"
 
-# Check if learn files are being committed
-if git diff --cached --name-only | grep -qE '^learn/'; then
-    echo "Detected changes in learn/ directory"
+# Check if example files are being committed
+if git diff --cached --name-only | grep -qE '^examples/'; then
+    echo "Detected changes in examples/ directory"
     
     # Run the compilation tests
-    if ! go test -run "TestPlaygroundExamples|TestCourseCodeBlocks|TestDocsCodeBlocks" 2>&1; then
+    if ! go test -run "TestPlaygroundExamples" 2>&1; then
         echo ""
         echo "${RED}❌ Code compilation tests failed!${NC}"
         echo "${RED}Please fix compilation errors before committing.${NC}"
         echo ""
         echo "To see detailed errors, run:"
-        echo "  go test -v -run 'TestPlaygroundExamples|TestCourseCodeBlocks|TestDocsCodeBlocks'"
+        echo "  go test -v -run 'TestPlaygroundExamples'"
         echo ""
         exit 1
     fi
@@ -55,6 +55,6 @@ chmod +x "$HOOKS_DIR/pre-commit"
 
 echo "✅ Pre-commit hook installed successfully!"
 echo ""
-echo "The hook will run compilation tests when you commit changes to learn/ files."
+echo "The hook will run compilation tests when you commit changes to examples/ files."
 echo "To bypass the hook (not recommended), use: git commit --no-verify"
 

@@ -1,5 +1,7 @@
 # Sruja
 
+[![TypeScript Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg?flag=typescript)](https://codecov.io/gh/sruja-ai/sruja)
+
 **Sruja** is a next-generation architecture-as-code language with first-class support for requirements, ADRs, and extensible validation.
 
 > **⚠️ Alpha Release (v0.1.0)**: Sruja is under active development. APIs may change. See [ROADMAP.md](ROADMAP.md) for the path to v1.0.0.
@@ -25,7 +27,16 @@ sruja/
 ├── pkg/                  # Shared Go packages
 │   ├── engine/           # Validation engine
 │   ├── language/         # Parser, AST, lexer
-│   └── export/           # Exporters (D2, etc.)
+│   └── export/           # Exporters (D2, HTML, Markdown, SVG, JSON)
+├── apps/                 # Frontend applications
+│   ├── website/          # Astro website (docs, courses, tutorials)
+│   ├── studio-core/      # Studio app (diagram editor)
+│   ├── viewer-core/     # Viewer app (architecture visualization)
+│   └── vscode-extension/ # VS Code language support
+├── packages/             # Shared TypeScript packages
+│   ├── shared/           # Shared utilities and types
+│   ├── ui/               # UI component library
+│   └── viewer/           # Viewer library
 └── examples/             # Example .sruja files
 ```
 
@@ -63,8 +74,8 @@ architecture "My System" {
     }
     person User "User"
 
-    User -> Web "Visits"
-    Web -> DB "Reads/Writes"
+    User -> App.Web "Visits"
+    App.Web -> App.DB "Reads/Writes"
 }
 ```
 
@@ -109,7 +120,7 @@ make build
 
 ### Git Hooks
 
-A pre-commit hook automatically tests code compilation when you commit changes to the `learn/` directory. This prevents broken code from being committed.
+A pre-commit hook automatically tests code compilation when you commit changes to the `examples/` directory. This prevents broken code from being committed.
 
 **Setup:**
 ```bash
@@ -128,8 +139,32 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for more details.
 
 We welcome contributions of all sizes — from small doc fixes to core features.
 
-- Start with issues and "good first issues": https://github.com/sruja-ai/sruja/labels/good%20first%20issue
-- Read the [contribution guide](./docs/CONTRIBUTING.md)
+### 🎯 New to Contributing?
+
+**Start here:** [First Contribution Guide](docs/FIRST_CONTRIBUTION.md)
+
+This guide walks you through making your first contribution, even if you're new to the project.
+
+### Quick Links
+
+- 💡 **Contribution Ideas**: [What Can I Contribute?](docs/CONTRIBUTION_IDEAS.md)
+- 🐛 **Find Issues**: [Good First Issues](https://github.com/sruja-ai/sruja/labels/good%20first%20issue) (may be limited for new projects)
+- 📖 **Full Guide**: [Contribution Guide](docs/CONTRIBUTING.md)
+- 💬 **Get Help**: [Discord](https://discord.gg/QMCsquJq) | [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
+
+### Ways to Contribute
+
+**No Code Required:**
+- Fix typos in documentation
+- Add examples
+- Test and report bugs
+- Write tutorials or blog posts
+
+**Code Contributions:**
+- Fix bugs
+- Add features
+- Improve tests
+- Enhance tooling
 
 ### Pull Request Checklist
 

@@ -29,7 +29,7 @@ type ExampleEntry struct {
 func main() {
 	manifestPath := "examples/manifest.json"
 	examplesDir := "examples"
-	outputPath := "learn/assets/js/examples.generated.ts"
+	outputPath := "apps/website/src/lib/examples.generated.ts"
 
 	// Read manifest
 	manifestData, err := os.ReadFile(manifestPath)
@@ -118,7 +118,7 @@ func main() {
 	sb.WriteString("];\n")
 
 	// Write output
-	if err := os.WriteFile(outputPath, []byte(sb.String()), 0644); err != nil {
+	if err := os.WriteFile(outputPath, []byte(sb.String()), 0o644); err != nil { //nolint:gosec // generator script safe to write world-readable
 		fmt.Fprintf(os.Stderr, "Error writing output: %v\n", err)
 		os.Exit(1)
 	}

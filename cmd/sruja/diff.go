@@ -12,13 +12,13 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-func runDiff(stdout, stderr io.Writer) int {
+func runDiff(args []string, stdout, stderr io.Writer) int {
 	diffCmd := flag.NewFlagSet("diff", flag.ContinueOnError)
 	diffCmd.SetOutput(stderr)
 	diffJSON := diffCmd.Bool("json", false, "output as JSON")
 	diffFormat := diffCmd.String("format", "text", "output format: text, json")
 
-	if err := diffCmd.Parse(os.Args[2:]); err != nil {
+	if err := diffCmd.Parse(args); err != nil {
 		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing diff flags: %v", err)))
 		return 1
 	}
@@ -49,7 +49,8 @@ func runDiff(stdout, stderr io.Writer) int {
 	diff := computeDiff(program1, program2, file1, file2)
 
 	// Output diff
-	if *diffJSON || *diffFormat == "json" {
+	const outputFormatJSON = "json"
+	if *diffJSON || *diffFormat == outputFormatJSON {
 		outputDiffJSON(diff, stdout)
 	} else {
 		outputDiffText(diff, stdout)
@@ -78,10 +79,12 @@ func parseFile(filePath string) (*language.Program, error) {
 		return nil, err
 	}
 
-	return p.Parse(filePath, string(content))
+	program, _, err := p.Parse(filePath, string(content))
+	return program, err
 }
 
-func computeDiff(program1, program2 *language.Program, file1, file2 string) *Diff {
+//nolint:funlen,gocyclo,gocritic,goconst // Diff logic is inherently complex and centralized
+func computeDiff(program1, program2 *language.Program, _, _ string) *Diff {
 	diff := &Diff{
 		AddedContainers:   make(map[string][]string),
 		RemovedContainers: make(map[string][]string),
@@ -120,72 +123,77 @@ func computeDiff(program1, program2 *language.Program, file1, file2 string) *Dif
 	}
 
 	// Find modified systems (existing in both but changed)
+
 	for id, sys2 := range systems2 {
-		if sys1, exists := systems1[id]; exists {
-			// Compare containers
-			containers1 := make(map[string]bool)
-			containers2 := make(map[string]bool)
+		sys1, exists := systems1[id]
+		if !exists {
+			continue
+		}
 
-			for _, cont := range sys1.Containers {
-				containers1[cont.ID] = true
-			}
-			for _, cont := range sys2.Containers {
-				containers2[cont.ID] = true
-			}
+		// Compare containers
+		containers1 := make(map[string]bool)
+		containers2 := make(map[string]bool)
 
-			// Added containers
-			for contID := range containers2 {
-				if !containers1[contID] {
-					diff.AddedContainers[id] = append(diff.AddedContainers[id], contID)
-					diff.ModifiedSystems = appendIfNotExists(diff.ModifiedSystems, id)
+		for _, cont := range sys1.Containers {
+			containers1[cont.ID] = true
+		}
+		for _, cont := range sys2.Containers {
+			containers2[cont.ID] = true
+		}
+
+		// Added containers
+		for contID := range containers2 {
+			if !containers1[contID] {
+				diff.AddedContainers[id] = append(diff.AddedContainers[id], contID)
+				diff.ModifiedSystems = appendIfNotExists(diff.ModifiedSystems, id)
+			}
+		}
+
+		// Removed containers
+		for contID := range containers1 {
+			if !containers2[contID] {
+				diff.RemovedContainers[id] = append(diff.RemovedContainers[id], contID)
+				diff.ModifiedSystems = appendIfNotExists(diff.ModifiedSystems, id)
+			}
+		}
+
+		// Compare components (simplified - check if container has new/removed components)
+		for _, cont2 := range sys2.Containers {
+			var cont1 *language.Container
+			for _, c := range sys1.Containers {
+				if c.ID == cont2.ID {
+					cont1 = c
+					break
 				}
 			}
+			if cont1 != nil {
+				comps1 := make(map[string]bool)
+				comps2 := make(map[string]bool)
 
-			// Removed containers
-			for contID := range containers1 {
-				if !containers2[contID] {
-					diff.RemovedContainers[id] = append(diff.RemovedContainers[id], contID)
-					diff.ModifiedSystems = appendIfNotExists(diff.ModifiedSystems, id)
+				for _, comp := range cont1.Components {
+					comps1[comp.ID] = true
 				}
-			}
+				for _, comp := range cont2.Components {
+					comps2[comp.ID] = true
+				}
 
-			// Compare components (simplified - check if container has new/removed components)
-			for _, cont2 := range sys2.Containers {
-				var cont1 *language.Container
-				for _, c := range sys1.Containers {
-					if c.ID == cont2.ID {
-						cont1 = c
-						break
+				for compID := range comps2 {
+					if !comps1[compID] {
+						key := fmt.Sprintf("%s.%s", id, cont2.ID)
+						diff.AddedComponents[key] = append(diff.AddedComponents[key], compID)
+						diff.ModifiedSystems = appendIfNotExists(diff.ModifiedSystems, id)
 					}
 				}
-				if cont1 != nil {
-					comps1 := make(map[string]bool)
-					comps2 := make(map[string]bool)
-
-					for _, comp := range cont1.Components {
-						comps1[comp.ID] = true
-					}
-					for _, comp := range cont2.Components {
-						comps2[comp.ID] = true
-					}
-
-					for compID := range comps2 {
-						if !comps1[compID] {
-							key := fmt.Sprintf("%s.%s", id, cont2.ID)
-							diff.AddedComponents[key] = append(diff.AddedComponents[key], compID)
-							diff.ModifiedSystems = appendIfNotExists(diff.ModifiedSystems, id)
-						}
-					}
-					for compID := range comps1 {
-						if !comps2[compID] {
-							key := fmt.Sprintf("%s.%s", id, cont1.ID)
-							diff.RemovedComponents[key] = append(diff.RemovedComponents[key], compID)
-							diff.ModifiedSystems = appendIfNotExists(diff.ModifiedSystems, id)
-						}
+				for compID := range comps1 {
+					if !comps2[compID] {
+						key := fmt.Sprintf("%s.%s", id, cont1.ID)
+						diff.RemovedComponents[key] = append(diff.RemovedComponents[key], compID)
+						diff.ModifiedSystems = appendIfNotExists(diff.ModifiedSystems, id)
 					}
 				}
 			}
 		}
+
 	}
 
 	return diff
@@ -213,22 +221,10 @@ func outputDiffText(diff *Diff, w io.Writer) {
 	useColor := dx.SupportsColor()
 
 	// Added systems
-	if len(diff.AddedSystems) > 0 {
-		_, _ = fmt.Fprintln(w, dx.Section("Added Systems"))
-		for _, sys := range diff.AddedSystems {
-			_, _ = fmt.Fprintf(w, "  %s %s\n", dx.Colorize(dx.ColorGreen, "+", useColor), dx.Colorize(dx.ColorBold, sys, useColor))
-		}
-		_, _ = fmt.Fprintln(w)
-	}
+	printDiffList(w, "Added Systems", diff.AddedSystems, "+", dx.ColorGreen)
 
 	// Removed systems
-	if len(diff.RemovedSystems) > 0 {
-		_, _ = fmt.Fprintln(w, dx.Section("Removed Systems"))
-		for _, sys := range diff.RemovedSystems {
-			_, _ = fmt.Fprintf(w, "  %s %s\n", dx.Colorize(dx.ColorRed, "-", useColor), dx.Colorize(dx.ColorBold, sys, useColor))
-		}
-		_, _ = fmt.Fprintln(w)
-	}
+	printDiffList(w, "Removed Systems", diff.RemovedSystems, "-", dx.ColorRed)
 
 	// Modified systems
 	if len(diff.ModifiedSystems) > 0 {
@@ -236,19 +232,9 @@ func outputDiffText(diff *Diff, w io.Writer) {
 		for _, sys := range diff.ModifiedSystems {
 			_, _ = fmt.Fprintf(w, "  %s %s\n", dx.Colorize(dx.ColorYellow, "~", useColor), dx.Colorize(dx.ColorBold, sys, useColor))
 
-			// Added containers
-			if containers, ok := diff.AddedContainers[sys]; ok && len(containers) > 0 {
-				for _, cont := range containers {
-					_, _ = fmt.Fprintf(w, "    %s container %s\n", dx.Colorize(dx.ColorGreen, "+", useColor), cont)
-				}
-			}
-
-			// Removed containers
-			if containers, ok := diff.RemovedContainers[sys]; ok && len(containers) > 0 {
-				for _, cont := range containers {
-					_, _ = fmt.Fprintf(w, "    %s container %s\n", dx.Colorize(dx.ColorRed, "-", useColor), cont)
-				}
-			}
+			// Added/Removed containers
+			printContainerDiffs(w, sys, diff.AddedContainers, "+", dx.ColorGreen)
+			printContainerDiffs(w, sys, diff.RemovedContainers, "-", dx.ColorRed)
 
 			// Added components
 			for key, components := range diff.AddedComponents {

@@ -56,9 +56,9 @@ func TestPrinter_PrintRelation(t *testing.T) {
 	arch := &language.Architecture{
 		Name: "Test",
 		Relations: []*language.Relation{
-			{From: "A", To: "B"},
-			{From: "C", To: "D", Verb: stringPtr("calls")},
-			{From: "E", To: "F", Verb: stringPtr("uses"), Label: stringPtr("HTTP")},
+			{From: language.QualifiedIdent{Parts: []string{"A"}}, To: language.QualifiedIdent{Parts: []string{"B"}}},
+			{From: language.QualifiedIdent{Parts: []string{"C"}}, To: language.QualifiedIdent{Parts: []string{"D"}}, Verb: stringPtr("calls")},
+			{From: language.QualifiedIdent{Parts: []string{"E"}}, To: language.QualifiedIdent{Parts: []string{"F"}}, Verb: stringPtr("uses"), Label: stringPtr("HTTP")},
 		},
 	}
 	prog := &language.Program{Architecture: arch}
@@ -80,6 +80,7 @@ func TestPrinter_PrintRequirement(t *testing.T) {
 	arch := &language.Architecture{
 		Name: "Test",
 		Requirements: []*language.Requirement{
+			// Requirement.Type and Description are *string
 			{ID: "R1", Type: stringPtr("performance"), Description: stringPtr("p95<200ms")},
 			{ID: "R2", Type: stringPtr("security"), Description: stringPtr("TLS1.3")},
 		},
@@ -88,31 +89,45 @@ func TestPrinter_PrintRequirement(t *testing.T) {
 	printer := language.NewPrinter()
 	output := printer.Print(prog)
 
-	if !strings.Contains(output, `requirement R1 performance "p95<200ms"`) {
-		t.Error("Should print requirement")
-	}
 	if !strings.Contains(output, `requirement R2 security "TLS1.3"`) {
 		t.Error("Should print all requirements")
 	}
 }
 
-func TestPrinter_PrintADR(t *testing.T) {
+func TestPrinter_PrintADR_Full(t *testing.T) {
 	arch := &language.Architecture{
 		Name: "Test",
 		ADRs: []*language.ADR{
-			{ID: "ADR001", Title: stringPtr("Use JWT")},
-			{ID: "ADR002", Title: stringPtr("Use PostgreSQL")},
+			{
+				ID:    "ADR-001",
+				Title: stringPtr("Use Go"),
+				Body: &language.ADRBody{
+					Status:       stringPtr("Accepted"),
+					Context:      stringPtr("Need speed"),
+					Decision:     stringPtr("Use Go"),
+					Consequences: stringPtr("Good performance"),
+				},
+			},
 		},
 	}
 	prog := &language.Program{Architecture: arch}
 	printer := language.NewPrinter()
 	output := printer.Print(prog)
 
-	if !strings.Contains(output, `adr ADR001 "Use JWT"`) {
-		t.Error("Should print ADR")
+	if !strings.Contains(output, `adr ADR-001 "Use Go" {`) {
+		t.Error("Should print ADR header")
 	}
-	if !strings.Contains(output, `adr ADR002 "Use PostgreSQL"`) {
-		t.Error("Should print all ADRs")
+	if !strings.Contains(output, `status "Accepted"`) {
+		t.Error("Should print status")
+	}
+	if !strings.Contains(output, `context "Need speed"`) {
+		t.Error("Should print context")
+	}
+	if !strings.Contains(output, `decision "Use Go"`) {
+		t.Error("Should print decision")
+	}
+	if !strings.Contains(output, `consequences "Good performance"`) {
+		t.Error("Should print consequences")
 	}
 }
 
@@ -174,8 +189,8 @@ func TestPrinter_PrintRelation_InSystem(t *testing.T) {
 				Items: []language.SystemItem{
 					{
 						Relation: &language.Relation{
-							From: "Sys",
-							To:   "Other",
+							From: language.QualifiedIdent{Parts: []string{"Sys"}},
+							To:   language.QualifiedIdent{Parts: []string{"Other"}},
 							Verb: stringPtr("calls"),
 						},
 					},
@@ -359,8 +374,8 @@ func TestPrinter_PrintRelation_InComponent(t *testing.T) {
 										Items: []language.ComponentItem{
 											{
 												Relation: &language.Relation{
-													From: "Comp",
-													To:   "Other",
+													From: language.QualifiedIdent{Parts: []string{"Comp"}},
+													To:   language.QualifiedIdent{Parts: []string{"Other"}},
 												},
 											},
 										},

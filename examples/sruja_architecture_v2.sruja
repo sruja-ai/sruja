@@ -1,0 +1,76 @@
+architecture "Sruja Architecture" {
+  system Sruja "Sruja System" "The complete Sruja toolchain." {
+    container Core "Sruja Core" "The core logic for parsing, validating, and processing Sruja DSL." {
+      component Parser "Parser" "Parses .sruja files into AST." {
+        technology "Participle (Go)"
+      }
+      component AST "AST" "Abstract Syntax Tree definitions." {
+        technology "Go Structs"
+      }
+      component Validator "Validator" "Validates AST against rules (cycles, types, etc.)." {
+      }
+      component Engine "Engine" "Processes AST, resolves references, runs plugins." {
+      }
+    }
+    container CLI "Sruja CLI" "Command-line interface for Sruja." {
+      technology "Go (Cobra)"
+      component Commands "Commands" "export, fmt, lint, etc." {
+      }
+    }
+    container LSP "Language Server" "LSP implementation for IDE support." {
+      technology "Go (jsonrpc2)"
+      component Handler "LSP Handler" "Handles textDocument/didChange, hover, definition, etc." {
+      }
+    }
+    container VSCode "VS Code Extension" "Editor extension for VS Code." {
+      technology "TypeScript"
+      component Client "LSP Client" "Communicates with LSP server." {
+      }
+    }
+    container Studio "Sruja Studio" "Web-based visual editor and viewer." {
+      technology "React, Vite"
+      component Editor "Monaco Editor"
+      component Viewer "Diagram Viewer"
+      component WasmCore "WASM Core" "Sruja Core compiled to WebAssembly." {
+        technology "Go (WASM)"
+      }
+    }
+  }
+  person Architect "Software Architect"
+  person Developer "Developer"
+  Architect -> Sruja.CLI "Runs CICD checks"
+  Architect -> Sruja.VSCode "Writes Architecture DSL"
+  Architect -> Sruja.Studio "Visualizes Architecture Diagrams"
+  requirement R1 functional "Must support full C4 model hierarchy"
+  requirement R2 performance "Parsing must be < 100ms for typical files"
+  requirement R3 portability "Core must compile to WASM"
+  adr ADR01 "Use Participle for Parsing" {
+    status "Accepted"
+    context "Need a type-safe, declarative parser for Go."
+    decision "Use github.com/alecthomas/participle."
+  }
+  policy CodeStyle "Go code must be formatted with gofmt" {
+    category "quality"
+  }
+  policy NoCycles "Architecture graph must be acyclic" {
+    category "structural"
+    enforcement "strict"
+  }
+  flow AuthoringFlow "Authoring Architecture" {
+    Architect -> Sruja.VSCode "Writes DSL"
+    Sruja.VSCode -> Sruja.LSP "Validates"
+    Architect -> Sruja.Studio "Opens Preview"
+    Sruja.Studio -> Sruja.WasmCore "Renders diagram"
+  }
+  flow CICDFlow "CI/CD Verification" {
+    Developer -> Sruja.CLI "Pushes code"
+    Sruja.CLI -> Sruja.CLI "Runs lint"
+    Sruja.CLI -> Sruja.CLI "Runs export"
+    Sruja.CLI -> Sruja.CLI "Generates artifacts"
+  }
+  metadata {
+    version "1.0.0"
+    owner "Sruja Team"
+    repo "github.com/sruja-ai/sruja"
+  }
+}

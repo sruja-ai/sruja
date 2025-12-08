@@ -1,0 +1,138 @@
+.toast-container {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 9998;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    pointer-events: none;
+}
+
+.toast {
+    background: var(--glass-background);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-xl);
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 300px;
+    max-width: 400px;
+    pointer-events: auto;
+    animation: slideInFromRight 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), fadeIn 0.3s ease-out;
+}
+
+.toast.toast-exit {
+    animation: slideOutToRight 0.3s ease-out, fadeOut 0.3s ease-out;
+}
+
+@keyframes slideOutToRight {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(400px);
+    }
+}
+
+.toast-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+
+.toast-success .toast-icon {
+    background: var(--gradient-success);
+    color: white;
+}
+
+.toast-error .toast-icon {
+    background: var(--gradient-error);
+    color: white;
+}
+
+.toast-info .toast-icon {
+    background: var(--gradient-primary);
+    color: white;
+}
+
+.toast-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.toast-message {
+    color: var(--color-text-primary);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 0 0 0.75rem 0.75rem;
+    overflow: hidden;
+}
+
+.toast-progress-bar {
+    height: 100%;
+    animation: toastProgress 3s linear forwards;
+}
+
+.toast-success .toast-progress-bar {
+    background: var(--gradient-success);
+}
+
+.toast-error .toast-progress-bar {
+    background: var(--gradient-error);
+}
+
+.toast-info .toast-progress-bar {
+    background: var(--gradient-primary);
+}
+
+@keyframes toastProgress {
+    from {
+        width: 100%;
+    }
+
+    to {
+        width: 0%;
+    }
+}
+
+/* Dark mode enhancements */
+[data-theme='dark'] .toast {
+    background: rgba(15, 23, 42, 0.95);
+    border-color: rgba(148, 163, 184, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .toast-container {
+        bottom: 1rem;
+        right: 1rem;
+        left: 1rem;
+    }
+
+    .toast {
+        min-width: auto;
+        max-width: 100%;
+    }
+}

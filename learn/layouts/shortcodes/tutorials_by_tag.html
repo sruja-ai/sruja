@@ -1,6 +1,0 @@
-{{ $tag := .Get 0 }}
-<ul class="tutorials-by-tag">
-{{ range where (where .Site.RegularPages "Section" "tutorials") ".Params.tags" "intersect" (slice $tag) }}
-  <li><a href="{{ .RelPermalink }}">{{ .Title }}</a> — {{ .Params.summary }}</li>
-{{ end }}
-</ul>

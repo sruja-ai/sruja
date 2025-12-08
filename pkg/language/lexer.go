@@ -22,8 +22,8 @@ func (l *Lexer) readChar() {
 		l.ch = l.input[l.readPosition]
 	}
 	l.position = l.readPosition
-	l.readPosition += 1
-	l.column += 1
+	l.readPosition++
+	l.column++
 }
 
 func (l *Lexer) NextToken() Token {

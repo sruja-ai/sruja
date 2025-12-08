@@ -18,7 +18,7 @@ architecture "Test" {
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}
-	prog, err := p.Parse("test.sruja", dsl)
+	prog, _, err := p.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -37,7 +37,7 @@ system B "B"
 A -> B uses "Uses"
 `
 	p, _ := language.NewParser()
-	prog, err := p.Parse("test.sruja", dsl)
+	prog, _, err := p.Parse("test.sruja", dsl)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
