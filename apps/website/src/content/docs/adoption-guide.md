@@ -73,14 +73,14 @@ Answer these questions to determine if Sruja addresses your needs:
 
 **What problem are you trying to solve?**
 
-| Goal | Sruja Benefit | Priority |
-|------|---------------|----------|
-| **Reduce documentation overhead** | Architecture-as-code stays current | High |
-| **Ensure compliance** | Policy-as-code with automated validation | High |
-| **Prevent architectural drift** | Automated validation in CI/CD | Medium |
-| **Faster onboarding** | Living documentation in codebase | Medium |
-| **Enforce service boundaries** | Layer and dependency validation | Medium |
-| **Generate infrastructure** | Terraform/OpenTofu generation (roadmap) | Low |
+| Goal                              | Sruja Benefit                            | Priority |
+| --------------------------------- | ---------------------------------------- | -------- |
+| **Reduce documentation overhead** | Architecture-as-code stays current       | High     |
+| **Ensure compliance**             | Policy-as-code with automated validation | High     |
+| **Prevent architectural drift**   | Automated validation in CI/CD            | Medium   |
+| **Faster onboarding**             | Living documentation in codebase         | Medium   |
+| **Enforce service boundaries**    | Layer and dependency validation          | Medium   |
+| **Generate infrastructure**       | Terraform/OpenTofu generation (roadmap)  | Low      |
 
 **Action**: Rank your top 3 goals. Sruja should address at least 2.
 
@@ -99,6 +99,7 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 ```
 
 **Example** (10 senior engineers, 20 new engineers/year):
+
 - Time: 10 × 4 hours × 0.7 × 50 × $100 = **$140k/year**
 - Onboarding: 20 × 2 × 0.5 × $150k ÷ 50 = **$60k/year**
 - Risk: 1 failure avoided = **$100k** (one-time)
@@ -110,16 +111,17 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 
 **Evaluate your technical stack:**
 
-| Technology | Sruja Integration | Status |
-|------------|-------------------|--------|
-| **Git/GitHub/GitLab** | Native integration | ✅ Available |
-| **CI/CD (GitHub Actions, GitLab CI)** | Validation in pipelines | ✅ Available |
-| **Terraform/OpenTofu** | Infrastructure generation | 🚧 Roadmap (Phase 2) |
-| **Kubernetes/Istio** | Service mesh config generation | 🚧 Roadmap (Phase 3) |
-| **API Gateways (Kong, Apigee)** | Config generation | 🚧 Roadmap (Phase 3) |
-| **OPA (Open Policy Agent)** | Policy integration | 🚧 Roadmap (Phase 2) |
+| Technology                            | Sruja Integration              | Status               |
+| ------------------------------------- | ------------------------------ | -------------------- |
+| **Git/GitHub/GitLab**                 | Native integration             | ✅ Available         |
+| **CI/CD (GitHub Actions, GitLab CI)** | Validation in pipelines        | ✅ Available         |
+| **Terraform/OpenTofu**                | Infrastructure generation      | 🚧 Roadmap (Phase 2) |
+| **Kubernetes/Istio**                  | Service mesh config generation | 🚧 Roadmap (Phase 3) |
+| **API Gateways (Kong, Apigee)**       | Config generation              | 🚧 Roadmap (Phase 3) |
+| **OPA (Open Policy Agent)**           | Policy integration             | 🚧 Roadmap (Phase 2) |
 
-**Action**: 
+**Action**:
+
 - If you need Git/CI/CD integration → ✅ Ready now
 - If you need Terraform/Istio/OPA → 🚧 On roadmap (see [Roadmap Discussions](https://github.com/sruja-ai/sruja/discussions)) — you can pilot with current features now
 
@@ -128,6 +130,7 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 ### Phase 1: Discovery (Week 1)
 
 **Activities:**
+
 1. Review Sruja documentation
 2. Try the online playground
 3. Install CLI: `curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash`
@@ -138,12 +141,14 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 ### Phase 2: Proof of Concept (Weeks 2-4)
 
 **Activities:**
+
 1. Model 1-2 real systems in Sruja
 2. Integrate validation into CI/CD
 3. Document architecture decisions as ADRs
 4. Measure time savings
 
 **Success Criteria:**
+
 - [ ] Can model systems accurately
 - [ ] Validation catches real issues
 - [ ] Team sees value
@@ -154,12 +159,14 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 ### Phase 3: Pilot (Months 2-3)
 
 **Activities:**
+
 1. Roll out to 1-2 teams
 2. Establish best practices
 3. Create internal documentation
 4. Measure compliance improvements
 
 **Success Criteria:**
+
 - [ ] Architecture stays current
 - [ ] Compliance validation working
 - [ ] Team adoption > 80%
@@ -186,16 +193,17 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 
 ### Decision Matrix
 
-| Criteria | Weight | Your Score (1-5) | Weighted Score |
-|----------|--------|------------------|----------------|
-| Problem fit | 30% | ___ | ___ |
-| Value/ROI | 25% | ___ | ___ |
-| Technical fit | 20% | ___ | ___ |
-| Team readiness | 15% | ___ | ___ |
-| Leadership support | 10% | ___ | ___ |
-| **Total** | 100% | | **___/5.0** |
+| Criteria           | Weight | Your Score (1-5) | Weighted Score |
+| ------------------ | ------ | ---------------- | -------------- |
+| Problem fit        | 30%    | \_\_\_           | \_\_\_         |
+| Value/ROI          | 25%    | \_\_\_           | \_\_\_         |
+| Technical fit      | 20%    | \_\_\_           | \_\_\_         |
+| Team readiness     | 15%    | \_\_\_           | \_\_\_         |
+| Leadership support | 10%    | \_\_\_           | \_\_\_         |
+| **Total**          | 100%   |                  | **\_\_\_/5.0** |
 
 **Decision Rule**:
+
 - **> 4.0**: Strong fit → Proceed with pilot
 - **3.5-4.0**: Good fit → Consider pilot
 - **< 3.5**: Weak fit → Reassess or wait
@@ -205,6 +213,7 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 ### "We already have architecture documentation"
 
 **Response**: Sruja doesn't replace documentation — it makes it **executable**. Your documentation becomes code that:
+
 - Stays current (version-controlled)
 - Validates automatically
 - Enforces policies
@@ -213,14 +222,16 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 ### "Our team isn't technical enough for a DSL"
 
 **Response**: Sruja's DSL is designed for **all developers**:
+
 - 1st-year CS students productive in 10 minutes
 - Progressive disclosure (simple → advanced)
 - Rich error messages guide users
-- VS Code extension with autocomplete
+- VS Code extension with full LSP support (autocomplete, go-to-definition, rename, find references, and more) - see [VS Code Extension Guide](/docs/vscode-extension)
 
 ### "We don't have compliance requirements"
 
 **Response**: Sruja provides value beyond compliance:
+
 - Faster onboarding (50% reduction)
 - Reduced documentation time (20-30%)
 - Architectural validation (prevents drift)
@@ -228,7 +239,8 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 
 ### "The roadmap features we need aren't ready"
 
-**Response**: 
+**Response**:
+
 - Core features (validation, CI/CD) are **available now**
 - Roadmap features (Terraform, Istio, OPA) are planned for **Phase 2-3** (see [Roadmap Discussions](https://github.com/sruja-ai/sruja/discussions))
 - You can start with core features and add advanced later
@@ -238,12 +250,12 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 
 ### Track These KPIs
 
-| Metric | Baseline | Target (3 months) | Target (6 months) |
-|--------|----------|-------------------|-------------------|
-| **Documentation time** | X hours/week | X × 0.7 hours/week | X × 0.5 hours/week |
-| **Onboarding time** | X weeks | X × 0.7 weeks | X × 0.5 weeks |
-| **Architecture freshness** | X% outdated | < 10% outdated | < 5% outdated |
-| **Compliance violations** | X per quarter | X × 0.5 per quarter | 0 per quarter |
+| Metric                          | Baseline        | Target (3 months)     | Target (6 months)     |
+| ------------------------------- | --------------- | --------------------- | --------------------- |
+| **Documentation time**          | X hours/week    | X × 0.7 hours/week    | X × 0.5 hours/week    |
+| **Onboarding time**             | X weeks         | X × 0.7 weeks         | X × 0.5 weeks         |
+| **Architecture freshness**      | X% outdated     | < 10% outdated        | < 5% outdated         |
+| **Compliance violations**       | X per quarter   | X × 0.5 per quarter   | 0 per quarter         |
 | **Architectural issues caught** | X in production | X × 0.3 in production | X × 0.1 in production |
 
 ## Next Steps

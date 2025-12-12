@@ -1,175 +1,257 @@
-import type { Point } from '../geometry/point'
-import type { Rect } from '../geometry/rect'
+import type { Point } from "../geometry/point";
+import type { Rect } from "../geometry/rect";
 
-export function calculateBestPort(source: Rect, target: Rect): { side: 'north' | 'south' | 'east' | 'west'; position: Point; angle: number } {
-  const sc = { x: source.x + source.width / 2, y: source.y + source.height / 2 }
-  const tc = { x: target.x + target.width / 2, y: target.y + target.height / 2 }
-  const dx = tc.x - sc.x
-  const dy = tc.y - sc.y
-  if (Math.abs(dx) > Math.abs(dy)) {
-    return dx > 0 ? { side: 'east', position: { x: source.x + source.width, y: sc.y }, angle: 0 } : { side: 'west', position: { x: source.x, y: sc.y }, angle: 180 }
-  } else {
-    return dy > 0 ? { side: 'south', position: { x: sc.x, y: source.y + source.height }, angle: 90 } : { side: 'north', position: { x: sc.x, y: source.y }, angle: 270 }
+export function calculateBestPort(
+  source: Rect,
+  target: Rect
+): { side: "north" | "south" | "east" | "west"; position: Point; angle: number } {
+  const sc = { x: source.x + source.width / 2, y: source.y + source.height / 2 };
+  const tc = { x: target.x + target.width / 2, y: target.y + target.height / 2 };
+
+  const srcRight = source.x + source.width;
+  const srcBottom = source.y + source.height;
+  const tgtRight = target.x + target.width;
+  const tgtBottom = target.y + target.height;
+
+  const isEast = target.x >= srcRight;
+  const isWest = tgtRight <= source.x;
+  const isSouth = target.y >= srcBottom;
+  const isNorth = tgtBottom <= source.y;
+
+  let side: "north" | "south" | "east" | "west";
+
+  // Prefer strict non-overlapping sides
+  if (isEast && !isNorth && !isSouth) side = "east";
+  else if (isWest && !isNorth && !isSouth) side = "west";
+  else if (isSouth && !isEast && !isWest) side = "south";
+  else if (isNorth && !isEast && !isWest) side = "north";
+  else {
+    // Diagonal or overlapping - fall back to center delta
+    const dx = tc.x - sc.x;
+    const dy = tc.y - sc.y;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      side = dx > 0 ? "east" : "west";
+    } else {
+      side = dy > 0 ? "south" : "north";
+    }
   }
+
+  // Calculate sliding position on the chosen side
+  let pos: Point;
+  let angle: number;
+
+  if (side === "east") {
+    const py = Math.max(source.y, Math.min(srcBottom, tc.y));
+    pos = { x: srcRight, y: py };
+    angle = 0;
+  } else if (side === "west") {
+    const py = Math.max(source.y, Math.min(srcBottom, tc.y));
+    pos = { x: source.x, y: py };
+    angle = 180;
+  } else if (side === "south") {
+    const px = Math.max(source.x, Math.min(srcRight, tc.x));
+    pos = { x: px, y: srcBottom };
+    angle = 90;
+  } else {
+    // north
+    const px = Math.max(source.x, Math.min(srcRight, tc.x));
+    pos = { x: px, y: source.y };
+    angle = 270;
+  }
+
+  return { side, position: pos, angle };
 }
 
-export function routeOrthogonal(source: { position: Point; side: string }, target: { position: Point; side: string }): Point[] {
-  const points: Point[] = [source.position]
-  const sx = source.position.x, sy = source.position.y
-  const tx = target.position.x, ty = target.position.y
-  if (source.side === 'south' || source.side === 'north') {
-    const midY = (sy + ty) / 2
-    if (sx !== tx) { points.push({ x: sx, y: midY }); points.push({ x: tx, y: midY }) }
+export function routeOrthogonal(
+  source: { position: Point; side: string },
+  target: { position: Point; side: string }
+): Point[] {
+  const points: Point[] = [source.position];
+  const sx = source.position.x,
+    sy = source.position.y;
+  const tx = target.position.x,
+    ty = target.position.y;
+  if (source.side === "south" || source.side === "north") {
+    const midY = (sy + ty) / 2;
+    if (sx !== tx) {
+      points.push({ x: sx, y: midY });
+      points.push({ x: tx, y: midY });
+    }
   } else {
-    const midX = (sx + tx) / 2
-    if (sy !== ty) { points.push({ x: midX, y: sy }); points.push({ x: midX, y: ty }) }
+    const midX = (sx + tx) / 2;
+    if (sy !== ty) {
+      points.push({ x: midX, y: sy });
+      points.push({ x: midX, y: ty });
+    }
   }
-  points.push(target.position)
-  return points
+  points.push(target.position);
+  return points;
 }
 
 // Default padding increased from 6 to 20 for better visual clearance around nodes
-export function routeOrthogonalAvoid(source: { position: Point; side: string }, target: { position: Point; side: string }, obstacles: Rect[], padding = 20, maxIterations = 50): Point[] {
+export function routeOrthogonalAvoid(
+  source: { position: Point; side: string },
+  target: { position: Point; side: string },
+  obstacles: Rect[],
+  padding = 20,
+  maxIterations = 50
+): Point[] {
   // Expand obstacles by a visual clearance buffer to prevent edges from appearing too close
-  const VISUAL_CLEARANCE = 8
-  const expandedObstacles = obstacles.map(r => ({
+  const VISUAL_CLEARANCE = 8;
+  const expandedObstacles = obstacles.map((r) => ({
     x: r.x - VISUAL_CLEARANCE,
     y: r.y - VISUAL_CLEARANCE,
     width: r.width + VISUAL_CLEARANCE * 2,
-    height: r.height + VISUAL_CLEARANCE * 2
-  }))
+    height: r.height + VISUAL_CLEARANCE * 2,
+  }));
 
-  let path = routeOrthogonal(source, target)
-  let iterations = 0
+  let path = routeOrthogonal(source, target);
+  let iterations = 0;
   for (let i = 1; i < path.length && iterations < maxIterations; i++) {
-    const a = path[i - 1]
-    const b = path[i]
-    const hit = firstObstacleHit(a, b, expandedObstacles)
+    const a = path[i - 1];
+    const b = path[i];
+    const hit = firstObstacleHit(a, b, expandedObstacles);
     if (hit) {
       // Use original obstacle for detour calculation, but with increased padding
-      const originalObstacle = obstacles.find(o =>
-        hit.x >= o.x - VISUAL_CLEARANCE - 1 &&
-        hit.y >= o.y - VISUAL_CLEARANCE - 1 &&
-        hit.x <= o.x + 1 &&
-        hit.y <= o.y + 1
-      ) || hit
-      const detour = detourAround(a, b, originalObstacle, padding, expandedObstacles)
-      path = [...path.slice(0, i), ...detour, ...path.slice(i)]
-      i += detour.length
-      iterations++
+      const originalObstacle =
+        obstacles.find(
+          (o) =>
+            hit.x >= o.x - VISUAL_CLEARANCE - 1 &&
+            hit.y >= o.y - VISUAL_CLEARANCE - 1 &&
+            hit.x <= o.x + 1 &&
+            hit.y <= o.y + 1
+        ) || hit;
+      const detour = detourAround(a, b, originalObstacle, padding, expandedObstacles);
+      path = [...path.slice(0, i), ...detour, ...path.slice(i)];
+      i += detour.length;
+      iterations++;
     }
   }
-  return path
+  return path;
 }
 
 function firstObstacleHit(a: Point, b: Point, obstacles: Rect[]): Rect | undefined {
   for (const r of obstacles) {
-    if (segmentIntersectsRect(a, b, r)) return r
+    if (segmentIntersectsRect(a, b, r)) return r;
   }
-  return undefined
+  return undefined;
 }
 
 function segmentIntersectsRect(a: Point, b: Point, r: Rect): boolean {
-  const withinX = (x: number) => x >= r.x && x <= r.x + r.width
-  const withinY = (y: number) => y >= r.y && y <= r.y + r.height
+  const withinX = (x: number) => x >= r.x && x <= r.x + r.width;
+  const withinY = (y: number) => y >= r.y && y <= r.y + r.height;
   if (a.x === b.x) {
-    const x = a.x
-    const minY = Math.min(a.y, b.y), maxY = Math.max(a.y, b.y)
-    return withinX(x) && !(maxY < r.y || minY > r.y + r.height)
+    const x = a.x;
+    const minY = Math.min(a.y, b.y),
+      maxY = Math.max(a.y, b.y);
+    return withinX(x) && !(maxY < r.y || minY > r.y + r.height);
   } else if (a.y === b.y) {
-    const y = a.y
-    const minX = Math.min(a.x, b.x), maxX = Math.max(a.x, b.x)
-    return withinY(y) && !(maxX < r.x || minX > r.x + r.width)
+    const y = a.y;
+    const minX = Math.min(a.x, b.x),
+      maxX = Math.max(a.x, b.x);
+    return withinY(y) && !(maxX < r.x || minX > r.x + r.width);
   }
-  return false
+  return false;
 }
 
 /**
  * Improved detour selection that considers both path length and obstacle clearance.
  * Prefers routes that maximize distance from all obstacles, not just the current one.
  */
-function detourAround(a: Point, b: Point, r: Rect, pad: number, allObstacles: Rect[] = []): Point[] {
-  const left = { x: r.x - pad, y: a.y }
-  const right = { x: r.x + r.width + pad, y: a.y }
-  const top = { x: a.x, y: r.y - pad }
-  const bottom = { x: a.x, y: r.y + r.height + pad }
+function detourAround(
+  a: Point,
+  b: Point,
+  r: Rect,
+  pad: number,
+  allObstacles: Rect[] = []
+): Point[] {
+  const left = { x: r.x - pad, y: a.y };
+  const right = { x: r.x + r.width + pad, y: a.y };
+  const top = { x: a.x, y: r.y - pad };
+  const bottom = { x: a.x, y: r.y + r.height + pad };
   const candidates: Point[][] = [
     [left, { x: left.x, y: b.y }],
     [right, { x: right.x, y: b.y }],
     [top, { x: b.x, y: top.y }],
-    [bottom, { x: b.x, y: bottom.y }]
-  ]
+    [bottom, { x: b.x, y: bottom.y }],
+  ];
 
   // Score each candidate: prefer shorter paths that don't cross other obstacles
-  let best: Point[] = candidates[0]
-  let bestScore = Infinity
+  let best: Point[] = candidates[0];
+  let bestScore = Infinity;
 
   for (const candidate of candidates) {
-    const fullPath = [a, ...candidate, b]
-    const len = pathLength(fullPath)
+    const fullPath = [a, ...candidate, b];
+    const len = pathLength(fullPath);
 
     // Check if this detour passes through any other obstacle
-    let crossesOther = false
+    let crossesOther = false;
     for (let i = 1; i < fullPath.length && !crossesOther; i++) {
       for (const obs of allObstacles) {
         if (obs !== r && segmentIntersectsRect(fullPath[i - 1], fullPath[i], obs)) {
-          crossesOther = true
-          break
+          crossesOther = true;
+          break;
         }
       }
     }
 
     // Score: path length + heavy penalty for crossing obstacles
-    const score = len + (crossesOther ? 10000 : 0)
+    const score = len + (crossesOther ? 10000 : 0);
     if (score < bestScore) {
-      best = candidate
-      bestScore = score
+      best = candidate;
+      bestScore = score;
     }
   }
 
-  return best
+  return best;
 }
 
 export function pathLength(points: Point[]): number {
-  let len = 0
+  let len = 0;
   for (let i = 1; i < points.length; i++) {
-    len += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y)
+    len += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
   }
-  return len
+  return len;
 }
 
 export function pathMidpoint(points: Point[]): Point {
-  const half = pathLength(points) / 2
-  let acc = 0
+  const half = pathLength(points) / 2;
+  let acc = 0;
   for (let i = 1; i < points.length; i++) {
-    const seg = Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y)
+    const seg = Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
     if (acc + seg >= half) {
-      const t = (half - acc) / seg
-      return { x: points[i - 1].x + (points[i].x - points[i - 1].x) * t, y: points[i - 1].y + (points[i].y - points[i - 1].y) * t }
+      const t = (half - acc) / seg;
+      return {
+        x: points[i - 1].x + (points[i].x - points[i - 1].x) * t,
+        y: points[i - 1].y + (points[i].y - points[i - 1].y) * t,
+      };
     }
-    acc += seg
+    acc += seg;
   }
-  return points[Math.floor(points.length / 2)]
+  return points[Math.floor(points.length / 2)];
 }
 
 export function arrowAngle(p1: Point, p2: Point): number {
-  return (Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180) / Math.PI
+  return (Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180) / Math.PI;
 }
 
-export function routeSpline(source: { position: Point; side: string }, target: { position: Point; side: string }) {
-  const p0 = source.position
-  const p3 = target.position
-  const dx = p3.x - p0.x
-  const dy = p3.y - p0.y
-  const k = 0.3
-  let c1: Point
-  let c2: Point
-  if (source.side === 'east' || source.side === 'west') {
-    c1 = { x: p0.x + dx * k, y: p0.y }
-    c2 = { x: p3.x - dx * k, y: p3.y }
+export function routeSpline(
+  source: { position: Point; side: string },
+  target: { position: Point; side: string }
+) {
+  const p0 = source.position;
+  const p3 = target.position;
+  const dx = p3.x - p0.x;
+  const dy = p3.y - p0.y;
+  const k = 0.3;
+  let c1: Point;
+  let c2: Point;
+  if (source.side === "east" || source.side === "west") {
+    c1 = { x: p0.x + dx * k, y: p0.y };
+    c2 = { x: p3.x - dx * k, y: p3.y };
   } else {
-    c1 = { x: p0.x, y: p0.y + dy * k }
-    c2 = { x: p3.x, y: p3.y - dy * k }
+    c1 = { x: p0.x, y: p0.y + dy * k };
+    c2 = { x: p3.x, y: p3.y - dy * k };
   }
-  return { points: [p0, p3], controlPoints: [c1, c2] }
+  return { points: [p0, p3], controlPoints: [c1, c2] };
 }

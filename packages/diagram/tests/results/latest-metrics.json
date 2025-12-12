@@ -1,0 +1,80 @@
+{
+  "timestamp": "2025-12-12T15:33:18.430Z",
+  "metrics": [
+    {
+      "exampleName": "Quick Start",
+      "category": "basic",
+      "timestamp": "2025-12-12T15:33:18.421Z",
+      "weightedScore": 80,
+      "overallScore": 89.71912124369663,
+      "grade": "B",
+      "overlappingNodes": 0,
+      "edgeCrossings": 3,
+      "edgesOverNodes": 0,
+      "edgeBends": 4,
+      "spacingViolations": 0,
+      "parentChildViolations": 0,
+      "nodeCount": 2,
+      "edgeCount": 3,
+      "hasHierarchy": false,
+      "currentLevel": "L2",
+      "selectedEngine": "sruja",
+      "selectedDirection": "DOWN",
+      "layoutTime": 0,
+      "renderTime": 530,
+      "viewportUtilization": 0.13427528583520415,
+      "aspectRatio": 0.39111710531426885,
+      "diagramBounds": {
+        "x": -110,
+        "y": -512.4913792078371,
+        "width": 219.99999999999997,
+        "height": 562.4913792078371
+      },
+      "qualityMetrics": {
+        "overlappingNodes": [],
+        "overlapScore": 100,
+        "minSpacing": 362.4913792078371,
+        "averageSpacing": 362.4913792078371,
+        "spacingViolations": [],
+        "spacingScore": 100,
+        "edgeCrossings": 3,
+        "edgeOverlaps": 0,
+        "edgesOverNodes": 0,
+        "edgeBends": 4,
+        "edgeLength": {
+          "min": 0,
+          "max": 462.4913792078371,
+          "average": 308.32758613855805
+        },
+        "edgeScore": 90,
+        "parentChildContainment": [],
+        "hierarchyScore": 100,
+        "viewportUtilization": 0.680795019055394,
+        "viewportScore": 68.0795019055394,
+        "consistencyScore": 100,
+        "aspectRatio": 0.39111710531426896,
+        "aspectRatioScore": 89.1117105314269,
+        "parentChildSizeViolations": [],
+        "overallScore": 89.71912124369663,
+        "weightedScore": 80,
+        "grade": "B",
+        "directionViolations": [],
+        "directionScore": 100,
+        "emptySpace": 0.6444389951688465,
+        "emptySpaceScore": 100,
+        "edgeLabelOverlaps": 1,
+        "edgeLabelOverlapScore": 83.33333333333334,
+        "clippedNodeLabels": 0,
+        "clippedLabelScore": 100,
+        "edgeCongestionScore": 20,
+        "crossingAngleScore": 100,
+        "alignmentScore": 100,
+        "detourScore": 100,
+        "nodeBadness": {
+          "User": 0,
+          "API": 0
+        }
+      }
+    }
+  ]
+}
