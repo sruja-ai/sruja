@@ -127,12 +127,15 @@ body {
 
 .header-left {
   flex: 1;
+  min-width: 0;
 }
 
 .header-center {
   flex: 2;
   display: flex;
   justify-content: center;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .header-right {
@@ -141,6 +144,11 @@ body {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
+  min-width: 0;
+}
+
+.header-center > * {
+  max-width: 100%;
 }
 
 .app-title {
@@ -459,21 +467,25 @@ body {
 
 .view-tab.active {
   background: var(--c4-system);
-  /* Use brand color */
   color: white;
-  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
   font-weight: 600;
 }
 
 [data-theme="dark"] .view-tab.active {
   background: var(--c4-system);
   color: white;
-  box-shadow: 0 4px 6px -1px rgba(96, 165, 250, 0.3);
+  box-shadow: 0 2px 4px rgba(96, 165, 250, 0.25);
 }
 
 .view-tab svg {
   width: 16px;
   height: 16px;
+}
+
+.view-tab:focus-visible {
+  outline: 2px solid var(--highlight-color);
+  outline-offset: 2px;
 }
 
 .tab-badge {
@@ -518,6 +530,13 @@ body {
   background: var(--bg-tertiary);
   color: var(--text-primary);
   border-color: var(--border-color);
+}
+
+.action-btn:focus-visible,
+.mobile-menu-btn:focus-visible,
+.mode-btn:focus-visible {
+  outline: 2px solid var(--highlight-color);
+  outline-offset: 2px;
 }
 
 .btn-label {

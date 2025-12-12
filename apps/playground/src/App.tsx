@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect } from "react";
 import { Menu, Info, RefreshCw, Edit, Eye, Settings, Share2, Play, Plus } from "lucide-react";
 import { ArchitectureCanvas } from "./components/Canvas";
+import "./App.css";
 import {
   NavigationPanel,
   DetailsPanel,
@@ -196,36 +197,7 @@ export default function App() {
         app.style.height = "100vh";
       }
 
-      if (appHeader) {
-        appHeader.style.display = "flex";
-        appHeader.style.flexDirection = "row";
-        appHeader.style.alignItems = "center";
-        appHeader.style.justifyContent = "space-between";
-        appHeader.style.height = "56px";
-        appHeader.style.flexShrink = "0";
-      }
-
-      const headerLeft = document.querySelector(".header-left") as HTMLElement | null;
-      const headerCenter = document.querySelector(".header-center") as HTMLElement | null;
-      const headerRight = document.querySelector(".header-right") as HTMLElement | null;
-
-      if (headerLeft) {
-        headerLeft.style.display = "flex";
-        headerLeft.style.flex = "1";
-        headerLeft.style.alignItems = "center";
-      }
-
-      if (headerCenter) {
-        headerCenter.style.display = "flex";
-        headerCenter.style.flex = "2";
-        headerCenter.style.justifyContent = "center";
-      }
-
-      if (headerRight) {
-        headerRight.style.display = "flex";
-        headerRight.style.alignItems = "center";
-        headerRight.style.gap = "8px";
-      }
+      // Respect CSS-driven header layout to keep responsiveness intact
 
       if (appMain) {
         appMain.style.display = "flex";
@@ -296,6 +268,7 @@ export default function App() {
               className={`mode-btn ${editMode === "view" ? "active" : ""}`}
               onClick={() => setEditMode("view")}
               title="View Mode"
+              aria-pressed={editMode === "view"}
             >
               <Eye size={16} />
               <span className="btn-label">View</span>
@@ -304,6 +277,7 @@ export default function App() {
               className={`mode-btn ${editMode === "edit" ? "active" : ""}`}
               onClick={() => setEditMode("edit")}
               title="Edit Mode"
+              aria-pressed={editMode === "edit"}
             >
               <Edit size={16} />
               <span className="btn-label">Edit</span>
