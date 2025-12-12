@@ -194,18 +194,11 @@
       "description": "User story documentation"
     },
     {
-      "file": "sruja_architecture.sruja",
+      "file": "sruja_architecture_v2.sruja",
       "name": "Sruja Architecture",
       "order": 28,
       "category": "advanced",
       "description": "Sruja's own architecture definition"
-    },
-    {
-      "file": "sruja_architecture_v2.sruja",
-      "name": "Sruja Architecture v2",
-      "order": 29,
-      "category": "advanced",
-      "description": "Updated Sruja architecture definition"
     },
     {
       "file": "dfd.sruja",
