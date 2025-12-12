@@ -45,6 +45,21 @@ func TestParser_ADR(t *testing.T) {
 				Title: nil,
 			},
 		},
+		{
+			name: "ADR with Tags",
+			input: `adr ADR004 "Tagged Decision" {
+				status "Accepted"
+				tags "Tag1", "Tag2"
+			}`,
+			expected: &ADR{
+				ID:    "ADR004",
+				Title: stringPtr("Tagged Decision"),
+				Body: &ADRBody{
+					Status: stringPtr("Accepted"),
+					Tags:   []string{"Tag1", "Tag2"},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -100,17 +115,40 @@ func TestParser_ADR(t *testing.T) {
 				if foundADR.Body == nil {
 					t.Fatalf("Expected Body, got nil")
 				}
-				if *foundADR.Body.Status != *tt.expected.Body.Status {
-					t.Errorf("Expected Status %q, got %q", *tt.expected.Body.Status, *foundADR.Body.Status)
+
+				// Helper to check string pointers
+				checkStr := func(name string, got, want *string) {
+					if want == nil {
+						if got != nil {
+							t.Errorf("Expected nil %s, got %q", name, *got)
+						}
+					} else {
+						if got == nil {
+							t.Errorf("Expected %s %q, got nil", name, *want)
+						} else if *got != *want {
+							t.Errorf("Expected %s %q, got %q", name, *want, *got)
+						}
+					}
 				}
-				if *foundADR.Body.Context != *tt.expected.Body.Context {
-					t.Errorf("Expected Context %q, got %q", *tt.expected.Body.Context, *foundADR.Body.Context)
-				}
-				if *foundADR.Body.Decision != *tt.expected.Body.Decision {
-					t.Errorf("Expected Decision %q, got %q", *tt.expected.Body.Decision, *foundADR.Body.Decision)
-				}
-				if *foundADR.Body.Consequences != *tt.expected.Body.Consequences {
-					t.Errorf("Expected Consequences %q, got %q", *tt.expected.Body.Consequences, *foundADR.Body.Consequences)
+
+				checkStr("Status", foundADR.Body.Status, tt.expected.Body.Status)
+				checkStr("Context", foundADR.Body.Context, tt.expected.Body.Context)
+				checkStr("Decision", foundADR.Body.Decision, tt.expected.Body.Decision)
+				checkStr("Consequences", foundADR.Body.Consequences, tt.expected.Body.Consequences)
+
+				// Check Tags
+				if len(tt.expected.Body.Tags) > 0 {
+					if len(foundADR.Body.Tags) != len(tt.expected.Body.Tags) {
+						t.Errorf("Expected %d tags, got %d", len(tt.expected.Body.Tags), len(foundADR.Body.Tags))
+					} else {
+						for i, tag := range tt.expected.Body.Tags {
+							if foundADR.Body.Tags[i] != tag {
+								t.Errorf("Expected Tag[%d] %q, got %q", i, tag, foundADR.Body.Tags[i])
+							}
+						}
+					}
+				} else if len(foundADR.Body.Tags) > 0 {
+					t.Errorf("Expected no tags, got %v", foundADR.Body.Tags)
 				}
 			}
 		})

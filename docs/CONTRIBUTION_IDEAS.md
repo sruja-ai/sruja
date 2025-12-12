@@ -199,7 +199,7 @@ This way, maintainers can guide you and you won't waste time on something that m
 
 ## 🤝 Need Help?
 
-- 💬 **Discord**: https://discord.gg/QMCsquJq
+- 💬 **Discord**: https://discord.gg/VNrvHPV5
 - 💬 **GitHub Discussions**: Ask questions
 - 📝 **Open an Issue**: Discuss your idea first
 

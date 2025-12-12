@@ -158,7 +158,7 @@ git push origin fix/your-issue-name
 
 **Stuck? We're here to help!**
 
-- 💬 **Discord**: https://discord.gg/QMCsquJq
+- 💬 **Discord**: https://discord.gg/VNrvHPV5
 - 💬 **GitHub Discussions**: Ask questions
 - 📝 **GitHub Issues**: Report problems
 - 📧 **Comment on your PR**: Ask for clarification

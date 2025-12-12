@@ -37,24 +37,26 @@ The number of requests a system can handle per unit of time.
 In Sruja, you can represent horizontal scaling using the native `scale` block. This allows you to define minimum and maximum replicas and the scaling metric.
 
 ```sruja
-system ECommerce "E-Commerce System" {
-    container WebServer "Web App" {
-        technology "Go, Gin"
-        
-        // Define horizontal scaling properties
-        scale {
-            min 3
-            max 10
-            metric "cpu > 80%"
+architecture "E-Commerce Platform" {
+    system ECommerce "E-Commerce System" {
+        container WebServer "Web App" {
+            technology "Go, Gin"
+            
+            // Define horizontal scaling properties
+            scale {
+                min 3
+                max 10
+                metric "cpu > 80%"
+            }
         }
-    }
-    
-    container Database "Primary DB" {
-        technology "PostgreSQL"
-        // Vertical scaling example
-        description "Running on a high-memory instance (AWS r5.2xlarge)."
-    }
+        
+        container Database "Primary DB" {
+            technology "PostgreSQL"
+            // Vertical scaling example
+            description "Running on a high-memory instance (AWS r5.2xlarge)."
+        }
 
-    WebServer -> Database "Reads/Writes"
+        WebServer -> Database "Reads/Writes"
+    }
 }
 ```

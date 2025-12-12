@@ -31,11 +31,12 @@ import HomeHero from '@/features/home/components/HomeHero';
   }
 
   :global(.hero a) {
-    color: #3b82f6;
+    color: var(--color-primary);
     text-decoration: none;
   }
 
   :global(.hero a:hover) {
+    color: var(--color-primary-hover);
     text-decoration: underline;
   }
 
@@ -98,4 +99,3 @@ import HomeHero from '@/features/home/components/HomeHero';
     }
   }
 </style>
-

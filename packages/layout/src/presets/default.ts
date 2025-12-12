@@ -1,4 +1,4 @@
-import { LayoutConfig } from '../types'
+import type { LayoutConfig } from '../types'
 
 export const DefaultLayoutConfig: LayoutConfig = {
   padding: 16,

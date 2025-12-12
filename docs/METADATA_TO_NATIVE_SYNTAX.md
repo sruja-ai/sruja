@@ -12,6 +12,169 @@ This document proposes converting FAANG-level features from freeform metadata to
 
 **Critical Insight**: These features are **optional** (like `metadata`, `style`, `scale`), but rule engines can **contextually enforce** them when appropriate. This aligns with "empower, don't restrict" - developers learn important concepts while keeping simple architectures simple.
 
+## Minimal DSL Approach (Prefer Reuse Over New Keywords)
+
+To avoid complicating the language surface while still moving away from fragile freeform metadata, prefer reusing existing DSL features and adding only where truly necessary:
+
+- Keep `slo { ... }` as a native block (already implemented) for first-class SLOs
+- Model capacity/scaling primarily with `scale { min ... max ... metric ... }` plus a few `properties { ... }`
+- Capture failure modes and DR with `requirement` and `adr` entries, enriched by `properties { ... }` for typed fields
+- Use `properties { ... }` for observability, compliance and cost details with a documented schema and lint rules
+
+This yields strong validation and IDE support with minimal grammar growth.
+
+### Why this is sufficient
+- `slo` is already native and typed (`pkg/language/ast_core.go:164`)
+- `scale` expresses numeric ranges and metrics (`pkg/language/ast_core.go:147`)
+- `requirement`/`adr` capture narrative structure and IDs (`pkg/language/ast_requirements.go:23`, `pkg/language/ast_requirements.go:51`)
+- `properties` provides typed key-value pairs suitable for small structured data (`pkg/language/ast_core.go:90`)
+
+### Recommended Modeling Patterns
+
+1. SLOs (native)
+```sruja
+system Checkout {
+  slo {
+    availability { target "99.9%" window "30d" }
+    latency { p95 "200ms" p99 "500ms" window "7d" }
+  }
+}
+```
+
+2. Capacity & Scaling (reuse `scale` + `properties`)
+```sruja
+container API "Checkout API" {
+  scale { min 10 max 50 metric "cpu > 80%" }
+  properties {
+    "capacity.instanceType": "c5.2xlarge"
+    "capacity.readReplicas": "3"
+    "capacity.cache": "redis-16gb-3nodes"
+  }
+}
+```
+
+3. Failure Modes (use `requirement` + `adr` + `properties`)
+```sruja
+system Checkout {
+  requirement FM_Platform risk "Platform failure impacts all users" {
+    properties {
+      "failure.impact": "Complete service outage"
+      "failure.detection": "Health check failures (>3)"
+      "failure.mitigation": "Auto-scale, circuit breakers"
+      "failure.rto": "15m"
+      "failure.rpo": "5m"
+    }
+  }
+
+  adr ADR001 "DR and fallback strategy" {
+    status "accepted"
+    context "Global outage scenario"
+    decision "Enable read-only mode and queue orders"
+    consequences "Reduced write availability, preserved UX"
+  }
+}
+```
+
+4. Disaster Recovery (properties on system)
+```sruja
+system Checkout {
+  properties {
+    "dr.primaryRegion": "us-east-1"
+    "dr.drRegion": "us-west-2"
+    "dr.rto": "30m"
+    "dr.rpo": "5m"
+    "dr.backup.database": "6h, 30d retention"
+  }
+}
+```
+
+5. Observability (properties on system/container)
+```sruja
+container API {
+  properties {
+    "obs.metrics.application": "Prometheus"
+    "obs.alerting.critical": "PagerDuty"
+    "obs.logging.application": "CloudWatch Logs (7d)"
+    "obs.tracing.tool": "AWS X-Ray"
+    "obs.tracing.sampleRate": "1%"
+  }
+}
+```
+
+6. Compliance (properties)
+```sruja
+system Checkout {
+  properties {
+    "compliance.pci.level": "Level 1"
+    "compliance.pci.status": "certified"
+    "compliance.soc2.type": "Type II"
+    "compliance.gdpr.status": "compliant"
+  }
+}
+```
+
+7. Cost (properties)
+```sruja
+system Checkout {
+  properties {
+    "cost.monthly.total": "$14,300"
+    "cost.monthly.compute": "$8,000"
+    "cost.perTransaction.average": "$0.0143"
+  }
+}
+```
+
+### Validation without new grammar
+- Define an organization-wide property key schema and types (e.g., JSON/YAML)
+- Add lint rules that validate required keys and formats against this schema
+- Provide IDE hover docs for known keys via the registry
+
+This preserves a small language surface while delivering typed, discoverable, validated data.
+
+## Properties vs Metadata
+
+Use the right block for the job:
+
+- Syntax
+  - `metadata { key "value" | ["a", "b"] }` (ident keys, no colon). See `pkg/language/ast_core.go:71–84`.
+  - `properties { "key" "value" }` or `"key": "value"` (colon optional; quoted keys). See `pkg/language/ast_core.go:90–108`.
+
+- Types
+  - Metadata: supports string or array of strings; good for tags and loose annotations.
+  - Properties: string→string map; stable keys well-suited for schema-driven validation.
+
+- Post-processing
+  - Metadata entries are appended to `*.Metadata` slices: `pkg/language/ast_postprocess.go:245–247`, `312–314`, `373–375`.
+  - Properties are consolidated into `map[string]string`: `pkg/language/ast_postprocess.go:93–99`, `258–264`, `325–331`, `376–382`, `410–416`, `441–447`, `469–475`.
+
+- Validation & IDE
+  - Prefer `properties` for organization-standard keys with lint/schema validation and hover docs.
+  - Use `metadata` for exploratory or team-specific freeform notes and tags.
+
+- Guidance
+  - For FAANG-style features (capacity, DR, observability, compliance, cost), prefer `properties` with a documented key schema and enforcement via lint rules.
+  - Keep `metadata` for truly freeform extensions where structure is intentionally flexible.
+
+Examples
+
+```sruja
+// Properties: stable, schema-validated keys
+container API {
+  properties {
+    "capacity.instanceType": "c5.2xlarge"
+    "obs.alerting.critical": "PagerDuty"
+  }
+}
+
+// Metadata: freeform annotations and tags
+container API {
+  metadata {
+    tier "critical"
+    tags ["backend", "payments"]
+  }
+}
+```
+
 ## Syntax Compatibility
 
 ✅ **All proposed syntax is compatible with existing patterns:**
@@ -441,10 +604,12 @@ All proposed syntax follows existing Sruja DSL patterns:
 
 1. **Colons**: Existing syntax is inconsistent:
    - `metadata { key "value" }` - no colon
-   - `style { key: "value" }` - with colon
+  - `style { key "value" }` or `key: "value"` — colon optional
    - `properties { "key": "value" }` - quoted key with colon
    
    **Decision**: Use no-colon pattern (like metadata/scale) for consistency and simplicity.
+
+   For the minimal approach, prefer `properties { "key": "value" }` where typing and validation are handled by lint rules and a shared schema registry, avoiding additional keywords.
 
 2. **Nested Structures**: Some blocks have nested structures (like `recovery { rto "15 minutes" }`). This is compatible as the parser already handles nested blocks.
 
@@ -581,21 +746,22 @@ rules:
 
 ## Migration Strategy
 
-### Phase 1: Add Native Syntax (Backward Compatible)
+### Phase 1: Add Native Syntax
 
 1. **Extend Parser Grammar**
    - Add new AST node types for each block type
-   - Parse both old metadata and new native syntax
-   - Keep metadata parsing for backward compatibility
+   - Add grammar rules for native syntax blocks
+   - Remove metadata parsing for FAANG features (no backward compatibility needed)
 
 2. **Update AST Structures**
    - Add `SLOBlock`, `CapacityBlock`, `FailureModeBlock`, etc. to AST
-   - Keep `Metadata` field for backward compatibility
-   - Add helper methods to extract from either source
+   - Remove metadata keys for FAANG features (slo_*, capacity, failureMode_*, etc.)
+   - Keep `Metadata` field for truly freeform/extensible use cases only
 
 3. **Update Exporters**
-   - Markdown exporter checks for native blocks first, falls back to metadata
-   - JSON exporter includes both formats during transition
+   - Markdown exporter uses native blocks
+   - JSON exporter includes native blocks
+   - Remove metadata extraction for FAANG features
 
 ### Phase 2: Validation Rules
 
@@ -606,11 +772,10 @@ rules:
    - Validate compliance status values
 
 2. **Semantic Validation**
-   - Warn if native blocks exist but metadata also has same info (duplicate)
-   - Suggest migration from metadata to native syntax
    - Validate cross-references (e.g., failure mode references to systems)
+   - Validate required fields within blocks
 
-3. **Contextual Enforcement Rules** (New)
+3. **Contextual Enforcement Rules**
    - **SLO Rule**: Suggest SLO block if system has SLA requirements
    - **Capacity Rule**: Suggest capacity block if scaling is configured
    - **Failure Mode Rule**: Suggest failure modes for critical systems
@@ -623,17 +788,6 @@ rules:
    - `info`: Learning/suggestion (default for most rules)
    - `warning`: Best practice enforcement
    - `error`: Mandatory for compliance/regulatory requirements
-
-### Phase 3: Deprecation
-
-1. **Deprecation Warnings**
-   - Warn when metadata keys are used that have native syntax equivalents
-   - Provide migration suggestions
-   - Document migration path
-
-2. **Remove Metadata Support (Future)**
-   - After sufficient migration period, remove metadata parsing for these keys
-   - Keep metadata for truly freeform/extensible use cases
 
 ## Implementation Plan
 
@@ -692,16 +846,10 @@ type SLOAvailability struct {
 - `pkg/export/markdown/faang_helpers.go` - Check native blocks first
 - `pkg/export/json/json.go` - Export native blocks
 
-**Migration Helper:**
-```go
-func (sys *System) GetSLO() *SLOBlock {
-    if sys.SLO != nil {
-        return sys.SLO  // Native syntax
-    }
-    // Fallback to metadata extraction
-    return extractSLOFromMetadata(sys.Metadata)
-}
-```
+**No Migration Needed:**
+- Native syntax is the only way to define FAANG features
+- No fallback to metadata - cleaner implementation
+- Users migrate existing metadata manually or via migration tool
 
 ## Benefits Summary
 
@@ -741,10 +889,10 @@ func (sys *System) GetSLO() *SLOBlock {
    - Easier to add new features
    - Better tooling support
 
-8. **Backward Compatibility**
-   - Metadata still works during transition
-   - Gradual migration path
-   - No breaking changes
+8. **Clean Implementation**
+   - No backward compatibility complexity
+   - Native syntax is the only way to define FAANG features
+   - Migration tool can help convert existing metadata to native syntax
 
 ## Design Philosophy Alignment
 
@@ -801,4 +949,4 @@ Sruja already has many **optional** features that follow the same pattern:
 5. **Rule Engine Configuration**: Add `.sruja-lint.yml` support for rule configuration
 6. **Export Updates**: Update exporters to use native blocks
 7. **Documentation**: Update language spec with new syntax
-8. **Migration Tools**: Create tool to migrate metadata to native syntax
+8. **Migration Tool** (Optional): Create tool to help convert existing metadata to native syntax for users who want to migrate

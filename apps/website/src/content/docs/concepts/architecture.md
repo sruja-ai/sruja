@@ -1,6 +1,6 @@
 ---
 title: "Architecture"
-weight: 1
+weight: 10
 summary: "The architecture block is the root element of any Sruja model."
 ---
 
@@ -23,7 +23,7 @@ architecture "My System Name" {
 You can also define elements at the top level without an `architecture` wrapper. Sruja will automatically wrap them in a default architecture.
 
 ```sruja
-system MySystem "My System" { ... }
+system MySystem "My System" {  }
 person User "User"
 ```
 

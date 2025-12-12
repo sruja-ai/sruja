@@ -2,6 +2,8 @@
 title: "{{.Title}}"
 weight: {{.Weight}}
 summary: "{{.Summary}}"
+difficulty: "beginner"
+estimatedTime: "10–15 minutes"
 ---
 
 # {{.Title}}
@@ -12,6 +14,10 @@ TODO: Write lesson content
 
 - TODO: Add learning objectives
 
+## Prerequisites
+
+- TODO: Add prerequisites
+
 ## Content
 
 TODO: Add lesson content
@@ -20,3 +26,10 @@ TODO: Add lesson content
 
 TODO: Add Sruja-specific examples or modeling guidance
 
+## Check Your Understanding (Optional)
+
+- TODO: Add 3 quick questions or link to `/quizzes/...`
+
+## What’s Next
+
+- TODO: Link to follow-up lesson or tutorial

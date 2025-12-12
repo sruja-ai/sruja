@@ -1,5 +1,5 @@
 import type { PositionedNode } from './algorithms/coordinates'
-import { C4Id } from './brand'
+import type { C4Id } from './brand'
 
 export function beautify(positioned: Map<C4Id, PositionedNode>, opts: { alignNodes?: boolean; gridSize?: number; snapToGrid?: boolean } = {}): Map<C4Id, PositionedNode> {
   const grid = opts.gridSize ?? 20

@@ -50,51 +50,23 @@
       "description": "Using tags for categorization"
     },
     {
-      "file": "requirements_implements.sruja",
-      "name": "Requirements",
-      "order": 8,
-      "category": "advanced",
-      "description": "Defining and implementing requirements"
-    },
-    {
       "file": "integration_verbs_and_elements.sruja",
       "name": "Integration Verbs",
-      "order": 9,
+      "order": 8,
       "category": "intermediate",
       "description": "Different relation verbs (uses, reads, writes, publishes)"
     },
     {
       "file": "external_ok.sruja",
       "name": "External Systems",
-      "order": 10,
+      "order": 9,
       "category": "intermediate",
       "description": "External system dependencies"
     },
     {
-      "file": "full_features.sruja",
-      "name": "Full Features",
-      "order": 11,
-      "category": "advanced",
-      "description": "Comprehensive example with requirements and ADRs"
-    },
-    {
-      "file": "full_mvp.sruja",
-      "name": "E‑Commerce",
-      "order": 12,
-      "category": "advanced",
-      "description": "Complete e-commerce MVP architecture"
-    },
-    {
-      "file": "c4_full.sruja",
-      "name": "C4 Complete",
-      "order": 13,
-      "category": "advanced",
-      "description": "Complete C4 model example with deployment views"
-    },
-    {
       "file": "top_level_system.sruja",
       "name": "Top-Level System",
-      "order": 14,
+      "order": 10,
       "category": "intermediate",
       "description": "System defined without architecture wrapper",
       "skipOrphanCheck": true
@@ -102,7 +74,7 @@
     {
       "file": "top_level_container.sruja",
       "name": "Top-Level Container",
-      "order": 15,
+      "order": 11,
       "category": "intermediate",
       "description": "Container defined without architecture wrapper",
       "skipOrphanCheck": true
@@ -110,7 +82,7 @@
     {
       "file": "top_level_component.sruja",
       "name": "Top-Level Component",
-      "order": 16,
+      "order": 12,
       "category": "intermediate",
       "description": "Component defined without architecture wrapper",
       "skipOrphanCheck": true
@@ -118,17 +90,165 @@
     {
       "file": "metadata_showcase.sruja",
       "name": "Metadata",
-      "order": 17,
+      "order": 13,
       "category": "intermediate",
       "description": "Metadata for all element types",
       "skipOrphanCheck": true
     },
     {
-      "file": "import_main.sruja",
-      "name": "Imports",
+      "file": "implied_relationships.sruja",
+      "name": "Implied Relationships",
+      "order": 14,
+      "category": "intermediate",
+      "description": "Relationships inferred from hierarchy"
+    },
+    {
+      "file": "flow_decision.sruja",
+      "name": "Flow & Decision",
+      "order": 15,
+      "category": "intermediate",
+      "description": "Flow definitions and decision points"
+    },
+    {
+      "file": "overview_showcase.sruja",
+      "name": "Overview",
+      "order": 16,
+      "category": "intermediate",
+      "description": "Overview documentation showcase"
+    },
+    {
+      "file": "views_customization.sruja",
+      "name": "Views Customization",
+      "order": 17,
+      "category": "intermediate",
+      "description": "Customizing views and filters"
+    },
+    {
+      "file": "requirements_implements.sruja",
+      "name": "Requirements",
       "order": 18,
       "category": "advanced",
+      "description": "Defining and implementing requirements"
+    },
+    {
+      "file": "full_features.sruja",
+      "name": "Full Features",
+      "order": 19,
+      "category": "advanced",
+      "description": "Comprehensive example with requirements and ADRs"
+    },
+    {
+      "file": "full_mvp.sruja",
+      "name": "E-Commerce MVP",
+      "order": 20,
+      "category": "advanced",
+      "description": "Complete e-commerce MVP architecture"
+    },
+    {
+      "file": "ecommerce_platform.sruja",
+      "name": "E-Commerce Platform",
+      "order": 21,
+      "category": "advanced",
+      "description": "Full e-commerce platform architecture"
+    },
+    {
+      "file": "c4_full.sruja",
+      "name": "C4 Complete",
+      "order": 22,
+      "category": "advanced",
+      "description": "Complete C4 model example with deployment views"
+    },
+    {
+      "file": "import_main.sruja",
+      "name": "Imports",
+      "order": 23,
+      "category": "advanced",
       "description": "Using imports to compose architectures"
+    },
+    {
+      "file": "governance.sruja",
+      "name": "Governance",
+      "order": 24,
+      "category": "advanced",
+      "description": "Governance and compliance example"
+    },
+    {
+      "file": "slo_example.sruja",
+      "name": "SLO Example",
+      "order": 25,
+      "category": "advanced",
+      "description": "Service Level Objectives example"
+    },
+    {
+      "file": "systems_thinking.sruja",
+      "name": "Systems Thinking",
+      "order": 26,
+      "category": "advanced",
+      "description": "Systems thinking patterns"
+    },
+    {
+      "file": "user_story.sruja",
+      "name": "User Story",
+      "order": 27,
+      "category": "advanced",
+      "description": "User story documentation"
+    },
+    {
+      "file": "sruja_architecture.sruja",
+      "name": "Sruja Architecture",
+      "order": 28,
+      "category": "advanced",
+      "description": "Sruja's own architecture definition"
+    },
+    {
+      "file": "sruja_architecture_v2.sruja",
+      "name": "Sruja Architecture v2",
+      "order": 29,
+      "category": "advanced",
+      "description": "Updated Sruja architecture definition"
+    },
+    {
+      "file": "dfd.sruja",
+      "name": "Data Flow Diagram",
+      "order": 30,
+      "category": "advanced",
+      "description": "Data flow diagram example"
+    },
+    {
+      "file": "real_world_microservices.sruja",
+      "name": "Real World Microservices",
+      "order": 31,
+      "category": "real-world",
+      "description": "Real-world microservices architecture"
+    },
+    {
+      "file": "real_world_implied_relationships.sruja",
+      "name": "Real World Implied Relationships",
+      "order": 32,
+      "category": "real-world",
+      "description": "Real-world example with implied relationships"
+    },
+    {
+      "file": "real_world_views_customization.sruja",
+      "name": "Real World Views",
+      "order": 33,
+      "category": "real-world",
+      "description": "Real-world views customization"
+    },
+    {
+      "file": "bad_score.sruja",
+      "name": "Bad Score Example",
+      "order": 34,
+      "category": "testing",
+      "description": "Example with poor layout quality score",
+      "skipPlayground": true
+    },
+    {
+      "file": "course/ecommerce.sruja",
+      "name": "Course: E-Commerce",
+      "order": 35,
+      "category": "course",
+      "description": "E-commerce course example"
     },
     {
       "file": "invalid.sruja",
@@ -174,7 +294,30 @@
       "description": "Standalone elements without relations",
       "skipOrphanCheck": true,
       "skipPlayground": true
+    },
+    {
+      "file": "test.sruja",
+      "name": "Test Example",
+      "order": 99,
+      "category": "testing",
+      "description": "Test example file",
+      "skipPlayground": true
+    },
+    {
+      "file": "test_overview.sruja",
+      "name": "Test Overview",
+      "order": 99,
+      "category": "testing",
+      "description": "Test overview example",
+      "skipPlayground": true
+    },
+    {
+      "file": "temp_story.sruja",
+      "name": "Temp Story",
+      "order": 99,
+      "category": "testing",
+      "description": "Temporary story example",
+      "skipPlayground": true
     }
   ]
 }
-

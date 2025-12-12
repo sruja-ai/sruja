@@ -12,7 +12,6 @@ import (
 func TestAST_StructureParsing(t *testing.T) {
 	dsl := `
 architecture "Test" {
-  import "shared.sruja"
   system App "Application" {
     container API "HTTP API" {
       tags ["http", "public"]
@@ -40,13 +39,7 @@ architecture "Test" {
 		t.Fatalf("architecture nil")
 	}
 
-	// Imports
-	if len(prog.Architecture.Imports) != 1 {
-		t.Fatalf("expected one import, got %d", len(prog.Architecture.Imports))
-	}
-	if prog.Architecture.Imports[0].Path != "shared.sruja" {
-		t.Fatalf("expected import path 'shared.sruja', got '%s'", prog.Architecture.Imports[0].Path)
-	}
+	// Import feature removed - no longer checking imports
 
 	// Systems
 	if len(prog.Architecture.Systems) != 1 {

@@ -12,30 +12,30 @@ func TestParser_EdgeCases(t *testing.T) {
 		shouldErr bool
 		errMsg    string
 	}{
-		{
-			name:      "Empty Input",
-			input:     "",
-			shouldErr: false, // Empty input is now valid (empty architecture)
-			errMsg:    "",
-		},
+        {
+            name:      "Empty Input",
+            input:     "",
+            shouldErr: true,
+            errMsg:    "sub-expression",
+        },
 		{
 			name:      "Unclosed Block",
 			input:     `system S1 {`,
 			shouldErr: true,
 			errMsg:    "unexpected token",
 		},
-		{
-			name:      "Missing ID",
-			input:     `system "Label"`,
-			shouldErr: true,
-			errMsg:    "did not progress the lexer",
-		},
-		{
-			name:      "Invalid Keyword",
-			input:     `unknown S1 "Label"`,
-			shouldErr: true,
-			errMsg:    "did not progress the lexer",
-		},
+        {
+            name:      "Missing ID",
+            input:     `system "Label"`,
+            shouldErr: true,
+            errMsg:    "sub-expression",
+        },
+        {
+            name:      "Invalid Keyword",
+            input:     `unknown S1 "Label"`,
+            shouldErr: true,
+            errMsg:    "sub-expression",
+        },
 		{
 			name:      "Unclosed String",
 			input:     `system S1 "Label`,

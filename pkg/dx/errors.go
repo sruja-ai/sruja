@@ -22,20 +22,48 @@ type EnhancedError struct {
 
 // Format formats an enhanced error with color and suggestions.
 func (e *EnhancedError) Format(useColor bool) string {
+	// Estimate capacity
+	estimatedSize := len(e.Message) + len(e.Context) + len(e.QuickFix) + 100
+	for _, s := range e.Suggestions {
+		estimatedSize += len(s)
+	}
 	var sb strings.Builder
+	sb.Grow(estimatedSize)
 
 	// Location
-	location := fmt.Sprintf("%s:%d:%d", e.File, e.Line, e.Column)
-	if e.File == "" {
-		location = fmt.Sprintf("line %d, column %d", e.Line, e.Column)
+	var location string
+	if e.File != "" {
+		// Build location efficiently
+		var locSb strings.Builder
+		locSb.Grow(len(e.File) + 20)
+		locSb.WriteString(e.File)
+		locSb.WriteString(":")
+		locSb.WriteString(fmt.Sprintf("%d", e.Line))
+		locSb.WriteString(":")
+		locSb.WriteString(fmt.Sprintf("%d", e.Column))
+		location = locSb.String()
+	} else {
+		var locSb strings.Builder
+		locSb.Grow(30)
+		locSb.WriteString("line ")
+		locSb.WriteString(fmt.Sprintf("%d", e.Line))
+		locSb.WriteString(", column ")
+		locSb.WriteString(fmt.Sprintf("%d", e.Column))
+		location = locSb.String()
 	}
 
 	if useColor {
-		sb.WriteString(fmt.Sprintf("\033[31m✗ Error\033[0m: %s\n", e.Message))
-		sb.WriteString(fmt.Sprintf("\033[90m  At: %s\033[0m\n", location))
+		sb.WriteString("\033[31m✗ Error\033[0m: ")
+		sb.WriteString(e.Message)
+		sb.WriteString("\n\033[90m  At: ")
+		sb.WriteString(location)
+		sb.WriteString("\033[0m\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("✗ Error: %s\n", e.Message))
-		sb.WriteString(fmt.Sprintf("  At: %s\n", location))
+		sb.WriteString("✗ Error: ")
+		sb.WriteString(e.Message)
+		sb.WriteString("\n  At: ")
+		sb.WriteString(location)
+		sb.WriteString("\n")
 	}
 
 	// Context
@@ -45,12 +73,31 @@ func (e *EnhancedError) Format(useColor bool) string {
 		} else {
 			sb.WriteString("  Context:\n")
 		}
-		lines := strings.Split(e.Context, "\n")
-		for _, line := range lines {
+		// Process context line by line without splitting
+		start := 0
+		for i := 0; i < len(e.Context); i++ {
+			if e.Context[i] == '\n' {
+				if useColor {
+					sb.WriteString("\033[90m    ")
+					sb.WriteString(e.Context[start:i])
+					sb.WriteString("\033[0m\n")
+				} else {
+					sb.WriteString("    ")
+					sb.WriteString(e.Context[start:i])
+					sb.WriteString("\n")
+				}
+				start = i + 1
+			}
+		}
+		if start < len(e.Context) {
 			if useColor {
-				sb.WriteString(fmt.Sprintf("\033[90m    %s\033[0m\n", line))
+				sb.WriteString("\033[90m    ")
+				sb.WriteString(e.Context[start:])
+				sb.WriteString("\033[0m\n")
 			} else {
-				sb.WriteString(fmt.Sprintf("    %s\n", line))
+				sb.WriteString("    ")
+				sb.WriteString(e.Context[start:])
+				sb.WriteString("\n")
 			}
 		}
 	}
@@ -62,15 +109,19 @@ func (e *EnhancedError) Format(useColor bool) string {
 		} else {
 			sb.WriteString("  Suggestions:\n")
 		}
-		for i, suggestion := range e.Suggestions {
+		maxSuggestions := 3
+		if len(e.Suggestions) < maxSuggestions {
+			maxSuggestions = len(e.Suggestions)
+		}
+		for i := 0; i < maxSuggestions; i++ {
 			if useColor {
-				sb.WriteString(fmt.Sprintf("\033[33m  → %s\033[0m\n", suggestion))
+				sb.WriteString("\033[33m  → ")
+				sb.WriteString(e.Suggestions[i])
+				sb.WriteString("\033[0m\n")
 			} else {
-				sb.WriteString(fmt.Sprintf("  → %s\n", suggestion))
-			}
-			// Limit to 3 suggestions
-			if i >= 2 {
-				break
+				sb.WriteString("  → ")
+				sb.WriteString(e.Suggestions[i])
+				sb.WriteString("\n")
 			}
 		}
 	}
@@ -78,9 +129,13 @@ func (e *EnhancedError) Format(useColor bool) string {
 	// Quick fix
 	if e.QuickFix != "" {
 		if useColor {
-			sb.WriteString(fmt.Sprintf("\033[32m  Quick fix:\033[0m %s\n", e.QuickFix))
+			sb.WriteString("\033[32m  Quick fix:\033[0m ")
+			sb.WriteString(e.QuickFix)
+			sb.WriteString("\n")
 		} else {
-			sb.WriteString(fmt.Sprintf("  Quick fix: %s\n", e.QuickFix))
+			sb.WriteString("  Quick fix: ")
+			sb.WriteString(e.QuickFix)
+			sb.WriteString("\n")
 		}
 	}
 

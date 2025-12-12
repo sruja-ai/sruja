@@ -1,6 +1,6 @@
 ---
 title: "Architecture Decision Records (ADR)"
-weight: 10
+weight: 51
 summary: "Capture architecture decisions directly in your model."
 ---
 

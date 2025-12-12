@@ -16,53 +16,73 @@ func (r *ValidReferenceRule) Name() string {
 
 //nolint:funlen,gocyclo // Validation logic is long and complex
 func (r *ValidReferenceRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	var diags []diagnostics.Diagnostic
-	if program == nil {
-		return diags
+	if program == nil || program.Architecture == nil {
+		return nil
 	}
-	defined := map[string]bool{}
 
 	arch := program.Architecture
-	if arch == nil {
-		return diags
+	// Estimate capacity based on architecture size
+	estimatedDefs := estimateDefinedCount(arch)
+	defined := make(map[string]bool, estimatedDefs)
+	diags := make([]diagnostics.Diagnostic, 0, estimatedDefs/10)
+
+	// Helper to build qualified IDs efficiently
+	buildQualifiedID := func(parts ...string) string {
+		if len(parts) == 0 {
+			return ""
+		}
+		if len(parts) == 1 {
+			return parts[0]
+		}
+		totalLen := len(parts) - 1 // for dots
+		for _, p := range parts {
+			totalLen += len(p)
+		}
+		buf := make([]byte, 0, totalLen)
+		buf = append(buf, parts[0]...)
+		for i := 1; i < len(parts); i++ {
+			buf = append(buf, '.')
+			buf = append(buf, parts[i]...)
+		}
+		return string(buf)
 	}
 
 	for _, sys := range arch.Systems {
 		defined[sys.ID] = true
 		for _, cont := range sys.Containers {
-			contID := sys.ID + "." + cont.ID
+			contID := buildQualifiedID(sys.ID, cont.ID)
 			defined[contID] = true
 			for _, comp := range cont.Components {
-				defined[contID+"."+comp.ID] = true
+				defined[buildQualifiedID(contID, comp.ID)] = true
 			}
 			for _, ds := range cont.DataStores {
-				defined[contID+"."+ds.ID] = true
+				defined[buildQualifiedID(contID, ds.ID)] = true
 			}
 			for _, q := range cont.Queues {
-				defined[contID+"."+q.ID] = true
+				defined[buildQualifiedID(contID, q.ID)] = true
 			}
 		}
 		for _, comp := range sys.Components {
-			defined[sys.ID+"."+comp.ID] = true
+			defined[buildQualifiedID(sys.ID, comp.ID)] = true
 		}
 		for _, ds := range sys.DataStores {
-			defined[sys.ID+"."+ds.ID] = true
+			defined[buildQualifiedID(sys.ID, ds.ID)] = true
 		}
 		for _, q := range sys.Queues {
-			defined[sys.ID+"."+q.ID] = true
+			defined[buildQualifiedID(sys.ID, q.ID)] = true
 		}
 	}
 	// Add top-level elements
 	for _, cont := range arch.Containers {
 		defined[cont.ID] = true
 		for _, comp := range cont.Components {
-			defined[cont.ID+"."+comp.ID] = true
+			defined[buildQualifiedID(cont.ID, comp.ID)] = true
 		}
 		for _, ds := range cont.DataStores {
-			defined[cont.ID+"."+ds.ID] = true
+			defined[buildQualifiedID(cont.ID, ds.ID)] = true
 		}
 		for _, q := range cont.Queues {
-			defined[cont.ID+"."+q.ID] = true
+			defined[buildQualifiedID(cont.ID, q.ID)] = true
 		}
 	}
 	for _, comp := range arch.Components {
@@ -126,28 +146,100 @@ func (r *ValidReferenceRule) Validate(program *language.Program) []diagnostics.D
 		}
 		if resolve(rel.From.String(), scope) == "" {
 			loc := rel.Location()
+			fromID := rel.From.String()
+
+			// Build enhanced error message with suggestions
+			var msgSb strings.Builder
+			msgSb.Grow(len(fromID) + 100)
+			msgSb.WriteString("Reference to undefined element '")
+			msgSb.WriteString(fromID)
+			msgSb.WriteString("'")
+			if scope != "" {
+				msgSb.WriteString(fmt.Sprintf(" in scope '%s'", scope))
+			}
+
+			var suggestions []string
+			suggestions = append(suggestions, "Check if the element is defined before this relation")
+			suggestions = append(suggestions, "Ensure the element ID matches exactly (case-sensitive)")
+			if scope != "" {
+				suggestions = append(suggestions, fmt.Sprintf("Try using the fully qualified name: '%s.%s'", scope, fromID))
+			}
+			// Try to find similar element names
+			similar := r.findSimilarElements(fromID, defined)
+			if len(similar) > 0 {
+				var similarSb strings.Builder
+				similarSb.Grow(50)
+				similarSb.WriteString("Did you mean: ")
+				for i, sim := range similar {
+					if i > 0 {
+						similarSb.WriteString(", ")
+					}
+					similarSb.WriteString("'")
+					similarSb.WriteString(sim)
+					similarSb.WriteString("'")
+				}
+				suggestions = append(suggestions, similarSb.String())
+			}
+
 			diags = append(diags, diagnostics.Diagnostic{
 				Code:     diagnostics.CodeReferenceNotFound,
 				Severity: diagnostics.SeverityError,
-				Message:  fmt.Sprintf("Reference to undefined element '%s'", rel.From.String()),
+				Message:  msgSb.String(),
 				Location: diagnostics.SourceLocation{
 					File:   loc.File,
 					Line:   loc.Line,
 					Column: loc.Column,
 				},
+				Suggestions: suggestions,
 			})
 		}
 		if resolve(rel.To.String(), scope) == "" {
 			loc := rel.Location()
+			toID := rel.To.String()
+
+			// Build enhanced error message with suggestions
+			var msgSb strings.Builder
+			msgSb.Grow(len(toID) + 100)
+			msgSb.WriteString("Reference to undefined element '")
+			msgSb.WriteString(toID)
+			msgSb.WriteString("'")
+			if scope != "" {
+				msgSb.WriteString(fmt.Sprintf(" in scope '%s'", scope))
+			}
+
+			var suggestions []string
+			suggestions = append(suggestions, "Check if the element is defined before this relation")
+			suggestions = append(suggestions, "Ensure the element ID matches exactly (case-sensitive)")
+			if scope != "" {
+				suggestions = append(suggestions, fmt.Sprintf("Try using the fully qualified name: '%s.%s'", scope, toID))
+			}
+			// Try to find similar element names
+			similar := r.findSimilarElements(toID, defined)
+			if len(similar) > 0 {
+				var similarSb strings.Builder
+				similarSb.Grow(50)
+				similarSb.WriteString("Did you mean: ")
+				for i, sim := range similar {
+					if i > 0 {
+						similarSb.WriteString(", ")
+					}
+					similarSb.WriteString("'")
+					similarSb.WriteString(sim)
+					similarSb.WriteString("'")
+				}
+				suggestions = append(suggestions, similarSb.String())
+			}
+
 			diags = append(diags, diagnostics.Diagnostic{
 				Code:     diagnostics.CodeReferenceNotFound,
 				Severity: diagnostics.SeverityError,
-				Message:  fmt.Sprintf("Reference to undefined element '%s'", rel.To.String()),
+				Message:  msgSb.String(),
 				Location: diagnostics.SourceLocation{
 					File:   loc.File,
 					Line:   loc.Line,
 					Column: loc.Column,
 				},
+				Suggestions: suggestions,
 			})
 		}
 	}
@@ -174,4 +266,95 @@ func (r *ValidReferenceRule) Validate(program *language.Program) []diagnostics.D
 
 	// Current Requirement struct has no Implements field; skip implements checks
 	return diags
+}
+
+// estimateDefinedCount provides a rough estimate of defined elements for map pre-allocation.
+func estimateDefinedCount(arch *language.Architecture) int {
+	if arch == nil {
+		return 16
+	}
+	count := len(arch.Persons) + len(arch.Components) + len(arch.DataStores) + len(arch.Queues) + len(arch.Containers)
+	for _, sys := range arch.Systems {
+		count += 1 + len(sys.Components) + len(sys.DataStores) + len(sys.Queues)
+		for _, cont := range sys.Containers {
+			count += 1 + len(cont.Components) + len(cont.DataStores) + len(cont.Queues)
+		}
+	}
+	return count + 32 // Add buffer
+}
+
+// findSimilarElements finds element IDs similar to the given reference (for typo detection)
+func (r *ValidReferenceRule) findSimilarElements(ref string, defined map[string]bool) []string {
+	var similar []string
+	refLower := strings.ToLower(ref)
+
+	// Calculate similarity for each defined element
+	type candidate struct {
+		id    string
+		score float64
+	}
+	candidates := make([]candidate, 0, len(defined))
+
+	for id := range defined {
+		score := r.calculateSimilarity(refLower, strings.ToLower(id))
+		if score > 0.3 { // Threshold for similarity
+			candidates = append(candidates, candidate{id: id, score: score})
+		}
+	}
+
+	// Sort by score (simple selection sort for small lists)
+	for i := 0; i < len(candidates) && i < 3; i++ {
+		maxIdx := i
+		for j := i + 1; j < len(candidates); j++ {
+			if candidates[j].score > candidates[maxIdx].score {
+				maxIdx = j
+			}
+		}
+		if maxIdx != i {
+			candidates[i], candidates[maxIdx] = candidates[maxIdx], candidates[i]
+		}
+		similar = append(similar, candidates[i].id)
+	}
+
+	return similar
+}
+
+// calculateSimilarity calculates a similarity score between two strings (0.0 to 1.0)
+func (r *ValidReferenceRule) calculateSimilarity(s1, s2 string) float64 {
+	if s1 == s2 {
+		return 1.0
+	}
+
+	// Check if one contains the other
+	if strings.Contains(s1, s2) || strings.Contains(s2, s1) {
+		return 0.7
+	}
+
+	// Simple character-based similarity
+	if len(s1) == 0 || len(s2) == 0 {
+		return 0.0
+	}
+
+	// Count matching characters in same positions
+	matches := 0
+	minLen := len(s1)
+	if len(s2) < minLen {
+		minLen = len(s2)
+	}
+	for i := 0; i < minLen; i++ {
+		if s1[i] == s2[i] {
+			matches++
+		}
+	}
+
+	// Also check if last part matches (for qualified IDs)
+	if strings.HasSuffix(s1, s2) || strings.HasSuffix(s2, s1) {
+		return 0.6
+	}
+
+	// Return normalized score
+	if minLen > 0 {
+		return float64(matches) / float64(minLen)
+	}
+	return 0.0
 }

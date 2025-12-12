@@ -22,54 +22,83 @@ func (r *ExternalDependencyRule) Name() string {
 
 //nolint:funlen,gocyclo // Validation logic is long and complex
 func (r *ExternalDependencyRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	var diags []diagnostics.Diagnostic
-
 	arch := program.Architecture
 	if arch == nil {
-		return diags
+		return nil
 	}
 
+	// Pre-allocate diagnostics slice
+	estimatedDiags := len(arch.Relations) / 10
+	if estimatedDiags < 8 {
+		estimatedDiags = 8
+	}
+	diags := make([]diagnostics.Diagnostic, 0, estimatedDiags)
+
+	// Estimate capacity based on architecture size
+	estimatedElements := estimateElementCountForDependency(arch)
+
 	// Build parent map: child ID -> parent ID
-	parent := map[string]string{}
+	parent := make(map[string]string, estimatedElements)
 
 	// Build defined map for resolution (boolean map for quick lookup)
-	defined := map[string]bool{}
+	defined := make(map[string]bool, estimatedElements)
+
+	// Helper to build qualified IDs efficiently
+	buildQualifiedID := func(parts ...string) string {
+		if len(parts) == 0 {
+			return ""
+		}
+		if len(parts) == 1 {
+			return parts[0]
+		}
+		totalLen := len(parts) - 1 // for dots
+		for _, p := range parts {
+			totalLen += len(p)
+		}
+		buf := make([]byte, 0, totalLen)
+		buf = append(buf, parts[0]...)
+		for i := 1; i < len(parts); i++ {
+			buf = append(buf, '.')
+			buf = append(buf, parts[i]...)
+		}
+		return string(buf)
+	}
 
 	// Build parent relationships and defined elements map
 	for _, sys := range arch.Systems {
 		defined[sys.ID] = true
 		for _, cont := range sys.Containers {
-			contID := sys.ID + "." + cont.ID
+			contID := buildQualifiedID(sys.ID, cont.ID)
 			defined[contID] = true
 			parent[contID] = sys.ID
 			for _, comp := range cont.Components {
-				compID := contID + "." + comp.ID
+				compID := buildQualifiedID(contID, comp.ID)
 				defined[compID] = true
 				parent[compID] = contID
 			}
 			for _, ds := range cont.DataStores {
-				dsID := contID + "." + ds.ID
+				dsID := buildQualifiedID(contID, ds.ID)
 				defined[dsID] = true
 				parent[dsID] = contID
 			}
 			for _, q := range cont.Queues {
-				qID := contID + "." + q.ID
+				qID := buildQualifiedID(contID, q.ID)
 				defined[qID] = true
 				parent[qID] = contID
 			}
 		}
 		for _, comp := range sys.Components {
-			compID := sys.ID + "." + comp.ID
+			compID := buildQualifiedID(sys.ID, comp.ID)
 			defined[compID] = true
 			parent[compID] = sys.ID
 		}
 		for _, ds := range sys.DataStores {
-			dsID := sys.ID + "." + ds.ID
+			dsID := buildQualifiedID(sys.ID, ds.ID)
 			defined[dsID] = true
 			parent[dsID] = sys.ID
 		}
 		for _, q := range sys.Queues {
-			qID := sys.ID + "." + q.ID
+			qID := buildQualifiedID(sys.ID, q.ID)
 			defined[qID] = true
 			parent[qID] = sys.ID
 		}
@@ -143,6 +172,11 @@ func (r *ExternalDependencyRule) Validate(program *language.Program) []diagnosti
 					Code:     diagnostics.CodeValidationRuleError,
 					Severity: diagnostics.SeverityError,
 					Message:  fmt.Sprintf("Element '%s' cannot depend on its parent '%s'. Dependencies must be external.", fromStr, toStr),
+					Suggestions: []string{
+						fmt.Sprintf("Remove the dependency from '%s' to '%s'", fromStr, toStr),
+						"If this is an external dependency, ensure the parent is marked as external",
+						"Consider restructuring to avoid parent-child dependencies",
+					},
 					Location: diagnostics.SourceLocation{
 						File:   location.File,
 						Line:   location.Line,
@@ -187,4 +221,19 @@ func (r *ExternalDependencyRule) Validate(program *language.Program) []diagnosti
 	}
 
 	return diags
+}
+
+// estimateElementCountForDependency provides a rough estimate of elements for map pre-allocation.
+func estimateElementCountForDependency(arch *language.Architecture) int {
+	if arch == nil {
+		return 16
+	}
+	count := len(arch.Persons)
+	for _, sys := range arch.Systems {
+		count += 1 + len(sys.Components) + len(sys.DataStores) + len(sys.Queues)
+		for _, cont := range sys.Containers {
+			count += 1 + len(cont.Components) + len(cont.DataStores) + len(cont.Queues)
+		}
+	}
+	return count + 32 // Add buffer
 }

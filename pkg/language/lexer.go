@@ -50,10 +50,8 @@ func (l *Lexer) NextToken() Token {
 		tok = newToken(TOKEN_RBRACKET, l.ch, l.line, l.column)
 	case '-':
 		if l.peekChar() == '>' {
-			ch := l.ch
 			l.readChar()
-			literal := string(ch) + string(l.ch)
-			tok = Token{Type: TOKEN_ARROW, Literal: literal, Line: l.line, Column: l.column - 1}
+			tok = Token{Type: TOKEN_ARROW, Literal: "->", Line: l.line, Column: l.column - 1}
 		} else {
 			tok = newToken(TOKEN_ILLEGAL, l.ch, l.line, l.column)
 		}

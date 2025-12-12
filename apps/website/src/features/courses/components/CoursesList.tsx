@@ -53,7 +53,15 @@ export default function CoursesList({ courses }: CoursesListProps) {
                 }
               }}
             >
-              <h2 className="course-title">{course.title}</h2>
+              <a
+                href={`/courses/${course.name}`}
+                className="course-title-link"
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                <h2 className="course-title">{course.title}</h2>
+              </a>
               <svg
                 width="20"
                 height="20"

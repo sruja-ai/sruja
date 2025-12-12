@@ -12,24 +12,125 @@ type ScenarioFQNRule struct{}
 
 func (r *ScenarioFQNRule) Name() string { return "ScenarioReferenceValidation" }
 
+// findSimilarInDefined finds element IDs similar to the given reference
+func findSimilarInDefined(ref string, defined map[string]bool) []string {
+	var similar []string
+	refLower := strings.ToLower(ref)
+
+	type candidate struct {
+		id    string
+		score float64
+	}
+	candidates := make([]candidate, 0, len(defined))
+
+	for id := range defined {
+		score := calculateSimilarityForScenario(refLower, strings.ToLower(id))
+		if score > 0.3 {
+			candidates = append(candidates, candidate{id: id, score: score})
+		}
+	}
+
+	// Sort by score and return top 3
+	for i := 0; i < len(candidates) && i < 3; i++ {
+		maxIdx := i
+		for j := i + 1; j < len(candidates); j++ {
+			if candidates[j].score > candidates[maxIdx].score {
+				maxIdx = j
+			}
+		}
+		if maxIdx != i {
+			candidates[i], candidates[maxIdx] = candidates[maxIdx], candidates[i]
+		}
+		similar = append(similar, candidates[i].id)
+	}
+
+	return similar
+}
+
+// calculateSimilarityForScenario calculates similarity between two strings
+func calculateSimilarityForScenario(s1, s2 string) float64 {
+	if s1 == s2 {
+		return 1.0
+	}
+	if strings.Contains(s1, s2) || strings.Contains(s2, s1) {
+		return 0.7
+	}
+	if len(s1) == 0 || len(s2) == 0 {
+		return 0.0
+	}
+	matches := 0
+	minLen := len(s1)
+	if len(s2) < minLen {
+		minLen = len(s2)
+	}
+	for i := 0; i < minLen; i++ {
+		if s1[i] == s2[i] {
+			matches++
+		}
+	}
+	if minLen > 0 {
+		return float64(matches) / float64(minLen)
+	}
+	return 0.0
+}
+
 //nolint:funlen,gocyclo // Validation logic is long and complex
 func (r *ScenarioFQNRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	var diags []diagnostics.Diagnostic
 	if program == nil || program.Architecture == nil {
-		return diags
+		return nil
 	}
 
 	arch := program.Architecture
 
+	// Estimate capacity based on architecture size
+	estimatedElements := estimateElementCountForScenario(arch)
+
 	// Build set of defined qualified IDs
-	defined := map[string]bool{}
+	defined := make(map[string]bool, estimatedElements)
 	// Build map of suffix -> []fullID for smart resolution
-	suffixMap := map[string][]string{}
+	suffixMap := make(map[string][]string, estimatedElements/2)
+
+	// Pre-allocate diagnostics slice
+	estimatedDiags := len(arch.Scenarios) + len(arch.Flows)
+	if estimatedDiags < 8 {
+		estimatedDiags = 8
+	}
+	diags := make([]diagnostics.Diagnostic, 0, estimatedDiags)
+
+	// Helper to build qualified IDs efficiently
+	buildQualifiedID := func(parts ...string) string {
+		if len(parts) == 0 {
+			return ""
+		}
+		if len(parts) == 1 {
+			return parts[0]
+		}
+		totalLen := len(parts) - 1 // for dots
+		for _, p := range parts {
+			totalLen += len(p)
+		}
+		buf := make([]byte, 0, totalLen)
+		buf = append(buf, parts[0]...)
+		for i := 1; i < len(parts); i++ {
+			buf = append(buf, '.')
+			buf = append(buf, parts[i]...)
+		}
+		return string(buf)
+	}
 
 	addID := func(id string) {
+		if id == "" {
+			return
+		}
 		defined[id] = true
-		parts := strings.Split(id, ".")
-		suffix := parts[len(parts)-1]
+		// Use LastIndex for better performance than Split when we only need the last part
+		lastDot := strings.LastIndexByte(id, '.')
+		var suffix string
+		if lastDot == -1 {
+			suffix = id
+		} else {
+			suffix = id[lastDot+1:]
+		}
 		suffixMap[suffix] = append(suffixMap[suffix], id)
 	}
 
@@ -37,13 +138,13 @@ func (r *ScenarioFQNRule) Validate(program *language.Program) []diagnostics.Diag
 	for _, cont := range arch.Containers {
 		addID(cont.ID)
 		for _, comp := range cont.Components {
-			addID(cont.ID + "." + comp.ID)
+			addID(buildQualifiedID(cont.ID, comp.ID))
 		}
 		for _, ds := range cont.DataStores {
-			addID(cont.ID + "." + ds.ID)
+			addID(buildQualifiedID(cont.ID, ds.ID))
 		}
 		for _, q := range cont.Queues {
-			addID(cont.ID + "." + q.ID)
+			addID(buildQualifiedID(cont.ID, q.ID))
 		}
 	}
 	for _, comp := range arch.Components {
@@ -63,26 +164,26 @@ func (r *ScenarioFQNRule) Validate(program *language.Program) []diagnostics.Diag
 	for _, sys := range arch.Systems {
 		addID(sys.ID)
 		for _, cont := range sys.Containers {
-			contID := sys.ID + "." + cont.ID
+			contID := buildQualifiedID(sys.ID, cont.ID)
 			addID(contID)
 			for _, comp := range cont.Components {
-				addID(contID + "." + comp.ID)
+				addID(buildQualifiedID(contID, comp.ID))
 			}
 			for _, ds := range cont.DataStores {
-				addID(contID + "." + ds.ID)
+				addID(buildQualifiedID(contID, ds.ID))
 			}
 			for _, q := range cont.Queues {
-				addID(contID + "." + q.ID)
+				addID(buildQualifiedID(contID, q.ID))
 			}
 		}
 		for _, comp := range sys.Components {
-			addID(sys.ID + "." + comp.ID)
+			addID(buildQualifiedID(sys.ID, comp.ID))
 		}
 		for _, ds := range sys.DataStores {
-			addID(sys.ID + "." + ds.ID)
+			addID(buildQualifiedID(sys.ID, ds.ID))
 		}
 		for _, q := range sys.Queues {
-			addID(sys.ID + "." + q.ID)
+			addID(buildQualifiedID(sys.ID, q.ID))
 		}
 	}
 
@@ -97,26 +198,51 @@ func (r *ScenarioFQNRule) Validate(program *language.Program) []diagnostics.Diag
 		}
 
 		// 2. Unqualified match
+		// Use LastIndex for better performance than Split when we only need the last part
+		lastDot := strings.LastIndexByte(ref, '.')
 		var suffix string
-		if !strings.Contains(ref, ".") {
+		if lastDot == -1 {
 			suffix = ref
 		} else {
-			// If it has dots but isn't exact match, it might be a partial path?
-			// Current DSL logic doesn't really support "middle" partials well, usually just suffix.
-			// Treat as unknown or check suffix?
-			// Let's stick to simple suffix logic for now.
-			parts := strings.Split(ref, ".")
-			suffix = parts[len(parts)-1]
+			suffix = ref[lastDot+1:]
 		}
 
 		matches := suffixMap[suffix]
 
 		if len(matches) == 0 {
+			// Build enhanced error message with suggestions
+			var msgSb strings.Builder
+			msgSb.Grow(len(ref) + 100)
+			msgSb.WriteString("Reference to undefined element '")
+			msgSb.WriteString(ref)
+			msgSb.WriteString("' in scenario/flow step")
+
+			var suggestions []string
+			suggestions = append(suggestions, "Check if the element is defined before this step")
+			suggestions = append(suggestions, "Ensure the element ID matches exactly (case-sensitive)")
+			// Try to find similar element names
+			similar := findSimilarInDefined(ref, defined)
+			if len(similar) > 0 {
+				var similarSb strings.Builder
+				similarSb.Grow(50)
+				similarSb.WriteString("Did you mean: ")
+				for i, sim := range similar {
+					if i > 0 {
+						similarSb.WriteString(", ")
+					}
+					similarSb.WriteString("'")
+					similarSb.WriteString(sim)
+					similarSb.WriteString("'")
+				}
+				suggestions = append(suggestions, similarSb.String())
+			}
+
 			diags = append(diags, diagnostics.Diagnostic{
-				Code:     diagnostics.CodeReferenceNotFound,
-				Severity: diagnostics.SeverityError,
-				Message:  fmt.Sprintf("Reference to undefined element '%s'", ref),
-				Location: diagnostics.SourceLocation{File: loc.File, Line: loc.Line, Column: loc.Column},
+				Code:        diagnostics.CodeReferenceNotFound,
+				Severity:    diagnostics.SeverityError,
+				Message:     msgSb.String(),
+				Location:    diagnostics.SourceLocation{File: loc.File, Line: loc.Line, Column: loc.Column},
+				Suggestions: suggestions,
 			})
 			return
 		}
@@ -128,12 +254,29 @@ func (r *ScenarioFQNRule) Validate(program *language.Program) []diagnostics.Diag
 			return
 		}
 
-		// Ambiguous match
+		// Ambiguous match - build enhanced error message
+		var msgSb strings.Builder
+		msgSb.Grow(len(ref) + len(strings.Join(matches, ", ")) + 80)
+		msgSb.WriteString("Ambiguous reference '")
+		msgSb.WriteString(ref)
+		msgSb.WriteString("' matches multiple elements: ")
+		msgSb.WriteString(strings.Join(matches, ", "))
+		msgSb.WriteString(". Use a fully qualified name to disambiguate.")
+
+		var suggestions []string
+		for _, match := range matches {
+			suggestions = append(suggestions, fmt.Sprintf("Use fully qualified name: '%s'", match))
+		}
+		if len(suggestions) > 3 {
+			suggestions = suggestions[:3] // Limit to 3 suggestions
+		}
+
 		diags = append(diags, diagnostics.Diagnostic{
-			Code:     diagnostics.CodeValidationRuleError,
-			Severity: diagnostics.SeverityError,
-			Message:  fmt.Sprintf("Ambiguous reference '%s' matches multiple elements: %s (use fully qualified name)", ref, strings.Join(matches, ", ")),
-			Location: diagnostics.SourceLocation{File: loc.File, Line: loc.Line, Column: loc.Column},
+			Code:        diagnostics.CodeValidationRuleError,
+			Severity:    diagnostics.SeverityError,
+			Message:     msgSb.String(),
+			Location:    diagnostics.SourceLocation{File: loc.File, Line: loc.Line, Column: loc.Column},
+			Suggestions: suggestions,
 		})
 	}
 
@@ -157,4 +300,19 @@ func (r *ScenarioFQNRule) Validate(program *language.Program) []diagnostics.Diag
 	}
 
 	return diags
+}
+
+// estimateElementCountForScenario provides a rough estimate of elements for map pre-allocation.
+func estimateElementCountForScenario(arch *language.Architecture) int {
+	if arch == nil {
+		return 16
+	}
+	count := len(arch.Containers) + len(arch.Components) + len(arch.DataStores) + len(arch.Queues) + len(arch.Persons)
+	for _, sys := range arch.Systems {
+		count += 1 + len(sys.Containers) + len(sys.Components) + len(sys.DataStores) + len(sys.Queues)
+		for _, cont := range sys.Containers {
+			count += len(cont.Components) + len(cont.DataStores) + len(cont.Queues)
+		}
+	}
+	return count*2 + 32 // Add buffer
 }

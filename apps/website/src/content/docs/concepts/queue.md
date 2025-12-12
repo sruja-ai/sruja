@@ -1,6 +1,6 @@
 ---
 title: "Queue"
-weight: 8
+weight: 34
 summary: "A Queue represents a message queue, topic, or event stream."
 ---
 

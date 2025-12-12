@@ -1,6 +1,6 @@
 ---
 title: "Person"
-weight: 6
+weight: 15
 summary: "A Person represents a human user of your software system."
 ---
 

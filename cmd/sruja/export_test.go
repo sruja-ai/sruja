@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,68 +32,15 @@ func TestRunExport(t *testing.T) {
 		t.Errorf("Expected JSON output, got: %s", stdout.String())
 	}
 
-	// Test Markdown export
+	// Test Markdown export (disabled)
 	stdout.Reset()
 	stderr.Reset()
 	exitCode = runExport([]string{"markdown", file}, &stdout, &stderr)
-	if exitCode != 0 {
-		t.Errorf("Expected exit code 0 for Markdown export, got %d. Stderr: %s", exitCode, stderr.String())
+	if exitCode == 0 {
+		t.Errorf("Expected markdown export to be disabled, but got exit code 0")
 	}
-	if !strings.Contains(stdout.String(), "# Test") {
-		t.Errorf("Expected Markdown output, got: %s", stdout.String())
-	}
-
-	// Test HTML export
-	stdout.Reset()
-	stderr.Reset()
-	exitCode = runExport([]string{"html", file}, &stdout, &stderr)
-	if exitCode != 0 {
-		t.Errorf("Expected exit code 0 for HTML export, got %d. Stderr: %s", exitCode, stderr.String())
-	}
-	if !strings.Contains(stdout.String(), "<!DOCTYPE html>") {
-		t.Errorf("Expected HTML output, got: %s", stdout.String())
-	}
-
-	// Test SVG export
-	stdout.Reset()
-	stderr.Reset()
-	exitCode = runExport([]string{"svg", file}, &stdout, &stderr)
-	if exitCode != 0 {
-		t.Errorf("Expected exit code 0 for SVG export, got %d. Stderr: %s", exitCode, stderr.String())
-	}
-	if !strings.Contains(stdout.String(), "<svg") {
-		t.Errorf("Expected SVG output, got: %s", stdout.String())
-	}
-
-	// Test SVG container view export
-	stdout.Reset()
-	stderr.Reset()
-	exitCode = runExport([]string{"-view", "container:Sys", "svg", file}, &stdout, &stderr)
-	if exitCode != 0 {
-		t.Errorf("Expected exit code 0 for SVG container view export, got %d. Stderr: %s", exitCode, stderr.String())
-	}
-	if !strings.Contains(stdout.String(), "<svg") {
-		t.Errorf("Expected SVG output for container view, got: %s", stdout.String())
-	}
-
-	// Test HTML export with flags
-	stdout.Reset()
-	stderr.Reset()
-	exitCode = runExport([]string{"-local", "-single-file", "-out", tmpDir, "html", file}, &stdout, &stderr)
-	if exitCode != 0 {
-		t.Errorf("Expected exit code 0 for HTML export with flags, got %d. Stderr: %s", exitCode, stderr.String())
-	}
-
-	// Test SVG component view export
-	stdout.Reset()
-	stderr.Reset()
-	// Note: Component view falls back to container view for now as per implementation
-	exitCode = runExport([]string{"-view", "component:Sys/Cont", "svg", file}, &stdout, &stderr)
-	if exitCode != 0 {
-		t.Errorf("Expected exit code 0 for SVG component view export, got %d. Stderr: %s", exitCode, stderr.String())
-	}
-	if !strings.Contains(stdout.String(), "<svg") {
-		t.Errorf("Expected SVG output for component view, got: %s", stdout.String())
+	if !strings.Contains(stderr.String(), "temporarily disabled") {
+		t.Errorf("Expected disabled message, got: %s", stderr.String())
 	}
 
 	// Test unsupported format
@@ -115,6 +63,63 @@ func TestRunExport(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "Usage:") {
 		t.Errorf("Expected usage message, got: %s", stderr.String())
+	}
+}
+
+func TestRunExport_Mermaid(t *testing.T) {
+	tmpDir := t.TempDir()
+	file := filepath.Join(tmpDir, "mermaid.sruja")
+	err := os.WriteFile(file, []byte(`architecture "A" {
+        system S "Sys" { container C "Cont" }
+    }`), 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	// Mermaid export is disabled - should return error
+	exitCode := runExport([]string{"mermaid", file}, &stdout, &stderr)
+	if exitCode == 0 {
+		t.Fatalf("expected mermaid export to be disabled, but got exit code 0")
+	}
+	if !strings.Contains(stderr.String(), "temporarily disabled") {
+		t.Fatalf("expected disabled message, got: %s", stderr.String())
+	}
+}
+
+func TestRunExport_JSONExtendedViews(t *testing.T) {
+	tmpDir := t.TempDir()
+	file := filepath.Join(tmpDir, "ext.sruja")
+	err := os.WriteFile(file, []byte(`architecture "A" {
+        system S "Sys" {
+            container C "Cont"
+        }
+    }`), 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	exitCode := runExport([]string{"-extended", "json", file}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("exit=%d stderr=%s", exitCode, stderr.String())
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("json unmarshal: %v", err)
+	}
+	views, ok := result["views"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected views present in extended output")
+	}
+	l2 := views["L2"].(map[string]interface{})
+	if _, ok := l2["S"]; !ok {
+		t.Fatalf("expected L2 key 'S'")
+	}
+	l3 := views["L3"].(map[string]interface{})
+	if _, ok := l3["S.C"]; !ok {
+		t.Fatalf("expected L3 key 'S.C'")
 	}
 }
 
@@ -145,54 +150,4 @@ func TestRunExport_Errors(t *testing.T) {
 	}
 }
 
-func TestRunExport_SVG_Views(t *testing.T) {
-	tmpDir := t.TempDir()
-	file := filepath.Join(tmpDir, "views.sruja")
-	err := os.WriteFile(file, []byte(`architecture "Views" {
-		system Sys "System" {
-			container Cont "Container"
-		}
-		deployment Prod "Prod" {
-			node Server "Server" {
-				containerInstance Cont
-			}
-		}
-	}`), 0o644)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var stdout, stderr bytes.Buffer
-
-	tests := []struct {
-		view     string
-		wantOut  string
-		wantErr  string
-		exitCode int
-	}{
-		{"all", "<svg", "", 0},
-		{"deployment", "<svg", "", 0},
-		{"deployment:Prod", "<svg", "", 0},
-		{"c4:l1", "<svg", "", 0},
-		{"c4:l2:Sys", "<svg", "", 0},
-		{"c4:l3:Sys/Cont", "<svg", "", 0},
-		{"container:Unknown", "", "System not found", 1},
-		{"component:Sys/Unknown", "", "Component view not found", 1},
-		{"deployment:Unknown", "", "Deployment node not found", 1},
-	}
-
-	for _, tt := range tests {
-		stdout.Reset()
-		stderr.Reset()
-		exitCode := runExport([]string{"-view", tt.view, "svg", file}, &stdout, &stderr)
-		if exitCode != tt.exitCode {
-			t.Errorf("view %s: expected exit code %d, got %d. Stderr: %s", tt.view, tt.exitCode, exitCode, stderr.String())
-		}
-		if tt.wantOut != "" && !strings.Contains(stdout.String(), tt.wantOut) {
-			t.Errorf("view %s: expected output containing %q, got %q", tt.view, tt.wantOut, stdout.String())
-		}
-		if tt.wantErr != "" && !strings.Contains(stderr.String(), tt.wantErr) {
-			t.Errorf("view %s: expected error containing %q, got %q", tt.view, tt.wantErr, stderr.String())
-		}
-	}
-}
+// SVG export removed; views tests removed accordingly.

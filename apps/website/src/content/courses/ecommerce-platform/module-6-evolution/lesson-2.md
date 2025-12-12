@@ -13,14 +13,16 @@ We decided to move from `Stripe` to `Adyen` for lower fees. But we can't switch 
 
 ```sruja
 system Stripe "Legacy Payment Gateway" {
-    external
-    tags ["deprecated"]
+    metadata {
+        tags ["deprecated"]
+    }
     description "Do not use for new features. Migration in progress."
 }
 
 system Adyen "New Payment Gateway" {
-    external
-    tags ["preferred"]
+    metadata {
+        tags ["preferred"]
+    }
 }
 ```
 
@@ -28,6 +30,7 @@ system Adyen "New Payment Gateway" {
 We can enforce this with a policy!
 
 ```sruja
+// EXPECTED_FAILURE: Policy rules not yet implemented - rule keyword is deferred feature
 policy Migration "No New Stripe Integrations" {
     rule "BanStripe" {
         // Pseudo-code: Fail if any NEW relation points to Stripe

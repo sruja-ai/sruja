@@ -4,251 +4,47 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"syscall/js"
 
 	"github.com/sruja-ai/sruja/internal/converter"
 	"github.com/sruja-ai/sruja/pkg/diagnostics"
 	"github.com/sruja-ai/sruja/pkg/engine"
-	"github.com/sruja-ai/sruja/pkg/export/html"
-	"github.com/sruja-ai/sruja/pkg/export/markdown"
-	"github.com/sruja-ai/sruja/pkg/export/svg"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
 func main() {
 	c := make(chan struct{})
-	fmt.Println("WASM Go Starting...")
-	js.Global().Set("sruja_parse_dsl", js.FuncOf(parseDsl))
-	fmt.Println("Registered sruja_parse_dsl")
-	js.Global().Set("sruja_json_to_dsl", js.FuncOf(jsonToDsl))
-	fmt.Println("Registered sruja_json_to_dsl")
-	js.Global().Set("sruja_dsl_to_markdown", js.FuncOf(dslToMarkdown))
-	fmt.Println("Registered sruja_dsl_to_markdown")
-	js.Global().Set("sruja_dsl_to_svg", js.FuncOf(dslToSvg))
-	fmt.Println("Registered sruja_dsl_to_svg")
-	js.Global().Set("sruja_dsl_to_html", js.FuncOf(dslToHtml))
-	fmt.Println("Registered sruja_dsl_to_html")
-	js.Global().Set("sruja_dsl_to_html_v2", js.FuncOf(dslToHtmlV2))
-	fmt.Println("Registered sruja_dsl_to_html_v2")
+
+	// Register all functions with explicit references to prevent dead-code elimination
+	parseDslFn := js.FuncOf(parseDsl)
+	jsonToDslFn := js.FuncOf(jsonToDsl)
+
+	js.Global().Set("sruja_parse_dsl", parseDslFn)
+	js.Global().Set("sruja_json_to_dsl", jsonToDslFn)
+
 	// LSP functions
 	js.Global().Set("sruja_get_diagnostics", js.FuncOf(getDiagnostics))
-	fmt.Println("Registered sruja_get_diagnostics")
 	js.Global().Set("sruja_get_symbols", js.FuncOf(getSymbols))
-	fmt.Println("Registered sruja_get_symbols")
 	js.Global().Set("sruja_hover", js.FuncOf(hover))
-	fmt.Println("Registered sruja_hover")
 	js.Global().Set("sruja_completion", js.FuncOf(completion))
-	fmt.Println("Registered sruja_completion")
 	js.Global().Set("sruja_go_to_definition", js.FuncOf(goToDefinition))
-	fmt.Println("Registered sruja_go_to_definition")
 	js.Global().Set("sruja_format", js.FuncOf(format))
-	fmt.Println("Registered sruja_format")
 	js.Global().Set("sruja_score", js.FuncOf(score))
-	fmt.Println("Registered sruja_score")
-	fmt.Println("WASM Go Initialized")
+
+	// Explicitly keep function references to prevent optimization
+	_ = parseDslFn
+	_ = jsonToDslFn
+
 	<-c
 }
 
-// ... existing parseDsl and jsonToDsl ...
-
-func dslToMarkdown(this js.Value, args []js.Value) interface{} {
-	if len(args) < 1 {
-		return result(false, "", "invalid arguments")
-	}
-	input := args[0].String()
-
-	p, err := language.NewParser()
-	if err != nil {
-		return result(false, "", err.Error())
-	}
-
-	program, _, err := p.Parse("input.sruja", input)
-	if err != nil {
-		return result(false, "", err.Error())
-	}
-
-	if program.Architecture == nil {
-		return result(false, "", "architecture is nil")
-	}
-
-	exporter := markdown.NewExporter()
-	md, err := exporter.Export(program.Architecture)
-	if err != nil {
-		return result(false, "", err.Error())
-	}
-
-	return result(true, md, "")
-}
-
-func dslToSvg(this js.Value, args []js.Value) interface{} {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("Recovered from panic in dslToSvg:", r)
-		}
-	}()
-
-	if len(args) < 1 {
-		return result(false, "", "invalid arguments")
-	}
-	input := args[0].String()
-
-	p, err := language.NewParser()
-	if err != nil {
-		return result(false, "", err.Error())
-	}
-
-	program, _, err := p.Parse("input.sruja", input)
-	if err != nil {
-		return result(false, "", err.Error())
-	}
-
-	if program.Architecture == nil {
-		return result(false, "", "architecture is nil")
-	}
-
-	// Validate
-	validator := engine.NewValidator()
-	validator.RegisterRule(&engine.UniqueIDRule{})
-	validator.RegisterRule(&engine.ValidReferenceRule{})
-	validator.RegisterRule(&engine.RelationTagRule{})
-	validator.RegisterRule(&engine.ScenarioFQNRule{})
-	errs := validator.Validate(program)
-	if len(errs) > 0 {
-		msg := ""
-		for _, e := range errs {
-			msg += e.Message + "\n"
-		}
-		return result(false, "", "Validation errors:\n"+msg)
-	}
-
-	exporter := svg.NewExporter()
-	exporter.EmbedFonts = true
-	svgContent, err := exporter.ExportAll(program.Architecture)
-	if err != nil {
-		return result(false, "", err.Error())
-	}
-
-	return result(true, svgContent, "")
-}
-
-func dslToHtml(this js.Value, args []js.Value) interface{} {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("Recovered from panic in dslToHtml:", r)
-		}
-	}()
-
-	if len(args) < 1 {
-		return result(false, "", "invalid arguments")
-	}
-	input := args[0].String()
-
-	p, err := language.NewParser()
-	if err != nil {
-		return result(false, "", err.Error())
-	}
-
-	program, _, err := p.Parse("input.sruja", input)
-	if err != nil {
-		return result(false, "", err.Error())
-	}
-
-	if program.Architecture == nil {
-		return result(false, "", "architecture is nil")
-	}
-
-	// Validate
-	validator := engine.NewValidator()
-	validator.RegisterRule(&engine.UniqueIDRule{})
-	validator.RegisterRule(&engine.ValidReferenceRule{})
-	validator.RegisterRule(&engine.RelationTagRule{})
-	validator.RegisterRule(&engine.ScenarioFQNRule{})
-	errs := validator.Validate(program)
-	if len(errs) > 0 {
-		msg := ""
-		for _, e := range errs {
-			msg += e.Message + "\n"
-		}
-		return result(false, "", "Validation errors:\n"+msg)
-	}
-
-	// Export to HTML using V2 mode (Cytoscape.js + Dagre layout)
-	// Creates a fully standalone HTML file with embedded libraries and proper edge rendering
-	exporter := html.NewExporter()
-	exporter.Mode = html.ModeSingleFile // Use V1-style React viewer with full UI
-	exporter.EmbedJSON = true
-	exporter.Minify = true
-	htmlContent, err := exporter.ExportFromArchitecture(program.Architecture)
-	if err != nil {
-		return result(false, "", err.Error())
-	}
-
-	return result(true, htmlContent, "")
-}
-
-// dslToHtmlV2 exports DSL to HTML using V2 mode (Cytoscape.js + ELK layout)
-// This is an experimental mode with interactive navigation and documentation panels
-func dslToHtmlV2(this js.Value, args []js.Value) interface{} {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("Recovered from panic in dslToHtmlV2:", r)
-		}
-	}()
-
-	if len(args) < 1 {
-		return result(false, "", "invalid arguments")
-	}
-	input := args[0].String()
-
-	p, err := language.NewParser()
-	if err != nil {
-		return result(false, "", err.Error())
-	}
-
-	program, _, err := p.Parse("input.sruja", input)
-	if err != nil {
-		return result(false, "", err.Error())
-	}
-
-	if program.Architecture == nil {
-		return result(false, "", "architecture is nil")
-	}
-
-	// Validate
-	validator := engine.NewValidator()
-	validator.RegisterRule(&engine.UniqueIDRule{})
-	validator.RegisterRule(&engine.ValidReferenceRule{})
-	validator.RegisterRule(&engine.RelationTagRule{})
-	validator.RegisterRule(&engine.ScenarioFQNRule{})
-	errs := validator.Validate(program)
-	if len(errs) > 0 {
-		msg := ""
-		for _, e := range errs {
-			msg += e.Message + "\n"
-		}
-		return result(false, "", "Validation errors:\n"+msg)
-	}
-
-	// Export to HTML using V2 mode (Cytoscape.js + ELK layout)
-	// This mode provides interactive navigation with sidebar, breadcrumbs, and documentation panels
-	exporter := html.NewExporter()
-	exporter.Mode = html.ModeV2 // Use V2 mode (Cytoscape.js + ELK)
-	exporter.EmbedJSON = true
-	exporter.Minify = true
-	htmlContent, err := exporter.ExportFromArchitecture(program.Architecture)
-	if err != nil {
-		return result(false, "", err.Error())
-	}
-
-	return result(true, htmlContent, "")
-}
+// Export functions (dslToMarkdown, dslToMermaid) removed - now handled by TypeScript exporters
 
 func parseDsl(this js.Value, args []js.Value) interface{} {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Recovered from panic:", r)
+			// Silent recovery - no debug output in production
 		}
 	}()
 
@@ -256,13 +52,20 @@ func parseDsl(this js.Value, args []js.Value) interface{} {
 		return result(false, "", "invalid arguments")
 	}
 	input := args[0].String()
+	filename := "input.sruja"
+	if len(args) >= 2 {
+		fn := args[1].String()
+		if fn != "" {
+			filename = fn
+		}
+	}
 
 	p, err := language.NewParser()
 	if err != nil {
 		return result(false, "", err.Error())
 	}
 
-	program, _, err := p.Parse("input.sruja", input)
+	program, _, err := p.Parse(filename, input)
 	if err != nil {
 		return result(false, "", err.Error())
 	}
@@ -271,20 +74,21 @@ func parseDsl(this js.Value, args []js.Value) interface{} {
 	validator := engine.NewValidator()
 	validator.RegisterRule(&engine.UniqueIDRule{})
 	validator.RegisterRule(&engine.ValidReferenceRule{})
-	// Add other rules as needed
 	validator.RegisterRule(&engine.ScenarioFQNRule{})
 
 	errs := validator.Validate(program)
 	if len(errs) > 0 {
-		// For now, we might want to return validation errors, but let's just log them
-		// and proceed if possible, or fail if critical.
-		// The viewer might want to show errors.
-		// For now, let's fail on validation error to be safe.
-		msg := ""
-		for _, e := range errs {
-			msg += e.Message + "\n"
+		// Build error message efficiently with strings.Builder
+		var msgBuilder strings.Builder
+		msgBuilder.Grow(len(errs) * 50) // Pre-allocate space
+		msgBuilder.WriteString("Validation errors:\n")
+		for i, e := range errs {
+			if i > 0 {
+				msgBuilder.WriteByte('\n')
+			}
+			msgBuilder.WriteString(e.Message)
 		}
-		return result(false, "", "Validation errors:\n"+msg)
+		return result(false, "", msgBuilder.String())
 	}
 
 	// Convert to JSON
@@ -322,7 +126,7 @@ func jsonToDsl(this js.Value, args []js.Value) interface{} {
 }
 
 func result(ok bool, data string, err string) interface{} {
-	res := make(map[string]interface{})
+	res := make(map[string]interface{}, 3) // Pre-allocate with known capacity
 	res["ok"] = ok
 	if ok {
 		res["json"] = data // For parseDsl
@@ -339,7 +143,7 @@ func result(ok bool, data string, err string) interface{} {
 func getDiagnostics(this js.Value, args []js.Value) interface{} {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Recovered from panic in getDiagnostics:", r)
+			// Silent recovery
 		}
 	}()
 
@@ -403,7 +207,7 @@ func getDiagnostics(this js.Value, args []js.Value) interface{} {
 func getSymbols(this js.Value, args []js.Value) interface{} {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Recovered from panic in getSymbols:", r)
+			// Silent recovery
 		}
 	}()
 
@@ -431,7 +235,7 @@ func getSymbols(this js.Value, args []js.Value) interface{} {
 func hover(this js.Value, args []js.Value) interface{} {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Recovered from panic in hover:", r)
+			// Silent recovery
 		}
 	}()
 
@@ -465,7 +269,7 @@ func hover(this js.Value, args []js.Value) interface{} {
 func completion(this js.Value, args []js.Value) interface{} {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Recovered from panic in completion:", r)
+			// Silent recovery
 		}
 	}()
 
@@ -490,7 +294,7 @@ func completion(this js.Value, args []js.Value) interface{} {
 		}
 	}
 
-	// Simple completion: return keywords
+	// Pre-allocate completions slice
 	completions := make([]map[string]interface{}, len(keywords))
 	for i, kw := range keywords {
 		completions[i] = map[string]interface{}{
@@ -507,7 +311,7 @@ func completion(this js.Value, args []js.Value) interface{} {
 func goToDefinition(this js.Value, args []js.Value) interface{} {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Recovered from panic in goToDefinition:", r)
+			// Silent recovery
 		}
 	}()
 
@@ -541,7 +345,7 @@ func goToDefinition(this js.Value, args []js.Value) interface{} {
 func format(this js.Value, args []js.Value) interface{} {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Recovered from panic in format:", r)
+			// Silent recovery
 		}
 	}()
 
@@ -571,7 +375,7 @@ func format(this js.Value, args []js.Value) interface{} {
 func score(this js.Value, args []js.Value) interface{} {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Recovered from panic in score:", r)
+			// Silent recovery
 		}
 	}()
 
@@ -607,7 +411,7 @@ func score(this js.Value, args []js.Value) interface{} {
 // Helper functions
 
 func lspResult(ok bool, data interface{}, err string) interface{} {
-	res := make(map[string]interface{})
+	res := make(map[string]interface{}, 3) // Pre-allocate
 	res["ok"] = ok
 	if ok {
 		if data != nil {
@@ -627,14 +431,16 @@ func lspResult(ok bool, data interface{}, err string) interface{} {
 
 // extractSymbols extracts all symbols from the architecture
 func extractSymbols(arch *language.Architecture) []map[string]interface{} {
-	var symbols []map[string]interface{}
+	// Pre-allocate with estimated capacity
+	estimatedSize := len(arch.Systems) + len(arch.Containers) + len(arch.Components) + len(arch.DataStores) + len(arch.Persons)
+	symbols := make([]map[string]interface{}, 0, estimatedSize)
 
 	// Extract systems
 	for _, sys := range arch.Systems {
 		symbols = append(symbols, map[string]interface{}{
 			"name": sys.ID,
 			"kind": "system",
-			"line": 1, // TODO: get actual line from AST
+			"line": sys.Pos.Line, // Use actual line from AST
 		})
 	}
 
@@ -643,7 +449,7 @@ func extractSymbols(arch *language.Architecture) []map[string]interface{} {
 		symbols = append(symbols, map[string]interface{}{
 			"name": cont.ID,
 			"kind": "container",
-			"line": 1,
+			"line": cont.Pos.Line,
 		})
 	}
 
@@ -652,7 +458,7 @@ func extractSymbols(arch *language.Architecture) []map[string]interface{} {
 		symbols = append(symbols, map[string]interface{}{
 			"name": comp.ID,
 			"kind": "component",
-			"line": 1,
+			"line": comp.Pos.Line,
 		})
 	}
 
@@ -661,7 +467,7 @@ func extractSymbols(arch *language.Architecture) []map[string]interface{} {
 		symbols = append(symbols, map[string]interface{}{
 			"name": ds.ID,
 			"kind": "datastore",
-			"line": 1,
+			"line": ds.Pos.Line,
 		})
 	}
 
@@ -670,7 +476,7 @@ func extractSymbols(arch *language.Architecture) []map[string]interface{} {
 		symbols = append(symbols, map[string]interface{}{
 			"name": person.ID,
 			"kind": "person",
-			"line": 1,
+			"line": person.Pos.Line,
 		})
 	}
 
@@ -689,22 +495,44 @@ func findHoverInfo(arch *language.Architecture, text string, line, column int) m
 		return nil
 	}
 
-	// Simple implementation: find word at position
-	words := strings.Fields(lineText)
-	for _, word := range words {
-		if strings.Contains(lineText, word) {
-			// Check if this word matches a symbol
-			for _, sys := range arch.Systems {
-				if sys.ID == word {
-					return map[string]interface{}{
-						"contents": fmt.Sprintf("System: %s\n%s", sys.ID, sys.Label),
-					}
-				}
+	// Find word at position more efficiently
+	start := column - 1
+	end := column - 1
+	for start > 0 && isIdentChar(lineText[start-1]) {
+		start--
+	}
+	for end < len(lineText) && isIdentChar(lineText[end]) {
+		end++
+	}
+	if start >= end {
+		return nil
+	}
+
+	word := lineText[start:end]
+
+	// Check if this word matches a symbol
+	for _, sys := range arch.Systems {
+		if sys.ID == word {
+			var contents strings.Builder
+			contents.Grow(len(sys.ID) + len(sys.Label) + 20)
+			contents.WriteString("System: ")
+			contents.WriteString(sys.ID)
+			if sys.Label != "" {
+				contents.WriteString("\n")
+				contents.WriteString(sys.Label)
+			}
+			return map[string]interface{}{
+				"contents": contents.String(),
 			}
 		}
 	}
 
 	return nil
+}
+
+// isIdentChar checks if a character is a valid identifier character
+func isIdentChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
 }
 
 // findDefinition finds the definition location for a symbol at the given position
@@ -715,16 +543,27 @@ func findDefinition(arch *language.Architecture, text string, line, column int) 
 	}
 
 	lineText := lines[line-1]
-	words := strings.Fields(lineText)
-	for _, word := range words {
-		// Check if this word matches a symbol
-		for _, sys := range arch.Systems {
-			if sys.ID == word {
-				return map[string]interface{}{
-					"file":   "input.sruja",
-					"line":   1, // TODO: get actual line
-					"column": 1,
-				}
+	start := column - 1
+	end := column - 1
+	for start > 0 && isIdentChar(lineText[start-1]) {
+		start--
+	}
+	for end < len(lineText) && isIdentChar(lineText[end]) {
+		end++
+	}
+	if start >= end {
+		return nil
+	}
+
+	word := lineText[start:end]
+
+	// Check if this word matches a symbol
+	for _, sys := range arch.Systems {
+		if sys.ID == word {
+			return map[string]interface{}{
+				"file":   "input.sruja",
+				"line":   sys.Pos.Line,
+				"column": sys.Pos.Column,
 			}
 		}
 	}

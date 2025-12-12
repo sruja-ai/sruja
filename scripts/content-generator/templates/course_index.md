@@ -2,6 +2,9 @@
 title: "{{.Title}}"
 weight: {{.Weight}}
 summary: "{{.Summary}}"
+difficulty: "beginner"
+topic: ""
+estimatedTime: "2–4 hours"
 ---
 
 # {{.Title}}
@@ -21,3 +24,10 @@ In this course, you will learn:
 
 - TODO: Add prerequisites
 
+## Assessments (Optional)
+
+- TODO: Link to quizzes or challenges
+
+## Capstone (Optional)
+
+- TODO: Describe a small project applying the course

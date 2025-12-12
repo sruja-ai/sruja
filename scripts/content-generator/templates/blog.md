@@ -3,10 +3,9 @@ title: "{{.Title}}"
 {{- if .Summary}}
 summary: "{{.Summary}}"
 {{- end}}
-date: {{.Date}}
-{{- if .Draft}}
-draft: true
-{{- end}}
+pubDate: {{.Date}}
+tags: []
+description: ""
 ---
 
 # {{.Title}}
@@ -25,3 +24,10 @@ TODO: Add main content
 
 TODO: Add conclusion
 
+## Key Takeaways
+
+- TODO: Summarize 3–5 key points
+
+## Further Reading
+
+- TODO: Link to related docs or tutorials

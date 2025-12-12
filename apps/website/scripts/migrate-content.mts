@@ -90,7 +90,7 @@ function processFile(sourcePath: string, targetPath: string, collectionType: str
   const { frontmatter, body } = convertFrontmatter(content, sourcePath);
 
   // Clean up body - remove Docusaurus-specific components
-  let cleanedBody = body
+  const cleanedBody = body
     .replace(/import\s+.*?from\s+['"]@site\/.*?['"];?\s*/g, '')
     .replace(/<SrujaCodeBlock[^>]*>[\s\S]*?<\/SrujaCodeBlock>/g, (match) => {
       // Extract code from SrujaCodeBlock

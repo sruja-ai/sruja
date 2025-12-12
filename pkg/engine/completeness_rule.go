@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"fmt"
+	"strings"
 
 	"github.com/sruja-ai/sruja/pkg/diagnostics"
 	"github.com/sruja-ai/sruja/pkg/language"
@@ -17,11 +17,13 @@ func (r *CompletenessRule) Name() string {
 
 //nolint:funlen,gocyclo // Validation logic is long and complex
 func (r *CompletenessRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	var diags []diagnostics.Diagnostic
-
 	if program.Architecture == nil {
-		return diags
+		return nil
 	}
+
+	// Pre-allocate diagnostics slice with estimated capacity
+	estimatedDiags := 20
+	diags := make([]diagnostics.Diagnostic, 0, estimatedDiags)
 
 	// Helper functions
 	var checkComponent func(comp *language.Component)
@@ -31,10 +33,16 @@ func (r *CompletenessRule) Validate(program *language.Program) []diagnostics.Dia
 	checkComponent = func(comp *language.Component) {
 		if comp.Description == nil || *comp.Description == "" {
 			loc := comp.Location()
+			// Build message efficiently
+			var msgSb strings.Builder
+			msgSb.Grow(len(comp.ID) + 30)
+			msgSb.WriteString("Component '")
+			msgSb.WriteString(comp.ID)
+			msgSb.WriteString("' has no description.")
 			diags = append(diags, diagnostics.Diagnostic{
 				Code:     "SUGGESTION_MISSING_DESC",
 				Severity: diagnostics.SeverityInfo,
-				Message:  fmt.Sprintf("Component '%s' has no description.", comp.ID),
+				Message:  msgSb.String(),
 				Location: diagnostics.SourceLocation{
 					File:   loc.File,
 					Line:   loc.Line,
@@ -52,10 +60,16 @@ func (r *CompletenessRule) Validate(program *language.Program) []diagnostics.Dia
 	checkContainer = func(cont *language.Container) {
 		if cont.Description == nil || *cont.Description == "" {
 			loc := cont.Location()
+			// Build message efficiently
+			var msgSb strings.Builder
+			msgSb.Grow(len(cont.ID) + 30)
+			msgSb.WriteString("Container '")
+			msgSb.WriteString(cont.ID)
+			msgSb.WriteString("' has no description.")
 			diags = append(diags, diagnostics.Diagnostic{
 				Code:     "SUGGESTION_MISSING_DESC",
 				Severity: diagnostics.SeverityInfo,
-				Message:  fmt.Sprintf("Container '%s' has no description.", cont.ID),
+				Message:  msgSb.String(),
 				Location: diagnostics.SourceLocation{
 					File:   loc.File,
 					Line:   loc.Line,
@@ -88,10 +102,16 @@ func (r *CompletenessRule) Validate(program *language.Program) []diagnostics.Dia
 
 		if !hasTech {
 			loc := cont.Location()
+			// Build message efficiently
+			var msgSb strings.Builder
+			msgSb.Grow(len(cont.ID) + 60)
+			msgSb.WriteString("Container '")
+			msgSb.WriteString(cont.ID)
+			msgSb.WriteString("' has no technology defined (e.g., 'Go', 'React').")
 			diags = append(diags, diagnostics.Diagnostic{
 				Code:     "SUGGESTION_MISSING_TECH",
 				Severity: diagnostics.SeverityInfo,
-				Message:  fmt.Sprintf("Container '%s' has no technology defined (e.g., 'Go', 'React').", cont.ID),
+				Message:  msgSb.String(),
 				Location: diagnostics.SourceLocation{
 					File:   loc.File,
 					Line:   loc.Line,
@@ -102,10 +122,16 @@ func (r *CompletenessRule) Validate(program *language.Program) []diagnostics.Dia
 
 		if len(cont.Components) == 0 {
 			loc := cont.Location()
+			// Build message efficiently
+			var msgSb strings.Builder
+			msgSb.Grow(len(cont.ID) + 50)
+			msgSb.WriteString("Container '")
+			msgSb.WriteString(cont.ID)
+			msgSb.WriteString("' has no components. Consider breaking it down.")
 			diags = append(diags, diagnostics.Diagnostic{
 				Code:     "SUGGESTION_EMPTY_CONTAINER",
 				Severity: diagnostics.SeverityInfo,
-				Message:  fmt.Sprintf("Container '%s' has no components. Consider breaking it down.", cont.ID),
+				Message:  msgSb.String(),
 				Location: diagnostics.SourceLocation{
 					File:   loc.File,
 					Line:   loc.Line,
@@ -124,10 +150,16 @@ func (r *CompletenessRule) Validate(program *language.Program) []diagnostics.Dia
 		// Check description
 		if sys.Description == nil || *sys.Description == "" {
 			loc := sys.Location()
+			// Build message efficiently
+			var msgSb strings.Builder
+			msgSb.Grow(len(sys.ID) + 50)
+			msgSb.WriteString("System '")
+			msgSb.WriteString(sys.ID)
+			msgSb.WriteString("' has no description. Adding one helps context.")
 			diags = append(diags, diagnostics.Diagnostic{
 				Code:     "SUGGESTION_MISSING_DESC",
 				Severity: diagnostics.SeverityInfo,
-				Message:  fmt.Sprintf("System '%s' has no description. Adding one helps context.", sys.ID),
+				Message:  msgSb.String(),
 				Location: diagnostics.SourceLocation{
 					File:   loc.File,
 					Line:   loc.Line,
@@ -139,10 +171,16 @@ func (r *CompletenessRule) Validate(program *language.Program) []diagnostics.Dia
 		// Check empty system (no containers/components)
 		if len(sys.Containers) == 0 && len(sys.Components) == 0 {
 			loc := sys.Location()
+			// Build message efficiently
+			var msgSb strings.Builder
+			msgSb.Grow(len(sys.ID) + 50)
+			msgSb.WriteString("System '")
+			msgSb.WriteString(sys.ID)
+			msgSb.WriteString("' is empty. Add Containers or Components.")
 			diags = append(diags, diagnostics.Diagnostic{
 				Code:     "SUGGESTION_EMPTY_SYSTEM",
 				Severity: diagnostics.SeverityInfo,
-				Message:  fmt.Sprintf("System '%s' is empty. Add Containers or Components.", sys.ID),
+				Message:  msgSb.String(),
 				Location: diagnostics.SourceLocation{
 					File:   loc.File,
 					Line:   loc.Line,

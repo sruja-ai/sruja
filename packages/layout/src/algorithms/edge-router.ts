@@ -28,15 +28,32 @@ export function routeOrthogonal(source: { position: Point; side: string }, targe
   return points
 }
 
-export function routeOrthogonalAvoid(source: { position: Point; side: string }, target: { position: Point; side: string }, obstacles: Rect[], maxIterations = 50): Point[] {
+// Default padding increased from 6 to 20 for better visual clearance around nodes
+export function routeOrthogonalAvoid(source: { position: Point; side: string }, target: { position: Point; side: string }, obstacles: Rect[], padding = 20, maxIterations = 50): Point[] {
+  // Expand obstacles by a visual clearance buffer to prevent edges from appearing too close
+  const VISUAL_CLEARANCE = 8
+  const expandedObstacles = obstacles.map(r => ({
+    x: r.x - VISUAL_CLEARANCE,
+    y: r.y - VISUAL_CLEARANCE,
+    width: r.width + VISUAL_CLEARANCE * 2,
+    height: r.height + VISUAL_CLEARANCE * 2
+  }))
+
   let path = routeOrthogonal(source, target)
   let iterations = 0
   for (let i = 1; i < path.length && iterations < maxIterations; i++) {
     const a = path[i - 1]
     const b = path[i]
-    const hit = firstObstacleHit(a, b, obstacles)
+    const hit = firstObstacleHit(a, b, expandedObstacles)
     if (hit) {
-      const detour = detourAround(a, b, hit)
+      // Use original obstacle for detour calculation, but with increased padding
+      const originalObstacle = obstacles.find(o =>
+        hit.x >= o.x - VISUAL_CLEARANCE - 1 &&
+        hit.y >= o.y - VISUAL_CLEARANCE - 1 &&
+        hit.x <= o.x + 1 &&
+        hit.y <= o.y + 1
+      ) || hit
+      const detour = detourAround(a, b, originalObstacle, padding, expandedObstacles)
       path = [...path.slice(0, i), ...detour, ...path.slice(i)]
       i += detour.length
       iterations++
@@ -67,8 +84,11 @@ function segmentIntersectsRect(a: Point, b: Point, r: Rect): boolean {
   return false
 }
 
-function detourAround(a: Point, b: Point, r: Rect): Point[] {
-  const pad = 6
+/**
+ * Improved detour selection that considers both path length and obstacle clearance.
+ * Prefers routes that maximize distance from all obstacles, not just the current one.
+ */
+function detourAround(a: Point, b: Point, r: Rect, pad: number, allObstacles: Rect[] = []): Point[] {
   const left = { x: r.x - pad, y: a.y }
   const right = { x: r.x + r.width + pad, y: a.y }
   const top = { x: a.x, y: r.y - pad }
@@ -79,12 +99,34 @@ function detourAround(a: Point, b: Point, r: Rect): Point[] {
     [top, { x: b.x, y: top.y }],
     [bottom, { x: b.x, y: bottom.y }]
   ]
+
+  // Score each candidate: prefer shorter paths that don't cross other obstacles
   let best: Point[] = candidates[0]
-  let bestLen = pathLength([a, ...best, b])
-  for (const c of candidates.slice(1)) {
-    const len = pathLength([a, ...c, b])
-    if (len < bestLen) { best = c; bestLen = len }
+  let bestScore = Infinity
+
+  for (const candidate of candidates) {
+    const fullPath = [a, ...candidate, b]
+    const len = pathLength(fullPath)
+
+    // Check if this detour passes through any other obstacle
+    let crossesOther = false
+    for (let i = 1; i < fullPath.length && !crossesOther; i++) {
+      for (const obs of allObstacles) {
+        if (obs !== r && segmentIntersectsRect(fullPath[i - 1], fullPath[i], obs)) {
+          crossesOther = true
+          break
+        }
+      }
+    }
+
+    // Score: path length + heavy penalty for crossing obstacles
+    const score = len + (crossesOther ? 10000 : 0)
+    if (score < bestScore) {
+      best = candidate
+      bestScore = score
+    }
   }
+
   return best
 }
 

@@ -1,1 +1,0 @@
-import{R as a,a as l}from"./iframe-CLHqt8sP.js";function o({children:n,freeze:e},r){let t=c(e,n);return l.isValidElement(t)?l.cloneElement(t,{ref:r}):a.createElement(a.Fragment,null,t)}const s=a.forwardRef(o);function c(n,e){let[r,t]=l.useState(e);return!n&&r!==e&&t(e),n?r:e}export{s,c as u};

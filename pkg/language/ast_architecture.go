@@ -29,7 +29,7 @@ type File struct {
 	Pos          lexer.Position
 	Architecture *Architecture      `parser:"@@"`
 	Change       *ChangeBlock       `parser:"| @@"`
-	Items        []ArchitectureItem `parser:"| @@*"`
+    Items        []ArchitectureItem `parser:"| @@+"`
 }
 
 func (f *File) Location() SourceLocation {
@@ -67,8 +67,7 @@ type Architecture struct {
 
 	// Post-processed fields
 	// Post-processed fields
-	Imports         []*ImportSpec
-	ResolvedImports []*ImportedArchitecture
+
 	Systems         []*System
 	Containers      []*Container
 	Components      []*Component
@@ -88,9 +87,11 @@ type Architecture struct {
 	Scenarios       []*Scenario
 	Policies        []*Policy
 	Flows           []*Flow
-	Views           *ViewBlock // Optional views block for customization
+	Views           *ViewBlock     // Optional views block for customization
+	Overview        *OverviewBlock // Optional overview block for high-level introduction
 	Properties      map[string]string
 	Style           map[string]string
+	SLO             *SLOBlock
 	Description     *string
 }
 
@@ -100,8 +101,7 @@ func (a *Architecture) Location() SourceLocation {
 
 // ArchitectureItem is a union type for items that can appear at the architecture level.
 type ArchitectureItem struct {
-	Import           *ImportSpec       `parser:"@@"`
-	Container        *Container        `parser:"| @@"`
+	Container        *Container        `parser:"@@"`
 	System           *System           `parser:"| @@"`
 	Component        *Component        `parser:"| @@"`
 	DataStore        *DataStore        `parser:"| @@"`
@@ -121,35 +121,13 @@ type ArchitectureItem struct {
 	Policy           *Policy           `parser:"| @@"`
 	Flow             *Flow             `parser:"| @@"`
 	Views            *ViewBlock        `parser:"| @@"`
+	Overview         *OverviewBlock    `parser:"| @@"`
 	Properties       *PropertiesBlock  `parser:"| @@"`
 	Style            *StyleBlock       `parser:"| @@"`
-	Description      *string           `parser:"| 'description' @String"`
-}
-
-// ============================================================================
-// Imports & Multi-Architecture Composition
-// ============================================================================
-
-// ImportSpec represents an import statement.
-//
-// Example DSL:
-//
-//	import "shared.sruja"
-//	import "common.sruja" as common
-type ImportSpec struct {
-	Pos   lexer.Position
-	Path  string  `parser:"'import' @String"`
-	Alias *string `parser:"( 'as' @Ident )?"`
-}
-
-func (i *ImportSpec) Location() SourceLocation {
-	return SourceLocation{File: i.Pos.Filename, Line: i.Pos.Line, Column: i.Pos.Column, Offset: i.Pos.Offset}
-}
-
-// ImportedArchitecture represents a resolved imported architecture.
-type ImportedArchitecture struct {
-	Alias        string
-	Architecture *Architecture
+    SLO              *SLOBlock         `parser:"| @@"`
+    Change           *ChangeBlock      `parser:"| @@"`
+    Snapshot         *SnapshotBlock    `parser:"| @@"`
+    Description      *string           `parser:"| 'description' @String"`
 }
 
 // ============================================================================

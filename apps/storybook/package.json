@@ -21,15 +21,14 @@
     "@storybook/addon-a11y": "^10.1.4",
     "@storybook/addon-viewport": "^9.0.8",
     "@sruja/layout": "*",
-    "@sruja/react-flow-architecture": "*",
+    "@sruja/diagram": "*",
     "@xyflow/react": "^12.10.0",
-    "elkjs": "^0.9.3",
     "framer-motion": "^11.18.0",
     "lucide-react": "^0.555.0",
     "mermaid": "^10.7.0",
     "monaco-editor": "^0.52.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "zustand": "^5.0.9"
   },
   "devDependencies": {

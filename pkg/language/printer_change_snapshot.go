@@ -10,20 +10,39 @@ import (
 // printChangeBlock prints a change block
 func (p *Printer) printChangeBlock(sb *strings.Builder, change *ChangeBlock) {
 	indent := p.indent()
-	fmt.Fprintf(sb, "%schange %q {\n", indent, change.ID)
+	sb.WriteString(indent)
+	sb.WriteString("change ")
+	sb.WriteString(fmt.Sprintf("%q", change.ID))
+	sb.WriteString(" {\n")
 	p.IndentLevel++
 
 	if change.Version != nil {
-		fmt.Fprintf(sb, "%sversion %q\n", p.indent(), *change.Version)
+		ind := p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("version ")
+		sb.WriteString(fmt.Sprintf("%q", *change.Version))
+		sb.WriteString("\n")
 	}
 	if change.Status != nil {
-		fmt.Fprintf(sb, "%sstatus %q\n", p.indent(), *change.Status)
+		ind := p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("status ")
+		sb.WriteString(fmt.Sprintf("%q", *change.Status))
+		sb.WriteString("\n")
 	}
 	if change.Requirement != nil {
-		fmt.Fprintf(sb, "%srequirement %q\n", p.indent(), *change.Requirement)
+		ind := p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("requirement ")
+		sb.WriteString(fmt.Sprintf("%q", *change.Requirement))
+		sb.WriteString("\n")
 	}
 	if change.ADR != nil {
-		fmt.Fprintf(sb, "%sadr %q\n", p.indent(), *change.ADR)
+		ind := p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("adr ")
+		sb.WriteString(fmt.Sprintf("%q", *change.ADR))
+		sb.WriteString("\n")
 	}
 
 	if change.Metadata != nil {
@@ -31,31 +50,45 @@ func (p *Printer) printChangeBlock(sb *strings.Builder, change *ChangeBlock) {
 	}
 
 	if change.Add != nil {
-		sb.WriteString(p.indent() + "add {\n")
+		ind := p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("add {\n")
 		p.IndentLevel++
 		p.printArchitectureBlock(sb, change.Add)
 		p.IndentLevel--
-		sb.WriteString(p.indent() + "}\n")
+		ind = p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("}\n")
 	}
 
 	if change.Modify != nil {
-		sb.WriteString(p.indent() + "modify {\n")
+		ind := p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("modify {\n")
 		p.IndentLevel++
 		p.printArchitectureBlock(sb, change.Modify)
 		p.IndentLevel--
-		sb.WriteString(p.indent() + "}\n")
+		ind = p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("}\n")
 	}
 
 	if change.Remove != nil {
-		sb.WriteString(p.indent() + "remove {\n")
+		ind := p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("remove {\n")
 		p.IndentLevel++
 		p.printArchitectureBlock(sb, change.Remove)
 		p.IndentLevel--
-		sb.WriteString(p.indent() + "}\n")
+		ind = p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("}\n")
 	}
 
 	p.IndentLevel--
-	sb.WriteString(p.indent() + "}\n")
+	ind := p.indent()
+	sb.WriteString(ind)
+	sb.WriteString("}\n")
 }
 
 // printArchitectureBlock prints an architecture block (for add/modify/remove)
@@ -98,40 +131,71 @@ func (p *Printer) printArchitectureBlock(sb *strings.Builder, block *Architectur
 //nolint:unused // Future use
 func (p *Printer) printSnapshotBlock(sb *strings.Builder, snapshot *SnapshotBlock) {
 	indent := p.indent()
-	fmt.Fprintf(sb, "%ssnapshot %q {\n", indent, snapshot.Name)
+	sb.WriteString(indent)
+	sb.WriteString("snapshot ")
+	sb.WriteString(fmt.Sprintf("%q", snapshot.Name))
+	sb.WriteString(" {\n")
 	p.IndentLevel++
 
 	if snapshot.Version != nil {
-		fmt.Fprintf(sb, "%sversion %q\n", p.indent(), *snapshot.Version)
+		ind := p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("version ")
+		sb.WriteString(fmt.Sprintf("%q", *snapshot.Version))
+		sb.WriteString("\n")
 	}
 	if snapshot.Description != nil {
-		fmt.Fprintf(sb, "%sdescription %q\n", p.indent(), *snapshot.Description)
+		ind := p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("description ")
+		sb.WriteString(fmt.Sprintf("%q", *snapshot.Description))
+		sb.WriteString("\n")
 	}
 	if snapshot.Timestamp != nil {
-		fmt.Fprintf(sb, "%stimestamp %q\n", p.indent(), *snapshot.Timestamp)
+		ind := p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("timestamp ")
+		sb.WriteString(fmt.Sprintf("%q", *snapshot.Timestamp))
+		sb.WriteString("\n")
 	}
 	if snapshot.Preview != nil {
-		previewStr := "false"
+		ind := p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("preview ")
 		if *snapshot.Preview {
-			previewStr = "true"
+			sb.WriteString("true")
+		} else {
+			sb.WriteString("false")
 		}
-		fmt.Fprintf(sb, "%spreview %s\n", p.indent(), previewStr)
+		sb.WriteString("\n")
 	}
 	if len(snapshot.Changes) > 0 {
+		ind := p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("changes [")
 		quoted := make([]string, len(snapshot.Changes))
 		for i, v := range snapshot.Changes {
 			quoted[i] = fmt.Sprintf("%q", v)
 		}
-		fmt.Fprintf(sb, "%schanges [%s]\n", p.indent(), strings.Join(quoted, ", "))
+		sb.WriteString(strings.Join(quoted, ", "))
+		sb.WriteString("]\n")
 	}
 	if snapshot.ArchName != nil && snapshot.Architecture != nil {
-		fmt.Fprintf(sb, "%sarchitecture %q {\n", p.indent(), *snapshot.ArchName)
+		ind := p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("architecture ")
+		sb.WriteString(fmt.Sprintf("%q", *snapshot.ArchName))
+		sb.WriteString(" {\n")
 		p.IndentLevel++
 		p.printArchitecture(sb, snapshot.Architecture)
 		p.IndentLevel--
-		sb.WriteString(p.indent() + "}\n")
+		ind = p.indent()
+		sb.WriteString(ind)
+		sb.WriteString("}\n")
 	}
 
 	p.IndentLevel--
-	sb.WriteString(p.indent() + "}\n")
+	ind := p.indent()
+	sb.WriteString(ind)
+	sb.WriteString("}\n")
 }

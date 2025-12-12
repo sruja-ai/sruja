@@ -1,0 +1,738 @@
+.overview-panel {
+    padding: 1.5rem;
+    background: var(--panel-bg);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    height: 100%;
+    overflow-y: auto;
+    color: var(--text-primary);
+}
+
+/* Hero Section */
+.overview-hero {
+    margin-bottom: 1.5rem;
+    text-align: center;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.overview-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+[data-theme="dark"] .overview-title {
+    background: linear-gradient(135deg, #a3b8ff 0%, #c4a6e8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+.overview-architecture-name {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem 0;
+    color: var(--text-primary);
+}
+
+.overview-description {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.5rem 0;
+    line-height: 1.5;
+}
+
+.overview-summary {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.5;
+    font-style: italic;
+}
+
+/* Quick Stats */
+.overview-stats {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    flex: 1;
+    min-width: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 1rem 0.75rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+    background: var(--card-hover-bg);
+    transform: translateY(-2px);
+}
+
+.stat-card svg {
+    color: var(--highlight-color);
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Metadata Cards */
+.overview-metadata {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.metadata-section {
+    display: contents;
+}
+
+.metadata-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem 1rem;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.metadata-key {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metadata-value {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* Goals Section */
+.overview-goals-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.goals-card {
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid;
+}
+
+.goals-card.goals {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+.goals-card.non-goals {
+    background: rgba(156, 163, 175, 0.1);
+    border-color: rgba(156, 163, 175, 0.3);
+}
+
+.goals-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem 0;
+    color: var(--text-primary);
+}
+
+.goals-card.goals h3 svg {
+    color: #22c55e;
+}
+
+.goals-card.non-goals h3 svg {
+    color: var(--text-muted);
+}
+
+.goals-card ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    list-style: none;
+}
+
+.goals-card li {
+    position: relative;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    padding-left: 0.75rem;
+}
+
+.goals-card.goals li::before {
+    content: '✓';
+    position: absolute;
+    left: -1rem;
+    color: #22c55e;
+}
+
+.goals-card.non-goals li::before {
+    content: '✗';
+    position: absolute;
+    left: -1rem;
+    color: var(--text-muted);
+}
+
+/* Risks Section */
+.overview-risks {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.overview-risks h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem 0;
+    color: #ef4444;
+}
+
+.risks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.risk-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.risk-item svg {
+    color: #f87171;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* Context Section */
+.overview-context {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.context-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.context-item svg {
+    color: var(--highlight-color);
+    flex-shrink: 0;
+}
+
+.context-label {
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.overview-hero-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.overview-hero-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.edit-mode-toggle {
+    display: flex;
+    gap: 0.25rem;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    padding: 0.25rem;
+}
+
+.overview-hero-header>div {
+    flex: 1;
+}
+
+.metadata-section-header,
+.policies-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.metadata-section-title,
+.policies-section-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.metadata-card-editable {
+    position: relative;
+}
+
+.metadata-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.metadata-card-actions {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.metadata-card-editable:hover .metadata-card-actions {
+    opacity: 1;
+}
+
+.metadata-edit-btn,
+.metadata-delete-btn {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.metadata-edit-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--highlight-color);
+    color: var(--highlight-color);
+}
+
+.metadata-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.overview-policies-section {
+    margin-bottom: 1.5rem;
+}
+
+.policies-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.policy-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+}
+
+.policy-card:hover {
+    background: var(--card-hover-bg);
+}
+
+.policy-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.policy-id {
+    font-family: monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #f59e0b;
+}
+
+.policy-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.policy-card-actions {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.policy-card:hover .policy-card-actions {
+    opacity: 1;
+}
+
+.policy-edit-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.policy-edit-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--highlight-color);
+    color: var(--highlight-color);
+}
+
+.overview-constraints-section,
+.overview-conventions-section {
+    margin-bottom: 1.5rem;
+}
+
+.constraints-section-header,
+.conventions-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.constraints-section-title,
+.conventions-section-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.constraints-list,
+.conventions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.constraint-card,
+.convention-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+    position: relative;
+}
+
+.constraint-card:hover,
+.convention-card:hover {
+    background: var(--card-hover-bg);
+}
+
+.constraint-card-content,
+.convention-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.constraint-key,
+.convention-key {
+    font-family: monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #f59e0b;
+}
+
+.constraint-value,
+.convention-value {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.constraint-card-actions,
+.convention-card-actions {
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.constraint-card:hover .constraint-card-actions,
+.convention-card:hover .convention-card-actions {
+    opacity: 1;
+}
+
+.constraint-edit-btn,
+.convention-edit-btn,
+.constraint-delete-btn,
+.convention-delete-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.constraint-edit-btn:hover,
+.convention-edit-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--highlight-color);
+    color: var(--highlight-color);
+}
+
+.constraint-delete-btn:hover,
+.convention-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.feature-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.feature-settings-info {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.feature-settings-description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.5;
+}
+
+.feature-settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.feature-setting-item {
+    padding: 0.75rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+}
+
+.feature-setting-item:hover {
+    background: var(--card-hover-bg);
+}
+
+.feature-setting-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.feature-setting-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.feature-setting-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    flex: 1;
+}
+
+.feature-setting-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--highlight-color);
+}
+
+.feature-setting-label:has(input:disabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.feature-setting-label:has(input:disabled) input {
+    cursor: not-allowed;
+}
+
+.feature-complexity-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.feature-setting-description {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0;
+    margin-left: 1.75rem;
+}
+
+/* Action Buttons */
+.overview-actions {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.action-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.action-group-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.action-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 6px;
+    color: var(--highlight-color);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background: rgba(102, 126, 234, 0.2);
+    border-color: rgba(102, 126, 234, 0.5);
+    transform: translateY(-1px);
+}
+
+.action-btn svg {
+    flex-shrink: 0;
+}
+
+.stat-card-action {
+    position: relative;
+}
+
+.stat-add-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(102, 126, 234, 0.2);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 4px;
+    color: var(--highlight-color);
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s;
+}
+
+.stat-card-action:hover .stat-add-btn {
+    opacity: 1;
+}
+
+.stat-add-btn:hover {
+    background: rgba(102, 126, 234, 0.3);
+    border-color: rgba(102, 126, 234, 0.5);
+}

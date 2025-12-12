@@ -23,8 +23,11 @@ func (s *Server) References(_ context.Context, params lsp.ReferenceParams) ([]ls
 		return nil, nil
 	}
 
-	var locs []lsp.Location
-	for _, d := range s.workspace.AllDocuments() {
+	// Estimate capacity: assume token appears ~5 times per document on average
+	docs := s.workspace.AllDocuments()
+	estimatedLocs := len(docs) * 5
+	locs := make([]lsp.Location, 0, estimatedLocs)
+	for _, d := range docs {
 		text := d.Text
 		idx := 0
 		for {

@@ -67,6 +67,12 @@ func (v *Validator) RegisterDefaultRules() {
 	// New Best Practice Rules
 	v.RegisterRule(&DatabaseIsolationRule{})
 	v.RegisterRule(&PublicInterfaceDocumentationRule{})
+
+	// SLO Validation Rule
+	v.RegisterRule(&SLOValidationRule{})
+
+	// Properties Validation Rule
+	v.RegisterRule(&PropertiesValidationRule{})
 }
 
 // Validate runs all registered validation rules concurrently with timeout and panic recovery.

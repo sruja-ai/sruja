@@ -1,5 +1,5 @@
-import { TextMeasurer } from './text-measurer'
-import { C4Kind, C4Level } from '../c4-model'
+import type { TextMeasurer } from './text-measurer'
+import type { C4Kind, C4Level } from '../c4-model'
 
 export class CachedTextMeasurer implements TextMeasurer {
   private base: TextMeasurer

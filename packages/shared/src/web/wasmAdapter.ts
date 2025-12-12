@@ -1,12 +1,13 @@
 // packages/shared/src/web/wasmAdapter.ts
 import { logger } from '../utils/logger'
+import { exportToMarkdown } from '../export/markdown'
+import { generateSystemDiagramForArch } from '../export/mermaid'
+import type { ArchitectureJSON } from '../types/architecture'
 
 export type WasmApi = {
   parseDslToJson: (dsl: string) => Promise<string>
   printJsonToDsl: (json: string) => Promise<string>
-  dslToMarkdown: (dsl: string) => Promise<string>
-  dslToSvg: (dsl: string) => Promise<string>
-  dslToHtml: (dsl: string) => Promise<string>
+  // Export functions (dslToMarkdown, dslToMermaid) removed - now handled by TypeScript exporters
 }
 
 async function ensureScript(src: string): Promise<void> {
@@ -30,7 +31,7 @@ async function ensureGoRuntimeLoaded(execUrl: string, base: string): Promise<voi
     execUrl,
     base.replace(/\/?$/, '/') + 'wasm_exec.js',
     '/wasm_exec.js',
-    'https://cdn.jsdelivr.net/gh/golang/go@go1.22.0/misc/wasm/wasm_exec.js'
+    'https://cdn.jsdelivr.net/gh/golang/go@go1.25.0/misc/wasm/wasm_exec.js'
   ]
   let loaded = false
   for (const url of candidates) {
@@ -54,7 +55,9 @@ async function ensureGoRuntimeLoaded(execUrl: string, base: string): Promise<voi
 export async function initWasm(options?: { base?: string; skipGoLoad?: boolean }): Promise<WasmApi> {
   const base = options?.base || '/'
   const wasmExecUrl = base.replace(/\/?$/, '/') + 'wasm/wasm_exec.js'
-  const wasmUrl = base.replace(/\/?$/, '/') + 'wasm/sruja.wasm'
+  const wasmBaseUrl = base.replace(/\/?$/, '/') + 'wasm/sruja.wasm'
+  // Add cache-busting query parameter to ensure fresh WASM is loaded (only for primary URL)
+  const wasmUrl = wasmBaseUrl + '?t=' + Date.now()
 
   if (!options?.skipGoLoad) {
     await ensureGoRuntimeLoaded(wasmExecUrl, base)
@@ -63,8 +66,8 @@ export async function initWasm(options?: { base?: string; skipGoLoad?: boolean }
       try {
         await ensureGoRuntimeLoaded(wasmExecUrl, base)
       } catch {
-      // Ignore errors
-    }
+        // Ignore errors
+      }
     }
   }
 
@@ -99,7 +102,8 @@ export async function initWasm(options?: { base?: string; skipGoLoad?: boolean }
 
   let instance: WebAssembly.Instance | null = null
   const candidates = [
-    wasmUrl,
+    wasmUrl, // Primary URL with cache-busting
+    wasmBaseUrl, // Fallback without cache-busting
     base.replace(/\/?$/, '/') + 'sruja.wasm',
     '/sruja.wasm',
     base.replace(/\/?$/, '/') + 'studio/wasm/sruja.wasm',
@@ -109,20 +113,13 @@ export async function initWasm(options?: { base?: string; skipGoLoad?: boolean }
   let lastError: any = null
   for (const url of candidates) {
     try {
-      try {
-        const resp = await WebAssembly.instantiateStreaming(fetch(url), importObject)
-        instance = resp.instance
-        lastError = null
-        break
-      } catch (e) {
-        const response = await fetch(url)
-        if (!response.ok) throw e
-        const bytes = await response.arrayBuffer()
-        const mod = await WebAssembly.instantiate(bytes, importObject)
-        instance = mod.instance
-        lastError = null
-        break
-      }
+      const response = await fetch(url)
+      if (!response.ok) throw new Error('Failed to fetch ' + url)
+      const bytes = await response.arrayBuffer()
+      const mod = await WebAssembly.instantiate(bytes, importObject)
+      instance = mod.instance
+      lastError = null
+      break
     } catch (e) {
       lastError = e
       continue
@@ -134,47 +131,60 @@ export async function initWasm(options?: { base?: string; skipGoLoad?: boolean }
     throw error
   }
 
+  // Start the Go runtime - this is asynchronous
   go.run(instance)
+
+  // Give Go runtime a moment to start
+  await new Promise(r => setTimeout(r, 100))
 
   // Wait for required functions to be registered
   let retries = 0
-  const maxRetries = 100
-  while ((!(window as any).sruja_parse_dsl || !(window as any).sruja_dsl_to_markdown) && retries < maxRetries) {
+  const maxRetries = 150 // Increased to give more time
+  while (!(window as any).sruja_parse_dsl && retries < maxRetries) {
     await new Promise(r => setTimeout(r, 50))
     retries++
   }
 
-  // Wait a bit more for optional functions (HTML, SVG) to be registered
-  retries = 0
-  while (retries < 50 && (!(window as any).sruja_dsl_to_html || !(window as any).sruja_dsl_to_svg)) {
-    await new Promise(r => setTimeout(r, 50))
-    retries++
+  if (retries >= maxRetries) {
+    const available = Object.keys(window).filter(k => k.startsWith('sruja_'))
+    logger.error('Required WASM functions not found after waiting', {
+      component: 'wasm',
+      action: 'wait_for_required',
+      retries,
+      available,
+      missing: {
+        parse: !(window as any).sruja_parse_dsl
+      }
+    })
   }
 
   const parseFn = (window as any).sruja_parse_dsl
   const jsonToDslFn = (window as any).sruja_json_to_dsl
-  const mdFn = (window as any).sruja_dsl_to_markdown
-  const svgFn = (window as any).sruja_dsl_to_svg // Optional function
-  const htmlFn = (window as any).sruja_dsl_to_html // Optional function
 
-  // Only require core functions, svg is optional
-  if (!parseFn || !jsonToDslFn || !mdFn) {
+  // Debug: Log all registered functions
+  const allSrujaFunctions = Object.keys(window).filter(k => k.startsWith('sruja_'))
+  logger.info('WASM functions loaded', {
+    component: 'wasm',
+    action: 'init_complete',
+    available: allSrujaFunctions
+  })
+
+  // Only require core functions (parsing and JSON conversion)
+  if (!parseFn || !jsonToDslFn) {
     const missing = []
     if (!parseFn) missing.push('sruja_parse_dsl')
     if (!jsonToDslFn) missing.push('sruja_json_to_dsl')
-    if (!mdFn) missing.push('sruja_dsl_to_markdown')
     const available = Object.keys(window).filter(k => k.startsWith('sruja_'))
     const error = new Error(`WASM functions not found. Missing: ${missing.join(', ')}. Available: ${available.join(', ') || 'none'}`)
     logger.error('WASM functions missing', { component: 'wasm', action: 'init', errorType: 'wasm_functions_missing', missing, available, retries, windowKeys: Object.keys(window).filter(k => k.includes('sruja') || k.includes('wasm')), error: error.message })
     throw error
   }
 
-  // Note: sruja_dsl_to_svg is optional - only warn if actually needed
-
   return {
     parseDslToJson: async (dsl: string) => {
       try {
-        const r = parseFn(dsl)
+        const filename = typeof location !== 'undefined' ? (location.pathname || 'input.sruja') : 'input.sruja'
+        const r = parseFn(dsl, filename)
         if (!r || !r.ok) {
           const error = new Error(r?.error || 'parse failed')
           logger.error('WASM parse failed', { component: 'wasm', action: 'parse_dsl', errorType: 'parse_failure', errorCode: r?.error, dslLength: dsl.length, error: error.message })
@@ -200,57 +210,196 @@ export async function initWasm(options?: { base?: string; skipGoLoad?: boolean }
         throw error
       }
     },
-    dslToMarkdown: async (dsl: string) => {
-      try {
-        const r = mdFn(dsl)
-        if (!r || !r.ok) {
-          const error = new Error(r?.error || 'markdown export failed')
-          logger.error('WASM markdown export failed', { component: 'wasm', action: 'export_markdown', errorType: 'export_failure', errorCode: r?.error, error: error.message })
-          throw error
-        }
-        return r.dsl
-      } catch (error) {
-        logger.error('WASM markdown export exception', { component: 'wasm', action: 'export_markdown', errorType: 'export_exception', error: error instanceof Error ? error.message : String(error) })
-        throw error
+    // Export functions (dslToMarkdown, dslToMermaid) removed - now handled by TypeScript exporters
+  }
+}
+
+// Singleton WASM API instance
+let wasmApi: WasmApi | null = null
+let initPromise: Promise<WasmApi> | null = null
+
+/**
+ * Auto-detects the base URL for WASM files based on the current environment.
+ * Handles Vite, Astro, and other frameworks automatically.
+ */
+function detectBaseUrl(): string {
+  if (typeof window === 'undefined') {
+    return '/'
+  }
+
+  // Try to get BASE_URL from import.meta.env (Vite/Astro)
+  const envBase = (import.meta as any).env?.BASE_URL
+  if (envBase) {
+    return envBase
+  }
+
+  // Fallback: use current location pathname
+  const pathname = window.location.pathname
+
+  // For studio page, use root as base since WASM is at /wasm/
+  if (pathname.startsWith('/studio')) {
+    return '/'
+  }
+
+  // For other paths, ensure it ends with /
+  return pathname.endsWith('/') ? pathname : pathname + '/'
+}
+
+/**
+ * Initialize WASM with auto-detected base URL.
+ * Uses singleton pattern to ensure WASM is only initialized once.
+ */
+export async function initWasmAuto(options?: { base?: string; skipGoLoad?: boolean }): Promise<WasmApi> {
+  if (wasmApi) return wasmApi
+
+  if (initPromise) return initPromise
+
+  initPromise = (async () => {
+    const base = options?.base ?? detectBaseUrl()
+    wasmApi = await initWasm({ ...options, base })
+    return wasmApi
+  })()
+
+  return initPromise
+}
+
+/**
+ * Get the initialized WASM API, initializing if necessary.
+ * Returns null if initialization fails.
+ */
+export async function getWasmApi(): Promise<WasmApi | null> {
+  if (wasmApi) return wasmApi
+
+  try {
+    return await initWasmAuto()
+  } catch (error) {
+    logger.error('Failed to initialize WASM', {
+      component: 'wasm',
+      action: 'get_api',
+      error: error instanceof Error ? error.message : String(error)
+    })
+    return null
+  }
+}
+
+/**
+ * Convert DSL string to Architecture JSON object.
+ * Returns parsed JSON object if successful, null on error.
+ */
+export async function convertDslToJson(dsl: string): Promise<object | null> {
+  const api = await getWasmApi()
+  if (!api) {
+    logger.error('WASM not available', { component: 'wasm', action: 'convert_dsl_to_json' })
+    return null
+  }
+
+  try {
+    const jsonString = await api.parseDslToJson(dsl)
+    return JSON.parse(jsonString)
+  } catch (error) {
+    logger.error('DSL parse error', {
+      component: 'wasm',
+      action: 'convert_dsl_to_json',
+      error: error instanceof Error ? error.message : String(error)
+    })
+    return null
+  }
+}
+
+/**
+ * Convert DSL string to Markdown string.
+ * Returns markdown string if successful, null on error.
+ * Uses TypeScript markdown exporter instead of WASM.
+ */
+export async function convertDslToMarkdown(dsl: string): Promise<string | null> {
+  const api = await getWasmApi()
+  if (!api) {
+    logger.error('WASM not available', { component: 'wasm', action: 'convert_dsl_to_markdown' })
+    return null
+  }
+
+  try {
+    // Parse DSL to JSON using WASM (keep parsing in WASM per roadmap)
+    const jsonStr = await api.parseDslToJson(dsl)
+    const archJson = JSON.parse(jsonStr) as ArchitectureJSON
+    // Use TypeScript markdown exporter
+    return exportToMarkdown(archJson)
+  } catch (error) {
+    logger.error('DSL to Markdown conversion error', {
+      component: 'wasm',
+      action: 'convert_dsl_to_markdown',
+      error: error instanceof Error ? error.message : String(error)
+    })
+    return null
+  }
+}
+
+/**
+ * Convert DSL string to Mermaid diagram string.
+ * Returns mermaid diagram string if successful, null on error.
+ * Uses TypeScript mermaid exporter instead of WASM.
+ */
+export async function convertDslToMermaid(dsl: string): Promise<string | null> {
+  const api = await getWasmApi()
+  if (!api) {
+    logger.error('WASM not available', { component: 'wasm', action: 'convert_dsl_to_mermaid' })
+    return null
+  }
+
+  try {
+    // Parse DSL to JSON using WASM (keep parsing in WASM per roadmap)
+    const jsonStr = await api.parseDslToJson(dsl)
+    if (!jsonStr || jsonStr.trim().length === 0) {
+      logger.error('WASM parser returned empty JSON', {
+        component: 'wasm',
+        action: 'convert_dsl_to_mermaid',
+        dslLength: dsl.length
+      })
+      return null
+    }
+
+    const archJson = JSON.parse(jsonStr) as ArchitectureJSON
+    if (!archJson || !archJson.architecture) {
+      logger.error('Invalid architecture JSON structure', {
+        component: 'wasm',
+        action: 'convert_dsl_to_mermaid',
+        hasArchitecture: !!archJson?.architecture
+      })
+      return null
+    }
+
+    // Use TypeScript mermaid exporter (NOT WASM - this is TypeScript code)
+    try {
+      const mermaidCode = generateSystemDiagramForArch(archJson)
+      if (!mermaidCode || mermaidCode.trim().length === 0) {
+        logger.error('TypeScript mermaid exporter returned empty result', {
+          component: 'wasm',
+          action: 'convert_dsl_to_mermaid',
+          hasArchitecture: !!archJson?.architecture,
+          architectureName: archJson?.architecture?.name
+        })
+        return null
       }
-    },
-    dslToSvg: async (dsl: string) => {
-      try {
-        if (!svgFn) {
-          const error = new Error('SVG export is not available. The sruja_dsl_to_svg function is not present in the WASM module.')
-          logger.warn('WASM svg export unavailable', { component: 'wasm', action: 'export_svg', errorType: 'function_unavailable', error: error.message })
-          throw error
-        }
-        const r = svgFn(dsl)
-        if (!r || !r.ok) {
-          const error = new Error(r?.error || 'svg export failed')
-          logger.error('WASM svg export failed', { component: 'wasm', action: 'export_svg', errorType: 'export_failure', errorCode: r?.error, error: error.message })
-          throw error
-        }
-        return r.dsl
-      } catch (error) {
-        logger.error('WASM svg export exception', { component: 'wasm', action: 'export_svg', errorType: 'export_exception', error: error instanceof Error ? error.message : String(error) })
-        throw error
-      }
-    },
-    dslToHtml: async (dsl: string) => {
-      try {
-        if (!htmlFn) {
-          const error = new Error('HTML export is not available. The sruja_dsl_to_html function is not present in the WASM module.')
-          logger.warn('WASM html export unavailable', { component: 'wasm', action: 'export_html', errorType: 'function_unavailable', error: error.message })
-          throw error
-        }
-        const r = htmlFn(dsl)
-        if (!r || !r.ok) {
-          const error = new Error(r?.error || 'html export failed')
-          logger.error('WASM html export failed', { component: 'wasm', action: 'export_html', errorType: 'export_failure', errorCode: r?.error, error: error.message })
-          throw error
-        }
-        return r.dsl
-      } catch (error) {
-        logger.error('WASM html export exception', { component: 'wasm', action: 'export_html', errorType: 'export_exception', error: error instanceof Error ? error.message : String(error) })
-        throw error
-      }
-    },
+
+      return mermaidCode
+    } catch (exporterError) {
+      logger.error('TypeScript mermaid exporter threw error', {
+        component: 'wasm',
+        action: 'convert_dsl_to_mermaid',
+        error: exporterError instanceof Error ? exporterError.message : String(exporterError),
+        errorType: exporterError instanceof Error ? exporterError.constructor.name : typeof exporterError,
+        stack: exporterError instanceof Error ? exporterError.stack : undefined
+      })
+      return null
+    }
+  } catch (error) {
+    logger.error('DSL to Mermaid conversion error', {
+      component: 'wasm',
+      action: 'convert_dsl_to_mermaid',
+      error: error instanceof Error ? error.message : String(error),
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
+    return null
   }
 }

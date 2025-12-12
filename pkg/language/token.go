@@ -33,7 +33,6 @@ const (
 	TOKEN_COMPONENT TokenType = "COMPONENT"
 	TOKEN_CONTAINER TokenType = "CONTAINER"
 	TOKEN_RELATION  TokenType = "RELATION"
-	TOKEN_IMPORT    TokenType = "IMPORT"
 	TOKEN_TRUE      TokenType = "TRUE"
 	TOKEN_FALSE     TokenType = "FALSE"
 
@@ -61,7 +60,6 @@ var keywords = map[string]TokenType{
 	"system":        TOKEN_SYSTEM,
 	"component":     TOKEN_COMPONENT,
 	"container":     TOKEN_CONTAINER,
-	"import":        TOKEN_IMPORT,
 	"true":          TOKEN_TRUE,
 	"false":         TOKEN_FALSE,
 	"library":       TOKEN_LIBRARY,

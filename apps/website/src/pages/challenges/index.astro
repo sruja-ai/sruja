@@ -1,9 +1,10 @@
 ---
 import { getCollection } from 'astro:content'
+import type { CollectionEntry } from 'astro:content'
 import Layout from '../../layouts/Layout.astro'
 import ContentPage from '@/features/content/components/ContentPage.astro'
-const challenges = await getCollection('challenges')
-const topics = Array.from(new Set(challenges.map((c: any) => c.data.topic).filter(Boolean)))
+const challenges = (await getCollection('challenges')) as CollectionEntry<'challenges'>[]
+const topics = Array.from(new Set(challenges.map((c) => c.data.topic).filter(Boolean)))
 ---
 
 <Layout title="Challenges" description="Practice Sruja by fixing broken architectures.">
@@ -13,8 +14,10 @@ const topics = Array.from(new Set(challenges.map((c: any) => c.data.topic).filte
       {topics.map(t => (<button class="filter" data-topic={t}>{t}</button>))}
     </div>
     <div class="challenge-grid" id="challenge-list">
-      {challenges.sort((a: any, b: any) => a.id.localeCompare(b.id)).map((c: any) => (
-        <a class="challenge-card" href={`/challenges/${c.data.slug}`} data-slug={c.data.slug} data-difficulty={c.data.difficulty} data-topic={c.data.topic}>
+      {challenges
+        .sort((a: CollectionEntry<'challenges'>, b: CollectionEntry<'challenges'>) => (a.data.title || '').localeCompare(b.data.title || ''))
+        .map((c) => (
+        <a class="challenge-card" href={`/challenges/${c.slug}`} data-slug={c.slug} data-difficulty={c.data.difficulty} data-topic={c.data.topic}>
           <div class="challenge-meta">
             {c.data.difficulty && <span class={`pill ${c.data.difficulty}`}>{c.data.difficulty}</span>}
             {c.data.topic && <span class="pill topic">{c.data.topic}</span>}
@@ -24,22 +27,32 @@ const topics = Array.from(new Set(challenges.map((c: any) => c.data.topic).filte
           {c.data.summary && <p class="challenge-summary">{c.data.summary}</p>}
           <span class="badge" data-badge></span>
         </a>
-      ))}
+        )
+      )}
     </div>
   </ContentPage>
   <script is:inline>
+    // Initialize challenges page
     try {
       const setActive = (btn) => {
         document.querySelectorAll('#filters .filter').forEach(b => b.classList.remove('active'))
         if (btn) btn.classList.add('active')
       }
+      
       const applyFilter = (topic) => {
-        document.querySelectorAll('#challenge-list .challenge-card').forEach((card) => {
-          const ctopic = card.getAttribute('data-topic') || ''
-          const show = !topic || ctopic === topic
-          card.style.display = show ? '' : 'none'
-        })
+        const cards = document.querySelectorAll('#challenge-list .challenge-card');
+        if (cards.length > 0) {
+          cards.forEach((card) => {
+            const ctopic = card.getAttribute('data-topic') || ''
+            const show = !topic || ctopic === topic
+            card.style.display = show ? '' : 'none'
+          })
+        }
       }
+
+      // Initial filter application (shows all)
+      applyFilter('');
+
       document.querySelectorAll('#filters .filter').forEach((btn) => {
         btn.addEventListener('click', () => {
           const t = btn.getAttribute('data-topic') || ''

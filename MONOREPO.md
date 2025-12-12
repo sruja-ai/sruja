@@ -8,9 +8,7 @@ This repository is organized as a monorepo using [Turborepo](https://turbo.build
 sruja-lang/
 ├── apps/
 │   ├── website/        # Astro-based website (docs, courses, tutorials, blog)
-│   ├── studio-core/     # Studio application (diagram editor)
-│   ├── viewer-core/    # Viewer application (architecture visualization)
-│   ├── vscode-extension/ # VS Code language support
+│   ├── architecture-visualizer/ # The architecture visualization tool
 │   ├── storybook/      # Storybook for component documentation
 │   └── social-publish/ # Social media publishing scripts
 ├── packages/

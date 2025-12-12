@@ -1,6 +1,6 @@
 ---
 title: "Relations"
-weight: 5
+weight: 20
 summary: "Relations describe how elements interact with each other."
 ---
 

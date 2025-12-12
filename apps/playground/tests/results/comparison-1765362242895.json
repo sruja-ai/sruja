@@ -1,0 +1,509 @@
+{
+  "comparisons": [
+    {
+      "exampleName": "Quick Start",
+      "baselineScore": 95.41839700801789,
+      "currentScore": 95.41839700801789,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Basic Example",
+      "baselineScore": 95.50163898092603,
+      "currentScore": 95.50163898092603,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Person & Relations",
+      "baselineScore": 95.62503970966642,
+      "currentScore": 95.62503970966642,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Components",
+      "baselineScore": 95.62585711451939,
+      "currentScore": 95.62585711451939,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Person to Component",
+      "baselineScore": 95.31346195523702,
+      "currentScore": 95.31346195523702,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Queues & DataStore",
+      "baselineScore": 97.56239030067155,
+      "currentScore": 97.56239030067155,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Tags",
+      "baselineScore": 96.18546937003968,
+      "currentScore": 96.18546937003968,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Requirements",
+      "baselineScore": 90.51899183388362,
+      "currentScore": 90.51899183388362,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Integration Verbs",
+      "baselineScore": 95.43435967775375,
+      "currentScore": 95.43435967775375,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "External Systems",
+      "baselineScore": 96.18546937003968,
+      "currentScore": 96.18546937003968,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Full Features",
+      "baselineScore": 95.41048623608786,
+      "currentScore": 95.41048623608786,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "E‑Commerce",
+      "baselineScore": 95.45469116646903,
+      "currentScore": 95.45469116646903,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "C4 Complete",
+      "baselineScore": 95.74973963177393,
+      "currentScore": 95.74973963177393,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Top-Level System",
+      "baselineScore": 96.49926787622101,
+      "currentScore": 96.49926787622101,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Metadata",
+      "baselineScore": 95.42378374469091,
+      "currentScore": 95.42378374469091,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Imports",
+      "baselineScore": 90.385298214867,
+      "currentScore": 90.385298214867,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    }
+  ],
+  "summary": {
+    "totalExamples": 16,
+    "improved": 0,
+    "regressed": 0,
+    "unchanged": 16,
+    "avgScoreDelta": 0,
+    "avgScoreBaseline": 95.14339638692904,
+    "avgScoreCurrent": 95.14339638692904
+  }
+}

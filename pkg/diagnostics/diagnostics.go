@@ -53,8 +53,9 @@ type BasicErrorReporter struct {
 }
 
 func NewBasicErrorReporter() *BasicErrorReporter {
+	// Pre-allocate with small capacity
 	return &BasicErrorReporter{
-		diagnostics: make([]Diagnostic, 0),
+		diagnostics: make([]Diagnostic, 0, 8),
 	}
 }
 
@@ -84,21 +85,32 @@ func FormatDiagnostic(d Diagnostic) string {
 	var sb strings.Builder
 
 	// Header: [E001] Error: Message
-	sb.WriteString(fmt.Sprintf("[%s] %s: %s\n", d.Code, d.Severity, d.Message))
-	sb.WriteString(fmt.Sprintf("  --> %s\n", d.Location))
+	sb.WriteString("[")
+	sb.WriteString(d.Code)
+	sb.WriteString("] ")
+	sb.WriteString(string(d.Severity))
+	sb.WriteString(": ")
+	sb.WriteString(d.Message)
+	sb.WriteString("\n  --> ")
+	sb.WriteString(d.Location.String())
+	sb.WriteString("\n")
 
 	// Context snippet
 	if len(d.Context) > 0 {
 		sb.WriteString("\n")
 		for _, line := range d.Context {
-			sb.WriteString(fmt.Sprintf("  | %s\n", line))
+			sb.WriteString("  | ")
+			sb.WriteString(line)
+			sb.WriteString("\n")
 		}
 		sb.WriteString("\n")
 	}
 
 	// Suggestions
 	if len(d.Suggestions) > 0 {
-		sb.WriteString("  = Help: " + strings.Join(d.Suggestions, "\n          ") + "\n")
+		sb.WriteString("  = Help: ")
+		sb.WriteString(strings.Join(d.Suggestions, "\n          "))
+		sb.WriteString("\n")
 	}
 
 	return sb.String()

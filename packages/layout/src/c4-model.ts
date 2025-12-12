@@ -1,4 +1,4 @@
-import { C4Id } from './brand'
+import type { C4Id } from './brand'
 import { ValidationError } from './utils/validation'
 
 export type C4Level = 'landscape' | 'context' | 'container' | 'component' | 'deployment'

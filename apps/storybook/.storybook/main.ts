@@ -16,7 +16,6 @@ const config: StorybookConfig = {
       ...(cfg.resolve.alias || {}),
       '@sruja/shared': path.resolve(dirname, '../../../packages/shared/src'),
       '@sruja/viewer': path.resolve(dirname, '../../../packages/viewer/src'),
-      '@sruja/viewer-core': path.resolve(dirname, '../../viewer-core/app'),
       '@sruja/architecture-visualizer': path.resolve(dirname, '../../architecture-visualizer/src'),
       '@sruja/layout': path.resolve(dirname, '../../../packages/layout/src'),
     }

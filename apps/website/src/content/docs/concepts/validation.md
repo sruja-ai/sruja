@@ -1,6 +1,6 @@
 ---
 title: "Validation"
-weight: 8
+weight: 35
 summary: "Automatic checks: IDs, references, cycles, layering, externals."
 ---
 

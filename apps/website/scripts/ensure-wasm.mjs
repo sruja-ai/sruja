@@ -14,11 +14,14 @@ try {
     mkdirSync(publicWasmDir, { recursive: true })
   }
 
-  if (existsSync(wasmOut)) {
-    process.exit(0)
+  const variant = (process.env.SRUJA_WASM_VARIANT || 'full').toLowerCase()
+  let target = 'wasm'
+  if (variant === 'tiny') {
+    target = 'wasm-tiny'
   }
+  // Note: 'minimal' variant removed - no separate viewer component on website
 
-  const build = spawnSync('bash', ['-lc', 'GOOS=js GOARCH=wasm go build -ldflags="-s -w" -trimpath -o apps/website/public/wasm/sruja.wasm ./cmd/wasm'], {
+  const build = spawnSync('bash', ['-lc', `make ${target}`], {
     cwd: projectRoot,
     stdio: 'inherit'
   })
@@ -37,4 +40,3 @@ try {
 } catch {
   // Ignore errors, dev server will still run; HTML preview will show a friendly error
 }
-

@@ -1,4 +1,4 @@
-import { TextStyle } from '../types'
+import type { TextStyle } from '../types'
 
 export type MeasuredLine = { text: string; width: number; lineHeight: number }
 

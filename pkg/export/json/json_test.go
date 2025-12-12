@@ -7,10 +7,10 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-func TestJSONExport_PreservesImports(t *testing.T) {
+// TestJSONExport_PreservesImports removed - import feature removed
+func TestJSONExport_PreservesImports_Removed(t *testing.T) {
+	t.Skip("Import feature removed")
 	dsl := `architecture "Test" {
-  import "shared.sruja"
-  import "billing.sruja" as Billing
   person Customer "Customer"
   system API "API Service" {}
 }`
@@ -35,18 +35,8 @@ func TestJSONExport_PreservesImports(t *testing.T) {
 		t.Fatalf("json unmarshal: %v", err)
 	}
 
-	if len(doc.Architecture.Imports) != 2 {
-		t.Fatalf("expected 2 imports, got %d", len(doc.Architecture.Imports))
-	}
-	if doc.Architecture.Imports[0].Path != "shared.sruja" || doc.Architecture.Imports[0].Alias != nil {
-		t.Fatalf("first import mismatch: %+v", doc.Architecture.Imports[0])
-	}
-	if doc.Architecture.Imports[1].Path != "billing.sruja" {
-		t.Fatalf("second import path mismatch: %+v", doc.Architecture.Imports[1])
-	}
-	if doc.Architecture.Imports[1].Alias == nil || *doc.Architecture.Imports[1].Alias != "Billing" {
-		t.Fatalf("second import alias mismatch: %+v", doc.Architecture.Imports[1])
-	}
+	// Import feature removed - no longer checking imports
+	_ = doc
 }
 
 func TestJSONExport_Metadata(t *testing.T) {
@@ -279,22 +269,16 @@ func TestJSONExport_ComplexContainerComponent(t *testing.T) {
 				technology "React"
 				tags ["frontend", "spa"]
 				version "1.0.0"
-				
-				requirement R1 functional "Req 1"
-				adr ADR1 "Decision 1"
-				
-				metadata {
-					key "value"
-				}
-				
-				component Comp "Component" {
-					technology "Redux"
-					requirement R2 functional "Req 2"
-					adr ADR2 "Decision 2"
-					metadata {
-						key2 "value2"
-					}
-				}
+                metadata {
+                    key "value"
+                }
+                
+                component Comp "Component" {
+                    technology "Redux"
+                    metadata {
+                        key2 "value2"
+                    }
+                }
 			}
 		}
 	}`
@@ -315,12 +299,7 @@ func TestJSONExport_ComplexContainerComponent(t *testing.T) {
 	if c.Version == nil || *c.Version != "1.0.0" {
 		t.Error("Container version mismatch")
 	}
-	if len(c.Requirements) != 1 {
-		t.Error("Container requirements mismatch")
-	}
-	if len(c.ADRs) != 1 {
-		t.Error("Container ADRs mismatch")
-	}
+    // Root-only policy: no container-level requirements/ADRs in export
 	if len(c.Metadata) != 1 {
 		t.Error("Container metadata mismatch")
 	}
@@ -329,12 +308,7 @@ func TestJSONExport_ComplexContainerComponent(t *testing.T) {
 	if comp.Technology == nil || *comp.Technology != "Redux" {
 		t.Error("Component technology mismatch")
 	}
-	if len(comp.Requirements) != 1 {
-		t.Error("Component requirements mismatch")
-	}
-	if len(comp.ADRs) != 1 {
-		t.Error("Component ADRs mismatch")
-	}
+    // Root-only policy: no component-level requirements/ADRs in export
 	if len(comp.Metadata) != 1 {
 		t.Error("Component metadata mismatch")
 	}

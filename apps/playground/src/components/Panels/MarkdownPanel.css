@@ -1,0 +1,9 @@
+/* MarkdownPanel.css */
+/* Minimal styles for empty state - main styles come from MarkdownPreviewPanel */
+.markdown-panel.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary, var(--color-text-secondary));
+    height: 100%;
+}

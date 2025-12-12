@@ -29,6 +29,28 @@ interface Lesson {
 
 const coursesMap = new Map<string, Course>();
 
+// First pass: find course overview files to get proper titles
+allLessons.forEach((lesson: CollectionEntry<'courses'>) => {
+  const slugParts = lesson.slug.split('/');
+  
+  // Check if this is a course-overview file (e.g., "advanced-architects/course-overview")
+  if (slugParts.length === 2 && slugParts[1] === 'course-overview') {
+    const courseName = slugParts[0];
+    if (!coursesMap.has(courseName)) {
+      coursesMap.set(courseName, {
+        name: courseName,
+        title: lesson.data.title || courseName.split('-').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+        modules: [],
+      });
+    } else {
+      // Update existing course with title from overview
+      const course = coursesMap.get(courseName)!;
+      course.title = lesson.data.title || course.title;
+    }
+  }
+});
+
+// Second pass: process lessons and modules
 allLessons.forEach((lesson: CollectionEntry<'courses'>) => {
   const slugParts = lesson.slug.split('/');
   
@@ -172,6 +194,16 @@ courses.forEach(course => {
     transition: color 0.2s;
   }
 
+  :global(.course-title-link) {
+    text-decoration: none;
+    color: inherit;
+    display: inline-block;
+  }
+
+  :global(.course-title-link:hover) .course-title {
+    text-decoration: underline;
+  }
+
   :global(html.dark) .course-title {
     color: #f1f5f9;
   }
@@ -299,4 +331,3 @@ courses.forEach(course => {
     }
   }
 </style>
-

@@ -216,7 +216,7 @@ func TestExporter_Extended(t *testing.T) {
 }
 
 func containsViews(json string) bool {
-	return len(json) > 0 && strings.Contains(json, `"views":`)
+    return json != "" && strings.Contains(json, `"views":`)
 }
 
 func strPtr(s string) *string {

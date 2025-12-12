@@ -1,5 +1,5 @@
-import { C4Id } from './brand'
-import { C4Kind, C4Level } from './c4-model'
+import type { C4Id } from './brand'
+import type { C4Kind, C4Level } from './c4-model'
 
 export interface C4Viewport {
   width: number
@@ -58,6 +58,21 @@ export function createDefaultViewState(): C4ViewState {
     showGrid: false,
     snapToGrid: false,
     gridSize: 20
+  }
+}
+
+export function LandscapeView(): C4ViewState {
+  return {
+    collapsedNodeIds: new Set(),
+    hiddenNodeIds: new Set(),
+    expandedLevels: new Set(['landscape']),
+    layoutPreset: 'presentation', // Will be overridden if we set specific options, but for now we rely on the preset in c4-layout
+    direction: 'TB',
+    alignment: 'center',
+    filter: { includeKinds: new Set(['SoftwareSystem', 'Person', 'EnterpriseBoundary'] as C4Kind[]) },
+    // We can't set "strategy" directly on the view state yet as it's not in C4ViewState interface
+    // But we can hint it via a new heuristic or updated interface later. 
+    // For now, let's assume the consumer of this view will use it with LandscapePreset.
   }
 }
 

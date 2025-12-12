@@ -1,6 +1,7 @@
-import { C4Graph, C4Node } from '../c4-model'
-import { C4Id } from '../brand'
-import { C4ViewState, applyFilter } from '../c4-view'
+import type { C4Graph, C4Node } from '../c4-model'
+import type { C4Id } from '../brand'
+import type { C4ViewState } from '../c4-view'
+import { applyFilter } from '../c4-view'
 
 export interface HierarchyNode {
   id: C4Id

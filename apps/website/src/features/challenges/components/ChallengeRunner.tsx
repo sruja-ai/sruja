@@ -1,5 +1,6 @@
+// apps/website/src/features/challenges/components/ChallengeRunner.tsx
 import { useEffect, useState } from 'react'
-import { SrujaMonacoEditor } from '@sruja/ui'
+import { SrujaMonacoEditor, Button } from '@sruja/ui'
 import { initWasm } from '@sruja/shared'
 import { formatParseError } from '@/shared/utils/errors'
 import { markCompleted } from '@/shared/lib/progress'
@@ -152,11 +153,17 @@ export default function ChallengeRunner({ challenge }: { challenge: Challenge })
         />
       </div>
       <div className="actions">
-        <button onClick={run} disabled={running}>{running ? 'Running...' : 'Run Tests'}</button>
+        <Button variant="primary" onClick={run} disabled={running} isLoading={running}>
+          {running ? 'Running...' : 'Run Tests'}
+        </Button>
         {attempts >= 1 && !result?.passed && (
           <>
-            <button onClick={showHint} disabled={running || (challenge.hints?.length || 0) === shownHintCount}>Show Hint</button>
-            <button onClick={revealSolution} disabled={running || !challenge.solution}>Reveal Solution</button>
+            <Button variant="outline" onClick={showHint} disabled={running || (challenge.hints?.length || 0) === shownHintCount}>
+              Show Hint
+            </Button>
+            <Button variant="outline" onClick={revealSolution} disabled={running || !challenge.solution}>
+              Reveal Solution
+            </Button>
           </>
         )}
       </div>

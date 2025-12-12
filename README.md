@@ -27,7 +27,7 @@ sruja/
 ├── pkg/                  # Shared Go packages
 │   ├── engine/           # Validation engine
 │   ├── language/         # Parser, AST, lexer
-│   └── export/           # Exporters (D2, HTML, Markdown, SVG, JSON)
+│   └── export/           # Exporters (JSON, views)
 ├── apps/                 # Frontend applications
 │   ├── website/          # Astro website (docs, courses, tutorials)
 │   ├── studio-core/      # Studio app (diagram editor)
@@ -150,7 +150,7 @@ This guide walks you through making your first contribution, even if you're new 
 - 💡 **Contribution Ideas**: [What Can I Contribute?](docs/CONTRIBUTION_IDEAS.md)
 - 🐛 **Find Issues**: [Good First Issues](https://github.com/sruja-ai/sruja/labels/good%20first%20issue) (may be limited for new projects)
 - 📖 **Full Guide**: [Contribution Guide](docs/CONTRIBUTING.md)
-- 💬 **Get Help**: [Discord](https://discord.gg/QMCsquJq) | [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
+- 💬 **Get Help**: [Discord](https://discord.gg/VNrvHPV5) | [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
 
 ### Ways to Contribute
 

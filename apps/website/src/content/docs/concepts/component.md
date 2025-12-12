@@ -1,6 +1,6 @@
 ---
 title: "Component"
-weight: 4
+weight: 13
 summary: "A Component is a grouping of related functionality encapsulated behind a well-defined interface."
 ---
 

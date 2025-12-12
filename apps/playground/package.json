@@ -1,0 +1,72 @@
+{
+  "name": "@sruja/playground",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.tsx",
+  "exports": {
+    ".": "./src/index.tsx",
+    "./src/App": "./src/App.tsx"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest --watch",
+    "test:e2e": "playwright test",
+    "test:baseline": "playwright test tests/baseline-metrics.spec.ts",
+    "test:optimize": "playwright test tests/all-examples-quality.spec.ts tests/rules-based-layout.spec.ts",
+    "test:regression": "playwright test tests/regression.spec.ts tests/layout-stability.spec.ts tests/parent-child-sizing.spec.ts",
+    "test:layout": "playwright test tests/*.spec.ts",
+    "test:optimization-loop": "playwright test tests/optimization-loop.spec.ts",
+    "test:comparison": "playwright test tests/layout-comparison.spec.ts",
+    "analyze:metrics": "tsx scripts/analyze-metrics.ts",
+    "analyze:rules": "tsx scripts/analyze-rules.ts",
+    "report:generate": "tsx scripts/generate-report.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@heroui/react": "^2.4.7",
+    "@sruja/diagram": "*",
+    "@sruja/layout": "^0.1.0",
+    "@sruja/shared": "*",
+    "@sruja/ui": "*",
+    "@xyflow/react": "^12.10.0",
+    "framer-motion": "^11.18.2",
+    "lucide-react": "^0.555.0",
+    "lz-string": "^1.5.0",
+    "zustand": "^5.0.9"
+  },
+  "peerDependencies": {
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@sruja/eslint-config": "*",
+    "@tailwindcss/postcss": "^4.1.17",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "@vitest/coverage-v8": "^4.0.15",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "jsdom": "^24.1.3",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "rimraf": "^5.0.5",
+    "tailwindcss": "^4.1.17",
+    "tsx": "^4.19.2",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.49.0",
+    "vite": "^7.2.4",
+    "vitest": "^4.0.15"
+  }
+}

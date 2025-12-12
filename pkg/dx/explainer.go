@@ -264,7 +264,8 @@ func (e *Explainer) findRelations(elementID string) RelationsInfo {
 
 // extractMetadata extracts metadata from an element.
 func (e *Explainer) extractMetadata(elem interface{}) map[string]string {
-	metadata := make(map[string]string)
+	// Estimate capacity: typically 3-8 metadata entries per element
+	metadata := make(map[string]string, 8)
 
 	switch v := elem.(type) {
 	case *language.System:
@@ -329,7 +330,8 @@ func (e *Explainer) findRelatedScenarios(elementID string) []*ScenarioInfo {
 
 // findDependencies finds all dependencies of an element.
 func (e *Explainer) findDependencies(elementID string) []string {
-	deps := make(map[string]bool)
+	// Estimate capacity: typically few dependencies per element
+	deps := make(map[string]bool, 16)
 	relations := e.findRelations(elementID)
 
 	// Add outgoing relation targets as dependencies

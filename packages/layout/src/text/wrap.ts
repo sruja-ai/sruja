@@ -1,5 +1,5 @@
-import { TextStyle } from '../types'
-import { TextMeasurer } from './TextMeasurer'
+import type { TextStyle } from '../types'
+import type { TextMeasurer } from './TextMeasurer'
 
 export function wrapText(text: string, style: TextStyle, measurer: TextMeasurer, maxWidth: number): { lines: string[]; widths: number[]; lineHeight: number } {
   const words = text.split(/\s+/).filter(Boolean)

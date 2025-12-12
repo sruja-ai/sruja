@@ -99,6 +99,10 @@ requirement ID nonfunctional "Description"
 requirement ID constraint "Description"
 ```
 
+Constraints:
+- Requirements are declared at the architecture root only.
+- Declarations at system/container/component level are deprecated and ignored by exporters and UI.
+
 #### ADRs (Architectural Decision Records)
 ```sruja
 adr ID "Title" {
@@ -108,6 +112,10 @@ adr ID "Title" {
     consequences "Trade-offs, gains, and losses"
 }
 ```
+
+Constraints:
+- ADRs are declared at the architecture root only.
+- Declarations at system/container/component level are deprecated and ignored by exporters and UI.
 
 ### Scenarios and Flows
 

@@ -221,19 +221,6 @@ func TestComponent_PostProcess(t *testing.T) {
 				Description: stringPtr("Main component"),
 			},
 			{
-				Requirement: &language.Requirement{
-					ID:          "R1",
-					Type:        strPtr("performance"),
-					Description: strPtr("Fast"),
-				},
-			},
-			{
-				ADR: &language.ADR{
-					ID:    "ADR001",
-					Title: stringPtr("Use JWT"),
-				},
-			},
-			{
 				Relation: &language.Relation{
 					From: language.QualifiedIdent{Parts: []string{"Comp"}},
 					To:   language.QualifiedIdent{Parts: []string{"Other"}},
@@ -257,12 +244,7 @@ func TestComponent_PostProcess(t *testing.T) {
 	if comp.Description == nil || *comp.Description != "Main component" {
 		t.Error("Description should be populated")
 	}
-	if len(comp.Requirements) != 1 {
-		t.Errorf("Expected 1 requirement, got %d", len(comp.Requirements))
-	}
-	if len(comp.ADRs) != 1 {
-		t.Errorf("Expected 1 ADR, got %d", len(comp.ADRs))
-	}
+    // root-only policy: component does not collect requirements/ADRs
 	if len(comp.Relations) != 1 {
 		t.Errorf("Expected 1 relation, got %d", len(comp.Relations))
 	}
@@ -352,19 +334,6 @@ func TestContainer_PostProcess(t *testing.T) {
 				},
 			},
 			{
-				Requirement: &language.Requirement{
-					ID:          "R1",
-					Type:        strPtr("performance"),
-					Description: strPtr("Fast"),
-				},
-			},
-			{
-				ADR: &language.ADR{
-					ID:    "ADR001",
-					Title: stringPtr("Use JWT"),
-				},
-			},
-			{
 				Relation: &language.Relation{
 					From: language.QualifiedIdent{Parts: []string{"Cont"}},
 					To:   language.QualifiedIdent{Parts: []string{"Other"}},
@@ -394,12 +363,7 @@ func TestContainer_PostProcess(t *testing.T) {
 	if len(cont.Queues) != 1 {
 		t.Errorf("Expected 1 queue, got %d", len(cont.Queues))
 	}
-	if len(cont.Requirements) != 1 {
-		t.Errorf("Expected 1 requirement, got %d", len(cont.Requirements))
-	}
-	if len(cont.ADRs) != 1 {
-		t.Errorf("Expected 1 ADR, got %d", len(cont.ADRs))
-	}
+    // root-only policy: container does not collect requirements/ADRs
 	if len(cont.Relations) != 1 {
 		t.Errorf("Expected 1 relation, got %d", len(cont.Relations))
 	}
@@ -441,19 +405,6 @@ func TestSystem_PostProcess(t *testing.T) {
 				},
 			},
 			{
-				Requirement: &language.Requirement{
-					ID:          "R1",
-					Type:        strPtr("security"),
-					Description: strPtr("Must be secure"),
-				},
-			},
-			{
-				ADR: &language.ADR{
-					ID:    "ADR001",
-					Title: stringPtr("Use JWT"),
-				},
-			},
-			{
 				Relation: &language.Relation{
 					From: language.QualifiedIdent{Parts: []string{"Sys"}},
 					To:   language.QualifiedIdent{Parts: []string{"Other"}},
@@ -486,12 +437,7 @@ func TestSystem_PostProcess(t *testing.T) {
 	if len(sys.Persons) != 1 {
 		t.Errorf("Expected 1 person, got %d", len(sys.Persons))
 	}
-	if len(sys.Requirements) != 1 {
-		t.Errorf("Expected 1 requirement, got %d", len(sys.Requirements))
-	}
-	if len(sys.ADRs) != 1 {
-		t.Errorf("Expected 1 ADR, got %d", len(sys.ADRs))
-	}
+    // root-only policy: system does not collect requirements/ADRs
 	if len(sys.Relations) != 1 {
 		t.Errorf("Expected 1 relation, got %d", len(sys.Relations))
 	}
@@ -504,11 +450,6 @@ func TestArchitecture_PostProcess(t *testing.T) {
 	arch := &language.Architecture{
 		Name: "Test",
 		Items: []language.ArchitectureItem{
-			{
-				Import: &language.ImportSpec{
-					Path: "other.sruja",
-				},
-			},
 			{
 				System: &language.System{
 					ID:    "Sys",
@@ -564,9 +505,7 @@ func TestArchitecture_PostProcess(t *testing.T) {
 
 	arch.PostProcess()
 
-	if len(arch.Imports) != 1 {
-		t.Errorf("Expected 1 import, got %d", len(arch.Imports))
-	}
+	// Import feature removed - no longer checking imports
 	if len(arch.Systems) != 1 {
 		t.Errorf("Expected 1 system, got %d", len(arch.Systems))
 	}

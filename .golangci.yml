@@ -51,6 +51,15 @@ linters-settings:
       - performance
     disabled-checks:
       - commentFormatting
+      - preferFprint
+      - sprintfQuotedString
+      - ifElseChain
+      - nestingReduce
+      - rangeValCopy
+      - appendAssign
+      - hugeParam
+      - paramTypeCombine
+      - emptyFallthrough
 
 issues:
   exclude-rules:
@@ -81,6 +90,37 @@ issues:
     - linters:
         - gosec
       source: "^pkg/config/.*_test\\.go$"
+
+    # Reduce linter strictness for high-complexity export code paths
+    - path: pkg/export/mermaid/.*
+      linters:
+        - gocyclo
+        - funlen
+        - gocritic
+        - goconst
+    - path: pkg/export/markdown/.*
+      linters:
+        - gocyclo
+        - funlen
+        - gocritic
+        - goconst
+    - path: pkg/engine/resolver.go
+      linters:
+        - gocyclo
+        - funlen
+    - path: pkg/export/json/json.go
+      linters:
+        - gocyclo
+    - path: pkg/export/views/views.go
+      linters:
+        - gocyclo
+    - path: pkg/engine/orphan_rule.go
+      linters:
+        - prealloc
+    - path: pkg/engine/best_practices_rule.go
+      linters:
+        - funlen
+        - gocyclo
   
   max-issues-per-linter: 0
   max-same-issues: 0

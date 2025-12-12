@@ -32,9 +32,20 @@ type Requirement struct {
 }
 
 type RequirementBody struct {
-	Type        *string        `parser:"( 'type' @String )?"`
-	Description *string        `parser:"( 'description' @String )?"`
-	Metadata    *MetadataBlock `parser:"@@?"`
+	Properties []RequirementProperty `parser:"@@*"`
+
+	// Post-processed
+	Type        *string
+	Description *string
+	Tags        []string
+	Metadata    *MetadataBlock
+}
+
+type RequirementProperty struct {
+	Type        *string        `parser:"  'type' @String"`
+	Description *string        `parser:"| 'description' @String"`
+	Tags        []string       `parser:"| 'tags' @String ( ',' @String )*"`
+	Metadata    *MetadataBlock `parser:"| @@"`
 }
 
 func (r *Requirement) Location() SourceLocation {
@@ -60,10 +71,22 @@ type ADRRef struct {
 }
 
 type ADRBody struct {
-	Status       *string `parser:"( 'status' @String )?"`
-	Context      *string `parser:"( 'context' @String )?"`
-	Decision     *string `parser:"( 'decision' @String )?"`
-	Consequences *string `parser:"( 'consequences' @String )?"`
+	Properties []ADRProperty `parser:"@@*"`
+
+	// Post-processed fields
+	Status       *string
+	Context      *string
+	Decision     *string
+	Consequences *string
+	Tags         []string
+}
+
+type ADRProperty struct {
+	Status       *string  `parser:"  'status' @String"`
+	Context      *string  `parser:"| 'context' @String"`
+	Decision     *string  `parser:"| 'decision' @String"`
+	Consequences *string  `parser:"| 'consequences' @String"`
+	Tags         []string `parser:"| 'tags' @String ( ',' @String )*"`
 }
 
 func (a *ADR) Location() SourceLocation {

@@ -1,4 +1,4 @@
-import { LayoutNode, LayoutConfig, Size } from '../types'
+import type { LayoutNode, LayoutConfig, Size } from '../types'
 
 export function flowLayout(children: { id: string; size: Size }[], config: LayoutConfig): { nodes: LayoutNode; children: LayoutNode[] } {
   let y = config.padding as any

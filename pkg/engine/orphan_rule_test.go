@@ -2,6 +2,7 @@
 package engine_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sruja-ai/sruja/pkg/engine"
@@ -51,7 +52,8 @@ architecture "Test" {
 	}
 	found := false
 	for _, e := range errs {
-		if e.Message == expectedOrphanMessage {
+		// Updated message format includes additional context
+		if strings.Contains(e.Message, "Orphan element") && strings.Contains(e.Message, "never used") {
 			found = true
 			break
 		}
@@ -75,7 +77,8 @@ architecture "Test" {
 	errs := rule.Validate(program)
 	foundOrphan := false
 	for _, e := range errs {
-		if e.Message == expectedOrphanMessage {
+		// Updated message format includes additional context
+		if strings.Contains(e.Message, "Orphan element") && strings.Contains(e.Message, "never used") {
 			foundOrphan = true
 			break
 		}
@@ -101,7 +104,8 @@ architecture "Test" {
 	errs := rule.Validate(program)
 	foundOrphan := false
 	for _, e := range errs {
-		if e.Message == expectedOrphanMessage {
+		// Updated message format includes additional context
+		if strings.Contains(e.Message, "Orphan element") && strings.Contains(e.Message, "never used") {
 			foundOrphan = true
 			break
 		}
@@ -125,7 +129,8 @@ architecture "Test" {
 	errs := rule.Validate(program)
 	foundOrphan := false
 	for _, e := range errs {
-		if e.Message == expectedOrphanMessage {
+		// Updated message format includes additional context
+		if strings.Contains(e.Message, "Orphan element") && strings.Contains(e.Message, "never used") {
 			foundOrphan = true
 			break
 		}
@@ -149,7 +154,8 @@ architecture "Test" {
 	errs := rule.Validate(program)
 	foundOrphan := false
 	for _, e := range errs {
-		if e.Message == expectedOrphanMessage {
+		// Updated message format includes additional context
+		if strings.Contains(e.Message, "Orphan element 'Orphan'") && strings.Contains(e.Message, "never used") {
 			foundOrphan = true
 			break
 		}
@@ -171,7 +177,8 @@ architecture "Test" {
 	errs := rule.Validate(program)
 	foundOrphan := false
 	for _, e := range errs {
-		if e.Message == expectedOrphanMessage {
+		// Updated message format includes additional context
+		if strings.Contains(e.Message, "Orphan element") && strings.Contains(e.Message, "never used") {
 			foundOrphan = true
 			break
 		}

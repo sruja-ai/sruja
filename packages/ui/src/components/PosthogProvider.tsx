@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { initPosthog, capture, identify, isReady } from '@sruja/shared'
+import { initPosthog, capture, identify, isReady, enableAutoTracking } from '@sruja/shared'
 
 type Ctx = {
   capture: (event: string, props?: Record<string, any>) => void
@@ -17,16 +17,20 @@ export type PosthogProviderProps = {
   apiKey: string
   host?: string
   options?: Record<string, any>
+  auto?: boolean
   children: any
 }
 
-export function PosthogProvider({ apiKey, host, options, children }: PosthogProviderProps) {
+export function PosthogProvider({ apiKey, host, options, auto = true, children }: PosthogProviderProps) {
   const [ready, setReady] = useState(false)
   useEffect(() => {
     if (typeof window === 'undefined') return
     // Only initialize if we have a valid API key
     if (apiKey && apiKey.trim() !== '') {
-      initPosthog({ apiKey, host, options }).then(() => setReady(true))
+      initPosthog({ apiKey, host, options }).then(() => {
+        if (auto) enableAutoTracking()
+        setReady(true)
+      })
     } else {
       // If no API key, mark as ready but don't initialize (silent fail)
       setReady(true)

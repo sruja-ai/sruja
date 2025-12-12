@@ -26,7 +26,7 @@ func TestLocation_Methods(t *testing.T) {
 		{"SchemaBlock", &language.SchemaBlock{}},
 		{"ConstraintEntry", &language.ConstraintEntry{}},
 		{"ConventionEntry", &language.ConventionEntry{}},
-		{"ImportSpec", &language.ImportSpec{}},
+		// ImportSpec removed - import feature removed
 		{"System", &language.System{}},
 		{"Container", &language.Container{}},
 		{"Component", &language.Component{}},

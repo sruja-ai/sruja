@@ -1,6 +1,6 @@
 ---
 title: "Examples"
-weight: 100
+weight: 80
 summary: "Full, runnable examples of Sruja architectures."
 ---
 

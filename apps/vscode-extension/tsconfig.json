@@ -8,10 +8,15 @@
     ],
     "sourceMap": true,
     "esModuleInterop": true,
-    "rootDir": "src",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
     "strict": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@sruja/shared/*": ["../../packages/shared/src/*"]
+    }
   },
   "exclude": [
     "node_modules",

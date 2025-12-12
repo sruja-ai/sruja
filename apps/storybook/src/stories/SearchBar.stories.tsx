@@ -46,7 +46,7 @@ const ARCHITECTURE_ELEMENTS: SearchItem[] = [
 ]
 
 export const Playground: Story = {
-  render: () => {
+  render: function PlaygroundComponent() {
     const [q, setQ] = useState('')
     const [sel, setSel] = useState<SearchItem | null>(null)
     const results = useMemo(() => {
@@ -70,7 +70,7 @@ export const Playground: Story = {
 }
 
 export const Basic: Story = {
-  render: () => {
+  render: function BasicComponent() {
     const [q, setQ] = useState('')
     const results = useMemo(() => {
       const s = q.trim().toLowerCase()
@@ -95,7 +95,7 @@ export const Basic: Story = {
 }
 
 export const WithResults: Story = {
-  render: () => {
+  render: function WithResultsComponent() {
     const [q, setQ] = useState('api')
     const results = useMemo(() => {
       const s = q.trim().toLowerCase()
@@ -123,4 +123,3 @@ export const WithResults: Story = {
     },
   },
 }
-

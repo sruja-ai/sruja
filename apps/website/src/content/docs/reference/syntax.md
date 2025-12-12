@@ -1,6 +1,6 @@
 ---
 title: "Syntax Reference"
-weight: 0
+weight: 51
 summary: "Core constructs and fields for Sruja DSL."
 ---
 

@@ -17,7 +17,7 @@ func comprehensiveDSL() string {
 			owner "Tech Team"
 		}
 
-		import "shared.sruja"
+
 
 		person Customer "Customer" {
 			description "End user"
@@ -120,12 +120,6 @@ func TestCLI_ExportJSON(t *testing.T) {
 
 	arch := result["architecture"].(map[string]interface{})
 
-	// Validate imports
-	imports := arch["imports"].([]interface{})
-	if len(imports) != 1 {
-		t.Errorf("Expected 1 import, got %d", len(imports))
-	}
-
 	// Validate persons
 	persons := arch["persons"].([]interface{})
 	if len(persons) != 1 {
@@ -177,7 +171,7 @@ func TestCLI_ExportJSON(t *testing.T) {
 	}
 }
 
-// TestCLI_ExportMarkdown tests markdown export with comprehensive DSL
+// TestCLI_ExportMarkdown tests that markdown export is disabled
 func TestCLI_ExportMarkdown(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "comprehensive.sruja")
@@ -188,59 +182,19 @@ func TestCLI_ExportMarkdown(t *testing.T) {
 
 	var stdout, stderr bytes.Buffer
 
+	// Markdown export is disabled - should return error
 	exitCode := runExport([]string{"markdown", file}, &stdout, &stderr)
-	if exitCode != 0 {
-		t.Fatalf("Export failed. Stderr: %s", stderr.String())
+	if exitCode == 0 {
+		t.Fatalf("Expected markdown export to be disabled, but got exit code 0")
 	}
-
-	output := stdout.String()
-
-	// Validate key markdown elements
-	if !strings.Contains(output, "# IntegrationTest") {
-		t.Error("Expected architecture title")
-	}
-	if !strings.Contains(output, "Backend System") {
-		t.Error("Expected Backend system")
-	}
-	if !strings.Contains(output, "Customer") {
-		t.Error("Expected Customer person")
-	}
-	if !strings.Contains(output, "## Requirements") {
-		t.Error("Expected Requirements section")
-	}
-	if !strings.Contains(output, "## Architecture Decision Records") {
-		t.Error("Expected ADRs section")
-	}
-	if !strings.Contains(output, "## Scenarios") {
-		t.Error("Expected Scenarios section")
+	if !strings.Contains(stderr.String(), "temporarily disabled") {
+		t.Errorf("Expected disabled message, got: %s", stderr.String())
 	}
 }
 
 // TestCLI_ExportHTML tests HTML export with comprehensive DSL
 func TestCLI_ExportHTML(t *testing.T) {
-	tmpDir := t.TempDir()
-	file := filepath.Join(tmpDir, "comprehensive.sruja")
-
-	if err := os.WriteFile(file, []byte(comprehensiveDSL()), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	var stdout, stderr bytes.Buffer
-
-	exitCode := runExport([]string{"html", file}, &stdout, &stderr)
-	if exitCode != 0 {
-		t.Fatalf("Export failed. Stderr: %s", stderr.String())
-	}
-
-	output := stdout.String()
-
-	// Validate HTML structure
-	if !strings.Contains(output, "<!DOCTYPE html>") {
-		t.Error("Expected HTML doctype")
-	}
-	if !strings.Contains(output, "IntegrationTest") {
-		t.Error("Expected architecture name in HTML")
-	}
+	t.Skip("HTML export removed from CLI")
 }
 
 // TestCLI_CompileComprehensive tests compile with comprehensive DSL

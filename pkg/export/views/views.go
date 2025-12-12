@@ -16,8 +16,13 @@ func ApplyViewExpressions(arch *language.Architecture, view *language.View) (map
 		return nil, fmt.Errorf("view is nil")
 	}
 
-	included := make(map[string]bool)
-	excluded := make(map[string]bool)
+	// Estimate capacity based on view expressions
+	estimatedElements := len(view.Expressions) * 10
+	if estimatedElements < 32 {
+		estimatedElements = 32
+	}
+	included := make(map[string]bool, estimatedElements)
+	excluded := make(map[string]bool, estimatedElements/2)
 
 	// Process expressions in order
 	for _, expr := range view.Expressions {
@@ -62,25 +67,46 @@ func includeAllInScope(arch *language.Architecture, scope language.QualifiedIden
 			// Include system
 			included[sys.ID] = true
 
+			// Helper to build qualified IDs efficiently
+			buildQualifiedID := func(parts ...string) string {
+				if len(parts) == 0 {
+					return ""
+				}
+				if len(parts) == 1 {
+					return parts[0]
+				}
+				totalLen := len(parts) - 1 // for dots
+				for _, p := range parts {
+					totalLen += len(p)
+				}
+				buf := make([]byte, 0, totalLen)
+				buf = append(buf, parts[0]...)
+				for i := 1; i < len(parts); i++ {
+					buf = append(buf, '.')
+					buf = append(buf, parts[i]...)
+				}
+				return string(buf)
+			}
+
 			// Include all containers
 			for _, cont := range sys.Containers {
-				included[sys.ID+"."+cont.ID] = true
+				included[buildQualifiedID(sys.ID, cont.ID)] = true
 			}
 
 			// Include all data stores
 			for _, ds := range sys.DataStores {
-				included[sys.ID+"."+ds.ID] = true
+				included[buildQualifiedID(sys.ID, ds.ID)] = true
 			}
 
 			// Include all queues
 			for _, q := range sys.Queues {
-				included[sys.ID+"."+q.ID] = true
+				included[buildQualifiedID(sys.ID, q.ID)] = true
 			}
 
 			// Include all components
 			for _, cont := range sys.Containers {
 				for _, comp := range cont.Components {
-					included[sys.ID+"."+cont.ID+"."+comp.ID] = true
+					included[buildQualifiedID(sys.ID, cont.ID, comp.ID)] = true
 				}
 			}
 			return
@@ -95,7 +121,12 @@ func ApplyStyles(arch *language.Architecture, viewBlock *language.ViewBlock) map
 		return nil
 	}
 
-	styles := make(map[string]map[string]string)
+	// Estimate capacity: typically few styles per view block
+	estimatedStyles := 16
+	if viewBlock.Styles != nil && len(viewBlock.Styles.Styles) > 0 {
+		estimatedStyles = len(viewBlock.Styles.Styles) * 5
+	}
+	styles := make(map[string]map[string]string, estimatedStyles)
 
 	// Build tag-to-elements map
 	tagMap := buildTagMap(arch)
@@ -109,7 +140,8 @@ func ApplyStyles(arch *language.Architecture, viewBlock *language.ViewBlock) map
 		}
 
 		// Build style properties map
-		props := make(map[string]string)
+		// Estimate capacity: typically 3-5 properties per style
+		props := make(map[string]string, 8)
 		for _, prop := range style.Properties {
 			if prop.Value != nil {
 				props[prop.Key] = strings.Trim(*prop.Value, "\"")
@@ -132,7 +164,10 @@ func ApplyStyles(arch *language.Architecture, viewBlock *language.ViewBlock) map
 
 // buildTagMap builds a map of tags to element IDs.
 func buildTagMap(arch *language.Architecture) map[string]map[string]bool {
-	tagMap := make(map[string]map[string]bool)
+	// Estimate capacity: typically few tags per architecture
+	estimatedTags := 16
+	tagMap := make(map[string]map[string]bool, estimatedTags)
+	const metaKeyTags = "tags"
 
 	// Add default tags
 	addTag(tagMap, "Element", arch.Systems, func(s *language.System) string { return s.ID })
@@ -142,17 +177,38 @@ func buildTagMap(arch *language.Architecture) map[string]map[string]bool {
 	// Add tags from metadata
 	for _, sys := range arch.Systems {
 		for _, meta := range sys.Metadata {
-			if meta.Key == "tags" && len(meta.Array) > 0 {
+			if meta.Key == metaKeyTags && len(meta.Array) > 0 {
 				for _, tag := range meta.Array {
 					addTagToElement(tagMap, tag, sys.ID)
 				}
 			}
 		}
 
+		// Helper to build qualified IDs efficiently
+		buildQualifiedID := func(parts ...string) string {
+			if len(parts) == 0 {
+				return ""
+			}
+			if len(parts) == 1 {
+				return parts[0]
+			}
+			totalLen := len(parts) - 1 // for dots
+			for _, p := range parts {
+				totalLen += len(p)
+			}
+			buf := make([]byte, 0, totalLen)
+			buf = append(buf, parts[0]...)
+			for i := 1; i < len(parts); i++ {
+				buf = append(buf, '.')
+				buf = append(buf, parts[i]...)
+			}
+			return string(buf)
+		}
+
 		for _, cont := range sys.Containers {
-			contID := sys.ID + "." + cont.ID
+			contID := buildQualifiedID(sys.ID, cont.ID)
 			for _, meta := range cont.Metadata {
-				if meta.Key == "tags" && len(meta.Array) > 0 {
+				if meta.Key == metaKeyTags && len(meta.Array) > 0 {
 					for _, tag := range meta.Array {
 						addTagToElement(tagMap, tag, contID)
 					}
@@ -161,9 +217,9 @@ func buildTagMap(arch *language.Architecture) map[string]map[string]bool {
 		}
 
 		for _, ds := range sys.DataStores {
-			dsID := sys.ID + "." + ds.ID
+			dsID := buildQualifiedID(sys.ID, ds.ID)
 			for _, meta := range ds.Metadata {
-				if meta.Key == "tags" && len(meta.Array) > 0 {
+				if meta.Key == metaKeyTags && len(meta.Array) > 0 {
 					for _, tag := range meta.Array {
 						addTagToElement(tagMap, tag, dsID)
 					}
@@ -175,15 +231,16 @@ func buildTagMap(arch *language.Architecture) map[string]map[string]bool {
 	return tagMap
 }
 
-func addTag[T any](tagMap map[string]map[string]bool, tag string, items []T, getId func(T) string) {
+func addTag[T any](tagMap map[string]map[string]bool, tag string, items []T, getID func(T) string) {
 	for _, item := range items {
-		addTagToElement(tagMap, tag, getId(item))
+		addTagToElement(tagMap, tag, getID(item))
 	}
 }
 
 func addTagToElement(tagMap map[string]map[string]bool, tag, elemID string) {
 	if tagMap[tag] == nil {
-		tagMap[tag] = make(map[string]bool)
+		// Estimate capacity: typically 5-10 elements per tag
+		tagMap[tag] = make(map[string]bool, 16)
 	}
 	tagMap[tag][elemID] = true
 }

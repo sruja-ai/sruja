@@ -1,6 +1,7 @@
 ---
 // apps/website/src/layouts/Layout.astro
 import Navbar from '@/shared/components/layout/Navbar';
+import PosthogInit from '@/shared/components/PosthogInit.astro';
 import '@sruja/ui/design-system/styles.css';
 
 interface Props {
@@ -21,11 +22,26 @@ const fullTitle = title === 'Sruja' ? title : `${title} | Sruja`;
     <link rel="icon" type="image/svg+xml" href="/sruja-logo.svg" />
     <meta name="generator" content={Astro.generator} />
     <title>{fullTitle}</title>
+    <PosthogInit />
     <script is:inline>
       (function() {
         const applyTheme = () => {
           const theme = localStorage.getItem('sruja-theme-mode') || 'system';
           const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          const root = document.documentElement;
+          if (isDark) {
+            root.style.setProperty('--color-primary', '#a78bfa');
+            root.style.setProperty('--color-primary-hover', '#c4b5fd');
+            root.style.setProperty('--color-primary-active', '#8b5cf6');
+            root.style.setProperty('--color-background', '#0f172a');
+            root.style.setProperty('--color-text-primary', '#f1f5f9');
+          } else {
+            root.style.setProperty('--color-primary', '#7c3aed');
+            root.style.setProperty('--color-primary-hover', '#6d28d9');
+            root.style.setProperty('--color-primary-active', '#5b21b6');
+            root.style.setProperty('--color-background', '#ffffff');
+            root.style.setProperty('--color-text-primary', '#0f172a');
+          }
           if (isDark) {
             document.documentElement.classList.add('dark');
             document.documentElement.classList.remove('light');
@@ -75,7 +91,7 @@ const fullTitle = title === 'Sruja' ? title : `${title} | Sruja`;
           <h3>More</h3>
           <ul>
             <li><a href="/blogs">Blogs</a></li>
-            <li><a href="/studio">Studio</a></li>
+            <li><a href="/investors">Investors</a></li>
           </ul>
         </div>
       </div>
@@ -174,7 +190,7 @@ const fullTitle = title === 'Sruja' ? title : `${title} | Sruja`;
 
   :global(.nav-links a) {
     text-decoration: none;
-    color: var(--color-text-secondary, #475569);
+    color: var(--color-primary);
     font-weight: 500;
     font-size: 0.9375rem;
     transition: color 0.2s;
@@ -194,11 +210,11 @@ const fullTitle = title === 'Sruja' ? title : `${title} | Sruja`;
   }
 
   :global(.nav-links a:hover) {
-    color: var(--color-text-primary, #0f172a);
+    color: var(--color-primary-hover);
   }
 
   :global(html.dark .nav-links a:hover) {
-    color: #f1f5f9;
+    color: var(--color-primary-hover);
   }
 
   :global(.nav-links a:hover::after) {
@@ -452,21 +468,21 @@ const fullTitle = title === 'Sruja' ? title : `${title} | Sruja`;
   }
 
   .footer-section a {
-    color: var(--color-text-secondary, #cbd5e1);
+    color: var(--color-primary);
     text-decoration: none;
     transition: color 0.2s;
   }
 
   .footer-section a:hover {
-    color: var(--color-text-primary, #ffffff);
+    color: var(--color-primary-hover);
   }
 
   :global(html.dark .footer-section a) {
-    color: #cbd5e1;
+    color: var(--color-primary);
   }
 
   :global(html.dark .footer-section a:hover) {
-    color: #f1f5f9;
+    color: var(--color-primary-hover);
   }
 
   .footer-copyright {

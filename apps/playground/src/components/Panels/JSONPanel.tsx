@@ -1,0 +1,186 @@
+// components/Panels/JSONPanel.tsx
+// JSON Panel - Shows the JSON representation of the current architecture
+import { useState, useEffect, useCallback } from 'react';
+import { FileJson, Copy, Check, Save } from 'lucide-react';
+import { useArchitectureStore } from '../../stores';
+import { MonacoEditor, useTheme, Button } from '@sruja/ui';
+import { convertJsonToDsl } from '../../utils/jsonToDsl';
+import './JSONPanel.css';
+
+export function JSONPanel() {
+    const data = useArchitectureStore((s) => s.data);
+    const convertedJson = useArchitectureStore((s) => s.convertedJson);
+    const isConverting = useArchitectureStore((s) => s.isConverting);
+    const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
+    const setDslSource = useArchitectureStore((s) => s.setDslSource);
+    const { mode } = useTheme();
+    const [copied, setCopied] = useState(false);
+    const [monacoTheme, setMonacoTheme] = useState<'vs' | 'vs-dark'>('vs');
+    const [jsonSource, setJsonSource] = useState<string>('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Detect theme for Monaco Editor
+    useEffect(() => {
+        const updateTheme = () => {
+            const isDark = mode === 'dark' ||
+                (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches) ||
+                document.documentElement.getAttribute('data-theme') === 'dark';
+            setMonacoTheme(isDark ? 'vs-dark' : 'vs');
+        };
+        updateTheme();
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        mediaQuery.addEventListener('change', updateTheme);
+        return () => mediaQuery.removeEventListener('change', updateTheme);
+    }, [mode]);
+
+    // Use converted JSON if available, otherwise fallback to data
+    useEffect(() => {
+        const sourceData = convertedJson || data;
+        if (!sourceData) {
+            setJsonSource('');
+            return;
+        }
+        const jsonString = JSON.stringify(sourceData, null, 2);
+        setJsonSource(jsonString);
+    }, [convertedJson, data]);
+
+    const handleCopy = async () => {
+        if (!jsonSource) return;
+
+        try {
+            await navigator.clipboard.writeText(jsonSource);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+        }
+    };
+
+    const handleJsonChange = useCallback((newJson: string) => {
+        setJsonSource(newJson);
+        setError(null);
+    }, []);
+
+    const handleSave = useCallback(async () => {
+        if (!jsonSource || !jsonSource.trim()) {
+            setError('JSON cannot be empty');
+            return;
+        }
+
+        setIsSaving(true);
+        setError(null);
+
+        try {
+            const parsed = JSON.parse(jsonSource);
+            
+            // Update architecture with parsed JSON
+            await updateArchitecture(() => parsed);
+            
+            // Convert to DSL and update DSL source
+            try {
+                const newDsl = convertJsonToDsl(parsed);
+                await setDslSource(newDsl, null);
+            } catch (dslErr) {
+                console.warn('Failed to convert JSON to DSL:', dslErr);
+                // Don't fail the save if DSL conversion fails
+            }
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Invalid JSON';
+            setError(`Failed to save JSON: ${message}`);
+            console.error('Failed to save JSON:', err);
+        } finally {
+            setIsSaving(false);
+        }
+    }, [jsonSource, updateArchitecture, setDslSource]);
+
+    if (!data) {
+        return (
+            <div className="json-panel empty">
+                <p>No architecture loaded</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="json-panel">
+            <div className="json-panel-header">
+                <div className="json-panel-title">
+                    <FileJson size={18} />
+                    <span>JSON Representation</span>
+                </div>
+                {jsonSource && (
+                    <div className="json-panel-actions">
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            title="Save JSON changes"
+                        >
+                            <Save size={14} />
+                            {isSaving ? 'Saving...' : 'Save'}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleCopy}
+                            title="Copy to clipboard"
+                        >
+                            {copied ? (
+                                <>
+                                    <Check size={14} />
+                                    <span>Copied!</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Copy size={14} />
+                                    <span>Copy</span>
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                )}
+            </div>
+
+            <div className="json-panel-content">
+                {isConverting && (
+                    <div className="json-loading">Converting DSL to JSON...</div>
+                )}
+
+                {error && (
+                    <div className="json-error">{error}</div>
+                )}
+
+                {!isConverting && jsonSource && (
+                    <MonacoEditor
+                        value={jsonSource}
+                        onChange={handleJsonChange}
+                        language="json"
+                        theme={monacoTheme}
+                        height="100%"
+                        options={{
+                            readOnly: false,
+                            lineNumbers: 'on',
+                            glyphMargin: true,
+                            guides: {
+                                indentation: true,
+                            },
+                            folding: true,
+                            foldingStrategy: 'indentation',
+                            showFoldingControls: 'always',
+                            formatOnPaste: true,
+                            formatOnType: true,
+                        }}
+                    />
+                )}
+
+                {!isConverting && !jsonSource && (
+                    <div className="json-empty">
+                        <p>JSON representation not available</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}

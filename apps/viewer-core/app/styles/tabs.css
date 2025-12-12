@@ -1,6 +1,0 @@
-.tabs { display: flex; background-color: var(--bg-primary); border-bottom: 1px solid var(--border-color); padding: 0 20px; gap: 24px; }
-.tab { display: flex; align-items: center; gap: 8px; padding: 14px 0; background: none; border: none; color: var(--text-secondary); font-size: 13px; font-weight: 500; cursor: pointer; position: relative; transition: color 0.2s; }
-.tab:hover { color: var(--text-primary); }
-.tab.active { color: var(--accent-primary); font-weight: 600; }
-.tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background-color: var(--accent-primary); border-radius: 2px 2px 0 0; }
-

@@ -3,6 +3,7 @@ package language
 
 import (
 	"fmt"
+	"strings"
 )
 
 // ErrorSeverity represents the severity of an error.
@@ -118,7 +119,14 @@ type ErrorList struct {
 }
 
 // Add adds an error to the list.
+// Pre-allocates slice capacity if needed for better performance.
 func (el *ErrorList) Add(err error) {
+	if err == nil {
+		return
+	}
+	if el.Errors == nil {
+		el.Errors = make([]error, 0, 8) // Pre-allocate small capacity
+	}
 	el.Errors = append(el.Errors, err)
 }
 
@@ -139,7 +147,15 @@ func (el *ErrorList) Error() string {
 	if len(el.Errors) == 1 {
 		return el.Errors[0].Error()
 	}
-	return fmt.Sprintf("%d errors (first: %s)", len(el.Errors), el.Errors[0].Error())
+	// Build error message efficiently
+	var sb strings.Builder
+	firstErr := el.Errors[0].Error()
+	sb.Grow(30 + len(firstErr))
+	sb.WriteString(fmt.Sprintf("%d", len(el.Errors)))
+	sb.WriteString(" errors (first: ")
+	sb.WriteString(firstErr)
+	sb.WriteString(")")
+	return sb.String()
 }
 
 // NewParseError creates a new parse error with error severity.

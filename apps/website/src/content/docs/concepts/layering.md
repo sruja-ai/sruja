@@ -1,6 +1,6 @@
 ---
 title: "Layering"
-weight: 7
+weight: 30
 summary: "Keep dependencies flowing downward: Web → API → DB."
 ---
 
@@ -26,6 +26,7 @@ architecture "Shop" {
 ## Violation Example
 
 ```sruja
+// EXPECTED_FAILURE: Layer violation - this example intentionally demonstrates an invalid pattern
 architecture "Shop" {
   system App {
     container WebApp

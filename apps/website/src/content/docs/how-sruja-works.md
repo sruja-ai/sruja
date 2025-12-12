@@ -1,6 +1,6 @@
 ---
 title: "How Sruja Works"
-weight: 2
+weight: 3
 ---
 
 
@@ -108,10 +108,18 @@ architecture "Sruja" {
 		Website -> Viewer "embeds"
 	}
 
-User -> Sruja.CLI "runs commands"
-User -> Sruja.VSCode "writes DSL"
-User -> Sruja.Studio "visualizes architecture"
-User -> Sruja.Website "reads docs"
+	User -> Sruja.CLI "runs commands"
+	User -> Sruja.VSCode "writes DSL"
+	User -> Sruja.Studio "visualizes architecture"
+	User -> Sruja.Website "reads docs"
+
+	system Browser "Web Browser" {
+		description "User's web browser environment"
+		metadata {
+			tags ["external"]
+		}
+		datastore LocalStore "Local Storage"
+	}
 
 	// ADRs
 	adr ADR001 "Use WASM for Client-Side Execution" {
@@ -151,10 +159,7 @@ User -> Sruja.Website "reads docs"
     Actions -> Pages "deploys to"
     Actions -> Releases "publishes to"
   }
-
-    GitHub.Actions -> GitHub.Pages "deploys to"
-    GitHub.Actions -> GitHub.Releases "publishes to"
-  }
+  
 
   User -> GitHub "pushes code to" [Git]
 
@@ -225,13 +230,13 @@ User -> Sruja.Website "reads docs"
   }
 
   scenario ViewerURLState "URL State Management" {
-    User -> Viewer "edits DSL code" [Input]
-    Viewer -> Browser "debounces URL update" [Timeout]
+    User -> Sruja.Viewer "edits DSL code" [Input]
+    Sruja.Viewer -> Browser "debounces URL update" [Timeout]
     Browser -> Browser "updates URL hash with code" [HistoryAPI]
     User -> Browser "refreshes page" [Event]
-    Browser -> Viewer "loads code from URL" [HashParse]
-    Viewer -> WASM "parses DSL from URL" [FunctionCall]
-    Viewer -> User "restores architecture state" [DOM]
+    Browser -> Sruja.Viewer "loads code from URL" [HashParse]
+    Sruja.Viewer -> Sruja.WASM "parses DSL from URL" [FunctionCall]
+    Sruja.Viewer -> User "restores architecture state" [DOM]
   }
 
   story StudioStory "Visual Editing in Studio" {
@@ -251,14 +256,11 @@ User -> Sruja.Website "reads docs"
   }
 
   scenario StudioAutosave "Autosave on Close" {
-    system Browser {
-      datastore LocalStore "Local Storage"
-    }
-    Studio -> LocalStore "save DSL snapshot"
-    User -> Studio "closes tab"
-    User -> Studio "reopens Studio"
-    Studio -> LocalStore "load DSL snapshot"
-    Studio -> User "restores session"
+    Sruja.Studio -> Browser.LocalStore "save DSL snapshot"
+    User -> Sruja.Studio "closes tab"
+    User -> Sruja.Studio "reopens Studio"
+    Sruja.Studio -> Browser.LocalStore "load DSL snapshot"
+    Sruja.Studio -> User "restores session"
   }
 
   story DocsStory "Reading Documentation" {
@@ -280,21 +282,21 @@ User -> Sruja.Website "reads docs"
     GitHub.Actions -> GitHub "creates release/<semVer> branch"
     GitHub.Actions -> GitHub "creates PR to prod"
     GitHub.Actions -> GitHub "creates <semVer>-RC1 tag"
-    GitHub.Actions -> Marketplace "publishes pre-release extension"
+    GitHub.Actions -> Sruja.VSCode "publishes pre-release extension"
   }
 
   scenario ReleaseFixes "Release Candidate Fixes" {
     User -> GitHub "commits fix to release/<semVer>"
     GitHub -> GitHub.Actions "triggers CI"
     GitHub.Actions -> GitHub "creates <semVer>-RC2 tag"
-    GitHub.Actions -> Marketplace "updates pre-release extension"
+    GitHub.Actions -> Sruja.VSCode "updates pre-release extension"
   }
 
   scenario ReleaseProd "Production Release" {
     User -> GitHub "merges PR to prod"
     GitHub -> GitHub.Actions "triggers release"
     GitHub.Actions -> GitHub.Pages "deploys prod site"
-    GitHub.Actions -> Marketplace "publishes extension"
+    GitHub.Actions -> Sruja.VSCode "publishes extension"
     GitHub.Actions -> GitHub.Releases "publishes CLI binaries"
   }
 
@@ -303,7 +305,7 @@ User -> Sruja.Website "reads docs"
     GitHub.Actions -> GitHub "creates hotfix branch"
     User -> GitHub "merges hotfix to prod"
     GitHub.Actions -> GitHub.Pages "deploys prod site"
-    GitHub.Actions -> Marketplace "publishes patch update"
+    GitHub.Actions -> Sruja.VSCode "publishes patch update"
   }
 }
 ```

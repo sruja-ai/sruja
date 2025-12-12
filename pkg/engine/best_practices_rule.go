@@ -25,14 +25,33 @@ func (r *DatabaseIsolationRule) Validate(program *language.Program) []diagnostic
 
 	// 1. Identify all DataStores
 	// Map: DataStore ID -> List of Consumers (System/Container/Component IDs)
-	dsUsage := make(map[string][]string)
+	// Estimate capacity: typically few datastores per architecture
+	estimatedDataStores := 8
+	if program.Architecture != nil {
+		for _, sys := range program.Architecture.Systems {
+			estimatedDataStores += len(sys.DataStores)
+		}
+		estimatedDataStores += len(program.Architecture.DataStores)
+	}
+	dsUsage := make(map[string][]string, estimatedDataStores)
 
 	collectRelations := func(program *language.Program) []*language.Relation {
-		var allRels []*language.Relation
 		if program.Architecture == nil {
-			return allRels
+			return nil
 		}
 
+		// Estimate capacity for relations
+		estimatedRels := len(program.Architecture.Relations)
+		for _, sys := range program.Architecture.Systems {
+			estimatedRels += len(sys.Relations)
+			for _, cont := range sys.Containers {
+				estimatedRels += len(cont.Relations)
+				for _, comp := range cont.Components {
+					estimatedRels += len(comp.Relations)
+				}
+			}
+		}
+		allRels := make([]*language.Relation, 0, estimatedRels)
 		allRels = append(allRels, program.Architecture.Relations...)
 
 		for _, sys := range program.Architecture.Systems {
@@ -62,7 +81,14 @@ func (r *DatabaseIsolationRule) Validate(program *language.Program) []diagnostic
 			// Who is calling it?
 			sourceName := rel.From.String()
 			// Get root component of source (e.g. if A.B calls DB, source is A)
-			sourceRoot := strings.Split(sourceName, ".")[0]
+			// Use IndexByte for better performance than Split when we only need first part
+			firstDot := strings.IndexByte(sourceName, '.')
+			var sourceRoot string
+			if firstDot == -1 {
+				sourceRoot = sourceName
+			} else {
+				sourceRoot = sourceName[:firstDot]
+			}
 
 			// Add to usage
 			consumers := dsUsage[targetName]
@@ -96,9 +122,9 @@ func (r *DatabaseIsolationRule) Validate(program *language.Program) []diagnostic
 						fmt.Sprintf("Accessed by: %s", strings.Join(consumers, ", ")),
 					},
 					Suggestions: []string{
-						"Split the database into separate databases for each service.",
-						"Create a shared API service to wrap the database.",
-						"Mark the datastore with `metadata { shared \"true\" }` if this is intentional.",
+						"Consider splitting the DataStore into service-specific databases",
+						"Use the Database-Per-Service pattern for better service isolation",
+						"If shared data is required, mark with `metadata { shared \"true\" }` and document the rationale",
 					},
 				})
 			}
@@ -220,10 +246,13 @@ func (r *PublicInterfaceDocumentationRule) Validate(program *language.Program) [
 			if sys.ID == itemName {
 				if sys.Description == nil || *sys.Description == "" {
 					diags = append(diags, diagnostics.Diagnostic{
-						Code:        diagnostics.CodeBestPractice,
-						Severity:    diagnostics.SeverityWarning,
-						Message:     fmt.Sprintf("Public API Documentation: System '%s' is used by humans but lacks a description.", sys.ID),
-						Suggestions: []string{"Add a user-friendly description to the System."},
+						Code:     diagnostics.CodeBestPractice,
+						Severity: diagnostics.SeverityWarning,
+						Message:  fmt.Sprintf("Public API Documentation: System '%s' is used by humans but lacks a description.", sys.ID),
+						Suggestions: []string{
+							fmt.Sprintf("Add a description to System '%s' to document its purpose", sys.ID),
+							"Descriptions help users understand the system's role and responsibilities",
+						},
 					})
 				}
 			}
@@ -233,15 +262,19 @@ func (r *PublicInterfaceDocumentationRule) Validate(program *language.Program) [
 				if fullName == itemName {
 					if cont.Description == nil || *cont.Description == "" {
 						diags = append(diags, diagnostics.Diagnostic{
-							Code:        diagnostics.CodeBestPractice,
-							Severity:    diagnostics.SeverityWarning,
-							Message:     fmt.Sprintf("Public Interface: Container '%s' is used by humans but lacks a description.", fullName),
-							Suggestions: []string{"Add a description explaining what this application does."},
+							Code:     diagnostics.CodeBestPractice,
+							Severity: diagnostics.SeverityWarning,
+							Message:  fmt.Sprintf("Public Interface: Container '%s' is used by humans but lacks a description.", fullName),
+							Suggestions: []string{
+								fmt.Sprintf("Add a description to Container '%s'", fullName),
+								"Public interfaces should be well-documented for API consumers",
+							},
 						})
 					}
 					// Check technology for containers (Systems don't have technology)
 					hasTech := false
-					for _, item := range cont.Items {
+					for i := range cont.Items {
+						item := cont.Items[i]
 						if item.Technology != nil {
 							hasTech = true
 						}
@@ -260,8 +293,8 @@ func (r *PublicInterfaceDocumentationRule) Validate(program *language.Program) [
 					// So we must check Items.
 
 					if !hasTech {
-						// double check items
-						for _, it := range cont.Items {
+						for i := range cont.Items {
+							it := cont.Items[i]
 							if it.Technology != nil {
 								hasTech = true
 								break
@@ -274,6 +307,11 @@ func (r *PublicInterfaceDocumentationRule) Validate(program *language.Program) [
 							Code:     diagnostics.CodeBestPractice,
 							Severity: diagnostics.SeverityInfo,
 							Message:  fmt.Sprintf("Public Interface: Container '%s' should specify its Technology (e.g., 'React', 'iOS').", fullName),
+							Suggestions: []string{
+								fmt.Sprintf("Add technology field to Container '%s'", fullName),
+								"Example: technology \"React\" or technology \"iOS\"",
+								"Technology helps consumers understand implementation details",
+							},
 						})
 					}
 				}

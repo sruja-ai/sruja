@@ -97,7 +97,7 @@ architecture "Unified Design" {
 	if len(arch.Systems) != 1 {
 		t.Errorf("Expected 1 system, got %d", len(arch.Systems))
 	}
-	sys := arch.Systems[0]
+    _ = arch.Systems[0]
 
 	// Policy handling commented out - Policy type not yet defined
 	// if len(sys.Requirements) != 1 {
@@ -118,17 +118,17 @@ architecture "Unified Design" {
 	// 	}
 	// }
 
-	// Verify ADR Options
-	if len(sys.ADRs) != 1 {
-		t.Errorf("Expected 1 ADR, got %d", len(sys.ADRs))
-	} else {
-		adr := sys.ADRs[0]
-		if adr.Body == nil {
-			t.Errorf("ADR body is nil")
-		} else if adr.Body.Decision == nil || *adr.Body.Decision != "Postgres" {
-			t.Errorf("Expected decision 'Postgres', got '%s'", *adr.Body.Decision)
-		}
-	}
+    // Verify ADR at architecture root
+    if len(arch.ADRs) != 1 {
+        t.Errorf("Expected 1 ADR, got %d", len(arch.ADRs))
+    } else {
+        adr := arch.ADRs[0]
+        if adr.Body == nil {
+            t.Errorf("ADR body is nil")
+        } else if adr.Body.Decision == nil || *adr.Body.Decision != "Postgres" {
+            t.Errorf("Expected decision 'Postgres', got '%s'", *adr.Body.Decision)
+        }
+    }
 
 	// Verify Story (Scenario)
 	// Scenarios are in Architecture, not System

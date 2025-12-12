@@ -5,10 +5,36 @@
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "module": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./lsp": "./src/lsp/index.ts",
-    "./utils/cssVars": "./src/utils/cssVars.ts"
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    },
+    "./lsp": {
+      "import": "./src/lsp/index.ts",
+      "types": "./src/lsp/index.ts"
+    },
+    "./utils/cssVars": {
+      "import": "./src/utils/cssVars.ts",
+      "types": "./src/utils/cssVars.ts"
+    },
+    "./export/markdown": {
+      "import": "./src/export/markdown.ts",
+      "types": "./src/export/markdown.ts"
+    },
+    "./export/mermaid": {
+      "import": "./src/export/mermaid.ts",
+      "types": "./src/export/mermaid.ts"
+    },
+    "./types/architecture": {
+      "import": "./src/types/architecture.ts",
+      "types": "./src/types/architecture.ts"
+    },
+    "./node/wasmAdapter": {
+      "import": "./src/node/wasmAdapter.ts",
+      "types": "./src/node/wasmAdapter.ts"
+    }
   },
   "scripts": {
     "build": "tsc",
@@ -18,8 +44,7 @@
     "test:coverage": "vitest run --coverage",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "clean": "rimraf dist",
-    "generate:icons": "ts-node ./src/scripts/generate-icons.ts"
+    "clean": "rimraf dist"
   },
   "size-limit": [
     {

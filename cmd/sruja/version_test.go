@@ -1,33 +1,30 @@
 package main
 
 import (
-	"bytes"
-	"strings"
-	"testing"
+    "bytes"
+    "strings"
+    "testing"
 )
 
-func TestRunVersion(t *testing.T) {
-	var stdout, stderr bytes.Buffer
+func TestRunVersion_PrintsVersion(t *testing.T) {
+    var out, err bytes.Buffer
+    code := runVersion([]string{}, &out, &err)
+    if code != 0 {
+        t.Fatalf("expected exit code 0, got %d", code)
+    }
+    line := out.String()
+    if !strings.HasPrefix(line, "sruja version ") {
+        t.Fatalf("unexpected version output: %q", line)
+    }
+}
 
-	// Test version output
-	exitCode := runVersion([]string{}, &stdout, &stderr)
-	if exitCode != 0 {
-		t.Errorf("Expected exit code 0, got %d. Stderr: %s", exitCode, stderr.String())
-	}
-	output := stdout.String()
-	if !strings.Contains(output, "sruja version") {
-		t.Error("Output missing version string")
-	}
-
-	// Test with flags (should fail as it doesn't accept flags but flags are parsed)
-	// The implementation uses flag.FlagSet, so unknown flags will cause error.
-	stdout.Reset()
-	stderr.Reset()
-	exitCode = runVersion([]string{"--unknown"}, &stdout, &stderr)
-	if exitCode == 0 {
-		t.Error("Expected non-zero exit code for unknown flag")
-	}
-	if !strings.Contains(stderr.String(), "flag provided but not defined") {
-		t.Errorf("Expected flag error, got: %s", stderr.String())
-	}
+func TestRunVersion_InvalidFlag(t *testing.T) {
+    var out, err bytes.Buffer
+    code := runVersion([]string{"--unknown"}, &out, &err)
+    if code != 1 {
+        t.Fatalf("expected exit code 1 on invalid flag, got %d", code)
+    }
+    if !strings.Contains(err.String(), "Error parsing version flags") {
+        t.Fatalf("expected error message, got %q", err.String())
+    }
 }

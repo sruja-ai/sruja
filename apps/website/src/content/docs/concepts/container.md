@@ -1,6 +1,6 @@
 ---
 title: "Container"
-weight: 3
+weight: 14
 summary: "A Container represents an application or a data store."
 ---
 
@@ -35,3 +35,26 @@ system BankingSystem "Internet Banking System" {
   }
 }
 ```
+
+## Scaling Configuration
+
+Containers can define horizontal scaling properties using the `scale` block:
+
+```sruja
+container API "API Service" {
+  technology "Go, Gin"
+  scale {
+    min 3
+    max 10
+    metric "cpu > 80%"
+  }
+}
+```
+
+### Scale Block Fields
+
+- **`min`** (optional): Minimum number of replicas
+- **`max`** (optional): Maximum number of replicas  
+- **`metric`** (optional): Scaling metric trigger (e.g., "cpu > 80%", "memory > 90%")
+
+This helps document your auto-scaling strategy and can be used by deployment tools.

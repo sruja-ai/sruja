@@ -1,1 +1,0 @@
-import{a as l}from"./iframe-CLHqt8sP.js";function u(n,t){return n!==null&&t!==null&&typeof n=="object"&&typeof t=="object"&&"id"in n&&"id"in t?n.id===t.id:n===t}function f(n=u){return l.useCallback((t,o)=>{if(typeof n=="string"){let i=n;return t?.[i]===o?.[i]}return n(t,o)},[n])}export{f as u};

@@ -1,6 +1,6 @@
 ---
 title: "Deployment"
-weight: 9
+weight: 33
 summary: "The Deployment view allows you to map your software containers to infrastructure."
 ---
 

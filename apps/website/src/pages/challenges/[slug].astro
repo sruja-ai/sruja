@@ -7,23 +7,27 @@ import ContentNavigation from '@/features/content/components/ContentNavigation.a
 
 export async function getStaticPaths() {
   const raw = await getCollection('challenges')
-  const challenges = raw.sort((a: any, b: any) => a.data.slug.localeCompare(b.data.slug))
+  const challenges = raw.sort((a: any, b: any) => a.id.localeCompare(b.id))
   return challenges.map((entry: any, index: number) => {
     const previous = index > 0 ? challenges[index - 1] : null
     const next = index < challenges.length - 1 ? challenges[index + 1] : null
+    const slug = entry.id.replace(/\.md$/, '')
+    const prevSlug = previous ? previous.id.replace(/\.md$/, '') : null
+    const nextSlug = next ? next.id.replace(/\.md$/, '') : null
     return {
-      params: { slug: entry.data.slug },
+      params: { slug },
       props: {
         challenge: entry.data,
-        previous: previous ? { title: previous.data.title, href: `/challenges/${previous.data.slug}` } : null,
-        next: next ? { title: next.data.title, href: `/challenges/${next.data.slug}` } : null,
+        slug,
+        previous: previous ? { title: previous.data.title, href: `/challenges/${prevSlug}` } : null,
+        next: next ? { title: next.data.title, href: `/challenges/${nextSlug}` } : null,
       },
     }
   })
 }
 
-type Props = { challenge: any; previous?: { title: string; href: string } | null; next?: { title: string; href: string } | null }
-const { challenge, previous, next } = Astro.props as Props
+type Props = { challenge: any; slug: string; previous?: { title: string; href: string } | null; next?: { title: string; href: string } | null }
+const { challenge, slug, previous, next } = Astro.props as Props
 ---
 
 <Layout title={challenge.title} description={challenge.summary || `Challenge: ${challenge.title}`}>
@@ -34,7 +38,7 @@ const { challenge, previous, next } = Astro.props as Props
       {challenge.estimatedTime && <span class="pill time">{challenge.estimatedTime}</span>}
     </div>
     <p><a class="back-link" href="/challenges">← Back to Challenges</a></p>
-    <ChallengeRunner client:only="react" challenge={challenge} />
+    <ChallengeRunner client:only="react" challenge={{ ...challenge, slug }} />
   </ContentPage>
   <ContentNavigation previous={previous || undefined} next={next || undefined} basePath="/challenges" />
   <style>

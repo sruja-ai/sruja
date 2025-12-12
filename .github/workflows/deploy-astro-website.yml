@@ -75,8 +75,18 @@ jobs:
           node-version: '24'
           cache: 'npm'
 
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.4'
+
       - name: Install npm dependencies
         run: npm ci
+
+      - name: Build Viewer + WASM
+        run: |
+          make build-embed-viewer
+          make wasm
 
       - name: Build Astro website
         working-directory: apps/website
@@ -93,7 +103,7 @@ jobs:
           # to match the deployment target
           SITE_URL: ${{ needs.determine-environment.outputs.site_url }}
           # Algolia configuration - index name is auto-determined by env.ts based on PUBLIC_ENV
-          PUBLIC_ALGOLIA_APP_ID: ${{ secrets.PUBLIC_ALGOLIA_APP_ID }}
+          # Note: Algolia App ID is hardcoded in env.ts, only search API key is needed
           PUBLIC_ALGOLIA_SEARCH_API_KEY: ${{ secrets.PUBLIC_ALGOLIA_SEARCH_API_KEY }}
           # Optional: Override index name if needed (otherwise uses default based on PUBLIC_ENV)
           # PUBLIC_ALGOLIA_INDEX_NAME: ${{ needs.determine-environment.outputs.env == 'prod' && 'sruja_docs' || (needs.determine-environment.outputs.env == 'staging' && 'sruja_docs_staging' || 'sruja_docs_dev') }}

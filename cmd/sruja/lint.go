@@ -57,7 +57,8 @@ func runLint(args []string, stdout, stderr io.Writer) int {
 	var blockingErrors []diagnostics.Diagnostic
 	var warnings []diagnostics.Diagnostic
 
-	for _, d := range diags {
+    for i := range diags {
+        d := diags[i]
 		// Skip informational cycle detection messages (cycles are valid patterns)
 		if d.Code == diagnostics.CodeCycleDetected && d.Severity == diagnostics.SeverityInfo {
 			continue // Cycles are valid - skip informational messages
@@ -74,9 +75,10 @@ func runLint(args []string, stdout, stderr io.Writer) int {
 	if len(warnings) > 0 {
 		enhancer := dx.NewErrorEnhancer(filePath, strings.Split(string(content), "\n"), program)
 		enhancedWarnings := make([]*dx.EnhancedError, 0, len(warnings))
-		for _, w := range warnings {
-			enhancedWarnings = append(enhancedWarnings, enhancer.Enhance(w))
-		}
+    for i := range warnings {
+            w := warnings[i]
+            enhancedWarnings = append(enhancedWarnings, enhancer.Enhance(w))
+    }
 		// Print warnings but continue
 		_, _ = fmt.Fprint(stderr, dx.FormatErrors(enhancedWarnings, dx.SupportsColor()))
 	}
@@ -85,9 +87,10 @@ func runLint(args []string, stdout, stderr io.Writer) int {
 		// Enhance errors with suggestions and context
 		enhancer := dx.NewErrorEnhancer(filePath, strings.Split(string(content), "\n"), program)
 		enhancedErrors := make([]*dx.EnhancedError, 0, len(blockingErrors))
-		for _, err := range blockingErrors {
-			enhancedErrors = append(enhancedErrors, enhancer.Enhance(err))
-		}
+    for i := range blockingErrors {
+            err := blockingErrors[i]
+            enhancedErrors = append(enhancedErrors, enhancer.Enhance(err))
+    }
 
 		_, _ = fmt.Fprint(stderr, dx.FormatErrors(enhancedErrors, dx.SupportsColor()))
 		return 1

@@ -58,7 +58,9 @@ architecture "E-Commerce" {
   person Admin "System Administrator"
   
   system PaymentGateway "Third-party Payment Service" {
-    tags ["external"]
+    metadata {
+      tags ["external"]
+    }
   }
   
   // Relationships cross boundaries
@@ -86,7 +88,9 @@ architecture "Order Processing" {
     datastore DB
   }
   system PaymentGateway {
-    tags ["external"]
+    metadata {
+      tags ["external"]
+    }
   }
   
   scenario OrderProcess "Order Processing" {
@@ -105,17 +109,32 @@ architecture "Order Processing" {
 Use `scenario` for behavioral flows:
 
 ```sruja
-story Checkout "User Checkout Flow" {
-  Customer -> ECommerce.CartPage "adds items to cart"
-  ECommerce.CartPage -> ECommerce.WebApp "clicks checkout"
-  ECommerce.WebApp -> ECommerce.API "validates cart"
-  ECommerce.API -> ECommerce.DB "checks inventory"
-  ECommerce.DB -> ECommerce.API "returns stock status"
-  ECommerce.API -> PaymentGateway "processes payment"
-  PaymentGateway -> ECommerce.API "confirms payment"
-  ECommerce.API -> ECommerce.DB "creates order"
-  ECommerce.API -> ECommerce.WebApp "returns order confirmation"
-  ECommerce.WebApp -> Customer "displays success message"
+architecture "Checkout Example" {
+  person Customer "End User"
+  system ECommerce "E-Commerce System" {
+    container CartPage "Shopping Cart Page"
+    container WebApp "Web Application"
+    container API "API Service"
+    datastore DB "Database"
+  }
+  system PaymentGateway "Payment Service" {
+    metadata {
+      tags ["external"]
+    }
+  }
+  
+  story Checkout "User Checkout Flow" {
+    Customer -> ECommerce.CartPage "adds items to cart"
+    ECommerce.CartPage -> ECommerce.WebApp "clicks checkout"
+    ECommerce.WebApp -> ECommerce.API "validates cart"
+    ECommerce.API -> ECommerce.DB "checks inventory"
+    ECommerce.DB -> ECommerce.API "returns stock status"
+    ECommerce.API -> PaymentGateway "processes payment"
+    PaymentGateway -> ECommerce.API "confirms payment"
+    ECommerce.API -> ECommerce.DB "creates order"
+    ECommerce.API -> ECommerce.WebApp "returns order confirmation"
+    ECommerce.WebApp -> Customer "displays success message"
+  }
 }
 ```
 
@@ -128,18 +147,19 @@ Feedback loops show how actions create **reactions** that affect future actions.
 ### Simple Feedback Loop
 
 ```sruja
+// EXPECTED_FAILURE: Layer violation - intentional feedback loop example showing API -> WebApp is valid for teaching feedback patterns
 architecture "User Interaction" {
-  person User
-  system App {
-    container WebApp
-    container API
+  person User "End User"
+  system App "Application" {
+    container WebApp "Web Application"
+    container API "API Service"
   }
   
   // Feedback loop: User action → System response → User reaction
-  Customer -> Shop.WebApp "Submits Form"
-  Shop.WebApp -> Shop.API "Validates"
-  Shop.API -> Shop.WebApp "Returns Validation Result"
-  Shop.WebApp -> Customer "Shows Feedback"
+  User -> App.WebApp "Submits Form"
+  App.WebApp -> App.API "Validates"
+  App.API -> App.WebApp "Returns Validation Result"
+  App.WebApp -> User "Shows Feedback"
   // The feedback affects user's next action (completing the loop)
 }
 ```
@@ -173,9 +193,9 @@ Context defines the **environment** the system operates in - external dependenci
 architecture "E-Commerce Platform" {
   // Internal system
   system Shop {
-    container WebApp
-    container API
-    datastore DB
+    container WebApp "Web Application"
+    container API "API Service"
+    datastore DB "Database"
   }
   
   // Context: Stakeholders
@@ -185,15 +205,21 @@ architecture "E-Commerce Platform" {
   
   // Context: External dependencies
   system PaymentGateway "Third-party Payment" {
-    tags ["external"]
+    metadata {
+      tags ["external"]
+    }
   }
   
   system EmailService "Email Notifications" {
-    tags ["external"]
+    metadata {
+      tags ["external"]
+    }
   }
   
   system AnalyticsService "Usage Analytics" {
-    tags ["external"]
+    metadata {
+      tags ["external"]
+    }
   }
   
   // Context relationships
@@ -213,6 +239,7 @@ architecture "E-Commerce Platform" {
 Here's a complete example combining all five concepts:
 
 ```sruja
+// EXPECTED_FAILURE: Layer violation - intentional feedback loop example showing API -> WebApp is valid for teaching feedback patterns
 architecture "Systems Thinking Example" {
   // 1. PARTS AND RELATIONSHIPS
   person Customer "End User"
@@ -232,7 +259,9 @@ architecture "Systems Thinking Example" {
   
   // 2. BOUNDARIES
   system PaymentGateway "Third-party Payment Service" {
-    tags ["external"]
+    metadata {
+      tags ["external"]
+    }
   }
   
   // 3. FLOWS
@@ -246,20 +275,22 @@ architecture "Systems Thinking Example" {
   }
   
   // 4. FEEDBACK LOOPS
-  Customer -> Shop.WebApp "Submits Form"
-  Shop.WebApp -> Shop.API "Validates"
-  Shop.API -> Shop.WebApp "Returns Validation Result"
-  Shop.WebApp -> Customer "Shows Feedback"
+  Customer -> ECommerce.WebApp "Submits Form"
+  ECommerce.WebApp -> ECommerce.API "Validates"
+  ECommerce.API -> ECommerce.WebApp "Returns Validation Result"
+  ECommerce.WebApp -> Customer "Shows Feedback"
   
-  API -> DB "Updates Inventory"
-  DB -> API "Notifies Low Stock"
-  API -> Admin "Sends Alert"
-  Admin -> API "Adjusts Inventory"
+  ECommerce.API -> ECommerce.DB "Updates Inventory"
+  ECommerce.DB -> ECommerce.API "Notifies Low Stock"
+  ECommerce.API -> Admin "Sends Alert"
+  Admin -> ECommerce.API "Adjusts Inventory"
   
   // 5. CONTEXT
   person Support "Customer Support"
   system EmailService "Email Notifications" {
-    external
+    metadata {
+      tags ["external"]
+    }
   }
   
   Customer -> ECommerce "Uses"
@@ -281,4 +312,4 @@ architecture "Systems Thinking Example" {
 ## Next Steps
 
 - Try the complete example: `examples/systems_thinking.sruja`
-- Learn [Deployment Modeling](/tutorials/deployment-modeling/) for infrastructure perspective
+- Learn [Deployment Modeling](/tutorials/advanced/deployment-modeling) for infrastructure perspective

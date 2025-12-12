@@ -15,7 +15,7 @@
     "test:coverage": "turbo run test:coverage",
     "size": "size-limit",
     "size:why": "size-limit --why",
-    "clean": "turbo run clean && rm -rf node_modules",
+    "clean": "rimraf dist && turbo run clean && rm -rf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "prepare": "husky",
     "check:unused": "ts-prune --project tsconfig.json || true",

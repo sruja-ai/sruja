@@ -49,7 +49,7 @@ This is a Sruja project.
 
 1. Install Sruja CLI
 2. Run ` + "`sruja compile main.sruja`" + ` to compile
-3. Run ` + "`sruja export html main.sruja`" + ` to generate documentation
+3. Run ` + "`sruja export json main.sruja`" + ` to export architecture
 `
 	if err := os.WriteFile(filepath.Join(projectName, "README.md"), []byte(readmeContent), 0o644); err != nil { //nolint:gosec // template file safe to be world-readable
 		return fmt.Errorf("failed to create README.md: %w", err)

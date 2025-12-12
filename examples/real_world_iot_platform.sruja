@@ -1,0 +1,142 @@
+// Real-world IoT Platform with many devices, gateways, and data processing
+// Tests layout with complex hierarchy and many edges
+
+architecture "IoT Platform Architecture" {
+  person DeviceOwner "Device Owner"
+  person DataAnalyst "Data Analyst"
+  person SystemAdmin "System Administrator"
+  
+  system IoTPlatform "IoT Platform" {
+    container DeviceGateway "Device Gateway" "Manages device connections" {
+      technology "MQTT Broker"
+      component ConnectionManager "Connection Manager"
+      component MessageRouter "Message Router"
+      component ProtocolAdapter "Protocol Adapter"
+      ConnectionManager -> MessageBroker "Routes messages"
+      MessageRouter -> DeviceRegistry "Queries devices"
+      ProtocolAdapter -> MessageBroker "Publishes messages"
+    }
+    
+    container IngestionService "Ingestion Service" "Processes incoming data" {
+      technology "Go"
+      component MessageConsumer "Message Consumer"
+      component DataValidator "Data Validator"
+      component DataNormalizer "Data Normalizer"
+      MessageConsumer -> MessageBroker "Consumes messages"
+      DataValidator -> DeviceRegistry "Validates devices"
+      DataNormalizer -> TimeSeriesDB "Writes data"
+    }
+    
+    container DeviceManagementService "Device Management Service" "Manages device lifecycle" {
+      technology "Java, Spring Boot"
+      component DeviceAPI "Device API"
+      component ProvisioningService "Provisioning Service"
+      component FirmwareManager "Firmware Manager"
+      DeviceAPI -> DeviceRegistry "Manages devices"
+      ProvisioningService -> DeviceRegistry "Registers devices"
+      FirmwareManager -> ObjectStorage "Stores firmware"
+    }
+    
+    container AnalyticsService "Analytics Service" "Real-time and batch analytics" {
+      technology "Python, Spark"
+      component StreamProcessor "Stream Processor"
+      component BatchProcessor "Batch Processor"
+      component AlertEngine "Alert Engine"
+      StreamProcessor -> MessageBroker "Processes streams"
+      BatchProcessor -> TimeSeriesDB "Reads historical data"
+      AlertEngine -> NotificationService "Sends alerts"
+    }
+    
+    container RuleEngine "Rule Engine" "Executes business rules" {
+      technology "Node.js"
+      component RuleEvaluator "Rule Evaluator"
+      component ActionExecutor "Action Executor"
+      RuleEvaluator -> TimeSeriesDB "Queries data"
+      ActionExecutor -> DeviceGateway "Sends commands"
+    }
+    
+    container DashboardService "Dashboard Service" "Provides web dashboard" {
+      technology "React"
+      component DashboardAPI "Dashboard API"
+      component VisualizationEngine "Visualization Engine"
+      DashboardAPI -> TimeSeriesDB "Queries data"
+      VisualizationEngine -> DashboardAPI "Fetches data"
+    }
+    
+    datastore DeviceRegistry "Device Registry" {
+      technology "PostgreSQL"
+    }
+    
+    datastore TimeSeriesDB "Time Series Database" {
+      technology "InfluxDB"
+    }
+    
+    datastore MetadataDB "Metadata Database" {
+      technology "PostgreSQL"
+    }
+    
+    queue MessageBroker "Message Broker" {
+      technology "Kafka"
+    }
+    
+    container ObjectStorage "Object Storage" {
+      technology "S3"
+    }
+  }
+  
+  system NotificationService "Notification Service" {
+    container EmailService "Email Service" {
+      technology "SendGrid"
+    }
+    
+    container SMSService "SMS Service" {
+      technology "Twilio"
+    }
+    
+    container PushService "Push Service" {
+      technology "Firebase"
+    }
+  }
+  
+  system EdgeGateway "Edge Gateway" "On-premise edge gateway" {
+    container EdgeProcessor "Edge Processor" {
+      technology "Docker"
+    }
+  }
+  
+  // User interactions
+  DeviceOwner -> IoTPlatform.DashboardService "Views data"
+  DataAnalyst -> IoTPlatform.DashboardService "Analyzes data"
+  SystemAdmin -> IoTPlatform.DeviceManagementService "Manages devices"
+  
+  // Data flow
+  EdgeGateway -> IoTPlatform.DeviceGateway "Sends telemetry"
+  IoTPlatform.DeviceGateway -> IoTPlatform.IngestionService "Routes data"
+  IoTPlatform.IngestionService -> IoTPlatform.TimeSeriesDB "Stores data"
+  
+  // Device management
+  IoTPlatform.DeviceManagementService -> IoTPlatform.DeviceRegistry "Manages registry"
+  IoTPlatform.DeviceGateway -> IoTPlatform.DeviceRegistry "Queries devices"
+  
+  // Analytics flow
+  IoTPlatform.AnalyticsService -> IoTPlatform.TimeSeriesDB "Reads data"
+  IoTPlatform.DashboardService -> IoTPlatform.TimeSeriesDB "Queries data"
+  IoTPlatform.RuleEngine -> IoTPlatform.TimeSeriesDB "Queries data"
+  
+  // Rule execution
+  IoTPlatform.RuleEngine -> IoTPlatform.DeviceGateway "Sends commands"
+  IoTPlatform.RuleEngine -> IoTPlatform.NotificationService "Sends notifications"
+  
+  // Notifications
+  IoTPlatform.AnalyticsService -> NotificationService.EmailService "Sends emails"
+  IoTPlatform.AnalyticsService -> NotificationService.SMSService "Sends SMS"
+  IoTPlatform.AnalyticsService -> NotificationService.PushService "Sends push"
+  
+  // Storage
+  IoTPlatform.DeviceManagementService -> IoTPlatform.ObjectStorage "Stores firmware"
+  
+  requirement REQ001 functional "Handle 1M+ devices"
+  requirement REQ002 performance "Process 100k messages/second"
+  requirement REQ003 reliability "99.9% message delivery"
+  requirement REQ004 latency "Sub-second rule execution"
+}
