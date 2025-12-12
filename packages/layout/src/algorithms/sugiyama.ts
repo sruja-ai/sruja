@@ -1,6 +1,6 @@
-import { C4Id } from '../brand'
-import { Size } from '../types'
-import { C4LayoutOptions } from '../c4-options'
+import type { C4Id } from '../brand'
+import type { Size } from '../types'
+import type { C4LayoutOptions } from '../c4-options'
 
 export interface SugiyamaNode {
     id: C4Id
@@ -41,33 +41,36 @@ export function layoutSugiyama(
     // 2. Minimize Crossings (Order Layers)
     // Simple heuristic: Barycenter or Median.
     // We'll use a simplified barycenter-ish approach (iterative).
-    for (let i = 0; i < 4; i++) { // Few iterations
+    for (let i = 0; i < 12; i++) { // Increased iterations for better convergence
         orderLayers(layers, relationships, true)  // Down
         orderLayers(layers, relationships, false) // Up
     }
 
     // 3. Assign Coordinates
-    // X: Compact packing within layer
-    // Y: Layer heights
     const xMap = new Map<C4Id, number>()
-    const yMap = new Map<C4Id, number>()
 
-    const rankSpacing = options.spacing.rank.Container ?? 60
-    const nodeSpacing = options.spacing.node.Container ?? 40 // Default spacing
+
+    const rankSpacing = options.spacing.rank.Container ?? 80 // Increased rank spacing
+    const nodeSpacing = options.spacing.node.Container ?? 60 // Increased node spacing
 
     let maxWidth = 0
+    const layerWidths: number[] = []
 
+    // Pass 1: Calculate widths
     for (let l = 0; l < layers.length; l++) {
         const layerIds = layers[l] || []
-        if (layerIds.length === 0) continue
+        if (layerIds.length === 0) {
+            layerWidths.push(0)
+            continue
+        }
 
         const layerNodes = layerIds.map(id => nodeMap.get(id)!)
-
-        const totalWidth = layerNodes.reduce((sum, n) => sum + n.size.width, 0) + nodeSpacing * (layerNodes.length - 1)
+        const totalWidth = layerNodes.reduce((sum, n) => sum + Math.max(n.size.width, 100), 0) + nodeSpacing * (layerNodes.length - 1)
+        layerWidths.push(totalWidth)
         maxWidth = Math.max(maxWidth, totalWidth)
     }
 
-    // Re-iterate to calculate exact coords
+    // Pass 2: Assign Coords
     let currentY = 0
     for (let l = 0; l < layers.length; l++) {
         const layerIds = layers[l] || []
@@ -76,26 +79,29 @@ export function layoutSugiyama(
         const layerNodes = layerIds.map(id => nodeMap.get(id)!)
         const maxHeight = Math.max(...layerNodes.map(n => n.size.height))
 
-        const totalWidth = layerNodes.reduce((sum, n) => sum + n.size.width, 0) + nodeSpacing * (layerNodes.length - 1)
+        // Center alignment
+        const layerW = layerWidths[l]
+        let currentX = (maxWidth - layerW) / 2
 
-        let startX = (maxWidth - totalWidth) / 2 // Center alignment
-
-        let currentX = startX
         layerNodes.forEach((n, i) => {
             xMap.set(n.id, currentX)
+            // Center vertically in the rank
             const offY = (maxHeight - n.size.height) / 2
-            yMap.set(n.id, currentY + offY)
+            const finalX = currentX
+            const finalY = currentY + offY
 
             resultNodes.set(n.id, {
                 id: n.id,
                 size: n.size,
                 layer: l,
                 order: i,
-                x: currentX,
-                y: currentY + offY // Store top-left
+                x: finalX,
+                y: finalY
             })
 
-            currentX += n.size.width + nodeSpacing
+            // Advance X
+            // Use Math.max to ensure we don't overlap if size is 0 for some reason
+            currentX += Math.max(n.size.width, 100) + nodeSpacing
         })
 
         currentY += maxHeight + rankSpacing
@@ -185,21 +191,18 @@ function orderLayers(layers: C4Id[][], relationships: { from: C4Id; to: C4Id }[]
         const nodePos = new Map<C4Id, number>()
         prevLayer.forEach((id, idx) => nodePos.set(id, idx))
 
-        const scores = currentLayer.map(id => {
+        const scores = currentLayer.map((id, idx) => {
             const neighbors = down
                 ? relationships.filter(r => r.to === id && nodePos.has(r.from)).map(r => r.from)
                 : relationships.filter(r => r.from === id && nodePos.has(r.to)).map(r => r.to)
 
-            if (neighbors.length === 0) return { id, score: -1 } // Keep current pos or use index
+            if (neighbors.length === 0) return { id, score: idx } // Keep current pos (stability) to avoid bunching
 
             const sum = neighbors.reduce((a, b) => a + nodePos.get(b)!, 0)
             return { id, score: sum / neighbors.length }
         })
 
         scores.sort((a, b) => {
-            if (a.score === -1 && b.score === -1) return 0
-            if (a.score === -1) return 1
-            if (b.score === -1) return -1
             return a.score - b.score
         })
 

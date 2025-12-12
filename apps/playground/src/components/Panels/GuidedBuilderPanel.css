@@ -1,0 +1,180 @@
+.guided-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.guided-section {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.guided-status-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.guided-status {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.guided-status.ok {
+    color: var(--success);
+}
+
+.guided-status.warn {
+    color: var(--warning);
+}
+
+.guided-header {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.guided-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.guided-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    color: var(--text-2);
+}
+
+.guided-stats span {
+    position: relative;
+}
+
+.guided-stats span:not(:last-child)::after {
+    content: "•";
+    position: absolute;
+    right: -0.6rem;
+    color: var(--text-3);
+}
+
+.guided-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+
+.guided-actions.form-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    align-items: end;
+}
+
+.guided-actions .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    flex: 1;
+    min-width: 140px;
+}
+
+.guided-actions .checkbox-row {
+    flex-direction: row;
+    align-items: center;
+    padding-bottom: 0.5rem;
+}
+
+.guided-actions label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-2);
+}
+
+.guided-actions select,
+.guided-actions input[type="text"] {
+    height: 32px;
+    padding: 0 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface-2);
+    color: var(--text-1);
+    font-size: 0.875rem;
+}
+
+.guided-actions select:focus,
+.guided-actions input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-alpha-20);
+}
+
+.guided-next {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.guided-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: var(--surface-2);
+    border-radius: 6px;
+}
+
+.check-item {
+    display: flex;
+    align-items: start;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--text-2);
+    line-height: 1.4;
+}
+
+.check-item.optional {
+    color: var(--text-3);
+}
+
+.check-item svg {
+    margin-top: 0.1rem;
+    flex-shrink: 0;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.text-link {
+    color: var(--link);
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.text-link:hover {
+    text-decoration: underline;
+}
+
+.hint {
+    font-size: 0.75rem;
+    color: var(--text-3);
+}

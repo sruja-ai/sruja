@@ -2,11 +2,13 @@
 title: "Getting Started"
 weight: 1
 summary: "Install Sruja and create your first architecture model."
+difficulty: "beginner"
+estimatedTime: "20–30 minutes"
 ---
 
 # Getting Started with Sruja
 
-This guide will help you install Sruja and create your first architecture model.
+Sruja is **free and open source** (MIT licensed). This guide will help you install Sruja and create your first architecture model.
 
 ## Installation
 
@@ -43,6 +45,28 @@ If `sruja` is not found in your shell, add Go's `bin` directory to your `PATH`:
 export PATH="$HOME/go/bin:$PATH"
 ```
 
+## Core Concepts (The C4 Model)
+
+Before writing code, it helps to know what we are defining. Sruja uses specific terms from the **[C4 Model](/docs/concepts/c4-model)**:
+
+1.  **System:** The highest level. Think of this as your entire application boundary.
+2.  **Container:** A deployable part of your system (e.g., a Web App, an API, a Database). *Not a Docker container!*
+3.  **Relationship:** How these parts talk to each other (e.g., "Uses", "Sends emails to").
+
+We are going to build this:
+> A **User** visits a **Web App**, which reads/writes data to a **Database**.
+
+```mermaid
+graph LR
+    User([Person: User])
+    subgraph "System: My App"
+        Web[Container: Web Server]
+        DB[(Container: Database)]
+    end
+    User -->|Visits| Web
+    Web -->|Reads/Writes| DB
+```
+
 ## Your First Project
 **Create a file**: Create a new file named `architecture.sruja`.
 
@@ -58,12 +82,21 @@ User -> App.Web "Visits"
 App.Web -> App.DB "Reads/Writes"
 ```
 
-**Visualize**: Open in Studio for an interactive diagram, or export Markdown with Mermaid for docs.
+**Visualize**: Use Studio for interactive diagrams, or export to various formats.
 
 ```bash
-# Interactive visualization
-# Open /studio/ and paste your DSL, or use the "Open in Studio" button in Learn
+# Interactive visualization in Studio
+# Visit /studio/ and paste your DSL code
 
-# Markdown export with Mermaid
-sruja export mermaid architecture.sruja > architecture.md
+# Export to Markdown (with embedded Mermaid diagrams)
+sruja export markdown architecture.sruja > architecture.md
+
+# Export to Mermaid diagram code only
+sruja export mermaid architecture.sruja > diagram.mmd
 ```
+
+## Next Steps
+
+- **Learn more**: Explore the [concepts](/docs/concepts/overview) and [reference](/docs/reference/syntax) documentation
+- **Join the community**: Get help, share ideas, and contribute on [Discord](https://discord.gg/VNrvHPV5) or [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
+- **Contribute**: See the [Community](/docs/community) page for ways to get involved

@@ -18,7 +18,11 @@ async function initMermaid() {
         startOnLoad: false,
         theme: 'default',
         securityLevel: 'loose',
-        flowchart: { useMaxWidth: true, htmlLabels: true },
+        flowchart: { 
+          useMaxWidth: true, 
+          htmlLabels: true,
+          subGraphTitleMargin: { top: 10, bottom: 20 }
+        },
       })
       mermaidInitialized = true
     }

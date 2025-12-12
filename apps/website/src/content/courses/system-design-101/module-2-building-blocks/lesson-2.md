@@ -43,13 +43,13 @@ Sruja allows you to define the type of database and its role in the system.
 architecture "User Management" {
     container UserDB "User Database" {
         technology "PostgreSQL"
-        tags "relational", "primary"
+        tags ["relational", "primary"]
         description "Stores user profiles and authentication data."
     }
 
     container SessionStore "Session Cache" {
         technology "Redis"
-        tags "key-value", "cache"
+        tags ["key-value", "cache"]
         description "Stores active user sessions for fast access."
     }
 }

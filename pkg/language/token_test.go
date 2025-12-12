@@ -18,7 +18,6 @@ func TestLookupIdent(t *testing.T) {
 		{"system", language.TOKEN_SYSTEM},
 		{"container", language.TOKEN_CONTAINER},
 		{"component", language.TOKEN_COMPONENT},
-		{"import", language.TOKEN_IMPORT},
 		{"true", language.TOKEN_TRUE},
 		{"false", language.TOKEN_FALSE},
 		{"requirements", language.TOKEN_REQUIREMENTS},

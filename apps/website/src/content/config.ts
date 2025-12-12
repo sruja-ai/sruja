@@ -41,6 +41,9 @@ const courses = defineCollection({
     weight: z.number().optional(),
     summary: z.string().optional(),
     description: z.string().optional(),
+    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+    topic: z.string().optional(),
+    estimatedTime: z.string().optional(),
   }),
 });
 
@@ -53,6 +56,9 @@ const tutorials = defineCollection({
     tags: z.array(z.string()).optional(),
     aliases: z.array(z.string()).optional(),
     description: z.string().optional(),
+    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+    topic: z.string().optional(),
+    estimatedTime: z.string().optional(),
   }),
 });
 
@@ -75,10 +81,9 @@ const quizzes = defineCollection({
 });
 
 const challenges = defineCollection({
-  type: 'data',
+  type: 'content',
   schema: z.object({
     title: z.string(),
-    slug: z.string(),
     summary: z.string().optional(),
     difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
     topic: z.string().optional(),
@@ -99,6 +104,29 @@ const challenges = defineCollection({
   }),
 });
 
+const investors = defineCollection({
+  type: 'content',
+  schema: z.object({
+    title: z.string(),
+    weight: z.number().optional(),
+    summary: z.string().optional(),
+    description: z.string().optional(),
+  }),
+});
+
+const templates = defineCollection({
+  type: 'content',
+  schema: z.object({
+    title: z.string(),
+    summary: z.string().optional(),
+    estimated_time: z.string().optional(),
+    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+    tags: z.array(z.string()).optional(),
+    prerequisites: z.array(z.string()).optional(),
+    learning_objectives: z.array(z.string()).optional(),
+  }),
+});
+
 export const collections = {
   docs,
   blog,
@@ -106,6 +134,8 @@ export const collections = {
   tutorials,
   quizzes,
   challenges,
+  investors,
+  templates,
 };
 
 // Note: These collections are defined but may be empty initially.

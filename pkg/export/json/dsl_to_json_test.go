@@ -17,8 +17,7 @@ func TestDSLToJSON_ComprehensiveParsing(t *testing.T) {
 			brand_logo "logo.png"
 		}
 
-		import "shared.sruja"
-		import "billing.sruja" as Billing
+        // imports removed
 
 		person Customer "Customer" {
 			description "End user"
@@ -29,11 +28,29 @@ func TestDSLToJSON_ComprehensiveParsing(t *testing.T) {
 		system Backend "Backend System" {
 			description "Core backend services"
 			
+			properties {
+				"tier": "1"
+				"criticality": "high"
+			}
+			style {
+				shape: "rounded_box"
+			}
+			slo {
+				availability {
+					target "99.9%"
+					window "30d"
+				}
+			}
+
 			container API "REST API" {
 				technology "Go"
 				tags ["api", "rest"]
 				version "2.0.0"
 				description "Main API gateway"
+				
+				properties {
+					"language": "go"
+				}
 				
 				component Auth "Authentication" {
 					technology "JWT"
@@ -57,6 +74,11 @@ func TestDSLToJSON_ComprehensiveParsing(t *testing.T) {
 			
 			container Worker "Background Worker" {
 				technology "Python"
+				scale {
+					min 1
+					max 10
+					metric "cpu > 80%"
+				}
 			}
 			
 			datastore DB "PostgreSQL" {
@@ -67,6 +89,8 @@ func TestDSLToJSON_ComprehensiveParsing(t *testing.T) {
 			
 			API -> DB "reads/writes"
 			Worker -> DB "reads/writes"
+
+            // root-only: requirements declared at architecture level
 		}
 
 		system Frontend "Frontend" {
@@ -145,11 +169,7 @@ func TestDSLToJSON_ComprehensiveParsing(t *testing.T) {
 		t.Fatal("Expected architecture object")
 	}
 
-	// Validate imports
-	imports, ok := arch["imports"].([]interface{})
-	if !ok || len(imports) != 2 {
-		t.Errorf("Expected 2 imports, got %v", imports)
-	}
+    // Imports feature removed; skip validation
 
 	// Validate persons
 	persons, ok := arch["persons"].([]interface{})
@@ -199,6 +219,11 @@ func TestDSLToJSON_ComprehensiveParsing(t *testing.T) {
 	sysDatastores := backend["datastores"].([]interface{})
 	if len(sysDatastores) != 1 {
 		t.Error("Expected 1 datastore at system level")
+	} else {
+		db := sysDatastores[0].(map[string]interface{})
+		if db["description"] != "Main database" {
+			t.Errorf("Expected database description 'Main database', got %v", db["description"])
+		}
 	}
 
 	// Validate top-level relations
@@ -234,6 +259,51 @@ func TestDSLToJSON_ComprehensiveParsing(t *testing.T) {
 	steps := scenario1["steps"].([]interface{})
 	if len(steps) != 3 {
 		t.Errorf("Expected 3 steps in Login scenario, got %d", len(steps))
+	}
+
+	// Validate Properties and Style on Backend
+	if backend["properties"] == nil {
+		t.Error("Expected properties on Backend")
+	} else {
+		props := backend["properties"].(map[string]interface{})
+		if props["tier"] != "1" {
+			t.Errorf("Expected properties.tier to be '1', got %v", props["tier"])
+		}
+	}
+	if backend["style"] == nil {
+		t.Error("Expected style on Backend")
+	}
+
+	// Validate SLO on Backend
+	if backend["slo"] == nil {
+		t.Error("Expected slo on Backend")
+	} else {
+		slo := backend["slo"].(map[string]interface{})
+		avail := slo["availability"].(map[string]interface{})
+		if avail["target"] != "99.9%" {
+			t.Errorf("Expected slo.availability.target to be '99.9%%', got %v", avail["target"])
+		}
+	}
+
+    // Validate Requirements at architecture root
+    if arch["requirements"] == nil {
+        t.Error("Expected requirements at architecture root")
+    } else {
+        reqs := arch["requirements"].([]interface{})
+        if len(reqs) < 2 { // FR1 and NFR1
+            t.Errorf("Expected at least 2 requirements at root, got %d", len(reqs))
+        }
+    }
+
+	// Validate Scale on Worker container (second container in Backend)
+	worker := containers[1].(map[string]interface{})
+	if worker["scale"] == nil {
+		t.Error("Expected scale on Worker container")
+	} else {
+		scale := worker["scale"].(map[string]interface{})
+		if scale["min"] != float64(1) { // generic JSON numbers are floats
+			t.Errorf("Expected scale.min to be 1, got %v", scale["min"])
+		}
 	}
 }
 

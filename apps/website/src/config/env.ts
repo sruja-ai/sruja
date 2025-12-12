@@ -91,7 +91,7 @@ function getEnvConfig(): EnvConfig {
 
     // Log index name in development for debugging
     if (env === 'development' && typeof console !== 'undefined') {
-      console.log(`[Algolia] Using index: ${defaultIndexName} (env: ${env})`);
+      console.info(`[Algolia] Using index: ${defaultIndexName} (env: ${env})`);
     }
   }
 
@@ -100,6 +100,5 @@ function getEnvConfig(): EnvConfig {
 
 export const envConfig = getEnvConfig()
 export type { EnvConfig, Environment }
-
 
 

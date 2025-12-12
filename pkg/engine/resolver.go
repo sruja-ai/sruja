@@ -14,34 +14,74 @@ type Resolver struct {
 
 // NewResolver creates a new resolver instance.
 func NewResolver(arch *language.Architecture) *Resolver {
+	// Estimate capacity to reduce allocations
+	estimatedElements := estimateElementCount(arch)
 	r := &Resolver{
-		defined:   make(map[string]bool),
-		suffixMap: make(map[string][]string),
+		defined:   make(map[string]bool, estimatedElements),
+		suffixMap: make(map[string][]string, estimatedElements/2),
 	}
 	r.index(arch)
 	return r
 }
 
+// estimateElementCount provides a rough estimate of total elements for map pre-allocation.
+func estimateElementCount(arch *language.Architecture) int {
+	if arch == nil {
+		return 16
+	}
+	count := len(arch.Containers) + len(arch.Components) + len(arch.DataStores) + len(arch.Queues) + len(arch.Persons)
+	for _, sys := range arch.Systems {
+		count += 1 + len(sys.Containers) + len(sys.Components) + len(sys.DataStores) + len(sys.Queues)
+		for _, cont := range sys.Containers {
+			count += len(cont.Components) + len(cont.DataStores) + len(cont.Queues)
+		}
+	}
+	// Add some buffer for nested elements
+	return count*2 + 32
+}
+
 // index builds the lookup maps.
 func (r *Resolver) index(arch *language.Architecture) {
 	addID := func(id string) {
+		if id == "" {
+			return
+		}
 		r.defined[id] = true
-		parts := strings.Split(id, ".")
-		suffix := parts[len(parts)-1]
+		// Use LastIndex for better performance than Split when we only need the last part
+		lastDot := strings.LastIndex(id, ".")
+		var suffix string
+		if lastDot == -1 {
+			suffix = id
+		} else {
+			suffix = id[lastDot+1:]
+		}
 		r.suffixMap[suffix] = append(r.suffixMap[suffix], id)
+	}
+
+	// Helper to build qualified IDs efficiently
+	buildQualifiedID := func(prefix, id string) string {
+		if prefix == "" {
+			return id
+		}
+		// Pre-allocate with estimated capacity
+		buf := make([]byte, 0, len(prefix)+len(id)+1)
+		buf = append(buf, prefix...)
+		buf = append(buf, '.')
+		buf = append(buf, id...)
+		return string(buf)
 	}
 
 	// Top-level elements
 	for _, cont := range arch.Containers {
 		addID(cont.ID)
 		for _, comp := range cont.Components {
-			addID(cont.ID + "." + comp.ID)
+			addID(buildQualifiedID(cont.ID, comp.ID))
 		}
 		for _, ds := range cont.DataStores {
-			addID(cont.ID + "." + ds.ID)
+			addID(buildQualifiedID(cont.ID, ds.ID))
 		}
 		for _, q := range cont.Queues {
-			addID(cont.ID + "." + q.ID)
+			addID(buildQualifiedID(cont.ID, q.ID))
 		}
 	}
 	for _, comp := range arch.Components {
@@ -61,31 +101,31 @@ func (r *Resolver) index(arch *language.Architecture) {
 	for _, sys := range arch.Systems {
 		addID(sys.ID)
 		for _, cont := range sys.Containers {
-			contID := sys.ID + "." + cont.ID
+			contID := buildQualifiedID(sys.ID, cont.ID)
 			addID(contID)
 			for _, comp := range cont.Components {
-				addID(contID + "." + comp.ID)
+				addID(buildQualifiedID(contID, comp.ID))
 			}
 			for _, ds := range cont.DataStores {
-				addID(contID + "." + ds.ID)
+				addID(buildQualifiedID(contID, ds.ID))
 			}
 			for _, q := range cont.Queues {
-				addID(contID + "." + q.ID)
+				addID(buildQualifiedID(contID, q.ID))
 			}
 		}
 		for _, comp := range sys.Components {
-			addID(sys.ID + "." + comp.ID)
+			addID(buildQualifiedID(sys.ID, comp.ID))
 		}
 		for _, ds := range sys.DataStores {
-			addID(sys.ID + "." + ds.ID)
+			addID(buildQualifiedID(sys.ID, ds.ID))
 		}
 		for _, q := range sys.Queues {
-			addID(sys.ID + "." + q.ID)
+			addID(buildQualifiedID(sys.ID, q.ID))
 		}
 	}
 }
 
-// resolve returns the fully qualified ID if the reference is unique/valid,
+// resolveID returns the fully qualified ID if the reference is unique/valid,
 // or returns the original ref if ambiguous or unknown.
 func (r *Resolver) resolveID(ref string) string {
 	if ref == "" {
@@ -95,12 +135,13 @@ func (r *Resolver) resolveID(ref string) string {
 		return ref
 	}
 
+	// Use LastIndex for better performance than Split when we only need the last part
+	lastDot := strings.LastIndex(ref, ".")
 	var suffix string
-	if !strings.Contains(ref, ".") {
+	if lastDot == -1 {
 		suffix = ref
 	} else {
-		parts := strings.Split(ref, ".")
-		suffix = parts[len(parts)-1]
+		suffix = ref[lastDot+1:]
 	}
 
 	matches := r.suffixMap[suffix]

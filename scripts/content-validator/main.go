@@ -130,7 +130,7 @@ func validateTutorials() []ValidationError {
 
 func validateBlogs() []ValidationError {
 	var errors []ValidationError
-	blogsDir := filepath.Join(contentDir, "blogs")
+    blogsDir := filepath.Join(contentDir, "blog")
 
 	if _, err := os.Stat(blogsDir); os.IsNotExist(err) {
 		return errors

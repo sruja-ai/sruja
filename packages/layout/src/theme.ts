@@ -1,4 +1,4 @@
-import { C4Kind, C4Level } from './c4-model'
+import type { C4Kind, C4Level } from './c4-model'
 
 export interface C4Theme {
   fontFamily: string

@@ -6,12 +6,60 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
+// buildQualifiedIDForView builds a qualified ID efficiently for view keys.
+func buildQualifiedIDForView(parts ...string) string {
+	if len(parts) == 0 {
+		return ""
+	}
+	if len(parts) == 1 {
+		return parts[0]
+	}
+	totalLen := len(parts) - 1 // for dots
+	for _, p := range parts {
+		totalLen += len(p)
+	}
+	buf := make([]byte, 0, totalLen)
+	buf = append(buf, parts[0]...)
+	for i := 1; i < len(parts); i++ {
+		buf = append(buf, '.')
+		buf = append(buf, parts[i]...)
+	}
+	return string(buf)
+}
+
+// buildEdgeID builds an edge ID efficiently.
+func buildEdgeID(fromID, toID string, index int) string {
+	// Estimate capacity: "edge-" (5) + fromID + "-" (1) + toID + "-" (1) + index (up to 10 digits) + null term
+	estimatedLen := 5 + len(fromID) + 1 + len(toID) + 1 + 10
+	buf := make([]byte, 0, estimatedLen)
+	buf = append(buf, "edge-"...)
+	buf = append(buf, fromID...)
+	buf = append(buf, '-')
+	buf = append(buf, toID...)
+	buf = append(buf, '-')
+	// Convert index to string efficiently
+	if index == 0 {
+		buf = append(buf, '0')
+	} else {
+		indexStr := fmt.Sprintf("%d", index)
+		buf = append(buf, indexStr...)
+	}
+	return string(buf)
+}
+
 // GenerateViews creates pre-computed views for all C4 levels
 func GenerateViews(arch *language.Architecture) *ViewsJSON {
+	// Pre-allocate maps with estimated capacity
+	estimatedL2 := len(arch.Systems)
+	estimatedL3 := 0
+	for _, sys := range arch.Systems {
+		estimatedL3 += len(sys.Containers)
+	}
+
 	views := &ViewsJSON{
 		L1: generateL1View(arch),
-		L2: make(map[string]ViewData),
-		L3: make(map[string]ViewData),
+		L2: make(map[string]ViewData, estimatedL2),
+		L3: make(map[string]ViewData, estimatedL3),
 	}
 
 	// Generate L2 view for each system
@@ -19,8 +67,9 @@ func GenerateViews(arch *language.Architecture) *ViewsJSON {
 		views.L2[sys.ID] = generateL2View(arch, sys)
 
 		// Generate L3 view for each container in this system
+		// Build qualified ID efficiently
 		for _, cont := range sys.Containers {
-			key := fmt.Sprintf("%s.%s", sys.ID, cont.ID)
+			key := buildQualifiedIDForView(sys.ID, cont.ID)
 			views.L3[key] = generateL3View(arch, sys, cont)
 		}
 	}
@@ -30,9 +79,14 @@ func GenerateViews(arch *language.Architecture) *ViewsJSON {
 
 // generateL1View creates the system context view (all systems + persons)
 func generateL1View(arch *language.Architecture) ViewData {
-	var nodes []ViewNode
-	var edges []ViewEdge
-	nodeSet := make(map[string]bool)
+	nodes := make([]ViewNode, 0, len(arch.Persons)+len(arch.Systems))
+	// Estimate capacity for edges: typically fewer than nodes
+	estimatedEdges := len(arch.Relations)
+	if estimatedEdges < 8 {
+		estimatedEdges = 8
+	}
+	edges := make([]ViewEdge, 0, estimatedEdges)
+	nodeSet := make(map[string]bool, len(arch.Persons)+len(arch.Systems))
 
 	// Add all persons
 	for _, p := range arch.Persons {
@@ -69,11 +123,12 @@ func generateL1View(arch *language.Architecture) ViewData {
 		toID = getL1ID(toID)
 
 		if nodeSet[fromID] && nodeSet[toID] {
+			edgeID := buildEdgeID(fromID, toID, edgeIndex)
 			edges = append(edges, ViewEdge{
-				ID:     fmt.Sprintf("edge-%s-%s-%d", fromID, toID, edgeIndex),
+				ID:     edgeID,
 				Source: fromID,
 				Target: toID,
-				Label:  ptrStr(r.Label),
+				Label:  getRelationLabel(r),
 			})
 			edgeIndex++
 		}
@@ -84,9 +139,11 @@ func generateL1View(arch *language.Architecture) ViewData {
 
 // generateL2View creates container view for a specific system
 func generateL2View(arch *language.Architecture, focusedSystem *language.System) ViewData {
-	var nodes []ViewNode
-	var edges []ViewEdge
-	nodeSet := make(map[string]bool)
+	nodes := make([]ViewNode, 0, len(focusedSystem.Containers)+len(focusedSystem.DataStores)+len(focusedSystem.Queues))
+	// Estimate capacity for edges
+	estimatedEdges := len(focusedSystem.Relations) + 8
+	edges := make([]ViewEdge, 0, estimatedEdges)
+	nodeSet := make(map[string]bool, len(focusedSystem.Containers)+len(focusedSystem.DataStores)+len(focusedSystem.Queues))
 
 	// Add containers, datastores, queues from focused system
 	for _, c := range focusedSystem.Containers {
@@ -137,9 +194,11 @@ func generateL2View(arch *language.Architecture, focusedSystem *language.System)
 
 // generateL3View creates component view for a specific container
 func generateL3View(_ *language.Architecture, _ *language.System, cont *language.Container) ViewData {
-	var nodes []ViewNode
-	var edges []ViewEdge
-	nodeSet := make(map[string]bool)
+	nodes := make([]ViewNode, 0, len(cont.Components)+len(cont.DataStores)+len(cont.Queues))
+	// Estimate capacity for edges
+	estimatedEdges := 16
+	edges := make([]ViewEdge, 0, estimatedEdges)
+	nodeSet := make(map[string]bool, len(cont.Components)+len(cont.DataStores)+len(cont.Queues))
 
 	// Add components from the container
 	for _, comp := range cont.Components {
@@ -182,11 +241,12 @@ func generateL3View(_ *language.Architecture, _ *language.System, cont *language
 		toID := getLastPart(r.To.String())
 
 		if nodeSet[fromID] && nodeSet[toID] {
+			edgeID := buildEdgeID(fromID, toID, edgeIndex)
 			edges = append(edges, ViewEdge{
-				ID:     fmt.Sprintf("edge-%s-%s-%d", fromID, toID, edgeIndex),
+				ID:     edgeID,
 				Source: fromID,
 				Target: toID,
-				Label:  ptrStr(r.Label),
+				Label:  getRelationLabel(r),
 			})
 			edgeIndex++
 		}
@@ -240,7 +300,9 @@ func findConnectedExternalL2(arch *language.Architecture, focusedSystem *languag
 
 // collectL2Edges collects edges relevant to a system view
 func collectL2Edges(arch *language.Architecture, sys *language.System, nodeSet map[string]bool) []ViewEdge {
-	var edges []ViewEdge
+	// Estimate capacity for edges
+	estimatedEdges := 16
+	edges := make([]ViewEdge, 0, estimatedEdges)
 	edgeIndex := 0
 
 	// System-level relations
@@ -249,11 +311,12 @@ func collectL2Edges(arch *language.Architecture, sys *language.System, nodeSet m
 		toID := getLastPart(r.To.String())
 
 		if nodeSet[fromID] && nodeSet[toID] {
+			edgeID := buildEdgeID(fromID, toID, edgeIndex)
 			edges = append(edges, ViewEdge{
-				ID:     fmt.Sprintf("edge-%s-%s-%d", fromID, toID, edgeIndex),
+				ID:     edgeID,
 				Source: fromID,
 				Target: toID,
-				Label:  ptrStr(r.Label),
+				Label:  getRelationLabel(r),
 			})
 			edgeIndex++
 		}
@@ -265,11 +328,12 @@ func collectL2Edges(arch *language.Architecture, sys *language.System, nodeSet m
 		toID := getLastPart(r.To.String())
 
 		if nodeSet[fromID] && nodeSet[toID] {
+			edgeID := buildEdgeID(fromID, toID, edgeIndex)
 			edges = append(edges, ViewEdge{
-				ID:     fmt.Sprintf("edge-%s-%s-%d", fromID, toID, edgeIndex),
+				ID:     edgeID,
 				Source: fromID,
 				Target: toID,
-				Label:  ptrStr(r.Label),
+				Label:  getRelationLabel(r),
 			})
 			edgeIndex++
 		}
@@ -343,7 +407,7 @@ func findNodeByIDInArch(arch *language.Architecture, id string) *ViewNode {
 
 // Helper functions
 
-func labelOrID(label string, id string) string {
+func labelOrID(label, id string) string {
 	if label != "" {
 		return label
 	}
@@ -357,9 +421,22 @@ func ptrStr(s *string) string {
 	return *s
 }
 
+// getRelationLabel returns the relation's label, falling back to verb if label is not set.
+// Most DSL relations only specify verb (first string after arrow), not label (second string).
+func getRelationLabel(r *language.Relation) string {
+	if r.Label != nil && *r.Label != "" {
+		return *r.Label
+	}
+	if r.Verb != nil && *r.Verb != "" {
+		return *r.Verb
+	}
+	return ""
+}
+
 func getContainerTechnology(c *language.Container) string {
 	// Technology is stored in Items
-	for _, item := range c.Items {
+	for i := range c.Items {
+		item := c.Items[i]
 		if item.Technology != nil {
 			return *item.Technology
 		}

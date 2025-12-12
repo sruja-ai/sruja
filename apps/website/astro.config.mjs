@@ -1,4 +1,5 @@
 // apps/website/astro.config.mjs
+/* eslint-disable no-undef */
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import mdx from '@astrojs/mdx';
@@ -10,9 +11,13 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // https://astro.build/config
+// Access Node.js process.env (available in Astro config context at build time)
+const siteUrl = process.env.SITE_URL;
+const baseUrl = process.env.BASE_URL;
+
 export default defineConfig({
-  site: process.env.SITE_URL || 'https://sruja.ai',
-  base: process.env.BASE_URL || '/',
+  site: siteUrl || 'https://sruja.ai',
+  base: baseUrl || '/',
   markdown: {
     syntaxHighlight: 'shiki',
     shikiConfig: {
@@ -35,29 +40,34 @@ export default defineConfig({
     plugins: [
       tailwindcss(),
     ],
+    server: {
+      cors: true,
+    },
     define: {
       'global': 'globalThis',
     },
     optimizeDeps: {
-      include: ['react', 'react-dom', 'monaco-editor', 'buffer', 'algoliasearch/lite'],
-      exclude: ['@sruja/shared', '@sruja/viewer', '@sruja/ui', '@sruja/studio-core'],
+      include: ['react', 'react-dom', 'react-dom/client', 'monaco-editor', 'buffer', 'algoliasearch/lite', 'mermaid'],
+      exclude: ['@sruja/shared', '@sruja/ui'],
     },
     ssr: {
-      // Add all Monaco/vscode packages to noExternal so Vite processes CSS imports
-      // They will only run client-side via client:only directive, preventing SSR execution
+      // Static site - no SSR, but Vite still uses this config during build
+      // Add packages to noExternal so Vite processes them (needed for CSS and module resolution)
+      // React must remain external to prevent multiple instances
       noExternal: [
         '@sruja/ui',
         '@sruja/shared',
-        '@sruja/studio-core',
-        '@sruja/viewer',
         'monaco-editor'
       ],
+      // Keep React external to ensure single instance
+      external: ['react', 'react-dom', 'react/jsx-runtime', 'react-dom/client'],
     },
     resolve: {
       conditions: ['import', 'module', 'browser', 'default'],
       // Ensure CSS files are resolved as raw assets, not modules
-      dedupe: ['react', 'react-dom', '@sruja/ui'],
+      dedupe: ['react', 'react-dom', '@sruja/ui', '@sruja/shared', '@sruja/diagram', '@sruja/playground'],
       // Explicitly handle CSS imports from packages
+      extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json', '.css'],
       alias: {
         // Map CSS import to actual file path
         'node:buffer': 'buffer',
@@ -67,7 +77,11 @@ export default defineConfig({
         '@/shared': path.resolve(__dirname, './src/shared'),
       },
     },
+    css: {
+      postcss: {
+        plugins: [],
+      },
+    },
     // Default CSS handling; Tailwind v4 Vite plugin processes imports
   },
 });
-

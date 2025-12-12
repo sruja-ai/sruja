@@ -1,4 +1,4 @@
-import { C4Id } from './brand'
+import type { C4Id } from './brand'
 
 export type NodeKind = 'system' | 'container' | 'component' | 'code'
 

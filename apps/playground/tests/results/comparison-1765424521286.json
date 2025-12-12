@@ -1,0 +1,1005 @@
+{
+  "comparisons": [
+    {
+      "exampleName": "Quick Start",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Basic Example",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Person & Relations",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Components",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Person to Component",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Queues & DataStore",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Tags",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Integration Verbs",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "External Systems",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Top-Level System",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Metadata",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Implied Relationships",
+      "baselineScore": 84.13022366591862,
+      "currentScore": 84.13022366591862,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 1,
+          "current": 1,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Flow & Decision",
+      "baselineScore": 84.13022366591862,
+      "currentScore": 84.13022366591862,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 1,
+          "current": 1,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Overview",
+      "baselineScore": 86.21792982430219,
+      "currentScore": 86.21792982430219,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 1,
+          "current": 1,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Views Customization",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Requirements",
+      "baselineScore": 80.92596726190476,
+      "currentScore": 80.92596726190476,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 1,
+          "current": 1,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Full Features",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "E-Commerce MVP",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "E-Commerce Platform",
+      "baselineScore": 80.36808432861461,
+      "currentScore": 80.36808432861461,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 18,
+          "current": 18,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 3,
+          "current": 3,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "C4 Complete",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Imports",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Governance",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "SLO Example",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Systems Thinking",
+      "baselineScore": 85.38317580450149,
+      "currentScore": 85.38317580450149,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 15,
+          "current": 15,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "User Story",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Sruja Architecture",
+      "baselineScore": 80.12479996454148,
+      "currentScore": 80.12479996454148,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 6,
+          "current": 6,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 1,
+          "current": 1,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Sruja Architecture v2",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Data Flow Diagram",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Real World Microservices",
+      "baselineScore": 85.19189616612026,
+      "currentScore": 85.19189616612026,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 15,
+          "current": 15,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Real World Implied Relationships",
+      "baselineScore": 68.20283734940348,
+      "currentScore": 56,
+      "scoreDelta": -12.202837349403481,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 2,
+          "current": 2,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 15,
+          "current": 15,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 4,
+          "current": 4,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 2,
+          "current": 2,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Real World Views",
+      "baselineScore": 85.28262763363975,
+      "currentScore": 85.28262763363975,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 15,
+          "current": 15,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    },
+    {
+      "exampleName": "Course: E-Commerce",
+      "baselineScore": 100,
+      "currentScore": 100,
+      "scoreDelta": 0,
+      "improvement": false,
+      "regressions": [],
+      "improvements": [],
+      "details": {
+        "overlappingNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgeCrossings": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "edgesOverNodes": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        },
+        "spacingViolations": {
+          "baseline": 0,
+          "current": 0,
+          "delta": 0
+        }
+      }
+    }
+  ],
+  "summary": {
+    "totalExamples": 32,
+    "improved": 0,
+    "regressed": 1,
+    "unchanged": 31,
+    "avgScoreDelta": -0.3813386671688619,
+    "avgScoreBaseline": 94.37368017702705,
+    "avgScoreCurrent": 93.99234150985819
+  }
+}

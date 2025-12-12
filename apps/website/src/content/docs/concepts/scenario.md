@@ -1,6 +1,6 @@
 ---
 title: "Scenario"
-weight: 6
+weight: 22
 summary: "Describe behavioral flows as steps between elements."
 ---
 
@@ -29,11 +29,39 @@ architecture "Checkout" {
 }
 ```
 
+## Scenario vs Flow
+
+Sruja supports two similar constructs for modeling interactions:
+
+- **`scenario`**: Models behavioral flows - what happens when a user interacts with the system (user stories, use cases)
+- **`flow`**: Models data flows - how data moves through the system (Data Flow Diagrams, DFD-style)
+
+Both use the same syntax with relations between elements, but serve different purposes:
+
+```sruja
+// Scenario: User behavior
+scenario Checkout "User Checkout" {
+  Customer -> Shop.WebApp "adds items to cart"
+  Shop.WebApp -> Shop.API "submits cart"
+}
+
+// Flow: Data flow
+flow OrderProcess "Order Processing" {
+  Customer -> Shop "Order Details"
+  Shop -> Shop.API "Processes"
+  Shop.API -> Shop.DB "Save Order"
+}
+```
+
+**When to use:**
+- Use `scenario` for user journeys, business processes, and behavioral flows
+- Use `flow` for data pipelines, ETL processes, and system-to-system data flows
+
 ## Tips
 
 - Keep step labels short and action‑oriented.
- - Use fully qualified names when referring outside the current context.
- - Use `scenario` for behavior; use relations for structure.
+- Use fully qualified names when referring outside the current context.
+- Use `scenario` for behavior; use `flow` for data flows; use relations for structure.
 
 ## See Also
 

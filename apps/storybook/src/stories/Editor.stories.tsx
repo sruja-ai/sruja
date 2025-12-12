@@ -52,7 +52,7 @@ EcommerceSystem.Inventory -> EcommerceSystem.ProductDB "Queries"
 Admin -> EcommerceSystem.API "Manages"`
 
 export const Basic: Story = {
-  render: () => {
+  render: function BasicComponent() {
     const [value, setValue] = useState(SIMPLE_EXAMPLE)
     return (
       <div style={{ height: '400px', border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden' }}>
@@ -70,7 +70,7 @@ export const Basic: Story = {
 }
 
 export const ComplexArchitecture: Story = {
-  render: () => {
+  render: function ComplexArchitectureComponent() {
     const [value, setValue] = useState(ECOMMERCE_EXAMPLE)
     return (
       <div style={{ height: '500px', border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden' }}>
@@ -88,7 +88,7 @@ export const ComplexArchitecture: Story = {
 }
 
 export const SplitView: Story = {
-  render: () => {
+  render: function SplitViewComponent() {
     const [value, setValue] = useState(SIMPLE_EXAMPLE)
     return (
       <div style={{ display: 'flex', height: '500px', border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden' }}>

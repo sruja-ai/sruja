@@ -1,0 +1,241 @@
+// pkg/lsp/folding_ranges.go
+package lsp
+
+import (
+	"context"
+	"strings"
+
+	"github.com/sourcegraph/go-lsp"
+	"github.com/sruja-ai/sruja/pkg/language"
+)
+
+// FoldingRangeParams represents the parameters for the folding range request.
+type FoldingRangeParams struct {
+	TextDocument lsp.TextDocumentIdentifier `json:"textDocument"`
+}
+
+// FoldingRange represents a folding range in a document.
+type FoldingRange struct {
+	StartLine      uint32  `json:"startLine"`
+	StartCharacter *uint32 `json:"startCharacter,omitempty"`
+	EndLine        uint32  `json:"endLine"`
+	EndCharacter   *uint32 `json:"endCharacter,omitempty"`
+	Kind           *string `json:"kind,omitempty"`
+}
+
+// FoldingRangeKind constants
+const (
+	FoldingRangeKindComment = "comment"
+	FoldingRangeKindImports = "imports"
+	FoldingRangeKindRegion  = "region"
+)
+
+// FoldingRanges returns folding ranges for the document.
+// Folding ranges allow users to collapse/expand code blocks in the editor.
+func (s *Server) FoldingRanges(_ context.Context, params FoldingRangeParams) ([]FoldingRange, error) {
+	doc := s.workspace.GetDocument(params.TextDocument.URI)
+	if doc == nil {
+		return nil, nil
+	}
+
+	// Parse the document to get AST
+	parser, err := language.NewParser()
+	if err != nil {
+		return nil, nil
+	}
+
+	program, _, err := parser.Parse(string(params.TextDocument.URI), doc.Text)
+	if err != nil || program == nil {
+		// If parsing fails, still try to provide basic folding based on braces
+		return s.foldingRangesFromText(doc.Text), nil
+	}
+
+	ranges := make([]FoldingRange, 0, 32)
+
+	// Add folding ranges for architecture block
+	if program.Architecture != nil {
+		arch := program.Architecture
+		if arch.Pos.Line > 0 {
+			// Find the closing brace of the architecture block
+			endLine := s.findBlockEnd(doc.Text, arch.Pos.Line-1, arch.Pos.Column-1)
+			if endLine > arch.Pos.Line {
+				startCol := uint32(arch.Pos.Column - 1)
+				kind := FoldingRangeKindRegion
+				ranges = append(ranges, FoldingRange{
+					StartLine:      uint32(arch.Pos.Line - 1), // Convert to 0-based
+					StartCharacter: &startCol,
+					EndLine:        uint32(endLine - 1), // Convert to 0-based
+					Kind:           &kind,
+				})
+			}
+		}
+
+		// Add folding ranges for systems
+		for _, sys := range arch.Systems {
+			if sys.Pos.Line > 0 {
+				endLine := s.findBlockEnd(doc.Text, sys.Pos.Line-1, sys.Pos.Column-1)
+				if endLine > sys.Pos.Line {
+					startCol := uint32(sys.Pos.Column - 1)
+					kind := FoldingRangeKindRegion
+					ranges = append(ranges, FoldingRange{
+						StartLine:      uint32(sys.Pos.Line - 1),
+						StartCharacter: &startCol,
+						EndLine:        uint32(endLine - 1),
+						Kind:           &kind,
+					})
+				}
+
+				// Add folding ranges for containers within systems
+				for _, cont := range sys.Containers {
+					if cont.Pos.Line > 0 {
+						endLine := s.findBlockEnd(doc.Text, cont.Pos.Line-1, cont.Pos.Column-1)
+						if endLine > cont.Pos.Line {
+							startCol := uint32(cont.Pos.Column - 1)
+							kind := FoldingRangeKindRegion
+							ranges = append(ranges, FoldingRange{
+								StartLine:      uint32(cont.Pos.Line - 1),
+								StartCharacter: &startCol,
+								EndLine:        uint32(endLine - 1),
+								Kind:           &kind,
+							})
+						}
+					}
+				}
+			}
+		}
+
+		// Add folding ranges for scenarios/flows
+		for _, scenario := range arch.Scenarios {
+			if scenario.Pos.Line > 0 {
+				endLine := s.findBlockEnd(doc.Text, scenario.Pos.Line-1, scenario.Pos.Column-1)
+				if endLine > scenario.Pos.Line {
+					startCol := uint32(scenario.Pos.Column - 1)
+					kind := FoldingRangeKindRegion
+					ranges = append(ranges, FoldingRange{
+						StartLine:      uint32(scenario.Pos.Line - 1),
+						StartCharacter: &startCol,
+						EndLine:        uint32(endLine - 1),
+						Kind:           &kind,
+					})
+				}
+			}
+		}
+
+		// Add folding ranges for flows
+		for _, flow := range arch.Flows {
+			if flow.Pos.Line > 0 {
+				endLine := s.findBlockEnd(doc.Text, flow.Pos.Line-1, flow.Pos.Column-1)
+				if endLine > flow.Pos.Line {
+					startCol := uint32(flow.Pos.Column - 1)
+					kind := FoldingRangeKindRegion
+					ranges = append(ranges, FoldingRange{
+						StartLine:      uint32(flow.Pos.Line - 1),
+						StartCharacter: &startCol,
+						EndLine:        uint32(endLine - 1),
+						Kind:           &kind,
+					})
+				}
+			}
+		}
+	}
+
+	return ranges, nil
+}
+
+// findBlockEnd finds the line number of the closing brace for a block starting at the given position.
+// Returns 0 if not found.
+func (s *Server) findBlockEnd(text string, startLine, startCol int) int {
+	lines := strings.Split(text, "\n")
+	if startLine >= len(lines) {
+		return 0
+	}
+
+	// Find the opening brace on the start line or subsequent lines
+	braceCol := -1
+	searchLine := startLine
+	for searchLine < len(lines) {
+		line := lines[searchLine]
+		if searchLine == startLine {
+			// On the start line, look for brace after the start column
+			if idx := strings.Index(line[startCol:], "{"); idx >= 0 {
+				braceCol = startCol + idx
+				break
+			}
+		} else {
+			// On subsequent lines, look for any opening brace
+			if idx := strings.Index(line, "{"); idx >= 0 {
+				braceCol = idx
+				break
+			}
+		}
+		searchLine++
+	}
+
+	if braceCol < 0 {
+		return 0
+	}
+
+	// Count braces to find matching closing brace
+	depth := 0
+	for i := searchLine; i < len(lines); i++ {
+		line := lines[i]
+		startIdx := 0
+		if i == searchLine {
+			startIdx = braceCol + 1
+		}
+
+		for j := startIdx; j < len(line); j++ {
+			char := line[j]
+			if char == '{' {
+				depth++
+			} else if char == '}' {
+				depth--
+				if depth == 0 {
+					return i + 1 // Return 1-based line number
+				}
+			}
+		}
+	}
+
+	return 0
+}
+
+// foldingRangesFromText provides basic folding ranges based on brace matching
+// when AST parsing fails.
+func (s *Server) foldingRangesFromText(text string) []FoldingRange {
+	lines := strings.Split(text, "\n")
+	ranges := make([]FoldingRange, 0, 16)
+
+	// Find all opening braces and their matching closing braces
+	type braceInfo struct {
+		line   int
+		column int
+	}
+
+	openBraces := []braceInfo{}
+	for i, line := range lines {
+		for j, char := range line {
+			if char == '{' {
+				openBraces = append(openBraces, braceInfo{line: i, column: j})
+			} else if char == '}' && len(openBraces) > 0 {
+				// Found matching closing brace
+				open := openBraces[len(openBraces)-1]
+				openBraces = openBraces[:len(openBraces)-1]
+
+				// Only add folding range if the block spans multiple lines
+				if i > open.line {
+					col := uint32(open.column)
+					kind := FoldingRangeKindRegion
+					ranges = append(ranges, FoldingRange{
+						StartLine:      uint32(open.line),
+						StartCharacter: &col,
+						EndLine:        uint32(i),
+						Kind:           &kind,
+					})
+				}
+			}
+		}
+	}
+
+	return ranges
+}

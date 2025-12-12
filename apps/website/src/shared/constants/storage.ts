@@ -4,12 +4,12 @@
  * Storage keys used across the application
  */
 export const STORAGE_KEYS = {
-  // Viewer-specific
-  VIEWER_DSL: 'sruja:viewer:dsl',
-  VIEWER_PANE: 'sruja:viewer:pane',
-  
+  // Playground-specific
+  PLAYGROUND_DSL: 'sruja:playground:dsl',
+  PLAYGROUND_PANE: 'sruja:playground:pane',
+
   // Progress tracking
   COMPLETED_CHALLENGES: 'sruja:completedChallenges',
-  
+
   // Add more storage keys here as needed
 } as const;

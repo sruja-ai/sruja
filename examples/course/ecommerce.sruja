@@ -18,11 +18,11 @@ architecture "E-Commerce System" {
             
             // Module 7: Properties & Styles
             properties {
-                "framework": "Next.js"
-                "hosting": "Vercel"
+                "framework" "Next.js"
+                "hosting" "Vercel"
             }
             style {
-                shape: "browser"
+                shape "browser"
             }
         }
 
@@ -44,8 +44,8 @@ architecture "E-Commerce System" {
         datastore DB "Product Database" {
             technology "PostgreSQL"
             properties {
-                "version": "15"
-                "storage": "100GB"
+                "version" "15"
+                "storage" "100GB"
             }
         }
 

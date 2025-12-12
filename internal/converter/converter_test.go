@@ -71,8 +71,8 @@ func TestConvertToJSON(t *testing.T) {
 
 	result := ConvertToJSON(arch)
 
-	if result.Metadata.Name != "Sruja Architecture" {
-		t.Errorf("Expected metadata name 'Sruja Architecture', got '%s'", result.Metadata.Name)
+	if result.Metadata.Name != "Test Arch" {
+		t.Errorf("Expected metadata name 'Test Arch', got '%s'", result.Metadata.Name)
 	}
 
 	if len(result.Architecture.Systems) != 1 {

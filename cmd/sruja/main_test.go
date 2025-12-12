@@ -54,7 +54,7 @@ func TestParseArchitectureFile_Errors(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for invalid syntax")
 	}
-	if !strings.Contains(stderr.String(), "Parser Error") && !strings.Contains(stderr.String(), "unexpected token") && !strings.Contains(stderr.String(), "Internal parser panic") {
-		t.Errorf("Expected parser error message, got:\n%s", stderr.String())
-	}
+    if !strings.Contains(stderr.String(), "Parser Error") && !strings.Contains(stderr.String(), "unexpected token") && !strings.Contains(stderr.String(), "Internal parser panic") && !strings.Contains(stderr.String(), "sub-expression") {
+        t.Errorf("Expected parser error message, got:\n%s", stderr.String())
+    }
 }

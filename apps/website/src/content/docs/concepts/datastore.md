@@ -1,6 +1,6 @@
 ---
 title: "DataStore"
-weight: 7
+weight: 16
 summary: "A DataStore represents a database, file system, or any other system that stores data."
 ---
 

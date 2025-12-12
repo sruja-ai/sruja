@@ -2,6 +2,8 @@ package language
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/alecthomas/participle/v2/lexer"
 )
 
@@ -54,7 +56,15 @@ type SourceLocation struct {
 //
 // Example: "example.sruja:5:12"
 func (l SourceLocation) String() string {
-	return fmt.Sprintf("%s:%d:%d", l.File, l.Line, l.Column)
+	// Build string efficiently using strings.Builder
+	var sb strings.Builder
+	sb.Grow(len(l.File) + 20) // Estimate: file name + ":line:column"
+	sb.WriteString(l.File)
+	sb.WriteString(":")
+	sb.WriteString(fmt.Sprintf("%d", l.Line))
+	sb.WriteString(":")
+	sb.WriteString(fmt.Sprintf("%d", l.Column))
+	return sb.String()
 }
 
 // ASTNode is the base interface for all AST nodes.
@@ -102,7 +112,8 @@ type PropertiesBlock struct {
 }
 
 type PropertyEntry struct {
-	Key   string `parser:"@String ':'"`
+	Key   string `parser:"( @Ident | @String )"`
+	Sep   string `parser:"( ':' )?"`
 	Value string `parser:"@String"`
 }
 
@@ -126,7 +137,8 @@ type StyleBlock struct {
 }
 
 type StyleEntry struct {
-	Key   string `parser:"@Ident ':'"`
+	Key   string `parser:"@Ident"`
+	Sep   string `parser:"( ':' )?"`
 	Value string `parser:"@String"`
 }
 
@@ -134,8 +146,62 @@ func (s *StyleBlock) Location() SourceLocation {
 	return SourceLocation{File: s.Pos.Filename, Line: s.Pos.Line, Column: s.Pos.Column, Offset: s.Pos.Offset}
 }
 
-// ScaleBlock represents a scalability block.
+// OverviewBlock represents an architecture overview block for high-level introduction.
 //
+// This provides a structured way to document architecture-level information
+// for reviewers and stakeholders. Uses the same MetaEntry pattern as metadata blocks.
+//
+// Example DSL:
+//
+//	overview {
+//	    summary "High-performance e-commerce platform supporting 10M+ users"
+//	    audience "Engineering teams, architects, stakeholders"
+//	    scope "Covers ordering, payments, inventory, and analytics"
+//	    goals ["Scale to 50M users", "Sub-200ms p95 latency", "99.99% uptime"]
+//	    nonGoals ["Real-time inventory sync", "Multi-currency support"]
+//	    risks ["Payment Gateway SPOF", "Database bottleneck"]
+//	}
+type OverviewBlock struct {
+	Pos     lexer.Position
+	LBrace  string       `parser:"'overview' '{'"`
+	Entries []*MetaEntry `parser:"@@*"`
+	RBrace  string       `parser:"'}'"`
+
+	// Post-processed convenience fields
+	Summary  *string
+	Audience *string
+	Scope    *string
+	Goals    []string
+	NonGoals []string
+	Risks    []string
+}
+
+func (o *OverviewBlock) Location() SourceLocation {
+	return SourceLocation{File: o.Pos.Filename, Line: o.Pos.Line, Column: o.Pos.Column, Offset: o.Pos.Offset}
+}
+
+// PostProcess extracts well-known keys from MetaEntry items to convenience fields
+func (o *OverviewBlock) PostProcess() {
+	for _, entry := range o.Entries {
+		switch entry.Key {
+		case "summary":
+			o.Summary = entry.Value
+		case "audience":
+			o.Audience = entry.Value
+		case "scope":
+			o.Scope = entry.Value
+		case "goals":
+			o.Goals = entry.Array
+		case "nonGoals":
+			o.NonGoals = entry.Array
+		case "risks":
+			o.Risks = entry.Array
+		}
+	}
+}
+
+// ScaleBlock represents a scalability block.
+
 // Example DSL:
 //
 //	scale {
@@ -145,15 +211,122 @@ func (s *StyleBlock) Location() SourceLocation {
 //	}
 type ScaleBlock struct {
 	Pos    lexer.Position
-	LBrace string  `parser:"'scale' '{'"`
-	Min    *int    `parser:"( 'min' @Int )?"`
-	Max    *int    `parser:"( 'max' @Int )?"`
-	Metric *string `parser:"( 'metric' @String )?"`
-	RBrace string  `parser:"'}'"`
+	LBrace string       `parser:"'scale' '{'"`
+	Items  []*ScaleItem `parser:"@@*"`
+	RBrace string       `parser:"'}'"`
+
+	// Post-processed
+	Min    *int
+	Max    *int
+	Metric *string
+}
+
+type ScaleItem struct {
+	Min    *ScaleMin    `parser:"@@"`
+	Max    *ScaleMax    `parser:"| @@"`
+	Metric *ScaleMetric `parser:"| @@"`
+}
+
+type ScaleMin struct {
+	Val int `parser:"'min' @Int"`
+}
+
+type ScaleMax struct {
+	Val int `parser:"'max' @Int"`
+}
+
+type ScaleMetric struct {
+	Val string `parser:"'metric' @String"`
 }
 
 func (s *ScaleBlock) Location() SourceLocation {
 	return SourceLocation{File: s.Pos.Filename, Line: s.Pos.Line, Column: s.Pos.Column, Offset: s.Pos.Offset}
+}
+
+// ============================================================================
+// SLO (Service Level Objectives)
+// ============================================================================
+
+// SLOBlock represents a Service Level Objectives block.
+//
+// Example DSL:
+//
+//	slo {
+//	    availability {
+//	        target "99.9%"
+//	        window "30 days"
+//	        current "99.95%"
+//	    }
+//	    latency {
+//	        p95 "200ms"
+//	        p99 "500ms"
+//	    }
+//	}
+type SLOBlock struct {
+	Pos    lexer.Position
+	LBrace string     `parser:"'slo' '{'"`
+	Items  []*SLOItem `parser:"@@*"`
+	RBrace string     `parser:"'}'"`
+
+	// Post-processed
+	Availability *SLOAvailability
+	Latency      *SLOLatency
+	ErrorRate    *SLOErrorRate
+	Throughput   *SLOThroughput
+}
+
+type SLOItem struct {
+	Availability *SLOAvailability `parser:"@@"`
+	Latency      *SLOLatency      `parser:"| @@"`
+	ErrorRate    *SLOErrorRate    `parser:"| @@"`
+	Throughput   *SLOThroughput   `parser:"| @@"`
+}
+
+func (s *SLOBlock) Location() SourceLocation {
+	return SourceLocation{File: s.Pos.Filename, Line: s.Pos.Line, Column: s.Pos.Column, Offset: s.Pos.Offset}
+}
+
+// SLOAvailability represents availability SLO configuration.
+type SLOAvailability struct {
+	LBrace  string  `parser:"'availability' '{'"`
+	Target  *string `parser:"( 'target' @String )?"`
+	Window  *string `parser:"( 'window' @String )?"`
+	Current *string `parser:"( 'current' @String )?"`
+	RBrace  string  `parser:"'}'"`
+}
+
+// SLOLatency represents latency SLO configuration.
+type SLOLatency struct {
+	LBrace  string      `parser:"'latency' '{'"`
+	P95     *string     `parser:"( 'p95' @String )?"`
+	P99     *string     `parser:"( 'p99' @String )?"`
+	Window  *string     `parser:"( 'window' @String )?"`
+	Current *SLOCurrent `parser:"( 'current' '{' @@ '}' )?"`
+	RBrace  string      `parser:"'}'"`
+}
+
+// SLOCurrent represents current latency metrics.
+type SLOCurrent struct {
+	P95 *string `parser:"( 'p95' @String )?"`
+	P99 *string `parser:"( 'p99' @String )?"`
+}
+
+// SLOErrorRate represents error rate SLO configuration.
+type SLOErrorRate struct {
+	LBrace  string  `parser:"'errorRate' '{'"`
+	Target  *string `parser:"( 'target' @String )?"`
+	Window  *string `parser:"( 'window' @String )?"`
+	Current *string `parser:"( 'current' @String )?"`
+	RBrace  string  `parser:"'}'"`
+}
+
+// SLOThroughput represents throughput SLO configuration.
+type SLOThroughput struct {
+	LBrace  string  `parser:"'throughput' '{'"`
+	Target  *string `parser:"( 'target' @String )?"`
+	Window  *string `parser:"( 'window' @String )?"`
+	Current *string `parser:"( 'current' @String )?"`
+	RBrace  string  `parser:"'}'"`
 }
 
 // ============================================================================
@@ -315,4 +488,22 @@ func metaMap(metadata []*MetaEntry, prefix string) map[string]string {
 		}
 	}
 	return result
+}
+
+// PostProcess extracts items into typed SLO fields
+func (s *SLOBlock) PostProcess() {
+	for _, it := range s.Items {
+		if it.Availability != nil {
+			s.Availability = it.Availability
+		}
+		if it.Latency != nil {
+			s.Latency = it.Latency
+		}
+		if it.ErrorRate != nil {
+			s.ErrorRate = it.ErrorRate
+		}
+		if it.Throughput != nil {
+			s.Throughput = it.Throughput
+		}
+	}
 }

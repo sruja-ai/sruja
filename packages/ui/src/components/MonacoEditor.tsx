@@ -44,13 +44,13 @@ export function MonacoEditor({ value, onChange, language = 'plaintext', theme = 
     // Wait for container to be available in DOM before importing Monaco
     const checkAndInit = () => {
       if (!isMounted) return
-      
+
       const container = containerRef.current
       if (!container) {
         timeoutId = setTimeout(checkAndInit, 50)
         return
       }
-      
+
       // Ensure container is in DOM - check multiple ways
       try {
         if (!container.parentNode || !container.isConnected || !document.body.contains(container)) {
@@ -66,7 +66,7 @@ export function MonacoEditor({ value, onChange, language = 'plaintext', theme = 
       // Now that container is confirmed ready, import Monaco
       import('monaco-editor').then((monaco) => {
         if (!isMounted) return
-        
+
         // Final check - container must still exist and be in DOM
         const currentContainer = containerRef.current
         try {
@@ -76,15 +76,13 @@ export function MonacoEditor({ value, onChange, language = 'plaintext', theme = 
         } catch (e) {
           return
         }
-        
+
         monacoRef.current = monaco
 
-        // Register Sruja language with syntax highlighting
+        // Register Sruja language with syntax highlighting; rely on built-ins for others
         try {
           if (language === 'sruja') {
             registerSrujaLanguage(monaco)
-          } else {
-            monaco.languages.register({ id: language })
           }
         } catch (err) {
           console.warn('Failed to register language:', err)
@@ -102,15 +100,84 @@ export function MonacoEditor({ value, onChange, language = 'plaintext', theme = 
         }
 
         try {
-          editor = monaco.editor.create(containerRef.current, {
+          // Build editor options with folding explicitly enabled
+          // Use 'indentation' strategy which works reliably for JSON and all languages
+          const editorOptions = {
             value,
             language,
             automaticLayout: true,
             minimap: { enabled: false },
             theme,
             scrollBeyondLastLine: false,
+            // Explicitly enable folding with indentation strategy (works for JSON)
+            foldingHighlight: true,
+            foldingImportsByDefault: false,
+            unfoldOnClickAfterEndOfLine: true,
+            // Accessibility improvements
+            accessibilitySupport: 'on' as const,
+            // Apply user-provided options (folding settings above will override if needed)
             ...options,
+            // Force folding to be enabled (unless explicitly disabled)
+            folding: options.folding === false ? false : true,
+            // Use indentation strategy for reliable folding
+            foldingStrategy: options.foldingStrategy || 'indentation',
+            showFoldingControls: options.showFoldingControls || 'always',
+          }
+
+          editor = monaco.editor.create(containerRef.current, editorOptions)
+
+          // Ensure folding is properly initialized after editor creation
+          if (editor) {
+            // Force layout update to ensure folding controls are rendered
+            setTimeout(() => {
+              try {
+                editor?.layout()
+              } catch (err) {
+                // Ignore layout errors
+              }
+            }, 100)
+          }
+
+          // Fix aria-hidden issue with find widget
+          // Monaco's find widget sometimes sets aria-hidden on focused elements
+          // We'll observe and fix this accessibility issue
+          const fixAriaHidden = () => {
+            const findWidget = containerRef.current?.querySelector('.editor-widget.find-widget')
+            if (findWidget) {
+              const focusedElement = findWidget.querySelector(':focus')
+              if (focusedElement && findWidget.getAttribute('aria-hidden') === 'true') {
+                // Remove aria-hidden when widget contains focused element
+                findWidget.removeAttribute('aria-hidden')
+              }
+            }
+          }
+
+          // Observe for focus changes in the editor container
+          const observer = new MutationObserver(() => {
+            fixAriaHidden()
           })
+
+          if (containerRef.current) {
+            observer.observe(containerRef.current, {
+              attributes: true,
+              attributeFilter: ['aria-hidden'],
+              subtree: true,
+            })
+
+            // Also listen for focus events
+            containerRef.current.addEventListener('focusin', fixAriaHidden, true)
+            containerRef.current.addEventListener('focus', fixAriaHidden, true)
+          }
+
+          // Store observer for cleanup
+          ; (editor as any)._ariaObserver = observer
+            ; (editor as any)._ariaCleanup = () => {
+              observer.disconnect()
+              if (containerRef.current) {
+                containerRef.current.removeEventListener('focusin', fixAriaHidden, true)
+                containerRef.current.removeEventListener('focus', fixAriaHidden, true)
+              }
+            }
           editorRef.current = editor
           subscription = editor.onDidChangeModelContent(() => {
             if (editor && isMounted) {
@@ -149,6 +216,11 @@ export function MonacoEditor({ value, onChange, language = 'plaintext', theme = 
       }
       if (editorRef.current) {
         try {
+          // Clean up aria observer if it exists
+          const cleanup = (editorRef.current as any)?._ariaCleanup
+          if (cleanup) {
+            cleanup()
+          }
           editorRef.current.dispose()
         } catch (err) {
           // Ignore disposal errors

@@ -1,0 +1,222 @@
+/* MarkdownPreviewPanel.css */
+/* Styles for the enhanced markdown preview panel component */
+
+.markdown-preview-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-background, var(--bg-color, #ffffff));
+  border: 1px solid var(--color-border, var(--border-color, #e2e8f0));
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.markdown-preview-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border, var(--border-color, #e2e8f0));
+  background: var(--color-surface, var(--bg-secondary, #f8fafc));
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.markdown-preview-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-text-primary, var(--text-primary, #1a1a1a));
+}
+
+.markdown-preview-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.markdown-view-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--color-background, var(--bg-color, #ffffff));
+  border: 1px solid var(--color-border, var(--border-color, #e2e8f0));
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.view-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--color-text-secondary, var(--text-secondary, #64748b));
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.view-toggle-btn:hover {
+  background: var(--color-surface, var(--bg-hover, #f1f5f9));
+  color: var(--color-text-primary, var(--text-primary, #1a1a1a));
+}
+
+.view-toggle-btn.active {
+  background: var(--color-primary, var(--highlight-color, #7c3aed));
+  color: white;
+}
+
+.view-toggle-btn:focus {
+  outline: 2px solid var(--color-primary, #7c3aed);
+  outline-offset: 2px;
+}
+
+.markdown-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--color-background, var(--bg-color, #ffffff));
+  border: 1px solid var(--color-border, var(--border-color, #e2e8f0));
+  border-radius: 6px;
+  color: var(--color-text-primary, var(--text-primary, #1a1a1a));
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.markdown-copy-btn:hover {
+  background: var(--color-surface, var(--bg-hover, #f1f5f9));
+  border-color: var(--color-border-hover, var(--border-hover, #cbd5e1));
+}
+
+.markdown-copy-btn:active {
+  transform: scale(0.98);
+}
+
+.markdown-copy-btn:focus {
+  outline: 2px solid var(--color-primary, #7c3aed);
+  outline-offset: 2px;
+}
+
+.markdown-preview-panel-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  min-height: 0;
+  background: var(--color-background, var(--bg-color, #ffffff));
+}
+
+.markdown-preview-container {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px 32px;
+  background: var(--color-background, var(--bg-color, #ffffff));
+  max-width: 100%;
+}
+
+.markdown-raw {
+  height: 100%;
+  overflow: auto;
+  padding: 24px 32px;
+  margin: 0;
+  background: var(--color-surface, var(--bg-tertiary, #f8fafc));
+  border: none;
+  font-family: var(--font-family-mono, 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-primary, var(--text-primary, #1a1a1a));
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.markdown-raw code {
+  background: transparent;
+  padding: 0;
+  border: none;
+  font-size: inherit;
+  color: inherit;
+}
+
+.markdown-loading,
+.markdown-error,
+.markdown-empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--color-text-secondary, var(--text-secondary, #64748b));
+}
+
+.markdown-error {
+  color: var(--color-error, var(--error-color, #ef4444));
+}
+
+.markdown-empty p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Dark theme support */
+[data-theme="dark"] .markdown-preview-panel {
+  background: var(--color-background, var(--bg-color, #0f172a));
+  border-color: var(--color-border, var(--border-color, #334155));
+}
+
+[data-theme="dark"] .markdown-preview-panel-header {
+  background: var(--color-surface, var(--bg-secondary, #1e293b));
+  border-color: var(--color-border, var(--border-color, #334155));
+}
+
+[data-theme="dark"] .markdown-preview-panel-title {
+  color: var(--color-text-primary, var(--text-primary, #f1f5f9));
+}
+
+[data-theme="dark"] .view-toggle-btn {
+  background: var(--color-background, var(--bg-color, #0f172a));
+  border-color: var(--color-border, var(--border-color, #334155));
+  color: var(--color-text-secondary, var(--text-secondary, #cbd5e1));
+}
+
+[data-theme="dark"] .view-toggle-btn:hover {
+  background: var(--color-surface, var(--bg-hover, #334155));
+  color: var(--color-text-primary, var(--text-primary, #f1f5f9));
+}
+
+[data-theme="dark"] .view-toggle-btn.active {
+  background: var(--color-primary, var(--highlight-color, #a78bfa));
+  color: white;
+}
+
+[data-theme="dark"] .markdown-copy-btn {
+  background: var(--color-background, var(--bg-color, #0f172a));
+  border-color: var(--color-border, var(--border-color, #334155));
+  color: var(--color-text-primary, var(--text-primary, #f1f5f9));
+}
+
+[data-theme="dark"] .markdown-copy-btn:hover {
+  background: var(--color-surface, var(--bg-hover, #334155));
+  border-color: var(--color-border-hover, var(--border-hover, #475569));
+}
+
+[data-theme="dark"] .markdown-preview-container {
+  background: var(--color-background, var(--bg-color, #0f172a));
+}
+
+[data-theme="dark"] .markdown-raw {
+  background: var(--color-surface, var(--bg-tertiary, #1e293b));
+  color: var(--color-text-primary, var(--text-primary, #f1f5f9));
+}
+
+[data-theme="dark"] .markdown-loading,
+[data-theme="dark"] .markdown-empty {
+  color: var(--color-text-secondary, var(--text-secondary, #cbd5e1));
+}
+
+[data-theme="dark"] .markdown-error {
+  color: var(--color-error, var(--error-color, #f87171));
+}

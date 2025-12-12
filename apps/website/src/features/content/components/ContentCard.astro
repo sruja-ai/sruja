@@ -38,12 +38,12 @@ const { title, href, summary, tags, date, linkText = 'Read More →' } = Astro.p
   }
 
   .content-card:hover {
-    border-color: #3b82f6;
+    border-color: var(--color-primary);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
 
   :global(html.dark) .content-card:hover {
-    border-color: #60a5fa;
+    border-color: var(--color-primary-hover);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
   }
 
@@ -65,11 +65,11 @@ const { title, href, summary, tags, date, linkText = 'Read More →' } = Astro.p
   }
 
   .content-card h2 a:hover {
-    color: #3b82f6;
+    color: var(--color-primary);
   }
 
   :global(html.dark) .content-card h2 a:hover {
-    color: #60a5fa;
+    color: var(--color-primary-hover);
   }
 
   .content-date {
@@ -101,14 +101,14 @@ const { title, href, summary, tags, date, linkText = 'Read More →' } = Astro.p
 
   .content-link {
     display: inline-block;
-    color: #3b82f6;
+    color: var(--color-primary);
     text-decoration: none;
     font-weight: 500;
     transition: color 0.2s;
   }
 
   .content-link:hover {
-    color: #2563eb;
+    color: var(--color-primary-hover);
     text-decoration: underline;
   }
 
@@ -140,4 +140,3 @@ const { title, href, summary, tags, date, linkText = 'Read More →' } = Astro.p
     }
   }
 </style>
-

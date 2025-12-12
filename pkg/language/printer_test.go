@@ -15,41 +15,20 @@ func stringPtr(s string) *string {
 func TestPrinter_Print_Full(t *testing.T) {
 	arch := &language.Architecture{
 		Name: "Test",
-		Imports: []*language.ImportSpec{
-			{Path: "other.sruja"},
-			{Path: "billing.sruja", Alias: stringPtr("Billing")},
-		},
 	}
 	prog := &language.Program{Architecture: arch}
 	printer := language.NewPrinter()
 	output := printer.Print(prog)
 
-	if !strings.Contains(output, `import "other.sruja"`) {
-		t.Error("Should print import without alias")
-	}
-	if !strings.Contains(output, `import "billing.sruja" as Billing`) {
-		t.Error("Should print import with alias")
+	// Verify basic architecture printing
+	if !strings.Contains(output, `architecture "Test"`) {
+		t.Error("Should print architecture name")
 	}
 }
 
-func TestPrinter_PrintImport(t *testing.T) {
-	arch := &language.Architecture{
-		Name: "Test",
-		Imports: []*language.ImportSpec{
-			{Path: "other.sruja"},
-			{Path: "billing.sruja", Alias: stringPtr("Billing")},
-		},
-	}
-	prog := &language.Program{Architecture: arch}
-	printer := language.NewPrinter()
-	output := printer.Print(prog)
-
-	if !strings.Contains(output, `import "other.sruja"`) {
-		t.Error("Should print import without alias")
-	}
-	if !strings.Contains(output, `import "billing.sruja" as Billing`) {
-		t.Error("Should print import with alias")
-	}
+// TestPrinter_PrintImport removed - import feature removed
+func TestPrinter_PrintImport_Removed(t *testing.T) {
+	t.Skip("Import feature removed")
 }
 
 func TestPrinter_PrintRelation(t *testing.T) {
@@ -207,152 +186,39 @@ func TestPrinter_PrintRelation_InSystem(t *testing.T) {
 	}
 }
 
-func TestPrinter_PrintRequirement_InSystem(t *testing.T) {
-	arch := &language.Architecture{
-		Name: "Test",
-		Systems: []*language.System{
-			{
-				ID:    "Sys",
-				Label: "System",
-				Items: []language.SystemItem{
-					{
-						Requirement: &language.Requirement{
-							ID:          "R1",
-							Type:        stringPtr("performance"),
-							Description: stringPtr("Fast"),
-						},
-					},
-				},
-			},
-		},
-	}
-	prog := &language.Program{Architecture: arch}
-	printer := language.NewPrinter()
-	output := printer.Print(prog)
+func TestPrinter_PrintRequirement_AtRoot(t *testing.T) {
+    arch := &language.Architecture{
+        Name: "Test",
+        Systems: []*language.System{{ ID: "Sys", Label: "System" }},
+        Requirements: []*language.Requirement{{ ID: "R1", Type: stringPtr("performance"), Description: stringPtr("Fast") }},
+    }
+    prog := &language.Program{Architecture: arch}
+    printer := language.NewPrinter()
+    output := printer.Print(prog)
 
-	if !strings.Contains(output, `requirement R1 performance "Fast"`) {
-		t.Error("Should print requirement within system")
-	}
+    if !strings.Contains(output, `requirement R1 performance "Fast"`) {
+        t.Error("Should print requirement at root")
+    }
 }
 
-func TestPrinter_PrintADR_InSystem(t *testing.T) {
-	arch := &language.Architecture{
-		Name: "Test",
-		Systems: []*language.System{
-			{
-				ID:    "Sys",
-				Label: "System",
-				Items: []language.SystemItem{
-					{
-						ADR: &language.ADR{
-							ID:    "ADR001",
-							Title: stringPtr("Use JWT"),
-						},
-					},
-				},
-			},
-		},
-	}
-	prog := &language.Program{Architecture: arch}
-	printer := language.NewPrinter()
-	output := printer.Print(prog)
+func TestPrinter_PrintADR_AtRoot(t *testing.T) {
+    arch := &language.Architecture{
+        Name: "Test",
+        Systems: []*language.System{{ ID: "Sys", Label: "System" }},
+        ADRs: []*language.ADR{{ ID: "ADR001", Title: stringPtr("Use JWT") }},
+    }
+    prog := &language.Program{Architecture: arch}
+    printer := language.NewPrinter()
+    output := printer.Print(prog)
 
-	if !strings.Contains(output, `adr ADR001 "Use JWT"`) {
-		t.Error("Should print ADR within system")
-	}
+    if !strings.Contains(output, `adr ADR001 "Use JWT"`) {
+        t.Error("Should print ADR at root")
+    }
 }
 
-func TestPrinter_PrintRequirement_InComponent(t *testing.T) {
-	arch := &language.Architecture{
-		Name: "Test",
-		Systems: []*language.System{
-			{
-				ID:    "Sys",
-				Label: "System",
-				Items: []language.SystemItem{
-					{
-						Container: &language.Container{
-							ID:    "Cont",
-							Label: "Container",
-							Items: []language.ContainerItem{
-								{
-									Component: &language.Component{
-										ID:    "Comp",
-										Label: "Component",
-										Items: []language.ComponentItem{
-											{
-												Requirement: &language.Requirement{
-													ID:          "R1",
-													Type:        stringPtr("security"),
-													Description: stringPtr("Secure"),
-												},
-											},
-										},
-										// Add technology to trigger block printing
-										Technology: stringPtr("Go"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	prog := &language.Program{Architecture: arch}
-	printer := language.NewPrinter()
-	output := printer.Print(prog)
+// Removed: component-level requirement printing (root-only policy)
 
-	if !strings.Contains(output, `requirement R1 security "Secure"`) {
-		t.Logf("Actual output:\n%s", output)
-		t.Error("Should print requirement within component")
-	}
-}
-
-func TestPrinter_PrintADR_InComponent(t *testing.T) {
-	arch := &language.Architecture{
-		Name: "Test",
-		Systems: []*language.System{
-			{
-				ID:    "Sys",
-				Label: "System",
-				Items: []language.SystemItem{
-					{
-						Container: &language.Container{
-							ID:    "Cont",
-							Label: "Container",
-							Items: []language.ContainerItem{
-								{
-									Component: &language.Component{
-										ID:    "Comp",
-										Label: "Component",
-										Items: []language.ComponentItem{
-											{
-												ADR: &language.ADR{
-													ID:    "ADR001",
-													Title: stringPtr("Component ADR"),
-												},
-											},
-										},
-										// Add technology to trigger block printing
-										Technology: stringPtr("Go"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	prog := &language.Program{Architecture: arch}
-	printer := language.NewPrinter()
-	output := printer.Print(prog)
-
-	if !strings.Contains(output, `adr ADR001 "Component ADR"`) {
-		t.Errorf("Should print ADR within component. Output:\n%s", output)
-	}
-}
+// Removed: component-level ADR printing (root-only policy)
 
 func TestPrinter_PrintRelation_InComponent(t *testing.T) {
 	arch := &language.Architecture{

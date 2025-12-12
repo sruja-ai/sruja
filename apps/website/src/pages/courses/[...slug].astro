@@ -9,8 +9,36 @@ import { generateContentPaths } from '@/features/content/utils/paths';
 export async function getStaticPaths() {
   const courses = await getCollection('courses');
   const paths = generateContentPaths(courses, '/courses', 'weight');
-  
-  return paths.map(path => ({
+  // Add alias paths for course overview pages (e.g., /courses/<course-name>)
+  const byCourse = new Map<string, CollectionEntry<'courses'>[]>();
+  for (const entry of courses) {
+    const courseName = entry.slug.split('/')[0];
+    const arr = byCourse.get(courseName) || [];
+    arr.push(entry);
+    byCourse.set(courseName, arr);
+  }
+  const overviewAliases = Array.from(byCourse.entries()).map(([courseName, entries]) => {
+    // Prefer course-overview, else first module-overview, else first lesson by weight
+    const courseOverview = entries.find(e => e.slug.endsWith('/course-overview'));
+    const moduleOverview = entries.find(e => e.slug.includes('/module-') && e.slug.endsWith('/module-overview'));
+    const sorted = entries.slice().sort((a, b) => (a.data.weight ?? 999) - (b.data.weight ?? 999));
+    const fallback = sorted[0];
+    const chosen = courseOverview || moduleOverview || fallback;
+    if (!chosen) return null;
+    return {
+      params: { slug: courseName },
+      props: {
+        entry: chosen,
+        previous: null,
+        next: null,
+      },
+    };
+  }).filter(Boolean) as Array<{
+    params: { slug: string },
+    props: { entry: CollectionEntry<'courses'>; previous: null; next: null }
+  }>;
+
+  return [...paths, ...overviewAliases].map(path => ({
     params: path.params,
     props: {
       course: path.props.entry,

@@ -54,15 +54,5 @@ system App {
 
 ## Next Steps
 
-- Learn [Deployment Modeling](/tutorials/deployment-modeling/) for infrastructure perspective
+ - Learn [Deployment Modeling](/tutorials/advanced/deployment-modeling) for infrastructure perspective
 - Take the quiz: [DSL Basics Quiz](/quizzes/dsl-basics)
-
-## Component‑level Modeling
-
-```sruja
-system App {
-  container Web {
-    component Cart "Cart"
-  }
-}
-```

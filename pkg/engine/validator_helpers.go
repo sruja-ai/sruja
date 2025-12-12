@@ -72,7 +72,8 @@ func collectResults(
 	panicChan <-chan string,
 	totalRules int,
 ) []diagnostics.Diagnostic {
-	var diags []diagnostics.Diagnostic
+	// Pre-allocate with estimated capacity (most rules return few or no diagnostics)
+	diags := make([]diagnostics.Diagnostic, 0, totalRules*2)
 	completed := 0
 
 	for completed < totalRules {
@@ -149,6 +150,3 @@ func drainChannels(
 
 	return diags
 }
-
-
-

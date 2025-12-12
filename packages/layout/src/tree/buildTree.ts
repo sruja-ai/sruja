@@ -1,4 +1,4 @@
-import { C4Element, TreeNode } from '../types'
+import type { C4Element, TreeNode } from '../types'
 
 export function buildTree(model: C4Element): TreeNode {
   const seen = new Set<string>()

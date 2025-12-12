@@ -5,11 +5,9 @@ import Layout from '../../layouts/Layout.astro';
 import ContentPage from '@/features/content/components/ContentPage.astro';
 import ContentList from '@/features/content/components/ContentList.astro';
 
-const lessons = await getCollection('courses');
-const tutorials = await getCollection('tutorials');
-const posts = await getCollection('blog', ({ data }: { data: any }) => {
-  return true;
-});
+const lessons = (await getCollection('courses')) as CollectionEntry<'courses'>[];
+const tutorials = (await getCollection('tutorials')) as CollectionEntry<'tutorials'>[];
+const posts = (await getCollection('blog', () => true)) as CollectionEntry<'blog'>[];
 
 // Group by course name (first segment of slug)
 interface CourseSummary { name: string; title: string; modules: Set<string>; }
@@ -41,13 +39,13 @@ const courseList = Array.from(coursesMap.values()).sort((a, b) => {
   return a.name.localeCompare(b.name);
 }).slice(0, 3);
 
-const sortedTutorials = tutorials.sort((a: any, b: any) => {
+const sortedTutorials = tutorials.sort((a: CollectionEntry<'tutorials'>, b: CollectionEntry<'tutorials'>) => {
   const weightA = a.data.weight ?? 999;
   const weightB = b.data.weight ?? 999;
   return weightA - weightB;
 }).slice(0, 3);
 
-const sortedPosts = posts.sort((a: any, b: any) => {
+const sortedPosts = posts.sort((a: CollectionEntry<'blog'>, b: CollectionEntry<'blog'>) => {
   const dateA = a.data.pubDate 
     ? (typeof a.data.pubDate === 'string' ? new Date(a.data.pubDate) : a.data.pubDate)
     : new Date(0);

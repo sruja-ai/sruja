@@ -45,10 +45,13 @@ func (s *Server) Initialize(_ context.Context, _ lsp.InitializeParams) (*lsp.Ini
 			CompletionProvider:         &lsp.CompletionOptions{TriggerCharacters: []string{".", ":"}},
 			DefinitionProvider:         true,
 			ReferencesProvider:         true,
-			CodeActionProvider:         false,
+			CodeActionProvider:         true, // Enable code actions (using Command-based approach)
 			DocumentSymbolProvider:     true,
 			WorkspaceSymbolProvider:    true,
 			DocumentFormattingProvider: true,
+			RenameProvider:             true, // Enable rename provider
+			// Note: DocumentLinkProvider and FoldingRangeProvider are not in go-lsp ServerCapabilities
+			// but we handle the requests manually in the switch statement below
 		},
 	}, nil
 }
@@ -214,6 +217,34 @@ func StartServer(in io.Reader, out io.Writer) error {
 		case "textDocument/semanticTokens/legend":
 			legend := srv.SemanticTokensLegend()
 			return legend, nil
+		case "textDocument/codeAction":
+			var params lsp.CodeActionParams
+			if req.Params != nil {
+				_ = json.Unmarshal(*req.Params, &params)
+			}
+			actions, err := srv.CodeAction(ctx, params)
+			return actions, err
+		case "textDocument/rename":
+			var params lsp.RenameParams
+			if req.Params != nil {
+				_ = json.Unmarshal(*req.Params, &params)
+			}
+			edit, err := srv.Rename(ctx, params)
+			return edit, err
+		case "textDocument/documentLink":
+			var params DocumentLinkParams
+			if req.Params != nil {
+				_ = json.Unmarshal(*req.Params, &params)
+			}
+			links, err := srv.DocumentLinks(ctx, params)
+			return links, err
+		case "textDocument/foldingRange":
+			var params FoldingRangeParams
+			if req.Params != nil {
+				_ = json.Unmarshal(*req.Params, &params)
+			}
+			ranges, err := srv.FoldingRanges(ctx, params)
+			return ranges, err
 		default:
 			// Unhandled methods: respond with nil
 			return nil, nil

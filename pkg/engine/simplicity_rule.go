@@ -14,12 +14,11 @@ func (r *SimplicityRule) Name() string {
 }
 
 func (r *SimplicityRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	var diags []diagnostics.Diagnostic
-
-	arch := program.Architecture
-	if arch == nil {
-		return diags
+	if program == nil || program.Architecture == nil {
+		return nil
 	}
+	// Pre-allocate diagnostics slice (currently empty but ready for future use)
+	diags := make([]diagnostics.Diagnostic, 0, 0)
 
 	// Domain/ContextBlock validation removed - DDD features, deferred to Phase 2
 	// DomainBlock structure doesn't match expected fields (no Contexts, Components, etc.)

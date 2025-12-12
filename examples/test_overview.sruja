@@ -1,0 +1,7 @@
+architecture "Test Overview" {
+  overview {
+    summary "Test summary"
+  }
+  
+  person User "Test User"
+}

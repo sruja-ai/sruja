@@ -23,7 +23,7 @@ export default function AlgoliaSearch({ isOpen, onClose, onSelect }: AlgoliaSear
       
       // Log configuration in development
       if (envConfig.env === 'development' && typeof console !== 'undefined') {
-        console.log(`[Algolia Search] Initialized with index: ${envConfig.algolia.indexName}`);
+        console.info(`[Algolia Search] Initialized with index: ${envConfig.algolia.indexName}`);
       }
     } else {
       // Log warning if Algolia is not configured

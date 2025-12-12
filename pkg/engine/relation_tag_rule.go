@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/sruja-ai/sruja/pkg/diagnostics"
@@ -31,11 +30,13 @@ var allowedTags = map[string]bool{
 
 //nolint:gocyclo // Validation logic is complex
 func (r *RelationTagRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	var diags []diagnostics.Diagnostic
-	arch := program.Architecture
-	if arch == nil {
-		return diags
+	if program == nil || program.Architecture == nil {
+		return nil
 	}
+	// Pre-allocate diagnostics slice with estimated capacity
+	estimatedDiags := 10
+	diags := make([]diagnostics.Diagnostic, 0, estimatedDiags)
+	arch := program.Architecture
 
 	checkTags := func(rel *language.Relation) {
 		if rel == nil {
@@ -44,10 +45,16 @@ func (r *RelationTagRule) Validate(program *language.Program) []diagnostics.Diag
 		for _, tag := range rel.Tags {
 			lowerTag := strings.ToLower(tag)
 			if !allowedTags[lowerTag] {
+				// Build message efficiently
+				var msgSb strings.Builder
+				msgSb.Grow(len(tag) + 120)
+				msgSb.WriteString("Invalid relation tag '")
+				msgSb.WriteString(tag)
+				msgSb.WriteString("'. Allowed tags are: Reads, Writes, Sends, Uses, Calls, Processes, Queries, Updates, Deletes, Creates, Triggers, Notifies.")
 				diags = append(diags, diagnostics.Diagnostic{
 					Code:     diagnostics.CodeValidationRuleError,
 					Severity: diagnostics.SeverityWarning,
-					Message:  fmt.Sprintf("Invalid relation tag '%s'. Allowed tags are: Reads, Writes, Sends, Uses, Calls, Processes, Queries, Updates, Deletes, Creates, Triggers, Notifies.", tag),
+					Message:  msgSb.String(),
 					Location: diagnostics.SourceLocation{
 						File:   rel.Location().File,
 						Line:   rel.Location().Line,

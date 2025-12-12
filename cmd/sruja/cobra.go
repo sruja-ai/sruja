@@ -99,7 +99,7 @@ var cmdFmt = &cobra.Command{
 var cmdExport = &cobra.Command{
 	Use:                "export",
 	Short:              "Export to a format",
-	Long:               "Export a .sruja file to various formats (json, html, markdown)",
+	Long:               "Export a .sruja file to various formats (json)",
 	DisableFlagParsing: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if runExport(args, cmd.OutOrStdout(), cmd.ErrOrStderr()) != 0 {
@@ -110,10 +110,12 @@ var cmdExport = &cobra.Command{
 }
 
 func init() {
-	// HTML export flags
-	cmdExport.Flags().Bool("local", false, "Use local multi-file mode (copies JS bundles)")
-	cmdExport.Flags().Bool("single-file", false, "Use single-file mode (inlines everything)")
-	cmdExport.Flags().StringP("out", "o", "", "Output directory (for local mode) or file (for single-file mode)")
+	// Note: HTML export removed from CLI - HTML export code exists in pkg/export/html
+	// but is not accessible via CLI export command
+	// Legacy flags kept for backward compatibility but unused
+	_ = cmdExport.Flags().Bool("local", false, "(deprecated) Use local multi-file mode")
+	_ = cmdExport.Flags().Bool("single-file", false, "(deprecated) Use single-file mode")
+	_ = cmdExport.Flags().StringP("out", "o", "", "(deprecated) Output directory or file")
 }
 
 var cmdImport = &cobra.Command{

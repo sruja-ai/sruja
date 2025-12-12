@@ -29,28 +29,27 @@ export default function HomeHero() {
       </div>
       <h1>Build Better Software Systems</h1>
       <p>
-        <strong>Sruja</strong> is the developer-friendly language for defining, visualizing, and validating software architecture. 
-        Our vision is to bring governance to software architecture and assist AI-driven development.
+        <strong>Sruja</strong> is an open source architecture-as-code language for defining, visualizing, and validating software architecture.
+        Built by and for the community, with a vision to evolve into a platform for live system review and architectural governance.
       </p>
       <p>
-        Visit <a href="/studio">Studio</a> for interactive modeling.
+        Try the <a href="/playground">Playground</a> for interactive visualization. Studio is coming soon.
       </p>
-      <div className="hero-actions">
-        <Button variant="primary" onClick={() => (window.location.href = '/docs/intro')}>
+      <div className="hero-cta" style={{ gap: '1rem' }}>
+        <a href="/docs/getting-started" className="btn btn-primary">
           Get Started
-        </Button>
-        <Button variant="secondary" onClick={() => (window.location.href = '/studio')}>
-          Open Studio
+        </a>
+        <Button variant="secondary" onClick={() => (window.location.href = '/playground')}>
+          Open Playground
         </Button>
         <Button variant="outline" onClick={() => setSearchOpen(true)}>
           Search
         </Button>
       </div>
-      <AlgoliaSearch 
-        isOpen={searchOpen} 
-        onClose={() => setSearchOpen(false)} 
+      <AlgoliaSearch
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
       />
     </div>
   );
 }
-

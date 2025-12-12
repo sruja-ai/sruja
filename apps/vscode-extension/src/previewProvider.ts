@@ -1,7 +1,42 @@
+// apps/vscode-extension/src/previewProvider.ts
 import * as vscode from 'vscode';
-import { execFile } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import { convertDslToMarkdown, initWasmNode } from '@sruja/shared/node/wasmAdapter';
+
+function createFileNotFoundError(filePath: string): string {
+    return `# Error Generating Preview
+
+File not found:
+\`\`\`
+${filePath}
+\`\`\`
+
+Please ensure the file is saved and try again.`;
+}
+
+function createConversionError(): string {
+    return `# Error Generating Preview
+
+Failed to convert DSL to Markdown.
+
+**Troubleshooting:**
+1. Check that the file contains valid Sruja DSL
+2. Ensure WASM files are bundled with extension
+3. Try rebuilding the extension: \`npm run vscode:prepublish\``;
+}
+
+function createWasmError(errorMsg: string): string {
+    return `# Error Generating Preview
+
+WASM parser failed: ${errorMsg}
+
+**Troubleshooting:**
+1. Ensure WASM files are bundled with extension (\`wasm/sruja.wasm\` and \`wasm/wasm_exec.js\`)
+2. Check that extension was built correctly: \`npm run vscode:prepublish\`
+3. Verify WASM files exist in extension directory
+4. Try rebuilding: \`make wasm && npm run vscode:prepublish\``;
+}
 
 export class SrujaPreviewProvider implements vscode.TextDocumentContentProvider {
     static readonly scheme = 'sruja-preview';
@@ -18,7 +53,7 @@ export class SrujaPreviewProvider implements vscode.TextDocumentContentProvider 
     }
 
     provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             const query = new URLSearchParams(uri.query);
             const originalPath = query.get('original');
 
@@ -26,30 +61,28 @@ export class SrujaPreviewProvider implements vscode.TextDocumentContentProvider 
                 return reject(new Error('Original file path not found in URI query'));
             }
 
-            const config = vscode.workspace.getConfiguration('srujaLanguageServer');
-            let srujaPath = config.get<string>('path') || 'sruja';
-            const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-            const localBin = ws ? path.join(ws, 'bin', 'sruja') : undefined;
-            if (localBin && fs.existsSync(localBin)) {
-                srujaPath = localBin;
+            if (!fs.existsSync(originalPath)) {
+                return resolve(createFileNotFoundError(originalPath));
             }
 
-            execFile(srujaPath, ['export', 'markdown', originalPath], { env: process.env }, (err, stdout, stderr) => {
-                if (err) {
-                    const errorMsg = stderr?.toString() || err.message || 'Unknown error';
-                    return resolve(`
-# Error Generating Preview
+            const absolutePath = path.isAbsolute(originalPath) 
+                ? originalPath 
+                : path.resolve(originalPath);
 
-Failed to run sruja export:
-\`\`\`
-${errorMsg}
-\`\`\`
-
-Please ensure the Sruja CLI is installed and configured correctly.
-`);
+            try {
+                const dslContent = fs.readFileSync(absolutePath, 'utf-8');
+                const extensionPath = this.context.extensionPath;
+                const wasmApi = await initWasmNode({ extensionPath });
+                const markdown = await convertDslToMarkdown(dslContent, wasmApi, path.basename(absolutePath));
+                
+                if (markdown) {
+                    return resolve(markdown);
                 }
-                resolve(stdout.toString());
-            });
+                return resolve(createConversionError());
+            } catch (wasmErr) {
+                const errorMsg = wasmErr instanceof Error ? wasmErr.message : String(wasmErr);
+                return resolve(createWasmError(errorMsg));
+            }
         });
     }
 }

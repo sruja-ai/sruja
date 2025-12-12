@@ -1,11 +1,10 @@
 package engine
 
 import (
-	"strings"
-	"testing"
+    "strings"
+    "testing"
 
-	"github.com/sruja-ai/sruja/pkg/diagnostics"
-	"github.com/sruja-ai/sruja/pkg/language"
+    "github.com/sruja-ai/sruja/pkg/language"
 )
 
 func TestDatabaseIsolationRule(t *testing.T) {
@@ -96,11 +95,10 @@ architecture "Allowed" {
 				}
 				for _, d := range diags {
 					msg := d.Message
-					for _, exp := range tc.expected {
-						if !strings.Contains(msg, exp) && !strings.Contains(fmtDiagnostic(d), exp) {
-							// We check message primarily
-						}
-					}
+                    for range tc.expected {
+                        _ = msg
+                        _ = d
+                    }
 				}
 			}
 		})
@@ -202,8 +200,4 @@ architecture "DocCont" {
 			}
 		})
 	}
-}
-
-func fmtDiagnostic(d diagnostics.Diagnostic) string {
-	return d.Message
 }

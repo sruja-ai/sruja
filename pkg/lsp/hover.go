@@ -3,7 +3,6 @@ package lsp
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/sourcegraph/go-lsp"
@@ -30,7 +29,16 @@ func (s *Server) Hover(_ context.Context, params lsp.TextDocumentPositionParams)
 	if word != "" {
 		t, label := findElement(program.Architecture, word)
 		if t != "" {
-			content := fmt.Sprintf("**%s** `%s`\n%s", t, word, label)
+			// Build content efficiently
+			var sb strings.Builder
+			sb.Grow(len(t) + len(word) + len(label) + 10)
+			sb.WriteString("**")
+			sb.WriteString(t)
+			sb.WriteString("** `")
+			sb.WriteString(word)
+			sb.WriteString("`\n")
+			sb.WriteString(label)
+			content := sb.String()
 			return &lsp.Hover{Contents: []lsp.MarkedString{{Language: "markdown", Value: content}}, Range: &lsp.Range{Start: lsp.Position{Line: params.Position.Line, Character: start}, End: lsp.Position{Line: params.Position.Line, Character: end}}}, nil
 		}
 	}
@@ -51,7 +59,19 @@ func (s *Server) Hover(_ context.Context, params lsp.TextDocumentPositionParams)
 		right := strings.TrimSpace(line[rightStart:rightEnd])
 		if left != "" && right != "" {
 			verb, rlabel := findRelationInfo(program.Architecture, left, right)
-			content := fmt.Sprintf("**Relation** `%s -> %s`\n%s", left, right, strings.TrimSpace(strings.Join(filterNotEmpty([]string{verb, rlabel}), " ")))
+			// Build content efficiently
+			var sb strings.Builder
+			sb.Grow(len(left) + len(right) + len(verb) + len(rlabel) + 20)
+			sb.WriteString("**Relation** `")
+			sb.WriteString(left)
+			sb.WriteString(" -> ")
+			sb.WriteString(right)
+			sb.WriteString("`\n")
+			parts := filterNotEmpty([]string{verb, rlabel})
+			if len(parts) > 0 {
+				sb.WriteString(strings.TrimSpace(strings.Join(parts, " ")))
+			}
+			content := sb.String()
 			rng := lsp.Range{Start: lsp.Position{Line: params.Position.Line, Character: arrowIdx}, End: lsp.Position{Line: params.Position.Line, Character: arrowIdx + 2}}
 			return &lsp.Hover{Contents: []lsp.MarkedString{{Language: "markdown", Value: content}}, Range: &rng}, nil
 		}
@@ -80,34 +100,58 @@ func wordBounds(line string, pos int) (int, int) {
 
 //nolint:gocyclo // Recursive search is complex
 func findElement(arch *language.Architecture, id string) (string, string) {
+	// Helper to build qualified IDs efficiently
+	buildQualifiedID := func(parts ...string) string {
+		if len(parts) == 0 {
+			return ""
+		}
+		if len(parts) == 1 {
+			return parts[0]
+		}
+		totalLen := len(parts) - 1 // for dots
+		for _, p := range parts {
+			totalLen += len(p)
+		}
+		buf := make([]byte, 0, totalLen)
+		buf = append(buf, parts[0]...)
+		for i := 1; i < len(parts); i++ {
+			buf = append(buf, '.')
+			buf = append(buf, parts[i]...)
+		}
+		return string(buf)
+	}
+
 	for _, s := range arch.Systems {
 		if s.ID == id {
 			return "System", s.Label
 		}
-	}
-	for _, s := range arch.Systems {
 		for _, c := range s.Containers {
-			if c.ID == id || (s.ID+"."+c.ID) == id {
+			contID := buildQualifiedID(s.ID, c.ID)
+			if c.ID == id || contID == id {
 				return "Container", c.Label
 			}
 			for _, comp := range c.Components {
-				if comp.ID == id || (s.ID+"."+c.ID+"."+comp.ID) == id {
+				compID := buildQualifiedID(s.ID, c.ID, comp.ID)
+				if comp.ID == id || compID == id {
 					return "Component", comp.Label
 				}
 			}
 		}
 		for _, comp := range s.Components {
-			if comp.ID == id || (s.ID+"."+comp.ID) == id {
+			compID := buildQualifiedID(s.ID, comp.ID)
+			if comp.ID == id || compID == id {
 				return "Component", comp.Label
 			}
 		}
 		for _, ds := range s.DataStores {
-			if ds.ID == id || (s.ID+"."+ds.ID) == id {
+			dsID := buildQualifiedID(s.ID, ds.ID)
+			if ds.ID == id || dsID == id {
 				return "DataStore", ds.Label
 			}
 		}
 		for _, q := range s.Queues {
-			if q.ID == id || (s.ID+"."+q.ID) == id {
+			qID := buildQualifiedID(s.ID, q.ID)
+			if q.ID == id || qID == id {
 				return "Queue", q.Label
 			}
 		}
@@ -148,7 +192,17 @@ func findElement(arch *language.Architecture, id string) (string, string) {
 					if item.Step.Description != nil {
 						desc = *item.Step.Description
 					}
-					return "Flow Step", fmt.Sprintf("%s -> %s: %s", item.Step.From.String(), item.Step.To.String(), desc)
+					// Build description efficiently
+					var sb strings.Builder
+					sb.Grow(len(item.Step.From.String()) + len(item.Step.To.String()) + len(desc) + 10)
+					sb.WriteString(item.Step.From.String())
+					sb.WriteString(" -> ")
+					sb.WriteString(item.Step.To.String())
+					if desc != "" {
+						sb.WriteString(": ")
+						sb.WriteString(desc)
+					}
+					return "Flow Step", sb.String()
 				}
 			}
 		}
@@ -217,7 +271,8 @@ func findRelationInfo(arch *language.Architecture, from string, to string) (stri
 }
 
 func filterNotEmpty(items []string) []string {
-	var out []string
+	// Pre-allocate with estimated capacity
+	out := make([]string, 0, len(items))
 	for _, s := range items {
 		if strings.TrimSpace(s) != "" {
 			out = append(out, s)

@@ -37,7 +37,7 @@ export default meta
 type Story = StoryObj<typeof Dialog>
 
 export const Playground: Story = {
-  render: () => {
+  render: function PlaygroundComponent() {
     const [open, setOpen] = useState(false)
     return (
       <div style={{ padding: 16 }}>
@@ -61,7 +61,7 @@ export const Playground: Story = {
 }
 
 export const AddElement: Story = {
-  render: () => {
+  render: function AddElementComponent() {
     const [open, setOpen] = useState(false)
     const [name, setName] = useState('')
     return (
@@ -113,7 +113,7 @@ export const AddElement: Story = {
 }
 
 export const Confirmation: Story = {
-  render: () => {
+  render: function ConfirmationComponent() {
     const [open, setOpen] = useState(false)
     return (
       <div style={{ padding: 16 }}>
@@ -138,7 +138,7 @@ export const Confirmation: Story = {
           }
         >
           <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>
-            Are you sure you want to delete "Web Application"? This action cannot be undone and will remove all containers and relations.
+            Are you sure you want to delete &quot;Web Application&quot;? This action cannot be undone and will remove all containers and relations.
           </p>
         </Dialog>
       </div>
@@ -154,7 +154,7 @@ export const Confirmation: Story = {
 }
 
 export const ExportOptions: Story = {
-  render: () => {
+  render: function ExportOptionsComponent() {
     const [open, setOpen] = useState(false)
     const [format, setFormat] = useState<'png' | 'svg' | 'json'>('png')
     return (
@@ -225,7 +225,7 @@ export const ExportOptions: Story = {
 }
 
 export const Showcase: Story = {
-  render: () => {
+  render: function ShowcaseComponent() {
     const [open, setOpen] = useState(false)
     return (
       <div>

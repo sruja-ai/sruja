@@ -42,26 +42,26 @@ The process of switching to a redundant system upon failure. This can be manual 
 You can explicitly model redundant components in Sruja to visualize your high-availability strategy.
 
 ```sruja
-```sruja
-system Payments "Payment System" {
-    container PaymentService "Payment Service" {
-        technology "Java"
-    }
+architecture "Payment Platform" {
+    system Payments "Payment System" {
+        container PaymentService "Payment Service" {
+            technology "Java"
+        }
 
-    // Modeling a primary and standby database
-    container PrimaryDB "Primary Database" {
-        technology "MySQL"
-        tags ["primary"]
-    }
+        // Modeling a primary and standby database
+        container PrimaryDB "Primary Database" {
+            technology "MySQL"
+            tags ["primary"]
+        }
 
-    container StandbyDB "Standby Database" {
-        technology "MySQL"
-        tags ["standby"]
-        description "Replicates from PrimaryDB. Promoted to primary if PrimaryDB fails."
-    }
+        container StandbyDB "Standby Database" {
+            technology "MySQL"
+            tags ["standby"]
+            description "Replicates from PrimaryDB. Promoted to primary if PrimaryDB fails."
+        }
 
-    PaymentService -> PrimaryDB "Reads/Writes"
-    PrimaryDB -> StandbyDB "Replicates data"
+        PaymentService -> PrimaryDB "Reads/Writes"
+        PrimaryDB -> StandbyDB "Replicates data"
+    }
 }
-```
 ```

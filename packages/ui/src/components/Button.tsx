@@ -11,6 +11,10 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: 'sm' | 'md' | 'lg';
   /** Whether the button is in loading state */
   isLoading?: boolean;
+  /** Enable or disable auto tracking */
+  track?: boolean;
+  /** Optional tracking name */
+  trackName?: string;
 }
 
 export function Button({
@@ -18,6 +22,8 @@ export function Button({
   variant = 'primary',
   size = 'md',
   isLoading = false,
+  track = true,
+  trackName,
   disabled,
   className = '',
   ...props
@@ -43,6 +49,9 @@ export function Button({
       type="button"
       disabled={disabled || isLoading}
       className={vx(baseClasses, sizeClasses[size], variantClasses[variant], className)}
+      data-track={track ? 'click' : undefined}
+      data-component="button"
+      data-name={trackName}
       {...props}
     >
       {isLoading && (

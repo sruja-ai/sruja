@@ -36,14 +36,14 @@ export default meta
 type Story = StoryObj<typeof Switch>
 
 export const Playground: Story = {
-  render: () => {
+  render: function PlaygroundComponent() {
     const [checked, setChecked] = useState(false)
     return <Switch checked={checked} onChange={setChecked} label="Enable feature" />
   },
 }
 
 export const Basic: Story = {
-  render: () => {
+  render: function BasicComponent() {
     const [checked, setChecked] = useState(false)
     return <Switch checked={checked} onChange={setChecked} label="Auto-save architecture" />
   },
@@ -57,7 +57,7 @@ export const Basic: Story = {
 }
 
 export const SettingsPanel: Story = {
-  render: () => {
+  render: function SettingsPanelComponent() {
     const [autoSave, setAutoSave] = useState(true)
     const [showGrid, setShowGrid] = useState(false)
     const [darkMode, setDarkMode] = useState(false)
@@ -106,7 +106,7 @@ export const SettingsPanel: Story = {
 }
 
 export const States: Story = {
-  render: () => {
+  render: function StatesComponent() {
     const [checked1, setChecked1] = useState(false)
     const [checked2, setChecked2] = useState(true)
     return (
@@ -128,7 +128,7 @@ export const States: Story = {
 }
 
 export const Showcase: Story = {
-  render: () => {
+  render: function ShowcaseComponent() {
     const [a, setA] = useState(true)
     const [b, setB] = useState(false)
     const [c, setC] = useState(true)

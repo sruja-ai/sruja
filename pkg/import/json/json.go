@@ -29,7 +29,29 @@ type FileOutput struct {
 
 // stringToQualifiedIdent converts a string to a QualifiedIdent
 func stringToQualifiedIdent(s string) language.QualifiedIdent {
-	parts := strings.Split(s, ".")
+	// Count dots to estimate capacity
+	dotCount := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == '.' {
+			dotCount++
+		}
+	}
+	parts := make([]string, 0, dotCount+1)
+	start := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == '.' {
+			if i > start {
+				parts = append(parts, s[start:i])
+			}
+			start = i + 1
+		}
+	}
+	if start < len(s) {
+		parts = append(parts, s[start:])
+	} else if len(parts) == 0 {
+		// Empty string case
+		parts = append(parts, "")
+	}
 	return language.QualifiedIdent{Parts: parts}
 }
 
@@ -68,16 +90,22 @@ func (c *Converter) ToArchitecture(jsonData []byte) (*language.Architecture, err
 		Name: archJSON.Metadata.Name,
 	}
 
-	// Convert imports
-	if len(archJSON.Architecture.Imports) > 0 {
-		for _, impJSON := range archJSON.Architecture.Imports {
-			imp := &language.ImportSpec{
-				Path:  impJSON.Path,
-				Alias: impJSON.Alias,
-			}
-			arch.Items = append(arch.Items, language.ArchitectureItem{Import: imp})
-		}
+	// Import feature removed - no longer converting imports
+
+	// Estimate total items for pre-allocation
+	estimatedItems := len(archJSON.Architecture.Persons) +
+		len(archJSON.Architecture.Systems) +
+		len(archJSON.Architecture.Relations) +
+		len(archJSON.Architecture.Requirements) +
+		len(archJSON.Architecture.ADRs) +
+		len(archJSON.Architecture.Scenarios) +
+		len(archJSON.Architecture.Policies) +
+		len(archJSON.Architecture.Flows) +
+		len(archJSON.Architecture.Deployment)
+	if len(archJSON.Architecture.Contracts) > 0 {
+		estimatedItems++ // ContractsBlock counts as one item
 	}
+	arch.Items = make([]language.ArchitectureItem, 0, estimatedItems)
 
 	// Convert persons
 	if len(archJSON.Architecture.Persons) > 0 {
@@ -147,7 +175,9 @@ func (c *Converter) ToArchitecture(jsonData []byte) (*language.Architecture, err
 	// Convert contracts
 	if len(archJSON.Architecture.Contracts) > 0 {
 		// Contracts are in a block, so we need to create a ContractsBlock
-		contractsBlock := &language.ContractsBlock{}
+		contractsBlock := &language.ContractsBlock{
+			Contracts: make([]*language.Contract, 0, len(archJSON.Architecture.Contracts)),
+		}
 		for _, contractJSON := range archJSON.Architecture.Contracts {
 			contract := convertContractJSONToAST(&contractJSON)
 			contractsBlock.Contracts = append(contractsBlock.Contracts, contract)
@@ -330,7 +360,7 @@ func extractArchitectureOnly(arch *language.Architecture) *language.Architecture
 		item := arch.Items[i]
 		if item.System != nil || item.Person != nil || item.Relation != nil ||
 			item.Container != nil || item.Component != nil || item.DataStore != nil ||
-			item.Queue != nil || item.Import != nil || item.DeploymentNode != nil {
+			item.Queue != nil || item.DeploymentNode != nil {
 			result.Items = append(result.Items, item)
 		}
 	}
@@ -641,11 +671,9 @@ func convertFlowJSONToAST(flowJSON *jsonexport.FlowJSON) *language.Flow {
 	if len(flowJSON.Steps) > 0 {
 		for _, stepJSON := range flowJSON.Steps {
 			// Parse qualified identifiers from strings
-			fromParts := strings.Split(stepJSON.From, ".")
-			toParts := strings.Split(stepJSON.To, ".")
 			step := &language.ScenarioStep{
-				From:        language.QualifiedIdent{Parts: fromParts},
-				To:          language.QualifiedIdent{Parts: toParts},
+				From:        stringToQualifiedIdent(stepJSON.From),
+				To:          stringToQualifiedIdent(stepJSON.To),
 				Description: stepJSON.Description,
 				Tags:        stepJSON.Tags,
 				Order:       intPtrToStringPtr(stepJSON.Order),

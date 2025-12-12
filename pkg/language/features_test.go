@@ -115,16 +115,9 @@ func Test_Feature_ADR(t *testing.T) {
 	}
 }
 
-func Test_Feature_Imports_WithAlias(t *testing.T) {
-	dsl := `architecture "A" { import "billing.sruja" as Billing system S "S" {} }`
-	p, _ := language.NewParser()
-	prog, _, err := p.Parse("a.sruja", dsl)
-	if err != nil {
-		t.Fatalf("parse %v", err)
-	}
-	if prog.Architecture.Imports[0].Alias == nil || *prog.Architecture.Imports[0].Alias != "Billing" {
-		t.Fatalf("alias missing")
-	}
+// Test_Feature_Imports_WithAlias removed - import feature removed
+func Test_Feature_Imports_WithAlias_Removed(t *testing.T) {
+	t.Skip("Import feature removed")
 }
 
 func Test_Printer_Emits_Metadata_For_All_Elements(t *testing.T) {

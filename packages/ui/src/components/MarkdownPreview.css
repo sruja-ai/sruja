@@ -1,0 +1,469 @@
+/* MarkdownPreview.css */
+/* Elegant styling for markdown preview component */
+
+.markdown-preview {
+  line-height: 1.75;
+  font-size: 16px;
+  color: var(--color-text-primary, var(--text-primary, #1a1a1a));
+  font-family: var(--font-family-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography - Headings with refined hierarchy */
+.markdown-preview :global(h1),
+.markdown-preview :global(h2),
+.markdown-preview :global(h3),
+.markdown-preview :global(h4),
+.markdown-preview :global(h5),
+.markdown-preview :global(h6) {
+  margin-top: 2em;
+  margin-bottom: 0.75em;
+  font-weight: 700;
+  color: var(--color-text-primary, var(--text-primary, #1a1a1a));
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.markdown-preview :global(h1) {
+  font-size: 2.5em;
+  margin-top: 0;
+  margin-bottom: 1.25em;
+  padding-bottom: 0.75em;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  border-bottom: 1px solid var(--color-border, var(--border-color, #e2e8f0));
+  background: linear-gradient(to right, var(--color-primary, #7c3aed), transparent);
+  background-size: 4px 100%;
+  background-repeat: no-repeat;
+  background-position: left bottom;
+}
+
+.markdown-preview :global(h2) {
+  font-size: 2em;
+  margin-top: 2.5em;
+  margin-bottom: 1em;
+  padding-bottom: 0.5em;
+  font-weight: 700;
+  border-bottom: 1px solid var(--color-border, var(--border-color, #e2e8f0));
+}
+
+.markdown-preview :global(h3) {
+  font-size: 1.5em;
+  margin-top: 2em;
+  margin-bottom: 0.875em;
+  font-weight: 600;
+  color: var(--color-text-primary, var(--text-primary, #1a1a1a));
+}
+
+.markdown-preview :global(h4) {
+  font-size: 1.25em;
+  margin-top: 1.75em;
+  margin-bottom: 0.75em;
+  font-weight: 600;
+  color: var(--color-text-primary, var(--text-primary, #1a1a1a));
+}
+
+.markdown-preview :global(h5) {
+  font-size: 1.125em;
+  margin-top: 1.5em;
+  margin-bottom: 0.625em;
+  font-weight: 600;
+  color: var(--color-text-secondary, var(--text-secondary, #475569));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.875em;
+}
+
+.markdown-preview :global(h6) {
+  font-size: 1em;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  color: var(--color-text-secondary, var(--text-secondary, #64748b));
+}
+
+/* Paragraphs with refined spacing */
+.markdown-preview :global(p) {
+  margin-bottom: 1.25em;
+  line-height: 1.8;
+  color: var(--color-text-primary, var(--text-primary, #1a1a1a));
+}
+
+.markdown-preview :global(p:first-of-type) {
+  margin-top: 0;
+  font-size: 1.125em;
+  line-height: 1.75;
+  color: var(--color-text-secondary, var(--text-secondary, #475569));
+}
+
+/* Lists with elegant styling */
+.markdown-preview :global(ul),
+.markdown-preview :global(ol) {
+  margin-top: 1em;
+  margin-bottom: 1.5em;
+  padding-left: 2em;
+  line-height: 1.9;
+}
+
+.markdown-preview :global(ul) {
+  list-style: none;
+  padding-left: 1.5em;
+}
+
+.markdown-preview :global(ul li) {
+  position: relative;
+  margin-bottom: 0.5em;
+  padding-left: 1.5em;
+}
+
+.markdown-preview :global(ul li::before) {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--color-primary, #7c3aed);
+  font-weight: 700;
+  font-size: 1.2em;
+  line-height: 1.4;
+}
+
+.markdown-preview :global(ol) {
+  counter-reset: list-counter;
+}
+
+.markdown-preview :global(ol li) {
+  position: relative;
+  margin-bottom: 0.5em;
+  padding-left: 2em;
+  counter-increment: list-counter;
+}
+
+.markdown-preview :global(ol li::before) {
+  content: counter(list-counter) ".";
+  position: absolute;
+  left: 0;
+  color: var(--color-primary, #7c3aed);
+  font-weight: 600;
+  min-width: 1.5em;
+}
+
+.markdown-preview :global(li > p) {
+  margin-bottom: 0.625em;
+}
+
+.markdown-preview :global(li > p:last-child) {
+  margin-bottom: 0;
+}
+
+.markdown-preview :global(li > ul),
+.markdown-preview :global(li > ol) {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+/* Code with elegant styling */
+.markdown-preview :global(code) {
+  background: var(--color-surface, var(--bg-tertiary, #f1f5f9));
+  padding: 0.2em 0.5em;
+  border-radius: 4px;
+  font-family: var(--font-family-mono, 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace);
+  font-size: 0.9em;
+  color: var(--color-primary, #7c3aed);
+  font-weight: 500;
+  border: 1px solid var(--color-border, var(--border-color, #e2e8f0));
+}
+
+.markdown-preview :global(pre) {
+  background: var(--color-surface, var(--bg-tertiary, #f8fafc));
+  padding: 1.5em;
+  border-radius: 12px;
+  overflow-x: auto;
+  margin-top: 1.5em;
+  margin-bottom: 2em;
+  border: 1px solid var(--color-border, var(--border-color, #e2e8f0));
+  line-height: 1.7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+.markdown-preview :global(pre::before) {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-primary, #7c3aed), var(--color-primary-500, #8b5cf6));
+  border-radius: 12px 12px 0 0;
+}
+
+.markdown-preview :global(pre code) {
+  background: transparent;
+  padding: 0;
+  border: none;
+  font-size: 0.875em;
+  color: var(--color-text-primary, var(--text-primary, #1a1a1a));
+  font-weight: 400;
+}
+
+/* Tables with refined design */
+.markdown-preview :global(table) {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 1.5em;
+  margin-bottom: 2em;
+  border: 1px solid var(--color-border, var(--border-color, #e2e8f0));
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.markdown-preview :global(th),
+.markdown-preview :global(td) {
+  padding: 0.875em 1.25em;
+  text-align: left;
+  line-height: 1.6;
+  border-bottom: 1px solid var(--color-border, var(--border-color, #e2e8f0));
+}
+
+.markdown-preview :global(th) {
+  background: linear-gradient(to bottom, var(--color-surface, var(--bg-secondary, #f8fafc)), var(--color-background, #ffffff));
+  font-weight: 600;
+  color: var(--color-text-primary, var(--text-primary, #1a1a1a));
+  font-size: 0.875em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid var(--color-border, var(--border-color, #e2e8f0));
+}
+
+.markdown-preview :global(td) {
+  color: var(--color-text-primary, var(--text-primary, #1a1a1a));
+}
+
+.markdown-preview :global(tr:last-child td) {
+  border-bottom: none;
+}
+
+.markdown-preview :global(tr:nth-child(even)) {
+  background: var(--color-surface, var(--bg-secondary, #f8fafc));
+}
+
+.markdown-preview :global(tr:hover) {
+  background: var(--color-surface, var(--bg-tertiary, #f1f5f9));
+  transition: background-color 0.15s ease;
+}
+
+/* Blockquotes with elegant design */
+.markdown-preview :global(blockquote) {
+  border-left: 3px solid var(--color-primary, #7c3aed);
+  padding: 1.25em 1.75em;
+  margin: 2em 0;
+  background: linear-gradient(to right, var(--color-primary-50, rgba(124, 58, 237, 0.05)), transparent);
+  border-radius: 0 8px 8px 0;
+  color: var(--color-text-primary, var(--text-primary, #1a1a1a));
+  font-style: normal;
+  line-height: 1.75;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.markdown-preview :global(blockquote::before) {
+  content: '\201C';
+  position: absolute;
+  left: 0.5em;
+  top: 0.25em;
+  font-size: 3em;
+  color: var(--color-primary, #7c3aed);
+  opacity: 0.2;
+  font-family: Georgia, serif;
+  line-height: 1;
+}
+
+.markdown-preview :global(blockquote p) {
+  margin-bottom: 0.75em;
+  position: relative;
+  z-index: 1;
+}
+
+.markdown-preview :global(blockquote p:last-child) {
+  margin-bottom: 0;
+}
+
+/* Links with refined hover effects */
+.markdown-preview :global(a) {
+  color: var(--color-primary, #7c3aed);
+  text-decoration: none;
+  border-bottom: 1.5px solid transparent;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.markdown-preview :global(a:hover) {
+  border-bottom-color: var(--color-primary, #7c3aed);
+  color: var(--color-primary-hover, #6d28d9);
+}
+
+/* Horizontal Rules with elegant styling */
+.markdown-preview :global(hr) {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--color-border, var(--border-color, #e2e8f0)), transparent);
+  margin: 3em 0;
+  position: relative;
+}
+
+.markdown-preview :global(hr::after) {
+  content: "◆";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--color-background, #ffffff);
+  padding: 0 1em;
+  color: var(--color-text-tertiary, var(--text-muted, #94a3b8));
+  font-size: 0.75em;
+}
+
+/* Images with elegant borders */
+.markdown-preview :global(img) {
+  max-width: 100%;
+  height: auto;
+  margin: 2em 0;
+  border-radius: 8px;
+  border: 1px solid var(--color-border, var(--border-color, #e2e8f0));
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.markdown-preview :global(img:hover) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
+
+/* Strong and Emphasis */
+.markdown-preview :global(strong) {
+  font-weight: 600;
+  color: var(--color-text-primary, var(--text-primary, #1a1a1a));
+}
+
+.markdown-preview :global(em) {
+  font-style: italic;
+  color: var(--color-text-primary, var(--text-primary, #1a1a1a));
+}
+
+/* Mermaid Diagrams */
+.markdown-preview :global(.mermaid) {
+  margin: 2.5em 0;
+  text-align: center;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Dark theme support */
+[data-theme="dark"] .markdown-preview {
+  color: var(--color-text-primary, var(--text-primary, #f1f5f9));
+}
+
+[data-theme="dark"] .markdown-preview :global(h1),
+[data-theme="dark"] .markdown-preview :global(h2),
+[data-theme="dark"] .markdown-preview :global(h3),
+[data-theme="dark"] .markdown-preview :global(h4),
+[data-theme="dark"] .markdown-preview :global(h5),
+[data-theme="dark"] .markdown-preview :global(h6) {
+  color: var(--color-text-primary, var(--text-primary, #f1f5f9));
+  border-color: var(--color-border, var(--border-color, #334155));
+}
+
+[data-theme="dark"] .markdown-preview :global(h1) {
+  background: linear-gradient(to right, var(--color-primary, #a78bfa), transparent);
+}
+
+[data-theme="dark"] .markdown-preview :global(p) {
+  color: var(--color-text-primary, var(--text-primary, #f1f5f9));
+}
+
+[data-theme="dark"] .markdown-preview :global(p:first-of-type) {
+  color: var(--color-text-secondary, var(--text-secondary, #cbd5e1));
+}
+
+[data-theme="dark"] .markdown-preview :global(ul li::before),
+[data-theme="dark"] .markdown-preview :global(ol li::before) {
+  color: var(--color-primary, #a78bfa);
+}
+
+[data-theme="dark"] .markdown-preview :global(code) {
+  background: var(--color-surface, var(--bg-tertiary, #1e293b));
+  border-color: var(--color-border, var(--border-color, #334155));
+  color: var(--color-primary, #a78bfa);
+}
+
+[data-theme="dark"] .markdown-preview :global(pre) {
+  background: var(--color-surface, var(--bg-tertiary, #1e293b));
+  border-color: var(--color-border, var(--border-color, #334155));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .markdown-preview :global(pre::before) {
+  background: linear-gradient(90deg, var(--color-primary, #a78bfa), var(--color-primary-500, #c4b5fd));
+}
+
+[data-theme="dark"] .markdown-preview :global(pre code) {
+  color: var(--color-text-primary, var(--text-primary, #f1f5f9));
+}
+
+[data-theme="dark"] .markdown-preview :global(table) {
+  border-color: var(--color-border, var(--border-color, #334155));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .markdown-preview :global(th),
+[data-theme="dark"] .markdown-preview :global(td) {
+  border-color: var(--color-border, var(--border-color, #334155));
+}
+
+[data-theme="dark"] .markdown-preview :global(th) {
+  background: linear-gradient(to bottom, var(--color-surface, var(--bg-secondary, #1e293b)), var(--color-background, #0f172a));
+}
+
+[data-theme="dark"] .markdown-preview :global(tr:nth-child(even)) {
+  background: var(--color-surface, var(--bg-secondary, #1e293b));
+}
+
+[data-theme="dark"] .markdown-preview :global(tr:hover) {
+  background: var(--color-surface, var(--bg-tertiary, #334155));
+}
+
+[data-theme="dark"] .markdown-preview :global(blockquote) {
+  background: linear-gradient(to right, rgba(167, 139, 250, 0.1), transparent);
+  border-left-color: var(--color-primary, #a78bfa);
+  color: var(--color-text-primary, var(--text-primary, #f1f5f9));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .markdown-preview :global(blockquote::before) {
+  color: var(--color-primary, #a78bfa);
+}
+
+[data-theme="dark"] .markdown-preview :global(hr) {
+  background: linear-gradient(to right, transparent, var(--color-border, var(--border-color, #334155)), transparent);
+}
+
+[data-theme="dark"] .markdown-preview :global(hr::after) {
+  background: var(--color-background, #0f172a);
+  color: var(--color-text-tertiary, var(--text-muted, #64748b));
+}
+
+[data-theme="dark"] .markdown-preview :global(img) {
+  border-color: var(--color-border, var(--border-color, #334155));
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .markdown-preview :global(a) {
+  color: var(--color-primary, #a78bfa);
+}
+
+[data-theme="dark"] .markdown-preview :global(a:hover) {
+  border-bottom-color: var(--color-primary, #a78bfa);
+  color: var(--color-primary-hover, #c4b5fd);
+}

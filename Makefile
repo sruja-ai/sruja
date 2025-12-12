@@ -1,21 +1,22 @@
-.PHONY: build build-embed-viewer test test-coverage test-coverage-html test-coverage-check clean install lint fmt wasm setup-hooks generate-svgs generate-svgs-all generate-svgs-examples generate-svgs-containers generate-svgs-complete clean-svgs generate-markdown-all generate-markdown-examples clean-markdown security-scan lint-security check-unused help
+.PHONY: build build-embed-viewer test test-coverage test-coverage-html test-coverage-check clean install lint fmt wasm wasm-tiny wasm-select setup-hooks generate-svgs generate-svgs-all generate-svgs-examples generate-svgs-containers generate-svgs-complete clean-svgs security-scan lint-security check-unused help help-svgs
 
 GOLANGCI_LINT_VERSION = v1.62.2
 GOLANGCI = $(shell go env GOPATH)/bin/golangci-lint
 
 # Build CLI
-build: build-html-viewer
+build:
 	@echo "Building CLI..."
 	@mkdir -p bin
 	@go build -o bin/sruja ./cmd/sruja
 
-# Build CLI only (no viewer dependencies - for V2 exports which are self-contained)
+# Build CLI only (alias for build)
 build-cli-only:
 	@echo "Building CLI..."
 	@mkdir -p bin
 	@go build -o bin/sruja ./cmd/sruja
 
-# Build embed-viewer IIFE bundle for HTML export (used by --mode v2 and --mode single)
+# Build embed-viewer IIFE bundle for HTML export (if HTML export is re-enabled)
+# Note: HTML export is currently removed from CLI, but code exists in pkg/export/html
 # Only rebuilds if source files have changed
 EMBED_VIEWER_OUT := pkg/export/html/embed/embed-viewer.js
 VIEWER_SOURCES := $(shell find packages/viewer/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
@@ -32,20 +33,16 @@ $(EMBED_VIEWER_OUT): $(VIEWER_SOURCES) $(EMBED_SOURCES)
 	@cp apps/viewer-core/dist/embed-viewer.css pkg/export/html/embed/embed-viewer.css 2>/dev/null || echo "Warning: embed-viewer.css not found"
 	@echo "✅ Embed viewer bundle built"
 
-# Force rebuild of embed-viewer (ignores timestamps)
+# Force rebuild of embed-viewer (ignores timestamps) - calls build-embed-viewer after removing dependency
 build-embed-viewer-force:
 	@echo "Force rebuilding embed-viewer IIFE bundle..."
-	@cd packages/viewer && npm run build
-	@cd apps/viewer-core && npm run build:embed
-	@mkdir -p pkg/export/html/embed
-	@cp apps/viewer-core/dist/embed-viewer.iife.js pkg/export/html/embed/embed-viewer.js 2>/dev/null || echo "Warning: embed-viewer.iife.js not found"
-	@cp apps/viewer-core/dist/embed-viewer.css pkg/export/html/embed/embed-viewer.css 2>/dev/null || echo "Warning: embed-viewer.css not found"
-	@echo "✅ Embed viewer bundle rebuilt"
+	@rm -f $(EMBED_VIEWER_OUT)
+	@$(MAKE) build-embed-viewer
 
 # Run tests
 test:
 	@echo "Running Go tests..."
-	@go test ./pkg/... ./cmd/...
+	@go test ./...
 
 # Run tests with coverage
 test-coverage:
@@ -70,41 +67,50 @@ install:
 	@echo "Installing Go dependencies..."
 	@go mod download
 
-# Build WASM
+# Build WASM (full version with parsing, validation, LSP features, and compression)
 wasm:
-	@echo "Building WASM..."
+	@echo "Building WASM (full version with compression)..."
 	@mkdir -p apps/website/public/wasm
 	@GOOS=js GOARCH=wasm go build -ldflags="-s -w" -trimpath -o apps/website/public/wasm/sruja.wasm ./cmd/wasm
 	@cp $$(go env GOROOT)/lib/wasm/wasm_exec.js apps/website/public/wasm/
 	@if command -v wasm-opt >/dev/null 2>&1; then \
-		echo "Optimizing WASM with wasm-opt..."; \
-		wasm-opt -Oz apps/website/public/wasm/sruja.wasm -o apps/website/public/wasm/sruja.wasm; \
+		echo "Optimizing WASM with wasm-opt (bulk-memory enabled)..."; \
+		wasm-opt --enable-bulk-memory -Oz apps/website/public/wasm/sruja.wasm -o apps/website/public/wasm/sruja.wasm; \
+	fi
+	@echo "Creating compressed versions (gzip and brotli)..."
+	@gzip -k -f apps/website/public/wasm/sruja.wasm 2>/dev/null || true
+	@if command -v brotli >/dev/null 2>&1; then \
+		brotli -k -f apps/website/public/wasm/sruja.wasm 2>/dev/null || true; \
 	fi
 	@SIZE=$$(ls -lh apps/website/public/wasm/sruja.wasm | awk '{print $$5}'); \
 	echo "WASM built successfully: apps/website/public/wasm/sruja.wasm ($$SIZE)"; \
 	echo ""; \
-	echo "Note: Enable compression on your web server for better performance."
+	ORIG_SIZE=$$(stat -f%z apps/website/public/wasm/sruja.wasm 2>/dev/null || stat -c%s apps/website/public/wasm/sruja.wasm 2>/dev/null); \
+	if [ -f apps/website/public/wasm/sruja.wasm.gz ]; then \
+		GZ_SIZE=$$(stat -f%z apps/website/public/wasm/sruja.wasm.gz 2>/dev/null || stat -c%s apps/website/public/wasm/sruja.wasm.gz 2>/dev/null); \
+		GZ_RATIO=$$(echo "scale=1; (1 - $$GZ_SIZE / $$ORIG_SIZE) * 100" | bc 2>/dev/null || echo "N/A"); \
+		echo "Compression ratios:"; \
+		echo "  gzip: $$GZ_RATIO% reduction"; \
+	fi; \
+	if [ -f apps/website/public/wasm/sruja.wasm.br ]; then \
+		BR_SIZE=$$(stat -f%z apps/website/public/wasm/sruja.wasm.br 2>/dev/null || stat -c%s apps/website/public/wasm/sruja.wasm.br 2>/dev/null); \
+		BR_RATIO=$$(echo "scale=1; (1 - $$BR_SIZE / $$ORIG_SIZE) * 100" | bc 2>/dev/null || echo "N/A"); \
+		if [ -z "$$GZ_RATIO" ]; then echo "Compression ratios:"; fi; \
+		echo "  brotli: $$BR_RATIO% reduction"; \
+	fi; \
+	echo ""; \
+	echo "Files created:"; \
+	ls -lh apps/website/public/wasm/sruja.wasm* 2>/dev/null | awk '{print "  " $$9 " (" $$5 ")"}'
+
 
 # Generate playground examples from .sruja files
 generate-examples:
 	@echo "Generating playground examples..."
 	@go run scripts/generate-playground-examples.go
 
-# Build WASM for website (includes compression)
-build-wasm-compressed: generate-examples wasm
-	@echo "Creating compressed versions..."
-	@gzip -k -f apps/website/public/wasm/sruja.wasm 2>/dev/null || true
-	@if command -v brotli >/dev/null 2>&1; then \
-		brotli -k -f apps/website/public/wasm/sruja.wasm 2>/dev/null || true; \
-	fi
-	@echo "WASM ready for website"
-	@echo ""
-	@echo "Files created:"
-	@ls -lh apps/website/public/wasm/sruja.wasm* 2>/dev/null | awk '{print "  " $$9 " (" $$5 ")"}'
-	@echo ""
-	@echo "Optimization tips:"
-	@echo "  - Configure web server to serve .wasm.gz with Content-Encoding: gzip"
-	@echo "  - Consider lazy-loading WASM only when playground is used"
+# Build WASM for website (compression included by default in wasm target)
+build-wasm-compressed: wasm
+	@echo "WASM ready for website (compression already included)"
 
 # Run linter
 lint: $(GOLANGCI)
@@ -258,105 +264,6 @@ generate-svgs-containers: build
 	@echo ""
 	@echo "✅ Container view SVG generation complete!"
 
-# Generate Markdown for all examples
-generate-markdown-all: build
-	@echo "Generating Markdown for all examples..."
-	@mkdir -p examples-markdown
-	@for file in examples/*.sruja; do \
-		if [ -f "$$file" ]; then \
-			name=$$(basename "$$file" .sruja); \
-			echo "  [$$name] Markdown"; \
-			./bin/sruja export markdown "$$file" > "examples-markdown/$${name}.md" 2>/dev/null || echo "    ⚠️  Markdown failed"; \
-		fi; \
-		done
-	@echo ""
-	@echo "✅ Markdown generation complete!"
-	@echo "   Output directory: examples-markdown/"
-
-# Generate Markdown for examples (alias)
-generate-markdown-examples: generate-markdown-all
-
-# Build HTML viewer components (TypeScript to JS)
-build-html-viewer:
-	@echo "Building HTML viewer components..."
-	@cd packages/html-viewer && npm install && npm run build
-	@echo "✅ HTML viewer components built"
-
-# Generate HTML for all examples (SVG-based, lightweight)
-generate-html-all: build build-html-viewer
-	@echo "Generating HTML exports for all examples..."
-	@mkdir -p examples-html
-	@for file in examples/*.sruja; do \
-		if [ -f "$$file" ]; then \
-			name=$$(basename "$$file" .sruja); \
-			echo "  [$$name] HTML"; \
-			./bin/sruja export html "$$file" -o "examples-html/$${name}.html" 2>/dev/null || echo "    ⚠️  HTML failed"; \
-		fi; \
-	done
-	@echo ""
-	@echo "✅ HTML generation complete!"
-	@echo "   Output directory: examples-html/"
-	@echo "   Generated $$(ls -1 examples-html/*.html 2>/dev/null | wc -l | tr -d ' ') HTML files"
-	@echo ""
-	@echo "To test locally, open any file in examples-html/ in your browser"
-
-# Generate HTML V2 for all examples (Cytoscape.js viewer - self-contained, no viewer dependencies)
-generate-html-v2-all: build-cli-only
-	@echo "Generating HTML V2 exports for all examples..."
-	@mkdir -p examples-html-v2
-	@for file in examples/*.sruja; do \
-		if [ -f "$$file" ]; then \
-			name=$$(basename "$$file" .sruja); \
-			echo "  [$$name] HTML V2"; \
-			./bin/sruja export html "$$file" --mode v2 -o "examples-html-v2/$${name}.html" 2>/dev/null || echo "    ⚠️  HTML V2 failed"; \
-		fi; \
-	done
-	@echo ""
-	@echo "✅ HTML V2 generation complete!"
-	@echo "   Output directory: examples-html-v2/"
-	@echo "   Generated $$(ls -1 examples-html-v2/*.html 2>/dev/null | wc -l | tr -d ' ') HTML files"
-	@echo ""
-	@echo "To test locally, open any file in examples-html-v2/ in your browser"
-
-# Quick HTML V2 generation (alias for generate-html-v2-all, kept for compatibility)
-generate-html-v2-quick: build-cli-only
-	@echo "Generating HTML V2 exports..."
-	@mkdir -p examples-html-v2
-	@for file in examples/*.sruja; do \
-		if [ -f "$$file" ]; then \
-			name=$$(basename "$$file" .sruja); \
-			echo "  [$$name] HTML V2"; \
-			./bin/sruja export html "$$file" --mode v2 -o "examples-html-v2/$${name}.html" 2>/dev/null || echo "    ⚠️  HTML V2 failed"; \
-		fi; \
-	done
-	@echo ""
-	@echo "✅ HTML V2 generation complete!"
-
-# Generate HTML for a single example (for quick testing)
-generate-html: build
-	@if [ -z "$(FILE)" ]; then \
-		echo "Usage: make generate-html FILE=examples/simple.sruja"; \
-		exit 1; \
-	fi
-	@mkdir -p test-outputs
-	@name=$$(basename "$(FILE)" .sruja); \
-	echo "Generating HTML for $$name..."; \
-	./bin/sruja export html "$(FILE)" -o "test-outputs/$$name.html" 2>&1; \
-	if [ $$? -eq 0 ]; then \
-		echo "✅ HTML generated: test-outputs/$$name.html"; \
-		echo "   File size: $$(ls -lh test-outputs/$$name.html | awk '{print $$5}')"; \
-		echo "   Open in browser: open test-outputs/$$name.html"; \
-	else \
-		echo "❌ HTML generation failed"; \
-		exit 1; \
-	fi
-
-# Clean generated Markdown files
-clean-markdown:
-	@echo "Cleaning generated Markdown files..."
-	@rm -rf examples-markdown
-	@echo "✅ Cleaned Markdown files"
-
 # Clean generated SVG files
 clean-svgs:
 	@echo "Cleaning generated SVG files..."
@@ -407,38 +314,9 @@ help:
 	@echo "  make help-svgs          - Show SVG generation commands"
 	@echo "  make generate-svgs-all  - Generate SVGs for all examples"
 	@echo ""
-	@echo "WASM:"
-	@echo "  make wasm               - Build WASM"
-	@echo "  make build-wasm-compressed - Build WASM with compression"
+	@echo "WASM (all targets include compression by default):"
+	@echo "  make wasm                    - Build WASM (full version with compression)"
+	@echo ""
+	@echo "Note: All WASM targets include gzip and brotli compression by default."
 	@echo ""
 	@echo "For more SVG commands, run: make help-svgs"
-
-	@echo "Generating PNGs for all examples (flat output: C4 L1/L2/L3, All, Deployment)..."
-	@mkdir -p examples-png
-	@for file in examples/*.sruja; do \
-		if [ -f "$$file" ]; then \
-			name=$$(basename "$$file" .sruja); \
-			echo "  [$$name] C4:L1"; \
-			./bin/sruja export -view=c4:l1 -img-max-width=1600 -out=examples-png png "$$file" >/dev/null 2>&1 || echo "    ⚠️  L1 failed"; \
-			echo "  [$$name] All"; \
-			./bin/sruja export -view=all -img-max-width=1600 -out=examples-png png "$$file" >/dev/null 2>&1 || echo "    ⚠️  All failed"; \
-			sys_ids=$$(awk '/^[[:space:]]*system[[:space:]]+/ {print $$2}' "$$file" | tr -d '"'); \
-			for sys in $$sys_ids; do \
-				echo "    [$$name] C4:L2 $$sys"; \
-				./bin/sruja export -view=c4:l2:$$sys -img-max-width=1600 -out=examples-png png "$$file" >/dev/null 2>&1 || echo "      ⚠️  L2 failed: $$sys"; \
-				cont_ids=$$(awk '/^[[:space:]]*container[[:space:]]+/ {print $$2}' "$$file" | tr -d '"'); \
-				for cont in $$cont_ids; do \
-					./bin/sruja export -view=c4:l3:$$sys/$$cont -img-max-width=1600 -out=examples-png png "$$file" >/dev/null 2>&1 || true; \
-				done; \
-			done; \
-			dep_ids=$$(awk '/^[[:space:]]*(deployment|deploymentNode)[[:space:]]+/ {print $$2}' "$$file" | tr -d '"'); \
-			for dep in $$dep_ids; do \
-				echo "    [$$name] Deployment $$dep"; \
-				./bin/sruja export -view=deployment:$$dep -img-max-width=1600 -out=examples-png png "$$file" >/dev/null 2>&1 || echo "      ⚠️  Deployment failed: $$dep"; \
-			done; \
-		fi; \
-		done
-	@echo ""
-	@echo "✅ PNG generation complete!"
-	@echo "   Output directory: examples-png/"
-	@echo "   Generated $$(ls -1 examples-png/*.png 2>/dev/null | wc -l | tr -d ' ') PNG files"

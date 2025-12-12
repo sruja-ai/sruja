@@ -16,16 +16,21 @@ func (r *LayerViolationRule) Name() string {
 }
 
 func (r *LayerViolationRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	var diags []diagnostics.Diagnostic
-
 	if program == nil || program.Architecture == nil {
-		return diags
+		return nil
 	}
+
+	// Pre-allocate diagnostics slice
+	estimatedDiags := len(program.Architecture.Relations) / 10
+	if estimatedDiags < 8 {
+		estimatedDiags = 8
+	}
+	diags := make([]diagnostics.Diagnostic, 0, estimatedDiags)
 
 	// Define layers (ordered from top to bottom)
 	// In a real implementation, this should be configurable
 	layers := []string{"web", "api", "service", "data", "database"}
-	layerMap := make(map[string]int)
+	layerMap := make(map[string]int, len(layers))
 	for i, l := range layers {
 		layerMap[l] = i
 	}
@@ -81,10 +86,30 @@ func (r *LayerViolationRule) Validate(program *language.Program) []diagnostics.D
 			// Data (3) -> Web (0) : VIOLATION (3 > 0)
 
 			if fromIdx > toIdx {
+				// Build enhanced error message with suggestions
+				var msgSb strings.Builder
+				fromID := rel.From.String()
+				toID := rel.To.String()
+				msgSb.Grow(len(fromID) + len(toID) + len(fromLayer) + len(toLayer) + 120)
+				msgSb.WriteString("Layer violation: '")
+				msgSb.WriteString(fromID)
+				msgSb.WriteString("' (")
+				msgSb.WriteString(fromLayer)
+				msgSb.WriteString(") cannot depend on '")
+				msgSb.WriteString(toID)
+				msgSb.WriteString("' (")
+				msgSb.WriteString(toLayer)
+				msgSb.WriteString("). Dependencies must flow downwards (higher layers can only depend on lower layers).")
+
+				var suggestions []string
+				suggestions = append(suggestions, fmt.Sprintf("Reverse the dependency: '%s -> %s'", toID, fromID))
+				suggestions = append(suggestions, "Or restructure to follow proper layering (e.g., Web -> API -> Data)")
+				suggestions = append(suggestions, "If this is intentional, consider documenting the exception")
+
 				diags = append(diags, diagnostics.Diagnostic{
 					Code:     diagnostics.CodeLayerViolation,
 					Severity: diagnostics.SeverityError,
-					Message:  fmt.Sprintf("Layer violation: '%s' (%s) cannot depend on '%s' (%s). Dependencies must flow downwards.", rel.From.String(), fromLayer, rel.To.String(), toLayer),
+					Message:  msgSb.String(),
 					Location: diagnostics.SourceLocation{
 						File:   rel.Location().File,
 						Line:   rel.Location().Line,
@@ -93,11 +118,7 @@ func (r *LayerViolationRule) Validate(program *language.Program) []diagnostics.D
 					Context: []string{
 						fmt.Sprintf("%s -> %s", rel.From.String(), rel.To.String()),
 					},
-					Suggestions: []string{
-						"Reverse the dependency direction",
-						"Introduce an interface or event bus to invert the dependency",
-						"Move the functionality to a lower layer",
-					},
+					Suggestions: suggestions,
 				})
 			}
 		}

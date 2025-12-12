@@ -29,7 +29,9 @@ func (s *Server) SemanticTokensFull(_ context.Context, docID lsp.TextDocumentIde
 	if doc == nil {
 		return SemanticTokens{}, nil
 	}
-	var data []uint32
+	// Estimate capacity: assume ~10 tokens per line on average
+	estimatedTokens := len(doc.lines) * 10
+	data := make([]uint32, 0, estimatedTokens)
 	// Token type indices according to legend
 	ti := map[string]uint32{
 		"keyword": 0, "class": 1, "module": 2, "function": 3, "struct": 4, "enum": 5, "variable": 6, "operator": 7, "string": 8,

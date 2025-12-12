@@ -210,7 +210,7 @@ This step-by-step guide will walk you through:
 
 ### Ask questions
 
-- 💬 **Discord**: https://discord.gg/QMCsquJq
+- 💬 **Discord**: https://discord.gg/VNrvHPV5
 - 💬 **GitHub Discussions**: Ask questions and share ideas
 - 📝 **GitHub Issues**: Report bugs or request features
 - 💬 **PR Comments**: Ask for help on your pull request
@@ -225,7 +225,7 @@ This step-by-step guide will walk you through:
 ## Get in Touch
 
 - GitHub Discussions
-- Discord: https://discord.gg/QMCsquJq
+- Discord: https://discord.gg/VNrvHPV5
 
 ## Contributing Content
 

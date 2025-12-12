@@ -1,53 +1,65 @@
 ---
-title: "Content Style Guide"
-weight: 1
-summary: "Standards for writing Sruja DSL examples in docs, tutorials, and courses."
+title: "Documentation Style Guide"
+weight: 100
+summary: "Standards for tutorials, how‑tos, reference, and explanation."
+tags: ["docs", "style", "quality"]
 ---
 
-# Content Style Guide
+# Documentation Style Guide
 
-Use these conventions for all Sruja examples to keep content consistent and compilable.
+## Goals
+- Align with the Diátaxis framework: Tutorials, How‑to Guides, Reference, Explanation
+- Improve clarity, consistency, and task‑orientation
+- Raise quality to industry standards (Stripe, React, Kubernetes, MDN)
 
-## Core Rules
+## Front Matter
+- Required: `title`, `summary`
+- Recommended: `prerequisites`, `learning_objectives`, `estimated_time`, `difficulty`, `tags`, `last_updated`
 
-- Prefer `architecture`, `system`, `container`, `component`, `datastore`, `person`, and `scenario`.
-- Do not use deprecated keywords: `module`, `context`, `boundedContext`, `data`, `api`, `policy`, `flow`, or bare `external`.
-- Use fully qualified names when referring to nested elements outside local scope (e.g., `System.Container`, `System.Container.Component`).
-- Place `tags [...]` inside element blocks (e.g., in a `container`), not at the system root.
-- Use `metadata { key "value" }` syntax (no colon).
-- Mark external boundaries with `tags ["external"]` inside the element.
-- Keep scenario step labels short and action‑oriented.
+## Headings
+- Use Title Case for H1/H2/H3
+- Keep headings unique; avoid duplicates within a page
 
-## Example Template
+## Code Blocks
+- Always specify language fences: `bash`, `sh`, `json`, `yaml`, `go`, `ts`, `tsx`, `md`, `sruja`
+- Prefer copy‑ready commands; avoid interactive prompts where possible
 
-```sruja
-architecture "Sample" {
-  person User
-  system App {
-    container WebApp
-    container API
-    datastore DB
-  }
+## Admonitions
+- Use standard callouts: Note, Tip, Warning
+- Keep callouts short and action‑oriented
 
-  // Valid relations
-  User -> App.WebApp "Uses"
-  App.WebApp -> App.API "Calls"
-  App.API -> App.DB "Reads/Writes"
+## Links
+- Prefer descriptive link text (not raw URLs)
+- Cross‑link to Reference and Examples when teaching a concept or task
 
-  // Scenario
-  scenario Checkout "User Checkout" {
-    User -> App.WebApp "adds items"
-    App.WebApp -> App.API "submits"
-    App.API -> App.DB "reserves"
-    App.API -> App.WebApp "confirms"
-    App.WebApp -> User "shows result"
-  }
-}
-```
+## Images & Diagrams
+- Include small screenshots or diagram previews for expected outcomes
+- Use alt text that describes the intent and context
 
-## Linking
+## Tutorials
+- Structure: Overview → Prerequisites → Steps → Outcome → Troubleshooting → Next Steps
+- Include at least one end‑to‑end task with an expected output
 
-When introducing a concept, link to related pages:
-- Scenario → Layering, Validation
-- Relations → Scenario, Validation
-- Metadata & Tags → Validation
+## How‑to Guides
+- Task‑oriented and concise
+- Structure: Purpose → Steps → Validation → References
+
+## Reference
+- Precise, complete, and skimmable tables/lists
+- Avoid narrative; link outward to tutorials for workflows
+
+## Explanation
+- Conceptual background, rationale, trade‑offs
+- Link to reference for details and to tutorials for practice
+
+## Quality Gates
+- Markdown lint for headings, lists, links
+- Link checking for external and internal links
+- Optional accessibility lint (alt text, heading levels)
+
+## Review Checklist
+- Front matter present and complete
+- Headings consistent and unique
+- Code fences have language tags
+- Cross‑links added to relevant Reference/Examples
+- Outcome preview or screenshot included where appropriate

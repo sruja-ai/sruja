@@ -1,6 +1,6 @@
 ---
 title: "Metadata & Tags"
-weight: 11
+weight: 41
 summary: "Attach additional information to your elements using Metadata and Tags."
 ---
 

@@ -1,32 +1,45 @@
 architecture "Sruja Architecture Tooling" {
+  overview {
+    summary "A comprehensive architecture-as-code toolkit for documenting, validating, and visualizing software architectures"
+    audience "Software architects, engineering teams, technical leads, and documentation maintainers"
+    scope "Covers the CLI compiler, VS Code extension, and web-based Studio visualizer"
+    goals ["Enable architecture documentation close to code", "Provide automated validation and linting", "Generate interactive visualizations", "Support multiple export formats (JSON, HTML, Markdown, Mermaid)"]
+    nonGoals ["Runtime architecture monitoring", "Deployment automation", "Real-time collaboration"]
+    risks ["Large graph layout performance in browser WASM", "Parser complexity for advanced DSL features"]
+  }
+
+  description "Toolkit for defining software architectures as code with validation and visualization"
+
+  metadata {
+    team "Sruja Core Team"
+    status "Active"
+    version "0.5.0"
+    scale "Local execution + Web (Client-side)"
+    availability "CLI 100% (Offline), Studio 99.9% (Static Hosting)"
+    cost "Low (Static hosting + Open Source)"
+  }
+
   system CLI "Sruja CLI" "Command line interface for processing .sruja files" {
-    metadata {
-      language "Go 1.22"
-      distribution "Homebrew, Binary, Docker"
+    properties {
+      "language" "Go 1.22"
+      "distribution" "Homebrew, Binary, Docker"
     }
     container Compiler "Compiler" "Parses and validates DSL files" {
       technology "Go / Participle"
-      component Lexer "Lexer" "Tokenizes input" {
-      }
-      component Parser "Parser" "Builds AST" {
-      }
-      component Validator "Validator" "Runs semantic checks and rules" {
-      }
-      component Exporter "Exporter" "Generates JSON, Markdown, Mermaid" {
-      }
+      component Lexer "Lexer" "Tokenizes input"
+      component Parser "Parser" "Builds AST"
+      component Validator "Validator" "Runs semantic checks and rules"
+      component Exporter "Exporter" "Generates JSON, Markdown, Mermaid"
     }
     container LSP "Language Server" "LSP implementation for IDE support" {
       technology "Go / Sourcegraph JSON-RPC"
     }
-    metadata {
-      language "Go 1.22"
-      distribution "Homebrew, Binary, Docker"
-    }
   }
+
   system Studio "Sruja Studio" "Web-based visualizer and editor" {
-    metadata {
-      hosting "Vercel / AWS Amplify"
-      capacity "Client-side rendering (Scales with users)"
+    properties {
+      "hosting" "Vercel / AWS Amplify"
+      "capacity" "Client-side rendering (Scales with users)"
     }
     container Editor "Monaco Editor" "Code editor with syntax highlighting" {
       technology "Monaco"
@@ -34,37 +47,48 @@ architecture "Sruja Architecture Tooling" {
     container Visualizer "Graph Visualizer" "Interactive architecture diagrams" {
       technology "React Flow / Cytoscape"
     }
-    metadata {
-      hosting "Vercel / AWS Amplify"
-      capacity "Client-side rendering (Scales with users)"
-    }
   }
+
   system VSCode "VS Code Extension" "Editor extension for Sruja DSL" {
-    metadata {
-      marketplace "Visual Studio Marketplace"
-    }
-    metadata {
+    properties {
       marketplace "Visual Studio Marketplace"
     }
   }
+
   person Developer "Developer"
   person Architect "Software Architect"
-  Developer -> CLI "Compiles & Lints"
+
+  Developer -> CLI "Compiles and Lints"
   Developer -> VSCode "Writes code"
-  Architect -> Studio "Visualizes & Reviews"
+  Architect -> Studio "Visualizes and Reviews"
   VSCode -> CLI.LSP "Communicates via RPC"
   Studio -> CLI.Compiler "Compiles DSL (WASM)"
-  metadata {
-    team "Sruja Core Team"
-    status "Active"
-    version "0.5.0"
-    scale "Local execution + Web (Client-side)"
-    availability "CLI: 100% (Offline), Studio: 99.9% (Static Hosting)"
-    cost "Low (Static hosting + Open Source)"
-    architecture "Client-heavy, Serverless, Offline-first"
-    dataRetention "No user data stored centrally. All data stays local or in git."
-    privacy "No tracking enabled by default."
-    projectedGrowth "Adoption growing in enterprise sector"
-    bottlenecks "Large graph layout performance in browser (WASM)"
+
+  requirement REQ001 functional "DSL must support C4 model elements (System, Container, Component)"
+  requirement REQ002 functional "CLI must export to JSON, Markdown, HTML, and Mermaid formats"
+  requirement REQ003 performance "Parser must handle files up to 10,000 lines"
+  requirement REQ004 constraint "CLI must be a single binary with no runtime dependencies"
+
+  adr ADR001 "Use Participle for DSL Parsing" {
+    status "Accepted"
+    context "Need a parser generator that works well with Go and produces readable code"
+    decision "Use Participle - a Go-native parser combinator library"
+    consequences "Gain: No external build tools needed, type-safe AST. Trade-off: Less flexibility than ANTLR"
+  }
+
+  adr ADR002 "Client-Side Rendering for Studio" {
+    status "Accepted"
+    context "Studio needs to run without a backend server for cost and simplicity"
+    decision "Compile Go compiler to WASM and run entirely client-side"
+    consequences "Gain: Zero backend costs, works offline. Trade-off: Larger bundle size, WASM compatibility issues"
+  }
+
+  policy OpenSourcePolicy "All components must use OSI-approved licenses" category "compliance" enforcement "required"
+
+  flow DeveloperWorkflow "Developer Workflow" {
+    Developer -> VSCode "Writes .sruja file"
+    VSCode -> CLI.LSP "Validates in real-time"
+    Developer -> CLI "Runs export command"
+    CLI.Compiler -> Architect "Generates documentation"
   }
 }

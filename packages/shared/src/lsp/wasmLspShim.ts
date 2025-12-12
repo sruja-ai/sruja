@@ -3,6 +3,7 @@
 // This provides LSP features without a real LSP server by using WASM directly
 
 import type * as monaco from 'monaco-editor'
+import { propertyKeys, isInsideBlock } from '../registry/propertyKeys'
 
 export interface WasmLspApi {
   getDiagnostics: (text: string) => Promise<Diagnostic[]>
@@ -231,6 +232,17 @@ export function initializeMonacoWasmLsp(
         insertText: c.label,
         range: range,
       }))
+
+      // Augment with property keys when cursor is within properties block
+      if (isInsideBlock(text, position.lineNumber - 1, 'properties')) {
+        const propItems = propertyKeys.map(k => ({
+          label: k,
+          kind: monaco.languages.CompletionItemKind.Property,
+          insertText: k,
+          range,
+        }))
+        items.push(...propItems)
+      }
       
       return {
         suggestions: items,

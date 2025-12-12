@@ -25,10 +25,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Pre-build checks
+      - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version: '1.25.4'
+
+      - name: Pre-build checks
         run: |
           go build -v ./...
           go test -v ./pkg/... ./cmd/...
@@ -37,11 +39,6 @@ jobs:
         run: |
           git tag -a "${{ inputs.patchVersion }}" -m "Hotfix ${{ inputs.patchVersion }}"
           git push origin "${{ inputs.patchVersion }}"
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.25.4'
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
@@ -95,13 +92,10 @@ jobs:
         env:
           NODE_ENV: production
           SITE_URL: https://sruja.ai
-          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
-          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
-          VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
-          ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
-          ALGOLIA_SEARCH_API_KEY: ${{ secrets.ALGOLIA_SEARCH_API_KEY }}
-          ALGOLIA_INDEX_NAME: sruja_docs
+          PUBLIC_POSTHOG_API_KEY: ${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+          PUBLIC_POSTHOG_HOST: ${{ secrets.PUBLIC_POSTHOG_HOST }}
+          PUBLIC_ALGOLIA_SEARCH_API_KEY: ${{ secrets.PUBLIC_ALGOLIA_SEARCH_API_KEY }}
+          PUBLIC_ALGOLIA_INDEX_NAME: sruja_docs
 
       - name: Prepare site artifact
         run: |
@@ -118,7 +112,6 @@ jobs:
   deploy-website:
     runs-on: ubuntu-latest
     needs: publish
-    environment: prod
     steps:
       - name: Download site artifact
         uses: actions/download-artifact@v4

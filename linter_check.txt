@@ -1,4 +1,0 @@
-Running linter...
-level=warning msg="[config_reader] The configuration option `output.format` is deprecated, please use `output.formats`"
-level=error msg="Running error: context loading failed: no go files to analyze: running `go mod tidy` may solve the problem"
-make: *** [lint] Error 5

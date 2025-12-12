@@ -1,6 +1,6 @@
 ---
 title: "Architecture Patterns"
-weight: 2
+weight: 53
 summary: "Reusable patterns: request/response, event-driven, saga, CQRS."
 ---
 

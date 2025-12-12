@@ -243,16 +243,25 @@ var (
 	propertyRegex     = regexp.MustCompile(`\w+\s*:\s*"`)
 )
 
-// extractCodeBlocks extracts Sruja code blocks from markdown files
-func extractCodeBlocks(rootDir string) (map[string]string, error) {
-	codeBlocks := make(map[string]string)
+// CodeBlockMetadata holds metadata extracted from code blocks
+type CodeBlockMetadata struct {
+	ExpectedFailure string
+	SkipOrphanCheck bool
+}
 
-	err := filepath.Walk(rootDir, func(path string, _ os.FileInfo, err error) error {
+// extractCodeBlocks extracts Sruja code blocks from markdown files
+// Returns both code blocks and their metadata
+func extractCodeBlocks(rootDir string) (codeBlocks map[string]string, metadata map[string]CodeBlockMetadata, err error) {
+    codeBlocks = make(map[string]string)
+    metadata = make(map[string]CodeBlockMetadata)
+
+    err = filepath.Walk(rootDir, func(path string, _ os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if !strings.HasSuffix(path, ".md") {
+		// Check for both .md and .mdx files
+		if !strings.HasSuffix(path, ".md") && !strings.HasSuffix(path, ".mdx") {
 			return nil
 		}
 
@@ -262,7 +271,9 @@ func extractCodeBlocks(rootDir string) (map[string]string, error) {
 		}
 
 		// Match ```sruja ... ``` blocks
-		re := regexp.MustCompile("```sruja\\s*\n([\\s\\S]*?)```")
+		// Pattern matches: ```sruja (optional whitespace/newline) (content) ```
+		// The (?s) flag makes . match newlines
+		re := regexp.MustCompile("(?s)```sruja\\s*\n([\\s\\S]*?)```")
 		matches := re.FindAllStringSubmatch(string(content), -1)
 
 		for i, match := range matches {
@@ -271,6 +282,8 @@ func extractCodeBlocks(rootDir string) (map[string]string, error) {
 				if code != "" && !isSyntaxExample(code) {
 					blockName := fmt.Sprintf("%s#block%d", filepath.Base(path), i+1)
 					codeBlocks[blockName] = code
+					// Extract metadata from code block comments
+					metadata[blockName] = extractCodeBlockMetadata(code)
 				}
 			}
 		}
@@ -278,7 +291,25 @@ func extractCodeBlocks(rootDir string) (map[string]string, error) {
 		return nil
 	})
 
-	return codeBlocks, err
+    return codeBlocks, metadata, err
+}
+
+// extractCodeBlockMetadata extracts metadata from code block comments
+func extractCodeBlockMetadata(code string) CodeBlockMetadata {
+	meta := CodeBlockMetadata{}
+	lines := strings.Split(code, "\n")
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "// EXPECTED_FAILURE:") {
+			meta.ExpectedFailure = strings.TrimSpace(strings.TrimPrefix(trimmed, "// EXPECTED_FAILURE:"))
+		}
+		if strings.HasPrefix(trimmed, "// SKIP_ORPHAN_CHECK:") || trimmed == "// SKIP_ORPHAN_CHECK" {
+			meta.SkipOrphanCheck = true
+		}
+	}
+
+	return meta
 }
 
 // usesDeferredFeature checks if code uses deferred/unimplemented features
@@ -490,58 +521,6 @@ func (e *CompilationError) Error() string {
 	return e.Message
 }
 
-// validateWebsiteContent applies a relaxed set of rules suited for website content examples
-// Some course and tutorial snippets are conceptual and may intentionally omit strict references or layering
-func validateWebsiteContent(program *language.Program) error {
-	validator := engine.NewValidator()
-	validator.RegisterRule(&engine.UniqueIDRule{})
-	validator.RegisterRule(&engine.CycleDetectionRule{})
-	validator.RegisterRule(&engine.ExternalDependencyRule{})
-	validator.RegisterRule(&engine.SimplicityRule{})
-
-	diags := validator.Validate(program)
-	if len(diags) == 0 {
-		return nil
-	}
-
-	var blockingErrors []diagnostics.Diagnostic
-	for i := range diags {
-		d := &diags[i]
-		if d.Code == diagnostics.CodeCycleDetected && d.Severity == diagnostics.SeverityInfo {
-			continue
-		}
-		if strings.Contains(d.Message, "Consider using") {
-			continue
-		}
-		if d.Severity == diagnostics.SeverityError {
-			blockingErrors = append(blockingErrors, *d)
-		}
-	}
-
-	if len(blockingErrors) == 0 {
-		return nil
-	}
-
-	msgs := make([]string, 0, len(blockingErrors))
-	for i := range blockingErrors {
-		d := &blockingErrors[i]
-		msgs = append(msgs, diagnostics.FormatDiagnostic(*d))
-	}
-	return &CompilationError{Message: strings.Join(msgs, "; ")}
-}
-
-// compileLenient parses and validates with relaxed rules for website content blocks
-func compileLenient(name, code string) error {
-	parser, err := language.NewParser()
-	if err != nil {
-		return err
-	}
-	program, _, err := parser.Parse(name, code)
-	if err != nil {
-		return err
-	}
-	return validateWebsiteContent(program)
-}
 
 func TestPlaygroundExamples(t *testing.T) {
 	examples, metadata, err := extractPlaygroundExamples()
@@ -595,7 +574,7 @@ func TestCourseCodeBlocks(t *testing.T) {
 		t.Skipf("Course directory %s does not exist, skipping", courseDir)
 	}
 
-	codeBlocks, err := extractCodeBlocks(courseDir)
+	codeBlocks, metadata, err := extractCodeBlocks(courseDir)
 	if err != nil {
 		t.Fatalf("Failed to extract code blocks: %v", err)
 	}
@@ -607,16 +586,24 @@ func TestCourseCodeBlocks(t *testing.T) {
 	t.Logf("Found %d code blocks in course files", len(codeBlocks))
 
 	for name, code := range codeBlocks {
+		meta := metadata[name]
 		t.Run(name, func(t *testing.T) {
-			// Skip examples that use deferred/unimplemented features
-			if usesDeferredFeature(code) {
-				t.Skipf("Skipping '%s': uses deferred/unimplemented features (DDD, Policy, Flow, View, or qualified names)", name)
-				return
-			}
+			// Use regular compiler with optional orphan check skip
+			skipOrphan := meta.SkipOrphanCheck
+			err := compileCode("course-"+name, code, skipOrphan, true)
 
-			// Use relaxed validation for course examples (conceptual snippets)
-			if err := compileLenient(name, code); err != nil {
-				t.Errorf("Course code block '%s' failed to compile: %v\nCode:\n%s", name, err, code)
+			if meta.ExpectedFailure != "" {
+				// This code block is expected to fail
+				if err == nil {
+					t.Errorf("Course code block '%s' was expected to fail (%s) but compiled successfully", name, meta.ExpectedFailure)
+				} else {
+					t.Logf("Course code block '%s' failed as expected: %s - %v", name, meta.ExpectedFailure, err)
+				}
+			} else {
+				// This code block should compile successfully
+				if err != nil {
+					t.Errorf("Course code block '%s' failed to compile: %v\nCode:\n%s", name, err, code)
+				}
 			}
 		})
 	}
@@ -630,7 +617,7 @@ func TestDocsCodeBlocks(t *testing.T) {
 		t.Skipf("Docs directory %s does not exist, skipping", docsDir)
 	}
 
-	codeBlocks, err := extractCodeBlocks(docsDir)
+	codeBlocks, metadata, err := extractCodeBlocks(docsDir)
 	if err != nil {
 		t.Fatalf("Failed to extract code blocks: %v", err)
 	}
@@ -642,16 +629,24 @@ func TestDocsCodeBlocks(t *testing.T) {
 	t.Logf("Found %d code blocks in docs files", len(codeBlocks))
 
 	for name, code := range codeBlocks {
+		meta := metadata[name]
 		t.Run(name, func(t *testing.T) {
-			// Skip examples that use deferred/unimplemented features
-			if usesDeferredFeature(code) {
-				t.Skipf("Skipping '%s': uses deferred/unimplemented features (DDD, Policy, Flow, View, or qualified names)", name)
-				return
-			}
+			// Use regular compiler with optional orphan check skip
+			skipOrphan := meta.SkipOrphanCheck
+			err := compileCode("docs-"+name, code, skipOrphan, true)
 
-			// Use relaxed validation for docs examples (conceptual snippets)
-			if err := compileLenient(name, code); err != nil {
-				t.Errorf("Docs code block '%s' failed to compile: %v\nCode:\n%s", name, err, code)
+			if meta.ExpectedFailure != "" {
+				// This code block is expected to fail
+				if err == nil {
+					t.Errorf("Docs code block '%s' was expected to fail (%s) but compiled successfully", name, meta.ExpectedFailure)
+				} else {
+					t.Logf("Docs code block '%s' failed as expected: %s - %v", name, meta.ExpectedFailure, err)
+				}
+			} else {
+				// This code block should compile successfully
+				if err != nil {
+					t.Errorf("Docs code block '%s' failed to compile: %v\nCode:\n%s", name, err, code)
+				}
 			}
 		})
 	}
@@ -665,7 +660,7 @@ func TestTutorialCodeBlocks(t *testing.T) {
 		t.Skipf("Tutorials directory %s does not exist, skipping", tutorialsDir)
 	}
 
-	codeBlocks, err := extractCodeBlocks(tutorialsDir)
+	codeBlocks, metadata, err := extractCodeBlocks(tutorialsDir)
 	if err != nil {
 		t.Fatalf("Failed to extract code blocks: %v", err)
 	}
@@ -677,16 +672,24 @@ func TestTutorialCodeBlocks(t *testing.T) {
 	t.Logf("Found %d code blocks in tutorial files", len(codeBlocks))
 
 	for name, code := range codeBlocks {
+		meta := metadata[name]
 		t.Run(name, func(t *testing.T) {
-			// Skip examples that use deferred/unimplemented features
-			if usesDeferredFeature(code) {
-				t.Skipf("Skipping '%s': uses deferred/unimplemented features (DDD, Policy, Flow, View, or qualified names)", name)
-				return
-			}
+			// Use regular compiler with optional orphan check skip
+			skipOrphan := meta.SkipOrphanCheck
+			err := compileCode("tutorial-"+name, code, skipOrphan, true)
 
-			// Use relaxed validation for tutorial examples (conceptual snippets)
-			if err := compileLenient(name, code); err != nil {
-				t.Errorf("Tutorial code block '%s' failed to compile: %v\nCode:\n%s", name, err, code)
+			if meta.ExpectedFailure != "" {
+				// This code block is expected to fail
+				if err == nil {
+					t.Errorf("Tutorial code block '%s' was expected to fail (%s) but compiled successfully", name, meta.ExpectedFailure)
+				} else {
+					t.Logf("Tutorial code block '%s' failed as expected: %s - %v", name, meta.ExpectedFailure, err)
+				}
+			} else {
+				// This code block should compile successfully
+				if err != nil {
+					t.Errorf("Tutorial code block '%s' failed to compile: %v\nCode:\n%s", name, err, code)
+				}
 			}
 		})
 	}
@@ -700,7 +703,7 @@ func TestBlogCodeBlocks(t *testing.T) {
 		t.Skipf("Blog directory %s does not exist, skipping", blogDir)
 	}
 
-	codeBlocks, err := extractCodeBlocks(blogDir)
+	codeBlocks, metadata, err := extractCodeBlocks(blogDir)
 	if err != nil {
 		t.Fatalf("Failed to extract code blocks: %v", err)
 	}
@@ -712,16 +715,24 @@ func TestBlogCodeBlocks(t *testing.T) {
 	t.Logf("Found %d code blocks in blog files", len(codeBlocks))
 
 	for name, code := range codeBlocks {
+		meta := metadata[name]
 		t.Run(name, func(t *testing.T) {
-			// Skip examples that use deferred/unimplemented features
-			if usesDeferredFeature(code) {
-				t.Skipf("Skipping '%s': uses deferred/unimplemented features (DDD, Policy, Flow, View, or qualified names)", name)
-				return
-			}
+			// Use regular compiler with optional orphan check skip
+			skipOrphan := meta.SkipOrphanCheck
+			err := compileCode("blog-"+name, code, skipOrphan, true)
 
-			// Use relaxed validation for blog examples (conceptual snippets)
-			if err := compileLenient(name, code); err != nil {
-				t.Errorf("Blog code block '%s' failed to compile: %v\nCode:\n%s", name, err, code)
+			if meta.ExpectedFailure != "" {
+				// This code block is expected to fail
+				if err == nil {
+					t.Errorf("Blog code block '%s' was expected to fail (%s) but compiled successfully", name, meta.ExpectedFailure)
+				} else {
+					t.Logf("Blog code block '%s' failed as expected: %s - %v", name, meta.ExpectedFailure, err)
+				}
+			} else {
+				// This code block should compile successfully
+				if err != nil {
+					t.Errorf("Blog code block '%s' failed to compile: %v\nCode:\n%s", name, err, code)
+				}
 			}
 		})
 	}

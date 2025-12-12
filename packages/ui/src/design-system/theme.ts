@@ -47,9 +47,9 @@ export const lightTheme: ThemeColors = {
     tertiary: '#64748b',
   },
   primary: {
-    default: '#0284c7',
-    hover: '#0369a1',
-    active: '#075985',
+    default: '#7c3aed',
+    hover: '#6d28d9',
+    active: '#5b21b6',
   },
   neutral: {
     50: '#f8fafc',
@@ -81,9 +81,9 @@ export const darkTheme: ThemeColors = {
     tertiary: '#94a3b8',
   },
   primary: {
-    default: '#38bdf8',
-    hover: '#7dd3fc',
-    active: '#0ea5e9',
+    default: '#a78bfa',
+    hover: '#c4b5fd',
+    active: '#8b5cf6',
   },
   neutral: {
     50: '#020617',
@@ -115,6 +115,16 @@ export function getTheme(mode: ThemeMode = 'system'): ThemeColors {
   }
   return mode === 'dark' ? darkTheme : lightTheme;
 }
+
+
+
+
+
+
+
+
+
+
 
 
 

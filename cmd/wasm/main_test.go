@@ -32,8 +32,9 @@ func TestConvertToJSON(t *testing.T) {
 
 	jsonArch := converter.ConvertToJSON(arch)
 
-	if jsonArch.Metadata.Name != "Sruja Architecture" {
-		t.Errorf("Expected metadata name 'Sruja Architecture', got '%s'", jsonArch.Metadata.Name)
+	// Metadata name should use the architecture name from DSL
+	if jsonArch.Metadata.Name != "Test Arch" {
+		t.Errorf("Expected metadata name 'Test Arch', got '%s'", jsonArch.Metadata.Name)
 	}
 
 	if len(jsonArch.Architecture.Systems) != 1 {

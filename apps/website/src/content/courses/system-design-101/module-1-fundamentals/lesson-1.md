@@ -2,6 +2,12 @@
 title: "Lesson 1: What is System Design?"
 weight: 1
 summary: "Introduction to System Design, Requirements, and Trade-offs."
+learning_objectives:
+  - Understand functional vs non-functional requirements
+  - Practice clarifying requirements in interviews
+  - Recognize common trade-offs in system design
+estimated_time: "20 minutes"
+difficulty: "beginner"
 ---
 
 # Lesson 1: What is System Design?
@@ -12,7 +18,9 @@ System design is the process of defining the architecture, components, modules, 
 
 At its core, system design is about **managing complexity** and **making trade-offs**. There is rarely a single "correct" design; instead, there are different designs that optimize for different goals (e.g., speed of development vs. system performance).
 
-## Requirements Analysis
+## Requirements Analysis (Critical Interview Skill)
+
+**In system design interviews, the first thing you should do is clarify requirements.** Interviewers expect this and it shows you think systematically.
 
 Every system design interview or real-world project starts with clarifying requirements. These are generally categorized into two types:
 
@@ -37,6 +45,18 @@ These define **how** the system should perform. They act as constraints on the d
 
 ---
 
+## Visualizing Architecture (The C4 Model)
+
+To communicate design effectively, we need a standard way to draw it. Sruja uses the **C4 Model**, which breaks a system down into hierarchical levels:
+
+1.  **System Context (Level 1):** The big picture. Your system and the people/systems it interacts with.
+2.  **Container (Level 2):** The deployable units (e.g., API, Database, Mobile App).
+3.  **Component (Level 3):** The internal code structure (e.g., Controllers, Managers).
+
+*For a detailed guide, see [The C4 Model](/docs/concepts/c4-model).*
+
+---
+
 ## 🛠️ Sruja Perspective: Documenting Requirements
 
 While Sruja is primarily for modeling architecture, it is also an excellent place to capture your requirements right alongside your design.
@@ -44,16 +64,30 @@ While Sruja is primarily for modeling architecture, it is also an excellent plac
 In Sruja, you can use the `description` field or comments to document high-level requirements.
 
 ```sruja
-// Native Requirement Support
-requirement R1 functional "Users can post tweets"
-requirement R2 performance "Must handle 10k writes/second"
+architecture "Social Media Platform" {
+    // Native Requirement Support
+    requirement R1 functional "Users can post tweets"
+    requirement R2 performance "Must handle 10k writes/second"
 
-system Twitter "Social Media Platform" {
-    description "Allows users to post short messages and follow others."
+    person User "User"
+    
+    system Twitter "Social Media Platform" {
+        description "Allows users to post short messages and follow others."
+    }
+
+    User -> Twitter "Posts tweets"
 }
-
-person User "User"
-User -> Twitter "Posts tweets"
 ```
 
 By using the `requirement` keyword, you make requirements a first-class citizen of your architecture. These can be validated and tracked by the Sruja CLI.
+
+---
+
+## Knowledge Check
+- Which statement best describes non-functional requirements?
+- In interviews, what is the first step before proposing an architecture?
+- Name one common trade-off pair in system design.
+
+## Further Reading
+- Reference: [`requirements` keyword](/docs/reference/syntax)
+- Tutorial: [CLI Basics](/tutorials/basic/cli-basics)

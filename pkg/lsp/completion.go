@@ -29,7 +29,9 @@ func (s *Server) Completion(_ context.Context, params lsp.CompletionParams) (*ls
 	}
 
 	program := doc.EnsureParsed()
-	var items []lsp.CompletionItem
+	// Pre-allocate with estimated capacity
+	estimatedItems := len(keywordList) + 32
+	items := make([]lsp.CompletionItem, 0, estimatedItems)
 
 	for _, k := range keywordList {
 		if token == "" || strings.HasPrefix(k, token) {
@@ -39,7 +41,34 @@ func (s *Server) Completion(_ context.Context, params lsp.CompletionParams) (*ls
 
 	if program != nil && program.Architecture != nil {
 		arch := program.Architecture
-		seen := make(map[string]bool)
+		// Estimate capacity: typically many completion items
+		estimatedItems := len(arch.Systems) * 10
+		if estimatedItems < 32 {
+			estimatedItems = 32
+		}
+		seen := make(map[string]bool, estimatedItems)
+
+		// Helper to build qualified IDs efficiently
+		buildQualifiedID := func(parts ...string) string {
+			if len(parts) == 0 {
+				return ""
+			}
+			if len(parts) == 1 {
+				return parts[0]
+			}
+			totalLen := len(parts) - 1 // for dots
+			for _, p := range parts {
+				totalLen += len(p)
+			}
+			buf := make([]byte, 0, totalLen)
+			buf = append(buf, parts[0]...)
+			for i := 1; i < len(parts); i++ {
+				buf = append(buf, '.')
+				buf = append(buf, parts[i]...)
+			}
+			return string(buf)
+		}
+
 		add := func(id string) {
 			if id == "" || seen[id] {
 				return
@@ -54,31 +83,31 @@ func (s *Server) Completion(_ context.Context, params lsp.CompletionParams) (*ls
 			for _, c := range s.Containers {
 				add(c.ID)
 				// Qualified container
-				add(s.ID + "." + c.ID)
+				add(buildQualifiedID(s.ID, c.ID))
 				for _, comp := range c.Components {
 					add(comp.ID)
-					add(s.ID + "." + c.ID + "." + comp.ID)
+					add(buildQualifiedID(s.ID, c.ID, comp.ID))
 				}
 				for _, ds := range c.DataStores {
 					add(ds.ID)
-					add(s.ID + "." + c.ID + "." + ds.ID)
+					add(buildQualifiedID(s.ID, c.ID, ds.ID))
 				}
 				for _, q := range c.Queues {
 					add(q.ID)
-					add(s.ID + "." + c.ID + "." + q.ID)
+					add(buildQualifiedID(s.ID, c.ID, q.ID))
 				}
 			}
 			for _, comp := range s.Components {
 				add(comp.ID)
-				add(s.ID + "." + comp.ID)
+				add(buildQualifiedID(s.ID, comp.ID))
 			}
 			for _, ds := range s.DataStores {
 				add(ds.ID)
-				add(s.ID + "." + ds.ID)
+				add(buildQualifiedID(s.ID, ds.ID))
 			}
 			for _, q := range s.Queues {
 				add(q.ID)
-				add(s.ID + "." + q.ID)
+				add(buildQualifiedID(s.ID, q.ID))
 			}
 		}
 		for _, p := range arch.Persons {

@@ -41,7 +41,7 @@ export const Playground: Story = {
       { id: 'system1', label: 'E-commerce Platform' },
       { id: 'container1', label: 'API Gateway' },
     ],
-    onItemClick: (id) => console.log('Clicked:', id),
+    onItemClick: (id) => console.info('Clicked:', id),
     showHome: true,
   },
 }
@@ -169,4 +169,3 @@ export const InTopBar: Story = {
     },
   },
 }
-

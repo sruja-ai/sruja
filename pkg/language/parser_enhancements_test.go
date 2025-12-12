@@ -10,23 +10,23 @@ import (
 func TestParser_PropertiesAndStyle(t *testing.T) {
 	dsl := `
 architecture "Test System" {
-	system Sys "My System" {
-		properties {
-			"qps": "1000"
-			"latency": "50ms"
-		}
-		style {
-			shape: "cylinder"
-			color: "#ff0000"
-		}
+		system Sys "My System" {
+			properties {
+				"qps" "1000"
+				"latency" "50ms"
+			}
+			style {
+				shape "cylinder"
+				color "#ff0000"
+			}
 
 		container Web "Web App" {
 			technology "React"
 			properties {
-				"framework": "nextjs"
+				"framework" "nextjs"
 			}
 			style {
-				icon: "react.png"
+				icon "react.png"
 			}
 		}
 	}

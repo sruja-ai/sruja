@@ -38,13 +38,13 @@ In Sruja, a load balancer is typically modeled as a `container` or `component` t
 architecture "Web Application" {
     container LB "Nginx Load Balancer" {
         technology "Nginx"
-        tags "load-balancer"
+        tags ["load-balancer"]
         description "Layer 7 load balancer routing traffic based on URL paths."
     }
 
     container AppServer "App Server" {
         technology "Python, Django"
-        tags "scaled"
+        tags ["scaled"]
     }
 
     // Traffic flow

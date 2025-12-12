@@ -22,9 +22,14 @@ type Document struct {
 func NewDocument(uri lsp.DocumentURI, text string, version int) *Document {
 	d := &Document{URI: uri, Text: text, Version: version}
 	d.lines = strings.Split(text, "\n")
-	d.defs = make(map[string]lsp.Range)
-	d.defKinds = make(map[string]lsp.SymbolKind)
-	d.defContainers = make(map[string]string)
+	// Estimate capacity: typical DSL files have ~50-200 definitions
+	estimatedDefs := len(d.lines) / 10
+	if estimatedDefs < 32 {
+		estimatedDefs = 32
+	}
+	d.defs = make(map[string]lsp.Range, estimatedDefs)
+	d.defKinds = make(map[string]lsp.SymbolKind, estimatedDefs)
+	d.defContainers = make(map[string]string, estimatedDefs/2)
 	d.rebuildDefs()
 	return d
 }
@@ -68,19 +73,59 @@ func (d *Document) ApplyChange(change lsp.TextDocumentContentChangeEvent) {
 		offsetEnd = len(d.Text)
 	}
 
-	d.Text = d.Text[:offsetStart] + change.Text + d.Text[offsetEnd:]
+	// Use strings.Builder for better performance with large texts
+	var sb strings.Builder
+	sb.Grow(len(d.Text) - (offsetEnd - offsetStart) + len(change.Text))
+	sb.WriteString(d.Text[:offsetStart])
+	sb.WriteString(change.Text)
+	sb.WriteString(d.Text[offsetEnd:])
+	d.Text = sb.String()
 	d.lines = strings.Split(d.Text, "\n")
 	d.rebuildDefs()
 	d.program = nil
 }
 
+// buildQualifiedIDForWorkspace builds a qualified ID efficiently.
+func buildQualifiedIDForWorkspace(parts ...string) string {
+	// Filter empty parts
+	nonEmpty := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p != "" {
+			nonEmpty = append(nonEmpty, p)
+		}
+	}
+	if len(nonEmpty) == 0 {
+		return ""
+	}
+	if len(nonEmpty) == 1 {
+		return nonEmpty[0]
+	}
+	totalLen := len(nonEmpty) - 1 // for dots
+	for _, p := range nonEmpty {
+		totalLen += len(p)
+	}
+	buf := make([]byte, 0, totalLen)
+	buf = append(buf, nonEmpty[0]...)
+	for i := 1; i < len(nonEmpty); i++ {
+		buf = append(buf, '.')
+		buf = append(buf, nonEmpty[i]...)
+	}
+	return string(buf)
+}
+
 //nolint:funlen,gocyclo // Logic requires length and is complex
 func (d *Document) rebuildDefs() {
-	d.defs = make(map[string]lsp.Range)
-	d.defKinds = make(map[string]lsp.SymbolKind)
-	d.defContainers = make(map[string]string)
+	// Estimate capacity based on document size
+	estimatedDefs := len(d.lines) / 10
+	if estimatedDefs < 32 {
+		estimatedDefs = 32
+	}
+	d.defs = make(map[string]lsp.Range, estimatedDefs)
+	d.defKinds = make(map[string]lsp.SymbolKind, estimatedDefs)
+	d.defContainers = make(map[string]string, estimatedDefs/2)
 	type ctx struct{ kind, id string }
-	stack := make([]ctx, 0)
+	// Estimate stack depth: typically 2-5 levels (system -> container -> component)
+	stack := make([]ctx, 0, 8)
 	currentSystem := ""
 	currentContainer := ""
 
@@ -132,9 +177,10 @@ func (d *Document) rebuildDefs() {
 			d.defKinds[id] = lsp.SKModule
 			d.defContainers[id] = currentSystem
 			if currentSystem != "" {
-				d.defs[currentSystem+"."+id] = r
-				d.defKinds[currentSystem+"."+id] = lsp.SKModule
-				d.defContainers[currentSystem+"."+id] = currentSystem
+				q := buildQualifiedIDForWorkspace(currentSystem, "", id)
+				d.defs[q] = r
+				d.defKinds[q] = lsp.SKModule
+				d.defContainers[q] = currentSystem
 			}
 			currentContainer = id
 			if strings.Contains(trimmed, "{") {
@@ -153,12 +199,12 @@ func (d *Document) rebuildDefs() {
 			d.defKinds[id] = lsp.SKFunction
 			d.defContainers[id] = currentSystem
 			if currentSystem != "" && currentContainer != "" {
-				q := currentSystem + "." + currentContainer + "." + id
+				q := buildQualifiedIDForWorkspace(currentSystem, currentContainer, id)
 				d.defs[q] = r
 				d.defKinds[q] = lsp.SKFunction
-				d.defContainers[q] = currentSystem + "." + currentContainer
+				d.defContainers[q] = buildQualifiedIDForWorkspace(currentSystem, currentContainer, "")
 			} else if currentSystem != "" {
-				q := currentSystem + "." + id
+				q := buildQualifiedIDForWorkspace(currentSystem, "", id)
 				d.defs[q] = r
 				d.defKinds[q] = lsp.SKFunction
 				d.defContainers[q] = currentSystem
@@ -179,9 +225,10 @@ func (d *Document) rebuildDefs() {
 			d.defKinds[id] = lsp.SKStruct
 			d.defContainers[id] = currentSystem
 			if currentSystem != "" {
-				d.defs[currentSystem+"."+id] = r
-				d.defKinds[currentSystem+"."+id] = lsp.SKStruct
-				d.defContainers[currentSystem+"."+id] = currentSystem
+				q := buildQualifiedIDForWorkspace(currentSystem, "", id)
+				d.defs[q] = r
+				d.defKinds[q] = lsp.SKStruct
+				d.defContainers[q] = currentSystem
 			}
 			continue
 		}
@@ -196,9 +243,10 @@ func (d *Document) rebuildDefs() {
 			d.defKinds[id] = lsp.SKEnum
 			d.defContainers[id] = currentSystem
 			if currentSystem != "" {
-				d.defs[currentSystem+"."+id] = r
-				d.defKinds[currentSystem+"."+id] = lsp.SKEnum
-				d.defContainers[currentSystem+"."+id] = currentSystem
+				q := buildQualifiedIDForWorkspace(currentSystem, "", id)
+				d.defs[q] = r
+				d.defKinds[q] = lsp.SKEnum
+				d.defContainers[q] = currentSystem
 			}
 			continue
 		}

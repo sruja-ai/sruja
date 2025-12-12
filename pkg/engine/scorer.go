@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/sruja-ai/sruja/pkg/diagnostics"
 	"github.com/sruja-ai/sruja/pkg/language"
@@ -45,7 +46,9 @@ func NewScorer() *Scorer {
 //nolint:funlen,gocyclo // Score calculation is long and complex
 func (s *Scorer) CalculateScore(program *language.Program) ScoreCard {
 	score := 100
-	deductions := []Deduction{}
+	// Pre-allocate deductions slice with estimated capacity
+	estimatedDeductions := 20
+	deductions := make([]Deduction, 0, estimatedDeductions)
 
 	// 1. Run Validation Rules (Correctness)
 	diags := s.validator.Validate(program)
@@ -74,11 +77,17 @@ func (s *Scorer) CalculateScore(program *language.Program) ScoreCard {
 		}
 
 		if points > 0 {
+			// Build target efficiently
+			var targetSb strings.Builder
+			targetSb.Grow(len(d.Location.File) + 20)
+			targetSb.WriteString(d.Location.File)
+			targetSb.WriteString(":")
+			targetSb.WriteString(fmt.Sprintf("%d", d.Location.Line))
 			deductions = append(deductions, Deduction{
 				Rule:    rule,
 				Points:  points,
 				Message: d.Message,
-				Target:  fmt.Sprintf("%s:%d", d.Location.File, d.Location.Line),
+				Target:  targetSb.String(),
 			})
 			score -= points
 		}
@@ -103,10 +112,16 @@ func (s *Scorer) CalculateScore(program *language.Program) ScoreCard {
 			// Check Components
 			if item.Component != nil {
 				if item.Component.Description == nil {
+					// Build message efficiently
+					var msgSb strings.Builder
+					msgSb.Grow(len(item.Component.ID) + 40)
+					msgSb.WriteString("Component '")
+					msgSb.WriteString(item.Component.ID)
+					msgSb.WriteString("' is missing a description")
 					deductions = append(deductions, Deduction{
 						Rule:    "Missing Description",
 						Points:  2,
-						Message: fmt.Sprintf("Component '%s' is missing a description", item.Component.ID),
+						Message: msgSb.String(),
 						Target:  item.Component.ID,
 					})
 					score -= 2
@@ -117,10 +132,16 @@ func (s *Scorer) CalculateScore(program *language.Program) ScoreCard {
 				for _, sysItem := range item.System.Items {
 					if sysItem.Container != nil {
 						if sysItem.Container.Description == nil {
+							// Build message efficiently
+							var msgSb strings.Builder
+							msgSb.Grow(len(sysItem.Container.ID) + 40)
+							msgSb.WriteString("Container '")
+							msgSb.WriteString(sysItem.Container.ID)
+							msgSb.WriteString("' is missing a description")
 							deductions = append(deductions, Deduction{
 								Rule:    "Missing Description",
 								Points:  2,
-								Message: fmt.Sprintf("Container '%s' is missing a description", sysItem.Container.ID),
+								Message: msgSb.String(),
 								Target:  sysItem.Container.ID,
 							})
 							score -= 2

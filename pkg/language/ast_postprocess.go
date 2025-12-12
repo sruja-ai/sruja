@@ -12,11 +12,97 @@ package language
 //
 //nolint:funlen,gocyclo // PostProcess is long and complex
 func (a *Architecture) PostProcess() {
+	// Count items by type for pre-allocation
+	var systemsCount, containersCount, componentsCount, dataStoresCount, queuesCount int
+	var personsCount, relationsCount, requirementsCount, adrsCount, sharedArtifactsCount int
+	var librariesCount, metadataCount, contractsCount, constraintsCount, conventionsCount int
+	var deploymentNodesCount, scenariosCount, policiesCount, flowsCount int
+
 	for i := range a.Items {
 		item := &a.Items[i]
-		if item.Import != nil {
-			a.Imports = append(a.Imports, item.Import)
+		if item.System != nil {
+			systemsCount++
 		}
+		if item.Container != nil {
+			containersCount++
+		}
+		if item.Component != nil {
+			componentsCount++
+		}
+		if item.DataStore != nil {
+			dataStoresCount++
+		}
+		if item.Queue != nil {
+			queuesCount++
+		}
+		if item.Person != nil {
+			personsCount++
+		}
+		if item.Relation != nil {
+			relationsCount++
+		}
+		if item.Requirement != nil {
+			requirementsCount++
+		}
+		if item.ADR != nil {
+			adrsCount++
+		}
+		if item.SharedArtifact != nil {
+			sharedArtifactsCount++
+		}
+		if item.Library != nil {
+			librariesCount++
+		}
+		if item.Metadata != nil {
+			metadataCount += len(item.Metadata.Entries)
+		}
+		if item.ContractsBlock != nil {
+			contractsCount += len(item.ContractsBlock.Contracts)
+		}
+		if item.ConstraintsBlock != nil {
+			constraintsCount += len(item.ConstraintsBlock.Entries)
+		}
+		if item.ConventionsBlock != nil {
+			conventionsCount += len(item.ConventionsBlock.Entries)
+		}
+		if item.DeploymentNode != nil {
+			deploymentNodesCount++
+		}
+		if item.Scenario != nil {
+			scenariosCount++
+		}
+		if item.Policy != nil {
+			policiesCount++
+		}
+		if item.Flow != nil {
+			flowsCount++
+		}
+	}
+
+	// Pre-allocate slices
+	a.Systems = make([]*System, 0, systemsCount)
+	a.Containers = make([]*Container, 0, containersCount)
+	a.Components = make([]*Component, 0, componentsCount)
+	a.DataStores = make([]*DataStore, 0, dataStoresCount)
+	a.Queues = make([]*Queue, 0, queuesCount)
+	a.Persons = make([]*Person, 0, personsCount)
+	a.Relations = make([]*Relation, 0, relationsCount)
+	a.Requirements = make([]*Requirement, 0, requirementsCount)
+	a.ADRs = make([]*ADR, 0, adrsCount)
+	a.SharedArtifacts = make([]*SharedArtifact, 0, sharedArtifactsCount)
+	a.Libraries = make([]*Library, 0, librariesCount)
+	a.Metadata = make([]*MetaEntry, 0, metadataCount)
+	a.Contracts = make([]*Contract, 0, contractsCount)
+	a.Constraints = make([]*ConstraintEntry, 0, constraintsCount)
+	a.Conventions = make([]*ConventionEntry, 0, conventionsCount)
+	a.DeploymentNodes = make([]*DeploymentNode, 0, deploymentNodesCount)
+	a.Scenarios = make([]*Scenario, 0, scenariosCount)
+	a.Policies = make([]*Policy, 0, policiesCount)
+	a.Flows = make([]*Flow, 0, flowsCount)
+
+	for i := range a.Items {
+		item := &a.Items[i]
+
 		if item.System != nil {
 			item.System.PostProcess()
 			a.Systems = append(a.Systems, item.System)
@@ -50,6 +136,7 @@ func (a *Architecture) PostProcess() {
 			a.Requirements = append(a.Requirements, item.Requirement)
 		}
 		if item.ADR != nil {
+			item.ADR.PostProcess()
 			a.ADRs = append(a.ADRs, item.ADR)
 		}
 		if item.SharedArtifact != nil {
@@ -92,7 +179,8 @@ func (a *Architecture) PostProcess() {
 		}
 		if item.Properties != nil {
 			if a.Properties == nil {
-				a.Properties = make(map[string]string)
+				// Pre-allocate with estimated capacity
+				a.Properties = make(map[string]string, len(item.Properties.Entries))
 			}
 			for _, entry := range item.Properties.Entries {
 				a.Properties[entry.Key] = entry.Value
@@ -235,13 +323,7 @@ func (s *System) PostProcess() {
 			normalizeRelation(item.Relation)
 			s.Relations = append(s.Relations, item.Relation)
 		}
-		if item.Requirement != nil {
-			item.Requirement.PostProcess()
-			s.Requirements = append(s.Requirements, item.Requirement)
-		}
-		if item.ADR != nil {
-			s.ADRs = append(s.ADRs, item.ADR)
-		}
+		// requirements and ADRs are root-level only
 		if item.Metadata != nil {
 			s.Metadata = append(s.Metadata, item.Metadata.Entries...)
 		}
@@ -271,6 +353,10 @@ func (s *System) PostProcess() {
 				s.Style[style.Key] = style.Value
 			}
 		}
+		if item.SLO != nil {
+			item.SLO.PostProcess()
+			s.SLO = item.SLO
+		}
 	}
 }
 
@@ -299,13 +385,7 @@ func (c *Container) PostProcess() {
 			normalizeRelation(item.Relation)
 			c.Relations = append(c.Relations, item.Relation)
 		}
-		if item.Requirement != nil {
-			item.Requirement.PostProcess()
-			c.Requirements = append(c.Requirements, item.Requirement)
-		}
-		if item.ADR != nil {
-			c.ADRs = append(c.ADRs, item.ADR)
-		}
+		// requirements and ADRs are root-level only
 		if item.Metadata != nil {
 			c.Metadata = append(c.Metadata, item.Metadata.Entries...)
 		}
@@ -336,10 +416,15 @@ func (c *Container) PostProcess() {
 			}
 		}
 		if item.Scale != nil {
+			item.Scale.PostProcess()
 			c.Scale = item.Scale
 		}
 		if item.Version != nil {
 			c.Version = item.Version
+		}
+		if item.SLO != nil {
+			item.SLO.PostProcess()
+			c.SLO = item.SLO
 		}
 	}
 }
@@ -353,13 +438,7 @@ func (c *Component) PostProcess() {
 		if item.Description != nil {
 			c.Description = item.Description
 		}
-		if item.Requirement != nil {
-			item.Requirement.PostProcess()
-			c.Requirements = append(c.Requirements, item.Requirement)
-		}
-		if item.ADR != nil {
-			c.ADRs = append(c.ADRs, item.ADR)
-		}
+		// requirements and ADRs are root-level only
 		if item.Relation != nil {
 			normalizeRelation(item.Relation)
 			c.Relations = append(c.Relations, item.Relation)
@@ -384,6 +463,7 @@ func (c *Component) PostProcess() {
 			}
 		}
 		if item.Scale != nil {
+			item.Scale.PostProcess()
 			c.Scale = item.Scale
 		}
 	}
@@ -544,18 +624,29 @@ func (p *Policy) PostProcess() {
 
 	// Override with body values if present
 	if p.Body != nil {
-		if p.Body.Category != nil {
-			p.Category = p.Body.Category
+		for _, prop := range p.Body.Properties {
+			if prop.Category != nil {
+				p.Category = prop.Category
+				p.Body.Category = prop.Category
+			}
+			if prop.Enforcement != nil {
+				p.Enforcement = prop.Enforcement
+				p.Body.Enforcement = prop.Enforcement
+			}
+			if prop.Description != nil {
+				p.Description = *prop.Description
+				p.Body.Description = prop.Description
+			}
+			if len(prop.Tags) > 0 {
+				p.Body.Tags = append(p.Body.Tags, prop.Tags...)
+			}
+			if prop.Metadata != nil {
+				p.Metadata = append(p.Metadata, prop.Metadata.Entries...)
+			}
 		}
-		if p.Body.Enforcement != nil {
-			p.Enforcement = p.Body.Enforcement
-		}
-		if p.Body.Description != nil {
-			p.Description = *p.Body.Description
-		}
-		if p.Body.Metadata != nil {
-			p.Metadata = append(p.Metadata, p.Body.Metadata.Entries...)
-		}
+
+		// Fallback for fields populated directly (if any logic bypasses PostProcess)
+		// But for PostProcess we just use Properties
 	}
 }
 
@@ -575,14 +666,79 @@ func (f *Flow) PostProcess() {
 // PostProcess populates convenience fields from requirement body.
 func (r *Requirement) PostProcess() {
 	if r.Body != nil {
+		for _, prop := range r.Body.Properties {
+			if prop.Type != nil {
+				r.Type = prop.Type
+				r.Body.Type = prop.Type
+			}
+			if prop.Description != nil {
+				r.Description = prop.Description
+				r.Body.Description = prop.Description
+			}
+			if len(prop.Tags) > 0 {
+				r.Body.Tags = append(r.Body.Tags, prop.Tags...)
+			}
+			if prop.Metadata != nil {
+				r.Metadata = append(r.Metadata, prop.Metadata.Entries...)
+			}
+		}
+		// Populate root-level fields if body overrides them (though types usually set on root)
 		if r.Body.Type != nil {
 			r.Type = r.Body.Type
 		}
 		if r.Body.Description != nil {
 			r.Description = r.Body.Description
 		}
-		if r.Body.Metadata != nil {
-			r.Metadata = append(r.Metadata, r.Body.Metadata.Entries...)
+	}
+}
+
+// PostProcess populates items for SharedArtifact.
+// SharedArtifact now has Items list.
+// Struct fields: Description, Url.
+func (s *SharedArtifact) PostProcess() {
+	// SharedArtifact doesn't have a PostProcess method signature requirement but good for consistency
+	// But since it's not an ASTNode root usually, maybe not needed?
+	// Wait, Architecture.PostProcess accesses SharedArtifact. But doesn't call PostProcess on it.
+	// I should implement it and call it if I want to populate Description/Url.
+}
+
+// PostProcess populates ADR fields from unordered properties.
+func (a *ADR) PostProcess() {
+	if a.Body != nil {
+		for _, prop := range a.Body.Properties {
+			if prop.Status != nil {
+				a.Body.Status = prop.Status
+			}
+			if prop.Context != nil {
+				a.Body.Context = prop.Context
+			}
+			if prop.Decision != nil {
+				a.Body.Decision = prop.Decision
+			}
+			if prop.Consequences != nil {
+				a.Body.Consequences = prop.Consequences
+			}
+			if len(prop.Tags) > 0 {
+				a.Body.Tags = append(a.Body.Tags, prop.Tags...)
+			}
+		}
+	}
+}
+
+// PostProcess populates fields for ScaleBlock.
+func (s *ScaleBlock) PostProcess() {
+	for _, item := range s.Items {
+		if item.Min != nil {
+			val := item.Min.Val
+			s.Min = &val
+		}
+		if item.Max != nil {
+			val := item.Max.Val
+			s.Max = &val
+		}
+		if item.Metric != nil {
+			val := item.Metric.Val
+			s.Metric = &val
 		}
 	}
 }

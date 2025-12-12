@@ -6,12 +6,9 @@ import DocSearchBox from '@/features/search/components/DocSearchBox';
 
 export default function Navbar() {
   const [learnMenuOpen, setLearnMenuOpen] = useState(false);
-  const [playgroundsMenuOpen, setPlaygroundsMenuOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const learnMenuRef = useRef<HTMLDivElement>(null);
-  const playgroundsMenuRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const playgroundsCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Mark as hydrated after component mounts
@@ -22,7 +19,6 @@ export default function Navbar() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (learnMenuOpen) setLearnMenuOpen(false);
-        if (playgroundsMenuOpen) setPlaygroundsMenuOpen(false);
       }
     };
 
@@ -30,36 +26,25 @@ export default function Navbar() {
       if (learnMenuRef.current && !learnMenuRef.current.contains(event.target as Node)) {
         setLearnMenuOpen(false);
       }
-      if (playgroundsMenuRef.current && !playgroundsMenuRef.current.contains(event.target as Node)) {
-        setPlaygroundsMenuOpen(false);
-      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     document.addEventListener('mousedown', handleClickOutside);
-    
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('mousedown', handleClickOutside);
       if (closeTimeoutRef.current) {
         clearTimeout(closeTimeoutRef.current);
       }
-      if (playgroundsCloseTimeoutRef.current) {
-        clearTimeout(playgroundsCloseTimeoutRef.current);
-      }
     };
-  }, [learnMenuOpen, playgroundsMenuOpen]);
+  }, [learnMenuOpen]);
 
   const handleLearnMouseEnter = () => {
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current);
       closeTimeoutRef.current = null;
     }
-    if (playgroundsCloseTimeoutRef.current) {
-      clearTimeout(playgroundsCloseTimeoutRef.current);
-      playgroundsCloseTimeoutRef.current = null;
-    }
-    setPlaygroundsMenuOpen(false);
     setLearnMenuOpen(true);
   };
 
@@ -73,29 +58,6 @@ export default function Navbar() {
     }, 200);
   };
 
-  const handlePlaygroundsMouseEnter = () => {
-    if (playgroundsCloseTimeoutRef.current) {
-      clearTimeout(playgroundsCloseTimeoutRef.current);
-      playgroundsCloseTimeoutRef.current = null;
-    }
-    if (closeTimeoutRef.current) {
-      clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-    setLearnMenuOpen(false);
-    setPlaygroundsMenuOpen(true);
-  };
-
-  const handlePlaygroundsMouseLeave = () => {
-    if (playgroundsCloseTimeoutRef.current) {
-      clearTimeout(playgroundsCloseTimeoutRef.current);
-      playgroundsCloseTimeoutRef.current = null;
-    }
-    playgroundsCloseTimeoutRef.current = setTimeout(() => {
-      setPlaygroundsMenuOpen(false);
-    }, 200);
-  };
-
   return (
     <ThemeProvider defaultMode="system">
       <nav className="navbar">
@@ -105,14 +67,14 @@ export default function Navbar() {
             <span>Sruja</span>
           </a>
           <div className="nav-links">
-            <a href="/docs/intro">Docs</a>
-            <div 
+            <a href="/docs">Docs</a>
+            <div
               className="nav-dropdown"
               ref={learnMenuRef}
               onMouseEnter={handleLearnMouseEnter}
               onMouseLeave={handleLearnMouseLeave}
             >
-              <a 
+              <a
                 href="/learn"
                 className="nav-dropdown-trigger"
                 onClick={(e) => {
@@ -152,50 +114,7 @@ export default function Navbar() {
                 </div>
               )}
             </div>
-            <div 
-              className="nav-dropdown"
-              ref={playgroundsMenuRef}
-              onMouseEnter={handlePlaygroundsMouseEnter}
-              onMouseLeave={handlePlaygroundsMouseLeave}
-            >
-              <a 
-                href="/playgrounds"
-                className="nav-dropdown-trigger"
-                onClick={(e) => {
-                  // Allow click to navigate, but also toggle dropdown on click
-                  if (e.ctrlKey || e.metaKey) {
-                    // Allow Ctrl/Cmd+click to open in new tab
-                    return;
-                  }
-                  // On regular click, navigate to /playgrounds (default link behavior)
-                }}
-              >
-                Playgrounds
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{
-                    marginLeft: '4px',
-                    transform: playgroundsMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.2s',
-                  }}
-                >
-                  <path d="m3 4.5 3 3 3-3" />
-                </svg>
-              </a>
-              {playgroundsMenuOpen && (
-                <div className="nav-dropdown-menu">
-                  <a href="/studio" onClick={() => setPlaygroundsMenuOpen(false)}>Studio</a>
-                  <a href="/viewer" onClick={() => setPlaygroundsMenuOpen(false)}>Viewer</a>
-                </div>
-              )}
-            </div>
+            <a href="/playground">Playground</a>
             <a href="https://github.com/sruja-ai/sruja" target="_blank" rel="noopener noreferrer">
               GitHub
             </a>

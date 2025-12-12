@@ -32,8 +32,6 @@ type System struct {
 	Queues       []*Queue
 	Persons      []*Person
 	Components   []*Component
-	Requirements []*Requirement
-	ADRs         []*ADR
 	Relations    []*Relation
 	Metadata     []*MetaEntry // Metadata from metadata blocks
 	Contracts    []*Contract
@@ -41,6 +39,7 @@ type System struct {
 	Conventions  []*ConventionEntry
 	Properties   map[string]string
 	Style        map[string]string
+	SLO          *SLOBlock
 }
 
 func (s *System) Location() SourceLocation {
@@ -53,15 +52,14 @@ type SystemItem struct {
 	DataStore        *DataStore        `parser:"| @@"`
 	Queue            *Queue            `parser:"| @@"`
 	Person           *Person           `parser:"| @@"`
-	Relation         *Relation         `parser:"| @@"`
-	Requirement      *Requirement      `parser:"| @@"`
-	ADR              *ADR              `parser:"| @@"`
 	Metadata         *MetadataBlock    `parser:"| @@"`
 	ContractsBlock   *ContractsBlock   `parser:"| 'contracts' '{' @@ '}'"`
 	ConstraintsBlock *ConstraintsBlock `parser:"| 'constraints' '{' @@ '}'"`
 	ConventionsBlock *ConventionsBlock `parser:"| 'conventions' '{' @@ '}'"`
 	Properties       *PropertiesBlock  `parser:"| @@"`
 	Style            *StyleBlock       `parser:"| @@"`
+	SLO              *SLOBlock         `parser:"| @@"`
+	Relation         *Relation         `parser:"| @@"`
 	Description      *string           `parser:"| 'description' @String"`
 }
 
@@ -96,8 +94,6 @@ type Container struct {
 	Components   []*Component
 	DataStores   []*DataStore
 	Queues       []*Queue
-	Requirements []*Requirement
-	ADRs         []*ADR
 	Relations    []*Relation
 	Metadata     []*MetaEntry // Metadata from metadata blocks
 	Contracts    []*Contract
@@ -107,6 +103,7 @@ type Container struct {
 	Properties   map[string]string
 	Style        map[string]string
 	Scale        *ScaleBlock
+	SLO          *SLOBlock
 }
 
 func (c *Container) Location() SourceLocation {
@@ -121,9 +118,6 @@ type ContainerItem struct {
 	Component        *Component        `parser:"| @@"`
 	DataStore        *DataStore        `parser:"| @@"`
 	Queue            *Queue            `parser:"| @@"`
-	Relation         *Relation         `parser:"| @@"`
-	Requirement      *Requirement      `parser:"| @@"`
-	ADR              *ADR              `parser:"| @@"`
 	Metadata         *MetadataBlock    `parser:"| @@"`
 	ContractsBlock   *ContractsBlock   `parser:"| 'contracts' '{' @@ '}'"`
 	ConstraintsBlock *ConstraintsBlock `parser:"| 'constraints' '{' @@ '}'"`
@@ -131,6 +125,8 @@ type ContainerItem struct {
 	Properties       *PropertiesBlock  `parser:"| @@"`
 	Style            *StyleBlock       `parser:"| @@"`
 	Scale            *ScaleBlock       `parser:"| @@"`
+	SLO              *SLOBlock         `parser:"| @@"`
+	Relation         *Relation         `parser:"| @@"`
 	Description      *string           `parser:"| 'description' @String"`
 }
 
@@ -160,8 +156,6 @@ type Component struct {
 
 	// Post-processed fields
 	Technology   *string
-	Requirements []*Requirement
-	ADRs         []*ADR
 	Relations    []*Relation
 	Metadata     []*MetaEntry // Metadata from metadata blocks
 	Properties   map[string]string
@@ -175,10 +169,7 @@ func (c *Component) Location() SourceLocation {
 
 // ComponentItem is a union type for items that can appear in a component.
 type ComponentItem struct {
-	Technology       *string           `parser:"'technology' @String |"`
-	Requirement      *Requirement      `parser:"@@ |"`
-	ADR              *ADR              `parser:"@@ |"`
-	Relation         *Relation         `parser:"@@ |"`
+    Technology       *string           `parser:"'technology' @String |"`
 	Metadata         *MetadataBlock    `parser:"@@ |"`
 	Behavior         *BehaviorBlock    `parser:"'behavior' '{' @@* '}' |"`
 	ContractsBlock   *ContractsBlock   `parser:"'contracts' '{' @@ '}' |"`
@@ -188,6 +179,7 @@ type ComponentItem struct {
 	Properties       *PropertiesBlock  `parser:"@@ |"`
 	Style            *StyleBlock       `parser:"@@ |"`
 	Scale            *ScaleBlock       `parser:"@@ |"`
+    Relation         *Relation         `parser:"@@ |"`
 	Description      *string           `parser:"'description' @String"`
 }
 

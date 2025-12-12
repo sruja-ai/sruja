@@ -54,14 +54,21 @@ export function ThemeProvider({
       root.style.setProperty('--color-primary', currentTheme.primary.default);
       root.style.setProperty('--color-primary-hover', currentTheme.primary.hover);
       root.style.setProperty('--color-primary-active', currentTheme.primary.active);
+      root.style.setProperty('--color-success-500', currentTheme.semantic.success);
+      root.style.setProperty('--color-error-500', currentTheme.semantic.error);
+      root.style.setProperty('--color-warning-500', currentTheme.semantic.warning);
+      root.style.setProperty('--color-info-500', currentTheme.semantic.info);
       
       root.classList.toggle('dark', isDark);
       root.classList.toggle('light', !isDark);
+      root.setAttribute('data-theme', isDark ? 'dark' : 'light');
     }
 
     // Store preference
     if (typeof window !== 'undefined') {
       localStorage.setItem(storageKey, mode);
+      // Dispatch custom event for cross-component theme synchronization
+      window.dispatchEvent(new CustomEvent('theme-change'));
     }
   }, [mode, storageKey]);
 
@@ -108,6 +115,7 @@ export function useTheme() {
   }
   return context;
 }
+
 
 
 
