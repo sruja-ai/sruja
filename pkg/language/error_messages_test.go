@@ -11,14 +11,14 @@ import (
 )
 
 // parseWithValidation parses DSL and runs validation, returning diagnostics
-func parseWithValidation(t *testing.T, filename, dsl string) ([]diagnostics.Diagnostic, error) {
+func parseWithValidation(t *testing.T, dsl string) ([]diagnostics.Diagnostic, error) {
 	t.Helper()
 	parser, err := language.NewParser()
 	if err != nil {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	program, parseDiags, err := parser.Parse(filename, dsl)
+	program, parseDiags, err := parser.Parse("test.sruja", dsl)
 
 	allDiags := make([]diagnostics.Diagnostic, 0, len(parseDiags))
 	allDiags = append(allDiags, parseDiags...)
@@ -54,7 +54,7 @@ architecture "Test" {
         container WebApp "Web App"
     // Missing closing brace
 `
-	diags, err := parseWithValidation(t, "test.sruja", dsl)
+	diags, err := parseWithValidation(t, dsl)
 
 	if err == nil {
 		t.Error("Expected parsing error for missing closing brace")
@@ -97,7 +97,7 @@ architecture "Test" {
     }
 }
 `
-	diags, err := parseWithValidation(t, "test.sruja", dsl)
+	diags, err := parseWithValidation(t, dsl)
 
 	// Should have parsing error
 	if err == nil && len(diags) == 0 {
@@ -156,7 +156,7 @@ architecture "Test" {
     }
 }
 `
-	diags, err := parseWithValidation(t, "test.sruja", dsl)
+	diags, err := parseWithValidation(t, dsl)
 
 	// May or may not be a parsing error, but should have helpful message if it is
 	if err != nil || len(diags) > 0 {
@@ -191,7 +191,7 @@ architecture "Test" {
     system API "Duplicate API" {}
 }
 `
-	diags, err := parseWithValidation(t, "test.sruja", dsl)
+	diags, err := parseWithValidation(t, dsl)
 
 	if err != nil {
 		t.Fatalf("Parsing should succeed: %v", err)
@@ -250,7 +250,7 @@ architecture "Test" {
     }
 }
 `
-	diags, err := parseWithValidation(t, "test.sruja", dsl)
+	diags, err := parseWithValidation(t, dsl)
 
 	if err != nil {
 		t.Fatalf("Parsing should succeed: %v", err)
@@ -310,7 +310,7 @@ architecture "Test" {
     system Unused "Unused System" {}
 }
 `
-	diags, err := parseWithValidation(t, "test.sruja", dsl)
+	diags, err := parseWithValidation(t, dsl)
 
 	if err != nil {
 		t.Fatalf("Parsing should succeed: %v", err)
@@ -364,7 +364,7 @@ architecture "Test" {
     }
 }
 `
-	diags, err := parseWithValidation(t, "test.sruja", dsl)
+	diags, err := parseWithValidation(t, dsl)
 
 	if err != nil {
 		t.Fatalf("Parsing should succeed: %v", err)
@@ -422,7 +422,7 @@ architecture "Test" {
     }
 }
 `
-	diags, err := parseWithValidation(t, "test.sruja", dsl)
+	diags, err := parseWithValidation(t, dsl)
 
 	if err != nil {
 		t.Fatalf("Parsing should succeed: %v", err)
@@ -477,7 +477,7 @@ architecture "Test" {
     DataLayer -> WebLayer "Invalid dependency"
 }
 `
-	diags, err := parseWithValidation(t, "test.sruja", dsl)
+	diags, err := parseWithValidation(t, dsl)
 
 	if err != nil {
 		t.Fatalf("Parsing should succeed: %v", err)
@@ -533,7 +533,7 @@ architecture "Test" {
     API DB "Missing arrow"
 }
 `
-	diags, err := parseWithValidation(t, "test.sruja", dsl)
+	diags, err := parseWithValidation(t, dsl)
 
 	// Should have parsing error
 	if err == nil && len(diags) == 0 {
@@ -576,7 +576,7 @@ architecture "Test" {
     }
 }
 `
-	diags, err := parseWithValidation(t, "test.sruja", dsl)
+	diags, err := parseWithValidation(t, dsl)
 
 	if err != nil {
 		// If parsing fails, check if error message is still helpful
@@ -656,7 +656,7 @@ architecture "Test" {
     }
 }
 `
-	diags, err := parseWithValidation(t, "test.sruja", dsl)
+	diags, err := parseWithValidation(t, dsl)
 
 	if err != nil {
 		t.Fatalf("Parsing should succeed: %v", err)
@@ -757,7 +757,7 @@ architecture "Test" {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			diags, err := parseWithValidation(t, "test.sruja", tc.dsl)
+			diags, err := parseWithValidation(t, tc.dsl)
 			if err != nil {
 				t.Logf("Parsing error (may be acceptable): %v", err)
 			}
@@ -780,7 +780,7 @@ architecture "Test" {
     }
 }
 `
-	diags, err := parseWithValidation(t, "test.sruja", dsl)
+	diags, err := parseWithValidation(t, dsl)
 
 	if err != nil {
 		t.Fatalf("Parsing should succeed: %v", err)

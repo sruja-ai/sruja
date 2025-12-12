@@ -243,7 +243,7 @@ func (p *Parser) convertErrorToDiagnostics(err error, filename, text string) []d
 		}
 
 		// Generate enhanced error message and suggestions
-		enhancedMsg, suggestions := p.enhanceErrorMessage(msg, pos, text, lineIdx)
+		enhancedMsg, suggestions := p.enhanceErrorMessage(msg, pos)
 
 		// Determine error code based on message content
 		code := p.determineErrorCode(msg)
@@ -315,7 +315,7 @@ func (p *Parser) determineErrorCode(msg string) string {
 }
 
 // enhanceErrorMessage improves error messages with better context and suggestions
-func (p *Parser) enhanceErrorMessage(msg string, pos lexer.Position, text string, lineIdx int) (string, []string) {
+func (p *Parser) enhanceErrorMessage(msg string, pos lexer.Position) (string, []string) {
 	var suggestions []string
 	enhancedMsg := msg
 

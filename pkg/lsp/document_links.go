@@ -41,7 +41,7 @@ func (s *Server) DocumentLinks(_ context.Context, params DocumentLinkParams) ([]
 		// Check for file:// URLs
 		if idx := strings.Index(line, "file://"); idx >= 0 {
 			endIdx := idx + 7 // "file://"
-			for endIdx < len(line) && !strings.ContainsAny(string(line[endIdx:endIdx+1]), " \t\n\r\"'`") {
+			for endIdx < len(line) && !strings.ContainsAny(line[endIdx:endIdx+1], " \t\n\r\"'`") {
 				endIdx++
 			}
 			if endIdx > idx+7 {
@@ -66,7 +66,7 @@ func (s *Server) DocumentLinks(_ context.Context, params DocumentLinkParams) ([]
 			}
 			// Find the end of the filename
 			endIdx := idx + 6 // ".sruja"
-			for endIdx < len(line) && !strings.ContainsAny(string(line[endIdx:endIdx+1]), " \t\n\r\"'`") {
+			for endIdx < len(line) && !strings.ContainsAny(line[endIdx:endIdx+1], " \t\n\r\"'`") {
 				endIdx++
 			}
 

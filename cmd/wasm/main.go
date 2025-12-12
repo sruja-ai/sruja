@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"syscall/js"
 
@@ -41,10 +42,10 @@ func main() {
 
 // Export functions (dslToMarkdown, dslToMermaid) removed - now handled by TypeScript exporters
 
-func parseDsl(this js.Value, args []js.Value) interface{} {
+func parseDsl(this js.Value, args []js.Value) (ret interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
-			// Silent recovery - no debug output in production
+			ret = result(false, "", fmt.Sprint(r))
 		}
 	}()
 
@@ -98,10 +99,11 @@ func parseDsl(this js.Value, args []js.Value) interface{} {
 		return result(false, "", err.Error())
 	}
 
-	return result(true, string(jsonBytes), "")
+	ret = result(true, string(jsonBytes), "")
+	return
 }
 
-func jsonToDsl(this js.Value, args []js.Value) interface{} {
+func jsonToDsl(this js.Value, args []js.Value) (ret interface{}) {
 	if len(args) < 1 {
 		return result(false, "", "invalid arguments")
 	}
@@ -122,7 +124,8 @@ func jsonToDsl(this js.Value, args []js.Value) interface{} {
 	printer := language.NewPrinter()
 	dsl := printer.Print(program)
 
-	return result(true, dsl, "")
+	ret = result(true, dsl, "")
+	return
 }
 
 func result(ok bool, data string, err string) interface{} {
@@ -140,10 +143,10 @@ func result(ok bool, data string, err string) interface{} {
 // LSP Functions
 
 // getDiagnostics returns diagnostics (errors/warnings) for the DSL text
-func getDiagnostics(this js.Value, args []js.Value) interface{} {
+func getDiagnostics(this js.Value, args []js.Value) (ret interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
-			// Silent recovery
+			ret = lspResult(false, nil, fmt.Sprint(r))
 		}
 	}()
 
@@ -200,14 +203,15 @@ func getDiagnostics(this js.Value, args []js.Value) interface{} {
 	}
 
 	jsonBytes, _ := json.Marshal(diagJSON)
-	return lspResult(true, string(jsonBytes), "")
+	ret = lspResult(true, string(jsonBytes), "")
+	return
 }
 
 // getSymbols returns all symbols (identifiers) in the DSL
-func getSymbols(this js.Value, args []js.Value) interface{} {
+func getSymbols(this js.Value, args []js.Value) (ret interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
-			// Silent recovery
+			ret = lspResult(false, nil, fmt.Sprint(r))
 		}
 	}()
 
@@ -228,14 +232,15 @@ func getSymbols(this js.Value, args []js.Value) interface{} {
 
 	symbols := extractSymbols(program.Architecture)
 	jsonBytes, _ := json.Marshal(symbols)
-	return lspResult(true, string(jsonBytes), "")
+	ret = lspResult(true, string(jsonBytes), "")
+	return
 }
 
 // hover returns hover information at the given position
-func hover(this js.Value, args []js.Value) interface{} {
+func hover(this js.Value, args []js.Value) (ret interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
-			// Silent recovery
+			ret = lspResult(false, nil, fmt.Sprint(r))
 		}
 	}()
 
@@ -262,14 +267,15 @@ func hover(this js.Value, args []js.Value) interface{} {
 	}
 
 	jsonBytes, _ := json.Marshal(hoverInfo)
-	return lspResult(true, string(jsonBytes), "")
+	ret = lspResult(true, string(jsonBytes), "")
+	return
 }
 
 // completion returns completion suggestions at the given position
-func completion(this js.Value, args []js.Value) interface{} {
+func completion(this js.Value, args []js.Value) (ret interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
-			// Silent recovery
+			ret = lspResult(false, nil, fmt.Sprint(r))
 		}
 	}()
 
@@ -304,14 +310,15 @@ func completion(this js.Value, args []js.Value) interface{} {
 	}
 
 	jsonBytes, _ := json.Marshal(completions)
-	return lspResult(true, string(jsonBytes), "")
+	ret = lspResult(true, string(jsonBytes), "")
+	return
 }
 
 // goToDefinition returns the definition location for a symbol at the given position
-func goToDefinition(this js.Value, args []js.Value) interface{} {
+func goToDefinition(this js.Value, args []js.Value) (ret interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
-			// Silent recovery
+			ret = lspResult(false, nil, fmt.Sprint(r))
 		}
 	}()
 
@@ -338,14 +345,15 @@ func goToDefinition(this js.Value, args []js.Value) interface{} {
 	}
 
 	jsonBytes, _ := json.Marshal(def)
-	return lspResult(true, string(jsonBytes), "")
+	ret = lspResult(true, string(jsonBytes), "")
+	return
 }
 
 // format formats the DSL text
-func format(this js.Value, args []js.Value) interface{} {
+func format(this js.Value, args []js.Value) (ret interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
-			// Silent recovery
+			ret = lspResult(false, nil, fmt.Sprint(r))
 		}
 	}()
 
@@ -368,14 +376,15 @@ func format(this js.Value, args []js.Value) interface{} {
 	// Format by printing and re-parsing
 	printer := language.NewPrinter()
 	formatted := printer.Print(program)
-	return lspResult(true, formatted, "")
+	ret = lspResult(true, formatted, "")
+	return
 }
 
 // score calculates the architecture score for the given DSL
-func score(this js.Value, args []js.Value) interface{} {
+func score(this js.Value, args []js.Value) (ret interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
-			// Silent recovery
+			ret = result(false, "", fmt.Sprint(r))
 		}
 	}()
 
@@ -405,7 +414,8 @@ func score(this js.Value, args []js.Value) interface{} {
 		return result(false, "", err.Error())
 	}
 
-	return result(true, string(jsonBytes), "")
+	ret = result(true, string(jsonBytes), "")
+	return
 }
 
 // Helper functions

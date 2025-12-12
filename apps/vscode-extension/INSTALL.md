@@ -3,6 +3,7 @@
 ## Method 1: Install from VSIX (Recommended)
 
 1. Build the VSIX:
+
    ```bash
    npm run build:vsix
    ```
@@ -19,6 +20,7 @@
 ## Method 2: Using Command Palette
 
 1. Build the VSIX:
+
    ```bash
    npm run build:vsix
    ```
@@ -46,32 +48,11 @@ code --install-extension sruja-language-support.vsix
 ```
 
 To add VS Code CLI to PATH:
+
 - **Mac**: Open VS Code → `Cmd+Shift+P` → "Shell Command: Install 'code' command in PATH"
 - **Windows**: Usually installed automatically
 - **Linux**: May need to add manually to PATH
 
+## Note
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+The extension uses WASM and doesn't require any external CLI tools. Everything works out of the box!

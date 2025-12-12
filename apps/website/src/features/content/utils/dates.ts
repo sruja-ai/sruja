@@ -5,11 +5,11 @@
  */
 export function formatContentDate(date: string | Date | undefined | null): string | null {
   if (!date) return null;
-  
-  if (typeof date === 'string') {
+
+  if (typeof date === "string") {
     return new Date(date).toLocaleDateString();
   }
-  
+
   return date.toLocaleDateString();
 }
 
@@ -18,27 +18,10 @@ export function formatContentDate(date: string | Date | undefined | null): strin
  */
 export function formatContentDateISO(date: string | Date | undefined | null): string | null {
   if (!date) return null;
-  
-  if (typeof date === 'string') {
+
+  if (typeof date === "string") {
     return new Date(date).toISOString();
   }
-  
+
   return date.toISOString();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

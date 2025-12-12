@@ -166,15 +166,3 @@ func TestScenarioFQNRule_IntegrationWithValidator(t *testing.T) {
 		t.Errorf("Expected validation error for undefined reference, but got none. Diagnostics: %v", diags)
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,23 +1,34 @@
-import { useCallback, useState, useEffect } from 'react';
-import { Menu, Info, RefreshCw, Edit, Eye, Settings, Share2, Play, Plus } from 'lucide-react';
-import { ArchitectureCanvas } from './components/Canvas';
-import { NavigationPanel, DetailsPanel, OverviewPanel, GuidedBuilderPanel, RequirementsPanel, ADRsPanel, CodePanel } from './components/Panels';
-import { Breadcrumb, ExamplesDropdown } from './components/shared';
-import { ThemeToggle } from '@sruja/ui';
-import { useArchitectureStore, useSelectionStore, useUIStore, useFeatureFlagsStore } from './stores';
-import { getAllExamples, fetchExampleDsl } from './examples';
-import { convertDslToJson } from './wasm';
-import { convertJsonToDsl } from './utils/jsonToDsl';
-import { Logo, SrujaLoader } from '@sruja/ui';
-import type { ArchitectureJSON, ViewTab } from './types';
-import { useTabCounts } from './hooks/useTabCounts';
-import { DetailsView } from './components/Views/DetailsView';
-import LZString from 'lz-string';
-import { ViewTabs } from './components/ViewTabs';
-import { FeatureSettingsDialog } from './components/Overview/FeatureSettingsDialog';
-import { useUrlState } from './hooks/useUrlState';
+import { useCallback, useState, useEffect } from "react";
+import { Menu, Info, RefreshCw, Edit, Eye, Settings, Share2, Play, Plus } from "lucide-react";
+import { ArchitectureCanvas } from "./components/Canvas";
+import {
+  NavigationPanel,
+  DetailsPanel,
+  OverviewPanel,
+  GuidedBuilderPanel,
+  CodePanel,
+} from "./components/Panels";
+import { Breadcrumb, ExamplesDropdown } from "./components/shared";
+import { ThemeToggle } from "@sruja/ui";
+import {
+  useArchitectureStore,
+  useSelectionStore,
+  useUIStore,
+  useFeatureFlagsStore,
+} from "./stores";
+import { getAllExamples, fetchExampleDsl } from "./examples";
+import { convertDslToJson } from "./wasm";
+import { convertJsonToDsl } from "./utils/jsonToDsl";
+import { Logo, SrujaLoader } from "@sruja/ui";
+import type { ArchitectureJSON, ViewTab } from "./types";
+import { useTabCounts } from "./hooks/useTabCounts";
+import { DetailsView } from "./components/Views/DetailsView";
+import LZString from "lz-string";
+import { ViewTabs } from "./components/ViewTabs";
+import { FeatureSettingsDialog } from "./components/Overview/FeatureSettingsDialog";
+import { useUrlState } from "./hooks/useUrlState";
 
-const VALID_TABS: ViewTab[] = ['overview', 'diagram', 'details', 'code', 'guided'];
+const VALID_TABS: ViewTab[] = ["overview", "diagram", "details", "code", "guided"];
 
 export default function App() {
   // Sync URL state (level, expanded nodes) with view store - must be called early
@@ -29,7 +40,7 @@ export default function App() {
   const loadFromDSL = useArchitectureStore((s) => s.loadFromDSL);
   const reset = useArchitectureStore((s) => s.reset);
   const selectedNodeId = useSelectionStore((s) => s.selectedNodeId);
-  const selectNode = useSelectionStore((s) => s.selectNode); // Added helpful selector
+  // const selectNode = useSelectionStore((s) => s.selectNode); // selector not used currently
   const activeTab = useUIStore((s) => s.activeTab);
   const setActiveTab = useUIStore((s) => s.setActiveTab);
   const editMode = useFeatureFlagsStore((s) => s.editMode);
@@ -43,25 +54,25 @@ export default function App() {
   // Initialize activeTab from URL on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get('tab');
+    const tabParam = params.get("tab");
 
     // Map legacy tabs to new structure
-    if (tabParam === 'requirements' || tabParam === 'adrs') {
-      setActiveTab('details');
+    if (tabParam === "requirements" || tabParam === "adrs") {
+      setActiveTab("details");
     } else if (VALID_TABS.includes(tabParam as ViewTab)) {
       setActiveTab(tabParam as ViewTab);
     } else {
-      setActiveTab('diagram');
+      setActiveTab("diagram");
     }
   }, [setActiveTab]);
 
   // Sync URL when activeTab changes
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('tab') !== activeTab) {
-      params.set('tab', activeTab);
+    if (params.get("tab") !== activeTab) {
+      params.set("tab", activeTab);
       const newUrl = `${window.location.pathname}?${params.toString()}`;
-      window.history.replaceState({}, '', newUrl);
+      window.history.replaceState({}, "", newUrl);
     }
   }, [activeTab]);
 
@@ -70,24 +81,24 @@ export default function App() {
 
   const handleShareHeader = useCallback(async () => {
     try {
-      const dsl = storeDslSource || (data ? convertJsonToDsl(data) : '');
+      const dsl = storeDslSource || (data ? convertJsonToDsl(data) : "");
       if (!dsl) return;
       const compressed = LZString.compressToBase64(dsl);
       const encoded = encodeURIComponent(compressed);
       const url = new URL(window.location.href);
-      url.searchParams.set('share', encoded);
-      url.searchParams.set('tab', activeTab);
+      url.searchParams.set("share", encoded);
+      url.searchParams.set("tab", activeTab);
       await navigator.clipboard.writeText(url.toString());
     } catch (err) {
-      console.error('Failed to generate share URL:', err);
+      console.error("Failed to generate share URL:", err);
     }
   }, [storeDslSource, data, activeTab]);
 
   // Load DSL from URL on mount (if share parameter exists)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const shareParam = params.get('share');
-    const dslParam = params.get('dsl');
+    const shareParam = params.get("share");
+    const dslParam = params.get("dsl");
 
     if (shareParam || dslParam) {
       setIsLoadingFile(true);
@@ -96,20 +107,22 @@ export default function App() {
         const decompressed = LZString.decompressFromBase64(decodeURIComponent(compressed));
         if (decompressed) {
           // Load DSL from URL
-          convertDslToJson(decompressed).then(json => {
-            if (json) {
-              loadFromDSL(json as ArchitectureJSON, decompressed, undefined);
-              setActiveTab('diagram');
-            } else {
-              console.error('Failed to parse DSL from URL');
-            }
-          }).finally(() => {
-            setIsLoadingFile(false);
-          });
+          convertDslToJson(decompressed)
+            .then((json) => {
+              if (json) {
+                loadFromDSL(json as ArchitectureJSON, decompressed, undefined);
+                setActiveTab("diagram");
+              } else {
+                console.error("Failed to parse DSL from URL");
+              }
+            })
+            .finally(() => {
+              setIsLoadingFile(false);
+            });
           return;
         }
       } catch (err) {
-        console.error('Failed to load DSL from URL:', err);
+        console.error("Failed to load DSL from URL:", err);
         setIsLoadingFile(false);
       }
     }
@@ -119,7 +132,7 @@ export default function App() {
   const loadDemo = useCallback(async () => {
     // Don't load demo if URL has DSL
     const params = new URLSearchParams(window.location.search);
-    if (params.get('share') || params.get('dsl')) {
+    if (params.get("share") || params.get("dsl")) {
       return;
     }
 
@@ -134,18 +147,18 @@ export default function App() {
             const json = await convertDslToJson(content);
             if (json) {
               loadFromDSL(json as ArchitectureJSON, content, firstExample.file);
-              setActiveTab('diagram');
+              setActiveTab("diagram");
               return;
             }
           } else {
             const parsed = JSON.parse(content) as ArchitectureJSON;
             const dsl = convertJsonToDsl(parsed);
             loadFromDSL(parsed, dsl, firstExample.file);
-            setActiveTab('diagram');
+            setActiveTab("diagram");
             return;
           }
         }
-      } catch { }
+      } catch {}
       const fallbackDsl = `architecture "Demo" {
   persons {user "User" }
   systems {web "WebApp" }
@@ -153,11 +166,11 @@ export default function App() {
 }`;
       const fallbackJson = await convertDslToJson(fallbackDsl);
       if (fallbackJson) {
-        loadFromDSL(fallbackJson as ArchitectureJSON, fallbackDsl, 'fallback');
-        setActiveTab('diagram');
+        loadFromDSL(fallbackJson as ArchitectureJSON, fallbackDsl, "fallback");
+        setActiveTab("diagram");
       }
     } catch (err) {
-      console.error('Failed to load demo:', err);
+      console.error("Failed to load demo:", err);
     } finally {
       setIsLoadingFile(false);
     }
@@ -171,73 +184,73 @@ export default function App() {
   // Fix flex layout for React Flow container (CSS may not be applied immediately)
   useEffect(() => {
     const fixLayout = () => {
-      const app = document.querySelector('.app');
-      const appHeader = document.querySelector('.app-header');
-      const appMain = document.querySelector('.app-main');
-      const centerPanel = document.querySelector('.center-panel');
-      const canvasContainer = document.querySelector('.canvas-container');
-      
+      const app = document.querySelector(".app") as HTMLElement | null;
+      const appHeader = document.querySelector(".app-header") as HTMLElement | null;
+      const appMain = document.querySelector(".app-main") as HTMLElement | null;
+      const centerPanel = document.querySelector(".center-panel") as HTMLElement | null;
+      const canvasContainer = document.querySelector(".canvas-container") as HTMLElement | null;
+
       if (app) {
-        app.style.display = 'flex';
-        app.style.flexDirection = 'column';
-        app.style.height = '100vh';
+        app.style.display = "flex";
+        app.style.flexDirection = "column";
+        app.style.height = "100vh";
       }
-      
+
       if (appHeader) {
-        appHeader.style.display = 'flex';
-        appHeader.style.flexDirection = 'row';
-        appHeader.style.alignItems = 'center';
-        appHeader.style.justifyContent = 'space-between';
-        appHeader.style.height = '56px';
-        appHeader.style.flexShrink = '0';
+        appHeader.style.display = "flex";
+        appHeader.style.flexDirection = "row";
+        appHeader.style.alignItems = "center";
+        appHeader.style.justifyContent = "space-between";
+        appHeader.style.height = "56px";
+        appHeader.style.flexShrink = "0";
       }
-      
-      const headerLeft = document.querySelector('.header-left');
-      const headerCenter = document.querySelector('.header-center');
-      const headerRight = document.querySelector('.header-right');
-      
+
+      const headerLeft = document.querySelector(".header-left") as HTMLElement | null;
+      const headerCenter = document.querySelector(".header-center") as HTMLElement | null;
+      const headerRight = document.querySelector(".header-right") as HTMLElement | null;
+
       if (headerLeft) {
-        headerLeft.style.display = 'flex';
-        headerLeft.style.flex = '1';
-        headerLeft.style.alignItems = 'center';
+        headerLeft.style.display = "flex";
+        headerLeft.style.flex = "1";
+        headerLeft.style.alignItems = "center";
       }
-      
+
       if (headerCenter) {
-        headerCenter.style.display = 'flex';
-        headerCenter.style.flex = '2';
-        headerCenter.style.justifyContent = 'center';
+        headerCenter.style.display = "flex";
+        headerCenter.style.flex = "2";
+        headerCenter.style.justifyContent = "center";
       }
-      
+
       if (headerRight) {
-        headerRight.style.display = 'flex';
-        headerRight.style.alignItems = 'center';
-        headerRight.style.gap = '8px';
+        headerRight.style.display = "flex";
+        headerRight.style.alignItems = "center";
+        headerRight.style.gap = "8px";
       }
-      
+
       if (appMain) {
-        appMain.style.display = 'flex';
-        appMain.style.flex = '1 1 auto';
-        appMain.style.minHeight = '0';
+        appMain.style.display = "flex";
+        appMain.style.flex = "1 1 auto";
+        appMain.style.minHeight = "0";
       }
-      
+
       if (centerPanel) {
-        centerPanel.style.display = 'flex';
-        centerPanel.style.flexDirection = 'column';
-        centerPanel.style.flex = '1 1 auto';
-        centerPanel.style.minHeight = '0';
-        centerPanel.style.overflow = 'hidden';
+        centerPanel.style.display = "flex";
+        centerPanel.style.flexDirection = "column";
+        centerPanel.style.flex = "1 1 auto";
+        centerPanel.style.minHeight = "0";
+        centerPanel.style.overflow = "hidden";
       }
-      
+
       if (canvasContainer) {
-        canvasContainer.style.flex = '1 1 auto';
-        canvasContainer.style.minHeight = '0';
+        canvasContainer.style.flex = "1 1 auto";
+        canvasContainer.style.minHeight = "0";
       }
     };
 
     // Fix immediately and after a short delay to ensure DOM is ready
     fixLayout();
     const timeout = setTimeout(fixLayout, 100);
-    
+
     return () => clearTimeout(timeout);
   }, []);
 
@@ -258,16 +271,14 @@ export default function App() {
             <span>Sruja Playground</span>
           </div>
         </div>
-        <div className="header-center">
-          {data && <Breadcrumb />}
-        </div>
+        <div className="header-center">{data && <Breadcrumb />}</div>
         <div className="header-right">
           <button
             className="action-btn"
             onClick={() => {
               // Clear localStorage explicitly
-              localStorage.removeItem('sruja-architecture-data');
-              localStorage.removeItem('architecture-visualizer-feature-flags');
+              localStorage.removeItem("sruja-architecture-data");
+              localStorage.removeItem("architecture-visualizer-feature-flags");
               // Reset store state
               reset();
               // Reload the page
@@ -282,16 +293,16 @@ export default function App() {
 
           <div className="mode-toggle-group">
             <button
-              className={`mode-btn ${editMode === 'view' ? 'active' : ''}`}
-              onClick={() => setEditMode('view')}
+              className={`mode-btn ${editMode === "view" ? "active" : ""}`}
+              onClick={() => setEditMode("view")}
               title="View Mode"
             >
               <Eye size={16} />
               <span className="btn-label">View</span>
             </button>
             <button
-              className={`mode-btn ${editMode === 'edit' ? 'active' : ''}`}
-              onClick={() => setEditMode('edit')}
+              className={`mode-btn ${editMode === "edit" ? "active" : ""}`}
+              onClick={() => setEditMode("edit")}
               title="Edit Mode"
             >
               <Edit size={16} />
@@ -344,19 +355,13 @@ export default function App() {
 
       {/* Main Content */}
       <main className="app-main">
-        <div className={`navigation-panel-wrapper ${isNavOpen ? 'open' : ''}`}>
+        <div className={`navigation-panel-wrapper ${isNavOpen ? "open" : ""}`}>
           <NavigationPanel onClose={() => setIsNavOpen(false)} />
         </div>
 
-        <div className={`center-panel ${editMode === 'edit' ? 'edit-mode' : ''}`}>
+        <div className={`center-panel ${editMode === "edit" ? "edit-mode" : ""}`}>
           {/* View Tabs */}
-          {data && (
-            <ViewTabs
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              counts={counts}
-            />
-          )}
+          {data && <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} counts={counts} />}
 
           {/* Tab Content */}
           <div className="canvas-container">
@@ -370,17 +375,20 @@ export default function App() {
                     <Play size={18} />
                     Load Demo Architecture
                   </button>
-                  <button className="upload-btn large" onClick={() => {
-                    // Creating new empty architecture
-                    const emptyDsl = `architecture "New System" {
+                  <button
+                    className="upload-btn large"
+                    onClick={() => {
+                      // Creating new empty architecture
+                      const emptyDsl = `architecture "New System" {
   // Start designing your system
   persons { user "User" }
   systems { system "System" }
 }`;
-                    convertDslToJson(emptyDsl).then(json => {
-                      if (json) loadFromDSL(json as ArchitectureJSON, emptyDsl, 'new');
-                    });
-                  }}>
+                      convertDslToJson(emptyDsl).then((json) => {
+                        if (json) loadFromDSL(json as ArchitectureJSON, emptyDsl, "new");
+                      });
+                    }}
+                  >
                     <Plus size={18} />
                     Create New
                   </button>
@@ -393,25 +401,24 @@ export default function App() {
                 <p>Loading architecture...</p>
               </div>
             )}
-            {data && activeTab === 'overview' && <OverviewPanel />}
-            {data && activeTab === 'diagram' && <ArchitectureCanvas dragEnabled={editMode === 'edit'} />}
-            {data && activeTab === 'guided' && <GuidedBuilderPanel />}
-            {data && activeTab === 'details' && <DetailsView />}
-            {data && activeTab === 'code' && <CodePanel />}
+            {data && activeTab === "overview" && <OverviewPanel />}
+            {data && activeTab === "diagram" && (
+              <ArchitectureCanvas dragEnabled={editMode === "edit"} />
+            )}
+            {data && activeTab === "guided" && <GuidedBuilderPanel />}
+            {data && activeTab === "details" && <DetailsView />}
+            {data && activeTab === "code" && <CodePanel />}
           </div>
         </div>
 
         {selectedNodeId && (
-          <div className={`details-panel-wrapper ${isDetailsOpen ? 'open' : ''}`}>
+          <div className={`details-panel-wrapper ${isDetailsOpen ? "open" : ""}`}>
             <DetailsPanel onClose={() => setIsDetailsOpen(false)} />
           </div>
         )}
       </main>
 
-      <FeatureSettingsDialog
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-      />
+      <FeatureSettingsDialog isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </div>
   );
 }

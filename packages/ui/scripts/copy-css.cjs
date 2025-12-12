@@ -1,7 +1,7 @@
 // packages/ui/scripts/copy-css.cjs
 // Copy CSS files from src to dist maintaining directory structure
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
 function copyDir(src, dest) {
   if (!fs.existsSync(dest)) {
@@ -16,7 +16,7 @@ function copyDir(src, dest) {
 
     if (entry.isDirectory()) {
       copyDir(srcPath, destPath);
-    } else if (entry.name.endsWith('.css')) {
+    } else if (entry.name.endsWith(".css")) {
       const destDir = path.dirname(destPath);
       if (!fs.existsSync(destDir)) {
         fs.mkdirSync(destDir, { recursive: true });
@@ -27,16 +27,13 @@ function copyDir(src, dest) {
   }
 }
 
-const srcDir = path.join(__dirname, '../src');
-const distDir = path.join(__dirname, '../dist');
+const srcDir = path.join(__dirname, "../src");
+const distDir = path.join(__dirname, "../dist");
 
 if (fs.existsSync(srcDir)) {
   copyDir(srcDir, distDir);
-  console.log('CSS files copied successfully');
+  console.log("CSS files copied successfully");
 } else {
-  console.error('Source directory does not exist:', srcDir);
+  console.error("Source directory does not exist:", srcDir);
   process.exit(1);
 }
-
-
-

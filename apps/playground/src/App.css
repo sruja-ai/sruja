@@ -1,54 +1,85 @@
 /* Global App Styles */
 :root {
-  /* C4 Colors - same for both themes */
-  --c4-person: #08427B;
-  --c4-system: #1168BD;
-  --c4-system-external: #999999;
-  --c4-container: #438DD5;
-  --c4-component: #85BBF0;
+  /* C4 Colors - refined specific shades */
+  --c4-person: #0284c7;
+  /* Sky 600 */
+  --c4-system: #2563eb;
+  /* Blue 600 */
+  --c4-system-external: #94a3b8;
+  /* Slate 400 */
+  --c4-container: #3b82f6;
+  /* Blue 500 */
+  --c4-component: #60a5fa;
+  /* Blue 400 */
 
   /* Light theme (default) */
   --bg-primary: #ffffff;
-  --bg-secondary: #fafafa;
-  --bg-tertiary: #f5f5f5;
-  --border-color: #e5e5e5;
-  --text-primary: #333333;
-  --text-secondary: #666666;
-  --text-muted: #999999;
-  --shadow-color: rgba(0, 0, 0, 0.1);
-  --highlight-color: #1168BD;
+  --bg-secondary: #f8fafc;
+  /* Slate 50 */
+  --bg-tertiary: #f1f5f9;
+  /* Slate 100 */
+  --border-color: #e2e8f0;
+  /* Slate 200 */
+  --text-primary: #0f172a;
+  /* Slate 900 */
+  --text-secondary: #64748b;
+  /* Slate 500 */
+  --text-muted: #94a3b8;
+  /* Slate 400 */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --highlight-color: #3b82f6;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-blur: blur(12px);
 
   /* Panel Colors */
-  --panel-bg: #ffffff;
-  --panel-border: #e5e5e5;
-  --card-bg: #fafafa;
-  --card-hover-bg: #f5f5f5;
+  --panel-bg: rgba(255, 255, 255, 0.9);
+  --panel-border: #e2e8f0;
+  --card-bg: #ffffff;
+  --card-hover-bg: #f8fafc;
 }
 
 /* Dark theme */
 [data-theme="dark"] {
-  --bg-primary: #1a1a2e;
-  --bg-secondary: #16213e;
-  --bg-tertiary: #0f3460;
-  --border-color: #3d4f6f;
-  --text-primary: #e8e8e8;
-  --text-secondary: #b8b8b8;
-  --text-muted: #888888;
-  --shadow-color: rgba(0, 0, 0, 0.3);
-  --highlight-color: #4dabf7;
+  --bg-primary: #0f172a;
+  /* Slate 900 */
+  --bg-secondary: #020617;
+  /* Slate 950 */
+  --bg-tertiary: #1e293b;
+  /* Slate 800 */
+  --border-color: #334155;
+  /* Slate 700 */
+  --text-primary: #f8fafc;
+  /* Slate 50 */
+  --text-secondary: #94a3b8;
+  /* Slate 400 */
+  --text-muted: #64748b;
+  /* Slate 500 */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3);
 
-  /* Panel Colors */
-  --panel-bg: #1a1a2e;
-  --panel-border: #3d4f6f;
-  --card-bg: rgba(255, 255, 255, 0.03);
-  --card-hover-bg: rgba(255, 255, 255, 0.06);
+  --highlight-color: #60a5fa;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(15, 23, 42, 0.7);
+  --glass-border: rgba(51, 65, 85, 0.5);
+
+  --panel-bg: rgba(15, 23, 42, 0.9);
+  --panel-border: #334155;
+  --card-bg: rgba(30, 41, 59, 0.5);
+  /* Slate 800 */
+  --card-hover-bg: rgba(30, 41, 59, 0.8);
 
   /* Adjust C4 colors for better dark mode contrast */
-  --c4-person: #4a90d9;
-  --c4-system: #5ea8f5;
-  --c4-system-external: #7a7a8a;
-  --c4-container: #6bb5ff;
-  --c4-component: #a8d4ff;
+  --c4-person: #38bdf8;
+  --c4-system: #60a5fa;
+  --c4-system-external: #94a3b8;
+  --c4-container: #93c5fd;
+  --c4-component: #bfdbfe;
 }
 
 * {
@@ -58,7 +89,7 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   background: var(--bg-secondary);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
@@ -74,19 +105,24 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  background: radial-gradient(circle at top center, var(--bg-tertiary), var(--bg-secondary));
 }
 
 /* Header */
 .app-header {
-  height: 56px;
-  background: var(--bg-primary);
+  height: 60px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 24px;
   gap: 20px;
-  transition: background 0.3s ease, border-color 0.3s ease;
+  position: relative;
+  z-index: 50;
+  box-shadow: var(--shadow-sm);
 }
 
 .header-left {
@@ -108,12 +144,13 @@ body {
 }
 
 .app-title {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  letter-spacing: -0.02em;
 }
 
 /* Logo rotation animation */
@@ -136,39 +173,44 @@ body {
 .demo-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
 }
 
 .upload-btn {
   background: var(--c4-system);
   color: white;
-  border: none;
+  border: 1px solid transparent;
 }
 
 .upload-btn:hover {
-  background: #0d5aa0;
+  background: #1d4ed8;
+  /* Blue 700 */
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .demo-btn {
-  background: white;
+  background: var(--bg-primary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
 }
 
 .demo-btn:hover {
-  background: #f5f5f5;
+  background: var(--bg-secondary);
+  border-color: var(--text-secondary);
 }
 
 .demo-btn.large {
   padding: 12px 24px;
-  font-size: 14px;
-  margin-top: 20px;
+  font-size: 15px;
+  margin-top: 24px;
 }
 
 /* Main Content */
@@ -177,12 +219,13 @@ body {
   display: flex;
   overflow: hidden;
   min-height: 0;
+  position: relative;
 }
 
 .canvas-container {
   flex: 1 1 auto;
   position: relative;
-  background: var(--bg-secondary);
+  background: transparent;
   overflow: auto;
   min-height: 0;
   width: 100%;
@@ -199,20 +242,24 @@ body {
   color: var(--text-secondary);
   text-align: center;
   padding: 40px;
-  gap: 16px;
+  gap: 20px;
+  background: radial-gradient(circle at center, var(--bg-primary), var(--bg-secondary));
 }
 
 .drop-zone h2 {
-  font-size: 20px;
-  font-weight: 500;
+  font-size: 24px;
+  font-weight: 700;
   color: var(--text-primary);
-  margin-top: 16px;
+  margin-top: 24px;
+  letter-spacing: -0.02em;
 }
 
 .drop-zone p {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--text-secondary);
-  margin-bottom: 8px;
+  margin-bottom: 24px;
+  max-width: 400px;
+  line-height: 1.5;
 }
 
 .loading {
@@ -222,15 +269,18 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 24px;
   font-size: 16px;
   color: var(--text-secondary);
+  background: var(--glass-bg);
+  backdrop-filter: blur(4px);
 }
 
 .loading p {
   margin: 0;
-  font-size: 14px;
-  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
 /* SrujaLoader animations */
@@ -371,30 +421,35 @@ body {
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
+  background: var(--bg-secondary);
 }
 
 /* View Tabs */
 .view-tabs {
   display: flex;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: var(--bg-primary);
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--border-color);
+  z-index: 10;
 }
 
 .view-tab {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
   font-weight: 500;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 20px;
+  /* Pill shape */
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
 
 .view-tab:hover {
@@ -403,13 +458,17 @@ body {
 }
 
 .view-tab.active {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-  border-color: rgba(102, 126, 234, 0.3);
-  color: #667eea;
+  background: var(--c4-system);
+  /* Use brand color */
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+  font-weight: 600;
 }
 
 [data-theme="dark"] .view-tab.active {
-  color: #a3b8ff;
+  background: var(--c4-system);
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(96, 165, 250, 0.3);
 }
 
 .view-tab svg {
@@ -418,17 +477,23 @@ body {
 }
 
 .tab-badge {
-  font-size: 0.7rem;
-  font-weight: 600;
-  background: rgba(102, 126, 234, 0.2);
-  color: #667eea;
-  padding: 0.15rem 0.4rem;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 2px 6px;
   border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
 }
 
 [data-theme="dark"] .tab-badge {
-  background: rgba(163, 184, 255, 0.2);
-  color: #a3b8ff;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.view-tab:not(.active) .tab-badge {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
 }
 
 /* Action Buttons in Header */
@@ -438,20 +503,21 @@ body {
   justify-content: center;
   gap: 8px;
   height: 36px;
-  padding: 0 12px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
+  padding: 0 16px;
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: 8px;
   cursor: pointer;
-  color: var(--text-primary);
-  transition: all 0.15s;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
   font-size: 13px;
   font-weight: 500;
 }
 
 .action-btn:hover {
   background: var(--bg-tertiary);
-  border-color: var(--highlight-color);
+  color: var(--text-primary);
+  border-color: var(--border-color);
 }
 
 .btn-label {
@@ -462,25 +528,25 @@ body {
 .mode-toggle-group {
   display: flex;
   background: var(--bg-tertiary);
-  padding: 3px;
-  border-radius: 8px;
+  padding: 4px;
+  border-radius: 10px;
   border: 1px solid var(--border-color);
-  gap: 2px;
+  gap: 4px;
 }
 
 .mode-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 6px 14px;
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 500;
-  transition: all 0.15s;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
 
 .mode-btn:hover {
@@ -489,9 +555,13 @@ body {
 
 .mode-btn.active {
   background: var(--bg-primary);
-  color: var(--highlight-color);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  font-weight: 600;
+  color: var(--c4-system);
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .mode-btn.active {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 /* Edit Mode Visual Indicator */
@@ -508,11 +578,13 @@ body {
   color: white;
   font-size: 10px;
   font-weight: 700;
-  padding: 4px 8px;
-  border-bottom-left-radius: 6px;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  border-bottom-left-radius: 8px;
   pointer-events: none;
   z-index: 100;
-  opacity: 0.8;
+  opacity: 0.9;
+  box-shadow: var(--shadow-sm);
 }
 
 .center-panel.edit-mode .canvas-container {
@@ -527,17 +599,12 @@ body {
 .empty-state-actions {
   display: flex;
   gap: 16px;
-  margin-top: 24px;
+  margin-top: 32px;
 }
 
 .upload-btn.large {
   padding: 12px 24px;
-  font-size: 14px;
-}
-
-/* Utility classes */
-.nodrag {
-  cursor: default;
+  font-size: 15px;
 }
 
 /* Utility classes */
@@ -552,7 +619,7 @@ body {
   border: none;
   cursor: pointer;
   padding: 8px;
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--text-primary);
   transition: background 0.15s;
 }
@@ -567,6 +634,7 @@ body {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
   z-index: 99;
   animation: fadeIn 0.3s ease;
 }
@@ -597,10 +665,6 @@ body {
   .header-center {
     flex: 1;
   }
-
-  /* Keep labels visible on tablet/laptop, hide on mobile/small tablet if needed, 
-     but previously we put the label hiding rule here. 
-     Let's move label hiding to 768px. */
 
   .action-btn {
     padding: 0;
@@ -641,7 +705,7 @@ body {
     bottom: 0;
     z-index: 100;
     transform: translateX(-100%);
-    transition: transform 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .navigation-panel-wrapper.open {
@@ -660,7 +724,7 @@ body {
     bottom: 0;
     z-index: 100;
     transform: translateX(100%);
-    transition: transform 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .details-panel-wrapper.open {
@@ -676,7 +740,7 @@ body {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
-    padding: 0.75rem 0.5rem;
+    padding: 12px 16px;
   }
 
   .view-tabs::-webkit-scrollbar {
@@ -690,8 +754,8 @@ body {
 
   .view-tab {
     flex-shrink: 0;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.8rem;
+    padding: 6px 12px;
+    font-size: 13px;
   }
 
   .view-tab svg {
@@ -726,7 +790,7 @@ body {
   }
 
   .app-header {
-    height: 48px;
+    height: 52px;
     padding: 0 12px;
     gap: 8px;
   }
@@ -736,21 +800,19 @@ body {
   }
 
   .app-title {
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .view-tabs {
-    padding: 0.5rem 0.25rem;
-    gap: 0.25rem;
+    padding: 8px 12px;
+    gap: 6px;
   }
 
   .view-tab {
-    padding: 0.4rem 0.6rem;
-    font-size: 0.75rem;
-    gap: 0.25rem;
+    padding: 6px 10px;
+    font-size: 12px;
+    gap: 4px;
   }
-
-
 
   .view-tab svg {
     width: 16px;
@@ -758,26 +820,26 @@ body {
   }
 
   .drop-zone {
-    padding: 20px;
+    padding: 24px;
   }
 
   .drop-zone h2 {
-    font-size: 18px;
+    font-size: 20px;
   }
 
   .drop-zone p {
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .demo-btn.large {
     padding: 10px 20px;
-    font-size: 13px;
+    font-size: 14px;
   }
 }
 
 @media (max-width: 480px) {
   .app-header {
-    height: 44px;
+    height: 48px;
     padding: 0 8px;
   }
 
@@ -786,17 +848,17 @@ body {
   }
 
   .view-tabs {
-    padding: 0.4rem 0.125rem;
+    padding: 6px 8px;
   }
 
   .view-tab {
-    padding: 0.35rem 0.5rem;
+    padding: 4px 8px;
     min-width: 44px;
     justify-content: center;
   }
 
   .tab-badge {
-    font-size: 0.65rem;
-    padding: 0.1rem 0.3rem;
+    font-size: 10px;
+    padding: 1px 4px;
   }
 }

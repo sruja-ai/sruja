@@ -71,15 +71,3 @@ func TestCollectResults_WithPanic(t *testing.T) {
 		t.Error("Expected panic diagnostic but got none")
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-

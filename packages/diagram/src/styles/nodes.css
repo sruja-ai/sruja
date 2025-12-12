@@ -1,27 +1,49 @@
 /* C4 Node Styles */
 
+/* Common Variables for Nodes (can be overridden by theme) */
+:root {
+    --node-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+    --node-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --node-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --node-border-radius: 12px;
+    --node-border-width: 1px;
+}
+
 .c4-node {
     width: 100%;
     height: 100%;
     box-sizing: border-box;
     padding: 16px 20px;
-    border-radius: 8px;
-    border: 2px solid;
+    border-radius: var(--node-border-radius);
+    border: var(--node-border-width) solid;
     min-width: 150px;
-    max-width: 220px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    transition: box-shadow 0.2s ease, transform 0.1s ease;
+    max-width: 240px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-shadow: var(--node-shadow-md);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
+    backdrop-filter: blur(8px);
+    /* Subtle glass feel */
+    background: rgba(255, 255, 255, 0.95);
+    /* High opacity for readability */
+}
+
+/* Dark mode overrides would be handled by parent CSS variable changes, 
+   but ensuring base contrast here */
+[data-theme="dark"] .c4-node {
+    background: rgba(30, 41, 59, 0.95);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
 .c4-node:hover {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-    transform: translateY(-1px);
+    box-shadow: var(--node-shadow-hover);
+    transform: translateY(-2px);
+    z-index: 10;
 }
 
 .c4-node.selected {
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5), 0 4px 16px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 0 0 2px var(--highlight-color, #3b82f6), var(--node-shadow-hover);
+    border-color: var(--highlight-color, #3b82f6) !important;
 }
 
 /* Node Icon */
@@ -29,8 +51,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 8px;
-    opacity: 0.9;
+    margin-bottom: 12px;
+    opacity: 1;
+    color: inherit;
 }
 
 /* Node Content */
@@ -45,95 +68,154 @@
     word-wrap: break-word;
     overflow-wrap: break-word;
     white-space: normal;
-    line-height: 1.2;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
 }
 
 .node-description {
     font-size: 11px;
-    opacity: 0.85;
-    line-height: 1.3;
-    margin-top: 4px;
+    opacity: 0.7;
+    line-height: 1.4;
+    margin-top: 6px;
+    font-weight: 400;
 }
 
 .node-technology {
     font-size: 10px;
-    opacity: 0.8;
-    font-style: italic;
+    opacity: 0.6;
+    font-weight: 500;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
 }
 
 .node-badge {
     margin-top: 8px;
     font-size: 10px;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.05);
     padding: 2px 8px;
-    border-radius: 10px;
+    border-radius: 12px;
     display: inline-block;
+    font-weight: 600;
+}
+
+[data-theme="dark"] .node-badge {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 /* System Node */
 .system-node {
     min-width: 180px;
+    background: linear-gradient(to bottom right, #ffffff, #f8fafc);
 }
 
-/* System Boundary Node - Green tint */
+[data-theme="dark"] .system-node {
+    background: linear-gradient(to bottom right, #1e293b, #0f172a);
+}
+
+/* System Boundary Node - Premium container */
 .system-boundary-node {
     min-width: 240px;
     min-height: 160px;
-    background: rgba(16, 185, 129, 0.03);
+    background: rgba(255, 255, 255, 0.4);
+    /* More transparent */
     border-style: dashed;
-    border-color: #10b981;
+    border-color: rgba(16, 185, 129, 0.4);
+    border-width: 2px;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+
+[data-theme="dark"] .system-boundary-node {
+    background: rgba(16, 185, 129, 0.05);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.system-boundary-node:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: rgba(16, 185, 129, 0.6);
 }
 
 .system-boundary-node .boundary-titlebar {
-    background: rgba(16, 185, 129, 0.9);
-    border-color: #059669;
+    background: #10b981;
+    color: white;
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+    border: none;
 }
 
-/* Container Boundary Node - Purple tint */
+/* Container Boundary Node */
 .container-boundary-node {
     min-width: 200px;
     min-height: 140px;
-    background: rgba(147, 51, 234, 0.03);
+    background: rgba(255, 255, 255, 0.4);
     border-style: dashed;
-    border-color: #9333ea;
+    border-color: rgba(147, 51, 234, 0.4);
+    border-width: 2px;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+
+[data-theme="dark"] .container-boundary-node {
+    background: rgba(147, 51, 234, 0.05);
+    border-color: rgba(147, 51, 234, 0.3);
+}
+
+.container-boundary-node:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: rgba(147, 51, 234, 0.6);
 }
 
 .container-boundary-node .boundary-titlebar {
-    background: rgba(147, 51, 234, 0.9);
-    border-color: #7c3aed;
+    background: #9333ea;
+    color: white;
+    box-shadow: 0 2px 4px rgba(147, 51, 234, 0.2);
+    border: none;
 }
 
-/* Enterprise Boundary Node - Blue tint */
+/* Enterprise Boundary Node */
 .enterprise-boundary-node {
     min-width: 600px;
     min-height: 400px;
-    background: rgba(30, 64, 175, 0.03);
+    background: rgba(255, 255, 255, 0.2);
     border-style: dashed;
-    border-color: #1e40af;
-    border-width: 3px;
+    border-color: rgba(37, 99, 235, 0.3);
+    border-width: 2px;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+
+[data-theme="dark"] .enterprise-boundary-node {
+    background: rgba(30, 64, 175, 0.05);
+    border-color: rgba(37, 99, 235, 0.3);
 }
 
 .enterprise-boundary-node .boundary-titlebar {
-    background: rgba(30, 64, 175, 0.95);
-    border-color: #1e3a8a;
-    font-size: 14px;
-    padding: 4px 12px;
+    background: #2563eb;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border: none;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
 }
 
 .boundary-header {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
 }
 
 .boundary-title {
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .boundary-description {
-    font-size: 11px;
-    opacity: 0.85;
+    font-size: 10px;
+    opacity: 0.9;
+    font-weight: 400;
 }
 
 /* Container Node */
@@ -148,77 +230,96 @@
     padding: 12px 16px;
 }
 
-/* Person Node - special rounded shape */
+/* Person Node - refined shape */
 .person-node {
-    border-radius: 50% 50% 8px 8px;
+    border-radius: 40px 40px 12px 12px;
     text-align: center;
-    padding: 20px;
-    min-width: 120px;
+    padding: 24px 20px 16px;
+    min-width: 140px;
 }
 
 .person-icon-circle {
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.03);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 10px;
+    margin: 0 auto 12px;
+    color: var(--c4-person);
+    /* Inherit connection color usually, but set default */
+    border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-/* DataStore Node - cylinder-like */
+[data-theme="dark"] .person-icon-circle {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* DataStore Node - Modern stack look instead of pure cylinder */
 .datastore-node {
     border-radius: 8px;
     position: relative;
-}
-
-.datastore-node::before {
-    content: '';
-    position: absolute;
-    top: -6px;
-    left: -2px;
-    right: -2px;
-    height: 12px;
-    background: inherit;
-    border-radius: 50%;
-    border: 2px solid;
-    border-color: inherit;
+    border-width: 1px;
+    /* Optional: Stacked effect via box-shadow */
+    box-shadow:
+        0 -3px 0 -1px rgba(0, 0, 0, 0.05),
+        0 -6px 0 -2px rgba(0, 0, 0, 0.03),
+        var(--node-shadow-md);
+    margin-top: 6px;
+    /* Space for the stack effect */
 }
 
 /* Queue Node */
 .queue-node {
-    border-radius: 4px 20px 20px 4px;
+    border-radius: 6px 24px 24px 6px;
 }
 
 /* Handle styling */
 .c4-handle {
     width: 8px;
     height: 8px;
-    background: #555;
-    border: 2px solid #fff;
+    background: var(--bg-primary, #fff);
+    border: 2px solid var(--text-secondary, #666);
+    border-radius: 50%;
+    transition: transform 0.1s;
 }
 
 .c4-handle:hover {
-    background: #333;
+    transform: scale(1.2);
+    border-color: var(--highlight-color);
 }
 
 /* External nodes - dimmed, dashed border */
 .c4-node.external {
     border-style: dashed;
-    opacity: 0.6;
-    filter: grayscale(30%);
+    opacity: 0.8;
+    background: repeating-linear-gradient(45deg,
+            rgba(0, 0, 0, 0.02),
+            rgba(0, 0, 0, 0.02) 10px,
+            transparent 10px,
+            transparent 20px);
+}
+
+[data-theme="dark"] .c4-node.external {
+    opacity: 0.7;
+    background: repeating-linear-gradient(45deg,
+            rgba(255, 255, 255, 0.02),
+            rgba(255, 255, 255, 0.02) 10px,
+            transparent 10px,
+            transparent 20px);
 }
 
 .c4-node.external:hover {
-    opacity: 0.8;
+    opacity: 1;
 }
 
-/* Node header - horizontal layout for icon, content, expand button */
+/* Node header */
 .node-header {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 12px;
 }
 
 .node-header .node-icon {
@@ -233,52 +334,65 @@
 
 /* Expand/Collapse button */
 .expand-btn {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.05);
     border: none;
-    border-radius: 4px;
-    padding: 4px 6px;
+    border-radius: 12px;
+    padding: 4px 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
     color: inherit;
     font-size: 11px;
-    transition: background 0.15s;
+    font-weight: 600;
+    transition: all 0.2s;
+    margin-top: 2px;
+}
+
+[data-theme="dark"] .expand-btn {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .expand-btn:hover {
-    background: rgba(255, 255, 255, 0.35);
+    background: rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
 }
 
-.expand-btn .child-count {
-    font-weight: 600;
+[data-theme="dark"] .expand-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
 }
 
 /* Expanded system node */
 .system-node.expanded {
     min-width: 220px;
-    border-width: 3px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    border-width: 2px;
+    box-shadow: var(--node-shadow-hover);
+    border-color: var(--c4-system);
 }
 
 .boundary-titlebar {
     position: absolute;
-    top: 8px;
-    left: 8px;
+    top: -12px;
+    /* Pull up to overlap border */
+    left: 12px;
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(17, 24, 39, 0.85);
-    color: #e5e7eb;
-    border: 1px solid #374151;
-    border-radius: 6px;
-    padding: 2px 8px;
+    border-radius: 16px;
+    padding: 4px 12px;
     font-size: 12px;
+    font-weight: 600;
     pointer-events: none;
+    z-index: 5;
+    white-space: nowrap;
 }
 
 .boundary-titlebar .count {
-    opacity: 0.85;
+    opacity: 0.8;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 10px;
 }
 
 .boundary-titlebar .icon {
