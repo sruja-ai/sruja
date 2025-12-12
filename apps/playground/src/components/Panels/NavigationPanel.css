@@ -538,6 +538,47 @@
     color: var(--highlight-color);
 }
 
+.nav-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    margin-bottom: 12px;
+    padding-top: 8px;
+}
+
+.nav-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 36px;
+    height: 36px;
+}
+
+.nav-action-btn:hover:not(:disabled) {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--highlight-color);
+}
+
+.nav-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.nav-action-btn svg {
+    flex-shrink: 0;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .navigation-panel {

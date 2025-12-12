@@ -676,16 +676,21 @@
 }
 
 .action-buttons {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 0.75rem;
+    align-items: flex-start;
 }
 
 .action-btn {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     gap: 0.5rem;
-    padding: 0.75rem 1rem;
+    padding: 0.875rem 1.25rem;
+    min-width: 120px;
+    max-width: 200px;
+    min-height: 40px;
     background: rgba(102, 126, 234, 0.1);
     border: 1px solid rgba(102, 126, 234, 0.3);
     border-radius: 6px;
@@ -694,6 +699,22 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    position: relative;
+}
+
+.action-btn span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.action-btn svg {
+    flex-shrink: 0;
 }
 
 .action-btn:hover {
