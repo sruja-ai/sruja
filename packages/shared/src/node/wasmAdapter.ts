@@ -36,15 +36,24 @@ export interface Location {
   column: number;
 }
 
+export interface Symbol {
+  name: string;
+  kind: string;
+  line: number;
+}
+
 export type NodeWasmApi = {
   parseDslToJson: (dsl: string, filename?: string) => Promise<string>;
   printJsonToDsl: (json: string) => Promise<string>;
   // Export functions (dslToMarkdown, dslToMermaid) removed - now handled by TypeScript exporters
   // LSP functions
   getDiagnostics: (text: string) => Promise<Diagnostic[]>;
+  getSymbols: (text: string) => Promise<Symbol[]>;
   hover: (text: string, line: number, column: number) => Promise<HoverInfo | null>;
   completion: (text: string, line: number, column: number) => Promise<CompletionItem[]>;
   goToDefinition: (text: string, line: number, column: number) => Promise<Location | null>;
+  findReferences: (text: string, line: number, column: number) => Promise<Location[]>;
+  rename: (text: string, line: number, column: number, newName: string) => Promise<string>;
   format: (text: string) => Promise<string>;
 };
 
@@ -166,16 +175,68 @@ async function loadWasmModule(
   const instance = await WebAssemblyAPI.instantiate(wasmModule, go.importObject);
   console.log("[WASM] WASM module instantiated");
 
-  // Run the Go program in a separate promise to avoid blocking
-  // The Go program will register functions on global
-  console.log("[WASM] Running Go program (this may take a moment)...");
-  try {
-    await go.run(instance);
-    console.log("[WASM] Go program completed");
-  } catch (error) {
-    console.error("[WASM] Go program failed:", error);
-    throw error;
-  }
+  // Run the Go program - note: Go WASM main() typically blocks on a channel
+  // to keep the program alive, so go.run() will never return.
+  // However, functions are registered BEFORE the blocking, so we can check
+  // for them after starting go.run() without waiting for it to complete.
+  console.log("[WASM] Starting Go program...");
+
+  return new Promise<void>((resolve, reject) => {
+    let functionsReady = false;
+    const startTime = Date.now();
+
+    // Poll for functions to be available (they're registered before main() blocks)
+    const checkInterval = setInterval(() => {
+      const hasParseFn = !!(global as any).sruja_parse_dsl;
+      const hasDiagnosticsFn = !!(global as any).sruja_get_diagnostics;
+
+      if (hasParseFn && hasDiagnosticsFn) {
+        const duration = Date.now() - startTime;
+        console.log(`[WASM] Functions registered after ${duration}ms`);
+        functionsReady = true;
+        clearInterval(checkInterval);
+        clearTimeout(timeout);
+        resolve();
+      }
+    }, 50); // Check every 50ms
+
+    // Timeout if functions don't appear
+    const timeout = setTimeout(() => {
+      if (!functionsReady) {
+        clearInterval(checkInterval);
+        const hasAnyFn = !!(global as any).sruja_parse_dsl;
+        if (hasAnyFn) {
+          console.log("[WASM] Some functions available - continuing despite timeout");
+          resolve();
+        } else {
+          console.error("[WASM] No functions registered after 10 seconds");
+          reject(new Error("WASM functions not registered after 10 seconds"));
+        }
+      }
+    }, 10000);
+
+    // Start go.run() - it will block, but functions should be registered quickly
+    try {
+      // Run in setImmediate to avoid blocking the current tick
+      setImmediate(() => {
+        try {
+          go.run(instance);
+          // This will never return because main() blocks on a channel
+          // But that's OK - we're checking for functions above
+        } catch (error) {
+          console.error("[WASM] go.run() threw error:", error);
+          clearInterval(checkInterval);
+          clearTimeout(timeout);
+          reject(error);
+        }
+      });
+    } catch (error) {
+      console.error("[WASM] Failed to start go.run():", error);
+      clearInterval(checkInterval);
+      clearTimeout(timeout);
+      reject(error);
+    }
+  });
 }
 
 // Initialize WASM for Node.js
@@ -252,10 +313,12 @@ export async function initWasmNode(options?: {
 
   // LSP functions
   const diagnosticsFn = (global as any).sruja_get_diagnostics;
-  // const symbolsFn = (global as any).sruja_get_symbols; // Reserved for future use
+  const symbolsFn = (global as any).sruja_get_symbols;
   const hoverFn = (global as any).sruja_hover;
   const completionFn = (global as any).sruja_completion;
   const goToDefinitionFn = (global as any).sruja_go_to_definition;
+  const findReferencesFn = (global as any).sruja_find_references;
+  const renameFn = (global as any).sruja_rename;
   const formatFn = (global as any).sruja_format;
 
   if (!parseFn || !jsonToDslFn) {
@@ -268,9 +331,12 @@ export async function initWasmNode(options?: {
   // Log available LSP functions for debugging
   const availableLspFunctions = [];
   if (diagnosticsFn) availableLspFunctions.push("diagnostics");
+  if (symbolsFn) availableLspFunctions.push("symbols");
   if (hoverFn) availableLspFunctions.push("hover");
   if (completionFn) availableLspFunctions.push("completion");
   if (goToDefinitionFn) availableLspFunctions.push("goToDefinition");
+  if (findReferencesFn) availableLspFunctions.push("findReferences");
+  if (renameFn) availableLspFunctions.push("rename");
   if (formatFn) availableLspFunctions.push("format");
 
   if (availableLspFunctions.length > 0) {
@@ -353,6 +419,23 @@ export async function initWasmNode(options?: {
         return Array.isArray(data) ? data : [];
       } catch (error) {
         console.error("WASM getDiagnostics failed:", error);
+        return [];
+      }
+    },
+    getSymbols: async (text: string): Promise<Symbol[]> => {
+      if (!symbolsFn) {
+        console.warn("WASM getSymbols function not available");
+        return [];
+      }
+      try {
+        const r = symbolsFn(text) as { ok: boolean; data?: string; error?: string };
+        if (!r || !r.ok || !r.data) {
+          return [];
+        }
+        const data = JSON.parse(r.data);
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error("WASM getSymbols failed:", error);
         return [];
       }
     },
@@ -448,6 +531,75 @@ export async function initWasmNode(options?: {
       } catch (error) {
         console.error("WASM goToDefinition failed:", error);
         return null;
+      }
+    },
+    findReferences: async (text: string, line: number, column: number): Promise<Location[]> => {
+      if (!findReferencesFn) {
+        console.warn("WASM findReferences function not available");
+        return [];
+      }
+      try {
+        console.log(`[WASM] Calling findReferences with line=${line}, column=${column}`);
+        const r = findReferencesFn(text, line, column) as {
+          ok: boolean;
+          data?: string;
+          error?: string;
+        };
+        console.log(`[WASM] FindReferences result:`, {
+          ok: r?.ok,
+          hasData: !!r?.data,
+        });
+
+        if (!r || !r.ok || !r.data) {
+          if (r?.error) {
+            console.warn("WASM findReferences returned error:", r.error);
+          }
+          return [];
+        }
+
+        if (r.data === "[]" || r.data === "null") {
+          return [];
+        }
+
+        const parsed = JSON.parse(r.data);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        console.error("WASM findReferences failed:", error);
+        return [];
+      }
+    },
+    rename: async (
+      text: string,
+      line: number,
+      column: number,
+      newName: string
+    ): Promise<string> => {
+      if (!renameFn) {
+        console.warn("WASM rename function not available");
+        return text; // Return original on failure
+      }
+      try {
+        console.log(
+          `[WASM] Calling rename with line=${line}, column=${column}, newName=${newName}`
+        );
+        const r = renameFn(text, line, column, newName) as {
+          ok: boolean;
+          data?: string;
+          error?: string;
+        };
+        console.log(`[WASM] Rename result:`, { ok: r?.ok, hasData: !!r?.data });
+
+        if (!r || !r.ok || !r.data) {
+          if (r?.error) {
+            console.warn("WASM rename returned error:", r.error);
+          }
+          return text; // Return original on failure
+        }
+
+        return r.data;
+      } catch (error) {
+        console.error("WASM rename failed:", error);
+        return text; // Return original on error
       }
     },
     format: async (text: string): Promise<string> => {

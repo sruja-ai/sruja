@@ -50,10 +50,11 @@ export PATH="$HOME/go/bin:$PATH"
 Before writing code, it helps to know what we are defining. Sruja uses specific terms from the **[C4 Model](/docs/concepts/c4-model)**:
 
 1.  **System:** The highest level. Think of this as your entire application boundary.
-2.  **Container:** A deployable part of your system (e.g., a Web App, an API, a Database). *Not a Docker container!*
+2.  **Container:** A deployable part of your system (e.g., a Web App, an API, a Database). _Not a Docker container!_
 3.  **Relationship:** How these parts talk to each other (e.g., "Uses", "Sends emails to").
 
 We are going to build this:
+
 > A **User** visits a **Web App**, which reads/writes data to a **Database**.
 
 ```mermaid
@@ -68,9 +69,11 @@ graph LR
 ```
 
 ## Your First Project
+
 **Create a file**: Create a new file named `architecture.sruja`.
 
 **Write your model**:
+
 ```sruja
 system App "My App" {
   container Web "Web Server"
@@ -95,8 +98,32 @@ sruja export markdown architecture.sruja > architecture.md
 sruja export mermaid architecture.sruja > diagram.mmd
 ```
 
+## Editor Support
+
+### VS Code Extension
+
+For the best editing experience, install the **Sruja VS Code Extension**:
+
+1. Open VS Code
+2. Go to Extensions (`Cmd+Shift+X` or `Ctrl+Shift+X`)
+3. Search for "Sruja" and install "Sruja DSL Language Support"
+
+The extension provides:
+
+- ✨ **Autocomplete** - Smart suggestions as you type
+- 🔍 **Go to Definition** - Navigate to symbol definitions
+- 🔎 **Find All References** - See where symbols are used
+- ✏️ **Rename Symbol** - Rename symbols and all references
+- 📋 **Outline View** - Navigate your architecture structure
+- ⚠️ **Real-time Diagnostics** - Errors and warnings as you type
+- 💡 **Hover Information** - See symbol details on hover
+- 🎨 **Code Formatting** - Format your DSL code
+
+See the [VS Code Extension Guide](/docs/vscode-extension) for complete documentation.
+
 ## Next Steps
 
 - **Learn more**: Explore the [concepts](/docs/concepts/overview) and [reference](/docs/reference/syntax) documentation
+- **Install VS Code Extension**: Get full LSP support - see [VS Code Extension Guide](/docs/vscode-extension)
 - **Join the community**: Get help, share ideas, and contribute on [Discord](https://discord.gg/VNrvHPV5) or [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
 - **Contribute**: See the [Community](/docs/community) page for ways to get involved

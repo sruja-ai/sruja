@@ -81,10 +81,10 @@ function removeOverlapsAmongSiblings(
         // Check for overlap with padding
         const overlapX =
           a.bbox.x < b.bbox.x + b.bbox.width + padding &&
-          a.bbox.x + a.bbox.width + padding > b.bbox.x;
+          a.bbox.x + a.bbox.width + padding >= b.bbox.x;
         const overlapY =
           a.bbox.y < b.bbox.y + b.bbox.height + padding &&
-          a.bbox.y + a.bbox.height + padding > b.bbox.y;
+          a.bbox.y + a.bbox.height + padding >= b.bbox.y;
 
         if (overlapX && overlapY) {
           hasOverlap = true;
@@ -102,7 +102,7 @@ function removeOverlapsAmongSiblings(
           // Push apart in the direction of least overlap
           if (overlapWidth < overlapHeight) {
             // Separate horizontally
-            const pushDist = overlapWidth / 2;
+            const pushDist = Math.max(1, overlapWidth) / 2;
             adjusted[i] = {
               ...a,
               x: a.x - pushDist,
@@ -115,7 +115,7 @@ function removeOverlapsAmongSiblings(
             };
           } else {
             // Separate vertically
-            const pushDist = overlapHeight / 2;
+            const pushDist = Math.max(1, overlapHeight) / 2;
             adjusted[i] = {
               ...a,
               y: a.y - pushDist,
@@ -239,6 +239,13 @@ export function removeOverlapsBottomUp(
     fixNode(root);
   }
 
+  // Final pass: fix overlaps among top-level roots
+  if (tree.roots.length > 1) {
+    const rootNodes = tree.roots.map((r) => result.get(r.id)!).filter((n) => n !== undefined);
+    const adjustedRoots = removeOverlapsAmongSiblings(rootNodes, padding);
+    adjustedRoots.forEach((adjustedNode) => result.set(adjustedNode.node.id, adjustedNode));
+  }
+
   return result;
 }
 
@@ -274,27 +281,41 @@ export function distributeSpaceTopDown(
 
     // Only distribute if we have significant extra space
     if (extraSpaceX > minThreshold || extraSpaceY > minThreshold) {
-      const childCount = node.children.length;
+      // Calculate uniform offset to CENTER children within available space
+      // We want the children as a group to be centered, not individually offset
+      const contentStartX = current.bbox.x + padding;
+      const contentStartY = current.bbox.y + headerHeight;
 
-      // Simple uniform distribution: add equal spacing between children
-      const spacingX = extraSpaceX / (childCount + 1);
-      const spacingY = extraSpaceY / (childCount + 1);
+      // Current children group starts at childrenBBox.x, should start at contentStartX + centeringOffsetX
+      const centeringOffsetX = extraSpaceX > minThreshold ? extraSpaceX / 2 : 0;
+      const centeringOffsetY = extraSpaceY > minThreshold ? extraSpaceY / 2 : 0;
 
-      node.children.forEach((child, index) => {
-        const childNode = result.get(child.id);
-        if (childNode) {
-          result.set(child.id, {
-            ...childNode,
-            x: childNode.x + spacingX * (index + 1),
-            y: childNode.y + spacingY * (index + 1),
-            bbox: {
-              ...childNode.bbox,
-              x: childNode.bbox.x + spacingX * (index + 1),
-              y: childNode.bbox.y + spacingY * (index + 1),
-            },
-          });
-        }
-      });
+      // Calculate how much we need to shift the children group
+      const targetX = contentStartX + centeringOffsetX;
+      const targetY = contentStartY + centeringOffsetY;
+
+      // Only shift if the children aren't already roughly centered
+      const shiftX = targetX - childrenBBox.x;
+      const shiftY = targetY - childrenBBox.y;
+
+      // Apply uniform shift if significant
+      if (Math.abs(shiftX) > 5 || Math.abs(shiftY) > 5) {
+        node.children.forEach((child) => {
+          const childNode = result.get(child.id);
+          if (childNode) {
+            result.set(child.id, {
+              ...childNode,
+              x: childNode.x + shiftX,
+              y: childNode.y + shiftY,
+              bbox: {
+                ...childNode.bbox,
+                x: childNode.bbox.x + shiftX,
+                y: childNode.bbox.y + shiftY,
+              },
+            });
+          }
+        });
+      }
     }
 
     // Recurse to children
@@ -609,6 +630,8 @@ function groupIntoLayers(nodes: HierarchyNode[]): HierarchyNode[][] {
 
 /**
  * Apply layers back to positioned nodes
+ * IMPORTANT: This should only REORDER nodes within their current context,
+ * not reposition them absolutely. Children must stay within their parent.
  */
 function applyLayerOrdering(
   positioned: Map<C4Id, PositionedNode>,
@@ -617,33 +640,52 @@ function applyLayerOrdering(
   const result = new Map(positioned);
 
   for (const layer of layers) {
-    // Calculate average Y position for this layer
-    const layerNodes = layer.map((n) => positioned.get(n.id)!).filter((n) => n);
-    if (layerNodes.length === 0) continue;
+    if (layer.length === 0) continue;
 
-    const avgY = layerNodes.reduce((sum, n) => sum + n.y, 0) / layerNodes.length;
+    // Group nodes by parent to preserve containment
+    const nodesByParent = new Map<string | undefined, HierarchyNode[]>();
+    for (const node of layer) {
+      const parentId = node.parent?.id;
+      if (!nodesByParent.has(parentId)) {
+        nodesByParent.set(parentId, []);
+      }
+      nodesByParent.get(parentId)!.push(node);
+    }
 
-    // Redistribute horizontally with proper spacing
-    const spacing = 100; // Minimum horizontal spacing
-    let currentX = 0;
+    // Only reorder siblings (nodes with same parent)
+    for (const [_parentId, siblings] of nodesByParent) {
+      if (siblings.length <= 1) continue;
 
-    for (let i = 0; i < layer.length; i++) {
-      const node = layer[i];
-      const posNode = positioned.get(node.id);
-      if (!posNode) continue;
+      // Get current positions
+      const siblingPositions = siblings.map((n) => positioned.get(n.id)!).filter((n) => n);
 
-      result.set(node.id, {
-        ...posNode,
-        x: currentX,
-        y: avgY,
-        bbox: {
-          ...posNode.bbox,
+      if (siblingPositions.length === 0) continue;
+
+      // Calculate the starting x and average y for this sibling group
+      const minX = Math.min(...siblingPositions.map((n) => n.x));
+      const avgY = siblingPositions.reduce((sum, n) => sum + n.y, 0) / siblingPositions.length;
+      const spacing = 100; // Minimum horizontal spacing
+
+      // Reposition siblings starting from their group's minX
+      let currentX = minX;
+      for (let i = 0; i < siblings.length; i++) {
+        const node = siblings[i];
+        const posNode = positioned.get(node.id);
+        if (!posNode) continue;
+
+        result.set(node.id, {
+          ...posNode,
           x: currentX,
           y: avgY,
-        },
-      });
+          bbox: {
+            ...posNode.bbox,
+            x: currentX,
+            y: avgY,
+          },
+        });
 
-      currentX += posNode.bbox.width + spacing;
+        currentX += posNode.bbox.width + spacing;
+      }
     }
   }
 

@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"syscall/js"
 
@@ -30,6 +31,8 @@ func main() {
 	js.Global().Set("sruja_hover", js.FuncOf(hover))
 	js.Global().Set("sruja_completion", js.FuncOf(completion))
 	js.Global().Set("sruja_go_to_definition", js.FuncOf(goToDefinition))
+	js.Global().Set("sruja_find_references", js.FuncOf(findReferences))
+	js.Global().Set("sruja_rename", js.FuncOf(rename))
 	js.Global().Set("sruja_format", js.FuncOf(format))
 	js.Global().Set("sruja_score", js.FuncOf(score))
 
@@ -349,6 +352,278 @@ func goToDefinition(this js.Value, args []js.Value) (ret interface{}) {
 	return
 }
 
+// findReferences finds all references to a symbol at the given position
+func findReferences(this js.Value, args []js.Value) (ret interface{}) {
+	defer func() {
+		if r := recover(); r != nil {
+			ret = lspResult(false, nil, fmt.Sprint(r))
+		}
+	}()
+
+	if len(args) < 3 {
+		return lspResult(false, nil, "invalid arguments: need (text, line, column)")
+	}
+	input := args[0].String()
+	line := args[1].Int()
+	column := args[2].Int()
+
+	p, err := language.NewParser()
+	if err != nil {
+		return lspResult(false, nil, err.Error())
+	}
+
+	program, _, err := p.Parse("input.sruja", input)
+	if err != nil || program == nil || program.Architecture == nil {
+		return lspResult(true, "[]", "") // Empty references on parse error
+	}
+
+	// First, find the symbol at the position
+	def := findDefinition(program.Architecture, input, line, column)
+	if def == nil {
+		return lspResult(true, "[]", "") // No definition, no references
+	}
+
+	// Extract the symbol name from the definition location
+	lines := strings.Split(input, "\n")
+	if def["line"] == nil {
+		return lspResult(true, "[]", "")
+	}
+	defLine := int(def["line"].(float64))
+	if defLine < 1 || defLine > len(lines) {
+		return lspResult(true, "[]", "")
+	}
+
+	defLineText := lines[defLine-1]
+	defCol := int(def["column"].(float64))
+	if defCol < 1 || defCol > len(defLineText) {
+		return lspResult(true, "[]", "")
+	}
+
+	// Extract symbol name from definition line
+	start := defCol - 1
+	for start > 0 && (isIdentChar(defLineText[start-1]) || defLineText[start-1] == '.') {
+		start--
+	}
+	end := defCol - 1
+	for end < len(defLineText) && (isIdentChar(defLineText[end]) || defLineText[end] == '.') {
+		end++
+	}
+	if start >= end {
+		return lspResult(true, "[]", "")
+	}
+
+	symbolName := defLineText[start:end]
+
+	// Find all references to this symbol
+	references := findSymbolReferences(program.Architecture, input, symbolName)
+
+	// Convert to JSON
+	refJSON := make([]map[string]interface{}, len(references))
+	for i, ref := range references {
+		refJSON[i] = map[string]interface{}{
+			"file":   "input.sruja",
+			"line":   ref["line"],
+			"column": ref["column"],
+		}
+	}
+
+	jsonBytes, _ := json.Marshal(refJSON)
+	ret = lspResult(true, string(jsonBytes), "")
+	return
+}
+
+// findSymbolReferences finds all references to a symbol in the architecture
+func findSymbolReferences(arch *language.Architecture, text string, symbolName string) []map[string]interface{} {
+	references := []map[string]interface{}{}
+	lines := strings.Split(text, "\n")
+
+	// Helper to check if a qualified name matches the symbol
+	matchesSymbol := func(qname string) bool {
+		// Exact match
+		if qname == symbolName {
+			return true
+		}
+		// Check if symbol is part of qualified name (e.g., "App" matches "App.API")
+		if strings.HasPrefix(qname, symbolName+".") {
+			return true
+		}
+		// Check if qualified name ends with symbol (e.g., "API" matches "App.API")
+		if strings.HasSuffix(qname, "."+symbolName) {
+			return true
+		}
+		// Check if symbol is in the middle (e.g., "App" matches "MyApp.API")
+		parts := strings.Split(qname, ".")
+		for _, part := range parts {
+			if part == symbolName {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Find references in relations
+	findInRelations := func(rels []*language.Relation) {
+		for _, rel := range rels {
+			fromStr := rel.From.String()
+			toStr := rel.To.String()
+
+			if matchesSymbol(fromStr) {
+				loc := rel.Location()
+				// Find the actual position in text
+				lineNum := findLineForRelation(lines, fromStr, loc.Line)
+				if lineNum > 0 {
+					colNum := findColumnForSymbol(lines[lineNum-1], fromStr)
+					if colNum > 0 {
+						references = append(references, map[string]interface{}{
+							"line":   lineNum,
+							"column": colNum,
+						})
+					}
+				}
+			}
+
+			if matchesSymbol(toStr) {
+				loc := rel.Location()
+				lineNum := findLineForRelation(lines, toStr, loc.Line)
+				if lineNum > 0 {
+					colNum := findColumnForSymbol(lines[lineNum-1], toStr)
+					if colNum > 0 {
+						references = append(references, map[string]interface{}{
+							"line":   lineNum,
+							"column": colNum,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	// Search in architecture-level relations
+	findInRelations(arch.Relations)
+
+	// Search in system relations
+	for _, sys := range arch.Systems {
+		findInRelations(sys.Relations)
+		// Search in container relations
+		for _, cont := range sys.Containers {
+			findInRelations(cont.Relations)
+		}
+	}
+
+	return references
+}
+
+// Helper functions for finding positions
+func findLineForRelation(lines []string, symbol string, hintLine int) int {
+	// Start searching from hint line
+	for i := hintLine - 1; i < len(lines); i++ {
+		if strings.Contains(lines[i], symbol) {
+			return i + 1
+		}
+	}
+	// Search backwards
+	for i := hintLine - 2; i >= 0; i-- {
+		if strings.Contains(lines[i], symbol) {
+			return i + 1
+		}
+	}
+	return 0
+}
+
+func findColumnForSymbol(lineText string, symbol string) int {
+	// Find the position of the symbol in the line
+	idx := strings.Index(lineText, symbol)
+	if idx >= 0 {
+		return idx + 1 // Convert to 1-based
+	}
+	return 0
+}
+
+// rename renames a symbol and all its references
+func rename(this js.Value, args []js.Value) (ret interface{}) {
+	defer func() {
+		if r := recover(); r != nil {
+			ret = lspResult(false, nil, fmt.Sprint(r))
+		}
+	}()
+
+	if len(args) < 4 {
+		return lspResult(false, nil, "invalid arguments: need (text, line, column, newName)")
+	}
+	input := args[0].String()
+	line := args[1].Int()
+	column := args[2].Int()
+	newName := args[3].String()
+
+	if newName == "" {
+		return lspResult(false, nil, "new name cannot be empty")
+	}
+
+	p, err := language.NewParser()
+	if err != nil {
+		return lspResult(false, nil, err.Error())
+	}
+
+	program, _, err := p.Parse("input.sruja", input)
+	if err != nil || program == nil || program.Architecture == nil {
+		return lspResult(false, nil, "parse error: "+err.Error())
+	}
+
+	// Extract old symbol name from cursor position (not definition position)
+	lines := strings.Split(input, "\n")
+	if line < 1 || line > len(lines) {
+		return lspResult(false, nil, "invalid line")
+	}
+
+	lineText := lines[line-1]
+	if column < 1 || column > len(lineText) {
+		return lspResult(false, nil, "invalid column")
+	}
+
+	// Extract the symbol name at cursor position
+	start := column - 1
+	for start > 0 && (isIdentChar(lineText[start-1]) || lineText[start-1] == '.') {
+		start--
+	}
+	end := column - 1
+	for end < len(lineText) && (isIdentChar(lineText[end]) || lineText[end] == '.') {
+		end++
+	}
+	if start >= end {
+		return lspResult(false, nil, "could not extract symbol name at cursor")
+	}
+
+	oldName := lineText[start:end]
+
+	// Verify the symbol exists (optional check)
+	def := findDefinition(program.Architecture, input, line, column)
+	if def == nil {
+		// Still allow rename even if definition not found - might be renaming a reference
+	}
+
+	// Perform rename: replace all occurrences intelligently
+	result := input
+
+	// Strategy: Replace the symbol name in all contexts
+	// 1. Replace exact word matches (standalone identifiers) - use word boundaries
+	wordBoundaryPattern := `\b` + regexp.QuoteMeta(oldName) + `\b`
+	result = regexp.MustCompile(wordBoundaryPattern).ReplaceAllString(result, newName)
+
+	// 2. Replace in qualified names (e.g., "App.API" -> "App.API2")
+	// Match oldName when it appears after a dot or arrow, followed by whitespace/punctuation
+	qualifiedAfterDot := `\.` + regexp.QuoteMeta(oldName) + `(\s|->|"|\.|{|}|,|\[|\]|$)`
+	result = regexp.MustCompile(qualifiedAfterDot).ReplaceAllStringFunc(result, func(match string) string {
+		return "." + newName + match[len(oldName)+1:]
+	})
+
+	// 3. Replace in qualified names before arrow (e.g., "App.API ->" -> "App.API2 ->")
+	qualifiedBeforeArrow := regexp.QuoteMeta(oldName) + `\s*->`
+	result = regexp.MustCompile(qualifiedBeforeArrow).ReplaceAllString(result, newName+" ->")
+
+	ret = lspResult(true, result, "")
+	return
+}
+
 // format formats the DSL text
 func format(this js.Value, args []js.Value) (ret interface{}) {
 	defer func() {
@@ -553,27 +828,179 @@ func findDefinition(arch *language.Architecture, text string, line, column int) 
 	}
 
 	lineText := lines[line-1]
+
+	// Extract the full qualified name (including dots)
+	// Strategy: find the word boundaries, but also include dots and adjacent identifiers
+	// First, find where the qualified name starts (go backwards until we hit non-identifier/non-dot)
 	start := column - 1
+	for start > 0 {
+		prevChar := lineText[start-1]
+		if isIdentChar(prevChar) || prevChar == '.' {
+			start--
+		} else {
+			break
+		}
+	}
+
+	// Then find where it ends (go forwards until we hit non-identifier/non-dot)
 	end := column - 1
-	for start > 0 && isIdentChar(lineText[start-1]) {
-		start--
+	for end < len(lineText) {
+		currChar := lineText[end]
+		if isIdentChar(currChar) || currChar == '.' {
+			end++
+		} else {
+			break
+		}
 	}
-	for end < len(lineText) && isIdentChar(lineText[end]) {
-		end++
-	}
+
 	if start >= end {
 		return nil
 	}
 
-	word := lineText[start:end]
+	qualifiedName := lineText[start:end]
 
-	// Check if this word matches a symbol
+	// Split by dots to get the path parts
+	parts := strings.Split(qualifiedName, ".")
+	if len(parts) == 0 {
+		return nil
+	}
+
+	// Navigate through the hierarchy
+	// First part should be a System
+	if len(parts) == 1 {
+		// Single identifier - check for System
+		for _, sys := range arch.Systems {
+			if sys.ID == parts[0] {
+				return map[string]interface{}{
+					"file":   "input.sruja",
+					"line":   sys.Pos.Line,
+					"column": sys.Pos.Column,
+				}
+			}
+		}
+		// Check top-level containers, components, datastores
+		for _, cont := range arch.Containers {
+			if cont.ID == parts[0] {
+				return map[string]interface{}{
+					"file":   "input.sruja",
+					"line":   cont.Pos.Line,
+					"column": cont.Pos.Column,
+				}
+			}
+		}
+		for _, comp := range arch.Components {
+			if comp.ID == parts[0] {
+				return map[string]interface{}{
+					"file":   "input.sruja",
+					"line":   comp.Pos.Line,
+					"column": comp.Pos.Column,
+				}
+			}
+		}
+		for _, ds := range arch.DataStores {
+			if ds.ID == parts[0] {
+				return map[string]interface{}{
+					"file":   "input.sruja",
+					"line":   ds.Pos.Line,
+					"column": ds.Pos.Column,
+				}
+			}
+		}
+		return nil
+	}
+
+	// Multi-part qualified name - navigate hierarchy
+	// Find the System (first part)
+	var currentSystem *language.System
 	for _, sys := range arch.Systems {
-		if sys.ID == word {
-			return map[string]interface{}{
-				"file":   "input.sruja",
-				"line":   sys.Pos.Line,
-				"column": sys.Pos.Column,
+		if sys.ID == parts[0] {
+			currentSystem = sys
+			break
+		}
+	}
+	if currentSystem == nil {
+		return nil
+	}
+
+	// If only 2 parts, look for Container/Component/DataStore in System
+	if len(parts) == 2 {
+		// Check containers in system
+		for _, cont := range currentSystem.Containers {
+			if cont.ID == parts[1] {
+				return map[string]interface{}{
+					"file":   "input.sruja",
+					"line":   cont.Pos.Line,
+					"column": cont.Pos.Column,
+				}
+			}
+		}
+		// Check components in system
+		for _, comp := range currentSystem.Components {
+			if comp.ID == parts[1] {
+				return map[string]interface{}{
+					"file":   "input.sruja",
+					"line":   comp.Pos.Line,
+					"column": comp.Pos.Column,
+				}
+			}
+		}
+		// Check datastores in system
+		for _, ds := range currentSystem.DataStores {
+			if ds.ID == parts[1] {
+				return map[string]interface{}{
+					"file":   "input.sruja",
+					"line":   ds.Pos.Line,
+					"column": ds.Pos.Column,
+				}
+			}
+		}
+		return nil
+	}
+
+	// 3+ parts: System.Container.Child
+	if len(parts) >= 3 {
+		// Find container (second part)
+		var currentContainer *language.Container
+		for _, cont := range currentSystem.Containers {
+			if cont.ID == parts[1] {
+				currentContainer = cont
+				break
+			}
+		}
+		if currentContainer == nil {
+			return nil
+		}
+
+		// Find child in container (third part)
+		childID := parts[2]
+		// Check components
+		for _, comp := range currentContainer.Components {
+			if comp.ID == childID {
+				return map[string]interface{}{
+					"file":   "input.sruja",
+					"line":   comp.Pos.Line,
+					"column": comp.Pos.Column,
+				}
+			}
+		}
+		// Check datastores
+		for _, ds := range currentContainer.DataStores {
+			if ds.ID == childID {
+				return map[string]interface{}{
+					"file":   "input.sruja",
+					"line":   ds.Pos.Line,
+					"column": ds.Pos.Column,
+				}
+			}
+		}
+		// Check queues
+		for _, q := range currentContainer.Queues {
+			if q.ID == childID {
+				return map[string]interface{}{
+					"file":   "input.sruja",
+					"line":   q.Pos.Line,
+					"column": q.Pos.Column,
+				}
 			}
 		}
 	}

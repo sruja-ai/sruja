@@ -22,6 +22,8 @@ coverage.html
 *.html
 !learn/layouts/**/*.html
 !pkg/export/html/*.html
+!packages/diagram/test-app/index.html
+apps/playground/test-results
 
 # Dependency directories
 vendor/
@@ -109,7 +111,7 @@ test-outputs/
 
 # Temporary files
 repro.js
-test_output.txt
+!test_output.txt
 test.failures.txt
 final_output.md
 ull_features.sruja.md

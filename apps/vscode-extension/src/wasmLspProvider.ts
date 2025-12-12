@@ -9,6 +9,7 @@ import {
   type HoverInfo,
   type CompletionItem,
   type Location,
+  type Symbol,
 } from "@sruja/shared/node/wasmAdapter";
 
 let wasmApi: Awaited<ReturnType<typeof initWasmNode>> | null = null;
@@ -66,6 +67,29 @@ function setupConsoleInterception() {
 
 export function getWasmApi() {
   return wasmApi;
+}
+
+// Helper function to check if character is identifier character
+function isIdentChar(c: string): boolean {
+  return /[a-zA-Z0-9_]/.test(c);
+}
+
+// Map symbol kind from Go to VS Code SymbolKind
+function mapSymbolKind(kind: string): vscode.SymbolKind {
+  switch (kind.toLowerCase()) {
+    case "system":
+      return vscode.SymbolKind.Class;
+    case "container":
+      return vscode.SymbolKind.Module;
+    case "component":
+      return vscode.SymbolKind.Method;
+    case "datastore":
+      return vscode.SymbolKind.Variable; // Database not available in older VS Code versions
+    case "person":
+      return vscode.SymbolKind.Interface;
+    default:
+      return vscode.SymbolKind.Variable;
+  }
 }
 
 export async function initializeWasmLsp(context: vscode.ExtensionContext): Promise<void> {
@@ -203,6 +227,39 @@ export async function initializeWasmLsp(context: vscode.ExtensionContext): Promi
       const errMsg = error instanceof Error ? error.message : String(error);
       testResults.format = { success: false, error: errMsg };
       log(`❌ Format: FAILED - ${errMsg}`, "error");
+    }
+
+    // Test getSymbols
+    try {
+      const symbols = await wasmApi.getSymbols(testCode);
+      testResults.getSymbols = { success: true };
+      log(`✅ GetSymbols: OK (returned ${symbols.length} symbols)`);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      testResults.getSymbols = { success: false, error: errMsg };
+      log(`❌ GetSymbols: FAILED - ${errMsg}`, "error");
+    }
+
+    // Test findReferences
+    try {
+      const refs = await wasmApi.findReferences(testCode, 1, 15);
+      testResults.findReferences = { success: true };
+      log(`✅ FindReferences: OK (returned ${refs.length} references)`);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      testResults.findReferences = { success: false, error: errMsg };
+      log(`❌ FindReferences: FAILED - ${errMsg}`, "error");
+    }
+
+    // Test rename
+    try {
+      const renamed = await wasmApi.rename(testCode, 1, 15, "TestApp");
+      testResults.rename = { success: true };
+      log(`✅ Rename: OK (returned ${renamed.length} chars)`);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      testResults.rename = { success: false, error: errMsg };
+      log(`❌ Rename: FAILED - ${errMsg}`, "error");
     }
 
     const failedTests = Object.entries(testResults).filter(([_, result]) => !result.success);
@@ -429,6 +486,197 @@ export async function initializeWasmLsp(context: vscode.ExtensionContext): Promi
       vscode.languages.registerDocumentFormattingEditProvider("sruja", formatProvider)
     );
 
+    // Register document symbol provider (for Outline view)
+    const documentSymbolProvider: vscode.DocumentSymbolProvider = {
+      async provideDocumentSymbols(document) {
+        if (!wasmApi || document.languageId !== "sruja") return [];
+
+        try {
+          const text = document.getText();
+          const symbols = await wasmApi.getSymbols(text);
+
+          return symbols.map((sym) => {
+            const kind = mapSymbolKind(sym.kind);
+            const line = Math.max(0, sym.line - 1); // Convert to 0-based
+            const range = new vscode.Range(line, 0, line, 1000); // Full line range
+
+            return new vscode.DocumentSymbol(sym.name, sym.kind, kind, range, range);
+          });
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          log(`WASM documentSymbols failed: ${errMsg}`, "error");
+          return [];
+        }
+      },
+    };
+
+    context.subscriptions.push(
+      vscode.languages.registerDocumentSymbolProvider("sruja", documentSymbolProvider)
+    );
+
+    // Register workspace symbol provider (for "Go to Symbol in Workspace")
+    const workspaceSymbolProvider: vscode.WorkspaceSymbolProvider = {
+      async provideWorkspaceSymbols(query) {
+        if (!wasmApi || !query) return [];
+
+        try {
+          const results: vscode.SymbolInformation[] = [];
+          const queryLower = query.toLowerCase();
+
+          // Search through all open Sruja documents
+          for (const doc of vscode.workspace.textDocuments) {
+            if (doc.languageId !== "sruja") continue;
+
+            try {
+              const text = doc.getText();
+              const symbols = await wasmApi.getSymbols(text);
+
+              for (const sym of symbols) {
+                if (sym.name.toLowerCase().includes(queryLower)) {
+                  const kind = mapSymbolKind(sym.kind);
+                  const line = Math.max(0, sym.line - 1);
+                  const location = new vscode.Location(doc.uri, new vscode.Position(line, 0));
+
+                  results.push(new vscode.SymbolInformation(sym.name, kind, "", location));
+                }
+              }
+            } catch (error) {
+              // Skip documents that fail to parse
+              continue;
+            }
+          }
+
+          return results;
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          log(`WASM workspaceSymbols failed: ${errMsg}`, "error");
+          return [];
+        }
+      },
+    };
+
+    context.subscriptions.push(
+      vscode.languages.registerWorkspaceSymbolProvider(workspaceSymbolProvider)
+    );
+
+    // Register reference provider (Find All References)
+    const referenceProvider: vscode.ReferenceProvider = {
+      async provideReferences(document, position, context) {
+        if (!wasmApi || document.languageId !== "sruja") return [];
+
+        try {
+          const text = document.getText();
+          const line = position.line + 1;
+          const column = position.character + 1;
+
+          log(`[References] Request at line ${line}, column ${column} in ${document.fileName}`);
+          const references = await wasmApi.findReferences(text, line, column);
+
+          log(`[References] Found ${references.length} references`);
+
+          return references.map((ref) => {
+            const refLine = Math.max(0, ref.line - 1);
+            const refCol = Math.max(0, ref.column - 1);
+            const lineText = document.getText().split("\n")[refLine] || "";
+            // Find the end of the symbol
+            let endCol = refCol;
+            while (
+              endCol < lineText.length &&
+              (isIdentChar(lineText[endCol]) || lineText[endCol] === ".")
+            ) {
+              endCol++;
+            }
+
+            const range = new vscode.Range(refLine, refCol, refLine, endCol);
+            return new vscode.Location(document.uri, range);
+          });
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          log(`WASM references failed: ${errMsg}`, "error");
+          return [];
+        }
+      },
+    };
+
+    context.subscriptions.push(
+      vscode.languages.registerReferenceProvider("sruja", referenceProvider)
+    );
+
+    // Register rename provider
+    const renameProvider: vscode.RenameProvider = {
+      async provideRenameEdits(document, position, newName, token) {
+        if (!wasmApi || document.languageId !== "sruja") return null;
+
+        try {
+          const text = document.getText();
+          const line = position.line + 1;
+          const column = position.character + 1;
+
+          log(
+            `[Rename] Request at line ${line}, column ${column} to "${newName}" in ${document.fileName}`
+          );
+          const renamedText = await wasmApi.rename(text, line, column, newName);
+
+          if (renamedText === text) {
+            log(`[Rename] No changes made`);
+            return null;
+          }
+
+          // Create a workspace edit with the full document replacement
+          const range = new vscode.Range(
+            document.positionAt(0),
+            document.positionAt(document.getText().length)
+          );
+
+          const edit = new vscode.WorkspaceEdit();
+          edit.replace(document.uri, range, renamedText);
+          log(`[Rename] Successfully renamed`);
+          return edit;
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          log(`WASM rename failed: ${errMsg}`, "error");
+          return null;
+        }
+      },
+      async prepareRename(document, position) {
+        if (!wasmApi || document.languageId !== "sruja") return null;
+
+        try {
+          const text = document.getText();
+          const line = position.line + 1;
+          const column = position.character + 1;
+
+          // Check if we can rename at this position by trying to find definition
+          const def = await wasmApi.goToDefinition(text, line, column);
+          if (!def) {
+            return null; // Can't rename if no definition found
+          }
+
+          // Extract the symbol name at cursor
+          const lineText = document.lineAt(position.line).text;
+          let start = position.character;
+          while (start > 0 && (isIdentChar(lineText[start - 1]) || lineText[start - 1] === ".")) {
+            start--;
+          }
+          let end = position.character;
+          while (end < lineText.length && (isIdentChar(lineText[end]) || lineText[end] === ".")) {
+            end++;
+          }
+
+          if (start >= end) {
+            return null;
+          }
+
+          const range = new vscode.Range(position.line, start, position.line, end);
+          return range;
+        } catch (error) {
+          return null;
+        }
+      },
+    };
+
+    context.subscriptions.push(vscode.languages.registerRenameProvider("sruja", renameProvider));
+
     log("WASM LSP providers registered successfully");
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
@@ -561,6 +809,56 @@ export async function debugWasmLsp() {
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     log(`❌ Format failed: ${errMsg}`, "error");
+  }
+
+  log("\n--- Testing GetSymbols ---");
+  try {
+    const symbols = await wasmApi.getSymbols(text);
+    log(`✅ GetSymbols: ${symbols.length} symbols`);
+    symbols.slice(0, 10).forEach((s, i) => {
+      log(`  ${i + 1}. ${s.name} (${s.kind}) at line ${s.line}`);
+    });
+    if (symbols.length > 10) {
+      log(`  ... and ${symbols.length - 10} more`);
+    }
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    log(`❌ GetSymbols failed: ${errMsg}`, "error");
+  }
+
+  log("\n--- Testing FindReferences ---");
+  try {
+    const line = position.line + 1;
+    const column = position.character + 1;
+    const refs = await wasmApi.findReferences(text, line, column);
+    log(`✅ FindReferences: ${refs.length} references`);
+    refs.slice(0, 10).forEach((ref, i) => {
+      log(`  ${i + 1}. Line ${ref.line}, column ${ref.column}`);
+    });
+    if (refs.length > 10) {
+      log(`  ... and ${refs.length - 10} more`);
+    }
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    log(`❌ FindReferences failed: ${errMsg}`, "error");
+  }
+
+  log("\n--- Testing Rename ---");
+  try {
+    const line = position.line + 1;
+    const column = position.character + 1;
+    const newName = "RenamedSymbol";
+    const renamed = await wasmApi.rename(text, line, column, newName);
+    log(`✅ Rename: Success (${renamed.length} chars)`);
+    if (renamed !== text) {
+      log(`  Document was modified`);
+      log(`  Preview: ${renamed.substring(0, 200)}...`);
+    } else {
+      log(`  Document unchanged`);
+    }
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    log(`❌ Rename failed: ${errMsg}`, "error");
   }
 
   log("\n=== Debug Session Complete ===");
