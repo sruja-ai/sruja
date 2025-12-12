@@ -13,3 +13,4 @@ export {
 } from "./forms";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { SidePanel } from "./SidePanel";
+export { ErrorBoundary } from "./ErrorBoundary";

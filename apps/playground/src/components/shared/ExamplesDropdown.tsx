@@ -92,9 +92,9 @@ export function ExamplesDropdown() {
         disabled={loading}
         aria-label={loading ? "Loading examples..." : "Examples"}
         title={loading ? "Loading examples..." : "Examples"}
+        style={{ paddingLeft: "8px", paddingRight: "8px", minWidth: "36px" }}
       >
         <FileCode size={18} />
-        <span>Examples</span>
       </Button>
 
       {isOpen && (

@@ -118,8 +118,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  gap: 20px;
+  padding: 0 12px;
+  gap: 8px;
   position: relative;
   z-index: 50;
   box-shadow: var(--shadow-sm);
@@ -133,7 +133,8 @@ body {
 .header-center {
   flex: 2;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
+  padding-left: 8px;
   min-width: 0;
   overflow: hidden;
 }
@@ -143,12 +144,49 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 6px;
   min-width: 0;
+}
+
+/* Reduce padding on buttons in header */
+.header-right > button:not(.icon-only):not(.mode-btn),
+.header-right > div > button {
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
+
+.action-btn.icon-only {
+  padding: 0;
+  min-width: 36px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn.icon-only .btn-label {
+  display: none;
+}
+
+.action-btn.icon-only:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .header-center > * {
   max-width: 100%;
+}
+
+/* Breadcrumb dark theme fixes */
+[data-theme="dark"] .app-header .header-center nav button {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .app-header .header-center nav button:hover {
+  background-color: var(--bg-tertiary) !important;
 }
 
 .app-title {
@@ -513,9 +551,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   height: 36px;
-  padding: 0 16px;
+  padding: 0 10px;
+  min-width: 36px;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -524,6 +563,7 @@ body {
   transition: all 0.2s ease;
   font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .action-btn:hover {
@@ -540,7 +580,7 @@ body {
 }
 
 .btn-label {
-  display: inline-block;
+  display: none;
 }
 
 /* Mode Toggle Group (Segmented Control) */
@@ -556,8 +596,11 @@ body {
 .mode-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
+  justify-content: center;
+  gap: 0;
+  padding: 8px;
+  min-width: 36px;
+  width: 36px;
   border: none;
   background: transparent;
   color: var(--text-secondary);
@@ -699,9 +742,7 @@ body {
     padding: 6px;
   }
 
-  .mode-btn span {
-    display: none;
-  }
+.mode-btn span { display: none; }
 
   .app-title span {
     display: none;

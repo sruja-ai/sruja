@@ -1,5 +1,17 @@
-import { useCallback, useState, useEffect } from "react";
-import { Menu, Info, RefreshCw, Edit, Eye, Settings, Share2, Play, Plus } from "lucide-react";
+import { useCallback, useState, useEffect, useRef } from "react";
+import {
+  Menu,
+  Info,
+  RefreshCw,
+  Edit,
+  Eye,
+  Settings,
+  Share2,
+  Play,
+  Plus,
+  Upload,
+  Download,
+} from "lucide-react";
 import { ArchitectureCanvas } from "./components/Canvas";
 import "./App.css";
 import {
@@ -51,6 +63,7 @@ export default function App() {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize activeTab from URL on mount
   useEffect(() => {
@@ -94,6 +107,49 @@ export default function App() {
       console.error("Failed to generate share URL:", err);
     }
   }, [storeDslSource, data, activeTab]);
+
+  const handleExport = useCallback(() => {
+    if (!data) return;
+    const dsl = storeDslSource || convertJsonToDsl(data);
+    const blob = new Blob([dsl], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${data.architecture?.name || "architecture"}.sruja`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [data, storeDslSource]);
+
+  const handleImport = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      setIsLoadingFile(true);
+      try {
+        const text = await file.text();
+        const json = await convertDslToJson(text);
+        if (json) {
+          loadFromDSL(json as ArchitectureJSON, text, file.name);
+        }
+      } catch (err) {
+        console.error("Failed to load file:", err);
+        alert("Failed to load file. Please ensure it's a valid .sruja file.");
+      } finally {
+        setIsLoadingFile(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
+    },
+    [loadFromDSL]
+  );
 
   // Load DSL from URL on mount (if share parameter exists)
   useEffect(() => {
@@ -245,8 +301,33 @@ export default function App() {
         </div>
         <div className="header-center">{data && <Breadcrumb />}</div>
         <div className="header-right">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".sruja"
+            onChange={handleFileChange}
+            style={{ display: "none" }}
+            aria-label="Import file"
+          />
           <button
-            className="action-btn"
+            className="action-btn icon-only"
+            onClick={handleImport}
+            title="Import .sruja file"
+            aria-label="Import .sruja file"
+          >
+            <Upload size={18} />
+          </button>
+          <button
+            className="action-btn icon-only"
+            onClick={handleExport}
+            title="Export to .sruja file"
+            aria-label="Export to .sruja file"
+            disabled={!data}
+          >
+            <Download size={18} />
+          </button>
+          <button
+            className="action-btn icon-only"
             onClick={() => {
               // Clear localStorage explicitly
               localStorage.removeItem("sruja-architecture-data");
@@ -260,7 +341,6 @@ export default function App() {
             aria-label="Clear cache and reload"
           >
             <RefreshCw size={18} />
-            <span className="btn-label">Reload</span>
           </button>
 
           <div className="mode-toggle-group">
@@ -271,7 +351,6 @@ export default function App() {
               aria-pressed={editMode === "view"}
             >
               <Eye size={16} />
-              <span className="btn-label">View</span>
             </button>
             <button
               className={`mode-btn ${editMode === "edit" ? "active" : ""}`}
@@ -280,29 +359,26 @@ export default function App() {
               aria-pressed={editMode === "edit"}
             >
               <Edit size={16} />
-              <span className="btn-label">Edit</span>
             </button>
           </div>
 
           <button
-            className="action-btn"
+            className="action-btn icon-only"
             onClick={handleShareHeader}
             title="Copy shareable URL"
             aria-label="Copy shareable URL"
           >
             <Share2 size={18} />
-            <span className="btn-label">Share</span>
           </button>
           <ThemeToggle iconOnly />
           <ExamplesDropdown />
           <button
-            className="action-btn"
+            className="action-btn icon-only"
             onClick={() => setShowSettings(true)}
             title="Feature Settings"
             aria-label="Feature Settings"
           >
             <Settings size={18} />
-            <span className="btn-label">Settings</span>
           </button>
           {selectedNodeId && (
             <button
