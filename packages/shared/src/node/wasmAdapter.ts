@@ -65,6 +65,7 @@ async function loadGoRuntime(options?: {
   extensionPath?: string;
   wasmExecPath?: string;
 }): Promise<any> {
+  console.log("[WASM] Loading Go runtime...");
   // Try to find wasm_exec.js in common locations
   const candidates: string[] = [];
 
@@ -88,6 +89,7 @@ async function loadGoRuntime(options?: {
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
+      console.log(`[WASM] Trying to load wasm_exec.js from: ${candidate}`);
       try {
         // wasm_exec.js is CommonJS, use require() for Node.js
         // Clear cache to ensure fresh load
@@ -95,16 +97,22 @@ async function loadGoRuntime(options?: {
         delete require.cache[resolvedPath];
         require(resolvedPath);
         if ((global as any).Go) {
+          console.log("[WASM] Go runtime loaded successfully");
           return (global as any).Go;
+        } else {
+          console.warn("[WASM] wasm_exec.js loaded but Go class not found on global");
         }
       } catch (error) {
+        console.warn(`[WASM] Failed to load ${candidate} with require:`, error);
         // Try ES module import as fallback (for ESM contexts)
         try {
           await import(pathToFileURL(candidate).href);
           if ((global as any).Go) {
+            console.log("[WASM] Go runtime loaded successfully (via ESM)");
             return (global as any).Go;
           }
-        } catch {
+        } catch (esmError) {
+          console.warn(`[WASM] Failed to load ${candidate} with ESM:`, esmError);
           // Continue to next candidate
         }
       }
@@ -119,19 +127,26 @@ async function loadWasmModule(
   wasmPath: string,
   options?: { extensionPath?: string; wasmExecPath?: string }
 ): Promise<void> {
+  console.log(`[WASM] Loading WASM module from: ${wasmPath}`);
   const Go = await loadGoRuntime(options);
   const go = new Go();
+  console.log("[WASM] Go instance created");
 
   let wasmBuffer: Buffer;
+  console.log("[WASM] Reading WASM file...");
   const wasmData = fs.readFileSync(wasmPath);
+  console.log(`[WASM] WASM file read: ${wasmData.length} bytes`);
 
   // Check if file is gzip compressed (magic bytes: 1f 8b)
   if (wasmData.length >= 2 && wasmData[0] === 0x1f && wasmData[1] === 0x8b) {
+    console.log("[WASM] Decompressing gzip...");
     // Decompress gzip
     wasmBuffer = zlib.gunzipSync(wasmData);
+    console.log(`[WASM] Decompressed: ${wasmBuffer.length} bytes`);
   } else {
     // Use as-is (uncompressed)
     wasmBuffer = wasmData;
+    console.log("[WASM] Using uncompressed WASM");
   }
 
   // Use WebAssembly API available in Node.js
@@ -142,12 +157,25 @@ async function loadWasmModule(
     compile: (buffer: Buffer) => Promise<any>;
     instantiate: (module: any, imports: any) => Promise<any>;
   };
+
+  console.log("[WASM] Compiling WASM module...");
   const wasmModule = await WebAssemblyAPI.compile(wasmBuffer);
+  console.log("[WASM] WASM module compiled");
+
+  console.log("[WASM] Instantiating WASM module...");
   const instance = await WebAssemblyAPI.instantiate(wasmModule, go.importObject);
+  console.log("[WASM] WASM module instantiated");
 
   // Run the Go program in a separate promise to avoid blocking
   // The Go program will register functions on global
-  await go.run(instance);
+  console.log("[WASM] Running Go program (this may take a moment)...");
+  try {
+    await go.run(instance);
+    console.log("[WASM] Go program completed");
+  } catch (error) {
+    console.error("[WASM] Go program failed:", error);
+    throw error;
+  }
 }
 
 // Initialize WASM for Node.js
@@ -211,11 +239,13 @@ export async function initWasmNode(options?: {
     );
   }
 
+  console.log(`[WASM] Loading WASM module from: ${wasmPath}`);
   await loadWasmModule(wasmPath, {
     extensionPath: options?.extensionPath,
     wasmExecPath: options?.wasmExecPath,
   });
 
+  console.log("[WASM] Checking for exported functions...");
   // Check if functions are available on global
   const parseFn = (global as any).sruja_parse_dsl;
   const jsonToDslFn = (global as any).sruja_json_to_dsl;
@@ -247,6 +277,25 @@ export async function initWasmNode(options?: {
     console.log(`WASM LSP functions available: ${availableLspFunctions.join(", ")}`);
   } else {
     console.warn("No WASM LSP functions found - LSP features may not work");
+  }
+
+  // Verify functions are actually callable
+  if (hoverFn) {
+    try {
+      const testResult = hoverFn('architecture "Test" { system App "App" {} }', 1, 15);
+      console.log("[WASM] Hover function test:", testResult);
+    } catch (e) {
+      console.warn("[WASM] Hover function test failed:", e);
+    }
+  }
+
+  if (goToDefinitionFn) {
+    try {
+      const testResult = goToDefinitionFn('architecture "Test" { system App "App" {} }', 1, 15);
+      console.log("[WASM] GoToDefinition function test:", testResult);
+    } catch (e) {
+      console.warn("[WASM] GoToDefinition function test failed:", e);
+    }
   }
 
   return {
@@ -309,14 +358,32 @@ export async function initWasmNode(options?: {
     },
     hover: async (text: string, line: number, column: number): Promise<HoverInfo | null> => {
       if (!hoverFn) {
+        console.warn("WASM hover function not available");
         return null;
       }
       try {
+        console.log(`[WASM] Calling hover with line=${line}, column=${column}`);
         const r = hoverFn(text, line, column) as { ok: boolean; data?: string; error?: string };
-        if (!r || !r.ok || !r.data || r.data === "null") {
+        console.log(`[WASM] Hover result:`, {
+          ok: r?.ok,
+          hasData: !!r?.data,
+          data: r?.data?.substring(0, 100),
+        });
+
+        if (!r || !r.ok) {
+          if (r?.error) {
+            console.warn("WASM hover returned error:", r.error);
+          }
           return null;
         }
-        return JSON.parse(r.data);
+
+        if (!r.data || r.data === "null") {
+          return null;
+        }
+
+        const parsed = JSON.parse(r.data);
+        console.log(`[WASM] Parsed hover data:`, parsed);
+        return parsed;
       } catch (error) {
         console.error("WASM hover failed:", error);
         return null;
@@ -348,18 +415,36 @@ export async function initWasmNode(options?: {
       column: number
     ): Promise<Location | null> => {
       if (!goToDefinitionFn) {
+        console.warn("WASM goToDefinition function not available");
         return null;
       }
       try {
+        console.log(`[WASM] Calling goToDefinition with line=${line}, column=${column}`);
         const r = goToDefinitionFn(text, line, column) as {
           ok: boolean;
           data?: string;
           error?: string;
         };
-        if (!r || !r.ok || !r.data || r.data === "null") {
+        console.log(`[WASM] GoToDefinition result:`, {
+          ok: r?.ok,
+          hasData: !!r?.data,
+          data: r?.data,
+        });
+
+        if (!r || !r.ok) {
+          if (r?.error) {
+            console.warn("WASM goToDefinition returned error:", r.error);
+          }
           return null;
         }
-        return JSON.parse(r.data);
+
+        if (!r.data || r.data === "null") {
+          return null;
+        }
+
+        const parsed = JSON.parse(r.data);
+        console.log(`[WASM] Parsed definition data:`, parsed);
+        return parsed;
       } catch (error) {
         console.error("WASM goToDefinition failed:", error);
         return null;

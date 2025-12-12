@@ -116,6 +116,7 @@ architecture "E-Commerce Platform" {
     tags "ECommerce.API", "PaymentGateway"
   }
   flow PaymentFlow "Payment processing flow" {
+    
     ECommerce.WebApp -> ECommerce.API "Payment request"
     ECommerce.API.PaymentService -> PaymentGateway.StripeAPI "Process payment"
     PaymentGateway.StripeAPI -> ECommerce.API.PaymentService "Payment confirmation"

@@ -17,6 +17,7 @@ export interface OptimizationOptions {
   edgeOptimization?: {
     enabled?: boolean;
     minimizeCrossings?: boolean;
+    iterations?: number;
   };
 }
 
@@ -690,10 +691,11 @@ export function optimizeForEdges(
     );
 
     // Phase 1: Layer-by-layer minimization
-    let optimizedLayers = layerByLayerMinimization(layers, subtreeRels, 5);
+    const iterations = options.edgeOptimization?.iterations ?? 12;
+    let optimizedLayers = layerByLayerMinimization(layers, subtreeRels, iterations);
 
     // Phase 2: Sifting
-    optimizedLayers = siftingMinimization(optimizedLayers, subtreeRels, 5);
+    optimizedLayers = siftingMinimization(optimizedLayers, subtreeRels, iterations);
 
     // Apply the optimized ordering back to positions
     const reordered = applyLayerOrdering(result, optimizedLayers);

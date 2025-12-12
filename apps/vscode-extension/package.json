@@ -62,6 +62,11 @@
         "command": "sruja.previewArchitecture",
         "title": "Preview Sruja Architecture",
         "icon": "$(preview)"
+      },
+      {
+        "command": "sruja.debugWasmLsp",
+        "title": "Debug WASM LSP",
+        "icon": "$(debug)"
       }
     ],
     "menus": {
