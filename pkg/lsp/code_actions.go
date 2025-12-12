@@ -90,7 +90,7 @@ func (s *Server) generateQuickFixForUndefinedRef(doc *Document, diag lsp.Diagnos
 }
 
 // generateQuickFixForDuplicateID suggests renaming for duplicate IDs
-func (s *Server) generateQuickFixForDuplicateID(doc *Document, diag lsp.Diagnostic, uri lsp.DocumentURI) *lsp.Command {
+func (s *Server) generateQuickFixForDuplicateID(_ *Document, diag lsp.Diagnostic, uri lsp.DocumentURI) *lsp.Command {
 	// Extract the duplicate ID from the message
 	msg := diag.Message
 	startIdx := strings.Index(msg, "'")
@@ -114,7 +114,7 @@ func (s *Server) generateQuickFixForDuplicateID(doc *Document, diag lsp.Diagnost
 }
 
 // generateQuickFixForOrphan suggests adding a relation for orphan elements
-func (s *Server) generateQuickFixForOrphan(doc *Document, diag lsp.Diagnostic, uri lsp.DocumentURI) *lsp.Command {
+func (s *Server) generateQuickFixForOrphan(_ *Document, diag lsp.Diagnostic, uri lsp.DocumentURI) *lsp.Command {
 	// Extract the orphan element name
 	msg := diag.Message
 	startIdx := strings.Index(msg, "'")
@@ -148,7 +148,7 @@ func (s *Server) generateQuickFixForOrphan(doc *Document, diag lsp.Diagnostic, u
 }
 
 // generateQuickFixForSyntax suggests fixes for syntax errors
-func (s *Server) generateQuickFixForSyntax(doc *Document, diag lsp.Diagnostic, uri lsp.DocumentURI) *lsp.Command {
+func (s *Server) generateQuickFixForSyntax(_ *Document, diag lsp.Diagnostic, uri lsp.DocumentURI) *lsp.Command {
 	msg := diag.Message
 	// Check for common syntax errors and suggest fixes
 	if strings.Contains(msg, "unexpected token") {

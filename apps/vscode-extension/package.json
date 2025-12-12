@@ -110,7 +110,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build && npm run copy-wasm",
-    "copy-wasm": "mkdir -p wasm && (cp ../../apps/website/public/wasm/sruja.wasm wasm/ 2>/dev/null || echo 'Warning: sruja.wasm not found, run make wasm first') && (cp ../../apps/website/public/wasm/wasm_exec.js wasm/ 2>/dev/null || echo 'Warning: wasm_exec.js not found')",
+    "copy-wasm": "mkdir -p wasm && (cp ../../apps/website/public/wasm/sruja.wasm.gz wasm/ 2>/dev/null && echo '✅ Copied compressed WASM (1.4M vs 4.8M)' || (cp ../../apps/website/public/wasm/sruja.wasm wasm/ 2>/dev/null && echo '⚠️  Using uncompressed WASM (run make wasm to generate compressed version)') || echo 'Warning: sruja.wasm not found, run make wasm first') && (cp ../../apps/website/public/wasm/wasm_exec.js wasm/ 2>/dev/null || echo 'Warning: wasm_exec.js not found')",
     "compile": "tsc -p ./",
     "bundle": "tsx ./scripts/bundle.mts",
     "watch": "tsc -watch -p ./",
@@ -126,7 +126,6 @@
     "deploy:antigravity": "antigravity --install-extension ./sruja-language-support.vsix",
     "deploy:trae": "trae --install-extension ./sruja-language-support.vsix",
     "publish:marketplace": "../../node_modules/.bin/vsce publish",
-    "postinstall": "zx ./scripts/postinstall.mts || true",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

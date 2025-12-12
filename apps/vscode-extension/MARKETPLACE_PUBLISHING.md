@@ -2,7 +2,7 @@
 
 ## Overview
 
-When published to the VS Code Marketplace, users can install the extension directly from VS Code. However, the extension requires the `sruja` CLI tool to be installed separately.
+When published to the VS Code Marketplace, users can install the extension directly from VS Code. The extension uses WASM and works out of the box with no external dependencies.
 
 ## How It Works for End Users
 
@@ -12,35 +12,19 @@ When published to the VS Code Marketplace, users can install the extension direc
    - Search for "Sruja DSL Language Support" in VS Code Extensions
    - Click "Install"
    - Extension installs automatically
-
-2. **User needs to install `sruja` CLI:**
-   - The extension requires the `sruja` command-line tool to be available
-   - Users must install it separately using one of these methods:
-     ```bash
-     # Automated install (recommended)
-     curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-     
-     # Or download from GitHub Releases
-     # Or: go install github.com/sruja-ai/sruja/cmd/sruja@latest
-     ```
-
-3. **Extension automatically detects `sruja`:**
-   - Extension looks for `sruja` in PATH
-   - If not found, users can configure path in settings
+   - No additional setup required!
 
 ### 2. Features Available
 
 Once installed, users get:
 
 - **Syntax Highlighting**: `.sruja` files are highlighted
-- **Language Server**: 
+- **Language Server**:
   - Auto-completion
   - Error detection
   - Validation
   - Hover information
 - **Commands**:
-  - `sruja.restartServer` - Restart language server
-  - `sruja.showOutput` - View server logs
   - `sruja.previewArchitecture` - Preview markdown export
 - **Context Menu**: Right-click on `.sruja` files to preview
 
@@ -50,9 +34,6 @@ Users can configure the extension via VS Code settings:
 
 ```json
 {
-  "srujaLanguageServer.path": "sruja",  // Path to sruja executable
-  "srujaLanguageServer.enableLogging": false,
-  "srujaLanguageServer.logLevel": "info",
   "sruja.formatting.enabled": true,
   "sruja.formatting.tabSize": 2,
   "sruja.formatting.insertSpaces": true
@@ -81,12 +62,14 @@ Users can configure the extension via VS Code settings:
 ### Publishing Steps
 
 1. **Login to marketplace:**
+
    ```bash
    vsce login sruja-ai
    # Enter your Personal Access Token
    ```
 
 2. **Build and publish:**
+
    ```bash
    cd apps/vscode-extension
    npm run build:vsix  # Test build first
@@ -102,11 +85,13 @@ Users can configure the extension via VS Code settings:
 To publish updates:
 
 1. Update version in `package.json`:
+
    ```json
    "version": "0.1.1"
    ```
 
 2. Publish:
+
    ```bash
    vsce publish
    ```
@@ -118,33 +103,35 @@ To publish updates:
 
 ## Important Considerations
 
-### 1. CLI Dependency
+### 1. WASM-Based (No CLI Dependency)
 
-⚠️ **Critical**: The extension requires the `sruja` CLI to be installed separately. Consider:
+✅ **No external dependencies**: The extension uses WASM and works out of the box:
 
-- Adding installation instructions in README
-- Adding a post-install message or notification
-- Creating a setup wizard (future enhancement)
-- Bundling the CLI (complex, platform-specific)
+- All language features work without CLI
+- WASM files are bundled with the extension
+- No platform-specific installation needed
 
 ### 2. Platform Support
 
-The extension works on all platforms (Windows, macOS, Linux), but:
-- Users must install the correct `sruja` binary for their platform
-- The extension will detect the binary automatically if in PATH
+The extension works on all platforms (Windows, macOS, Linux):
+
+- WASM is platform-agnostic
+- No additional binaries required
+- Works immediately after installation
 
 ### 3. Error Handling
 
-The extension handles missing CLI gracefully:
-- Shows helpful error messages
-- Provides configuration option to set custom path
-- Status bar shows connection status
+The extension handles errors gracefully:
+
+- Shows helpful error messages for WASM initialization failures
+- Status bar shows extension status
+- Preview errors are displayed in the preview pane
 
 ### 4. README Content
 
 Update `README.md` to include:
-- Installation instructions for `sruja` CLI
-- Quick start guide
+
+- Quick start guide (no installation needed)
 - Configuration options
 - Troubleshooting section
 - Links to documentation
@@ -153,8 +140,8 @@ Update `README.md` to include:
 
 - [ ] Verify extension appears in marketplace
 - [ ] Test installation on clean VS Code instance
-- [ ] Verify all features work with CLI installed
-- [ ] Test error handling when CLI is missing
+- [ ] Verify all features work (WASM-based, no CLI needed)
+- [ ] Test error handling for WASM initialization failures
 - [ ] Update main repository README with extension link
 - [ ] Add extension badge to main README
 - [ ] Monitor marketplace reviews and issues
@@ -166,30 +153,3 @@ Add to main README.md:
 ```markdown
 [![VS Code Extension](https://img.shields.io/badge/VS%20Code-Extension-blue)](https://marketplace.visualstudio.com/items?itemName=sruja-ai.sruja-language-support)
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

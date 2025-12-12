@@ -2,15 +2,17 @@
 // Node.js-compatible WASM adapter for VS Code extension
 // Uses Node.js WebAssembly API instead of browser APIs
 
-import * as fs from 'fs';
-import * as path from 'path';
-import { exportToMarkdown } from '../export/markdown';
-import { generateSystemDiagramForArch } from '../export/mermaid';
-import type { ArchitectureJSON } from '../types/architecture';
+import * as fs from "fs";
+import * as path from "path";
+import * as zlib from "zlib";
+import { pathToFileURL } from "url";
+import { exportToMarkdown } from "../export/markdown";
+import { generateSystemDiagramForArch } from "../export/mermaid";
+import type { ArchitectureJSON } from "../types/architecture";
 
 export interface Diagnostic {
   code: string;
-  severity: 'Error' | 'Warning' | 'Info';
+  severity: "Error" | "Warning" | "Info";
   message: string;
   location: {
     file: string;
@@ -44,7 +46,7 @@ export type NodeWasmApi = {
   completion: (text: string, line: number, column: number) => Promise<CompletionItem[]>;
   goToDefinition: (text: string, line: number, column: number) => Promise<Location | null>;
   format: (text: string) => Promise<string>;
-}
+};
 
 interface ParseResult {
   ok: boolean;
@@ -59,35 +61,79 @@ interface JsonToDslResult {
 }
 
 // Load Go WASM runtime for Node.js
-async function loadGoRuntime(_options?: { extensionPath?: string; wasmExecPath?: string }): Promise<any> {
+async function loadGoRuntime(options?: {
+  extensionPath?: string;
+  wasmExecPath?: string;
+}): Promise<any> {
   // Try to find wasm_exec.js in common locations
-  const candidates = [
-    path.join(__dirname, '../../../../wasm/wasm_exec.js'),
-    path.join(__dirname, '../../../wasm/wasm_exec.js'),
-    path.join(process.cwd(), 'wasm/wasm_exec.js'),
-    path.join(process.cwd(), 'node_modules/@sruja/shared/wasm/wasm_exec.js'),
-  ];
+  const candidates: string[] = [];
+
+  // First, try explicit wasmExecPath if provided
+  if (options?.wasmExecPath) {
+    candidates.push(options.wasmExecPath);
+  }
+
+  // Then try extension path (most reliable for VS Code extension)
+  if (options?.extensionPath) {
+    candidates.push(path.join(options.extensionPath, "wasm/wasm_exec.js"));
+  }
+
+  // Then try relative paths from bundled location
+  candidates.push(
+    path.join(__dirname, "../../../../wasm/wasm_exec.js"),
+    path.join(__dirname, "../../../wasm/wasm_exec.js"),
+    path.join(process.cwd(), "wasm/wasm_exec.js"),
+    path.join(process.cwd(), "node_modules/@sruja/shared/wasm/wasm_exec.js")
+  );
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
-      // Use require to load the Go runtime
-      delete require.cache[require.resolve(candidate)];
-      require(candidate);
-      if ((global as any).Go) {
-        return (global as any).Go;
+      try {
+        // wasm_exec.js is CommonJS, use require() for Node.js
+        // Clear cache to ensure fresh load
+        const resolvedPath = require.resolve(candidate);
+        delete require.cache[resolvedPath];
+        require(resolvedPath);
+        if ((global as any).Go) {
+          return (global as any).Go;
+        }
+      } catch (error) {
+        // Try ES module import as fallback (for ESM contexts)
+        try {
+          await import(pathToFileURL(candidate).href);
+          if ((global as any).Go) {
+            return (global as any).Go;
+          }
+        } catch {
+          // Continue to next candidate
+        }
       }
     }
   }
 
-  throw new Error('wasm_exec.js not found. Please ensure WASM files are available.');
+  throw new Error("wasm_exec.js not found. Please ensure WASM files are available.");
 }
 
-// Load WASM module for Node.js
-async function loadWasmModule(wasmPath: string, options?: { extensionPath?: string; wasmExecPath?: string }): Promise<void> {
+// Load WASM module for Node.js (supports compressed files)
+async function loadWasmModule(
+  wasmPath: string,
+  options?: { extensionPath?: string; wasmExecPath?: string }
+): Promise<void> {
   const Go = await loadGoRuntime(options);
   const go = new Go();
-  
-  const wasmBuffer = fs.readFileSync(wasmPath);
+
+  let wasmBuffer: Buffer;
+  const wasmData = fs.readFileSync(wasmPath);
+
+  // Check if file is gzip compressed (magic bytes: 1f 8b)
+  if (wasmData.length >= 2 && wasmData[0] === 0x1f && wasmData[1] === 0x8b) {
+    // Decompress gzip
+    wasmBuffer = zlib.gunzipSync(wasmData);
+  } else {
+    // Use as-is (uncompressed)
+    wasmBuffer = wasmData;
+  }
+
   // Use WebAssembly API available in Node.js
   // WebAssembly is available in Node.js 12+ and ES2020+
   // Type assertion needed because TypeScript doesn't always recognize WebAssembly in Node.js context
@@ -98,44 +144,57 @@ async function loadWasmModule(wasmPath: string, options?: { extensionPath?: stri
   };
   const wasmModule = await WebAssemblyAPI.compile(wasmBuffer);
   const instance = await WebAssemblyAPI.instantiate(wasmModule, go.importObject);
-  
+
   // Run the Go program in a separate promise to avoid blocking
   // The Go program will register functions on global
   await go.run(instance);
 }
 
 // Initialize WASM for Node.js
-export async function initWasmNode(options?: { wasmPath?: string; wasmExecPath?: string; extensionPath?: string }): Promise<NodeWasmApi> {
+export async function initWasmNode(options?: {
+  wasmPath?: string;
+  wasmExecPath?: string;
+  extensionPath?: string;
+}): Promise<NodeWasmApi> {
   // Find WASM file - prioritize extension path if provided
   const wasmCandidates: string[] = [];
-  
+
   // First, try extension path (most reliable for VS Code extension)
+  // Prefer compressed version for smaller disk footprint
   if (options?.extensionPath) {
-    wasmCandidates.push(path.join(options.extensionPath, 'wasm/sruja.wasm'));
+    wasmCandidates.push(path.join(options.extensionPath, "wasm/sruja.wasm.gz"));
+    wasmCandidates.push(path.join(options.extensionPath, "wasm/sruja.wasm"));
   }
-  
+
   // Then try explicit wasmPath
   if (options?.wasmPath) {
     wasmCandidates.push(options.wasmPath);
   }
-  
+
   // Try VS Code extension path if available
   try {
-    const vscode = require('vscode');
-    const extPath = vscode?.extensions?.getExtension('sruja-ai.sruja-language-support')?.extensionPath;
+    const vscode = await import("vscode");
+    const extPath = vscode?.extensions?.getExtension(
+      "sruja-ai.sruja-language-support"
+    )?.extensionPath;
     if (extPath) {
-      wasmCandidates.push(path.join(extPath, 'wasm/sruja.wasm'));
+      wasmCandidates.push(path.join(extPath, "wasm/sruja.wasm.gz"));
+      wasmCandidates.push(path.join(extPath, "wasm/sruja.wasm"));
     }
   } catch {
     void 0;
   }
-  
-  // Then try common locations
+
+  // Then try common locations (prefer compressed)
   wasmCandidates.push(
-    path.join(__dirname, '../../../../wasm/sruja.wasm'),
-    path.join(__dirname, '../../../wasm/sruja.wasm'),
-    path.join(process.cwd(), 'wasm/sruja.wasm'),
-    path.join(process.cwd(), 'node_modules/@sruja/shared/wasm/sruja.wasm'),
+    path.join(__dirname, "../../../../wasm/sruja.wasm.gz"),
+    path.join(__dirname, "../../../../wasm/sruja.wasm"),
+    path.join(__dirname, "../../../wasm/sruja.wasm.gz"),
+    path.join(__dirname, "../../../wasm/sruja.wasm"),
+    path.join(process.cwd(), "wasm/sruja.wasm.gz"),
+    path.join(process.cwd(), "wasm/sruja.wasm"),
+    path.join(process.cwd(), "node_modules/@sruja/shared/wasm/sruja.wasm.gz"),
+    path.join(process.cwd(), "node_modules/@sruja/shared/wasm/sruja.wasm")
   );
 
   let wasmPath: string | undefined;
@@ -147,15 +206,20 @@ export async function initWasmNode(options?: { wasmPath?: string; wasmExecPath?:
   }
 
   if (!wasmPath) {
-    throw new Error('sruja.wasm not found. Please ensure WASM files are available.');
+    throw new Error(
+      "sruja.wasm or sruja.wasm.gz not found. Please ensure WASM files are available."
+    );
   }
 
-  await loadWasmModule(wasmPath, { extensionPath: options?.extensionPath, wasmExecPath: options?.wasmExecPath });
+  await loadWasmModule(wasmPath, {
+    extensionPath: options?.extensionPath,
+    wasmExecPath: options?.wasmExecPath,
+  });
 
   // Check if functions are available on global
   const parseFn = (global as any).sruja_parse_dsl;
   const jsonToDslFn = (global as any).sruja_json_to_dsl;
-  
+
   // LSP functions
   const diagnosticsFn = (global as any).sruja_get_diagnostics;
   // const symbolsFn = (global as any).sruja_get_symbols; // Reserved for future use
@@ -165,110 +229,157 @@ export async function initWasmNode(options?: { wasmPath?: string; wasmExecPath?:
   const formatFn = (global as any).sruja_format;
 
   if (!parseFn || !jsonToDslFn) {
-    throw new Error('WASM functions not found. Missing functions after WASM load.');
+    const missing = [];
+    if (!parseFn) missing.push("sruja_parse_dsl");
+    if (!jsonToDslFn) missing.push("sruja_json_to_dsl");
+    throw new Error(`WASM functions not found. Missing: ${missing.join(", ")}`);
+  }
+
+  // Log available LSP functions for debugging
+  const availableLspFunctions = [];
+  if (diagnosticsFn) availableLspFunctions.push("diagnostics");
+  if (hoverFn) availableLspFunctions.push("hover");
+  if (completionFn) availableLspFunctions.push("completion");
+  if (goToDefinitionFn) availableLspFunctions.push("goToDefinition");
+  if (formatFn) availableLspFunctions.push("format");
+
+  if (availableLspFunctions.length > 0) {
+    console.log(`WASM LSP functions available: ${availableLspFunctions.join(", ")}`);
+  } else {
+    console.warn("No WASM LSP functions found - LSP features may not work");
   }
 
   return {
-    parseDslToJson: async (dsl: string, filename: string = 'input.sruja'): Promise<string> => {
+    parseDslToJson: async (dsl: string, filename: string = "input.sruja"): Promise<string> => {
       try {
         const r = parseFn(dsl, filename) as ParseResult;
         if (!r || !r.ok) {
-          throw new Error(r?.error || 'parse failed');
+          throw new Error(r?.error || "parse failed");
         }
         if (!r.json) {
-          throw new Error('parse succeeded but no JSON returned');
+          throw new Error("parse succeeded but no JSON returned");
         }
         return r.json;
       } catch (error) {
-        throw new Error(`WASM parse failed: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(
+          `WASM parse failed: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     },
     printJsonToDsl: async (json: string): Promise<string> => {
       try {
         const r = jsonToDslFn(json) as JsonToDslResult;
         if (!r || !r.ok) {
-          throw new Error(r?.error || 'print failed');
+          throw new Error(r?.error || "print failed");
         }
         if (!r.dsl) {
-          throw new Error('print succeeded but no DSL returned');
+          throw new Error("print succeeded but no DSL returned");
         }
         return r.dsl;
       } catch (error) {
-        throw new Error(`WASM print failed: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(
+          `WASM print failed: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     },
     // Export functions (dslToMarkdown, dslToMermaid) removed - now handled by TypeScript exporters
     // LSP functions
     getDiagnostics: async (text: string): Promise<Diagnostic[]> => {
       if (!diagnosticsFn) {
-        throw new Error('WASM getDiagnostics function not available');
+        console.warn("WASM getDiagnostics function not available");
+        return [];
       }
       try {
         const r = diagnosticsFn(text) as { ok: boolean; data?: string; error?: string };
-        if (!r || !r.ok || !r.data) {
+        if (!r || !r.ok) {
+          if (r?.error) {
+            console.warn("WASM getDiagnostics returned error:", r.error);
+          }
+          return [];
+        }
+        if (!r.data) {
           return [];
         }
         const data = JSON.parse(r.data);
         return Array.isArray(data) ? data : [];
       } catch (error) {
-        throw new Error(`WASM getDiagnostics failed: ${error instanceof Error ? error.message : String(error)}`);
+        console.error("WASM getDiagnostics failed:", error);
+        return [];
       }
     },
     hover: async (text: string, line: number, column: number): Promise<HoverInfo | null> => {
       if (!hoverFn) {
-        throw new Error('WASM hover function not available');
+        return null;
       }
       try {
         const r = hoverFn(text, line, column) as { ok: boolean; data?: string; error?: string };
-        if (!r || !r.ok || !r.data || r.data === 'null') {
+        if (!r || !r.ok || !r.data || r.data === "null") {
           return null;
         }
         return JSON.parse(r.data);
       } catch (error) {
-        throw new Error(`WASM hover failed: ${error instanceof Error ? error.message : String(error)}`);
+        console.error("WASM hover failed:", error);
+        return null;
       }
     },
     completion: async (text: string, line: number, column: number): Promise<CompletionItem[]> => {
       if (!completionFn) {
-        throw new Error('WASM completion function not available');
+        return [];
       }
       try {
-        const r = completionFn(text, line, column) as { ok: boolean; data?: string; error?: string };
+        const r = completionFn(text, line, column) as {
+          ok: boolean;
+          data?: string;
+          error?: string;
+        };
         if (!r || !r.ok || !r.data) {
           return [];
         }
         const data = JSON.parse(r.data);
         return Array.isArray(data) ? data : [];
       } catch (error) {
-        throw new Error(`WASM completion failed: ${error instanceof Error ? error.message : String(error)}`);
+        console.error("WASM completion failed:", error);
+        return [];
       }
     },
-    goToDefinition: async (text: string, line: number, column: number): Promise<Location | null> => {
+    goToDefinition: async (
+      text: string,
+      line: number,
+      column: number
+    ): Promise<Location | null> => {
       if (!goToDefinitionFn) {
-        throw new Error('WASM goToDefinition function not available');
+        return null;
       }
       try {
-        const r = goToDefinitionFn(text, line, column) as { ok: boolean; data?: string; error?: string };
-        if (!r || !r.ok || !r.data || r.data === 'null') {
+        const r = goToDefinitionFn(text, line, column) as {
+          ok: boolean;
+          data?: string;
+          error?: string;
+        };
+        if (!r || !r.ok || !r.data || r.data === "null") {
           return null;
         }
         return JSON.parse(r.data);
       } catch (error) {
-        throw new Error(`WASM goToDefinition failed: ${error instanceof Error ? error.message : String(error)}`);
+        console.error("WASM goToDefinition failed:", error);
+        return null;
       }
     },
     format: async (text: string): Promise<string> => {
       if (!formatFn) {
-        throw new Error('WASM format function not available');
+        // Return original text if formatting not available
+        return text;
       }
       try {
         const r = formatFn(text) as { ok: boolean; data?: string; error?: string };
         if (!r || !r.ok || !r.data) {
-          return text;
+          console.warn("WASM format failed:", r?.error || "format failed");
+          return text; // Return original on failure
         }
         return r.data;
       } catch (error) {
-        throw new Error(`WASM format failed: ${error instanceof Error ? error.message : String(error)}`);
+        console.error("WASM format failed:", error);
+        return text; // Return original on error
       }
     },
   };
@@ -279,7 +390,11 @@ export async function initWasmNode(options?: { wasmPath?: string; wasmExecPath?:
  * Returns markdown string if successful, null on error.
  * Uses TypeScript markdown exporter instead of WASM.
  */
-export async function convertDslToMarkdown(dsl: string, wasmApi?: NodeWasmApi, filename?: string): Promise<string | null> {
+export async function convertDslToMarkdown(
+  dsl: string,
+  wasmApi?: NodeWasmApi,
+  filename?: string
+): Promise<string | null> {
   let api = wasmApi;
   if (!api) {
     try {
@@ -305,7 +420,10 @@ export async function convertDslToMarkdown(dsl: string, wasmApi?: NodeWasmApi, f
  * Returns mermaid diagram string if successful, null on error.
  * Uses TypeScript mermaid exporter instead of WASM.
  */
-export async function convertDslToMermaid(dsl: string, wasmApi?: NodeWasmApi): Promise<string | null> {
+export async function convertDslToMermaid(
+  dsl: string,
+  wasmApi?: NodeWasmApi
+): Promise<string | null> {
   let api = wasmApi;
   if (!api) {
     try {

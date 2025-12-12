@@ -140,9 +140,6 @@ func generateL1View(arch *language.Architecture) ViewData {
 // generateL2View creates container view for a specific system
 func generateL2View(arch *language.Architecture, focusedSystem *language.System) ViewData {
 	nodes := make([]ViewNode, 0, len(focusedSystem.Containers)+len(focusedSystem.DataStores)+len(focusedSystem.Queues))
-	// Estimate capacity for edges
-	estimatedEdges := len(focusedSystem.Relations) + 8
-	edges := make([]ViewEdge, 0, estimatedEdges)
 	nodeSet := make(map[string]bool, len(focusedSystem.Containers)+len(focusedSystem.DataStores)+len(focusedSystem.Queues))
 
 	// Add containers, datastores, queues from focused system
@@ -187,7 +184,7 @@ func generateL2View(arch *language.Architecture, focusedSystem *language.System)
 	}
 
 	// Add relations involving nodes in this view
-	edges = collectL2Edges(arch, focusedSystem, nodeSet)
+	edges := collectL2Edges(arch, focusedSystem, nodeSet)
 
 	return ViewData{Nodes: nodes, Edges: edges}
 }

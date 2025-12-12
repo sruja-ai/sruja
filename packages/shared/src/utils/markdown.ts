@@ -12,8 +12,8 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   if (!text) return false;
 
   // Check if we're in a browser environment
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    console.warn('copyToClipboard: Not available in Node.js environment');
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    console.warn("copyToClipboard: Not available in Node.js environment");
     return false;
   }
 
@@ -25,17 +25,17 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     }
 
     // Fallback for older browsers
-    const textArea = document.createElement('textarea');
+    const textArea = document.createElement("textarea");
     textArea.value = text;
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-999999px';
-    textArea.style.top = '-999999px';
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
 
     try {
-      const successful = document.execCommand('copy');
+      const successful = document.execCommand("copy");
       document.body.removeChild(textArea);
       return successful;
     } catch (err) {
@@ -43,7 +43,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
       return false;
     }
   } catch (err) {
-    console.error('Failed to copy to clipboard:', err);
+    console.error("Failed to copy to clipboard:", err);
     return false;
   }
 }
@@ -99,9 +99,9 @@ export function extractCodeBlocks(
 export function sanitizeMarkdown(markdown: string): string {
   // Remove potentially dangerous HTML tags while preserving markdown syntax
   return markdown
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    .replace(/javascript:/gi, '');
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
+    .replace(/javascript:/gi, "");
 }
 
 /**
@@ -112,9 +112,9 @@ export function sanitizeMarkdown(markdown: string): string {
 export function getMarkdownWordCount(markdown: string): number {
   // Remove code blocks and inline code
   const text = markdown
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/`[^`]+`/g, '')
-    .replace(/[#*_~`\[\]()]/g, '')
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`[^`]+`/g, "")
+    .replace(/[#*_~`()[\]]/g, "")
     .trim();
 
   return text.split(/\s+/).filter((word) => word.length > 0).length;
@@ -138,5 +138,5 @@ export function getReadingTime(markdown: string, wordsPerMinute: number = 200): 
  */
 export function formatMarkdownForPreview(markdown: string): string {
   // Normalize line endings
-  return markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  return markdown.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }

@@ -9,8 +9,6 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-const expectedOrphanMessage = "Orphan element 'Orphan' is defined but never used in any relation."
-
 func TestOrphanDetectionRule_EmptyArchitecture(t *testing.T) {
 	program := &language.Program{
 		Architecture: nil,

@@ -3,6 +3,7 @@ package lsp
 
 import (
 	"context"
+	"math"
 	"strings"
 
 	"github.com/sourcegraph/go-lsp"
@@ -59,12 +60,12 @@ func (s *Server) FoldingRanges(_ context.Context, params FoldingRangeParams) ([]
 			// Find the closing brace of the architecture block
 			endLine := s.findBlockEnd(doc.Text, arch.Pos.Line-1, arch.Pos.Column-1)
 			if endLine > arch.Pos.Line {
-				startCol := uint32(arch.Pos.Column - 1)
+				startCol := toUint32(arch.Pos.Column - 1)
 				kind := FoldingRangeKindRegion
 				ranges = append(ranges, FoldingRange{
-					StartLine:      uint32(arch.Pos.Line - 1), // Convert to 0-based
+					StartLine:      toUint32(arch.Pos.Line - 1), // Convert to 0-based
 					StartCharacter: &startCol,
-					EndLine:        uint32(endLine - 1), // Convert to 0-based
+					EndLine:        toUint32(endLine - 1), // Convert to 0-based
 					Kind:           &kind,
 				})
 			}
@@ -75,12 +76,12 @@ func (s *Server) FoldingRanges(_ context.Context, params FoldingRangeParams) ([]
 			if sys.Pos.Line > 0 {
 				endLine := s.findBlockEnd(doc.Text, sys.Pos.Line-1, sys.Pos.Column-1)
 				if endLine > sys.Pos.Line {
-					startCol := uint32(sys.Pos.Column - 1)
+					startCol := toUint32(sys.Pos.Column - 1)
 					kind := FoldingRangeKindRegion
 					ranges = append(ranges, FoldingRange{
-						StartLine:      uint32(sys.Pos.Line - 1),
+						StartLine:      toUint32(sys.Pos.Line - 1),
 						StartCharacter: &startCol,
-						EndLine:        uint32(endLine - 1),
+						EndLine:        toUint32(endLine - 1),
 						Kind:           &kind,
 					})
 				}
@@ -90,12 +91,12 @@ func (s *Server) FoldingRanges(_ context.Context, params FoldingRangeParams) ([]
 					if cont.Pos.Line > 0 {
 						endLine := s.findBlockEnd(doc.Text, cont.Pos.Line-1, cont.Pos.Column-1)
 						if endLine > cont.Pos.Line {
-							startCol := uint32(cont.Pos.Column - 1)
+							startCol := toUint32(cont.Pos.Column - 1)
 							kind := FoldingRangeKindRegion
 							ranges = append(ranges, FoldingRange{
-								StartLine:      uint32(cont.Pos.Line - 1),
+								StartLine:      toUint32(cont.Pos.Line - 1),
 								StartCharacter: &startCol,
-								EndLine:        uint32(endLine - 1),
+								EndLine:        toUint32(endLine - 1),
 								Kind:           &kind,
 							})
 						}
@@ -109,12 +110,12 @@ func (s *Server) FoldingRanges(_ context.Context, params FoldingRangeParams) ([]
 			if scenario.Pos.Line > 0 {
 				endLine := s.findBlockEnd(doc.Text, scenario.Pos.Line-1, scenario.Pos.Column-1)
 				if endLine > scenario.Pos.Line {
-					startCol := uint32(scenario.Pos.Column - 1)
+					startCol := toUint32(scenario.Pos.Column - 1)
 					kind := FoldingRangeKindRegion
 					ranges = append(ranges, FoldingRange{
-						StartLine:      uint32(scenario.Pos.Line - 1),
+						StartLine:      toUint32(scenario.Pos.Line - 1),
 						StartCharacter: &startCol,
-						EndLine:        uint32(endLine - 1),
+						EndLine:        toUint32(endLine - 1),
 						Kind:           &kind,
 					})
 				}
@@ -126,12 +127,12 @@ func (s *Server) FoldingRanges(_ context.Context, params FoldingRangeParams) ([]
 			if flow.Pos.Line > 0 {
 				endLine := s.findBlockEnd(doc.Text, flow.Pos.Line-1, flow.Pos.Column-1)
 				if endLine > flow.Pos.Line {
-					startCol := uint32(flow.Pos.Column - 1)
+					startCol := toUint32(flow.Pos.Column - 1)
 					kind := FoldingRangeKindRegion
 					ranges = append(ranges, FoldingRange{
-						StartLine:      uint32(flow.Pos.Line - 1),
+						StartLine:      toUint32(flow.Pos.Line - 1),
 						StartCharacter: &startCol,
-						EndLine:        uint32(endLine - 1),
+						EndLine:        toUint32(endLine - 1),
 						Kind:           &kind,
 					})
 				}
@@ -224,12 +225,12 @@ func (s *Server) foldingRangesFromText(text string) []FoldingRange {
 
 				// Only add folding range if the block spans multiple lines
 				if i > open.line {
-					col := uint32(open.column)
+					col := toUint32(open.column)
 					kind := FoldingRangeKindRegion
 					ranges = append(ranges, FoldingRange{
-						StartLine:      uint32(open.line),
+						StartLine:      toUint32(open.line),
 						StartCharacter: &col,
-						EndLine:        uint32(i),
+						EndLine:        toUint32(i),
 						Kind:           &kind,
 					})
 				}
@@ -238,4 +239,15 @@ func (s *Server) foldingRangesFromText(text string) []FoldingRange {
 	}
 
 	return ranges
+}
+
+// toUint32 safely converts an int to uint32 by clamping to [0, MaxUint32].
+func toUint32(v int) uint32 {
+	if v <= 0 {
+		return 0
+	}
+	if v > int(math.MaxUint32) {
+		return math.MaxUint32
+	}
+	return uint32(v)
 }

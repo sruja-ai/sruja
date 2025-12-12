@@ -164,15 +164,3 @@ func TestRelationTagRule_IntegrationWithValidator(t *testing.T) {
 		t.Errorf("Expected validation warning for invalid tag, but got none. Diagnostics: %v", diags)
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-

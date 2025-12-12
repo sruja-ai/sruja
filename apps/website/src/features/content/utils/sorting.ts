@@ -1,16 +1,20 @@
 // apps/website/src/features/content/utils/sorting.ts
-import type { CollectionEntry } from 'astro:content';
+import type { CollectionEntry } from "astro:content";
 
 /**
  * Sort entries by publication date (newest first)
  */
 export function sortByDate<T extends CollectionEntry<any>>(entries: T[]): T[] {
   return entries.sort((a: T, b: T) => {
-    const dateA = a.data.pubDate 
-      ? (typeof a.data.pubDate === 'string' ? new Date(a.data.pubDate) : a.data.pubDate)
+    const dateA = a.data.pubDate
+      ? typeof a.data.pubDate === "string"
+        ? new Date(a.data.pubDate)
+        : a.data.pubDate
       : new Date(0);
-    const dateB = b.data.pubDate 
-      ? (typeof b.data.pubDate === 'string' ? new Date(b.data.pubDate) : b.data.pubDate)
+    const dateB = b.data.pubDate
+      ? typeof b.data.pubDate === "string"
+        ? new Date(b.data.pubDate)
+        : b.data.pubDate
       : new Date(0);
     return dateB.getTime() - dateA.getTime();
   });
@@ -26,20 +30,3 @@ export function sortByWeight<T extends CollectionEntry<any>>(entries: T[]): T[] 
     return weightA - weightB;
   });
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

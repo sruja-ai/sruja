@@ -48,7 +48,7 @@ func (r *UniqueIDRule) Validate(program *language.Program) []diagnostics.Diagnos
 			suggestions = append(suggestions, fmt.Sprintf("Rename this element to a unique identifier (e.g., '%s2' or '%s_v2')", id, id))
 			suggestions = append(suggestions, "Element IDs must be unique within the architecture")
 			if existing.File != "" && existing.File != loc.File {
-				suggestions = append(suggestions, fmt.Sprintf("Consider using a namespace or prefix to avoid conflicts across files"))
+				suggestions = append(suggestions, "Consider using a namespace or prefix to avoid conflicts across files")
 			}
 
 			diags = append(diags, diagnostics.Diagnostic{

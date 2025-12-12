@@ -11,14 +11,14 @@ import (
 )
 
 // parseWithFullValidation parses DSL and runs all validation rules
-func parseWithFullValidation(t *testing.T, filename, dsl string) ([]diagnostics.Diagnostic, error) {
+func parseWithFullValidation(t *testing.T, dsl string) ([]diagnostics.Diagnostic, error) {
 	t.Helper()
 	parser, err := language.NewParser()
 	if err != nil {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	program, parseDiags, err := parser.Parse(filename, dsl)
+	program, parseDiags, err := parser.Parse("test.sruja", dsl)
 
 	allDiags := make([]diagnostics.Diagnostic, 0, len(parseDiags)+10)
 	allDiags = append(allDiags, parseDiags...)
@@ -206,7 +206,7 @@ architecture "Test" {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			diags, err := parseWithFullValidation(t, "test.sruja", tc.dsl)
+			diags, err := parseWithFullValidation(t, tc.dsl)
 
 			// Check that we got errors or diagnostics
 			if err == nil && len(diags) == 0 {
@@ -292,7 +292,7 @@ architecture "Test" {
     }
 }
 `
-	diags, err := parseWithFullValidation(t, "test.sruja", dsl)
+	diags, err := parseWithFullValidation(t, dsl)
 
 	if err != nil {
 		t.Fatalf("Parsing should succeed: %v", err)
@@ -365,7 +365,7 @@ architecture "Test" {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			diags, err := parseWithFullValidation(t, "test.sruja", tc.dsl)
+			diags, err := parseWithFullValidation(t, tc.dsl)
 			if err != nil {
 				t.Logf("Parsing error (may be acceptable): %v", err)
 			}
@@ -412,7 +412,7 @@ architecture "Test" {
     }
 }
 `
-	diags, err := parseWithFullValidation(t, "test.sruja", dsl)
+	diags, err := parseWithFullValidation(t, dsl)
 
 	if err != nil {
 		t.Fatalf("Parsing should succeed: %v", err)
