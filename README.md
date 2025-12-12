@@ -14,9 +14,10 @@ https://sruja.ai
 
 - 🎯 **Architecture DSL**: Define systems, containers, components, and relations
 - ✅ **Validation Engine**: Cycle detection, orphan detection, unique IDs, valid references
-- 📊 **D2 Export**: Export to D2 diagrams for rendering
+- 📊 **JSON Export**: Export to JSON format for integration with other tools
 - 🎨 **Code Formatter**: Auto-format your architecture with `sruja fmt`
 - 🌳 **Tree View**: Visualize hierarchy with `sruja tree`
+- 🔍 **LSP Support**: Language Server Protocol for IDE integration
 
 ## Project Structure
 
@@ -30,13 +31,15 @@ sruja/
 │   └── export/           # Exporters (JSON, views)
 ├── apps/                 # Frontend applications
 │   ├── website/          # Astro website (docs, courses, tutorials)
-│   ├── studio-core/      # Studio app (diagram editor)
-│   ├── viewer-core/     # Viewer app (architecture visualization)
-│   └── vscode-extension/ # VS Code language support
+│   ├── playground/       # Interactive playground application
+│   ├── vscode-extension/ # VS Code language support
+│   ├── social-publish/   # Social media publishing tools
+│   └── storybook/        # Component documentation
 ├── packages/             # Shared TypeScript packages
 │   ├── shared/           # Shared utilities and types
 │   ├── ui/               # UI component library
-│   └── viewer/           # Viewer library
+│   ├── layout/           # Layout algorithms for diagrams
+│   └── diagram/          # Diagram rendering utilities
 └── examples/             # Example .sruja files
 ```
 
@@ -66,6 +69,7 @@ go install github.com/sruja-ai/sruja/cmd/sruja@latest
 ## Quick Start
 
 **Create `example.sruja`:**
+
 ```sruja
 architecture "My System" {
     system App "My App" {
@@ -79,22 +83,26 @@ architecture "My System" {
 }
 ```
 
-**Export to D2:**
+**Export to JSON:**
+
 ```bash
-sruja export d2 example.sruja
+sruja export json example.sruja
 ```
 
 **Lint your code:**
+
 ```bash
 sruja lint example.sruja
 ```
 
 **Format your code:**
+
 ```bash
 sruja fmt example.sruja
 ```
 
 **View hierarchy:**
+
 ```bash
 sruja tree --file example.sruja
 ```
@@ -123,13 +131,15 @@ make build
 A pre-commit hook automatically tests code compilation when you commit changes to the `examples/` directory. This prevents broken code from being committed.
 
 **Setup:**
+
 ```bash
 make setup-hooks
 ```
 
 The hook will:
+
 - Test playground examples compile correctly
-- Test course code blocks compile correctly  
+- Test course code blocks compile correctly
 - Test docs code blocks compile correctly
 - Block commits if any code fails to compile
 
@@ -155,12 +165,14 @@ This guide walks you through making your first contribution, even if you're new 
 ### Ways to Contribute
 
 **No Code Required:**
+
 - Fix typos in documentation
 - Add examples
 - Test and report bugs
 - Write tutorials or blog posts
 
 **Code Contributions:**
+
 - Fix bugs
 - Add features
 - Improve tests

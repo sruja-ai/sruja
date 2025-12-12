@@ -5,15 +5,18 @@ This directory contains realistic, production-ready examples demonstrating the n
 ## Implied Relationships
 
 ### `real_world_implied_relationships.sruja`
+
 **Scenario:** Microservices E-commerce Platform
 
 **What it demonstrates:**
+
 - Complex microservices architecture with 8+ services
 - Multiple data stores and message queues
 - External service integrations
 - How implied relationships reduce boilerplate in large architectures
 
 **Key Benefits:**
+
 - **Before:** Would need ~50+ explicit relationships
 - **After:** Only ~30 explicit relationships needed (40% reduction)
 - Automatically infers parent relationships (e.g., `Customer -> ECommerce` from `Customer -> ECommerce.WebApp`)
@@ -22,15 +25,18 @@ This directory contains realistic, production-ready examples demonstrating the n
 Perfect for documenting microservices architectures where you have many services and want to focus on specific interactions without repeating parent relationships.
 
 ### `real_world_microservices.sruja`
+
 **Scenario:** E-commerce Microservices Platform
 
 **What it demonstrates:**
+
 - API Gateway pattern with multiple backend services
 - Service-to-service communication
 - Event-driven architecture
 - How implied relationships simplify service mesh documentation
 
 **Key Benefits:**
+
 - Reduces relationship definitions by ~35%
 - Makes service interactions clearer
 - Automatically shows system-level relationships
@@ -38,9 +44,11 @@ Perfect for documenting microservices architectures where you have many services
 ## Views Block Customization
 
 ### `real_world_views_customization.sruja`
+
 **Scenario:** SaaS Analytics Platform
 
 **What it demonstrates:**
+
 - **Multiple stakeholder views:**
   - Developer View: API and processing services
   - Product View: User-facing components
@@ -48,6 +56,7 @@ Perfect for documenting microservices architectures where you have many services
   - Executive Overview: High-level system context
 
 **Key Features:**
+
 - Custom filtering for different audiences
 - Tag-based styling (Database, Queue, external services)
 - Visual differentiation by element type
@@ -55,6 +64,7 @@ Perfect for documenting microservices architectures where you have many services
 
 **Real-world use case:**
 Perfect for large platforms where different teams need different views:
+
 - **Developers:** Focus on APIs and services
 - **Product Managers:** Focus on user experience
 - **Data Engineers:** Focus on data flow
@@ -63,9 +73,11 @@ Perfect for large platforms where different teams need different views:
 ## Combined Example
 
 ### `real_world_microservices.sruja`
+
 **Scenario:** E-commerce Microservices (Combined Features)
 
 **What it demonstrates:**
+
 - Implied relationships for service interactions
 - Custom views for different teams:
   - API Architecture (for API team)
@@ -78,48 +90,46 @@ Perfect for large platforms where different teams need different views:
 ### Export Individual Examples
 
 ```bash
-# Export as markdown
-sruja export markdown examples/real_world_implied_relationships.sruja
+# Export as JSON (currently supported format)
+sruja export json examples/real_world_implied_relationships.sruja
 
-# Export as SVG
-sruja export svg examples/real_world_views_customization.sruja
+# Export with extended views
+sruja export json --extended examples/real_world_views_customization.sruja
 
-# Export as HTML
-sruja export html examples/real_world_microservices.sruja
+# Export to stdout
+sruja export json examples/real_world_microservices.sruja > output.json
 ```
 
-### Generate All Markdown
-
-```bash
-make generate-markdown-all
-# Includes all real-world examples
-```
+Note: Markdown, SVG, and HTML exports are currently disabled. Use the TypeScript exporters in frontend apps (playground, website) for these formats.
 
 ## Key Takeaways
 
 ### Implied Relationships
+
 - **Best for:** Complex architectures with many nested elements
 - **Benefit:** 30-40% reduction in relationship definitions
 - **Use when:** You want to focus on specific interactions without boilerplate
 
 ### Views Block
+
 - **Best for:** Large platforms with multiple stakeholders
 - **Benefit:** One architecture, multiple views for different audiences
 - **Use when:** Different teams need different levels of detail
 
 ### Combined
+
 - **Best for:** Enterprise architectures
 - **Benefit:** Simplified relationships + Customized views = Better documentation
 - **Use when:** You need both simplicity and flexibility
 
 ## Comparison
 
-| Feature | Simple Example | Real-World Example |
-|---------|---------------|-------------------|
+| Feature                   | Simple Example             | Real-World Example             |
+| ------------------------- | -------------------------- | ------------------------------ |
 | **Implied Relationships** | 3 relationships, 1 implied | 30+ relationships, 10+ implied |
-| **Views Block** | 1 custom view | 4 stakeholder-specific views |
-| **Complexity** | Beginner-friendly | Production-ready |
-| **Use Case** | Learning | Documentation |
+| **Views Block**           | 1 custom view              | 4 stakeholder-specific views   |
+| **Complexity**            | Beginner-friendly          | Production-ready               |
+| **Use Case**              | Learning                   | Documentation                  |
 
 ## Next Steps
 
