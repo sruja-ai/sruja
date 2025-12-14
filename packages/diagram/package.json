@@ -12,7 +12,11 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "vite"
+    "dev": "vite",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "improve": "tsx tests/improve-layout.ts",
+    "improve:iterative": "tsx tests/improve-iteratively.ts"
   },
   "peerDependencies": {
     "@xyflow/react": "^12.0.0",

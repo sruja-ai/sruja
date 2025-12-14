@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"io"
 	"os"
-	"sync"
 
 	"github.com/sourcegraph/go-lsp"
 	"github.com/sourcegraph/jsonrpc2"
@@ -17,8 +16,6 @@ type Server struct {
 	conn      *jsonrpc2.Conn
 	workspace *Workspace
 	validator *engine.Validator
-	//nolint:unused // Future use
-	mu sync.Mutex
 }
 
 func NewServer() *Server {
@@ -252,7 +249,6 @@ func StartServer(in io.Reader, out io.Writer) error {
 	})
 	stream := jsonrpc2.NewBufferedStream(stdioStream{in: in, out: out}, jsonrpc2.VSCodeObjectCodec{})
 	conn := jsonrpc2.NewConn(context.Background(), stream, handler)
-	srv.conn = conn
 	<-conn.DisconnectNotify()
 	return nil
 }

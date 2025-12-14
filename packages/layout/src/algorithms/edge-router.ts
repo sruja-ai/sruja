@@ -1,6 +1,199 @@
 import type { Point } from "../geometry/point";
 import type { Rect } from "../geometry/rect";
 
+/**
+ * Calculate best port considering obstacles for better routing
+ */
+export function calculateBestPortWithObstacles(
+  source: Rect,
+  target: Rect,
+  obstacles: Rect[] = [],
+  usedPorts?: Map<string, number> // Track how many edges use each port side
+): { side: "north" | "south" | "east" | "west"; position: Point; angle: number } {
+  const sc = { x: source.x + source.width / 2, y: source.y + source.height / 2 };
+  const tc = { x: target.x + target.width / 2, y: target.y + target.height / 2 };
+
+  const srcRight = source.x + source.width;
+  const srcBottom = source.y + source.height;
+
+  // Calculate relative position
+  const dx = tc.x - sc.x;
+  const dy = tc.y - sc.y;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+
+  // Candidate ports on all sides
+  interface PortCandidate {
+    side: "north" | "south" | "east" | "west";
+    position: Point;
+    angle: number;
+    score: number;
+  }
+
+  // Calculate port positions on all 4 sides
+  // For better routing options, distribute ports more evenly along each side
+  const candidates: PortCandidate[] = [
+    {
+      side: "east",
+      position: { x: srcRight, y: Math.max(source.y, Math.min(srcBottom, tc.y)) },
+      angle: 0,
+      // Score based on direction, but give all sides a base score to consider them
+      score: dx > 0 ? absDx * 2 : absDx < absDy ? absDx * 0.5 : 0,
+    },
+    {
+      side: "west",
+      position: { x: source.x, y: Math.max(source.y, Math.min(srcBottom, tc.y)) },
+      angle: 180,
+      score: dx < 0 ? absDx * 2 : absDx < absDy ? absDx * 0.5 : 0,
+    },
+    {
+      side: "south",
+      position: { x: Math.max(source.x, Math.min(srcRight, tc.x)), y: srcBottom },
+      angle: 90,
+      score: dy > 0 ? absDy * 2 : absDy < absDx ? absDy * 0.5 : 0,
+    },
+    {
+      side: "north",
+      position: { x: Math.max(source.x, Math.min(srcRight, tc.x)), y: source.y },
+      angle: 270,
+      score: dy < 0 ? absDy * 2 : absDy < absDx ? absDy * 0.5 : 0,
+    },
+  ];
+
+  // Check clearance for each port (short ray cast outward)
+  const CLEARANCE_DISTANCE = 20;
+  for (const candidate of candidates) {
+    let rayEnd: Point;
+    if (candidate.side === "east") {
+      rayEnd = { x: candidate.position.x + CLEARANCE_DISTANCE, y: candidate.position.y };
+    } else if (candidate.side === "west") {
+      rayEnd = { x: candidate.position.x - CLEARANCE_DISTANCE, y: candidate.position.y };
+    } else if (candidate.side === "south") {
+      rayEnd = { x: candidate.position.x, y: candidate.position.y + CLEARANCE_DISTANCE };
+    } else {
+      rayEnd = { x: candidate.position.x, y: candidate.position.y - CLEARANCE_DISTANCE };
+    }
+
+    // Check if ray intersects any obstacle
+    let hasClearance = true;
+    for (const obstacle of obstacles) {
+      if (segmentIntersectsRect(candidate.position, rayEnd, obstacle)) {
+        hasClearance = false;
+        break;
+      }
+    }
+
+    // Boost score if port has clearance (very important for avoiding obstacles)
+    if (hasClearance) {
+      candidate.score += 150; // Increased from 100 to prioritize ports with clearance
+    } else {
+      // Heavily penalize ports blocked by obstacles, but don't eliminate them completely
+      // Sometimes we need to use a blocked port if all others are worse
+      candidate.score -= 80;
+    }
+
+    // Penalize ports that are already heavily used (distribute edges across all sides)
+    // This is critical for reducing crossings - spread edges across all 4 sides
+    if (usedPorts) {
+      const portKey = `${source.x},${source.y}:${candidate.side}`;
+      const usageCount = usedPorts.get(portKey) || 0;
+      // More aggressive penalty to better distribute edges across all sides
+      // For dense graphs, this helps reduce crossings significantly
+      const penaltyMultiplier = obstacles.length > 10 ? 80 : 60;
+      candidate.score -= usageCount * penaltyMultiplier;
+    }
+
+    // Additional scoring: prefer sides that point away from obstacles
+    // This helps route edges around obstacles more effectively
+    let obstacleDistance = Infinity;
+    for (const obstacle of obstacles) {
+      const dist = distanceFromPortToObstacle(candidate.position, candidate.side, obstacle);
+      obstacleDistance = Math.min(obstacleDistance, dist);
+    }
+    if (obstacleDistance < 50 && obstacleDistance > 0) {
+      // Boost score if port is reasonably far from obstacles
+      candidate.score += Math.min(30, obstacleDistance / 2);
+    }
+  }
+
+  // Sort by score (highest first)
+  candidates.sort((a, b) => b.score - a.score);
+
+  // Return best candidate
+  const best = candidates[0];
+
+  // Track usage if provided
+  if (usedPorts) {
+    const portKey = `${source.x},${source.y}:${best.side}`;
+    usedPorts.set(portKey, (usedPorts.get(portKey) || 0) + 1);
+  }
+
+  // For dense graphs or when we have many obstacles, consider top 2-3 candidates
+  // and pick the one that balances direction, clearance, and usage distribution
+  if (obstacles.length > 5 && candidates.length >= 2) {
+    // Re-score top candidates considering all factors more holistically
+    const topCandidates = candidates.slice(0, Math.min(3, candidates.length));
+    for (const candidate of topCandidates) {
+      // Give bonus to candidates that are less used (better distribution)
+      if (usedPorts) {
+        const portKey = `${source.x},${source.y}:${candidate.side}`;
+        const usageCount = usedPorts.get(portKey) || 0;
+        if (usageCount === 0) {
+          candidate.score += 40; // Bonus for unused sides
+        }
+      }
+    }
+    // Re-sort with updated scores
+    topCandidates.sort((a, b) => b.score - a.score);
+    const best = topCandidates[0];
+
+    // Track usage if provided
+    if (usedPorts) {
+      const portKey = `${source.x},${source.y}:${best.side}`;
+      usedPorts.set(portKey, (usedPorts.get(portKey) || 0) + 1);
+    }
+
+    return { side: best.side, position: best.position, angle: best.angle };
+  }
+
+  // Track usage if provided
+  if (usedPorts) {
+    const portKey = `${source.x},${source.y}:${best.side}`;
+    usedPorts.set(portKey, (usedPorts.get(portKey) || 0) + 1);
+  }
+
+  return { side: best.side, position: best.position, angle: best.angle };
+}
+
+/**
+ * Calculate distance from a port position to an obstacle
+ */
+function distanceFromPortToObstacle(
+  portPos: Point,
+  side: "north" | "south" | "east" | "west",
+  obstacle: Rect
+): number {
+  let checkPoint: Point;
+
+  // Project port outward along its side direction
+  const PROJECTION_DISTANCE = 30;
+  if (side === "east") {
+    checkPoint = { x: portPos.x + PROJECTION_DISTANCE, y: portPos.y };
+  } else if (side === "west") {
+    checkPoint = { x: portPos.x - PROJECTION_DISTANCE, y: portPos.y };
+  } else if (side === "south") {
+    checkPoint = { x: portPos.x, y: portPos.y + PROJECTION_DISTANCE };
+  } else {
+    checkPoint = { x: portPos.x, y: portPos.y - PROJECTION_DISTANCE };
+  }
+
+  // Calculate distance to obstacle
+  const closestX = Math.max(obstacle.x, Math.min(checkPoint.x, obstacle.x + obstacle.width));
+  const closestY = Math.max(obstacle.y, Math.min(checkPoint.y, obstacle.y + obstacle.height));
+
+  return Math.hypot(checkPoint.x - closestX, checkPoint.y - closestY);
+}
+
 export function calculateBestPort(
   source: Rect,
   target: Rect
@@ -10,56 +203,87 @@ export function calculateBestPort(
 
   const srcRight = source.x + source.width;
   const srcBottom = source.y + source.height;
-  const tgtRight = target.x + target.width;
-  const tgtBottom = target.y + target.height;
 
-  const isEast = target.x >= srcRight;
-  const isWest = tgtRight <= source.x;
-  const isSouth = target.y >= srcBottom;
-  const isNorth = tgtBottom <= source.y;
+  // Calculate relative position
+  const dx = tc.x - sc.x;
+  const dy = tc.y - sc.y;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
 
-  let side: "north" | "south" | "east" | "west";
+  // Score each side based on:
+  // 1. Direction toward target (primary factor)
+  // 2. Distance to target (secondary factor)
+  // 3. Clearance from target (tertiary factor)
 
-  // Prefer strict non-overlapping sides
-  if (isEast && !isNorth && !isSouth) side = "east";
-  else if (isWest && !isNorth && !isSouth) side = "west";
-  else if (isSouth && !isEast && !isWest) side = "south";
-  else if (isNorth && !isEast && !isWest) side = "north";
-  else {
-    // Diagonal or overlapping - fall back to center delta
-    const dx = tc.x - sc.x;
-    const dy = tc.y - sc.y;
-    if (Math.abs(dx) > Math.abs(dy)) {
-      side = dx > 0 ? "east" : "west";
+  interface SideScore {
+    side: "north" | "south" | "east" | "west";
+    score: number;
+  }
+
+  const sides: SideScore[] = [
+    {
+      side: "east",
+      score: dx > 0 ? absDx * 2 : 0, // Strong preference if target is to the right
+    },
+    {
+      side: "west",
+      score: dx < 0 ? absDx * 2 : 0, // Strong preference if target is to the left
+    },
+    {
+      side: "south",
+      score: dy > 0 ? absDy * 2 : 0, // Strong preference if target is below
+    },
+    {
+      side: "north",
+      score: dy < 0 ? absDy * 2 : 0, // Strong preference if target is above
+    },
+  ];
+
+  // For diagonal cases, prefer the side with stronger directional component
+  // But allow any side if it provides a good path
+  if (absDx > 0 && absDy > 0) {
+    const primaryIsHorizontal = absDx >= absDy;
+    if (primaryIsHorizontal) {
+      sides.find((s) => s.side === (dx > 0 ? "east" : "west"))!.score += absDx;
     } else {
-      side = dy > 0 ? "south" : "north";
+      sides.find((s) => s.side === (dy > 0 ? "south" : "north"))!.score += absDy;
     }
   }
 
+  // Sort by score (highest first)
+  sides.sort((a, b) => b.score - a.score);
+
+  // Select the best side (always pick one, even if scores are low)
+  const bestSide = sides[0].side;
+
   // Calculate sliding position on the chosen side
+  // Position should be as close as possible to the target while staying on the side
   let pos: Point;
   let angle: number;
 
-  if (side === "east") {
+  if (bestSide === "east") {
+    // Connect from right side, align vertically with target center
     const py = Math.max(source.y, Math.min(srcBottom, tc.y));
     pos = { x: srcRight, y: py };
     angle = 0;
-  } else if (side === "west") {
+  } else if (bestSide === "west") {
+    // Connect from left side, align vertically with target center
     const py = Math.max(source.y, Math.min(srcBottom, tc.y));
     pos = { x: source.x, y: py };
     angle = 180;
-  } else if (side === "south") {
+  } else if (bestSide === "south") {
+    // Connect from bottom side, align horizontally with target center
     const px = Math.max(source.x, Math.min(srcRight, tc.x));
     pos = { x: px, y: srcBottom };
     angle = 90;
   } else {
-    // north
+    // north - Connect from top side, align horizontally with target center
     const px = Math.max(source.x, Math.min(srcRight, tc.x));
     pos = { x: px, y: source.y };
     angle = 270;
   }
 
-  return { side, position: pos, angle };
+  return { side: bestSide, position: pos, angle };
 }
 
 export function routeOrthogonal(
@@ -71,6 +295,10 @@ export function routeOrthogonal(
     sy = source.position.y;
   const tx = target.position.x,
     ty = target.position.y;
+
+  // For bidirectional edges (same source/target), offset paths to avoid crossings
+  // Check if we need to offset (this will be handled by the routing algorithm)
+
   if (source.side === "south" || source.side === "north") {
     const midY = (sy + ty) / 2;
     if (sx !== tx) {
@@ -97,7 +325,8 @@ export function routeOrthogonalAvoid(
   maxIterations = 50
 ): Point[] {
   // Expand obstacles by a visual clearance buffer to prevent edges from appearing too close
-  const VISUAL_CLEARANCE = 8;
+  // Increased clearance for better edge distribution and reduced crossings, especially for expanded nodes
+  const VISUAL_CLEARANCE = obstacles.length > 10 ? 18 : 15; // More clearance for dense/expanded graphs
   const expandedObstacles = obstacles.map((r) => ({
     x: r.x - VISUAL_CLEARANCE,
     y: r.y - VISUAL_CLEARANCE,
@@ -107,6 +336,10 @@ export function routeOrthogonalAvoid(
 
   let path = routeOrthogonal(source, target);
   let iterations = 0;
+
+  // Track which obstacles we've detoured around to vary detour distances
+  const detouredObstacles = new Map<Rect, number>();
+
   for (let i = 1; i < path.length && iterations < maxIterations; i++) {
     const a = path[i - 1];
     const b = path[i];
@@ -121,7 +354,15 @@ export function routeOrthogonalAvoid(
             hit.x <= o.x + 1 &&
             hit.y <= o.y + 1
         ) || hit;
-      const detour = detourAround(a, b, originalObstacle, padding, expandedObstacles);
+
+      // Vary padding based on how many times we've detoured around this obstacle
+      // This spreads edges out to reduce congestion and crossings
+      const detourCount = detouredObstacles.get(originalObstacle) || 0;
+      // Increase padding more aggressively for subsequent detours to reduce crossings
+      const variedPadding = padding + detourCount * (obstacles.length > 10 ? 25 : 20);
+      detouredObstacles.set(originalObstacle, detourCount + 1);
+
+      const detour = detourAround(a, b, originalObstacle, variedPadding, expandedObstacles);
       path = [...path.slice(0, i), ...detour, ...path.slice(i)];
       i += detour.length;
       iterations++;
@@ -165,45 +406,55 @@ function detourAround(
   pad: number,
   allObstacles: Rect[] = []
 ): Point[] {
-  const left = { x: r.x - pad, y: a.y };
-  const right = { x: r.x + r.width + pad, y: a.y };
-  const top = { x: a.x, y: r.y - pad };
-  const bottom = { x: a.x, y: r.y + r.height + pad };
-  const candidates: Point[][] = [
-    [left, { x: left.x, y: b.y }],
-    [right, { x: right.x, y: b.y }],
-    [top, { x: b.x, y: top.y }],
-    [bottom, { x: b.x, y: bottom.y }],
+  // Try multiple detour strategies with varying distances to spread edges
+  const strategies = [
+    { offset: pad, name: "close" },
+    { offset: pad * 1.5, name: "medium" },
+    { offset: pad * 2, name: "far" },
   ];
 
-  // Score each candidate: prefer shorter paths that don't cross other obstacles
-  let best: Point[] = candidates[0];
+  let best: Point[] | null = null;
   let bestScore = Infinity;
 
-  for (const candidate of candidates) {
-    const fullPath = [a, ...candidate, b];
-    const len = pathLength(fullPath);
+  for (const strategy of strategies) {
+    const offset = strategy.offset;
+    const left = { x: r.x - offset, y: a.y };
+    const right = { x: r.x + r.width + offset, y: a.y };
+    const top = { x: a.x, y: r.y - offset };
+    const bottom = { x: a.x, y: r.y + r.height + offset };
+    const candidates: Point[][] = [
+      [left, { x: left.x, y: b.y }],
+      [right, { x: right.x, y: b.y }],
+      [top, { x: b.x, y: top.y }],
+      [bottom, { x: b.x, y: bottom.y }],
+    ];
 
-    // Check if this detour passes through any other obstacle
-    let crossesOther = false;
-    for (let i = 1; i < fullPath.length && !crossesOther; i++) {
-      for (const obs of allObstacles) {
-        if (obs !== r && segmentIntersectsRect(fullPath[i - 1], fullPath[i], obs)) {
-          crossesOther = true;
-          break;
+    for (const candidate of candidates) {
+      const fullPath = [a, ...candidate, b];
+      const len = pathLength(fullPath);
+
+      // Check if this detour passes through any other obstacle
+      let crossesOther = false;
+      for (let i = 1; i < fullPath.length && !crossesOther; i++) {
+        for (const obs of allObstacles) {
+          if (obs !== r && segmentIntersectsRect(fullPath[i - 1], fullPath[i], obs)) {
+            crossesOther = true;
+            break;
+          }
         }
       }
-    }
 
-    // Score: path length + heavy penalty for crossing obstacles
-    const score = len + (crossesOther ? 10000 : 0);
-    if (score < bestScore) {
-      best = candidate;
-      bestScore = score;
+      // Score: path length + heavy penalty for crossing obstacles + preference for medium distance (spreads edges)
+      const distanceBonus = strategy.name === "medium" ? -10 : 0; // Prefer medium distance to spread edges
+      const score = len + (crossesOther ? 10000 : 0) - distanceBonus;
+      if (score < bestScore) {
+        best = candidate;
+        bestScore = score;
+      }
     }
   }
 
-  return best;
+  return best || [a, b];
 }
 
 export function pathLength(points: Point[]): number {

@@ -1,12 +1,12 @@
 // apps/website/astro.config.mjs
-/* eslint-disable no-undef */
-import { defineConfig } from 'astro/config';
-import react from '@astrojs/react';
-import mdx from '@astrojs/mdx';
 
-import tailwindcss from '@tailwindcss/vite';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { defineConfig } from "astro/config";
+import react from "@astrojs/react";
+import mdx from "@astrojs/mdx";
+
+import tailwindcss from "@tailwindcss/vite";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,65 +16,79 @@ const siteUrl = process.env.SITE_URL;
 const baseUrl = process.env.BASE_URL;
 
 export default defineConfig({
-  site: siteUrl || 'https://sruja.ai',
-  base: baseUrl || '/',
+  site: siteUrl || "https://sruja.ai",
+  base: baseUrl || "/",
   markdown: {
-    syntaxHighlight: 'shiki',
+    syntaxHighlight: "shiki",
     shikiConfig: {
       wrap: true,
       themes: {
-        light: 'github-light',
-        dark: 'github-dark',
+        light: "github-light",
+        dark: "github-dark",
       },
       langs: [
-        { id: 'sruja', scopeName: 'source.sruja', path: path.resolve(__dirname, './syntaxes/sruja.tmLanguage.json') }
+        {
+          id: "sruja",
+          scopeName: "source.sruja",
+          path: path.resolve(__dirname, "./syntaxes/sruja.tmLanguage.json"),
+        },
       ],
     },
   },
-  integrations: [
-    react(),
-    mdx(),
-  ],
-  output: 'static',
+  integrations: [react(), mdx()],
+  output: "static",
   vite: {
-    plugins: [
-      tailwindcss(),
-    ],
+    plugins: [tailwindcss()],
     server: {
       cors: true,
+      watch: {
+        // Watch workspace packages for changes
+        ignored: ["!**/node_modules/@sruja/**"],
+      },
     },
     define: {
-      'global': 'globalThis',
+      global: "globalThis",
     },
     optimizeDeps: {
-      include: ['react', 'react-dom', 'react-dom/client', 'monaco-editor', 'buffer', 'algoliasearch/lite', 'mermaid'],
-      exclude: ['@sruja/shared', '@sruja/ui'],
+      include: [
+        "react",
+        "react-dom",
+        "react-dom/client",
+        "monaco-editor",
+        "buffer",
+        "algoliasearch/lite",
+        "mermaid",
+      ],
+      exclude: ["@sruja/shared", "@sruja/ui", "@sruja/layout", "@sruja/diagram"],
     },
     ssr: {
       // Static site - no SSR, but Vite still uses this config during build
       // Add packages to noExternal so Vite processes them (needed for CSS and module resolution)
       // React must remain external to prevent multiple instances
-      noExternal: [
-        '@sruja/ui',
-        '@sruja/shared',
-        'monaco-editor'
-      ],
+      noExternal: ["@sruja/ui", "@sruja/shared", "monaco-editor"],
       // Keep React external to ensure single instance
-      external: ['react', 'react-dom', 'react/jsx-runtime', 'react-dom/client'],
+      external: ["react", "react-dom", "react/jsx-runtime", "react-dom/client"],
     },
     resolve: {
-      conditions: ['import', 'module', 'browser', 'default'],
+      conditions: ["import", "module", "browser", "default"],
       // Ensure CSS files are resolved as raw assets, not modules
-      dedupe: ['react', 'react-dom', '@sruja/ui', '@sruja/shared', '@sruja/diagram', '@sruja/playground'],
+      dedupe: [
+        "react",
+        "react-dom",
+        "@sruja/ui",
+        "@sruja/shared",
+        "@sruja/diagram",
+        "@sruja/playground",
+      ],
       // Explicitly handle CSS imports from packages
-      extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json', '.css'],
+      extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json", ".css"],
       alias: {
         // Map CSS import to actual file path
-        'node:buffer': 'buffer',
+        "node:buffer": "buffer",
         // Feature-based path aliases
-        '@': path.resolve(__dirname, './src'),
-        '@/features': path.resolve(__dirname, './src/features'),
-        '@/shared': path.resolve(__dirname, './src/shared'),
+        "@": path.resolve(__dirname, "./src"),
+        "@/features": path.resolve(__dirname, "./src/features"),
+        "@/shared": path.resolve(__dirname, "./src/shared"),
       },
     },
     css: {

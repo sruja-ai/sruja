@@ -38,6 +38,11 @@ export interface LayoutConfig {
     layerSpacing?: number;
     [key: string]: any;
   };
+  constraints?: {
+    orderHint?: Record<string, number>;
+    rankOf?: Record<string, number>;
+    sameRank?: string[][];
+  };
 }
 
 /**
@@ -54,7 +59,18 @@ export function analyzeLayoutContext(
   const nodeCount = nodes.length;
   const edgeCount = edges.length;
   const hasHierarchy = nodes.some((n) => n.parentId);
-  const hasExpandedNodes = expandedNodes ? expandedNodes.size > 0 : false;
+  // Check if any nodes are expanded by checking if expandedNodes contains any node IDs
+  // Also check if nodes have children (which indicates expansion in the layout)
+  const hasExpandedNodes = expandedNodes
+    ? expandedNodes.size > 0 ||
+      nodes.some((n) => {
+        const nodeId = n.id || n.data?.id;
+        return expandedNodes.has(nodeId) || n.data?.expanded === true;
+      })
+    : nodes.some(
+        (n) =>
+          n.data?.expanded === true || (n.data?.childCount && n.data.childCount > 0 && n.parentId)
+      );
 
   // Calculate average node size
   const totalWidth = nodes.reduce((sum, n) => sum + (n.width || 100), 0);
@@ -121,7 +137,7 @@ export const DEFAULT_LAYOUT_RULES: LayoutRule[] = [
     action: () => ({
       engine: "sruja",
       direction: "DOWN",
-      options: { nodeSpacing: 150, layerSpacing: 180 }, // Increased spacing for better quality
+      options: { nodeSpacing: 200, layerSpacing: 220 }, // Increased spacing to reduce edge crossings
     }),
   },
 
@@ -135,8 +151,24 @@ export const DEFAULT_LAYOUT_RULES: LayoutRule[] = [
       engine: "sruja",
       direction: "DOWN",
       options: {
-        nodeSpacing: 150, // Matches simple-c4
-        layerSpacing: 180, // Matches simple-c4
+        nodeSpacing: 250, // Increased for better edge routing in hierarchical layouts
+        layerSpacing: 280, // Increased for better edge routing and containment
+      },
+    }),
+  },
+
+  // Rule 2b: Expanded nodes (showing internal structure) - needs even more spacing
+  {
+    id: "expanded-hierarchical",
+    name: "Expanded Hierarchical Layout",
+    priority: 96, // Higher than regular hierarchy
+    condition: (ctx) => ctx.hasHierarchy && ctx.hasExpandedNodes,
+    action: () => ({
+      engine: "sruja",
+      direction: "DOWN",
+      options: {
+        nodeSpacing: 280, // Extra spacing for expanded nodes
+        layerSpacing: 320, // Extra vertical space for parent-child containment
       },
     }),
   },
@@ -151,8 +183,8 @@ export const DEFAULT_LAYOUT_RULES: LayoutRule[] = [
       engine: "sruja",
       direction: "DOWN",
       options: {
-        nodeSpacing: 180, // Increased from 120 -> 180 for better routing
-        layerSpacing: 200, // Increased from 180 -> 200
+        nodeSpacing: 220, // Increased for better edge routing and reduced crossings
+        layerSpacing: 240, // Increased for better edge routing
       },
     }),
   },
@@ -167,8 +199,8 @@ export const DEFAULT_LAYOUT_RULES: LayoutRule[] = [
       engine: "sruja",
       direction: "DOWN", // Usually DOWN is best for hierarchy
       options: {
-        nodeSpacing: 200,
-        layerSpacing: 250, // Even more vertical space
+        nodeSpacing: 240, // Increased for dense graphs
+        layerSpacing: 280, // Even more vertical space for edge routing
         edgeRouting: "orthogonal", // Enforce orthogonal if engine supports hints
       },
     }),
@@ -183,7 +215,10 @@ export const DEFAULT_LAYOUT_RULES: LayoutRule[] = [
     action: () => ({
       engine: "sruja",
       direction: "DOWN",
-      options: {},
+      options: {
+        nodeSpacing: 200, // Increased for better edge routing
+        layerSpacing: 220, // Increased for better edge routing
+      },
     }),
   },
 
@@ -209,7 +244,10 @@ export const DEFAULT_LAYOUT_RULES: LayoutRule[] = [
     action: () => ({
       engine: "sruja",
       direction: "DOWN",
-      options: {},
+      options: {
+        nodeSpacing: 280, // Increased spacing for complex diagrams
+        layerSpacing: 300, // More vertical space
+      },
     }),
   },
 
@@ -223,8 +261,8 @@ export const DEFAULT_LAYOUT_RULES: LayoutRule[] = [
       engine: "sruja",
       direction: "DOWN",
       options: {
-        nodeSpacing: 200, // Extra spacing for dense graphs
-        layerSpacing: 220,
+        nodeSpacing: 300, // Increased from 250 - more space to reduce crossings
+        layerSpacing: 320, // Increased from 280 - more vertical space for edge routing
         edgeRouting: "orthogonal",
       },
     }),
@@ -323,7 +361,81 @@ export function selectLayoutConfig(
     if (rule.condition(context)) {
       const config = rule.action(context);
       console.log(`Layout rule matched: ${rule.name} -> ${config.engine}-${config.direction}`);
-      return config;
+      // Augment with deterministic ordering constraint
+      const byLabel = [...nodes].sort((a, b) =>
+        (a.data?.label || a.id).localeCompare(b.data?.label || b.id)
+      );
+      const orderHint: Record<string, number> = {};
+      byLabel.forEach((n, idx) => {
+        orderHint[n.id] = idx;
+      });
+
+      // Group persons and databases for clearer rows when hierarchical layout is used
+      const persons = nodes.filter((n) => n.data?.type === "person").map((n) => n.id);
+      const datastores = nodes.filter((n) => n.data?.type === "datastore").map((n) => n.id);
+      const queues = nodes.filter((n) => n.data?.type === "queue").map((n) => n.id);
+      const topics = nodes.filter((n) => n.data?.type === "topic").map((n) => n.id);
+      const caches = nodes.filter((n) => n.data?.type === "cache").map((n) => n.id);
+      const filesystems = nodes.filter((n) => n.data?.type === "filesystem").map((n) => n.id);
+      const externalServices = nodes
+        .filter(
+          (n) =>
+            n.data?.type === "external-component" ||
+            n.data?.type === "external-container" ||
+            (n.data?.type === "system" && n.data?.isExternal)
+        )
+        .map((n) => n.id);
+      const sameRank: string[][] = [];
+      if (persons.length > 1) sameRank.push(persons);
+      if (datastores.length > 1) sameRank.push(datastores);
+
+      // Level-specific rank constraints
+      const rankOf: Record<string, number> = {};
+      if (currentLevel === "L1" || currentLevel === "L2") {
+        // Persons at TOP (rank 0)
+        for (const id of persons) rankOf[id] = 0;
+        // Datastores at BOTTOM (high rank)
+        for (const id of datastores) rankOf[id] = 100;
+        // Queues near bottom
+        for (const id of queues) rankOf[id] = 90;
+        // Topics just above datastores (below queues)
+        for (const id of topics) rankOf[id] = 95;
+        // Cache/filesystem along lower band but above queues
+        for (const id of caches) rankOf[id] = 85;
+        for (const id of filesystems) rankOf[id] = 85;
+        // External services mid band
+        for (const id of externalServices) rankOf[id] = 60;
+      }
+
+      // Boundary-aware row alignment: group siblings under the same parent into rows
+      const pushGroupsByParent = (type: string) => {
+        const byParent = new Map<string, string[]>();
+        for (const n of nodes) {
+          if (n.data?.type === type && n.parentId) {
+            const pid = n.parentId;
+            const arr = byParent.get(pid) || [];
+            arr.push(n.id);
+            byParent.set(pid, arr);
+          }
+        }
+        for (const arr of byParent.values()) {
+          if (arr.length > 1) sameRank.push(arr);
+        }
+      };
+      if (currentLevel === "L2") {
+        pushGroupsByParent("container");
+      } else if (currentLevel === "L3") {
+        pushGroupsByParent("component");
+      }
+
+      return {
+        ...config,
+        constraints: {
+          orderHint,
+          sameRank,
+          rankOf,
+        },
+      };
     }
   }
 
@@ -332,6 +444,9 @@ export function selectLayoutConfig(
     engine: "sruja",
     direction: "DOWN",
     options: {},
+    constraints: {
+      orderHint: Object.fromEntries(nodes.map((n, i) => [n.id, i])),
+    },
   };
 }
 

@@ -58,20 +58,27 @@ function App() {
 
         const level = (params.get("level") as any) || "L1";
 
-        // Initial conversion
-        const initial = jsonToReactFlow(arch, { level });
+        // Support expanded nodes via URL parameter (comma-separated list)
+        const expandedParam = params.get("expanded");
+        const expandedNodes = expandedParam
+          ? new Set(expandedParam.split(",").map((id) => id.trim()))
+          : new Set<string>();
 
-        // Apply Layout
+        // Initial conversion with expanded nodes
+        const initial = jsonToReactFlow(arch, { level, expandedNodes });
+
+        // Apply Layout with expanded nodes
         const { nodes: n, edges: e } = applySrujaLayout(initial.nodes, initial.edges, arch, {
           level,
           direction: "TB",
+          expandedNodes, // Pass expanded nodes to layout engine
         });
 
         setNodes(n);
         setEdges(e);
 
-        // Expose for testing
-        (window as any).__CYBER_GRAPH__ = { nodes: n, edges: e };
+        // Expose for testing (update when nodes change)
+        (window as any).__CYBER_GRAPH__ = { nodes: n, edges: e, expandedNodes };
       } catch (err: any) {
         console.error(err);
         setError(err.message);
@@ -81,7 +88,48 @@ function App() {
     }
 
     load();
-  }, []);
+
+    // Expose loadGraph API for Agent Optimization Loop
+    (window as any).loadGraph = async (
+      jsonOrDsl: string | ArchitectureJSON,
+      level: string = "L1"
+    ) => {
+      try {
+        let arch: ArchitectureJSON;
+
+        if (typeof jsonOrDsl === "string") {
+          // Try to parse as JSON first
+          try {
+            arch = JSON.parse(jsonOrDsl) as ArchitectureJSON;
+          } catch {
+            // Assume it's DSL, convert via WASM
+            const json = await convertDslToJson(jsonOrDsl);
+            if (!json) throw new Error("Failed to parse DSL");
+            arch = json as ArchitectureJSON;
+          }
+        } else {
+          arch = jsonOrDsl;
+        }
+
+        const expandedNodes = new Set<string>();
+        const initial = jsonToReactFlow(arch, { level: level as any, expandedNodes });
+        const { nodes: n, edges: e } = applySrujaLayout(initial.nodes, initial.edges, arch, {
+          level: level as any,
+          direction: "TB",
+          expandedNodes,
+        });
+
+        setNodes(n);
+        setEdges(e);
+        (window as any).__CYBER_GRAPH__ = { nodes: n, edges: e, expandedNodes };
+
+        return { success: true, nodeCount: n.length, edgeCount: e.length };
+      } catch (err: any) {
+        console.error("[loadGraph] Error:", err);
+        return { success: false, error: err.message };
+      }
+    };
+  }, [window.location.search]); // Re-run when URL params change (including expanded)
 
   if (loading) return <div className="loading-overlay">Loading...</div>;
   if (error) return <div>Error: {error}</div>;

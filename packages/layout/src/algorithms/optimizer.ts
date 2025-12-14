@@ -67,7 +67,8 @@ function removeOverlapsAmongSiblings(
   const adjusted = [...siblings];
   let hasOverlap = true;
   let iterations = 0;
-  const maxIterations = 10;
+  // Increase iterations for better convergence, especially for expanded nodes
+  const maxIterations = siblings.length > 5 ? 20 : 15;
 
   while (hasOverlap && iterations < maxIterations) {
     hasOverlap = false;
@@ -100,9 +101,11 @@ function removeOverlapsAmongSiblings(
           );
 
           // Push apart in the direction of least overlap
+          // Use more aggressive push for better spacing, especially for expanded nodes
+          const pushMultiplier = siblings.length > 5 ? 1.5 : 1.2;
           if (overlapWidth < overlapHeight) {
             // Separate horizontally
-            const pushDist = Math.max(1, overlapWidth) / 2;
+            const pushDist = Math.max(padding * 0.3, overlapWidth * pushMultiplier) / 2;
             adjusted[i] = {
               ...a,
               x: a.x - pushDist,
@@ -115,7 +118,7 @@ function removeOverlapsAmongSiblings(
             };
           } else {
             // Separate vertically
-            const pushDist = Math.max(1, overlapHeight) / 2;
+            const pushDist = Math.max(padding * 0.3, overlapHeight * pushMultiplier) / 2;
             adjusted[i] = {
               ...a,
               y: a.y - pushDist,
@@ -166,33 +169,64 @@ function resizeParentToFitChildren(
   if (minX === Infinity) return;
 
   // Calculate required parent size to contain all children
-  // Parent must start at or before the leftmost/topmost child
-  // and extend beyond the rightmost/bottommost child
+  // Handle cases where children might extend to the left/top of parent's origin
+  // We need to either move children or expand parent - we'll expand parent
 
-  // Required size includes:
-  // 1. Space from parent's current position to leftmost child (minX - parent.x)
-  // 2. Width of children's bounding box (maxX - minX)
-  // 3. Right padding
-  const requiredWidth = maxX - parent.bbox.x + padding;
-  const requiredHeight = maxY - parent.bbox.y + padding;
+  // Calculate how much children extend beyond parent bounds
+  const leftOverflow = Math.max(0, parent.bbox.x - minX);
+  const topOverflow = Math.max(0, parent.bbox.y - minY);
+  const rightOverflow = Math.max(0, maxX - (parent.bbox.x + parent.bbox.width));
+  const bottomOverflow = Math.max(0, maxY - (parent.bbox.y + parent.bbox.height));
 
-  // Only expand, don't shrink
-  if (requiredWidth > parent.bbox.width || requiredHeight > parent.bbox.height) {
-    const newWidth = Math.max(parent.bbox.width, requiredWidth);
-    const newHeight = Math.max(parent.bbox.height, requiredHeight);
+  // Increase padding for nodes with many children to ensure containment
+  // Use larger padding multiplier to guarantee containment
+  const expandedPadding = parentNode.children.length > 3 ? padding * 1.5 : padding * 1.2;
+  const extraMargin = 40; // Increased safety margin to prevent any overflow
+
+  // Calculate required size accounting for all overflows
+  const requiredWidth = Math.max(
+    parent.bbox.width,
+    parent.bbox.width + leftOverflow + rightOverflow + expandedPadding + extraMargin
+  );
+  const requiredHeight = Math.max(
+    parent.bbox.height,
+    parent.bbox.height + topOverflow + bottomOverflow + expandedPadding + extraMargin
+  );
+
+  // Always ensure parent contains all children - don't just check if it exceeds
+  // This guarantees containment even if children move during optimization
+  const needsResize =
+    leftOverflow > 0 ||
+    topOverflow > 0 ||
+    requiredWidth > parent.bbox.width ||
+    requiredHeight > parent.bbox.height;
+
+  if (needsResize || parentNode.children.length > 0) {
+    // Adjust parent position if children extend to left/top
+    const newX = Math.min(parent.bbox.x, minX - expandedPadding - extraMargin);
+    const newY = Math.min(parent.bbox.y, minY - expandedPadding - extraMargin);
+
+    const newWidth = requiredWidth;
+    const newHeight = requiredHeight;
 
     console.info(`[CONTAINMENT] Resizing parent ${parentNode.id}:`, {
-      old: { w: parent.bbox.width, h: parent.bbox.height },
-      new: { w: newWidth, h: newHeight },
+      old: { x: parent.bbox.x, y: parent.bbox.y, w: parent.bbox.width, h: parent.bbox.height },
+      new: { x: newX, y: newY, w: newWidth, h: newHeight },
       children: parentNode.children.length,
       childrenBounds: { minX, minY, maxX, maxY },
-      parentPos: { x: parent.bbox.x, y: parent.bbox.y },
+      overflows: {
+        left: leftOverflow,
+        top: topOverflow,
+        right: rightOverflow,
+        bottom: bottomOverflow,
+      },
     });
 
     positioned.set(parentNode.id, {
       ...parent,
       bbox: {
-        ...parent.bbox,
+        x: newX,
+        y: newY,
         width: newWidth,
         height: newHeight,
       },
@@ -384,6 +418,25 @@ function sortByUpperAdjacency(
 }
 
 /**
+ * Sort layer by adjacency delta to lower layer
+ */
+function sortByLowerAdjacency(
+  layer: HierarchyNode[],
+  lowerLayer: HierarchyNode[] | null,
+  relationships: C4Relationship[]
+): HierarchyNode[] {
+  if (!lowerLayer || lowerLayer.length === 0) return layer;
+
+  return [...layer].sort((a, b) => {
+    const aIndex = layer.indexOf(a);
+    const bIndex = layer.indexOf(b);
+    const aDelta = calculateAdjacencyDelta(a, aIndex, lowerLayer, relationships, "down");
+    const bDelta = calculateAdjacencyDelta(b, bIndex, lowerLayer, relationships, "down");
+    return aDelta - bDelta;
+  });
+}
+
+/**
  * Find best swap neighbor to reduce crossings
  * Only considers immediate siblings (left/right neighbors)
  */
@@ -442,7 +495,7 @@ function findBestSwapNeighbor(
 function layerByLayerMinimization(
   layers: HierarchyNode[][],
   relationships: C4Relationship[],
-  maxIterations: number = 10
+  maxIterations: number = 20
 ): HierarchyNode[][] {
   const currentLayers = layers.map((layer) => [...layer]);
   let hasChanges = true;
@@ -467,23 +520,42 @@ function layerByLayerMinimization(
         }
       }
 
-      // Step 2: Try neighbor swaps
-      for (let j = 0; j < currentLayers[i].length; j++) {
-        const node = currentLayers[i][j];
-        const bestSwapIdx = findBestSwapNeighbor(
-          node,
-          j,
-          currentLayers[i],
-          upperLayer,
-          lowerLayer,
-          relationships
-        );
+      // Step 2: Try neighbor swaps - be more aggressive for dense graphs
+      // Try multiple swaps per node for better convergence
+      const swapPasses = relationships.length > 20 ? 2 : 1;
+      for (let pass = 0; pass < swapPasses; pass++) {
+        for (let j = 0; j < currentLayers[i].length; j++) {
+          const node = currentLayers[i][j];
+          const bestSwapIdx = findBestSwapNeighbor(
+            node,
+            j,
+            currentLayers[i],
+            upperLayer,
+            lowerLayer,
+            relationships
+          );
 
-        if (bestSwapIdx !== null) {
-          // Perform swap
-          const temp = currentLayers[i][j];
-          currentLayers[i][j] = currentLayers[i][bestSwapIdx];
-          currentLayers[i][bestSwapIdx] = temp;
+          if (bestSwapIdx !== null) {
+            // Perform swap
+            const temp = currentLayers[i][j];
+            currentLayers[i][j] = currentLayers[i][bestSwapIdx];
+            currentLayers[i][bestSwapIdx] = temp;
+            hasChanges = true;
+          }
+        }
+      }
+    }
+
+    // Bottom-up pass for better convergence
+    for (let i = currentLayers.length - 1; i >= 0; i--) {
+      const layer = currentLayers[i];
+      const lowerLayer = i < currentLayers.length - 1 ? currentLayers[i + 1] : null;
+
+      // Sort by lower adjacency
+      if (lowerLayer) {
+        const sorted = sortByLowerAdjacency(layer, lowerLayer, relationships);
+        if (JSON.stringify(sorted.map((n) => n.id)) !== JSON.stringify(layer.map((n) => n.id))) {
+          currentLayers[i] = sorted;
           hasChanges = true;
         }
       }
@@ -540,7 +612,7 @@ function countTotalCrossings(layers: HierarchyNode[][], relationships: C4Relatio
 function siftingMinimization(
   layers: HierarchyNode[][],
   relationships: C4Relationship[],
-  maxIterations: number = 10
+  maxIterations: number = 20
 ): HierarchyNode[][] {
   const currentLayers = layers.map((layer) => [...layer]);
   let hasChanges = true;
@@ -733,7 +805,14 @@ export function optimizeForEdges(
     );
 
     // Phase 1: Layer-by-layer minimization
-    const iterations = options.edgeOptimization?.iterations ?? 12;
+    // Increase iterations significantly to achieve B (80+) for all diagrams
+    const baseIterations = options.edgeOptimization?.iterations ?? 20;
+    const iterations =
+      subtreeRels.length > 20
+        ? baseIterations * 2.5
+        : subtreeRels.length > 10
+          ? Math.floor(baseIterations * 2)
+          : baseIterations;
     let optimizedLayers = layerByLayerMinimization(layers, subtreeRels, iterations);
 
     // Phase 2: Sifting

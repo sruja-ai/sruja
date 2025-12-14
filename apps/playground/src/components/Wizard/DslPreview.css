@@ -1,0 +1,135 @@
+/* =====================================================
+   DSL PREVIEW - Live DSL Syntax Display
+   ===================================================== */
+
+.dsl-preview {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-1);
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+[data-theme="dark"] .dsl-preview {
+    background: rgba(20, 20, 30, 0.8);
+    backdrop-filter: blur(10px);
+}
+
+.dsl-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--surface-2);
+    border: none;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.dsl-preview-header:hover {
+    background: var(--bg-tertiary, var(--surface-1));
+}
+
+.dsl-preview-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-1);
+}
+
+.dsl-preview-title svg {
+    color: var(--primary);
+}
+
+.dsl-preview-hint {
+    font-weight: 400;
+    color: var(--text-3);
+    margin-left: 0.5rem;
+}
+
+.dsl-preview-header>svg {
+    color: var(--text-3);
+}
+
+/* Code Block */
+.dsl-preview-code {
+    margin: 0;
+    padding: 1rem;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    max-height: 200px;
+    transition: max-height 0.3s ease;
+}
+
+.dsl-preview.expanded .dsl-preview-code {
+    max-height: 400px;
+}
+
+.dsl-preview-code code {
+    display: block;
+    white-space: pre;
+    color: var(--text-2);
+}
+
+/* Syntax Highlighting */
+.dsl-keyword {
+    color: #c678dd;
+    font-weight: 600;
+}
+
+[data-theme="dark"] .dsl-keyword {
+    color: #c792ea;
+}
+
+.dsl-string {
+    color: #98c379;
+}
+
+[data-theme="dark"] .dsl-string {
+    color: #a5d6a7;
+}
+
+.dsl-id {
+    color: #61afef;
+}
+
+[data-theme="dark"] .dsl-id {
+    color: #82aaff;
+}
+
+.dsl-arrow {
+    color: #e5c07b;
+    font-weight: 600;
+}
+
+[data-theme="dark"] .dsl-arrow {
+    color: #ffcb6b;
+}
+
+.dsl-comment {
+    color: #5c6370;
+    font-style: italic;
+}
+
+[data-theme="dark"] .dsl-comment {
+    color: #676e95;
+}
+
+.dsl-more {
+    color: var(--text-3);
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .dsl-preview-code {
+        font-size: 0.75rem;
+        padding: 0.75rem;
+    }
+}
