@@ -61,7 +61,7 @@ func (s *Server) DocumentLinks(_ context.Context, params DocumentLinkParams) ([]
 		if idx := strings.Index(line, ".sruja"); idx >= 0 {
 			// Find the start of the filename (look backwards for path start)
 			startIdx := idx
-			for startIdx > 0 && !strings.ContainsAny(string(line[startIdx-1]), " \t\n\r\"'`:/\\") {
+			for startIdx > 0 && !strings.ContainsAny(string(line[startIdx-1]), " \t\n\r\"'`") {
 				startIdx--
 			}
 			// Find the end of the filename

@@ -1,17 +1,17 @@
-import { defineConfig } from '@playwright/test'
+import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
-  testDir: 'tests',
+  testDir: "tests",
   use: {
-    baseURL: 'http://localhost:4173',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure'
+    baseURL: "http://localhost:4173",
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
   },
   webServer: {
-    command: 'npm run preview',
-    port: 4173,
+    command: process.env.CI ? "npm run preview" : "npm run dev -- --port 4173",
+    url: "http://localhost:4173",
     timeout: 120_000,
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
   },
-  reporter: [['list']]
-})
+  reporter: [["list"]],
+});

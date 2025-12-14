@@ -329,10 +329,13 @@ export function calculateSizes(
 
       // Step 4: Calculate total parent size
       const headerHeight = headerData.contentSize.height + padding;
-      const safetyPadding = 60;
+      // Safety padding must match or exceed MIN_PARENT_PADDING (80px) in diagramQuality.ts
+      // Adding extra buffer to ensure containment validation passes
+      const safetyPadding = 100;
 
-      const totalWidth = childLayout.boundingBox.width + padding * 2 + safetyPadding;
-      const totalHeight = headerHeight + childLayout.boundingBox.height + padding + safetyPadding;
+      const totalWidth = childLayout.boundingBox.width + padding * 2 + safetyPadding * 2;
+      const totalHeight =
+        headerHeight + childLayout.boundingBox.height + padding + safetyPadding * 2;
 
       // Step 5: Apply constraints
       let width = Math.max(options.minSize.width, Math.min(options.maxSize.width, totalWidth));

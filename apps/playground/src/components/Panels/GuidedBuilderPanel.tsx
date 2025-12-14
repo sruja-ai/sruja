@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button, Input } from "@sruja/ui";
+import { Button, Input, Textarea } from "@sruja/ui";
 import {
   CheckCircle,
   AlertCircle,
@@ -16,6 +16,7 @@ import { useArchitectureStore } from "../../stores/architectureStore";
 import { useViewStore } from "../../stores/viewStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
+import { BestPracticeTip } from "../shared";
 import type { ArchitectureJSON, SystemJSON, ContainerJSON } from "../../types";
 import "./GuidedBuilderPanel.css";
 
@@ -38,14 +39,23 @@ export function GuidedBuilderPanel() {
   const adrs = useMemo(() => data?.architecture.adrs ?? [], [data]);
 
   const [systemName, setSystemName] = useState("");
+  const [systemDescription, setSystemDescription] = useState("");
+  const [useCustomSystemId, setUseCustomSystemId] = useState(false);
+  const [systemIdInput, setSystemIdInput] = useState("");
   const [personName, setPersonName] = useState("");
   const [containerName, setContainerName] = useState("");
   const [containerTech, setContainerTech] = useState("");
-  const [containerExternal, setContainerExternal] = useState(false);
+  const [containerDescription, setContainerDescription] = useState("");
+  const [useCustomContainerId, setUseCustomContainerId] = useState(false);
+  const [containerIdInput, setContainerIdInput] = useState("");
   const [containerParentId, setContainerParentId] = useState<string | "">(
     focusedSystemId || systems[0]?.id || ""
   );
   const [componentName, setComponentName] = useState("");
+  const [componentTech, setComponentTech] = useState("");
+  const [componentDescription, setComponentDescription] = useState("");
+  const [useCustomComponentId, setUseCustomComponentId] = useState(false);
+  const [componentIdInput, setComponentIdInput] = useState("");
   const [componentParentId, setComponentParentId] = useState<string | "">(
     focusedContainerId || allContainers[0]?.id || ""
   );
@@ -58,14 +68,22 @@ export function GuidedBuilderPanel() {
       .replace(/^-+|-+$/g, "");
 
   const submitAddSystem = async () => {
-    const id = slugify(systemName) || "system";
+    const id = (useCustomSystemId ? systemIdInput || "" : "") || slugify(systemName) || "system";
     await updateArchitecture((arch: ArchitectureJSON) => {
       const systems = [...(arch.architecture?.systems || [])];
       if (!systems.find((s) => s.id === id))
-        systems.push({ id, label: systemName, containers: [] } as SystemJSON);
+        systems.push({
+          id,
+          label: systemName,
+          description: systemDescription || undefined,
+          containers: [],
+        } as SystemJSON);
       return { ...arch, architecture: { ...arch.architecture, systems } };
     });
     setSystemName("");
+    setSystemDescription("");
+    setUseCustomSystemId(false);
+    setSystemIdInput("");
   };
 
   const submitAddPerson = async () => {
@@ -80,7 +98,8 @@ export function GuidedBuilderPanel() {
 
   const submitAddContainer = async () => {
     if (!containerParentId) return;
-    const id = slugify(containerName) || "container";
+    const id =
+      (useCustomContainerId ? containerIdInput || "" : "") || slugify(containerName) || "container";
     await updateArchitecture((arch: ArchitectureJSON) => {
       const systems = (arch.architecture?.systems || []).map((s) => {
         if (s.id !== containerParentId) return s;
@@ -90,6 +109,7 @@ export function GuidedBuilderPanel() {
             id,
             label: containerName,
             technology: containerTech || undefined,
+            description: containerDescription || undefined,
             components: [],
           } as ContainerJSON);
         return { ...s, containers };
@@ -98,18 +118,27 @@ export function GuidedBuilderPanel() {
     });
     setContainerName("");
     setContainerTech("");
-    setContainerExternal(false);
+    setContainerDescription("");
+    setUseCustomContainerId(false);
+    setContainerIdInput("");
   };
 
   const submitAddComponent = async () => {
     if (!componentParentId) return;
-    const id = slugify(componentName) || "component";
+    const id =
+      (useCustomComponentId ? componentIdInput || "" : "") || slugify(componentName) || "component";
     await updateArchitecture((arch: ArchitectureJSON) => {
       const systems = (arch.architecture?.systems || []).map((s) => {
         const containers = (s.containers || []).map((c) => {
           if (c.id !== componentParentId) return c;
           const components = [...(c.components || [])];
-          if (!components.find((co) => co.id === id)) components.push({ id, label: componentName });
+          if (!components.find((co) => co.id === id))
+            components.push({
+              id,
+              label: componentName,
+              technology: componentTech || undefined,
+              description: componentDescription || undefined,
+            });
           return { ...c, components };
         });
         return { ...s, containers };
@@ -117,6 +146,10 @@ export function GuidedBuilderPanel() {
       return { ...arch, architecture: { ...arch.architecture, systems } };
     });
     setComponentName("");
+    setComponentTech("");
+    setComponentDescription("");
+    setUseCustomComponentId(false);
+    setComponentIdInput("");
   };
 
   const personIds = useMemo(() => new Set(persons.map((p) => p.id)), [persons]);
@@ -533,6 +566,27 @@ export function GuidedBuilderPanel() {
                 system. Establish relationships between actors and systems.
               </p>
             </div>
+
+            {/* L1 Best Practice Tips */}
+            <BestPracticeTip variant="tip" show={systems.length === 0}>
+              Start by identifying your main system and who interacts with it. Think: "What's the
+              core product and who are its users?"
+            </BestPracticeTip>
+
+            <BestPracticeTip variant="tip" show={systems.length > 0 && !hasL1Relations}>
+              Connect your actors to systems! Every actor should have at least one relationship
+              showing how they interact with the system.
+            </BestPracticeTip>
+
+            <BestPracticeTip variant="warning" show={systems.length > 3}>
+              You have {systems.length} systems at L1. If a system is internal to your main system,
+              consider moving it to L2 as a container instead.
+            </BestPracticeTip>
+
+            <BestPracticeTip variant="success" show={l1Complete}>
+              L1 is complete! You've defined your system context. Continue to L2 to break down your
+              system into containers.
+            </BestPracticeTip>
             <div className="guided-stats">
               <span>
                 {systems.length} system{systems.length !== 1 ? "s" : ""}
@@ -560,6 +614,32 @@ export function GuidedBuilderPanel() {
                   onChange={(e) => setSystemName(e.target.value)}
                   placeholder="e.g., WebApp"
                 />
+                <Textarea
+                  label="Description"
+                  value={systemDescription}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setSystemDescription(e.target.value)
+                  }
+                  rows={3}
+                  placeholder="Responsibilities, boundaries, integrations"
+                />
+                <div className="form-group checkbox-row">
+                  <input
+                    id="guided-system-custom-id"
+                    type="checkbox"
+                    checked={useCustomSystemId}
+                    onChange={(e) => setUseCustomSystemId(e.target.checked)}
+                  />
+                  <label htmlFor="guided-system-custom-id">Set custom ID (optional)</label>
+                </div>
+                {useCustomSystemId && (
+                  <Input
+                    label="ID"
+                    value={systemIdInput}
+                    onChange={(e) => setSystemIdInput(e.target.value)}
+                    placeholder="If empty, ID is auto-generated from name"
+                  />
+                )}
                 <Button variant="primary" onClick={submitAddSystem} type="button">
                   Add System
                 </Button>
@@ -803,6 +883,42 @@ export function GuidedBuilderPanel() {
                 how containers interact with each other through relationships.
               </p>
             </div>
+
+            {/* L2 Best Practice Tips */}
+            <BestPracticeTip variant="tip" show={allContainers.length === 0}>
+              Common containers: Web App, API Server, Database, Message Queue, Cache. Each should
+              have a specific technology choice.
+            </BestPracticeTip>
+
+            <BestPracticeTip
+              variant="tip"
+              show={allContainers.length > 0 && containersWithTech < allContainers.length}
+            >
+              Specify technologies! {containersWithTech}/{allContainers.length} containers have tech
+              defined. Good examples: "React", "Node.js + Express", "PostgreSQL".
+            </BestPracticeTip>
+
+            <BestPracticeTip variant="warning" show={containersMissingRelations.length > 0}>
+              {containersMissingRelations.length} orphan container
+              {containersMissingRelations.length !== 1 ? "s" : ""} found. Connect them to show data
+              flow, or remove if unused.
+            </BestPracticeTip>
+
+            <BestPracticeTip variant="warning" show={sharedDatastores > 0}>
+              Shared database detected! Consider data ownership—each container should ideally own
+              its data to avoid coupling.
+            </BestPracticeTip>
+
+            <BestPracticeTip
+              variant="success"
+              show={
+                allContainers.length > 0 &&
+                containersMissingRelations.length === 0 &&
+                containersWithTech === allContainers.length
+              }
+            >
+              L2 is looking great! All containers have tech and relationships defined.
+            </BestPracticeTip>
             <div className="guided-stats">
               {(() => {
                 const sys = focusedSystemId
@@ -858,6 +974,32 @@ export function GuidedBuilderPanel() {
                   onChange={(e) => setContainerTech(e.target.value)}
                   placeholder="e.g., Node.js"
                 />
+                <Textarea
+                  label="Description"
+                  value={containerDescription}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setContainerDescription(e.target.value)
+                  }
+                  rows={3}
+                  placeholder="Responsibilities, patterns, external dependencies"
+                />
+                <div className="form-group checkbox-row">
+                  <input
+                    id="guided-container-custom-id"
+                    type="checkbox"
+                    checked={useCustomContainerId}
+                    onChange={(e) => setUseCustomContainerId(e.target.checked)}
+                  />
+                  <label htmlFor="guided-container-custom-id">Set custom ID (optional)</label>
+                </div>
+                {useCustomContainerId && (
+                  <Input
+                    label="ID"
+                    value={containerIdInput}
+                    onChange={(e) => setContainerIdInput(e.target.value)}
+                    placeholder="If empty, ID is auto-generated from name"
+                  />
+                )}
                 <Button variant="primary" onClick={submitAddContainer} type="button">
                   Add Container
                 </Button>
@@ -1096,6 +1238,39 @@ export function GuidedBuilderPanel() {
                 interactions and their relationships.
               </p>
             </div>
+
+            {/* L3 Best Practice Tips */}
+            <BestPracticeTip variant="tip" show={componentsAll.length === 0}>
+              Components are the building blocks inside containers. Examples: Controllers, Services,
+              Repositories, Handlers.
+            </BestPracticeTip>
+
+            <BestPracticeTip
+              variant="tip"
+              show={componentsAll.length > 0 && componentsWithTech < componentsAll.length}
+            >
+              Specify component types! {componentsWithTech}/{componentsAll.length} have tech/type
+              defined. Use: "Controller", "Service", "Repository", "Handler".
+            </BestPracticeTip>
+
+            <BestPracticeTip variant="warning" show={layeringViolations > 0}>
+              {layeringViolations} layering violation{layeringViolations !== 1 ? "s" : ""} detected!
+              Lower layers shouldn't depend on higher layers (e.g., Service → Controller is wrong).
+            </BestPracticeTip>
+
+            <BestPracticeTip variant="warning" show={componentsMissingRelations.length > 0}>
+              {componentsMissingRelations.length} orphan component
+              {componentsMissingRelations.length !== 1 ? "s" : ""} found. Connect them or remove if
+              unused.
+            </BestPracticeTip>
+
+            <BestPracticeTip
+              variant="info"
+              show={componentsAll.length > 0 && layeringViolations === 0}
+            >
+              Pro tip: Follow layering order Web → API → Service → Data. This keeps dependencies
+              flowing in one direction.
+            </BestPracticeTip>
             <div className="guided-stats">
               {(() => {
                 const container = focusedContainerId
@@ -1145,6 +1320,38 @@ export function GuidedBuilderPanel() {
                   onChange={(e) => setComponentName(e.target.value)}
                   placeholder="e.g., AuthService"
                 />
+                <Input
+                  label="Technology"
+                  value={componentTech}
+                  onChange={(e) => setComponentTech(e.target.value)}
+                  placeholder="e.g., React, Go"
+                />
+                <Textarea
+                  label="Description"
+                  value={componentDescription}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setComponentDescription(e.target.value)
+                  }
+                  rows={2}
+                  placeholder="Responsibilities, key APIs, dependencies"
+                />
+                <div className="form-group checkbox-row">
+                  <input
+                    id="guided-component-custom-id"
+                    type="checkbox"
+                    checked={useCustomComponentId}
+                    onChange={(e) => setUseCustomComponentId(e.target.checked)}
+                  />
+                  <label htmlFor="guided-component-custom-id">Set custom ID (optional)</label>
+                </div>
+                {useCustomComponentId && (
+                  <Input
+                    label="ID"
+                    value={componentIdInput}
+                    onChange={(e) => setComponentIdInput(e.target.value)}
+                    placeholder="If empty, ID is auto-generated from name"
+                  />
+                )}
                 <Button variant="primary" onClick={submitAddComponent} type="button">
                   Add Component
                 </Button>

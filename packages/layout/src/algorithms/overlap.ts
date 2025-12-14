@@ -33,9 +33,10 @@ export function removeOverlaps(
           const dy = a.bbox.y + a.bbox.height / 2 - (b.bbox.y + b.bbox.height / 2);
 
           // Push nodes apart - use larger push for better convergence
-          const pushFactor = 5;
-          const pushX = Math.sign(dx) * Math.max(pushFactor, Math.abs(dx) / 10);
-          const pushY = Math.sign(dy) * Math.max(pushFactor, Math.abs(dy) / 10);
+          // Increase push factor for better spacing, especially for expanded nodes
+          const pushFactor = Math.max(8, padding * 0.5);
+          const pushX = Math.sign(dx) * Math.max(pushFactor, Math.abs(dx) / 8);
+          const pushY = Math.sign(dy) * Math.max(pushFactor, Math.abs(dy) / 8);
 
           a.x += pushX;
           a.y += pushY;

@@ -323,16 +323,24 @@ export async function applySrujaLayout(
           const parent = result.nodes.get(parentC4Id);
           if (parent) {
             // Convert absolute to relative position
+            const absPos = { x: pos.bbox.x, y: pos.bbox.y };
             position = {
               x: pos.bbox.x - parent.bbox.x,
               y: pos.bbox.y - parent.bbox.y,
             };
+            console.log(
+              `[LAYOUT] Child ${n.id}: absolute(${absPos.x.toFixed(0)}, ${absPos.y.toFixed(0)}) -> relative(${position.x.toFixed(0)}, ${position.y.toFixed(0)}) within parent ${n.parentId} at (${parent.bbox.x.toFixed(0)}, ${parent.bbox.y.toFixed(0)})`
+            );
           } else {
             console.warn(
-              `Parent ${n.parentId} (${parentC4Id}) not found in layout result for node ${n.id}, using absolute position`
+              `[LAYOUT] Parent ${n.parentId} (${parentC4Id}) not found in layout result for node ${n.id}, using absolute position`
             );
             // Use absolute position if parent not found
           }
+        } else {
+          console.log(
+            `[LAYOUT] Root ${n.id}: position (${position.x.toFixed(0)}, ${position.y.toFixed(0)}), size (${pos.bbox.width.toFixed(0)}x${pos.bbox.height.toFixed(0)})`
+          );
         }
 
         // Ensure valid dimensions - use minimum sizes to prevent clipping

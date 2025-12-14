@@ -2,6 +2,7 @@ package lsp
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/sourcegraph/go-lsp"
 	"github.com/sruja-ai/sruja/pkg/engine"
@@ -316,6 +317,7 @@ func (d *Document) EnsureParsed() *language.Program {
 
 type Workspace struct {
 	docs map[lsp.DocumentURI]*Document
+	mu   sync.RWMutex
 }
 
 func NewWorkspace() *Workspace {
@@ -323,18 +325,26 @@ func NewWorkspace() *Workspace {
 }
 
 func (w *Workspace) AddDocument(uri lsp.DocumentURI, text string, version int) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	w.docs[uri] = NewDocument(uri, text, version)
 }
 
 func (w *Workspace) RemoveDocument(uri lsp.DocumentURI) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	delete(w.docs, uri)
 }
 
 func (w *Workspace) GetDocument(uri lsp.DocumentURI) *Document {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
 	return w.docs[uri]
 }
 
 func (w *Workspace) AllDocuments() []*Document {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
 	res := make([]*Document, 0, len(w.docs))
 	for _, d := range w.docs {
 		res = append(res, d)
@@ -344,6 +354,8 @@ func (w *Workspace) AllDocuments() []*Document {
 
 func (w *Workspace) FindDefinition(id string) (lsp.DocumentURI, lsp.Range, bool) {
 	// Try exact match (including qualified form)
+	w.mu.RLock()
+	defer w.mu.RUnlock()
 	for _, d := range w.docs {
 		if r, ok := d.defs[id]; ok {
 			return d.URI, r, true

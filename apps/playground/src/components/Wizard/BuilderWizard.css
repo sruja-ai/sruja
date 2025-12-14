@@ -1,0 +1,112 @@
+/* =====================================================
+   BUILDER WIZARD - Main Container Styling
+   ===================================================== */
+
+.builder-wizard {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-primary);
+}
+
+.wizard-content {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+.wizard-main {
+    flex: 1;
+    overflow-y: auto;
+    min-width: 0;
+}
+
+.wizard-sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    padding: 1.5rem;
+    overflow-y: auto;
+    background: var(--surface-1);
+}
+
+[data-theme="dark"] .wizard-sidebar {
+    background: rgba(20, 20, 28, 0.6);
+}
+
+@media (max-width: 1024px) {
+    .wizard-content {
+        flex-direction: column;
+    }
+
+    .wizard-sidebar {
+        width: 100%;
+        max-height: 200px;
+        border-left: none;
+        border-top: 1px solid var(--border);
+    }
+}
+
+/* Placeholder styles for unimplemented steps */
+.step-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 4rem 2rem;
+    text-align: center;
+}
+
+.step-placeholder h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-1);
+}
+
+.step-placeholder p {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-2);
+}
+
+.step-placeholder .step-navigation {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.step-placeholder .btn-primary,
+.step-placeholder .btn-secondary {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.step-placeholder .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.step-placeholder .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+}
+
+.step-placeholder .btn-secondary {
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    color: var(--text-1);
+}
+
+.step-placeholder .btn-secondary:hover {
+    background: var(--surface-1);
+    border-color: var(--primary-alpha-50);
+}

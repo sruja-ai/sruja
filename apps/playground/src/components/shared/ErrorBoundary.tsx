@@ -1,5 +1,6 @@
 // apps/playground/src/components/shared/ErrorBoundary.tsx
-import React, { Component, ErrorInfo, ReactNode } from "react";
+import { Component } from "react";
+import type { ErrorInfo, ReactNode } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 
 interface Props {

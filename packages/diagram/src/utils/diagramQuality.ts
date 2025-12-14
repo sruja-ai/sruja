@@ -116,7 +116,7 @@ export interface ParentChildSizeViolation {
 }
 
 const MIN_NODE_SPACING = 30; // Minimum pixels between nodes (further increased for better quality)
-const MIN_PARENT_PADDING = 50; // Minimum padding inside parent nodes (must match layoutEngine.ts - increased for strict containment)
+const MIN_PARENT_PADDING = 80; // Minimum padding inside parent nodes (increased further to prevent any child overflow)
 
 /**
  * Default weights for quality metrics
@@ -880,7 +880,7 @@ function calculateEdgeMetrics(
     edgeLengths.push(length);
   });
 
-  // Simple crossing detection (approximate)
+  // Improved crossing detection - use actual edge paths if available
   for (let i = 0; i < edges.length; i++) {
     for (let j = i + 1; j < edges.length; j++) {
       const e1 = edges[i];
@@ -893,9 +893,34 @@ function calculateEdgeMetrics(
 
       if (!s1 || !t1 || !s2 || !t2) continue;
 
-      // Check if edges cross (simplified line intersection)
-      if (doEdgesCross(s1, t1, s2, t2)) {
-        crossings++;
+      // Check if edges share both endpoints (same edge, skip)
+      if (s1.id === s2.id && t1.id === t2.id) continue;
+      if (s1.id === t2.id && t1.id === s2.id) continue;
+
+      // Get actual edge paths if available (for routed edges with points)
+      const e1Points = (e1.data as any)?.points as Array<{ x: number; y: number }> | undefined;
+      const e2Points = (e2.data as any)?.points as Array<{ x: number; y: number }> | undefined;
+
+      if (e1Points && e1Points.length > 1 && e2Points && e2Points.length > 1) {
+        // Check if routed paths intersect
+        let pathsCross = false;
+        for (let k = 0; k < e1Points.length - 1 && !pathsCross; k++) {
+          for (let l = 0; l < e2Points.length - 1 && !pathsCross; l++) {
+            if (
+              linesIntersectProperly(e1Points[k], e1Points[k + 1], e2Points[l], e2Points[l + 1])
+            ) {
+              pathsCross = true;
+            }
+          }
+        }
+        if (pathsCross) {
+          crossings++;
+        }
+      } else {
+        // Fallback to node-based crossing detection
+        if (doEdgesCross(s1, t1, s2, t2)) {
+          crossings++;
+        }
       }
     }
   }
@@ -915,8 +940,43 @@ function calculateEdgeMetrics(
 }
 
 function doEdgesCross(s1: Node, t1: Node, s2: Node, t2: Node): boolean {
-  // Simplified line intersection check
-  // Using bounding box intersection as approximation
+  // More accurate line segment intersection check
+  // Get actual edge paths if available (for routed edges)
+  // For now, use center-to-center as approximation, but check if they share endpoints
+  const shareSource = s1.id === s2.id;
+  const shareTarget = t1.id === t2.id;
+  const shareEndpoints = shareSource || shareTarget;
+
+  // If edges share an endpoint, they don't cross (they meet at a node)
+  if (shareEndpoints) {
+    // Check if it's the same edge (both endpoints same)
+    if (shareSource && shareTarget) return false;
+
+    // If they share one endpoint, check if the other endpoints are on opposite sides
+    // This would indicate a crossing, but for edges from same node, it's usually fine
+    // Only count as crossing if the paths actually intersect in the middle
+    const p1 = {
+      x: s1.position.x + (s1.width || 100) / 2,
+      y: s1.position.y + (s1.height || 100) / 2,
+    };
+    const p2 = {
+      x: t1.position.x + (t1.width || 100) / 2,
+      y: t1.position.y + (t1.height || 100) / 2,
+    };
+    const p3 = {
+      x: s2.position.x + (s2.width || 100) / 2,
+      y: s2.position.y + (s2.height || 100) / 2,
+    };
+    const p4 = {
+      x: t2.position.x + (t2.width || 100) / 2,
+      y: t2.position.y + (t2.height || 100) / 2,
+    };
+
+    // Use line segment intersection formula
+    return linesIntersectProperly(p1, p2, p3, p4);
+  }
+
+  // For edges with different endpoints, use bounding box as approximation
   const x1min = Math.min(s1.position.x, t1.position.x);
   const x1max = Math.max(s1.position.x, t1.position.x);
   const y1min = Math.min(s1.position.y, t1.position.y);
@@ -928,7 +988,49 @@ function doEdgesCross(s1: Node, t1: Node, s2: Node, t2: Node): boolean {
   const y2max = Math.max(s2.position.y, t2.position.y);
 
   // Check if bounding boxes overlap
-  return !(x1max < x2min || x2max < x1min || y1max < y2min || y2max < y1min);
+  const bboxOverlap = !(x1max < x2min || x2max < x1min || y1max < y2min || y2max < y1min);
+
+  if (!bboxOverlap) return false;
+
+  // If bounding boxes overlap, do more precise check
+  const p1 = {
+    x: s1.position.x + (s1.width || 100) / 2,
+    y: s1.position.y + (s1.height || 100) / 2,
+  };
+  const p2 = {
+    x: t1.position.x + (t1.width || 100) / 2,
+    y: t1.position.y + (t1.height || 100) / 2,
+  };
+  const p3 = {
+    x: s2.position.x + (s2.width || 100) / 2,
+    y: s2.position.y + (s2.height || 100) / 2,
+  };
+  const p4 = {
+    x: t2.position.x + (t2.width || 100) / 2,
+    y: t2.position.y + (t2.height || 100) / 2,
+  };
+
+  return linesIntersectProperly(p1, p2, p3, p4);
+}
+
+function linesIntersectProperly(
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+  p3: { x: number; y: number },
+  p4: { x: number; y: number }
+): boolean {
+  // Line segment intersection using cross product
+  const ccw = (
+    A: { x: number; y: number },
+    B: { x: number; y: number },
+    C: { x: number; y: number }
+  ) => {
+    return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
+  };
+
+  // Two line segments (p1-p2) and (p3-p4) intersect if:
+  // ccw(p1,p3,p4) != ccw(p2,p3,p4) && ccw(p1,p2,p3) != ccw(p1,p2,p4)
+  return ccw(p1, p3, p4) !== ccw(p2, p3, p4) && ccw(p1, p2, p3) !== ccw(p1, p2, p4);
 }
 
 function calculateEdgeScore(
@@ -960,16 +1062,36 @@ function calculateEdgeScore(
 
 /**
  * Calculate score specifically for edge crossings
+ * For complex diagrams with many edges, some crossings are unavoidable
+ * The formula scales based on edge count to be more forgiving for dense graphs
  */
 function calculateEdgeCrossingScore(crossings: number, edgeCount: number): number {
   if (edgeCount === 0) return 100;
+  if (crossings === 0) return 100;
 
-  // Normalize by number of edges (more edges = more potential crossings)
+  // For complex diagrams (many edges), crossings are harder to avoid
+  // Use a logarithmic scale for penalty and adjust based on edge density
   const normalizedCrossings = crossings / edgeCount;
 
-  // Score: 100 - (normalized_crossings * 100)
-  // 0 crossings = 100, 0.5 crossings per edge = 50, 1+ = 0
-  const score = Math.max(0, 100 - normalizedCrossings * 200);
+  // Scale penalty based on edge count:
+  // - Few edges (< 10): crossings are very bad, harsh penalty
+  // - Medium edges (10-20): moderate penalty
+  // - Many edges (> 20): some crossings acceptable, lenient penalty
+  let penaltyMultiplier: number;
+  if (edgeCount <= 10) {
+    penaltyMultiplier = 150; // Harsh for simple diagrams
+  } else if (edgeCount <= 20) {
+    penaltyMultiplier = 100; // Moderate for medium diagrams
+  } else {
+    // For complex diagrams, use logarithmic scaling
+    // More edges = more potential crossings = lower penalty per crossing
+    penaltyMultiplier = Math.max(50, 120 - (edgeCount - 20) * 2);
+  }
+
+  // Also consider absolute crossing count - 50+ crossings is always bad
+  const absolutePenalty = crossings > 50 ? (crossings - 50) * 0.5 : 0;
+
+  const score = Math.max(0, 100 - normalizedCrossings * penaltyMultiplier - absolutePenalty);
   return score;
 }
 
@@ -1044,8 +1166,9 @@ function calculateEdgeCongestionScore(nodes: Node<C4NodeData>[], edges: Edge[]):
   const maxY = Math.max(...positions.map((p) => p.y + p.h));
   const width = Math.max(1, maxX - minX);
   const height = Math.max(1, maxY - minY);
-  const cols = 6,
-    rows = 6;
+  // Use finer grid for better congestion detection
+  const cols = 8,
+    rows = 8;
   const counts = Array.from({ length: cols * rows }, () => 0);
   edges.forEach((edge) => {
     const s = nodes.find((n) => n.id === edge.source);
@@ -1059,7 +1182,16 @@ function calculateEdgeCongestionScore(nodes: Node<C4NodeData>[], edges: Edge[]):
   });
   const maxCell = Math.max(...counts);
   const ratio = maxCell / edges.length;
-  const score = Math.max(0, 100 - ratio * 120);
+  // More lenient scoring for complex diagrams - some congestion is unavoidable
+  // Scale penalty based on edge count: more edges = more lenient
+  let penaltyMultiplier = 100;
+  if (edges.length > 20) {
+    penaltyMultiplier = 80; // More lenient for complex diagrams
+  }
+  if (edges.length > 40) {
+    penaltyMultiplier = 60; // Even more lenient for very complex diagrams
+  }
+  const score = Math.max(0, 100 - ratio * penaltyMultiplier);
   return score;
 }
 

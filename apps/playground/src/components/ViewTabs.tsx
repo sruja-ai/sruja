@@ -1,5 +1,5 @@
 // apps/playground/src/components/ViewTabs.tsx
-import { Layout, Eye, FileCode, Compass, List } from "lucide-react";
+import { Layout, FileCode, List, Hammer } from "lucide-react";
 import type { ViewTab } from "../types";
 import { useFeatureFlagsStore } from "../stores";
 
@@ -15,10 +15,9 @@ interface ViewTabsProps {
 export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
   const editMode = useFeatureFlagsStore((s) => s.editMode);
 
+  // Builder (guided) is now first and always visible in edit mode
   const tabs: ViewTab[] =
-    editMode === "edit"
-      ? ["overview", "diagram", "details", "code", "guided"]
-      : ["overview", "diagram", "details", "code"];
+    editMode === "edit" ? ["guided", "diagram", "details", "code"] : ["diagram", "details", "code"];
 
   const index = tabs.indexOf(activeTab);
 
@@ -42,16 +41,18 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
-      <button
-        className={`view-tab ${activeTab === "overview" ? "active" : ""}`}
-        onClick={() => onTabChange("overview")}
-        role="tab"
-        aria-selected={activeTab === "overview"}
-        title="Overview"
-      >
-        <Eye size={16} />
-        Overview
-      </button>
+      {editMode === "edit" && (
+        <button
+          className={`view-tab view-tab-primary ${activeTab === "guided" ? "active" : ""}`}
+          onClick={() => onTabChange("guided")}
+          role="tab"
+          aria-selected={activeTab === "guided"}
+          title="Builder - Design your architecture step by step"
+        >
+          <Hammer size={16} />
+          Builder
+        </button>
+      )}
       <button
         className={`view-tab ${activeTab === "diagram" ? "active" : ""}`}
         onClick={() => onTabChange("diagram")}
@@ -85,18 +86,6 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
         <FileCode size={16} />
         Code
       </button>
-      {editMode === "edit" && (
-        <button
-          className={`view-tab ${activeTab === "guided" ? "active" : ""}`}
-          onClick={() => onTabChange("guided")}
-          role="tab"
-          aria-selected={activeTab === "guided"}
-          title="Guided"
-        >
-          <Compass size={16} />
-          Guided
-        </button>
-      )}
     </div>
   );
 }

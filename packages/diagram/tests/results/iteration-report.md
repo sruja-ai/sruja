@@ -1,6 +1,6 @@
 # Layout Optimization Comparison Report
 
-Generated: 2025-12-12T15:33:18.448Z
+Generated: 2025-12-13T03:56:33.654Z
 
 ## Summary
 
@@ -9,4 +9,4 @@ Generated: 2025-12-12T15:33:18.448Z
 - **Regressed**: 0 (NaN%)
 - **Unchanged**: 0 (NaN%)
 - **Average Score Delta**: NaN points
-- **Average Score**: NaN → 80.0
+- **Average Score**: NaN → 90.6

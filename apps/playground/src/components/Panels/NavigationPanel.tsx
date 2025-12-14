@@ -14,11 +14,21 @@ import {
   Layout,
   Link2,
   Package,
+  Target,
+  Info,
+  FileText,
 } from "lucide-react";
-import { Button, Input } from "@sruja/ui";
+import { Button, Input, Textarea } from "@sruja/ui";
 import { useArchitectureStore, useViewStore, useSelectionStore } from "../../stores";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
-import { EditScenarioForm, EditFlowForm, ConfirmDialog, SidePanel } from "../shared";
+import {
+  EditScenarioForm,
+  EditFlowForm,
+  EditRequirementForm,
+  EditADRForm,
+  ConfirmDialog,
+  SidePanel,
+} from "../shared";
 import type {
   SystemJSON,
   ContainerJSON,
@@ -26,6 +36,8 @@ import type {
   FlowJSON,
   PersonJSON,
   ComponentJSON,
+  RequirementJSON,
+  ADRJSON,
 } from "../../types";
 import type { DiagramQualityMetrics } from "../../utils/diagramQuality";
 import "./NavigationPanel.css";
@@ -77,6 +89,8 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   const flows = useMemo(() => data?.architecture.flows ?? [], [data]);
   const scenarios = useMemo(() => data?.architecture.scenarios ?? [], [data]);
   const relations = useMemo(() => data?.architecture.relations ?? [], [data]);
+  const requirements = useMemo(() => data?.architecture.requirements ?? [], [data]);
+  const adrs = useMemo(() => data?.architecture.adrs ?? [], [data]);
   const allContainers = useMemo(() => systems.flatMap((s) => s.containers || []), [systems]);
   const [editScenario, setEditScenario] = useState<ScenarioJSON | undefined>(undefined);
   const [editFlow, setEditFlow] = useState<FlowJSON | undefined>(undefined);
@@ -87,7 +101,6 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   const [showDeleteScenarioConfirm, setShowDeleteScenarioConfirm] = useState(false);
   const [showDeleteFlowConfirm, setShowDeleteFlowConfirm] = useState(false);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
-  const loadFromDSL = useArchitectureStore((s) => s.loadFromDSL);
 
   // Track layout metrics from ArchitectureCanvas
   const [layoutMetrics, setLayoutMetrics] = useState<DiagramQualityMetrics | null>(null);
@@ -192,6 +205,9 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
 
   const [isSystemFormOpen, setIsSystemFormOpen] = useState(false);
   const [systemName, setSystemName] = useState("");
+  const [systemDescription, setSystemDescription] = useState("");
+  const [useCustomSystemId, setUseCustomSystemId] = useState(false);
+  const [systemIdInput, setSystemIdInput] = useState("");
   const [systemExternal, setSystemExternal] = useState(false);
   const [editSystem, setEditSystem] = useState<SystemJSON | undefined>(undefined);
   const [showEditSystem, setShowEditSystem] = useState(false);
@@ -201,7 +217,9 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   const [isContainerFormOpen, setIsContainerFormOpen] = useState(false);
   const [containerName, setContainerName] = useState("");
   const [containerTechnology, setContainerTechnology] = useState("");
-  const [containerExternal, setContainerExternal] = useState(false);
+  const [containerDescription, setContainerDescription] = useState("");
+  const [useCustomContainerId, setUseCustomContainerId] = useState(false);
+  const [containerIdInput, setContainerIdInput] = useState("");
   const [containerParentSystemId, setContainerParentSystemId] = useState<string | null>(null);
   const [editContainer, setEditContainer] = useState<ContainerJSON | undefined>(undefined);
   const [editContainerSystemId, setEditContainerSystemId] = useState<string | null>(null);
@@ -212,6 +230,10 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
 
   const [isComponentFormOpen, setIsComponentFormOpen] = useState(false);
   const [componentName, setComponentName] = useState("");
+  const [componentTechnology, setComponentTechnology] = useState("");
+  const [componentDescription, setComponentDescription] = useState("");
+  const [useCustomComponentId, setUseCustomComponentId] = useState(false);
+  const [componentIdInput, setComponentIdInput] = useState("");
   const [componentParentSystemId, setComponentParentSystemId] = useState<string | null>(null);
   const [componentParentContainerId, setComponentParentContainerId] = useState<string | null>(null);
   const componentSystemContainers = useMemo(() => {
@@ -232,6 +254,16 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   const [relationToId, setRelationToId] = useState<string>("");
   const [relationLabel, setRelationLabel] = useState<string>("");
   const [relationTech, setRelationTech] = useState<string>("");
+  const [showRequirementForm, setShowRequirementForm] = useState(false);
+  const [editRequirement, setEditRequirement] = useState<RequirementJSON | undefined>(undefined);
+  const [showDeleteRequirementConfirm, setShowDeleteRequirementConfirm] = useState(false);
+  const [deleteRequirement, setDeleteRequirement] = useState<RequirementJSON | undefined>(
+    undefined
+  );
+  const [showADRForm, setShowADRForm] = useState(false);
+  const [editADR, setEditADR] = useState<ADRJSON | undefined>(undefined);
+  const [showDeleteADRConfirm, setShowDeleteADRConfirm] = useState(false);
+  const [deleteADR, setDeleteADR] = useState<ADRJSON | undefined>(undefined);
 
   // Build hierarchical node options with FQN display
   const relationNodeOptions = useMemo(() => {
@@ -330,14 +362,23 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   };
 
   const submitAddSystem = async () => {
-    const id = uniqueId(systemName);
+    const id = (useCustomSystemId ? systemIdInput || "" : "") || uniqueId(systemName);
     await updateArchitecture((arch) => {
       const systems = [...(arch.architecture?.systems || [])];
       const metadata = systemExternal ? [{ key: "tags", value: "external" }] : undefined;
-      systems.push({ id, label: systemName, containers: [], metadata });
+      systems.push({
+        id,
+        label: systemName,
+        description: systemDescription || undefined,
+        containers: [],
+        metadata,
+      });
       return { ...arch, architecture: { ...arch.architecture, systems } };
     });
     setSystemName("");
+    setSystemDescription("");
+    setUseCustomSystemId(false);
+    setSystemIdInput("");
     setSystemExternal(false);
     setIsSystemFormOpen(false);
   };
@@ -369,7 +410,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
 
   const submitAddContainer = async () => {
     if (!containerParentSystemId) return;
-    const id = uniqueId(containerName);
+    const id = (useCustomContainerId ? containerIdInput || "" : "") || uniqueId(containerName);
     await updateArchitecture((arch) => {
       const systems = (arch.architecture?.systems || []).map((s) => {
         if (s.id !== containerParentSystemId) return s;
@@ -378,6 +419,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
           id,
           label: containerName,
           technology: containerTechnology || undefined,
+          description: containerDescription || undefined,
           components: [],
         });
         return { ...s, containers };
@@ -386,7 +428,9 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
     });
     setContainerName("");
     setContainerTechnology("");
-    setContainerExternal(false);
+    setContainerDescription("");
+    setUseCustomContainerId(false);
+    setContainerIdInput("");
     setContainerParentSystemId(null);
     setIsContainerFormOpen(false);
   };
@@ -411,14 +455,19 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
 
   const submitAddComponent = async () => {
     if (!componentParentSystemId || !componentParentContainerId) return;
-    const id = uniqueId(componentName);
+    const id = (useCustomComponentId ? componentIdInput || "" : "") || uniqueId(componentName);
     await updateArchitecture((arch) => {
       const systems = (arch.architecture?.systems || []).map((s) => {
         if (s.id !== componentParentSystemId) return s;
         const containers = (s.containers || []).map((c) => {
           if (c.id !== componentParentContainerId) return c;
           const components = [...(c.components || [])];
-          components.push({ id, label: componentName });
+          components.push({
+            id,
+            label: componentName,
+            technology: componentTechnology || undefined,
+            description: componentDescription || undefined,
+          });
           return { ...c, components };
         });
         return { ...s, containers };
@@ -426,6 +475,10 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
       return { ...arch, architecture: { ...arch.architecture, systems } };
     });
     setComponentName("");
+    setComponentTechnology("");
+    setComponentDescription("");
+    setUseCustomComponentId(false);
+    setComponentIdInput("");
     setComponentParentSystemId(null);
     setComponentParentContainerId(null);
     setIsComponentFormOpen(false);
@@ -661,7 +714,6 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                       setContainerParentSystemId(focusedSystemId);
                       setContainerName("");
                       setContainerTechnology("");
-                      setContainerExternal(false);
                       setIsContainerFormOpen(true);
                     }}
                   >
@@ -923,180 +975,64 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
       </div>
 
       {/* Add */}
-      {!isCollapsed && (
+      {!isCollapsed && isEditMode() && (
         <div className="nav-section">
           <div className="nav-section-title">
+            <Plus size={14} />
             <span>Add</span>
           </div>
-          {isEditMode() && (
-            <div className="nav-actions-grid">
-              <button
-                className="nav-action-btn"
-                title="Add System"
-                onClick={() => {
-                  setSystemName("");
-                  setSystemExternal(false);
-                  setIsSystemFormOpen(true);
-                }}
-              >
-                <Building2 size={14} />
-              </button>
-              <button
-                className="nav-action-btn"
-                title="Add Person"
-                onClick={() => {
-                  setPersonName("");
-                  setIsPersonFormOpen(true);
-                }}
-              >
-                <User size={14} />
-              </button>
-              <button
-                className="nav-action-btn"
-                title="Add Container"
-                onClick={() => {
-                  setContainerParentSystemId(focusedSystemId || (systems[0]?.id ?? null));
-                  setContainerName("");
-                  setContainerTechnology("");
-                  setContainerExternal(false);
-                  setIsContainerFormOpen(true);
-                }}
-              >
-                <Box size={14} />
-              </button>
-              <button
-                className="nav-action-btn"
-                title="Add Component"
-                onClick={() => {
-                  setComponentParentSystemId(null);
-                  setComponentParentContainerId(null);
-                  setComponentName("");
-                  setIsComponentFormOpen(true);
-                }}
-                disabled={systems.length === 0}
-              >
-                <Package size={14} />
-              </button>
-              <button
-                className="nav-action-btn"
-                onClick={() => setIsRelationFormOpen(true)}
-                title="Create Relation"
-              >
-                <Link2 size={14} />
-              </button>
-            </div>
-          )}
-          {layeringViolationDetails.length > 0 && (
-            <div className="nav-subsection">
-              <div className="nav-subsection-title">Layering violations</div>
-              {(showLayeringDetails
-                ? layeringViolationDetails
-                : layeringViolationDetails.slice(0, 5)
-              ).map((v) => (
-                <div key={`${v.from}->${v.to}`} className="nav-row">
-                  <button
-                    className="link-btn"
-                    onClick={() => {
-                      const parts = v.from.split(".");
-                      if (parts.length === 1) {
-                        drillDown(parts[0], "system");
-                      } else if (parts.length === 2) {
-                        drillDown(parts[1], "container", parts[0]);
-                      } else if (parts.length === 3) {
-                        drillDown(parts[1], "container", parts[0]);
-                      }
-                    }}
-                  >
-                    {v.from}
-                  </button>
-                  <span style={{ margin: "0 6px" }}>→</span>
-                  <button
-                    className="link-btn"
-                    onClick={() => {
-                      const parts = v.to.split(".");
-                      if (parts.length === 1) {
-                        drillDown(parts[0], "system");
-                      } else if (parts.length === 2) {
-                        drillDown(parts[1], "container", parts[0]);
-                      } else if (parts.length === 3) {
-                        drillDown(parts[1], "container", parts[0]);
-                      }
-                    }}
-                  >
-                    {v.to}
-                  </button>
-                  <span className="qa-hint" style={{ marginLeft: 8 }}>
-                    {v.fromLayer || ""} → {v.toLayer || ""}
-                  </span>
-                  <button
-                    className="nav-icon-btn"
-                    title="Reverse relation"
-                    onClick={() => submitReverseRelation(v.from, v.to)}
-                  >
-                    <ChevronDown size={12} />
-                  </button>
-                </div>
-              ))}
-              {(showLayeringDetails
-                ? layeringViolationDetails
-                : layeringViolationDetails.slice(0, 5)
-              ).map((v) => {
-                const key = `${v.from}->${v.to}`;
-                const targets = getDownwardTargets(v.from);
-                const sel = layeringFixTargetMap[key] || targets[0]?.id || "";
-                return (
-                  <div key={`${key}-fix`} className="nav-row" style={{ gap: 6 }}>
-                    <select
-                      value={sel}
-                      onChange={(e) =>
-                        setLayeringFixTargetMap((prev) => ({ ...prev, [key]: e.target.value }))
-                      }
-                    >
-                      <option value="">Select downward target</option>
-                      {targets.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      className="qa-btn"
-                      onClick={() =>
-                        sel &&
-                        updateArchitecture((arch) => ({
-                          ...arch,
-                          architecture: {
-                            ...arch.architecture,
-                            relations: [
-                              ...(arch.architecture?.relations || []),
-                              { from: v.from, to: sel },
-                            ],
-                          },
-                        }))
-                      }
-                    >
-                      <Link2 size={12} />
-                      <span>Create suggested</span>
-                    </button>
-                    <button
-                      className="qa-btn"
-                      onClick={() => sel && submitReplaceRelation(v.from, v.to, sel)}
-                    >
-                      <Edit size={12} />
-                      <span>Replace</span>
-                    </button>
-                  </div>
-                );
-              })}
-              {layeringViolationDetails.length > 5 && (
-                <div className="nav-row">
-                  <button className="link-btn" onClick={() => setShowLayeringDetails((s) => !s)}>
-                    {showLayeringDetails ? "Show less" : "View all"}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+          <div className="nav-add-actions">
+            <button
+              className="nav-add-action-btn"
+              onClick={() => {
+                setSystemName("");
+                setSystemExternal(false);
+                setIsSystemFormOpen(true);
+              }}
+            >
+              <Building2 size={14} />
+              <span>System</span>
+            </button>
+            <button
+              className="nav-add-action-btn"
+              onClick={() => {
+                setContainerParentSystemId(focusedSystemId || (systems[0]?.id ?? null));
+                setContainerName("");
+                setContainerTechnology("");
+                setIsContainerFormOpen(true);
+              }}
+            >
+              <Box size={14} />
+              <span>Container</span>
+            </button>
+            <button
+              className="nav-add-action-btn"
+              onClick={() => {
+                setComponentParentSystemId(null);
+                setComponentParentContainerId(null);
+                setComponentName("");
+                setIsComponentFormOpen(true);
+              }}
+              disabled={systems.length === 0}
+            >
+              <Package size={14} />
+              <span>Component</span>
+            </button>
+            <button
+              className="nav-add-action-btn"
+              onClick={() => {
+                setPersonName("");
+                setIsPersonFormOpen(true);
+              }}
+            >
+              <User size={14} />
+              <span>Actor</span>
+            </button>
+            <button className="nav-add-action-btn" onClick={() => setIsRelationFormOpen(true)}>
+              <Link2 size={14} />
+              <span>Relation</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -1458,6 +1394,32 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
             required
             placeholder="System name"
           />
+          <Textarea
+            label="Description"
+            value={systemDescription}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+              setSystemDescription(e.target.value)
+            }
+            rows={3}
+            placeholder="What does this system do? Responsibilities, boundaries, integrations."
+          />
+          <div className="form-group" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              id="system-custom-id"
+              type="checkbox"
+              checked={useCustomSystemId}
+              onChange={(e) => setUseCustomSystemId(e.target.checked)}
+            />
+            <label htmlFor="system-custom-id">Set custom ID (optional)</label>
+          </div>
+          {useCustomSystemId && (
+            <Input
+              label="ID"
+              value={systemIdInput}
+              onChange={(e) => setSystemIdInput(e.target.value)}
+              placeholder="If empty, ID is auto-generated from name"
+            />
+          )}
           <div className="form-group" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <input
               id="system-external"
@@ -1615,6 +1577,32 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
             onChange={(e) => setContainerTechnology(e.target.value)}
             placeholder="e.g., Node.js, Postgres"
           />
+          <Textarea
+            label="Description"
+            value={containerDescription}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+              setContainerDescription(e.target.value)
+            }
+            rows={3}
+            placeholder="Responsibilities, patterns, external dependencies"
+          />
+          <div className="form-group" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              id="container-custom-id"
+              type="checkbox"
+              checked={useCustomContainerId}
+              onChange={(e) => setUseCustomContainerId(e.target.checked)}
+            />
+            <label htmlFor="container-custom-id">Set custom ID (optional)</label>
+          </div>
+          {useCustomContainerId && (
+            <Input
+              label="ID"
+              value={containerIdInput}
+              onChange={(e) => setContainerIdInput(e.target.value)}
+              placeholder="If empty, ID is auto-generated from name"
+            />
+          )}
         </div>
       </SidePanel>
 
@@ -1721,6 +1709,38 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
             required
             placeholder="Component name"
           />
+          <Input
+            label="Technology"
+            value={componentTechnology}
+            onChange={(e) => setComponentTechnology(e.target.value)}
+            placeholder="e.g., React, Go, Python"
+          />
+          <Textarea
+            label="Description"
+            value={componentDescription}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+              setComponentDescription(e.target.value)
+            }
+            rows={2}
+            placeholder="Responsibilities, key APIs, dependencies"
+          />
+          <div className="form-group" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              id="component-custom-id"
+              type="checkbox"
+              checked={useCustomComponentId}
+              onChange={(e) => setUseCustomComponentId(e.target.checked)}
+            />
+            <label htmlFor="component-custom-id">Set custom ID (optional)</label>
+          </div>
+          {useCustomComponentId && (
+            <Input
+              label="ID"
+              value={componentIdInput}
+              onChange={(e) => setComponentIdInput(e.target.value)}
+              placeholder="If empty, ID is auto-generated from name"
+            />
+          )}
         </div>
       </SidePanel>
 
@@ -1824,6 +1844,22 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
           />
         </div>
       </SidePanel>
+      <EditRequirementForm
+        isOpen={showRequirementForm}
+        onClose={() => {
+          setShowRequirementForm(false);
+          setEditRequirement(undefined);
+        }}
+        requirement={editRequirement}
+      />
+      <EditADRForm
+        isOpen={showADRForm}
+        onClose={() => {
+          setShowADRForm(false);
+          setEditADR(undefined);
+        }}
+        adr={editADR}
+      />
 
       {/* Delete confirms */}
       <ConfirmDialog
@@ -1859,6 +1895,42 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
         onConfirm={doDeleteComponent}
         title="Delete Component"
         message={`Delete component "${deleteComponent?.label ?? deleteComponent?.id}"? Related relations will be removed.`}
+        confirmLabel="Delete"
+        variant="danger"
+      />
+      <ConfirmDialog
+        isOpen={showDeleteRequirementConfirm}
+        onClose={() => setShowDeleteRequirementConfirm(false)}
+        onConfirm={async () => {
+          if (!deleteRequirement) return;
+          await updateArchitecture((arch) => {
+            const requirements = (arch.architecture?.requirements || []).filter(
+              (r) => r.id !== deleteRequirement.id
+            );
+            return { ...arch, architecture: { ...arch.architecture, requirements } };
+          });
+          setShowDeleteRequirementConfirm(false);
+          setDeleteRequirement(undefined);
+        }}
+        title="Delete Requirement"
+        message={`Delete requirement "${deleteRequirement?.id}"?`}
+        confirmLabel="Delete"
+        variant="danger"
+      />
+      <ConfirmDialog
+        isOpen={showDeleteADRConfirm}
+        onClose={() => setShowDeleteADRConfirm(false)}
+        onConfirm={async () => {
+          if (!deleteADR) return;
+          await updateArchitecture((arch) => {
+            const adrs = (arch.architecture?.adrs || []).filter((a) => a.id !== deleteADR.id);
+            return { ...arch, architecture: { ...arch.architecture, adrs } };
+          });
+          setShowDeleteADRConfirm(false);
+          setDeleteADR(undefined);
+        }}
+        title="Delete ADR"
+        message={`Delete ADR "${deleteADR?.id}"?`}
         confirmLabel="Delete"
         variant="danger"
       />

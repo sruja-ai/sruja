@@ -14,13 +14,8 @@ import {
 } from "lucide-react";
 import { ArchitectureCanvas } from "./components/Canvas";
 import "./App.css";
-import {
-  NavigationPanel,
-  DetailsPanel,
-  OverviewPanel,
-  GuidedBuilderPanel,
-  CodePanel,
-} from "./components/Panels";
+import { NavigationPanel, DetailsPanel, CodePanel } from "./components/Panels";
+import { BuilderWizard } from "./components/Wizard";
 import { Breadcrumb, ExamplesDropdown } from "./components/shared";
 import { ThemeToggle } from "@sruja/ui";
 import {
@@ -51,7 +46,6 @@ export default function App() {
   // Actions are stable references, so we can use them directly
   const data = useArchitectureStore((s) => s.data);
   const loadFromDSL = useArchitectureStore((s) => s.loadFromDSL);
-  const reset = useArchitectureStore((s) => s.reset);
   const selectedNodeId = useSelectionStore((s) => s.selectedNodeId);
   // const selectNode = useSelectionStore((s) => s.selectNode); // selector not used currently
   const activeTab = useUIStore((s) => s.activeTab);
@@ -73,12 +67,16 @@ export default function App() {
     // Map legacy tabs to new structure
     if (tabParam === "requirements" || tabParam === "adrs") {
       setActiveTab("details");
+    } else if (tabParam === "overview") {
+      // Overview merged into Builder/Details
+      setActiveTab(editMode === "edit" ? "guided" : "diagram");
     } else if (VALID_TABS.includes(tabParam as ViewTab)) {
       setActiveTab(tabParam as ViewTab);
     } else {
-      setActiveTab("diagram");
+      // Default: Builder in edit mode, Diagram in view mode
+      setActiveTab(editMode === "edit" ? "guided" : "diagram");
     }
-  }, [setActiveTab]);
+  }, [setActiveTab, editMode]);
 
   // Sync URL when activeTab changes
   useEffect(() => {
@@ -177,6 +175,8 @@ export default function App() {
               setIsLoadingFile(false);
             });
           return;
+        } else {
+          setIsLoadingFile(false);
         }
       } catch (err) {
         console.error("Failed to load DSL from URL:", err);
@@ -242,7 +242,6 @@ export default function App() {
   useEffect(() => {
     const fixLayout = () => {
       const app = document.querySelector(".app") as HTMLElement | null;
-      const appHeader = document.querySelector(".app-header") as HTMLElement | null;
       const appMain = document.querySelector(".app-main") as HTMLElement | null;
       const centerPanel = document.querySelector(".center-panel") as HTMLElement | null;
       const canvasContainer = document.querySelector(".canvas-container") as HTMLElement | null;
@@ -328,17 +327,25 @@ export default function App() {
           </button>
           <button
             className="action-btn icon-only"
-            onClick={() => {
-              // Clear localStorage explicitly
-              localStorage.removeItem("sruja-architecture-data");
+            onClick={async () => {
               localStorage.removeItem("architecture-visualizer-feature-flags");
-              // Reset store state
-              reset();
-              // Reload the page
-              window.location.reload();
+              const { dslSource, currentExampleFile } = useArchitectureStore.getState();
+              if (dslSource) {
+                try {
+                  const json = await convertDslToJson(dslSource);
+                  if (json) {
+                    await loadFromDSL(
+                      json as ArchitectureJSON,
+                      dslSource,
+                      currentExampleFile ?? undefined
+                    );
+                    setActiveTab("diagram");
+                  }
+                } catch {}
+              }
             }}
-            title="Clear cache and reload"
-            aria-label="Clear cache and reload"
+            title="Reload from DSL (clear cache)"
+            aria-label="Reload from DSL (clear cache)"
           >
             <RefreshCw size={18} />
           </button>
@@ -430,13 +437,28 @@ export default function App() {
                     onClick={() => {
                       // Creating new empty architecture
                       const emptyDsl = `architecture "New System" {
-  // Start designing your system
   persons { user "User" }
-  systems { system "System" }
+  systems { web "WebApp" }
+  relations { user -> web "uses" }
 }`;
-                      convertDslToJson(emptyDsl).then((json) => {
-                        if (json) loadFromDSL(json as ArchitectureJSON, emptyDsl, "new");
-                      });
+                      const emptyJson: ArchitectureJSON = {
+                        metadata: {
+                          name: "New System",
+                          version: "1.0.0",
+                          generated: new Date().toISOString(),
+                        },
+                        architecture: {
+                          persons: [{ id: "user", label: "User" }],
+                          systems: [{ id: "web", label: "WebApp", containers: [] }],
+                          relations: [{ from: "user", to: "web", verb: "uses" }],
+                        },
+                        navigation: {
+                          levels: ["L1", "L2", "L3"],
+                          scenarios: [],
+                          flows: [],
+                        },
+                      };
+                      loadFromDSL(emptyJson, emptyDsl, "new");
                     }}
                   >
                     <Plus size={18} />
@@ -451,11 +473,11 @@ export default function App() {
                 <p>Loading architecture...</p>
               </div>
             )}
-            {data && activeTab === "overview" && <OverviewPanel />}
+            {/* Overview tab removed - content consolidated into Builder and Details */}
             {data && activeTab === "diagram" && (
               <ArchitectureCanvas dragEnabled={editMode === "edit"} />
             )}
-            {data && activeTab === "guided" && <GuidedBuilderPanel />}
+            {data && activeTab === "guided" && <BuilderWizard />}
             {data && activeTab === "details" && <DetailsView />}
             {data && activeTab === "code" && <CodePanel />}
           </div>

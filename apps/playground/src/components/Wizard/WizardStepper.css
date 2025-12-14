@@ -1,0 +1,198 @@
+/* =====================================================
+   WIZARD STEPPER - Modern Step Progress UI
+   ===================================================== */
+
+.wizard-stepper {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem 2rem;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+[data-theme="dark"] .wizard-stepper {
+    background: rgba(20, 20, 28, 0.95);
+    backdrop-filter: blur(12px);
+}
+
+/* Progress Bar */
+.wizard-progress {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.wizard-progress-track {
+    flex: 1;
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.wizard-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    border-radius: 3px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wizard-progress-text {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-3);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Steps Container */
+.wizard-steps {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Individual Step */
+.wizard-step {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    background: transparent;
+    border: 1.5px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.wizard-step:hover:not(:disabled) {
+    background: var(--surface-2);
+}
+
+.wizard-step:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Step Indicator Circle */
+.wizard-step-indicator {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 2px solid var(--border);
+    color: var(--text-3);
+    font-size: 0.8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.wizard-step-number {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Active Step */
+.wizard-step.active {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.05) 100%);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+.wizard-step.active .wizard-step-indicator {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+/* Completed Step */
+.wizard-step.complete .wizard-step-indicator {
+    background: #059669;
+    border-color: transparent;
+    color: white;
+}
+
+.wizard-step.complete:hover .wizard-step-indicator {
+    background: #047857;
+}
+
+/* Locked Step */
+.wizard-step.locked .wizard-step-indicator {
+    background: var(--surface-2);
+    border-color: var(--border);
+    color: var(--text-3);
+}
+
+/* Step Content */
+.wizard-step-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+}
+
+.wizard-step-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wizard-step.locked .wizard-step-label {
+    color: var(--text-3);
+}
+
+.wizard-step-description {
+    font-size: 0.75rem;
+    color: var(--text-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .wizard-stepper {
+        padding: 1rem;
+    }
+
+    .wizard-steps {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .wizard-step {
+        padding: 0.75rem;
+    }
+
+    .wizard-step-indicator {
+        width: 28px;
+        height: 28px;
+    }
+}
+
+@media (max-width: 480px) {
+    .wizard-step-content {
+        display: none;
+    }
+
+    .wizard-steps {
+        flex-direction: row;
+        justify-content: center;
+    }
+
+    .wizard-step {
+        flex: 0;
+        padding: 0.5rem;
+    }
+}
