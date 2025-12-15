@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from "react";
 import { Code, ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
+import { Button } from "@sruja/ui";
 import "./DslPreview.css";
 
 interface DslPreviewProps {
@@ -88,26 +89,50 @@ export function DslPreview({ dsl }: DslPreviewProps) {
 
   return (
     <div className={`dsl-preview ${isExpanded ? "expanded" : ""}`}>
-      <button className="dsl-preview-header" onClick={() => setIsExpanded(!isExpanded)}>
+      <div
+        className="dsl-preview-header"
+        onClick={() => setIsExpanded(!isExpanded)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsExpanded(!isExpanded);
+          }
+        }}
+        aria-expanded={isExpanded}
+        aria-label="Toggle DSL preview"
+      >
         <div className="dsl-preview-title">
-          <Code size={16} />
+          <Code size={16} aria-hidden="true" />
           <span>DSL Preview</span>
           <span className="dsl-preview-hint">{lineCount} lines</span>
         </div>
         <div className="dsl-preview-actions">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             className="dsl-copy-btn"
             onClick={(e) => {
               e.stopPropagation();
               handleCopy();
             }}
-            title="Copy DSL"
+            aria-label={copied ? "Copied" : "Copy DSL"}
           >
-            {copied ? <Check size={14} /> : <Copy size={14} />}
-          </button>
-          {hasMore && (isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
+            {copied ? (
+              <Check size={14} aria-hidden="true" />
+            ) : (
+              <Copy size={14} aria-hidden="true" />
+            )}
+          </Button>
+          {hasMore &&
+            (isExpanded ? (
+              <ChevronUp size={16} aria-hidden="true" />
+            ) : (
+              <ChevronDown size={16} aria-hidden="true" />
+            ))}
         </div>
-      </button>
+      </div>
 
       <pre className="dsl-preview-code">
         <code

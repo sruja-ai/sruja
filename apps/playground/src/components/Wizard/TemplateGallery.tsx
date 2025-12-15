@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { X, CheckCircle, Layers, Cloud, FileText } from "lucide-react";
+import { Button } from "@sruja/ui";
 import { templates, type Template } from "./templates";
 import { useArchitectureStore } from "../../stores/architectureStore";
 import "./TemplateGallery.css";
@@ -97,14 +98,16 @@ export function TemplateGallery({ isOpen, onClose }: TemplateGalleryProps) {
         <div className="template-gallery-header">
           <h2 id="template-gallery-title">Choose a Template</h2>
           <p>Start with a pre-built architecture pattern</p>
-          <button
+          <Button
             ref={closeButtonRef}
+            variant="ghost"
+            size="sm"
             className="template-close-btn"
             onClick={onClose}
             aria-label="Close template gallery"
           >
             <X size={20} aria-hidden="true" />
-          </button>
+          </Button>
         </div>
 
         <div className="template-grid" role="radiogroup" aria-label="Template options">
@@ -139,10 +142,16 @@ export function TemplateGallery({ isOpen, onClose }: TemplateGalleryProps) {
         </div>
 
         <div className="template-gallery-footer">
-          <button className="template-cancel-btn" onClick={onClose} aria-label="Cancel and close">
+          <Button
+            variant="ghost"
+            className="template-cancel-btn"
+            onClick={onClose}
+            aria-label="Cancel and close"
+          >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
             className="template-use-btn"
             disabled={!selectedId}
             onClick={() => {
@@ -152,7 +161,7 @@ export function TemplateGallery({ isOpen, onClose }: TemplateGalleryProps) {
             aria-label={selectedId ? "Use selected template" : "Select a template first"}
           >
             Use Template
-          </button>
+          </Button>
         </div>
       </div>
     </div>
