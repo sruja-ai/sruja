@@ -3,7 +3,7 @@
  * Curated architecture templates for quick-start
  */
 
-import type { ArchitectureJSON } from "../../types";
+import type { ArchitectureJSON } from "../../../types";
 
 export interface Template {
   id: string;

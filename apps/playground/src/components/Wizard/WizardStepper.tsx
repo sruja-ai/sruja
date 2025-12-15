@@ -1,4 +1,4 @@
-import { Check, Circle, Lock } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import "./WizardStepper.css";
 
 export interface WizardStep {
