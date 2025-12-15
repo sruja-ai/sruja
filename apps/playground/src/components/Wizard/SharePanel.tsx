@@ -3,7 +3,7 @@
  * Export architecture to multiple formats and share via URL
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Share2, Link, Copy, Check, Download, FileJson, FileCode, FileText, X } from "lucide-react";
 import { useArchitectureStore } from "../../stores/architectureStore";
 import { convertJsonToDsl } from "../../utils/jsonToDsl";
@@ -18,8 +18,45 @@ interface SharePanelProps {
 export function SharePanel({ isOpen, onClose }: SharePanelProps) {
   const data = useArchitectureStore((s) => s.data);
   const dslSource = useArchitectureStore((s) => s.dslSource);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const [copiedType, setCopiedType] = useState<string | null>(null);
+
+  // Focus trap and keyboard handling
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Focus close button on open
+    closeButtonRef.current?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      // Focus trap
+      if (e.key === "Tab" && modalRef.current) {
+        const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstEl = focusableElements[0];
+        const lastEl = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey && document.activeElement === firstEl) {
+          e.preventDefault();
+          lastEl?.focus();
+        } else if (!e.shiftKey && document.activeElement === lastEl) {
+          e.preventDefault();
+          firstEl?.focus();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   // Generate shareable URL
   const generateShareUrl = useCallback(() => {
@@ -71,15 +108,27 @@ export function SharePanel({ isOpen, onClose }: SharePanelProps) {
   const safeName = archName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
   return (
-    <div className="share-panel-overlay" onClick={onClose}>
-      <div className="share-panel-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="share-panel-overlay" onClick={onClose} role="presentation">
+      <div
+        ref={modalRef}
+        className="share-panel-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="share-panel-title"
+      >
         <div className="share-panel-header">
           <div className="share-panel-title">
-            <Share2 size={20} />
-            <h2>Share & Export</h2>
+            <Share2 size={20} aria-hidden="true" />
+            <h2 id="share-panel-title">Share & Export</h2>
           </div>
-          <button className="share-close-btn" onClick={onClose}>
-            <X size={18} />
+          <button
+            ref={closeButtonRef}
+            className="share-close-btn"
+            onClick={onClose}
+            aria-label="Close share panel"
+          >
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
@@ -87,7 +136,7 @@ export function SharePanel({ isOpen, onClose }: SharePanelProps) {
           {/* Shareable Link */}
           <div className="share-section">
             <h3>
-              <Link size={16} />
+              <Link size={16} aria-hidden="true" />
               Shareable Link
             </h3>
             <p>Anyone with this link can view your architecture</p>
@@ -97,9 +146,18 @@ export function SharePanel({ isOpen, onClose }: SharePanelProps) {
                 readOnly
                 value={shareUrl}
                 onClick={(e) => (e.target as HTMLInputElement).select()}
+                aria-label="Shareable URL"
               />
-              <button className="share-copy-btn" onClick={() => handleCopy("url", shareUrl)}>
-                {copiedType === "url" ? <Check size={16} /> : <Copy size={16} />}
+              <button
+                className="share-copy-btn"
+                onClick={() => handleCopy("url", shareUrl)}
+                aria-label={copiedType === "url" ? "URL copied" : "Copy URL"}
+              >
+                {copiedType === "url" ? (
+                  <Check size={16} aria-hidden="true" />
+                ) : (
+                  <Copy size={16} aria-hidden="true" />
+                )}
                 {copiedType === "url" ? "Copied!" : "Copy"}
               </button>
             </div>
@@ -108,58 +166,72 @@ export function SharePanel({ isOpen, onClose }: SharePanelProps) {
           {/* Export Options */}
           <div className="share-section">
             <h3>
-              <Download size={16} />
+              <Download size={16} aria-hidden="true" />
               Export
             </h3>
-            <div className="export-grid">
+            <div className="export-grid" role="list">
               {/* DSL */}
-              <div className="export-card">
+              <div className="export-card" role="listitem">
                 <div className="export-icon">
-                  <FileCode size={24} />
+                  <FileCode size={24} aria-hidden="true" />
                 </div>
                 <div className="export-info">
                   <h4>Sruja DSL</h4>
                   <p>.sruja file</p>
                 </div>
                 <div className="export-actions">
-                  <button onClick={() => handleCopy("dsl", dsl)} title="Copy">
-                    {copiedType === "dsl" ? <Check size={14} /> : <Copy size={14} />}
+                  <button
+                    onClick={() => handleCopy("dsl", dsl)}
+                    aria-label={copiedType === "dsl" ? "DSL copied" : "Copy DSL"}
+                  >
+                    {copiedType === "dsl" ? (
+                      <Check size={14} aria-hidden="true" />
+                    ) : (
+                      <Copy size={14} aria-hidden="true" />
+                    )}
                   </button>
                   <button
                     onClick={() => handleDownload(`${safeName}.sruja`, dsl, "text/plain")}
-                    title="Download"
+                    aria-label="Download DSL file"
                   >
-                    <Download size={14} />
+                    <Download size={14} aria-hidden="true" />
                   </button>
                 </div>
               </div>
 
               {/* JSON */}
-              <div className="export-card">
+              <div className="export-card" role="listitem">
                 <div className="export-icon">
-                  <FileJson size={24} />
+                  <FileJson size={24} aria-hidden="true" />
                 </div>
                 <div className="export-info">
                   <h4>JSON</h4>
                   <p>.json file</p>
                 </div>
                 <div className="export-actions">
-                  <button onClick={() => handleCopy("json", json)} title="Copy">
-                    {copiedType === "json" ? <Check size={14} /> : <Copy size={14} />}
+                  <button
+                    onClick={() => handleCopy("json", json)}
+                    aria-label={copiedType === "json" ? "JSON copied" : "Copy JSON"}
+                  >
+                    {copiedType === "json" ? (
+                      <Check size={14} aria-hidden="true" />
+                    ) : (
+                      <Copy size={14} aria-hidden="true" />
+                    )}
                   </button>
                   <button
                     onClick={() => handleDownload(`${safeName}.json`, json, "application/json")}
-                    title="Download"
+                    aria-label="Download JSON file"
                   >
-                    <Download size={14} />
+                    <Download size={14} aria-hidden="true" />
                   </button>
                 </div>
               </div>
 
               {/* Markdown (DSL in code block) */}
-              <div className="export-card">
+              <div className="export-card" role="listitem">
                 <div className="export-icon">
-                  <FileText size={24} />
+                  <FileText size={24} aria-hidden="true" />
                 </div>
                 <div className="export-info">
                   <h4>Markdown</h4>
@@ -168,9 +240,13 @@ export function SharePanel({ isOpen, onClose }: SharePanelProps) {
                 <div className="export-actions">
                   <button
                     onClick={() => handleCopy("md", `# ${archName}\n\n\`\`\`sruja\n${dsl}\n\`\`\``)}
-                    title="Copy"
+                    aria-label={copiedType === "md" ? "Markdown copied" : "Copy Markdown"}
                   >
-                    {copiedType === "md" ? <Check size={14} /> : <Copy size={14} />}
+                    {copiedType === "md" ? (
+                      <Check size={14} aria-hidden="true" />
+                    ) : (
+                      <Copy size={14} aria-hidden="true" />
+                    )}
                   </button>
                   <button
                     onClick={() =>
@@ -180,9 +256,9 @@ export function SharePanel({ isOpen, onClose }: SharePanelProps) {
                         "text/markdown"
                       )
                     }
-                    title="Download"
+                    aria-label="Download Markdown file"
                   >
-                    <Download size={14} />
+                    <Download size={14} aria-hidden="true" />
                   </button>
                 </div>
               </div>
