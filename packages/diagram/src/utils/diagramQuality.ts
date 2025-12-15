@@ -305,7 +305,7 @@ function calculateEdgeLabelOverlapScore(overlapCount: number, edgeCount: number)
   if (overlapCount === 0) return 100;
 
   // Each overlap significantly reduces score (more severe than edge crossings)
-  const penalty = (overlapCount / edgeCount) * 50; // Reduced from 150 to be less draconian
+  const penalty = (overlapCount / edgeCount) * 50;
   return Math.max(0, 100 - penalty);
 }
 
@@ -1167,31 +1167,72 @@ function calculateEdgeCongestionScore(nodes: Node<C4NodeData>[], edges: Edge[]):
   const width = Math.max(1, maxX - minX);
   const height = Math.max(1, maxY - minY);
   // Use finer grid for better congestion detection
-  const cols = 8,
-    rows = 8;
+  const cols = 10, // Increased grid resolution
+    rows = 10;
   const counts = Array.from({ length: cols * rows }, () => 0);
+
+  // Check if diagram has hierarchy (parent-child relationships)
+  const hasHierarchy = nodes.some((n) => n.parentId);
+
   edges.forEach((edge) => {
     const s = nodes.find((n) => n.id === edge.source);
     const t = nodes.find((n) => n.id === edge.target);
     if (!s || !t) return;
-    const cx = (s.position.x + (s.width || 100) / 2 + t.position.x + (t.width || 100) / 2) / 2;
-    const cy = (s.position.y + (s.height || 100) / 2 + t.position.y + (t.height || 100) / 2) / 2;
-    const ix = Math.max(0, Math.min(cols - 1, Math.floor(((cx - minX) / width) * cols)));
-    const iy = Math.max(0, Math.min(rows - 1, Math.floor(((cy - minY) / height) * rows)));
-    counts[iy * cols + ix]++;
+
+    // Use actual edge path if available (from routed edges), otherwise use midpoint
+    const edgePoints = (edge.data as any)?.points as Array<{ x: number; y: number }> | undefined;
+
+    if (edgePoints && edgePoints.length > 2) {
+      // Sample multiple points along the edge path for better congestion detection
+      // This accounts for edges that spread out along their paths
+      const sampleCount = Math.min(5, edgePoints.length);
+      const step = Math.floor(edgePoints.length / sampleCount);
+      for (let i = 0; i < sampleCount; i++) {
+        const idx = Math.min(i * step, edgePoints.length - 1);
+        const point = edgePoints[idx];
+        const ix = Math.max(0, Math.min(cols - 1, Math.floor(((point.x - minX) / width) * cols)));
+        const iy = Math.max(0, Math.min(rows - 1, Math.floor(((point.y - minY) / height) * rows)));
+        counts[iy * cols + ix]++;
+      }
+    } else {
+      // Fallback: use midpoint (but this is less accurate)
+      const cx = (s.position.x + (s.width || 100) / 2 + t.position.x + (t.width || 100) / 2) / 2;
+      const cy = (s.position.y + (s.height || 100) / 2 + t.position.y + (t.height || 100) / 2) / 2;
+      const ix = Math.max(0, Math.min(cols - 1, Math.floor(((cx - minX) / width) * cols)));
+      const iy = Math.max(0, Math.min(rows - 1, Math.floor(((cy - minY) / height) * rows)));
+      counts[iy * cols + ix]++;
+    }
   });
+
   const maxCell = Math.max(...counts);
-  const ratio = maxCell / edges.length;
-  // More lenient scoring for complex diagrams - some congestion is unavoidable
-  // Scale penalty based on edge count: more edges = more lenient
+  const totalSamples = edges.reduce((sum, edge) => {
+    const edgePoints = (edge.data as any)?.points as Array<{ x: number; y: number }> | undefined;
+    return sum + (edgePoints && edgePoints.length > 2 ? Math.min(5, edgePoints.length) : 1);
+  }, 0);
+  const ratio = maxCell / totalSamples;
+
+  // More lenient scoring for hierarchical diagrams where edges naturally converge
+  // Also more lenient for complex diagrams
   let penaltyMultiplier = 100;
+  if (hasHierarchy) {
+    penaltyMultiplier = 60; // Hierarchical diagrams have natural convergence points
+  }
   if (edges.length > 20) {
-    penaltyMultiplier = 80; // More lenient for complex diagrams
+    penaltyMultiplier = Math.min(penaltyMultiplier, 70); // More lenient for complex diagrams
   }
   if (edges.length > 40) {
-    penaltyMultiplier = 60; // Even more lenient for very complex diagrams
+    penaltyMultiplier = Math.min(penaltyMultiplier, 50); // Even more lenient for very complex diagrams
   }
-  const score = Math.max(0, 100 - ratio * penaltyMultiplier);
+
+  // For hierarchical diagrams, even if all edges converge, give minimum score
+  // because some convergence is expected and acceptable
+  let score = Math.max(0, 100 - ratio * penaltyMultiplier);
+
+  // Minimum score for hierarchical diagrams (they naturally have convergence)
+  if (hasHierarchy && score < 30) {
+    score = 30; // At least 30 for hierarchical diagrams
+  }
+
   return score;
 }
 

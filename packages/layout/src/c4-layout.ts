@@ -1276,11 +1276,12 @@ export function layout(
             }
 
             // Try each combination, prioritizing those with fewer crossings
-            // Sort combinations by how promising they look (prefer less-used sides)
+            // Sort combinations by how promising they look (prefer less-used ports)
+            // Use precise port position in key to differentiate ports on same side
             const sortedCombinations = combinations
               .map((combo) => {
-                const srcPortKey = `${src.bbox.x},${src.bbox.y}:${combo.sp.side}`;
-                const dstPortKey = `${dst.bbox.x},${dst.bbox.y}:${combo.tp.side}`;
+                const srcPortKey = `${src.bbox.x},${src.bbox.y}:${combo.sp.side}:${Math.round(combo.sp.position.x)},${Math.round(combo.sp.position.y)}`;
+                const dstPortKey = `${dst.bbox.x},${dst.bbox.y}:${combo.tp.side}:${Math.round(combo.tp.position.x)},${Math.round(combo.tp.position.y)}`;
                 const srcUsage = portUsage.get(srcPortKey) || 0;
                 const dstUsage = portUsage.get(dstPortKey) || 0;
                 return { combo, priority: srcUsage + dstUsage }; // Lower usage = higher priority

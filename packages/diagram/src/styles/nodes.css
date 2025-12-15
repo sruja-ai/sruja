@@ -400,3 +400,58 @@
     align-items: center;
     justify-content: center;
 }
+
+/* =====================================================
+   GOVERNANCE BADGES ON NODES
+   ===================================================== */
+
+.governance-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    display: flex;
+    gap: 3px;
+    z-index: 10;
+}
+
+.gov-badge-item {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 5px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.gov-badge-item svg {
+    flex-shrink: 0;
+}
+
+.gov-badge-item.req {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+
+.gov-badge-item.adr {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+/* Badge on hover - slightly enlarge */
+.c4-node:hover .governance-badge {
+    transform: scale(1.05);
+}
+
+/* Position adjustment for different node types */
+.person-node .governance-badge {
+    top: 4px;
+    right: 4px;
+}
+
+.system-boundary-node .governance-badge,
+.container-boundary-node .governance-badge {
+    top: -4px;
+    right: 8px;
+}

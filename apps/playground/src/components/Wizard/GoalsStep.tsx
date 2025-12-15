@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Target, Lightbulb, Plus, Trash2 } from "lucide-react";
+import { Target, Lightbulb, Plus, Trash2, LayoutTemplate } from "lucide-react";
 import { Button, Input } from "@sruja/ui";
 import { useArchitectureStore } from "../../stores/architectureStore";
 import { BestPracticeTip } from "../shared";
+import { TemplateGallery } from "./TemplateGallery";
 import type { RequirementJSON } from "../../types";
 import "./WizardSteps.css";
 
@@ -21,6 +22,7 @@ export function GoalsStep({ onNext }: GoalsStepProps) {
   const [newGoal, setNewGoal] = useState("");
   const [newRequirement, setNewRequirement] = useState("");
   const [reqType, setReqType] = useState<"functional" | "non-functional">("functional");
+  const [showTemplates, setShowTemplates] = useState(false);
 
   const isComplete = goals.length > 0 || requirements.length > 0;
 
@@ -94,10 +96,16 @@ export function GoalsStep({ onNext }: GoalsStepProps) {
         </div>
       </div>
 
-      <BestPracticeTip variant="tip" show={goals.length === 0 && requirements.length === 0}>
-        <strong>Start with "Why"</strong> — Good architectures are driven by clear goals. Examples:
-        "Enable 10x user growth", "Reduce latency to &lt;100ms", "Support offline mode"
-      </BestPracticeTip>
+      {/* Quick Start with Template */}
+      <div className="template-prompt">
+        <button className="template-prompt-btn" onClick={() => setShowTemplates(true)}>
+          <LayoutTemplate size={18} />
+          <span>Start from a Template</span>
+        </button>
+        <span className="template-prompt-hint">or define your own below</span>
+      </div>
+
+      <TemplateGallery isOpen={showTemplates} onClose={() => setShowTemplates(false)} />
 
       {/* Goals Section */}
       <div className="step-section">

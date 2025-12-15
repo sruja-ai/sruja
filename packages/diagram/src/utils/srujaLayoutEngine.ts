@@ -26,6 +26,7 @@ interface LayoutOptions {
   focusedContainerId?: string;
   direction?: "TB" | "LR" | "RL";
   expandedNodes?: Set<string>;
+  viewportSize?: { width: number; height: number };
 }
 
 /**
@@ -312,14 +313,23 @@ export function applySrujaLayout(
   // Get view state
   const viewState = getViewState(options);
 
-  // Select layout config based on diagram characteristics (including expanded nodes)
+  // Select layout config based on diagram characteristics (including expanded nodes and viewport)
+  // Try to get viewport size from window if not provided
+  const viewportSize =
+    options.viewportSize ||
+    (typeof window !== "undefined"
+      ? { width: window.innerWidth, height: window.innerHeight }
+      : undefined);
+
   const layoutConfig = selectLayoutConfig(
     nodes,
     edges,
     options.level,
     options.focusedSystemId,
     options.focusedContainerId,
-    options.expandedNodes
+    options.expandedNodes,
+    undefined, // rules (use defaults)
+    viewportSize
   );
 
   // Build layout options from config, applying spacing rules

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Share2 } from "lucide-react";
 import { WizardStepper } from "./WizardStepper";
 import type { WizardStep } from "./WizardStepper";
 import { GoalsStep } from "./GoalsStep";
@@ -7,12 +8,15 @@ import { ContainersStep } from "./ContainersStep";
 import { ComponentsStep } from "./ComponentsStep";
 import { FlowsStep } from "./FlowsStep";
 import { DslPreview } from "./DslPreview";
+import { ValidationPanel } from "./ValidationPanel";
+import { SharePanel } from "./SharePanel";
 import { useArchitectureStore } from "../../stores/architectureStore";
 import { convertJsonToDsl } from "../../utils/jsonToDsl";
 import "./BuilderWizard.css";
 
 export function BuilderWizard() {
   const [currentStep, setCurrentStep] = useState(0);
+  const [showShare, setShowShare] = useState(false);
   const data = useArchitectureStore((s) => s.data);
 
   // Generate current DSL for preview
@@ -113,9 +117,18 @@ export function BuilderWizard() {
 
         {/* DSL Preview Sidebar */}
         <div className="wizard-sidebar">
+          <div className="sidebar-actions">
+            <button className="share-btn" onClick={() => setShowShare(true)}>
+              <Share2 size={14} />
+              Share
+            </button>
+          </div>
+          <ValidationPanel compact />
           <DslPreview dsl={currentDsl} />
         </div>
       </div>
+
+      <SharePanel isOpen={showShare} onClose={() => setShowShare(false)} />
     </div>
   );
 }

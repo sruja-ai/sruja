@@ -28,6 +28,9 @@ export interface LayoutContext {
   // Extended metrics for better layout selection
   relationshipDensity: number; // edges/nodes ratio (higher = more connected)
   hasBidirectionalEdges: boolean; // Has pairs of edges A->B and B->A
+  edgeFlowDirection: "vertical" | "horizontal" | "mixed"; // Dominant edge flow pattern
+  estimatedAspectRatio: number; // Estimated diagram aspect ratio (width/height)
+  viewportAspectRatio?: number; // Viewport aspect ratio if available
 }
 
 export interface LayoutConfig {
@@ -46,6 +49,115 @@ export interface LayoutConfig {
 }
 
 /**
+ * Analyze edge flow direction to determine optimal layout direction
+ * Uses graph structure analysis since positions aren't available yet
+ */
+function analyzeEdgeFlow(
+  nodes: Node<C4NodeData>[],
+  edges: Edge[]
+): "vertical" | "horizontal" | "mixed" {
+  if (edges.length === 0) return "vertical"; // Default to vertical
+
+  // Analyze graph structure to infer flow direction
+  const hasHierarchy = nodes.some((n) => n.parentId);
+
+  // Hierarchical graphs typically flow vertically (parent → child)
+  if (hasHierarchy) {
+    // Count parent-child edges vs sibling edges
+    let parentChildEdges = 0;
+    let siblingEdges = 0;
+
+    for (const edge of edges) {
+      const source = nodes.find((n) => n.id === edge.source);
+      const target = nodes.find((n) => n.id === edge.target);
+      if (!source || !target) continue;
+
+      // Check if it's a parent-child relationship
+      if (source.parentId === target.id || target.parentId === source.id) {
+        parentChildEdges++;
+      } else if (source.parentId && target.parentId && source.parentId === target.parentId) {
+        siblingEdges++;
+      }
+    }
+
+    // More parent-child edges → vertical flow
+    // More sibling edges → could be horizontal
+    if (parentChildEdges > siblingEdges * 2) {
+      return "vertical";
+    } else if (siblingEdges > parentChildEdges) {
+      return "horizontal";
+    }
+    return "mixed";
+  }
+
+  // For flat graphs, analyze connectivity patterns
+  // Dense graphs with many cross-connections might benefit from horizontal
+  const nodeCount = nodes.length;
+  const edgeCount = edges.length;
+  const density = edgeCount / Math.max(1, nodeCount);
+
+  // Very dense graphs (many edges per node) often work better horizontally
+  if (density > 2.5) {
+    return "horizontal";
+  }
+
+  // Default: vertical for most cases
+  return "vertical";
+}
+
+/**
+ * Estimate diagram aspect ratio based on node count and structure
+ */
+function estimateAspectRatio(
+  nodes: Node<C4NodeData>[],
+  edges: Edge[],
+  hasHierarchy: boolean
+): number {
+  const nodeCount = nodes.length;
+  const edgeCount = edges.length;
+
+  // For hierarchical diagrams, estimate based on depth vs breadth
+  if (hasHierarchy) {
+    // Count hierarchy levels
+    const levels = new Set<number>();
+    nodes.forEach((n) => {
+      let depth = 0;
+      let current = n;
+      while (current.parentId) {
+        depth++;
+        current = nodes.find((n2) => n2.id === current.parentId)!;
+        if (!current) break;
+      }
+      levels.add(depth);
+    });
+    const maxDepth = Math.max(...Array.from(levels));
+
+    // Estimate: deeper hierarchies → taller diagrams
+    // Wider hierarchies → wider diagrams
+    const avgChildrenPerParent = nodeCount / Math.max(1, maxDepth);
+
+    if (maxDepth > avgChildrenPerParent) {
+      return 0.7; // Taller (vertical preferred)
+    } else {
+      return 1.5; // Wider (horizontal might be better)
+    }
+  }
+
+  // For flat graphs, estimate based on edge density and node count
+  const density = edgeCount / Math.max(1, nodeCount);
+
+  // Dense graphs tend to be wider (more horizontal connections)
+  if (density > 2.0) {
+    return 1.8; // Wide
+  } else if (density < 1.0) {
+    return 0.8; // Tall
+  }
+
+  // Default: square-ish
+  return 1.0;
+}
+
+/**
  * Analyze layout context from nodes and edges
  */
 export function analyzeLayoutContext(
@@ -54,7 +166,8 @@ export function analyzeLayoutContext(
   currentLevel: C4Level,
   focusedSystemId?: string,
   focusedContainerId?: string,
-  expandedNodes?: Set<string>
+  expandedNodes?: Set<string>,
+  viewportSize?: { width: number; height: number }
 ): LayoutContext {
   const nodeCount = nodes.length;
   const edgeCount = edges.length;
@@ -106,6 +219,15 @@ export function analyzeLayoutContext(
     edgePairs.add(forwardKey);
   }
 
+  // Analyze edge flow direction
+  const edgeFlowDirection = analyzeEdgeFlow(nodes, edges);
+
+  // Estimate aspect ratio
+  const estimatedAspectRatio = estimateAspectRatio(nodes, edges, hasHierarchy);
+
+  // Viewport aspect ratio if available
+  const viewportAspectRatio = viewportSize ? viewportSize.width / viewportSize.height : undefined;
+
   return {
     nodes,
     edges,
@@ -121,6 +243,9 @@ export function analyzeLayoutContext(
     complexity,
     relationshipDensity,
     hasBidirectionalEdges,
+    edgeFlowDirection,
+    estimatedAspectRatio,
+    viewportAspectRatio,
   };
 }
 
@@ -284,6 +409,67 @@ export const DEFAULT_LAYOUT_RULES: LayoutRule[] = [
     }),
   },
 
+  // Rule 6d: Adaptive direction based on edge flow and aspect ratio
+  {
+    id: "adaptive-direction",
+    name: "Adaptive Direction Layout",
+    priority: 52,
+    condition: (ctx) => {
+      // Use adaptive direction when we have clear flow patterns or aspect ratio mismatch
+      const hasClearFlow = ctx.edgeFlowDirection !== "mixed";
+      const aspectMismatch = ctx.viewportAspectRatio
+        ? Math.abs(ctx.estimatedAspectRatio - ctx.viewportAspectRatio) > 0.5
+        : ctx.estimatedAspectRatio < 0.6 || ctx.estimatedAspectRatio > 1.8;
+      return hasClearFlow || aspectMismatch;
+    },
+    action: (ctx) => {
+      // Determine optimal direction based on multiple factors
+      let direction: "DOWN" | "RIGHT" | "UP" | "LEFT" = "DOWN";
+
+      // Factor 1: Edge flow direction
+      if (ctx.edgeFlowDirection === "horizontal") {
+        direction = "RIGHT";
+      } else if (ctx.edgeFlowDirection === "vertical") {
+        direction = "DOWN";
+      }
+
+      // Factor 2: Aspect ratio - match diagram shape to viewport
+      if (ctx.viewportAspectRatio) {
+        // If viewport is wide and diagram is tall, use horizontal layout
+        if (ctx.viewportAspectRatio > 1.5 && ctx.estimatedAspectRatio < 0.8) {
+          direction = "RIGHT";
+        }
+        // If viewport is tall and diagram is wide, use vertical layout
+        else if (ctx.viewportAspectRatio < 0.7 && ctx.estimatedAspectRatio > 1.5) {
+          direction = "DOWN";
+        }
+      }
+
+      // Factor 3: Estimated aspect ratio alone (if no viewport)
+      if (!ctx.viewportAspectRatio) {
+        if (ctx.estimatedAspectRatio > 1.5) {
+          direction = "RIGHT"; // Wide diagram → horizontal layout
+        } else if (ctx.estimatedAspectRatio < 0.7) {
+          direction = "DOWN"; // Tall diagram → vertical layout
+        }
+      }
+
+      // Factor 4: Hierarchy depth - deep hierarchies work better vertically
+      if (ctx.hasHierarchy && ctx.estimatedAspectRatio < 1.0) {
+        direction = "DOWN";
+      }
+
+      return {
+        engine: "sruja",
+        direction,
+        options: {
+          nodeSpacing: direction === "RIGHT" ? 200 : 250,
+          layerSpacing: direction === "RIGHT" ? 220 : 280,
+        },
+      };
+    },
+  },
+
   // Rule 7: Wide diagrams (many nodes horizontally) - use vertical layout
   {
     id: "wide-vertical",
@@ -341,16 +527,18 @@ export function selectLayoutConfig(
   focusedSystemId?: string,
   focusedContainerId?: string,
   expandedNodes?: Set<string>,
-  rules: LayoutRule[] = DEFAULT_LAYOUT_RULES
+  rules: LayoutRule[] = DEFAULT_LAYOUT_RULES,
+  viewportSize?: { width: number; height: number }
 ): LayoutConfig {
-  // Analyze context
+  // Analyze context (including viewport for adaptive direction)
   const context = analyzeLayoutContext(
     nodes,
     edges,
     currentLevel,
     focusedSystemId,
     focusedContainerId,
-    expandedNodes
+    expandedNodes,
+    viewportSize
   );
 
   // Sort rules by priority (highest first)
