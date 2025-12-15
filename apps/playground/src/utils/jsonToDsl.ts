@@ -112,6 +112,10 @@ function renderRequirements(requirements?: RequirementJSON[]): string {
       if (r.title || r.description) {
         parts.push(`"${esc(r.title || r.description || "")}"`);
       }
+      // Add tags if present
+      if (r.tags && r.tags.length > 0) {
+        parts.push(`tags [${r.tags.join(", ")}]`);
+      }
       return `  ${parts.join(" ")}`;
     })
     .join("\n");
@@ -128,6 +132,10 @@ function renderADRs(adrs?: ADRJSON[]): string {
       if (a.context) bodyParts.push(`    context "${esc(a.context)}"`);
       if (a.decision) bodyParts.push(`    decision "${esc(a.decision)}"`);
       if (a.consequences) bodyParts.push(`    consequences "${esc(a.consequences)}"`);
+      // Add tags if present
+      if (a.tags && a.tags.length > 0) {
+        bodyParts.push(`    tags [${a.tags.join(", ")}]`);
+      }
       if (bodyParts.length > 0) {
         return `  ${parts.join(" ")} {\n${bodyParts.join("\n")}\n  }`;
       }

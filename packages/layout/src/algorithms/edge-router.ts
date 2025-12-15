@@ -30,35 +30,62 @@ export function calculateBestPortWithObstacles(
     score: number;
   }
 
-  // Calculate port positions on all 4 sides
-  // For better routing options, distribute ports more evenly along each side
-  const candidates: PortCandidate[] = [
-    {
+  // Generate multiple ports along each side for better edge distribution
+  // More ports = better spread = lower congestion
+  const candidates: PortCandidate[] = [];
+
+  // Number of ports per side - adaptive based on node size
+  const horizontalPorts = source.width < 200 ? 3 : source.width < 400 ? 5 : 7;
+  const verticalPorts = source.height < 200 ? 3 : source.height < 400 ? 5 : 7;
+
+  // Generate ports along each side, distributed evenly (avoiding corners)
+  // East side (right)
+  for (let i = 0; i < horizontalPorts; i++) {
+    const ratio = (i + 1) / (horizontalPorts + 1); // Distribute evenly
+    const y = source.y + source.height * ratio;
+    candidates.push({
       side: "east",
-      position: { x: srcRight, y: Math.max(source.y, Math.min(srcBottom, tc.y)) },
+      position: { x: srcRight, y },
       angle: 0,
-      // Score based on direction, but give all sides a base score to consider them
       score: dx > 0 ? absDx * 2 : absDx < absDy ? absDx * 0.5 : 0,
-    },
-    {
+    });
+  }
+
+  // West side (left)
+  for (let i = 0; i < horizontalPorts; i++) {
+    const ratio = (i + 1) / (horizontalPorts + 1);
+    const y = source.y + source.height * ratio;
+    candidates.push({
       side: "west",
-      position: { x: source.x, y: Math.max(source.y, Math.min(srcBottom, tc.y)) },
+      position: { x: source.x, y },
       angle: 180,
       score: dx < 0 ? absDx * 2 : absDx < absDy ? absDx * 0.5 : 0,
-    },
-    {
+    });
+  }
+
+  // South side (bottom)
+  for (let i = 0; i < verticalPorts; i++) {
+    const ratio = (i + 1) / (verticalPorts + 1);
+    const x = source.x + source.width * ratio;
+    candidates.push({
       side: "south",
-      position: { x: Math.max(source.x, Math.min(srcRight, tc.x)), y: srcBottom },
+      position: { x, y: srcBottom },
       angle: 90,
       score: dy > 0 ? absDy * 2 : absDy < absDx ? absDy * 0.5 : 0,
-    },
-    {
+    });
+  }
+
+  // North side (top)
+  for (let i = 0; i < verticalPorts; i++) {
+    const ratio = (i + 1) / (verticalPorts + 1);
+    const x = source.x + source.width * ratio;
+    candidates.push({
       side: "north",
-      position: { x: Math.max(source.x, Math.min(srcRight, tc.x)), y: source.y },
+      position: { x, y: source.y },
       angle: 270,
       score: dy < 0 ? absDy * 2 : absDy < absDx ? absDy * 0.5 : 0,
-    },
-  ];
+    });
+  }
 
   // Check clearance for each port (short ray cast outward)
   const CLEARANCE_DISTANCE = 20;
@@ -92,12 +119,13 @@ export function calculateBestPortWithObstacles(
       candidate.score -= 80;
     }
 
-    // Penalize ports that are already heavily used (distribute edges across all sides)
-    // This is critical for reducing crossings - spread edges across all 4 sides
+    // Penalize ports that are already heavily used (distribute edges across all ports)
+    // Track by actual position, not just side, to spread edges along each side
     if (usedPorts) {
-      const portKey = `${source.x},${source.y}:${candidate.side}`;
+      // Use precise position for port key to differentiate ports on same side
+      const portKey = `${source.x},${source.y}:${candidate.side}:${Math.round(candidate.position.x)},${Math.round(candidate.position.y)}`;
       const usageCount = usedPorts.get(portKey) || 0;
-      // More aggressive penalty to better distribute edges across all sides
+      // More aggressive penalty to better distribute edges across all ports
       // For dense graphs, this helps reduce crossings significantly
       const penaltyMultiplier = obstacles.length > 10 ? 80 : 60;
       candidate.score -= usageCount * penaltyMultiplier;
@@ -122,9 +150,9 @@ export function calculateBestPortWithObstacles(
   // Return best candidate
   const best = candidates[0];
 
-  // Track usage if provided
+  // Track usage if provided (use precise position to differentiate ports on same side)
   if (usedPorts) {
-    const portKey = `${source.x},${source.y}:${best.side}`;
+    const portKey = `${source.x},${source.y}:${best.side}:${Math.round(best.position.x)},${Math.round(best.position.y)}`;
     usedPorts.set(portKey, (usedPorts.get(portKey) || 0) + 1);
   }
 
@@ -136,10 +164,10 @@ export function calculateBestPortWithObstacles(
     for (const candidate of topCandidates) {
       // Give bonus to candidates that are less used (better distribution)
       if (usedPorts) {
-        const portKey = `${source.x},${source.y}:${candidate.side}`;
+        const portKey = `${source.x},${source.y}:${candidate.side}:${Math.round(candidate.position.x)},${Math.round(candidate.position.y)}`;
         const usageCount = usedPorts.get(portKey) || 0;
         if (usageCount === 0) {
-          candidate.score += 40; // Bonus for unused sides
+          candidate.score += 40; // Bonus for unused ports
         }
       }
     }
@@ -147,18 +175,18 @@ export function calculateBestPortWithObstacles(
     topCandidates.sort((a, b) => b.score - a.score);
     const best = topCandidates[0];
 
-    // Track usage if provided
+    // Track usage if provided (use precise position)
     if (usedPorts) {
-      const portKey = `${source.x},${source.y}:${best.side}`;
+      const portKey = `${source.x},${source.y}:${best.side}:${Math.round(best.position.x)},${Math.round(best.position.y)}`;
       usedPorts.set(portKey, (usedPorts.get(portKey) || 0) + 1);
     }
 
     return { side: best.side, position: best.position, angle: best.angle };
   }
 
-  // Track usage if provided
+  // Track usage if provided (use precise position)
   if (usedPorts) {
-    const portKey = `${source.x},${source.y}:${best.side}`;
+    const portKey = `${source.x},${source.y}:${best.side}:${Math.round(best.position.x)},${Math.round(best.position.y)}`;
     usedPorts.set(portKey, (usedPorts.get(portKey) || 0) + 1);
   }
 

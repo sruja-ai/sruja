@@ -47,12 +47,46 @@
 
 .dsl-preview-hint {
     font-weight: 400;
+    font-size: 0.6875rem;
     color: var(--text-3);
     margin-left: 0.5rem;
+    padding: 0.125rem 0.375rem;
+    background: var(--surface-1);
+    border-radius: 4px;
 }
 
-.dsl-preview-header>svg {
+.dsl-preview-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dsl-preview-actions>svg {
     color: var(--text-3);
+}
+
+/* Copy Button */
+.dsl-copy-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-2);
+    transition: all 0.15s;
+}
+
+.dsl-copy-btn:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.dsl-copy-btn svg {
+    color: inherit;
 }
 
 /* Code Block */
@@ -77,7 +111,7 @@
     color: var(--text-2);
 }
 
-/* Syntax Highlighting */
+/* Syntax Highlighting - Structure Keywords */
 .dsl-keyword {
     color: #c678dd;
     font-weight: 600;
@@ -87,6 +121,26 @@
     color: #c792ea;
 }
 
+/* Governance Keywords */
+.dsl-keyword-gov {
+    color: #10b981;
+    font-weight: 600;
+}
+
+[data-theme="dark"] .dsl-keyword-gov {
+    color: #6ee7b7;
+}
+
+/* Property Names */
+.dsl-property {
+    color: #e5c07b;
+}
+
+[data-theme="dark"] .dsl-property {
+    color: #ffcb6b;
+}
+
+/* Strings */
 .dsl-string {
     color: #98c379;
 }
@@ -95,14 +149,38 @@
     color: #a5d6a7;
 }
 
-.dsl-id {
-    color: #61afef;
+/* ADR Status Colors */
+.dsl-status-proposed {
+    color: #f59e0b !important;
+    font-style: italic;
 }
 
-[data-theme="dark"] .dsl-id {
-    color: #82aaff;
+.dsl-status-accepted {
+    color: #10b981 !important;
+    font-weight: 600;
 }
 
+.dsl-status-deprecated {
+    color: #ef4444 !important;
+    text-decoration: line-through;
+}
+
+/* Requirement Types */
+.dsl-req-type {
+    color: #3b82f6;
+    font-weight: 500;
+}
+
+/* Tags */
+.dsl-tags {
+    color: #8b5cf6;
+}
+
+[data-theme="dark"] .dsl-tags {
+    color: #a78bfa;
+}
+
+/* Arrows */
 .dsl-arrow {
     color: #e5c07b;
     font-weight: 600;
@@ -112,6 +190,7 @@
     color: #ffcb6b;
 }
 
+/* Comments */
 .dsl-comment {
     color: #5c6370;
     font-style: italic;
@@ -121,6 +200,16 @@
     color: #676e95;
 }
 
+/* IDs (for legacy) */
+.dsl-id {
+    color: #61afef;
+}
+
+[data-theme="dark"] .dsl-id {
+    color: #82aaff;
+}
+
+/* More indicator */
 .dsl-more {
     color: var(--text-3);
     font-style: italic;

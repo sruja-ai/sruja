@@ -93,11 +93,95 @@ function segmentIntersectsRect(
 
 // --- Smart Port Selection ---
 
+/**
+ * Generate multiple ports along each side of a node to reduce edge congestion
+ * More ports = better edge distribution = lower congestion
+ */
+function generatePorts(node: RouteNode, padding: number): Port[] {
+  const ports: Port[] = [];
+  const { x, y, width, height } = node.bbox;
+
+  // Number of ports per side - more for larger nodes
+  // For small nodes (width/height < 200): 3 ports per side
+  // For medium nodes (200-400): 5 ports per side
+  // For large nodes (>400): 7 ports per side
+  const horizontalPorts = width < 200 ? 3 : width < 400 ? 5 : 7;
+  const verticalPorts = height < 200 ? 3 : height < 400 ? 5 : 7;
+
+  // Generate ports along each side
+  // East side (right)
+  for (let i = 0; i < horizontalPorts; i++) {
+    const ratio = (i + 1) / (horizontalPorts + 1); // Distribute evenly, avoid corners
+    ports.push({
+      side: "east",
+      position: { x: x + width + padding, y: y + height * ratio },
+    });
+  }
+
+  // West side (left)
+  for (let i = 0; i < horizontalPorts; i++) {
+    const ratio = (i + 1) / (horizontalPorts + 1);
+    ports.push({
+      side: "west",
+      position: { x: x - padding, y: y + height * ratio },
+    });
+  }
+
+  // South side (bottom)
+  for (let i = 0; i < verticalPorts; i++) {
+    const ratio = (i + 1) / (verticalPorts + 1);
+    ports.push({
+      side: "south",
+      position: { x: x + width * ratio, y: y + height + padding },
+    });
+  }
+
+  // North side (top)
+  for (let i = 0; i < verticalPorts; i++) {
+    const ratio = (i + 1) / (verticalPorts + 1);
+    ports.push({
+      side: "north",
+      position: { x: x + width * ratio, y: y - padding },
+    });
+  }
+
+  return ports;
+}
+
+// Port usage tracking to avoid congestion - shared across all edges
+const portUsageMap = new Map<string, Map<string, number>>(); // nodeId -> portKey -> usage count
+
+function getPortKey(port: Port): string {
+  // Create unique key for port position (rounded to avoid floating point issues)
+  return `${port.side}-${Math.round(port.position.x)}-${Math.round(port.position.y)}`;
+}
+
+function getPortUsage(nodeId: string, port: Port): number {
+  const nodeUsage = portUsageMap.get(nodeId);
+  if (!nodeUsage) return 0;
+  const key = getPortKey(port);
+  return nodeUsage.get(key) || 0;
+}
+
+function incrementPortUsage(nodeId: string, port: Port): void {
+  if (!portUsageMap.has(nodeId)) {
+    portUsageMap.set(nodeId, new Map());
+  }
+  const nodeUsage = portUsageMap.get(nodeId)!;
+  const key = getPortKey(port);
+  nodeUsage.set(key, (nodeUsage.get(key) || 0) + 1);
+}
+
+export function resetPortUsage(): void {
+  portUsageMap.clear();
+}
+
 export function pickSmartPort(
   node: RouteNode,
   towardNode: RouteNode,
   obstacles: string[],
-  nodes: Map<string, RouteNode>
+  nodes: Map<string, RouteNode>,
+  nodeId?: string // Optional node ID for usage tracking
 ): Port {
   const srcCenter = {
     x: node.bbox.x + node.bbox.width / 2,
@@ -112,23 +196,28 @@ export function pickSmartPort(
   const dy = dstCenter.y - srcCenter.y;
   const padding = NO_ENTRY_MARGIN;
 
-  // Candidates
-  const ports: Port[] = [
-    { side: "east", position: { x: node.bbox.x + node.bbox.width + padding, y: srcCenter.y } },
-    { side: "west", position: { x: node.bbox.x - padding, y: srcCenter.y } },
-    { side: "south", position: { x: srcCenter.x, y: node.bbox.y + node.bbox.height + padding } },
-    { side: "north", position: { x: srcCenter.x, y: node.bbox.y - padding } },
-  ];
+  // Generate multiple ports along each side for better edge distribution
+  const ports = generatePorts(node, padding);
 
-  // Sort by "natural direction"
-  ports.sort((a, b) => {
-    const scoreA = getDirectionScore(a.side, dx, dy);
-    const scoreB = getDirectionScore(b.side, dx, dy);
-    return scoreB - scoreA; // higher is better
+  // Score each port based on direction, distance, and usage diversity
+  const scoredPorts = ports.map((port) => {
+    const directionScore = getDirectionScore(port.side, dx, dy);
+    const distanceScore = getDistanceScore(port.position, dstCenter);
+    // Diversity bonus: prefer unused or less-used ports (penalty for high usage)
+    const usageCount = nodeId ? getPortUsage(nodeId, port) : 0;
+    const diversityBonus = Math.max(0, 20 - usageCount * 5); // Up to 20 bonus for unused ports
+
+    return {
+      port,
+      score: directionScore + distanceScore + diversityBonus,
+    };
   });
 
-  // Check clearance (short ray cast)
-  for (const port of ports) {
+  // Sort by score (higher is better)
+  scoredPorts.sort((a, b) => b.score - a.score);
+
+  // Check clearance (short ray cast) - try best ports first
+  for (const { port } of scoredPorts) {
     // Cast a small ray outward
     const rayEnd = { ...port.position };
     if (port.side === "east") rayEnd.x += 20;
@@ -137,21 +226,43 @@ export function pickSmartPort(
     if (port.side === "north") rayEnd.y -= 20;
 
     if (!segmentIntersectsRect(port.position, rayEnd, obstacles, nodes)) {
+      // Track usage if nodeId provided
+      if (nodeId) {
+        incrementPortUsage(nodeId, port);
+      }
       return port;
     }
   }
 
   // Fallback: Best directional port even if blocked (router will handle detour)
-  return ports[0];
+  const selectedPort = scoredPorts[0].port;
+  if (nodeId) {
+    incrementPortUsage(nodeId, selectedPort);
+  }
+  return selectedPort;
+}
+
+function getDistanceScore(portPos: Point, targetCenter: Point): number {
+  // Prefer ports closer to target (inverse distance, normalized)
+  const dx = targetCenter.x - portPos.x;
+  const dy = targetCenter.y - portPos.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  // Normalize: closer ports get higher score (max distance ~1000px gives score ~10)
+  return Math.max(0, 10 - distance / 100);
 }
 
 function getDirectionScore(side: PortSide, dx: number, dy: number): number {
-  // Dot product-ish
-  if (side === "east" && dx > 0) return Math.abs(dx);
-  if (side === "west" && dx < 0) return Math.abs(dx);
-  if (side === "south" && dy > 0) return Math.abs(dy);
-  if (side === "north" && dy < 0) return Math.abs(dy);
-  return 0;
+  // Normalized direction score (0-50 range) to balance with distance score
+  // This prevents direction from completely dominating port selection
+  let rawScore = 0;
+  if (side === "east" && dx > 0) rawScore = Math.abs(dx);
+  else if (side === "west" && dx < 0) rawScore = Math.abs(dx);
+  else if (side === "south" && dy > 0) rawScore = Math.abs(dy);
+  else if (side === "north" && dy < 0) rawScore = Math.abs(dy);
+
+  // Normalize: scale to 0-50 range (typical distances 0-500px)
+  // This makes direction and distance scores comparable
+  return Math.min(50, rawScore / 10);
 }
 
 // --- Robust Manhattan Router ---
@@ -422,9 +533,10 @@ export function routeEdge(
   );
   const obstacleIds = obstacles.map((o) => o.id);
 
-  // Phase 5: Smart Port Selection
-  const sourcePort = pickSmartPort(sourceNode, targetNode, obstacleIds, nodes);
-  const targetPort = pickSmartPort(targetNode, sourceNode, obstacleIds, nodes); // Reciprocal?
+  // Phase 5: Smart Port Selection (with usage tracking for diversity)
+  // Use node IDs for port usage tracking to spread edges across ports
+  const sourcePort = pickSmartPort(sourceNode, targetNode, obstacleIds, nodes, edge.sourceId);
+  const targetPort = pickSmartPort(targetNode, sourceNode, obstacleIds, nodes, edge.targetId);
 
   switch (level) {
     case "L0":
