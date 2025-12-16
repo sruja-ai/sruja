@@ -44,10 +44,10 @@ export interface BundlingOptions {
 }
 
 export const DEFAULT_BUNDLING_OPTIONS: BundlingOptions = {
-  angleTolerance: 25, // Increased to bundle more edges and reduce congestion
-  positionTolerance: 80, // Increased for better bundling of parallel edges
-  fanOutSpacing: 8, // Reduced for tighter bundles, better congestion management
-  minBundleSize: 2,
+  angleTolerance: 5, // Strict angle tolerance to only bundle typically parallel lines
+  positionTolerance: 20, // Only bundle edges that are already close
+  fanOutSpacing: 15, // Increased spacing for clear separation
+  minBundleSize: 2, // Bundle any pair of parallel edges
 };
 
 // ============================================================================
@@ -147,45 +147,38 @@ export function applyBundleOffsets(
         continue;
       }
 
-      // Calculate perpendicular direction at start and end
+      // Calculate perpendicular direction based on the first segment
+      // We apply this same offset vector to the entire path to keeping parallel edges parallel
       const start = edge.points[0];
       const second = edge.points[1];
-      const secondLast = edge.points[edge.points.length - 2];
-      const end = edge.points[edge.points.length - 1];
 
-      const startPerp = perpendicularOffset(start, second, offset);
-      const endPerp = perpendicularOffset(end, secondLast, offset);
+      const dx = second.x - start.x;
+      const dy = second.y - start.y;
+      const len = Math.hypot(dx, dy);
 
-      // Apply offsets
-      const newPoints = [...edge.points];
-      newPoints[0] = startPerp;
-      newPoints[newPoints.length - 1] = endPerp;
+      let perpX = 0;
+      let perpY = 0;
+
+      if (len > 0.001) {
+        perpX = -dy / len;
+        perpY = dx / len;
+      }
+
+      const offsetX = perpX * offset;
+      const offsetY = perpY * offset;
+
+      // Apply offset to ALL points
+      // This creates distinct parallel paths ("bus" style) instead of merging in the middle
+      const newPoints = edge.points.map((p) => ({
+        x: p.x + offsetX,
+        y: p.y + offsetY,
+      }));
 
       result.set(edgeId, newPoints);
     }
   }
 
   return result;
-}
-
-/**
- * Calculate a point offset perpendicular to the line direction.
- */
-function perpendicularOffset(point: Point, toward: Point, offset: number): Point {
-  const dx = toward.x - point.x;
-  const dy = toward.y - point.y;
-  const len = Math.hypot(dx, dy);
-
-  if (len < 0.001) return point;
-
-  // Perpendicular unit vector (rotated 90 degrees)
-  const perpX = -dy / len;
-  const perpY = dx / len;
-
-  return {
-    x: point.x + perpX * offset,
-    y: point.y + perpY * offset,
-  };
 }
 
 // ============================================================================

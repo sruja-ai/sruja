@@ -1,6 +1,6 @@
 .overview-panel {
     padding: 1.5rem;
-    background: var(--panel-bg);
+    background: var(--bg-primary);
     border-radius: 12px;
     margin-bottom: 1rem;
     height: 100%;
@@ -11,36 +11,27 @@
 /* Hero Section */
 .overview-hero {
     margin-bottom: 1.5rem;
-    text-align: center;
+    text-align: left;
     padding-bottom: 1.5rem;
     border-bottom: 1px solid var(--border-color);
 }
 
 .overview-title {
-    font-size: 2rem;
+    font-size: 1.75rem;
     font-weight: 700;
     margin: 0 0 0.25rem 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-[data-theme="dark"] .overview-title {
-    background: linear-gradient(135deg, #a3b8ff 0%, #c4a6e8 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
+    color: var(--text-primary);
 }
 
 .overview-architecture-name {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 600;
-    margin: 0 0 0.75rem 0;
+    margin: 0 0 0.5rem 0;
     color: var(--text-primary);
 }
 
 .overview-description {
-    font-size: 1.1rem;
+    font-size: 1rem;
     color: var(--text-secondary);
     margin: 0 0 0.5rem 0;
     line-height: 1.5;
@@ -48,10 +39,9 @@
 
 .overview-summary {
     font-size: 0.95rem;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     margin: 0;
     line-height: 1.5;
-    font-style: italic;
 }
 
 /* Quick Stats */
@@ -78,7 +68,6 @@
 
 .stat-card:hover {
     background: var(--card-hover-bg);
-    transform: translateY(-2px);
 }
 
 .stat-card svg {
@@ -115,9 +104,9 @@
     flex-direction: column;
     gap: 0.25rem;
     padding: 0.75rem 1rem;
-    background: rgba(102, 126, 234, 0.1);
+    background: var(--card-bg);
     border-radius: 8px;
-    border: 1px solid rgba(102, 126, 234, 0.2);
+    border: 1px solid var(--border-color);
 }
 
 .metadata-key {

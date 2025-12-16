@@ -16,11 +16,14 @@ export function removeOverlaps(
 ): Map<C4Id, PositionedNode> {
   const nodes = [...positioned.values()];
 
+  // Optimized: cache nodes length to avoid repeated property access
+  const nodesLength = nodes.length;
+
   for (let iter = 0; iter < iterations; iter++) {
     let moved = false;
 
-    for (let i = 0; i < nodes.length; i++) {
-      for (let j = i + 1; j < nodes.length; j++) {
+    for (let i = 0; i < nodesLength; i++) {
+      for (let j = i + 1; j < nodesLength; j++) {
         const a = nodes[i];
         const b = nodes[j];
 
@@ -28,24 +31,41 @@ export function removeOverlaps(
         const shouldResolve = shouldResolveOverlap(a, b);
         if (!shouldResolve) continue;
 
-        if (rectsOverlap(a.bbox, b.bbox, padding)) {
-          const dx = a.bbox.x + a.bbox.width / 2 - (b.bbox.x + b.bbox.width / 2);
-          const dy = a.bbox.y + a.bbox.height / 2 - (b.bbox.y + b.bbox.height / 2);
+        // Optimized: cache bbox references to avoid repeated property access
+        const aBbox = a.bbox;
+        const bBbox = b.bbox;
+
+        if (rectsOverlap(aBbox, bBbox, padding)) {
+          // Optimized: cache center calculations
+          const aCenterX = aBbox.x + aBbox.width * 0.5;
+          const aCenterY = aBbox.y + aBbox.height * 0.5;
+          const bCenterX = bBbox.x + bBbox.width * 0.5;
+          const bCenterY = bBbox.y + bBbox.height * 0.5;
+
+          const dx = aCenterX - bCenterX;
+          const dy = aCenterY - bCenterY;
 
           // Push nodes apart - use larger push for better convergence
           // Increase push factor for better spacing, especially for expanded nodes
           const pushFactor = Math.max(8, padding * 0.5);
-          const pushX = Math.sign(dx) * Math.max(pushFactor, Math.abs(dx) / 8);
-          const pushY = Math.sign(dy) * Math.max(pushFactor, Math.abs(dy) / 8);
+          const absDx = Math.abs(dx);
+          const absDy = Math.abs(dy);
+          const pushX = Math.sign(dx) * Math.max(pushFactor, absDx * 0.125); // Use multiplication instead of division
+          const pushY = Math.sign(dy) * Math.max(pushFactor, absDy * 0.125);
 
-          a.x += pushX;
-          a.y += pushY;
-          b.x -= pushX;
-          b.y -= pushY;
-          a.bbox.x = a.x;
-          a.bbox.y = a.y;
-          b.bbox.x = b.x;
-          b.bbox.y = b.y;
+          const newAX = a.x + pushX;
+          const newAY = a.y + pushY;
+          const newBX = b.x - pushX;
+          const newBY = b.y - pushY;
+
+          a.x = newAX;
+          a.y = newAY;
+          b.x = newBX;
+          b.y = newBY;
+          aBbox.x = newAX;
+          aBbox.y = newAY;
+          bBbox.x = newBX;
+          bBbox.y = newBY;
           moved = true;
         }
       }
@@ -110,10 +130,11 @@ function rectsOverlap(
   b: { x: number; y: number; width: number; height: number },
   pad: number
 ): boolean {
-  return !(
-    a.x + a.width + pad < b.x ||
-    b.x + b.width + pad < a.x ||
-    a.y + a.height + pad < b.y ||
-    b.y + b.height + pad < a.y
-  );
+  // Optimized: cache boundaries to avoid repeated calculations
+  const aRight = a.x + a.width;
+  const aBottom = a.y + a.height;
+  const bRight = b.x + b.width;
+  const bBottom = b.y + b.height;
+
+  return !(aRight + pad < b.x || bRight + pad < a.x || aBottom + pad < b.y || bBottom + pad < a.y);
 }

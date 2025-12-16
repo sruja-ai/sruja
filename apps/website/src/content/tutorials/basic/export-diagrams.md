@@ -22,6 +22,7 @@ sruja export mermaid architecture.sruja > architecture.md
 The output includes ```mermaid blocks that render in most Markdown engines with Mermaid enabled.
 
 **Use cases:**
+
 - Documentation sites using Markdown
 - Lightweight diagrams without external tooling
 
@@ -34,11 +35,13 @@ Open in Studio from the Learn examples or visit /studio/
 ```
 
 **Features:**
+
 - Interactive preview and navigation
 - C4 model views (context, containers, components)
 - Embedded documentation and metadata
 
 **Use cases:**
+
 - Architecture reviews
 - Presentations
 - Iterative modeling and validation
@@ -53,4 +56,4 @@ See `pkg/export/markdown/MERMAID_CONFIG.md` for available options.
 - **Mermaid**: For Markdown-first workflows and lightweight sharing
 - **Studio**: For interactive exploration and richer documentation
 
-**Note**: The Playground has moved to Studio for interactive diagrams.
+**Note**: Sruja Designer provides interactive diagrams and editing capabilities.

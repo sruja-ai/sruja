@@ -1,147 +1,155 @@
-import { create } from 'zustand';
-import type { C4Level, FlowJSON } from '../types';
+import { create } from "zustand";
+import type { C4Level, FlowJSON } from "../types";
 
 interface ViewState {
-    currentLevel: C4Level;
-    focusedSystemId: string | null;
-    focusedContainerId: string | null;
-    expandedNodes: Set<string>;
-    breadcrumb: string[];
+  currentLevel: C4Level;
+  focusedSystemId: string | null;
+  focusedContainerId: string | null;
+  expandedNodes: Set<string>;
+  breadcrumb: string[];
 
-    // Navigation actions
-    setLevel: (level: C4Level) => void;
-    drillDown: (nodeId: string, nodeType: 'system' | 'container', parentId?: string) => void;
-    goUp: () => void;
-    goToRoot: () => void;
-    toggleExpand: (nodeId: string) => void;
+  // Navigation actions
+  setLevel: (level: C4Level) => void;
+  drillDown: (nodeId: string, nodeType: "system" | "container", parentId?: string) => void;
+  goUp: () => void;
+  goToRoot: () => void;
+  toggleExpand: (nodeId: string) => void;
 }
 
 export const useViewStore = create<ViewState>((set, get) => ({
-    currentLevel: 'L1',
-    focusedSystemId: null,
-    focusedContainerId: null,
-    expandedNodes: new Set<string>(),
-    breadcrumb: ['Architecture'],
+  currentLevel: "L1",
+  focusedSystemId: null,
+  focusedContainerId: null,
+  expandedNodes: new Set<string>(),
+  breadcrumb: ["Architecture"],
 
-    setLevel: (level) => {
-        set({ currentLevel: level });
-    },
+  setLevel: (level) => {
+    set({ currentLevel: level });
+  },
 
-    drillDown: (nodeId, nodeType, parentId) => {
-        const state = get();
-        if (nodeType === 'system') {
-            const breadcrumb = ['Architecture', nodeId];
-            // Idempotent update; avoid duplicate breadcrumb entries for same system
-            set({
-                currentLevel: 'L2',
-                focusedSystemId: nodeId,
-                focusedContainerId: null,
-                breadcrumb,
-            });
-        } else if (nodeType === 'container') {
-            const systemId = parentId ?? state.focusedSystemId ?? undefined;
-            const breadcrumb = systemId ? ['Architecture', systemId, nodeId] : ['Architecture', nodeId];
-            set({
-                currentLevel: 'L3',
-                focusedContainerId: nodeId,
-                breadcrumb,
-            });
-        }
-    },
+  drillDown: (nodeId, nodeType, parentId) => {
+    const state = get();
+    if (nodeType === "system") {
+      const breadcrumb = ["Architecture", nodeId];
+      // Idempotent update; avoid duplicate breadcrumb entries for same system
+      set({
+        currentLevel: "L2",
+        focusedSystemId: nodeId,
+        focusedContainerId: null,
+        breadcrumb,
+      });
+    } else if (nodeType === "container") {
+      const systemId = parentId ?? state.focusedSystemId ?? undefined;
+      const breadcrumb = systemId ? ["Architecture", systemId, nodeId] : ["Architecture", nodeId];
+      set({
+        currentLevel: "L3",
+        focusedContainerId: nodeId,
+        breadcrumb,
+      });
+    }
+  },
 
-    goUp: () => {
-        const state = get();
-        const newBreadcrumb = [...state.breadcrumb];
-        newBreadcrumb.pop();
+  goUp: () => {
+    const state = get();
+    const newBreadcrumb = [...state.breadcrumb];
+    newBreadcrumb.pop();
 
-        if (state.currentLevel === 'L3') {
-            set({
-                currentLevel: 'L2',
-                focusedContainerId: null,
-                breadcrumb: newBreadcrumb,
-            });
-        } else if (state.currentLevel === 'L2') {
-            set({
-                currentLevel: 'L1',
-                focusedSystemId: null,
-                breadcrumb: newBreadcrumb,
-            });
-        }
-        // L1 is now root, no further up
-    },
+    if (state.currentLevel === "L3") {
+      set({
+        currentLevel: "L2",
+        focusedContainerId: null,
+        breadcrumb: newBreadcrumb,
+      });
+    } else if (state.currentLevel === "L2") {
+      set({
+        currentLevel: "L1",
+        focusedSystemId: null,
+        breadcrumb: newBreadcrumb,
+      });
+    }
+    // L1 is now root, no further up
+  },
 
-    goToRoot: () => {
-        set({
-            currentLevel: 'L1',
-            focusedSystemId: null,
-            focusedContainerId: null,
-            breadcrumb: ['Architecture'],
-        });
-    },
+  goToRoot: () => {
+    set({
+      currentLevel: "L1",
+      focusedSystemId: null,
+      focusedContainerId: null,
+      breadcrumb: ["Architecture"],
+    });
+  },
 
-    toggleExpand: (nodeId) => {
-        const state = get();
-        const newExpanded = new Set(state.expandedNodes);
-        if (newExpanded.has(nodeId)) {
-            newExpanded.delete(nodeId);
-        } else {
-            newExpanded.add(nodeId);
-        }
-        set({ expandedNodes: newExpanded });
-    },
+  toggleExpand: (nodeId) => {
+    const state = get();
+    const newExpanded = new Set(state.expandedNodes);
+    if (newExpanded.has(nodeId)) {
+      newExpanded.delete(nodeId);
+    } else {
+      newExpanded.add(nodeId);
+    }
+    set({ expandedNodes: newExpanded });
+  },
 }));
 
 // Selection store for selected nodes and active flows
 interface SelectionState {
-    selectedNodeId: string | null;
-    activeFlow: FlowJSON | null;
-    flowStep: number;
-    isFlowPlaying: boolean;
+  selectedNodeId: string | null;
+  activeFlow: FlowJSON | null;
+  flowStep: number;
+  isFlowPlaying: boolean;
 
-    // Actions
-    selectNode: (id: string | null) => void;
-    setActiveFlow: (flow: FlowJSON | null) => void;
-    setFlowStep: (step: number) => void;
-    playFlow: () => void;
-    pauseFlow: () => void;
-    nextStep: () => void;
-    prevStep: () => void;
+  activeRequirement: string | null;
+
+  // Actions
+  selectNode: (id: string | null) => void;
+  setActiveFlow: (flow: FlowJSON | null) => void;
+  setActiveRequirement: (reqId: string | null) => void;
+  setFlowStep: (step: number) => void;
+  playFlow: () => void;
+  pauseFlow: () => void;
+  nextStep: () => void;
+  prevStep: () => void;
 }
 
 export const useSelectionStore = create<SelectionState>((set, get) => ({
-    selectedNodeId: null,
-    activeFlow: null,
-    flowStep: 0,
-    isFlowPlaying: false,
+  selectedNodeId: null,
+  activeFlow: null,
+  activeRequirement: null,
+  flowStep: 0,
+  isFlowPlaying: false,
 
-    selectNode: (id) => {
-        set({ selectedNodeId: id });
-    },
+  selectNode: (id) => {
+    set({ selectedNodeId: id, activeRequirement: null }); // Clear requirement when selecting node
+  },
 
-    setActiveFlow: (flow) => {
-        set({ activeFlow: flow, flowStep: 0, isFlowPlaying: false });
-    },
+  setActiveFlow: (flow) => {
+    set({ activeFlow: flow, flowStep: 0, isFlowPlaying: false, activeRequirement: null });
+  },
 
-    setFlowStep: (step) => {
-        set({ flowStep: step });
-    },
+  setActiveRequirement: (reqId) => {
+    set({ activeRequirement: reqId, selectedNodeId: null, activeFlow: null }); // Clear others
+  },
 
-    playFlow: () => {
-        set({ isFlowPlaying: true });
-    },
+  setFlowStep: (step) => {
+    set({ flowStep: step });
+  },
 
-    pauseFlow: () => {
-        set({ isFlowPlaying: false });
-    },
+  playFlow: () => {
+    set({ isFlowPlaying: true });
+  },
 
-    nextStep: () => {
-        const state = get();
-        const maxStep = (state.activeFlow?.steps?.length ?? 1) - 1;
-        set({ flowStep: Math.min(state.flowStep + 1, maxStep) });
-    },
+  pauseFlow: () => {
+    set({ isFlowPlaying: false });
+  },
 
-    prevStep: () => {
-        const state = get();
-        set({ flowStep: Math.max(state.flowStep - 1, 0) });
-    },
+  nextStep: () => {
+    const state = get();
+    const maxStep = (state.activeFlow?.steps?.length ?? 1) - 1;
+    set({ flowStep: Math.min(state.flowStep + 1, maxStep) });
+  },
+
+  prevStep: () => {
+    const state = get();
+    set({ flowStep: Math.max(state.flowStep - 1, 0) });
+  },
 }));

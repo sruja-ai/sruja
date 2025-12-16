@@ -31,8 +31,8 @@ export interface LabelOptions {
 export const DEFAULT_LABEL_OPTIONS: LabelOptions = {
   defaultWidth: 80,
   defaultHeight: 20,
-  padding: 20, // Increased from 16 for better clearance
-  maxShiftIterations: 15, // Increased from 10 to try more positions
+  padding: 30, // Increased from 20 for better clearance from nodes
+  maxShiftIterations: 20, // Increased from 15 to try more positions
   allowRotation: false,
 };
 
@@ -53,11 +53,17 @@ export interface NodeForLabeling {
 // ============================================================================
 
 function rectOverlaps(a: Rect, b: Rect, padding: number = 0): boolean {
+  // Optimized: cache boundaries to avoid repeated calculations
+  const aRight = a.x + a.width;
+  const aBottom = a.y + a.height;
+  const bRight = b.x + b.width;
+  const bBottom = b.y + b.height;
+
   return !(
-    a.x + a.width + padding < b.x ||
-    b.x + b.width + padding < a.x ||
-    a.y + a.height + padding < b.y ||
-    b.y + b.height + padding < a.y
+    aRight + padding < b.x ||
+    bRight + padding < a.x ||
+    aBottom + padding < b.y ||
+    bBottom + padding < a.y
   );
 }
 
@@ -68,21 +74,30 @@ function pointAlongPath(points: readonly Point[], t: number): Point {
   if (t >= 1) return { ...points[points.length - 1] };
 
   // Calculate total path length
+  // Optimized: cache point references and use squared distance for comparison where possible
   let totalLength = 0;
-  for (let i = 1; i < points.length; i++) {
-    totalLength += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+  const pointsLength = points.length;
+  for (let i = 1; i < pointsLength; i++) {
+    const dx = points[i].x - points[i - 1].x;
+    const dy = points[i].y - points[i - 1].y;
+    totalLength += Math.sqrt(dx * dx + dy * dy); // Cache dx/dy to avoid repeated property access
   }
 
   const targetDist = t * totalLength;
   let accum = 0;
 
-  for (let i = 1; i < points.length; i++) {
-    const segLen = Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+  for (let i = 1; i < pointsLength; i++) {
+    const p1 = points[i - 1];
+    const p2 = points[i];
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const segLen = Math.sqrt(dx * dx + dy * dy);
+
     if (accum + segLen >= targetDist) {
       const segT = (targetDist - accum) / segLen;
       return {
-        x: points[i - 1].x + (points[i].x - points[i - 1].x) * segT,
-        y: points[i - 1].y + (points[i].y - points[i - 1].y) * segT,
+        x: p1.x + dx * segT,
+        y: p1.y + dy * segT,
       };
     }
     accum += segLen;
@@ -95,20 +110,31 @@ function angleAtPoint(points: readonly Point[], t: number): number {
   if (points.length < 2) return 0;
 
   // Find segment at position t
+  // Optimized: cache point references and use squared distance
   let totalLength = 0;
-  for (let i = 1; i < points.length; i++) {
-    totalLength += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+  const pointsLength = points.length;
+  for (let i = 1; i < pointsLength; i++) {
+    const dx = points[i].x - points[i - 1].x;
+    const dy = points[i].y - points[i - 1].y;
+    totalLength += Math.sqrt(dx * dx + dy * dy);
   }
 
   const targetDist = t * totalLength;
   let accum = 0;
+  const pointsLengthMinus1 = pointsLength - 1;
 
-  for (let i = 1; i < points.length; i++) {
-    const segLen = Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
-    if (accum + segLen >= targetDist || i === points.length - 1) {
-      const dx = points[i].x - points[i - 1].x;
-      const dy = points[i].y - points[i - 1].y;
-      return Math.atan2(dy, dx) * (180 / Math.PI);
+  for (let i = 1; i < pointsLength; i++) {
+    // Optimized: cache point references
+    const p1 = points[i - 1];
+    const p2 = points[i];
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const segLen = Math.sqrt(dx * dx + dy * dy);
+
+    if (accum + segLen >= targetDist || i === pointsLengthMinus1) {
+      // Optimized: cache Math.PI inverse
+      const radToDeg = 180 / Math.PI;
+      return Math.atan2(dy, dx) * radToDeg;
     }
     accum += segLen;
   }
@@ -211,8 +237,23 @@ export function placeLabels(
 
   // Step 2-4: Iteratively resolve collisions
   // More candidate positions for better label placement, especially for dense graphs
+  // Prioritize positions away from nodes (avoid 0.5 midpoint which is often near nodes)
   const candidatePositions = [
-    0.5, 0.35, 0.65, 0.25, 0.75, 0.2, 0.8, 0.15, 0.85, 0.3, 0.7, 0.4, 0.6,
+    0.3,
+    0.7,
+    0.25,
+    0.75,
+    0.2,
+    0.8,
+    0.35,
+    0.65,
+    0.4,
+    0.6,
+    0.15,
+    0.85,
+    0.1,
+    0.9,
+    0.5, // Midpoint last
   ];
 
   // Track which positions each label has tried to avoid infinite loops

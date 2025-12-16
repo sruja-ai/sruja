@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FileText, ClipboardList, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button, Input } from "@sruja/ui";
 import { useArchitectureStore } from "../../stores/architectureStore";
@@ -32,6 +32,16 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
 
   const [activeTab, setActiveTab] = useState<"requirements" | "adrs">("requirements");
   const [expandedAdr, setExpandedAdr] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState(true);
+
+  useEffect(() => {
+    try {
+      const key = `playground:govCollapsed:${levelLabel}`;
+      const saved = window.localStorage.getItem(key);
+      if (saved === "false") setCollapsed(false);
+      else if (saved === "true") setCollapsed(true);
+    } catch {}
+  }, [levelLabel]);
 
   // Requirement form
   const [reqId, setReqId] = useState("");
@@ -119,27 +129,47 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
 
   return (
     <div className="step-section governance-section">
-      <div className="governance-mini-tabs">
+      <div className="governance-toggle">
         <button
-          className={`gov-mini-tab ${activeTab === "requirements" ? "active" : ""}`}
-          onClick={() => setActiveTab("requirements")}
+          className="gov-toggle-btn"
+          onClick={() => {
+            setCollapsed((v) => {
+              const next = !v;
+              try {
+                const key = `playground:govCollapsed:${levelLabel}`;
+                window.localStorage.setItem(key, next ? "true" : "false");
+              } catch {}
+              return next;
+            });
+          }}
         >
-          <ClipboardList size={14} />
-          Requirements
-          <span className="count-badge">{requirements.length}</span>
-        </button>
-        <button
-          className={`gov-mini-tab ${activeTab === "adrs" ? "active" : ""}`}
-          onClick={() => setActiveTab("adrs")}
-        >
-          <FileText size={14} />
-          ADRs
-          <span className="count-badge">{adrs.length}</span>
+          {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          <span>Governance</span>
         </button>
       </div>
+      {!collapsed && (
+        <div className="governance-mini-tabs">
+          <button
+            className={`gov-mini-tab ${activeTab === "requirements" ? "active" : ""}`}
+            onClick={() => setActiveTab("requirements")}
+          >
+            <ClipboardList size={14} />
+            Requirements
+            <span className="count-badge">{requirements.length}</span>
+          </button>
+          <button
+            className={`gov-mini-tab ${activeTab === "adrs" ? "active" : ""}`}
+            onClick={() => setActiveTab("adrs")}
+          >
+            <FileText size={14} />
+            ADRs
+            <span className="count-badge">{adrs.length}</span>
+          </button>
+        </div>
+      )}
 
       {/* Requirements */}
-      {activeTab === "requirements" && (
+      {!collapsed && activeTab === "requirements" && (
         <>
           <p className="section-description">Define requirements linked to {levelLabel} elements</p>
 
@@ -209,7 +239,7 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
       )}
 
       {/* ADRs */}
-      {activeTab === "adrs" && (
+      {!collapsed && activeTab === "adrs" && (
         <>
           <p className="section-description">Document architectural decisions for {levelLabel}</p>
 

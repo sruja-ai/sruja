@@ -28,6 +28,8 @@ export function getNodeWidth(type?: string): number {
       return 200; // Increased from 160
     case "queue":
       return 200; // Increased from 160
+    case "deployment":
+      return 280; // Larger for containing nodes
     default:
       return 220; // Increased from 180
   }
@@ -47,6 +49,8 @@ export function getNodeHeight(type?: string): number {
       return 100; // Increased from 80
     case "queue":
       return 100; // Increased from 80
+    case "deployment":
+      return 200; // Larger height
     default:
       return 120; // Increased from 100
   }
@@ -781,7 +785,9 @@ export function mapTypeToKind(type?: string): C4Kind {
     case "queue":
       return "Queue";
     case "boundary":
-      return "EnterpriseBoundary" as any; // Cast if type defs lag, but should be fine.
+      return "EnterpriseBoundary" as any;
+    case "deployment":
+      return "DeploymentNode" as any;
     default:
       return "SoftwareSystem";
   }
@@ -797,6 +803,8 @@ function mapTypeToLevel(type?: string): C4Level {
     case "datastore":
     case "queue":
       return "container";
+    case "deployment":
+      return "deployment" as any;
     case "component":
       return "component";
     default:

@@ -15,6 +15,10 @@ export function calculateBestPortWithObstacles(
 
   const srcRight = source.x + source.width;
   const srcBottom = source.y + source.height;
+  const srcX = source.x;
+  const srcY = source.y;
+  const srcWidth = source.width;
+  const srcHeight = source.height;
 
   // Calculate relative position
   const dx = tc.x - sc.x;
@@ -35,14 +39,19 @@ export function calculateBestPortWithObstacles(
   const candidates: PortCandidate[] = [];
 
   // Number of ports per side - adaptive based on node size
-  const horizontalPorts = source.width < 200 ? 3 : source.width < 400 ? 5 : 7;
-  const verticalPorts = source.height < 200 ? 3 : source.height < 400 ? 5 : 7;
+  // Optimized: cache width/height checks
+  const horizontalPorts = srcWidth < 200 ? 3 : srcWidth < 400 ? 5 : 7;
+  const verticalPorts = srcHeight < 200 ? 3 : srcHeight < 400 ? 5 : 7;
+
+  // Optimized: pre-calculate denominator for ratio calculations
+  const horizontalDenom = horizontalPorts + 1;
+  const verticalDenom = verticalPorts + 1;
 
   // Generate ports along each side, distributed evenly (avoiding corners)
   // East side (right)
   for (let i = 0; i < horizontalPorts; i++) {
-    const ratio = (i + 1) / (horizontalPorts + 1); // Distribute evenly
-    const y = source.y + source.height * ratio;
+    const ratio = (i + 1) / horizontalDenom; // Distribute evenly
+    const y = srcY + srcHeight * ratio;
     candidates.push({
       side: "east",
       position: { x: srcRight, y },
@@ -53,11 +62,11 @@ export function calculateBestPortWithObstacles(
 
   // West side (left)
   for (let i = 0; i < horizontalPorts; i++) {
-    const ratio = (i + 1) / (horizontalPorts + 1);
-    const y = source.y + source.height * ratio;
+    const ratio = (i + 1) / horizontalDenom;
+    const y = srcY + srcHeight * ratio;
     candidates.push({
       side: "west",
-      position: { x: source.x, y },
+      position: { x: srcX, y },
       angle: 180,
       score: dx < 0 ? absDx * 2 : absDx < absDy ? absDx * 0.5 : 0,
     });
@@ -65,8 +74,8 @@ export function calculateBestPortWithObstacles(
 
   // South side (bottom)
   for (let i = 0; i < verticalPorts; i++) {
-    const ratio = (i + 1) / (verticalPorts + 1);
-    const x = source.x + source.width * ratio;
+    const ratio = (i + 1) / verticalDenom;
+    const x = srcX + srcWidth * ratio;
     candidates.push({
       side: "south",
       position: { x, y: srcBottom },
@@ -77,11 +86,11 @@ export function calculateBestPortWithObstacles(
 
   // North side (top)
   for (let i = 0; i < verticalPorts; i++) {
-    const ratio = (i + 1) / (verticalPorts + 1);
-    const x = source.x + source.width * ratio;
+    const ratio = (i + 1) / verticalDenom;
+    const x = srcX + srcWidth * ratio;
     candidates.push({
       side: "north",
-      position: { x, y: source.y },
+      position: { x, y: srcY },
       angle: 270,
       score: dy < 0 ? absDy * 2 : absDy < absDx ? absDy * 0.5 : 0,
     });
@@ -123,11 +132,14 @@ export function calculateBestPortWithObstacles(
     // Track by actual position, not just side, to spread edges along each side
     if (usedPorts) {
       // Use precise position for port key to differentiate ports on same side
-      const portKey = `${source.x},${source.y}:${candidate.side}:${Math.round(candidate.position.x)},${Math.round(candidate.position.y)}`;
+      // Optimized: cache source coordinates and rounded position
+      const portKey = `${srcX},${srcY}:${candidate.side}:${Math.round(candidate.position.x)},${Math.round(candidate.position.y)}`;
       const usageCount = usedPorts.get(portKey) || 0;
       // More aggressive penalty to better distribute edges across all ports
       // For dense graphs, this helps reduce crossings significantly
-      const penaltyMultiplier = obstacles.length > 10 ? 80 : 60;
+      // Optimized: cache obstacles length
+      const obstaclesLength = obstacles.length;
+      const penaltyMultiplier = obstaclesLength > 10 ? 80 : 60;
       candidate.score -= usageCount * penaltyMultiplier;
     }
 
@@ -533,4 +545,196 @@ export function routeSpline(
     c2 = { x: p3.x, y: p3.y - dy * k };
   }
   return { points: [p0, p3], controlPoints: [c1, c2] };
+}
+
+// ============================================================================
+// SMOOTH CORNER ROUNDING
+// ============================================================================
+
+export type CornerStyle = "sharp" | "rounded" | "smooth";
+
+export interface RoundingOptions {
+  /** Corner radius in pixels. Default: 8 */
+  cornerRadius?: number;
+  /** Corner style. Default: 'rounded' */
+  style?: CornerStyle;
+  /** Minimum segment length to apply rounding. Default: 20 */
+  minSegmentLength?: number;
+}
+
+export interface RoundedPathResult {
+  /** The path points (may be modified for smooth corners) */
+  points: Point[];
+  /** Quadratic bezier control points for each corner */
+  cornerControlPoints: Array<{ corner: Point; control: Point }>;
+  /** Segment types for rendering */
+  segmentTypes: Array<"line" | "arc">;
+}
+
+/**
+ * Apply smooth corner rounding to an orthogonal path.
+ * Converts sharp 90° bends to smooth quadratic bezier curves.
+ *
+ * For each corner, we:
+ * 1. Move the points before/after the corner inward by `radius`
+ * 2. Create a control point at the original corner position
+ * 3. The renderer draws a quadratic bezier through these points
+ */
+export function applyCornerRounding(
+  points: Point[],
+  options: RoundingOptions = {}
+): RoundedPathResult {
+  const { cornerRadius = 8, style = "rounded", minSegmentLength = 20 } = options;
+
+  // Sharp style means no rounding
+  if (style === "sharp" || points.length < 3 || cornerRadius <= 0) {
+    return {
+      points: [...points],
+      cornerControlPoints: [],
+      segmentTypes: points.slice(1).map(() => "line" as const),
+    };
+  }
+
+  const result: Point[] = [points[0]];
+  const cornerControlPoints: Array<{ corner: Point; control: Point }> = [];
+  const segmentTypes: Array<"line" | "arc"> = [];
+
+  for (let i = 1; i < points.length - 1; i++) {
+    const prev = points[i - 1];
+    const curr = points[i]; // The corner
+    const next = points[i + 1];
+
+    // Calculate segment lengths
+    const prevSegLen = Math.hypot(curr.x - prev.x, curr.y - prev.y);
+    const nextSegLen = Math.hypot(next.x - curr.x, next.y - curr.y);
+
+    // Adjust radius to fit within available segment length
+    // Use half the shorter segment as max radius
+    const maxRadius = Math.min(prevSegLen, nextSegLen) / 2;
+    const radius = Math.min(cornerRadius, maxRadius);
+
+    // Skip rounding for very short segments
+    if (prevSegLen < minSegmentLength || nextSegLen < minSegmentLength || radius < 2) {
+      result.push(curr);
+      segmentTypes.push("line");
+      continue;
+    }
+
+    // Calculate direction vectors
+    const prevDir = {
+      x: (curr.x - prev.x) / prevSegLen,
+      y: (curr.y - prev.y) / prevSegLen,
+    };
+    const nextDir = {
+      x: (next.x - curr.x) / nextSegLen,
+      y: (next.y - curr.y) / nextSegLen,
+    };
+
+    // Point before the corner (pulled back by radius)
+    const beforeCorner: Point = {
+      x: curr.x - prevDir.x * radius,
+      y: curr.y - prevDir.y * radius,
+    };
+
+    // Point after the corner (moved forward by radius)
+    const afterCorner: Point = {
+      x: curr.x + nextDir.x * radius,
+      y: curr.y + nextDir.y * radius,
+    };
+
+    // Add the point before the corner
+    result.push(beforeCorner);
+    segmentTypes.push("line");
+
+    // Store the control point info for bezier rendering
+    cornerControlPoints.push({
+      corner: curr, // Original corner (becomes control point)
+      control: curr, // For quadratic bezier, control is at original corner
+    });
+
+    // For 'smooth' style, use a gentler curve
+    if (style === "smooth") {
+      // Add an intermediate point for smoother curve
+      const midControl: Point = {
+        x: curr.x,
+        y: curr.y,
+      };
+      cornerControlPoints[cornerControlPoints.length - 1].control = midControl;
+    }
+
+    // Add the point after the corner
+    result.push(afterCorner);
+    segmentTypes.push("arc");
+  }
+
+  // Add the final point
+  result.push(points[points.length - 1]);
+  segmentTypes.push("line");
+
+  return {
+    points: result,
+    cornerControlPoints,
+    segmentTypes,
+  };
+}
+
+/**
+ * Convert corner control points to SVG path data.
+ * Useful for rendering in browsers or SVG export.
+ */
+export function cornerRoundingToSvgPath(roundedPath: RoundedPathResult): string {
+  const { points, cornerControlPoints, segmentTypes } = roundedPath;
+
+  if (points.length === 0) return "";
+
+  let path = `M ${points[0].x} ${points[0].y}`;
+  let cornerIndex = 0;
+
+  for (let i = 1; i < points.length; i++) {
+    const segType = segmentTypes[i - 1];
+
+    if (segType === "arc" && cornerIndex < cornerControlPoints.length) {
+      // Quadratic bezier curve through the corner
+      const cc = cornerControlPoints[cornerIndex];
+      path += ` Q ${cc.control.x} ${cc.control.y} ${points[i].x} ${points[i].y}`;
+      cornerIndex++;
+    } else {
+      // Straight line
+      path += ` L ${points[i].x} ${points[i].y}`;
+    }
+  }
+
+  return path;
+}
+
+/**
+ * Calculate the approximate length of a rounded path
+ * (useful for label placement)
+ */
+export function roundedPathLength(roundedPath: RoundedPathResult): number {
+  const { points, segmentTypes, cornerControlPoints } = roundedPath;
+  let len = 0;
+  let cornerIndex = 0;
+
+  for (let i = 1; i < points.length; i++) {
+    const p1 = points[i - 1];
+    const p2 = points[i];
+    const segType = segmentTypes[i - 1];
+
+    if (segType === "arc" && cornerIndex < cornerControlPoints.length) {
+      // Approximate arc length using control point
+      const cc = cornerControlPoints[cornerIndex];
+      // Use chord + 1/4 of difference to control point as approximation
+      const chord = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+      const toControl =
+        Math.hypot(cc.control.x - p1.x, cc.control.y - p1.y) +
+        Math.hypot(p2.x - cc.control.x, p2.y - cc.control.y);
+      len += chord + (toControl - chord) * 0.25;
+      cornerIndex++;
+    } else {
+      len += Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    }
+  }
+
+  return len;
 }

@@ -32,30 +32,27 @@ export function analyzeNodeCrossings(
   // Count crossings per node
   // Each crossing involves 2 edges, and each edge has 2 nodes
   // So each crossing contributes to 4 nodes' counts
-  for (let i = 0; i < edges.length; i++) {
-    for (let j = i + 1; j < edges.length; j++) {
-      const e1 = edges[i];
+  // Optimized: compare each pair exactly once (i < j) and cache edge references
+  const edgesLength = edges.length;
+  for (let i = 0; i < edgesLength; i++) {
+    const e1 = edges[i];
+    const e1SourceId = e1.sourceId as C4Id;
+    const e1TargetId = e1.targetId as C4Id;
+
+    for (let j = i + 1; j < edgesLength; j++) {
       const e2 = edges[j];
 
       if (pathsCrossFn(e1.path, e2.path, e1.sourceId, e1.targetId, e2.sourceId, e2.targetId)) {
         // Both source and target nodes of crossing edges are involved
         // Weight by how many crossings each node is involved in
-        nodeCrossingCounts.set(
-          e1.sourceId as C4Id,
-          (nodeCrossingCounts.get(e1.sourceId as C4Id) || 0) + 1
-        );
-        nodeCrossingCounts.set(
-          e1.targetId as C4Id,
-          (nodeCrossingCounts.get(e1.targetId as C4Id) || 0) + 1
-        );
-        nodeCrossingCounts.set(
-          e2.sourceId as C4Id,
-          (nodeCrossingCounts.get(e2.sourceId as C4Id) || 0) + 1
-        );
-        nodeCrossingCounts.set(
-          e2.targetId as C4Id,
-          (nodeCrossingCounts.get(e2.targetId as C4Id) || 0) + 1
-        );
+        // Optimized: cache IDs to avoid repeated type casting
+        const e2SourceId = e2.sourceId as C4Id;
+        const e2TargetId = e2.targetId as C4Id;
+
+        nodeCrossingCounts.set(e1SourceId, (nodeCrossingCounts.get(e1SourceId) || 0) + 1);
+        nodeCrossingCounts.set(e1TargetId, (nodeCrossingCounts.get(e1TargetId) || 0) + 1);
+        nodeCrossingCounts.set(e2SourceId, (nodeCrossingCounts.get(e2SourceId) || 0) + 1);
+        nodeCrossingCounts.set(e2TargetId, (nodeCrossingCounts.get(e2TargetId) || 0) + 1);
       }
     }
   }
@@ -81,19 +78,22 @@ export function findCrossingClusters(
   const clusters: Array<{ nodes: Set<C4Id>; crossingCount: number }> = [];
 
   // Group edges that cross each other
-  for (let i = 0; i < edges.length; i++) {
-    for (let j = i + 1; j < edges.length; j++) {
-      const e1 = edges[i];
+  // Optimized: compare each pair exactly once (i < j) and cache edge references
+  const edgesLength = edges.length;
+  for (let i = 0; i < edgesLength; i++) {
+    const e1 = edges[i];
+    for (let j = i + 1; j < edgesLength; j++) {
       const e2 = edges[j];
 
       if (pathsCrossFn(e1.path, e2.path, e1.sourceId, e1.targetId, e2.sourceId, e2.targetId)) {
         // Find or create cluster for these nodes
-        const clusterNodes = new Set<C4Id>([
-          e1.sourceId as C4Id,
-          e1.targetId as C4Id,
-          e2.sourceId as C4Id,
-          e2.targetId as C4Id,
-        ]);
+        // Optimized: cache IDs to avoid repeated type casting
+        const e1SourceId = e1.sourceId as C4Id;
+        const e1TargetId = e1.targetId as C4Id;
+        const e2SourceId = e2.sourceId as C4Id;
+        const e2TargetId = e2.targetId as C4Id;
+
+        const clusterNodes = new Set<C4Id>([e1SourceId, e1TargetId, e2SourceId, e2TargetId]);
 
         // Try to merge with existing clusters
         let merged = false;
@@ -180,21 +180,29 @@ export function adjustNodePositionsForCrossings(
         const n2Node = result.get(n2.id);
         if (n1Node?.parent?.id === n2.id || n2Node?.parent?.id === n1.id) continue;
 
-        const dx = n2.node.bbox.x - n1.node.bbox.x;
-        const dy = n2.node.bbox.y - n1.node.bbox.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        // Optimized: cache bbox references and use squared distance
+        const n1Bbox = n1.node.bbox;
+        const n2Bbox = n2.node.bbox;
+        const dx = n2Bbox.x - n1Bbox.x;
+        const dy = n2Bbox.y - n1Bbox.y;
+        const distSq = dx * dx + dy * dy;
+        const dist = Math.sqrt(distSq) || 1;
 
         // Repulsion force - scale based on crossing counts
         // For nodes with many crossings, be more aggressive
-        const baseStrength = n1.crossings * n2.crossings * 0.5;
+        const n1Crossings = n1.crossings;
+        const n2Crossings = n2.crossings;
+        const baseStrength = n1Crossings * n2Crossings * 0.5;
+        const totalCrossings = n1Crossings + n2Crossings;
         const strength = Math.min(
           baseStrength,
-          Math.max(30, n1.crossings + n2.crossings) * 5 // Scale with total crossings
+          Math.max(30, totalCrossings) * 5 // Scale with total crossings
         );
-        const force = strength / Math.max(dist * dist, 50); // Prevent infinite force but allow stronger forces
+        const force = strength / Math.max(distSq, 50); // Use distSq directly, prevent infinite force
 
-        const fx = (dx / dist) * force;
-        const fy = (dy / dist) * force;
+        const invDist = 1 / dist; // Cache inverse distance
+        const fx = dx * invDist * force;
+        const fy = dy * invDist * force;
 
         const f1 = forces.get(n1.id)!;
         const f2 = forces.get(n2.id)!;
@@ -208,55 +216,63 @@ export function adjustNodePositionsForCrossings(
     }
 
     // Apply forces with damping - more conservative
+    // Optimized: cache damping calculation and stepSize * damping
     const damping = 0.7 - iter * 0.1; // Less aggressive damping
+    const stepDamping = stepSize * damping;
+    const minMoveThreshold = 1;
+    const containmentPadding = 20;
+
     for (const [id, force] of forces) {
       const node = result.get(id)!;
-      const moveX = force.fx * stepSize * damping;
-      const moveY = force.fy * stepSize * damping;
+      const moveX = force.fx * stepDamping;
+      const moveY = force.fy * stepDamping;
 
       // Only move if force is significant and movement is reasonable
-      if (Math.abs(moveX) > 1 || Math.abs(moveY) > 1) {
+      if (Math.abs(moveX) > minMoveThreshold || Math.abs(moveY) > minMoveThreshold) {
         // Limit maximum movement per iteration - allow more movement for high-crossing nodes
         const nodeCrossings = crossingCounts.get(id) || 0;
         const maxMove = nodeCrossings > 8 ? 50 : nodeCrossings > 5 ? 40 : 30;
         const clampedMoveX = Math.max(-maxMove, Math.min(maxMove, moveX));
         const clampedMoveY = Math.max(-maxMove, Math.min(maxMove, moveY));
 
-        const newX = node.bbox.x + clampedMoveX;
-        const newY = node.bbox.y + clampedMoveY;
+        // Optimized: cache bbox reference
+        const nodeBbox = node.bbox;
+        const newX = nodeBbox.x + clampedMoveX;
+        const newY = nodeBbox.y + clampedMoveY;
 
         // Check if node has parent - if so, ensure it stays within parent bounds
         let canMove = true;
         if (node.parent) {
           const parent = result.get(node.parent.id);
           if (parent) {
-            const parentRight = parent.bbox.x + parent.bbox.width;
-            const parentBottom = parent.bbox.y + parent.bbox.height;
-            const nodeRight = newX + node.bbox.width;
-            const nodeBottom = newY + node.bbox.height;
+            // Optimized: cache parent boundaries
+            const parentBbox = parent.bbox;
+            const parentRight = parentBbox.x + parentBbox.width;
+            const parentBottom = parentBbox.y + parentBbox.height;
+            const nodeRight = newX + nodeBbox.width;
+            const nodeBottom = newY + nodeBbox.height;
+            const minX = parentBbox.x + containmentPadding;
+            const minY = parentBbox.y + containmentPadding;
+            const maxX = parentRight - containmentPadding;
+            const maxY = parentBottom - containmentPadding;
 
             // Check if new position would be outside parent
-            if (
-              newX < parent.bbox.x + 20 ||
-              newY < parent.bbox.y + 20 ||
-              nodeRight > parentRight - 20 ||
-              nodeBottom > parentBottom - 20
-            ) {
+            if (newX < minX || newY < minY || nodeRight > maxX || nodeBottom > maxY) {
               canMove = false;
             }
           }
         }
 
         if (canMove) {
+          // Optimized: reuse bbox object if coordinates haven't changed
           result.set(id, {
             ...node,
             x: newX,
             y: newY,
-            bbox: {
-              ...node.bbox,
-              x: newX,
-              y: newY,
-            },
+            bbox:
+              nodeBbox.x === newX && nodeBbox.y === newY
+                ? nodeBbox
+                : { ...nodeBbox, x: newX, y: newY },
           });
         }
       }

@@ -15,7 +15,9 @@ import type {
   ViewNode,
   ViewEdge,
   Badge,
+  DeploymentNodeJSON,
 } from "../types";
+import { countPendingActions } from "./pendingActions";
 
 interface TransformOptions {
   level: C4Level;
@@ -91,6 +93,14 @@ function transformFromViews(
         viewData = views.L3[key];
       }
       break;
+    case "L4":
+      if (views.L4) {
+        // Use "Production" as default environment if not specified
+        // Logic should align with how c4LevelLayout calls DeploymentView("Production")
+        const env = "Production";
+        viewData = views.L4[env];
+      }
+      break;
   }
 
   if (!viewData) {
@@ -98,7 +108,28 @@ function transformFromViews(
     viewData = views.L1;
   }
 
-  return convertViewDataToReactFlow(viewData, expandedNodes);
+  return convertViewDataToReactFlow(viewData, expandedNodes, data.architecture);
+}
+
+// Helper to find node by ID for pending action calculation
+function findNodeById(
+  id: string,
+  architecture: ArchitectureJSON["architecture"]
+): { node: SystemJSON | ContainerJSON | ComponentJSON | PersonJSON; type: string } | null {
+  const person = architecture.persons?.find((p) => p.id === id);
+  if (person) return { node: person, type: "Person" };
+
+  for (const system of architecture.systems ?? []) {
+    if (system.id === id) return { node: system, type: "System" };
+    for (const container of system.containers ?? []) {
+      if (container.id === id) return { node: container, type: "Container" };
+      for (const component of container.components ?? []) {
+        if (component.id === id) return { node: component, type: "Component" };
+      }
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -106,10 +137,11 @@ function transformFromViews(
  */
 function convertViewDataToReactFlow(
   viewData: ViewData,
-  expandedNodes: Set<string>
+  expandedNodes: Set<string>,
+  architecture?: ArchitectureJSON["architecture"]
 ): { nodes: Node<C4NodeData>[]; edges: Edge[] } {
   const nodes: Node<C4NodeData>[] = viewData.nodes.map((node, index) =>
-    createNodeFromViewNode(node, index, expandedNodes)
+    createNodeFromViewNode(node, index, expandedNodes, architecture)
   );
 
   const edges: Edge[] = viewData.edges
@@ -122,7 +154,8 @@ function convertViewDataToReactFlow(
 function createNodeFromViewNode(
   node: ViewNode,
   index: number,
-  expandedNodes: Set<string>
+  expandedNodes: Set<string>,
+  architecture?: ArchitectureJSON["architecture"]
 ): Node<C4NodeData> {
   // Simple grid layout - will be overridden by ELK
   const col = index % 4;
@@ -131,6 +164,16 @@ function createNodeFromViewNode(
   const ySpacing = 180;
 
   const isExpanded = expandedNodes.has(node.id);
+
+  // Calculate pending actions count if architecture is available
+  let pendingActionCount = 0;
+  if (architecture) {
+    // Find the actual node object to calculate pending actions
+    const actualNode = findNodeById(node.id, architecture);
+    if (actualNode) {
+      pendingActionCount = countPendingActions(actualNode.node, architecture);
+    }
+  }
 
   return {
     id: node.id,
@@ -146,6 +189,7 @@ function createNodeFromViewNode(
       parentId: node.parentId,
       childCount: node.childCount,
       expanded: isExpanded,
+      pendingActionCount: pendingActionCount > 0 ? pendingActionCount : undefined,
     },
   };
 }
@@ -194,6 +238,9 @@ function transformLegacy(
         nodeIdSet
       );
       break;
+    case "L4":
+      transformDeploymentLevel(data, nodes, edges, nodeIdSet);
+      break;
   }
 
   return { nodes, edges };
@@ -236,7 +283,7 @@ function transformSystemLevel(
     console.log(
       `System ${system.id}: isExpanded=${isExpanded}, hasContainers=${!!system.containers}, containerCount=${system.containers?.length ?? 0}`
     );
-    nodes.push(createSystemNode(system, index * xSpacing, yOffset, isExpanded, isExt));
+    nodes.push(createSystemNode(system, index * xSpacing, yOffset, isExpanded, isExt, [], arch));
     nodeIdSet.add(system.id);
 
     // If expanded, add containers as children (mindmap-style expansion)
@@ -253,7 +300,8 @@ function transformSystemLevel(
           system.id,
           false,
           containerExpanded,
-          true // useCompoundParent - enable React Flow compound rendering
+          true, // useCompoundParent - enable React Flow compound rendering
+          arch
         );
         console.log(
           `    Created container node: ${container.id}, parentId: ${containerNode.parentId}, expanded: ${containerExpanded}`
@@ -269,7 +317,8 @@ function transformSystemLevel(
                 component,
                 index * xSpacing + 100,
                 yOffset + 100 + cIndex * 80 + 60 + compIndex * 60,
-                container.id
+                container.id,
+                arch
               )
             );
             nodeIdSet.add(component.id);
@@ -353,7 +402,10 @@ function transformContainerLevel(
         col * xSpacing,
         yBase + row * 180,
         systemId,
-        false // not dimmed
+        false, // not dimmed
+        false, // expanded
+        false, // useCompoundParent
+        arch
       )
     );
     nodeIdSet.add(container.id);
@@ -508,7 +560,7 @@ function transformComponentLevel(
 
   // Add components
   container.components?.forEach((component, index) => {
-    nodes.push(createComponentNode(component, index * xSpacing, yBase, containerId));
+    nodes.push(createComponentNode(component, index * xSpacing, yBase, containerId, arch));
     nodeIdSet.add(component.id);
   });
 
@@ -668,8 +720,11 @@ function createSystemNode(
   y: number,
   expanded: boolean,
   isExternal: boolean = false,
-  badges: Badge[] = []
+  badges: Badge[] = [],
+  architecture?: ArchitectureJSON["architecture"]
 ): Node<C4NodeData> {
+  const pendingActionCount = architecture ? countPendingActions(system, architecture) : 0;
+
   return {
     id: system.id,
     type: "system",
@@ -683,6 +738,7 @@ function createSystemNode(
       expanded,
       isExternal,
       badges,
+      pendingActionCount: pendingActionCount > 0 ? pendingActionCount : undefined,
     },
   };
 }
@@ -694,8 +750,11 @@ function createContainerNode(
   parentId: string,
   isExternal: boolean = false,
   expanded: boolean = false,
-  useCompoundParent: boolean = false // When true, set parentId at node level for React Flow compound nodes
+  useCompoundParent: boolean = false, // When true, set parentId at node level for React Flow compound nodes
+  architecture?: ArchitectureJSON["architecture"]
 ): Node<C4NodeData> {
+  const pendingActionCount = architecture ? countPendingActions(container, architecture) : 0;
+
   return {
     id: container.id,
     type: "container",
@@ -715,6 +774,7 @@ function createContainerNode(
       expanded,
       isExternal,
       tags: container.tags ?? [],
+      pendingActionCount: pendingActionCount > 0 ? pendingActionCount : undefined,
     },
   };
 }
@@ -723,8 +783,11 @@ function createComponentNode(
   component: ComponentJSON,
   x: number,
   y: number,
-  parentId: string
+  parentId: string,
+  architecture?: ArchitectureJSON["architecture"]
 ): Node<C4NodeData> {
+  const pendingActionCount = architecture ? countPendingActions(component, architecture) : 0;
+
   return {
     id: component.id,
     type: "component",
@@ -737,6 +800,7 @@ function createComponentNode(
       technology: component.technology,
       type: "component",
       parentId, // Keep in data for logical reference
+      pendingActionCount: pendingActionCount > 0 ? pendingActionCount : undefined,
     },
   };
 }
@@ -797,5 +861,52 @@ function createRelationEdge(relation: RelationJSON, index: number = 0): Edge {
       tags: relation.tags ?? [],
     },
     animated: false,
+  };
+}
+
+function transformDeploymentLevel(
+  data: ArchitectureJSON,
+  nodes: Node<C4NodeData>[],
+  edges: Edge[],
+  nodeIdSet: Set<string>
+) {
+  const arch = data.architecture;
+  const deploymentNodes = arch.deployment;
+  if (!deploymentNodes || deploymentNodes.length === 0) return;
+
+  const xSpacing = 250;
+  const ySpacing = 150;
+
+  // Simple grid for now since legacy layout doesn't support complex hierarchy without ELK/Sruja layout
+  const cols = Math.ceil(Math.sqrt(deploymentNodes.length));
+
+  deploymentNodes.forEach((node, index) => {
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    nodes.push(createDeploymentNode(node, col * xSpacing, row * ySpacing));
+    nodeIdSet.add(node.id);
+  });
+
+  // Add relations if any exist in arch.relations that connect visible deployment nodes
+  // Note: Deployment diagrams typically show infrastructure relations.
+  // If relations are defined at deployment level, we should render them.
+  arch.relations?.forEach((relation) => {
+    if (nodeIdSet.has(relation.from) && nodeIdSet.has(relation.to)) {
+      edges.push(createRelationEdge(relation));
+    }
+  });
+}
+
+function createDeploymentNode(node: DeploymentNodeJSON, x: number, y: number): Node<C4NodeData> {
+  return {
+    id: node.id,
+    type: "deployment",
+    position: { x, y },
+    data: {
+      id: node.id,
+      label: node.label ?? node.id,
+      type: "deployment",
+      childCount: 0, // Deployment nodes can have children but for MVP legacy we might not show them
+    },
   };
 }

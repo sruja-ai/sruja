@@ -1,8 +1,8 @@
 // apps/website/src/shared/components/layout/Navbar.tsx
-import { useState, useEffect, useRef } from 'react';
-import { Logo, ThemeToggle, ThemeProvider } from '@sruja/ui';
-import '@sruja/ui/design-system/styles.css';
-import DocSearchBox from '@/features/search/components/DocSearchBox';
+import { useState, useEffect, useRef } from "react";
+import { Logo, ThemeToggle, ThemeProvider } from "@sruja/ui";
+import "@sruja/ui/design-system/styles.css";
+import DocSearchBox from "@/features/search/components/DocSearchBox";
 
 export default function Navbar() {
   const [learnMenuOpen, setLearnMenuOpen] = useState(false);
@@ -17,7 +17,7 @@ export default function Navbar() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         if (learnMenuOpen) setLearnMenuOpen(false);
       }
     };
@@ -28,12 +28,12 @@ export default function Navbar() {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
       if (closeTimeoutRef.current) {
         clearTimeout(closeTimeoutRef.current);
       }
@@ -97,9 +97,9 @@ export default function Navbar() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   style={{
-                    marginLeft: '4px',
-                    transform: learnMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.2s',
+                    marginLeft: "4px",
+                    transform: learnMenuOpen ? "rotate(180deg)" : "rotate(0deg)",
+                    transition: "transform 0.2s",
                   }}
                 >
                   <path d="m3 4.5 3 3 3-3" />
@@ -107,14 +107,22 @@ export default function Navbar() {
               </a>
               {learnMenuOpen && (
                 <div className="nav-dropdown-menu">
-                  <a href="/courses" onClick={() => setLearnMenuOpen(false)}>Courses</a>
-                  <a href="/tutorials" onClick={() => setLearnMenuOpen(false)}>Tutorials</a>
-                  <a href="/blogs" onClick={() => setLearnMenuOpen(false)}>Blogs</a>
-                  <a href="/challenges" onClick={() => setLearnMenuOpen(false)}>Challenges</a>
+                  <a href="/courses" onClick={() => setLearnMenuOpen(false)}>
+                    Courses
+                  </a>
+                  <a href="/tutorials" onClick={() => setLearnMenuOpen(false)}>
+                    Tutorials
+                  </a>
+                  <a href="/blogs" onClick={() => setLearnMenuOpen(false)}>
+                    Blogs
+                  </a>
+                  <a href="/challenges" onClick={() => setLearnMenuOpen(false)}>
+                    Challenges
+                  </a>
                 </div>
               )}
             </div>
-            <a href="/playground">Playground</a>
+            <a href="/designer">Designer</a>
             <a href="https://github.com/sruja-ai/sruja" target="_blank" rel="noopener noreferrer">
               GitHub
             </a>

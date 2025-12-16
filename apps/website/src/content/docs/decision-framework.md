@@ -12,14 +12,14 @@ summary: "5-minute decision matrix to determine if Sruja is right for your organ
 
 **Do you have these problems?**
 
-| Problem | Yes/No | Priority |
-|---------|--------|----------|
-| Architecture docs become outdated quickly | ☐ | High |
-| Engineers spend too much time on documentation | ☐ | High |
-| Compliance audits are risky/time-consuming | ☐ | High |
-| New engineers struggle to understand architecture | ☐ | Medium |
-| Architectural drift (design vs. implementation) | ☐ | Medium |
-| Need to enforce service boundaries | ☐ | Medium |
+| Problem                                           | Yes/No | Priority |
+| ------------------------------------------------- | ------ | -------- |
+| Architecture docs become outdated quickly         | ☐      | High     |
+| Engineers spend too much time on documentation    | ☐      | High     |
+| Compliance audits are risky/time-consuming        | ☐      | High     |
+| New engineers struggle to understand architecture | ☐      | Medium   |
+| Architectural drift (design vs. implementation)   | ☐      | Medium   |
+| Need to enforce service boundaries                | ☐      | Medium   |
 
 **Decision**: If 3+ "Yes" with High priority → **Proceed to Step 2**
 
@@ -40,6 +40,7 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 ```
 
 **Example** (10 senior engineers, 20 new engineers/year):
+
 - Time: 10 × 4 hours × 0.7 × 50 × $100 = **$140k/year**
 - Onboarding: 20 × 2 × 0.5 × $150k ÷ 50 = **$60k/year**
 - Risk: 1 failure avoided = **$100k** (one-time)
@@ -53,15 +54,16 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 
 **Check your stack:**
 
-| Technology | Needed? | Sruja Status |
-|------------|---------|--------------|
-| Git/GitHub/GitLab | ☐ | ✅ Available |
-| CI/CD Pipeline | ☐ | ✅ Available |
-| Terraform/OpenTofu | ☐ | 🚧 Roadmap (Phase 2) |
-| Kubernetes/Istio | ☐ | 🚧 Roadmap (Phase 3) |
-| Compliance (HIPAA/SOC2) | ☐ | ✅ Available |
+| Technology              | Needed? | Sruja Status         |
+| ----------------------- | ------- | -------------------- |
+| Git/GitHub/GitLab       | ☐       | ✅ Available         |
+| CI/CD Pipeline          | ☐       | ✅ Available         |
+| Terraform/OpenTofu      | ☐       | 🚧 Roadmap (Phase 2) |
+| Kubernetes/Istio        | ☐       | 🚧 Roadmap (Phase 3) |
+| Compliance (HIPAA/SOC2) | ☐       | ✅ Available         |
 
-**Decision**: 
+**Decision**:
+
 - If Git + CI/CD available → **Ready now**
 - If need Terraform/Istio → **On roadmap** - you can pilot with current features now
 
@@ -104,7 +106,8 @@ START: Do you have architecture documentation challenges?
 - [ ] Microservices architecture
 - [ ] Advanced features needed (Terraform, Istio)
 
-**Decision Rule**: 
+**Decision Rule**:
+
 - ✅ **All Must-Haves** → **GO** (Proceed with pilot)
 - ⚠️ **3-4 Must-Haves** → **MAYBE** (Consider pilot)
 - ❌ **< 3 Must-Haves** → **NO-GO** (Reassess later)
@@ -115,7 +118,7 @@ START: Do you have architecture documentation challenges?
 
 ### Option A: Quick Evaluation (1-2 weeks)
 
-1. **Day 1**: Try online playground
+1. **Day 1**: Try Sruja Designer online
 2. **Week 1**: Install CLI, model one system
 3. **Week 2**: Integrate validation into CI/CD
 4. **Decision**: Go/No-Go for pilot
@@ -159,12 +162,14 @@ START: Do you have architecture documentation challenges?
 ### "Should we pilot or go full rollout?"
 
 **Pilot if:**
+
 - Team size > 50 engineers
 - Uncertain about value/time savings
 - Need to prove value first
 - Want to minimize adoption risk
 
 **Full rollout if:**
+
 - Small team (< 20 engineers)
 - Clear value (> $200k/year in time savings)
 - Strong leadership support
@@ -173,11 +178,13 @@ START: Do you have architecture documentation challenges?
 ### "Should we wait for roadmap features?"
 
 **Start now if:**
+
 - Core features (validation, CI/CD) meet your needs
 - You can add advanced features later
 - You want to influence roadmap
 
 **Wait if:**
+
 - You absolutely need Terraform/Istio integration (on roadmap)
 - No immediate pain points
 - Team not ready for adoption
@@ -186,13 +193,13 @@ START: Do you have architecture documentation challenges?
 
 ## Quick Reference: Key Metrics
 
-| Metric | Target | How to Measure |
-|--------|--------|----------------|
-| **Documentation time** | -70% | Track hours/week |
-| **Onboarding time** | -50% | Track weeks to productivity |
-| **Architecture freshness** | > 95% current | Review update frequency |
-| **Compliance violations** | 0 | Track audit findings |
-| **Architectural issues** | -90% | Track production issues |
+| Metric                     | Target        | How to Measure              |
+| -------------------------- | ------------- | --------------------------- |
+| **Documentation time**     | -70%          | Track hours/week            |
+| **Onboarding time**        | -50%          | Track weeks to productivity |
+| **Architecture freshness** | > 95% current | Review update frequency     |
+| **Compliance violations**  | 0             | Track audit findings        |
+| **Architectural issues**   | -90%          | Track production issues     |
 
 ---
 
@@ -233,6 +240,7 @@ START: Do you have architecture documentation challenges?
 **Open Source Community**: Sruja is free and open source (MIT licensed). Join the community on [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions) for support, questions, and contributions.
 
 **Professional Services**: Need help with adoption, integration, or custom requirements? Professional consulting services are available to help organizations:
+
 - Implement Sruja across teams and systems
 - Establish architectural governance practices
 - Integrate with existing CI/CD and infrastructure toolchains

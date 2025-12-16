@@ -118,6 +118,9 @@ test.describe("Template Gallery", () => {
     // Modal should close
     await expect(page.locator(".template-gallery-modal")).not.toBeVisible();
 
+    // Ensure preview sidebar is visible
+    const toggleBtn = page.locator(".preview-toggle-btn");
+    await toggleBtn.click();
     // DSL preview should update with new content
     const dslPreview = page.locator(".dsl-preview");
     await expect(dslPreview).toContainText("Microservices");
@@ -142,6 +145,9 @@ test.describe("Template Gallery", () => {
     // Modal should close
     await expect(page.locator(".template-gallery-modal")).not.toBeVisible();
 
+    // Ensure preview sidebar is visible
+    const toggleBtn = page.locator(".preview-toggle-btn");
+    await toggleBtn.click();
     // Architecture should be loaded
     const dslPreview = page.locator(".dsl-preview");
     await expect(dslPreview).toContainText("Event");

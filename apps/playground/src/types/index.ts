@@ -1,320 +1,338 @@
-// Type definitions for Sruja Playground
+// Type definitions for Sruja Designer
 // These types match the Go JSON export structure in pkg/export/json/json_types.go
 
 /**
  * Complete Architecture JSON structure matching Go export
  */
 export interface ArchitectureJSON {
-    metadata: MetadataJSON;
-    architecture: ArchitectureBody;
-    navigation: NavigationJSON;
-    views?: ViewsJSON; // Pre-computed views (only with --extended flag)
+  metadata: MetadataJSON;
+  architecture: ArchitectureBody;
+  navigation: NavigationJSON;
+  views?: ViewsJSON; // Pre-computed views (only with --extended flag)
 }
 
 /**
  * Pre-computed views for different C4 levels
  */
 export interface ViewsJSON {
-    L1: ViewData;
-    L2: Record<string, ViewData>; // Key: systemId
-    L3: Record<string, ViewData>; // Key: systemId.containerId
+  L1: ViewData;
+  L2: Record<string, ViewData>; // Key: systemId
+  L3: Record<string, ViewData>; // Key: systemId.containerId
+  L4?: Record<string, ViewData>; // Key: environment
 }
 
 export interface ViewData {
-    nodes: ViewNode[];
-    edges: ViewEdge[];
+  nodes: ViewNode[];
+  edges: ViewEdge[];
 }
 
 export interface ViewNode {
-    id: string;
-    label: string;
-    type: 'person' | 'system' | 'container' | 'component' | 'datastore' | 'queue' | 'topic' | 'cache' | 'filesystem' | 'deployment' | 'external-container' | 'external-component';
-    technology?: string;
-    description?: string;
-    isExternal?: boolean;
-    parentId?: string;
-    childCount?: number;
+  id: string;
+  label: string;
+  type:
+    | "person"
+    | "system"
+    | "container"
+    | "component"
+    | "datastore"
+    | "queue"
+    | "topic"
+    | "cache"
+    | "filesystem"
+    | "deployment"
+    | "external-container"
+    | "external-component";
+  technology?: string;
+  description?: string;
+  isExternal?: boolean;
+  parentId?: string;
+  childCount?: number;
 }
 
 export interface ViewEdge {
-    id: string;
-    source: string;
-    target: string;
-    label?: string;
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
 }
 
 export interface MetadataJSON {
-    name: string;
-    version: string;
-    generated: string;
-    layout?: Record<string, LayoutData>;
-    brandLogo?: string;
-    layoutEngine?: string;
+  name: string;
+  version: string;
+  generated: string;
+  layout?: Record<string, LayoutData>;
+  brandLogo?: string;
+  layoutEngine?: string;
 }
 
 export interface MetadataEntry {
-    key: string;
-    value?: string;
-    array?: string[];
+  key: string;
+  value?: string;
+  array?: string[];
 }
 
 export interface ArchitectureBody {
-    name?: string;
-    description?: string;
-    overview?: OverviewJSON;
-    archMetadata?: MetadataEntry[];
-    imports?: ImportJSON[];
-    systems?: SystemJSON[];
-    persons?: PersonJSON[];
-    relations?: RelationJSON[];
-    containers?: ContainerJSON[];
-    components?: ComponentJSON[];
-    datastores?: DataStoreJSON[];
-    queues?: QueueJSON[];
-    scenarios?: ScenarioJSON[];
-    flows?: FlowJSON[];
-    requirements?: RequirementJSON[];
-    adrs?: ADRJSON[];
-    deployment?: DeploymentNodeJSON[];
-    contracts?: ContractJSON[];
-    sharedArtifacts?: SharedArtifactJSON[];
-    libraries?: LibraryJSON[];
-    policies?: PolicyJSON[];
-    constraints?: ConstraintJSON[];
-    conventions?: ConventionJSON[];
+  name?: string;
+  description?: string;
+  overview?: OverviewJSON;
+  archMetadata?: MetadataEntry[];
+  imports?: ImportJSON[];
+  systems?: SystemJSON[];
+  persons?: PersonJSON[];
+  relations?: RelationJSON[];
+  containers?: ContainerJSON[];
+  components?: ComponentJSON[];
+  datastores?: DataStoreJSON[];
+  queues?: QueueJSON[];
+  scenarios?: ScenarioJSON[];
+  flows?: FlowJSON[];
+  requirements?: RequirementJSON[];
+  adrs?: ADRJSON[];
+  deployment?: DeploymentNodeJSON[];
+  contracts?: ContractJSON[];
+  sharedArtifacts?: SharedArtifactJSON[];
+  libraries?: LibraryJSON[];
+  policies?: PolicyJSON[];
+  constraints?: ConstraintJSON[];
+  conventions?: ConventionJSON[];
 }
 
 /**
  * Overview block for high-level architecture introduction
  */
 export interface OverviewJSON {
-    summary?: string;
-    audience?: string;
-    scope?: string;
-    goals?: string[];
-    nonGoals?: string[];
-    risks?: string[];
+  summary?: string;
+  audience?: string;
+  scope?: string;
+  goals?: string[];
+  nonGoals?: string[];
+  risks?: string[];
 }
 
 export interface NavigationJSON {
-    levels?: string[];
-    scenarios?: ScenarioNavJSON[];
-    flows?: FlowNavJSON[];
+  levels?: string[];
+  scenarios?: ScenarioNavJSON[];
+  flows?: FlowNavJSON[];
 }
 
 export interface ImportJSON {
-    path: string;
-    alias?: string;
+  path: string;
+  alias?: string;
 }
 
 export interface SystemJSON {
-    id: string;
-    label?: string;
-    description?: string;
-    containers?: ContainerJSON[];
-    components?: ComponentJSON[];
-    datastores?: DataStoreJSON[];
-    queues?: QueueJSON[];
-    relations?: RelationJSON[];
-    metadata?: MetadataEntry[];
+  id: string;
+  label?: string;
+  description?: string;
+  containers?: ContainerJSON[];
+  components?: ComponentJSON[];
+  datastores?: DataStoreJSON[];
+  queues?: QueueJSON[];
+  relations?: RelationJSON[];
+  metadata?: MetadataEntry[];
 }
 
 export interface ContainerJSON {
-    id: string;
-    label?: string;
-    description?: string;
-    technology?: string;
-    tags?: string[];
-    version?: string;
-    components?: ComponentJSON[];
-    datastores?: DataStoreJSON[];
-    queues?: QueueJSON[];
-    relations?: RelationJSON[];
-    metadata?: MetadataEntry[];
+  id: string;
+  label?: string;
+  description?: string;
+  technology?: string;
+  tags?: string[];
+  version?: string;
+  components?: ComponentJSON[];
+  datastores?: DataStoreJSON[];
+  queues?: QueueJSON[];
+  relations?: RelationJSON[];
+  metadata?: MetadataEntry[];
 }
 
 export interface ComponentJSON {
-    id: string;
-    label?: string;
-    description?: string;
-    technology?: string;
-    relations?: RelationJSON[];
-    metadata?: MetadataEntry[];
+  id: string;
+  label?: string;
+  description?: string;
+  technology?: string;
+  relations?: RelationJSON[];
+  metadata?: MetadataEntry[];
 }
 
 export interface DataStoreJSON {
-    id: string;
-    label?: string;
-    metadata?: MetadataEntry[];
+  id: string;
+  label?: string;
+  description?: string;
+  technology?: string;
+  metadata?: MetadataEntry[];
 }
 
 export interface QueueJSON {
-    id: string;
-    label?: string;
-    metadata?: MetadataEntry[];
+  id: string;
+  label?: string;
+  description?: string;
+  technology?: string;
+  metadata?: MetadataEntry[];
 }
 
 export interface PersonJSON {
-    id: string;
-    label?: string;
-    description?: string;
-    metadata?: MetadataEntry[];
+  id: string;
+  label?: string;
+  description?: string;
+  metadata?: MetadataEntry[];
 }
 
 export interface RelationJSON {
-    from: string;
-    to: string;
-    verb?: string;
-    label?: string;
-    technology?: string;
-    interaction?: 'sync' | 'async' | 'event';
-    tags?: string[];
+  from: string;
+  to: string;
+  verb?: string;
+  label?: string;
+  technology?: string;
+  interaction?: "sync" | "async" | "event";
+  tags?: string[];
 }
 
 export interface ScenarioStepJSON {
-    from: string;
-    to: string;
-    description?: string;
-    tags?: string[];
-    order?: number;
+  from: string;
+  to: string;
+  description?: string;
+  tags?: string[];
+  order?: number;
 }
 
 export interface ScenarioJSON {
-    id: string;
-    title?: string;
-    label?: string;
-    description?: string;
-    steps?: ScenarioStepJSON[];
+  id: string;
+  title?: string;
+  label?: string;
+  description?: string;
+  steps?: ScenarioStepJSON[];
 }
 
 export interface FlowJSON {
-    id: string;
-    title?: string;
-    label?: string;
-    description?: string;
-    steps?: ScenarioStepJSON[];
+  id: string;
+  title?: string;
+  label?: string;
+  description?: string;
+  steps?: ScenarioStepJSON[];
 }
 
 export interface RequirementJSON {
-    id: string;
-    type?: string;
-    title?: string;
-    description?: string;
-    tags?: string[];
+  id: string;
+  type?: string;
+  title?: string;
+  description?: string;
+  tags?: string[];
 }
 
 export interface ADRJSON {
-    id: string;
-    title?: string;
-    status?: string;
-    context?: string;
-    decision?: string;
-    consequences?: string;
-    tags?: string[];
+  id: string;
+  title?: string;
+  status?: string;
+  context?: string;
+  decision?: string;
+  consequences?: string;
+  tags?: string[];
 }
 
 export interface DeploymentNodeJSON {
-    id: string;
-    label?: string;
+  id: string;
+  label?: string;
 }
 
 export interface ContractJSON {
-    id: string;
-    label?: string;
+  id: string;
+  label?: string;
 }
 
 export interface SharedArtifactJSON {
-    id: string;
-    label?: string;
+  id: string;
+  label?: string;
 }
 
 export interface LibraryJSON {
-    id: string;
-    label?: string;
+  id: string;
+  label?: string;
 }
 
 export interface PolicyJSON {
-    id: string;
-    label?: string;
-    description?: string;
-    category?: string;
-    enforcement?: string;
-    tags?: string[];
+  id: string;
+  label?: string;
+  description?: string;
+  category?: string;
+  enforcement?: string;
+  tags?: string[];
 }
 
 export interface ConstraintJSON {
-    key: string;
-    value: string;
+  key: string;
+  value: string;
 }
 
 export interface ConventionJSON {
-    key: string;
-    value: string;
+  key: string;
+  value: string;
 }
 
 export interface ScenarioNavJSON {
-    id: string;
-    label?: string;
+  id: string;
+  label?: string;
 }
 
 export interface FlowNavJSON {
-    id: string;
-    label?: string;
+  id: string;
+  label?: string;
 }
 
 export interface LayoutData {
-    x: number;
-    y: number;
-    width?: number;
-    height?: number;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
 }
 
 // View state types
-export type C4Level = 'L1' | 'L2' | 'L3';
+export type C4Level = "L1" | "L2" | "L3" | "L4";
 
 export interface ViewContext {
-    level: C4Level;
-    focusedSystemId?: string;
-    focusedContainerId?: string;
+  level: C4Level;
+  focusedSystemId?: string;
+  focusedContainerId?: string;
 }
 
 // Node types for React Flow
 export type C4NodeType =
-    | 'system'
-    | 'container'
-    | 'component'
-    | 'person'
-    | 'datastore'
-    | 'queue'
-    | 'topic'
-    | 'cache'
-    | 'filesystem'
-    | 'deployment'
-    | 'external-container'
-    | 'external-component'
-    | 'boundary';
+  | "system"
+  | "container"
+  | "component"
+  | "person"
+  | "datastore"
+  | "queue"
+  | "topic"
+  | "cache"
+  | "filesystem"
+  | "deployment"
+  | "external-container"
+  | "external-component"
+  | "boundary";
 
 export interface Badge {
-    id: string;
-    label: string;
-    type: 'container' | 'component' | 'other';
-    x: number;
-    y: number;
-    width: number;
-    height: number;
+  id: string;
+  label: string;
+  type: "container" | "component" | "other";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export interface C4NodeData {
-    [key: string]: unknown; // Index signature for React Flow compatibility
-    id: string;
-    label: string;
-    description?: string;
-    technology?: string;
-    type: C4NodeType;
-    isExternal?: boolean;
-    childCount?: number;
-    expanded?: boolean;
-    badges?: Badge[];
+  [key: string]: unknown; // Index signature for React Flow compatibility
+  id: string;
+  label: string;
+  description?: string;
+  technology?: string;
+  type: C4NodeType;
+  isExternal?: boolean;
+  childCount?: number;
+  expanded?: boolean;
+  badges?: Badge[];
+  pendingActionCount?: number; // Number of pending actions (e.g., ADRs without decisions)
 }
 
-export type ViewTab = 'overview' | 'diagram' | 'details' | 'code' | 'guided';
+export type ViewTab = "overview" | "diagram" | "details" | "code" | "builder";

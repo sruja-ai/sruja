@@ -12,8 +12,8 @@ test.describe("Core Navigation", () => {
   });
 
   test("switch tabs by click", async ({ page }) => {
-    await page.locator('button.view-tab:has-text("Overview")').click();
-    await expect(page.locator(".overview-panel")).toBeVisible();
+    await page.locator('button.view-tab:has-text("Builder")').click();
+    await expect(page.locator(".builder-wizard")).toBeVisible();
     await page.locator('button.view-tab:has-text("Diagram")').click();
     await expect(page.locator(".react-flow")).toBeVisible();
     await page.locator('button.view-tab:has-text("Details")').click();

@@ -1,6 +1,6 @@
 .adrs-panel {
     padding: 1rem;
-    background: var(--panel-bg);
+    background: var(--bg-primary);
     border-radius: 12px;
     margin-bottom: 1rem;
     height: 100%;
@@ -14,9 +14,9 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
-    margin: 0 0 1rem 0;
+    margin: 0 0 0.75rem 0;
     color: var(--text-primary);
 }
 
@@ -26,15 +26,16 @@
 
 .adrs-count {
     margin-left: auto;
-    background: rgba(245, 158, 11, 0.2);
-    color: #f59e0b;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
     border-radius: 12px;
 }
 
 .adrs-search {
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
 }
 
 .adrs-add-btn {

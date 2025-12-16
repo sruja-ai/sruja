@@ -154,8 +154,8 @@ export function GoalsStep({ onNext }: GoalsStepProps) {
         <p className="section-description">Specific functional and non-functional requirements</p>
 
         <div className="items-list">
-          {requirements.map((req) => (
-            <div key={req.id} className="item-card">
+          {requirements.map((req, i) => (
+            <div key={`${req.id}-${i}`} className="item-card">
               <span className={`item-type ${req.type ?? "functional"}`}>
                 {req.type === "non-functional" ? "NFR" : "FR"}
               </span>

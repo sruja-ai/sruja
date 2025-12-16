@@ -6,7 +6,7 @@ summary: "Full, runnable examples of Sruja architectures."
 
 # Examples
 
-Here are some complete examples of Sruja models. You can edit and run them directly in the playground.
+Here are some complete examples of Sruja models. You can edit and run them directly in Sruja Designer.
 
 ## Banking System
 

@@ -14,9 +14,9 @@ import {
   Layout,
   Link2,
   Package,
-  Target,
-  Info,
-  FileText,
+  Database,
+  MessageSquare,
+  ShieldCheck,
 } from "lucide-react";
 import { Button, Input, Textarea } from "@sruja/ui";
 import { useArchitectureStore, useViewStore, useSelectionStore } from "../../stores";
@@ -38,6 +38,8 @@ import type {
   ComponentJSON,
   RequirementJSON,
   ADRJSON,
+  DataStoreJSON,
+  QueueJSON,
 } from "../../types";
 import type { DiagramQualityMetrics } from "../../utils/diagramQuality";
 import "./NavigationPanel.css";
@@ -71,6 +73,8 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   const drillDown = useViewStore((s) => s.drillDown);
   const goToRoot = useViewStore((s) => s.goToRoot);
   const setActiveFlow = useSelectionStore((s) => s.setActiveFlow);
+  const setActiveRequirement = useSelectionStore((s) => s.setActiveRequirement);
+  const activeRequirement = useSelectionStore((s) => s.activeRequirement);
   const isEditMode = useFeatureFlagsStore((s) => s.isEditMode);
   const [filterQuery, setFilterQuery] = useState("");
 
@@ -88,9 +92,8 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   }, [systems, filterQuery]);
   const flows = useMemo(() => data?.architecture.flows ?? [], [data]);
   const scenarios = useMemo(() => data?.architecture.scenarios ?? [], [data]);
-  const relations = useMemo(() => data?.architecture.relations ?? [], [data]);
   const requirements = useMemo(() => data?.architecture.requirements ?? [], [data]);
-  const adrs = useMemo(() => data?.architecture.adrs ?? [], [data]);
+  // Removed unused derived lists to satisfy type checks
   const allContainers = useMemo(() => systems.flatMap((s) => s.containers || []), [systems]);
   const [editScenario, setEditScenario] = useState<ScenarioJSON | undefined>(undefined);
   const [editFlow, setEditFlow] = useState<FlowJSON | undefined>(undefined);
@@ -181,6 +184,8 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
         ids.add(c.id);
         c.components?.forEach((co) => ids.add(co.id));
       });
+      s.datastores?.forEach((ds) => ids.add(`${s.id}.${ds.id}`));
+      s.queues?.forEach((q) => ids.add(`${s.id}.${q.id}`));
     });
     return ids;
   };
@@ -304,6 +309,26 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
             label: `Component: ${systemName} -> ${containerName} -> ${componentName}`,
             type: "component",
           });
+        });
+      });
+
+      // Add datastores with system prefix
+      s.datastores?.forEach((ds) => {
+        const datastoreName = ds.label ?? ds.id;
+        options.push({
+          id: `${s.id}.${ds.id}`,
+          label: `DataStore: ${systemName} -> ${datastoreName}`,
+          type: "datastore",
+        });
+      });
+
+      // Add queues with system prefix
+      s.queues?.forEach((q) => {
+        const queueName = q.label ?? q.id;
+        options.push({
+          id: `${s.id}.${q.id}`,
+          label: `Queue: ${systemName} -> ${queueName}`,
+          type: "queue",
         });
       });
     });
@@ -529,6 +554,8 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
         ids.add(c.id);
         (c.components || []).forEach((co) => ids.add(co.id));
       });
+      (deleteSystem.datastores || []).forEach((ds) => ids.add(`${deleteSystem.id}.${ds.id}`));
+      (deleteSystem.queues || []).forEach((q) => ids.add(`${deleteSystem.id}.${q.id}`));
       const relations = removeRelationsForIds(arch, ids);
       return { ...arch, architecture: { ...arch.architecture, systems, relations } };
     });
@@ -574,118 +601,19 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
     setDeleteComponentContainerId(null);
   };
 
-  const layers = ["web", "api", "service", "data", "database"];
-  const layerIndex = (name?: string) => (name ? layers.indexOf(name) : -1);
-  const resolveMetaLayer = (id: string): string | undefined => {
-    const sys = systems.find((s) => s.id === id);
-    if (sys)
-      return sys.metadata
-        ?.find((m) => m.key === "layer")
-        ?.value?.replace(/"/g, "")
-        .toLowerCase();
-    const parts = id.split(".");
-    if (parts.length === 2) {
-      const s = systems.find((x) => x.id === parts[0]);
-      const c = s?.containers?.find((y) => y.id === parts[1]);
-      return c?.metadata
-        ?.find((m) => m.key === "layer")
-        ?.value?.replace(/"/g, "")
-        .toLowerCase();
-    }
-    if (parts.length === 1) {
-      const c = allContainers.find((y) => y.id === parts[0]);
-      return c?.metadata
-        ?.find((m) => m.key === "layer")
-        ?.value?.replace(/"/g, "")
-        .toLowerCase();
-    }
-    if (parts.length === 3) {
-      const s = systems.find((x) => x.id === parts[0]);
-      const c = s?.containers?.find((y) => y.id === parts[1]);
-      const co = c?.components?.find((z) => z.id === parts[2]);
-      return co?.metadata
-        ?.find((m) => m.key === "layer")
-        ?.value?.replace(/"/g, "")
-        .toLowerCase();
-    }
-    return undefined;
-  };
-  const layeringViolationDetails = useMemo(
-    () =>
-      relations
-        .map((r) => {
-          const fromL = resolveMetaLayer(r.from);
-          const toL = resolveMetaLayer(r.to);
-          const fi = layerIndex(fromL);
-          const ti = layerIndex(toL);
-          return fi !== -1 && ti !== -1 && fi > ti
-            ? { from: r.from, to: r.to, fromLayer: fromL, toLayer: toL }
-            : null;
-        })
-        .filter(Boolean) as { from: string; to: string; fromLayer?: string; toLayer?: string }[],
-    [relations, systems, allContainers]
-  );
-  const [showLayeringDetails, setShowLayeringDetails] = useState(false);
-  const [layeringFixTargetMap, setLayeringFixTargetMap] = useState<Record<string, string>>({});
-  const getDownwardTargets = (fromId: string): { id: string; label: string }[] => {
-    const fromLayer = resolveMetaLayer(fromId);
-    const fi = layerIndex(fromLayer);
-    if (fi === -1) return [];
-    const parts = fromId.split(".");
-    if (parts.length === 1) {
-      const sys = systems.find((s) => s.id === parts[0]);
-      const conts = (sys?.containers || [])
-        .map((c) => ({ id: `${parts[0]}.${c.id}`, label: c.label || c.id }))
-        .filter((t) => layerIndex(resolveMetaLayer(t.id)) > fi);
-      const dss = (sys?.datastores || [])
-        .map((ds) => ({ id: `${parts[0]}.${ds.id}`, label: ds.label || ds.id }))
-        .filter((t) => layerIndex(resolveMetaLayer(t.id)) > fi);
-      return [...conts, ...dss];
-    }
-    if (parts.length === 3) {
-      const sys = systems.find((s) => s.id === parts[0]);
-      const container = sys?.containers?.find((c) => c.id === parts[1]);
-      const comps = (container?.components || [])
-        .map((co) => ({ id: `${parts[0]}.${parts[1]}.${co.id}`, label: co.label || co.id }))
-        .filter((t) => layerIndex(resolveMetaLayer(t.id)) > fi);
-      const cont = { id: `${parts[0]}.${parts[1]}`, label: container?.label || parts[1] };
-      const contLayer = layerIndex(resolveMetaLayer(cont.id));
-      const targets = [...comps, ...(contLayer > fi ? [cont] : [])];
-      return targets;
-    }
-    if (parts.length === 2) {
-      const sys = systems.find((s) => s.id === parts[0]);
-      const siblings = (sys?.containers || [])
-        .filter((c) => c.id !== parts[1])
-        .map((c) => ({ id: `${parts[0]}.${c.id}`, label: c.label || c.id }))
-        .filter((t) => layerIndex(resolveMetaLayer(t.id)) > fi);
-      const dss = (sys?.datastores || [])
-        .map((ds) => ({ id: `${parts[0]}.${ds.id}`, label: ds.label || ds.id }))
-        .filter((t) => layerIndex(resolveMetaLayer(t.id)) > fi);
-      return [...siblings, ...dss];
-    }
-    return [];
-  };
-  const submitReverseRelation = async (fromId: string, toId: string) => {
-    await updateArchitecture((arch: any) => {
-      const existing = arch.architecture?.relations || [];
-      const filtered = existing.filter((r: any) => !(r.from === fromId && r.to === toId));
-      const relations = [...filtered, { from: toId, to: fromId }];
-      return { ...arch, architecture: { ...arch.architecture, relations } };
-    });
-  };
-  const submitReplaceRelation = async (fromId: string, toId: string, newTargetId: string) => {
-    await updateArchitecture((arch: any) => {
-      const existing = arch.architecture?.relations || [];
-      const filtered = existing.filter((r: any) => !(r.from === fromId && r.to === toId));
-      const relations = [...filtered, { from: fromId, to: newTargetId }];
-      return { ...arch, architecture: { ...arch.architecture, relations } };
-    });
-  };
+  // removed unused layer helpers
+  // Removed unused layering helpers and relation utilities to satisfy type checks
 
   return (
     <div className={`navigation-panel ${isCollapsed ? "collapsed" : ""}`}>
-      {!data && <div className="panel-empty">Load an architecture to see navigation</div>}
+      {!isCollapsed && (
+        <div className="nav-header">
+          <h3 className="nav-title">Navigation</h3>
+        </div>
+      )}
+      {!data && !isCollapsed && (
+        <div className="panel-empty">Load an architecture to see navigation</div>
+      )}
       {!isCollapsed && (
         <div className="nav-search-row">
           <Input
@@ -786,17 +714,15 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
           )}
         </div>
       )}
-      {/* Desktop Collapse Toggle */}
-      {!onClose && (
-        <button
-          className="nav-collapse-btn"
-          onClick={toggleCollapse}
-          aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"}
-          title={isCollapsed ? "Expand navigation" : "Collapse navigation"}
-        >
-          {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-        </button>
-      )}
+      {/* Collapse Toggle */}
+      <button
+        className="nav-collapse-btn"
+        onClick={toggleCollapse}
+        aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"}
+        title={isCollapsed ? "Expand navigation" : "Collapse navigation"}
+      >
+        {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+      </button>
 
       {onClose && (
         <div className="panel-mobile-header">
@@ -1041,7 +967,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
         <div className="nav-section">
           <div className="nav-section-title">
             <Play size={14} />
-            {!isCollapsed && <span>Scenarios ({scenarios.length})</span>}
+            {!isCollapsed && <span>User Stories & Scenarios ({scenarios.length})</span>}
             {!isCollapsed && isEditMode() && (
               <button
                 className="nav-add-btn"
@@ -1108,7 +1034,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
         <div className="nav-section">
           <div className="nav-section-title">
             <Play size={14} />
-            {!isCollapsed && <span>Flows ({flows.length})</span>}
+            {!isCollapsed && <span>Data Flows ({flows.length})</span>}
             {!isCollapsed && isEditMode() && (
               <button
                 className="nav-add-btn"
@@ -1162,6 +1088,29 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                     )}
                   </>
                 )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Requirements */}
+      {requirements.length > 0 && (
+        <div className="nav-section">
+          <div className="nav-section-title">
+            <ShieldCheck size={14} />
+            {!isCollapsed && <span>Requirements ({requirements.length})</span>}
+          </div>
+          <ul className="nav-tree">
+            {requirements.map((req) => (
+              <li
+                key={req.id}
+                className={`nav-item clickable ${activeRequirement === req.id ? "selected" : ""}`}
+                onClick={() => setActiveRequirement(req.id === activeRequirement ? null : req.id)}
+                title={isCollapsed ? req.title || req.id : undefined}
+              >
+                <ShieldCheck size={12} />
+                {!isCollapsed && <span className="nav-item-label">{req.title || req.id}</span>}
               </li>
             ))}
           </ul>
@@ -1970,13 +1919,16 @@ function SystemTreeItem({
   onDeleteContainer,
 }: SystemTreeItemProps) {
   const hasContainers = (system.containers?.length ?? 0) > 0;
+  const hasDatastores = (system.datastores?.length ?? 0) > 0;
+  const hasQueues = (system.queues?.length ?? 0) > 0;
+  const hasChildren = hasContainers || hasDatastores || hasQueues;
   const isEditMode = useFeatureFlagsStore((s) => s.isEditMode);
 
   return (
     <li className={`nav-item ${isSelected ? "selected" : ""}`}>
       <div className="nav-item-row">
         {/* Expand/Collapse Button */}
-        {hasContainers && !isCollapsed ? (
+        {hasChildren && !isCollapsed ? (
           <button className="nav-expand-btn" onClick={onToggle}>
             {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
           </button>
@@ -2032,8 +1984,8 @@ function SystemTreeItem({
         )}
       </div>
 
-      {/* Expanded Containers */}
-      {isExpanded && hasContainers && !isCollapsed && (
+      {/* Expanded Children */}
+      {isExpanded && hasChildren && !isCollapsed && (
         <ul className="nav-tree nested">
           {system.containers?.map((container: ContainerJSON) => (
             <ContainerTreeItem
@@ -2045,6 +1997,24 @@ function SystemTreeItem({
               onEditContainer={() => onEditContainer(container, system.id)}
               onDeleteContainer={() => onDeleteContainer(container, system.id)}
             />
+          ))}
+          {system.datastores?.map((datastore: DataStoreJSON) => (
+            <li key={datastore.id} className="nav-item">
+              <button className="nav-item-btn" title={datastore.label ?? datastore.id}>
+                <Database size={12} />
+                {!isCollapsed && (
+                  <span className="nav-item-label">{datastore.label ?? datastore.id}</span>
+                )}
+              </button>
+            </li>
+          ))}
+          {system.queues?.map((queue: QueueJSON) => (
+            <li key={queue.id} className="nav-item">
+              <button className="nav-item-btn" title={queue.label ?? queue.id}>
+                <MessageSquare size={12} />
+                {!isCollapsed && <span className="nav-item-label">{queue.label ?? queue.id}</span>}
+              </button>
+            </li>
           ))}
         </ul>
       )}

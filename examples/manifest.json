@@ -303,14 +303,6 @@
       "category": "testing",
       "description": "Test overview example",
       "skipPlayground": true
-    },
-    {
-      "file": "temp_story.sruja",
-      "name": "Temp Story",
-      "order": 99,
-      "category": "testing",
-      "description": "Temporary story example",
-      "skipPlayground": true
     }
   ]
 }

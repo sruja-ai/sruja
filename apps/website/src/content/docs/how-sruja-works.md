@@ -75,9 +75,9 @@ architecture "Sruja" {
 			description "Editor extension (apps/vscode-extension)"
 		}
 
-		container Playground "Sruja Playground" {
+		container Designer "Sruja Designer" {
 			technology "React/Vite"
-			description "Interactive playground for testing Sruja code (apps/playground)"
+			description "Interactive architecture design tool (apps/playground)"
 		}
 
 		container Website "Documentation Site" {
@@ -96,14 +96,14 @@ architecture "Sruja" {
 		VSCode -> Language "uses LSP"
 		VSCode -> WASM "uses for LSP and preview"
 
-		Playground -> WASM "uses for parsing/rendering"
+		Designer -> WASM "uses for parsing/rendering"
 
-		Website -> Playground "embeds"
+		Website -> Designer "embeds"
 	}
 
 	User -> Sruja.CLI "runs commands"
 	User -> Sruja.VSCode "writes DSL"
-	User -> Sruja.Playground "visualizes architecture"
+	User -> Sruja.Designer "designs architecture"
 	User -> Sruja.Website "reads docs"
 
 	system Browser "Web Browser" {
@@ -158,81 +158,81 @@ architecture "Sruja" {
 
 
   // Component Stories
-  story PlaygroundStory "Using the Playground" {
-    User -> Sruja.Website "visits playground"
-    Sruja.Website -> Sruja.Playground "initializes"
-    Sruja.Playground -> Sruja.WASM "loads engine"
-    Sruja.Playground -> Sruja.WASM "parses DSL"
-    Sruja.Playground -> User "renders interactive diagram"
+  story DesignerStory "Using Sruja Designer" {
+    User -> Sruja.Website "visits designer"
+    Sruja.Website -> Sruja.Designer "initializes"
+    Sruja.Designer -> Sruja.WASM "loads engine"
+    Sruja.Designer -> Sruja.WASM "parses DSL"
+    Sruja.Designer -> User "renders interactive diagram"
   }
 
-  story PlaygroundExports "Exporting from Playground" {
-    User -> Sruja.Playground "clicks export"
-    Sruja.Playground -> Sruja.WASM "requests JSON"
-    Sruja.WASM -> Sruja.Playground "returns JSON data"
-    Sruja.Playground -> User "downloads file"
+  story DesignerExports "Exporting from Designer" {
+    User -> Sruja.Designer "clicks export"
+    Sruja.Designer -> Sruja.WASM "requests JSON"
+    Sruja.WASM -> Sruja.Designer "returns JSON data"
+    Sruja.Designer -> User "downloads file"
   }
 
-  // Playground-specific Scenarios
-  scenario PlaygroundShare "Share From Playground" {
-    User -> Sruja.Playground "edits DSL code"
-    Sruja.Playground -> Browser "updates URL with code"
-    User -> Sruja.Playground "clicks Share button"
-    Sruja.Playground -> Browser "copies shareable URL"
+  // Designer-specific Scenarios
+  scenario DesignerShare "Share From Designer" {
+    User -> Sruja.Designer "edits DSL code"
+    Sruja.Designer -> Browser "updates URL with code"
+    User -> Sruja.Designer "clicks Share button"
+    Sruja.Designer -> Browser "copies shareable URL"
     User -> User "shares URL with team"
   }
 
-  scenario PlaygroundFormatPreview "Preview Multiple Formats" {
-    User -> Sruja.Playground "loads architecture"
-    User -> Sruja.Playground "switches to JSON preview"
-    Sruja.Playground -> Sruja.WASM "parses DSL to JSON"
-    Sruja.Playground -> User "displays JSON export"
+  scenario DesignerFormatPreview "Preview Multiple Formats" {
+    User -> Sruja.Designer "loads architecture"
+    User -> Sruja.Designer "switches to JSON preview"
+    Sruja.Designer -> Sruja.WASM "parses DSL to JSON"
+    Sruja.Designer -> User "displays JSON export"
   }
 
-  scenario PlaygroundResizePanels "Resize Editor and Preview" {
-    User -> Sruja.Playground "opens split view"
-    Sruja.Playground -> User "shows editor and preview side-by-side"
-    User -> Sruja.Playground "drags resize handle"
-    Sruja.Playground -> User "adjusts panel sizes"
-    Sruja.Playground -> Browser "saves panel preference"
+  scenario DesignerResizePanels "Resize Editor and Preview" {
+    User -> Sruja.Designer "opens split view"
+    Sruja.Designer -> User "shows editor and preview side-by-side"
+    User -> Sruja.Designer "drags resize handle"
+    Sruja.Designer -> User "adjusts panel sizes"
+    Sruja.Designer -> Browser "saves panel preference"
   }
 
-  scenario PlaygroundLoadExample "Load Example Architecture" {
-    User -> Sruja.Playground "opens examples dropdown"
-    Sruja.Playground -> User "shows available examples"
-    User -> Sruja.Playground "selects example"
-    Sruja.Playground -> Sruja.Website "loads example file"
-    Sruja.Website -> Sruja.Playground "returns DSL content"
-    Sruja.Playground -> Sruja.WASM "parses DSL"
-    Sruja.Playground -> User "displays architecture"
-    Sruja.Playground -> Browser "updates URL with code"
+  scenario DesignerLoadExample "Load Example Architecture" {
+    User -> Sruja.Designer "opens examples dropdown"
+    Sruja.Designer -> User "shows available examples"
+    User -> Sruja.Designer "selects example"
+    Sruja.Designer -> Sruja.Website "loads example file"
+    Sruja.Website -> Sruja.Designer "returns DSL content"
+    Sruja.Designer -> Sruja.WASM "parses DSL"
+    Sruja.Designer -> User "displays architecture"
+    Sruja.Designer -> Browser "updates URL with code"
   }
 
-  scenario PlaygroundURLState "URL State Management" {
-    User -> Sruja.Playground "edits DSL code" [Input]
-    Sruja.Playground -> Browser "debounces URL update" [Timeout]
+  scenario DesignerURLState "URL State Management" {
+    User -> Sruja.Designer "edits DSL code" [Input]
+    Sruja.Designer -> Browser "debounces URL update" [Timeout]
     Browser -> Browser "updates URL hash with code" [HistoryAPI]
     User -> Browser "refreshes page" [Event]
-    Browser -> Sruja.Playground "loads code from URL" [HashParse]
-    Sruja.Playground -> Sruja.WASM "parses DSL from URL" [FunctionCall]
-    Sruja.Playground -> User "restores architecture state" [DOM]
+    Browser -> Sruja.Designer "loads code from URL" [HashParse]
+    Sruja.Designer -> Sruja.WASM "parses DSL from URL" [FunctionCall]
+    Sruja.Designer -> User "restores architecture state" [DOM]
   }
 
-  story PlaygroundEditingStory "Visual Editing in Playground" {
-    User -> Sruja.Playground "opens editor"
-    Sruja.Playground -> Sruja.WASM "loads engine"
-    User -> Sruja.Playground "types DSL code"
-    Sruja.Playground -> Sruja.WASM "validates code"
-    Sruja.WASM -> Sruja.Playground "returns diagnostics"
-    Sruja.Playground -> User "shows errors/diagram"
+  story DesignerEditingStory "Visual Editing in Designer" {
+    User -> Sruja.Designer "opens editor"
+    Sruja.Designer -> Sruja.WASM "loads engine"
+    User -> Sruja.Designer "types DSL code"
+    Sruja.Designer -> Sruja.WASM "validates code"
+    Sruja.WASM -> Sruja.Designer "returns diagnostics"
+    Sruja.Designer -> User "shows errors/diagram"
   }
 
-  scenario PlaygroundAutosave "Autosave on Close" {
-    Sruja.Playground -> Browser.LocalStore "save DSL snapshot"
-    User -> Sruja.Playground "closes tab"
-    User -> Sruja.Playground "reopens playground"
-    Sruja.Playground -> Browser.LocalStore "load DSL snapshot"
-    Sruja.Playground -> User "restores session"
+  scenario DesignerAutosave "Autosave on Close" {
+    Sruja.Designer -> Browser.LocalStore "save DSL snapshot"
+    User -> Sruja.Designer "closes tab"
+    User -> Sruja.Designer "reopens designer"
+    Sruja.Designer -> Browser.LocalStore "load DSL snapshot"
+    Sruja.Designer -> User "restores session"
   }
 
   story DocsStory "Reading Documentation" {
@@ -292,7 +292,7 @@ The [`pkg/engine`](https://github.com/sruja-ai/sruja/tree/main/pkg/engine) and [
 
 To ensure a consistent experience across all tools, we compile the Go engine to WebAssembly ([`cmd/wasm`](https://github.com/sruja-ai/sruja/tree/main/cmd/wasm)). This allows the **exact same parsing and validation logic** to run in:
 
-- **Sruja Playground**: For instant feedback in the browser.
+- **Sruja Designer**: For instant feedback in the browser.
 - **VS Code Extension**: For local preview without needing a binary.
 - **Documentation Site**: For embedding interactive diagrams in documentation (like the one above!).
 

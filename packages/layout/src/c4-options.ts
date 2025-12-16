@@ -149,9 +149,9 @@ export const InteractivePreset: C4LayoutOptions = {
   ...PublicationPreset,
   spacingMode: "adaptive",
   spacing: {
-    node: { SoftwareSystem: 30 },
-    rank: { Container: 80 },
-    padding: { SoftwareSystem: 28, Container: 20 },
+    node: { SoftwareSystem: 30, Container: 50, Component: 40 },
+    rank: { Container: 70, Component: 60 },
+    padding: { SoftwareSystem: 28, Container: 20, Component: 20 },
     port: 12,
   },
 };

@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
-import { Component } from "lucide-react";
+import { Component, AlertTriangle } from "lucide-react";
 import type { C4NodeData } from "../../types";
 import { getNodeColors } from "../../utils/colorScheme";
 import "./nodes.css";
@@ -31,6 +31,17 @@ function ComponentNodeComponent({ data, selected }: ComponentNodeProps) {
         <div className="node-label">{nodeData.label}</div>
         {nodeData.technology && <div className="node-technology">[{nodeData.technology}]</div>}
       </div>
+
+      {nodeData.pendingActionCount && nodeData.pendingActionCount > 0 && (
+        <div
+          className="node-warning-badge"
+          aria-hidden="true"
+          title={`${nodeData.pendingActionCount} pending action${nodeData.pendingActionCount > 1 ? "s" : ""} - Action required`}
+        >
+          <AlertTriangle size={12} />
+          <span>{nodeData.pendingActionCount}</span>
+        </div>
+      )}
 
       <Handle type="source" position={Position.Bottom} className="c4-handle" />
     </div>
