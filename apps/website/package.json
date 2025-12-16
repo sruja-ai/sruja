@@ -41,7 +41,7 @@
     "@astrojs/check": "^0.9.3",
     "@astrojs/mdx": "4.3.12",
     "@astrojs/react": "4.4.2",
-    "@sruja/playground": "*",
+    "@sruja/designer": "*",
     "@sruja/diagram": "*",
     "@sruja/shared": "*",
     "@sruja/ui": "*",

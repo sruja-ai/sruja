@@ -6,7 +6,7 @@
 @source "../../../viewer/src";
 @source "../../../shared/src";
 @source "../../../../apps/studio-core/src";
-@source "../../../../apps/playground/src";
+@source "../../../../apps/designer/src";
 @source "../../../../apps/website/src";
 
 /* Global design system styles with dark/light mode support */

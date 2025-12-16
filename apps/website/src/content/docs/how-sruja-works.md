@@ -77,7 +77,7 @@ architecture "Sruja" {
 
 		container Designer "Sruja Designer" {
 			technology "React/Vite"
-			description "Interactive architecture design tool (apps/playground)"
+			description "Interactive architecture design tool (apps/designer)"
 		}
 
 		container Website "Documentation Site" {

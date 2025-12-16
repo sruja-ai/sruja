@@ -28,7 +28,7 @@ internal/            # Internal utilities
 examples/            # Example .sruja models
 apps/                # Frontend applications
   website/           # Astro-based website (docs, courses, tutorials, blog)
-  playground/        # Interactive playground application
+  designer/          # Interactive designer application
   vscode-extension/  # VS Code language support
   social-publish/    # Social media publishing tools
   storybook/         # Component documentation
@@ -149,11 +149,11 @@ scripts/             # Installer and tooling scripts
 - Features: Playground with WASM support, viewer integration.
 - Build: Astro static site generator with TypeScript/React components.
 
-### Playground (apps/playground/)
+### Designer (apps/designer/)
 
-- Interactive playground for testing Sruja code in the browser.
+- Interactive designer for testing Sruja code in the browser.
 - Uses WASM for parsing and validation.
-- Located at `apps/playground/`.
+- Located at `apps/designer/`.
 
 ### VS Code Extension (apps/vscode-extension/)
 

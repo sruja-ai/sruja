@@ -23,7 +23,7 @@ coverage.html
 !learn/layouts/**/*.html
 !pkg/export/html/*.html
 !packages/diagram/test-app/index.html
-apps/playground/test-results
+apps/designer/test-results
 
 # Dependency directories
 vendor/

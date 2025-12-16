@@ -99,9 +99,9 @@ architecture "Sruja Architecture" {
       description "Editor extension (apps/vscode-extension)"
     }
 
-    container Playground "Sruja Playground" {
+    container Designer "Sruja Designer" {
       technology "React/Vite"
-      description "Interactive playground for testing Sruja code (apps/playground)"
+      description "Interactive designer for testing Sruja code (apps/designer)"
     }
 
     container Website "Documentation Site" {
