@@ -5,29 +5,14 @@
     "jsxImportSource": "react",
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@/features/*": [
-        "./src/features/*"
-      ],
-      "@/shared/*": [
-        "./src/shared/*"
-      ],
-      "@sruja/shared": [
-        "../../packages/shared/src"
-      ],
-      "@sruja/ui": [
-        "../../packages/ui/src"
-      ]
+      "@/*": ["./src/*"],
+      "@/features/*": ["./src/features/*"],
+      "@/shared/*": ["./src/shared/*"],
+      "@sruja/shared": ["../../packages/shared/src"],
+      "@sruja/ui": ["../../packages/ui/src"],
+      "@sruja/designer": ["../../apps/designer/src"]
     }
   },
-  "include": [
-    "src/**/*",
-    "src/env.d.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["src/**/*", "src/env.d.ts"],
+  "exclude": ["node_modules", "dist"]
 }
