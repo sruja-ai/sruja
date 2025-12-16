@@ -31,7 +31,7 @@ sruja/
 │   └── export/           # Exporters (JSON, views)
 ├── apps/                 # Frontend applications
 │   ├── website/          # Astro website (docs, courses, tutorials)
-│   ├── playground/       # Interactive designer application (Sruja Designer)
+│   ├── designer/         # Interactive designer application (Sruja Designer)
 │   ├── vscode-extension/ # VS Code language support
 │   ├── social-publish/   # Social media publishing tools
 │   └── storybook/        # Component documentation
@@ -138,7 +138,7 @@ make setup-hooks
 
 The hook will:
 
-- Test playground examples compile correctly
+- Test designer examples compile correctly
 - Test course code blocks compile correctly
 - Test docs code blocks compile correctly
 - Block commits if any code fails to compile

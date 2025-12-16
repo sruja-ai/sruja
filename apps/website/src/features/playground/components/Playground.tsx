@@ -5,10 +5,10 @@ import { SrujaLoader, ThemeProvider } from "@sruja/ui";
 import "@sruja/ui/design-system/styles.css";
 import AlgoliaSearch from "@/features/search/components/AlgoliaSearch";
 
-// Lazy load the playground App component
+// Lazy load the designer App component
 // CSS files are imported within the App component itself
 const PlaygroundApp = lazy(() =>
-  import("@sruja/playground").then((m) => ({ default: m.default || m.App }))
+  import("@sruja/designer").then((m) => ({ default: m.default || m.App }))
 );
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {

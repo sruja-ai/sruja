@@ -103,9 +103,9 @@ wasm:
 	ls -lh apps/website/public/wasm/sruja.wasm* 2>/dev/null | awk '{print "  " $$9 " (" $$5 ")"}'
 
 
-# Generate playground examples from .sruja files
+# Generate designer examples from .sruja files
 generate-examples:
-	@echo "Generating playground examples..."
+	@echo "Generating designer examples..."
 	@go run scripts/generate-playground-examples.go
 
 # Build WASM for website (compression included by default in wasm target)

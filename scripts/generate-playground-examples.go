@@ -44,8 +44,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Filter examples for playground (exclude skipPlayground=true)
-	var playgroundExamples []ExampleEntry
+	// Filter examples for designer (exclude skipPlayground=true)
+	var designerExamples []ExampleEntry
 	for _, ex := range manifest.Examples {
 		if !ex.SkipPlayground {
 			playgroundExamples = append(playgroundExamples, ex)
@@ -53,8 +53,8 @@ func main() {
 	}
 
 	// Sort by order
-	sort.Slice(playgroundExamples, func(i, j int) bool {
-		return playgroundExamples[i].Order < playgroundExamples[j].Order
+	sort.Slice(designerExamples, func(i, j int) bool {
+		return designerExamples[i].Order < designerExamples[j].Order
 	})
 
 	// Generate TypeScript file
@@ -64,7 +64,7 @@ func main() {
 	sb.WriteString("import type { PlaygroundExample } from './types';\n\n")
 	sb.WriteString("export const EXAMPLES: PlaygroundExample[] = [\n")
 
-	for i, entry := range playgroundExamples {
+	for i, entry := range designerExamples {
 		// Validate file name to prevent directory traversal
 		if strings.Contains(entry.File, "..") || filepath.IsAbs(entry.File) {
 			fmt.Fprintf(os.Stderr, "Warning: Skipping invalid file path: %s\n", entry.File)
@@ -84,7 +84,7 @@ func main() {
 			continue
 		}
 
-		// Remove comment lines (metadata comments) for cleaner playground display
+		// Remove comment lines (metadata comments) for cleaner designer display
 		lines := strings.Split(string(content), "\n")
 		var cleanLines []string
 		for _, line := range lines {
@@ -123,5 +123,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Generated %s with %d examples (filtered from %d total)\n", outputPath, len(playgroundExamples), len(manifest.Examples))
+	fmt.Printf("Generated %s with %d examples (filtered from %d total)\n", outputPath, len(designerExamples), len(manifest.Examples))
 }
