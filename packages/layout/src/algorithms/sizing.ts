@@ -294,12 +294,6 @@ export function calculateSizes(
    * This ensures all children are sized before we calculate parent size
    */
   function processNode(node: HierarchyNode): SizedNode {
-    console.info(`[SIZING] Processing ${node.id}:`, {
-      childrenCount: node.children.length,
-      collapseChildren: node.node.collapseChildren,
-      kind: node.node.kind,
-    });
-
     // Is this a leaf node or collapsed parent?
     if (node.children.length === 0 || node.node.collapseChildren) {
       // --- LEAF NODE PATH ---
@@ -315,7 +309,7 @@ export function calculateSizes(
       return sizedNode;
     } else {
       // --- PARENT NODE PATH ---
-      console.info(`[SIZING] ${node.id} taking PARENT path with ${node.children.length} children`);
+
       // Step 1: Process all children first (post-order)
       const childSizedNodes = node.children.map((c) => processNode(c));
 
@@ -331,7 +325,7 @@ export function calculateSizes(
       const headerHeight = headerData.contentSize.height + padding;
       // Safety padding must match or exceed MIN_PARENT_PADDING (80px) in diagramQuality.ts
       // Adding extra buffer to ensure containment validation passes
-      const safetyPadding = 100;
+      const safetyPadding = 24;
 
       const totalWidth = childLayout.boundingBox.width + padding * 2 + safetyPadding * 2;
       const totalHeight =

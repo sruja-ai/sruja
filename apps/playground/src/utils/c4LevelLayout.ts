@@ -13,6 +13,7 @@ import {
   SystemContextView,
   ContainerView,
   ComponentView,
+  DeploymentView,
   LandscapeView,
   InteractivePreset,
   type C4Node,
@@ -120,6 +121,9 @@ export async function applyC4LevelLayout(
     case "L3":
       view = focusedContainerId ? ComponentView(focusedContainerId as C4Id) : LandscapeView();
       break;
+    case "L4":
+      view = DeploymentView("Production");
+      break;
   }
 
   // 3. Run Layout
@@ -134,6 +138,10 @@ export async function applyC4LevelLayout(
     if (focusedSystemId) {
       layoutOptions.focusSystemId = focusedSystemId;
     }
+  } else if (level === "L4") {
+    // L4 Deployment uses LR direction by default
+    layoutOptions.direction = "LR";
+    delete layoutOptions.strategy;
   } else {
     // L2-L3 or expanded L1 use Sugiyama (default)
     delete layoutOptions.strategy;

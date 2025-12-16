@@ -3,13 +3,14 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0;
 }
 
 .code-tabs {
     display: flex;
     gap: 0.5rem;
     padding: 0.5rem 1rem;
-    background: var(--bg-secondary);
+    background: var(--bg-primary);
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -35,9 +36,9 @@
 
 .code-tab.active {
     background: var(--bg-primary);
-    color: var(--highlight-color);
-    border-color: var(--border-color);
-    box-shadow: 0 1px 2px var(--shadow-color);
+    color: var(--text-primary);
+    border-color: var(--highlight-color);
+    box-shadow: var(--shadow-sm);
 }
 
 .code-content {
@@ -45,4 +46,5 @@
     overflow: hidden;
     position: relative;
     background: var(--bg-primary);
+    min-height: 0;
 }

@@ -1,5 +1,7 @@
 export { Breadcrumb } from "./Breadcrumb";
 export { ExamplesDropdown } from "./ExamplesDropdown";
+export { CommandPalette, type Command } from "./CommandPalette";
+export { ShortcutsModal, type Shortcut } from "./ShortcutsModal";
 export {
   EditRequirementForm,
   EditADRForm,

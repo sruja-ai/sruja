@@ -17,7 +17,13 @@ import { useViewStore } from "../../stores/viewStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
 import { BestPracticeTip } from "../shared";
-import type { ArchitectureJSON, SystemJSON, ContainerJSON } from "../../types";
+import type {
+  ArchitectureJSON,
+  SystemJSON,
+  ContainerJSON,
+  DataStoreJSON,
+  QueueJSON,
+} from "../../types";
 import "./GuidedBuilderPanel.css";
 
 export function GuidedBuilderPanel() {
@@ -58,6 +64,22 @@ export function GuidedBuilderPanel() {
   const [componentIdInput, setComponentIdInput] = useState("");
   const [componentParentId, setComponentParentId] = useState<string | "">(
     focusedContainerId || allContainers[0]?.id || ""
+  );
+  const [datastoreName, setDatastoreName] = useState("");
+  const [datastoreTech, setDatastoreTech] = useState("");
+  const [datastoreDescription, setDatastoreDescription] = useState("");
+  const [useCustomDatastoreId, setUseCustomDatastoreId] = useState(false);
+  const [datastoreIdInput, setDatastoreIdInput] = useState("");
+  const [datastoreParentId, setDatastoreParentId] = useState<string | "">(
+    focusedSystemId || systems[0]?.id || ""
+  );
+  const [queueName, setQueueName] = useState("");
+  const [queueTech, setQueueTech] = useState("");
+  const [queueDescription, setQueueDescription] = useState("");
+  const [useCustomQueueId, setUseCustomQueueId] = useState(false);
+  const [queueIdInput, setQueueIdInput] = useState("");
+  const [queueParentId, setQueueParentId] = useState<string | "">(
+    focusedSystemId || systems[0]?.id || ""
   );
 
   const slugify = (text: string) =>
@@ -150,6 +172,57 @@ export function GuidedBuilderPanel() {
     setComponentDescription("");
     setUseCustomComponentId(false);
     setComponentIdInput("");
+  };
+
+  const submitAddDataStore = async () => {
+    if (!datastoreParentId) return;
+    const id =
+      (useCustomDatastoreId ? datastoreIdInput || "" : "") || slugify(datastoreName) || "datastore";
+    await updateArchitecture((arch: ArchitectureJSON) => {
+      const systems = (arch.architecture?.systems || []).map((s) => {
+        if (s.id !== datastoreParentId) return s;
+        const datastores = [...(s.datastores || [])];
+        if (!datastores.find((ds) => ds.id === id))
+          datastores.push({
+            id,
+            label: datastoreName || undefined,
+            technology: datastoreTech || undefined,
+            description: datastoreDescription || undefined,
+          } as DataStoreJSON);
+        return { ...s, datastores };
+      });
+      return { ...arch, architecture: { ...arch.architecture, systems } };
+    });
+    setDatastoreName("");
+    setDatastoreTech("");
+    setDatastoreDescription("");
+    setUseCustomDatastoreId(false);
+    setDatastoreIdInput("");
+  };
+
+  const submitAddQueue = async () => {
+    if (!queueParentId) return;
+    const id = (useCustomQueueId ? queueIdInput || "" : "") || slugify(queueName) || "queue";
+    await updateArchitecture((arch: ArchitectureJSON) => {
+      const systems = (arch.architecture?.systems || []).map((s) => {
+        if (s.id !== queueParentId) return s;
+        const queues = [...(s.queues || [])];
+        if (!queues.find((q) => q.id === id))
+          queues.push({
+            id,
+            label: queueName || undefined,
+            technology: queueTech || undefined,
+            description: queueDescription || undefined,
+          } as QueueJSON);
+        return { ...s, queues };
+      });
+      return { ...arch, architecture: { ...arch.architecture, systems } };
+    });
+    setQueueName("");
+    setQueueTech("");
+    setQueueDescription("");
+    setUseCustomQueueId(false);
+    setQueueIdInput("");
   };
 
   const personIds = useMemo(() => new Set(persons.map((p) => p.id)), [persons]);
@@ -879,14 +952,16 @@ export function GuidedBuilderPanel() {
           <>
             <div className="guided-description">
               <p>
-                Break down each system into containers (applications, databases, services). Define
-                how containers interact with each other through relationships.
+                Break down each system into containers (applications, services), datastores, and
+                queues. Define how containers, datastores, and queues interact with each other
+                through relationships.
               </p>
             </div>
 
             {/* L2 Best Practice Tips */}
             <BestPracticeTip variant="tip" show={allContainers.length === 0}>
-              Common containers: Web App, API Server, Database, Message Queue, Cache. Each should
+              Common containers: Web App, API Server, Backend Service. For databases and queues, you
+              can use dedicated datastore/queue types (add via DSL code) or containers. Each should
               have a specific technology choice.
             </BestPracticeTip>
 
@@ -924,12 +999,28 @@ export function GuidedBuilderPanel() {
                 const sys = focusedSystemId
                   ? systems.find((s) => s.id === focusedSystemId)
                   : systems[0];
-                const count = sys?.containers?.length ?? 0;
+                const containerCount = sys?.containers?.length ?? 0;
+                const datastoreCount = sys?.datastores?.length ?? 0;
+                const queueCount = sys?.queues?.length ?? 0;
                 return (
-                  <span>
-                    {count} container{count !== 1 ? "s" : ""}
-                    {sys ? ` in ${sys.label ?? sys.id}` : ""}
-                  </span>
+                  <>
+                    {containerCount > 0 && (
+                      <span>
+                        {containerCount} container{containerCount !== 1 ? "s" : ""}
+                        {sys ? ` in ${sys.label ?? sys.id}` : ""}
+                      </span>
+                    )}
+                    {datastoreCount > 0 && (
+                      <span>
+                        {datastoreCount} datastore{datastoreCount !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                    {queueCount > 0 && (
+                      <span>
+                        {queueCount} queue{queueCount !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </>
                 );
               })()}
               {hasContainerRelations && <span>relations defined</span>}
@@ -1002,6 +1093,119 @@ export function GuidedBuilderPanel() {
                 )}
                 <Button variant="primary" onClick={submitAddContainer} type="button">
                   Add Container
+                </Button>
+                <hr
+                  style={{ margin: "1rem 0", border: "none", borderTop: "1px solid var(--border)" }}
+                />
+                <div className="form-group">
+                  <label>Parent system (for datastore)</label>
+                  <select
+                    value={datastoreParentId}
+                    onChange={(e) => setDatastoreParentId(e.target.value)}
+                  >
+                    <option value="">Select system</option>
+                    {systems.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.label ?? s.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Input
+                  label="DataStore name"
+                  value={datastoreName}
+                  onChange={(e) => setDatastoreName(e.target.value)}
+                  placeholder="e.g., PostgreSQL"
+                />
+                <Input
+                  label="Technology (optional)"
+                  value={datastoreTech}
+                  onChange={(e) => setDatastoreTech(e.target.value)}
+                  placeholder="e.g., PostgreSQL 14"
+                />
+                <Textarea
+                  label="Description (optional)"
+                  value={datastoreDescription}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setDatastoreDescription(e.target.value)
+                  }
+                  rows={2}
+                  placeholder="Database description"
+                />
+                <div className="form-group checkbox-row">
+                  <input
+                    id="guided-datastore-custom-id"
+                    type="checkbox"
+                    checked={useCustomDatastoreId}
+                    onChange={(e) => setUseCustomDatastoreId(e.target.checked)}
+                  />
+                  <label htmlFor="guided-datastore-custom-id">Set custom ID (optional)</label>
+                </div>
+                {useCustomDatastoreId && (
+                  <Input
+                    label="ID"
+                    value={datastoreIdInput}
+                    onChange={(e) => setDatastoreIdInput(e.target.value)}
+                    placeholder="If empty, ID is auto-generated from name"
+                  />
+                )}
+                <Button variant="secondary" onClick={submitAddDataStore} type="button">
+                  Add DataStore
+                </Button>
+                <hr
+                  style={{ margin: "1rem 0", border: "none", borderTop: "1px solid var(--border)" }}
+                />
+                <div className="form-group">
+                  <label>Parent system (for queue)</label>
+                  <select value={queueParentId} onChange={(e) => setQueueParentId(e.target.value)}>
+                    <option value="">Select system</option>
+                    {systems.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.label ?? s.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Input
+                  label="Queue name"
+                  value={queueName}
+                  onChange={(e) => setQueueName(e.target.value)}
+                  placeholder="e.g., EventQueue"
+                />
+                <Input
+                  label="Technology (optional)"
+                  value={queueTech}
+                  onChange={(e) => setQueueTech(e.target.value)}
+                  placeholder="e.g., RabbitMQ"
+                />
+                <Textarea
+                  label="Description (optional)"
+                  value={queueDescription}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setQueueDescription(e.target.value)
+                  }
+                  rows={2}
+                  placeholder="Queue description"
+                />
+                <div className="form-group checkbox-row">
+                  <input
+                    id="guided-queue-custom-id"
+                    type="checkbox"
+                    checked={useCustomQueueId}
+                    onChange={(e) => setUseCustomQueueId(e.target.checked)}
+                  />
+                  <label htmlFor="guided-queue-custom-id">Set custom ID (optional)</label>
+                </div>
+                {useCustomQueueId && (
+                  <Input
+                    label="ID"
+                    value={queueIdInput}
+                    onChange={(e) => setQueueIdInput(e.target.value)}
+                    placeholder="If empty, ID is auto-generated from name"
+                  />
+                )}
+                <Button variant="secondary" onClick={submitAddQueue} type="button">
+                  Add Queue
                 </Button>
               </div>
             )}

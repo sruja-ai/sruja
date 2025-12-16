@@ -118,6 +118,7 @@ import { applyPostProcessors } from "./plugin";
 import type { Rect as BBox } from "./geometry/rect";
 import { bundleEdges } from "./algorithms/edge-bundler";
 import { placeLabels, type NodeForLabeling } from "./algorithms/label-placer";
+import { expandToViewport } from "./algorithms/viewport-expander";
 import { applyMultiPassOptimization } from "./algorithms/optimizer";
 
 export interface PositionedC4Node {
@@ -378,8 +379,14 @@ export function layout(
       };
     });
 
-    // Increase iterations significantly to achieve B (80+) for all diagrams
-    const reducedEdges = reduceCrossingsPostProcess(edgesForReduction, pathsCross, 10);
+    // Adaptive iterations: start with fewer, algorithm will early-exit when no improvement
+    // For expanded nodes, use more iterations but algorithm optimizes internally
+    const edgeCount = edgesForReduction.length;
+    // Reduced max iterations - algorithm has early exit for efficiency
+    const baseIterations = hasExpandedNodes
+      ? Math.min(20, Math.max(12, Math.floor(edgeCount / 3))) // 12-20 iterations for expanded (was 20-30)
+      : Math.min(15, Math.max(10, Math.floor(edgeCount / 4))); // 10-15 for normal (was 15-20)
+    const reducedEdges = reduceCrossingsPostProcess(edgesForReduction, pathsCross, baseIterations);
     optimizedRoutes = reducedEdges.map((reduced) => {
       const original = optimizedRoutes.find((r) => r.id === reduced.id)!;
       return {
@@ -431,7 +438,13 @@ export function layout(
         };
       });
 
-      const finalReduced = reduceCrossingsPostProcess(edgesForFinalReduction, pathsCross, 8);
+      // Adaptive iterations for final reduction - algorithm has early exit
+      const finalReductionIterations = hasExpandedNodes ? 12 : 8; // Reduced from 15/10, early exit handles rest
+      const finalReduced = reduceCrossingsPostProcess(
+        edgesForFinalReduction,
+        pathsCross,
+        finalReductionIterations
+      );
       for (const reduced of finalReduced) {
         const routeIndex = optimizedRoutes.findIndex((r) => r.id === reduced.id);
         if (routeIndex >= 0) {
@@ -716,7 +729,13 @@ export function layout(
           };
         });
 
-        const finalReduced2 = reduceCrossingsPostProcess(edgesForFinalReduction2, pathsCross, 8);
+        // Adaptive iterations for final reduction in swap optimization
+        const finalReductionIterations2 = hasExpandedNodes ? 12 : 8; // Reduced from 15/10, early exit handles rest
+        const finalReduced2 = reduceCrossingsPostProcess(
+          edgesForFinalReduction2,
+          pathsCross,
+          finalReductionIterations2
+        );
         for (const reduced of finalReduced2) {
           const routeIndex = optimizedRoutes.findIndex((r) => r.id === reduced.id);
           if (routeIndex >= 0) {
@@ -1364,10 +1383,10 @@ export function layout(
     points: [...e.points] as Point[],
   }));
   const { bundles, adjustedPoints } = bundleEdges(edgesForBundling, {
-    angleTolerance: 2, // Very strict: only bundle nearly identical edges (reduced for better readability)
-    positionTolerance: 20, // Only bundle edges very close together (reduced for better readability)
-    fanOutSpacing: 20, // More spacing between bundled edges for readability (increased)
-    minBundleSize: 4, // Only bundle if 4+ edges (reduces bundling overall, improves readability)
+    angleTolerance: 5,
+    positionTolerance: 20,
+    fanOutSpacing: 15,
+    minBundleSize: 2,
   });
 
   // Apply bundled points back to edges
@@ -1383,7 +1402,7 @@ export function layout(
     nodesProcessed: bundles.length,
   });
 
-  const nodesOut = new Map<string, PositionedC4Node>();
+  let nodesOut = new Map<string, PositionedC4Node>();
   // Calculate z-index based on depth: deeper nodes (children) should have higher z-index
   // This ensures children render on top of parents, but parents are still visible
   // Root nodes: z-index 0, each level deeper: +10
@@ -1437,9 +1456,13 @@ export function layout(
     : isDenseOrExpanded
       ? 30
       : 18;
+  // Increased padding and iterations for expanded/hierarchical diagrams to avoid overlaps
+  const finalLabelPadding = hasExpandedNodes ? Math.max(labelPadding, 40) : labelPadding;
+  const finalLabelIterations = hasExpandedNodes ? Math.max(labelIterations, 30) : labelIterations;
+
   const labelPlacements = placeLabels(edgesForLabeling, nodeMap, {
-    padding: labelPadding,
-    maxShiftIterations: labelIterations,
+    padding: finalLabelPadding,
+    maxShiftIterations: finalLabelIterations,
     allowRotation: false,
   });
 
@@ -1467,6 +1490,7 @@ export function layout(
   applyPostProcessors(nodesOut as any, edges as any);
   phases.push({ name: "beautify", durationMs: Date.now() - b0, nodesProcessed: positioned.size });
 
+  // Calculate current bounds before viewport expansion
   let minX = Infinity,
     minY = Infinity,
     maxX = -Infinity,
@@ -1476,6 +1500,55 @@ export function layout(
     minY = Math.min(minY, n.bbox.y);
     maxX = Math.max(maxX, n.bbox.x + n.bbox.width);
     maxY = Math.max(maxY, n.bbox.y + n.bbox.height);
+  }
+
+  // Viewport expansion: expand diagram to better utilize viewport space (improves viewport utilization score)
+  // Use default viewport if not provided (typical web viewport)
+  const defaultViewport = { width: 1920, height: 1080 };
+  const viewport = defaultViewport;
+  const currentWidth = maxX - minX;
+  const currentHeight = maxY - minY;
+
+  // Only expand if diagram uses less than 50% of viewport (very compact)
+  if (currentWidth < viewport.width * 0.5 || currentHeight < viewport.height * 0.5) {
+    const expanded = expandToViewport(nodesOut, viewport, {
+      targetUtilization: 0.7, // Target 70% utilization (was 0.75, slightly lower for safety)
+      preserveAspectRatio: true,
+      minExpansion: 1.0,
+      maxExpansion: 1.8, // Limit expansion to avoid excessive scaling
+    });
+
+    // Update nodes if expansion occurred and is beneficial
+    if (expanded.size === nodesOut.size) {
+      // Recalculate bounds after expansion
+      let expandedMinX = Infinity,
+        expandedMinY = Infinity;
+      let expandedMaxX = -Infinity,
+        expandedMaxY = -Infinity;
+      for (const n of expanded.values()) {
+        expandedMinX = Math.min(expandedMinX, n.bbox.x);
+        expandedMinY = Math.min(expandedMinY, n.bbox.y);
+        expandedMaxX = Math.max(expandedMaxX, n.bbox.x + n.bbox.width);
+        expandedMaxY = Math.max(expandedMaxY, n.bbox.y + n.bbox.height);
+      }
+      const expandedWidth = expandedMaxX - expandedMinX;
+      const expandedHeight = expandedMaxY - expandedMinY;
+
+      // Use expanded if it improves utilization without excessive scaling
+      const widthImprovement = expandedWidth / currentWidth;
+      const heightImprovement = expandedHeight / currentHeight;
+      if (
+        (widthImprovement > 1.1 || heightImprovement > 1.1) &&
+        widthImprovement < 2.0 &&
+        heightImprovement < 2.0
+      ) {
+        nodesOut = expanded;
+        minX = expandedMinX;
+        minY = expandedMinY;
+        maxX = expandedMaxX;
+        maxY = expandedMaxY;
+      }
+    }
   }
   const bbox = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   const center = { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 };

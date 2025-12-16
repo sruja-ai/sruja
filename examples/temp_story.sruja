@@ -1,6 +1,0 @@
-architecture "Temp" {
-  person User "User"
-  story Test "Story" {
-    User -> User "Self"
-  }
-}

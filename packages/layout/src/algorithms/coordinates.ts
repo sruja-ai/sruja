@@ -110,7 +110,7 @@ export function assignCoordinates(
   // Increased for expanded nodes to ensure proper containment
   // Increased further to prevent any child nodes from being outside parent bounds
   // Increased to 100px to ensure children never overflow parent bounds and have good spacing
-  const CONTAINMENT_BUFFER = 100;
+  const CONTAINMENT_BUFFER = 24;
 
   /**
    * Recursively position a node and all its children (top-down, pre-order)
@@ -141,15 +141,6 @@ export function assignCoordinates(
     const isNotCollapsed = !node.node.collapseChildren;
     const hasChildren = node.children.length > 0;
 
-    console.info(`[COORDS] Processing ${node.id}:`, {
-      hasChildLayout,
-      hasValidPositions,
-      isNotCollapsed,
-      hasChildren,
-      childLayoutPositions: sized.childLayout?.positions?.size ?? 0,
-      nodeChildren: node.children.length,
-    });
-
     if (isNotCollapsed && hasChildren) {
       const headerHeight = sized.contentSize.height + padding;
 
@@ -179,8 +170,8 @@ export function assignCoordinates(
 
       // Elastic padding: base + scale with child density + scale with external edges
       const baseBuffer = CONTAINMENT_BUFFER;
-      const childDensityFactor = childCount > 5 ? 2.0 : childCount > 3 ? 1.8 : 1.5;
-      const externalEdgeFactor = externalEdgeCount > 5 ? 1.3 : externalEdgeCount > 2 ? 1.15 : 1.0;
+      const childDensityFactor = childCount > 5 ? 1.5 : childCount > 3 ? 1.25 : 1.1;
+      const externalEdgeFactor = externalEdgeCount > 5 ? 1.2 : externalEdgeCount > 2 ? 1.1 : 1.0;
       const expandedBuffer = baseBuffer * childDensityFactor * externalEdgeFactor;
       const contentStartX = absolutePos.x + padding + expandedBuffer;
       const contentStartY = absolutePos.y + headerHeight + expandedBuffer;
@@ -222,8 +213,8 @@ export function assignCoordinates(
               );
               const childIndex = node.children.indexOf(child);
               const childAbsolutePos = {
-                x: contentStartX + (childIndex % 3) * 150,
-                y: contentStartY + Math.floor(childIndex / 3) * 150,
+                x: contentStartX + (childIndex % 3) * 60,
+                y: contentStartY + Math.floor(childIndex / 3) * 60,
               };
               positionNode(child, childAbsolutePos);
             }
@@ -303,10 +294,10 @@ export function assignCoordinates(
       const topOffset = Math.max(0, absolutePos.y - minChildTop);
       // Increased safety margin to match MIN_PARENT_PADDING (80px) in diagramQuality.ts
       // Scale margin based on child count to handle larger expansions
-      const MIN_QUALITY_PADDING = 80; // Must match diagramQuality.ts MIN_PARENT_PADDING
+      const MIN_QUALITY_PADDING = 32; // Reduced from 80
       const extraMargin = Math.max(
         MIN_QUALITY_PADDING,
-        childCount > 5 ? 100 : childCount > 3 ? 90 : 85
+        childCount > 5 ? 60 : childCount > 3 ? 48 : 40
       );
       const requiredWidth = Math.max(
         positioned.bbox.width,

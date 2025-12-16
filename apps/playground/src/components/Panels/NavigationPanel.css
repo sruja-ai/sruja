@@ -1,8 +1,6 @@
 .navigation-panel {
     width: 260px;
-    background: var(--panel-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    background: var(--bg-primary);
     border-right: 1px solid var(--border-color);
     height: 100%;
     min-height: 0;
@@ -14,6 +12,28 @@
     color: var(--text-primary);
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
     z-index: 20;
+}
+
+.navigation-panel.collapsed {
+    width: 40px;
+}
+
+/* Navigation Panel Header */
+.nav-header {
+    position: sticky;
+    top: 0;
+    z-index: 7;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 12px;
+}
+
+.nav-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    letter-spacing: -0.01em;
 }
 
 .nav-toolbar {
@@ -31,7 +51,7 @@
 
 .nav-search-row {
     position: sticky;
-    top: 0;
+    top: 44px;
     z-index: 6;
     display: flex;
     align-items: center;

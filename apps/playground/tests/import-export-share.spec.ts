@@ -32,7 +32,11 @@ test.describe("Import, Export, Share", () => {
     }
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      page.locator('button[aria-label="Export to .sruja file"]').click(),
+      (async () => {
+        const actionsBtn = page.locator('button[aria-label="Actions"]');
+        await actionsBtn.click();
+        await page.locator('button[aria-label="Export .sruja file"]').click();
+      })(),
     ]);
     const path = await download.path();
     expect(path).toBeTruthy();
@@ -44,8 +48,11 @@ test.describe("Import, Export, Share", () => {
       await page.locator("button.demo-btn").click();
       await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
-    await expect(page.locator('button[aria-label="Copy shareable URL"]')).toBeVisible();
-    await page.locator('button[aria-label="Copy shareable URL"]').click();
-    await expect(page.locator('button[aria-label="Copy shareable URL"]')).toBeVisible();
+    // Open Actions and click Share
+    const actionsBtn = page.locator('button[aria-label="Actions"]');
+    await actionsBtn.click();
+    const shareBtn = page.locator('button[aria-label="Copy shareable URL"]');
+    await shareBtn.click();
+    await expect(actionsBtn).toBeVisible();
   });
 });

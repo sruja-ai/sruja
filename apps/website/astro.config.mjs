@@ -45,6 +45,12 @@ export default defineConfig({
         // Watch workspace packages for changes
         ignored: ["!**/node_modules/@sruja/**"],
       },
+      fs: {
+        allow: [
+          // Allow accessing files from the monorepo root (packages/apps)
+          path.resolve(__dirname, "..", ".."),
+        ],
+      },
     },
     define: {
       global: "globalThis",
@@ -58,8 +64,15 @@ export default defineConfig({
         "buffer",
         "algoliasearch/lite",
         "mermaid",
+        "lz-string",
       ],
-      exclude: ["@sruja/shared", "@sruja/ui", "@sruja/layout", "@sruja/diagram"],
+      exclude: [
+        "@sruja/shared",
+        "@sruja/ui",
+        "@sruja/layout",
+        "@sruja/diagram",
+        "@sruja/playground",
+      ],
     },
     ssr: {
       // Static site - no SSR, but Vite still uses this config during build

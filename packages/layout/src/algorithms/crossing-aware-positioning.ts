@@ -30,29 +30,26 @@ export function analyzeCrossingNodes(
   const nodeCrossingCounts = new Map<C4Id, number>();
 
   // Count crossings per node
-  for (let i = 0; i < edges.length; i++) {
-    for (let j = i + 1; j < edges.length; j++) {
-      const e1 = edges[i];
+  // Optimized: compare each pair exactly once (i < j) and cache edge references
+  const edgesLength = edges.length;
+  for (let i = 0; i < edgesLength; i++) {
+    const e1 = edges[i];
+    const e1SourceId = e1.sourceId as C4Id;
+    const e1TargetId = e1.targetId as C4Id;
+
+    for (let j = i + 1; j < edgesLength; j++) {
       const e2 = edges[j];
 
       if (pathsCrossFn(e1.path, e2.path, e1.sourceId, e1.targetId, e2.sourceId, e2.targetId)) {
         // Both source and target nodes of crossing edges are involved
-        nodeCrossingCounts.set(
-          e1.sourceId as C4Id,
-          (nodeCrossingCounts.get(e1.sourceId as C4Id) || 0) + 1
-        );
-        nodeCrossingCounts.set(
-          e1.targetId as C4Id,
-          (nodeCrossingCounts.get(e1.targetId as C4Id) || 0) + 1
-        );
-        nodeCrossingCounts.set(
-          e2.sourceId as C4Id,
-          (nodeCrossingCounts.get(e2.sourceId as C4Id) || 0) + 1
-        );
-        nodeCrossingCounts.set(
-          e2.targetId as C4Id,
-          (nodeCrossingCounts.get(e2.targetId as C4Id) || 0) + 1
-        );
+        // Optimized: cache IDs to avoid repeated type casting
+        const e2SourceId = e2.sourceId as C4Id;
+        const e2TargetId = e2.targetId as C4Id;
+
+        nodeCrossingCounts.set(e1SourceId, (nodeCrossingCounts.get(e1SourceId) || 0) + 1);
+        nodeCrossingCounts.set(e1TargetId, (nodeCrossingCounts.get(e1TargetId) || 0) + 1);
+        nodeCrossingCounts.set(e2SourceId, (nodeCrossingCounts.get(e2SourceId) || 0) + 1);
+        nodeCrossingCounts.set(e2TargetId, (nodeCrossingCounts.get(e2TargetId) || 0) + 1);
       }
     }
   }
@@ -103,13 +100,19 @@ export function applyForceDirectedAdjustments(
         // Skip if they're neighbors (connected by edge)
         if (neighbors.get(n1.id)?.has(n2.id)) continue;
 
-        const dx = n2.node.bbox.x - n1.node.bbox.x;
-        const dy = n2.node.bbox.y - n1.node.bbox.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        // Optimized: cache bbox references and use squared distance
+        const n1Bbox = n1.node.bbox;
+        const n2Bbox = n2.node.bbox;
+        const dx = n2Bbox.x - n1Bbox.x;
+        const dy = n2Bbox.y - n1Bbox.y;
+        const distSq = dx * dx + dy * dy;
+        const dist = Math.sqrt(distSq) || 1;
 
         // Repulsion force proportional to crossing counts
-        const strength = (crossingCounts.get(n1.id) || 0) * (crossingCounts.get(n2.id) || 0) * 0.5;
-        const force = strength / (dist * dist);
+        const n1Crossings = crossingCounts.get(n1.id) || 0;
+        const n2Crossings = crossingCounts.get(n2.id) || 0;
+        const strength = n1Crossings * n2Crossings * 0.5;
+        const force = strength / distSq; // Use distSq directly instead of dist * dist
 
         const fx = (dx / dist) * force;
         const fy = (dy / dist) * force;
@@ -124,21 +127,27 @@ export function applyForceDirectedAdjustments(
     }
 
     // Apply forces with damping
+    // Optimized: cache damping calculation and stepSize * damping
     const damping = 0.8 - iter * 0.1; // Reduce movement over iterations
+    const stepDamping = stepSize * damping;
+    const minMoveThreshold = 0.5;
+
     for (const [id, force] of forces) {
       const node = result.get(id)!;
-      const moveX = force.fx * stepSize * damping;
-      const moveY = force.fy * stepSize * damping;
+      const moveX = force.fx * stepDamping;
+      const moveY = force.fy * stepDamping;
 
       // Only move if force is significant
-      if (Math.abs(moveX) > 0.5 || Math.abs(moveY) > 0.5) {
+      if (Math.abs(moveX) > minMoveThreshold || Math.abs(moveY) > minMoveThreshold) {
         // Update both x/y and bbox
-        const newX = node.bbox.x + moveX;
-        const newY = node.bbox.y + moveY;
+        // Optimized: cache bbox reference
+        const nodeBbox = node.bbox;
+        const newX = nodeBbox.x + moveX;
+        const newY = nodeBbox.y + moveY;
         const updatedNode = {
           ...node,
           bbox: {
-            ...node.bbox,
+            ...nodeBbox,
             x: newX,
             y: newY,
           },
@@ -176,18 +185,26 @@ export function adjustSpacingForCrossings(
   const nodePairs = new Map<string, number>(); // Track pairs with crossings
 
   // Identify node pairs involved in crossings
-  for (let i = 0; i < edges.length; i++) {
-    for (let j = i + 1; j < edges.length; j++) {
-      const e1 = edges[i];
+  // Optimized: compare each pair exactly once (i < j) and cache edge references
+  const edgesLength = edges.length;
+  for (let i = 0; i < edgesLength; i++) {
+    const e1 = edges[i];
+    for (let j = i + 1; j < edgesLength; j++) {
       const e2 = edges[j];
 
       if (pathsCrossFn(e1.path, e2.path, e1.sourceId, e1.targetId, e2.sourceId, e2.targetId)) {
         // Mark all node pairs from these edges
+        // Optimized: cache IDs to avoid repeated property access
+        const e1Source = e1.sourceId;
+        const e1Target = e1.targetId;
+        const e2Source = e2.sourceId;
+        const e2Target = e2.targetId;
+
         const pairs = [
-          [e1.sourceId, e2.sourceId],
-          [e1.sourceId, e2.targetId],
-          [e1.targetId, e2.sourceId],
-          [e1.targetId, e2.targetId],
+          [e1Source, e2Source],
+          [e1Source, e2Target],
+          [e1Target, e2Source],
+          [e1Target, e2Target],
         ];
 
         for (const [n1, n2] of pairs) {
@@ -208,33 +225,38 @@ export function adjustSpacingForCrossings(
 
     if (!node1 || !node2) continue;
 
-    const dx = node2.bbox.x - node1.bbox.x;
-    const dy = node2.bbox.y - node1.bbox.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+    // Optimized: cache bbox references
+    const node1Bbox = node1.bbox;
+    const node2Bbox = node2.bbox;
+    const dx = node2Bbox.x - node1Bbox.x;
+    const dy = node2Bbox.y - node1Bbox.y;
+    const distSq = dx * dx + dy * dy;
+    const dist = Math.sqrt(distSq);
     const requiredDist = minSpacing + crossingCount * 20;
 
     if (dist < requiredDist && dist > 0) {
-      const pushDist = (requiredDist - dist) / 2;
-      const pushX = (dx / dist) * pushDist;
-      const pushY = (dy / dist) * pushDist;
+      const pushDist = (requiredDist - dist) * 0.5; // Use multiplication instead of division
+      const invDist = 1 / dist; // Cache inverse distance
+      const pushX = dx * invDist * pushDist;
+      const pushY = dy * invDist * pushDist;
 
       const node1Id = id1 as C4Id;
       const node2Id = id2 as C4Id;
 
       // Only adjust if both nodes exist
       if (result.has(node1Id) && result.has(node2Id)) {
-        const newX1 = node1.bbox.x - pushX;
-        const newY1 = node1.bbox.y - pushY;
-        const newX2 = node2.bbox.x + pushX;
-        const newY2 = node2.bbox.y + pushY;
+        const newX1 = node1Bbox.x - pushX;
+        const newY1 = node1Bbox.y - pushY;
+        const newX2 = node2Bbox.x + pushX;
+        const newY2 = node2Bbox.y + pushY;
 
+        // Optimized: reuse bbox object if coordinates haven't changed
         const updatedNode1 = {
           ...node1,
-          bbox: {
-            ...node1.bbox,
-            x: newX1,
-            y: newY1,
-          },
+          bbox:
+            node1Bbox.x === newX1 && node1Bbox.y === newY1
+              ? node1Bbox
+              : { ...node1Bbox, x: newX1, y: newY1 },
         };
         if ("x" in node1 && "y" in node1) {
           (updatedNode1 as any).x = newX1;
@@ -244,11 +266,10 @@ export function adjustSpacingForCrossings(
 
         const updatedNode2 = {
           ...node2,
-          bbox: {
-            ...node2.bbox,
-            x: newX2,
-            y: newY2,
-          },
+          bbox:
+            node2Bbox.x === newX2 && node2Bbox.y === newY2
+              ? node2Bbox
+              : { ...node2Bbox, x: newX2, y: newY2 },
         };
         if ("x" in node2 && "y" in node2) {
           (updatedNode2 as any).x = newX2;

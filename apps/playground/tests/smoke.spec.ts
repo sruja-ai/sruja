@@ -89,13 +89,13 @@ test.describe("Playground Smoke", () => {
       }
     }
 
-    const overviewTab = page.locator('button.view-tab:has-text("Overview")');
+    const overviewTab = page.locator('button.view-tab:has-text("Builder")');
     const diagramTab = page.locator('button.view-tab:has-text("Diagram")');
     const detailsTab = page.locator('button.view-tab:has-text("Details")');
     const codeTab = page.locator('button.view-tab:has-text("Code")');
 
     await overviewTab.click();
-    await expect(page.locator(".overview-panel")).toBeVisible();
+    await expect(page.locator(".builder-wizard")).toBeVisible();
 
     await diagramTab.click();
     await expect(page.locator(".react-flow")).toBeVisible();

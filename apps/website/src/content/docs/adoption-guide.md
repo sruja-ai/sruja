@@ -132,7 +132,7 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 **Activities:**
 
 1. Review Sruja documentation
-2. Try the online playground
+2. Try Sruja Designer online
 3. Install CLI: `curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash`
 4. Model a simple existing system
 

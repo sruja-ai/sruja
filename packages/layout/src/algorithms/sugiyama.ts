@@ -107,13 +107,21 @@ export function layoutSugiyama(
   // 3. Assign Coordinates
   const xMap = new Map<C4Id, number>();
 
-  const rankSpacing = options.spacing.rank.Container ?? 80; // Increased rank spacing
-  const nodeSpacing = options.spacing.node.Container ?? 60; // Increased node spacing
+  // Increased spacing for better edge distribution and reduced congestion
+  // For expanded/hierarchical diagrams, spacing is critical
+  const rankSpacing = options.spacing.rank.Container ?? 100; // Increased from 80
+  const nodeSpacing = options.spacing.node.Container ?? 80; // Increased from 60
 
   let maxWidth = 0;
   const layerWidths: number[] = [];
 
   // Pass 1: Calculate widths
+  // Optimized: cache relationships length and nodeSpacing calculations
+  const relationshipsLength = relationships.length;
+  const isDense = relationshipsLength > 15;
+  const adjustedNodeSpacing = isDense ? nodeSpacing * 1.3 : nodeSpacing;
+  const minNodeWidth = 100;
+
   for (let l = 0; l < layers.length; l++) {
     const layerIds = layers[l] || [];
     if (layerIds.length === 0) {
@@ -121,20 +129,19 @@ export function layoutSugiyama(
       continue;
     }
 
+    // Optimized: cache layerNodes and length
     const layerNodes = layerIds.map((id) => nodeMap.get(id)!);
-    const isDense = relationships.length > 15;
-    const adjustedNodeSpacing = isDense ? nodeSpacing * 1.3 : nodeSpacing;
+    const layerNodesLength = layerNodes.length;
     const totalWidth =
-      layerNodes.reduce((sum, n) => sum + Math.max(n.size.width, 100), 0) +
-      adjustedNodeSpacing * (layerNodes.length - 1);
+      layerNodes.reduce((sum, n) => sum + Math.max(n.size.width, minNodeWidth), 0) +
+      adjustedNodeSpacing * (layerNodesLength - 1);
     layerWidths.push(totalWidth);
     maxWidth = Math.max(maxWidth, totalWidth);
   }
 
   // Pass 2: Assign Coords
   // For dense graphs, use better spacing to reduce crossing opportunities
-  const isDense = relationships.length > 15;
-  const adjustedNodeSpacing = isDense ? nodeSpacing * 1.3 : nodeSpacing;
+  // Optimized: reuse isDense and adjustedNodeSpacing from Pass 1
   const adjustedRankSpacing = isDense ? rankSpacing * 1.2 : rankSpacing;
 
   let currentY = 0;
@@ -143,22 +150,30 @@ export function layoutSugiyama(
     if (layerIds.length === 0) continue;
 
     const layerNodes = layerIds.map((id) => nodeMap.get(id)!);
-    const maxHeight = Math.max(...layerNodes.map((n) => n.size.height));
+    // Optimized: calculate maxHeight without creating intermediate array
+    let maxHeight = 0;
+    for (const n of layerNodes) {
+      maxHeight = Math.max(maxHeight, n.size.height);
+    }
 
     // Center alignment
     const layerW = layerWidths[l];
     let currentX = (maxWidth - layerW) / 2;
 
-    layerNodes.forEach((n, i) => {
+    // Optimized: use for loop instead of forEach for better performance
+    for (let i = 0; i < layerNodes.length; i++) {
+      const n = layerNodes[i];
       xMap.set(n.id, currentX);
       // Center vertically in the rank
-      const offY = (maxHeight - n.size.height) / 2;
+      // Optimized: cache size references
+      const nSize = n.size;
+      const offY = (maxHeight - nSize.height) * 0.5; // Use multiplication instead of division
       const finalX = currentX;
       const finalY = currentY + offY;
 
       resultNodes.set(n.id, {
         id: n.id,
-        size: n.size,
+        size: nSize,
         layer: l,
         order: i,
         x: finalX,
@@ -166,8 +181,8 @@ export function layoutSugiyama(
       });
 
       // Advance X with adjusted spacing for dense graphs
-      currentX += Math.max(n.size.width, 100) + adjustedNodeSpacing;
-    });
+      currentX += Math.max(nSize.width, minNodeWidth) + adjustedNodeSpacing;
+    }
 
     currentY += maxHeight + adjustedRankSpacing;
   }

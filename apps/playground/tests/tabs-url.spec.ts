@@ -11,8 +11,9 @@ test.describe("Tabs URL Persistence", () => {
       await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
-    await page.locator('button.view-tab:has-text("Overview")').click();
-    await expect.poll(async () => page.url()).toMatch(/\btab=overview\b/);
+    // In edit mode, the first tab is Builder (Overview merged)
+    await page.locator('button.view-tab:has-text("Builder")').click();
+    await expect.poll(async () => page.url()).toMatch(/\btab=builder\b/);
 
     await page.locator('button.view-tab:has-text("Diagram")').click();
     await expect.poll(async () => page.url()).toMatch(/\btab=diagram\b/);

@@ -13,9 +13,15 @@ interface WizardStepperProps {
   steps: WizardStep[];
   currentStep: number;
   onStepClick: (stepIndex: number) => void;
+  extraActions?: React.ReactNode;
 }
 
-export function WizardStepper({ steps, currentStep, onStepClick }: WizardStepperProps) {
+export function WizardStepper({
+  steps,
+  currentStep,
+  onStepClick,
+  extraActions,
+}: WizardStepperProps) {
   const progress = (currentStep / (steps.length - 1)) * 100;
   const completedSteps = steps.filter((s) => s.isComplete).length;
 
@@ -29,6 +35,7 @@ export function WizardStepper({ steps, currentStep, onStepClick }: WizardStepper
         <span className="wizard-progress-text">
           {completedSteps}/{steps.length} complete
         </span>
+        {extraActions && <div className="wizard-actions">{extraActions}</div>}
       </div>
 
       {/* Steps */}

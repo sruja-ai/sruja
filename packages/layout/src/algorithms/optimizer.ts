@@ -37,13 +37,19 @@ function calculateChildrenBoundingBox(
   let maxX = -Infinity;
   let maxY = -Infinity;
 
-  for (const child of children) {
+  // Optimized: cache children length and use for loop for better performance
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
     const pos = positioned.get(child.id);
     if (pos) {
-      minX = Math.min(minX, pos.bbox.x);
-      minY = Math.min(minY, pos.bbox.y);
-      maxX = Math.max(maxX, pos.bbox.x + pos.bbox.width);
-      maxY = Math.max(maxY, pos.bbox.y + pos.bbox.height);
+      const bbox = pos.bbox;
+      const right = bbox.x + bbox.width;
+      const bottom = bbox.y + bbox.height;
+
+      minX = Math.min(minX, bbox.x);
+      minY = Math.min(minY, bbox.y);
+      maxX = Math.max(maxX, right);
+      maxY = Math.max(maxY, bottom);
     }
   }
 
@@ -69,65 +75,75 @@ function removeOverlapsAmongSiblings(
   let iterations = 0;
   // Increase iterations for better convergence, especially for expanded nodes
   const maxIterations = siblings.length > 5 ? 20 : 15;
+  // Cache push multiplier calculation
+  const pushMultiplier = siblings.length > 5 ? 1.5 : 1.2;
+  const minPushDist = padding * 0.3;
 
   while (hasOverlap && iterations < maxIterations) {
     hasOverlap = false;
     iterations++;
 
-    for (let i = 0; i < adjusted.length; i++) {
-      for (let j = i + 1; j < adjusted.length; j++) {
-        const a = adjusted[i];
-        const b = adjusted[j];
+    // Cache array length to avoid repeated property access
+    const length = adjusted.length;
+    for (let i = 0; i < length; i++) {
+      const a = adjusted[i];
+      const aBbox = a.bbox;
+      const aRight = aBbox.x + aBbox.width;
+      const aBottom = aBbox.y + aBbox.height;
+      const aRightPadded = aRight + padding;
+      const aBottomPadded = aBottom + padding;
 
-        // Check for overlap with padding
-        const overlapX =
-          a.bbox.x < b.bbox.x + b.bbox.width + padding &&
-          a.bbox.x + a.bbox.width + padding >= b.bbox.x;
-        const overlapY =
-          a.bbox.y < b.bbox.y + b.bbox.height + padding &&
-          a.bbox.y + a.bbox.height + padding >= b.bbox.y;
+      for (let j = i + 1; j < length; j++) {
+        const b = adjusted[j];
+        const bBbox = b.bbox;
+        const bRight = bBbox.x + bBbox.width;
+        const bBottom = bBbox.y + bBbox.height;
+        const bRightPadded = bRight + padding;
+        const bBottomPadded = bBottom + padding;
+
+        // Check for overlap with padding (optimized overlap detection)
+        const overlapX = aBbox.x < bRightPadded && aRightPadded >= bBbox.x;
+        const overlapY = aBbox.y < bBottomPadded && aBottomPadded >= bBbox.y;
 
         if (overlapX && overlapY) {
           hasOverlap = true;
 
-          // Calculate overlap amounts
-          const overlapWidth = Math.min(
-            a.bbox.x + a.bbox.width + padding - b.bbox.x,
-            b.bbox.x + b.bbox.width + padding - a.bbox.x
-          );
-          const overlapHeight = Math.min(
-            a.bbox.y + a.bbox.height + padding - b.bbox.y,
-            b.bbox.y + b.bbox.height + padding - a.bbox.y
-          );
+          // Calculate overlap amounts (optimized)
+          const overlapWidth = Math.min(aRightPadded - bBbox.x, bRightPadded - aBbox.x);
+          const overlapHeight = Math.min(aBottomPadded - bBbox.y, bBottomPadded - aBbox.y);
 
           // Push apart in the direction of least overlap
-          // Use more aggressive push for better spacing, especially for expanded nodes
-          const pushMultiplier = siblings.length > 5 ? 1.5 : 1.2;
           if (overlapWidth < overlapHeight) {
             // Separate horizontally
-            const pushDist = Math.max(padding * 0.3, overlapWidth * pushMultiplier) / 2;
+            const pushDist = Math.max(minPushDist, overlapWidth * pushMultiplier) * 0.5;
+            const newAX = aBbox.x - pushDist;
+            const newBX = bBbox.x + pushDist;
+
             adjusted[i] = {
               ...a,
-              x: a.x - pushDist,
-              bbox: { ...a.bbox, x: a.bbox.x - pushDist },
+              x: newAX,
+              bbox: { ...aBbox, x: newAX },
             };
             adjusted[j] = {
               ...b,
-              x: b.x + pushDist,
-              bbox: { ...b.bbox, x: b.bbox.x + pushDist },
+              x: newBX,
+              bbox: { ...bBbox, x: newBX },
             };
           } else {
             // Separate vertically
-            const pushDist = Math.max(padding * 0.3, overlapHeight * pushMultiplier) / 2;
+            const pushDist = Math.max(minPushDist, overlapHeight * pushMultiplier) * 0.5;
+            const newAY = aBbox.y - pushDist;
+            const newBY = bBbox.y + pushDist;
+
             adjusted[i] = {
               ...a,
-              y: a.y - pushDist,
-              bbox: { ...a.bbox, y: a.bbox.y - pushDist },
+              y: newAY,
+              bbox: { ...aBbox, y: newAY },
             };
             adjusted[j] = {
               ...b,
-              y: b.y + pushDist,
-              bbox: { ...b.bbox, y: b.bbox.y + pushDist },
+              y: newBY,
+              bbox: { ...bBbox, y: newBY },
             };
           }
         }
@@ -208,19 +224,6 @@ function resizeParentToFitChildren(
 
     const newWidth = requiredWidth;
     const newHeight = requiredHeight;
-
-    console.info(`[CONTAINMENT] Resizing parent ${parentNode.id}:`, {
-      old: { x: parent.bbox.x, y: parent.bbox.y, w: parent.bbox.width, h: parent.bbox.height },
-      new: { x: newX, y: newY, w: newWidth, h: newHeight },
-      children: parentNode.children.length,
-      childrenBounds: { minX, minY, maxX, maxY },
-      overflows: {
-        left: leftOverflow,
-        top: topOverflow,
-        right: rightOverflow,
-        bottom: bottomOverflow,
-      },
-    });
 
     positioned.set(parentNode.id, {
       ...parent,
@@ -891,82 +894,31 @@ export function applyMultiPassOptimization(
   options: OptimizationOptions
 ): Map<C4Id, PositionedNode> {
   if (!options.enabled) {
-    console.info("[OPTIMIZER] Disabled, skipping");
     return positioned;
   }
-
-  console.info("[OPTIMIZER] Starting multi-pass optimization:", {
-    nodes: positioned.size,
-    relationships: relationships.length,
-    roots: tree.roots.length,
-    options,
-  });
 
   let result = positioned;
 
   // Pass 1: Remove overlaps (bottom-up)
   if (options.overlapRemoval) {
-    console.info("[OPTIMIZER] Pass 1: Overlap removal");
-    const before = new Map(result);
     result = removeOverlapsBottomUp(result, tree, options);
-
-    let movedCount = 0;
-    result.forEach((after, id) => {
-      const beforeNode = before.get(id);
-      if (
-        beforeNode &&
-        (beforeNode.bbox.x !== after.bbox.x || beforeNode.bbox.y !== after.bbox.y)
-      ) {
-        movedCount++;
-      }
-    });
-    console.info("[OPTIMIZER] Pass 1 complete, nodes moved:", movedCount);
   }
 
   // Pass 2: Distribute space (top-down)
   if (options.spaceDistribution?.enabled) {
-    console.info("[OPTIMIZER] Pass 2: Space distribution");
-    const before = new Map(result);
     result = distributeSpaceTopDown(result, tree, options);
-
-    let movedCount = 0;
-    result.forEach((after, id) => {
-      const beforeNode = before.get(id);
-      if (
-        beforeNode &&
-        (beforeNode.bbox.x !== after.bbox.x || beforeNode.bbox.y !== after.bbox.y)
-      ) {
-        movedCount++;
-      }
-    });
-    console.info("[OPTIMIZER] Pass 2 complete, nodes moved:", movedCount);
   }
 
   // Pass 3: Optimize for edges
   if (options.edgeOptimization?.enabled) {
-    console.info("[OPTIMIZER] Pass 3: Edge optimization");
-    const before = new Map(result);
     result = optimizeForEdges(result, relationships, tree, options);
-
-    let movedCount = 0;
-    result.forEach((after, id) => {
-      const beforeNode = before.get(id);
-      if (
-        beforeNode &&
-        (beforeNode.bbox.x !== after.bbox.x || beforeNode.bbox.y !== after.bbox.y)
-      ) {
-        movedCount++;
-      }
-    });
-    console.info("[OPTIMIZER] Pass 3 complete, nodes moved:", movedCount);
   }
 
   // CRITICAL: Final cleanup pass to fix containment
   // After all optimizations that might move nodes, ensure parents contain children
-  console.info("[OPTIMIZER] Final pass: Ensuring proper containment");
+
   const padding = options.overlapRemoval?.padding ?? 16;
   result = ensureProperContainment(result, tree, padding);
 
-  console.info("[OPTIMIZER] All passes complete");
   return result;
 }

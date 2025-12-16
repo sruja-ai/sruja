@@ -59,7 +59,10 @@ const DEFAULT_OPTIONS: AuditOptions = {
  * ```
  */
 export class LayoutAuditor {
-  constructor(private page: Page) {}
+  private page: Page;
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   /**
    * Audit the current layout and return structured feedback

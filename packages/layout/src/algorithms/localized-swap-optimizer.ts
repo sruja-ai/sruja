@@ -36,48 +36,41 @@ type PathsCrossFunction = (
 ) => boolean;
 
 /**
- * Counts the number of edge crossings in the current layout.
+ * Checks if any edge crossings exist in the current layout.
+ * More efficient than countCrossings when we only need to know if crossings exist.
  *
- * Time complexity: O(n²) where n is the number of edges.
- * This is acceptable as crossing detection is only performed once per optimization pass.
+ * Time complexity: O(n²) worst case, but early exits on first crossing.
  *
  * @param edges - Array of edge routes to check
  * @param pathsCrossFn - Function to determine if two paths cross
- * @returns Total number of crossings found
- *
- * @example
- * ```ts
- * const crossings = countCrossings(edges, pathsCross)
- * if (crossings === 0) {
- *   // No optimization needed
- * }
- * ```
+ * @returns true if any crossings exist, false otherwise
  */
-function countCrossings(edges: EdgeRoute[], pathsCrossFn: PathsCrossFunction): number {
+function hasCrossings(edges: EdgeRoute[], pathsCrossFn: PathsCrossFunction): boolean {
   // Early exit for empty or single edge cases
   if (edges.length <= 1) {
-    return 0;
+    return false;
   }
 
-  let crossings = 0;
-  // Compare each pair of edges exactly once (i < j)
+  // Compare each pair of edges exactly once (i < j), exit early on first crossing
   for (let i = 0; i < edges.length; i++) {
+    const edge1 = edges[i];
     for (let j = i + 1; j < edges.length; j++) {
+      const edge2 = edges[j];
       if (
         pathsCrossFn(
-          edges[i].path,
-          edges[j].path,
-          edges[i].sourceId,
-          edges[i].targetId,
-          edges[j].sourceId,
-          edges[j].targetId
+          edge1.path,
+          edge2.path,
+          edge1.sourceId,
+          edge1.targetId,
+          edge2.sourceId,
+          edge2.targetId
         )
       ) {
-        crossings++;
+        return true;
       }
     }
   }
-  return crossings;
+  return false;
 }
 
 /**
@@ -102,18 +95,22 @@ function groupNodesByRank(nodes: Map<C4Id, PositionedNode>): Map<number, RankGro
   const rankGroups = new Map<number, RankGroup>();
 
   // Group nodes by rank (O(n))
+  // Cache rank key calculation to avoid repeated operations
   for (const [id, node] of nodes) {
-    const centerY = node.bbox.y + node.bbox.height / 2;
+    const centerY = node.bbox.y + node.bbox.height * 0.5; // Use multiplication instead of division
     const rankKey = Math.round(centerY / RANK_TOLERANCE) * RANK_TOLERANCE;
 
-    if (!rankGroups.has(rankKey)) {
-      rankGroups.set(rankKey, []);
+    let rankGroup = rankGroups.get(rankKey);
+    if (!rankGroup) {
+      rankGroup = [];
+      rankGroups.set(rankKey, rankGroup);
     }
-    rankGroups.get(rankKey)!.push({ id, node });
+    rankGroup.push({ id, node });
   }
 
   // Sort nodes within each rank by X position (left to right) - O(n log n) worst case
-  for (const [_rankKey, nodesInRank] of rankGroups) {
+  // Use for...of with destructuring for better performance
+  for (const nodesInRank of rankGroups.values()) {
     nodesInRank.sort((a, b) => a.node.bbox.x - b.node.bbox.x);
   }
 
@@ -133,6 +130,7 @@ function hasParentChildRelationship(node1: PositionedNode, node2: PositionedNode
 
 /**
  * Creates a new PositionedNode with swapped coordinates.
+ * Optimized to avoid unnecessary object spreading when possible.
  *
  * @param node - Original node to swap
  * @param newX - New X coordinate
@@ -140,41 +138,48 @@ function hasParentChildRelationship(node1: PositionedNode, node2: PositionedNode
  * @returns New PositionedNode with updated position
  */
 function createSwappedNode(node: PositionedNode, newX: number, newY: number): PositionedNode {
+  // Reuse bbox object if coordinates haven't changed (rare but possible)
+  const bbox =
+    node.bbox.x === newX && node.bbox.y === newY ? node.bbox : { ...node.bbox, x: newX, y: newY };
+
   return {
     ...node,
     x: newX,
     y: newY,
-    bbox: {
-      ...node.bbox,
-      x: newX,
-      y: newY,
-    },
+    bbox,
   };
 }
 
 /**
  * Checks if a node position is within its parent container boundaries.
+ * Optimized to reduce redundant calculations.
  *
  * @param node - Node to check containment for
  * @param parent - Parent node container
  * @returns true if node is properly contained within parent, false otherwise
  */
 function isNodeContained(node: PositionedNode, parent: PositionedNode): boolean {
-  const parentRight = parent.bbox.x + parent.bbox.width;
-  const parentBottom = parent.bbox.y + parent.bbox.height;
-  const nodeRight = node.bbox.x + node.bbox.width;
-  const nodeBottom = node.bbox.y + node.bbox.height;
+  const nodeX = node.bbox.x;
+  const nodeY = node.bbox.y;
+  const nodeRight = nodeX + node.bbox.width;
+  const nodeBottom = nodeY + node.bbox.height;
 
-  return (
-    node.bbox.x >= parent.bbox.x + CONTAINMENT_PADDING &&
-    node.bbox.y >= parent.bbox.y + CONTAINMENT_PADDING &&
-    nodeRight <= parentRight - CONTAINMENT_PADDING &&
-    nodeBottom <= parentBottom - CONTAINMENT_PADDING
-  );
+  const parentX = parent.bbox.x;
+  const parentY = parent.bbox.y;
+  const parentRight = parentX + parent.bbox.width;
+  const parentBottom = parentY + parent.bbox.height;
+
+  const minX = parentX + CONTAINMENT_PADDING;
+  const minY = parentY + CONTAINMENT_PADDING;
+  const maxX = parentRight - CONTAINMENT_PADDING;
+  const maxY = parentBottom - CONTAINMENT_PADDING;
+
+  return nodeX >= minX && nodeY >= minY && nodeRight <= maxX && nodeBottom <= maxY;
 }
 
 /**
  * Validates if swapping two nodes would maintain proper containment constraints.
+ * Optimized with cached parent lookups to avoid repeated Map.get calls.
  *
  * @param swappedNode1 - First node after swap
  * @param swappedNode2 - Second node after swap
@@ -186,20 +191,16 @@ function isValidSwap(
   swappedNode2: PositionedNode,
   allNodes: Map<C4Id, PositionedNode>
 ): boolean {
-  // Check containment for node1
-  if (swappedNode1.parent) {
-    const parent = allNodes.get(swappedNode1.parent.id);
-    if (parent && !isNodeContained(swappedNode1, parent)) {
-      return false;
-    }
+  // Check containment for node1 (cache parent lookup)
+  const parent1 = swappedNode1.parent ? allNodes.get(swappedNode1.parent.id) : null;
+  if (parent1 && !isNodeContained(swappedNode1, parent1)) {
+    return false;
   }
 
-  // Check containment for node2
-  if (swappedNode2.parent) {
-    const parent = allNodes.get(swappedNode2.parent.id);
-    if (parent && !isNodeContained(swappedNode2, parent)) {
-      return false;
-    }
+  // Check containment for node2 (cache parent lookup)
+  const parent2 = swappedNode2.parent ? allNodes.get(swappedNode2.parent.id) : null;
+  if (parent2 && !isNodeContained(swappedNode2, parent2)) {
+    return false;
   }
 
   return true;
@@ -250,13 +251,17 @@ export function applyLocalizedSwaps(
   pathsCrossFn: PathsCrossFunction,
   maxSwaps: number = 10
 ): { nodes: Map<C4Id, PositionedNode>; improved: boolean } {
-  const result = new Map(nodes);
-
-  // Early exit if no crossings exist
-  const currentCrossings = countCrossings(edges, pathsCrossFn);
-  if (currentCrossings === 0) {
-    return { nodes: result, improved: false };
+  // Early exit if no edges or nodes
+  if (edges.length === 0 || nodes.size === 0) {
+    return { nodes: new Map(nodes), improved: false };
   }
+
+  // Early exit if no crossings exist (use faster hasCrossings check)
+  if (!hasCrossings(edges, pathsCrossFn)) {
+    return { nodes: new Map(nodes), improved: false };
+  }
+
+  const result = new Map(nodes);
 
   // Group nodes by rank and sort within each rank
   const rankGroups = groupNodesByRank(result);
@@ -266,12 +271,16 @@ export function applyLocalizedSwaps(
   let improved = false;
   let swapsAttempted = 0;
 
-  for (const [_rankKey, nodesInRank] of rankGroups) {
+  // Process ranks in order, using values() iterator for better performance
+  for (const nodesInRank of rankGroups.values()) {
+    // Early exit conditions
     if (nodesInRank.length < 2 || swapsAttempted >= maxSwaps) {
       continue;
     }
 
-    for (let i = 0; i < nodesInRank.length - 1 && swapsAttempted < maxSwaps; i++) {
+    // Cache length to avoid repeated property access
+    const rankLength = nodesInRank.length;
+    for (let i = 0; i < rankLength - 1 && swapsAttempted < maxSwaps; i++) {
       const node1 = nodesInRank[i];
       const node2 = nodesInRank[i + 1];
 
@@ -280,11 +289,15 @@ export function applyLocalizedSwaps(
         continue;
       }
 
+      // Cache bbox references to avoid repeated property access
+      const bbox1 = node1.node.bbox;
+      const bbox2 = node2.node.bbox;
+
       // Calculate swapped positions
-      const newX1 = node2.node.bbox.x;
-      const newY1 = node2.node.bbox.y;
-      const newX2 = node1.node.bbox.x;
-      const newY2 = node1.node.bbox.y;
+      const newX1 = bbox2.x;
+      const newY1 = bbox2.y;
+      const newX2 = bbox1.x;
+      const newY2 = bbox1.y;
 
       // Create swapped node positions
       const swappedNode1 = createSwappedNode(node1.node, newX1, newY1);
@@ -299,10 +312,9 @@ export function applyLocalizedSwaps(
       result.set(node1.id, swappedNode1);
       result.set(node2.id, swappedNode2);
 
-      // Update rank array for next iteration
-      const temp = nodesInRank[i];
-      nodesInRank[i] = nodesInRank[i + 1];
-      nodesInRank[i + 1] = temp;
+      // Update rank array for next iteration (swap in-place)
+      nodesInRank[i] = node2;
+      nodesInRank[i + 1] = node1;
 
       improved = true;
       swapsAttempted++;

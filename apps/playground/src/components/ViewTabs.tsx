@@ -15,9 +15,11 @@ interface ViewTabsProps {
 export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
   const editMode = useFeatureFlagsStore((s) => s.editMode);
 
-  // Builder (guided) is now first and always visible in edit mode
+  // Builder is now first and always visible in edit mode
   const tabs: ViewTab[] =
-    editMode === "edit" ? ["guided", "diagram", "details", "code"] : ["diagram", "details", "code"];
+    editMode === "edit"
+      ? ["builder", "diagram", "details", "code"]
+      : ["diagram", "details", "code"];
 
   const index = tabs.indexOf(activeTab);
 
@@ -43,14 +45,16 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
     >
       {editMode === "edit" && (
         <button
-          className={`view-tab view-tab-primary ${activeTab === "guided" ? "active" : ""}`}
-          onClick={() => onTabChange("guided")}
+          className={`view-tab view-tab-primary ${activeTab === "builder" ? "active" : ""}`}
+          onClick={() => onTabChange("builder")}
           role="tab"
-          aria-selected={activeTab === "guided"}
-          title="Builder - Design your architecture step by step"
+          aria-selected={activeTab === "builder"}
+          id="tab-builder"
+          aria-controls="tabpanel-builder"
+          title="Builder - Step-by-step architecture design guide"
         >
           <Hammer size={16} />
-          Builder
+          <span>Builder</span>
         </button>
       )}
       <button
@@ -58,20 +62,24 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
         onClick={() => onTabChange("diagram")}
         role="tab"
         aria-selected={activeTab === "diagram"}
-        title="Diagram"
+        id="tab-diagram"
+        aria-controls="tabpanel-diagram"
+        title="Diagram - Visual architecture diagram and layout"
       >
         <Layout size={16} />
-        Diagram
+        <span>Diagram</span>
       </button>
       <button
         className={`view-tab ${activeTab === "details" ? "active" : ""}`}
         onClick={() => onTabChange("details")}
         role="tab"
         aria-selected={activeTab === "details"}
-        title="Details"
+        id="tab-details"
+        aria-controls="tabpanel-details"
+        title="Details - Requirements, ADRs, scenarios, and flows"
       >
         <List size={16} />
-        Details
+        <span>Details</span>
         {counts.requirements + counts.adrs > 0 && (
           <span className="tab-badge">{counts.requirements + counts.adrs}</span>
         )}
@@ -81,10 +89,12 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
         onClick={() => onTabChange("code")}
         role="tab"
         aria-selected={activeTab === "code"}
-        title="Code"
+        id="tab-code"
+        aria-controls="tabpanel-code"
+        title="Code - View and edit Sruja DSL source code"
       >
         <FileCode size={16} />
-        Code
+        <span>Code</span>
       </button>
     </div>
   );

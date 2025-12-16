@@ -74,6 +74,14 @@ export function ExamplesDropdown() {
         const dsl = convertJsonToDsl(parsed);
         loadFromDSL(parsed, dsl, example.file);
       }
+
+      // Update URL with example parameter
+      const url = new URL(window.location.href);
+      url.searchParams.set("example", example.file);
+      // Remove other loading params to avoid conflicts
+      url.searchParams.delete("share");
+      url.searchParams.delete("dsl");
+      window.history.pushState({}, "", url.toString());
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       setError(`Failed to load example: ${message}`);

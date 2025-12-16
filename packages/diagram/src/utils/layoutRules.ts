@@ -288,14 +288,25 @@ export const DEFAULT_LAYOUT_RULES: LayoutRule[] = [
     name: "Expanded Hierarchical Layout",
     priority: 96, // Higher than regular hierarchy
     condition: (ctx) => ctx.hasHierarchy && ctx.hasExpandedNodes,
-    action: () => ({
-      engine: "sruja",
-      direction: "DOWN",
-      options: {
-        nodeSpacing: 280, // Extra spacing for expanded nodes
-        layerSpacing: 320, // Extra vertical space for parent-child containment
-      },
-    }),
+    action: (ctx) => {
+      // Adaptive spacing based on complexity - more nodes/edges = more space needed
+      const baseNodeSpacing = 320; // Increased from 280
+      const baseLayerSpacing = 380; // Increased from 320
+
+      // Scale up for complex expanded diagrams
+      const complexityMultiplier =
+        ctx.complexity === "complex" ? 1.3 : ctx.complexity === "medium" ? 1.15 : 1.0;
+      const densityMultiplier = ctx.relationshipDensity > 2.0 ? 1.2 : 1.0;
+
+      return {
+        engine: "sruja",
+        direction: "DOWN",
+        options: {
+          nodeSpacing: Math.round(baseNodeSpacing * complexityMultiplier * densityMultiplier),
+          layerSpacing: Math.round(baseLayerSpacing * complexityMultiplier * densityMultiplier),
+        },
+      };
+    },
   },
 
   // Rule 3: L1 level (System Context) - use Sruja with generous spacing

@@ -2,6 +2,7 @@ import { layoutL1SystemContext } from "./src/algorithms/l1-layout.ts";
 import { buildHierarchy } from "./src/algorithms/hierarchy.ts";
 import { createC4Graph, C4Node, C4Relationship } from "./src/c4-model.ts";
 import { C4Id } from "./src/brand.ts";
+import { createDefaultViewState } from "./src/c4-view.ts";
 
 const createId = (id: string) => id as C4Id;
 
@@ -59,7 +60,7 @@ function runLayout(expanded: boolean) {
   const relationships: C4Relationship[] = []; // No rels needed for L1 layout test
 
   const graph = createC4Graph(nodes, relationships);
-  const tree = buildHierarchy(graph);
+  const tree = buildHierarchy(graph, createDefaultViewState());
 
   // Mock Sizes
   const sizes = new Map<string, { width: number; height: number }>();

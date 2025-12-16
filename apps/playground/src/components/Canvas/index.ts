@@ -1,1 +1,1 @@
-export { ArchitectureCanvas } from './ArchitectureCanvas';
+export { ArchitectureCanvas, type ArchitectureCanvasRef } from "./ArchitectureCanvas";

@@ -31,7 +31,7 @@ sruja/
 │   └── export/           # Exporters (JSON, views)
 ├── apps/                 # Frontend applications
 │   ├── website/          # Astro website (docs, courses, tutorials)
-│   ├── playground/       # Interactive playground application
+│   ├── playground/       # Interactive designer application (Sruja Designer)
 │   ├── vscode-extension/ # VS Code language support
 │   ├── social-publish/   # Social media publishing tools
 │   └── storybook/        # Component documentation

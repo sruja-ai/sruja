@@ -4,7 +4,7 @@ import { applyLocalizedSwaps, type EdgeRoute } from "../localized-swap-optimizer
 import type { PositionedNode } from "../coordinates";
 import type { Point } from "../../geometry/point";
 import type { C4Id } from "../../brand";
-import type { C4Relationship } from "../../c4-model";
+import type { HierarchyNode } from "../hierarchy";
 
 function createPositionedNode(
   id: string,
@@ -14,6 +14,23 @@ function createPositionedNode(
   height: number = 100,
   parent?: { id: C4Id }
 ): PositionedNode {
+  const parentNode: HierarchyNode | undefined = parent
+    ? {
+        id: parent.id,
+        node: {
+          id: parent.id,
+          kind: "Container",
+          label: String(parent.id),
+          level: "container",
+          tags: new Set(),
+        } as any,
+        parent: undefined,
+        children: [],
+        depth: 0,
+        subtreeSize: 1,
+        subtreeDepth: 0,
+      }
+    : undefined;
   return {
     id: id as C4Id,
     node: {
@@ -32,7 +49,8 @@ function createPositionedNode(
     depth: 1,
     subtreeSize: 1,
     subtreeDepth: 0,
-    parent: parent ? { id: parent.id } : undefined,
+    children: [],
+    parent: parentNode,
   };
 }
 
@@ -159,7 +177,7 @@ describe("applyLocalizedSwaps", () => {
     const result = applyLocalizedSwaps(nodes, edges, [], pathsCross, 10);
 
     // Verify children are still contained after any swaps
-    for (const [id, node] of result.nodes) {
+    for (const node of result.nodes.values()) {
       if (node.parent) {
         const parentNode = result.nodes.get(node.parent.id);
         if (parentNode) {

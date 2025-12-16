@@ -16,6 +16,9 @@ test.describe("Share Panel", () => {
     const builderTab = page.locator('button.view-tab:has-text("Builder")');
     await builderTab.click();
     await page.waitForSelector(".builder-wizard", { timeout: 10000 });
+    // Ensure preview sidebar is visible
+    const toggleBtn = page.locator(".preview-toggle-btn");
+    await toggleBtn.click();
   });
 
   test("opens SharePanel modal", async ({ page }) => {
@@ -39,11 +42,11 @@ test.describe("Share Panel", () => {
   });
 
   test("copies URL to clipboard", async ({ page }) => {
-    // Mock clipboard
-    await page.addInitScript(() => {
+    // Mock clipboard in page context
+    await page.evaluate(() => {
       (window as any).__COPIED__ = "";
       const orig = navigator.clipboard.writeText;
-      navigator.clipboard.writeText = async (text) => {
+      (navigator.clipboard as any).writeText = async (text: string) => {
         (window as any).__COPIED__ = text;
         if (orig) return orig.call(navigator.clipboard, text);
       };
@@ -82,7 +85,7 @@ test.describe("Share Panel", () => {
     await page.waitForSelector(".share-panel-modal", { timeout: 5000 });
 
     const dslCard = page.locator(".export-card").filter({ hasText: "Sruja DSL" });
-    const downloadBtn = dslCard.locator('button[title="Download"]');
+    const downloadBtn = dslCard.locator('button[aria-label="Download DSL file"]');
 
     const [download] = await Promise.all([page.waitForEvent("download"), downloadBtn.click()]);
 
@@ -94,7 +97,7 @@ test.describe("Share Panel", () => {
     await page.waitForSelector(".share-panel-modal", { timeout: 5000 });
 
     const jsonCard = page.locator(".export-card").filter({ hasText: "JSON" });
-    const downloadBtn = jsonCard.locator('button[title="Download"]');
+    const downloadBtn = jsonCard.locator('button[aria-label="Download JSON file"]');
 
     const [download] = await Promise.all([page.waitForEvent("download"), downloadBtn.click()]);
 
@@ -136,6 +139,8 @@ test.describe("Share URL Loading", () => {
     // Go to builder and get share URL
     await page.locator('button.view-tab:has-text("Builder")').click();
     await page.waitForSelector(".builder-wizard", { timeout: 10000 });
+    const toggleBtn = page.locator(".preview-toggle-btn");
+    await toggleBtn.click();
     await page.locator(".share-btn").click();
     await page.waitForSelector(".share-panel-modal", { timeout: 5000 });
 

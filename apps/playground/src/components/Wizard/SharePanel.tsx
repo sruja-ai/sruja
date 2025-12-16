@@ -8,6 +8,7 @@ import { Share2, Link, Copy, Check, Download, FileJson, FileCode, FileText, X } 
 import { Button, Input } from "@sruja/ui";
 import { useArchitectureStore } from "../../stores/architectureStore";
 import { convertJsonToDsl } from "../../utils/jsonToDsl";
+import { firebaseShareService } from "../../utils/firebaseShareService";
 import LZString from "lz-string";
 import "./SharePanel.css";
 
@@ -147,14 +148,25 @@ export function SharePanel({ isOpen, onClose }: SharePanelProps) {
               <Input
                 type="text"
                 readOnly
-                value={shareUrl}
+                value={
+                  firebaseShareService.isProjectUrl(window.location.href)
+                    ? window.location.href
+                    : shareUrl
+                }
                 onClick={(e) => (e.target as HTMLInputElement).select()}
                 aria-label="Shareable URL"
                 className="share-url-input"
               />
               <Button
                 className="share-copy-btn"
-                onClick={() => handleCopy("url", shareUrl)}
+                onClick={() =>
+                  handleCopy(
+                    "url",
+                    firebaseShareService.isProjectUrl(window.location.href)
+                      ? window.location.href
+                      : shareUrl
+                  )
+                }
                 aria-label={copiedType === "url" ? "URL copied" : "Copy URL"}
               >
                 {copiedType === "url" ? (
@@ -165,6 +177,11 @@ export function SharePanel({ isOpen, onClose }: SharePanelProps) {
                 {copiedType === "url" ? "Copied!" : "Copy"}
               </Button>
             </div>
+            {firebaseShareService.isProjectUrl(window.location.href) && (
+              <p className="share-note">
+                Use this link to collaborate. Changes will be saved to this project.
+              </p>
+            )}
           </div>
 
           {/* Export Options */}

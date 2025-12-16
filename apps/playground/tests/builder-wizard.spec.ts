@@ -41,6 +41,9 @@ test.describe("Builder Wizard", () => {
   });
 
   test("shows DSL preview in sidebar", async ({ page }) => {
+    // Enable preview sidebar
+    const toggleBtn = page.locator(".preview-toggle-btn");
+    await toggleBtn.click();
     const dslPreview = page.locator(".dsl-preview");
     await expect(dslPreview).toBeVisible();
 
@@ -49,6 +52,9 @@ test.describe("Builder Wizard", () => {
   });
 
   test("shows validation panel in sidebar", async ({ page }) => {
+    // Ensure preview sidebar is visible
+    const toggleBtn = page.locator(".preview-toggle-btn");
+    await toggleBtn.click();
     const validationPanel = page.locator(".validation-panel");
     await expect(validationPanel).toBeVisible();
 
@@ -58,6 +64,9 @@ test.describe("Builder Wizard", () => {
   });
 
   test("shows Share button in sidebar", async ({ page }) => {
+    // Ensure preview sidebar is visible
+    const toggleBtn = page.locator(".preview-toggle-btn");
+    await toggleBtn.click();
     const shareBtn = page.locator(".share-btn");
     await expect(shareBtn).toBeVisible();
     await expect(shareBtn).toContainText("Share");
@@ -105,7 +114,7 @@ test.describe("Builder Wizard", () => {
     await expect(actorsSection).toBeVisible();
 
     // Should have systems section
-    const systemsSection = page.locator(".step-section").filter({ hasText: "Systems" });
+    const systemsSection = page.locator('.step-section:has(h3:has-text("Systems"))');
     await expect(systemsSection).toBeVisible();
   });
 
@@ -128,8 +137,8 @@ test.describe("Builder Wizard", () => {
   });
 
   test("progress bar reflects completion", async ({ page }) => {
+    await page.locator(".wizard-step").nth(1).click();
     const progressFill = page.locator(".wizard-progress-fill");
-    await expect(progressFill).toBeVisible();
 
     // Progress should be > 0% since demo has data
     const width = await progressFill.evaluate((el) => {
