@@ -3,7 +3,6 @@ import { calculateSizes } from "../sizing";
 import { HierarchyTree, HierarchyNode } from "../hierarchy";
 import { C4LayoutOptions } from "../../c4-options";
 import { TextMeasurer } from "../../utils/text-measurer";
-import { C4Kind } from "../../c4-model";
 import { Size } from "../../types";
 
 // Mock Measurer
@@ -13,6 +12,12 @@ class MockMeasurer implements TextMeasurer {
   }
   measureMultiline(text: string): { width: number; height: number; lines: string[] } {
     return { width: text.length * 10, height: 20, lines: [text] };
+  }
+  getLineHeight(): number {
+    return 14;
+  }
+  getDescent(): number {
+    return 4;
   }
 }
 
@@ -30,9 +35,12 @@ describe("sizing algorithm - bug reproduction", () => {
         kind: "Container",
         level: "container",
         label: "Child Container",
+        tags: new Set(),
       },
       children: [],
-      graph: { nodes: new Map(), relationships: [] } as any,
+      depth: 1,
+      subtreeSize: 1,
+      subtreeDepth: 0,
     };
 
     const parentNode: HierarchyNode = {
@@ -42,10 +50,13 @@ describe("sizing algorithm - bug reproduction", () => {
         kind: "SoftwareSystem",
         level: "context",
         label: "Parent System",
+        tags: new Set(),
         // collapseChildren is false (expanded)
       },
       children: [childNode],
-      graph: { nodes: new Map(), relationships: [] } as any,
+      depth: 0,
+      subtreeSize: 2,
+      subtreeDepth: 1,
     };
 
     const tree: HierarchyTree = {
@@ -54,6 +65,7 @@ describe("sizing algorithm - bug reproduction", () => {
         ["parent1" as any, parentNode],
         ["child1" as any, childNode],
       ]),
+      maxDepth: 1,
     };
 
     // Options with incremental strategy and previous positions for the PARENT only
@@ -98,10 +110,10 @@ describe("sizing algorithm - bug reproduction", () => {
     expect(childLayout?.height).toBeGreaterThan(0);
     expect(Number.isFinite(childLayout?.width)).toBe(true);
 
-    // Check if parent size accommodates child
-    // Child width ~150 (label length * 10 + padding)
-    // Parent padding ~100
-    // Expect > 200
-    expect(parentSize!.size.width).toBeGreaterThan(200);
+    // Strict containment check
+    // The child needs space (approx 150 width + padding)
+    // Parent should be larger than child
+    expect(parentSize!.size.width).toBeGreaterThan(childLayout!.width + 40);
+    expect(parentSize!.size.height).toBeGreaterThan(childLayout!.height + 40);
   });
 });

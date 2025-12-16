@@ -1466,6 +1466,97 @@ export function layout(
     allowRotation: false,
   });
 
+  // Helper to verify and enforce strict parent containment
+  function enforceParentContainment(
+    nodes: Map<string, PositionedC4Node>
+  ): Map<string, PositionedC4Node> {
+    // Process nodes by depth (deepest first) to propagate size changes up
+    // Calculate max depth
+    let maxDepth = 0;
+    for (const node of nodes.values()) {
+      maxDepth = Math.max(maxDepth, node.depth);
+    }
+
+    // Iterate from maxDepth down to 0
+    for (let d = maxDepth; d >= 0; d--) {
+      const layerNodes = Array.from(nodes.values()).filter((n) => n.depth === d);
+
+      for (const node of layerNodes) {
+        if (!node.childrenIds || node.childrenIds.length === 0) continue;
+
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        let hasChildren = false;
+
+        for (const childId of node.childrenIds) {
+          const child = nodes.get(childId);
+          if (child) {
+            hasChildren = true;
+            // Child coordinates are absolute
+            minX = Math.min(minX, child.bbox.x);
+            minY = Math.min(minY, child.bbox.y);
+            maxX = Math.max(maxX, child.bbox.x + child.bbox.width);
+            maxY = Math.max(maxY, child.bbox.y + child.bbox.height);
+          }
+        }
+
+        if (hasChildren) {
+          // Calculate required padding
+          // Use safer padding logic consistent with sizing.ts
+          // Better: we don't have kind strictly typed here, but we can infer or use default
+          const basePadding = 20;
+
+          // Ensure parent bbox covers all children
+          const currentBBox = node.bbox;
+
+          // Check if containment is violated
+          const SAFETY_MARGIN = 24; // Extra internal padding
+          const requiredLeft = minX - SAFETY_MARGIN - basePadding;
+          const requiredTop = minY - SAFETY_MARGIN - basePadding; // Header height? We don't have it easily here
+
+          // Note: We can't easily know header height here without re-measuring.
+          // But we can ensure at least the bbox contains children.
+          // We preserve the header area by assuming top padding covers it or existing top is valid
+
+          // If child is to the left/top of parent, expand parent left/top
+          const newX = Math.min(currentBBox.x, requiredLeft);
+          const newY = Math.min(currentBBox.y, requiredTop);
+
+          // If child is to right/bottom, expand parent width/height
+          const requiredRight = maxX + SAFETY_MARGIN + basePadding;
+          const requiredBottom = maxY + SAFETY_MARGIN + basePadding;
+
+          const currentRight = currentBBox.x + currentBBox.width;
+          const currentBottom = currentBBox.y + currentBBox.height;
+
+          const newRight = Math.max(currentRight, requiredRight);
+          const newBottom = Math.max(currentBottom, requiredBottom);
+
+          const newWidth = newRight - newX;
+          const newHeight = newBottom - newY;
+
+          // Only update if changed
+          if (
+            newX !== currentBBox.x ||
+            newY !== currentBBox.y ||
+            newWidth !== currentBBox.width ||
+            newHeight !== currentBBox.height
+          ) {
+            nodes.set(node.nodeId, {
+              ...node,
+              bbox: { x: newX, y: newY, width: newWidth, height: newHeight },
+              contentBox: { ...node.contentBox, x: newX + basePadding, y: newY + basePadding }, // Approximate
+            });
+          }
+        }
+      }
+    }
+
+    return nodes;
+  }
+
   // Apply label placements back to edges
   for (const edge of edges) {
     const placement = labelPlacements.get(edge.relationshipId);
@@ -1550,9 +1641,27 @@ export function layout(
       }
     }
   }
+
+  // Phase 7: Post-Processing & Validation
+  // Ensure strict containment of children within parents
+  // This must happen LAST to catch any movements from previous phases
+  const container0 = Date.now();
+  if (nodesOut) {
+    nodesOut = enforceParentContainment(nodesOut);
+  } else {
+    // Fallback if nodesOut not defined (should be positioned)
+    // Looking at code flow, positioned seems to be the main var until late
+  }
+  phases.push({
+    name: "enforceContainment",
+    durationMs: Date.now() - container0,
+    nodesProcessed: nodesOut ? nodesOut.size : 0,
+  });
+
   const bbox = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   const center = { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 };
   const metrics = calculateMetrics(
+    // metrics calc line 1644
     new Map(
       [...nodesOut].map(([id, n]) => [
         id,
