@@ -19,7 +19,7 @@ func BenchmarkParser(b *testing.B) {
 		// Add containers
 		for j := 0; j < 5; j++ {
 			sb.WriteString(fmt.Sprintf("\t\tcontainer Container%d \"Benchmark Container %d\" {\n", j, j))
-            sb.WriteString("\t\t\ttechnology \"Go\"\n")
+			sb.WriteString("\t\t\ttechnology \"Go\"\n")
 			sb.WriteString("\t\t}\n")
 		}
 		sb.WriteString("\t}\n")

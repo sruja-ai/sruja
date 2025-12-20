@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { HelpCircle, X, User, Box, Database, MessageSquare } from "lucide-react";
+import { Button } from "@sruja/ui";
 import "./Legend.css";
 
 interface LegendItem {
@@ -75,23 +76,25 @@ export function Legend() {
   return (
     <>
       {/* Toggle Button */}
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         className="legend-toggle"
         onClick={() => setIsOpen(!isOpen)}
         title={isOpen ? "Hide Legend" : "Show Legend"}
       >
         <HelpCircle size={18} />
         <span>Legend</span>
-      </button>
+      </Button>
 
       {/* Legend Panel */}
       {isOpen && (
         <div className="legend-panel">
           <div className="legend-header">
             <h3>C4 Notation</h3>
-            <button className="legend-close" onClick={() => setIsOpen(false)}>
+            <Button variant="ghost" size="sm" className="legend-close" onClick={() => setIsOpen(false)}>
               <X size={16} />
-            </button>
+            </Button>
           </div>
 
           <div className="legend-section">

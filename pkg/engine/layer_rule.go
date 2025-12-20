@@ -16,12 +16,15 @@ func (r *LayerViolationRule) Name() string {
 }
 
 func (r *LayerViolationRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	if program == nil || program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return nil
 	}
 
+	// Collect all relations from Model
+	_, relations := collectLikeC4Elements(program.Model)
+
 	// Pre-allocate diagnostics slice
-	estimatedDiags := len(program.Architecture.Relations) / 10
+	estimatedDiags := len(relations) / 10
 	if estimatedDiags < 8 {
 		estimatedDiags = 8
 	}
@@ -54,7 +57,7 @@ func (r *LayerViolationRule) Validate(program *language.Program) []diagnostics.D
 	}
 
 	// Check all relations
-	for _, rel := range program.Architecture.Relations {
+	for _, rel := range relations {
 		fromLayer := ""
 		toLayer := ""
 
@@ -128,22 +131,64 @@ func (r *LayerViolationRule) Validate(program *language.Program) []diagnostics.D
 }
 
 func findMetadata(program *language.Program, name string) []*language.MetaEntry {
-	// Simple linear search for top-level elements
-	// This handles simple cases. Nested elements would require a full traversal or symbol table.
-	for i := range program.Architecture.Items {
-		item := &program.Architecture.Items[i]
-		if item.Container != nil && item.Container.ID == name {
-			return item.Container.Metadata
+	if program == nil || program.Model == nil {
+		return nil
+	}
+
+	// Search for element by qualified name in LikeC4 Model
+	var findElement func(elem *language.LikeC4ElementDef, currentFQN string) []*language.MetaEntry
+	findElement = func(elem *language.LikeC4ElementDef, currentFQN string) []*language.MetaEntry {
+		if elem == nil {
+			return nil
 		}
-		if item.Component != nil && item.Component.ID == name {
-			return item.Component.Metadata
+
+		id := elem.GetID()
+		if id == "" {
+			return nil
 		}
-		if item.System != nil && item.System.ID == name {
-			return item.System.Metadata
+
+		fqn := id
+		if currentFQN != "" {
+			fqn = buildQualifiedID(currentFQN, id)
 		}
-		if item.DataStore != nil && item.DataStore.ID == name {
-			return item.DataStore.Metadata
+
+		// Check if this is the element we're looking for
+		if fqn == name || id == name {
+			// Extract metadata from body
+			body := elem.GetBody()
+			if body != nil {
+				for _, item := range body.Items {
+					if item.Metadata != nil {
+						return item.Metadata.Entries
+					}
+				}
+			}
+			return nil
+		}
+
+		// Recurse into nested elements
+		body := elem.GetBody()
+		if body != nil {
+			for _, bodyItem := range body.Items {
+				if bodyItem.Element != nil {
+					if meta := findElement(bodyItem.Element, fqn); meta != nil {
+						return meta
+					}
+				}
+			}
+		}
+
+		return nil
+	}
+
+	// Search all top-level elements
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			if meta := findElement(item.ElementDef, ""); meta != nil {
+				return meta
+			}
 		}
 	}
+
 	return nil
 }

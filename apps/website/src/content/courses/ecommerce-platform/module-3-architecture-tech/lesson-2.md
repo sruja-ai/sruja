@@ -17,25 +17,31 @@ We have our domains. Now we need to pick the tools to build them.
 We define these choices in our `container` definitions.
 
 ```sruja
-system Platform "E-Commerce Platform" {
-    
-    container WebApp "Storefront & Admin" {
-        technology "Next.js, TypeScript"
-        description "The user-facing application."
+specification {
+  element system
+  element container
+}
+
+model {
+  Platform = system "E-Commerce Platform" {
+    WebApp = container "Storefront & Admin" {
+      technology "Next.js, TypeScript"
+      description "The user-facing application."
     }
 
-    container API "Core API" {
-        technology "Go, Gin"
-        description "REST API handling business logic."
+    API = container "Core API" {
+      technology "Go, Gin"
+      description "REST API handling business logic."
     }
 
-    container Database "Primary DB" {
-        technology "PostgreSQL 15"
-        description "Stores orders, products, and users."
+    Database = container "Primary DB" {
+      technology "PostgreSQL 15"
+      description "Stores orders, products, and users."
     }
 
     WebApp -> API "JSON/HTTPS"
     API -> Database "SQL/TCP"
+  }
 }
 ```
 

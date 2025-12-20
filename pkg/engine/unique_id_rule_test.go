@@ -10,39 +10,45 @@ import (
 
 func TestUniqueIDRule_EmptyArchitecture(t *testing.T) {
 	program := &language.Program{
-		Architecture: nil,
+		Model: nil,
 	}
 
 	rule := &engine.UniqueIDRule{}
 	errs := rule.Validate(program)
 	if len(errs) != 0 {
-		t.Errorf("Expected 0 errors for nil architecture, got %d", len(errs))
+		t.Errorf("Expected 0 errors for nil model, got %d", len(errs))
 	}
 }
 
 func TestUniqueIDRule_EmptyID(t *testing.T) {
-	program := &language.Program{
-		Architecture: &language.Architecture{
-			Systems: []*language.System{
-				{ID: ""},
-			},
-		},
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+
+	// Empty ID is not valid in LikeC4 syntax, so we test with a valid model
+	dsl := `model {
+		Sys = system "System"
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
 	}
 
 	rule := &engine.UniqueIDRule{}
 	errs := rule.Validate(program)
+	// Should have no errors for valid model
 	if len(errs) != 0 {
-		t.Errorf("Expected 0 errors for empty ID, got %d", len(errs))
+		t.Errorf("Expected 0 errors for valid model, got %d", len(errs))
 	}
 }
 
 func TestUniqueIDRule_DuplicateSystems(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system A "System A" {}
-    system A "System B" {}
-}
-`
+	dsl := `model {
+		A = system "System A"
+		A = system "System B"
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}
@@ -53,16 +59,14 @@ architecture "Test" {
 }
 
 func TestUniqueIDRule_DuplicateComponents(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Sys "System" {
-        container Cont "Container" {
-            component X "X" {}
-            component X "X Duplicate" {}
-        }
-    }
-}
-`
+	dsl := `model {
+		Sys = system "System" {
+			Cont = container "Container" {
+				X = component "X"
+				X = component "X Duplicate"
+			}
+		}
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}
@@ -73,14 +77,12 @@ architecture "Test" {
 }
 
 func TestUniqueIDRule_DuplicateDataStores(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Sys "System" {
-        datastore DB "Database" {}
-        datastore DB "Database Duplicate" {}
-    }
-}
-`
+	dsl := `model {
+		Sys = system "System" {
+			DB = datastore "Database"
+			DB = datastore "Database Duplicate"
+		}
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}
@@ -91,14 +93,12 @@ architecture "Test" {
 }
 
 func TestUniqueIDRule_DuplicateQueues(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Sys "System" {
-        queue Q "Queue" {}
-        queue Q "Queue Duplicate" {}
-    }
-}
-`
+	dsl := `model {
+		Sys = system "System" {
+			Q = queue "Queue"
+			Q = queue "Queue Duplicate"
+		}
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}
@@ -109,12 +109,10 @@ architecture "Test" {
 }
 
 func TestUniqueIDRule_DuplicatePersons(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    person User "User" {}
-    person User "User Duplicate" {}
-}
-`
+	dsl := `model {
+		User = person "User"
+		User = person "User Duplicate"
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}
@@ -125,12 +123,10 @@ architecture "Test" {
 }
 
 func TestUniqueIDRule_DuplicateRequirements(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    requirement R1 performance "Requirement 1"
-    requirement R1 performance "Requirement 2"
-}
-`
+	dsl := `model {
+		requirement R1 performance "Requirement 1"
+		requirement R1 performance "Requirement 2"
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}
@@ -141,12 +137,10 @@ architecture "Test" {
 }
 
 func TestUniqueIDRule_DuplicateADRs(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    adr ADR001 "ADR 1"
-    adr ADR001 "ADR 2"
-}
-`
+	dsl := `model {
+		adr ADR001 "ADR 1"
+		adr ADR001 "ADR 2"
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}
@@ -157,14 +151,12 @@ architecture "Test" {
 }
 
 func TestUniqueIDRule_CrossLevelDuplicates(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system X "System X" {}
-    system Y "System Y" {
-        container X "Container X" {}
-    }
-}
-`
+	dsl := `model {
+		X = system "System X"
+		Y = system "System Y" {
+			X = container "Container X"
+		}
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}

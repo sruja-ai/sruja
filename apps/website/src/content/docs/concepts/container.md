@@ -18,20 +18,33 @@ A **Container** represents an application or a data store. It is something that 
 ## Syntax
 
 ```sruja
-container ID "Label/Name" {
+specification {
+  element container
+}
+
+model {
+  ID = container "Label/Name" {
     technology "Technology Stack"
     tags ["tag1", "tag2"]
     // ... contains components
+  }
 }
 ```
 
 ## Example
 
 ```sruja
-system BankingSystem "Internet Banking System" {
-  container BankingSystem.WebApp "Web Application" {
-    technology "Java and Spring MVC"
-    tags ["web", "frontend"]
+specification {
+  element system
+  element container
+}
+
+model {
+  BankingSystem = system "Internet Banking System" {
+    WebApp = container "Web Application" {
+      technology "Java and Spring MVC"
+      tags ["web", "frontend"]
+    }
   }
 }
 ```
@@ -41,12 +54,18 @@ system BankingSystem "Internet Banking System" {
 Containers can define horizontal scaling properties using the `scale` block:
 
 ```sruja
-container API "API Service" {
-  technology "Go, Gin"
-  scale {
-    min 3
-    max 10
-    metric "cpu > 80%"
+specification {
+  element container
+}
+
+model {
+  API = container "API Service" {
+    technology "Go, Gin"
+    scale {
+      min 3
+      max 10
+      metric "cpu > 80%"
+    }
   }
 }
 ```

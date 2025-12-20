@@ -1,10 +1,11 @@
 // apps/website/vitest.config.ts
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import path from 'path';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), nodePolyfills()],
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/shared/__tests__/setup.ts'],

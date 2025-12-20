@@ -4,8 +4,6 @@
  * Stores C4 layouts that scored 1.0 on the auditor for use as
  * reference examples in future generation prompts.
  */
-import * as fs from "fs";
-import * as path from "path";
 import type { ArchitectureJSON } from "../types";
 
 /**
@@ -161,10 +159,14 @@ export class MemoryBank {
     if (this.loaded) return;
 
     try {
-      if (fs.existsSync(this.options.storagePath)) {
-        const content = fs.readFileSync(this.options.storagePath, "utf-8");
-        const data = JSON.parse(content);
-        this.layouts = data.layouts || [];
+      // Dynamic import to avoid bundling fs in browser
+      if (typeof process !== 'undefined' && process.release?.name === 'node') {
+        const fs = await import('fs');
+        if (fs.existsSync(this.options.storagePath)) {
+          const content = fs.readFileSync(this.options.storagePath, "utf-8");
+          const data = JSON.parse(content);
+          this.layouts = data.layouts || [];
+        }
       }
     } catch (error) {
       console.warn(`[MemoryBank] Could not load from storage:`, error);
@@ -175,17 +177,26 @@ export class MemoryBank {
   }
 
   private async save(): Promise<void> {
-    const dir = path.dirname(this.options.storagePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    try {
+      if (typeof process !== 'undefined' && process.release?.name === 'node') {
+        const fs = await import('fs');
+        const path = await import('path');
+
+        const dir = path.dirname(this.options.storagePath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+
+        const data = {
+          version: 1,
+          lastUpdated: new Date().toISOString(),
+          layouts: this.layouts,
+        };
+
+        fs.writeFileSync(this.options.storagePath, JSON.stringify(data, null, 2));
+      }
+    } catch (error) {
+      console.warn(`[MemoryBank] Could not save to storage:`, error);
     }
-
-    const data = {
-      version: 1,
-      lastUpdated: new Date().toISOString(),
-      layouts: this.layouts,
-    };
-
-    fs.writeFileSync(this.options.storagePath, JSON.stringify(data, null, 2));
   }
 }

@@ -16,87 +16,18 @@ func (r *ValidReferenceRule) Name() string {
 
 //nolint:funlen,gocyclo // Validation logic is long and complex
 func (r *ValidReferenceRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	if program == nil || program.Architecture == nil {
+	if program == nil {
 		return nil
 	}
 
-	arch := program.Architecture
-	// Estimate capacity based on architecture size
-	estimatedDefs := estimateDefinedCount(arch)
-	defined := make(map[string]bool, estimatedDefs)
-	diags := make([]diagnostics.Diagnostic, 0, estimatedDefs/10)
-
-	// Helper to build qualified IDs efficiently
-	buildQualifiedID := func(parts ...string) string {
-		if len(parts) == 0 {
-			return ""
-		}
-		if len(parts) == 1 {
-			return parts[0]
-		}
-		totalLen := len(parts) - 1 // for dots
-		for _, p := range parts {
-			totalLen += len(p)
-		}
-		buf := make([]byte, 0, totalLen)
-		buf = append(buf, parts[0]...)
-		for i := 1; i < len(parts); i++ {
-			buf = append(buf, '.')
-			buf = append(buf, parts[i]...)
-		}
-		return string(buf)
+	// Work directly with LikeC4 Model AST
+	if program.Model == nil {
+		return nil
 	}
 
-	for _, sys := range arch.Systems {
-		defined[sys.ID] = true
-		for _, cont := range sys.Containers {
-			contID := buildQualifiedID(sys.ID, cont.ID)
-			defined[contID] = true
-			for _, comp := range cont.Components {
-				defined[buildQualifiedID(contID, comp.ID)] = true
-			}
-			for _, ds := range cont.DataStores {
-				defined[buildQualifiedID(contID, ds.ID)] = true
-			}
-			for _, q := range cont.Queues {
-				defined[buildQualifiedID(contID, q.ID)] = true
-			}
-		}
-		for _, comp := range sys.Components {
-			defined[buildQualifiedID(sys.ID, comp.ID)] = true
-		}
-		for _, ds := range sys.DataStores {
-			defined[buildQualifiedID(sys.ID, ds.ID)] = true
-		}
-		for _, q := range sys.Queues {
-			defined[buildQualifiedID(sys.ID, q.ID)] = true
-		}
-	}
-	// Add top-level elements
-	for _, cont := range arch.Containers {
-		defined[cont.ID] = true
-		for _, comp := range cont.Components {
-			defined[buildQualifiedID(cont.ID, comp.ID)] = true
-		}
-		for _, ds := range cont.DataStores {
-			defined[buildQualifiedID(cont.ID, ds.ID)] = true
-		}
-		for _, q := range cont.Queues {
-			defined[buildQualifiedID(cont.ID, q.ID)] = true
-		}
-	}
-	for _, comp := range arch.Components {
-		defined[comp.ID] = true
-	}
-	for _, ds := range arch.DataStores {
-		defined[ds.ID] = true
-	}
-	for _, q := range arch.Queues {
-		defined[q.ID] = true
-	}
-	for _, p := range arch.Persons {
-		defined[p.ID] = true
-	}
+	// Collect all defined elements and relations from Model block
+	defined, relations := collectLikeC4Elements(program.Model)
+	diags := make([]diagnostics.Diagnostic, 0, len(relations))
 
 	resolve := func(ref, scope string) string {
 		// 1. Try absolute/global match
@@ -243,44 +174,13 @@ func (r *ValidReferenceRule) Validate(program *language.Program) []diagnostics.D
 			})
 		}
 	}
-	for _, r := range arch.Relations {
-		checkRel(r, "")
-	}
-	for _, s := range arch.Systems {
-		for _, r := range s.Relations {
-			checkRel(r, s.ID)
-		}
-		for _, c := range s.Containers {
-			contID := s.ID + "." + c.ID
-			for _, r := range c.Relations {
-				checkRel(r, contID)
-			}
-		}
-		for _, comp := range s.Components {
-			compID := s.ID + "." + comp.ID
-			for _, r := range comp.Relations {
-				checkRel(r, compID)
-			}
-		}
+	// Check all relations from Model block
+	for _, rel := range relations {
+		scope := getElementScope(program.Model, rel)
+		checkRel(rel, scope)
 	}
 
-	// Current Requirement struct has no Implements field; skip implements checks
 	return diags
-}
-
-// estimateDefinedCount provides a rough estimate of defined elements for map pre-allocation.
-func estimateDefinedCount(arch *language.Architecture) int {
-	if arch == nil {
-		return 16
-	}
-	count := len(arch.Persons) + len(arch.Components) + len(arch.DataStores) + len(arch.Queues) + len(arch.Containers)
-	for _, sys := range arch.Systems {
-		count += 1 + len(sys.Components) + len(sys.DataStores) + len(sys.Queues)
-		for _, cont := range sys.Containers {
-			count += 1 + len(cont.Components) + len(cont.DataStores) + len(cont.Queues)
-		}
-	}
-	return count + 32 // Add buffer
 }
 
 // findSimilarElements finds element IDs similar to the given reference (for typo detection)

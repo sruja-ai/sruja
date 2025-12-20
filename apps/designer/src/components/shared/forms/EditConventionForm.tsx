@@ -1,16 +1,23 @@
-// apps/playground/src/components/shared/forms/EditConventionForm.tsx
-import { useState, useEffect, useRef } from "react";
+// apps/designer/src/components/shared/forms/EditConventionForm.tsx
+// Refactored to use Mantine form components
+
+import { useEffect, useRef } from "react";
 import { useArchitectureStore } from "../../../stores";
-import type { ConventionJSON } from "../../../types";
-import { Button, Input } from "@sruja/ui";
+import { Button } from "@sruja/ui";
 import { SidePanel } from "../SidePanel";
+import { FormField, useFormState, type FormErrors } from "./";
 import "../EditForms.css";
 
 interface EditConventionFormProps {
   isOpen: boolean;
   onClose: () => void;
-  convention?: ConventionJSON;
+  convention?: any; // ConventionDump
   conventionIndex?: number;
+}
+
+interface FormValues {
+  key: string;
+  value: string;
 }
 
 export function EditConventionForm({
@@ -21,18 +28,59 @@ export function EditConventionForm({
 }: EditConventionFormProps) {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
   const formRef = useRef<HTMLFormElement>(null);
-  const [key, setKey] = useState(convention?.key || "");
-  const [value, setValue] = useState(convention?.value || "");
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Initialize form state
+  const form = useFormState<FormValues>({
+    initialValues: {
+      key: convention?.key || "",
+      value: convention?.value || "",
+    },
+    validate: (values) => {
+      const errors: FormErrors = {};
+      if (!values.key.trim()) errors.key = "Key is required";
+      if (!values.value.trim()) errors.value = "Value is required";
+      return errors;
+    },
+    onSubmit: async (values) => {
+      await updateArchitecture((model) => {
+        const sruja = (model as any).sruja || {};
+        const conventions = [...(sruja.conventions || [])];
+
+        const newConvention = {
+          key: values.key.trim(),
+          value: values.value.trim(),
+        };
+
+        if (convention && conventionIndex !== undefined) {
+          conventions[conventionIndex] = newConvention;
+        } else {
+          conventions.push(newConvention);
+        }
+
+        return {
+          ...model,
+          sruja: {
+            ...sruja,
+            conventions,
+          },
+        };
+      });
+      onClose();
+    },
+  });
+
+  // Reset form when opening/switching contexts
   useEffect(() => {
     if (isOpen) {
-      setKey(convention?.key || "");
-      setValue(convention?.value || "");
-      setErrors({});
+      form.setValues({
+        key: convention?.key || "",
+        value: convention?.value || "",
+      });
+      form.clearErrors();
     }
-  }, [isOpen, convention]);
+  }, [isOpen, convention]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Handle Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
@@ -45,52 +93,6 @@ export function EditConventionForm({
     }
   }, [isOpen, onClose]);
 
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!key.trim()) {
-      newErrors.key = "Key is required";
-    }
-    if (!value.trim()) {
-      newErrors.value = "Value is required";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    try {
-      await updateArchitecture((arch) => {
-        if (!arch.architecture) return arch;
-        const conventions = [...(arch.architecture.conventions || [])];
-        const newConvention: ConventionJSON = {
-          key: key.trim(),
-          value: value.trim(),
-        };
-
-        if (convention && conventionIndex !== undefined) {
-          conventions[conventionIndex] = newConvention;
-        } else {
-          conventions.push(newConvention);
-        }
-
-        return {
-          ...arch,
-          architecture: {
-            ...arch.architecture,
-            conventions,
-          },
-        };
-      });
-      onClose();
-    } catch (err) {
-      console.error("Failed to update convention:", err);
-      setErrors({ submit: "Failed to save convention. Please try again." });
-    }
-  };
-
   return (
     <SidePanel
       isOpen={isOpen}
@@ -102,41 +104,34 @@ export function EditConventionForm({
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button
-            variant="primary"
-            onClick={(e) => {
-              e.preventDefault();
-              handleSubmit(e as any);
-            }}
-          >
+          <Button variant="primary" type="submit" form="edit-convention-form" isLoading={form.isSubmitting}>
             {convention ? "Update" : "Add"}
           </Button>
         </>
       }
     >
-      <form ref={formRef} onSubmit={handleSubmit} className="edit-form">
-        <Input
-          label="Key *"
-          value={key}
-          onChange={(e) => {
-            setKey(e.target.value);
-            if (errors.key) setErrors({ ...errors, key: "" });
-          }}
+      <form ref={formRef} id="edit-convention-form" onSubmit={form.handleSubmit} className="edit-form">
+        <FormField
+          label="Key"
+          name="key"
+          value={form.values.key}
+          onChange={(value) => form.setValue("key", value)}
           required
           placeholder="e.g., naming, versioning, documentation"
-          error={errors.key}
+          error={form.errors.key}
         />
-        <Input
-          label="Value *"
-          value={value}
-          onChange={(e) => {
-            setValue(e.target.value);
-            if (errors.value) setErrors({ ...errors, value: "" });
-          }}
+        <FormField
+          label="Value"
+          name="value"
+          value={form.values.value}
+          onChange={(value) => form.setValue("value", value)}
           required
           placeholder="Convention value"
-          error={errors.value}
+          error={form.errors.value}
         />
+        {form.errors.submit && (
+          <div className="text-sm text-[var(--color-error-500)] mt-2">{form.errors.submit}</div>
+        )}
       </form>
     </SidePanel>
   );

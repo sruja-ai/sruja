@@ -25,7 +25,7 @@ Models export to `markdown`, `mermaid`, `svg`, `json`, and `d2`. Your architectu
 Track review cycle time, incident rates tied to architecture mistakes, and cross‑service consistency. Most organizations see measurable improvements within 4–6 weeks.
 
 ## Is Sruja really free?
-Yes. Sruja is open source (MIT licensed) and free to use. There are no licensing fees or restrictions. Professional consulting services are available for organizations that need implementation support, training, or custom integrations.
+Yes. Sruja is open source (Apache 2.0 licensed) and free to use. There are no licensing fees or restrictions. Professional consulting services are available for organizations that need implementation support, training, or custom integrations.
 
 ## What's the future roadmap?
 Sruja is designed to evolve into a comprehensive platform for architectural governance:

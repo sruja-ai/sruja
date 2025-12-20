@@ -1,16 +1,29 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { ConstraintsSection } from "../../../../apps/designer/src/components/Overview/ConstraintsSection";
+import { useEffect } from "react";
+import { ConstraintsSection } from "../../../../../apps/designer/src/components/Overview/ConstraintsSection";
+import { useFeatureFlagsStore } from "../../../../../apps/designer/src/stores/featureFlagsStore";
 import { fn } from "@storybook/test";
 
 const meta = {
   title: "Overview/ConstraintsSection",
   component: ConstraintsSection,
+  decorators: [
+    (Story) => {
+      const setFlag = useFeatureFlagsStore((s) => s.setFlag);
+      useEffect(() => {
+        setFlag("constraints", true);
+      }, [setFlag]);
+      return <Story />;
+    },
+  ],
   parameters: {
     layout: "padded",
   },
   tags: ["autodocs"],
   args: {
-    onEdit: fn(),
+    onAddConstraint: fn(),
+    onEditConstraint: fn(),
+    onDeleteConstraint: fn(),
   },
 } satisfies Meta<typeof ConstraintsSection>;
 
@@ -21,16 +34,12 @@ export const Default: Story = {
   args: {
     constraints: [
       {
-        id: "con-1",
-        title: "Budget",
-        description: "Monthly cloud spend must not exceed $5000.",
-        category: "Financial",
+        key: "Budget",
+        value: "Monthly cloud spend must not exceed $5000.",
       },
       {
-        id: "con-2",
-        title: "Compliance",
-        description: "Must be GDPR compliant.",
-        category: "Legal",
+        key: "Compliance",
+        value: "Must be GDPR compliant.",
       },
     ],
   },

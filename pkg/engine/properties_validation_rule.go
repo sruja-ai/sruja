@@ -14,16 +14,12 @@ type PropertiesValidationRule struct{}
 func (r *PropertiesValidationRule) Name() string { return "Properties Validation" }
 
 func (r *PropertiesValidationRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	if program == nil || program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return nil
 	}
 
 	// Pre-allocate diagnostics slice
-	estimatedDiags := 16
-	if program.Architecture != nil {
-		estimatedDiags = len(program.Architecture.Systems) * 4
-	}
-	diags := make([]diagnostics.Diagnostic, 0, estimatedDiags)
+	diags := make([]diagnostics.Diagnostic, 0, 16)
 
 	// Built-in validators
 	validators := map[string]func(string, map[string]string) bool{
@@ -36,36 +32,52 @@ func (r *PropertiesValidationRule) Validate(program *language.Program) []diagnos
 		"cost.perTransaction.average": func(s string, _ map[string]string) bool { return isCurrency(s) },
 	}
 
-	arch := program.Architecture
-	diags = append(diags, r.validatePropsMap(arch.Properties, arch.Location(), validators)...)
+	// Validate properties from LikeC4 elements
+	var validateElementProps func(elem *language.LikeC4ElementDef)
+	validateElementProps = func(elem *language.LikeC4ElementDef) {
+		if elem == nil {
+			return
+		}
 
-	for _, sys := range arch.Systems {
-		diags = append(diags, r.validatePropsMap(sys.Properties, sys.Location(), validators)...)
-		for _, cont := range sys.Containers {
-			diags = append(diags, r.validatePropsMap(cont.Properties, cont.Location(), validators)...)
-			for _, comp := range cont.Components {
-				diags = append(diags, r.validatePropsMap(comp.Properties, comp.Location(), validators)...)
+		// Extract properties from metadata
+		body := elem.GetBody()
+		if body != nil {
+			for _, item := range body.Items {
+				if item.Metadata != nil {
+					// Convert metadata entries to properties map
+					props := make(map[string]string)
+					for _, entry := range item.Metadata.Entries {
+						if entry.Value != nil {
+							props[entry.Key] = *entry.Value
+						}
+					}
+					if len(props) > 0 {
+						loc := elem.Location()
+						diags = append(diags, r.validatePropsMap(props, loc, validators)...)
+					}
+				}
+				if item.Properties != nil {
+					props := make(map[string]string)
+					for _, entry := range item.Properties.Entries {
+						props[entry.Key] = entry.Value
+					}
+					if len(props) > 0 {
+						diags = append(diags, r.validatePropsMap(props, item.Properties.Location(), validators)...)
+					}
+				}
+				// Recurse into nested elements
+				if item.Element != nil {
+					validateElementProps(item.Element)
+				}
 			}
-			for _, ds := range cont.DataStores {
-				diags = append(diags, r.validatePropsMap(ds.Properties, ds.Location(), validators)...)
-			}
-			for _, q := range cont.Queues {
-				diags = append(diags, r.validatePropsMap(q.Properties, q.Location(), validators)...)
-			}
-		}
-		for _, comp := range sys.Components {
-			diags = append(diags, r.validatePropsMap(comp.Properties, comp.Location(), validators)...)
-		}
-		for _, ds := range sys.DataStores {
-			diags = append(diags, r.validatePropsMap(ds.Properties, ds.Location(), validators)...)
-		}
-		for _, q := range sys.Queues {
-			diags = append(diags, r.validatePropsMap(q.Properties, q.Location(), validators)...)
 		}
 	}
 
-	for _, p := range arch.Persons {
-		diags = append(diags, r.validatePropsMap(p.Properties, p.Location(), validators)...)
+	// Process all top-level elements
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			validateElementProps(item.ElementDef)
+		}
 	}
 
 	return diags
@@ -90,14 +102,15 @@ func (r *PropertiesValidationRule) validatePropsMap(props map[string]string, loc
 
 				var suggestions []string
 				// Provide specific suggestions based on property type
-				if k == "port" {
+				switch k {
+				case "port":
 					suggestions = append(suggestions, "Port must be a valid integer between 1 and 65535")
 					suggestions = append(suggestions, "Example: '8080' or '443'")
-				} else if k == "version" {
+				case "version":
 					suggestions = append(suggestions, "Version should follow semantic versioning (e.g., '1.0.0', '2.1.3')")
-				} else if k == "url" {
+				case "url":
 					suggestions = append(suggestions, "URL must be a valid URL format (e.g., 'https://example.com')")
-				} else {
+				default:
 					suggestions = append(suggestions, fmt.Sprintf("Check the expected format for property '%s'", k))
 					suggestions = append(suggestions, "Refer to the DSL documentation for valid property values")
 				}

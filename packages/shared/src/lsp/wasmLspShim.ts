@@ -234,7 +234,8 @@ export function initializeMonacoWasmLsp(
       }))
 
       // Augment with property keys when cursor is within properties block
-      if (isInsideBlock(text, position.lineNumber - 1, 'properties')) {
+      // Monaco uses 1-based line numbers, isInsideBlock also expects 1-based
+      if (isInsideBlock(text, position.lineNumber, 'properties')) {
         const propItems = propertyKeys.map(k => ({
           label: k,
           kind: monaco.languages.CompletionItemKind.Property,

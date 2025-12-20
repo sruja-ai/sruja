@@ -1,7 +1,5 @@
 // apps/playground/src/utils/firebaseShareService.ts
-// @ts-ignore - Firebase types may not be fully available
 import { initializeApp, type FirebaseApp } from "firebase/app";
-// @ts-ignore
 import {
   getFirestore,
   doc,
@@ -35,7 +33,7 @@ interface ProjectDocument {
   ciphertext: string;
   iv: string;
   version: number;
-  updatedAt: any; // serverTimestamp
+  updatedAt: ReturnType<typeof serverTimestamp> | Date;
 }
 
 /**

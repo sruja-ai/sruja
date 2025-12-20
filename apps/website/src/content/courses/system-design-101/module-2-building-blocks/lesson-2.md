@@ -40,17 +40,32 @@ Partitioning data across multiple servers (e.g., Users A-M on Server 1, N-Z on S
 Sruja allows you to define the type of database and its role in the system.
 
 ```sruja
-architecture "User Management" {
-    container UserDB "User Database" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+    UserDB = container "User Database" {
         technology "PostgreSQL"
         tags ["relational", "primary"]
         description "Stores user profiles and authentication data."
     }
 
-    container SessionStore "Session Cache" {
+    SessionStore = container "Session Cache" {
         technology "Redis"
         tags ["key-value", "cache"]
         description "Stores active user sessions for fast access."
     }
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```

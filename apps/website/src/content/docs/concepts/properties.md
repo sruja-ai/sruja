@@ -11,7 +11,16 @@ Use `properties` for structured metadata beyond `metadata` labels.
 ## Syntax
 
 ```sruja
-architecture "Shop" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   system App {
     container API {
       properties {
@@ -20,6 +29,12 @@ architecture "Shop" {
         language "go"
       }
     }
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```

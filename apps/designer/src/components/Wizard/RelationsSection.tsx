@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { ArrowRight, Plus, Trash2 } from "lucide-react";
-import { Button, Input } from "@sruja/ui";
+import { Button, Input, Select } from "@sruja/ui";
 import { useArchitectureStore } from "../../stores/architectureStore";
-import type { RelationJSON } from "../../types";
+import type { RelationDump } from "@sruja/shared";
 import "./WizardSteps.css";
 
 interface ElementOption {
@@ -17,7 +17,7 @@ interface RelationsSectionProps {
   /** Elements available for "to" selection */
   toElements: ElementOption[];
   /** Optional filter to show only relevant relations */
-  filterFn?: (rel: RelationJSON) => boolean;
+  filterFn?: (rel: RelationDump) => boolean;
   /** Title for the section */
   title?: string;
   /** Description for the section */
@@ -31,10 +31,10 @@ export function RelationsSection({
   title = "Relations",
   description = "Connect elements to show how they communicate",
 }: RelationsSectionProps) {
-  const data = useArchitectureStore((s) => s.data);
+  const data = useArchitectureStore((s) => s.likec4Model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
 
-  const allRelations = data?.architecture?.relations ?? [];
+  const allRelations = data?.relations ?? [];
   const relations = filterFn ? allRelations.filter(filterFn) : allRelations;
 
   // Form state
@@ -43,20 +43,26 @@ export function RelationsSection({
   const [label, setLabel] = useState("");
 
   const addRelation = () => {
-    if (!fromId || !toId || !data?.architecture) return;
+    if (!fromId || !toId || !data) return;
 
-    const newRelation: RelationJSON = {
-      from: fromId,
-      to: toId,
-      label: label.trim() || undefined,
+    // We can't easily generate a unique ID without full list, but updateArchitecture helper usually handles or push.
+    // For now we assume we are just pushing a structure that will be handled.
+    // Actually RelationDump has mandatory ID. We need to generate one.
+    // Simplified: Just pass data to updateArchitecture and let it handle logic if possible,
+    // but here we are manipulating the model directly.
+    // We should probably rely on a 'addRelation' action in store if available, or generate a random ID.
+    const newId = `rel_${Math.random().toString(36).substr(2, 9)}`;
+
+    const newRelation: RelationDump = {
+      id: newId as any,
+      source: { model: fromId } as any,
+      target: { model: toId } as any,
+      title: label.trim() || undefined,
     };
 
-    updateArchitecture((arch) => ({
-      ...arch,
-      architecture: {
-        ...arch.architecture,
-        relations: [...(arch.architecture.relations ?? []), newRelation],
-      },
+    updateArchitecture((model) => ({
+      ...model,
+      relations: [...(model.relations || []), newRelation],
     }));
 
     setFromId("");
@@ -64,15 +70,10 @@ export function RelationsSection({
     setLabel("");
   };
 
-  const removeRelation = (from: string, to: string, relLabel?: string) => {
-    updateArchitecture((arch) => ({
-      ...arch,
-      architecture: {
-        ...arch.architecture,
-        relations: (arch.architecture.relations ?? []).filter(
-          (r) => !(r.from === from && r.to === to && r.label === relLabel)
-        ),
-      },
+  const removeRelation = (id: string) => {
+    updateArchitecture((model) => ({
+      ...model,
+      relations: (model.relations || []).filter((r) => r.id !== id),
     }));
   };
 
@@ -96,47 +97,49 @@ export function RelationsSection({
       <p className="section-description">{description}</p>
 
       <div className="items-list">
-        {relations.map((rel, index) => (
-          <div key={`${rel.from}-${rel.to}-${index}`} className="item-card relation-card">
-            <span className="relation-element from">{getElementLabel(rel.from)}</span>
-            <ArrowRight size={14} className="relation-arrow-small" />
-            <span className="relation-element to">{getElementLabel(rel.to)}</span>
-            {rel.label && <span className="relation-label-text">"{rel.label}"</span>}
-            <button
-              className="item-remove"
-              onClick={() => removeRelation(rel.from, rel.to, rel.label)}
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
-        ))}
+        {(relations || []).map((rel, index: number) => {
+          const srcFqn = typeof rel.source === 'object' && rel.source?.model ? rel.source.model : String(rel.source || '');
+          const tgtFqn = typeof rel.target === 'object' && rel.target?.model ? rel.target.model : String(rel.target || '');
+          return (
+            <div key={rel.id || `${srcFqn}-${tgtFqn}-${index}`} className="item-card relation-card">
+              <span className="relation-element from">{getElementLabel(srcFqn)}</span>
+              <ArrowRight size={14} className="relation-arrow-small" />
+              <span className="relation-element to">{getElementLabel(tgtFqn)}</span>
+              {rel.title && <span className="relation-label-text">"{rel.title}"</span>}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="item-remove"
+                onClick={() => removeRelation(rel.id)}
+              >
+                <Trash2 size={14} />
+              </Button>
+            </div>
+          );
+        })}
       </div>
 
       <div className="add-form relation-form-inline">
         <div className="form-group">
-          <select value={fromId} onChange={(e) => setFromId(e.target.value)}>
-            <option value="">From...</option>
-            {fromElements.map((el) => (
-              <option key={el.id} value={el.id}>
-                {el.id}
-              </option>
-            ))}
-          </select>
+          <Select
+            value={fromId}
+            onChange={(value) => setFromId(value || "")}
+            placeholder="From..."
+            data={fromElements.map((el) => ({ value: el.id, label: el.id }))}
+          />
         </div>
 
         <ArrowRight size={16} className="form-arrow" />
 
         <div className="form-group">
-          <select value={toId} onChange={(e) => setToId(e.target.value)}>
-            <option value="">To...</option>
-            {toElements
+          <Select
+            value={toId}
+            onChange={(value) => setToId(value || "")}
+            placeholder="To..."
+            data={toElements
               .filter((e) => e.id !== fromId)
-              .map((el) => (
-                <option key={el.id} value={el.id}>
-                  {el.id}
-                </option>
-              ))}
-          </select>
+              .map((el) => ({ value: el.id, label: el.id }))}
+          />
         </div>
 
         <Input

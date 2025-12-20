@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/sruja-ai/sruja/pkg/language"
+	"golang.org/x/text/cases"
+	lang "golang.org/x/text/language"
 )
 
 // Explainer provides natural-language explanations of architecture elements.
@@ -32,8 +34,8 @@ func NewExplainer(program *language.Program) *Explainer {
 // - Journey participation
 // - Dependencies
 func (e *Explainer) ExplainElement(elementID string) (*ElementExplanation, error) {
-	if e.program == nil || e.program.Architecture == nil {
-		return nil, fmt.Errorf("no architecture found")
+	if e.program == nil || e.program.Model == nil {
+		return nil, fmt.Errorf("no model found")
 	}
 
 	explanation := &ElementExplanation{
@@ -91,51 +93,55 @@ type ScenarioInfo struct {
 	Role  string // "actor", "system", "step"
 }
 
-// findElement finds an element by ID.
+// findElement finds an element by ID in LikeC4 Model.
 func (e *Explainer) findElement(id string) interface{} {
-	arch := e.program.Architecture
+	if e.program == nil || e.program.Model == nil {
+		return nil
+	}
 
-	// Search systems
-	for _, sys := range arch.Systems {
-		if sys.ID == id {
-			return sys
+	// Search for element in LikeC4 Model
+	var findElement func(elem *language.LikeC4ElementDef, currentFQN string) *language.LikeC4ElementDef
+	findElement = func(elem *language.LikeC4ElementDef, currentFQN string) *language.LikeC4ElementDef {
+		if elem == nil {
+			return nil
 		}
-		// Search containers in system
-		for _, cont := range sys.Containers {
-			if cont.ID == id {
-				return cont
-			}
-			// Search components in container
-			for _, comp := range cont.Components {
-				if comp.ID == id {
-					return comp
+
+		elemID := elem.GetID()
+		if elemID == "" {
+			return nil
+		}
+
+		fqn := elemID
+		if currentFQN != "" {
+			fqn = currentFQN + "." + elemID
+		}
+
+		// Check if this is the element we're looking for
+		if fqn == id || elemID == id {
+			return elem
+		}
+
+		// Recurse into nested elements
+		body := elem.GetBody()
+		if body != nil {
+			for _, bodyItem := range body.Items {
+				if bodyItem.Element != nil {
+					if found := findElement(bodyItem.Element, fqn); found != nil {
+						return found
+					}
 				}
 			}
 		}
-		// Search components directly in system
-		for _, comp := range sys.Components {
-			if comp.ID == id {
-				return comp
-			}
-		}
-		// Search datastores
-		for _, ds := range sys.DataStores {
-			if ds.ID == id {
-				return ds
-			}
-		}
-		// Search queues
-		for _, q := range sys.Queues {
-			if q.ID == id {
-				return q
-			}
-		}
+
+		return nil
 	}
 
-	// Search persons
-	for _, person := range arch.Persons {
-		if person.ID == id {
-			return person
+	// Search all top-level elements
+	for _, item := range e.program.Model.Items {
+		if item.ElementDef != nil {
+			if found := findElement(item.ElementDef, ""); found != nil {
+				return found
+			}
 		}
 	}
 
@@ -146,6 +152,72 @@ func (e *Explainer) findElement(id string) interface{} {
 func (e *Explainer) buildDescription(elem interface{}) string {
 	var sb strings.Builder
 
+	// Handle LikeC4ElementDef
+	if likeC4Elem, ok := elem.(*language.LikeC4ElementDef); ok {
+		id := likeC4Elem.GetID()
+		kind := likeC4Elem.GetKind()
+		title := id
+		t := likeC4Elem.GetTitle()
+		if t != nil {
+			title = *t
+		}
+
+		sb.WriteString(fmt.Sprintf("**%s: %s**\n\n", cases.Title(lang.Und).String(kind), title))
+
+		// Extract description from body
+		description := ""
+		technology := ""
+		nestedCounts := make(map[string]int)
+		body := likeC4Elem.GetBody()
+		if body != nil {
+			for _, item := range body.Items {
+				if item.Description != nil {
+					description = *item.Description
+				}
+				if item.Technology != nil {
+					technology = *item.Technology
+				}
+				if item.Element != nil {
+					nestedCounts[item.Element.GetKind()]++
+				}
+			}
+		}
+
+		if description != "" {
+			sb.WriteString(fmt.Sprintf("%s\n\n", description))
+		}
+
+		// Specific descriptions based on kind
+		switch kind {
+		case "system":
+			sb.WriteString("This is a system that provides functionality. ")
+			if count, ok := nestedCounts["container"]; ok && count > 0 {
+				sb.WriteString(fmt.Sprintf("It consists of %d container(s). ", count))
+			}
+			if count, ok := nestedCounts["database"]; ok && count > 0 {
+				sb.WriteString(fmt.Sprintf("It uses %d data store(s). ", count))
+			}
+		case "container":
+			sb.WriteString("This is a container application within a system. ")
+			if count, ok := nestedCounts["component"]; ok && count > 0 {
+				sb.WriteString(fmt.Sprintf("It contains %d component(s). ", count))
+			}
+		case "component":
+			sb.WriteString("This is a component that provides specific functionality. ")
+		case "person":
+			sb.WriteString("This represents a person who interacts with the architecture. ")
+		default:
+			sb.WriteString("This is an architecture element. ")
+		}
+
+		if technology != "" {
+			sb.WriteString(fmt.Sprintf("It uses %s technology. ", technology))
+		}
+
+		return sb.String()
+	}
+
+	// Legacy support for old Architecture types (if any remain)
 	switch v := elem.(type) {
 	case *language.System:
 		sb.WriteString(fmt.Sprintf("**System: %s**\n\n", v.Label))
@@ -232,30 +304,40 @@ func processRelation(rel *language.Relation, elementID string, info *RelationsIn
 // findRelations finds all relations involving an element.
 func (e *Explainer) findRelations(elementID string) RelationsInfo {
 	var info RelationsInfo
-	arch := e.program.Architecture
+	if e.program == nil || e.program.Model == nil {
+		return info
+	}
 
-	for _, sys := range arch.Systems {
-		for _, rel := range sys.Relations {
-			processRelation(rel, elementID, &info)
+	// Collect all relations from LikeC4 Model
+	// Use internal helper - we need to make collectLikeC4Elements exported or use it differently
+	// For now, collect relations manually
+	relations := []*language.Relation{}
+	var collectRelations func(elem *language.LikeC4ElementDef)
+	collectRelations = func(elem *language.LikeC4ElementDef) {
+		body := elem.GetBody()
+		if body == nil {
+			return
 		}
-
-		// Check containers
-		for _, cont := range sys.Containers {
-			for _, rel := range cont.Relations {
-				processRelation(rel, elementID, &info)
+		for _, bodyItem := range body.Items {
+			if bodyItem.Relation != nil {
+				relations = append(relations, bodyItem.Relation)
 			}
-		}
-
-		// Check components
-		for _, comp := range sys.Components {
-			for _, rel := range comp.Relations {
-				processRelation(rel, elementID, &info)
+			if bodyItem.Element != nil {
+				collectRelations(bodyItem.Element)
 			}
 		}
 	}
+	for _, item := range e.program.Model.Items {
+		if item.Relation != nil {
+			relations = append(relations, item.Relation)
+		}
+		if item.ElementDef != nil {
+			collectRelations(item.ElementDef)
+		}
+	}
 
-	// Check architecture-level relations
-	for _, rel := range arch.Relations {
+	// Process all relations
+	for _, rel := range relations {
 		processRelation(rel, elementID, &info)
 	}
 
@@ -267,6 +349,24 @@ func (e *Explainer) extractMetadata(elem interface{}) map[string]string {
 	// Estimate capacity: typically 3-8 metadata entries per element
 	metadata := make(map[string]string, 8)
 
+	// Handle LikeC4ElementDef
+	if likeC4Elem, ok := elem.(*language.LikeC4ElementDef); ok {
+		body := likeC4Elem.GetBody()
+		if body != nil {
+			for _, item := range body.Items {
+				if item.Metadata != nil {
+					for _, entry := range item.Metadata.Entries {
+						if entry.Value != nil {
+							metadata[entry.Key] = *entry.Value
+						}
+					}
+				}
+			}
+		}
+		return metadata
+	}
+
+	// Legacy support for old Architecture types
 	switch v := elem.(type) {
 	case *language.System:
 		for _, meta := range v.Metadata {
@@ -294,12 +394,17 @@ func (e *Explainer) extractMetadata(elem interface{}) map[string]string {
 // findRelatedADRs finds ADRs that mention the element.
 func (e *Explainer) findRelatedADRs(elementID string) []*language.ADR {
 	var related []*language.ADR
-	arch := e.program.Architecture
+	if e.program == nil || e.program.Model == nil {
+		return related
+	}
 
-	for _, adr := range arch.ADRs {
-		// Simple check: if ADR title mentions the element ID
-		if adr.Title != nil && strings.Contains(*adr.Title, elementID) {
-			related = append(related, adr)
+	// Search for ADRs in Model items
+	for _, item := range e.program.Model.Items {
+		if item.ADR != nil {
+			// Simple check: if ADR title mentions the element ID
+			if item.ADR.Title != nil && strings.Contains(*item.ADR.Title, elementID) {
+				related = append(related, item.ADR)
+			}
 		}
 	}
 
@@ -309,18 +414,27 @@ func (e *Explainer) findRelatedADRs(elementID string) []*language.ADR {
 // findRelatedScenarios finds scenarios that involve the element.
 func (e *Explainer) findRelatedScenarios(elementID string) []*ScenarioInfo {
 	var related []*ScenarioInfo
-	arch := e.program.Architecture
+	if e.program == nil || e.program.Model == nil {
+		return related
+	}
 
-	for _, scenario := range arch.Scenarios {
-		for _, step := range scenario.Steps {
-			// step.From and step.To are QualifiedIdent - use String() for comparison
-			if step.From.String() == elementID || step.To.String() == elementID {
-				related = append(related, &ScenarioInfo{
-					ID:    scenario.Title, // Use title as ID since scenario ID is optional
-					Label: scenario.Title,
-					Role:  "participant",
-				})
-				break
+	// Search for scenarios in Model items
+	for _, item := range e.program.Model.Items {
+		if item.Scenario != nil {
+			for _, step := range item.Scenario.Steps {
+				// step.From and step.To are QualifiedIdent - use String() for comparison
+				if step.From.String() == elementID || step.To.String() == elementID {
+					title := ""
+					if item.Scenario.Title != nil {
+						title = *item.Scenario.Title
+					}
+					related = append(related, &ScenarioInfo{
+						ID:    item.Scenario.ID,
+						Label: title,
+						Role:  "participant",
+					})
+					break
+				}
 			}
 		}
 	}

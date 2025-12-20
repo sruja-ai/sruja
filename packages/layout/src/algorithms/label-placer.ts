@@ -144,8 +144,22 @@ function angleAtPoint(points: readonly Point[], t: number): number {
 
 function estimateLabelWidth(label: string | undefined, defaultWidth: number): number {
   if (!label) return 0;
-  // Rough estimate: 7px per character
-  return Math.max(defaultWidth, label.length * 7);
+  // Improved heuristic:
+  // Uppercase: ~9-10px
+  // Lowercase: ~7-8px
+  // Numbers: ~8px
+  // Symbol: ~6px
+  // Average around 8px to be safe + padding
+  let approxWidth = 0;
+  for (let i = 0; i < label.length; i++) {
+    const char = label[i];
+    if (char === char.toUpperCase() && char !== char.toLowerCase()) {
+      approxWidth += 9.5;
+    } else {
+      approxWidth += 7.5;
+    }
+  }
+  return Math.max(defaultWidth, Math.ceil(approxWidth + 10)); // +10 for internal padding
 }
 
 // ============================================================================
@@ -239,21 +253,14 @@ export function placeLabels(
   // More candidate positions for better label placement, especially for dense graphs
   // Prioritize positions away from nodes (avoid 0.5 midpoint which is often near nodes)
   const candidatePositions = [
-    0.3,
-    0.7,
-    0.25,
-    0.75,
-    0.2,
-    0.8,
-    0.35,
-    0.65,
-    0.4,
-    0.6,
-    0.15,
-    0.85,
-    0.1,
-    0.9,
-    0.5, // Midpoint last
+    // Center cluster (preferred)
+    0.5, 0.48, 0.52, 0.45, 0.55, 0.42, 0.58, 0.4, 0.6,
+    // Mid-range cluster
+    0.35, 0.65, 0.32, 0.68, 0.3, 0.7, 0.28, 0.72, 0.25, 0.75,
+    // Outer cluster (often clearer but harder to read)
+    0.2, 0.8, 0.18, 0.82, 0.15, 0.85, 0.12, 0.88, 0.1, 0.9,
+    // Fine-grained checks
+    0.38, 0.62, 0.46, 0.54
   ];
 
   // Track which positions each label has tried to avoid infinite loops
@@ -295,6 +302,7 @@ export function placeLabels(
 
           // Count collisions for this candidate position
           let candidateCollisions = 0;
+          // Fast collision check
           for (const [otherId, otherPlacement] of placements) {
             if (otherId === id) continue;
             if (rectOverlaps(candidateBounds, otherPlacement.bounds, opts.padding)) {
@@ -310,6 +318,8 @@ export function placeLabels(
           if (candidateCollisions < bestCollisions) {
             bestCollisions = candidateCollisions;
             bestT = candidateT;
+            // Early exit if we find a free spot
+            if (candidateCollisions === 0) break;
           }
         }
 
@@ -332,19 +342,27 @@ export function placeLabels(
             },
           });
         } else {
-          // If no better position found, try offsetting perpendicular to edge
+          // If no better position found along the line, try offsetting perpendicular to edge
           if (edge.points.length >= 2) {
-            const segmentIdx = Math.floor(bestT * (edge.points.length - 1));
+            // Try different segments for perpendicular offset
+            const segmentT = bestT;
+            const segmentIdx = Math.floor(segmentT * (edge.points.length - 1));
             const p1 = edge.points[Math.min(segmentIdx, edge.points.length - 2)];
             const p2 = edge.points[Math.min(segmentIdx + 1, edge.points.length - 1)];
             const dx = p2.x - p1.x;
             const dy = p2.y - p1.y;
             const len = Math.hypot(dx, dy);
+
             if (len > 0) {
               // Perpendicular offset (normalized)
               const perpX = -dy / len;
               const perpY = dx / len;
-              const offset = ((iteration % 3) + 1) * 25; // Try offsets: 25, 50, 75
+
+              // Try increasing offsets: +/- 25, +/- 50, +/- 75
+              // Use iteration count to flip signs and increase distance
+              const step = Math.floor(iteration / 2) + 1;
+              const sign = iteration % 2 === 0 ? 1 : -1;
+              const offset = step * 25 * sign;
 
               const offsetPosition = {
                 x: currentPlacement.position.x + perpX * offset,

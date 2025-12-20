@@ -1,6 +1,6 @@
 // packages/layout/src/algorithms/node-position-optimizer.ts
 // Post-processing node position optimization to reduce edge crossings
-import type { PositionedC4Node } from "../c4-layout";
+import type { PositionedC4Node } from "../types";
 
 export interface EdgeInfo {
   id: string;

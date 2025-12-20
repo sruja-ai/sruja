@@ -3,27 +3,47 @@
 
 export * from './glossary';
 
-// Re-export for backward compatibility
-export interface DocSection {
-  id: string;
-  title: string;
-  content: string;
-  url: string;
-  summary?: string;
-}
+// Re-export DocSection and loader functions
+export type { DocSection } from './loader';
+export { loadDocSection, getAllDocSections } from './loader';
 
-// Helper to convert glossary entry to DocSection format
-import { getConceptById, getAllConcepts } from './glossary';
+import type { DocSection } from './loader';
+import { getConceptById, getAllConcepts, getConceptUrl } from './glossary';
 
+/**
+ * Get documentation URL for a node type.
+ * 
+ * @public
+ * @param nodeType - Node type identifier
+ * @returns Documentation URL or default concepts URL
+ * 
+ * @remarks
+ * Alias for getConceptUrl() for backward compatibility.
+ */
 export function getDocUrl(nodeType: string): string {
-  const concept = getConceptById(nodeType);
-  return concept?.url || '/docs/concepts';
+  return getConceptUrl(nodeType);
 }
 
-export function getAllDocSectionIds(): string[] {
-  return getAllConcepts().map(concept => concept.id);
+/**
+ * Get all documentation section IDs.
+ * 
+ * @public
+ * @returns Array of all concept IDs
+ */
+export function getAllDocSectionIds(): ReadonlyArray<string> {
+  return getAllConcepts().map((concept) => concept.id);
 }
 
+/**
+ * Get documentation section for a node type.
+ * 
+ * @public
+ * @param nodeType - Node type identifier
+ * @returns DocSection or null if not found
+ * 
+ * @remarks
+ * Converts glossary entry to DocSection format for backward compatibility.
+ */
 export function getDocSection(nodeType: string): DocSection | null {
   const concept = getConceptById(nodeType);
   if (!concept) return null;

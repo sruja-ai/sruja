@@ -1,16 +1,29 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { ConventionsSection } from "../../../../apps/designer/src/components/Overview/ConventionsSection";
+import { useEffect } from "react";
+import { ConventionsSection } from "../../../../../apps/designer/src/components/Overview/ConventionsSection";
+import { useFeatureFlagsStore } from "../../../../../apps/designer/src/stores/featureFlagsStore";
 import { fn } from "@storybook/test";
 
 const meta = {
   title: "Overview/ConventionsSection",
   component: ConventionsSection,
+  decorators: [
+    (Story) => {
+      const setFlag = useFeatureFlagsStore((s) => s.setFlag);
+      useEffect(() => {
+        setFlag("conventions", true);
+      }, [setFlag]);
+      return <Story />;
+    },
+  ],
   parameters: {
     layout: "padded",
   },
   tags: ["autodocs"],
   args: {
-    onEdit: fn(),
+    onAddConvention: fn(),
+    onEditConvention: fn(),
+    onDeleteConvention: fn(),
   },
 } satisfies Meta<typeof ConventionsSection>;
 
@@ -21,16 +34,12 @@ export const Default: Story = {
   args: {
     conventions: [
       {
-        id: "conv-1",
-        title: "Naming Strategy",
-        description: "Use kebab-case for all API endpoints.",
-        category: "API",
+        key: "Naming Strategy",
+        value: "Use kebab-case for all API endpoints.",
       },
       {
-        id: "conv-2",
-        title: "Git Branching",
-        description: "Follow Trunk Based Development.",
-        category: "Process",
+        key: "Git Branching",
+        value: "Follow Trunk Based Development.",
       },
     ],
   },

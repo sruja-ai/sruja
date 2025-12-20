@@ -2,11 +2,9 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { FileCode } from "lucide-react";
 import { Button, SearchBar, type SearchItem } from "@sruja/ui";
 import { getAllExamples, fetchExampleDsl } from "../../examples";
-import { convertDslToJson } from "../../wasm";
-import { convertJsonToDsl } from "../../utils/jsonToDsl";
+import { convertDslToLikeC4 } from "../../wasm";
 import { useArchitectureStore } from "../../stores";
-import type { ArchitectureJSON } from "../../types";
-import type { Example } from "@sruja/shared";
+import type { SrujaModelDump, Example } from "@sruja/shared";
 
 export function ExamplesDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -19,7 +17,10 @@ export function ExamplesDropdown() {
 
   useEffect(() => {
     getAllExamples()
-      .then((all) => setExamples(all.filter((e) => e.isDsl)))
+      .then((all) => {
+        // Show both DSL and JSON examples (filter out only if explicitly skipped)
+        setExamples(all)
+      })
       .catch((err) => {
         console.error("Failed to load examples:", err);
         setError("Failed to load examples");
@@ -36,11 +37,11 @@ export function ExamplesDropdown() {
     const q = query.toLowerCase().trim();
     const list = q
       ? examples.filter(
-          (ex) =>
-            ex.name.toLowerCase().includes(q) ||
-            ex.description.toLowerCase().includes(q) ||
-            ex.category.toLowerCase().includes(q)
-        )
+        (ex) =>
+          ex.name.toLowerCase().includes(q) ||
+          ex.description.toLowerCase().includes(q) ||
+          ex.category.toLowerCase().includes(q)
+      )
       : examples;
     return list.sort((a, b) => a.order - b.order);
   }, [examples, query]);
@@ -63,22 +64,28 @@ export function ExamplesDropdown() {
     setError(null);
 
     try {
+      let content: string;
+      try {
+        content = await fetchExampleDsl(example.file);
+      } catch (fetchErr) {
+        throw new Error(`Failed to fetch example file "${example.file}": ${fetchErr instanceof Error ? fetchErr.message : "Unknown error"}`);
+      }
+
       if (example.isDsl) {
-        const dsl = await fetchExampleDsl(example.file);
-        const converted = await convertDslToJson(dsl);
-        if (!converted) throw new Error("Failed to parse DSL");
-        loadFromDSL(converted as ArchitectureJSON, dsl, example.file);
+        // Parse DSL to Model
+        const data = await convertDslToLikeC4(content, example.file);
+        if (!data) throw new Error("Failed to parse DSL to Model");
+
+        loadFromDSL(data as SrujaModelDump, content, example.file);
       } else {
-        const jsonText = await fetchExampleDsl(example.file);
-        const parsed = JSON.parse(jsonText) as ArchitectureJSON;
-        const dsl = convertJsonToDsl(parsed);
-        loadFromDSL(parsed, dsl, example.file);
+        // Legacy JSON path - try to migrate or error
+        // For now assuming all examples are DSL or will fail gracefully
+        throw new Error("JSON examples are deprecated. Please use DSL examples.");
       }
 
       // Update URL with example parameter
       const url = new URL(window.location.href);
       url.searchParams.set("example", example.file);
-      // Remove other loading params to avoid conflicts
       url.searchParams.delete("share");
       url.searchParams.delete("dsl");
       window.history.pushState({}, "", url.toString());
@@ -169,17 +176,16 @@ export function ExamplesDropdown() {
                 {category}
               </div>
               {list.map((example) => (
-                <button
+                <Button
                   key={example.file}
+                  variant="ghost"
+                  size="sm"
                   className="example-item"
                   onClick={() => handleExampleSelect(example)}
                   style={{
                     width: "100%",
                     padding: "10px 8px",
-                    background: "transparent",
-                    border: "none",
                     textAlign: "left",
-                    cursor: "pointer",
                     display: "flex",
                     alignItems: "flex-start",
                     justifyContent: "space-between",
@@ -215,7 +221,7 @@ export function ExamplesDropdown() {
                       DSL
                     </span>
                   )}
-                </button>
+                </Button>
               ))}
             </div>
           ))}

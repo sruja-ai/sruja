@@ -1,0 +1,120 @@
+// examples/concept_systems_thinking.sruja
+// Systems Thinking Example
+
+specification {
+  element person
+  element system
+  element container
+  element database
+}
+
+model {
+  // ============================================================================
+  // 1. PARTS AND RELATIONSHIPS
+  // ============================================================================
+  // Systems thinking starts with understanding how components connect and interact
+  
+  customer = person "End User"
+  admin = person "System Administrator"
+  support = person "Customer Support"
+  
+  ecommerce = system "E-Commerce System" {
+    webApp = container "Web Application" {
+      technology "React"
+    }
+    
+    api = container "API Service" {
+      technology "Go"
+    }
+    
+    database = database "PostgreSQL Database" {
+      technology "PostgreSQL 14"
+    }
+  }
+  
+  paymentGateway = system "Third-party Payment Service" {
+    metadata {
+      tags ["external"]
+    }
+  }
+  
+  emailService = system "Email Notifications" {
+    metadata {
+      tags ["external"]
+    }
+  }
+  
+  analyticsService = system "Usage Analytics" {
+    metadata {
+      tags ["external"]
+    }
+  }
+  
+  // Relationships show how parts interact
+  customer -> ecommerce.webApp "uses"
+  ecommerce.webApp -> ecommerce.api "calls"
+  ecommerce.api -> ecommerce.database "reads and writes to"
+  ecommerce.api -> paymentGateway "processes payments through"
+  
+  // Simple relationship flow (unidirectional to avoid cycles)
+  customer -> ecommerce.webApp "browses products via"
+  ecommerce.webApp -> ecommerce.api "fetches products from"
+  ecommerce.api -> ecommerce.database "queries products in"
+  
+  // ============================================================================
+  // 4. FEEDBACK LOOPS
+  // ============================================================================
+  // Feedback loops show how actions create reactions
+  
+  // Simple feedback: User action triggers system response
+  customer -> ecommerce.webApp "submits form to"
+  ecommerce.webApp -> ecommerce.api "validates with"
+  ecommerce.api -> ecommerce.webApp "returns validation result to"
+  ecommerce.webApp -> customer "shows feedback to"
+  
+  // System feedback: Component A affects Component B, which affects A
+  ecommerce.api -> ecommerce.database "updates inventory in"
+  ecommerce.database -> ecommerce.api "notifies low stock to"
+  ecommerce.api -> admin "sends alert to"
+  admin -> ecommerce.api "adjusts inventory via"
+  
+  // ============================================================================
+  // 5. CONTEXT
+  // ============================================================================
+  // Context shows the environment the system operates in
+  
+  customer -> ecommerce "uses"
+  admin -> ecommerce "manages"
+  support -> ecommerce "monitors"
+  ecommerce -> paymentGateway "depends on"
+  ecommerce -> emailService "sends notifications via"
+  ecommerce -> analyticsService "tracks usage with"
+  
+  // ============================================================================
+  // REQUIREMENTS AND ADRs
+  // ============================================================================
+  
+  requirement R1 functional "System must handle 10k concurrent users"
+  requirement R2 constraint "Must use PostgreSQL for data persistence"
+  requirement R3 performance "API response time must be < 100ms"
+  
+  adr ADR001 "Use microservices architecture for scalability" {
+    status "Accepted"
+    context "Need to scale independently"
+    decision "Adopt microservices"
+    consequences "Better scalability, increased complexity"
+  }
+  adr ADR002 "Use PostgreSQL for strong consistency requirements" {
+    status "Accepted"
+    context "Need ACID transactions"
+    decision "Use PostgreSQL"
+    consequences "Strong consistency, SQL complexity"
+  }
+}
+
+views {
+  view index {
+    title "Systems Thinking Example"
+    include *
+  }
+}

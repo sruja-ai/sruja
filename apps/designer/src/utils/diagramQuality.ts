@@ -1,6 +1,7 @@
 // Diagram quality metrics and validation for "well-structured" diagrams
 import type { Node, Edge } from "@xyflow/react";
 import type { C4NodeData } from "../types";
+import { getLabelPosition, getEdgePoints } from "../types";
 
 export interface DiagramQualityMetrics {
   // Overlap detection
@@ -211,12 +212,8 @@ function detectEdgeLabelOverlaps(nodes: Node<C4NodeData>[], edges: Edge[]): numb
     let labelX: number;
     let labelY: number;
 
-    const labelPosition = (edge.data as any)?.labelPosition;
-    if (
-      labelPosition &&
-      typeof labelPosition.x === "number" &&
-      typeof labelPosition.y === "number"
-    ) {
+    const labelPosition = getLabelPosition(edge.data);
+    if (labelPosition) {
       // Use explicit label position from layout (absolute coordinates)
       labelX = labelPosition.x;
       labelY = labelPosition.y;
@@ -567,13 +564,13 @@ export function calculateDiagramQuality(
     Math.min(
       100,
       overlapScore * 0.15 +
-        spacingScore * 0.1 +
-        edgeScore * 0.1 +
-        hierarchyScore * 0.15 +
-        directionScore * 0.15 +
-        viewportScore * 0.1 +
-        consistencyScore * 0.1 +
-        aspectRatioScore * 0.1
+      spacingScore * 0.1 +
+      edgeScore * 0.1 +
+      hierarchyScore * 0.15 +
+      directionScore * 0.15 +
+      viewportScore * 0.1 +
+      consistencyScore * 0.1 +
+      aspectRatioScore * 0.1
     )
   );
 
@@ -646,16 +643,16 @@ export function compositeObjective(metrics: DiagramQualityMetrics): number {
     Math.min(
       100,
       score -
-        containmentPenalty -
-        overlapPenalty -
-        crossingPenalty -
-        overNodesPenalty -
-        labelPenalty -
-        congestionPenalty -
-        anglePenalty -
-        alignmentPenalty -
-        detourPenalty +
-        bonus
+      containmentPenalty -
+      overlapPenalty -
+      crossingPenalty -
+      overNodesPenalty -
+      labelPenalty -
+      congestionPenalty -
+      anglePenalty -
+      alignmentPenalty -
+      detourPenalty +
+      bonus
     )
   );
   return score;
@@ -875,7 +872,7 @@ function calculateEdgeMetrics(
 
     const length = Math.sqrt(
       Math.pow(targetNode.position.x - sourceNode.position.x, 2) +
-        Math.pow(targetNode.position.y - sourceNode.position.y, 2)
+      Math.pow(targetNode.position.y - sourceNode.position.y, 2)
     );
     edgeLengths.push(length);
   });
@@ -906,10 +903,10 @@ function calculateEdgeMetrics(
     length:
       edgeLengths.length > 0
         ? {
-            min: Math.min(...edgeLengths),
-            max: Math.max(...edgeLengths),
-            average: edgeLengths.reduce((a, b) => a + b, 0) / edgeLengths.length,
-          }
+          min: Math.min(...edgeLengths),
+          max: Math.max(...edgeLengths),
+          average: edgeLengths.reduce((a, b) => a + b, 0) / edgeLengths.length,
+        }
         : { min: 0, max: 0, average: 0 },
   };
 }
@@ -1139,8 +1136,8 @@ function calculateDetourScore(nodes: Node<C4NodeData>[], edges: Edge[]): number 
     if (!s || !t) return;
     const straight = Math.hypot(t.position.x - s.position.x, t.position.y - s.position.y);
     let pathLen = straight;
-    const pts = (edge.data as any)?.points;
-    if (Array.isArray(pts) && pts.length >= 2) {
+    const pts = getEdgePoints(edge.data);
+    if (pts && pts.length >= 2) {
       pathLen = 0;
       for (let i = 1; i < pts.length; i++) {
         const p0 = pts[i - 1];
@@ -1269,8 +1266,8 @@ function countEdgeBends(edges: Edge[]): number {
 
   edges.forEach((edge) => {
     // Check if edge has points (bends) in its data
-    const points = (edge.data as any)?.points;
-    if (points && Array.isArray(points)) {
+    const points = getEdgePoints(edge.data);
+    if (points) {
       // Number of bends = points.length - 2 (excluding start and end)
       totalBends += Math.max(0, points.length - 2);
     } else {
@@ -1878,7 +1875,7 @@ export function generateQualityReport(metrics: DiagramQualityMetrics, context?: 
     metrics.parentChildSizeViolations.slice(0, 5).forEach((v) => {
       lines.push(
         `  - Parent ${v.parentId}: ${v.parentWidth.toFixed(0)}x${v.parentHeight.toFixed(0)}px, ` +
-          `required: ${v.requiredWidth.toFixed(0)}x${v.requiredHeight.toFixed(0)}px (${v.violation})`
+        `required: ${v.requiredWidth.toFixed(0)}x${v.requiredHeight.toFixed(0)}px (${v.violation})`
       );
     });
   }
@@ -1889,7 +1886,7 @@ export function generateQualityReport(metrics: DiagramQualityMetrics, context?: 
   ) {
     lines.push(
       `\n⚠️  Aspect Ratio Warning: ${metrics.aspectRatio.toFixed(2)} ` +
-        `(optimal: ${OPTIMAL_ASPECT_RATIO_MIN}-${OPTIMAL_ASPECT_RATIO_MAX})`
+      `(optimal: ${OPTIMAL_ASPECT_RATIO_MIN}-${OPTIMAL_ASPECT_RATIO_MAX})`
     );
     if (metrics.aspectRatio < OPTIMAL_ASPECT_RATIO_MIN) {
       lines.push("   Diagram is too tall (vertically stretched)");

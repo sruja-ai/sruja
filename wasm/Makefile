@@ -8,3 +8,7 @@ go:
 tinygo:
 	tinygo build -o ../apps/studio/public/wasm/sruja.wasm -target wasm ./
 	cp wasm_exec_tinygo.js ../apps/studio/public/wasm/wasm_exec_tinygo.js
+
+test-integration: go
+	@echo "Running WASM integration tests..."
+	cd ../packages/shared && npm test src/node/__tests__/wasmAdapter.test.ts

@@ -11,17 +11,29 @@ A **Component** is a grouping of related functionality encapsulated behind a wel
 ## Syntax
 
 ```sruja
-component ID "Label/Name" {
+specification {
+  element component
+}
+
+model {
+  ID = component "Label/Name" {
     technology "Technology"
     // ... items
+  }
 }
 ```
 
 ## Example
 
 ```sruja
-component AuthController "Authentication Controller" {
+specification {
+  element component
+}
+
+model {
+  AuthController = component "Authentication Controller" {
     technology "Spring MVC Rest Controller"
     description "Handles user login and registration."
+  }
 }
 ```

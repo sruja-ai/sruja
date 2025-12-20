@@ -1,6 +1,7 @@
 // apps/playground/src/components/shared/ShortcutsModal.tsx
 import { useEffect } from "react";
 import { X } from "lucide-react";
+import { Button } from "@sruja/ui";
 
 export interface Shortcut {
   keys: string[];
@@ -135,23 +136,21 @@ export function ShortcutsModal({ isOpen, onClose, shortcuts }: ShortcutsModalPro
           >
             Keyboard Shortcuts
           </h2>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onClose}
             style={{
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
               padding: "4px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: "var(--text-secondary)",
-              borderRadius: "4px",
             }}
             aria-label="Close shortcuts"
           >
             <X size={20} />
-          </button>
+          </Button>
         </div>
 
         {/* Content */}

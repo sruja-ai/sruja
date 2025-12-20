@@ -38,17 +38,26 @@ Where does the rate limiter live?
 In Sruja, we can model the Rate Limiter as a component within the API Gateway, backed by a fast datastore like Redis.
 
 ```sruja
-architecture "API Rate Limiter" {
-    system APIGateway "API Gateway" {
-        container GatewayService "Gateway" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+    APIGateway = system "API Gateway" {
+        GatewayService = container "Gateway" {
             technology "Nginx / Kong"
             
-            component RateLimiter "Rate Limiter Middleware" {
+            RateLimiter = component "Rate Limiter Middleware" {
                 description "Implements Token Bucket algorithm"
             }
         }
         
-        datastore Redis "Rate Limit Store" {
+        Redis = datastore "Rate Limit Store" {
             technology "Redis"
             description "Stores token counts per user/IP"
         }
@@ -56,17 +65,39 @@ architecture "API Rate Limiter" {
         APIGateway.GatewayService -> APIGateway.Redis "Stores tokens"
     }
     
-    system Backend "Backend Service"
+    Backend = system "Backend Service"
     
     APIGateway.GatewayService -> Backend "Forward Requests"
-    person Client "Client"
+    Client = person "Client"
 
-    // Scenario of a request being limited
-    scenario RateLimitCheck "Rate Limit Check" {
+    // Scenario: Request allowed (has tokens)
+    scenario RateLimitAllowed "Rate Limit Check - Allowed" {
         Client -> APIGateway.GatewayService "API Request"
         APIGateway.GatewayService -> APIGateway.Redis "DECR user_123_tokens"
-        APIGateway.Redis -> APIGateway.GatewayService "Result: -1 (Empty)"
+        APIGateway.Redis -> APIGateway.GatewayService "Result: 5 (tokens remaining)"
+        APIGateway.GatewayService -> Backend "Forward request"
+        Backend -> APIGateway.GatewayService "Response"
+        APIGateway.GatewayService -> Client "200 OK"
+    }
+    
+    // Scenario: Request rate limited (no tokens)
+    scenario RateLimitBlocked "Rate Limit Check - Blocked" {
+        Client -> APIGateway.GatewayService "API Request"
+        APIGateway.GatewayService -> APIGateway.Redis "DECR user_123_tokens"
+        APIGateway.Redis -> APIGateway.GatewayService "Result: -1 (Empty bucket)"
         APIGateway.GatewayService -> Client "429 Too Many Requests"
     }
+    
+    // Scenario: Token refill (background process)
+    scenario TokenRefill "Token Bucket Refill" {
+        APIGateway.Redis -> APIGateway.Redis "Add 10 tokens/sec (background)"
+        APIGateway.Redis -> APIGateway.Redis "Cap at max bucket size"
+    }
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```

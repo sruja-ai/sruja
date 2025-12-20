@@ -11,12 +11,20 @@ export async function exportAsPNG(
   filename: string = "diagram.png"
 ): Promise<void> {
   try {
-    // Get the React Flow viewport element
-    const reactFlowViewport = containerElement.querySelector(
+    // Try to find React Flow viewport or LikeC4 diagram container
+    let viewportElement = containerElement.querySelector(
       ".react-flow__viewport"
     ) as HTMLElement;
-    if (!reactFlowViewport) {
-      throw new Error("React Flow viewport not found");
+    
+    // Fallback to LikeC4 diagram container
+    if (!viewportElement) {
+      viewportElement = containerElement.querySelector(
+        ".likec4-diagram-container, .likec4-canvas"
+      ) as HTMLElement;
+    }
+    
+    if (!viewportElement) {
+      throw new Error("Diagram viewport not found (neither React Flow nor LikeC4)");
     }
 
     // Use html2canvas if available, otherwise use canvas API
@@ -24,7 +32,7 @@ export async function exportAsPNG(
 
     if (html2canvas?.default) {
       // Use html2canvas for better quality
-      const canvas = await html2canvas.default(reactFlowViewport, {
+      const canvas = await html2canvas.default(viewportElement, {
         backgroundColor:
           getComputedStyle(document.documentElement).getPropertyValue("--bg-primary") || "#ffffff",
         scale: 2, // Higher quality

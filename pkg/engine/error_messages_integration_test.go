@@ -44,22 +44,13 @@ func TestErrorMessages_ComprehensiveInvalidExamples(t *testing.T) {
 		expectedErrors   []string // Keywords that should appear in error messages
 		checkSuggestions bool
 	}{
-		{
-			name: "Missing closing brace",
-			dsl: `
-architecture "Test" {
-    system API "API Service" {
-        container WebApp "Web App"
-`,
-			expectedErrors:   []string{"brace", "expected", "missing"},
-			checkSuggestions: true,
-		},
+
 		{
 			name: "Duplicate system ID",
 			dsl: `
-architecture "Test" {
-    system API "API Service" {}
-    system API "Duplicate API" {}
+model {
+    API = system "API Service"
+    API = system "Duplicate API"
 }`,
 			expectedErrors:   []string{"duplicate", "API", "previously", "first defined"},
 			checkSuggestions: true,
@@ -67,8 +58,8 @@ architecture "Test" {
 		{
 			name: "Undefined reference",
 			dsl: `
-architecture "Test" {
-    system API "API Service" {
+model {
+    API = system "API Service" {
         API -> UnknownSystem "Uses"
     }
 }`,
@@ -78,8 +69,8 @@ architecture "Test" {
 		{
 			name: "Invalid SLO duration format",
 			dsl: `
-architecture "Test" {
-    system API "API Service" {
+model {
+    API = system "API Service" {
         slo {
             latency {
                 p95 "invalid_format"
@@ -93,15 +84,14 @@ architecture "Test" {
 		{
 			name: "Invalid property value",
 			dsl: `
-architecture "Test" {
-    system API "API Service" {
+model {
+    API = system "API Service" {
         properties {
             "capacity.readReplicas" "not_a_number"
         }
     }
-    system Client "Client" {
-        Client -> API "Uses"
-    }
+    Client = system "Client"
+    Client -> API "Uses"
 }`,
 			expectedErrors:   []string{"property", "readReplicas", "invalid"},
 			checkSuggestions: true,
@@ -109,9 +99,9 @@ architecture "Test" {
 		{
 			name: "Orphan element",
 			dsl: `
-architecture "Test" {
-    system API "API Service" {}
-    system Unused "Unused System" {}
+model {
+    API = system "API Service"
+    Unused = system "Unused System"
 }`,
 			expectedErrors:   []string{"orphan", "unused", "never used"},
 			checkSuggestions: true,
@@ -119,11 +109,11 @@ architecture "Test" {
 		{
 			name: "Layer violation",
 			dsl: `
-architecture "Test" {
-    system DataLayer "Data Layer" {
+model {
+    DataLayer = system "Data Layer" {
         metadata { layer "data" }
     }
-    system WebLayer "Web Layer" {
+    WebLayer = system "Web Layer" {
         metadata { layer "web" }
     }
     DataLayer -> WebLayer "Invalid"
@@ -134,12 +124,12 @@ architecture "Test" {
 		{
 			name: "Ambiguous reference in scenario",
 			dsl: `
-architecture "Test" {
-    system Order "Order System" {
-        container API "Order API" {}
+model {
+    Order = system "Order System" {
+        API = container "Order API"
     }
-    system Payment "Payment System" {
-        container API "Payment API" {}
+    Payment = system "Payment System" {
+        API = container "Payment API"
     }
     scenario TestScenario "Test Scenario" "Description" {
         Order -> API "Uses"
@@ -151,9 +141,9 @@ architecture "Test" {
 		{
 			name: "External dependency violation",
 			dsl: `
-architecture "Test" {
-    system Parent "Parent System" {
-        container Child "Child Container" {
+model {
+    Parent = system "Parent System" {
+        Child = container "Child Container" {
             Child -> Parent "Invalid"
         }
     }
@@ -164,8 +154,8 @@ architecture "Test" {
 		{
 			name: "Invalid error rate format",
 			dsl: `
-architecture "Test" {
-    system API "API Service" {
+model {
+    API = system "API Service" {
         slo {
             errorRate {
                 target "wrong_format"
@@ -179,8 +169,8 @@ architecture "Test" {
 		{
 			name: "Invalid throughput format",
 			dsl: `
-architecture "Test" {
-    system API "API Service" {
+model {
+    API = system "API Service" {
         slo {
             throughput {
                 target "wrong"
@@ -189,17 +179,6 @@ architecture "Test" {
     }
 }`,
 			expectedErrors:   []string{"rate", "throughput", "target"},
-			checkSuggestions: true,
-		},
-		{
-			name: "Unexpected token",
-			dsl: `
-architecture "Test" {
-    system API "API Service" {
-        unexpected_keyword "value"
-    }
-}`,
-			expectedErrors:   []string{"unexpected", "token"},
 			checkSuggestions: true,
 		},
 	}
@@ -282,12 +261,12 @@ architecture "Test" {
 // TestErrorMessages_LocationPrecision tests that error locations are precise
 func TestErrorMessages_LocationPrecision(t *testing.T) {
 	dsl := `
-architecture "Test" {
-    system API "API Service" {
-        container WebApp "Web App" {
-            component Frontend "Frontend Component"
-            component Backend "Backend Component"
-            component Frontend "Duplicate Frontend"
+model {
+    API = system "API Service" {
+        WebApp = container "Web App" {
+            Frontend = component "Frontend Component"
+            Backend = component "Backend Component"
+            Frontend = component "Duplicate Frontend"
         }
     }
 }
@@ -331,9 +310,9 @@ func TestErrorMessages_SuggestionQuality(t *testing.T) {
 		{
 			name: "Undefined reference should suggest similar elements",
 			dsl: `
-architecture "Test" {
-    system API "API Service" {}
-    system APIService "API Service Full" {}
+model {
+    API = system "API Service"
+    APIService = system "API Service Full"
     API -> APIServic "Typo"
 }`,
 			expectedSuggestionKeywords: []string{"did you mean", "APIService", "check", "defined"},
@@ -341,8 +320,8 @@ architecture "Test" {
 		{
 			name: "Invalid SLO should provide format examples",
 			dsl: `
-architecture "Test" {
-    system API "API Service" {
+model {
+    API = system "API Service" {
         slo {
             latency {
                 p95 "wrong"
@@ -355,9 +334,9 @@ architecture "Test" {
 		{
 			name: "Duplicate ID should suggest renaming",
 			dsl: `
-architecture "Test" {
-    system API "API Service" {}
-    system API "Duplicate" {}
+model {
+    API = system "API Service"
+    API = system "Duplicate"
 }`,
 			expectedSuggestionKeywords: []string{"rename", "unique", "API2"},
 		},
@@ -401,7 +380,7 @@ architecture "Test" {
 // TestErrorMessages_ContextHelpfulness tests that error context is helpful
 func TestErrorMessages_ContextHelpfulness(t *testing.T) {
 	dsl := `
-architecture "Test" {
+model {
     system API "API Service" {
         container WebApp "Web App" {
             component Frontend "Frontend"

@@ -2,17 +2,36 @@
 // Glossary of Sruja concepts - single source of truth for concept summaries
 // This file is used across studio and learn apps
 
+/**
+ * Concept glossary entry.
+ * 
+ * @public
+ * @remarks
+ * Single source of truth for concept documentation used across apps.
+ */
 export interface ConceptGlossaryEntry {
-  id: string;
-  title: string;
-  summary: string;
-  description: string;
-  url: string;
-  examples?: string[];
-  keyPoints?: string[];
+  /** Unique concept identifier */
+  readonly id: string;
+  /** Concept title */
+  readonly title: string;
+  /** Short summary */
+  readonly summary: string;
+  /** Full description (markdown) */
+  readonly description: string;
+  /** Documentation URL */
+  readonly url: string;
+  /** Example code snippets */
+  readonly examples?: ReadonlyArray<string>;
+  /** Key points about the concept */
+  readonly keyPoints?: ReadonlyArray<string>;
 }
 
-export const CONCEPT_GLOSSARY: ConceptGlossaryEntry[] = [
+/**
+ * Concept glossary - single source of truth for all Sruja concepts.
+ * 
+ * @public
+ */
+export const CONCEPT_GLOSSARY: ReadonlyArray<ConceptGlossaryEntry> = [
   {
     id: 'person',
     title: 'Person',
@@ -161,17 +180,36 @@ export const CONCEPT_GLOSSARY: ConceptGlossaryEntry[] = [
   },
 ];
 
-// Helper functions
+/**
+ * Get concept by ID.
+ * 
+ * @public
+ * @param id - Concept identifier
+ * @returns Concept entry or undefined if not found
+ */
 export function getConceptById(id: string): ConceptGlossaryEntry | undefined {
-  return CONCEPT_GLOSSARY.find(entry => entry.id === id);
+  return CONCEPT_GLOSSARY.find((entry) => entry.id === id);
 }
 
-export function getAllConcepts(): ConceptGlossaryEntry[] {
+/**
+ * Get all concepts.
+ * 
+ * @public
+ * @returns Array of all concept entries
+ */
+export function getAllConcepts(): ReadonlyArray<ConceptGlossaryEntry> {
   return CONCEPT_GLOSSARY;
 }
 
+/**
+ * Get concept URL by ID.
+ * 
+ * @public
+ * @param id - Concept identifier
+ * @returns Concept URL or default concepts URL
+ */
 export function getConceptUrl(id: string): string {
   const concept = getConceptById(id);
-  return concept?.url || '/docs/concepts';
+  return concept?.url ?? '/docs/concepts';
 }
 

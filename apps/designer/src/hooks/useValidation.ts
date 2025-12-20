@@ -26,6 +26,8 @@ export interface UseValidationReturn {
   errorCount: number;
   /** Warning count */
   warningCount: number;
+  /** Best Practice violation count */
+  bestPracticeCount: number;
   /** Get issues for a specific element */
   getElementIssues: (elementPath: string) => ValidationIssue[];
   /** Get issues by category */
@@ -40,7 +42,7 @@ export interface UseValidationReturn {
  * Hook for real-time architecture validation
  */
 export function useValidation(): UseValidationReturn {
-  const data = useArchitectureStore((s) => s.data);
+  const data = useArchitectureStore((s) => s.likec4Model);
 
   const result = useMemo(() => validateArchitecture(data), [data]);
 
@@ -72,6 +74,7 @@ export function useValidation(): UseValidationReturn {
     issues: result.issues,
     errorCount: result.summary.errors,
     warningCount: result.summary.warnings,
+    bestPracticeCount: result.summary.bestPractices,
     getElementIssues,
     getCategoryIssues,
     hasIssues,

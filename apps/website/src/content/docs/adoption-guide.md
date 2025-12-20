@@ -283,7 +283,7 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 
 ## Open Source & Community Support
 
-Sruja is **free and open source** (MIT licensed), developed by and for the community. You can:
+Sruja is **free and open source** (Apache 2.0 licensed), developed by and for the community. You can:
 
 - **Use it freely**: No licensing fees or restrictions
 - **Contribute**: Submit PRs, report issues, suggest features

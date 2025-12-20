@@ -3,7 +3,21 @@
  * Curated architecture templates for quick-start
  */
 
-import type { ArchitectureJSON } from "../../../types";
+import type { SrujaModelDump } from "@sruja/shared";
+
+// Helper to create metadata
+const createMetadata = (name: string) => ({
+  name,
+  version: "1.0.0",
+  generated: new Date().toISOString(),
+  srujaVersion: "2.0.0"
+});
+
+// Helper to create a complete project structure
+const createProject = (name: string) => ({
+  id: name.toLowerCase().replace(/\s+/g, "-"),
+  name,
+});
 
 export interface Template {
   id: string;
@@ -11,7 +25,7 @@ export interface Template {
   category: "basic" | "intermediate" | "advanced";
   description: string;
   icon: string;
-  architecture: ArchitectureJSON;
+  architecture: SrujaModelDump; // Changed from ArchitectureJSON
 }
 
 /**
@@ -24,31 +38,37 @@ const simpleWebApp: Template = {
   description: "Classic 3-tier: User → Frontend → API → Database",
   icon: "🌐",
   architecture: {
-    metadata: {
-      name: "Simple Web Application",
-      version: "1.0.0",
-      generated: new Date().toISOString(),
+    _stage: "parsed" as const,
+    specification: { tags: {}, elements: {}, deployments: {}, relationships: {} },
+    deployments: { elements: {}, relations: {} },
+    project: createProject("Simple Web Application"),
+    projectId: "simple-web-application",
+    globals: { predicates: {}, dynamicPredicates: {}, styles: {} },
+    elements: {
+      "User": { id: "User" as any, kind: "person", title: "End User", tags: [], links: [], style: {} as any },
+      "WebApp": { id: "WebApp" as any, kind: "system", title: "Web Application", tags: [], links: [], style: {} as any },
+      "WebApp.Frontend": { id: "WebApp.Frontend" as any, kind: "container", title: "Frontend", technology: "React", tags: [], links: [], style: {} as any },
+      "WebApp.API": { id: "WebApp.API" as any, kind: "container", title: "API Server", technology: "Node.js", tags: [], links: [], style: {} as any },
+      "WebApp.Database": { id: "WebApp.Database" as any, kind: "datastore", title: "Database", tags: [], links: [], style: {} as any }
     },
-    architecture: {
-      persons: [{ id: "User", label: "End User" }],
-      systems: [
-        {
-          id: "WebApp",
-          label: "Web Application",
-          containers: [
-            { id: "Frontend", label: "Frontend", technology: "React" },
-            { id: "API", label: "API Server", technology: "Node.js" },
-          ],
-          datastores: [{ id: "Database", label: "Database" }],
-        },
-      ],
-      relations: [
-        { from: "User", to: "WebApp.Frontend", label: "Uses" },
-        { from: "WebApp.Frontend", to: "WebApp.API", verb: "calls" },
-        { from: "WebApp.API", to: "WebApp.Database", verb: "reads/writes" },
-      ],
+    relations: [
+      { id: "rel1" as any, source: { model: "User" }, target: { model: "WebApp.Frontend" }, title: "Uses" },
+      { id: "rel2" as any, source: { model: "WebApp.Frontend" }, target: { model: "WebApp.API" }, title: "calls" },
+      { id: "rel3" as any, source: { model: "WebApp.API" }, target: { model: "WebApp.Database" }, title: "reads/writes" }
+    ],
+    views: {
+      index: {
+        id: "index" as any,
+        title: "Overview",
+      } as any,
     },
-    navigation: { levels: ["L1", "L2"] },
+    sruja: {
+      requirements: [],
+      flows: [],
+      scenarios: [],
+      adrs: [],
+    },
+    _metadata: createMetadata("Simple Web Application"),
   },
 };
 
@@ -62,46 +82,49 @@ const microservices: Template = {
   description: "API Gateway with 3 services, message queue, and databases",
   icon: "🔗",
   architecture: {
-    metadata: {
-      name: "Microservices Architecture",
-      version: "1.0.0",
-      generated: new Date().toISOString(),
+    _stage: "parsed" as const,
+    specification: { tags: {}, elements: {}, deployments: {}, relationships: {} },
+    deployments: { elements: {}, relations: {} },
+    project: createProject("Microservices Architecture"),
+    projectId: "microservices",
+    globals: { predicates: {}, dynamicPredicates: {}, styles: {} },
+    elements: {
+      "Customer": { id: "Customer" as any, kind: "person", title: "Customer", tags: [], links: [], style: {} as any },
+      "Platform": { id: "Platform" as any, kind: "system", title: "Platform", tags: [], links: [], style: {} as any },
+      "Platform.Gateway": { id: "Platform.Gateway" as any, kind: "container", title: "API Gateway", technology: "Kong", tags: [], links: [], style: {} as any },
+      "Platform.UserService": { id: "Platform.UserService" as any, kind: "container", title: "User Service", technology: "Go", tags: [], links: [], style: {} as any },
+      "Platform.OrderService": { id: "Platform.OrderService" as any, kind: "container", title: "Order Service", technology: "Java", tags: [], links: [], style: {} as any },
+      "Platform.PaymentService": { id: "Platform.PaymentService" as any, kind: "container", title: "Payment Service", technology: "Go", tags: [], links: [], style: {} as any },
+      "Platform.UserDB": { id: "Platform.UserDB" as any, kind: "datastore", title: "User DB", tags: [], links: [], style: {} as any },
+      "Platform.OrderDB": { id: "Platform.OrderDB" as any, kind: "datastore", title: "Order DB", tags: [], links: [], style: {} as any },
+      "Platform.EventBus": { id: "Platform.EventBus" as any, kind: "queue", title: "Event Bus", tags: [], links: [], style: {} as any },
     },
-    architecture: {
-      persons: [{ id: "Customer", label: "Customer" }],
-      systems: [
-        {
-          id: "Platform",
-          label: "Platform",
-          containers: [
-            { id: "Gateway", label: "API Gateway", technology: "Kong" },
-            { id: "UserService", label: "User Service", technology: "Go" },
-            { id: "OrderService", label: "Order Service", technology: "Java" },
-            { id: "PaymentService", label: "Payment Service", technology: "Go" },
-          ],
-          datastores: [
-            { id: "UserDB", label: "User DB" },
-            { id: "OrderDB", label: "Order DB" },
-          ],
-          queues: [{ id: "EventBus", label: "Event Bus" }],
-        },
-      ],
-      relations: [
-        { from: "Customer", to: "Platform.Gateway", label: "Uses" },
-        { from: "Platform.Gateway", to: "Platform.UserService", verb: "routes" },
-        { from: "Platform.Gateway", to: "Platform.OrderService", verb: "routes" },
-        { from: "Platform.Gateway", to: "Platform.PaymentService", verb: "routes" },
-        { from: "Platform.UserService", to: "Platform.UserDB", verb: "reads/writes" },
-        { from: "Platform.OrderService", to: "Platform.OrderDB", verb: "reads/writes" },
-        { from: "Platform.OrderService", to: "Platform.EventBus", verb: "publishes" },
-        { from: "Platform.PaymentService", to: "Platform.EventBus", verb: "subscribes" },
-      ],
+    relations: [
+      { id: "rel4" as any, source: { model: "Customer" }, target: { model: "Platform.Gateway" }, title: "Uses" },
+      { id: "rel5" as any, source: { model: "Platform.Gateway" }, target: { model: "Platform.UserService" }, title: "routes" },
+      { id: "rel6" as any, source: { model: "Platform.Gateway" }, target: { model: "Platform.OrderService" }, title: "routes" },
+      { id: "rel7" as any, source: { model: "Platform.Gateway" }, target: { model: "Platform.PaymentService" }, title: "routes" },
+      { id: "rel8" as any, source: { model: "Platform.UserService" }, target: { model: "Platform.UserDB" }, title: "reads/writes" },
+      { id: "rel9" as any, source: { model: "Platform.OrderService" }, target: { model: "Platform.OrderDB" }, title: "reads/writes" },
+      { id: "rel10" as any, source: { model: "Platform.OrderService" }, target: { model: "Platform.EventBus" }, title: "publishes" },
+      { id: "rel11" as any, source: { model: "Platform.PaymentService" }, target: { model: "Platform.EventBus" }, title: "subscribes" },
+    ],
+    views: {
+      index: {
+        id: "index" as any,
+        title: "Overview",
+      } as any,
+    },
+    sruja: {
       requirements: [
-        { id: "R1", type: "performance", title: "API response <200ms", tags: ["Platform.Gateway"] },
-        { id: "R2", type: "availability", title: "99.9% uptime", tags: ["Platform"] },
+        { id: "R1", type: "performance", title: "API response <200ms" },
+        { id: "R2", type: "availability", title: "99.9% uptime" },
       ],
+      flows: [],
+      scenarios: [],
+      adrs: []
     },
-    navigation: { levels: ["L1", "L2"] },
+    _metadata: createMetadata("Microservices Architecture"),
   },
 };
 
@@ -115,48 +138,35 @@ const eventDriven: Template = {
   description: "Producers, consumers, and event store with async messaging",
   icon: "⚡",
   architecture: {
-    metadata: {
-      name: "Event-Driven Architecture",
-      version: "1.0.0",
-      generated: new Date().toISOString(),
+    _stage: "parsed" as const,
+    specification: { tags: {}, elements: {}, deployments: {}, relationships: {} },
+    deployments: { elements: {}, relations: {} },
+    project: createProject("Event-Driven Architecture"),
+    projectId: "event-driven",
+    globals: { predicates: {}, dynamicPredicates: {}, styles: {} },
+    elements: {
+      "User": { id: "User" as any, kind: "person", title: "User", tags: [], links: [], style: {} as any },
+      "EventSystem": { id: "EventSystem" as any, kind: "system", title: "Event System", tags: [], links: [], style: {} as any },
+      "EventSystem.Producer": { id: "EventSystem.Producer" as any, kind: "container", title: "Event Producer", technology: "Python", tags: [], links: [], style: {} as any },
+      "EventSystem.Consumer": { id: "EventSystem.Consumer" as any, kind: "container", title: "Event Consumer", technology: "Python", tags: [], links: [], style: {} as any },
+      "EventSystem.Processor": { id: "EventSystem.Processor" as any, kind: "container", title: "Stream Processor", technology: "Flink", tags: [], links: [], style: {} as any },
+      "EventSystem.EventBus": { id: "EventSystem.EventBus" as any, kind: "queue", title: "Event Bus", tags: [], links: [], style: {} as any },
+      "EventSystem.EventStore": { id: "EventSystem.EventStore" as any, kind: "datastore", title: "Event Store", tags: [], links: [], style: {} as any },
     },
-    architecture: {
-      persons: [{ id: "User", label: "User" }],
-      systems: [
-        {
-          id: "EventSystem",
-          label: "Event System",
-          containers: [
-            { id: "Producer", label: "Event Producer", technology: "Python" },
-            { id: "Consumer", label: "Event Consumer", technology: "Python" },
-            { id: "Processor", label: "Stream Processor", technology: "Flink" },
-          ],
-          queues: [{ id: "EventBus", label: "Event Bus" }],
-          datastores: [{ id: "EventStore", label: "Event Store" }],
-        },
-      ],
-      relations: [
-        { from: "User", to: "EventSystem.Producer", label: "Triggers" },
-        {
-          from: "EventSystem.Producer",
-          to: "EventSystem.EventBus",
-          verb: "publishes",
-          interaction: "async",
-        },
-        {
-          from: "EventSystem.Consumer",
-          to: "EventSystem.EventBus",
-          verb: "subscribes",
-          interaction: "async",
-        },
-        {
-          from: "EventSystem.Processor",
-          to: "EventSystem.EventBus",
-          verb: "consumes",
-          interaction: "async",
-        },
-        { from: "EventSystem.Processor", to: "EventSystem.EventStore", verb: "writes" },
-      ],
+    relations: [
+      { id: "rel12" as any, source: { model: "User" }, target: { model: "EventSystem.Producer" }, title: "Triggers" },
+      { id: "rel13" as any, source: { model: "EventSystem.Producer" }, target: { model: "EventSystem.EventBus" }, title: "publishes" },
+      { id: "rel14" as any, source: { model: "EventSystem.Consumer" }, target: { model: "EventSystem.EventBus" }, title: "subscribes" },
+      { id: "rel15" as any, source: { model: "EventSystem.Processor" }, target: { model: "EventSystem.EventBus" }, title: "consumes" },
+      { id: "rel16" as any, source: { model: "EventSystem.Processor" }, target: { model: "EventSystem.EventStore" }, title: "writes" },
+    ],
+    views: {
+      index: {
+        id: "index" as any,
+        title: "Overview",
+      } as any,
+    },
+    sruja: {
       adrs: [
         {
           id: "ADR001",
@@ -164,11 +174,13 @@ const eventDriven: Template = {
           status: "accepted",
           context: "Need event replay capability",
           decision: "Store all events in immutable event store",
-          tags: ["EventSystem.EventStore"],
         },
       ],
+      requirements: [],
+      flows: [],
+      scenarios: []
     },
-    navigation: { levels: ["L1", "L2"] },
+    _metadata: createMetadata("Event-Driven Architecture"),
   },
 };
 
@@ -182,36 +194,35 @@ const modularMonolith: Template = {
   description: "Single deployable with well-separated modules",
   icon: "📦",
   architecture: {
-    metadata: { name: "Modular Monolith", version: "1.0.0", generated: new Date().toISOString() },
-    architecture: {
-      persons: [{ id: "User", label: "User" }],
-      systems: [
-        {
-          id: "App",
-          label: "Application",
-          containers: [
-            {
-              id: "Monolith",
-              label: "Monolith",
-              technology: "Java, Spring Boot",
-              components: [
-                { id: "UserModule", label: "User Module" },
-                { id: "OrderModule", label: "Order Module" },
-                { id: "PaymentModule", label: "Payment Module" },
-              ],
-            },
-          ],
-          datastores: [{ id: "MainDB", label: "PostgreSQL" }],
-        },
-      ],
-      relations: [
-        { from: "User", to: "App.Monolith", label: "Uses" },
-        { from: "App.Monolith.OrderModule", to: "App.Monolith.UserModule", verb: "calls" },
-        { from: "App.Monolith.PaymentModule", to: "App.Monolith.OrderModule", verb: "calls" },
-        { from: "App.Monolith", to: "App.MainDB", verb: "reads/writes" },
-      ],
+    _stage: "parsed" as const,
+    specification: { tags: {}, elements: {}, deployments: {}, relationships: {} },
+    deployments: { elements: {}, relations: {} },
+    project: createProject("Modular Monolith"),
+    projectId: "modular-monolith",
+    globals: { predicates: {}, dynamicPredicates: {}, styles: {} },
+    elements: {
+      "User": { id: "User" as any, kind: "person", title: "User", tags: [], links: [], style: {} as any },
+      "App": { id: "App" as any, kind: "system", title: "Application", tags: [], links: [], style: {} as any },
+      "App.Monolith": { id: "App.Monolith" as any, kind: "container", title: "Monolith", technology: "Java, Spring Boot", tags: [], links: [], style: {} as any },
+      "App.Monolith.UserModule": { id: "App.Monolith.UserModule" as any, kind: "component", title: "User Module", tags: [], links: [], style: {} as any },
+      "App.Monolith.OrderModule": { id: "App.Monolith.OrderModule" as any, kind: "component", title: "Order Module", tags: [], links: [], style: {} as any },
+      "App.Monolith.PaymentModule": { id: "App.Monolith.PaymentModule" as any, kind: "component", title: "Payment Module", tags: [], links: [], style: {} as any },
+      "App.MainDB": { id: "App.MainDB" as any, kind: "datastore", title: "PostgreSQL", tags: [], links: [], style: {} as any },
     },
-    navigation: { levels: ["L1", "L2", "L3"] },
+    relations: [
+      { id: "rel17" as any, source: { model: "User" }, target: { model: "App.Monolith" }, title: "Uses" },
+      { id: "rel18" as any, source: { model: "App.Monolith.OrderModule" }, target: { model: "App.Monolith.UserModule" }, title: "calls" },
+      { id: "rel19" as any, source: { model: "App.Monolith.PaymentModule" }, target: { model: "App.Monolith.OrderModule" }, title: "calls" },
+      { id: "rel20" as any, source: { model: "App.Monolith" }, target: { model: "App.MainDB" }, title: "reads/writes" },
+    ],
+    views: {
+      index: {
+        id: "index" as any,
+        title: "Overview",
+      } as any,
+    },
+    sruja: { requirements: [], flows: [], scenarios: [], adrs: [] },
+    _metadata: createMetadata("Modular Monolith"),
   },
 };
 
@@ -225,42 +236,47 @@ const saasMultiTenant: Template = {
   description: "Multi-tenant SaaS with tenant isolation and shared services",
   icon: "☁️",
   architecture: {
-    metadata: { name: "SaaS Multi-Tenant", version: "1.0.0", generated: new Date().toISOString() },
-    architecture: {
-      persons: [
-        { id: "Tenant", label: "Tenant User" },
-        { id: "Admin", label: "Platform Admin" },
-      ],
-      systems: [
-        {
-          id: "SaaS",
-          label: "SaaS Platform",
-          containers: [
-            { id: "Portal", label: "Tenant Portal", technology: "Next.js" },
-            { id: "AdminPanel", label: "Admin Panel", technology: "React" },
-            { id: "TenantAPI", label: "Tenant API", technology: "Node.js" },
-            { id: "IdentityService", label: "Identity Service", technology: "Go" },
-          ],
-          datastores: [
-            { id: "TenantDB", label: "Tenant Database" },
-            { id: "ConfigDB", label: "Config Store" },
-          ],
-        },
-      ],
-      relations: [
-        { from: "Tenant", to: "SaaS.Portal", label: "Uses" },
-        { from: "Admin", to: "SaaS.AdminPanel", label: "Manages" },
-        { from: "SaaS.Portal", to: "SaaS.TenantAPI", verb: "calls" },
-        { from: "SaaS.TenantAPI", to: "SaaS.IdentityService", verb: "authenticates" },
-        { from: "SaaS.TenantAPI", to: "SaaS.TenantDB", verb: "reads/writes" },
-        { from: "SaaS.IdentityService", to: "SaaS.ConfigDB", verb: "reads" },
-      ],
-      requirements: [
-        { id: "R1", type: "security", title: "Tenant data isolation", tags: ["SaaS.TenantDB"] },
-        { id: "R2", type: "compliance", title: "GDPR compliance", tags: ["SaaS"] },
-      ],
+    _stage: "parsed" as const,
+    specification: { tags: {}, elements: {}, deployments: {}, relationships: {} },
+    deployments: { elements: {}, relations: {} },
+    project: createProject("SaaS Multi-Tenant"),
+    projectId: "saas-multi-tenant",
+    globals: { predicates: {}, dynamicPredicates: {}, styles: {} },
+    elements: {
+      "Tenant": { id: "Tenant" as any, kind: "person", title: "Tenant User", tags: [], links: [], style: {} as any },
+      "Admin": { id: "Admin" as any, kind: "person", title: "Platform Admin", tags: [], links: [], style: {} as any },
+      "SaaS": { id: "SaaS" as any, kind: "system", title: "SaaS Platform", tags: [], links: [], style: {} as any },
+      "SaaS.Portal": { id: "SaaS.Portal" as any, kind: "container", title: "Tenant Portal", technology: "Next.js", tags: [], links: [], style: {} as any },
+      "SaaS.AdminPanel": { id: "SaaS.AdminPanel" as any, kind: "container", title: "Admin Panel", technology: "React", tags: [], links: [], style: {} as any },
+      "SaaS.TenantAPI": { id: "SaaS.TenantAPI" as any, kind: "container", title: "Tenant API", technology: "Node.js", tags: [], links: [], style: {} as any },
+      "SaaS.IdentityService": { id: "SaaS.IdentityService" as any, kind: "container", title: "Identity Service", technology: "Go", tags: [], links: [], style: {} as any },
+      "SaaS.TenantDB": { id: "SaaS.TenantDB" as any, kind: "datastore", title: "Tenant Database", tags: [], links: [], style: {} as any },
+      "SaaS.ConfigDB": { id: "SaaS.ConfigDB" as any, kind: "datastore", title: "Config Store", tags: [], links: [], style: {} as any },
     },
-    navigation: { levels: ["L1", "L2"] },
+    relations: [
+      { id: "rel21" as any, source: { model: "Tenant" }, target: { model: "SaaS.Portal" }, title: "Uses" },
+      { id: "rel22" as any, source: { model: "Admin" }, target: { model: "SaaS.AdminPanel" }, title: "Manages" },
+      { id: "rel23" as any, source: { model: "SaaS.Portal" }, target: { model: "SaaS.TenantAPI" }, title: "calls" },
+      { id: "rel24" as any, source: { model: "SaaS.TenantAPI" }, target: { model: "SaaS.IdentityService" }, title: "authenticates" },
+      { id: "rel25" as any, source: { model: "SaaS.TenantAPI" }, target: { model: "SaaS.TenantDB" }, title: "reads/writes" },
+      { id: "rel26" as any, source: { model: "SaaS.IdentityService" }, target: { model: "SaaS.ConfigDB" }, title: "reads" },
+    ],
+    views: {
+      index: {
+        id: "index" as any,
+        title: "Overview",
+      } as any,
+    },
+    sruja: {
+      requirements: [
+        { id: "R1", type: "security", title: "Tenant data isolation" },
+        { id: "R2", type: "compliance", title: "GDPR compliance" },
+      ],
+      flows: [],
+      scenarios: [],
+      adrs: []
+    },
+    _metadata: createMetadata("SaaS Multi-Tenant"),
   },
 };
 
@@ -274,13 +290,22 @@ const emptyStarter: Template = {
   description: "Start from scratch with a blank architecture",
   icon: "📝",
   architecture: {
-    metadata: { name: "New Architecture", version: "1.0.0", generated: new Date().toISOString() },
-    architecture: {
-      persons: [],
-      systems: [],
-      relations: [],
+    _stage: "parsed" as const,
+    specification: { tags: {}, elements: {}, deployments: {}, relationships: {} },
+    deployments: { elements: {}, relations: {} },
+    project: createProject("New Architecture"),
+    projectId: "new-architecture",
+    globals: { predicates: {}, dynamicPredicates: {}, styles: {} },
+    elements: {},
+    relations: [],
+    views: {
+      index: {
+        id: "index" as any,
+        title: "Overview",
+      } as any,
     },
-    navigation: { levels: ["L1"] },
+    sruja: {},
+    _metadata: createMetadata("New Architecture"),
   },
 };
 

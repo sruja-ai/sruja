@@ -36,6 +36,61 @@ export interface C4NodeData {
   adrCount?: number;
 }
 
+// Type guards for type-safe node discrimination
+// FAANG best practice: Use type guards with discriminated unions
+
+/** Check if node is a system node */
+export function isSystemNode(data: C4NodeData): data is C4NodeData & { type: "system" } {
+  return data.type === "system";
+}
+
+/** Check if node is a person node */
+export function isPersonNode(data: C4NodeData): data is C4NodeData & { type: "person" } {
+  return data.type === "person";
+}
+
+/** Check if node is a container node */
+export function isContainerNode(data: C4NodeData): data is C4NodeData & { type: "container" } {
+  return data.type === "container";
+}
+
+/** Check if node is a component node */
+export function isComponentNode(data: C4NodeData): data is C4NodeData & { type: "component" } {
+  return data.type === "component";
+}
+
+/** Check if node is a boundary type (system-boundary, container-boundary, enterprise-boundary) */
+export function isBoundaryNode(data: C4NodeData): boolean {
+  return data.type === "system-boundary" ||
+    data.type === "container-boundary" ||
+    data.type === "enterprise-boundary";
+}
+
+/** Check if node can be expanded (has children) */
+export function isExpandable(data: C4NodeData): boolean {
+  return (data.type === "system" || isBoundaryNode(data)) &&
+    (data.childCount ?? 0) > 0;
+}
+
+/** Check if node is an external entity */
+export function isExternalNode(data: C4NodeData): boolean {
+  return data.isExternal === true ||
+    data.type === "external-container" ||
+    data.type === "external-component";
+}
+
+/** Check if node is a data storage type */
+export function isDataNode(data: C4NodeData): boolean {
+  return data.type === "datastore" ||
+    data.type === "cache" ||
+    data.type === "filesystem";
+}
+
+/** Check if node is a messaging type */
+export function isMessagingNode(data: C4NodeData): boolean {
+  return data.type === "queue" || data.type === "topic";
+}
+
 // Architecture JSON types (simplified for package)
 export interface ArchitectureJSON {
   metadata: MetadataJSON;

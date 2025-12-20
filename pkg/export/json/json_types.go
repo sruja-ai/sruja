@@ -47,19 +47,17 @@ type ArchitectureBody struct {
 	// Domains        []DomainJSON    `json:"domains,omitempty"`
 	// Contexts       []ContextJSON   `json:"contexts,omitempty"`
 	// Aggregates     []AggregateJSON `json:"aggregates,omitempty"`
-	Scenarios       []ScenarioJSON       `json:"scenarios,omitempty"`
-	Flows           []FlowJSON           `json:"flows,omitempty"`
-	Requirements    []RequirementJSON    `json:"requirements,omitempty"`
-	ADRs            []ADRJSON            `json:"adrs,omitempty"`
-	Deployment      []DeploymentNodeJSON `json:"deployment,omitempty"`
-	Properties      map[string]string    `json:"properties,omitempty"`
-	Style           map[string]string    `json:"style,omitempty"`
-	Constraints     []ConstraintJSON     `json:"constraints,omitempty"`
-	Conventions     []ConventionJSON     `json:"conventions,omitempty"`
-	Contracts       []ContractJSON       `json:"contracts,omitempty"`
-	Policies        []PolicyJSON         `json:"policies,omitempty"`
-	SharedArtifacts []SharedArtifactJSON `json:"sharedArtifacts,omitempty"`
-	Libraries       []LibraryJSON        `json:"libraries,omitempty"`
+	Scenarios    []ScenarioJSON       `json:"scenarios,omitempty"`
+	Flows        []FlowJSON           `json:"flows,omitempty"`
+	Requirements []RequirementJSON    `json:"requirements,omitempty"`
+	ADRs         []ADRJSON            `json:"adrs,omitempty"`
+	Deployment   []DeploymentNodeJSON `json:"deployment,omitempty"`
+	Properties   map[string]string    `json:"properties,omitempty"`
+	Style        map[string]string    `json:"style,omitempty"`
+	Constraints  []ConstraintJSON     `json:"constraints,omitempty"`
+	Conventions  []ConventionJSON     `json:"conventions,omitempty"`
+	Contracts    []ContractJSON       `json:"contracts,omitempty"`
+	Policies     []PolicyJSON         `json:"policies,omitempty"`
 	// Views removed - View type not in simplified plan
 	// Views          []ViewJSON          `json:"views,omitempty"
 
@@ -220,14 +218,6 @@ type ContractJSON struct {
 	Label string            `json:"label,omitempty"`
 	Kind  string            `json:"kind,omitempty"`
 	Body  *ContractBodyJSON `json:"body,omitempty"`
-}
-type SharedArtifactJSON struct {
-	ID    string `json:"id"`
-	Label string `json:"label,omitempty"`
-}
-type LibraryJSON struct {
-	ID    string `json:"id"`
-	Label string `json:"label,omitempty"`
 }
 type PolicyJSON struct {
 	ID          string   `json:"id"`

@@ -4,6 +4,8 @@
 
 Sruja is a Go project composed of a CLI entrypoint, a language/AST and parser, a validation engine, exporters, LSP server, and developer experience helpers. The website lives under `apps/website/` and is built with Astro.
 
+> **📐 Architecture-as-Code**: Sruja's architecture is documented using Sruja DSL files in [`docs/architecture/`](./architecture/README.md). These files serve as living documentation that can be visualized and kept in sync with the codebase.
+
 ## Directory Layout
 
 ```

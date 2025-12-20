@@ -15,58 +15,34 @@ func convertSystemJSONToAST(sJSON *jsonexport.SystemJSON) *language.System {
 		sJSON.ID = sJSON.Label
 	}
 
+	totalItems := len(sJSON.Containers) + len(sJSON.DataStores) + len(sJSON.Queues) + len(sJSON.Relations)
 	sys := &language.System{
 		ID:          sJSON.ID,
 		Label:       sJSON.Label,
 		Description: sJSON.Description,
+		Items:       make([]language.SystemItem, 0, totalItems),
 	}
 
-	if len(sJSON.Containers) > 0 {
-		for i := range sJSON.Containers {
-			sys.Items = append(sys.Items, language.SystemItem{Container: convertContainerJSONToAST(&sJSON.Containers[i])})
-		}
+	for i := range sJSON.Containers {
+		sys.Items = append(sys.Items, language.SystemItem{Container: convertContainerJSONToAST(&sJSON.Containers[i])})
 	}
 
-	if len(sJSON.Components) > 0 {
-		_ = sJSON.Components
+	for _, dsJSON := range sJSON.DataStores {
+		sys.Items = append(sys.Items, language.SystemItem{DataStore: &language.DataStore{
+			ID:    dsJSON.ID,
+			Label: dsJSON.Label,
+		}})
 	}
 
-	if len(sJSON.DataStores) > 0 {
-		for _, dsJSON := range sJSON.DataStores {
-			ds := &language.DataStore{
-				ID:    dsJSON.ID,
-				Label: dsJSON.Label,
-			}
-			sys.Items = append(sys.Items, language.SystemItem{DataStore: ds})
-		}
+	for _, qJSON := range sJSON.Queues {
+		sys.Items = append(sys.Items, language.SystemItem{Queue: &language.Queue{
+			ID:    qJSON.ID,
+			Label: qJSON.Label,
+		}})
 	}
 
-	if len(sJSON.Queues) > 0 {
-		for _, qJSON := range sJSON.Queues {
-			q := &language.Queue{
-				ID:    qJSON.ID,
-				Label: qJSON.Label,
-			}
-			sys.Items = append(sys.Items, language.SystemItem{Queue: q})
-		}
-	}
-
-	if len(sJSON.Relations) > 0 {
-		for _, rJSON := range sJSON.Relations {
-			if rJSON.From == "" || rJSON.To == "" {
-				continue
-			}
-			var verb *string
-			if rJSON.Verb != nil {
-				verb = rJSON.Verb
-			}
-			rel := &language.Relation{
-				From:  stringToQualifiedIdent(rJSON.From),
-				Arrow: "->",
-				To:    stringToQualifiedIdent(rJSON.To),
-				Verb:  verb,
-				Label: rJSON.Label,
-			}
+	for _, rJSON := range sJSON.Relations {
+		if rel := convertRelationJSONToAST(&rJSON); rel != nil {
 			sys.Items = append(sys.Items, language.SystemItem{Relation: rel})
 		}
 	}
@@ -80,55 +56,34 @@ func convertContainerJSONToAST(cJSON *jsonexport.ContainerJSON) *language.Contai
 		cJSON.ID = cJSON.Label
 	}
 
+	totalItems := len(cJSON.Components) + len(cJSON.DataStores) + len(cJSON.Queues) + len(cJSON.Relations)
 	cont := &language.Container{
 		ID:          cJSON.ID,
 		Label:       cJSON.Label,
 		Description: cJSON.Description,
+		Items:       make([]language.ContainerItem, 0, totalItems),
 	}
 
-	if len(cJSON.Components) > 0 {
-		for i := range cJSON.Components {
-			comp := convertComponentJSONToAST(&cJSON.Components[i])
-			cont.Items = append(cont.Items, language.ContainerItem{Component: comp})
-		}
+	for i := range cJSON.Components {
+		cont.Items = append(cont.Items, language.ContainerItem{Component: convertComponentJSONToAST(&cJSON.Components[i])})
 	}
 
-	if len(cJSON.DataStores) > 0 {
-		for _, dsJSON := range cJSON.DataStores {
-			ds := &language.DataStore{
-				ID:    dsJSON.ID,
-				Label: dsJSON.Label,
-			}
-			cont.Items = append(cont.Items, language.ContainerItem{DataStore: ds})
-		}
+	for _, dsJSON := range cJSON.DataStores {
+		cont.Items = append(cont.Items, language.ContainerItem{DataStore: &language.DataStore{
+			ID:    dsJSON.ID,
+			Label: dsJSON.Label,
+		}})
 	}
 
-	if len(cJSON.Queues) > 0 {
-		for _, qJSON := range cJSON.Queues {
-			q := &language.Queue{
-				ID:    qJSON.ID,
-				Label: qJSON.Label,
-			}
-			cont.Items = append(cont.Items, language.ContainerItem{Queue: q})
-		}
+	for _, qJSON := range cJSON.Queues {
+		cont.Items = append(cont.Items, language.ContainerItem{Queue: &language.Queue{
+			ID:    qJSON.ID,
+			Label: qJSON.Label,
+		}})
 	}
 
-	if len(cJSON.Relations) > 0 {
-		for _, rJSON := range cJSON.Relations {
-			if rJSON.From == "" || rJSON.To == "" {
-				continue
-			}
-			var verb *string
-			if rJSON.Verb != nil {
-				verb = rJSON.Verb
-			}
-			rel := &language.Relation{
-				From:  stringToQualifiedIdent(rJSON.From),
-				Arrow: "->",
-				To:    stringToQualifiedIdent(rJSON.To),
-				Verb:  verb,
-				Label: rJSON.Label,
-			}
+	for _, rJSON := range cJSON.Relations {
+		if rel := convertRelationJSONToAST(&rJSON); rel != nil {
 			cont.Items = append(cont.Items, language.ContainerItem{Relation: rel})
 		}
 	}
@@ -146,29 +101,29 @@ func convertComponentJSONToAST(compJSON *jsonexport.ComponentJSON) *language.Com
 		ID:          compJSON.ID,
 		Label:       compJSON.Label,
 		Description: compJSON.Description,
+		Items:       make([]language.ComponentItem, 0, len(compJSON.Relations)),
 	}
 
-	if len(compJSON.Relations) > 0 {
-		for _, rJSON := range compJSON.Relations {
-			if rJSON.From == "" || rJSON.To == "" {
-				continue
-			}
-			var verb *string
-			if rJSON.Verb != nil {
-				verb = rJSON.Verb
-			}
-			rel := &language.Relation{
-				From:  stringToQualifiedIdent(rJSON.From),
-				Arrow: "->",
-				To:    stringToQualifiedIdent(rJSON.To),
-				Verb:  verb,
-				Label: rJSON.Label,
-			}
+	for _, rJSON := range compJSON.Relations {
+		if rel := convertRelationJSONToAST(&rJSON); rel != nil {
 			comp.Items = append(comp.Items, language.ComponentItem{Relation: rel})
 		}
 	}
 
 	return comp
+}
+
+func convertRelationJSONToAST(rJSON *jsonexport.RelationJSON) *language.Relation {
+	if rJSON.From == "" || rJSON.To == "" {
+		return nil
+	}
+	return &language.Relation{
+		From:  stringToQualifiedIdent(rJSON.From),
+		Arrow: "->",
+		To:    stringToQualifiedIdent(rJSON.To),
+		Verb:  rJSON.Verb,
+		Label: rJSON.Label,
+	}
 }
 
 // convertRequirementJSONToAST converts a RequirementJSON to a Requirement AST
@@ -209,12 +164,11 @@ func convertScenarioJSONToAST(scenJSON *jsonexport.ScenarioJSON) *language.Scena
 		scenJSON.ID = scenJSON.Label
 	}
 
+	title := scenJSON.Label
 	scen := &language.Scenario{
-		ID:     scenJSON.ID,
-		Title:  scenJSON.Label,
-		LBrace: "{",
-		RBrace: "}",
-		Items:  []*language.ScenarioItem{},
+		ID:    scenJSON.ID,
+		Title: &title,
+		Items: []*language.ScenarioItem{},
 	}
 	return scen
 }
@@ -242,12 +196,11 @@ func convertPolicyJSONToAST(policyJSON *jsonexport.PolicyJSON) *language.Policy 
 
 // convertFlowJSONToAST converts a FlowJSON to a Flow AST
 func convertFlowJSONToAST(flowJSON *jsonexport.FlowJSON) *language.Flow {
+	title := flowJSON.Title
 	flow := &language.Flow{
 		ID:          flowJSON.ID,
-		Title:       flowJSON.Title,
+		Title:       &title,
 		Description: flowJSON.Description,
-		LBrace:      "{",
-		RBrace:      "}",
 	}
 
 	if len(flowJSON.Steps) > 0 {
@@ -282,24 +235,6 @@ func convertDeploymentNodeJSONToAST(depJSON *jsonexport.DeploymentNodeJSON) *lan
 		Label: depJSON.Label,
 	}
 	return dep
-}
-
-// convertSharedArtifactJSONToAST converts a SharedArtifactJSON to a SharedArtifact AST
-func convertSharedArtifactJSONToAST(saJSON *jsonexport.SharedArtifactJSON) *language.SharedArtifact {
-	sa := &language.SharedArtifact{
-		ID:    saJSON.ID,
-		Label: saJSON.Label,
-	}
-	return sa
-}
-
-// convertLibraryJSONToAST converts a LibraryJSON to a Library AST
-func convertLibraryJSONToAST(libJSON *jsonexport.LibraryJSON) *language.Library {
-	lib := &language.Library{
-		ID:    libJSON.ID,
-		Label: libJSON.Label,
-	}
-	return lib
 }
 
 func strPtr(s string) *string {

@@ -11,8 +11,16 @@ Use these blocks to formalize interfaces, limits, and team agreements.
 ## Syntax
 
 ```sruja
-// EXPECTED_FAILURE: contracts syntax in docs simplified; full schema not parsed here
-architecture "Shop" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   contracts {
     api CheckoutAPI {
       version "v1"
@@ -45,6 +53,7 @@ architecture "Shop" {
     naming "kebab-case for services"
     tracing "W3C trace context propagated across services"
   }
+
 }
 ```
 

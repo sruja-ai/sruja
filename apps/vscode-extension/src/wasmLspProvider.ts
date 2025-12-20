@@ -10,6 +10,9 @@ import {
   type CompletionItem,
   type Location,
   type Symbol,
+  type CodeAction,
+  type DocumentLink,
+  type FoldingRange,
 } from "@sruja/shared/node/wasmAdapter";
 
 let wasmApi: Awaited<ReturnType<typeof initWasmNode>> | null = null;
@@ -260,6 +263,51 @@ export async function initializeWasmLsp(context: vscode.ExtensionContext): Promi
       const errMsg = error instanceof Error ? error.message : String(error);
       testResults.rename = { success: false, error: errMsg };
       log(`❌ Rename: FAILED - ${errMsg}`, "error");
+    }
+
+    // Test codeActions
+    try {
+      const diags = await wasmApi.getDiagnostics(testCode);
+      const actions = await wasmApi.codeActions(testCode, diags);
+      testResults.codeActions = { success: true };
+      log(`✅ CodeActions: OK (returned ${actions.length} actions)`);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      testResults.codeActions = { success: false, error: errMsg };
+      log(`❌ CodeActions: FAILED - ${errMsg}`, "error");
+    }
+
+    // Test semanticTokens
+    try {
+      const tokens = await wasmApi.semanticTokens(testCode);
+      testResults.semanticTokens = { success: true };
+      log(`✅ SemanticTokens: OK (returned ${tokens.length} tokens)`);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      testResults.semanticTokens = { success: false, error: errMsg };
+      log(`❌ SemanticTokens: FAILED - ${errMsg}`, "error");
+    }
+
+    // Test documentLinks
+    try {
+      const links = await wasmApi.documentLinks(testCode);
+      testResults.documentLinks = { success: true };
+      log(`✅ DocumentLinks: OK (returned ${links.length} links)`);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      testResults.documentLinks = { success: false, error: errMsg };
+      log(`❌ DocumentLinks: FAILED - ${errMsg}`, "error");
+    }
+
+    // Test foldingRanges
+    try {
+      const ranges = await wasmApi.foldingRanges(testCode);
+      testResults.foldingRanges = { success: true };
+      log(`✅ FoldingRanges: OK (returned ${ranges.length} ranges)`);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      testResults.foldingRanges = { success: false, error: errMsg };
+      log(`❌ FoldingRanges: FAILED - ${errMsg}`, "error");
     }
 
     const failedTests = Object.entries(testResults).filter(([_, result]) => !result.success);
@@ -677,6 +725,140 @@ export async function initializeWasmLsp(context: vscode.ExtensionContext): Promi
 
     context.subscriptions.push(vscode.languages.registerRenameProvider("sruja", renameProvider));
 
+    // Register code action provider
+    const codeActionProvider: vscode.CodeActionProvider = {
+      async provideCodeActions(document, range, context) {
+        if (!wasmApi || document.languageId !== "sruja") return [];
+
+        try {
+          const text = document.getText();
+          const diagnostics: Diagnostic[] = context.diagnostics.map((d) => ({
+            code: d.code?.toString() || "",
+            severity: (d.severity === vscode.DiagnosticSeverity.Error
+              ? "Error"
+              : d.severity === vscode.DiagnosticSeverity.Warning
+                ? "Warning"
+                : "Info") as "Error" | "Warning" | "Info",
+            message: d.message,
+            location: {
+              file: document.fileName,
+              line: d.range.start.line + 1,
+              column: d.range.start.character + 1,
+            },
+          }));
+
+          const actions = await wasmApi.codeActions(text, diagnostics);
+          return actions.map((action) => {
+            const codeAction = new vscode.CodeAction(action.title, vscode.CodeActionKind.QuickFix);
+            codeAction.command = {
+              title: action.title,
+              command: action.command,
+              arguments: action.arguments || [],
+            };
+            return codeAction;
+          });
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          log(`WASM codeActions failed: ${errMsg}`, "error");
+          return [];
+        }
+      },
+    };
+
+    context.subscriptions.push(
+      vscode.languages.registerCodeActionsProvider("sruja", codeActionProvider)
+    );
+
+    // Register document link provider
+    const documentLinkProvider: vscode.DocumentLinkProvider = {
+      async provideDocumentLinks(document) {
+        if (!wasmApi || document.languageId !== "sruja") return [];
+
+        try {
+          const text = document.getText();
+          const links = await wasmApi.documentLinks(text);
+          return links.map((link) => {
+            const range = new vscode.Range(
+              link.range.start.line,
+              link.range.start.character,
+              link.range.end.line,
+              link.range.end.character
+            );
+            const vscodeLink = new vscode.DocumentLink(range, link.target ? vscode.Uri.parse(link.target) : undefined);
+            if (link.tooltip) {
+              vscodeLink.tooltip = link.tooltip;
+            }
+            return vscodeLink;
+          });
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          log(`WASM documentLinks failed: ${errMsg}`, "error");
+          return [];
+        }
+      },
+    };
+
+    context.subscriptions.push(
+      vscode.languages.registerDocumentLinkProvider("sruja", documentLinkProvider)
+    );
+
+    // Register folding range provider
+    const foldingRangeProvider: vscode.FoldingRangeProvider = {
+      async provideFoldingRanges(document) {
+        if (!wasmApi || document.languageId !== "sruja") return [];
+
+        try {
+          const text = document.getText();
+          const ranges = await wasmApi.foldingRanges(text);
+          return ranges.map((range) => {
+            return new vscode.FoldingRange(
+              range.startLine,
+              range.endLine,
+              range.kind === "region" || range.kind === "comment" || range.kind === "imports"
+                ? vscode.FoldingRangeKind.Region
+                : undefined
+            );
+          });
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          log(`WASM foldingRanges failed: ${errMsg}`, "error");
+          return [];
+        }
+      },
+    };
+
+    context.subscriptions.push(
+      vscode.languages.registerFoldingRangeProvider("sruja", foldingRangeProvider)
+    );
+
+    // Register semantic tokens provider
+    const semanticTokensLegend = new vscode.SemanticTokensLegend(
+      ["keyword", "class", "module", "function", "struct", "enum", "variable", "operator", "string"],
+      ["declaration"]
+    );
+
+    const semanticTokensProvider: vscode.DocumentSemanticTokensProvider = {
+      async provideDocumentSemanticTokens(document) {
+        if (!wasmApi || document.languageId !== "sruja") {
+          return new vscode.SemanticTokens(new Uint32Array(0));
+        }
+
+        try {
+          const text = document.getText();
+          const tokens = await wasmApi.semanticTokens(text);
+          return new vscode.SemanticTokens(new Uint32Array(tokens));
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
+          log(`WASM semanticTokens failed: ${errMsg}`, "error");
+          return new vscode.SemanticTokens(new Uint32Array(0));
+        }
+      },
+    };
+
+    context.subscriptions.push(
+      vscode.languages.registerDocumentSemanticTokensProvider("sruja", semanticTokensProvider, semanticTokensLegend)
+    );
+
     log("WASM LSP providers registered successfully");
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
@@ -859,6 +1041,62 @@ export async function debugWasmLsp() {
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     log(`❌ Rename failed: ${errMsg}`, "error");
+  }
+
+  log("\n--- Testing CodeActions ---");
+  try {
+    const diags = await wasmApi.getDiagnostics(text);
+    const actions = await wasmApi.codeActions(text, diags);
+    log(`✅ CodeActions: ${actions.length} actions`);
+    actions.slice(0, 5).forEach((a, i) => {
+      log(`  ${i + 1}. ${a.title} (${a.command})`);
+    });
+    if (actions.length > 5) {
+      log(`  ... and ${actions.length - 5} more`);
+    }
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    log(`❌ CodeActions failed: ${errMsg}`, "error");
+  }
+
+  log("\n--- Testing SemanticTokens ---");
+  try {
+    const tokens = await wasmApi.semanticTokens(text);
+    log(`✅ SemanticTokens: ${tokens.length} tokens`);
+    log(`  Token data length: ${tokens.length} (${tokens.length / 5} semantic tokens)`);
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    log(`❌ SemanticTokens failed: ${errMsg}`, "error");
+  }
+
+  log("\n--- Testing DocumentLinks ---");
+  try {
+    const links = await wasmApi.documentLinks(text);
+    log(`✅ DocumentLinks: ${links.length} links`);
+    links.slice(0, 5).forEach((link, i) => {
+      log(`  ${i + 1}. Line ${link.range.start.line}, target: ${link.target || "none"}`);
+    });
+    if (links.length > 5) {
+      log(`  ... and ${links.length - 5} more`);
+    }
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    log(`❌ DocumentLinks failed: ${errMsg}`, "error");
+  }
+
+  log("\n--- Testing FoldingRanges ---");
+  try {
+    const ranges = await wasmApi.foldingRanges(text);
+    log(`✅ FoldingRanges: ${ranges.length} ranges`);
+    ranges.slice(0, 5).forEach((range, i) => {
+      log(`  ${i + 1}. Lines ${range.startLine}-${range.endLine} (${range.kind || "region"})`);
+    });
+    if (ranges.length > 5) {
+      log(`  ... and ${ranges.length - 5} more`);
+    }
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    log(`❌ FoldingRanges failed: ${errMsg}`, "error");
   }
 
   log("\n=== Debug Session Complete ===");

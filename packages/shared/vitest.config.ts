@@ -17,10 +17,11 @@ export default defineConfig({
         '**/*.spec.*',
       ],
       thresholds: {
-        lines: 55,
-        functions: 60,
-        branches: 40,
-        statements: 55,
+        // High coverage targets for critical utilities
+        lines: 80,
+        functions: 80,
+        branches: 70,
+        statements: 80,
       },
     },
   },

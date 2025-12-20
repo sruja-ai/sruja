@@ -13,12 +13,12 @@ func TestRunLint(t *testing.T) {
 	validFile := filepath.Join(tmpDir, "valid.sruja")
 	invalidFile := filepath.Join(tmpDir, "invalid.sruja")
 
-	validContent := `architecture "Valid" {
+	validContent := `model {
 		system S1 "System 1"
 		system S2 "System 2"
 		S1 -> S2 "uses"
 	}`
-	invalidContent := `architecture "Invalid" {
+	invalidContent := `model {
 		system S1 "System 1"
 		system S1 "Duplicate System"
 	}`
@@ -61,5 +61,16 @@ func TestRunLint(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "Usage:") {
 		t.Errorf("Expected usage message, got: %s", stderr.String())
+	}
+}
+
+func TestRunLint_FlagsError(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	exitCode := runLint([]string{"--invalid-flag", "file.sruja"}, &stdout, &stderr)
+	if exitCode == 0 {
+		t.Error("Expected failure for invalid flag")
+	}
+	if !strings.Contains(stderr.String(), "Error parsing lint flags") {
+		t.Errorf("Expected flag parse error, got: %s", stderr.String())
 	}
 }

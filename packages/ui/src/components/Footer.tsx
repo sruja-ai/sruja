@@ -1,5 +1,5 @@
 // packages/ui/src/components/Footer.tsx
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { cn } from '../utils/cn';
 
 export interface FooterProps {

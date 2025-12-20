@@ -29,7 +29,7 @@ func runInit(_ *cobra.Command, args []string) error {
 	}
 
 	// Create main.sruja
-	mainContent := `architecture "` + projectName + `" {
+	mainContent := `model {
 	// Define your system here
 	system MySystem "My System" {
 		description "A new Sruja system"

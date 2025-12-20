@@ -9,189 +9,159 @@ import (
 // ============================================================================
 
 // File represents the physical structure of a parsed Sruja DSL file.
-//
-// It contains a list of items that can appear at the top level.
-// Files can contain elements at any level (system, container, component) without
-// requiring an architecture wrapper. These elements can be imported and reused
-// in other Sruja files.
-//
-// Example DSL (without architecture block):
-//
-//	system API "API Service" { ... }
-//	container WebApp "Web Application" { ... }
-//
-// Example DSL (with architecture block):
-//
-//	architecture "My System" {
-//	  system API "API Service" { ... }
-//	}
 type File struct {
-	Pos          lexer.Position
-	Architecture *Architecture      `parser:"@@"`
-	Change       *ChangeBlock       `parser:"| @@"`
-    Items        []ArchitectureItem `parser:"| @@+"`
+	Pos lexer.Position
+	// Allow multiple top-level blocks (LikeC4 pattern)
+	TopLevelItems []TopLevelItem `parser:"@@*"`
+}
+
+// TopLevelItem is a union type for items that can appear at the file top level.
+type TopLevelItem struct {
+	Specification *SpecificationBlock `parser:"@@"`
+	Model         *ModelBlock         `parser:"| @@"`
+	Views         *LikeC4ViewsBlock   `parser:"| @@"`
 }
 
 func (f *File) Location() SourceLocation {
 	return SourceLocation{File: f.Pos.Filename, Line: f.Pos.Line, Column: f.Pos.Column, Offset: f.Pos.Offset}
 }
 
-// Program represents the complete parsed program
 type Program struct {
-	Architecture *Architecture
-	Change       *ChangeBlock
+	Specification *SpecificationBlock
+	Model         *ModelBlock
+	Views         *LikeC4ViewsBlock
 }
 
-// ============================================================================
-// Architecture (Top-Level)
-// ============================================================================
-
-// Architecture is the top-level root of a document.
-//
-// An architecture contains all the elements that make up the system architecture:
-// systems, persons, relations, requirements, ADRs, shared artifacts, libraries, and scenarios.
-//
-// Example DSL:
-//
-//	architecture "My System" {
-//	  import "shared.sruja"
-//	  system API "API Service" { ... }
-//	  person User "End User"
-//	}
-type Architecture struct {
-	Pos    lexer.Position
-	Name   string             `parser:"'architecture' @String"`
-	LBrace string             `parser:"'{'"`
-	Items  []ArchitectureItem `parser:"@@*"`
-	RBrace string             `parser:"'}'"`
-
-	// Post-processed fields
-	// Post-processed fields
-
-	Systems         []*System
-	Containers      []*Container
-	Components      []*Component
-	DataStores      []*DataStore
-	Queues          []*Queue
-	Persons         []*Person
-	Relations       []*Relation
-	Requirements    []*Requirement
-	ADRs            []*ADR
-	SharedArtifacts []*SharedArtifact
-	Libraries       []*Library
-	Metadata        []*MetaEntry // Metadata from metadata blocks
-	Contracts       []*Contract
-	Constraints     []*ConstraintEntry
-	Conventions     []*ConventionEntry
-	DeploymentNodes []*DeploymentNode
-	Scenarios       []*Scenario
-	Policies        []*Policy
-	Flows           []*Flow
-	Views           *ViewBlock     // Optional views block for customization
-	Overview        *OverviewBlock // Optional overview block for high-level introduction
-	Properties      map[string]string
-	Style           map[string]string
-	SLO             *SLOBlock
-	Description     *string
+func (p *Program) PostProcess() {
+	if p.Model != nil {
+		p.Model.PostProcess()
+	}
+	if p.Views != nil {
+		p.Views.PostProcess()
+	}
 }
 
-func (a *Architecture) Location() SourceLocation {
-	return SourceLocation{File: a.Pos.Filename, Line: a.Pos.Line, Column: a.Pos.Column, Offset: a.Pos.Offset}
+func (m *ModelBlock) PostProcess() {
+	for _, item := range m.Items {
+		item.PostProcess()
+	}
+	m.InferImpliedRelationships()
 }
 
-// ArchitectureItem is a union type for items that can appear at the architecture level.
-type ArchitectureItem struct {
-	Container        *Container        `parser:"@@"`
-	System           *System           `parser:"| @@"`
-	Component        *Component        `parser:"| @@"`
-	DataStore        *DataStore        `parser:"| @@"`
-	Queue            *Queue            `parser:"| @@"`
-	Person           *Person           `parser:"| @@"`
-	Relation         *Relation         `parser:"| @@"`
-	Requirement      *Requirement      `parser:"| @@"`
-	ADR              *ADR              `parser:"| @@"`
-	SharedArtifact   *SharedArtifact   `parser:"| @@"`
-	Library          *Library          `parser:"| @@"`
-	Metadata         *MetadataBlock    `parser:"| @@"`
-	ContractsBlock   *ContractsBlock   `parser:"| 'contracts' '{' @@ '}'"`
-	ConstraintsBlock *ConstraintsBlock `parser:"| 'constraints' '{' @@ '}'"`
-	ConventionsBlock *ConventionsBlock `parser:"| 'conventions' '{' @@ '}'"`
-	DeploymentNode   *DeploymentNode   `parser:"| @@"`
-	Scenario         *Scenario         `parser:"| @@"`
-	Policy           *Policy           `parser:"| @@"`
-	Flow             *Flow             `parser:"| @@"`
-	Views            *ViewBlock        `parser:"| @@"`
-	Overview         *OverviewBlock    `parser:"| @@"`
-	Properties       *PropertiesBlock  `parser:"| @@"`
-	Style            *StyleBlock       `parser:"| @@"`
-    SLO              *SLOBlock         `parser:"| @@"`
-    Change           *ChangeBlock      `parser:"| @@"`
-    Snapshot         *SnapshotBlock    `parser:"| @@"`
-    Description      *string           `parser:"| 'description' @String"`
+func (m *ModelBlock) InferImpliedRelationships() {
+	var inferred []*Relation
+	for _, item := range m.Items {
+		if item.Relation != nil {
+			rel := item.Relation
+			// Infer parents of From
+			for i := 1; i < len(rel.From.Parts); i++ {
+				parentFrom := QualifiedIdent{Parts: rel.From.Parts[:i]}
+				if !isRelParentChild(parentFrom, rel.To) && !isRelParentChild(rel.To, parentFrom) {
+					inferred = append(inferred, &Relation{
+						From:  parentFrom,
+						Arrow: "->",
+						To:    rel.To,
+						Verb:  rel.Verb,
+						Label: rel.Label,
+					})
+				}
+			}
+			// Infer parents of To
+			for i := 1; i < len(rel.To.Parts); i++ {
+				parentTo := QualifiedIdent{Parts: rel.To.Parts[:i]}
+				if !isRelParentChild(rel.From, parentTo) && !isRelParentChild(parentTo, rel.From) {
+					inferred = append(inferred, &Relation{
+						From:  rel.From,
+						Arrow: "->",
+						To:    parentTo,
+						Verb:  rel.Verb,
+						Label: rel.Label,
+					})
+				}
+			}
+			// And both parents
+			for i := 1; i < len(rel.From.Parts); i++ {
+				for j := 1; j < len(rel.To.Parts); j++ {
+					parentFrom := QualifiedIdent{Parts: rel.From.Parts[:i]}
+					parentTo := QualifiedIdent{Parts: rel.To.Parts[:j]}
+					fromStr := parentFrom.String()
+					toStr := parentTo.String()
+					if fromStr != toStr && !isRelParentChild(parentFrom, parentTo) && !isRelParentChild(parentTo, parentFrom) {
+						inferred = append(inferred, &Relation{
+							From:  parentFrom,
+							Arrow: "->",
+							To:    parentTo,
+							Verb:  rel.Verb,
+							Label: rel.Label,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	// Add inferred relations (avoiding duplicates and self-references)
+	for _, inf := range inferred {
+		fromStr := inf.From.String()
+		toStr := inf.To.String()
+		if fromStr != toStr && !m.hasRelation(fromStr, toStr) {
+			m.Items = append(m.Items, ModelItem{Relation: inf})
+		}
+	}
 }
 
-// ============================================================================
-// Change Block
-// ============================================================================
-
-// ChangeBlock represents a change block
-type ChangeBlock struct {
-	Pos         lexer.Position
-	ID          string             `parser:"'change' @String '{'"`
-	Status      *string            `parser:"( 'status' @String )?"`
-	Version     *string            `parser:"( 'version' @String )?"`
-	Requirement *string            `parser:"( 'requirement' @String )?"`
-	ADR         *string            `parser:"( 'adr' @String )?"`
-	Metadata    *MetadataBlock     `parser:"( @@ )?"`
-	Add         *ArchitectureBlock `parser:"( 'add' '{' @@ '}' )?"`
-	Modify      *ArchitectureBlock `parser:"( 'modify' '{' @@ '}' )?"`
-	Remove      *ArchitectureBlock `parser:"( 'remove' '{' @@ '}' )?"`
-	RBrace      string             `parser:"'}'"`
+func (m *ModelBlock) hasRelation(from, to string) bool {
+	for _, item := range m.Items {
+		if item.Relation != nil {
+			if item.Relation.From.String() == from && item.Relation.To.String() == to {
+				return true
+			}
+		}
+	}
+	return false
 }
 
-func (c *ChangeBlock) Location() SourceLocation {
-	return SourceLocation{File: c.Pos.Filename, Line: c.Pos.Line, Column: c.Pos.Column, Offset: c.Pos.Offset}
+func isRelParentChild(parent, child QualifiedIdent) bool {
+	if len(parent.Parts) >= len(child.Parts) {
+		return false
+	}
+	for i := range parent.Parts {
+		if parent.Parts[i] != child.Parts[i] {
+			return false
+		}
+	}
+	return true
 }
 
-// ArchitectureBlock contains architecture elements (for add/modify/remove)
-type ArchitectureBlock struct {
-	Items []ArchitectureItem `parser:"@@*"`
-}
-
-// ============================================================================
-// Snapshot Block
-// ============================================================================
-
-// SnapshotBlock represents a snapshot block
-type SnapshotBlock struct {
-	Pos          lexer.Position
-	Name         string        `parser:"'snapshot' @String '{'"`
-	Version      *string       `parser:"( 'version' @String )?"`
-	Description  *string       `parser:"( 'description' @String )?"`
-	Timestamp    *string       `parser:"( 'timestamp' @String )?"`
-	Preview      *bool         `parser:"( 'preview' @('true'|'false') )?"`
-	Changes      []string      `parser:"( 'changes' '[' @String ( ',' @String )* ']' )?"`
-	ArchName     *string       `parser:"( 'architecture' @String )?"`
-	Architecture *Architecture `parser:"( '{' @@ '}' )?"`
-	RBrace       string        `parser:"'}'"`
-}
-
-func (s *SnapshotBlock) Location() SourceLocation {
-	return SourceLocation{File: s.Pos.Filename, Line: s.Pos.Line, Column: s.Pos.Column, Offset: s.Pos.Offset}
-}
-
-// MetaString returns a metadata value as a string.
-func (a *Architecture) MetaString(key string) (string, bool) {
-	return metaString(a.Metadata, key)
-}
-
-// HasMeta checks if a metadata key exists.
-func (a *Architecture) HasMeta(key string) bool {
-	_, ok := a.MetaString(key)
-	return ok
-}
-
-// AllMetadata returns all metadata as a map.
-func (a *Architecture) AllMetadata() map[string]string {
-	return metaAll(a.Metadata)
+func (m *ModelItem) PostProcess() {
+	if m.Import != nil {
+		m.Import.PostProcess()
+	}
+	if m.Requirement != nil {
+		m.Requirement.PostProcess()
+	}
+	if m.ADR != nil {
+		m.ADR.PostProcess()
+	}
+	if m.Policy != nil {
+		m.Policy.PostProcess()
+	}
+	if m.Scenario != nil {
+		m.Scenario.PostProcess()
+	}
+	if m.Flow != nil {
+		m.Flow.PostProcess()
+	}
+	if m.DeploymentNode != nil {
+		m.DeploymentNode.PostProcess()
+	}
+	if m.Overview != nil {
+		m.Overview.PostProcess()
+	}
+	if m.Relation != nil {
+		normalizeRelation(m.Relation)
+	}
+	if m.ElementDef != nil {
+		m.ElementDef.PostProcess()
+	}
 }

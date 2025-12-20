@@ -344,3 +344,94 @@ func TestMerge_Plugins(t *testing.T) {
 		t.Errorf("Expected 2 plugins, got %d", len(cfg1.Plugins))
 	}
 }
+
+func TestLoadConfig_InvalidPath(t *testing.T) {
+	// Test directory traversal protection
+	invalidPath := "../../../etc/passwd"
+	_, err := LoadConfig(invalidPath)
+	if err == nil {
+		t.Fatal("LoadConfig should error on invalid path with directory traversal")
+	}
+}
+
+func TestLoadConfig_Symlink(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "sruja.config.json")
+	linkPath := filepath.Join(tmpDir, "link.json")
+	configJSON := `{"diagrams": {"theme": "test"}}`
+
+	if err := os.WriteFile(configPath, []byte(configJSON), 0o644); err != nil {
+		t.Fatalf("Failed to write config: %v", err)
+	}
+
+	// Create symlink
+	if err := os.Symlink(configPath, linkPath); err != nil {
+		// Skip test on systems that don't support symlinks
+		t.Skipf("Symlinks not supported: %v", err)
+	}
+
+	_, err := LoadConfig(linkPath)
+	if err == nil {
+		t.Fatal("LoadConfig should error on symlink")
+	}
+}
+
+func TestLoadConfig_NonRegularFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "sruja.config.json")
+	configJSON := `{"diagrams": {"theme": "test"}}`
+
+	if err := os.WriteFile(configPath, []byte(configJSON), 0o644); err != nil {
+		t.Fatalf("Failed to write config: %v", err)
+	}
+
+	// Try to load a directory instead
+	_, err := LoadConfig(tmpDir)
+	if err == nil {
+		t.Fatal("LoadConfig should error when path is a directory")
+	}
+}
+
+func TestSaveConfig_WithNestedDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	nestedDir := filepath.Join(tmpDir, "nested", "subdir")
+	configPath := filepath.Join(nestedDir, "sruja.config.json")
+
+	cfg := DefaultConfig()
+	if err := SaveConfig(cfg, configPath); err != nil {
+		t.Fatalf("SaveConfig should create nested directories: %v", err)
+	}
+
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		t.Fatal("Config file should be created in nested directory")
+	}
+}
+
+func TestLoadConfig_GetwdError(t *testing.T) {
+	// This is hard to test directly, but we can verify the code path exists
+	// by checking that LoadConfig handles empty path gracefully
+	cfg, err := LoadConfig("")
+	if err != nil {
+		t.Fatalf("LoadConfig with empty path should not error: %v", err)
+	}
+	if cfg == nil {
+		t.Fatal("LoadConfig should return default config")
+	}
+}
+
+func TestMerge_Layout(t *testing.T) {
+	cfg1 := &Config{}
+	cfg2 := &Config{
+		Diagrams: &DiagramsConfig{
+			Layout: "dagre",
+		},
+	}
+
+	cfg1.Merge(cfg2)
+	if cfg1.Diagrams == nil {
+		t.Fatal("Diagrams should be created during merge")
+	}
+	if cfg1.Diagrams.Layout != "dagre" {
+		t.Errorf("Expected layout 'dagre', got '%s'", cfg1.Diagrams.Layout)
+	}
+}

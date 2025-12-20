@@ -10,20 +10,20 @@ import (
 	"time"
 )
 
-const (
+var (
 	contentDir   = "apps/website/src/content"
 	templatesDir = "scripts/content-generator/templates"
 )
 
 type ContentMeta struct {
-    Title      string
-    Summary    string
-    Weight     int
-    Type       string
-    Date       string
-    CourseName string
-    ModuleName string
-    LessonName string
+	Title      string
+	Summary    string
+	Weight     int
+	Type       string
+	Date       string
+	CourseName string
+	ModuleName string
+	LessonName string
 }
 
 func main() {
@@ -245,8 +245,8 @@ func createTutorial(name string) {
 }
 
 func createBlog(name string) {
-    slug := toSlug(name)
-    blogFile := filepath.Join(contentDir, "blog", slug+".md")
+	slug := toSlug(name)
+	blogFile := filepath.Join(contentDir, "blog", slug+".md")
 
 	// Check if blog already exists
 	if _, err := os.Stat(blogFile); err == nil {
@@ -256,22 +256,22 @@ func createBlog(name string) {
 
 	// Get metadata
 	title := promptString("Blog post title", name)
-    summary := promptString("Blog post summary", "")
-    date := time.Now().Format("2006-01-02")
+	summary := promptString("Blog post summary", "")
+	date := time.Now().Format("2006-01-02")
 
-    meta := ContentMeta{
-        Title:   title,
-        Summary: summary,
-        Date:    date,
-    }
+	meta := ContentMeta{
+		Title:   title,
+		Summary: summary,
+		Date:    date,
+	}
 
-    // Create blog.md
-    createFromTemplate("blog.md", blogFile, &meta)
+	// Create blog.md
+	createFromTemplate("blog.md", blogFile, &meta)
 
 	fmt.Printf("✅ Created blog post '%s' at %s\n", title, blogFile)
 	fmt.Printf("   Next steps:\n")
 	fmt.Printf("   1. Edit: %s\n", blogFile)
-    fmt.Printf("   2. Ensure pubDate and tags are set appropriately\n")
+	fmt.Printf("   2. Ensure pubDate and tags are set appropriately\n")
 }
 
 func createDoc(name string) {
@@ -318,10 +318,11 @@ func toSlug(s string) string {
 	return strings.Trim(result.String(), "-")
 }
 
+var defaultReader = bufio.NewReader(os.Stdin)
+
 func promptString(prompt, defaultValue string) string {
 	fmt.Printf("%s [%s]: ", prompt, defaultValue)
-	reader := bufio.NewReader(os.Stdin)
-	input, _ := reader.ReadString('\n')
+	input, _ := defaultReader.ReadString('\n')
 	input = strings.TrimSpace(input)
 	if input == "" {
 		return defaultValue
@@ -332,8 +333,7 @@ func promptString(prompt, defaultValue string) string {
 //nolint:unparam // prompt parameter allows function to be reusable
 func promptInt(prompt string, defaultValue int) int {
 	fmt.Printf("%s [%d]: ", prompt, defaultValue)
-	reader := bufio.NewReader(os.Stdin)
-	input, _ := reader.ReadString('\n')
+	input, _ := defaultReader.ReadString('\n')
 	input = strings.TrimSpace(input)
 	if input == "" {
 		return defaultValue
@@ -344,7 +344,6 @@ func promptInt(prompt string, defaultValue int) int {
 	}
 	return result
 }
-
 
 func createFromTemplate(templateName, outputPath string, meta *ContentMeta) {
 	templatePath := filepath.Join(templatesDir, templateName)
@@ -415,11 +414,11 @@ func createBasicFile(outputPath string, meta *ContentMeta) {
 			fmt.Printf("⚠️  Warning: error writing to file: %v\n", err)
 		}
 	}
-    if meta.Date != "" {
-        if _, err := fmt.Fprintf(file, "pubDate: %q\n", meta.Date); err != nil {
-            fmt.Printf("⚠️  Warning: error writing to file: %v\n", err)
-        }
-    }
+	if meta.Date != "" {
+		if _, err := fmt.Fprintf(file, "pubDate: %q\n", meta.Date); err != nil {
+			fmt.Printf("⚠️  Warning: error writing to file: %v\n", err)
+		}
+	}
 	if _, err := fmt.Fprintf(file, "---\n\n"); err != nil {
 		fmt.Printf("⚠️  Warning: error writing to file: %v\n", err)
 	}

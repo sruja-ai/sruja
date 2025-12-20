@@ -1,8 +1,7 @@
 package language
 
 import (
-	"fmt"
-	"strings"
+	"strconv"
 
 	"github.com/alecthomas/participle/v2/lexer"
 )
@@ -11,20 +10,6 @@ import (
 // Shared Base Types
 // ============================================================================
 
-// MetaEntry represents a single metadata key-value pair.
-//
-// Metadata is freeform key-value pairs that allow infinite extension
-// without modifying the core DSL grammar. Plugins can consume metadata
-// for validation, code generation, diagram customization, etc.
-//
-// Example DSL:
-//
-//	metadata {
-//	    team: "Payments"
-//	    tier: "critical"
-//	    rate_limit: "100/s"
-//	    tags: ["backend", "critical"]
-//	}
 type MetaEntry struct {
 	Pos   lexer.Position
 	Key   string   `parser:"@Ident"`
@@ -36,55 +21,22 @@ func (m *MetaEntry) Location() SourceLocation {
 	return SourceLocation{File: m.Pos.Filename, Line: m.Pos.Line, Column: m.Pos.Column, Offset: m.Pos.Offset}
 }
 
-// SourceLocation represents the position of a node in the source file.
-//
-// This is used for:
-//   - Error reporting (showing where errors occurred)
-//   - IDE features (go-to-definition, hover, etc.)
-//   - Validation (reporting which element has issues)
-//
-// All positions are 1-based (line 1, column 1 is the first character).
 type SourceLocation struct {
-	File   string // File path where this node appears
-	Line   int    // 1-based line number
-	Column int    // 1-based column number
-	Offset int    // Byte offset in file (0-based)
-	Length int    // Length of the node in bytes
+	File   string
+	Line   int
+	Column int
+	Offset int
+	Length int
 }
 
-// String returns a human-readable location string in the format "file:line:column".
-//
-// Example: "example.sruja:5:12"
 func (l SourceLocation) String() string {
-	// Build string efficiently using strings.Builder
-	var sb strings.Builder
-	sb.Grow(len(l.File) + 20) // Estimate: file name + ":line:column"
-	sb.WriteString(l.File)
-	sb.WriteString(":")
-	sb.WriteString(fmt.Sprintf("%d", l.Line))
-	sb.WriteString(":")
-	sb.WriteString(fmt.Sprintf("%d", l.Column))
-	return sb.String()
+	return l.File + ":" + strconv.Itoa(l.Line) + ":" + strconv.Itoa(l.Column)
 }
 
-// ASTNode is the base interface for all AST nodes.
-//
-// Every node in the AST implements this interface, which provides:
-//   - Source location information (for error reporting)
-//
-// All concrete AST types (Architecture, System, Container, etc.) implement this interface.
 type ASTNode interface {
 	Location() SourceLocation
 }
 
-// MetadataBlock represents a metadata block.
-//
-// Example DSL:
-//
-//	metadata {
-//	    team: "Payments"
-//	    tier: "critical"
-//	}
 type MetadataBlock struct {
 	Pos     lexer.Position
 	LBrace  string       `parser:"'metadata' '{'"`
@@ -96,14 +48,6 @@ func (m *MetadataBlock) Location() SourceLocation {
 	return SourceLocation{File: m.Pos.Filename, Line: m.Pos.Line, Column: m.Pos.Column, Offset: m.Pos.Offset}
 }
 
-// PropertiesBlock represents a generic key-value properties block.
-//
-// Example DSL:
-//
-//	properties {
-//	    "qps": "1000"
-//	    "latency": "50ms"
-//	}
 type PropertiesBlock struct {
 	Pos     lexer.Position
 	LBrace  string           `parser:"'properties' '{'"`
@@ -121,53 +65,39 @@ func (p *PropertiesBlock) Location() SourceLocation {
 	return SourceLocation{File: p.Pos.Filename, Line: p.Pos.Line, Column: p.Pos.Column, Offset: p.Pos.Offset}
 }
 
-// StyleBlock represents a style block for customizing appearance.
-//
-// Example DSL:
-//
-//	style {
-//	    shape: "cylinder"
-//	    color: "#ff0000"
-//	}
+type StyleDecl struct {
+	Pos     lexer.Position
+	Keyword string      `parser:"@( 'style' | 'styles' )"`
+	Body    *StyleBlock `parser:"@@"`
+}
+
 type StyleBlock struct {
 	Pos     lexer.Position
-	LBrace  string        `parser:"'style' '{'"`
+	LBrace  string        `parser:"'{'"`
 	Entries []*StyleEntry `parser:"@@*"`
 	RBrace  string        `parser:"'}'"`
 }
 
 type StyleEntry struct {
-	Key   string `parser:"@Ident"`
-	Sep   string `parser:"( ':' )?"`
-	Value string `parser:"@String"`
+	Key   string      `parser:"@( Ident | 'element' | 'person' | 'system' | 'container' | 'component' | 'database' | 'queue' | 'style' | 'styles' | TagRef | ( '@' Ident ) )"`
+	Value *string     `parser:"( @String | @Ident | @Number | @( 'true' | 'false' ) | @TagRef )?"`
+	Body  *StyleBlock `parser:"( @@ )?"`
+}
+
+func (s *StyleDecl) Location() SourceLocation {
+	return SourceLocation{File: s.Pos.Filename, Line: s.Pos.Line, Column: s.Pos.Column, Offset: s.Pos.Offset}
 }
 
 func (s *StyleBlock) Location() SourceLocation {
 	return SourceLocation{File: s.Pos.Filename, Line: s.Pos.Line, Column: s.Pos.Column, Offset: s.Pos.Offset}
 }
 
-// OverviewBlock represents an architecture overview block for high-level introduction.
-//
-// This provides a structured way to document architecture-level information
-// for reviewers and stakeholders. Uses the same MetaEntry pattern as metadata blocks.
-//
-// Example DSL:
-//
-//	overview {
-//	    summary "High-performance e-commerce platform supporting 10M+ users"
-//	    audience "Engineering teams, architects, stakeholders"
-//	    scope "Covers ordering, payments, inventory, and analytics"
-//	    goals ["Scale to 50M users", "Sub-200ms p95 latency", "99.99% uptime"]
-//	    nonGoals ["Real-time inventory sync", "Multi-currency support"]
-//	    risks ["Payment Gateway SPOF", "Database bottleneck"]
-//	}
 type OverviewBlock struct {
 	Pos     lexer.Position
 	LBrace  string       `parser:"'overview' '{'"`
 	Entries []*MetaEntry `parser:"@@*"`
 	RBrace  string       `parser:"'}'"`
 
-	// Post-processed convenience fields
 	Summary  *string
 	Audience *string
 	Scope    *string
@@ -180,7 +110,6 @@ func (o *OverviewBlock) Location() SourceLocation {
 	return SourceLocation{File: o.Pos.Filename, Line: o.Pos.Line, Column: o.Pos.Column, Offset: o.Pos.Offset}
 }
 
-// PostProcess extracts well-known keys from MetaEntry items to convenience fields
 func (o *OverviewBlock) PostProcess() {
 	for _, entry := range o.Entries {
 		switch entry.Key {
@@ -200,22 +129,12 @@ func (o *OverviewBlock) PostProcess() {
 	}
 }
 
-// ScaleBlock represents a scalability block.
-
-// Example DSL:
-//
-//	scale {
-//	    min 3
-//	    max 10
-//	    metric "cpu > 80%"
-//	}
 type ScaleBlock struct {
 	Pos    lexer.Position
 	LBrace string       `parser:"'scale' '{'"`
 	Items  []*ScaleItem `parser:"@@*"`
 	RBrace string       `parser:"'}'"`
 
-	// Post-processed
 	Min    *int
 	Max    *int
 	Metric *string
@@ -247,32 +166,17 @@ func (s *ScaleBlock) Location() SourceLocation {
 // SLO (Service Level Objectives)
 // ============================================================================
 
-// SLOBlock represents a Service Level Objectives block.
-//
-// Example DSL:
-//
-//	slo {
-//	    availability {
-//	        target "99.9%"
-//	        window "30 days"
-//	        current "99.95%"
-//	    }
-//	    latency {
-//	        p95 "200ms"
-//	        p99 "500ms"
-//	    }
-//	}
 type SLOBlock struct {
 	Pos    lexer.Position
 	LBrace string     `parser:"'slo' '{'"`
 	Items  []*SLOItem `parser:"@@*"`
 	RBrace string     `parser:"'}'"`
 
-	// Post-processed
 	Availability *SLOAvailability
 	Latency      *SLOLatency
 	ErrorRate    *SLOErrorRate
 	Throughput   *SLOThroughput
+	Cost         *SLOCost
 }
 
 type SLOItem struct {
@@ -280,13 +184,20 @@ type SLOItem struct {
 	Latency      *SLOLatency      `parser:"| @@"`
 	ErrorRate    *SLOErrorRate    `parser:"| @@"`
 	Throughput   *SLOThroughput   `parser:"| @@"`
+	Cost         *SLOCost         `parser:"| @@"`
+}
+
+type SLOCost struct {
+	LBrace string  `parser:"'cost' '{'"`
+	Target *string `parser:"( 'target' @String )?"`
+	Window *string `parser:"( 'window' @String )?"`
+	RBrace string  `parser:"'}'"`
 }
 
 func (s *SLOBlock) Location() SourceLocation {
 	return SourceLocation{File: s.Pos.Filename, Line: s.Pos.Line, Column: s.Pos.Column, Offset: s.Pos.Offset}
 }
 
-// SLOAvailability represents availability SLO configuration.
 type SLOAvailability struct {
 	LBrace  string  `parser:"'availability' '{'"`
 	Target  *string `parser:"( 'target' @String )?"`
@@ -295,7 +206,6 @@ type SLOAvailability struct {
 	RBrace  string  `parser:"'}'"`
 }
 
-// SLOLatency represents latency SLO configuration.
 type SLOLatency struct {
 	LBrace  string      `parser:"'latency' '{'"`
 	P95     *string     `parser:"( 'p95' @String )?"`
@@ -305,13 +215,11 @@ type SLOLatency struct {
 	RBrace  string      `parser:"'}'"`
 }
 
-// SLOCurrent represents current latency metrics.
 type SLOCurrent struct {
 	P95 *string `parser:"( 'p95' @String )?"`
 	P99 *string `parser:"( 'p99' @String )?"`
 }
 
-// SLOErrorRate represents error rate SLO configuration.
 type SLOErrorRate struct {
 	LBrace  string  `parser:"'errorRate' '{'"`
 	Target  *string `parser:"( 'target' @String )?"`
@@ -320,7 +228,6 @@ type SLOErrorRate struct {
 	RBrace  string  `parser:"'}'"`
 }
 
-// SLOThroughput represents throughput SLO configuration.
 type SLOThroughput struct {
 	LBrace  string  `parser:"'throughput' '{'"`
 	Target  *string `parser:"( 'target' @String )?"`
@@ -390,7 +297,7 @@ type ConstraintsBlock struct {
 
 type ConstraintEntry struct {
 	Pos   lexer.Position
-	Key   string `parser:"@Ident"`
+	Key   string `parser:"( @Ident )?"`
 	Value string `parser:"@String"`
 }
 
@@ -404,7 +311,7 @@ type ConventionsBlock struct {
 
 type ConventionEntry struct {
 	Pos   lexer.Position
-	Key   string `parser:"@Ident"`
+	Key   string `parser:"( @Ident )?"`
 	Value string `parser:"@String"`
 }
 
@@ -454,7 +361,6 @@ type BehaviorEntry struct {
 // Metadata Helper Methods
 // ============================================================================
 
-// metaString is a helper function that searches metadata for a key.
 func metaString(metadata []*MetaEntry, key string) (string, bool) {
 	for _, meta := range metadata {
 		if meta.Key == key {
@@ -466,7 +372,6 @@ func metaString(metadata []*MetaEntry, key string) (string, bool) {
 	return "", false
 }
 
-// metaAll is a helper function that converts metadata to a map.
 func metaAll(metadata []*MetaEntry) map[string]string {
 	result := make(map[string]string, len(metadata))
 	for _, meta := range metadata {
@@ -477,7 +382,6 @@ func metaAll(metadata []*MetaEntry) map[string]string {
 	return result
 }
 
-// metaMap is a helper function that returns metadata entries with a given prefix.
 func metaMap(metadata []*MetaEntry, prefix string) map[string]string {
 	result := make(map[string]string)
 	for _, meta := range metadata {
@@ -488,22 +392,4 @@ func metaMap(metadata []*MetaEntry, prefix string) map[string]string {
 		}
 	}
 	return result
-}
-
-// PostProcess extracts items into typed SLO fields
-func (s *SLOBlock) PostProcess() {
-	for _, it := range s.Items {
-		if it.Availability != nil {
-			s.Availability = it.Availability
-		}
-		if it.Latency != nil {
-			s.Latency = it.Latency
-		}
-		if it.ErrorRate != nil {
-			s.ErrorRate = it.ErrorRate
-		}
-		if it.Throughput != nil {
-			s.Throughput = it.Throughput
-		}
-	}
 }

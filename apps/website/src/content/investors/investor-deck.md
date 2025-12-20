@@ -82,7 +82,7 @@ Transform architecture from static documentation into **executable, validated, a
 ## Slide 5: Go-to-Market Strategy
 
 ### Open Source Foundation
-- **MIT-licensed** open source project
+- **Apache 2.0 licensed** open source project
 - Builds community adoption and trust
 - Enables transparent development
 - Creates network effects as more teams adopt
@@ -197,7 +197,7 @@ Sruja is designed to evolve into a comprehensive platform for continuous archite
 ## Slide 11: Traction & Community
 
 ### Current Status
-- ✅ **Open Source** (MIT licensed)
+- ✅ **Open Source** (Apache 2.0 licensed)
 - ✅ **Active Development** (v0.1.0 alpha)
 - ✅ **Community-Driven** (GitHub, Discord)
 - ✅ **Professional Services** available

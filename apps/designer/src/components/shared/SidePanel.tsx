@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import type { ReactNode } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { X } from "lucide-react";
-import { cn } from "@sruja/ui";
+import { cn, Button } from "@sruja/ui";
 import "./SidePanel.css";
 
 interface SidePanelProps {
@@ -43,10 +43,10 @@ export function SidePanel({
               <div className="side-panel-content">
                 <div className="side-panel-header">
                   <Dialog.Title className="side-panel-title">{title}</Dialog.Title>
-                  <button type="button" className="side-panel-close" onClick={onClose}>
+                  <Button variant="ghost" size="sm" type="button" className="side-panel-close" onClick={onClose}>
                     <span className="sr-only">Close panel</span>
                     <X size={20} aria-hidden="true" />
-                  </button>
+                  </Button>
                 </div>
                 <div className="side-panel-body">{children}</div>
                 {footer && <div className="side-panel-footer">{footer}</div>}

@@ -20,7 +20,16 @@ Sruja validates your model to catch issues early.
 ## Example
 
 ```sruja
-architecture "Shop" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   person User
   system App {
     container WebApp
@@ -32,6 +41,12 @@ architecture "Shop" {
   User -> App.WebApp "Uses"
   App.WebApp -> App.API "Calls"
   App.API -> App.DB "Reads/Writes"
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 

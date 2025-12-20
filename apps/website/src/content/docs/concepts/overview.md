@@ -11,10 +11,25 @@ Use `overview` to provide a concise system description shown in docs/exports.
 ## Syntax
 
 ```sruja
-architecture "Shop" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   overview {
     title "E‑Commerce Platform"
     summary "Web, API, and DB supporting browse, cart, and checkout"
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```

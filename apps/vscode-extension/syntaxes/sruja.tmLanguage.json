@@ -65,11 +65,15 @@
       "patterns": [
         {
           "name": "keyword.control.sruja",
-          "match": "\\b(architecture|library|system|container|component|person|deployment|queue|datastore|external|import|implements|requires|policy|requirement|scenario|story|flow|decision|yes|no|condition|owner|description|metadata|properties|style|adr|contract|constraint|convention|technology|status|context|consequences|category|enforcement|layer|version|type|scale|tags|link|title|date|author)\\b"
+          "match": "\\b(architecture|library|system|container|component|person|deployment|queue|datastore|database|external|import|implements|requires|policy|requirement|scenario|story|flow|decision|yes|no|condition|owner|description|metadata|properties|style|adr|contract|constraint|convention|technology|status|context|consequences|category|enforcement|layer|version|type|scale|tags|link|title|date|author|specification|model|views|view|include|exclude|element|relationship|tag|color|of|extends|dynamic|autoLayout|TopBottom|BottomTop|LeftRight|RightLeft|summary|notation)\\b"
         },
         {
           "name": "storage.type.sruja",
           "match": "\\b(Database|Queue|Cache|FileSystem|API|Service|Web|Mobile|Desktop|IoT|Messaging|Stream|Function|Serverless)\\b"
+        },
+        {
+          "name": "entity.name.tag.hash.sruja",
+          "match": "#[a-zA-Z_][a-zA-Z0-9_-]*"
         }
       ]
     },
@@ -81,7 +85,7 @@
         },
         {
           "name": "variable.other.sruja",
-          "match": "\\b[a-z][a-zA-Z0-9_]*\\b"
+          "match": "\\b[a-z][a-zA-Z0-9_-]*\\b"
         }
       ]
     },
@@ -89,7 +93,7 @@
       "patterns": [
         {
           "name": "keyword.operator.sruja",
-          "match": "->|-->|<->|\\[\\]|\\(\\)|uses|calls|sends|receives|reads|writes|depends_on|connects_to"
+          "match": "->|<->|<-|--|=|\\[\\]|\\(\\)|uses|calls|sends|receives|reads|writes|depends_on|connects_to"
         }
       ]
     },

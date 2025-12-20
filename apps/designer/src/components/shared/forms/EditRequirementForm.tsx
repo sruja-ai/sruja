@@ -1,45 +1,102 @@
-// apps/playground/src/components/shared/forms/EditRequirementForm.tsx
-import { useState, useEffect } from "react";
+// apps/designer/src/components/shared/forms/EditRequirementForm.tsx
+// Refactored to use Mantine form components
+
+import { useEffect } from "react";
 import { useArchitectureStore } from "../../../stores";
-import type { RequirementJSON } from "../../../types";
-import { Button, Input, Listbox, Textarea } from "@sruja/ui";
+import type { RequirementDump } from "@sruja/shared";
+import { Button, Listbox } from "@sruja/ui";
 import type { ListOption } from "@sruja/ui";
 import { SidePanel } from "../SidePanel";
-
+import { FormField, useFormState, type FormErrors } from "./";
 import { REQUIREMENT_TYPES } from "./constants";
 import "../EditForms.css";
 
 interface EditRequirementFormProps {
   isOpen: boolean;
   onClose: () => void;
-  requirement?: RequirementJSON;
+  requirement?: RequirementDump;
+}
+
+interface FormValues {
+  id: string;
+  type: ListOption | null;
+  title: string;
+  description: string;
 }
 
 export function EditRequirementForm({ isOpen, onClose, requirement }: EditRequirementFormProps) {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
 
-  const [id, setId] = useState(requirement?.id || "");
-  const [type, setType] = useState<ListOption | null>(
-    REQUIREMENT_TYPES.find((t) => t.id === (requirement?.type || "functional")) ||
-      REQUIREMENT_TYPES[0]
-  );
-  const [title, setTitle] = useState(requirement?.title || "");
-  const [description, setDescription] = useState(requirement?.description || "");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  // Initialize form state
+  const form = useFormState<FormValues>({
+    initialValues: {
+      id: requirement?.id || "",
+      // @ts-ignore
+      type: REQUIREMENT_TYPES.find((t) => t.id === (requirement?.type || "functional")) || REQUIREMENT_TYPES[0],
+      title: requirement?.title || "",
+      description: requirement?.description || "",
+    },
+    validate: (values) => {
+      const errors: FormErrors = {};
+      if (!values.id.trim()) {
+        errors.id = "ID is required";
+      } else if (!/^[A-Za-z0-9_-]+$/.test(values.id.trim())) {
+        errors.id = "ID can only contain letters, numbers, hyphens, and underscores";
+      }
+      if (!values.title.trim() && !values.description.trim()) {
+        errors.title = "Title or description is required";
+      }
+      return errors;
+    },
+    onSubmit: async (values) => {
+      await updateArchitecture((model) => {
+        const sruja = (model as any).sruja || {};
+        const requirements = [...(sruja.requirements || [])];
 
+        const newRequirement: RequirementDump = {
+          id: values.id.trim(),
+          // @ts-ignore
+          type: values.type?.id,
+          title: values.title.trim(),
+          description: values.description.trim() || undefined,
+        };
+
+        if (requirement) {
+          const index = requirements.findIndex((r: any) => r.id === requirement.id);
+          if (index >= 0) {
+            requirements[index] = newRequirement;
+          }
+        } else {
+          requirements.push(newRequirement);
+        }
+
+        return {
+          ...model,
+          sruja: {
+            ...sruja,
+            requirements,
+          },
+        };
+      });
+      onClose();
+    },
+  });
+
+  // Reset form when opening/switching contexts
   useEffect(() => {
     if (isOpen) {
-      setId(requirement?.id || "");
-      setType(
-        REQUIREMENT_TYPES.find((t) => t.id === (requirement?.type || "functional")) ||
-          REQUIREMENT_TYPES[0]
-      );
-      setTitle(requirement?.title || "");
-      setDescription(requirement?.description || "");
-      setErrors({});
+      form.setValues({
+        id: requirement?.id || "",
+        // @ts-ignore
+        type: REQUIREMENT_TYPES.find((t) => t.id === (requirement?.type || "functional")) || REQUIREMENT_TYPES[0],
+        title: requirement?.title || "",
+        description: requirement?.description || "",
+      });
+      form.clearErrors();
     }
-  }, [isOpen, requirement]);
+  }, [isOpen, requirement]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Handle Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
@@ -52,59 +109,6 @@ export function EditRequirementForm({ isOpen, onClose, requirement }: EditRequir
     }
   }, [isOpen, onClose]);
 
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!id.trim()) {
-      newErrors.id = "ID is required";
-    } else if (!/^[A-Za-z0-9_-]+$/.test(id.trim())) {
-      newErrors.id = "ID can only contain letters, numbers, hyphens, and underscores";
-    }
-    if (!title.trim() && !description.trim()) {
-      newErrors.title = "Title or description is required";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    try {
-      await updateArchitecture((arch) => {
-        if (!arch.architecture) return arch;
-        const requirements = [...(arch.architecture.requirements || [])];
-        const newRequirement: RequirementJSON = {
-          id: id.trim(),
-          type: type?.id as RequirementJSON["type"],
-          title: title.trim() || undefined,
-          description: description.trim() || undefined,
-        };
-
-        if (requirement) {
-          const index = requirements.findIndex((r) => r.id === requirement.id);
-          if (index >= 0) {
-            requirements[index] = newRequirement;
-          }
-        } else {
-          requirements.push(newRequirement);
-        }
-
-        return {
-          ...arch,
-          architecture: {
-            ...arch.architecture,
-            requirements,
-          },
-        };
-      });
-      onClose();
-    } catch (err) {
-      console.error("Failed to update requirement:", err);
-      setErrors({ submit: "Failed to save requirement. Please try again." });
-    }
-  };
-
   return (
     <SidePanel
       isOpen={isOpen}
@@ -116,53 +120,47 @@ export function EditRequirementForm({ isOpen, onClose, requirement }: EditRequir
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button
-            variant="primary"
-            onClick={(e) => {
-              e.preventDefault();
-              handleSubmit(e as any);
-            }}
-          >
+          <Button variant="primary" type="submit" form="edit-requirement-form" isLoading={form.isSubmitting}>
             {requirement ? "Update" : "Add"}
           </Button>
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="edit-form">
-        <Input
+      <form id="edit-requirement-form" onSubmit={form.handleSubmit} className="edit-form">
+        <FormField
           name="id"
-          label="ID *"
-          value={id}
-          onChange={(e) => {
-            setId(e.target.value);
-            if (errors.id) setErrors({ ...errors, id: "" });
-          }}
+          label="ID"
+          value={form.values.id}
+          onChange={(value) => form.setValue("id", value)}
           required
           placeholder="R1"
-          error={errors.id}
+          error={form.errors.id}
         />
-        <Listbox label="Type" options={REQUIREMENT_TYPES} value={type} onChange={setType} />
-        <Input
+        <Listbox
+          label="Type"
+          options={REQUIREMENT_TYPES}
+          value={form.values.type}
+          onChange={(value) => form.setValue("type", value)}
+        />
+        <FormField
           name="title"
           label="Title"
-          value={title}
-          onChange={(e) => {
-            setTitle(e.target.value);
-            if (errors.title) setErrors({ ...errors, title: "" });
-          }}
+          value={form.values.title}
+          onChange={(value) => form.setValue("title", value)}
           placeholder="Requirement title"
-          error={errors.title}
+          error={form.errors.title}
         />
-        <Textarea
+        <FormField
           name="description"
           label="Description"
-          value={description}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
+          value={form.values.description}
+          onChange={(value) => form.setValue("description", value)}
+          type="textarea"
           rows={4}
           placeholder="Requirement description"
         />
-        {errors.submit && (
-          <div className="text-sm text-[var(--color-error-500)] mt-2">{errors.submit}</div>
+        {form.errors.submit && (
+          <div className="text-sm text-[var(--color-error-500)] mt-2">{form.errors.submit}</div>
         )}
       </form>
     </SidePanel>

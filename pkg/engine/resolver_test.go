@@ -7,61 +7,51 @@ import (
 )
 
 func TestResolver(t *testing.T) {
-	// Setup a program with ambiguous and unambiguous references
-	arch := &language.Architecture{
-		Systems: []*language.System{
-			{
-				ID: "SysA",
-				Containers: []*language.Container{
-					{
-						ID: "ContA",
-						Components: []*language.Component{
-							{ID: "UniqueComp"},
-							{ID: "SharedComp"},
-						},
-					},
-				},
-			},
-			{
-				ID: "SysB",
-				Containers: []*language.Container{
-					{
-						ID: "ContB",
-						Components: []*language.Component{
-							{ID: "UniqueCompB"}, // Correct unique suffix
-							{ID: "SharedComp"},  // Ambiguous with SysA.ContA.SharedComp
-						},
-					},
-				},
-			},
-		},
-		Flows: []*language.Flow{
-			{
-				ID: "TestFlow",
-				Items: []*language.ScenarioItem{
-					{
-						Step: &language.ScenarioStep{
-							From: language.QualifiedIdent{Parts: []string{"UniqueComp"}},
-							To:   language.QualifiedIdent{Parts: []string{"UniqueCompB"}},
-						},
-					},
-					{
-						Step: &language.ScenarioStep{
-							From: language.QualifiedIdent{Parts: []string{"SharedComp"}}, // Ambiguous
-							To:   language.QualifiedIdent{Parts: []string{"Unknown"}},    // Unknown
-						},
-					},
-				},
-			},
-		},
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
 	}
-	program := &language.Program{Architecture: arch}
+
+	// Setup a program with ambiguous and unambiguous references
+	dsl := `model {
+		SysA = system "System A" {
+			ContA = container "Container A" {
+				UniqueComp = component "Unique Component"
+				SharedComp = component "Shared Component"
+			}
+		}
+		SysB = system "System B" {
+			ContB = container "Container B" {
+				UniqueCompB = component "Unique Component B"
+				SharedComp = component "Shared Component"
+			}
+		}
+		flow TestFlow {
+			UniqueComp -> UniqueCompB
+			SharedComp -> Unknown
+		}
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
 
 	// Run Resolution
 	RunResolution(program)
 
-	// Verify
-	flow := program.Architecture.Flows[0]
+	// Verify - find the flow in Model.Items
+	var flow *language.Flow
+	for _, item := range program.Model.Items {
+		if item.Flow != nil {
+			flow = item.Flow
+			break
+		}
+	}
+
+	if flow == nil {
+		t.Fatal("Expected to find TestFlow")
+	}
 
 	// Step 1: UniqueComp -> SysA.ContA.UniqueComp
 	step1 := flow.Items[0].Step

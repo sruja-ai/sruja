@@ -131,19 +131,6 @@
         ],
         "description": "Define a decision point in a flow"
     },
-    "Library": {
-        "prefix": "library",
-        "body": [
-            "library ${1:ID} \"${2:Label}\" {",
-            "\tdescription \"${3:Description}\"",
-            "\tmetadata {",
-            "\t\tversion \"${4:1.0.0}\"",
-            "\t}",
-            "\t$0",
-            "}"
-        ],
-        "description": "Define a library of reusable elements"
-    },
     "Requirement Block": {
         "prefix": "reqblock",
         "body": [
@@ -183,5 +170,104 @@
             "description \"${1:Description}\""
         ],
         "description": "Define description"
+    },
+    "LikeC4 Specification": {
+        "prefix": "spec",
+        "body": [
+            "specification {",
+            "\telement person",
+            "\telement system",
+            "\telement container",
+            "\telement component",
+            "\telement database",
+            "\telement queue",
+            "\t$0",
+            "}"
+        ],
+        "description": "LikeC4: Define a specification block"
+    },
+    "LikeC4 Model": {
+        "prefix": "model",
+        "body": [
+            "model {",
+            "\t$0",
+            "}"
+        ],
+        "description": "LikeC4: Define a model block"
+    },
+    "LikeC4 Element": {
+        "prefix": "elem",
+        "body": [
+            "${1:name} = ${2|person,system,container,component,database,queue|} \"${3:Title}\" {",
+            "\tdescription \"${4:Description}\"",
+            "\t$0",
+            "}"
+        ],
+        "description": "LikeC4: Define an element with assignment syntax"
+    },
+    "LikeC4 Views": {
+        "prefix": "views",
+        "body": [
+            "views {",
+            "\tview ${1:index} {",
+            "\t\ttitle \"${2:Title}\"",
+            "\t\tinclude *",
+            "\t}",
+            "\t$0",
+            "}"
+        ],
+        "description": "LikeC4: Define a views block"
+    },
+    "LikeC4 View": {
+        "prefix": "view",
+        "body": [
+            "view ${1:name} {",
+            "\ttitle \"${2:Title}\"",
+            "\tinclude ${3:*}",
+            "\t$0",
+            "}"
+        ],
+        "description": "LikeC4: Define a single view"
+    },
+    "LikeC4 View Of": {
+        "prefix": "viewof",
+        "body": [
+            "view ${1:name} of ${2:Element} {",
+            "\ttitle \"${3:Title}\"",
+            "\tinclude *",
+            "\t$0",
+            "}"
+        ],
+        "description": "LikeC4: Define a view scoped to an element"
+    },
+    "LikeC4 Full Template": {
+        "prefix": "likec4",
+        "body": [
+            "specification {",
+            "\telement person",
+            "\telement system",
+            "\telement container",
+            "\telement component",
+            "\telement database",
+            "}",
+            "",
+            "model {",
+            "\t${1:user} = person \"${2:User}\"",
+            "\t",
+            "\t${3:mySystem} = system \"${4:My System}\" {",
+            "\t\t${5:api} = container \"${6:API}\"",
+            "\t}",
+            "\t",
+            "\t${1:user} -> ${3:mySystem}.${5:api} \"uses\"",
+            "}",
+            "",
+            "views {",
+            "\tview index {",
+            "\t\ttitle \"${7:System Overview}\"",
+            "\t\tinclude *",
+            "\t}",
+            "}"
+        ],
+        "description": "LikeC4: Complete file template with specification, model, and views"
     }
 }

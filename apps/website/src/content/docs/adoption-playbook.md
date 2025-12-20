@@ -43,5 +43,5 @@ jobs:
 
 ---
 
-**Note**: Sruja is **free and open source** (MIT licensed). Need help with implementation? Professional consulting services are available. Contact the team through [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions) to learn more.
+**Note**: Sruja is **free and open source** (Apache 2.0 licensed). Need help with implementation? Professional consulting services are available. Contact the team through [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions) to learn more.
 

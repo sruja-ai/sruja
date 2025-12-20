@@ -51,12 +51,14 @@ func (s *System) PostProcess() {
 				s.Properties[prop.Key] = prop.Value
 			}
 		}
-		if item.Style != nil {
+		if item.Style != nil && item.Style.Body != nil {
 			if s.Style == nil {
 				s.Style = make(map[string]string)
 			}
-			for _, style := range item.Style.Entries {
-				s.Style[style.Key] = style.Value
+			for _, style := range item.Style.Body.Entries {
+				if style.Value != nil {
+					s.Style[style.Key] = *style.Value
+				}
 			}
 		}
 		if item.SLO != nil {
@@ -111,12 +113,14 @@ func (c *Container) PostProcess() {
 				c.Properties[prop.Key] = prop.Value
 			}
 		}
-		if item.Style != nil {
+		if item.Style != nil && item.Style.Body != nil {
 			if c.Style == nil {
 				c.Style = make(map[string]string)
 			}
-			for _, style := range item.Style.Entries {
-				c.Style[style.Key] = style.Value
+			for _, style := range item.Style.Body.Entries {
+				if style.Value != nil {
+					c.Style[style.Key] = *style.Value
+				}
 			}
 		}
 		if item.Scale != nil {
@@ -157,12 +161,14 @@ func (c *Component) PostProcess() {
 				c.Properties[prop.Key] = prop.Value
 			}
 		}
-		if item.Style != nil {
+		if item.Style != nil && item.Style.Body != nil {
 			if c.Style == nil {
 				c.Style = make(map[string]string)
 			}
-			for _, style := range item.Style.Entries {
-				c.Style[style.Key] = style.Value
+			for _, style := range item.Style.Body.Entries {
+				if style.Value != nil {
+					c.Style[style.Key] = *style.Value
+				}
 			}
 		}
 		if item.Scale != nil {
@@ -192,12 +198,14 @@ func (d *DataStore) PostProcess() {
 				d.Properties[prop.Key] = prop.Value
 			}
 		}
-		if it.Style != nil {
+		if it.Style != nil && it.Style.Body != nil {
 			if d.Style == nil {
 				d.Style = make(map[string]string)
 			}
-			for _, style := range it.Style.Entries {
-				d.Style[style.Key] = style.Value
+			for _, style := range it.Style.Body.Entries {
+				if style.Value != nil {
+					d.Style[style.Key] = *style.Value
+				}
 			}
 		}
 	}
@@ -223,12 +231,14 @@ func (q *Queue) PostProcess() {
 				q.Properties[prop.Key] = prop.Value
 			}
 		}
-		if it.Style != nil {
+		if it.Style != nil && it.Style.Body != nil {
 			if q.Style == nil {
 				q.Style = make(map[string]string)
 			}
-			for _, style := range it.Style.Entries {
-				q.Style[style.Key] = style.Value
+			for _, style := range it.Style.Body.Entries {
+				if style.Value != nil {
+					q.Style[style.Key] = *style.Value
+				}
 			}
 		}
 	}
@@ -251,12 +261,14 @@ func (p *Person) PostProcess() {
 				p.Properties[prop.Key] = prop.Value
 			}
 		}
-		if it.Style != nil {
+		if it.Style != nil && it.Style.Body != nil {
 			if p.Style == nil {
 				p.Style = make(map[string]string)
 			}
-			for _, style := range it.Style.Entries {
-				p.Style[style.Key] = style.Value
+			for _, style := range it.Style.Body.Entries {
+				if style.Value != nil {
+					p.Style[style.Key] = *style.Value
+				}
 			}
 		}
 	}

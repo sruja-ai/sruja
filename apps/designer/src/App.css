@@ -1,6 +1,98 @@
 /* Global App Styles */
+@import "tailwindcss";
+
 :root {
-  /* C4 Colors - refined specific shades */
+  /* ============================================
+     DESIGN SYSTEM TOKENS
+     ============================================ */
+
+  /* Spacing Scale (8px base) */
+  --space-1: 0.25rem;
+  /* 4px */
+  --space-2: 0.5rem;
+  /* 8px */
+  --space-3: 0.75rem;
+  /* 12px */
+  --space-4: 1rem;
+  /* 16px */
+  --space-5: 1.25rem;
+  /* 20px */
+  --space-6: 1.5rem;
+  /* 24px */
+  --space-8: 2rem;
+  /* 32px */
+  --space-10: 2.5rem;
+  /* 40px */
+  --space-12: 3rem;
+  /* 48px */
+  --space-16: 4rem;
+  /* 64px */
+
+  /* Typography Scale */
+  --text-xs: 0.75rem;
+  /* 12px */
+  --text-sm: 0.875rem;
+  /* 14px */
+  --text-base: 1rem;
+  /* 16px */
+  --text-lg: 1.125rem;
+  /* 18px */
+  --text-xl: 1.25rem;
+  /* 20px */
+  --text-2xl: 1.5rem;
+  /* 24px */
+  --text-3xl: 1.875rem;
+  /* 30px */
+  --text-4xl: 2.25rem;
+  /* 36px */
+
+  /* Font Weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Line Heights */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* Border Radius Scale */
+  --radius-sm: 0.25rem;
+  /* 4px */
+  --radius-md: 0.5rem;
+  /* 8px */
+  --radius-lg: 0.75rem;
+  /* 12px */
+  --radius-xl: 1rem;
+  /* 16px */
+  --radius-2xl: 1.5rem;
+  /* 24px */
+  --radius-full: 9999px;
+
+  /* Elevation System (Modern Shadows) */
+  --elevation-0: none;
+  --elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --elevation-2: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --elevation-3: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --elevation-4: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --elevation-5: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+  /* Animation Timing */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Breakpoints */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  /* ============================================
+     C4 COLORS
+     ============================================ */
   --c4-person: #0284c7;
   /* Sky 600 */
   --c4-system: #2563eb;
@@ -12,7 +104,9 @@
   --c4-component: #60a5fa;
   /* Blue 400 */
 
-  /* Light theme (default) */
+  /* ============================================
+     LIGHT THEME (default)
+     ============================================ */
   --bg-primary: #ffffff;
   --bg-secondary: #f8fafc;
   /* Slate 50 */
@@ -26,15 +120,18 @@
   /* Slate 500 */
   --text-muted: #94a3b8;
   /* Slate 400 */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --highlight-color: #3b82f6;
 
-  /* Glassmorphism */
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.5);
-  --glass-blur: blur(12px);
+  /* Legacy shadow variables (for backward compatibility) */
+  --shadow-sm: var(--elevation-1);
+  --shadow-md: var(--elevation-3);
+  --shadow-lg: var(--elevation-4);
+
+  /* Enhanced Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-blur: blur(20px) saturate(180%);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
 
   /* Panel Colors */
   --panel-bg: rgba(255, 255, 255, 0.9);
@@ -53,9 +150,29 @@
   --primary-alpha-20: rgba(59, 130, 246, 0.2);
   --primary-alpha-30: rgba(59, 130, 246, 0.3);
   --primary-alpha-50: rgba(59, 130, 246, 0.5);
+
+  /* Map UI library color variables to designer app variables */
+  /* These will be overridden by ThemeProvider, but provide fallbacks */
+  --color-background: var(--bg-primary);
+  --color-surface: var(--bg-secondary);
+  --color-border: var(--border-color);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-muted);
+  --color-primary: var(--highlight-color);
+  --color-primary-hover: var(--highlight-color);
+  --color-primary-active: var(--highlight-color);
+  --color-neutral-200: #e2e8f0;
+  /* Slate 200 for light theme */
+  --color-success-500: #22c55e;
+  --color-error-500: #ef4444;
+  --color-warning-500: #f59e0b;
+  --color-info-500: #3b82f6;
 }
 
-/* Dark theme */
+/* ============================================
+   DARK THEME
+   ============================================ */
 [data-theme="dark"] {
   --bg-primary: #0f172a;
   /* Slate 900 */
@@ -71,14 +188,24 @@
   /* Slate 400 */
   --text-muted: #64748b;
   /* Slate 500 */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3);
-
   --highlight-color: #60a5fa;
 
-  /* Glassmorphism */
-  --glass-bg: rgba(15, 23, 42, 0.7);
-  --glass-border: rgba(51, 65, 85, 0.5);
+  /* Enhanced shadows for dark mode */
+  --elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --elevation-2: 0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px -1px rgba(0, 0, 0, 0.5);
+  --elevation-3: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5);
+  --elevation-4: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+  --elevation-5: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+
+  /* Legacy shadow variables */
+  --shadow-sm: var(--elevation-1);
+  --shadow-md: var(--elevation-3);
+  --shadow-lg: var(--elevation-4);
+
+  /* Enhanced Glassmorphism for dark mode */
+  --glass-bg: rgba(15, 23, 42, 0.8);
+  --glass-border: rgba(51, 65, 85, 0.3);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
 
   --panel-bg: rgba(15, 23, 42, 0.9);
   --panel-border: #334155;
@@ -100,6 +227,23 @@
   --surface-1: #1e293b;
   /* Slate 800 - lighter than bg-primary for contrast */
   --surface-2: #334155;
+
+  /* Map UI library color variables to designer app variables for dark theme */
+  --color-background: var(--bg-primary);
+  --color-surface: var(--bg-secondary);
+  --color-border: var(--border-color);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-muted);
+  --color-primary: var(--highlight-color);
+  --color-primary-hover: var(--highlight-color);
+  --color-primary-active: var(--highlight-color);
+  --color-neutral-200: #1e293b;
+  /* Slate 800 for dark theme */
+  --color-success-500: #22c55e;
+  --color-error-500: #f87171;
+  --color-warning-500: #fbbf24;
+  --color-info-500: #60a5fa;
   /* Slate 700 - provides secondary surface contrast */
   --border: var(--border-color);
   --primary: var(--highlight-color);
@@ -127,7 +271,8 @@ body {
   height: 100vh;
 }
 
-.app {
+.app,
+.app-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -152,6 +297,9 @@ body {
 .header-left {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .header-center {
@@ -163,7 +311,7 @@ body {
   overflow: hidden;
 }
 
-.header-center nav {
+.header-left nav {
   max-width: 100%;
   overflow: hidden;
 }
@@ -208,14 +356,21 @@ body {
 }
 
 /* Breadcrumb dark theme fixes */
-[data-theme="dark"] .app-header .header-center nav button {
+[data-theme="dark"] .app-header .header-left nav button {
   background-color: var(--bg-secondary) !important;
   color: var(--text-primary) !important;
   border-color: var(--border-color) !important;
 }
 
-[data-theme="dark"] .app-header .header-center nav button:hover {
+[data-theme="dark"] .app-header .header-left nav button:hover {
   background-color: var(--bg-tertiary) !important;
+}
+
+.app-branding {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .app-title {
@@ -243,32 +398,37 @@ body {
   }
 }
 
-/* Buttons */
+/* ============================================
+   MODERN BUTTONS
+   ============================================ */
 .upload-btn,
 .demo-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 8px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+  box-shadow: var(--elevation-1);
+  border: none;
 }
 
 .upload-btn {
-  background: var(--c4-system);
+  background: linear-gradient(135deg, var(--c4-system) 0%, #1d4ed8 100%);
   color: white;
-  border: 1px solid transparent;
 }
 
 .upload-btn:hover {
-  background: #1d4ed8;
-  /* Blue 700 */
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--elevation-3);
+}
+
+.upload-btn:active {
+  transform: translateY(0);
+  box-shadow: var(--elevation-1);
 }
 
 .demo-btn {
@@ -279,7 +439,13 @@ body {
 
 .demo-btn:hover {
   background: var(--bg-secondary);
-  border-color: var(--text-secondary);
+  border-color: var(--highlight-color);
+  transform: translateY(-1px);
+  box-shadow: var(--elevation-2);
+}
+
+.demo-btn:active {
+  transform: translateY(0);
 }
 
 .demo-btn.large {
@@ -302,12 +468,21 @@ body {
   position: relative;
   background: transparent;
   overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
   min-height: 0;
   width: 100%;
+  height: 100%;
+  max-height: 100%;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  /* Ensure scroll works even when React Flow is present */
+  touch-action: auto;
 }
 
 /* Ensure tab panels fill available space in the center panel */
-.canvas-container > [role="tabpanel"] {
+.canvas-container>[role="tabpanel"] {
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -317,52 +492,85 @@ body {
 /* Scrollbar styling for scrollable containers */
 .guided-panel::-webkit-scrollbar,
 .canvas-container::-webkit-scrollbar,
-.navigation-panel::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+.navigation-panel::-webkit-scrollbar,
+.actions-menu::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
 }
 
 .guided-panel::-webkit-scrollbar-track,
 .canvas-container::-webkit-scrollbar-track,
-.navigation-panel::-webkit-scrollbar-track {
-  background: transparent;
+.navigation-panel::-webkit-scrollbar-track,
+.actions-menu::-webkit-scrollbar-track {
+  background: var(--bg-secondary, #f8fafc);
+  border-radius: 6px;
 }
 
 .guided-panel::-webkit-scrollbar-thumb,
 .canvas-container::-webkit-scrollbar-thumb,
-.navigation-panel::-webkit-scrollbar-thumb {
-  background-color: var(--border-color);
-  border-radius: 4px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
+.navigation-panel::-webkit-scrollbar-thumb,
+.actions-menu::-webkit-scrollbar-thumb {
+  background-color: var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  border: 2px solid var(--bg-secondary, #f8fafc);
+  min-height: 30px;
+  cursor: pointer;
 }
 
 .guided-panel::-webkit-scrollbar-thumb:hover,
 .canvas-container::-webkit-scrollbar-thumb:hover,
-.navigation-panel::-webkit-scrollbar-thumb:hover {
-  background-color: var(--text-muted);
+.navigation-panel::-webkit-scrollbar-thumb:hover,
+.actions-menu::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-muted, #94a3b8);
+  border-color: var(--bg-secondary, #f8fafc);
+}
+
+.guided-panel::-webkit-scrollbar-thumb:active,
+.canvas-container::-webkit-scrollbar-thumb:active,
+.navigation-panel::-webkit-scrollbar-thumb:active,
+.actions-menu::-webkit-scrollbar-thumb:active {
+  background-color: var(--text-secondary, #64748b);
 }
 
 .guided-panel,
 .canvas-container,
-.navigation-panel {
+.navigation-panel,
+.actions-menu {
   scrollbar-width: thin;
-  scrollbar-color: var(--border-color) transparent;
+  scrollbar-color: var(--border-color, #e2e8f0) var(--bg-secondary, #f8fafc);
+}
+
+[data-theme="dark"] .guided-panel::-webkit-scrollbar-track,
+[data-theme="dark"] .canvas-container::-webkit-scrollbar-track,
+[data-theme="dark"] .navigation-panel::-webkit-scrollbar-track,
+[data-theme="dark"] .actions-menu::-webkit-scrollbar-track {
+  background: var(--bg-tertiary, #1e293b);
 }
 
 [data-theme="dark"] .guided-panel::-webkit-scrollbar-thumb,
 [data-theme="dark"] .canvas-container::-webkit-scrollbar-thumb,
-[data-theme="dark"] .navigation-panel::-webkit-scrollbar-thumb {
-  background-color: var(--border-color);
+[data-theme="dark"] .navigation-panel::-webkit-scrollbar-thumb,
+[data-theme="dark"] .actions-menu::-webkit-scrollbar-thumb {
+  background-color: var(--border-color, #334155);
+  border-color: var(--bg-tertiary, #1e293b);
 }
 
 [data-theme="dark"] .guided-panel::-webkit-scrollbar-thumb:hover,
 [data-theme="dark"] .canvas-container::-webkit-scrollbar-thumb:hover,
-[data-theme="dark"] .navigation-panel::-webkit-scrollbar-thumb:hover {
-  background-color: var(--text-secondary);
+[data-theme="dark"] .navigation-panel::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .actions-menu::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-secondary, #94a3b8);
+  border-color: var(--bg-tertiary, #1e293b);
 }
 
-/* Drop Zone */
+[data-theme="dark"] .guided-panel,
+[data-theme="dark"] .canvas-container,
+[data-theme="dark"] .navigation-panel,
+[data-theme="dark"] .actions-menu {
+  scrollbar-color: var(--border-color, #334155) var(--bg-tertiary, #1e293b);
+}
+
+/* Drop Zone - Modernized Empty State */
 .drop-zone {
   position: absolute;
   inset: 0;
@@ -372,36 +580,57 @@ body {
   justify-content: center;
   color: var(--text-secondary);
   text-align: center;
-  padding: 40px;
-  gap: 24px;
-  background: radial-gradient(circle at center, var(--bg-primary), var(--bg-secondary));
+  padding: var(--space-10, 2.5rem);
+  gap: var(--space-6, 1.5rem);
+  background: radial-gradient(circle at center,
+      var(--bg-primary) 0%,
+      var(--bg-secondary) 100%);
+  animation: fadeIn 0.4s ease-out;
+}
+
+.drop-zone svg {
+  opacity: 0.8;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 .drop-zone h2 {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: var(--text-3xl, 1.875rem);
+  font-weight: var(--font-bold, 700);
   color: var(--text-primary);
-  margin-top: 8px;
+  margin-top: var(--space-2, 0.5rem);
   letter-spacing: -0.02em;
-  line-height: 1.2;
+  line-height: var(--leading-tight, 1.25);
 }
 
 .drop-zone p {
-  font-size: 16px;
+  font-size: var(--text-base, 1rem);
   color: var(--text-secondary);
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2, 0.5rem);
   max-width: 500px;
-  line-height: 1.6;
+  line-height: var(--leading-relaxed, 1.75);
 }
 
 .drop-zone code {
   background: var(--bg-tertiary);
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
+  border-radius: var(--radius-sm, 0.25rem);
   font-family: 'Monaco', 'Courier New', monospace;
-  font-size: 14px;
+  font-size: var(--text-sm, 0.875rem);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
+  box-shadow: var(--elevation-1, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
 }
 
 .loading {
@@ -411,8 +640,12 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 24px;
-  font-size: 16px;
+  gap: var(--space-6, 1.5rem);
+  font-size: var(--text-base, 1rem);
+  background: var(--bg-secondary);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: fadeIn var(--transition-base, 0.2s ease-out);
   color: var(--text-secondary);
   background: var(--glass-bg);
   backdrop-filter: blur(4px);
@@ -420,9 +653,10 @@ body {
 
 .loading p {
   margin: 0;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: var(--text-base, 1rem);
+  font-weight: var(--font-medium, 500);
   color: var(--text-primary);
+  animation: fadeIn 0.4s ease-out 0.2s both;
 }
 
 /* SrujaLoader animations */
@@ -566,11 +800,11 @@ body {
   background: var(--bg-secondary);
 }
 
-/* View Tabs */
+/* View Tabs - Modernized */
 .view-tabs {
   display: flex;
-  gap: 8px;
-  padding: 12px 24px;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-3, 0.75rem) var(--space-6, 1.5rem);
   background: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
   z-index: 10;
@@ -580,31 +814,55 @@ body {
 .view-tab {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  font-size: 14px;
-  font-weight: 500;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: var(--font-medium, 500);
   background: transparent;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-md, 0.5rem);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--transition-base, 0.2s cubic-bezier(0.4, 0, 0.2, 1));
   position: relative;
   white-space: nowrap;
 }
 
 .view-tab:hover {
-  background: var(--bg-primary);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
+  transform: translateY(-1px);
 }
 
 .view-tab.active {
   background: var(--bg-primary);
   color: var(--text-primary);
-  border-color: var(--c4-system);
-  box-shadow: 0 0 0 1px var(--c4-system);
-  font-weight: 600;
+  border-color: var(--highlight-color);
+  font-weight: var(--font-semibold, 600);
+}
+
+.view-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: var(--space-2, 0.5rem);
+  right: var(--space-2, 0.5rem);
+  height: 2px;
+  background: var(--highlight-color);
+  border-radius: 2px 2px 0 0;
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
 }
 
 [data-theme="dark"] .view-tab.active {
@@ -623,6 +881,8 @@ body {
   outline: 2px solid var(--highlight-color);
   outline-offset: 2px;
   border-color: var(--highlight-color);
+  border-radius: var(--radius-md, 0.5rem);
+  box-shadow: 0 0 0 4px var(--primary-alpha-20, rgba(59, 130, 246, 0.2));
 }
 
 .view-tab.view-tab-primary:focus-visible {
@@ -656,6 +916,19 @@ body {
 [data-theme="dark"] .view-tab:not(.active) .tab-badge {
   background: var(--text-muted);
   color: var(--bg-primary);
+}
+
+.tab-badge.edit-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  font-size: 9px;
+  padding: 2px 5px;
+  margin-left: 4px;
+}
+
+[data-theme="dark"] .tab-badge.edit-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
 }
 
 /* Primary Tab (Builder) - Extra Prominent */
@@ -722,7 +995,7 @@ body {
 }
 
 .btn-label {
-  display: none;
+  display: inline-block;
 }
 
 /* Mode Toggle Group (Segmented Control) */
@@ -780,7 +1053,7 @@ body {
   .mode-label {
     display: none;
   }
-  
+
   .mode-btn {
     min-width: 36px;
     width: 36px;
@@ -821,16 +1094,30 @@ body {
   border-color: rgba(96, 165, 250, 0.25);
 }
 
-/* Empty State Actions */
+/* Empty State Actions - Modernized */
 .empty-state-actions {
   display: flex;
-  gap: 16px;
-  margin-top: 32px;
+  gap: var(--space-3, 0.75rem);
+  margin-top: var(--space-8, 2rem);
+  animation: slideUp 0.5s ease-out 0.2s both;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .upload-btn.large {
-  padding: 12px 24px;
-  font-size: 15px;
+  padding: var(--space-3, 0.75rem) var(--space-6, 1.5rem);
+  font-size: var(--text-base, 1rem);
+  font-weight: var(--font-semibold, 600);
 }
 
 /* Utility classes */
@@ -881,7 +1168,11 @@ body {
   position: relative;
 }
 
-/* Responsive Design */
+/* ============================================
+   RESPONSIVE DESIGN - Enhanced Breakpoints
+   ============================================ */
+
+/* Large screens and below (Tablet landscape) */
 @media (max-width: 1024px) {
   .app-header {
     padding: 0 16px;
@@ -966,7 +1257,8 @@ body {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
-    padding: 12px 16px;
+    padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+    gap: var(--space-2, 0.5rem);
   }
 
   .view-tabs::-webkit-scrollbar {
@@ -975,21 +1267,29 @@ body {
 
   .view-tabs::-webkit-scrollbar-thumb {
     background: var(--border-color);
-    border-radius: 2px;
+    border-radius: var(--radius-full, 9999px);
   }
 
   .view-tab {
     flex-shrink: 0;
-    padding: 6px 12px;
-    font-size: 13px;
+    padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+    font-size: var(--text-sm, 0.875rem);
   }
 
   .view-tab svg {
     width: 14px;
     height: 14px;
   }
+
+  /* Better touch targets */
+  .action-btn,
+  .mode-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
+/* Medium screens and below (Tablet portrait / Mobile landscape) */
 @media (max-width: 768px) {
 
   /* Hide labels on smaller screens */
@@ -999,18 +1299,21 @@ body {
 
   .action-btn {
     padding: 0;
-    width: 36px;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
     gap: 0;
   }
 
   .mode-toggle-group {
-    gap: 0;
+    gap: var(--space-1, 0.25rem);
   }
 
   .mode-btn {
-    padding: 8px;
-    min-width: 36px;
-    width: 36px;
+    padding: var(--space-2, 0.5rem);
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
     gap: 0;
   }
 
@@ -1019,9 +1322,9 @@ body {
   }
 
   .app-header {
-    height: 52px;
-    padding: 0 12px;
-    gap: 8px;
+    height: 56px;
+    padding: 0 var(--space-3, 0.75rem);
+    gap: var(--space-2, 0.5rem);
   }
 
   .header-center {
@@ -1029,18 +1332,19 @@ body {
   }
 
   .app-title {
-    font-size: 16px;
+    font-size: var(--text-lg, 1.125rem);
   }
 
   .view-tabs {
-    padding: 8px 12px;
-    gap: 6px;
+    padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+    gap: var(--space-2, 0.5rem);
   }
 
   .view-tab {
-    padding: 6px 10px;
-    font-size: 12px;
-    gap: 4px;
+    padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+    font-size: var(--text-xs, 0.75rem);
+    gap: var(--space-1, 0.25rem);
+    min-height: 44px;
   }
 
   .view-tab svg {
@@ -1049,82 +1353,141 @@ body {
   }
 
   .drop-zone {
-    padding: 24px;
+    padding: var(--space-6, 1.5rem);
+    gap: var(--space-4, 1rem);
   }
 
   .drop-zone h2 {
-    font-size: 20px;
+    font-size: var(--text-xl, 1.25rem);
   }
 
   .drop-zone p {
-    font-size: 14px;
+    font-size: var(--text-sm, 0.875rem);
   }
 
   .demo-btn.large {
-    padding: 10px 20px;
-    font-size: 14px;
+    padding: var(--space-3, 0.75rem) var(--space-5, 1.25rem);
+    font-size: var(--text-sm, 0.875rem);
   }
 }
 
+/* Small screens and below (Mobile portrait) */
 @media (max-width: 480px) {
   .app-header {
-    height: 48px;
-    padding: 0 8px;
+    height: 52px;
+    padding: 0 var(--space-2, 0.5rem);
   }
 
   .header-right {
-    gap: 8px;
+    gap: var(--space-2, 0.5rem);
   }
 
   .view-tabs {
-    padding: 6px 8px;
+    padding: var(--space-2, 0.5rem) var(--space-2, 0.5rem);
+    gap: var(--space-1, 0.25rem);
   }
 
   .view-tab {
-    padding: 4px 8px;
+    padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
     min-width: 44px;
+    min-height: 44px;
     justify-content: center;
+    font-size: var(--text-xs, 0.75rem);
+  }
+
+  .view-tab span {
+    display: none;
   }
 
   .tab-badge {
-    font-size: 10px;
-    padding: 1px 4px;
+    font-size: 8px;
+    padding: 1px var(--space-1, 0.25rem);
+  }
+
+  /* Stack action buttons vertically on very small screens */
+  .header-right {
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 }
 
-/* Actions menu */
+/* Extra small screens */
+@media (max-width: 360px) {
+  .app-header {
+    padding: 0 var(--space-1, 0.25rem);
+  }
+
+  .view-tabs {
+    padding: var(--space-1, 0.25rem);
+  }
+
+  .view-tab {
+    padding: var(--space-1, 0.25rem);
+    min-width: 40px;
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+  .app-header {
+    height: 48px;
+  }
+
+  .view-tabs {
+    padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
+  }
+}
+
+/* Actions dropdown container - positioned relative for absolute menu */
+.actions-dropdown-container {
+  position: relative;
+}
+
+/* Actions menu - Modernized */
 .actions-menu {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: var(--shadow-md);
-  padding: 4px;
+  position: absolute;
+  top: calc(100% + var(--space-2, 0.5rem));
+  right: 0;
+  background: var(--glass-bg, rgba(255, 255, 255, 0.95));
+  backdrop-filter: var(--glass-blur, blur(20px) saturate(180%));
+  -webkit-backdrop-filter: var(--glass-blur, blur(20px) saturate(180%));
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.3));
+  border-radius: var(--radius-lg, 0.75rem);
+  box-shadow: var(--glass-shadow, 0 8px 32px 0 rgba(31, 38, 135, 0.37));
+  padding: var(--space-1, 0.25rem);
   min-width: 220px;
+  z-index: 1000;
+  animation: fadeIn var(--transition-base, 0.2s ease-out);
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
 }
 
 .action-item {
   width: 100%;
-  padding: 10px 12px;
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
   background: transparent;
   border: none;
   text-align: left;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--radius-md, 0.5rem);
   color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  transition: background-color 0.15s ease;
+  gap: var(--space-3, 0.75rem);
+  font-size: var(--text-sm, 0.875rem);
+  transition: all var(--transition-fast, 0.15s cubic-bezier(0.4, 0, 0.2, 1));
 }
 
 .action-item:hover {
   background: var(--bg-tertiary);
+  transform: translateX(2px);
 }
 
 .action-item:focus-visible {
   outline: 2px solid var(--highlight-color);
-  outline-offset: -2px;
+  outline-offset: 2px;
+  border-radius: var(--radius-md, 0.5rem);
+  box-shadow: 0 0 0 4px var(--primary-alpha-20, rgba(59, 130, 246, 0.2));
 }
 
 .action-item:disabled {

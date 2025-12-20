@@ -130,29 +130,44 @@ func (d *Document) rebuildDefs() {
 	currentSystem := ""
 	currentContainer := ""
 
-	extractID := func(trimmed, prefix string) (string, bool) {
-		if !strings.HasPrefix(trimmed, prefix) {
-			return "", false
-		}
-		rest := strings.TrimSpace(strings.TrimPrefix(trimmed, prefix))
-		if rest == "" {
-			return "", false
-		}
-		end := 0
-		for end < len(rest) {
-			c := rest[end]
-			if c == ' ' || c == '"' || c == '{' {
-				break
+	extractID := func(trimmed, keyword string) (string, bool) {
+		// Try simple prefix: keyword ID ...
+		prefix := keyword + " "
+		if strings.HasPrefix(trimmed, prefix) {
+			rest := strings.TrimSpace(strings.TrimPrefix(trimmed, prefix))
+			if rest != "" {
+				end := 0
+				for end < len(rest) {
+					c := rest[end]
+					if c == ' ' || c == '"' || c == '{' {
+						break
+					}
+					end++
+				}
+				return rest[:end], true
 			}
-			end++
 		}
-		return rest[:end], true
+
+		// Try assignment: ID = keyword ...
+		eqIdx := strings.Index(trimmed, "=")
+		if eqIdx != -1 {
+			left := strings.TrimSpace(trimmed[:eqIdx])
+			right := strings.TrimSpace(trimmed[eqIdx+1:])
+			if strings.HasPrefix(right, keyword) {
+				// Check boundary
+				if len(right) == len(keyword) || right[len(keyword)] == ' ' || right[len(keyword)] == '"' || right[len(keyword)] == '{' {
+					return left, true
+				}
+			}
+		}
+
+		return "", false
 	}
 
 	for i, line := range d.lines {
 		trimmed := strings.TrimSpace(line)
 		// System
-		if id, ok := extractID(trimmed, "system "); ok {
+		if id, ok := extractID(trimmed, "system"); ok {
 			col := strings.Index(line, id)
 			if col < 0 {
 				col = 0
@@ -168,7 +183,7 @@ func (d *Document) rebuildDefs() {
 			continue
 		}
 		// Container
-		if id, ok := extractID(trimmed, "container "); ok {
+		if id, ok := extractID(trimmed, "container"); ok {
 			col := strings.Index(line, id)
 			if col < 0 {
 				col = 0
@@ -190,7 +205,7 @@ func (d *Document) rebuildDefs() {
 			continue
 		}
 		// Component
-		if id, ok := extractID(trimmed, "component "); ok {
+		if id, ok := extractID(trimmed, "component"); ok {
 			col := strings.Index(line, id)
 			if col < 0 {
 				col = 0
@@ -216,7 +231,7 @@ func (d *Document) rebuildDefs() {
 			continue
 		}
 		// DataStore
-		if id, ok := extractID(trimmed, "datastore "); ok {
+		if id, ok := extractID(trimmed, "datastore"); ok {
 			col := strings.Index(line, id)
 			if col < 0 {
 				col = 0
@@ -234,7 +249,7 @@ func (d *Document) rebuildDefs() {
 			continue
 		}
 		// Queue
-		if id, ok := extractID(trimmed, "queue "); ok {
+		if id, ok := extractID(trimmed, "queue"); ok {
 			col := strings.Index(line, id)
 			if col < 0 {
 				col = 0
@@ -252,7 +267,7 @@ func (d *Document) rebuildDefs() {
 			continue
 		}
 		// Person
-		if id, ok := extractID(trimmed, "person "); ok {
+		if id, ok := extractID(trimmed, "person"); ok {
 			col := strings.Index(line, id)
 			if col < 0 {
 				col = 0
@@ -260,6 +275,42 @@ func (d *Document) rebuildDefs() {
 			r := lsp.Range{Start: lsp.Position{Line: i, Character: col}, End: lsp.Position{Line: i, Character: col + len(id)}}
 			d.defs[id] = r
 			d.defKinds[id] = lsp.SKVariable
+			d.defContainers[id] = ""
+			continue
+		}
+		// ADR
+		if id, ok := extractID(trimmed, "adr"); ok {
+			col := strings.Index(line, id)
+			if col < 0 {
+				col = 0
+			}
+			r := lsp.Range{Start: lsp.Position{Line: i, Character: col}, End: lsp.Position{Line: i, Character: col + len(id)}}
+			d.defs[id] = r
+			d.defKinds[id] = lsp.SKString
+			d.defContainers[id] = ""
+			continue
+		}
+		// Requirement
+		if id, ok := extractID(trimmed, "requirement"); ok {
+			col := strings.Index(line, id)
+			if col < 0 {
+				col = 0
+			}
+			r := lsp.Range{Start: lsp.Position{Line: i, Character: col}, End: lsp.Position{Line: i, Character: col + len(id)}}
+			d.defs[id] = r
+			d.defKinds[id] = lsp.SKProperty
+			d.defContainers[id] = ""
+			continue
+		}
+		// Policy
+		if id, ok := extractID(trimmed, "policy"); ok {
+			col := strings.Index(line, id)
+			if col < 0 {
+				col = 0
+			}
+			r := lsp.Range{Start: lsp.Position{Line: i, Character: col}, End: lsp.Position{Line: i, Character: col + len(id)}}
+			d.defs[id] = r
+			d.defKinds[id] = lsp.SKConstant
 			d.defContainers[id] = ""
 			continue
 		}

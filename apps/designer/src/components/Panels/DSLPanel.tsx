@@ -7,14 +7,18 @@ import { convertDslToJson } from "../../wasm";
 import "./DSLPanel.css";
 
 export function DSLPanel() {
-  const data = useArchitectureStore((s) => s.data);
+  const likec4Model = useArchitectureStore((s) => s.likec4Model);
   const storeDslSource = useArchitectureStore((s) => s.dslSource);
   const setDslSourceStore = useArchitectureStore((s) => s.setDslSource);
   const loadFromDSL = useArchitectureStore((s) => s.loadFromDSL);
-  const currentExampleFile = useArchitectureStore((s) => s.currentExampleFile);
   const { mode } = useTheme();
-  const [dslSource, setDslSourceLocal] = useState<string>("");
-  const [loading, setLoading] = useState(false);
+  // Initialize local state from store DSL source - use function initializer to get current store value
+  const [dslSource, setDslSourceLocal] = useState<string>(() => {
+    // Get current store value at initialization time
+    const currentStoreDsl = useArchitectureStore.getState().dslSource;
+    return currentStoreDsl || "";
+  });
+  const [loading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -35,48 +39,49 @@ export function DSLPanel() {
     return () => mediaQuery.removeEventListener("change", updateTheme);
   }, [mode]);
 
-  // Load DSL from store when data changes (URL loading is handled in App.tsx)
+  // Sync local state with store DSL source - always sync when store changes or component mounts
   useEffect(() => {
-    if (!data) {
+    // Always sync from store when it changes, regardless of current local state
+    // This ensures that when component remounts (e.g., after tab switch), it gets the latest value
+    if (storeDslSource !== undefined) {
+      if (storeDslSource !== null) {
+        // Only update if different to avoid unnecessary re-renders
+        if (storeDslSource !== dslSource) {
+          console.log("[DSLPanel] Syncing local DSL from store", { 
+            storeLength: storeDslSource.length, 
+            localLength: dslSource.length 
+          });
+          setDslSourceLocal(storeDslSource);
+        }
+      } else if (storeDslSource === null && dslSource && dslSource.trim() && !dslSource.includes("DSL source not available")) {
+        // If store DSL is cleared but we have local DSL, clear local too
+        setDslSourceLocal("");
+      }
+    }
+  }, [storeDslSource]); // Only depend on storeDslSource, not dslSource to avoid circular updates
+
+  // Initial load and fallback logic - runs when model or store DSL changes
+  useEffect(() => {
+    // If we have DSL source in store, use it (handled by sync effect above)
+    if (storeDslSource) {
+      return;
+    }
+
+    // If no model and no DSL, clear
+    if (!likec4Model && !storeDslSource) {
       setDslSourceLocal("");
       return;
     }
 
-    // Skip if we already loaded from URL
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("share") || params.get("dsl")) {
-      // URL DSL is loaded in App.tsx, just sync the local state
-      if (storeDslSource) {
-        setDslSourceLocal(storeDslSource);
-      }
-      return;
+    // If we have a model but no DSL source, provide a fallback message
+    if (likec4Model && !storeDslSource && !loading) {
+      // @ts-ignore
+      const archName = likec4Model._metadata?.name || likec4Model.project?.name || "Architecture";
+      setDslSourceLocal(
+        `// Architecture: ${archName}\n// DSL source not available for this architecture.\n// This architecture may have been loaded from JSON or a custom file.`
+      );
     }
-
-    // Sync with store DSL source when it changes (e.g., from form edits)
-    if (storeDslSource && storeDslSource !== dslSource) {
-      setDslSourceLocal(storeDslSource);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      // Use DSL from store if available (from examples)
-      if (storeDslSource) {
-        setDslSourceLocal(storeDslSource);
-      } else {
-        const archName = data.metadata?.name || data.architecture?.name || "";
-        setDslSourceLocal(
-          `// Architecture: ${archName}\n// DSL source not available for this architecture.\n// This architecture may have been loaded from JSON or a custom file.`
-        );
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      setError(`Failed to load DSL: ${message}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [data, storeDslSource, currentExampleFile, dslSource]);
+  }, [likec4Model, storeDslSource, loading]);
 
   // Debounced DSL update handler
   const handleDSLChange = useCallback(
@@ -249,7 +254,7 @@ export function DSLPanel() {
 
   // ... render logic
 
-  if (!data) {
+  if (!likec4Model) {
     return (
       <div className="dsl-panel empty">
         <p>No architecture loaded</p>

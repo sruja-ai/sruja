@@ -166,22 +166,6 @@ func TestMetaString_Person(t *testing.T) {
 	}
 }
 
-func TestMetaString_Architecture(t *testing.T) {
-	arch := &language.Architecture{
-		Metadata: []*language.MetaEntry{
-			{Key: "level", Value: stringPtrMeta("arch")},
-		},
-	}
-
-	value, ok := arch.MetaString("level")
-	if !ok {
-		t.Error("MetaString should find existing key")
-	}
-	if value != "arch" {
-		t.Errorf("Expected 'arch', got %q", value)
-	}
-}
-
 func TestHasMeta_System(t *testing.T) {
 	sys := &language.System{
 		Metadata: []*language.MetaEntry{
@@ -253,18 +237,6 @@ func TestHasMeta_Person(t *testing.T) {
 	}
 
 	if !p.HasMeta("persona") {
-		t.Error("HasMeta should return true for existing key")
-	}
-}
-
-func TestHasMeta_Architecture(t *testing.T) {
-	arch := &language.Architecture{
-		Metadata: []*language.MetaEntry{
-			{Key: "level", Value: stringPtrMeta("arch")},
-		},
-	}
-
-	if !arch.HasMeta("level") {
 		t.Error("HasMeta should return true for existing key")
 	}
 }
@@ -346,19 +318,6 @@ func TestAllMetadata_Person(t *testing.T) {
 	}
 
 	result := p.AllMetadata()
-	if len(result) != 1 {
-		t.Errorf("Expected 1 metadata entry, got %d", len(result))
-	}
-}
-
-func TestAllMetadata_Architecture(t *testing.T) {
-	arch := &language.Architecture{
-		Metadata: []*language.MetaEntry{
-			{Key: "level", Value: stringPtrMeta("arch")},
-		},
-	}
-
-	result := arch.AllMetadata()
 	if len(result) != 1 {
 		t.Errorf("Expected 1 metadata entry, got %d", len(result))
 	}
@@ -450,7 +409,7 @@ func TestMetaMap_EmptyPrefix(t *testing.T) {
 func TestMetaMap_KeyShorterThanPrefix(t *testing.T) {
 	sys := &language.System{
 		Metadata: []*language.MetaEntry{
-			{Key: "a", Value: stringPtr("value")},
+			{Key: "a", Value: stringPtrMeta("value")},
 		},
 	}
 

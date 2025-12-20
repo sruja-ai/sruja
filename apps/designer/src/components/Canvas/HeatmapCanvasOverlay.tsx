@@ -1,3 +1,4 @@
+// apps/designer/src/components/Canvas/HeatmapCanvasOverlay.tsx
 import React, { useEffect, useRef } from "react";
 import { useReactFlow, useStore } from "@xyflow/react";
 
@@ -6,15 +7,19 @@ interface HeatmapCanvasOverlayProps {
   visible: boolean;
 }
 
+/**
+ * HeatmapCanvasOverlay - Shows quality heatmap overlay on diagram
+ * 
+ * NOTE: This component requires ReactFlow and is not compatible with LikeC4 mode.
+ * It should only be rendered when ReactFlow is available. The parent component
+ * should check for ReactFlow availability before rendering this.
+ */
 export const HeatmapCanvasOverlay: React.FC<HeatmapCanvasOverlayProps> = ({
   nodeBadness,
   visible,
 }) => {
-  const { getViewport } = useReactFlow();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  // Subscribe to transform changes to redraw efficiently
-  // xyflow/react store subscription (internal but effective)
+  const { getViewport } = useReactFlow();
   const transform = useStore((s) => s.transform);
 
   useEffect(() => {
@@ -47,13 +52,7 @@ export const HeatmapCanvasOverlay: React.FC<HeatmapCanvasOverlayProps> = ({
       Object.entries(nodeBadness).forEach(([id, bad]) => {
         if (bad < 0.05) return;
 
-        // We need to find the node's DOM element OR rely on React Flow internal state.
-        // DOM lookup is safer for exact screen position if we don't have node positions passed in.
-        // However, accessing DOM in render loop is slow.
-        // Better: Use `useStore` to get nodes?
-        // Or: assume `nodeBadness` is computed from *current* nodes, but we need their positions.
-        // To keep it simple/fast: DOM lookup for now, or pass nodes prop.
-
+        // Find the node's DOM element
         const nodeEl = document.querySelector(`[data-id="${id}"]`);
         if (!nodeEl) return;
 
@@ -84,14 +83,8 @@ export const HeatmapCanvasOverlay: React.FC<HeatmapCanvasOverlayProps> = ({
       ctx.setTransform(1, 0, 0, 1, 0, 0);
     };
 
-    // Draw on mount and updates
-    // Use requestAnimationFrame for smoothness
-
     const renderLoop = () => {
       draw();
-      // We don't need a continuous loop if we subscribe to events,
-      // but for smooth dragging it's often easier.
-      // For now, draw once per effect trigger (metrics/transform change).
     };
 
     renderLoop();

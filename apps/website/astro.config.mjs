@@ -3,6 +3,7 @@
 import { defineConfig } from "astro/config";
 import react from "@astrojs/react";
 import mdx from "@astrojs/mdx";
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -38,12 +39,25 @@ export default defineConfig({
   integrations: [react(), mdx()],
   output: "static",
   vite: {
-    plugins: [tailwindcss()],
+    plugins: [
+      tailwindcss(),
+      nodePolyfills(),
+      {
+        name: 'suppress-node-resolve',
+        enforce: 'pre',
+        resolveId(id) {
+          if (id === 'fs/promises' || id === 'path' || id === 'url') {
+            return { id, external: true };
+          }
+          return null;
+        },
+      },
+    ],
     server: {
       cors: true,
       watch: {
         // Watch workspace packages for changes
-        ignored: ["!**/node_modules/@sruja/**"],
+        ignored: ["!**/node_modules/@sruja/**", "**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "**/__tests__/**"],
       },
       fs: {
         allow: [
@@ -66,7 +80,7 @@ export default defineConfig({
         "mermaid",
         "lz-string",
       ],
-      exclude: ["@sruja/shared", "@sruja/ui", "@sruja/layout", "@sruja/diagram", "@sruja/designer"],
+      exclude: ["@sruja/shared", "@sruja/ui", "@sruja/layout", "@sruja/diagram", "@sruja/designer", "@likec4/core", "@likec4/diagram"],
     },
     ssr: {
       // Static site - no SSR, but Vite still uses this config during build

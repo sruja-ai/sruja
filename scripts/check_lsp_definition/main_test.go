@@ -19,7 +19,7 @@ func TestFindDefinitionOnExamples(t *testing.T) {
 	uri := glsp.DocumentURI(path)
 	ws.AddDocument(uri, string(b), 1)
 
-	ids := []string{"Sruja.CLI", "Sruja.Engine", "Sruja.Language", "Sruja.LSP", "Sruja.WASM", "Sruja.Playground", "Sruja.Website"}
+	ids := []string{"sruja.cli", "sruja.engine", "sruja.language", "sruja.lsp", "sruja.wasm", "sruja.playground", "sruja.website"}
 	for _, id := range ids {
 		u, r, ok := ws.FindDefinition(id)
 		if !ok {

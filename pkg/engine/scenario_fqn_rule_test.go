@@ -30,49 +30,49 @@ func TestScenarioFQNRule_Validate(t *testing.T) {
 	}{
 		{
 			name:      "valid fully qualified reference",
-			input:     `architecture "Test" { system API "API" scenario S1 "Test" { API -> API } }`,
+			input:     `model { system API "API" scenario S1 "Test" { API -> API } }`,
 			wantError: false,
 		},
 		{
 			name:      "valid unqualified reference - unique",
-			input:     `architecture "Test" { system API "API" scenario S1 "Test" { API -> API } }`,
+			input:     `model { system API "API" scenario S1 "Test" { API -> API } }`,
 			wantError: false,
 		},
 		{
 			name:          "undefined reference",
-			input:         `architecture "Test" { scenario S1 "Test" { Unknown -> Unknown } }`,
+			input:         `model { scenario S1 "Test" "Test scenario" { Unknown -> Unknown } }`,
 			wantError:     true,
 			errorContains: "undefined element",
 		},
 		{
 			name:      "ambiguous reference",
-			input:     `architecture "Test" { system API "API" { container Web "Web" { component Auth "Auth" } } system Backend "Backend" { container Web "Web" { component Auth "Auth" } } scenario S1 "Test" { API.Web.Auth -> Backend.Web.Auth } }`,
+			input:     `model { API = system "API" { Web = container "Web" { Auth = component "Auth" } } Backend = system "Backend" { Web = container "Web" { Auth = component "Auth" } } scenario S1 "Test" "Test scenario" { API.Web.Auth -> Backend.Web.Auth } }`,
 			wantError: false, // Using fully qualified names should not be ambiguous
 		},
 		{
 			name:      "valid reference in flow",
-			input:     `architecture "Test" { system API "API" flow F1 "Test" { API -> API } }`,
+			input:     `model { API = system "API" flow F1 "Test" "Test flow" { API -> API } }`,
 			wantError: false,
 		},
 		{
 			name:          "undefined reference in flow",
-			input:         `architecture "Test" { flow F1 "Test" { Unknown -> Unknown } }`,
+			input:         `model { flow F1 "Test" "Test flow" { Unknown -> Unknown } }`,
 			wantError:     true,
 			errorContains: "undefined element",
 		},
 		{
 			name:      "valid nested system reference",
-			input:     `architecture "Test" { system API "API" { container Web "Web" } scenario S1 "Test" { API.Web -> API.Web } }`,
+			input:     `model { API = system "API" { Web = container "Web" } scenario S1 "Test" "Test scenario" { API.Web -> API.Web } }`,
 			wantError: false,
 		},
 		{
 			name:      "valid component reference",
-			input:     `architecture "Test" { system API "API" { container Web "Web" { component Auth "Auth" } } scenario S1 "Test" { API.Web.Auth -> API.Web.Auth } }`,
+			input:     `model { API = system "API" { Web = container "Web" { Auth = component "Auth" } } scenario S1 "Test" "Test scenario" { API.Web.Auth -> API.Web.Auth } }`,
 			wantError: false,
 		},
 		{
 			name:      "valid person reference",
-			input:     `architecture "Test" { person User "User" scenario S1 "Test" { User -> User } }`,
+			input:     `model { User = person "User" scenario S1 "Test" "Test scenario" { User -> User } }`,
 			wantError: false,
 		},
 		{
@@ -82,7 +82,7 @@ func TestScenarioFQNRule_Validate(t *testing.T) {
 		},
 		{
 			name:      "empty scenario",
-			input:     `architecture "Test" { scenario S1 "Test" { } }`,
+			input:     `model { scenario S1 "Test" "Test scenario" { } }`,
 			wantError: false,
 		},
 	}
@@ -139,7 +139,7 @@ func TestScenarioFQNRule_IntegrationWithValidator(t *testing.T) {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	input := `architecture "Test" {
+	input := `model {
 		scenario S1 "Test" {
 			Unknown -> Unknown
 		}

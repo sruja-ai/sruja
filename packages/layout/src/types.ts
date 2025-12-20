@@ -40,3 +40,19 @@ export type LayoutConfig = {
   spacingY: number
   spacingX: number
 }
+
+export interface PositionedC4Node {
+  nodeId: string;
+  node?: any;
+  bbox: Rect;
+  contentBox: Rect;
+  labelBox: Rect;
+  parentId?: string;
+  childrenIds: string[];
+  depth: number;
+  level: string;
+  collapsed: boolean;
+  visible: boolean;
+  zIndex: number;
+  ports: any[];
+}

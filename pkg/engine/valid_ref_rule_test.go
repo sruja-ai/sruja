@@ -10,21 +10,29 @@ import (
 
 func TestValidReferenceRule_EmptyArchitecture(t *testing.T) {
 	program := &language.Program{
-		Architecture: nil,
+		Model: nil,
 	}
 
 	rule := &engine.ValidReferenceRule{}
 	errs := rule.Validate(program)
 	if len(errs) != 0 {
-		t.Errorf("Expected 0 errors for nil architecture, got %d", len(errs))
+		t.Errorf("Expected 0 errors for nil model, got %d", len(errs))
 	}
 }
 
 func TestValidReferenceRule_NilRelation(_ *testing.T) {
-	program := &language.Program{
-		Architecture: &language.Architecture{
-			Relations: []*language.Relation{nil},
-		},
+	parser, err := language.NewParser()
+	if err != nil {
+		return
+	}
+
+	dsl := `model {
+		Sys = system "System"
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		return
 	}
 
 	rule := &engine.ValidReferenceRule{}
@@ -34,12 +42,10 @@ func TestValidReferenceRule_NilRelation(_ *testing.T) {
 }
 
 func TestValidReferenceRule_UndefinedFrom(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Sys "System" {}
-    Undefined -> Sys "Uses"
-}
-`
+	dsl := `model {
+		Sys = system "System"
+		Undefined -> Sys "Uses"
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.ValidReferenceRule{}
@@ -60,12 +66,10 @@ architecture "Test" {
 }
 
 func TestValidReferenceRule_UndefinedTo(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Sys "System" {}
-    Sys -> Undefined "Uses"
-}
-`
+	dsl := `model {
+		Sys = system "System"
+		Sys -> Undefined "Uses"
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.ValidReferenceRule{}
@@ -86,14 +90,12 @@ architecture "Test" {
 }
 
 func TestValidReferenceRule_SystemLevelRelations(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Sys "System" {
-        container Cont "Container" {}
-        Sys -> Cont "Uses"
-    }
-}
-`
+	dsl := `model {
+		Sys = system "System" {
+			Cont = container "Container"
+			Sys -> Cont "Uses"
+		}
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.ValidReferenceRule{}
@@ -104,16 +106,14 @@ architecture "Test" {
 }
 
 func TestValidReferenceRule_ContainerLevelRelations(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Sys "System" {
-        container Cont "Container" {
-            component Comp "Component" {}
-            Cont -> Comp "Uses"
-        }
-    }
-}
-`
+	dsl := `model {
+		Sys = system "System" {
+			Cont = container "Container" {
+				Comp = component "Component"
+				Cont -> Comp "Uses"
+			}
+		}
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.ValidReferenceRule{}
@@ -124,17 +124,15 @@ architecture "Test" {
 }
 
 func TestValidReferenceRule_ComponentLevelRelations(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Sys "System" {
-        container Cont "Container" {
-            component Comp1 "Component 1" {}
-            component Comp2 "Component 2" {}
-            Comp1 -> Comp2 "Uses"
-        }
-    }
-}
-`
+	dsl := `model {
+		Sys = system "System" {
+			Cont = container "Container" {
+				Comp1 = component "Component 1"
+				Comp2 = component "Component 2"
+				Comp1 -> Comp2 "Uses"
+			}
+		}
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.ValidReferenceRule{}

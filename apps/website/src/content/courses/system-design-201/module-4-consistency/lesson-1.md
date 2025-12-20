@@ -31,29 +31,38 @@ Don't write to the DB immediately.
 We can use Sruja to model the "Write-Behind" architecture.
 
 ```sruja
-architecture "Distributed Counter" {
-    system CounterService "View Counter" {
-        container API "Ingestion API" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+    CounterService = system "View Counter" {
+        API = container "Ingestion API" {
             technology "Go"
             description "Receives 'view' events"
         }
         
-        queue EventLog "Kafka" {
+        EventLog = queue "Kafka" {
             description "Buffers raw view events"
         }
         
-        container Worker "Aggregator" {
+        Worker = container "Aggregator" {
             technology "Python"
             description "Reads batch of events, sums them, updates DB"
             scale { min 5 }
         }
         
-        datastore DB "Counter DB" {
+        DB = datastore "Counter DB" {
             technology "Cassandra"
             description "Stores final counts (Counter Columns)"
         }
         
-        container Cache "Read Cache" {
+        Cache = container "Read Cache" {
             technology "Redis"
             description "Caches total counts for fast reads"
         }
@@ -64,7 +73,7 @@ architecture "Distributed Counter" {
         Worker -> Cache "Updates cache"
     }
 
-    person User "Viewer"
+    User = person "Viewer"
 
     // Write Path (Eventual Consistency)
     scenario TrackView "User watches a video" {
@@ -77,5 +86,11 @@ architecture "Distributed Counter" {
         Worker -> DB "UPDATE views += batch_size"
         Worker -> Cache "Invalidate/Update"
     }
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```

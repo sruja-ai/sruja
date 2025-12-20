@@ -8,6 +8,7 @@ require (
 	github.com/sourcegraph/jsonrpc2 v0.2.1
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.11.1
+	golang.org/x/text v0.32.0
 )
 
 require (

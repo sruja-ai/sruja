@@ -97,9 +97,9 @@ func (r *Requirement) PostProcess() {
 	}
 }
 
-// PostProcess populates items for SharedArtifact.
-func (s *SharedArtifact) PostProcess() {
-	// SharedArtifact doesn't have a PostProcess method signature requirement but good for consistency
+// PostProcess for ImportStatement (no-op, imports are just declarations).
+func (i *ImportStatement) PostProcess() {
+	// Import statements don't need post-processing, they're just declarations
 }
 
 // PostProcess populates ADR fields from unordered properties.
@@ -139,6 +139,23 @@ func (s *ScaleBlock) PostProcess() {
 		if item.Metric != nil {
 			val := item.Metric.Val
 			s.Metric = &val
+		}
+	}
+}
+
+func (s *SLOBlock) PostProcess() {
+	for _, it := range s.Items {
+		if it.Availability != nil {
+			s.Availability = it.Availability
+		}
+		if it.Latency != nil {
+			s.Latency = it.Latency
+		}
+		if it.ErrorRate != nil {
+			s.ErrorRate = it.ErrorRate
+		}
+		if it.Throughput != nil {
+			s.Throughput = it.Throughput
 		}
 	}
 }

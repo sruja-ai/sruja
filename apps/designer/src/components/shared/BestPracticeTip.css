@@ -97,3 +97,24 @@
 .tip-info .tip-icon {
     color: #3b82f6;
 }
+
+.tip-doc-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--color-primary, #3b82f6);
+    text-decoration: none;
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+
+.tip-doc-link:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+}
+
+.tip-doc-link svg {
+    vertical-align: middle;
+}

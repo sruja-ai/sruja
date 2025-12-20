@@ -1,10 +1,10 @@
 package engine
 
 import (
-    "strings"
-    "testing"
+	"strings"
+	"testing"
 
-    "github.com/sruja-ai/sruja/pkg/language"
+	"github.com/sruja-ai/sruja/pkg/language"
 )
 
 func TestDatabaseIsolationRule(t *testing.T) {
@@ -16,15 +16,15 @@ func TestDatabaseIsolationRule(t *testing.T) {
 		{
 			name: "Clean Isolation",
 			dsl: `
-architecture "Clean" {
-  system A "System A" {
-    container API "API"
-    datastore DB "DB"
+model {
+  A = system "System A" {
+    API = container "API"
+    DB = database "DB"
     API -> DB "Writes"
   }
-  system B "System B" {
-    container API "API"
-    datastore DB "DB"
+  B = system "System B" {
+    API = container "API"
+    DB = database "DB"
     API -> DB "Writes"
   }
   A.API -> B.API "Calls"
@@ -35,14 +35,14 @@ architecture "Clean" {
 		{
 			name: "Violation - Shared DB",
 			dsl: `
-architecture "Violation" {
-  system A "System A" {
-    container API "API"
+model {
+  A = system "System A" {
+    API = container "API"
   }
-  system B "System B" {
-    container API "API"
+  B = system "System B" {
+    API = container "API"
   }
-  datastore SharedDB "Shared Database"
+  SharedDB = database "Shared Database"
   
   A.API -> SharedDB "Reads"
   B.API -> SharedDB "Writes"
@@ -53,14 +53,14 @@ architecture "Violation" {
 		{
 			name: "Allowed Shared DB",
 			dsl: `
-architecture "Allowed" {
-  system A "System A" {
-    container API "API"
+model {
+  A = system "System A" {
+    API = container "API"
   }
-  system B "System B" {
-    container API "API"
+  B = system "System B" {
+    API = container "API"
   }
-  datastore SharedDB "Shared Database" {
+  SharedDB = database "Shared Database" {
     metadata {
       shared "true"
     }
@@ -95,10 +95,10 @@ architecture "Allowed" {
 				}
 				for _, d := range diags {
 					msg := d.Message
-                    for range tc.expected {
-                        _ = msg
-                        _ = d
-                    }
+					for range tc.expected {
+						_ = msg
+						_ = d
+					}
 				}
 			}
 		})
@@ -114,9 +114,9 @@ func TestPublicInterfaceDocumentationRule(t *testing.T) {
 		{
 			name: "Documented System",
 			dsl: `
-architecture "Doc" {
-  person User "User"
-  system Sys "System" {
+model {
+  User = person "User"
+  Sys = system "System" {
     description "Handles things"
   }
   User -> Sys "Uses"
@@ -127,9 +127,9 @@ architecture "Doc" {
 		{
 			name: "Undocumented System",
 			dsl: `
-architecture "NoDoc" {
-  person User "User"
-  system Sys "System" // No description
+model {
+  User = person "User"
+  Sys = system "System" // No description
   User -> Sys "Uses"
 }
 `,
@@ -138,10 +138,10 @@ architecture "NoDoc" {
 		{
 			name: "Undocumented Container",
 			dsl: `
-architecture "NoDocCont" {
-  person User "User"
-  system Sys "System" {
-    container Web "Web App" // No description, no technology
+model {
+  User = person "User"
+  Sys = system "System" {
+    Web = container "Web App" // No description, no technology
     User -> Web "Uses"
   }
 }
@@ -154,10 +154,10 @@ architecture "NoDocCont" {
 		{
 			name: "Fully Documented Container",
 			dsl: `
-architecture "DocCont" {
-  person User "User"
-  system Sys "System" {
-    container Web "Web App" {
+model {
+  User = person "User"
+  Sys = system "System" {
+    Web = container "Web App" {
       description "The web interface"
       technology "React"
     }

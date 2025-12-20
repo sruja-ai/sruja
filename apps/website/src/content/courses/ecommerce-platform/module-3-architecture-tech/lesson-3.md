@@ -15,25 +15,61 @@ Instead of writing code and then documenting it, we define the contract first. T
 We can define contracts directly inside our containers.
 
 ```sruja
-container API "Core API" {
-    
-    contracts {
+specification {
+  element system
+  element container
+  element datastore
+}
+
+model {
+  ECommerce = system "E-Commerce Platform" {
+    API = container "Core API" {
+      technology "Go, Gin"
+      
+      contracts {
         api CreateOrder {
-            endpoint "/orders"
-            method "POST"
-            description "Creates a new customer order."
-            
-            request {
-                items List<OrderItem>
-                paymentMethod string
-            }
-            
-            response {
-                orderId string
-                status string
-            }
+          endpoint "/orders"
+          method "POST"
+          description "Creates a new customer order."
+          
+          request {
+            items List<OrderItem>
+            paymentMethod string
+          }
+          
+          response {
+            orderId string
+            status string
+          }
         }
+        
+        api GetOrder {
+          endpoint "/orders/{orderId}"
+          method "GET"
+          description "Retrieves order details by ID"
+        }
+      }
     }
+    
+    OrderDB = datastore "Order Database" {
+      technology "PostgreSQL"
+    }
+    
+    API -> OrderDB "Reads/Writes"
+  }
+}
+
+views {
+  view index {
+    title "API Contracts View"
+    include *
+  }
+  
+  // API-focused view
+  view api {
+    title "API Contracts"
+    include ECommerce.API
+  }
 }
 ```
 

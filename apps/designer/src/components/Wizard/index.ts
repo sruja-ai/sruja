@@ -1,6 +1,7 @@
 export { WizardStepper } from "./WizardStepper";
 export type { WizardStep } from "./WizardStepper";
 export { BuilderWizard } from "./BuilderWizard";
+export { DocumentationPanel } from "./DocumentationPanel";
 export { GoalsStep } from "./GoalsStep";
 export { SystemContextStep } from "./SystemContextStep";
 export { ContainersStep } from "./ContainersStep";

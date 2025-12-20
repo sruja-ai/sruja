@@ -1,18 +1,28 @@
 import { defineConfig } from "@playwright/test";
 
-// Allow overriding server command and baseURL to avoid port collisions and host restrictions.
-// Defaults keep current behavior but can be changed via env when running locally or in CI:
-// - PLAYWRIGHT_TEST_SERVER_CMD: custom server start command (e.g., "npm run preview -- --host 127.0.0.1 --port 0")
+// E2E tests run against built code by default (preview server).
+// This ensures tests validate the production build, not just dev mode.
+//
+// Environment variables for customization:
+// - PLAYWRIGHT_TEST_SERVER_CMD: custom server start command
 // - PLAYWRIGHT_TEST_BASE_URL: custom base URL if server runs elsewhere
 // - PLAYWRIGHT_TEST_NO_SERVER: skip starting a webServer (expects externally running app)
+// - PLAYWRIGHT_TEST_USE_DEV: set to "true" to use dev server instead of preview
+// - PLAYWRIGHT_TEST_PORT: custom port (default: 4173)
+// - PLAYWRIGHT_TEST_HOST: custom host (default: 127.0.0.1)
 const DEFAULT_PORT = process.env.PLAYWRIGHT_TEST_PORT || "4173";
 const DEFAULT_HOST = process.env.PLAYWRIGHT_TEST_HOST || "127.0.0.1";
 const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || `http://${DEFAULT_HOST}:${DEFAULT_PORT}`;
+
+// Default to preview server (built code) unless explicitly overridden
+const useDevServer = process.env.PLAYWRIGHT_TEST_USE_DEV === "true";
+// Preview server uses the built code (which should be built with BASE_PATH=/ for tests)
 const serverCommand =
   process.env.PLAYWRIGHT_TEST_SERVER_CMD ||
-  (process.env.CI
-    ? `npm run preview -- --host ${DEFAULT_HOST} --port ${DEFAULT_PORT}`
-    : `npm run dev -- --host ${DEFAULT_HOST} --port ${DEFAULT_PORT}`);
+  (useDevServer
+    ? `npm run dev -- --host ${DEFAULT_HOST} --port ${DEFAULT_PORT}`
+    : `npm run preview -- --host ${DEFAULT_HOST} --port ${DEFAULT_PORT}`);
+
 const startServer = !process.env.PLAYWRIGHT_TEST_NO_SERVER;
 
 export default defineConfig({
@@ -30,5 +40,10 @@ export default defineConfig({
         reuseExistingServer: !process.env.CI,
       }
     : undefined,
-  reporter: [["list"]],
+  reporter: [["list"], ["html", { outputFolder: "playwright-report" }]],
+  // Increase timeout for slower operations
+  timeout: 60_000,
+  expect: {
+    timeout: 10_000,
+  },
 });

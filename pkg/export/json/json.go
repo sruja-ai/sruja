@@ -1,35 +1,36 @@
 // pkg/export/json/json.go
-// Main JSON exporter for architecture AST
+// Main JSON exporter for architecture AST - LikeC4 compatible format
 package json
 
 import (
-	"encoding/json"
-
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
+// Exporter exports Architecture to LikeC4-compatible JSON format
 type Exporter struct {
 	Extended bool // If true, include pre-computed views in output
 }
 
+// NewExporter creates a new JSON exporter
 func NewExporter() *Exporter { return &Exporter{} }
 
-func (e *Exporter) Export(arch *language.Architecture) (string, error) {
-	doc := ArchitectureJSON{
-		Metadata:     NewMetadata(arch.Name),
-		Architecture: convertArchitectureToJSON(arch),
-		Navigation:   buildNavigation(arch),
-	}
+// Export converts Program (LikeC4 AST) to LikeC4-compatible JSON string
+func (e *Exporter) Export(program *language.Program) (string, error) {
+	likec4 := NewLikeC4Exporter()
+	likec4.Extended = e.Extended
+	return likec4.Export(program)
+}
 
-	populateMetadataFromDSL(&doc.Metadata, arch)
+// ExportAsModelDump returns the structured model dump
+func (e *Exporter) ExportAsModelDump(program *language.Program) *SrujaModelDump {
+	likec4 := NewLikeC4Exporter()
+	likec4.Extended = e.Extended
+	return likec4.ToModelDump(program)
+}
 
-	if e.Extended {
-		doc.Views = GenerateViews(arch)
-	}
-
-	b, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
+// ExportCompact exports without indentation
+func (e *Exporter) ExportCompact(program *language.Program) ([]byte, error) {
+	likec4 := NewLikeC4Exporter()
+	likec4.Extended = e.Extended
+	return likec4.ExportCompact(program)
 }

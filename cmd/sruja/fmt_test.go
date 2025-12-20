@@ -13,7 +13,7 @@ func TestRunFmt(t *testing.T) {
 	file := filepath.Join(tmpDir, "test.sruja")
 
 	// Unformatted content
-	content := `architecture "Test"{system S "S"}`
+	content := `model{system S "S"}`
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -24,8 +24,8 @@ func TestRunFmt(t *testing.T) {
 		t.Errorf("Expected exit code 0, got %d. Stderr: %s", exitCode, stderr.String())
 	}
 
-	expected := `architecture "Test" {
-  system S "S"
+	expected := `model {
+  S = system "S"
 }
 `
 	if stdout.String() != expected {
@@ -51,8 +51,8 @@ func TestRunFmt_Errors(t *testing.T) {
 	if exitCode := runFmt([]string{"nonexistent.sruja"}, &stdout, &stderr); exitCode == 0 {
 		t.Error("Expected non-zero exit code for non-existent file")
 	}
-	if !strings.Contains(stderr.String(), "Error reading file") {
-		t.Error("Expected error reading file")
+	if !strings.Contains(stderr.String(), "Error accessing path") {
+		t.Error("Expected error accessing path")
 	}
 
 	// Invalid syntax
@@ -68,5 +68,16 @@ func TestRunFmt_Errors(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "Parser Error") {
 		t.Error("Expected parser error")
+	}
+}
+
+func TestRunFmt_FlagsError(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	exitCode := runFmt([]string{"--invalid-flag", "file.sruja"}, &stdout, &stderr)
+	if exitCode == 0 {
+		t.Error("Expected failure for invalid flag")
+	}
+	if !strings.Contains(stderr.String(), "Error parsing fmt flags") {
+		t.Errorf("Expected flag parse error, got: %s", stderr.String())
 	}
 }

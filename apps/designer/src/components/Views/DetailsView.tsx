@@ -1,73 +1,93 @@
-import { useState } from "react";
-import { Target, FileText, Play, Workflow } from "lucide-react";
-import { RequirementsPanel } from "../Panels/RequirementsPanel";
-import { ADRsPanel } from "../Panels/ADRsPanel";
+// apps/designer/src/components/Views/DetailsView.tsx
+import { useState, useEffect, useMemo } from "react";
+import { Search } from "lucide-react";
 import { useArchitectureStore } from "../../stores";
+import { DetailsSidebarFilters, type FilterState } from "../Details/DetailsSidebarFilters";
+import { UnifiedDetailsList } from "../Details/UnifiedDetailsList";
+import { deduplicateRequirements } from "../../utils/deduplicateRequirements";
+import { Input } from "@sruja/ui";
 import "./DetailsView.css";
 
-type DetailSubTab = "requirements" | "adrs" | "scenarios" | "flows";
-
 export function DetailsView() {
-  const [activeSubTab, setActiveSubTab] = useState<DetailSubTab>("requirements");
-  const data = useArchitectureStore((s) => s.data);
+  const likec4Model = useArchitectureStore((s) => s.likec4Model);
+  const [filters, setFilters] = useState<FilterState>({
+    types: new Set(),
+    statuses: new Set(),
+    tags: new Set(),
+    searchQuery: "",
+  });
 
-  const scenarios = data?.architecture?.scenarios ?? [];
-  const flows = data?.architecture?.flows ?? [];
-  const requirements = data?.architecture?.requirements ?? [];
-  const adrs = data?.architecture?.adrs ?? [];
+  // Listen for sub-tab switch events from diagram badges
+  useEffect(() => {
+    const handleSubTabSwitch = (event: CustomEvent<"requirements" | "adrs" | "scenarios" | "flows">) => {
+      const tab = event.detail;
+      // Set filter to show only the selected type
+      setFilters((prev) => ({
+        ...prev,
+        types: new Set([tab === "requirements" ? "requirement" : tab === "adrs" ? "adr" : tab === "scenarios" ? "scenario" : "flow"]),
+      }));
+    };
 
-  const tabs: { id: DetailSubTab; label: string; icon: React.ReactNode; count: number }[] = [
-    {
-      id: "requirements",
-      label: "Requirements",
-      icon: <Target size={14} />,
-      count: requirements.length,
-    },
-    { id: "adrs", label: "ADRs", icon: <FileText size={14} />, count: adrs.length },
-    { id: "scenarios", label: "Scenarios", icon: <Play size={14} />, count: scenarios.length },
-    { id: "flows", label: "Flows", icon: <Workflow size={14} />, count: flows.length },
-  ];
+    window.addEventListener("switch-details-subtab", handleSubTabSwitch as EventListener);
+    return () => {
+      window.removeEventListener("switch-details-subtab", handleSubTabSwitch as EventListener);
+    };
+  }, []);
+
+  const sruja = (likec4Model?.sruja as any) || {};
+
+  const scenarios = sruja.scenarios ?? [];
+  const flows = sruja.flows ?? [];
+  const allRequirements = sruja.requirements ?? [];
+  const adrs = sruja.adrs ?? [];
+
+  // Deduplicate requirements to match what UnifiedDetailsList displays
+  const requirements = useMemo(() => deduplicateRequirements(allRequirements), [allRequirements]);
+
+  // Collect all unique tags
+  const availableTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    requirements.forEach((r: any) => (r.tags ?? []).forEach((t: string) => tagSet.add(t)));
+    adrs.forEach((a: any) => (a.tags ?? []).forEach((t: string) => tagSet.add(t)));
+    scenarios.forEach((s: any) => (s.steps ?? []).forEach((step: any) => (step.tags ?? []).forEach((t: string) => tagSet.add(t))));
+    flows.forEach((f: any) => (f.steps ?? []).forEach((step: any) => (step.tags ?? []).forEach((t: string) => tagSet.add(t))));
+    return Array.from(tagSet).sort();
+  }, [requirements, adrs, scenarios, flows]);
+
+  const stats = {
+    requirements: requirements.length,
+    adrs: adrs.length,
+    scenarios: scenarios.length,
+    flows: flows.length,
+  };
 
   return (
-    <div className="details-view">
-      <div className="details-subnav">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            className={`subnav-item ${activeSubTab === tab.id ? "active" : ""}`}
-            onClick={() => setActiveSubTab(tab.id)}
-          >
-            {tab.icon}
-            <span>{tab.label}</span>
-            {tab.count > 0 && <span className="subnav-count">{tab.count}</span>}
-          </button>
-        ))}
+    <div className="details-view-unified">
+      {/* Search Bar */}
+      <div className="details-search-bar">
+        <div className="search-input-wrapper">
+          <Search size={16} className="search-icon" />
+          <Input
+            placeholder="Search requirements, ADRs, scenarios, flows..."
+            value={filters.searchQuery}
+            onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
+            className="details-search-input"
+          />
+        </div>
       </div>
-      <div className="details-content">
-        {activeSubTab === "requirements" && <RequirementsPanel />}
-        {activeSubTab === "adrs" && <ADRsPanel />}
-        {activeSubTab === "scenarios" && (
-          <div className="details-placeholder">
-            <Play size={48} className="placeholder-icon" />
-            <h3>Scenarios</h3>
-            <p>
-              {scenarios.length > 0
-                ? `${scenarios.length} scenario${scenarios.length !== 1 ? "s" : ""} defined. View and manage scenarios in the Diagram tab.`
-                : "No scenarios defined yet. Create scenarios to document user journeys and use cases."}
-            </p>
-          </div>
-        )}
-        {activeSubTab === "flows" && (
-          <div className="details-placeholder">
-            <Workflow size={48} className="placeholder-icon" />
-            <h3>Flows</h3>
-            <p>
-              {flows.length > 0
-                ? `${flows.length} flow${flows.length !== 1 ? "s" : ""} defined. View and manage flows in the Diagram tab.`
-                : "No flows defined yet. Create flows to document data movement and interactions."}
-            </p>
-          </div>
-        )}
+
+      {/* Main Content */}
+      <div className="details-content-unified">
+        {/* Sidebar Filters */}
+        <DetailsSidebarFilters
+          filters={filters}
+          onFilterChange={setFilters}
+          availableTags={availableTags}
+          stats={stats}
+        />
+
+        {/* Unified List */}
+        <UnifiedDetailsList filters={filters} />
       </div>
     </div>
   );

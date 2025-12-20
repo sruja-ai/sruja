@@ -11,46 +11,60 @@ func TestParser_ViewsBlock(t *testing.T) {
 		name    string
 		dsl     string
 		wantErr bool
-		checkFn func(*Architecture) error
+		checkFn func(*Program) error // Updated to use Program instead of Architecture
 	}{
 		{
 			name: "Simple views block",
 			dsl: `
-architecture "Test" {
-    system Shop "Shop" {
-        container WebApp "Web Application"
-    }
-    
-    views {
-        container Shop "Container View" {
-            include *
-        }
-    }
+specification {
+	element system
+	element container
+}
+model {
+	Shop = system "Shop" {
+		WebApp = container "Web Application"
+	}
+}
+views {
+	view index {
+		include Shop.*
+	}
 }`,
 			wantErr: false,
-			checkFn: func(arch *Architecture) error {
-				if arch.Views == nil {
+			checkFn: func(p *Program) error {
+				if p.Views == nil {
 					return fmt.Errorf("Views block is nil")
 				}
-				if len(arch.Views.Views) != 1 {
-					return fmt.Errorf("Expected 1 view, got %d", len(arch.Views.Views))
+				// Filter for Views (Items can be Styles or Views)
+				var views []*LikeC4ViewDef
+				for _, item := range p.Views.Items {
+					if item.View != nil {
+						views = append(views, item.View)
+					}
 				}
-				view := arch.Views.Views[0]
-				if view.Type != "container" {
-					return fmt.Errorf("Expected view type 'container', got '%s'", view.Type)
+				if len(views) != 1 {
+					return fmt.Errorf("Expected 1 view, got %d", len(views))
 				}
-				if view.Scope.String() != "Shop" {
-					return fmt.Errorf("Expected scope 'Shop', got '%s'", view.Scope.String())
+				view := views[0]
+				if view.Name == nil || *view.Name != "index" {
+					return fmt.Errorf("Expected view name 'index', got %v", view.Name)
 				}
-				if len(view.Expressions) != 1 {
-					return fmt.Errorf("Expected 1 expression, got %d", len(view.Expressions))
+				// Check includes
+				if view.Body == nil || len(view.Body.Items) == 0 {
+					return fmt.Errorf("Expected view body items")
 				}
-				expr := view.Expressions[0]
-				if expr.Type != "include" {
-					return fmt.Errorf("Expected expression type 'include', got '%s'", expr.Type)
+				includeFound := false
+				for _, item := range view.Body.Items {
+					if item.Include != nil {
+						includeFound = true
+						if len(item.Include.Expressions) != 1 {
+							return fmt.Errorf("Expected 1 include expression, got %d", len(item.Include.Expressions))
+						}
+						// Verify explicit Shop.* wildcard if possible, or just parse success
+					}
 				}
-				if expr.Wildcard == nil {
-					return fmt.Errorf("Expected wildcard '*', got nil")
+				if !includeFound {
+					return fmt.Errorf("Expected 'include' predicate")
 				}
 				return nil
 			},
@@ -58,30 +72,68 @@ architecture "Test" {
 		{
 			name: "Views block with include elements",
 			dsl: `
-architecture "Test" {
-    system Shop "Shop" {
-        container WebApp "Web Application"
-        container API "API Gateway"
-    }
-    
-    views {
-        container Shop "API Focus" {
-            include Shop.API Shop.WebApp
-        }
-    }
+specification {
+	element system
+	element container
+}
+model {
+	Shop = system "Shop" {
+		WebApp = container "Web Application"
+		API = container "API Gateway"
+	}
+}
+views {
+	view apiFocus {
+		include Shop.API Shop.WebApp
+	}
 }`,
 			wantErr: false,
-			checkFn: func(arch *Architecture) error {
-				if arch.Views == nil {
+			checkFn: func(p *Program) error {
+				if p.Views == nil {
 					return fmt.Errorf("Views block is nil")
 				}
-				view := arch.Views.Views[0]
-				if len(view.Expressions) != 1 {
-					return fmt.Errorf("Expected 1 expression, got %d", len(view.Expressions))
+				// Find view
+				var view *LikeC4ViewDef
+				for _, item := range p.Views.Items {
+					if item.View != nil {
+						view = item.View
+						break
+					}
 				}
-				expr := view.Expressions[0]
-				if len(expr.Elements) != 2 {
-					return fmt.Errorf("Expected 2 elements, got %d", len(expr.Elements))
+				if view == nil {
+					return fmt.Errorf("Expected 1 view, got 0")
+				}
+
+				if view.Body == nil || len(view.Body.Items) == 0 {
+					return fmt.Errorf("Expected view body items")
+				}
+				// Find include
+				var include *IncludePredicate
+				for _, item := range view.Body.Items {
+					if item.Include != nil {
+						include = item.Include
+						break
+					}
+				}
+				if include == nil {
+					return fmt.Errorf("Expected include predicate")
+				}
+				// Check elements count (flatten expressions)
+				count := 0
+				for _, expr := range include.Expressions {
+					// each expr is a ViewExpr
+					// Check if it's wildcard or specific?
+					// AST structure for IncludePredicate: Expressions []ViewExpr
+					// ViewExpr union: Wildcard, Element ...
+					// The DSL is "include Shop.API Shop.WebApp"
+					// This likely parses as multiple expressions if comma separated or space separated?
+					// Parser rule: 'include' @@ ( ','? @@ )*
+					// So it should be 2 expressions
+					count++
+					_ = expr
+				}
+				if count != 2 {
+					return fmt.Errorf("Expected 2 include expressions, got %d", count)
 				}
 				return nil
 			},
@@ -89,59 +141,79 @@ architecture "Test" {
 		{
 			name: "Views block with styles",
 			dsl: `
-architecture "Test" {
-    system Shop "Shop" {
-        container DB "Database" {
-            tags ["Database"]
-        }
-    }
-    
-    views {
-        container Shop "Container View" {
-            include *
-        }
-        
-        styles {
-            element "Database" {
-                shape "cylinder"
-                color "#ff0000"
-            }
-        }
-    }
+specification {
+	element system
+	element container
+	tag Database
+}
+model {
+	Shop = system "Shop" {
+		DB = container "Database" #Database
+	}
+}
+views {
+	view index {
+		include Shop.*
+	}
+	styles {
+		element #Database {
+			shape cylinder
+			color "#ff0000"
+		}
+	}
 }`,
 			wantErr: false,
-			checkFn: func(arch *Architecture) error {
-				if arch.Views == nil {
+			checkFn: func(p *Program) error {
+				if p.Views == nil {
 					return fmt.Errorf("Views block is nil")
 				}
-				// Styles block should be in the ViewBlock, not in individual views
-				if arch.Views.Styles == nil {
+				// Find styles
+				var styles *StyleDecl
+				for _, item := range p.Views.Items {
+					if item.Styles != nil {
+						styles = item.Styles
+						break
+					}
+				}
+				if styles == nil {
 					return fmt.Errorf("Expected styles block, got nil")
 				}
-				if len(arch.Views.Styles.Styles) != 1 {
-					return fmt.Errorf("Expected 1 style, got %d", len(arch.Views.Styles.Styles))
+				if styles.Body == nil {
+					return fmt.Errorf("Expected styles body")
 				}
-				style := arch.Views.Styles.Styles[0]
-				if style.Target != "element" {
-					return fmt.Errorf("Expected target 'element', got '%s'", style.Target)
+				if len(styles.Body.Entries) != 1 {
+					return fmt.Errorf("Expected 1 style entry, got %d", len(styles.Body.Entries))
 				}
-				if style.Tag != "Database" {
-					return fmt.Errorf("Expected tag 'Database', got '%s'", style.Tag)
+				entry := styles.Body.Entries[0]
+				if entry.Key != "element" {
+					return fmt.Errorf("Expected key 'element', got '%s'", entry.Key)
+				}
+				// Value should be #Database (TagRef)
+				if entry.Value == nil || *entry.Value != "#Database" {
+					return fmt.Errorf("Expected value '#Database', got %v", entry.Value)
+				}
+				// Check inner properties
+				if entry.Body == nil || len(entry.Body.Entries) != 2 {
+					return fmt.Errorf("Expected 2 inner style properties")
 				}
 				return nil
 			},
 		},
 		{
-			name: "Architecture without views block",
+			name: "Model without views block",
 			dsl: `
-architecture "Test" {
-    system Shop "Shop" {
-        container WebApp "Web Application"
-    }
+specification {
+	element system
+	element container
+}
+model {
+	Shop = system "Shop" {
+		WebApp = container "Web Application"
+	}
 }`,
 			wantErr: false,
-			checkFn: func(arch *Architecture) error {
-				if arch.Views != nil {
+			checkFn: func(p *Program) error {
+				if p.Views != nil {
 					return fmt.Errorf("Expected no views block, but got one")
 				}
 				return nil
@@ -165,12 +237,9 @@ architecture "Test" {
 				return
 			}
 
-			if program.Architecture == nil {
-				t.Fatal("Architecture is nil")
-			}
-
+			// Architecture removed - these tests need to be migrated to LikeC4 syntax
 			if tt.checkFn != nil {
-				if err := tt.checkFn(program.Architecture); err != nil {
+				if err := tt.checkFn(program); err != nil {
 					t.Error(err)
 				}
 			}

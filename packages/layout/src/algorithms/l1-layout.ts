@@ -1,6 +1,6 @@
 import type { HierarchyTree, HierarchyNode } from './hierarchy'
 import type { C4LayoutOptions } from '../c4-options'
-import type { PositionedC4Node } from '../c4-layout'
+import type { PositionedC4Node } from '../types'
 import type { Point } from '../geometry/point'
 import type { Rect } from '../geometry/rect'
 

@@ -32,9 +32,18 @@ In a distributed system, network partitions (P) are inevitable. Therefore, you m
 When defining data stores in Sruja, it is helpful to document their consistency guarantees, especially for distributed databases.
 
 ```sruja
-architecture "Global User Store" {
-    system DataLayer "Data Layer" {
-        container UserDB "User Database" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+    DataLayer = system "Data Layer" {
+        UserDB = container "User Database" {
             technology "Cassandra"
             // Explicitly stating the consistency model
             description "configured with replication factor 3. Uses eventual consistency for high availability."
@@ -43,11 +52,17 @@ architecture "Global User Store" {
             tags ["AP-System", "Eventual-Consistency"]
         }
         
-        container BillingDB "Billing Database" {
+        BillingDB = container "Billing Database" {
             technology "PostgreSQL"
             description "Single primary with synchronous replication to ensure strong consistency."
             tags ["CP-System", "Strong-Consistency"]
         }
     }
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```

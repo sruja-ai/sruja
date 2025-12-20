@@ -45,8 +45,19 @@ sruja/
 
 ### Developer Documentation
 
-- Architecture & Code Organization: `docs/ARCHITECTURE.md`
-- Internal Guide: `internal-docs/guide.md`
+**Essential Guides:**
+- [Contributing Guide](docs/CONTRIBUTING.md) - How to contribute to Sruja
+- [First Contribution](docs/FIRST_CONTRIBUTION.md) - Step-by-step guide for your first contribution
+- [Development Guide](docs/DEVELOPMENT.md) - Development practices and tooling
+- [Architecture Guide](docs/ARCHITECTURE.md) - Code organization and structure
+
+**Content Creation:**
+- [Content Contribution Guide](docs/CONTENT_CONTRIBUTION_GUIDE.md) - Creating courses, tutorials, and docs
+- [Content Style Guide](docs/CONTENT_STYLE_GUIDE.md) - Writing style and best practices
+
+**Reference:**
+- [Language Specification](docs/LANGUAGE_SPECIFICATION.md) - Complete DSL reference
+- [Design Philosophy](docs/DESIGN_PHILOSOPHY.md) - Language design principles
 
 ## Installation
 
@@ -185,6 +196,4 @@ This guide walks you through making your first contribution, even if you're new 
 - Keep changes focused and well‑scoped
 - Use Conventional Commits (e.g., `feat: …`, `fix: …`, `docs: …`)
 
-## License
-
-MIT
+Apache 2.0

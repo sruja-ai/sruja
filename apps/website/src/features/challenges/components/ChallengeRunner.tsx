@@ -1,6 +1,6 @@
 // apps/website/src/features/challenges/components/ChallengeRunner.tsx
 import { useEffect, useState } from 'react'
-import { SrujaMonacoEditor, Button } from '@sruja/ui'
+import { SrujaMonacoEditor, Button, MantineProvider } from '@sruja/ui'
 import { initWasm } from '@sruja/shared'
 import { formatParseError } from '@/shared/utils/errors'
 import { markCompleted } from '@/shared/lib/progress'
@@ -139,7 +139,8 @@ export default function ChallengeRunner({ challenge }: { challenge: Challenge })
   }
 
   return (
-    <div className="challenge">
+    <MantineProvider>
+      <div className="challenge">
       <div className="header">
         <h2>{challenge.title}</h2>
         {challenge.summary && <p className="summary">{challenge.summary}</p>}
@@ -188,6 +189,7 @@ export default function ChallengeRunner({ challenge }: { challenge: Challenge })
         .result.err { background: var(--error-dim); border: 1px solid var(--color-error-500); }
         .hint { margin-top: 8px; color: var(--color-text-tertiary); }
       `}</style>
-    </div>
+      </div>
+    </MantineProvider>
   )
 }

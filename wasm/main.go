@@ -3,13 +3,13 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"syscall/js"
 
-	"github.com/sruja-ai/sruja/internal/converter"
 	"github.com/sruja-ai/sruja/pkg/engine"
 	jexport "github.com/sruja-ai/sruja/pkg/export/json"
+	"github.com/sruja-ai/sruja/pkg/export/markdown"
+	"github.com/sruja-ai/sruja/pkg/export/mermaid"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
@@ -56,7 +56,7 @@ func parseDsl(this js.Value, args []js.Value) interface{} {
 	}
 
 	exporter := jexport.NewExporter()
-	output, err := exporter.Export(program.Architecture)
+	output, err := exporter.Export(program)
 	if err != nil {
 		return result(false, "", err.Error())
 	}
@@ -67,24 +67,55 @@ func jsonToDSL(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
 		return result(false, "", "invalid arguments")
 	}
-	input := args[0].String()
-
-	var archJson converter.ArchitectureJSON
-	if err := json.Unmarshal([]byte(input), &archJson); err != nil {
-		return result(false, "", "json unmarshal failed: "+err.Error())
-	}
 
 	// Convert JSON back to AST
-	astArch := converter.ConvertFromJSON(archJson)
-	program := &language.Program{
-		Architecture: astArch,
+	// ConvertFromJSON removed - Architecture struct removed (old syntax no longer supported)
+	// Use LikeC4 importers instead
+	return result(false, "", "JSON to DSL conversion is no longer supported - Architecture struct removed. Use LikeC4 format instead")
+}
+
+func dslToMermaid(this js.Value, args []js.Value) interface{} {
+	if len(args) < 1 {
+		return result(false, "", "invalid arguments")
+	}
+	input := args[0].String()
+	filename := "input.sruja"
+
+	p, err := language.NewParser()
+	if err != nil {
+		return result(false, "", err.Error())
 	}
 
-	// Print AST to DSL
-	printer := language.NewPrinter()
-	dsl := printer.Print(program)
+	program, _, err := p.Parse(filename, input)
+	if err != nil {
+		return result(false, "", err.Error())
+	}
 
-	return result(true, dsl, "")
+	exporter := mermaid.NewExporter(mermaid.DefaultConfig())
+	output := exporter.Export(program)
+	return result(true, output, "")
+}
+
+func dslToMarkdown(this js.Value, args []js.Value) interface{} {
+	if len(args) < 1 {
+		return result(false, "", "invalid arguments")
+	}
+	input := args[0].String()
+	filename := "input.sruja"
+
+	p, err := language.NewParser()
+	if err != nil {
+		return result(false, "", err.Error())
+	}
+
+	program, _, err := p.Parse(filename, input)
+	if err != nil {
+		return result(false, "", err.Error())
+	}
+
+	exporter := markdown.NewExporter(markdown.DefaultOptions())
+	output := exporter.Export(program)
+	return result(true, output, "")
 }
 
 // Export functions (dslToMarkdown, dslToMermaid) removed - now handled by TypeScript exporters
@@ -109,9 +140,13 @@ func main() {
 	// Register all functions to prevent dead-code elimination
 	parseDslFn := js.FuncOf(parseDsl)
 	jsonToDSLFn := js.FuncOf(jsonToDSL)
+	dslToMermaidFn := js.FuncOf(dslToMermaid)
+	dslToMarkdownFn := js.FuncOf(dslToMarkdown)
 
 	js.Global().Set("sruja_parse_dsl", parseDslFn)
 	js.Global().Set("sruja_json_to_dsl", jsonToDSLFn)
+	js.Global().Set("sruja_dsl_to_mermaid", dslToMermaidFn)
+	js.Global().Set("sruja_dsl_to_markdown", dslToMarkdownFn)
 
 	fmt.Println("WASM Go initialized - functions registered")
 	fmt.Println("Registered sruja_parse_dsl")
@@ -120,6 +155,8 @@ func main() {
 	// Explicitly keep function references to prevent optimization
 	_ = parseDslFn
 	_ = jsonToDSLFn
+	_ = dslToMermaidFn
+	_ = dslToMarkdownFn
 
 	// Keep the goroutine alive - TinyGo needs this
 	c := make(chan struct{})

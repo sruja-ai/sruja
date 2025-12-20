@@ -73,6 +73,9 @@ func (v *Validator) RegisterDefaultRules() {
 
 	// Properties Validation Rule
 	v.RegisterRule(&PropertiesValidationRule{})
+
+	// Governance Validation Rule
+	v.RegisterRule(&GovernanceValidationRule{})
 }
 
 // Validate runs all registered validation rules concurrently with timeout and panic recovery.

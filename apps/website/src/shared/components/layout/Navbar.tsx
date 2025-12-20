@@ -1,6 +1,6 @@
 // apps/website/src/shared/components/layout/Navbar.tsx
 import { useState, useEffect, useRef } from "react";
-import { Logo, ThemeToggle, ThemeProvider } from "@sruja/ui";
+import { Logo, ThemeToggle, MantineProvider, ThemeProvider } from "@sruja/ui";
 import "@sruja/ui/design-system/styles.css";
 import DocSearchBox from "@/features/search/components/DocSearchBox";
 
@@ -59,8 +59,9 @@ export default function Navbar() {
   };
 
   return (
-    <ThemeProvider defaultMode="system">
-      <nav className="navbar">
+    <MantineProvider>
+      <ThemeProvider defaultMode="system">
+        <nav className="navbar">
         <div className="nav-container">
           <a href="/" className="nav-logo">
             <Logo size={32} />
@@ -131,6 +132,7 @@ export default function Navbar() {
           </div>
         </div>
       </nav>
-    </ThemeProvider>
+      </ThemeProvider>
+    </MantineProvider>
   );
 }

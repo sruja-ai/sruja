@@ -11,11 +11,19 @@ Use `change` to describe modifications; use `snapshot` to capture versioned stat
 ## Syntax
 
 ```sruja
-// EXPECTED_FAILURE: change/snapshot inside architecture parsing pending harmonization
-architecture "Shop" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   system App {
-    container API
-    datastore DB
+    API = container
+    DB = datastore
   }
 
   change "Add caching layer" {
@@ -26,6 +34,7 @@ architecture "Shop" {
   snapshot v"2025.12" {
     note "Post‑Black Friday stabilization"
   }
+
 }
 ```
 

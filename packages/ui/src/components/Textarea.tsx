@@ -1,39 +1,24 @@
+// packages/ui/src/components/Textarea.tsx
 import { forwardRef } from 'react'
+import { Textarea as MantineTextarea } from '@mantine/core'
+import type { TextareaProps as MantineTextareaProps } from '@mantine/core'
 
-export type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
-  label?: string
+export type TextareaProps = Omit<MantineTextareaProps, 'error'> & {
   helperText?: string
   error?: string
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   function Textarea({ label, helperText, error, className, ...props }, ref) {
-    const base = 'w-full px-3.5 py-2.5 rounded-md border bg-[var(--color-background)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--color-primary)] transition-all duration-200 resize-vertical'
-    const normal = 'border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface)]'
-    const err = 'border-[var(--color-error-500)] focus:ring-[var(--color-error-500)]'
-    
     return (
-      <label className="block">
-        {label && (
-          <div className="mb-1.5 text-sm font-medium text-[var(--color-text-secondary)]">
-            {label}
-          </div>
-        )}
-        <textarea
-          ref={ref}
-          className={[base, error ? err : normal, className || ''].join(' ')}
-          {...props}
-        />
-        {error ? (
-          <div className="mt-1 text-xs text-[var(--color-error-500)]">{error}</div>
-        ) : (
-          helperText && (
-            <div className="mt-1 text-xs text-[var(--color-text-tertiary)]">
-              {helperText}
-            </div>
-          )
-        )}
-      </label>
+      <MantineTextarea
+        ref={ref}
+        label={label}
+        description={helperText}
+        error={error}
+        className={className}
+        {...props}
+      />
     )
   }
 )

@@ -21,13 +21,13 @@ func parse2(t *testing.T, dsl string) *language.Program {
 
 func TestValidReferences_NewElements(t *testing.T) {
 	dsl := `
-architecture "Test" {
-    system App "App" {
-      datastore Store "DB"
-      queue Bus "Queue"
-      container Pay "Payments"
+model {
+    App = system "App" {
+      Store = database "DB"
+      Bus = queue "Queue"
+      Pay = container "Payments"
     }
-    person User "User"
+    User = person "User"
     User -> Store "reads"
     App -> Bus "publishes"
     App -> Pay "depends"
@@ -41,11 +41,11 @@ architecture "Test" {
 
 func TestOrphanDetection_NewElementsUsage(t *testing.T) {
 	dsl := `
-architecture "Test" {
-    system App "App" {
-      datastore Store "DB"
+model {
+    App = system "App" {
+      Store = database "DB"
     }
-    person User "User"
+    User = person "User"
     User -> Store "reads"
 }
 `

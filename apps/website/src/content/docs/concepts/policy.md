@@ -24,18 +24,48 @@ policy PolicyID "Description" {
 ## Simple Policy
 
 ```sruja
-architecture "E-Commerce" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   policy SecurityPolicy "Enforce TLS 1.3 for all external communications"
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 
 ## Policy with Category and Enforcement
 
 ```sruja
-architecture "E-Commerce" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   policy DataRetentionPolicy "Retain order data for 7 years for tax compliance" {
     category "compliance"
     enforcement "required"
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```
@@ -52,7 +82,16 @@ architecture "E-Commerce" {
 ## Example: Security Policies
 
 ```sruja
-architecture "Banking System" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   policy TLSEnforcement "All external communications must use TLS 1.3" {
     category "security"
     enforcement "required"
@@ -64,8 +103,14 @@ architecture "Banking System" {
   }
   
   system BankingApp {
-    container API "API Service"
-    datastore CustomerDB "Customer Database"
+    API = container "API Service"
+    CustomerDB = datastore "Customer Database"
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```
@@ -73,7 +118,16 @@ architecture "Banking System" {
 ## Example: Compliance Policies
 
 ```sruja
-architecture "Healthcare Platform" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   policy HIPAACompliance "Must comply with HIPAA regulations" {
     category "compliance"
     enforcement "required"
@@ -85,12 +139,27 @@ architecture "Healthcare Platform" {
     enforcement "required"
   }
 }
+
+views {
+  view index {
+    include *
+  }
+}
 ```
 
 ## Example: Observability Policies
 
 ```sruja
-architecture "Microservices Platform" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   policy Observability "All services must expose health check endpoints" {
     category "observability"
     enforcement "required"
@@ -98,6 +167,12 @@ architecture "Microservices Platform" {
       metricEndpoint "/health"
       logLevel "info"
     }
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```

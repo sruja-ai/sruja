@@ -52,7 +52,7 @@ sruja export markdown architecture.sruja
 
 ## Open Source & Community
 
-Sruja is **free and open source** (MIT licensed) - no purchase required. The project is developed in the open with community contributions, transparent decision-making, and an extensible architecture that welcomes plugins and integrations.
+Sruja is **free and open source** (Apache 2.0 licensed) - no purchase required. The project is developed in the open with community contributions, transparent decision-making, and an extensible architecture that welcomes plugins and integrations.
 
 **Need help with adoption?** Professional consulting services are available to help organizations implement Sruja, establish best practices, and integrate with existing toolchains. Contact the team through [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions) to learn more.
 

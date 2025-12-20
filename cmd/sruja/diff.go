@@ -92,23 +92,107 @@ func computeDiff(program1, program2 *language.Program, _, _ string) *Diff {
 		RemovedComponents: make(map[string][]string),
 	}
 
-	arch1 := program1.Architecture
-	arch2 := program2.Architecture
-
-	if arch1 == nil || arch2 == nil {
+	if program1 == nil || program1.Model == nil || program2 == nil || program2.Model == nil {
 		return diff
 	}
 
-	// Build element maps for comparison
-	systems1 := make(map[string]*language.System)
-	systems2 := make(map[string]*language.System)
+	// Collect systems from LikeC4 Model
+	collectSystems := func(model *language.ModelBlock) map[string]map[string]interface{} {
+		systems := make(map[string]map[string]interface{})
+		var collectFromElement func(elem *language.LikeC4ElementDef, parentFQN string)
+		collectFromElement = func(elem *language.LikeC4ElementDef, parentFQN string) {
+			if elem == nil {
+				return
+			}
 
-	for _, sys := range arch1.Systems {
-		systems1[sys.ID] = sys
+			id := elem.GetID()
+			if id == "" {
+				return
+			}
+
+			fqn := id
+			if parentFQN != "" {
+				fqn = parentFQN + "." + id
+			}
+
+			kind := elem.GetKind()
+			if kind == "system" {
+				if systems[id] == nil {
+					systems[id] = make(map[string]interface{})
+				}
+				systems[id]["fqn"] = fqn
+				systems[id]["containers"] = make(map[string]map[string]interface{})
+				systems[id]["components"] = make(map[string]map[string]interface{})
+			} else if kind == "container" {
+				// Find parent system
+				if parentFQN != "" {
+					// Extract system ID from parent FQN
+					parts := strings.Split(parentFQN, ".")
+					if len(parts) > 0 {
+						sysID := parts[0]
+						if systems[sysID] == nil {
+							systems[sysID] = make(map[string]interface{})
+							systems[sysID]["containers"] = make(map[string]map[string]interface{})
+							systems[sysID]["components"] = make(map[string]map[string]interface{})
+						}
+						containers := systems[sysID]["containers"].(map[string]map[string]interface{})
+						containers[id] = map[string]interface{}{"fqn": fqn, "components": make(map[string]interface{})}
+					}
+				}
+			} else if kind == "component" {
+				// Find parent system and container
+				if parentFQN != "" {
+					parts := strings.Split(parentFQN, ".")
+					if len(parts) >= 2 {
+						sysID := parts[0]
+						contID := parts[1]
+						if systems[sysID] == nil {
+							systems[sysID] = make(map[string]interface{})
+							systems[sysID]["containers"] = make(map[string]map[string]interface{})
+							systems[sysID]["components"] = make(map[string]map[string]interface{})
+						}
+						containers := systems[sysID]["containers"].(map[string]map[string]interface{})
+						if containers[contID] == nil {
+							containers[contID] = map[string]interface{}{"components": make(map[string]interface{})}
+						}
+						components := containers[contID]["components"].(map[string]interface{})
+						components[id] = true
+					} else if len(parts) == 1 {
+						// Component directly under system
+						sysID := parts[0]
+						if systems[sysID] == nil {
+							systems[sysID] = make(map[string]interface{})
+							systems[sysID]["containers"] = make(map[string]map[string]interface{})
+							systems[sysID]["components"] = make(map[string]map[string]interface{})
+						}
+						components := systems[sysID]["components"].(map[string]map[string]interface{})
+						components[id] = map[string]interface{}{"fqn": fqn}
+					}
+				}
+			}
+
+			// Recurse into nested elements
+			body := elem.GetBody()
+			if body != nil {
+				for _, bodyItem := range body.Items {
+					if bodyItem.Element != nil {
+						collectFromElement(bodyItem.Element, fqn)
+					}
+				}
+			}
+		}
+
+		for _, item := range model.Items {
+			if item.ElementDef != nil {
+				collectFromElement(item.ElementDef, "")
+			}
+		}
+
+		return systems
 	}
-	for _, sys := range arch2.Systems {
-		systems2[sys.ID] = sys
-	}
+
+	systems1 := collectSystems(program1.Model)
+	systems2 := collectSystems(program2.Model)
 
 	// Find added and removed systems
 	for id := range systems2 {
@@ -123,7 +207,6 @@ func computeDiff(program1, program2 *language.Program, _, _ string) *Diff {
 	}
 
 	// Find modified systems (existing in both but changed)
-
 	for id, sys2 := range systems2 {
 		sys1, exists := systems1[id]
 		if !exists {
@@ -134,11 +217,15 @@ func computeDiff(program1, program2 *language.Program, _, _ string) *Diff {
 		containers1 := make(map[string]bool)
 		containers2 := make(map[string]bool)
 
-		for _, cont := range sys1.Containers {
-			containers1[cont.ID] = true
+		if sys1["containers"] != nil {
+			for contID := range sys1["containers"].(map[string]map[string]interface{}) {
+				containers1[contID] = true
+			}
 		}
-		for _, cont := range sys2.Containers {
-			containers2[cont.ID] = true
+		if sys2["containers"] != nil {
+			for contID := range sys2["containers"].(map[string]map[string]interface{}) {
+				containers2[contID] = true
+			}
 		}
 
 		// Added containers
@@ -157,43 +244,47 @@ func computeDiff(program1, program2 *language.Program, _, _ string) *Diff {
 			}
 		}
 
-		// Compare components (simplified - check if container has new/removed components)
-		for _, cont2 := range sys2.Containers {
-			var cont1 *language.Container
-			for _, c := range sys1.Containers {
-				if c.ID == cont2.ID {
-					cont1 = c
-					break
+		// Compare components
+		if sys1["containers"] != nil && sys2["containers"] != nil {
+			conts1 := sys1["containers"].(map[string]map[string]interface{})
+			conts2 := sys2["containers"].(map[string]map[string]interface{})
+
+			for contID, cont2 := range conts2 {
+				cont1, exists := conts1[contID]
+				if !exists {
+					continue
 				}
-			}
-			if cont1 != nil {
+
 				comps1 := make(map[string]bool)
 				comps2 := make(map[string]bool)
 
-				for _, comp := range cont1.Components {
-					comps1[comp.ID] = true
+				if cont1["components"] != nil {
+					for compID := range cont1["components"].(map[string]interface{}) {
+						comps1[compID] = true
+					}
 				}
-				for _, comp := range cont2.Components {
-					comps2[comp.ID] = true
+				if cont2["components"] != nil {
+					for compID := range cont2["components"].(map[string]interface{}) {
+						comps2[compID] = true
+					}
 				}
 
 				for compID := range comps2 {
 					if !comps1[compID] {
-						key := fmt.Sprintf("%s.%s", id, cont2.ID)
+						key := fmt.Sprintf("%s.%s", id, contID)
 						diff.AddedComponents[key] = append(diff.AddedComponents[key], compID)
 						diff.ModifiedSystems = appendIfNotExists(diff.ModifiedSystems, id)
 					}
 				}
 				for compID := range comps1 {
 					if !comps2[compID] {
-						key := fmt.Sprintf("%s.%s", id, cont1.ID)
+						key := fmt.Sprintf("%s.%s", id, contID)
 						diff.RemovedComponents[key] = append(diff.RemovedComponents[key], compID)
 						diff.ModifiedSystems = appendIfNotExists(diff.ModifiedSystems, id)
 					}
 				}
 			}
 		}
-
 	}
 
 	return diff

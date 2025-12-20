@@ -45,21 +45,30 @@ The player automatically switches quality based on the user's internet speed.
 We can use Sruja's `deployment` nodes to visualize the global distribution of content.
 
 ```sruja
-architecture "Video Streaming" {
-    system YouTube "Video Platform" {
-        container WebApp "Web App"
-        container API "API Server"
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+    YouTube = system "Video Platform" {
+        WebApp = container "Web App"
+        API = container "API Server"
         
-        container Transcoder "Transcoding Service" {
+        Transcoder = container "Transcoding Service" {
             description "Converts raw video to HLS format"
             scale { min 50 }
         }
         
-        datastore S3 "Blob Storage" {
+        S3 = datastore "Blob Storage" {
             description "Stores raw and processed video files"
         }
         
-        datastore MetadataDB "Metadata DB"
+        MetadataDB = datastore "Metadata DB"
 
         WebApp -> API "HTTPS"
         API -> MetadataDB "Reads/Writes"
@@ -86,7 +95,7 @@ architecture "Video Streaming" {
         }
     }
 
-    person User "Viewer"
+    User = person "Viewer"
 
     // Streaming Flow
     scenario WatchVideo "User watches a video" {
@@ -100,11 +109,59 @@ architecture "Video Streaming" {
 
     // Upload Flow
     scenario UploadVideo "Creator uploads a video" {
-        User -> API "Upload Raw Video"
-        API -> S3 "Store Raw Video"
-        API -> Transcoder "Trigger Transcoding Job"
-        Transcoder -> S3 "Read Raw / Write HLS"
-        Transcoder -> MetadataDB "Update Video Status"
+        User -> YouTube.WebApp "Upload Raw Video"
+        YouTube.WebApp -> YouTube.API "POST /upload"
+        YouTube.API -> YouTube.S3 "Store Raw Video"
+        YouTube.API -> YouTube.Transcoder "Trigger Transcoding Job"
+        YouTube.Transcoder -> YouTube.S3 "Read Raw / Write HLS"
+        YouTube.Transcoder -> YouTube.MetadataDB "Update Video Status"
     }
+    
+    // Data flow: Video transcoding pipeline
+    flow TranscodingPipeline "Video Transcoding Data Flow" {
+        YouTube.S3 -> YouTube.Transcoder "Streams raw video chunks"
+        YouTube.Transcoder -> YouTube.Transcoder "Encodes to HLS (360p, 720p, 1080p)"
+        YouTube.Transcoder -> YouTube.S3 "Writes encoded chunks"
+        YouTube.Transcoder -> YouTube.MetadataDB "Updates manifest URLs"
+    }
+    
+    // Data flow: Video delivery pipeline
+    flow DeliveryPipeline "Video Delivery Data Flow" {
+        YouTube.S3 -> CDN "Replicates video chunks to edge"
+        CDN -> User "Streams chunks on demand"
+        User -> CDN "Requests next chunk based on bandwidth"
+        CDN -> YouTube.S3 "Cache miss: fetch from origin"
+    }
+    
+    // Data flow: Analytics pipeline
+    flow AnalyticsPipeline "Video Analytics Data Flow" {
+        YouTube.WebApp -> YouTube.API "Sends view events"
+        YouTube.API -> YouTube.MetadataDB "Updates view count"
+        YouTube.API -> YouTube.MetadataDB "Stores watch time"
+        YouTube.MetadataDB -> YouTube.API "Aggregates analytics"
+    }
+}
+
+views {
+  view index {
+    title "Complete Video Platform"
+    include *
+  }
+  
+  // Data flow view: Focus on data pipelines
+  view dataflow {
+    title "Data Flow View"
+    include YouTube.Transcoder YouTube.S3 YouTube.MetadataDB
+    exclude YouTube.WebApp YouTube.API
+    description "Shows data transformation and storage flows"
+  }
+  
+  // Processing view: Transcoding pipeline
+  view processing {
+    title "Processing Pipeline"
+    include YouTube.Transcoder YouTube.S3
+    exclude YouTube.WebApp YouTube.API YouTube.MetadataDB
+    description "Focuses on video processing components"
+  }
 }
 ```

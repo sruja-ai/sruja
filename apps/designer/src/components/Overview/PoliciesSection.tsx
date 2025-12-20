@@ -2,13 +2,12 @@ import { Shield, Plus, Edit } from "lucide-react";
 import { Button } from "@sruja/ui";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
 import { useSelectionStore } from "../../stores";
-import type { PolicyJSON } from "../../types";
 
 interface PoliciesSectionProps {
-  policies: PolicyJSON[] | undefined;
+  policies: any[] | undefined;
   policyCount: number;
   onAddPolicy: () => void;
-  onEditPolicy: (policy: PolicyJSON) => void;
+  onEditPolicy: (policy: any) => void;
 }
 
 export function PoliciesSection({
@@ -84,13 +83,15 @@ export function PoliciesSection({
             </div>
             {isEditMode() && (
               <div className="policy-card-actions">
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="policy-edit-btn"
                   onClick={() => onEditPolicy(policy)}
                   title="Edit Policy"
                 >
                   <Edit size={12} />
-                </button>
+                </Button>
               </div>
             )}
           </div>

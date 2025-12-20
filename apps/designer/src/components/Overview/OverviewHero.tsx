@@ -1,13 +1,12 @@
 import { Edit } from "lucide-react";
 import { Button } from "@sruja/ui";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
-import type { OverviewJSON, MetadataEntry } from "../../types";
 
 interface OverviewHeroProps {
   architectureName?: string;
   description?: string;
-  overview?: OverviewJSON;
-  archMetadata?: MetadataEntry[];
+  overview?: any; // was OverviewJSON
+  archMetadata?: any[]; // was MetadataEntry[]
   onEditOverview: () => void;
 }
 

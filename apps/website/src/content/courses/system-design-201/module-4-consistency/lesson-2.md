@@ -12,7 +12,16 @@ They document trade‑offs and prevent accidental coupling across services.
 ## Sruja: Guardrails for Consistency
 
 ```sruja
-architecture "Orders" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   constraints {
     rule "No cross‑service transactions"
     rule "Idempotent event handlers"
@@ -20,6 +29,12 @@ architecture "Orders" {
   conventions {
     naming "kebab-case"
     retries "Exponential backoff (max 3)"
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```

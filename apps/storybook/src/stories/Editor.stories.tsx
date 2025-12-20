@@ -20,36 +20,93 @@ const meta: Meta<typeof SrujaMonacoEditor> = {
 export default meta;
 type Story = StoryObj<typeof SrujaMonacoEditor>;
 
-const SIMPLE_EXAMPLE = `system App "My App" {
-  container Web "Web Server"
-  datastore DB "Database"
+const SIMPLE_EXAMPLE = `specification {
+  element person
+  element system
+  element container
+  element database
 }
-person User "User"
-User -> App.Web "Visits"
-App.Web -> App.DB "Reads/Writes"`;
 
-const ECOMMERCE_EXAMPLE = `system EcommerceSystem "E-commerce Platform" {
-  container WebApp "Web Application"
-  container API "API Gateway"
-  container Payment "Payment Service"
-  container Inventory "Inventory Service"
+model {
+  user = person "End User"
   
-  datastore UserDB "User Database"
-  datastore ProductDB "Product Database"
-  datastore OrderDB "Order Database"
+  app = system "My App" {
+    web = container "Web Server" {
+      technology "Node.js"
+    }
+    db = database "Database" {
+      technology "PostgreSQL"
+    }
+  }
+  
+  user -> app.web "Visits"
+  app.web -> app.db "Reads/Writes"
 }
 
-person Customer "Customer"
-person Admin "Administrator"
+views {
+  view index {
+    title "System Overview"
+    include *
+  }
+}`;
 
-Customer -> EcommerceSystem.WebApp "Browses"
-Customer -> EcommerceSystem.WebApp "Purchases"
-EcommerceSystem.WebApp -> EcommerceSystem.API "Requests"
-EcommerceSystem.API -> EcommerceSystem.Payment "Processes"
-EcommerceSystem.API -> EcommerceSystem.Inventory "Checks"
-EcommerceSystem.Payment -> EcommerceSystem.OrderDB "Stores"
-EcommerceSystem.Inventory -> EcommerceSystem.ProductDB "Queries"
-Admin -> EcommerceSystem.API "Manages"`;
+const ECOMMERCE_EXAMPLE = `specification {
+  element person
+  element system
+  element container
+  element database
+}
+
+model {
+  customer = person "Customer"
+  admin = person "Administrator"
+  
+  ecommerce = system "E-Commerce Platform" {
+    webApp = container "Web Application" {
+      technology "Next.js"
+    }
+    api = container "API Gateway" {
+      technology "Express.js"
+    }
+    payment = container "Payment Service" {
+      technology "Go"
+    }
+    inventory = container "Inventory Service" {
+      technology "Python"
+    }
+    
+    userDB = database "User Database" {
+      technology "PostgreSQL"
+    }
+    productDB = database "Product Database" {
+      technology "MongoDB"
+    }
+    orderDB = database "Order Database" {
+      technology "PostgreSQL"
+    }
+  }
+  
+  customer -> ecommerce.webApp "Browses"
+  customer -> ecommerce.webApp "Purchases"
+  ecommerce.webApp -> ecommerce.api "Requests"
+  ecommerce.api -> ecommerce.payment "Processes"
+  ecommerce.api -> ecommerce.inventory "Checks"
+  ecommerce.payment -> ecommerce.orderDB "Stores"
+  ecommerce.inventory -> ecommerce.productDB "Queries"
+  admin -> ecommerce.api "Manages"
+}
+
+views {
+  view landscape {
+    title "E-Commerce Landscape"
+    include *
+  }
+  
+  view containers of ecommerce {
+    title "E-Commerce Containers"
+    include ecommerce.*
+  }
+}`;
 
 export const Basic: Story = {
   render: function BasicComponent() {

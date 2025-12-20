@@ -1,23 +1,51 @@
 import type { StorybookConfig } from '@storybook/react-vite'
-import path from 'path'
+import path, { dirname } from 'path';
 import { fileURLToPath } from 'url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const storybookRoot = path.resolve(__dirname, '..')
 
 const config: StorybookConfig = {
   stories: ['../src/**/*.stories.@(ts|tsx)'],
-  addons: ['@storybook/addon-vitest', '@storybook/addon-docs', '@storybook/addon-viewport', '@chromatic-com/storybook', '@storybook/addon-a11y'],
+  addons: [
+    getAbsolutePath("@storybook/addon-vitest"),
+    getAbsolutePath("@storybook/addon-docs"),
+    getAbsolutePath("@chromatic-com/storybook"),
+    getAbsolutePath("@storybook/addon-a11y")
+  ],
   framework: {
-    name: '@storybook/react-vite',
+    name: getAbsolutePath("@storybook/react-vite"),
     options: {}
   },
   viteFinal: async (cfg) => {
-    const dirname = path.dirname(fileURLToPath(import.meta.url))
+    // Don't override root - let Storybook handle it
+    // Only set base path if not already set
+    if (!cfg.base) {
+      cfg.base = '/'
+    }
+    
+    // Configure server to handle paths correctly
+    cfg.server = cfg.server || {}
+    cfg.server.fs = cfg.server.fs || {}
+    const workspaceRoot = path.resolve(storybookRoot, '../../..')
+    cfg.server.fs.allow = [
+      ...(cfg.server.fs.allow || []),
+      storybookRoot,
+      path.resolve(storybookRoot, '..'),
+      workspaceRoot,
+      path.resolve(workspaceRoot, 'apps/designer'),
+    ]
+    
     cfg.resolve = cfg.resolve || {}
     cfg.resolve.alias = {
       ...(cfg.resolve.alias || {}),
-      '@sruja/shared': path.resolve(dirname, '../../../packages/shared/src'),
-      '@sruja/viewer': path.resolve(dirname, '../../../packages/viewer/src'),
-      '@sruja/architecture-visualizer': path.resolve(dirname, '../../architecture-visualizer/src'),
-      '@sruja/layout': path.resolve(dirname, '../../../packages/layout/src'),
+      '@sruja/shared': path.resolve(__dirname, '../../../packages/shared/src'),
+      '@sruja/ui': path.resolve(__dirname, '../../../packages/ui/src'),
+    }
+    // Ensure designer app dependencies can be resolved
+    cfg.resolve.conditions = cfg.resolve.conditions || []
+    if (!cfg.resolve.conditions.includes('import')) {
+      cfg.resolve.conditions.push('import')
     }
     cfg.optimizeDeps = cfg.optimizeDeps || {}
     cfg.optimizeDeps.exclude = [
@@ -42,3 +70,7 @@ const config: StorybookConfig = {
 }
 
 export default config
+
+function getAbsolutePath(value: string): any {
+  return dirname(fileURLToPath(import.meta.resolve(`${value}/package.json`)));
+}

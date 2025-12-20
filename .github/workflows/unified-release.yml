@@ -1,0 +1,292 @@
+name: Unified Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Triggers on semantic version tags
+  release:
+    types: [published]  # Triggers when Release Please publishes a release
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: "release"
+  cancel-in-progress: false
+
+jobs:
+  determine-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Determine version
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF: ${{ github.ref }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [ "$EVENT_NAME" == "release" ] && [ -n "$RELEASE_TAG" ]; then
+            VERSION="$RELEASE_TAG"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          # Remove 'v' prefix if present
+          VERSION="${VERSION#v}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Release version: v${VERSION}"
+
+  publish-extension:
+    runs-on: ubuntu-latest
+    needs: determine-version
+    steps:
+      - uses: actions/checkout@v6
+      
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.4'
+      
+      - name: Build WASM
+        run: make wasm
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+          cache-dependency-path: apps/vscode-extension/package-lock.json
+
+      - name: Update extension version
+        run: |
+          VERSION="${{ needs.determine-version.outputs.version }}"
+          cd apps/vscode-extension
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          if [ "$CURRENT_VERSION" != "$VERSION" ]; then
+            npm version "$VERSION" --no-git-tag-version
+            echo "✅ Updated extension version to $VERSION"
+          else
+            echo "✅ Extension version already at $VERSION"
+          fi
+
+      - name: Install Dependencies
+        run: npm ci
+        working-directory: apps/vscode-extension
+
+      - name: Build extension
+        run: npm run build
+        working-directory: apps/vscode-extension
+
+      - name: Publish to Marketplace
+        run: npx vsce publish --skipDuplicate
+        working-directory: apps/vscode-extension
+        env:
+          VSCE_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
+
+  deploy-prod-website:
+    runs-on: ubuntu-latest
+    needs: determine-version
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.4'
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build Viewer + WASM
+        run: |
+          make build-embed-viewer
+          make wasm
+
+      - name: Build Astro website (production)
+        working-directory: apps/website
+        run: npm run build:prod
+        env:
+          SITE_URL: https://sruja.ai
+          PUBLIC_ALGOLIA_SEARCH_API_KEY: ${{ secrets.PUBLIC_ALGOLIA_SEARCH_API_KEY }}
+          PUBLIC_POSTHOG_API_KEY: ${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+          PUBLIC_POSTHOG_HOST: ${{ secrets.PUBLIC_POSTHOG_HOST }}
+
+      - name: Prepare deployment
+        run: |
+          mkdir -p _site
+          cp -r apps/website/dist/* _site/
+          touch _site/.nojekyll
+
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SRUJA_WEBSITE_DEPLOY_APP_ID }}
+          private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
+          owner: sruja-ai
+          repositories: prod-website
+
+      - name: Get GitHub App User ID
+        id: get-user-id
+        run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Checkout target repo
+        uses: actions/checkout@v6
+        with:
+          repository: sruja-ai/prod-website
+          ref: main
+          token: ${{ steps.app-token.outputs.token }}
+          path: target
+          persist-credentials: false
+
+      - name: Copy site contents
+        run: rsync -a --delete _site/ target/
+
+      - name: Configure git
+        run: |
+          cd target
+          git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
+          git config user.email "${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
+
+      - name: Commit and push
+        run: |
+          cd target
+          git add -A
+          if git diff --cached --quiet; then 
+            echo "No changes to deploy"
+          else 
+            COMMIT_MSG="Deploy production website (release ${{ needs.determine-version.outputs.tag }})"
+            git commit -m "$COMMIT_MSG"
+            git push origin HEAD:main
+          fi
+
+  deploy-designer:
+    runs-on: ubuntu-latest
+    needs: determine-version
+    runs-on: ubuntu-latest
+    needs: determine-version
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build designer app
+        run: npm run build
+        working-directory: apps/designer
+        env:
+          BASE_PATH: '/designer/'
+
+      - name: Verify examples are copied
+        run: |
+          if [ ! -d "apps/designer/dist/examples" ]; then
+            echo "ERROR: examples directory not found in dist/"
+            exit 1
+          fi
+          if [ ! -f "apps/designer/dist/examples/manifest.json" ]; then
+            echo "ERROR: manifest.json not found"
+            exit 1
+          fi
+          echo "✅ Examples verified in dist/"
+
+      - name: Prepare deployment
+        run: |
+          mkdir -p _site/designer
+          cp -r apps/designer/dist/* _site/designer/
+          touch _site/designer/.nojekyll
+
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SRUJA_WEBSITE_DEPLOY_APP_ID }}
+          private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
+          owner: sruja-ai
+          repositories: prod-website
+
+      - name: Get GitHub App User ID
+        id: get-user-id
+        run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Checkout target repo
+        uses: actions/checkout@v6
+        with:
+          repository: sruja-ai/prod-website
+          ref: main
+          token: ${{ steps.app-token.outputs.token }}
+          path: target
+          persist-credentials: false
+
+      - name: Copy designer app to target
+        run: |
+          rm -rf target/designer
+          cp -r _site/designer target/
+
+      - name: Configure git
+        run: |
+          cd target
+          git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
+          git config user.email "${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
+
+      - name: Commit and push
+        run: |
+          cd target
+          git add -A
+          if git diff --cached --quiet; then 
+            echo "No changes to deploy"
+          else 
+            COMMIT_MSG="Deploy designer app (release ${{ needs.determine-version.outputs.tag }})"
+            git commit -m "$COMMIT_MSG"
+            git push origin HEAD:main
+          fi
+
+  create-go-release:
+    runs-on: ubuntu-latest
+    needs: determine-version
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --force --tags
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.4'
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

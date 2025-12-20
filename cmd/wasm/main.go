@@ -3,14 +3,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"strings"
 	"syscall/js"
 
-	"github.com/sruja-ai/sruja/internal/converter"
-	"github.com/sruja-ai/sruja/pkg/engine"
-	"github.com/sruja-ai/sruja/pkg/language"
+	jexport "github.com/sruja-ai/sruja/pkg/export/json"
+	"github.com/sruja-ai/sruja/pkg/export/markdown"
+	"github.com/sruja-ai/sruja/pkg/export/mermaid"
 )
 
 func main() {
@@ -32,7 +30,14 @@ func main() {
 	js.Global().Set("sruja_find_references", js.FuncOf(findReferences))
 	js.Global().Set("sruja_rename", js.FuncOf(rename))
 	js.Global().Set("sruja_format", js.FuncOf(format))
+	js.Global().Set("sruja_code_actions", js.FuncOf(codeActions))
+	js.Global().Set("sruja_semantic_tokens", js.FuncOf(semanticTokens))
+	js.Global().Set("sruja_document_links", js.FuncOf(documentLinks))
+	js.Global().Set("sruja_folding_ranges", js.FuncOf(foldingRanges))
 	js.Global().Set("sruja_score", js.FuncOf(score))
+	js.Global().Set("sruja_dsl_to_mermaid", js.FuncOf(dslToMermaid))
+	js.Global().Set("sruja_dsl_to_markdown", js.FuncOf(dslToMarkdown))
+	js.Global().Set("sruja_dsl_to_likec4", js.FuncOf(dslToLikeC4))
 
 	// Explicitly keep function references to prevent optimization
 	_ = parseDslFn
@@ -40,8 +45,6 @@ func main() {
 
 	<-c
 }
-
-// Export functions (dslToMarkdown, dslToMermaid) removed - now handled by TypeScript exporters
 
 func parseDsl(this js.Value, args []js.Value) (ret interface{}) {
 	defer func() {
@@ -62,44 +65,19 @@ func parseDsl(this js.Value, args []js.Value) (ret interface{}) {
 		}
 	}
 
-	p, err := language.NewParser()
+	_, program, err := parseToWorkspace(input, filename)
 	if err != nil {
 		return result(false, "", err.Error())
 	}
 
-	program, _, err := p.Parse(filename, input)
+	// Use LikeC4 exporter to generate JSON
+	exporter := jexport.NewLikeC4Exporter()
+	jsonStr, err := exporter.Export(program)
 	if err != nil {
 		return result(false, "", err.Error())
 	}
 
-	// Validate
-	validator := engine.NewValidator()
-	validator.RegisterRule(&engine.UniqueIDRule{})
-	validator.RegisterRule(&engine.ValidReferenceRule{})
-	validator.RegisterRule(&engine.ScenarioFQNRule{})
-
-	errs := validator.Validate(program)
-	if len(errs) > 0 {
-		var msgBuilder strings.Builder
-		msgBuilder.Grow(len(errs) * 50)
-		msgBuilder.WriteString("Validation errors:\n")
-		for i, e := range errs {
-			if i > 0 {
-				msgBuilder.WriteByte('\n')
-			}
-			msgBuilder.WriteString(e.Message)
-		}
-		return result(false, "", msgBuilder.String())
-	}
-
-	// Convert to JSON
-	archJson := converter.ConvertToJSON(program.Architecture)
-	jsonBytes, err := json.Marshal(archJson)
-	if err != nil {
-		return result(false, "", err.Error())
-	}
-
-	ret = result(true, string(jsonBytes), "")
+	ret = result(true, jsonStr, "")
 	return
 }
 
@@ -107,23 +85,92 @@ func jsonToDsl(this js.Value, args []js.Value) (ret interface{}) {
 	if len(args) < 1 {
 		return result(false, "", "invalid arguments")
 	}
+	return result(false, "", "JSON to DSL conversion is no longer supported - Architecture struct removed. Use LikeC4 format instead")
+}
+
+func dslToMermaid(this js.Value, args []js.Value) interface{} {
+	if len(args) < 1 {
+		return result(false, "", "invalid arguments")
+	}
 	input := args[0].String()
-
-	var archJson converter.ArchitectureJSON
-	if err := json.Unmarshal([]byte(input), &archJson); err != nil {
-		return result(false, "", "json unmarshal failed: "+err.Error())
+	filename := "input.sruja"
+	if len(args) >= 2 {
+		fn := args[1].String()
+		if fn != "" {
+			filename = fn
+		}
 	}
 
-	// Convert JSON back to AST
-	astArch := converter.ConvertFromJSON(archJson)
-	program := &language.Program{
-		Architecture: astArch,
+	_, program, err := parseToWorkspace(input, filename)
+	if err != nil {
+		return result(false, "", err.Error())
 	}
 
-	// Print AST to DSL
-	printer := language.NewPrinter()
-	dsl := printer.Print(program)
+	if program == nil || program.Model == nil {
+		return result(false, "", "no model found")
+	}
 
-	ret = result(true, dsl, "")
-	return
+	exporter := mermaid.NewExporter(mermaid.DefaultConfig())
+	output := exporter.Export(program)
+	return result(true, output, "")
+}
+
+func dslToMarkdown(this js.Value, args []js.Value) interface{} {
+	if len(args) < 1 {
+		return result(false, "", "invalid arguments")
+	}
+	input := args[0].String()
+	filename := "input.sruja"
+	if len(args) >= 2 {
+		fn := args[1].String()
+		if fn != "" {
+			filename = fn
+		}
+	}
+
+	_, program, err := parseToWorkspace(input, filename)
+	if err != nil {
+		return result(false, "", err.Error())
+	}
+
+	if program == nil || program.Model == nil {
+		return result(false, "", "no model found")
+	}
+
+	exporter := markdown.NewExporter(markdown.DefaultOptions())
+	output := exporter.Export(program)
+	return result(true, output, "")
+}
+
+func dslToLikeC4(this js.Value, args []js.Value) interface{} {
+	if len(args) < 1 {
+		return result(false, "", "invalid arguments")
+	}
+	input := args[0].String()
+	filename := "input.sruja"
+	if len(args) >= 2 {
+		fn := args[1].String()
+		if fn != "" {
+			filename = fn
+		}
+	}
+
+	_, program, err := parseToWorkspace(input, filename)
+	if err != nil {
+		return result(false, "", err.Error())
+	}
+
+	// Export directly from LikeC4 Program AST
+	if program.Model == nil {
+		return result(false, "", "no model found")
+	}
+
+	// Use LikeC4 exporter to generate LikeC4-compatible JSON
+	exporter := jexport.NewLikeC4Exporter()
+	output, err := exporter.Export(program)
+	if err != nil {
+		return result(false, "", err.Error())
+	}
+
+	return result(true, output, "")
 }

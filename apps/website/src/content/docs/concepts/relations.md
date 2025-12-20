@@ -11,30 +11,52 @@ summary: "Relations describe how elements interact with each other."
 ## Syntax
 
 ```sruja
-Source -> Destination "Label"
-// When referring to nested elements, use fully qualified names:
-System.Container -> System.Container.Component "Label"
+specification {
+  element system
+  element container
+  element datastore
+  element person
+}
+
+model {
+  // Relations use element IDs
+  Source -> Destination "Label"
+  // When referring to nested elements, use fully qualified names:
+  System.Container -> System.Container.Component "Label"
+}
 ```
 
 Or with a technology/protocol:
 
 ```sruja
-Source -> Destination "Label" {
+model {
+  Source -> Destination "Label" {
     technology "HTTPS/JSON"
+  }
 }
 ```
 
 ## Example
 
 ```sruja
-system BankingSystem "Internet Banking System" {
-  container WebApp "Web Application"
-  datastore DB "Database"
+specification {
+  element system
+  element container
+  element datastore
+  element person
 }
-person User "User"
 
-User -> BankingSystem.WebApp "Visits"
-BankingSystem.WebApp -> BankingSystem.DB "Reads Data"
+model {
+  BankingSystem = system "Internet Banking System" {
+    WebApp = container "Web Application"
+    DB = datastore "Database"
+  }
+  
+  User = person "User"
+
+  User -> BankingSystem.WebApp "Visits"
+  BankingSystem.WebApp -> BankingSystem.DB "Reads Data"
+}
 ```
 
 Use clear, unique IDs to reference relation endpoints.

@@ -58,4 +58,4 @@ Follow this small-steps plan. Each step has a clear outcome, takes 10–30 minut
 
 ---
 
-**Note**: Sruja is **free and open source** (MIT licensed). Join the community on [Discord](https://discord.gg/VNrvHPV5) or [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions) for help and to contribute.
+**Note**: Sruja is **free and open source** (Apache 2.0 licensed). Join the community on [Discord](https://discord.gg/VNrvHPV5) or [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions) for help and to contribute.

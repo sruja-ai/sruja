@@ -42,14 +42,23 @@ HTTP is request/response (pull). For chat, we need **push**.
 We can use Sruja to model the WebSocket connections and the async message processing.
 
 ```sruja
-architecture "Chat System" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
     requirement R1 functional "Real-time messaging"
     requirement R2 functional "Message history"
     requirement R3 latency "Instant delivery"
     requirement R4 consistency "Ordered delivery"
 
-    system ChatApp "WhatsApp Clone" {
-        container ChatServer "Chat Server" {
+    ChatApp = system "WhatsApp Clone" {
+        ChatServer = container "Chat Server" {
             technology "Node.js (Socket.io)"
             description "Handles WebSocket connections"
             scale {
@@ -59,17 +68,17 @@ architecture "Chat System" {
             }
         }
         
-        datastore SessionStore "Session Store" {
+        SessionStore = datastore "Session Store" {
             technology "Redis"
             description "Maps UserID -> WebSocketServerID"
         }
         
-        datastore MessageDB "Message History" {
+        MessageDB = datastore "Message History" {
             technology "Cassandra"
             description "Stores chat logs"
         }
         
-        queue MessageQueue "Message Queue" {
+        MessageQueue = queue "Message Queue" {
             technology "Kafka"
             description "Buffers messages for group chat fan-out"
         }
@@ -79,16 +88,52 @@ architecture "Chat System" {
         ChatServer -> MessageQueue "Async processing"
     }
 
-    person UserA "Alice"
-    person UserB "Bob"
+    UserA = person "Alice"
+    UserB = person "Bob"
 
-    // Scenario of 1-on-1 chat
-    scenario SendMessage "Send Message Flow" {
-        UserA -> ChatServer "Send 'Hello'"
-        ChatServer -> MessageDB "Persist message"
-        ChatServer -> SessionStore "Lookup Bob's connection"
-        SessionStore -> ChatServer "Bob is on Server-2"
-        ChatServer -> UserB "Push 'Hello'"
+    // Scenario: 1-on-1 chat (user online)
+    scenario SendMessageOnline "Send Message - Recipient Online" {
+        UserA -> ChatApp.ChatServer "Send 'Hello'"
+        ChatApp.ChatServer -> ChatApp.MessageDB "Persist message"
+        ChatApp.ChatServer -> ChatApp.SessionStore "Lookup Bob's connection"
+        ChatApp.SessionStore -> ChatApp.ChatServer "Bob is on Server-2"
+        ChatApp.ChatServer -> UserB "Push 'Hello' via WebSocket"
+        UserB -> ChatApp.ChatServer "ACK received"
     }
+    
+    // Scenario: 1-on-1 chat (user offline)
+    scenario SendMessageOffline "Send Message - Recipient Offline" {
+        UserA -> ChatApp.ChatServer "Send 'Hello'"
+        ChatApp.ChatServer -> ChatApp.MessageDB "Persist message"
+        ChatApp.ChatServer -> ChatApp.SessionStore "Lookup Bob's connection"
+        ChatApp.SessionStore -> ChatApp.ChatServer "Bob is offline"
+        ChatApp.ChatServer -> ChatApp.MessageDB "Mark as pending delivery"
+    }
+    
+    // Scenario: Group chat (fan-out)
+    scenario SendGroupMessage "Send Group Message" {
+        UserA -> ChatApp.ChatServer "Send 'Hello' to Group"
+        ChatApp.ChatServer -> ChatApp.MessageDB "Persist message"
+        ChatApp.ChatServer -> ChatApp.MessageQueue "Enqueue for fan-out"
+        ChatApp.MessageQueue -> ChatApp.ChatServer "Process for each member"
+        ChatApp.ChatServer -> ChatApp.SessionStore "Lookup each member's server"
+        ChatApp.ChatServer -> UserB "Push to member 1"
+        ChatApp.ChatServer -> UserC "Push to member 2"
+        ChatApp.ChatServer -> UserD "Push to member 3"
+    }
+    
+    // Scenario: Message history retrieval
+    scenario GetMessageHistory "Retrieve Message History" {
+        UserA -> ChatApp.ChatServer "Request chat history"
+        ChatApp.ChatServer -> ChatApp.MessageDB "Query messages"
+        ChatApp.MessageDB -> ChatApp.ChatServer "Return messages"
+        ChatApp.ChatServer -> UserA "Send history"
+    }
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```

@@ -106,7 +106,8 @@ function sizeLeafNode(
 
   // 1. Measure text with wrapping
   // Note: maxLabelWidth here controls where we wrap
-  const textMetrics = measurer.measureMultiline(node.node.label, kind, level, maxLabelWidth);
+  const labelText = node.node.label || "";
+  const textMetrics = measurer.measureMultiline(labelText, kind, level, maxLabelWidth);
 
   let contentWidth = textMetrics.width;
   let contentHeight = textMetrics.height + iconHeightSpace;

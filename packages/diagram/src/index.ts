@@ -33,6 +33,33 @@ export { getNodeColors } from "./utils/colorScheme";
 export { exportSVG } from "./utils/exportSVG";
 export { exportPNGFromSVG } from "./utils/exportPNG";
 
+// Node Factory Utilities
+export {
+  createNode,
+  nodeFactory,
+  createPersonNode,
+  createSystemNode,
+  createContainerNode,
+  createComponentNode,
+  createDataStoreNode,
+  createQueueNode,
+  type NodeFactoryConfig,
+  type NodeSourceData,
+} from "./utils/nodeFactory";
+
+// Type Guards
+export {
+  isSystemNode,
+  isPersonNode,
+  isContainerNode,
+  isComponentNode,
+  isBoundaryNode,
+  isExpandable,
+  isExternalNode,
+  isDataNode,
+  isMessagingNode,
+} from "./types";
+
 // Types
 export type {
   ArchitectureJSON,
@@ -58,5 +85,32 @@ export type {
   C4NodeData,
 } from "./types";
 
+// Performance Utilities
+export {
+  measure,
+  measureAsync,
+  createProfiler,
+  memoizeWithLimit,
+  debounce,
+  throttle,
+  scheduleIdleWork,
+  batchUpdates,
+  setPerformanceCallback,
+  type PerformanceMetrics,
+  type ProfilerReport,
+} from "./utils/performance";
+
+// React Performance Hooks
+export {
+  useStableCallback,
+  useRenderTracker,
+  useDebouncedValue,
+  useThrottledCallback,
+  useIdleCalculation,
+  createPropsComparator,
+  usePrevious,
+} from "./hooks/usePerformance";
+
 // Optimization (Agent Loop)
 export * from "./optimization";
+

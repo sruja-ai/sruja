@@ -1,8 +1,0 @@
-architecture "Flow Decision Test" {
-  scenario LoginFlow "User Login" {
-    CheckCreds -> IsValid "Check Credentials"
-    IsValid -> GrantAccess "Yes"
-    IsValid -> DenyAccess "No"
-    GrantAccess -> DenyAccess "End"
-  }
-}

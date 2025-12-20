@@ -21,13 +21,19 @@ This is the highest level of abstraction. It shows your software system as a sin
 *   **Audience:** Everyone (Technical & Non-Technical).
 
 ```sruja
-// A System Context View
-system App "My App"
-person User "Customer"
-system Stripe "Payment Gateway"
+specification {
+  element system
+  element person
+}
 
-User -> App "Uses"
-App -> Stripe "Process Payments"
+model {
+  App = system "My App"
+  User = person "Customer"
+  Stripe = system "Payment Gateway"
+
+  User -> App "Uses"
+  App -> Stripe "Process Payments"
+}
 ```
 
 ### 2. Container (Level 2)
@@ -44,10 +50,18 @@ App -> Stripe "Process Payments"
 *   **Audience:** Architects, Developers, Ops.
 
 ```sruja
-system App "My App" {
-    container Web "React App"
-    container API "Go Service"
-    datastore DB "PostgreSQL"
+specification {
+  element system
+  element container
+  element datastore
+}
+
+model {
+  App = system "My App" {
+    Web = container "React App"
+    API = container "Go Service"
+    DB = datastore "PostgreSQL"
+  }
 }
 ```
 

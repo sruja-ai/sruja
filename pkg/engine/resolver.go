@@ -7,47 +7,51 @@ import (
 )
 
 // Resolver updates the AST to use fully qualified names for ambiguous-free references.
+// It maintains an internal cache for O(1) repeated lookups.
 type Resolver struct {
-	defined   map[string]bool
-	suffixMap map[string][]string
+	defined      map[string]bool
+	suffixMap    map[string][]string
+	resolveCache map[string]string // Cache for resolved IDs (ref -> resolved)
 }
 
-// NewResolver creates a new resolver instance.
-func NewResolver(arch *language.Architecture) *Resolver {
-	// Estimate capacity to reduce allocations
-	estimatedElements := estimateElementCount(arch)
-	r := &Resolver{
-		defined:   make(map[string]bool, estimatedElements),
-		suffixMap: make(map[string][]string, estimatedElements/2),
+// NewResolver creates a new resolver instance from a LikeC4 Model.
+func NewResolverFromModel(model *language.ModelBlock) *Resolver {
+	if model == nil {
+		return &Resolver{
+			defined:      make(map[string]bool, 16),
+			suffixMap:    make(map[string][]string, 8),
+			resolveCache: make(map[string]string, 16),
+		}
 	}
-	r.index(arch)
+
+	// Collect all elements
+	defined, _ := collectLikeC4Elements(model)
+
+	estimatedElements := len(defined)
+	if estimatedElements < 16 {
+		estimatedElements = 16
+	}
+
+	r := &Resolver{
+		defined:      make(map[string]bool, estimatedElements),
+		suffixMap:    make(map[string][]string, estimatedElements/2),
+		resolveCache: make(map[string]string, estimatedElements),
+	}
+	r.indexFromModel(model)
 	return r
 }
 
-// estimateElementCount provides a rough estimate of total elements for map pre-allocation.
-func estimateElementCount(arch *language.Architecture) int {
-	if arch == nil {
-		return 16
+// indexFromModel builds the lookup maps from LikeC4 Model.
+func (r *Resolver) indexFromModel(model *language.ModelBlock) {
+	if model == nil {
+		return
 	}
-	count := len(arch.Containers) + len(arch.Components) + len(arch.DataStores) + len(arch.Queues) + len(arch.Persons)
-	for _, sys := range arch.Systems {
-		count += 1 + len(sys.Containers) + len(sys.Components) + len(sys.DataStores) + len(sys.Queues)
-		for _, cont := range sys.Containers {
-			count += len(cont.Components) + len(cont.DataStores) + len(cont.Queues)
-		}
-	}
-	// Add some buffer for nested elements
-	return count*2 + 32
-}
 
-// index builds the lookup maps.
-func (r *Resolver) index(arch *language.Architecture) {
 	addID := func(id string) {
 		if id == "" {
 			return
 		}
 		r.defined[id] = true
-		// Use LastIndex for better performance than Split when we only need the last part
 		lastDot := strings.LastIndex(id, ".")
 		var suffix string
 		if lastDot == -1 {
@@ -58,80 +62,60 @@ func (r *Resolver) index(arch *language.Architecture) {
 		r.suffixMap[suffix] = append(r.suffixMap[suffix], id)
 	}
 
-	// Helper to build qualified IDs efficiently
-	buildQualifiedID := func(prefix, id string) string {
-		if prefix == "" {
-			return id
+	// Collect all element IDs from Model
+	var collectIDs func(elem *language.LikeC4ElementDef, parentFQN string)
+	collectIDs = func(elem *language.LikeC4ElementDef, parentFQN string) {
+		if elem == nil {
+			return
 		}
-		// Pre-allocate with estimated capacity
-		buf := make([]byte, 0, len(prefix)+len(id)+1)
-		buf = append(buf, prefix...)
-		buf = append(buf, '.')
-		buf = append(buf, id...)
-		return string(buf)
+
+		id := elem.GetID()
+		if id == "" {
+			return
+		}
+
+		fqn := id
+		if parentFQN != "" {
+			fqn = buildQualifiedID(parentFQN, id)
+		}
+
+		addID(fqn)
+
+		// Recurse into nested elements
+		body := elem.GetBody()
+		if body != nil {
+			for _, bodyItem := range body.Items {
+				if bodyItem.Element != nil {
+					collectIDs(bodyItem.Element, fqn)
+				}
+			}
+		}
 	}
 
-	// Top-level elements
-	for _, cont := range arch.Containers {
-		addID(cont.ID)
-		for _, comp := range cont.Components {
-			addID(buildQualifiedID(cont.ID, comp.ID))
-		}
-		for _, ds := range cont.DataStores {
-			addID(buildQualifiedID(cont.ID, ds.ID))
-		}
-		for _, q := range cont.Queues {
-			addID(buildQualifiedID(cont.ID, q.ID))
-		}
-	}
-	for _, comp := range arch.Components {
-		addID(comp.ID)
-	}
-	for _, ds := range arch.DataStores {
-		addID(ds.ID)
-	}
-	for _, q := range arch.Queues {
-		addID(q.ID)
-	}
-	for _, p := range arch.Persons {
-		addID(p.ID)
-	}
-
-	// Nested elements under systems
-	for _, sys := range arch.Systems {
-		addID(sys.ID)
-		for _, cont := range sys.Containers {
-			contID := buildQualifiedID(sys.ID, cont.ID)
-			addID(contID)
-			for _, comp := range cont.Components {
-				addID(buildQualifiedID(contID, comp.ID))
-			}
-			for _, ds := range cont.DataStores {
-				addID(buildQualifiedID(contID, ds.ID))
-			}
-			for _, q := range cont.Queues {
-				addID(buildQualifiedID(contID, q.ID))
-			}
-		}
-		for _, comp := range sys.Components {
-			addID(buildQualifiedID(sys.ID, comp.ID))
-		}
-		for _, ds := range sys.DataStores {
-			addID(buildQualifiedID(sys.ID, ds.ID))
-		}
-		for _, q := range sys.Queues {
-			addID(buildQualifiedID(sys.ID, q.ID))
+	// Process all top-level elements
+	for _, item := range model.Items {
+		if item.ElementDef != nil {
+			collectIDs(item.ElementDef, "")
 		}
 	}
 }
 
 // resolveID returns the fully qualified ID if the reference is unique/valid,
 // or returns the original ref if ambiguous or unknown.
+// Results are cached for O(1) repeated lookups.
 func (r *Resolver) resolveID(ref string) string {
 	if ref == "" {
 		return ""
 	}
+
+	// Check cache first (O(1) lookup)
+	if cached, ok := r.resolveCache[ref]; ok {
+		return cached
+	}
+
+	// Already defined - cache and return
 	if r.defined[ref] {
+		r.resolveCache[ref] = ref
 		return ref
 	}
 
@@ -145,16 +129,21 @@ func (r *Resolver) resolveID(ref string) string {
 	}
 
 	matches := r.suffixMap[suffix]
+	var result string
 	if len(matches) == 1 {
-		return matches[0]
+		result = matches[0]
+	} else {
+		result = ref
 	}
 
-	return ref
+	// Cache the result
+	r.resolveCache[ref] = result
+	return result
 }
 
-// Resolve updates the program architecture in place.
-func (r *Resolver) Resolve(arch *language.Architecture) {
-	if arch == nil {
+// Resolve updates the program model in place (LikeC4 syntax).
+func (r *Resolver) ResolveModel(model *language.ModelBlock) {
+	if model == nil {
 		return
 	}
 
@@ -171,61 +160,75 @@ func (r *Resolver) Resolve(arch *language.Architecture) {
 		}
 	}
 
-	// Update Flows
-	for _, flow := range arch.Flows {
-		for _, item := range flow.Items {
-			if item.Step != nil {
-				updateRef(&item.Step.From)
-				updateRef(&item.Step.To)
-			}
-		}
-	}
-
-	// Update Scenarios
-	for _, sc := range arch.Scenarios {
-		for _, step := range sc.Steps {
-			updateRef(&step.From)
-			updateRef(&step.To)
-		}
-	}
-
-	// Also update Relation targets if they use short names?
-	// DSL relations usually are scoped, but sometimes they might use global short names.
-	// Let's safe-update them too.
-	updateRelation := func(rel *language.Relation) {
-		if rel == nil {
+	// Update relations in Model
+	var updateRelationsInElement func(elem *language.LikeC4ElementDef)
+	updateRelationsInElement = func(elem *language.LikeC4ElementDef) {
+		body := elem.GetBody()
+		if body == nil {
 			return
 		}
-		updateRef(&rel.From)
-		updateRef(&rel.To)
-	}
 
-	for _, rel := range arch.Relations {
-		updateRelation(rel)
-	}
-
-	for _, s := range arch.Systems {
-		for _, r := range s.Relations {
-			updateRelation(r)
-		}
-		for _, c := range s.Containers {
-			for _, r := range c.Relations {
-				updateRelation(r)
+		for _, bodyItem := range body.Items {
+			if bodyItem.Relation != nil {
+				updateRef(&bodyItem.Relation.From)
+				updateRef(&bodyItem.Relation.To)
+			}
+			if bodyItem.Element != nil {
+				updateRelationsInElement(bodyItem.Element)
 			}
 		}
-		for _, c := range s.Components {
-			for _, r := range c.Relations {
-				updateRelation(r)
+	}
+
+	// Process all items in model
+	for _, item := range model.Items {
+		if item.Relation != nil {
+			updateRef(&item.Relation.From)
+			updateRef(&item.Relation.To)
+		}
+		if item.ElementDef != nil {
+			updateRelationsInElement(item.ElementDef)
+		}
+		// Update scenarios and flows
+		if item.Scenario != nil {
+			for _, step := range item.Scenario.Steps {
+				updateRef(&step.From)
+				updateRef(&step.To)
+			}
+		}
+		if item.Flow != nil {
+			for _, step := range item.Flow.Steps {
+				updateRef(&step.From)
+				updateRef(&step.To)
 			}
 		}
 	}
 }
 
-// RunResolution is a convenience entry point
+// RunResolution is a convenience entry point for a single program
 func RunResolution(program *language.Program) {
-	if program == nil || program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return
 	}
-	r := NewResolver(program.Architecture)
-	r.Resolve(program.Architecture)
+	r := NewResolverFromModel(program.Model)
+	r.ResolveModel(program.Model)
+}
+
+// RunWorkspaceResolution resolves references across all programs in a workspace
+func RunWorkspaceResolution(ws *language.Workspace) {
+	if ws == nil {
+		return
+	}
+	merged := ws.MergedProgram()
+	if merged == nil || merged.Model == nil {
+		return
+	}
+	// Index all elements across the entire workspace
+	r := NewResolverFromModel(merged.Model)
+
+	// Resolve each program's model independently using the global index
+	for _, prog := range ws.Programs {
+		if prog != nil && prog.Model != nil {
+			r.ResolveModel(prog.Model)
+		}
+	}
 }

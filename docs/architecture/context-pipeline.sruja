@@ -1,0 +1,213 @@
+// Architecture model for Sruja's AI-Assisted Development Pipeline
+// This models the context provisioning system that provides architectural
+// context to AI coding assistants
+
+architecture "Sruja Context Provisioning System" {
+  person Developer "Developer"
+  
+  system ContextProvisioningSystem "Context Provisioning System" {
+    description "System that extracts and formats architectural context from Sruja DSL for AI coding assistants"
+    
+    // Existing components that we leverage
+    container DSLParser "DSL Parser" {
+      description "Existing parser that processes .sruja files into AST"
+      technology "Go, pkg/language"
+      component Lexer "Lexer"
+      component Parser "Parser"
+      component ASTBuilder "AST Builder"
+      Lexer -> Parser "Tokenizes input"
+      Parser -> ASTBuilder "Builds AST"
+    }
+    
+    container JSONExport "JSON Export" {
+      description "Existing export system that converts AST to JSON"
+      technology "Go, pkg/export/json"
+      component JSONConverter "JSON Converter"
+      component SchemaValidator "Schema Validator"
+      DSLParser.ASTBuilder -> JSONConverter "AST to JSON"
+      JSONConverter -> SchemaValidator "Validates JSON"
+    }
+    
+    // New components for context provisioning
+    container PIMExtractor "PIM Extractor" {
+      description "Extracts Platform Independent Model from JSON for AI context"
+      technology "Go, pkg/context"
+      component PIMBuilder "PIM Builder"
+      component AbstractionLayer "Abstraction Layer"
+      component PIMValidator "PIM Validator"
+      JSONExport.JSONConverter -> PIMBuilder "JSON to PIM"
+      PIMBuilder -> AbstractionLayer "Removes platform details"
+      AbstractionLayer -> PIMValidator "Validates PIM structure"
+    }
+    
+    container ContextFormatter "Context Formatter" {
+      description "Formats PIM into various formats for different AI assistants"
+      technology "Go, pkg/context"
+      
+      component FormatRouter "Format Router"
+      component MarkdownFormatter "Markdown Formatter" {
+        description "Formats context as Markdown for Copilot/Cursor"
+      }
+      component JSONFormatter "JSON Formatter" {
+        description "Formats context as structured JSON"
+      }
+      component PromptFormatter "Prompt Formatter" {
+        description "Formats context as prompt-ready text for ChatGPT/Claude"
+      }
+      component TokenOptimizer "Token Optimizer" {
+        description "Optimizes context for token limits"
+      }
+      
+      PIMExtractor.PIMValidator -> FormatRouter "Routes PIM by format"
+      FormatRouter -> MarkdownFormatter "Markdown format"
+      FormatRouter -> JSONFormatter "JSON format"
+      FormatRouter -> PromptFormatter "Prompt format"
+      MarkdownFormatter -> TokenOptimizer "Optimizes tokens"
+      JSONFormatter -> TokenOptimizer "Optimizes tokens"
+      PromptFormatter -> TokenOptimizer "Optimizes tokens"
+    }
+    
+    container TraceabilityManager "Traceability Manager" {
+      description "Tracks connections between DSL elements, AI prompts, and generated code"
+      technology "Go, pkg/traceability"
+      component LinkStore "Link Store" {
+        description "Stores traceability links in JSON format"
+      }
+      component LinkQuery "Link Query" {
+        description "Queries traceability links by DSL element or code file"
+      }
+      component ImpactAnalyzer "Impact Analyzer" {
+        description "Analyzes impact of architecture changes on code"
+      }
+      LinkStore -> LinkQuery "Provides links"
+      LinkQuery -> ImpactAnalyzer "Analyzes relationships"
+    }
+    
+    container OptionalAIAssistant "Optional AI Assistant" {
+      description "Optional AI features for DSL authoring (not code generation)"
+      technology "Go, pkg/ai"
+      component LLMClient "LLM Client" {
+        description "Abstracts LLM provider (OpenAI, Anthropic, local)"
+      }
+      component DSLTranslator "DSL Translator" {
+        description "Translates natural language to DSL"
+      }
+      component ArchitectureAdvisor "Architecture Advisor" {
+        description "Suggests architecture improvements"
+      }
+      LLMClient -> DSLTranslator "Provides LLM access"
+      LLMClient -> ArchitectureAdvisor "Provides LLM access"
+    }
+    
+    container ValidationEngine "Validation Engine" {
+      description "Enhanced validation for PIM and architecture quality"
+      technology "Go, pkg/validation"
+      component EnhancedPIMValidator "Enhanced PIM Validator"
+      component QualityChecker "Quality Checker"
+      PIMExtractor.PIMValidator -> EnhancedPIMValidator "Validates PIM"
+      EnhancedPIMValidator -> QualityChecker "Checks quality metrics"
+    }
+    
+    container LSPIntegration "LSP Integration" {
+      description "Provides context via Language Server Protocol for IDE integration"
+      technology "Go, pkg/lsp"
+      component ContextProvider "Context Provider"
+      component HoverEnhancer "Hover Enhancer"
+      ContextFormatter.FormatRouter -> ContextProvider "Provides formatted context"
+      ContextProvider -> HoverEnhancer "Enhances hover with context"
+    }
+    
+    container CLI "CLI" {
+      description "Command-line interface for context export and traceability"
+      technology "Go, cmd/sruja"
+      component ContextExportCmd "Context Export Command"
+      component TraceCmd "Trace Command"
+      component OptionalAICmd "Optional AI Command"
+      
+      ContextFormatter.TokenOptimizer -> ContextExportCmd "Exports context"
+      TraceabilityManager.ImpactAnalyzer -> TraceCmd "Provides traceability"
+      OptionalAIAssistant.DSLTranslator -> OptionalAICmd "Provides AI features"
+    }
+    
+    // Internal relationships
+    PIMExtractor -> ContextFormatter "PIM to format"
+    ContextFormatter -> TraceabilityManager "Tracks context exports"
+    ValidationEngine -> ContextFormatter "Validated PIM"
+  }
+  
+  // External systems and relationships
+  system AICodingAssistants "AI Coding Assistants" {
+    description "External AI coding assistants (GitHub Copilot, Cursor, ChatGPT, Claude, etc.)"
+    container Copilot "GitHub Copilot" {
+      description "GitHub Copilot AI coding assistant"
+    }
+    container Cursor "Cursor AI" {
+      description "Cursor AI coding assistant with IDE integration"
+    }
+    container ChatGPT "ChatGPT" {
+      description "OpenAI ChatGPT for code generation"
+    }
+    container Claude "Claude" {
+      description "Anthropic Claude for code generation"
+    }
+  }
+  
+  system DeveloperWorkspace "Developer Workspace" {
+    description "Developer's codebase where code is generated with AI assistance"
+    container Codebase "Codebase" {
+      description "Application and infrastructure code"
+    }
+  }
+  
+  // User interactions
+  Developer -> ContextProvisioningSystem.CLI.ContextExportCmd "Exports context"
+  Developer -> ContextProvisioningSystem.CLI.TraceCmd "Queries traceability"
+  Developer -> ContextProvisioningSystem.OptionalAIAssistant.DSLTranslator "Gets DSL help"
+  
+  // Context flow to AI assistants
+  ContextProvisioningSystem.ContextFormatter.MarkdownFormatter -> AICodingAssistants.Copilot "Markdown context"
+  ContextProvisioningSystem.ContextFormatter.MarkdownFormatter -> AICodingAssistants.Cursor "Markdown context"
+  ContextProvisioningSystem.ContextFormatter.PromptFormatter -> AICodingAssistants.ChatGPT "Prompt context"
+  ContextProvisioningSystem.ContextFormatter.PromptFormatter -> AICodingAssistants.Claude "Prompt context"
+  ContextProvisioningSystem.LSPIntegration.ContextProvider -> AICodingAssistants.Cursor "IDE context"
+  
+  // Code generation flow
+  Developer -> AICodingAssistants.Copilot "Uses context to generate code"
+  Developer -> AICodingAssistants.Cursor "Uses context to generate code"
+  AICodingAssistants.Copilot -> DeveloperWorkspace.Codebase "Generated code"
+  AICodingAssistants.Cursor -> DeveloperWorkspace.Codebase "Generated code"
+  
+  // Traceability flow
+  Developer -> ContextProvisioningSystem.TraceabilityManager.LinkStore "Links code to DSL"
+  DeveloperWorkspace.Codebase -> ContextProvisioningSystem.TraceabilityManager.LinkStore "Tracks code files"
+  
+  // Stories/Flows
+  story ExportContext "Export Context for System" {
+    Developer -> ContextProvisioningSystem.CLI.ContextExportCmd "runs: sruja context export --system=OrderService --format=markdown"
+    ContextProvisioningSystem.CLI.ContextExportCmd -> ContextProvisioningSystem.ContextFormatter.MarkdownFormatter "formats context"
+    ContextProvisioningSystem.ContextFormatter.MarkdownFormatter -> Developer "provides Markdown context"
+  }
+  
+  story UseContextWithAI "Use Context with AI Assistant" {
+    Developer -> AICodingAssistants.Copilot "provides context + code request"
+    AICodingAssistants.Copilot -> DeveloperWorkspace.Codebase "generates code with architecture awareness"
+  }
+  
+  story TrackTraceability "Track Traceability" {
+    Developer -> ContextProvisioningSystem.CLI.TraceCmd "links: sruja trace link --element=system.App.container.Web --file=app/web/server.go"
+    ContextProvisioningSystem.CLI.TraceCmd -> ContextProvisioningSystem.TraceabilityManager.LinkStore "stores traceability link"
+    DeveloperWorkspace.Codebase -> ContextProvisioningSystem.TraceabilityManager.LinkStore "tracks code file"
+  }
+  
+  story LSPContextProvision "LSP Context Provision" {
+    Developer -> ContextProvisioningSystem.LSPIntegration.HoverEnhancer "hovers over DSL element"
+    ContextProvisioningSystem.LSPIntegration.ContextProvider -> AICodingAssistants.Cursor "provides context automatically"
+  }
+  
+  // Requirements
+  requirement REQ_CONTEXT_EXPORT functional "System must export architectural context in multiple formats"
+  requirement REQ_TOKEN_OPTIMIZATION performance "Context must be optimized for AI assistant token limits"
+  requirement REQ_TRACEABILITY functional "System must track relationships between DSL elements and generated code"
+  requirement REQ_LSP_INTEGRATION functional "System must provide context via LSP for IDE integration"
+  requirement REQ_BACKWARD_COMPAT constraint "New features must not break existing Sruja functionality"
+}

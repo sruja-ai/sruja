@@ -1,62 +1,115 @@
 ---
-title: "Lesson 2: Scalability & Performance"
+title: "Lesson 2: The Vocabulary of Scale"
 weight: 2
-summary: "Vertical vs. Horizontal Scaling, Latency vs. Throughput."
+summary: "Vertical vs. Horizontal Scaling, Latency vs. Throughput. The words you need to know."
+learning_objectives:
+  - Explain Vertical vs Horizontal scaling
+  - Understand why distributed systems are hard
+  - Master the difference between Latency and Throughput
+estimated_time: "15 minutes"
+difficulty: "beginner"
 ---
 
-# Lesson 2: Scalability & Performance
+# Lesson 2: The Vocabulary of Scale
 
-## What is Scalability?
+To design big systems, you need to speak the language.
 
-Scalability is the ability of a system to handle increased load without performance degradation. It's not just about "handling more users"; it's about doing so cost-effectively and reliably.
+## 1. Scaling: Up vs Out
+
+When your website crashes because too many people are using it, you have two choices.
 
 ### Vertical Scaling (Scaling Up)
-Adding more power (CPU, RAM) to an existing server.
-*   **Pros:** Simple to implement.
-*   **Cons:** Hardware limits, single point of failure, expensive at the high end.
+**"Get a bigger machine."**
+You upgrade from a 4GB RAM server to a 64GB RAM server.
+-   **Pros**: Easy. No code changes.
+-   **Cons**: Expensive. Finite limit (you can't buy a 100TB RAM server... easily). Single point of failure.
 
 ### Horizontal Scaling (Scaling Out)
-Adding more servers to the pool of resources.
-*   **Pros:** Theoretically infinite scale, better fault tolerance.
-*   **Cons:** Increased complexity (load balancing, data consistency).
+**"Get more machines."**
+You buy 10 cheap servers and split the traffic between them.
+-   **Pros**: Infinite scale (google has millions of servers). Resilient (if one dies, others take over).
+-   **Cons**: Complex. You need load balancers and data consistency strategies.
 
-## Performance Metrics
+```mermaid
+graph TD
+    subgraph Vertical [Vertical Scaling]
+        Small[Server] -- Upgrade --> Big[SERVER]
+    end
+    
+    subgraph Horizontal [Horizontal Scaling]
+        One[Server] -- Add More --> Many1[Server]
+        One -- Add More --> Many2[Server]
+        One -- Add More --> Many3[Server]
+    end
+```
 
-### Latency
-The time it takes for a system to process a request.
-*   *Goal:* Minimize latency (e.g., "API response < 100ms").
+## 2. Speed: Latency vs Throughput
 
-### Throughput
-The number of requests a system can handle per unit of time.
-*   *Goal:* Maximize throughput (e.g., "Handle 10,000 requests per second").
+In interviews, never just say "it needs to be fast". Be specific.
 
----
+-   **Latency**: The time it takes for **one person** to get a result. 
+    -   *Metaphor*: The time it takes to drive from A to B.
+    -   *Unit*: Milliseconds (ms).
+-   **Throughput**: The number of people the system can serve **at the same time**.
+    -   *Metaphor*: The width of the highway (how many cars per hour).
+    -   *Unit*: Requests per Second (RPS).
 
-## 🛠️ Sruja Perspective: Modeling Scalability
+> [!TIP]
+> **Use the right word**: A system can have **low latency** (fast response) but **low throughput** (crashes if 5 people use it). A highway can have **high throughput** (10 lanes) but **high latency** (traffic jam).
 
-In Sruja, you can represent horizontal scaling using the native `scale` block. This allows you to define minimum and maximum replicas and the scaling metric.
+## 3. Sruja in Action
+
+Sruja allows you to define horizontal scaling requirements explicitly using the `scale` block.
 
 ```sruja
-architecture "E-Commerce Platform" {
-    system ECommerce "E-Commerce System" {
-        container WebServer "Web App" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+    ECommerce = system "E-Commerce System" {
+        WebServer = container "Web App" {
             technology "Go, Gin"
             
-            // Define horizontal scaling properties
+            // Explicitly defining Horizontal Scaling
             scale {
-                min 3
-                max 10
+                min 3            // Start with 3 servers
+                max 100          // Scale up to 100
                 metric "cpu > 80%"
             }
         }
         
-        container Database "Primary DB" {
+        Database = container "Primary DB" {
             technology "PostgreSQL"
-            // Vertical scaling example
-            description "Running on a high-memory instance (AWS r5.2xlarge)."
+            // Describing Vertical Scaling via comments/description
+            description "Running on a massive AWS r5.24xlarge instance (Vertical Scaling)"
         }
 
         WebServer -> Database "Reads/Writes"
     }
 }
+
+views {
+  view index {
+    include *
+  }
+}
 ```
+
+## Knowledge Check
+
+<details>
+<summary><strong>Q: Why don't we just vertically scale forever?</strong></summary>
+
+Because physics. There is a limit to how fast a single CPU can be. Also, if that one super-computer catches fire, your entire business is dead.
+</details>
+
+## Next Steps
+
+We have the mindset, and we have the words. Now let's draw.
+👉 **[Lesson 3: The C4 Model (Visualizing Architecture)](./lesson-3)**

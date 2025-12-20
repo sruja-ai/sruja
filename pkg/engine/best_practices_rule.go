@@ -19,54 +19,18 @@ func (r *DatabaseIsolationRule) Name() string {
 
 func (r *DatabaseIsolationRule) Validate(program *language.Program) []diagnostics.Diagnostic {
 	var diags []diagnostics.Diagnostic
-	if program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return diags
 	}
 
+	// Collect all relations from LikeC4 Model
+	_, relations := collectLikeC4Elements(program.Model)
+
 	// 1. Identify all DataStores
 	// Map: DataStore ID -> List of Consumers (System/Container/Component IDs)
-	// Estimate capacity: typically few datastores per architecture
-	estimatedDataStores := 8
-	if program.Architecture != nil {
-		for _, sys := range program.Architecture.Systems {
-			estimatedDataStores += len(sys.DataStores)
-		}
-		estimatedDataStores += len(program.Architecture.DataStores)
-	}
-	dsUsage := make(map[string][]string, estimatedDataStores)
+	dsUsage := make(map[string][]string, 8)
 
-	collectRelations := func(program *language.Program) []*language.Relation {
-		if program.Architecture == nil {
-			return nil
-		}
-
-		// Estimate capacity for relations
-		estimatedRels := len(program.Architecture.Relations)
-		for _, sys := range program.Architecture.Systems {
-			estimatedRels += len(sys.Relations)
-			for _, cont := range sys.Containers {
-				estimatedRels += len(cont.Relations)
-				for _, comp := range cont.Components {
-					estimatedRels += len(comp.Relations)
-				}
-			}
-		}
-		allRels := make([]*language.Relation, 0, estimatedRels)
-		allRels = append(allRels, program.Architecture.Relations...)
-
-		for _, sys := range program.Architecture.Systems {
-			allRels = append(allRels, sys.Relations...)
-			for _, cont := range sys.Containers {
-				allRels = append(allRels, cont.Relations...)
-				for _, comp := range cont.Components {
-					allRels = append(allRels, comp.Relations...)
-				}
-			}
-		}
-		return allRels
-	}
-
-	rels := collectRelations(program)
+	rels := relations
 
 	for _, rel := range rels {
 		// potential datastore targets
@@ -135,25 +99,64 @@ func (r *DatabaseIsolationRule) Validate(program *language.Program) []diagnostic
 }
 
 func isTargetDatastore(program *language.Program, name string) bool {
-	// Root level
-	for _, ds := range program.Architecture.DataStores {
-		if ds.ID == name {
+	if program == nil || program.Model == nil {
+		return false
+	}
+
+	// Search for database elements in LikeC4 Model
+	var findDatabase func(elem *language.LikeC4ElementDef, currentFQN string) bool
+	findDatabase = func(elem *language.LikeC4ElementDef, currentFQN string) bool {
+		if elem == nil {
+			return false
+		}
+
+		id := elem.GetID()
+		if id == "" {
+			return false
+		}
+
+		fqn := id
+		if currentFQN != "" {
+			fqn = buildQualifiedID(currentFQN, id)
+		}
+
+		// Check if this is a database and matches the name
+		if elem.GetKind() == "database" && (fqn == name || id == name) {
 			return true
 		}
+
+		// Recurse into nested elements
+		body := elem.GetBody()
+		if body != nil {
+			for _, bodyItem := range body.Items {
+				if bodyItem.Element != nil {
+					if findDatabase(bodyItem.Element, fqn) {
+						return true
+					}
+				}
+			}
+		}
+
+		return false
 	}
-	// System level
-	for _, sys := range program.Architecture.Systems {
-		for _, ds := range sys.DataStores {
-			// ID inside system is usually just the name, but reference is System.Name
-			if sys.ID+"."+ds.ID == name {
+
+	// Search all top-level elements
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			if findDatabase(item.ElementDef, "") {
 				return true
 			}
 		}
 	}
+
 	return false
 }
 
 func isSharedDatastore(program *language.Program, name string) bool {
+	if program == nil || program.Model == nil {
+		return false
+	}
+
 	checkMeta := func(metadata []*language.MetaEntry) bool {
 		for _, m := range metadata {
 			if m.Key == "shared" && m.Value != nil {
@@ -164,18 +167,61 @@ func isSharedDatastore(program *language.Program, name string) bool {
 		return false
 	}
 
-	for _, ds := range program.Architecture.DataStores {
-		if ds.ID == name {
-			return checkMeta(ds.Metadata)
+	// Search for database element and check its metadata
+	var findAndCheckDatabase func(elem *language.LikeC4ElementDef, currentFQN string) bool
+	findAndCheckDatabase = func(elem *language.LikeC4ElementDef, currentFQN string) bool {
+		if elem == nil {
+			return false
 		}
+
+		id := elem.GetID()
+		if id == "" {
+			return false
+		}
+
+		fqn := id
+		if currentFQN != "" {
+			fqn = buildQualifiedID(currentFQN, id)
+		}
+
+		// Check if this is the database we're looking for
+		if elem.GetKind() == "database" && (fqn == name || id == name) {
+			// Extract metadata from body
+			body := elem.GetBody()
+			if body != nil {
+				for _, item := range body.Items {
+					if item.Metadata != nil {
+						return checkMeta(item.Metadata.Entries)
+					}
+				}
+			}
+			return false
+		}
+
+		// Recurse into nested elements
+		body := elem.GetBody()
+		if body != nil {
+			for _, bodyItem := range body.Items {
+				if bodyItem.Element != nil {
+					if findAndCheckDatabase(bodyItem.Element, fqn) {
+						return true
+					}
+				}
+			}
+		}
+
+		return false
 	}
-	for _, sys := range program.Architecture.Systems {
-		for _, ds := range sys.DataStores {
-			if sys.ID+"."+ds.ID == name {
-				return checkMeta(ds.Metadata)
+
+	// Search all top-level elements
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			if findAndCheckDatabase(item.ElementDef, "") {
+				return true
 			}
 		}
 	}
+
 	return false
 }
 
@@ -189,132 +235,172 @@ func (r *PublicInterfaceDocumentationRule) Name() string {
 
 func (r *PublicInterfaceDocumentationRule) Validate(program *language.Program) []diagnostics.Diagnostic {
 	var diags []diagnostics.Diagnostic
-	if program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return diags
 	}
 
-	// 1. Find all items accessed by a Person
-	accessedItems := make(map[string]bool)
-
-	// Re-implement iteration with context
-	checkRel := func(rel *language.Relation, contextPrefix string) {
-		fromName := rel.From.String()
-		// Check if FROM matches a Person ID (Global)
-		isPerson := false
-		for _, p := range program.Architecture.Persons {
-			if p.ID == fromName {
-				isPerson = true
-				break
+	// 1. Find all person IDs
+	personIDs := make(map[string]bool)
+	var collectPersons func(elem *language.LikeC4ElementDef)
+	collectPersons = func(elem *language.LikeC4ElementDef) {
+		if elem == nil {
+			return
+		}
+		if elem.GetKind() == "person" {
+			id := elem.GetID()
+			if id != "" {
+				personIDs[id] = true
 			}
 		}
-		if isPerson {
+		body := elem.GetBody()
+		if body != nil {
+			for _, bodyItem := range body.Items {
+				if bodyItem.Element != nil {
+					collectPersons(bodyItem.Element)
+				}
+			}
+		}
+	}
+
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			collectPersons(item.ElementDef)
+		}
+	}
+
+	// 2. Find all items accessed by a Person
+	accessedItems := make(map[string]bool)
+
+	// Collect all relations with their scopes
+	relationsWithScope := collectAllRelations(program.Model)
+
+	// Check relations for person -> element
+	for _, relScope := range relationsWithScope {
+		rel := relScope.Relation
+		fromName := rel.From.String()
+		// Check if FROM matches a Person ID
+		if personIDs[fromName] {
 			toName := rel.To.String()
 			// Resolve to Full Name
 			fullToName := toName
-			if contextPrefix != "" && !strings.Contains(toName, ".") {
-				fullToName = contextPrefix + "." + toName
+			scope := relScope.Scope
+			if scope != "" && !strings.Contains(toName, ".") {
+				fullToName = buildQualifiedID(scope, toName)
 			}
 			accessedItems[fullToName] = true
-			// Also track the short name if it's unique? No, explicit full name is safer.
-			// But for "System" access, user usually writes `User -> System`.
-			// `contextPrefix` is empty.
 			accessedItems[toName] = true
 		}
 	}
 
-	// Iterate with context
-	for _, rel := range program.Architecture.Relations {
-		checkRel(rel, "")
-	}
-	for _, sys := range program.Architecture.Systems {
-		for _, rel := range sys.Relations {
-			// Inside system, resolving depends on what it is.
-			// If it points to a container in THIS system, prefix it.
-			checkRel(rel, sys.ID)
+	// 3. Validate those items have description/technology
+	// Helper to find element and check documentation
+	var checkElementDoc func(elem *language.LikeC4ElementDef, currentFQN string, targetName string) bool
+	checkElementDoc = func(elem *language.LikeC4ElementDef, currentFQN string, targetName string) bool {
+		if elem == nil {
+			return false
 		}
-		for _, cont := range sys.Containers {
-			for _, rel := range cont.Relations {
-				checkRel(rel, sys.ID+"."+cont.ID)
+
+		id := elem.GetID()
+		if id == "" {
+			return false
+		}
+
+		fqn := id
+		if currentFQN != "" {
+			fqn = buildQualifiedID(currentFQN, id)
+		}
+
+		// Check if this is the element we're looking for
+		if fqn == targetName || id == targetName {
+			description := ""
+			technology := ""
+
+			body := elem.GetBody()
+			if body != nil {
+				for _, item := range body.Items {
+					if item.Description != nil {
+						description = *item.Description
+					}
+					if item.Technology != nil {
+						technology = *item.Technology
+					}
+				}
+			}
+
+			kind := elem.GetKind()
+			loc := elem.Location()
+
+			// Check for missing description
+			if description == "" {
+				var msg string
+				switch kind {
+				case "system":
+					msg = fmt.Sprintf("Public API Documentation: System '%s' is used by humans but lacks a description.", id)
+				case "container":
+					msg = fmt.Sprintf("Public Interface: Container '%s' is used by humans but lacks a description.", id)
+				default:
+					return true // Only check systems and containers
+				}
+
+				diags = append(diags, diagnostics.Diagnostic{
+					Code:     diagnostics.CodeBestPractice,
+					Severity: diagnostics.SeverityWarning,
+					Message:  msg,
+					Location: diagnostics.SourceLocation{
+						File:   loc.File,
+						Line:   loc.Line,
+						Column: loc.Column,
+					},
+					Suggestions: []string{
+						fmt.Sprintf("Add a description to %s '%s'", kind, id),
+						"Public interfaces should be well-documented for API consumers",
+					},
+				})
+			}
+
+			// Check for missing technology (containers only)
+			if kind == "container" && technology == "" {
+				loc := elem.Location()
+				diags = append(diags, diagnostics.Diagnostic{
+					Code:     diagnostics.CodeBestPractice,
+					Severity: diagnostics.SeverityWarning,
+					Message:  fmt.Sprintf("Public Interface: Container '%s' is used by humans but lacks technology specification.", id),
+					Location: diagnostics.SourceLocation{
+						File:   loc.File,
+						Line:   loc.Line,
+						Column: loc.Column,
+					},
+					Suggestions: []string{
+						fmt.Sprintf("Add technology to Container '%s' (e.g., 'Go', 'React')", id),
+						"Technology helps API consumers understand implementation details",
+					},
+				})
+			}
+
+			return true
+		}
+
+		// Recurse into nested elements
+		body := elem.GetBody()
+		if body != nil {
+			for _, bodyItem := range body.Items {
+				if bodyItem.Element != nil {
+					if checkElementDoc(bodyItem.Element, fqn, targetName) {
+						return true
+					}
+				}
 			}
 		}
+
+		return false
 	}
 
-	// 2. Validate those items have description/technology
+	// Check all accessed items
 	for itemName := range accessedItems {
-		// Check Systems
-		for _, sys := range program.Architecture.Systems {
-			if sys.ID == itemName {
-				if sys.Description == nil || *sys.Description == "" {
-					diags = append(diags, diagnostics.Diagnostic{
-						Code:     diagnostics.CodeBestPractice,
-						Severity: diagnostics.SeverityWarning,
-						Message:  fmt.Sprintf("Public API Documentation: System '%s' is used by humans but lacks a description.", sys.ID),
-						Suggestions: []string{
-							fmt.Sprintf("Add a description to System '%s' to document its purpose", sys.ID),
-							"Descriptions help users understand the system's role and responsibilities",
-						},
-					})
-				}
-			}
-			// Check Containers
-			for _, cont := range sys.Containers {
-				fullName := sys.ID + "." + cont.ID
-				if fullName == itemName {
-					if cont.Description == nil || *cont.Description == "" {
-						diags = append(diags, diagnostics.Diagnostic{
-							Code:     diagnostics.CodeBestPractice,
-							Severity: diagnostics.SeverityWarning,
-							Message:  fmt.Sprintf("Public Interface: Container '%s' is used by humans but lacks a description.", fullName),
-							Suggestions: []string{
-								fmt.Sprintf("Add a description to Container '%s'", fullName),
-								"Public interfaces should be well-documented for API consumers",
-							},
-						})
-					}
-					// Check technology for containers (Systems don't have technology)
-					hasTech := false
-					for i := range cont.Items {
-						item := cont.Items[i]
-						if item.Technology != nil {
-							hasTech = true
-						}
-					}
-					// OR check if we populated it in post-process (which we did in ast_elements.go: Technology *string)
-					// But we have to check the Container struct directly.
-					// The Container struct in ast_elements.go has Technology *string, but let's check validation logic.
-					// Actually, Container struct has Technology *string? No, it has Items.
-					// Wait, looking at ast_elements.go again...
-					// Container doesn't have Technology field directly on struct in the snippet I saw?
-					// Let's re-verify AST.
-					// Ah, ast_elements.go:96: "Post-processed fields" doesn't list Technology.
-					// But ast_elements.go:118: ContainerItem has Technology.
-					// We need to iterate items to be sure or check if we added a convenience field.
-					// The AST snippet for Container (lines 88-110) does NOT show a Technology *string convenience field.
-					// So we must check Items.
-
-					if !hasTech {
-						for i := range cont.Items {
-							it := cont.Items[i]
-							if it.Technology != nil {
-								hasTech = true
-								break
-							}
-						}
-					}
-
-					if !hasTech {
-						diags = append(diags, diagnostics.Diagnostic{
-							Code:     diagnostics.CodeBestPractice,
-							Severity: diagnostics.SeverityInfo,
-							Message:  fmt.Sprintf("Public Interface: Container '%s' should specify its Technology (e.g., 'React', 'iOS').", fullName),
-							Suggestions: []string{
-								fmt.Sprintf("Add technology field to Container '%s'", fullName),
-								"Example: technology \"React\" or technology \"iOS\"",
-								"Technology helps consumers understand implementation details",
-							},
-						})
-					}
-				}
+		// Search for the element in the model
+		for _, item := range program.Model.Items {
+			if item.ElementDef != nil {
+				checkElementDoc(item.ElementDef, "", itemName)
 			}
 		}
 	}

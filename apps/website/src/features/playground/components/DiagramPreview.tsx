@@ -21,19 +21,19 @@ interface DiagramPreviewProps {
     data: ArchitectureJSON;
 }
 
-function transformToFlow(
+async function transformToFlow(
     data: ArchitectureJSON,
     level: 'L0' | 'L1' | 'L2' | 'L3',
     focusedSystemId?: string,
     focusedContainerId?: string
-): { nodes: Node<C4NodeData>[]; edges: Edge[] } {
+): Promise<{ nodes: Node<C4NodeData>[]; edges: Edge[] }> {
     const result = jsonToReactFlow(data, {
         level,
         focusedSystemId,
         focusedContainerId,
         expandedNodes: new Set<string>(),
     });
-    const laidOut = applySrujaLayout(result.nodes, result.edges, data, {
+    const laidOut = await applySrujaLayout(result.nodes, result.edges, data, {
         level,
         focusedSystemId,
         focusedContainerId,
@@ -44,7 +44,15 @@ function transformToFlow(
 }
 
 function FlowContent({ data, level, systemId, containerId, onStatsChange }: { data: ArchitectureJSON; level: 'L0'|'L1'|'L2'|'L3'; systemId?: string; containerId?: string; onStatsChange?: (nodes: number, edges: number) => void }) {
-    const { nodes: initialNodes, edges: initialEdges } = useMemo(() => transformToFlow(data, level, systemId, containerId), [data, level, systemId, containerId]);
+    const [initialNodes, setInitialNodes] = useState<Node<C4NodeData>[]>([]);
+    const [initialEdges, setInitialEdges] = useState<Edge[]>([]);
+    
+    useEffect(() => {
+        transformToFlow(data, level, systemId, containerId).then(({ nodes, edges }) => {
+            setInitialNodes(nodes);
+            setInitialEdges(edges);
+        });
+    }, [data, level, systemId, containerId]);
     const [nodes, , onNodesChange] = useNodesState<Node<C4NodeData>>(initialNodes);
     const [edges, , onEdgesChange] = useEdgesState<Edge>(initialEdges);
     const rfRef = useRef<any>(null);

@@ -71,6 +71,12 @@ export function identifyBundles(
   const pairMap = new Map<string, EdgeForBundling[]>();
 
   for (const edge of edges) {
+    // Validate edge has required fields
+    if (!edge.sourceId || !edge.targetId) {
+      console.warn(`[EdgeBundler] Edge missing sourceId or targetId, skipping:`, edge);
+      continue;
+    }
+
     // Create canonical key (lower ID first for bidirectional matching)
     const forward = `${edge.sourceId}::${edge.targetId}`;
     const reverse = `${edge.targetId}::${edge.sourceId}`;
@@ -91,8 +97,18 @@ export function identifyBundles(
 
   for (const [key, groupEdges] of pairMap) {
     if (groupEdges.length < opts.minBundleSize) continue;
+    if (!key || typeof key !== 'string') {
+      console.warn(`[EdgeBundler] Invalid key, skipping:`, key);
+      continue;
+    }
 
-    const [sourceId, targetId] = key.split("::");
+    const parts = key.split("::");
+    if (parts.length !== 2) {
+      console.warn(`[EdgeBundler] Invalid key format, expected 'id1::id2', got:`, key);
+      continue;
+    }
+
+    const [sourceId, targetId] = parts;
     const hasReverse = groupEdges.some((e: any) => e._isReverse === true);
 
     // Calculate spread offsets for each edge

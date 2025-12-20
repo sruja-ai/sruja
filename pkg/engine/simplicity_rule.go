@@ -14,7 +14,7 @@ func (r *SimplicityRule) Name() string {
 }
 
 func (r *SimplicityRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	if program == nil || program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return nil
 	}
 	// Pre-allocate diagnostics slice (currently empty but ready for future use)

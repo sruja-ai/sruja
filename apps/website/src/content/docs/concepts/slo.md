@@ -13,32 +13,39 @@ Service Level Objectives (SLOs) define measurable targets for system performance
 SLOs can be defined at the system or container level:
 
 ```sruja
-system API "API Service" {
-  container WebServer "Web Server" {
-    slo {
-      availability {
-        target "99.9%"
-        window "30 days"
-        current "99.95%"
-      }
-      latency {
-        p95 "200ms"
-        p99 "500ms"
-        window "7 days"
-        current {
-          p95 "180ms"
-          p99 "450ms"
+specification {
+  element system
+  element container
+}
+
+model {
+  API = system "API Service" {
+    WebServer = container "Web Server" {
+      slo {
+        availability {
+          target "99.9%"
+          window "30 days"
+          current "99.95%"
         }
-      }
-      errorRate {
-        target "< 0.1%"
-        window "30 days"
-        current "0.05%"
-      }
-      throughput {
-        target "1000 req/s"
-        window "1 hour"
-        current "950 req/s"
+        latency {
+          p95 "200ms"
+          p99 "500ms"
+          window "7 days"
+          current {
+            p95 "180ms"
+            p99 "450ms"
+          }
+        }
+        errorRate {
+          target "< 0.1%"
+          window "30 days"
+          current "0.05%"
+        }
+        throughput {
+          target "1000 req/s"
+          window "1 hour"
+          current "950 req/s"
+        }
       }
     }
   }
@@ -127,9 +134,18 @@ slo {
 ## Example
 
 ```sruja
-architecture "E-Commerce Platform" {
-  system PaymentService "Payment Service" {
-    container PaymentAPI "Payment API" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+  PaymentService = system "Payment Service" {
+    PaymentAPI = container "Payment API" {
       technology "Go"
       slo {
         availability {
@@ -147,6 +163,12 @@ architecture "E-Commerce Platform" {
         }
       }
     }
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```

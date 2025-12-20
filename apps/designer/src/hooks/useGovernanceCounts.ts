@@ -10,40 +10,74 @@ export interface GovernanceCounts {
   [elementPath: string]: {
     requirementCount: number;
     adrCount: number;
+    scenarioCount: number;
+    flowCount: number;
   };
 }
 
 /**
  * Compute governance counts for all elements based on tag references
  */
+// ... imports
+// ...
+
+// ...
+
 export function useGovernanceCounts(): GovernanceCounts {
-  const data = useArchitectureStore((s) => s.data);
+  const data = useArchitectureStore((s) => s.likec4Model);
 
   return useMemo(() => {
     const counts: GovernanceCounts = {};
 
-    if (!data?.architecture) return counts;
+    // Check sruja property primarily
+    if (!data?.sruja) return counts;
 
-    const requirements = data.architecture.requirements ?? [];
-    const adrs = data.architecture.adrs ?? [];
+    const requirements = data.sruja.requirements ?? [];
+    const adrs = (data as any).sruja.adrs ?? [];
+    const scenarios = data.sruja.scenarios ?? [];
+    const flows = scenarios;
 
     // Count requirements per element
-    requirements.forEach((req) => {
-      (req.tags ?? []).forEach((tag) => {
+    requirements.forEach((req: any) => {
+      (req.tags ?? []).forEach((tag: string) => {
         if (!counts[tag]) {
-          counts[tag] = { requirementCount: 0, adrCount: 0 };
+          counts[tag] = { requirementCount: 0, adrCount: 0, scenarioCount: 0, flowCount: 0 };
         }
         counts[tag].requirementCount++;
       });
     });
 
     // Count ADRs per element
-    adrs.forEach((adr) => {
-      (adr.tags ?? []).forEach((tag) => {
+    adrs.forEach((adr: any) => {
+      (adr.tags ?? []).forEach((tag: string) => {
         if (!counts[tag]) {
-          counts[tag] = { requirementCount: 0, adrCount: 0 };
+          counts[tag] = { requirementCount: 0, adrCount: 0, scenarioCount: 0, flowCount: 0 };
         }
         counts[tag].adrCount++;
+      });
+    });
+
+    // Count scenarios per element (from scenario steps)
+    scenarios.forEach((scenario: any) => {
+      (scenario.steps ?? []).forEach((step: any) => {
+        (step.tags ?? []).forEach((tag: string) => {
+          if (!counts[tag]) {
+            counts[tag] = { requirementCount: 0, adrCount: 0, scenarioCount: 0, flowCount: 0 };
+          }
+          counts[tag].scenarioCount++;
+        });
+      });
+    });
+
+    // Count flows per element (from flow steps)
+    flows.forEach((flow: any) => {
+      (flow.steps ?? []).forEach((step: any) => {
+        (step.tags ?? []).forEach((tag: string) => {
+          if (!counts[tag]) {
+            counts[tag] = { requirementCount: 0, adrCount: 0, scenarioCount: 0, flowCount: 0 };
+          }
+          counts[tag].flowCount++;
+        });
       });
     });
 
@@ -68,6 +102,8 @@ export function enrichNodesWithGovernance<T extends { id: string; data: Record<s
         ...node.data,
         requirementCount: counts.requirementCount,
         adrCount: counts.adrCount,
+        scenarioCount: counts.scenarioCount,
+        flowCount: counts.flowCount,
       },
     };
   });

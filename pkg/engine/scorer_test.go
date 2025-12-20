@@ -19,12 +19,12 @@ func TestScorer_CalculateScore(t *testing.T) {
 		{
 			name: "Perfect Score",
 			dsl: `
-architecture "Perfect" {
-	container Web "Web App" {
+model {
+	Web = container "Web App" {
 		description "A web application"
 		technology "React"
 	}
-	container API "API Service" {
+	API = container "API Service" {
 		description "An API service"
 		technology "Go"
 	}
@@ -37,8 +37,8 @@ architecture "Perfect" {
 		{
 			name: "Missing Description",
 			dsl: `
-architecture "MissingDesc" {
-	container Web "Web App" {
+model {
+	Web = container "Web App" {
 		technology "React"
 	}
 }`,
@@ -49,8 +49,8 @@ architecture "MissingDesc" {
 		{
 			name: "Orphan Element",
 			dsl: `
-architecture "Orphan" {
-	container Web "Web App" {
+model {
+	Web = container "Web App" {
 		description "Web App"
 	}
 }`,
@@ -61,12 +61,12 @@ architecture "Orphan" {
 		{
 			name: "Layer Violation",
 			dsl: `
-architecture "LayerViolation" {
-	container Web "Web App" {
+model {
+	Web = container "Web App" {
 		description "Web App"
 		metadata { layer "web" }
 	}
-	container DB "Database" {
+	DB = container "Database" {
 		description "Database"
 		metadata { layer "data" }
 	}
@@ -80,9 +80,9 @@ architecture "LayerViolation" {
 		{
 			name: "Cycle Detection",
 			dsl: `
-architecture "Cycle" {
+model {
 	container A "Service A" { description "A" }
-	container B "Service B" { description "B" }
+	B = container "Service B" { description "B" }
 	A -> B
 	B -> A
 }`,
@@ -93,7 +93,7 @@ architecture "Cycle" {
 		{
 			name: "Invalid Reference",
 			dsl: `
-architecture "InvalidRef" {
+model {
 	container A "Service A" { description "A" }
 	A -> B // B is undefined
 }`,
@@ -104,9 +104,9 @@ architecture "InvalidRef" {
 		{
 			name: "Multiple Violations",
 			dsl: `
-architecture "Multiple" {
+model {
 	// Orphan (-5) + Missing Description (-2)
-	container Orphan "Orphan" 
+	Orphan = container "Orphan" 
 }`,
 			expectedScore: 93, // 100 - 5 - 2
 			expectedGrade: "A",

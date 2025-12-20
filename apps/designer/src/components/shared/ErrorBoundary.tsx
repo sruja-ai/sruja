@@ -2,6 +2,8 @@
 import { Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import { Button } from "@sruja/ui";
+import "./ErrorState.css";
 
 interface Props {
   children: ReactNode;
@@ -55,56 +57,24 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: "100vh",
-            padding: "2rem",
-            backgroundColor: "var(--bg-primary, #ffffff)",
-            color: "var(--text-primary, #000000)",
-          }}
-        >
+        <div className="error-state" style={{ minHeight: "100vh" }}>
           <div
             style={{
               maxWidth: "600px",
               width: "100%",
-              padding: "2rem",
+              padding: "var(--space-8, 2rem)",
               border: "1px solid var(--border-color, #e5e7eb)",
-              borderRadius: "8px",
+              borderRadius: "var(--radius-lg, 0.75rem)",
               backgroundColor: "var(--bg-secondary, #f9fafb)",
+              boxShadow: "var(--elevation-3, 0 4px 6px -1px rgba(0, 0, 0, 0.1))",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.75rem",
-                marginBottom: "1rem",
-              }}
-            >
-              <AlertCircle size={24} color="#ef4444" />
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize: "1.25rem",
-                  fontWeight: 600,
-                  color: "var(--text-primary)",
-                }}
-              >
-                Something went wrong
-              </h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3, 0.75rem)", marginBottom: "var(--space-4, 1rem)" }}>
+              <AlertCircle size={32} className="error-icon" />
+              <h2 className="error-title">Something went wrong</h2>
             </div>
 
-            <p
-              style={{
-                margin: "0 0 1rem 0",
-                color: "var(--text-secondary)",
-                lineHeight: "1.5",
-              }}
-            >
+            <p className="error-message">
               An unexpected error occurred. Please try refreshing the page or contact support if the
               problem persists.
             </p>
@@ -112,33 +82,23 @@ export class ErrorBoundary extends Component<Props, State> {
             {this.state.error && (
               <details
                 style={{
-                  marginBottom: "1rem",
-                  padding: "1rem",
+                  marginBottom: "var(--space-4, 1rem)",
+                  padding: "var(--space-4, 1rem)",
                   backgroundColor: "var(--bg-tertiary, #f3f4f6)",
-                  borderRadius: "4px",
-                  fontSize: "0.875rem",
+                  borderRadius: "var(--radius-md, 0.5rem)",
+                  fontSize: "var(--text-sm, 0.875rem)",
                 }}
               >
                 <summary
                   style={{
                     cursor: "pointer",
-                    fontWeight: 500,
-                    marginBottom: "0.5rem",
+                    fontWeight: "var(--font-medium, 500)",
+                    marginBottom: "var(--space-2, 0.5rem)",
                   }}
                 >
                   Error Details
                 </summary>
-                <pre
-                  style={{
-                    margin: 0,
-                    padding: "0.5rem",
-                    overflow: "auto",
-                    backgroundColor: "var(--bg-primary)",
-                    borderRadius: "4px",
-                    fontSize: "0.75rem",
-                    color: "#dc2626",
-                  }}
-                >
+                <pre className="error-code">
                   {this.state.error.toString()}
                   {this.state.errorInfo?.componentStack && (
                     <>
@@ -150,32 +110,22 @@ export class ErrorBoundary extends Component<Props, State> {
               </details>
             )}
 
-            <button
-              onClick={this.handleReset}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.5rem 1rem",
-                backgroundColor: "var(--highlight-color, #3b82f6)",
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                transition: "background-color 0.2s",
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--highlight-color-hover, #2563eb)";
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--highlight-color, #3b82f6)";
-              }}
-            >
-              <RefreshCw size={16} />
-              Try Again
-            </button>
+            <div className="error-actions">
+              <Button
+                variant="primary"
+                size="md"
+                onClick={this.handleReset}
+                className="upload-btn"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "var(--space-2, 0.5rem)",
+                }}
+              >
+                <RefreshCw size={16} />
+                Try Again
+              </Button>
+            </div>
           </div>
         </div>
       );

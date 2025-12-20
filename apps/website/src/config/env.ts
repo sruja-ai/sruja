@@ -1,9 +1,6 @@
 // apps/website/src/config/env.ts
-// Environment configuration with Algolia index selection
-// Each environment uses a different Algolia index:
-// - development: sruja_docs_dev
-// - staging: sruja_docs_staging
-// - production: sruja_docs
+// Environment configuration with simplified Algolia index selection
+// Uses a single Algolia index across all environments (overridable via env)
 
 type Environment = 'development' | 'staging' | 'production'
 
@@ -67,7 +64,7 @@ function getEnvConfig(): EnvConfig {
     }
   }
 
-  // Algolia configuration
+  // Algolia configuration (single index)
   // Application ID is hardcoded (safe to expose publicly, same across all environments)
   const algoliaAppId = 'N6FUL0KI3V';
   
@@ -76,12 +73,8 @@ function getEnvConfig(): EnvConfig {
   const algoliaApiKey = import.meta.env.PUBLIC_ALGOLIA_SEARCH_API_KEY;
   
   if (algoliaAppId && algoliaApiKey) {
-    // Determine index name based on environment
-    // Can be overridden with PUBLIC_ALGOLIA_INDEX_NAME env var
-    const defaultIndexName = import.meta.env.PUBLIC_ALGOLIA_INDEX_NAME || 
-      (env === 'production' ? 'sruja_docs' : 
-       env === 'staging' ? 'sruja_docs_staging' : 
-       'sruja_docs_dev')
+    // Single index name, overridable via PUBLIC_ALGOLIA_INDEX_NAME
+    const defaultIndexName = import.meta.env.PUBLIC_ALGOLIA_INDEX_NAME || 'sruja_docs'
     
     config.algolia = {
       appId: algoliaAppId,
@@ -89,9 +82,8 @@ function getEnvConfig(): EnvConfig {
       indexName: defaultIndexName,
     }
 
-    // Log index name in development for debugging
     if (env === 'development' && typeof console !== 'undefined') {
-      console.info(`[Algolia] Using index: ${defaultIndexName} (env: ${env})`);
+      console.info(`[Algolia] Using index: ${defaultIndexName}`);
     }
   }
 
@@ -100,5 +92,4 @@ function getEnvConfig(): EnvConfig {
 
 export const envConfig = getEnvConfig()
 export type { EnvConfig, Environment }
-
 

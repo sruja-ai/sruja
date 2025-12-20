@@ -19,25 +19,33 @@ func (r *SLOValidationRule) Name() string {
 
 // Validate checks SLO blocks for valid formats and values.
 func (r *SLOValidationRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	if program == nil || program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return nil
 	}
 	// Pre-allocate diagnostics slice with estimated capacity
-	estimatedDiags := 10
-	diags := make([]diagnostics.Diagnostic, 0, estimatedDiags)
+	diags := make([]diagnostics.Diagnostic, 0, 10)
 
-	arch := program.Architecture
-
-	// Validate SLO blocks in systems
-	for _, sys := range arch.Systems {
-		if sys.SLO != nil {
-			diags = append(diags, r.validateSLOBlock(sys.SLO, sys.Location())...)
+	var validateInElement func(elem *language.LikeC4ElementDef)
+	validateInElement = func(elem *language.LikeC4ElementDef) {
+		body := elem.GetBody()
+		if body == nil {
+			return
 		}
-		// Also check containers
-		for _, cont := range sys.Containers {
-			if cont.SLO != nil {
-				diags = append(diags, r.validateSLOBlock(cont.SLO, cont.Location())...)
+
+		for _, item := range body.Items {
+			if item.SLO != nil {
+				diags = append(diags, r.validateSLOBlock(item.SLO, item.SLO.Location())...)
 			}
+			if item.Element != nil {
+				validateInElement(item.Element)
+			}
+		}
+	}
+
+	// Process top-level items
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			validateInElement(item.ElementDef)
 		}
 	}
 

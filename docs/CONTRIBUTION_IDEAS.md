@@ -130,8 +130,12 @@ These are bigger contributions - consider opening a discussion or issue first:
    vim examples/my-architecture.sruja
    
    # 2. Add your architecture
-   architecture "My System" {
+   specification {
+       element system
+   }
+   model {
        # ... your code ...
+       sys = system "My System"
    }
    
    # 3. Add to manifest.json

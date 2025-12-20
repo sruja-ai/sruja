@@ -76,54 +76,24 @@ func calculateSimilarityForScenario(s1, s2 string) float64 {
 
 //nolint:funlen,gocyclo // Validation logic is long and complex
 func (r *ScenarioFQNRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	if program == nil || program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return nil
 	}
 
-	arch := program.Architecture
+	// Collect all elements from LikeC4 Model
+	defined, _ := collectLikeC4Elements(program.Model)
 
-	// Estimate capacity based on architecture size
-	estimatedElements := estimateElementCountForScenario(arch)
-
-	// Build set of defined qualified IDs
-	defined := make(map[string]bool, estimatedElements)
 	// Build map of suffix -> []fullID for smart resolution
-	suffixMap := make(map[string][]string, estimatedElements/2)
+	suffixMap := make(map[string][]string, len(defined)/2)
 
 	// Pre-allocate diagnostics slice
-	estimatedDiags := len(arch.Scenarios) + len(arch.Flows)
-	if estimatedDiags < 8 {
-		estimatedDiags = 8
-	}
-	diags := make([]diagnostics.Diagnostic, 0, estimatedDiags)
+	diags := make([]diagnostics.Diagnostic, 0, 8)
 
-	// Helper to build qualified IDs efficiently
-	buildQualifiedID := func(parts ...string) string {
-		if len(parts) == 0 {
-			return ""
-		}
-		if len(parts) == 1 {
-			return parts[0]
-		}
-		totalLen := len(parts) - 1 // for dots
-		for _, p := range parts {
-			totalLen += len(p)
-		}
-		buf := make([]byte, 0, totalLen)
-		buf = append(buf, parts[0]...)
-		for i := 1; i < len(parts); i++ {
-			buf = append(buf, '.')
-			buf = append(buf, parts[i]...)
-		}
-		return string(buf)
-	}
-
-	addID := func(id string) {
+	// Build suffix map from defined elements
+	for id := range defined {
 		if id == "" {
-			return
+			continue
 		}
-		defined[id] = true
-		// Use LastIndex for better performance than Split when we only need the last part
 		lastDot := strings.LastIndexByte(id, '.')
 		var suffix string
 		if lastDot == -1 {
@@ -132,59 +102,6 @@ func (r *ScenarioFQNRule) Validate(program *language.Program) []diagnostics.Diag
 			suffix = id[lastDot+1:]
 		}
 		suffixMap[suffix] = append(suffixMap[suffix], id)
-	}
-
-	// Top-level elements
-	for _, cont := range arch.Containers {
-		addID(cont.ID)
-		for _, comp := range cont.Components {
-			addID(buildQualifiedID(cont.ID, comp.ID))
-		}
-		for _, ds := range cont.DataStores {
-			addID(buildQualifiedID(cont.ID, ds.ID))
-		}
-		for _, q := range cont.Queues {
-			addID(buildQualifiedID(cont.ID, q.ID))
-		}
-	}
-	for _, comp := range arch.Components {
-		addID(comp.ID)
-	}
-	for _, ds := range arch.DataStores {
-		addID(ds.ID)
-	}
-	for _, q := range arch.Queues {
-		addID(q.ID)
-	}
-	for _, p := range arch.Persons {
-		addID(p.ID)
-	}
-
-	// Nested elements under systems
-	for _, sys := range arch.Systems {
-		addID(sys.ID)
-		for _, cont := range sys.Containers {
-			contID := buildQualifiedID(sys.ID, cont.ID)
-			addID(contID)
-			for _, comp := range cont.Components {
-				addID(buildQualifiedID(contID, comp.ID))
-			}
-			for _, ds := range cont.DataStores {
-				addID(buildQualifiedID(contID, ds.ID))
-			}
-			for _, q := range cont.Queues {
-				addID(buildQualifiedID(contID, q.ID))
-			}
-		}
-		for _, comp := range sys.Components {
-			addID(buildQualifiedID(sys.ID, comp.ID))
-		}
-		for _, ds := range sys.DataStores {
-			addID(buildQualifiedID(sys.ID, ds.ID))
-		}
-		for _, q := range sys.Queues {
-			addID(buildQualifiedID(sys.ID, q.ID))
-		}
 	}
 
 	validateRef := func(ref string, loc language.SourceLocation) {
@@ -288,31 +205,19 @@ func (r *ScenarioFQNRule) Validate(program *language.Program) []diagnostics.Diag
 		validateRef(step.To.String(), step.Location())
 	}
 
-	for _, s := range arch.Scenarios {
-		for _, step := range s.Steps {
-			checkStep(step)
+	// Check scenarios and flows from Model items
+	for _, item := range program.Model.Items {
+		if item.Scenario != nil {
+			for _, step := range item.Scenario.Steps {
+				checkStep(step)
+			}
 		}
-	}
-	for _, f := range arch.Flows {
-		for _, step := range f.Steps {
-			checkStep(step)
+		if item.Flow != nil {
+			for _, step := range item.Flow.Steps {
+				checkStep(step)
+			}
 		}
 	}
 
 	return diags
-}
-
-// estimateElementCountForScenario provides a rough estimate of elements for map pre-allocation.
-func estimateElementCountForScenario(arch *language.Architecture) int {
-	if arch == nil {
-		return 16
-	}
-	count := len(arch.Containers) + len(arch.Components) + len(arch.DataStores) + len(arch.Queues) + len(arch.Persons)
-	for _, sys := range arch.Systems {
-		count += 1 + len(sys.Containers) + len(sys.Components) + len(sys.DataStores) + len(sys.Queues)
-		for _, cont := range sys.Containers {
-			count += len(cont.Components) + len(cont.DataStores) + len(cont.Queues)
-		}
-	}
-	return count*2 + 32 // Add buffer
 }

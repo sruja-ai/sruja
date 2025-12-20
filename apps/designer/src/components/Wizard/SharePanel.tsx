@@ -7,7 +7,8 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Share2, Link, Copy, Check, Download, FileJson, FileCode, FileText, X } from "lucide-react";
 import { Button, Input } from "@sruja/ui";
 import { useArchitectureStore } from "../../stores/architectureStore";
-import { convertJsonToDsl } from "../../utils/jsonToDsl";
+// import { convertJsonToDsl } from "../../utils/jsonToDsl"; // Removed
+import { convertModelToDsl } from "../../utils/modelToDsl";
 import { firebaseShareService } from "../../utils/firebaseShareService";
 import LZString from "lz-string";
 import "./SharePanel.css";
@@ -18,7 +19,7 @@ interface SharePanelProps {
 }
 
 export function SharePanel({ isOpen, onClose }: SharePanelProps) {
-  const data = useArchitectureStore((s) => s.data);
+  const data = useArchitectureStore((state) => state.likec4Model);
   const dslSource = useArchitectureStore((s) => s.dslSource);
   const modalRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -61,10 +62,10 @@ export function SharePanel({ isOpen, onClose }: SharePanelProps) {
   }, [isOpen, onClose]);
 
   // Generate shareable URL
-  const generateShareUrl = useCallback(() => {
+  const generateShareUrl = useCallback(async () => {
     if (!dslSource && !data) return "";
 
-    const dsl = dslSource || (data ? convertJsonToDsl(data) : "");
+    const dsl = dslSource || (data ? await convertModelToDsl(data) : "");
     const compressed = LZString.compressToBase64(dsl);
     const encoded = encodeURIComponent(compressed);
     const baseUrl = window.location.origin + window.location.pathname;
@@ -101,12 +102,39 @@ export function SharePanel({ isOpen, onClose }: SharePanelProps) {
     URL.revokeObjectURL(url);
   }, []);
 
+  const [dsl, setDsl] = useState<string>("");
+  const [shareUrl, setShareUrl] = useState<string>("");
+
+  useEffect(() => {
+    const loadDsl = async () => {
+      if (dslSource) {
+        setDsl(dslSource);
+      } else if (data) {
+        try {
+          const generatedDsl = await convertModelToDsl(data);
+          setDsl(generatedDsl);
+        } catch (error) {
+          setDsl(`// Error generating DSL: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      } else {
+        setDsl("");
+      }
+    };
+    void loadDsl();
+  }, [dslSource, data]);
+
+  useEffect(() => {
+    const loadShareUrl = async () => {
+      const url = await generateShareUrl();
+      setShareUrl(url);
+    };
+    void loadShareUrl();
+  }, [generateShareUrl]);
+
   if (!isOpen) return null;
 
-  const dsl = dslSource || (data ? convertJsonToDsl(data) : "");
   const json = data ? JSON.stringify(data, null, 2) : "";
-  const shareUrl = generateShareUrl();
-  const archName = data?.metadata?.name || "architecture";
+  const archName = data?._metadata?.name || "architecture";
   const safeName = archName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
   return (

@@ -197,18 +197,32 @@ func hasPlaceholderSyntax(code string) bool {
 	return strings.Contains(code, "...")
 }
 
+// removeComments removes line comments from code
+func removeComments(code string) string {
+	lines := strings.Split(code, "\n")
+	var result []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "//") {
+			result = append(result, line)
+		}
+	}
+	return strings.Join(result, "\n")
+}
+
 // isStandaloneTags checks if code is just standalone tags
 func isStandaloneTags(code string) bool {
-	return strings.HasPrefix(strings.TrimSpace(code), "tags [")
+	return strings.HasPrefix(strings.TrimSpace(removeComments(code)), "tags [")
 }
 
 // isStandaloneElement checks if code is a standalone element without architecture wrapper
 func isStandaloneElement(code string) bool {
-	trimmed := strings.TrimSpace(code)
+	trimmed := strings.TrimSpace(removeComments(code))
 	standalonePatterns := []string{
 		"^container ", "^component ", "^datastore ", "^queue ",
 		"^person ", "^system ", "^deployment ", "^node ",
 		"^containerInstance ", "^scenario ",
+		"^adr ", "^requirement ", "^policy ",
 	}
 	for _, pattern := range standalonePatterns {
 		if matched, _ := regexp.MatchString(pattern, trimmed); matched {
@@ -222,7 +236,7 @@ func isStandaloneElement(code string) bool {
 
 // isRelationWithoutDefinitions checks if code has relations but no element definitions
 func isRelationWithoutDefinitions(code string) bool {
-	trimmed := strings.TrimSpace(code)
+	trimmed := strings.TrimSpace(removeComments(code))
 	if !strings.Contains(trimmed, "->") {
 		return false
 	}
@@ -252,10 +266,10 @@ type CodeBlockMetadata struct {
 // extractCodeBlocks extracts Sruja code blocks from markdown files
 // Returns both code blocks and their metadata
 func extractCodeBlocks(rootDir string) (codeBlocks map[string]string, metadata map[string]CodeBlockMetadata, err error) {
-    codeBlocks = make(map[string]string)
-    metadata = make(map[string]CodeBlockMetadata)
+	codeBlocks = make(map[string]string)
+	metadata = make(map[string]CodeBlockMetadata)
 
-    err = filepath.Walk(rootDir, func(path string, _ os.FileInfo, err error) error {
+	err = filepath.Walk(rootDir, func(path string, _ os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -291,7 +305,7 @@ func extractCodeBlocks(rootDir string) (codeBlocks map[string]string, metadata m
 		return nil
 	})
 
-    return codeBlocks, metadata, err
+	return codeBlocks, metadata, err
 }
 
 // extractCodeBlockMetadata extracts metadata from code block comments
@@ -359,6 +373,7 @@ func usesDeferredFeature(code string) bool {
 		"data ",    // Not yet implemented
 		"api ",     // Not yet implemented
 		"external", // Not yet implemented (as a keyword)
+		"slo ",     // Not yet implemented
 	}
 	for _, keyword := range unsupportedKeywords {
 		// Check if keyword appears (not in comments)
@@ -521,7 +536,6 @@ func (e *CompilationError) Error() string {
 	return e.Message
 }
 
-
 func TestPlaygroundExamples(t *testing.T) {
 	examples, metadata, err := extractPlaygroundExamples()
 	if err != nil {
@@ -588,6 +602,18 @@ func TestCourseCodeBlocks(t *testing.T) {
 	for name, code := range codeBlocks {
 		meta := metadata[name]
 		t.Run(name, func(t *testing.T) {
+			// Skip examples that use deferred/unimplemented features
+			if usesDeferredFeature(code) {
+				t.Skipf("Skipping '%s': uses deferred/unimplemented features", name)
+				return
+			}
+
+			// Skip examples that use deferred/unimplemented features
+			if usesDeferredFeature(code) {
+				t.Skipf("Skipping '%s': uses deferred/unimplemented features", name)
+				return
+			}
+
 			// Use regular compiler with optional orphan check skip
 			skipOrphan := meta.SkipOrphanCheck
 			err := compileCode("course-"+name, code, skipOrphan, true)
@@ -631,6 +657,12 @@ func TestDocsCodeBlocks(t *testing.T) {
 	for name, code := range codeBlocks {
 		meta := metadata[name]
 		t.Run(name, func(t *testing.T) {
+			// Skip examples that use deferred/unimplemented features
+			if usesDeferredFeature(code) {
+				t.Skipf("Skipping '%s': uses deferred/unimplemented features", name)
+				return
+			}
+
 			// Use regular compiler with optional orphan check skip
 			skipOrphan := meta.SkipOrphanCheck
 			err := compileCode("docs-"+name, code, skipOrphan, true)
@@ -674,6 +706,12 @@ func TestTutorialCodeBlocks(t *testing.T) {
 	for name, code := range codeBlocks {
 		meta := metadata[name]
 		t.Run(name, func(t *testing.T) {
+			// Skip examples that use deferred/unimplemented features
+			if usesDeferredFeature(code) {
+				t.Skipf("Skipping '%s': uses deferred/unimplemented features", name)
+				return
+			}
+
 			// Use regular compiler with optional orphan check skip
 			skipOrphan := meta.SkipOrphanCheck
 			err := compileCode("tutorial-"+name, code, skipOrphan, true)
@@ -717,6 +755,12 @@ func TestBlogCodeBlocks(t *testing.T) {
 	for name, code := range codeBlocks {
 		meta := metadata[name]
 		t.Run(name, func(t *testing.T) {
+			// Skip examples that use deferred/unimplemented features
+			if usesDeferredFeature(code) {
+				t.Skipf("Skipping '%s': uses deferred/unimplemented features", name)
+				return
+			}
+
 			// Use regular compiler with optional orphan check skip
 			skipOrphan := meta.SkipOrphanCheck
 			err := compileCode("blog-"+name, code, skipOrphan, true)

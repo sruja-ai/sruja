@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { StatsRow } from "../../../../apps/designer/src/components/Overview/StatsRow";
+import { StatsRow } from "../../../../../apps/designer/src/components/Overview/StatsRow";
+import { fn } from "@storybook/test";
 
 const meta = {
   title: "Overview/StatsRow",
@@ -9,6 +10,10 @@ const meta = {
   },
   tags: ["autodocs"],
   argTypes: {},
+  args: {
+    onAddRequirement: fn(),
+    onAddADR: fn(),
+  },
 } satisfies Meta<typeof StatsRow>;
 
 export default meta;
@@ -19,8 +24,6 @@ export const Default: Story = {
     stats: {
       systems: 5,
       persons: 3,
-      containers: 12,
-      components: 45,
       requirements: 20,
       adrs: 15,
       policies: 8,
@@ -34,8 +37,6 @@ export const Empty: Story = {
     stats: {
       systems: 0,
       persons: 0,
-      containers: 0,
-      components: 0,
       requirements: 0,
       adrs: 0,
       policies: 0,
@@ -49,8 +50,6 @@ export const PartialStats: Story = {
     stats: {
       systems: 1,
       persons: 1,
-      containers: 0,
-      components: 0,
       requirements: 0,
       adrs: 0,
       policies: 0,

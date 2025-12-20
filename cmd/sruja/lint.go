@@ -28,10 +28,9 @@ func runLint(args []string, stdout, stderr io.Writer) int {
 	}
 
 	filePath := lintCmd.Arg(0)
-
-	content, err := os.ReadFile(filePath)
+	info, err := os.Stat(filePath)
 	if err != nil {
-		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error reading file: %v", err)))
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error accessing path: %v", err)))
 		return 1
 	}
 
@@ -41,10 +40,33 @@ func runLint(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	program, _, err := p.Parse(filePath, string(content))
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Parser Error: %v", err)))
-		return 1
+	var program *language.Program
+	var content string // For error context
+
+	if info.IsDir() {
+		ws, err := p.ParseWorkspace(filePath)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Workspace Parser Error: %v", err)))
+			return 1
+		}
+		// Resolve references across the workspace
+		engine.RunWorkspaceResolution(ws)
+		program = ws.MergedProgram()
+		content = "// Merged workspace content"
+	} else {
+		fileContent, err := os.ReadFile(filePath)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error reading file: %v", err)))
+			return 1
+		}
+		content = string(fileContent)
+		program, _, err = p.Parse(filePath, content)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Parser Error: %v", err)))
+			return 1
+		}
+		// Resolve references in the single file
+		engine.RunResolution(program)
 	}
 
 	// Validation
@@ -57,8 +79,8 @@ func runLint(args []string, stdout, stderr io.Writer) int {
 	var blockingErrors []diagnostics.Diagnostic
 	var warnings []diagnostics.Diagnostic
 
-    for i := range diags {
-        d := diags[i]
+	for i := range diags {
+		d := diags[i]
 		// Skip informational cycle detection messages (cycles are valid patterns)
 		if d.Code == diagnostics.CodeCycleDetected && d.Severity == diagnostics.SeverityInfo {
 			continue // Cycles are valid - skip informational messages
@@ -75,10 +97,10 @@ func runLint(args []string, stdout, stderr io.Writer) int {
 	if len(warnings) > 0 {
 		enhancer := dx.NewErrorEnhancer(filePath, strings.Split(string(content), "\n"), program)
 		enhancedWarnings := make([]*dx.EnhancedError, 0, len(warnings))
-    for i := range warnings {
-            w := warnings[i]
-            enhancedWarnings = append(enhancedWarnings, enhancer.Enhance(w))
-    }
+		for i := range warnings {
+			w := warnings[i]
+			enhancedWarnings = append(enhancedWarnings, enhancer.Enhance(w))
+		}
 		// Print warnings but continue
 		_, _ = fmt.Fprint(stderr, dx.FormatErrors(enhancedWarnings, dx.SupportsColor()))
 	}
@@ -87,10 +109,10 @@ func runLint(args []string, stdout, stderr io.Writer) int {
 		// Enhance errors with suggestions and context
 		enhancer := dx.NewErrorEnhancer(filePath, strings.Split(string(content), "\n"), program)
 		enhancedErrors := make([]*dx.EnhancedError, 0, len(blockingErrors))
-    for i := range blockingErrors {
-            err := blockingErrors[i]
-            enhancedErrors = append(enhancedErrors, enhancer.Enhance(err))
-    }
+		for i := range blockingErrors {
+			err := blockingErrors[i]
+			enhancedErrors = append(enhancedErrors, enhancer.Enhance(err))
+		}
 
 		_, _ = fmt.Fprint(stderr, dx.FormatErrors(enhancedErrors, dx.SupportsColor()))
 		return 1

@@ -199,9 +199,10 @@ func TestConvertRequirement_NoBody(t *testing.T) {
 
 func TestConvertFlow_AllFields(t *testing.T) {
 	desc := "Flow description"
+	title := "Flow Title"
 	flow := &language.Flow{
 		ID:          "flow1",
-		Title:       "Flow Title",
+		Title:       &title,
 		Description: &desc,
 		Steps: []*language.ScenarioStep{
 			{
@@ -242,9 +243,10 @@ func TestConvertFlow_AllFields(t *testing.T) {
 }
 
 func TestConvertFlow_NoSteps(t *testing.T) {
+	title := "Flow Title"
 	flow := &language.Flow{
 		ID:    "flow1",
-		Title: "Flow Title",
+		Title: &title,
 	}
 
 	result := convertFlow(flow)
@@ -340,6 +342,121 @@ func TestConvertPolicy_BodyOnly(t *testing.T) {
 	}
 	if len(result.Tags) != 1 {
 		t.Errorf("expected 1 tag, got %d", len(result.Tags))
+	}
+}
+
+func TestConvertSystem_AllFields(t *testing.T) {
+	sys := &language.System{
+		ID:          "sys1",
+		Label:       "System",
+		Description: mkStr("System description"),
+		Items: []language.SystemItem{
+			{Container: &language.Container{ID: "cont1", Label: "Container"}},
+			{DataStore: &language.DataStore{ID: "ds1", Label: "DataStore"}},
+			{Queue: &language.Queue{ID: "q1", Label: "Queue"}},
+			{Metadata: &language.MetadataBlock{Entries: []*language.MetaEntry{{Key: "K", Value: mkStr("V")}}}},
+		},
+	}
+
+	result := convertSystem(sys)
+
+	if result.ID != "sys1" {
+		t.Errorf("expected ID sys1, got %s", result.ID)
+	}
+	if len(result.Containers) != 1 {
+		t.Errorf("expected 1 container, got %d", len(result.Containers))
+	}
+	if len(result.DataStores) != 1 {
+		t.Errorf("expected 1 datastore, got %d", len(result.DataStores))
+	}
+	if len(result.Queues) != 1 {
+		t.Errorf("expected 1 queue, got %d", len(result.Queues))
+	}
+	if len(result.Metadata) != 1 {
+		t.Errorf("expected 1 metadata, got %d", len(result.Metadata))
+	}
+}
+
+func TestConvertContainer_AllFields(t *testing.T) {
+	tech := "Docker"
+	cont := &language.Container{
+		ID:          "cont1",
+		Label:       "Container",
+		Description: mkStr("Container description"),
+		Items: []language.ContainerItem{
+			{Technology: &tech},
+			{Component: &language.Component{ID: "comp1", Label: "Component"}},
+			{Metadata: &language.MetadataBlock{Entries: []*language.MetaEntry{{Key: "K", Value: mkStr("V")}}}},
+		},
+	}
+
+	result := convertContainer(cont)
+
+	if result.ID != "cont1" {
+		t.Errorf("expected ID cont1, got %s", result.ID)
+	}
+	if result.Technology != "Docker" {
+		t.Errorf("expected Technology Docker, got %s", result.Technology)
+	}
+	if len(result.Components) != 1 {
+		t.Errorf("expected 1 component, got %d", len(result.Components))
+	}
+}
+
+func TestConvertRelation_AllFields(t *testing.T) {
+	verb := "calls"
+	label := "API call"
+	rel := &language.Relation{
+		From:  language.QualifiedIdent{Parts: []string{"A"}},
+		To:    language.QualifiedIdent{Parts: []string{"B"}},
+		Verb:  &verb,
+		Label: &label,
+		Tags:  []string{"tag1"},
+	}
+
+	result := convertRelation(rel)
+
+	if result.From != "A" {
+		t.Errorf("expected From A, got %s", result.From)
+	}
+	if result.To != "B" {
+		t.Errorf("expected To B, got %s", result.To)
+	}
+	if result.Verb != "calls" {
+		t.Errorf("expected Verb calls, got %s", result.Verb)
+	}
+	if result.Label != "API call" {
+		t.Errorf("expected Label API call, got %s", result.Label)
+	}
+}
+
+func TestConvertADR_AllFields(t *testing.T) {
+	title := "ADR Title"
+	status := "accepted"
+	ctx := "Context"
+	dec := "Decision"
+	cons := "Consequences"
+	adr := &language.ADR{
+		ID:    "ADR1",
+		Title: &title,
+		Body: &language.ADRBody{
+			Status:       &status,
+			Context:      &ctx,
+			Decision:     &dec,
+			Consequences: &cons,
+		},
+	}
+
+	result := convertADR(adr)
+
+	if result.ID != "ADR1" {
+		t.Errorf("expected ID ADR1, got %s", result.ID)
+	}
+	if result.Title != "ADR Title" {
+		t.Errorf("expected Title ADR Title, got %s", result.Title)
+	}
+	if result.Status != "accepted" {
+		t.Errorf("expected Status accepted, got %s", result.Status)
 	}
 }
 

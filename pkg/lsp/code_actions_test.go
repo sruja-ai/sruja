@@ -11,7 +11,7 @@ import (
 func TestCodeAction_GeneratesActionsForDiagnostics(t *testing.T) {
 	s := NewServer()
 	uri := lsp.DocumentURI("file:///actions.sruja")
-	text := "architecture \"A\" {\n  system S {\n    container Cont \"Container\"\n  }\n}\n"
+	text := "model {\n  system S {\n    container Cont \"Container\"\n  }\n}\n"
 	_ = s.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{
 		TextDocument: lsp.TextDocumentItem{URI: uri, Text: text, Version: 1},
 	})

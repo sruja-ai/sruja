@@ -5,17 +5,28 @@ difficulty: beginner
 topic: relations
 estimatedTime: "5-10 min"
 initialDsl: |
-  architecture "Healthcare System" {
-    person Patient "Healthcare Patient"
+  specification {
+    element person
+    element system
+    element container
+    element component
+    element datastore
+    element queue
+    element external
+  }
+  
+  model {
+    Patient = person "Healthcare Patient"
     
-    system HealthPortal {
-      container Portal "Patient Portal"
-      container AppointmentAPI "Appointment Service"
-      datastore RecordsDB "Patient Records Database"
-    }
+      HealthPortal = system  {
+        Portal = container "Patient Portal"
+        AppointmentAPI = container "Appointment Service"
+        RecordsDB = datastore "Patient Records Database"
+      }
     
-    // TODO: Connect Patient -> Portal -> AppointmentAPI -> RecordsDB
-    // Think about what each interaction represents
+      // TODO: Connect Patient -> Portal -> AppointmentAPI -> RecordsDB
+      // Think about what each interaction represents
+    
   }
 checks:
   - type: noErrors
@@ -38,17 +49,28 @@ hints:
   - "Finally AppointmentAPI -> RecordsDB \"Stores appointment\""
   - "Remember: all relation labels must be in quotes"
 solution: |
-  architecture "Healthcare System" {
-    person Patient "Healthcare Patient"
+  specification {
+    element person
+    element system
+    element container
+    element component
+    element datastore
+    element queue
+    element external
+  }
+  
+  model {
+    Patient = person "Healthcare Patient"
     
-    system HealthPortal {
-      container Portal "Patient Portal"
-      container AppointmentAPI "Appointment Service"
-      datastore RecordsDB "Patient Records Database"
-    }
+      HealthPortal = system  {
+        Portal = container "Patient Portal"
+        AppointmentAPI = container "Appointment Service"
+        RecordsDB = datastore "Patient Records Database"
+      }
     
-    Patient -> Portal "Books appointment"
-    Portal -> AppointmentAPI "Requests appointment"
-    AppointmentAPI -> RecordsDB "Stores appointment"
+      Patient -> Portal "Books appointment"
+      Portal -> AppointmentAPI "Requests appointment"
+      AppointmentAPI -> RecordsDB "Stores appointment"
+    
   }
 ---

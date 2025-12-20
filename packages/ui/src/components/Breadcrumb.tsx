@@ -1,5 +1,5 @@
 // packages/ui/src/components/Breadcrumb.tsx
-import { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { ChevronRight, Home } from 'lucide-react'
 import { vx } from '../utils/variants'
 

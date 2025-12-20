@@ -1,4 +1,5 @@
 import { Check, Lock } from "lucide-react";
+import { Button } from "@sruja/ui";
 import "./WizardStepper.css";
 
 export interface WizardStep {
@@ -46,8 +47,10 @@ export function WizardStepper({
           const isClickable = step.isComplete || index <= currentStep;
 
           return (
-            <button
+            <Button
               key={step.id}
+              variant={isActive ? "primary" : "ghost"}
+              size="sm"
               className={`wizard-step ${isActive ? "active" : ""} ${isPast ? "past" : ""} ${step.isComplete ? "complete" : ""} ${step.isLocked ? "locked" : ""}`}
               onClick={() => isClickable && onStepClick(index)}
               disabled={step.isLocked && !isClickable}
@@ -68,7 +71,7 @@ export function WizardStepper({
                   <span className="wizard-step-description">{step.description}</span>
                 )}
               </div>
-            </button>
+            </Button>
           );
         })}
       </div>

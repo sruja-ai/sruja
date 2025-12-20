@@ -11,7 +11,7 @@ import (
 func TestRunExplain(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
-	content := `architecture "Test" {
+	content := `model {
 		system S1 "System 1" {
 			description "A test system"
 		}

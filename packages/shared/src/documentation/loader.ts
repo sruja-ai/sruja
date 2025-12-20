@@ -1,16 +1,33 @@
 // packages/shared/src/documentation/loader.ts
 // Utility to load and parse markdown documentation files from learn app
 
+/**
+ * Documentation section interface.
+ * 
+ * @public
+ * @remarks
+ * Single source of truth for DocSection type.
+ * Defined here to avoid circular dependency with index.ts
+ */
 export interface DocSection {
-  id: string;
-  title: string;
-  content: string;
-  url: string;
-  summary?: string;
+  /** Unique identifier for the section */
+  readonly id: string;
+  /** Section title */
+  readonly title: string;
+  /** Markdown content */
+  readonly content: string;
+  /** URL path to the documentation */
+  readonly url: string;
+  /** Optional summary/description */
+  readonly summary?: string;
 }
 
-// Map node types to markdown file paths
-const DOC_FILE_MAP: Record<string, { file: string; url: string }> = {
+/**
+ * Map of node types to their documentation file paths and URLs.
+ * 
+ * @internal
+ */
+const DOC_FILE_MAP: Readonly<Record<string, Readonly<{ file: string; url: string }>>> = {
   person: { file: '../../apps/learn/docs/docs/concepts/person.md', url: '/learn/docs/docs/concepts/person' },
   system: { file: '../../apps/learn/docs/docs/concepts/system.md', url: '/learn/docs/docs/concepts/system' },
   container: { file: '../../apps/learn/docs/docs/concepts/container.md', url: '/learn/docs/docs/concepts/container' },
@@ -22,8 +39,17 @@ const DOC_FILE_MAP: Record<string, { file: string; url: string }> = {
   deployment: { file: '../../apps/learn/docs/docs/concepts/deployment.md', url: '/learn/docs/docs/concepts/deployment' },
 };
 
-// Parse markdown frontmatter and content
-function parseMarkdown(markdown: string): { frontmatter: Record<string, any>; content: string } {
+/**
+ * Parse markdown frontmatter and content.
+ * 
+ * @internal
+ * @param markdown - Markdown content with optional frontmatter
+ * @returns Parsed frontmatter and content
+ */
+function parseMarkdown(markdown: string): {
+  readonly frontmatter: Readonly<Record<string, string>>;
+  readonly content: string;
+} {
   const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n/;
   const match = markdown.match(frontmatterRegex);
   
@@ -34,14 +60,17 @@ function parseMarkdown(markdown: string): { frontmatter: Record<string, any>; co
   const frontmatterText = match[1];
   const content = markdown.slice(match[0].length);
   
-  const frontmatter: Record<string, any> = {};
-  frontmatterText.split('\n').forEach(line => {
+  const frontmatter: Record<string, string> = {};
+  frontmatterText.split('\n').forEach((line) => {
     const colonIndex = line.indexOf(':');
     if (colonIndex > 0) {
       const key = line.slice(0, colonIndex).trim();
       let value = line.slice(colonIndex + 1).trim();
       // Remove quotes if present
-      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
         value = value.slice(1, -1);
       }
       frontmatter[key] = value;
@@ -51,8 +80,28 @@ function parseMarkdown(markdown: string): { frontmatter: Record<string, any>; co
   return { frontmatter, content: content.trim() };
 }
 
-// Load markdown file (for build-time or runtime)
-export async function loadDocSection(nodeType: string): Promise<DocSection | null> {
+/**
+ * Load documentation section for a node type.
+ * 
+ * @public
+ * @param nodeType - Type of node (e.g., 'system', 'container', 'component')
+ * @returns Documentation section or null if not found
+ * 
+ * @remarks
+ * Fetches markdown file from the documentation directory.
+ * Parses frontmatter and content.
+ * 
+ * @example
+ * ```typescript
+ * const doc = await loadDocSection('system');
+ * if (doc) {
+ *   console.log(doc.title, doc.content);
+ * }
+ * ```
+ */
+export async function loadDocSection(
+  nodeType: string
+): Promise<DocSection | null> {
   const fileInfo = DOC_FILE_MAP[nodeType];
   if (!fileInfo) return null;
 
@@ -80,8 +129,25 @@ export async function loadDocSection(nodeType: string): Promise<DocSection | nul
   }
 }
 
-// Get all doc sections (for build-time generation)
-export function getAllDocSections(): DocSection[] {
+/**
+ * Get all available documentation sections.
+ * 
+ * @public
+ * @returns Array of all documentation sections (content loaded dynamically)
+ * 
+ * @remarks
+ * Returns metadata for all available documentation sections.
+ * Content is loaded dynamically via loadDocSection().
+ * 
+ * @example
+ * ```typescript
+ * const sections = getAllDocSections();
+ * for (const section of sections) {
+ *   const content = await loadDocSection(section.id);
+ * }
+ * ```
+ */
+export function getAllDocSections(): ReadonlyArray<DocSection> {
   return Object.keys(DOC_FILE_MAP).map(nodeType => ({
     id: nodeType,
     title: nodeType.charAt(0).toUpperCase() + nodeType.slice(1),

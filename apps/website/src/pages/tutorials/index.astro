@@ -9,14 +9,91 @@ import { transformToContentListItems } from '@/features/content/utils/transform'
 
 const tutorials = await getCollection('tutorials');
 const sortedTutorials = sortByWeight(tutorials);
-const items = transformToContentListItems(sortedTutorials, '/tutorials', {
+
+// Categorize tutorials
+const basicTutorials = sortedTutorials.filter(t => t.slug.startsWith('basic/'));
+const advancedTutorials = sortedTutorials.filter(t => t.slug.startsWith('advanced/'));
+
+const basicItems = transformToContentListItems(basicTutorials, '/tutorials', {
+  linkText: 'Read Tutorial →',
+});
+const advancedItems = transformToContentListItems(advancedTutorials, '/tutorials', {
   linkText: 'Read Tutorial →',
 });
 ---
 
 <Layout title="Tutorials" description="Step-by-step tutorials for learning Sruja.">
-  <ContentPage title="Tutorials" summary="Step-by-step guides to help you learn and master Sruja.">
-    <ContentList items={items} emptyMessage="No tutorials available yet. Check back soon!" />
+  <ContentPage title="Tutorials" summary="Step-by-step guides to help you learn and master Sruja. From basic CLI usage to advanced CI/CD integration and deployment modeling.">
+    
+    {basicTutorials.length > 0 && (
+      <section class="tutorial-section">
+        <h2 class="section-title">Basic Tutorials</h2>
+        <p class="section-description">Get started with Sruja fundamentals: CLI, validation, and basic modeling.</p>
+        <ContentList items={basicItems} emptyMessage="No basic tutorials available yet." />
+      </section>
+    )}
+
+    {advancedTutorials.length > 0 && (
+      <section class="tutorial-section">
+        <h2 class="section-title">Advanced Tutorials</h2>
+        <p class="section-description">Learn advanced patterns: CI/CD integration, deployment modeling, and production-ready architectures.</p>
+        <ContentList items={advancedItems} emptyMessage="No advanced tutorials available yet." />
+      </section>
+    )}
+
+    {sortedTutorials.length === 0 && (
+      <p class="empty-message">No tutorials available yet. Check back soon!</p>
+    )}
+
   </ContentPage>
 </Layout>
+
+<style>
+  .tutorial-section {
+    margin-bottom: 3rem;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    color: var(--color-text-primary, #0f172a);
+  }
+
+  :global(html.dark) .section-title {
+    color: #f1f5f9;
+  }
+
+  .section-description {
+    font-size: 0.9375rem;
+    color: var(--color-text-secondary, #64748b);
+    margin: 0 0 1.5rem 0;
+    line-height: 1.5;
+  }
+
+  :global(html.dark) .section-description {
+    color: #cbd5e1;
+  }
+
+  .empty-message {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--color-text-tertiary, #64748b);
+    font-size: 1.125rem;
+  }
+
+  :global(html.dark) .empty-message {
+    color: #cbd5e1;
+  }
+
+  @media (max-width: 768px) {
+    .tutorial-section {
+      margin-bottom: 2rem;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+    }
+  }
+</style>
 

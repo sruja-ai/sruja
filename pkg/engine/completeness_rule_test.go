@@ -9,11 +9,11 @@ import (
 
 func TestCompletenessRule_MissingDescriptions(t *testing.T) {
 	dsl := `
-architecture "Test" {
-    system Sys "System" {
-        container API "Order API" {
+model {
+    Sys = system "System" {
+        API = container "Order API" {
 			technology "Go"
-            component Comp "Order Component" {
+            Comp = component "Order Component" {
 				technology "Go"
 			}
         }
@@ -43,8 +43,10 @@ architecture "Test" {
 
 func TestCompletenessRule_EmptySystem(t *testing.T) {
 	dsl := `
-architecture "Test" {
-    system Sys "System" "Description"
+model {
+    Sys = system "System" {
+		description "Description"
+	}
 }
 `
 	parser, _ := language.NewParser()
@@ -67,10 +69,14 @@ architecture "Test" {
 
 func TestCompletenessRule_MissingTechnology(t *testing.T) {
 	dsl := `
-architecture "Test" {
-    system Sys "System" "Description" {
-        container API "Order API" "Description" {
-            component Comp "Order Component" "Description"
+model {
+    Sys = system "System" {
+		description "Description"
+        API = container "Order API" {
+			description "Description"
+            Comp = component "Order Component" {
+				description "Description"
+			}
         }
     }
 }
@@ -95,9 +101,11 @@ architecture "Test" {
 
 func TestCompletenessRule_EmptyContainer(t *testing.T) {
 	dsl := `
-architecture "Test" {
-    system Sys "System" "Description" {
-        container API "Order API" "Description" {
+model {
+    Sys = system "System" {
+		description "Description"
+        API = container "Order API" {
+			description "Description"
 			technology "Go"
 		}
     }

@@ -44,7 +44,7 @@ type RequirementBody struct {
 type RequirementProperty struct {
 	Type        *string        `parser:"  'type' @String"`
 	Description *string        `parser:"| 'description' @String"`
-	Tags        []string       `parser:"| 'tags' @String ( ',' @String )*"`
+	Tags        []string       `parser:"| 'tags' '[' @String ( ',' @String )* ']'"`
 	Metadata    *MetadataBlock `parser:"| @@"`
 }
 
@@ -86,7 +86,7 @@ type ADRProperty struct {
 	Context      *string  `parser:"| 'context' @String"`
 	Decision     *string  `parser:"| 'decision' @String"`
 	Consequences *string  `parser:"| 'consequences' @String"`
-	Tags         []string `parser:"| 'tags' @String ( ',' @String )*"`
+	Tags         []string `parser:"| 'tags' '[' @String ( ',' @String )* ']'"`
 }
 
 func (a *ADR) Location() SourceLocation {

@@ -1,136 +1,94 @@
 import { useState, useMemo } from "react";
-import { Puzzle, Plus, Trash2, Box, ChevronRight } from "lucide-react";
-import { Button, Input } from "@sruja/ui";
+import { Puzzle, Plus, Trash2, Box, ChevronRight, Edit } from "lucide-react";
+import { Button } from "@sruja/ui"; // Removed Input
 import { useArchitectureStore } from "../../stores/architectureStore";
-import { BestPracticeTip } from "../shared";
+import { BestPracticeTip, EditComponentForm } from "../shared"; // Updated imports
 import { RelationsSection } from "./RelationsSection";
 import { GovernanceSection } from "./GovernanceSection";
-import type { ComponentJSON } from "../../types";
+import type { ElementDump } from "@sruja/shared";
 import "./WizardSteps.css";
 
 interface ComponentsStepProps {
   onBack: () => void;
   onFinish: () => void;
+  readOnly?: boolean;
 }
 
-export function ComponentsStep({ onBack, onFinish }: ComponentsStepProps) {
-  const data = useArchitectureStore((s) => s.data);
+export function ComponentsStep({ onBack, onFinish, readOnly: _readOnly = false }: ComponentsStepProps) {
+  const data = useArchitectureStore((s) => s.likec4Model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
+
+  const allElements = useMemo(() => Object.values(data?.elements || {}), [data?.elements]);
 
   // Build container list from all systems
   const containerList = useMemo(() => {
-    const systems = data?.architecture?.systems ?? [];
-    const result: { systemId: string; containerId: string; label: string }[] = [];
+    // Find all containers (kind "container") and map to structure for selector
+    // ID hierarchy: systemId.containerId ... but kind is reliable
+    // We need systemId and containerId.
+    // Assuming hierarchy is reflected in ID: system.container
+    const containers = allElements.filter((e: any) => e.kind === "container");
 
-    systems.forEach((system) => {
-      (system.containers ?? []).forEach((container) => {
-        result.push({
-          systemId: system.id,
-          containerId: container.id,
-          label: `${system.id}.${container.id}`,
-        });
-      });
-    });
-    return result;
-  }, [data]);
+    return containers.map((c: any) => {
+      const parts = c.id.split(".");
+      // If strict 2 parts: system.container
+      const systemId = parts[0];
+      const containerId = parts.length > 1 ? parts[1] : c.id; // Fallback
+      return {
+        systemId,
+        containerId,
+        label: c.id, // Using full ID as label/value for selector
+        title: c.title
+      };
+    }).sort((a, b) => a.label.localeCompare(b.label));
+  }, [allElements]);
 
   // Form state
+  // selectedPath is actually the container ID (full path)
   const [selectedPath, setSelectedPath] = useState(containerList[0]?.label ?? "");
-  const [newId, setNewId] = useState("");
-  const [newLabel, setNewLabel] = useState("");
-  const [newTechnology, setNewTechnology] = useState("");
 
-  const selectedContainer = useMemo(() => {
-    const [systemId, containerId] = selectedPath.split(".");
-    const system = data?.architecture?.systems?.find((s) => s.id === systemId);
-    return system?.containers?.find((c) => c.id === containerId);
-  }, [selectedPath, data]);
+  if (!selectedPath && containerList.length > 0) {
+    setSelectedPath(containerList[0].label);
+  }
 
-  const components = selectedContainer?.components ?? [];
+  // Modal State
+  const [isComponentFormOpen, setIsComponentFormOpen] = useState(false);
+  const [editComponent, setEditComponent] = useState<ElementDump | undefined>(undefined);
+
+  const components = useMemo(() => {
+    if (!selectedPath) return [];
+    // Components are children of selectedPath (container ID)
+    // ID hierarchy: containerId.componentId (where containerId is system.container)
+    return allElements.filter((e: any) => {
+      if (e.kind !== "component") return false;
+      // Start with selectedPath + "." ?
+      // selectedPath is e.g. "sys1.cont1"
+      // component ID is "sys1.cont1.comp1"
+      return e.id.startsWith(selectedPath + ".") && e.id.split(".").length === selectedPath.split(".").length + 1;
+    });
+  }, [allElements, selectedPath]);
 
   const totalComponents = useMemo(() => {
-    const systems = data?.architecture?.systems ?? [];
-    return systems.reduce(
-      (acc, s) =>
-        acc + (s.containers ?? []).reduce((cAcc, c) => cAcc + (c.components?.length ?? 0), 0),
-      0
-    );
-  }, [data]);
+    return allElements.filter((e: any) => e.kind === "component").length;
+  }, [allElements]);
 
   // Build L3 elements for relations (all components across all containers)
   const l3Elements = useMemo(() => {
-    const systems = data?.architecture?.systems ?? [];
-    const result: { id: string; label: string; type: string }[] = [];
-    systems.forEach((system) => {
-      (system.containers ?? []).forEach((container) => {
-        (container.components ?? []).forEach((component) => {
-          result.push({
-            id: `${system.id}.${container.id}.${component.id}`,
-            label: component.label || component.id,
-            type: "component",
-          });
-        });
-      });
-    });
-    return result;
-  }, [data]);
-
-  const addComponent = () => {
-    if (!newId.trim() || !selectedPath) return;
-    const [systemId, containerId] = selectedPath.split(".");
-
-    const newComponent: ComponentJSON = {
-      id: newId.trim(),
-      label: newLabel.trim() || undefined,
-      technology: newTechnology.trim() || undefined,
-    };
-
-    updateArchitecture((arch) => ({
-      ...arch,
-      architecture: {
-        ...arch.architecture,
-        systems: (arch.architecture.systems ?? []).map((system) => {
-          if (system.id !== systemId) return system;
-          return {
-            ...system,
-            containers: (system.containers ?? []).map((container) => {
-              if (container.id !== containerId) return container;
-              return {
-                ...container,
-                components: [...(container.components ?? []), newComponent],
-              };
-            }),
-          };
-        }),
-      },
+    return allElements.filter((e: any) => e.kind === "component").map((e: any) => ({
+      id: e.id,
+      label: e.title,
+      type: e.kind
     }));
-    setNewId("");
-    setNewLabel("");
-    setNewTechnology("");
-  };
+  }, [allElements]);
 
   const removeComponent = (componentId: string) => {
-    const [systemId, containerId] = selectedPath.split(".");
-
-    updateArchitecture((arch) => ({
-      ...arch,
-      architecture: {
-        ...arch.architecture,
-        systems: (arch.architecture.systems ?? []).map((system) => {
-          if (system.id !== systemId) return system;
-          return {
-            ...system,
-            containers: (system.containers ?? []).map((container) => {
-              if (container.id !== containerId) return container;
-              return {
-                ...container,
-                components: (container.components ?? []).filter((c) => c.id !== componentId),
-              };
-            }),
-          };
-        }),
-      },
-    }));
+    updateArchitecture((model) => {
+      const newElements = { ...model.elements };
+      delete newElements[componentId];
+      return {
+        ...model,
+        elements: newElements
+      };
+    });
   };
 
   if (containerList.length === 0) {
@@ -161,7 +119,16 @@ export function ComponentsStep({ onBack, onFinish }: ComponentsStepProps) {
         </div>
       </div>
 
-      <BestPracticeTip variant="tip" show={totalComponents === 0}>
+      <EditComponentForm
+        isOpen={isComponentFormOpen}
+        onClose={() => setIsComponentFormOpen(false)}
+        component={editComponent}
+        parentSystemId={selectedPath ? selectedPath.split(".")[0] : null}
+        parentContainerId={selectedPath ? selectedPath.split(".")[1] : null}
+        initialName=""
+      />
+
+      <BestPracticeTip variant="tip" show={totalComponents === 0} stepId="components">
         <strong>Components are optional</strong> — Only add L3 detail for containers that need it.
         Examples: "AuthService", "PaymentProcessor", "OrderValidator"
       </BestPracticeTip>
@@ -171,25 +138,30 @@ export function ComponentsStep({ onBack, onFinish }: ComponentsStepProps) {
         <h3>Select Container</h3>
         <div className="container-tabs">
           {containerList.map((item) => {
-            const [sId, cId] = item.label.split(".");
-            const system = data?.architecture?.systems?.find((s) => s.id === sId);
-            const container = system?.containers?.find((c) => c.id === cId);
-            const count = container?.components?.length ?? 0;
+            const count = allElements.filter((e: any) => {
+              if (e.kind !== "component") return false;
+              // starts with item.label (id) + "."
+              return e.id.startsWith(item.label + ".") && e.id.split(".").length === item.label.split(".").length + 1;
+            }).length;
+
+            const [_sId, _cId] = item.label.split("."); // simple split for display if needed, but item.systemId/containerId exist
 
             return (
-              <button
+              <Button
                 key={item.label}
+                variant={selectedPath === item.label ? "primary" : "ghost"}
+                size="sm"
                 className={`container-tab ${selectedPath === item.label ? "active" : ""}`}
                 onClick={() => setSelectedPath(item.label)}
               >
                 <Box size={14} />
                 <span className="container-path">
-                  {sId}
+                  {item.systemId}
                   <ChevronRight size={12} />
-                  {cId}
+                  {item.title || item.containerId}
                 </span>
                 <span className="count-badge">{count}</span>
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -203,17 +175,31 @@ export function ComponentsStep({ onBack, onFinish }: ComponentsStepProps) {
         </h3>
 
         <div className="items-list">
-          {components.map((c) => (
+          {components.map((c: any) => (
             <div key={c.id} className="item-card">
               <Puzzle size={16} className="item-icon component" />
               <div className="item-info">
                 <span className="item-id">{c.id}</span>
-                {c.label && <span className="item-label">{c.label}</span>}
+                {c.title && <span className="item-label">{c.title}</span>}
                 {c.technology && <span className="item-tech">{c.technology}</span>}
               </div>
-              <button className="item-remove" onClick={() => removeComponent(c.id)}>
-                <Trash2 size={14} />
-              </button>
+              <div className="item-actions">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="item-edit"
+                  onClick={() => {
+                    setEditComponent(c);
+                    setIsComponentFormOpen(true);
+                  }}
+                  title="Edit component"
+                >
+                  <Edit size={14} />
+                </Button>
+                <Button variant="ghost" size="sm" className="item-remove" onClick={() => removeComponent(c.id)}>
+                  <Trash2 size={14} />
+                </Button>
+              </div>
             </div>
           ))}
           {components.length === 0 && (
@@ -221,37 +207,21 @@ export function ComponentsStep({ onBack, onFinish }: ComponentsStepProps) {
           )}
         </div>
 
-        {/* Add Form */}
+        {/* Add Actions */}
         <div className="add-form">
-          <Input
-            label="ID"
-            value={newId}
-            onChange={(e) => setNewId(e.target.value.replace(/\s/g, ""))}
-            placeholder="e.g., AuthService"
-            onKeyDown={(e) => e.key === "Enter" && addComponent()}
-          />
-          <Input
-            label="Label"
-            value={newLabel}
-            onChange={(e) => setNewLabel(e.target.value)}
-            placeholder="e.g., Authentication Service"
-            onKeyDown={(e) => e.key === "Enter" && addComponent()}
-          />
-          <Input
-            label="Technology"
-            value={newTechnology}
-            onChange={(e) => setNewTechnology(e.target.value)}
-            placeholder="e.g., JWT"
-            onKeyDown={(e) => e.key === "Enter" && addComponent()}
-          />
-          <Button variant="secondary" onClick={addComponent} disabled={!newId.trim()}>
-            <Plus size={16} />
-            Add
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setEditComponent(undefined);
+              setIsComponentFormOpen(true);
+            }}
+          >
+            <Plus size={16} /> Add Component
           </Button>
         </div>
       </div>
 
-      <BestPracticeTip variant="info" show={totalComponents >= 3}>
+      <BestPracticeTip variant="info" show={totalComponents >= 3} stepId="components">
         You have {totalComponents} components defined. Add relations below to show how they
         interact!
       </BestPracticeTip>
@@ -261,10 +231,10 @@ export function ComponentsStep({ onBack, onFinish }: ComponentsStepProps) {
         <RelationsSection
           fromElements={l3Elements}
           toElements={l3Elements}
-          filterFn={(rel) => {
+          filterFn={(rel: any) => {
             // Show L3 relations (two dots in path = System.Container.Component)
-            const fromParts = rel.from.split(".");
-            const toParts = rel.to.split(".");
+            const fromParts = rel.source.split(".");
+            const toParts = rel.target.split(".");
             return fromParts.length === 3 && toParts.length === 3;
           }}
           title="L3 Relations"

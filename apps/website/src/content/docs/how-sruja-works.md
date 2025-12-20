@@ -22,36 +22,45 @@ The platform consists of several key components working together:
 Explore the Sruja architecture itself using the interactive viewer below. This diagram is defined in Sruja DSL!
 
 ```sruja
-architecture "Sruja" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
 	description "The Sruja Architecture-as-Code Platform"
 
-	person User "Architect/Developer" {
+	User = person "Architect/Developer" {
 		description "Uses Sruja to design and document systems"
 	}
 
-	system Sruja "Sruja Platform" {
+	Sruja = system "Sruja Platform" {
 		description "Tools for defining, visualizing, and analyzing software architecture"
 
-		container CLI "Sruja CLI" {
+		CLI = container "Sruja CLI" {
 			technology "Go"
 			description "Command-line interface (cmd/sruja)"
 		}
 
-		container Engine "Core Engine" {
+		Engine = container "Core Engine" {
 			technology "Go"
 			description "Core logic for validation, scoring, and analysis (pkg/engine)"
 
-			component Validation "Validation Engine" {
+			Validation = component "Validation Engine" {
 				technology "Go"
 				description "Validates AST against rules (pkg/engine/rules)"
 			}
 
-			component Scorer "Scoring Engine" {
+			Scorer = component "Scoring Engine" {
 				technology "Go"
 				description "Calculates architecture health score (pkg/engine/scorer.go)"
 			}
 
-			component Policy "Policy Engine" {
+			Policy = component "Policy Engine" {
 				technology "Go"
 				description "Enforces custom policies (future: OPA/Rego)"
 			}
@@ -60,27 +69,27 @@ architecture "Sruja" {
 			Validation -> Policy "checks against"
 		}
 
-		container Language "Language Service" {
+		Language = container "Language Service" {
 			technology "Go"
 			description "Parser, AST, and LSP implementation (pkg/language)"
 		}
 
-		container WASM "WASM Module" {
+		WASM = container "WASM Module" {
 			technology "Go/WASM"
 			description "WebAssembly build of the core engine (cmd/wasm)"
 		}
 
-		container VSCode "VS Code Extension" {
+		VSCode = container "VS Code Extension" {
 			technology "TypeScript"
 			description "Editor extension (apps/vscode-extension)"
 		}
 
-		container Designer "Sruja Designer" {
+		Designer = container "Sruja Designer" {
 			technology "React/Vite"
 			description "Interactive architecture design tool (apps/designer)"
 		}
 
-		container Website "Documentation Site" {
+		Website = container "Documentation Site" {
 			technology "Astro"
 			description "Project documentation and guides (apps/website)"
 		}
@@ -106,12 +115,12 @@ architecture "Sruja" {
 	User -> Sruja.Designer "designs architecture"
 	User -> Sruja.Website "reads docs"
 
-	system Browser "Web Browser" {
+	Browser = system "Web Browser" {
 		description "User's web browser environment"
 		metadata {
 			tags ["external"]
 		}
-		datastore LocalStore "Local Storage"
+		LocalStore = datastore "Local Storage"
 	}
 
 	// ADRs
@@ -135,17 +144,17 @@ architecture "Sruja" {
     }
   }
 
-  system GitHub "GitHub Platform" {
+  GitHub = system "GitHub Platform" {
     description "Source control, CI/CD, and hosting"
-    container Actions "GitHub Actions" {
+    Actions = container "GitHub Actions" {
       technology "YAML/Node"
       description "CI/CD workflows"
     }
-    container Pages "GitHub Pages" {
+    Pages = container "GitHub Pages" {
       technology "Static Hosting"
       description "Hosts documentation site"
     }
-    container Releases "GitHub Releases" {
+    Releases = container "GitHub Releases" {
       technology "File Hosting"
       description "Hosts CLI binaries"
     }
@@ -278,6 +287,12 @@ architecture "Sruja" {
     User -> GitHub "merges hotfix to prod"
     GitHub.Actions -> GitHub.Pages "deploys prod site"
     GitHub.Actions -> Sruja.VSCode "publishes patch update"
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```

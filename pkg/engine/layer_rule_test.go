@@ -16,11 +16,11 @@ func TestLayerViolationRule_Validate(t *testing.T) {
 		{
 			name: "Valid Layering (Web -> API)",
 			dsl: `
-				architecture "Test" {
-					container WebApp "Web" {
+				model {
+					WebApp = container "Web" {
 						metadata { layer "web" }
 					}
-					container APIService "API" {
+					APIService = container "API" {
 						metadata { layer "api" }
 					}
 					WebApp -> APIService
@@ -31,11 +31,11 @@ func TestLayerViolationRule_Validate(t *testing.T) {
 		{
 			name: "Invalid Layering (API -> Web)",
 			dsl: `
-				architecture "Test" {
-					container WebApp "Web" {
+				model {
+					WebApp = container "Web" {
 						metadata { layer "web" }
 					}
-					container APIService "API" {
+					APIService = container "API" {
 						metadata { layer "api" }
 					}
 					APIService -> WebApp
@@ -46,9 +46,9 @@ func TestLayerViolationRule_Validate(t *testing.T) {
 		{
 			name: "Valid Layering (Name Convention)",
 			dsl: `
-				architecture "Test" {
-					container MyWeb "Web"
-					container MyAPI "API"
+				model {
+					MyWeb = container "Web"
+					MyAPI = container "API"
 					MyWeb -> MyAPI
 				}
 			`,
@@ -57,9 +57,9 @@ func TestLayerViolationRule_Validate(t *testing.T) {
 		{
 			name: "Invalid Layering (Name Convention)",
 			dsl: `
-				architecture "Test" {
-					container MyWeb "Web"
-					container MyAPI "API"
+				model {
+					MyWeb = container "Web"
+					MyAPI = container "API"
 					MyAPI -> MyWeb
 				}
 			`,
@@ -68,9 +68,9 @@ func TestLayerViolationRule_Validate(t *testing.T) {
 		{
 			name: "Unknown Layers (Ignored)",
 			dsl: `
-				architecture "Test" {
-					container A "A"
-					container B "B"
+				model {
+					A = container "A"
+					B = container "B"
 					A -> B
 				}
 			`,
@@ -79,11 +79,11 @@ func TestLayerViolationRule_Validate(t *testing.T) {
 		{
 			name: "Relaxed Layering (Web -> Data)",
 			dsl: `
-				architecture "Test" {
-					container WebApp "Web" {
+				model {
+					WebApp = container "Web" {
 						metadata { layer "web" }
 					}
-					container DB "Database" {
+					DB = container "Database" {
 						metadata { layer "data" }
 					}
 					WebApp -> DB

@@ -1,38 +1,101 @@
-// apps/playground/src/components/shared/forms/EditPolicyForm.tsx
-import { useState, useEffect, useRef } from "react";
+// apps/designer/src/components/shared/forms/EditPolicyForm.tsx
+// Refactored to use Mantine form components
+
+import { useEffect, useRef } from "react";
 import { useArchitectureStore } from "../../../stores";
-import type { PolicyJSON } from "../../../types";
-import { Button, Input, Textarea } from "@sruja/ui";
+import { Button } from "@sruja/ui";
 import { SidePanel } from "../SidePanel";
+import { FormField, useFormState, type FormErrors } from "./";
 import "../EditForms.css";
 
 interface EditPolicyFormProps {
   isOpen: boolean;
   onClose: () => void;
-  policy?: PolicyJSON;
+  policy?: any; // PolicyDump
+}
+
+interface FormValues {
+  id: string;
+  label: string;
+  description: string;
+  category: string;
+  enforcement: string;
 }
 
 export function EditPolicyForm({ isOpen, onClose, policy }: EditPolicyFormProps) {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
   const formRef = useRef<HTMLFormElement>(null);
-  const [id, setId] = useState(policy?.id || "");
-  const [label, setLabel] = useState(policy?.label || "");
-  const [description, setDescription] = useState(policy?.description || "");
-  const [category, setCategory] = useState(policy?.category || "");
-  const [enforcement, setEnforcement] = useState(policy?.enforcement || "");
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Initialize form state
+  const form = useFormState<FormValues>({
+    initialValues: {
+      id: policy?.id || "",
+      label: policy?.title || policy?.label || "",
+      description: policy?.description || "",
+      category: policy?.category || "",
+      enforcement: policy?.enforcement || "",
+    },
+    validate: (values) => {
+      const errors: FormErrors = {};
+      if (!values.id.trim()) {
+        errors.id = "ID is required";
+      } else if (!/^[A-Za-z0-9_-]+$/.test(values.id.trim())) {
+        errors.id = "ID can only contain letters, numbers, hyphens, and underscores";
+      }
+      if (!values.label.trim() && !values.description.trim()) {
+        errors.label = "Label or description is required";
+      }
+      return errors;
+    },
+    onSubmit: async (values) => {
+      await updateArchitecture((model) => {
+        const sruja = (model as any).sruja || {};
+        const policies = [...(sruja.policies || [])];
+
+        const newPolicy = {
+          id: values.id.trim(),
+          title: values.label.trim() || undefined,
+          description: values.description.trim() || undefined,
+          category: values.category.trim() || undefined,
+          enforcement: values.enforcement.trim() || undefined,
+        };
+
+        if (policy) {
+          const index = policies.findIndex((p: any) => p.id === policy.id);
+          if (index >= 0) {
+            policies[index] = newPolicy;
+          }
+        } else {
+          policies.push(newPolicy);
+        }
+
+        return {
+          ...model,
+          sruja: {
+            ...sruja,
+            policies,
+          },
+        };
+      });
+      onClose();
+    },
+  });
+
+  // Reset form when opening/switching contexts
   useEffect(() => {
     if (isOpen) {
-      setId(policy?.id || "");
-      setLabel(policy?.label || "");
-      setDescription(policy?.description || "");
-      setCategory(policy?.category || "");
-      setEnforcement(policy?.enforcement || "");
-      setErrors({});
+      form.setValues({
+        id: policy?.id || "",
+        label: policy?.title || policy?.label || "",
+        description: policy?.description || "",
+        category: policy?.category || "",
+        enforcement: policy?.enforcement || "",
+      });
+      form.clearErrors();
     }
-  }, [isOpen, policy]);
+  }, [isOpen, policy]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Handle Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
@@ -45,60 +108,6 @@ export function EditPolicyForm({ isOpen, onClose, policy }: EditPolicyFormProps)
     }
   }, [isOpen, onClose]);
 
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!id.trim()) {
-      newErrors.id = "ID is required";
-    } else if (!/^[A-Za-z0-9_-]+$/.test(id.trim())) {
-      newErrors.id = "ID can only contain letters, numbers, hyphens, and underscores";
-    }
-    if (!label.trim() && !description.trim()) {
-      newErrors.label = "Label or description is required";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    try {
-      await updateArchitecture((arch) => {
-        if (!arch.architecture) return arch;
-        const policies = [...(arch.architecture.policies || [])];
-        const newPolicy: PolicyJSON = {
-          id: id.trim(),
-          label: label.trim() || undefined,
-          description: description.trim() || undefined,
-          category: category.trim() || undefined,
-          enforcement: enforcement.trim() || undefined,
-        };
-
-        if (policy) {
-          const index = policies.findIndex((p) => p.id === policy.id);
-          if (index >= 0) {
-            policies[index] = newPolicy;
-          }
-        } else {
-          policies.push(newPolicy);
-        }
-
-        return {
-          ...arch,
-          architecture: {
-            ...arch.architecture,
-            policies,
-          },
-        };
-      });
-      onClose();
-    } catch (err) {
-      console.error("Failed to update policy:", err);
-      setErrors({ submit: "Failed to save policy. Please try again." });
-    }
-  };
-
   return (
     <SidePanel
       isOpen={isOpen}
@@ -110,59 +119,56 @@ export function EditPolicyForm({ isOpen, onClose, policy }: EditPolicyFormProps)
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button
-            variant="primary"
-            onClick={(e) => {
-              e.preventDefault();
-              handleSubmit(e as any);
-            }}
-          >
+          <Button variant="primary" type="submit" form="edit-policy-form" isLoading={form.isSubmitting}>
             {policy ? "Update" : "Add"}
           </Button>
         </>
       }
     >
-      <form ref={formRef} onSubmit={handleSubmit} className="edit-form">
-        <Input
-          label="ID *"
-          value={id}
-          onChange={(e) => {
-            setId(e.target.value);
-            if (errors.id) setErrors({ ...errors, id: "" });
-          }}
+      <form ref={formRef} id="edit-policy-form" onSubmit={form.handleSubmit} className="edit-form">
+        <FormField
+          label="ID"
+          name="id"
+          value={form.values.id}
+          onChange={(value) => form.setValue("id", value)}
           required
           placeholder="SecurityPolicy"
-          error={errors.id}
+          error={form.errors.id}
         />
-        <Input
+        <FormField
           label="Label"
-          value={label}
-          onChange={(e) => {
-            setLabel(e.target.value);
-            if (errors.label) setErrors({ ...errors, label: "" });
-          }}
+          name="label"
+          value={form.values.label}
+          onChange={(value) => form.setValue("label", value)}
           placeholder="Policy label"
-          error={errors.label}
+          error={form.errors.label}
         />
-        <Textarea
+        <FormField
           label="Description"
-          value={description}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
+          name="description"
+          value={form.values.description}
+          onChange={(value) => form.setValue("description", value)}
+          type="textarea"
           rows={3}
           placeholder="Policy description"
         />
-        <Input
+        <FormField
           label="Category"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          name="category"
+          value={form.values.category}
+          onChange={(value) => form.setValue("category", value)}
           placeholder="e.g., security, compliance, performance"
         />
-        <Input
+        <FormField
           label="Enforcement"
-          value={enforcement}
-          onChange={(e) => setEnforcement(e.target.value)}
+          name="enforcement"
+          value={form.values.enforcement}
+          onChange={(value) => form.setValue("enforcement", value)}
           placeholder="e.g., required, recommended, optional"
         />
+        {form.errors.submit && (
+          <div className="text-sm text-[var(--color-error-500)] mt-2">{form.errors.submit}</div>
+        )}
       </form>
     </SidePanel>
   );

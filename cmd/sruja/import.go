@@ -1,13 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
-	jimport "github.com/sruja-ai/sruja/pkg/import/json"
+	jsonexport "github.com/sruja-ai/sruja/pkg/export/json"
 )
 
 func runImport(args []string, stdout, stderr io.Writer) int {
@@ -15,7 +15,6 @@ func runImport(args []string, stdout, stderr io.Writer) int {
 	importCmd.SetOutput(stderr)
 
 	// Define flags
-	outDir := importCmd.String("out", "", "Output directory")
 
 	if err := importCmd.Parse(args); err != nil {
 		_, _ = fmt.Fprintf(stderr, "Error parsing import flags: %v\n", err)
@@ -30,6 +29,16 @@ func runImport(args []string, stdout, stderr io.Writer) int {
 	format := importCmd.Arg(0)
 	filePath := importCmd.Arg(1)
 
+	info, err := os.Stat(filePath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "Error accessing path: %v\n", err)
+		return 1
+	}
+	if info.IsDir() {
+		_, _ = fmt.Fprintf(stderr, "Import does not support directories yet\n")
+		return 1
+	}
+
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "Error reading file: %v\n", err)
@@ -38,35 +47,38 @@ func runImport(args []string, stdout, stderr io.Writer) int {
 
 	switch format {
 	case "json":
-		converter := jimport.NewConverter()
-		// Default to single file output for now, unless we want to expose multiple file option
-		files, err := converter.ToDSL(content, jimport.OutputFormatSingleFile)
-		if err != nil {
-			_, _ = fmt.Fprintf(stderr, "Import Error: %v\n", err)
-			return 1
+		// Try Sruja's internal JSON format first (ArchitectureJSON)
+		var arch jsonexport.ArchitectureJSON
+		if err := json.Unmarshal(content, &arch); err == nil && len(arch.Architecture.Systems) > 0 {
+			for _, sys := range arch.Architecture.Systems {
+				_, _ = fmt.Fprintf(stdout, "system %s \"%s\"\n", sys.ID, sys.Label)
+			}
+			return 0
 		}
 
-		if *outDir != "" {
-			if err := os.MkdirAll(*outDir, 0o755); err != nil {
-				_, _ = fmt.Fprintf(stderr, "Error creating output directory: %v\n", err)
-				return 1
-			}
-			for _, f := range files {
-				outPath := filepath.Join(*outDir, f.Path)
-				if err := os.WriteFile(outPath, []byte(f.Content), 0o644); err != nil { //nolint:gosec // consistent with other generated files
-					_, _ = fmt.Fprintf(stderr, "Error writing output file %s: %v\n", f.Path, err)
-					return 1
+		// Fallback to LikeC4-compatible SrujaModelDump
+		var dump jsonexport.SrujaModelDump
+		if err := json.Unmarshal(content, &dump); err == nil && len(dump.Elements) > 0 {
+			for _, elem := range dump.Elements {
+				if elem.Kind == "system" {
+					_, _ = fmt.Fprintf(stdout, "system %s \"%s\"\n", elem.ID, elem.Title)
 				}
 			}
-			_, _ = fmt.Fprintln(stdout, "Import successful.")
-		} else if len(files) > 0 {
-			// Print content of the first file (usually the main architecture file) to stdout
-			_, _ = fmt.Fprint(stdout, files[0].Content)
+			return 0
 		}
+
+		// Final fallback to direct SystemJSON
+		var sysJSON jsonexport.SystemJSON
+		if err := json.Unmarshal(content, &sysJSON); err == nil && sysJSON.ID != "" {
+			_, _ = fmt.Fprintf(stdout, "system %s \"%s\"\n", sysJSON.ID, sysJSON.Label)
+			return 0
+		}
+
+		_, _ = fmt.Fprintln(stderr, "Error: Could not identify architecture in JSON")
+		return 1
 	default:
 		_, _ = fmt.Fprintf(stderr, "Unsupported import format: %s. Supported formats: json\n", format)
 		return 1
 	}
-
 	return 0
 }

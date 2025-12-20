@@ -1,5 +1,6 @@
 // packages/ui/src/components/Popover.tsx
-import { Fragment, ReactNode } from 'react';
+import { Fragment } from 'react';
+import type { ReactNode } from 'react';
 import { Popover as HeadlessPopover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react';
 import { cn } from '../utils/cn';
 

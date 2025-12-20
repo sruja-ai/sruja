@@ -1,4 +1,5 @@
 import { Layers, Users, Target, Info, Plus } from "lucide-react";
+import { Button } from "@sruja/ui";
 
 interface Stats {
   systems: number;
@@ -34,17 +35,17 @@ export function StatsRow({ stats, onAddRequirement, onAddADR }: StatsRowProps) {
         <Target size={20} />
         <span className="stat-value">{stats.requirements}</span>
         <span className="stat-label">Requirements</span>
-        <button className="stat-add-btn" onClick={onAddRequirement} title="Add Requirement">
+        <Button variant="ghost" size="sm" className="stat-add-btn" onClick={onAddRequirement} title="Add Requirement">
           <Plus size={14} />
-        </button>
+        </Button>
       </div>
       <div className="stat-card stat-card-action">
         <Info size={20} />
         <span className="stat-value">{stats.adrs}</span>
         <span className="stat-label">ADRs</span>
-        <button className="stat-add-btn" onClick={onAddADR} title="Add ADR">
+        <Button variant="ghost" size="sm" className="stat-add-btn" onClick={onAddADR} title="Add ADR">
           <Plus size={14} />
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -44,7 +44,16 @@ This is a **senior/staff level interview question** that tests:
 This is where Sruja's `policy` feature is perfect! Show how you enforce compliance:
 
 ```sruja
-architecture "Healthcare Platform" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   // HIPAA Compliance Policy
   policy HIPAACompliance "All patient data must be encrypted and access logged" {
     category "compliance"
@@ -89,43 +98,43 @@ architecture "Healthcare Platform" {
     }
   }
   
-  system HealthcareApp "Healthcare Application" {
-    container PatientAPI "Patient API" {
+  HealthcareApp = system "Healthcare Application" {
+    PatientAPI = container "Patient API" {
       technology "Go, gRPC"
       tags ["encrypted", "audit-logged"]
       description "Handles patient data - must comply with HIPAACompliance policy"
     }
     
-    container AppointmentAPI "Appointment API" {
+    AppointmentAPI = container "Appointment API" {
       technology "Java, Spring Boot"
       tags ["encrypted"]
       description "Manages appointments - must comply with all policies"
     }
     
-    container BillingAPI "Billing API" {
+    BillingAPI = container "Billing API" {
       technology "Node.js, Express"
       tags ["encrypted", "audit-logged"]
       description "Handles billing - contains PHI (Protected Health Information)"
     }
     
-    datastore PatientDB "Patient Database" {
+    PatientDB = datastore "Patient Database" {
       technology "PostgreSQL"
       tags ["encrypted", "audit-logged"]
       description "Encrypted at rest, all access logged for HIPAA compliance"
     }
     
-    datastore AuditLogDB "Audit Log Database" {
+    AuditLogDB = datastore "Audit Log Database" {
       technology "PostgreSQL"
       description "Stores audit logs - immutable, append-only"
     }
     
-    queue AuditQueue "Audit Log Queue" {
+    AuditQueue = queue "Audit Log Queue" {
       technology "Kafka"
       description "Async audit logging to avoid blocking operations"
     }
   }
   
-  system IdentityProvider "Identity Provider" {
+  IdentityProvider = system "Identity Provider" {
     tags ["external"]
     description "OAuth2/OIDC for authentication and authorization"
   }
@@ -134,6 +143,12 @@ architecture "Healthcare Platform" {
   HealthcareApp.PatientAPI -> HealthcareApp.PatientDB "Reads/Writes (encrypted, logged)"
   HealthcareApp.PatientAPI -> HealthcareApp.AuditLogDB "Logs access via AuditQueue"
   HealthcareApp.PatientAPI -> IdentityProvider "Validates access tokens"
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 
@@ -202,7 +217,16 @@ architecture "Healthcare Platform" {
 Add data retention policy:
 
 ```sruja
-architecture "Healthcare Platform" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   // Existing policies (HIPAACompliance, TLSEnforcement, etc. from main design)
   policy HIPAACompliance "All patient data must be encrypted and access logged" {
     category "compliance"
@@ -222,21 +246,27 @@ architecture "Healthcare Platform" {
     description "GDPR/HIPAA - patients can request data deletion, but some data must be retained for legal reasons"
   }
   
-  system HealthcareApp "Healthcare Application" {
-    container PatientAPI "Patient API" {
+  HealthcareApp = system "Healthcare Application" {
+    PatientAPI = container "Patient API" {
       technology "Go, gRPC"
       tags ["encrypted", "audit-logged"]
     }
     
-    datastore PatientDB "Patient Database" {
+    PatientDB = datastore "Patient Database" {
       technology "PostgreSQL"
       description "Active patient records - 10 year retention"
     }
     
-    datastore ArchiveDB "Archive Database" {
+    ArchiveDB = datastore "Archive Database" {
       technology "S3 Glacier"
       description "Cold storage for records older than 10 years"
     }
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```

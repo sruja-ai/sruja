@@ -2,12 +2,11 @@ import { useMemo } from "react";
 import { Plus, Edit } from "lucide-react";
 import { Button } from "@sruja/ui";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
-import type { MetadataEntry } from "../../types";
 
 interface MetadataSectionProps {
-  metadata: MetadataEntry[] | undefined;
+  metadata: any[] | undefined;
   onAddMetadata: () => void;
-  onEditMetadata: (metadata: MetadataEntry, index: number) => void;
+  onEditMetadata: (metadata: any, index: number) => void;
   onDeleteMetadata: (index: number, key: string) => void;
 }
 
@@ -72,20 +71,24 @@ export function MetadataSection({
                       </div>
                       {isEditMode() && (
                         <div className="metadata-card-actions">
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="metadata-edit-btn"
                             onClick={() => onEditMetadata(metadata[metadataIndex], metadataIndex)}
                             title="Edit Metadata"
                           >
                             <Edit size={12} />
-                          </button>
-                          <button
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="metadata-delete-btn"
                             onClick={() => onDeleteMetadata(metadataIndex, item.key)}
                             title="Delete Metadata"
                           >
                             ×
-                          </button>
+                          </Button>
                         </div>
                       )}
                     </div>

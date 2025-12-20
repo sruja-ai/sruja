@@ -23,7 +23,7 @@ func (s *Server) Definition(_ context.Context, params lsp.TextDocumentPositionPa
 	}
 
 	program := doc.EnsureParsed()
-	if program == nil || program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return nil, nil
 	}
 
@@ -42,7 +42,7 @@ func (s *Server) Definition(_ context.Context, params lsp.TextDocumentPositionPa
 //nolint:unused // Future use
 func findDefinitionRange(doc *Document, id string) lsp.Range {
 	// Look for lines starting with DSL declarations followed by the id
-	decls := []string{"system ", "container ", "component ", "datastore ", "queue ", "person "}
+	decls := []string{"system ", "container ", "component ", "datastore ", "queue ", "person ", "adr ", "requirement ", "policy "}
 	for i, line := range doc.lines {
 		trimmed := strings.TrimSpace(line)
 		for _, d := range decls {

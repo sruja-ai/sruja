@@ -12,7 +12,16 @@ Governance ensures systems remain secure, maintainable, and consistent as they e
 ## Sruja: Codify Guardrails
 
 ```sruja
-architecture "Platform" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   policy Security {
     description "Security posture for services"
   }
@@ -25,6 +34,12 @@ architecture "Platform" {
   conventions {
     naming "kebab-case for services"
     tracing "W3C trace context propagated"
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```

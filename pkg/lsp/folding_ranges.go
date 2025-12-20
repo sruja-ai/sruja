@@ -53,88 +53,76 @@ func (s *Server) FoldingRanges(_ context.Context, params FoldingRangeParams) ([]
 
 	ranges := make([]FoldingRange, 0, 32)
 
-	// Add folding ranges for architecture block
-	if program.Architecture != nil {
-		arch := program.Architecture
-		if arch.Pos.Line > 0 {
-			// Find the closing brace of the architecture block
-			endLine := s.findBlockEnd(doc.Text, arch.Pos.Line-1, arch.Pos.Column-1)
-			if endLine > arch.Pos.Line {
-				startCol := toUint32(arch.Pos.Column - 1)
-				kind := FoldingRangeKindRegion
-				ranges = append(ranges, FoldingRange{
-					StartLine:      toUint32(arch.Pos.Line - 1), // Convert to 0-based
-					StartCharacter: &startCol,
-					EndLine:        toUint32(endLine - 1), // Convert to 0-based
-					Kind:           &kind,
-				})
+	// Add folding ranges for LikeC4 Model block
+	if program.Model != nil {
+		// Add folding ranges for elements in Model
+		var addElementRanges func(elem *language.LikeC4ElementDef)
+		addElementRanges = func(elem *language.LikeC4ElementDef) {
+			if elem == nil {
+				return
 			}
-		}
 
-		// Add folding ranges for systems
-		for _, sys := range arch.Systems {
-			if sys.Pos.Line > 0 {
-				endLine := s.findBlockEnd(doc.Text, sys.Pos.Line-1, sys.Pos.Column-1)
-				if endLine > sys.Pos.Line {
-					startCol := toUint32(sys.Pos.Column - 1)
+			loc := elem.Location()
+			body := elem.GetBody()
+			if loc.Line > 0 && body != nil {
+				// Find the closing brace of the element block
+				endLine := s.findBlockEnd(doc.Text, loc.Line-1, loc.Column-1)
+				if endLine > loc.Line {
+					startCol := toUint32(loc.Column - 1)
 					kind := FoldingRangeKindRegion
 					ranges = append(ranges, FoldingRange{
-						StartLine:      toUint32(sys.Pos.Line - 1),
+						StartLine:      toUint32(loc.Line - 1),
 						StartCharacter: &startCol,
 						EndLine:        toUint32(endLine - 1),
 						Kind:           &kind,
 					})
 				}
 
-				// Add folding ranges for containers within systems
-				for _, cont := range sys.Containers {
-					if cont.Pos.Line > 0 {
-						endLine := s.findBlockEnd(doc.Text, cont.Pos.Line-1, cont.Pos.Column-1)
-						if endLine > cont.Pos.Line {
-							startCol := toUint32(cont.Pos.Column - 1)
-							kind := FoldingRangeKindRegion
-							ranges = append(ranges, FoldingRange{
-								StartLine:      toUint32(cont.Pos.Line - 1),
-								StartCharacter: &startCol,
-								EndLine:        toUint32(endLine - 1),
-								Kind:           &kind,
-							})
-						}
+				// Recurse into nested elements
+				for _, bodyItem := range body.Items {
+					if bodyItem.Element != nil {
+						addElementRanges(bodyItem.Element)
 					}
 				}
 			}
 		}
 
-		// Add folding ranges for scenarios/flows
-		for _, scenario := range arch.Scenarios {
-			if scenario.Pos.Line > 0 {
-				endLine := s.findBlockEnd(doc.Text, scenario.Pos.Line-1, scenario.Pos.Column-1)
-				if endLine > scenario.Pos.Line {
-					startCol := toUint32(scenario.Pos.Column - 1)
-					kind := FoldingRangeKindRegion
-					ranges = append(ranges, FoldingRange{
-						StartLine:      toUint32(scenario.Pos.Line - 1),
-						StartCharacter: &startCol,
-						EndLine:        toUint32(endLine - 1),
-						Kind:           &kind,
-					})
+		// Process all top-level elements
+		for _, item := range program.Model.Items {
+			if item.ElementDef != nil {
+				addElementRanges(item.ElementDef)
+			}
+			// Also add folding ranges for scenarios/flows
+			if item.Scenario != nil {
+				loc := item.Scenario.Location()
+				if loc.Line > 0 {
+					endLine := s.findBlockEnd(doc.Text, loc.Line-1, loc.Column-1)
+					if endLine > loc.Line {
+						startCol := toUint32(loc.Column - 1)
+						kind := FoldingRangeKindRegion
+						ranges = append(ranges, FoldingRange{
+							StartLine:      toUint32(loc.Line - 1),
+							StartCharacter: &startCol,
+							EndLine:        toUint32(endLine - 1),
+							Kind:           &kind,
+						})
+					}
 				}
 			}
-		}
-
-		// Add folding ranges for flows
-		for _, flow := range arch.Flows {
-			if flow.Pos.Line > 0 {
-				endLine := s.findBlockEnd(doc.Text, flow.Pos.Line-1, flow.Pos.Column-1)
-				if endLine > flow.Pos.Line {
-					startCol := toUint32(flow.Pos.Column - 1)
-					kind := FoldingRangeKindRegion
-					ranges = append(ranges, FoldingRange{
-						StartLine:      toUint32(flow.Pos.Line - 1),
-						StartCharacter: &startCol,
-						EndLine:        toUint32(endLine - 1),
-						Kind:           &kind,
-					})
+			if item.Flow != nil {
+				loc := item.Flow.Location()
+				if loc.Line > 0 {
+					endLine := s.findBlockEnd(doc.Text, loc.Line-1, loc.Column-1)
+					if endLine > loc.Line {
+						startCol := toUint32(loc.Column - 1)
+						kind := FoldingRangeKindRegion
+						ranges = append(ranges, FoldingRange{
+							StartLine:      toUint32(loc.Line - 1),
+							StartCharacter: &startCol,
+							EndLine:        toUint32(endLine - 1),
+							Kind:           &kind,
+						})
+					}
 				}
 			}
 		}
