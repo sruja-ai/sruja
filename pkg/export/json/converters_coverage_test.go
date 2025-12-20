@@ -288,18 +288,144 @@ func TestConvertScale_Nil(t *testing.T) {
 	}
 }
 
-func TestStrVal_Nil(t *testing.T) {
-	result := strVal(nil)
-	if result != "" {
-		t.Errorf("expected empty string for nil, got %s", result)
+func TestConvertSystem_AllFields(t *testing.T) {
+	sys := &language.System{
+		ID:          "sys1",
+		Label:       "System",
+		Description: mkStrCoverage("Description"),
+		Metadata:    []*language.MetaEntry{{Key: "k", Value: mkStrCoverage("v")}},
+		Containers: []*language.Container{
+			{ID: "c1", Label: "C1"},
+		},
+	}
+	result := convertSystem(sys)
+	if result.ID != "sys1" {
+		t.Errorf("expected ID sys1, got %s", result.ID)
+	}
+	if len(result.Containers) != 1 {
+		t.Errorf("expected 1 container, got %d", len(result.Containers))
 	}
 }
 
-func TestStrVal_NonNil(t *testing.T) {
-	s := "test"
-	result := strVal(&s)
-	if result != "test" {
-		t.Errorf("expected test, got %s", result)
+func TestConvertContainer_AllFields(t *testing.T) {
+	cont := &language.Container{
+		ID:    "cont1",
+		Label: "Container",
+		Components: []*language.Component{
+			{ID: "comp1", Label: "Comp1"},
+		},
+		DataStores: []*language.DataStore{
+			{ID: "ds1", Label: "DS1"},
+		},
+		Queues: []*language.Queue{
+			{ID: "q1", Label: "Q1"},
+		},
+	}
+	result := convertContainer(cont)
+	if result.ID != "cont1" {
+		t.Errorf("expected ID cont1, got %s", result.ID)
+	}
+	if len(result.Components) != 1 {
+		t.Errorf("expected 1 component, got %d", len(result.Components))
+	}
+}
+
+func TestConvertPerson_AllFields(t *testing.T) {
+	p := &language.Person{
+		ID:    "p1",
+		Label: "Person",
+	}
+	result := convertPerson(p)
+	if result.ID != "p1" {
+		t.Errorf("expected ID p1, got %s", result.ID)
+	}
+}
+
+func TestConvertPolicy_AllFields(t *testing.T) {
+	p := &language.Policy{
+		ID:          "pol1",
+		Description: "Desc",
+	}
+	result := convertPolicy(p)
+	if result.ID != "pol1" {
+		t.Errorf("expected ID pol1, got %s", result.ID)
+	}
+}
+
+func TestConvertContracts(t *testing.T) {
+	contracts := []*language.Contract{
+		{ID: "c1", Kind: "Type1"},
+	}
+	result := convertContracts(contracts)
+	if len(result) != 1 || result[0].ID != "c1" {
+		t.Errorf("expected 1 contract, got %v", result)
+	}
+}
+
+func TestConvertConstraints(t *testing.T) {
+	constraints := []*language.ConstraintEntry{
+		{Key: "k1", Value: "v1"},
+	}
+	result := convertConstraints(constraints)
+	if len(result) != 1 || result[0].Key != "k1" {
+		t.Errorf("expected k1, got %v", result)
+	}
+}
+
+func TestConvertConventions(t *testing.T) {
+	conventions := []*language.ConventionEntry{
+		{Key: "k1", Value: "v1"},
+	}
+	result := convertConventions(conventions)
+	if len(result) != 1 || result[0].Key != "k1" {
+		t.Errorf("expected k1, got %v", result)
+	}
+}
+
+func TestStringPtrToIntPtr_NonNil(t *testing.T) {
+	s := "123"
+	result := stringPtrToIntPtr(&s)
+	if result == nil || *result != 123 {
+		t.Errorf("expected 123, got %v", result)
+	}
+}
+
+func TestConvertContractBody(t *testing.T) {
+	body := &language.ContractBody{
+		Version: mkStrCoverage("1.1.0"),
+	}
+	result := convertContractBody(body)
+	if result == nil || *result.Version != "1.1.0" {
+		t.Errorf("expected 1.1.0, got %v", result)
+	}
+}
+
+func TestConvertSchemaBlock(t *testing.T) {
+	sb := &language.SchemaBlock{
+		Entries: []*language.SchemaEntry{
+			{Key: "key1", Type: &language.TypeSpec{Name: "String"}},
+		},
+	}
+	result := convertSchemaBlock(sb)
+	if result == nil || len(result.Entries) != 1 || result.Entries[0].Key != "key1" {
+		t.Errorf("expected key1, got %v", result)
+	}
+}
+
+func TestConvertPolicies(t *testing.T) {
+	policies := []*language.Policy{
+		{ID: "p1", Description: "d1"},
+	}
+	result := convertPolicies(policies)
+	if len(result) != 1 || result[0].ID != "p1" {
+		t.Errorf("expected 1 policy, got %v", result)
+	}
+}
+
+func TestStrVal_Nil_Coverage(t *testing.T) {
+	result := strVal(nil)
+	if result != "" {
+		t.Errorf("expected empty string for nil, got %s", result)
 	}
 }
 

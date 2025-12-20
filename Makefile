@@ -161,7 +161,7 @@ content-validate:
 test-coverage-check: test-coverage
 	@echo "Checking coverage threshold..."
 	@COVERAGE=$$(go tool cover -func=coverage.out | tail -1 | awk '{print $$3}' | sed 's/%//'); \
-	THRESHOLD=80; \
+	THRESHOLD=85; \
 	if [ $$(echo "$$COVERAGE < $$THRESHOLD" | bc) -eq 1 ]; then \
 		echo "❌ Coverage $$COVERAGE% is below threshold $$THRESHOLD%"; \
 		exit 1; \

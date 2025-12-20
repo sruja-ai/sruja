@@ -3,7 +3,7 @@
  * Client-side validation rules for real-time feedback in the Builder wizard
  */
 
-import type { ArchitectureJSON, RelationJSON } from "../types";
+import type { SrujaModelDump } from "@sruja/shared";
 
 // ============================================================================
 // Validation Types
@@ -14,7 +14,7 @@ export type ValidationSeverity = "error" | "warning" | "info";
 export interface ValidationIssue {
   id: string;
   severity: ValidationSeverity;
-  category: "orphan" | "duplicate" | "reference" | "missing" | "structure";
+  category: "orphan" | "duplicate" | "reference" | "missing" | "structure" | "c4" | "best-practice";
   elementId?: string;
   elementType?: string;
   message: string;
@@ -29,100 +29,8 @@ export interface ValidationResult {
     errors: number;
     warnings: number;
     infos: number;
+    bestPractices: number;
   };
-}
-
-// ============================================================================
-// Element Collection Helpers
-// ============================================================================
-
-interface ElementInfo {
-  id: string;
-  fullPath: string;
-  type: "person" | "system" | "container" | "datastore" | "queue" | "component";
-  label?: string;
-  parentPath?: string;
-}
-
-/**
- * Collect all elements from the architecture with their full paths
- */
-function collectAllElements(arch: ArchitectureJSON): ElementInfo[] {
-  const elements: ElementInfo[] = [];
-
-  // Persons
-  (arch.architecture?.persons ?? []).forEach((p) => {
-    elements.push({
-      id: p.id,
-      fullPath: p.id,
-      type: "person",
-      label: p.label,
-    });
-  });
-
-  // Systems and their children
-  (arch.architecture?.systems ?? []).forEach((system) => {
-    elements.push({
-      id: system.id,
-      fullPath: system.id,
-      type: "system",
-      label: system.label,
-    });
-
-    // Containers
-    (system.containers ?? []).forEach((container) => {
-      const containerPath = `${system.id}.${container.id}`;
-      elements.push({
-        id: container.id,
-        fullPath: containerPath,
-        type: "container",
-        label: container.label,
-        parentPath: system.id,
-      });
-
-      // Components
-      (container.components ?? []).forEach((component) => {
-        elements.push({
-          id: component.id,
-          fullPath: `${containerPath}.${component.id}`,
-          type: "component",
-          label: component.label,
-          parentPath: containerPath,
-        });
-      });
-    });
-
-    // Datastores
-    (system.datastores ?? []).forEach((ds) => {
-      elements.push({
-        id: ds.id,
-        fullPath: `${system.id}.${ds.id}`,
-        type: "datastore",
-        label: ds.label,
-        parentPath: system.id,
-      });
-    });
-
-    // Queues
-    (system.queues ?? []).forEach((q) => {
-      elements.push({
-        id: q.id,
-        fullPath: `${system.id}.${q.id}`,
-        type: "queue",
-        label: q.label,
-        parentPath: system.id,
-      });
-    });
-  });
-
-  return elements;
-}
-
-/**
- * Get all valid element paths for reference checking
- */
-function getValidPaths(elements: ElementInfo[]): Set<string> {
-  return new Set(elements.map((e) => e.fullPath));
 }
 
 // ============================================================================
@@ -130,56 +38,137 @@ function getValidPaths(elements: ElementInfo[]): Set<string> {
 // ============================================================================
 
 /**
+ * Detect best practice violations
+ */
+function checkBestPractices(model: SrujaModelDump): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const elements = Object.values(model.elements || {}) as any[];
+  const systems = elements.filter(el => el.kind === "system");
+  const containers = elements.filter(el => el.kind === "container");
+
+  // BP001: Each System should have an overview/description
+  systems.forEach((sys: any) => {
+    // Description can be a string or an object with 'txt' property
+    const description = typeof sys.description === 'string' ? sys.description : sys.description?.txt || "";
+    if (!description || description.trim().length < 10) {
+      issues.push({
+        id: `bp-overview-${sys.id}`,
+        severity: "warning",
+        category: "best-practice",
+        elementId: sys.id,
+        message: `System "${sys.title}" is missing a detailed description or overview`,
+        suggestion: "Add an 'overview' block or a 'description' to provide context for reviewers.",
+      });
+    }
+
+    // BP002: Metadata completeness (owner, status)
+    // Sruja elements have metadata in system/container items in DSL, 
+    // but in Dump they might be in 'metadata' or 'properties'.
+    const hasOwner = sys.metadata?.owner || sys.properties?.owner;
+    const hasStatus = sys.metadata?.status || sys.properties?.status;
+
+    if (!hasOwner) {
+      issues.push({
+        id: `bp-owner-${sys.id}`,
+        severity: "info",
+        category: "best-practice",
+        elementId: sys.id,
+        message: `System "${sys.title}" missing owner metadata`,
+        suggestion: "Add 'owner' to the metadata block.",
+      });
+    }
+
+    if (!hasStatus) {
+      issues.push({
+        id: `bp-status-${sys.id}`,
+        severity: "info",
+        category: "best-practice",
+        elementId: sys.id,
+        message: `System "${sys.title}" missing status (e.g., "production", "proposed")`,
+        suggestion: "Add 'status' to the metadata block.",
+      });
+    }
+  });
+
+  // BP003: SLO for critical containers
+  containers.forEach(container => {
+    // Check if container has SLO block
+    // In Dump, SLO might be a field or in sruja extension
+    const hasSlo = (container as any).slo || (model.sruja as any)?.slos?.[container.id];
+    if (!hasSlo) {
+      issues.push({
+        id: `bp-slo-${container.id}`,
+        severity: "info",
+        category: "best-practice",
+        elementId: container.id,
+        message: `Container "${container.title}" has no SLO defined`,
+        suggestion: "Define an 'slo' block (availability, latency) to specify reliability targets.",
+      });
+    }
+  });
+
+  // BP004: Process coverage (flows/scenarios)
+  const flowCount = (model.sruja?.flows?.length || 0) + (model.sruja?.scenarios?.length || 0);
+  if (flowCount === 0 && elements.length > 3) {
+    issues.push({
+      id: "bp-no-flows",
+      severity: "warning",
+      category: "best-practice",
+      message: "Architecture lacks behavioral documentation (flows or scenarios)",
+      suggestion: "Add a 'flow' or 'scenario' to document how components interact in key use cases.",
+    });
+  }
+
+  // BP005: ADR coverage
+  if ((model.sruja?.adrs?.length || 0) === 0 && elements.length > 5) {
+    issues.push({
+      id: "bp-no-adrs",
+      severity: "info",
+      category: "best-practice",
+      message: "No Architectural Decision Records (ADR) found",
+      suggestion: "Use 'adr' blocks to document the 'why' behind major technical choices.",
+    });
+  }
+
+  return issues;
+}
+
+/**
  * Detect orphan elements (elements with no relations)
  */
 function detectOrphanElements(
-  elements: ElementInfo[],
-  relations: RelationJSON[]
+  model: SrujaModelDump
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
+  const elements = Object.values(model.elements || {}) as any[];
   const connectedPaths = new Set<string>();
 
   // Collect all paths mentioned in relations
-  relations.forEach((rel) => {
-    connectedPaths.add(rel.from);
-    connectedPaths.add(rel.to);
-
-    // Also mark parent paths as connected (implied relationships)
-    const fromParts = rel.from.split(".");
-    const toParts = rel.to.split(".");
-
-    for (let i = 1; i < fromParts.length; i++) {
-      connectedPaths.add(fromParts.slice(0, i).join("."));
-    }
-    for (let i = 1; i < toParts.length; i++) {
-      connectedPaths.add(toParts.slice(0, i).join("."));
-    }
+  (model.relations || []).forEach((rel: any) => {
+    connectedPaths.add(rel.source || rel.from);
+    connectedPaths.add(rel.target || rel.to);
   });
 
   // Check each element
   elements.forEach((el) => {
     // Skip if element is connected
-    if (connectedPaths.has(el.fullPath)) return;
+    if (connectedPaths.has(el.id)) return;
 
-    // Skip if any child is connected (parent is implicitly connected)
-    const hasConnectedChild = elements.some(
-      (child) => child.parentPath === el.fullPath && connectedPaths.has(child.fullPath)
+    // Skip groups/systems that contain connected elements
+    // In flat map, we check if any other element has this as parent
+    const hasConnectedChildren = elements.some(other =>
+      other.id.startsWith(el.id + ".") && connectedPaths.has(other.id)
     );
-    if (hasConnectedChild) return;
 
-    // Skip persons if there are no systems (early stage)
-    if (el.type === "person" && elements.filter((e) => e.type === "system").length === 0) {
-      return;
-    }
+    if (hasConnectedChildren) return;
 
     issues.push({
-      id: `orphan-${el.fullPath}`,
+      id: `orphan-${el.id}`,
       severity: "warning",
       category: "orphan",
-      elementId: el.fullPath,
-      elementType: el.type,
-      message: `${el.type} "${el.label || el.id}" has no relations`,
-      suggestion: `Add a relation to or from ${el.fullPath}`,
+      elementId: el.id,
+      message: `Element "${el.title}" (${el.kind}) has no relations`,
+      suggestion: "Connect this element to others using '->' to show how it fits into the architecture.",
     });
   });
 
@@ -188,60 +177,43 @@ function detectOrphanElements(
 
 /**
  * Detect duplicate IDs at the same level
+ * (LikeC4 elements map guarantees unique IDs)
  */
-function detectDuplicateIds(elements: ElementInfo[]): ValidationIssue[] {
-  const issues: ValidationIssue[] = [];
-  const seenPaths = new Map<string, ElementInfo>();
-
-  elements.forEach((el) => {
-    if (seenPaths.has(el.fullPath)) {
-      const existing = seenPaths.get(el.fullPath)!;
-      issues.push({
-        id: `duplicate-${el.fullPath}`,
-        severity: "error",
-        category: "duplicate",
-        elementId: el.fullPath,
-        elementType: el.type,
-        message: `Duplicate ID "${el.id}" - conflicts with ${existing.type}`,
-        suggestion: `Rename one of the "${el.id}" elements`,
-      });
-    } else {
-      seenPaths.set(el.fullPath, el);
-    }
-  });
-
-  return issues;
+function detectDuplicateIds(_model: SrujaModelDump): ValidationIssue[] {
+  return [];
 }
 
 /**
  * Validate relation references point to existing elements
  */
 function validateRelationReferences(
-  relations: RelationJSON[],
-  validPaths: Set<string>
+  model: SrujaModelDump
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
+  const validIds = new Set(Object.keys(model.elements || {}));
 
-  relations.forEach((rel, index) => {
-    if (!validPaths.has(rel.from)) {
+  (model.relations || []).forEach((rel: any, index) => {
+    const source = rel.source || rel.from;
+    const target = rel.target || rel.to;
+    if (!validIds.has(source)) {
       issues.push({
-        id: `invalid-ref-from-${index}`,
+        id: `invalid-ref-source-${index}`,
         severity: "error",
         category: "reference",
-        elementId: rel.from,
-        message: `Relation references unknown element "${rel.from}"`,
-        suggestion: `Check if "${rel.from}" exists or fix the path`,
+        elementId: source,
+        message: `Relation references unknown element "${source}"`,
+        suggestion: `Check if "${source}" exists or if there is a typo in the ID.`,
       });
     }
 
-    if (!validPaths.has(rel.to)) {
+    if (!validIds.has(target)) {
       issues.push({
-        id: `invalid-ref-to-${index}`,
+        id: `invalid-ref-target-${index}`,
         severity: "error",
         category: "reference",
-        elementId: rel.to,
-        message: `Relation references unknown element "${rel.to}"`,
-        suggestion: `Check if "${rel.to}" exists or fix the path`,
+        elementId: target,
+        message: `Relation references unknown element "${target}"`,
+        suggestion: `Check if "${target}" exists or if there is a typo in the ID.`,
       });
     }
   });
@@ -250,40 +222,41 @@ function validateRelationReferences(
 }
 
 /**
- * Validate tag references in requirements and ADRs
+ * Detect issues in governance elements (requirements, adrs, etc.)
  */
-function validateTagReferences(arch: ArchitectureJSON, validPaths: Set<string>): ValidationIssue[] {
+function validateGovernanceReferences(model: SrujaModelDump): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
+  const tags = new Set(Object.keys(model.specification?.tags || {}));
 
-  // Check requirement tags
-  (arch.architecture?.requirements ?? []).forEach((req) => {
-    (req.tags ?? []).forEach((tag) => {
-      if (!validPaths.has(tag)) {
+  // Validate requirement tags
+  (model.sruja?.requirements || []).forEach((req: any) => {
+    (req.tags || []).forEach((tag: string) => {
+      if (!tags.has(tag)) {
         issues.push({
-          id: `invalid-tag-req-${req.id}-${tag}`,
-          severity: "error",
+          id: `req-tag-ref-${req.id}-${tag}`,
+          severity: "warning",
           category: "reference",
-          elementId: req.id,
           elementType: "requirement",
-          message: `Requirement "${req.id}" references unknown element "${tag}"`,
-          suggestion: `Remove the tag or create element "${tag}"`,
+          elementId: req.id,
+          message: `Requirement "${req.id}" references unknown tag "${tag}"`,
+          suggestion: `Define tag "${tag}" in the specification block.`,
         });
       }
     });
   });
 
-  // Check ADR tags
-  (arch.architecture?.adrs ?? []).forEach((adr) => {
-    (adr.tags ?? []).forEach((tag) => {
-      if (!validPaths.has(tag)) {
+  // Validate ADR tags
+  (model.sruja?.adrs || []).forEach((adr: any) => {
+    (adr.tags || []).forEach((tag: string) => {
+      if (!tags.has(tag)) {
         issues.push({
-          id: `invalid-tag-adr-${adr.id}-${tag}`,
-          severity: "error",
+          id: `adr-tag-ref-${adr.id}-${tag}`,
+          severity: "warning",
           category: "reference",
-          elementId: adr.id,
           elementType: "adr",
-          message: `ADR "${adr.id}" references unknown element "${tag}"`,
-          suggestion: `Remove the tag or create element "${tag}"`,
+          elementId: adr.id,
+          message: `ADR "${adr.id}" references unknown tag "${tag}"`,
+          suggestion: `Define tag "${tag}" in the specification block.`,
         });
       }
     });
@@ -293,81 +266,10 @@ function validateTagReferences(arch: ArchitectureJSON, validPaths: Set<string>):
 }
 
 /**
- * Check for missing labels (info level)
+ * Main Validator
  */
-function checkMissingLabels(elements: ElementInfo[]): ValidationIssue[] {
-  const issues: ValidationIssue[] = [];
-
-  elements.forEach((el) => {
-    // Only warn for systems and containers (important for clarity)
-    if ((el.type === "system" || el.type === "container") && !el.label) {
-      issues.push({
-        id: `missing-label-${el.fullPath}`,
-        severity: "info",
-        category: "missing",
-        elementId: el.fullPath,
-        elementType: el.type,
-        message: `${el.type} "${el.id}" has no label`,
-        suggestion: `Add a descriptive label for better readability`,
-      });
-    }
-  });
-
-  return issues;
-}
-
-/**
- * Check structural issues
- */
-function checkStructuralIssues(arch: ArchitectureJSON): ValidationIssue[] {
-  const issues: ValidationIssue[] = [];
-
-  // Check for empty architecture
-  const systems = arch.architecture?.systems ?? [];
-  const persons = arch.architecture?.persons ?? [];
-
-  if (systems.length === 0 && persons.length === 0) {
-    issues.push({
-      id: "empty-architecture",
-      severity: "warning",
-      category: "structure",
-      message: "Architecture has no systems or persons defined",
-      suggestion: "Add at least one system to get started",
-    });
-  }
-
-  // Check for systems without containers (L2 opportunity)
-  systems.forEach((system) => {
-    const hasChildren =
-      (system.containers?.length ?? 0) > 0 ||
-      (system.datastores?.length ?? 0) > 0 ||
-      (system.queues?.length ?? 0) > 0;
-
-    if (!hasChildren) {
-      issues.push({
-        id: `no-containers-${system.id}`,
-        severity: "info",
-        category: "structure",
-        elementId: system.id,
-        elementType: "system",
-        message: `System "${system.label || system.id}" has no containers`,
-        suggestion: "Consider adding containers for L2 detail",
-      });
-    }
-  });
-
-  return issues;
-}
-
-// ============================================================================
-// Main Validator
-// ============================================================================
-
-/**
- * Validate an architecture and return all issues
- */
-export function validateArchitecture(arch: ArchitectureJSON | null): ValidationResult {
-  if (!arch || !arch.architecture) {
+export function validateArchitecture(model: SrujaModelDump | null): ValidationResult {
+  if (!model || !model.elements) {
     return {
       isValid: false,
       score: 0,
@@ -379,34 +281,39 @@ export function validateArchitecture(arch: ArchitectureJSON | null): ValidationR
           message: "No architecture loaded",
         },
       ],
-      summary: { errors: 1, warnings: 0, infos: 0 },
+      summary: { errors: 1, warnings: 0, infos: 0, bestPractices: 0 },
     };
   }
 
-  const elements = collectAllElements(arch);
-  const validPaths = getValidPaths(elements);
-  const relations = arch.architecture.relations ?? [];
-
-  // Collect all issues
   const allIssues: ValidationIssue[] = [
-    ...detectDuplicateIds(elements),
-    ...validateRelationReferences(relations, validPaths),
-    ...validateTagReferences(arch, validPaths),
-    ...detectOrphanElements(elements, relations),
-    ...checkMissingLabels(elements),
-    ...checkStructuralIssues(arch),
+    ...detectDuplicateIds(model),
+    ...validateRelationReferences(model),
+    ...detectOrphanElements(model),
+    ...checkBestPractices(model),
+    ...validateGovernanceReferences(model),
   ];
 
-  // Calculate summary
+  // Add empty architecture warning if no elements
+  if (Object.keys(model.elements).length === 0) {
+    allIssues.push({
+      id: "empty-architecture",
+      severity: "warning",
+      category: "structure",
+      message: "Architecture has no elements",
+      suggestion: "Start by adding a system or a persona.",
+    });
+  }
+
   const summary = {
     errors: allIssues.filter((i) => i.severity === "error").length,
     warnings: allIssues.filter((i) => i.severity === "warning").length,
     infos: allIssues.filter((i) => i.severity === "info").length,
+    bestPractices: allIssues.filter((i) => i.category === "best-practice").length,
   };
 
-  // Calculate score (100 - deductions)
-  // Errors: -10 each, Warnings: -5 each, Infos: -1 each
-  const deductions = summary.errors * 10 + summary.warnings * 5 + summary.infos * 1;
+  // Score calculation: Base 100, deduct based on severity
+  // Errors: -15, Warnings: -10, Info/BestPractices: -2
+  const deductions = (summary.errors * 15) + (summary.warnings * 10) + (summary.infos * 2);
   const score = Math.max(0, Math.min(100, 100 - deductions));
 
   return {
@@ -417,9 +324,6 @@ export function validateArchitecture(arch: ArchitectureJSON | null): ValidationR
   };
 }
 
-/**
- * Get issues for a specific element
- */
 export function getIssuesForElement(
   result: ValidationResult,
   elementPath: string
@@ -427,9 +331,6 @@ export function getIssuesForElement(
   return result.issues.filter((i) => i.elementId === elementPath);
 }
 
-/**
- * Get issues by category
- */
 export function getIssuesByCategory(
   result: ValidationResult,
   category: ValidationIssue["category"]
@@ -437,9 +338,6 @@ export function getIssuesByCategory(
   return result.issues.filter((i) => i.category === category);
 }
 
-/**
- * Get color class for severity
- */
 export function getSeverityColor(severity: ValidationSeverity): string {
   switch (severity) {
     case "error":
@@ -451,9 +349,6 @@ export function getSeverityColor(severity: ValidationSeverity): string {
   }
 }
 
-/**
- * Get icon name for severity
- */
 export function getSeverityIcon(severity: ValidationSeverity): string {
   switch (severity) {
     case "error":

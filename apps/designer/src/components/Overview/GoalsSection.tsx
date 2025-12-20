@@ -1,8 +1,7 @@
 import { Target, Ban, AlertTriangle, Tag, Layers } from "lucide-react";
-import type { OverviewJSON } from "../../types";
 
 interface GoalsSectionProps {
-  overview: OverviewJSON | undefined;
+  overview: any | undefined; // was OverviewJSON
 }
 
 export function GoalsSection({ overview }: GoalsSectionProps) {
@@ -30,7 +29,7 @@ export function GoalsSection({ overview }: GoalsSectionProps) {
                 <Target size={16} /> Goals
               </h3>
               <ul>
-                {overview.goals!.map((goal, i) => (
+                {overview.goals!.map((goal: string, i: number) => (
                   <li key={i}>{goal}</li>
                 ))}
               </ul>
@@ -42,7 +41,7 @@ export function GoalsSection({ overview }: GoalsSectionProps) {
                 <Ban size={16} /> Non-Goals
               </h3>
               <ul>
-                {overview.nonGoals!.map((ng, i) => (
+                {overview.nonGoals!.map((ng: string, i: number) => (
                   <li key={i}>{ng}</li>
                 ))}
               </ul>
@@ -58,7 +57,7 @@ export function GoalsSection({ overview }: GoalsSectionProps) {
             <AlertTriangle size={16} /> Risks & Concerns
           </h3>
           <div className="risks-list">
-            {overview.risks!.map((risk, i) => (
+            {overview.risks!.map((risk: string, i: number) => (
               <div key={i} className="risk-item">
                 <AlertTriangle size={14} />
                 <span>{risk}</span>

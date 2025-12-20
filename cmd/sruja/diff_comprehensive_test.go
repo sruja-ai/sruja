@@ -14,11 +14,11 @@ func TestDiffJSON(t *testing.T) {
 	file1 := filepath.Join(tmpDir, "v1.sruja")
 	file2 := filepath.Join(tmpDir, "v2.sruja")
 
-	content1 := `architecture "Test" {
+	content1 := `model {
 		system Sys1 "System 1"
 	}`
 
-	content2 := `architecture "Test" {
+	content2 := `model {
 		system Sys1 "System 1"
 		system Sys2 "System 2"
 	}`
@@ -51,11 +51,11 @@ func TestDiffModified(t *testing.T) {
 	file1 := filepath.Join(tmpDir, "v1.sruja")
 	file2 := filepath.Join(tmpDir, "v2.sruja")
 
-	content1 := `architecture "Test" {
+	content1 := `model {
 		system Sys1 "System One"
 	}`
 
-	content2 := `architecture "Test" {
+	content2 := `model {
 		system Sys1 "System 1 Updated"
 	}`
 
@@ -83,12 +83,12 @@ func TestDiffRemoved(t *testing.T) {
 	file1 := filepath.Join(tmpDir, "v1.sruja")
 	file2 := filepath.Join(tmpDir, "v2.sruja")
 
-	content1 := `architecture "Test" {
+	content1 := `model {
 		system Sys1 "System 1"
 		system Sys2 "System 2"
 	}`
 
-	content2 := `architecture "Test" {
+	content2 := `model {
 		system Sys1 "System 1"
 	}`
 

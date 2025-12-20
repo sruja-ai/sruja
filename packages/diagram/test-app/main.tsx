@@ -68,7 +68,7 @@ function App() {
         const initial = jsonToReactFlow(arch, { level, expandedNodes });
 
         // Apply Layout with expanded nodes
-        const { nodes: n, edges: e } = applySrujaLayout(initial.nodes, initial.edges, arch, {
+        const { nodes: n, edges: e } = await applySrujaLayout(initial.nodes, initial.edges, arch, {
           level,
           direction: "TB",
           expandedNodes, // Pass expanded nodes to layout engine
@@ -89,10 +89,10 @@ function App() {
 
     load();
 
-    // Expose loadGraph API for Agent Optimization Loop
     (window as any).loadGraph = async (
       jsonOrDsl: string | ArchitectureJSON,
-      level: string = "L1"
+      level: string = "L1",
+      expandedNodesList: string[] = [] // Add optional expanded nodes
     ) => {
       try {
         let arch: ArchitectureJSON;
@@ -111,14 +111,19 @@ function App() {
           arch = jsonOrDsl;
         }
 
-        const expandedNodes = new Set<string>();
+        const expandedNodes = new Set<string>(expandedNodesList);
         const initial = jsonToReactFlow(arch, { level: level as any, expandedNodes });
-        const { nodes: n, edges: e } = applySrujaLayout(initial.nodes, initial.edges, arch, {
-          level: level as any,
-          direction: "TB",
-          expandedNodes,
-        });
-
+        // Apply layout
+        const { nodes: n, edges: e } = await applySrujaLayout(
+          initial.nodes,
+          initial.edges,
+          arch,
+          {
+            level: level as any,
+            direction: "TB", // Keep direction as it was in the original call
+            expandedNodes: expandedNodes, // Use the already defined expandedNodes
+          }
+        );
         setNodes(n);
         setEdges(e);
         (window as any).__CYBER_GRAPH__ = { nodes: n, edges: e, expandedNodes };

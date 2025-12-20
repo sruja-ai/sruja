@@ -57,22 +57,25 @@ func TestSimplicityRule_SystemForDomain(t *testing.T) {
 func TestSimplicityRule_ValidUsage(t *testing.T) {
 	rule := &SimplicityRule{}
 
-	// Valid: System with containers (deployment modeling)
-	prog1 := &language.Program{
-		Architecture: &language.Architecture{
-			Systems: []*language.System{
-				{
-					ID: "ShopAPI",
-					Containers: []*language.Container{
-						{ID: "WebApp"},
-						{ID: "Database"},
-					},
-				},
-			},
-		},
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	errors1 := rule.Validate(prog1)
+	// Valid: System with containers (deployment modeling)
+	dsl1 := `model {
+		ShopAPI = system "Shop API" {
+			WebApp = container "Web App"
+			Database = container "Database"
+		}
+	}`
+
+	program1, _, err := parser.Parse("test.sruja", dsl1)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	errors1 := rule.Validate(program1)
 	if len(errors1) > 0 {
 		t.Errorf("Expected no errors for valid system usage, got: %v", errors1)
 	}
@@ -134,55 +137,59 @@ func TestSimplicityRule_NilArchitecture(t *testing.T) {
 	rule := &SimplicityRule{}
 
 	prog := &language.Program{
-		Architecture: nil,
+		Model: nil,
 	}
 
 	errors := rule.Validate(prog)
 	if len(errors) != 0 {
-		t.Errorf("Expected no errors for nil architecture, got: %v", errors)
+		t.Errorf("Expected no errors for nil model, got: %v", errors)
 	}
 }
 
 func TestSimplicityRule_EmptySystems(t *testing.T) {
 	rule := &SimplicityRule{}
 
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Systems: []*language.System{},
-		},
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	errors := rule.Validate(prog)
+	dsl := `model {}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	errors := rule.Validate(program)
 	if len(errors) != 0 {
-		t.Errorf("Expected no errors for empty systems, got: %v", errors)
+		t.Errorf("Expected no errors for empty model, got: %v", errors)
 	}
 }
 
 func TestSimplicityRule_SystemWithMultipleContainerTypes(t *testing.T) {
 	rule := &SimplicityRule{}
 
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Systems: []*language.System{
-				{
-					ID: "ComplexSys",
-					Containers: []*language.Container{
-						{ID: "Web"},
-					},
-					DataStores: []*language.DataStore{
-						{ID: "DB"},
-					},
-					Queues: []*language.Queue{
-						{ID: "Queue"},
-					},
-				},
-			},
-		},
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	errors := rule.Validate(prog)
+	dsl := `model {
+		ComplexSys = system "Complex System" {
+			Web = container "Web"
+			DB = datastore "Database"
+		}
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	errors := rule.Validate(program)
 	if len(errors) != 0 {
-		t.Errorf("Expected no errors for system with multiple container types, got: %v", errors)
+		t.Errorf("Expected no errors, got: %v", errors)
 	}
 }
 

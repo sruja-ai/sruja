@@ -30,13 +30,11 @@ var allowedTags = map[string]bool{
 
 //nolint:gocyclo // Validation logic is complex
 func (r *RelationTagRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	if program == nil || program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return nil
 	}
 	// Pre-allocate diagnostics slice with estimated capacity
-	estimatedDiags := 10
-	diags := make([]diagnostics.Diagnostic, 0, estimatedDiags)
-	arch := program.Architecture
+	diags := make([]diagnostics.Diagnostic, 0, 10)
 
 	checkTags := func(rel *language.Relation) {
 		if rel == nil {
@@ -65,40 +63,12 @@ func (r *RelationTagRule) Validate(program *language.Program) []diagnostics.Diag
 		}
 	}
 
-	// Check top-level relations
-	for _, rel := range arch.Relations {
+	// Collect all relations from LikeC4 Model
+	_, relations := collectLikeC4Elements(program.Model)
+
+	// Check all relations
+	for _, rel := range relations {
 		checkTags(rel)
-	}
-
-	// Check system relations
-	for _, sys := range arch.Systems {
-		for _, rel := range sys.Relations {
-			checkTags(rel)
-		}
-		for _, item := range sys.Items {
-			if item.Relation != nil {
-				checkTags(item.Relation)
-			}
-		}
-
-		for _, c := range sys.Containers {
-			for i := range c.Items {
-				item := &c.Items[i]
-				if item.Relation != nil {
-					checkTags(item.Relation)
-				}
-			}
-			for _, comp := range c.Components {
-				for _, rel := range comp.Relations {
-					checkTags(rel)
-				}
-				for _, item := range comp.Items {
-					if item.Relation != nil {
-						checkTags(item.Relation)
-					}
-				}
-			}
-		}
 	}
 
 	return diags

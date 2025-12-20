@@ -9,8 +9,8 @@
 //
 //	parser, _ := language.NewParser()
 //	program, _ := parser.Parse("example.sruja", dslText)
-//	architecture := program.Architecture
-//	system := architecture.Systems[0]
+//	model := program.Model
+//	// Access elements via model.Items
 package language
 
 // This file is intentionally empty.
@@ -20,6 +20,6 @@ package language
 // - ast_elements.go: Core C4 elements (System, Container, Component, etc.)
 // - ast_relations.go: Relations
 // - ast_requirements.go: Requirements and ADRs
-// - ast_library.go: Libraries and Policies
+// - ast_library.go: Policies
 // - ast_scenarios.go: Scenarios and Flows
 // - ast_deployment.go: Deployment nodes

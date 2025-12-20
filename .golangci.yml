@@ -10,11 +10,14 @@ linters:
     - ineffassign
     - revive
     - unparam
+    - prealloc     # Detect slice pre-allocation opportunities
+    - gocritic     # Advanced code patterns and suggestions
+    - noctx        # Ensure context.Context is passed where needed
+    - bodyclose    # Ensure HTTP response bodies are closed
   disable:
     - funlen
     - gocyclo
     - goconst
-    - gocritic
 
 linters-settings:
   gocyclo:

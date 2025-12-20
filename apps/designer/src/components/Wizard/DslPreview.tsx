@@ -16,16 +16,10 @@ export function DslPreview({ dsl }: DslPreviewProps) {
       await navigator.clipboard.writeText(dsl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback for older browsers
-      const textarea = document.createElement("textarea");
-      textarea.value = dsl;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      // Clipboard API failed - show error or fallback UI
+      console.warn("Failed to copy to clipboard:", err);
+      // Optionally: show a toast/notification to user
     }
   }, [dsl]);
 
@@ -35,19 +29,29 @@ export function DslPreview({ dsl }: DslPreviewProps) {
 
     return (
       dsl
-        // Block keywords (structure)
+        // Top-level block keywords (advanced DSL)
         .replace(
-          /\b(architecture|system|container|component|person|datastore|queue)\b/g,
+          /\b(specification|model|views)\b/g,
+          '<span class="dsl-keyword-block">$1</span>'
+        )
+        // Element type keywords
+        .replace(
+          /\b(element|person|system|container|component|database|queue|datastore)\b/g,
           '<span class="dsl-keyword">$1</span>'
+        )
+        // View keywords
+        .replace(
+          /\b(view|include|exclude|of)\b/g,
+          '<span class="dsl-keyword-view">$1</span>'
         )
         // Governance keywords
         .replace(
-          /\b(requirement|adr|policy|scenario|flow)\b/g,
+          /\b(requirement|adr|policy|scenario|flow|constraint|convention)\b/g,
           '<span class="dsl-keyword-gov">$1</span>'
         )
         // Property keywords
         .replace(
-          /\b(description|tech|label|verb|interaction|tags|status|context|decision|consequences|summary|goals|nonGoals)\b/g,
+          /\b(description|technology|tags|status|context|decision|consequences|summary|goals|nonGoals|metadata|link|title|priority|enforcement|date|author)\b/g,
           '<span class="dsl-property">$1</span>'
         )
         // ADR status values with colors
@@ -82,6 +86,23 @@ export function DslPreview({ dsl }: DslPreviewProps) {
         .replace(/(\/\/[^\n]*)/g, '<span class="dsl-comment">$1</span>')
     );
   }, [dsl]);
+
+  // Handle empty or invalid DSL
+  if (!dsl || dsl.trim().length === 0) {
+    return (
+      <div className={`dsl-preview ${isExpanded ? "expanded" : ""}`}>
+        <div className="dsl-preview-header">
+          <div className="dsl-preview-title">
+            <Code size={16} aria-hidden="true" />
+            <span>DSL Preview</span>
+          </div>
+        </div>
+        <div className="dsl-preview-code">
+          <code>// No DSL content available</code>
+        </div>
+      </div>
+    );
+  }
 
   const previewLines = dsl.split("\n").slice(0, 5);
   const hasMore = dsl.split("\n").length > 5;
@@ -143,7 +164,7 @@ export function DslPreview({ dsl }: DslPreviewProps) {
                   .map((line) => {
                     return line
                       .replace(
-                        /\b(architecture|system|container|component|person)\b/g,
+                        /\b(specification|model|views|element|system|container|component|person|database|queue)\b/g,
                         '<span class="dsl-keyword">$1</span>'
                       )
                       .replace(/"([^"]+)"/g, '<span class="dsl-string">"$1"</span>');

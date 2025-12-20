@@ -5,22 +5,33 @@ difficulty: beginner
 topic: relations
 estimatedTime: "5-10 min"
 initialDsl: |
-  architecture "Microservices Platform" {
-    person Customer "Online Customer"
+  specification {
+    element person
+    element system
+    element container
+    element component
+    element datastore
+    element queue
+    element external
+  }
+  
+  model {
+    Customer = person "Online Customer"
     
-    system ECommerce {
-      container UserService "User Management"
-      container OrderService "Order Processing"
-      container PaymentService "Payment Processing"
-      datastore UserDB "User Database"
-      datastore OrderDB "Order Database"
-      datastore PaymentDB "Payment Database"
-    }
+      ECommerce = system  {
+        UserService = container "User Management"
+        OrderService = container "Order Processing"
+        PaymentService = container "Payment Processing"
+        UserDB = datastore "User Database"
+        OrderDB = datastore "Order Database"
+        PaymentDB = datastore "Payment Database"
+      }
     
-    Customer -> UserService "Logs in"
+      Customer -> UserService "Logs in"
     
-    // TODO: Connect services in order flow: UserService -> OrderService -> PaymentService
-    // TODO: Connect each service to its database
+      // TODO: Connect services in order flow: UserService -> OrderService -> PaymentService
+      // TODO: Connect each service to its database
+    
   }
 checks:
   - type: noErrors
@@ -51,23 +62,34 @@ hints:
   - "Each service connects to its own DB: Service -> DB \"Reads/Writes\""
   - "Use descriptive labels for each relation"
 solution: |
-  architecture "Microservices Platform" {
-    person Customer "Online Customer"
+  specification {
+    element person
+    element system
+    element container
+    element component
+    element datastore
+    element queue
+    element external
+  }
+  
+  model {
+    Customer = person "Online Customer"
     
-    system ECommerce {
-      container UserService "User Management"
-      container OrderService "Order Processing"
-      container PaymentService "Payment Processing"
-      datastore UserDB "User Database"
-      datastore OrderDB "Order Database"
-      datastore PaymentDB "Payment Database"
-    }
+      ECommerce = system  {
+        UserService = container "User Management"
+        OrderService = container "Order Processing"
+        PaymentService = container "Payment Processing"
+        UserDB = datastore "User Database"
+        OrderDB = datastore "Order Database"
+        PaymentDB = datastore "Payment Database"
+      }
     
-    Customer -> UserService "Logs in"
-    UserService -> OrderService "Creates order"
-    OrderService -> PaymentService "Processes payment"
-    UserService -> UserDB "Reads/Writes"
-    OrderService -> OrderDB "Reads/Writes"
-    PaymentService -> PaymentDB "Reads/Writes"
+      Customer -> UserService "Logs in"
+      UserService -> OrderService "Creates order"
+      OrderService -> PaymentService "Processes payment"
+      UserService -> UserDB "Reads/Writes"
+      OrderService -> OrderDB "Reads/Writes"
+      PaymentService -> PaymentDB "Reads/Writes"
+    
   }
 ---

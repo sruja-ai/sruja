@@ -1,0 +1,324 @@
+// examples/pattern_agentic_ai.sruja
+// Customer Support AI Agents
+
+specification {
+  element person
+  element system
+  element container
+  element component
+  element database
+  element queue
+}
+
+model {
+  overview {
+    summary "Agentic automation for e-commerce support: triage, investigation, and resolution"
+    audience "Support operations, product, platform engineering"
+    scope "Ticket triage, refunds, missing orders, chargebacks, proactive outreach"
+    goals ["Reduce resolution time", "Ensure approvals", "Maintain auditability"]
+    nonGoals ["General-purpose RPA outside support domain"]
+    risks ["Prompt injection", "PII leakage", "Incorrect refunds", "Vendor lock-in"]
+  }
+
+  customer = person "Customer" {
+    description "Reports issues, requests refunds, tracks orders"
+  }
+  supportAgent = person "Support Agent" {
+    description "Approves sensitive actions, handles escalations"
+  }
+
+  commerce = system "E-commerce" {
+    description "Order management, catalog, and shipping integrations"
+
+    shopFrontend = container "Web/App Frontend" {
+      technology "React/Next.js"
+      description "Customer portal for orders and support"
+      version "2.3.0"
+      tags ["customer","frontend"]
+      scale { min 3 max 12 metric "cpu > 70%" }
+    }
+
+    orderAPI = container "Order Service" {
+      technology "Node.js"
+      description "Order management and fulfillment API"
+      scale { min 4 max 10 }
+      slo { latency { p95 "300ms" p99 "800ms" } }
+      ordersRead = component "Order read endpoints"
+      ordersWrite = component "Order write endpoints"
+    }
+
+    ordersDB = database "Orders Database" {
+      technology "PostgreSQL"
+      description "Canonical source of order and payment state"
+    }
+
+    shippingAPI = container "Shipping Integration" {
+      technology "Go"
+      description "Carrier integrations and tracking"
+    }
+  }
+
+  support = system "Support Operations" {
+    description "Ticketing, CRM, and communications"
+
+    ticketing = container "Ticketing System" {
+      technology "Zendesk"
+      description "Customer support tickets and workflows"
+      ticketAPI = component "Ticket CRUD and macros"
+    }
+
+    cRM = container "CRM" {
+      technology "Salesforce"
+      description "Customer profiles and entitlements"
+      cRMAPI = component "Contact, case, entitlement APIs"
+    }
+
+    email = container "Transactional Email" {
+      technology "SendGrid"
+      description "Outbound communications and notifications"
+      emailAPI = component "Email send and templates"
+    }
+  }
+
+  agentic = system "Agentic Platform" {
+    description "Planning, tool-use, execution, memory, and governance for support automation"
+
+    aPI = container "Agent Gateway" {
+      technology "TypeScript/Node.js"
+      description "Ingress, contracts, streaming of results"
+      version "1.1.0"
+      tags ["api","backend"]
+      scale { min 2 max 6 metric "cpu > 65%" }
+      slo { latency { p95 "1200ms" p99 "2500ms" } }
+      requestHandler = component "Validates and receives tasks"
+      streamServer = component "SSE/WebSocket streams"
+    }
+
+    orchestrator = container "Task Orchestrator" {
+      technology "Go"
+      description "Lifecycle control, routing, safety checks, trace context"
+      plannerRouter = component "Planner routing and retries"
+      safetyGate = component "Pre-execution guardrails"
+      memoryManager = component "Retrieval hooks and updates"
+      slo { availability { target "99.9%" window "30d" } }
+    }
+
+    planner = container "Planning Agent Service" {
+      technology "Python"
+      description "Generates plans and selects tools"
+      scale { min 3 max 10 }
+      reActPlanner = component "Reason+Act planning"
+      toTPlanner = component "Tree-of-Thought for complex cases"
+      toolSelector = component "Tool allowlist and selection"
+    }
+
+    tools = container "Support Tools" {
+      technology "Mixed"
+      description "External tools invoked by agents"
+      webBrowser = component "Web search and scraping"
+      databaseQuery = component "Structured data access"
+      codeRunner = component "Ephemeral code execution"
+      emailSender = component "Templated email dispatch"
+    }
+
+    executor = container "Execution Sandbox" {
+      technology "Docker"
+      description "Network-restricted sandbox for code execution"
+      sandboxRuntime = component "Runtime with quotas"
+      traceEmitter = component "Execution traces"
+    }
+
+    monitor = container "Telemetry & Policy" {
+      technology "Go"
+      description "Metrics, logs, policy evaluation, audit trail"
+      policyEngine = component "Evaluates enforcement rules"
+      metricsCollector = component "Latency, error rate, throughput"
+      auditLog = component "Immutable audit trail"
+    }
+
+    vectorDB = database "Vector Store" {
+      technology "Pinecone/Weaviate"
+      description "Long-term memory for retrieval"
+    }
+
+    cache = database "Context Cache" {
+      technology "Redis"
+      description "Short-term context, rate limits, throttles"
+    }
+
+    taskQueue = queue "Agent Tasks" {
+      technology "Kafka/SQS"
+      description "Decouples planning from execution"
+    }
+
+    aPI.requestHandler -> orchestrator.plannerRouter "Dispatch task"
+    orchestrator.plannerRouter -> planner.reActPlanner "Request plan"
+    planner.toolSelector -> tools.webBrowser "Search"
+    planner.toolSelector -> tools.databaseQuery "Query"
+    planner.toolSelector -> tools.codeRunner "Prototype"
+    planner.toolSelector -> tools.emailSender "Notify"
+    planner.reActPlanner -> orchestrator.memoryManager "Retrieve context"
+    orchestrator.safetyGate -> monitor.policyEngine "Evaluate"
+    orchestrator.plannerRouter -> executor.sandboxRuntime "Execute step"
+    executor.traceEmitter -> monitor.auditLog "Emit traces"
+    planner.reActPlanner -> vectorDB "Write embeddings"
+    planner.reActPlanner -> cache "Warm context"
+    orchestrator.plannerRouter -> taskQueue "Enqueue execution"
+    taskQueue -> executor.sandboxRuntime "Dequeue"
+    monitor.metricsCollector -> aPI.streamServer "Stream telemetry"
+  }
+
+  external = system "External Services" {
+    description "Third-party APIs"
+    payments = container "Stripe"
+    commerceHost = container "Shopify"
+    searchAPI = container "Search API"
+    carriers = container "Carrier APIs"
+  }
+
+  customer -> commerce.shopFrontend "Places orders"
+  customer -> support.ticketing "Submits ticket"
+  supportAgent -> support.ticketing "Works tickets"
+  supportAgent -> agentic.aPI "Approves actions"
+
+  agentic.aPI -> support.ticketing "Create/update tickets"
+  agentic.tools.databaseQuery -> commerce.ordersDB "Read order state"
+  agentic.tools.webBrowser -> external.searchAPI "Query"
+  agentic.tools.webBrowser -> external.carriers "Track shipment"
+  agentic.tools.emailSender -> support.email "Send email"
+  agentic.tools.databaseQuery -> support.cRM "Fetch customer profile"
+  agentic.tools.codeRunner -> agentic.executor "Invoke code"
+  agentic.tools.databaseQuery -> external.commerceHost "Fetch order"
+  agentic.tools.databaseQuery -> external.payments "Payment lookup"
+
+  requirement R1 functional "Automate triage and investigation for top 5 issue types"
+  requirement R2 performance "Reduce average resolution time by 40%"
+  requirement R3 security "Mask PII in prompts and logs"
+  requirement R4 constraint "Refunds over $100 require human approval"
+
+  adr ADR001 "Adopt ReAct for planning" {
+    status "accepted"
+    context "Reliable tool selection and iterative refinement needed"
+    decision "Use ReAct; fall back to ToT for complex cases"
+    consequences "Higher success rate; increased token usage"
+  }
+  adr ADR002 "Use vector DB for memory" {
+    status "accepted"
+    context "Require retrieval-augmented planning and case recall"
+    decision "Persist embeddings and traces to VectorDB"
+    consequences "Better recall; vendor lock-in risk"
+  }
+  adr ADR003 "Introduce task queue" {
+    status "accepted"
+    context "Decouple planning from execution and absorb spikes"
+    decision "Use Kafka/SQS between orchestrator and executor"
+    consequences "Eventual consistency; simplified scaling"
+  }
+  adr ADR004 "Human-in-the-loop approvals" {
+    status "accepted"
+    context "Financial risk and customer trust require oversight"
+    decision "Require agent approval for sensitive operations"
+    consequences "Adds latency; improves correctness and compliance"
+  }
+
+  policy RefundPolicy "Refunds over $100 require approval" {
+    category "finance"
+    enforcement "required"
+  }
+  policy PIIProtection "Mask PII in prompts and logs" {
+    category "security"
+    enforcement "required"
+  }
+  policy ToolAccessPolicy "Restrict tools to allowlist" {
+    category "governance"
+    enforcement "required"
+  }
+
+  constraints {
+    "Executor runs in sandbox with default egress blocked"
+    "All tool calls pass SafetyGate"
+    "Only allowlisted domains for WebBrowser"
+    "DatabaseQuery limited to read-only for OrdersDB"
+  }
+
+  conventions {
+    "Emit JSON traces with step and ticket IDs"
+    "Use typed contracts for agent ingress and approvals"
+    "Tag sensitive relations with [HumanInLoop]"
+  }
+
+  slo {
+    latency { p95 "2000ms" p99 "5000ms" window "7d" }
+    errorRate { target "0.5%" window "7d" }
+    throughput { target "500 tickets/min" window "peak hour" }
+    availability { target "99.9%" window "30d" }
+  }
+
+  contracts {
+    contract SubmitSupportRequest {
+      type "api"
+      version "1.0"
+      endpoint "/api/support/submit"
+      method "POST"
+    }
+    contract ApproveAction {
+      type "api"
+      version "1.0"
+      endpoint "/api/support/approve"
+      method "POST"
+    }
+  }
+
+  scenario TicketTriage "Triage incoming ticket" {
+    step customer -> support.ticketing "Submit"
+    step support.ticketing -> agentic.aPI "Webhook"
+    step agentic.aPI -> agentic.orchestrator "Dispatch"
+    step agentic.orchestrator -> agentic.planner "Plan"
+    step agentic.planner -> agentic.tools.databaseQuery "Order lookup"
+    step agentic.planner -> agentic.tools.webBrowser "Carrier tracking"
+    step agentic.orchestrator -> agentic.executor "Execute macro"
+    step agentic.executor -> agentic.monitor "Trace"
+    step agentic.aPI -> support.ticketing "Update"
+  }
+
+  scenario RefundInvestigation "Process refund request" {
+    step support.ticketing -> agentic.aPI "Refund requested"
+    step agentic.aPI -> agentic.orchestrator "Dispatch"
+    step agentic.orchestrator -> agentic.planner "Plan investigation"
+    step agentic.planner -> agentic.tools.databaseQuery "Payment lookup"
+    step agentic.planner -> agentic.tools.databaseQuery "Order state"
+    step agentic.orchestrator -> agentic.monitor.policyEngine "Evaluate policy"
+    step supportAgent -> agentic.aPI "Approve refund"
+    step agentic.aPI -> external.payments "Initiate refund"
+    step agentic.aPI -> support.email "Notify customer"
+  }
+
+  scenario LostPackage "Handle not received order" {
+    step customer -> support.ticketing "Report issue"
+    step agentic.aPI -> agentic.orchestrator "Dispatch"
+    step agentic.planner -> agentic.tools.webBrowser "Carrier tracking"
+    step agentic.planner -> agentic.tools.emailSender "Proactive outreach"
+    step agentic.aPI -> support.ticketing "Add tracking info"
+  }
+
+  flow TriageFlow "Data flow for triage" {
+    step agentic.planner -> agentic.tools.databaseQuery "Order lookup"
+    step agentic.tools.databaseQuery -> agentic.planner "Order details"
+    step agentic.planner -> agentic.tools.webBrowser "Carrier query"
+    step agentic.tools.webBrowser -> agentic.planner "Tracking data"
+    step agentic.planner -> agentic.tools.emailSender "Email"
+    step agentic.tools.emailSender -> support.email "Send"
+  }
+}
+
+views {
+  view index {
+    title "Customer Support AI Agents"
+    include *
+  }
+  
+  view containers of agentic {
+    title "Agentic Platform Containers"
+    include agentic.*
+  }
+}

@@ -1,5 +1,5 @@
 // apps/website/src/shared/components/ui/ThemeWrapper.tsx
-import { ThemeProvider } from '@sruja/ui';
+import { MantineProvider, ThemeProvider } from '@sruja/ui';
 import type { ReactNode } from 'react';
 
 interface ThemeWrapperProps {
@@ -7,6 +7,10 @@ interface ThemeWrapperProps {
 }
 
 export default function ThemeWrapper({ children }: ThemeWrapperProps) {
-  return <ThemeProvider defaultMode="system">{children}</ThemeProvider>;
+  return (
+    <MantineProvider>
+      <ThemeProvider defaultMode="system">{children}</ThemeProvider>
+    </MantineProvider>
+  );
 }
 

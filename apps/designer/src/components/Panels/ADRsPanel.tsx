@@ -14,8 +14,8 @@ import {
 import { useArchitectureStore, useUIStore, useSelectionStore } from "../../stores";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
 import { EditADRForm, ConfirmDialog } from "../shared";
-import { Input } from "@sruja/ui";
-import type { ADRJSON } from "../../types";
+import { Input, Button } from "@sruja/ui";
+import { useTagNavigation } from "../../hooks/useTagNavigation";
 import "./ADRsPanel.css";
 
 const STATUS_CONFIG: Record<string, { icon: React.ReactNode; color: string }> = {
@@ -26,12 +26,12 @@ const STATUS_CONFIG: Record<string, { icon: React.ReactNode; color: string }> = 
 };
 
 export function ADRsPanel() {
-  const data = useArchitectureStore((s) => s.data);
+  const likec4Model = useArchitectureStore((s) => s.likec4Model);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [editADR, setEditADR] = useState<ADRJSON | undefined>(undefined);
+  const [editADR, setEditADR] = useState<any | undefined>(undefined);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [deleteADR, setDeleteADR] = useState<ADRJSON | undefined>(undefined);
+  const [deleteADR, setDeleteADR] = useState<any | undefined>(undefined);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
   const isEditMode = useFeatureFlagsStore((s) => s.isEditMode);
@@ -48,24 +48,25 @@ export function ADRsPanel() {
   }, [pendingAction, clearPendingAction]);
 
   const selectedNodeId = useSelectionStore((s) => s.selectedNodeId);
+  const { navigateToTaggedElement } = useTagNavigation();
 
   const adrs = useMemo(() => {
-    return data?.architecture?.adrs ?? [];
-  }, [data]);
+    return (likec4Model?.sruja as any)?.adrs ?? [];
+  }, [likec4Model]);
 
   const filteredADRs = useMemo(() => {
     let filtered = adrs;
 
     // Filter by selected node
     if (selectedNodeId) {
-      filtered = filtered.filter((a) => a.tags?.includes(selectedNodeId));
+      filtered = filtered.filter((a: any) => a.tags?.includes(selectedNodeId));
     }
 
     if (!searchQuery.trim()) return filtered;
 
     const query = searchQuery.toLowerCase();
     return filtered.filter(
-      (adr) =>
+      (adr: any) =>
         adr.id?.toLowerCase().includes(query) ||
         adr.title?.toLowerCase().includes(query) ||
         adr.status?.toLowerCase().includes(query) ||
@@ -94,7 +95,9 @@ export function ADRsPanel() {
         Architecture Decision Records
         <span className="adrs-count">{adrs.length}</span>
         {isEditMode() && (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             className="adrs-add-btn"
             onClick={() => {
               setEditADR(undefined);
@@ -103,7 +106,7 @@ export function ADRsPanel() {
             title="Add ADR"
           >
             <Plus size={14} />
-          </button>
+          </Button>
         )}
       </h3>
 
@@ -139,16 +142,35 @@ export function ADRsPanel() {
       </div>
 
       <div className="adrs-list">
-        {filteredADRs.map((adr) => {
+        {filteredADRs.map((adr: any) => {
           const isExpanded = expandedId === adr.id;
           const status = adr.status?.toLowerCase() || "proposed";
           const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.proposed;
 
           return (
             <div key={adr.id} className={`adr-card ${isExpanded ? "expanded" : ""}`}>
-              <button className="adr-header" onClick={() => toggleExpand(adr.id)}>
+              <Button variant="ghost" size="sm" className="adr-header" onClick={() => toggleExpand(adr.id)}>
                 <span className="adr-id">{adr.id}</span>
                 <span className="adr-title-text">{adr.title}</span>
+                {adr.tags && adr.tags.length > 0 && (
+                  <div className="adr-tags-inline">
+                    {adr.tags.map((tag: string) => (
+                      <Button
+                        key={tag}
+                        variant="ghost"
+                        size="sm"
+                        className="adr-tag clickable"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigateToTaggedElement(tag);
+                        }}
+                        title={`Navigate to ${tag} in diagram`}
+                      >
+                        {tag}
+                      </Button>
+                    ))}
+                  </div>
+                )}
                 <span
                   className="adr-status"
                   style={{ "--status-color": statusConfig.color } as React.CSSProperties}
@@ -158,7 +180,9 @@ export function ADRsPanel() {
                 </span>
                 {isEditMode() && (
                   <div className="adr-actions">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="adr-edit-btn"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -168,8 +192,10 @@ export function ADRsPanel() {
                       title="Edit ADR"
                     >
                       <Edit size={14} />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="adr-delete-btn"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -179,11 +205,11 @@ export function ADRsPanel() {
                       title="Delete ADR"
                     >
                       <Trash2 size={14} />
-                    </button>
+                    </Button>
                   </div>
                 )}
                 {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </button>
+              </Button>
 
               {isExpanded && (
                 <div className="adr-content">
@@ -228,13 +254,13 @@ export function ADRsPanel() {
         }}
         onConfirm={async () => {
           if (deleteADR) {
-            await updateArchitecture((arch) => {
-              if (!arch.architecture) return arch;
-              const adrs = (arch.architecture.adrs || []).filter((a) => a.id !== deleteADR.id);
+            await updateArchitecture((model: any) => {
+              const sruja = model.sruja || {};
+              const adrs = (sruja.adrs || []).filter((a: any) => a.id !== deleteADR.id);
               return {
-                ...arch,
-                architecture: {
-                  ...arch.architecture,
+                ...model,
+                sruja: {
+                  ...sruja,
                   adrs,
                 },
               };

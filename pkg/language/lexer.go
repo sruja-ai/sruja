@@ -40,6 +40,16 @@ func (l *Lexer) NextToken() Token {
 		tok = newToken(TOKEN_COMMA, l.ch, l.line, l.column)
 	case '.':
 		tok = newToken(TOKEN_DOT, l.ch, l.line, l.column)
+	case '*':
+		tok = newToken(TOKEN_STAR, l.ch, l.line, l.column)
+	case '#':
+		// Tags in LikeC4 start with #
+		tok.Line = l.line
+		tok.Column = l.column
+		l.readChar() // consume #
+		tok.Literal = "#" + l.readIdentifier()
+		tok.Type = TOKEN_TAG_REF
+		return tok
 	case '{':
 		tok = newToken(TOKEN_LBRACE, l.ch, l.line, l.column)
 	case '}':
@@ -55,11 +65,29 @@ func (l *Lexer) NextToken() Token {
 		} else {
 			tok = newToken(TOKEN_ILLEGAL, l.ch, l.line, l.column)
 		}
+	case '<':
+		if l.peekChar() == '-' {
+			l.readChar()
+			if l.peekChar() == '>' {
+				l.readChar()
+				tok = Token{Type: TOKEN_BIARROW, Literal: "<->", Line: l.line, Column: l.column - 2}
+			} else {
+				tok = Token{Type: TOKEN_BACKARROW, Literal: "<-", Line: l.line, Column: l.column - 1}
+			}
+		} else {
+			tok = newToken(TOKEN_ILLEGAL, l.ch, l.line, l.column)
+		}
 	case '"':
 		tok.Type = TOKEN_STRING
 		tok.Literal = l.readString()
 		tok.Line = l.line
 		tok.Column = l.column // Approximate
+	case '\'':
+		// LikeC4 also supports single-quoted strings
+		tok.Type = TOKEN_STRING
+		tok.Literal = l.readSingleQuoteString()
+		tok.Line = l.line
+		tok.Column = l.column
 	case 0:
 		tok.Literal = ""
 		tok.Type = TOKEN_EOF
@@ -86,8 +114,16 @@ func (l *Lexer) NextToken() Token {
 	return tok
 }
 
+var tokenLiteralCache = [256]string{}
+
+func init() {
+	for i := 0; i < 256; i++ {
+		tokenLiteralCache[i] = string(byte(i))
+	}
+}
+
 func newToken(tokenType TokenType, ch byte, line, col int) Token {
-	return Token{Type: tokenType, Literal: string(ch), Line: line, Column: col}
+	return Token{Type: tokenType, Literal: tokenLiteralCache[ch], Line: line, Column: col}
 }
 
 func (l *Lexer) readIdentifier() string {
@@ -111,6 +147,17 @@ func (l *Lexer) readString() string {
 	for {
 		l.readChar()
 		if l.ch == '"' || l.ch == 0 {
+			break
+		}
+	}
+	return l.input[position:l.position]
+}
+
+func (l *Lexer) readSingleQuoteString() string {
+	position := l.position + 1
+	for {
+		l.readChar()
+		if l.ch == '\'' || l.ch == 0 {
 			break
 		}
 	}

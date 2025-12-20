@@ -13,18 +13,40 @@ The `architecture` block is the root element of a Sruja model. It represents the
 ### Explicit Block (Recommended for large projects)
 
 ```sruja
-architecture "My System Name" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
     // ... define systems, persons, etc. here
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 
-### Implicit Block (Recommended for scripts/snippets)
+### Minimal Example
 
-You can also define elements at the top level without an `architecture` wrapper. Sruja will automatically wrap them in a default architecture.
+For simple examples, you can use a minimal structure:
 
 ```sruja
-system MySystem "My System" {  }
-person User "User"
+specification {
+  element system
+  element person
+}
+
+model {
+  MySystem = system "My System"
+  User = person "User"
+}
 ```
 
 ## Purpose

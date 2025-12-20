@@ -1,93 +1,178 @@
 ---
-title: "Lesson 1: What is System Design?"
+title: "Lesson 1: The Mindset"
 weight: 1
-summary: "Introduction to System Design, Requirements, and Trade-offs."
+summary: "Stop coding. Start designing. Why system design is different from application development."
 learning_objectives:
-  - Understand functional vs non-functional requirements
-  - Practice clarifying requirements in interviews
-  - Recognize common trade-offs in system design
-estimated_time: "20 minutes"
+  - Understand the difference between coding and system design
+  - Learn the 'House vs Skyscraper' analogy
+  - Master the Functional vs Non-Functional distinction
+estimated_time: "15 minutes"
 difficulty: "beginner"
 ---
 
-# Lesson 1: What is System Design?
+# Lesson 1: The Mindset
 
-## Defining System Design
+## The Shift
 
-System design is the process of defining the architecture, components, modules, interfaces, and data for a system to satisfy specified requirements. It is the bridge between business requirements and the final code.
+When you write code, you are building a single room. You care about the furniture (variables), the flow (logic), and the usability (UI).
 
-At its core, system design is about **managing complexity** and **making trade-offs**. There is rarely a single "correct" design; instead, there are different designs that optimize for different goals (e.g., speed of development vs. system performance).
+**System Design is city planning.**
 
-## Requirements Analysis (Critical Interview Skill)
+You stop caring about the furniture in every room. instead, you care about:
+-   **Traffic flow**: Can the roads handle rush hour? (Throughput)
+-   **Utilities**: Is there enough water and electricity? (Capacity)
+-   **Disaster recovery**: What happens if the power plant explodes? (Reliability)
+-   **Expansion**: Can we add a new suburb next year? (Scalability)
 
-**In system design interviews, the first thing you should do is clarify requirements.** Interviewers expect this and it shows you think systematically.
+> [!IMPORTANT]
+> **The golden rule**: In system design, there are no right answers, only **trade-offs**.
 
-Every system design interview or real-world project starts with clarifying requirements. These are generally categorized into two types:
+## Functional vs Non-Functional
 
-### 1. Functional Requirements
-These define **what** the system should do. They describe the specific behaviors or functions.
-*   *Example:* "Users should be able to post a tweet."
-*   *Example:* "The system should send a notification when a new follower is added."
+Every system has two sets of requirements. In an interview (and real life), 90% of your initial grade comes from clarifying these **before you draw a single box**.
 
-### 2. Non-Functional Requirements (NFRs)
-These define **how** the system should perform. They act as constraints on the design.
-*   *Scalability:* Can the system handle 10 million daily active users?
-*   *Availability:* Will the system be up 99.99% of the time?
-*   *Latency:* Should the API respond within 200ms?
-*   *Consistency:* Do all users need to see the same data at the same time?
+### 1. Functional Requirements (The "What")
+These are the features. If the system doesn't do this, it's useless.
+-   User can post a tweet.
+-   User can follow others.
+-   User sees a news feed.
 
-## The Art of Trade-offs
+### 2. Non-Functional Requirements (The "How")
+These are the constraints. If the system doesn't meet these, it will crash/fail/be too slow.
+-   **Scalability**: Must handle 100M daily active users.
+-   **Latency**: Feed must load in < 200ms.
+-   **Consistency**: A tweet must appear on followers' feeds within 5 seconds.
 
-"Good" system design is all about choosing the right trade-offs.
-*   **Consistency vs. Availability:** You often can't have both perfectly (CAP Theorem).
-*   **Latency vs. Throughput:** Optimizing for one might hurt the other.
-*   **Cost vs. Performance:** Faster hardware is more expensive.
+```mermaid
+graph TD
+    A[Requirements] --> B[Functional]
+    A --> C[Non-Functional]
+    B --> B1[Features]
+    B --> B2[APIs]
+    B --> B3[User Flows]
+    C --> C1[Scalability]
+    C --> C2[Reliability]
+    C --> C3[Latency]
+    C --> C4[Cost]
+    
+    style A fill:#f9f,stroke:#333
+    style B fill:#bbf,stroke:#333
+    style C fill:#bfb,stroke:#333
+```
 
----
+## The "It Depends" Game
 
-## Visualizing Architecture (The C4 Model)
+Junior engineers search for the "best" database. Senior engineers ask "what are we optimizing for?"
 
-To communicate design effectively, we need a standard way to draw it. Sruja uses the **C4 Model**, which breaks a system down into hierarchical levels:
+| You Optimize For | You Might Sacrifice | Example |
+| :--- | :--- | :--- |
+| **Consistency** | **Availability** | Banking (Balances must be correct, even if system goes down briefly) |
+| **Availability** | **Consistency** | Social Media (Better to show *old* likes than an error page) |
+| **Write Speed** | **Read Speed** | Logging (Write fast, read rarely) |
+| **Development Speed** | **Performance** | Startups (Ship Python/Ruby MVP fast, rewrite later) |
 
-1.  **System Context (Level 1):** The big picture. Your system and the people/systems it interacts with.
-2.  **Container (Level 2):** The deployable units (e.g., API, Database, Mobile App).
-3.  **Component (Level 3):** The internal code structure (e.g., Controllers, Managers).
+## Sruja Integration
 
-*For a detailed guide, see [The C4 Model](/docs/concepts/c4-model).*
+In Sruja, we treat requirements as code. This keeps your constraints right next to your architecture.
 
----
+### Why the Specification Block Matters
 
-## 🛠️ Sruja Perspective: Documenting Requirements
+The `specification` block isn't just syntax—it provides real benefits:
 
-While Sruja is primarily for modeling architecture, it is also an excellent place to capture your requirements right alongside your design.
+1. **Early Validation**: If you typo an element type (e.g., `sytem` instead of `system`), Sruja catches it immediately
+2. **Better Tooling**: IDEs can provide autocomplete and validation based on declared element types
+3. **Self-Documentation**: Anyone reading your model knows exactly what element types are available
+4. **Organization**: Separates "what types exist" from "what instances we create"
 
-In Sruja, you can use the `description` field or comments to document high-level requirements.
+### Example: Requirements-Driven Architecture
 
 ```sruja
-architecture "Social Media Platform" {
-    // Native Requirement Support
-    requirement R1 functional "Users can post tweets"
-    requirement R2 performance "Must handle 10k writes/second"
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
 
-    person User "User"
+model {
+    // 1. Defining the "What" (Functional)
+    requirement R1 functional "Users can post short text messages (tweets)"
     
-    system Twitter "Social Media Platform" {
-        description "Allows users to post short messages and follow others."
-    }
+    // 2. Defining the "How" (Non-Functional)
+    requirement R2 performance "500ms p95 latency for reading timeline"
+    requirement R3 scale "Store 5 years of tweets (approx 1PB)"
+    requirement R4 availability "99.9% uptime SLA"
 
-    User -> Twitter "Posts tweets"
+    // 3. The Architecture follows the requirements
+    Twitter = system "The Platform" {
+        description "Satisfies R1, R2, R3, R4"
+        
+        TimelineAPI = container "Timeline API" {
+            technology "Go"
+            description "Satisfies R2 - optimized for low latency"
+            
+            slo {
+                latency {
+                    p95 "500ms"
+                    window "7 days"
+                }
+                availability {
+                    target "99.9%"
+                    window "30 days"
+                }
+            }
+        }
+        
+        TweetDB = datastore "Tweet Storage" {
+            technology "Cassandra"
+            description "Satisfies R3 - distributed storage for 1PB scale"
+        }
+        
+        TimelineAPI -> TweetDB "Reads/Writes"
+    }
+    
+    // 4. Document the decision
+    adr ADR001 "Use Cassandra for tweet storage" {
+        status "Accepted"
+        context "Need to store 1PB of tweets with high write throughput"
+        decision "Use Cassandra for distributed, scalable storage"
+        consequences "Excellent scalability, eventual consistency trade-off"
+    }
+}
+
+views {
+  view index {
+    title "Twitter Platform Overview"
+    include *
+  }
+  
+  // Performance-focused view
+  view performance {
+    title "Performance View"
+    include Twitter.TimelineAPI Twitter.TweetDB
+  }
 }
 ```
 
-By using the `requirement` keyword, you make requirements a first-class citizen of your architecture. These can be validated and tracked by the Sruja CLI.
-
----
-
 ## Knowledge Check
-- Which statement best describes non-functional requirements?
-- In interviews, what is the first step before proposing an architecture?
-- Name one common trade-off pair in system design.
 
-## Further Reading
-- Reference: [`requirements` keyword](/docs/reference/syntax)
-- Tutorial: [CLI Basics](/tutorials/basic/cli-basics)
+<details>
+<summary><strong>Q: My boss says "We need to handle infinite users". How do you respond?</strong></summary>
+
+**Bad Answer**: "Okay, I'll use Kubernetes and sharding."
+
+**Senior Answer**: "Infinite is expensive. Do we expect 1k users or 100M users? The design for 1k costs $50/mo. The design for 100M costs $50k/mo. Let's define a realistic target for the next 12 months."
+</details>
+
+<details>
+<summary><strong>Q: Why not just use the fastest database for everything?</strong></summary>
+
+Because "fastest" depends on the workload. A database fast at reading (Cassandra) might be complex to manage. A database fast at relationships (Neo4j) might scale poorly for heavy writes. **Trade-offs.**
+</details>
+
+## Next Steps
+
+Now that we have the mindset, let's learn the language.
+👉 **[Lesson 2: The Vocabulary of Scale](./lesson-2)**

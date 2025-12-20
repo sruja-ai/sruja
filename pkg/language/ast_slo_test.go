@@ -14,11 +14,13 @@ func TestSLOBlockParsing(t *testing.T) {
 	}{
 		{
 			name: "simple SLO with availability",
-			input: `system API "API Service" {
-				slo {
-					availability {
-						target "99.9%"
-						window "30 days"
+			input: `model {
+				system API "API Service" {
+					slo {
+						availability {
+							target "99.9%"
+							window "30 days"
+						}
 					}
 				}
 			}`,
@@ -32,31 +34,33 @@ func TestSLOBlockParsing(t *testing.T) {
 		},
 		{
 			name: "SLO with all fields",
-			input: `system API "API Service" {
-				slo {
-					availability {
-						target "99.9%"
-						window "30 days"
-						current "99.95%"
-					}
-					latency {
-						p95 "200ms"
-						p99 "500ms"
-						window "7 days"
-						current {
-							p95 "180ms"
-							p99 "420ms"
+			input: `model {
+				system API "API Service" {
+					slo {
+						availability {
+							target "99.9%"
+							window "30 days"
+							current "99.95%"
 						}
-					}
-					errorRate {
-						target "0.1%"
-						window "7 days"
-						current "0.08%"
-					}
-					throughput {
-						target "10000 req/s"
-						window "peak hour"
-						current "8500 req/s"
+						latency {
+							p95 "200ms"
+							p99 "500ms"
+							window "7 days"
+							current {
+								p95 "180ms"
+								p99 "420ms"
+							}
+						}
+						errorRate {
+							target "0.1%"
+							window "7 days"
+							current "0.08%"
+						}
+						throughput {
+							target "10000 req/s"
+							window "peak hour"
+							current "8500 req/s"
+						}
 					}
 				}
 			}`,
@@ -95,16 +99,34 @@ func TestSLOBlockParsing(t *testing.T) {
 				t.Fatalf("Unexpected diagnostics: %v", diags)
 			}
 
-			if program == nil || program.Architecture == nil {
-				t.Fatalf("Program or architecture is nil")
+			if program == nil || program.Model == nil {
+				t.Fatalf("Program or Model is nil")
 			}
 
-			if len(program.Architecture.Systems) == 0 {
-				t.Fatalf("No systems found")
+			// Find first system in Model and extract SLO
+			var slo *SLOBlock
+			for _, item := range program.Model.Items {
+				if item.ElementDef != nil && item.ElementDef.GetKind() == "system" {
+					// Extract SLO from LikeC4ElementDef body
+					body := item.ElementDef.GetBody()
+					if body != nil {
+						for _, bodyItem := range body.Items {
+							if bodyItem.SLO != nil {
+								slo = bodyItem.SLO
+								break
+							}
+						}
+					}
+				}
+				if slo != nil {
+					break
+				}
 			}
-
-			sys := program.Architecture.Systems[0]
-			if !tt.checkSLO(sys.SLO) {
+			if slo == nil {
+				t.Errorf("SLO block not found in system")
+				return
+			}
+			if !tt.checkSLO(slo) {
 				t.Errorf("SLO block check failed")
 			}
 		})

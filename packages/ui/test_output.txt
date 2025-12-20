@@ -1,0 +1,85 @@
+
+> @sruja/ui@0.1.0 test
+> vitest run --no-color
+
+
+ RUN  v4.0.15 /Users/dilipkola/Workspace/sruja/packages/ui
+
+ ✓ src/utils/cn.test.ts (8 tests) 7ms
+ ✓ src/design-system/theme.test.ts (13 tests) 8ms
+ ✓ src/design-system/tokens.test.ts (18 tests) 5ms
+ ✓ src/components/Badge.test.tsx (3 tests) 35ms
+ ✓ src/components/SrujaLoader.test.tsx (5 tests) 191ms
+ ✓ src/utils/variants.test.ts (8 tests) 10ms
+ ✓ dist/design-system/theme.test.js (13 tests) 8ms
+ ✓ dist/utils/variants.test.js (8 tests) 13ms
+ ✓ dist/design-system/tokens.test.js (18 tests) 4ms
+ ✓ dist/utils/cn.test.js (8 tests) 8ms
+ ❯ src/components/Input.test.tsx (5 tests | 5 failed) 23ms
+     × should render input field 13ms
+     × should handle value changes 2ms
+     × should be disabled when disabled prop is true 2ms
+     × should display error state 3ms
+     × should apply custom className 1ms
+ ❯ src/components/Button.test.tsx (6 tests | 6 failed) 25ms
+     × should render button with text 14ms
+     × should handle click events 3ms
+     × should be disabled when disabled prop is true 3ms
+     × should not call onClick when disabled 1ms
+     × should apply variant classes 1ms
+     × should apply size classes 1ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/Button.test.tsx > Button > should render button with text
+ FAIL  src/components/Button.test.tsx > Button > should handle click events
+ FAIL  src/components/Button.test.tsx > Button > should be disabled when disabled prop is true
+ FAIL  src/components/Button.test.tsx > Button > should not call onClick when disabled
+ FAIL  src/components/Button.test.tsx > Button > should apply variant classes
+ FAIL  src/components/Button.test.tsx > Button > should apply size classes
+Error: @mantine/core: MantineProvider was not found in component tree, make sure you have it in your app
+ ❯ useMantineTheme ../../node_modules/@mantine/core/esm/core/MantineProvider/MantineThemeProvider/MantineThemeProvider.mjs:12:11
+ ❯ useProps ../../node_modules/@mantine/core/esm/core/MantineProvider/use-props/use-props.mjs:10:17
+ ❯ @mantine/core/Button ../../node_modules/@mantine/core/esm/components/Button/Button.mjs:58:17
+ ❯ Object.react_stack_bottom_frame ../../node_modules/react-dom/cjs/react-dom-client.development.js:25904:20
+ ❯ renderWithHooks ../../node_modules/react-dom/cjs/react-dom-client.development.js:7662:22
+ ❯ updateForwardRef ../../node_modules/react-dom/cjs/react-dom-client.development.js:9724:19
+ ❯ beginWork ../../node_modules/react-dom/cjs/react-dom-client.development.js:12117:18
+ ❯ runWithFiberInDEV ../../node_modules/react-dom/cjs/react-dom-client.development.js:874:13
+ ❯ performUnitOfWork ../../node_modules/react-dom/cjs/react-dom-client.development.js:17641:22
+ ❯ workLoopSync ../../node_modules/react-dom/cjs/react-dom-client.development.js:17469:41
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  src/components/Input.test.tsx > Input > should render input field
+ FAIL  src/components/Input.test.tsx > Input > should handle value changes
+ FAIL  src/components/Input.test.tsx > Input > should be disabled when disabled prop is true
+ FAIL  src/components/Input.test.tsx > Input > should display error state
+ FAIL  src/components/Input.test.tsx > Input > should apply custom className
+Error: @mantine/core: MantineProvider was not found in component tree, make sure you have it in your app
+ ❯ useMantineTheme ../../node_modules/@mantine/core/esm/core/MantineProvider/MantineThemeProvider/MantineThemeProvider.mjs:12:11
+ ❯ useProps ../../node_modules/@mantine/core/esm/core/MantineProvider/use-props/use-props.mjs:10:17
+ ❯ @mantine/core/TextInput ../../node_modules/@mantine/core/esm/components/TextInput/TextInput.mjs:19:18
+ ❯ Object.react_stack_bottom_frame ../../node_modules/react-dom/cjs/react-dom-client.development.js:25904:20
+ ❯ renderWithHooks ../../node_modules/react-dom/cjs/react-dom-client.development.js:7662:22
+ ❯ updateForwardRef ../../node_modules/react-dom/cjs/react-dom-client.development.js:9724:19
+ ❯ beginWork ../../node_modules/react-dom/cjs/react-dom-client.development.js:12117:18
+ ❯ runWithFiberInDEV ../../node_modules/react-dom/cjs/react-dom-client.development.js:874:13
+ ❯ performUnitOfWork ../../node_modules/react-dom/cjs/react-dom-client.development.js:17641:22
+ ❯ workLoopSync ../../node_modules/react-dom/cjs/react-dom-client.development.js:17469:41
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+
+ Test Files  2 failed | 10 passed (12)
+      Tests  11 failed | 102 passed (113)
+   Start at  14:10:00
+   Duration  2.26s (transform 491ms, setup 2.97s, import 2.52s, tests 336ms, environment 6.94s)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/dilipkola/Workspace/sruja/packages/ui
+npm error workspace @sruja/ui@0.1.0
+npm error location /Users/dilipkola/Workspace/sruja/packages/ui
+npm error command failed
+npm error command sh -c vitest run --no-color

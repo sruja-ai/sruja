@@ -4,12 +4,12 @@ import { SrujaMonacoEditor } from '@sruja/ui'
 import { SrujaLoader } from '@sruja/ui'
 import { initWasm, logger } from '@sruja/shared'
 import { trackEvent, trackInteraction } from '@/shared/utils/analytics'
-import { type ArchitectureJSON } from '@sruja/diagram'
-import { DiagramPreview } from '../../playground/components/DiagramPreview'
+import type { SrujaModelDump } from '@sruja/shared'
+import { LikeC4DiagramPreview } from '../../playground/components/LikeC4DiagramPreview'
 
 export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
   const [dsl, setDsl] = useState(initialDsl)
-  const [data, setData] = useState<ArchitectureJSON | null>(null)
+  const [data, setData] = useState<SrujaModelDump | null>(null)
   const [busy, setBusy] = useState(false)
   const [errorHeader, setErrorHeader] = useState<string | null>(null)
 
@@ -32,8 +32,9 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
       }
       const input = normalize(dsl)
       const api = await initWasm()
-      const jsonStr = await api.parseDslToJson(input)
-      const parsed = JSON.parse(jsonStr)
+      // Use LikeC4 export instead of legacy JSON export
+      const jsonStr = await api.dslToLikeC4(input)
+      const parsed = JSON.parse(jsonStr) as SrujaModelDump
       setData(parsed)
       trackInteraction('success', 'render_diagram', { component: 'playground' })
     } catch (error) {
@@ -88,7 +89,7 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
             </div>
           )}
           {data ? (
-            <DiagramPreview data={data} />
+            <LikeC4DiagramPreview model={data} />
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-secondary)' }}>
               {busy ? <SrujaLoader size={32} /> : <div>Click Render to view diagram</div>}

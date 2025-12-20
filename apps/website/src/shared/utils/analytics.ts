@@ -32,5 +32,5 @@ export function trackPageView(path: string, title?: string): void {
  * Track a user interaction
  */
 export function trackInteraction(action: string, element: string, properties?: Record<string, any>): void {
-  posthogTrackInteraction(`interaction.${action}`, { element, ...properties });
+  posthogTrackInteraction(action, element, { ...properties });
 }

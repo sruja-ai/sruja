@@ -21,11 +21,9 @@ import (
 type Scenario struct {
 	Pos         lexer.Position
 	ID          string          `parser:"( 'scenario' | 'story' ) ( @Ident )?"`
-	Title       string          `parser:"@String"`
+	Title       *string         `parser:"( @String )?"`
 	Description *string         `parser:"( @String )?"`
-	LBrace      string          `parser:"'{'"`
-	Items       []*ScenarioItem `parser:"@@*"`
-	RBrace      string          `parser:"'}'"`
+	Items       []*ScenarioItem `parser:"( '{' @@* '}' )?"`
 
 	Steps []*ScenarioStep
 }
@@ -35,11 +33,14 @@ func (s *Scenario) Location() SourceLocation {
 }
 
 type ScenarioItem struct {
-	Step *ScenarioStep `parser:"@@"`
+	Description *string       `parser:"( 'description' @String )"`
+	Step        *ScenarioStep `parser:"| @@"`
 }
 
 type ScenarioStep struct {
-	Pos         lexer.Position
+	Pos lexer.Position
+	// Optional 'step' keyword
+	StepKeyword *string  `parser:"( 'step' )?"`
 	FromParts   []string `parser:"@Ident ( '.' @Ident )*"` // Source parts (supports qualified refs like System.Container)
 	Arrow       string   `parser:"'->'"`                   // Arrow operator
 	ToParts     []string `parser:"@Ident ( '.' @Ident )*"` // Target parts (supports qualified refs like System.Container)
@@ -75,12 +76,10 @@ func (s *ScenarioStep) Location() SourceLocation {
 //	}
 type Flow struct {
 	Pos         lexer.Position
-	ID          string          `parser:"'flow' @Ident"`
-	Title       string          `parser:"@String"`
+	ID          string          `parser:"'flow' ( @Ident )?"`
+	Title       *string         `parser:"( @String )?"`
 	Description *string         `parser:"( @String )?"`
-	LBrace      string          `parser:"'{'"`
-	Items       []*ScenarioItem `parser:"@@*"` // Same as Scenario - uses ScenarioItem
-	RBrace      string          `parser:"'}'"`
+	Items       []*ScenarioItem `parser:"( '{' @@* '}' )?"` // Same as Scenario - uses ScenarioItem
 
 	Steps []*ScenarioStep // DFD-style data flows (same as Scenario)
 }

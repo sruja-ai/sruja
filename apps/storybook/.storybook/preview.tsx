@@ -1,5 +1,6 @@
 import React from 'react'
 import { ThemeProvider } from '../../../packages/ui/src/components/ThemeProvider'
+import { MantineProvider } from '../../../packages/ui/src/components/MantineProvider'
 import '../../../packages/ui/src/design-system/styles.css'
 import { srujaLightTheme, srujaDarkTheme } from './theme'
 import { INITIAL_VIEWPORTS, MINIMAL_VIEWPORTS } from 'storybook/viewport'
@@ -40,9 +41,13 @@ export const decorators = [
     )
     const isFullscreen = context?.parameters?.layout === 'fullscreen'
     return React.createElement(
-      ThemeProvider,
-      { defaultMode: 'system' },
-      isFullscreen ? content : wrapped
+      MantineProvider,
+      {},
+      React.createElement(
+        ThemeProvider,
+        { defaultMode: 'system' },
+        isFullscreen ? content : wrapped
+      )
     )
   },
 ]
@@ -62,13 +67,12 @@ export const parameters = {
   },
   layout: 'padded',
   backgrounds: {
-    default: 'Surface',
-    values: [
-      { name: 'Surface', value: '#f8fafc' },
-      { name: 'Background', value: '#ffffff' },
-      { name: 'Dark Surface', value: '#1e293b' },
-      { name: 'Dark Background', value: '#0f172a' },
-    ],
+    options: {
+      surface: { name: 'Surface', value: '#f8fafc' },
+      background: { name: 'Background', value: '#ffffff' },
+      dark_surface: { name: 'Dark Surface', value: '#1e293b' },
+      dark_background: { name: 'Dark Background', value: '#0f172a' }
+    }
   },
   docs: {
     theme: srujaLightTheme,
@@ -100,6 +104,10 @@ export const parameters = {
 // Set initial default viewport key; users can change via toolbar
 export const initialGlobals = {
   viewport: { value: 'desktop', isRotated: false },
+
+  backgrounds: {
+    value: 'surface'
+  }
 }
 
 export const tags = ['autodocs']

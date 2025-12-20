@@ -1,5 +1,6 @@
 // packages/ui/src/components/Menu.tsx
-import { Fragment, ReactNode } from 'react';
+import { Fragment } from 'react';
+import type { ReactNode } from 'react';
 import { Menu as HeadlessMenu, Transition } from '@headlessui/react';
 import { cn } from '../utils/cn';
 

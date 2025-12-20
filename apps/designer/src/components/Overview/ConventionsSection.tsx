@@ -1,12 +1,11 @@
 import { Tag, Plus, Edit } from "lucide-react";
 import { Button } from "@sruja/ui";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
-import type { ConventionJSON } from "../../types";
 
 interface ConventionsSectionProps {
-  conventions: ConventionJSON[] | undefined;
+  conventions: any[] | undefined;
   onAddConvention: () => void;
-  onEditConvention: (convention: ConventionJSON, index: number) => void;
+  onEditConvention: (convention: any, index: number) => void;
   onDeleteConvention: (index: number, key: string) => void;
 }
 
@@ -43,20 +42,24 @@ export function ConventionsSection({
             </div>
             {isEditMode() && (
               <div className="convention-card-actions">
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="convention-edit-btn"
                   onClick={() => onEditConvention(convention, index)}
                   title="Edit Convention"
                 >
                   <Edit size={12} />
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="convention-delete-btn"
                   onClick={() => onDeleteConvention(index, convention.key)}
                   title="Delete Convention"
                 >
                   ×
-                </button>
+                </Button>
               </div>
             )}
           </div>

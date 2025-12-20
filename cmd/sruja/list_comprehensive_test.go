@@ -12,7 +12,7 @@ func TestListComponents(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `architecture "Test" {
+	content := `model {
 		system Sys1 "System 1" {
 			container Cont1 "Container 1" {
 				component Comp2 "Component 2"
@@ -46,7 +46,7 @@ func TestListPersons(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `architecture "Test" {
+	content := `model {
 		person User1 "End User"
 		person Admin1 "Administrator"
 	}`
@@ -74,7 +74,7 @@ func TestListDataStores(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `architecture "Test" {
+	content := `model {
 		system Sys1 "System 1" {
 			datastore DB1 "Database"
 		}
@@ -102,7 +102,7 @@ func TestListQueues(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `architecture "Test" {
+	content := `model {
 		system Sys1 "System 1" {
 			queue Q1 "Event Queue"
 		}
@@ -130,7 +130,7 @@ func TestListScenarios(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `architecture "Test" {
+	content := `model {
 		scenario S1 "User Login" {
 			User -> System "User enters credentials"
 		}
@@ -158,7 +158,7 @@ func TestListADRs(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `architecture "Test" {
+	content := `model {
 		adr ADR001 "Use JWT"
 	}`
 
@@ -184,7 +184,7 @@ func TestListJSON(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `architecture "Test" {
+	content := `model {
 		system Sys1 "System 1"
 	}`
 
@@ -217,7 +217,7 @@ func TestListJSONCoverage(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `architecture "Test" {
+	content := `model {
 		system Sys1 "System 1" {
 			container Cont1 "Container 1" {
 				component Comp1 "Component 1"
@@ -274,7 +274,7 @@ func TestListContainers(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `architecture "Test" {
+	content := `model {
 		system Sys1 "System 1" {
 			container Cont1 "Container 1" {}
 		}
@@ -329,7 +329,7 @@ func TestListErrors(t *testing.T) {
 	// Test unknown type
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
-	if err := os.WriteFile(file, []byte(`architecture "Test" {}`), 0o644); err != nil {
+	if err := os.WriteFile(file, []byte(`model {}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

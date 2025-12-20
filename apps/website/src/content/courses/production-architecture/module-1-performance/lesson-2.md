@@ -37,9 +37,18 @@ This is where SLOs (Service Level Objectives) come in. **Interviewers love when 
 Let's model the payment system with explicit SLOs:
 
 ```sruja
-architecture "Payment Gateway" {
-  system PaymentService "Payment Processing" {
-    container PaymentAPI "Payment API" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+  PaymentService = system "Payment Processing" {
+    PaymentAPI = container "Payment API" {
       technology "Go, gRPC"
       
       // This shows production-ready thinking!
@@ -80,32 +89,32 @@ architecture "Payment Gateway" {
       }
     }
     
-    container FraudDetection "Fraud Detection" {
+    FraudDetection = container "Fraud Detection" {
       technology "Python, ML"
       description "Real-time fraud detection"
     }
     
-    datastore PaymentDB "Payment Database" {
+    PaymentDB = datastore "Payment Database" {
       technology "PostgreSQL"
       description "Primary database with 10 read replicas"
     }
     
-    datastore Cache "Payment Cache" {
+    Cache = datastore "Payment Cache" {
       technology "Redis"
       description "Caches recent transactions"
     }
     
-    queue PaymentQueue "Payment Queue" {
+    PaymentQueue = queue "Payment Queue" {
       technology "Kafka"
       description "Async payment processing"
     }
   }
   
-  system Stripe "Stripe Gateway" {
+  Stripe = system "Stripe Gateway" {
     tags ["external"]
   }
   
-  system BankAPI "Bank API" {
+  BankAPI = system "Bank API" {
     tags ["external"]
   }
   
@@ -115,6 +124,12 @@ architecture "Payment Gateway" {
   PaymentService.PaymentAPI -> PaymentService.PaymentQueue "Enqueues for async processing"
   PaymentService.PaymentAPI -> Stripe "Processes payment"
   PaymentService.PaymentAPI -> BankAPI "Validates with bank"
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 
@@ -180,9 +195,18 @@ architecture "Payment Gateway" {
 
 **Your answer with SLO**:
 ```sruja
-architecture "Payment System" {
-  system PaymentService "Payment Processing" {
-    container PaymentAPI "Payment API" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+  PaymentService = system "Payment Processing" {
+    PaymentAPI = container "Payment API" {
       slo {
         availability {
           target "99.99%"
@@ -191,6 +215,12 @@ architecture "Payment System" {
         }
       }
     }
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```
@@ -203,9 +233,18 @@ architecture "Payment System" {
 
 **Your answer with SLO**:
 ```sruja
-architecture "Payment System" {
-  system PaymentService "Payment Processing" {
-    container PaymentAPI "Payment API" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+  PaymentService = system "Payment Processing" {
+    PaymentAPI = container "Payment API" {
       slo {
         latency {
           p95 "100ms"
@@ -214,6 +253,12 @@ architecture "Payment System" {
         }
       }
     }
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```
@@ -226,9 +271,18 @@ architecture "Payment System" {
 
 **Your answer with SLO**:
 ```sruja
-architecture "Payment System" {
-  system PaymentService "Payment Processing" {
-    container PaymentAPI "Payment API" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+  PaymentService = system "Payment Processing" {
+    PaymentAPI = container "Payment API" {
       slo {
         errorRate {
           target "< 0.01%"
@@ -237,6 +291,12 @@ architecture "Payment System" {
         }
       }
     }
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```
@@ -264,9 +324,18 @@ architecture "Payment System" {
 Add redundancy to your design:
 
 ```sruja
-architecture "Payment Gateway" {
-  system PaymentService "Payment Processing" {
-    container PaymentAPI "Payment API" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+  PaymentService = system "Payment Processing" {
+    PaymentAPI = container "Payment API" {
       technology "Go, gRPC"
       scale {
         min 100
@@ -276,7 +345,7 @@ architecture "Payment Gateway" {
       description "Deployed across 3 data centers (active-active)"
     }
     
-    datastore PaymentDB "Payment Database" {
+    PaymentDB = datastore "Payment Database" {
       technology "PostgreSQL"
       description "Primary in US-East, replicas in US-West and EU"
     }
@@ -284,6 +353,12 @@ architecture "Payment Gateway" {
   
   // Show redundancy
   PaymentService.PaymentAPI -> PaymentService.PaymentDB "Writes to primary"
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 

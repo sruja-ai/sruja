@@ -1,42 +1,33 @@
 ---
-title: "Module Overview: Fundamentals"
+title: "Module 1: Fundamentals"
 weight: 0
-summary: "Master the basics: systems, containers, relations, and interview fundamentals."
+summary: "Lay the groundwork. Learn the language of system design, how to dissect problems, and master the art of trade-offs."
 ---
 
-# Module Overview: Fundamentals
+# Module 1: Fundamentals
 
-**Foundation for system design interviews and real-world architecture.**
+> [!TIP]
+> **The Interview Secret**: Most candidates fail not because they don't know the tech, but because they **dive into solutions too early**. This module fixes that.
 
-This module teaches the core concepts you'll use in every system design interview and real project.
+## What's Inside?
+
+This isn't just theory. It's the playbook for how senior engineers approach broad, ambiguous problems.
+
+1.  **[What is System Design?](./lesson-1)**: Defining the game we're playing.
+2.  **The Art of Requirements**: How to extract the *real* problem from a vague prompt.
+3.  **The C4 Model**: A standardized way to draw your ideas so others actually understand them.
+4.  **Trade-offs**: Why "it depends" is the only correct answer (and how to explain *what* it depends on).
+5.  **Sruja Basics**: Your first architecture-as-code model.
 
 ## Learning Goals
 
-- Understand systems, containers, persons, and relations
-- Learn how to clarify requirements (critical interview skill)
-- Model simple architectures with Sruja
-- Understand trade-offs (key interview topic)
+By the end of this module, you will be able to:
 
-## Interview Preparation
+-   ✅ **Distinguish** between Functional and Non-Functional Requirements.
+-   ✅ **Calculate** rough capacity estimates (back-of-the-envelope math).
+-   ✅ **Draw** a high-level System Context diagram.
+-   ✅ **Explain** the CAP theorem in plain English.
 
-- ✅ How to approach system design questions
-- ✅ How to clarify requirements (what interviewers want to hear)
-- ✅ Basic architecture modeling
-- ✅ Understanding functional vs non-functional requirements
+## Ready?
 
-## Real-World Application
-
-- Build your first architecture model
-- Apply concepts to actual projects
-- Validate and iterate on designs
-
-## Estimated Time
-
-45-60 minutes (includes practice)
-
-## Checklist
-
-- [ ] Understand core Sruja concepts
-- [ ] Can clarify requirements effectively
-- [ ] Can model a simple system
-- [ ] Understand trade-offs
+Let's start your journey with **[Lesson 1: What is System Design?](./lesson-1)**

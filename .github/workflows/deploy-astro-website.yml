@@ -3,11 +3,13 @@ name: Deploy Astro Website
 on:
   push:
     branches:
+      - main
       - dev
       - staging
       - prod
   pull_request:
     branches:
+      - main
       - dev
       - staging
       - prod
@@ -16,6 +18,10 @@ on:
 permissions:
   contents: write
   id-token: write
+
+concurrency:
+  group: env-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   determine-environment:
@@ -29,7 +35,12 @@ jobs:
       - name: Determine environment
         id: set-env
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/dev" ]] || [[ "${{ github.event.pull_request.base_ref }}" == "dev" ]]; then
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event.pull_request.base_ref }}" == "main" ]]; then
+            echo "env=dev" >> $GITHUB_OUTPUT
+            echo "public_env=development" >> $GITHUB_OUTPUT
+            echo "site_url=https://dev.sruja.ai" >> $GITHUB_OUTPUT
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/dev" ]] || [[ "${{ github.event.pull_request.base_ref }}" == "dev" ]]; then
             echo "env=dev" >> $GITHUB_OUTPUT
             echo "public_env=development" >> $GITHUB_OUTPUT
             echo "site_url=https://dev.sruja.ai" >> $GITHUB_OUTPUT
@@ -54,7 +65,7 @@ jobs:
           # Only deploy on merge (closed PRs that were merged, or direct pushes)
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             if [[ "${{ github.event.pull_request.merged }}" != "true" ]]; then
-              echo "should_deploy=false" >> $GITHUB_OUTPUT
+             echo "should_deploy=false" >> $GITHUB_OUTPUT
             fi
           fi
 
@@ -82,6 +93,11 @@ jobs:
 
       - name: Install npm dependencies
         run: npm ci
+
+      - name: Lint + Test
+        run: |
+          go build -v ./...
+          go test -v ./pkg/... ./cmd/...
 
       - name: Build Viewer + WASM
         run: |
@@ -191,4 +207,3 @@ jobs:
             git commit -m "$COMMIT_MSG"
             git push origin HEAD:gh-pages
           fi
-

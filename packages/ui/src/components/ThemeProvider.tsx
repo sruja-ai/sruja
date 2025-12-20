@@ -1,6 +1,7 @@
 // packages/ui/src/components/ThemeProvider.tsx
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { ThemeMode, getTheme, type ThemeColors } from '../design-system/theme';
+import { createContext, useContext, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import { getTheme, type ThemeColors, type ThemeMode } from '../design-system/theme';
 
 interface ThemeContextType {
   theme: ThemeColors;

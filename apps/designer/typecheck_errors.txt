@@ -1,0 +1,31 @@
+
+> @sruja/designer@0.1.0 typecheck
+> tsc -p tsconfig.app.json --noEmit
+
+src/components/Canvas/ContextMenuWithActions.tsx(27,45): error TS2339: Property 'id' does not exist on type 'object'.
+src/components/Canvas/ContextMenuWithActions.tsx(34,25): error TS2339: Property 'parent' does not exist on type 'object'.
+src/components/Canvas/ContextMenuWithActions.tsx(37,42): error TS2339: Property 'id' does not exist on type 'object'.
+src/components/Canvas/ContextMenuWithActions.tsx(42,27): error TS2339: Property 'id' does not exist on type 'object'.
+src/components/Canvas/ContextMenuWithActions.tsx(71,46): error TS2339: Property 'id' does not exist on type 'object'.
+src/components/Canvas/ContextMenuWithActions.tsx(83,23): error TS2339: Property 'id' does not exist on type 'object'.
+src/components/Canvas/ContextMenuWithActions.tsx(83,49): error TS2339: Property 'id' does not exist on type 'object'.
+src/components/Canvas/ContextMenuWithActions.tsx(86,18): error TS2339: Property 'id' does not exist on type 'object'.
+src/components/Canvas/ContextMenuWithActions.tsx(91,32): error TS2339: Property 'id' does not exist on type 'object'.
+src/components/Canvas/ContextMenuWithActions.tsx(92,21): error TS2339: Property 'parent' does not exist on type 'object'.
+src/components/Canvas/ContextMenuWithActions.tsx(94,12): error TS2339: Property 'id' does not exist on type 'object'.
+src/components/Canvas/ContextMenuWithActions.tsx(171,41): error TS2339: Property 'parent' does not exist on type 'object'.
+src/components/Canvas/LikeC4Canvas.tsx(52,19): error TS2367: This comparison appears to be unintentional because the types '"computed" | "layouted" | undefined' and '"parsed"' have no overlap.
+src/hooks/useNavigationData.ts(17,63): error TS2339: Property 'kind' does not exist on type 'object'.
+src/hooks/useNavigationData.ts(18,63): error TS2339: Property 'kind' does not exist on type 'object'.
+src/hooks/useNavigationData.ts(23,41): error TS2339: Property 'title' does not exist on type 'object'.
+src/hooks/useNavigationData.ts(23,52): error TS2339: Property 'id' does not exist on type 'object'.
+src/hooks/useNavigationData.ts(29,41): error TS2339: Property 'title' does not exist on type 'object'.
+src/hooks/useNavigationData.ts(29,52): error TS2339: Property 'id' does not exist on type 'object'.
+src/hooks/useNavigationData.ts(34,71): error TS2339: Property 'kind' does not exist on type 'object'.
+npm error Lifecycle script `typecheck` failed with error:
+npm error code 2
+npm error path /Users/dilipkola/Workspace/sruja/apps/designer
+npm error workspace @sruja/designer@0.1.0
+npm error location /Users/dilipkola/Workspace/sruja/apps/designer
+npm error command failed
+npm error command sh -c tsc -p tsconfig.app.json --noEmit

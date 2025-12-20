@@ -1,0 +1,344 @@
+import type { Meta, StoryObj } from "@storybook/react";
+import { fn } from "@storybook/test";
+import { BuilderWizard } from "../../../../../apps/designer/src/components/Wizard/BuilderWizard";
+
+// Mock store data for builder wizard
+const mockLikec4Model = {
+  elements: {
+    user: { id: "user", title: "External User", kind: "person", technology: "" },
+    "web-app": {
+      id: "web-app",
+      title: "Web Application",
+      kind: "system",
+      technology: "React",
+      description: "Main web application for users",
+    },
+    api: {
+      id: "api",
+      title: "API Server",
+      kind: "container",
+      technology: "Node.js",
+      description: "RESTful API server",
+      parent: "web-app",
+    },
+    database: {
+      id: "database",
+      title: "Database",
+      kind: "container",
+      technology: "PostgreSQL",
+      description: "Main data storage",
+      parent: "web-app",
+    },
+  },
+  relations: [
+    { id: "rel-1", from: "user", to: "web-app", technology: "HTTPS" },
+    { id: "rel-2", from: "web-app", to: "api", technology: "REST" },
+    { id: "rel-3", from: "api", to: "database", technology: "SQL" },
+  ],
+  sruja: {
+    requirements: [
+      {
+        id: "req-1",
+        title: "User Authentication",
+        description: "System must authenticate users securely",
+        priority: "high",
+        status: "active",
+        category: "Security",
+      },
+    ],
+    scenarios: [
+      {
+        id: "scenario-1",
+        title: "User Login Flow",
+        description: "User logs into the system",
+        steps: [
+          "User enters credentials",
+          "System validates credentials",
+          "System returns session token",
+        ],
+      },
+    ],
+  },
+};
+
+const meta = {
+  title: "Designer/BuilderWizard",
+  component: BuilderWizard,
+  parameters: {
+    layout: "fullscreen",
+  },
+  tags: ["autodocs"],
+  decorators: [
+    (Story) => {
+      // Mock stores
+      const { vi } = require("vitest");
+
+      vi.doMock("../../../../../apps/designer/src/stores", () => ({
+        useArchitectureStore: () => ({
+          likec4Model: mockLikec4Model,
+          dslSource: "// Generated DSL content",
+          setDslSource: fn(),
+          updateArchitecture: fn(),
+        }),
+        useViewStore: () => ({
+          currentLevel: "L1",
+          focusedSystemId: null,
+          focusedContainerId: null,
+          drillDown: fn(),
+          goToRoot: fn(),
+        }),
+        useSelectionStore: () => ({
+          selectedNodeId: null,
+          setSelectedNodeId: fn(),
+          hoveredNodeId: null,
+          setHoveredNodeId: fn(),
+        }),
+        useUIStore: () => ({
+          activeTab: "builder",
+          setActiveTab: fn(),
+        }),
+      }));
+
+      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
+        useFeatureFlagsStore: () => ({
+          editMode: "edit",
+          setEditMode: fn(),
+          isEditMode: () => true,
+        }),
+      }));
+
+      // Mock localStorage for step persistence
+      const originalLocalStorage = global.localStorage;
+      global.localStorage = {
+        ...originalLocalStorage,
+        getItem: () => null,
+        setItem: fn(),
+        removeItem: fn(),
+      };
+
+      return (
+        <div
+          style={{
+            width: "100%",
+            height: "800px",
+            position: "relative",
+            overflow: "auto",
+          }}
+        >
+          <Story />
+        </div>
+      );
+    },
+  ],
+} satisfies Meta<typeof BuilderWizard>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+  decorators: [
+    (Story) => {
+      // Mock with full model
+      const { vi } = require("vitest");
+
+      vi.doMock("../../../../../apps/designer/src/stores", () => ({
+        useArchitectureStore: () => ({
+          likec4Model: mockLikec4Model,
+          dslSource: "// Generated DSL content",
+          setDslSource: fn(),
+          updateArchitecture: fn(),
+        }),
+      }));
+
+      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
+        useFeatureFlagsStore: () => ({
+          editMode: "edit",
+          setEditMode: fn(),
+          isEditMode: () => true,
+        }),
+      }));
+
+      return (
+        <div
+          style={{
+            width: "100%",
+            height: "800px",
+            position: "relative",
+            overflow: "auto",
+          }}
+        >
+          <Story />
+        </div>
+      );
+    },
+  ],
+};
+
+export const ViewMode: Story = {
+  decorators: [
+    (Story) => {
+      // Mock with view mode
+      const { vi } = require("vitest");
+
+      vi.doMock("../../../../../apps/designer/src/stores", () => ({
+        useArchitectureStore: () => ({
+          likec4Model: mockLikec4Model,
+          dslSource: "// Generated DSL content",
+          setDslSource: fn(),
+          updateArchitecture: fn(),
+        }),
+      }));
+
+      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
+        useFeatureFlagsStore: () => ({
+          editMode: "view",
+          setEditMode: fn(),
+          isEditMode: () => false,
+        }),
+      }));
+
+      return (
+        <div
+          style={{
+            width: "100%",
+            height: "800px",
+            position: "relative",
+            overflow: "auto",
+          }}
+        >
+          <Story />
+        </div>
+      );
+    },
+  ],
+};
+
+export const EmptyModel: Story = {
+  decorators: [
+    (Story) => {
+      // Mock with empty model
+      const { vi } = require("vitest");
+
+      vi.doMock("../../../../../apps/designer/src/stores", () => ({
+        useArchitectureStore: () => ({
+          likec4Model: null,
+          dslSource: "// No DSL content",
+          setDslSource: fn(),
+          updateArchitecture: fn(),
+        }),
+      }));
+
+      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
+        useFeatureFlagsStore: () => ({
+          editMode: "edit",
+          setEditMode: fn(),
+          isEditMode: () => true,
+        }),
+      }));
+
+      return (
+        <div
+          style={{
+            width: "100%",
+            height: "800px",
+            position: "relative",
+            overflow: "auto",
+          }}
+        >
+          <Story />
+        </div>
+      );
+    },
+  ],
+};
+
+export const WithSidebarOpen: Story = {
+  decorators: [
+    (Story) => {
+      // Mock with sidebar preference
+      const { vi } = require("vitest");
+
+      vi.doMock("../../../../../apps/designer/src/stores", () => ({
+        useArchitectureStore: () => ({
+          likec4Model: mockLikec4Model,
+          dslSource: "// Generated DSL content",
+          setDslSource: fn(),
+          updateArchitecture: fn(),
+        }),
+      }));
+
+      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
+        useFeatureFlagsStore: () => ({
+          editMode: "edit",
+          setEditMode: fn(),
+          isEditMode: () => true,
+        }),
+      }));
+
+      // Mock localStorage with sidebar preference
+      const originalLocalStorage = global.localStorage;
+      global.localStorage = {
+        ...originalLocalStorage,
+        getItem: (key: string) => {
+          if (key === "playground:previewSidebar") return "on";
+          return null;
+        },
+        setItem: fn(),
+        removeItem: fn(),
+      };
+
+      return (
+        <div
+          style={{
+            width: "100%",
+            height: "800px",
+            position: "relative",
+            overflow: "auto",
+          }}
+        >
+          <Story />
+        </div>
+      );
+    },
+  ],
+};
+
+export const Mobile: Story = {
+  decorators: [
+    (Story) => {
+      // Mock for mobile view
+      const { vi } = require("vitest");
+
+      vi.doMock("../../../../../apps/designer/src/stores", () => ({
+        useArchitectureStore: () => ({
+          likec4Model: mockLikec4Model,
+          dslSource: "// Generated DSL content",
+          setDslSource: fn(),
+          updateArchitecture: fn(),
+        }),
+      }));
+
+      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
+        useFeatureFlagsStore: () => ({
+          editMode: "edit",
+          setEditMode: fn(),
+          isEditMode: () => true,
+        }),
+      }));
+
+      return (
+        <div
+          style={{
+            width: "375px",
+            height: "800px",
+            position: "relative",
+            overflow: "auto",
+            border: "1px solid #ccc",
+          }}
+        >
+          <Story />
+        </div>
+      );
+    },
+  ],
+};

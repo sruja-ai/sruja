@@ -44,6 +44,12 @@
   --warning-dim: rgba(245, 158, 11, 0.12);
   --error-dim: rgba(239, 68, 68, 0.12);
   --info-dim: rgba(59, 130, 246, 0.12);
+  
+  /* Toast colors */
+  --toast-success: var(--color-success-500);
+  --toast-error: var(--color-error-500);
+  --toast-warning: var(--color-warning-500);
+  --toast-info: var(--color-info-500);
 
   --color-brand-violet: #7C3AED;
   --color-brand-blue: #2563EB;

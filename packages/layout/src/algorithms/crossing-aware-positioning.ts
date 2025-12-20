@@ -1,7 +1,7 @@
 // packages/layout/src/algorithms/crossing-aware-positioning.ts
 // Node position adjustments based on edge crossing analysis
 import type { Point } from "../geometry/point";
-import type { PositionedC4Node } from "../c4-layout";
+import type { PositionedC4Node } from "../types";
 import type { C4Id } from "../brand";
 import type { C4Relationship } from "../c4-model";
 
@@ -219,7 +219,18 @@ export function adjustSpacingForCrossings(
 
   // Adjust spacing for pairs with crossings
   for (const [key, crossingCount] of nodePairs) {
-    const [id1, id2] = key.split("-");
+    if (!key || typeof key !== 'string') {
+      console.warn(`[CrossingAware] Invalid key, skipping:`, key);
+      continue;
+    }
+
+    const parts = key.split("-");
+    if (parts.length !== 2) {
+      console.warn(`[CrossingAware] Invalid key format, expected 'id1-id2', got:`, key);
+      continue;
+    }
+
+    const [id1, id2] = parts;
     const node1 = result.get(id1 as C4Id);
     const node2 = result.get(id2 as C4Id);
 

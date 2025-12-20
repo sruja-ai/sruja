@@ -4,19 +4,30 @@ import { useState, useEffect, useCallback } from "react";
 import { FileJson, Copy, Check, Save, ChevronDown, ChevronUp } from "lucide-react";
 import { useArchitectureStore } from "../../stores";
 import { MonacoEditor, useTheme, Button } from "@sruja/ui";
-import { convertJsonToDsl } from "../../utils/jsonToDsl";
+// import { convertJsonToDsl } from "../../utils/jsonToDsl"; // Removed
+import { convertModelToDsl } from "../../utils/modelToDsl";
 import "./JSONPanel.css";
 
 export function JSONPanel() {
-  const data = useArchitectureStore((s) => s.data);
-  const convertedJson = useArchitectureStore((s) => s.convertedJson);
+  const data = useArchitectureStore((state) => state.likec4Model);
+  // convertedJson removed
+  // convertedJson removed
   const isConverting = useArchitectureStore((s) => s.isConverting);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
   const setDslSource = useArchitectureStore((s) => s.setDslSource);
   const { mode } = useTheme();
   const [copied, setCopied] = useState(false);
   const [monacoTheme, setMonacoTheme] = useState<"vs" | "vs-dark">("vs");
-  const [jsonSource, setJsonSource] = useState<string>("");
+  // Initialize JSON source from current model data
+  const [jsonSource, setJsonSource] = useState<string>(() => {
+    const currentData = useArchitectureStore.getState().likec4Model;
+    if (!currentData) return "";
+    try {
+      return JSON.stringify(currentData, null, 2);
+    } catch {
+      return "";
+    }
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -43,16 +54,24 @@ export function JSONPanel() {
     return () => mediaQuery.removeEventListener("change", updateTheme);
   }, [mode]);
 
-  // Use converted JSON if available, otherwise fallback to data
+  // Sync JSON source when model data changes
   useEffect(() => {
-    const sourceData = convertedJson || data;
-    if (!sourceData) {
+    if (!data) {
       setJsonSource("");
       return;
     }
-    const jsonString = JSON.stringify(sourceData, null, 2);
-    setJsonSource(jsonString);
-  }, [convertedJson, data]);
+    
+    try {
+      const jsonString = JSON.stringify(data, null, 2);
+      // Only update if different to avoid unnecessary re-renders
+      if (jsonString !== jsonSource) {
+        setJsonSource(jsonString);
+      }
+    } catch (err) {
+      console.error("Failed to stringify model to JSON:", err);
+      setJsonSource("");
+    }
+  }, [data]); // Only depend on data, not jsonSource to avoid circular updates
 
   const handleCopy = async () => {
     if (!jsonSource) return;
@@ -88,7 +107,7 @@ export function JSONPanel() {
 
       // Convert to DSL and update DSL source
       try {
-        const newDsl = convertJsonToDsl(parsed);
+        const newDsl = await convertModelToDsl(parsed);
         await setDslSource(newDsl, null);
       } catch (dslErr) {
         console.warn("Failed to convert JSON to DSL:", dslErr);
@@ -96,7 +115,7 @@ export function JSONPanel() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Invalid JSON";
-      setError(`Failed to save JSON: ${message}`);
+      setError(`Failed to save JSON: ${message} `);
       console.error("Failed to save JSON:", err);
     } finally {
       setIsSaving(false);
@@ -119,7 +138,9 @@ export function JSONPanel() {
           <span>JSON Representation</span>
         </div>
         <div className="json-panel-actions">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             className="json-collapse-btn"
             onClick={() => {
               setCollapsed((v) => {
@@ -129,7 +150,7 @@ export function JSONPanel() {
                     "playground:jsonPanelCollapsed",
                     next ? "true" : "false"
                   );
-                } catch {}
+                } catch { }
                 return next;
               });
             }}
@@ -137,7 +158,7 @@ export function JSONPanel() {
           >
             {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
             <span>{collapsed ? "Expand" : "Collapse"}</span>
-          </button>
+          </Button>
           {jsonSource && !collapsed && (
             <>
               <Button

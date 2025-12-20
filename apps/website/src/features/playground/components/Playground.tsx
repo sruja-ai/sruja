@@ -1,7 +1,7 @@
 // apps/website/src/features/playground/components/Playground.tsx
 // Wrapper component to use playground in the website
 import React, { lazy, Suspense } from "react";
-import { SrujaLoader, ThemeProvider } from "@sruja/ui";
+import { SrujaLoader, MantineProvider, ThemeProvider } from "@sruja/ui";
 import "@sruja/ui/design-system/styles.css";
 import AlgoliaSearch from "@/features/search/components/AlgoliaSearch";
 
@@ -39,8 +39,9 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 export default function Playground() {
   return (
-    <ThemeProvider defaultMode="system">
-      <ErrorBoundary>
+    <MantineProvider>
+      <ThemeProvider defaultMode="system">
+        <ErrorBoundary>
         <Suspense
           fallback={
             <div className="flex items-center justify-center h-full w-full">
@@ -54,6 +55,7 @@ export default function Playground() {
           <PlaygroundApp />
         </Suspense>
       </ErrorBoundary>
-    </ThemeProvider>
+      </ThemeProvider>
+    </MantineProvider>
   );
 }

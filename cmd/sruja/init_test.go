@@ -62,3 +62,23 @@ func TestRunInit(t *testing.T) {
 		t.Errorf("Default project directory not created")
 	}
 }
+
+func TestRunInit_Error(t *testing.T) {
+	tempDir := t.TempDir()
+	originalWd, _ := os.Getwd()
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to change dir: %v", err)
+	}
+	defer os.Chdir(originalWd)
+
+	// Create a file blocking the directory creation
+	blockedName := "blocked-project"
+	if err := os.WriteFile(blockedName, []byte("blocker"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := runInit(nil, []string{blockedName})
+	if err == nil {
+		t.Error("Expected error when project directory is blocked by a file")
+	}
+}

@@ -123,9 +123,20 @@ describe('Label Placer', () => {
             const p1 = result.get('edge1')!
             const p2 = result.get('edge2')!
 
-            // After repositioning, at least one should have moved from t=0.5
-            const bothAtMid = Math.abs(p1.position.x - 100) < 5 && Math.abs(p2.position.x - 100) < 5
-            expect(bothAtMid).toBe(false) // They shouldn't both be at the exact middle
+            // Verify they no longer overlap
+            const p1Right = p1.bounds.x + p1.bounds.width
+            const p1Bottom = p1.bounds.y + p1.bounds.height
+            const p2Right = p2.bounds.x + p2.bounds.width
+            const p2Bottom = p2.bounds.y + p2.bounds.height
+
+            const overlaps = !(
+                p1Right < p2.bounds.x ||
+                p2Right < p1.bounds.x ||
+                p1Bottom < p2.bounds.y ||
+                p2Bottom < p1.bounds.y
+            )
+
+            expect(overlaps).toBe(false)
         })
     })
 })

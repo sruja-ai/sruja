@@ -1,19 +1,30 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { MetadataSection } from "../../../../apps/designer/src/components/Overview/MetadataSection";
+import { useEffect } from "react";
+import { MetadataSection } from "../../../../../apps/designer/src/components/Overview/MetadataSection";
+import { useFeatureFlagsStore } from "../../../../../apps/designer/src/stores/featureFlagsStore";
 import { fn } from "@storybook/test";
 
 const meta = {
   title: "Overview/MetadataSection",
   component: MetadataSection,
+  decorators: [
+    (Story) => {
+      const setFlag = useFeatureFlagsStore((s) => s.setFlag);
+      useEffect(() => {
+        setFlag("metadata", true);
+      }, [setFlag]);
+      return <Story />;
+    },
+  ],
   parameters: {
     layout: "padded",
   },
   tags: ["autodocs"],
   argTypes: {},
   args: {
-    onAdd: fn(),
-    onUpdate: fn(),
-    onRemove: fn(),
+    onAddMetadata: fn(),
+    onEditMetadata: fn(),
+    onDeleteMetadata: fn(),
   },
 } satisfies Meta<typeof MetadataSection>;
 

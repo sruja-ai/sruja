@@ -11,7 +11,7 @@ import (
 
 func TestAllExamples(t *testing.T) {
 	// Many example files use DDD/Policy/Flow features not yet implemented - skip test
-	t.Skip("Example files use DDD/Policy/Flow features not yet implemented (deferred to Phase 2 or to be implemented)")
+	// t.Skip("Example files use DDD/Policy/Flow features not yet implemented (deferred to Phase 2 or to be implemented)")
 	examplesDir := "../../examples"
 	files, err := os.ReadDir(examplesDir)
 	if err != nil {

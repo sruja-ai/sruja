@@ -11,7 +11,16 @@ Use `style` to set global visual defaults across diagrams and exports.
 ## Syntax
 
 ```sruja
-architecture "Shop" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   style {
     element "Datastore" { shape cylinder color "#22c55e" }
     element "API" { color "#0ea5e9" }
@@ -19,6 +28,12 @@ architecture "Shop" {
   }
 
   // ... rest of architecture
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 

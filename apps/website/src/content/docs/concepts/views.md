@@ -11,21 +11,30 @@ Define `views` to customize what elements appear and how they render.
 ## Syntax
 
 ```sruja
-architecture "Shop" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   system App {
     container WebApp
     container API
     datastore DB
   }
 
-  person User "User"
+  User = person "User"
 
   User -> App.WebApp "Uses"
   App.WebApp -> App.API "Calls"
   App.API -> App.DB "Reads/Writes"
 
   views {
-    container App "API Focus" {
+    App = container "API Focus" {
       include App.API App.DB
       exclude App.WebApp
     }
@@ -34,6 +43,12 @@ architecture "Shop" {
       element "Datastore" { shape "cylinder" color "#3b82f6" }
       relationship "Calls" { color "#ef4444" }
     }
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```

@@ -12,12 +12,12 @@ func TestHover_Elements(t *testing.T) {
 	server := NewServer()
 	uri := lsp.DocumentURI("file:///test.sruja")
 	text := `
-architecture "A" {
+model {
 	system S1 "System 1" {
 		container C1 "Container 1" {
 			component Comp1 "Component 1"
 		}
-		datastore DB1 "Database 1"
+		database DB1 "Database 1"
 		queue Q1 "Queue 1"
 	}
 	person P1 "Person 1"
@@ -112,9 +112,9 @@ func TestHover_EdgeCases(t *testing.T) {
 func TestHoverArrowRelation(t *testing.T) {
 	s := NewServer()
 	uri := lsp.DocumentURI("file:///hover.sruja")
-	text := "system S \"System\"\ncontainer C \"Container\"\nS -> C \"uses\""
+	text := "model {\nsystem S \"System\"\ncontainer C \"Container\"\nS -> C \"uses\"\n}"
 	s.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{TextDocument: lsp.TextDocumentItem{URI: uri, Text: text}})
-	h, err := s.Hover(context.Background(), lsp.TextDocumentPositionParams{TextDocument: lsp.TextDocumentIdentifier{URI: uri}, Position: lsp.Position{Line: 2, Character: 3}})
+	h, err := s.Hover(context.Background(), lsp.TextDocumentPositionParams{TextDocument: lsp.TextDocumentIdentifier{URI: uri}, Position: lsp.Position{Line: 3, Character: 3}})
 	if err != nil {
 		t.Fatalf("Hover failed: %v", err)
 	}

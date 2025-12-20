@@ -12,17 +12,23 @@ Every codebase has skeletons. The key is to label them.
 We decided to move from `Stripe` to `Adyen` for lower fees. But we can't switch overnight.
 
 ```sruja
-system Stripe "Legacy Payment Gateway" {
-    metadata {
-        tags ["deprecated"]
-    }
-    description "Do not use for new features. Migration in progress."
+specification {
+  element system
 }
 
-system Adyen "New Payment Gateway" {
+model {
+  Stripe = system "Legacy Payment Gateway" {
     metadata {
-        tags ["preferred"]
+      tags ["deprecated"]
     }
+    description "Do not use for new features. Migration in progress."
+  }
+
+  Adyen = system "New Payment Gateway" {
+    metadata {
+      tags ["preferred"]
+    }
+  }
 }
 ```
 

@@ -11,8 +11,16 @@ Use `behavior` to document responsibilities; use `depends_on` to note upstreams.
 ## Syntax
 
 ```sruja
-// EXPECTED_FAILURE: behavior/dependency example uses advanced relations inside component
-architecture "Shop" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   system App {
     container API {
       component CheckoutService {}
@@ -26,6 +34,7 @@ architecture "Shop" {
   App.API.CheckoutService -> PaymentGateway "calls"
 
   system PaymentGateway { tags ["external"] }
+
 }
 ```
 

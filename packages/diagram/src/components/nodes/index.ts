@@ -1,5 +1,4 @@
-// packages/react-flow-architecture/src/components/nodes/index.ts
-// packages/react-flow-architecture/src/components/nodes/index.ts
+// @sruja/diagram - Node Components
 import type { NodeTypes } from "@xyflow/react";
 import { SystemNode } from "./SystemNode";
 import { SystemBoundaryNode } from "./SystemBoundaryNode";
@@ -17,7 +16,10 @@ import { DeploymentNode } from "./DeploymentNode";
 import { ExternalContainerNode } from "./ExternalContainerNode";
 import { ExternalComponentNode } from "./ExternalComponentNode";
 
-// Export individual components
+// Base components
+export { BaseNode, type BaseNodeProps, createNodeComponent } from "./BaseNode";
+
+// Node components
 export { SystemNode } from "./SystemNode";
 export { SystemBoundaryNode } from "./SystemBoundaryNode";
 export { ContainerBoundaryNode } from "./ContainerBoundaryNode";
@@ -53,3 +55,4 @@ export const nodeTypes: NodeTypes = {
   "external-container": ExternalContainerNode,
   "external-component": ExternalComponentNode,
 };
+

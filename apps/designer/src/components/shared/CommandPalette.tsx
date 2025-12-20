@@ -1,6 +1,7 @@
 // apps/playground/src/components/shared/CommandPalette.tsx
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Search } from "lucide-react";
+import { Input, Button } from "@sruja/ui";
 
 export interface Command {
   id: string;
@@ -152,7 +153,7 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
           }}
         >
           <Search size={20} style={{ color: "var(--text-secondary)" }} />
-          <input
+          <Input
             ref={inputRef}
             type="text"
             value={query}
@@ -225,8 +226,10 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
                     const isSelected = globalIndex === selectedIndex;
 
                     return (
-                      <button
+                      <Button
                         key={cmd.id}
+                        variant="ghost"
+                        size="sm"
                         onClick={() => {
                           cmd.action();
                           onClose();
@@ -238,9 +241,6 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
                           alignItems: "center",
                           gap: "12px",
                           background: isSelected ? "var(--bg-tertiary)" : "transparent",
-                          border: "none",
-                          borderRadius: "8px",
-                          cursor: "pointer",
                           textAlign: "left",
                           color: "var(--text-primary)",
                           fontSize: "14px",
@@ -262,7 +262,7 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
                             </div>
                           )}
                         </div>
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>

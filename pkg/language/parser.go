@@ -5,12 +5,41 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
 	"github.com/sruja-ai/sruja/pkg/diagnostics"
+	"github.com/sruja-ai/sruja/pkg/stdlib"
 )
+
+// Cached parser instance for reuse (thread-safe)
+var (
+	cachedParser     *Parser
+	cachedParserOnce sync.Once
+	cachedParserErr  error
+)
+
+// DefaultParser returns a cached parser instance (thread-safe).
+// This avoids the overhead of rebuilding the parser for each parse operation.
+// The parser is built once and reused for all subsequent calls.
+//
+// Example:
+//
+//	parser := language.DefaultParser()
+//	program, diags, err := parser.Parse("example.sruja", dslText)
+func DefaultParser() *Parser {
+	cachedParserOnce.Do(func() {
+		cachedParser, cachedParserErr = NewParser()
+	})
+	if cachedParserErr != nil {
+		// This should never happen in production, but panic clearly in dev
+		panic("failed to initialize parser: " + cachedParserErr.Error())
+	}
+	return cachedParser
+}
 
 // Parser parses Sruja DSL text into an AST (Abstract Syntax Tree).
 //
@@ -48,23 +77,33 @@ type Parser struct {
 //   - String unquoting (removes quotes from string literals)
 //
 // Returns an error if the parser cannot be built (e.g., invalid grammar).
+//
+// For most use cases, prefer DefaultParser() which returns a cached instance.
 func NewParser() (*Parser, error) {
-	// Define lexer for Sruja DSL
+	// Define lexer for Sruja DSL (LikeC4 compatible)
 	// This tokenizes the input into keywords, strings, operators, etc.
 	srujaLexer := lexer.MustSimple([]lexer.SimpleRule{
 		{Name: "Comment", Pattern: `//.*|/\*.*?\*/`},
-		{Name: "String", Pattern: `"(\\"|[^"])*"`},
+		// LikeC4: Support both double and single quoted strings
+		{Name: "String", Pattern: `"(\\"|[^"])*"|'(\\'|[^'])*'`},
 		{Name: "Int", Pattern: `\d+`},
 		{Name: "Number", Pattern: `\d+(?:\.\d+)?`},
-		{Name: "Library", Pattern: `library`},
-		{Name: "Story", Pattern: `story`},
-		{Name: "Scenario", Pattern: `scenario`},
-		{Name: "Flow", Pattern: `flow`},
-		{Name: "Policy", Pattern: `policy`},
+		// LikeC4: Tag references like #deprecated
+		{Name: "TagRef", Pattern: `#[a-zA-Z_][a-zA-Z0-9_-]*`},
+		{Name: "Story", Pattern: `\bstory\b`},
+		{Name: "Scenario", Pattern: `\bscenario\b`},
+		{Name: "Flow", Pattern: `\bflow\b`},
+		{Name: "Policy", Pattern: `\bpolicy\b`},
+		{Name: "Import", Pattern: `\bimport\b`},
+		{Name: "From", Pattern: `\bfrom\b`},
 		{Name: "Wildcard", Pattern: `\*`}, // For view expressions: include *
-		{Name: "Ident", Pattern: `[a-zA-Z_][a-zA-Z0-9_]*`},
+		{Name: "Ident", Pattern: `[a-zA-Z_][a-zA-Z0-9_-]*`},
 		{Name: "Dot", Pattern: `\.`},
+		// LikeC4: Support bidirectional and back arrows
+		{Name: "BiArrow", Pattern: `<->`},
+		{Name: "BackArrow", Pattern: `<-`},
 		{Name: "Arrow", Pattern: `->`},
+		{Name: "Assign", Pattern: `=`},
 		{Name: "Colon", Pattern: `:`},
 		{Name: "Comma", Pattern: `,`},
 		{Name: "Less", Pattern: `<`},
@@ -82,7 +121,7 @@ func NewParser() (*Parser, error) {
 		participle.Unquote("String"),
 		participle.Elide("Whitespace"),
 		participle.Elide("Comment"),
-		participle.UseLookahead(5), // Increased for qualified identifiers in scenarios/flows
+		participle.UseLookahead(5), // Increased to handle ambiguity
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build parser: %w", err)
@@ -102,20 +141,16 @@ func NewParser() (*Parser, error) {
 //   - []diagnostics.Diagnostic: List of diagnostics (errors/warnings)
 //   - error: Critical error if parsing cannot proceed
 //
-// The parser supports flexible file structures:
-//   - Files can contain top-level elements (system, container, component) without architecture wrapper
-//   - Files can contain an explicit architecture block
-//   - Top-level elements are automatically wrapped in an Architecture for compatibility
+// The parser supports LikeC4 syntax with specification, model, and views blocks.
 //
-// Example (without architecture):
+// Example:
 //
 //	parser, _ := language.NewParser()
-//	program, diags, err := parser.Parse("api.sruja", `system API "API Service" { ... }`)
-//
-// Example (with architecture):
-//
-//	parser, _ := language.NewParser()
-//	program, diags, err := parser.Parse("system.sruja", `architecture "My System" { system API "API Service" }`)
+//	program, diags, err := parser.Parse("example.sruja", `
+//		specification { element system }
+//		model { Backend = system "Backend" }
+//		views { view index { include * } }
+//	`)
 func (p *Parser) Parse(filename, text string) (prog *Program, diags []diagnostics.Diagnostic, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -141,27 +176,151 @@ func (p *Parser) Parse(filename, text string) (prog *Program, diags []diagnostic
 	// Convert File to Program (Logical Model)
 	prog = &Program{}
 
-	if file.Change != nil {
-		prog.Change = file.Change
+	// Collect items from TopLevelItems
+	for _, item := range file.TopLevelItems {
+		// LikeC4 format
+		if item.Specification != nil {
+			prog.Specification = item.Specification
+		}
+		if item.Model != nil {
+			prog.Model = item.Model
+		}
+		if item.Views != nil {
+			prog.Views = item.Views
+		}
+	}
+	// If LikeC4 format was used, return it directly (no conversion needed)
+	if prog.Specification != nil || prog.Model != nil || prog.Views != nil {
+		prog.PostProcess()
 		return prog, nil, nil
 	}
 
-	arch := file.Architecture
-	if arch == nil {
-		// If no architecture block, create a default one
-		arch = &Architecture{
-			Name:  baseName(filename),
-			Items: file.Items,
+	// No valid TopLevelItems found - return empty program
+	return prog, nil, nil
+}
+
+// ParseWorkspace recursively finds and parses all .sruja files in the given directory.
+func (p *Parser) ParseWorkspace(rootPath string) (*Workspace, error) {
+	ws := NewWorkspace()
+
+	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
 		}
-	} else if arch.Name == "" {
-		arch.Name = baseName(filename)
+		if !info.IsDir() && strings.HasPrefix(filepath.Base(path), ".") {
+			return nil
+		}
+		if !info.IsDir() && filepath.Ext(path) == ".sruja" {
+			content, err := os.ReadFile(path)
+			if err != nil {
+				return fmt.Errorf("failed to read %s: %w", path, err)
+			}
+
+			prog, diags, err := p.Parse(path, string(content))
+			if err != nil {
+				// We still add it to workspace to collect diags, but the error might be critical
+				ws.AddProgram(path, prog, diags)
+				return nil // Continue walking to find other files
+			}
+			ws.AddProgram(path, prog, diags)
+
+			// Recursively resolve imports found in this file
+			_ = p.resolveImports(ws, prog, path)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to walk workspace: %w", err)
 	}
 
-	// Populate convenience fields
-	arch.PostProcess()
-	prog.Architecture = arch
+	return ws, nil
+}
 
-	return prog, nil, nil
+// ResolveImports recursively loads files referenced by import statements.
+func (p *Parser) ResolveImports(ws *Workspace, prog *Program, filename string) error {
+	return p.resolveImports(ws, prog, filename)
+}
+
+// resolveImports recursively loads files referenced by import statements.
+func (p *Parser) resolveImports(ws *Workspace, prog *Program, filename string) error {
+	if prog == nil || prog.Model == nil {
+		return nil
+	}
+
+	for _, item := range prog.Model.Items {
+		if item.Import != nil {
+			importPath := item.Import.From
+
+			// Resolve alias or relative path
+			resolvedPath := importPath
+			if alias, ok := ws.Aliases[importPath]; ok {
+				resolvedPath = alias
+			} else if strings.HasPrefix(importPath, ".") {
+				resolvedPath = filepath.Join(filepath.Dir(filename), importPath)
+			}
+
+			// Special case: Standard Library (can be embedded or local)
+			if ws.IsStdLib(importPath) {
+				// Try loading from embedded FS first (works in WASM)
+				err := p.loadFromStdLibFS(ws, importPath)
+				if err == nil {
+					continue
+				}
+			}
+
+			// Capture info to decide how to load from OS
+			info, err := os.Stat(resolvedPath)
+			if err != nil {
+				continue // Skip invalid paths for now
+			}
+
+			if info.IsDir() {
+				// Load all files in directory
+				subWS, err := p.ParseWorkspace(resolvedPath)
+				if err == nil {
+					for f, p := range subWS.Programs {
+						ws.AddProgram(f, p, nil) // Diagnostics already in subWS
+					}
+					ws.Diags = append(ws.Diags, subWS.Diags...)
+				}
+			} else if filepath.Ext(resolvedPath) == ".sruja" {
+				// Load single file if not already loaded
+				if _, ok := ws.Programs[resolvedPath]; !ok {
+					fileContent, err := os.ReadFile(resolvedPath)
+					if err == nil {
+						newProg, diags, err := p.Parse(resolvedPath, string(fileContent))
+						if err == nil {
+							ws.AddProgram(resolvedPath, newProg, diags)
+							// Recursively resolve imports of the new program
+							_ = p.resolveImports(ws, newProg, resolvedPath)
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// loadFromStdLibFS loads the standard library from the embedded filesystem.
+func (p *Parser) loadFromStdLibFS(ws *Workspace, importPath string) error {
+	// stdlib files are core.sruja, styles.sruja
+	files := []string{"core.sruja", "styles.sruja"}
+	for _, f := range files {
+		content, err := stdlib.FS.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		path := "sruja.ai/stdlib/" + f
+		if _, ok := ws.Programs[path]; !ok {
+			prog, diags, err := p.Parse(path, string(content))
+			if err == nil {
+				ws.AddProgram(path, prog, diags)
+			}
+		}
+	}
+	return nil
 }
 
 // ParseFile parses a DSL file into an AST.
@@ -203,42 +362,70 @@ func (p *Parser) convertErrorToDiagnostics(err error, filename, text string) []d
 		msg := parseErr.Message()
 
 		// Extract context lines (error line + surrounding lines for better context)
-		lineIdx := pos.Line - 1
 		var context []string
 
-		// Find line boundaries
-		lines := strings.Split(text, "\n")
-		if lineIdx >= 0 && lineIdx < len(lines) {
-			// Add previous line for context (if available)
-			if lineIdx > 0 {
-				context = append(context, lines[lineIdx-1])
+		// Find line boundaries without splitting the entire file
+		currentLine := 1
+		start := 0
+		foundTarget := false
+		for i := 0; i < len(text); i++ {
+			if text[i] == '\n' {
+				if currentLine >= pos.Line-1 && currentLine <= pos.Line+1 {
+					context = append(context, text[start:i])
+				}
+				if currentLine == pos.Line {
+					foundTarget = true
+				}
+				if currentLine > pos.Line+1 {
+					break
+				}
+				start = i + 1
+				currentLine++
 			}
-			// Add error line
-			lineContent := lines[lineIdx]
-			context = append(context, lineContent)
-			// Add next line for context (if available)
-			if lineIdx+1 < len(lines) {
-				context = append(context, lines[lineIdx+1])
+		}
+		// Handle last line if no newline at end
+		if !foundTarget && currentLine == pos.Line && start < len(text) {
+			context = append(context, text[start:])
+		} else if currentLine == pos.Line+1 && start < len(text) {
+			// If we found the error line but not the next line yet
+			context = append(context, text[start:])
+		}
+
+		if len(context) > 0 {
+			// Find the error line within the context
+			errorLineIdx := 1
+			if pos.Line == 1 {
+				errorLineIdx = 0
 			}
-			// Add pointer line with precise column indication
-			if pos.Column > 0 {
-				// Calculate pointer position accounting for tabs
-				pointerCol := 0
-				for i := 0; i < len(lineContent) && i < pos.Column-1; i++ {
-					if lineContent[i] == '\t' {
-						pointerCol += 4 // Tab width
-					} else {
-						pointerCol++
+			if len(context) > errorLineIdx {
+				lineContent := context[errorLineIdx]
+				// Add pointer line with precise column indication
+				if pos.Column > 0 {
+					// Calculate pointer position accounting for tabs
+					pointerCol := 0
+					for i := 0; i < len(lineContent) && i < pos.Column-1; i++ {
+						if lineContent[i] == '\t' {
+							pointerCol += 4 // Tab width
+						} else {
+							pointerCol++
+						}
 					}
+					pointer := strings.Repeat(" ", pointerCol) + "^"
+					// Add underline for multi-character tokens
+					tokenLen := p.estimateTokenLength(lineContent, pos.Column-1)
+					if tokenLen > 1 {
+						underline := strings.Repeat("~", tokenLen-1)
+						pointer += underline
+					}
+					// Insert pointer line after the error line in context
+					newContext := make([]string, 0, len(context)+1)
+					newContext = append(newContext, context[:errorLineIdx+1]...)
+					newContext = append(newContext, pointer)
+					if errorLineIdx+1 < len(context) {
+						newContext = append(newContext, context[errorLineIdx+1:]...)
+					}
+					context = newContext
 				}
-				pointer := strings.Repeat(" ", pointerCol) + "^"
-				// Add underline for multi-character tokens
-				tokenLen := p.estimateTokenLength(lineContent, pos.Column-1)
-				if tokenLen > 1 {
-					underline := strings.Repeat("~", tokenLen-1)
-					pointer += underline
-				}
-				context = append(context, pointer)
 			}
 		}
 
@@ -342,20 +529,21 @@ func (p *Parser) enhanceErrorMessage(msg string, pos lexer.Position) (string, []
 	}
 
 	// Check for specific error patterns
-	if strings.Contains(msg, "unexpected token") {
-		if token != "" {
-			if hint, ok := knownKeywords[token]; ok {
-				enhancedMsg = fmt.Sprintf("Unexpected '%s' at this position. %s", token, hint)
-				suggestions = append(suggestions, fmt.Sprintf("Move '%s' to the correct position in the element definition", token))
-				suggestions = append(suggestions, "Check the DSL syntax guide for the correct field order")
-			} else if token == "{" {
+	if strings.Contains(msg, "unexpected token") && token != "" {
+		if hint, ok := knownKeywords[token]; ok {
+			enhancedMsg = fmt.Sprintf("Unexpected '%s' at this position. %s", token, hint)
+			suggestions = append(suggestions, fmt.Sprintf("Move '%s' to the correct position in the element definition", token))
+			suggestions = append(suggestions, "Check the DSL syntax guide for the correct field order")
+		} else {
+			switch token {
+			case "{":
 				enhancedMsg = "Unexpected block start '{'. Missing required fields before the block."
 				suggestions = append(suggestions, "Ensure you have defined the element ID and label before the block")
 				suggestions = append(suggestions, "Example: system MySystem \"My System\" { ... }")
-			} else if token == "}" {
+			case "}":
 				enhancedMsg = "Unexpected block end '}'. Missing required fields inside the block."
 				suggestions = append(suggestions, "Check that all required fields are defined inside the block")
-			} else {
+			default:
 				// Try to find similar keywords for typo detection
 				similar := p.findSimilarKeywords(token)
 				if len(similar) > 0 {
@@ -388,10 +576,11 @@ func (p *Parser) enhanceErrorMessage(msg string, pos lexer.Position) (string, []
 func (p *Parser) findSimilarKeywords(token string) []string {
 	allKeywords := []string{
 		"system", "container", "component", "datastore", "queue", "person",
-		"relation", "architecture", "metadata", "properties", "style",
-		"requirement", "adr", "policy", "flow", "scenario", "library",
+		"relation", "metadata", "properties", "style",
+		"requirement", "adr", "policy", "flow", "scenario",
 		"tags", "status", "description", "technology", "type", "category",
 		"enforcement", "decision", "consequences", "context",
+		"specification", "model", "views", "view", "element", "include",
 	}
 
 	var similar []string

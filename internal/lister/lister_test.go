@@ -6,41 +6,49 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-func stringPtr(s string) *string {
-	return &s
+func parseDSL(t *testing.T, dsl string) *language.Program {
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+	prog, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+	return prog
 }
 
 func TestListSystems(t *testing.T) {
 	tests := []struct {
 		name string
-		arch *language.Architecture
+		prog *language.Program
 		want int
 	}{
 		{
-			name: "nil architecture",
-			arch: nil,
+			name: "nil program",
+			prog: nil,
 			want: 0,
 		},
 		{
-			name: "empty architecture",
-			arch: &language.Architecture{},
+			name: "empty program",
+			prog: &language.Program{Model: &language.ModelBlock{}},
 			want: 0,
 		},
 		{
 			name: "with systems",
-			arch: &language.Architecture{
-				Systems: []*language.System{
-					{ID: "S1", Label: "System 1", Description: stringPtr("Desc 1")},
-					{ID: "S2", Label: "System 2"},
-				},
-			},
+			prog: parseDSL(t, `model {
+				S1 = system "System 1" {
+					description "Desc 1"
+				}
+				S2 = system "System 2"
+			}`),
 			want: 2,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ListSystems(tt.arch)
+			result := ListSystems(tt.prog)
 			if len(result) != tt.want {
 				t.Errorf("ListSystems() = %d items, want %d", len(result), tt.want)
 			}
@@ -52,20 +60,17 @@ func TestListSystems(t *testing.T) {
 }
 
 func TestListContainers(t *testing.T) {
-	arch := &language.Architecture{
-		Systems: []*language.System{
-			{
-				ID:    "S1",
-				Label: "System 1",
-				Containers: []*language.Container{
-					{ID: "C1", Label: "Container 1", Description: stringPtr("Test")},
-					{ID: "C2", Label: "Container 2"},
-				},
-			},
-		},
-	}
+	dsl := `model {
+		S1 = system "System 1" {
+			C1 = container "Container 1" {
+				description "Test"
+			}
+			C2 = container "Container 2"
+		}
+	}`
+	prog := parseDSL(t, dsl)
 
-	result := ListContainers(arch)
+	result := ListContainers(prog)
 	if len(result) != 2 {
 		t.Errorf("Expected 2 containers, got %d", len(result))
 	}
@@ -78,28 +83,19 @@ func TestListContainers(t *testing.T) {
 }
 
 func TestListComponents(t *testing.T) {
-	arch := &language.Architecture{
-		Systems: []*language.System{
-			{
-				ID:    "S1",
-				Label: "System 1",
-				Components: []*language.Component{
-					{ID: "Comp1", Label: "Component 1"},
-				},
-				Containers: []*language.Container{
-					{
-						ID:    "C1",
-						Label: "Container 1",
-						Components: []*language.Component{
-							{ID: "Comp2", Label: "Component 2", Description: stringPtr("Nested")},
-						},
-					},
-				},
-			},
-		},
-	}
+	dsl := `model {
+		S1 = system "System 1" {
+			Comp1 = component "Component 1"
+			C1 = container "Container 1" {
+				Comp2 = component "Component 2" {
+					description "Nested"
+				}
+			}
+		}
+	}`
+	prog := parseDSL(t, dsl)
 
-	result := ListComponents(arch)
+	result := ListComponents(prog)
 	if len(result) != 2 {
 		t.Errorf("Expected 2  components, got %d", len(result))
 	}
@@ -113,8 +109,8 @@ func TestListComponents(t *testing.T) {
 	}
 
 	// Check container-level component
-	if result[1].ContainerID != "C1" {
-		t.Errorf("Expected ContainerID 'C1', got '%s'", result[1].ContainerID)
+	if result[1].ContainerID != "S1.C1" {
+		t.Errorf("Expected ContainerID 'S1.C1', got '%s'", result[1].ContainerID)
 	}
 	if result[1].Description != "Nested" {
 		t.Errorf("Expected description 'Nested', got '%s'", result[1].Description)
@@ -122,14 +118,13 @@ func TestListComponents(t *testing.T) {
 }
 
 func TestListPersons(t *testing.T) {
-	arch := &language.Architecture{
-		Persons: []*language.Person{
-			{ID: "User1", Label: "End User"},
-			{ID: "Admin1", Label: "Administrator"},
-		},
-	}
+	dsl := `model {
+		User1 = person "End User"
+		Admin1 = person "Administrator"
+	}`
+	prog := parseDSL(t, dsl)
 
-	result := ListPersons(arch)
+	result := ListPersons(prog)
 	if len(result) != 2 {
 		t.Errorf("Expected 2 persons, got %d", len(result))
 	}
@@ -139,19 +134,14 @@ func TestListPersons(t *testing.T) {
 }
 
 func TestListDataStores(t *testing.T) {
-	arch := &language.Architecture{
-		Systems: []*language.System{
-			{
-				ID:    "S1",
-				Label: "System 1",
-				DataStores: []*language.DataStore{
-					{ID: "DB1", Label: "Database 1"},
-				},
-			},
-		},
-	}
+	dsl := `model {
+		S1 = system "System 1" {
+			DB1 = database "Database 1"
+		}
+	}`
+	prog := parseDSL(t, dsl)
 
-	result := ListDataStores(arch)
+	result := ListDataStores(prog)
 	if len(result) != 1 {
 		t.Errorf("Expected 1 datastore, got %d", len(result))
 	}
@@ -161,58 +151,51 @@ func TestListDataStores(t *testing.T) {
 }
 
 func TestListQueues(t *testing.T) {
-	arch := &language.Architecture{
-		Systems: []*language.System{
-			{
-				ID:    "S1",
-				Label: "System 1",
-				Queues: []*language.Queue{
-					{ID: "Q1", Label: "Queue 1"},
-				},
-			},
-		},
-	}
+	dsl := `model {
+		S1 = system "System 1" {
+			Q1 = queue "Queue 1"
+		}
+	}`
+	prog := parseDSL(t, dsl)
 
-	result := ListQueues(arch)
+	result := ListQueues(prog)
 	if len(result) != 1 {
 		t.Errorf("Expected 1 queue, got %d", len(result))
 	}
 }
 
 func TestListScenarios(t *testing.T) {
-	arch := &language.Architecture{
-		Scenarios: []*language.Scenario{
-			{ID: "S1", Title: "User Login"},
-		},
-	}
+	dsl := `model {
+		scenario S1 "User Login" "User logs into system"
+	}`
+	prog := parseDSL(t, dsl)
 
-	result := ListScenarios(arch)
+	result := ListScenarios(prog)
 	if len(result) != 1 {
 		t.Errorf("Expected 1 scenario, got %d", len(result))
 	}
 }
 
 func TestListADRs(t *testing.T) {
-	arch := &language.Architecture{
-		ADRs: []*language.ADR{
-			{ID: "ADR001", Title: stringPtr("Use JWT")},
-			{ID: "ADR002"},
-		},
-	}
+	dsl := `model {
+		adr ADR001 "Use JWT"
+		adr ADR002 "ADR002"
+	}`
+	prog := parseDSL(t, dsl)
 
-	result := ListADRs(arch)
+	result := ListADRs(prog)
 	if len(result) != 2 {
 		t.Errorf("Expected 2 ADRs, got %d", len(result))
 	}
 	if result[0].Title != "Use JWT" {
 		t.Errorf("Expected title 'Use JWT', got '%s'", result[0].Title)
 	}
-	if result[1].Title != "" {
-		t.Errorf("Expected empty title for ADR002, got '%s'", result[1].Title)
+	if result[1].Title != "ADR002" {
+		t.Errorf("Expected title 'ADR002' for ADR002, got '%s'", result[1].Title)
 	}
 }
 
-func TestNilArchitectureHandling(t *testing.T) {
+func TestNilProgramHandling(t *testing.T) {
 	// Test that all functions handle nil gracefully
 	if result := ListSystems(nil); result != nil {
 		t.Error("ListSystems(nil) should return nil")

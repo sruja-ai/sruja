@@ -1,12 +1,11 @@
-import { Ban, Plus, Edit } from "lucide-react";
+import { AlertOctagon, Plus, Edit } from "lucide-react";
 import { Button } from "@sruja/ui";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
-import type { ConstraintJSON } from "../../types";
 
 interface ConstraintsSectionProps {
-  constraints: ConstraintJSON[] | undefined;
+  constraints: any[] | undefined;
   onAddConstraint: () => void;
-  onEditConstraint: (constraint: ConstraintJSON, index: number) => void;
+  onEditConstraint: (constraint: any, index: number) => void;
   onDeleteConstraint: (index: number, key: string) => void;
 }
 
@@ -25,7 +24,7 @@ export function ConstraintsSection({
     <div className="overview-constraints-section">
       <div className="constraints-section-header">
         <h3 className="constraints-section-title">
-          <Ban size={16} />
+          <AlertOctagon size={16} />
           Constraints ({constraints.length})
         </h3>
         {isEditMode() && (
@@ -43,20 +42,24 @@ export function ConstraintsSection({
             </div>
             {isEditMode() && (
               <div className="constraint-card-actions">
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="constraint-edit-btn"
                   onClick={() => onEditConstraint(constraint, index)}
                   title="Edit Constraint"
                 >
                   <Edit size={12} />
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="constraint-delete-btn"
                   onClick={() => onDeleteConstraint(index, constraint.key)}
                   title="Delete Constraint"
                 >
                   ×
-                </button>
+                </Button>
               </div>
             )}
           </div>

@@ -12,6 +12,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useState } from "react";
+import { Button } from "@sruja/ui";
 import { useValidation } from "../../hooks/useValidation";
 import type { ValidationIssue, ValidationSeverity } from "../../utils/architectureValidator";
 import "./ValidationPanel.css";
@@ -59,12 +60,14 @@ export function ValidationPanel({ compact = false }: ValidationPanelProps) {
     reference: "Invalid References",
     missing: "Missing Info",
     structure: "Structure",
+    c4: "C4 Modeling",
+    "best-practice": "Best Practices",
   };
 
   if (compact) {
     return (
       <div className={`validation-panel compact ${isValid ? "valid" : "invalid"}`}>
-        <button className="validation-header-compact" onClick={() => setIsExpanded(!isExpanded)}>
+        <Button variant="ghost" size="sm" className="validation-header-compact" onClick={() => setIsExpanded(!isExpanded)}>
           <div className="validation-score-compact">
             {isValid ? (
               <CheckCircle size={16} className="icon-valid" />
@@ -91,7 +94,7 @@ export function ValidationPanel({ compact = false }: ValidationPanelProps) {
             )}
           </div>
           {issues.length > 0 && (isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-        </button>
+        </Button>
 
         {isExpanded && issues.length > 0 && (
           <div className="validation-issues-compact">
@@ -144,7 +147,9 @@ export function ValidationPanel({ compact = false }: ValidationPanelProps) {
         <div className="validation-categories">
           {Object.entries(groupedIssues).map(([category, categoryIssues]) => (
             <div key={category} className="validation-category">
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 className="category-header"
                 onClick={() => setExpandedCategory(expandedCategory === category ? null : category)}
               >
@@ -155,7 +160,7 @@ export function ValidationPanel({ compact = false }: ValidationPanelProps) {
                 ) : (
                   <ChevronDown size={14} />
                 )}
-              </button>
+              </Button>
 
               {expandedCategory === category && (
                 <div className="category-issues">

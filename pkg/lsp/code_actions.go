@@ -69,11 +69,11 @@ func (s *Server) generateQuickFixForUndefinedRef(doc *Document, diag lsp.Diagnos
 
 	// Find similar elements in the document
 	program := doc.EnsureParsed()
-	if program == nil || program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return nil
 	}
 
-	similar := s.findSimilarElementNames(elementName, program.Architecture)
+	similar := s.findSimilarElementNames(elementName, program.Model)
 	if len(similar) == 0 {
 		return nil
 	}
@@ -172,42 +172,44 @@ func (s *Server) generateQuickFixForSyntax(_ *Document, diag lsp.Diagnostic, uri
 }
 
 // findSimilarElementNames finds element names similar to the given name
-func (s *Server) findSimilarElementNames(name string, arch interface{}) []string {
-	// Type assertion to get architecture
-	archPtr, ok := arch.(*language.Architecture)
-	if !ok {
+func (s *Server) findSimilarElementNames(name string, model *language.ModelBlock) []string {
+	if model == nil {
 		return nil
 	}
 
 	var similar []string
 	nameLower := strings.ToLower(name)
 
-	// Collect all element IDs
+	// Collect all element IDs from LikeC4 Model
 	allIDs := make([]string, 0, 32)
 
-	// Add systems
-	for _, sys := range archPtr.Systems {
-		allIDs = append(allIDs, sys.ID)
-		for _, cont := range sys.Containers {
-			allIDs = append(allIDs, cont.ID)
-			for _, comp := range cont.Components {
-				allIDs = append(allIDs, comp.ID)
-			}
+	var collectIDs func(elem *language.LikeC4ElementDef)
+	collectIDs = func(elem *language.LikeC4ElementDef) {
+		if elem == nil {
+			return
 		}
-		for _, comp := range sys.Components {
-			allIDs = append(allIDs, comp.ID)
+
+		id := elem.GetID()
+		if id != "" {
+			allIDs = append(allIDs, id)
+		}
+
+		// Recurse into nested elements
+		body := elem.GetBody()
+		if body != nil {
+			for _, bodyItem := range body.Items {
+				if bodyItem.Element != nil {
+					collectIDs(bodyItem.Element)
+				}
+			}
 		}
 	}
 
-	// Add top-level elements
-	for _, cont := range archPtr.Containers {
-		allIDs = append(allIDs, cont.ID)
-	}
-	for _, comp := range archPtr.Components {
-		allIDs = append(allIDs, comp.ID)
-	}
-	for _, p := range archPtr.Persons {
-		allIDs = append(allIDs, p.ID)
+	// Process all top-level elements
+	for _, item := range model.Items {
+		if item.ElementDef != nil {
+			collectIDs(item.ElementDef)
+		}
 	}
 
 	// Calculate similarity

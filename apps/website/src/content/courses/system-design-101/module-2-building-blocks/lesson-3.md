@@ -45,23 +45,38 @@ When the cache is full, what do you remove?
 In Sruja, caches are often modeled as separate containers or components.
 
 ```sruja
-architecture "Product Catalog" {
-    system Catalog "Product Catalog System" {
-        container WebApp "Storefront" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+    Catalog = system "Product Catalog System" {
+        WebApp = container "Storefront" {
             technology "Node.js"
         }
 
-        container ProductCache "Product Cache" {
+        ProductCache = container "Product Cache" {
             technology "Memcached"
             description "Caches product details using LRU eviction."
         }
 
-        container ProductDB "Product Database" {
+        ProductDB = container "Product Database" {
             technology "MongoDB"
         }
 
         WebApp -> ProductCache "Read (Cache-Aside)"
         WebApp -> ProductDB "Read on Miss"
     }
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```

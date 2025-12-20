@@ -7,22 +7,22 @@
 export const NODE_WIDTH = 200
 export const NODE_HEIGHT = 120
 
-// Spacing between nodes (tighter for better density)
-export const H_SPACING = 120
-export const V_SPACING = 150
+// Spacing between nodes (increased for C4 model compliance and edge routing)
+export const H_SPACING = 180 // Increased from 120 for better edge routing
+export const V_SPACING = 220 // Increased from 150 for better tier separation
 
-// Boundary configuration
-export const BOUNDARY_PADDING = 60
+// Boundary configuration (increased for containment compliance)
+export const BOUNDARY_PADDING = 100 // Increased from 60 for proper containment
 
 // External nodes gap (for L1/L2)
-export const EXTERNAL_GAP = 120
+export const EXTERNAL_GAP = 150 // Increased from 120 for clearer external separation
 
 // Lane height for L3 component layouts
-export const LANE_HEIGHT = 160
+export const LANE_HEIGHT = 200 // Increased from 160 for better lane separation
 
 // Edge routing
-export const NO_ENTRY_MARGIN = 20 // No-entry zone padding around nodes
-export const MIN_EDGE_LENGTH = 40 // Minimum edge segment length
+export const NO_ENTRY_MARGIN = 30 // Increased from 20 for better edge routing
+export const MIN_EDGE_LENGTH = 50 // Increased from 40 for cleaner edges
 
 // Grid configuration
 export const MAX_COLS_L2 = 3 // Maximum columns for L2 container grid (forces vertical wrapping)
@@ -30,7 +30,17 @@ export const MAX_COLS_L3 = 3 // Maximum columns for L3 component lanes
 
 // Optimization thresholds
 export const CLUTTER_THRESHOLD = 0.7 // When to trigger re-optimization
-export const MAX_OPTIMIZATION_PASSES = 3
+export const MAX_OPTIMIZATION_PASSES = 5 // Increased from 3 for better convergence
+
+// Containment & Padding (increased for zero containment violations)
+export const MIN_PARENT_PADDING = 80 // Increased from 50 for proper containment
+export const SAFETY_MARGIN = 40 // Increased from 24 for better safety buffer
+export const DEFAULT_PADDING = 50 // Increased from 30 for more breathing room
+export const LABEL_HEIGHT_BUFFER = 40 // Increased from 30 for label visibility
+
+// C4 Semantic Layer Spacing
+export const SEMANTIC_TIER_SPACING = 250 // Extra spacing between presentation/logic/data tiers
+export const ACTOR_ZONE_OFFSET = 300 // Distance of person/actor nodes from main system
 
 /**
  * Get grid dimensions for n items

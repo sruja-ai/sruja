@@ -1,6 +1,6 @@
 // packages/layout/src/algorithms/viewport-expander.ts
 // Post-processing to expand diagram to better utilize viewport space
-import type { PositionedC4Node } from "../c4-layout";
+import type { PositionedC4Node } from "../types";
 
 export interface ViewportExpansionOptions {
   targetUtilization?: number; // Target viewport utilization (0-1), default 0.75

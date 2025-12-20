@@ -1,0 +1,29 @@
+packages/shared/src/node/wasmAdapter.ts(198,34): error TS6133: 'reject' is declared but its value is never read.
+packages/shared/src/node/wasmAdapter.ts(218,17): error TS2345: Argument of type 'any[] | T' is not assignable to parameter of type 'T | PromiseLike<T>'.
+  Type 'any[]' is not assignable to type 'T | PromiseLike<T>'.
+    Type 'any[]' is not assignable to type 'T'.
+      'T' could be instantiated with an arbitrary type which could be unrelated to 'any[]'.
+packages/shared/src/utils/memoize.ts(66,20): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+packages/shared/src/web/wasmAdapter.ts(4,34): error TS6133: 'WindowWithWasm' is declared but its value is never read.
+packages/shared/src/web/wasmAdapter.ts(132,8): error TS18046: 'importObject.gojs' is of type 'unknown'.
+packages/shared/src/web/wasmAdapter.ts(133,5): error TS18046: 'importObject.gojs' is of type 'unknown'.
+packages/shared/src/web/wasmAdapter.ts(168,56): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(bytes: BufferSource, importObject?: Imports | undefined): Promise<WebAssemblyInstantiatedSource>', gave the following error.
+    Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'Imports'.
+      'string' index signatures are incompatible.
+        Type 'unknown' is not assignable to type 'ModuleImports'.
+  Overload 2 of 2, '(moduleObject: Module, importObject?: Imports | undefined): Promise<Instance>', gave the following error.
+    Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'Imports'.
+      'string' index signatures are incompatible.
+        Type 'unknown' is not assignable to type 'ModuleImports'.
+packages/shared/src/web/wasmAdapter.ts(265,5): error TS2322: Type '(dsl: string, filename?: string) => Promise<string | undefined>' is not assignable to type '(dsl: string, filename?: string | undefined) => Promise<string>'.
+  Type 'Promise<string | undefined>' is not assignable to type 'Promise<string>'.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+packages/shared/src/web/wasmAdapter.ts(288,18): error TS2339: Property 'dsl' does not exist on type 'WasmParseResponse'.
+packages/shared/src/web/wasmAdapter.ts(300,18): error TS2339: Property 'data' does not exist on type 'WasmParseResponse'.
+packages/shared/src/web/wasmAdapter.ts(312,18): error TS2339: Property 'data' does not exist on type 'WasmParseResponse'.
+packages/shared/src/web/wasmAdapter.ts(321,19): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+packages/shared/src/web/wasmAdapter.ts(321,19): error TS18048: 'likec4Fn' is possibly 'undefined'.
+packages/shared/src/web/wasmAdapter.ts(325,18): error TS2339: Property 'data' does not exist on type 'WasmParseResponse'.

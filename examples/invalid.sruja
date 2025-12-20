@@ -1,7 +1,0 @@
-// EXPECTED_FAILURE: Duplicate system definition and unknown reference
-architecture "Invalid Example" {
-  system User "User"
-  system User "Duplicate User"
-  
-  User -> Unknown "Uses"
-}

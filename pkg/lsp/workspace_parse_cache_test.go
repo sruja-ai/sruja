@@ -7,7 +7,7 @@ import (
 )
 
 func TestDocument_EnsureParsed_CacheAndInvalidate(t *testing.T) {
-	text := `system S "System"`
+	text := `model { system S "System" }`
 	d := NewDocument(lsp.DocumentURI("file:///cache.sruja"), text, 1)
 	p1 := d.EnsureParsed()
 	if p1 == nil {
@@ -19,7 +19,7 @@ func TestDocument_EnsureParsed_CacheAndInvalidate(t *testing.T) {
 		t.Fatalf("expected cached program pointer equality")
 	}
 	// Mutate text and ensure cache invalidates
-	d.SetText(`system X "X"`)
+	d.SetText(`model { system X "X" }`)
 	p3 := d.EnsureParsed()
 	if p3 == nil || p3 == p1 {
 		t.Fatalf("expected new program after SetText")

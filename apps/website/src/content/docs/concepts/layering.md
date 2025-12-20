@@ -11,7 +11,16 @@ Layering keeps your architecture modular. Higher layers depend on lower ones, no
 ## Allowed Direction
 
 ```sruja
-architecture "Shop" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   system App {
     container WebApp
     container API
@@ -21,19 +30,34 @@ architecture "Shop" {
   App.WebApp -> App.API "Calls"
   App.API -> App.DB "Reads/Writes"
 }
+
+views {
+  view index {
+    include *
+  }
+}
 ```
 
 ## Violation Example
 
 ```sruja
-// EXPECTED_FAILURE: Layer violation - this example intentionally demonstrates an invalid pattern
-architecture "Shop" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   system App {
-    container WebApp
-    container API
+    WebApp = container
+    API = container
   }
 
   App.API -> App.WebApp "Returns UI"
+
 }
 ```
 

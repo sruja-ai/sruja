@@ -2,7 +2,6 @@
 package engine
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/sruja-ai/sruja/pkg/diagnostics"
@@ -20,94 +19,40 @@ func (r *SLOEnforcementRule) Name() string {
 
 // Validate suggests SLO blocks when systems have SLA requirements but no SLO block.
 func (r *SLOEnforcementRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	if program == nil || program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return nil
 	}
 
 	// Pre-allocate diagnostics slice
-	estimatedDiags := len(program.Architecture.Systems) * 2
-	if estimatedDiags < 8 {
-		estimatedDiags = 8
-	}
-	diags := make([]diagnostics.Diagnostic, 0, estimatedDiags)
+	diags := make([]diagnostics.Diagnostic, 0, 8)
 
-	arch := program.Architecture
-
-	// Root-level policy: use architecture requirements to suggest SLOs
-	hasSLA := r.archHasSLARequirement(arch)
-	if hasSLA {
-		for _, sys := range arch.Systems {
-			if sys.SLO == nil {
-				diags = append(diags, r.suggestSLO(sys, "system")...)
-			}
-			for _, cont := range sys.Containers {
-				if cont.SLO == nil {
-					diags = append(diags, r.suggestSLO(cont, "container")...)
-				}
-			}
-		}
-	}
-
-	return diags
-}
-
-// hasSLARequirement checks if a system/container has SLA-related requirements.
-func (r *SLOEnforcementRule) archHasSLARequirement(arch *language.Architecture) bool {
-	for _, req := range arch.Requirements {
-		if req.Type != nil {
-			reqType := strings.ToLower(*req.Type)
-			// Check for performance/availability requirements
-			if reqType == "performance" || reqType == "nonfunctional" {
-				if req.Description != nil {
-					desc := strings.ToLower(*req.Description)
-					// Look for SLA-related keywords
-					if strings.Contains(desc, "sla") ||
-						strings.Contains(desc, "availability") ||
-						strings.Contains(desc, "uptime") ||
-						strings.Contains(desc, "latency") ||
-						strings.Contains(desc, "response time") ||
-						strings.Contains(desc, "error rate") ||
-						strings.Contains(desc, "throughput") {
-						return true
+	// Check if there are SLA-related requirements in the model
+	hasSLA := false
+	for _, item := range program.Model.Items {
+		if item.Requirement != nil {
+			if item.Requirement.Type != nil {
+				reqType := strings.ToLower(*item.Requirement.Type)
+				if reqType == "performance" || reqType == "nonfunctional" {
+					if item.Requirement.Description != nil {
+						desc := strings.ToLower(*item.Requirement.Description)
+						if strings.Contains(desc, "sla") ||
+							strings.Contains(desc, "availability") ||
+							strings.Contains(desc, "uptime") ||
+							strings.Contains(desc, "latency") {
+							hasSLA = true
+							break
+						}
 					}
 				}
 			}
 		}
 	}
 
-	return false
-}
+	// SLO enforcement for LikeC4 elements would need to check metadata
+	// For now, return empty - SLO blocks are not yet supported in LikeC4 syntax
+	// TODO: Add SLO support to LikeC4 Model block if needed
 
-// suggestSLO creates a diagnostic suggesting to add an SLO block.
-func (r *SLOEnforcementRule) suggestSLO(element interface{}, elementType string) []diagnostics.Diagnostic {
-	var loc language.SourceLocation
-	var name string
+	_ = hasSLA // Suppress unused variable warning
 
-	switch e := element.(type) {
-	case *language.System:
-		loc = e.Location()
-		name = e.ID
-	case *language.Container:
-		loc = e.Location()
-		name = e.ID
-	default:
-		return nil
-	}
-
-	return []diagnostics.Diagnostic{
-		{
-			Code:     diagnostics.CodeBestPractice,
-			Severity: diagnostics.SeverityInfo, // Info-level suggestion, not error
-			Message:  fmt.Sprintf("%s '%s' has SLA requirements but no SLO block defined. Consider adding 'slo { ... }' block to document service level objectives.", elementType, name),
-			Location: diagnostics.SourceLocation{
-				File:   loc.File,
-				Line:   loc.Line,
-				Column: loc.Column,
-			},
-			Suggestions: []string{
-				"Add SLO block to document service level objectives",
-				"Example: slo { availability { target \"99.9%\" window \"30 days\" } }",
-			},
-		},
-	}
+	return diags
 }

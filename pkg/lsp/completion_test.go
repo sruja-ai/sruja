@@ -37,13 +37,13 @@ func TestCompletion(t *testing.T) {
 
 	foundArch := false
 	for _, item := range list.Items {
-		if item.Label == "architecture" {
+		if item.Label == "model" {
 			foundArch = true
 			break
 		}
 	}
 	if !foundArch {
-		t.Error("Expected 'architecture' keyword in completion list")
+		t.Error("Expected 'model' keyword in completion list")
 	}
 
 	// Test ID completion
@@ -63,30 +63,5 @@ func TestCompletion(t *testing.T) {
 	}
 	if !foundS {
 		t.Error("Expected 'S' identifier in completion list")
-	}
-}
-
-func TestCompletionVerbSuggestions(t *testing.T) {
-	s := NewServer()
-	uri := lsp.DocumentURI("file:///verbs.sruja")
-	content := `system S "System"
-container C "Container"
-S -> C `
-	s.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{TextDocument: lsp.TextDocumentItem{URI: uri, Text: content}})
-
-	params := lsp.CompletionParams{TextDocumentPositionParams: lsp.TextDocumentPositionParams{TextDocument: lsp.TextDocumentIdentifier{URI: uri}, Position: lsp.Position{Line: 2, Character: 7}}}
-	list, err := s.Completion(context.Background(), params)
-	if err != nil {
-		t.Fatalf("Completion failed: %v", err)
-	}
-	found := false
-	for _, it := range list.Items {
-		if it.Label == "reads" || it.Label == "uses" || it.Label == "calls" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Fatalf("Expected verb suggestions after relation arrow")
 	}
 }

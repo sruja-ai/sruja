@@ -42,6 +42,24 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
             }
           }
 
+          // For copy/paste shortcuts, check if text is selected - if so, allow default behavior
+          if ((shortcut.key === "c" || shortcut.key === "v" || shortcut.key === "x") && ctrlOrCmd) {
+            const selection = window.getSelection();
+            if (selection && selection.toString().length > 0 && shortcut.key === "c") {
+              // User has text selected and wants to copy - allow default behavior
+              continue;
+            }
+            // For paste, also check if we're in an input/textarea
+            if (shortcut.key === "v" && (
+              target.tagName === "INPUT" ||
+              target.tagName === "TEXTAREA" ||
+              target.isContentEditable
+            )) {
+              // Allow default paste in inputs
+              continue;
+            }
+          }
+
           if (shortcut.preventDefault !== false) {
             event.preventDefault();
           }

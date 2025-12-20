@@ -1,0 +1,32 @@
+/* Modern Input Styles - Enhanced Focus States */
+.modern-input {
+    border-radius: var(--radius-lg, 0.75rem);
+    padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+    border: 2px solid var(--border-color, #e2e8f0);
+    transition: all var(--transition-base, 0.2s cubic-bezier(0.4, 0, 0.2, 1));
+    background: var(--bg-primary, #ffffff);
+    color: var(--text-primary, #0f172a);
+    font-size: var(--text-sm, 0.875rem);
+}
+
+.modern-input:focus {
+    outline: none;
+    border-color: var(--highlight-color, #3b82f6);
+    box-shadow: 0 0 0 3px var(--primary-alpha-20, rgba(59, 130, 246, 0.2));
+    transform: translateY(-1px);
+}
+
+.modern-input::placeholder {
+    color: var(--text-muted, #94a3b8);
+    opacity: 0.7;
+}
+
+[data-theme="dark"] .modern-input {
+    background: var(--bg-primary, #1e293b);
+    border-color: var(--border-color, #475569);
+    color: var(--text-primary, #f8fafc);
+}
+
+[data-theme="dark"] .modern-input:focus {
+    box-shadow: 0 0 0 3px var(--primary-alpha-20, rgba(96, 165, 250, 0.2));
+}

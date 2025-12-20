@@ -2,7 +2,7 @@ package engine
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 
 	"github.com/sruja-ai/sruja/pkg/diagnostics"
 	"github.com/sruja-ai/sruja/pkg/language"
@@ -77,77 +77,82 @@ func (s *Scorer) CalculateScore(program *language.Program) ScoreCard {
 		}
 
 		if points > 0 {
-			// Build target efficiently
-			var targetSb strings.Builder
+			// Build target efficiently using pooled builder
+			targetSb := GetStringBuilder()
 			targetSb.Grow(len(d.Location.File) + 20)
 			targetSb.WriteString(d.Location.File)
-			targetSb.WriteString(":")
-			targetSb.WriteString(fmt.Sprintf("%d", d.Location.Line))
+			targetSb.WriteByte(':')
+			targetSb.WriteString(strconv.Itoa(d.Location.Line))
+			target := targetSb.String()
+			PutStringBuilder(targetSb)
 			deductions = append(deductions, Deduction{
 				Rule:    rule,
 				Points:  points,
 				Message: d.Message,
-				Target:  targetSb.String(),
+				Target:  target,
 			})
 			score -= points
 		}
 	}
 
-	// 2. Check Completeness (Missing Metadata)
-	if program.Architecture != nil {
-		for i := range program.Architecture.Items {
-			item := &program.Architecture.Items[i]
-			// Check Top-level Containers
-			if item.Container != nil {
-				if item.Container.Description == nil {
-					deductions = append(deductions, Deduction{
-						Rule:    "Missing Description",
-						Points:  2,
-						Message: fmt.Sprintf("Container '%s' is missing a description", item.Container.ID),
-						Target:  item.Container.ID,
-					})
-					score -= 2
-				}
+	// 2. Check Completeness (Missing Metadata) - work with LikeC4 Model AST
+	if program.Model != nil {
+		var checkElement func(elem *language.LikeC4ElementDef, parentID string)
+		checkElement = func(elem *language.LikeC4ElementDef, parentID string) {
+			if elem == nil {
+				return
 			}
-			// Check Components
-			if item.Component != nil {
-				if item.Component.Description == nil {
-					// Build message efficiently
-					var msgSb strings.Builder
-					msgSb.Grow(len(item.Component.ID) + 40)
-					msgSb.WriteString("Component '")
-					msgSb.WriteString(item.Component.ID)
-					msgSb.WriteString("' is missing a description")
-					deductions = append(deductions, Deduction{
-						Rule:    "Missing Description",
-						Points:  2,
-						Message: msgSb.String(),
-						Target:  item.Component.ID,
-					})
-					score -= 2
-				}
+
+			id := elem.GetID()
+			if id == "" {
+				return
 			}
-			// Check Systems and their nested items
-			if item.System != nil {
-				for _, sysItem := range item.System.Items {
-					if sysItem.Container != nil {
-						if sysItem.Container.Description == nil {
-							// Build message efficiently
-							var msgSb strings.Builder
-							msgSb.Grow(len(sysItem.Container.ID) + 40)
-							msgSb.WriteString("Container '")
-							msgSb.WriteString(sysItem.Container.ID)
-							msgSb.WriteString("' is missing a description")
-							deductions = append(deductions, Deduction{
-								Rule:    "Missing Description",
-								Points:  2,
-								Message: msgSb.String(),
-								Target:  sysItem.Container.ID,
-							})
-							score -= 2
-						}
+
+			// Check if element has description
+			hasDescription := false
+			body := elem.GetBody()
+			if body != nil {
+				for _, bodyItem := range body.Items {
+					if bodyItem.Description != nil {
+						hasDescription = true
+						break
 					}
 				}
+			}
+
+			if !hasDescription {
+				elementID := id
+				if parentID != "" {
+					elementID = buildQualifiedID(parentID, id)
+				}
+				deductions = append(deductions, Deduction{
+					Rule:    "Missing Description",
+					Points:  2,
+					Message: fmt.Sprintf("Element '%s' is missing a description", elementID),
+					Target:  elementID,
+				})
+				score -= 2
+			}
+
+			// Recursively check nested elements
+			body = elem.GetBody()
+			if body != nil {
+				qualifiedID := id
+				if parentID != "" {
+					qualifiedID = buildQualifiedID(parentID, id)
+				}
+				for _, bodyItem := range body.Items {
+					if bodyItem.Element != nil {
+						checkElement(bodyItem.Element, qualifiedID)
+					}
+				}
+			}
+		}
+
+		// Check all top-level elements
+		for _, item := range program.Model.Items {
+			if item.ElementDef != nil {
+				checkElement(item.ElementDef, "")
 			}
 		}
 	}

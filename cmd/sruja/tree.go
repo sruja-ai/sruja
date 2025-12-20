@@ -43,35 +43,47 @@ func runTree(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	printTree(stdout, program.Architecture, "")
+	if program.Model == nil {
+		_, _ = fmt.Fprintf(stderr, "Error: no model found in file\n")
+		return 1
+	}
+
+	printTreeFromModel(stdout, program.Model, "")
 	return 0
 }
 
-func printTree(w io.Writer, arch *language.Architecture, prefix string) {
-	_, _ = fmt.Fprintf(w, "%s%s\n", prefix, arch.Name)
-	//nolint:gocritic // Copying item struct is acceptable
-	for _, item := range arch.Items {
-		if item.System != nil {
-			printSystemTree(w, item.System, prefix+"  ")
+func printTreeFromModel(w io.Writer, model *language.ModelBlock, prefix string) {
+	_, _ = fmt.Fprintf(w, "%sModel\n", prefix)
+	var printElement func(elem *language.LikeC4ElementDef, indent string)
+	printElement = func(elem *language.LikeC4ElementDef, indent string) {
+		if elem == nil {
+			return
+		}
+		id := elem.GetID()
+		if id == "" {
+			return
+		}
+		title := id
+		titlePtr := elem.GetTitle()
+		if titlePtr != nil {
+			title = *titlePtr
+		}
+		_, _ = fmt.Fprintf(w, "%s%s (%s)\n", indent, title, id)
+		body := elem.GetBody()
+		if body != nil {
+			for _, bodyItem := range body.Items {
+				if bodyItem.Element != nil {
+					printElement(bodyItem.Element, indent+"  ")
+				}
+			}
+		}
+	}
+	for _, item := range model.Items {
+		if item.ElementDef != nil {
+			printElement(item.ElementDef, prefix+"  ")
 		}
 	}
 }
 
-func printSystemTree(w io.Writer, sys *language.System, prefix string) {
-	_, _ = fmt.Fprintf(w, "%s%s (%s)\n", prefix, sys.Label, sys.ID)
-	for _, item := range sys.Items {
-		if item.Container != nil {
-			printContainerTree(w, item.Container, prefix+"  ")
-		}
-	}
-}
-
-func printContainerTree(w io.Writer, cont *language.Container, prefix string) {
-	_, _ = fmt.Fprintf(w, "%s%s (%s)\n", prefix, cont.Label, cont.ID)
-	//nolint:gocritic // Copying item struct is acceptable
-	for _, item := range cont.Items {
-		if item.Component != nil {
-			_, _ = fmt.Fprintf(w, "%s  %s (%s)\n", prefix, item.Component.Label, item.Component.ID)
-		}
-	}
-}
+// Legacy printTree functions removed - Architecture struct removed (old syntax no longer supported)
+// Use printTreeFromModel instead

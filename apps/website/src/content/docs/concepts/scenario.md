@@ -11,7 +11,16 @@ Scenarios describe behavioral flows as ordered steps. They focus on interactions
 ## Syntax
 
 ```sruja
-architecture "Checkout" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   person Customer
   system Shop {
     container WebApp
@@ -25,6 +34,12 @@ architecture "Checkout" {
     Shop.API -> Shop.DB "validates and reserves stock"
     Shop.API -> Shop.WebApp "returns confirmation"
     Shop.WebApp -> Customer "displays success"
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```

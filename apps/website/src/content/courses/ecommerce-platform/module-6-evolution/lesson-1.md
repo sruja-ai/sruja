@@ -22,9 +22,16 @@ We change `Inventory` from a logical domain inside the monolith to a physical `s
 domain Inventory { ... }
 
 // After
-system InventoryService "Inventory Microservice" {
-    container API "Inventory API"
-    container Database "Inventory DB"
+specification {
+  element system
+  element container
+}
+
+model {
+  InventoryService = system "Inventory Microservice" {
+    API = container "Inventory API"
+    Database = container "Inventory DB"
+  }
 }
 ```
 
@@ -32,9 +39,16 @@ system InventoryService "Inventory Microservice" {
 The `OrderService` can no longer call `Inventory` functions directly. It must make a gRPC call.
 
 ```sruja
-container OrderService {
+specification {
+  element system
+  element container
+}
+
+model {
+  OrderService = system "Order Service" {
     // ...
     OrderService -> InventoryService "gRPC CheckStock"
+  }
 }
 ```
 

@@ -10,11 +10,20 @@ tags: ["deployment", "infrastructure"]
 Model production environments and map containers onto infrastructure nodes.
 
 ```sruja
-architecture "Web App" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   system WebApp {
-    container WebServer "Nginx"
-    container AppServer "Python App"
-    container Database "Postgres"
+    WebServer = container "Nginx"
+    AppServer = container "Python App"
+    Database = container "Postgres"
   }
 
   deployment Production "Production" {
@@ -29,6 +38,12 @@ architecture "Web App" {
         }
       }
     }
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```

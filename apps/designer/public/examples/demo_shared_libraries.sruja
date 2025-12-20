@@ -1,0 +1,20 @@
+// examples/demo_shared_libraries.sruja
+// Shared Model Example
+
+specification {
+  element system
+  element database
+}
+
+model {
+  shared = system "Shared" {
+    sharedDb = database "Shared DB"
+  }
+}
+
+views {
+  view index {
+    title "Shared Model"
+    include *
+  }
+}

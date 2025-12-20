@@ -2,8 +2,7 @@ export * from "./brand";
 export * from "./types";
 export * from "./c4-model";
 export * from "./c4-view";
-export { layout, layoutAsync } from "./c4-layout";
-export type { PositionedC4Node, PositionedC4Relationship, C4LayoutResult } from "./c4-layout";
+// Legacy c4-layout removed - use modular engine via applySrujaLayout
 export * from "./c4-options";
 export * from "./theme";
 export * from "./plugin";
@@ -29,7 +28,29 @@ export * from "./algorithms/unified-router";
 export * from "./algorithms/transitions";
 export * from "./algorithms/grid-layout";
 export * from "./algorithms/l0-layout";
+export type { ArchitectureJSON } from "./bridge";
 export * from "./algorithms/label-placer";
 export * from "./algorithms/edge-bundler";
 export * from "./algorithms/optimizer";
 export * from "./algorithms/viewport-expander";
+
+// Layout Helpers (extracted utilities)
+export * from "./layout-helpers";
+
+// Edge Routing Helpers
+export * from "./edge-routing-helpers";
+
+// Edge Routing Pipeline
+export * from "./edge-routing-pipeline";
+
+// Bridge Adapter (for backward compatibility and feature flag control)
+export {
+  applySrujaLayout,
+  isNewLayoutEngineEnabled,
+  enableNewLayoutEngine,
+  disableNewLayoutEngine,
+  testNewLayoutEngine,
+} from "./bridge";
+
+
+

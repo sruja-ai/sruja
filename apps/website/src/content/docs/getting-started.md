@@ -1,129 +1,115 @@
 ---
 title: "Getting Started"
 weight: 1
-summary: "Install Sruja and create your first architecture model."
+summary: "From zero to architecture in 5 minutes. Install Sruja and deploy your first diagram."
 difficulty: "beginner"
-estimatedTime: "20–30 minutes"
+estimatedTime: "5 minutes"
 ---
 
-# Getting Started with Sruja
+# Your First Architecture
 
-Sruja is **free and open source** (MIT licensed). This guide will help you install Sruja and create your first architecture model.
+Welcome to the future of system design.
 
-## Installation
+Sruja allows you to define your software architecture as code. No more dragging boxes around. No more outdated PNGs on a wiki. **You write code, Sruja draws the maps.**
 
-### Automated Install (Recommended)
+## 1. Installation
 
+Install the Sruja CLI to compile, validate, and export your diagrams.
+
+### Mac / Linux
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
 ```
 
-Note for macOS (Apple Silicon): If the automated installer reports a missing
-Darwin arm64 binary, use one of the alternatives below (Manual Download or Go install).
-
-### Manual Download
-
-Download the latest release for your operating system from the [GitHub Releases](https://github.com/sruja-ai/sruja/releases) page.
-
 ### From Source (Go)
-
-If you have Go installed, you can still build from source:
-
 ```bash
 go install github.com/sruja-ai/sruja/cmd/sruja@latest
 ```
 
-Verify the installation:
-
+*Verify installation:*
 ```bash
 sruja --version
+# Should output something like: sruja version v0.2.0
 ```
 
-If `sruja` is not found in your shell, add Go's `bin` directory to your `PATH`:
+---
 
-```bash
-export PATH="$HOME/go/bin:$PATH"
-```
+## 2. Hello, World!
 
-## Core Concepts (The C4 Model)
+Let's model a simple web application. Create a file named `hello.sruja`.
 
-Before writing code, it helps to know what we are defining. Sruja uses specific terms from the **[C4 Model](/docs/concepts/c4-model)**:
-
-1.  **System:** The highest level. Think of this as your entire application boundary.
-2.  **Container:** A deployable part of your system (e.g., a Web App, an API, a Database). _Not a Docker container!_
-3.  **Relationship:** How these parts talk to each other (e.g., "Uses", "Sends emails to").
-
-We are going to build this:
-
-> A **User** visits a **Web App**, which reads/writes data to a **Database**.
-
-```mermaid
-graph LR
-    User([Person: User])
-    subgraph "System: My App"
-        Web[Container: Web Server]
-        DB[(Container: Database)]
-    end
-    User -->|Visits| Web
-    Web -->|Reads/Writes| DB
-```
-
-## Your First Project
-
-**Create a file**: Create a new file named `architecture.sruja`.
-
-**Write your model**:
+### The Code
+Copy and paste this into your file:
 
 ```sruja
-system App "My App" {
-  container Web "Web Server"
-  datastore DB "Database"
-}
-person User "User"
+// hello.sruja
 
-User -> App.Web "Visits"
-App.Web -> App.DB "Reads/Writes"
+specification {
+    element system
+    element container
+    element datastore
+    element person
+}
+
+model {
+    // 1. Define the System
+    webApp = system "My Cool Startup" {
+        description "The next big thing."
+
+        frontend = container "React App"
+        api = container "Go Service"
+        db = datastore "PostgreSQL"
+
+        // 2. Define Connections
+        frontend -> api "Requests Data"
+        api -> db "Reads/Writes"
+    }
+
+    // 3. Define Users
+    user = person "Early Adopter"
+
+    // 4. Connect User to System
+    user -> webApp.frontend "Visits Website"
+}
 ```
 
-**Visualize**: Use Studio for interactive diagrams, or export to various formats.
+### 3. Generate the Diagram
+
+Run this command in your terminal:
 
 ```bash
-# Interactive visualization in Studio
-# Visit /studio/ and paste your DSL code
-
-# Export to Markdown (with embedded Mermaid diagrams)
-sruja export markdown architecture.sruja > architecture.md
-
-# Export to Mermaid diagram code only
-sruja export mermaid architecture.sruja > diagram.mmd
+sruja export mermaid hello.sruja > diagram.mmd
 ```
 
-## Editor Support
+You have just created a **Diagram-as-Code** artifact! You can paste the content of `diagram.mmd` into [Mermaid Live Editor](https://mermaid.live) to see it, or use the VS Code extension to preview it instantly.
 
-### VS Code Extension
+> [!TIP]
+> **VS Code User?**
+> Install the [Sruja VS Code Extension](https://marketplace.visualstudio.com/) for real-time preview, autocomplete, and syntax highlighting.
 
-For the best editing experience, install the **Sruja VS Code Extension**:
+---
 
-1. Open VS Code
-2. Go to Extensions (`Cmd+Shift+X` or `Ctrl+Shift+X`)
-3. Search for "Sruja" and install "Sruja DSL Language Support"
+## 4. Understanding the Basics
 
-The extension provides:
+Let's break down what just happened.
 
-- ✨ **Autocomplete** - Smart suggestions as you type
-- 🔍 **Go to Definition** - Navigate to symbol definitions
-- 🔎 **Find All References** - See where symbols are used
-- ✏️ **Rename Symbol** - Rename symbols and all references
-- 📋 **Outline View** - Navigate your architecture structure
-- ⚠️ **Real-time Diagnostics** - Errors and warnings as you type
-- 💡 **Hover Information** - See symbol details on hover
-- 🎨 **Code Formatting** - Format your DSL code
+1.  **`specification`**: Defines the types of elements available in your model. This provides:
+    - **Early Validation**: Catches typos in element types before runtime
+    - **Better Tooling**: Enables autocomplete, validation, and refactoring in your IDE
+    - **Documentation**: Makes available element types explicit and self-documenting
+    - **Organization**: Separates structure definition from instantiation
+2.  **`model`**: The root block where you instantiate your architecture. This is where you define your actual systems, containers, and relationships.
+3.  **`views`**: Creates custom perspectives from your model. Different views for different audiences (executives, architects, developers).
+4.  **`system`**: A high-level collection of software (C4 Level 1).
+5.  **`container`**: A deployable application (e.g., Docker container, Lambda, Database).
+6.  **`->`**: The magic arrow. This defines a relationship. Sruja (and the C4 model) cares deeply about *how* things talk to each other.
 
-See the [VS Code Extension Guide](/docs/vscode-extension) for complete documentation.
+---
 
-## Next Steps
+## What Now?
 
-- **Learn more**: Explore the [concepts](/docs/concepts/overview) and [reference](/docs/reference/syntax) documentation
-- **Install VS Code Extension**: Get full LSP support - see [VS Code Extension Guide](/docs/vscode-extension)
-- **Join the community**: Get help, share ideas, and contribute on [Discord](https://discord.gg/VNrvHPV5) or [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
-- **Contribute**: See the [Community](/docs/community) page for ways to get involved
+You have the tools. Now get the skills.
+
+-   🎓 **Learn the Core**: Take the **[System Design 101](/courses/system-design-101)** course to move beyond "Hello World".
+-   🏗 **See Real Patterns**: Copy production-ready code from **[Examples](/docs/examples)**.
+-   🛠 **Master the CLI**: Learn how to validate constraints in **[CLI Basics](/tutorials/basic/cli-basics)**.

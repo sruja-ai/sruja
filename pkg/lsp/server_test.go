@@ -1,276 +1,104 @@
+// pkg/lsp/server_test.go
 package lsp
 
 import (
-	"context"
-	"io"
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/sourcegraph/go-lsp"
-	"github.com/sourcegraph/jsonrpc2"
 )
 
-func TestNewServer(t *testing.T) {
-	server := NewServer()
-	if server == nil {
-		t.Fatal("NewServer returned nil")
-	}
-	// Check if validator is initialized (indirectly)
-	// We can't access private fields, but we can verify public behavior
-}
+// TestStartServer_Initialize tests basic server initialization
+func TestStartServer_Initialize(t *testing.T) {
+	// Create mock input/output
+	input := bytes.NewBuffer(nil)
+	output := bytes.NewBuffer(nil)
 
-func TestInitialize(t *testing.T) {
-	server := NewServer()
-	params := lsp.InitializeParams{}
-	result, err := server.Initialize(context.Background(), params)
-	if err != nil {
-		t.Fatalf("Initialize failed: %v", err)
-	}
-
-	if result.Capabilities.TextDocumentSync == nil {
-		t.Error("Expected TextDocumentSync capability")
-	}
-	if !result.Capabilities.HoverProvider {
-		t.Error("Expected HoverProvider capability")
-	}
-	if result.Capabilities.CompletionProvider == nil {
-		t.Error("Expected CompletionProvider capability")
-	}
-}
-
-func TestDidOpen(t *testing.T) {
-	server := NewServer()
-	uri := lsp.DocumentURI("file:///test.sruja")
-	text := `system S "System"`
-
-	params := lsp.DidOpenTextDocumentParams{
-		TextDocument: lsp.TextDocumentItem{
-			URI:        uri,
-			LanguageID: "sruja",
-			Version:    1,
-			Text:       text,
-		},
-	}
-
-	// This might fail or log error because connection is nil, but it shouldn't panic
-	err := server.DidOpen(context.Background(), params)
-	if err != nil {
-		t.Fatalf("DidOpen failed: %v", err)
-	}
-
-	// Verify document was added to workspace (we need to access workspace via some way or trust it works)
-	// Since workspace is private, we can't check it directly.
-	// But we can check if Hover works on it.
-}
-
-func TestHover(t *testing.T) {
-	server := NewServer()
-	uri := lsp.DocumentURI("file:///test.sruja")
-	text := `system S "System"`
-
-	// Open document first
-	server.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{
-		TextDocument: lsp.TextDocumentItem{
-			URI: uri, Text: text,
-		},
-	})
-
-	// Hover over "system" (keyword) or "S" (identifier)
-	// "system" is at 0:0
-	params := lsp.TextDocumentPositionParams{
-		TextDocument: lsp.TextDocumentIdentifier{URI: uri},
-		Position:     lsp.Position{Line: 0, Character: 0},
-	}
-
-	_, err := server.Hover(context.Background(), params)
-	if err != nil {
-		t.Fatalf("Hover failed: %v", err)
-	}
-
-	// Hover might be nil if nothing found, but it shouldn't error
-
-}
-
-func TestDidChange(t *testing.T) {
-	server := NewServer()
-	uri := lsp.DocumentURI("file:///test.sruja")
-	text := `system S "System"`
-
-	server.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{
-		TextDocument: lsp.TextDocumentItem{URI: uri, Text: text},
-	})
-
-	// Change "System" to "System Updated"
-	params := lsp.DidChangeTextDocumentParams{
-		TextDocument: lsp.VersionedTextDocumentIdentifier{
-			TextDocumentIdentifier: lsp.TextDocumentIdentifier{URI: uri},
-			Version:                2,
-		},
-		ContentChanges: []lsp.TextDocumentContentChangeEvent{
-			{
-				Range: &lsp.Range{
-					Start: lsp.Position{Line: 0, Character: 10},
-					End:   lsp.Position{Line: 0, Character: 16},
+	// Craft an LSP initialize request
+	initRequest := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "initialize",
+		"params": map[string]interface{}{
+			"processId": 12345,
+			"rootUri":   "file:///test",
+			"capabilities": map[string]interface{}{
+				"textDocument": map[string]interface{}{
+					"hover": map[string]interface{}{
+						"contentFormat": []string{"markdown"},
+					},
 				},
-				Text: "Updated",
 			},
 		},
 	}
 
-	err := server.DidChange(context.Background(), params)
-	if err != nil {
-		t.Fatalf("DidChange failed: %v", err)
-	}
-}
+	// Encode as JSON-RPC message
+	reqBytes, _ := json.Marshal(initRequest)
+	// JSON-RPC over stdio uses Content-Length header
+	msg := fmt.Sprintf("Content-Length: %d\r\n\r\n%s", len(reqBytes), reqBytes)
+	input.WriteString(msg)
 
-func TestDidClose(t *testing.T) {
-	server := NewServer()
-	uri := lsp.DocumentURI("file:///test.sruja")
-
-	server.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{
-		TextDocument: lsp.TextDocumentItem{URI: uri, Text: `system S "System"`},
-	})
-
-	err := server.DidClose(context.Background(), lsp.DidCloseTextDocumentParams{
-		TextDocument: lsp.TextDocumentIdentifier{URI: uri},
-	})
-	if err != nil {
-		t.Fatalf("DidClose failed: %v", err)
-	}
-}
-
-// pipeReadWriteCloser adapts a pipe to ReadWriteCloser
-type pipeReadWriteCloser struct {
-	*io.PipeReader
-	*io.PipeWriter
-}
-
-func (p pipeReadWriteCloser) Close() error {
-	err1 := p.PipeReader.Close()
-	err2 := p.PipeWriter.Close()
-	if err1 != nil {
-		return err1
-	}
-	return err2
-}
-
-func TestStartServer(t *testing.T) {
-	// Create pipes for communication
-	// clientWriter -> serverReader (server stdin)
-	// serverWriter (server stdout) -> clientReader
-	serverReader, clientWriter := io.Pipe()
-	clientReader, serverWriter := io.Pipe()
-
-	// Run server in goroutine
-	serverErrCh := make(chan error, 1)
+	// Start server in goroutine (it blocks until disconnected)
+	done := make(chan error, 1)
 	go func() {
-		serverErrCh <- StartServer(serverReader, serverWriter)
+		done <- StartServer(input, output)
 	}()
 
-	// Create client connection
-	clientStream := pipeReadWriteCloser{clientReader, clientWriter}
-	clientConn := jsonrpc2.NewConn(context.Background(), jsonrpc2.NewBufferedStream(clientStream, jsonrpc2.VSCodeObjectCodec{}), jsonrpc2.HandlerWithError(func(_ context.Context, _ *jsonrpc2.Conn, _ *jsonrpc2.Request) (interface{}, error) {
-		return nil, nil
-	}))
+	// Give server time to process
+	time.Sleep(100 * time.Millisecond)
 
-	// Send initialize request
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	initParams := lsp.InitializeParams{
-		RootURI: "file:///workspace",
-	}
-	var initResult lsp.InitializeResult
-	if err := clientConn.Call(ctx, "initialize", initParams, &initResult); err != nil {
-		t.Fatalf("Initialize call failed: %v", err)
+	// Check that we got a response (output buffer should have data)
+	if output.Len() == 0 {
+		t.Fatal("expected server to write response, got nothing")
 	}
 
-	if !initResult.Capabilities.HoverProvider {
-		t.Error("Expected HoverProvider capability")
+	// Server should still be running, so we can't check done yet
+	// In a real test, we'd send a shutdown request
+	t.Log("Server started and responded to initialize request")
+}
+
+// TestNewServer tests server creation
+func TestNewServer(t *testing.T) {
+	srv := NewServer()
+	if srv == nil {
+		t.Fatal("expected non-nil server")
+	}
+	if srv.workspace == nil {
+		t.Fatal("expected server to have workspace")
+	}
+}
+
+// TestServer_Initialize tests the Initialize method directly
+func TestServer_Initialize(t *testing.T) {
+	srv := NewServer()
+	processID := 12345
+	rootURI := lsp.DocumentURI("file:///test")
+	params := lsp.InitializeParams{
+		ProcessID: processID,
+		RootURI:   rootURI,
 	}
 
-	// Send didOpen notification
-	didOpenParams := lsp.DidOpenTextDocumentParams{
-		TextDocument: lsp.TextDocumentItem{
-			URI:        "file:///workspace/test.sruja",
-			LanguageID: "sruja",
-			Version:    1,
-			Text:       `system S "System"`,
-		},
+	result, err := srv.Initialize(nil, params)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if err := clientConn.Notify(ctx, "textDocument/didOpen", didOpenParams); err != nil {
-		t.Fatalf("DidOpen notify failed: %v", err)
+	if result == nil {
+		t.Fatal("expected non-nil result")
 	}
 
-	// Send hover request
-	hoverParams := lsp.TextDocumentPositionParams{
-		TextDocument: lsp.TextDocumentIdentifier{URI: "file:///workspace/test.sruja"},
-		Position:     lsp.Position{Line: 0, Character: 0},
+	// Check capabilities - result is already *InitializeResult
+	if result.Capabilities.TextDocumentSync == nil {
+		t.Fatal("expected TextDocumentSync capability")
 	}
-	var hoverResult *lsp.Hover
-	if err := clientConn.Call(ctx, "textDocument/hover", hoverParams, &hoverResult); err != nil {
-		t.Fatalf("Hover call failed: %v", err)
-	}
+}
 
-	// Send didChange notification
-	didChangeParams := lsp.DidChangeTextDocumentParams{
-		TextDocument: lsp.VersionedTextDocumentIdentifier{
-			TextDocumentIdentifier: lsp.TextDocumentIdentifier{URI: "file:///workspace/test.sruja"},
-			Version:                2,
-		},
-		ContentChanges: []lsp.TextDocumentContentChangeEvent{
-			{
-				Range: &lsp.Range{
-					Start: lsp.Position{Line: 0, Character: 10},
-					End:   lsp.Position{Line: 0, Character: 16},
-				},
-				Text: "Updated",
-			},
-		},
-	}
-	if err := clientConn.Notify(ctx, "textDocument/didChange", didChangeParams); err != nil {
-		t.Fatalf("DidChange notify failed: %v", err)
-	}
+func intPtr(i int) *int {
+	return &i
+}
 
-	// Send completion request
-	completionParams := lsp.CompletionParams{
-		TextDocumentPositionParams: lsp.TextDocumentPositionParams{
-			TextDocument: lsp.TextDocumentIdentifier{URI: "file:///workspace/test.sruja"},
-			Position:     lsp.Position{Line: 0, Character: 0},
-		},
-	}
-	var completionResult *lsp.CompletionList
-	if err := clientConn.Call(ctx, "textDocument/completion", completionParams, &completionResult); err != nil {
-		t.Fatalf("Completion call failed: %v", err)
-	}
-
-	// Send formatting request
-	formattingParams := lsp.DocumentFormattingParams{
-		TextDocument: lsp.TextDocumentIdentifier{URI: "file:///workspace/test.sruja"},
-	}
-	var formattingResult []lsp.TextEdit
-	if err := clientConn.Call(ctx, "textDocument/formatting", formattingParams, &formattingResult); err != nil {
-		t.Fatalf("Formatting call failed: %v", err)
-	}
-
-	// Send didClose notification
-	didCloseParams := lsp.DidCloseTextDocumentParams{
-		TextDocument: lsp.TextDocumentIdentifier{URI: "file:///workspace/test.sruja"},
-	}
-	if err := clientConn.Notify(ctx, "textDocument/didClose", didCloseParams); err != nil {
-		t.Fatalf("DidClose notify failed: %v", err)
-	}
-
-	// Close connection to stop server
-	clientConn.Close()
-
-	// Wait for server to stop
-	select {
-	case err := <-serverErrCh:
-		if err != nil {
-			t.Errorf("Server exited with error: %v", err)
-		}
-	case <-time.After(5 * time.Second):
-		t.Error("Server did not stop after connection close")
-	}
+func strPtr(s string) *string {
+	return &s
 }

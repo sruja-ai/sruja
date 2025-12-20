@@ -1,92 +1,61 @@
-// apps/playground/src/components/shared/forms/EditFlowForm.tsx
-import { useState, useEffect, useRef } from "react";
+// apps/designer/src/components/shared/forms/EditFlowForm.tsx
+import { useEffect, useRef } from "react";
 import { useArchitectureStore } from "../../../stores";
-import type { FlowJSON, ScenarioStepJSON } from "../../../types";
 import { SidePanel } from "../SidePanel";
 import { ArrowRight, Trash2, Plus } from "lucide-react";
-import { Button, Input, Textarea } from "@sruja/ui";
+import { Button, Input } from "@sruja/ui";
+import { FormField, useFormState, type FormErrors } from "./";
+import type { FlowDump, SrujaModelDump /* ScenarioStepDump unavailable */ } from "@sruja/shared";
 import "../EditForms.css";
 
 interface EditFlowFormProps {
   isOpen: boolean;
   onClose: () => void;
-  flow?: FlowJSON;
+  flow?: FlowDump;
+}
+
+interface FormValues {
+  id: string;
+  title: string;
+  description: string;
+  steps: any[];
 }
 
 export function EditFlowForm({ isOpen, onClose, flow }: EditFlowFormProps) {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
-  const data = useArchitectureStore((s) => s.data);
+  const data = useArchitectureStore((s) => s.likec4Model);
   const formRef = useRef<HTMLFormElement>(null);
-  const [id, setId] = useState(flow?.id || "");
-  const [title, setTitle] = useState(flow?.title || flow?.label || "");
-  const [description, setDescription] = useState(flow?.description || "");
-  const [steps, setSteps] = useState<ScenarioStepJSON[]>(flow?.steps || []);
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    if (isOpen) {
-      setId(flow?.id || "");
-      setTitle(flow?.title || flow?.label || "");
-      setDescription(flow?.description || "");
-      setSteps(flow?.steps || []);
-      setErrors({});
-    }
-  }, [isOpen, flow]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        onClose();
+  // Initialize form state
+  const form = useFormState<FormValues>({
+    initialValues: {
+      id: flow?.id || "",
+      title: flow?.title || "",
+      description: flow?.description || "",
+      steps: [...(flow?.steps || [])] as any[],
+    },
+    validate: (values) => {
+      const errors: FormErrors = {};
+      if (!values.id.trim()) {
+        errors.id = "ID is required";
+      } else if (!/^[A-Za-z0-9_-]+$/.test(values.id.trim())) {
+        errors.id = "ID can only contain letters, numbers, hyphens, and underscores";
       }
-    };
-    if (isOpen) {
-      document.addEventListener("keydown", handleKeyDown);
-      return () => document.removeEventListener("keydown", handleKeyDown);
-    }
-  }, [isOpen, onClose]);
+      if (!values.title.trim()) {
+        errors.title = "Title is required";
+      }
+      return errors;
+    },
+    onSubmit: async (values) => {
+      await updateArchitecture((model: SrujaModelDump) => {
+        const sruja = model.sruja || {};
+        const flows = [...(sruja.flows || [])];
 
-  const addStep = () => {
-    setSteps([...steps, { from: "", to: "", description: "" }]);
-  };
-
-  const updateStep = (index: number, field: keyof ScenarioStepJSON, value: string) => {
-    const newSteps = [...steps];
-    newSteps[index] = { ...newSteps[index], [field]: value };
-    setSteps(newSteps);
-  };
-
-  const removeStep = (index: number) => {
-    setSteps(steps.filter((_, i) => i !== index));
-  };
-
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!id.trim()) {
-      newErrors.id = "ID is required";
-    } else if (!/^[A-Za-z0-9_-]+$/.test(id.trim())) {
-      newErrors.id = "ID can only contain letters, numbers, hyphens, and underscores";
-    }
-    if (!title.trim()) {
-      newErrors.title = "Title is required";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    try {
-      await updateArchitecture((arch) => {
-        if (!arch.architecture) return arch;
-        const flows = [...(arch.architecture.flows || [])];
-
-        const newFlow: FlowJSON = {
-          id: id.trim(),
-          title: title.trim(),
-          description: description.trim() || undefined,
-          steps: steps
+        const newFlow: FlowDump = {
+          id: values.id.trim(),
+          title: values.title.trim(),
+          description: values.description.trim() || undefined,
+          steps: values.steps
             .filter((s) => s.from && s.to && s.from.trim() !== "" && s.to.trim() !== "")
             .map((s) => ({
               from: s.from,
@@ -105,34 +74,59 @@ export function EditFlowForm({ isOpen, onClose, flow }: EditFlowFormProps) {
         }
 
         return {
-          ...arch,
-          architecture: {
-            ...arch.architecture,
+          ...model,
+          sruja: {
+            ...sruja,
             flows,
           },
         };
       });
       onClose();
-    } catch (err) {
-      console.error("Failed to update flow:", err);
-      setErrors({ submit: "Failed to save flow. Please try again." });
+    },
+  });
+
+  // Reset form when opening/switching contexts
+  useEffect(() => {
+    if (isOpen) {
+      form.setValues({
+        id: flow?.id || "",
+        title: flow?.title || "",
+        description: flow?.description || "",
+        steps: [...(flow?.steps || [])] as any[],
+      });
+      form.clearErrors();
     }
+  }, [isOpen, flow]);
+
+  // Handle Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isOpen, onClose]);
+
+  const addStep = () => {
+    form.setValue("steps", [...form.values.steps, { from: "", to: "", description: "" }]);
+  };
+
+  const updateStep = (index: number, field: string, value: string) => {
+    const newSteps = [...form.values.steps];
+    newSteps[index] = { ...newSteps[index], [field]: value };
+    form.setValue("steps", newSteps);
+  };
+
+  const removeStep = (index: number) => {
+    form.setValue("steps", form.values.steps.filter((_, i) => i !== index));
   };
 
   // Get all available node IDs for autocomplete
-  const nodeIds: string[] = [];
-  if (data?.architecture) {
-    data.architecture.systems?.forEach((s) => {
-      nodeIds.push(s.id);
-      s.containers?.forEach((c) => {
-        nodeIds.push(`${s.id}.${c.id}`);
-        c.components?.forEach((comp) => {
-          nodeIds.push(`${s.id}.${c.id}.${comp.id}`);
-        });
-      });
-    });
-    data.architecture.persons?.forEach((p) => nodeIds.push(p.id));
-  }
+  const nodeIds: string[] = Object.keys(data?.elements || {});
 
   return (
     <SidePanel
@@ -145,45 +139,37 @@ export function EditFlowForm({ isOpen, onClose, flow }: EditFlowFormProps) {
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button
-            variant="primary"
-            onClick={(e) => {
-              e.preventDefault();
-              handleSubmit(e as any);
-            }}
-          >
+          <Button variant="primary" type="submit" form="edit-flow-form" isLoading={form.isSubmitting}>
             {flow ? "Update" : "Add"}
           </Button>
         </>
       }
     >
-      <form ref={formRef} onSubmit={handleSubmit} className="edit-form">
-        <Input
-          label="ID *"
-          value={id}
-          onChange={(e) => {
-            setId(e.target.value);
-            if (errors.id) setErrors({ ...errors, id: "" });
-          }}
+      <form ref={formRef} id="edit-flow-form" onSubmit={form.handleSubmit} className="edit-form">
+        <FormField
+          label="ID"
+          name="id"
+          value={form.values.id}
+          onChange={(value) => form.setValue("id", value)}
           required
           placeholder="F1"
-          error={errors.id}
+          error={form.errors.id}
         />
-        <Input
-          label="Title *"
-          value={title}
-          onChange={(e) => {
-            setTitle(e.target.value);
-            if (errors.title) setErrors({ ...errors, title: "" });
-          }}
+        <FormField
+          label="Title"
+          name="title"
+          value={form.values.title}
+          onChange={(value) => form.setValue("title", value)}
           required
           placeholder="Flow title"
-          error={errors.title}
+          error={form.errors.title}
         />
-        <Textarea
+        <FormField
           label="Description"
-          value={description}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
+          name="description"
+          value={form.values.description}
+          onChange={(value) => form.setValue("description", value)}
+          type="textarea"
           rows={3}
           placeholder="Flow description"
         />
@@ -191,7 +177,7 @@ export function EditFlowForm({ isOpen, onClose, flow }: EditFlowFormProps) {
         <div className="form-group border-t border-[var(--color-border)] pt-4 mt-2">
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm font-medium text-[var(--color-text-secondary)]">
-              Steps ({steps.length})
+              Steps ({form.values.steps.length})
             </label>
             <Button type="button" size="sm" variant="outline" onClick={addStep}>
               <Plus size={14} className="mr-1" /> Add Step
@@ -199,25 +185,27 @@ export function EditFlowForm({ isOpen, onClose, flow }: EditFlowFormProps) {
           </div>
 
           <div className="steps-list space-y-3">
-            {steps.length === 0 && (
+            {form.values.steps.length === 0 && (
               <div className="text-center py-8 text-[var(--color-text-tertiary)] italic bg-[var(--color-surface)] rounded-lg border border-dashed border-[var(--color-border)]">
                 No steps defined yet. Click "Add Step" to begin.
               </div>
             )}
-            {steps.map((step, index) => (
+            {form.values.steps.map((step, index) => (
               <div
                 key={index}
                 className="bg-[var(--color-surface)] rounded-lg p-3 border border-[var(--color-border)] relative group"
               >
                 <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => removeStep(index)}
                     className="text-[var(--color-error-500)] hover:opacity-80 p-1 rounded hover:bg-[var(--color-background)]"
                     title="Remove step"
                   >
                     <Trash2 size={14} />
-                  </button>
+                  </Button>
                 </div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs font-mono text-[var(--color-text-tertiary)] bg-[var(--color-background)] px-1.5 py-0.5 rounded border border-[var(--color-border)]">

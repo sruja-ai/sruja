@@ -1,12 +1,6 @@
 //nolint:gocritic // rangeValCopy, ifElseChain acceptable here
 package converter
 
-import (
-	"time"
-
-	"github.com/sruja-ai/sruja/pkg/language"
-)
-
 // JSON Structures matching viewer expectations
 
 type ArchitectureJSON struct {
@@ -134,29 +128,4 @@ type Policy struct {
 	Category    string   `json:"category,omitempty"`
 	Enforcement string   `json:"enforcement,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
-}
-
-func ConvertToJSON(arch *language.Architecture) ArchitectureJSON {
-	destArch := Architecture{}
-
-	processArchitecture(arch, &destArch)
-
-	archName := arch.Name
-	if archName == "" {
-		archName = "Sruja Architecture"
-	}
-
-	version := "1.0.0"
-	if versionMeta, ok := arch.MetaString("version"); ok && versionMeta != "" {
-		version = versionMeta
-	}
-
-	return ArchitectureJSON{
-		Metadata: MetadataJSON{
-			Name:      archName,
-			Version:   version,
-			Generated: time.Now().Format(time.RFC3339),
-		},
-		Architecture: destArch,
-	}
 }

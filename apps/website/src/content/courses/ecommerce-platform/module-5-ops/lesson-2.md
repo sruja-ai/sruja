@@ -15,12 +15,34 @@ Start reading random logs or guessing which database query is slow.
 Look at your Sruja **User Journey** for "Purchase".
 
 ```sruja
-story Purchase {
-    // ...
-    Checkout -> PaymentGateway "Process Payment" {
-        latency "2s"
+specification {
+  element person
+  element system
+  element container
+  element queue
+}
+
+model {
+  Customer = person "Customer"
+  
+  Platform = system "E-Commerce Platform" {
+    Checkout = container "Checkout Service"
+    PaymentWorker = container "Payment Worker"
+    PaymentQueue = queue "Payment Jobs"
+  }
+  
+  PaymentGateway = system "Payment Gateway" {
+    external true
+  }
+  
+  // Original synchronous flow (problematic)
+  story Purchase "User Purchase Flow" {
+    Customer -> Platform.Checkout "Initiates checkout"
+    Platform.Checkout -> PaymentGateway "Process Payment" {
+      latency "2s"
     }
-    // ...
+    PaymentGateway -> Customer "Returns confirmation"
+  }
 }
 ```
 
@@ -38,12 +60,59 @@ We need to decouple the user request from the payment processing.
 Let's update the architecture:
 
 ```sruja
-system Platform {
-    queue PaymentQueue "Payment Jobs"
-    
-    // Updated Flow
-    Checkout -> PaymentQueue "Enqueue Job" { latency "10ms" }
-    PaymentQueue -> PaymentWorker "Process Async"
+specification {
+  element person
+  element system
+  element container
+  element queue
+}
+
+model {
+  Customer = person "Customer"
+  
+  Platform = system "E-Commerce Platform" {
+    Checkout = container "Checkout Service"
+    PaymentWorker = container "Payment Worker"
+    PaymentQueue = queue "Payment Jobs"
+  }
+  
+  PaymentGateway = system "Payment Gateway" {
+    external true
+  }
+  
+  // Updated asynchronous flow
+  Customer -> Platform.Checkout "Initiates checkout"
+  Platform.Checkout -> Platform.PaymentQueue "Enqueues payment job" {
+    latency "10ms"
+  }
+  Platform.PaymentQueue -> Platform.PaymentWorker "Processes async"
+  Platform.PaymentWorker -> PaymentGateway "Processes payment"
+  PaymentGateway -> Customer "Sends confirmation email"
+  
+  // Updated scenario
+  story PurchaseAsync "Asynchronous Purchase Flow" {
+    Customer -> Platform.Checkout "Initiates checkout"
+    Platform.Checkout -> Platform.PaymentQueue "Enqueues job" {
+      latency "10ms"
+    }
+    Platform.PaymentQueue -> Platform.PaymentWorker "Processes async"
+    Platform.PaymentWorker -> PaymentGateway "Processes payment"
+    PaymentGateway -> Customer "Sends confirmation"
+  }
+}
+
+views {
+  view index {
+    title "Payment Processing Architecture"
+    include *
+  }
+  
+  // Performance view: Focus on async flow
+  view performance {
+    title "Performance View - Async Processing"
+    include Platform.Checkout Platform.PaymentQueue Platform.PaymentWorker PaymentGateway
+    exclude Customer
+  }
 }
 ```
 

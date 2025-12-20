@@ -28,30 +28,95 @@ A message (event) is published to a topic. Multiple subscribers can receive a co
 Sruja supports `queue` as a first-class citizen to model asynchronous communication.
 
 ```sruja
-architecture "Notification System" {
-    system Notifications "Notification System" {
-        container AuthService "Auth Service" {
+specification {
+  element person
+  element system
+  element container
+  element datastore
+  element queue
+}
+
+model {
+    User = person "End User"
+    
+    Notifications = system "Notification System" {
+        AuthService = container "Auth Service" {
             technology "Node.js"
+            description "Handles user authentication and publishes events"
         }
 
         // Define a queue or topic
-        queue UserEvents "User Events Topic" {
+        UserEvents = queue "User Events Topic" {
             technology "Kafka"
-            description "Events related to user lifecycle (signup, login)."
+            description "Events related to user lifecycle (signup, login, profile updates)."
         }
 
-        container EmailService "Email Service" {
+        EmailService = container "Email Service" {
             technology "Python"
+            description "Sends transactional emails"
         }
 
-        container AnalyticsService "Analytics Service" {
+        AnalyticsService = container "Analytics Service" {
             technology "Spark"
+            description "Processes user events for analytics"
+        }
+        
+        NotificationDB = datastore "Notification Database" {
+            technology "PostgreSQL"
+            description "Stores notification preferences and history"
         }
 
         // Pub/Sub flow
-        AuthService -> UserEvents "Publishes 'UserSignedUp'"
-        UserEvents -> EmailService "Consumes"
-        UserEvents -> AnalyticsService "Consumes"
+        User -> AuthService "Signs up"
+        AuthService -> UserEvents "Publishes 'UserSignedUp' event"
+        UserEvents -> EmailService "Consumes - sends welcome email"
+        UserEvents -> AnalyticsService "Consumes - tracks signup"
+        EmailService -> NotificationDB "Logs email sent"
+    }
+    
+    // Model the event flow as a scenario
+    scenario UserSignupFlow "User Signup Event Flow" {
+        User -> AuthService "Submits registration"
+        AuthService -> UserEvents "Publishes UserSignedUp"
+        UserEvents -> EmailService "Triggers welcome email"
+        UserEvents -> AnalyticsService "Tracks signup event"
+        EmailService -> User "Sends welcome email"
+    }
+    
+    // Data flow for analytics processing
+    flow AnalyticsPipeline "Analytics Data Pipeline" {
+        UserEvents -> AnalyticsService "Streams events"
+        AnalyticsService -> AnalyticsService "Processes batch"
+        AnalyticsService -> AnalyticsService "Generates reports"
     }
 }
+
+views {
+  view index {
+    title "Notification System Overview"
+    include *
+  }
+  
+  // Event flow view: Focus on async communication
+  view eventflow {
+    title "Event Flow View"
+    include Notifications.AuthService Notifications.UserEvents
+    include Notifications.EmailService Notifications.AnalyticsService
+    exclude User Notifications.NotificationDB
+  }
+  
+  // Data view: Focus on data storage
+  view data {
+    title "Data Storage View"
+    include Notifications.EmailService Notifications.NotificationDB
+    include Notifications.AnalyticsService
+    exclude Notifications.AuthService Notifications.UserEvents
+  }
+}
 ```
+
+### Key Concepts
+
+1. **Scenarios** model behavioral flows (user journeys, use cases)
+2. **Flows** model data pipelines (ETL, streaming, batch processing)
+3. **Views** let you focus on different aspects (events vs data vs user experience)

@@ -1,7 +1,0 @@
-architecture "Order Processing DFD" {
-	system OrderSystem "Order Processing System" {
-    container Processor "Process Orders"
-    datastore Database "Order DB"
-    Processor -> Database "Store Order"
-	}
-}

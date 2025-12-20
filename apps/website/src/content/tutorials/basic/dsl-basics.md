@@ -12,32 +12,51 @@ Sruja is an architecture DSL. This tutorial introduces its core elements.
 ## Elements
 
 ```sruja
-architecture "Shop" {
-  system ShopSystem "API" {
-    container WebApp "Web" {
+specification {
+  element person
+  element system
+  element container
+  element datastore
+}
+
+model {
+  shop = system "Shop API" {
+    webApp = container "Web" {
       description "Gateway layer"
     }
-    container CatalogSvc "Catalog"
-    datastore MainDB "Database"
+    catalogSvc = container "Catalog"
+    mainDB = datastore "Database"
   }
 
-  person User "User"
+  user = person "User"
 
-  User -> ShopSystem.WebApp "Uses"
-  ShopSystem.WebApp -> ShopSystem.CatalogSvc "Routes"
-  ShopSystem.CatalogSvc -> ShopSystem.MainDB "Reads/Writes"
+  user -> shop.webApp "Uses"
+  shop.webApp -> shop.catalogSvc "Routes"
+  shop.catalogSvc -> shop.mainDB "Reads/Writes"
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 
 ## Descriptions and Metadata
 
 ```sruja
-system Payments "Payments" {
-  description "Handles payments and refunds"
-  // metadata
-  metadata {
-    team "FinTech"
-    tier "critical"
+specification {
+  element system
+}
+
+model {
+  Payments = system "Payments" {
+    description "Handles payments and refunds"
+    // metadata
+    metadata {
+      team "FinTech"
+      tier "critical"
+    }
   }
 }
 ```
@@ -45,9 +64,17 @@ system Payments "Payments" {
 ## Component‑level Modeling
 
 ```sruja
-system App {
-  container Web {
-    component Cart "Cart"
+specification {
+  element system
+  element container
+  element component
+}
+
+model {
+  App = system "App" {
+    Web = container "Web" {
+      Cart = component "Cart"
+    }
   }
 }
 ```

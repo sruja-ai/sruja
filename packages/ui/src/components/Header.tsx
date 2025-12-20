@@ -1,5 +1,5 @@
 // packages/ui/src/components/Header.tsx
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Logo } from './Logo';
 import { cn } from '../utils/cn';
 

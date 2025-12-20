@@ -1,6 +1,7 @@
 // apps/playground/src/hooks/useUrlState.ts
 import { useEffect, useRef, useCallback } from "react";
 import { useViewStore } from "../stores/viewStore";
+import { toC4Level } from "../types/layout";
 
 /**
  * Syncs view state with URL search parameters for easy testing and sharing
@@ -19,7 +20,7 @@ export function useUrlState() {
 
     const levelParam = params.get("level");
     if (levelParam && ["L1", "L2", "L3"].includes(levelParam)) {
-      setLevel(levelParam as any);
+      setLevel(toC4Level(levelParam));
     }
 
     const expandedParam = params.get("expanded");

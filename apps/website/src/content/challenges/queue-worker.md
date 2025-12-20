@@ -5,16 +5,27 @@ difficulty: intermediate
 topic: async
 estimatedTime: "10-15 min"
 initialDsl: |
-  architecture "Notification System" {
-    system App {
-      container API "Main API" {
-        // TODO: Add component EmailWorker "Email Processor" here
+  specification {
+    element person
+    element system
+    element container
+    element component
+    element datastore
+    element queue
+    element external
+  }
+  
+  model {
+    App = system  {
+        API = container "Main API" {
+          // TODO: Add component EmailWorker "Email Processor" here
+        }
+        EmailQueue = queue "RabbitMQ"
       }
-      queue EmailQueue "RabbitMQ"
-    }
     
-    // TODO: Connect EmailQueue -> EmailWorker for async processing
-    // TODO: Add external EmailService (like SendGrid) and connect EmailWorker -> EmailService
+      // TODO: Connect EmailQueue -> EmailWorker for async processing
+      // TODO: Add external EmailService (like SendGrid) and connect EmailWorker -> EmailService
+    
   }
 checks:
   - type: noErrors
@@ -39,17 +50,28 @@ hints:
   - "Add external EmailService \"SendGrid\" outside the system block"
   - "Worker sends emails: EmailWorker -> EmailService \"Sends email\""
 solution: |
-  architecture "Notification System" {
-    system App {
-      container API "Main API" {
-        component EmailWorker "Email Processor"
+  specification {
+    element person
+    element system
+    element container
+    element component
+    element datastore
+    element queue
+    element external
+  }
+  
+  model {
+    App = system  {
+        API = container "Main API" {
+          EmailWorker = component "Email Processor"
+        }
+        EmailQueue = queue "RabbitMQ"
       }
-      queue EmailQueue "RabbitMQ"
-    }
     
-    external EmailService "SendGrid"
+      EmailService = external "SendGrid"
     
-    EmailQueue -> EmailWorker "Delivers email job"
-    EmailWorker -> EmailService "Sends email"
+      EmailQueue -> EmailWorker "Delivers email job"
+      EmailWorker -> EmailService "Sends email"
+    
   }
 ---

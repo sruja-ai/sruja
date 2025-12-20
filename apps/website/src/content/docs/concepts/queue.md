@@ -11,17 +11,29 @@ A **Queue** represents a message queue, topic, or event stream. It is a speciali
 ## Syntax
 
 ```sruja
-queue ID "Label" {
+specification {
+  element queue
+}
+
+model {
+  ID = queue "Label" {
     description "Optional description"
     technology "Technology"
+  }
 }
 ```
 
 ## Example
 
 ```sruja
-queue Events "Event Stream" {
+specification {
+  element queue
+}
+
+model {
+  Events = queue "Event Stream" {
     technology "Kafka"
     description "Handles domain events"
+  }
 }
 ```

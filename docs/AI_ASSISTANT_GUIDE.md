@@ -1,6 +1,6 @@
-# Guide: Using AI Code Assistants with Sruja
+# Using AI Code Assistants with Sruja
 
-This guide explains how to configure your environment so AI code assistants (like GitHub Copilot, Cursor, Claude, ChatGPT, etc.) can effectively help you write Sruja code.
+This guide helps you use AI code assistants (GitHub Copilot, Cursor, Claude, ChatGPT, etc.) to write Sruja code effectively.
 
 ## Quick Setup
 

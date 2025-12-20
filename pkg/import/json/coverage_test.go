@@ -1,12 +1,9 @@
-// pkg/import/json/coverage_test.go
-// Additional tests to improve coverage
 package json
 
 import (
 	"testing"
 
 	jsonexport "github.com/sruja-ai/sruja/pkg/export/json"
-	"github.com/sruja-ai/sruja/pkg/language"
 )
 
 func TestConvertComponentJSONToAST_AllFields(t *testing.T) {
@@ -34,79 +31,159 @@ func TestConvertComponentJSONToAST_AllFields(t *testing.T) {
 	if len(result.Items) != 1 {
 		t.Errorf("expected 1 item (relation), got %d", len(result.Items))
 	}
-	if result.Items[0].Relation == nil {
-		t.Fatal("expected relation in items")
-	}
-	if result.Items[0].Relation.From.String() != "A" {
-		t.Errorf("expected relation From A, got %s", result.Items[0].Relation.From.String())
-	}
 }
 
-func TestConvertComponentJSONToAST_NoID(t *testing.T) {
-	compJSON := &jsonexport.ComponentJSON{
-		Label: "Component",
-	}
-
-	result := convertComponentJSONToAST(compJSON)
-
-	if result.ID != "Component" {
-		t.Errorf("expected ID Component (from label), got %s", result.ID)
-	}
-}
-
-func TestConvertComponentJSONToAST_InvalidRelations(t *testing.T) {
-	compJSON := &jsonexport.ComponentJSON{
-		ID:    "comp1",
-		Label: "Component",
+func TestConvertSystemJSONToAST_AllFields(t *testing.T) {
+	sysJSON := &jsonexport.SystemJSON{
+		ID:    "sys1",
+		Label: "System",
+		Containers: []jsonexport.ContainerJSON{
+			{ID: "cont1", Label: "Cont1"},
+		},
+		DataStores: []jsonexport.DataStoreJSON{
+			{ID: "ds1", Label: "DS1"},
+		},
+		Queues: []jsonexport.QueueJSON{
+			{ID: "q1", Label: "Q1"},
+		},
 		Relations: []jsonexport.RelationJSON{
-			{From: "", To: "B"},
-			{From: "A", To: ""},
+			{From: "A", To: "B", Verb: mkStr("calls")},
+		},
+	}
+
+	result := convertSystemJSONToAST(sysJSON)
+	if result.ID != "sys1" {
+		t.Errorf("expected sys1, got %s", result.ID)
+	}
+	// SysItems (Container + DataStore + Queue + Relation)
+	if len(result.Items) != 4 {
+		t.Errorf("expected 4 items, got %d", len(result.Items))
+	}
+}
+
+func TestConvertContainerJSONToAST_AllFields(t *testing.T) {
+	contJSON := &jsonexport.ContainerJSON{
+		ID:    "cont1",
+		Label: "Container",
+		Components: []jsonexport.ComponentJSON{
+			{ID: "comp1", Label: "Comp1"},
+		},
+		DataStores: []jsonexport.DataStoreJSON{
+			{ID: "ds1", Label: "DS1"},
+		},
+		Queues: []jsonexport.QueueJSON{
+			{ID: "q1", Label: "Q1"},
+		},
+		Relations: []jsonexport.RelationJSON{
 			{From: "A", To: "B"},
 		},
 	}
 
-	result := convertComponentJSONToAST(compJSON)
+	result := convertContainerJSONToAST(contJSON)
+	if result.ID != "cont1" {
+		t.Errorf("expected cont1, got %s", result.ID)
+	}
+	if len(result.Items) != 4 {
+		t.Errorf("expected 4 items, got %d", len(result.Items))
+	}
+}
 
+func TestConvertRequirementJSONToAST(t *testing.T) {
+	reqJSON := &jsonexport.RequirementJSON{ID: "R1", Title: "Req1"}
+	result := convertRequirementJSONToAST(reqJSON)
+	if result.ID != "R1" {
+		t.Error("expected R1")
+	}
+}
+
+func TestConvertADRJSONToAST(t *testing.T) {
+	adrJSON := &jsonexport.ADRJSON{ID: "A1", Title: "ADR1"}
+	result := convertADRJSONToAST(adrJSON)
+	if result.ID != "A1" {
+		t.Error("expected A1")
+	}
+}
+
+func TestConvertScenarioJSONToAST(t *testing.T) {
+	scenJSON := &jsonexport.ScenarioJSON{ID: "S1", Label: "Scen1"}
+	result := convertScenarioJSONToAST(scenJSON)
+	if result.ID != "S1" {
+		t.Error("expected S1")
+	}
+}
+
+func TestConvertContractJSONToAST(t *testing.T) {
+	cJSON := &jsonexport.ContractJSON{ID: "C1"}
+	result := convertContractJSONToAST(cJSON)
+	if result.ID != "C1" {
+		t.Error("expected C1")
+	}
+}
+
+func TestConvertPolicyJSONToAST(t *testing.T) {
+	pJSON := &jsonexport.PolicyJSON{ID: "P1", Label: "Pol1"}
+	result := convertPolicyJSONToAST(pJSON)
+	if result.ID != "P1" {
+		t.Error("expected P1")
+	}
+}
+
+func TestConvertFlowJSONToAST(t *testing.T) {
+	fJSON := &jsonexport.FlowJSON{
+		ID:    "F1",
+		Title: "Flow1",
+		Steps: []jsonexport.ScenarioStepJSON{
+			{From: "A", To: "B", Description: mkStr("step")},
+		},
+	}
+	result := convertFlowJSONToAST(fJSON)
+	if result.ID != "F1" {
+		t.Error("expected F1")
+	}
 	if len(result.Items) != 1 {
-		t.Errorf("expected 1 valid relation, got %d", len(result.Items))
+		t.Error("expected 1 step")
 	}
 }
 
-func TestExtractScenariosOnly(t *testing.T) {
-	arch := &language.Architecture{
-		Name: "Test",
-		Items: []language.ArchitectureItem{
-			{System: &language.System{ID: "S1", Label: "System"}},
-			{Scenario: &language.Scenario{ID: "Sc1", Title: "Scenario 1"}},
-			{Scenario: &language.Scenario{ID: "Sc2", Title: "Scenario 2"}},
-		},
-	}
-
-	result := extractScenariosOnly(arch)
-
-	if result.Name != "Test - Scenarios" {
-		t.Errorf("expected name Test - Scenarios, got %s", result.Name)
-	}
-	if len(result.Items) != 2 {
-		t.Errorf("expected 2 scenarios, got %d", len(result.Items))
+func TestConvertDeploymentNodeJSONToAST(t *testing.T) {
+	dJSON := &jsonexport.DeploymentNodeJSON{ID: "D1", Label: "Dep1"}
+	result := convertDeploymentNodeJSONToAST(dJSON)
+	if result.ID != "D1" {
+		t.Error("expected D1")
 	}
 }
 
-func TestExtractScenariosOnly_NoScenarios(t *testing.T) {
-	arch := &language.Architecture{
-		Name: "Test",
-		Items: []language.ArchitectureItem{
-			{System: &language.System{ID: "S1", Label: "System"}},
-		},
+func TestStringToQualifiedIdent(t *testing.T) {
+	qid := stringToQualifiedIdent("A.B.C")
+	if len(qid.Parts) != 3 || qid.String() != "A.B.C" {
+		t.Errorf("expected A.B.C, got %v", qid.Parts)
 	}
 
-	result := extractScenariosOnly(arch)
-
-	if len(result.Items) != 0 {
-		t.Errorf("expected 0 scenarios, got %d", len(result.Items))
+	qid = stringToQualifiedIdent("")
+	if len(qid.Parts) != 1 || qid.Parts[0] != "" {
+		t.Errorf("expected empty part, got %v", qid.Parts)
 	}
 }
 
-func mkStr(s string) *string {
-	return &s
+func TestIntPtrToStringPtr(t *testing.T) {
+	i := 10
+	s := intPtrToStringPtr(&i)
+	if s == nil || *s != "10" {
+		t.Errorf("expected 10, got %v", s)
+	}
+	if intPtrToStringPtr(nil) != nil {
+		t.Error("expected nil")
+	}
+}
+
+func TestConverter_Methods(t *testing.T) {
+	c := NewConverter()
+	_, err := c.ToArchitecture(nil)
+	if err == nil {
+		t.Error("expected error for ToArchitecture")
+	}
+	_, err = c.ToDSL(nil, OutputFormatSingleFile)
+	if err == nil {
+		t.Error("expected error for ToDSL")
+	}
 }

@@ -17,8 +17,6 @@ export interface FeatureFlags {
   conventions: boolean;
   deployment: boolean;
   contracts: boolean;
-  sharedArtifacts: boolean;
-  libraries: boolean;
   imports: boolean;
 }
 
@@ -37,8 +35,6 @@ const DEFAULT_FLAGS: FeatureFlags = {
   conventions: false, // Less common
   deployment: false,
   contracts: false,
-  sharedArtifacts: false,
-  libraries: false,
   imports: false,
 };
 

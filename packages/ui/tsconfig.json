@@ -23,16 +23,16 @@
     "declarationMap": true,
     "outDir": "./dist",
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "types": ["node"]
+    "forceConsistentCasingInFileNames": true
   },
   "include": [
     "src/**/*"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.tsx",
+    "src/test/**/*"
   ]
 }
-
-

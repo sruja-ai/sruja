@@ -97,45 +97,51 @@ Order -> Payment "Triggers"
 
 ### Level 1: Beginner (C4 Style)
 ```sruja
-architecture "E-Commerce" {
-    person User "End User"
+specification {
+    element person
+    element system
+    element container
+}
+
+model {
+    user = person "End User"
     
-    system ShopAPI "Shop API" {
-        container WebApp "Web Application" {
+    shop = system "Shop API" {
+        webApp = container "Web Application" {
             technology "React"
         }
         
-        container Database "PostgreSQL Database" {
+        db = container "PostgreSQL Database" {
             technology "PostgreSQL 14"
         }
     }
     
-    User -> ShopAPI.WebApp "Uses"
-    ShopAPI.WebApp -> ShopAPI.Database "Reads/Writes"
+    user -> shop.webApp "Uses"
+    shop.webApp -> shop.db "Reads/Writes"
 }
 ```
 
 ### Level 2: Intermediate (Unified Data + API)
 ```sruja
-architecture "E-Commerce" {
-    system ShopAPI {
-        module Orders {
+model {
+    ShopAPI = system {
+        Orders = module {
             // Data structures
-            data Order {
+            Order = data {
                 id string
                 total float
                 items OrderItem[]  // Array syntax (DOD style)
                 status string
             }
             
-            data OrderItem {
+            OrderItem = data {
                 product_id string
                 qty int
                 price float
             }
             
             // API endpoints
-            api PlaceOrder {
+            PlaceOrder = api {
                 method POST
                 path "/orders"
                 request Order
@@ -146,7 +152,7 @@ architecture "E-Commerce" {
             }
             
             // Events
-            event OrderPlaced {
+            OrderPlaced = event {
                 order_id string
                 customer_id string
             }
@@ -414,25 +420,31 @@ ShopAPI -> PaymentGateway "Processes payments"
 
 **Beginner**: Just model the parts and connections
 ```sruja
-system MyApp {
-    container Frontend
-    container Backend
+specification {
+    element system
+    element container
 }
-MyApp.Frontend -> MyApp.Backend "Calls"
+model {
+    myApp = system "MyApp" {
+        frontend = container "Frontend"
+        backend = container "Backend"
+    }
+    myApp.frontend -> myApp.backend "Calls"
+}
 ```
 
 **Intermediate**: Add flows and events
 ```sruja
 // Simple qualified relationships
-User -> MyApp.Frontend "Clicks"
-MyApp.Frontend -> MyApp.Backend "Sends request"
-MyApp.Backend -> MyApp.Database "Saves"
+user -> myApp.frontend "Clicks"
+myApp.frontend -> myApp.backend "Sends request"
+myApp.backend -> myApp.database "Saves"
 
 // DFD-style — use scenario
 scenario OrderFlow "Order Processing" {
-    User -> MyApp.Frontend "Submits"
-    MyApp.Frontend -> MyApp.Backend "Processes"
-    MyApp.Backend -> MyApp.Database "Stores"
+    user -> myApp.frontend "Submits"
+    myApp.frontend -> myApp.backend "Processes"
+    myApp.backend -> myApp.database "Stores"
 }
 ```
 
@@ -440,16 +452,16 @@ scenario OrderFlow "Order Processing" {
 ```sruja
 // Feedback loop: User action -> System response -> User sees result
 story CompleteOrder "Order Completion Flow" {
-    User -> Shop.System "Submits"
-    Shop.System -> Shop.Database "Stores"
-    Shop.System -> User "Confirms"
+    user -> shop.system "Submits"
+    shop.system -> shop.database "Stores"
+    shop.system -> user "Confirms"
 }
 
 // Complex flow with multiple steps — use scenario
 scenario PaymentFlow "Payment Processing" {
-    Orders.OrderService -> Orders.PaymentGateway "Charge"
-    Orders.PaymentGateway -> Orders.OrderService "Confirms"
-    Orders.OrderService -> User "Notifies"
+    orders.orderService -> orders.paymentGateway "Charge"
+    orders.paymentGateway -> orders.orderService "Confirms"
+    orders.orderService -> user "Notifies"
 }
 ```
 

@@ -11,10 +11,12 @@ export interface ContentListItem {
   linkText?: string;
 }
 
+type AnyCollectionEntry = CollectionEntry<"blog" | "docs" | "courses" | "tutorials">;
+
 /**
  * Transform a content entry to a ContentList item
  */
-export function transformToContentListItem<T extends CollectionEntry<any>>(
+export function transformToContentListItem<T extends AnyCollectionEntry>(
   entry: T,
   basePath: string,
   options: {
@@ -23,20 +25,21 @@ export function transformToContentListItem<T extends CollectionEntry<any>>(
   } = {}
 ): ContentListItem {
   const { linkText, includeDate = false } = options;
+  const entryTyped = entry as AnyCollectionEntry;
 
   const item: ContentListItem = {
-    title: entry.data.title,
-    href: `${basePath}/${entry.slug}`,
-    summary: entry.data.summary,
-    tags: entry.data.tags,
+    title: entryTyped.data.title,
+    href: `${basePath}/${entryTyped.slug}`,
+    summary: entryTyped.data.summary,
+    tags: entryTyped.data.tags,
   };
 
   if (linkText) {
     item.linkText = linkText;
   }
 
-  if (includeDate && entry.data.pubDate) {
-    const date = formatContentDate(entry.data.pubDate);
+  if (includeDate && entryTyped.data.pubDate) {
+    const date = formatContentDate(entryTyped.data.pubDate);
     if (date) {
       item.date = date;
     }
@@ -48,7 +51,7 @@ export function transformToContentListItem<T extends CollectionEntry<any>>(
 /**
  * Transform multiple content entries to ContentList items
  */
-export function transformToContentListItems<T extends CollectionEntry<any>>(
+export function transformToContentListItems<T extends AnyCollectionEntry>(
   entries: T[],
   basePath: string,
   options: {

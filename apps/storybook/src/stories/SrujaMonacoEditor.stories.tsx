@@ -46,19 +46,36 @@ const meta: Meta<typeof SrujaMonacoEditor> = {
 export default meta;
 type Story = StoryObj<typeof SrujaMonacoEditor>;
 
-const exampleSruja = `architecture "Example System" {
-    system App "My Application" {
-        container Web "Web Server" {
-            component Auth "Authentication"
-            component API "REST API"
-        }
-        datastore DB "Database"
+const exampleSruja = `specification {
+  element person
+  element system
+  element container
+  element component
+  element database
+}
+
+model {
+  user = person "End User"
+  
+  app = system "My Application" {
+    web = container "Web Server" {
+      auth = component "Authentication"
+      api = component "REST API"
     }
-    
-    person User "End User"
-    
-    User -> App.Web "Uses"
-    App.Web.API -> App.DB "Reads/Writes"
+    db = database "Database" {
+      technology "PostgreSQL"
+    }
+  }
+  
+  user -> app.web "Uses"
+  app.web.api -> app.db "Reads/Writes"
+}
+
+views {
+  view index {
+    title "System Overview"
+    include *
+  }
 }`;
 
 export const Default: Story = {
@@ -86,8 +103,18 @@ export const WithoutLsp: Story = {
 
 export const Small: Story = {
   args: {
-    value: `architecture "Simple" {
-    system App "Application"
+    value: `specification {
+  element system
+}
+
+model {
+  app = system "Application"
+}
+
+views {
+  view index {
+    include *
+  }
 }`,
     height: '200px',
   },

@@ -18,14 +18,46 @@ In Sruja, use `scenario` (and its alias `story`) to model runtime interactions: 
 When modeling a user flow, you focus on the *value* delivered to the user. Sruja provides the `story` keyword (an alias for `scenario`) to make these definitions semantic and clear.
 
 ```sruja
-// High-level user flow
-story BuyTicket "User purchases a ticket" {
-    User -> WebApp "Selects ticket"
-    WebApp -> PaymentService "Process payment" {
-        latency "500ms"
-        protocol "HTTPS"
+specification {
+  element person
+  element system
+  element container
+  element datastore
+}
+
+model {
+    User = person "Customer"
+    
+    Ticketing = system "Ticketing System" {
+        WebApp = container "Web Application" {
+            technology "React"
+        }
+        PaymentService = container "Payment Service" {
+            technology "Go"
+        }
+        TicketDB = datastore "Ticket Database" {
+            technology "PostgreSQL"
+        }
+        
+        WebApp -> PaymentService "Processes payment"
+        PaymentService -> TicketDB "Stores transaction"
     }
-    PaymentService -> User "Sends receipt"
+    
+    // High-level user flow
+    story BuyTicket "User purchases a ticket" {
+        User -> Ticketing.WebApp "Selects ticket"
+        Ticketing.WebApp -> Ticketing.PaymentService "Process payment" {
+            latency "500ms"
+            protocol "HTTPS"
+        }
+        Ticketing.PaymentService -> User "Sends receipt"
+    }
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 
@@ -36,14 +68,46 @@ Notice how we can add properties like `latency` and `protocol` to steps using th
 When modeling technical sequences, you dive deeper into the architecture, showing how `containers` and `components` interact to fulfill a request. You can stick with the `scenario` keyword here.
 
 ```sruja
-// Detailed technical flow
-scenario AuthFlow "Authentication" "Handles OAuth2 login process" {
-    User -> WebApp "Credentials"
-    WebApp -> AuthServer "Validate Token"
-    AuthServer -> Database "Lookup User"
-    Database -> AuthServer "User Data"
-    AuthServer -> WebApp "Token Valid"
-    WebApp -> User "Login Success"
+specification {
+  element person
+  element system
+  element container
+  element datastore
+}
+
+model {
+    User = person "End User"
+    
+    AuthSystem = system "Authentication System" {
+        WebApp = container "Web Application" {
+            technology "React"
+        }
+        AuthServer = container "Auth Server" {
+            technology "Node.js, OAuth2"
+        }
+        Database = datastore "User Database" {
+            technology "PostgreSQL"
+        }
+        
+        WebApp -> AuthServer "Validates tokens"
+        AuthServer -> Database "Queries user data"
+    }
+    
+    // Detailed technical flow
+    scenario AuthFlow "Authentication" "Handles OAuth2 login process" {
+        User -> AuthSystem.WebApp "Provides credentials"
+        AuthSystem.WebApp -> AuthSystem.AuthServer "Validates token"
+        AuthSystem.AuthServer -> AuthSystem.Database "Looks up user"
+        AuthSystem.Database -> AuthSystem.AuthServer "Returns user data"
+        AuthSystem.AuthServer -> AuthSystem.WebApp "Confirms token valid"
+        AuthSystem.WebApp -> User "Shows login success"
+    }
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 
@@ -55,9 +119,29 @@ Sruja offers flexible syntax to suit your needs:
 Great for quick sketches or simple flows.
 
 ```sruja
-scenario "Login Failure" {
-    User -> WebApp "Enters wrong password"
-    WebApp -> User "Show error message"
+specification {
+  element person
+  element system
+  element container
+}
+
+model {
+    User = person "User"
+    
+    AuthSystem = system "Auth System" {
+        WebApp = container "Web App"
+    }
+    
+    scenario "Login Failure" {
+        User -> AuthSystem.WebApp "Enters wrong password"
+        AuthSystem.WebApp -> User "Shows error message"
+    }
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 
@@ -65,13 +149,50 @@ scenario "Login Failure" {
 Better for documentation and referencing. Includes an ID and optional description.
 
 ```sruja
-scenario Checkout "Checkout Process" {
-    description "The complete checkout flow including payment and inventory check."
+specification {
+  element person
+  element system
+  element container
+  element datastore
+}
+
+model {
+    Customer = person "Customer"
     
-    User -> Cart "Checkout"
-    Cart -> Inventory "Reserve Items"
-    Inventory -> Cart "Reserved"
-    Cart -> Payment "Charge"
+    ECommerce = system "E-Commerce System" {
+        Cart = container "Shopping Cart" {
+            technology "React"
+        }
+        Payment = container "Payment Service" {
+            technology "Go"
+        }
+    }
+    
+    Inventory = system "Inventory System" {
+        InventoryService = container "Inventory Service" {
+            technology "Java"
+        }
+    }
+    
+    Customer -> ECommerce.Cart "Adds items"
+    ECommerce.Cart -> Inventory.InventoryService "Checks availability"
+    ECommerce.Cart -> ECommerce.Payment "Processes payment"
+    
+    scenario Checkout "Checkout Process" {
+        description "The complete checkout flow including payment and inventory check."
+        
+        Customer -> ECommerce.Cart "Initiates checkout"
+        ECommerce.Cart -> Inventory.InventoryService "Reserves items"
+        Inventory.InventoryService -> ECommerce.Cart "Confirms reserved"
+        ECommerce.Cart -> ECommerce.Payment "Charges payment"
+        ECommerce.Payment -> Customer "Sends confirmation"
+    }
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 

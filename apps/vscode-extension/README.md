@@ -50,6 +50,4 @@ Configure the extension in VS Code settings:
 - [GitHub Repository](https://github.com/sruja-ai/sruja)
 - [Examples](https://github.com/sruja-ai/sruja/tree/main/examples)
 
-## License
-
-MIT
+Apache 2.0

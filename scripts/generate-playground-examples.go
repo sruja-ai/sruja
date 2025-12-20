@@ -48,7 +48,7 @@ func main() {
 	var designerExamples []ExampleEntry
 	for _, ex := range manifest.Examples {
 		if !ex.SkipPlayground {
-			playgroundExamples = append(playgroundExamples, ex)
+			designerExamples = append(designerExamples, ex)
 		}
 	}
 

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/sruja-ai/sruja/pkg/dx"
+	"github.com/sruja-ai/sruja/pkg/export/likec4"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
@@ -26,6 +27,16 @@ func runFmt(args []string, stdout, stderr io.Writer) int {
 
 	filePath := fmtCmd.Arg(0)
 
+	info, err := os.Stat(filePath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "Error accessing path: %v\n", err)
+		return 1
+	}
+	if info.IsDir() {
+		_, _ = fmt.Fprintf(stderr, "Formatting directories not supported yet\n")
+		return 1
+	}
+
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "Error reading file: %v\n", err)
@@ -44,8 +55,14 @@ func runFmt(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	printer := &language.Printer{}
-	formatted := printer.Print(program)
+	if program.Model == nil {
+		_, _ = fmt.Fprintf(stderr, "Error: no model found in file\n")
+		return 1
+	}
+
+	// Use LikeC4 DSL exporter for formatting
+	dslExporter := likec4.NewDSLExporter()
+	formatted := dslExporter.ExportDSL(program)
 	_, _ = fmt.Fprint(stdout, formatted)
 	return 0
 }

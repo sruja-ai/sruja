@@ -15,15 +15,12 @@ func (r *UniqueIDRule) Name() string {
 }
 
 func (r *UniqueIDRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	if program == nil || program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return nil
 	}
 
-	arch := program.Architecture
-	// Estimate capacity based on architecture size
-	estimatedIDs := estimateIDCount(arch)
-	seenIDs := make(map[string]language.SourceLocation, estimatedIDs)
-	diags := make([]diagnostics.Diagnostic, 0, estimatedIDs/10) // Assume ~10% duplicates
+	seenIDs := make(map[string]language.SourceLocation, 100)
+	diags := make([]diagnostics.Diagnostic, 0, 10)
 
 	checkID := func(id string, loc language.SourceLocation) {
 		if id == "" {
@@ -36,11 +33,12 @@ func (r *UniqueIDRule) Validate(program *language.Program) []diagnostics.Diagnos
 			msgSb.WriteString("Duplicate identifier '")
 			msgSb.WriteString(id)
 			msgSb.WriteString("'")
-			if existing.File != "" && existing.File == loc.File {
+			switch {
+			case existing.File != "" && existing.File == loc.File:
 				msgSb.WriteString(fmt.Sprintf(". First defined at line %d, column %d", existing.Line, existing.Column))
-			} else if existing.File != "" {
+			case existing.File != "":
 				msgSb.WriteString(fmt.Sprintf(". First defined in '%s' at line %d", existing.File, existing.Line))
-			} else {
+			default:
 				msgSb.WriteString(fmt.Sprintf(". Previously defined at line %d", existing.Line))
 			}
 
@@ -67,55 +65,54 @@ func (r *UniqueIDRule) Validate(program *language.Program) []diagnostics.Diagnos
 		}
 	}
 
-	for _, sys := range arch.Systems {
-		checkID(sys.ID, sys.Location())
-		for _, cont := range sys.Containers {
-			checkID(cont.ID, cont.Location())
-			for _, comp := range cont.Components {
-				checkID(comp.ID, comp.Location())
-			}
-			for _, ds := range cont.DataStores {
-				checkID(ds.ID, ds.Location())
-			}
-			for _, q := range cont.Queues {
-				checkID(q.ID, q.Location())
-			}
+	// Collect all element IDs from LikeC4 Model
+	var collectIDs func(elem *language.LikeC4ElementDef, parentFQN string)
+	collectIDs = func(elem *language.LikeC4ElementDef, parentFQN string) {
+		if elem == nil {
+			return
 		}
-		for _, comp := range sys.Components {
-			checkID(comp.ID, comp.Location())
+
+		id := elem.GetID()
+		if id == "" {
+			return
 		}
-		for _, ds := range sys.DataStores {
-			checkID(ds.ID, ds.Location())
+
+		fqn := id
+		if parentFQN != "" {
+			fqn = buildQualifiedID(parentFQN, id)
+			// Check both FQN and short ID for uniqueness if they differ
+			checkID(id, elem.Location())
 		}
-		for _, q := range sys.Queues {
-			checkID(q.ID, q.Location())
+
+		checkID(fqn, elem.Location())
+
+		// Recurse into nested elements
+		body := elem.GetBody()
+		if body != nil {
+			for _, bodyItem := range body.Items {
+				if bodyItem.Element != nil {
+					collectIDs(bodyItem.Element, fqn)
+				}
+			}
 		}
 	}
 
-	for _, p := range arch.Persons {
-		checkID(p.ID, p.Location())
-	}
-	for _, req := range arch.Requirements {
-		checkID(req.ID, req.Location())
-	}
-	for _, adr := range arch.ADRs {
-		checkID(adr.ID, adr.Location())
+	// Process all items in model
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			collectIDs(item.ElementDef, "")
+		}
+		// Check other top-level items (scenarios, ADRs, etc.)
+		if item.Scenario != nil {
+			checkID(item.Scenario.ID, item.Scenario.Location())
+		}
+		if item.ADR != nil {
+			checkID(item.ADR.ID, item.ADR.Location())
+		}
+		if item.Requirement != nil {
+			checkID(item.Requirement.ID, item.Requirement.Location())
+		}
 	}
 
 	return diags
-}
-
-// estimateIDCount provides a rough estimate of total IDs for map pre-allocation.
-func estimateIDCount(arch *language.Architecture) int {
-	if arch == nil {
-		return 16
-	}
-	count := len(arch.Persons) + len(arch.Requirements) + len(arch.ADRs)
-	for _, sys := range arch.Systems {
-		count += 1 + len(sys.Components) + len(sys.DataStores) + len(sys.Queues)
-		for _, cont := range sys.Containers {
-			count += 1 + len(cont.Components) + len(cont.DataStores) + len(cont.Queues)
-		}
-	}
-	return count + 32 // Add buffer
 }

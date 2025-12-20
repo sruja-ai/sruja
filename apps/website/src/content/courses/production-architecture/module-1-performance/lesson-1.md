@@ -43,35 +43,44 @@ Start with the core components:
 Let's model this architecture:
 
 ```sruja
-architecture "Video Streaming Platform" {
-  person Viewer "Video Viewer"
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+  Viewer = person "Video Viewer"
   
-  system StreamingPlatform "Video Streaming Service" {
-    container CDN "Content Delivery Network" {
+  StreamingPlatform = system "Video Streaming Service" {
+    CDN = container "Content Delivery Network" {
       technology "Cloudflare, AWS CloudFront"
       description "Serves videos from edge locations worldwide"
     }
     
-    container OriginServer "Origin Server" {
+    OriginServer = container "Origin Server" {
       technology "S3, GCS"
       description "Stores original video files"
     }
     
-    container VideoAPI "Video API" {
+    VideoAPI = container "Video API" {
       technology "Go, gRPC"
       description "Handles video metadata, user requests"
     }
     
-    container TranscodingService "Video Transcoding" {
+    TranscodingService = container "Video Transcoding" {
       technology "FFmpeg, Kubernetes"
       description "Converts videos to different formats/qualities"
     }
     
-    datastore VideoDB "Video Metadata Database" {
+    VideoDB = datastore "Video Metadata Database" {
       technology "PostgreSQL"
     }
     
-    datastore UserDB "User Database" {
+    UserDB = datastore "User Database" {
       technology "PostgreSQL"
     }
   }
@@ -83,6 +92,12 @@ architecture "Video Streaming Platform" {
   StreamingPlatform.VideoAPI -> StreamingPlatform.UserDB "Queries user data"
   StreamingPlatform.OriginServer -> StreamingPlatform.TranscodingService "Processes videos"
 }
+
+views {
+  view index {
+    include *
+  }
+}
 ```
 
 ## Step 4: Address Scaling (The Key Part)
@@ -92,17 +107,26 @@ architecture "Video Streaming Platform" {
 This is where you show your scaling knowledge. Let's add scaling configuration:
 
 ```sruja
-architecture "Video Streaming Platform" {
-  person Viewer "Video Viewer"
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+  Viewer = person "Video Viewer"
   
-  system StreamingPlatform "Video Streaming Service" {
-    container CDN "Content Delivery Network" {
+  StreamingPlatform = system "Video Streaming Service" {
+    CDN = container "Content Delivery Network" {
       technology "Cloudflare, AWS CloudFront"
       // CDN scales automatically - no need to configure
       description "Serves videos from edge locations worldwide"
     }
     
-    container VideoAPI "Video API" {
+    VideoAPI = container "Video API" {
       technology "Go, gRPC"
       
       // This is what interviewers want to see!
@@ -115,7 +139,7 @@ architecture "Video Streaming Platform" {
       description "Handles video metadata, user requests"
     }
     
-    container TranscodingService "Video Transcoding" {
+    TranscodingService = container "Video Transcoding" {
       technology "FFmpeg, Kubernetes"
       
       scale {
@@ -127,11 +151,17 @@ architecture "Video Streaming Platform" {
       description "Converts videos to different formats/qualities"
     }
     
-    datastore VideoDB "Video Metadata Database" {
+    VideoDB = datastore "Video Metadata Database" {
       technology "PostgreSQL"
       // Database scaling: read replicas
       description "Primary database with 5 read replicas for scaling reads"
     }
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```
@@ -175,9 +205,18 @@ architecture "Video Streaming Platform" {
 Add caching to your design:
 
 ```sruja
-architecture "Video Streaming Platform" {
-  system StreamingPlatform "Video Streaming Service" {
-    container VideoAPI "Video API" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+  StreamingPlatform = system "Video Streaming Service" {
+    VideoAPI = container "Video API" {
       technology "Go, gRPC"
       scale {
         min 10
@@ -186,11 +225,11 @@ architecture "Video Streaming Platform" {
       }
     }
     
-    datastore VideoDB "Video Metadata Database" {
+    VideoDB = datastore "Video Metadata Database" {
       technology "PostgreSQL"
     }
     
-    datastore Cache "Video Metadata Cache" {
+    Cache = datastore "Video Metadata Cache" {
       technology "Redis"
       description "Caches frequently accessed video metadata"
     }
@@ -199,6 +238,12 @@ architecture "Video Streaming Platform" {
   StreamingPlatform.VideoAPI -> StreamingPlatform.Cache "Reads metadata (cache hit)"
   StreamingPlatform.VideoAPI -> StreamingPlatform.VideoDB "Reads metadata (cache miss)"
   StreamingPlatform.VideoAPI -> StreamingPlatform.Cache "Writes to cache"
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 

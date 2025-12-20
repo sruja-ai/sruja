@@ -11,7 +11,7 @@ func TestDocumentFormatting(t *testing.T) {
 	s := NewServer()
 	uri := lsp.DocumentURI("file:///test.sruja")
 	// Unformatted content
-	content := `architecture "Test"{system S "System"}`
+	content := `model {system S "System"}`
 	s.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{
 		TextDocument: lsp.TextDocumentItem{
 			URI:  uri,

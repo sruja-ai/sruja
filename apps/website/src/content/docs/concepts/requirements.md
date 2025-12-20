@@ -11,11 +11,26 @@ Use `requirement` to capture functional, performance, security, and constraint r
 ## Syntax
 
 ```sruja
-architecture "Shop" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   requirement R1 functional "Support 10k concurrent users"
   requirement R2 performance "p95 < 200ms for /checkout"
   requirement R3 security "PII encrypted at rest"
   requirement R4 constraint "Only PostgreSQL managed service"
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 

@@ -37,7 +37,7 @@ export const PERFORMANCE_THRESHOLDS = {
 /**
  * Simple performance profiler for layout operations
  */
-class PerformanceProfiler {
+export class PerformanceProfiler {
   private metrics: PerformanceMetrics[] = [];
   private maxStoredMetrics = 50;
 
@@ -166,6 +166,8 @@ export function throttle<T extends (...args: any[]) => any>(
 }
 
 // Expose for debugging
+import { setPerformanceProfiler } from "../types/windowGlobals";
+
 if (typeof window !== "undefined") {
-  (window as any).__PERFORMANCE_PROFILER__ = performanceProfiler;
+  setPerformanceProfiler(performanceProfiler);
 }

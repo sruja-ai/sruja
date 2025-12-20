@@ -5,11 +5,24 @@ import (
 	"strings"
 
 	"github.com/sourcegraph/go-lsp"
+	"github.com/sruja-ai/sruja/pkg/language"
 )
 
 var keywordList = []string{
-	"architecture", "import", "system", "container", "component", "datastore", "queue", "person", "relation", "description", "metadata", "properties", "style",
-	"scenario", "story", "flow", "decision", "yes", "no", "condition", "library", "owner",
+	// Top-level elements
+	"specification", "model", "views", "view",
+	"element", "system", "component", "container", "datastore", "queue", "person",
+	// Extended elements
+	"adr", "requirement", "policy",
+	// Relationships
+	"relationship", "extend", "include", "exclude", "extends",
+	// Properties & Fields
+	"tag", "tags", "link", "links", "color", "icon", "shape", "style",
+	"title", "description", "technology", "tech", "owner",
+	"autoLayout", "of", "dynamic",
+	// Nested fields for extended elements
+	"status", "context", "decision", "consequences", "date",
+	"id", "text", "struct", "doc",
 }
 
 //nolint:funlen,gocyclo // Completion logic is complex and requires length
@@ -39,35 +52,8 @@ func (s *Server) Completion(_ context.Context, params lsp.CompletionParams) (*ls
 		}
 	}
 
-	if program != nil && program.Architecture != nil {
-		arch := program.Architecture
-		// Estimate capacity: typically many completion items
-		estimatedItems := len(arch.Systems) * 10
-		if estimatedItems < 32 {
-			estimatedItems = 32
-		}
-		seen := make(map[string]bool, estimatedItems)
-
-		// Helper to build qualified IDs efficiently
-		buildQualifiedID := func(parts ...string) string {
-			if len(parts) == 0 {
-				return ""
-			}
-			if len(parts) == 1 {
-				return parts[0]
-			}
-			totalLen := len(parts) - 1 // for dots
-			for _, p := range parts {
-				totalLen += len(p)
-			}
-			buf := make([]byte, 0, totalLen)
-			buf = append(buf, parts[0]...)
-			for i := 1; i < len(parts); i++ {
-				buf = append(buf, '.')
-				buf = append(buf, parts[i]...)
-			}
-			return string(buf)
-		}
+	if program != nil && program.Model != nil {
+		seen := make(map[string]bool, 32)
 
 		add := func(id string) {
 			if id == "" || seen[id] {
@@ -78,53 +64,50 @@ func (s *Server) Completion(_ context.Context, params lsp.CompletionParams) (*ls
 				seen[id] = true
 			}
 		}
-		for _, s := range arch.Systems {
-			add(s.ID)
-			for _, c := range s.Containers {
-				add(c.ID)
-				// Qualified container
-				add(buildQualifiedID(s.ID, c.ID))
-				for _, comp := range c.Components {
-					add(comp.ID)
-					add(buildQualifiedID(s.ID, c.ID, comp.ID))
+
+		// Collect all element IDs from LikeC4 Model
+		var collectIDs func(elem *language.LikeC4ElementDef, parentFQN string)
+		collectIDs = func(elem *language.LikeC4ElementDef, parentFQN string) {
+			if elem == nil {
+				return
+			}
+
+			id := elem.GetID()
+			if id == "" {
+				return
+			}
+
+			fqn := id
+			if parentFQN != "" {
+				fqn = parentFQN + "." + id
+			}
+
+			add(id)
+			add(fqn)
+
+			// Recurse into nested elements
+			body := elem.GetBody()
+			if body != nil {
+				for _, bodyItem := range body.Items {
+					if bodyItem.Element != nil {
+						collectIDs(bodyItem.Element, fqn)
+					}
 				}
-				for _, ds := range c.DataStores {
-					add(ds.ID)
-					add(buildQualifiedID(s.ID, c.ID, ds.ID))
-				}
-				for _, q := range c.Queues {
-					add(q.ID)
-					add(buildQualifiedID(s.ID, c.ID, q.ID))
-				}
-			}
-			for _, comp := range s.Components {
-				add(comp.ID)
-				add(buildQualifiedID(s.ID, comp.ID))
-			}
-			for _, ds := range s.DataStores {
-				add(ds.ID)
-				add(buildQualifiedID(s.ID, ds.ID))
-			}
-			for _, q := range s.Queues {
-				add(q.ID)
-				add(buildQualifiedID(s.ID, q.ID))
 			}
 		}
-		for _, p := range arch.Persons {
-			add(p.ID)
-		}
-		for _, ds := range arch.DataStores {
-			add(ds.ID)
-		}
-		for _, q := range arch.Queues {
-			add(q.ID)
-		}
-		// Scenario and flow IDs
-		for _, sc := range arch.Scenarios {
-			add(sc.ID)
-		}
-		for _, fl := range arch.Flows {
-			add(fl.ID)
+
+		// Process all top-level elements
+		for _, item := range program.Model.Items {
+			if item.ElementDef != nil {
+				collectIDs(item.ElementDef, "")
+			}
+			// Also add scenario and flow IDs
+			if item.Scenario != nil {
+				add(item.Scenario.ID)
+			}
+			if item.Flow != nil {
+				add(item.Flow.ID)
+			}
 		}
 	}
 

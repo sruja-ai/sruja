@@ -28,10 +28,9 @@ func runCompile(args []string, stdout, stderr io.Writer) int {
 	}
 
 	filePath := compileCmd.Arg(0)
-
-	content, err := os.ReadFile(filePath)
+	info, err := os.Stat(filePath)
 	if err != nil {
-		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error reading file: %v", err)))
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error accessing path: %v", err)))
 		return 1
 	}
 
@@ -41,10 +40,33 @@ func runCompile(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	program, _, err := p.Parse(filePath, string(content))
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Parser Error: %v", err)))
-		return 1
+	var program *language.Program
+	var content string // For error context
+
+	if info.IsDir() {
+		ws, err := p.ParseWorkspace(filePath)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Workspace Parser Error: %v", err)))
+			return 1
+		}
+		// Resolve references across the workspace
+		engine.RunWorkspaceResolution(ws)
+		program = ws.MergedProgram()
+		content = "// Merged workspace content"
+	} else {
+		fileContent, err := os.ReadFile(filePath)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error reading file: %v", err)))
+			return 1
+		}
+		content = string(fileContent)
+		program, _, err = p.Parse(filePath, content)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Parser Error: %v", err)))
+			return 1
+		}
+		// Resolve references in the single file
+		engine.RunResolution(program)
 	}
 
 	// Validation

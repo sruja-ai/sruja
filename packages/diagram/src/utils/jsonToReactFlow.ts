@@ -115,9 +115,73 @@ function convertViewDataToReactFlow(
     }
   });
 
-  const edges: Edge[] = viewData.edges
-    .filter((edge) => edge.source !== edge.target)
-    .map((edge) => createEdgeFromViewEdge(edge));
+  // Filter and deduplicate edges
+  // Rule: If same source has edges to both parent and child, prefer the child (more specific)
+  const edgeMap = new Map<string, Edge>();
+  const nodeMap = new Map<string, Node<C4NodeData>>();
+  nodes.forEach((n) => nodeMap.set(n.id, n));
+
+  // Build parent-child relationships map
+  const parentMap = new Map<string, string>(); // childId -> parentId
+  nodes.forEach((n) => {
+    if (n.parentId) {
+      parentMap.set(n.id, n.parentId);
+    }
+  });
+
+  // Helper to check if node1 is ancestor of node2
+  const isAncestor = (ancestorId: string, nodeId: string): boolean => {
+    let current = nodeId;
+    while (current) {
+      const parent = parentMap.get(current);
+      if (parent === ancestorId) return true;
+      if (!parent) break;
+      current = parent;
+    }
+    return false;
+  };
+
+  // Process edges and deduplicate
+  for (const edge of viewData.edges) {
+    if (edge.source === edge.target) continue;
+
+    const sourceNode = nodeMap.get(edge.source);
+    const targetNode = nodeMap.get(edge.target);
+    if (!sourceNode || !targetNode) continue;
+
+    // Create edge key for deduplication
+    const edgeKey = `${edge.source}::${edge.target}`;
+
+    // Check if we already have an edge from this source
+    const existingEdges = Array.from(edgeMap.values()).filter(
+      (e) => e.source === edge.source
+    );
+
+    // Check if target is a child of any existing target
+    let shouldAdd = true;
+    for (const existing of existingEdges) {
+      const existingTarget = nodeMap.get(existing.target);
+      if (!existingTarget) continue;
+
+      // If new target is child of existing target, replace existing with more specific
+      if (isAncestor(existing.target, edge.target)) {
+        edgeMap.delete(`${existing.source}::${existing.target}`);
+        break;
+      }
+
+      // If existing target is child of new target, skip new (less specific)
+      if (isAncestor(edge.target, existing.target)) {
+        shouldAdd = false;
+        break;
+      }
+    }
+
+    if (shouldAdd) {
+      edgeMap.set(edgeKey, createEdgeFromViewEdge(edge));
+    }
+  }
+
+  const edges: Edge[] = Array.from(edgeMap.values());
 
   return { nodes, edges };
 }
@@ -528,6 +592,7 @@ function transformComponentLevel(
 }
 
 // Helper to resolve dotted references like "ECommerce.API" to visible node
+// Option B: Only fall back to parent when the child is NOT visible
 function resolveNodeId(
   nodeRef: string,
   _arch: ArchitectureJSON["architecture"],
@@ -543,9 +608,27 @@ function resolveNodeId(
     }
   }
 
-  // Try to find the parent system
+  // Try to find the parent system - but ONLY if no child matches the FQN suffix
+  // This prevents creating duplicate edges to both parent and child when expanded
   const parts = nodeRef.split(".");
   if (parts.length > 1) {
+    const childPart = parts[parts.length - 1]; // e.g., "WebApp" from "ECommerce.WebApp"
+
+    // Check if any visible node matches the child part directly
+    // If so, the child is visible and we should NOT fall back to parent
+    if (visibleNodes.has(childPart)) {
+      return childPart;
+    }
+
+    // Also check if any visible node is the child using FQN matching
+    // e.g., "Shop.WebApp" visible when nodeRef is "ECommerce.Shop.WebApp"
+    for (const visibleId of visibleNodes) {
+      if (visibleId === childPart || visibleId.endsWith("." + childPart)) {
+        return visibleId;
+      }
+    }
+
+    // Only fall back to parent when no child is visible
     const systemId = parts[0];
     if (visibleNodes.has(systemId)) return systemId;
   }

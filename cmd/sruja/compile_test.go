@@ -13,12 +13,12 @@ func TestRunCompile(t *testing.T) {
 	validFile := filepath.Join(tmpDir, "valid.sruja")
 	invalidFile := filepath.Join(tmpDir, "invalid.sruja")
 
-	validContent := `architecture "Valid" {
+	validContent := `model {
 		system S1 "System 1"
 		system S2 "System 2"
 		S1 -> S2 "uses"
 	}`
-	invalidContent := `architecture "Invalid" {
+	invalidContent := `model {
 		system S1 "System 1"
 		system S1 "Duplicate System"
 	}`
@@ -71,8 +71,8 @@ func TestRunCompile_Errors(t *testing.T) {
 	if exitCode := runCompile([]string{"nonexistent.sruja"}, &stdout, &stderr); exitCode == 0 {
 		t.Error("Expected non-zero exit code for non-existent file")
 	}
-	if !strings.Contains(stderr.String(), "Error reading file") {
-		t.Error("Expected error reading file")
+	if !strings.Contains(stderr.String(), "Error accessing path") {
+		t.Error("Expected error accessing path")
 	}
 
 	// Test invalid syntax
@@ -88,5 +88,27 @@ func TestRunCompile_Errors(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "Parser Error") {
 		t.Error("Expected parser error")
+	}
+}
+
+func TestRunCompile_Directory(t *testing.T) {
+	tmpDir := t.TempDir()
+	mainFile := filepath.Join(tmpDir, "main.sruja")
+	otherFile := filepath.Join(tmpDir, "other.sruja")
+
+	if err := os.WriteFile(mainFile, []byte(`model { system S1 "Sys 1" }`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(otherFile, []byte(`model { system S2 "Sys 2" }`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	exitCode := runCompile([]string{tmpDir}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Errorf("Expected exit code 0 for directory compilation, got %d. Stderr: %s", exitCode, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "Compilation successful") {
+		t.Error("Expected success message")
 	}
 }

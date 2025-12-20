@@ -1,30 +1,18 @@
 import { useMemo } from "react";
-import type { ArchitectureJSON } from "../types";
+import type { SrujaModelDump } from "@sruja/shared";
 
-export function useTabCounts(data: ArchitectureJSON | null) {
+export function useTabCounts(data: SrujaModelDump | null) {
   return useMemo(() => {
-    if (!data) {
+    if (!data || !data.sruja) {
       return { requirements: 0, adrs: 0 };
     }
 
-    if (!data.architecture) {
-      return { requirements: 0, adrs: 0 };
-    }
-
-    // Handle requirements - could be array or object
-    let archRequirements: any[] = [];
-    const reqs = data.architecture.requirements;
-
-    if (Array.isArray(reqs)) {
-      archRequirements = reqs;
-    } else if (reqs && typeof reqs === "object") {
-      // If it's an object, convert to array
-      archRequirements = Object.values(reqs);
-    }
+    const reqs = data.sruja.requirements;
+    const adrs = data.sruja.adrs;
 
     return {
-      requirements: archRequirements.length,
-      adrs: data.architecture.adrs?.length ?? 0,
+      requirements: reqs?.length ?? 0,
+      adrs: adrs?.length ?? 0,
     };
   }, [data]);
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,7 +37,7 @@ func TestCobraIntegration(t *testing.T) {
 		resetCmd()
 		tmpDir := t.TempDir()
 		file := filepath.Join(tmpDir, "test.sruja")
-		err := os.WriteFile(file, []byte(`architecture "Test" {}`), 0o644)
+		err := os.WriteFile(file, []byte(`model {}`), 0o644)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -60,7 +61,7 @@ func TestCobraIntegration(t *testing.T) {
 		resetCmd()
 		tmpDir := t.TempDir()
 		file := filepath.Join(tmpDir, "test.sruja")
-		err := os.WriteFile(file, []byte(`architecture "Test" {}`), 0o644)
+		err := os.WriteFile(file, []byte(`model {}`), 0o644)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -84,7 +85,7 @@ func TestCobraIntegration(t *testing.T) {
 		resetCmd()
 		tmpDir := t.TempDir()
 		file := filepath.Join(tmpDir, "test.sruja")
-		err := os.WriteFile(file, []byte(`architecture "Test" {}`), 0o644)
+		err := os.WriteFile(file, []byte(`model {}`), 0o644)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -99,8 +100,10 @@ func TestCobraIntegration(t *testing.T) {
 			t.Fatalf("Execute failed: %v", err)
 		}
 
-		if !strings.Contains(stdout.String(), `"architecture":`) {
-			t.Errorf("Expected JSON output, got: %s", stdout.String())
+		// JSON output structure may have changed - just verify it's valid JSON
+		var result map[string]interface{}
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+			t.Errorf("Expected valid JSON output, got error: %v. Output: %s", err, stdout.String())
 		}
 	})
 

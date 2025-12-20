@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -16,18 +15,9 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	// Add flags to change create command (must be before adding to parent)
-	cmdChangeCreate.Flags().String("requirement", "", "Requirement ID")
-	cmdChangeCreate.Flags().String("owner", "", "Change owner")
-	cmdChangeCreate.Flags().String("stakeholders", "", "Comma-separated list of stakeholders")
-
 	// Add flags to import command
 	cmdImport.Flags().String("output", "", "Output directory (default: current directory)")
 	cmdImport.Flags().String("format", "single", "Output format: single (one file) or multiple (separate files)")
-
-	// Add subcommands to change command
-	cmdChange.AddCommand(cmdChangeCreate)
-	cmdChange.AddCommand(cmdChangeValidate)
 
 	rootCmd.AddCommand(cmdVersion)
 	rootCmd.AddCommand(cmdCompile)
@@ -40,7 +30,7 @@ func init() {
 	rootCmd.AddCommand(cmdList)
 	rootCmd.AddCommand(cmdTree)
 	rootCmd.AddCommand(cmdDiff)
-	rootCmd.AddCommand(cmdChange)
+	// cmdChange removed - ChangeBlock and SnapshotBlock removed (old syntax)
 	rootCmd.AddCommand(cmdCompletion)
 	rootCmd.AddCommand(cmdLSP)
 	rootCmd.AddCommand(initCmd)
@@ -109,15 +99,6 @@ var cmdExport = &cobra.Command{
 	},
 }
 
-func init() {
-	// Note: HTML export removed from CLI - HTML export code exists in pkg/export/html
-	// but is not accessible via CLI export command
-	// Legacy flags kept for backward compatibility but unused
-	_ = cmdExport.Flags().Bool("local", false, "(deprecated) Use local multi-file mode")
-	_ = cmdExport.Flags().Bool("single-file", false, "(deprecated) Use single-file mode")
-	_ = cmdExport.Flags().StringP("out", "o", "", "(deprecated) Output directory or file")
-}
-
 var cmdImport = &cobra.Command{
 	Use:                "import",
 	Short:              "Import from a format",
@@ -182,44 +163,8 @@ var cmdDiff = &cobra.Command{
 	},
 }
 
-var cmdChange = &cobra.Command{
-	Use:   "change",
-	Short: "Manage architectural changes",
-}
-
-var cmdChangeCreate = &cobra.Command{
-	Use:   "create <change-name>",
-	Short: "Create a new change file",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		requirement, _ := cmd.Flags().GetString("requirement")
-		owner, _ := cmd.Flags().GetString("owner")
-		stakeholdersStr, _ := cmd.Flags().GetString("stakeholders")
-		var stakeholders []string
-		if stakeholdersStr != "" {
-			stakeholders = strings.Split(stakeholdersStr, ",")
-			for i := range stakeholders {
-				stakeholders[i] = strings.TrimSpace(stakeholders[i])
-			}
-		}
-		if runChangeCreate(args[0], requirement, owner, stakeholders, cmd.OutOrStdout(), cmd.ErrOrStderr()) != 0 {
-			return fmt.Errorf("change create failed")
-		}
-		return nil
-	},
-}
-
-var cmdChangeValidate = &cobra.Command{
-	Use:   "validate <change-file>",
-	Short: "Validate a change file",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if runChangeValidate(args[0], cmd.ErrOrStderr()) != 0 {
-			return fmt.Errorf("change validate failed")
-		}
-		return nil
-	},
-}
+// cmdChange, cmdChangeCreate, cmdChangeValidate removed
+// ChangeBlock and SnapshotBlock removed (old syntax no longer supported)
 
 var cmdCompletion = &cobra.Command{
 	Use:   "completion [bash|zsh|fish]",

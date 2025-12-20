@@ -1,5 +1,5 @@
 // packages/ui/src/components/Logo.tsx
-import { CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import { cn } from '../utils/cn';
 
 export interface LogoProps {

@@ -328,7 +328,18 @@ export function increaseSpacingForCrossingNodes(
 
   // Adjust spacing for pairs with crossings
   for (const [key, crossingCount] of nodePairs) {
-    const [id1, id2] = key.split("-");
+    if (!key || typeof key !== 'string') {
+      console.warn(`[CrossingBased] Invalid key, skipping:`, key);
+      continue;
+    }
+
+    const parts = key.split("-");
+    if (parts.length !== 2) {
+      console.warn(`[CrossingBased] Invalid key format, expected 'id1-id2', got:`, key);
+      continue;
+    }
+
+    const [id1, id2] = parts;
     const node1 = result.get(id1 as C4Id);
     const node2 = result.get(id2 as C4Id);
 

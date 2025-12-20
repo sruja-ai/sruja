@@ -7,6 +7,8 @@ import (
 
 	"github.com/sourcegraph/go-lsp"
 	"github.com/sruja-ai/sruja/pkg/language"
+	"golang.org/x/text/cases"
+	lang "golang.org/x/text/language"
 )
 
 func (s *Server) Hover(_ context.Context, params lsp.TextDocumentPositionParams) (*lsp.Hover, error) {
@@ -22,12 +24,12 @@ func (s *Server) Hover(_ context.Context, params lsp.TextDocumentPositionParams)
 	word := strings.TrimSpace(line[start:end])
 
 	program := doc.EnsureParsed()
-	if program == nil || program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return nil, nil
 	}
 
 	if word != "" {
-		t, label := findElement(program.Architecture, word)
+		t, label := findElementInModel(program.Model, word)
 		if t != "" {
 			// Build content efficiently
 			var sb strings.Builder
@@ -58,7 +60,7 @@ func (s *Server) Hover(_ context.Context, params lsp.TextDocumentPositionParams)
 		rightStart, rightEnd := wordBounds(line, rightPos)
 		right := strings.TrimSpace(line[rightStart:rightEnd])
 		if left != "" && right != "" {
-			verb, rlabel := findRelationInfo(program.Architecture, left, right)
+			verb, rlabel := findRelationInfoInModel(program.Model, left, right)
 			// Build content efficiently
 			var sb strings.Builder
 			sb.Grow(len(left) + len(right) + len(verb) + len(rlabel) + 20)
@@ -99,135 +101,126 @@ func wordBounds(line string, pos int) (int, int) {
 }
 
 //nolint:gocyclo // Recursive search is complex
-func findElement(arch *language.Architecture, id string) (string, string) {
-	// Helper to build qualified IDs efficiently
-	buildQualifiedID := func(parts ...string) string {
-		if len(parts) == 0 {
-			return ""
-		}
-		if len(parts) == 1 {
-			return parts[0]
-		}
-		totalLen := len(parts) - 1 // for dots
-		for _, p := range parts {
-			totalLen += len(p)
-		}
-		buf := make([]byte, 0, totalLen)
-		buf = append(buf, parts[0]...)
-		for i := 1; i < len(parts); i++ {
-			buf = append(buf, '.')
-			buf = append(buf, parts[i]...)
-		}
-		return string(buf)
+func findElementInModel(model *language.ModelBlock, id string) (string, string) {
+	if model == nil {
+		return "", ""
 	}
 
-	for _, s := range arch.Systems {
-		if s.ID == id {
-			return "System", s.Label
+	// Search for element in LikeC4 Model
+	var findElement func(elem *language.LikeC4ElementDef, currentFQN string) (string, string)
+	findElement = func(elem *language.LikeC4ElementDef, currentFQN string) (string, string) {
+		if elem == nil {
+			return "", ""
 		}
-		for _, c := range s.Containers {
-			contID := buildQualifiedID(s.ID, c.ID)
-			if c.ID == id || contID == id {
-				return "Container", c.Label
+
+		elemID := elem.GetID()
+		if elemID == "" {
+			return "", ""
+		}
+
+		fqn := elemID
+		if currentFQN != "" {
+			fqn = currentFQN + "." + elemID
+		}
+
+		// Check if this is the element we're looking for
+		if fqn == id || elemID == id {
+			kind := elem.GetKind()
+			titlePtr := elem.GetTitle()
+			title := elemID
+			if titlePtr != nil {
+				title = *titlePtr
 			}
-			for _, comp := range c.Components {
-				compID := buildQualifiedID(s.ID, c.ID, comp.ID)
-				if comp.ID == id || compID == id {
-					return "Component", comp.Label
+			if kind == "database" || kind == "datastore" {
+				return "DataStore", title
+			}
+			return cases.Title(lang.Und).String(kind), title
+		}
+
+		// Recurse into nested elements
+		body := elem.GetBody()
+		if body != nil {
+			for _, bodyItem := range body.Items {
+				if bodyItem.Element != nil {
+					if kind, label := findElement(bodyItem.Element, fqn); kind != "" {
+						return kind, label
+					}
 				}
 			}
 		}
-		for _, comp := range s.Components {
-			compID := buildQualifiedID(s.ID, comp.ID)
-			if comp.ID == id || compID == id {
-				return "Component", comp.Label
+
+		return "", ""
+	}
+
+	// Search all top-level elements
+	for _, item := range model.Items {
+		if item.ElementDef != nil {
+			if kind, label := findElement(item.ElementDef, ""); kind != "" {
+				return kind, label
 			}
 		}
-		for _, ds := range s.DataStores {
-			dsID := buildQualifiedID(s.ID, ds.ID)
-			if ds.ID == id || dsID == id {
-				return "DataStore", ds.Label
+		// Also check scenarios, flows, ADRs, etc.
+		if item.Scenario != nil && item.Scenario.ID == id {
+			title := item.Scenario.ID
+			if item.Scenario.Title != nil {
+				title = *item.Scenario.Title
 			}
+			return "Scenario", title
 		}
-		for _, q := range s.Queues {
-			qID := buildQualifiedID(s.ID, q.ID)
-			if q.ID == id || qID == id {
-				return "Queue", q.Label
+		if item.Flow != nil && item.Flow.ID == id {
+			title := item.Flow.ID
+			if item.Flow.Title != nil {
+				title = *item.Flow.Title
 			}
+			return "Flow", title
 		}
-	}
-	for _, p := range arch.Persons {
-		if p.ID == id {
-			return "Person", p.Label
-		}
-	}
-	for _, ds := range arch.DataStores {
-		if ds.ID == id {
-			return "DataStore", ds.Label
-		}
-	}
-	for _, q := range arch.Queues {
-		if q.ID == id {
-			return "Queue", q.Label
-		}
-	}
-	for _, lib := range arch.Libraries {
-		if lib.ID == id {
-			return "Library", lib.Label
-		}
-	}
-	for _, sc := range arch.Scenarios {
-		if sc.ID == id {
-			return "Scenario", sc.Title
-		}
-	}
-	for _, flow := range arch.Flows {
-		if flow.ID == id {
-			return "Flow", flow.Title
-		}
-		for _, item := range flow.Items {
-			if item.Step != nil {
-				if item.Step.From.String() == id || item.Step.To.String() == id {
-					desc := ""
-					if item.Step.Description != nil {
-						desc = *item.Step.Description
-					}
-					// Build description efficiently
-					var sb strings.Builder
-					sb.Grow(len(item.Step.From.String()) + len(item.Step.To.String()) + len(desc) + 10)
-					sb.WriteString(item.Step.From.String())
-					sb.WriteString(" -> ")
-					sb.WriteString(item.Step.To.String())
-					if desc != "" {
-						sb.WriteString(": ")
-						sb.WriteString(desc)
-					}
-					return "Flow Step", sb.String()
-				}
+		if item.ADR != nil && item.ADR.ID == id {
+			title := item.ADR.ID
+			if item.ADR.Title != nil {
+				title = *item.ADR.Title
 			}
+			return "ADR", title
+		}
+		if item.Requirement != nil && item.Requirement.ID == id {
+			desc := item.Requirement.ID
+			if item.Requirement.Description != nil {
+				desc = *item.Requirement.Description
+			}
+			return "Requirement", desc
 		}
 	}
+
 	return "", ""
 }
 
+// resolvedRel represents a relation with resolved FQNs
+type resolvedRel struct {
+	from, to    string
+	verb, label string
+}
+
 //nolint:gocyclo // Relation lookup is complex
-func findRelationInfo(arch *language.Architecture, from string, to string) (string, string) {
-	// search architecture-level relations first
-	for _, rel := range arch.Relations {
-		if rel.From.String() == from && rel.To.String() == to {
-			var verb, label string
-			if rel.Verb != nil {
-				verb = *rel.Verb
-			}
-			if rel.Label != nil {
-				label = *rel.Label
-			}
-			return verb, label
-		}
+func findRelationInfoInModel(model *language.ModelBlock, from string, to string) (string, string) {
+	if model == nil {
+		return "", ""
 	}
-	for _, s := range arch.Systems {
-		for _, rel := range s.Relations {
-			if rel.From.String() == from && rel.To.String() == to {
+
+	var relations []resolvedRel
+	var collectRelations func(elem *language.LikeC4ElementDef, currentFQN string)
+	collectRelations = func(elem *language.LikeC4ElementDef, currentFQN string) {
+		elemID := elem.GetID()
+		fqn := elemID
+		if currentFQN != "" {
+			fqn = currentFQN + "." + elemID
+		}
+
+		body := elem.GetBody()
+		if body == nil {
+			return
+		}
+		for _, bodyItem := range body.Items {
+			if bodyItem.Relation != nil {
+				rel := bodyItem.Relation
 				var verb, label string
 				if rel.Verb != nil {
 					verb = *rel.Verb
@@ -235,38 +228,53 @@ func findRelationInfo(arch *language.Architecture, from string, to string) (stri
 				if rel.Label != nil {
 					label = *rel.Label
 				}
-				return verb, label
-			}
-		}
-		for _, c := range s.Containers {
-			for _, rel := range c.Relations {
-				if rel.From.String() == from && rel.To.String() == to {
-					var verb, label string
-					if rel.Verb != nil {
-						verb = *rel.Verb
-					}
-					if rel.Label != nil {
-						label = *rel.Label
-					}
-					return verb, label
+				// Basic resolution: try current FQN and sibling lookups
+				rFrom := rel.From.String()
+				rTo := rel.To.String()
+
+				relations = append(relations, resolvedRel{
+					from: rFrom, to: rTo, verb: verb, label: label,
+				})
+				// Also add with context if available
+				if fqn != "" {
+					relations = append(relations, resolvedRel{
+						from: fqn + "." + rFrom, to: fqn + "." + rTo, verb: verb, label: label,
+					})
 				}
 			}
-		}
-		for _, comp := range s.Components {
-			for _, rel := range comp.Relations {
-				if rel.From.String() == from && rel.To.String() == to {
-					var verb, label string
-					if rel.Verb != nil {
-						verb = *rel.Verb
-					}
-					if rel.Label != nil {
-						label = *rel.Label
-					}
-					return verb, label
-				}
+			if bodyItem.Element != nil {
+				collectRelations(bodyItem.Element, fqn)
 			}
 		}
 	}
+
+	for _, item := range model.Items {
+		if item.Relation != nil {
+			var verb, label string
+			if item.Relation.Verb != nil {
+				verb = *item.Relation.Verb
+			}
+			if item.Relation.Label != nil {
+				label = *item.Relation.Label
+			}
+			relations = append(relations, resolvedRel{
+				from: item.Relation.From.String(),
+				to:   item.Relation.To.String(),
+				verb: verb, label: label,
+			})
+		}
+		if item.ElementDef != nil {
+			collectRelations(item.ElementDef, "")
+		}
+	}
+
+	// Search relations
+	for _, rel := range relations {
+		if rel.from == from && rel.to == to {
+			return rel.verb, rel.label
+		}
+	}
+
 	return "", ""
 }
 

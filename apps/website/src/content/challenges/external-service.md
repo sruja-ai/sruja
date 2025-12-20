@@ -5,20 +5,31 @@ difficulty: intermediate
 topic: integration
 estimatedTime: "10-15 min"
 initialDsl: |
-  architecture "Weather App" {
-    person User "App User"
+  specification {
+    element person
+    element system
+    element container
+    element component
+    element datastore
+    element queue
+    element external
+  }
+  
+  model {
+    User = person "App User"
     
-    system WeatherApp {
-      container MobileApp "Mobile App"
-      container WeatherAPI "Weather Service API"
-      datastore UserPrefs "User Preferences DB"
-    }
+      WeatherApp = system  {
+        MobileApp = container "Mobile App"
+        WeatherAPI = container "Weather Service API"
+        UserPrefs = datastore "User Preferences DB"
+      }
     
-    User -> MobileApp "Checks weather"
-    MobileApp -> WeatherAPI "Requests forecast"
-    WeatherAPI -> UserPrefs "Loads preferences"
+      User -> MobileApp "Checks weather"
+      MobileApp -> WeatherAPI "Requests forecast"
+      WeatherAPI -> UserPrefs "Loads preferences"
     
-    // TODO: Add external WeatherService and connect WeatherAPI -> WeatherService
+      // TODO: Add external WeatherService and connect WeatherAPI -> WeatherService
+    
   }
 checks:
   - type: noErrors
@@ -36,20 +47,31 @@ hints:
   - "External services represent third-party APIs you don't control"
   - "Add relation: WeatherAPI -> WeatherService \"Fetches weather data\""
 solution: |
-  architecture "Weather App" {
-    person User "App User"
+  specification {
+    element person
+    element system
+    element container
+    element component
+    element datastore
+    element queue
+    element external
+  }
+  
+  model {
+    User = person "App User"
     
-    system WeatherApp {
-      container MobileApp "Mobile App"
-      container WeatherAPI "Weather Service API"
-      datastore UserPrefs "User Preferences DB"
-    }
+      WeatherApp = system  {
+        MobileApp = container "Mobile App"
+        WeatherAPI = container "Weather Service API"
+        UserPrefs = datastore "User Preferences DB"
+      }
     
-    external WeatherService "OpenWeatherMap"
+      WeatherService = external "OpenWeatherMap"
     
-    User -> MobileApp "Checks weather"
-    MobileApp -> WeatherAPI "Requests forecast"
-    WeatherAPI -> UserPrefs "Loads preferences"
-    WeatherAPI -> WeatherService "Fetches weather data"
+      User -> MobileApp "Checks weather"
+      MobileApp -> WeatherAPI "Requests forecast"
+      WeatherAPI -> UserPrefs "Loads preferences"
+      WeatherAPI -> WeatherService "Fetches weather data"
+    
   }
 ---

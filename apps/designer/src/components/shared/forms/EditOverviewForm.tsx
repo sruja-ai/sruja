@@ -1,9 +1,11 @@
-// apps/playground/src/components/shared/forms/EditOverviewForm.tsx
-import { useState, useEffect, useRef } from "react";
+// apps/designer/src/components/shared/forms/EditOverviewForm.tsx
+// Refactored to use Mantine form components
+
+import { useEffect, useRef } from "react";
 import { useArchitectureStore } from "../../../stores";
-import type { OverviewJSON } from "../../../types";
-import { Button, Input, Textarea } from "@sruja/ui";
+import { Button, Input } from "@sruja/ui";
 import { SidePanel } from "../SidePanel";
+import { FormField, useFormState } from "./";
 import { X } from "lucide-react";
 import "../EditForms.css";
 
@@ -12,34 +14,94 @@ interface EditOverviewFormProps {
   onClose: () => void;
 }
 
+interface FormValues {
+  architectureDescription: string;
+  summary: string;
+  audience: string;
+  scope: string;
+  goals: string[];
+  nonGoals: string[];
+  risks: string[];
+}
+
 export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
-  const data = useArchitectureStore((s) => s.data);
+  const data = useArchitectureStore((s) => s.likec4Model);
   const formRef = useRef<HTMLFormElement>(null);
-  const overview = data?.architecture?.overview;
-  const [architectureDescription, setArchitectureDescription] = useState<string>(
-    data?.architecture?.description || ""
-  );
 
-  const [summary, setSummary] = useState(overview?.summary || "");
-  const [audience, setAudience] = useState(overview?.audience || "");
-  const [scope, setScope] = useState(overview?.scope || "");
-  const [goals, setGoals] = useState<string[]>(overview?.goals || []);
-  const [nonGoals, setNonGoals] = useState<string[]>(overview?.nonGoals || []);
-  const [risks, setRisks] = useState<string[]>(overview?.risks || []);
+  // Need to be careful mapping from likec4Model if it doesn't have overview yet or it's in sruja
+  const sruja = (data as any)?.sruja || {};
+  const overview = sruja?.overview;
 
+  // Initialize form state
+  const form = useFormState<FormValues>({
+    initialValues: {
+      architectureDescription: sruja?.description || "",
+      summary: overview?.summary || "",
+      audience: overview?.audience || "",
+      scope: overview?.scope || "",
+      goals: overview?.goals || [],
+      nonGoals: overview?.nonGoals || [],
+      risks: overview?.risks || [],
+    },
+    validate: () => ({}), // No validation needed for overview
+    onSubmit: async (values) => {
+      await updateArchitecture((model) => {
+        const sruja = (model as any).sruja || {};
+
+        const newOverview = {
+          summary: values.summary.trim() || undefined,
+          audience: values.audience.trim() || undefined,
+          scope: values.scope.trim() || undefined,
+          goals:
+            values.goals.filter((g) => g.trim()).length > 0
+              ? values.goals.filter((g) => g.trim())
+              : undefined,
+          nonGoals:
+            values.nonGoals.filter((ng) => ng.trim()).length > 0
+              ? values.nonGoals.filter((ng) => ng.trim())
+              : undefined,
+          risks:
+            values.risks.filter((r) => r.trim()).length > 0
+              ? values.risks.filter((r) => r.trim())
+              : undefined,
+        };
+
+        return {
+          ...model,
+          sruja: {
+            ...sruja,
+            description: values.architectureDescription.trim() || undefined,
+            overview: Object.keys(newOverview).some((k) => newOverview[k as keyof typeof newOverview])
+              ? newOverview
+              : undefined,
+          },
+        };
+      });
+      onClose();
+    },
+  });
+
+  // Reset form when opening/switching contexts
   useEffect(() => {
     if (isOpen) {
-      setSummary(overview?.summary || "");
-      setAudience(overview?.audience || "");
-      setScope(overview?.scope || "");
-      setGoals(overview?.goals || []);
-      setNonGoals(overview?.nonGoals || []);
-      setRisks(overview?.risks || []);
-      setArchitectureDescription(data?.architecture?.description || "");
-    }
-  }, [isOpen, overview, data]);
+      const sruja = (data as any)?.sruja || {};
+      const overview = sruja?.overview;
 
+      form.setValues({
+        architectureDescription: sruja?.description || "",
+        summary: overview?.summary || "",
+        audience: overview?.audience || "",
+        scope: overview?.scope || "",
+        goals: overview?.goals || [],
+        nonGoals: overview?.nonGoals || [],
+        risks: overview?.risks || [],
+      });
+      form.clearErrors();
+    }
+  }, [isOpen, data]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
@@ -52,60 +114,18 @@ export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
     }
   }, [isOpen, onClose]);
 
-  const addItem = (list: string[], setter: (items: string[]) => void) => {
-    setter([...list, ""]);
+  const addItem = (listName: "goals" | "nonGoals" | "risks") => {
+    form.setValue(listName, [...form.values[listName], ""]);
   };
 
-  const updateItem = (
-    list: string[],
-    index: number,
-    value: string,
-    setter: (items: string[]) => void
-  ) => {
-    const newList = [...list];
+  const updateItem = (listName: "goals" | "nonGoals" | "risks", index: number, value: string) => {
+    const newList = [...form.values[listName]];
     newList[index] = value;
-    setter(newList);
+    form.setValue(listName, newList);
   };
 
-  const removeItem = (list: string[], index: number, setter: (items: string[]) => void) => {
-    setter(list.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    try {
-      await updateArchitecture((arch) => {
-        if (!arch.architecture) return arch;
-        const newOverview: OverviewJSON = {
-          summary: summary.trim() || undefined,
-          audience: audience.trim() || undefined,
-          scope: scope.trim() || undefined,
-          goals:
-            goals.filter((g) => g.trim()).length > 0 ? goals.filter((g) => g.trim()) : undefined,
-          nonGoals:
-            nonGoals.filter((ng) => ng.trim()).length > 0
-              ? nonGoals.filter((ng) => ng.trim())
-              : undefined,
-          risks:
-            risks.filter((r) => r.trim()).length > 0 ? risks.filter((r) => r.trim()) : undefined,
-        };
-
-        return {
-          ...arch,
-          architecture: {
-            ...arch.architecture,
-            description: architectureDescription.trim() || undefined,
-            overview: Object.keys(newOverview).some((k) => newOverview[k as keyof OverviewJSON])
-              ? newOverview
-              : undefined,
-          },
-        };
-      });
-      onClose();
-    } catch (err) {
-      console.error("Failed to update overview:", err);
-    }
+  const removeItem = (listName: "goals" | "nonGoals" | "risks", index: number) => {
+    form.setValue(listName, form.values[listName].filter((_, i) => i !== index));
   };
 
   return (
@@ -119,45 +139,43 @@ export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button
-            variant="primary"
-            onClick={(e) => {
-              e.preventDefault();
-              handleSubmit(e as any);
-            }}
-          >
+          <Button variant="primary" type="submit" form="edit-overview-form" isLoading={form.isSubmitting}>
             Save
           </Button>
         </>
       }
     >
-      <form ref={formRef} onSubmit={handleSubmit} className="edit-form">
-        <Textarea
+      <form ref={formRef} id="edit-overview-form" onSubmit={form.handleSubmit} className="edit-form">
+        <FormField
           label="Architecture Description"
-          value={architectureDescription}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-            setArchitectureDescription(e.target.value)
-          }
+          name="architectureDescription"
+          value={form.values.architectureDescription}
+          onChange={(value) => form.setValue("architectureDescription", value)}
+          type="textarea"
           rows={3}
           placeholder="Purpose, scope, and high-level context of the architecture"
         />
-        <Textarea
+        <FormField
           label="Summary"
-          value={summary}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setSummary(e.target.value)}
+          name="summary"
+          value={form.values.summary}
+          onChange={(value) => form.setValue("summary", value)}
+          type="textarea"
           rows={3}
           placeholder="High-level architecture summary"
         />
-        <Input
+        <FormField
           label="Audience"
-          value={audience}
-          onChange={(e) => setAudience(e.target.value)}
+          name="audience"
+          value={form.values.audience}
+          onChange={(value) => form.setValue("audience", value)}
           placeholder="Target audience for this architecture"
         />
-        <Input
+        <FormField
           label="Scope"
-          value={scope}
-          onChange={(e) => setScope(e.target.value)}
+          name="scope"
+          value={form.values.scope}
+          onChange={(value) => form.setValue("scope", value)}
           placeholder="Architecture scope"
         />
         <div className="form-group">
@@ -165,12 +183,12 @@ export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
             Goals
           </label>
           <div className="list-items">
-            {goals.map((goal, index) => (
+            {form.values.goals.map((goal, index) => (
               <div key={index} className="list-item">
                 <div>
                   <Input
                     value={goal}
-                    onChange={(e) => updateItem(goals, index, e.target.value, setGoals)}
+                    onChange={(e) => updateItem("goals", index, e.target.value)}
                     placeholder="Enter a goal"
                   />
                 </div>
@@ -178,13 +196,13 @@ export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => removeItem(goals, index, setGoals)}
+                  onClick={() => removeItem("goals", index)}
                 >
                   <X size={16} />
                 </Button>
               </div>
             ))}
-            <Button type="button" variant="outline" onClick={() => addItem(goals, setGoals)}>
+            <Button type="button" variant="outline" onClick={() => addItem("goals")}>
               + Add Goal
             </Button>
           </div>
@@ -194,12 +212,12 @@ export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
             Non-Goals
           </label>
           <div className="list-items">
-            {nonGoals.map((ng, index) => (
+            {form.values.nonGoals.map((ng, index) => (
               <div key={index} className="list-item">
                 <div>
                   <Input
                     value={ng}
-                    onChange={(e) => updateItem(nonGoals, index, e.target.value, setNonGoals)}
+                    onChange={(e) => updateItem("nonGoals", index, e.target.value)}
                     placeholder="Enter a non-goal"
                   />
                 </div>
@@ -207,13 +225,13 @@ export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => removeItem(nonGoals, index, setNonGoals)}
+                  onClick={() => removeItem("nonGoals", index)}
                 >
                   <X size={16} />
                 </Button>
               </div>
             ))}
-            <Button type="button" variant="outline" onClick={() => addItem(nonGoals, setNonGoals)}>
+            <Button type="button" variant="outline" onClick={() => addItem("nonGoals")}>
               + Add Non-Goal
             </Button>
           </div>
@@ -223,12 +241,12 @@ export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
             Risks & Concerns
           </label>
           <div className="list-items">
-            {risks.map((risk, index) => (
+            {form.values.risks.map((risk, index) => (
               <div key={index} className="list-item">
                 <div>
                   <Input
                     value={risk}
-                    onChange={(e) => updateItem(risks, index, e.target.value, setRisks)}
+                    onChange={(e) => updateItem("risks", index, e.target.value)}
                     placeholder="Enter a risk or concern"
                   />
                 </div>
@@ -236,13 +254,13 @@ export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => removeItem(risks, index, setRisks)}
+                  onClick={() => removeItem("risks", index)}
                 >
                   <X size={16} />
                 </Button>
               </div>
             ))}
-            <Button type="button" variant="outline" onClick={() => addItem(risks, setRisks)}>
+            <Button type="button" variant="outline" onClick={() => addItem("risks")}>
               + Add Risk
             </Button>
           </div>

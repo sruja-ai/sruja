@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import type { C4Level, FlowJSON } from "../types";
+import type { C4Level, ViewTab, ViewMode } from "../types";
+import type { FlowDump } from "@sruja/shared";
 
 interface ViewState {
   currentLevel: C4Level;
@@ -94,7 +95,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
 // Selection store for selected nodes and active flows
 interface SelectionState {
   selectedNodeId: string | null;
-  activeFlow: FlowJSON | null;
+  activeFlow: FlowDump | null;
   flowStep: number;
   isFlowPlaying: boolean;
 
@@ -102,7 +103,18 @@ interface SelectionState {
 
   // Actions
   selectNode: (id: string | null) => void;
-  setActiveFlow: (flow: FlowJSON | null) => void;
+  /**
+   * Set the active view (Diagram, Code, etc.)
+   */
+  setActiveTab: (tab: ViewTab) => void;
+  /**
+   * Set the view mode (Designer, Present)
+   */
+  setViewMode: (mode: ViewMode) => void;
+  /**
+   * Set the active flow for animation
+   */
+  setActiveFlow: (flow: FlowDump | null) => void;
   setActiveRequirement: (reqId: string | null) => void;
   setFlowStep: (step: number) => void;
   playFlow: () => void;
@@ -117,13 +129,18 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
   activeRequirement: null,
   flowStep: 0,
   isFlowPlaying: false,
+  activeTab: "Diagram", // Added default
+  viewMode: "Designer", // Added default
 
   selectNode: (id) => {
-    set({ selectedNodeId: id, activeRequirement: null }); // Clear requirement when selecting node
+    set({ selectedNodeId: id });
   },
 
+  setActiveTab: (tab) => set((state) => ({ ...state, activeTab: tab })),
+  setViewMode: (mode) => set((state) => ({ ...state, viewMode: mode })),
+
   setActiveFlow: (flow) => {
-    set({ activeFlow: flow, flowStep: 0, isFlowPlaying: false, activeRequirement: null });
+    set({ activeFlow: flow, isFlowPlaying: !!flow, flowStep: 0 });
   },
 
   setActiveRequirement: (reqId) => {

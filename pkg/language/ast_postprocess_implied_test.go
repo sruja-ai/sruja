@@ -14,7 +14,7 @@ func TestArchitecture_InferImpliedRelationships(t *testing.T) {
 		{
 			name: "Simple implied relationship",
 			dsl: `
-architecture "Test" {
+model {
     person User "User"
     system API "API Service" {
         container WebApp "Web Application"
@@ -27,7 +27,7 @@ architecture "Test" {
 		{
 			name: "Multiple implied relationships",
 			dsl: `
-architecture "Test" {
+model {
     person User "User"
     system Shop "Shop" {
         container WebApp "Web Application"
@@ -45,7 +45,7 @@ architecture "Test" {
 		{
 			name: "No implied if parent exists",
 			dsl: `
-architecture "Test" {
+model {
     person User "User"
     system API "API Service" {
         container WebApp "Web Application"
@@ -70,16 +70,24 @@ architecture "Test" {
 				t.Fatalf("Failed to parse: %v", err)
 			}
 
-			if program.Architecture == nil {
-				t.Fatal("Architecture is nil")
+			if program == nil || program.Model == nil {
+				t.Fatal("Program or Model is nil")
 			}
 
-			actual := len(program.Architecture.Relations)
+			// Count relations in Model
+			actual := 0
+			for _, item := range program.Model.Items {
+				if item.Relation != nil {
+					actual++
+				}
+			}
 			if actual != tt.expected {
 				t.Errorf("Expected %d relationships, got %d", tt.expected, actual)
 				// Print actual relationships for debugging
-				for i, rel := range program.Architecture.Relations {
-					t.Logf("  Relationship %d: %s -> %s", i+1, rel.From.String(), rel.To.String())
+				for i, item := range program.Model.Items {
+					if item.Relation != nil {
+						t.Logf("  Relationship %d: %s -> %s", i+1, item.Relation.From.String(), item.Relation.To.String())
+					}
 				}
 			}
 		})

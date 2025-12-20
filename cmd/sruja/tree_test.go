@@ -11,7 +11,7 @@ import (
 func TestRunTree(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
-	content := `architecture "Test" {
+	content := `model {
 		system S "System" {
 			container C "Container" {
 				component Comp "Component"
@@ -30,9 +30,6 @@ func TestRunTree(t *testing.T) {
 		t.Errorf("Expected exit code 0, got %d. Stderr: %s", exitCode, stderr.String())
 	}
 	output := stdout.String()
-	if !strings.Contains(output, "Test") {
-		t.Error("Output missing architecture name")
-	}
 	if !strings.Contains(output, "System (S)") {
 		t.Error("Output missing system")
 	}

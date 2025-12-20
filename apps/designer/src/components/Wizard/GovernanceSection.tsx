@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { FileText, ClipboardList, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import { Button, Input } from "@sruja/ui";
+import { Button, Input, Select } from "@sruja/ui";
 import { useArchitectureStore } from "../../stores/architectureStore";
-import type { RequirementJSON, ADRJSON } from "../../types";
+import { deduplicateRequirements } from "../../utils/deduplicateRequirements";
+import type { RequirementDump, ADRDump } from "@sruja/shared";
 import "./WizardSteps.css";
 
 interface ElementOption {
@@ -20,15 +21,19 @@ interface GovernanceSectionProps {
 }
 
 export function GovernanceSection({ elements, levelLabel, filterFn }: GovernanceSectionProps) {
-  const data = useArchitectureStore((s) => s.data);
+  const data = useArchitectureStore((s) => s.likec4Model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
 
-  const allRequirements = data?.architecture?.requirements ?? [];
-  const allAdrs = data?.architecture?.adrs ?? [];
+  const sruja = (data as any)?.sruja ?? {}; // Dump structure for Sruja extensions
+  const allRequirements: RequirementDump[] = sruja.requirements ?? [];
+  const allAdrs: ADRDump[] = sruja.adrs ?? [];
+
+  // Deduplicate requirements first, then filter
+  const uniqueRequirements = deduplicateRequirements(allRequirements as any); // Cast to any because deduplicate might expect legacy types or just id/title
 
   // Filter to show only items tagged with elements at this level
-  const requirements = filterFn ? allRequirements.filter((r) => filterFn(r.tags)) : allRequirements;
-  const adrs = filterFn ? allAdrs.filter((a) => filterFn(a.tags)) : allAdrs;
+  const requirements = filterFn ? uniqueRequirements.filter((r: any) => filterFn(r.tags)) : uniqueRequirements;
+  const adrs = filterFn ? allAdrs.filter((a: any) => filterFn(a.tags)) : allAdrs; // adr.tags might be missing in interface
 
   const [activeTab, setActiveTab] = useState<"requirements" | "adrs">("requirements");
   const [expandedAdr, setExpandedAdr] = useState<string | null>(null);
@@ -40,7 +45,7 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
       const saved = window.localStorage.getItem(key);
       if (saved === "false") setCollapsed(false);
       else if (saved === "true") setCollapsed(true);
-    } catch {}
+    } catch { }
   }, [levelLabel]);
 
   // Requirement form
@@ -58,38 +63,49 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
   const [adrTag, setAdrTag] = useState("");
 
   const addRequirement = () => {
-    if (!reqId.trim() || !reqTitle.trim() || !data?.architecture) return;
-    const newReq: RequirementJSON = {
+    if (!reqId.trim() || !reqTitle.trim() || !data) return;
+    if (allRequirements.some((r) => r.id === reqId.trim())) return;
+    const newReq: any = {
       id: reqId.trim(),
       type: reqType,
       title: reqTitle.trim(),
       tags: reqTag ? [reqTag] : undefined,
     };
-    updateArchitecture((arch) => ({
-      ...arch,
-      architecture: {
-        ...arch.architecture,
-        requirements: [...(arch.architecture.requirements ?? []), newReq],
-      },
-    }));
+
+    updateArchitecture((model) => {
+      const currentSruja = (model as any).sruja || {};
+      const currentReqs = currentSruja.requirements || [];
+      return {
+        ...model,
+        sruja: {
+          ...currentSruja,
+          requirements: [...currentReqs, newReq]
+        }
+      };
+    });
+
     setReqId("");
     setReqTitle("");
     setReqTag("");
   };
 
   const removeRequirement = (id: string) => {
-    updateArchitecture((arch) => ({
-      ...arch,
-      architecture: {
-        ...arch.architecture,
-        requirements: (arch.architecture.requirements ?? []).filter((r) => r.id !== id),
-      },
-    }));
+    updateArchitecture((model) => {
+      const currentSruja = (model as any).sruja || {};
+      const currentReqs = currentSruja.requirements || [];
+      return {
+        ...model,
+        sruja: {
+          ...currentSruja,
+          requirements: currentReqs.filter((r: any) => r.id !== id)
+        }
+      };
+    });
   };
 
   const addAdr = () => {
-    if (!adrId.trim() || !adrTitle.trim() || !data?.architecture) return;
-    const newAdr: ADRJSON = {
+    if (!adrId.trim() || !adrTitle.trim() || !data) return;
+    const newAdr: any = {
       id: adrId.trim(),
       title: adrTitle.trim(),
       status: adrStatus,
@@ -97,13 +113,19 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
       decision: adrDecision.trim() || undefined,
       tags: adrTag ? [adrTag] : undefined,
     };
-    updateArchitecture((arch) => ({
-      ...arch,
-      architecture: {
-        ...arch.architecture,
-        adrs: [...(arch.architecture.adrs ?? []), newAdr],
-      },
-    }));
+
+    updateArchitecture((model) => {
+      const currentSruja = (model as any).sruja || {};
+      const currentAdrs = currentSruja.adrs || [];
+      return {
+        ...model,
+        sruja: {
+          ...currentSruja,
+          adrs: [...currentAdrs, newAdr]
+        }
+      };
+    });
+
     setAdrId("");
     setAdrTitle("");
     setAdrStatus("proposed");
@@ -113,13 +135,17 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
   };
 
   const removeAdr = (id: string) => {
-    updateArchitecture((arch) => ({
-      ...arch,
-      architecture: {
-        ...arch.architecture,
-        adrs: (arch.architecture.adrs ?? []).filter((a) => a.id !== id),
-      },
-    }));
+    updateArchitecture((model) => {
+      const currentSruja = (model as any).sruja || {};
+      const currentAdrs = currentSruja.adrs || [];
+      return {
+        ...model,
+        sruja: {
+          ...currentSruja,
+          adrs: currentAdrs.filter((a: any) => a.id !== id)
+        }
+      };
+    });
   };
 
   // Don't render if no elements to tag
@@ -130,7 +156,9 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
   return (
     <div className="step-section governance-section">
       <div className="governance-toggle">
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           className="gov-toggle-btn"
           onClick={() => {
             setCollapsed((v) => {
@@ -138,33 +166,37 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
               try {
                 const key = `playground:govCollapsed:${levelLabel}`;
                 window.localStorage.setItem(key, next ? "true" : "false");
-              } catch {}
+              } catch { }
               return next;
             });
           }}
         >
           {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
           <span>Governance</span>
-        </button>
+        </Button>
       </div>
       {!collapsed && (
         <div className="governance-mini-tabs">
-          <button
+          <Button
+            variant={activeTab === "requirements" ? "primary" : "ghost"}
+            size="sm"
             className={`gov-mini-tab ${activeTab === "requirements" ? "active" : ""}`}
             onClick={() => setActiveTab("requirements")}
           >
             <ClipboardList size={14} />
             Requirements
             <span className="count-badge">{requirements.length}</span>
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={activeTab === "adrs" ? "primary" : "ghost"}
+            size="sm"
             className={`gov-mini-tab ${activeTab === "adrs" ? "active" : ""}`}
             onClick={() => setActiveTab("adrs")}
           >
             <FileText size={14} />
             ADRs
             <span className="count-badge">{adrs.length}</span>
-          </button>
+          </Button>
         </div>
       )}
 
@@ -174,7 +206,7 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
           <p className="section-description">Define requirements linked to {levelLabel} elements</p>
 
           <div className="items-list">
-            {requirements.map((req) => (
+            {requirements.map((req: any) => (
               <div key={req.id} className="item-card">
                 <span
                   className={`item-type ${req.type === "functional" ? "functional" : "non-functional"}`}
@@ -186,9 +218,9 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
                   <span className="item-label">{req.title}</span>
                 </div>
                 {req.tags?.[0] && <span className="item-tag">{req.tags[0]}</span>}
-                <button className="item-remove" onClick={() => removeRequirement(req.id)}>
+                <Button variant="ghost" size="sm" className="item-remove" onClick={() => removeRequirement(req.id)}>
                   <Trash2 size={14} />
-                </button>
+                </Button>
               </div>
             ))}
           </div>
@@ -200,37 +232,39 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
               onChange={(e) => setReqId(e.target.value.replace(/\s/g, ""))}
               placeholder="REQ001"
             />
-            <div className="form-group">
-              <label>Type</label>
-              <select
-                value={reqType}
-                onChange={(e) => setReqType(e.target.value as "functional" | "nonfunctional")}
-              >
-                <option value="functional">Functional</option>
-                <option value="nonfunctional">Non-Functional</option>
-              </select>
-            </div>
+            <Select
+              label="Type"
+              value={reqType}
+              onChange={(value) => setReqType((value || "functional") as "functional" | "nonfunctional")}
+              data={[
+                { value: "functional", label: "Functional" },
+                { value: "nonfunctional", label: "Non-Functional" },
+              ]}
+            />
             <Input
               label="Title"
               value={reqTitle}
               onChange={(e) => setReqTitle(e.target.value)}
               placeholder="Must support 10k concurrent users"
             />
-            <div className="form-group">
-              <label>Link to</label>
-              <select value={reqTag} onChange={(e) => setReqTag(e.target.value)}>
-                <option value="">No link</option>
-                {elements.map((el) => (
-                  <option key={el.id} value={el.id}>
-                    {el.id}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="Link to"
+              value={reqTag}
+              onChange={(value) => setReqTag(value || "")}
+              placeholder="No link"
+              data={elements.map((el) => ({ value: el.id, label: el.id }))}
+            />
             <Button
               variant="secondary"
               onClick={addRequirement}
-              disabled={!reqId.trim() || !reqTitle.trim()}
+              disabled={
+                !reqId.trim() || !reqTitle.trim() || allRequirements.some((r) => r.id === reqId.trim())
+              }
+              title={
+                allRequirements.some((r) => r.id === reqId.trim())
+                  ? "Duplicate requirement ID"
+                  : undefined
+              }
             >
               <Plus size={16} />
             </Button>
@@ -244,7 +278,7 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
           <p className="section-description">Document architectural decisions for {levelLabel}</p>
 
           <div className="items-list">
-            {adrs.map((adr) => (
+            {adrs.map((adr: any) => (
               <div key={adr.id} className="item-card adr-card-mini">
                 <div
                   className="adr-header-mini"
@@ -255,7 +289,9 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
                   <span className="item-label">{adr.title}</span>
                   {adr.tags?.[0] && <span className="item-tag">{adr.tags[0]}</span>}
                   {expandedAdr === adr.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="item-remove"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -263,7 +299,7 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
                     }}
                   >
                     <Trash2 size={14} />
-                  </button>
+                  </Button>
                 </div>
                 {expandedAdr === adr.id && (
                   <div className="adr-details-mini">
@@ -297,45 +333,37 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
                 onChange={(e) => setAdrTitle(e.target.value)}
                 placeholder="Use PostgreSQL for orders"
               />
-              <div className="form-group">
-                <label>Status</label>
-                <select value={adrStatus} onChange={(e) => setAdrStatus(e.target.value)}>
-                  <option value="proposed">Proposed</option>
-                  <option value="accepted">Accepted</option>
-                  <option value="deprecated">Deprecated</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Link to</label>
-                <select value={adrTag} onChange={(e) => setAdrTag(e.target.value)}>
-                  <option value="">No link</option>
-                  {elements.map((el) => (
-                    <option key={el.id} value={el.id}>
-                      {el.id}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="Status"
+                value={adrStatus}
+                onChange={(value) => setAdrStatus(value || "proposed")}
+                data={[
+                  { value: "proposed", label: "Proposed" },
+                  { value: "accepted", label: "Accepted" },
+                  { value: "deprecated", label: "Deprecated" },
+                ]}
+              />
+              <Select
+                label="Link to"
+                value={adrTag}
+                onChange={(value) => setAdrTag(value || "")}
+                placeholder="No link"
+                data={elements.map((el) => ({ value: el.id, label: el.id }))}
+              />
             </div>
             <div className="form-row">
-              <div className="form-group textarea-group-mini">
-                <label>Context</label>
-                <input
-                  type="text"
-                  value={adrContext}
-                  onChange={(e) => setAdrContext(e.target.value)}
-                  placeholder="Why this decision?"
-                />
-              </div>
-              <div className="form-group textarea-group-mini">
-                <label>Decision</label>
-                <input
-                  type="text"
-                  value={adrDecision}
-                  onChange={(e) => setAdrDecision(e.target.value)}
-                  placeholder="What was decided?"
-                />
-              </div>
+              <Input
+                label="Context"
+                value={adrContext}
+                onChange={(e) => setAdrContext(e.target.value)}
+                placeholder="Why this decision?"
+              />
+              <Input
+                label="Decision"
+                value={adrDecision}
+                onChange={(e) => setAdrDecision(e.target.value)}
+                placeholder="What was decided?"
+              />
               <Button
                 variant="secondary"
                 onClick={addAdr}

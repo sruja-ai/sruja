@@ -48,126 +48,135 @@ This is one of the **most common system design interview questions**. It tests:
 Model each microservice as a **separate system** within the architecture. This clearly shows service boundaries.
 
 ```sruja
-architecture "E-Commerce Platform" {
-  person Customer "Online Customer"
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+  Customer = person "Online Customer"
   
   // Each microservice is a separate system
-  system UserService "User Management" {
-    container AuthAPI "Authentication API" {
+  UserService = system "User Management" {
+    AuthAPI = container "Authentication API" {
       technology "Go, gRPC"
     }
     
-    container ProfileAPI "Profile API" {
+    ProfileAPI = container "Profile API" {
       technology "Go, gRPC"
     }
     
-    datastore UserDB "User Database" {
+    UserDB = datastore "User Database" {
       technology "PostgreSQL"
     }
   }
   
-  system ProductService "Product Catalog" {
-    container ProductAPI "Product API" {
+  ProductService = system "Product Catalog" {
+    ProductAPI = container "Product API" {
       technology "Java, Spring Boot"
     }
     
-    container SearchAPI "Search API" {
+    SearchAPI = container "Search API" {
       technology "Elasticsearch"
     }
     
-    container RecommendationAPI "Recommendation API" {
+    RecommendationAPI = container "Recommendation API" {
       technology "Python, ML"
     }
     
-    datastore ProductDB "Product Database" {
+    ProductDB = datastore "Product Database" {
       technology "PostgreSQL"
     }
     
-    datastore SearchIndex "Search Index" {
+    SearchIndex = datastore "Search Index" {
       technology "Elasticsearch"
     }
   }
   
-  system CartService "Shopping Cart" {
-    container CartAPI "Cart API" {
+  CartService = system "Shopping Cart" {
+    CartAPI = container "Cart API" {
       technology "Node.js, Express"
     }
     
-    datastore CartDB "Cart Database" {
+    CartDB = datastore "Cart Database" {
       technology "Redis"
       description "In-memory cache for fast cart operations"
     }
   }
   
-  system OrderService "Order Management" {
-    container OrderAPI "Order API" {
+  OrderService = system "Order Management" {
+    OrderAPI = container "Order API" {
       technology "Node.js, Express"
     }
     
-    container OrderProcessor "Order Processor" {
+    OrderProcessor = container "Order Processor" {
       technology "Node.js"
     }
     
-    datastore OrderDB "Order Database" {
+    OrderDB = datastore "Order Database" {
       technology "PostgreSQL"
     }
     
-    queue OrderQueue "Order Queue" {
+    OrderQueue = queue "Order Queue" {
       technology "Kafka"
     }
   }
   
-  system PaymentService "Payment Processing" {
-    container PaymentAPI "Payment API" {
+  PaymentService = system "Payment Processing" {
+    PaymentAPI = container "Payment API" {
       technology "Go, gRPC"
     }
     
-    datastore PaymentDB "Payment Database" {
+    PaymentDB = datastore "Payment Database" {
       technology "PostgreSQL"
     }
   }
   
-  system InventoryService "Inventory Management" {
-    container InventoryAPI "Inventory API" {
+  InventoryService = system "Inventory Management" {
+    InventoryAPI = container "Inventory API" {
       technology "Java, Spring Boot"
     }
     
-    datastore InventoryDB "Inventory Database" {
+    InventoryDB = datastore "Inventory Database" {
       technology "PostgreSQL"
     }
   }
   
-  system NotificationService "Notifications" {
-    container NotificationAPI "Notification API" {
+  NotificationService = system "Notifications" {
+    NotificationAPI = container "Notification API" {
       technology "Python, FastAPI"
     }
     
-    queue EmailQueue "Email Queue" {
+    EmailQueue = queue "Email Queue" {
       technology "RabbitMQ"
     }
     
-    queue SMSQueue "SMS Queue" {
+    SMSQueue = queue "SMS Queue" {
       technology "RabbitMQ"
     }
   }
   
   // API Gateway - single entry point
-  system ECommerceApp "E-Commerce Application" {
-    container WebApp "Web Application" {
+  ECommerceApp = system "E-Commerce Application" {
+    WebApp = container "Web Application" {
       technology "React, Next.js"
     }
     
-    container APIGateway "API Gateway" {
+    APIGateway = container "API Gateway" {
       technology "Kong, Nginx"
       description "Routes requests to appropriate microservices"
     }
   }
   
-  system Stripe "Stripe Gateway" {
+  Stripe = system "Stripe Gateway" {
     tags ["external"]
   }
   
-  system PayPal "PayPal Gateway" {
+  PayPal = system "PayPal Gateway" {
     tags ["external"]
   }
   
@@ -200,6 +209,12 @@ architecture "E-Commerce Platform" {
   // Notification flow
   NotificationService.NotificationAPI -> NotificationService.EmailQueue "Sends emails"
   NotificationService.NotificationAPI -> NotificationService.SMSQueue "Sends SMS"
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 
@@ -261,46 +276,55 @@ architecture "E-Commerce Platform" {
 Add them to your design (extending the main architecture):
 
 ```sruja
-architecture "E-Commerce Platform" {
-  person Customer "Online Customer"
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+  Customer = person "Online Customer"
   
   // Existing services (UserService, ProductService, OrderService, etc. from main design)
-  system ProductService "Product Catalog" {
-    container ProductAPI "Product API" {
+  ProductService = system "Product Catalog" {
+    ProductAPI = container "Product API" {
       technology "Java, Spring Boot"
     }
   }
   
-  system OrderService "Order Management" {
-    container OrderAPI "Order API" {
+  OrderService = system "Order Management" {
+    OrderAPI = container "Order API" {
       technology "Node.js, Express"
     }
   }
   
-  system ECommerceApp "E-Commerce Application" {
-    container APIGateway "API Gateway" {
+  ECommerceApp = system "E-Commerce Application" {
+    APIGateway = container "API Gateway" {
       technology "Kong, Nginx"
     }
   }
   
   // Additional services
-  system RecommendationService "Recommendations" {
-    container RecommendationAPI "Recommendation API" {
+  RecommendationService = system "Recommendations" {
+    RecommendationAPI = container "Recommendation API" {
       technology "Python, ML"
     }
     
-    datastore UserBehaviorDB "User Behavior Database" {
+    UserBehaviorDB = datastore "User Behavior Database" {
       technology "MongoDB"
       description "Stores user clicks, views, purchases for ML"
     }
   }
   
-  system AnalyticsService "Analytics" {
-    container AnalyticsAPI "Analytics API" {
+  AnalyticsService = system "Analytics" {
+    AnalyticsAPI = container "Analytics API" {
       technology "Go"
     }
     
-    datastore AnalyticsDB "Analytics Database" {
+    AnalyticsDB = datastore "Analytics Database" {
       technology "ClickHouse"
       description "Time-series data for analytics"
     }
@@ -310,6 +334,12 @@ architecture "E-Commerce Platform" {
   ECommerceApp.APIGateway -> ProductService.ProductAPI "Gets products"
   ECommerceApp.APIGateway -> RecommendationService.RecommendationAPI "Gets recommendations"
   OrderService.OrderAPI -> AnalyticsService.AnalyticsAPI "Tracks order events"
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 

@@ -5,19 +5,30 @@ difficulty: beginner
 topic: components
 estimatedTime: "5-10 min"
 initialDsl: |
-  architecture "SocialPlatform" {
-    person User "Social Media User"
+  specification {
+    element person
+    element system
+    element container
+    element component
+    element datastore
+    element queue
+    element external
+  }
+  
+  model {
+    User = person "Social Media User"
     
-    system SocialApp {
-      container FeedService "Feed Service" {
-        technology "Python, FastAPI"
-        // TODO: Add component Recommendation "Recommendation Engine" here
+      SocialApp = system  {
+        FeedService = container "Feed Service" {
+          technology "Python, FastAPI"
+          // TODO: Add component Recommendation "Recommendation Engine" here
+        }
+        UserDB = datastore "MongoDB"
       }
-      datastore UserDB "MongoDB"
-    }
     
-    User -> FeedService "Views feed"
-    FeedService -> UserDB "Queries user data"
+      User -> FeedService "Views feed"
+      FeedService -> UserDB "Queries user data"
+    
   }
 checks:
   - type: noErrors
@@ -30,18 +41,29 @@ hints:
   - "Add component Recommendation \"Recommendation Engine\" inside the FeedService block"
   - "Make sure to open the FeedService container block with { before adding the component"
 solution: |
-  architecture "SocialPlatform" {
-    person User "Social Media User"
+  specification {
+    element person
+    element system
+    element container
+    element component
+    element datastore
+    element queue
+    element external
+  }
+  
+  model {
+    User = person "Social Media User"
     
-    system SocialApp {
-      container FeedService "Feed Service" {
-        technology "Python, FastAPI"
-        component Recommendation "Recommendation Engine"
+      SocialApp = system  {
+        FeedService = container "Feed Service" {
+          technology "Python, FastAPI"
+          Recommendation = component "Recommendation Engine"
+        }
+        UserDB = datastore "MongoDB"
       }
-      datastore UserDB "MongoDB"
-    }
     
-    User -> FeedService "Views feed"
-    FeedService -> UserDB "Queries user data"
+      User -> FeedService "Views feed"
+      FeedService -> UserDB "Queries user data"
+    
   }
 ---

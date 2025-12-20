@@ -8,7 +8,7 @@ export interface OptimizationRule {
   enabled: boolean;
   priority: number; // Higher priority = applied first
   category: OptimizationRuleCategory;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
 }
 
 export type OptimizationRuleCategory =
@@ -119,7 +119,7 @@ export const DEFAULT_OPTIMIZATION_RULES: OptimizationRuleConfig = {
     enabled: true,
     strictEnforcement: true,
     minParentPadding: 50,
-    paddingMultiplier: 3.0,
+    paddingMultiplier: 1.2, // Reduced from 3.0 to prevent excessive empty space (sparsity penalty)
     autoResizeParents: true,
     validationEnabled: true,
   },
@@ -172,10 +172,75 @@ export const DEFAULT_OPTIMIZATION_RULES: OptimizationRuleConfig = {
 /**
  * Apply optimization rules to layout options
  */
+export interface LayoutOptions {
+  spacing?: {
+    node?: {
+      horizontal?: number;
+      vertical?: number;
+      SoftwareSystem?: number;
+      Container?: number;
+      Component?: number;
+    };
+    padding?: {
+      SoftwareSystem?: number;
+      Container?: number;
+      Component?: number;
+    };
+    layer?: number;
+  };
+  containment?: {
+    padding?: number;
+  };
+  edgeRouting?: {
+    style?: string;
+    algorithm?: string;
+    bendPenalty?: number;
+    crossingPenalty?: number;
+    segmentLength?: number;
+    labelOffset?: number;
+    minEdgeLength?: number;
+    avoidNodes?: boolean;
+    preferOrthogonal?: boolean;
+    avoidOverlaps?: boolean;
+  };
+  optimization?: {
+    overlapRemoval?: {
+      enabled?: boolean;
+      iterations?: number;
+      padding?: number;
+      aggressive?: boolean;
+      preserveHierarchy?: boolean;
+    };
+    spaceDistribution?: {
+      enabled?: boolean;
+      minThreshold?: number;
+      targetRatio?: number;
+    };
+    edgeOptimization?: {
+      enabled?: boolean;
+      minimizeCrossings?: boolean;
+      minimizeBends?: boolean;
+      preferStraight?: boolean;
+    };
+    containmentOptimization?: {
+      enabled?: boolean;
+      minParentPadding?: number;
+      enforceStrict?: boolean;
+      autoResize?: boolean;
+    };
+  };
+  minSize?: {
+    width?: number;
+    height?: number;
+  };
+  measurer?: any;
+  [key: string]: unknown;
+}
+
 export function applyOptimizationRules(
-  baseOptions: any,
+  baseOptions: LayoutOptions,
   rules: OptimizationRuleConfig = DEFAULT_OPTIMIZATION_RULES
-): any {
+): LayoutOptions {
   const options = { ...baseOptions };
 
   // Apply spacing rules

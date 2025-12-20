@@ -1,17 +1,26 @@
-// apps/playground/src/components/shared/forms/EditMetadataForm.tsx
-import { useState, useEffect, useRef } from "react";
+// apps/designer/src/components/shared/forms/EditMetadataForm.tsx
+// Refactored to use Mantine form components
+
+import { useEffect, useRef } from "react";
 import { useArchitectureStore } from "../../../stores";
-import type { MetadataEntry } from "../../../types";
 import { Button, Input } from "@sruja/ui";
 import { SidePanel } from "../SidePanel";
+import { FormField, useFormState, type FormErrors } from "./";
 import { X } from "lucide-react";
 import "../EditForms.css";
 
 interface EditMetadataFormProps {
   isOpen: boolean;
   onClose: () => void;
-  metadata?: MetadataEntry;
+  metadata?: any; // MetadataDump
   metadataIndex?: number;
+}
+
+interface FormValues {
+  key: string;
+  value: string;
+  isArray: boolean;
+  arrayValues: string[];
 }
 
 export function EditMetadataForm({
@@ -22,22 +31,67 @@ export function EditMetadataForm({
 }: EditMetadataFormProps) {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
   const formRef = useRef<HTMLFormElement>(null);
-  const [key, setKey] = useState(metadata?.key || "");
-  const [value, setValue] = useState(metadata?.value || "");
-  const [isArray, setIsArray] = useState(!!metadata?.array);
-  const [arrayValues, setArrayValues] = useState<string[]>(metadata?.array || [""]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Initialize form state
+  const form = useFormState<FormValues>({
+    initialValues: {
+      key: metadata?.key || "",
+      value: metadata?.value || "",
+      isArray: !!metadata?.array,
+      arrayValues: metadata?.array || [""],
+    },
+    validate: (values) => {
+      const errors: FormErrors = {};
+      if (!values.key.trim()) errors.key = "Key is required";
+      if (!values.isArray && !values.value.trim()) errors.value = "Value is required";
+      if (values.isArray && values.arrayValues.filter((v) => v.trim()).length === 0) {
+        errors.arrayValues = "At least one array value is required";
+      }
+      return errors;
+    },
+    onSubmit: async (values) => {
+      await updateArchitecture((model) => {
+        const sruja = (model as any).sruja || {};
+        const metadataList = [...(sruja.metadata || [])];
+
+        const newMetadata = {
+          key: values.key.trim(),
+          value: values.isArray ? undefined : values.value.trim() || undefined,
+          array: values.isArray ? values.arrayValues.filter((v) => v.trim()) : undefined,
+        };
+
+        if (metadata && metadataIndex !== undefined) {
+          metadataList[metadataIndex] = newMetadata;
+        } else {
+          metadataList.push(newMetadata);
+        }
+
+        return {
+          ...model,
+          sruja: {
+            ...sruja,
+            metadata: metadataList,
+          },
+        };
+      });
+      onClose();
+    },
+  });
+
+  // Reset form when opening/switching contexts
   useEffect(() => {
     if (isOpen) {
-      setKey(metadata?.key || "");
-      setValue(metadata?.value || "");
-      setIsArray(!!metadata?.array);
-      setArrayValues(metadata?.array || [""]);
-      setErrors({});
+      form.setValues({
+        key: metadata?.key || "",
+        value: metadata?.value || "",
+        isArray: !!metadata?.array,
+        arrayValues: metadata?.array || [""],
+      });
+      form.clearErrors();
     }
-  }, [isOpen, metadata]);
+  }, [isOpen, metadata]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Handle Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
@@ -51,67 +105,17 @@ export function EditMetadataForm({
   }, [isOpen, onClose]);
 
   const addArrayItem = () => {
-    setArrayValues([...arrayValues, ""]);
+    form.setValue("arrayValues", [...form.values.arrayValues, ""]);
   };
 
   const updateArrayItem = (index: number, val: string) => {
-    const newArray = [...arrayValues];
+    const newArray = [...form.values.arrayValues];
     newArray[index] = val;
-    setArrayValues(newArray);
+    form.setValue("arrayValues", newArray);
   };
 
   const removeArrayItem = (index: number) => {
-    setArrayValues(arrayValues.filter((_, i) => i !== index));
-  };
-
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!key.trim()) {
-      newErrors.key = "Key is required";
-    }
-    if (!isArray && !value.trim()) {
-      newErrors.value = "Value is required";
-    }
-    if (isArray && arrayValues.filter((v) => v.trim()).length === 0) {
-      newErrors.array = "At least one array value is required";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    try {
-      await updateArchitecture((arch) => {
-        if (!arch.architecture) return arch;
-        const metadataList = [...(arch.architecture.archMetadata || [])];
-        const newMetadata: MetadataEntry = {
-          key: key.trim(),
-          value: isArray ? undefined : value.trim() || undefined,
-          array: isArray ? arrayValues.filter((v) => v.trim()) : undefined,
-        };
-
-        if (metadata && metadataIndex !== undefined) {
-          metadataList[metadataIndex] = newMetadata;
-        } else {
-          metadataList.push(newMetadata);
-        }
-
-        return {
-          ...arch,
-          architecture: {
-            ...arch.architecture,
-            archMetadata: metadataList,
-          },
-        };
-      });
-      onClose();
-    } catch (err) {
-      console.error("Failed to update metadata:", err);
-      setErrors({ submit: "Failed to save metadata. Please try again." });
-    }
+    form.setValue("arrayValues", form.values.arrayValues.filter((_, i) => i !== index));
   };
 
   return (
@@ -125,51 +129,41 @@ export function EditMetadataForm({
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button
-            variant="primary"
-            onClick={(e) => {
-              e.preventDefault();
-              handleSubmit(e as any);
-            }}
-          >
+          <Button variant="primary" type="submit" form="edit-metadata-form" isLoading={form.isSubmitting}>
             {metadata ? "Update" : "Add"}
           </Button>
         </>
       }
     >
-      <form ref={formRef} onSubmit={handleSubmit} className="edit-form">
-        <Input
-          label="Key *"
-          value={key}
-          onChange={(e) => {
-            setKey(e.target.value);
-            if (errors.key) setErrors({ ...errors, key: "" });
-          }}
+      <form ref={formRef} id="edit-metadata-form" onSubmit={form.handleSubmit} className="edit-form">
+        <FormField
+          label="Key"
+          name="key"
+          value={form.values.key}
+          onChange={(value) => form.setValue("key", value)}
           required
           placeholder="e.g., team, owner, version"
-          error={errors.key}
+          error={form.errors.key}
         />
         <div className="form-group">
           <label className="flex items-center gap-2 mb-1.5 text-sm font-medium text-[var(--color-text-secondary)]">
             <input
               type="checkbox"
-              checked={isArray}
-              onChange={(e) => setIsArray(e.target.checked)}
+              checked={form.values.isArray}
+              onChange={(e) => form.setValue("isArray", e.target.checked)}
             />
             <span>Array value (multiple items)</span>
           </label>
         </div>
-        {!isArray ? (
-          <Input
-            label="Value *"
-            value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-              if (errors.value) setErrors({ ...errors, value: "" });
-            }}
+        {!form.values.isArray ? (
+          <FormField
+            label="Value"
+            name="value"
+            value={form.values.value}
+            onChange={(value) => form.setValue("value", value)}
             required
             placeholder="Metadata value"
-            error={errors.value}
+            error={form.errors.value}
           />
         ) : (
           <div className="form-group">
@@ -177,7 +171,7 @@ export function EditMetadataForm({
               Values *
             </label>
             <div className="list-items">
-              {arrayValues.map((val, index) => (
+              {form.values.arrayValues.map((val, index) => (
                 <div key={index} className="list-item">
                   <div>
                     <Input
@@ -200,10 +194,13 @@ export function EditMetadataForm({
                 + Add Value
               </Button>
             </div>
-            {errors.array && (
-              <div className="mt-1 text-xs text-[var(--color-error-500)]">{errors.array}</div>
+            {form.errors.arrayValues && (
+              <div className="mt-1 text-xs text-[var(--color-error-500)]">{form.errors.arrayValues}</div>
             )}
           </div>
+        )}
+        {form.errors.submit && (
+          <div className="text-sm text-[var(--color-error-500)] mt-2">{form.errors.submit}</div>
         )}
       </form>
     </SidePanel>

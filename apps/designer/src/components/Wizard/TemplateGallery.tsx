@@ -17,7 +17,7 @@ interface TemplateGalleryProps {
 
 export function TemplateGallery({ isOpen, onClose }: TemplateGalleryProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
+  const loadFromModel = useArchitectureStore((s) => s.loadFromModel);
   const modalRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -79,9 +79,14 @@ export function TemplateGallery({ isOpen, onClose }: TemplateGalleryProps) {
     // Deep clone the architecture to avoid mutation
     const arch = JSON.parse(JSON.stringify(template.architecture));
     // Update timestamp
-    arch.metadata.generated = new Date().toISOString();
-    // Use updateArchitecture with a function that replaces the whole architecture
-    updateArchitecture(() => arch);
+    if (arch.metadata) {
+      arch.metadata.generated = new Date().toISOString();
+    } else if (arch._metadata) {
+      arch._metadata.generated = new Date().toISOString();
+    }
+
+    // Use loadFromModel to sync both JSON and DSL
+    loadFromModel(arch, `template:${template.id}`);
     onClose();
   };
 
@@ -112,8 +117,10 @@ export function TemplateGallery({ isOpen, onClose }: TemplateGalleryProps) {
 
         <div className="template-grid" role="radiogroup" aria-label="Template options">
           {templates.map((template) => (
-            <button
+            <Button
               key={template.id}
+              variant={selectedId === template.id ? "primary" : "ghost"}
+              size="sm"
               className={`template-card ${selectedId === template.id ? "selected" : ""}`}
               onClick={() => setSelectedId(template.id)}
               onDoubleClick={() => handleSelect(template)}
@@ -137,7 +144,7 @@ export function TemplateGallery({ isOpen, onClose }: TemplateGalleryProps) {
                   <CheckCircle size={16} />
                 </div>
               )}
-            </button>
+            </Button>
           ))}
         </div>
 

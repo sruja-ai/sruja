@@ -332,3 +332,16 @@ func TestNextToken_MultipleTokens(t *testing.T) {
 		}
 	}
 }
+
+func TestNextToken_SingleQuoteString(t *testing.T) {
+	input := `'Hello World'`
+	l := language.NewLexer(input)
+	tok := l.NextToken()
+
+	if tok.Type != language.TOKEN_STRING {
+		t.Errorf("Expected TOKEN_STRING, got %v", tok.Type)
+	}
+	if tok.Literal != "Hello World" {
+		t.Errorf("Expected literal 'Hello World', got %q", tok.Literal)
+	}
+}

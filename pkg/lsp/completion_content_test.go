@@ -65,7 +65,7 @@ func TestCompletion_KeywordsAndPrefix(t *testing.T) {
 func TestCompletion_RelationVerbSuggestions(t *testing.T) {
 	s := NewServer()
 	uri := lsp.DocumentURI("file:///verbs.sruja")
-	text := "architecture \"A\" {\n  system S {\n    container C {}\n  }\n}\nS -> C "
+	text := "model {\n  system S {\n    container C {}\n  }\n  S -> C \n}\n"
 	_ = s.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{
 		TextDocument: lsp.TextDocumentItem{URI: uri, Text: text, Version: 1},
 	})
@@ -73,7 +73,7 @@ func TestCompletion_RelationVerbSuggestions(t *testing.T) {
 	res, err := s.Completion(context.Background(), lsp.CompletionParams{
 		TextDocumentPositionParams: lsp.TextDocumentPositionParams{
 			TextDocument: lsp.TextDocumentIdentifier{URI: uri},
-			Position:     lsp.Position{Line: 5, Character: 7},
+			Position:     lsp.Position{Line: 4, Character: 9},
 		},
 	})
 	if err != nil {

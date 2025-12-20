@@ -237,7 +237,7 @@ START: Do you have architecture documentation challenges?
 
 ## Getting Help with Implementation
 
-**Open Source Community**: Sruja is free and open source (MIT licensed). Join the community on [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions) for support, questions, and contributions.
+**Open Source Community**: Sruja is free and open source (Apache 2.0 licensed). Join the community on [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions) for support, questions, and contributions.
 
 **Professional Services**: Need help with adoption, integration, or custom requirements? Professional consulting services are available to help organizations:
 

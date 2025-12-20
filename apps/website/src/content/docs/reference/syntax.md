@@ -9,21 +9,34 @@ summary: "Core constructs and fields for Sruja DSL."
 ## Elements
 
 ```sruja
-person ID "Label"
-system ID "Label" { ... }
-container ID "Label" { ... }
-datastore ID "Label" { ... }
-queue ID "Label" { ... }
-component ID "Label" { ... }
+specification {
+  element person
+  element system
+  element container
+  element datastore
+  element queue
+  element component
+}
+
+model {
+  ID = person "Label"
+  ID = system "Label" { ... }
+  ID = container "Label" { ... }
+  ID = datastore "Label" { ... }
+  ID = queue "Label" { ... }
+  ID = component "Label" { ... }
+}
 ```
 
 ## Relations
 
 ```sruja
-Source -> Target "Label"
-// Use fully qualified names when referring to nested elements:
-System.Container -> System.API "Label"
-System.Container.Component -> System.API.Component "Label"
+model {
+  Source -> Target "Label"
+  // Use fully qualified names when referring to nested elements:
+  System.Container -> System.API "Label"
+  System.Container.Component -> System.API.Component "Label"
+}
 ```
 
 ## Metadata

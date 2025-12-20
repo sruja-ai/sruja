@@ -6,48 +6,6 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-func processArchitecture(src *language.Architecture, dest *Architecture) {
-	dest.Name = src.Name
-
-	if len(src.Metadata) > 0 {
-		dest.ArchMetadata = convertMetadataToJSON(&language.MetadataBlock{Entries: src.Metadata})
-	}
-
-	for _, item := range src.Items {
-		if item.System != nil {
-			dest.Systems = append(dest.Systems, convertSystem(item.System))
-		} else if item.Person != nil {
-			dest.Persons = append(dest.Persons, convertPerson(item.Person))
-		} else if item.Relation != nil {
-			dest.Relations = append(dest.Relations, convertRelation(item.Relation))
-		} else if item.ADR != nil {
-			dest.ADRs = append(dest.ADRs, convertADR(item.ADR))
-		} else if item.Requirement != nil {
-			dest.Requirements = append(dest.Requirements, convertRequirement(item.Requirement))
-		}
-	}
-
-	if len(src.Flows) > 0 {
-		for _, f := range src.Flows {
-			dest.Flows = append(dest.Flows, convertFlow(f))
-		}
-	}
-
-	if len(src.Policies) > 0 {
-		for _, p := range src.Policies {
-			dest.Policies = append(dest.Policies, convertPolicy(p))
-		}
-	}
-
-	if len(src.Requirements) > 0 {
-		for _, r := range src.Requirements {
-			if r != nil {
-				dest.Requirements = append(dest.Requirements, convertRequirement(r))
-			}
-		}
-	}
-}
-
 func convertSystem(src *language.System) System {
 	sys := System{
 		ID:    src.ID,
@@ -59,13 +17,14 @@ func convertSystem(src *language.System) System {
 
 	if src.Items != nil {
 		for _, item := range src.Items {
-			if item.Container != nil {
+			switch {
+			case item.Container != nil:
 				sys.Containers = append(sys.Containers, convertContainer(item.Container))
-			} else if item.DataStore != nil {
+			case item.DataStore != nil:
 				sys.DataStores = append(sys.DataStores, convertDataStore(item.DataStore))
-			} else if item.Queue != nil {
+			case item.Queue != nil:
 				sys.Queues = append(sys.Queues, convertQueue(item.Queue))
-			} else if item.Metadata != nil {
+			case item.Metadata != nil:
 				sys.Metadata = convertMetadataToJSON(item.Metadata)
 			}
 		}
@@ -243,10 +202,14 @@ func convertRequirement(src *language.Requirement) Requirement {
 }
 
 func convertFlow(src *language.Flow) Flow {
+	title := ""
+	if src.Title != nil {
+		title = *src.Title
+	}
 	f := Flow{
 		ID:    src.ID,
-		Title: src.Title,
-		Label: src.Title,
+		Title: title,
+		Label: title,
 	}
 	if src.Description != nil {
 		f.Description = *src.Description

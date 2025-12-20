@@ -16,9 +16,24 @@ Design Mode helps you build architecture assets step by step, starting with high
 Start with the high-level context:
 
 ```sruja
-architecture "Shop" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   person User
   system Shop
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 
@@ -27,17 +42,32 @@ architecture "Shop" {
 Add containers and datastores:
 
 ```sruja
-architecture "Shop" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   person User
   system App {
-    container WebApp "Web Application"
-    container API "API Service"
-    datastore DB "Database"
+    WebApp = container "Web Application"
+    API = container "API Service"
+    DB = datastore "Database"
   }
 
   User -> App.WebApp "Uses"
   App.WebApp -> App.API "Calls"
   App.API -> App.DB "Reads/Writes"
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 
@@ -46,7 +76,16 @@ architecture "Shop" {
 Drill down into components:
 
 ```sruja
-architecture "Shop" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   system App {
     container WebApp {
       component UI
@@ -58,6 +97,12 @@ architecture "Shop" {
 
   // Component‑level interaction
   App.WebApp.UI -> App.API.Auth "Calls"
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 

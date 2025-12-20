@@ -176,14 +176,14 @@ export function analyzeLayoutContext(
   // Also check if nodes have children (which indicates expansion in the layout)
   const hasExpandedNodes = expandedNodes
     ? expandedNodes.size > 0 ||
-      nodes.some((n) => {
-        const nodeId = n.id || n.data?.id;
-        return expandedNodes.has(nodeId) || n.data?.expanded === true;
-      })
+    nodes.some((n) => {
+      const nodeId = n.id || n.data?.id;
+      return expandedNodes.has(nodeId) || n.data?.expanded === true;
+    })
     : nodes.some(
-        (n) =>
-          n.data?.expanded === true || (n.data?.childCount && n.data.childCount > 0 && n.parentId)
-      );
+      (n) =>
+        n.data?.expanded === true || (n.data?.childCount && n.data.childCount > 0 && n.parentId)
+    );
 
   // Calculate average node size
   const totalWidth = nodes.reduce((sum, n) => sum + (n.width || 100), 0);

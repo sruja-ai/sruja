@@ -29,7 +29,16 @@ An **Architecture Decision Record (ADR)** is a document that captures an importa
 Sruja treats ADRs as first-class citizens. You can define them directly in your architecture file.
 
 ```sruja
-architecture "Payment System" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
     // Define an ADR
     adr ADR001 "Use Stripe for Payments" {
         status "Accepted"
@@ -51,11 +60,17 @@ architecture "Payment System" {
         consequences "Vendor lock-in, but faster time to market."
     }
 
-    system PaymentService "Payment Service" {
+    PaymentService = system "Payment Service" {
         // Link the ADR to the component it affects
         adr ADR001
         description "Handles credit card processing."
     }
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 

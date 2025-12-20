@@ -29,7 +29,16 @@ Sruja lets you codify architectural standards as **constraints** and **conventio
 Constraints define **hard rules** that must be followed. Violations block CI/CD.
 
 ```sruja
-architecture "E-Commerce Platform" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   // Constraint: Presentation layer cannot access datastores directly
   constraint C1 {
     description "Presentation layer must not access datastores"
@@ -60,13 +69,13 @@ architecture "E-Commerce Platform" {
     }
   }
 
-  system Shop "E-Commerce System" {
-    container WebApp "Web Application" {
+  Shop = system "E-Commerce System" {
+    WebApp = container "Web Application" {
       layer Presentation
       // This would violate C1 if it accessed DB directly
     }
     
-    container PaymentService "Payment Service" {
+    PaymentService = container "Payment Service" {
       layer Business
       tags ["payment"]
       properties {
@@ -74,13 +83,19 @@ architecture "E-Commerce Platform" {
       }
     }
     
-    datastore DB "Database" {
+    DB = datastore "Database" {
       layer Data
     }
 
     // Correct: WebApp -> PaymentService -> DB (respects layers)
     WebApp -> PaymentService "Processes payments"
     PaymentService -> DB "Stores transactions"
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```
@@ -90,7 +105,16 @@ architecture "E-Commerce Platform" {
 Conventions define **best practices** and **naming standards**. They're warnings, not blockers.
 
 ```sruja
-architecture "Microservices Platform" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   // Convention: Naming standards
   convention N1 {
     description "Service names should follow pattern: <domain>-<function>"
@@ -103,16 +127,22 @@ architecture "Microservices Platform" {
     rule "containers with tag 'api' must have technology matching /REST|gRPC/"
   }
 
-  system Platform "Microservices Platform" {
+  Platform = system "Microservices Platform" {
     container user-service "User Service" {  // ✅ Follows N1
       tags ["api"]
       technology "REST"  // ✅ Follows T1
     }
     
-    container authService "Auth Service" {  // ⚠️ Violates N1 (should be auth-service)
+    authService = container "Auth Service" {  // ⚠️ Violates N1 (should be auth-service)
       tags ["api"]
       technology "GraphQL"  // ⚠️ Violates T1 (should be REST or gRPC)
     }
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```
@@ -122,7 +152,16 @@ architecture "Microservices Platform" {
 Here's how a large organization enforces standards across teams:
 
 ```sruja
-architecture "Organization Standards" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   // Global constraint: All services must have SLOs
   constraint Global1 {
     description "All production services must define SLOs"
@@ -146,8 +185,8 @@ architecture "Organization Standards" {
     layer healthcare "Healthcare Layer"
   }
 
-  system PaymentSystem "Payment System" {
-    container PaymentAPI "Payment API" {
+  PaymentSystem = system "Payment System" {
+    PaymentAPI = container "Payment API" {
       layer payment
       tags ["payment", "production"]
       slo {
@@ -157,14 +196,20 @@ architecture "Organization Standards" {
     }
   }
 
-  system HealthcareSystem "Healthcare System" {
-    datastore PatientDB "Patient Database" {
+  HealthcareSystem = system "Healthcare System" {
+    PatientDB = datastore "Patient Database" {
       layer healthcare
       tags ["healthcare"]
       properties {
         encryption "AES-256"
       }
     }
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```

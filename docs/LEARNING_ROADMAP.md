@@ -1,6 +1,6 @@
 # Learning Roadmap
 
-Recommended path from beginner → advanced for Sruja.
+Recommended learning path from beginner to advanced for Sruja contributors and users.
 
 ## Beginner
 - Quick Start: Install CLI and model your first system

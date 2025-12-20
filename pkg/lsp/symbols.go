@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sourcegraph/go-lsp"
+	"github.com/sruja-ai/sruja/pkg/language"
 )
 
 //nolint:funlen // Logic requires length
@@ -14,105 +15,130 @@ func (s *Server) DocumentSymbols(_ context.Context, params lsp.DocumentSymbolPar
 		return nil, nil
 	}
 	program := doc.EnsureParsed()
-	if program == nil || program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return nil, nil
 	}
 
-	arch := program.Architecture
-	var symbols []lsp.SymbolInformation //nolint:prealloc // Size calculation is complex due to nested structures
+	var symbols []lsp.SymbolInformation
 
-	archRange := fullDocRange(doc)
-	symbols = append(symbols, lsp.SymbolInformation{
-		Name:          arch.Name,
-		Kind:          lsp.SKNamespace,
-		Location:      lsp.Location{URI: params.TextDocument.URI, Range: archRange},
-		ContainerName: "architecture",
-	})
+	// Extract symbols from LikeC4 Model
+	var extractSymbols func(elem *language.LikeC4ElementDef, containerName string)
+	extractSymbols = func(elem *language.LikeC4ElementDef, containerName string) {
+		if elem == nil {
+			return
+		}
 
-	for _, sys := range arch.Systems {
-		sRange := findIDRange(doc, sys.ID)
-		sSel := sRange
+		id := elem.GetID()
+		if id == "" {
+			return
+		}
+
+		kind := elem.GetKind()
+		loc := elem.Location()
+
+		// Map LikeC4 kind to LSP symbol kind
+		var lspKind lsp.SymbolKind
+		switch kind {
+		case "system":
+			lspKind = lsp.SKClass
+		case "container":
+			lspKind = lsp.SKModule
+		case "component":
+			lspKind = lsp.SKFunction
+		case "database":
+			lspKind = lsp.SKStruct
+		case "queue":
+			lspKind = lsp.SKEnum
+		case "person":
+			lspKind = lsp.SKInterface
+		default:
+			lspKind = lsp.SKVariable
+		}
+
+		// Find range in document
+		sRange := findIDRange(doc, id)
+		if sRange.Start.Line == 0 && sRange.End.Line == 0 {
+			// Fallback to position from AST
+			sRange = lsp.Range{
+				Start: lsp.Position{Line: int(loc.Line) - 1, Character: int(loc.Column) - 1},
+				End:   lsp.Position{Line: int(loc.Line) - 1, Character: int(loc.Column) - 1 + len(id)},
+			}
+		}
+
 		symbols = append(symbols, lsp.SymbolInformation{
-			Name:          sys.ID,
-			Kind:          lsp.SKClass,
-			Location:      lsp.Location{URI: params.TextDocument.URI, Range: sSel},
-			ContainerName: arch.Name,
+			Name:          id,
+			Kind:          lspKind,
+			Location:      lsp.Location{URI: params.TextDocument.URI, Range: sRange},
+			ContainerName: containerName,
 		})
-		var childrenContainer = sys.ID
-		for _, c := range sys.Containers {
-			cRange := findIDRange(doc, c.ID)
-			symbols = append(symbols, lsp.SymbolInformation{
-				Name:          c.ID,
-				Kind:          lsp.SKModule,
-				Location:      lsp.Location{URI: params.TextDocument.URI, Range: cRange},
-				ContainerName: childrenContainer,
-			})
-			for _, comp := range c.Components {
-				compRange := findIDRange(doc, comp.ID)
-				symbols = append(symbols, lsp.SymbolInformation{
-					Name:          comp.ID,
-					Kind:          lsp.SKFunction,
-					Location:      lsp.Location{URI: params.TextDocument.URI, Range: compRange},
-					ContainerName: c.ID,
-				})
-			}
-			for _, ds := range c.DataStores {
-				dsRange := findIDRange(doc, ds.ID)
-				symbols = append(symbols, lsp.SymbolInformation{
-					Name:          ds.ID,
-					Kind:          lsp.SKStruct,
-					Location:      lsp.Location{URI: params.TextDocument.URI, Range: dsRange},
-					ContainerName: c.ID,
-				})
-			}
-			for _, q := range c.Queues {
-				qRange := findIDRange(doc, q.ID)
-				symbols = append(symbols, lsp.SymbolInformation{
-					Name:          q.ID,
-					Kind:          lsp.SKEnum,
-					Location:      lsp.Location{URI: params.TextDocument.URI, Range: qRange},
-					ContainerName: c.ID,
-				})
+
+		// Recurse into nested elements
+		body := elem.GetBody()
+		if body != nil {
+			for _, bodyItem := range body.Items {
+				if bodyItem.Element != nil {
+					extractSymbols(bodyItem.Element, id)
+				}
 			}
 		}
-		for _, comp := range sys.Components {
-			compRange := findIDRange(doc, comp.ID)
+	}
+
+	// Process all top-level elements
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			extractSymbols(item.ElementDef, "")
+		}
+		// Also add symbols for other top-level items
+		if item.ADR != nil {
+			loc := item.ADR.Location()
+			adrRange := findIDRange(doc, item.ADR.ID)
+			if adrRange.Start.Line == 0 && adrRange.End.Line == 0 {
+				adrRange = lsp.Range{
+					Start: lsp.Position{Line: int(loc.Line) - 1, Character: int(loc.Column) - 1},
+					End:   lsp.Position{Line: int(loc.Line) - 1, Character: int(loc.Column) - 1 + len(item.ADR.ID)},
+				}
+			}
 			symbols = append(symbols, lsp.SymbolInformation{
-				Name:          comp.ID,
-				Kind:          lsp.SKFunction,
-				Location:      lsp.Location{URI: params.TextDocument.URI, Range: compRange},
-				ContainerName: sys.ID,
+				Name:          item.ADR.ID,
+				Kind:          lsp.SKString,
+				Location:      lsp.Location{URI: params.TextDocument.URI, Range: adrRange},
+				ContainerName: "",
 			})
 		}
-		for _, ds := range sys.DataStores {
-			dsRange := findIDRange(doc, ds.ID)
+		if item.Requirement != nil {
+			loc := item.Requirement.Location()
+			reqRange := findIDRange(doc, item.Requirement.ID)
+			if reqRange.Start.Line == 0 && reqRange.End.Line == 0 {
+				reqRange = lsp.Range{
+					Start: lsp.Position{Line: int(loc.Line) - 1, Character: int(loc.Column) - 1},
+					End:   lsp.Position{Line: int(loc.Line) - 1, Character: int(loc.Column) - 1 + len(item.Requirement.ID)},
+				}
+			}
 			symbols = append(symbols, lsp.SymbolInformation{
-				Name:          ds.ID,
-				Kind:          lsp.SKStruct,
-				Location:      lsp.Location{URI: params.TextDocument.URI, Range: dsRange},
-				ContainerName: sys.ID,
+				Name:          item.Requirement.ID,
+				Kind:          lsp.SKProperty,
+				Location:      lsp.Location{URI: params.TextDocument.URI, Range: reqRange},
+				ContainerName: "",
 			})
 		}
-		for _, q := range sys.Queues {
-			qRange := findIDRange(doc, q.ID)
+		if item.Policy != nil {
+			loc := item.Policy.Location()
+			polRange := findIDRange(doc, item.Policy.ID)
+			if polRange.Start.Line == 0 && polRange.End.Line == 0 {
+				polRange = lsp.Range{
+					Start: lsp.Position{Line: int(loc.Line) - 1, Character: int(loc.Column) - 1},
+					End:   lsp.Position{Line: int(loc.Line) - 1, Character: int(loc.Column) - 1 + len(item.Policy.ID)},
+				}
+			}
 			symbols = append(symbols, lsp.SymbolInformation{
-				Name:          q.ID,
-				Kind:          lsp.SKEnum,
-				Location:      lsp.Location{URI: params.TextDocument.URI, Range: qRange},
-				ContainerName: sys.ID,
+				Name:          item.Policy.ID,
+				Kind:          lsp.SKConstant,
+				Location:      lsp.Location{URI: params.TextDocument.URI, Range: polRange},
+				ContainerName: "",
 			})
 		}
 	}
 
-	for _, p := range arch.Persons {
-		pRange := findIDRange(doc, p.ID)
-		symbols = append(symbols, lsp.SymbolInformation{
-			Name:          p.ID,
-			Kind:          lsp.SKVariable,
-			Location:      lsp.Location{URI: params.TextDocument.URI, Range: pRange},
-			ContainerName: arch.Name,
-		})
-	}
 	return symbols, nil
 }
 

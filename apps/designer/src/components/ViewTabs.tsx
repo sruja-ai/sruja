@@ -1,5 +1,6 @@
 // apps/playground/src/components/ViewTabs.tsx
 import { Layout, FileCode, List, Hammer } from "lucide-react";
+import { Button } from "@sruja/ui";
 import type { ViewTab } from "../types";
 import { useFeatureFlagsStore } from "../stores";
 
@@ -15,11 +16,8 @@ interface ViewTabsProps {
 export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
   const editMode = useFeatureFlagsStore((s) => s.editMode);
 
-  // Builder is now first and always visible in edit mode
-  const tabs: ViewTab[] =
-    editMode === "edit"
-      ? ["builder", "diagram", "details", "code"]
-      : ["diagram", "details", "code"];
+  // Builder is now always visible (first tab)
+  const tabs: ViewTab[] = ["builder", "diagram", "details", "code"];
 
   const index = tabs.indexOf(activeTab);
 
@@ -43,21 +41,24 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
-      {editMode === "edit" && (
-        <button
-          className={`view-tab view-tab-primary ${activeTab === "builder" ? "active" : ""}`}
-          onClick={() => onTabChange("builder")}
-          role="tab"
-          aria-selected={activeTab === "builder"}
-          id="tab-builder"
-          aria-controls="tabpanel-builder"
-          title="Builder - Step-by-step architecture design guide"
-        >
-          <Hammer size={16} />
-          <span>Builder</span>
-        </button>
-      )}
-      <button
+      <Button
+        variant={activeTab === "builder" && editMode === "edit" ? "primary" : activeTab === "builder" ? "secondary" : "ghost"}
+        size="sm"
+        className={`view-tab ${editMode === "edit" ? "view-tab-primary" : ""} ${activeTab === "builder" ? "active" : ""}`}
+        onClick={() => onTabChange("builder")}
+        role="tab"
+        aria-selected={activeTab === "builder"}
+        id="tab-builder"
+        aria-controls="tabpanel-builder"
+        title={editMode === "edit" ? "Builder - Step-by-step architecture design guide" : "Builder - Architecture guide (view mode)"}
+      >
+        <Hammer size={16} />
+        <span>Builder</span>
+        {editMode === "edit" && <span className="tab-badge edit-badge">Edit</span>}
+      </Button>
+      <Button
+        variant={activeTab === "diagram" ? "secondary" : "ghost"}
+        size="sm"
         className={`view-tab ${activeTab === "diagram" ? "active" : ""}`}
         onClick={() => onTabChange("diagram")}
         role="tab"
@@ -68,8 +69,10 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
       >
         <Layout size={16} />
         <span>Diagram</span>
-      </button>
-      <button
+      </Button>
+      <Button
+        variant={activeTab === "details" ? "secondary" : "ghost"}
+        size="sm"
         className={`view-tab ${activeTab === "details" ? "active" : ""}`}
         onClick={() => onTabChange("details")}
         role="tab"
@@ -83,8 +86,10 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
         {counts.requirements + counts.adrs > 0 && (
           <span className="tab-badge">{counts.requirements + counts.adrs}</span>
         )}
-      </button>
-      <button
+      </Button>
+      <Button
+        variant={activeTab === "code" ? "secondary" : "ghost"}
+        size="sm"
         className={`view-tab ${activeTab === "code" ? "active" : ""}`}
         onClick={() => onTabChange("code")}
         role="tab"
@@ -95,7 +100,7 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
       >
         <FileCode size={16} />
         <span>Code</span>
-      </button>
+      </Button>
     </div>
   );
 }

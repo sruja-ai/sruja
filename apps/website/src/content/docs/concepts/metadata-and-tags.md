@@ -15,7 +15,15 @@ Tags are simple string labels that can be used for filtering, styling, or catego
 ### Syntax
 
 ```sruja
-tags ["tag1", "tag2"]
+specification {
+  element system
+}
+
+model {
+  API = system "API" {
+    tags ["tag1", "tag2"]
+  }
+}
 ```
 
 ## Metadata
@@ -25,11 +33,17 @@ Metadata allows you to attach key-value pairs to elements. This is useful for st
 ### Syntax
 
 ```sruja
-system API "API" {
+specification {
+  element system
+}
+
+model {
+  API = system "API" {
     metadata {
-        owner "Team A"
-        tier "1"
+      owner "Team A"
+      tier "1"
     }
+  }
 }
 ```
 

@@ -6,9 +6,9 @@ import (
 
 func TestParser_UnorderedFields(t *testing.T) {
 	// Input with out-of-order tags and status
-	input := `architecture "Test" {
+	input := `model {
 		adr ADR001 "Test" {
-			tags "tag1", "tag2"
+			tags ["tag1", "tag2"]
 			status "Accepted"
 			decision "We decided X"
 			context "Context Y"
@@ -28,7 +28,17 @@ func TestParser_UnorderedFields(t *testing.T) {
 		t.Fatalf("Parser returned diagnostics: %v", diags)
 	}
 
-	adr := program.Architecture.ADRs[0]
+	// Find ADR in Model
+	var adr *ADR
+	for _, item := range program.Model.Items {
+		if item.ADR != nil {
+			adr = item.ADR
+			break
+		}
+	}
+	if adr == nil {
+		t.Fatal("Expected ADR")
+	}
 	if *adr.Body.Status != "Accepted" {
 		t.Errorf("Expected Status 'Accepted', got %v", adr.Body.Status)
 	}

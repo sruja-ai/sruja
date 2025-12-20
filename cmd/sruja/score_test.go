@@ -17,7 +17,7 @@ func TestScoreCommand(t *testing.T) {
 	// Create a valid Sruja file with some violations to test scoring
 	validFile := filepath.Join(tempDir, "score_test.sruja")
 	content := `
-architecture "ScoreTest" {
+model {
 	system Sys {
 		container API {
 			technology "Go"

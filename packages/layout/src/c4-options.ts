@@ -151,7 +151,8 @@ export const InteractivePreset: C4LayoutOptions = {
   spacing: {
     node: { SoftwareSystem: 30, Container: 50, Component: 40 },
     rank: { Container: 70, Component: 60 },
-    padding: { SoftwareSystem: 28, Container: 20, Component: 20 },
+    // Increased padding to meet quality standards (>50px total with safety margin)
+    padding: { SoftwareSystem: 40, Container: 35, Component: 35 },
     port: 12,
   },
 };
@@ -177,3 +178,16 @@ export const CompactPreset: C4LayoutOptions = {
     port: 8,
   },
 };
+
+/**
+ * Create C4 layout options for a specific level
+ * @param level - C4 level: "L0", "L1", "L2", "L3"
+ * @returns C4LayoutOptions configured for the specified level
+ */
+export function createC4LayoutOptions(level: "L0" | "L1" | "L2" | "L3"): C4LayoutOptions {
+  const baseOptions: C4LayoutOptions = {
+    ...InteractivePreset,
+    strategy: level === "L0" ? "grid" : level === "L1" ? "l1-context" : "sugiyama",
+  };
+  return baseOptions;
+}

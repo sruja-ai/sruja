@@ -61,200 +61,441 @@ type ADRInfo struct {
 	Title string
 }
 
-// ListSystems extracts all systems from an architecture.
-func ListSystems(arch *language.Architecture) []SystemInfo {
-	if arch == nil {
+// ListSystems extracts all systems from a LikeC4 model.
+func ListSystems(program *language.Program) []SystemInfo {
+	if program == nil || program.Model == nil {
 		return nil
 	}
 
-	result := make([]SystemInfo, 0, len(arch.Systems))
-	for _, sys := range arch.Systems {
-		info := SystemInfo{
-			ID:    sys.ID,
-			Label: sys.Label,
+	var result []SystemInfo
+	var collectSystems func(elem *language.LikeC4ElementDef, parentPrefix string)
+	collectSystems = func(elem *language.LikeC4ElementDef, parentPrefix string) {
+		if elem == nil {
+			return
 		}
-		if sys.Description != nil {
-			info.Description = *sys.Description
+
+		id := elem.GetID()
+		if id == "" {
+			return
 		}
-		result = append(result, info)
+
+		qualifiedID := id
+		if parentPrefix != "" {
+			qualifiedID = parentPrefix + "." + id
+		}
+
+		// Check if this is a system
+		if elem.GetKind() == "system" {
+			label := id
+			if title := elem.GetTitle(); title != nil {
+				label = *title
+			}
+			info := SystemInfo{
+				ID:    qualifiedID,
+				Label: label,
+			}
+			if body := elem.GetBody(); body != nil {
+				for _, item := range body.Items {
+					if item.Description != nil {
+						info.Description = *item.Description
+						break
+					}
+				}
+			}
+			result = append(result, info)
+		}
+
+		// Recursively collect nested elements
+		if body := elem.GetBody(); body != nil {
+			for _, item := range body.Items {
+				if item.Element != nil {
+					collectSystems(item.Element, qualifiedID)
+				}
+			}
+		}
 	}
+
+	// Process all items in the model
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			collectSystems(item.ElementDef, "")
+		}
+	}
+
 	return result
 }
 
-// ListContainers extracts all containers from an architecture.
-func ListContainers(arch *language.Architecture) []ContainerInfo {
-	if arch == nil {
+// ListContainers extracts all containers from a LikeC4 model.
+func ListContainers(program *language.Program) []ContainerInfo {
+	if program == nil || program.Model == nil {
 		return nil
 	}
 
 	var result []ContainerInfo
-	for _, sys := range arch.Systems {
-		for _, cont := range sys.Containers {
-			info := ContainerInfo{
-				ID:       cont.ID,
-				Label:    cont.Label,
-				SystemID: sys.ID,
+	var collectContainers func(elem *language.LikeC4ElementDef, parentPrefix, systemID string)
+	collectContainers = func(elem *language.LikeC4ElementDef, parentPrefix, systemID string) {
+		if elem == nil {
+			return
+		}
+
+		id := elem.GetID()
+		if id == "" {
+			return
+		}
+
+		qualifiedID := id
+		if parentPrefix != "" {
+			qualifiedID = parentPrefix + "." + id
+		}
+
+		// Update systemID if this is a system
+		if elem.GetKind() == "system" {
+			systemID = qualifiedID
+		}
+
+		// Check if this is a container
+		kind := elem.GetKind()
+		if kind == "container" || kind == "webapp" || kind == "mobile" || kind == "api" || kind == "database" || kind == "queue" {
+			label := id
+			if title := elem.GetTitle(); title != nil {
+				label = *title
 			}
-			if cont.Description != nil {
-				info.Description = *cont.Description
+			info := ContainerInfo{
+				ID:       qualifiedID,
+				Label:    label,
+				SystemID: systemID,
+			}
+			if body := elem.GetBody(); body != nil {
+				for _, item := range body.Items {
+					if item.Description != nil {
+						info.Description = *item.Description
+						break
+					}
+				}
 			}
 			result = append(result, info)
 		}
+
+		// Recursively collect nested elements
+		if body := elem.GetBody(); body != nil {
+			for _, item := range body.Items {
+				if item.Element != nil {
+					collectContainers(item.Element, qualifiedID, systemID)
+				}
+			}
+		}
 	}
+
+	// Process all items in the model
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			collectContainers(item.ElementDef, "", "")
+		}
+	}
+
 	return result
 }
 
-// ListComponents extracts all components from an architecture.
-func ListComponents(arch *language.Architecture) []ComponentInfo {
-	if arch == nil {
+// ListComponents extracts all components from a LikeC4 model.
+func ListComponents(program *language.Program) []ComponentInfo {
+	if program == nil || program.Model == nil {
 		return nil
 	}
 
 	var result []ComponentInfo
-	for _, sys := range arch.Systems {
-		// System-level components
-		for _, comp := range sys.Components {
-			info := ComponentInfo{
-				ID:       comp.ID,
-				Label:    comp.Label,
-				SystemID: sys.ID,
+	var collectComponents func(elem *language.LikeC4ElementDef, parentPrefix, systemID, containerID string)
+	collectComponents = func(elem *language.LikeC4ElementDef, parentPrefix, systemID, containerID string) {
+		if elem == nil {
+			return
+		}
+
+		id := elem.GetID()
+		if id == "" {
+			return
+		}
+
+		qualifiedID := id
+		if parentPrefix != "" {
+			qualifiedID = parentPrefix + "." + id
+		}
+
+		// Update systemID if this is a system
+		kind := elem.GetKind()
+		if kind == "system" {
+			systemID = qualifiedID
+			containerID = "" // Reset container ID when entering a new system
+		}
+
+		// Update containerID if this is a container
+		if kind == "container" || kind == "webapp" || kind == "mobile" || kind == "api" {
+			containerID = qualifiedID
+		}
+
+		// Check if this is a component
+		if kind == "component" {
+			label := id
+			if title := elem.GetTitle(); title != nil {
+				label = *title
 			}
-			if comp.Description != nil {
-				info.Description = *comp.Description
+			info := ComponentInfo{
+				ID:          qualifiedID,
+				Label:       label,
+				SystemID:    systemID,
+				ContainerID: containerID,
+			}
+			if body := elem.GetBody(); body != nil {
+				for _, item := range body.Items {
+					if item.Description != nil {
+						info.Description = *item.Description
+						break
+					}
+				}
 			}
 			result = append(result, info)
 		}
-		// Container-level components
-		for _, cont := range sys.Containers {
-			for _, comp := range cont.Components {
-				info := ComponentInfo{
-					ID:          comp.ID,
-					Label:       comp.Label,
-					SystemID:    sys.ID,
-					ContainerID: cont.ID,
+
+		// Recursively collect nested elements
+		if body := elem.GetBody(); body != nil {
+			for _, item := range body.Items {
+				if item.Element != nil {
+					collectComponents(item.Element, qualifiedID, systemID, containerID)
 				}
-				if comp.Description != nil {
-					info.Description = *comp.Description
-				}
-				result = append(result, info)
 			}
 		}
 	}
+
+	// Process all items in the model
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			collectComponents(item.ElementDef, "", "", "")
+		}
+	}
+
 	return result
 }
 
-// ListPersons extracts all persons from an architecture.
-func ListPersons(arch *language.Architecture) []PersonInfo {
-	if arch == nil {
+// ListPersons extracts all persons from a LikeC4 model.
+func ListPersons(program *language.Program) []PersonInfo {
+	if program == nil || program.Model == nil {
 		return nil
 	}
 
-	result := make([]PersonInfo, 0, len(arch.Persons))
-	for _, person := range arch.Persons {
-		result = append(result, PersonInfo{
-			ID:    person.ID,
-			Label: person.Label,
-		})
-	}
-	for _, sys := range arch.Systems {
-		for _, person := range sys.Persons {
+	var result []PersonInfo
+	var collectPersons func(elem *language.LikeC4ElementDef, parentPrefix string)
+	collectPersons = func(elem *language.LikeC4ElementDef, parentPrefix string) {
+		if elem == nil {
+			return
+		}
+
+		id := elem.GetID()
+		if id == "" {
+			return
+		}
+
+		qualifiedID := id
+		if parentPrefix != "" {
+			qualifiedID = parentPrefix + "." + id
+		}
+
+		// Check if this is a person
+		kind := elem.GetKind()
+		if kind == "person" || kind == "actor" || kind == "user" {
+			label := id
+			if title := elem.GetTitle(); title != nil {
+				label = *title
+			}
 			result = append(result, PersonInfo{
-				ID:    person.ID,
-				Label: person.Label,
+				ID:    qualifiedID,
+				Label: label,
 			})
 		}
+
+		// Recursively collect nested elements
+		if body := elem.GetBody(); body != nil {
+			for _, item := range body.Items {
+				if item.Element != nil {
+					collectPersons(item.Element, qualifiedID)
+				}
+			}
+		}
 	}
+
+	// Process all items in the model
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			collectPersons(item.ElementDef, "")
+		}
+	}
+
 	return result
 }
 
-// ListDataStores extracts all datastores from an architecture.
-func ListDataStores(arch *language.Architecture) []DataStoreInfo {
-	if arch == nil {
+// ListDataStores extracts all datastores from a LikeC4 model.
+func ListDataStores(program *language.Program) []DataStoreInfo {
+	if program == nil || program.Model == nil {
 		return nil
 	}
 
 	var result []DataStoreInfo
-	for _, sys := range arch.Systems {
-		for _, ds := range sys.DataStores {
+	var collectDataStores func(elem *language.LikeC4ElementDef, parentPrefix, systemID string)
+	collectDataStores = func(elem *language.LikeC4ElementDef, parentPrefix, systemID string) {
+		if elem == nil {
+			return
+		}
+
+		id := elem.GetID()
+		if id == "" {
+			return
+		}
+
+		qualifiedID := id
+		if parentPrefix != "" {
+			qualifiedID = parentPrefix + "." + id
+		}
+
+		// Update systemID if this is a system
+		kind := elem.GetKind()
+		if kind == "system" {
+			systemID = qualifiedID
+		}
+
+		// Check if this is a datastore/database
+		if kind == "database" || kind == "datastore" {
+			label := id
+			if title := elem.GetTitle(); title != nil {
+				label = *title
+			}
 			result = append(result, DataStoreInfo{
-				ID:       ds.ID,
-				Label:    ds.Label,
-				SystemID: sys.ID,
+				ID:       qualifiedID,
+				Label:    label,
+				SystemID: systemID,
 			})
 		}
-		for _, cont := range sys.Containers {
-			for _, ds := range cont.DataStores {
-				result = append(result, DataStoreInfo{
-					ID:       ds.ID,
-					Label:    ds.Label,
-					SystemID: sys.ID,
-				})
+
+		// Recursively collect nested elements
+		if body := elem.GetBody(); body != nil {
+			for _, item := range body.Items {
+				if item.Element != nil {
+					collectDataStores(item.Element, qualifiedID, systemID)
+				}
 			}
 		}
 	}
+
+	// Process all items in the model
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			collectDataStores(item.ElementDef, "", "")
+		}
+	}
+
 	return result
 }
 
-// ListQueues extracts all queues from an architecture.
-func ListQueues(arch *language.Architecture) []QueueInfo {
-	if arch == nil {
+// ListQueues extracts all queues from a LikeC4 model.
+func ListQueues(program *language.Program) []QueueInfo {
+	if program == nil || program.Model == nil {
 		return nil
 	}
 
 	var result []QueueInfo
-	for _, sys := range arch.Systems {
-		for _, q := range sys.Queues {
+	var collectQueues func(elem *language.LikeC4ElementDef, parentPrefix, systemID string)
+	collectQueues = func(elem *language.LikeC4ElementDef, parentPrefix, systemID string) {
+		if elem == nil {
+			return
+		}
+
+		id := elem.GetID()
+		if id == "" {
+			return
+		}
+
+		qualifiedID := id
+		if parentPrefix != "" {
+			qualifiedID = parentPrefix + "." + id
+		}
+
+		// Update systemID if this is a system
+		kind := elem.GetKind()
+		if kind == "system" {
+			systemID = qualifiedID
+		}
+
+		// Check if this is a queue
+		if kind == "queue" {
+			label := id
+			if title := elem.GetTitle(); title != nil {
+				label = *title
+			}
 			result = append(result, QueueInfo{
-				ID:       q.ID,
-				Label:    q.Label,
-				SystemID: sys.ID,
+				ID:       qualifiedID,
+				Label:    label,
+				SystemID: systemID,
 			})
 		}
-		for _, cont := range sys.Containers {
-			for _, q := range cont.Queues {
-				result = append(result, QueueInfo{
-					ID:       q.ID,
-					Label:    q.Label,
-					SystemID: sys.ID,
-				})
+
+		// Recursively collect nested elements
+		if body := elem.GetBody(); body != nil {
+			for _, item := range body.Items {
+				if item.Element != nil {
+					collectQueues(item.Element, qualifiedID, systemID)
+				}
 			}
 		}
 	}
-	return result
-}
 
-// ListScenarios extracts all scenarios from an architecture.
-func ListScenarios(arch *language.Architecture) []ScenarioInfo {
-	if arch == nil {
-		return nil
-	}
-
-	result := make([]ScenarioInfo, 0, len(arch.Scenarios))
-	for _, scenario := range arch.Scenarios {
-		result = append(result, ScenarioInfo{
-			ID:    scenario.ID,
-			Title: scenario.Title,
-		})
-	}
-	return result
-}
-
-// ListADRs extracts all ADRs from an architecture.
-func ListADRs(arch *language.Architecture) []ADRInfo {
-	if arch == nil {
-		return nil
-	}
-
-	result := make([]ADRInfo, 0, len(arch.ADRs))
-	for _, adr := range arch.ADRs {
-		title := ""
-		if adr.Title != nil {
-			title = *adr.Title
+	// Process all items in the model
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			collectQueues(item.ElementDef, "", "")
 		}
-		result = append(result, ADRInfo{
-			ID:    adr.ID,
-			Title: title,
-		})
+	}
+
+	return result
+}
+
+// ListScenarios extracts all scenarios from a LikeC4 model.
+func ListScenarios(program *language.Program) []ScenarioInfo {
+	if program == nil || program.Model == nil {
+		return nil
+	}
+
+	var result []ScenarioInfo
+	// Scenarios are at the top level of the model, not nested in elements
+	for _, item := range program.Model.Items {
+		if item.Scenario != nil {
+			title := ""
+			if item.Scenario.Title != nil {
+				title = *item.Scenario.Title
+			}
+			result = append(result, ScenarioInfo{
+				ID:    item.Scenario.ID,
+				Title: title,
+			})
+		}
+	}
+	return result
+}
+
+// ListADRs extracts all ADRs from a LikeC4 model.
+func ListADRs(program *language.Program) []ADRInfo {
+	if program == nil || program.Model == nil {
+		return nil
+	}
+
+	var result []ADRInfo
+	// ADRs are at the top level of the model, not nested in elements
+	for _, item := range program.Model.Items {
+		if item.ADR != nil {
+			title := ""
+			if item.ADR.Title != nil {
+				title = *item.ADR.Title
+			}
+			result = append(result, ADRInfo{
+				ID:    item.ADR.ID,
+				Title: title,
+			})
+		}
 	}
 	return result
 }

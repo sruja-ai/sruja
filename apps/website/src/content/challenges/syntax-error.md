@@ -5,18 +5,29 @@ difficulty: beginner
 topic: validation
 estimatedTime: "5-8 min"
 initialDsl: |
-  architecture "RideShare" {
-    person Rider "App User"
+  specification {
+    element person
+    element system
+    element container
+    element component
+    element datastore
+    element queue
+    element external
+  }
+  
+  model {
+    Rider = person "App User"
     
-    system RideApp {
-      container MobileApp "Mobile Application"
-      container MatchingService "Driver Matching"  // Syntax issue here
-      datastore LocationDB "Location Database"
-    }
+      RideApp = system  {
+        MobileApp = container "Mobile Application"
+        MatchingService = container "Driver Matching"
+        LocationDB = datastore "Location Database"
+      }
     
-    Rider -> MobileApp "Requests ride"
-    MobileApp -> MatchingService Finds driver  // Missing quotes
-    MatchingService -> LocationDB "Queries locations"
+      Rider -> MobileApp "Requests ride"
+      MobileApp -> MatchingService Finds driver  // Missing quotes
+      MatchingService -> LocationDB "Queries locations"
+    
   }
 checks:
   - type: noErrors
@@ -35,17 +46,28 @@ hints:
   - "All relation labels must be wrapped in double quotes"
   - "Container definitions need proper closing braces"
 solution: |
-  architecture "RideShare" {
-    person Rider "App User"
+  specification {
+    element person
+    element system
+    element container
+    element component
+    element datastore
+    element queue
+    element external
+  }
+  
+  model {
+    Rider = person "App User"
     
-    system RideApp {
-      container MobileApp "Mobile Application"
-      container MatchingService "Driver Matching"
-      datastore LocationDB "Location Database"
-    }
+      RideApp = system  {
+        MobileApp = container "Mobile Application"
+        MatchingService = container "Driver Matching"
+        LocationDB = datastore "Location Database"
+      }
     
-    Rider -> MobileApp "Requests ride"
-    MobileApp -> MatchingService "Finds driver"
-    MatchingService -> LocationDB "Queries locations"
+      Rider -> MobileApp "Requests ride"
+      MobileApp -> MatchingService "Finds driver"
+      MatchingService -> LocationDB "Queries locations"
+    
   }
 ---

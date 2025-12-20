@@ -3,6 +3,7 @@ package diagnostics
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -23,7 +24,7 @@ type SourceLocation struct {
 }
 
 func (l SourceLocation) String() string {
-	return fmt.Sprintf("%s:%d:%d", l.File, l.Line, l.Column)
+	return l.File + ":" + strconv.Itoa(l.Line) + ":" + strconv.Itoa(l.Column)
 }
 
 // Diagnostic represents a single error or warning.

@@ -11,7 +11,16 @@ Use `scale` to capture expected capacity, concurrency, or throughput ranges.
 ## Syntax
 
 ```sruja
-architecture "Shop" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   system App {
     container API {
       scale {
@@ -20,6 +29,12 @@ architecture "Shop" {
         max 2000
       }
     }
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```

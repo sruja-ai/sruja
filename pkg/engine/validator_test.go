@@ -32,17 +32,22 @@ func TestValidator_Validate(t *testing.T) {
 	rule := &UniqueIDRule{}
 	v.RegisterRule(rule)
 
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{ID: "Sys1", Label: "System 1"},
-				{ID: "Sys2", Label: "System 2"},
-			},
-		},
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	errs := v.Validate(prog)
+	dsl := `model {
+		Sys1 = system "System 1"
+		Sys2 = system "System 2"
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	errs := v.Validate(program)
 	// Should have no errors for unique IDs
 	if len(errs) != 0 {
 		t.Errorf("Expected no errors, got %d", len(errs))
@@ -54,16 +59,21 @@ func TestValidator_Validate_MultipleRules(_ *testing.T) {
 	v.RegisterRule(&UniqueIDRule{})
 	v.RegisterRule(&ValidReferenceRule{})
 
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{ID: "Sys1", Label: "System 1"},
-			},
-		},
+	parser, err := language.NewParser()
+	if err != nil {
+		return
 	}
 
-	errs := v.Validate(prog)
+	dsl := `model {
+		Sys1 = system "System 1"
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		return
+	}
+
+	errs := v.Validate(program)
 	// Should run all rules
 	_ = errs
 }
@@ -77,17 +87,26 @@ func TestCycleDetectionRule_Name(t *testing.T) {
 
 func TestCycleDetectionRule_Validate_NoCycle(t *testing.T) {
 	rule := &CycleDetectionRule{}
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Relations: []*language.Relation{
-				{From: language.QualifiedIdent{Parts: []string{"A"}}, To: language.QualifiedIdent{Parts: []string{"B"}}},
-				{From: language.QualifiedIdent{Parts: []string{"B"}}, To: language.QualifiedIdent{Parts: []string{"C"}}},
-			},
-		},
+
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	errs := rule.Validate(prog)
+	dsl := `model {
+		A = system "A"
+		B = system "B"
+		C = system "C"
+		A -> B
+		B -> C
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	errs := rule.Validate(program)
 	if len(errs) != 0 {
 		t.Errorf("Expected no errors, got %d", len(errs))
 	}
@@ -95,17 +114,25 @@ func TestCycleDetectionRule_Validate_NoCycle(t *testing.T) {
 
 func TestCycleDetectionRule_Validate_Cycle(t *testing.T) {
 	rule := &CycleDetectionRule{}
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Relations: []*language.Relation{
-				{From: language.QualifiedIdent{Parts: []string{"A"}}, To: language.QualifiedIdent{Parts: []string{"B"}}},
-				{From: language.QualifiedIdent{Parts: []string{"B"}}, To: language.QualifiedIdent{Parts: []string{"A"}}},
-			},
-		},
+
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	errs := rule.Validate(prog)
+	dsl := `model {
+		A = system "A"
+		B = system "B"
+		A -> B
+		B -> A
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	errs := rule.Validate(program)
 	if len(errs) == 0 {
 		t.Error("Expected cycle detection error")
 	}
@@ -123,22 +150,27 @@ func TestCycleDetectionRule_Validate_NilArchitecture(t *testing.T) {
 
 func TestCycleDetectionRule_Validate_SystemRelations(t *testing.T) {
 	rule := &CycleDetectionRule{}
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{
-					ID: "Sys",
-					Relations: []*language.Relation{
-						{From: language.QualifiedIdent{Parts: []string{"A"}}, To: language.QualifiedIdent{Parts: []string{"B"}}},
-						{From: language.QualifiedIdent{Parts: []string{"B"}}, To: language.QualifiedIdent{Parts: []string{"A"}}},
-					},
-				},
-			},
-		},
+
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	errs := rule.Validate(prog)
+	dsl := `model {
+		Sys = system "System" {
+			A = container "A"
+			B = container "B"
+			A -> B
+			B -> A
+		}
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	errs := rule.Validate(program)
 	if len(errs) == 0 {
 		t.Error("Expected cycle detection error in system relations")
 	}
@@ -215,22 +247,27 @@ func TestValidator_RegisterDefaultRules(t *testing.T) {
 }
 
 func TestValidator_RegisterDefaultRules_CanValidate(t *testing.T) {
-    t.Helper()
-    v := NewValidator()
+	t.Helper()
+	v := NewValidator()
 	v.RegisterDefaultRules()
 
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{ID: "Sys1", Label: "System 1"},
-				{ID: "Sys2", Label: "System 2"},
-			},
-		},
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+
+	dsl := `model {
+		Sys1 = system "System 1"
+		Sys2 = system "System 2"
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
 	}
 
 	// Should run without panicking
-	diags := v.Validate(prog)
+	diags := v.Validate(program)
 	_ = diags // We're just checking it doesn't panic
 }
 

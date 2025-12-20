@@ -11,7 +11,7 @@ import (
 
 // ApplyViewExpressions filters elements based on view expressions.
 // Returns a set of element IDs that should be included in the view.
-func ApplyViewExpressions(arch *language.Architecture, view *language.View) (map[string]bool, error) {
+func ApplyViewExpressions(prog *language.Program, view *language.View) (map[string]bool, error) {
 	if view == nil {
 		return nil, fmt.Errorf("view is nil")
 	}
@@ -27,18 +27,19 @@ func ApplyViewExpressions(arch *language.Architecture, view *language.View) (map
 	// Process expressions in order
 	for _, expr := range view.Expressions {
 		if expr.Type == "include" {
-			if expr.Wildcard != nil && *expr.Wildcard == "*" {
+			switch {
+			case expr.Wildcard != nil && *expr.Wildcard == "*":
 				// Include all elements in scope
-				includeAllInScope(arch, view.Scope, included)
-			} else if len(expr.Elements) > 0 {
+				includeAllInScope(prog, view.Scope, included)
+			case len(expr.Elements) > 0:
 				// Include specific elements
 				for _, elem := range expr.Elements {
 					included[elem.String()] = true
 				}
-			} else if expr.Pattern != nil {
+			case expr.Pattern != nil:
 				// Pattern-based include (e.g., "->Element->")
 				// For now, treat as wildcard - full pattern matching can be added later
-				includeAllInScope(arch, view.Scope, included)
+				includeAllInScope(prog, view.Scope, included)
 			}
 		} else if expr.Type == "exclude" {
 			if len(expr.Elements) > 0 {
@@ -58,11 +59,12 @@ func ApplyViewExpressions(arch *language.Architecture, view *language.View) (map
 }
 
 // includeAllInScope includes all elements within the view scope.
-func includeAllInScope(arch *language.Architecture, scope language.QualifiedIdent, included map[string]bool) {
+func includeAllInScope(prog *language.Program, scope language.QualifiedIdent, included map[string]bool) {
 	scopeStr := scope.String()
+	systems := extractSystems(prog)
 
 	// Find the system
-	for _, sys := range arch.Systems {
+	for _, sys := range systems {
 		if sys.ID == scopeStr {
 			// Include system
 			included[sys.ID] = true
@@ -116,7 +118,7 @@ func includeAllInScope(arch *language.Architecture, scope language.QualifiedIden
 
 // ApplyStyles applies styles from the views block to elements.
 // Returns a map of element IDs to style properties.
-func ApplyStyles(arch *language.Architecture, viewBlock *language.ViewBlock) map[string]map[string]string {
+func ApplyStyles(prog *language.Program, viewBlock *language.ViewBlock) map[string]map[string]string {
 	if viewBlock == nil || viewBlock.Styles == nil {
 		return nil
 	}
@@ -129,7 +131,7 @@ func ApplyStyles(arch *language.Architecture, viewBlock *language.ViewBlock) map
 	styles := make(map[string]map[string]string, estimatedStyles)
 
 	// Build tag-to-elements map
-	tagMap := buildTagMap(arch)
+	tagMap := buildTagMap(prog)
 
 	// Apply styles by tag
 	for _, style := range viewBlock.Styles.Styles {
@@ -163,19 +165,22 @@ func ApplyStyles(arch *language.Architecture, viewBlock *language.ViewBlock) map
 }
 
 // buildTagMap builds a map of tags to element IDs.
-func buildTagMap(arch *language.Architecture) map[string]map[string]bool {
+func buildTagMap(prog *language.Program) map[string]map[string]bool {
 	// Estimate capacity: typically few tags per architecture
 	estimatedTags := 16
 	tagMap := make(map[string]map[string]bool, estimatedTags)
 	const metaKeyTags = "tags"
 
+	systems := extractSystems(prog)
+	persons := extractPersons(prog)
+
 	// Add default tags
-	addTag(tagMap, "Element", arch.Systems, func(s *language.System) string { return s.ID })
-	addTag(tagMap, "System", arch.Systems, func(s *language.System) string { return s.ID })
-	addTag(tagMap, "Person", arch.Persons, func(p *language.Person) string { return p.ID })
+	addTag(tagMap, "Element", systems, func(s *language.System) string { return s.ID })
+	addTag(tagMap, "System", systems, func(s *language.System) string { return s.ID })
+	addTag(tagMap, "Person", persons, func(p *language.Person) string { return p.ID })
 
 	// Add tags from metadata
-	for _, sys := range arch.Systems {
+	for _, sys := range systems {
 		for _, meta := range sys.Metadata {
 			if meta.Key == metaKeyTags && len(meta.Array) > 0 {
 				for _, tag := range meta.Array {
@@ -246,17 +251,12 @@ func addTagToElement(tagMap map[string]map[string]bool, tag, elemID string) {
 }
 
 // FindViewByName finds a view by name in the views block.
-func FindViewByName(arch *language.Architecture, viewName string) *language.View {
-	if arch.Views == nil {
-		return nil
-	}
-
-	for _, view := range arch.Views.Views {
-		if strings.Trim(view.Name, "\"") == viewName {
-			return view
-		}
-	}
-
+// Note: This function works with the old ViewBlock structure.
+// For LikeC4 views, use FindLikeC4ViewByName instead.
+func FindViewByName(_ *language.Program, _ string) *language.View {
+	// Check old ViewBlock format (if still supported)
+	// For now, return nil as ViewBlock is not part of Program
+	// This function may need to be updated to work with LikeC4ViewsBlock
 	return nil
 }
 

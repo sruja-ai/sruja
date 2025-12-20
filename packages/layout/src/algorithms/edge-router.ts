@@ -47,16 +47,27 @@ export function calculateBestPortWithObstacles(
   const horizontalDenom = horizontalPorts + 1;
   const verticalDenom = verticalPorts + 1;
 
-  // Generate ports along each side, distributed evenly (avoiding corners)
+  // Optimize scoring weights
+  // 1. Direction is primary but shouldn't be exclusive (allow side ports even if vertical)
+  // 2. Clearance is critical
+  // 3. Port usage distribution is important for large diagrams
+
   // East side (right)
   for (let i = 0; i < horizontalPorts; i++) {
     const ratio = (i + 1) / horizontalDenom; // Distribute evenly
     const y = srcY + srcHeight * ratio;
+    // Base score: heavily favor direct line, but allow indirect if needed
+    // If dx > 0 (target is right), score = absDx * 2
+    // If target is vertical (absDy > absDx), give substantial score to side ports to allow routing around
+    let score = 0;
+    if (dx > 0) score = absDx * 2;
+    else if (absDy > absDx) score = absDx * 0.8; // Allow side port even if vertical
+
     candidates.push({
       side: "east",
       position: { x: srcRight, y },
       angle: 0,
-      score: dx > 0 ? absDx * 2 : absDx < absDy ? absDx * 0.5 : 0,
+      score
     });
   }
 
@@ -64,11 +75,15 @@ export function calculateBestPortWithObstacles(
   for (let i = 0; i < horizontalPorts; i++) {
     const ratio = (i + 1) / horizontalDenom;
     const y = srcY + srcHeight * ratio;
+    let score = 0;
+    if (dx < 0) score = absDx * 2;
+    else if (absDy > absDx) score = absDx * 0.8;
+
     candidates.push({
       side: "west",
       position: { x: srcX, y },
       angle: 180,
-      score: dx < 0 ? absDx * 2 : absDx < absDy ? absDx * 0.5 : 0,
+      score
     });
   }
 
@@ -76,11 +91,15 @@ export function calculateBestPortWithObstacles(
   for (let i = 0; i < verticalPorts; i++) {
     const ratio = (i + 1) / verticalDenom;
     const x = srcX + srcWidth * ratio;
+    let score = 0;
+    if (dy > 0) score = absDy * 2;
+    else if (absDx > absDy) score = absDy * 0.8; // Allow bottom port even if horizontal
+
     candidates.push({
       side: "south",
       position: { x, y: srcBottom },
       angle: 90,
-      score: dy > 0 ? absDy * 2 : absDy < absDx ? absDy * 0.5 : 0,
+      score
     });
   }
 
@@ -88,11 +107,15 @@ export function calculateBestPortWithObstacles(
   for (let i = 0; i < verticalPorts; i++) {
     const ratio = (i + 1) / verticalDenom;
     const x = srcX + srcWidth * ratio;
+    let score = 0;
+    if (dy < 0) score = absDy * 2;
+    else if (absDx > absDy) score = absDy * 0.8;
+
     candidates.push({
       side: "north",
       position: { x, y: srcY },
       angle: 270,
-      score: dy < 0 ? absDy * 2 : absDy < absDx ? absDy * 0.5 : 0,
+      score
     });
   }
 

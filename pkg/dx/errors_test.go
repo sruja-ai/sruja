@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sruja-ai/sruja/pkg/diagnostics"
+	"github.com/sruja-ai/sruja/pkg/language"
 )
 
 func TestEnhancedError_Format(t *testing.T) {
@@ -399,5 +400,125 @@ func TestExtractRuleName(t *testing.T) {
 		if enhanced.RuleName != tt.expected {
 			t.Errorf("RuleName for %q = %q, want %q", tt.msg, enhanced.RuleName, tt.expected)
 		}
+	}
+}
+
+func TestExtractContext_EdgeCases(t *testing.T) {
+	fileLines := []string{
+		"line 1",
+		"line 2",
+		"line 3",
+		"line 4",
+		"line 5",
+	}
+	enhancer := NewErrorEnhancer("test.sruja", fileLines, nil)
+
+	// Test error at first line
+	valErr1 := diagnostics.Diagnostic{
+		Message: "error",
+		Location: diagnostics.SourceLocation{
+			Line:   1,
+			Column: 3,
+		},
+	}
+	enhanced1 := enhancer.Enhance(valErr1)
+	if enhanced1.Context == "" {
+		t.Error("Context should not be empty for first line")
+	}
+
+	// Test error at last line
+	valErr2 := diagnostics.Diagnostic{
+		Message: "error",
+		Location: diagnostics.SourceLocation{
+			Line:   5,
+			Column: 3,
+		},
+	}
+	enhanced2 := enhancer.Enhance(valErr2)
+	if enhanced2.Context == "" {
+		t.Error("Context should not be empty for last line")
+	}
+
+	// Test error with column out of bounds
+	valErr3 := diagnostics.Diagnostic{
+		Message: "error",
+		Location: diagnostics.SourceLocation{
+			Line:   3,
+			Column: 100,
+		},
+	}
+	enhanced3 := enhancer.Enhance(valErr3)
+	if enhanced3.Context == "" {
+		t.Error("Context should handle out of bounds column")
+	}
+}
+
+func TestExtractContext_EmptyFile(t *testing.T) {
+	enhancer := NewErrorEnhancer("test.sruja", []string{}, nil)
+	valErr := diagnostics.Diagnostic{
+		Message: "error",
+		Location: diagnostics.SourceLocation{
+			Line:   1,
+			Column: 1,
+		},
+	}
+	enhanced := enhancer.Enhance(valErr)
+	if enhanced.Context != "" {
+		t.Error("Context should be empty for empty file")
+	}
+}
+
+func TestGenerateSuggestions_VariousErrors(t *testing.T) {
+	fileLines := []string{"system API {}"}
+	enhancer := NewErrorEnhancer("test.sruja", fileLines, nil)
+
+	tests := []struct {
+		msg               string
+		expectSuggestions bool
+	}{
+		{"duplicate ID found", true},
+		{"unknown element", true},
+		{"invalid reference", true},
+		{"circular dependency", true},
+		{"generic error message", false},
+	}
+
+	for _, tt := range tests {
+		valErr := diagnostics.Diagnostic{
+			Message: tt.msg,
+			Location: diagnostics.SourceLocation{
+				Line:   1,
+				Column: 1,
+			},
+		}
+		enhanced := enhancer.Enhance(valErr)
+		if enhanced == nil {
+			t.Errorf("Enhance should return enhanced error for %q", tt.msg)
+			continue
+		}
+		if tt.expectSuggestions && len(enhanced.Suggestions) == 0 {
+			t.Errorf("Expected suggestions for %q, got none", tt.msg)
+		}
+	}
+}
+
+func TestErrorEnhancer_WithProgram(t *testing.T) {
+	fileLines := []string{"system API {}"}
+	program := &language.Program{}
+	enhancer := NewErrorEnhancer("test.sruja", fileLines, program)
+
+	valErr := diagnostics.Diagnostic{
+		Message: "unknown element",
+		Location: diagnostics.SourceLocation{
+			Line:   1,
+			Column: 1,
+		},
+	}
+	enhanced := enhancer.Enhance(valErr)
+	if enhanced == nil {
+		t.Fatal("Enhance should return enhanced error")
+	}
+	if enhanced.Message != "unknown element" {
+		t.Errorf("Expected message 'unknown element', got %q", enhanced.Message)
 	}
 }

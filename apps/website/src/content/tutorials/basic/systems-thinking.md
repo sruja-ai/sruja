@@ -14,19 +14,28 @@ Systems thinking helps you understand how components interact as part of a whole
 Systems thinking starts with understanding **what** the system contains (parts) and **how** they connect (relationships).
 
 ```sruja
-architecture "E-Commerce" {
-  person Customer "End User"
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+  Customer = person "End User"
   
-  system Shop "E-Commerce System" {
-    container WebApp "Web Application" {
+  Shop = system "E-Commerce System" {
+    WebApp = container "Web Application" {
       technology "React"
     }
     
-    container API "API Service" {
+    API = container "API Service" {
       technology "Go"
     }
     
-    datastore DB "PostgreSQL Database" {
+    DB = datastore "PostgreSQL Database" {
       technology "PostgreSQL 14"
     }
   }
@@ -35,6 +44,12 @@ architecture "E-Commerce" {
   Customer -> Shop.WebApp "Uses"
   Shop.WebApp -> Shop.API "Calls"
   Shop.API -> Shop.DB "Reads/Writes"
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 
@@ -45,7 +60,16 @@ architecture "E-Commerce" {
 Boundaries define what's **inside** the system vs. what's **outside** (the environment).
 
 ```sruja
-architecture "E-Commerce" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   // Inside boundary: System contains these components
   system Shop {
     container WebApp
@@ -54,10 +78,10 @@ architecture "E-Commerce" {
   }
   
   // Outside boundary: External entities
-  person Customer "End User"
-  person Admin "System Administrator"
+  Customer = person "End User"
+  Admin = person "System Administrator"
   
-  system PaymentGateway "Third-party Payment Service" {
+  PaymentGateway = system "Third-party Payment Service" {
     metadata {
       tags ["external"]
     }
@@ -66,6 +90,12 @@ architecture "E-Commerce" {
   // Relationships cross boundaries
   Customer -> Shop.WebApp "Uses"
   Shop.API -> PaymentGateway "Processes"
+}
+
+views {
+  view index {
+    include *
+  }
 }
 ```
 
@@ -80,7 +110,16 @@ Flows show how information and data **move through** the system. Sruja supports 
 Use `scenario` for data-oriented flows:
 
 ```sruja
-architecture "Order Processing" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   person Customer
   system Shop {
     container WebApp
@@ -102,6 +141,12 @@ architecture "Order Processing" {
     Shop.WebApp -> Customer "Shows Confirmation"
   }
 }
+
+views {
+  view index {
+    include *
+  }
+}
 ```
 
 ### User Story/Scenario Style
@@ -109,15 +154,24 @@ architecture "Order Processing" {
 Use `scenario` for behavioral flows:
 
 ```sruja
-architecture "Checkout Example" {
-  person Customer "End User"
-  system ECommerce "E-Commerce System" {
-    container CartPage "Shopping Cart Page"
-    container WebApp "Web Application"
-    container API "API Service"
-    datastore DB "Database"
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+  Customer = person "End User"
+  ECommerce = system "E-Commerce System" {
+    CartPage = container "Shopping Cart Page"
+    WebApp = container "Web Application"
+    API = container "API Service"
+    DB = datastore "Database"
   }
-  system PaymentGateway "Payment Service" {
+  PaymentGateway = system "Payment Service" {
     metadata {
       tags ["external"]
     }
@@ -136,6 +190,12 @@ architecture "Checkout Example" {
     ECommerce.WebApp -> Customer "displays success message"
   }
 }
+
+views {
+  view index {
+    include *
+  }
+}
 ```
 
 **Key insight**: Use `flow` for data flows (DFD), `story`/`scenario` for behavioral flows (BDD).
@@ -147,12 +207,21 @@ Feedback loops show how actions create **reactions** that affect future actions.
 ### Simple Feedback Loop
 
 ```sruja
-// EXPECTED_FAILURE: Layer violation - intentional feedback loop example showing API -> WebApp is valid for teaching feedback patterns
-architecture "User Interaction" {
-  person User "End User"
-  system App "Application" {
-    container WebApp "Web Application"
-    container API "API Service"
+// EXPECTED_FAILURE: Layer violation
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
+  User = person "End User"
+  App = system "Application" {
+    WebApp = container "Web Application"
+    API = container "API Service"
   }
   
   // Feedback loop: User action → System response → User reaction
@@ -161,13 +230,23 @@ architecture "User Interaction" {
   App.API -> App.WebApp "Returns Validation Result"
   App.WebApp -> User "Shows Feedback"
   // The feedback affects user's next action (completing the loop)
+
 }
 ```
 
 ### System Feedback Loop
 
 ```sruja
-architecture "Inventory Management" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   person Admin
   system Shop {
     container API
@@ -181,6 +260,12 @@ architecture "Inventory Management" {
   Admin -> Shop.API "Adjusts Inventory"
   // Creates feedback: API ↔ Inventory ↔ Admin
 }
+
+views {
+  view index {
+    include *
+  }
+}
 ```
 
 **Key insight**: Cycles model natural feedback loops, event-driven patterns, and mutual dependencies. They're valid architectural patterns.
@@ -190,33 +275,42 @@ architecture "Inventory Management" {
 Context defines the **environment** the system operates in - external dependencies, stakeholders, and surrounding systems.
 
 ```sruja
-architecture "E-Commerce Platform" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   // Internal system
   system Shop {
-    container WebApp "Web Application"
-    container API "API Service"
-    datastore DB "Database"
+    WebApp = container "Web Application"
+    API = container "API Service"
+    DB = datastore "Database"
   }
   
   // Context: Stakeholders
-  person Customer "End User"
-  person Admin "System Administrator"
-  person Support "Customer Support"
+  Customer = person "End User"
+  Admin = person "System Administrator"
+  Support = person "Customer Support"
   
   // Context: External dependencies
-  system PaymentGateway "Third-party Payment" {
+  PaymentGateway = system "Third-party Payment" {
     metadata {
       tags ["external"]
     }
   }
   
-  system EmailService "Email Notifications" {
+  EmailService = system "Email Notifications" {
     metadata {
       tags ["external"]
     }
   }
   
-  system AnalyticsService "Usage Analytics" {
+  AnalyticsService = system "Usage Analytics" {
     metadata {
       tags ["external"]
     }
@@ -230,6 +324,12 @@ architecture "E-Commerce Platform" {
   Shop -> EmailService "Sends notifications"
   Shop -> AnalyticsService "Tracks usage"
 }
+
+views {
+  view index {
+    include *
+  }
+}
 ```
 
 **Key insight**: Context includes all external entities and dependencies that affect or are affected by your system.
@@ -239,26 +339,35 @@ architecture "E-Commerce Platform" {
 Here's a complete example combining all five concepts:
 
 ```sruja
-// EXPECTED_FAILURE: Layer violation - intentional feedback loop example showing API -> WebApp is valid for teaching feedback patterns
-architecture "Systems Thinking Example" {
+// EXPECTED_FAILURE: Layer violation
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   // 1. PARTS AND RELATIONSHIPS
-  person Customer "End User"
-  person Admin "System Administrator"
+  Customer = person "End User"
+  Admin = person "System Administrator"
   
-  system ECommerce "E-Commerce System" {
-    container WebApp "Web Application" {
+  ECommerce = system "E-Commerce System" {
+    WebApp = container "Web Application" {
       technology "React"
     }
-    container API "API Service" {
+    API = container "API Service" {
       technology "Go"
     }
-    datastore DB "PostgreSQL Database" {
+    DB = datastore "PostgreSQL Database" {
       technology "PostgreSQL 14"
     }
   }
   
   // 2. BOUNDARIES
-  system PaymentGateway "Third-party Payment Service" {
+  PaymentGateway = system "Third-party Payment Service" {
     metadata {
       tags ["external"]
     }
@@ -286,8 +395,8 @@ architecture "Systems Thinking Example" {
   Admin -> ECommerce.API "Adjusts Inventory"
   
   // 5. CONTEXT
-  person Support "Customer Support"
-  system EmailService "Email Notifications" {
+  Support = person "Customer Support"
+  EmailService = system "Email Notifications" {
     metadata {
       tags ["external"]
     }
@@ -298,6 +407,7 @@ architecture "Systems Thinking Example" {
   Support -> ECommerce "Monitors"
   ECommerce -> PaymentGateway "Depends on"
   ECommerce -> EmailService "Sends notifications"
+
 }
 ```
 

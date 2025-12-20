@@ -13,115 +13,78 @@ func (r *CycleDetectionRule) Name() string {
 	return "CycleDetection"
 }
 
-// estimateNodeCount provides a rough estimate of nodes for map pre-allocation.
-func estimateNodeCount(arch *language.Architecture) int {
-	if arch == nil {
-		return 16
-	}
-	count := len(arch.Relations)
-	for _, sys := range arch.Systems {
-		count += len(sys.Relations)
-		for _, c := range sys.Containers {
-			count += len(c.Relations)
-		}
-		for _, comp := range sys.Components {
-			count += len(comp.Relations)
-		}
-	}
-	// Estimate unique nodes (typically fewer than relations)
-	return count/2 + 32
-}
-
 //nolint:funlen,gocyclo // Validation logic is long and complex
 func (r *CycleDetectionRule) Validate(program *language.Program) []diagnostics.Diagnostic {
 	var diags []diagnostics.Diagnostic
-	if program == nil || program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return diags
 	}
+
+	// Collect all elements and relations from LikeC4 Model
+	defined, relations := collectLikeC4Elements(program.Model)
+
 	// Pre-allocate adjacency list with estimated capacity
-	estimatedNodes := estimateNodeCount(program.Architecture)
+	estimatedNodes := len(defined)
+	if estimatedNodes < 16 {
+		estimatedNodes = 16
+	}
 	adj := make(map[string][]string, estimatedNodes)
 
-	arch := program.Architecture
+	// Build adjacency list from relations
 	add := func(from, to string) {
 		if from != "" && to != "" {
 			adj[from] = append(adj[from], to)
 		}
 	}
-	for _, r := range arch.Relations {
-		add(r.From.String(), r.To.String())
-	}
-	for _, s := range arch.Systems {
-		for _, r := range s.Relations {
-			add(r.From.String(), r.To.String())
-		}
-		for _, c := range s.Containers {
-			for _, r := range c.Relations {
-				add(r.From.String(), r.To.String())
-			}
-		}
-		for _, comp := range s.Components {
-			for _, r := range comp.Relations {
-				add(r.From.String(), r.To.String())
-			}
-		}
+
+	// Add all relations to adjacency list
+	for _, rel := range relations {
+		add(rel.From.String(), rel.To.String())
 	}
 
-	visited := make(map[string]bool, estimatedNodes)
-	recStack := make(map[string]bool, estimatedNodes)
+	visited := make(map[string]bool, len(defined))
+	recStack := make(map[string]bool, len(defined))
 
 	// Build location map for better error reporting
-	// Estimate capacity based on systems and their nested elements
-	estimatedLocations := len(arch.Systems) * 4 // Rough estimate
-	locMap := make(map[string]diagnostics.SourceLocation, estimatedLocations)
+	locMap := make(map[string]diagnostics.SourceLocation, len(defined))
 
-	// Helper to build qualified IDs efficiently
-	buildQualifiedID := func(parts ...string) string {
-		if len(parts) == 0 {
-			return ""
+	// Collect element locations from LikeC4 Model
+	var collectLocations func(elem *language.LikeC4ElementDef, parentFQN string)
+	collectLocations = func(elem *language.LikeC4ElementDef, parentFQN string) {
+		if elem == nil {
+			return
 		}
-		if len(parts) == 1 {
-			return parts[0]
-		}
-		// Estimate total length
-		totalLen := len(parts) - 1 // for dots
-		for _, p := range parts {
-			totalLen += len(p)
-		}
-		buf := make([]byte, 0, totalLen)
-		buf = append(buf, parts[0]...)
-		for i := 1; i < len(parts); i++ {
-			buf = append(buf, '.')
-			buf = append(buf, parts[i]...)
-		}
-		return string(buf)
-	}
 
-	for _, sys := range arch.Systems {
-		l := sys.Location()
-		locMap[sys.ID] = diagnostics.SourceLocation{File: l.File, Line: l.Line, Column: l.Column}
-		for _, c := range sys.Containers {
-			cl := c.Location()
-			contID := buildQualifiedID(sys.ID, c.ID)
-			locMap[contID] = diagnostics.SourceLocation{File: cl.File, Line: cl.Line, Column: cl.Column}
-			for _, cmp := range c.Components {
-				cmpl := cmp.Location()
-				compID := buildQualifiedID(sys.ID, c.ID, cmp.ID)
-				locMap[compID] = diagnostics.SourceLocation{File: cmpl.File, Line: cmpl.Line, Column: cmpl.Column}
+		id := elem.GetID()
+		if id == "" {
+			return
+		}
+
+		fqn := id
+		if parentFQN != "" {
+			fqn = buildQualifiedID(parentFQN, id)
+		}
+
+		loc := elem.Location()
+		locMap[fqn] = diagnostics.SourceLocation{File: loc.File, Line: loc.Line, Column: loc.Column}
+
+		// Recurse into nested elements
+		body := elem.GetBody()
+		if body != nil {
+			for _, bodyItem := range body.Items {
+				if bodyItem.Element != nil {
+					collectLocations(bodyItem.Element, fqn)
+				}
 			}
 		}
-		for _, cmp := range sys.Components {
-			cmpl := cmp.Location()
-			compID := buildQualifiedID(sys.ID, cmp.ID)
-			locMap[compID] = diagnostics.SourceLocation{File: cmpl.File, Line: cmpl.Line, Column: cmpl.Column}
+	}
+
+	// Collect locations from all top-level elements
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			collectLocations(item.ElementDef, "")
 		}
 	}
-	// Add top-level containers/components/etc if needed, similar to orphan rule
-	// Also include other elements like Person, etc if they can be part of cycles.
-	// Previous code iterated Systems only, need to be comprehensive if relations exist elsewhere.
-	// The previous `add` function iterated everything.
-
-	// For now, let's keep it simple and just add the basic hierarchy as above.
 
 	// Optimization: Use a single path slice with backtracking to avoid unnecessary allocations
 	path := make([]string, 0, 16) // Pre-allocate with small capacity

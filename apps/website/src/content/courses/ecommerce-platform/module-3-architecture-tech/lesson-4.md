@@ -12,7 +12,16 @@ Contracts define stable interfaces between services; they reduce coupling and su
 ## Sruja: API & Event Contracts
 
 ```sruja
-architecture "E-Commerce" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   contracts {
     api CheckoutAPI {
       version "v1"
@@ -26,6 +35,12 @@ architecture "E-Commerce" {
       topic "orders.placed"
       payload "Order"
     }
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```

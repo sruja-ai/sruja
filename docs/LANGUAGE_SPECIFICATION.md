@@ -17,9 +17,30 @@ A Sruja file can contain:
 
 ### Core Syntax
 
+Sruja uses the LikeC4 syntax structure:
+
 ```sruja
-architecture "Name" {
-    // Elements go here
+specification {
+    // Element definitions
+    element person
+    element system
+    element container
+    element component
+}
+
+model {
+    // Model architecture and relationships
+    customer = person "Customer"
+    backend = system "Backend System"
+    
+    customer -> backend "uses"
+}
+
+views {
+    // C4 Views
+    view index {
+        include *
+    }
 }
 ```
 
@@ -335,27 +356,6 @@ conventions {
 }
 ```
 
-### Libraries and Shared Artifacts
-
-#### Libraries
-
-```sruja
-library React "React Framework" version "18.0.0" owner "facebook" {
-    description "UI framework for building user interfaces"
-    policy SecurityPolicy "Follow security best practices"
-    requirement R1 functional "Must support TypeScript"
-}
-```
-
-#### Shared Artifacts
-
-```sruja
-sharedArtifact Auth "Authentication Service" version "1.0.0" owner "platform-team" {
-    description "Shared authentication service"
-    url "https://auth.example.com"
-}
-```
-
 ### Views (Optional)
 
 Views are **optional** - if not specified, standard C4 views are automatically generated. Views block is only needed for customization.
@@ -405,23 +405,28 @@ This reduces boilerplate while maintaining clarity.
 ## Complete Example
 
 ```sruja
-architecture "E-commerce Platform" {
-    overview {
-        summary "High-performance e-commerce platform"
-        goals ["Scale to 50M users", "Maintain sub-200ms latency"]
-    }
+specification {
+    element person
+    element system
+    element container
+    element component
+    element datastore
+}
 
-    person Customer "Customer"
-    person Admin "Administrator"
+model {
+    customer = person "Customer"
+    admin = person "Administrator"
 
-    system Shop "E-commerce Shop" {
-        container WebApp "Web Application" {
+    shop = system "E-commerce Shop" {
+        description "High-performance e-commerce platform"
+        
+        webApp = container "Web Application" {
             technology "React"
-            component Cart "Shopping Cart"
-            component Checkout "Checkout Service"
+            cart = component "Shopping Cart"
+            checkout = component "Checkout Service"
         }
 
-        container API "API Gateway" {
+        api = container "API Gateway" {
             technology "Node.js"
             scale {
                 min 3
@@ -435,15 +440,17 @@ architecture "E-commerce Platform" {
             }
         }
 
-        datastore DB "PostgreSQL Database" {
+        db = datastore "PostgreSQL Database" {
             technology "PostgreSQL 14"
         }
     }
 
-    Customer -> Shop.WebApp "Browses"
-    Shop.WebApp -> Shop.API "Calls"
-    Shop.API -> Shop.DB "Reads/Writes"
+    // Relationships
+    customer -> shop.webApp "Browses"
+    shop.webApp -> shop.api "Calls"
+    shop.api -> shop.db "Reads/Writes"
 
+    // Sruja Extensions (Governance & Requirements)
     requirement R1 functional "Must support 10k concurrent users"
     requirement R2 constraint "Must use PostgreSQL"
 
@@ -467,23 +474,26 @@ architecture "E-commerce Platform" {
     }
 
     scenario "User purchases item" {
-        Customer -> Shop.WebApp "Adds item to cart"
-        Shop.WebApp -> Shop.API "Submits order"
-        Shop.API -> Shop.DB "Saves order"
+        customer -> shop.webApp "Adds item to cart"
+        shop.webApp -> shop.api "Submits order"
+        shop.api -> shop.db "Saves order"
     }
 
     flow PaymentFlow "Payment processing" {
-        WebApp -> API "Validate payment method"
-        API -> PaymentGateway "Process payment"
-        PaymentGateway -> API "Update order status"
+        shop.webApp -> shop.api "Validate payment method"
+        shop.api -> paymentGateway "Process payment" // Identifying external system
     }
+}
 
-    library React "React Framework" version "18.0.0" {
-        description "UI framework"
+views {
+    view index {
+        title "System Context"
+        include *
     }
-
-    sharedArtifact Auth "Authentication Service" version "1.0.0" {
-        description "Shared auth service"
+    
+    view container_view of shop {
+        title "Shop Containers"
+        include shop.*
     }
 }
 ```

@@ -218,3 +218,36 @@
     color: var(--text-secondary);
     line-height: 1.5;
 }
+
+/* Tag styles */
+.adr-tags-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-left: 0.5rem;
+}
+
+.adr-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.7rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-family: monospace;
+    transition: all 0.2s;
+}
+
+.adr-tag.clickable {
+    cursor: pointer;
+}
+
+.adr-tag.clickable:hover {
+    background: var(--highlight-color);
+    border-color: var(--highlight-color);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}

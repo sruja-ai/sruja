@@ -46,8 +46,6 @@ func (r *Relation) Location() SourceLocation {
 	}
 }
 
-// legacy RelationVerb removed; Verb is now a simple *string
-
 type QualifiedIdent struct {
 	Parts []string `parser:"@Ident ( '.' @Ident )*"`
 }

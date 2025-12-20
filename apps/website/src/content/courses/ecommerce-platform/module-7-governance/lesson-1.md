@@ -15,7 +15,16 @@ Security isn't something you "add on" at the end. It must be baked into the arch
 Use tags and metadata to make security posture explicit.
 
 ```sruja
-architecture "E-Commerce" {
+specification {
+  element person
+  element system
+  element container
+  element component
+  element datastore
+  element queue
+}
+
+model {
   system Shop {
     datastore UserDB {
       tags ["pii", "encrypted"]
@@ -23,6 +32,12 @@ architecture "E-Commerce" {
         retention "90d"
       }
     }
+  }
+}
+
+views {
+  view index {
+    include *
   }
 }
 ```

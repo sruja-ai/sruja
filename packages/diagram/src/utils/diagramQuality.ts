@@ -677,11 +677,28 @@ function detectOverlaps(nodes: Node<C4NodeData>[]): OverlapViolation[] {
         continue;
       }
 
-      const overlap = calculateOverlap(node1, node2);
+      const overlap = calculateOverlap(node1, node2, nodes);
       if (overlap.area > 0) {
         const area1 = (node1.width || 100) * (node1.height || 100);
         const area2 = (node2.width || 100) * (node2.height || 100);
         const overlapPercentage = (overlap.area / Math.min(area1, area2)) * 100;
+
+        // Debug logging for specific problematic overlaps
+        const isProblematic = 
+          (node1.id.includes('User') && node2.id.includes('WebApp')) ||
+          (node1.id.includes('WebApp') && node2.id.includes('Database')) ||
+          (node2.id.includes('User') && node1.id.includes('WebApp')) ||
+          (node2.id.includes('WebApp') && node1.id.includes('Database'));
+        
+        if (isProblematic && typeof window !== 'undefined' && (window as any).__LAYOUT_DEBUG__) {
+          const abs1 = getAbsolutePosition(node1, nodes);
+          const abs2 = getAbsolutePosition(node2, nodes);
+          console.log(`[OverlapDetect] ${node1.id} ↔ ${node2.id}:`, {
+            node1: { id: node1.id, rel: node1.position, abs: abs1, size: `${node1.width}x${node1.height}`, parent: node1.parentId },
+            node2: { id: node2.id, rel: node2.position, abs: abs2, size: `${node2.width}x${node2.height}`, parent: node2.parentId },
+            overlap: { area: overlap.area, percentage: overlapPercentage.toFixed(1) + '%' }
+          });
+        }
 
         violations.push({
           node1: node1.id,
@@ -696,16 +713,62 @@ function detectOverlaps(nodes: Node<C4NodeData>[]): OverlapViolation[] {
   return violations;
 }
 
-function calculateOverlap(node1: Node, node2: Node): { area: number } {
+// Helper to get absolute position for debugging
+function getAbsolutePosition(node: Node<C4NodeData>, allNodes: Node<C4NodeData>[]): { x: number; y: number } {
+  let x = node.position.x;
+  let y = node.position.y;
+  
+  if (node.parentId) {
+    const parent = allNodes.find((n) => n.id === node.parentId);
+    if (parent) {
+      const parentAbs = getAbsolutePosition(parent, allNodes);
+      x = parentAbs.x + node.position.x;
+      y = parentAbs.y + node.position.y;
+    }
+  }
+  
+  return { x, y };
+}
+
+function calculateOverlap(node1: Node, node2: Node, allNodes?: Node[]): { area: number } {
   const w1 = node1.width || 100;
   const h1 = node1.height || 100;
   const w2 = node2.width || 100;
   const h2 = node2.height || 100;
 
-  const x1 = node1.position.x;
-  const y1 = node1.position.y;
-  const x2 = node2.position.x;
-  const y2 = node2.position.y;
+  // Convert relative positions to absolute for child nodes
+  let x1 = node1.position.x;
+  let y1 = node1.position.y;
+  let x2 = node2.position.x;
+  let y2 = node2.position.y;
+
+  // If nodes have parents, convert to absolute coordinates
+  // CRITICAL: Handle nested parents recursively
+  if (allNodes) {
+    // Helper to get absolute position recursively
+    const getAbsolutePos = (node: Node, allNodes: Node[]): { x: number; y: number } => {
+      let x = node.position.x;
+      let y = node.position.y;
+      
+      if (node.parentId) {
+        const parent = allNodes.find((n) => n.id === node.parentId);
+        if (parent) {
+          const parentAbs = getAbsolutePos(parent, allNodes);
+          x = parentAbs.x + node.position.x;
+          y = parentAbs.y + node.position.y;
+        }
+      }
+      
+      return { x, y };
+    };
+    
+    const abs1 = getAbsolutePos(node1, allNodes);
+    const abs2 = getAbsolutePos(node2, allNodes);
+    x1 = abs1.x;
+    y1 = abs1.y;
+    x2 = abs2.x;
+    y2 = abs2.y;
+  }
 
   // Calculate bounding boxes
   const left1 = x1;
@@ -1605,7 +1668,7 @@ function calculateViewportUtilization(
 function calculateEmptySpace(nodes: Node<C4NodeData>[]): number {
   if (nodes.length < 2) return 0;
 
-  // Calculate diagram bounding box
+  // Calculate diagram bounding box using ABSOLUTE positions for all nodes
   let minX = Infinity,
     minY = Infinity;
   let maxX = -Infinity,
@@ -1613,20 +1676,22 @@ function calculateEmptySpace(nodes: Node<C4NodeData>[]): number {
   let totalNodeArea = 0;
 
   nodes.forEach((node) => {
-    // Update global bounds
-    const x = node.position.x;
-    const y = node.position.y;
+    // CRITICAL: Use absolute position for child nodes (recursively walk up parent chain)
+    const absPos = getAbsolutePosition(node, nodes);
+    const x = absPos.x;
+    const y = absPos.y;
     const w = node.width || 100;
     const h = node.height || 100;
 
+    // Update global bounds using absolute positions
     minX = Math.min(minX, x);
     minY = Math.min(minY, y);
     maxX = Math.max(maxX, x + w);
     maxY = Math.max(maxY, y + h);
 
-    if (!node.parentId) {
-      totalNodeArea += w * h;
-    }
+    // CRITICAL: Count ALL nodes in area calculation, not just root nodes
+    // Child nodes contribute to the bounding box, so they should also contribute to area
+    totalNodeArea += w * h;
   });
 
   if (minX === Infinity || maxX === -Infinity) return 0;

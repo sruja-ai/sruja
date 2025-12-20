@@ -37,7 +37,16 @@ func (s *Server) SemanticTokensFull(_ context.Context, docID lsp.TextDocumentIde
 		"keyword": 0, "class": 1, "module": 2, "function": 3, "struct": 4, "enum": 5, "variable": 6, "operator": 7, "string": 8,
 	}
 
-	keywords := []string{"architecture", "import", "system", "container", "component", "datastore", "queue", "person", "relation", "metadata", "properties", "style", "decision", "yes", "no", "condition", "library", "owner"}
+	keywords := []string{
+		"specification", "model", "views", "view",
+		"element", "system", "component", "container", "datastore", "queue", "person", "workspace",
+		"relationship", "extend", "include", "exclude",
+		"metadata", "properties", "style",
+		"requirement", "adr", "policy", "domain",
+		"owner",
+		"title", "description", "technology", "tech", "owner", "link", "icon", "shape", "color",
+		"status", "context", "decision", "consequences",
+	}
 
 	prevLine := uint32(0)
 	for li, line := range doc.lines {
