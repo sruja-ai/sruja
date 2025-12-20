@@ -131,9 +131,19 @@ test.md
 test.mmd
 test.sruja
 
-# WASM
+# WASM build outputs (these are generated from Go source via `make wasm`)
+# WASM files are large (~5MB each) and can be regenerated, so they should not be committed
+# They are built automatically via ensure-wasm.mjs scripts in apps
 wasm/*.wasm
-!wasm/sruja.wasm
+apps/*/public/wasm/*.wasm
+apps/*/public/wasm/*.wasm.br
+apps/*/public/wasm/*.wasm.gz
+apps/*/dist/wasm/*.wasm
+apps/*/public/*.wasm
+apps/*/public/*.wasm.br
+apps/*/public/*.wasm.gz
+apps/*/wasm/*.wasm
+apps/*/wasm/*.wasm.gz
 
 # Binary files
 bin/

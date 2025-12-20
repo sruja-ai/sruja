@@ -23,7 +23,6 @@ This directory contains essential documentation for contributors and developers.
 - [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) - Complete Sruja DSL reference
 - [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md) - Language design principles
 - [AI_ASSISTANT_GUIDE.md](AI_ASSISTANT_GUIDE.md) - Using AI assistants with Sruja
-- [LEARNING_ROADMAP.md](LEARNING_ROADMAP.md) - Recommended learning path
 
 ## Internal Documentation
 
