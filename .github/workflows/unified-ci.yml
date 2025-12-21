@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 permissions:
   contents: read
@@ -17,16 +17,16 @@ jobs:
   go-test:
     name: Go Tests & Quality
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25.4'
-      
+          go-version: "1.25.4"
+
       - name: Cache Go modules
         uses: actions/cache@v4
         with:
@@ -36,13 +36,14 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      
+        continue-on-error: true
+
       - name: Install dependencies
         run: go mod download
-      
+
       - name: Build
         run: go build -v ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
-      
+
       - name: Run gofmt check
         run: |
           if [ "$(gofmt -s -l ./pkg ./internal ./cmd ./scripts | wc -l)" -gt 0 ]; then
@@ -50,84 +51,93 @@ jobs:
             gofmt -s -l ./pkg ./internal ./cmd ./scripts
             exit 1
           fi
-      
+
       - name: Run go vet
         run: go vet ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
-      
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.6.2
           args: --timeout=5m
-      
+
       - name: Run tests with coverage
         run: go test -v -coverprofile=coverage.out ./pkg/... ./internal/... ./cmd/sruja ./tests/... ./scripts/...
-      
+
       - name: Check coverage threshold
         run: make test-coverage-check
         continue-on-error: true
-      
+
+      - name: Verify coverage file
+        run: |
+          if [ ! -f coverage.out ]; then
+            echo "❌ coverage.out not found!"
+            exit 1
+          fi
+          echo "Coverage file size: $(stat -c%s coverage.out 2>/dev/null || stat -f%z coverage.out 2>/dev/null) bytes"
+          head -n 5 coverage.out
+
       - name: Upload coverage to Codacy
-        uses: codacy/codacy-coverage-reporter-action@v1
+        uses: codacy/codacy-coverage-reporter-action@v1.3.0
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: coverage.out
-      
+
       - name: Run security scan (govulncheck)
         run: |
           command -v govulncheck > /dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
         continue-on-error: true
-      
+
       - name: Run security linter (gosec)
         run: |
           command -v gosec > /dev/null 2>&1 || go install github.com/securego/gosec/v2/cmd/gosec@latest
           gosec -quiet ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
         continue-on-error: true
-      
+
       # Note: Comprehensive security scanning is also performed by security.yml workflow
 
   typescript-lint:
     name: Lint TypeScript/JavaScript
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '24'
-          cache: 'npm'
-      
+          node-version: "24"
+          cache: "npm"
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run ESLint
         run: npm run lint
 
   typescript-test:
     name: Test TypeScript/JavaScript
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '24'
-          cache: 'npm'
-      
+          node-version: "24"
+          cache: "npm"
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run tests with coverage
         run: npm run test:coverage
         continue-on-error: true
-      
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
@@ -138,11 +148,11 @@ jobs:
           name: typescript-coverage
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
-      
+
       - name: Run security audit
         run: npm audit --audit-level=moderate
         continue-on-error: true
-      
+
       - name: Check bundle sizes
         run: npm run build --filter=@sruja/shared --filter=@sruja/ui && npm run size || echo "Bundle size check skipped (packages use source TypeScript, not bundles)"
         continue-on-error: true
@@ -151,38 +161,38 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '24'
-          cache: 'npm'
-      
+          node-version: "24"
+          cache: "npm"
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Build shared packages
         run: npm run build --workspace=packages/shared --workspace=packages/ui
-      
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
         working-directory: apps/website
-      
+
       - name: Build website
         run: npm run build
         working-directory: apps/website
-      
+
       - name: Run E2E tests
         run: npm run test:e2e
         working-directory: apps/website
         env:
           CI: true
-          PLAYWRIGHT_BASE_URL: 'http://localhost:4321'
-      
+          PLAYWRIGHT_BASE_URL: "http://localhost:4321"
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -195,24 +205,24 @@ jobs:
     name: Build Examples
     runs-on: ubuntu-latest
     needs: go-test
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25.4'
-      
+          go-version: "1.25.4"
+
       - name: Build CLI
         run: go build -o sruja ./cmd/sruja
-      
+
       - name: Compile examples
         run: |
           ./sruja compile examples/example.sruja
           ./sruja compile examples/full_features.sruja
-      
+
       - name: Lint examples
         run: |
           ./sruja lint examples/example.sruja
