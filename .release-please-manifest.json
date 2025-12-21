@@ -1,4 +1,11 @@
 {
-  ".": "0.1.0",
-  "apps/vscode-extension": "0.1.1"
+  ".": "0.1.1",
+  "apps/designer": "0.1.1",
+  "apps/social-publish": "0.1.1",
+  "apps/storybook": "0.1.1",
+  "apps/vscode-extension": "0.1.1",
+  "apps/website": "0.1.1",
+  "packages/eslint-config": "0.1.1",
+  "packages/shared": "0.1.1",
+  "packages/ui": "0.1.1"
 }

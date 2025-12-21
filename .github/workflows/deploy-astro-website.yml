@@ -14,29 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  determine-environment:
-    runs-on: ubuntu-latest
-    outputs:
-      env: ${{ steps.set-env.outputs.env }}
-      site_url: ${{ steps.set-env.outputs.site_url }}
-      public_env: ${{ steps.set-env.outputs.public_env }}
-      should_deploy: ${{ steps.set-env.outputs.should_deploy }}
-    steps:
-      - name: Determine environment
-        id: set-env
-        run: |
-          # Single website deployment - always use production settings
-          echo "env=prod" >> $GITHUB_OUTPUT
-          echo "public_env=production" >> $GITHUB_OUTPUT
-          echo "site_url=https://sruja.ai" >> $GITHUB_OUTPUT
-          
-          # Deploy on all pushes to main branch
-          echo "should_deploy=true" >> $GITHUB_OUTPUT
-
   build:
     runs-on: ubuntu-latest
-    needs: determine-environment
-    if: needs.determine-environment.outputs.should_deploy == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -47,13 +26,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '24'
-          cache: 'npm'
+          node-version: "24"
+          cache: "npm"
 
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25.4'
+          go-version: "1.25.4"
 
       - name: Cache Go modules
         uses: actions/cache@v4
