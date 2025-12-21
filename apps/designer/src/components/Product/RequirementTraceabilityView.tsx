@@ -26,7 +26,6 @@ export function RequirementTraceabilityView({
 
   // Deduplicate requirements by ID
   const requirements = useMemo(() => {
-    // @ts-expect-error: types mismatch
     const reqs = (model?.sruja as any)?.requirements || [];
     return deduplicateRequirements(reqs);
   }, [model]);
@@ -40,8 +39,7 @@ export function RequirementTraceabilityView({
     }> = {};
 
     requirements.forEach((req) => {
-      // @ts-expect-error: types mismatch
-      const elementIds: string[] = req.tags ?? [];
+      const elementIds: string[] = (req as any).tags ?? [];
       const hasLinks = elementIds.length > 0;
       const status: "fulfilled" | "partial" | "missing" =
         hasLinks ? (elementIds.length >= 2 ? "fulfilled" : "partial") : "missing";
@@ -64,8 +62,7 @@ export function RequirementTraceabilityView({
       setIsAnimating(true);
       setSelectedRequirement(requirement.id);
 
-      // @ts-expect-error: types mismatch
-      const elementIds: string[] = requirement.tags ?? [];
+      const elementIds: string[] = (requirement as any).tags ?? [];
       const highlightedSet = new Set(elementIds);
 
       setHighlightedElements(highlightedSet);

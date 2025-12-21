@@ -61,7 +61,6 @@ export function OverviewPanel() {
   const sruja = (likec4Model?.sruja) as any;
   const overview = sruja?.overview;
   const archMetadata = (likec4Model?._metadata as any)?.archMetadata; // custom metadata might be here
-  // @ts-expect-error: types mismatch
   const architectureName = likec4Model?._metadata?.name || "Architecture";
   const description = sruja?.description;
 

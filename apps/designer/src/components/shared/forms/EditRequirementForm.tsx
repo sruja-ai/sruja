@@ -31,7 +31,6 @@ export function EditRequirementForm({ isOpen, onClose, requirement }: EditRequir
   const form = useFormState<FormValues>({
     initialValues: {
       id: requirement?.id || "",
-      // @ts-expect-error: types mismatch
       type: REQUIREMENT_TYPES.find((t) => t.id === (requirement?.type || "functional")) || REQUIREMENT_TYPES[0],
       title: requirement?.title || "",
       description: requirement?.description || "",
@@ -55,7 +54,6 @@ export function EditRequirementForm({ isOpen, onClose, requirement }: EditRequir
 
         const newRequirement: RequirementDump = {
           id: values.id.trim(),
-          // @ts-expect-error: types mismatch
           type: values.type?.id,
           title: values.title.trim(),
           description: values.description.trim() || undefined,
@@ -87,7 +85,6 @@ export function EditRequirementForm({ isOpen, onClose, requirement }: EditRequir
     if (isOpen) {
       form.setValues({
         id: requirement?.id || "",
-        // @ts-expect-error: types mismatch
         type: REQUIREMENT_TYPES.find((t) => t.id === (requirement?.type || "functional")) || REQUIREMENT_TYPES[0],
         title: requirement?.title || "",
         description: requirement?.description || "",

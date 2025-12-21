@@ -1,0 +1,209 @@
+
+/Users/dilipkola/Workspace/sruja/apps/designer/public/wasm/wasm_exec.js
+   22:6   error    'console' is not defined                                                                        no-undef
+   22:6   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  100:22  error    'TextEncoder' is not defined                                                                    no-undef
+  101:22  error    'TextDecoder' is not defined                                                                    no-undef
+  109:6   error    'console' is not defined                                                                        no-undef
+  124:10  warning  'setInt32' is assigned a value but never used. Allowed unused vars must match /^_/u             @typescript-eslint/no-unused-vars
+  224:36  error    'performance' is not defined                                                                    no-undef
+  255:7   error    'fs' is not defined                                                                             no-undef
+  260:7   warning  'sp' is assigned a value but never used. Allowed unused args must match /^_/u                   @typescript-eslint/no-unused-vars
+  267:38  error    'performance' is not defined                                                                    no-undef
+  283:39  error    'setTimeout' is not defined                                                                     no-undef
+  289:10  error    'console' is not defined                                                                        no-undef
+  302:7   error    'clearTimeout' is not defined                                                                   no-undef
+  309:7   error    'crypto' is not defined                                                                         no-undef
+  473:7   error    'console' is not defined                                                                        no-undef
+  473:7   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  480:30  error    'WebAssembly' is not defined                                                                    no-undef
+  566:10  error    Unexpected aliasing of 'this' to local variable                                                 @typescript-eslint/no-this-alias
+
+/Users/dilipkola/Workspace/sruja/apps/designer/scripts/analyze-metrics.ts
+  388:3  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  389:3  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  390:3  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  391:3  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  392:3  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  394:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  395:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  398:3  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  400:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  403:3  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+
+/Users/dilipkola/Workspace/sruja/apps/designer/scripts/analyze-rules.ts
+  163:3  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  165:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  166:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  167:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  168:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  169:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  173:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  175:7  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  179:3  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+
+/Users/dilipkola/Workspace/sruja/apps/designer/scripts/ensure-wasm-exists.mjs
+  12:3  error    'console' is not defined                                                                        no-undef
+  13:3  error    'console' is not defined                                                                        no-undef
+  21:5  error    'console' is not defined                                                                        no-undef
+  21:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  25:3  error    'console' is not defined                                                                        no-undef
+  25:3  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  31:7  error    'console' is not defined                                                                        no-undef
+  37:7  error    'console' is not defined                                                                        no-undef
+  37:7  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  40:5  error    'console' is not defined                                                                        no-undef
+
+/Users/dilipkola/Workspace/sruja/apps/designer/scripts/generate-report.ts
+  163:3  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  164:3  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  165:3  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+
+/Users/dilipkola/Workspace/sruja/apps/designer/scripts/improve-iteratively.ts
+   41:7   warning  'ISSUES_FILE' is assigned a value but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+  167:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  169:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  171:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  204:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  205:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  206:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  207:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  208:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  209:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  214:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  216:7   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  220:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  221:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  222:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  223:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  224:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  225:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  226:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  229:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  230:41  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  234:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  235:53  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  238:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  250:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  252:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  254:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  256:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  297:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  298:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  300:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  303:27  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  305:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  306:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  313:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+
+/Users/dilipkola/Workspace/sruja/apps/designer/scripts/test-fixes.ts
+    6:3  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   13:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   16:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   19:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   24:7  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   26:7  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   30:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   37:9  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   39:9  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   42:7  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   46:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   56:9  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   58:9  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   61:7  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   65:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   73:7  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   75:7  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   79:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   91:9  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   97:9  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  100:7  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  103:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  106:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+
+/Users/dilipkola/Workspace/sruja/apps/designer/scripts/test-quality-prod.ts
+   18:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   24:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   37:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  102:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  105:3   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  113:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  115:12  warning  'error' is defined but never used                                                               @typescript-eslint/no-unused-vars
+  120:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Canvas/LikeC4Canvas.tsx
+  177:20  warning  'error' is defined but never used                                                               @typescript-eslint/no-unused-vars
+  195:13  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  252:7   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Canvas/__tests__/LikeC4Canvas.test.tsx
+  15:22  warning  'dump' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Canvas/useLikeC4Animation.ts
+  54:8  warning  React Hook useEffect has a missing dependency: 'containerRef'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Canvas/useLikeC4Canvas.ts
+   40:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   54:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   64:9  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  108:9  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Canvas/useLikeC4CanvasEvents.ts
+  50:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  62:13  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  67:13  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  71:16  warning  'error' is defined but never used                                                               @typescript-eslint/no-unused-vars
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Panels/DSLPanel.tsx
+   54:11  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug                no-console
+   65:6   warning  React Hook useEffect has a missing dependency: 'dslSource'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  113:9   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug                no-console
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Panels/JSONPanel.tsx
+  74:6  warning  React Hook useEffect has a missing dependency: 'jsonSource'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Views/DetailsView.tsx
+  40:9  warning  The 'scenarios' logical expression could make the dependencies of useMemo Hook (at line 56) change on every render. To fix this, wrap the initialization of 'scenarios' in its own useMemo() Hook                                                     react-hooks/exhaustive-deps
+  41:9  warning  The 'flows' logical expression could make the dependencies of useMemo Hook (at line 56) change on every render. To fix this, wrap the initialization of 'flows' in its own useMemo() Hook                                                             react-hooks/exhaustive-deps
+  42:9  warning  The 'allRequirements' logical expression could make the dependencies of useMemo Hook (at line 46) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'allRequirements' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  43:9  warning  The 'adrs' logical expression could make the dependencies of useMemo Hook (at line 56) change on every render. To fix this, wrap the initialization of 'adrs' in its own useMemo() Hook                                                               react-hooks/exhaustive-deps
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Wizard/BuilderWizard.tsx
+  162:6  warning  React Hook useEffect has a missing dependency: 'steps.length'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Wizard/SystemContextStep.tsx
+  22:9  warning  The 'elements' conditional could make the dependencies of useMemo Hook (at line 24) change on every render. To fix this, wrap the initialization of 'elements' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  22:9  warning  The 'elements' conditional could make the dependencies of useMemo Hook (at line 25) change on every render. To fix this, wrap the initialization of 'elements' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/shared/forms/EditFlowForm.tsx
+  99:6  warning  React Hook useEffect has a missing dependency: 'form'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/hooks/__tests__/useFileHandlers.test.ts
+  18:7  warning  'createMockDump' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/hooks/useBuilderProgress.ts
+   14:11  warning  The 'sruja' logical expression could make the dependencies of useMemo Hook (at line 15) change on every render. To fix this, wrap the initialization of 'sruja' in its own useMemo() Hook  react-hooks/exhaustive-deps
+   14:11  warning  The 'sruja' logical expression could make the dependencies of useMemo Hook (at line 16) change on every render. To fix this, wrap the initialization of 'sruja' in its own useMemo() Hook  react-hooks/exhaustive-deps
+   14:11  warning  The 'sruja' logical expression could make the dependencies of useMemo Hook (at line 17) change on every render. To fix this, wrap the initialization of 'sruja' in its own useMemo() Hook  react-hooks/exhaustive-deps
+   14:11  warning  The 'sruja' logical expression could make the dependencies of useMemo Hook (at line 18) change on every render. To fix this, wrap the initialization of 'sruja' in its own useMemo() Hook  react-hooks/exhaustive-deps
+   75:9   warning  React Hook useMemo has a missing dependency: 'reqTaggedTo'. Either include it or remove the dependency array                                                                               react-hooks/exhaustive-deps
+   80:9   warning  React Hook useMemo has a missing dependency: 'reqTaggedTo'. Either include it or remove the dependency array                                                                               react-hooks/exhaustive-deps
+   86:9   warning  React Hook useMemo has a missing dependency: 'reqTaggedTo'. Either include it or remove the dependency array                                                                               react-hooks/exhaustive-deps
+  135:9   warning  React Hook useMemo has a missing dependency: 'containerHasRelations'. Either include it or remove the dependency array                                                                     react-hooks/exhaustive-deps
+  146:9   warning  React Hook useMemo has a missing dependency: 'componentHasRelations'. Either include it or remove the dependency array                                                                     react-hooks/exhaustive-deps
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/stores/architectureStore.ts
+  265:11  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  294:13  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  363:13  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/utils/firebaseShareService.ts
+  101:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  157:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/dilipkola/Workspace/sruja/apps/designer/tests/code-panel.spec.ts
+  34:11  warning  'hasTabs' is assigned a value but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+  47:11  warning  'isVisible' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+✖ 158 problems (21 errors, 137 warnings)
+

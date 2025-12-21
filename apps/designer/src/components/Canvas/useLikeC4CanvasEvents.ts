@@ -158,13 +158,14 @@ export function useKeyboardShortcuts(config: KeyboardConfig): void {
           event.preventDefault();
           onSetFlowStep(0);
           break;
-        case "End": // Go to last step
+        case "End": { // Go to last step
           event.preventDefault();
           const totalSteps = activeFlow.steps?.length ?? 0;
           if (totalSteps > 0) {
             onSetFlowStep(totalSteps - 1);
           }
           break;
+        }
       }
     };
 

@@ -45,7 +45,7 @@ class LikeC4ViewErrorBoundary extends Component<
           textAlign: 'center'
         }}>
           <div>
-            <p>Failed to render view "{this.props.viewId}"</p>
+            <p>Failed to render view {"\""}{this.props.viewId}{"\""}</p>
             {this.state.error?.message && (
               <p style={{ fontSize: 12, marginTop: '0.5rem', color: 'var(--color-text-tertiary)' }}>
                 {this.state.error.message}
@@ -224,7 +224,7 @@ export function LikeC4DiagramPreview({ model, viewId = 'index' }: LikeC4DiagramP
               textAlign: 'center'
             }}>
               <div>
-                <p>Unable to render view "{activeViewId}"</p>
+                <p>Unable to render view {"\""}{activeViewId}{"\""}</p>
                 <p style={{ fontSize: 12, marginTop: '0.5rem', color: 'var(--color-text-tertiary)' }}>
                   The view may not be layouted or the model may not contain layout information.
                 </p>
