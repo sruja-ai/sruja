@@ -212,7 +212,7 @@ jobs:
           echo "✅ Checkout verified - git repository is valid"
 
       - name: Copy site contents
-        run: rsync -a --delete _site/ target/
+        run: rsync -a --delete --exclude .git _site/ target/
 
       - name: Configure git
         working-directory: target
