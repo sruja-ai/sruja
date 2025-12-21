@@ -1,7 +1,12 @@
-import { vi } from "vitest";
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { UnifiedDetailsList } from "../../../../../apps/designer/src/components/Details/UnifiedDetailsList";
+import {
+  useSelectionStore,
+  useArchitectureStore,
+  useUIStore,
+} from "../../../../../apps/designer/src/stores";
+import { useEffect } from "react";
 import type { FilterState } from "../../../../../apps/designer/src/components/Details/DetailsSidebarFilters";
 import type { SrujaModelDump } from "@sruja/shared";
 
@@ -122,7 +127,8 @@ const meta = {
     layout: "padded",
     docs: {
       description: {
-        component: "Unified list showing requirements, ADRs, scenarios, and flows. Automatically filters by selected node when a node is clicked in the diagram.",
+        component:
+          "Unified list showing requirements, ADRs, scenarios, and flows. Automatically filters by selected node when a node is clicked in the diagram.",
       },
     },
   },
@@ -146,18 +152,17 @@ const meta = {
   },
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
           likec4Model: mockLikec4Model,
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           setActiveTab: fn(),
-        }),
-        useSelectionStore: () => ({
+        });
+        useSelectionStore.setState({
           selectedNodeId: null,
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -194,18 +199,17 @@ export const FilteredByNode: Story = {
   },
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
           likec4Model: mockLikec4Model,
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           setActiveTab: fn(),
-        }),
-        useSelectionStore: () => ({
+        });
+        useSelectionStore.setState({
           selectedNodeId: "web-app",
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -227,7 +231,8 @@ export const FilteredByNode: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Shows items filtered by selected node 'web-app'. Only requirements, ADRs, scenarios, and flows tagged with or referencing 'web-app' are displayed.",
+        story:
+          "Shows items filtered by selected node 'web-app'. Only requirements, ADRs, scenarios, and flows tagged with or referencing 'web-app' are displayed.",
       },
     },
   },
@@ -312,18 +317,17 @@ export const EmptyStateWithNode: Story = {
   },
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
           likec4Model: mockLikec4Model,
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           setActiveTab: fn(),
-        }),
-        useSelectionStore: () => ({
+        });
+        useSelectionStore.setState({
           selectedNodeId: "nonexistent-node",
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -350,4 +354,3 @@ export const EmptyStateWithNode: Story = {
     },
   },
 };
-

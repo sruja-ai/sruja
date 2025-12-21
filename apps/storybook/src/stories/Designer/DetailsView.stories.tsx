@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
-import { vi } from "vitest";
 import { DetailsView } from "../../../../../apps/designer/src/components/Views/DetailsView";
+import {
+  useArchitectureStore,
+  useSelectionStore,
+  useUIStore,
+} from "../../../../../apps/designer/src/stores";
+import { useEffect } from "react";
 import type { SrujaModelDump } from "@sruja/shared";
 
 // Mock model with comprehensive Sruja extensions
@@ -68,9 +73,7 @@ const mockLikec4Model: SrujaModelDump = {
         id: "scenario-login",
         title: "User Login",
         description: "User authentication flow",
-        steps: [
-          { from: "customer", to: "web-app", description: "Enter credentials" },
-        ],
+        steps: [{ from: "customer", to: "web-app", description: "Enter credentials" }],
       },
     ],
     flows: [
@@ -78,9 +81,7 @@ const mockLikec4Model: SrujaModelDump = {
         id: "flow-order",
         title: "Order Processing",
         description: "Order processing flow",
-        steps: [
-          { from: "customer", to: "web-app", description: "Submit order" },
-        ],
+        steps: [{ from: "customer", to: "web-app", description: "Submit order" }],
       },
     ],
     policies: [],
@@ -96,22 +97,22 @@ const meta = {
     layout: "fullscreen",
     docs: {
       description: {
-        component: "Unified details view showing requirements, ADRs, scenarios, and flows with filtering capabilities. Automatically filters by selected node when a node is clicked in the diagram.",
+        component:
+          "Unified details view showing requirements, ADRs, scenarios, and flows with filtering capabilities. Automatically filters by selected node when a node is clicked in the diagram.",
       },
     },
   },
   tags: ["autodocs"],
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
           likec4Model: mockLikec4Model,
-        }),
-        useSelectionStore: () => ({
+        });
+        useSelectionStore.setState({
           selectedNodeId: null,
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -147,15 +148,14 @@ export const Default: Story = {
 export const WithNodeSelection: Story = {
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
           likec4Model: mockLikec4Model,
-        }),
-        useSelectionStore: () => ({
+        });
+        useSelectionStore.setState({
           selectedNodeId: "web-app",
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -176,7 +176,8 @@ export const WithNodeSelection: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Shows items filtered by selected node 'web-app'. The list automatically filters to show only items tagged with or referencing the selected node.",
+        story:
+          "Shows items filtered by selected node 'web-app'. The list automatically filters to show only items tagged with or referencing the selected node.",
       },
     },
   },
@@ -185,22 +186,24 @@ export const WithNodeSelection: Story = {
 export const WithTypeFilter: Story = {
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
           likec4Model: mockLikec4Model,
-        }),
-        useSelectionStore: () => ({
+        });
+        useSelectionStore.setState({
           selectedNodeId: null,
-        }),
-      }));
+        });
+      }, []);
 
       // Simulate type filter being set via sub-tab switch event
-      setTimeout(() => {
-        window.dispatchEvent(
-          new CustomEvent("switch-details-subtab", { detail: "requirements" })
-        );
-      }, 100);
+      useEffect(() => {
+        const timer = setTimeout(() => {
+          window.dispatchEvent(
+            new CustomEvent("switch-details-subtab", { detail: "requirements" })
+          );
+        }, 100);
+        return () => clearTimeout(timer);
+      }, []);
 
       return (
         <div
@@ -221,9 +224,9 @@ export const WithTypeFilter: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Shows only requirements when filtered by type (simulated via sub-tab switch event).",
+        story:
+          "Shows only requirements when filtered by type (simulated via sub-tab switch event).",
       },
     },
   },
 };
-
