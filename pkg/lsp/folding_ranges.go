@@ -175,9 +175,10 @@ func (s *Server) findBlockEnd(text string, startLine, startCol int) int {
 
 		for j := startIdx; j < len(line); j++ {
 			char := line[j]
-			if char == '{' {
+			switch char {
+			case '{':
 				depth++
-			} else if char == '}' {
+			case '}':
 				depth--
 				if depth == 0 {
 					return i + 1 // Return 1-based line number

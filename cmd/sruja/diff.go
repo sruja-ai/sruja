@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/sruja-ai/sruja/pkg/dx"
@@ -69,7 +70,7 @@ type Diff struct {
 }
 
 func parseFile(filePath string) (*language.Program, error) {
-	content, err := os.ReadFile(filePath)
+	content, err := os.ReadFile(filepath.Clean(filePath))
 	if err != nil {
 		return nil, err
 	}
@@ -116,14 +117,15 @@ func computeDiff(program1, program2 *language.Program, _, _ string) *Diff {
 			}
 
 			kind := elem.GetKind()
-			if kind == "system" {
+			switch kind {
+			case "system":
 				if systems[id] == nil {
 					systems[id] = make(map[string]interface{})
 				}
 				systems[id]["fqn"] = fqn
 				systems[id]["containers"] = make(map[string]map[string]interface{})
 				systems[id]["components"] = make(map[string]map[string]interface{})
-			} else if kind == "container" {
+			case "container":
 				// Find parent system
 				if parentFQN != "" {
 					// Extract system ID from parent FQN
@@ -139,7 +141,7 @@ func computeDiff(program1, program2 *language.Program, _, _ string) *Diff {
 						containers[id] = map[string]interface{}{"fqn": fqn, "components": make(map[string]interface{})}
 					}
 				}
-			} else if kind == "component" {
+			case "component":
 				// Find parent system and container
 				if parentFQN != "" {
 					parts := strings.Split(parentFQN, ".")

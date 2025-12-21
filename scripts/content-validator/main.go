@@ -73,7 +73,7 @@ func validateCourses() []ValidationError {
 			}
 
 			// Check required fields
-			content, _ := os.ReadFile(path)
+			content, _ := os.ReadFile(filepath.Clean(path))
 			if !strings.Contains(string(content), "title:") {
 				errors = append(errors, ValidationError{
 					File:    relPath,
@@ -184,7 +184,7 @@ func validateFrontmatter(path string) []ValidationError {
 	var errors []ValidationError
 	relPath, _ := filepath.Rel(contentDir, path)
 
-	content, err := os.ReadFile(path)
+	content, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		errors = append(errors, ValidationError{
 			File:    relPath,

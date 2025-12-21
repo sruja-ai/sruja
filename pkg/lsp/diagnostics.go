@@ -9,11 +9,14 @@ func (s *Server) convertDiagnosticsToLSP(diags []diagnostics.Diagnostic) []lsp.D
 	lspDiags := make([]lsp.Diagnostic, 0, len(diags))
 	//nolint:gocritic // copying small struct
 	for _, d := range diags {
-		severity := lsp.Error
-		if d.Severity == diagnostics.SeverityWarning {
+		var severity lsp.DiagnosticSeverity
+		switch d.Severity {
+		case diagnostics.SeverityWarning:
 			severity = lsp.Warning
-		} else if d.Severity == diagnostics.SeverityInfo {
+		case diagnostics.SeverityInfo:
 			severity = lsp.Info
+		default:
+			severity = lsp.Error
 		}
 
 		// Calculate end position for better range highlighting

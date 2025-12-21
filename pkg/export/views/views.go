@@ -26,7 +26,8 @@ func ApplyViewExpressions(prog *language.Program, view *language.View) (map[stri
 
 	// Process expressions in order
 	for _, expr := range view.Expressions {
-		if expr.Type == "include" {
+		switch expr.Type {
+		case "include":
 			switch {
 			case expr.Wildcard != nil && *expr.Wildcard == "*":
 				// Include all elements in scope
@@ -41,7 +42,7 @@ func ApplyViewExpressions(prog *language.Program, view *language.View) (map[stri
 				// For now, treat as wildcard - full pattern matching can be added later
 				includeAllInScope(prog, view.Scope, included)
 			}
-		} else if expr.Type == "exclude" {
+		case "exclude":
 			if len(expr.Elements) > 0 {
 				for _, elem := range expr.Elements {
 					excluded[elem.String()] = true

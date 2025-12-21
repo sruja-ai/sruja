@@ -33,7 +33,7 @@ func (s *Server) Definition(_ context.Context, params lsp.TextDocumentPositionPa
 
 	// Fallback to any occurrence
 	rng := findIDRange(doc, token)
-	if !(rng.Start.Line == 0 && rng.End.Line == 0 && rng.Start.Character == 0 && rng.End.Character == 0) {
+	if rng.Start.Line != 0 || rng.End.Line != 0 || rng.Start.Character != 0 || rng.End.Character != 0 {
 		return []lsp.Location{{URI: params.TextDocument.URI, Range: rng}}, nil
 	}
 	return nil, nil

@@ -462,7 +462,7 @@ func compileCode(name, code string, skipOrphanCheck, _ bool) error {
 
 	if err := validateSrujaCode(program, skipOrphanCheck); err != nil {
 		// Filter out informational cycle messages (cycles are valid in many architectures)
-		if errStr := err.Error(); !(strings.Contains(errStr, "Cycle detected") && strings.Contains(errStr, "valid")) {
+		if errStr := err.Error(); !strings.Contains(errStr, "Cycle detected") || !strings.Contains(errStr, "valid") {
 			return err
 		}
 		// Cycles are valid - skip informational messages

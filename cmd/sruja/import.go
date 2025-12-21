@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	jsonexport "github.com/sruja-ai/sruja/pkg/export/json"
 )
@@ -39,7 +40,7 @@ func runImport(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	content, err := os.ReadFile(filePath)
+	content, err := os.ReadFile(filepath.Clean(filePath))
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "Error reading file: %v\n", err)
 		return 1

@@ -22,7 +22,7 @@ func (p *Printer) printMetadataBlock(sb *strings.Builder, block *MetadataBlock) 
 			sb.WriteString(entryIndent)
 			sb.WriteString(entry.Key)
 			sb.WriteString(" ")
-			sb.WriteString(fmt.Sprintf("%q\n", *entry.Value))
+			_, _ = fmt.Fprintf(sb, "%q\n", *entry.Value)
 		} else if len(entry.Array) > 0 {
 			sb.WriteString(entryIndent)
 			sb.WriteString(entry.Key)
@@ -31,7 +31,7 @@ func (p *Printer) printMetadataBlock(sb *strings.Builder, block *MetadataBlock) 
 				if i > 0 {
 					sb.WriteString(", ")
 				}
-				sb.WriteString(fmt.Sprintf("%q", v))
+				_, _ = fmt.Fprintf(sb, "%q", v)
 			}
 			sb.WriteString("]\n")
 		}
@@ -57,7 +57,7 @@ func (p *Printer) printMetadata(sb *strings.Builder, entries []*MetaEntry) {
 			sb.WriteString(entryIndent)
 			sb.WriteString(entry.Key)
 			sb.WriteString(" ")
-			sb.WriteString(fmt.Sprintf("%q\n", *entry.Value))
+			_, _ = fmt.Fprintf(sb, "%q\n", *entry.Value)
 		} else if len(entry.Array) > 0 {
 			sb.WriteString(entryIndent)
 			sb.WriteString(entry.Key)
@@ -66,7 +66,7 @@ func (p *Printer) printMetadata(sb *strings.Builder, entries []*MetaEntry) {
 				if i > 0 {
 					sb.WriteString(", ")
 				}
-				sb.WriteString(fmt.Sprintf("%q", v))
+				_, _ = fmt.Fprintf(sb, "%q", v)
 			}
 			sb.WriteString("]\n")
 		}

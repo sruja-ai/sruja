@@ -223,7 +223,7 @@ func (p *Printer) PrintImport(sb *strings.Builder, imp *ImportStatement) {
 		sb.WriteString(elem)
 	}
 	sb.WriteString(" } from ")
-	sb.WriteString(fmt.Sprintf("%q\n", imp.From))
+	_, _ = fmt.Fprintf(sb, "%q\n", imp.From)
 }
 
 func (p *Printer) PrintScenario(sb *strings.Builder, s *Scenario) {

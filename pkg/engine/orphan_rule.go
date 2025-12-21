@@ -111,10 +111,7 @@ func (r *OrphanDetectionRule) Validate(program *language.Program) []diagnostics.
 
 		// 2. Try relative to scope, walking up
 		currScope := scope
-		for {
-			if currScope == "" {
-				break
-			}
+		for currScope != "" {
 			candidate := buildQualifiedIDFromParts(currScope, ref)
 			if defined[candidate] {
 				return candidate

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/sruja-ai/sruja/pkg/engine"
 	jexport "github.com/sruja-ai/sruja/pkg/export/json"
@@ -66,7 +67,7 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 		engine.RunWorkspaceResolution(ws)
 		program = ws.MergedProgram()
 	} else {
-		fileContent, err := os.ReadFile(filePath)
+		fileContent, err := os.ReadFile(filepath.Clean(filePath))
 		if err != nil {
 			_, _ = fmt.Fprintf(stderr, "Error reading file: %v\n", err)
 			return 1

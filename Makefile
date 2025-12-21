@@ -1,6 +1,6 @@
 .PHONY: build test test-coverage test-coverage-html test-coverage-check clean install lint fmt wasm wasm-tiny wasm-select setup-hooks generate-svgs generate-svgs-all generate-svgs-examples generate-svgs-containers generate-svgs-complete clean-svgs security-scan lint-security check-unused help help-svgs
 
-GOLANGCI_LINT_VERSION = v1.62.2
+GOLANGCI_LINT_VERSION = v2.6.2
 GOLANGCI = $(shell go env GOPATH)/bin/golangci-lint
 
 # Build CLI

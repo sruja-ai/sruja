@@ -15,7 +15,7 @@ func (p *Printer) printFlow(sb *strings.Builder, flow *Flow) {
 	sb.WriteString(flow.ID)
 	sb.WriteString(" ")
 	if flow.Title != nil {
-		sb.WriteString(fmt.Sprintf("%q {\n", *flow.Title))
+		_, _ = fmt.Fprintf(sb, "%q {\n", *flow.Title)
 	} else {
 		sb.WriteString("{\n") // Optional title
 	}
@@ -25,7 +25,7 @@ func (p *Printer) printFlow(sb *strings.Builder, flow *Flow) {
 		stepIndent := p.indent()
 		sb.WriteString(stepIndent)
 		sb.WriteString("description ")
-		sb.WriteString(fmt.Sprintf("%q\n", *flow.Description))
+		_, _ = fmt.Fprintf(sb, "%q\n", *flow.Description)
 	}
 
 	for _, item := range flow.Items {
@@ -37,7 +37,7 @@ func (p *Printer) printFlow(sb *strings.Builder, flow *Flow) {
 			sb.WriteString(item.Step.To.String())
 			if item.Step.Description != nil {
 				sb.WriteString(" ")
-				sb.WriteString(fmt.Sprintf("%q", *item.Step.Description))
+				_, _ = fmt.Fprintf(sb, "%q", *item.Step.Description)
 			}
 			if len(item.Step.Tags) > 0 {
 				sb.WriteString(" [")
@@ -50,8 +50,7 @@ func (p *Printer) printFlow(sb *strings.Builder, flow *Flow) {
 				sb.WriteString("]")
 			}
 			if item.Step.Order != nil {
-				sb.WriteString(" order ")
-				sb.WriteString(fmt.Sprintf("%q", *item.Step.Order))
+				_, _ = fmt.Fprintf(sb, " order %q", *item.Step.Order)
 			}
 			sb.WriteString("\n")
 		}

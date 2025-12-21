@@ -71,7 +71,7 @@ pids/
 *.dll
 *.so
 *.dylib
-sruja
+/sruja
 cmd_sruja.out
 
 # Go test files

@@ -22,7 +22,7 @@ func (p *Parser) ParseWorkspace(rootPath string) (*Workspace, error) {
 			return nil
 		}
 		if !info.IsDir() && filepath.Ext(path) == ".sruja" {
-			content, err := os.ReadFile(path)
+			content, err := os.ReadFile(filepath.Clean(path))
 			if err != nil {
 				return fmt.Errorf("failed to read %s: %w", path, err)
 			}
@@ -98,7 +98,7 @@ func (p *Parser) resolveImports(ws *Workspace, prog *Program, filename string) e
 			} else if filepath.Ext(resolvedPath) == ".sruja" {
 				// Load single file if not already loaded
 				if _, ok := ws.Programs[resolvedPath]; !ok {
-					fileContent, err := os.ReadFile(resolvedPath)
+					fileContent, err := os.ReadFile(filepath.Clean(resolvedPath))
 					if err == nil {
 						newProg, diags, err := p.Parse(resolvedPath, string(fileContent))
 						if err == nil {

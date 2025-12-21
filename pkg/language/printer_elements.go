@@ -29,12 +29,12 @@ func (p *Printer) printRelation(sb *strings.Builder, rel *Relation) {
 		if isIdent(*rel.Verb) {
 			sb.WriteString(*rel.Verb)
 		} else {
-			sb.WriteString(fmt.Sprintf("%q", *rel.Verb))
+			_, _ = fmt.Fprintf(sb, "%q", *rel.Verb)
 		}
 	}
 	if rel.Label != nil && *rel.Label != "" {
 		sb.WriteString(" ")
-		sb.WriteString(fmt.Sprintf("%q", *rel.Label))
+		_, _ = fmt.Fprintf(sb, " %q", *rel.Label)
 	}
 	sb.WriteString("\n")
 }
