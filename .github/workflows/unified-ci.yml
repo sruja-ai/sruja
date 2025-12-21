@@ -222,10 +222,10 @@ jobs:
 
       - name: Compile examples
         run: |
-          ./sruja compile examples/example.sruja
-          ./sruja compile examples/full_features.sruja
-
+          ./sruja compile examples/likec4_example.sruja
+          ./sruja compile examples/project_ecommerce.sruja
+      
       - name: Lint examples
         run: |
-          ./sruja lint examples/example.sruja
-          ./sruja lint examples/full_features.sruja
+          ./sruja lint examples/likec4_example.sruja
+          ./sruja lint examples/project_ecommerce.sruja
