@@ -157,7 +157,7 @@ func codeActions(this js.Value, args []js.Value) (ret interface{}) {
 							}
 							line, _ := location["line"].(float64)
 							column, _ := location["column"].(float64)
-							
+
 							actions = append(actions, map[string]interface{}{
 								"title":   "Replace with '" + sym.Name + "'",
 								"command": "sruja.replaceElement",
