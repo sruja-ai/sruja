@@ -80,5 +80,4 @@ func runImport(args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "Unsupported import format: %s. Supported formats: json\n", format)
 		return 1
 	}
-	return 0
 }
