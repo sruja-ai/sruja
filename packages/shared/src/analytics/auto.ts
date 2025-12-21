@@ -10,12 +10,13 @@ type AutoCfg = {
 let installed = false
 
 function textOf(el: Element): string {
-  const t = (el as any).innerText || (el as any).textContent || ''
-  return String(t).trim().slice(0, 200)
+  const htmlEl = el as HTMLElement;
+  const t = htmlEl.innerText || htmlEl.textContent || '';
+  return String(t).trim().slice(0, 200);
 }
 
-function propsFrom(el: Element): Record<string, any> {
-  const d: Record<string, any> = {}
+function propsFrom(el: Element): Record<string, string | undefined> {
+  const d: Record<string, string | undefined> = {};
   const ds = (el as HTMLElement).dataset || {}
   for (const k of Object.keys(ds)) d[`data_${k}`] = ds[k]
   const tag = el.tagName.toLowerCase()
