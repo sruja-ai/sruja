@@ -283,6 +283,15 @@ jobs:
           path: target
           persist-credentials: false
 
+      - name: Verify checkout succeeded
+        run: |
+          if [ ! -d "target/.git" ]; then
+            echo "Error: Checkout failed - target/.git directory not found"
+            echo "Repository: sruja-ai/prod-website"
+            echo "This may indicate the repository doesn't exist or the token lacks access"
+            exit 1
+          fi
+
       - name: Copy designer app to target
         run: |
           rm -rf target/designer
