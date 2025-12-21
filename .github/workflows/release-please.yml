@@ -5,6 +5,12 @@ on:
     branches:
       - main
 
+# Required permissions for release-please to create pull requests
+# If repository has "Read and write permissions" disabled in Settings → Actions → General,
+# you must either:
+# 1. Enable "Read and write permissions" in repository settings, OR
+# 2. Create a Personal Access Token (PAT) with 'repo' scope and add it as secret RELEASE_PLEASE_TOKEN
+#    Then change token below to: token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 permissions:
   contents: write
   pull-requests: write
