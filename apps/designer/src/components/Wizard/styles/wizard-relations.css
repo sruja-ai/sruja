@@ -1,0 +1,118 @@
+/* =====================================================
+   RELATIONS SECTION - Inline Relations in Steps
+   ===================================================== */
+
+.relations-section {
+    border: 1px dashed var(--border);
+    background: transparent;
+}
+
+[data-theme="dark"] .relations-section {
+    background: rgba(102, 126, 234, 0.03);
+}
+
+.relation-card {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.relation-element {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-1);
+    padding: 0.25rem 0.5rem;
+    background: var(--surface-1);
+    border-radius: 4px;
+}
+
+.relation-element.from {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.relation-element.to {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.relation-arrow-small {
+    color: var(--text-3);
+    flex-shrink: 0;
+}
+
+.relation-label-text {
+    font-size: 0.75rem;
+    color: var(--text-2);
+    font-style: italic;
+    margin-left: auto;
+    margin-right: 0.5rem;
+}
+
+/* Inline Relation Form */
+.relation-form-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.relation-form-inline .form-group {
+    flex: 1;
+    min-width: 100px;
+}
+
+.relation-form-inline .form-group select {
+    width: 100%;
+    height: 36px;
+    padding: 0 0.75rem;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-1);
+    color: var(--text-1);
+    font-size: 0.8125rem;
+    cursor: pointer;
+}
+
+.relation-form-inline .form-group select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.relation-form-inline .form-arrow {
+    color: var(--text-3);
+    flex-shrink: 0;
+}
+
+.relation-form-inline>label {
+    flex: 1.5;
+    min-width: 120px;
+}
+
+.relation-form-inline>label input {
+    height: 36px;
+    font-size: 0.8125rem;
+}
+
+.relation-form-inline>button {
+    height: 36px;
+    padding: 0 0.75rem;
+}
+
+@media (max-width: 640px) {
+    .relation-form-inline {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .relation-form-inline .form-group,
+    .relation-form-inline>label {
+        width: 100%;
+    }
+
+    .relation-form-inline .form-arrow {
+        display: none;
+    }
+}
+

@@ -1,0 +1,69 @@
+/* Global Focus Styles - Enhanced Accessibility */
+
+/* Modern focus indicators for all interactive elements */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible {
+    outline: 2px solid var(--highlight-color, #3b82f6);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm, 0.25rem);
+    box-shadow: 0 0 0 4px var(--primary-alpha-20, rgba(59, 130, 246, 0.2));
+}
+
+/* Remove default outline for mouse users */
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+input:focus:not(:focus-visible),
+textarea:focus:not(:focus-visible),
+select:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Enhanced input focus states */
+input[type="text"]:focus-visible,
+input[type="email"]:focus-visible,
+input[type="password"]:focus-visible,
+input[type="number"]:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+    border-color: var(--highlight-color, #3b82f6);
+    box-shadow: 0 0 0 3px var(--primary-alpha-20, rgba(59, 130, 246, 0.2));
+    transform: translateY(-1px);
+}
+
+/* Card focus states */
+.card-modern:focus-visible,
+.unified-item-card:focus-visible {
+    outline: 2px solid var(--highlight-color, #3b82f6);
+    outline-offset: 2px;
+    box-shadow: var(--elevation-3, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+}
+
+/* Tab focus states */
+.view-tab:focus-visible,
+.subnav-item:focus-visible {
+    outline: 2px solid var(--highlight-color, #3b82f6);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--primary-alpha-20, rgba(59, 130, 246, 0.2));
+}
+
+/* Skip link for accessibility */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--highlight-color, #3b82f6);
+    color: white;
+    padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+    text-decoration: none;
+    border-radius: var(--radius-md, 0.5rem);
+    z-index: 1000;
+}
+
+.skip-link:focus {
+    top: var(--space-2, 0.5rem);
+}

@@ -1,0 +1,37 @@
+{
+  "issues": [
+    "HIGH: 2 node overlaps",
+    "LOW: 3 edge label overlaps"
+  ],
+  "metrics": {
+    "grade": "D",
+    "weightedScore": 65,
+    "overallScore": 72.57232142857143,
+    "edgeCrossings": 2,
+    "overlappingNodes": 2,
+    "parentChildContainment": 0,
+    "spacingViolations": 3,
+    "edgeLabelOverlaps": 3,
+    "clippedNodeLabels": 0,
+    "violations": [
+      {
+        "type": "node-overlap",
+        "severity": "high",
+        "description": "User overlaps WebApp",
+        "affectedNodes": [
+          "User",
+          "WebApp"
+        ]
+      },
+      {
+        "type": "node-overlap",
+        "severity": "high",
+        "description": "WebApp overlaps Database",
+        "affectedNodes": [
+          "WebApp",
+          "Database"
+        ]
+      }
+    ]
+  }
+}

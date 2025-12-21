@@ -1,0 +1,11 @@
+specification {
+  element component
+  element database
+  element queue
+}
+
+model {
+  sys = system "Legacy System" {
+    api = container "API"
+  }
+}

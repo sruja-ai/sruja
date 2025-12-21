@@ -1,0 +1,46 @@
+---
+// apps/website/src/pages/blogs/[...slug].astro
+import { getCollection, type CollectionEntry } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import ContentDetail from '@/features/content/components/ContentDetail.astro';
+import ContentNavigation from '@/features/content/components/ContentNavigation.astro';
+import { generateContentPaths } from '@/features/content/utils/paths';
+import { formatContentDate, formatContentDateISO } from '@/features/content/utils/dates';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  const paths = generateContentPaths(posts, '/blogs', 'date');
+  
+  return paths.map(path => ({
+    params: path.params,
+    props: {
+      post: path.props.entry,
+      previous: path.props.previous,
+      next: path.props.next,
+    },
+  }));
+}
+
+type Props = {
+  post: CollectionEntry<'blog'>;
+  previous?: { title: string; href: string };
+  next?: { title: string; href: string };
+};
+
+const { post, previous, next } = Astro.props as Props;
+const { Content } = await post.render();
+const pubDate = formatContentDate(post.data.pubDate);
+const pubDateISO = formatContentDateISO(post.data.pubDate);
+---
+
+<Layout title={post.data.title} description={post.data.description}>
+  <ContentDetail
+    title={post.data.title}
+    tags={post.data.tags}
+    date={pubDate || undefined}
+    dateISO={pubDateISO || undefined}
+    Content={Content}
+    standalone={true}
+  />
+  <ContentNavigation previous={previous} next={next} basePath="/blogs" />
+</Layout>

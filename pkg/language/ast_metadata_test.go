@@ -7,6 +7,10 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
+func stringPtrMeta(s string) *string {
+	return &s
+}
+
 func TestContract_Location(t *testing.T) {
 	contract := &language.Contract{
 		Kind: "api",
@@ -47,8 +51,8 @@ func TestGetLabel_Methods(t *testing.T) {
 func TestMetaString_System(t *testing.T) {
 	sys := &language.System{
 		Metadata: []*language.MetaEntry{
-			{Key: "team", Value: "backend"},
-			{Key: "tier", Value: "critical"},
+			{Key: "team", Value: stringPtrMeta("backend")},
+			{Key: "tier", Value: stringPtrMeta("critical")},
 		},
 	}
 
@@ -69,7 +73,7 @@ func TestMetaString_System(t *testing.T) {
 func TestMetaString_System_NotFound(t *testing.T) {
 	sys := &language.System{
 		Metadata: []*language.MetaEntry{
-			{Key: "team", Value: "backend"},
+			{Key: "team", Value: stringPtrMeta("backend")},
 		},
 	}
 
@@ -85,7 +89,7 @@ func TestMetaString_System_NotFound(t *testing.T) {
 func TestMetaString_Container(t *testing.T) {
 	cont := &language.Container{
 		Metadata: []*language.MetaEntry{
-			{Key: "technology", Value: "Go"},
+			{Key: "technology", Value: stringPtrMeta("Go")},
 		},
 	}
 
@@ -101,7 +105,7 @@ func TestMetaString_Container(t *testing.T) {
 func TestMetaString_Component(t *testing.T) {
 	comp := &language.Component{
 		Metadata: []*language.MetaEntry{
-			{Key: "critical", Value: "true"},
+			{Key: "critical", Value: stringPtrMeta("true")},
 		},
 	}
 
@@ -117,7 +121,7 @@ func TestMetaString_Component(t *testing.T) {
 func TestMetaString_DataStore(t *testing.T) {
 	ds := &language.DataStore{
 		Metadata: []*language.MetaEntry{
-			{Key: "engine", Value: "postgres"},
+			{Key: "engine", Value: stringPtrMeta("postgres")},
 		},
 	}
 
@@ -133,7 +137,7 @@ func TestMetaString_DataStore(t *testing.T) {
 func TestMetaString_Queue(t *testing.T) {
 	q := &language.Queue{
 		Metadata: []*language.MetaEntry{
-			{Key: "topic", Value: "events"},
+			{Key: "topic", Value: stringPtrMeta("events")},
 		},
 	}
 
@@ -149,7 +153,7 @@ func TestMetaString_Queue(t *testing.T) {
 func TestMetaString_Person(t *testing.T) {
 	p := &language.Person{
 		Metadata: []*language.MetaEntry{
-			{Key: "persona", Value: "customer"},
+			{Key: "persona", Value: stringPtrMeta("customer")},
 		},
 	}
 
@@ -162,26 +166,10 @@ func TestMetaString_Person(t *testing.T) {
 	}
 }
 
-func TestMetaString_Architecture(t *testing.T) {
-	arch := &language.Architecture{
-		Metadata: []*language.MetaEntry{
-			{Key: "level", Value: "arch"},
-		},
-	}
-
-	value, ok := arch.MetaString("level")
-	if !ok {
-		t.Error("MetaString should find existing key")
-	}
-	if value != "arch" {
-		t.Errorf("Expected 'arch', got %q", value)
-	}
-}
-
 func TestHasMeta_System(t *testing.T) {
 	sys := &language.System{
 		Metadata: []*language.MetaEntry{
-			{Key: "team", Value: "backend"},
+			{Key: "team", Value: stringPtrMeta("backend")},
 		},
 	}
 
@@ -196,7 +184,7 @@ func TestHasMeta_System(t *testing.T) {
 func TestHasMeta_Container(t *testing.T) {
 	cont := &language.Container{
 		Metadata: []*language.MetaEntry{
-			{Key: "technology", Value: "Go"},
+			{Key: "technology", Value: stringPtrMeta("Go")},
 		},
 	}
 
@@ -208,7 +196,7 @@ func TestHasMeta_Container(t *testing.T) {
 func TestHasMeta_Component(t *testing.T) {
 	comp := &language.Component{
 		Metadata: []*language.MetaEntry{
-			{Key: "critical", Value: "true"},
+			{Key: "critical", Value: stringPtrMeta("true")},
 		},
 	}
 
@@ -220,7 +208,7 @@ func TestHasMeta_Component(t *testing.T) {
 func TestHasMeta_DataStore(t *testing.T) {
 	ds := &language.DataStore{
 		Metadata: []*language.MetaEntry{
-			{Key: "engine", Value: "postgres"},
+			{Key: "engine", Value: stringPtrMeta("postgres")},
 		},
 	}
 
@@ -232,7 +220,7 @@ func TestHasMeta_DataStore(t *testing.T) {
 func TestHasMeta_Queue(t *testing.T) {
 	q := &language.Queue{
 		Metadata: []*language.MetaEntry{
-			{Key: "topic", Value: "events"},
+			{Key: "topic", Value: stringPtrMeta("events")},
 		},
 	}
 
@@ -244,7 +232,7 @@ func TestHasMeta_Queue(t *testing.T) {
 func TestHasMeta_Person(t *testing.T) {
 	p := &language.Person{
 		Metadata: []*language.MetaEntry{
-			{Key: "persona", Value: "customer"},
+			{Key: "persona", Value: stringPtrMeta("customer")},
 		},
 	}
 
@@ -253,23 +241,11 @@ func TestHasMeta_Person(t *testing.T) {
 	}
 }
 
-func TestHasMeta_Architecture(t *testing.T) {
-	arch := &language.Architecture{
-		Metadata: []*language.MetaEntry{
-			{Key: "level", Value: "arch"},
-		},
-	}
-
-	if !arch.HasMeta("level") {
-		t.Error("HasMeta should return true for existing key")
-	}
-}
-
 func TestAllMetadata_System(t *testing.T) {
 	sys := &language.System{
 		Metadata: []*language.MetaEntry{
-			{Key: "team", Value: "backend"},
-			{Key: "tier", Value: "critical"},
+			{Key: "team", Value: stringPtrMeta("backend")},
+			{Key: "tier", Value: stringPtrMeta("critical")},
 		},
 	}
 
@@ -285,7 +261,7 @@ func TestAllMetadata_System(t *testing.T) {
 func TestAllMetadata_Container(t *testing.T) {
 	cont := &language.Container{
 		Metadata: []*language.MetaEntry{
-			{Key: "technology", Value: "Go"},
+			{Key: "technology", Value: stringPtrMeta("Go")},
 		},
 	}
 
@@ -298,7 +274,7 @@ func TestAllMetadata_Container(t *testing.T) {
 func TestAllMetadata_Component(t *testing.T) {
 	comp := &language.Component{
 		Metadata: []*language.MetaEntry{
-			{Key: "critical", Value: "true"},
+			{Key: "critical", Value: stringPtrMeta("true")},
 		},
 	}
 
@@ -311,7 +287,7 @@ func TestAllMetadata_Component(t *testing.T) {
 func TestAllMetadata_DataStore(t *testing.T) {
 	ds := &language.DataStore{
 		Metadata: []*language.MetaEntry{
-			{Key: "engine", Value: "postgres"},
+			{Key: "engine", Value: stringPtrMeta("postgres")},
 		},
 	}
 
@@ -324,7 +300,7 @@ func TestAllMetadata_DataStore(t *testing.T) {
 func TestAllMetadata_Queue(t *testing.T) {
 	q := &language.Queue{
 		Metadata: []*language.MetaEntry{
-			{Key: "topic", Value: "events"},
+			{Key: "topic", Value: stringPtrMeta("events")},
 		},
 	}
 
@@ -337,24 +313,11 @@ func TestAllMetadata_Queue(t *testing.T) {
 func TestAllMetadata_Person(t *testing.T) {
 	p := &language.Person{
 		Metadata: []*language.MetaEntry{
-			{Key: "persona", Value: "customer"},
+			{Key: "persona", Value: stringPtrMeta("customer")},
 		},
 	}
 
 	result := p.AllMetadata()
-	if len(result) != 1 {
-		t.Errorf("Expected 1 metadata entry, got %d", len(result))
-	}
-}
-
-func TestAllMetadata_Architecture(t *testing.T) {
-	arch := &language.Architecture{
-		Metadata: []*language.MetaEntry{
-			{Key: "level", Value: "arch"},
-		},
-	}
-
-	result := arch.AllMetadata()
 	if len(result) != 1 {
 		t.Errorf("Expected 1 metadata entry, got %d", len(result))
 	}
@@ -374,9 +337,9 @@ func TestAllMetadata_Empty(t *testing.T) {
 func TestMetaMap_System(t *testing.T) {
 	sys := &language.System{
 		Metadata: []*language.MetaEntry{
-			{Key: "team.backend", Value: "api"},
-			{Key: "team.frontend", Value: "ui"},
-			{Key: "tier", Value: "critical"},
+			{Key: "team.backend", Value: stringPtrMeta("api")},
+			{Key: "team.frontend", Value: stringPtrMeta("ui")},
+			{Key: "tier", Value: stringPtrMeta("critical")},
 		},
 	}
 
@@ -392,8 +355,8 @@ func TestMetaMap_System(t *testing.T) {
 func TestMetaMap_Container(t *testing.T) {
 	cont := &language.Container{
 		Metadata: []*language.MetaEntry{
-			{Key: "env.prod", Value: "production"},
-			{Key: "env.dev", Value: "development"},
+			{Key: "env.prod", Value: stringPtrMeta("production")},
+			{Key: "env.dev", Value: stringPtrMeta("development")},
 		},
 	}
 
@@ -406,8 +369,8 @@ func TestMetaMap_Container(t *testing.T) {
 func TestMetaMap_Component(t *testing.T) {
 	comp := &language.Component{
 		Metadata: []*language.MetaEntry{
-			{Key: "config.timeout", Value: "30s"},
-			{Key: "config.retries", Value: "3"},
+			{Key: "config.timeout", Value: stringPtrMeta("30s")},
+			{Key: "config.retries", Value: stringPtrMeta("3")},
 		},
 	}
 
@@ -420,7 +383,7 @@ func TestMetaMap_Component(t *testing.T) {
 func TestMetaMap_NoMatch(t *testing.T) {
 	sys := &language.System{
 		Metadata: []*language.MetaEntry{
-			{Key: "team", Value: "backend"},
+			{Key: "team", Value: stringPtrMeta("backend")},
 		},
 	}
 
@@ -433,7 +396,7 @@ func TestMetaMap_NoMatch(t *testing.T) {
 func TestMetaMap_EmptyPrefix(t *testing.T) {
 	sys := &language.System{
 		Metadata: []*language.MetaEntry{
-			{Key: "team", Value: "backend"},
+			{Key: "team", Value: stringPtrMeta("backend")},
 		},
 	}
 
@@ -446,7 +409,7 @@ func TestMetaMap_EmptyPrefix(t *testing.T) {
 func TestMetaMap_KeyShorterThanPrefix(t *testing.T) {
 	sys := &language.System{
 		Metadata: []*language.MetaEntry{
-			{Key: "a", Value: "value"},
+			{Key: "a", Value: stringPtrMeta("value")},
 		},
 	}
 

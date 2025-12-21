@@ -1,0 +1,70 @@
+library Compliance "Standard Compliance Policies" {
+  description "A collection of standard compliance policies and requirements."
+
+  metadata {
+    version "1.0.0"
+    owner "Sruja Team"
+  }
+
+  // ==========================================================================
+  // GDPR (General Data Protection Regulation)
+  // ==========================================================================
+
+  policy GDPR_Encryption "GDPR Data Encryption" {
+    category "security"
+    enforcement "required"
+    description "All personal data must be encrypted at rest and in transit."
+    metadata {
+      source "GDPR Article 32"
+    }
+  }
+
+  policy GDPR_Retention "GDPR Data Retention" {
+    category "privacy"
+    enforcement "required"
+    description "Personal data must not be kept longer than necessary."
+    metadata {
+      source "GDPR Article 5(1)(e)"
+    }
+  }
+
+  requirement GDPR_R1 "Right to Erasure" {
+    type "functional"
+    description "System must support deletion of user data upon request."
+  }
+
+  // ==========================================================================
+  // SOC 2 (Service Organization Control 2)
+  // ==========================================================================
+
+  policy SOC2_AccessControl "SOC 2 Access Control" {
+    category "security"
+    enforcement "required"
+    description "Access to production systems must be restricted and logged."
+    metadata {
+      trust_principle "Security"
+    }
+  }
+
+  policy SOC2_AuditLogs "SOC 2 Audit Logging" {
+    category "security"
+    enforcement "required"
+    description "All system activities must be logged and retained for 1 year."
+    metadata {
+      trust_principle "Security"
+    }
+  }
+
+  // ==========================================================================
+  // ISO 27001
+  // ==========================================================================
+
+  policy ISO27001_Backup "ISO 27001 Backup Policy" {
+    category "availability"
+    enforcement "required"
+    description "Regular backups must be performed and tested."
+    metadata {
+      control "A.12.3.1"
+    }
+  }
+}

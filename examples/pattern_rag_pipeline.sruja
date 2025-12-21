@@ -1,0 +1,175 @@
+// examples/pattern_rag_pipeline.sruja
+// Enterprise RAG Pipeline
+
+specification {
+  element person
+  element system
+  element container
+  element component
+  element database
+  element queue
+}
+
+model {
+  overview {
+    summary "Retrieval-Augmented Generation (RAG) pipeline for enterprise knowledge management"
+    audience "Data Engineers, AI Architects, Compliance Officers"
+    scope "Document ingestion, embedding generation, vector retrieval, and llm answer generation"
+    goals ["Provide accurate answers from internal docs", "Ensure data freshness < 1hr", "Enforce access controls"]
+    nonGoals ["General purpose chatbot", "Creative writing"]
+    risks ["Hallucinations", "Leaking sensitive document data to unauthorized users"]
+  }
+
+  employee = person "Employee" {
+    description "Knowledge worker seeking internal information"
+  }
+
+  dataAdmin = person "Data Administrator" {
+    description "Manages document sources and access policies"
+  }
+
+  ragPlatform = system "RAG Platform" {
+    description "End-to-end RAG system"
+
+    ui = container "Chat Interface" {
+      technology "React/Tailwind"
+      description "Chatbot UI with citation support"
+      chatWindow = component "Message stream"
+      citationViewer = component "Source document preview"
+    }
+
+    gateway = container "API Gateway" {
+      technology "Python/FastAPI"
+      description "Orchestrates retrieval and generation"
+      slo { latency { p95 "2s" p99 "5s" } }
+      queryPreprocessor = component "Rewrites queries for better retrieval"
+      guardrails = component "Input/Output safety checks"
+    }
+
+    ingestion = container "Ingestion Service" {
+      technology "Python/LangChain"
+      description "Processes documents into vectors"
+      pdfLoader = component "Parses PDFs"
+      chunker = component "Splits text (RecursiveCharacterTextSplitter)"
+      embedder = component "Generates embeddings (OpenAI/Cohere)"
+    }
+
+    retrieval = container "Retrieval Service" {
+      technology "Python"
+      description "Semantic search and reranking"
+      hybridSearch = component "Keyword + Vector search"
+      reranker = component "Cross-encoder reranking (Cohere)"
+    }
+
+    vectorDb = database "Vector Database" {
+      technology "Qdrant / Milvus"
+      description "Stores document embeddings and metadata"
+      scale { min 3 max 5 metric "memory > 80%" }
+    }
+
+    docStore = database "Document Store" {
+      technology "S3 / MinIO"
+      description "Raw document storage"
+    }
+
+    cache = database "Semantic Cache" {
+      technology "Redis"
+      description "Caches frequent queries and answers"
+    }
+
+    ingestionQueue = queue "Ingestion Queue" {
+      technology "RabbitMQ"
+      description "Decouples upload from processing"
+    }
+    
+    // Internal Flows
+    gateway.queryPreprocessor -> retrieval.hybridSearch "Search"
+    retrieval.hybridSearch -> vectorDb "KNN Search"
+    retrieval.reranker -> retrieval.hybridSearch "Re-rank results"
+    gateway -> cache "Check hit"
+    ingestion.chunker -> ingestion.embedder "Embed chunks"
+    ingestion.embedder -> vectorDb "Upsert vectors"
+    ingestion.pdfLoader -> docStore "Fetch raw"
+    ingestionQueue -> ingestion.pdfLoader "Trigger job"
+
+    // External dependencies
+    llm = system "llm Provider" {
+      description "OpenAI GPT-4 or Azure OpenAI"
+      metadata { tags ["external", "cost-sensitive"] }
+    }
+    
+    gateway -> llm "Generate answer"
+    ingestion.embedder -> llm "Get embeddings"
+  }
+
+  internalSources = system "Internal Data Sources" {
+    sharePoint = container "SharePoint"
+    confluence = container "Confluence"
+    googleDrive = container "Google Drive"
+  }
+
+  // User Flows
+  employee -> ragPlatform.ui "Asks question"
+  ragPlatform.ui -> ragPlatform.gateway "Submit query"
+  
+  // Admin Flows
+  dataAdmin -> ragPlatform.ingestion "Configure sources"
+  internalSources.sharePoint -> ragPlatform.ingestionQueue "Webhook/Sync"
+
+  // Scenarios
+  scenario AnswerQuestion "Answer Question" {
+    step employee -> ragPlatform.ui "What is the travel policy?"
+    step ragPlatform.ui -> ragPlatform.gateway "Query"
+    step ragPlatform.gateway -> ragPlatform.cache "Check cache"
+    // Cache Miss
+    step ragPlatform.gateway -> ragPlatform.retrieval "Retrieve context"
+    step ragPlatform.retrieval -> ragPlatform.vectorDb "Semantic search"
+    step ragPlatform.vectorDb -> ragPlatform.retrieval "Top 20 chunks"
+    step ragPlatform.retrieval -> ragPlatform.gateway "Context"
+    step ragPlatform.gateway -> ragPlatform.llm "Generate(Query + Context)"
+    step ragPlatform.llm -> ragPlatform.gateway "Answer"
+    step ragPlatform.gateway -> ragPlatform.ui "Stream response"
+  }
+
+  flow IngestionFlow "Document Indexing" {
+    step internalSources -> ingestionQueue "New Document Event"
+    step ingestionQueue -> ingestion.pdfLoader "Process"
+    step ingestion.pdfLoader -> ingestion.chunker "Text"
+    step ingestion.chunker -> ingestion.embedder "Chunks"
+    step ingestion.embedder -> vectorDb "Vectors"
+  }
+
+  // Governance
+  policy ACLPolicy "Users can only retrieve docs they have access to" {
+    category "security"
+    enforcement "required"
+  }
+  policy CitationsPolicy "All answers must include citations" {
+    category "compliance"
+    enforcement "required"
+  }
+  
+  constraints {
+    "vectorDb must be isolated per tenant"
+    "PII must be redacted before embedding"
+  }
+
+  adr ADR001 "Hybrid Search" {
+    status "accepted"
+    context "Vector search misses exact keyword matches (e.g., project codes)."
+    decision "Implement Hybrid Search (Sparse + Dense vectors)."
+    consequences "Higher storage cost, better retrieval accuracy."
+  }
+}
+
+views {
+  view index {
+    title "Enterprise RAG Pipeline"
+    include *
+  }
+  
+  view containers of ragPlatform {
+    title "RAG Platform Containers"
+    include ragPlatform.*
+  }
+}

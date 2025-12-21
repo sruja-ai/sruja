@@ -1,0 +1,30 @@
+---
+import { getCollection } from 'astro:content'
+import type { CollectionEntry } from 'astro:content'
+import Layout from '../layouts/Layout.astro'
+
+const challenges = (await getCollection('challenges')) as CollectionEntry<'challenges'>[]
+const total = challenges.length
+---
+
+<Layout title="Debug Challenges" description="Debug view for challenges collection.">
+  <section style="padding: 1rem 0;">
+    <h1 style="margin: 0 0 0.5rem 0;">Debug: Challenges</h1>
+    <p>Total challenges: {total}</p>
+    <ul>
+      {challenges
+        .sort((a: CollectionEntry<'challenges'>, b: CollectionEntry<'challenges'>) => (a.data.title || '').localeCompare(b.data.title || ''))
+        .map((c) => (
+          <li>
+            <a href={`/challenges/${c.slug}`}>{c.data.title}</a>
+          </li>
+        ))}
+    </ul>
+  </section>
+</Layout>
+
+<style>
+  ul { padding-left: 1.25rem; }
+  a { color: var(--color-primary, #3b82f6); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>

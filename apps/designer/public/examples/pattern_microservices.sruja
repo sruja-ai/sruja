@@ -1,0 +1,217 @@
+// examples/pattern_microservices.sruja
+// Real-world example: Microservices Architecture with Implied Relationships
+// Shows how implied relationships simplify complex microservices diagrams
+
+specification {
+  element person
+  element system
+  element container
+  element component
+  element database
+  element queue
+}
+
+model {
+  customer = person "Customer"
+  merchant = person "Merchant"
+  admin = person "Platform Administrator"
+  
+  ecommerce = system "E-Commerce Platform" {
+    // API Gateway
+    apiGateway = container "API Gateway" {
+      technology "Kong"
+      routing = component "Routing"
+      auth = component "Authentication"
+      rateLimit = component "Rate Limiting"
+    }
+    
+    // Core Services
+    catalogService = container "Catalog Service" {
+      technology "Java, Spring Boot"
+      productApi = component "Product API"
+      searchApi = component "Search API"
+      categoryApi = component "Category API"
+    }
+    
+    inventoryService = container "Inventory Service" {
+      technology "Go"
+      stockApi = component "Stock API"
+      reservationApi = component "Reservation API"
+    }
+    
+    cartService = container "Cart Service" {
+      technology "Node.js"
+      cartApi = component "Cart API"
+      sessionManager = component "Session Manager"
+    }
+    
+    orderService = container "Order Service" {
+      technology "Java, Spring Boot"
+      orderApi = component "Order API"
+      orderProcessor = component "Order Processor"
+      fulfillmentCoordinator = component "Fulfillment Coordinator"
+    }
+    
+    paymentService = container "Payment Service" {
+      technology "Go"
+      paymentApi = component "Payment API"
+      refundProcessor = component "Refund Processor"
+    }
+    
+    userService = container "User Service" {
+      technology "Python, FastAPI"
+      authApi = component "Auth API"
+      profileApi = component "Profile API"
+      preferenceApi = component "Preference API"
+    }
+    
+    notificationService = container "Notification Service" {
+      technology "Node.js"
+      emailSender = component "Email Sender"
+      smsSender = component "SMS Sender"
+      pushNotifier = component "Push Notifier"
+    }
+    
+    // Data Stores
+    catalogDb = database "Catalog Database" {
+      technology "PostgreSQL"
+    }
+    
+    inventoryDb = database "Inventory Database" {
+      technology "PostgreSQL"
+    }
+    
+    cartDb = database "Cart Database" {
+      technology "Redis"
+    }
+    
+    orderDb = database "Order Database" {
+      technology "PostgreSQL"
+    }
+    
+    userDb = database "User Database" {
+      technology "MongoDB"
+    }
+    
+    // Message Queue
+    orderEvents = queue "Order Events" {
+      technology "Kafka"
+    }
+    
+    notificationQueue = queue "Notification Queue" {
+      technology "RabbitMQ"
+    }
+  }
+  
+  // External Services
+  paymentProvider = system "Payment Provider" {
+    metadata {
+      tags ["external"]
+    }
+  }
+  
+  shippingProvider = system "Shipping Provider" {
+    metadata {
+      tags ["external"]
+    }
+  }
+  
+  emailService = system "Email Service" {
+    metadata {
+      tags ["external"]
+    }
+  }
+  
+  // Customer flow - only define specific service relationships
+  // Parent relationships are automatically inferred
+  customer -> ecommerce.apiGateway "accesses platform via"
+  customer -> ecommerce.catalogService "browses products in"
+  customer -> ecommerce.cartService "manages cart in"
+  customer -> ecommerce.orderService "places orders via"
+  customer -> ecommerce.paymentService "makes payments through"
+  
+  // Service-to-service communication
+  ecommerce.apiGateway -> ecommerce.catalogService "routes requests to"
+  ecommerce.apiGateway -> ecommerce.cartService "routes requests to"
+  ecommerce.apiGateway -> ecommerce.orderService "routes requests to"
+  ecommerce.apiGateway -> ecommerce.paymentService "routes requests to"
+  ecommerce.apiGateway -> ecommerce.userService "routes requests to"
+  
+  ecommerce.catalogService -> ecommerce.inventoryService "checks availability with"
+  ecommerce.cartService -> ecommerce.inventoryService "reserves items in"
+  ecommerce.orderService -> ecommerce.inventoryService "deducts stock from"
+  ecommerce.orderService -> ecommerce.paymentService "processes payment via"
+  ecommerce.orderService -> ecommerce.notificationService "sends notifications through"
+  
+  // Service to database
+  ecommerce.catalogService -> ecommerce.catalogDb "reads and writes to"
+  ecommerce.inventoryService -> ecommerce.inventoryDb "reads and writes to"
+  ecommerce.cartService -> ecommerce.cartDb "reads and writes to"
+  ecommerce.orderService -> ecommerce.orderDb "reads and writes to"
+  ecommerce.userService -> ecommerce.userDb "reads and writes to"
+  
+  // Event-driven communication
+  ecommerce.orderService -> ecommerce.orderEvents "publishes order events to"
+  ecommerce.notificationService -> ecommerce.notificationQueue "queues notifications to"
+  
+  // External integrations
+  ecommerce.paymentService -> paymentProvider "processes payments through"
+  ecommerce.orderService -> shippingProvider "creates shipments via"
+  ecommerce.notificationService -> emailService "sends emails through"
+  
+  // Merchant interactions
+  merchant -> ecommerce.catalogService "manages products in"
+  merchant -> ecommerce.orderService "views orders in"
+  
+  // Admin interactions
+  admin -> ecommerce.userService "manages users in"
+  admin -> ecommerce.orderService "monitors orders in"
+  
+  // Implied relationships automatically created:
+  //   customer -> ecommerce (from customer -> ecommerce.*Service)
+  //   ecommerce.apiGateway -> ecommerce (from ecommerce.apiGateway -> ecommerce.*Service)
+  //   ecommerce.*Service -> ecommerce (from ecommerce.*Service -> ecommerce.*Db)
+  //   ecommerce -> paymentProvider (from ecommerce.paymentService -> paymentProvider)
+  //   ecommerce -> shippingProvider (from ecommerce.orderService -> shippingProvider)
+  //   ecommerce -> emailService (from ecommerce.notificationService -> emailService)
+  //   merchant -> ecommerce (from merchant -> ecommerce.*Service)
+  //   admin -> ecommerce (from admin -> ecommerce.*Service)
+  
+  requirement R1 functional "Must handle 50k orders/day"
+  requirement R2 performance "API response time < 300ms (p95)"
+  requirement R3 availability "99.9% uptime"
+  requirement R4 scalability "Scale to 10x traffic during sales events"
+}
+
+views {
+  view index {
+    title "E-commerce Microservices Platform"
+    include *
+  }
+  
+  // View for API team: Focus on API Gateway and services
+  view api of ecommerce {
+    title "API Architecture"
+    include ecommerce.apiGateway
+    include ecommerce.catalogService ecommerce.cartService
+    include ecommerce.orderService ecommerce.paymentService
+    include ecommerce.userService
+    exclude ecommerce.inventoryService ecommerce.notificationService
+  }
+  
+  // View for data team: Focus on data flow
+  view data of ecommerce {
+    title "Data Architecture"
+    include ecommerce.catalogService ecommerce.inventoryService
+    include ecommerce.orderService ecommerce.userService
+    include ecommerce.catalogDb ecommerce.inventoryDb
+    include ecommerce.orderDb ecommerce.userDb
+    include ecommerce.orderEvents ecommerce.notificationQueue
+  }
+  
+  // View for operations: Focus on external dependencies
+  view external of ecommerce {
+    title "External Dependencies"
+    include ecommerce paymentProvider shippingProvider emailService
+  }
+}

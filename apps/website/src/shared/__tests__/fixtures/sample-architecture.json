@@ -1,0 +1,42 @@
+// apps/website/src/shared/__tests__/fixtures/sample-architecture.json
+export const SAMPLE_ARCHITECTURE = {
+  architecture: {
+    name: 'Test System',
+    systems: [
+      {
+        id: 'App',
+        label: 'My App',
+        containers: [
+          {
+            id: 'Web',
+            label: 'Web Server',
+          },
+        ],
+        datastores: [
+          {
+            id: 'DB',
+            label: 'Database',
+          },
+        ],
+      },
+    ],
+    persons: [
+      {
+        id: 'User',
+        label: 'User',
+      },
+    ],
+    relations: [
+      {
+        from: 'User',
+        to: 'Web',
+        label: 'Uses',
+      },
+      {
+        from: 'Web',
+        to: 'DB',
+        label: 'Stores data in',
+      },
+    ],
+  },
+};

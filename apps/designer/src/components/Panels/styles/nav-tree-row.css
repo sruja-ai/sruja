@@ -1,0 +1,57 @@
+/* Tree Row Layout */
+.nav-item-row {
+    display: flex;
+    align-items: center;
+}
+
+.guided-builder {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.guided-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.guided-step {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 6px;
+    background: var(--bg-primary);
+}
+
+.guided-step-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.guided-step-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.nav-expand-btn {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.nav-expand-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+

@@ -38,6 +38,8 @@ type LSPConfig struct {
 }
 
 // LoadConfig loads configuration from a file or returns default config.
+//
+//nolint:gocyclo // Config loading is complex
 func LoadConfig(configPath string) (*Config, error) {
 	// Try to find config file
 	if configPath == "" {
@@ -117,13 +119,13 @@ func SaveConfig(config *Config, configPath string) error {
 
 	// ensure directory exists
 	dir := filepath.Dir(target)
-	if mkErr := os.MkdirAll(dir, 0700); mkErr != nil {
+	if mkErr := os.MkdirAll(dir, 0o700); mkErr != nil {
 		return fmt.Errorf("error ensuring config directory: %w", mkErr)
 	}
 
 	// atomic write: write to temp file then rename
 	tmp := target + ".tmp"
-	if wErr := os.WriteFile(tmp, data, 0600); wErr != nil {
+	if wErr := os.WriteFile(tmp, data, 0o600); wErr != nil {
 		return fmt.Errorf("error writing temp config file: %w", wErr)
 	}
 	if rErr := os.Rename(tmp, target); rErr != nil {

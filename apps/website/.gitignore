@@ -1,0 +1,33 @@
+# build output
+dist/
+.output/
+
+# generated types
+.astro/
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# environment variables
+.env
+.env.local
+.env.production
+
+# macOS-specific files
+.DS_Store
+
+# Examples are symlinked from root examples/ directory
+# public/examples/ is a symlink and should be committed
+
+# Generated embed bundle (built during CI/CD)
+public/embed-viewer.js
+public/embed-viewer.css
+
+
+

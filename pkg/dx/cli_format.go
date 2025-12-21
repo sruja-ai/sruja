@@ -43,7 +43,13 @@ func SupportsColor() bool {
 // Colorize applies color to text if color support is enabled.
 func Colorize(color, text string, enabled bool) string {
 	if enabled {
-		return color + text + ColorReset
+		// Pre-allocate builder with estimated capacity
+		var sb strings.Builder
+		sb.Grow(len(color) + len(text) + len(ColorReset))
+		sb.WriteString(color)
+		sb.WriteString(text)
+		sb.WriteString(ColorReset)
+		return sb.String()
 	}
 	return text
 }
@@ -51,25 +57,45 @@ func Colorize(color, text string, enabled bool) string {
 // Success formats a success message.
 func Success(message string) string {
 	useColor := SupportsColor()
-	return Colorize(ColorGreen, "✓", useColor) + " " + message
+	var sb strings.Builder
+	sb.Grow(len(message) + 10)
+	sb.WriteString(Colorize(ColorGreen, "✓", useColor))
+	sb.WriteString(" ")
+	sb.WriteString(message)
+	return sb.String()
 }
 
 // Error formats an error message.
 func Error(message string) string {
 	useColor := SupportsColor()
-	return Colorize(ColorRed, "✗", useColor) + " " + message
+	var sb strings.Builder
+	sb.Grow(len(message) + 10)
+	sb.WriteString(Colorize(ColorRed, "✗", useColor))
+	sb.WriteString(" ")
+	sb.WriteString(message)
+	return sb.String()
 }
 
 // Warning formats a warning message.
 func Warning(message string) string {
 	useColor := SupportsColor()
-	return Colorize(ColorYellow, "⚠", useColor) + " " + message
+	var sb strings.Builder
+	sb.Grow(len(message) + 10)
+	sb.WriteString(Colorize(ColorYellow, "⚠", useColor))
+	sb.WriteString(" ")
+	sb.WriteString(message)
+	return sb.String()
 }
 
 // Info formats an info message.
 func Info(message string) string {
 	useColor := SupportsColor()
-	return Colorize(ColorBlue, "ℹ", useColor) + " " + message
+	var sb strings.Builder
+	sb.Grow(len(message) + 10)
+	sb.WriteString(Colorize(ColorBlue, "ℹ", useColor))
+	sb.WriteString(" ")
+	sb.WriteString(message)
+	return sb.String()
 }
 
 // Bold makes text bold.
@@ -88,19 +114,38 @@ func Dim(text string) string {
 func Header(text string) string {
 	useColor := SupportsColor()
 	line := strings.Repeat("=", len(text))
+	var sb strings.Builder
+	sb.Grow(len(text)*3 + 20)
+	sb.WriteString("\n")
+	sb.WriteString(line)
+	sb.WriteString("\n")
 	if useColor {
-		return fmt.Sprintf("\n%s\n%s\n%s\n", line, Colorize(ColorBold+ColorCyan, text, useColor), line)
+		sb.WriteString(Colorize(ColorBold+ColorCyan, text, useColor))
+	} else {
+		sb.WriteString(text)
 	}
-	return fmt.Sprintf("\n%s\n%s\n%s\n", line, text, line)
+	sb.WriteString("\n")
+	sb.WriteString(line)
+	sb.WriteString("\n")
+	return sb.String()
 }
 
 // Section formats a section with a title.
 func Section(title string) string {
 	useColor := SupportsColor()
+	var sb strings.Builder
+	sb.Grow(len(title) + 10)
+	sb.WriteString("\n")
 	if useColor {
-		return fmt.Sprintf("\n%s %s\n", Colorize(ColorCyan+ColorBold, "→", useColor), Bold(title))
+		sb.WriteString(Colorize(ColorCyan+ColorBold, "→", useColor))
+		sb.WriteString(" ")
+		sb.WriteString(Bold(title))
+	} else {
+		sb.WriteString("→ ")
+		sb.WriteString(title)
 	}
-	return fmt.Sprintf("\n→ %s\n", title)
+	sb.WriteString("\n")
+	return sb.String()
 }
 
 // ListItem formats a list item.

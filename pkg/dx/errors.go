@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sruja-ai/sruja/pkg/engine"
+	"github.com/sruja-ai/sruja/pkg/diagnostics"
 )
 
 // EnhancedError provides rich error information with suggestions.
@@ -22,20 +22,48 @@ type EnhancedError struct {
 
 // Format formats an enhanced error with color and suggestions.
 func (e *EnhancedError) Format(useColor bool) string {
+	// Estimate capacity
+	estimatedSize := len(e.Message) + len(e.Context) + len(e.QuickFix) + 100
+	for _, s := range e.Suggestions {
+		estimatedSize += len(s)
+	}
 	var sb strings.Builder
+	sb.Grow(estimatedSize)
 
 	// Location
-	location := fmt.Sprintf("%s:%d:%d", e.File, e.Line, e.Column)
-	if e.File == "" {
-		location = fmt.Sprintf("line %d, column %d", e.Line, e.Column)
+	var location string
+	if e.File != "" {
+		// Build location efficiently
+		var locSb strings.Builder
+		locSb.Grow(len(e.File) + 20)
+		locSb.WriteString(e.File)
+		locSb.WriteString(":")
+		locSb.WriteString(fmt.Sprintf("%d", e.Line))
+		locSb.WriteString(":")
+		locSb.WriteString(fmt.Sprintf("%d", e.Column))
+		location = locSb.String()
+	} else {
+		var locSb strings.Builder
+		locSb.Grow(30)
+		locSb.WriteString("line ")
+		locSb.WriteString(fmt.Sprintf("%d", e.Line))
+		locSb.WriteString(", column ")
+		locSb.WriteString(fmt.Sprintf("%d", e.Column))
+		location = locSb.String()
 	}
 
 	if useColor {
-		sb.WriteString(fmt.Sprintf("\033[31m✗ Error\033[0m: %s\n", e.Message))
-		sb.WriteString(fmt.Sprintf("\033[90m  At: %s\033[0m\n", location))
+		sb.WriteString("\033[31m✗ Error\033[0m: ")
+		sb.WriteString(e.Message)
+		sb.WriteString("\n\033[90m  At: ")
+		sb.WriteString(location)
+		sb.WriteString("\033[0m\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("✗ Error: %s\n", e.Message))
-		sb.WriteString(fmt.Sprintf("  At: %s\n", location))
+		sb.WriteString("✗ Error: ")
+		sb.WriteString(e.Message)
+		sb.WriteString("\n  At: ")
+		sb.WriteString(location)
+		sb.WriteString("\n")
 	}
 
 	// Context
@@ -45,12 +73,31 @@ func (e *EnhancedError) Format(useColor bool) string {
 		} else {
 			sb.WriteString("  Context:\n")
 		}
-		lines := strings.Split(e.Context, "\n")
-		for _, line := range lines {
+		// Process context line by line without splitting
+		start := 0
+		for i := 0; i < len(e.Context); i++ {
+			if e.Context[i] == '\n' {
+				if useColor {
+					sb.WriteString("\033[90m    ")
+					sb.WriteString(e.Context[start:i])
+					sb.WriteString("\033[0m\n")
+				} else {
+					sb.WriteString("    ")
+					sb.WriteString(e.Context[start:i])
+					sb.WriteString("\n")
+				}
+				start = i + 1
+			}
+		}
+		if start < len(e.Context) {
 			if useColor {
-				sb.WriteString(fmt.Sprintf("\033[90m    %s\033[0m\n", line))
+				sb.WriteString("\033[90m    ")
+				sb.WriteString(e.Context[start:])
+				sb.WriteString("\033[0m\n")
 			} else {
-				sb.WriteString(fmt.Sprintf("    %s\n", line))
+				sb.WriteString("    ")
+				sb.WriteString(e.Context[start:])
+				sb.WriteString("\n")
 			}
 		}
 	}
@@ -62,15 +109,19 @@ func (e *EnhancedError) Format(useColor bool) string {
 		} else {
 			sb.WriteString("  Suggestions:\n")
 		}
-		for i, suggestion := range e.Suggestions {
+		maxSuggestions := 3
+		if len(e.Suggestions) < maxSuggestions {
+			maxSuggestions = len(e.Suggestions)
+		}
+		for i := 0; i < maxSuggestions; i++ {
 			if useColor {
-				sb.WriteString(fmt.Sprintf("\033[33m  → %s\033[0m\n", suggestion))
+				sb.WriteString("\033[33m  → ")
+				sb.WriteString(e.Suggestions[i])
+				sb.WriteString("\033[0m\n")
 			} else {
-				sb.WriteString(fmt.Sprintf("  → %s\n", suggestion))
-			}
-			// Limit to 3 suggestions
-			if i >= 2 {
-				break
+				sb.WriteString("  → ")
+				sb.WriteString(e.Suggestions[i])
+				sb.WriteString("\n")
 			}
 		}
 	}
@@ -78,9 +129,13 @@ func (e *EnhancedError) Format(useColor bool) string {
 	// Quick fix
 	if e.QuickFix != "" {
 		if useColor {
-			sb.WriteString(fmt.Sprintf("\033[32m  Quick fix:\033[0m %s\n", e.QuickFix))
+			sb.WriteString("\033[32m  Quick fix:\033[0m ")
+			sb.WriteString(e.QuickFix)
+			sb.WriteString("\n")
 		} else {
-			sb.WriteString(fmt.Sprintf("  Quick fix: %s\n", e.QuickFix))
+			sb.WriteString("  Quick fix: ")
+			sb.WriteString(e.QuickFix)
+			sb.WriteString("\n")
 		}
 	}
 
@@ -104,20 +159,22 @@ func NewErrorEnhancer(fileName string, fileLines []string, program interface{}) 
 }
 
 // Enhance converts a basic validation error into an enhanced error with suggestions.
-func (e *ErrorEnhancer) Enhance(err engine.ValidationError) *EnhancedError {
+//
+//nolint:gocritic // Diagnostic is a struct by design
+func (e *ErrorEnhancer) Enhance(err diagnostics.Diagnostic) *EnhancedError {
 	enhanced := &EnhancedError{
 		Message:  err.Message,
-		Line:     err.Line,
-		Column:   err.Column,
+		Line:     err.Location.Line,
+		Column:   err.Location.Column,
 		File:     e.fileName,
 		RuleName: extractRuleName(err.Message),
 	}
 
 	// Extract context from source code
-	enhanced.Context = e.extractContext(err.Line, err.Column)
+	enhanced.Context = e.extractContext(err.Location.Line, err.Location.Column)
 
 	// Generate suggestions based on error type
-	enhanced.Suggestions = e.generateSuggestions(err)
+	enhanced.Suggestions = e.generateSuggestions(&err)
 
 	return enhanced
 }
@@ -162,15 +219,16 @@ func (e *ErrorEnhancer) extractContext(line, column int) string {
 }
 
 // generateSuggestions generates helpful suggestions based on error message.
-func (e *ErrorEnhancer) generateSuggestions(err engine.ValidationError) []string {
+func (e *ErrorEnhancer) generateSuggestions(err *diagnostics.Diagnostic) []string {
 	suggestions := []string{}
 	msg := strings.ToLower(err.Message)
 
 	// Unknown reference errors
 	if strings.Contains(msg, "unknown") || strings.Contains(msg, "not found") || strings.Contains(msg, "invalid reference") {
-		suggestions = append(suggestions, "Check if the element ID is spelled correctly")
-		suggestions = append(suggestions, "Verify that the element is defined in the same file or imported")
-		suggestions = append(suggestions, "Use 'sruja list systems' or 'sruja list containers' to see available elements")
+		suggestions = append(suggestions,
+			"Check if the element ID is spelled correctly",
+			"Verify that the element is defined in the same file or imported",
+			"Use 'sruja list systems' or 'sruja list containers' to see available elements")
 
 		// Try to suggest similar element names
 		if suggested := e.suggestSimilarElement(err.Message); suggested != "" {
@@ -180,35 +238,39 @@ func (e *ErrorEnhancer) generateSuggestions(err engine.ValidationError) []string
 
 	// Duplicate ID errors
 	if strings.Contains(msg, "duplicate") || strings.Contains(msg, "already defined") {
-		suggestions = append(suggestions, "Rename one of the elements to have a unique ID")
-		suggestions = append(suggestions, "Use a more specific name that reflects the element's purpose")
+		suggestions = append(suggestions,
+			"Rename one of the elements to have a unique ID",
+			"Use a more specific name that reflects the element's purpose")
 	}
 
 	// Cycle detection errors
 	if strings.Contains(msg, "cycle") || strings.Contains(msg, "circular") {
-		suggestions = append(suggestions, "Review the dependency relationships")
-		suggestions = append(suggestions, "Consider breaking the cycle by introducing an intermediate element")
-		suggestions = append(suggestions, "Use a queue or event bus to decouple the dependencies")
+		suggestions = append(suggestions,
+			"Review the dependency relationships",
+			"Consider breaking the cycle by introducing an intermediate element",
+			"Use a queue or event bus to decouple the dependencies")
 	}
 
 	// Missing metadata errors
 	if strings.Contains(msg, "missing metadata") || strings.Contains(msg, "required metadata") {
-		suggestions = append(suggestions, "Add a metadata block with the required keys")
-		suggestions = append(suggestions, "Check available metadata keys with LSP autocomplete")
+		suggestions = append(suggestions,
+			"Add a metadata block with the required keys",
+			"Check available metadata keys with LSP autocomplete")
 	}
 
 	// Import errors
 	if strings.Contains(msg, "import") || strings.Contains(msg, "cannot resolve") {
-		suggestions = append(suggestions, "Check that the import path is correct")
-		suggestions = append(suggestions, "Verify that the imported file exists")
-		suggestions = append(suggestions, "Ensure the imported file has valid DSL syntax")
+		suggestions = append(suggestions,
+			"Check that the import path is correct",
+			"Verify that the imported file exists",
+			"Ensure the imported file has valid DSL syntax")
 	}
 
 	return suggestions
 }
 
 // suggestSimilarElement tries to suggest a similar element name from the error message.
-func (e *ErrorEnhancer) suggestSimilarElement(errorMsg string) string {
+func (e *ErrorEnhancer) suggestSimilarElement(_ string) string {
 	// Extract element ID from error message
 	// Simple heuristic: look for quoted strings or identifiers
 	// This is a basic implementation - can be enhanced with fuzzy matching

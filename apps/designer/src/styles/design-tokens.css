@@ -1,0 +1,190 @@
+/* ============================================
+   DESIGN TOKENS - CSS Custom Properties
+   Designer App Specific Tokens
+   ============================================ */
+
+/* Global App Styles */
+@import "tailwindcss";
+
+:root {
+  /* ============================================
+     DESIGNER-SPECIFIC TOKENS
+     (Shared design system tokens are provided by @sruja/ui/design-system/styles.css)
+     ============================================ */
+
+  /* Spacing Scale (8px base) - Aliases for convenience */
+  --space-1: var(--spacing-1);
+  --space-2: var(--spacing-2);
+  --space-3: 0.75rem; /* 12px - not in shared tokens */
+  --space-4: var(--spacing-4);
+  --space-5: 1.25rem; /* 20px - not in shared tokens */
+  --space-6: var(--spacing-6);
+  --space-8: var(--spacing-8);
+  --space-10: 2.5rem; /* 40px - not in shared tokens */
+  --space-12: 3rem; /* 48px - not in shared tokens */
+  --space-16: 4rem; /* 64px - not in shared tokens */
+
+  /* Typography Scale - Aliases for convenience */
+  --text-xs: 0.75rem; /* 12px */
+  --text-sm: 0.875rem; /* 14px */
+  --text-base: 1rem; /* 16px */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.25rem; /* 20px */
+  --text-2xl: 1.5rem; /* 24px */
+  --text-3xl: 1.875rem; /* 30px */
+  --text-4xl: 2.25rem; /* 36px */
+
+  /* Font Weights - Aliases */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Line Heights - Aliases */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* Border Radius Scale - Use shared tokens */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: 0.75rem; /* 12px - not in shared tokens */
+  --radius-2xl: 1.5rem; /* 24px - not in shared tokens */
+  --radius-full: 9999px;
+
+  /* Elevation System - Use shared shadow tokens */
+  --elevation-0: none;
+  --elevation-1: var(--shadow-sm);
+  --elevation-2: var(--shadow-base);
+  --elevation-3: var(--shadow-md);
+  --elevation-4: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --elevation-5: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+  /* Animation Timing */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Breakpoints - Use shared tokens where available */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  /* ============================================
+     C4 COLORS (Designer-specific)
+     ============================================ */
+  --c4-person: #0284c7; /* Sky 600 */
+  --c4-system: #2563eb; /* Blue 600 */
+  --c4-system-external: #94a3b8; /* Slate 400 */
+  --c4-container: #3b82f6; /* Blue 500 */
+  --c4-component: #60a5fa; /* Blue 400 */
+
+  /* ============================================
+     DESIGNER APP ALIASES
+     Map to shared UI design system variables
+     ============================================ */
+  
+  /* Background colors - use shared UI variables */
+  --bg-primary: var(--color-background);
+  --bg-secondary: var(--color-surface);
+  --bg-tertiary: var(--color-neutral-50);
+  --border-color: var(--color-border);
+  
+  /* Text colors - use shared UI variables */
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-tertiary);
+  --highlight-color: var(--color-primary);
+
+  /* Legacy shadow variables (for backward compatibility) */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  /* Enhanced Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-blur: blur(20px) saturate(180%);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+
+  /* Panel Colors - use shared UI variables */
+  --panel-bg: rgba(255, 255, 255, 0.9);
+  --panel-border: var(--color-border);
+  --card-bg: var(--color-background);
+  --card-hover-bg: var(--color-surface);
+
+  /* Additional variables for GuidedBuilderPanel and other components */
+  --text-1: var(--color-text-primary);
+  --text-2: var(--color-text-secondary);
+  --text-3: var(--color-text-tertiary);
+  --surface-1: var(--color-background);
+  --surface-2: var(--color-surface);
+  --border: var(--color-border);
+  --primary: var(--color-primary);
+  --primary-alpha-20: rgba(124, 58, 237, 0.2); /* Based on primary color */
+  --primary-alpha-30: rgba(124, 58, 237, 0.3);
+  --primary-alpha-50: rgba(124, 58, 237, 0.5);
+}
+
+/* ============================================
+   DARK THEME
+   Shared UI design system handles most theme variables.
+   Only designer-specific overrides are defined here.
+   ============================================ */
+[data-theme="dark"] {
+  /* Designer app aliases - automatically use shared UI dark theme variables */
+  --bg-primary: var(--color-background);
+  --bg-secondary: var(--color-surface);
+  --bg-tertiary: var(--color-neutral-50);
+  --border-color: var(--color-border);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-tertiary);
+  --highlight-color: var(--color-primary);
+
+  /* Enhanced shadows for dark mode */
+  --elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --elevation-2: 0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px -1px rgba(0, 0, 0, 0.5);
+  --elevation-3: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5);
+  --elevation-4: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+  --elevation-5: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+
+  /* Legacy shadow variables */
+  --shadow-sm: var(--elevation-1);
+  --shadow-md: var(--elevation-3);
+  --shadow-lg: var(--elevation-4);
+
+  /* Enhanced Glassmorphism for dark mode */
+  --glass-bg: rgba(15, 23, 42, 0.8);
+  --glass-border: rgba(51, 65, 85, 0.3);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+
+  /* Panel Colors - use shared UI variables */
+  --panel-bg: rgba(15, 23, 42, 0.9);
+  --panel-border: var(--color-border);
+  --card-bg: rgba(30, 41, 59, 0.5);
+  --card-hover-bg: rgba(30, 41, 59, 0.8);
+
+  /* Adjust C4 colors for better dark mode contrast */
+  --c4-person: #38bdf8;
+  --c4-system: #60a5fa;
+  --c4-system-external: #94a3b8;
+  --c4-container: #93c5fd;
+  --c4-component: #bfdbfe;
+
+  /* Additional variables for GuidedBuilderPanel and other components */
+  --text-1: var(--color-text-primary);
+  --text-2: var(--color-text-secondary);
+  --text-3: var(--color-text-tertiary);
+  --surface-1: var(--color-surface);
+  --surface-2: var(--color-neutral-300);
+  --border: var(--color-border);
+  --primary: var(--color-primary);
+  --primary-alpha-20: rgba(167, 139, 250, 0.2); /* Based on dark theme primary */
+  --primary-alpha-30: rgba(167, 139, 250, 0.3);
+  --primary-alpha-50: rgba(167, 139, 250, 0.5);
+}
+

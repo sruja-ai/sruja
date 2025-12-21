@@ -2,6 +2,7 @@
 package engine_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sruja-ai/sruja/pkg/engine"
@@ -10,36 +11,40 @@ import (
 
 func TestOrphanDetectionRule_EmptyArchitecture(t *testing.T) {
 	program := &language.Program{
-		Architecture: nil,
+		Model: nil,
 	}
 
 	rule := &engine.OrphanDetectionRule{}
 	errs := rule.Validate(program)
 	if len(errs) != 0 {
-		t.Errorf("Expected 0 errors for nil architecture, got %d", len(errs))
+		t.Errorf("Expected 0 errors for nil model, got %d", len(errs))
 	}
 }
 
 func TestOrphanDetectionRule_EmptySystems(t *testing.T) {
-	program := &language.Program{
-		Architecture: &language.Architecture{
-			Systems: []*language.System{},
-		},
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+
+	dsl := `model {}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
 	}
 
 	rule := &engine.OrphanDetectionRule{}
 	errs := rule.Validate(program)
 	if len(errs) != 0 {
-		t.Errorf("Expected 0 errors for empty systems, got %d", len(errs))
+		t.Errorf("Expected 0 errors for empty model, got %d", len(errs))
 	}
 }
 
 func TestOrphanDetectionRule_OrphanSystem(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Orphan "Orphan System" {}
-}
-`
+	dsl := `model {
+		Orphan = system "Orphan System"
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
@@ -49,7 +54,8 @@ architecture "Test" {
 	}
 	found := false
 	for _, e := range errs {
-		if e.Message == "Orphan element 'Orphan' is defined but never used in any relation." {
+		// Updated message format includes additional context
+		if strings.Contains(e.Message, "Orphan element") && strings.Contains(e.Message, "never used") {
 			found = true
 			break
 		}
@@ -60,20 +66,19 @@ architecture "Test" {
 }
 
 func TestOrphanDetectionRule_OrphanContainer(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Sys "System" {
-        container Orphan "Orphan Container" {}
-    }
-}
-`
+	dsl := `model {
+		Sys = system "System" {
+			Orphan = container "Orphan Container"
+		}
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
 	errs := rule.Validate(program)
 	foundOrphan := false
 	for _, e := range errs {
-		if e.Message == "Orphan element 'Orphan' is defined but never used in any relation." {
+		// Updated message format includes additional context
+		if strings.Contains(e.Message, "Orphan element") && strings.Contains(e.Message, "never used") {
 			foundOrphan = true
 			break
 		}
@@ -84,22 +89,21 @@ architecture "Test" {
 }
 
 func TestOrphanDetectionRule_OrphanComponent(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Sys "System" {
-        container Cont "Container" {
-            component Orphan "Orphan Component" {}
-        }
-    }
-}
-`
+	dsl := `model {
+		Sys = system "System" {
+			Cont = container "Container" {
+				Orphan = component "Orphan Component"
+			}
+		}
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
 	errs := rule.Validate(program)
 	foundOrphan := false
 	for _, e := range errs {
-		if e.Message == "Orphan element 'Orphan' is defined but never used in any relation." {
+		// Updated message format includes additional context
+		if strings.Contains(e.Message, "Orphan element") && strings.Contains(e.Message, "never used") {
 			foundOrphan = true
 			break
 		}
@@ -110,20 +114,19 @@ architecture "Test" {
 }
 
 func TestOrphanDetectionRule_OrphanDataStore(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Sys "System" {
-        datastore Orphan "Orphan DB" {}
-    }
-}
-`
+	dsl := `model {
+		Sys = system "System" {
+			Orphan = datastore "Orphan DB"
+		}
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
 	errs := rule.Validate(program)
 	foundOrphan := false
 	for _, e := range errs {
-		if e.Message == "Orphan element 'Orphan' is defined but never used in any relation." {
+		// Updated message format includes additional context
+		if strings.Contains(e.Message, "Orphan element") && strings.Contains(e.Message, "never used") {
 			foundOrphan = true
 			break
 		}
@@ -134,20 +137,19 @@ architecture "Test" {
 }
 
 func TestOrphanDetectionRule_OrphanQueue(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Sys "System" {
-        queue Orphan "Orphan Queue" {}
-    }
-}
-`
+	dsl := `model {
+		Sys = system "System" {
+			Orphan = queue "Orphan Queue"
+		}
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
 	errs := rule.Validate(program)
 	foundOrphan := false
 	for _, e := range errs {
-		if e.Message == "Orphan element 'Orphan' is defined but never used in any relation." {
+		// Updated message format includes additional context
+		if strings.Contains(e.Message, "Orphan element 'Orphan'") && strings.Contains(e.Message, "never used") {
 			foundOrphan = true
 			break
 		}
@@ -158,18 +160,17 @@ architecture "Test" {
 }
 
 func TestOrphanDetectionRule_OrphanPerson(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    person Orphan "Orphan Person" {}
-}
-`
+	dsl := `model {
+		Orphan = person "Orphan Person"
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
 	errs := rule.Validate(program)
 	foundOrphan := false
 	for _, e := range errs {
-		if e.Message == "Orphan element 'Orphan' is defined but never used in any relation." {
+		// Updated message format includes additional context
+		if strings.Contains(e.Message, "Orphan element") && strings.Contains(e.Message, "never used") {
 			foundOrphan = true
 			break
 		}
@@ -180,14 +181,12 @@ architecture "Test" {
 }
 
 func TestOrphanDetectionRule_SystemLevelRelations(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Sys "System" {
-        container Cont "Container" {}
-        Sys -> Cont "Uses"
-    }
-}
-`
+	dsl := `model {
+		Sys = system "System" {
+			Cont = container "Container"
+			Sys -> Cont "Uses"
+		}
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
@@ -200,16 +199,14 @@ architecture "Test" {
 }
 
 func TestOrphanDetectionRule_ContainerLevelRelations(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Sys "System" {
-        container Cont "Container" {
-            component Comp "Component" {}
-            Cont -> Comp "Uses"
-        }
-    }
-}
-`
+	dsl := `model {
+		Sys = system "System" {
+			Cont = container "Container" {
+				Comp = component "Component"
+				Cont -> Comp "Uses"
+			}
+		}
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
@@ -222,17 +219,15 @@ architecture "Test" {
 }
 
 func TestOrphanDetectionRule_ComponentLevelRelations(t *testing.T) {
-	dsl := `
-architecture "Test" {
-    system Sys "System" {
-        container Cont "Container" {
-            component Comp1 "Component 1" {}
-            component Comp2 "Component 2" {}
-            Comp1 -> Comp2 "Uses"
-        }
-    }
-}
-`
+	dsl := `model {
+		Sys = system "System" {
+			Cont = container "Container" {
+				Comp1 = component "Component 1"
+				Comp2 = component "Component 2"
+				Comp1 -> Comp2 "Uses"
+			}
+		}
+	}`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}

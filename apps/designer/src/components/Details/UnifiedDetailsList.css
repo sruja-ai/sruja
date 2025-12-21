@@ -1,0 +1,98 @@
+/* Unified Details List */
+.unified-details-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    background: var(--bg-primary, #ffffff);
+}
+
+[data-theme="dark"] .unified-details-list {
+    background: var(--bg-primary, #1e293b);
+}
+
+.unified-list-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.item-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.group-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-primary, #0f172a);
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--border-color, #e2e8f0);
+    margin-bottom: 0.5rem;
+}
+
+[data-theme="dark"] .group-header {
+    color: var(--text-primary, #f8fafc);
+    border-color: var(--border-color, #475569);
+}
+
+.group-header svg {
+    color: var(--highlight-color, #3b82f6);
+}
+
+.group-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.unified-list-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-16, 4rem) var(--space-8, 2rem);
+    text-align: center;
+    color: var(--text-secondary, #64748b);
+    animation: fadeIn 0.4s ease-out;
+}
+
+[data-theme="dark"] .unified-list-empty {
+    color: var(--text-secondary, #cbd5e1);
+}
+
+.unified-list-empty .empty-icon {
+    margin-bottom: var(--space-4, 1rem);
+    opacity: 0.6;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+.unified-list-empty h3 {
+    margin: 0 0 var(--space-2, 0.5rem) 0;
+    font-size: var(--text-xl, 1.25rem);
+    font-weight: var(--font-semibold, 600);
+    color: var(--text-primary, #0f172a);
+}
+
+[data-theme="dark"] .unified-list-empty h3 {
+    color: var(--text-primary, #f8fafc);
+}
+
+.unified-list-empty p {
+    margin: 0;
+    font-size: var(--text-sm, 0.875rem);
+    max-width: 400px;
+    line-height: var(--leading-relaxed, 1.75);
+}

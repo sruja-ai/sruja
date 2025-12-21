@@ -1,0 +1,123 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+
+	"github.com/sruja-ai/sruja/pkg/diagnostics"
+	"github.com/sruja-ai/sruja/pkg/dx"
+	"github.com/sruja-ai/sruja/pkg/engine"
+	"github.com/sruja-ai/sruja/pkg/language"
+)
+
+func runLint(args []string, stdout, stderr io.Writer) int {
+	lintCmd := flag.NewFlagSet("lint", flag.ContinueOnError)
+	lintCmd.SetOutput(stderr)
+
+	if err := lintCmd.Parse(args); err != nil {
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing lint flags: %v", err)))
+		return 1
+	}
+
+	if lintCmd.NArg() < 1 {
+		_, _ = fmt.Fprintln(stderr, dx.Error("Usage: sruja lint <file>"))
+		return 1
+	}
+
+	filePath := lintCmd.Arg(0)
+	info, err := os.Stat(filePath)
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error accessing path: %v", err)))
+		return 1
+	}
+
+	p, err := language.NewParser()
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error creating parser: %v", err)))
+		return 1
+	}
+
+	var program *language.Program
+	var content string // For error context
+
+	if info.IsDir() {
+		ws, err := p.ParseWorkspace(filePath)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Workspace Parser Error: %v", err)))
+			return 1
+		}
+		// Resolve references across the workspace
+		engine.RunWorkspaceResolution(ws)
+		program = ws.MergedProgram()
+		content = "// Merged workspace content"
+	} else {
+		fileContent, err := os.ReadFile(filePath)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error reading file: %v", err)))
+			return 1
+		}
+		content = string(fileContent)
+		program, _, err = p.Parse(filePath, content)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Parser Error: %v", err)))
+			return 1
+		}
+		// Resolve references in the single file
+		engine.RunResolution(program)
+	}
+
+	// Validation
+	validator := engine.NewValidator()
+	validator.RegisterDefaultRules()
+
+	diags := validator.Validate(program)
+
+	// Filter diagnostics
+	var blockingErrors []diagnostics.Diagnostic
+	var warnings []diagnostics.Diagnostic
+
+	for i := range diags {
+		d := diags[i]
+		// Skip informational cycle detection messages (cycles are valid patterns)
+		if d.Code == diagnostics.CodeCycleDetected && d.Severity == diagnostics.SeverityInfo {
+			continue // Cycles are valid - skip informational messages
+		}
+
+		if d.Severity == diagnostics.SeverityError {
+			blockingErrors = append(blockingErrors, d)
+		} else if d.Severity == diagnostics.SeverityWarning {
+			warnings = append(warnings, d)
+		}
+	}
+
+	// Print warnings first (non-blocking)
+	if len(warnings) > 0 {
+		enhancer := dx.NewErrorEnhancer(filePath, strings.Split(string(content), "\n"), program)
+		enhancedWarnings := make([]*dx.EnhancedError, 0, len(warnings))
+		for i := range warnings {
+			w := warnings[i]
+			enhancedWarnings = append(enhancedWarnings, enhancer.Enhance(w))
+		}
+		// Print warnings but continue
+		_, _ = fmt.Fprint(stderr, dx.FormatErrors(enhancedWarnings, dx.SupportsColor()))
+	}
+
+	if len(blockingErrors) > 0 {
+		// Enhance errors with suggestions and context
+		enhancer := dx.NewErrorEnhancer(filePath, strings.Split(string(content), "\n"), program)
+		enhancedErrors := make([]*dx.EnhancedError, 0, len(blockingErrors))
+		for i := range blockingErrors {
+			err := blockingErrors[i]
+			enhancedErrors = append(enhancedErrors, enhancer.Enhance(err))
+		}
+
+		_, _ = fmt.Fprint(stderr, dx.FormatErrors(enhancedErrors, dx.SupportsColor()))
+		return 1
+	}
+
+	_, _ = fmt.Fprintln(stdout, dx.Success("No linting errors found."))
+	return 0
+}

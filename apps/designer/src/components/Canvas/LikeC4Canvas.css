@@ -1,0 +1,48 @@
+.likec4-canvas {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background-color: var(--color-background, #ffffff);
+}
+
+.likec4-canvas-empty {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-background, #ffffff);
+}
+
+.likec4-canvas-empty-content {
+    text-align: center;
+}
+
+.likec4-canvas-empty-message {
+    font-size: 0.875rem;
+    color: #666;
+    margin-top: 0.5rem;
+}
+
+
+
+.likec4-diagram-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    min-height: 400px;
+    overflow: hidden;
+}
+
+.likec4-diagram-container svg {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 600px;
+    display: block;
+}
+
+.likec4-diagram-container > div {
+    width: 100%;
+    height: 100%;
+    min-height: 600px;
+}

@@ -1,0 +1,1044 @@
+[
+  {
+    "iteration": 1,
+    "timestamp": "2025-12-17T01:02:23.134Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": []
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 2,
+    "timestamp": "2025-12-17T01:03:23.070Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": []
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 3,
+    "timestamp": "2025-12-17T01:04:07.287Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": []
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 4,
+    "timestamp": "2025-12-17T01:04:43.395Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": []
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 5,
+    "timestamp": "2025-12-17T01:05:19.871Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": []
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 6,
+    "timestamp": "2025-12-17T01:05:58.937Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": []
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 7,
+    "timestamp": "2025-12-17T01:12:31.540Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": []
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 8,
+    "timestamp": "2025-12-17T01:13:30.385Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": []
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 9,
+    "timestamp": "2025-12-17T01:14:22.629Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": []
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 10,
+    "timestamp": "2025-12-17T01:15:09.970Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": []
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 11,
+    "timestamp": "2025-12-17T01:15:46.684Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 12,
+    "timestamp": "2025-12-17T01:16:40.713Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 13,
+    "timestamp": "2025-12-17T01:17:27.109Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 14,
+    "timestamp": "2025-12-17T01:18:25.854Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 15,
+    "timestamp": "2025-12-17T01:19:33.331Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 16,
+    "timestamp": "2025-12-17T01:20:22.591Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 17,
+    "timestamp": "2025-12-17T01:21:00.936Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 18,
+    "timestamp": "2025-12-17T01:21:38.642Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 19,
+    "timestamp": "2025-12-17T01:22:42.510Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 20,
+    "timestamp": "2025-12-17T01:23:20.253Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 21,
+    "timestamp": "2025-12-17T01:30:41.533Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 22,
+    "timestamp": "2025-12-17T01:31:40.602Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 23,
+    "timestamp": "2025-12-17T01:32:41.853Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 24,
+    "timestamp": "2025-12-17T01:33:28.938Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 25,
+    "timestamp": "2025-12-17T01:36:53.079Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 26,
+    "timestamp": "2025-12-17T01:37:22.788Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 27,
+    "timestamp": "2025-12-17T01:38:06.128Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  },
+  {
+    "iteration": 28,
+    "timestamp": "2025-12-17T01:38:56.690Z",
+    "metrics": {
+      "grade": "D",
+      "weightedScore": 65,
+      "overallScore": 72.57232142857143,
+      "edgeCrossings": 2,
+      "overlappingNodes": 2,
+      "parentChildContainment": 0,
+      "spacingViolations": 3,
+      "edgeLabelOverlaps": 3,
+      "clippedNodeLabels": 0,
+      "violations": [
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "User overlaps WebApp",
+          "affectedNodes": [
+            "User",
+            "WebApp"
+          ]
+        },
+        {
+          "type": "node-overlap",
+          "severity": "high",
+          "description": "WebApp overlaps Database",
+          "affectedNodes": [
+            "WebApp",
+            "Database"
+          ]
+        }
+      ]
+    },
+    "issues": [
+      "HIGH: 2 node overlaps (penalty: 25 per overlap, weight: 0.25)",
+      "LOW: 3 edge label overlaps"
+    ],
+    "improvements": [
+      "2. Fix node overlaps in packages/layout/src/phases/optimization.ts:\n   - Improve applyOverlapRemoval to handle all cases\n   - Ensure bottom-up processing covers all hierarchy levels\n   - Add spatial indexing for faster overlap detection",
+      "5. Fix label issues:\n   - Improve node sizing in packages/layout/src/phases/sizing.ts\n   - Ensure labels fit within node bounds\n   - Add label placement optimization"
+    ],
+    "scoreDelta": 0
+  }
+]

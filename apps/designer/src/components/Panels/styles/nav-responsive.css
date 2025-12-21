@@ -1,0 +1,61 @@
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .navigation-panel {
+        width: 280px;
+        background: var(--bg-primary);
+        border-right: 1px solid var(--border-color);
+    }
+
+    .navigation-panel.collapsed {
+        width: 280px;
+        /* Don't collapse on mobile */
+    }
+
+    [data-theme="dark"] .navigation-panel {
+        background: var(--bg-primary);
+    }
+
+    .panel-mobile-header {
+        display: flex;
+    }
+
+    .nav-collapse-btn {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .navigation-panel {
+        width: 100%;
+        max-width: 320px;
+    }
+
+    .nav-section {
+        padding: 10px;
+    }
+
+    .nav-item-btn {
+        padding: 8px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .navigation-panel {
+        max-width: 100%;
+    }
+
+    .nav-section-title {
+        font-size: 10px;
+    }
+
+    .level-btn {
+        font-size: 10px;
+        padding: 5px 6px;
+    }
+
+    .nav-item-btn {
+        font-size: 13px;
+        padding: 6px;
+    }
+}

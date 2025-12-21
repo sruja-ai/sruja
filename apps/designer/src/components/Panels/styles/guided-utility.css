@@ -1,0 +1,29 @@
+/* =====================================================
+   UTILITY CLASSES
+   ===================================================== */
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.text-link {
+    color: var(--primary);
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: 500;
+    transition: opacity 0.15s;
+}
+
+.text-link:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+}
+
+.hint {
+    font-size: 0.75rem;
+    color: var(--text-3);
+    font-style: italic;
+}

@@ -1,0 +1,153 @@
+
+func convertFromJSON(json ArchitectureJSON) *language.Architecture {
+	arch := &language.Architecture{
+		Name:  json.Metadata.Name, // Or derive from somewhere else if needed
+		Items: []language.ArchitectureItem{},
+	}
+
+	for _, sys := range json.Architecture.Systems {
+		arch.Items = append(arch.Items, language.ArchitectureItem{System: convertSystemFromJSON(sys)})
+		arch.Systems = append(arch.Systems, convertSystemFromJSON(sys))
+	}
+	for _, p := range json.Architecture.Persons {
+		arch.Items = append(arch.Items, language.ArchitectureItem{Person: convertPersonFromJSON(p)})
+		arch.Persons = append(arch.Persons, convertPersonFromJSON(p))
+	}
+	for _, r := range json.Architecture.Relations {
+		arch.Items = append(arch.Items, language.ArchitectureItem{Relation: convertRelationFromJSON(r)})
+		arch.Relations = append(arch.Relations, convertRelationFromJSON(r))
+	}
+	for _, adr := range json.Architecture.ADRs {
+		arch.Items = append(arch.Items, language.ArchitectureItem{ADR: convertADRFromJSON(adr)})
+		arch.ADRs = append(arch.ADRs, convertADRFromJSON(adr))
+	}
+	// Add other items
+
+	return arch
+}
+
+func convertSystemFromJSON(src System) *language.System {
+	sys := &language.System{
+		ID:    src.ID,
+		Label: src.Label,
+	}
+	if src.Description != "" {
+		sys.Description = &src.Description
+	}
+
+	for _, c := range src.Containers {
+		sys.Items = append(sys.Items, language.SystemItem{Container: convertContainerFromJSON(c)})
+	}
+	for _, d := range src.DataStores {
+		sys.Items = append(sys.Items, language.SystemItem{DataStore: convertDataStoreFromJSON(d)})
+	}
+	for _, q := range src.Queues {
+		sys.Items = append(sys.Items, language.SystemItem{Queue: convertQueueFromJSON(q)})
+	}
+	return sys
+}
+
+func convertContainerFromJSON(src Container) *language.Container {
+	c := &language.Container{
+		ID:    src.ID,
+		Label: src.Label,
+	}
+	if src.Description != "" {
+		c.Description = &src.Description
+	}
+	if src.Technology != "" {
+		c.Items = append(c.Items, language.ContainerItem{Technology: &src.Technology})
+	}
+	for _, comp := range src.Components {
+		c.Items = append(c.Items, language.ContainerItem{Component: convertComponentFromJSON(comp)})
+	}
+	return c
+}
+
+func convertComponentFromJSON(src Component) *language.Component {
+	c := &language.Component{
+		ID:    src.ID,
+		Label: src.Label,
+	}
+	if src.Description != "" {
+		c.Description = &src.Description
+	}
+	if src.Technology != "" {
+		c.Items = append(c.Items, language.ComponentItem{Technology: &src.Technology})
+	}
+	return c
+}
+
+func convertDataStoreFromJSON(src DataStore) *language.DataStore {
+	d := &language.DataStore{
+		ID:    src.ID,
+		Label: src.Label,
+	}
+	if src.Description != "" {
+		d.Description = &src.Description
+	}
+	if src.Technology != "" {
+		d.Items = append(d.Items, language.DataStoreItem{Technology: &src.Technology})
+	}
+	return d
+}
+
+func convertQueueFromJSON(src Queue) *language.Queue {
+	q := &language.Queue{
+		ID:    src.ID,
+		Label: src.Label,
+	}
+	if src.Description != "" {
+		q.Description = &src.Description
+	}
+	if src.Technology != "" {
+		q.Items = append(q.Items, language.QueueItem{Technology: &src.Technology})
+	}
+	return q
+}
+
+func convertPersonFromJSON(src Person) *language.Person {
+	p := &language.Person{
+		ID:    src.ID,
+		Label: src.Label,
+	}
+	if src.Description != "" {
+		p.Items = append(p.Items, language.PersonItem{Description: &src.Description})
+	}
+	return p
+}
+
+func convertRelationFromJSON(src Relation) *language.Relation {
+	r := &language.Relation{
+		From: language.QualifiedIdent{Parts: strings.Split(src.From, ".")},
+		To:   language.QualifiedIdent{Parts: strings.Split(src.To, ".")},
+	}
+	if src.Verb != "" {
+		r.Verb = &src.Verb
+	}
+	if src.Label != "" {
+		r.Label = &src.Label
+	}
+	return r
+}
+
+func convertADRFromJSON(src ADR) *language.ADR {
+	adr := &language.ADR{
+		ID:    src.ID,
+		Title: &src.Title,
+		Body:  &language.ADRBody{},
+	}
+	if src.Status != "" {
+		adr.Body.Status = &src.Status
+	}
+	if src.Context != "" {
+		adr.Body.Context = &src.Context
+	}
+	if src.Decision != "" {
+		adr.Body.Decision = &src.Decision
+	}
+	if src.Consequences != "" {
+		adr.Body.Consequences = &src.Consequences
+	}
+	return adr
+}

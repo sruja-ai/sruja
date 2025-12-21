@@ -1,132 +1,185 @@
 //go:build js && wasm
 
+// Package main provides the WebAssembly (WASM) entry point for Sruja.
+//
+// This package exposes Sruja's functionality to JavaScript/TypeScript code running
+// in the browser. Functions are registered with the JavaScript global object and
+// can be called from JavaScript code.
 package main
 
 import (
-	"context"
 	"fmt"
-	"log/slog"
-
 	"syscall/js"
 
-	"github.com/sruja-ai/sruja/pkg/engine"
-	"github.com/sruja-ai/sruja/pkg/export/d2"
-	"github.com/sruja-ai/sruja/pkg/language"
-	"oss.terrastruct.com/d2/d2graph"
-	"oss.terrastruct.com/d2/d2layouts/d2dagrelayout"
-	"oss.terrastruct.com/d2/d2lib"
-	"oss.terrastruct.com/d2/d2renderers/d2svg"
-	d2log "oss.terrastruct.com/d2/lib/log"
-	"oss.terrastruct.com/d2/lib/textmeasure"
+	jexport "github.com/sruja-ai/sruja/pkg/export/json"
+	"github.com/sruja-ai/sruja/pkg/export/markdown"
+	"github.com/sruja-ai/sruja/pkg/export/mermaid"
 )
 
+const (
+	// defaultFilename is the default filename used when none is provided
+	defaultFilename = "input.sruja"
+	// minArgsRequired is the minimum number of arguments required for most functions
+	minArgsRequired = 1
+)
+
+// main initializes the WASM module and registers all exported functions.
+//
+// Registers Go functions with the JavaScript global object. The channel blocks
+// forever to keep the WASM module alive (WASM modules are garbage collected when
+// the goroutine exits).
 func main() {
 	c := make(chan struct{})
-	js.Global().Set("compileSruja", js.FuncOf(compileSruja))
+
+	parseDslFn := js.FuncOf(parseDsl)
+	jsonToDslFn := js.FuncOf(jsonToDsl)
+	js.Global().Set("sruja_parse_dsl", parseDslFn)
+	js.Global().Set("sruja_json_to_dsl", jsonToDslFn)
+
+	js.Global().Set("sruja_get_diagnostics", js.FuncOf(getDiagnostics))
+	js.Global().Set("sruja_get_symbols", js.FuncOf(getSymbols))
+	js.Global().Set("sruja_hover", js.FuncOf(hover))
+	js.Global().Set("sruja_completion", js.FuncOf(completion))
+	js.Global().Set("sruja_go_to_definition", js.FuncOf(goToDefinition))
+	js.Global().Set("sruja_find_references", js.FuncOf(findReferences))
+	js.Global().Set("sruja_rename", js.FuncOf(rename))
+	js.Global().Set("sruja_format", js.FuncOf(format))
+	js.Global().Set("sruja_code_actions", js.FuncOf(codeActions))
+	js.Global().Set("sruja_semantic_tokens", js.FuncOf(semanticTokens))
+	js.Global().Set("sruja_document_links", js.FuncOf(documentLinks))
+	js.Global().Set("sruja_folding_ranges", js.FuncOf(foldingRanges))
+	js.Global().Set("sruja_score", js.FuncOf(score))
+	js.Global().Set("sruja_dsl_to_mermaid", js.FuncOf(dslToMermaid))
+	js.Global().Set("sruja_dsl_to_markdown", js.FuncOf(dslToMarkdown))
+	js.Global().Set("sruja_dsl_to_likec4", js.FuncOf(dslToLikeC4))
+
+	// Keep function references to prevent dead-code elimination
+	_ = parseDslFn
+	_ = jsonToDslFn
+
 	<-c
 }
 
-func compileSruja(this js.Value, args []js.Value) (res interface{}) {
-	defer func() {
-		if r := recover(); r != nil {
-			res = result(nil, fmt.Errorf("panic: %v", r))
-		}
-	}()
-
-	return doCompile(args)
-}
-
-func doCompile(args []js.Value) interface{} {
-	if len(args) < 1 {
-		return result(nil, fmt.Errorf("invalid arguments"))
+// parseArgs extracts and validates arguments from JavaScript function calls.
+// Returns the DSL text, filename (defaults to "input.sruja"), and any validation error.
+func parseArgs(args []js.Value) (input, filename string, err error) {
+	if len(args) < minArgsRequired {
+		return "", "", fmt.Errorf("invalid arguments: expected at least %d argument(s), got %d", minArgsRequired, len(args))
 	}
-	input := args[0].String()
-	filename := "playground.sruja"
+	
+	input = args[0].String()
+	if input == "" {
+		return "", "", fmt.Errorf("invalid arguments: input cannot be empty")
+	}
+	
+	filename = defaultFilename
 	if len(args) >= 2 {
-		fn := args[1].String()
-		if fn != "" {
+		if fn := args[1].String(); fn != "" {
 			filename = fn
 		}
 	}
-
-	p, err := language.NewParser()
-	if err != nil {
-		return result(nil, err)
-	}
-
-	program, err := p.Parse(filename, input)
-	if err != nil {
-		return result(nil, fmt.Errorf("%s: %w", filename, err))
-	}
-
-	validator := engine.NewValidator()
-	validator.RegisterRule(&engine.UniqueIDRule{})
-	validator.RegisterRule(&engine.ValidReferenceRule{})
-	validator.RegisterRule(&engine.CycleDetectionRule{})
-	validator.RegisterRule(&engine.OrphanDetectionRule{})
-
-	errs := validator.Validate(program)
-	if len(errs) > 0 {
-		msg := ""
-		for _, e := range errs {
-			msg += filename + ": " + e.Error() + "\n"
-		}
-		return result(nil, fmt.Errorf("Validation errors:\n%s", msg))
-	}
-
-	exporter := d2.NewExporter()
-	d2Script, err := exporter.Export(program.Architecture)
-	if err != nil {
-		return result(nil, err)
-	}
-
-	// Compile D2 to SVG
-	ruler, err := textmeasure.NewRuler()
-	if err != nil {
-		return result(nil, fmt.Errorf("Ruler Error: %w", err))
-	}
-
-	pad := int64(d2svg.DEFAULT_PADDING)
-	renderOpts := &d2svg.RenderOpts{
-		Pad: &pad,
-	}
-
-	// Create a no-op logger for WASM to suppress d2 library warnings
-	// In WASM, we don't need logging output (it would go to browser console anyway)
-	// Using nil writer creates a no-op handler that discards all logs
-	logger := slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{Level: slog.LevelError}))
-	ctx := d2log.With(context.Background(), logger)
-
-	layout := "dagre"
-	diagram, _, err := d2lib.Compile(ctx, d2Script, &d2lib.CompileOptions{
-		Ruler:  ruler,
-		Layout: &layout,
-		LayoutResolver: func(engine string) (d2graph.LayoutGraph, error) {
-			return func(ctx context.Context, g *d2graph.Graph) error {
-				return d2dagrelayout.Layout(ctx, g, nil)
-			}, nil
-		},
-	}, renderOpts)
-	if err != nil {
-		return result(nil, fmt.Errorf("%s: D2 Compilation Error: %w", filename, err))
-	}
-
-	out, err := d2svg.Render(diagram, renderOpts)
-	if err != nil {
-		return result(nil, fmt.Errorf("%s: D2 Rendering Error: %w", filename, err))
-	}
-
-	svg := string(out)
-	return result(&svg, nil)
+	
+	return input, filename, nil
 }
 
-func result(svg *string, err error) interface{} {
-	res := make(map[string]interface{})
-	if svg != nil {
-		res["svg"] = *svg
-	}
+// parseDsl parses DSL text and exports it to JSON format.
+// Arguments: args[0] is DSL text (required), args[1] is filename (optional).
+func parseDsl(this js.Value, args []js.Value) (ret interface{}) {
+	defer func() {
+		if r := recover(); r != nil {
+			ret = result(false, "", fmt.Sprint(r))
+		}
+	}()
+
+	input, filename, err := parseArgs(args)
 	if err != nil {
-		res["error"] = err.Error()
+		return result(false, "", err.Error())
 	}
-	return js.ValueOf(res)
+
+	_, program, err := parseToWorkspace(input, filename)
+	if err != nil {
+		return result(false, "", err.Error())
+	}
+
+	exporter := jexport.NewLikeC4Exporter()
+	jsonStr, err := exporter.Export(program)
+	if err != nil {
+		return result(false, "", fmt.Errorf("export failed: %w", err).Error())
+	}
+
+	return result(true, jsonStr, "")
+}
+
+func jsonToDsl(this js.Value, args []js.Value) interface{} {
+	_, _, err := parseArgs(args)
+	if err != nil {
+		return result(false, "", err.Error())
+	}
+	return result(false, "", "JSON to DSL conversion is no longer supported - Architecture struct removed. Use LikeC4 format instead")
+}
+
+func dslToMermaid(this js.Value, args []js.Value) interface{} {
+	input, filename, err := parseArgs(args)
+	if err != nil {
+		return result(false, "", err.Error())
+	}
+
+	_, program, err := parseToWorkspace(input, filename)
+	if err != nil {
+		return result(false, "", fmt.Errorf("parse failed: %w", err).Error())
+	}
+
+	if program == nil || program.Model == nil {
+		return result(false, "", "no model found")
+	}
+
+	exporter := mermaid.NewExporter(mermaid.DefaultConfig())
+	output := exporter.Export(program)
+	return result(true, output, "")
+}
+
+func dslToMarkdown(this js.Value, args []js.Value) interface{} {
+	input, filename, err := parseArgs(args)
+	if err != nil {
+		return result(false, "", err.Error())
+	}
+
+	_, program, err := parseToWorkspace(input, filename)
+	if err != nil {
+		return result(false, "", fmt.Errorf("parse failed: %w", err).Error())
+	}
+
+	if program == nil || program.Model == nil {
+		return result(false, "", "no model found")
+	}
+
+	exporter := markdown.NewExporter(markdown.DefaultOptions())
+	output := exporter.Export(program)
+	return result(true, output, "")
+}
+
+func dslToLikeC4(this js.Value, args []js.Value) interface{} {
+	input, filename, err := parseArgs(args)
+	if err != nil {
+		return result(false, "", err.Error())
+	}
+
+	_, program, err := parseToWorkspace(input, filename)
+	if err != nil {
+		return result(false, "", fmt.Errorf("parse failed: %w", err).Error())
+	}
+
+	// Export directly from LikeC4 Program AST
+	if program == nil || program.Model == nil {
+		return result(false, "", "no model found")
+	}
+
+	// Use LikeC4 exporter to generate LikeC4-compatible JSON
+	exporter := jexport.NewLikeC4Exporter()
+	output, err := exporter.Export(program)
+	if err != nil {
+		return result(false, "", fmt.Errorf("export failed: %w", err).Error())
+	}
+
+	return result(true, output, "")
 }

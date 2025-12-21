@@ -1,0 +1,253 @@
+.adrs-panel {
+    padding: 1rem;
+    background: var(--bg-primary);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    color: var(--text-primary);
+}
+
+.adrs-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem 0;
+    color: var(--text-primary);
+}
+
+.adrs-title svg {
+    color: #f59e0b;
+}
+
+.adrs-count {
+    margin-left: auto;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+}
+
+.adrs-search {
+    margin-bottom: 0.75rem;
+}
+
+.adrs-add-btn {
+    margin-left: 0.5rem;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 6px;
+    color: #f59e0b;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.adrs-add-btn:hover {
+    background: rgba(245, 158, 11, 0.3);
+    border-color: rgba(245, 158, 11, 0.5);
+}
+
+/* ADR List */
+.adrs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.adr-card {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.adr-card.expanded {
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.adr-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--card-bg);
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s ease;
+}
+
+.adr-header:hover {
+    background: var(--card-hover-bg);
+}
+
+.adr-id {
+    font-family: monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #f59e0b;
+    flex-shrink: 0;
+}
+
+.adr-title-text {
+    flex: 1;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.adr-status {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    background: rgba(var(--status-color-rgb, 245, 158, 11), 0.15);
+    color: var(--status-color, #f59e0b);
+    flex-shrink: 0;
+}
+
+.adr-actions {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: 0.5rem;
+    opacity: 0;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.adr-header:hover .adr-actions {
+    opacity: 1;
+}
+
+.adr-edit-btn,
+.adr-delete-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.adr-edit-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--highlight-color);
+    color: var(--highlight-color);
+}
+
+.adr-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.adr-header>svg:last-child {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+/* ADR Content */
+.adr-content {
+    padding: 0 1rem 1rem 1rem;
+    background: var(--card-bg);
+    animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.adr-section {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.adr-section:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+.adr-section h4 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 0.5rem 0;
+    color: var(--text-muted);
+}
+
+.adr-section p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* Tag styles */
+.adr-tags-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-left: 0.5rem;
+}
+
+.adr-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.7rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-family: monospace;
+    transition: all 0.2s;
+}
+
+.adr-tag.clickable {
+    cursor: pointer;
+}
+
+.adr-tag.clickable:hover {
+    background: var(--highlight-color);
+    border-color: var(--highlight-color);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}

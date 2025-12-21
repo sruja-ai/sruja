@@ -1,0 +1,27 @@
+/* apps/website/src/shared/components/ui/TagList.css */
+.tags {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tag {
+  background: var(--color-surface);
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+:global(html.dark) .tag {
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 640px) {
+  .tag {
+    font-size: 0.8125rem;
+    padding: 0.1875rem 0.5rem;
+  }
+}

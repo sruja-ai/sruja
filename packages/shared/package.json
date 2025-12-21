@@ -1,0 +1,70 @@
+{
+  "name": "@sruja/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "module": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./lsp": {
+      "import": "./dist/lsp/index.js",
+      "types": "./dist/lsp/index.d.ts"
+    },
+    "./utils/cssVars": {
+      "import": "./dist/utils/cssVars.js",
+      "types": "./dist/utils/cssVars.d.ts"
+    },
+    "./utils/constants": {
+      "import": "./dist/utils/constants.js",
+      "types": "./dist/utils/constants.d.ts"
+    },
+    "./types/architecture": {
+      "import": "./dist/types/architecture.js",
+      "types": "./dist/types/architecture.d.ts"
+    },
+    "./node/wasmAdapter": {
+      "import": "./dist/node/wasmAdapter.js",
+      "types": "./dist/node/wasmAdapter.d.ts"
+    },
+    "./builder": {
+      "import": "./dist/builder/index.js",
+      "types": "./dist/builder/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "rimraf dist && tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "clean": "rimraf dist"
+  },
+  "size-limit": [
+    {
+      "path": "dist/**/*.js",
+      "limit": "50 KB"
+    }
+  ],
+  "devDependencies": {
+    "@sruja/eslint-config": "*",
+    "@vitest/coverage-v8": "^4.0.15",
+    "eslint": "^9.39.1",
+    "fast-check": "^3.22.0",
+    "jsdom": "^24.1.3",
+    "lucide": "^0.555.0",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "@likec4/core": "^1.46.3",
+    "posthog-js": "^1.299.0",
+    "vitest": "^4.0.15"
+  }
+}

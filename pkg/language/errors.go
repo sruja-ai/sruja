@@ -3,6 +3,7 @@ package language
 
 import (
 	"fmt"
+	"strings"
 )
 
 // ErrorSeverity represents the severity of an error.
@@ -37,11 +38,17 @@ type ParseError struct {
 	Location SourceLocation // Where the error occurred
 	Message  string         // Error message
 	Severity ErrorSeverity  // Error severity
+	Err      error          // Wrapped sentinel error for errors.Is() support
 }
 
 // Error returns a formatted error string.
 func (e *ParseError) Error() string {
 	return fmt.Sprintf("%s: %s", e.Location, e.Message)
+}
+
+// Unwrap returns the wrapped error for errors.Is() and errors.As() support.
+func (e *ParseError) Unwrap() error {
+	return e.Err
 }
 
 // ValidationError represents a validation error.
@@ -67,11 +74,17 @@ type ValidationError struct {
 	RuleID   string         // Validation rule ID (e.g., "semantic/duplicate-id")
 	Message  string         // Error message
 	Severity ErrorSeverity  // Error severity
+	Err      error          // Wrapped sentinel error for errors.Is() support
 }
 
 // Error returns a formatted error string with rule ID.
 func (e *ValidationError) Error() string {
 	return fmt.Sprintf("%s [%s]: %s", e.Location, e.RuleID, e.Message)
+}
+
+// Unwrap returns the wrapped error for errors.Is() and errors.As() support.
+func (e *ValidationError) Unwrap() error {
+	return e.Err
 }
 
 // CompilationError represents a compilation error.
@@ -93,11 +106,17 @@ type CompilationError struct {
 	Location SourceLocation // Where the error occurred
 	Message  string         // Error message
 	Severity ErrorSeverity  // Error severity
+	Err      error          // Wrapped sentinel error for errors.Is() support
 }
 
 // Error returns a formatted error string.
 func (e *CompilationError) Error() string {
 	return fmt.Sprintf("%s: %s", e.Location, e.Message)
+}
+
+// Unwrap returns the wrapped error for errors.Is() and errors.As() support.
+func (e *CompilationError) Unwrap() error {
+	return e.Err
 }
 
 // ErrorList represents a collection of errors.
@@ -118,7 +137,14 @@ type ErrorList struct {
 }
 
 // Add adds an error to the list.
+// Pre-allocates slice capacity if needed for better performance.
 func (el *ErrorList) Add(err error) {
+	if err == nil {
+		return
+	}
+	if el.Errors == nil {
+		el.Errors = make([]error, 0, 8) // Pre-allocate small capacity
+	}
 	el.Errors = append(el.Errors, err)
 }
 
@@ -139,10 +165,19 @@ func (el *ErrorList) Error() string {
 	if len(el.Errors) == 1 {
 		return el.Errors[0].Error()
 	}
-	return fmt.Sprintf("%d errors (first: %s)", len(el.Errors), el.Errors[0].Error())
+	// Build error message efficiently
+	var sb strings.Builder
+	firstErr := el.Errors[0].Error()
+	sb.Grow(30 + len(firstErr))
+	sb.WriteString(fmt.Sprintf("%d", len(el.Errors)))
+	sb.WriteString(" errors (first: ")
+	sb.WriteString(firstErr)
+	sb.WriteString(")")
+	return sb.String()
 }
 
 // NewParseError creates a new parse error with error severity.
+// The error wraps ErrParse for use with errors.Is().
 //
 // Example:
 //
@@ -150,15 +185,18 @@ func (el *ErrorList) Error() string {
 //	    SourceLocation{File: "example.sruja", Line: 5, Column: 12},
 //	    "Expected ':' after identifier",
 //	)
+//	if errors.Is(err, ErrParse) { ... }
 func NewParseError(loc SourceLocation, msg string) *ParseError {
 	return &ParseError{
 		Location: loc,
 		Message:  msg,
 		Severity: ErrorSeverityError,
+		Err:      ErrParse,
 	}
 }
 
 // NewValidationError creates a new validation error with error severity.
+// The error wraps ErrValidation for use with errors.Is().
 //
 // Example:
 //
@@ -167,16 +205,19 @@ func NewParseError(loc SourceLocation, msg string) *ParseError {
 //	    "semantic/duplicate-id",
 //	    "Element 'API' is already defined",
 //	)
+//	if errors.Is(err, ErrValidation) { ... }
 func NewValidationError(loc SourceLocation, ruleID, msg string) *ValidationError {
 	return &ValidationError{
 		Location: loc,
 		RuleID:   ruleID,
 		Message:  msg,
 		Severity: ErrorSeverityError,
+		Err:      ErrValidation,
 	}
 }
 
 // NewCompilationError creates a new compilation error with error severity.
+// The error wraps ErrCompilation for use with errors.Is().
 //
 // Example:
 //
@@ -184,10 +225,12 @@ func NewValidationError(loc SourceLocation, ruleID, msg string) *ValidationError
 //	    SourceLocation{File: "example.sruja", Line: 3, Column: 1},
 //	    "System 'API' is missing required 'id' field",
 //	)
+//	if errors.Is(err, ErrCompilation) { ... }
 func NewCompilationError(loc SourceLocation, msg string) *CompilationError {
 	return &CompilationError{
 		Location: loc,
 		Message:  msg,
 		Severity: ErrorSeverityError,
+		Err:      ErrCompilation,
 	}
 }

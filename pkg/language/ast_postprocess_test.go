@@ -7,18 +7,53 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
+func strPtr(s string) *string {
+	return &s
+}
+
+func TestArchitecture_PostProcess_Imports(t *testing.T) {
+	ds := &language.DataStore{
+		ID:    "DB",
+		Label: "Database",
+		Items: []language.DataStoreItem{
+			{
+				Description: strPtr("Main database"),
+			},
+			{
+				Metadata: &language.MetadataBlock{
+					Entries: []*language.MetaEntry{
+						{Key: "engine", Value: strPtr("postgres")},
+					},
+				},
+			},
+		},
+	}
+
+	ds.PostProcess()
+
+	if ds.Description == nil || *ds.Description != "Main database" {
+		t.Error("Description should be populated from items")
+	}
+	if len(ds.Metadata) != 1 {
+		t.Errorf("Expected 1 metadata entry, got %d", len(ds.Metadata))
+	}
+	if ds.Metadata[0].Key != "engine" {
+		t.Errorf("Expected metadata key 'engine', got %q", ds.Metadata[0].Key)
+	}
+}
+
 func TestDataStore_PostProcess(t *testing.T) {
 	ds := &language.DataStore{
 		ID:    "DB",
 		Label: "Database",
 		Items: []language.DataStoreItem{
 			{
-				Description: stringPtr("Main database"),
+				Description: strPtr("Main database"),
 			},
 			{
 				Metadata: &language.MetadataBlock{
 					Entries: []*language.MetaEntry{
-						{Key: "engine", Value: "postgres"},
+						{Key: "engine", Value: strPtr("postgres")},
 					},
 				},
 			},
@@ -44,12 +79,12 @@ func TestQueue_PostProcess(t *testing.T) {
 		Label: "Queue",
 		Items: []language.QueueItem{
 			{
-				Description: stringPtr("Event queue"),
+				Description: strPtr("Event queue"),
 			},
 			{
 				Metadata: &language.MetadataBlock{
 					Entries: []*language.MetaEntry{
-						{Key: "topic", Value: "events"},
+						{Key: "topic", Value: strPtr("events")},
 					},
 				},
 			},
@@ -72,12 +107,12 @@ func TestPerson_PostProcess(t *testing.T) {
 		Label: "End User",
 		Items: []language.PersonItem{
 			{
-				Description: stringPtr("Customer"),
+				Description: strPtr("Customer"),
 			},
 			{
 				Metadata: &language.MetadataBlock{
 					Entries: []*language.MetaEntry{
-						{Key: "persona", Value: "customer"},
+						{Key: "persona", Value: strPtr("customer")},
 					},
 				},
 			},
@@ -107,9 +142,11 @@ func TestPerson_PostProcess_PropertiesAndStyle(t *testing.T) {
 				},
 			},
 			{
-				Style: &language.StyleBlock{
-					Entries: []*language.StyleEntry{
-						{Key: "color", Value: "blue"},
+				Style: &language.StyleDecl{
+					Body: &language.StyleBlock{
+						Entries: []*language.StyleEntry{
+							{Key: "color", Value: strPtr("blue")},
+						},
 					},
 				},
 			},
@@ -138,7 +175,7 @@ func TestQueue_PostProcess_PropertiesAndStyle(t *testing.T) {
 		Label: "Queue",
 		Items: []language.QueueItem{
 			{
-				Technology: stringPtr("RabbitMQ"),
+				Technology: strPtr("RabbitMQ"),
 			},
 			{
 				Properties: &language.PropertiesBlock{
@@ -148,9 +185,11 @@ func TestQueue_PostProcess_PropertiesAndStyle(t *testing.T) {
 				},
 			},
 			{
-				Style: &language.StyleBlock{
-					Entries: []*language.StyleEntry{
-						{Key: "shape", Value: "cylinder"},
+				Style: &language.StyleDecl{
+					Body: &language.StyleBlock{
+						Entries: []*language.StyleEntry{
+							{Key: "shape", Value: strPtr("cylinder")},
+						},
 					},
 				},
 			},
@@ -182,32 +221,19 @@ func TestComponent_PostProcess(t *testing.T) {
 		Label: "Component",
 		Items: []language.ComponentItem{
 			{
-				Technology:  stringPtr("Go"),
-				Description: stringPtr("Main component"),
-			},
-			{
-				Requirement: &language.Requirement{
-					ID:          "R1",
-					Type:        "performance",
-					Description: "Fast",
-				},
-			},
-			{
-				ADR: &language.ADR{
-					ID:    "ADR001",
-					Title: stringPtr("Use JWT"),
-				},
+				Technology:  strPtr("Go"),
+				Description: strPtr("Main component"),
 			},
 			{
 				Relation: &language.Relation{
-					From: "Comp",
-					To:   "Other",
+					From: language.QualifiedIdent{Parts: []string{"Comp"}},
+					To:   language.QualifiedIdent{Parts: []string{"Other"}},
 				},
 			},
 			{
 				Metadata: &language.MetadataBlock{
 					Entries: []*language.MetaEntry{
-						{Key: "critical", Value: "true"},
+						{Key: "critical", Value: strPtr("true")},
 					},
 				},
 			},
@@ -222,12 +248,7 @@ func TestComponent_PostProcess(t *testing.T) {
 	if comp.Description == nil || *comp.Description != "Main component" {
 		t.Error("Description should be populated")
 	}
-	if len(comp.Requirements) != 1 {
-		t.Errorf("Expected 1 requirement, got %d", len(comp.Requirements))
-	}
-	if len(comp.ADRs) != 1 {
-		t.Errorf("Expected 1 ADR, got %d", len(comp.ADRs))
-	}
+	// root-only policy: component does not collect requirements/ADRs
 	if len(comp.Relations) != 1 {
 		t.Errorf("Expected 1 relation, got %d", len(comp.Relations))
 	}
@@ -271,9 +292,11 @@ func TestComponent_PostProcess_Style(t *testing.T) {
 		Label: "Component",
 		Items: []language.ComponentItem{
 			{
-				Style: &language.StyleBlock{
-					Entries: []*language.StyleEntry{
-						{Key: "color", Value: "red"},
+				Style: &language.StyleDecl{
+					Body: &language.StyleBlock{
+						Entries: []*language.StyleEntry{
+							{Key: "color", Value: strPtr("red")},
+						},
 					},
 				},
 			},
@@ -296,7 +319,7 @@ func TestContainer_PostProcess(t *testing.T) {
 		Label: "Container",
 		Items: []language.ContainerItem{
 			{
-				Description: stringPtr("Container description"),
+				Description: strPtr("Container description"),
 			},
 			{
 				Component: &language.Component{
@@ -317,28 +340,15 @@ func TestContainer_PostProcess(t *testing.T) {
 				},
 			},
 			{
-				Requirement: &language.Requirement{
-					ID:          "R1",
-					Type:        "performance",
-					Description: "Fast",
-				},
-			},
-			{
-				ADR: &language.ADR{
-					ID:    "ADR001",
-					Title: stringPtr("Use JWT"),
-				},
-			},
-			{
 				Relation: &language.Relation{
-					From: "Cont",
-					To:   "Other",
+					From: language.QualifiedIdent{Parts: []string{"Cont"}},
+					To:   language.QualifiedIdent{Parts: []string{"Other"}},
 				},
 			},
 			{
 				Metadata: &language.MetadataBlock{
 					Entries: []*language.MetaEntry{
-						{Key: "tier", Value: "gold"},
+						{Key: "tier", Value: strPtr("gold")},
 					},
 				},
 			},
@@ -359,12 +369,7 @@ func TestContainer_PostProcess(t *testing.T) {
 	if len(cont.Queues) != 1 {
 		t.Errorf("Expected 1 queue, got %d", len(cont.Queues))
 	}
-	if len(cont.Requirements) != 1 {
-		t.Errorf("Expected 1 requirement, got %d", len(cont.Requirements))
-	}
-	if len(cont.ADRs) != 1 {
-		t.Errorf("Expected 1 ADR, got %d", len(cont.ADRs))
-	}
+	// root-only policy: container does not collect requirements/ADRs
 	if len(cont.Relations) != 1 {
 		t.Errorf("Expected 1 relation, got %d", len(cont.Relations))
 	}
@@ -379,7 +384,7 @@ func TestSystem_PostProcess(t *testing.T) {
 		Label: "System",
 		Items: []language.SystemItem{
 			{
-				Description: stringPtr("System description"),
+				Description: strPtr("System description"),
 			},
 			{
 				Container: &language.Container{
@@ -406,28 +411,15 @@ func TestSystem_PostProcess(t *testing.T) {
 				},
 			},
 			{
-				Requirement: &language.Requirement{
-					ID:          "R1",
-					Type:        "security",
-					Description: "Secure",
-				},
-			},
-			{
-				ADR: &language.ADR{
-					ID:    "ADR001",
-					Title: stringPtr("Use JWT"),
-				},
-			},
-			{
 				Relation: &language.Relation{
-					From: "Sys",
-					To:   "Other",
+					From: language.QualifiedIdent{Parts: []string{"Sys"}},
+					To:   language.QualifiedIdent{Parts: []string{"Other"}},
 				},
 			},
 			{
 				Metadata: &language.MetadataBlock{
 					Entries: []*language.MetaEntry{
-						{Key: "owner", Value: "team"},
+						{Key: "owner", Value: strPtr("team")},
 					},
 				},
 			},
@@ -451,235 +443,11 @@ func TestSystem_PostProcess(t *testing.T) {
 	if len(sys.Persons) != 1 {
 		t.Errorf("Expected 1 person, got %d", len(sys.Persons))
 	}
-	if len(sys.Requirements) != 1 {
-		t.Errorf("Expected 1 requirement, got %d", len(sys.Requirements))
-	}
-	if len(sys.ADRs) != 1 {
-		t.Errorf("Expected 1 ADR, got %d", len(sys.ADRs))
-	}
+	// root-only policy: system does not collect requirements/ADRs
 	if len(sys.Relations) != 1 {
 		t.Errorf("Expected 1 relation, got %d", len(sys.Relations))
 	}
 	if len(sys.Metadata) != 1 {
 		t.Errorf("Expected 1 metadata entry, got %d", len(sys.Metadata))
-	}
-}
-
-func TestArchitecture_PostProcess(t *testing.T) {
-	arch := &language.Architecture{
-		Name: "Test",
-		Items: []language.ArchitectureItem{
-			{
-				Import: &language.ImportSpec{
-					Path: "other.sruja",
-				},
-			},
-			{
-				System: &language.System{
-					ID:    "Sys",
-					Label: "System",
-				},
-			},
-			{
-				Person: &language.Person{
-					ID:    "User",
-					Label: "User",
-				},
-			},
-			{
-				Relation: &language.Relation{
-					From: "User",
-					To:   "Sys",
-				},
-			},
-			{
-				Requirement: &language.Requirement{
-					ID:          "R1",
-					Type:        "performance",
-					Description: "Fast",
-				},
-			},
-			{
-				ADR: &language.ADR{
-					ID:    "ADR001",
-					Title: stringPtr("Use JWT"),
-				},
-			},
-			{
-				SharedArtifact: &language.SharedArtifact{
-					ID:    "SA1",
-					Label: "Shared Lib",
-				},
-			},
-			{
-				Library: &language.Library{
-					ID:    "Lib1",
-					Label: "Library",
-				},
-			},
-			{
-				Metadata: &language.MetadataBlock{
-					Entries: []*language.MetaEntry{
-						{Key: "level", Value: "arch"},
-					},
-				},
-			},
-		},
-	}
-
-	arch.PostProcess()
-
-	if len(arch.Imports) != 1 {
-		t.Errorf("Expected 1 import, got %d", len(arch.Imports))
-	}
-	if len(arch.Systems) != 1 {
-		t.Errorf("Expected 1 system, got %d", len(arch.Systems))
-	}
-	if len(arch.Persons) != 1 {
-		t.Errorf("Expected 1 person, got %d", len(arch.Persons))
-	}
-	if len(arch.Relations) != 1 {
-		t.Errorf("Expected 1 relation, got %d", len(arch.Relations))
-	}
-	if len(arch.Requirements) != 1 {
-		t.Errorf("Expected 1 requirement, got %d", len(arch.Requirements))
-	}
-	if len(arch.ADRs) != 1 {
-		t.Errorf("Expected 1 ADR, got %d", len(arch.ADRs))
-	}
-	if len(arch.SharedArtifacts) != 1 {
-		t.Errorf("Expected 1 shared artifact, got %d", len(arch.SharedArtifacts))
-	}
-	if len(arch.Libraries) != 1 {
-		t.Errorf("Expected 1 library, got %d", len(arch.Libraries))
-	}
-	if len(arch.Metadata) != 1 {
-		t.Errorf("Expected 1 metadata entry, got %d", len(arch.Metadata))
-	}
-}
-
-func TestDeploymentNode_PostProcess(t *testing.T) {
-	dn := &language.DeploymentNode{
-		ID:    "Prod",
-		Label: "Production",
-		Items: []language.DeploymentNodeItem{
-			{
-				Node: &language.DeploymentNode{
-					ID:    "Server",
-					Label: "Server",
-				},
-			},
-			{
-				ContainerInstance: &language.ContainerInstance{
-					ContainerID: "Sys.Cont",
-				},
-			},
-			{
-				Infrastructure: &language.InfrastructureNode{
-					ID:    "LB",
-					Label: "Load Balancer",
-				},
-			},
-		},
-	}
-
-	dn.PostProcess()
-
-	if len(dn.Children) != 1 {
-		t.Errorf("Expected 1 child node, got %d", len(dn.Children))
-	}
-	if len(dn.ContainerInstances) != 1 {
-		t.Errorf("Expected 1 container instance, got %d", len(dn.ContainerInstances))
-	}
-	if len(dn.Infrastructure) != 1 {
-		t.Errorf("Expected 1 infrastructure node, got %d", len(dn.Infrastructure))
-	}
-}
-
-func TestArchitecture_PostProcess_Domain(t *testing.T) {
-	arch := &language.Architecture{
-		Name: "Test",
-		Items: []language.ArchitectureItem{
-			{
-				Domain: &language.DomainBlock{
-					Name: "UserDomain",
-					EntitiesBlock: &language.EntitiesBlock{
-						Entities: []*language.Entity{
-							{Name: "E1"},
-						},
-					},
-				},
-			},
-			{
-				Domain: &language.DomainBlock{
-					Name: "EventDomain",
-					EventsBlock: &language.EventsBlock{
-						Events: []*language.DomainEvent{
-							{Name: "Ev1"},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	arch.PostProcess()
-
-	if len(arch.Entities) != 1 {
-		t.Errorf("Expected 1 entity, got %d", len(arch.Entities))
-	}
-	if len(arch.Events) != 1 {
-		t.Errorf("Expected 1 event, got %d", len(arch.Events))
-	}
-}
-
-func TestArchitecture_PostProcess_ContractsAndConstraints(t *testing.T) {
-	arch := &language.Architecture{
-		Name: "Test",
-		Items: []language.ArchitectureItem{
-			{
-				ContractsBlock: &language.ContractsBlock{
-					Contracts: []*language.Contract{
-						{Kind: "api", ID: "C1"},
-					},
-				},
-			},
-			{
-				ConstraintsBlock: &language.ConstraintsBlock{
-					Entries: []*language.ConstraintEntry{
-						{Key: "constraint1", Value: "value1"},
-					},
-				},
-			},
-			{
-				ConventionsBlock: &language.ConventionsBlock{
-					Entries: []*language.ConventionEntry{
-						{Key: "convention1", Value: "value1"},
-					},
-				},
-			},
-			{
-				EntitiesBlock: &language.EntitiesBlock{
-					Entities: []*language.Entity{
-						{Name: "E1"},
-					},
-				},
-			},
-		},
-	}
-
-	arch.PostProcess()
-
-	if len(arch.Contracts) != 1 {
-		t.Errorf("Expected 1 contract, got %d", len(arch.Contracts))
-	}
-	if len(arch.Constraints) != 1 {
-		t.Errorf("Expected 1 constraint, got %d", len(arch.Constraints))
-	}
-	if len(arch.Conventions) != 1 {
-		t.Errorf("Expected 1 convention, got %d", len(arch.Conventions))
-	}
-	if len(arch.Entities) != 1 {
-		t.Errorf("Expected 1 entity, got %d", len(arch.Entities))
 	}
 }

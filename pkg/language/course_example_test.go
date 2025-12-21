@@ -11,6 +11,6 @@ func TestParseCourseExample(t *testing.T) {
 	parser, err := language.NewParser()
 	require.NoError(t, err)
 
-	_, err = parser.ParseFile("../../examples/course/ecommerce.sruja")
+	_, _, err = parser.ParseFile("../../examples/course/ecommerce.sruja")
 	require.NoError(t, err)
 }

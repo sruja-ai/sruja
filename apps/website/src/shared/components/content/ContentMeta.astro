@@ -1,0 +1,37 @@
+---
+// apps/website/src/shared/components/content/ContentMeta.astro
+import TagList from '../ui/TagList.astro';
+
+interface Props {
+  date?: string;
+  dateISO?: string;
+  tags?: string[];
+  className?: string;
+}
+
+const { date, dateISO, tags, className = '' } = Astro.props;
+---
+
+{(date || tags) && (
+  <div class={`meta ${className}`}>
+    {date && <time datetime={dateISO}>{date}</time>}
+    {tags && tags.length > 0 && <TagList tags={tags} />}
+  </div>
+)}
+
+<style>
+  .meta {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 1rem;
+    transition: color 0.2s;
+  }
+
+  :global(html.dark) .meta {
+    color: var(--color-text-secondary);
+  }
+</style>

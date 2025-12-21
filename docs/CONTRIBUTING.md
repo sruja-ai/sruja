@@ -1,86 +1,95 @@
-# Contributing & Community
+# Contributing to Sruja
 
-Central hub for Sruja contributions and community resources. Use this as the single source of truth for setup, workflow, policies, and ways to get involved.
+Welcome! This guide will help you get started contributing to Sruja. Whether you're fixing a typo or adding a major feature, your contributions are welcome.
+
+## 🎯 New to Contributing?
+
+**Start here:** [First Contribution Guide](FIRST_CONTRIBUTION.md)
+
+This step-by-step guide walks you through making your first contribution, even if you're new to the project.
+
+## Quick Links
+
+- 💡 **Contribution Ideas**: [What Can I Contribute?](CONTRIBUTION_IDEAS.md)
+- 🐛 **Find Issues**: [Good First Issues](https://github.com/sruja-ai/sruja/labels/good%20first%20issue)
+- 📖 **Development Guide**: [Development Practices](DEVELOPMENT.md)
+- 📝 **Content Guide**: [Content Contribution Guide](CONTENT_CONTRIBUTION_GUIDE.md)
+- 💬 **Get Help**: [Discord](https://discord.gg/VNrvHPV5) | [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
 
 ## Project Overview
 
-- Language and CLI in Go (Go 1.25 per `go.mod`)
-- WebAssembly build for docs playground
-- Examples, Hugo‑based docs/learning site
-- Repo: https://github.com/sruja-ai/sruja
+Sruja is a monorepo containing:
+- **Language and CLI**: Go (Go 1.25+)
+- **Website**: Astro-based with TypeScript/React
+- **Designer**: Interactive diagram designer
+- **VS Code Extension**: Language support
+- **Examples**: Real-world architecture examples
 
 ## Development Setup
 
 ### Prerequisites
 
-- `Go >= 1.25` (CI uses `1.25.4`)
-- Git
+- **Go >= 1.25** (CI uses `1.25.4`)
+- **Git**
+- **Node.js 18+** (for website and TypeScript packages)
 
 Optional:
-
 - `golangci-lint` (installed automatically by `make lint`)
 - `wasm-opt` (optimizes WASM artifacts)
 
-### Clone the repository
+### Quick Setup
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/sruja-ai/sruja.git
 cd sruja
-```
 
-### Install dependencies
-
-```bash
+# 2. Install dependencies
 make install
-```
 
-### Build the CLI
-
-```bash
+# 3. Build the CLI
 make build
+
+# 4. Verify it works
 ./bin/sruja --help
 ```
 
-### Run tests and coverage
+### Common Commands
 
 ```bash
+# Run tests
 make test
-make test-coverage      # prints summary
-make test-coverage-html # writes coverage.html
-```
 
-### Format and lint
-
-```bash
+# Format code
 make fmt
+
+# Lint code
 make lint
-```
 
-### Try examples
+# Build everything
+make build
 
-```bash
+# Try examples
 ./bin/sruja compile examples/example.sruja
 ./bin/sruja lint examples/example.sruja
 ```
 
-### Build WebAssembly for docs playground
-
-```bash
-make build-docs
-```
-
-Outputs go to `docs/static/` including compressed variants.
-
-For additional context, see `README.md` and `Makefile`.
+For more details, see [Development Guide](DEVELOPMENT.md).
 
 ## Working With Examples
 
-- Example `.sruja` models live under `examples/`
-- After building the CLI:
+Example `.sruja` models live under `examples/`. After building the CLI:
 
 ```bash
+# Compile an example
 ./bin/sruja compile examples/example.sruja
+
+# Lint an example
 ./bin/sruja lint examples/example.sruja
+
+# Export to different formats
+./bin/sruja export json examples/example.sruja
+./bin/sruja export markdown examples/example.sruja
 ```
 
 CI compiles and lints selected examples to catch regressions.
@@ -148,45 +157,104 @@ Optional scope: `feat(language): …`
 - Maintain meaningful test coverage
 - Explicit error handling; avoid panics in library code
 - Keep dependencies minimal and pinned via `go.mod`
+- Follow the **[Design Philosophy](DESIGN_PHILOSOPHY.md)** when proposing language changes.
 
-## Contributor Guide
+## Ways to Contribute
 
-Welcome! This section points you to key resources and principles.
+### No Code Required
 
-### Find an issue
+- 📝 **Documentation**: Fix typos, improve clarity, add examples
+- 🐛 **Testing**: Test features and report bugs
+- 💡 **Examples**: Add example architectures to `examples/` directory
+- ✍️ **Content**: Write tutorials, blog posts, or courses
+- 🌐 **Translation**: Translate documentation
 
-- Browse open issues on GitHub
-- Look for `good first issue` labels suitable for newcomers
+### Beginner-Friendly Code
 
-### Ask questions
+- ✅ **Tests**: Add test cases for existing functionality
+- 🐛 **Bugs**: Fix small bugs
+- 📝 **Error Messages**: Improve error messages and help text
+- 📚 **Examples**: Add more example architectures
+- 🎨 **CLI**: Improve CLI help text and user experience
 
-- GitHub Discussions
-- Discord community
+### More Advanced
 
-### Principles
+- 🔧 **Features**: Implement new features
+- 🚀 **Export Formats**: Add new export formats
+- 🔍 **Validation**: Add validation rules
+- 🛠️ **Tooling**: Improve development tooling
 
-- Keep PRs small, focused, and well‑tested
-- Prefer explicit error handling and minimal dependencies
-- Document externally visible behavior
+## Finding Work
+
+### GitHub Issues
+
+- Browse [open issues](https://github.com/sruja-ai/sruja/issues)
+- Look for `good first issue` labels
+- Filter by `help wanted` for areas needing assistance
+
+### Contribution Ideas
+
+If there aren't many issues yet, check **[Contribution Ideas](CONTRIBUTION_IDEAS.md)** for specific tasks you can work on. Common tasks that don't need issues:
+
+- Fix typos in documentation
+- Add examples to `examples/` directory
+- Improve error messages
+- Add test cases
+- Write tutorials or blog posts
+
+You can start working on these right away! Open a draft PR to show what you're working on.
+
+## Getting Help
+
+- 💬 **Discord**: https://discord.gg/VNrvHPV5
+- 💬 **GitHub Discussions**: Ask questions and share ideas
+- 📝 **GitHub Issues**: Report bugs or request features
+- 💬 **PR Comments**: Ask for help on your pull request
+
+## Principles
+
+- **Keep PRs small and focused**: Easier to review and merge
+- **Test your changes**: Run `make test` before submitting
+- **Follow conventions**: Use Conventional Commits, run `make fmt`
+- **Start small**: You can always contribute more later!
+- **Ask questions**: We're here to help!
 
 ## Get in Touch
 
 - GitHub Discussions
-- Discord: https://discord.gg/QMCsquJq
+- Discord: https://discord.gg/VNrvHPV5
 
-## Documentation Notes
+## Contributing Content
 
-- User docs live under `learn/` (Hugo site). Changes under `docs/**` trigger the docs deploy workflow.
-- Align learning materials and user‑facing docs across `learn/` when applicable.
+To add content to the Sruja website (courses, tutorials, blog posts, etc.), see:
 
-## Reporting Issues and Requesting Features
+**📖 [Content Contribution Guide](CONTENT_CONTRIBUTION_GUIDE.md)**
 
-- Use GitHub Issues with clear description, reproduction, and expected behavior
-- Tag appropriately (bug, enhancement, docs)
-- Consider draft PRs if you have a prototype
+This guide covers:
+- Creating courses, tutorials, blogs, and docs
+- Content structure and best practices
+- Validation and workflow
+- Troubleshooting
 
-## Community Expectations
+## Reporting Issues
 
-- Be respectful and constructive
-- Provide actionable reviews and respond to feedback
-- Prefer async, documented decisions (link ADRs or issues where relevant)
+When reporting bugs or requesting features:
+
+1. **Check existing issues**: Search to see if it's already reported
+2. **Use clear titles**: Describe the issue or feature clearly
+3. **Provide context**: Include steps to reproduce, expected vs actual behavior
+4. **Tag appropriately**: Use labels like `bug`, `enhancement`, `docs`
+5. **Consider draft PRs**: If you have a prototype, open a draft PR
+
+## Community Guidelines
+
+- **Be respectful**: Treat everyone with kindness and respect
+- **Be constructive**: Provide actionable feedback
+- **Be patient**: Reviews take time, especially for maintainers
+- **Be collaborative**: Work together to improve Sruja
+
+## Additional Resources
+
+- **Architecture**: See [ARCHITECTURE.md](ARCHITECTURE.md) for code organization
+- **Design Philosophy**: See [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md) for language design principles
+- **Language Spec**: See [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) for complete DSL reference

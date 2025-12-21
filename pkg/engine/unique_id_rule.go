@@ -2,7 +2,9 @@ package engine
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/sruja-ai/sruja/pkg/diagnostics"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
@@ -12,64 +14,105 @@ func (r *UniqueIDRule) Name() string {
 	return "Unique IDs"
 }
 
-func (r *UniqueIDRule) Validate(program *language.Program) []ValidationError {
-	errors := []ValidationError{}
-	seenIDs := make(map[string]language.SourceLocation)
+func (r *UniqueIDRule) Validate(program *language.Program) []diagnostics.Diagnostic {
+	if program == nil || program.Model == nil {
+		return nil
+	}
+
+	seenIDs := make(map[string]language.SourceLocation, 100)
+	diags := make([]diagnostics.Diagnostic, 0, 10)
 
 	checkID := func(id string, loc language.SourceLocation) {
 		if id == "" {
 			return
 		}
 		if existing, ok := seenIDs[id]; ok {
-			errors = append(errors, ValidationError{
-				Message: fmt.Sprintf("Duplicate identifier '%s'. Previously defined at line %d.", id, existing.Line),
-				Line:    loc.Line,
-				Column:  loc.Column,
+			// Build enhanced error message with precise location
+			var msgSb strings.Builder
+			msgSb.Grow(len(id) + 100)
+			msgSb.WriteString("Duplicate identifier '")
+			msgSb.WriteString(id)
+			msgSb.WriteString("'")
+			switch {
+			case existing.File != "" && existing.File == loc.File:
+				msgSb.WriteString(fmt.Sprintf(". First defined at line %d, column %d", existing.Line, existing.Column))
+			case existing.File != "":
+				msgSb.WriteString(fmt.Sprintf(". First defined in '%s' at line %d", existing.File, existing.Line))
+			default:
+				msgSb.WriteString(fmt.Sprintf(". Previously defined at line %d", existing.Line))
+			}
+
+			var suggestions []string
+			suggestions = append(suggestions, fmt.Sprintf("Rename this element to a unique identifier (e.g., '%s2' or '%s_v2')", id, id))
+			suggestions = append(suggestions, "Element IDs must be unique within the architecture")
+			if existing.File != "" && existing.File != loc.File {
+				suggestions = append(suggestions, "Consider using a namespace or prefix to avoid conflicts across files")
+			}
+
+			diags = append(diags, diagnostics.Diagnostic{
+				Code:     diagnostics.CodeDuplicateIdentifier,
+				Severity: diagnostics.SeverityError,
+				Message:  msgSb.String(),
+				Location: diagnostics.SourceLocation{
+					File:   loc.File,
+					Line:   loc.Line,
+					Column: loc.Column,
+				},
+				Suggestions: suggestions,
 			})
 		} else {
 			seenIDs[id] = loc
 		}
 	}
 
-	arch := program.Architecture
-	if arch == nil {
-		return errors
+	// Collect all element IDs from LikeC4 Model
+	var collectIDs func(elem *language.LikeC4ElementDef, parentFQN string)
+	collectIDs = func(elem *language.LikeC4ElementDef, parentFQN string) {
+		if elem == nil {
+			return
+		}
+
+		id := elem.GetID()
+		if id == "" {
+			return
+		}
+
+		fqn := id
+		if parentFQN != "" {
+			fqn = buildQualifiedID(parentFQN, id)
+			// Check both FQN and short ID for uniqueness if they differ
+			checkID(id, elem.Location())
+		}
+
+		checkID(fqn, elem.Location())
+
+		// Recurse into nested elements
+		body := elem.GetBody()
+		if body != nil {
+			for _, bodyItem := range body.Items {
+				if bodyItem.Element != nil {
+					collectIDs(bodyItem.Element, fqn)
+				}
+			}
+		}
 	}
 
-	for _, sys := range arch.Systems {
-		checkID(sys.ID, sys.Location())
-		for _, cont := range sys.Containers {
-			checkID(cont.ID, cont.Location())
-			for _, comp := range cont.Components {
-				checkID(comp.ID, comp.Location())
-			}
-			for _, ds := range cont.DataStores {
-				checkID(ds.ID, ds.Location())
-			}
-			for _, q := range cont.Queues {
-				checkID(q.ID, q.Location())
-			}
+	// Process all items in model
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			collectIDs(item.ElementDef, "")
 		}
-		for _, comp := range sys.Components {
-			checkID(comp.ID, comp.Location())
+		// Check other top-level items (scenarios, ADRs, etc.)
+		if item.Scenario != nil {
+			checkID(item.Scenario.ID, item.Scenario.Location())
 		}
-		for _, ds := range sys.DataStores {
-			checkID(ds.ID, ds.Location())
+		if item.ADR != nil {
+			checkID(item.ADR.ID, item.ADR.Location())
 		}
-		for _, q := range sys.Queues {
-			checkID(q.ID, q.Location())
+		if item.Requirement != nil {
+			checkID(item.Requirement.ID, item.Requirement.Location())
 		}
 	}
 
-	for _, p := range arch.Persons {
-		checkID(p.ID, p.Location())
-	}
-	for _, req := range arch.Requirements {
-		checkID(req.ID, req.Location())
-	}
-	for _, adr := range arch.ADRs {
-		checkID(adr.ID, adr.Location())
-	}
-
-	return errors
+	return diags
 }

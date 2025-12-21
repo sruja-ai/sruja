@@ -1,0 +1,40 @@
+{
+  "title": "DSL Basics Quiz",
+  "slug": "dsl-basics",
+  "summary": "Check your understanding of Sruja core syntax.",
+  "questions": [
+    {
+      "id": "q1",
+      "prompt": "Which elements define the main structure inside a system?",
+      "options": [
+        { "id": "a", "label": "person, story, flow" },
+        { "id": "b", "label": "container, component, datastore" },
+        { "id": "c", "label": "queue only" }
+      ],
+      "answer": "b",
+      "explanation": "Systems typically contain containers; containers can contain components; datastores model data storage."
+    },
+    {
+      "id": "q2",
+      "prompt": "How do you declare a relation from Web to API?",
+      "options": [
+        { "id": "a", "label": "Web <- API" },
+        { "id": "b", "label": "Web -> API \"Calls\"" },
+        { "id": "c", "label": "relation(Web, API)" }
+      ],
+      "answer": "b",
+      "explanation": "Use Source -> Target with an optional label string."
+    },
+    {
+      "id": "q3",
+      "prompt": "Which block adds arbitrary metadata?",
+      "options": [
+        { "id": "a", "label": "config { ... }" },
+        { "id": "b", "label": "metadata { team \"Platform\" }" },
+        { "id": "c", "label": "tags [\"external\"]" }
+      ],
+      "answer": "b",
+      "explanation": "Use metadata { key \"value\" } entries for richer documentation."
+    }
+  ]
+}

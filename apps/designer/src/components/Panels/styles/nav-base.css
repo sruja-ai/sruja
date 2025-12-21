@@ -1,0 +1,22 @@
+.navigation-panel {
+    width: 260px;
+    background: var(--glass-bg, rgba(255, 255, 255, 0.95));
+    backdrop-filter: var(--glass-blur, blur(10px));
+    -webkit-backdrop-filter: var(--glass-blur, blur(10px));
+    border-right: 1px solid var(--border-color);
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    transition: width var(--transition-slow, 0.3s cubic-bezier(0.4, 0, 0.2, 1));
+    position: relative;
+    color: var(--text-primary);
+    box-shadow: var(--elevation-2, 0 1px 3px 0 rgba(0, 0, 0, 0.1));
+    z-index: 20;
+}
+
+.navigation-panel.collapsed {
+    width: 40px;
+}
+

@@ -1,0 +1,101 @@
+// examples/demo_overview.sruja
+// Example demonstrating overview block and LikeC4 syntax
+
+specification {
+  element person
+  element system
+  element container
+  element database
+}
+
+model {
+  // Overview metadata (Sruja extension)
+  overview {
+    summary "High-performance e-commerce platform supporting 10M+ users with sub-200ms latency"
+    audience "Engineering teams, architects, stakeholders, and reviewers"
+    scope "Covers ordering, payments, inventory management, and analytics subsystems"
+    goals ["Scale to 50M users by Q4", "Maintain sub-200ms p95 latency", "Achieve 99.99% uptime SLA"]
+    nonGoals ["Real-time inventory sync (eventual consistency acceptable)", "Multi-currency support (Phase 2)"]
+    risks ["Payment Gateway single point of failure", "Database write bottleneck during flash sales", "CDN vendor lock-in"]
+  }
+  
+  customer = person "Customer"
+  admin = person "Administrator"
+  
+  ecommerce = system "E-Commerce Platform" {
+    description "Main platform handling all e-commerce operations"
+    metadata {
+      team "E-Commerce Platform Team"
+      owner "platform-team@example.com"
+      version "2.1.0"
+      status "production"
+      scale "10M+ users, 1M+ requests/day"
+      cost "$15k/month operational cost"
+    }
+    
+    webApp = container "Web Application" {
+      technology "React"
+    }
+    api = container "REST API" {
+      technology "Go"
+    }
+    productDb = database "Product Database"
+    orderDb = database "Order Database"
+  }
+  
+  paymentGateway = system "Payment Gateway" {
+    description "External payment processing service"
+    stripeApi = container "Stripe API" {
+      technology "Stripe"
+    }
+  }
+  
+  // Relationships
+  customer -> ecommerce.webApp "browses and purchases via"
+  admin -> ecommerce.webApp "manages via"
+  ecommerce.webApp -> ecommerce.api "makes API calls to"
+  ecommerce.api -> ecommerce.productDb "reads products from"
+  ecommerce.api -> ecommerce.orderDb "writes orders to"
+  ecommerce.api -> paymentGateway.stripeApi "processes payments through"
+  
+  // Sruja extensions
+  requirement REQ001 functional "Users must be able to browse products by category"
+  requirement REQ002 performance "Product catalog page must load in under 2 seconds"
+  requirement REQ003 security "All API endpoints must use HTTPS"
+  
+  adr ADR001 "Use Microservices Architecture" {
+    status "Accepted"
+    context "Need to scale different parts of the system independently"
+    decision "Adopt microservices with service boundaries aligned to business capabilities"
+    consequences "Gain: Independent scaling. Trade-off: Increased operational complexity"
+  }
+  
+  policy SecurityPolicy "Enforce TLS 1.3 for all external communications" {
+    category "security"
+    enforcement "required"
+  }
+  
+  policy DataRetentionPolicy "Retain order data for 7 years for tax compliance" {
+    category "compliance"
+    enforcement "required"
+  }
+  
+  flow CheckoutFlow "Customer Checkout Flow" {
+    step customer -> ecommerce.webApp "initiates checkout"
+    step ecommerce.webApp -> ecommerce.api "submits order"
+    step ecommerce.api -> paymentGateway.stripeApi "processes payment"
+    step ecommerce.api -> ecommerce.orderDb "saves order"
+  }
+}
+
+views {
+  view index {
+    title "E-Commerce Platform Overview"
+    include *
+  }
+  
+  view containers of ecommerce {
+    title "E-Commerce Containers"
+    include ecommerce.*
+  }
+}
