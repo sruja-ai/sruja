@@ -72,7 +72,7 @@ jobs:
         with:
           node-version: 24
           cache: 'npm'
-          cache-dependency-path: apps/vscode-extension/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Update extension version
         run: |
