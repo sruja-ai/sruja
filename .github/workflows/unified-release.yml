@@ -191,12 +191,25 @@ jobs:
 
       - name: Verify checkout succeeded
         run: |
+          if [ ! -d "target" ]; then
+            echo "Error: Checkout failed - target directory not found"
+            echo "Repository: sruja-ai/prod-website"
+            exit 1
+          fi
           if [ ! -d "target/.git" ]; then
             echo "Error: Checkout failed - target/.git directory not found"
             echo "Repository: sruja-ai/prod-website"
             echo "This may indicate the repository doesn't exist or the token lacks access"
             exit 1
           fi
+          # Verify it's actually a git repository
+          cd target
+          if ! git rev-parse --git-dir > /dev/null 2>&1; then
+            echo "Error: target directory exists but is not a valid git repository"
+            echo "Repository: sruja-ai/prod-website"
+            exit 1
+          fi
+          echo "✅ Checkout verified - git repository is valid"
 
       - name: Copy site contents
         run: rsync -a --delete _site/ target/
