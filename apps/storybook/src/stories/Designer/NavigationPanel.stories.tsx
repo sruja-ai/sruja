@@ -1,7 +1,12 @@
-import { vi } from "vitest";
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { NavigationPanel } from "../../../../../apps/designer/src/components/Panels/NavigationPanel";
+import {
+  useArchitectureStore,
+  useViewStore,
+  useFeatureFlagsStore,
+} from "../../../../../apps/designer/src/stores";
+import { useEffect } from "react";
 
 // Mock store data
 const mockLikec4Model = {
@@ -67,27 +72,23 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   decorators: [
     (Story) => {
-      // Mock the stores using vi.mock
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
-          likec4Model: mockLikec4Model,
-        }),
-        useViewStore: () => ({
+      // Mock the stores
+      useEffect(() => {
+        useArchitectureStore.setState({
+          likec4Model: mockLikec4Model as any,
+        });
+        useViewStore.setState({
           currentLevel: "L1",
           focusedSystemId: null,
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
           setLevel: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
-          isEditMode: () => false,
-        }),
-      }));
+        });
+        useFeatureFlagsStore.setState({
+          editMode: "view", // isEditMode returns false if editMode !== 'edit'
+        });
+      }, []);
 
       return (
         <div style={{ height: "500px", position: "relative" }}>
@@ -109,26 +110,22 @@ export const Collapsed: Story = {
       };
 
       // Mock stores
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
-          likec4Model: mockLikec4Model,
-        }),
-        useViewStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
+          likec4Model: mockLikec4Model as any,
+        });
+        useViewStore.setState({
           currentLevel: "L1",
           focusedSystemId: null,
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
           setLevel: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
-          isEditMode: () => false,
-        }),
-      }));
+        });
+        useFeatureFlagsStore.setState({
+          editMode: "view",
+        });
+      }, []);
 
       return (
         <div style={{ height: "500px", position: "relative" }}>
@@ -143,25 +140,21 @@ export const WithFocus: Story = {
   decorators: [
     (Story) => {
       // Mock stores with focused system
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
-          likec4Model: mockLikec4Model,
-        }),
-        useViewStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
+          likec4Model: mockLikec4Model as any,
+        });
+        useViewStore.setState({
           currentLevel: "L2",
           focusedSystemId: "web-app",
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
-          isEditMode: () => false,
-        }),
-      }));
+        });
+        useFeatureFlagsStore.setState({
+          editMode: "view",
+        });
+      }, []);
 
       return (
         <div style={{ height: "500px", position: "relative" }}>
@@ -176,26 +169,22 @@ export const WithEditMode: Story = {
   decorators: [
     (Story) => {
       // Mock stores with edit mode enabled
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
-          likec4Model: mockLikec4Model,
-        }),
-        useViewStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
+          likec4Model: mockLikec4Model as any,
+        });
+        useViewStore.setState({
           currentLevel: "L1",
           focusedSystemId: null,
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
           setLevel: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
-          isEditMode: () => true,
-        }),
-      }));
+        });
+        useFeatureFlagsStore.setState({
+          editMode: "edit",
+        });
+      }, []);
 
       return (
         <div style={{ height: "500px", position: "relative" }}>
@@ -210,26 +199,22 @@ export const Mobile: Story = {
   decorators: [
     (Story) => {
       // Mock stores
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
-          likec4Model: mockLikec4Model,
-        }),
-        useViewStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
+          likec4Model: mockLikec4Model as any,
+        });
+        useViewStore.setState({
           currentLevel: "L1",
           focusedSystemId: null,
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
           setLevel: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
-          isEditMode: () => false,
-        }),
-      }));
+        });
+        useFeatureFlagsStore.setState({
+          editMode: "view",
+        });
+      }, []);
 
       return (
         <div
@@ -251,26 +236,22 @@ export const Empty: Story = {
   decorators: [
     (Story) => {
       // Mock stores with empty model
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
           likec4Model: null,
-        }),
-        useViewStore: () => ({
+        });
+        useViewStore.setState({
           currentLevel: "L1",
           focusedSystemId: null,
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
           setLevel: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
-          isEditMode: () => false,
-        }),
-      }));
+        });
+        useFeatureFlagsStore.setState({
+          editMode: "view",
+        });
+      }, []);
 
       return (
         <div style={{ height: "500px", position: "relative" }}>

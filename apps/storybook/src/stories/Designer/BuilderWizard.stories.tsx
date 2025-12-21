@@ -1,7 +1,14 @@
-import { vi } from "vitest";
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { BuilderWizard } from "../../../../../apps/designer/src/components/Wizard/BuilderWizard";
+import {
+  useArchitectureStore,
+  useViewStore,
+  useSelectionStore,
+  useUIStore,
+  useFeatureFlagsStore,
+} from "../../../../../apps/designer/src/stores";
+import { useEffect } from "react";
 
 // Mock store data for builder wizard
 const mockLikec4Model = {
@@ -72,40 +79,35 @@ const meta = {
   decorators: [
     (Story) => {
       // Mock stores
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
-          likec4Model: mockLikec4Model,
+      useEffect(() => {
+        useArchitectureStore.setState({
+          likec4Model: mockLikec4Model as any,
           dslSource: "// Generated DSL content",
           setDslSource: fn(),
-          updateArchitecture: fn(),
-        }),
-        useViewStore: () => ({
+          updateArchitecture: async (_updater) => {},
+        });
+        useViewStore.setState({
           currentLevel: "L1",
           focusedSystemId: null,
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
-        }),
-        useSelectionStore: () => ({
+        });
+        useSelectionStore.setState({
           selectedNodeId: null,
           setSelectedNodeId: fn(),
           hoveredNodeId: null,
           setHoveredNodeId: fn(),
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           activeTab: "builder",
           setActiveTab: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
+        });
+        useFeatureFlagsStore.setState({
           editMode: "edit",
           setEditMode: fn(),
-          isEditMode: () => true,
-        }),
-      }));
+        });
+      }, []);
 
       // Mock localStorage for step persistence
       const originalLocalStorage = global.localStorage;
@@ -139,23 +141,18 @@ export const Default: Story = {
   decorators: [
     (Story) => {
       // Mock with full model
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
-          likec4Model: mockLikec4Model,
+      useEffect(() => {
+        useArchitectureStore.setState({
+          likec4Model: mockLikec4Model as any,
           dslSource: "// Generated DSL content",
           setDslSource: fn(),
-          updateArchitecture: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
+          updateArchitecture: async (_updater) => {},
+        });
+        useFeatureFlagsStore.setState({
           editMode: "edit",
           setEditMode: fn(),
-          isEditMode: () => true,
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -177,23 +174,18 @@ export const ViewMode: Story = {
   decorators: [
     (Story) => {
       // Mock with view mode
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
-          likec4Model: mockLikec4Model,
+      useEffect(() => {
+        useArchitectureStore.setState({
+          likec4Model: mockLikec4Model as any,
           dslSource: "// Generated DSL content",
           setDslSource: fn(),
-          updateArchitecture: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
+          updateArchitecture: async (_updater) => {},
+        });
+        useFeatureFlagsStore.setState({
           editMode: "view",
           setEditMode: fn(),
-          isEditMode: () => false,
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -215,23 +207,18 @@ export const EmptyModel: Story = {
   decorators: [
     (Story) => {
       // Mock with empty model
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
           likec4Model: null,
           dslSource: "// No DSL content",
           setDslSource: fn(),
-          updateArchitecture: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
+          updateArchitecture: async (_updater) => {},
+        });
+        useFeatureFlagsStore.setState({
           editMode: "edit",
           setEditMode: fn(),
-          isEditMode: () => true,
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -253,23 +240,18 @@ export const WithSidebarOpen: Story = {
   decorators: [
     (Story) => {
       // Mock with sidebar preference
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
-          likec4Model: mockLikec4Model,
+      useEffect(() => {
+        useArchitectureStore.setState({
+          likec4Model: mockLikec4Model as any,
           dslSource: "// Generated DSL content",
           setDslSource: fn(),
-          updateArchitecture: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
+          updateArchitecture: async (_updater) => {},
+        });
+        useFeatureFlagsStore.setState({
           editMode: "edit",
           setEditMode: fn(),
-          isEditMode: () => true,
-        }),
-      }));
+        });
+      }, []);
 
       // Mock localStorage with sidebar preference
       const originalLocalStorage = global.localStorage;
@@ -303,23 +285,18 @@ export const Mobile: Story = {
   decorators: [
     (Story) => {
       // Mock for mobile view
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
-          likec4Model: mockLikec4Model,
+      useEffect(() => {
+        useArchitectureStore.setState({
+          likec4Model: mockLikec4Model as any,
           dslSource: "// Generated DSL content",
           setDslSource: fn(),
-          updateArchitecture: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
+          updateArchitecture: async (_updater) => {},
+        });
+        useFeatureFlagsStore.setState({
           editMode: "edit",
           setEditMode: fn(),
-          isEditMode: () => true,
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div

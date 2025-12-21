@@ -1,7 +1,12 @@
-import { vi } from "vitest";
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { DetailsPanel } from "../../../../../apps/designer/src/components/Panels/DetailsPanel";
+import {
+  useArchitectureStore,
+  useSelectionStore,
+  useUIStore,
+} from "../../../../../apps/designer/src/stores";
+import { useEffect } from "react";
 
 // Mock store data for details panel
 const mockLikec4Model = {
@@ -122,21 +127,20 @@ const meta = {
   decorators: [
     (Story) => {
       // Mock stores
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
-          likec4Model: mockLikec4Model,
-          updateArchitecture: fn(),
-        }),
-        useSelectionStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
+          likec4Model: mockLikec4Model as any,
+          updateArchitecture: async (_updater) => {},
+        });
+        useSelectionStore.setState({
           selectedNodeId: "web-app",
           selectNode: fn(),
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           activeTab: "diagram",
           setActiveTab: fn(),
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -161,21 +165,20 @@ type Story = StoryObj<typeof meta>;
 export const SystemNode: Story = {
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
-          likec4Model: mockLikec4Model,
-          updateArchitecture: fn(),
-        }),
-        useSelectionStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
+          likec4Model: mockLikec4Model as any,
+          updateArchitecture: async (_updater) => {},
+        });
+        useSelectionStore.setState({
           selectedNodeId: "web-app",
           selectNode: fn(),
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           activeTab: "diagram",
           setActiveTab: fn(),
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -197,23 +200,22 @@ export const SystemNode: Story = {
 export const ContainerNode: Story = {
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
-          likec4Model: mockLikec4Model,
-          updateArchitecture: fn(),
-        }),
-        useSelectionStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
+          likec4Model: mockLikec4Model as any,
+          updateArchitecture: async (_updater) => {},
+        });
+        useSelectionStore.setState({
           selectedNodeId: "api",
           selectNode: fn(),
           hoveredNodeId: null,
           setHoveredNodeId: fn(),
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           activeTab: "diagram",
           setActiveTab: fn(),
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -235,23 +237,22 @@ export const ContainerNode: Story = {
 export const PersonNode: Story = {
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
-          likec4Model: mockLikec4Model,
-          updateArchitecture: fn(),
-        }),
-        useSelectionStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
+          likec4Model: mockLikec4Model as any,
+          updateArchitecture: async (_updater) => {},
+        });
+        useSelectionStore.setState({
           selectedNodeId: "user",
           selectNode: fn(),
           hoveredNodeId: null,
           setHoveredNodeId: fn(),
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           activeTab: "diagram",
           setActiveTab: fn(),
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -273,9 +274,8 @@ export const PersonNode: Story = {
 export const NodeWithNoData: Story = {
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
           likec4Model: {
             elements: {
               "empty-node": {
@@ -294,20 +294,20 @@ export const NodeWithNoData: Story = {
               flows: [],
               scenarios: [],
             },
-          },
-          updateArchitecture: fn(),
-        }),
-        useSelectionStore: () => ({
+          } as any,
+          updateArchitecture: async (_updater) => {},
+        });
+        useSelectionStore.setState({
           selectedNodeId: "empty-node",
           selectNode: fn(),
           hoveredNodeId: null,
           setHoveredNodeId: fn(),
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           activeTab: "diagram",
           setActiveTab: fn(),
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -329,23 +329,22 @@ export const NodeWithNoData: Story = {
 export const NoSelection: Story = {
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
-          likec4Model: mockLikec4Model,
-          updateArchitecture: fn(),
-        }),
-        useSelectionStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
+          likec4Model: mockLikec4Model as any,
+          updateArchitecture: async (_updater) => {},
+        });
+        useSelectionStore.setState({
           selectedNodeId: null,
           selectNode: fn(),
           hoveredNodeId: null,
           setHoveredNodeId: fn(),
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           activeTab: "diagram",
           setActiveTab: fn(),
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -367,21 +366,20 @@ export const NoSelection: Story = {
 export const NoModel: Story = {
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
           likec4Model: null,
-          updateArchitecture: fn(),
-        }),
-        useSelectionStore: () => ({
+          updateArchitecture: async (_updater) => {},
+        });
+        useSelectionStore.setState({
           selectedNodeId: "web-app",
           selectNode: fn(),
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           activeTab: "diagram",
           setActiveTab: fn(),
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div

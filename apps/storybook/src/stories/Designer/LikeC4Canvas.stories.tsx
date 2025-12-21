@@ -1,10 +1,18 @@
-import { vi } from "vitest";
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { LikeC4Canvas } from "../../../../../apps/designer/src/components/Canvas/LikeC4Canvas";
 import type { SrujaModelDump } from "@sruja/shared";
+import {
+  useArchitectureStore,
+  useViewStore,
+  useSelectionStore,
+  useUIStore,
+  useFeatureFlagsStore,
+} from "../../../../../apps/designer/src/stores";
+import { useEffect } from "react";
 
 // Comprehensive mock model with all element types and Sruja extensions
+// ... [mockLikec4Model remains same]
 const mockLikec4Model: SrujaModelDump = {
   _stage: "parsed",
   projectId: "storybook-project",
@@ -141,7 +149,16 @@ const mockLikec4Model: SrujaModelDump = {
     L1: {
       id: "L1",
       title: "System Context (L1)",
-      rules: [{ include: [{ ref: { model: "customer" } }, { ref: { model: "admin" } }, { ref: { model: "web-app" } }, { ref: { model: "api-service" } }] }],
+      rules: [
+        {
+          include: [
+            { ref: { model: "customer" } },
+            { ref: { model: "admin" } },
+            { ref: { model: "web-app" } },
+            { ref: { model: "api-service" } },
+          ],
+        },
+      ],
       nodes: [],
       edges: [],
     },
@@ -227,7 +244,8 @@ const meta = {
     layout: "fullscreen",
     docs: {
       description: {
-        component: "The main diagram canvas component that renders LikeC4 diagrams with node color coding, selection, and navigation sync.",
+        component:
+          "The main diagram canvas component that renders LikeC4 diagrams with node color coding, selection, and navigation sync.",
       },
     },
   },
@@ -247,22 +265,21 @@ const meta = {
   },
   decorators: [
     (Story) => {
-      // Mock stores with proper structure
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
+      // Mock stores with proper structure using useEffect to avoid sync issues
+      useEffect(() => {
+        useArchitectureStore.setState({
           likec4Model: mockLikec4Model,
-          updateArchitecture: fn(),
-        }),
-        useViewStore: () => ({
+          updateArchitecture: async (_updater) => {}, // Simple stub
+        });
+        useViewStore.setState({
           currentLevel: "L1",
           focusedSystemId: null,
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
           setLevel: fn(),
-        }),
-        useSelectionStore: () => ({
+        });
+        useSelectionStore.setState({
           selectedNodeId: null,
           selectNode: fn(),
           activeFlow: null,
@@ -273,20 +290,16 @@ const meta = {
           nextStep: fn(),
           prevStep: fn(),
           setFlowStep: fn(),
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           activeTab: "diagram",
           setActiveTab: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
+        });
+        useFeatureFlagsStore.setState({
           editMode: "view",
           setEditMode: fn(),
-          isEditMode: () => false,
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -317,21 +330,20 @@ export const WithNodeSelection: Story = {
   args: {},
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
           likec4Model: mockLikec4Model,
-          updateArchitecture: fn(),
-        }),
-        useViewStore: () => ({
+          updateArchitecture: async (_updater) => {},
+        });
+        useViewStore.setState({
           currentLevel: "L1",
           focusedSystemId: null,
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
           setLevel: fn(),
-        }),
-        useSelectionStore: () => ({
+        });
+        useSelectionStore.setState({
           selectedNodeId: "web-app",
           selectNode: fn(),
           activeFlow: null,
@@ -342,20 +354,16 @@ export const WithNodeSelection: Story = {
           nextStep: fn(),
           prevStep: fn(),
           setFlowStep: fn(),
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           activeTab: "diagram",
           setActiveTab: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
+        });
+        useFeatureFlagsStore.setState({
           editMode: "view",
           setEditMode: fn(),
-          isEditMode: () => false,
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -376,7 +384,8 @@ export const WithNodeSelection: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Shows the canvas with a selected node. The selected node should be highlighted and clicking it shows related requirements, ADRs, scenarios, and flows in the Details panel.",
+        story:
+          "Shows the canvas with a selected node. The selected node should be highlighted and clicking it shows related requirements, ADRs, scenarios, and flows in the Details panel.",
       },
     },
   },
@@ -386,21 +395,20 @@ export const L2ContainerView: Story = {
   args: {},
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
           likec4Model: mockLikec4Model,
-          updateArchitecture: fn(),
-        }),
-        useViewStore: () => ({
+          updateArchitecture: async (_updater) => {},
+        });
+        useViewStore.setState({
           currentLevel: "L2",
           focusedSystemId: "web-app",
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
           setLevel: fn(),
-        }),
-        useSelectionStore: () => ({
+        });
+        useSelectionStore.setState({
           selectedNodeId: null,
           selectNode: fn(),
           activeFlow: null,
@@ -411,20 +419,16 @@ export const L2ContainerView: Story = {
           nextStep: fn(),
           prevStep: fn(),
           setFlowStep: fn(),
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           activeTab: "diagram",
           setActiveTab: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
+        });
+        useFeatureFlagsStore.setState({
           editMode: "view",
           setEditMode: fn(),
-          isEditMode: () => false,
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -445,7 +449,8 @@ export const L2ContainerView: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Shows the L2 (Container) view focused on the 'web-app' system, displaying its containers, databases, and queues.",
+        story:
+          "Shows the L2 (Container) view focused on the 'web-app' system, displaying its containers, databases, and queues.",
       },
     },
   },
@@ -455,21 +460,20 @@ export const L3ComponentView: Story = {
   args: {},
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
           likec4Model: mockLikec4Model,
-          updateArchitecture: fn(),
-        }),
-        useViewStore: () => ({
+          updateArchitecture: async (_updater) => {},
+        });
+        useViewStore.setState({
           currentLevel: "L3",
           focusedSystemId: "web-app",
           focusedContainerId: "frontend",
           drillDown: fn(),
           goToRoot: fn(),
           setLevel: fn(),
-        }),
-        useSelectionStore: () => ({
+        });
+        useSelectionStore.setState({
           selectedNodeId: null,
           selectNode: fn(),
           activeFlow: null,
@@ -480,20 +484,16 @@ export const L3ComponentView: Story = {
           nextStep: fn(),
           prevStep: fn(),
           setFlowStep: fn(),
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           activeTab: "diagram",
           setActiveTab: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
+        });
+        useFeatureFlagsStore.setState({
           editMode: "view",
           setEditMode: fn(),
-          isEditMode: () => false,
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -514,7 +514,8 @@ export const L3ComponentView: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Shows the L3 (Component) view focused on the 'frontend' container within 'web-app', displaying its internal components.",
+        story:
+          "Shows the L3 (Component) view focused on the 'frontend' container within 'web-app', displaying its internal components.",
       },
     },
   },
@@ -525,7 +526,8 @@ export const WithNodeColors: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Demonstrates node color coding by element type: Person (pink), System (blue), Container (green), Component (yellow), Database (purple), Queue (orange).",
+        story:
+          "Demonstrates node color coding by element type: Person (pink), System (blue), Container (green), Component (yellow), Database (purple), Queue (orange).",
       },
     },
   },
@@ -535,21 +537,20 @@ export const WithAnimation: Story = {
   args: {},
   decorators: [
     (Story) => {
-
-      vi.doMock("../../../../../apps/designer/src/stores", () => ({
-        useArchitectureStore: () => ({
+      useEffect(() => {
+        useArchitectureStore.setState({
           likec4Model: mockLikec4Model,
-          updateArchitecture: fn(),
-        }),
-        useViewStore: () => ({
+          updateArchitecture: async (_updater) => {},
+        });
+        useViewStore.setState({
           currentLevel: "L1",
           focusedSystemId: null,
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
           setLevel: fn(),
-        }),
-        useSelectionStore: () => ({
+        });
+        useSelectionStore.setState({
           selectedNodeId: null,
           selectNode: fn(),
           activeFlow: mockLikec4Model.sruja?.flows?.[0] || null,
@@ -560,20 +561,16 @@ export const WithAnimation: Story = {
           nextStep: fn(),
           prevStep: fn(),
           setFlowStep: fn(),
-        }),
-        useUIStore: () => ({
+        });
+        useUIStore.setState({
           activeTab: "diagram",
           setActiveTab: fn(),
-        }),
-      }));
-
-      vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
-        useFeatureFlagsStore: () => ({
+        });
+        useFeatureFlagsStore.setState({
           editMode: "view",
           setEditMode: fn(),
-          isEditMode: () => false,
-        }),
-      }));
+        });
+      }, []);
 
       return (
         <div
@@ -594,9 +591,9 @@ export const WithAnimation: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Shows the canvas with an active flow animation. Animation controls appear at the bottom to control playback.",
+        story:
+          "Shows the canvas with an active flow animation. Animation controls appear at the bottom to control playback.",
       },
     },
   },
 };
-
