@@ -4,12 +4,22 @@
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
-    "./design-system": "./dist/design-system/index.js",
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./design-system": {
+      "import": "./dist/design-system/index.js",
+      "types": "./dist/design-system/index.d.ts"
+    },
     "./design-system/styles.css": "./src/design-system/styles.css",
-    "./components": "./dist/components/index.js"
+    "./components": {
+      "import": "./dist/components/index.js",
+      "types": "./dist/components/index.d.ts"
+    }
   },
   "scripts": {
     "build": "rimraf dist && tsc && npm run copy-css",
