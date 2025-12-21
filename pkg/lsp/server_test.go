@@ -3,6 +3,7 @@ package lsp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -81,7 +82,7 @@ func TestServer_Initialize(t *testing.T) {
 		RootURI:   rootURI,
 	}
 
-	result, err := srv.Initialize(nil, params)
+	result, err := srv.Initialize(context.TODO(), params)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -93,12 +94,4 @@ func TestServer_Initialize(t *testing.T) {
 	if result.Capabilities.TextDocumentSync == nil {
 		t.Fatal("expected TextDocumentSync capability")
 	}
-}
-
-func intPtr(i int) *int {
-	return &i
-}
-
-func strPtr(s string) *string {
-	return &s
 }

@@ -87,7 +87,8 @@ func (s *Server) publishDiagnostics(uri lsp.DocumentURI) error {
 		// This allows the LSP to continue functioning even if parser creation fails
 		return s.notifyDiagnostics(uri, []lsp.Diagnostic{})
 	}
-	program, diags, err := p.Parse(string(uri), doc.Text)
+	program, diags, parseErr := p.Parse(string(uri), doc.Text)
+	_ = parseErr // Ignore parse errors, we still want to show diagnostics
 
 	var lspDiagnostics []lsp.Diagnostic
 	if len(diags) > 0 {

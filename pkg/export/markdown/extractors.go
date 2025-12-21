@@ -315,27 +315,6 @@ func escapeQuotesForMermaid(s string) string {
 	return strings.ReplaceAll(s, "\"", "#quot;")
 }
 
-func formatLabelForMermaid(label, id, description, technology string) string {
-	main := label
-	if main == "" {
-		main = id
-	}
-
-	res := main
-	if technology != "" {
-		res += fmt.Sprintf("\n(%s)", technology)
-	}
-	if description != "" {
-		// Truncate description for Mermaid
-		desc := description
-		if len(desc) > 50 {
-			desc = desc[:47] + "..."
-		}
-		res += fmt.Sprintf("\n%s", desc)
-	}
-	return res
-}
-
 // extractTermsFromText extracts potential glossary terms (simplified implementation)
 func extractTermsFromText(text string, terms map[string]string) {
 	// This is a simplified implementation

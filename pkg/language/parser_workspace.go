@@ -115,7 +115,7 @@ func (p *Parser) resolveImports(ws *Workspace, prog *Program, filename string) e
 }
 
 // loadFromStdLibFS loads the standard library from the embedded filesystem.
-func (p *Parser) loadFromStdLibFS(ws *Workspace, importPath string) error {
+func (p *Parser) loadFromStdLibFS(ws *Workspace, _ string) error {
 	// stdlib files are core.sruja, styles.sruja
 	files := []string{"core.sruja", "styles.sruja"}
 	for _, f := range files {

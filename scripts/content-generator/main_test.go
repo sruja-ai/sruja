@@ -171,7 +171,7 @@ func TestCreateFromTemplateFallback(t *testing.T) {
 		t.Errorf("basic file not created")
 	}
 }
-func TestPrintUsage(t *testing.T) {
+func TestPrintUsage(_ *testing.T) {
 	printUsage()
 }
 func TestCommandLesson(t *testing.T) {

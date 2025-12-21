@@ -32,7 +32,7 @@ func (e *Exporter) writeSystems(sb *strings.Builder, arch interface{}, prog *lan
 		}
 
 		// Display properties if available (tags may be in properties)
-		if sys.Properties != nil && len(sys.Properties) > 0 {
+		if len(sys.Properties) > 0 {
 			sb.WriteString("**Properties:**\n\n")
 			for key, value := range sys.Properties {
 				fmt.Fprintf(sb, "- `%s`: %s\n", key, value)

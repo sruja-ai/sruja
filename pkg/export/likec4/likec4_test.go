@@ -273,9 +273,6 @@ func TestConvertComponent(t *testing.T) {
 	// Actually we should test the internal converter directly if possible
 }
 
-func intPtr(i int) *int       { return &i }
-func strPtr(s string) *string { return &s }
-
 func TestExporter_ScaleMetadata(t *testing.T) {
 	dsl := `model {
 		sys = system "System" {
