@@ -169,7 +169,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v2
         with:
-          app-id: ${{ vars.SRUJA_WEBSITE_DEPLOY_APP_ID }}
+          app-id: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_ID }}
           private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
           owner: sruja-ai
           repositories: prod-website
@@ -254,7 +254,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v2
         with:
-          app-id: ${{ vars.SRUJA_WEBSITE_DEPLOY_APP_ID }}
+          app-id: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_ID }}
           private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
           owner: sruja-ai
           repositories: prod-website
