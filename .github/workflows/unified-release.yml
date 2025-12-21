@@ -189,18 +189,27 @@ jobs:
           path: target
           persist-credentials: false
 
+      - name: Verify checkout succeeded
+        run: |
+          if [ ! -d "target/.git" ]; then
+            echo "Error: Checkout failed - target/.git directory not found"
+            echo "Repository: sruja-ai/prod-website"
+            echo "This may indicate the repository doesn't exist or the token lacks access"
+            exit 1
+          fi
+
       - name: Copy site contents
         run: rsync -a --delete _site/ target/
 
       - name: Configure git
+        working-directory: target
         run: |
-          cd target
           git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
           git config user.email "${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
 
       - name: Commit and push
+        working-directory: target
         run: |
-          cd target
           git add -A
           if git diff --cached --quiet; then 
             echo "No changes to deploy"
