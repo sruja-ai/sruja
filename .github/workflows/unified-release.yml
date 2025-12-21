@@ -1,5 +1,11 @@
 name: Unified Release
 
+# This workflow handles production deployments and releases:
+# - Triggers when release-please PR is merged (creates a release)
+# - Deploys website to production (prod-website repository)
+# - Publishes VS Code extension to marketplace
+# - Creates Go release artifacts
+
 on:
   push:
     tags:
