@@ -1,4 +1,7 @@
-name: Deploy Designer to GitHub Pages
+name: Deploy Designer to GitHub Pages (Staging)
+
+# This workflow deploys designer to staging when code is merged to main.
+# Production deployment happens via unified-release.yml when a release is published.
 
 on:
   push:
@@ -84,7 +87,7 @@ jobs:
           app-id: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_ID }}
           private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
           owner: sruja-ai
-          repositories: prod-website
+          repositories: staging-website
 
       - name: Get GitHub App User ID
         id: get-user-id
@@ -95,7 +98,7 @@ jobs:
       - name: Checkout target repo
         uses: actions/checkout@v6
         with:
-          repository: sruja-ai/prod-website
+          repository: sruja-ai/staging-website
           ref: main
           token: ${{ steps.app-token.outputs.token }}
           path: target
@@ -104,12 +107,12 @@ jobs:
         run: |
           if [ ! -d "target" ]; then
             echo "Error: Checkout failed - target directory not found"
-            echo "Repository: sruja-ai/prod-website"
+            echo "Repository: sruja-ai/staging-website"
             exit 1
           fi
           if [ ! -d "target/.git" ]; then
             echo "Error: Checkout failed - target/.git directory not found"
-            echo "Repository: sruja-ai/prod-website"
+            echo "Repository: sruja-ai/staging-website"
             echo "This may indicate the repository doesn't exist or the token lacks access"
             exit 1
           fi
@@ -117,7 +120,7 @@ jobs:
           cd target
           if ! git rev-parse --git-dir > /dev/null 2>&1; then
             echo "Error: target directory exists but is not a valid git repository"
-            echo "Repository: sruja-ai/prod-website"
+            echo "Repository: sruja-ai/staging-website"
             exit 1
           fi
           echo "✅ Checkout verified - git repository is valid"
@@ -142,7 +145,7 @@ jobs:
           if git diff --cached --quiet; then 
             echo "No changes to deploy"
           else 
-            COMMIT_MSG="Deploy designer app from main branch (commit ${{ github.sha }})"
+            COMMIT_MSG="Deploy staging designer app from main branch (commit ${{ github.sha }})"
             git commit -m "$COMMIT_MSG"
             git push origin HEAD:main
           fi
