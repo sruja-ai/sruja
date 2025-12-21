@@ -4,15 +4,9 @@ on:
   push:
     branches:
       - main
-      - dev
-      - staging
-      - prod
   pull_request:
     branches:
       - main
-      - dev
-      - staging
-      - prod
     types: [closed]
 
 permissions:
@@ -35,38 +29,22 @@ jobs:
       - name: Determine environment
         id: set-env
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event.pull_request.base_ref }}" == "main" ]]; then
-            echo "env=dev" >> $GITHUB_OUTPUT
-            echo "public_env=development" >> $GITHUB_OUTPUT
-            echo "site_url=https://dev.sruja.ai" >> $GITHUB_OUTPUT
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == "refs/heads/dev" ]] || [[ "${{ github.event.pull_request.base_ref }}" == "dev" ]]; then
-            echo "env=dev" >> $GITHUB_OUTPUT
-            echo "public_env=development" >> $GITHUB_OUTPUT
-            echo "site_url=https://dev.sruja.ai" >> $GITHUB_OUTPUT
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]] || [[ "${{ github.event.pull_request.base_ref }}" == "staging" ]]; then
-            echo "env=staging" >> $GITHUB_OUTPUT
-            echo "public_env=staging" >> $GITHUB_OUTPUT
-            echo "site_url=https://staging.sruja.ai" >> $GITHUB_OUTPUT
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == "refs/heads/prod" ]] || [[ "${{ github.event.pull_request.base_ref }}" == "prod" ]]; then
-            echo "env=prod" >> $GITHUB_OUTPUT
-            echo "public_env=production" >> $GITHUB_OUTPUT
-            echo "site_url=https://sruja.ai" >> $GITHUB_OUTPUT
+          # Single website deployment - always use production settings
+          echo "env=prod" >> $GITHUB_OUTPUT
+          echo "public_env=production" >> $GITHUB_OUTPUT
+          echo "site_url=https://sruja.ai" >> $GITHUB_OUTPUT
+          
+          # Only deploy on merge (closed PRs that were merged, or direct pushes to main)
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            if [[ "${{ github.event.pull_request.merged }}" == "true" ]] && [[ "${{ github.event.pull_request.base_ref }}" == "main" ]]; then
+              echo "should_deploy=true" >> $GITHUB_OUTPUT
+            else
+              echo "should_deploy=false" >> $GITHUB_OUTPUT
+            fi
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "should_deploy=true" >> $GITHUB_OUTPUT
           else
-            echo "env=unknown" >> $GITHUB_OUTPUT
-            echo "public_env=development" >> $GITHUB_OUTPUT
-            echo "site_url=" >> $GITHUB_OUTPUT
             echo "should_deploy=false" >> $GITHUB_OUTPUT
-          fi
-          
-          # Only deploy on merge (closed PRs that were merged, or direct pushes)
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            if [[ "${{ github.event.pull_request.merged }}" != "true" ]]; then
-             echo "should_deploy=false" >> $GITHUB_OUTPUT
-            fi
           fi
 
   build:
@@ -106,14 +84,7 @@ jobs:
 
       - name: Build Astro website
         working-directory: apps/website
-        run: |
-          if [[ "${{ needs.determine-environment.outputs.env }}" == "prod" ]]; then
-            npm run build:prod
-          elif [[ "${{ needs.determine-environment.outputs.env }}" == "staging" ]]; then
-            npm run build:staging
-          else
-            npm run build:dev
-          fi
+        run: npm run build:prod
         env:
           # Build scripts already set PUBLIC_ENV and SITE_URL, but we override SITE_URL
           # to match the deployment target
@@ -154,14 +125,8 @@ jobs:
       - name: Determine target repository
         id: repo
         run: |
-          ENV="${{ needs.determine-environment.outputs.env }}"
-          if [[ "$ENV" == "dev" ]]; then
-            echo "repo=sruja-ai/dev-website" >> $GITHUB_OUTPUT
-          elif [[ "$ENV" == "staging" ]]; then
-            echo "repo=sruja-ai/staging-website" >> $GITHUB_OUTPUT
-          elif [[ "$ENV" == "prod" ]]; then
-            echo "repo=sruja-ai/prod-website" >> $GITHUB_OUTPUT
-          fi
+          # Single website deployment - always use production repository
+          echo "repo=sruja-ai/prod-website" >> $GITHUB_OUTPUT
 
       - name: Create GitHub App token
         id: app-token
@@ -170,7 +135,7 @@ jobs:
           app-id: ${{ vars.SRUJA_WEBSITE_DEPLOY_APP_ID }}
           private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
           owner: sruja-ai
-          repositories: ${{ steps.repo.outputs.repo == 'sruja-ai/dev-website' && 'dev-website' || steps.repo.outputs.repo == 'sruja-ai/staging-website' && 'staging-website' || 'prod-website' }}
+          repositories: prod-website
 
       - name: Get GitHub App User ID
         id: get-user-id
