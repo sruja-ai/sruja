@@ -1,0 +1,115 @@
+name: Social Publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      title:
+        description: "Post title"
+        required: true
+        type: string
+      body:
+        description: "Post body"
+        required: false
+        type: string
+      url:
+        description: "Link to include"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  discussions: write
+
+concurrency:
+  group: social-publish-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      # Content from release or manual inputs
+      POST_TITLE: ${{ github.event_name == 'release' && (github.event.release.name || github.event.release.tag_name) || inputs.title }}
+      POST_BODY: ${{ github.event_name == 'release' && github.event.release.body || inputs.body }}
+      POST_URL: ${{ github.event_name == 'release' && github.event.release.html_url || inputs.url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish to Reddit
+        if: ${{ secrets.REDDIT_CLIENT_ID && secrets.REDDIT_CLIENT_SECRET && secrets.REDDIT_USERNAME && secrets.REDDIT_PASSWORD && secrets.REDDIT_SUBREDDIT }}
+        env:
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
+          REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
+          REDDIT_SUBREDDIT: ${{ secrets.REDDIT_SUBREDDIT }}
+          REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
+          POST_TITLE: ${{ env.POST_TITLE }}
+          POST_BODY: ${{ env.POST_BODY }}
+          POST_URL: ${{ env.POST_URL }}
+        run: npm run -w @sruja/social-publish reddit
+
+      - name: Publish to Reddit (refresh token)
+        if: ${{ secrets.REDDIT_CLIENT_ID && secrets.REDDIT_CLIENT_SECRET && secrets.REDDIT_REFRESH_TOKEN && secrets.REDDIT_SUBREDDIT }}
+        env:
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_REFRESH_TOKEN: ${{ secrets.REDDIT_REFRESH_TOKEN }}
+          REDDIT_SUBREDDIT: ${{ secrets.REDDIT_SUBREDDIT }}
+          REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
+          POST_TITLE: ${{ env.POST_TITLE }}
+          POST_BODY: ${{ env.POST_BODY }}
+          POST_URL: ${{ env.POST_URL }}
+        run: npm run -w @sruja/social-publish reddit
+
+      - name: Publish to LinkedIn
+        if: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+        env:
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          POST_TITLE: ${{ env.POST_TITLE }}
+          POST_BODY: ${{ env.POST_BODY }}
+          POST_URL: ${{ env.POST_URL }}
+        run: npm run -w @sruja/social-publish linkedin
+
+      - name: Publish to Mastodon
+        if: ${{ secrets.MASTODON_ACCESS_TOKEN && secrets.MASTODON_INSTANCE_URL }}
+        env:
+          MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
+          MASTODON_INSTANCE_URL: ${{ secrets.MASTODON_INSTANCE_URL }}
+          POST_TITLE: ${{ env.POST_TITLE }}
+          POST_BODY: ${{ env.POST_BODY }}
+          POST_URL: ${{ env.POST_URL }}
+        run: npm run -w @sruja/social-publish mastodon
+
+      - name: Publish to Bluesky
+        if: ${{ secrets.BLUESKY_IDENTIFIER && secrets.BLUESKY_PASSWORD }}
+        env:
+          BLUESKY_IDENTIFIER: ${{ secrets.BLUESKY_IDENTIFIER }}
+          BLUESKY_PASSWORD: ${{ secrets.BLUESKY_PASSWORD }}
+          POST_TITLE: ${{ env.POST_TITLE }}
+          POST_BODY: ${{ env.POST_BODY }}
+          POST_URL: ${{ env.POST_URL }}
+        run: npm run -w @sruja/social-publish bluesky
+
+      - name: Create GitHub Discussion
+        if: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_DISCUSSION_CATEGORY_ID: ${{ secrets.GITHUB_DISCUSSION_CATEGORY_ID }}
+          POST_TITLE: ${{ env.POST_TITLE }}
+          POST_BODY: ${{ env.POST_BODY }}
+          POST_URL: ${{ env.POST_URL }}
+        run: npm run -w @sruja/social-publish github-discussion

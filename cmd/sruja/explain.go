@@ -5,19 +5,17 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/sruja-ai/sruja/pkg/dx"
-	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-func runExplain(stdout, stderr io.Writer) int {
+func runExplain(args []string, stdout, stderr io.Writer) int {
 	explainCmd := flag.NewFlagSet("explain", flag.ContinueOnError)
 	explainCmd.SetOutput(stderr)
 	explainJSON := explainCmd.Bool("json", false, "output as JSON")
 	explainFile := explainCmd.String("file", "", "architecture file path")
 
-	if err := explainCmd.Parse(os.Args[2:]); err != nil {
+	if err := explainCmd.Parse(args); err != nil {
 		_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error parsing explain flags: %v", err)))
 		return 1
 	}
@@ -29,42 +27,15 @@ func runExplain(stdout, stderr io.Writer) int {
 	}
 
 	elementID := explainCmd.Arg(0)
-	filePath := *explainFile
-
-	if filePath == "" {
-		// Try to find .sruja files in current directory
-		files, err := os.ReadDir(".")
-		if err == nil {
-			for _, file := range files {
-				if !file.IsDir() && len(file.Name()) > 6 && file.Name()[len(file.Name())-6:] == ".sruja" {
-					filePath = file.Name()
-					break
-				}
-			}
-		}
-	}
+	filePath := findSrujaFile(*explainFile)
 
 	if filePath == "" {
 		_, _ = fmt.Fprintln(stderr, "Error: no architecture file found. Use --file to specify.")
 		return 1
 	}
 
-	// Parse the architecture file
-	content, err := os.ReadFile(filePath)
+	program, err := parseArchitectureFile(filePath, stderr)
 	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "Error reading file: %v\n", err)
-		return 1
-	}
-
-	p, err := language.NewParser()
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "Error creating parser: %v\n", err)
-		return 1
-	}
-
-	program, err := p.Parse(filePath, string(content))
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "Parser Error: %v\n", err)
 		return 1
 	}
 

@@ -1,0 +1,107 @@
+name: Hotfix Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      patchVersion:
+        description: 'Patch version (e.g., v0.1.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: hotfix-${{ inputs.patchVersion }}
+  cancel-in-progress: true
+
+jobs:
+  create-hotfix-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.4'
+
+      - name: Verify hotfix branch
+        run: |
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          if [[ ! "$BRANCH_NAME" =~ ^hotfix/ ]]; then
+            echo "❌ Error: This workflow must be run from a 'hotfix/...' branch. Current branch: $BRANCH_NAME"
+            exit 1
+          fi
+
+      - name: Pre-build checks
+        run: |
+          go build -v ./...
+          go test -v ./pkg/... ./cmd/...
+
+      - name: Normalize version tag
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.patchVersion }}
+        run: |
+          VERSION="$INPUT_VERSION"
+          # Ensure 'v' prefix
+          if [[ ! "$VERSION" =~ ^v ]]; then
+            VERSION="v${VERSION}"
+          fi
+          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
+          echo "📦 Hotfix version: ${VERSION}"
+
+      - name: Create and push tag
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists"
+          else
+            git tag -a "$TAG" -m "Hotfix $TAG"
+            git push origin "$TAG"
+            echo "✅ Created and pushed tag: $TAG"
+          fi
+
+      - name: Cleanup on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          gh release delete "$TAG" -y || true
+          git tag -d "$TAG" || true
+          git push --delete origin "$TAG" || true
+
+  # Unified release will handle all deployments when tag is pushed
+  # This job just creates the tag, unified-release does the rest
+  merge-back:
+    runs-on: ubuntu-latest
+    needs: create-hotfix-tag
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Merge hotfix into main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PATCH_VERSION: ${{ inputs.patchVersion }}
+        run: |
+          # Extract version without 'v' prefix for branch name
+          VERSION="${PATCH_VERSION#v}"
+          TAG="${{ needs.create-hotfix-tag.outputs.tag }}"
+          gh pr create \
+            --base main \
+            --head hotfix/$VERSION \
+            --title "Merge hotfix $TAG to main" \
+            --body "Automatic merge of hotfix $TAG into main"

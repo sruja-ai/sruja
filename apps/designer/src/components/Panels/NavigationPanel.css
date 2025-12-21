@@ -1,0 +1,31 @@
+/* =====================================================
+   NAVIGATION PANEL - Main Stylesheet Entry Point
+   Imports modular CSS files
+   ===================================================== */
+
+/* Base panel styles */
+@import "./styles/nav-base.css";
+
+/* Navigation Panel Header */
+@import "./styles/nav-header.css";
+
+/* Level Buttons - Segmented Control */
+@import "./styles/nav-level-buttons.css";
+
+/* Navigation Tree */
+@import "./styles/nav-tree.css";
+
+/* Tree Row Layout */
+@import "./styles/nav-tree-row.css";
+
+/* Nested Tree Indentation */
+@import "./styles/nav-tree-nested.css";
+
+/* Add + Icon for Scenarios/Flows */
+@import "./styles/nav-add-icon.css";
+
+/* Add Actions */
+@import "./styles/nav-add-actions.css";
+
+/* Responsive Design */
+@import "./styles/nav-responsive.css";

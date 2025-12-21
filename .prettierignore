@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+.next/
+.turbo/
+coverage/
+
+# Generated files
+*.min.js
+*.min.css
+*.wasm
+*.wasm.gz
+*.wasm.br
+
+# Go template files
+pkg/export/html/*.html
+
+# Documentation
+CHANGELOG.md
+
+# Lock files
+go.sum
+
+
+# Go template files - autoformatter breaks {{ }} syntax
+pkg/export/html/template*.html

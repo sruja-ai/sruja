@@ -1,0 +1,37 @@
+/* =====================================================
+   OVERVIEW PANEL - Main Stylesheet Entry Point
+   Imports modular CSS files
+   ===================================================== */
+
+/* Base panel styles */
+@import "./styles/overview-base.css";
+
+/* Hero Section */
+@import "./styles/overview-hero.css";
+
+/* Quick Stats */
+@import "./styles/overview-stats.css";
+
+/* Metadata Cards */
+@import "./styles/overview-metadata.css";
+
+/* Goals Section */
+@import "./styles/overview-goals.css";
+
+/* Risks Section */
+@import "./styles/overview-risks.css";
+
+/* Context Section */
+@import "./styles/overview-context.css";
+
+/* Grid layout */
+@import "./styles/overview-grid.css";
+
+/* Compact vertical layout */
+@import "./styles/overview-compact.css";
+
+/* Legacy styles */
+@import "./styles/overview-legacy.css";
+
+/* Action Buttons */
+@import "./styles/overview-actions.css";

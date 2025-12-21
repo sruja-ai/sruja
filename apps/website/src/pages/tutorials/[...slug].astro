@@ -1,0 +1,42 @@
+---
+// apps/website/src/pages/tutorials/[...slug].astro
+import { getCollection, type CollectionEntry } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import ContentDetail from '@/features/content/components/ContentDetail.astro';
+import ContentNavigation from '@/features/content/components/ContentNavigation.astro';
+import { generateContentPaths } from '@/features/content/utils/paths';
+
+export async function getStaticPaths() {
+  const tutorials = await getCollection('tutorials');
+  const paths = generateContentPaths(tutorials, '/tutorials', 'weight');
+  
+  return paths.map(path => ({
+    params: path.params,
+    props: {
+      tutorial: path.props.entry,
+      previous: path.props.previous,
+      next: path.props.next,
+    },
+  }));
+}
+
+type Props = {
+  tutorial: CollectionEntry<'tutorials'>;
+  previous?: { title: string; href: string };
+  next?: { title: string; href: string };
+};
+
+const { tutorial, previous, next } = Astro.props as Props;
+const { Content } = await tutorial.render();
+---
+
+<Layout title={tutorial.data.title} description={tutorial.data.summary || tutorial.data.description}>
+  <ContentDetail
+    title={tutorial.data.title}
+    summary={tutorial.data.summary}
+    tags={tutorial.data.tags}
+    Content={Content}
+    standalone={true}
+  />
+  <ContentNavigation previous={previous || undefined} next={next || undefined} basePath="/tutorials" />
+</Layout>

@@ -1,5 +1,4 @@
 // pkg/language/printer.go
-// Package language provides DSL parsing and AST structures.
 package language
 
 import (
@@ -17,400 +16,242 @@ func NewPrinter() *Printer {
 	return &Printer{IndentLevel: 0}
 }
 
-// indent returns the indentation string for the current indent level.
+// indentCache holds pre-computed indentation strings
+var indentCache = make([]string, 20)
+
+func init() {
+	for i := range indentCache {
+		indentCache[i] = strings.Repeat("  ", i)
+	}
+}
+
 func (p *Printer) indent() string {
+	if p.IndentLevel < len(indentCache) {
+		return indentCache[p.IndentLevel]
+	}
 	return strings.Repeat("  ", p.IndentLevel)
 }
 
 // Print prints a Program back to DSL format.
 func (p *Printer) Print(program *Program) string {
-	if program == nil || program.Architecture == nil {
+	if program == nil || program.Model == nil {
 		return ""
 	}
+	sb := &strings.Builder{}
 
-	var sb strings.Builder
-	p.printArchitecture(&sb, program.Architecture)
+	// Model block
+	sb.WriteString("model {\n")
+	p.IndentLevel++
+	for _, item := range program.Model.Items {
+		p.PrintModelItem(sb, item)
+	}
+	p.IndentLevel--
+	sb.WriteString("}\n")
+
+	// Views block
+	if program.Views != nil {
+		p.PrintViews(sb, program.Views)
+	}
+
 	return sb.String()
 }
 
-// printArchitecture prints an architecture node.
-func (p *Printer) printArchitecture(sb *strings.Builder, arch *Architecture) {
-	indent := p.indent()
-	sb.WriteString(indent + "architecture \"" + arch.Name + "\" {\n")
-	p.IndentLevel++
-
-	// Print imports
-	for _, imp := range arch.Imports {
-		p.printImport(sb, imp)
+func (p *Printer) PrintModelItem(sb *strings.Builder, item ModelItem) {
+	if item.Import != nil {
+		p.PrintImport(sb, item.Import)
 	}
-
-	// Print systems
-	for _, sys := range arch.Systems {
-		p.printSystem(sb, sys)
+	if item.Requirement != nil {
+		p.PrintRequirement(sb, item.Requirement)
 	}
-
-	// Print persons
-	for _, person := range arch.Persons {
-		p.printPerson(sb, person)
+	if item.ADR != nil {
+		p.PrintADR(sb, item.ADR)
 	}
-
-	// Print relations
-	for _, rel := range arch.Relations {
-		p.printRelation(sb, rel)
+	if item.Relation != nil {
+		p.PrintRelation(sb, item.Relation)
 	}
-
-	// Print requirements
-	for _, req := range arch.Requirements {
-		p.printRequirement(sb, req)
+	if item.ElementDef != nil {
+		p.PrintElementDef(sb, item.ElementDef)
 	}
-
-	// Print ADRs
-	for _, adr := range arch.ADRs {
-		p.printADR(sb, adr)
+	if item.Scenario != nil {
+		p.PrintScenario(sb, item.Scenario)
 	}
-
-	// Print shared artifacts
-	for _, sa := range arch.SharedArtifacts {
-		p.printSharedArtifact(sb, sa)
-	}
-
-	// Print libraries
-	for _, lib := range arch.Libraries {
-		p.printLibrary(sb, lib)
-	}
-
-	// Print architecture-level metadata
-	if len(arch.Metadata) > 0 {
-		p.printMetadata(sb, arch.Metadata)
-	}
-
-	p.IndentLevel--
-	indent = p.indent()
-	sb.WriteString(indent + "}\n")
 }
 
-// printImport prints an import statement.
-func (p *Printer) printImport(sb *strings.Builder, imp *ImportSpec) {
+func (p *Printer) PrintElementDef(sb *strings.Builder, elem *LikeC4ElementDef) {
 	indent := p.indent()
-	fmt.Fprintf(sb, "%simport %q", indent, imp.Path)
-	if imp.Alias != nil {
-		fmt.Fprintf(sb, " as %s", *imp.Alias)
-	}
-	sb.WriteString("\n")
-}
+	id := elem.GetID()
+	kind := elem.GetKind()
 
-// printSystem prints a system node.
-func (p *Printer) printSystem(sb *strings.Builder, sys *System) {
-	indent := p.indent()
-	fmt.Fprintf(sb, "%ssystem %s %q", indent, sys.ID, sys.Label)
-
-	if sys.Description != nil && *sys.Description != "" {
-		fmt.Fprintf(sb, " %q", *sys.Description)
+	if elem.Assignment != nil {
+		fmt.Fprintf(sb, "%s%s = %s", indent, elem.Assignment.Name, kind)
+	} else {
+		fmt.Fprintf(sb, "%s%s", indent, kind)
+		if id != "" {
+			fmt.Fprintf(sb, " %s", id)
+		}
 	}
 
-	if len(sys.Items) > 0 || len(sys.Metadata) > 0 {
+	title := elem.GetTitle()
+	if title != nil {
+		fmt.Fprintf(sb, " %q", *title)
+	}
+
+	body := elem.GetBody()
+	if body != nil {
 		sb.WriteString(" {\n")
 		p.IndentLevel++
-
-		for _, item := range sys.Items {
-			if item.Container != nil {
-				p.printContainer(sb, item.Container)
-			}
-			if item.DataStore != nil {
-				p.printDataStore(sb, item.DataStore)
-			}
-			if item.Queue != nil {
-				p.printQueue(sb, item.Queue)
-			}
-			if item.Person != nil {
-				p.printPerson(sb, item.Person)
-			}
-			if item.Relation != nil {
-				p.printRelation(sb, item.Relation)
-			}
-			if item.Requirement != nil {
-				p.printRequirement(sb, item.Requirement)
-			}
-			if item.ADR != nil {
-				p.printADR(sb, item.ADR)
-			}
-			if item.Metadata != nil {
-				p.printMetadata(sb, item.Metadata.Entries)
-			}
+		for _, item := range body.Items {
+			p.PrintBodyItem(sb, item)
 		}
-
-		if len(sys.Metadata) > 0 {
-			p.printMetadata(sb, sys.Metadata)
-		}
-
 		p.IndentLevel--
-		indent = p.indent()
-		sb.WriteString(indent + "}\n")
+		sb.WriteString(p.indent() + "}\n")
 	} else {
 		sb.WriteString("\n")
 	}
 }
 
-// printContainer prints a container node.
-func (p *Printer) printContainer(sb *strings.Builder, cont *Container) {
+func (p *Printer) PrintBodyItem(sb *strings.Builder, item *LikeC4BodyItem) {
 	indent := p.indent()
-	fmt.Fprintf(sb, "%scontainer %s %q", indent, cont.ID, cont.Label)
-
-	if cont.Description != nil && *cont.Description != "" {
-		fmt.Fprintf(sb, " %q", *cont.Description)
+	if item.Description != nil {
+		fmt.Fprintf(sb, "%sdescription %q\n", indent, *item.Description)
 	}
-
-	if len(cont.Items) > 0 || len(cont.Metadata) > 0 {
-		sb.WriteString(" {\n")
-		p.IndentLevel++
-
-		for _, item := range cont.Items {
-			if item.Technology != nil {
-				indent = p.indent()
-				fmt.Fprintf(sb, "%stechnology %q\n", indent, *item.Technology)
-			}
-			if len(item.Tags) > 0 {
-				indent = p.indent()
-				fmt.Fprintf(sb, "%stags [", indent)
-				for i, tag := range item.Tags {
-					if i > 0 {
-						sb.WriteString(", ")
-					}
-					fmt.Fprintf(sb, "%q", tag)
-				}
-				sb.WriteString("]\n")
-			}
-			if item.Version != nil {
-				indent = p.indent()
-				fmt.Fprintf(sb, "%sversion %q\n", indent, *item.Version)
-			}
-			if item.Component != nil {
-				p.printComponent(sb, item.Component)
-			}
-			if item.DataStore != nil {
-				p.printDataStore(sb, item.DataStore)
-			}
-			if item.Queue != nil {
-				p.printQueue(sb, item.Queue)
-			}
-			if item.Relation != nil {
-				p.printRelation(sb, item.Relation)
-			}
-			if item.Requirement != nil {
-				p.printRequirement(sb, item.Requirement)
-			}
-			if item.ADR != nil {
-				p.printADR(sb, item.ADR)
-			}
-			if item.Metadata != nil {
-				p.printMetadata(sb, item.Metadata.Entries)
-			}
-		}
-
-		if len(cont.Metadata) > 0 {
-			p.printMetadata(sb, cont.Metadata)
-		}
-
-		p.IndentLevel--
-		indent = p.indent()
-		sb.WriteString(indent + "}\n")
-	} else {
-		sb.WriteString("\n")
+	if item.Technology != nil {
+		fmt.Fprintf(sb, "%stechnology %q\n", indent, *item.Technology)
+	}
+	if item.Element != nil {
+		p.PrintElementDef(sb, item.Element)
+	}
+	if item.Relation != nil {
+		p.PrintRelation(sb, item.Relation)
+	}
+	if item.Metadata != nil {
+		p.PrintMetadataBlock(sb, item.Metadata)
+	}
+	if item.Scale != nil {
+		p.PrintScale(sb, item.Scale)
+	}
+	if item.SLO != nil {
+		p.PrintSLO(sb, item.SLO)
+	}
+	if item.Properties != nil {
+		p.PrintProperties(sb, item.Properties)
 	}
 }
 
-// printComponent prints a component node.
-func (p *Printer) printComponent(sb *strings.Builder, comp *Component) {
-	indent := p.indent()
-	fmt.Fprintf(sb, "%scomponent %s %q", indent, comp.ID, comp.Label)
-
-	if comp.Description != nil && *comp.Description != "" {
-		fmt.Fprintf(sb, " %q", *comp.Description)
-	}
-
-	if comp.Technology != nil || len(comp.Items) > 0 || len(comp.Metadata) > 0 {
-		sb.WriteString(" {\n")
-		p.IndentLevel++
-
-		if comp.Technology != nil {
-			indent = p.indent()
-			fmt.Fprintf(sb, "%stechnology %q\n", indent, *comp.Technology)
-		}
-
-		for _, item := range comp.Items {
-			if item.Requirement != nil {
-				p.printRequirement(sb, item.Requirement)
-			}
-			if item.ADR != nil {
-				p.printADR(sb, item.ADR)
-			}
-			if item.Relation != nil {
-				p.printRelation(sb, item.Relation)
-			}
-			if item.Metadata != nil {
-				p.printMetadata(sb, item.Metadata.Entries)
-			}
-		}
-
-		if len(comp.Metadata) > 0 {
-			p.printMetadata(sb, comp.Metadata)
-		}
-
-		p.IndentLevel--
-		indent = p.indent()
-		sb.WriteString(indent + "}\n")
-	} else {
-		sb.WriteString("\n")
-	}
-}
-
-// printDataStore prints a datastore node.
-func (p *Printer) printDataStore(sb *strings.Builder, ds *DataStore) {
-	indent := p.indent()
-	fmt.Fprintf(sb, "%sdatastore %s %q", indent, ds.ID, ds.Label)
-	if ds.Description != nil && *ds.Description != "" {
-		fmt.Fprintf(sb, " %q", *ds.Description)
-	}
-	if len(ds.Metadata) > 0 {
-		sb.WriteString(" {\n")
-		p.IndentLevel++
-		p.printMetadata(sb, ds.Metadata)
-		p.IndentLevel--
-		indent = p.indent()
-		sb.WriteString(indent + "}\n")
-	} else {
-		sb.WriteString("\n")
-	}
-}
-
-// printQueue prints a queue node.
-func (p *Printer) printQueue(sb *strings.Builder, q *Queue) {
-	indent := p.indent()
-	fmt.Fprintf(sb, "%squeue %s %q", indent, q.ID, q.Label)
-	if q.Description != nil && *q.Description != "" {
-		fmt.Fprintf(sb, " %q", *q.Description)
-	}
-	if len(q.Metadata) > 0 {
-		sb.WriteString(" {\n")
-		p.IndentLevel++
-		p.printMetadata(sb, q.Metadata)
-		p.IndentLevel--
-		indent = p.indent()
-		sb.WriteString(indent + "}\n")
-	} else {
-		sb.WriteString("\n")
-	}
-}
-
-// printPerson prints a person node.
-func (p *Printer) printPerson(sb *strings.Builder, person *Person) {
-	indent := p.indent()
-	fmt.Fprintf(sb, "%sperson %s %q", indent, person.ID, person.Label)
-	if len(person.Metadata) > 0 {
-		sb.WriteString(" {\n")
-		p.IndentLevel++
-		p.printMetadata(sb, person.Metadata)
-		p.IndentLevel--
-		indent = p.indent()
-		sb.WriteString(indent + "}\n")
-	} else {
-		sb.WriteString("\n")
-	}
-}
-
-// printRelation prints a relation node.
-func (p *Printer) printRelation(sb *strings.Builder, rel *Relation) {
-	indent := p.indent()
-	fmt.Fprintf(sb, "%s%s -> %s", indent, rel.From, rel.To)
-	if rel.Verb != nil {
-		fmt.Fprintf(sb, " %s", *rel.Verb)
-	}
-	if rel.Label != nil && *rel.Label != "" {
+func (p *Printer) PrintRelation(sb *strings.Builder, rel *Relation) {
+	fmt.Fprintf(sb, "%s%s %s %s", p.indent(), rel.From, rel.Arrow, rel.To)
+	if rel.Label != nil {
 		fmt.Fprintf(sb, " %q", *rel.Label)
 	}
 	sb.WriteString("\n")
 }
 
-// printRequirement prints a requirement node.
-func (p *Printer) printRequirement(sb *strings.Builder, req *Requirement) {
-	indent := p.indent()
-	fmt.Fprintf(sb, "%srequirement %s %s %q\n", indent, req.ID, req.Type, req.Description)
-}
-
-// printADR prints an ADR node.
-func (p *Printer) printADR(sb *strings.Builder, adr *ADR) {
-	indent := p.indent()
-	if adr.Title != nil {
-		fmt.Fprintf(sb, "%sadr %s %q", indent, adr.ID, *adr.Title)
-	} else {
-		fmt.Fprintf(sb, "%sadr %s", indent, adr.ID)
-	}
-
-	if adr.Body != nil {
-		sb.WriteString(" {\n")
-		p.IndentLevel++
-		indent = p.indent()
-
-		if adr.Body.Status != nil {
-			fmt.Fprintf(sb, "%sstatus %q\n", indent, *adr.Body.Status)
-		}
-		if adr.Body.Context != nil {
-			fmt.Fprintf(sb, "%scontext %q\n", indent, *adr.Body.Context)
-		}
-		if adr.Body.Decision != nil {
-			fmt.Fprintf(sb, "%sdecision %q\n", indent, *adr.Body.Decision)
-		}
-		if adr.Body.Consequences != nil {
-			fmt.Fprintf(sb, "%sconsequences %q\n", indent, *adr.Body.Consequences)
-		}
-
-		p.IndentLevel--
-		indent = p.indent()
-		sb.WriteString(indent + "}\n")
-	} else {
-		sb.WriteString("\n")
-	}
-}
-
-// printSharedArtifact prints a shared artifact node.
-func (p *Printer) printSharedArtifact(sb *strings.Builder, sa *SharedArtifact) {
-	indent := p.indent()
-	fmt.Fprintf(sb, "%ssharedArtifact %s %q", indent, sa.ID, sa.Label)
-	if sa.Version != nil {
-		fmt.Fprintf(sb, " version %q", *sa.Version)
-	}
-	if sa.Owner != nil {
-		fmt.Fprintf(sb, " owner %q", *sa.Owner)
-	}
-	sb.WriteString("\n")
-}
-
-// printLibrary prints a library node.
-func (p *Printer) printLibrary(sb *strings.Builder, lib *Library) {
-	indent := p.indent()
-	fmt.Fprintf(sb, "%slibrary %s %q", indent, lib.ID, lib.Label)
-	if lib.Version != nil {
-		fmt.Fprintf(sb, " version %q", *lib.Version)
-	}
-	if lib.Owner != nil {
-		fmt.Fprintf(sb, " owner %q", *lib.Owner)
-	}
-	sb.WriteString("\n")
-}
-
-// printMetadata prints a metadata block.
-func (p *Printer) printMetadata(sb *strings.Builder, entries []*MetaEntry) {
-	if len(entries) == 0 {
-		return
-	}
-	indent := p.indent()
-	sb.WriteString(indent + "metadata {\n")
+func (p *Printer) PrintViews(sb *strings.Builder, views *LikeC4ViewsBlock) {
+	sb.WriteString("\nviews {\n")
 	p.IndentLevel++
-	for _, entry := range entries {
-		indent = p.indent()
-		fmt.Fprintf(sb, "%s%s: %q\n", indent, entry.Key, entry.Value)
+	for _, item := range views.Items {
+		if item.View != nil {
+			p.PrintViewDef(sb, item.View)
+		}
+		if item.Styles != nil {
+			p.PrintStyles(sb, item.Styles)
+		}
 	}
 	p.IndentLevel--
-	indent = p.indent()
+	sb.WriteString("}\n")
+}
+
+func (p *Printer) PrintViewDef(sb *strings.Builder, v *LikeC4ViewDef) {
+	indent := p.indent()
+	fmt.Fprintf(sb, "%sview", indent)
+	if v.Name != nil {
+		fmt.Fprintf(sb, " %s", *v.Name)
+	}
+	if v.Of != nil {
+		fmt.Fprintf(sb, " of %s", v.Of.String())
+	}
+	sb.WriteString(" {\n")
+	p.IndentLevel++
+	if v.Title != nil {
+		fmt.Fprintf(sb, "%stitle %q\n", p.indent(), *v.Title)
+	}
+	if v.Body != nil {
+		for _, item := range v.Body.Items {
+			if item.Title != nil {
+				fmt.Fprintf(sb, "%stitle %q\n", p.indent(), *item.Title)
+			}
+			if item.Include != nil && len(item.Include.Expressions) > 0 {
+				exprs := make([]string, len(item.Include.Expressions))
+				for i, expr := range item.Include.Expressions {
+					exprs[i] = expr.String()
+				}
+				fmt.Fprintf(sb, "%sinclude %s\n", p.indent(), strings.Join(exprs, ", "))
+			}
+			if item.Exclude != nil && len(item.Exclude.Expressions) > 0 {
+				exprs := make([]string, len(item.Exclude.Expressions))
+				for i, expr := range item.Exclude.Expressions {
+					exprs[i] = expr.String()
+				}
+				fmt.Fprintf(sb, "%sexclude %s\n", p.indent(), strings.Join(exprs, ", "))
+			}
+		}
+	}
+	p.IndentLevel--
 	sb.WriteString(indent + "}\n")
+}
+
+func (p *Printer) PrintRequirement(sb *strings.Builder, req *Requirement) {
+	fmt.Fprintf(sb, "%srequirement %s {\n", p.indent(), req.ID)
+	// Body printing simplified for now
+	sb.WriteString(p.indent() + "}\n")
+}
+
+func (p *Printer) PrintADR(sb *strings.Builder, adr *ADR) {
+	fmt.Fprintf(sb, "%sadr %s {\n", p.indent(), adr.ID)
+	// Body printing simplified for now
+	sb.WriteString(p.indent() + "}\n")
+}
+
+func (p *Printer) PrintImport(sb *strings.Builder, imp *ImportStatement) {
+	indent := p.indent()
+	sb.WriteString(indent)
+	sb.WriteString("import { ")
+	for i, elem := range imp.Elements {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(elem)
+	}
+	sb.WriteString(" } from ")
+	sb.WriteString(fmt.Sprintf("%q\n", imp.From))
+}
+
+func (p *Printer) PrintScenario(sb *strings.Builder, s *Scenario) {
+	fmt.Fprintf(sb, "%sscenario %s {\n", p.indent(), s.ID)
+	sb.WriteString(p.indent() + "}\n")
+}
+
+func (p *Printer) PrintScale(sb *strings.Builder, _ *ScaleBlock) {
+	fmt.Fprintf(sb, "%sscale {\n", p.indent())
+	sb.WriteString(p.indent() + "}\n")
+}
+
+func (p *Printer) PrintSLO(sb *strings.Builder, _ *SLOBlock) {
+	fmt.Fprintf(sb, "%sslo {\n", p.indent())
+	sb.WriteString(p.indent() + "}\n")
+}
+
+func (p *Printer) PrintProperties(sb *strings.Builder, _ *PropertiesBlock) {
+	fmt.Fprintf(sb, "%sproperties {\n", p.indent())
+	sb.WriteString(p.indent() + "}\n")
+}
+
+func (p *Printer) PrintStyles(sb *strings.Builder, s *StyleDecl) {
+	fmt.Fprintf(sb, "%s%s {\n", p.indent(), s.Keyword)
+	sb.WriteString(p.indent() + "}\n")
+}
+
+func (p *Printer) PrintMetadataBlock(sb *strings.Builder, _ *MetadataBlock) {
+	fmt.Fprintf(sb, "%smetadata {\n", p.indent())
+	sb.WriteString(p.indent() + "}\n")
 }

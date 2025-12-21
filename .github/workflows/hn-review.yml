@@ -1,0 +1,88 @@
+name: Prepare HN Post
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g., v1.3.0)'
+        required: true
+      release_name:
+        description: 'Release name'
+        required: false
+      release_url:
+        description: 'Release URL'
+        required: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set release variables
+        id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+          INPUT_RELEASE_NAME: ${{ github.event.inputs.release_name }}
+          INPUT_RELEASE_URL: ${{ github.event.inputs.release_url }}
+          RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_HTML_URL: ${{ github.event.release.html_url }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            RELEASE_TAG="$INPUT_RELEASE_TAG"
+            RELEASE_NAME="$INPUT_RELEASE_NAME"
+            RELEASE_URL="$INPUT_RELEASE_URL"
+          else
+            RELEASE_TAG="$RELEASE_TAG_NAME"
+            RELEASE_NAME="$RELEASE_NAME"
+            RELEASE_URL="$RELEASE_HTML_URL"
+          fi
+          
+          # Default release name to tag if not provided
+          if [ -z "$RELEASE_NAME" ]; then
+            RELEASE_NAME="$RELEASE_TAG"
+          fi
+          
+          # Default release URL if not provided
+          if [ -z "$RELEASE_URL" ]; then
+            RELEASE_URL="https://github.com/$REPOSITORY/releases/tag/${RELEASE_TAG}"
+          fi
+          
+          # Build HN submit URL
+          HN_SUBMIT_URL="https://news.ycombinator.com/submitlink?u=${RELEASE_URL}&t=${RELEASE_NAME}"
+          
+          echo "release_tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+          echo "release_name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
+          echo "release_url=${RELEASE_URL}" >> $GITHUB_OUTPUT
+          echo "hn_submit_url=${HN_SUBMIT_URL}" >> $GITHUB_OUTPUT
+
+      - name: Create template file
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
+          RELEASE_NAME: ${{ steps.release.outputs.release_name }}
+          RELEASE_URL: ${{ steps.release.outputs.release_url }}
+          HN_SUBMIT_URL: ${{ steps.release.outputs.hn_submit_url }}
+        run: |
+          sed -e "s|{{ release_tag }}|${RELEASE_TAG}|g" \
+              -e "s|{{ release_name }}|${RELEASE_NAME}|g" \
+              -e "s|{{ release_url }}|${RELEASE_URL}|g" \
+              -e "s|{{ hn_submit_url }}|${HN_SUBMIT_URL}|g" \
+              .github/hn_template.md > /tmp/hn_issue.md
+
+      - name: Create Issue
+        uses: peter-evans/create-issue-from-file@e8ef132d6df98ed982188e460ebb3b5d4ef3a9cd # v5
+        with:
+          title: "Ready to post release ${{ steps.release.outputs.release_tag }} to Hacker News?"
+          content-filepath: /tmp/hn_issue.md
+          labels: hn,release
+

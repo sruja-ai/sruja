@@ -1,0 +1,94 @@
+/* apps/website/src/features/content/components/TableOfContents.css */
+.toc {
+  padding: 1.5rem;
+  background: var(--color-surface, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 0.5rem;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+
+.toc-header {
+  margin-bottom: 1rem;
+}
+
+.toc-header h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary, #64748b);
+  margin: 0;
+  transition: color 0.2s;
+}
+
+
+.toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.toc-item {
+  margin: 0;
+}
+
+.toc-link {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  color: var(--color-text-secondary, #475569);
+  text-decoration: none;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  border-radius: 0.375rem;
+  transition: all 0.2s;
+}
+
+.toc-link:hover {
+  background: var(--color-background, #ffffff);
+  color: var(--color-text-primary, #0f172a);
+}
+
+
+.toc-item.active .toc-link {
+  background: var(--color-primary, #3b82f6);
+  color: #ffffff;
+  font-weight: 500;
+}
+
+/* Dark mode handled by design-system variables */
+
+.toc-level-2 {
+  padding-left: 0;
+}
+
+.toc-level-3 {
+  padding-left: 1rem;
+}
+
+.toc-level-4 {
+  padding-left: 2rem;
+}
+
+/* Scrollbar styling */
+.toc-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.toc-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.toc-sidebar::-webkit-scrollbar-thumb {
+  background: var(--color-border, #e2e8f0);
+  border-radius: 3px;
+}
+
+/* Dark mode handled by design-system variables */
+
+.toc-sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary, #94a3b8);
+}

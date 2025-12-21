@@ -1,0 +1,28 @@
+{
+  "ignorePatterns": [
+    {
+      "pattern": "^/docs/"
+    },
+    {
+      "pattern": "^/tutorials/"
+    },
+    {
+      "pattern": "^/courses/"
+    },
+    {
+      "pattern": "^/quizzes/"
+    },
+    {
+      "pattern": "^/challenges/"
+    },
+    {
+      "pattern": "^/examples/"
+    },
+    {
+      "pattern": "^/studio/"
+    },
+    {
+      "pattern": "^/investors/"
+    }
+  ]
+}

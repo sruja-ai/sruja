@@ -1,0 +1,21 @@
+---
+// apps/website/src/pages/investors/index.astro
+import { getCollection } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import ContentPage from '@/features/content/components/ContentPage.astro';
+import ContentList from '@/features/content/components/ContentList.astro';
+import { sortByWeight } from '@/features/content/utils/sorting';
+import { transformToContentListItems } from '@/features/content/utils/transform';
+
+const investors = await getCollection('investors');
+const sortedInvestors = sortByWeight(investors);
+const items = transformToContentListItems(sortedInvestors, '/investors', {
+  linkText: 'Read More →',
+});
+---
+
+<Layout title="Investors" description="Information for investors about Sruja's market opportunity, solution approach, and investment details.">
+  <ContentPage title="Investors" summary="Information for investors about Sruja's market opportunity, solution approach, and investment details.">
+    <ContentList items={items} emptyMessage="No investor information available yet. Check back soon!" />
+  </ContentPage>
+</Layout>

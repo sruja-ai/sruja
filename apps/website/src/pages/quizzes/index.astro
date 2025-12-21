@@ -1,0 +1,34 @@
+---
+import { getCollection } from 'astro:content'
+const quizzes = await getCollection('quizzes')
+---
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quizzes | Sruja</title>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Quizzes</h1>
+      <p class="lead">Test your knowledge and earn local badges.</p>
+      <ul>
+        {quizzes.sort((a: any, b: any) => a.id.localeCompare(b.id)).map((q: any) => (
+          <li>
+            <a href={`/quizzes/${q.data.slug}`}>{q.data.title}</a>
+            {q.data.summary && <span class="summary"> — {q.data.summary}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  </body>
+</html>
+
+<style>
+  .container { max-width: 960px; margin: 0 auto; padding: 2rem; }
+  .lead { color: #64748b; }
+  ul { list-style: none; padding: 0; margin: 1rem 0; }
+  li { margin: 0.5rem 0; }
+  .summary { color: #64748b; }
+</style>

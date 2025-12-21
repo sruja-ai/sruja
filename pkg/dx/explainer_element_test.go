@@ -9,17 +9,18 @@ import (
 )
 
 func TestExplainElement_System(t *testing.T) {
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{
-					ID:          "API",
-					Label:       "API Service",
-					Description: stringPtr("Main API"),
-				},
-			},
-		},
+	dsl := `model {
+		API = system "API Service" {
+			description "Main API"
+		}
+	}`
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+	prog, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
 	}
 
 	explainer := NewExplainer(prog)
@@ -39,12 +40,20 @@ func TestExplainElement_System(t *testing.T) {
 }
 
 func TestExplainElement_NotFound(t *testing.T) {
-	prog := &language.Program{
-		Architecture: &language.Architecture{Name: "Test"},
+	dsl := `model {
+		API = system "API Service"
+	}`
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+	prog, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
 	}
 
 	explainer := NewExplainer(prog)
-	_, err := explainer.ExplainElement("NonExistent")
+	_, err = explainer.ExplainElement("NonExistent")
 	if err == nil {
 		t.Fatal("ExplainElement should error for non-existent element")
 	}
@@ -58,69 +67,61 @@ func TestExplainElement_NoArchitecture(t *testing.T) {
 	explainer := NewExplainer(prog)
 	_, err := explainer.ExplainElement("API")
 	if err == nil {
-		t.Fatal("ExplainElement should error when no architecture")
+		t.Fatal("ExplainElement should error when no model")
 	}
 }
 
 func TestExplainElement_Container(t *testing.T) {
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{
-					ID: "Sys",
-					Containers: []*language.Container{
-						{
-							ID:    "Cont",
-							Label: "Container",
-						},
-					},
-				},
-			},
-		},
+	dsl := `model {
+		Sys = system "System" {
+			Cont = container "Container"
+		}
+	}`
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+	prog, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
 	}
 
 	explainer := NewExplainer(prog)
-	explanation, err := explainer.ExplainElement("Cont")
+	explanation, err := explainer.ExplainElement("Sys.Cont")
 	if err != nil {
 		t.Fatalf("ExplainElement failed: %v", err)
 	}
-	if explanation.ID != "Cont" {
-		t.Errorf("Expected ID 'Cont', got '%s'", explanation.ID)
+	if explanation.ID != "Sys.Cont" {
+		t.Errorf("Expected ID 'Sys.Cont', got '%s'", explanation.ID)
 	}
 }
 
 func TestExplainElement_Component(t *testing.T) {
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{
-					ID: "Sys",
-					Containers: []*language.Container{
-						{
-							ID: "Cont",
-							Components: []*language.Component{
-								{
-									ID:         "Comp",
-									Label:      "Component",
-									Technology: stringPtr("Go"),
-								},
-							},
-						},
-					},
-				},
-			},
-		},
+	dsl := `model {
+		Sys = system "System" {
+			Cont = container "Container" {
+				Comp = component "Component" {
+					technology "Go"
+				}
+			}
+		}
+	}`
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+	prog, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
 	}
 
 	explainer := NewExplainer(prog)
-	explanation, err := explainer.ExplainElement("Comp")
+	explanation, err := explainer.ExplainElement("Sys.Cont.Comp")
 	if err != nil {
 		t.Fatalf("ExplainElement failed: %v", err)
 	}
-	if explanation.ID != "Comp" {
-		t.Errorf("Expected ID 'Comp', got '%s'", explanation.ID)
+	if explanation.ID != "Sys.Cont.Comp" {
+		t.Errorf("Expected ID 'Sys.Cont.Comp', got '%s'", explanation.ID)
 	}
 	if !strings.Contains(explanation.Description, "Go") {
 		t.Error("Description should mention technology")
@@ -128,16 +129,16 @@ func TestExplainElement_Component(t *testing.T) {
 }
 
 func TestExplainElement_Person(t *testing.T) {
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Persons: []*language.Person{
-				{
-					ID:    "User",
-					Label: "End User",
-				},
-			},
-		},
+	dsl := `model {
+		User = person "End User"
+	}`
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+	prog, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
 	}
 
 	explainer := NewExplainer(prog)
@@ -151,76 +152,76 @@ func TestExplainElement_Person(t *testing.T) {
 }
 
 func TestFindElement_DataStore(t *testing.T) {
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{
-					ID: "Sys",
-					DataStores: []*language.DataStore{
-						{ID: "DB", Label: "Database"},
-					},
-				},
-			},
-		},
+	dsl := `model {
+		Sys = system "System" {
+			DB = database "Database"
+		}
+	}`
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+	prog, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
 	}
 
 	explainer := NewExplainer(prog)
-	explanation, err := explainer.ExplainElement("DB")
+	explanation, err := explainer.ExplainElement("Sys.DB")
 	if err != nil {
 		t.Fatalf("ExplainElement failed: %v", err)
 	}
-	if explanation.ID != "DB" {
-		t.Errorf("Expected ID 'DB', got '%s'", explanation.ID)
+	if explanation.ID != "Sys.DB" {
+		t.Errorf("Expected ID 'Sys.DB', got '%s'", explanation.ID)
 	}
 }
 
 func TestFindElement_Queue(t *testing.T) {
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{
-					ID: "Sys",
-					Queues: []*language.Queue{
-						{ID: "Q", Label: "Queue"},
-					},
-				},
-			},
-		},
+	dsl := `model {
+		Sys = system "System" {
+			Q = queue "Queue"
+		}
+	}`
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+	prog, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
 	}
 
 	explainer := NewExplainer(prog)
-	explanation, err := explainer.ExplainElement("Q")
+	explanation, err := explainer.ExplainElement("Sys.Q")
 	if err != nil {
 		t.Fatalf("ExplainElement failed: %v", err)
 	}
-	if explanation.ID != "Q" {
-		t.Errorf("Expected ID 'Q', got '%s'", explanation.ID)
+	if explanation.ID != "Sys.Q" {
+		t.Errorf("Expected ID 'Sys.Q', got '%s'", explanation.ID)
 	}
 }
 
 func TestFindElement_ComponentInSystem(t *testing.T) {
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{
-					ID: "Sys",
-					Components: []*language.Component{
-						{ID: "Comp", Label: "Component"},
-					},
-				},
-			},
-		},
+	dsl := `model {
+		Sys = system "System" {
+			Comp = component "Component"
+		}
+	}`
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+	prog, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
 	}
 
 	explainer := NewExplainer(prog)
-	explanation, err := explainer.ExplainElement("Comp")
+	explanation, err := explainer.ExplainElement("Sys.Comp")
 	if err != nil {
 		t.Fatalf("ExplainElement failed: %v", err)
 	}
-	if explanation.ID != "Comp" {
-		t.Errorf("Expected ID 'Comp', got '%s'", explanation.ID)
+	if explanation.ID != "Sys.Comp" {
+		t.Errorf("Expected ID 'Sys.Comp', got '%s'", explanation.ID)
 	}
 }

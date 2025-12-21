@@ -1,0 +1,219 @@
+// examples/sruja_architecture_v2.sruja
+// The Sruja Architecture-as-Code Platform
+
+specification {
+  element person
+  element system
+  element container
+  element component
+}
+
+model {
+  architect = person "Software Architect" {
+    description "Uses Sruja to design and document systems"
+  }
+
+  developer = person "Developer" {
+    description "Uses Sruja CLI and VS Code extension for development"
+  }
+
+  sruja = system "Sruja Platform" {
+    description "Tools for defining, visualizing, and analyzing software architecture"
+
+    cli = container "Sruja CLI" {
+      technology "Go (Cobra)"
+      description "Command-line interface (cmd/sruja)"
+
+      commands = component "Commands" {
+        description "compile, lint, fmt, export, import, tree, diff, explain, score, change"
+      }
+    }
+
+    engine = container "Core Engine" {
+      technology "Go"
+      description "Core logic for validation, scoring, and analysis (pkg/engine)"
+
+      validation = component "Validation Engine" {
+        technology "Go"
+        description "Validates AST against rules (pkg/engine)"
+      }
+
+      scorer = component "Scoring Engine" {
+        technology "Go"
+        description "Calculates architecture health score (pkg/engine/scorer.go)"
+      }
+
+      resolver = component "Reference Resolver" {
+        technology "Go"
+        description "Resolves references and relationships (pkg/engine/resolver.go)"
+      }
+
+      scorer -> validation "uses results from"
+      validation -> resolver "validates references"
+    }
+
+    language = container "Language Service" {
+      technology "Go"
+      description "Parser, AST, and language implementation (pkg/language)"
+
+      parser = component "Parser" {
+        technology "Go"
+        description "Parses .sruja files into AST (pkg/language/parser.go)"
+      }
+
+      ast = component "AST" {
+        technology "Go"
+        description "Abstract Syntax Tree definitions (pkg/language/ast.go)"
+      }
+
+      printer = component "Printer" {
+        technology "Go"
+        description "Formats AST back to DSL (pkg/language/printer.go)"
+      }
+
+      parser -> ast "builds"
+      printer -> ast "reads"
+    }
+
+    lsp = container "Language Server" {
+      technology "Go (jsonrpc2)"
+      description "LSP implementation for IDE support (pkg/lsp)"
+
+      handler = component "LSP Handler" {
+        description "Handles textDocument/didChange, hover, definition, completion, etc."
+      }
+    }
+
+    export = container "Exporters" {
+      technology "Go"
+      description "Export functionality (pkg/export)"
+
+      jsonExporter = component "JSON Exporter" {
+        description "Exports architecture to JSON format (pkg/export/json)"
+      }
+
+      viewGenerator = component "View Generator" {
+        description "Generates custom views (pkg/export/views)"
+      }
+    }
+
+    wasm = container "WASM Module" {
+      technology "Go/WASM"
+      description "WebAssembly build of the core engine (cmd/wasm)"
+    }
+
+    vscode = container "VS Code Extension" {
+      technology "TypeScript"
+      description "Editor extension (apps/vscode-extension)"
+    }
+
+    designer = container "Sruja Designer" {
+      technology "React/Vite"
+      description "Interactive designer for testing Sruja code (apps/designer)"
+    }
+
+    website = container "Documentation Site" {
+      technology "Astro"
+      description "Project documentation and guides (apps/website)"
+    }
+
+    playground = container "Playground" {
+      description "Interactive playground for testing DSL (embedded in website)"
+    }
+
+    // Internal Dependencies
+    cli -> language "parses DSL using"
+    cli -> engine "validates using"
+    cli -> export "exports using"
+    cli -> wasm "builds"
+
+    engine -> language "uses AST from"
+    lsp -> language "uses parser"
+    lsp -> engine "validates using"
+
+    wasm -> language "embeds"
+    wasm -> engine "embeds"
+
+    vscode -> lsp "uses for IDE features"
+    vscode -> wasm "uses for LSP and preview"
+
+    playground -> wasm "uses for parsing/rendering"
+    website -> playground "embeds"
+  }
+
+  architect -> sruja.cli "runs commands"
+  architect -> sruja.vscode "writes DSL"
+  architect -> sruja.playground "visualizes architecture"
+  architect -> sruja.website "reads docs"
+
+  developer -> sruja.cli "runs lint/compile"
+  developer -> sruja.vscode "writes code"
+
+  requirement R1 functional "Must support full C4 model hierarchy"
+  requirement R2 performance "Parsing must be < 100ms for typical files"
+  requirement R3 portability "Core must compile to WASM"
+  requirement R4 functional "Must export to JSON format"
+
+  adr ADR001 "Use Participle for Parsing" {
+    status "Accepted"
+    context "Need a type-safe, declarative parser for Go."
+    decision "Use github.com/alecthomas/participle."
+    consequences "Gain: No external build tools needed, type-safe AST. Trade-off: Less flexibility than ANTLR"
+  }
+
+  adr ADR002 "Client-Side Rendering for Playground" {
+    status "Accepted"
+    context "Playground needs to run without a backend server for cost and simplicity"
+    decision "Compile Go engine to WASM and run entirely client-side"
+    consequences "Gain: Zero backend costs, works offline. Trade-off: Larger bundle size, WASM compatibility considerations"
+  }
+
+  adr ADR003 "JSON as Primary Export Format" {
+    status "Accepted"
+    context "Need a format that can be consumed by various tools and frontend applications"
+    decision "Use JSON as the primary export format, with TypeScript exporters in frontend apps for other formats"
+    consequences "Gain: Interoperability, easy integration. Trade-off: Frontend apps handle format conversion"
+  }
+
+  policy CodeStyle "Go code must be formatted with gofmt" {
+    category "quality"
+    enforcement "required"
+  }
+
+  policy NoCycles "Architecture graph must be acyclic" {
+    category "structural"
+    enforcement "strict"
+  }
+
+  flow AuthoringFlow "Authoring Architecture" {
+    step architect -> sruja.vscode "writes DSL"
+    step sruja.vscode -> sruja.lsp "validates in real-time"
+    step architect -> sruja.playground "opens preview"
+    step sruja.playground -> sruja.wasm "renders diagram"
+  }
+
+  flow CICDFlow "CI/CD Verification" {
+    step developer -> sruja.cli "pushes code"
+    step sruja.cli -> sruja.cli "runs lint"
+    step sruja.cli -> sruja.cli "runs export json"
+    step sruja.cli -> sruja.cli "generates artifacts"
+  }
+
+  metadata {
+    version "0.1.0"
+    owner "Sruja Team"
+    repo "github.com/sruja-ai/sruja"
+  }
+}
+
+views {
+  view index {
+    title "Sruja Architecture"
+    include *
+  }
+  
+  view containers of sruja {
+    title "Sruja Platform Containers"
+    include sruja.*
+  }
+}

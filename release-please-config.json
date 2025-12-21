@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "sruja",
+      "version-file": "package.json",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "apps/vscode-extension": {
+      "release-type": "node",
+      "package-name": "sruja-language-support",
+      "version-file": "apps/vscode-extension/package.json"
+    }
+  },
+  "$comment": "Release Please will create release PRs that update versions in package.json files and generate CHANGELOG.md"
+}

@@ -1,0 +1,196 @@
+// examples/demo_views_customization.sruja
+// Real-world example: SaaS Platform with Custom Views
+// Demonstrates practical use cases for views block customization
+
+specification {
+  element person
+  element system
+  element container
+  element component
+  element database
+  element queue
+}
+
+model {
+  endUser = person "End User"
+  dataAnalyst = person "Data Analyst"
+  devopsEngineer = person "DevOps Engineer"
+  productManager = person "Product Manager"
+  
+  analyticsPlatform = system "Analytics Platform" {
+    // Frontend
+    dashboard = container "Analytics Dashboard" {
+      technology "React, D3.js"
+      tags ["frontend", "ui"]
+      chartBuilder = component "Chart Builder"
+      reportGenerator = component "Report Generator"
+      dataExplorer = component "Data Explorer"
+    }
+    
+    adminPanel = container "Admin Panel" {
+      technology "React"
+      tags ["frontend", "admin"]
+      userManagement = component "User Management"
+      billingManagement = component "Billing Management"
+    }
+    
+    // API Layer
+    api = container "REST API" {
+      technology "Node.js, Express"
+      tags ["backend", "api"]
+      queryEngine = component "Query Engine"
+      authMiddleware = component "Auth Middleware"
+      rateLimiter = component "Rate Limiter"
+    }
+    
+    graphqlApi = container "GraphQL API" {
+      technology "Node.js, Apollo"
+      tags ["backend", "api"]
+      schemaResolver = component "Schema Resolver"
+      dataLoader = component "Data Loader"
+    }
+    
+    // Processing Services
+    dataIngestion = container "Data Ingestion Service" {
+      technology "Go"
+      tags ["backend", "processing"]
+      eventCollector = component "Event Collector"
+      dataTransformer = component "Data Transformer"
+      batchProcessor = component "Batch Processor"
+    }
+    
+    queryService = container "Query Service" {
+      technology "Go"
+      tags ["backend", "processing"]
+      queryParser = component "Query Parser"
+      queryOptimizer = component "Query Optimizer"
+      resultAggregator = component "Result Aggregator"
+    }
+    
+    alertService = container "Alert Service" {
+      technology "Python"
+      tags ["backend", "processing"]
+      ruleEngine = component "Rule Engine"
+      notificationSender = component "Notification Sender"
+    }
+    
+    // Data Layer
+    timeSeriesDb = database "Time Series Database" {
+      technology "InfluxDB"
+      metadata {
+        tags ["Database", "TimeSeries"]
+      }
+    }
+    
+    dataWarehouse = database "Data Warehouse" {
+      technology "Snowflake"
+      metadata {
+        tags ["Database", "Warehouse"]
+      }
+    }
+    
+    metadataDb = database "Metadata Database" {
+      technology "PostgreSQL"
+      metadata {
+        tags ["Database", "Relational"]
+      }
+    }
+    
+    cache = database "Cache Layer" {
+      technology "Redis"
+      metadata {
+        tags ["Database", "Cache"]
+      }
+    }
+    
+    // Message Queue
+    eventStream = queue "Event Stream" {
+      technology "Kafka"
+      metadata {
+        tags ["Queue", "Streaming"]
+      }
+    }
+    
+    taskQueue = queue "Task Queue" {
+      technology "RabbitMQ"
+      metadata {
+        tags ["Queue", "Tasks"]
+      }
+    }
+  }
+  
+  // External services
+  paymentGateway = system "Payment Gateway" {
+    metadata {
+      tags ["external"]
+    }
+  }
+  
+  emailProvider = system "Email Provider" {
+    metadata {
+      tags ["external"]
+    }
+  }
+  
+  // Relationships
+  endUser -> analyticsPlatform.dashboard "uses"
+  dataAnalyst -> analyticsPlatform.dashboard "creates reports in"
+  productManager -> analyticsPlatform.adminPanel "manages platform via"
+  devopsEngineer -> analyticsPlatform.api "monitors"
+  
+  analyticsPlatform.dashboard -> analyticsPlatform.api "fetches data from"
+  analyticsPlatform.dashboard -> analyticsPlatform.graphqlApi "queries data via"
+  analyticsPlatform.adminPanel -> analyticsPlatform.api "manages via"
+  
+  analyticsPlatform.api -> analyticsPlatform.queryService "executes queries via"
+  analyticsPlatform.graphqlApi -> analyticsPlatform.queryService "resolves queries via"
+  analyticsPlatform.dataIngestion -> analyticsPlatform.timeSeriesDb "writes data to"
+  analyticsPlatform.queryService -> analyticsPlatform.timeSeriesDb "reads data from"
+  analyticsPlatform.queryService -> analyticsPlatform.dataWarehouse "queries"
+  analyticsPlatform.queryService -> analyticsPlatform.cache "caches results in"
+  
+  analyticsPlatform.dataIngestion -> analyticsPlatform.eventStream "publishes events to"
+  analyticsPlatform.alertService -> analyticsPlatform.eventStream "consumes events from"
+  analyticsPlatform.queryService -> analyticsPlatform.taskQueue "queues tasks to"
+  
+  analyticsPlatform.adminPanel -> paymentGateway "processes payments through"
+  analyticsPlatform.alertService -> emailProvider "sends alerts via"
+  
+  requirement R1 functional "Must support 1M events/minute ingestion"
+  requirement R2 performance "Query response time < 500ms (p95)"
+  requirement R3 scalability "Must scale to 10TB+ data"
+  requirement R4 reliability "99.99% uptime SLA"
+}
+
+views {
+  view index {
+    title "Analytics Platform Overview"
+    include *
+  }
+  
+  // View for developers: Focus on API and processing services
+  view developer of analyticsPlatform {
+    title "Developer View"
+    include analyticsPlatform.api analyticsPlatform.graphqlApi
+    include analyticsPlatform.queryService analyticsPlatform.dataIngestion
+    include analyticsPlatform.alertService
+    exclude analyticsPlatform.dashboard analyticsPlatform.adminPanel
+  }
+  
+  // View for product managers: Focus on user-facing components
+  view product of analyticsPlatform {
+    title "Product View"
+    include analyticsPlatform.dashboard analyticsPlatform.adminPanel
+    include analyticsPlatform.api analyticsPlatform.graphqlApi
+    exclude analyticsPlatform.dataIngestion analyticsPlatform.alertService
+  }
+  
+  // View for data engineers: Focus on data flow
+  view dataflow of analyticsPlatform {
+    title "Data Flow View"
+    include analyticsPlatform.dataIngestion
+    include analyticsPlatform.timeSeriesDb analyticsPlatform.dataWarehouse
+    include analyticsPlatform.eventStream analyticsPlatform.taskQueue
+    include analyticsPlatform.queryService
+  }
+}

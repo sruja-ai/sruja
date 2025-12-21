@@ -1,0 +1,21 @@
+{
+  "ignorePatterns": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/index.ts",
+    "**/index.tsx",
+    "**/*.stories.tsx",
+    "**/dist/**",
+    "**/build/**",
+    "**/node_modules/**"
+  ],
+  "ignoreUnimported": [
+    "**/vite.config.ts",
+    "**/vitest.config.ts",
+    "**/playwright.config.ts",
+    "**/*.config.ts",
+    "**/*.config.js"
+  ]
+}

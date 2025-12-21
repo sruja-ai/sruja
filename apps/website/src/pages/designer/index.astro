@@ -1,0 +1,72 @@
+---
+// apps/website/src/pages/designer/index.astro
+import Playground from '@/features/playground/components/Playground';
+import '@sruja/ui/design-system/styles.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content="Sruja Designer - Interactive architecture design tool" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/sruja-logo.svg" />
+    <title>Designer | Sruja</title>
+    
+  </head>
+  <body>
+    <div class="designer-container">
+      <Playground client:only="react" />
+    </div>
+  </body>
+</html>
+
+<style>
+  :global(html),
+  :global(body) {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: system-ui, sans-serif;
+    background: var(--color-background, #ffffff);
+    color: var(--color-text-primary, #0f172a);
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  :global(html.dark),
+  :global(html[data-theme='dark']) {
+    background: #0f172a;
+    color: #f1f5f9;
+  }
+
+  :global(html.light),
+  :global(html[data-theme='light']) {
+    background: #ffffff;
+    color: #0f172a;
+  }
+
+  .designer-container {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  :global(html.dark) .designer-container,
+  :global(html[data-theme='dark']) .designer-container {
+    background: #0f172a;
+    color: #f1f5f9;
+  }
+
+  :global(#root) {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+</style>

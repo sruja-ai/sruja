@@ -1,0 +1,153 @@
+---
+// apps/website/src/pages/index.astro
+import Layout from '../layouts/Layout.astro';
+import HomeHero from '@/features/home/components/HomeHero';
+---
+
+<Layout title="Sruja Learn" description="Documentation, courses, tutorials, and blogs for Sruja.">
+  <HomeHero client:load />
+</Layout>
+
+<style>
+  :global(.hero) {
+    max-width: 800px;
+    margin: 4rem auto;
+    padding: 0 2rem;
+    text-align: center;
+  }
+
+  :global(.hero h1) {
+    font-size: 3rem;
+    font-weight: 700;
+    margin: 0 0 1.5rem 0;
+    line-height: 1.2;
+  }
+
+  :global(.hero p) {
+    font-size: 1.25rem;
+    color: #64748b;
+    margin: 1rem 0;
+    line-height: 1.6;
+  }
+
+  :global(.hero a) {
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+
+  :global(.hero a:hover) {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+  }
+
+  :global(.hero-actions) {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    align-items: center;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+  }
+
+  :global(.hero-audiences) {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 2rem 0;
+    padding: 1.5rem 0;
+  }
+
+  :global(.audience-card) {
+    padding: 1rem;
+    background: var(--color-surface, #f8fafc);
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border, #e2e8f0);
+  }
+
+  :global(html.dark) .audience-card {
+    background: #1e293b;
+    border-color: #334155;
+  }
+
+  :global(.audience-card strong) {
+    display: block;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-text-primary, #0f172a);
+    margin-bottom: 0.5rem;
+  }
+
+  :global(html.dark) .audience-card strong {
+    color: #f1f5f9;
+  }
+
+  :global(.audience-card p) {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary, #64748b);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  :global(html.dark) .audience-card p {
+    color: #cbd5e1;
+  }
+
+  @media (max-width: 768px) {
+    :global(.hero-audiences) {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+      margin: 1.5rem 0;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    :global(.hero) {
+      margin: 3rem auto;
+      padding: 0 1.5rem;
+    }
+
+    :global(.hero h1) {
+      font-size: 2.5rem;
+    }
+
+    :global(.hero p) {
+      font-size: 1.125rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    :global(.hero) {
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    :global(.hero h1) {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    :global(.hero p) {
+      font-size: 1rem;
+    }
+
+    :global(.hero-actions) {
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    :global(.hero) {
+      margin: 1.5rem auto;
+      padding: 0 0.75rem;
+    }
+
+    :global(.hero h1) {
+      font-size: 1.75rem;
+    }
+
+    :global(.hero p) {
+      font-size: 0.9375rem;
+    }
+  }
+</style>

@@ -1,0 +1,33 @@
+/* =====================================================
+   CONTINUE BUTTON
+   ===================================================== */
+
+.guided-next {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+}
+
+.guided-next button {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.guided-next button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+}
+
+.guided-next button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}

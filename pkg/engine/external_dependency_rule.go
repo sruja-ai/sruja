@@ -3,7 +3,9 @@ package engine
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/sruja-ai/sruja/pkg/diagnostics"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
@@ -18,103 +20,142 @@ func (r *ExternalDependencyRule) Name() string {
 	return "ExternalDependency"
 }
 
-func (r *ExternalDependencyRule) Validate(program *language.Program) []ValidationError {
-	errors := []ValidationError{}
-
-	arch := program.Architecture
-	if arch == nil {
-		return errors
+//nolint:funlen,gocyclo // Validation logic is long and complex
+func (r *ExternalDependencyRule) Validate(program *language.Program) []diagnostics.Diagnostic {
+	if program == nil || program.Model == nil {
+		return nil
 	}
+
+	// Collect all elements from LikeC4 Model
+	defined, relations := collectLikeC4Elements(program.Model)
+
+	// Pre-allocate diagnostics slice
+	estimatedDiags := len(relations) / 10
+	if estimatedDiags < 8 {
+		estimatedDiags = 8
+	}
+	diags := make([]diagnostics.Diagnostic, 0, estimatedDiags)
 
 	// Build parent map: child ID -> parent ID
-	parent := map[string]string{}
+	parent := make(map[string]string, len(defined))
 
-	// Track all defined elements
-	defined := map[string]language.Element{}
-
-	// Build parent relationships and element map
-	for _, sys := range arch.Systems {
-		defined[sys.ID] = sys
-		for _, cont := range sys.Containers {
-			defined[cont.ID] = cont
-			parent[cont.ID] = sys.ID
-			for _, comp := range cont.Components {
-				defined[comp.ID] = comp
-				parent[comp.ID] = cont.ID
-			}
-			for _, ds := range cont.DataStores {
-				defined[ds.ID] = ds
-				parent[ds.ID] = cont.ID
-			}
-			for _, q := range cont.Queues {
-				defined[q.ID] = q
-				parent[q.ID] = cont.ID
-			}
-		}
-		for _, comp := range sys.Components {
-			defined[comp.ID] = comp
-			parent[comp.ID] = sys.ID
-		}
-		for _, ds := range sys.DataStores {
-			defined[ds.ID] = ds
-			parent[ds.ID] = sys.ID
-		}
-		for _, q := range sys.Queues {
-			defined[q.ID] = q
-			parent[q.ID] = sys.ID
-		}
-	}
-
-	// Check all relations
-	checkRelation := func(rel *language.Relation, location language.SourceLocation) {
-		if rel == nil {
+	// Build parent relationships from LikeC4 elements
+	var buildParentMap func(elem *language.LikeC4ElementDef, parentFQN string)
+	buildParentMap = func(elem *language.LikeC4ElementDef, parentFQN string) {
+		if elem == nil {
 			return
 		}
 
-		fromID := rel.From
-		toID := rel.To
+		id := elem.GetID()
+		if id == "" {
+			return
+		}
+
+		fqn := id
+		if parentFQN != "" {
+			fqn = buildQualifiedID(parentFQN, id)
+			parent[fqn] = parentFQN
+		}
+
+		// Recurse into nested elements
+		body := elem.GetBody()
+		if body != nil {
+			for _, bodyItem := range body.Items {
+				if bodyItem.Element != nil {
+					buildParentMap(bodyItem.Element, fqn)
+				}
+			}
+		}
+	}
+
+	// Build parent map from all top-level elements
+	for _, item := range program.Model.Items {
+		if item.ElementDef != nil {
+			buildParentMap(item.ElementDef, "")
+		}
+	}
+
+	// Resolve unqualified ID to qualified ID within scope
+	resolve := func(ref, scope string) string {
+		refStr := ref
+		// 1. Try absolute/global match
+		if defined[refStr] {
+			return refStr
+		}
+
+		// 2. Try relative to scope, walking up
+		if scope != "" {
+			candidate := scope + "." + refStr
+			if defined[candidate] {
+				return candidate
+			}
+
+			parts := strings.Split(scope, ".")
+			for i := len(parts) - 1; i >= 0; i-- {
+				prefix := strings.Join(parts[:i], ".")
+				var candidate string
+				if prefix == "" {
+					candidate = refStr
+				} else {
+					candidate = prefix + "." + refStr
+				}
+				if defined[candidate] {
+					return candidate
+				}
+			}
+		}
+
+		// 3. For architecture-level relations (scope=""), search all defined elements
+		// to find matching IDs (e.g., "API" matches "App.API")
+		if scope == "" {
+			for id := range defined {
+				parts := strings.Split(id, ".")
+				if len(parts) > 0 && parts[len(parts)-1] == refStr {
+					return id
+				}
+			}
+		}
+
+		return refStr // Return original if not resolved
+	}
+
+	// Check all relations with their scopes
+	relationsWithScope := collectAllRelations(program.Model)
+
+	for _, relScope := range relationsWithScope {
+		rel := relScope.Relation
+		scope := relScope.Scope
+
+		fromStr := rel.From.String()
+		toStr := rel.To.String()
+
+		// Resolve IDs to their fully qualified names
+		fromID := resolve(fromStr, scope)
+		toID := resolve(toStr, scope)
 
 		// Check if 'from' is a child and 'to' is its parent
 		if parentID, isChild := parent[fromID]; isChild {
 			if parentID == toID {
-				errors = append(errors, ValidationError{
-					Message: fmt.Sprintf("Element '%s' cannot depend on its parent '%s'. Dependencies must be external.", fromID, toID),
-					Line:    location.Line,
-					Column:  location.Column,
+				// Use original unqualified names for error message
+				loc := rel.Location()
+				diags = append(diags, diagnostics.Diagnostic{
+					Code:     diagnostics.CodeValidationRuleError,
+					Severity: diagnostics.SeverityError,
+					Message:  fmt.Sprintf("Element '%s' cannot depend on its parent '%s'. Dependencies must be external.", fromStr, toStr),
+					Suggestions: []string{
+						fmt.Sprintf("Remove the dependency from '%s' to '%s'", fromStr, toStr),
+						"If this is an external dependency, ensure the parent is marked as external",
+						"Consider restructuring to avoid parent-child dependencies",
+					},
+					Location: diagnostics.SourceLocation{
+						File:   loc.File,
+						Line:   loc.Line,
+						Column: loc.Column,
+					},
 				})
 			}
 		}
 	}
 
-	// Check architecture-level relations
-	for _, rel := range arch.Relations {
-		checkRelation(rel, rel.Location())
-	}
-
-	// Check system-level relations
-	for _, sys := range arch.Systems {
-		for _, rel := range sys.Relations {
-			checkRelation(rel, rel.Location())
-		}
-		// Check container relations
-		for _, cont := range sys.Containers {
-			for _, rel := range cont.Relations {
-				checkRelation(rel, rel.Location())
-			}
-			// Check component relations
-			for _, comp := range cont.Components {
-				for _, rel := range comp.Relations {
-					checkRelation(rel, rel.Location())
-				}
-			}
-		}
-		// Check component relations at system level
-		for _, comp := range sys.Components {
-			for _, rel := range comp.Relations {
-				checkRelation(rel, rel.Location())
-			}
-		}
-	}
-
-	return errors
+	return diags
 }

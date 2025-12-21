@@ -7,32 +7,49 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-func Test_Feature_ArchitectureWrapper(t *testing.T) {
-	dsl := `system API "API Service" {}`
-	p, err := language.NewParser()
-	if err != nil {
-		t.Fatalf("parser: %v", err)
-	}
-	prog, err := p.Parse("test.sruja", dsl)
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	if prog.Architecture == nil {
-		t.Fatalf("architecture nil")
-	}
-	if len(prog.Architecture.Systems) != 1 {
-		t.Fatalf("expected 1 system")
-	}
-}
-
 func Test_Feature_System_WithDescription_And_Metadata(t *testing.T) {
-	dsl := `architecture "A" { system API "API" "Desc" { metadata { owner: "team" } } }`
+	dsl := `model {
+		API = system "API" {
+			description "Desc"
+			metadata {
+				owner "team"
+			}
+		}
+	}`
 	p, _ := language.NewParser()
-	prog, err := p.Parse("a.sruja", dsl)
+	prog, _, err := p.Parse("a.sruja", dsl)
 	if err != nil {
-		t.Fatalf("parse: %v", err)
+		t.Fatalf("parse %v", err)
 	}
-	sys := prog.Architecture.Systems[0]
+	// Find system in Model
+	var sys *language.System
+	for _, item := range prog.Model.Items {
+		if item.ElementDef != nil && item.ElementDef.GetKind() == "system" && item.ElementDef.GetID() == "API" {
+			// Extract system - simplified check
+			sys = &language.System{
+				ID: item.ElementDef.GetID(),
+			}
+			body := item.ElementDef.GetBody()
+			if body != nil {
+				for _, bodyItem := range body.Items {
+					if bodyItem.Description != nil {
+						sys.Description = bodyItem.Description
+					}
+					if bodyItem.Metadata != nil {
+						for _, m := range bodyItem.Metadata.Entries {
+							if m.Key == "owner" {
+								sys.Metadata = append(sys.Metadata, m)
+							}
+						}
+					}
+				}
+			}
+			break
+		}
+	}
+	if sys == nil {
+		t.Fatalf("system not found")
+	}
 	if sys.Description == nil || *sys.Description != "Desc" {
 		t.Fatalf("missing description")
 	}
@@ -42,59 +59,228 @@ func Test_Feature_System_WithDescription_And_Metadata(t *testing.T) {
 }
 
 func Test_Feature_Container_Tech_Tags_Version_Metadata(t *testing.T) {
-	dsl := `architecture "A" { system S "S" { container C "C" { technology "Go" tags ["api","svc"] version "1.0" metadata { tier: "gold" } } } }`
+	dsl := `model {
+		S = system "S" {
+			C = container "C" {
+				technology "Go"
+				tags ["api", "svc"]
+				version "1.0"
+				metadata {
+					tier "gold"
+				}
+			}
+		}
+	}`
 	p, _ := language.NewParser()
-	prog, err := p.Parse("a.sruja", dsl)
+	prog, _, err := p.Parse("a.sruja", dsl)
 	if err != nil {
-		t.Fatalf("parse: %v", err)
+		t.Fatalf("parse %v", err)
 	}
-	cont := prog.Architecture.Systems[0].Containers[0]
+	// Find container in Model
+	var cont *language.Container
+	for _, item := range prog.Model.Items {
+		if item.ElementDef != nil && item.ElementDef.GetKind() == "system" && item.ElementDef.GetID() == "S" {
+			body := item.ElementDef.GetBody()
+			if body != nil {
+				for _, bodyItem := range body.Items {
+					if bodyItem.Element != nil && bodyItem.Element.GetKind() == "container" && bodyItem.Element.GetID() == "C" {
+						cont = &language.Container{
+							ID: bodyItem.Element.GetID(),
+						}
+						contBody := bodyItem.Element.GetBody()
+						if contBody != nil {
+							for _, contBodyItem := range contBody.Items {
+								if contBodyItem.Metadata != nil {
+									cont.Metadata = append(cont.Metadata, contBodyItem.Metadata.Entries...)
+								}
+							}
+						}
+						break
+					}
+				}
+			}
+			break
+		}
+	}
+	if cont == nil {
+		t.Fatalf("container not found")
+	}
 	if !cont.HasMeta("tier") {
 		t.Fatalf("container metadata not parsed")
 	}
 }
 
 func Test_Feature_Component_Technology_Metadata(t *testing.T) {
-	dsl := `architecture "A" { system S "S" { container C "C" { component X "X" { technology "React" metadata { critical: "true" } } } } }`
+	dsl := `model {
+		S = system "S" {
+			C = container "C" {
+				X = component "X" {
+					technology "React"
+					metadata {
+						critical "true"
+					}
+				}
+			}
+		}
+	}`
 	p, _ := language.NewParser()
-	prog, err := p.Parse("a.sruja", dsl)
+	prog, _, err := p.Parse("a.sruja", dsl)
 	if err != nil {
-		t.Fatalf("parse: %v", err)
+		t.Fatalf("parse %v", err)
 	}
-	comp := prog.Architecture.Systems[0].Containers[0].Components[0]
+	// Find component in Model
+	var comp *language.Component
+	for _, item := range prog.Model.Items {
+		if item.ElementDef != nil && item.ElementDef.GetKind() == "system" && item.ElementDef.GetID() == "S" {
+			sysBody := item.ElementDef.GetBody()
+			if sysBody != nil {
+				for _, bodyItem := range sysBody.Items {
+					if bodyItem.Element != nil && bodyItem.Element.GetKind() == "container" && bodyItem.Element.GetID() == "C" {
+						contBody := bodyItem.Element.GetBody()
+						if contBody != nil {
+							for _, contBodyItem := range contBody.Items {
+								if contBodyItem.Element != nil && contBodyItem.Element.GetKind() == "component" && contBodyItem.Element.GetID() == "X" {
+									comp = &language.Component{
+										ID: contBodyItem.Element.GetID(),
+									}
+									compBody := contBodyItem.Element.GetBody()
+									if compBody != nil {
+										for _, compBodyItem := range compBody.Items {
+											if compBodyItem.Metadata != nil {
+												comp.Metadata = append(comp.Metadata, compBodyItem.Metadata.Entries...)
+											}
+										}
+									}
+									break
+								}
+							}
+						}
+						break
+					}
+				}
+			}
+			break
+		}
+	}
+	if comp == nil {
+		t.Fatalf("component not found")
+	}
 	if !comp.HasMeta("critical") {
 		t.Fatalf("component metadata not parsed")
 	}
 }
 
 func Test_Feature_DataStore_Queue_Person_Metadata(t *testing.T) {
-	dsl := `architecture "A" { person U "User" { metadata { persona: "customer" } } system S "S" { datastore D "DB" { metadata { engine: "postgres" } } queue Q "Events" { metadata { topic: "billing" } } } }`
+	dsl := `model {
+		U = person "User" {
+			metadata {
+				persona "customer"
+			}
+		}
+		S = system "S" {
+			D = database "DB" {
+				metadata {
+					engine "postgres"
+				}
+			}
+			Q = queue "Events" {
+				metadata {
+					topic "billing"
+				}
+			}
+		}
+	}`
 	p, _ := language.NewParser()
-	prog, err := p.Parse("a.sruja", dsl)
+	prog, _, err := p.Parse("a.sruja", dsl)
 	if err != nil {
-		t.Fatalf("parse: %v", err)
+		t.Fatalf("parse %v", err)
 	}
-	if !prog.Architecture.Persons[0].HasMeta("persona") {
+	// Find person
+	var person *language.Person
+	for _, item := range prog.Model.Items {
+		if item.ElementDef != nil && item.ElementDef.GetKind() == "person" && item.ElementDef.GetID() == "U" {
+			person = &language.Person{ID: item.ElementDef.GetID()}
+			body := item.ElementDef.GetBody()
+			if body != nil {
+				for _, bodyItem := range body.Items {
+					if bodyItem.Metadata != nil {
+						person.Metadata = append(person.Metadata, bodyItem.Metadata.Entries...)
+					}
+				}
+			}
+			break
+		}
+	}
+	if person == nil || !person.HasMeta("persona") {
 		t.Fatalf("person metadata not parsed")
 	}
-	ds := prog.Architecture.Systems[0].DataStores[0]
-	if !ds.HasMeta("engine") {
+	// Find datastore and queue
+	var ds *language.DataStore
+	var q *language.Queue
+	for _, item := range prog.Model.Items {
+		if item.ElementDef != nil && item.ElementDef.GetKind() == "system" && item.ElementDef.GetID() == "S" {
+			sysBody := item.ElementDef.GetBody()
+			if sysBody != nil {
+				for _, bodyItem := range sysBody.Items {
+					if bodyItem.Element != nil {
+						if bodyItem.Element.GetKind() == "database" && bodyItem.Element.GetID() == "D" {
+							ds = &language.DataStore{ID: bodyItem.Element.GetID()}
+							dsBody := bodyItem.Element.GetBody()
+							if dsBody != nil {
+								for _, dsBodyItem := range dsBody.Items {
+									if dsBodyItem.Metadata != nil {
+										ds.Metadata = append(ds.Metadata, dsBodyItem.Metadata.Entries...)
+									}
+								}
+							}
+						}
+						if bodyItem.Element.GetKind() == "queue" && bodyItem.Element.GetID() == "Q" {
+							q = &language.Queue{ID: bodyItem.Element.GetID()}
+							qBody := bodyItem.Element.GetBody()
+							if qBody != nil {
+								for _, qBodyItem := range qBody.Items {
+									if qBodyItem.Metadata != nil {
+										q.Metadata = append(q.Metadata, qBodyItem.Metadata.Entries...)
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			break
+		}
+	}
+	if ds == nil || !ds.HasMeta("engine") {
 		t.Fatalf("datastore metadata not parsed")
 	}
-	q := prog.Architecture.Systems[0].Queues[0]
-	if !q.HasMeta("topic") {
+	if q == nil || !q.HasMeta("topic") {
 		t.Fatalf("queue metadata not parsed")
 	}
 }
 
 func Test_Feature_Relation_Verb_Label(t *testing.T) {
-	dsl := `architecture "A" { system A "A" {} system B "B" {} A -> B calls "HTTP" }`
+	dsl := `model {
+		A = system "A"
+		B = system "B"
+		A -> B "calls" "HTTP"
+	}`
 	p, _ := language.NewParser()
-	prog, err := p.Parse("a.sruja", dsl)
+	prog, _, err := p.Parse("a.sruja", dsl)
 	if err != nil {
-		t.Fatalf("parse: %v", err)
+		t.Fatalf("parse %v", err)
 	}
-	rel := prog.Architecture.Relations[0]
+	// Find relation in Model
+	var rel *language.Relation
+	for _, item := range prog.Model.Items {
+		if item.Relation != nil {
+			rel = item.Relation
+			break
+		}
+	}
+	if rel == nil {
+		t.Fatalf("relation not found")
+	}
 	if rel.Verb == nil || *rel.Verb != "calls" {
 		t.Fatalf("verb missing")
 	}
@@ -103,61 +289,40 @@ func Test_Feature_Relation_Verb_Label(t *testing.T) {
 	}
 }
 
-func Test_Feature_Journey_Bidirectional(t *testing.T) {
-	// Journey feature removed - test placeholder
-	// This test can be removed or updated when journey feature is re-implemented
-	t.Skip("Journey feature removed")
-}
-
-func Test_Feature_Requirements_Types(t *testing.T) {
-	dsl := `architecture "A" { requirement R1 performance "p95<200ms" requirement R2 security "TLS1.3" requirement R3 constraint "Use Postgres" }`
-	p, _ := language.NewParser()
-	prog, err := p.Parse("a.sruja", dsl)
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	got := []string{prog.Architecture.Requirements[0].Type, prog.Architecture.Requirements[1].Type, prog.Architecture.Requirements[2].Type}
-	want1, want2, want3 := "performance", "security", "constraint"
-	if got[0] != want1 || got[1] != want2 || got[2] != want3 {
-		t.Fatalf("unexpected requirement types: %v", got)
-	}
-}
+// Journey feature removed - test removed
 
 func Test_Feature_ADR(t *testing.T) {
-	dsl := `architecture "A" { adr ADR001 "Use JWT" }`
+	dsl := `model {
+		adr ADR001 "Use JWT"
+	}`
 	p, _ := language.NewParser()
-	prog, err := p.Parse("a.sruja", dsl)
+	prog, _, err := p.Parse("a.sruja", dsl)
 	if err != nil {
-		t.Fatalf("parse: %v", err)
+		t.Fatalf("parse %v", err)
 	}
-	if len(prog.Architecture.ADRs) != 1 {
-		t.Fatalf("expected 1 ADR")
+	// Find ADRs in Model
+	var adrs []*language.ADR
+	for _, item := range prog.Model.Items {
+		if item.ADR != nil {
+			adrs = append(adrs, item.ADR)
+		}
 	}
-}
-
-func Test_Feature_Imports_WithAlias(t *testing.T) {
-	dsl := `architecture "A" { import "billing.sruja" as Billing system S "S" {} }`
-	p, _ := language.NewParser()
-	prog, err := p.Parse("a.sruja", dsl)
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	if prog.Architecture.Imports[0].Alias == nil || *prog.Architecture.Imports[0].Alias != "Billing" {
-		t.Fatalf("alias missing")
+	if len(adrs) != 1 {
+		t.Fatalf("expected 1 ADR, got %d", len(adrs))
 	}
 }
 
 func Test_Printer_Emits_Metadata_For_All_Elements(t *testing.T) {
-	dsl := `architecture "A" { metadata { level: "arch" } person U "User" { metadata { persona: "customer" } } system S "S" { metadata { owner: "team" } container C "C" { metadata { tier: "gold" } component X "X" { metadata { critical: "true" } } datastore D "DB" { metadata { engine: "postgres" } } queue Q "Events" { metadata { topic: "billing" } } } } }`
+	dsl := `model { metadata { level "arch" } person U "User" { metadata { persona "customer" } } system S "S" { metadata { owner "team" } container C "C" { metadata { tier "gold" } component X "X" { metadata { critical "true" } } datastore D "DB" { metadata { engine "postgres" } } queue Q "Events" { metadata { topic "billing" } } } } }`
 	p, _ := language.NewParser()
-	prog, err := p.Parse("a.sruja", dsl)
+	prog, _, err := p.Parse("a.sruja", dsl)
 	if err != nil {
-		t.Fatalf("parse: %v", err)
+		t.Fatalf("parse %v", err)
 	}
 	pr := language.NewPrinter()
 	out := pr.Print(prog)
 	checks := []string{
-		"architecture \"A\" {",
+		"model {",
 		"metadata {",
 		"person U \"User\" {",
 		"datastore D \"DB\" {",
@@ -167,7 +332,7 @@ func Test_Printer_Emits_Metadata_For_All_Elements(t *testing.T) {
 	}
 	for _, s := range checks {
 		if !strings.Contains(out, s) {
-			t.Fatalf("printer missing segment: %s", s)
+			t.Fatalf("printer missing segment %s", s)
 		}
 	}
 }

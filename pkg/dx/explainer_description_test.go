@@ -8,20 +8,25 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-func TestBuildDescription_DataStore(t *testing.T) {
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{
-					ID: "Sys",
-					DataStores: []*language.DataStore{
-						{ID: "DB", Label: "Database"},
-					},
-				},
-			},
-		},
+func parseDSL(t *testing.T, dsl string) *language.Program {
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
 	}
+	prog, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+	return prog
+}
+
+func TestBuildDescription_DataStore(t *testing.T) {
+	dsl := `model {
+		Sys = system "System" {
+			DB = database "Database"
+		}
+	}`
+	prog := parseDSL(t, dsl)
 
 	explainer := NewExplainer(prog)
 	explanation, err := explainer.ExplainElement("DB")
@@ -34,19 +39,12 @@ func TestBuildDescription_DataStore(t *testing.T) {
 }
 
 func TestBuildDescription_Queue(t *testing.T) {
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{
-					ID: "Sys",
-					Queues: []*language.Queue{
-						{ID: "Q", Label: "Queue"},
-					},
-				},
-			},
-		},
-	}
+	dsl := `model {
+		Sys = system "System" {
+			Q = queue "Queue"
+		}
+	}`
+	prog := parseDSL(t, dsl)
 
 	explainer := NewExplainer(prog)
 	explanation, err := explainer.ExplainElement("Q")
@@ -64,7 +62,10 @@ func TestBuildDescription_Queue(t *testing.T) {
 
 func TestBuildDescription_DefaultCase(t *testing.T) {
 	// Test with an unknown element type (nil)
-	explainer := NewExplainer(&language.Program{Architecture: &language.Architecture{Name: "Test"}})
+	prog := &language.Program{
+		Model: &language.ModelBlock{},
+	}
+	explainer := NewExplainer(prog)
 	desc := explainer.buildDescription(nil)
 	if !strings.Contains(desc, "architecture element") {
 		t.Error("Default case should mention 'architecture element'")
@@ -72,20 +73,12 @@ func TestBuildDescription_DefaultCase(t *testing.T) {
 }
 
 func TestBuildDescription_SystemWithDataStores(t *testing.T) {
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{
-					ID:    "Sys",
-					Label: "System",
-					DataStores: []*language.DataStore{
-						{ID: "DB", Label: "Database"},
-					},
-				},
-			},
-		},
-	}
+	dsl := `model {
+		Sys = system "System" {
+			DB = database "Database"
+		}
+	}`
+	prog := parseDSL(t, dsl)
 
 	explainer := NewExplainer(prog)
 	explanation, err := explainer.ExplainElement("Sys")
@@ -98,25 +91,14 @@ func TestBuildDescription_SystemWithDataStores(t *testing.T) {
 }
 
 func TestBuildDescription_ContainerWithComponents(t *testing.T) {
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{
-					ID: "Sys",
-					Containers: []*language.Container{
-						{
-							ID:    "Cont",
-							Label: "Container",
-							Components: []*language.Component{
-								{ID: "Comp", Label: "Component"},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
+	dsl := `model {
+		Sys = system "System" {
+			Cont = container "Container" {
+				Comp = component "Component"
+			}
+		}
+	}`
+	prog := parseDSL(t, dsl)
 
 	explainer := NewExplainer(prog)
 	explanation, err := explainer.ExplainElement("Cont")

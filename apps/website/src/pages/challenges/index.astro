@@ -1,0 +1,109 @@
+---
+import { getCollection } from 'astro:content'
+import type { CollectionEntry } from 'astro:content'
+import Layout from '../../layouts/Layout.astro'
+import ContentPage from '@/features/content/components/ContentPage.astro'
+const challenges = (await getCollection('challenges')) as CollectionEntry<'challenges'>[]
+const topics = Array.from(new Set(challenges.map((c) => c.data.topic).filter(Boolean)))
+---
+
+<Layout title="Challenges" description="Practice Sruja by fixing broken architectures.">
+  <ContentPage title="Challenges" summary="Fix broken architectures using the editor and validate with WASM.">
+    <div class="filters" id="filters">
+      <button class="filter active" data-topic="">All</button>
+      {topics.map(t => (<button class="filter" data-topic={t}>{t}</button>))}
+    </div>
+    <div class="challenge-grid" id="challenge-list">
+      {challenges
+        .sort((a: CollectionEntry<'challenges'>, b: CollectionEntry<'challenges'>) => (a.data.title || '').localeCompare(b.data.title || ''))
+        .map((c) => (
+        <a class="challenge-card" href={`/challenges/${c.slug}`} data-slug={c.slug} data-difficulty={c.data.difficulty} data-topic={c.data.topic}>
+          <div class="challenge-meta">
+            {c.data.difficulty && <span class={`pill ${c.data.difficulty}`}>{c.data.difficulty}</span>}
+            {c.data.topic && <span class="pill topic">{c.data.topic}</span>}
+            {c.data.estimatedTime && <span class="pill time">{c.data.estimatedTime}</span>}
+          </div>
+          <h3 class="challenge-title">{c.data.title}</h3>
+          {c.data.summary && <p class="challenge-summary">{c.data.summary}</p>}
+          <span class="badge" data-badge></span>
+        </a>
+        )
+      )}
+    </div>
+  </ContentPage>
+  <script is:inline>
+    // Initialize challenges page
+    try {
+      const setActive = (btn) => {
+        document.querySelectorAll('#filters .filter').forEach(b => b.classList.remove('active'))
+        if (btn) btn.classList.add('active')
+      }
+      
+      const applyFilter = (topic) => {
+        const cards = document.querySelectorAll('#challenge-list .challenge-card');
+        if (cards.length > 0) {
+          cards.forEach((card) => {
+            const ctopic = card.getAttribute('data-topic') || ''
+            const show = !topic || ctopic === topic
+            card.style.display = show ? '' : 'none'
+          })
+        }
+      }
+
+      // Initial filter application (shows all)
+      applyFilter('');
+
+      document.querySelectorAll('#filters .filter').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const t = btn.getAttribute('data-topic') || ''
+          setActive(btn)
+          applyFilter(t)
+        })
+      })
+      const raw = localStorage.getItem('sruja:completedChallenges');
+      const done = raw ? JSON.parse(raw) : [];
+      const set = new Set(done);
+      document.querySelectorAll('#challenge-list .challenge-card').forEach((card) => {
+        const slug = card.getAttribute('data-slug');
+        const badge = card.querySelector('[data-badge]');
+        if (slug && set.has(slug)) {
+          if (badge) badge.textContent = 'Completed';
+          if (badge instanceof HTMLElement) {
+            badge.classList.add('completed');
+          }
+        }
+      });
+    } catch {}
+  </script>
+</Layout>
+
+<style>
+  .challenge-grid { display: grid; gap: 1rem; }
+  .challenge-card {
+    display: block;
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    text-decoration: none;
+    background: var(--color-background, #ffffff);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .challenge-card:hover {
+    border-color: var(--color-primary, #3b82f6);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  }
+  .challenge-meta { display: flex; gap: 6px; margin-bottom: 6px; }
+  .pill { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--color-border, #e2e8f0); color: var(--color-text-secondary, #64748b); }
+  .pill.beginner { background: #ecfdf5; border-color: #22c55e; color: #166534; }
+  .pill.intermediate { background: #fff7ed; border-color: #f59e0b; color: #92400e; }
+  .pill.advanced { background: #fef2f2; border-color: #ef4444; color: #7f1d1d; }
+  .pill.topic { background: #f1f5f9; }
+  .pill.time { background: #eef2ff; }
+  .challenge-title { margin: 0 0 0.25rem 0; font-weight: 600; color: var(--color-text-primary, #0f172a); }
+  .challenge-summary { margin: 0; color: var(--color-text-secondary, #64748b); }
+  .badge { margin-top: 0.5rem; display: inline-block; font-size: 12px; color: #22c55e; }
+  .badge.completed::before { content: '✅ '; }
+  .filters { display: flex; gap: 8px; margin-bottom: 8px; }
+  .filter { padding: 4px 10px; border: 1px solid var(--color-border, #e2e8f0); border-radius: 999px; background: #f8fafc; font-size: 12px; cursor: pointer; }
+  .filter.active { border-color: var(--color-primary, #3b82f6); color: var(--color-primary, #3b82f6); background: #eff6ff; }
+</style>

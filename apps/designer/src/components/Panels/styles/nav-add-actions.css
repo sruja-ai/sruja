@@ -1,0 +1,39 @@
+/* Add Actions - Elegant list of add buttons */
+.nav-add-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.nav-add-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+}
+
+.nav-add-action-btn:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.nav-add-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.nav-add-action-btn svg {
+    flex-shrink: 0;
+    color: var(--highlight-color);
+}
+

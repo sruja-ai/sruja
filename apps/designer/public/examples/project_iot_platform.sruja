@@ -1,0 +1,171 @@
+// examples/project_iot_platform.sruja
+// Real-world IoT Platform with many devices, gateways, and data processing
+// Tests layout with complex hierarchy and many edges
+
+specification {
+  element person
+  element system
+  element container
+  element component
+  element database
+  element queue
+}
+
+model {
+  deviceOwner = person "Device Owner"
+  dataAnalyst = person "Data Analyst"
+  systemAdmin = person "System Administrator"
+  
+  ioTPlatform = system "IoT Platform" {
+    deviceGateway = container "Device Gateway" {
+      description "Manages device connections"
+      technology "MQTT Broker"
+      connectionManager = component "Connection Manager"
+      messageRouter = component "Message Router"
+      protocolAdapter = component "Protocol Adapter"
+      connectionManager -> messageBroker "Routes messages"
+      messageRouter -> deviceRegistry "Queries devices"
+      protocolAdapter -> messageBroker "Publishes messages"
+    }
+    
+    ingestionService = container "Ingestion Service" {
+      description "Processes incoming data"
+      technology "Go"
+      messageConsumer = component "Message Consumer"
+      dataValidator = component "Data Validator"
+      dataNormalizer = component "Data Normalizer"
+      messageConsumer -> messageBroker "Consumes messages"
+      dataValidator -> deviceRegistry "Validates devices"
+      dataNormalizer -> timeSeriesDB "Writes data"
+    }
+    
+    deviceManagementService = container "Device Management Service" {
+      description "Manages device lifecycle"
+      technology "Java, Spring Boot"
+      deviceAPI = component "Device API"
+      provisioningService = component "Provisioning Service"
+      firmwareManager = component "Firmware Manager"
+      deviceAPI -> deviceRegistry "Manages devices"
+      provisioningService -> deviceRegistry "Registers devices"
+      firmwareManager -> objectStorage "Stores firmware"
+    }
+    
+    analyticsService = container "Analytics Service" {
+      description "Real-time and batch analytics"
+      technology "Python, Spark"
+      streamProcessor = component "Stream Processor"
+      batchProcessor = component "Batch Processor"
+      alertEngine = component "Alert Engine"
+      streamProcessor -> messageBroker "Processes streams"
+      batchProcessor -> timeSeriesDB "Reads historical data"
+      alertEngine -> notificationService "Sends alerts"
+    }
+    
+    ruleEngine = container "Rule Engine" {
+      description "Executes business rules"
+      technology "Node.js"
+      ruleEvaluator = component "Rule Evaluator"
+      actionExecutor = component "Action Executor"
+      ruleEvaluator -> timeSeriesDB "Queries data"
+      actionExecutor -> deviceGateway "Sends commands"
+    }
+    
+    dashboardService = container "Dashboard Service" {
+      description "Provides web dashboard"
+      technology "React"
+      dashboardAPI = component "Dashboard API"
+      visualizationEngine = component "Visualization Engine"
+      dashboardAPI -> timeSeriesDB "Queries data"
+      visualizationEngine -> dashboardAPI "Fetches data"
+    }
+    
+    deviceRegistry = database "Device Registry" {
+      technology "PostgreSQL"
+    }
+    
+    timeSeriesDB = database "Time Series Database" {
+      technology "InfluxDB"
+    }
+    
+    metadataDB = database "Metadata Database" {
+      technology "PostgreSQL"
+    }
+    
+    messageBroker = queue "Message Broker" {
+      technology "Kafka"
+    }
+    
+    objectStorage = container "Object Storage" {
+      technology "S3"
+    }
+  }
+  
+  notificationService = system "Notification Service" {
+    emailService = container "Email Service" {
+      technology "SendGrid"
+    }
+    
+    sMSService = container "SMS Service" {
+      technology "Twilio"
+    }
+    
+    pushService = container "Push Service" {
+      technology "Firebase"
+    }
+  }
+  
+  edgeGateway = system "Edge Gateway" {
+    description "On-premise edge gateway"
+    edgeProcessor = container "Edge Processor" {
+      technology "Docker"
+    }
+  }
+  
+  // User interactions
+  deviceOwner -> ioTPlatform.dashboardService "Views data"
+  dataAnalyst -> ioTPlatform.dashboardService "Analyzes data"
+  systemAdmin -> ioTPlatform.deviceManagementService "Manages devices"
+  
+  // Data flow
+  edgeGateway -> ioTPlatform.deviceGateway "Sends telemetry"
+  ioTPlatform.deviceGateway -> ioTPlatform.ingestionService "Routes data"
+  ioTPlatform.ingestionService -> ioTPlatform.timeSeriesDB "Stores data"
+  
+  // Device management
+  ioTPlatform.deviceManagementService -> ioTPlatform.deviceRegistry "Manages registry"
+  ioTPlatform.deviceGateway -> ioTPlatform.deviceRegistry "Queries devices"
+  
+  // Analytics flow
+  ioTPlatform.analyticsService -> ioTPlatform.timeSeriesDB "Reads data"
+  ioTPlatform.dashboardService -> ioTPlatform.timeSeriesDB "Queries data"
+  ioTPlatform.ruleEngine -> ioTPlatform.timeSeriesDB "Queries data"
+  
+  // Rule execution
+  ioTPlatform.ruleEngine -> ioTPlatform.deviceGateway "Sends commands"
+  ioTPlatform.ruleEngine -> notificationService "Sends notifications"
+  
+  // Notifications
+  ioTPlatform.analyticsService -> notificationService.emailService "Sends emails"
+  ioTPlatform.analyticsService -> notificationService.sMSService "Sends SMS"
+  ioTPlatform.analyticsService -> notificationService.pushService "Sends push"
+  
+  // Storage
+  ioTPlatform.deviceManagementService -> ioTPlatform.objectStorage "Stores firmware"
+  
+  requirement REQ001 functional "Handle 1M+ devices"
+  requirement REQ002 performance "Process 100k messages/second"
+  requirement REQ003 reliability "99.9% message delivery"
+  requirement REQ004 latency "Sub-second rule execution"
+}
+
+views {
+  view index {
+    title "IoT Platform Architecture"
+    include *
+  }
+  
+  view containers of ioTPlatform {
+    title "IoT Platform Containers"
+    include ioTPlatform.*
+  }
+}

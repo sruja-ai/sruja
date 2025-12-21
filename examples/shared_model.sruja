@@ -1,6 +1,0 @@
-// SKIP_ORPHAN_CHECK: Intentionally has standalone elements without relations
-architecture "Shared Model" {
-  system Shared "Shared" {
-    datastore SharedDB "Shared DB"
-  }
-}

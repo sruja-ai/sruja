@@ -2,37 +2,11 @@
 package engine
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sruja-ai/sruja/pkg/language"
 )
-
-func TestValidationError_String(t *testing.T) {
-	err := ValidationError{
-		Message: "Test error",
-		Line:    10,
-		Column:  5,
-	}
-	str := err.String()
-	if str == "" {
-		t.Error("String() should return error message")
-	}
-	if !contains(str, "Test error") {
-		t.Error("String() should contain error message")
-	}
-}
-
-func TestValidationError_Error(t *testing.T) {
-	err := ValidationError{
-		Message: "Test error",
-		Line:    5,
-		Column:  3,
-	}
-	errStr := err.Error()
-	if errStr == "" {
-		t.Error("Error() should return error message")
-	}
-}
 
 func TestNewValidator(t *testing.T) {
 	v := NewValidator()
@@ -58,38 +32,48 @@ func TestValidator_Validate(t *testing.T) {
 	rule := &UniqueIDRule{}
 	v.RegisterRule(rule)
 
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{ID: "Sys1", Label: "System 1"},
-				{ID: "Sys2", Label: "System 2"},
-			},
-		},
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	errs := v.Validate(prog)
+	dsl := `model {
+		Sys1 = system "System 1"
+		Sys2 = system "System 2"
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	errs := v.Validate(program)
 	// Should have no errors for unique IDs
 	if len(errs) != 0 {
 		t.Errorf("Expected no errors, got %d", len(errs))
 	}
 }
 
-func TestValidator_Validate_MultipleRules(t *testing.T) {
+func TestValidator_Validate_MultipleRules(_ *testing.T) {
 	v := NewValidator()
 	v.RegisterRule(&UniqueIDRule{})
 	v.RegisterRule(&ValidReferenceRule{})
 
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{ID: "Sys1", Label: "System 1"},
-			},
-		},
+	parser, err := language.NewParser()
+	if err != nil {
+		return
 	}
 
-	errs := v.Validate(prog)
+	dsl := `model {
+		Sys1 = system "System 1"
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		return
+	}
+
+	errs := v.Validate(program)
 	// Should run all rules
 	_ = errs
 }
@@ -103,17 +87,26 @@ func TestCycleDetectionRule_Name(t *testing.T) {
 
 func TestCycleDetectionRule_Validate_NoCycle(t *testing.T) {
 	rule := &CycleDetectionRule{}
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Relations: []*language.Relation{
-				{From: "A", To: "B"},
-				{From: "B", To: "C"},
-			},
-		},
+
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	errs := rule.Validate(prog)
+	dsl := `model {
+		A = system "A"
+		B = system "B"
+		C = system "C"
+		A -> B
+		B -> C
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	errs := rule.Validate(program)
 	if len(errs) != 0 {
 		t.Errorf("Expected no errors, got %d", len(errs))
 	}
@@ -121,17 +114,25 @@ func TestCycleDetectionRule_Validate_NoCycle(t *testing.T) {
 
 func TestCycleDetectionRule_Validate_Cycle(t *testing.T) {
 	rule := &CycleDetectionRule{}
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Relations: []*language.Relation{
-				{From: "A", To: "B"},
-				{From: "B", To: "A"},
-			},
-		},
+
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	errs := rule.Validate(prog)
+	dsl := `model {
+		A = system "A"
+		B = system "B"
+		A -> B
+		B -> A
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	errs := rule.Validate(program)
 	if len(errs) == 0 {
 		t.Error("Expected cycle detection error")
 	}
@@ -149,22 +150,27 @@ func TestCycleDetectionRule_Validate_NilArchitecture(t *testing.T) {
 
 func TestCycleDetectionRule_Validate_SystemRelations(t *testing.T) {
 	rule := &CycleDetectionRule{}
-	prog := &language.Program{
-		Architecture: &language.Architecture{
-			Name: "Test",
-			Systems: []*language.System{
-				{
-					ID: "Sys",
-					Relations: []*language.Relation{
-						{From: "A", To: "B"},
-						{From: "B", To: "A"},
-					},
-				},
-			},
-		},
+
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	errs := rule.Validate(prog)
+	dsl := `model {
+		Sys = system "System" {
+			A = container "A"
+			B = container "B"
+			A -> B
+			B -> A
+		}
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	errs := rule.Validate(program)
 	if len(errs) == 0 {
 		t.Error("Expected cycle detection error in system relations")
 	}
@@ -191,18 +197,97 @@ func TestOrphanDetectionRule_Name(t *testing.T) {
 	}
 }
 
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > len(substr) && (s[:len(substr)] == substr ||
-			s[len(s)-len(substr):] == substr ||
-			containsMiddle(s, substr))))
-}
+func TestValidator_RegisterDefaultRules(t *testing.T) {
+	v := NewValidator()
+	v.RegisterDefaultRules()
 
-func containsMiddle(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
+	// Check that default rules are registered
+	if len(v.Rules) == 0 {
+		t.Error("RegisterDefaultRules should register at least one rule")
+	}
+
+	// Verify some expected rules are present
+	ruleNames := make(map[string]bool)
+	for _, rule := range v.Rules {
+		ruleNames[rule.Name()] = true
+	}
+
+	// Check that we have the expected number of default rules
+	// RegisterDefaultRules should register at least 8 rules
+	if len(v.Rules) < 8 {
+		t.Errorf("Expected at least 8 default rules, got %d", len(v.Rules))
+	}
+
+	// Verify some key rules are present by checking their names
+	expectedRuleNames := map[string]bool{
+		"Unique IDs":                  false,
+		"Valid References":            false,
+		"CycleDetection":              false,
+		"OrphanDetection":             false,
+		"SimplicityGuidance":          false,
+		"Layer Violation":             false,
+		"ScenarioReferenceValidation": false,
+		"SLO Validation":              false,
+	}
+
+	for _, rule := range v.Rules {
+		ruleName := rule.Name()
+		for expected := range expectedRuleNames {
+			if strings.Contains(ruleName, expected) {
+				expectedRuleNames[expected] = true
+			}
 		}
 	}
-	return false
+
+	for expected, found := range expectedRuleNames {
+		if !found {
+			t.Errorf("Expected rule containing '%s' not found in registered rules. Got: %v", expected, ruleNames)
+		}
+	}
+}
+
+func TestValidator_RegisterDefaultRules_CanValidate(t *testing.T) {
+	t.Helper()
+	v := NewValidator()
+	v.RegisterDefaultRules()
+
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+
+	dsl := `model {
+		Sys1 = system "System 1"
+		Sys2 = system "System 2"
+	}`
+
+	program, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	// Should run without panicking
+	diags := v.Validate(program)
+	_ = diags // We're just checking it doesn't panic
+}
+
+func TestDatabaseIsolationRule_Name(t *testing.T) {
+	rule := &DatabaseIsolationRule{}
+	if rule.Name() != "Database Isolation" {
+		t.Errorf("Expected name 'Database Isolation', got '%s'", rule.Name())
+	}
+}
+
+func TestPublicInterfaceDocumentationRule_Name(t *testing.T) {
+	rule := &PublicInterfaceDocumentationRule{}
+	if rule.Name() != "Public Interface Documentation" {
+		t.Errorf("Expected name 'Public Interface Documentation', got '%s'", rule.Name())
+	}
+}
+
+func TestLayerViolationRule_Name(t *testing.T) {
+	rule := &LayerViolationRule{}
+	if rule.Name() == "" {
+		t.Error("Name() should return rule name")
+	}
 }

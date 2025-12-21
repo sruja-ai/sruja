@@ -1,0 +1,209 @@
+.details-view {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-primary);
+}
+
+.details-subnav {
+    display: flex;
+    gap: 2px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    flex-shrink: 0;
+}
+
+.subnav-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.subnav-item:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+}
+
+.subnav-item.active {
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    font-weight: 600;
+}
+
+.subnav-item svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.subnav-item.active svg {
+    opacity: 1;
+    color: var(--highlight-color);
+}
+
+.subnav-count {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    min-width: 18px;
+    text-align: center;
+}
+
+.subnav-item.active .subnav-count {
+    background: rgba(102, 126, 234, 0.15);
+    color: var(--highlight-color);
+}
+
+.details-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Ensure child panels fit */
+.details-content>div {
+    height: 100%;
+    overflow-y: auto;
+}
+
+/* Placeholder for Scenarios/Flows - Modernized */
+.details-placeholder {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-8, 2rem);
+    text-align: center;
+    color: var(--text-secondary);
+    animation: fadeIn 0.4s ease-out;
+}
+
+.details-placeholder .placeholder-icon {
+    color: var(--text-muted);
+    opacity: 0.6;
+    margin-bottom: var(--space-4, 1rem);
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+.details-placeholder h3 {
+    margin: 0 0 var(--space-2, 0.5rem) 0;
+    font-size: var(--text-xl, 1.25rem);
+    font-weight: var(--font-semibold, 600);
+    color: var(--text-primary);
+}
+
+.details-placeholder p {
+    margin: 0;
+    font-size: var(--text-base, 0.9rem);
+    max-width: 400px;
+    line-height: var(--leading-relaxed, 1.75);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .details-subnav {
+        padding: 10px 12px;
+        gap: 4px;
+        overflow-x: auto;
+    }
+
+    .subnav-item {
+        padding: 6px 10px;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+
+    .subnav-item span:first-of-type {
+        display: none;
+    }
+
+    .subnav-item.active span:first-of-type {
+        display: inline;
+    }
+}
+
+/* Unified Details View */
+.details-view-unified {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-primary, #ffffff);
+}
+
+[data-theme="dark"] .details-view-unified {
+    background: var(--bg-primary, #1e293b);
+}
+
+.details-search-bar {
+    padding: var(--space-4, 1rem) var(--space-6, 1.5rem);
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    background: var(--bg-secondary, #f8fafc);
+    flex-shrink: 0;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+[data-theme="dark"] .details-search-bar {
+    background: var(--bg-secondary, #334155);
+    border-color: var(--border-color, #475569);
+}
+
+.search-input-wrapper {
+    position: relative;
+    max-width: 600px;
+}
+
+.search-icon {
+    position: absolute;
+    left: var(--space-3, 0.75rem);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary, #64748b);
+    pointer-events: none;
+    z-index: 1;
+    transition: color var(--transition-base, 0.2s ease);
+}
+
+.details-search-input:focus + .search-icon,
+.details-search-input:focus ~ .search-icon {
+    color: var(--highlight-color, #3b82f6);
+}
+
+[data-theme="dark"] .search-icon {
+    color: var(--text-secondary, #cbd5e1);
+}
+
+.details-search-input {
+    padding-left: 2.5rem;
+}
+
+.details-content-unified {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}

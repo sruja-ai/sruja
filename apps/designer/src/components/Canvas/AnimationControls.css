@@ -1,0 +1,106 @@
+/**
+ * Animation Controls Styles
+ */
+
+.animation-controls {
+  /* Position handling moved to parent wrapper for animation */
+  background: var(--color-background, #ffffff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  min-width: 400px;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.animation-controls-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.animation-controls-steps {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 1px solid var(--color-border, #e0e0e0);
+}
+
+.animation-controls-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.animation-controls-progress-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--color-border, #e0e0e0);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.animation-controls-progress-fill {
+  height: 100%;
+  background: var(--color-primary, #0066cc);
+  border-radius: 2px;
+  transition: width 0.3s ease-out;
+}
+
+.animation-controls-progress-text {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--color-text-secondary, #666);
+}
+
+.animation-controls-step-counter {
+  font-weight: 500;
+  color: var(--color-text, #333);
+}
+
+.animation-controls-step-description {
+  flex: 1;
+  margin-left: 12px;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .animation-controls {
+    background: var(--color-background-dark, #1a1a1a);
+    border-color: var(--color-border-dark, #333);
+  }
+
+  .animation-controls-step-counter {
+    color: var(--color-text-dark, #e0e0e0);
+  }
+
+  .animation-controls-step-description {
+    color: var(--color-text-secondary-dark, #999);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .animation-controls {
+    min-width: auto;
+    width: calc(100% - 32px);
+    /* Positioning handled by parent wrapper */
+  }
+
+  .animation-controls-step-description {
+    display: none;
+  }
+}

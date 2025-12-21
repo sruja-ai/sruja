@@ -1,0 +1,106 @@
+/* Action Buttons */
+.overview-actions {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.action-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.action-group-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-start;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    padding: 0.875rem 1.25rem;
+    min-width: 120px;
+    max-width: 200px;
+    min-height: 40px;
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 6px;
+    color: var(--highlight-color);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    position: relative;
+}
+
+.action-btn span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.action-btn svg {
+    flex-shrink: 0;
+}
+
+.action-btn:hover {
+    background: rgba(102, 126, 234, 0.2);
+    border-color: rgba(102, 126, 234, 0.5);
+    transform: translateY(-1px);
+}
+
+.action-btn svg {
+    flex-shrink: 0;
+}
+
+.stat-card-action {
+    position: relative;
+}
+
+.stat-add-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(102, 126, 234, 0.2);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 4px;
+    color: var(--highlight-color);
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s;
+}
+
+.stat-card-action:hover .stat-add-btn {
+    opacity: 1;
+}
+
+.stat-add-btn:hover {
+    background: rgba(102, 126, 234, 0.3);
+    border-color: rgba(102, 126, 234, 0.5);
+}

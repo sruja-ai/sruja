@@ -1,0 +1,29 @@
+// examples/demo_governance.sruja
+// Governance Example
+
+specification {
+  element system
+}
+
+model {
+  shop = system "Shop" {
+    adr DB_Choice "Database Selection" {
+      status "Accepted"
+      context "Choose between Postgres and Mongo"
+      decision "Use Postgres for relational needs"
+      consequences "Reliable ACID; more ops complexity"
+    }
+  }
+  
+  policy SecurityPolicy "Encrypt data at rest" {
+    category "security"
+    enforcement "required"
+  }
+}
+
+views {
+  view index {
+    title "Governance Example"
+    include *
+  }
+}

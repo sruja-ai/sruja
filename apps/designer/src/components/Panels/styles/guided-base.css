@@ -1,0 +1,14 @@
+/* =====================================================
+   GUIDED BUILDER PANEL - Modern Professional Styling
+   ===================================================== */
+
+.guided-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    height: 100%;
+    overflow-y: auto;
+    background: var(--bg-primary);
+}
+

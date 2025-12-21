@@ -1,0 +1,176 @@
+{
+  "name": "sruja-language-support",
+  "displayName": "Sruja DSL Language Support",
+  "description": "Language support for Sruja DSL with LSP integration",
+  "version": "0.1.1",
+  "publisher": "sruja-ai",
+  "private": true,
+  "icon": "sruja-logo.png",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Formatters"
+  ],
+  "main": "./dist/extension.js",
+  "files": [
+    "out/**",
+    "dist/**",
+    "wasm/**",
+    "language-configuration.json",
+    "syntaxes/**",
+    "snippets/**",
+    "README.md",
+    "LICENSE.txt",
+    "sruja-logo.png"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sruja-ai/sruja"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "sruja",
+        "aliases": [
+          "Sruja",
+          "sruja"
+        ],
+        "extensions": [
+          ".sruja"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "sruja",
+        "scopeName": "source.sruja",
+        "path": "./syntaxes/sruja.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "sruja",
+        "path": "./snippets/sruja.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "sruja.previewArchitecture",
+        "title": "Preview Sruja Architecture",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "sruja.debugWasmLsp",
+        "title": "Debug WASM LSP",
+        "icon": "$(debug)"
+      },
+      {
+        "command": "editor.action.showReferences",
+        "title": "Show References",
+        "when": "editorHasReferenceProvider && editorTextFocus && !inReferenceSearchEditor"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "sruja.previewArchitecture",
+          "when": "editorLangId == sruja",
+          "group": "navigation@1"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "sruja.previewArchitecture",
+          "when": "resourceExtname == .sruja",
+          "group": "navigation@1"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "sruja.previewArchitecture",
+          "when": "editorLangId == sruja",
+          "group": "navigation@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Sruja",
+      "properties": {
+        "sruja.formatting.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable automatic formatting"
+        },
+        "sruja.formatting.tabSize": {
+          "type": "number",
+          "default": 2,
+          "description": "Number of spaces per indentation level"
+        },
+        "sruja.formatting.insertSpaces": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use spaces instead of tabs for indentation"
+        },
+        "sruja.performance.enableCaching": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable document caching for improved performance"
+        },
+        "sruja.performance.cacheTTL": {
+          "type": "number",
+          "default": 5000,
+          "description": "Cache time-to-live in milliseconds (default: 5000ms)"
+        },
+        "sruja.performance.diagnosticsDebounce": {
+          "type": "number",
+          "default": 300,
+          "description": "Diagnostics update debounce delay in milliseconds (default: 300ms)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build && npm run copy-wasm",
+    "copy-wasm": "mkdir -p wasm && (cp ../../apps/website/public/wasm/sruja.wasm.gz wasm/ 2>/dev/null && echo '✅ Copied compressed WASM (1.4M vs 4.8M)' || (cp ../../apps/website/public/wasm/sruja.wasm wasm/ 2>/dev/null && echo '⚠️  Using uncompressed WASM (run make wasm to generate compressed version)') || echo 'Warning: sruja.wasm not found, run make wasm first') && (cp ../../apps/website/public/wasm/wasm_exec.js wasm/ 2>/dev/null || echo 'Warning: wasm_exec.js not found')",
+    "compile": "tsc -p ./",
+    "bundle": "tsx ./scripts/bundle.mts",
+    "watch": "tsc -watch -p ./",
+    "test": "npm run compile && node ./out/test/runTest.js",
+    "build": "npm run compile && npm run bundle",
+    "dev": "npm run watch",
+    "clean": "rimraf out dist *.vsix",
+    "build:vsix": "rm -rf dist && npm run build && ../../node_modules/.bin/vsce package -o sruja-language-support.vsix --no-dependencies --allow-unused-files-pattern",
+    "install:local": "npm run build:vsix && (code --install-extension sruja-language-support.vsix || echo 'VSIX built. Install manually: Extensions > ... > Install from VSIX > sruja-language-support.vsix')",
+    "deploy": "npm run build:vsix && zx ./scripts/deploy.mts",
+    "deploy:code": "code --install-extension ./sruja-language-support.vsix",
+    "deploy:cursor": "cursor --install-extension ./sruja-language-support.vsix",
+    "deploy:antigravity": "antigravity --install-extension ./sruja-language-support.vsix",
+    "deploy:trae": "trae --install-extension ./sruja-language-support.vsix",
+    "publish:marketplace": "../../node_modules/.bin/vsce publish",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "@sruja/shared": "*"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.7.9",
+    "@types/vscode": "^1.75.0",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.27.1",
+    "glob": "^7.2.3",
+    "mocha": "^11.7.5",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.6.3",
+    "@sruja/eslint-config": "*",
+    "tsx": "^4.7.0",
+    "eslint": "^9.39.1"
+  }
+}

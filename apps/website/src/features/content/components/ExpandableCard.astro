@@ -1,0 +1,150 @@
+---
+// apps/website/src/features/content/components/ExpandableCard.astro
+interface Props {
+  title: string;
+  summary?: string;
+  defaultExpanded?: boolean;
+  id: string;
+}
+
+const { title, summary, defaultExpanded = false, id } = Astro.props;
+---
+
+<div class="expandable-card" data-id={id}>
+  <button class="expandable-card-header" aria-expanded={defaultExpanded} aria-controls={`content-${id}`}>
+    <span class="expandable-card-title">{title}</span>
+    {summary && <span class="expandable-card-summary">{summary}</span>}
+    <svg class="expandable-card-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+  <div class="expandable-card-content" id={`content-${id}`} data-expanded={defaultExpanded}>
+    <slot />
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const cards = document.querySelectorAll('.expandable-card');
+    
+    cards.forEach((card) => {
+      const button = card.querySelector('.expandable-card-header') as HTMLButtonElement;
+      const content = card.querySelector('.expandable-card-content') as HTMLElement;
+      const isExpanded = content.getAttribute('data-expanded') === 'true';
+      
+      if (!isExpanded) {
+        content.style.display = 'none';
+      }
+      
+      button.addEventListener('click', () => {
+        const expanded = button.getAttribute('aria-expanded') === 'true';
+        const newExpanded = !expanded;
+        
+        button.setAttribute('aria-expanded', String(newExpanded));
+        content.setAttribute('data-expanded', String(newExpanded));
+        
+        if (newExpanded) {
+          content.style.display = 'block';
+          button.classList.add('expanded');
+        } else {
+          content.style.display = 'none';
+          button.classList.remove('expanded');
+        }
+      });
+    });
+  });
+</script>
+
+<style>
+  .expandable-card {
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 0.5rem;
+    background: var(--color-background, #ffffff);
+    overflow: hidden;
+    transition: all 0.2s;
+  }
+
+  :global(html.dark) .expandable-card {
+    border-color: #334155;
+    background: #1e293b;
+  }
+
+  .expandable-card-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .expandable-card-header:hover {
+    background: var(--color-surface, #f8fafc);
+  }
+
+  :global(html.dark) .expandable-card-header:hover {
+    background: #334155;
+  }
+
+  .expandable-card-header.expanded .expandable-card-icon {
+    transform: rotate(180deg);
+  }
+
+  .expandable-card-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-primary, #0f172a);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex: 1;
+  }
+
+  :global(html.dark) .expandable-card-title {
+    color: #f1f5f9;
+  }
+
+  .expandable-card-summary {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary, #64748b);
+    flex: 2;
+    text-align: right;
+  }
+
+  :global(html.dark) .expandable-card-summary {
+    color: #cbd5e1;
+  }
+
+  .expandable-card-icon {
+    flex-shrink: 0;
+    color: var(--color-text-secondary, #64748b);
+    transition: transform 0.2s;
+  }
+
+  :global(html.dark) .expandable-card-icon {
+    color: #cbd5e1;
+  }
+
+  .expandable-card-content {
+    padding: 0 1.25rem 1rem 1.25rem;
+  }
+
+  @media (max-width: 768px) {
+    .expandable-card-header {
+      padding: 0.875rem 1rem;
+      flex-wrap: wrap;
+    }
+
+    .expandable-card-summary {
+      display: none;
+    }
+
+    .expandable-card-content {
+      padding: 0 1rem 0.875rem 1rem;
+    }
+  }
+</style>

@@ -1,7 +1,0 @@
-architecture "External OK Example" {
-  system App "Application" {
-    container API "API" {
-    }
-  }
-  App -> API uses "Uses"
-}

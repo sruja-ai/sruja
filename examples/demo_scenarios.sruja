@@ -1,0 +1,34 @@
+// examples/demo_scenarios.sruja
+// User Stories with Qualified Actors
+
+specification {
+  element person
+  element system
+  element container
+}
+
+model {
+  user = person "Customer"
+  
+  inventory = system "Inventory System"
+  
+  ecommerce = system "E-Commerce System" {
+    cartPage = container "Cart Page"
+  }
+  
+  user -> ecommerce.cartPage "browses and shops via"
+  ecommerce -> inventory "checks stock in"
+  
+  scenario Checkout "User Checkout Flow" {
+    step user -> ecommerce.cartPage "adds item to cart"
+    step ecommerce.cartPage -> ecommerce "clicks checkout"
+    step ecommerce -> inventory "checks stock in"
+  }
+}
+
+views {
+  view index {
+    title "User Stories with Qualified Actors"
+    include *
+  }
+}

@@ -1,46 +1,38 @@
 version: 2
-
 project_name: sruja
 
+before:
+  hooks:
+    - go mod tidy
+
 builds:
-  - env:
+  - id: sruja
+    main: ./cmd/sruja
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
-      - windows
       - darwin
     goarch:
       - amd64
       - arm64
-    main: ./cmd/sruja
-    binary: sruja
     ldflags:
-      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+      - -s -w -X main.Version={{ .Version }} -X main.BuildDate={{ .Date }} -X main.GitCommit={{ .Commit }}
 
 archives:
-  - format: tar.gz
-    # this name template makes the OS and Arch compatible with the results of uname.
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
-    format_overrides:
-      - goos: windows
-        format: zip
+  - id: default
+    ids:
+      - sruja
+    formats: ["tar.gz"]
+    name_template: '{{ .ProjectName }}_{{ .Os | title }}_{{- if eq .Arch "amd64" -}}x86_64{{- else -}}{{ .Arch }}{{- end -}}'
+    files:
+      - LICENSE
+      - README.md
 
 checksum:
-  name_template: 'checksums.txt'
+  name_template: checksums.txt
+  algorithm: sha256
 
-snapshot:
-  version_template: "{{ incpatch .Version }}-next"
-
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - '^docs:'
-      - '^test:'
+release:
+  draft: false
+  prerelease: auto

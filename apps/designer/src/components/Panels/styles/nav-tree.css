@@ -1,0 +1,134 @@
+/* Navigation Tree */
+.nav-tree {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-item {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.nav-item-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    min-height: 32px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+    text-align: left;
+    transition: background 0.15s;
+    color: var(--text-primary);
+}
+
+.nav-item-btn:hover {
+    background: var(--bg-tertiary);
+    transform: translateX(2px);
+}
+
+.nav-item.selected .nav-item-btn {
+    background: rgba(17, 104, 189, 0.1);
+    color: var(--highlight-color);
+}
+
+.nav-item-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.navigation-panel.collapsed .nav-item-label {
+    display: none;
+}
+
+.nav-item-actions {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: auto;
+    opacity: 0;
+    transition: all 0.2s;
+}
+
+.nav-item.clickable:hover .nav-item-actions {
+    opacity: 1;
+}
+
+.nav-edit-btn,
+.nav-delete-btn {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.nav-edit-btn:hover {
+    background: rgba(17, 104, 189, 0.1);
+    border-color: var(--highlight-color);
+    color: var(--highlight-color);
+}
+
+.nav-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.navigation-panel.collapsed .nav-item-actions {
+    display: none;
+}
+
+.navigation-panel.collapsed .nav-item-btn {
+    justify-content: center;
+    padding: 8px;
+}
+
+.navigation-panel.collapsed .nav-item {
+    display: flex;
+    justify-content: center;
+}
+
+.nav-item-count {
+    font-size: 10px;
+    background: var(--bg-tertiary);
+    padding: 1px 6px;
+    border-radius: 10px;
+    color: var(--text-secondary);
+}
+
+.navigation-panel.collapsed .nav-item-count {
+    display: none;
+}
+
+.nav-item.clickable {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    color: var(--text-primary);
+}
+
+.nav-item.clickable:hover {
+    background: var(--bg-tertiary);
+}
+
+.spacer {
+    width: 12px;
+}
+

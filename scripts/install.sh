@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Sruja DSL Installation Script
 # Downloads and installs the latest Sruja DSL binary
 

@@ -1,0 +1,34 @@
+// examples/reference_c4_model.sruja
+// C4 Complete Example
+
+specification {
+  element person
+  element system
+  element container
+  element database
+}
+
+model {
+  user = person "End User"
+  
+  webApp = system "Web Application" {
+    api = container "API Service"
+    db = database "Database"
+  }
+  
+  user -> webApp "uses"
+  user -> webApp.api "authenticates with"
+  webApp.api -> webApp.db "validates user in"
+}
+
+views {
+  view index {
+    title "C4 Complete Example"
+    include *
+  }
+  
+  view containers of webApp {
+    title "Web Application Containers"
+    include webApp.*
+  }
+}

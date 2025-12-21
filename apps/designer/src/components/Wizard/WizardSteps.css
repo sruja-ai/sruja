@@ -1,0 +1,25 @@
+/* =====================================================
+   WIZARD STEPS - Main Stylesheet Entry Point
+   Imports modular CSS files
+   ===================================================== */
+
+/* Base wizard step styles */
+@import "./styles/wizard-base.css";
+
+/* Step 2: System Context */
+@import "./styles/wizard-system-context.css";
+
+/* Relations Section */
+@import "./styles/wizard-relations.css";
+
+/* Governance Step - ADRs and Policies */
+@import "./styles/wizard-governance.css";
+
+/* Flows Step - Scenarios and Steps */
+@import "./styles/wizard-flows.css";
+
+/* Inline Governance Section */
+@import "./styles/wizard-inline-governance.css";
+
+/* Template Prompt */
+@import "./styles/wizard-template.css";

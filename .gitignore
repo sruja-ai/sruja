@@ -1,84 +1,159 @@
-# Binaries
-# sruja binary
-/bin/sruja
-sruja-lsp
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-bin/
-
-# Test binary, built with `go test -c`
-*.test
-
-# Output of the go coverage tool
-*.out
-*.html
-!learn/layouts/**/*.html
-
-# Dependency directories
-vendor/
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
 
-# Go workspace file
-go.work
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+.next/
+out/
+.turbo/
 
-# IDE
+# Test outputs
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+*.test
+*.out
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
-Thumbs.db
+.cursor/
+.trae/
 
-# Build outputs
-dist/
-build/
-.next/
-.turbo/
-bin/
+# Logs
+logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Environment
-.env
-.env.local
-.env.*.local
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
 
-# Playground
-apps/playground-web/dist/
-apps/playground-web/.vite/
-apps/playground-server/tmp/
-apps/playground-server/build-errors.log
+# Optional npm cache directory
+.npm
 
-# Architecture cache
-.architecture/cache/
-index.json
-visual.json
+# Optional eslint cache
+.eslintcache
 
-learn/public/
-# Bun
-.bun/
-.trae
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# Go build outputs
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+sruja
+cmd_sruja.out
+
+# Go test files
+*.test
+*.out
+
+# Go coverage
+coverage.out
+*_coverage.out
+all_coverage.out
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+# Architecture documentation build outputs
+docs/architecture/*.json
+docs/architecture/*.png
+docs/architecture/*.svg
+
+# Playwright MCP
+.playwright-mcp/
+
+# Codacy
+.codacy/
+*.codacy
+
+# Storybook
+storybook-static/
+
+# TypeScript
+*.tsbuildinfo
+
+# Vite
+.vite/
+
+# Turbo
+.turbo/
 
 # Hugo
-docs/public/
-docs/resources/
-public/
+.hugo_build.lock
 
-# WASM build artifacts (generated during build)
-*.wasm
-*.wasm.gz
-*.wasm.br
-wasm_exec.js
+# HTML test outputs (but keep website and public HTML files)
+test-outputs/*.html
+test_*.html
+*.html
+!apps/website/src/**/*.html
+!apps/website/public/**/*.html
+!public/**/*.html
 
-#Ignore cursor AI rules
-.cursor/rules/codacy.mdc
+# Test markdown
+test.md
+test.mmd
+test.sruja
 
-snippet_*
+# WASM build outputs (these are generated from Go source via `make wasm`)
+# WASM files are large (~5MB each) and can be regenerated, so they should not be committed
+# They are built automatically via ensure-wasm.mjs scripts in apps
+wasm/*.wasm
+apps/*/public/wasm/*.wasm
+apps/*/public/wasm/*.wasm.br
+apps/*/public/wasm/*.wasm.gz
+apps/*/dist/wasm/*.wasm
+apps/*/public/*.wasm
+apps/*/public/*.wasm.br
+apps/*/public/*.wasm.gz
+apps/*/wasm/*.wasm
+apps/*/wasm/*.wasm.gz
 
-.playwright-mcp/
-.codacy/
+# Binary files
+bin/
+*.bin
+
+# Lock files (keep package-lock.json but ignore pnpm-lock.yaml in root)
+# package-lock.json is tracked
+pnpm-lock.yaml
+
+# Temporary documentation (if any remain)
+*_FINDINGS.md
+*_INVESTIGATION.md
+*_REVIEW.md

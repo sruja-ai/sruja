@@ -1,0 +1,37 @@
+/* =====================================================
+   GUIDED BUILDER PANEL - Main Stylesheet Entry Point
+   Imports modular CSS files
+   ===================================================== */
+
+/* Base panel styles */
+@import "./styles/guided-base.css";
+
+/* Section Cards */
+@import "./styles/guided-sections.css";
+
+/* Section Header */
+@import "./styles/guided-header.css";
+
+/* Description Box */
+@import "./styles/guided-description.css";
+
+/* Stats Row */
+@import "./styles/guided-stats.css";
+
+/* Form Actions */
+@import "./styles/guided-form.css";
+
+/* Continue Button */
+@import "./styles/guided-continue-button.css";
+
+/* Checklist */
+@import "./styles/guided-checklist.css";
+
+/* Welcome Card */
+@import "./styles/guided-welcome.css";
+
+/* Utility Classes */
+@import "./styles/guided-utility.css";
+
+/* Responsive */
+@import "./styles/guided-responsive.css";
