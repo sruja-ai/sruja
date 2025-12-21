@@ -51,7 +51,7 @@ describe('errorTracking', () => {
 
       trackError(error, context);
 
-      const captureCall = (posthog.capture as any).mock.calls[0];
+      const captureCall = (posthog.capture as ReturnType<typeof vi.fn>).mock.calls[0];
       expect(captureCall[1].error_message).not.toContain('token12345');
       expect(captureCall[1].error_message).not.toContain('secret123');
     });
@@ -94,8 +94,8 @@ describe('errorTracking', () => {
         trackError(error, { component: 'test', action: 'test' });
 
         expect(posthog.capture).toHaveBeenCalled();
-        const captureCall = (posthog.capture as any).mock.calls[0];
-        const properties = captureCall[1];
+        const captureCall = (posthog.capture as ReturnType<typeof vi.fn>).mock.calls[0];
+        const properties = captureCall[1] as Record<string, unknown>;
         
         expect(properties.user_agent).toBe('test-agent');
         expect(properties.screen_size).toBe('1920x1080');

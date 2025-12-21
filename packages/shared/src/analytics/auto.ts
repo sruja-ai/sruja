@@ -21,10 +21,11 @@ function propsFrom(el: Element): Record<string, string | undefined> {
   for (const k of Object.keys(ds)) d[`data_${k}`] = ds[k]
   const tag = el.tagName.toLowerCase()
   const href = (el as HTMLAnchorElement).href || undefined
-  const role = (el as any).role || (el.getAttribute('role') || undefined)
-  const name = (el as any).name || el.getAttribute('name') || undefined
+  const htmlEl = el as HTMLElement;
+  const role = (htmlEl as HTMLElement & { role?: string }).role || (el.getAttribute('role') || undefined)
+  const name = (htmlEl as HTMLElement & { name?: string }).name || el.getAttribute('name') || undefined
   const id = el.id || undefined
-  const cls = (el as any).className || ''
+  const cls = htmlEl.className || ''
   return {
     tag,
     id,
@@ -70,7 +71,7 @@ function onChange(e: Event, attr: string) {
   if (!isChangeTarget(el) && !el.hasAttribute(attr)) return
   const component = el.getAttribute('data-component') || 'form'
   const action = el.getAttribute(attr) || 'change'
-  let value: any = undefined
+  let value: string | boolean | undefined = undefined
   const tag = el.tagName.toLowerCase()
   if (tag === 'select') value = (el as HTMLSelectElement).value
   else if (tag === 'input') {
@@ -78,7 +79,8 @@ function onChange(e: Event, attr: string) {
     if (input.type === 'checkbox' || input.type === 'radio') value = input.checked
     else value = input.value
   }
-  const name = (el as any).name || el.getAttribute('name') || undefined
+  const htmlEl = el as HTMLElement;
+  const name = (htmlEl as HTMLElement & { name?: string }).name || el.getAttribute('name') || undefined
   capture(`interaction.${component}.${action}`, { ...propsFrom(el), name, value })
 }
 
@@ -106,13 +108,13 @@ function enablePageviews() {
   capturePage()
   const origPush = history.pushState
   const origReplace = history.replaceState
-  history.pushState = function (...args: any[]) {
-    const r = origPush.apply(this, args as any)
+  history.pushState = function (state: unknown, title: string, url?: string | URL | null) {
+    const r = origPush.call(this, state, title, url)
     queueMicrotask(capturePage)
     return r
   }
-  history.replaceState = function (...args: any[]) {
-    const r = origReplace.apply(this, args as any)
+  history.replaceState = function (state: unknown, title: string, url?: string | URL | null) {
+    const r = origReplace.call(this, state, title, url)
     queueMicrotask(capturePage)
     return r
   }
