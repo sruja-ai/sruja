@@ -10,21 +10,21 @@ interface WindowWithPosthog extends Window {
   };
 }
 
-interface GlobalWithWindow extends typeof globalThis {
+type GlobalWithWindow = typeof globalThis & {
   window?: WindowWithPosthog;
-}
+};
 
 describe('posthog', () => {
   beforeEach(() => {
     // Reset module state
     vi.resetModules();
-    
+
     // Clear window.posthog
     if (typeof window !== 'undefined') {
       const windowWithPosthog = window as WindowWithPosthog;
       delete windowWithPosthog.posthog;
     }
-    
+
     // Reset globals
     const globalWithWindow = global as GlobalWithWindow;
     globalWithWindow.window = globalWithWindow.window || {} as WindowWithPosthog;
@@ -35,11 +35,11 @@ describe('posthog', () => {
       const originalWindow = global.window;
       const globalWithWindow = global as GlobalWithWindow;
       delete globalWithWindow.window;
-      
+
       const result = await initPosthog({ apiKey: 'test-key' });
-      
+
       expect(result).toBeNull();
-      
+
       global.window = originalWindow;
     });
 
@@ -59,12 +59,12 @@ describe('posthog', () => {
         capture: vi.fn(),
         identify: vi.fn(),
       };
-      
+
       const windowWithPosthog = window as WindowWithPosthog;
       windowWithPosthog.posthog = mockPosthog;
-      
+
       const result = await initPosthog({ apiKey: 'test-key' });
-      
+
       expect(mockPosthog.init).toHaveBeenCalledWith('test-key', { api_host: undefined });
       expect(result).toBe(mockPosthog);
     });
@@ -75,17 +75,17 @@ describe('posthog', () => {
         capture: vi.fn(),
         identify: vi.fn(),
       };
-      
+
       const windowWithPosthog = window as WindowWithPosthog;
       windowWithPosthog.posthog = mockPosthog;
-      
-      const result = await initPosthog({ 
-        apiKey: 'test-key', 
-        host: 'https://custom.posthog.com' 
+
+      const result = await initPosthog({
+        apiKey: 'test-key',
+        host: 'https://custom.posthog.com'
       });
-      
-      expect(mockPosthog.init).toHaveBeenCalledWith('test-key', { 
-        api_host: 'https://custom.posthog.com' 
+
+      expect(mockPosthog.init).toHaveBeenCalledWith('test-key', {
+        api_host: 'https://custom.posthog.com'
       });
       expect(result).toBe(mockPosthog);
     });
@@ -96,16 +96,16 @@ describe('posthog', () => {
         capture: vi.fn(),
         identify: vi.fn(),
       };
-      
+
       const windowWithPosthog = window as WindowWithPosthog;
       windowWithPosthog.posthog = mockPosthog;
-      
-      const result = await initPosthog({ 
+
+      const result = await initPosthog({
         apiKey: 'test-key',
         options: { autocapture: false }
       });
-      
-      expect(mockPosthog.init).toHaveBeenCalledWith('test-key', { 
+
+      expect(mockPosthog.init).toHaveBeenCalledWith('test-key', {
         api_host: undefined,
         autocapture: false
       });
@@ -117,11 +117,11 @@ describe('posthog', () => {
       // Actual import testing requires more complex setup
       const windowWithPosthog = window as WindowWithPosthog;
       delete windowWithPosthog.posthog;
-      
+
       // The function will attempt to import posthog-js
       // In test environment, this may fail or succeed depending on whether posthog-js is installed
       const result = await initPosthog({ apiKey: 'test-key' });
-      
+
       // Result could be null if import fails, or a client if it succeeds
       // We just verify it doesn't throw
       expect(result === null || typeof result === 'object').toBe(true);
@@ -133,7 +133,7 @@ describe('posthog', () => {
       const mockPosthog = { capture: vi.fn() };
       const windowWithPosthog = window as WindowWithPosthog;
       windowWithPosthog.posthog = mockPosthog;
-      
+
       const result = getPosthog();
       expect(result).toBe(mockPosthog);
     });
@@ -144,14 +144,14 @@ describe('posthog', () => {
         capture: vi.fn(),
         identify: vi.fn(),
       };
-      
+
       const windowWithPosthog = window as WindowWithPosthog;
       windowWithPosthog.posthog = mockPosthog;
-      
+
       await initPosthog({ apiKey: 'test-key' });
-      
+
       delete windowWithPosthog.posthog;
-      
+
       const result = getPosthog();
       expect(result).toBe(mockPosthog);
     });
@@ -175,13 +175,13 @@ describe('posthog', () => {
         capture: vi.fn(),
         identify: vi.fn(),
       };
-      
+
       const windowWithPosthog = window as WindowWithPosthog;
       windowWithPosthog.posthog = mockPosthog;
       await initPosthog({ apiKey: 'test-key' });
-      
+
       capture('test-event', { prop: 'value' });
-      
+
       expect(mockPosthog.capture).toHaveBeenCalledWith('test-event', { prop: 'value' });
     });
 
@@ -191,20 +191,20 @@ describe('posthog', () => {
         capture: vi.fn(),
         identify: vi.fn(),
       };
-      
+
       const windowWithPosthog = window as WindowWithPosthog;
       windowWithPosthog.posthog = mockPosthog;
       await initPosthog({ apiKey: 'test-key' });
-      
+
       capture('test-event');
-      
+
       expect(mockPosthog.capture).toHaveBeenCalledWith('test-event', {});
     });
 
     it('should not throw if posthog is not initialized', () => {
       const windowWithPosthog = window as WindowWithPosthog;
       delete windowWithPosthog.posthog;
-      
+
       expect(() => capture('test-event')).not.toThrow();
     });
 
@@ -213,11 +213,11 @@ describe('posthog', () => {
         init: vi.fn(),
         identify: vi.fn(),
       };
-      
+
       const windowWithPosthog = window as WindowWithPosthog;
       windowWithPosthog.posthog = mockPosthog;
       await initPosthog({ apiKey: 'test-key' });
-      
+
       expect(() => capture('test-event')).not.toThrow();
     });
   });
@@ -229,13 +229,13 @@ describe('posthog', () => {
         capture: vi.fn(),
         identify: vi.fn(),
       };
-      
+
       const windowWithPosthog = window as WindowWithPosthog;
       windowWithPosthog.posthog = mockPosthog;
       await initPosthog({ apiKey: 'test-key' });
-      
+
       identify('user-123', { name: 'Test User' });
-      
+
       expect(mockPosthog.identify).toHaveBeenCalledWith('user-123', { name: 'Test User' });
     });
 
@@ -245,20 +245,20 @@ describe('posthog', () => {
         capture: vi.fn(),
         identify: vi.fn(),
       };
-      
+
       const windowWithPosthog = window as WindowWithPosthog;
       windowWithPosthog.posthog = mockPosthog;
       await initPosthog({ apiKey: 'test-key' });
-      
+
       identify('user-123');
-      
+
       expect(mockPosthog.identify).toHaveBeenCalledWith('user-123', {});
     });
 
     it('should not throw if posthog is not initialized', () => {
       const windowWithPosthog = window as WindowWithPosthog;
       delete windowWithPosthog.posthog;
-      
+
       expect(() => identify('user-123')).not.toThrow();
     });
 
@@ -267,11 +267,11 @@ describe('posthog', () => {
         init: vi.fn(),
         capture: vi.fn(),
       };
-      
+
       const windowWithPosthog = window as WindowWithPosthog;
       windowWithPosthog.posthog = mockPosthog;
       await initPosthog({ apiKey: 'test-key' });
-      
+
       expect(() => identify('user-123')).not.toThrow();
     });
   });
@@ -281,7 +281,7 @@ describe('posthog', () => {
       const mockPosthog = { capture: vi.fn() };
       const windowWithPosthog = window as WindowWithPosthog;
       windowWithPosthog.posthog = mockPosthog;
-      
+
       expect(isReady()).toBe(true);
     });
 
@@ -291,13 +291,13 @@ describe('posthog', () => {
         capture: vi.fn(),
         identify: vi.fn(),
       };
-      
+
       const windowWithPosthog = window as WindowWithPosthog;
       windowWithPosthog.posthog = mockPosthog;
       await initPosthog({ apiKey: 'test-key' });
-      
+
       delete windowWithPosthog.posthog;
-      
+
       expect(isReady()).toBe(true);
     });
 
