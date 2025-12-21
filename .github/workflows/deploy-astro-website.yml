@@ -26,13 +26,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '24'
-          cache: 'npm'
+          node-version: "24"
+          cache: "npm"
 
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25.4'
+          go-version: "1.25.4"
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -55,9 +55,8 @@ jobs:
           go build -v ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
           go test -v ./pkg/... ./internal/... ./cmd/sruja ./tests/... ./scripts/...
 
-      - name: Build Viewer + WASM
+      - name: Build WASM
         run: |
-          make build-embed-viewer
           make wasm
 
       - name: Build Astro website
