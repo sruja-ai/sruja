@@ -82,15 +82,29 @@ go install github.com/sruja-ai/sruja/cmd/sruja@latest
 **Create `example.sruja`:**
 
 ```sruja
-architecture "My System" {
-    system App "My App" {
-        container Web "Web Server"
-        datastore DB "Database"
-    }
-    person User "User"
+specification {
+  element person
+  element system
+  element container
+  element database
+}
 
-    User -> App.Web "Visits"
-    App.Web -> App.DB "Reads/Writes"
+model {
+  user = person "User" {
+    description "End user of the application"
+  }
+
+  app = system "My App" {
+    web = container "Web Server" {
+      technology "Node.js"
+    }
+    db = database "Database" {
+      technology "PostgreSQL"
+    }
+  }
+
+  user -> app.web "visits"
+  app.web -> app.db "reads/writes"
 }
 ```
 
