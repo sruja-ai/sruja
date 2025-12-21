@@ -4,17 +4,13 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
-    types: [closed]
 
 permissions:
   contents: write
   id-token: write
 
 concurrency:
-  group: env-${{ github.ref }}
+  group: deploy-website
   cancel-in-progress: true
 
 jobs:
@@ -34,18 +30,8 @@ jobs:
           echo "public_env=production" >> $GITHUB_OUTPUT
           echo "site_url=https://sruja.ai" >> $GITHUB_OUTPUT
           
-          # Only deploy on merge (closed PRs that were merged, or direct pushes to main)
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            if [[ "${{ github.event.pull_request.merged }}" == "true" ]] && [[ "${{ github.event.pull_request.base_ref }}" == "main" ]]; then
-              echo "should_deploy=true" >> $GITHUB_OUTPUT
-            else
-              echo "should_deploy=false" >> $GITHUB_OUTPUT
-            fi
-          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
-          else
-            echo "should_deploy=false" >> $GITHUB_OUTPUT
-          fi
+          # Deploy on all pushes to main branch
+          echo "should_deploy=true" >> $GITHUB_OUTPUT
 
   build:
     runs-on: ubuntu-latest
