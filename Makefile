@@ -1,4 +1,4 @@
-.PHONY: build build-embed-viewer test test-coverage test-coverage-html test-coverage-check clean install lint fmt wasm wasm-tiny wasm-select setup-hooks generate-svgs generate-svgs-all generate-svgs-examples generate-svgs-containers generate-svgs-complete clean-svgs security-scan lint-security check-unused help help-svgs
+.PHONY: build test test-coverage test-coverage-html test-coverage-check clean install lint fmt wasm wasm-tiny wasm-select setup-hooks generate-svgs generate-svgs-all generate-svgs-examples generate-svgs-containers generate-svgs-complete clean-svgs security-scan lint-security check-unused help help-svgs
 
 GOLANGCI_LINT_VERSION = v1.62.2
 GOLANGCI = $(shell go env GOPATH)/bin/golangci-lint
@@ -14,30 +14,6 @@ build-cli-only:
 	@echo "Building CLI..."
 	@mkdir -p bin
 	@go build -o bin/sruja ./cmd/sruja
-
-# Build embed-viewer IIFE bundle for HTML export (if HTML export is re-enabled)
-# Note: HTML export is currently removed from CLI, but code exists in pkg/export/html
-# Only rebuilds if source files have changed
-EMBED_VIEWER_OUT := pkg/export/html/embed/embed-viewer.js
-VIEWER_SOURCES := $(shell find packages/viewer/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-EMBED_SOURCES := $(shell find apps/viewer-core/app -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-
-build-embed-viewer: $(EMBED_VIEWER_OUT)
-
-$(EMBED_VIEWER_OUT): $(VIEWER_SOURCES) $(EMBED_SOURCES)
-	@echo "Building embed-viewer IIFE bundle (sources changed)..."
-	@cd packages/viewer && npm run build
-	@cd apps/viewer-core && npm run build:embed
-	@mkdir -p pkg/export/html/embed
-	@cp apps/viewer-core/dist/embed-viewer.iife.js pkg/export/html/embed/embed-viewer.js 2>/dev/null || echo "Warning: embed-viewer.iife.js not found"
-	@cp apps/viewer-core/dist/embed-viewer.css pkg/export/html/embed/embed-viewer.css 2>/dev/null || echo "Warning: embed-viewer.css not found"
-	@echo "✅ Embed viewer bundle built"
-
-# Force rebuild of embed-viewer (ignores timestamps) - calls build-embed-viewer after removing dependency
-build-embed-viewer-force:
-	@echo "Force rebuilding embed-viewer IIFE bundle..."
-	@rm -f $(EMBED_VIEWER_OUT)
-	@$(MAKE) build-embed-viewer
 
 # Run tests (excluding cmd/wasm which requires WASM build constraints)
 test:
