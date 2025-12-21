@@ -18,16 +18,3 @@ jobs:
         with:
           # Use config file for monorepo support
           config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
-          # Changelog configuration
-          changelog-types: |
-            [
-              {"type":"feat","section":"Features"},
-              {"type":"fix","section":"Bug Fixes"},
-              {"type":"perf","section":"Performance Improvements"},
-              {"type":"docs","section":"Documentation"},
-              {"type":"refactor","section":"Code Refactoring"},
-              {"type":"test","section":"Tests"},
-              {"type":"build","section":"Build System"},
-              {"type":"ci","section":"Continuous Integration"}
-            ]
