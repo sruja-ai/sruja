@@ -18,21 +18,11 @@ These files document the proposal workflow that was removed in favor of using AD
 
 ### Export Enhancement (Completed)
 
-Implementation planning and completion summaries for export enhancement features:
-
-- `EXPORT_ENHANCEMENT_PLAN.md` - Original implementation plan
-- `EXPORT_ENHANCEMENT_SUMMARY.md` - Completion summary
-
-**Status**: All features completed and integrated into the codebase.
+**Status**: All features completed and integrated into the codebase. Implementation summaries removed as they are no longer needed for maintenance.
 
 ### Code Design Review Implementation (Completed)
 
-Implementation summaries from code design review recommendations:
-
-- `IMPLEMENTATION_SUMMARY.md` - Detailed implementation summary
-- `IMPLEMENTATION_COMPLETE.md` - Final completion confirmation
-
-**Status**: All high and medium priority recommendations completed.
+**Status**: All high and medium priority recommendations completed. Implementation summaries removed as they are no longer needed for maintenance.
 
 ### Analysis and Review Documents (Completed)
 

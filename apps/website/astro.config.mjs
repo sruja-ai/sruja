@@ -80,7 +80,7 @@ export default defineConfig({
         "mermaid",
         "lz-string",
       ],
-      exclude: ["@sruja/shared", "@sruja/ui", "@sruja/layout", "@sruja/diagram", "@sruja/designer", "@likec4/core", "@likec4/diagram"],
+      exclude: ["@sruja/shared", "@sruja/ui", "@sruja/designer", "@likec4/core", "@likec4/diagram"],
     },
     ssr: {
       // Static site - no SSR, but Vite still uses this config during build
@@ -98,7 +98,6 @@ export default defineConfig({
         "react-dom",
         "@sruja/ui",
         "@sruja/shared",
-        "@sruja/diagram",
         "@sruja/designer",
       ],
       // Explicitly handle CSS imports from packages

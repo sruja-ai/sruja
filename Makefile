@@ -68,39 +68,71 @@ install:
 	@go mod download
 
 # Build WASM (full version with parsing, validation, LSP features, and compression)
+# Optimized for size and performance without TinyGo
 wasm:
-	@echo "Building WASM (full version with compression)..."
+	@echo "Building optimized WASM (standard Go compiler)..."
 	@mkdir -p apps/website/public/wasm
-	@GOOS=js GOARCH=wasm go build -ldflags="-s -w" -trimpath -o apps/website/public/wasm/sruja.wasm ./cmd/wasm
+	@echo "Step 1/5: Compiling with aggressive optimizations..."
+	@GOOS=js GOARCH=wasm go build \
+		-ldflags="-s -w -extldflags '-Wl,--gc-sections'" \
+		-trimpath \
+		-buildmode=exe \
+		-tags="wasm,js" \
+		-o apps/website/public/wasm/sruja.wasm \
+		./cmd/wasm
+	@echo "Step 2/5: Copying wasm_exec.js..."
 	@cp $$(go env GOROOT)/lib/wasm/wasm_exec.js apps/website/public/wasm/
+	@ORIG_SIZE=$$(stat -f%z apps/website/public/wasm/sruja.wasm 2>/dev/null || stat -c%s apps/website/public/wasm/sruja.wasm 2>/dev/null); \
+	echo "  Original size: $$(numfmt --to=iec-i --suffix=B $$ORIG_SIZE 2>/dev/null || echo "$$ORIG_SIZE bytes")"
 	@if command -v wasm-opt >/dev/null 2>&1; then \
-		echo "Optimizing WASM with wasm-opt (bulk-memory enabled)..."; \
-		wasm-opt --enable-bulk-memory -Oz apps/website/public/wasm/sruja.wasm -o apps/website/public/wasm/sruja.wasm; \
+		echo "Step 3/5: Optimizing with wasm-opt (aggressive size reduction)..."; \
+		wasm-opt \
+			--enable-bulk-memory \
+			--enable-mutable-globals \
+			--enable-nontrapping-float-to-int \
+			--enable-sign-ext \
+			--enable-simd \
+			--enable-threads \
+			-Oz \
+			--strip-debug \
+			--strip-producers \
+			--converge \
+			apps/website/public/wasm/sruja.wasm \
+			-o apps/website/public/wasm/sruja.wasm.tmp && \
+		mv apps/website/public/wasm/sruja.wasm.tmp apps/website/public/wasm/sruja.wasm; \
+		OPT_SIZE=$$(stat -f%z apps/website/public/wasm/sruja.wasm 2>/dev/null || stat -c%s apps/website/public/wasm/sruja.wasm 2>/dev/null); \
+		OPT_RATIO=$$(echo "scale=1; (1 - $$OPT_SIZE / $$ORIG_SIZE) * 100" | bc 2>/dev/null || echo "N/A"); \
+		echo "  After wasm-opt: $$(numfmt --to=iec-i --suffix=B $$OPT_SIZE 2>/dev/null || echo "$$OPT_SIZE bytes") ($$OPT_RATIO% reduction)"; \
+	else \
+		echo "Step 3/5: Skipping wasm-opt (not installed). Install binaryen for better optimization."; \
 	fi
-	@echo "Creating compressed versions (gzip and brotli)..."
-	@gzip -k -f apps/website/public/wasm/sruja.wasm 2>/dev/null || true
-	@if command -v brotli >/dev/null 2>&1; then \
-		brotli -k -f apps/website/public/wasm/sruja.wasm 2>/dev/null || true; \
-	fi
-	@SIZE=$$(ls -lh apps/website/public/wasm/sruja.wasm | awk '{print $$5}'); \
-	echo "WASM built successfully: apps/website/public/wasm/sruja.wasm ($$SIZE)"; \
-	echo ""; \
-	ORIG_SIZE=$$(stat -f%z apps/website/public/wasm/sruja.wasm 2>/dev/null || stat -c%s apps/website/public/wasm/sruja.wasm 2>/dev/null); \
+	@echo "Step 4/5: Creating compressed versions..."
+	@FINAL_SIZE=$$(stat -f%z apps/website/public/wasm/sruja.wasm 2>/dev/null || stat -c%s apps/website/public/wasm/sruja.wasm 2>/dev/null); \
+	gzip -k -f -9 apps/website/public/wasm/sruja.wasm 2>/dev/null || true; \
+	if command -v brotli >/dev/null 2>&1; then \
+		brotli -k -f -q 11 apps/website/public/wasm/sruja.wasm 2>/dev/null || true; \
+	fi; \
 	if [ -f apps/website/public/wasm/sruja.wasm.gz ]; then \
 		GZ_SIZE=$$(stat -f%z apps/website/public/wasm/sruja.wasm.gz 2>/dev/null || stat -c%s apps/website/public/wasm/sruja.wasm.gz 2>/dev/null); \
-		GZ_RATIO=$$(echo "scale=1; (1 - $$GZ_SIZE / $$ORIG_SIZE) * 100" | bc 2>/dev/null || echo "N/A"); \
-		echo "Compression ratios:"; \
-		echo "  gzip: $$GZ_RATIO% reduction"; \
+		GZ_RATIO=$$(echo "scale=1; (1 - $$GZ_SIZE / $$FINAL_SIZE) * 100" | bc 2>/dev/null || echo "N/A"); \
+		echo "  gzip -9: $$(numfmt --to=iec-i --suffix=B $$GZ_SIZE 2>/dev/null || echo "$$GZ_SIZE bytes") ($$GZ_RATIO% reduction)"; \
 	fi; \
 	if [ -f apps/website/public/wasm/sruja.wasm.br ]; then \
 		BR_SIZE=$$(stat -f%z apps/website/public/wasm/sruja.wasm.br 2>/dev/null || stat -c%s apps/website/public/wasm/sruja.wasm.br 2>/dev/null); \
-		BR_RATIO=$$(echo "scale=1; (1 - $$BR_SIZE / $$ORIG_SIZE) * 100" | bc 2>/dev/null || echo "N/A"); \
-		if [ -z "$$GZ_RATIO" ]; then echo "Compression ratios:"; fi; \
-		echo "  brotli: $$BR_RATIO% reduction"; \
-	fi; \
-	echo ""; \
-	echo "Files created:"; \
-	ls -lh apps/website/public/wasm/sruja.wasm* 2>/dev/null | awk '{print "  " $$9 " (" $$5 ")"}'
+		BR_RATIO=$$(echo "scale=1; (1 - $$BR_SIZE / $$FINAL_SIZE) * 100" | bc 2>/dev/null || echo "N/A"); \
+		echo "  brotli -q 11: $$(numfmt --to=iec-i --suffix=B $$BR_SIZE 2>/dev/null || echo "$$BR_SIZE bytes") ($$BR_RATIO% reduction)"; \
+	fi
+	@echo "Step 5/5: Build complete!"
+	@echo ""
+	@echo "✅ WASM built successfully: apps/website/public/wasm/sruja.wasm"
+	@echo ""
+	@echo "Files created:"
+	@ls -lh apps/website/public/wasm/sruja.wasm* 2>/dev/null | awk '{print "  " $$9 " (" $$5 ")"}' || echo "  (no files found)"
+	@echo ""
+	@echo "💡 Tips for further optimization:"
+	@echo "  - Install binaryen (wasm-opt) for better size reduction"
+	@echo "  - Use streaming instantiation in frontend for faster loading"
+	@echo "  - Consider lazy loading for non-critical features"
 
 
 # Generate designer examples from .sruja files

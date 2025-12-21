@@ -1,18 +1,19 @@
-// cmd/wasm/helpers.go
-// Helper functions for WASM LSP operations
-// Supports new LikeC4 syntax
+// Package main provides helper functions for WASM LSP operations.
 //
 //nolint:unused
 package main
 
 import (
+	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/sruja-ai/sruja/pkg/engine"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-// parseToWorkspace centralizes workspace creation, import resolution, and global resolution for WASM.
+// parseToWorkspace parses DSL text and builds a complete workspace with resolved references.
+// Returns the workspace, merged program, and any error.
 func parseToWorkspace(input, filename string) (*language.Workspace, *language.Program, error) {
 	p, err := language.NewParser()
 	if err != nil {
@@ -24,24 +25,52 @@ func parseToWorkspace(input, filename string) (*language.Workspace, *language.Pr
 	if err != nil {
 		return nil, nil, err
 	}
+
 	ws.AddProgram(filename, prog, diags)
-
-	// Resolve imports (loads stdlib from embedded FS if referenced)
 	_ = p.ResolveImports(ws, prog, filename)
-
-	// Run global resolution across the workspace
 	engine.RunWorkspaceResolution(ws)
 
-	// Return the merged program which represents the full resolved model
 	return ws, ws.MergedProgram(), nil
 }
 
-// extractSymbolsFromProgram extracts all symbols from a Program
-func extractSymbolsFromProgram(program *language.Program) []map[string]interface{} {
+// Symbol represents a symbol extracted from the program AST.
+type Symbol struct {
+	Name string `json:"name"`
+	Kind string `json:"kind"`
+	Line int    `json:"line"`
+}
+
+// Position represents a position in a source file (0-indexed for LSP).
+type Position struct {
+	Line      int `json:"line"`
+	Character int `json:"character"`
+}
+
+// Range represents a text range in a source file.
+type Range struct {
+	Start Position `json:"start"`
+	End   Position `json:"end"`
+}
+
+// HoverInfo represents hover information for LSP.
+type HoverInfo struct {
+	Contents string `json:"contents"`
+	Range    Range  `json:"range"`
+}
+
+// CompletionItem represents a completion suggestion for LSP.
+type CompletionItem struct {
+	Label string `json:"label"`
+	Kind  string `json:"kind"`
+}
+
+// extractSymbolsFromProgram extracts all symbols from a Program.
+// Returns an empty slice (not nil) if no symbols are found, for consistent JSON serialization.
+func extractSymbolsFromProgram(program *language.Program) []Symbol {
 	if program == nil || program.Model == nil {
-		return nil
+		return []Symbol{}
 	}
-	var symbols []map[string]interface{}
+	var symbols []Symbol
 	for _, item := range program.Model.Items {
 		if item.ElementDef != nil {
 			extractElementSymbols(item.ElementDef, "", &symbols)
@@ -50,8 +79,12 @@ func extractSymbolsFromProgram(program *language.Program) []map[string]interface
 	return symbols
 }
 
-// extractElementSymbols recursively extracts symbols from a LikeC4 element and its children
-func extractElementSymbols(elem *language.LikeC4ElementDef, parentFQN string, symbols *[]map[string]interface{}) {
+// extractElementSymbols recursively extracts symbols from a LikeC4 element and its children.
+func extractElementSymbols(elem *language.LikeC4ElementDef, parentFQN string, symbols *[]Symbol) {
+	if elem == nil {
+		return
+	}
+	
 	id := elem.GetID()
 	if id == "" {
 		return
@@ -63,10 +96,10 @@ func extractElementSymbols(elem *language.LikeC4ElementDef, parentFQN string, sy
 	}
 
 	kind := elem.GetKind()
-	*symbols = append(*symbols, map[string]interface{}{
-		"name": fqn,
-		"kind": kind,
-		"line": elem.Pos.Line,
+	*symbols = append(*symbols, Symbol{
+		Name: fqn,
+		Kind: kind,
+		Line: elem.Pos.Line,
 	})
 
 	// Recursively process nested elements
@@ -80,10 +113,129 @@ func extractElementSymbols(elem *language.LikeC4ElementDef, parentFQN string, sy
 	}
 }
 
-// findHoverInfoFromProgram finds hover information at the given position
-func findHoverInfoFromProgram(_ *language.Program, _ string, _, _ int) map[string]interface{} {
-	// TODO: Implement actual hover search
-	return nil
+// findHoverInfoFromProgram finds hover information at a specific position.
+// Line and column are 1-indexed (editor coordinates), converted to 0-indexed in the result.
+func findHoverInfoFromProgram(program *language.Program, input string, line, column int) *HoverInfo {
+	if program == nil || program.Model == nil {
+		return nil
+	}
+
+	lines := strings.Split(input, "\n")
+	if line < 1 || line > len(lines) {
+		return nil
+	}
+
+	lineText := lines[line-1]
+	if column < 1 || column > len(lineText) {
+		return nil
+	}
+
+	// Extract word at cursor position (handles qualified names like "App.Web")
+	start := column - 1
+	for start > 0 && (isIdentChar(lineText[start-1]) || lineText[start-1] == '.') {
+		start--
+	}
+	end := column - 1
+	for end < len(lineText) && (isIdentChar(lineText[end]) || lineText[end] == '.') {
+		end++
+	}
+	if start >= end {
+		return nil
+	}
+
+	symbolName := lineText[start:end]
+	if symbolName == "" {
+		return nil
+	}
+
+	// Search AST for matching element (by ID or fully qualified name)
+	var foundElem *language.LikeC4ElementDef
+	var searchInElements func(items []language.ModelItem, parentFQN string)
+	searchInElements = func(items []language.ModelItem, parentFQN string) {
+		for _, item := range items {
+			if item.ElementDef != nil {
+				elem := item.ElementDef
+				id := elem.GetID()
+				if id == "" {
+					continue
+				}
+
+				fqn := id
+				if parentFQN != "" {
+					fqn = parentFQN + "." + id
+				}
+
+				if id == symbolName || fqn == symbolName {
+					foundElem = elem
+					return
+				}
+
+				body := elem.GetBody()
+				if body != nil {
+					for _, bodyItem := range body.Items {
+						if bodyItem.Element != nil {
+							tempItems := []language.ModelItem{{ElementDef: bodyItem.Element}}
+							searchInElements(tempItems, fqn)
+							if foundElem != nil {
+								return
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	searchInElements(program.Model.Items, "")
+
+	if foundElem == nil {
+		return nil
+	}
+
+	// Build hover information
+	kind := foundElem.GetKind()
+	id := foundElem.GetID()
+	titlePtr := foundElem.GetTitle()
+
+	contents := []string{}
+	if kind != "" {
+		contents = append(contents, fmt.Sprintf("**%s**: %s", kind, id))
+	}
+	if titlePtr != nil && *titlePtr != "" && *titlePtr != id {
+		contents = append(contents, fmt.Sprintf("**Title**: %s", *titlePtr))
+	}
+	
+	// Get description and technology from body items if available
+	body := foundElem.GetBody()
+	if body != nil {
+		for _, item := range body.Items {
+			if item.Description != nil && *item.Description != "" {
+				contents = append(contents, *item.Description)
+			}
+			if item.Technology != nil && *item.Technology != "" {
+				contents = append(contents, fmt.Sprintf("**Technology**: %s", *item.Technology))
+			}
+		}
+	}
+
+	if len(contents) == 0 {
+		return nil
+	}
+
+	// Convert 1-indexed editor coordinates to 0-indexed LSP coordinates
+	return &HoverInfo{
+		Contents: strings.Join(contents, "\n\n"),
+		Range: Range{
+			Start: Position{
+				Line:      line - 1,
+				Character: start,
+			},
+			End: Position{
+				Line:      line - 1,
+				Character: end,
+			},
+		},
+	}
 }
 
 // findDefinitionFromProgram finds the definition location for a symbol at the given position

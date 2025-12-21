@@ -11,7 +11,6 @@ import { Input, Button } from "@sruja/ui";
 import { useArchitectureStore, useViewStore } from "../../stores";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
 import { useNavigationData } from "../../hooks/useNavigationData";
-import { useLayoutMetrics } from "../../hooks/useLayoutMetrics";
 import { NavTreeItem } from "./NavTreeItem";
 import "./NavigationPanel.css";
 import type { Element, SrujaModelDump } from "@sruja/shared";
@@ -27,6 +26,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   const focusedContainerId = useViewStore((s) => s.focusedContainerId);
   const drillDown = useViewStore((s) => s.drillDown);
   const goToRoot = useViewStore((s) => s.goToRoot);
+  const setLevel = useViewStore((s) => s.setLevel);
   const isEditMode = useFeatureFlagsStore((s) => s.isEditMode);
 
   const [filterQuery, setFilterQuery] = useState("");
@@ -36,8 +36,6 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
     filterQuery
   });
 
-  // Keep metrics polling active (though typically not displayed in NavPanel anymore/hidden feature)
-  useLayoutMetrics();
 
   // Track expanded nodes locally
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
@@ -127,37 +125,33 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
         </div>
       )}
 
-      {/* Level Selector */}
+      {/* Level Selector - Segmented Control */}
       <div className="nav-section">
         {!isCollapsed && <div className="nav-section-title">View Level</div>}
-        <div className={`level-buttons ${isCollapsed ? "collapsed" : ""}`}>
-          <Button
-            variant={currentLevel === "L1" ? "primary" : "ghost"}
-            size="sm"
-            className={`level-btn ${currentLevel === "L1" ? "active" : ""}`}
+        <div className={`segmented-level-control ${isCollapsed ? "collapsed" : ""}`}>
+          <button
+            className={`segment-btn ${currentLevel === "L1" ? "active" : ""}`}
             onClick={goToRoot}
             title="System Context - Shows systems and actors"
           >
-            {isCollapsed ? "L1" : "L1 Context"}
-          </Button>
-          <Button
-            variant={currentLevel === "L2" ? "primary" : "ghost"}
-            size="sm"
-            className={`level-btn ${currentLevel === "L2" ? "active" : ""}`}
+            L1
+          </button>
+          <button
+            className={`segment-btn ${currentLevel === "L2" ? "active" : ""}`}
             disabled={!focusedSystemId}
+            onClick={() => setLevel("L2")}
             title="Container View - Detailed system internals"
           >
-            {isCollapsed ? "L2" : "L2 Container"}
-          </Button>
-          <Button
-            variant={currentLevel === "L3" ? "primary" : "ghost"}
-            size="sm"
-            className={`level-btn ${currentLevel === "L3" ? "active" : ""}`}
-            disabled={currentLevel !== "L3"}
+            L2
+          </button>
+          <button
+            className={`segment-btn ${currentLevel === "L3" ? "active" : ""}`}
+            disabled={!focusedContainerId}
+            onClick={() => setLevel("L3")}
             title="Component View - Fine-grained components"
           >
-            {isCollapsed ? "L3" : "L3 Component"}
-          </Button>
+            L3
+          </button>
         </div>
       </div>
 
@@ -271,7 +265,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
             <Link2 size={14} />
             <span>Governance</span>
           </div>
-          <div style={{ padding: '8px 12px', fontSize: '13px', color: '#666' }}>
+          <div className="nav-governance-hint">
             Select an item to view governance details.
           </div>
         </div>

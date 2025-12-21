@@ -1,0 +1,170 @@
+/* =====================================================
+   STEP 2: System Context - Additional Styles
+   ===================================================== */
+
+.item-icon {
+    flex-shrink: 0;
+    color: var(--text-3);
+}
+
+.item-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+}
+
+.item-id {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-1);
+}
+
+.item-label {
+    font-size: 0.75rem;
+    color: var(--text-2);
+}
+
+.item-tech {
+    font-size: 0.6875rem;
+    color: var(--text-3);
+    font-style: italic;
+}
+
+.item-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.item-badge.external {
+    background: rgba(249, 115, 22, 0.15);
+    color: #f97316;
+}
+
+.item-badge.container {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+.item-badge.datastore {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.item-badge.queue {
+    background: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+}
+
+.item-card.external {
+    border-left: 3px solid #f97316;
+}
+
+/* System/Container Tabs */
+.system-tabs,
+.container-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.system-tab,
+.container-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.system-tab:hover,
+.container-tab:hover {
+    background: var(--surface-1);
+    border-color: var(--primary-alpha-50, rgba(102, 126, 234, 0.5));
+    color: var(--text-1);
+}
+
+.system-tab.active,
+.container-tab.active {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-color: rgba(102, 126, 234, 0.5);
+    color: #667eea;
+}
+
+.container-path {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+}
+
+.container-path svg {
+    color: var(--text-3);
+}
+
+/* Step Navigation Right */
+.step-nav-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Empty Message */
+.empty-message {
+    margin: 0;
+    padding: 1rem;
+    text-align: center;
+    color: var(--text-3);
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+/* Checkbox Row in Forms */
+.form-group.checkbox-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+}
+
+.form-group.checkbox-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.form-group.checkbox-row label {
+    font-size: 0.8125rem;
+    color: var(--text-2);
+    cursor: pointer;
+}
+
+/* Form Group with Label */
+.form-group.type-select label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-3);
+    margin-bottom: 0.5rem;
+}
+

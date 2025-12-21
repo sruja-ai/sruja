@@ -69,6 +69,24 @@ describe("architectureValidator", () => {
       expect(refIssue?.message).toContain("NonExistent");
     });
 
+    it("handles FqnRef object format in relation references", () => {
+      const arch: SrujaModelDump = createEmptyDump();
+      arch.elements = {
+        "User": { id: "User", kind: "person", title: "User", tags: [], links: [] }
+      };
+      // Test with FqnRef object format: { model: string }
+      arch.relations = [
+        { id: "r1", source: { model: "User" }, target: { model: "NonExistent" }, title: "uses" } as any
+      ];
+
+      const result = validateArchitecture(arch);
+
+      const refIssue = result.issues.find((i) => i.category === "reference");
+      expect(refIssue).toBeDefined();
+      expect(refIssue?.message).toContain("NonExistent");
+      expect(refIssue?.message).not.toContain("[object Object]");
+    });
+
     it("detects orphan elements", () => {
       const arch: SrujaModelDump = createEmptyDump();
       arch.elements = {
@@ -82,6 +100,27 @@ describe("architectureValidator", () => {
       const result = validateArchitecture(arch);
 
       // System2 is orphan
+      const orphanIssue = result.issues.find(
+        (i) => i.category === "orphan" && i.elementId === "System2"
+      );
+      expect(orphanIssue).toBeDefined();
+      expect(orphanIssue?.message).toContain("no relations");
+    });
+
+    it("detects orphan elements with FqnRef object format", () => {
+      const arch: SrujaModelDump = createEmptyDump();
+      arch.elements = {
+        "System1": { id: "System1", kind: "system", title: "Connected", tags: [], links: [] },
+        "System2": { id: "System2", kind: "system", title: "Orphan", tags: [], links: [] }
+      };
+      // Test with FqnRef object format
+      arch.relations = [
+        { id: "r1", source: { model: "System1" }, target: { model: "System1" }, title: "self" } as any
+      ];
+
+      const result = validateArchitecture(arch);
+
+      // System2 should still be detected as orphan
       const orphanIssue = result.issues.find(
         (i) => i.category === "orphan" && i.elementId === "System2"
       );

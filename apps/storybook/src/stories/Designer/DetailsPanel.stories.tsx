@@ -131,8 +131,6 @@ const meta = {
         useSelectionStore: () => ({
           selectedNodeId: "web-app",
           selectNode: fn(),
-          hoveredNodeId: null,
-          setHoveredNodeId: fn(),
         }),
         useUIStore: () => ({
           activeTab: "diagram",
@@ -173,8 +171,6 @@ export const SystemNode: Story = {
         useSelectionStore: () => ({
           selectedNodeId: "web-app",
           selectNode: fn(),
-          hoveredNodeId: null,
-          setHoveredNodeId: fn(),
         }),
         useUIStore: () => ({
           activeTab: "diagram",
@@ -386,8 +382,6 @@ export const NoModel: Story = {
         useSelectionStore: () => ({
           selectedNodeId: "web-app",
           selectNode: fn(),
-          hoveredNodeId: null,
-          setHoveredNodeId: fn(),
         }),
         useUIStore: () => ({
           activeTab: "diagram",

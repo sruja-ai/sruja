@@ -3,6 +3,7 @@ package lsp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 
@@ -82,7 +83,9 @@ func (s *Server) publishDiagnostics(uri lsp.DocumentURI) error {
 	}
 	p, err := language.NewParser()
 	if err != nil {
-		return nil
+		// Log error but don't fail diagnostics - return empty diagnostics
+		// This allows the LSP to continue functioning even if parser creation fails
+		return s.notifyDiagnostics(uri, []lsp.Diagnostic{})
 	}
 	program, diags, err := p.Parse(string(uri), doc.Text)
 
@@ -91,9 +94,10 @@ func (s *Server) publishDiagnostics(uri lsp.DocumentURI) error {
 		lspDiagnostics = append(lspDiagnostics, s.convertDiagnosticsToLSP(diags)...)
 	}
 
-	if err == nil && program != nil {
-		diags := s.validator.Validate(program)
-		lspDiagnostics = append(lspDiagnostics, s.convertDiagnosticsToLSP(diags)...)
+	// Run validation even if parse had errors, as partial programs may still be validatable
+	if program != nil {
+		validatorDiags := s.validator.Validate(program)
+		lspDiagnostics = append(lspDiagnostics, s.convertDiagnosticsToLSP(validatorDiags)...)
 	}
 
 	return s.notifyDiagnostics(uri, lspDiagnostics)
@@ -120,6 +124,19 @@ func StartStdioServer() error {
 	return StartServer(os.Stdin, os.Stdout)
 }
 
+// unmarshalParams safely unmarshals JSON-RPC request parameters into the target type.
+// Returns an error if unmarshaling fails, allowing proper error propagation.
+func unmarshalParams[T any](params *json.RawMessage) (T, error) {
+	var result T
+	if params == nil {
+		return result, nil
+	}
+	if err := json.Unmarshal(*params, &result); err != nil {
+		return result, fmt.Errorf("failed to unmarshal params for %T: %w", result, err)
+	}
+	return result, nil
+}
+
 //nolint:funlen,gocyclo // Server start logic is complex and requires length
 func StartServer(in io.Reader, out io.Writer) error {
 	srv := NewServer()
@@ -127,68 +144,68 @@ func StartServer(in io.Reader, out io.Writer) error {
 		srv.conn = conn
 		switch req.Method {
 		case "initialize":
-			var params lsp.InitializeParams
-			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+			params, err := unmarshalParams[lsp.InitializeParams](req.Params)
+			if err != nil {
+				return nil, err
 			}
 			return srv.Initialize(ctx, params)
 		case "textDocument/didOpen":
-			var params lsp.DidOpenTextDocumentParams
-			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+			params, err := unmarshalParams[lsp.DidOpenTextDocumentParams](req.Params)
+			if err != nil {
+				return nil, err
 			}
 			return nil, srv.DidOpen(ctx, params)
 		case "textDocument/didChange":
-			var params lsp.DidChangeTextDocumentParams
-			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+			params, err := unmarshalParams[lsp.DidChangeTextDocumentParams](req.Params)
+			if err != nil {
+				return nil, err
 			}
 			return nil, srv.DidChange(ctx, params)
 		case "textDocument/didClose":
-			var params lsp.DidCloseTextDocumentParams
-			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+			params, err := unmarshalParams[lsp.DidCloseTextDocumentParams](req.Params)
+			if err != nil {
+				return nil, err
 			}
 			return nil, srv.DidClose(ctx, params)
 		case "textDocument/formatting":
-			var params lsp.DocumentFormattingParams
-			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+			params, err := unmarshalParams[lsp.DocumentFormattingParams](req.Params)
+			if err != nil {
+				return nil, err
 			}
 			edits, err := srv.DocumentFormatting(ctx, params)
 			return edits, err
 		case "textDocument/hover":
-			var params lsp.TextDocumentPositionParams
-			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+			params, err := unmarshalParams[lsp.TextDocumentPositionParams](req.Params)
+			if err != nil {
+				return nil, err
 			}
 			h, err := srv.Hover(ctx, params)
 			return h, err
 		case "textDocument/completion":
-			var params lsp.CompletionParams
-			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+			params, err := unmarshalParams[lsp.CompletionParams](req.Params)
+			if err != nil {
+				return nil, err
 			}
 			c, err := srv.Completion(ctx, params)
 			return c, err
 		case "textDocument/definition":
-			var params lsp.TextDocumentPositionParams
-			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+			params, err := unmarshalParams[lsp.TextDocumentPositionParams](req.Params)
+			if err != nil {
+				return nil, err
 			}
 			def, err := srv.Definition(ctx, params)
 			return def, err
 		case "textDocument/references":
-			var params lsp.ReferenceParams
-			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+			params, err := unmarshalParams[lsp.ReferenceParams](req.Params)
+			if err != nil {
+				return nil, err
 			}
 			refs, err := srv.References(ctx, params)
 			return refs, err
 		case "textDocument/documentSymbol":
-			var params lsp.DocumentSymbolParams
-			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+			params, err := unmarshalParams[lsp.DocumentSymbolParams](req.Params)
+			if err != nil {
+				return nil, err
 			}
 			syms, err := srv.DocumentSymbols(ctx, params)
 			return syms, err
@@ -197,7 +214,9 @@ func StartServer(in io.Reader, out io.Writer) error {
 				TextDocument lsp.TextDocumentIdentifier `json:"textDocument"`
 			}
 			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+				if err := json.Unmarshal(*req.Params, &params); err != nil {
+					return nil, fmt.Errorf("failed to unmarshal semanticTokens/full params: %w", err)
+				}
 			}
 			toks, err := srv.SemanticTokensFull(ctx, params.TextDocument)
 			return toks, err
@@ -207,7 +226,9 @@ func StartServer(in io.Reader, out io.Writer) error {
 				TextDocument lsp.TextDocumentIdentifier `json:"textDocument"`
 			}
 			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+				if err := json.Unmarshal(*req.Params, &params); err != nil {
+					return nil, fmt.Errorf("failed to unmarshal semanticTokens params: %w", err)
+				}
 			}
 			toks, err := srv.SemanticTokensFull(ctx, params.TextDocument)
 			return toks, err
@@ -215,30 +236,30 @@ func StartServer(in io.Reader, out io.Writer) error {
 			legend := srv.SemanticTokensLegend()
 			return legend, nil
 		case "textDocument/codeAction":
-			var params lsp.CodeActionParams
-			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+			params, err := unmarshalParams[lsp.CodeActionParams](req.Params)
+			if err != nil {
+				return nil, err
 			}
 			actions, err := srv.CodeAction(ctx, params)
 			return actions, err
 		case "textDocument/rename":
-			var params lsp.RenameParams
-			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+			params, err := unmarshalParams[lsp.RenameParams](req.Params)
+			if err != nil {
+				return nil, err
 			}
 			edit, err := srv.Rename(ctx, params)
 			return edit, err
 		case "textDocument/documentLink":
-			var params DocumentLinkParams
-			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+			params, err := unmarshalParams[DocumentLinkParams](req.Params)
+			if err != nil {
+				return nil, err
 			}
 			links, err := srv.DocumentLinks(ctx, params)
 			return links, err
 		case "textDocument/foldingRange":
-			var params FoldingRangeParams
-			if req.Params != nil {
-				_ = json.Unmarshal(*req.Params, &params)
+			params, err := unmarshalParams[FoldingRangeParams](req.Params)
+			if err != nil {
+				return nil, err
 			}
 			ranges, err := srv.FoldingRanges(ctx, params)
 			return ranges, err

@@ -145,8 +145,28 @@ function detectOrphanElements(
 
   // Collect all paths mentioned in relations
   (model.relations || []).forEach((rel: any) => {
-    connectedPaths.add(rel.source || rel.from);
-    connectedPaths.add(rel.target || rel.to);
+    // Handle FqnRef structure: { model: string } or fallback to string
+    const sourceRaw = rel.source || rel.from;
+    const targetRaw = rel.target || rel.to;
+
+    const source = (sourceRaw && typeof sourceRaw === "object" && "model" in sourceRaw)
+      ? sourceRaw.model
+      : typeof sourceRaw === "string"
+        ? sourceRaw
+        : null;
+
+    const target = (targetRaw && typeof targetRaw === "object" && "model" in targetRaw)
+      ? targetRaw.model
+      : typeof targetRaw === "string"
+        ? targetRaw
+        : null;
+
+    if (source && typeof source === "string") {
+      connectedPaths.add(source);
+    }
+    if (target && typeof target === "string") {
+      connectedPaths.add(target);
+    }
   });
 
   // Check each element
@@ -193,9 +213,25 @@ function validateRelationReferences(
   const validIds = new Set(Object.keys(model.elements || {}));
 
   (model.relations || []).forEach((rel: any, index) => {
-    const source = rel.source || rel.from;
-    const target = rel.target || rel.to;
-    if (!validIds.has(source)) {
+    // Handle FqnRef structure: { model: string } or fallback to string
+    // Also support legacy 'from'/'to' properties
+    const sourceRaw = rel.source || rel.from;
+    const targetRaw = rel.target || rel.to;
+
+    const source = (sourceRaw && typeof sourceRaw === "object" && "model" in sourceRaw)
+      ? sourceRaw.model
+      : typeof sourceRaw === "string"
+        ? sourceRaw
+        : String(sourceRaw); // Fallback for edge cases
+
+    const target = (targetRaw && typeof targetRaw === "object" && "model" in targetRaw)
+      ? targetRaw.model
+      : typeof targetRaw === "string"
+        ? targetRaw
+        : String(targetRaw); // Fallback for edge cases
+
+    // Only validate if we have valid string IDs
+    if (typeof source === "string" && !validIds.has(source)) {
       issues.push({
         id: `invalid-ref-source-${index}`,
         severity: "error",
@@ -206,7 +242,7 @@ function validateRelationReferences(
       });
     }
 
-    if (!validIds.has(target)) {
+    if (typeof target === "string" && !validIds.has(target)) {
       issues.push({
         id: `invalid-ref-target-${index}`,
         severity: "error",

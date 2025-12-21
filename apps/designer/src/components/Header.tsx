@@ -9,9 +9,11 @@ import {
     Plus,
     Upload,
     Download,
+    Github,
+    Globe,
 } from "lucide-react";
 import { Breadcrumb, ExamplesDropdown } from "./shared";
-import { ThemeToggle, Button, Logo } from "@sruja/ui"; // Assuming Logo is exported from ui, based on previous code
+import { ThemeToggle, Button, Logo } from "@sruja/ui";
 import type { SrujaModelDump } from "@sruja/shared";
 import type { ViewTab } from "../types";
 
@@ -80,13 +82,26 @@ export function Header({
             </div>
 
             <div className="header-center">
-                <div className="canvas-title">
-                    {(likec4Model?._metadata as any)?.name || "Untitled Architecture"}
+                <div className="project-pill">
+                    <span className="project-name">{(likec4Model?._metadata as any)?.name || "Untitled Architecture"}</span>
+                    <span className="version-separator">/</span>
                     <span className="version-badge">v{(likec4Model?._metadata as any)?.version || "1.0.0"}</span>
                 </div>
             </div>
 
             <div className="header-right">
+                <div className="external-links">
+                    <a href="https://sruja.ai" target="_blank" rel="noopener noreferrer" className="header-link" title="Sruja Website">
+                        <Button variant="ghost" size="sm" className="action-btn icon-only">
+                            <Globe size={18} />
+                        </Button>
+                    </a>
+                    <a href="https://github.com/sruja-ai/sruja" target="_blank" rel="noopener noreferrer" className="header-link" title="GitHub Repository">
+                        <Button variant="ghost" size="sm" className="action-btn icon-only">
+                            <Github size={18} />
+                        </Button>
+                    </a>
+                </div>
                 <div className="actions-dropdown-container">
                     <Button
                         variant="secondary"

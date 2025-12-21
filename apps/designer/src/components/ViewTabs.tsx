@@ -52,9 +52,11 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
         aria-controls="tabpanel-builder"
         title={editMode === "edit" ? "Builder - Step-by-step architecture design guide" : "Builder - Architecture guide (view mode)"}
       >
-        <Hammer size={16} />
-        <span>Builder</span>
-        {editMode === "edit" && <span className="tab-badge edit-badge">Edit</span>}
+        <div className="view-tab-content">
+          <Hammer size={16} />
+          <span>Builder</span>
+          {editMode === "edit" && <span className="tab-badge edit-badge">Edit</span>}
+        </div>
       </Button>
       <Button
         variant={activeTab === "diagram" ? "secondary" : "ghost"}
@@ -67,8 +69,10 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
         aria-controls="tabpanel-diagram"
         title="Diagram - Visual architecture diagram and layout"
       >
-        <Layout size={16} />
-        <span>Diagram</span>
+        <div className="view-tab-content">
+          <Layout size={16} />
+          <span>Diagram</span>
+        </div>
       </Button>
       <Button
         variant={activeTab === "details" ? "secondary" : "ghost"}
@@ -81,11 +85,13 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
         aria-controls="tabpanel-details"
         title="Details - Requirements, ADRs, scenarios, and flows"
       >
-        <List size={16} />
-        <span>Details</span>
-        {counts.requirements + counts.adrs > 0 && (
-          <span className="tab-badge">{counts.requirements + counts.adrs}</span>
-        )}
+        <div className="view-tab-content">
+          <List size={16} />
+          <span>Details</span>
+          {counts.requirements + counts.adrs > 0 && (
+            <span className="tab-badge">{counts.requirements + counts.adrs}</span>
+          )}
+        </div>
       </Button>
       <Button
         variant={activeTab === "code" ? "secondary" : "ghost"}
@@ -98,8 +104,10 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
         aria-controls="tabpanel-code"
         title="Code - View and edit Sruja DSL source code"
       >
-        <FileCode size={16} />
-        <span>Code</span>
+        <div className="view-tab-content">
+          <FileCode size={16} />
+          <span>Code</span>
+        </div>
       </Button>
     </div>
   );

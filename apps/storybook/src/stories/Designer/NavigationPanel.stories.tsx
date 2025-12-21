@@ -79,6 +79,7 @@ export const Default: Story = {
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
+          setLevel: fn(),
         }),
       }));
 
@@ -120,6 +121,7 @@ export const Collapsed: Story = {
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
+          setLevel: fn(),
         }),
       }));
 
@@ -188,6 +190,7 @@ export const WithEditMode: Story = {
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
+          setLevel: fn(),
         }),
       }));
 
@@ -222,6 +225,7 @@ export const Mobile: Story = {
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
+          setLevel: fn(),
         }),
       }));
 
@@ -263,6 +267,7 @@ export const Empty: Story = {
           focusedContainerId: null,
           drillDown: fn(),
           goToRoot: fn(),
+          setLevel: fn(),
         }),
       }));
 

@@ -1,5 +1,0 @@
-# This directory contains e2e test results
-# - baseline-metrics.json: Baseline metrics for comparison
-# - latest-metrics.json: Current metrics
-# - iteration-report.md: Comparison report
-# - improvement-suggestions.md: Actionable suggestions

@@ -1,0 +1,156 @@
+/* =====================================================
+   FORM ACTIONS - Modern Input Styling
+   ===================================================== */
+
+.guided-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.guided-actions .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.guided-actions .form-group>label:first-child {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-3);
+}
+
+/* Modern Input Fields */
+.guided-actions select,
+.guided-actions input[type="text"],
+.guided-actions textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-1);
+    color: var(--text-1);
+    font-size: 0.875rem;
+    font-family: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+}
+
+.guided-actions select:hover,
+.guided-actions input[type="text"]:hover,
+.guided-actions textarea:hover {
+    border-color: var(--primary-alpha-50, rgba(102, 126, 234, 0.5));
+    background: var(--surface-2);
+}
+
+.guided-actions select:focus,
+.guided-actions input[type="text"]:focus,
+.guided-actions textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-alpha-20, rgba(102, 126, 234, 0.2));
+    background: var(--surface-1);
+}
+
+.guided-actions select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+    cursor: pointer;
+}
+
+/* Input component styling */
+.guided-actions>label[class*="block"] {
+    margin-top: 0;
+}
+
+.guided-actions>label[class*="block"]>div:first-child {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-3);
+    margin-bottom: 0.5rem;
+}
+
+.guided-actions label input[type="text"] {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    height: auto;
+}
+
+/* Checkbox Row */
+.guided-actions .form-group.checkbox-row {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+    grid-column: 1 / -1;
+    padding: 0.75rem 1rem;
+    background: var(--surface-2);
+    border-radius: 8px;
+    margin-top: 0.5rem;
+}
+
+.guided-actions .checkbox-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+.guided-actions .checkbox-row label {
+    font-size: 0.875rem;
+    color: var(--text-2);
+    cursor: pointer;
+}
+
+/* Modern Buttons */
+.guided-actions>button {
+    grid-column: 1 / -1;
+    padding: 0.875rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* Primary Add Button */
+.guided-actions>button[class*="primary"] {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.guided-actions>button[class*="primary"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+}
+
+.guided-actions>button[class*="primary"]:active {
+    transform: translateY(0);
+}
+
+/* Secondary Button */
+.guided-actions>button[class*="secondary"] {
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    color: var(--text-1);
+}
+
+.guided-actions>button[class*="secondary"]:hover {
+    background: var(--surface-1);
+    border-color: var(--primary-alpha-50);
+    color: var(--primary);
+}
+

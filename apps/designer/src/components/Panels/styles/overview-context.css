@@ -1,0 +1,337 @@
+/* Context Section */
+.overview-context {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.context-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.context-item svg {
+    color: var(--highlight-color);
+    flex-shrink: 0;
+}
+
+.context-label {
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.overview-hero-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.overview-hero-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.edit-mode-toggle {
+    display: flex;
+    gap: 0.25rem;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    padding: 0.25rem;
+}
+
+.overview-hero-header>div {
+    flex: 1;
+}
+
+.metadata-section-header,
+.policies-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.metadata-section-title,
+.policies-section-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.metadata-card-editable {
+    position: relative;
+}
+
+.metadata-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.metadata-card-actions {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.metadata-card-editable:hover .metadata-card-actions {
+    opacity: 1;
+}
+
+.metadata-edit-btn,
+.metadata-delete-btn {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.metadata-edit-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--highlight-color);
+    color: var(--highlight-color);
+}
+
+.metadata-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.overview-policies-section {
+    margin-bottom: 1.5rem;
+}
+
+.policies-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.policy-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+}
+
+.policy-card:hover {
+    background: var(--card-hover-bg);
+}
+
+.policy-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.policy-id {
+    font-family: monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #f59e0b;
+}
+
+.policy-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.policy-card-actions {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.policy-card:hover .policy-card-actions {
+    opacity: 1;
+}
+
+.policy-edit-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.policy-edit-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--highlight-color);
+    color: var(--highlight-color);
+}
+
+.overview-constraints-section,
+.overview-conventions-section {
+    margin-bottom: 1.5rem;
+}
+
+.constraints-section-header,
+.conventions-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.constraints-section-title,
+.conventions-section-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.constraints-list,
+.conventions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.constraint-card,
+.convention-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+    position: relative;
+}
+
+.constraint-card:hover,
+.convention-card:hover {
+    background: var(--card-hover-bg);
+}
+
+.constraint-card-content,
+.convention-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.constraint-key,
+.convention-key {
+    font-family: monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #f59e0b;
+}
+
+.constraint-value,
+.convention-value {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.constraint-card-actions,
+.convention-card-actions {
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.constraint-card:hover .constraint-card-actions,
+.convention-card:hover .convention-card-actions {
+    opacity: 1;
+}
+
+.constraint-edit-btn,
+.convention-edit-btn,
+.constraint-delete-btn,
+.convention-delete-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.constraint-edit-btn:hover,
+.convention-edit-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--highlight-color);
+    color: var(--highlight-color);
+}
+
+.constraint-delete-btn:hover,
+.convention-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.feature-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.feature-settings-info {
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border, var(--border-color));
+}
+
+.feature-settings-description {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary, var(--text-secondary));
+    margin: 0;
+    line-height: 1.5;
+}
+

@@ -3,7 +3,7 @@
 import React, { lazy, Suspense } from "react";
 import { SrujaLoader, MantineProvider, ThemeProvider } from "@sruja/ui";
 import "@sruja/ui/design-system/styles.css";
-import AlgoliaSearch from "@/features/search/components/AlgoliaSearch";
+
 
 // Lazy load the designer App component
 // CSS files are imported within the App component itself
@@ -19,7 +19,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   static getDerivedStateFromError() {
     return { hasError: true };
   }
-  componentDidCatch() {}
+  componentDidCatch() { }
   render() {
     if (this.state.hasError) {
       return (
@@ -42,19 +42,19 @@ export default function Playground() {
     <MantineProvider>
       <ThemeProvider defaultMode="system">
         <ErrorBoundary>
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center h-full w-full">
-              <div className="text-center">
-                <SrujaLoader size={48} />
-                <p className="text-[var(--color-text-secondary)] mt-4">Loading Playground...</p>
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center h-full w-full">
+                <div className="text-center">
+                  <SrujaLoader size={48} />
+                  <p className="text-[var(--color-text-secondary)] mt-4">Loading Playground...</p>
+                </div>
               </div>
-            </div>
-          }
-        >
-          <PlaygroundApp />
-        </Suspense>
-      </ErrorBoundary>
+            }
+          >
+            <PlaygroundApp />
+          </Suspense>
+        </ErrorBoundary>
       </ThemeProvider>
     </MantineProvider>
   );

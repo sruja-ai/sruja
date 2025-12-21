@@ -1,0 +1,169 @@
+/* =====================================================
+   GOVERNANCE STEP - ADRs and Policies
+   ===================================================== */
+
+.step-icon.governance {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.step-icon.flows {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+/* Governance Tabs */
+.governance-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.gov-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.gov-tab:hover {
+    background: var(--surface-1);
+    border-color: var(--primary-alpha-50, rgba(102, 126, 234, 0.5));
+}
+
+.gov-tab.active {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%);
+    border-color: rgba(16, 185, 129, 0.5);
+    color: #10b981;
+}
+
+/* ADR Cards */
+.adr-card {
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+}
+
+.adr-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    width: 100%;
+}
+
+.adr-header:hover {
+    background: var(--surface-1);
+}
+
+.adr-status {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+.adr-status.proposed {
+    background: rgba(234, 179, 8, 0.15);
+    color: #eab308;
+}
+
+.adr-status.accepted {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.adr-status.deprecated {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.adr-status.superseded {
+    background: rgba(107, 114, 128, 0.15);
+    color: #6b7280;
+}
+
+.adr-details {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface-1);
+}
+
+.adr-field {
+    font-size: 0.8125rem;
+    color: var(--text-2);
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.adr-field strong {
+    color: var(--text-1);
+}
+
+/* ADR Form */
+.adr-form {
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.adr-form .form-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+}
+
+.adr-form .form-row>* {
+    flex: 1;
+}
+
+.textarea-group {
+    flex: 1;
+}
+
+.textarea-group label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-3);
+    margin-bottom: 0.5rem;
+}
+
+.textarea-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-1);
+    color: var(--text-1);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.textarea-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.item-icon.policy {
+    color: #10b981;
+}
+
+.item-desc {
+    font-size: 0.75rem;
+    color: var(--text-3);
+    font-style: italic;
+}
+

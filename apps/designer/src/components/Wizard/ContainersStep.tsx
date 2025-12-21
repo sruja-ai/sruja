@@ -2,6 +2,8 @@ import { useState, useMemo } from "react";
 import { Box, Database, MessageSquare, Plus, Trash2, Building2, Edit } from "lucide-react";
 import { Button } from "@sruja/ui"; // Removed Input
 import { useArchitectureStore } from "../../stores/architectureStore";
+import { useViewStore } from "../../stores/viewStore";
+import { useEffect } from "react";
 import { BestPracticeTip, EditContainerForm, EditDataStoreForm, EditQueueForm } from "../shared"; // Updated imports
 import { RelationsSection } from "./RelationsSection";
 import { GovernanceSection } from "./GovernanceSection";
@@ -19,6 +21,7 @@ type ElementType = "container" | "datastore" | "queue";
 export function ContainersStep({ onNext, onBack, readOnly: _readOnly = false }: ContainersStepProps) {
   const data = useArchitectureStore((s) => s.likec4Model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
+  const drillDown = useViewStore((s) => s.drillDown);
 
   // Derive systems from flat elements
   const allElements = useMemo(() => Object.values(data?.elements || {}) as any[], [data?.elements]);
@@ -32,6 +35,13 @@ export function ContainersStep({ onNext, onBack, readOnly: _readOnly = false }: 
   if (!selectedSystemId && systems.length > 0) {
     setSelectedSystemId((systems[0] as any).id);
   }
+
+  // Auto-Zoom: Focus diagram on selected system
+  useEffect(() => {
+    if (selectedSystemId) {
+      drillDown(selectedSystemId, "system");
+    }
+  }, [selectedSystemId, drillDown]);
 
   // Modal State
   const [isContainerFormOpen, setIsContainerFormOpen] = useState(false);

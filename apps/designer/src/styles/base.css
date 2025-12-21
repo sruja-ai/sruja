@@ -1,0 +1,197 @@
+/* ============================================
+   BASE STYLES - Global Reset & Layout
+   ============================================ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+.app,
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg-secondary);
+}
+
+/* ============================================
+   HEADER STYLES
+   ============================================ */
+
+.app-header {
+  height: 60px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  gap: 12px;
+  position: relative;
+  z-index: 50;
+  box-shadow: var(--shadow-sm);
+}
+
+.header-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-center {
+  flex: 2;
+  display: flex;
+  justify-content: flex-start;
+  padding-left: 12px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.header-left nav {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.header-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.external-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+  border-right: 1px solid var(--border-color);
+  padding-right: 8px;
+}
+
+/* Reduce padding on buttons in header */
+.header-right>button:not(.icon-only):not(.mode-btn),
+.header-right>div>button {
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
+
+.action-btn.icon-only {
+  padding: 0;
+  min-width: 36px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn.icon-only .btn-label {
+  display: none;
+}
+
+.action-btn.icon-only:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.header-center>* {
+  max-width: 100%;
+}
+
+/* Breadcrumb dark theme fixes */
+[data-theme="dark"] .app-header .header-left nav button {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .app-header .header-left nav button:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+.app-branding {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.app-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  letter-spacing: -0.02em;
+}
+
+/* Logo rotation animation */
+.logo-rotating {
+  animation: rotate 2s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Project Pill */
+.project-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 9999px; /* Pill shape */
+  font-size: 13px;
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.project-pill:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--highlight-color);
+}
+
+.project-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.version-separator {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.version-badge {
+  color: var(--text-secondary);
+  font-family: 'Monaco', monospace;
+  font-size: 11px;
+}
+
