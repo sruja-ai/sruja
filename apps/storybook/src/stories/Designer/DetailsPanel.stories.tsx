@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { DetailsPanel } from "../../../../../apps/designer/src/components/Panels/DetailsPanel";
@@ -121,7 +122,6 @@ const meta = {
   decorators: [
     (Story) => {
       // Mock stores
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -161,7 +161,6 @@ type Story = StoryObj<typeof meta>;
 export const SystemNode: Story = {
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -198,7 +197,6 @@ export const SystemNode: Story = {
 export const ContainerNode: Story = {
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -237,7 +235,6 @@ export const ContainerNode: Story = {
 export const PersonNode: Story = {
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -276,7 +273,6 @@ export const PersonNode: Story = {
 export const NodeWithNoData: Story = {
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -333,7 +329,6 @@ export const NodeWithNoData: Story = {
 export const NoSelection: Story = {
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -372,7 +367,6 @@ export const NoSelection: Story = {
 export const NoModel: Story = {
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({

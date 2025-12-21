@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { LikeC4Canvas } from "../../../../../apps/designer/src/components/Canvas/LikeC4Canvas";
@@ -148,7 +149,6 @@ const meta = {
   decorators: [
     (Story) => {
       // Mock stores
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -223,7 +223,6 @@ export const WithDragging: Story = {
   decorators: [
     (Story) => {
       // Mock with edit mode
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores/featureFlagsStore", () => ({
         useFeatureFlagsStore: () => ({
@@ -258,7 +257,6 @@ export const WithSelection: Story = {
   decorators: [
     (Story) => {
       // Mock with selected node
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -319,7 +317,6 @@ export const ComplexArchitecture: Story = {
   args: {},
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       const complexModel: SrujaModelDump = {
         _stage: "parsed",
@@ -512,7 +509,6 @@ export const Empty: Story = {
   args: {},
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       const emptyModel: SrujaModelDump = {
         _stage: "parsed",

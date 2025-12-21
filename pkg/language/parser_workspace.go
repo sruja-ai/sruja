@@ -74,10 +74,10 @@ func (p *Parser) resolveImports(ws *Workspace, prog *Program, filename string) e
 			// Special case: Standard Library (can be embedded or local)
 			if ws.IsStdLib(importPath) {
 				// Try loading from embedded FS first (works in WASM)
-				err := p.loadFromStdLibFS(ws, importPath)
-				if err == nil {
-					continue
-				}
+				p.loadFromStdLibFS(ws, importPath)
+				// Continue to next import if loaded successfully
+				// (function is best-effort and always succeeds)
+				continue
 			}
 
 			// Capture info to decide how to load from OS
@@ -115,7 +115,8 @@ func (p *Parser) resolveImports(ws *Workspace, prog *Program, filename string) e
 }
 
 // loadFromStdLibFS loads the standard library from the embedded filesystem.
-func (p *Parser) loadFromStdLibFS(ws *Workspace, _ string) error {
+// This is a best-effort operation that silently continues on errors.
+func (p *Parser) loadFromStdLibFS(ws *Workspace, _ string) {
 	// stdlib files are core.sruja, styles.sruja
 	files := []string{"core.sruja", "styles.sruja"}
 	for _, f := range files {
@@ -131,7 +132,6 @@ func (p *Parser) loadFromStdLibFS(ws *Workspace, _ string) error {
 			}
 		}
 	}
-	return nil
 }
 
 // ParseFile parses a DSL file into an AST.

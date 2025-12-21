@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { NavigationPanel } from "../../../../../apps/designer/src/components/Panels/NavigationPanel";
@@ -67,7 +68,6 @@ export const Default: Story = {
   decorators: [
     (Story) => {
       // Mock the stores using vi.mock
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -109,7 +109,6 @@ export const Collapsed: Story = {
       };
 
       // Mock stores
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -144,7 +143,6 @@ export const WithFocus: Story = {
   decorators: [
     (Story) => {
       // Mock stores with focused system
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -178,7 +176,6 @@ export const WithEditMode: Story = {
   decorators: [
     (Story) => {
       // Mock stores with edit mode enabled
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -213,7 +210,6 @@ export const Mobile: Story = {
   decorators: [
     (Story) => {
       // Mock stores
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -255,7 +251,6 @@ export const Empty: Story = {
   decorators: [
     (Story) => {
       // Mock stores with empty model
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({

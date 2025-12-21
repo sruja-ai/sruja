@@ -108,7 +108,7 @@ export const NestedErrorBoundary: Story = {
           <div>
             <h4>Nested ErrorBoundary</h4>
             <ThrowingComponent shouldThrow={true}>
-              <p>This content won't render due to the error</p>
+              <p>This content won{"'"}t render due to the error</p>
             </ThrowingComponent>
           </div>
         </ErrorBoundary>
@@ -185,7 +185,7 @@ export const CustomErrorMessage: Story = {
             }}
           >
             <strong>Test Error Details:</strong> The error below shows detailed information
-            including the error message and component stack trace. Click "Error Details" to expand
+            including the error message and component stack trace. Click {"\""}Error Details{"\""} to expand
             and see the full error information.
           </div>
           <Story />

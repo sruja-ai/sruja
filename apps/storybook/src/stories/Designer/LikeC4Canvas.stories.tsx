@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { LikeC4Canvas } from "../../../../../apps/designer/src/components/Canvas/LikeC4Canvas";
@@ -247,7 +248,6 @@ const meta = {
   decorators: [
     (Story) => {
       // Mock stores with proper structure
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -317,7 +317,6 @@ export const WithNodeSelection: Story = {
   args: {},
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -387,7 +386,6 @@ export const L2ContainerView: Story = {
   args: {},
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -457,7 +455,6 @@ export const L3ComponentView: Story = {
   args: {},
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -538,7 +535,6 @@ export const WithAnimation: Story = {
   args: {},
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({

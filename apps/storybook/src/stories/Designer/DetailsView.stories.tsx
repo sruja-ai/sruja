@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
+import { vi } from "vitest";
 import { DetailsView } from "../../../../../apps/designer/src/components/Views/DetailsView";
 import type { SrujaModelDump } from "@sruja/shared";
 
@@ -102,7 +103,6 @@ const meta = {
   tags: ["autodocs"],
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -147,7 +147,6 @@ export const Default: Story = {
 export const WithNodeSelection: Story = {
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -186,7 +185,6 @@ export const WithNodeSelection: Story = {
 export const WithTypeFilter: Story = {
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
