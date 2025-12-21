@@ -128,7 +128,6 @@ jobs:
           ref: main
           token: ${{ steps.app-token.outputs.token }}
           path: target
-          persist-credentials: false
 
       - name: Verify checkout succeeded
         run: |
