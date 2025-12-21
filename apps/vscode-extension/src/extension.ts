@@ -10,7 +10,7 @@ let previewProvider: SrujaPreviewProvider;
 
 export function activate(context: vscode.ExtensionContext) {
   try {
-    console.log("Sruja extension activating...");
+    console.info("Sruja extension activating...");
 
     // Check if this is first activation
     const isFirstActivation = !context.globalState.get("sruja.hasActivated", false);
@@ -54,7 +54,7 @@ export function activate(context: vscode.ExtensionContext) {
       updateStatusBarWithDiagnostics();
     });
 
-    console.log("Sruja extension commands registered");
+    console.info("Sruja extension commands registered");
 
     // Initialize WASM-based LSP (no CLI dependency)
     vscode.window.withProgress(
@@ -65,30 +65,30 @@ export function activate(context: vscode.ExtensionContext) {
       },
       async (progress) => {
         progress.report({ increment: 0, message: "Loading WASM module..." });
-        
+
         try {
           await initializeWasmLsp(context);
           progress.report({ increment: 100, message: "Ready!" });
-          
-        console.log("WASM LSP initialization completed");
-        updateStatusBar("Ready", "$(check)");
+
+          console.info("WASM LSP initialization completed");
+          updateStatusBar("Ready", "$(check)");
           // Update status bar with initial diagnostics
           updateStatusBarWithDiagnostics();
         } catch (error: unknown) {
           progress.report({ increment: 100, message: "Initialization failed" });
-        const errMsg = error instanceof Error ? error.message : String(error);
-        const stack = error instanceof Error ? error.stack : undefined;
-        console.error("Failed to initialize WASM LSP:", errMsg);
-        if (stack) {
-          console.error("Stack:", stack);
-        }
-        updateStatusBar("Error", "$(error)");
-        vscode.window.showErrorMessage(
+          const errMsg = error instanceof Error ? error.message : String(error);
+          const stack = error instanceof Error ? error.stack : undefined;
+          console.error("Failed to initialize WASM LSP:", errMsg);
+          if (stack) {
+            console.error("Stack:", stack);
+          }
+          updateStatusBar("Error", "$(error)");
+          vscode.window.showErrorMessage(
             `Failed to initialize Sruja Language Server: ${errMsg}. Check "Sruja WASM LSP" output channel for details.`
           );
         }
       }
-        );
+    );
   } catch (e) {
     console.error("Failed to activate Sruja extension:", e);
     vscode.window.showErrorMessage(`Sruja extension activation failed: ${e}`);
@@ -114,15 +114,19 @@ function updateStatusBar(text: string, icon?: string) {
 // Update status bar with diagnostics count
 export function updateStatusBarWithDiagnostics() {
   if (!statusBarItem) return;
-  
+
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== "sruja") {
     return;
   }
 
   const diagnostics = vscode.languages.getDiagnostics(editor.document.uri);
-  const errorCount = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Error).length;
-  const warningCount = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Warning).length;
+  const errorCount = diagnostics.filter(
+    (d) => d.severity === vscode.DiagnosticSeverity.Error
+  ).length;
+  const warningCount = diagnostics.filter(
+    (d) => d.severity === vscode.DiagnosticSeverity.Warning
+  ).length;
 
   if (errorCount > 0) {
     updateStatusBar(`${errorCount} error${errorCount !== 1 ? "s" : ""}`, "$(error)");
@@ -218,7 +222,7 @@ async function showWelcomeMessage(context: vscode.ExtensionContext) {
       content: sampleContent,
     });
     await vscode.window.showTextDocument(doc);
-    
+
     vscode.window.showInformationMessage(
       "Try hovering over symbols, using auto-completion (Ctrl+Space), or right-click to preview!"
     );

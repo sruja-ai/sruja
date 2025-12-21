@@ -29,12 +29,12 @@ export function getDebounceDelay(): number {
 }
 
 // Debounce utility
-export function debounce<T extends (...args: any[]) => any>(
-  func: T,
+export function debounce<T extends unknown[], R>(
+  func: (...args: T) => R,
   wait: number
-): (...args: Parameters<T>) => void {
+): (...args: T) => void {
   let timeout: NodeJS.Timeout | null = null;
-  return function executedFunction(...args: Parameters<T>) {
+  return function executedFunction(...args: T) {
     const later = () => {
       timeout = null;
       func(...args);
@@ -68,7 +68,7 @@ export function log(message: string, type: "info" | "warn" | "error" = "info") {
   } else if (type === "warn") {
     console.warn(fullMessage);
   } else {
-    console.log(fullMessage);
+    console.info(fullMessage);
   }
 
   // Log to output channel (for user visibility)
@@ -80,25 +80,27 @@ export function log(message: string, type: "info" | "warn" | "error" = "info") {
 export function setupConsoleInterception() {
   if (!outputChannel) return;
 
+  // eslint-disable-next-line no-console
   const originalLog = console.log;
   const originalWarn = console.warn;
   const originalError = console.error;
 
-  console.log = (...args: any[]) => {
+  // eslint-disable-next-line no-console
+  console.log = (...args: unknown[]) => {
     originalLog.apply(console, args);
     if (outputChannel && args.some((arg) => String(arg).includes("[WASM]"))) {
       outputChannel.appendLine(`[WASM] ${args.map((a) => String(a)).join(" ")}`);
     }
   };
 
-  console.warn = (...args: any[]) => {
+  console.warn = (...args: unknown[]) => {
     originalWarn.apply(console, args);
     if (outputChannel && args.some((arg) => String(arg).includes("[WASM]"))) {
       outputChannel.appendLine(`[WASM] ${args.map((a) => String(a)).join(" ")}`);
     }
   };
 
-  console.error = (...args: any[]) => {
+  console.error = (...args: unknown[]) => {
     originalError.apply(console, args);
     if (outputChannel && args.some((arg) => String(arg).includes("[WASM]"))) {
       outputChannel.appendLine(`[WASM ERROR] ${args.map((a) => String(a)).join(" ")}`);
@@ -128,4 +130,3 @@ export function mapSymbolKind(kind: string): vscode.SymbolKind {
       return vscode.SymbolKind.Variable;
   }
 }
-
