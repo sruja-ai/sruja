@@ -8,7 +8,13 @@ export default tsConfig(
   ...tsConfigs.recommended,
   reactRefresh.configs.vite,
   {
-    ignores: ["dist", "postcss.config.cjs"],
+    ignores: [
+      "dist",
+      "postcss.config.cjs",
+      "public/wasm/wasm_exec.js",
+      "scripts/**/*",
+      "eslint_designer_output.txt"
+    ],
   },
   {
     plugins: {

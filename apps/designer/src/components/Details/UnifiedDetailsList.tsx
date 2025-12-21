@@ -32,9 +32,10 @@ export function UnifiedDetailsList({ filters, onItemClick, selectedNodeId }: Uni
   // const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture); // Unused for now until delete logic is implemented
   const setActiveTab = useUIStore((s) => s.setActiveTab);
   const { navigateToTaggedElement } = useTagNavigation();
-  
+
+  const storeNodeId = useSelectionStore((s) => s.selectedNodeId);
   // Use selectedNodeId from store if not provided as prop
-  const nodeId = selectedNodeId ?? useSelectionStore((s) => s.selectedNodeId);
+  const nodeId = selectedNodeId ?? storeNodeId;
 
   const [editItem, setEditItem] = useState<UnifiedItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<UnifiedItem | null>(null);
@@ -124,13 +125,13 @@ export function UnifiedDetailsList({ filters, onItemClick, selectedNodeId }: Uni
         if (itemTags.includes(nodeId)) {
           return true;
         }
-        
+
         // For scenarios and flows, check if they reference the node in steps
         if (item.type === "scenario" || item.type === "flow") {
           const steps = (item.data as ScenarioDump | FlowDump).steps || [];
           return steps.some((step) => step.from === nodeId || step.to === nodeId);
         }
-        
+
         return false;
       });
     }

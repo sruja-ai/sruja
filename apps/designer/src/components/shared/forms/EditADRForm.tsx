@@ -35,7 +35,6 @@ export function EditADRForm({ isOpen, onClose, adr }: EditADRFormProps) {
     initialValues: {
       id: adr?.id || "",
       title: adr?.title || "",
-      // @ts-expect-error: types mismatch
       status: ADR_STATUSES.find((s) => s.id === (adr?.status || "proposed")) || ADR_STATUSES[0],
       context: adr?.context || "",
       decision: adr?.decision || "",
@@ -61,7 +60,6 @@ export function EditADRForm({ isOpen, onClose, adr }: EditADRFormProps) {
         const newADR: ADRDump = {
           id: values.id.trim(),
           title: values.title.trim(),
-          // @ts-expect-error: types mismatch
           status: values.status?.id,
           context: values.context.trim() || undefined,
           decision: values.decision.trim() || undefined,
@@ -95,7 +93,6 @@ export function EditADRForm({ isOpen, onClose, adr }: EditADRFormProps) {
       form.setValues({
         id: adr?.id || "",
         title: adr?.title || "",
-        // @ts-expect-error: types mismatch
         status: ADR_STATUSES.find((s) => s.id === (adr?.status || "proposed")) || ADR_STATUSES[0],
         context: adr?.context || "",
         decision: adr?.decision || "",

@@ -1,0 +1,77 @@
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Canvas/LikeC4Canvas.tsx
+  177:20  warning  'error' is defined but never used                                                               @typescript-eslint/no-unused-vars
+  195:13  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  252:7   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Canvas/__tests__/LikeC4Canvas.test.tsx
+  15:22  warning  'dump' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Canvas/useLikeC4Animation.ts
+  54:8  warning  React Hook useEffect has a missing dependency: 'containerRef'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Canvas/useLikeC4Canvas.ts
+   40:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   54:5  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+   64:9  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  108:9  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Canvas/useLikeC4CanvasEvents.ts
+  50:5   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  62:13  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  67:13  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  71:16  warning  'error' is defined but never used                                                               @typescript-eslint/no-unused-vars
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Panels/DSLPanel.tsx
+   54:11  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug                no-console
+   65:6   warning  React Hook useEffect has a missing dependency: 'dslSource'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  113:9   warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug                no-console
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Panels/JSONPanel.tsx
+  74:6  warning  React Hook useEffect has a missing dependency: 'jsonSource'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Views/DetailsView.tsx
+  40:9  warning  The 'scenarios' logical expression could make the dependencies of useMemo Hook (at line 56) change on every render. To fix this, wrap the initialization of 'scenarios' in its own useMemo() Hook                                                     react-hooks/exhaustive-deps
+  41:9  warning  The 'flows' logical expression could make the dependencies of useMemo Hook (at line 56) change on every render. To fix this, wrap the initialization of 'flows' in its own useMemo() Hook                                                             react-hooks/exhaustive-deps
+  42:9  warning  The 'allRequirements' logical expression could make the dependencies of useMemo Hook (at line 46) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'allRequirements' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  43:9  warning  The 'adrs' logical expression could make the dependencies of useMemo Hook (at line 56) change on every render. To fix this, wrap the initialization of 'adrs' in its own useMemo() Hook                                                               react-hooks/exhaustive-deps
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Wizard/BuilderWizard.tsx
+  162:6  warning  React Hook useEffect has a missing dependency: 'steps.length'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/Wizard/SystemContextStep.tsx
+  22:9  warning  The 'elements' conditional could make the dependencies of useMemo Hook (at line 24) change on every render. To fix this, wrap the initialization of 'elements' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  22:9  warning  The 'elements' conditional could make the dependencies of useMemo Hook (at line 25) change on every render. To fix this, wrap the initialization of 'elements' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/components/shared/forms/EditFlowForm.tsx
+  99:6  warning  React Hook useEffect has a missing dependency: 'form'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/hooks/__tests__/useFileHandlers.test.ts
+  18:7  warning  'createMockDump' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/hooks/useBuilderProgress.ts
+   14:11  warning  The 'sruja' logical expression could make the dependencies of useMemo Hook (at line 15) change on every render. To fix this, wrap the initialization of 'sruja' in its own useMemo() Hook  react-hooks/exhaustive-deps
+   14:11  warning  The 'sruja' logical expression could make the dependencies of useMemo Hook (at line 16) change on every render. To fix this, wrap the initialization of 'sruja' in its own useMemo() Hook  react-hooks/exhaustive-deps
+   14:11  warning  The 'sruja' logical expression could make the dependencies of useMemo Hook (at line 17) change on every render. To fix this, wrap the initialization of 'sruja' in its own useMemo() Hook  react-hooks/exhaustive-deps
+   14:11  warning  The 'sruja' logical expression could make the dependencies of useMemo Hook (at line 18) change on every render. To fix this, wrap the initialization of 'sruja' in its own useMemo() Hook  react-hooks/exhaustive-deps
+   75:9   warning  React Hook useMemo has a missing dependency: 'reqTaggedTo'. Either include it or remove the dependency array                                                                               react-hooks/exhaustive-deps
+   80:9   warning  React Hook useMemo has a missing dependency: 'reqTaggedTo'. Either include it or remove the dependency array                                                                               react-hooks/exhaustive-deps
+   86:9   warning  React Hook useMemo has a missing dependency: 'reqTaggedTo'. Either include it or remove the dependency array                                                                               react-hooks/exhaustive-deps
+  135:9   warning  React Hook useMemo has a missing dependency: 'containerHasRelations'. Either include it or remove the dependency array                                                                     react-hooks/exhaustive-deps
+  146:9   warning  React Hook useMemo has a missing dependency: 'componentHasRelations'. Either include it or remove the dependency array                                                                     react-hooks/exhaustive-deps
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/stores/architectureStore.ts
+  265:11  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  294:13  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+  363:13  warning  Unexpected console statement. Only these console methods are allowed: warn, error, info, debug  no-console
+
+/Users/dilipkola/Workspace/sruja/apps/designer/src/utils/firebaseShareService.ts
+  101:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  157:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/dilipkola/Workspace/sruja/apps/designer/tests/code-panel.spec.ts
+  34:11  warning  'hasTabs' is assigned a value but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+  47:11  warning  'isVisible' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+✖ 42 problems (0 errors, 42 warnings)
+

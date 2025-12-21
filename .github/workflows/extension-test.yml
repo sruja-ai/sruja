@@ -27,9 +27,11 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version: '24'
+        cache: 'npm'
+        cache-dependency-path: apps/vscode-extension/package-lock.json
 
     - name: Install dependencies
-      run: npm install
+      run: npm ci
 
     - name: Run tests
       run: xvfb-run -a npm test
