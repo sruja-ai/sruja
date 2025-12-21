@@ -79,7 +79,7 @@ export function DSLPanel() {
 
     // If we have a model but no DSL source, provide a fallback message
     if (likec4Model && !storeDslSource && !loading) {
-      // @ts-ignore
+      // @ts-expect-error: types mismatch
       const archName = likec4Model._metadata?.name || likec4Model.project?.name || "Architecture";
       setDslSourceLocal(
         `// Architecture: ${archName}\n// DSL source not available for this architecture.\n// This architecture may have been loaded from JSON or a custom file.`

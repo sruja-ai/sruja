@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { BuilderWizard } from "../../../../../apps/designer/src/components/Wizard/BuilderWizard";
@@ -71,7 +72,6 @@ const meta = {
   decorators: [
     (Story) => {
       // Mock stores
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -139,7 +139,6 @@ export const Default: Story = {
   decorators: [
     (Story) => {
       // Mock with full model
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -178,7 +177,6 @@ export const ViewMode: Story = {
   decorators: [
     (Story) => {
       // Mock with view mode
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -217,7 +215,6 @@ export const EmptyModel: Story = {
   decorators: [
     (Story) => {
       // Mock with empty model
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -256,7 +253,6 @@ export const WithSidebarOpen: Story = {
   decorators: [
     (Story) => {
       // Mock with sidebar preference
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -307,7 +303,6 @@ export const Mobile: Story = {
   decorators: [
     (Story) => {
       // Mock for mobile view
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({

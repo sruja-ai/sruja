@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { UnifiedDetailsList } from "../../../../../apps/designer/src/components/Details/UnifiedDetailsList";
@@ -145,7 +146,6 @@ const meta = {
   },
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -194,7 +194,6 @@ export const FilteredByNode: Story = {
   },
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({
@@ -313,7 +312,6 @@ export const EmptyStateWithNode: Story = {
   },
   decorators: [
     (Story) => {
-      const { vi } = require("vitest");
 
       vi.doMock("../../../../../apps/designer/src/stores", () => ({
         useArchitectureStore: () => ({

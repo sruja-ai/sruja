@@ -6,35 +6,29 @@ import type { PerformanceProfiler } from "../utils/performanceProfiler";
 import type { C4NodeData } from "./index";
 
 /**
- * Window global variables interface
+ * Window global variables augmentation
  * These are used for debugging and development tools
  */
-export interface WindowGlobals {
-  /**
-   * Flag to enable new layout engine
-   */
-  __USE_NEW_LAYOUT_ENGINE__?: string;
-
-
-  /**
-   * Performance profiler instance
-   */
-  __PERFORMANCE_PROFILER__?: PerformanceProfiler;
-
-  /**
-   * Current graph state (nodes and edges)
-   */
-  __CYBER_GRAPH__?: {
-    nodes: Node<C4NodeData>[];
-    edges: Edge[];
-  };
-}
-
-/**
- * Extend Window interface with our globals
- */
 declare global {
-  interface Window extends WindowGlobals {}
+  interface Window {
+    /**
+     * Flag to enable new layout engine
+     */
+    __USE_NEW_LAYOUT_ENGINE__?: string;
+
+    /**
+     * Performance profiler instance
+     */
+    __PERFORMANCE_PROFILER__?: PerformanceProfiler;
+
+    /**
+     * Current graph state (nodes and edges)
+     */
+    __CYBER_GRAPH__?: {
+      nodes: Node<C4NodeData>[];
+      edges: Edge[];
+    };
+  }
 }
 
 /**

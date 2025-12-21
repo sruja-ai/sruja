@@ -129,7 +129,7 @@ export const WithSearch: Story = {
             }}
           >
             <strong>Note:</strong> To see the search functionality, click the input field and type.
-            Try searching for "diagram", "export", or "import".
+            Try searching for {"\""}diagram{"\""}, {"\""}export{"\""}, or {"\""}import{"\""}.
           </div>
         </div>
       );

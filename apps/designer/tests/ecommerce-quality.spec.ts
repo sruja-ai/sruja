@@ -41,7 +41,7 @@ test.describe("ECommerce Platform Quality Measurement", () => {
     await page.waitForTimeout(2000);
     
     // Check if diagram is already visible
-    let hasDiagram = await page.locator(".react-flow, .likec4-canvas").isVisible({ timeout: 5000 }).catch(() => false);
+    const hasDiagram = await page.locator(".react-flow, .likec4-canvas").isVisible({ timeout: 5000 }).catch(() => false);
     
     // If not, load example manually (following smoke test pattern)
     if (!hasDiagram) {

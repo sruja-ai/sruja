@@ -76,7 +76,7 @@ export function RequirementsPanel() {
   const requirements = useMemo(() => {
     if (!model) return [];
 
-    // @ts-ignore
+    // @ts-expect-error: types mismatch
     const reqs = (model.sruja as any)?.requirements || [];
 
     // Deduplicate by ID to prevent showing duplicates
@@ -88,13 +88,13 @@ export function RequirementsPanel() {
 
     // Filter by selected node - RequirementDump might not have tags for linking to elements directly in standard model, but maybe it does. Assuming tags for now but safely.
     if (selectedNodeId) {
-      // @ts-ignore
+      // @ts-expect-error: types mismatch
       filtered = filtered.filter((r) => r.tags?.includes(selectedNodeId));
     }
 
     // Filter by type
     if (activeType !== "all") {
-      // @ts-ignore
+      // @ts-expect-error: types mismatch
       filtered = filtered.filter((r) => r.type?.toLowerCase() === activeType);
     }
 
@@ -106,7 +106,7 @@ export function RequirementsPanel() {
           r.id?.toLowerCase().includes(query) ||
           r.title?.toLowerCase().includes(query) ||
           r.description?.toLowerCase().includes(query) ||
-          // @ts-ignore
+          // @ts-expect-error: types mismatch
           r.type?.toLowerCase().includes(query)
       );
     }
@@ -121,13 +121,13 @@ export function RequirementsPanel() {
     // Let's filter by selection first for counts.
     let baseList = requirements;
     if (selectedNodeId) {
-      // @ts-ignore
+      // @ts-expect-error: types mismatch
       baseList = baseList.filter((r) => r.tags?.includes(selectedNodeId));
     }
 
     const counts: Record<string, number> = { all: baseList.length };
     baseList.forEach((r) => {
-      // @ts-ignore
+      // @ts-expect-error: types mismatch
       const type = r.type?.toLowerCase() || "other";
       counts[type] = (counts[type] || 0) + 1;
     });
@@ -143,7 +143,7 @@ export function RequirementsPanel() {
     }> = {};
 
     requirements.forEach((req) => {
-      // @ts-ignore
+      // @ts-expect-error: types mismatch
       const elementIds: string[] = req.tags ?? [];
       const hasLinks = elementIds.length > 0;
       const status: "fulfilled" | "partial" | "missing" =
@@ -281,7 +281,7 @@ export function RequirementsPanel() {
           {/* Requirements List */}
           <div className="requirements-list">
             {filteredRequirements.map((req, index) => {
-              // @ts-ignore
+              // @ts-expect-error: types mismatch
               const typeConfig = REQUIREMENT_TYPES.find((t) => t.type === req.type?.toLowerCase());
               const coverage = requirementCoverage[req.id];
               const isSelected = selectedRequirement === req.id;
@@ -297,11 +297,11 @@ export function RequirementsPanel() {
                 >
                   <div className="req-header">
                     <span className="req-id">{req.id || `REQ-${index + 1}`}</span>
-                    {/* @ts-ignore */}
+                    {/* @ts-expect-error: types mismatch */}
                     {req.type && (
                       <span className="req-type-badge">
                         {typeConfig?.icon}
-                        {/* @ts-ignore */}
+                        {/* @ts-expect-error: types mismatch */}
                         {req.type}
                       </span>
                     )}
@@ -364,10 +364,10 @@ export function RequirementsPanel() {
                       </span>
                     </div>
                   )}
-                  {/* @ts-ignore */}
+                  {/* @ts-expect-error: types mismatch */}
                   {req.tags && req.tags.length > 0 && (
                     <div className="req-tags">
-                      {/* @ts-ignore */}
+                      {/* @ts-expect-error: types mismatch */}
                       {req.tags.map((tag) => (
                         <Button
                           key={tag}
@@ -410,7 +410,7 @@ export function RequirementsPanel() {
           if (deleteRequirement) {
             await updateArchitecture((model) => {
               const sruja = (model as any).sruja || {};
-              // @ts-ignore
+              // @ts-expect-error: types mismatch
               const requirements = (sruja.requirements || []).filter(
                 (r: any) => r.id !== deleteRequirement.id
               );
