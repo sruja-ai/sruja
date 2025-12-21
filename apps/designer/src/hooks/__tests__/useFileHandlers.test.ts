@@ -15,14 +15,6 @@ const mockSaveProject = vi.fn();
 const mockBuildShareUrl = vi.fn();
 
 // Helper
-const createMockDump = (): SrujaModelDump => ({
-  specification: { tags: {}, elements: {} },
-  elements: {},
-  relations: [],
-  views: {},
-  sruja: { requirements: [], flows: [], scenarios: [], adrs: [] },
-  _metadata: { name: "Test Architecture", version: "1.0.0", generated: new Date().toISOString(), srujaVersion: "1.0" },
-});
 
 vi.mock("../../stores/architectureStore", () => ({
   useArchitectureStore: vi.fn((selector) => {
@@ -32,7 +24,12 @@ vi.mock("../../stores/architectureStore", () => ({
       relations: [],
       views: {},
       sruja: { requirements: [], flows: [], scenarios: [], adrs: [] },
-      _metadata: { name: "Test Architecture", version: "1.0.0", generated: new Date().toISOString(), srujaVersion: "1.0" },
+      _metadata: {
+        name: "Test Architecture",
+        version: "1.0.0",
+        generated: new Date().toISOString(),
+        srujaVersion: "1.0",
+      },
     };
     const state = {
       data: mockData,
@@ -85,7 +82,7 @@ vi.mock("../../utils/errorHandling", () => ({
       return { data: null, error };
     }
   }),
-  NetworkError: class NetworkError extends Error { },
+  NetworkError: class NetworkError extends Error {},
   ErrorType: {
     NETWORK: "NETWORK",
     VALIDATION: "VALIDATION",
@@ -127,9 +124,15 @@ describe("useFileHandlers", () => {
       download: "",
       click: vi.fn(),
     };
-    const createElementSpy = vi.spyOn(document, "createElement").mockReturnValue(mockAnchor as unknown as HTMLElement);
-    const appendChildSpy = vi.spyOn(document.body, "appendChild").mockImplementation(() => mockAnchor as unknown as Node);
-    const removeChildSpy = vi.spyOn(document.body, "removeChild").mockImplementation(() => mockAnchor as unknown as Node);
+    const createElementSpy = vi
+      .spyOn(document, "createElement")
+      .mockReturnValue(mockAnchor as unknown as HTMLElement);
+    const appendChildSpy = vi
+      .spyOn(document.body, "appendChild")
+      .mockImplementation(() => mockAnchor as unknown as Node);
+    const removeChildSpy = vi
+      .spyOn(document.body, "removeChild")
+      .mockImplementation(() => mockAnchor as unknown as Node);
     const createObjectURLSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:url");
 
     result.current.handleExport();
@@ -154,7 +157,12 @@ describe("useFileHandlers", () => {
       relations: [],
       views: {},
       sruja: { requirements: [], flows: [], scenarios: [], adrs: [] },
-      _metadata: { name: "Test", version: "1.0", generated: new Date().toISOString(), srujaVersion: "1.0" },
+      _metadata: {
+        name: "Test",
+        version: "1.0",
+        generated: new Date().toISOString(),
+        srujaVersion: "1.0",
+      },
     });
 
     const { result } = renderHook(() => useFileHandlers(mockCanvasRef));
@@ -164,7 +172,9 @@ describe("useFileHandlers", () => {
       readAsText: vi.fn((_file: File) => {
         setTimeout(() => {
           if (mockFileReader.onload) {
-            mockFileReader.onload({ target: { result: "system TestSystem" } } as ProgressEvent<FileReader>);
+            mockFileReader.onload({
+              target: { result: "system TestSystem" },
+            } as ProgressEvent<FileReader>);
           }
         }, 0);
       }),
@@ -172,13 +182,18 @@ describe("useFileHandlers", () => {
       onload: null as ((e: ProgressEvent<FileReader>) => void) | null,
     };
 
-    vi.spyOn(window, "FileReader").mockImplementation(() => mockFileReader as unknown as FileReader);
+    vi.spyOn(window, "FileReader").mockImplementation(
+      () => mockFileReader as unknown as FileReader
+    );
 
     result.current.handleImport();
 
-    await waitFor(() => {
-      expect(mockConvertDslToJson).toHaveBeenCalled();
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(mockConvertDslToJson).toHaveBeenCalled();
+      },
+      { timeout: 1000 }
+    );
   });
 
   it("should handle share correctly", async () => {
@@ -189,11 +204,14 @@ describe("useFileHandlers", () => {
 
     await result.current.handleShare();
 
-    await waitFor(() => {
-      expect(mockCreateNewProject).toHaveBeenCalled();
-      expect(mockSaveProject).toHaveBeenCalled();
-      expect(mockWriteText).toHaveBeenCalled();
-      expect(mockShowToast).toHaveBeenCalled();
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(mockCreateNewProject).toHaveBeenCalled();
+        expect(mockSaveProject).toHaveBeenCalled();
+        expect(mockWriteText).toHaveBeenCalled();
+        expect(mockShowToast).toHaveBeenCalled();
+      },
+      { timeout: 1000 }
+    );
   });
 });

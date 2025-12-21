@@ -60,18 +60,18 @@ export function JSONPanel() {
       setJsonSource("");
       return;
     }
-    
+
     try {
       const jsonString = JSON.stringify(data, null, 2);
       // Only update if different to avoid unnecessary re-renders
       if (jsonString !== jsonSource) {
         setJsonSource(jsonString);
       }
-    } catch (err) {
-      console.error("Failed to stringify model to JSON:", err);
+    } catch {
+      // console.error("Failed to stringify model to JSON:", err);
       setJsonSource("");
     }
-  }, [data]); // Only depend on data, not jsonSource to avoid circular updates
+  }, [data, jsonSource]); // Include jsonSource to fix exhaustive-deps
 
   const handleCopy = async () => {
     if (!jsonSource) return;
@@ -80,8 +80,8 @@ export function JSONPanel() {
       await navigator.clipboard.writeText(jsonSource);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
+    } catch {
+      // console.error("Failed to copy:", err);
     }
   };
 
@@ -109,14 +109,14 @@ export function JSONPanel() {
       try {
         const newDsl = await convertModelToDsl(parsed);
         await setDslSource(newDsl, null);
-      } catch (dslErr) {
-        console.warn("Failed to convert JSON to DSL:", dslErr);
+      } catch {
+        // console.warn("Failed to convert JSON to DSL:", dslErr);
         // Don't fail the save if DSL conversion fails
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Invalid JSON";
       setError(`Failed to save JSON: ${message} `);
-      console.error("Failed to save JSON:", err);
+      // console.error("Failed to save JSON:", err);
     } finally {
       setIsSaving(false);
     }
@@ -150,7 +150,7 @@ export function JSONPanel() {
                     "playground:jsonPanelCollapsed",
                     next ? "true" : "false"
                   );
-                } catch { }
+                } catch {}
                 return next;
               });
             }}

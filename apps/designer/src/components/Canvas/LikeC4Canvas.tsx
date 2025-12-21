@@ -8,7 +8,12 @@ import { useSelectionStore } from "../../stores/viewStore";
 import { useUIStore } from "../../stores";
 import { AnimatePresence, motion } from "framer-motion";
 import { applyNodeColors } from "./likeC4NodeStyler";
-import { useLikeC4Model, useAvailableViews, useActiveViewId, useNodeColorApplication } from "./useLikeC4Canvas";
+import {
+  useLikeC4Model,
+  useAvailableViews,
+  useActiveViewId,
+  useNodeColorApplication,
+} from "./useLikeC4Canvas";
 import { useLikeC4CanvasExports } from "./useLikeC4CanvasExports";
 import { useLikeC4Handlers, useKeyboardShortcuts } from "./useLikeC4CanvasEvents";
 import { useLikeC4Animation } from "./useLikeC4Animation";
@@ -37,14 +42,17 @@ import "./LikeC4Canvas.node-colors.css";
  * - Event handling (clicks, keyboard)
  */
 export const LikeC4Canvas = forwardRef<ArchitectureCanvasRef, LikeC4CanvasProps>(
-  ({
-    model: propModel,
-    dragEnabled: _dragEnabled = true,
-    viewId,
-    onNodeClick,
-    onEdgeClick: _onEdgeClick,
-    onCanvasClick: _onCanvasClick
-  }, ref) => {
+  (
+    {
+      model: propModel,
+      dragEnabled: _dragEnabled = true,
+      viewId,
+      onNodeClick,
+      onEdgeClick: _onEdgeClick,
+      onCanvasClick: _onCanvasClick,
+    },
+    ref
+  ) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const storeLikec4Model = useArchitectureStore((s) => s.likec4Model);
     const currentLevel = useViewStore((s) => s.currentLevel);
@@ -69,36 +77,26 @@ export const LikeC4Canvas = forwardRef<ArchitectureCanvasRef, LikeC4CanvasProps>
     const model = propModel || storeLikec4Model;
 
     // Model conversion and computation
-    const { model: likec4Model, error: conversionError, isComputing } = useLikeC4Model(
-      model,
-      focusedSystemId,
-      focusedContainerId
-    );
+    const {
+      model: likec4Model,
+      error: conversionError,
+      isComputing,
+    } = useLikeC4Model(model, focusedSystemId, focusedContainerId);
 
     // View management
-    const availableViews = useAvailableViews(model, likec4Model);
-    const { activeViewId } = useActiveViewId(
-      availableViews,
-      viewId,
-      currentLevel
-    );
+    const availableViews = useAvailableViews(likec4Model);
+    const { activeViewId } = useActiveViewId(availableViews, viewId, currentLevel);
 
     // Node color application
     const applyColors = useCallback(() => {
       applyNodeColors({
         containerRef,
         likec4Model,
-        selectedNodeId
+        selectedNodeId,
       });
     }, [likec4Model, selectedNodeId]);
 
-    useNodeColorApplication(
-      containerRef,
-      likec4Model,
-      activeViewId,
-      selectedNodeId,
-      applyColors
-    );
+    useNodeColorApplication(containerRef, likec4Model, activeViewId, selectedNodeId, applyColors);
 
     // Export functionality
     useLikeC4CanvasExports({ containerRef, model }, ref);
@@ -111,7 +109,7 @@ export const LikeC4Canvas = forwardRef<ArchitectureCanvasRef, LikeC4CanvasProps>
       onNodeClick,
       onDrillDown: drillDown,
       onSelectNode: selectNode,
-      onSetActiveTab: setActiveTab
+      onSetActiveTab: setActiveTab,
     });
 
     useKeyboardShortcuts({
@@ -122,7 +120,7 @@ export const LikeC4Canvas = forwardRef<ArchitectureCanvasRef, LikeC4CanvasProps>
       onPauseFlow: pauseFlow,
       onNextStep: nextStep,
       onPrevStep: prevStep,
-      onSetFlowStep: setFlowStep
+      onSetFlowStep: setFlowStep,
     });
 
     // Initialize animation engine
@@ -140,11 +138,11 @@ export const LikeC4Canvas = forwardRef<ArchitectureCanvasRef, LikeC4CanvasProps>
       }
 
       const container = containerRef.current;
-      
+
       const handleClick = (event: MouseEvent) => {
         // Find the clicked element that represents a node
         const target = event.target as HTMLElement;
-        
+
         // Look for data attributes that LikeC4 uses to identify nodes
         // LikeC4 typically uses data-element-id or similar attributes
         let nodeElement: HTMLElement | null = target;
@@ -153,12 +151,13 @@ export const LikeC4Canvas = forwardRef<ArchitectureCanvasRef, LikeC4CanvasProps>
         // Walk up the DOM tree to find the node element
         while (nodeElement && nodeElement !== container) {
           // Check for various data attributes that might contain the node ID
-          nodeId = nodeElement.getAttribute('data-element-id') ||
-                   nodeElement.getAttribute('data-id') ||
-                   nodeElement.getAttribute('id') ||
-                   nodeElement.closest('[data-element-id]')?.getAttribute('data-element-id') ||
-                   nodeElement.closest('[data-id]')?.getAttribute('data-id') ||
-                   null;
+          nodeId =
+            nodeElement.getAttribute("data-element-id") ||
+            nodeElement.getAttribute("data-id") ||
+            nodeElement.getAttribute("id") ||
+            nodeElement.closest("[data-element-id]")?.getAttribute("data-element-id") ||
+            nodeElement.closest("[data-id]")?.getAttribute("data-id") ||
+            null;
 
           if (nodeId) {
             break;
@@ -174,37 +173,27 @@ export const LikeC4Canvas = forwardRef<ArchitectureCanvasRef, LikeC4CanvasProps>
             if (element) {
               handleNodeClick(nodeId, event as any);
             }
-          } catch (error) {
+          } catch {
             // Node not found, ignore click
           }
         }
       };
 
-      container.addEventListener('click', handleClick);
+      container.addEventListener("click", handleClick);
       return () => {
-        container.removeEventListener('click', handleClick);
+        container.removeEventListener("click", handleClick);
       };
     }, [containerRef, handleNodeClick, likec4Model]);
 
-    // Debug: Check if SVG is rendered
+    /* Debug: Check if SVG is rendered - Disabled for production
     useEffect(() => {
       if (activeViewId && containerRef.current) {
         const checkSVG = () => {
           const svg = containerRef.current?.querySelector('svg');
           if (svg) {
-            console.log('[LikeC4Canvas] SVG found:', {
-              viewId: activeViewId,
-              width: svg.clientWidth,
-              height: svg.clientHeight,
-              viewBox: svg.getAttribute('viewBox'),
-              style: window.getComputedStyle(svg).display,
-              innerHTMLLength: svg.innerHTML.length
-            });
-          } else {
-            console.warn('[LikeC4Canvas] SVG not found in container for view:', activeViewId);
+            // SVG found
           }
         };
-        // Check after delays to catch SVG after it renders
         const timeout1 = setTimeout(checkSVG, 1000);
         const timeout2 = setTimeout(checkSVG, 2000);
         return () => {
@@ -213,6 +202,7 @@ export const LikeC4Canvas = forwardRef<ArchitectureCanvasRef, LikeC4CanvasProps>
         };
       }
     }, [activeViewId]);
+    */
 
     // Render empty states
     if (!model) {
@@ -236,18 +226,22 @@ export const LikeC4Canvas = forwardRef<ArchitectureCanvasRef, LikeC4CanvasProps>
 
     if (availableViews.length === 0 && !conversionError) {
       // Only warn if model has views but LikeC4Model filtered them all out
+      /*
       if (hasViewsInModel && !hasViewsInLikeC4Model) {
         console.warn("[LikeC4Canvas] Model has views but LikeC4Model filtered them out. This might indicate invalid view rules or missing elements.");
       }
+      */
       return (
         <CanvasEmptyMessage title="No diagrams found">
           The model is valid but contains no views. Add a <code>views</code> block to your DSL.
-          {hasViewsInModel && !hasViewsInLikeC4Model && " Views exist in the model but were filtered out by LikeC4Model - check view rules and element IDs."}
+          {hasViewsInModel &&
+            !hasViewsInLikeC4Model &&
+            " Views exist in the model but were filtered out by LikeC4Model - check view rules and element IDs."}
         </CanvasEmptyMessage>
       );
     }
 
-    // Debug: Log view information
+    /*
     if (activeViewId && likec4Model) {
       console.log('[LikeC4Canvas] Rendering view:', {
         viewId: activeViewId,
@@ -255,23 +249,29 @@ export const LikeC4Canvas = forwardRef<ArchitectureCanvasRef, LikeC4CanvasProps>
         availableViews: [...likec4Model.views()].map(v => v.id)
       });
     }
+    */
 
     return (
-      <div
-        ref={containerRef}
-        className="likec4-canvas"
-        data-testid="likec4-canvas"
-      >
+      <div ref={containerRef} className="likec4-canvas" data-testid="likec4-canvas">
         {/* LikeC4 diagram with AnimatePresence for transitions */}
-        <div className="likec4-diagram-container" style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+        <div
+          className="likec4-diagram-container"
+          style={{
+            width: "100%",
+            height: "100%",
+            position: "relative",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
           {activeViewId && likec4Model ? (
             <MantineProvider>
               <LikeC4ModelProvider likec4model={likec4Model}>
-                <div key={activeViewId} style={{ width: '100%', height: '100%', flex: 1, minHeight: 0 }}>
-                  <LikeC4View
-                    key={activeViewId}
-                    viewId={activeViewId}
-                  />
+                <div
+                  key={activeViewId}
+                  style={{ width: "100%", height: "100%", flex: 1, minHeight: 0 }}
+                >
+                  <LikeC4View key={activeViewId} viewId={activeViewId} />
                 </div>
               </LikeC4ModelProvider>
             </MantineProvider>
@@ -282,31 +282,29 @@ export const LikeC4Canvas = forwardRef<ArchitectureCanvasRef, LikeC4CanvasProps>
           )}
           {/* Animation Controls overlay */}
           <AnimatePresence>
-            {
-              activeFlow && (
-                <motion.div
-                  className="animation-controls-wrapper"
-                  initial={{ y: 50, opacity: 0, x: "-50%" }}
-                  animate={{ y: 0, opacity: 1, x: "-50%" }}
-                  exit={{ y: 50, opacity: 0, x: "-50%" }}
-                  transition={{ type: "spring", damping: 20, stiffness: 300 }}
-                  style={{
-                    position: "absolute",
-                    bottom: 16,
-                    left: "50%",
-                    zIndex: 100,
-                    pointerEvents: "none",
-                  }}
-                >
-                  <div style={{ pointerEvents: "auto" }}>
-                    <AnimationControls flow={activeFlow} />
-                  </div>
-                </motion.div>
-              )
-            }
-          </AnimatePresence >
-        </div >
-      </div >
+            {activeFlow && (
+              <motion.div
+                className="animation-controls-wrapper"
+                initial={{ y: 50, opacity: 0, x: "-50%" }}
+                animate={{ y: 0, opacity: 1, x: "-50%" }}
+                exit={{ y: 50, opacity: 0, x: "-50%" }}
+                transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                style={{
+                  position: "absolute",
+                  bottom: 16,
+                  left: "50%",
+                  zIndex: 100,
+                  pointerEvents: "none",
+                }}
+              >
+                <div style={{ pointerEvents: "auto" }}>
+                  <AnimationControls flow={activeFlow} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
     );
   }
 );

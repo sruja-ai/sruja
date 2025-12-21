@@ -96,7 +96,7 @@ export function EditFlowForm({ isOpen, onClose, flow }: EditFlowFormProps) {
       });
       form.clearErrors();
     }
-  }, [isOpen, flow]);
+  }, [isOpen, flow, form]);
 
   // Handle Escape key
   useEffect(() => {
@@ -122,7 +122,10 @@ export function EditFlowForm({ isOpen, onClose, flow }: EditFlowFormProps) {
   };
 
   const removeStep = (index: number) => {
-    form.setValue("steps", form.values.steps.filter((_, i) => i !== index));
+    form.setValue(
+      "steps",
+      form.values.steps.filter((_, i) => i !== index)
+    );
   };
 
   // Get all available node IDs for autocomplete
@@ -139,7 +142,12 @@ export function EditFlowForm({ isOpen, onClose, flow }: EditFlowFormProps) {
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" type="submit" form="edit-flow-form" isLoading={form.isSubmitting}>
+          <Button
+            variant="primary"
+            type="submit"
+            form="edit-flow-form"
+            isLoading={form.isSubmitting}
+          >
             {flow ? "Update" : "Add"}
           </Button>
         </>

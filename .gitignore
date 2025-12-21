@@ -122,6 +122,7 @@ storybook-static/
 test-outputs/*.html
 test_*.html
 *.html
+!apps/*/index.html
 !apps/website/src/**/*.html
 !apps/website/public/**/*.html
 !public/**/*.html

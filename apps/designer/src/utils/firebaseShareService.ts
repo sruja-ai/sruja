@@ -98,7 +98,7 @@ export class FirebaseShareService {
       const key = await cryptoService.importKey(keyBase64);
       this.currentProjectId = projectId;
       this.currentKey = key;
-    } catch (error) {
+    } catch {
       throw new Error("Invalid encryption key");
     }
   }
@@ -154,7 +154,7 @@ export class FirebaseShareService {
       this.currentProjectId = projectId;
       this.currentKey = key;
       return dsl;
-    } catch (error) {
+    } catch {
       throw new Error("Cannot decrypt project. Invalid key or corrupted data.");
     }
   }
