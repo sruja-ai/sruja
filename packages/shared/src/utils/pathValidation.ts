@@ -62,6 +62,7 @@ export function validateFilePath(
   }
 
   // Reject paths containing control characters
+  // eslint-disable-next-line no-control-regex
   if (/[\x00-\x1F\x7F]/.test(path)) {
     return err(
       new ValidationError(
