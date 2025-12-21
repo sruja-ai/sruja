@@ -34,7 +34,7 @@ func (p *Printer) printRelation(sb *strings.Builder, rel *Relation) {
 	}
 	if rel.Label != nil && *rel.Label != "" {
 		sb.WriteString(" ")
-		_, _ = fmt.Fprintf(sb, " %q", *rel.Label)
+		_, _ = fmt.Fprintf(sb, "%q", *rel.Label)
 	}
 	sb.WriteString("\n")
 }
