@@ -41,18 +41,18 @@ jobs:
         run: go mod download
       
       - name: Build
-        run: go build -v ./pkg/... ./internal/... ./cmd/sruja ./tests ./scripts/...
+        run: go build -v ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
       
       - name: Run gofmt check
         run: |
-          if [ "$(gofmt -s -l ./pkg ./internal ./cmd ./tests ./scripts | wc -l)" -gt 0 ]; then
+          if [ "$(gofmt -s -l ./pkg ./internal ./cmd ./scripts | wc -l)" -gt 0 ]; then
             echo "Code is not formatted. Run 'make fmt' to fix."
-            gofmt -s -l ./pkg ./internal ./cmd ./tests ./scripts
+            gofmt -s -l ./pkg ./internal ./cmd ./scripts
             exit 1
           fi
       
       - name: Run go vet
-        run: go vet ./pkg/... ./internal/... ./cmd/sruja ./tests ./scripts/...
+        run: go vet ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
       
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
@@ -61,7 +61,7 @@ jobs:
           args: --timeout=5m
       
       - name: Run tests with coverage
-        run: go test -v -coverprofile=coverage.out ./pkg/... ./internal/... ./cmd/sruja ./tests ./scripts/...
+        run: go test -v -coverprofile=coverage.out ./pkg/... ./internal/... ./cmd/sruja ./tests/... ./scripts/...
       
       - name: Check coverage threshold
         run: make test-coverage-check
@@ -76,13 +76,13 @@ jobs:
       - name: Run security scan (govulncheck)
         run: |
           command -v govulncheck > /dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./pkg/... ./internal/... ./cmd/sruja ./tests ./scripts/...
+          govulncheck ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
         continue-on-error: true
       
       - name: Run security linter (gosec)
         run: |
           command -v gosec > /dev/null 2>&1 || go install github.com/securego/gosec/v2/cmd/gosec@latest
-          gosec -quiet ./pkg/... ./internal/... ./cmd/sruja ./tests ./scripts/...
+          gosec -quiet ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
         continue-on-error: true
       
       # Note: Comprehensive security scanning is also performed by security.yml workflow
