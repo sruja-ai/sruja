@@ -1,4 +1,7 @@
-name: Deploy Astro Website
+name: Deploy Astro Website (Staging)
+
+# This workflow deploys to staging when code is merged to main.
+# Production deployment happens via unified-release.yml when a release is published.
 
 on:
   push:
@@ -62,18 +65,15 @@ jobs:
       - name: Build shared packages
         run: npm run build --workspace=packages/shared --workspace=packages/ui
 
-      - name: Build Astro website
+      - name: Build Astro website (staging)
         working-directory: apps/website
         run: npm run build:prod
         env:
-          # Build scripts already set PUBLIC_ENV and SITE_URL, but we override SITE_URL
-          # to match the deployment target
-          SITE_URL: https://sruja.ai
-          # Algolia configuration - index name is auto-determined by env.ts based on PUBLIC_ENV
-          # Note: Algolia App ID is hardcoded in env.ts, only search API key is needed
+          # Build for staging environment
+          SITE_URL: https://staging.sruja.ai
+          # Algolia configuration - use staging index
           PUBLIC_ALGOLIA_SEARCH_API_KEY: ${{ secrets.PUBLIC_ALGOLIA_SEARCH_API_KEY }}
-          # Optional: Override index name if needed (otherwise uses default based on PUBLIC_ENV)
-          # PUBLIC_ALGOLIA_INDEX_NAME: sruja_docs
+          PUBLIC_ALGOLIA_INDEX_NAME: sruja_docs_staging
           # PostHog configuration
           PUBLIC_POSTHOG_API_KEY: ${{ secrets.PUBLIC_POSTHOG_API_KEY }}
           PUBLIC_POSTHOG_HOST: ${{ secrets.PUBLIC_POSTHOG_HOST }}
@@ -103,8 +103,8 @@ jobs:
       - name: Determine target repository
         id: repo
         run: |
-          # Single website deployment - always use production repository
-          echo "repo=sruja-ai/prod-website" >> $GITHUB_OUTPUT
+          # Deploy to staging when merged to main
+          echo "repo=sruja-ai/staging-website" >> $GITHUB_OUTPUT
 
       - name: Create GitHub App token
         id: app-token
@@ -113,7 +113,7 @@ jobs:
           app-id: ${{ vars.SRUJA_WEBSITE_DEPLOY_APP_ID }}
           private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
           owner: sruja-ai
-          repositories: prod-website
+          repositories: staging-website
 
       - name: Get GitHub App User ID
         id: get-user-id
@@ -125,7 +125,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: ${{ steps.repo.outputs.repo }}
-          ref: gh-pages
+          ref: main
           token: ${{ steps.app-token.outputs.token }}
           path: target
           persist-credentials: false
@@ -146,7 +146,7 @@ jobs:
           if git diff --cached --quiet; then 
             echo "No changes to deploy"
           else 
-            COMMIT_MSG="Deploy Astro website from ${{ github.ref_name }} branch (commit ${{ github.sha }})"
+            COMMIT_MSG="Deploy staging website from ${{ github.ref_name }} branch (commit ${{ github.sha }})"
             git commit -m "$COMMIT_MSG"
-            git push origin HEAD:gh-pages
+            git push origin HEAD:main
           fi
