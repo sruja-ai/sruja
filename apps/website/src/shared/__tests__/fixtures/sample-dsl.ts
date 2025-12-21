@@ -1,38 +1,54 @@
 // apps/website/src/shared/__tests__/fixtures/sample-dsl.ts
 
 export const SIMPLE_DSL = `
-architecture "Test System" {
-    system App "My App" {
-        container Web "Web Server"
-        datastore DB "Database"
-    }
-    person User "User"
-    User -> Web "Uses"
-    Web -> DB "Stores data in"
+specification {
+  element person
+  element system
+  element container
+  element database
+}
+
+model {
+  user = person "User"
+  
+  app = system "My App" {
+    web = container "Web Server"
+    db = database "Database"
+  }
+  
+  user -> app.web "uses"
+  app.web -> app.db "stores data in"
 }
 `;
 
 export const COMPLEX_DSL = `
-architecture "E-commerce Platform" {
-    system Shop "Online Shop" {
-        container WebApp "Web Application"
-        container API "API Server"
-        datastore Catalog "Product Catalog"
-        datastore Orders "Order Database"
-    }
-    
-    system Payment "Payment Gateway" {
-        container PaymentAPI "Payment API"
-    }
-    
-    person Customer "Customer"
-    person Admin "Administrator"
+specification {
+  element person
+  element system
+  element container
+  element database
+}
 
-    Customer -> WebApp "Browses"
-    WebApp -> API "Calls"
-    API -> Catalog "Reads from"
-    API -> Orders "Writes to"
-    API -> PaymentAPI "Processes payments via"
-    Admin -> API "Manages"
+model {
+  customer = person "Customer"
+  admin = person "Administrator"
+  
+  shop = system "Online Shop" {
+    webApp = container "Web Application"
+    api = container "API Server"
+    catalog = database "Product Catalog"
+    orders = database "Order Database"
+  }
+  
+  payment = system "Payment Gateway" {
+    paymentAPI = container "Payment API"
+  }
+
+  customer -> shop.webApp "browses"
+  shop.webApp -> shop.api "calls"
+  shop.api -> shop.catalog "reads from"
+  shop.api -> shop.orders "writes to"
+  shop.api -> payment.paymentAPI "processes payments via"
+  admin -> shop.api "manages"
 }
 `;

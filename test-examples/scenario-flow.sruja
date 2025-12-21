@@ -1,28 +1,36 @@
-architecture "User Authentication System" {
-    person User "End User"
-    
-    system AuthSystem "Authentication System" {
-        container AuthAPI "Authentication API" {
-            component LoginService "Login Service"
-            component TokenService "Token Service"
-        }
-        
-        datastore UserDB "User Database"
+specification {
+  element person
+  element system
+  element container
+  element component
+  element database
+}
+
+model {
+  user = person "End User"
+  
+  authSystem = system "Authentication System" {
+    authAPI = container "Authentication API" {
+      loginService = component "Login Service"
+      tokenService = component "Token Service"
     }
     
-    scenario "User Login Flow" {
-        User -> AuthSystem.AuthAPI "Submits credentials"
-        AuthSystem.AuthAPI -> AuthSystem.UserDB "Validates user"
-        AuthSystem.UserDB -> AuthSystem.AuthAPI "Returns user data"
-        AuthSystem.AuthAPI -> User "Returns JWT token"
-    }
-    
-    scenario "Authentication Flow" {
-        User -> AuthSystem.AuthAPI.LoginService "POST /login"
-        AuthSystem.AuthAPI.LoginService -> AuthSystem.UserDB "SELECT user"
-        AuthSystem.AuthAPI.LoginService -> AuthSystem.AuthAPI.TokenService "Generate token"
-        AuthSystem.AuthAPI.TokenService -> User "Return JWT"
-    }
+    userDB = database "User Database"
+  }
+  
+  scenario "User Login Flow" {
+    user -> authSystem.authAPI "submits credentials"
+    authSystem.authAPI -> authSystem.userDB "validates user"
+    authSystem.userDB -> authSystem.authAPI "returns user data"
+    authSystem.authAPI -> user "returns JWT token"
+  }
+  
+  scenario "Authentication Flow" {
+    user -> authSystem.authAPI.loginService "POST /login"
+    authSystem.authAPI.loginService -> authSystem.userDB "SELECT user"
+    authSystem.authAPI.loginService -> authSystem.authAPI.tokenService "generate token"
+    authSystem.authAPI.tokenService -> user "return JWT"
+  }
 }
 
 
