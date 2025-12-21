@@ -10,23 +10,29 @@ describe('auto tracking', () => {
     captureSpy = vi.fn();
     vi.spyOn(posthog, 'capture').mockImplementation(captureSpy);
     
-    // Reset window
-    if (typeof window !== 'undefined') {
-      // Clear any existing event listeners by resetting history methods
-      const originalPushState = history.pushState;
-      const originalReplaceState = history.replaceState;
-      
-      // Restore original methods
-      if ((history as any).__originalPushState) {
-        history.pushState = (history as any).__originalPushState;
+      // Reset window
+      if (typeof window !== 'undefined') {
+        // Clear any existing event listeners by resetting history methods
+        const originalPushState = history.pushState;
+        const originalReplaceState = history.replaceState;
+        
+        // Restore original methods
+        interface HistoryWithOriginals extends History {
+          __originalPushState?: typeof history.pushState;
+          __originalReplaceState?: typeof history.replaceState;
+        }
+        const historyWithOriginals = history as HistoryWithOriginals;
+        
+        if (historyWithOriginals.__originalPushState) {
+          history.pushState = historyWithOriginals.__originalPushState;
+        }
+        if (historyWithOriginals.__originalReplaceState) {
+          history.replaceState = historyWithOriginals.__originalReplaceState;
+        }
+        
+        historyWithOriginals.__originalPushState = originalPushState;
+        historyWithOriginals.__originalReplaceState = originalReplaceState;
       }
-      if ((history as any).__originalReplaceState) {
-        history.replaceState = (history as any).__originalReplaceState;
-      }
-      
-      (history as any).__originalPushState = originalPushState;
-      (history as any).__originalReplaceState = originalReplaceState;
-    }
     
     // Don't reset modules in beforeEach - only reset where needed in specific tests
   });
@@ -39,7 +45,11 @@ describe('auto tracking', () => {
   describe('enableAutoTracking', () => {
     it('should return early if window is undefined', () => {
       const originalWindow = global.window;
-      delete (global as any).window;
+      interface GlobalWithWindow extends typeof globalThis {
+        window?: Window & typeof globalThis;
+      }
+      const globalWithWindow = global as GlobalWithWindow;
+      delete globalWithWindow.window;
       
       expect(() => enableAutoTracking()).not.toThrow();
       

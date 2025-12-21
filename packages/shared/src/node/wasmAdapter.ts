@@ -133,13 +133,13 @@ export async function initWasmNode(options?: {
     );
   }
 
-  console.log(`[WASM] Loading WASM module from: ${wasmPath}`);
+  console.debug(`[WASM] Loading WASM module from: ${wasmPath}`);
   await loadWasmModule(wasmPath, {
     extensionPath: options?.extensionPath,
     wasmExecPath: options?.wasmExecPath,
   });
 
-  console.log("[WASM] Checking for exported functions...");
+  console.debug("[WASM] Checking for exported functions...");
   // Check if functions are available on global
   const parseFn = (global as any).sruja_parse_dsl;
   const jsonToDslFn = (global as any).sruja_json_to_dsl;
@@ -184,7 +184,7 @@ export async function initWasmNode(options?: {
   if (foldingRangesFn) availableLspFunctions.push("foldingRanges");
 
   if (availableLspFunctions.length > 0) {
-    console.log(`WASM LSP functions available: ${availableLspFunctions.join(", ")}`);
+    console.debug(`WASM LSP functions available: ${availableLspFunctions.join(", ")}`);
   } else {
     console.warn("No WASM LSP functions found - LSP features may not work");
   }
