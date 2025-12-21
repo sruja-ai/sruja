@@ -84,7 +84,7 @@ func extractElementSymbols(elem *language.LikeC4ElementDef, parentFQN string, sy
 	if elem == nil {
 		return
 	}
-	
+
 	id := elem.GetID()
 	if id == "" {
 		return
@@ -204,7 +204,7 @@ func findHoverInfoFromProgram(program *language.Program, input string, line, col
 	if titlePtr != nil && *titlePtr != "" && *titlePtr != id {
 		contents = append(contents, fmt.Sprintf("**Title**: %s", *titlePtr))
 	}
-	
+
 	// Get description and technology from body items if available
 	body := foundElem.GetBody()
 	if body != nil {

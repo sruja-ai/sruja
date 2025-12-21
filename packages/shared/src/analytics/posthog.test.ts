@@ -2,6 +2,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { initPosthog, getPosthog, capture, identify, isReady } from './posthog';
 
+interface WindowWithPosthog extends Window {
+  posthog?: {
+    init: ReturnType<typeof vi.fn>;
+    capture: ReturnType<typeof vi.fn>;
+    identify: ReturnType<typeof vi.fn>;
+  };
+}
+
+interface GlobalWithWindow extends typeof globalThis {
+  window?: WindowWithPosthog;
+}
+
 describe('posthog', () => {
   beforeEach(() => {
     // Reset module state
@@ -9,17 +21,20 @@ describe('posthog', () => {
     
     // Clear window.posthog
     if (typeof window !== 'undefined') {
-      delete (window as any).posthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      delete windowWithPosthog.posthog;
     }
     
     // Reset globals
-    global.window = global.window || {} as any;
+    const globalWithWindow = global as GlobalWithWindow;
+    globalWithWindow.window = globalWithWindow.window || {} as WindowWithPosthog;
   });
 
   describe('initPosthog', () => {
     it('should return null in non-browser environment', async () => {
       const originalWindow = global.window;
-      delete (global as any).window;
+      const globalWithWindow = global as GlobalWithWindow;
+      delete globalWithWindow.window;
       
       const result = await initPosthog({ apiKey: 'test-key' });
       
@@ -45,7 +60,8 @@ describe('posthog', () => {
         identify: vi.fn(),
       };
       
-      (window as any).posthog = mockPosthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      windowWithPosthog.posthog = mockPosthog;
       
       const result = await initPosthog({ apiKey: 'test-key' });
       
@@ -60,7 +76,8 @@ describe('posthog', () => {
         identify: vi.fn(),
       };
       
-      (window as any).posthog = mockPosthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      windowWithPosthog.posthog = mockPosthog;
       
       const result = await initPosthog({ 
         apiKey: 'test-key', 
@@ -80,7 +97,8 @@ describe('posthog', () => {
         identify: vi.fn(),
       };
       
-      (window as any).posthog = mockPosthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      windowWithPosthog.posthog = mockPosthog;
       
       const result = await initPosthog({ 
         apiKey: 'test-key',
@@ -97,7 +115,8 @@ describe('posthog', () => {
     it('should handle posthog-js import when window.posthog not available', async () => {
       // This test verifies the import path is attempted
       // Actual import testing requires more complex setup
-      delete (window as any).posthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      delete windowWithPosthog.posthog;
       
       // The function will attempt to import posthog-js
       // In test environment, this may fail or succeed depending on whether posthog-js is installed
@@ -112,7 +131,8 @@ describe('posthog', () => {
   describe('getPosthog', () => {
     it('should return window.posthog if available', () => {
       const mockPosthog = { capture: vi.fn() };
-      (window as any).posthog = mockPosthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      windowWithPosthog.posthog = mockPosthog;
       
       const result = getPosthog();
       expect(result).toBe(mockPosthog);
@@ -125,18 +145,20 @@ describe('posthog', () => {
         identify: vi.fn(),
       };
       
-      (window as any).posthog = mockPosthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      windowWithPosthog.posthog = mockPosthog;
       
       await initPosthog({ apiKey: 'test-key' });
       
-      delete (window as any).posthog;
+      delete windowWithPosthog.posthog;
       
       const result = getPosthog();
       expect(result).toBe(mockPosthog);
     });
 
     it('should return null if no posthog available', async () => {
-      delete (window as any).posthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      delete windowWithPosthog.posthog;
       // Reset module state to clear any cached client
       vi.resetModules();
       const { getPosthog: getPosthogFresh } = await import('./posthog');
@@ -154,7 +176,8 @@ describe('posthog', () => {
         identify: vi.fn(),
       };
       
-      (window as any).posthog = mockPosthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      windowWithPosthog.posthog = mockPosthog;
       await initPosthog({ apiKey: 'test-key' });
       
       capture('test-event', { prop: 'value' });
@@ -169,7 +192,8 @@ describe('posthog', () => {
         identify: vi.fn(),
       };
       
-      (window as any).posthog = mockPosthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      windowWithPosthog.posthog = mockPosthog;
       await initPosthog({ apiKey: 'test-key' });
       
       capture('test-event');
@@ -178,7 +202,8 @@ describe('posthog', () => {
     });
 
     it('should not throw if posthog is not initialized', () => {
-      delete (window as any).posthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      delete windowWithPosthog.posthog;
       
       expect(() => capture('test-event')).not.toThrow();
     });
@@ -189,7 +214,8 @@ describe('posthog', () => {
         identify: vi.fn(),
       };
       
-      (window as any).posthog = mockPosthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      windowWithPosthog.posthog = mockPosthog;
       await initPosthog({ apiKey: 'test-key' });
       
       expect(() => capture('test-event')).not.toThrow();
@@ -204,7 +230,8 @@ describe('posthog', () => {
         identify: vi.fn(),
       };
       
-      (window as any).posthog = mockPosthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      windowWithPosthog.posthog = mockPosthog;
       await initPosthog({ apiKey: 'test-key' });
       
       identify('user-123', { name: 'Test User' });
@@ -219,7 +246,8 @@ describe('posthog', () => {
         identify: vi.fn(),
       };
       
-      (window as any).posthog = mockPosthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      windowWithPosthog.posthog = mockPosthog;
       await initPosthog({ apiKey: 'test-key' });
       
       identify('user-123');
@@ -228,7 +256,8 @@ describe('posthog', () => {
     });
 
     it('should not throw if posthog is not initialized', () => {
-      delete (window as any).posthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      delete windowWithPosthog.posthog;
       
       expect(() => identify('user-123')).not.toThrow();
     });
@@ -239,7 +268,8 @@ describe('posthog', () => {
         capture: vi.fn(),
       };
       
-      (window as any).posthog = mockPosthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      windowWithPosthog.posthog = mockPosthog;
       await initPosthog({ apiKey: 'test-key' });
       
       expect(() => identify('user-123')).not.toThrow();
@@ -249,7 +279,8 @@ describe('posthog', () => {
   describe('isReady', () => {
     it('should return true if window.posthog exists', () => {
       const mockPosthog = { capture: vi.fn() };
-      (window as any).posthog = mockPosthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      windowWithPosthog.posthog = mockPosthog;
       
       expect(isReady()).toBe(true);
     });
@@ -261,16 +292,18 @@ describe('posthog', () => {
         identify: vi.fn(),
       };
       
-      (window as any).posthog = mockPosthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      windowWithPosthog.posthog = mockPosthog;
       await initPosthog({ apiKey: 'test-key' });
       
-      delete (window as any).posthog;
+      delete windowWithPosthog.posthog;
       
       expect(isReady()).toBe(true);
     });
 
     it('should return false if posthog is not ready', async () => {
-      delete (window as any).posthog;
+      const windowWithPosthog = window as WindowWithPosthog;
+      delete windowWithPosthog.posthog;
       // Reset module state
       vi.resetModules();
       const { isReady: isReadyFresh } = await import('./posthog');

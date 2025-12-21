@@ -66,19 +66,19 @@ func parseArgs(args []js.Value) (input, filename string, err error) {
 	if len(args) < minArgsRequired {
 		return "", "", fmt.Errorf("invalid arguments: expected at least %d argument(s), got %d", minArgsRequired, len(args))
 	}
-	
+
 	input = args[0].String()
 	if input == "" {
 		return "", "", fmt.Errorf("invalid arguments: input cannot be empty")
 	}
-	
+
 	filename = defaultFilename
 	if len(args) >= 2 {
 		if fn := args[1].String(); fn != "" {
 			filename = fn
 		}
 	}
-	
+
 	return input, filename, nil
 }
 

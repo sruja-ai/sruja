@@ -48,19 +48,19 @@ func ParseScope(scopeStr string) (*Scope, error) {
 
 // Options represents Markdown export options.
 type Options struct {
-	IncludeTOC          bool
-	IncludeOverview     bool
-	IncludeSystems      bool
-	IncludeDeployments  bool
-	IncludePersons      bool
-	IncludeRequirements bool
-	IncludeADRs         bool
-	IncludeScenarios    bool
-	IncludeMetadata     bool
-	IncludeGlossary     bool
+	IncludeTOC             bool
+	IncludeOverview        bool
+	IncludeSystems         bool
+	IncludeDeployments     bool
+	IncludePersons         bool
+	IncludeRequirements    bool
+	IncludeADRs            bool
+	IncludeScenarios       bool
+	IncludeMetadata        bool
+	IncludeGlossary        bool
 	IncludeRecommendations bool
-	MermaidConfig       mermaid.Config
-	HeadingLevel        int
+	MermaidConfig          mermaid.Config
+	HeadingLevel           int
 
 	// New AI-friendly options
 	Scope      *Scope      // Scope to specific element
@@ -71,21 +71,21 @@ type Options struct {
 // DefaultOptions returns the default Markdown export options.
 func DefaultOptions() Options {
 	return Options{
-		IncludeTOC:          true,
-		IncludeOverview:     true,
-		IncludeSystems:      true,
-		IncludeDeployments:  true,
-		IncludePersons:      true,
-		IncludeRequirements: true,
-		IncludeADRs:         true,
-		IncludeScenarios:    true,
-		IncludeMetadata:     true,
-		IncludeGlossary:     true,
+		IncludeTOC:             true,
+		IncludeOverview:        true,
+		IncludeSystems:         true,
+		IncludeDeployments:     true,
+		IncludePersons:         true,
+		IncludeRequirements:    true,
+		IncludeADRs:            true,
+		IncludeScenarios:       true,
+		IncludeMetadata:        true,
+		IncludeGlossary:        true,
 		IncludeRecommendations: true,
-		MermaidConfig:       mermaid.DefaultConfig(),
-		HeadingLevel:        1,
-		Scope:               &Scope{Type: "full", ID: ""},
-		TokenLimit:          0,
-		Context:             ContextDefault,
+		MermaidConfig:          mermaid.DefaultConfig(),
+		HeadingLevel:           1,
+		Scope:                  &Scope{Type: "full", ID: ""},
+		TokenLimit:             0,
+		Context:                ContextDefault,
 	}
 }
