@@ -1,7 +1,6 @@
 package markdown
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/sruja-ai/sruja/pkg/language"
