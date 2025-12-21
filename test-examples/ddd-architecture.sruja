@@ -1,39 +1,51 @@
-architecture "Domain-Driven Design Example" {
-    system OrderSystem "Order Management System" {
-        container OrderAPI "Order API" {
-            component OrderController "Order Controller"
+specification {
+  element system
+  element container
+  element component
+  element domain
+  element context
+  element aggregate
+  element entity
+  element valueObject
+  element domainEvent
+}
+
+model {
+  orderSystem = system "Order Management System" {
+    orderAPI = container "Order API" {
+      orderController = component "Order Controller"
+    }
+  }
+  
+  orderDomain = domain "Order Domain" {
+    orderContext = context "Order Context" {
+      orderAggregate = aggregate "Order Aggregate" {
+        order = entity "Order Entity" {
+          field orderId "string"
+          field customerId "string"
+          field total "decimal"
         }
-    }
-    
-    domain OrderDomain "Order Domain" {
-        context OrderContext "Order Context" {
-            aggregate OrderAggregate "Order Aggregate" {
-                entity Order "Order Entity" {
-                    field orderId "string"
-                    field customerId "string"
-                    field total "decimal"
-                }
-                
-                valueObject Money "Money Value Object" {
-                    field amount "decimal"
-                    field currency "string"
-                }
-            }
-            
-            domainEvent OrderPlaced "Order Placed Event" {
-                field orderId "string"
-                field timestamp "datetime"
-            }
+        
+        money = valueObject "Money Value Object" {
+          field amount "decimal"
+          field currency "string"
         }
+      }
+      
+      orderPlaced = domainEvent "Order Placed Event" {
+        field orderId "string"
+        field timestamp "datetime"
+      }
     }
-    
-    requirement R1 functional "System must process orders"
-    requirement R2 performance "Response time < 200ms"
-    
-    adr ADR001 "Use DDD Architecture" {
-        status "Accepted"
-        decision "We will use Domain-Driven Design for order management"
-    }
+  }
+  
+  requirement R1 functional "System must process orders"
+  requirement R2 performance "Response time < 200ms"
+  
+  adr ADR001 "Use DDD Architecture" {
+    status "Accepted"
+    decision "We will use Domain-Driven Design for order management"
+  }
 }
 
 

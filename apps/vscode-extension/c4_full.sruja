@@ -1,25 +1,36 @@
-architecture "C4 Complete Example" {
+specification {
+  element person
+  element system
+  element container
+  element database
+  element deployment
+  element node
+  element infrastructure
+  element containerInstance
+}
 
-  person User "End User"
-  system WebApp "Web Application" {
-    container API "API Service"
-    container DB "Database"
+model {
+  user = person "End User"
+  
+  webApp = system "Web Application" {
+    api = container "API Service"
+    db = database "Database"
   }
 
   // New Deployment View
-  deployment Prod "Production" {
-    node AWS "AWS" {
-      node USEast1 "US-East-1" {
-         infrastructure LB "Load Balancer"
-         containerInstance API
+  prod = deployment "Production" {
+    aws = node "AWS" {
+      usEast1 = node "US-East-1" {
+        lb = infrastructure "Load Balancer"
+        apiInstance = containerInstance webApp.api
       }
-      node RDS "RDS" {
-         containerInstance DB
+      rds = node "RDS" {
+        dbInstance = containerInstance webApp.db
       }
     }
   }
 
-  // Login Flow Relations (dynamic view converted to relations)
-  User -> API "Credentials"
-  API -> DB "Validate User"
+  // Login Flow Relations
+  user -> webApp.api "credentials"
+  webApp.api -> webApp.db "validate user"
 }

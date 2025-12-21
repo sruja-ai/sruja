@@ -24,10 +24,14 @@ Sruja supports DDD by allowing you to model your domain directly in the DSL. You
 ### Example
 
 ```sruja
-architecture "My System" {
-    domain ECommerce "E-Commerce" {
-        description "The core business domain"
-    }
+specification {
+  element domain
+}
+
+model {
+  ecommerce = domain "E-Commerce" {
+    description "The core business domain"
+  }
 }
 ```
 
