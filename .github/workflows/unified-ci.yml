@@ -79,9 +79,11 @@ jobs:
 
       - name: Upload coverage to Codacy
         uses: codacy/codacy-coverage-reporter-action@v1.3.0
+        if: always() && hashFiles('coverage.out') != ''
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: coverage.out
+        continue-on-error: true
 
       - name: Run security scan (govulncheck)
         run: |
