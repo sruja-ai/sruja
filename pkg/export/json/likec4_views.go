@@ -93,11 +93,12 @@ func (e *LikeC4Exporter) convertViewsFromProgram(dump *SrujaModelDump, program *
 					if bitem.Include != nil {
 						expr := &ViewRuleExpr{}
 						for _, vexpr := range bitem.Include.Expressions {
-							if vexpr.Wildcard {
+							switch {
+							case vexpr.Wildcard:
 								expr.Wildcard = true
-							} else if vexpr.Recursive {
+							case vexpr.Recursive:
 								expr.Recursive = true
-							} else if vexpr.Selector != nil {
+							case vexpr.Selector != nil:
 								expr.Elements = append(expr.Elements, *vexpr.Selector)
 							}
 						}
@@ -106,11 +107,12 @@ func (e *LikeC4Exporter) convertViewsFromProgram(dump *SrujaModelDump, program *
 					if bitem.Exclude != nil {
 						expr := &ViewRuleExpr{}
 						for _, vexpr := range bitem.Exclude.Expressions {
-							if vexpr.Wildcard {
+							switch {
+							case vexpr.Wildcard:
 								expr.Wildcard = true
-							} else if vexpr.Recursive {
+							case vexpr.Recursive:
 								expr.Recursive = true
-							} else if vexpr.Selector != nil {
+							case vexpr.Selector != nil:
 								expr.Elements = append(expr.Elements, *vexpr.Selector)
 							}
 						}

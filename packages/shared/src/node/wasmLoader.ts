@@ -111,7 +111,7 @@ export async function loadWasmModule(
   // Use WebAssembly API available in Node.js
   // WebAssembly is available in Node.js 12+ and ES2020+
   // Type assertion needed because TypeScript doesn't always recognize WebAssembly in Node.js context
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+   
   const WebAssemblyAPI = (globalThis as any).WebAssembly as {
     compile: (buffer: Buffer) => Promise<any>;
     instantiate: (module: any, imports: any) => Promise<any>;

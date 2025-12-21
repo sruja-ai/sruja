@@ -218,7 +218,7 @@ func (e *Exporter) writeScenariosAndFlows(sb *strings.Builder, prog *language.Pr
 }
 
 // generateSequenceDiagram generates a Mermaid sequence diagram from scenario steps
-func (e *Exporter) generateSequenceDiagram(steps []*language.ScenarioStep, title string) string {
+func (e *Exporter) generateSequenceDiagram(steps []*language.ScenarioStep, _ string) string {
 	if len(steps) == 0 {
 		return ""
 	}
