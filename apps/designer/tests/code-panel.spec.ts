@@ -31,7 +31,7 @@ test.describe("Code Panel", () => {
     const markdownTab = page.locator('button:has-text("Markdown"), .code-tab:has-text("Markdown")');
 
     // At least one tab should be visible
-    const hasTabs = await Promise.race([
+    await Promise.race([
       dslTab.isVisible().then(() => true),
       jsonTab.isVisible().then(() => true),
       markdownTab.isVisible().then(() => true),
@@ -44,10 +44,12 @@ test.describe("Code Panel", () => {
   test("code panel displays content", async ({ page }) => {
     // Code panel should have some content area
     const codeContent = page.locator(".code-panel-container, .dsl-panel, .monaco-editor");
-    const isVisible = await codeContent.first().isVisible().catch(() => false);
-    
+    await codeContent
+      .first()
+      .isVisible()
+      .catch(() => false);
+
     // Panel container should always be visible
     await expect(page.locator(".code-panel-container")).toBeVisible();
   });
 });
-

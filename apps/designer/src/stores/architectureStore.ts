@@ -11,7 +11,7 @@ const STORAGE_KEY = "sruja-architecture-data";
 
 /**
  * Architecture store state interface.
- * 
+ *
  * Manages the core architecture data, DSL source, and conversion state.
  * Persists data to localStorage for automatic restoration.
  */
@@ -98,7 +98,10 @@ export const useArchitectureStore = create<ArchitectureState>()(
         const updatedJson = {
           ...json,
           _stage: json._stage || ("parsed" as const),
-          project: json.project || { id: json.projectId || "default-project", name: json._metadata?.name || "Architecture" },
+          project: json.project || {
+            id: json.projectId || "default-project",
+            name: json._metadata?.name || "Architecture",
+          },
           projectId: json.projectId || json.project?.id || "default-project",
           globals: json.globals || { predicates: {}, dynamicPredicates: {}, styles: {} },
         };
@@ -111,13 +114,17 @@ export const useArchitectureStore = create<ArchitectureState>()(
         const defaultViewConfig = {
           rules: [{ include: [{ wildcard: true }] }],
           nodes: [],
-          edges: []
+          edges: [],
         };
 
         // Merge existing views with default config (preserve existing view data)
         Object.keys(updatedJson.views || {}).forEach((viewId) => {
           const existingView = (updatedJson.views || {})[viewId] as any;
-          if (!existingView.rules || !Array.isArray(existingView.rules) || existingView.rules.length === 0) {
+          if (
+            !existingView.rules ||
+            !Array.isArray(existingView.rules) ||
+            existingView.rules.length === 0
+          ) {
             (updatedJson.views as any)[viewId] = {
               ...existingView,
               ...defaultViewConfig,
@@ -129,16 +136,32 @@ export const useArchitectureStore = create<ArchitectureState>()(
 
         // Add default views if they don't exist
         if (!updatedJson.views["index"]) {
-          (updatedJson.views as any)["index"] = { id: "index", title: "Index", ...defaultViewConfig };
+          (updatedJson.views as any)["index"] = {
+            id: "index",
+            title: "Index",
+            ...defaultViewConfig,
+          };
         }
         if (!updatedJson.views["L1"]) {
-          (updatedJson.views as any)["L1"] = { id: "L1", title: "Landscape View (L1)", ...defaultViewConfig };
+          (updatedJson.views as any)["L1"] = {
+            id: "L1",
+            title: "Landscape View (L1)",
+            ...defaultViewConfig,
+          };
         }
         if (!updatedJson.views["L2"]) {
-          (updatedJson.views as any)["L2"] = { id: "L2", title: "Container View (L2)", ...defaultViewConfig };
+          (updatedJson.views as any)["L2"] = {
+            id: "L2",
+            title: "Container View (L2)",
+            ...defaultViewConfig,
+          };
         }
         if (!updatedJson.views["L3"]) {
-          (updatedJson.views as any)["L3"] = { id: "L3", title: "Component View (L3)", ...defaultViewConfig };
+          (updatedJson.views as any)["L3"] = {
+            id: "L3",
+            title: "Component View (L3)",
+            ...defaultViewConfig,
+          };
         }
 
         // Update model and history
@@ -165,12 +188,12 @@ export const useArchitectureStore = create<ArchitectureState>()(
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
           set({
             dslSource: `// Architecture: ${updatedJson._metadata?.name || updatedJson.project?.name || "Architecture"}\n// Failed to convert model to DSL. Please check the model structure.\n// Error: ${errorMessage}`,
-            isConverting: false
+            isConverting: false,
           });
         } else if (dsl !== undefined && dsl) {
           set({
             dslSource: dsl,
-            isConverting: false
+            isConverting: false,
           });
 
           // Also convert to Markdown
@@ -217,7 +240,7 @@ export const useArchitectureStore = create<ArchitectureState>()(
             let likec4Json: SrujaModelDump | null = null;
             try {
               const likec4Data = await convertDslToLikeC4(dsl);
-              if (likec4Data && typeof likec4Data === 'object' && 'elements' in likec4Data) {
+              if (likec4Data && typeof likec4Data === "object" && "elements" in likec4Data) {
                 likec4Json = likec4Data as SrujaModelDump;
               }
             } catch (e) {
@@ -262,7 +285,7 @@ export const useArchitectureStore = create<ArchitectureState>()(
         // This is safe for templates that provide a full initial model.
         let baseModel = currentModel;
         if (!baseModel) {
-          console.log("[architectureStore] No current model, providing empty base for updater");
+          // console.log("[architectureStore] No current model, providing empty base for updater");
           baseModel = {
             _stage: "parsed",
             elements: {},
@@ -274,8 +297,8 @@ export const useArchitectureStore = create<ArchitectureState>()(
               name: "Untitled",
               version: "1.0.0",
               generated: new Date().toISOString(),
-              srujaVersion: "2.0.0"
-            }
+              srujaVersion: "2.0.0",
+            },
           } as any;
         }
 
@@ -291,7 +314,7 @@ export const useArchitectureStore = create<ArchitectureState>()(
         // This triggers: Builder → Model → DSL → DSL Panel (via useEffect in DSLPanel)
         const { error } = await safeAsync(
           async () => {
-            console.log("[architectureStore] Converting model to DSL (Builder → DSL sync)");
+            // console.log("[architectureStore] Converting model to DSL (Builder → DSL sync)");
             const newDsl = await convertModelToDsl(updatedModel);
             // Update DSL source - this will trigger DSLPanel to sync
             // Note: we don't call setDslSource directly to avoid circular update loop
@@ -299,7 +322,7 @@ export const useArchitectureStore = create<ArchitectureState>()(
             set({
               dslSource: newDsl,
               sourceType: "dsl",
-              isConverting: false
+              isConverting: false,
             });
           },
           "Failed to convert JSON to DSL",
@@ -352,17 +375,19 @@ export const useArchitectureStore = create<ArchitectureState>()(
           console.warn("Failed to rehydrate architecture store:", error);
         } else if (state) {
           // Clear old syntax DSL from localStorage (old syntax starts with "architecture")
-          if (state.dslSource && state.dslSource.trim().startsWith('architecture')) {
-            console.warn('Detected old syntax DSL in localStorage, clearing it.');
+          if (state.dslSource && state.dslSource.trim().startsWith("architecture")) {
+            console.warn("Detected old syntax DSL in localStorage, clearing it.");
             state.dslSource = null;
             state.sourceType = null;
             state.likec4Model = null;
           }
 
           if (state.likec4Model) {
+            /*
             console.log(
               `Architecture automatically loaded from localStorage (saved: ${state.lastLoaded || "unknown"})`
             );
+            */
           }
         }
       },

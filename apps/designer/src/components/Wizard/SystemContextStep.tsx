@@ -14,14 +14,25 @@ interface SystemContextStepProps {
   readOnly?: boolean;
 }
 
-export function SystemContextStep({ onNext, onBack, readOnly: _readOnly = false }: SystemContextStepProps) {
+export function SystemContextStep({
+  onNext,
+  onBack,
+  readOnly: _readOnly = false,
+}: SystemContextStepProps) {
   const data = useArchitectureStore((s) => s.likec4Model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
 
   // SrujaModelDump uses flat elements map
-  const elements = data?.elements ? (Object.values(data.elements) as ElementDump[]) : [];
+  const elements = useMemo(
+    () => (data?.elements ? (Object.values(data.elements) as ElementDump[]) : []),
+    [data?.elements]
+  );
 
-  const persons = useMemo(() => elements.filter((e: any) => e.kind === "person" || e.kind === "actor" || e.kind === "user"), [elements]);
+  const persons = useMemo(
+    () =>
+      elements.filter((e: any) => e.kind === "person" || e.kind === "actor" || e.kind === "user"),
+    [elements]
+  );
   const systems = useMemo(() => elements.filter((e: any) => e.kind === "system"), [elements]);
 
   // Form state
@@ -53,8 +64,11 @@ export function SystemContextStep({ onNext, onBack, readOnly: _readOnly = false 
   };
 
   const isExternal = (system: ElementDump) => {
-    return (system as any).tags?.includes("external") || (system as any).links?.some(
-      (m: any) => (m.title === "external") // link structure differs from legacy metadata
+    return (
+      (system as any).tags?.includes("external") ||
+      (system as any).links?.some(
+        (m: any) => m.title === "external" // link structure differs from legacy metadata
+      )
     );
     // Legacy metadata is gone. Check tags mostly.
   };
@@ -87,7 +101,11 @@ export function SystemContextStep({ onNext, onBack, readOnly: _readOnly = false 
         </div>
       </div>
 
-      <BestPracticeTip variant="tip" show={persons.length === 0 && systems.length === 0} stepId="context">
+      <BestPracticeTip
+        variant="tip"
+        show={persons.length === 0 && systems.length === 0}
+        stepId="context"
+      >
         <strong>Start with actors</strong> — Identify who uses your system: Users, Admins, External
         Services. This is C4 Level 1 (System Context).
       </BestPracticeTip>
@@ -246,8 +264,14 @@ export function SystemContextStep({ onNext, onBack, readOnly: _readOnly = false 
           filterFn={(rel) => {
             // Show only L1 relations (no dots in source/target)
             // Handle FqnRef format: source/target are { model: string } objects
-            const srcFqn = typeof rel.source === 'object' && rel.source?.model ? rel.source.model : String(rel.source || '');
-            const tgtFqn = typeof rel.target === 'object' && rel.target?.model ? rel.target.model : String(rel.target || '');
+            const srcFqn =
+              typeof rel.source === "object" && rel.source?.model
+                ? rel.source.model
+                : String(rel.source || "");
+            const tgtFqn =
+              typeof rel.target === "object" && rel.target?.model
+                ? rel.target.model
+                : String(rel.target || "");
             return !srcFqn.includes(".") && !tgtFqn.includes(".");
           }}
           title="L1 Relations"

@@ -58,7 +58,9 @@ export function BuilderWizard() {
         }
       } catch (error) {
         console.error("Error generating DSL:", error);
-        setCurrentDsl(`// Error generating DSL: ${error instanceof Error ? error.message : "Unknown error"}`);
+        setCurrentDsl(
+          `// Error generating DSL: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
       }
     };
 
@@ -88,8 +90,18 @@ export function BuilderWizard() {
     // Goals removed as they are not in SrujaModelDump and assume Requirements cover it.
 
     const systems = elements.filter((e: any) => e.kind === "system");
-    const persons = elements.filter((e: any) => e.kind === "person" || e.kind === "actor" || e.kind === "user");
-    const allContainers = elements.filter((e: any) => e.kind === "container" || e.kind === "webapp" || e.kind === "mobile" || e.kind === "api" || e.kind === "database" || e.kind === "queue");
+    const persons = elements.filter(
+      (e: any) => e.kind === "person" || e.kind === "actor" || e.kind === "user"
+    );
+    const allContainers = elements.filter(
+      (e: any) =>
+        e.kind === "container" ||
+        e.kind === "webapp" ||
+        e.kind === "mobile" ||
+        e.kind === "api" ||
+        e.kind === "database" ||
+        e.kind === "queue"
+    );
     const allComponents = elements.filter((e: any) => e.kind === "component");
 
     const scenarios = data?.sruja?.scenarios ?? [];
@@ -159,7 +171,7 @@ export function BuilderWizard() {
       setShowSidebar(false);
       setHasSidebarPref(true);
     }
-  }, []); // Run once on mount
+  }, [steps.length]); // Run on mount or when steps change
   // Actually, we only want to load on mount or when we switch projects (loaded data changes significantly)
   // But since we write back to metadata, we need to avoid reading back our own writes in a loop.
   // The simple way: Only read on initial load of a new architecture.
@@ -167,7 +179,6 @@ export function BuilderWizard() {
   // Limitation: If another user updates the step, we might want to sync it?
   // For now, let's load once per session/project load.
   // We can use a ref to track if we've initialized for the current data signature.
-
 
   // Helper to update metadata (now local storage)
   const updateMetadata = (key: string, value: string) => {
@@ -239,7 +250,7 @@ export function BuilderWizard() {
                   try {
                     window.localStorage.setItem("playground:previewSidebar", next ? "on" : "off");
                     setHasSidebarPref(true);
-                  } catch { }
+                  } catch {}
                   return next;
                 });
               }}
@@ -254,9 +265,15 @@ export function BuilderWizard() {
       <div className="wizard-content">
         <div className="wizard-main">
           {currentStep === 0 && <GoalsStep onNext={nextStep} readOnly={!isEditMode()} />}
-          {currentStep === 1 && <SystemContextStep onNext={nextStep} onBack={prevStep} readOnly={!isEditMode()} />}
-          {currentStep === 2 && <ContainersStep onNext={nextStep} onBack={prevStep} readOnly={!isEditMode()} />}
-          {currentStep === 3 && <ComponentsStep onBack={prevStep} onFinish={nextStep} readOnly={!isEditMode()} />}
+          {currentStep === 1 && (
+            <SystemContextStep onNext={nextStep} onBack={prevStep} readOnly={!isEditMode()} />
+          )}
+          {currentStep === 2 && (
+            <ContainersStep onNext={nextStep} onBack={prevStep} readOnly={!isEditMode()} />
+          )}
+          {currentStep === 3 && (
+            <ComponentsStep onBack={prevStep} onFinish={nextStep} readOnly={!isEditMode()} />
+          )}
           {currentStep === 4 && <FlowsStep onBack={prevStep} readOnly={!isEditMode()} />}
         </div>
 
@@ -268,7 +285,9 @@ export function BuilderWizard() {
                 <Eye size={16} />
                 {showSidebar ? "Hide Details" : "Show Details"}
               </Button>
-              <div className={`quality-badge ${score >= 80 ? "good" : score >= 50 ? "avg" : "poor"}`}>
+              <div
+                className={`quality-badge ${score >= 80 ? "good" : score >= 50 ? "avg" : "poor"}`}
+              >
                 <div className="quality-label">Quality Score</div>
                 <div className="quality-value">{score}</div>
               </div>

@@ -51,18 +51,25 @@ export function DSLPanel() {
         // Only update if different to avoid unnecessary re-renders
         // This prevents circular updates when DSL is edited manually
         if (storeDslSource !== dslSource) {
+          /*
           console.log("[DSLPanel] Syncing local DSL from store (Builder → DSL sync)", { 
             storeLength: storeDslSource.length, 
             localLength: dslSource.length 
           });
+          */
           setDslSourceLocal(storeDslSource);
         }
-      } else if (storeDslSource === null && dslSource && dslSource.trim() && !dslSource.includes("DSL source not available")) {
+      } else if (
+        storeDslSource === null &&
+        dslSource &&
+        dslSource.trim() &&
+        !dslSource.includes("DSL source not available")
+      ) {
         // If store DSL is cleared but we have local DSL, clear local too
         setDslSourceLocal("");
       }
     }
-  }, [storeDslSource]); // Only depend on storeDslSource, not dslSource to avoid circular updates
+  }, [storeDslSource, dslSource]); // Include dslSource to fix exhaustive-deps
 
   // Initial load and fallback logic - runs when model or store DSL changes
   useEffect(() => {
@@ -109,7 +116,7 @@ export function DSLPanel() {
       setIsSaving(true);
       setError(null);
       try {
-        console.log("[DSLPanel] Converting DSL to model (DSL → Model → Diagram sync)");
+        // console.log("[DSLPanel] Converting DSL to model (DSL → Model → Diagram sync)");
         const json = await convertDslToJson(dslSource);
         if (json) {
           // loadFromDSL updates model, which triggers Diagram to recompute
@@ -135,8 +142,8 @@ export function DSLPanel() {
       await navigator.clipboard.writeText(dslSource);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
+    } catch {
+      // console.error("Failed to copy:", err);
     }
   };
 

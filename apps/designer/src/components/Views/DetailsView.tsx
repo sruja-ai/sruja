@@ -20,12 +20,22 @@ export function DetailsView() {
 
   // Listen for sub-tab switch events from diagram badges
   useEffect(() => {
-    const handleSubTabSwitch = (event: CustomEvent<"requirements" | "adrs" | "scenarios" | "flows">) => {
+    const handleSubTabSwitch = (
+      event: CustomEvent<"requirements" | "adrs" | "scenarios" | "flows">
+    ) => {
       const tab = event.detail;
       // Set filter to show only the selected type
       setFilters((prev) => ({
         ...prev,
-        types: new Set([tab === "requirements" ? "requirement" : tab === "adrs" ? "adr" : tab === "scenarios" ? "scenario" : "flow"]),
+        types: new Set([
+          tab === "requirements"
+            ? "requirement"
+            : tab === "adrs"
+              ? "adr"
+              : tab === "scenarios"
+                ? "scenario"
+                : "flow",
+        ]),
       }));
     };
 
@@ -37,30 +47,43 @@ export function DetailsView() {
 
   const sruja = (likec4Model?.sruja as any) || {};
 
-  const scenarios = sruja.scenarios ?? [];
-  const flows = sruja.flows ?? [];
-  const allRequirements = sruja.requirements ?? [];
-  const adrs = sruja.adrs ?? [];
-
   // Deduplicate requirements to match what UnifiedDetailsList displays
-  const requirements = useMemo(() => deduplicateRequirements(allRequirements), [allRequirements]);
+  const requirements = useMemo(
+    () => deduplicateRequirements(sruja.requirements ?? []),
+    [sruja.requirements]
+  );
 
   // Collect all unique tags
   const availableTags = useMemo(() => {
+    const scenarios = sruja.scenarios ?? [];
+    const flows = sruja.flows ?? [];
+    const adrs = sruja.adrs ?? [];
+
     const tagSet = new Set<string>();
     requirements.forEach((r: any) => (r.tags ?? []).forEach((t: string) => tagSet.add(t)));
     adrs.forEach((a: any) => (a.tags ?? []).forEach((t: string) => tagSet.add(t)));
-    scenarios.forEach((s: any) => (s.steps ?? []).forEach((step: any) => (step.tags ?? []).forEach((t: string) => tagSet.add(t))));
-    flows.forEach((f: any) => (f.steps ?? []).forEach((step: any) => (step.tags ?? []).forEach((t: string) => tagSet.add(t))));
+    scenarios.forEach((s: any) =>
+      (s.steps ?? []).forEach((step: any) =>
+        (step.tags ?? []).forEach((t: string) => tagSet.add(t))
+      )
+    );
+    flows.forEach((f: any) =>
+      (f.steps ?? []).forEach((step: any) =>
+        (step.tags ?? []).forEach((t: string) => tagSet.add(t))
+      )
+    );
     return Array.from(tagSet).sort();
-  }, [requirements, adrs, scenarios, flows]);
+  }, [requirements, sruja.adrs, sruja.scenarios, sruja.flows]);
 
-  const stats = {
-    requirements: requirements.length,
-    adrs: adrs.length,
-    scenarios: scenarios.length,
-    flows: flows.length,
-  };
+  const stats = useMemo(
+    () => ({
+      requirements: requirements.length,
+      adrs: (sruja.adrs ?? []).length,
+      scenarios: (sruja.scenarios ?? []).length,
+      flows: (sruja.flows ?? []).length,
+    }),
+    [requirements, sruja.adrs, sruja.scenarios, sruja.flows]
+  );
 
   return (
     <div className="details-view-unified">

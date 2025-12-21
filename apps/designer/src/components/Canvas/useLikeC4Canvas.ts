@@ -7,12 +7,12 @@ import type { ModelConversionResult } from "./types";
 
 /**
  * Hook for managing LikeC4 model conversion and computation.
- * 
+ *
  * @param model - The Sruja model dump to convert
  * @param focusedSystemId - Optional system ID for L2 view generation
  * @param focusedContainerId - Optional container ID for L3 view generation
  * @returns Model conversion result with model, error state, and computing state
- * 
+ *
  * @remarks
  * Handles async model conversion and layout computation.
  * Automatically recomputes when model or navigation state changes.
@@ -37,11 +37,13 @@ export function useLikeC4Model(
     setIsComputing(true);
     setConversionError(null);
 
+    /*
     console.log("[LikeC4Canvas] Model or navigation changed, recomputing diagram", {
       modelElements: Object.keys(model.elements || {}).length,
       focusedSystemId,
       focusedContainerId
     });
+    */
 
     const modelDump = convertToLikeC4ModelDump(model, focusedSystemId, focusedContainerId);
     if (!modelDump) {
@@ -51,29 +53,30 @@ export function useLikeC4Model(
       return;
     }
 
+    /*
     console.log("[LikeC4Canvas] Computing and laying out model:", {
       elementsCount: Object.keys(modelDump.elements || {}).length,
       relationsCount: Array.isArray(modelDump.relations) ? modelDump.relations.length : 0,
       viewsCount: Object.keys(modelDump.views || {}).length,
       viewIds: Object.keys(modelDump.views || {}),
     });
+    */
 
     computeAndLayoutModel(modelDump)
       .then((result) => {
+        /*
         const createdViews = [...result.views()];
         console.log("[LikeC4Canvas] Layouted model created:", {
           viewsCount: createdViews.length,
           viewIds: createdViews.map(v => v.id),
         });
+        */
         setLikec4Model(result);
         setConversionError(null);
       })
       .catch((error) => {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        console.error("❌ Error computing/laying out model:", error);
-        if (error instanceof Error && error.stack) {
-          console.error("❌ Error stack:", error.stack);
-        }
+        // console.error("❌ Error computing/laying out model:", error);
         setLikec4Model(null);
         setConversionError(`Failed to compute and layout model: ${errorMessage}`);
       })
@@ -85,24 +88,22 @@ export function useLikeC4Model(
   return {
     model: likec4Model,
     error: conversionError,
-    isComputing
+    isComputing,
   };
 }
 
 /**
  * Hook for managing available views from LikeC4 model.
- * 
+ *
  * @param model - The original Sruja model dump (for fallback)
  * @param likec4Model - The computed LikeC4 model
  * @returns Array of available view IDs, filtered to show L1, L2, L3 views
  */
-export function useAvailableViews(
-  model: SrujaModelDump | null,
-  likec4Model: LikeC4Model<any> | null
-): string[] {
+export function useAvailableViews(likec4Model: LikeC4Model<any> | null): string[] {
   return useMemo<string[]>(() => {
     if (likec4Model) {
       try {
+        /*
         const views = [...likec4Model.views()];
         const viewIds = views.map(v => v.id);
         console.log("[LikeC4Canvas] Available views from likec4Model:", viewIds, "Total views:", views.length);
@@ -117,25 +118,30 @@ export function useAvailableViews(
             console.warn("[LikeC4Canvas] Model dump has views but LikeC4Model filtered them out:", modelDumpViews);
           }
         }
+        */
+        const views = [...likec4Model.views()];
+        const viewIds = views.map((v) => v.id);
 
         // Filter to show only L1, L2, L3 views (C4 landscape views)
-        const landscapeViews = viewIds.filter(vid => vid === "L1" || vid === "L2" || vid === "L3");
+        const landscapeViews = viewIds.filter(
+          (vid) => vid === "L1" || vid === "L2" || vid === "L3"
+        );
 
         // If we have landscape views, return them; otherwise return all views
         return landscapeViews.length > 0 ? landscapeViews : viewIds;
-      } catch (error) {
-        console.error("[LikeC4Canvas] Error getting views from likec4Model:", error);
+      } catch {
+        // console.error("[LikeC4Canvas] Error getting views from likec4Model:", error);
         return [];
       }
     }
 
     return [];
-  }, [model, likec4Model]);
+  }, [likec4Model]); // likec4Model already contains the views
 }
 
 /**
  * Hook for managing active view selection.
- * 
+ *
  * @param availableViews - Array of available view IDs
  * @param viewId - Optional explicit view ID from props
  * @param currentLevel - Current navigation level (L1, L2, L3)
@@ -181,7 +187,7 @@ export function useActiveViewId(
 
 /**
  * Hook for applying node colors with retry logic and mutation observation.
- * 
+ *
  * @param containerRef - Ref to the container element
  * @param likec4Model - The LikeC4 model
  * @param activeViewId - The currently active view ID
@@ -203,14 +209,17 @@ export function useNodeColorApplication(
     // Use requestAnimationFrame to ensure we apply colors after browser paint
     const applyColorsWithRetry = (attempt = 0) => {
       if (attempt < 3) {
-        setTimeout(() => {
-          requestAnimationFrame(() => {
-            applyNodeColors();
-            if (attempt < 2) {
-              applyColorsWithRetry(attempt + 1);
-            }
-          });
-        }, 100 * (attempt + 1));
+        setTimeout(
+          () => {
+            requestAnimationFrame(() => {
+              applyNodeColors();
+              if (attempt < 2) {
+                applyColorsWithRetry(attempt + 1);
+              }
+            });
+          },
+          100 * (attempt + 1)
+        );
       }
     };
 
@@ -235,7 +244,7 @@ export function useNodeColorApplication(
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ['data-element-id', 'data-node-id', 'data-id', 'id'],
+        attributeFilter: ["data-element-id", "data-node-id", "data-id", "id"],
       });
     }
 
@@ -245,4 +254,3 @@ export function useNodeColorApplication(
     };
   }, [likec4Model, activeViewId, selectedNodeId, applyNodeColors, containerRef]);
 }
-
