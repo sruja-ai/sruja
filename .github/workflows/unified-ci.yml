@@ -165,6 +165,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
+      - name: Build shared packages
+        run: npm run build --workspace=packages/shared --workspace=packages/ui
+      
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
         working-directory: apps/website
