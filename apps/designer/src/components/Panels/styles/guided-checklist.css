@@ -1,0 +1,39 @@
+/* =====================================================
+   CHECKLIST
+   ===================================================== */
+
+.guided-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 1rem;
+    background: var(--surface-2);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+}
+
+.check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-2);
+    line-height: 1.5;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    transition: background-color 0.15s;
+}
+
+.check-item:hover {
+    background: var(--surface-1);
+}
+
+.check-item svg {
+    margin-top: 0.125rem;
+    flex-shrink: 0;
+}
+
+.check-item.optional {
+    color: var(--text-3);
+    font-style: italic;
+}

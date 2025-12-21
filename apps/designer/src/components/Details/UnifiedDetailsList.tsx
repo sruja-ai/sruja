@@ -1,7 +1,7 @@
 // apps/designer/src/components/Details/UnifiedDetailsList.tsx
 import { useMemo, useState } from "react";
 import { Target, FileText, Play, Workflow } from "lucide-react";
-import { useArchitectureStore, useUIStore } from "../../stores";
+import { useArchitectureStore, useUIStore, useSelectionStore } from "../../stores";
 import { useTagNavigation } from "../../hooks/useTagNavigation";
 import { deduplicateRequirements } from "../../utils/deduplicateRequirements";
 import {
@@ -24,13 +24,17 @@ export type UnifiedItem =
 interface UnifiedDetailsListProps {
   filters: FilterState;
   onItemClick?: (item: UnifiedItem) => void;
+  selectedNodeId?: string | null; // Filter by selected node
 }
 
-export function UnifiedDetailsList({ filters, onItemClick }: UnifiedDetailsListProps) {
+export function UnifiedDetailsList({ filters, onItemClick, selectedNodeId }: UnifiedDetailsListProps) {
   const likec4Model = useArchitectureStore((s) => s.likec4Model);
   // const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture); // Unused for now until delete logic is implemented
   const setActiveTab = useUIStore((s) => s.setActiveTab);
   const { navigateToTaggedElement } = useTagNavigation();
+  
+  // Use selectedNodeId from store if not provided as prop
+  const nodeId = selectedNodeId ?? useSelectionStore((s) => s.selectedNodeId);
 
   const [editItem, setEditItem] = useState<UnifiedItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<UnifiedItem | null>(null);
@@ -112,6 +116,25 @@ export function UnifiedDetailsList({ filters, onItemClick }: UnifiedDetailsListP
       });
     }
 
+    // Filter by selected node (show items tagged with this node or referencing it)
+    if (nodeId) {
+      filtered = filtered.filter((item) => {
+        // Check if item is tagged with the node ID
+        const itemTags = ((item.data as any).tags || []) as string[];
+        if (itemTags.includes(nodeId)) {
+          return true;
+        }
+        
+        // For scenarios and flows, check if they reference the node in steps
+        if (item.type === "scenario" || item.type === "flow") {
+          const steps = (item.data as ScenarioDump | FlowDump).steps || [];
+          return steps.some((step) => step.from === nodeId || step.to === nodeId);
+        }
+        
+        return false;
+      });
+    }
+
     // Filter by search query
     if (filters.searchQuery.trim()) {
       const query = filters.searchQuery.toLowerCase();
@@ -124,7 +147,7 @@ export function UnifiedDetailsList({ filters, onItemClick }: UnifiedDetailsListP
     }
 
     return filtered;
-  }, [allItems, filters]);
+  }, [allItems, filters, nodeId]);
 
   // Group items by type for better organization
   const groupedItems = useMemo(() => {
@@ -190,13 +213,32 @@ export function UnifiedDetailsList({ filters, onItemClick }: UnifiedDetailsListP
       <div className="unified-list-empty">
         <FileText size={48} className="empty-icon" />
         <h3>No items found</h3>
-        <p>Try adjusting your filters or create new items</p>
+        {nodeId ? (
+          <p>No requirements, ADRs, scenarios, or flows tagged with <strong>{nodeId}</strong></p>
+        ) : (
+          <p>Try adjusting your filters or create new items</p>
+        )}
       </div>
     );
   }
 
   return (
     <div className="unified-details-list">
+      {nodeId && (
+        <div className="node-filter-badge" style={{
+          padding: '8px 12px',
+          marginBottom: '16px',
+          backgroundColor: 'var(--color-primary-light, #e0f2fe)',
+          borderRadius: '6px',
+          fontSize: '0.875rem',
+          color: 'var(--color-text, #333)',
+        }}>
+          <strong>Showing items for:</strong> <code>{nodeId}</code>
+          <span style={{ marginLeft: '8px', fontSize: '0.75rem', opacity: 0.7 }}>
+            (Requirements, ADRs, Scenarios, Flows tagged with this node)
+          </span>
+        </div>
+      )}
       {/* Grouped View */}
       <div className="unified-list-content">
         {groupedItems.requirement.length > 0 && (

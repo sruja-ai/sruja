@@ -40,14 +40,18 @@ export function DSLPanel() {
   }, [mode]);
 
   // Sync local state with store DSL source - always sync when store changes or component mounts
+  // This handles: Builder changes → Model → DSL → DSL Panel updates
   useEffect(() => {
     // Always sync from store when it changes, regardless of current local state
     // This ensures that when component remounts (e.g., after tab switch), it gets the latest value
+    // Also handles Builder → DSL sync: when Builder updates model, updateArchitecture converts to DSL
+    // and updates store, which triggers this effect to update the editor
     if (storeDslSource !== undefined) {
       if (storeDslSource !== null) {
         // Only update if different to avoid unnecessary re-renders
+        // This prevents circular updates when DSL is edited manually
         if (storeDslSource !== dslSource) {
-          console.log("[DSLPanel] Syncing local DSL from store", { 
+          console.log("[DSLPanel] Syncing local DSL from store (Builder → DSL sync)", { 
             storeLength: storeDslSource.length, 
             localLength: dslSource.length 
           });
@@ -94,15 +98,22 @@ export function DSLPanel() {
   );
 
   // Save DSL changes (debounced conversion)
+  // This handles: DSL edits → Model → Diagram updates
+  // Only convert if DSL was manually edited (not synced from store)
   useEffect(() => {
+    // Skip if DSL is empty, same as store (synced from Builder), or just whitespace
     if (!dslSource || dslSource === storeDslSource || !dslSource.trim()) return;
 
+    // This means DSL was manually edited - convert to model
+    // This will update the model, which will trigger Diagram to update
     const timeoutId = setTimeout(async () => {
       setIsSaving(true);
       setError(null);
       try {
+        console.log("[DSLPanel] Converting DSL to model (DSL → Model → Diagram sync)");
         const json = await convertDslToJson(dslSource);
         if (json) {
+          // loadFromDSL updates model, which triggers Diagram to recompute
           loadFromDSL(json as any, dslSource, "");
         } else {
           setError("Failed to parse DSL");

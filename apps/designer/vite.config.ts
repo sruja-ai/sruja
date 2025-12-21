@@ -34,20 +34,36 @@ function serveMonorepoAssets(): Plugin {
             return;
           }
         }
-        // Serve wasm from apps/website/public/wasm directory (where WASM files are built)
+        // Serve wasm from apps/designer/public/wasm first, then apps/website/public/wasm
         if (req.url?.startsWith("/wasm/")) {
-          const wasmPath = path.resolve(
+          // Try designer's public/wasm first (for graphvizlib.wasm)
+          const designerWasmPath = path.resolve(
             __dirname,
-            "../website/public/wasm",
+            "public/wasm",
             req.url.replace("/wasm/", "")
           );
-          if (fs.existsSync(wasmPath)) {
+          if (fs.existsSync(designerWasmPath)) {
             if (req.url.endsWith(".wasm")) {
               res.setHeader("Content-Type", "application/wasm");
             } else if (req.url.endsWith(".js")) {
               res.setHeader("Content-Type", "application/javascript");
             }
-            fs.createReadStream(wasmPath).pipe(res);
+            fs.createReadStream(designerWasmPath).pipe(res);
+            return;
+          }
+          // Fallback to website's public/wasm (for sruja.wasm)
+          const websiteWasmPath = path.resolve(
+            __dirname,
+            "../website/public/wasm",
+            req.url.replace("/wasm/", "")
+          );
+          if (fs.existsSync(websiteWasmPath)) {
+            if (req.url.endsWith(".wasm")) {
+              res.setHeader("Content-Type", "application/wasm");
+            } else if (req.url.endsWith(".js")) {
+              res.setHeader("Content-Type", "application/javascript");
+            }
+            fs.createReadStream(websiteWasmPath).pipe(res);
             return;
           }
         }
@@ -80,20 +96,36 @@ function serveMonorepoAssets(): Plugin {
             return;
           }
         }
-        // Serve wasm from apps/website/public/wasm directory (where WASM files are built)
+        // Serve wasm from apps/designer/public/wasm first, then apps/website/public/wasm
         if (req.url?.startsWith("/wasm/")) {
-          const wasmPath = path.resolve(
+          // Try designer's public/wasm first (for graphvizlib.wasm)
+          const designerWasmPath = path.resolve(
             __dirname,
-            "../website/public/wasm",
+            "public/wasm",
             req.url.replace("/wasm/", "")
           );
-          if (fs.existsSync(wasmPath)) {
+          if (fs.existsSync(designerWasmPath)) {
             if (req.url.endsWith(".wasm")) {
               res.setHeader("Content-Type", "application/wasm");
             } else if (req.url.endsWith(".js")) {
               res.setHeader("Content-Type", "application/javascript");
             }
-            fs.createReadStream(wasmPath).pipe(res);
+            fs.createReadStream(designerWasmPath).pipe(res);
+            return;
+          }
+          // Fallback to website's public/wasm (for sruja.wasm)
+          const websiteWasmPath = path.resolve(
+            __dirname,
+            "../website/public/wasm",
+            req.url.replace("/wasm/", "")
+          );
+          if (fs.existsSync(websiteWasmPath)) {
+            if (req.url.endsWith(".wasm")) {
+              res.setHeader("Content-Type", "application/wasm");
+            } else if (req.url.endsWith(".js")) {
+              res.setHeader("Content-Type", "application/javascript");
+            }
+            fs.createReadStream(websiteWasmPath).pipe(res);
             return;
           }
         }

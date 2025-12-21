@@ -1,3 +1,8 @@
+// Package engine provides the validation engine for Sruja architectures.
+//
+// The validation engine runs a collection of rules that check architectures
+// for correctness, best practices, and potential issues. Rules run concurrently
+// and return diagnostics (errors/warnings) if issues are found.
 package engine
 
 import (

@@ -1,0 +1,145 @@
+/* =====================================================
+   FLOWS STEP - Scenarios and Steps
+   ===================================================== */
+
+.scenario-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.scenario-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.scenario-tab:hover {
+    background: var(--surface-1);
+    border-color: var(--primary-alpha-50, rgba(102, 126, 234, 0.5));
+}
+
+.scenario-tab.active {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(124, 58, 237, 0.1) 100%);
+    border-color: rgba(139, 92, 246, 0.5);
+    color: #8b5cf6;
+}
+
+.scenario-remove {
+    padding: 0.25rem;
+    background: transparent;
+    border: none;
+    color: var(--text-3);
+    cursor: pointer;
+    border-radius: 4px;
+    opacity: 0;
+    transition: all 0.15s;
+}
+
+.scenario-tab:hover .scenario-remove {
+    opacity: 1;
+}
+
+.scenario-remove:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.add-scenario-inline {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.add-scenario-inline>label {
+    flex: 0 0 80px;
+}
+
+.add-scenario-inline>label:nth-child(2) {
+    flex: 1;
+}
+
+.add-scenario-inline>label input {
+    height: 32px;
+    font-size: 0.8125rem;
+}
+
+.add-scenario-inline>button {
+    height: 32px;
+    padding: 0 0.5rem;
+}
+
+/* Step Cards */
+.steps-list .step-card {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.step-number {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: white;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.step-desc {
+    font-size: 0.75rem;
+    color: var(--text-2);
+    font-style: italic;
+    margin-left: auto;
+    margin-right: 0.5rem;
+}
+
+.step-form {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.step-form .form-group {
+    flex: 1;
+    min-width: 100px;
+}
+
+.step-form .form-group select {
+    width: 100%;
+    height: 36px;
+    padding: 0 0.75rem;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-1);
+    color: var(--text-1);
+    font-size: 0.8125rem;
+    cursor: pointer;
+}
+
+.step-form>label {
+    flex: 2;
+    min-width: 150px;
+}
+
+.step-form>label input {
+    height: 36px;
+    font-size: 0.8125rem;
+}
+

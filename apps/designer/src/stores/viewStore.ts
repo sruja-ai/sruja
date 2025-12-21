@@ -25,7 +25,34 @@ export const useViewStore = create<ViewState>((set, get) => ({
   breadcrumb: ["Architecture"],
 
   setLevel: (level) => {
-    set({ currentLevel: level });
+    // When setting level manually, ensure navigation state is consistent
+    // L2 requires focusedSystemId, L3 requires both focusedSystemId and focusedContainerId
+    const state = get();
+    if (level === "L1") {
+      // Going to L1 clears focused IDs
+      set({ 
+        currentLevel: level,
+        focusedSystemId: null,
+        focusedContainerId: null,
+        breadcrumb: ["Architecture"]
+      });
+    } else if (level === "L2" && state.focusedSystemId) {
+      // L2 requires focusedSystemId - keep it, clear focusedContainerId
+      set({ 
+        currentLevel: level,
+        focusedContainerId: null,
+        breadcrumb: ["Architecture", state.focusedSystemId]
+      });
+    } else if (level === "L3" && state.focusedSystemId && state.focusedContainerId) {
+      // L3 requires both - keep them
+      set({ 
+        currentLevel: level,
+        breadcrumb: ["Architecture", state.focusedSystemId, state.focusedContainerId]
+      });
+    } else {
+      // Just update level if requirements not met (buttons should be disabled anyway)
+      set({ currentLevel: level });
+    }
   },
 
   drillDown: (nodeId, nodeType, parentId) => {

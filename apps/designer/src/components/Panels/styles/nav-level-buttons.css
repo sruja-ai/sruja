@@ -1,0 +1,50 @@
+/* Level Buttons - Segmented Control */
+.segmented-level-control {
+    display: flex;
+    background: var(--bg-tertiary);
+    padding: 2px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.segmented-level-control.collapsed {
+    flex-direction: column;
+}
+
+.segment-btn {
+    flex: 1;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 500;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.segment-btn:hover:not(:disabled) {
+    color: var(--text-primary);
+}
+
+.segment-btn.active {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.segment-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: var(--text-muted);
+}
+
+.nav-governance-hint {
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+

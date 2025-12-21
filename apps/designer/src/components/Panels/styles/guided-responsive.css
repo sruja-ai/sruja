@@ -1,0 +1,28 @@
+/* =====================================================
+   RESPONSIVE
+   ===================================================== */
+
+@media (max-width: 768px) {
+    .guided-panel {
+        padding: 1rem;
+        gap: 1rem;
+    }
+
+    .guided-section {
+        padding: 1rem;
+        border-radius: 10px;
+    }
+
+    .guided-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .guided-welcome-header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .guided-welcome-icon {
+        margin: 0 auto;
+    }
+}

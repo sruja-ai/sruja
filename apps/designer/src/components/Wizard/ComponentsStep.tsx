@@ -2,6 +2,8 @@ import { useState, useMemo } from "react";
 import { Puzzle, Plus, Trash2, Box, ChevronRight, Edit } from "lucide-react";
 import { Button } from "@sruja/ui"; // Removed Input
 import { useArchitectureStore } from "../../stores/architectureStore";
+import { useViewStore } from "../../stores/viewStore";
+import { useEffect } from "react";
 import { BestPracticeTip, EditComponentForm } from "../shared"; // Updated imports
 import { RelationsSection } from "./RelationsSection";
 import { GovernanceSection } from "./GovernanceSection";
@@ -17,6 +19,7 @@ interface ComponentsStepProps {
 export function ComponentsStep({ onBack, onFinish, readOnly: _readOnly = false }: ComponentsStepProps) {
   const data = useArchitectureStore((s) => s.likec4Model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
+  const drillDown = useViewStore((s) => s.drillDown);
 
   const allElements = useMemo(() => Object.values(data?.elements || {}), [data?.elements]);
 
@@ -49,6 +52,13 @@ export function ComponentsStep({ onBack, onFinish, readOnly: _readOnly = false }
   if (!selectedPath && containerList.length > 0) {
     setSelectedPath(containerList[0].label);
   }
+
+  // Auto-Zoom: Focus diagram on selected container
+  useEffect(() => {
+    if (selectedPath) {
+      drillDown(selectedPath, "container");
+    }
+  }, [selectedPath, drillDown]);
 
   // Modal State
   const [isComponentFormOpen, setIsComponentFormOpen] = useState(false);

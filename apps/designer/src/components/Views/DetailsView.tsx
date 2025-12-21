@@ -1,7 +1,7 @@
 // apps/designer/src/components/Views/DetailsView.tsx
 import { useState, useEffect, useMemo } from "react";
 import { Search } from "lucide-react";
-import { useArchitectureStore } from "../../stores";
+import { useArchitectureStore, useSelectionStore } from "../../stores";
 import { DetailsSidebarFilters, type FilterState } from "../Details/DetailsSidebarFilters";
 import { UnifiedDetailsList } from "../Details/UnifiedDetailsList";
 import { deduplicateRequirements } from "../../utils/deduplicateRequirements";
@@ -10,6 +10,7 @@ import "./DetailsView.css";
 
 export function DetailsView() {
   const likec4Model = useArchitectureStore((s) => s.likec4Model);
+  const selectedNodeId = useSelectionStore((s) => s.selectedNodeId);
   const [filters, setFilters] = useState<FilterState>({
     types: new Set(),
     statuses: new Set(),
@@ -86,8 +87,8 @@ export function DetailsView() {
           stats={stats}
         />
 
-        {/* Unified List */}
-        <UnifiedDetailsList filters={filters} />
+        {/* Unified List - automatically filters by selected node */}
+        <UnifiedDetailsList filters={filters} selectedNodeId={selectedNodeId} />
       </div>
     </div>
   );

@@ -1,0 +1,30 @@
+/* Nested Tree Indentation */
+.nav-tree.nested {
+    padding-left: 20px;
+    margin-top: 2px;
+}
+
+.nav-tree.nested .nav-item-btn {
+    padding-left: 4px;
+}
+
+/* Container styling */
+.nav-tree.nested .nav-item {
+    border-left: 1px solid var(--border-color);
+    margin-left: 6px;
+}
+
+.nav-tree.nested .nav-item:last-child {
+    border-left-color: transparent;
+}
+
+.nav-tree.nested .nav-item::before {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 1px;
+    background: var(--border-color);
+    vertical-align: middle;
+    margin-right: 4px;
+}
+

@@ -67,6 +67,11 @@
         "command": "sruja.debugWasmLsp",
         "title": "Debug WASM LSP",
         "icon": "$(debug)"
+      },
+      {
+        "command": "editor.action.showReferences",
+        "title": "Show References",
+        "when": "editorHasReferenceProvider && editorTextFocus && !inReferenceSearchEditor"
       }
     ],
     "menus": {
@@ -109,6 +114,21 @@
           "type": "boolean",
           "default": true,
           "description": "Use spaces instead of tabs for indentation"
+        },
+        "sruja.performance.enableCaching": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable document caching for improved performance"
+        },
+        "sruja.performance.cacheTTL": {
+          "type": "number",
+          "default": 5000,
+          "description": "Cache time-to-live in milliseconds (default: 5000ms)"
+        },
+        "sruja.performance.diagnosticsDebounce": {
+          "type": "number",
+          "default": 300,
+          "description": "Diagnostics update debounce delay in milliseconds (default: 300ms)"
         }
       }
     }

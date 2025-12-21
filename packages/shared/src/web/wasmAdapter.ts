@@ -164,11 +164,47 @@ export async function initWasm(options?: { base?: string; skipGoLoad?: boolean }
           status: response.status
         });
       }
-      const bytes = await response.arrayBuffer();
-      const mod = await WebAssembly.instantiate(bytes, importObject as WebAssembly.Imports);
-      instance = mod.instance;
-      lastError = null;
-      break;
+
+      // Try streaming instantiation first if supported
+      if (WebAssembly.instantiateStreaming) {
+        try {
+          // Create a new response for streaming because the original body might be consumed
+          // if we failed and are retrying, or if we need to clone.
+          // However, here we just use the response directly.
+          // Note: instantiationStreaming requires the response to have application/wasm content type
+          // which might not always be the case with some dev servers, so we catch errors.
+          const mod = await WebAssembly.instantiateStreaming(response, importObject as WebAssembly.Imports);
+          instance = mod.instance;
+          lastError = null;
+          logger.info('WASM loaded via streaming', { component: 'wasm', action: 'load_wasm', url });
+          break;
+        } catch (streamingError) {
+          logger.warn('WASM streaming failed, falling back to arrayBuffer', {
+            component: 'wasm',
+            action: 'load_wasm',
+            error: streamingError instanceof Error ? streamingError.message : String(streamingError)
+          });
+          // Fallback proceeds below...
+          // We need to fetch again because the response body is already consumed by instantiateStreaming
+          // or we can't clone it easily if it's already used.
+          // Simplest reliability is to re-fetch or just let the loop continue if we want to try next candidate,
+          // BUT here we want to try arrayBuffer on SAME url.
+          // So let's re-fetch for the fallback.
+          const fallbackResponse = await fetch(url);
+          if (!fallbackResponse.ok) throw new Error('Failed to re-fetch for fallback');
+          const bytes = await fallbackResponse.arrayBuffer();
+          const mod = await WebAssembly.instantiate(bytes, importObject as WebAssembly.Imports);
+          instance = mod.instance;
+          lastError = null;
+          break;
+        }
+      } else {
+        const bytes = await response.arrayBuffer();
+        const mod = await WebAssembly.instantiate(bytes, importObject as WebAssembly.Imports);
+        instance = mod.instance;
+        lastError = null;
+        break;
+      }
     } catch (e) {
       lastError = e instanceof Error ? e : new Error(String(e));
       continue;

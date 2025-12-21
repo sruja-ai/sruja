@@ -1,0 +1,109 @@
+/* =====================================================
+   WELCOME CARD
+   ===================================================== */
+
+.guided-welcome {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.05) 100%);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 12px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.guided-welcome::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(102, 126, 234, 0.15) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.guided-welcome-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    position: relative;
+    z-index: 1;
+}
+
+.guided-welcome-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.guided-welcome-content h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-1);
+    letter-spacing: -0.02em;
+}
+
+.guided-welcome-content p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-2);
+    line-height: 1.6;
+}
+
+.guided-welcome-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: var(--surface-2);
+    border: none;
+    font-size: 1.25rem;
+    color: var(--text-3);
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.15s;
+    z-index: 2;
+}
+
+.guided-welcome-close:hover {
+    background: var(--surface-1);
+    color: var(--text-1);
+}
+
+.guided-welcome-tips {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid rgba(102, 126, 234, 0.2);
+    position: relative;
+    z-index: 1;
+}
+
+.guided-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-2);
+    line-height: 1.5;
+}
+
+.guided-tip svg {
+    margin-top: 0.125rem;
+    flex-shrink: 0;
+    color: #667eea;
+}

@@ -58,6 +58,7 @@ type Options struct {
 	IncludeScenarios    bool
 	IncludeMetadata     bool
 	IncludeGlossary     bool
+	IncludeRecommendations bool
 	MermaidConfig       mermaid.Config
 	HeadingLevel        int
 
@@ -80,6 +81,7 @@ func DefaultOptions() Options {
 		IncludeScenarios:    true,
 		IncludeMetadata:     true,
 		IncludeGlossary:     true,
+		IncludeRecommendations: true,
 		MermaidConfig:       mermaid.DefaultConfig(),
 		HeadingLevel:        1,
 		Scope:               &Scope{Type: "full", ID: ""},

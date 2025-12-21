@@ -280,6 +280,7 @@ export const useArchitectureStore = create<ArchitectureState>()(
         }
 
         // Update the model
+        // This triggers: Builder → Model → Diagram (via useEffect in LikeC4Canvas)
         const updatedModel = updater(baseModel!);
         set({ likec4Model: updatedModel, lastLoaded: new Date().toISOString() });
 
@@ -287,11 +288,14 @@ export const useArchitectureStore = create<ArchitectureState>()(
         useHistoryStore.getState().push(updatedModel);
 
         // Convert updated JSON to DSL
+        // This triggers: Builder → Model → DSL → DSL Panel (via useEffect in DSLPanel)
         const { error } = await safeAsync(
           async () => {
+            console.log("[architectureStore] Converting model to DSL (Builder → DSL sync)");
             const newDsl = await convertModelToDsl(updatedModel);
-            // Update DSL source and trigger refresh mechanism
+            // Update DSL source - this will trigger DSLPanel to sync
             // Note: we don't call setDslSource directly to avoid circular update loop
+            // DSLPanel's useEffect watches storeDslSource and updates local state
             set({
               dslSource: newDsl,
               sourceType: "dsl",

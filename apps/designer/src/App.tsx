@@ -16,6 +16,7 @@ import {
   useHistoryStore,
   useToastStore,
 } from "./stores";
+import { useViewStore } from "./stores/viewStore";
 import {
   useClipboardOperations,
   useProjectSync,
@@ -50,6 +51,7 @@ export default function App() {
   const setActiveTab = useUIStore((s) => s.setActiveTab);
   const editMode = useFeatureFlagsStore((s) => s.editMode);
   const setEditMode = useFeatureFlagsStore((s) => s.setEditMode);
+  const currentLevel = useViewStore((s) => s.currentLevel);
 
   const toasts = useToastStore((s) => s.toasts);
   const removeToast = useToastStore((s) => s.removeToast);
@@ -266,6 +268,23 @@ export default function App() {
               </div>
             )}
 
+            {/* Builder Tab */}
+            {likec4Model && activeTab === "builder" && (
+              <div role="tabpanel" id="tabpanel-builder" aria-labelledby="tab-builder">
+                <ErrorBoundary
+                  fallback={
+                    <div className="error-state" style={{ padding: "2rem", textAlign: "center" }}>
+                      <h2>Builder Error</h2>
+                      <p>Failed to load the builder wizard. Please try refreshing the page.</p>
+                    </div>
+                  }
+                >
+                  <BuilderWizard />
+                </ErrorBoundary>
+              </div>
+            )}
+
+            {/* Standard Diagram Tab (Full Screen) */}
             {likec4Model && activeTab === "diagram" && (
               <div role="tabpanel" id="tabpanel-diagram" aria-labelledby="tab-diagram">
                 <ErrorBoundary
@@ -276,7 +295,12 @@ export default function App() {
                     </div>
                   }
                 >
-                  <ArchitectureCanvas ref={canvasRef} model={likec4Model} dragEnabled={editMode === "edit"} />
+                  <ArchitectureCanvas
+                    ref={canvasRef}
+                    model={likec4Model}
+                    dragEnabled={editMode === "edit"}
+                    viewId={currentLevel}
+                  />
                 </ErrorBoundary>
               </div>
             )}
@@ -299,21 +323,6 @@ export default function App() {
             {likec4Model && activeTab === "code" && (
               <div role="tabpanel" id="tabpanel-code" aria-labelledby="tab-code">
                 <CodePanel />
-              </div>
-            )}
-
-            {likec4Model && activeTab === "builder" && (
-              <div role="tabpanel" id="tabpanel-builder" aria-labelledby="tab-builder">
-                <ErrorBoundary
-                  fallback={
-                    <div className="error-state" style={{ padding: "2rem", textAlign: "center" }}>
-                      <h2>Builder Error</h2>
-                      <p>Failed to load the builder wizard. Please try refreshing the page.</p>
-                    </div>
-                  }
-                >
-                  <BuilderWizard />
-                </ErrorBoundary>
               </div>
             )}
           </div>
