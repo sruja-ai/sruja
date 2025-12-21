@@ -24,7 +24,7 @@ func runInit(_ *cobra.Command, args []string) error {
 	}
 
 	// Create project directory
-	if err := os.MkdirAll(projectName, 0o755); err != nil {
+	if err := os.MkdirAll(projectName, 0o750); err != nil {
 		return fmt.Errorf("failed to create project directory: %w", err)
 	}
 

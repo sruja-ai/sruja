@@ -262,7 +262,7 @@ func (e *Exporter) writeGlossary(sb *strings.Builder, prog *language.Program) {
 	for _, term := range termList {
 		// Simple glossary format: Term - (Description if we had a dictionary)
 		// Since we're just extracting terms, we list them.
-		sb.WriteString(fmt.Sprintf("- **%s**\n", term))
+		_, _ = fmt.Fprintf(sb, "- **%s**\n", term)
 	}
 	sb.WriteString("\n")
 }

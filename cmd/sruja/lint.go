@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/sruja-ai/sruja/pkg/diagnostics"
@@ -54,7 +55,7 @@ func runLint(args []string, stdout, stderr io.Writer) int {
 		program = ws.MergedProgram()
 		content = "// Merged workspace content"
 	} else {
-		fileContent, err := os.ReadFile(filePath)
+		fileContent, err := os.ReadFile(filepath.Clean(filePath))
 		if err != nil {
 			_, _ = fmt.Fprintln(stderr, dx.Error(fmt.Sprintf("Error reading file: %v", err)))
 			return 1
@@ -86,9 +87,10 @@ func runLint(args []string, stdout, stderr io.Writer) int {
 			continue // Cycles are valid - skip informational messages
 		}
 
-		if d.Severity == diagnostics.SeverityError {
+		switch d.Severity {
+		case diagnostics.SeverityError:
 			blockingErrors = append(blockingErrors, d)
-		} else if d.Severity == diagnostics.SeverityWarning {
+		case diagnostics.SeverityWarning:
 			warnings = append(warnings, d)
 		}
 	}

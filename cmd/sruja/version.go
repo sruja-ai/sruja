@@ -21,6 +21,6 @@ func runVersion(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	fmt.Fprintf(stdout, "sruja version %s (commit: %s, date: %s)\n", version, commit, date)
+	_, _ = fmt.Fprintf(stdout, "sruja version %s (commit: %s, date: %s)\n", version, commit, date)
 	return 0
 }

@@ -110,7 +110,7 @@ func createCourse(name string) {
 	}
 
 	// Create directory
-	if err := os.MkdirAll(courseDir, 0o755); err != nil {
+	if err := os.MkdirAll(courseDir, 0o750); err != nil {
 		fmt.Printf("❌ Error creating course directory: %v\n", err)
 		os.Exit(1)
 	}
@@ -144,7 +144,7 @@ func createModule(course, name string) {
 	}
 
 	// Create directory
-	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
+	if err := os.MkdirAll(moduleDir, 0o750); err != nil {
 		fmt.Printf("❌ Error creating module directory: %v\n", err)
 		os.Exit(1)
 	}
@@ -349,7 +349,7 @@ func createFromTemplate(templateName, outputPath string, meta *ContentMeta) {
 	templatePath := filepath.Join(templatesDir, templateName)
 
 	// Read template
-	tmplContent, err := os.ReadFile(templatePath)
+	tmplContent, err := os.ReadFile(filepath.Clean(templatePath))
 	if err != nil {
 		fmt.Printf("❌ Error reading template %s: %v\n", templatePath, err)
 		fmt.Printf("   Creating basic file instead...\n")
@@ -367,7 +367,7 @@ func createFromTemplate(templateName, outputPath string, meta *ContentMeta) {
 	}
 
 	// Create output file
-	file, err := os.Create(outputPath)
+	file, err := os.Create(filepath.Clean(outputPath))
 	if err != nil {
 		fmt.Printf("❌ Error creating file %s: %v\n", outputPath, err)
 		os.Exit(1)
@@ -387,7 +387,7 @@ func createFromTemplate(templateName, outputPath string, meta *ContentMeta) {
 }
 
 func createBasicFile(outputPath string, meta *ContentMeta) {
-	file, err := os.Create(outputPath)
+	file, err := os.Create(filepath.Clean(outputPath))
 	if err != nil {
 		fmt.Printf("❌ Error creating file: %v\n", err)
 		os.Exit(1)

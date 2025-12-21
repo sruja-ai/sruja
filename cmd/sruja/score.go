@@ -30,7 +30,7 @@ func runScore(filePath string, stdout, stderr io.Writer) int {
 	// 1. Find file
 	targetFile := findSrujaFile(filePath)
 	if targetFile == "" {
-		fmt.Fprintln(stderr, dx.Error("No .sruja file found. Please specify a file or run in a directory with a .sruja file."))
+		_, _ = fmt.Fprintln(stderr, dx.Error("No .sruja file found. Please specify a file or run in a directory with a .sruja file."))
 		return 1
 	}
 
@@ -56,18 +56,18 @@ func runScore(filePath string, stdout, stderr io.Writer) int {
 		scoreStr = dx.Colorize(dx.ColorGreen, scoreStr, useColor)
 	}
 
-	fmt.Fprintln(stdout, dx.Bold(fmt.Sprintf("Architecture Score: %s (%s)", scoreStr, card.Grade)))
-	fmt.Fprintln(stdout, "")
+	_, _ = fmt.Fprintln(stdout, dx.Bold(fmt.Sprintf("Architecture Score: %s (%s)", scoreStr, card.Grade)))
+	_, _ = fmt.Fprintln(stdout, "")
 
 	if len(card.Deductions) > 0 {
-		fmt.Fprintln(stdout, dx.Bold("Deductions:"))
+		_, _ = fmt.Fprintln(stdout, dx.Bold("Deductions:"))
 		for _, d := range card.Deductions {
 			pointsStr := dx.Colorize(dx.ColorRed, fmt.Sprintf("-%d pts", d.Points), useColor)
 			ruleStr := dx.Dim(d.Rule)
-			fmt.Fprintf(stdout, "- [%s] %s (%s)\n", pointsStr, d.Message, ruleStr)
+			_, _ = fmt.Fprintf(stdout, "- [%s] %s (%s)\n", pointsStr, d.Message, ruleStr)
 		}
 	} else {
-		fmt.Fprintln(stdout, dx.Success("Perfect Score! No deductions."))
+		_, _ = fmt.Fprintln(stdout, dx.Success("Perfect Score! No deductions."))
 	}
 
 	return 0

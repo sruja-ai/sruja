@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"io"
 
@@ -31,7 +32,7 @@ func findSrujaFile(filePath string) string {
 
 // parseArchitectureFile parses an architecture file and returns the program
 func parseArchitectureFile(filePath string, stderr io.Writer) (*language.Program, error) {
-	content, err := os.ReadFile(filePath)
+	content, err := os.ReadFile(filepath.Clean(filePath))
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "Error reading file: %v\n", err)
 		return nil, err

@@ -1,42 +1,43 @@
 version: "2"
-
-run:
-  timeout: 5m
-
 linters:
   enable:
-    - govet
-    - staticcheck
+    - bodyclose
+    - gocritic
     - gosec
-    - errcheck
-    - ineffassign
+    - noctx
+    - prealloc
     - revive
     - unparam
-    - prealloc     # Detect slice pre-allocation opportunities
-    - gocritic     # Advanced code patterns and suggestions
-    - noctx        # Ensure context.Context is passed where needed
-    - bodyclose    # Ensure HTTP response bodies are closed
   disable:
     - funlen
-    - gocyclo
     - goconst
-
-linters-settings:
-  gocyclo:
-    min-complexity: 25
-  funlen:
-    lines: 120
-    statements: 80
-  revive:
+    - gocyclo
+  settings:
+    funlen:
+      lines: 120
+      statements: 80
+    gocyclo:
+      min-complexity: 25
+    revive:
+      rules:
+        - name: unused-parameter
+          disabled: false
+  exclusions:
+    generated: lax
     rules:
-      - name: unused-parameter
-        disabled: false
-
-issues:
-  exclude-use-default: false
-  exclude:
-    - path: _test\.go
-      linters:
-        - goconst
-        - errcheck
-        - gosec
+      - linters:
+          - errcheck
+          - goconst
+          - gosec
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
