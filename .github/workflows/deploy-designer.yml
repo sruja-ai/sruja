@@ -4,16 +4,15 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/designer/**'
-      - 'packages/shared/**'
-      - 'packages/ui/**'
-      - 'packages/diagram/**'
-      - 'packages/layout/**'
-      - '.github/workflows/deploy-designer.yml'
+      - "apps/designer/**"
+      - "packages/shared/**"
+      - "packages/ui/**"
+      - "packages/diagram/**"
+      - "packages/layout/**"
+      - ".github/workflows/deploy-designer.yml"
   workflow_dispatch:
 
 permissions:
-  contents: read
   contents: write
   id-token: write
 
@@ -31,8 +30,8 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '24'
-          cache: 'npm'
+          node-version: "24"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -41,7 +40,7 @@ jobs:
         run: npm run build
         working-directory: apps/designer
         env:
-          BASE_PATH: '/designer/'
+          BASE_PATH: "/designer/"
 
       - name: Verify examples are copied
         run: |
@@ -100,7 +99,6 @@ jobs:
           ref: main
           token: ${{ steps.app-token.outputs.token }}
           path: target
-          persist-credentials: false
 
       - name: Verify checkout succeeded
         run: |
