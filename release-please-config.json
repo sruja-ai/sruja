@@ -3,15 +3,56 @@
   "packages": {
     ".": {
       "release-type": "node",
-      "package-name": "sruja",
-      "version-file": "package.json",
-      "changelog-path": "CHANGELOG.md"
+      "package-name": "sruja-monorepo"
+    },
+    "apps/designer": {
+      "release-type": "node",
+      "package-name": "@sruja/designer"
+    },
+    "apps/social-publish": {
+      "release-type": "node",
+      "package-name": "@sruja/social-publish"
+    },
+    "apps/storybook": {
+      "release-type": "node",
+      "package-name": "@sruja/storybook"
     },
     "apps/vscode-extension": {
       "release-type": "node",
-      "package-name": "sruja-language-support",
-      "version-file": "apps/vscode-extension/package.json"
+      "package-name": "sruja-language-support"
+    },
+    "apps/website": {
+      "release-type": "node",
+      "package-name": "@sruja/website"
+    },
+    "packages/eslint-config": {
+      "release-type": "node",
+      "package-name": "@sruja/eslint-config"
+    },
+    "packages/shared": {
+      "release-type": "node",
+      "package-name": "@sruja/shared"
+    },
+    "packages/ui": {
+      "release-type": "node",
+      "package-name": "@sruja/ui"
     }
   },
-  "$comment": "Release Please will create release PRs that update versions in package.json files and generate CHANGELOG.md"
+  "plugins": [
+    {
+      "type": "linked-versions",
+      "groupName": "sruja",
+      "components": [
+        "sruja-monorepo",
+        "@sruja/designer",
+        "@sruja/social-publish",
+        "@sruja/storybook",
+        "sruja-language-support",
+        "@sruja/website",
+        "@sruja/eslint-config",
+        "@sruja/shared",
+        "@sruja/ui"
+      ]
+    }
+  ]
 }
