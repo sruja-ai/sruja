@@ -191,73 +191,15 @@ jobs:
           cp -r apps/designer/dist/* _site/designer/
           touch _site/designer/.nojekyll
 
-      - name: Create GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v2
+      - name: Deploy designer to GitHub Pages
+        uses: ./.github/actions/deploy-to-github-pages
         with:
+          site-path: _site/designer
+          target-repo: prod-website
+          target-branch: main
           app-id: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_ID }}
-          private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
-          owner: sruja-ai
-          repositories: prod-website
-
-      - name: Get GitHub App User ID
-        id: get-user-id
-        run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-
-      - name: Checkout target repo
-        uses: actions/checkout@v6
-        with:
-          repository: sruja-ai/prod-website
-          ref: main
-          token: ${{ steps.app-token.outputs.token }}
-          path: target
-
-      - name: Verify checkout succeeded
-        run: |
-          if [ ! -d "target" ]; then
-            echo "Error: Checkout failed - target directory not found"
-            echo "Repository: sruja-ai/prod-website"
-            exit 1
-          fi
-          if [ ! -d "target/.git" ]; then
-            echo "Error: Checkout failed - target/.git directory not found"
-            echo "Repository: sruja-ai/prod-website"
-            echo "This may indicate the repository doesn't exist or the token lacks access"
-            exit 1
-          fi
-          # Verify it's actually a git repository
-          cd target
-          if ! git rev-parse --git-dir > /dev/null 2>&1; then
-            echo "Error: target directory exists but is not a valid git repository"
-            echo "Repository: sruja-ai/prod-website"
-            exit 1
-          fi
-          echo "✅ Checkout verified - git repository is valid"
-
-      - name: Copy designer app to target
-        run: |
-          rm -rf target/designer
-          cp -r _site/designer target/
-
-      - name: Configure git
-        working-directory: target
-        run: |
-          git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
-          git config user.email "${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
-
-      - name: Commit and push
-        working-directory: target
-        run: |
-          git add -A
-          if git diff --cached --quiet; then 
-            echo "No changes to deploy"
-          else 
-            COMMIT_MSG="Deploy designer app (release ${{ needs.determine-version.outputs.tag }})"
-            git commit -m "$COMMIT_MSG"
-            git push origin HEAD:main
-          fi
+          app-private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
+          commit-message: "Deploy designer app (release ${{ needs.determine-version.outputs.tag }})"
 
   create-go-release:
     runs-on: ubuntu-latest
