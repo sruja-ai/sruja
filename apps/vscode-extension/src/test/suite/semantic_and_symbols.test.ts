@@ -9,7 +9,8 @@ suite("Semantic Tokens and Workspace Symbols", function () {
     assert.ok(ext, "Extension not found");
     await ext!.activate();
 
-    const examplePath = path.resolve(__dirname, "../../../../../examples/example.sruja");
+    // Use any example file from the examples folder (workspace folder)
+    const examplePath = path.resolve(__dirname, "../../../../../examples/demo_overview.sruja");
     const doc = await vscode.workspace.openTextDocument(examplePath);
     await vscode.window.showTextDocument(doc);
 
@@ -37,7 +38,8 @@ suite("Semantic Tokens and Workspace Symbols", function () {
     assert.ok(ext);
     await ext!.activate();
 
-    const examplePath = path.resolve(__dirname, "../../../../../examples/example.sruja");
+    // Use any example file from the examples folder (workspace folder)
+    const examplePath = path.resolve(__dirname, "../../../../../examples/demo_overview.sruja");
     const doc = await vscode.workspace.openTextDocument(examplePath);
     await vscode.window.showTextDocument(doc);
     await new Promise((r) => setTimeout(r, 3000));
