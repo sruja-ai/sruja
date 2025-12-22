@@ -3,7 +3,7 @@
   "displayName": "Sruja",
   "description": "Official Sruja extension for VS Code with IntelliSense, validation, and architecture preview",
   "version": "0.1.1",
-  "publisher": "sruja-ai",
+  "publisher": "srujaai",
   "private": true,
   "icon": "sruja-logo.png",
   "engines": {
