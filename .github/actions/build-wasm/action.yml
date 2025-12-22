@@ -1,0 +1,10 @@
+name: 'Build WASM'
+description: 'Build WASM artifacts using make'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Build WASM
+      shell: bash
+      run: make wasm
+

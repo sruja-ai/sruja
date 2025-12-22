@@ -1,0 +1,104 @@
+name: 'Deploy to GitHub Pages'
+description: 'Deploy site contents to a GitHub Pages repository'
+inputs:
+  site-path:
+    description: 'Path to the site contents to deploy'
+    required: true
+  target-repo:
+    description: 'Target repository (owner/repo)'
+    required: true
+  target-branch:
+    description: 'Target branch to deploy to'
+    required: false
+    default: 'main'
+  app-id:
+    description: 'GitHub App ID (from secrets)'
+    required: true
+  app-private-key:
+    description: 'GitHub App private key (from secrets)'
+    required: true
+  commit-message:
+    description: 'Commit message template (supports ${{ github.ref_name }}, ${{ github.sha }})'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create GitHub App token
+      id: app-token
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.app-private-key }}
+        owner: sruja-ai
+        repositories: ${{ inputs.target-repo }}
+
+    - name: Get GitHub App User ID
+      id: get-user-id
+      shell: bash
+      run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+      env:
+        GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+    - name: Checkout target repo
+      uses: actions/checkout@v6
+      with:
+        repository: sruja-ai/${{ inputs.target-repo }}
+        ref: ${{ inputs.target-branch }}
+        token: ${{ steps.app-token.outputs.token }}
+        path: target
+
+    - name: Verify checkout succeeded
+      shell: bash
+      run: |
+        if [ ! -d "target" ]; then
+          echo "Error: Checkout failed - target directory not found"
+          echo "Repository: sruja-ai/${{ inputs.target-repo }}"
+          exit 1
+        fi
+        if [ ! -d "target/.git" ]; then
+          echo "Error: Checkout failed - target/.git directory not found"
+          echo "Repository: sruja-ai/${{ inputs.target-repo }}"
+          echo "This may indicate the repository doesn't exist or the token lacks access"
+          exit 1
+        fi
+        # Verify it's actually a git repository
+        cd target
+        if ! git rev-parse --git-dir > /dev/null 2>&1; then
+          echo "Error: target directory exists but is not a valid git repository"
+          echo "Repository: sruja-ai/${{ inputs.target-repo }}"
+          exit 1
+        fi
+        echo "✅ Checkout verified - git repository is valid"
+
+    - name: Copy site contents
+      shell: bash
+      run: |
+        # If site-path ends with /designer, deploy to target/designer
+        if [[ "${{ inputs.site-path }}" == *"/designer" ]]; then
+          rm -rf target/designer
+          cp -r ${{ inputs.site-path }} target/designer
+        else
+          rsync -a --delete --exclude .git ${{ inputs.site-path }}/ target/
+        fi
+
+    - name: Configure git
+      working-directory: target
+      shell: bash
+      run: |
+        git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
+        git config user.email "${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
+
+    - name: Commit and push
+      working-directory: target
+      shell: bash
+      run: |
+        git add -A
+        if git diff --cached --quiet; then 
+          echo "No changes to deploy"
+        else 
+          COMMIT_MSG="${{ inputs.commit-message }}"
+          git commit -m "$COMMIT_MSG"
+          git push origin HEAD:${{ inputs.target-branch }}
+        fi
+

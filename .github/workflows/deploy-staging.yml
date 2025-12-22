@@ -46,31 +46,10 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          cache: "npm"
+        uses: ./.github/actions/setup-node
 
       - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: "1.25.4"
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: Install Go dependencies
-        run: go mod download
-
-      - name: Install npm dependencies
-        run: npm ci
+        uses: ./.github/actions/setup-go
 
       - name: Lint + Test
         run: |
@@ -78,11 +57,10 @@ jobs:
           go test -v ./pkg/... ./internal/... ./cmd/sruja ./tests/... ./scripts/...
 
       - name: Build WASM
-        run: |
-          make wasm
+        uses: ./.github/actions/build-wasm
 
       - name: Build shared packages
-        run: npm run build --workspace=packages/shared --workspace=packages/ui
+        uses: ./.github/actions/build-shared-packages
 
       - name: Build Astro website (staging)
         working-directory: apps/website
@@ -142,76 +120,13 @@ jobs:
           name: staging-site
           path: site
 
-      - name: Create GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v2
+      - name: Deploy to GitHub Pages
+        uses: ./.github/actions/deploy-to-github-pages
         with:
+          site-path: site
+          target-repo: staging-website
+          target-branch: main
           app-id: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_ID }}
-          private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
-          owner: sruja-ai
-          repositories: staging-website
-
-      - name: Get GitHub App User ID
-        id: get-user-id
-        run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-
-      - name: Checkout target repo
-        uses: actions/checkout@v6
-        with:
-          repository: sruja-ai/staging-website
-          ref: main
-          token: ${{ steps.app-token.outputs.token }}
-          path: target
-
-      - name: Verify checkout succeeded
-        run: |
-          if [ ! -d "target" ]; then
-            echo "Error: Checkout failed - target directory not found"
-            echo "Repository: sruja-ai/staging-website"
-            exit 1
-          fi
-          if [ ! -d "target/.git" ]; then
-            echo "Error: Checkout failed - target/.git directory not found"
-            echo "Repository: sruja-ai/staging-website"
-            echo "This may indicate the repository doesn't exist or the token lacks access"
-            exit 1
-          fi
-          # Verify it's actually a git repository
-          cd target
-          if ! git rev-parse --git-dir > /dev/null 2>&1; then
-            echo "Error: target directory exists but is not a valid git repository"
-            echo "Repository: sruja-ai/staging-website"
-            exit 1
-          fi
-          echo "✅ Checkout verified - git repository is valid"
-
-      - name: Copy site contents
-        run: |
-          # Copy website (excluding .git)
-          rsync -a --delete --exclude .git site/ target/
-          # Ensure designer directory is properly copied
-          if [ -d "site/designer" ]; then
-            rm -rf target/designer
-            cp -r site/designer target/
-          fi
-
-      - name: Configure git
-        working-directory: target
-        run: |
-          git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
-          git config user.email "${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
-
-      - name: Commit and push
-        working-directory: target
-        run: |
-          git add -A
-          if git diff --cached --quiet; then 
-            echo "No changes to deploy"
-          else 
-            COMMIT_MSG="Deploy staging (website + designer) from ${{ github.ref_name }} branch (commit ${{ github.sha }})"
-            git commit -m "$COMMIT_MSG"
-            git push origin HEAD:main
-          fi
+          app-private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
+          commit-message: "Deploy staging (website + designer) from ${{ github.ref_name }} branch (commit ${{ github.sha }})"
 

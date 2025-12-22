@@ -1,0 +1,10 @@
+name: 'Build Shared Packages'
+description: 'Build shared workspace packages (@sruja/shared and @sruja/ui)'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Build shared packages
+      shell: bash
+      run: npm run build --workspace=packages/shared --workspace=packages/ui
+
