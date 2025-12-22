@@ -3,8 +3,18 @@ name: Security Scanning
 on:
   push:
     branches: [main, develop]
+    paths:
+      # Trigger on code changes that affect security
+      - "**"
+      # Also trigger when custom actions change (they're used in this workflow)
+      - ".github/actions/**"
   pull_request:
     branches: [main, develop]
+    paths:
+      # Trigger on code changes that affect security
+      - "**"
+      # Also trigger when custom actions change (they're used in this workflow)
+      - ".github/actions/**"
   schedule:
     # Run weekly on Mondays at 9 AM UTC
     - cron: "0 9 * * 1"

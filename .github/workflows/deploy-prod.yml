@@ -110,7 +110,10 @@ jobs:
         run: npm run build:prod
         env:
           SITE_URL: https://sruja.ai
+          # Algolia configuration - use production index
           PUBLIC_ALGOLIA_SEARCH_API_KEY: ${{ secrets.PUBLIC_ALGOLIA_SEARCH_API_KEY }}
+          PUBLIC_ALGOLIA_INDEX_NAME: sruja_docs
+          # PostHog configuration
           PUBLIC_POSTHOG_API_KEY: ${{ secrets.PUBLIC_POSTHOG_API_KEY }}
           PUBLIC_POSTHOG_HOST: ${{ secrets.PUBLIC_POSTHOG_HOST }}
 

@@ -41,6 +41,7 @@ jobs:
               - 'go.sum'
               - 'Makefile'
               - '.golangci.yml'
+              - '.github/actions/**'
             typescript:
               - 'apps/**'
               - 'packages/**'

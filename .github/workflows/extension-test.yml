@@ -6,11 +6,13 @@ on:
       - main
     paths:
       - "apps/vscode-extension/**"
+      - ".github/workflows/extension-test.yml"
   pull_request:
     branches:
       - main
     paths:
       - "apps/vscode-extension/**"
+      - ".github/workflows/extension-test.yml"
 
 jobs:
   test:
