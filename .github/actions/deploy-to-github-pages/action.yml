@@ -85,7 +85,9 @@ runs:
     - name: Create deployment README
       shell: bash
       run: |
-        cat > target/README.md << 'EOF'
+        # Only create README for root site deployments, not for designer subdirectory
+        if [[ "${{ inputs.site-path }}" != *"/designer" ]]; then
+          cat > target/README.md << 'EOF'
         # Deployment Repository
 
         ⚠️ **This repository is for deployment purposes only.**
@@ -116,6 +118,10 @@ runs:
 
         *This README is automatically generated and deployed.*
         EOF
+          echo "✅ Created deployment README"
+        else
+          echo "⏭️  Skipping README creation (designer subdirectory deployment)"
+        fi
 
     - name: Configure git
       working-directory: target
