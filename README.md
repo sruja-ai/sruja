@@ -4,7 +4,7 @@
 
 **Sruja** is a next-generation architecture-as-code language with first-class support for requirements, ADRs, and extensible validation.
 
-> **⚠️ Alpha Release (v0.1.0)**: Sruja is under active development. APIs may change. See [ROADMAP.md](ROADMAP.md) for the path to v1.0.0.
+> **⚠️ Alpha Release**: Sruja is under active development. APIs may change.
 
 ## Documentation
 
@@ -12,12 +12,13 @@ https://sruja.ai
 
 ## Features
 
-- 🎯 **Architecture DSL**: Define systems, containers, components, and relations
+- 🎯 **Architecture DSL**: Define systems, containers, components, and relations with first-class support for requirements and ADRs
 - ✅ **Validation Engine**: Cycle detection, orphan detection, unique IDs, valid references
-- 📊 **JSON Export**: Export to JSON format for integration with other tools
+- 📊 **Multiple Export Formats**: JSON, Markdown, LikeC4, and more for integration with other tools
 - 🎨 **Code Formatter**: Auto-format your architecture with `sruja fmt`
 - 🌳 **Tree View**: Visualize hierarchy with `sruja tree`
-- 🔍 **LSP Support**: Language Server Protocol for IDE integration
+- 🔍 **LSP Support**: Language Server Protocol for IDE integration (VS Code extension available)
+- 🎨 **Interactive Designer**: Web-based visual designer for creating and editing architecture diagrams
 
 ## Project Structure
 
@@ -136,7 +137,8 @@ sruja tree --file example.sruja
 
 ### Prerequisites
 
-- Go 1.25+
+- **Go >= 1.25** (CI uses `1.25.5`)
+- **Node.js >= 18** (CI uses `24` for most workflows)
 
 ### Setup
 
