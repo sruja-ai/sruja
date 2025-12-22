@@ -139,7 +139,7 @@
     "compile": "tsc -p ./",
     "bundle": "tsx ./scripts/bundle.mts",
     "watch": "tsc -watch -p ./",
-    "test": "npm run compile && node ./out/apps/vscode-extension/src/test/runTest.js",
+    "test": "npm run build && node ./out/apps/vscode-extension/src/test/runTest.js",
     "test:staging": "npm run compile && node ./out/apps/vscode-extension/src/test/runStagingTest.js",
     "build": "npm run compile && npm run bundle",
     "dev": "npm run watch",
