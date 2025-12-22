@@ -25,6 +25,24 @@ Sruja is a monorepo containing:
 - **VS Code Extension**: Language support
 - **Examples**: Real-world architecture examples
 
+### ⚠️ Important: Deployment Repositories
+
+This repository (`sruja-ai/sruja`) is the **main development repository** where all contributions should be made.
+
+**Do not contribute to these deployment-only repositories:**
+- `sruja-ai/staging-website` - Staging deployment (auto-updated from `main` branch)
+- `sruja-ai/prod-website` - Production deployment (auto-updated from releases)
+
+These repositories are **automatically updated** by GitHub Actions workflows and contain only built static files for GitHub Pages hosting. They are **read-only** for contributors.
+
+**All contributions should be made to this repository (`sruja-ai/sruja`):**
+- ✅ Open issues here
+- ✅ Submit pull requests here
+- ✅ Report bugs here
+- ✅ Contribute code, docs, and examples here
+
+The deployment repositories will be automatically updated when your changes are merged to `main` or released.
+
 ## Development Setup
 
 ### Prerequisites
