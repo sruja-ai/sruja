@@ -1,0 +1,65 @@
+# Exclude parent directories and monorepo files
+../../
+../../*
+!../../apps/website/public/wasm/
+
+# Exclude source files (only include compiled output)
+src/**
+!src/**/*.json
+tsconfig.json
+*.ts
+!*.d.ts
+*.tsx
+*.js.map
+
+# Exclude development files
+.vscode/**
+.vscode-test/**
+node_modules/**
+.git/**
+.gitignore
+*.log
+*.md
+!README.md
+!LICENSE.txt
+
+# Exclude build artifacts that aren't needed
+*.test.js
+*.test.js.map
+__tests__/**
+test/**
+tests/**
+
+# Exclude other monorepo apps
+../../apps/designer/**
+../../apps/social-publish/**
+../../apps/storybook/**
+../../apps/vscode-extension/**
+
+# Exclude packages (we only need the compiled output)
+../../packages/**
+
+# Exclude root files
+../../*.json
+../../*.md
+../../*.yml
+../../*.yaml
+../../Makefile
+../../go.*
+../../cmd/**
+../../pkg/**
+../../internal/**
+../../scripts/**
+../../docs/**
+../../examples/**
+../../tests/**
+../../wasm/**
+
+# Exclude temporary files
+*.tmp
+*.temp
+.DS_Store
+*.swp
+*.swo
+*~
+
