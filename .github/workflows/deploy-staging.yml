@@ -18,8 +18,10 @@ on:
       # Designer-related changes
       - "apps/designer/**"
       # Shared dependencies
-      - "packages/diagram/**"
-      - "packages/layout/**"
+
+      # Root package files (monorepo dependencies)
+      - "package.json"
+      - "package-lock.json"
       # Build infrastructure
       - "Makefile"
       - "go.mod"
