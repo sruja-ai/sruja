@@ -47,6 +47,8 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        env:
+          HUSKY: 0
 
       - name: Publish to Reddit
         if: ${{ secrets.REDDIT_CLIENT_ID && secrets.REDDIT_CLIENT_SECRET && secrets.REDDIT_USERNAME && secrets.REDDIT_PASSWORD && secrets.REDDIT_SUBREDDIT }}
