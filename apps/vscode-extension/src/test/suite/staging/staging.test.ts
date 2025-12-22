@@ -8,7 +8,7 @@ import * as fs from "fs";
 suite("Staging Extension E2E Tests", function () {
   this.timeout(60_000); // 60 seconds for e2e tests
 
-  const EXTENSION_ID = "sruja-ai.sruja";
+  const EXTENSION_ID = "srujaai.sruja";
 
   test("Extension is installed from marketplace", async () => {
     const extension = vscode.extensions.getExtension(EXTENSION_ID);

@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 suite("Semantic Tokens and Workspace Symbols", function () {
   this.timeout(10000);
   test("semantic tokens provided for .sruja", async function () {
-    const ext = vscode.extensions.getExtension("sruja-ai.sruja");
+    const ext = vscode.extensions.getExtension("srujaai.sruja");
     assert.ok(ext, "Extension not found");
     await ext!.activate();
 
@@ -34,7 +34,7 @@ suite("Semantic Tokens and Workspace Symbols", function () {
   });
 
   test("workspace symbols include systems as Class", async function () {
-    const ext = vscode.extensions.getExtension("sruja-ai.sruja");
+    const ext = vscode.extensions.getExtension("srujaai.sruja");
     assert.ok(ext);
     await ext!.activate();
 
