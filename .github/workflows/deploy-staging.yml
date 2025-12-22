@@ -202,13 +202,21 @@ jobs:
 
       - name: Update extension version
         run: |
-          # Extract version from tag (e.g., v0.1.2-rc.16 -> 0.1.2-rc16)
-          # VS Code Marketplace doesn't support dots in pre-release identifiers (rc.16)
-          # So we convert rc.16 to rc16
+          # Extract version from tag (e.g., v0.1.2-rc.17 -> 0.1.2-alpha.17)
+          # VS Code Marketplace requires standard pre-release identifiers (alpha, beta, etc.)
+          # 'rc' is not recognized, so we convert to 'alpha' format
           RC_TAG="${{ needs.determine-rc-version.outputs.rc-tag }}"
           EXTENSION_VERSION="${RC_TAG#v}"  # Remove 'v' prefix
-          # Replace rc. with rc (e.g., 0.1.2-rc.16 -> 0.1.2-rc16)
-          EXTENSION_VERSION="${EXTENSION_VERSION//rc./rc}"
+          # Convert rc.17 to alpha.17 format (VS Code Marketplace standard)
+          # Extract the RC number from rc.N format
+          if [[ "$EXTENSION_VERSION" =~ -rc\.([0-9]+)$ ]]; then
+            RC_NUMBER="${BASH_REMATCH[1]}"
+            BASE_VERSION="${EXTENSION_VERSION%-rc.*}"
+            EXTENSION_VERSION="${BASE_VERSION}-alpha.${RC_NUMBER}"
+            echo "✅ Converted RC version to Marketplace format: ${EXTENSION_VERSION}"
+          else
+            echo "⚠️  Could not parse RC version, using as-is: ${EXTENSION_VERSION}"
+          fi
           cd apps/vscode-extension
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           if [ "$CURRENT_VERSION" != "$EXTENSION_VERSION" ]; then
