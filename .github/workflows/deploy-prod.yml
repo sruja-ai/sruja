@@ -77,7 +77,7 @@ jobs:
         working-directory: apps/vscode-extension
 
       - name: Publish to Marketplace
-        run: npx vsce publish --skipDuplicate
+        run: npx vsce publish --skip-duplicate
         working-directory: apps/vscode-extension
         env:
           VSCE_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
