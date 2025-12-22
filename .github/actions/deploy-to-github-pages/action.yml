@@ -18,7 +18,7 @@ inputs:
     description: "GitHub App private key (from secrets)"
     required: true
   commit-message:
-    description: "Commit message template (supports ${{ github.ref_name }}, ${{ github.sha }})"
+    description: "Commit message (can include github.ref_name and github.sha if expanded by calling workflow)"
     required: true
 
 runs:
