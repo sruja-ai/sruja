@@ -110,7 +110,7 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-node
         with:
-          install-deps: 'false'
+          install-deps: 'true'
 
       - name: Update extension version
         run: |
