@@ -25,6 +25,8 @@ on:
       - "packages/ui/**"
       # Designer-related changes
       - "apps/designer/**"
+      # VS Code extension changes
+      - "apps/vscode-extension/**"
       # Shared dependencies
 
       # Root package files (monorepo dependencies)
