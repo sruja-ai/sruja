@@ -1,7 +1,12 @@
-# Exclude parent directories and monorepo files
-../../
+# Exclude ALL parent directories and monorepo files
+# Use absolute exclusion patterns to prevent any parent directory inclusion
+../
+../*
+../**/*
 ../../*
-!../../apps/website/public/wasm/
+../../**/*
+!../../apps/website/public/wasm/sruja.wasm.gz
+!../../apps/website/public/wasm/wasm_exec.js
 
 # Exclude source files (only include compiled output)
 src/**
@@ -29,11 +34,14 @@ __tests__/**
 test/**
 tests/**
 
-# Exclude other monorepo apps
+# Exclude other monorepo apps (explicitly exclude everything except wasm files we need)
 ../../apps/designer/**
 ../../apps/social-publish/**
 ../../apps/storybook/**
 ../../apps/vscode-extension/**
+../../apps/website/**
+!../../apps/website/public/wasm/sruja.wasm.gz
+!../../apps/website/public/wasm/wasm_exec.js
 
 # Exclude packages (we only need the compiled output)
 ../../packages/**
