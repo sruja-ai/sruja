@@ -421,7 +421,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libasound2 libgbm1 libgtk-3-0 libnss3
+          sudo apt-get install -y xvfb libasound2t64 libgbm1 libgtk-3-0 libnss3
 
       - name: Run staging e2e tests (Linux)
         working-directory: apps/vscode-extension
