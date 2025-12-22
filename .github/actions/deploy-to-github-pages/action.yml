@@ -79,22 +79,37 @@ runs:
           rm -rf target/designer
           cp -r ${{ inputs.site-path }} target/designer
         else
+          # Capture CNAME if it exists in the target repo
+          if [ -f "target/CNAME" ]; then
+            cp target/CNAME ./target_CNAME
+            HAS_CNAME=true
+          else
+            HAS_CNAME=false
+          fi
+
           # Remove existing contents except .git
           find target -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
-          # Copy all contents including _astro directory and hidden files
-          # Using cp -a to preserve all attributes and copy everything (including _astro)
+          # Copy all contents including assets directory and hidden files
+          # Using cp -a to preserve all attributes and copy everything
           cp -a ${{ inputs.site-path }}/. target/
-          # Verify _astro directory was copied
-          if [ ! -d "target/_astro" ]; then
-            echo "❌ Error: _astro directory not found after copy"
+
+          # Restore CNAME if it existed
+          if [ "$HAS_CNAME" = true ]; then
+            cp ./target_CNAME target/CNAME
+            echo "✅ CNAME restored"
+          fi
+
+          # Verify assets directory was copied (Astro now builds to /assets instead of /_astro)
+          if [ ! -d "target/assets" ] && [ ! -d "target/_astro" ]; then
+            echo "❌ Error: Neither assets nor _astro directory found after copy"
             echo "Source directory contents:"
             ls -la ${{ inputs.site-path }}/
             echo "Target directory contents:"
             ls -la target/
             exit 1
           fi
-          echo "✅ _astro directory verified"
-          # Ensure .nojekyll exists to prevent Jekyll from processing _astro
+          echo "✅ Asset directory verified"
+          # Ensure .nojekyll exists to prevent Jekyll from processing underscore directories
           touch target/.nojekyll
         fi
 
