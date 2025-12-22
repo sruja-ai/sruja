@@ -133,7 +133,7 @@ test.describe("Critical User Paths on Staging", () => {
 
     // Log errors for debugging
     if (errors.length > 0) {
-      console.log("JavaScript errors found:", errors);
+      console.error("JavaScript errors found:", errors);
     }
 
     // Page should still be functional

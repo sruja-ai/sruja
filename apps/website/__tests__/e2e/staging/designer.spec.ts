@@ -82,7 +82,7 @@ test.describe("Designer App on Staging", () => {
 
     // Log errors for debugging but don't fail if it's just warnings
     if (wasmErrors.length > 0) {
-      console.log("WASM-related console errors:", wasmErrors);
+      console.warn("WASM-related console errors:", wasmErrors);
     }
 
     // Basic check: page should still be functional
