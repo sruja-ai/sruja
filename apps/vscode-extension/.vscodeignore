@@ -10,7 +10,6 @@ tsconfig.json
 *.ts
 !*.d.ts
 *.tsx
-*.js.map
 
 # Exclude development files
 .vscode/**
@@ -62,4 +61,17 @@ tests/**
 *.swp
 *.swo
 *~
+
+# Include only necessary files (implicitly by excluding everything else)
+# The following are included:
+# - dist/** (compiled extension)
+# - out/** (TypeScript compiled output)
+# - wasm/** (WASM files)
+# - language-configuration.json
+# - syntaxes/** (syntax highlighting)
+# - snippets/** (code snippets)
+# - README.md
+# - LICENSE.txt
+# - sruja-logo.png
+# - package.json (required)
 

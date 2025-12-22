@@ -15,17 +15,6 @@
     "Formatters"
   ],
   "main": "./dist/extension.js",
-  "files": [
-    "out/**",
-    "dist/**",
-    "wasm/**",
-    "language-configuration.json",
-    "syntaxes/**",
-    "snippets/**",
-    "README.md",
-    "LICENSE.txt",
-    "sruja-logo.png"
-  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/sruja-ai/sruja"
