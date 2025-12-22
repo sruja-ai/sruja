@@ -14,9 +14,52 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  detect-changes:
+    name: Detect Changed Files
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.filter.outputs.go }}
+      typescript: ${{ steps.filter.outputs.typescript }}
+      examples: ${{ steps.filter.outputs.examples }}
+      website: ${{ steps.filter.outputs.website }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            go:
+              - 'pkg/**'
+              - 'cmd/**'
+              - 'internal/**'
+              - 'scripts/**'
+              - 'tests/**'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Makefile'
+              - '.golangci.yml'
+            typescript:
+              - 'apps/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig.json'
+            examples:
+              - 'examples/**'
+              - 'pkg/**'
+              - 'cmd/**'
+            website:
+              - 'apps/website/**'
+              - 'packages/shared/**'
+              - 'packages/ui/**'
+
   go-test:
     name: Go Tests & Quality
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.go == 'true'
 
     steps:
       - name: Checkout code
@@ -102,6 +145,8 @@ jobs:
   typescript-lint:
     name: Lint TypeScript/JavaScript
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.typescript == 'true'
 
     steps:
       - name: Checkout code
@@ -122,6 +167,8 @@ jobs:
   typescript-test:
     name: Test TypeScript/JavaScript
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.typescript == 'true'
 
     steps:
       - name: Checkout code
@@ -163,6 +210,8 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: detect-changes
+    if: needs.detect-changes.outputs.website == 'true'
 
     steps:
       - name: Checkout code
@@ -206,7 +255,8 @@ jobs:
   build-examples:
     name: Build Examples
     runs-on: ubuntu-latest
-    needs: go-test
+    needs: [detect-changes, go-test]
+    if: needs.detect-changes.outputs.examples == 'true' && needs.go-test.result == 'success'
 
     steps:
       - name: Checkout code
