@@ -15,11 +15,13 @@ runs:
     - name: Import GPG key
       shell: bash
       run: |
+        set +e  # Don't exit on error - we'll handle errors explicitly
+
         # Import the GPG private key
-        echo "${{ inputs.gpg-private-key }}" | gpg --batch --import 2>&1 || {
+        if ! echo "${{ inputs.gpg-private-key }}" | gpg --batch --import 2>&1; then
           echo "⚠️  Failed to import GPG key. Tag signing will be disabled."
           exit 0
-        }
+        fi
 
         # Get the key ID
         KEY_ID=$(gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep -E "^sec" | head -1 | awk '{print $2}' | cut -d'/' -f2)
@@ -32,29 +34,29 @@ runs:
         echo "GPG_KEY_ID=${KEY_ID}" >> $GITHUB_ENV
         echo "✅ Imported GPG key: ${KEY_ID}"
 
-        # Configure git to use this key for signing
-        git config --global user.signingkey "${KEY_ID}"
-        git config --global tag.gpgsign true
+        # Configure git to use this key for signing (non-critical, continue on failure)
+        git config --global user.signingkey "${KEY_ID}" || echo "⚠️  Failed to set git signing key, continuing..."
+        git config --global tag.gpgsign true || echo "⚠️  Failed to enable tag signing, continuing..."
 
         # Configure gpg-agent to use loopback pinentry (non-interactive)
-        mkdir -p ~/.gnupg
-        chmod 700 ~/.gnupg
+        mkdir -p ~/.gnupg || true
+        chmod 700 ~/.gnupg || true
 
-        # Configure GPG for non-interactive use
+        # Configure GPG for non-interactive use (append, create if doesn't exist)
         {
           echo "pinentry-mode loopback"
           echo "batch"
           echo "no-tty"
-        } >> ~/.gnupg/gpg.conf
+        } >> ~/.gnupg/gpg.conf 2>/dev/null || echo "⚠️  Failed to write gpg.conf, continuing..."
 
         # Configure gpg-agent for non-interactive use
         {
           echo "allow-loopback-pinentry"
           echo "default-cache-ttl 3600"
           echo "max-cache-ttl 3600"
-        } >> ~/.gnupg/gpg-agent.conf
+        } >> ~/.gnupg/gpg-agent.conf 2>/dev/null || echo "⚠️  Failed to write gpg-agent.conf, continuing..."
 
-        # Kill any existing gpg-agent and reload
+        # Kill any existing gpg-agent and reload (non-critical)
         gpg-connect-agent killagent /bye 2>/dev/null || true
         gpg-connect-agent reloadagent /bye 2>/dev/null || true
 
@@ -65,24 +67,30 @@ runs:
           
           if [ -n "$KEYGRIP" ]; then
             # Try different paths for gpg-preset-passphrase
+            PASS_CACHED=false
             for PRESET_PATH in /usr/lib/gnupg2/gpg-preset-passphrase /usr/lib/gnupg/gpg-preset-passphrase /usr/libexec/gpg-preset-passphrase; do
               if [ -x "$PRESET_PATH" ]; then
-                echo "${{ inputs.gpg-passphrase }}" | "$PRESET_PATH" --preset "$KEYGRIP" 2>/dev/null && {
+                if echo "${{ inputs.gpg-passphrase }}" | "$PRESET_PATH" --preset "$KEYGRIP" 2>/dev/null; then
                   echo "✅ Cached passphrase in gpg-agent"
+                  PASS_CACHED=true
                   break
-                }
+                fi
               fi
             done
+            if [ "$PASS_CACHED" = false ]; then
+              echo "⚠️  Could not cache passphrase in gpg-agent, will use fallback method"
+            fi
           fi
           
           # Export passphrase as environment variable for use in git tag (as fallback)
           # Note: This is less secure but works when gpg-preset-passphrase is not available
-          echo "GPG_PASSPHRASE=${{ inputs.gpg-passphrase }}" >> $GITHUB_ENV
+          echo "GPG_PASSPHRASE=${{ inputs.gpg-passphrase }}" >> $GITHUB_ENV || echo "⚠️  Failed to set GPG_PASSPHRASE env var, continuing..."
           
-          # Test that we can sign with the passphrase
-          echo "test" | gpg --batch --yes --passphrase "${{ inputs.gpg-passphrase }}" --pinentry-mode loopback --clearsign > /dev/null 2>&1 || {
+          # Test that we can sign with the passphrase (non-critical)
+          if ! echo "test" | gpg --batch --yes --passphrase "${{ inputs.gpg-passphrase }}" --pinentry-mode loopback --clearsign > /dev/null 2>&1; then
             echo "⚠️  GPG signing test with passphrase failed, but continuing..."
-          }
+          fi
         fi
 
         echo "✅ GPG configured for non-interactive signing"
+        exit 0  # Always exit successfully if we got this far

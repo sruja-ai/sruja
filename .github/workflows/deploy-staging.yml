@@ -27,8 +27,9 @@ on:
       - "cmd/**"
       - "pkg/**"
       - "internal/**"
-      # Workflow changes
+      # Workflow and action changes
       - ".github/workflows/deploy-staging.yml"
+      - ".github/actions/**"
   pull_request:
     types: [closed]
     branches:
