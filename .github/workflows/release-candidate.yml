@@ -34,6 +34,13 @@ jobs:
         with:
           install-deps: 'false'
 
+      - name: Setup GPG for signing
+        uses: ./.github/actions/setup-gpg
+        if: env.GPG_PRIVATE_KEY != ''
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
       - name: Determine next version and create RC tag
         id: version
         run: |
@@ -79,12 +86,21 @@ jobs:
           echo "rc-tag=${RC_TAG}" >> $GITHUB_OUTPUT
           echo "📦 Creating RC tag: ${RC_TAG}"
           
-          # Create and push the tag
+          # Configure git user
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "$RC_TAG" -m "Release candidate: $RC_TAG (commit ${{ github.sha }})"
+          
+          # Create signed tag if GPG is configured, otherwise unsigned
+          if [ -n "${GPG_KEY_ID:-}" ]; then
+            git tag -s "$RC_TAG" -m "Release candidate: $RC_TAG (commit ${{ github.sha }})"
+            echo "✅ Created signed RC tag: $RC_TAG"
+          else
+            git tag -a "$RC_TAG" -m "Release candidate: $RC_TAG (commit ${{ github.sha }})"
+            echo "⚠️  Created unsigned RC tag: $RC_TAG (GPG_PRIVATE_KEY secret not configured)"
+          fi
+          
           git push origin "$RC_TAG"
-          echo "✅ Created and pushed RC tag: $RC_TAG"
+          echo "✅ Pushed RC tag: $RC_TAG"
 
   publish-rc-extension:
     name: Publish RC Extension
