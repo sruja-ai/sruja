@@ -13,11 +13,18 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Setup Node.js
+    - name: Setup Node.js (with cache)
+      if: inputs.install-deps == 'true'
       uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
       with:
         node-version: ${{ inputs.node-version }}
         cache: "npm"
+
+    - name: Setup Node.js (without cache)
+      if: inputs.install-deps != 'true'
+      uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+      with:
+        node-version: ${{ inputs.node-version }}
 
     - name: Install npm dependencies
       if: inputs.install-deps == 'true'

@@ -3,7 +3,7 @@
 import { defineConfig } from "astro/config";
 import react from "@astrojs/react";
 import mdx from "@astrojs/mdx";
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -38,15 +38,18 @@ export default defineConfig({
   },
   integrations: [react(), mdx()],
   output: "static",
+  build: {
+    assets: "assets",
+  },
   vite: {
     plugins: [
       tailwindcss(),
       nodePolyfills(),
       {
-        name: 'suppress-node-resolve',
-        enforce: 'pre',
+        name: "suppress-node-resolve",
+        enforce: "pre",
         resolveId(id) {
-          if (id === 'fs/promises' || id === 'path' || id === 'url') {
+          if (id === "fs/promises" || id === "path" || id === "url") {
             return { id, external: true };
           }
           return null;
@@ -57,7 +60,12 @@ export default defineConfig({
       cors: true,
       watch: {
         // Watch workspace packages for changes
-        ignored: ["!**/node_modules/@sruja/**", "**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "**/__tests__/**"],
+        ignored: [
+          "!**/node_modules/@sruja/**",
+          "**/*.test.{ts,tsx}",
+          "**/*.spec.{ts,tsx}",
+          "**/__tests__/**",
+        ],
       },
       fs: {
         allow: [
@@ -93,13 +101,7 @@ export default defineConfig({
     resolve: {
       conditions: ["import", "module", "browser", "default"],
       // Ensure CSS files are resolved as raw assets, not modules
-      dedupe: [
-        "react",
-        "react-dom",
-        "@sruja/ui",
-        "@sruja/shared",
-        "@sruja/designer",
-      ],
+      dedupe: ["react", "react-dom", "@sruja/ui", "@sruja/shared", "@sruja/designer"],
       // Explicitly handle CSS imports from packages
       extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json", ".css"],
       alias: {
