@@ -1,6 +1,6 @@
 ---
 // apps/website/src/pages/tutorials/index.astro
-import { getCollection } from 'astro:content';
+import { getCollection, type CollectionEntry } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 import ContentPage from '@/features/content/components/ContentPage.astro';
 import ContentList from '@/features/content/components/ContentList.astro';
@@ -8,11 +8,11 @@ import { sortByWeight } from '@/features/content/utils/sorting';
 import { transformToContentListItems } from '@/features/content/utils/transform';
 
 const tutorials = await getCollection('tutorials');
-const sortedTutorials = sortByWeight(tutorials);
+const sortedTutorials: CollectionEntry<'tutorials'>[] = sortByWeight(tutorials);
 
 // Categorize tutorials
-const basicTutorials = sortedTutorials.filter(t => t.slug.startsWith('basic/'));
-const advancedTutorials = sortedTutorials.filter(t => t.slug.startsWith('advanced/'));
+const basicTutorials: CollectionEntry<'tutorials'>[] = sortedTutorials.filter((t: CollectionEntry<'tutorials'>) => t.slug.startsWith('basic/'));
+const advancedTutorials: CollectionEntry<'tutorials'>[] = sortedTutorials.filter((t: CollectionEntry<'tutorials'>) => t.slug.startsWith('advanced/'));
 
 const basicItems = transformToContentListItems(basicTutorials, '/tutorials', {
   linkText: 'Read Tutorial →',
