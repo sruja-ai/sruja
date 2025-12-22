@@ -112,16 +112,16 @@ model {
 **Export to different formats:**
 
 ```bash
-# Export to JSON (LikeC4 format)
+# Export to JSON (Sruja's extended LikeC4 format with metadata)
 sruja export json example.sruja
 
 # Export to Markdown documentation
 sruja export markdown example.sruja
 
-# Export to LikeC4 JSON
+# Export to pure LikeC4 JSON (standard LikeC4 Model API format)
 sruja export likec4 example.sruja
 
-# Export to LikeC4 DSL
+# Export to LikeC4 DSL (text format, not JSON)
 sruja export likec4-dsl example.sruja
 ```
 
