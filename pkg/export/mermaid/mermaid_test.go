@@ -153,8 +153,20 @@ func TestExporter_Config(t *testing.T) {
 	config.Theme = "dark"
 	config.UseFrontmatter = true
 	exporter := NewExporter(config)
+	// Create a program with at least one element so the exporter produces output
 	prog := &language.Program{
-		Model: &language.ModelBlock{},
+		Model: &language.ModelBlock{
+			Items: []language.ModelItem{
+				{
+					ElementDef: &language.LikeC4ElementDef{
+						Definition: &language.LikeC4Definition{
+							Kind: "system",
+							Name: mkStr("TestSystem"),
+						},
+					},
+				},
+			},
+		},
 	}
 	result := exporter.Export(prog)
 	if !strings.Contains(result, "---") {
