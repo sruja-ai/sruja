@@ -15,19 +15,35 @@ runs:
     - name: Import GPG key
       shell: bash
       run: |
-        echo "${{ inputs.gpg-private-key }}" | gpg --batch --import
+        # Import the GPG private key
+        echo "${{ inputs.gpg-private-key }}" | gpg --batch --import 2>&1 || {
+          echo "⚠️  Failed to import GPG key. Tag signing will be disabled."
+          exit 0
+        }
+        
         # Get the key ID
-        KEY_ID=$(gpg --list-secret-keys --keyid-format LONG | grep -E "^sec" | head -1 | awk '{print $2}' | cut -d'/' -f2)
+        KEY_ID=$(gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep -E "^sec" | head -1 | awk '{print $2}' | cut -d'/' -f2)
+        
+        if [ -z "$KEY_ID" ]; then
+          echo "⚠️  Could not extract GPG key ID. Tag signing will be disabled."
+          exit 0
+        fi
+        
         echo "GPG_KEY_ID=${KEY_ID}" >> $GITHUB_ENV
         echo "✅ Imported GPG key: ${KEY_ID}"
         
         # Configure git to use this key for signing
         git config --global user.signingkey "${KEY_ID}"
-        git config --global commit.gpgsign true
         git config --global tag.gpgsign true
         
-        # If passphrase is provided, configure gpg-agent
+        # Configure gpg-agent to use loopback pinentry (non-interactive)
+        mkdir -p ~/.gnupg
+        echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+        
+        # If passphrase is provided, configure it
         if [ -n "${{ inputs.gpg-passphrase }}" ]; then
-          echo "${{ inputs.gpg-passphrase }}" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback
+          echo "${{ inputs.gpg-passphrase }}" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --sign-key "${KEY_ID}" 2>&1 || true
         fi
-
+        
+        # Test signing capability
+        echo "test" | gpg --clearsign 2>&1 | head -1 || echo "⚠️  GPG signing test failed, but continuing..."

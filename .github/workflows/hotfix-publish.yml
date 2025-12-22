@@ -46,10 +46,10 @@ jobs:
 
       - name: Setup GPG for signing
         uses: ./.github/actions/setup-gpg
-        if: env.GPG_PRIVATE_KEY != ''
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        if: secrets.GPG_PRIVATE_KEY != ''
+        with:
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Normalize version tag
         id: version
