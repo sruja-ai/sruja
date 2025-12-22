@@ -1,7 +1,6 @@
 // apps/vscode-extension/src/extension.ts
 import * as vscode from "vscode";
 import * as fs from "fs";
-import * as path from "path";
 import { SrujaPreviewProvider } from "./previewProvider";
 import { initializeWasmLsp, debugWasmLsp } from "./wasmLspProvider";
 
@@ -142,7 +141,7 @@ function getPreviewUri(uri: vscode.Uri): vscode.Uri {
   return vscode.Uri.parse(`${SrujaPreviewProvider.scheme}:${uri.path}.md?${query}`);
 }
 
-async function previewArchitecture(context: vscode.ExtensionContext) {
+async function previewArchitecture(_context: vscode.ExtensionContext) {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     vscode.window.showErrorMessage("No active editor");
@@ -195,7 +194,7 @@ async function previewArchitecture(context: vscode.ExtensionContext) {
   }
 }
 
-async function showWelcomeMessage(context: vscode.ExtensionContext) {
+async function showWelcomeMessage(_context: vscode.ExtensionContext) {
   const action = await vscode.window.showInformationMessage(
     "Welcome to Sruja! 🎉",
     "Get Started",

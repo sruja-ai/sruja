@@ -6,9 +6,9 @@ import { getWasmApi } from "./initialization";
 
 /**
  * Registers all LSP providers for the Sruja language.
- * 
+ *
  * @param context - VS Code extension context
- * 
+ *
  * @remarks
  * Registers the following providers:
  * - Hover
@@ -65,7 +65,7 @@ export function registerLspProviders(context: vscode.ExtensionContext): void {
 
   // Register completion provider
   const completionProvider: vscode.CompletionItemProvider = {
-    async provideCompletionItems(document, position, token, context) {
+    async provideCompletionItems(document, position, _token, _context) {
       const wasmApi = getWasmApi();
       if (!wasmApi || document.languageId !== "sruja") return [];
 
@@ -234,7 +234,7 @@ export function registerLspProviders(context: vscode.ExtensionContext): void {
                 results.push(new vscode.SymbolInformation(sym.name, kind, "", location));
               }
             }
-          } catch (error) {
+          } catch {
             // Skip documents that fail to parse
             continue;
           }
@@ -255,7 +255,7 @@ export function registerLspProviders(context: vscode.ExtensionContext): void {
 
   // Register reference provider (Find All References)
   const referenceProvider: vscode.ReferenceProvider = {
-    async provideReferences(document, position, context) {
+    async provideReferences(document, position, _context) {
       const wasmApi = getWasmApi();
       if (!wasmApi || document.languageId !== "sruja") return [];
 
@@ -299,7 +299,7 @@ export function registerLspProviders(context: vscode.ExtensionContext): void {
 
   // Register rename provider
   const renameProvider: vscode.RenameProvider = {
-    async provideRenameEdits(document, position, newName, token) {
+    async provideRenameEdits(document, position, newName, _token) {
       const wasmApi = getWasmApi();
       if (!wasmApi || document.languageId !== "sruja") return null;
 
@@ -366,7 +366,7 @@ export function registerLspProviders(context: vscode.ExtensionContext): void {
 
         const range = new vscode.Range(position.line, start, position.line, end);
         return range;
-      } catch (error) {
+      } catch {
         return null;
       }
     },
@@ -435,7 +435,10 @@ export function registerLspProviders(context: vscode.ExtensionContext): void {
             link.range.end.line,
             link.range.end.character
           );
-          const vscodeLink = new vscode.DocumentLink(range, link.target ? vscode.Uri.parse(link.target) : undefined);
+          const vscodeLink = new vscode.DocumentLink(
+            range,
+            link.target ? vscode.Uri.parse(link.target) : undefined
+          );
           if (link.tooltip) {
             vscodeLink.tooltip = link.tooltip;
           }
@@ -509,7 +512,11 @@ export function registerLspProviders(context: vscode.ExtensionContext): void {
   };
 
   context.subscriptions.push(
-    vscode.languages.registerDocumentSemanticTokensProvider("sruja", semanticTokensProvider, semanticTokensLegend)
+    vscode.languages.registerDocumentSemanticTokensProvider(
+      "sruja",
+      semanticTokensProvider,
+      semanticTokensLegend
+    )
   );
 
   // Register Inlay Hints provider (advanced LSP feature)
@@ -609,10 +616,7 @@ export function registerLspProviders(context: vscode.ExtensionContext): void {
         const signatureMatch = hoverInfo.contents.match(/(\w+)\s*\([^)]*\)/);
         if (signatureMatch) {
           const signature = new vscode.SignatureHelp();
-          const sigInfo = new vscode.SignatureInformation(
-            signatureMatch[0],
-            hoverInfo.contents
-          );
+          const sigInfo = new vscode.SignatureInformation(signatureMatch[0], hoverInfo.contents);
           signature.signatures = [sigInfo];
           signature.activeSignature = 0;
           return signature;
@@ -650,4 +654,3 @@ export function registerLspProviders(context: vscode.ExtensionContext): void {
 
   log("WASM LSP providers registered successfully");
 }
-

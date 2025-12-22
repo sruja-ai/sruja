@@ -123,7 +123,7 @@ suite("Staging Extension E2E Tests", function () {
 
     try {
       const document = await vscode.workspace.openTextDocument(testFile);
-      const editor = await vscode.window.showTextDocument(document);
+      await vscode.window.showTextDocument(document);
 
       // Wait for LSP to initialize
       await new Promise((resolve) => setTimeout(resolve, 5000));
