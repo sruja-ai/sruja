@@ -1,7 +1,7 @@
 {
-  "name": "sruja-language-support",
-  "displayName": "Sruja DSL Language Support",
-  "description": "Language support for Sruja DSL with LSP integration",
+  "name": "sruja",
+  "displayName": "Sruja",
+  "description": "Official Sruja extension for VS Code with IntelliSense, validation, and architecture preview",
   "version": "0.1.1",
   "publisher": "sruja-ai",
   "private": true,
@@ -140,6 +140,7 @@
     "bundle": "tsx ./scripts/bundle.mts",
     "watch": "tsc -watch -p ./",
     "test": "npm run compile && node ./out/test/runTest.js",
+    "test:staging": "npm run compile && node ./out/test/runStagingTest.js",
     "build": "npm run compile && npm run bundle",
     "dev": "npm run watch",
     "clean": "rimraf out dist *.vsix",

@@ -3,7 +3,7 @@ name: Deploy to Staging
 # This workflow handles staging deployments:
 # - Triggers on merge to main or when release-please PR is merged
 # - Creates RC tag to GitHub
-# - Publishes VS Code extension with RC tag
+# - Publishes VS Code extension as pre-release with RC tag
 # - Deploys website and designer to staging
 
 on:
@@ -140,8 +140,20 @@ jobs:
 
           # Create signed tag if GPG is configured, otherwise unsigned
           if [ -n "${GPG_KEY_ID:-}" ]; then
-            git tag -s "$RC_TAG" -m "Release candidate: $RC_TAG (commit ${{ github.sha }})"
-            echo "✅ Created signed RC tag: $RC_TAG"
+            TAG_MESSAGE="Release candidate: $RC_TAG (commit ${{ github.sha }})"
+            
+            # Set up GPG for non-interactive use
+            export GPG_TTY=$(tty 2>/dev/null || echo /dev/console)
+            
+            # Try to create signed tag - GPG should use cached passphrase from setup-gpg action
+            # If that fails, fall back to unsigned tag
+            if git tag -s "$RC_TAG" -m "$TAG_MESSAGE" 2>&1; then
+              echo "✅ Created signed RC tag: $RC_TAG"
+            else
+              echo "⚠️  Failed to create signed tag (GPG signing failed), creating unsigned tag"
+              git tag -a "$RC_TAG" -m "$TAG_MESSAGE"
+              echo "✅ Created unsigned RC tag: $RC_TAG"
+            fi
           else
             git tag -a "$RC_TAG" -m "Release candidate: $RC_TAG (commit ${{ github.sha }})"
             echo "⚠️  Created unsigned RC tag: $RC_TAG (GPG_PRIVATE_KEY secret not configured)"
@@ -193,7 +205,7 @@ jobs:
         working-directory: apps/vscode-extension
 
       - name: Publish to Marketplace (RC)
-        run: npx vsce publish --skipDuplicate
+        run: npx vsce publish --pre-release --skipDuplicate
         working-directory: apps/vscode-extension
         env:
           VSCE_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
@@ -294,3 +306,98 @@ jobs:
           app-id: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_ID }}
           app-private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
           commit-message: "Deploy staging (website + designer) from ${{ github.ref_name }} branch (commit ${{ github.sha }})"
+
+  e2e-tests:
+    name: E2E Tests (Staging)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: deploy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
+        with:
+          install-deps: "false"
+
+      - name: Install dependencies
+        working-directory: apps/website
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: apps/website
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Run E2E tests against staging
+        working-directory: apps/website
+        run: npm run test:e2e:staging
+        env:
+          STAGING_URL: https://staging.sruja.ai
+          CI: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: playwright-report
+          path: apps/website/playwright-report/
+          retention-days: 7
+
+  e2e-tests-extension:
+    name: E2E Tests - VS Code Extension (Staging)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: publish-rc-extension
+    # Based on VS Code CI documentation: https://code.visualstudio.com/api/working-with-extensions/continuous-integration
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
+        with:
+          install-deps: "false"
+
+      - name: Set up Go
+        uses: ./.github/actions/setup-go
+
+      - name: Build WASM
+        uses: ./.github/actions/build-wasm
+
+      - name: Install dependencies
+        working-directory: apps/vscode-extension
+        run: npm ci
+
+      - name: Build extension
+        working-directory: apps/vscode-extension
+        run: npm run build
+
+      - name: Install xvfb (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libasound2 libgbm1 libgtk-3-0 libnss3
+
+      - name: Run staging e2e tests (Linux)
+        working-directory: apps/vscode-extension
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:staging
+        env:
+          CI: true
+          DISPLAY: ":99.0"
+
+      - name: Run staging e2e tests (non-Linux)
+        working-directory: apps/vscode-extension
+        if: runner.os != 'Linux'
+        run: npm run test:staging
+        env:
+          CI: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: vscode-extension-test-results
+          path: apps/vscode-extension/test-workspace/
+          retention-days: 7

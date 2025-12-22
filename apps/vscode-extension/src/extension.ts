@@ -197,7 +197,7 @@ async function previewArchitecture(context: vscode.ExtensionContext) {
 
 async function showWelcomeMessage(context: vscode.ExtensionContext) {
   const action = await vscode.window.showInformationMessage(
-    "Welcome to Sruja DSL Language Support! 🎉",
+    "Welcome to Sruja! 🎉",
     "Get Started",
     "View Documentation",
     "Dismiss"

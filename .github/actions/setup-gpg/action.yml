@@ -1,16 +1,16 @@
-name: 'Setup GPG for Tag Signing'
-description: 'Configures GPG for signing git tags in GitHub Actions'
+name: "Setup GPG for Tag Signing"
+description: "Configures GPG for signing git tags in GitHub Actions"
 inputs:
   gpg-private-key:
-    description: 'GPG private key for signing'
+    description: "GPG private key for signing"
     required: true
   gpg-passphrase:
-    description: 'GPG passphrase (if key is encrypted)'
+    description: "GPG passphrase (if key is encrypted)"
     required: false
-    default: ''
+    default: ""
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Import GPG key
       shell: bash
@@ -20,30 +20,69 @@ runs:
           echo "⚠️  Failed to import GPG key. Tag signing will be disabled."
           exit 0
         }
-        
+
         # Get the key ID
         KEY_ID=$(gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep -E "^sec" | head -1 | awk '{print $2}' | cut -d'/' -f2)
-        
+
         if [ -z "$KEY_ID" ]; then
           echo "⚠️  Could not extract GPG key ID. Tag signing will be disabled."
           exit 0
         fi
-        
+
         echo "GPG_KEY_ID=${KEY_ID}" >> $GITHUB_ENV
         echo "✅ Imported GPG key: ${KEY_ID}"
-        
+
         # Configure git to use this key for signing
         git config --global user.signingkey "${KEY_ID}"
         git config --global tag.gpgsign true
-        
+
         # Configure gpg-agent to use loopback pinentry (non-interactive)
         mkdir -p ~/.gnupg
-        echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
-        
-        # If passphrase is provided, configure it
+        chmod 700 ~/.gnupg
+
+        # Configure GPG for non-interactive use
+        {
+          echo "pinentry-mode loopback"
+          echo "batch"
+          echo "no-tty"
+        } >> ~/.gnupg/gpg.conf
+
+        # Configure gpg-agent for non-interactive use
+        {
+          echo "allow-loopback-pinentry"
+          echo "default-cache-ttl 3600"
+          echo "max-cache-ttl 3600"
+        } >> ~/.gnupg/gpg-agent.conf
+
+        # Kill any existing gpg-agent and reload
+        gpg-connect-agent killagent /bye 2>/dev/null || true
+        gpg-connect-agent reloadagent /bye 2>/dev/null || true
+
+        # If passphrase is provided, configure it for non-interactive use
         if [ -n "${{ inputs.gpg-passphrase }}" ]; then
-          echo "${{ inputs.gpg-passphrase }}" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --sign-key "${KEY_ID}" 2>&1 || true
+          # Try to cache passphrase in gpg-agent using preset-passphrase
+          KEYGRIP=$(gpg --with-keygrip --list-secret-keys "${KEY_ID}" 2>/dev/null | grep -A1 "^sec" | grep "Keygrip" | awk '{print $3}' | head -1)
+          
+          if [ -n "$KEYGRIP" ]; then
+            # Try different paths for gpg-preset-passphrase
+            for PRESET_PATH in /usr/lib/gnupg2/gpg-preset-passphrase /usr/lib/gnupg/gpg-preset-passphrase /usr/libexec/gpg-preset-passphrase; do
+              if [ -x "$PRESET_PATH" ]; then
+                echo "${{ inputs.gpg-passphrase }}" | "$PRESET_PATH" --preset "$KEYGRIP" 2>/dev/null && {
+                  echo "✅ Cached passphrase in gpg-agent"
+                  break
+                }
+              fi
+            done
+          fi
+          
+          # Export passphrase as environment variable for use in git tag (as fallback)
+          # Note: This is less secure but works when gpg-preset-passphrase is not available
+          echo "GPG_PASSPHRASE=${{ inputs.gpg-passphrase }}" >> $GITHUB_ENV
+          
+          # Test that we can sign with the passphrase
+          echo "test" | gpg --batch --yes --passphrase "${{ inputs.gpg-passphrase }}" --pinentry-mode loopback --clearsign > /dev/null 2>&1 || {
+            echo "⚠️  GPG signing test with passphrase failed, but continuing..."
+          }
         fi
-        
-        # Test signing capability
-        echo "test" | gpg --clearsign 2>&1 | head -1 || echo "⚠️  GPG signing test failed, but continuing..."
+
+        echo "✅ GPG configured for non-interactive signing"

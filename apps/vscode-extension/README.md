@@ -1,4 +1,4 @@
-# Sruja DSL Language Support for VS Code
+# Sruja for VS Code
 
 Professional language support for the Sruja architecture-as-code DSL, including comprehensive IntelliSense, real-time validation, and interactive documentation preview.
 
@@ -45,13 +45,13 @@ No prerequisites required! The extension uses WASM and works out of the box.
 ```sruja
 architecture "E-Commerce Platform" {
   person Customer "Customer"
-  
+
   system OrderService "Order Service" {
     container OrderAPI "Order API" {
       technology "Spring Boot"
     }
   }
-  
+
   Customer -> OrderService.OrderAPI "places orders"
 }
 ```
@@ -112,16 +112,19 @@ Configure the extension in VS Code settings:
 ### Common Issues
 
 **"WASM initialization failed"**
+
 - Ensure WASM files are bundled with extension
 - Try reloading the window
 - Check the output channel for detailed error messages
 
 **"No diagnostics showing"**
+
 - Ensure your `.sruja` file has valid syntax
 - Check that the language server initialized (status bar should show "Ready")
 - Try saving the file to trigger diagnostics
 
 **"IntelliSense not working"**
+
 - Ensure the file is saved (not untitled)
 - Check that the language server is running (status bar)
 - Try reloading the window
