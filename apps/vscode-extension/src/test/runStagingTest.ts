@@ -33,10 +33,10 @@ async function main() {
       );
     }
 
-    console.log("🧪 Running staging e2e tests...");
-    console.log(`   Extension ID: ${EXTENSION_ID}`);
-    console.log(`   Test workspace: ${testWorkspace}`);
-    console.log(`   Testing extension as if installed from marketplace (pre-release)`);
+    console.info("🧪 Running staging e2e tests...");
+    console.info(`   Extension ID: ${EXTENSION_ID}`);
+    console.info(`   Test workspace: ${testWorkspace}`);
+    console.info(`   Testing extension as if installed from marketplace (pre-release)`);
 
     // Run tests - the extension will be loaded from the development path
     // In a real scenario, this would be installed from marketplace
@@ -51,7 +51,7 @@ async function main() {
       ],
     });
 
-    console.log("✅ Staging e2e tests completed successfully");
+    console.info("✅ Staging e2e tests completed successfully");
   } catch (err) {
     console.error("❌ Failed to run staging e2e tests");
     console.error(err);
