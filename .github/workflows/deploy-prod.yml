@@ -1,29 +1,21 @@
-name: Unified Release
-
-# This workflow handles production deployments and releases:
-# - Triggers when release-please PR is merged (creates a release)
-# - Deploys website to production (prod-website repository)
-# - Publishes VS Code extension to marketplace
-# - Creates Go release artifacts
+name: Deploy to Production
 
 on:
-  push:
-    tags:
-      - "v*.*.*" # Triggers on semantic version tags
   release:
-    types: [published] # Triggers when Release Please publishes a release
+    types: [published]
 
 permissions:
   contents: write
   id-token: write
 
 concurrency:
-  group: "release"
+  group: "deploy-prod"
   cancel-in-progress: false
 
 jobs:
   determine-version:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
@@ -48,9 +40,10 @@ jobs:
 
   publish-extension:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: determine-version
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Set up Go
         uses: ./.github/actions/setup-go
@@ -91,10 +84,11 @@ jobs:
 
   deploy-prod-website:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: determine-version
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: true
           fetch-depth: 0
@@ -139,10 +133,11 @@ jobs:
 
   deploy-designer:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: determine-version
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Set up Node.js
         uses: ./.github/actions/setup-node
@@ -168,7 +163,7 @@ jobs:
       - name: Prepare deployment
         run: |
           mkdir -p _site/designer
-          cp -r apps/designer/dist/* _site/designer/
+          cp -a apps/designer/dist/. _site/designer/
           touch _site/designer/.nojekyll
 
       - name: Deploy designer to GitHub Pages
@@ -183,10 +178,11 @@ jobs:
 
   create-go-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: determine-version
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
 
@@ -197,7 +193,8 @@ jobs:
         uses: ./.github/actions/setup-go
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        # Security: Using commit SHA - Get from https://github.com/goreleaser/goreleaser-action/releases (v6)
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           distribution: goreleaser
           version: "~> v2"

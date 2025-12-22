@@ -1,7 +1,10 @@
 name: Deploy to Staging
 
-# This workflow deploys both website and designer to staging when code is merged to main.
-# Production deployment happens via unified-release.yml when a release is published.
+# This workflow handles staging deployments:
+# - Triggers on merge to main or when release-please PR is merged
+# - Creates RC tag to GitHub
+# - Publishes VS Code extension with RC tag
+# - Deploys website and designer to staging
 
 on:
   push:
@@ -26,6 +29,10 @@ on:
       - "internal/**"
       # Workflow changes
       - ".github/workflows/deploy-staging.yml"
+  pull_request:
+    types: [closed]
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -36,11 +43,168 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  determine-rc-version:
+    name: Determine RC Version
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      rc-tag: ${{ steps.version.outputs.rc-tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
+        with:
+          install-deps: "false"
+
+      - name: Check if GPG is configured
+        id: check-gpg
+        run: |
+          if [ -n "${{ secrets.GPG_PRIVATE_KEY }}" ]; then
+            echo "configured=true" >> $GITHUB_OUTPUT
+          else
+            echo "configured=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup GPG for signing
+        uses: ./.github/actions/setup-gpg
+        if: steps.check-gpg.outputs.configured == 'true'
+        with:
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Get next version from release-please manifest
+        id: version
+        run: |
+          # Get the current version from package.json
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $CURRENT_VERSION"
+
+          # Release-please maintains .release-please-manifest.json with the next version
+          # This file is updated by the release-please workflow
+          NEXT_VERSION="$CURRENT_VERSION"
+          if [ -f ".release-please-manifest.json" ]; then
+            MANIFEST_VERSION=$(node -p "require('./.release-please-manifest.json')['.'] || null")
+            if [ "$MANIFEST_VERSION" != "null" ] && [ -n "$MANIFEST_VERSION" ]; then
+              NEXT_VERSION="$MANIFEST_VERSION"
+              echo "✅ Next version from release-please manifest: $NEXT_VERSION"
+            else
+              echo "⚠️  No version in manifest, will use current version"
+            fi
+          else
+            echo "⚠️  .release-please-manifest.json not found (release-please may not have run yet)"
+          fi
+
+          # If still using current version, increment patch version as fallback
+          if [ "$NEXT_VERSION" == "$CURRENT_VERSION" ]; then
+            IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+            patch=$((patch + 1))
+            NEXT_VERSION="$major.$minor.$patch"
+            echo "⚠️  Using fallback incremented patch version: $NEXT_VERSION"
+          fi
+
+          echo "version=${NEXT_VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Next version to use: ${NEXT_VERSION}"
+
+      - name: Create RC tag
+        id: rc-tag
+        run: |
+          NEXT_VERSION="${{ steps.version.outputs.version }}"
+
+          # Find the highest existing RC tag for this version (format: v{version}-rc.{number})
+          RC_NUMBER=1
+          for i in {1..100}; do
+            if git rev-parse "v${NEXT_VERSION}-rc.${i}" >/dev/null 2>&1; then
+              RC_NUMBER=$((i + 1))
+            else
+              break
+            fi
+          done
+
+          if [ $RC_NUMBER -gt 100 ]; then
+            echo "Error: Maximum RC number (100) reached for version $NEXT_VERSION"
+            exit 1
+          fi
+
+          RC_TAG="v${NEXT_VERSION}-rc.${RC_NUMBER}"
+          echo "rc-tag=${RC_TAG}" >> $GITHUB_OUTPUT
+          echo "📦 Creating RC tag: ${RC_TAG}"
+
+          # Configure git user
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Create signed tag if GPG is configured, otherwise unsigned
+          if [ -n "${GPG_KEY_ID:-}" ]; then
+            git tag -s "$RC_TAG" -m "Release candidate: $RC_TAG (commit ${{ github.sha }})"
+            echo "✅ Created signed RC tag: $RC_TAG"
+          else
+            git tag -a "$RC_TAG" -m "Release candidate: $RC_TAG (commit ${{ github.sha }})"
+            echo "⚠️  Created unsigned RC tag: $RC_TAG (GPG_PRIVATE_KEY secret not configured)"
+          fi
+
+          git push origin "$RC_TAG"
+          echo "✅ Pushed RC tag: $RC_TAG"
+
+  publish-rc-extension:
+    name: Publish RC Extension
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: determine-rc-version
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Go
+        uses: ./.github/actions/setup-go
+
+      - name: Build WASM
+        uses: ./.github/actions/build-wasm
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
+        with:
+          install-deps: "true"
+
+      - name: Update extension version
+        run: |
+          # Extract version from tag (e.g., v0.1.2-rc.1 -> 0.1.2-rc.1)
+          RC_TAG="${{ needs.determine-rc-version.outputs.rc-tag }}"
+          EXTENSION_VERSION="${RC_TAG#v}"  # Remove 'v' prefix
+          cd apps/vscode-extension
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          if [ "$CURRENT_VERSION" != "$EXTENSION_VERSION" ]; then
+            npm version "$EXTENSION_VERSION" --no-git-tag-version
+            echo "✅ Updated extension version to $EXTENSION_VERSION"
+          else
+            echo "✅ Extension version already at $EXTENSION_VERSION"
+          fi
+
+      - name: Install Dependencies
+        run: npm ci
+        working-directory: apps/vscode-extension
+
+      - name: Build extension
+        run: npm run build
+        working-directory: apps/vscode-extension
+
+      - name: Publish to Marketplace (RC)
+        run: npx vsce publish --skipDuplicate
+        working-directory: apps/vscode-extension
+        env:
+          VSCE_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: determine-rc-version
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: true
           fetch-depth: 0
@@ -105,17 +269,18 @@ jobs:
           touch _site/designer/.nojekyll
 
       - name: Upload site artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: staging-site
           path: _site
 
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: build
     steps:
       - name: Download site artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: staging-site
           path: site

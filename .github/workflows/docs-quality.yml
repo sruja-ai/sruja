@@ -3,19 +3,20 @@ name: Docs Quality
 on:
   push:
     paths:
-      - 'apps/website/src/content/**'
+      - "apps/website/src/content/**"
   pull_request:
     paths:
-      - 'apps/website/src/content/**'
+      - "apps/website/src/content/**"
 
 jobs:
   lint-md:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
-          node-version: '22'
+          node-version: "22"
       - name: Install dependencies
         run: npm ci --prefix apps/website
       - name: Remark lint
@@ -23,13 +24,13 @@ jobs:
 
   link-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
-          node-version: '22'
+          node-version: "22"
       - name: Install dependencies
         run: npm ci --prefix apps/website
       - name: Markdown link check
         run: npm run link:check --prefix apps/website
-

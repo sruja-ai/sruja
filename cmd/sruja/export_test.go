@@ -229,36 +229,24 @@ func TestRunExport_LikeC4(t *testing.T) {
 
 	var stdout, stderr bytes.Buffer
 
-	// Test standard likec4 export
+	// Test likec4 DSL export
 	exitCode := runExport([]string{"likec4", file}, &stdout, &stderr)
 	if exitCode != 0 {
 		t.Errorf("Expected exit code 0 for likec4 export, got %d. Stderr: %s", exitCode, stderr.String())
 	}
-	if !strings.Contains(stdout.String(), `"kind": "system"`) {
-		t.Error("Expected JSON output for likec4 export")
+	if !strings.Contains(stdout.String(), "Sys = system") {
+		t.Errorf("Expected DSL output for likec4 export, got:\n%s", stdout.String())
 	}
 
-	// Test compact likec4 export
+	// Test c4 alias
 	stdout.Reset()
 	stderr.Reset()
-	exitCode = runExport([]string{"--compact", "likec4", file}, &stdout, &stderr)
+	exitCode = runExport([]string{"c4", file}, &stdout, &stderr)
 	if exitCode != 0 {
-		t.Errorf("Expected exit code 0 for compact likec4 export, got %d. Stderr: %s", exitCode, stderr.String())
-	}
-	// Compact output should not have newlines (mostly)
-	if strings.Count(stdout.String(), "\n") > 5 { // Allow a few newlines
-		t.Error("Expected compact output")
-	}
-
-	// Test likec4-dsl export
-	stdout.Reset()
-	stderr.Reset()
-	exitCode = runExport([]string{"likec4-dsl", file}, &stdout, &stderr)
-	if exitCode != 0 {
-		t.Errorf("Expected exit code 0 for likec4-dsl export, got %d. Stderr: %s", exitCode, stderr.String())
+		t.Errorf("Expected exit code 0 for c4 export, got %d. Stderr: %s", exitCode, stderr.String())
 	}
 	if !strings.Contains(stdout.String(), "Sys = system") {
-		t.Errorf("Expected DSL output for likec4-dsl export, got:\n%s", stdout.String())
+		t.Errorf("Expected DSL output for c4 export, got:\n%s", stdout.String())
 	}
 }
 

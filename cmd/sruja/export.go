@@ -24,7 +24,6 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 	_ = exportCmd.String("out", "", "(deprecated) Output directory")
 	extended := exportCmd.Bool("extended", false, "Include pre-computed views in JSON output (for viewer apps)")
 	_ = exportCmd.Bool("local", false, "Use local assets")
-	compact := exportCmd.Bool("compact", false, "Output compact JSON without indentation (likec4 only)")
 
 	// AI-friendly export options
 	scope := exportCmd.String("scope", "", "Scope to specific element (format: type:id, e.g., system:OrderService)")
@@ -38,7 +37,7 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 
 	if exportCmd.NArg() < 2 {
 		_, _ = fmt.Fprintln(stderr, "Usage: sruja export <format> <file>")
-		_, _ = fmt.Fprintln(stderr, "Formats: json, mermaid, markdown, likec4")
+		_, _ = fmt.Fprintln(stderr, "Formats: json, mermaid, markdown, likec4, c4")
 		return 1
 	}
 
@@ -87,7 +86,6 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 	}
 
 	var output string
-	var outputBytes []byte
 	switch format {
 	case "json":
 		exporter := jexport.NewLikeC4Exporter()
@@ -130,19 +128,11 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 		// TODO: Update mermaid exporter to work with LikeC4 AST
 		_, _ = fmt.Fprintf(stderr, "Error: mermaid export not yet updated for LikeC4 syntax\n")
 		return 1
-	case "likec4":
-		exporter := likec4.NewExporter()
-		if *compact {
-			outputBytes, err = exporter.ExportCompact(program)
-		} else {
-			outputBytes, err = exporter.Export(program)
-		}
-		output = string(outputBytes)
-	case "likec4-dsl", "c4":
+	case "likec4", "c4":
 		dslExporter := likec4.NewDSLExporter()
 		output = dslExporter.ExportDSL(program)
 	default:
-		_, _ = fmt.Fprintf(stderr, "Unsupported export format: %s. Supported formats: json, mermaid, markdown, likec4, likec4-dsl, c4\n", format)
+		_, _ = fmt.Fprintf(stderr, "Unsupported export format: %s. Supported formats: json, mermaid, markdown, likec4, c4\n", format)
 		return 1
 	}
 

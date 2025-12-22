@@ -5,12 +5,6 @@ on:
     branches:
       - main
 
-# Required permissions for release-please to create pull requests
-# If repository has "Read and write permissions" disabled in Settings → Actions → General,
-# you must either:
-# 1. Enable "Read and write permissions" in repository settings, OR
-# 2. Create a Personal Access Token (PAT) with 'repo' scope and add it as secret RELEASE_PLEASE_TOKEN
-#    Then change token below to: token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 permissions:
   contents: write
   pull-requests: write
@@ -18,12 +12,12 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
-      
-      - uses: googleapis/release-please-action@v4
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
         id: release
         with:
-          # Use config file for monorepo support
           config-file: release-please-config.json
           token: ${{ secrets.GITHUB_TOKEN }}

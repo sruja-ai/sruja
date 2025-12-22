@@ -17,16 +17,17 @@ jobs:
   detect-changes:
     name: Detect Changed Files
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       go: ${{ steps.filter.outputs.go }}
       typescript: ${{ steps.filter.outputs.typescript }}
       examples: ${{ steps.filter.outputs.examples }}
       website: ${{ steps.filter.outputs.website }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         id: filter
         with:
           filters: |
@@ -58,12 +59,13 @@ jobs:
   go-test:
     name: Go Tests & Quality
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: detect-changes
     if: needs.detect-changes.outputs.go == 'true'
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Set up Go
         uses: ./.github/actions/setup-go
@@ -74,7 +76,7 @@ jobs:
       - name: Run gofmt check
         run: |
           if [ "$(gofmt -s -l ./pkg ./internal ./cmd ./scripts | wc -l)" -gt 0 ]; then
-            echo "Code is not formatted. Run 'make fmt' to fix."
+            echo "::error::Code is not formatted. Run 'make fmt' to fix."
             gofmt -s -l ./pkg ./internal ./cmd ./scripts
             exit 1
           fi
@@ -83,13 +85,16 @@ jobs:
         run: go vet ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
-          version: v2.6.2
+          version: v1.61.0
           args: --timeout=5m
 
       - name: Run tests with coverage
-        run: go test -v -coverprofile=coverage.out ./pkg/... ./internal/... ./cmd/sruja ./tests/... ./scripts/...
+        run: |
+          go test -v -coverprofile=coverage.out ./pkg/... ./internal/... ./cmd/sruja ./tests/... ./scripts/...
+          echo "### Go Test Summary" >> $GITHUB_STEP_SUMMARY
+          go tool cover -func=coverage.out | tail -n 1 | awk '{print "Total Coverage: " $3}' >> $GITHUB_STEP_SUMMARY
 
       - name: Check coverage threshold
         run: make test-coverage-check
@@ -101,11 +106,9 @@ jobs:
             echo "❌ coverage.out not found!"
             exit 1
           fi
-          echo "Coverage file size: $(stat -c%s coverage.out 2>/dev/null || stat -f%z coverage.out 2>/dev/null) bytes"
-          head -n 5 coverage.out
 
       - name: Upload coverage to Codacy
-        uses: codacy/codacy-coverage-reporter-action@v1.3.0
+        uses: codacy/codacy-coverage-reporter-action@89d6c85cfafaec52c72b6c5e8b2878d33104c699 # v1.3.0
         if: always() && hashFiles('coverage.out') != ''
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
@@ -124,20 +127,20 @@ jobs:
           gosec -quiet ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
         continue-on-error: true
 
-      # Note: Comprehensive security scanning is also performed by security.yml workflow
-
   typescript-lint:
     name: Lint TypeScript/JavaScript
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: detect-changes
     if: needs.detect-changes.outputs.typescript == 'true'
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        # Security: Using commit SHA - Get from https://github.com/actions/setup-node/releases (v4.1.0)
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
           node-version: "24"
           cache: "npm"
@@ -151,15 +154,17 @@ jobs:
   typescript-test:
     name: Test TypeScript/JavaScript
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: detect-changes
     if: needs.detect-changes.outputs.typescript == 'true'
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        # Security: Using commit SHA - Get from https://github.com/actions/setup-node/releases (v4.1.0)
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
           node-version: "24"
           cache: "npm"
@@ -172,7 +177,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           files: |
             packages/shared/coverage/lcov.info
@@ -186,23 +191,20 @@ jobs:
         run: npm audit --audit-level=moderate
         continue-on-error: true
 
-      - name: Check bundle sizes
-        run: npm run build --filter=@sruja/shared --filter=@sruja/ui && npm run size || echo "Bundle size check skipped (packages use source TypeScript, not bundles)"
-        continue-on-error: true
-
   test-e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     needs: detect-changes
     if: needs.detect-changes.outputs.website == 'true'
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        # Security: Using commit SHA - Get from https://github.com/actions/setup-node/releases (v4.1.0)
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
           node-version: "24"
           cache: "npm"
@@ -213,7 +215,15 @@ jobs:
       - name: Build shared packages
         run: npm run build --workspace=packages/shared --workspace=packages/ui
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('apps/website/package-lock.json') }}
+
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps
         working-directory: apps/website
 
@@ -230,7 +240,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: playwright-report
           path: apps/website/playwright-report/
@@ -239,12 +249,13 @@ jobs:
   build-examples:
     name: Build Examples
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [detect-changes, go-test]
     if: needs.detect-changes.outputs.examples == 'true' && needs.go-test.result == 'success'
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Set up Go
         uses: ./.github/actions/setup-go
@@ -256,7 +267,7 @@ jobs:
         run: |
           ./sruja compile examples/likec4_example.sruja
           ./sruja compile examples/project_ecommerce.sruja
-      
+
       - name: Lint examples
         run: |
           ./sruja lint examples/likec4_example.sruja
