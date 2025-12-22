@@ -230,10 +230,29 @@ jobs:
         working-directory: apps/vscode-extension
 
       - name: Publish to Marketplace (RC)
-        run: npx vsce publish --pre-release --skip-duplicate
         working-directory: apps/vscode-extension
         env:
           VSCE_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
+        run: |
+          echo "📦 Publishing extension to VS Code Marketplace (pre-release)..."
+          echo "Extension: sruja-ai.sruja"
+          echo "Version: $(node -p "require('./package.json').version")"
+          
+          # Check if PAT is set
+          if [ -z "$VSCE_PAT" ]; then
+            echo "❌ Error: VSCE_PAT is not set. Check AZURE_DEVOPS_PAT secret."
+            exit 1
+          fi
+          
+          # Publish with verbose output
+          if npx vsce publish --pre-release --skip-duplicate; then
+            echo "✅ Extension published successfully!"
+            echo "🔗 Marketplace URL: https://marketplace.visualstudio.com/items?itemName=sruja-ai.sruja"
+          else
+            echo "❌ Failed to publish extension"
+            echo "Check the error messages above for details"
+            exit 1
+          fi
 
   build:
     runs-on: ubuntu-latest
