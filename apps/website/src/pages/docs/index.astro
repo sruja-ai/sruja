@@ -1,6 +1,6 @@
 ---
 // apps/website/src/pages/docs/index.astro
-import { getCollection } from 'astro:content';
+import { getCollection, type CollectionEntry } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 import ContentPage from '@/features/content/components/ContentPage.astro';
 import ExpandableCard from '@/features/content/components/ExpandableCard.astro';
@@ -8,46 +8,46 @@ import { sortByWeight } from '@/features/content/utils/sorting';
 import { transformToContentListItem } from '@/features/content/utils/transform';
 
 const allDocs = await getCollection('docs');
-const sortedDocs = sortByWeight(allDocs);
+const sortedDocs: CollectionEntry<'docs'>[] = sortByWeight(allDocs);
 
 // Categorize docs by weight ranges
-const gettingStarted = sortedDocs.filter(d => d.data.weight !== undefined && d.data.weight >= 0 && d.data.weight < 10 && !d.slug.includes('/'));
-const guides = sortedDocs.filter(d => d.data.weight !== undefined && d.data.weight >= 20 && d.data.weight < 50 && !d.slug.includes('/'));
-const reference = sortedDocs.filter(d => d.data.weight !== undefined && d.data.weight >= 50 && d.data.weight < 70 && !d.slug.includes('/'));
-const examples = sortedDocs.filter(d => d.data.weight !== undefined && d.data.weight >= 80 && d.data.weight < 90 && !d.slug.includes('/'));
-const community = sortedDocs.filter(d => d.data.weight !== undefined && d.data.weight >= 90 && d.data.weight < 100 && !d.slug.includes('/'));
-const styleGuide = sortedDocs.filter(d => d.data.weight !== undefined && d.data.weight >= 100 && !d.slug.includes('/'));
+const gettingStarted: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 0 && d.data.weight < 10 && !d.slug.includes('/'));
+const guides: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 20 && d.data.weight < 50 && !d.slug.includes('/'));
+const reference: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 50 && d.data.weight < 70 && !d.slug.includes('/'));
+const examples: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 80 && d.data.weight < 90 && !d.slug.includes('/'));
+const community: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 90 && d.data.weight < 100 && !d.slug.includes('/'));
+const styleGuide: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 100 && !d.slug.includes('/'));
 
 // Concepts (in subfolder)
-const concepts = sortedDocs.filter(d => d.slug.startsWith('concepts/'));
+const concepts: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.slug.startsWith('concepts/'));
 const conceptsOverview = concepts.find(d => d.slug === 'concepts/overview');
-const coreConcepts = concepts.filter(d => {
+const coreConcepts: CollectionEntry<'docs'>[] = concepts.filter(d => {
   const weight = d.data.weight || 999;
   return weight >= 10 && weight < 20;
 });
-const relationsConcepts = concepts.filter(d => {
+const relationsConcepts: CollectionEntry<'docs'>[] = concepts.filter(d => {
   const weight = d.data.weight || 999;
   return weight >= 20 && weight < 30;
 });
-const advancedConcepts = concepts.filter(d => {
+const advancedConcepts: CollectionEntry<'docs'>[] = concepts.filter(d => {
   const weight = d.data.weight || 999;
   return weight >= 30 && weight < 50;
 });
-const metadataConcepts = concepts.filter(d => {
+const metadataConcepts: CollectionEntry<'docs'>[] = concepts.filter(d => {
   const weight = d.data.weight || 999;
   return weight >= 40 && weight < 50;
 });
-const governanceConcepts = concepts.filter(d => {
+const governanceConcepts: CollectionEntry<'docs'>[] = concepts.filter(d => {
   const weight = d.data.weight || 999;
   return weight >= 50 && weight < 60;
 });
-const advancedFeatures = concepts.filter(d => {
+const advancedFeatures: CollectionEntry<'docs'>[] = concepts.filter(d => {
   const weight = d.data.weight || 999;
   return weight >= 60;
 });
 
 // Reference subfolder
-const referenceDocs = sortedDocs.filter(d => d.slug.startsWith('reference/'));
+const referenceDocs: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.slug.startsWith('reference/'));
 ---
 
 <Layout title="Documentation" description="Complete Sruja documentation and guides.">
