@@ -1,0 +1,33 @@
+name: 'Setup GPG for Tag Signing'
+description: 'Configures GPG for signing git tags in GitHub Actions'
+inputs:
+  gpg-private-key:
+    description: 'GPG private key for signing'
+    required: true
+  gpg-passphrase:
+    description: 'GPG passphrase (if key is encrypted)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Import GPG key
+      shell: bash
+      run: |
+        echo "${{ inputs.gpg-private-key }}" | gpg --batch --import
+        # Get the key ID
+        KEY_ID=$(gpg --list-secret-keys --keyid-format LONG | grep -E "^sec" | head -1 | awk '{print $2}' | cut -d'/' -f2)
+        echo "GPG_KEY_ID=${KEY_ID}" >> $GITHUB_ENV
+        echo "✅ Imported GPG key: ${KEY_ID}"
+        
+        # Configure git to use this key for signing
+        git config --global user.signingkey "${KEY_ID}"
+        git config --global commit.gpgsign true
+        git config --global tag.gpgsign true
+        
+        # If passphrase is provided, configure gpg-agent
+        if [ -n "${{ inputs.gpg-passphrase }}" ]; then
+          echo "${{ inputs.gpg-passphrase }}" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback
+        fi
+
