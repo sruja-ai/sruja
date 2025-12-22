@@ -38,6 +38,7 @@
     "lint:fix": "eslint . --fix",
     "lint:md": "remark -q src/content",
     "link:check": "markdown-link-check -r -c .mlc.config.json src/content",
+    "generate:algolia": "node scripts/generate-algolia-data.mts",
     "clean": "rimraf dist .astro"
   },
   "dependencies": {

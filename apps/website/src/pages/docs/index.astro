@@ -20,7 +20,6 @@ const styleGuide: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEn
 
 // Concepts (in subfolder)
 const concepts: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.slug.startsWith('concepts/'));
-const conceptsOverview = concepts.find(d => d.slug === 'concepts/overview');
 const coreConcepts: CollectionEntry<'docs'>[] = concepts.filter(d => {
   const weight = d.data.weight || 999;
   return weight >= 10 && weight < 20;

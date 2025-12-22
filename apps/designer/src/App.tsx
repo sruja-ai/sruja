@@ -17,11 +17,7 @@ import {
   useToastStore,
 } from "./stores";
 import { useViewStore } from "./stores/viewStore";
-import {
-  useClipboardOperations,
-  useProjectSync,
-  useFileHandlers,
-} from "./hooks";
+import { useClipboardOperations, useProjectSync, useFileHandlers } from "./hooks";
 import { useTabCounts } from "./hooks/useTabCounts";
 import { DetailsView } from "./components/Views/DetailsView";
 import { ViewTabs } from "./components/ViewTabs";
@@ -79,10 +75,12 @@ export default function App() {
     handleCreateLocal,
     reloadFromDsl,
     isImporting,
-    fileInputRef
+    fileInputRef,
   } = useFileHandlers(canvasRef as React.RefObject<ArchitectureCanvasRef>);
 
-  const { handleCopy, handlePaste, handleDuplicate } = useClipboardOperations(canvasRef as React.RefObject<ArchitectureCanvasRef>);
+  const { handleCopy, handlePaste, handleDuplicate } = useClipboardOperations(
+    canvasRef as React.RefObject<ArchitectureCanvasRef>
+  );
 
   const isLoadingFile = isSyncLoading || isImporting;
 
@@ -97,32 +95,48 @@ export default function App() {
   }, []);
 
   // Initialize activeTab from URL on mount
+  // If tab param is explicitly set, respect it. Otherwise, only set default if not loading code from URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get("tab");
+    const hasCodeParam = params.get("code") || params.get("dsl") || params.get("share");
 
+    // If tab is explicitly set in URL, always respect it
     if (tabParam === "requirements" || tabParam === "adrs") {
       setActiveTab("details");
+      return;
     } else if (tabParam === "guided") {
       setActiveTab("builder");
+      return;
     } else if (tabParam === "overview") {
       setActiveTab(editMode === "edit" ? "builder" : "diagram");
-    } else if (VALID_TABS.includes(tabParam as ViewTab)) {
+      return;
+    } else if (tabParam && VALID_TABS.includes(tabParam as ViewTab)) {
       setActiveTab(tabParam as ViewTab);
-    } else {
+      return;
+    }
+
+    // If no explicit tab param, only set default if we're NOT loading code from URL
+    // (to avoid flickering - useProjectSync will handle tab setting for code params)
+    if (!hasCodeParam) {
       setActiveTab(editMode === "edit" ? "builder" : "diagram");
     }
   }, [setActiveTab, editMode]);
 
-  // Sync URL when activeTab changes
+  // Sync URL when activeTab changes (skip during initial load to avoid flickering)
   useEffect(() => {
+    // Skip URL sync if we're still loading (to prevent flickering during initialization)
+    if (isLoadingFile) {
+      return;
+    }
+
     const params = new URLSearchParams(window.location.search);
     if (params.get("tab") !== activeTab) {
       params.set("tab", activeTab);
       const newUrl = `${window.location.pathname}?${params.toString()}`;
       window.history.replaceState({}, "", newUrl);
     }
-  }, [activeTab]);
+  }, [activeTab, isLoadingFile]);
 
   const counts = useTabCounts(likec4Model);
 
@@ -229,7 +243,9 @@ export default function App() {
 
         <div className={`center-panel ${editMode === "edit" ? "edit-mode" : ""}`}>
           {/* View Tabs */}
-          {likec4Model && <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} counts={counts} />}
+          {likec4Model && (
+            <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} counts={counts} />
+          )}
 
           {/* Tab Content */}
           <div className="canvas-container">
@@ -245,10 +261,7 @@ export default function App() {
                     <Play size={18} />
                     Try a Demo
                   </button>
-                  <button
-                    className="upload-btn large"
-                    onClick={() => void handleCreateLocal()}
-                  >
+                  <button className="upload-btn large" onClick={() => void handleCreateLocal()}>
                     <Plus size={18} />
                     Create New
                   </button>
@@ -291,7 +304,9 @@ export default function App() {
                   fallback={
                     <div className="error-state" style={{ padding: "2rem", textAlign: "center" }}>
                       <h2>Canvas Error</h2>
-                      <p>Failed to render the architecture canvas. Please try refreshing the page.</p>
+                      <p>
+                        Failed to render the architecture canvas. Please try refreshing the page.
+                      </p>
                     </div>
                   }
                 >
@@ -343,10 +358,7 @@ export default function App() {
       </main>
 
       {/* Modals & Dialogs */}
-      <FeatureSettingsDialog
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-      />
+      <FeatureSettingsDialog isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
       <CommandPalette
         isOpen={showCommandPalette}
@@ -362,4 +374,3 @@ export default function App() {
     </div>
   );
 }
-

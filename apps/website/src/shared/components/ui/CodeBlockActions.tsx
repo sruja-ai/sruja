@@ -5,6 +5,7 @@ import { initWasm, capture, convertDslToMermaid } from "@sruja/shared";
 // Removed DiagramPreview import - using mermaid only for expand
 import mermaid from "mermaid";
 import * as LZString from "lz-string";
+import { getDesignerUrl } from "@/utils/designer-url";
 
 let mermaidInitialized = false;
 function getMermaidTheme() {
@@ -41,7 +42,7 @@ function initMermaid() {
       }
       mermaidInitialized = true;
     }
-  } catch { }
+  } catch {}
 }
 
 /*
@@ -125,7 +126,7 @@ async function renderMermaid(preview: HTMLElement, dsl: string) {
       throw new Error(`Failed to generate mermaid diagram: ${errorMsg}`);
     }
 
-    if (!code) {
+    if (!code || code.trim().length === 0) {
       // Try to get more specific error information
       try {
         const api = await initWasm();
@@ -138,12 +139,31 @@ async function renderMermaid(preview: HTMLElement, dsl: string) {
           throw new Error("Failed to parse DSL. Please check your syntax.");
         }
         // If parsing works but mermaid export fails, it's an exporter issue
-        console.error(
-          "[CodeBlockActions] Parsing succeeded but mermaid export returned null. JSON:",
-          jsonStr.substring(0, 200)
-        );
+        // Try to extract more information from the JSON to help debug
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const modelItems = parsed?.model?.items || [];
+          const hasElements = modelItems.length > 0;
+          if (!hasElements) {
+            throw new Error(
+              "Mermaid export failed: No elements found in model. Please ensure your DSL defines systems, containers, or other elements."
+            );
+          }
+          // Log diagnostic info only in development/debug mode
+          if (process.env.NODE_ENV === "development") {
+            console.error(
+              "[CodeBlockActions] Parsing succeeded but mermaid export returned empty. Model items:",
+              modelItems.length
+            );
+          }
+        } catch (jsonError) {
+          // If JSON parsing fails, just use the generic error
+          if (process.env.NODE_ENV === "development") {
+            console.error("[CodeBlockActions] Failed to parse diagnostic JSON:", jsonError);
+          }
+        }
         throw new Error(
-          "Mermaid export failed. The TypeScript exporter returned null. Please check browser console for details."
+          "Mermaid export failed. The exporter returned an empty result. Please check browser console for details."
         );
       } catch (parseError) {
         const parseMsg = parseError instanceof Error ? parseError.message : String(parseError);
@@ -184,7 +204,8 @@ async function renderMermaid(preview: HTMLElement, dsl: string) {
     }
     preview.appendChild(inner);
     const host = preview;
-    host.style.minHeight = `${rec.h}px`;
+    // Remove minHeight to allow diagram to size naturally based on content
+    host.style.minHeight = "";
     const svgEl = inner.querySelector("svg") as SVGElement | null;
     if (svgEl) {
       svgEl.style.width = `${rec.w}px`;
@@ -275,17 +296,18 @@ function addToolbar(pre: HTMLElement, _codeEl: HTMLElement, dsl: string) {
   let currentDsl = dsl;
   viewBtn.onclick = () => {
     const text = currentDsl || "";
+    const designerUrl = getDesignerUrl();
     try {
       const b64 = encodeURIComponent(LZString.compressToBase64(text));
-      window.open(`/designer#code=${b64}`, "_blank");
+      window.open(`${designerUrl}?code=${b64}`, "_blank");
     } catch (e) {
-      window.open(`/designer?code=${encodeURIComponent(text)}`, "_blank");
+      window.open(`${designerUrl}?code=${encodeURIComponent(text)}`, "_blank");
     }
     try {
       window.dispatchEvent(
         new CustomEvent("sruja:event", { detail: { type: "tutorial.open_designer" } })
       );
-    } catch { }
+    } catch {}
   };
 
   toolbar.appendChild(showBtn);
@@ -371,19 +393,20 @@ function addToolbar(pre: HTMLElement, _codeEl: HTMLElement, dsl: string) {
   overlayControls.style.display = "flex";
   overlayControls.style.gap = "6px";
   overlayControls.style.zIndex = "5";
-  const mkBtn = (label: string) => {
-    const b = document.createElement("button");
-    Object.assign(b.style, btnStyle);
-    b.textContent = label;
-    return b;
-  };
-  const oZoomIn = mkBtn("+");
-  const oZoomOut = mkBtn("-");
-  const oReset = mkBtn("Reset");
-  const oExpand = mkBtn("Expand");
-  overlayControls.appendChild(oZoomIn);
-  overlayControls.appendChild(oZoomOut);
-  overlayControls.appendChild(oReset);
+
+  // Create expand button with icon
+  const oExpand = document.createElement("button");
+  Object.assign(oExpand.style, btnStyle);
+  oExpand.style.padding = "8px";
+  oExpand.style.display = "flex";
+  oExpand.style.alignItems = "center";
+  oExpand.style.justifyContent = "center";
+  oExpand.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+    </svg>
+  `;
+  oExpand.setAttribute("aria-label", "Expand diagram");
   overlayControls.appendChild(oExpand);
   overlayControls.style.display = "none";
   preview.appendChild(overlayControls);
@@ -420,27 +443,6 @@ function addToolbar(pre: HTMLElement, _codeEl: HTMLElement, dsl: string) {
       preview.style.display = "block";
       showBtn.textContent = "Hide Diagram";
     }
-  };
-
-  const applyScale = (delta: number | null) => {
-    const current = parseFloat(preview.dataset.scale || "1");
-    const next = delta === null ? 1 : Math.max(0.25, Math.min(4, current + delta));
-    const tx = parseFloat(preview.dataset.tx || "0");
-    const ty = parseFloat(preview.dataset.ty || "0");
-    applyTransform(next, tx, ty);
-  };
-
-  oZoomIn.onclick = () => {
-    renderOnce();
-    applyScale(0.25);
-  };
-  oZoomOut.onclick = () => {
-    renderOnce();
-    applyScale(-0.25);
-  };
-  oReset.onclick = () => {
-    renderOnce();
-    applyScale(null);
   };
 
   const openExpand = async (text: string) => {

@@ -1,71 +1,66 @@
+"use strict";
 // packages/shared/src/node/wasmAdapter.ts
 // Node.js-compatible WASM adapter for VS Code extension
 // Uses Node.js WebAssembly API instead of browser APIs
-
-import * as fs from "fs";
-import * as path from "path";
-import { loadWasmModule } from "./wasmLoader";
-import type {
-  Diagnostic,
-  HoverInfo,
-  CompletionItem,
-  Location,
-  Symbol,
-  CodeAction,
-  DocumentLink,
-  FoldingRange,
-} from "./lspTypes";
-
-// Re-export LSP types for convenience
-export type {
-  Diagnostic,
-  HoverInfo,
-  CompletionItem,
-  Location,
-  Symbol,
-  CodeAction,
-  DocumentLink,
-  FoldingRange,
-} from "./lspTypes";
-
-/**
- * Node.js WASM API interface.
- *
- * @public
- */
-export type NodeWasmApi = {
-  parseDslToJson: (dsl: string, filename?: string) => Promise<string>;
-  printJsonToDsl: (json: string) => Promise<string>;
-  dslToMermaid: (dsl: string) => Promise<string>;
-  dslToMarkdown: (dsl: string) => Promise<string>;
-  dslToLikeC4: (dsl: string, filename?: string) => Promise<string>;
-  // LSP functions
-  getDiagnostics: (text: string) => Promise<Diagnostic[]>;
-  getSymbols: (text: string) => Promise<Symbol[]>;
-  hover: (text: string, line: number, column: number) => Promise<HoverInfo | null>;
-  completion: (text: string, line: number, column: number) => Promise<CompletionItem[]>;
-  goToDefinition: (text: string, line: number, column: number) => Promise<Location | null>;
-  findReferences: (text: string, line: number, column: number) => Promise<Location[]>;
-  rename: (text: string, line: number, column: number, newName: string) => Promise<string>;
-  format: (text: string) => Promise<string>;
-  codeActions: (text: string, diagnostics: Diagnostic[]) => Promise<CodeAction[]>;
-  semanticTokens: (text: string) => Promise<number[]>;
-  documentLinks: (text: string) => Promise<DocumentLink[]>;
-  foldingRanges: (text: string) => Promise<FoldingRange[]>;
-};
-
-interface ParseResult {
-  ok: boolean;
-  json?: string;
-  error?: string;
-}
-
-interface JsonToDslResult {
-  ok: boolean;
-  dsl?: string;
-  error?: string;
-}
-
+var __createBinding =
+  (this && this.__createBinding) ||
+  (Object.create
+    ? function (o, m, k, k2) {
+        if (k2 === undefined) k2 = k;
+        var desc = Object.getOwnPropertyDescriptor(m, k);
+        if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+          desc = {
+            enumerable: true,
+            get: function () {
+              return m[k];
+            },
+          };
+        }
+        Object.defineProperty(o, k2, desc);
+      }
+    : function (o, m, k, k2) {
+        if (k2 === undefined) k2 = k;
+        o[k2] = m[k];
+      });
+var __setModuleDefault =
+  (this && this.__setModuleDefault) ||
+  (Object.create
+    ? function (o, v) {
+        Object.defineProperty(o, "default", { enumerable: true, value: v });
+      }
+    : function (o, v) {
+        o["default"] = v;
+      });
+var __importStar =
+  (this && this.__importStar) ||
+  (function () {
+    var ownKeys = function (o) {
+      ownKeys =
+        Object.getOwnPropertyNames ||
+        function (o) {
+          var ar = [];
+          for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+          return ar;
+        };
+      return ownKeys(o);
+    };
+    return function (mod) {
+      if (mod && mod.__esModule) return mod;
+      var result = {};
+      if (mod != null)
+        for (var k = ownKeys(mod), i = 0; i < k.length; i++)
+          if (k[i] !== "default") __createBinding(result, mod, k[i]);
+      __setModuleDefault(result, mod);
+      return result;
+    };
+  })();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.initWasmNode = initWasmNode;
+exports.convertDslToMarkdown = convertDslToMarkdown;
+exports.convertDslToMermaid = convertDslToMermaid;
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
+const wasmLoader_1 = require("./wasmLoader");
 /**
  * Initialize WASM for Node.js.
  *
@@ -73,30 +68,22 @@ interface JsonToDslResult {
  * @param options - Initialization options
  * @returns Promise resolving to NodeWasmApi
  */
-export async function initWasmNode(options?: {
-  wasmPath?: string;
-  wasmExecPath?: string;
-  extensionPath?: string;
-}): Promise<NodeWasmApi> {
+async function initWasmNode(options) {
   // Find WASM file - prioritize extension path if provided
-  const wasmCandidates: string[] = [];
-
+  const wasmCandidates = [];
   // First, try extension path (most reliable for VS Code extension)
   // Prefer compressed version for smaller disk footprint
   if (options?.extensionPath) {
     wasmCandidates.push(path.join(options.extensionPath, "wasm/sruja.wasm.gz"));
     wasmCandidates.push(path.join(options.extensionPath, "wasm/sruja.wasm"));
   }
-
   // Then try explicit wasmPath
   if (options?.wasmPath) {
     wasmCandidates.push(options.wasmPath);
   }
-
   // Try VS Code extension path if available
-  // Note: vscode module is only available in VS Code extension contexts
   try {
-    const vscode = await import("vscode");
+    const vscode = await Promise.resolve().then(() => __importStar(require("vscode")));
     const extPath = vscode?.extensions?.getExtension(
       "sruja-ai.sruja-language-support"
     )?.extensionPath;
@@ -105,10 +92,8 @@ export async function initWasmNode(options?: {
       wasmCandidates.push(path.join(extPath, "wasm/sruja.wasm"));
     }
   } catch {
-    // vscode module not available (not in VS Code extension context)
     void 0;
   }
-
   // Then try common locations (prefer compressed)
   wasmCandidates.push(
     path.join(__dirname, "../../../../wasm/sruja.wasm.gz"),
@@ -120,56 +105,49 @@ export async function initWasmNode(options?: {
     path.join(process.cwd(), "node_modules/@sruja/shared/wasm/sruja.wasm.gz"),
     path.join(process.cwd(), "node_modules/@sruja/shared/wasm/sruja.wasm")
   );
-
-  let wasmPath: string | undefined;
+  let wasmPath;
   for (const candidate of wasmCandidates) {
     if (fs.existsSync(candidate)) {
       wasmPath = candidate;
       break;
     }
   }
-
   if (!wasmPath) {
     throw new Error(
       "sruja.wasm or sruja.wasm.gz not found. Please ensure WASM files are available."
     );
   }
-
   console.debug(`[WASM] Loading WASM module from: ${wasmPath}`);
-  await loadWasmModule(wasmPath, {
+  await (0, wasmLoader_1.loadWasmModule)(wasmPath, {
     extensionPath: options?.extensionPath,
     wasmExecPath: options?.wasmExecPath,
   });
-
   console.debug("[WASM] Checking for exported functions...");
   // Check if functions are available on global
-  const parseFn = (global as any).sruja_parse_dsl;
-  const jsonToDslFn = (global as any).sruja_json_to_dsl;
-
+  const parseFn = global.sruja_parse_dsl;
+  const jsonToDslFn = global.sruja_json_to_dsl;
   // LSP functions
-  const diagnosticsFn = (global as any).sruja_get_diagnostics;
-  const symbolsFn = (global as any).sruja_get_symbols;
-  const hoverFn = (global as any).sruja_hover;
-  const completionFn = (global as any).sruja_completion;
-  const goToDefinitionFn = (global as any).sruja_go_to_definition;
-  const findReferencesFn = (global as any).sruja_find_references;
-  const renameFn = (global as any).sruja_rename;
-  const formatFn = (global as any).sruja_format;
-  const codeActionsFn = (global as any).sruja_code_actions;
-  const semanticTokensFn = (global as any).sruja_semantic_tokens;
-  const documentLinksFn = (global as any).sruja_document_links;
-  const foldingRangesFn = (global as any).sruja_folding_ranges;
-  const mermaidFn = (global as any).sruja_dsl_to_mermaid;
-  const markdownFn = (global as any).sruja_dsl_to_markdown;
-  const likec4Fn = (global as any).sruja_dsl_to_likec4;
-
+  const diagnosticsFn = global.sruja_get_diagnostics;
+  const symbolsFn = global.sruja_get_symbols;
+  const hoverFn = global.sruja_hover;
+  const completionFn = global.sruja_completion;
+  const goToDefinitionFn = global.sruja_go_to_definition;
+  const findReferencesFn = global.sruja_find_references;
+  const renameFn = global.sruja_rename;
+  const formatFn = global.sruja_format;
+  const codeActionsFn = global.sruja_code_actions;
+  const semanticTokensFn = global.sruja_semantic_tokens;
+  const documentLinksFn = global.sruja_document_links;
+  const foldingRangesFn = global.sruja_folding_ranges;
+  const mermaidFn = global.sruja_dsl_to_mermaid;
+  const markdownFn = global.sruja_dsl_to_markdown;
+  const likec4Fn = global.sruja_dsl_to_likec4;
   if (!parseFn || !jsonToDslFn) {
     const missing = [];
     if (!parseFn) missing.push("sruja_parse_dsl");
     if (!jsonToDslFn) missing.push("sruja_json_to_dsl");
     throw new Error(`WASM functions not found. Missing: ${missing.join(", ")}`);
   }
-
   // Log available LSP functions for debugging
   const availableLspFunctions = [];
   if (diagnosticsFn) availableLspFunctions.push("diagnostics");
@@ -184,23 +162,17 @@ export async function initWasmNode(options?: {
   if (semanticTokensFn) availableLspFunctions.push("semanticTokens");
   if (documentLinksFn) availableLspFunctions.push("documentLinks");
   if (foldingRangesFn) availableLspFunctions.push("foldingRanges");
-
   if (availableLspFunctions.length > 0) {
     console.debug(`WASM LSP functions available: ${availableLspFunctions.join(", ")}`);
   } else {
     console.warn("No WASM LSP functions found - LSP features may not work");
   }
-
   // Helper to safely call WASM function and parse JSON response
-  const callWasmFunction = <T>(
-    fn: ((...args: unknown[]) => { ok: boolean; data?: string; error?: string }) | undefined,
-    fnName: string,
-    ...args: unknown[]
-  ): Promise<T> => {
+  const callWasmFunction = (fn, fnName, ...args) => {
     return new Promise((resolve) => {
       if (!fn) {
         console.warn(`WASM ${fnName} function not available`);
-        resolve([] as T);
+        resolve([]);
         return;
       }
       try {
@@ -209,26 +181,25 @@ export async function initWasmNode(options?: {
           if (r?.error) {
             console.warn(`WASM ${fnName} returned error:`, r.error);
           }
-          resolve([] as T);
+          resolve([]);
           return;
         }
         if (!r.data) {
-          resolve([] as unknown as T);
+          resolve([]);
           return;
         }
         const data = JSON.parse(r.data);
-        resolve(data as T);
+        resolve(data);
       } catch (error) {
         console.error(`WASM ${fnName} failed:`, error);
-        resolve([] as unknown as T);
+        resolve([]);
       }
     });
   };
-
   return {
-    parseDslToJson: async (dsl: string, filename: string = "input.sruja"): Promise<string> => {
+    parseDslToJson: async (dsl, filename = "input.sruja") => {
       try {
-        const r = parseFn(dsl, filename) as ParseResult;
+        const r = parseFn(dsl, filename);
         if (!r || !r.ok) {
           throw new Error(r?.error || "parse failed");
         }
@@ -242,9 +213,9 @@ export async function initWasmNode(options?: {
         );
       }
     },
-    printJsonToDsl: async (json: string): Promise<string> => {
+    printJsonToDsl: async (json) => {
       try {
-        const r = jsonToDslFn(json) as JsonToDslResult;
+        const r = jsonToDslFn(json);
         if (!r || !r.ok) {
           throw new Error(r?.error || "print failed");
         }
@@ -258,9 +229,9 @@ export async function initWasmNode(options?: {
         );
       }
     },
-    dslToMermaid: async (dsl: string): Promise<string> => {
+    dslToMermaid: async (dsl) => {
       try {
-        const r = mermaidFn(dsl) as { ok: boolean; data?: string; error?: string };
+        const r = mermaidFn(dsl);
         if (!r || !r.ok) {
           throw new Error(r?.error || "mermaid export failed");
         }
@@ -274,9 +245,9 @@ export async function initWasmNode(options?: {
         );
       }
     },
-    dslToMarkdown: async (dsl: string): Promise<string> => {
+    dslToMarkdown: async (dsl) => {
       try {
-        const r = markdownFn(dsl) as { ok: boolean; data?: string; error?: string };
+        const r = markdownFn(dsl);
         if (!r || !r.ok) {
           throw new Error(r?.error || "markdown export failed");
         }
@@ -290,12 +261,12 @@ export async function initWasmNode(options?: {
         );
       }
     },
-    dslToLikeC4: async (dsl: string, filename: string = "input.sruja"): Promise<string> => {
+    dslToLikeC4: async (dsl, filename = "input.sruja") => {
       try {
         if (!likec4Fn) {
           throw new Error("sruja_dsl_to_likec4 function not available");
         }
-        const r = likec4Fn(dsl, filename) as { ok: boolean; data?: string; error?: string };
+        const r = likec4Fn(dsl, filename);
         if (!r || !r.ok) {
           throw new Error(r?.error || "likec4 export failed");
         }
@@ -310,16 +281,15 @@ export async function initWasmNode(options?: {
       }
     },
     // LSP functions
-    getDiagnostics: (text: string) =>
-      callWasmFunction<Diagnostic[]>(diagnosticsFn, "getDiagnostics", text),
-    getSymbols: (text: string) => callWasmFunction<Symbol[]>(symbolsFn, "getSymbols", text),
-    hover: async (text: string, line: number, column: number): Promise<HoverInfo | null> => {
+    getDiagnostics: (text) => callWasmFunction(diagnosticsFn, "getDiagnostics", text),
+    getSymbols: (text) => callWasmFunction(symbolsFn, "getSymbols", text),
+    hover: async (text, line, column) => {
       if (!hoverFn) {
         console.warn("WASM hover function not available");
         return null;
       }
       try {
-        const r = hoverFn(text, line, column) as { ok: boolean; data?: string; error?: string };
+        const r = hoverFn(text, line, column);
         if (!r || !r.ok || !r.data || r.data === "null") {
           return null;
         }
@@ -329,23 +299,15 @@ export async function initWasmNode(options?: {
         return null;
       }
     },
-    completion: (text: string, line: number, column: number) =>
-      callWasmFunction<CompletionItem[]>(completionFn, "completion", text, line, column),
-    goToDefinition: async (
-      text: string,
-      line: number,
-      column: number
-    ): Promise<Location | null> => {
+    completion: (text, line, column) =>
+      callWasmFunction(completionFn, "completion", text, line, column),
+    goToDefinition: async (text, line, column) => {
       if (!goToDefinitionFn) {
         console.warn("WASM goToDefinition function not available");
         return null;
       }
       try {
-        const r = goToDefinitionFn(text, line, column) as {
-          ok: boolean;
-          data?: string;
-          error?: string;
-        };
+        const r = goToDefinitionFn(text, line, column);
         if (!r || !r.ok || !r.data || r.data === "null") {
           return null;
         }
@@ -355,16 +317,12 @@ export async function initWasmNode(options?: {
         return null;
       }
     },
-    findReferences: async (text: string, line: number, column: number): Promise<Location[]> => {
+    findReferences: async (text, line, column) => {
       if (!findReferencesFn) {
         return [];
       }
       try {
-        const r = findReferencesFn(text, line, column) as {
-          ok: boolean;
-          data?: string;
-          error?: string;
-        };
+        const r = findReferencesFn(text, line, column);
         if (!r || !r.ok || !r.data || r.data === "[]" || r.data === "null") {
           return [];
         }
@@ -375,21 +333,12 @@ export async function initWasmNode(options?: {
         return [];
       }
     },
-    rename: async (
-      text: string,
-      line: number,
-      column: number,
-      newName: string
-    ): Promise<string> => {
+    rename: async (text, line, column, newName) => {
       if (!renameFn) {
         return text;
       }
       try {
-        const r = renameFn(text, line, column, newName) as {
-          ok: boolean;
-          data?: string;
-          error?: string;
-        };
+        const r = renameFn(text, line, column, newName);
         if (!r || !r.ok || !r.data) {
           return text;
         }
@@ -399,12 +348,12 @@ export async function initWasmNode(options?: {
         return text;
       }
     },
-    format: async (text: string): Promise<string> => {
+    format: async (text) => {
       if (!formatFn) {
         return text;
       }
       try {
-        const r = formatFn(text) as { ok: boolean; data?: string; error?: string };
+        const r = formatFn(text);
         if (!r || !r.ok || !r.data) {
           return text;
         }
@@ -414,17 +363,13 @@ export async function initWasmNode(options?: {
         return text;
       }
     },
-    codeActions: async (text: string, diagnostics: Diagnostic[]): Promise<CodeAction[]> => {
+    codeActions: async (text, diagnostics) => {
       if (!codeActionsFn) {
         return [];
       }
       try {
         const diagsJSON = JSON.stringify(diagnostics);
-        const r = codeActionsFn(text, diagsJSON) as {
-          ok: boolean;
-          data?: string;
-          error?: string;
-        };
+        const r = codeActionsFn(text, diagsJSON);
         if (!r || !r.ok || !r.data) {
           return [];
         }
@@ -435,15 +380,11 @@ export async function initWasmNode(options?: {
         return [];
       }
     },
-    semanticTokens: (text: string) =>
-      callWasmFunction<number[]>(semanticTokensFn, "semanticTokens", text),
-    documentLinks: (text: string) =>
-      callWasmFunction<DocumentLink[]>(documentLinksFn, "documentLinks", text),
-    foldingRanges: (text: string) =>
-      callWasmFunction<FoldingRange[]>(foldingRangesFn, "foldingRanges", text),
+    semanticTokens: (text) => callWasmFunction(semanticTokensFn, "semanticTokens", text),
+    documentLinks: (text) => callWasmFunction(documentLinksFn, "documentLinks", text),
+    foldingRanges: (text) => callWasmFunction(foldingRangesFn, "foldingRanges", text),
   };
 }
-
 /**
  * Convert DSL string to Markdown string.
  *
@@ -453,11 +394,7 @@ export async function initWasmNode(options?: {
  * @param _filename - Optional filename (for compatibility)
  * @returns Markdown string or null on error
  */
-export async function convertDslToMarkdown(
-  dsl: string,
-  wasmApi?: NodeWasmApi,
-  _filename?: string
-): Promise<string | null> {
+async function convertDslToMarkdown(dsl, wasmApi, _filename) {
   let api = wasmApi;
   if (!api) {
     try {
@@ -466,14 +403,12 @@ export async function convertDslToMarkdown(
       return null;
     }
   }
-
   try {
     return await api.dslToMarkdown(dsl);
   } catch {
     return null;
   }
 }
-
 /**
  * Convert DSL string to Mermaid diagram string.
  *
@@ -482,10 +417,7 @@ export async function convertDslToMarkdown(
  * @param wasmApi - Optional WASM API instance
  * @returns Mermaid diagram string or null on error
  */
-export async function convertDslToMermaid(
-  dsl: string,
-  wasmApi?: NodeWasmApi
-): Promise<string | null> {
+async function convertDslToMermaid(dsl, wasmApi) {
   let api = wasmApi;
   if (!api) {
     try {
@@ -494,10 +426,10 @@ export async function convertDslToMermaid(
       return null;
     }
   }
-
   try {
     return await api.dslToMermaid(dsl);
   } catch {
     return null;
   }
 }
+//# sourceMappingURL=wasmAdapter.js.map

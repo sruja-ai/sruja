@@ -133,8 +133,28 @@ func dslToMermaid(this js.Value, args []js.Value) interface{} {
 		return result(false, "", "no model found")
 	}
 
+	// Check if Model.Items is empty
+	if len(program.Model.Items) == 0 {
+		return result(false, "", "model block is empty - no items found in Model.Items")
+	}
+
 	exporter := mermaid.NewExporter(mermaid.DefaultConfig())
 	output := exporter.Export(program)
+
+	// Validate that we got a non-empty result
+	if output == "" {
+		// Provide diagnostic information about what was found
+		modelItemCount := len(program.Model.Items)
+		elementDefCount := 0
+		for _, item := range program.Model.Items {
+			if item.ElementDef != nil {
+				elementDefCount++
+			}
+		}
+		errorMsg := fmt.Sprintf("mermaid exporter returned empty output - no elements found in model (Model.Items: %d, ElementDef items: %d)", modelItemCount, elementDefCount)
+		return result(false, "", errorMsg)
+	}
+
 	return result(true, output, "")
 }
 

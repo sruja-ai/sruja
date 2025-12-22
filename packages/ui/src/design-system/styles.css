@@ -1,7 +1,6 @@
 /* packages/ui/src/design-system/styles.css */
-/* Tailwind CSS v4 (utilities only, no preflight to avoid global resets) */
-@import "tailwindcss/theme";
-@import "tailwindcss/utilities";
+/* Tailwind CSS v4 */
+@import "tailwindcss";
 @source "../";
 @source "../../../viewer/src";
 @source "../../../shared/src";
