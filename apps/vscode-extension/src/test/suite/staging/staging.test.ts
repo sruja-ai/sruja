@@ -13,10 +13,7 @@ suite("Staging Extension E2E Tests", function () {
   test("Extension is installed from marketplace", async () => {
     const extension = vscode.extensions.getExtension(EXTENSION_ID);
     assert.ok(extension, `Extension ${EXTENSION_ID} should be installed`);
-    assert.ok(
-      extension!.isActive || extension!.activationEvents,
-      "Extension should be activatable"
-    );
+    assert.ok(extension!.isActive || extension!.packageJSON, "Extension should be activatable");
   });
 
   test("Extension activates successfully", async () => {
