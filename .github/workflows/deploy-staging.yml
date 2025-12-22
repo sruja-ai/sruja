@@ -36,6 +36,13 @@ on:
     types: [closed]
     branches:
       - main
+  workflow_dispatch:
+    # Manual trigger - allows triggering staging deployment from Actions tab
+    # Useful when path filters don't match or you need to force a deployment
+    # Go to: Actions > Deploy to Staging > Run workflow
+  workflow_call:
+    # Allows other workflows to trigger this deployment
+    # Useful for CI workflows that want to trigger staging after successful builds
 
 permissions:
   contents: write
