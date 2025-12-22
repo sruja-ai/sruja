@@ -14,7 +14,7 @@ https://sruja.ai
 
 - 🎯 **Architecture DSL**: Define systems, containers, components, and relations with first-class support for requirements and ADRs
 - ✅ **Validation Engine**: Cycle detection, orphan detection, unique IDs, valid references
-- 📊 **Multiple Export Formats**: JSON, Markdown, LikeC4, and more for integration with other tools
+- 📊 **Multiple Export Formats**: JSON (Sruja extended), LikeC4 JSON (standard), LikeC4 DSL (text), and Markdown for integration with other tools
 - 🎨 **Code Formatter**: Auto-format your architecture with `sruja fmt`
 - 🌳 **Tree View**: Visualize hierarchy with `sruja tree`
 - 🔍 **LSP Support**: Language Server Protocol for IDE integration (VS Code extension available)
