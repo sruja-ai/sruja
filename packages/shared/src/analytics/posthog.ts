@@ -6,10 +6,12 @@ interface PosthogClient {
 
 let client: PosthogClient | null = null;
 let ready = false;
+let environment: string | undefined = undefined;
 
 export type PosthogInit = {
   apiKey: string;
   host?: string;
+  environment?: string;
   options?: Record<string, unknown>;
 };
 
@@ -24,8 +26,22 @@ export async function initPosthog(cfg: PosthogInit) {
 
   const win = window as unknown as Window & { posthog?: PosthogClient };
 
+  // Store environment for adding to all events
+  environment = cfg.environment;
+
+  // Build PostHog options with environment
+  const posthogOptions: Record<string, unknown> = {
+    api_host: cfg.host,
+    ...(cfg.options || {}),
+  };
+
+  // Add environment to PostHog options if provided
+  if (cfg.environment) {
+    posthogOptions.environment = cfg.environment;
+  }
+
   if (win.posthog && typeof win.posthog.init === "function") {
-    win.posthog.init(cfg.apiKey, { api_host: cfg.host, ...(cfg.options || {}) });
+    win.posthog.init(cfg.apiKey, posthogOptions);
     client = win.posthog;
     ready = true;
     return client;
@@ -35,7 +51,7 @@ export async function initPosthog(cfg: PosthogInit) {
   const ph = ((mod as any).default || (mod as any).posthog) as PosthogClient | undefined;
 
   if (ph && typeof ph.init === "function") {
-    ph.init(cfg.apiKey, { api_host: cfg.host, ...(cfg.options || {}) });
+    ph.init(cfg.apiKey, posthogOptions);
     client = ph;
     ready = true;
     return client;
@@ -55,12 +71,26 @@ export function getPosthog(): PosthogClient | null {
 
 export function capture(event: string, properties?: Record<string, unknown>) {
   const ph = getPosthog();
-  if (ph && typeof ph.capture === "function") ph.capture(event, properties || {});
+  if (ph && typeof ph.capture === "function") {
+    // Always include environment in event properties if set
+    const propsWithEnv = {
+      ...(properties || {}),
+      ...(environment ? { environment } : {}),
+    };
+    ph.capture(event, propsWithEnv);
+  }
 }
 
 export function identify(id: string, properties?: Record<string, unknown>) {
   const ph = getPosthog();
-  if (ph && typeof ph.identify === "function") ph.identify(id, properties || {});
+  if (ph && typeof ph.identify === "function") {
+    // Always include environment in identify properties if set
+    const propsWithEnv = {
+      ...(properties || {}),
+      ...(environment ? { environment } : {}),
+    };
+    ph.identify(id, propsWithEnv);
+  }
 }
 
 export function isReady() {

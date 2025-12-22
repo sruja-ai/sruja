@@ -111,6 +111,21 @@ runs:
           echo "✅ Asset directory verified"
           # Ensure .nojekyll exists to prevent Jekyll from processing underscore directories
           touch target/.nojekyll
+          
+          # Copy LICENSE file from main repo to website repo
+          # Check multiple possible locations (workspace root, parent directories)
+          LICENSE_FOUND=false
+          for LICENSE_PATH in "$GITHUB_WORKSPACE/LICENSE" "$(pwd)/LICENSE" "LICENSE" "../LICENSE" "../../LICENSE"; do
+            if [ -f "$LICENSE_PATH" ]; then
+              cp "$LICENSE_PATH" target/LICENSE
+              echo "✅ LICENSE file copied from $LICENSE_PATH"
+              LICENSE_FOUND=true
+              break
+            fi
+          done
+          if [ "$LICENSE_FOUND" = false ]; then
+            echo "⚠️  LICENSE file not found - website repo will not have a LICENSE file"
+          fi
         fi
 
     - name: Create deployment README

@@ -26,6 +26,17 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
 
+    - name: Cache .astro directory
+      uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+      with:
+        path: |
+          apps/website/.astro
+          .astro
+        key: ${{ runner.os }}-astro-${{ hashFiles('**/package-lock.json') }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-astro-${{ hashFiles('**/package-lock.json') }}-
+          ${{ runner.os }}-astro-
+
     - name: Install npm dependencies
       if: inputs.install-deps == 'true'
       shell: bash

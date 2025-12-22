@@ -1,5 +1,5 @@
 // apps/website/src/shared/hooks/useLocalStorage.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { createStorage } from '../utils/storage';
 
 /**

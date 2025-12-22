@@ -17,6 +17,13 @@ interface EnvConfig {
     apiKey: string
     indexName: string
   }
+  sentry?: {
+    dsn: string
+    environment: string
+    tracesSampleRate?: number
+    replaysSessionSampleRate?: number
+    replaysOnErrorSampleRate?: number
+  }
 }
 
 function getEnvironment(): Environment {
@@ -85,6 +92,20 @@ function getEnvConfig(): EnvConfig {
     if (env === 'development' && typeof console !== 'undefined') {
       console.info(`[Algolia] Using index: ${defaultIndexName}`);
     }
+  }
+
+  // Sentry configuration
+  const sentryDsn = import.meta.env.PUBLIC_SENTRY_DSN;
+  if (sentryDsn) {
+    config.sentry = {
+      dsn: sentryDsn,
+      environment: env,
+      // Lower sample rates for staging, higher for production
+      tracesSampleRate: env === 'production' ? 0.1 : env === 'staging' ? 0.5 : 1.0,
+      // Session replay: capture all errors, sample sessions
+      replaysSessionSampleRate: env === 'production' ? 0.1 : env === 'staging' ? 0.5 : 1.0,
+      replaysOnErrorSampleRate: 1.0, // Always capture replays on errors
+    };
   }
 
   return config

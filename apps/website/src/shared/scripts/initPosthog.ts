@@ -4,7 +4,11 @@ import { initPosthog, enableAutoTracking } from '@sruja/shared';
 
 (async () => {
   if (envConfig.posthog?.apiKey) {
-    await initPosthog({ apiKey: envConfig.posthog.apiKey, host: envConfig.posthog.host });
+    await initPosthog({ 
+      apiKey: envConfig.posthog.apiKey, 
+      host: envConfig.posthog.host,
+      environment: envConfig.env,
+    });
     enableAutoTracking();
   }
 })();

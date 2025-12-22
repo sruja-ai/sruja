@@ -239,9 +239,13 @@ jobs:
       - name: Build shared packages
         uses: ./.github/actions/build-shared-packages
 
+      - name: Run Astro Check
+        working-directory: apps/website
+        run: npm run typecheck
+
       - name: Build Astro website (staging)
         working-directory: apps/website
-        run: npm run build:prod
+        run: npm run build:staging
         env:
           # Build for staging environment
           SITE_URL: https://staging.sruja.ai
@@ -251,6 +255,12 @@ jobs:
           # PostHog configuration
           PUBLIC_POSTHOG_API_KEY: ${{ secrets.PUBLIC_POSTHOG_API_KEY }}
           PUBLIC_POSTHOG_HOST: ${{ secrets.PUBLIC_POSTHOG_HOST }}
+          # Sentry configuration
+          PUBLIC_SENTRY_DSN: ${{ secrets.PUBLIC_SENTRY_DSN }}
+          SENTRY_RELEASE: staging-${{ github.sha }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
 
       - name: Build designer app
         run: npm run build
@@ -278,6 +288,11 @@ jobs:
           # Copy designer
           mkdir -p _site/designer
           cp -a apps/designer/dist/. _site/designer/
+          # Copy LICENSE file from main repo
+          if [ -f "LICENSE" ]; then
+            cp LICENSE _site/LICENSE
+            echo "✅ LICENSE file copied to deployment"
+          fi
           touch _site/.nojekyll
           touch _site/designer/.nojekyll
 
