@@ -44,6 +44,13 @@ jobs:
           go build -v ./...
           go test -v ./pkg/... ./cmd/...
 
+      - name: Setup GPG for signing
+        uses: ./.github/actions/setup-gpg
+        if: env.GPG_PRIVATE_KEY != ''
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
       - name: Normalize version tag
         id: version
         env:
@@ -64,9 +71,20 @@ jobs:
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "Tag $TAG already exists"
           else
-            git tag -a "$TAG" -m "Hotfix $TAG"
+            # Configure git user
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            
+            # Create signed tag if GPG is configured, otherwise unsigned
+            if [ -n "${GPG_KEY_ID:-}" ]; then
+              git tag -s "$TAG" -m "Hotfix $TAG"
+              echo "✅ Created signed tag: $TAG"
+            else
+              git tag -a "$TAG" -m "Hotfix $TAG"
+              echo "⚠️  Created unsigned tag: $TAG (GPG_PRIVATE_KEY secret not configured)"
+            fi
             git push origin "$TAG"
-            echo "✅ Created and pushed tag: $TAG"
+            echo "✅ Pushed tag: $TAG"
           fi
 
       - name: Cleanup on failure
