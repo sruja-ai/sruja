@@ -235,7 +235,10 @@ jobs:
           VSCE_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
         run: |
           echo "📦 Publishing extension to VS Code Marketplace (pre-release)..."
-          echo "Extension: sruja-ai.sruja"
+          PUBLISHER=$(node -p "require('./package.json').publisher")
+          EXTENSION_NAME=$(node -p "require('./package.json').name")
+          EXTENSION_ID="${PUBLISHER}.${EXTENSION_NAME}"
+          echo "Extension ID: ${EXTENSION_ID}"
           echo "Version: $(node -p "require('./package.json').version")"
           
           # Check if PAT is set
@@ -247,7 +250,7 @@ jobs:
           # Publish with verbose output
           if npx vsce publish --pre-release --skip-duplicate; then
             echo "✅ Extension published successfully!"
-            echo "🔗 Marketplace URL: https://marketplace.visualstudio.com/items?itemName=sruja-ai.sruja"
+            echo "🔗 Marketplace URL: https://marketplace.visualstudio.com/items?itemName=${EXTENSION_ID}"
           else
             echo "❌ Failed to publish extension"
             echo "Check the error messages above for details"
