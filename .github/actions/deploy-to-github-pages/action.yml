@@ -1,28 +1,28 @@
-name: 'Deploy to GitHub Pages'
-description: 'Deploy site contents to a GitHub Pages repository'
+name: "Deploy to GitHub Pages"
+description: "Deploy site contents to a GitHub Pages repository"
 inputs:
   site-path:
-    description: 'Path to the site contents to deploy'
+    description: "Path to the site contents to deploy"
     required: true
   target-repo:
-    description: 'Target repository (owner/repo)'
+    description: "Target repository (owner/repo)"
     required: true
   target-branch:
-    description: 'Target branch to deploy to'
+    description: "Target branch to deploy to"
     required: false
-    default: 'main'
+    default: "main"
   app-id:
-    description: 'GitHub App ID (from secrets)'
+    description: "GitHub App ID (from secrets)"
     required: true
   app-private-key:
-    description: 'GitHub App private key (from secrets)'
+    description: "GitHub App private key (from secrets)"
     required: true
   commit-message:
-    description: 'Commit message template (supports ${{ github.ref_name }}, ${{ github.sha }})'
+    description: "Commit message template (supports ${{ github.ref_name }}, ${{ github.sha }})"
     required: true
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Create GitHub App token
       id: app-token
@@ -79,7 +79,23 @@ runs:
           rm -rf target/designer
           cp -r ${{ inputs.site-path }} target/designer
         else
-          rsync -a --delete --exclude .git ${{ inputs.site-path }}/ target/
+          # Remove existing contents except .git
+          find target -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          # Copy all contents including _astro directory and hidden files
+          # Using cp -a to preserve all attributes and copy everything (including _astro)
+          cp -a ${{ inputs.site-path }}/. target/
+          # Verify _astro directory was copied
+          if [ ! -d "target/_astro" ]; then
+            echo "❌ Error: _astro directory not found after copy"
+            echo "Source directory contents:"
+            ls -la ${{ inputs.site-path }}/
+            echo "Target directory contents:"
+            ls -la target/
+            exit 1
+          fi
+          echo "✅ _astro directory verified"
+          # Ensure .nojekyll exists to prevent Jekyll from processing _astro
+          touch target/.nojekyll
         fi
 
     - name: Create deployment README
@@ -142,4 +158,3 @@ runs:
           git commit -m "$COMMIT_MSG"
           git push origin HEAD:${{ inputs.target-branch }}
         fi
-
