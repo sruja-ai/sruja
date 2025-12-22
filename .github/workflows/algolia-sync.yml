@@ -1,0 +1,177 @@
+name: Sync Algolia Search Index
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/website/src/content/**"
+      - "apps/website/scripts/generate-algolia-data.mts"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to sync"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+          - staging
+
+permissions:
+  contents: read
+
+concurrency:
+  group: algolia-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  ALGOLIA_APP_ID: ${{ vars.ALGOLIA_APP_ID || 'N6FUL0KI3V' }}
+
+jobs:
+  sync-algolia:
+    name: Sync Algolia Index
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: apps/website/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/website
+        run: npm ci
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            ENV="${{ github.event.inputs.environment }}"
+          else
+            # Default to production for main branch
+            ENV="production"
+          fi
+          echo "environment=${ENV}" >> $GITHUB_OUTPUT
+          echo "📦 Environment: ${ENV}"
+
+      - name: Set Algolia configuration
+        id: algolia
+        run: |
+          if [ "${{ steps.env.outputs.environment }}" == "staging" ]; then
+            INDEX_NAME="sruja_docs_staging"
+            SITE_URL="https://staging.sruja.ai"
+          else
+            INDEX_NAME="sruja_docs"
+            SITE_URL="https://sruja.ai"
+          fi
+          echo "app_id=${{ env.ALGOLIA_APP_ID }}" >> $GITHUB_OUTPUT
+          echo "index_name=${INDEX_NAME}" >> $GITHUB_OUTPUT
+          echo "site_url=${SITE_URL}" >> $GITHUB_OUTPUT
+          echo "🔍 Algolia App ID: ${{ env.ALGOLIA_APP_ID }}"
+          echo "🔍 Algolia Index: ${INDEX_NAME}"
+          echo "🌐 Site URL: ${SITE_URL}"
+
+      - name: Generate Algolia data
+        working-directory: apps/website
+        run: |
+          echo "📝 Generating Algolia data file..."
+          echo "🌐 Site URL: ${{ steps.algolia.outputs.site_url }}"
+
+          # Generate the data using the npm script
+          echo "📊 Generating Algolia data..."
+          npm run generate:algolia
+
+          # Verify the file was created
+          if [ ! -f "algolia-data.json" ]; then
+            echo "❌ algolia-data.json not found"
+            exit 1
+          fi
+
+          echo "✅ Algolia data file generated"
+          echo "📄 File size: $(wc -c < algolia-data.json | tr -d ' ') bytes"
+          RECORD_COUNT=$(jq '. | length' algolia-data.json 2>/dev/null || echo "0")
+          echo "📊 Record count: ${RECORD_COUNT}"
+        env:
+          SITE_URL: ${{ steps.algolia.outputs.site_url }}
+
+      - name: Upload Algolia data artifact
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: algolia-data
+          path: apps/website/algolia-data.json
+          retention-days: 1
+
+      - name: Push to Algolia
+        run: |
+          ALGOLIA_APP_ID="${{ steps.algolia.outputs.app_id }}"
+          ALGOLIA_INDEX_NAME="${{ steps.algolia.outputs.index_name }}"
+          ALGOLIA_WRITE_KEY="${{ secrets.ALGOLIA_WRITE_KEY }}"
+
+          if [ -z "$ALGOLIA_WRITE_KEY" ]; then
+            echo "⚠️  ALGOLIA_WRITE_KEY secret not set. Skipping push."
+            echo "💡 Set the secret in GitHub repository settings to enable automatic syncing."
+            exit 0
+          fi
+
+          echo "📤 Pushing data to Algolia index: ${ALGOLIA_INDEX_NAME}"
+
+          # Read the data file
+          DATA_FILE="apps/website/algolia-data.json"
+
+          if [ ! -f "$DATA_FILE" ]; then
+            echo "❌ Data file not found: $DATA_FILE"
+            exit 1
+          fi
+
+          # Get record count
+          RECORD_COUNT=$(jq '. | length' "$DATA_FILE")
+          echo "📊 Pushing ${RECORD_COUNT} records..."
+
+          # Push to Algolia using batch API
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${ALGOLIA_INDEX_NAME}/batch" \
+            -H "X-Algolia-Application-Id: ${ALGOLIA_APP_ID}" \
+            -H "X-Algolia-API-Key: ${ALGOLIA_WRITE_KEY}" \
+            -H "Content-Type: application/json" \
+            --data-binary @"${DATA_FILE}")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
+            echo "✅ Successfully pushed ${RECORD_COUNT} records to Algolia"
+            echo "📋 Response: $BODY"
+          else
+            echo "❌ Failed to push to Algolia (HTTP ${HTTP_CODE})"
+            echo "📋 Response: $BODY"
+            exit 1
+          fi
+
+          # Wait for indexing to complete
+          echo "⏳ Waiting for indexing to complete..."
+          sleep 5
+
+          # Verify the index
+          VERIFY_RESPONSE=$(curl -s "https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${ALGOLIA_INDEX_NAME}/settings" \
+            -H "X-Algolia-Application-Id: ${ALGOLIA_APP_ID}" \
+            -H "X-Algolia-API-Key: ${ALGOLIA_WRITE_KEY}")
+
+          echo "✅ Index verification complete"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Algolia Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ steps.env.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Index**: ${{ steps.algolia.outputs.index_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Site URL**: ${{ steps.algolia.outputs.site_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY

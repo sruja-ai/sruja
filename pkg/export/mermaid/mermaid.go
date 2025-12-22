@@ -74,5 +74,16 @@ func (e *Exporter) Export(prog *language.Program) string {
 		e.writeRelation(sb, rel, indexedArch)
 	}
 
-	return sb.String()
+	output := sb.String()
+
+	// Validate that we found at least some elements to render
+	// If no elements were found, return empty string to signal an error
+	hasNodes := len(persons) > 0 || len(systems) > 0 || len(containers) > 0
+	if !hasNodes {
+		// No elements found - return empty to signal error
+		// This will be caught by the caller and reported appropriately
+		return ""
+	}
+
+	return output
 }

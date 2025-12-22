@@ -30,7 +30,7 @@ export type {
 
 /**
  * Node.js WASM API interface.
- * 
+ *
  * @public
  */
 export type NodeWasmApi = {
@@ -68,7 +68,7 @@ interface JsonToDslResult {
 
 /**
  * Initialize WASM for Node.js.
- * 
+ *
  * @public
  * @param options - Initialization options
  * @returns Promise resolving to NodeWasmApi
@@ -94,6 +94,7 @@ export async function initWasmNode(options?: {
   }
 
   // Try VS Code extension path if available
+  // Note: vscode module is only available in VS Code extension contexts
   try {
     const vscode = await import("vscode");
     const extPath = vscode?.extensions?.getExtension(
@@ -104,6 +105,7 @@ export async function initWasmNode(options?: {
       wasmCandidates.push(path.join(extPath, "wasm/sruja.wasm"));
     }
   } catch {
+    // vscode module not available (not in VS Code extension context)
     void 0;
   }
 
@@ -308,7 +310,8 @@ export async function initWasmNode(options?: {
       }
     },
     // LSP functions
-    getDiagnostics: (text: string) => callWasmFunction<Diagnostic[]>(diagnosticsFn, "getDiagnostics", text),
+    getDiagnostics: (text: string) =>
+      callWasmFunction<Diagnostic[]>(diagnosticsFn, "getDiagnostics", text),
     getSymbols: (text: string) => callWasmFunction<Symbol[]>(symbolsFn, "getSymbols", text),
     hover: async (text: string, line: number, column: number): Promise<HoverInfo | null> => {
       if (!hoverFn) {
@@ -328,7 +331,11 @@ export async function initWasmNode(options?: {
     },
     completion: (text: string, line: number, column: number) =>
       callWasmFunction<CompletionItem[]>(completionFn, "completion", text, line, column),
-    goToDefinition: async (text: string, line: number, column: number): Promise<Location | null> => {
+    goToDefinition: async (
+      text: string,
+      line: number,
+      column: number
+    ): Promise<Location | null> => {
       if (!goToDefinitionFn) {
         console.warn("WASM goToDefinition function not available");
         return null;
@@ -368,7 +375,12 @@ export async function initWasmNode(options?: {
         return [];
       }
     },
-    rename: async (text: string, line: number, column: number, newName: string): Promise<string> => {
+    rename: async (
+      text: string,
+      line: number,
+      column: number,
+      newName: string
+    ): Promise<string> => {
       if (!renameFn) {
         return text;
       }
@@ -423,15 +435,18 @@ export async function initWasmNode(options?: {
         return [];
       }
     },
-    semanticTokens: (text: string) => callWasmFunction<number[]>(semanticTokensFn, "semanticTokens", text),
-    documentLinks: (text: string) => callWasmFunction<DocumentLink[]>(documentLinksFn, "documentLinks", text),
-    foldingRanges: (text: string) => callWasmFunction<FoldingRange[]>(foldingRangesFn, "foldingRanges", text),
+    semanticTokens: (text: string) =>
+      callWasmFunction<number[]>(semanticTokensFn, "semanticTokens", text),
+    documentLinks: (text: string) =>
+      callWasmFunction<DocumentLink[]>(documentLinksFn, "documentLinks", text),
+    foldingRanges: (text: string) =>
+      callWasmFunction<FoldingRange[]>(foldingRangesFn, "foldingRanges", text),
   };
 }
 
 /**
  * Convert DSL string to Markdown string.
- * 
+ *
  * @public
  * @param dsl - DSL string to convert
  * @param wasmApi - Optional WASM API instance
@@ -461,7 +476,7 @@ export async function convertDslToMarkdown(
 
 /**
  * Convert DSL string to Mermaid diagram string.
- * 
+ *
  * @public
  * @param dsl - DSL string to convert
  * @param wasmApi - Optional WASM API instance

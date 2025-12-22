@@ -3,7 +3,6 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 import ContentPage from '@/features/content/components/ContentPage.astro';
-import ContentList from '@/features/content/components/ContentList.astro';
 
 const lessons = (await getCollection('courses')) as CollectionEntry<'courses'>[];
 const tutorials = (await getCollection('tutorials')) as CollectionEntry<'tutorials'>[];

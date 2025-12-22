@@ -57,7 +57,6 @@ allLessons.forEach((lesson: CollectionEntry<'courses'>) => {
   if (slugParts.length >= 3) {
     const courseName = slugParts[0];
     const moduleName = slugParts[1];
-    const lessonName = slugParts[2];
     
     // Get or create course
     if (!coursesMap.has(courseName)) {

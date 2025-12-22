@@ -7,7 +7,7 @@ import ContentList from '@/features/content/components/ContentList.astro';
 import { sortByDate } from '@/features/content/utils/sorting';
 import { transformToContentListItems } from '@/features/content/utils/transform';
 
-const posts = await getCollection('blog', ({ data }: { data: any }) => {
+const posts = await getCollection('blog', () => {
   return true;
 });
 const sortedPosts = sortByDate(posts);
