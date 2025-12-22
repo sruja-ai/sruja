@@ -15,7 +15,9 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@sruja/shared/*": ["../../packages/shared/src/*"]
+      "@sruja/shared/*": [
+        "../../packages/shared/src/*"
+      ]
     }
   },
   "exclude": [
