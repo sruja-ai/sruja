@@ -148,6 +148,8 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        env:
+          HUSKY: 0
 
       - name: Run ESLint
         run: npm run lint
@@ -172,6 +174,8 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        env:
+          HUSKY: 0
 
       - name: Run tests with coverage
         run: npm run test:coverage
@@ -212,6 +216,8 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        env:
+          HUSKY: 0
 
       - name: Build shared packages
         run: npm run build --workspace=packages/shared --workspace=packages/ui
