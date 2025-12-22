@@ -1,10 +1,18 @@
 name: Deploy to Staging
 
 # This workflow handles staging deployments:
-# - Triggers on merge to main or when release-please PR is merged
+# - Triggers on merge to main (when path filters match)
+# - Can be manually triggered via workflow_dispatch (Actions > Deploy to Staging > Run workflow)
+# - Can be triggered by other workflows via workflow_call
 # - Creates RC tag to GitHub
 # - Publishes VS Code extension as pre-release with RC tag
 # - Deploys website and designer to staging
+#
+# Manual Trigger:
+# If path filters don't match your changes, you can manually trigger this workflow:
+# 1. Go to: https://github.com/sruja-ai/sruja/actions/workflows/deploy-staging.yml
+# 2. Click "Run workflow" button
+# 3. Select branch (usually "main") and click "Run workflow"
 
 on:
   push:
