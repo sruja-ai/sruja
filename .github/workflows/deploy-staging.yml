@@ -202,22 +202,14 @@ jobs:
 
       - name: Update extension version
         run: |
-          # Extract base version from tag (e.g., v0.1.2-rc.17 -> 0.1.2)
+          # Use the version suggested by release-please (e.g., 0.2.0)
           # VS Code Marketplace does NOT support pre-release version strings (-rc, -alpha, etc.)
           # Pre-release is a distribution channel (--pre-release flag), not a version string
-          # So we use the base semver version (0.1.2) and publish with --pre-release flag
-          RC_TAG="${{ needs.determine-rc-version.outputs.rc-tag }}"
-          EXTENSION_VERSION="${RC_TAG#v}"  # Remove 'v' prefix
-          # Extract base version by removing -rc.N suffix
-          if [[ "$EXTENSION_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-rc\. ]]; then
-            BASE_VERSION="${BASH_REMATCH[1]}"
-            EXTENSION_VERSION="$BASE_VERSION"
-            echo "✅ Extracted base version from RC tag: ${EXTENSION_VERSION}"
-            echo "ℹ️  RC number is tracked via Git tag, not in package.json version"
-          else
-            # If no RC suffix, use version as-is (shouldn't happen in staging)
-            echo "⚠️  No RC suffix found, using version as-is: ${EXTENSION_VERSION}"
-          fi
+          # So we use the base semver version (0.2.0) and publish with --pre-release flag
+          EXTENSION_VERSION="${{ needs.determine-rc-version.outputs.version }}"
+          echo "✅ Using release-please suggested version: ${EXTENSION_VERSION}"
+          echo "ℹ️  RC number is tracked via Git tag (v${EXTENSION_VERSION}-rc.N), not in package.json version"
+          echo "ℹ️  Extension will be published as pre-release with version ${EXTENSION_VERSION}"
           cd apps/vscode-extension
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           if [ "$CURRENT_VERSION" != "$EXTENSION_VERSION" ]; then
