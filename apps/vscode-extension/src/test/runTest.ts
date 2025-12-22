@@ -17,8 +17,18 @@ async function main() {
     // Passed to --extensionTestsPath
     const extensionTestsPath = path.resolve(__dirname, "./suite/index");
 
+    // Workspace folder for tests (examples folder at repo root)
+    // From extension root (apps/vscode-extension), go up to repo root, then to examples
+    const workspaceFolder = path.resolve(extensionDevelopmentPath, "../../examples");
+
     // Download VS Code, unzip it and run the integration test
-    await runTests({ extensionDevelopmentPath, extensionTestsPath, version: "1.85.2" });
+    // Use launchArgs to open the workspace folder
+    await runTests({
+      extensionDevelopmentPath,
+      extensionTestsPath,
+      version: "1.85.2",
+      launchArgs: [workspaceFolder],
+    });
   } catch (err) {
     console.error("Failed to run tests:", err);
     if (err instanceof Error) {
