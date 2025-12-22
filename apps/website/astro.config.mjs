@@ -38,9 +38,6 @@ export default defineConfig({
   },
   integrations: [react(), mdx()],
   output: "static",
-  build: {
-    assets: "assets",
-  },
   vite: {
     plugins: [
       tailwindcss(),
