@@ -6,7 +6,7 @@ import { getWasmApi, setWasmApi } from "./initialization";
 
 /**
  * Debug command to test WASM functions.
- * 
+ *
  * @remarks
  * Tests all WASM LSP functions with the currently open document
  * and logs results to the output channel.
@@ -40,9 +40,7 @@ export async function debugWasmLsp(): Promise<void> {
   if (!wasmApi) {
     log("WASM API not initialized. Attempting to initialize...", "warn");
     try {
-      const extensionPath = vscode.extensions.getExtension(
-        "sruja-ai.sruja-language-support"
-      )?.extensionPath;
+      const extensionPath = vscode.extensions.getExtension("sruja-ai.sruja")?.extensionPath;
       if (!extensionPath) {
         throw new Error("Extension path not found");
       }
@@ -245,4 +243,3 @@ export async function debugWasmLsp(): Promise<void> {
     "WASM LSP debug complete. Check output channel for details."
   );
 }
-
