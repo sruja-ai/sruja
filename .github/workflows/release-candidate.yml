@@ -17,27 +17,74 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  create-rc-release:
-    name: Create RC Release
+  determine-rc-version:
+    name: Determine RC Version
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.release.outputs.version }}
-      rc-tag: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.version.outputs.version }}
+      rc-tag: ${{ steps.version.outputs.rc-tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Run Release Please (RC)
-        id: release
-        uses: googleapis/release-please-action@v4
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
         with:
-          config-file: release-please-config.json
-          token: ${{ secrets.GITHUB_TOKEN }}
-          # Note: prerelease feature may require changes to be detected
-          # If no release is created, outputs will be empty
-          # In that case, we'll fall back to manual version detection
+          install-deps: 'false'
+
+      - name: Determine next version and create RC tag
+        id: version
+        run: |
+          # Get the current version from package.json
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Try to get the next version from release-please-manifest.json if it exists
+          NEXT_VERSION="$CURRENT_VERSION"
+          if [ -f ".release-please-manifest.json" ]; then
+            MANIFEST_VERSION=$(node -p "require('./.release-please-manifest.json')['.'] || null")
+            if [ "$MANIFEST_VERSION" != "null" ] && [ -n "$MANIFEST_VERSION" ]; then
+              NEXT_VERSION="$MANIFEST_VERSION"
+              echo "Next version from manifest: $NEXT_VERSION"
+            fi
+          fi
+          
+          # If still using current version, increment patch version
+          if [ "$NEXT_VERSION" == "$CURRENT_VERSION" ]; then
+            IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+            patch=$((patch + 1))
+            NEXT_VERSION="$major.$minor.$patch"
+            echo "Incremented patch version: $NEXT_VERSION"
+          fi
+          
+          # Find the highest existing RC tag for this version (format: v{version}-rc.{number})
+          RC_NUMBER=1
+          for i in {1..100}; do
+            if git rev-parse "v${NEXT_VERSION}-rc.${i}" >/dev/null 2>&1; then
+              RC_NUMBER=$((i + 1))
+            else
+              break
+            fi
+          done
+          
+          if [ $RC_NUMBER -gt 100 ]; then
+            echo "Error: Maximum RC number (100) reached for version $NEXT_VERSION"
+            exit 1
+          fi
+          
+          RC_TAG="v${NEXT_VERSION}-rc.${RC_NUMBER}"
+          echo "version=${NEXT_VERSION}" >> $GITHUB_OUTPUT
+          echo "rc-tag=${RC_TAG}" >> $GITHUB_OUTPUT
+          echo "📦 Creating RC tag: ${RC_TAG}"
+          
+          # Create and push the tag
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RC_TAG" -m "Release candidate: $RC_TAG (commit ${{ github.sha }})"
+          git push origin "$RC_TAG"
+          echo "✅ Created and pushed RC tag: $RC_TAG"
 
   publish-rc-extension:
     name: Publish RC Extension
