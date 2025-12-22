@@ -30,6 +30,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
+        with:
+          install-deps: 'false'
+
       - name: Determine next version from release-please
         id: version
         run: |
@@ -38,15 +43,31 @@ jobs:
           echo "Current version: $CURRENT_VERSION"
           
           # Try to get the next version from release-please-manifest.json if it exists
+          NEXT_VERSION="$CURRENT_VERSION"
           if [ -f ".release-please-manifest.json" ]; then
-            NEXT_VERSION=$(node -p "require('./.release-please-manifest.json')['.'] || '$CURRENT_VERSION'")
-            echo "Next version from manifest: $NEXT_VERSION"
-          else
-            # If no manifest, increment patch version
+            MANIFEST_VERSION=$(node -p "require('./.release-please-manifest.json')['.'] || null")
+            if [ "$MANIFEST_VERSION" != "null" ] && [ -n "$MANIFEST_VERSION" ]; then
+              NEXT_VERSION="$MANIFEST_VERSION"
+              echo "Next version from manifest: $NEXT_VERSION"
+            fi
+          fi
+          
+          # If still using current version, try to get from CHANGELOG.md
+          if [ "$NEXT_VERSION" == "$CURRENT_VERSION" ] && [ -f "CHANGELOG.md" ]; then
+            # Look for unreleased section or next version in CHANGELOG
+            CHANGELOG_VERSION=$(grep -m 1 "^## \[.*\]" CHANGELOG.md | sed 's/## \[\(.*\)\].*/\1/' | head -1)
+            if [ -n "$CHANGELOG_VERSION" ] && [ "$CHANGELOG_VERSION" != "$CURRENT_VERSION" ]; then
+              NEXT_VERSION="$CHANGELOG_VERSION"
+              echo "Next version from CHANGELOG: $NEXT_VERSION"
+            fi
+          fi
+          
+          # If still using current version, increment patch version
+          if [ "$NEXT_VERSION" == "$CURRENT_VERSION" ]; then
             IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
             patch=$((patch + 1))
             NEXT_VERSION="$major.$minor.$patch"
-            echo "Incremented version: $NEXT_VERSION"
+            echo "Incremented patch version: $NEXT_VERSION"
           fi
           
           # Find the highest existing RC tag for this version
