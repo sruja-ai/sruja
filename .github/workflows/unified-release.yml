@@ -61,7 +61,7 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-node
         with:
-          install-deps: 'false'
+          install-deps: "false"
 
       - name: Update extension version
         run: |
@@ -123,7 +123,8 @@ jobs:
       - name: Prepare deployment
         run: |
           mkdir -p _site
-          cp -r apps/website/dist/* _site/
+          # Copy all contents including _astro directory
+          cp -a apps/website/dist/. _site/
           touch _site/.nojekyll
 
       - name: Deploy to GitHub Pages

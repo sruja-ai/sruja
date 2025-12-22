@@ -9,23 +9,23 @@ on:
       - main
     paths:
       # Website-related changes
-      - 'apps/website/**'
-      - 'packages/shared/**'
-      - 'packages/ui/**'
+      - "apps/website/**"
+      - "packages/shared/**"
+      - "packages/ui/**"
       # Designer-related changes
-      - 'apps/designer/**'
+      - "apps/designer/**"
       # Shared dependencies
-      - 'packages/diagram/**'
-      - 'packages/layout/**'
+      - "packages/diagram/**"
+      - "packages/layout/**"
       # Build infrastructure
-      - 'Makefile'
-      - 'go.mod'
-      - 'go.sum'
-      - 'cmd/**'
-      - 'pkg/**'
-      - 'internal/**'
+      - "Makefile"
+      - "go.mod"
+      - "go.sum"
+      - "cmd/**"
+      - "pkg/**"
+      - "internal/**"
       # Workflow changes
-      - '.github/workflows/deploy-staging.yml'
+      - ".github/workflows/deploy-staging.yml"
 
 permissions:
   contents: write
@@ -96,11 +96,11 @@ jobs:
       - name: Prepare deployment
         run: |
           mkdir -p _site
-          # Copy website
-          cp -r apps/website/dist/* _site/
+          # Copy website (including _astro directory)
+          cp -a apps/website/dist/. _site/
           # Copy designer
           mkdir -p _site/designer
-          cp -r apps/designer/dist/* _site/designer/
+          cp -a apps/designer/dist/. _site/designer/
           touch _site/.nojekyll
           touch _site/designer/.nojekyll
 
@@ -129,4 +129,3 @@ jobs:
           app-id: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_ID }}
           app-private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
           commit-message: "Deploy staging (website + designer) from ${{ github.ref_name }} branch (commit ${{ github.sha }})"
-
