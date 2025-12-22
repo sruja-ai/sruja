@@ -1,26 +1,25 @@
-name: 'Setup Node.js'
-description: 'Setup Node.js with npm caching and dependency installation'
+name: "Setup Node.js"
+description: "Setup Node.js with npm caching and dependency installation"
 inputs:
   node-version:
-    description: 'Node.js version to use'
+    description: "Node.js version to use"
     required: false
-    default: '24'
+    default: "24"
   install-deps:
-    description: 'Whether to install npm dependencies'
+    description: "Whether to install npm dependencies"
     required: false
-    default: 'true'
+    default: "true"
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Setup Node.js
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
       with:
         node-version: ${{ inputs.node-version }}
-        cache: 'npm'
+        cache: "npm"
 
     - name: Install npm dependencies
       if: inputs.install-deps == 'true'
       shell: bash
       run: npm ci
-

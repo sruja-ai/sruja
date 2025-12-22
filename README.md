@@ -14,7 +14,7 @@ https://sruja.ai
 
 - 🎯 **Architecture DSL**: Define systems, containers, components, and relations with first-class support for requirements and ADRs
 - ✅ **Validation Engine**: Cycle detection, orphan detection, unique IDs, valid references
-- 📊 **Multiple Export Formats**: JSON (Sruja extended), LikeC4 JSON (standard), LikeC4 DSL (text), and Markdown for integration with other tools
+- 📊 **Multiple Export Formats**: JSON (Sruja extended), LikeC4 DSL (text), and Markdown for integration with other tools
 - 🎨 **Code Formatter**: Auto-format your architecture with `sruja fmt`
 - 🌳 **Tree View**: Visualize hierarchy with `sruja tree`
 - 🔍 **LSP Support**: Language Server Protocol for IDE integration (VS Code extension available)
@@ -47,16 +47,19 @@ sruja/
 ### Developer Documentation
 
 **Essential Guides:**
+
 - [Contributing Guide](docs/CONTRIBUTING.md) - How to contribute to Sruja
 - [First Contribution](docs/FIRST_CONTRIBUTION.md) - Step-by-step guide for your first contribution
 - [Development Guide](docs/DEVELOPMENT.md) - Development practices and tooling
 - [Architecture Guide](docs/ARCHITECTURE.md) - Code organization and structure
 
 **Content Creation:**
+
 - [Content Contribution Guide](docs/CONTENT_CONTRIBUTION_GUIDE.md) - Creating courses, tutorials, and docs
 - [Content Style Guide](docs/CONTENT_STYLE_GUIDE.md) - Writing style and best practices
 
 **Reference:**
+
 - [Language Specification](docs/LANGUAGE_SPECIFICATION.md) - Complete DSL reference
 - [Design Philosophy](docs/DESIGN_PHILOSOPHY.md) - Language design principles
 
@@ -118,11 +121,10 @@ sruja export json example.sruja
 # Export to Markdown documentation
 sruja export markdown example.sruja
 
-# Export to pure LikeC4 JSON (standard LikeC4 Model API format)
-sruja export likec4 example.sruja
-
 # Export to LikeC4 DSL (text format, not JSON)
-sruja export likec4-dsl example.sruja
+sruja export likec4 example.sruja
+# or use the alias:
+sruja export c4 example.sruja
 ```
 
 **Lint your code:**

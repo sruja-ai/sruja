@@ -1,25 +1,25 @@
-name: 'Setup Go'
-description: 'Setup Go with caching and dependency installation'
+name: "Setup Go"
+description: "Setup Go with caching and dependency installation"
 inputs:
   go-version:
-    description: 'Go version to use'
+    description: "Go version to use"
     required: false
-    default: '1.25.5'
+    default: "1.25.5"
   install-deps:
-    description: 'Whether to install Go dependencies'
+    description: "Whether to install Go dependencies"
     required: false
-    default: 'true'
+    default: "true"
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Set up Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
         go-version: ${{ inputs.go-version }}
 
     - name: Cache Go modules
-      uses: actions/cache@v4
+      uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
       with:
         path: |
           ~/.cache/go-build
@@ -33,4 +33,3 @@ runs:
       if: inputs.install-deps == 'true'
       shell: bash
       run: go mod download
-

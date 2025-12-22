@@ -6,13 +6,13 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag (e.g., v1.3.0)'
+        description: "Release tag (e.g., v1.3.0)"
         required: true
       release_name:
-        description: 'Release name'
+        description: "Release name"
         required: false
       release_url:
-        description: 'Release URL'
+        description: "Release URL"
         required: false
 
 permissions:
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Set release variables
         id: release
@@ -47,20 +47,20 @@ jobs:
             RELEASE_NAME="$RELEASE_NAME"
             RELEASE_URL="$RELEASE_HTML_URL"
           fi
-          
+
           # Default release name to tag if not provided
           if [ -z "$RELEASE_NAME" ]; then
             RELEASE_NAME="$RELEASE_TAG"
           fi
-          
+
           # Default release URL if not provided
           if [ -z "$RELEASE_URL" ]; then
             RELEASE_URL="https://github.com/$REPOSITORY/releases/tag/${RELEASE_TAG}"
           fi
-          
+
           # Build HN submit URL
           HN_SUBMIT_URL="https://news.ycombinator.com/submitlink?u=${RELEASE_URL}&t=${RELEASE_NAME}"
-          
+
           echo "release_tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
           echo "release_name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
           echo "release_url=${RELEASE_URL}" >> $GITHUB_OUTPUT
@@ -80,9 +80,8 @@ jobs:
               .github/hn_template.md > /tmp/hn_issue.md
 
       - name: Create Issue
-        uses: peter-evans/create-issue-from-file@e8ef132d6df98ed982188e460ebb3b5d4ef3a9cd # v5
+        uses: peter-evans/create-issue-from-file@fca9117c27cdc29c6c4db3b86c48e4115a786710 # v6.0.0
         with:
           title: "Ready to post release ${{ steps.release.outputs.release_tag }} to Hacker News?"
           content-filepath: /tmp/hn_issue.md
           labels: hn,release
-

@@ -4,24 +4,24 @@ on:
   workflow_dispatch:
   schedule:
     # Run weekly on Tuesdays at 9 AM UTC (after Monday deployments)
-    - cron: '0 9 * * 2'
+    - cron: "0 9 * * 2"
 
 jobs:
   submit-sitemap:
     name: Submit Sitemap to Search Engines
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Submit to Google
         run: |
           echo "=== Submitting sitemap to Google ==="
           SITEMAP_URL="https://sruja.ai/sitemap.xml"
           echo "Pinging Google with: $SITEMAP_URL"
-          
+
           # Ping Google about sitemap update - FREE, no API key required
           curl -s "https://www.google.com/ping?sitemap=${SITEMAP_URL}" && \
             echo "✓ Successfully pinged Google" || \
@@ -32,7 +32,7 @@ jobs:
           echo "=== Submitting sitemap to Bing ==="
           SITEMAP_URL="https://sruja.ai/sitemap.xml"
           echo "Pinging Bing with: $SITEMAP_URL"
-          
+
           # Ping Bing about sitemap update - FREE, no API key required
           curl -s "https://www.bing.com/ping?sitemap=${SITEMAP_URL}" && \
             echo "✓ Successfully pinged Bing" || \
@@ -43,7 +43,7 @@ jobs:
           echo "=== Submitting sitemap to Yandex ==="
           SITEMAP_URL="https://sruja.ai/sitemap.xml"
           echo "Pinging Yandex with: $SITEMAP_URL"
-          
+
           # Ping Yandex - FREE, no API key required
           curl -s "https://webmaster.yandex.com/ping?sitemap=${SITEMAP_URL}" && \
             echo "✓ Successfully pinged Yandex" || \
@@ -63,4 +63,3 @@ jobs:
           echo "**Optional**: For advanced features (submission status, indexing requests), see:" >> $GITHUB_STEP_SUMMARY
           echo "- Google Search Console API (FREE but requires setup)" >> $GITHUB_STEP_SUMMARY
           echo "- See \`docs/SEO_SUBMISSION_AUTOMATION.md\` for details" >> $GITHUB_STEP_SUMMARY
-
