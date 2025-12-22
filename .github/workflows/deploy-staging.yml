@@ -324,6 +324,10 @@ jobs:
     timeout-minutes: 10
     needs: build
     steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        # Checkout is needed to access .github/actions/deploy-to-github-pages
+
       - name: Download site artifact
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
