@@ -109,10 +109,20 @@ model {
 }
 ```
 
-**Export to JSON:**
+**Export to different formats:**
 
 ```bash
+# Export to JSON (LikeC4 format)
 sruja export json example.sruja
+
+# Export to Markdown documentation
+sruja export markdown example.sruja
+
+# Export to LikeC4 JSON
+sruja export likec4 example.sruja
+
+# Export to LikeC4 DSL
+sruja export likec4-dsl example.sruja
 ```
 
 **Lint your code:**
