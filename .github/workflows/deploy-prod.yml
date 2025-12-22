@@ -105,6 +105,10 @@ jobs:
       - name: Build shared packages
         uses: ./.github/actions/build-shared-packages
 
+      - name: Run Astro Check
+        working-directory: apps/website
+        run: npm run typecheck
+
       - name: Build Astro website (production)
         working-directory: apps/website
         run: npm run build:prod
@@ -116,12 +120,23 @@ jobs:
           # PostHog configuration
           PUBLIC_POSTHOG_API_KEY: ${{ secrets.PUBLIC_POSTHOG_API_KEY }}
           PUBLIC_POSTHOG_HOST: ${{ secrets.PUBLIC_POSTHOG_HOST }}
+          # Sentry configuration
+          PUBLIC_SENTRY_DSN: ${{ secrets.PUBLIC_SENTRY_DSN }}
+          SENTRY_RELEASE: ${{ needs.determine-version.outputs.tag }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
 
       - name: Prepare deployment
         run: |
           mkdir -p _site
           # Copy all contents including _astro directory
           cp -a apps/website/dist/. _site/
+          # Copy LICENSE file from main repo
+          if [ -f "LICENSE" ]; then
+            cp LICENSE _site/LICENSE
+            echo "✅ LICENSE file copied to deployment"
+          fi
           touch _site/.nojekyll
 
       - name: Deploy to GitHub Pages

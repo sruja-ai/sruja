@@ -20,7 +20,7 @@
     "size:why": "size-limit --why",
     "clean": "rimraf dist && turbo run clean && rm -rf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
-    "prepare": "husky",
+    "prepare": "node -e \"if (process.env.HUSKY === '0' || process.env.CI === 'true') process.exit(0); try { require('child_process').execSync('husky', {stdio: 'inherit'}); } catch(e) { process.exit(0); }\"",
     "check:unused": "ts-prune --project tsconfig.json || true",
     "check:unused:files": "unimported || true",
     "check:unused:deps": "depcheck || true",

@@ -41,9 +41,10 @@ function initMermaid() {
       }
       mermaidInitialized = true;
     }
-  } catch {}
+  } catch { }
 }
 
+/*
 function sanitizeDslForDesigner(dsl: string): string {
   try {
     const lines = (dsl || "").split(/\r?\n/);
@@ -83,6 +84,7 @@ function sanitizeDslForDesigner(dsl: string): string {
     return dsl;
   }
 }
+*/
 
 async function renderMermaid(preview: HTMLElement, dsl: string) {
   preview.innerHTML = "";
@@ -244,7 +246,7 @@ async function renderMermaid(preview: HTMLElement, dsl: string) {
   }
 }
 
-function addToolbar(pre: HTMLElement, codeEl: HTMLElement, dsl: string) {
+function addToolbar(pre: HTMLElement, _codeEl: HTMLElement, dsl: string) {
   const toolbar = document.createElement("div");
   toolbar.style.display = "flex";
   toolbar.style.gap = "8px";
@@ -283,7 +285,7 @@ function addToolbar(pre: HTMLElement, codeEl: HTMLElement, dsl: string) {
       window.dispatchEvent(
         new CustomEvent("sruja:event", { detail: { type: "tutorial.open_designer" } })
       );
-    } catch {}
+    } catch { }
   };
 
   toolbar.appendChild(showBtn);

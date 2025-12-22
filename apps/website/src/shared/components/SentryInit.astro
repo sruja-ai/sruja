@@ -1,0 +1,11 @@
+---
+// apps/website/src/shared/components/SentryInit.astro
+// Client component to initialize Sentry
+import { envConfig } from '../../config/env';
+import { SentryInit as SentryInitComponent } from './SentryInit';
+---
+
+{envConfig.sentry && (
+  <SentryInitComponent client:load />
+)}
+

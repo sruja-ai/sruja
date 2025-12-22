@@ -154,6 +154,9 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Run Astro Check
+        run: npm run typecheck --workspace=apps/website
+
   typescript-test:
     name: Test TypeScript/JavaScript
     runs-on: ubuntu-latest

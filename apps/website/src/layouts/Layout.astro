@@ -2,6 +2,7 @@
 // apps/website/src/layouts/Layout.astro
 import Navbar from '@/shared/components/layout/Navbar';
 import PosthogInit from '@/shared/components/PosthogInit.astro';
+import SentryInit from '@/shared/components/SentryInit.astro';
 import '@sruja/ui/design-system/styles.css';
 
 interface Props {
@@ -23,6 +24,7 @@ const fullTitle = title === 'Sruja' ? title : `${title} | Sruja`;
     <meta name="generator" content={Astro.generator} />
     <title>{fullTitle}</title>
     <PosthogInit />
+    <SentryInit />
     <script is:inline>
       (function() {
         const applyTheme = () => {

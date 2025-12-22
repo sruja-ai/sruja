@@ -33,7 +33,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:staging": "playwright test --config=playwright.staging.config.ts",
     "test:all": "npm run test:unit && npm run test:e2e",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "astro check && tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:md": "remark -q src/content",
@@ -63,7 +63,8 @@
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-markdown": "^9.0.1",
-    "remark-gfm": "^4.0.0"
+    "remark-gfm": "^4.0.0",
+    "@sentry/react": "^10.32.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

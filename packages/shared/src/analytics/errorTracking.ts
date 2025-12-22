@@ -2,6 +2,23 @@
 import { capture } from './posthog';
 import { logger } from '../utils/logger';
 
+// Sentry is optional - check if it's available via window (initialized by SentryInit component)
+function getSentry(): typeof import('@sentry/react') | null {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    // SentryInit component makes Sentry available on window.Sentry
+    const win = window as { Sentry?: typeof import('@sentry/react') };
+    if (win.Sentry && typeof win.Sentry.captureException === 'function') {
+      return win.Sentry;
+    }
+  } catch {
+    // Sentry not available
+  }
+  
+  return null;
+}
+
 export interface ErrorContext {
   component?: string;
   action?: string;
@@ -78,6 +95,47 @@ export function trackError(
   
   // Capture to PostHog
   capture(eventName, properties);
+  
+  // Also capture to Sentry if available (better error tracking)
+  const Sentry = getSentry();
+  if (Sentry && error instanceof Error) {
+    try {
+      Sentry.captureException(error, {
+        tags: {
+          component: context.component || 'unknown',
+          action: context.action || 'unknown',
+          errorType: errorType,
+        },
+        extra: {
+          ...context,
+          error_message: errorMessage,
+        },
+        level: context.severity === 'warning' ? 'warning' : 'error',
+      });
+    } catch (sentryError) {
+      // Silently fail if Sentry capture fails
+      console.warn('Failed to capture error to Sentry:', sentryError);
+    }
+  } else if (Sentry && !(error instanceof Error)) {
+    // For non-Error objects, use captureMessage
+    try {
+      Sentry.captureMessage(String(error), {
+        level: context.severity === 'warning' ? 'warning' : 'error',
+        tags: {
+          component: context.component || 'unknown',
+          action: context.action || 'unknown',
+          errorType: errorType,
+        },
+        extra: {
+          ...context,
+          error_message: errorMessage,
+        },
+      });
+    } catch (sentryError) {
+      // Silently fail if Sentry capture fails
+      console.warn('Failed to capture message to Sentry:', sentryError);
+    }
+  }
   
   // Log using structured logger
   const logContext: Record<string, unknown> = {

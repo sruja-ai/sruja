@@ -27,12 +27,10 @@ export function sortByDate<T extends AnyCollectionEntry>(entries: T[]): T[] {
 /**
  * Sort entries by weight property (lower weight first)
  */
-export function sortByWeight<T extends AnyCollectionEntry>(entries: T[]): T[] {
-  return entries.sort((a, b) => {
-    const entryA = a as AnyCollectionEntry;
-    const entryB = b as AnyCollectionEntry;
-    const weightA = (entryA.data as any).weight ?? 999;
-    const weightB = (entryB.data as any).weight ?? 999;
+export function sortByWeight<T>(entries: T[]): T[] {
+  return [...entries].sort((a: any, b: any) => {
+    const weightA = a.data?.weight ?? 999;
+    const weightB = b.data?.weight ?? 999;
     return weightA - weightB;
   });
 }

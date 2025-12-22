@@ -2,10 +2,10 @@
 // apps/website/src/shared/components/PosthogInit.astro
 // Client component to initialize PostHog
 import { envConfig } from '../../config/env';
-import { PosthogInit } from './PosthogInit';
+import { PosthogInit as PosthogInitComponent } from './PosthogInit';
 ---
 
-<PosthogInit 
+<PosthogInitComponent 
   client:load
   apiKey={envConfig.posthog?.apiKey}
   host={envConfig.posthog?.host}
