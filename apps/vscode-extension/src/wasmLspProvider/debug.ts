@@ -40,7 +40,7 @@ export async function debugWasmLsp(): Promise<void> {
   if (!wasmApi) {
     log("WASM API not initialized. Attempting to initialize...", "warn");
     try {
-      const extensionPath = vscode.extensions.getExtension("sruja-ai.sruja")?.extensionPath;
+      const extensionPath = vscode.extensions.getExtension("srujaai.sruja")?.extensionPath;
       if (!extensionPath) {
         throw new Error("Extension path not found");
       }

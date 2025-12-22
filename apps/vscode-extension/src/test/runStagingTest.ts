@@ -4,7 +4,7 @@ import * as path from "path";
 import { runTests } from "@vscode/test-electron";
 import * as fs from "fs";
 
-const EXTENSION_ID = "sruja-ai.sruja";
+const EXTENSION_ID = "srujaai.sruja";
 // Use a stable VS Code version for testing
 // Update periodically to test against newer VS Code versions
 const VSCODE_VERSION = "1.85.2";

@@ -10,11 +10,11 @@ suite("Extension Test Suite", function () {
   vscode.window.showInformationMessage("Start all tests.");
 
   test("Extension should be present", () => {
-    assert.ok(vscode.extensions.getExtension("sruja-ai.sruja"));
+    assert.ok(vscode.extensions.getExtension("srujaai.sruja"));
   });
 
   test("Commands should be registered", async () => {
-    const ext = vscode.extensions.getExtension("sruja-ai.sruja");
+    const ext = vscode.extensions.getExtension("srujaai.sruja");
     assert.ok(ext, "Extension not found");
     await ext.activate();
 
