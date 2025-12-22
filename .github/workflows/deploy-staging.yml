@@ -1,6 +1,6 @@
-name: Deploy Astro Website (Staging)
+name: Deploy to Staging
 
-# This workflow deploys to staging when code is merged to main.
+# This workflow deploys both website and designer to staging when code is merged to main.
 # Production deployment happens via unified-release.yml when a release is published.
 
 on:
@@ -13,7 +13,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: deploy-website
+  group: deploy-staging
   cancel-in-progress: true
 
 jobs:
@@ -78,16 +78,39 @@ jobs:
           PUBLIC_POSTHOG_API_KEY: ${{ secrets.PUBLIC_POSTHOG_API_KEY }}
           PUBLIC_POSTHOG_HOST: ${{ secrets.PUBLIC_POSTHOG_HOST }}
 
+      - name: Build designer app
+        run: npm run build
+        working-directory: apps/designer
+        env:
+          BASE_PATH: "/designer/"
+
+      - name: Verify designer examples are copied
+        run: |
+          if [ ! -d "apps/designer/dist/examples" ]; then
+            echo "ERROR: examples directory not found in dist/"
+            exit 1
+          fi
+          if [ ! -f "apps/designer/dist/examples/manifest.json" ]; then
+            echo "ERROR: manifest.json not found"
+            exit 1
+          fi
+          echo "✅ Designer examples verified in dist/"
+
       - name: Prepare deployment
         run: |
           mkdir -p _site
+          # Copy website
           cp -r apps/website/dist/* _site/
+          # Copy designer
+          mkdir -p _site/designer
+          cp -r apps/designer/dist/* _site/designer/
           touch _site/.nojekyll
+          touch _site/designer/.nojekyll
 
       - name: Upload site artifact
         uses: actions/upload-artifact@v4
         with:
-          name: site
+          name: staging-site
           path: _site
 
   deploy:
@@ -97,14 +120,8 @@ jobs:
       - name: Download site artifact
         uses: actions/download-artifact@v4
         with:
-          name: site
+          name: staging-site
           path: site
-
-      - name: Determine target repository
-        id: repo
-        run: |
-          # Deploy to staging when merged to main
-          echo "repo=sruja-ai/staging-website" >> $GITHUB_OUTPUT
 
       - name: Create GitHub App token
         id: app-token
@@ -124,7 +141,7 @@ jobs:
       - name: Checkout target repo
         uses: actions/checkout@v6
         with:
-          repository: ${{ steps.repo.outputs.repo }}
+          repository: sruja-ai/staging-website
           ref: main
           token: ${{ steps.app-token.outputs.token }}
           path: target
@@ -133,12 +150,12 @@ jobs:
         run: |
           if [ ! -d "target" ]; then
             echo "Error: Checkout failed - target directory not found"
-            echo "Repository: ${{ steps.repo.outputs.repo }}"
+            echo "Repository: sruja-ai/staging-website"
             exit 1
           fi
           if [ ! -d "target/.git" ]; then
             echo "Error: Checkout failed - target/.git directory not found"
-            echo "Repository: ${{ steps.repo.outputs.repo }}"
+            echo "Repository: sruja-ai/staging-website"
             echo "This may indicate the repository doesn't exist or the token lacks access"
             exit 1
           fi
@@ -146,13 +163,20 @@ jobs:
           cd target
           if ! git rev-parse --git-dir > /dev/null 2>&1; then
             echo "Error: target directory exists but is not a valid git repository"
-            echo "Repository: ${{ steps.repo.outputs.repo }}"
+            echo "Repository: sruja-ai/staging-website"
             exit 1
           fi
           echo "✅ Checkout verified - git repository is valid"
 
       - name: Copy site contents
-        run: rsync -a --delete --exclude .git site/ target/
+        run: |
+          # Copy website (excluding .git)
+          rsync -a --delete --exclude .git site/ target/
+          # Ensure designer directory is properly copied
+          if [ -d "site/designer" ]; then
+            rm -rf target/designer
+            cp -r site/designer target/
+          fi
 
       - name: Configure git
         working-directory: target
@@ -167,7 +191,8 @@ jobs:
           if git diff --cached --quiet; then 
             echo "No changes to deploy"
           else 
-            COMMIT_MSG="Deploy staging website from ${{ github.ref_name }} branch (commit ${{ github.sha }})"
+            COMMIT_MSG="Deploy staging (website + designer) from ${{ github.ref_name }} branch (commit ${{ github.sha }})"
             git commit -m "$COMMIT_MSG"
             git push origin HEAD:main
           fi
+
