@@ -146,11 +146,21 @@ func (e *LikeC4Exporter) convertRelationsFromModel(dump *SrujaModelDump, model *
 					rel := bodyItem.Relation
 					fromFQN := resolveFQN(rel.From, elemFQN)
 					toFQN := resolveFQN(rel.To, elemFQN)
+					// Extract title: prefer Label, then Verb, then VerbRaw
+					title := ptrToString(rel.Label)
+					if title == "" {
+						title = strVal(rel.Verb)
+					}
+					if title == "" && rel.VerbRaw != nil {
+						title = rel.VerbRaw.Value
+					}
+
 					dump.Relations = append(dump.Relations, RelationDump{
-						ID:     fmt.Sprintf("rel-%d", relIndex),
-						Source: NewFqnRef(fromFQN),
-						Target: NewFqnRef(toFQN),
-						Title:  ptrToString(rel.Label),
+						ID:          fmt.Sprintf("rel-%d", relIndex),
+						Source:      NewFqnRef(fromFQN),
+						Target:      NewFqnRef(toFQN),
+						Title:       title,
+						Description: strVal(rel.Verb), // Keep Verb in Description if needed, or swap based on semantics
 					})
 					relIndex++
 				}
@@ -172,11 +182,22 @@ func (e *LikeC4Exporter) convertRelationsFromModel(dump *SrujaModelDump, model *
 			// Top-level relations are already fully qualified or relative to root
 			fromFQN := item.Relation.From.String()
 			toFQN := item.Relation.To.String()
+
+			// Extract title: prefer Label, then Verb, then VerbRaw
+			title := ptrToString(item.Relation.Label)
+			if title == "" {
+				title = strVal(item.Relation.Verb)
+			}
+			if title == "" && item.Relation.VerbRaw != nil {
+				title = item.Relation.VerbRaw.Value
+			}
+
 			dump.Relations = append(dump.Relations, RelationDump{
-				ID:     fmt.Sprintf("rel-%d", relIndex),
-				Source: NewFqnRef(fromFQN),
-				Target: NewFqnRef(toFQN),
-				Title:  ptrToString(item.Relation.Label),
+				ID:          fmt.Sprintf("rel-%d", relIndex),
+				Source:      NewFqnRef(fromFQN),
+				Target:      NewFqnRef(toFQN),
+				Title:       title,
+				Description: strVal(item.Relation.Verb),
 			})
 			relIndex++
 		}

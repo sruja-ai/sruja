@@ -8,7 +8,7 @@ import type {
   ParsedLikeC4ModelData,
   MarkdownOrString,
 } from "@likec4/core/types";
-import type { SrujaModelDump } from "./architecture";
+import type { SrujaModelDump, ElementDump } from "./architecture";
 import { extractText } from "../utils/richtext";
 import { toString } from "../utils/branded";
 
@@ -18,7 +18,8 @@ import { toString } from "../utils/branded";
  * 
  * @public
  */
-export type ElementDump = NonNullable<SrujaModelDump["elements"]>[string];
+// ElementDump is imported from ./architecture
+
 export type RelationDump = NonNullable<SrujaModelDump["relations"]>[number];
 export type ViewDump = SrujaModelDump["views"] extends Record<string, infer V>
   ? V

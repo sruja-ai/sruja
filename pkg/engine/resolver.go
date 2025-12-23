@@ -11,16 +11,18 @@ import (
 type Resolver struct {
 	defined      map[string]bool
 	suffixMap    map[string][]string
-	resolveCache map[string]string // Cache for resolved IDs (ref -> resolved)
+	resolveCache map[string]string   // Cache for resolved IDs (ref -> resolved)
+	partsCache   map[string][]string // Cache for ID parts (FQN -> []string)
 }
 
-// NewResolver creates a new resolver instance from a LikeC4 Model.
+// NewResolverFromModel creates a new resolver instance from a LikeC4 Model.
 func NewResolverFromModel(model *language.ModelBlock) *Resolver {
 	if model == nil {
 		return &Resolver{
 			defined:      make(map[string]bool, 16),
 			suffixMap:    make(map[string][]string, 8),
 			resolveCache: make(map[string]string, 16),
+			partsCache:   make(map[string][]string, 16),
 		}
 	}
 
@@ -36,6 +38,7 @@ func NewResolverFromModel(model *language.ModelBlock) *Resolver {
 		defined:      make(map[string]bool, estimatedElements),
 		suffixMap:    make(map[string][]string, estimatedElements/2),
 		resolveCache: make(map[string]string, estimatedElements),
+		partsCache:   make(map[string][]string, estimatedElements),
 	}
 	r.indexFromModel(model)
 	return r
@@ -141,7 +144,19 @@ func (r *Resolver) resolveID(ref string) string {
 	return result
 }
 
-// Resolve updates the program model in place (LikeC4 syntax).
+// getParts returns the parts of a fully qualified name, cached to avoid repeated splitting.
+func (r *Resolver) getParts(fqn string) []string {
+	if parts, ok := r.partsCache[fqn]; ok {
+		return parts
+	}
+
+	// Split and cache
+	parts := strings.Split(fqn, ".")
+	r.partsCache[fqn] = parts
+	return parts
+}
+
+// ResolveModel updates the program model in place (LikeC4 syntax).
 func (r *Resolver) ResolveModel(model *language.ModelBlock) {
 	if model == nil {
 		return
@@ -155,8 +170,8 @@ func (r *Resolver) ResolveModel(model *language.ModelBlock) {
 		original := id.String()
 		resolved := r.resolveID(original)
 		if resolved != original && resolved != "" {
-			// Update the AST node
-			id.Parts = strings.Split(resolved, ".")
+			// Update the AST node using cached parts
+			id.Parts = r.getParts(resolved)
 		}
 	}
 

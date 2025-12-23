@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"syscall/js"
 
+	"github.com/sruja-ai/sruja/pkg/export/dot"
 	jexport "github.com/sruja-ai/sruja/pkg/export/json"
 	"github.com/sruja-ai/sruja/pkg/export/markdown"
 	"github.com/sruja-ai/sruja/pkg/export/mermaid"
@@ -52,6 +53,7 @@ func main() {
 	js.Global().Set("sruja_dsl_to_mermaid", js.FuncOf(dslToMermaid))
 	js.Global().Set("sruja_dsl_to_markdown", js.FuncOf(dslToMarkdown))
 	js.Global().Set("sruja_dsl_to_likec4", js.FuncOf(dslToLikeC4))
+	js.Global().Set("sruja_dsl_to_dot", js.FuncOf(dslToDot))
 
 	// Keep function references to prevent dead-code elimination
 	_ = parseDslFn
@@ -202,4 +204,60 @@ func dslToLikeC4(this js.Value, args []js.Value) interface{} {
 	}
 
 	return result(true, output, "")
+}
+
+// dslToDot converts DSL to Graphviz DOT format for diagram layout.
+// Args: dsl string, [viewLevel int], [focusNodeId string]
+func dslToDot(this js.Value, args []js.Value) interface{} {
+	if len(args) < 1 {
+		return result(false, "", "at least 1 argument required")
+	}
+
+	input := args[0].String()
+
+	// Optional: viewLevel (default 1 = L1 Context)
+	viewLevel := 1
+	if len(args) > 1 && args[1].Type() == js.TypeNumber {
+		viewLevel = args[1].Int()
+	}
+
+	// Optional: focusNodeId (default empty)
+	focusNodeId := ""
+	if len(args) > 2 && args[2].Type() == js.TypeString {
+		focusNodeId = args[2].String()
+	}
+
+	_, program, err := parseToWorkspace(input, "input.sruja")
+	if err != nil {
+		return result(false, "", fmt.Errorf("parse failed: %w", err).Error())
+	}
+
+	if program == nil || program.Model == nil {
+		return result(false, "", "no model found")
+	}
+
+	// Check if Model.Items is empty
+	if len(program.Model.Items) == 0 {
+		return result(false, "", "model block is empty - no items found")
+	}
+
+	// Create config with view parameters
+	config := dot.DefaultConfig()
+	config.ViewLevel = viewLevel
+	config.FocusNodeID = focusNodeId
+
+	exporter := dot.NewExporter(config)
+	res := exporter.Export(program)
+
+	if res.DOT == "" && len(res.Elements) == 0 {
+		return result(false, "", "DOT exporter returned empty output - no elements found for this view")
+	}
+
+	resultData := map[string]interface{}{
+		"dot":       res.DOT,
+		"elements":  res.Elements,
+		"relations": res.Relations,
+	}
+
+	return result(true, resultData, "")
 }

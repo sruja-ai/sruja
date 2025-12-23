@@ -97,38 +97,17 @@ export function useLikeC4Model(
  *
  * @param model - The original Sruja model dump (for fallback)
  * @param likec4Model - The computed LikeC4 model
- * @returns Array of available view IDs, filtered to show L1, L2, L3 views
+ * @returns Array of all available view IDs
  */
 export function useAvailableViews(likec4Model: LikeC4Model<any> | null): string[] {
   return useMemo<string[]>(() => {
     if (likec4Model) {
       try {
-        /*
-        const views = [...likec4Model.views()];
-        const viewIds = views.map(v => v.id);
-        console.log("[LikeC4Canvas] Available views from likec4Model:", viewIds, "Total views:", views.length);
-
-        if (viewIds.length === 0) {
-          console.warn("[LikeC4Canvas] LikeC4Model returned 0 views. Views may have been filtered out because:");
-          console.warn("  - View rules don't match any elements in the model");
-          console.warn("  - View structure is invalid");
-          console.warn("  - Elements referenced in views don't exist");
-          if (model?.views) {
-            const modelDumpViews = Object.keys(model.views);
-            console.warn("[LikeC4Canvas] Model dump has views but LikeC4Model filtered them out:", modelDumpViews);
-          }
-        }
-        */
         const views = [...likec4Model.views()];
         const viewIds = views.map((v) => v.id);
 
-        // Filter to show only L1, L2, L3 views (C4 landscape views)
-        const landscapeViews = viewIds.filter(
-          (vid) => vid === "L1" || vid === "L2" || vid === "L3"
-        );
-
-        // If we have landscape views, return them; otherwise return all views
-        return landscapeViews.length > 0 ? landscapeViews : viewIds;
+        // Return all available views to support drill-down and custom views
+        return viewIds;
       } catch {
         // console.error("[LikeC4Canvas] Error getting views from likec4Model:", error);
         return [];

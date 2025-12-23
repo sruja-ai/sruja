@@ -1,8 +1,26 @@
 // packages/shared/src/web/wasmAdapter.ts
 import { logger } from "../utils/logger";
 import { ConfigurationError, NetworkError } from "../utils/errors";
-import { getWindowWithWasm, type GoConstructor, type GoInstance } from "./wasmTypes";
+import { getWindowWithWasm, type GoConstructor, type GoInstance, type DotResult } from "./wasmTypes";
 import { isBrowser } from "../utils/env";
+
+/**
+ * Check if running in development mode.
+ * Safely checks Vite's import.meta.env and falls back to process.env.
+ */
+function isDevelopmentMode(): boolean {
+  try {
+    const meta = typeof import.meta !== "undefined"
+      ? (import.meta as { env?: { DEV?: boolean; MODE?: string } })
+      : undefined;
+    if (meta?.env?.DEV || meta?.env?.MODE === "development") {
+      return true;
+    }
+  } catch {
+    // Ignore errors accessing import.meta
+  }
+  return typeof process !== "undefined" && process.env?.NODE_ENV === "development";
+}
 
 export type WasmApi = {
   parseDslToJson: (dsl: string, filename?: string) => Promise<string>;
@@ -10,6 +28,7 @@ export type WasmApi = {
   dslToMermaid: (dsl: string) => Promise<string>;
   dslToMarkdown: (dsl: string) => Promise<string>;
   dslToLikeC4: (dsl: string, filename?: string) => Promise<string>;
+  dslToDot: (dsl: string, viewLevel?: number, focusNodeId?: string) => Promise<DotResult>;
 };
 
 async function ensureScript(src: string): Promise<void> {
@@ -95,8 +114,11 @@ export async function initWasm(options?: {
   const base = options?.base || "/";
   const wasmExecUrl = base.replace(/\/?$/, "/") + "wasm/wasm_exec.js";
   const wasmBaseUrl = base.replace(/\/?$/, "/") + "wasm/sruja.wasm";
-  // Add cache-busting query parameter to ensure fresh WASM is loaded (only for primary URL)
-  const wasmUrl = wasmBaseUrl + "?t=" + Date.now();
+  // Add cache-busting query parameter to ensure fresh WASM is loaded
+  // In dev mode, use timestamp; in production, this helps with cache invalidation
+  const isDev = isDevelopmentMode();
+  const cacheBuster = isDev ? Date.now() : `v${Date.now()}`;
+  const wasmUrl = wasmBaseUrl + "?v=" + cacheBuster;
 
   if (!options?.skipGoLoad) {
     await ensureGoRuntimeLoaded(wasmExecUrl, base);
@@ -186,6 +208,14 @@ export async function initWasm(options?: {
           instance = mod.instance;
           lastError = null;
           logger.info("WASM loaded via streaming", { component: "wasm", action: "load_wasm", url });
+          // In dev mode, log WASM load info
+          if (isDevelopmentMode()) {
+            console.log(
+              `[WASM] ✅ Loaded from ${url}\n` +
+              `[WASM] Cache-busting enabled - new WASM will load automatically after rebuild.\n` +
+              `[WASM] If changes don't appear, try a hard refresh (Ctrl+Shift+R / Cmd+Shift+R)`
+            );
+          }
           break;
         } catch (streamingError) {
           logger.warn("WASM streaming failed, falling back to arrayBuffer", {
@@ -206,6 +236,15 @@ export async function initWasm(options?: {
           const mod = await WebAssembly.instantiate(bytes, importObject as WebAssembly.Imports);
           instance = mod.instance;
           lastError = null;
+          logger.info("WASM loaded via arrayBuffer fallback", { component: "wasm", action: "load_wasm", url });
+          // In dev mode, log WASM load info
+          if (isDevelopmentMode()) {
+            console.log(
+              `[WASM] ✅ Loaded from ${url} (fallback method)\n` +
+              `[WASM] Cache-busting enabled - new WASM will load automatically after rebuild.\n` +
+              `[WASM] If changes don't appear, try a hard refresh (Ctrl+Shift+R / Cmd+Shift+R)`
+            );
+          }
           break;
         }
       } else {
@@ -213,6 +252,15 @@ export async function initWasm(options?: {
         const mod = await WebAssembly.instantiate(bytes, importObject as WebAssembly.Imports);
         instance = mod.instance;
         lastError = null;
+        logger.info("WASM loaded via arrayBuffer", { component: "wasm", action: "load_wasm", url });
+        // In dev mode, log WASM load info
+        if (isDevelopmentMode()) {
+          console.log(
+            `[WASM] ✅ Loaded from ${url}\n` +
+            `[WASM] Cache-busting enabled - new WASM will load automatically after rebuild.\n` +
+            `[WASM] If changes don't appear, try a hard refresh (Ctrl+Shift+R / Cmd+Shift+R)`
+          );
+        }
         break;
       }
     } catch (e) {
@@ -272,6 +320,7 @@ export async function initWasm(options?: {
   const mermaidFn = win.sruja_dsl_to_mermaid;
   const markdownFn = win.sruja_dsl_to_markdown;
   const likec4Fn = win.sruja_dsl_to_likec4;
+  const dotFn = win.sruja_dsl_to_dot;
 
   // Debug: Log all registered functions
   const allSrujaFunctions = Object.keys(win).filter((k) => k.startsWith("sruja_"));
@@ -438,6 +487,26 @@ export async function initWasm(options?: {
         throw error;
       }
     },
+    dslToDot: async (dsl: string, viewLevel?: number, focusNodeId?: string) => {
+      try {
+        if (!dotFn) {
+          throw new Error("sruja_dsl_to_dot function not registered");
+        }
+        // Pass viewLevel (default 1) and focusNodeId (default empty string) to WASM
+        const r = dotFn(dsl, viewLevel ?? 1, focusNodeId ?? "");
+        if (!r || !r.ok) {
+          throw new Error(r?.error || "DOT export failed");
+        }
+        return r.data as DotResult;
+      } catch (error) {
+        logger.error("WASM DOT export exception", {
+          component: "wasm",
+          action: "export_dot",
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
+    },
   };
 }
 
@@ -577,3 +646,35 @@ export async function convertDslToMermaid(dsl: string): Promise<string | null> {
     return null;
   }
 }
+
+/**
+ * Convert DSL string to Graphviz DOT string.
+ * Returns DOT string if successful, null on error.
+ * Uses Go/WASM DOT exporter for layout.
+ * @param dsl - The DSL source string
+ * @param viewLevel - C4 view level (1=Context, 2=Container, 3=Component). Default 1.
+ * @param focusNodeId - Node ID to focus on for L2/L3 views (optional)
+ */
+export async function convertDslToDot(
+  dsl: string,
+  viewLevel?: number,
+  focusNodeId?: string
+): Promise<DotResult | null> {
+  const api = await getWasmApi();
+  if (!api) {
+    logger.error("WASM not available", { component: "wasm", action: "convert_dsl_to_dot" });
+    return null;
+  }
+
+  try {
+    return await api.dslToDot(dsl, viewLevel, focusNodeId);
+  } catch (error) {
+    logger.error("DSL to DOT conversion error", {
+      component: "wasm",
+      action: "convert_dsl_to_dot",
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+

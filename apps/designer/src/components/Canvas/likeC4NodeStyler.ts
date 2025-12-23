@@ -161,7 +161,9 @@ function applyStylingToElement(
     // Apply inline styles as fallback (CSS with !important will override)
     if (shape instanceof SVGElement) {
       shape.style.fill = colors.bg;
-      shape.style.stroke = colors.border;
+      // For filled style, border might be same as BG or darker.
+      // If border is same as BG, use it for stroke too.
+      shape.style.stroke = colors.border || (colors as any).bg;
       if (colors.border) {
         shape.style.strokeWidth = '2';
       }
@@ -177,7 +179,7 @@ function applyStylingToElement(
       shape.setAttribute('data-element-kind', kind);
       if (shape instanceof SVGElement) {
         shape.style.fill = colors.bg;
-        shape.style.stroke = colors.border;
+        shape.style.stroke = colors.border || (colors as any).bg;
         if (colors.border) {
           shape.style.strokeWidth = '2';
         }

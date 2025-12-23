@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	// DefaultValidationTimeout is the maximum time allowed for all validation rules to complete.
-	// If validation takes longer than this, it will be cancelled to prevent hanging.
+	// DefaultValidationTimeout is the default maximum time allowed for all validation rules to complete.
 	DefaultValidationTimeout = 30 * time.Second
+	// DefaultConcurrency is the default maximum number of concurrent validation rules.
+	DefaultConcurrency = 10
 )
 
 // Rule defines the interface for validation rules.
@@ -32,20 +33,20 @@ type Rule interface {
 // Validator manages a collection of validation rules and executes them concurrently.
 type Validator struct {
 	// Rules is the list of registered validation rules to execute.
-	Rules []Rule
+	Rules  []Rule
+	config validatorConfig
 }
 
-// NewValidator creates a new Validator instance with no rules registered.
+// NewValidator creates a new Validator instance with default configuration.
 // Use RegisterRule or RegisterDefaultRules to add validation rules.
+// For custom configuration, use NewValidatorWithOptions.
 //
 // Example:
 //
 //	validator := NewValidator()
 //	validator.RegisterDefaultRules()
 func NewValidator() *Validator {
-	return &Validator{
-		Rules: []Rule{},
-	}
+	return NewValidatorWithOptions()
 }
 
 // RegisterRule adds a validation rule to the validator.
@@ -84,7 +85,7 @@ func (v *Validator) RegisterDefaultRules() {
 }
 
 // Validate runs all registered validation rules concurrently with timeout and panic recovery.
-// Rules execute in parallel goroutines for better performance.
+// Rules execute in parallel goroutines for better performance, bounded by concurrency limit.
 // If a rule panics or exceeds the timeout, it is handled gracefully.
 //
 // Parameters:
@@ -107,17 +108,40 @@ func (v *Validator) Validate(program *language.Program) []diagnostics.Diagnostic
 		return nil
 	}
 
+	timeout := v.config.timeout
+	if timeout == 0 {
+		timeout = DefaultValidationTimeout
+	}
+
+	concurrency := v.config.concurrency
+	if concurrency == 0 {
+		concurrency = DefaultConcurrency
+	}
+
 	// Create context with timeout to prevent hanging
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultValidationTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// Channel to collect errors from concurrent rules
+	// Channel to collect results
 	errChan := make(chan []diagnostics.Diagnostic, len(v.Rules))
 	panicChan := make(chan string, len(v.Rules))
 
+	// Semaphore to limit concurrency
+	sem := make(chan struct{}, concurrency)
+
 	// Launch rules concurrently with panic recovery
 	for _, rule := range v.Rules {
-		go runRuleWithTimeout(ctx, rule, program, errChan, panicChan)
+		go func(r Rule) {
+			// Acquire semaphore
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }() // Release
+			case <-ctx.Done():
+				return
+			}
+
+			runRuleWithTimeout(ctx, r, program, errChan, panicChan)
+		}(rule)
 	}
 
 	// Collect results

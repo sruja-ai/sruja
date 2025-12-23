@@ -131,59 +131,28 @@ export const LikeC4Canvas = forwardRef<ArchitectureCanvasRef, LikeC4CanvasProps>
       flowStep,
     });
 
-    // Handle node clicks via event delegation since LikeC4View doesn't support onNodeClick prop
+    // Event delegation for node clicks (LikeC4View doesn't support onNodeClick prop)
     useEffect(() => {
-      if (!containerRef.current || !handleNodeClick) {
-        return;
-      }
+      if (!containerRef.current || !activeViewId) return;
+
+      const handleClick = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        // LikeC4 uses data-element-id attribute on SVG elements
+        const elementId = target.closest('[data-element-id]')?.getAttribute('data-element-id');
+        
+        if (elementId) {
+          e.stopPropagation();
+          handleNodeClick({ id: elementId }, e as any);
+        }
+      };
 
       const container = containerRef.current;
-
-      const handleClick = (event: MouseEvent) => {
-        // Find the clicked element that represents a node
-        const target = event.target as HTMLElement;
-
-        // Look for data attributes that LikeC4 uses to identify nodes
-        // LikeC4 typically uses data-element-id or similar attributes
-        let nodeElement: HTMLElement | null = target;
-        let nodeId: string | null = null;
-
-        // Walk up the DOM tree to find the node element
-        while (nodeElement && nodeElement !== container) {
-          // Check for various data attributes that might contain the node ID
-          nodeId =
-            nodeElement.getAttribute("data-element-id") ||
-            nodeElement.getAttribute("data-id") ||
-            nodeElement.getAttribute("id") ||
-            nodeElement.closest("[data-element-id]")?.getAttribute("data-element-id") ||
-            nodeElement.closest("[data-id]")?.getAttribute("data-id") ||
-            null;
-
-          if (nodeId) {
-            break;
-          }
-
-          nodeElement = nodeElement.parentElement;
-        }
-
-        if (nodeId && likec4Model) {
-          // Verify the node exists in the model
-          try {
-            const element = likec4Model.element(nodeId);
-            if (element) {
-              handleNodeClick(nodeId, event as any);
-            }
-          } catch {
-            // Node not found, ignore click
-          }
-        }
-      };
-
-      container.addEventListener("click", handleClick);
+      container.addEventListener('click', handleClick);
+      
       return () => {
-        container.removeEventListener("click", handleClick);
+        container.removeEventListener('click', handleClick);
       };
-    }, [containerRef, handleNodeClick, likec4Model]);
+    }, [activeViewId, handleNodeClick]);
 
     /* Debug: Check if SVG is rendered - Disabled for production
     useEffect(() => {
@@ -270,8 +239,20 @@ export const LikeC4Canvas = forwardRef<ArchitectureCanvasRef, LikeC4CanvasProps>
                 <div
                   key={activeViewId}
                   style={{ width: "100%", height: "100%", flex: 1, minHeight: 0 }}
+                  onClick={(e) => {
+                    // Handle canvas clicks (when clicking on empty space)
+                    const target = e.target as HTMLElement;
+                    // Check if click is on the container itself or SVG background, not on a node
+                    if (target === e.currentTarget || target.tagName === 'svg' || target.closest('[data-element-id]') === null) {
+                      selectNode(null);
+                      _onCanvasClick?.();
+                    }
+                  }}
                 >
-                  <LikeC4View key={activeViewId} viewId={activeViewId} />
+                  <LikeC4View
+                    key={activeViewId}
+                    viewId={activeViewId}
+                  />
                 </div>
               </LikeC4ModelProvider>
             </MantineProvider>

@@ -12,6 +12,7 @@ type ValidatorOption func(*validatorConfig)
 // validatorConfig holds configuration for creating a Validator.
 type validatorConfig struct {
 	timeout      time.Duration
+	concurrency  int
 	rules        []Rule
 	defaultRules bool
 }
@@ -25,6 +26,20 @@ type validatorConfig struct {
 func WithTimeout(d time.Duration) ValidatorOption {
 	return func(c *validatorConfig) {
 		c.timeout = d
+	}
+}
+
+// WithConcurrency sets the maximum number of concurrent validation rules.
+// Default is 10.
+//
+// Example:
+//
+//	validator := NewValidatorWithOptions(WithConcurrency(5))
+func WithConcurrency(n int) ValidatorOption {
+	return func(c *validatorConfig) {
+		if n > 0 {
+			c.concurrency = n
+		}
 	}
 }
 
@@ -79,7 +94,7 @@ func WithValidatorOptions(opts ...ValidatorOption) ScorerOption {
 }
 
 // NewValidatorWithOptions creates a new Validator with the given options.
-// If no options are provided, creates an empty validator (use RegisterDefaultRules to add rules).
+// If no options are provided, creates an empty validator (use RegisterRule to add rules).
 //
 // Example:
 //
@@ -95,7 +110,8 @@ func WithValidatorOptions(opts ...ValidatorOption) ScorerOption {
 //	)
 func NewValidatorWithOptions(opts ...ValidatorOption) *Validator {
 	config := &validatorConfig{
-		timeout: DefaultValidationTimeout,
+		timeout:     DefaultValidationTimeout,
+		concurrency: DefaultConcurrency,
 	}
 
 	for _, opt := range opts {
@@ -103,7 +119,8 @@ func NewValidatorWithOptions(opts ...ValidatorOption) *Validator {
 	}
 
 	v := &Validator{
-		Rules: make([]Rule, 0, len(config.rules)+16),
+		Rules:  make([]Rule, 0, len(config.rules)+16),
+		config: *config,
 	}
 
 	if config.defaultRules {

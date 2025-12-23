@@ -35,7 +35,6 @@ import type { SrujaModelDump } from "@sruja/shared";
  * ```
  */
 export function useProjectSync() {
-  const likec4Model = useArchitectureStore((s) => s.likec4Model);
   const storeDslSource = useArchitectureStore((s) => s.dslSource);
   const loadFromDSL = useArchitectureStore((s) => s.loadFromDSL);
   const setActiveTab = useUIStore((s) => s.setActiveTab);

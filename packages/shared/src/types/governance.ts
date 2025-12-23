@@ -62,6 +62,8 @@ export interface Requirement {
   readonly status?: string;
   /** Array of element FQNs this requirement applies to */
   readonly elements?: ReadonlyArray<string>;
+  /** Optional tags for grouping or filtering */
+  readonly tags?: ReadonlyArray<string>;
 }
 
 /**

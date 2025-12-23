@@ -1,45 +1,47 @@
 import { useMemo } from "react";
 import { useArchitectureStore } from "../stores/architectureStore";
+import type { ElementDump, SrujaModelDump, SrujaExtensions } from "@sruja/shared";
+import { extractText } from "@sruja/shared";
 
 export function useBuilderProgress() {
-  const model = useArchitectureStore((s) => s.likec4Model);
+  const model = useArchitectureStore((s) => s.likec4Model) as unknown as SrujaModelDump | null;
 
   // Helper to get element by ID (unused)
 
   // Core Data
-  const elements = useMemo(() => Object.values(model?.elements || {}) as any[], [model?.elements]);
+  const elements = useMemo(() => Object.values(model?.elements || {}) as ElementDump[], [model?.elements]);
   const relations = useMemo(() => model?.relations || [], [model?.relations]);
 
   // Sruja extensions
-  const sruja = useMemo(() => (model?.sruja as any) || {}, [model?.sruja]);
+  const sruja = useMemo(() => (model?.sruja) || ({} as SrujaExtensions), [model?.sruja]);
   const requirements = useMemo(() => sruja.requirements || [], [sruja.requirements]);
   const flows = useMemo(() => sruja.flows || [], [sruja.flows]);
   const scenarios = useMemo(() => sruja.scenarios || [], [sruja.scenarios]);
   const adrs = useMemo(() => sruja.adrs || [], [sruja.adrs]);
 
-  const systems = useMemo(() => elements.filter((e: any) => e.kind === "system"), [elements]);
+  const systems = useMemo(() => elements.filter((e) => e.kind === "system"), [elements]);
   const persons = useMemo(
-    () => elements.filter((e: any) => e.kind === "person" || e.kind === "actor"),
+    () => elements.filter((e) => e.kind === "person" || e.kind === "actor"),
     [elements]
   );
   const allContainers = useMemo(
-    () => elements.filter((e: any) => e.kind === "container"),
+    () => elements.filter((e) => e.kind === "container"),
     [elements]
   );
   const componentsAll = useMemo(
-    () => elements.filter((e: any) => e.kind === "component"),
+    () => elements.filter((e) => e.kind === "component"),
     [elements]
   );
   const datastores = useMemo(
-    () => elements.filter((e: any) => e.kind === "datastore" || e.kind === "database"),
+    () => elements.filter((e) => e.kind === "datastore" || e.kind === "database"),
     [elements]
   );
 
   // Derived IDs
-  const personIds = useMemo(() => new Set(persons.map((p: any) => p.id)), [persons]);
-  const systemIds = useMemo(() => new Set(systems.map((s: any) => s.id)), [systems]);
-  const containerIds = useMemo(() => new Set(allContainers.map((c: any) => c.id)), [allContainers]);
-  const componentIds = useMemo(() => new Set(componentsAll.map((c: any) => c.id)), [componentsAll]);
+  const personIds = useMemo(() => new Set(persons.map((p) => p.id)), [persons]);
+  const systemIds = useMemo(() => new Set(systems.map((s) => s.id)), [systems]);
+  const containerIds = useMemo(() => new Set(allContainers.map((c) => c.id)), [allContainers]);
+  const componentIds = useMemo(() => new Set(componentsAll.map((c) => c.id)), [componentsAll]);
 
   // Relationship Checks
   // Helper to extract FQN from FqnRef or string for backward compatibility
@@ -74,42 +76,41 @@ export function useBuilderProgress() {
 
   // Documentation Stats
   const systemsWithDescriptions = systems.filter(
-    (s: any) =>
-      !!s.description &&
-      (typeof s.description === "string"
-        ? s.description.trim().length > 0
-        : (s.description?.txt || "").trim().length > 0)
+    (s) => {
+      const desc = extractText(s.description);
+      return !!desc && desc.trim().length > 0;
+    }
   ).length;
 
   const containersWithTech = allContainers.filter(
-    (c: any) => !!c.technology && c.technology.trim().length > 0
+    (c) => !!c.technology && c.technology.trim().length > 0
   ).length;
 
   const componentsWithTech = componentsAll.filter(
-    (co: any) => !!co.technology && co.technology.trim().length > 0
+    (co) => !!co.technology && co.technology.trim().length > 0
   ).length;
 
   const l1ReqTagged = useMemo(() => {
     const reqTaggedToLocal = (ids: Set<string>) =>
-      requirements.filter((r: any) => (r.tags || []).some((tag: string) => ids.has(tag))).length;
+      requirements.filter((r) => (r.tags || []).some((tag: string) => ids.has(tag))).length;
     return reqTaggedToLocal(
-      new Set([...persons.map((p: any) => p.id), ...systems.map((s: any) => s.id)])
+      new Set([...persons.map((p) => p.id), ...systems.map((s) => s.id)])
     );
   }, [requirements, persons, systems]);
 
   const l2ReqTagged = useMemo(() => {
     const reqTaggedToLocal = (ids: Set<string>) =>
-      requirements.filter((r: any) => (r.tags || []).some((tag: string) => ids.has(tag))).length;
+      requirements.filter((r) => (r.tags || []).some((tag: string) => ids.has(tag))).length;
     return reqTaggedToLocal(
-      new Set([...allContainers.map((c: any) => c.id), ...systems.map((s: any) => s.id)])
+      new Set([...allContainers.map((c) => c.id), ...systems.map((s) => s.id)])
     );
   }, [requirements, allContainers, systems]);
 
   const l3ReqTagged = useMemo(() => {
     const reqTaggedToLocal = (ids: Set<string>) =>
-      requirements.filter((r: any) => (r.tags || []).some((tag: string) => ids.has(tag))).length;
+      requirements.filter((r) => (r.tags || []).some((tag) => ids.has(tag))).length;
     return reqTaggedToLocal(
-      new Set([...componentsAll.map((c: any) => c.id), ...allContainers.map((c: any) => c.id)])
+      new Set([...componentsAll.map((c) => c.id), ...allContainers.map((c) => c.id)])
     );
   }, [requirements, componentsAll, allContainers]);
 
@@ -117,21 +118,11 @@ export function useBuilderProgress() {
   // In flat model, 'parent' property links to parent ID.
   const containerParentById = useMemo(() => {
     const m = new Map<string, string>();
-    allContainers.forEach((c: any) => {
-      // Assuming parent is set. SrujaModelDump 'ElementDump' does not explicitly have 'parent' field in some versions,
-      // but usually it does. If not, we rely on ID hierarchy or metadata.
-      // LikeC4 usually doesn't have explicit parent field in ElementDump, but `hierarchy` or parent logic is used.
-      // Let's assume ID structure for now or check if we can get parent.
-      // Wait, standard LikeC4 ElementDump usually doesn't output parent ref directly, but the model hierarchy is known.
-      // However, our Builder enforces hierarchy via naming or structure.
-      // For now, let's assume standard '.' notation if parent field is missing.
-      // But wait, ElementDump often DOES have parent info or we can infer.
-      // Actually, if we are building it ourselves, we used to nest.
-      // In the NEW model (flat), we rely on `element.parent` if available or verify.
-      // Check `ElementDump` in `ast_likec4.go` or `nodeUtils.ts`.
-      // Let's assume we can parse from ID for now as fallback, or use parent if present.
-      // I'll assume ID nesting for containerParentById.
-      if (c.id.includes(".")) {
+    allContainers.forEach((c) => {
+      // Logic for parent extraction
+      if (c.parent) {
+        m.set(c.id, c.parent);
+      } else if (c.id.includes(".")) {
         const parts = c.id.split(".");
         m.set(c.id, parts.slice(0, parts.length - 1).join("."));
       }
@@ -141,7 +132,8 @@ export function useBuilderProgress() {
 
   const componentParentById = useMemo(() => {
     const m = new Map<string, { sysId: string; containerId: string }>();
-    componentsAll.forEach((co: any) => {
+    componentsAll.forEach((co) => {
+      // Fallback to ID splitting if parent not explicitly structured, but ideally we traverse up
       const parts = co.id.split(".");
       if (parts.length >= 3) {
         m.set(co.id, { sysId: parts[0], containerId: parts[1] });
@@ -154,7 +146,7 @@ export function useBuilderProgress() {
     const containerHasRelationsLocal = (cid: string) => {
       return relations.some((r) => getFqn(r.source) === cid || getFqn(r.target) === cid);
     };
-    return allContainers.filter((c: any) => !containerHasRelationsLocal(c.id));
+    return allContainers.filter((c) => !containerHasRelationsLocal(c.id));
   }, [allContainers, relations]);
   const containersWithRelations = allContainers.length - containersMissingRelations.length;
 
@@ -162,13 +154,13 @@ export function useBuilderProgress() {
     const componentHasRelationsLocal = (coid: string) => {
       return relations.some((r) => getFqn(r.source) === coid || getFqn(r.target) === coid);
     };
-    return componentsAll.filter((co: any) => !componentHasRelationsLocal(co.id));
+    return componentsAll.filter((co) => !componentHasRelationsLocal(co.id));
   }, [componentsAll, relations]);
   const componentsWithRelations = componentsAll.length - componentsMissingRelations.length;
 
   // Shared Datastores
   const sharedDatastores = useMemo(() => {
-    return datastores.filter((ds: any) => {
+    return datastores.filter((ds) => {
       const consumers = new Set<string>();
       relations.forEach((r) => {
         const srcFqn = getFqn(r.source);
@@ -186,11 +178,6 @@ export function useBuilderProgress() {
   const layerIndex = (name?: string) => (name ? layers.indexOf(name) : -1);
 
   const resolveMetaLayer = (_id: string): string | undefined => {
-    // Find element and check 'layer' meta/tag
-    // Since we don't have metadata easily accessible on ElementDump (it might be in links or tags),
-    // we might skip this or implement if critical.
-    // Assuming we kept it in tags or similar.
-    // For now, returning undefined to safe-guard.
     return undefined;
   };
 

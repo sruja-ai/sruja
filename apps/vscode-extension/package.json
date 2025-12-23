@@ -19,6 +19,9 @@
     "type": "git",
     "url": "https://github.com/sruja-ai/sruja"
   },
+  "sponsor": {
+    "url": "https://github.com/sponsors/koladilip"
+  },
   "contributes": {
     "languages": [
       {
@@ -141,6 +144,7 @@
     "deploy:antigravity": "antigravity --install-extension ./sruja-language-support.vsix",
     "deploy:trae": "trae --install-extension ./sruja-language-support.vsix",
     "publish:marketplace": "../../node_modules/.bin/vsce publish",
+    "publish:openvsx": "npx ovsx publish --skip-duplicate",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

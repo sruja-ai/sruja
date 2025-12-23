@@ -76,11 +76,19 @@ jobs:
         run: npm run build
         working-directory: apps/vscode-extension
 
-      - name: Publish to Marketplace
+      - name: Publish to VS Code Marketplace
         run: npx vsce publish --skip-duplicate
         working-directory: apps/vscode-extension
         env:
           VSCE_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
+
+      - name: Publish to Open VSX Registry
+        uses: HaaLeo/publish-vscode-extension@v2
+        with:
+          pat: ${{ secrets.OPEN_VSX_TOKEN }}
+          packagePath: apps/vscode-extension
+          skipDuplicate: true
+        continue-on-error: true
 
   deploy-prod-website:
     runs-on: ubuntu-latest
