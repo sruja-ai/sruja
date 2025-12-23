@@ -55,6 +55,7 @@ export type {
   FqnRef,
   SrujaRelationDump,
   SrujaModelDump,
+  ElementDump,
 } from "./core";
 
 // ===========================================================================

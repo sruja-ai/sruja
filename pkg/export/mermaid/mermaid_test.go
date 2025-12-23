@@ -169,11 +169,30 @@ func TestExporter_Config(t *testing.T) {
 		},
 	}
 	result := exporter.Export(prog)
-	if !strings.Contains(result, "---") {
-		t.Errorf("expected frontmatter, got %s", result)
+	
+	// Verify result is not empty
+	if result == "" {
+		t.Fatal("expected non-empty result from exporter")
 	}
+	
+	// Verify frontmatter is present
+	if !strings.Contains(result, "---") {
+		t.Errorf("expected frontmatter delimiter '---', got:\n%s", result)
+	}
+	
+	// Verify graph direction is correct (TD, not LR)
 	if !strings.Contains(result, "graph TD") {
-		t.Errorf("expected graph TD, got %s", result)
+		t.Errorf("expected 'graph TD' in output, got:\n%s", result)
+	}
+	
+	// Verify theme is in frontmatter (when UseFrontmatter is true)
+	if !strings.Contains(result, "theme: dark") {
+		t.Errorf("expected 'theme: dark' in frontmatter, got:\n%s", result)
+	}
+	
+	// Verify direction is in frontmatter (lowercase when UseFrontmatter is true)
+	if !strings.Contains(result, "direction: td") {
+		t.Errorf("expected 'direction: td' in frontmatter, got:\n%s", result)
 	}
 }
 

@@ -7,13 +7,16 @@ package main
 import "syscall/js"
 
 // result formats a result for parseDsl and jsonToDsl functions
-func result(ok bool, data string, err string) interface{} {
+func result(ok bool, data interface{}, err string) interface{} {
 	res := make(map[string]interface{}, 3)
 	res["ok"] = ok
 	if ok {
-		res["json"] = data
-		res["dsl"] = data
 		res["data"] = data
+		// Backward compatibility for older callers expecting json/dsl fields
+		if str, ok := data.(string); ok {
+			res["json"] = str
+			res["dsl"] = str
+		}
 	} else {
 		res["error"] = err
 	}

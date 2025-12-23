@@ -27,7 +27,7 @@ export interface NodeClickConfig {
  * - Select nodes and show details panel
  */
 export function useLikeC4Handlers(config: NodeClickConfig) {
-  const { likec4Model, currentLevel, onNodeClick, onDrillDown, onSelectNode, onSetActiveTab } =
+  const { onNodeClick, onSelectNode } =
     config;
 
   const handleNodeClick = (node: { id: string } | string, event?: React.MouseEvent) => {
@@ -40,32 +40,14 @@ export function useLikeC4Handlers(config: NodeClickConfig) {
 
     // Always select the node to show details panel
     onSelectNode(nodeId);
-    onSetActiveTab("details");
+    // onSetActiveTab("details"); // Disabled: Details are now shown in side panel
     // console.log("[LikeC4Canvas] Node selected:", nodeId, "- showing related items in details panel");
 
     if (onNodeClick) {
       onNodeClick(nodeId);
-    } else if (likec4Model) {
-      // Default navigation based on current level
-      try {
-        const element = likec4Model.element(nodeId);
-        if (element) {
-          const parts = nodeId.split(".");
-          if (currentLevel === "L1" && parts.length === 1) {
-            // Clicking a system at L1 should drill down to L2
-            // console.log("[LikeC4Canvas] Diagram → Navigation: Clicking system", nodeId, "→ drillDown to L2");
-            onDrillDown(nodeId, "system");
-          } else if (currentLevel === "L2" && parts.length === 2) {
-            // Clicking a container at L2 should drill down to L3
-            const systemId = parts[0];
-            // console.log("[LikeC4Canvas] Diagram → Navigation: Clicking container", parts[1], "→ drillDown to L3");
-            onDrillDown(parts[1], "container", systemId);
-          }
-        }
-      } catch {
-        // console.debug("[LikeC4Canvas] Could not find element for navigation:", nodeId);
-      }
     }
+    // Default navigation disabled.
+    // Navigation is handled via Side Panel / Left Nav.
   };
 
   return {

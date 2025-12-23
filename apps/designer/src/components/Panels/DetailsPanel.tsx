@@ -75,14 +75,14 @@ export function DetailsPanel({ onClose }: DetailsPanelProps) {
   // SrujaModelDump doesn't carry 'requirements' array on element directly based on shared types.
   // We'll rely on global lists + tags or manual associations.
 
-  // Find requirements tagged with this node
+  // Find requirements tagged with this node (case-insensitive)
   const relatedRequirements = allRequirements.filter((req: any) =>
-    req.tags?.some((tag: string) => tag === node.id)
+    req.tags?.some((tag: string) => tag.toLowerCase() === node.id.toLowerCase())
   );
 
-  // Find ADRs tagged with this node
+  // Find ADRs tagged with this node (case-insensitive)
   const relatedADRs = allADRs.filter((adr: any) =>
-    adr.tags?.some((tag: string) => tag === node.id)
+    adr.tags?.some((tag: string) => tag.toLowerCase() === node.id.toLowerCase())
   );
 
   // Find flows that reference this node in their steps

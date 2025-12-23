@@ -88,6 +88,7 @@ export function ExamplesDropdown() {
       url.searchParams.set("example", example.file);
       url.searchParams.delete("share");
       url.searchParams.delete("dsl");
+      url.searchParams.delete("code");
       window.history.pushState({}, "", url.toString());
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";

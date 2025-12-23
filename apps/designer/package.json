@@ -10,7 +10,8 @@
     "./src/App": "./src/App.tsx"
   },
   "scripts": {
-    "dev": "npm run copy:examples && node scripts/ensure-wasm-exists.mjs && vite",
+    "dev": "npm run copy:examples && node scripts/check-wasm-freshness.mjs && npm run copy:wasm && vite",
+    "dev:rebuild-wasm": "cd ../.. && make wasm && cd apps/designer && npm run copy:wasm && npm run dev",
     "build": "npm run typecheck && npm run copy:examples && npm run copy:wasm && vite build",
     "copy:examples": "rm -rf public/examples && cp -R ../../examples public/examples",
     "copy:wasm": "mkdir -p public/wasm && cp ../../apps/website/public/wasm/sruja.wasm public/wasm/ && cp ../../apps/website/public/wasm/wasm_exec.js public/wasm/",
@@ -47,6 +48,7 @@
     "events": "^3.3.0",
     "firebase": "^12.6.0",
     "framer-motion": "^11.18.2",
+    "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.555.0",
     "lz-string": "^1.5.0",

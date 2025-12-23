@@ -30,8 +30,19 @@ export interface WasmParseResponse {
   readonly ok: boolean;
   readonly json?: string;
   readonly dsl?: string;
-  readonly data?: string;
+  readonly data?: any; // Changed from string to any to support objects
   readonly error?: string;
+}
+
+/**
+ * Result of a DOT export containing the DOT string and projected elements/relations.
+ * 
+ * @public
+ */
+export interface DotResult {
+  readonly dot: string;
+  readonly elements: any[];
+  readonly relations: any[];
 }
 
 /**
@@ -46,6 +57,7 @@ export interface WindowWithWasm extends Window {
   sruja_dsl_to_mermaid?: (dsl: string) => WasmParseResponse;
   sruja_dsl_to_markdown?: (dsl: string) => WasmParseResponse;
   sruja_dsl_to_likec4?: (dsl: string, filename?: string) => WasmParseResponse;
+  sruja_dsl_to_dot?: (dsl: string, viewLevel?: number, focusNodeId?: string) => WasmParseResponse;
 }
 
 /**

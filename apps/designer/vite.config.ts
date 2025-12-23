@@ -36,16 +36,32 @@ function serveMonorepoAssets(): Plugin {
         }
         // Serve wasm from apps/designer/public/wasm first, then apps/website/public/wasm
         if (req.url?.startsWith("/wasm/")) {
+          // Remove query parameters for file lookup
+          const wasmFile = req.url.split("?")[0].replace("/wasm/", "");
+          
           // Try designer's public/wasm first (for graphvizlib.wasm)
           const designerWasmPath = path.resolve(
             __dirname,
             "public/wasm",
-            req.url.replace("/wasm/", "")
+            wasmFile
           );
           if (fs.existsSync(designerWasmPath)) {
-            if (req.url.endsWith(".wasm")) {
+            // Prevent caching of WASM files in development
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            res.setHeader("Pragma", "no-cache");
+            res.setHeader("Expires", "0");
+            // Add ETag based on file modification time for cache validation
+            const stats = fs.statSync(designerWasmPath);
+            const etag = `"${stats.mtime.getTime()}-${stats.size}"`;
+            res.setHeader("ETag", etag);
+            if (req.headers["if-none-match"] === etag) {
+              res.writeHead(304);
+              res.end();
+              return;
+            }
+            if (wasmFile.endsWith(".wasm")) {
               res.setHeader("Content-Type", "application/wasm");
-            } else if (req.url.endsWith(".js")) {
+            } else if (wasmFile.endsWith(".js")) {
               res.setHeader("Content-Type", "application/javascript");
             }
             fs.createReadStream(designerWasmPath).pipe(res);
@@ -55,12 +71,25 @@ function serveMonorepoAssets(): Plugin {
           const websiteWasmPath = path.resolve(
             __dirname,
             "../website/public/wasm",
-            req.url.replace("/wasm/", "")
+            wasmFile
           );
           if (fs.existsSync(websiteWasmPath)) {
-            if (req.url.endsWith(".wasm")) {
+            // Prevent caching of WASM files in development
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            res.setHeader("Pragma", "no-cache");
+            res.setHeader("Expires", "0");
+            // Add ETag based on file modification time for cache validation
+            const stats = fs.statSync(websiteWasmPath);
+            const etag = `"${stats.mtime.getTime()}-${stats.size}"`;
+            res.setHeader("ETag", etag);
+            if (req.headers["if-none-match"] === etag) {
+              res.writeHead(304);
+              res.end();
+              return;
+            }
+            if (wasmFile.endsWith(".wasm")) {
               res.setHeader("Content-Type", "application/wasm");
-            } else if (req.url.endsWith(".js")) {
+            } else if (wasmFile.endsWith(".js")) {
               res.setHeader("Content-Type", "application/javascript");
             }
             fs.createReadStream(websiteWasmPath).pipe(res);
@@ -98,16 +127,32 @@ function serveMonorepoAssets(): Plugin {
         }
         // Serve wasm from apps/designer/public/wasm first, then apps/website/public/wasm
         if (req.url?.startsWith("/wasm/")) {
+          // Remove query parameters for file lookup
+          const wasmFile = req.url.split("?")[0].replace("/wasm/", "");
+          
           // Try designer's public/wasm first (for graphvizlib.wasm)
           const designerWasmPath = path.resolve(
             __dirname,
             "public/wasm",
-            req.url.replace("/wasm/", "")
+            wasmFile
           );
           if (fs.existsSync(designerWasmPath)) {
-            if (req.url.endsWith(".wasm")) {
+            // Prevent caching of WASM files in preview mode
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            res.setHeader("Pragma", "no-cache");
+            res.setHeader("Expires", "0");
+            // Add ETag based on file modification time for cache validation
+            const stats = fs.statSync(designerWasmPath);
+            const etag = `"${stats.mtime.getTime()}-${stats.size}"`;
+            res.setHeader("ETag", etag);
+            if (req.headers["if-none-match"] === etag) {
+              res.writeHead(304);
+              res.end();
+              return;
+            }
+            if (wasmFile.endsWith(".wasm")) {
               res.setHeader("Content-Type", "application/wasm");
-            } else if (req.url.endsWith(".js")) {
+            } else if (wasmFile.endsWith(".js")) {
               res.setHeader("Content-Type", "application/javascript");
             }
             fs.createReadStream(designerWasmPath).pipe(res);
@@ -117,12 +162,25 @@ function serveMonorepoAssets(): Plugin {
           const websiteWasmPath = path.resolve(
             __dirname,
             "../website/public/wasm",
-            req.url.replace("/wasm/", "")
+            wasmFile
           );
           if (fs.existsSync(websiteWasmPath)) {
-            if (req.url.endsWith(".wasm")) {
+            // Prevent caching of WASM files in preview mode
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            res.setHeader("Pragma", "no-cache");
+            res.setHeader("Expires", "0");
+            // Add ETag based on file modification time for cache validation
+            const stats = fs.statSync(websiteWasmPath);
+            const etag = `"${stats.mtime.getTime()}-${stats.size}"`;
+            res.setHeader("ETag", etag);
+            if (req.headers["if-none-match"] === etag) {
+              res.writeHead(304);
+              res.end();
+              return;
+            }
+            if (wasmFile.endsWith(".wasm")) {
               res.setHeader("Content-Type", "application/wasm");
-            } else if (req.url.endsWith(".js")) {
+            } else if (wasmFile.endsWith(".js")) {
               res.setHeader("Content-Type", "application/javascript");
             }
             fs.createReadStream(websiteWasmPath).pipe(res);

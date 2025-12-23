@@ -5,7 +5,7 @@
 We use a unified release workflow that handles:
 
 1. **GitHub Release Creation** - Creates version tag and GitHub release
-2. **VS Code Extension** - Publishes to marketplace
+2. **VS Code Extension** - Publishes to VS Code Marketplace and Open VSX Registry
 3. **Production Website** - Deploys to sruja-ai/prod-website
 4. **Designer App** - Deploys to sruja-ai/prod-website/designer
 5. **Go Binaries** - Creates release artifacts via GoReleaser
@@ -25,7 +25,7 @@ The workflow will:
 - **Auto-detect next version** from latest tag and commit messages
 - Create git tag
 - Create GitHub release
-- Publish VS Code extension
+- Publish VS Code extension to VS Code Marketplace and Open VSX Registry
 - Deploy to production website
 - Deploy designer app
 - Create Go release binaries
@@ -73,6 +73,7 @@ The public key is available at [`.github/gpg-public-key.asc`](.github/gpg-public
 
 - Version updated in `package.json`
 - Published to VS Code Marketplace
+- Published to Open VSX Registry (for VSCodium and other VS Code alternatives)
 - Uses version from release tag
 
 ### Production Website
