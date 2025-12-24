@@ -5,13 +5,13 @@ import { test, expect } from "@playwright/test";
 test.describe("DSL Sync on Tab Switch", () => {
   test("DSL remains visible after switching tabs", async ({ page }) => {
     await page.goto("/");
-    await page.waitForSelector(".app", { timeout: 30000 });
+    await page.waitForSelector(".app-container, .drop-zone", { timeout: 30000 });
 
     // Load demo first
     const dropZone = page.locator(".drop-zone");
     if (await dropZone.isVisible().catch(() => false)) {
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
     // Go to Code tab first time
@@ -21,13 +21,16 @@ test.describe("DSL Sync on Tab Switch", () => {
 
     // Verify DSL content is visible
     const editor = page.locator(".monaco-editor, .dsl-panel-content");
-    const initialContent = await editor.first().textContent().catch(() => "");
+    const initialContent = await editor
+      .first()
+      .textContent()
+      .catch(() => "");
     expect(initialContent).toBeTruthy();
     expect(initialContent?.trim().length || 0).toBeGreaterThan(0);
 
     // Switch to Diagram tab
     await page.locator('button.view-tab:has-text("Diagram")').click();
-    await page.waitForSelector(".likec4-canvas", { timeout: 10000 });
+    await page.waitForSelector(".react-flow", { timeout: 10000 });
     await page.waitForTimeout(500); // Allow component to unmount
 
     // Switch back to Code tab
@@ -38,14 +41,17 @@ test.describe("DSL Sync on Tab Switch", () => {
     // Verify DSL content is still visible (should not be blank)
     const editorAfterSwitch = page.locator(".monaco-editor, .dsl-panel-content");
     await expect(editorAfterSwitch.first()).toBeVisible();
-    
+
     // Wait a bit for content to load
     await page.waitForTimeout(1000);
-    
-    const contentAfterSwitch = await editorAfterSwitch.first().textContent().catch(() => "");
+
+    const contentAfterSwitch = await editorAfterSwitch
+      .first()
+      .textContent()
+      .catch(() => "");
     expect(contentAfterSwitch).toBeTruthy();
     expect(contentAfterSwitch?.trim().length || 0).toBeGreaterThan(0);
-    
+
     // Content should be the same (or at least not empty)
     if (initialContent && contentAfterSwitch) {
       // Either same content or both have content
@@ -55,7 +61,7 @@ test.describe("DSL Sync on Tab Switch", () => {
 
   test("DSL syncs correctly when loading example", async ({ page }) => {
     await page.goto("/");
-    await page.waitForSelector(".app", { timeout: 30000 });
+    await page.waitForSelector(".app-container, .drop-zone", { timeout: 30000 });
 
     // Load example from examples menu
     const examplesButton = page.locator('button[aria-label="Examples"]');
@@ -67,7 +73,7 @@ test.describe("DSL Sync on Tab Switch", () => {
     await firstExample.click();
 
     // Wait for diagram to load
-    await page.waitForSelector(".likec4-canvas", { timeout: 30000 });
+    await page.waitForSelector(".react-flow", { timeout: 30000 });
 
     // Go to Code tab
     await page.locator('button.view-tab:has-text("Code")').click();
@@ -76,9 +82,12 @@ test.describe("DSL Sync on Tab Switch", () => {
     // Verify DSL is visible
     const editor = page.locator(".monaco-editor, .dsl-panel-content");
     await expect(editor.first()).toBeVisible();
-    
+
     await page.waitForTimeout(1000);
-    const content = await editor.first().textContent().catch(() => "");
+    const content = await editor
+      .first()
+      .textContent()
+      .catch(() => "");
     expect(content).toBeTruthy();
     expect(content?.trim().length || 0).toBeGreaterThan(0);
 
@@ -90,9 +99,11 @@ test.describe("DSL Sync on Tab Switch", () => {
     await page.waitForTimeout(1000);
 
     // Verify DSL is still visible
-    const contentAfterSwitch = await editor.first().textContent().catch(() => "");
+    const contentAfterSwitch = await editor
+      .first()
+      .textContent()
+      .catch(() => "");
     expect(contentAfterSwitch).toBeTruthy();
     expect(contentAfterSwitch?.trim().length || 0).toBeGreaterThan(0);
   });
 });
-

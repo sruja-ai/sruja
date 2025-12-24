@@ -5,9 +5,9 @@ import { type ArchitectureCanvasRef } from "./components/Canvas";
 import { SrujaCanvas } from "./components/SrujaCanvas";
 import "./App.css";
 import "./components/shared/GlobalFocusStyles.css";
-import { NavigationPanel, DetailsPanel, CodePanel } from "./components/Panels";
+import { NavigationPanel, DetailsPanel, CodePanel, GovernancePanel } from "./components/Panels";
 import { BuilderWizard } from "./components/Wizard";
-import { CommandPalette, ShortcutsModal, ErrorBoundary } from "./components/shared";
+import { CommandPalette, ShortcutsModal, ErrorBoundary, SentryInit } from "./components/shared";
 import { ToastContainer, Logo, SrujaLoader, PosthogProvider } from "@sruja/ui"; // Consolidated imports
 import {
   useArchitectureStore,
@@ -26,6 +26,7 @@ import { FeatureSettingsDialog } from "./components/Overview/FeatureSettingsDial
 import { useUrlState } from "./hooks/useUrlState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { setGlobalCanvasRef } from "./hooks/useTagNavigation";
+import { trackInteraction } from "@sruja/shared";
 import type { ViewTab } from "./types";
 
 // New components and hooks
@@ -33,7 +34,7 @@ import { Header } from "./components/Header";
 import { useAppCommands } from "./hooks/useAppCommands";
 import { useAppShortcuts } from "./hooks/useAppShortcuts";
 
-const VALID_TABS: ViewTab[] = ["overview", "diagram", "details", "code", "builder"];
+const VALID_TABS: ViewTab[] = ["overview", "diagram", "details", "code", "builder", "governance"];
 
 export default function App() {
   // Sync URL state (level, expanded nodes) with view store
@@ -48,7 +49,6 @@ export default function App() {
   const setActiveTab = useUIStore((s) => s.setActiveTab);
   const editMode = useFeatureFlagsStore((s) => s.editMode);
   const setEditMode = useFeatureFlagsStore((s) => s.setEditMode);
-
 
   const toasts = useToastStore((s) => s.toasts);
   const removeToast = useToastStore((s) => s.removeToast);
@@ -76,6 +76,8 @@ export default function App() {
     handleCreateLocal,
     reloadFromDsl,
     isImporting,
+    isExporting,
+    isSharing,
     fileInputRef,
   } = useFileHandlers(canvasRef as React.RefObject<ArchitectureCanvasRef>);
 
@@ -83,7 +85,7 @@ export default function App() {
     canvasRef as React.RefObject<ArchitectureCanvasRef>
   );
 
-  const isLoadingFile = isSyncLoading || isImporting;
+  const isLoadingFile = isSyncLoading || isImporting || isExporting || isSharing;
 
   // Set global canvas ref for tag navigation
   useEffect(() => {
@@ -132,10 +134,16 @@ export default function App() {
     }
 
     const params = new URLSearchParams(window.location.search);
-    if (params.get("tab") !== activeTab) {
+    const previousTab = params.get("tab");
+    if (previousTab !== activeTab) {
       params.set("tab", activeTab);
       const newUrl = `${window.location.pathname}?${params.toString()}`;
       window.history.replaceState({}, "", newUrl);
+
+      // Track tab change (only if tab actually changed, not on initial load)
+      if (previousTab && previousTab !== activeTab) {
+        trackInteraction("switch", "tab", { from: previousTab, to: activeTab });
+      }
     }
   }, [activeTab, isLoadingFile]);
 
@@ -200,131 +208,140 @@ export default function App() {
   }, [shortcuts]);
 
   return (
-    <PosthogProvider
-      apiKey={import.meta.env.VITE_POSTHOG_KEY || ''}
-      host={import.meta.env.VITE_POSTHOG_HOST}
-    >
-      <div className="app-container">
-        <ToastContainer toasts={toasts} onClose={removeToast} />
-        {/* ... existing content ... */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          accept=".sruja,.json"
-          onChange={handleFileChange}
-        />
-
-        <Header
-          isNavOpen={isNavOpen}
-          setIsNavOpen={setIsNavOpen}
-          likec4Model={likec4Model}
-          showActions={showActions}
-          setShowActions={setShowActions}
-          activeTab={activeTab}
-          editMode={editMode}
-          setEditMode={setEditMode}
-          setShowSettings={setShowSettings}
-          selectedNodeId={selectedNodeId}
-          isDetailsOpen={isDetailsOpen}
-          setIsDetailsOpen={setIsDetailsOpen}
-          handleImport={handleImport}
-          handleExport={handleExport}
-          handleExportPNG={handleExportPNG}
-          handleExportSVG={handleExportSVG}
-          reloadFromDsl={reloadFromDsl}
-          handleShareHeader={handleShareHeader}
-          handleCreateNewRemote={handleCreateNewRemote}
-        />
-
-        {/* Mobile Overlay */}
-        {(isNavOpen || isDetailsOpen) && (
-          <div
-            className="mobile-overlay"
-            onClick={() => {
-              setIsNavOpen(false);
-              setIsDetailsOpen(false);
-            }}
+    <>
+      <SentryInit />
+      <PosthogProvider
+        apiKey={import.meta.env.VITE_POSTHOG_KEY || ""}
+        host={import.meta.env.VITE_POSTHOG_HOST}
+      >
+        <div className="app-container">
+          <ToastContainer toasts={toasts} onClose={removeToast} />
+          {/* ... existing content ... */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept=".sruja,.json"
+            onChange={handleFileChange}
           />
-        )}
 
-        {/* Main Content */}
-        <main className="app-main">
-          <div className={`navigation-panel-wrapper ${isNavOpen ? "open" : ""}`}>
-            <NavigationPanel onClose={() => setIsNavOpen(false)} />
-          </div>
+          <Header
+            isNavOpen={isNavOpen}
+            setIsNavOpen={setIsNavOpen}
+            likec4Model={likec4Model}
+            showActions={showActions}
+            setShowActions={setShowActions}
+            activeTab={activeTab}
+            editMode={editMode}
+            setEditMode={setEditMode}
+            setShowSettings={setShowSettings}
+            selectedNodeId={selectedNodeId}
+            isDetailsOpen={isDetailsOpen}
+            setIsDetailsOpen={setIsDetailsOpen}
+            handleImport={handleImport}
+            handleExport={handleExport}
+            handleExportPNG={handleExportPNG}
+            handleExportSVG={handleExportSVG}
+            reloadFromDsl={reloadFromDsl}
+            handleShareHeader={handleShareHeader}
+            handleCreateNewRemote={handleCreateNewRemote}
+          />
 
-          <div className={`center-panel ${editMode === "edit" ? "edit-mode" : ""}`}>
-            {/* View Tabs */}
-            {likec4Model && (
-              <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} counts={counts} />
-            )}
+          {/* Mobile Overlay */}
+          {(isNavOpen || isDetailsOpen) && (
+            <div
+              className="mobile-overlay"
+              onClick={() => {
+                setIsNavOpen(false);
+                setIsDetailsOpen(false);
+              }}
+            />
+          )}
 
-            {/* Tab Content */}
-            <div className="canvas-container">
-              {!likec4Model && !isLoadingFile && (
-                <div className="drop-zone">
-                  <Logo size={64} />
-                  <h2>Design, visualize, and govern your architecture</h2>
-                  <p>
-                    Start from a demo or template, or import a <code>.sruja</code> file.
-                  </p>
-                  <div className="empty-state-actions">
-                    <button className="demo-btn large" onClick={() => void loadDemo()}>
-                      <Play size={18} />
-                      Try a Demo
-                    </button>
-                    <button className="upload-btn large" onClick={() => void handleCreateLocal()}>
-                      <Plus size={18} />
-                      Create New
-                    </button>
+          {/* Main Content */}
+          <main className="app-main">
+            <div className={`navigation-panel-wrapper ${isNavOpen ? "open" : ""}`}>
+              <NavigationPanel onClose={() => setIsNavOpen(false)} />
+            </div>
+
+            <div className={`center-panel ${editMode === "edit" ? "edit-mode" : ""}`}>
+              {/* View Tabs */}
+              {likec4Model && (
+                <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} counts={counts} />
+              )}
+
+              {/* Tab Content */}
+              <div className="canvas-container">
+                {!likec4Model && !isLoadingFile && (
+                  <div className="drop-zone">
+                    <Logo size={64} />
+                    <h2>Design, visualize, and govern your architecture</h2>
+                    <p>
+                      Start from a demo or template, or import a <code>.sruja</code> file.
+                    </p>
+                    <div className="empty-state-actions">
+                      <button className="demo-btn large" onClick={() => void loadDemo()}>
+                        <Play size={18} />
+                        Try a Demo
+                      </button>
+                      <button className="upload-btn large" onClick={() => void handleCreateLocal()}>
+                        <Plus size={18} />
+                        Create New
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-              {isLoadingFile && (
-                <div className="loading">
-                  <SrujaLoader size={64} />
-                  <p>Loading architecture...</p>
-                </div>
-              )}
+                )}
+                {isLoadingFile && (
+                  <div className="loading">
+                    <SrujaLoader size={64} />
+                    <p>Loading architecture...</p>
+                  </div>
+                )}
 
-              {likec4Model && activeTab === "overview" && (
-                <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
-                  {/* Overview merged into Diagram/Builder, redirects handled in effect */}
-                </div>
-              )}
+                {likec4Model && activeTab === "overview" && (
+                  <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
+                    {/* Overview merged into Diagram/Builder, redirects handled in effect */}
+                  </div>
+                )}
 
-              {/* Builder Tab */}
-              {likec4Model && activeTab === "builder" && (
-                <div role="tabpanel" id="tabpanel-builder" aria-labelledby="tab-builder">
-                  <ErrorBoundary
-                    fallback={
-                      <div className="error-state" style={{ padding: "2rem", textAlign: "center" }}>
-                        <h2>Builder Error</h2>
-                        <p>Failed to load the builder wizard. Please try refreshing the page.</p>
-                      </div>
-                    }
-                  >
-                    <BuilderWizard />
-                  </ErrorBoundary>
-                </div>
-              )}
+                {/* Builder Tab */}
+                {likec4Model && activeTab === "builder" && (
+                  <div role="tabpanel" id="tabpanel-builder" aria-labelledby="tab-builder">
+                    <ErrorBoundary
+                      fallback={
+                        <div
+                          className="error-state"
+                          style={{ padding: "2rem", textAlign: "center" }}
+                        >
+                          <h2>Builder Error</h2>
+                          <p>Failed to load the builder wizard. Please try refreshing the page.</p>
+                        </div>
+                      }
+                    >
+                      <BuilderWizard />
+                    </ErrorBoundary>
+                  </div>
+                )}
 
-              {/* Standard Diagram Tab (Full Screen) */}
-              {likec4Model && activeTab === "diagram" && (
-                <div role="tabpanel" id="tabpanel-diagram" aria-labelledby="tab-diagram">
-                  <ErrorBoundary
-                    fallback={
-                      <div className="error-state" style={{ padding: "2rem", textAlign: "center" }}>
-                        <h2>Canvas Error</h2>
-                        <p>
-                          Failed to render the architecture canvas. Please try refreshing the page.
-                        </p>
-                      </div>
-                    }
-                  >
-                    <SrujaCanvas />
-                    {/* 
+                {/* Standard Diagram Tab (Full Screen) */}
+                {likec4Model && activeTab === "diagram" && (
+                  <div role="tabpanel" id="tabpanel-diagram" aria-labelledby="tab-diagram">
+                    <ErrorBoundary
+                      fallback={
+                        <div
+                          className="error-state"
+                          style={{ padding: "2rem", textAlign: "center" }}
+                        >
+                          <h2>Canvas Error</h2>
+                          <p>
+                            Failed to render the architecture canvas. Please try refreshing the
+                            page.
+                          </p>
+                        </div>
+                      }
+                    >
+                      <SrujaCanvas />
+                      {/* 
                     <ArchitectureCanvas
                       ref={canvasRef}
                       model={likec4Model}
@@ -332,62 +349,72 @@ export default function App() {
                       viewId={currentLevel}
                     /> 
                     */}
-                  </ErrorBoundary>
-                </div>
-              )}
+                    </ErrorBoundary>
+                  </div>
+                )}
 
-              {likec4Model && activeTab === "details" && (
-                <div role="tabpanel" id="tabpanel-details" aria-labelledby="tab-details">
-                  <ErrorBoundary
-                    fallback={
-                      <div className="error-state" style={{ padding: "2rem", textAlign: "center" }}>
-                        <h2>Details Error</h2>
-                        <p>Failed to load details view. Please try refreshing the page.</p>
-                      </div>
-                    }
-                  >
-                    <DetailsView />
-                  </ErrorBoundary>
-                </div>
-              )}
+                {likec4Model && activeTab === "details" && (
+                  <div role="tabpanel" id="tabpanel-details" aria-labelledby="tab-details">
+                    <ErrorBoundary
+                      fallback={
+                        <div
+                          className="error-state"
+                          style={{ padding: "2rem", textAlign: "center" }}
+                        >
+                          <h2>Details Error</h2>
+                          <p>Failed to load details view. Please try refreshing the page.</p>
+                        </div>
+                      }
+                    >
+                      <DetailsView />
+                    </ErrorBoundary>
+                  </div>
+                )}
 
-              {likec4Model && activeTab === "code" && (
-                <div role="tabpanel" id="tabpanel-code" aria-labelledby="tab-code">
-                  <CodePanel />
-                </div>
-              )}
+                {likec4Model && activeTab === "code" && (
+                  <div role="tabpanel" id="tabpanel-code" aria-labelledby="tab-code">
+                    <CodePanel />
+                  </div>
+                )}
+
+                {likec4Model && activeTab === "governance" && (
+                  <div role="tabpanel" id="tabpanel-governance" aria-labelledby="tab-governance">
+                    <GovernancePanel />
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className={`details-panel-wrapper ${isDetailsOpen ? "open" : ""}`}>
-            <ErrorBoundary
-              fallback={
-                <div className="error-state" style={{ padding: "2rem", textAlign: "center" }}>
-                  <h2>Details Panel Error</h2>
-                  <p>Failed to load the details panel. Please try closing and reopening it.</p>
-                </div>
-              }
-            >
-              <DetailsPanel onClose={() => setIsDetailsOpen(false)} />
-            </ErrorBoundary>
-          </div>
-        </main>
+            <div className={`details-panel-wrapper ${isDetailsOpen ? "open" : ""}`}>
+              <ErrorBoundary
+                fallback={
+                  <div className="error-state" style={{ padding: "2rem", textAlign: "center" }}>
+                    <h2>Details Panel Error</h2>
+                    <p>Failed to load the details panel. Please try closing and reopening it.</p>
+                  </div>
+                }
+              >
+                <DetailsPanel onClose={() => setIsDetailsOpen(false)} />
+              </ErrorBoundary>
+            </div>
+          </main>
 
-        {/* Modals & Dialogs */}
-        <FeatureSettingsDialog isOpen={showSettings} onClose={() => setShowSettings(false)} />
+          {/* Modals & Dialogs */}
+          <FeatureSettingsDialog isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
-        <CommandPalette
-          isOpen={showCommandPalette}
-          onClose={() => setShowCommandPalette(false)}
-          commands={commandPaletteCommands}
-        />
+          <CommandPalette
+            isOpen={showCommandPalette}
+            onClose={() => setShowCommandPalette(false)}
+            commands={commandPaletteCommands}
+          />
 
-        <ShortcutsModal
-          isOpen={showShortcuts}
-          onClose={() => setShowShortcuts(false)}
-          shortcuts={modalShortcuts}
-        />
-      </div>
-    </PosthogProvider>
+          <ShortcutsModal
+            isOpen={showShortcuts}
+            onClose={() => setShowShortcuts(false)}
+            shortcuts={modalShortcuts}
+          />
+        </div>
+      </PosthogProvider>
+    </>
   );
 }

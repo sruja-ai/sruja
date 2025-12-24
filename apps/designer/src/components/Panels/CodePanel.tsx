@@ -1,15 +1,14 @@
-import { useState } from "react";
 import { Button } from "@sruja/ui";
 import { DSLPanel } from "./DSLPanel";
 import { JSONPanel } from "./JSONPanel";
 import { MarkdownPanel } from "./MarkdownPanel";
 import { Code, FileJson, FileText } from "lucide-react";
 import "./CodePanel.css";
-
-type CodeTab = "dsl" | "json" | "markdown";
+import { useUIStore } from "../../stores/uiStore";
 
 export function CodePanel() {
-  const [activeTab, setActiveTab] = useState<CodeTab>("dsl");
+  const activeTab = useUIStore((s) => s.codeTab);
+  const setActiveTab = useUIStore((s) => s.setCodeTab);
 
   return (
     <div className="code-panel-container">

@@ -5,13 +5,13 @@ import { test, expect } from "@playwright/test";
 test.describe("Builder Wizard", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForSelector(".app", { timeout: 30000 });
+    await page.waitForSelector(".app-container, .drop-zone", { timeout: 30000 });
 
     // Load demo first to ensure architecture exists
     const dropZone = page.locator(".drop-zone");
     if (await dropZone.isVisible().catch(() => false)) {
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
     // Switch to Builder tab
@@ -29,12 +29,12 @@ test.describe("Builder Wizard", () => {
   test("navigates between wizard steps", async ({ page }) => {
     const steps = page.locator(".wizard-step");
     const stepCount = await steps.count();
-    
+
     if (stepCount > 1) {
       // Click on second step
       await steps.nth(1).click();
       await page.waitForTimeout(500); // Allow step transition
-      
+
       // Verify step content is visible
       const stepContent = page.locator(".wizard-main, .step-content");
       await expect(stepContent.first()).toBeVisible();
@@ -51,4 +51,3 @@ test.describe("Builder Wizard", () => {
     }
   });
 });
-

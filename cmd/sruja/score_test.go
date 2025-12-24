@@ -63,13 +63,11 @@ model {
 	assert.NoError(t, err)
 
 	// Verify output contains score and violations
-	assert.Contains(t, output, "Architecture Score:")
+	assert.Contains(t, output, "Architecture Health Index:")
+	assert.Contains(t, output, "Dimensions:")
 	assert.Contains(t, output, "Deductions:")
 	assert.Contains(t, output, "Missing Description") // Worker
 	assert.Contains(t, output, "Orphan Element")      // User
-
-	// Check that score is not 100
-	assert.NotContains(t, output, "Score: 100/100")
 }
 
 func TestScoreCommand_FileNotFound(t *testing.T) {

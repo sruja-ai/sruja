@@ -1,0 +1,262 @@
+.governance-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    background-color: var(--panel-bg);
+    padding: 1.5rem;
+    font-family: var(--font-sans);
+}
+
+.governance-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+}
+
+.governance-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.governance-title h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.governance-score-card {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    padding: 2rem;
+    background-color: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
+}
+
+.score-ring {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 8px solid;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.grade {
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text-primary);
+}
+
+.score-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.score-summary h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+}
+
+.score-summary p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.governance-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.deduction-section {
+    background-color: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.deduction-section.critical {
+    border-left: 4px solid var(--color-danger);
+}
+
+.deduction-section.warning {
+    border-left: 4px solid var(--color-warning);
+}
+
+.deduction-section.info {
+    border-left: 4px solid var(--color-info);
+}
+
+.section-title {
+    padding: 1rem;
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.section-title.critical {
+    color: var(--color-danger);
+}
+
+.section-title.warning {
+    color: var(--color-warning);
+}
+
+.section-title.info {
+    color: var(--color-info);
+}
+
+.deduction-list {
+    padding: 0;
+}
+
+.deduction-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.deduction-item:last-child {
+    border-bottom: none;
+}
+
+.deduction-points {
+    font-weight: 700;
+    color: var(--color-danger);
+    min-width: 40px;
+    text-align: right;
+    font-size: 0.9rem;
+}
+
+.deduction-content {
+    flex: 1;
+}
+
+.deduction-content strong {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text-primary);
+}
+
+.deduction-content p {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.target-ref {
+    display: inline-block;
+    padding: 0.125rem 0.375rem;
+    background-color: var(--bg-tertiary);
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.target-ref.clickable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.target-ref.clickable:hover {
+    background-color: var(--color-primary-subtle);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.governance-perfect {
+    text-align: center;
+    padding: 4rem;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.ahi-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 1rem;
+    min-width: 400px;
+}
+
+.ahi-metric-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.ahi-metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.ahi-metric-label {
+    color: var(--text-secondary);
+}
+
+.ahi-metric-value {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.ahi-metric-track {
+    height: 4px;
+    background-color: var(--bg-tertiary);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.ahi-metric-fill {
+    height: 100%;
+    transition: width 0.5s ease-out;
+}
+
+@media (max-width: 1200px) {
+    .ahi-metrics {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

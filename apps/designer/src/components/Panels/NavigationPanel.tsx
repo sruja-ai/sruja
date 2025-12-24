@@ -1,17 +1,11 @@
 import { useState, useEffect } from "react";
-import {
-  ChevronRight,
-  ChevronLeft,
-  Building2,
-  User,
-  X,
-  Link2,
-} from "lucide-react";
+import { ChevronRight, ChevronLeft, Building2, User, X, Link2 } from "lucide-react";
 import { Input, Button } from "@sruja/ui";
 import { useArchitectureStore, useViewStore } from "../../stores";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
 import { useNavigationData } from "../../hooks/useNavigationData";
 import { NavTreeItem } from "./NavTreeItem";
+import { QualityScoreCard } from "./QualityScoreCard";
 import "./NavigationPanel.css";
 import type { Element, SrujaModelDump } from "@sruja/shared";
 
@@ -33,9 +27,8 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
 
   const { filteredPersons, filteredSystems, getChildren } = useNavigationData({
     likec4Model,
-    filterQuery
+    filterQuery,
   });
-
 
   // Track expanded nodes locally
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
@@ -74,15 +67,30 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   // --------------------------------------------------------------------------
   // Editing State Stubs
   // --------------------------------------------------------------------------
-  const onEditSystem = (_sys: Element) => { console.warn("Edit System not implemented"); };
-  const onAddSystem = () => { console.warn("Add System not implemented"); };
-  const onEditContainer = (_cont: Element) => { console.warn("Edit Container not implemented"); };
-  const onAddContainer = (_sysId: string) => { console.warn("Add Container not implemented"); };
-  const onEditComponent = (_comp: Element) => { console.warn("Edit Component not implemented"); };
-  const onAddComponent = (_contId: string) => { console.warn("Add Component not implemented"); };
-  const onEditPerson = (_p: Element) => { console.warn("Edit Person not implemented"); };
-  const onAddPerson = () => { console.warn("Add Person not implemented"); };
-
+  const onEditSystem = (_sys: Element) => {
+    console.warn("Edit System not implemented");
+  };
+  const onAddSystem = () => {
+    console.warn("Add System not implemented");
+  };
+  const onEditContainer = (_cont: Element) => {
+    console.warn("Edit Container not implemented");
+  };
+  const onAddContainer = (_sysId: string) => {
+    console.warn("Add Container not implemented");
+  };
+  const onEditComponent = (_comp: Element) => {
+    console.warn("Edit Component not implemented");
+  };
+  const onAddComponent = (_contId: string) => {
+    console.warn("Add Component not implemented");
+  };
+  const onEditPerson = (_p: Element) => {
+    console.warn("Edit Person not implemented");
+  };
+  const onAddPerson = () => {
+    console.warn("Add Person not implemented");
+  };
 
   return (
     <div className={`navigation-panel ${isCollapsed ? "collapsed" : ""}`}>
@@ -119,7 +127,13 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
       {onClose && (
         <div className="panel-mobile-header">
           <span>Navigation</span>
-          <Button variant="ghost" size="sm" className="panel-close-btn" onClick={onClose} aria-label="Close navigation">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="panel-close-btn"
+            onClick={onClose}
+            aria-label="Close navigation"
+          >
             <X size={18} />
           </Button>
         </div>
@@ -155,6 +169,9 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
         </div>
       </div>
 
+      {/* Quality Score Card */}
+      <QualityScoreCard isCollapsed={isCollapsed} />
+
       {/* Systems Tree */}
       <div className="nav-section">
         <div className="nav-section-title">
@@ -173,7 +190,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
             </li>
           )}
           {filteredSystems.map((system: any) => {
-            const containers = getChildren(system.id, 'container');
+            const containers = getChildren(system.id, "container");
             const isExpanded = expandedNodes.has(system.id);
             return (
               <NavTreeItem
@@ -189,7 +206,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                 onAddChild={onAddContainer}
               >
                 {containers.map((container: any) => {
-                  const components = getChildren(container.id, 'component');
+                  const components = getChildren(container.id, "component");
                   const isContExpanded = expandedNodes.has(container.id);
                   return (
                     <NavTreeItem
@@ -212,8 +229,8 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                           isExpanded={false}
                           isSelected={false} // Components rarely selected as view root
                           hasChildren={false}
-                          onExpand={() => { }}
-                          onDrillDown={() => { }} // Usually L3 is leaf
+                          onExpand={() => {}}
+                          onDrillDown={() => {}} // Usually L3 is leaf
                           isEditMode={!!isEditMode()}
                           onEdit={onEditComponent}
                         />
@@ -238,7 +255,9 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
             <li className="nav-empty">
               No actors.{" "}
               {isEditMode() && (
-                <Button variant="ghost" size="sm" className="link-btn" onClick={onAddPerson}>Add a person</Button>
+                <Button variant="ghost" size="sm" className="link-btn" onClick={onAddPerson}>
+                  Add a person
+                </Button>
               )}
             </li>
           )}
@@ -249,8 +268,8 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
               isExpanded={false}
               isSelected={false}
               hasChildren={false}
-              onExpand={() => { }}
-              onDrillDown={() => { }} // Persons usually don't have internal views
+              onExpand={() => {}}
+              onDrillDown={() => {}} // Persons usually don't have internal views
               isEditMode={!!isEditMode()}
               onEdit={onEditPerson}
             />
@@ -265,9 +284,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
             <Link2 size={14} />
             <span>Governance</span>
           </div>
-          <div className="nav-governance-hint">
-            Select an item to view governance details.
-          </div>
+          <div className="nav-governance-hint">Select an item to view governance details.</div>
         </div>
       )}
     </div>

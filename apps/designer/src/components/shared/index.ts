@@ -22,4 +22,5 @@ export {
 export { ConfirmDialog } from "./ConfirmDialog";
 export { SidePanel } from "./SidePanel";
 export { ErrorBoundary } from "./ErrorBoundary";
+export { SentryInit } from "./SentryInit";
 export { BestPracticeTip } from "./BestPracticeTip";

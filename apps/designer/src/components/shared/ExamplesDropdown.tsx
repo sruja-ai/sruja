@@ -4,22 +4,24 @@ import { Button, SearchBar, type SearchItem } from "@sruja/ui";
 import { getAllExamples, fetchExampleDsl } from "../../examples";
 import { convertDslToLikeC4 } from "../../wasm";
 import { useArchitectureStore } from "../../stores";
+import { useProjectSync } from "../../hooks/useProjectSync";
+import { trackInteraction } from "@sruja/shared";
 import type { SrujaModelDump, Example } from "@sruja/shared";
 
 export function ExamplesDropdown() {
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [examples, setExamples] = useState<Array<Example & { isDsl: boolean }>>([]);
   const [query, setQuery] = useState("");
   const loadFromDSL = useArchitectureStore((s) => s.loadFromDSL);
+  const { setIsLoadingFile } = useProjectSync();
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     getAllExamples()
       .then((all) => {
         // Show both DSL and JSON examples (filter out only if explicitly skipped)
-        setExamples(all)
+        setExamples(all);
       })
       .catch((err) => {
         console.error("Failed to load examples:", err);
@@ -37,11 +39,11 @@ export function ExamplesDropdown() {
     const q = query.toLowerCase().trim();
     const list = q
       ? examples.filter(
-        (ex) =>
-          ex.name.toLowerCase().includes(q) ||
-          ex.description.toLowerCase().includes(q) ||
-          ex.category.toLowerCase().includes(q)
-      )
+          (ex) =>
+            ex.name.toLowerCase().includes(q) ||
+            ex.description.toLowerCase().includes(q) ||
+            ex.category.toLowerCase().includes(q)
+        )
       : examples;
     return list.sort((a, b) => a.order - b.order);
   }, [examples, query]);
@@ -60,15 +62,19 @@ export function ExamplesDropdown() {
 
   const handleExampleSelect = async (example: Example & { isDsl: boolean }) => {
     setIsOpen(false);
-    setLoading(true);
     setError(null);
+
+    // Use global loading state to show loader in main app
+    setIsLoadingFile(true);
 
     try {
       let content: string;
       try {
         content = await fetchExampleDsl(example.file);
       } catch (fetchErr) {
-        throw new Error(`Failed to fetch example file "${example.file}": ${fetchErr instanceof Error ? fetchErr.message : "Unknown error"}`);
+        throw new Error(
+          `Failed to fetch example file "${example.file}": ${fetchErr instanceof Error ? fetchErr.message : "Unknown error"}`
+        );
       }
 
       if (example.isDsl) {
@@ -77,6 +83,13 @@ export function ExamplesDropdown() {
         if (!data) throw new Error("Failed to parse DSL to Model");
 
         loadFromDSL(data as SrujaModelDump, content, example.file);
+
+        // Track example selection
+        trackInteraction("select", "example", {
+          example_file: example.file,
+          example_name: example.name,
+          category: example.category,
+        });
       } else {
         // Legacy JSON path - try to migrate or error
         // For now assuming all examples are DSL or will fail gracefully
@@ -95,7 +108,7 @@ export function ExamplesDropdown() {
       setError(`Failed to load example: ${message}`);
       console.error("Example load error:", err);
     } finally {
-      setLoading(false);
+      setIsLoadingFile(false);
     }
   };
 
@@ -105,9 +118,8 @@ export function ExamplesDropdown() {
         variant="ghost"
         size="md"
         onClick={() => setIsOpen((v) => !v)}
-        disabled={loading}
-        aria-label={loading ? "Loading examples..." : "Examples"}
-        title={loading ? "Loading examples..." : "Examples"}
+        aria-label="Examples"
+        title="Examples"
         style={{ paddingLeft: "8px", paddingRight: "8px", minWidth: "36px" }}
       >
         <FileCode size={18} />

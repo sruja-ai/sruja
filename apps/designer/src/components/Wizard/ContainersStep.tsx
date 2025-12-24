@@ -18,7 +18,11 @@ interface ContainersStepProps {
 
 type ElementType = "container" | "datastore" | "queue";
 
-export function ContainersStep({ onNext, onBack, readOnly: _readOnly = false }: ContainersStepProps) {
+export function ContainersStep({
+  onNext,
+  onBack,
+  readOnly: _readOnly = false,
+}: ContainersStepProps) {
   const data = useArchitectureStore((s) => s.likec4Model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
   const drillDown = useViewStore((s) => s.drillDown);
@@ -63,15 +67,15 @@ export function ContainersStep({ onNext, onBack, readOnly: _readOnly = false }: 
       // Check if parent is selectedSystemId. Assuming dot notation or exact parent checking if we had it.
       // Using dot notation: id starts with "systemId." and has no other dots?
       // Actually L2 elements might just check if they start with systemId.
-      // But strict hierarchy: systemId.childId. 
+      // But strict hierarchy: systemId.childId.
       const parts = e.id.split(".");
       return parts.length === 2 && parts[0] === selectedSystemId;
     });
   }, [allElements, selectedSystemId]);
 
-  const containers = systemChildren.filter(e => e.kind === "container");
-  const datastores = systemChildren.filter(e => e.kind === "datastore" || e.kind === "database"); // Handle both?
-  const queues = systemChildren.filter(e => e.kind === "queue");
+  const containers = systemChildren.filter((e) => e.kind === "container");
+  const datastores = systemChildren.filter((e) => e.kind === "datastore" || e.kind === "database"); // Handle both?
+  const queues = systemChildren.filter((e) => e.kind === "queue");
 
   // Calculate total L2 elements across all systems for validation
   const totalElements = useMemo(() => {
@@ -86,14 +90,16 @@ export function ContainersStep({ onNext, onBack, readOnly: _readOnly = false }: 
 
   // Build L2 elements for relations (all containers, datastores, queues across all systems)
   const l2Elements = useMemo(() => {
-    return allElements.filter((e: any) => {
-      const parts = e.id.split(".");
-      return parts.length === 2 && systems.some((s: any) => s.id === parts[0]);
-    }).map((e: any) => ({
-      id: e.id,
-      label: e.title,
-      type: e.kind
-    }));
+    return allElements
+      .filter((e: any) => {
+        const parts = e.id.split(".");
+        return parts.length === 2 && systems.some((s: any) => s.id === parts[0]);
+      })
+      .map((e: any) => ({
+        id: e.id,
+        label: e.title,
+        type: e.kind,
+      }));
   }, [allElements, systems]);
 
   const removeElement = (_type: ElementType, id: string) => {
@@ -102,7 +108,7 @@ export function ContainersStep({ onNext, onBack, readOnly: _readOnly = false }: 
       delete newElements[id];
       return {
         ...model,
-        elements: newElements
+        elements: newElements,
       };
     });
   };
@@ -333,7 +339,11 @@ export function ContainersStep({ onNext, onBack, readOnly: _readOnly = false }: 
         </div>
       </div>
 
-      <BestPracticeTip variant="warning" show={containers.length > 0 && datastores.length === 0} stepId="containers">
+      <BestPracticeTip
+        variant="warning"
+        show={containers.length > 0 && datastores.length === 0}
+        stepId="containers"
+      >
         Don't forget to add a database! Most systems need persistent storage.
       </BestPracticeTip>
 
@@ -344,8 +354,17 @@ export function ContainersStep({ onNext, onBack, readOnly: _readOnly = false }: 
           toElements={l2Elements}
           filterFn={(rel: any) => {
             // Show L2 relations (one dot in path = System.Container)
-            const fromParts = rel.source.split(".");
-            const toParts = rel.target.split(".");
+            const srcId =
+              typeof rel.source === "object" && rel.source?.model
+                ? rel.source.model
+                : String(rel.source || "");
+            const tgtId =
+              typeof rel.target === "object" && rel.target?.model
+                ? rel.target.model
+                : String(rel.target || "");
+
+            const fromParts = srcId.split(".");
+            const toParts = tgtId.split(".");
             return fromParts.length === 2 && toParts.length === 2;
           }}
           title="L2 Relations"

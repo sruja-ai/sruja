@@ -8,3 +8,5 @@ export { DSLPanel } from "./DSLPanel";
 export { JSONPanel } from "./JSONPanel";
 export { MarkdownPanel } from "./MarkdownPanel";
 export { CodePanel } from "./CodePanel";
+export { GovernancePanel } from "./GovernancePanel";
+export { QualityScoreCard } from "./QualityScoreCard";

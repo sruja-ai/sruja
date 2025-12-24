@@ -1,7 +1,7 @@
 // DSL Panel - Shows the source DSL code for the current architecture
 import { useState, useEffect, useCallback } from "react";
 import { FileCode, Copy, Check } from "lucide-react";
-import { useArchitectureStore, useSelectionStore } from "../../stores";
+import { useArchitectureStore, useSelectionStore, useUIStore } from "../../stores";
 import { SrujaMonacoEditor, useTheme, Button } from "@sruja/ui";
 import { convertDslToJson } from "../../wasm";
 import "./DSLPanel.css";
@@ -268,6 +268,28 @@ export function DSLPanel() {
       }
     }
   }, [editorInstance, selectedNodeId, dslSource]);
+
+  const targetLine = useUIStore((s) => s.targetLine);
+  const clearTargetLine = useUIStore((s) => s.setTargetLine);
+
+  // Scroll to target line from global store (e.g. from Governance Dashboard)
+  useEffect(() => {
+    if (editorInstance && targetLine && targetLine > 0) {
+      // Reveal and highlight
+      editorInstance.revealLineInCenter(targetLine);
+      editorInstance.setPosition({ column: 1, lineNumber: targetLine });
+      editorInstance.setSelection({
+        startLineNumber: targetLine,
+        startColumn: 1,
+        endLineNumber: targetLine,
+        endColumn: 1000,
+      });
+
+      // Clear after revealing so it doesn't keep scrolling back
+      // if the user moves away and comes back to the DSL tab
+      clearTargetLine(null);
+    }
+  }, [editorInstance, targetLine, clearTargetLine]);
 
   // ... render logic
 

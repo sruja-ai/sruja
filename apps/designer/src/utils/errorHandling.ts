@@ -12,17 +12,17 @@ export const ErrorType = {
   UNKNOWN: "UNKNOWN",
 } as const;
 
-export type ErrorType = typeof ErrorType[keyof typeof ErrorType];
+export type ErrorType = (typeof ErrorType)[keyof typeof ErrorType];
 
 /**
  * Custom error class with type and context for better error handling.
- * 
+ *
  * Extends the base Error class to include error type categorization
  * and additional context information for debugging.
- * 
+ *
  * @class
  * @extends {Error}
- * 
+ *
  * @example
  * ```ts
  * throw new AppError("Failed to load data", ErrorType.NETWORK, { url: "/api/data" });
@@ -47,13 +47,13 @@ export class AppError extends Error {
 
 /**
  * Network-specific error wrapper.
- * 
+ *
  * Used for errors related to network operations (fetch, API calls, etc.).
  * Includes optional HTTP status code for better error handling.
- * 
+ *
  * @class
  * @extends {AppError}
- * 
+ *
  * @example
  * ```ts
  * throw new NetworkError("Failed to fetch", 404, { endpoint: "/api/users" });
@@ -71,13 +71,13 @@ export class NetworkError extends AppError {
 
 /**
  * Validation-specific error wrapper.
- * 
+ *
  * Used for errors related to data validation (form inputs, schema validation, etc.).
  * Includes optional field name for field-specific error messages.
- * 
+ *
  * @class
  * @extends {AppError}
- * 
+ *
  * @example
  * ```ts
  * throw new ValidationError("Email is required", "email");
@@ -95,16 +95,16 @@ export class ValidationError extends AppError {
 
 /**
  * Safely execute async operation with error handling.
- * 
+ *
  * Wraps an async operation in try-catch and returns a result object
  * with either data or error, preventing unhandled promise rejections.
- * 
+ *
  * @template T - The return type of the operation
  * @param operation - Async function to execute
  * @param errorMessage - User-friendly error message if operation fails
  * @param errorType - Type of error to categorize (default: UNKNOWN)
  * @returns Promise resolving to object with `data` and `error` properties
- * 
+ *
  * @example
  * ```ts
  * const { data, error } = await safeAsync(
@@ -112,12 +112,12 @@ export class ValidationError extends AppError {
  *   "Failed to load data",
  *   ErrorType.NETWORK
  * );
- * 
+ *
  * if (error) {
  *   console.error(error);
  *   return;
  * }
- * 
+ *
  * // Use data safely
  * console.log(data);
  * ```
@@ -131,23 +131,22 @@ export async function safeAsync<T>(
     const data = await operation();
     return { data, error: null };
   } catch (error) {
-    const appError = error instanceof AppError
-      ? error
-      : new AppError(
-          errorMessage,
-          errorType,
-          { originalError: error instanceof Error ? error.message : String(error) }
-        );
+    const appError =
+      error instanceof AppError
+        ? error
+        : new AppError(errorMessage, errorType, {
+            originalError: error instanceof Error ? error.message : String(error),
+          });
     return { data: null, error: appError };
   }
 }
 
 /**
  * Execute async operation with retry logic.
- * 
+ *
  * Retries a failed operation up to a specified number of times with
  * exponential backoff. Only retries if `shouldRetry` returns true.
- * 
+ *
  * @template T - The return type of the operation
  * @param operation - Async function to execute with retries
  * @param options - Retry configuration options
@@ -155,7 +154,7 @@ export async function safeAsync<T>(
  * @param options.retryDelay - Base delay between retries in ms (default: 1000)
  * @param options.shouldRetry - Function to determine if error is retryable (default: always retry)
  * @returns Promise resolving to operation result
- * 
+ *
  * @example
  * ```ts
  * const data = await withRetry(
@@ -172,11 +171,7 @@ export async function withRetry<T>(
     shouldRetry?: (error: unknown) => boolean;
   } = {}
 ): Promise<T> {
-  const {
-    maxRetries = 3,
-    retryDelay = 1000,
-    shouldRetry = () => true,
-  } = options;
+  const { maxRetries = 3, retryDelay = 1000, shouldRetry = () => true } = options;
 
   let lastError: unknown;
 
@@ -200,16 +195,16 @@ export async function withRetry<T>(
 
 /**
  * Execute async operation with timeout.
- * 
+ *
  * Wraps an async operation with a timeout. If the operation doesn't
  * complete within the specified time, it rejects with a timeout error.
- * 
+ *
  * @template T - The return type of the operation
  * @param operation - Async function to execute
  * @param timeoutMs - Timeout duration in milliseconds
  * @param timeoutMessage - Error message for timeout (default: "Operation timed out")
  * @returns Promise resolving to operation result
- * 
+ *
  * @example
  * ```ts
  * const data = await withTimeout(
@@ -234,14 +229,15 @@ export async function withTimeout<T>(
 
 /**
  * Handle and log error consistently.
- * 
- * Converts any error (Error, string, unknown) to an AppError instance
- * and logs it with context information for debugging.
- * 
+ *
+ * Converts any error (Error, string, unknown) to an AppError instance,
+ * logs it with context information for debugging, and sends it to
+ * Sentry and Posthog for monitoring.
+ *
  * @param error - Error to handle (can be Error, string, or unknown)
  * @param context - Optional context string for error logging (e.g., function name)
  * @returns AppError instance for further handling
- * 
+ *
  * @example
  * ```ts
  * try {
@@ -273,18 +269,40 @@ export function handleError(error: unknown, context?: string): AppError {
     context: appError.context,
   });
 
+  // Send error to Sentry and Posthog for monitoring
+  try {
+    // Dynamic import to avoid bundling issues if analytics packages aren't available
+    import("@sruja/shared")
+      .then((shared) => {
+        if (shared.trackError) {
+          shared.trackError(appError, {
+            component: context || "unknown",
+            action: "error",
+            errorType: appError.type,
+            severity: "error",
+            ...appError.context,
+          });
+        }
+      })
+      .catch(() => {
+        // Silently fail if analytics package isn't available
+      });
+  } catch {
+    // Silently fail if import fails
+  }
+
   return appError;
 }
 
 /**
  * Check if error is retryable.
- * 
+ *
  * Determines if an error should be retried based on error type.
  * Network errors (5xx) are retryable, validation errors (4xx) are not.
- * 
+ *
  * @param error - Error to check
  * @returns True if error is retryable, false otherwise
- * 
+ *
  * @example
  * ```ts
  * if (isRetryableError(error)) {
@@ -305,14 +323,14 @@ export function isRetryableError(error: unknown): boolean {
 
 /**
  * Extract user-friendly error message.
- * 
+ *
  * Converts any error to a user-friendly message string suitable for
  * displaying to end users. Handles AppError types with specific messages
  * and falls back to error message or generic message.
- * 
+ *
  * @param error - Error to extract message from
  * @returns User-friendly error message string
- * 
+ *
  * @example
  * ```ts
  * try {

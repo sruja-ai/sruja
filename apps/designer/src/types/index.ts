@@ -18,11 +18,11 @@ export type {
   Relationship,
   ParsedView,
   Specification,
-} from '@sruja/shared';
+} from "@sruja/shared";
 
 // Type aliases for backward compatibility (use LikeC4 types directly in new code)
 // These match SrujaModelDump structure which uses LikeC4 types
-import type { SrujaModelDump } from '@sruja/shared';
+import type { SrujaModelDump } from "@sruja/shared";
 
 export type ElementDump = NonNullable<SrujaModelDump["elements"]>[string]; // Same as Element<any>
 export type RelationDump = NonNullable<SrujaModelDump["relations"]>[number];
@@ -32,7 +32,7 @@ export type SpecificationDump = SrujaModelDump["specification"]; // Same as Spec
 export {
   isLikeC4Format,
   // isLegacyFormat, // Removed if legacy format is no longer supported
-} from '@sruja/shared';
+} from "@sruja/shared";
 
 // ===========================================================================
 // View & Node Types (UI Specific)
@@ -85,7 +85,7 @@ export interface C4NodeData {
   pendingActionCount?: number;
 }
 
-export type ViewTab = "overview" | "diagram" | "details" | "code" | "builder";
+export type ViewTab = "overview" | "diagram" | "details" | "code" | "builder" | "governance";
 export type ViewMode = "designer" | "present";
 
 // ===========================================================================

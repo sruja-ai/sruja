@@ -1,7 +1,12 @@
 // packages/shared/src/web/wasmAdapter.ts
 import { logger } from "../utils/logger";
 import { ConfigurationError, NetworkError } from "../utils/errors";
-import { getWindowWithWasm, type GoConstructor, type GoInstance, type DotResult } from "./wasmTypes";
+import {
+  getWindowWithWasm,
+  type GoConstructor,
+  type GoInstance,
+  type DotResult,
+} from "./wasmTypes";
 import { isBrowser } from "../utils/env";
 
 /**
@@ -10,9 +15,10 @@ import { isBrowser } from "../utils/env";
  */
 function isDevelopmentMode(): boolean {
   try {
-    const meta = typeof import.meta !== "undefined"
-      ? (import.meta as { env?: { DEV?: boolean; MODE?: string } })
-      : undefined;
+    const meta =
+      typeof import.meta !== "undefined"
+        ? (import.meta as { env?: { DEV?: boolean; MODE?: string } })
+        : undefined;
     if (meta?.env?.DEV || meta?.env?.MODE === "development") {
       return true;
     }
@@ -28,7 +34,13 @@ export type WasmApi = {
   dslToMermaid: (dsl: string) => Promise<string>;
   dslToMarkdown: (dsl: string) => Promise<string>;
   dslToLikeC4: (dsl: string, filename?: string) => Promise<string>;
-  dslToDot: (dsl: string, viewLevel?: number, focusNodeId?: string) => Promise<DotResult>;
+  dslToDot: (
+    dsl: string,
+    viewLevel?: number,
+    focusNodeId?: string,
+    nodeSizes?: Record<string, { width: number; height: number }>
+  ) => Promise<DotResult>;
+  calculateArchitectureScore: (dsl: string) => Promise<any>;
 };
 
 async function ensureScript(src: string): Promise<void> {
@@ -212,8 +224,8 @@ export async function initWasm(options?: {
           if (isDevelopmentMode()) {
             console.log(
               `[WASM] ✅ Loaded from ${url}\n` +
-              `[WASM] Cache-busting enabled - new WASM will load automatically after rebuild.\n` +
-              `[WASM] If changes don't appear, try a hard refresh (Ctrl+Shift+R / Cmd+Shift+R)`
+                `[WASM] Cache-busting enabled - new WASM will load automatically after rebuild.\n` +
+                `[WASM] If changes don't appear, try a hard refresh (Ctrl+Shift+R / Cmd+Shift+R)`
             );
           }
           break;
@@ -236,13 +248,17 @@ export async function initWasm(options?: {
           const mod = await WebAssembly.instantiate(bytes, importObject as WebAssembly.Imports);
           instance = mod.instance;
           lastError = null;
-          logger.info("WASM loaded via arrayBuffer fallback", { component: "wasm", action: "load_wasm", url });
+          logger.info("WASM loaded via arrayBuffer fallback", {
+            component: "wasm",
+            action: "load_wasm",
+            url,
+          });
           // In dev mode, log WASM load info
           if (isDevelopmentMode()) {
             console.log(
               `[WASM] ✅ Loaded from ${url} (fallback method)\n` +
-              `[WASM] Cache-busting enabled - new WASM will load automatically after rebuild.\n` +
-              `[WASM] If changes don't appear, try a hard refresh (Ctrl+Shift+R / Cmd+Shift+R)`
+                `[WASM] Cache-busting enabled - new WASM will load automatically after rebuild.\n` +
+                `[WASM] If changes don't appear, try a hard refresh (Ctrl+Shift+R / Cmd+Shift+R)`
             );
           }
           break;
@@ -257,8 +273,8 @@ export async function initWasm(options?: {
         if (isDevelopmentMode()) {
           console.log(
             `[WASM] ✅ Loaded from ${url}\n` +
-            `[WASM] Cache-busting enabled - new WASM will load automatically after rebuild.\n` +
-            `[WASM] If changes don't appear, try a hard refresh (Ctrl+Shift+R / Cmd+Shift+R)`
+              `[WASM] Cache-busting enabled - new WASM will load automatically after rebuild.\n` +
+              `[WASM] If changes don't appear, try a hard refresh (Ctrl+Shift+R / Cmd+Shift+R)`
           );
         }
         break;
@@ -321,6 +337,7 @@ export async function initWasm(options?: {
   const markdownFn = win.sruja_dsl_to_markdown;
   const likec4Fn = win.sruja_dsl_to_likec4;
   const dotFn = win.sruja_dsl_to_dot;
+  const scoreFn = win.sruja_score;
 
   // Debug: Log all registered functions
   const allSrujaFunctions = Object.keys(win).filter((k) => k.startsWith("sruja_"));
@@ -487,13 +504,19 @@ export async function initWasm(options?: {
         throw error;
       }
     },
-    dslToDot: async (dsl: string, viewLevel?: number, focusNodeId?: string) => {
+    dslToDot: async (
+      dsl: string,
+      viewLevel?: number,
+      focusNodeId?: string,
+      nodeSizes?: Record<string, { width: number; height: number }>
+    ) => {
       try {
         if (!dotFn) {
           throw new Error("sruja_dsl_to_dot function not registered");
         }
         // Pass viewLevel (default 1) and focusNodeId (default empty string) to WASM
-        const r = dotFn(dsl, viewLevel ?? 1, focusNodeId ?? "");
+        const nodeSizesJson = nodeSizes ? JSON.stringify(nodeSizes) : "";
+        const r = dotFn(dsl, viewLevel ?? 1, focusNodeId ?? "", nodeSizesJson);
         if (!r || !r.ok) {
           throw new Error(r?.error || "DOT export failed");
         }
@@ -502,6 +525,25 @@ export async function initWasm(options?: {
         logger.error("WASM DOT export exception", {
           component: "wasm",
           action: "export_dot",
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
+    },
+    calculateArchitectureScore: async (dsl: string) => {
+      try {
+        if (!scoreFn) {
+          throw new Error("sruja_score function not registered");
+        }
+        const r = scoreFn(dsl);
+        if (!r || !r.ok) {
+          throw new Error(r?.error || "score calculation failed");
+        }
+        return JSON.parse(r.data || "{}");
+      } catch (error) {
+        logger.error("WASM score calculation exception", {
+          component: "wasm",
+          action: "calculate_score",
           error: error instanceof Error ? error.message : String(error),
         });
         throw error;
@@ -658,7 +700,8 @@ export async function convertDslToMermaid(dsl: string): Promise<string | null> {
 export async function convertDslToDot(
   dsl: string,
   viewLevel?: number,
-  focusNodeId?: string
+  focusNodeId?: string,
+  nodeSizes?: Record<string, { width: number; height: number }>
 ): Promise<DotResult | null> {
   const api = await getWasmApi();
   if (!api) {
@@ -667,7 +710,7 @@ export async function convertDslToDot(
   }
 
   try {
-    return await api.dslToDot(dsl, viewLevel, focusNodeId);
+    return await api.dslToDot(dsl, viewLevel, focusNodeId, nodeSizes);
   } catch (error) {
     logger.error("DSL to DOT conversion error", {
       component: "wasm",
@@ -677,4 +720,3 @@ export async function convertDslToDot(
     return null;
   }
 }
-
