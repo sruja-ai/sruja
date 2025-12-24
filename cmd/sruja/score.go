@@ -56,7 +56,13 @@ func runScore(filePath string, stdout, stderr io.Writer) int {
 		scoreStr = dx.Colorize(dx.ColorGreen, scoreStr, useColor)
 	}
 
-	_, _ = fmt.Fprintln(stdout, dx.Bold(fmt.Sprintf("Architecture Score: %s (%s)", scoreStr, card.Grade)))
+	_, _ = fmt.Fprintln(stdout, dx.Bold(fmt.Sprintf("Architecture Health Index: %s (%s)", scoreStr, card.Grade)))
+	_, _ = fmt.Fprintln(stdout, dx.Dim("Dimensions:"))
+	_, _ = fmt.Fprintf(stdout, "  - Structural Integrity: %d%%\n", card.Categories.Structural)
+	_, _ = fmt.Fprintf(stdout, "  - Documentation Depth:  %d%%\n", card.Categories.Documentation)
+	_, _ = fmt.Fprintf(stdout, "  - Traceability:         %d%%\n", card.Categories.Traceability)
+	_, _ = fmt.Fprintf(stdout, "  - Complexity Control:   %d%%\n", card.Categories.Complexity)
+	_, _ = fmt.Fprintf(stdout, "  - Standardization:      %d%%\n", card.Categories.Standardization)
 	_, _ = fmt.Fprintln(stdout, "")
 
 	if len(card.Deductions) > 0 {
@@ -64,7 +70,8 @@ func runScore(filePath string, stdout, stderr io.Writer) int {
 		for _, d := range card.Deductions {
 			pointsStr := dx.Colorize(dx.ColorRed, fmt.Sprintf("-%d pts", d.Points), useColor)
 			ruleStr := dx.Dim(d.Rule)
-			_, _ = fmt.Fprintf(stdout, "- [%s] %s (%s)\n", pointsStr, d.Message, ruleStr)
+			categoryStr := dx.Dim("[" + d.Category + "]")
+			_, _ = fmt.Fprintf(stdout, "- %s %s %s (%s)\n", categoryStr, pointsStr, d.Message, ruleStr)
 		}
 	} else {
 		_, _ = fmt.Fprintln(stdout, dx.Success("Perfect Score! No deductions."))

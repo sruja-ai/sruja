@@ -58,46 +58,21 @@
     flex-wrap: wrap;
 }
 
+.relation-form-inline svg {
+    max-width: 16px;
+    max-height: 16px;
+    width: auto;
+    height: auto;
+}
+
 .relation-form-inline .form-group {
     flex: 1;
     min-width: 100px;
 }
 
-.relation-form-inline .form-group select {
-    width: 100%;
-    height: 36px;
-    padding: 0 0.75rem;
-    border: 1.5px solid var(--border);
-    border-radius: 6px;
-    background: var(--surface-1);
-    color: var(--text-1);
-    font-size: 0.8125rem;
-    cursor: pointer;
-}
-
-.relation-form-inline .form-group select:focus {
-    outline: none;
-    border-color: var(--primary);
-}
-
 .relation-form-inline .form-arrow {
     color: var(--text-3);
     flex-shrink: 0;
-}
-
-.relation-form-inline>label {
-    flex: 1.5;
-    min-width: 120px;
-}
-
-.relation-form-inline>label input {
-    height: 36px;
-    font-size: 0.8125rem;
-}
-
-.relation-form-inline>button {
-    height: 36px;
-    padding: 0 0.75rem;
 }
 
 @media (max-width: 640px) {
@@ -115,4 +90,3 @@
         display: none;
     }
 }
-

@@ -6,16 +6,42 @@ import (
 )
 
 // writeGraphHeader writes the DOT digraph header with global attributes.
-func (e *Exporter) writeGraphHeader(sb *strings.Builder) {
+// nodeCount is used for adaptive spacing - more nodes need more spacing.
+func (e *Exporter) writeGraphHeader(sb *strings.Builder, nodeCount int) {
+	// Adaptive spacing based on node count
+	// Base: 120px nodesep, 130px ranksep
+	// Scale up for denser diagrams
+	nodeSep := e.Config.NodeSep
+	rankSep := e.Config.RankSep
+
+	if nodeCount > 3 {
+		// For 4-6 nodes, add 20% spacing
+		if nodeCount <= 6 {
+			nodeSep = int(float64(nodeSep) * 1.2)
+			rankSep = int(float64(rankSep) * 1.2)
+		} else if nodeCount <= 10 {
+			// For 7-10 nodes, add 40% spacing
+			nodeSep = int(float64(nodeSep) * 1.4)
+			rankSep = int(float64(rankSep) * 1.4)
+		} else {
+			// For 11+ nodes, add 60% spacing
+			nodeSep = int(float64(nodeSep) * 1.6)
+			rankSep = int(float64(rankSep) * 1.6)
+		}
+	}
+
 	sb.WriteString("digraph G {\n")
 	sb.WriteString("  graph [\n")
 	fmt.Fprintf(sb, "    rankdir=\"%s\",\n", e.Config.RankDir)
-	fmt.Fprintf(sb, "    nodesep=%.2f,\n", pxToInch(e.Config.NodeSep))
-	fmt.Fprintf(sb, "    ranksep=%.2f,\n", pxToInch(e.Config.RankSep))
+	fmt.Fprintf(sb, "    nodesep=%.2f,\n", pxToInch(nodeSep))
+	fmt.Fprintf(sb, "    ranksep=%.2f,\n", pxToInch(rankSep))
 	sb.WriteString("    layout=\"dot\",\n")
 	sb.WriteString("    compound=true,\n")
-	sb.WriteString("    splines=ortho,\n")
-	sb.WriteString("    pad=0.2,\n")
+	sb.WriteString("    splines=spline,\n")         // LikeC4: curved splines for natural look
+	sb.WriteString("    TBbalance=min,\n")          // LikeC4: better vertical balance
+	sb.WriteString("    outputorder=nodesfirst,\n") // LikeC4: draw nodes before edges
+	sb.WriteString("    newrank=true,\n")           // Better cluster handling
+	sb.WriteString("    pad=0.4,\n")
 	sb.WriteString("    fontname=\"Arial\",\n")
 	sb.WriteString("    fontsize=12,\n")
 	sb.WriteString("    dpi=72\n")
@@ -62,7 +88,14 @@ func (e *Exporter) writeNode(sb *strings.Builder, elem *Element, indent string) 
 	fmt.Fprintf(sb, "%s\"%s\" [\n", indent, escapeID(elem.ID))
 	fmt.Fprintf(sb, "%s  label=\"%s\",\n", indent, escapeLabel(label))
 	fmt.Fprintf(sb, "%s  width=%.2f,\n", indent, pxToInch(width))
-	fmt.Fprintf(sb, "%s  height=%.2f\n", indent, pxToInch(height))
+	fmt.Fprintf(sb, "%s  height=%.2f", indent, pxToInch(height))
+
+	// Add group attribute for sibling clustering (LikeC4 pattern)
+	if elem.ParentID != "" {
+		fmt.Fprintf(sb, ",\n%s  group=\"%s\"", indent, escapeID(elem.ParentID))
+	}
+
+	sb.WriteString("\n")
 	fmt.Fprintf(sb, "%s];\n", indent)
 }
 
@@ -103,37 +136,75 @@ func (e *Exporter) writeRankConstraints(sb *strings.Builder, elements []*Element
 
 	sb.WriteString("  // Rank constraints for alignment\n")
 
-	// Add rank=same for each kind with multiple elements
-	for kind, kindElements := range byKind {
-		if len(kindElements) > 1 {
-			ids := make([]string, len(kindElements))
-			for i, elem := range kindElements {
-				ids[i] = fmt.Sprintf("\"%s\"", escapeID(elem.ID))
-			}
-			fmt.Fprintf(sb, "  { rank=same; %s }  // All %ss aligned\n", strings.Join(ids, "; "), kind)
+	// L1 Context View: Persons at top, then systems
+	persons := byKind["person"]
+	systems := byKind["system"]
+
+	// Put all persons on the same rank (top)
+	if len(persons) > 0 {
+		ids := make([]string, len(persons))
+		for i, elem := range persons {
+			ids[i] = fmt.Sprintf("\"%s\"", escapeID(elem.ID))
 		}
+		fmt.Fprintf(sb, "  { rank=min; %s }  // Persons at top\n", strings.Join(ids, "; "))
+	}
+
+	// Put all systems on the same rank (below persons)
+	if len(systems) > 0 {
+		ids := make([]string, len(systems))
+		for i, elem := range systems {
+			ids[i] = fmt.Sprintf("\"%s\"", escapeID(elem.ID))
+		}
+		fmt.Fprintf(sb, "  { rank=same; %s }  // Systems aligned\n", strings.Join(ids, "; "))
 	}
 
 	// Add invisible edges for vertical ordering (persons above systems)
-	persons := byKind["person"]
-	systems := byKind["system"]
 	if len(persons) > 0 && len(systems) > 0 {
-		fmt.Fprintf(sb, "  \"%s\" -> \"%s\" [style=invis, weight=100];  // Persons above Systems\n",
+		// Connect first person to first system with invisible high-weight edge
+		fmt.Fprintf(sb, "  \"%s\" -> \"%s\" [style=invis, weight=1000];  // Persons above Systems\n",
 			escapeID(persons[0].ID), escapeID(systems[0].ID))
 	}
 
-	// Group container-level elements together
+	// L2/L3: Group container-level elements together
 	containers := byKind["container"]
 	datastores := byKind["datastore"]
 	queues := byKind["queue"]
 
-	allContainerLevel := append(append(containers, datastores...), queues...)
-	if len(allContainerLevel) > 1 {
-		ids := make([]string, len(allContainerLevel))
-		for i, elem := range allContainerLevel {
+	// All containers on same rank
+	if len(containers) > 0 {
+		ids := make([]string, len(containers))
+		for i, elem := range containers {
 			ids[i] = fmt.Sprintf("\"%s\"", escapeID(elem.ID))
 		}
-		fmt.Fprintf(sb, "  { rank=same; %s }  // Container-level elements aligned\n", strings.Join(ids, "; "))
+		fmt.Fprintf(sb, "  { rank=same; %s }  // Containers aligned\n", strings.Join(ids, "; "))
+	}
+
+	// All datastores on same rank (typically below containers)
+	if len(datastores) > 0 {
+		ids := make([]string, len(datastores))
+		for i, elem := range datastores {
+			ids[i] = fmt.Sprintf("\"%s\"", escapeID(elem.ID))
+		}
+		fmt.Fprintf(sb, "  { rank=same; %s }  // Datastores aligned\n", strings.Join(ids, "; "))
+	}
+
+	// All queues on same rank (typically with datastores)
+	if len(queues) > 0 {
+		ids := make([]string, len(queues))
+		for i, elem := range queues {
+			ids[i] = fmt.Sprintf("\"%s\"", escapeID(elem.ID))
+		}
+		fmt.Fprintf(sb, "  { rank=same; %s }  // Queues aligned\n", strings.Join(ids, "; "))
+	}
+
+	// Components
+	components := byKind["component"]
+	if len(components) > 0 {
+		ids := make([]string, len(components))
+		for i, elem := range components {
+			ids[i] = fmt.Sprintf("\"%s\"", escapeID(elem.ID))
+		}
+		fmt.Fprintf(sb, "  { rank=same; %s }  // Components aligned\n", strings.Join(ids, "; "))
 	}
 
 	sb.WriteString("\n")
@@ -146,10 +217,18 @@ func (e *Exporter) writeEdge(sb *strings.Builder, rel *Relation) {
 	// Add label if present
 	if rel.Label != "" {
 		attrs = append(attrs, fmt.Sprintf("label=\"%s\"", escapeLabel(rel.Label)))
+	}
+
+	// Edge weights and layout constraints
+	if e.Config.UseEdgeWeights {
 		// Labeled edges are considered more important for layout
-		if e.Config.UseEdgeWeights {
+		if rel.Label != "" {
 			attrs = append(attrs, "weight=10")
+		} else {
+			attrs = append(attrs, "weight=1")
 		}
+		// Minimum edge length to prevent nodes from being too close
+		attrs = append(attrs, "minlen=1")
 	}
 
 	attrStr := ""

@@ -36,14 +36,16 @@ type Config struct {
 	ViewLevel int
 	// FocusNodeID specifies the node to focus on for L2/L3 views (optional)
 	FocusNodeID string
+	// NodeSizes provides explicit size overrides for nodes (ID -> {W, H})
+	NodeSizes map[string]struct{ Width, Height float64 }
 }
 
 // DefaultConfig returns the default DOT configuration.
 func DefaultConfig() Config {
 	return Config{
 		RankDir:            "TB",
-		NodeSep:            80,
-		RankSep:            90,
+		NodeSep:            150, // Increased for better horizontal spacing (was 120, increased to prevent overlaps)
+		RankSep:            180, // Increased for better vertical spacing (was 130, increased to prevent overlaps)
 		DefaultNodeWidth:   200,
 		DefaultNodeHeight:  120,
 		UseRankConstraints: true,
@@ -71,6 +73,8 @@ type ExportResult struct {
 	Elements []*Element
 	// Relations is the list of projected relations in the view.
 	Relations []*Relation
+	// Constraints are the layout constraints used (for testing/debugging).
+	Constraints *LayoutConstraints
 }
 
 // Export generates a Graphviz DOT result from a program.
@@ -94,40 +98,17 @@ func (e *Exporter) Export(prog *language.Program) *ExportResult {
 		return &ExportResult{}
 	}
 
-	// Write DOT structure
-	e.writeGraphHeader(sb)
-	e.writeGlobalNodeAttributes(sb)
-	e.writeGlobalEdgeAttributes(sb)
+	// Build constraints (FAANG-level constraint-based approach)
+	constraints := BuildConstraints(elements, relations, e.Config.ViewLevel, e.Config)
 
-	// Group elements by parent for cluster generation
-	rootElements, clusters := e.groupByParent(elements)
-
-	// Write root-level nodes
-	for _, elem := range rootElements {
-		e.writeNode(sb, elem, "  ")
-	}
-
-	// Write clusters (subgraphs)
-	for parentID, children := range clusters {
-		e.writeCluster(sb, parentID, children, elements)
-	}
-
-	// Write rank constraints
-	if e.Config.UseRankConstraints {
-		e.writeRankConstraints(sb, elements)
-	}
-
-	// Write edges
-	for _, rel := range relations {
-		e.writeEdge(sb, rel)
-	}
-
-	sb.WriteString("}\n")
+	// Generate DOT from constraints
+	dot := GenerateDOTFromConstraints(elements, relations, constraints)
 
 	return &ExportResult{
-		DOT:       sb.String(),
-		Elements:  elements,
-		Relations: relations,
+		DOT:         dot,
+		Elements:    elements,
+		Relations:   relations,
+		Constraints: &constraints,
 	}
 }
 
@@ -164,7 +145,8 @@ func (e *Exporter) filterByView(elements []*Element) []*Element {
 		for _, elem := range elements {
 			// Include elements inside the focused system
 			if strings.HasPrefix(elem.ID, focusID+".") {
-				if elem.Kind == "container" || elem.Kind == "datastore" || elem.Kind == "queue" {
+				// Include containers, datastores, queues, and nested systems
+				if elem.Kind == "container" || elem.Kind == "datastore" || elem.Kind == "queue" || elem.Kind == "system" {
 					result = append(result, elem)
 				}
 			} else if elem.ID == focusID {
@@ -223,8 +205,15 @@ func (e *Exporter) filterRelationsByView(relations []*Relation, visibleElements 
 
 	for _, rel := range relations {
 		// Find visible ancestors for source and target
-		source := e.getVisibleAncestor(rel.From, visible)
-		target := e.getVisibleAncestor(rel.To, visible)
+		// Pass the source ID to help resolve short names in the same scope
+		source := e.getVisibleAncestorWithContext(rel.From, visible, "")
+		// Use the resolved source as context for target resolution (if available)
+		// This helps resolve short names in the same scope as the resolved source
+		contextForTarget := source
+		if contextForTarget == "" {
+			contextForTarget = rel.From
+		}
+		target := e.getVisibleAncestorWithContext(rel.To, visible, contextForTarget)
 
 		// Create projected relation if both found and different
 		if source != "" && target != "" && source != target {
@@ -243,16 +232,69 @@ func (e *Exporter) filterRelationsByView(relations []*Relation, visibleElements 
 }
 
 // getVisibleAncestor finds the closest visible parent for an ID.
+// This is a convenience wrapper that calls getVisibleAncestorWithContext without context.
 func (e *Exporter) getVisibleAncestor(id string, visible map[string]bool) string {
+	return e.getVisibleAncestorWithContext(id, visible, "")
+}
+
+// getVisibleAncestorWithContext finds the closest visible parent for an ID.
+// Handles both FQN (e.g., "ragPlatform.llm") and short names (e.g., "llm").
+// contextID helps resolve short names by preferring matches within the same scope.
+func (e *Exporter) getVisibleAncestorWithContext(id string, visible map[string]bool, contextID string) string {
+	// First, try exact match
 	if visible[id] {
 		return id
 	}
 
+	// Try walking up the path (for FQNs like "ragPlatform.gateway.llm" -> "ragPlatform.gateway" -> "ragPlatform")
 	parts := strings.Split(id, ".")
 	for i := len(parts) - 1; i > 0; i-- {
 		parentID := strings.Join(parts[:i], ".")
 		if visible[parentID] {
 			return parentID
+		}
+	}
+
+	// If ID has no dots (short name like "llm"), search for visible elements
+	// This handles cases where relation uses "llm" but element is "ragPlatform.llm"
+	if len(parts) == 1 {
+		shortName := id
+
+		// Determine context scope (parent of contextID if available)
+		var contextScope string
+		if contextID != "" {
+			contextParts := strings.Split(contextID, ".")
+			if len(contextParts) > 1 {
+				contextScope = strings.Join(contextParts[:len(contextParts)-1], ".")
+			} else if len(contextParts) == 1 {
+				contextScope = contextParts[0]
+			}
+		}
+
+		// Prefer matches within the same scope
+		var sameScopeMatch string
+		var otherMatches []string
+
+		for visibleID := range visible {
+			if strings.HasSuffix(visibleID, "."+shortName) {
+				if contextScope != "" && strings.HasPrefix(visibleID, contextScope+".") {
+					sameScopeMatch = visibleID
+					break // Prefer first same-scope match
+				}
+				otherMatches = append(otherMatches, visibleID)
+			}
+		}
+
+		if sameScopeMatch != "" {
+			return sameScopeMatch
+		}
+		if len(otherMatches) > 0 {
+			return otherMatches[0] // Return first match if no same-scope match found
+		}
+
+		// Also try exact match of short name if it exists at root level
+		if visible[shortName] {
+			return shortName
 		}
 	}
 

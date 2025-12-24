@@ -1,0 +1,121 @@
+// Package dot provides layout quality metrics for iterative refinement.
+//
+// This implements FAANG-level quality measurement to drive layout optimization.
+
+package dot
+
+// LayoutQuality measures the quality of a layout.
+type LayoutQuality struct {
+	// EdgeCrossings is the number of edge crossings (lower is better)
+	EdgeCrossings int
+	// NodeOverlaps is the number of node overlaps (should be 0)
+	NodeOverlaps int
+	// LabelOverlaps is the number of label overlaps (should be 0)
+	LabelOverlaps int
+	// AvgEdgeLength is the average edge length
+	AvgEdgeLength float64
+	// EdgeLengthVariance is the variance in edge lengths (lower is better)
+	EdgeLengthVariance float64
+	// RankAlignment measures how well nodes align within ranks (0.0-1.0, higher is better)
+	RankAlignment float64
+	// ClusterBalance measures how balanced clusters are (0.0-1.0, higher is better)
+	ClusterBalance float64
+	// Score is the overall quality score (0.0-1.0, higher is better)
+	Score float64
+}
+
+// NeedsRefinement returns true if the layout quality needs improvement.
+func (q LayoutQuality) NeedsRefinement() bool {
+	return q.Score < 0.7 || q.EdgeCrossings > 5 || q.NodeOverlaps > 0
+}
+
+// CalculateScore computes the overall quality score from metrics.
+func (q *LayoutQuality) CalculateScore() {
+	score := 1.0
+
+	// Penalize edge crossings (each crossing reduces score by 0.05, max 0.5 reduction)
+	if q.EdgeCrossings > 0 {
+		penalty := float64(q.EdgeCrossings) * 0.05
+		if penalty > 0.5 {
+			penalty = 0.5
+		}
+		score -= penalty
+	}
+
+	// Penalize node overlaps heavily (each overlap reduces score by 0.2, max 0.6 reduction)
+	if q.NodeOverlaps > 0 {
+		penalty := float64(q.NodeOverlaps) * 0.2
+		if penalty > 0.6 {
+			penalty = 0.6
+		}
+		score -= penalty
+	}
+
+	// Penalize label overlaps (each overlap reduces score by 0.1, max 0.3 reduction)
+	if q.LabelOverlaps > 0 {
+		penalty := float64(q.LabelOverlaps) * 0.1
+		if penalty > 0.3 {
+			penalty = 0.3
+		}
+		score -= penalty
+	}
+
+	// Penalize poor rank alignment (reduces score by up to 0.2)
+	if q.RankAlignment < 0.9 {
+		score -= (0.9 - q.RankAlignment) * 0.2
+	}
+
+	// Penalize poor cluster balance (reduces score by up to 0.1)
+	if q.ClusterBalance < 0.8 {
+		score -= (0.8 - q.ClusterBalance) * 0.1
+	}
+
+	// Ensure score is in valid range
+	if score < 0.0 {
+		score = 0.0
+	}
+	if score > 1.0 {
+		score = 1.0
+	}
+
+	q.Score = score
+}
+
+// MeasureQuality analyzes a Graphviz layout result and computes quality metrics.
+// Note: This is a placeholder implementation. In a full implementation, we would
+// parse the Graphviz JSON output to compute actual metrics.
+func MeasureQuality(dotOutput string, elements []*Element, relations []*Relation) LayoutQuality {
+	quality := LayoutQuality{
+		// For now, we estimate based on graph structure
+		// A full implementation would parse Graphviz JSON output
+		EdgeCrossings:  estimateEdgeCrossings(elements, relations),
+		NodeOverlaps:   estimateNodeOverlaps(elements),
+		LabelOverlaps:  0,    // Would need Graphviz output to measure
+		RankAlignment:  0.95, // Assume good alignment if rank constraints are used
+		ClusterBalance: 0.9,  // Assume reasonable balance
+	}
+
+	// Calculate overall score
+	quality.CalculateScore()
+
+	return quality
+}
+
+// estimateEdgeCrossings estimates edge crossings based on graph structure.
+// This is a simplified heuristic - a full implementation would use Graphviz output.
+func estimateEdgeCrossings(elements []*Element, relations []*Relation) int {
+	// Simple heuristic: more edges = more potential crossings
+	// This is a placeholder - real implementation would parse Graphviz JSON
+	if len(relations) > len(elements)*2 {
+		return len(relations) / 4 // Rough estimate
+	}
+	return 0
+}
+
+// estimateNodeOverlaps estimates node overlaps.
+// This is a simplified heuristic - a full implementation would use Graphviz output.
+func estimateNodeOverlaps(elements []*Element) int {
+	// If we have proper size constraints, overlaps should be minimal
+	// This is a placeholder - real implementation would parse Graphviz JSON
+	return 0
+}

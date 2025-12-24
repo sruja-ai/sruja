@@ -5,7 +5,7 @@ import { test, expect } from "@playwright/test";
 test.describe("Fix Verification", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForSelector(".app", { timeout: 30000 });
+    await page.waitForSelector(".app-container, .drop-zone", { timeout: 30000 });
   });
 
   test("template gallery loads and selects template", async ({ page }) => {
@@ -13,7 +13,7 @@ test.describe("Fix Verification", () => {
     const dropZone = page.locator(".drop-zone");
     if (await dropZone.isVisible().catch(() => false)) {
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
     // Switch to Builder tab
@@ -26,7 +26,9 @@ test.describe("Fix Verification", () => {
     await page.waitForTimeout(500);
 
     // Click template button
-    const templateBtn = page.locator('button:has-text("Start from a Template"), .template-prompt-btn');
+    const templateBtn = page.locator(
+      'button:has-text("Start from a Template"), .template-prompt-btn'
+    );
     if (await templateBtn.isVisible().catch(() => false)) {
       await templateBtn.click();
       await page.waitForSelector(".template-gallery-modal", { timeout: 5000 });
@@ -52,8 +54,8 @@ test.describe("Fix Verification", () => {
 
       // Verify diagram loads
       await page.locator('button.view-tab:has-text("Diagram")').click();
-      await page.waitForSelector(".likec4-canvas", { timeout: 10000 });
-      await expect(page.locator(".likec4-canvas")).toBeVisible();
+      await page.waitForSelector(".react-flow", { timeout: 10000 });
+      await expect(page.locator(".react-flow")).toBeVisible();
     } else {
       test.skip();
     }
@@ -64,7 +66,7 @@ test.describe("Fix Verification", () => {
     const dropZone = page.locator(".drop-zone");
     if (await dropZone.isVisible().catch(() => false)) {
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
     // Switch to Code tab
@@ -77,14 +79,18 @@ test.describe("Fix Verification", () => {
     // Check if DSL panel is visible (should be default tab)
     const dslPanel = page.locator(".dsl-panel");
     const isVisible = await dslPanel.isVisible().catch(() => false);
-    
+
     if (isVisible) {
       // Check if there's content (either DSL or placeholder)
       const editor = page.locator(".monaco-editor, .dsl-panel-content");
       await expect(editor.first()).toBeVisible();
-      
+
       // Check if there's text content (not just empty)
-      const hasContent = await editor.first().textContent().then(t => t && t.trim().length > 0).catch(() => false);
+      const hasContent = await editor
+        .first()
+        .textContent()
+        .then((t) => t && t.trim().length > 0)
+        .catch(() => false);
       expect(hasContent).toBeTruthy();
     }
   });
@@ -94,16 +100,16 @@ test.describe("Fix Verification", () => {
     const dropZone = page.locator(".drop-zone");
     if (await dropZone.isVisible().catch(() => false)) {
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
     // Verify diagram is visible
-    await expect(page.locator(".likec4-canvas")).toBeVisible();
+    await expect(page.locator(".react-flow")).toBeVisible();
 
     // Check for SVG elements (LikeC4 renders SVG)
-    await page.waitForSelector(".likec4-diagram-container svg", { timeout: 10000 });
-    const svgCount = await page.locator(".likec4-diagram-container svg").count();
-    expect(svgCount).toBeGreaterThan(0);
+    await page.waitForSelector(".react-flow__node", { timeout: 10000 });
+    const nodeCount = await page.locator(".react-flow__node").count();
+    expect(nodeCount).toBeGreaterThan(0);
   });
 
   test("builder wizard steps are functional", async ({ page }) => {
@@ -111,7 +117,7 @@ test.describe("Fix Verification", () => {
     const dropZone = page.locator(".drop-zone");
     if (await dropZone.isVisible().catch(() => false)) {
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
     // Switch to Builder tab
@@ -130,7 +136,7 @@ test.describe("Fix Verification", () => {
     if (stepCount > 1) {
       await steps.nth(1).click();
       await page.waitForTimeout(500);
-      
+
       // Verify step content is visible
       const stepContent = page.locator(".wizard-main, .step-content, .wizard-step-content");
       await expect(stepContent.first()).toBeVisible();
@@ -142,7 +148,7 @@ test.describe("Fix Verification", () => {
     const dropZone = page.locator(".drop-zone");
     if (await dropZone.isVisible().catch(() => false)) {
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
     // Go to Builder
@@ -150,7 +156,9 @@ test.describe("Fix Verification", () => {
     await page.waitForSelector(".builder-wizard", { timeout: 10000 });
 
     // Open template gallery
-    const templateBtn = page.locator('button:has-text("Start from a Template"), .template-prompt-btn');
+    const templateBtn = page.locator(
+      'button:has-text("Start from a Template"), .template-prompt-btn'
+    );
     if (await templateBtn.isVisible().catch(() => false)) {
       await templateBtn.click();
       await page.waitForSelector(".template-gallery-modal", { timeout: 5000 });
@@ -164,17 +172,21 @@ test.describe("Fix Verification", () => {
 
         // Verify diagram loads
         await page.locator('button.view-tab:has-text("Diagram")').click();
-        await page.waitForSelector(".likec4-canvas", { timeout: 10000 });
-        await expect(page.locator(".likec4-canvas")).toBeVisible();
+        await page.waitForSelector(".react-flow", { timeout: 10000 });
+        await expect(page.locator(".react-flow")).toBeVisible();
 
         // Verify code tab has content
         await page.locator('button.view-tab:has-text("Code")').click();
         await page.waitForSelector(".code-panel-container", { timeout: 10000 });
-        
+
         const dslPanel = page.locator(".dsl-panel");
         if (await dslPanel.isVisible().catch(() => false)) {
           const editor = page.locator(".monaco-editor, .dsl-panel-content");
-          const hasContent = await editor.first().textContent().then(t => t && t.trim().length > 0).catch(() => false);
+          const hasContent = await editor
+            .first()
+            .textContent()
+            .then((t) => t && t.trim().length > 0)
+            .catch(() => false);
           expect(hasContent).toBeTruthy();
         }
       }
@@ -183,4 +195,3 @@ test.describe("Fix Verification", () => {
     }
   });
 });
-

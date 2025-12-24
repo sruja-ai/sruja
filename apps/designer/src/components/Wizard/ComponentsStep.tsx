@@ -16,7 +16,11 @@ interface ComponentsStepProps {
   readOnly?: boolean;
 }
 
-export function ComponentsStep({ onBack, onFinish, readOnly: _readOnly = false }: ComponentsStepProps) {
+export function ComponentsStep({
+  onBack,
+  onFinish,
+  readOnly: _readOnly = false,
+}: ComponentsStepProps) {
   const data = useArchitectureStore((s) => s.likec4Model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
   const drillDown = useViewStore((s) => s.drillDown);
@@ -31,18 +35,20 @@ export function ComponentsStep({ onBack, onFinish, readOnly: _readOnly = false }
     // Assuming hierarchy is reflected in ID: system.container
     const containers = allElements.filter((e: any) => e.kind === "container");
 
-    return containers.map((c: any) => {
-      const parts = c.id.split(".");
-      // If strict 2 parts: system.container
-      const systemId = parts[0];
-      const containerId = parts.length > 1 ? parts[1] : c.id; // Fallback
-      return {
-        systemId,
-        containerId,
-        label: c.id, // Using full ID as label/value for selector
-        title: c.title
-      };
-    }).sort((a, b) => a.label.localeCompare(b.label));
+    return containers
+      .map((c: any) => {
+        const parts = c.id.split(".");
+        // If strict 2 parts: system.container
+        const systemId = parts[0];
+        const containerId = parts.length > 1 ? parts[1] : c.id; // Fallback
+        return {
+          systemId,
+          containerId,
+          label: c.id, // Using full ID as label/value for selector
+          title: c.title,
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
   }, [allElements]);
 
   // Form state
@@ -73,7 +79,10 @@ export function ComponentsStep({ onBack, onFinish, readOnly: _readOnly = false }
       // Start with selectedPath + "." ?
       // selectedPath is e.g. "sys1.cont1"
       // component ID is "sys1.cont1.comp1"
-      return e.id.startsWith(selectedPath + ".") && e.id.split(".").length === selectedPath.split(".").length + 1;
+      return (
+        e.id.startsWith(selectedPath + ".") &&
+        e.id.split(".").length === selectedPath.split(".").length + 1
+      );
     });
   }, [allElements, selectedPath]);
 
@@ -83,11 +92,13 @@ export function ComponentsStep({ onBack, onFinish, readOnly: _readOnly = false }
 
   // Build L3 elements for relations (all components across all containers)
   const l3Elements = useMemo(() => {
-    return allElements.filter((e: any) => e.kind === "component").map((e: any) => ({
-      id: e.id,
-      label: e.title,
-      type: e.kind
-    }));
+    return allElements
+      .filter((e: any) => e.kind === "component")
+      .map((e: any) => ({
+        id: e.id,
+        label: e.title,
+        type: e.kind,
+      }));
   }, [allElements]);
 
   const removeComponent = (componentId: string) => {
@@ -96,7 +107,7 @@ export function ComponentsStep({ onBack, onFinish, readOnly: _readOnly = false }
       delete newElements[componentId];
       return {
         ...model,
-        elements: newElements
+        elements: newElements,
       };
     });
   };
@@ -151,7 +162,10 @@ export function ComponentsStep({ onBack, onFinish, readOnly: _readOnly = false }
             const count = allElements.filter((e: any) => {
               if (e.kind !== "component") return false;
               // starts with item.label (id) + "."
-              return e.id.startsWith(item.label + ".") && e.id.split(".").length === item.label.split(".").length + 1;
+              return (
+                e.id.startsWith(item.label + ".") &&
+                e.id.split(".").length === item.label.split(".").length + 1
+              );
             }).length;
 
             const [_sId, _cId] = item.label.split("."); // simple split for display if needed, but item.systemId/containerId exist
@@ -206,7 +220,12 @@ export function ComponentsStep({ onBack, onFinish, readOnly: _readOnly = false }
                 >
                   <Edit size={14} />
                 </Button>
-                <Button variant="ghost" size="sm" className="item-remove" onClick={() => removeComponent(c.id)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="item-remove"
+                  onClick={() => removeComponent(c.id)}
+                >
                   <Trash2 size={14} />
                 </Button>
               </div>
@@ -243,8 +262,17 @@ export function ComponentsStep({ onBack, onFinish, readOnly: _readOnly = false }
           toElements={l3Elements}
           filterFn={(rel: any) => {
             // Show L3 relations (two dots in path = System.Container.Component)
-            const fromParts = rel.source.split(".");
-            const toParts = rel.target.split(".");
+            const srcId =
+              typeof rel.source === "object" && rel.source?.model
+                ? rel.source.model
+                : String(rel.source || "");
+            const tgtId =
+              typeof rel.target === "object" && rel.target?.model
+                ? rel.target.model
+                : String(rel.target || "");
+
+            const fromParts = srcId.split(".");
+            const toParts = tgtId.split(".");
             return fromParts.length === 3 && toParts.length === 3;
           }}
           title="L3 Relations"

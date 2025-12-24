@@ -64,18 +64,33 @@ func (e *Exporter) extractAllElements(prog *language.Program) []*Element {
 			}
 		}
 
-		// Calculate dimensions based on kind and content
-		width, height := e.calculateNodeSize(kind, title, technology)
+		// Get description if available
+		var description string
+		if body != nil {
+			for _, item := range body.Items {
+				if item.Description != nil {
+					description = *item.Description
+					break
+				}
+			}
+		}
 
-		elements = append(elements, &Element{
-			ID:         fullID,
-			Kind:       kind,
-			Title:      title,
-			Technology: technology,
-			ParentID:   parentID,
-			Width:      width,
-			Height:     height,
-		})
+		// Create element first to measure content
+		newElem := &Element{
+			ID:          fullID,
+			Kind:        kind,
+			Title:       title,
+			Technology:  technology,
+			Description: description,
+			ParentID:    parentID,
+		}
+
+		// Measure actual content using font metrics
+		width, height := MeasureNodeContent(newElem)
+		newElem.Width = int(width)
+		newElem.Height = int(height)
+
+		elements = append(elements, newElem)
 
 		// Recursively extract children
 		if body != nil {
@@ -104,33 +119,113 @@ func extractRelationsFromModel(prog *language.Program) []*Relation {
 	}
 
 	var relations []*Relation
-	for _, item := range prog.Model.Items {
-		if item.Relation != nil {
-			rel := item.Relation
+	var contextStack []string // Track parent hierarchy for context resolution
 
-			// Build label from Verb or Label
-			// Verb is like "calls", Label is like "HTTP" (technology/description)
-			label := getString(rel.Verb)
-			if l := getString(rel.Label); l != "" {
-				if label != "" {
-					label = label + " [" + l + "]"
-				} else {
-					label = l
-				}
+	// Helper to extract relations from a list of model items
+	var extractFromItems func(items []language.ModelItem)
+	// Helper to extract relations from a list of body items (needed because types differ)
+	var extractFromBodyItems func(items []*language.LikeC4BodyItem)
+
+	extractFromItems = func(items []language.ModelItem) {
+		for _, item := range items {
+			// 1. Direct Relation
+			if item.Relation != nil {
+				processRelation(item.Relation, contextStack, &relations)
 			}
 
-			relations = append(relations, &Relation{
-				From:  rel.From.String(),
-				To:    rel.To.String(),
-				Label: label,
-			})
+			// 2. Element Definition (recurse into body)
+			if item.ElementDef != nil {
+				id := item.ElementDef.GetID()
+				if id != "" {
+					// Push ID to context stack
+					contextStack = append(contextStack, id)
+
+					// Recurse
+					body := item.ElementDef.GetBody()
+					if body != nil {
+						extractFromBodyItems(body.Items)
+					}
+
+					// Pop ID
+					contextStack = contextStack[:len(contextStack)-1]
+				}
+			}
 		}
 	}
+
+	extractFromBodyItems = func(items []*language.LikeC4BodyItem) {
+		for _, item := range items {
+			// 1. Direct Relation within body
+			if item.Relation != nil {
+				processRelation(item.Relation, contextStack, &relations)
+			}
+
+			// 2. Nested Element (recurse)
+			if item.Element != nil {
+				id := item.Element.GetID()
+				if id != "" {
+					// Push ID to context stack
+					contextStack = append(contextStack, id)
+
+					// Recurse
+					body := item.Element.GetBody()
+					if body != nil {
+						extractFromBodyItems(body.Items)
+					}
+
+					// Pop ID
+					contextStack = contextStack[:len(contextStack)-1]
+				}
+			}
+		}
+	}
+
+	// Start extraction from root model items
+	extractFromItems(prog.Model.Items)
 
 	return relations
 }
 
-// calculateNodeSize calculates node dimensions based on content.
+// processRelation processes a single relation AST node and adds it to the relations list.
+func processRelation(rel *language.Relation, contextStack []string, relations *[]*Relation) {
+	if rel == nil {
+		return
+	}
+
+	// Resolve From/To IDs
+	// Note: We might need to resolve relative paths based on contextStack in the future,
+	// but for now we assume the parser gives us fully qualified or globally unique IDs,
+	// or that the Exporter.getVisibleAncestorWithContext handles the short-name resolution.
+	// However, storing the context in the relation could be useful.
+
+	from := rel.From.String()
+	to := rel.To.String()
+
+	// If we are deep in the stack, we might need to qualify these IDs if they aren't fully qualified?
+	// The current Parser usually handles ID resolution, but if `rel.From` is just "api",
+	// and we are inside "system1", it likely means "system1.api".
+	// For now, we rely on the Exporter's resolution capability which uses visible ancestors.
+	// But strictly speaking, we should probably resolve them here if the AST doesn't.
+
+	// Build label
+	label := getString(rel.Verb)
+	if l := getString(rel.Label); l != "" {
+		if label != "" {
+			label = label + " [" + l + "]"
+		} else {
+			label = l
+		}
+	}
+
+	*relations = append(*relations, &Relation{
+		From:  from,
+		To:    to,
+		Label: label,
+	})
+}
+
+// calculateNodeSize is deprecated - use MeasureNodeContent instead.
+// Kept for backward compatibility during migration.
 func (e *Exporter) calculateNodeSize(kind, title, technology string) (width, height int) {
 	// Base sizes by kind
 	switch kind {

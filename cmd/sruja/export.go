@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/sruja-ai/sruja/pkg/engine"
+	ctxexport "github.com/sruja-ai/sruja/pkg/export/context"
 	jexport "github.com/sruja-ai/sruja/pkg/export/json"
 	"github.com/sruja-ai/sruja/pkg/export/likec4"
 	"github.com/sruja-ai/sruja/pkg/export/markdown"
@@ -30,6 +31,9 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 	tokenLimit := exportCmd.Int("token-limit", 0, "Limit output to approximately N tokens (0 = no limit)")
 	context := exportCmd.String("context", "default", "Context type: default, code_generation, review, analysis")
 
+	// New dedicated flags for 'context' format (reusing scope above)
+	template := exportCmd.String("template", "proposal", "Instruction template for context export (proposal, security, general)")
+
 	if err := exportCmd.Parse(args); err != nil {
 		_, _ = fmt.Fprintf(stderr, "Error parsing export flags: %v\n", err)
 		return 1
@@ -37,7 +41,7 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 
 	if exportCmd.NArg() < 2 {
 		_, _ = fmt.Fprintln(stderr, "Usage: sruja export <format> <file>")
-		_, _ = fmt.Fprintln(stderr, "Formats: json, mermaid, markdown, likec4, c4")
+		_, _ = fmt.Fprintln(stderr, "Formats: json, mermaid, markdown, likec4, c4, context")
 		return 1
 	}
 
@@ -131,8 +135,16 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 	case "likec4", "c4":
 		dslExporter := likec4.NewDSLExporter()
 		output = dslExporter.ExportDSL(program)
+	case "context":
+		opts := ctxexport.Options{
+			Scope:    *scope,
+			Template: *template,
+			Format:   "markdown", // Default to markdown for now
+		}
+		exporter := ctxexport.NewExporter(opts)
+		output = exporter.Export(program)
 	default:
-		_, _ = fmt.Fprintf(stderr, "Unsupported export format: %s. Supported formats: json, mermaid, markdown, likec4, c4\n", format)
+		_, _ = fmt.Fprintf(stderr, "Unsupported export format: %s. Supported formats: json, mermaid, markdown, likec4, c4, context\n", format)
 		return 1
 	}
 

@@ -164,6 +164,33 @@
     opacity: 1;
 }
 
+.item-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: auto;
+}
+
+.item-edit {
+    padding: 0.375rem;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-3);
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.15s;
+}
+
+.item-card:hover .item-edit {
+    opacity: 1;
+}
+
+.item-edit:hover {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+
 .item-remove:hover {
     background: rgba(239, 68, 68, 0.1);
     color: #ef4444;
@@ -365,4 +392,3 @@
         text-align: center;
     }
 }
-

@@ -5,13 +5,13 @@ import { test, expect } from "@playwright/test";
 test.describe("Code Panel", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForSelector(".app", { timeout: 30000 });
+    await page.waitForSelector(".app-container, .drop-zone", { timeout: 30000 });
 
     // Load demo first
     const dropZone = page.locator(".drop-zone");
     if (await dropZone.isVisible().catch(() => false)) {
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
     // Switch to Code tab

@@ -98,8 +98,14 @@ export function RelationsSection({
 
       <div className="items-list">
         {(relations || []).map((rel, index: number) => {
-          const srcFqn = typeof rel.source === 'object' && rel.source?.model ? rel.source.model : String(rel.source || '');
-          const tgtFqn = typeof rel.target === 'object' && rel.target?.model ? rel.target.model : String(rel.target || '');
+          const srcFqn =
+            typeof rel.source === "object" && rel.source?.model
+              ? rel.source.model
+              : String(rel.source || "");
+          const tgtFqn =
+            typeof rel.target === "object" && rel.target?.model
+              ? rel.target.model
+              : String(rel.target || "");
           return (
             <div key={rel.id || `${srcFqn}-${tgtFqn}-${index}`} className="item-card relation-card">
               <span className="relation-element from">{getElementLabel(srcFqn)}</span>
@@ -122,6 +128,7 @@ export function RelationsSection({
       <div className="add-form relation-form-inline">
         <div className="form-group">
           <Select
+            size="sm"
             value={fromId}
             onChange={(value) => setFromId(value || "")}
             placeholder="From..."
@@ -133,6 +140,7 @@ export function RelationsSection({
 
         <div className="form-group">
           <Select
+            size="sm"
             value={toId}
             onChange={(value) => setToId(value || "")}
             placeholder="To..."
@@ -143,14 +151,16 @@ export function RelationsSection({
         </div>
 
         <Input
+          size="sm"
           label=""
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="Label (e.g., uses)"
           onKeyDown={(e) => e.key === "Enter" && addRelation()}
+          style={{ flex: 1.5, minWidth: "120px" }}
         />
 
-        <Button variant="secondary" onClick={addRelation} disabled={!fromId || !toId}>
+        <Button variant="secondary" onClick={addRelation} disabled={!fromId || !toId} size="sm">
           <Plus size={16} />
         </Button>
       </div>

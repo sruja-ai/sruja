@@ -8,6 +8,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"syscall/js"
 
@@ -207,7 +208,7 @@ func dslToLikeC4(this js.Value, args []js.Value) interface{} {
 }
 
 // dslToDot converts DSL to Graphviz DOT format for diagram layout.
-// Args: dsl string, [viewLevel int], [focusNodeId string]
+// Args: dsl string, [viewLevel int], [focusNodeId string], [nodeSizesJson string]
 func dslToDot(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
 		return result(false, "", "at least 1 argument required")
@@ -225,6 +226,26 @@ func dslToDot(this js.Value, args []js.Value) interface{} {
 	focusNodeId := ""
 	if len(args) > 2 && args[2].Type() == js.TypeString {
 		focusNodeId = args[2].String()
+	}
+
+	// Optional: nodeSizes (default empty) - passed as JSON string
+	var nodeSizes map[string]struct{ Width, Height float64 }
+	if len(args) > 3 && args[3].Type() == js.TypeString {
+		sizesJson := args[3].String()
+		if sizesJson != "" {
+			// Helper struct for JSON unmarshaling
+			type nodeSize struct {
+				Width  float64 `json:"width"`
+				Height float64 `json:"height"`
+			}
+			var tempSizes map[string]nodeSize
+			if err := json.Unmarshal([]byte(sizesJson), &tempSizes); err == nil {
+				nodeSizes = make(map[string]struct{ Width, Height float64 })
+				for id, s := range tempSizes {
+					nodeSizes[id] = struct{ Width, Height float64 }{s.Width, s.Height}
+				}
+			}
+		}
 	}
 
 	_, program, err := parseToWorkspace(input, "input.sruja")
@@ -245,6 +266,7 @@ func dslToDot(this js.Value, args []js.Value) interface{} {
 	config := dot.DefaultConfig()
 	config.ViewLevel = viewLevel
 	config.FocusNodeID = focusNodeId
+	config.NodeSizes = nodeSizes
 
 	exporter := dot.NewExporter(config)
 	res := exporter.Export(program)
@@ -253,10 +275,35 @@ func dslToDot(this js.Value, args []js.Value) interface{} {
 		return result(false, "", "DOT exporter returned empty output - no elements found for this view")
 	}
 
+	// Convert Elements to []map[string]interface{} for JS compatibility
+	elements := make([]interface{}, len(res.Elements))
+	for i, elem := range res.Elements {
+		elements[i] = map[string]interface{}{
+			"id":          elem.ID,
+			"kind":        elem.Kind,
+			"title":       elem.Title,
+			"technology":  elem.Technology,
+			"description": elem.Description,
+			"parentId":    elem.ParentID,
+			"width":       elem.Width,
+			"height":      elem.Height,
+		}
+	}
+
+	// Convert Relations to []map[string]interface{} for JS compatibility
+	relations := make([]interface{}, len(res.Relations))
+	for i, rel := range res.Relations {
+		relations[i] = map[string]interface{}{
+			"from":  rel.From,
+			"to":    rel.To,
+			"label": rel.Label,
+		}
+	}
+
 	resultData := map[string]interface{}{
 		"dot":       res.DOT,
-		"elements":  res.Elements,
-		"relations": res.Relations,
+		"elements":  elements,
+		"relations": relations,
 	}
 
 	return result(true, resultData, "")

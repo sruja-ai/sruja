@@ -85,9 +85,17 @@ export function useProjectSync() {
 
   const loadDemo = useCallback(async () => {
     // Don't load demo if URL has project, DSL, or legacy share params
+    // But allow loading if example param is present (even if other params exist, example takes precedence)
     const { projectId } = firebaseShareService.parseUrl(window.location.href);
     const params = new URLSearchParams(window.location.search);
-    if (projectId || params.get("share") || params.get("dsl") || params.get("code")) {
+    const exampleParam = params.get("example");
+
+    // If example param is explicitly provided, always try to load it
+    // Otherwise, skip if project/share/dsl/code params exist
+    if (
+      !exampleParam &&
+      (projectId || params.get("share") || params.get("dsl") || params.get("code"))
+    ) {
       return;
     }
 
@@ -281,9 +289,11 @@ model {
         const { likec4Model, currentExampleFile: currentExample } = useArchitectureStore.getState();
 
         // Load demo if:
-        // 1. No model exists
-        // 2. OR an example param is present and it differs from the current one
-        if (!likec4Model || (exampleParam && exampleParam !== currentExample)) {
+        // 1. No model exists, OR
+        // 2. Example param is present and differs from current example
+        // This ensures examples load correctly in incognito mode (no model) or when switching examples
+        const shouldLoadDemo = !likec4Model || (exampleParam && exampleParam !== currentExample);
+        if (shouldLoadDemo) {
           loadDemo();
         }
       }

@@ -42,6 +42,46 @@ Just content
 	}
 }
 
+func TestValidateFrontmatter_MissingTitle(t *testing.T) {
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.md")
+	content := `---
+author: "Me"
+---
+Content here
+`
+	if err := os.WriteFile(testFile, []byte(content), 0o644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	errors := validateFrontmatter(testFile)
+	if len(errors) == 0 {
+		t.Error("Expected errors for missing title, got none")
+	}
+}
+
+func TestValidateFrontmatter_InvalidFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.md")
+	content := `---
+title: "Test"
+` // Missing closing delimiter
+	if err := os.WriteFile(testFile, []byte(content), 0o644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	errors := validateFrontmatter(testFile)
+	if len(errors) == 0 {
+		t.Error("Expected errors for invalid format, got none")
+	}
+}
+
+func TestValidateDocs_Empty(t *testing.T) {
+	// Should not panic if docs dir doesn't exist
+	errors := validateDocs()
+	_ = errors
+}
+
 func TestValidateFrontmatter_NonExistentFile(t *testing.T) {
 	errors := validateFrontmatter("/nonexistent/file.md")
 	if len(errors) == 0 {

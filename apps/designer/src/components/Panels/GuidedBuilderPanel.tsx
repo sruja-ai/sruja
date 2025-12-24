@@ -11,6 +11,7 @@ import {
   BookOpen,
   Lightbulb,
   Info,
+  Shield,
 } from "lucide-react";
 import { useUIStore } from "../../stores/uiStore";
 import { useBuilderProgress } from "../../hooks/useBuilderProgress";
@@ -21,12 +22,7 @@ import "./GuidedBuilderPanel.css";
 
 export function GuidedBuilderPanel() {
   const setActiveTab = useUIStore((s) => s.setActiveTab);
-  const {
-    l1Complete,
-    l1Progress,
-    l2Progress,
-    l3Progress,
-  } = useBuilderProgress();
+  const { l1Complete, l1Progress, l2Progress, l3Progress } = useBuilderProgress();
 
   // Need to reconstruct the boolean flags for "Complete" status based on hook data
   // Logic from original file:
@@ -95,6 +91,26 @@ export function GuidedBuilderPanel() {
           </div>
         </div>
       )}
+
+      {/* Governance Widget */}
+      <div className="guided-section governance-widget" onClick={() => setActiveTab("governance")}>
+        <div className="guided-section-header">
+          <div className="guided-section-title-group">
+            <Shield size={18} className="text-blue-500" />
+            <div className="guided-section-title-content">
+              <div className="guided-header">
+                <span>Governance Score</span>
+                <span className="text-sm text-gray-500 font-normal ml-2">
+                  Check architecture health
+                </span>
+              </div>
+            </div>
+          </div>
+          <Button variant="ghost" size="sm">
+            <Layout size={14} />
+          </Button>
+        </div>
+      </div>
 
       {/* L1 Section */}
       <div className="guided-section">

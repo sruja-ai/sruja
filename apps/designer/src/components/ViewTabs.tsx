@@ -1,8 +1,9 @@
-// apps/playground/src/components/ViewTabs.tsx
-import { Layout, FileCode, List, Hammer } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Layout, FileCode, List, Hammer, Shield } from "lucide-react";
 import { Button } from "@sruja/ui";
 import type { ViewTab } from "../types";
-import { useFeatureFlagsStore } from "../stores";
+import { useFeatureFlagsStore, useArchitectureStore } from "../stores";
+import { getWasmApi } from "@sruja/shared";
 
 interface ViewTabsProps {
   activeTab: ViewTab;
@@ -13,11 +14,50 @@ interface ViewTabsProps {
   };
 }
 
+interface ScoreCard {
+  Score: number;
+  Grade: string;
+}
+
 export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
   const editMode = useFeatureFlagsStore((s) => s.editMode);
+  const dslSource = useArchitectureStore((s) => s.dslSource);
+  const [scoreCard, setScoreCard] = useState<ScoreCard | null>(null);
+
+  // Calculate score when DSL changes
+  useEffect(() => {
+    const calculateScore = async () => {
+      if (!dslSource) return;
+      try {
+        const api = await getWasmApi();
+        if (api) {
+          const result = await api.calculateArchitectureScore(dslSource);
+          setScoreCard(result);
+        }
+      } catch (error) {
+        console.error("Failed to calculate score for tabs:", error);
+      }
+    };
+    calculateScore();
+  }, [dslSource]);
+
+  const getGradeColor = (grade: string) => {
+    switch (grade) {
+      case "A":
+        return "var(--mantine-color-green-filled)";
+      case "B":
+        return "var(--mantine-color-blue-filled)";
+      case "C":
+        return "var(--mantine-color-yellow-filled)";
+      case "D":
+        return "var(--mantine-color-red-filled)";
+      default:
+        return "var(--mantine-color-gray-filled)";
+    }
+  };
 
   // Builder is now always visible (first tab)
-  const tabs: ViewTab[] = ["builder", "diagram", "details", "code"];
+  const tabs: ViewTab[] = ["builder", "diagram", "details", "code", "governance"];
 
   const index = tabs.indexOf(activeTab);
 
@@ -42,7 +82,13 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
       onKeyDown={handleKeyDown}
     >
       <Button
-        variant={activeTab === "builder" && editMode === "edit" ? "primary" : activeTab === "builder" ? "secondary" : "ghost"}
+        variant={
+          activeTab === "builder" && editMode === "edit"
+            ? "primary"
+            : activeTab === "builder"
+              ? "secondary"
+              : "ghost"
+        }
         size="sm"
         className={`view-tab ${editMode === "edit" ? "view-tab-primary" : ""} ${activeTab === "builder" ? "active" : ""}`}
         onClick={() => onTabChange("builder")}
@@ -50,7 +96,11 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
         aria-selected={activeTab === "builder"}
         id="tab-builder"
         aria-controls="tabpanel-builder"
-        title={editMode === "edit" ? "Builder - Step-by-step architecture design guide" : "Builder - Architecture guide (view mode)"}
+        title={
+          editMode === "edit"
+            ? "Builder - Step-by-step architecture design guide"
+            : "Builder - Architecture guide (view mode)"
+        }
       >
         <div className="view-tab-content">
           <Hammer size={16} />
@@ -107,6 +157,34 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
         <div className="view-tab-content">
           <FileCode size={16} />
           <span>Code</span>
+        </div>
+      </Button>
+      <Button
+        variant={activeTab === "governance" ? "secondary" : "ghost"}
+        size="sm"
+        className={`view-tab ${activeTab === "governance" ? "active" : ""}`}
+        onClick={() => onTabChange("governance")}
+        role="tab"
+        aria-selected={activeTab === "governance"}
+        id="tab-governance"
+        aria-controls="tabpanel-governance"
+        title="Governance - Architecture health score and recommendations"
+      >
+        <div className="view-tab-content">
+          <Shield size={16} />
+          <span>Governance</span>
+          {scoreCard && (
+            <span
+              className="tab-badge"
+              style={{
+                backgroundColor: getGradeColor(scoreCard.Grade),
+                color: "#fff",
+                fontWeight: "bold",
+              }}
+            >
+              {scoreCard.Grade}
+            </span>
+          )}
         </div>
       </Button>
     </div>

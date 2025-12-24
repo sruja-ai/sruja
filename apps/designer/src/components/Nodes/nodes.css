@@ -7,6 +7,48 @@
     --node-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     --node-border-radius: 12px;
     --node-border-width: 1px;
+
+    /* Premium semantic colors - Person (Blue) */
+    --premium-person-bg: #EFF6FF;
+    --premium-person-border: #1E40AF;
+    --premium-person-shadow: 0 4px 12px rgba(30, 64, 175, 0.15);
+    --premium-person-glow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+
+    /* Premium semantic colors - System (Green) */
+    --premium-system-bg: #F0FDF4;
+    --premium-system-border: #166534;
+    --premium-system-shadow: 0 4px 12px rgba(22, 101, 52, 0.15);
+    --premium-system-glow: 0 0 0 3px rgba(34, 197, 94, 0.3);
+
+    /* Premium semantic colors - External System (Amber) */
+    --premium-external-bg: #FEF3C7;
+    --premium-external-border: #B45309;
+    --premium-external-shadow: 0 4px 12px rgba(180, 83, 9, 0.15);
+    --premium-external-glow: 0 0 0 3px rgba(245, 158, 11, 0.3);
+
+    /* Premium semantic colors - Container (Violet) */
+    --premium-container-bg: #EDE9FE;
+    --premium-container-border: #6D28D9;
+    --premium-container-shadow: 0 4px 12px rgba(109, 40, 217, 0.15);
+    --premium-container-glow: 0 0 0 3px rgba(139, 92, 246, 0.3);
+
+    /* Premium semantic colors - Component (Pink) */
+    --premium-component-bg: #FDF2F8;
+    --premium-component-border: #BE185D;
+    --premium-component-shadow: 0 4px 12px rgba(190, 24, 93, 0.15);
+    --premium-component-glow: 0 0 0 3px rgba(236, 72, 153, 0.3);
+
+    /* Premium semantic colors - Datastore (Cyan) */
+    --premium-datastore-bg: #ECFEFF;
+    --premium-datastore-border: #0E7490;
+    --premium-datastore-shadow: 0 4px 12px rgba(14, 116, 144, 0.15);
+    --premium-datastore-glow: 0 0 0 3px rgba(6, 182, 212, 0.3);
+
+    /* Premium semantic colors - Queue (Red) */
+    --premium-queue-bg: #FEF2F2;
+    --premium-queue-border: #B91C1C;
+    --premium-queue-shadow: 0 4px 12px rgba(185, 28, 28, 0.15);
+    --premium-queue-glow: 0 0 0 3px rgba(239, 68, 68, 0.3);
 }
 
 .c4-node {
@@ -62,6 +104,19 @@
 /* Node Content */
 .node-content {
     text-align: center;
+    /* Constrain text width to roughly match icon width (slightly bigger) */
+    max-width: 130px;
+    margin: 0 auto;
+}
+
+/* For person nodes, allow slightly wider text to match the larger icon */
+.person-node .node-content {
+    max-width: 130px; /* Person icon is 115px wide */
+}
+
+/* For system nodes, use available width minus padding to prevent text overflow */
+.system-node .node-content {
+    max-width: calc(100% - 24px); /* Account for 12px padding on each side */
 }
 
 .node-label {
@@ -74,6 +129,7 @@
     line-height: 1.3;
     letter-spacing: -0.01em;
     color: var(--text-primary, #0f172a);
+    max-width: 100%;
 }
 
 [data-theme="dark"] .node-label {
@@ -85,6 +141,9 @@
     line-height: 1.4;
     margin-top: 6px;
     font-weight: 400;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
     color: var(--text-secondary, #64748b);
     opacity: 1;
 }
@@ -257,19 +316,24 @@
 }
 
 @keyframes pulse-warning {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 1;
         transform: scale(1);
     }
+
     50% {
         opacity: 0.9;
         transform: scale(1.05);
     }
 }
 
-/* System Node */
+/* System Node - more compact sizing */
 .system-node {
-    min-width: 180px;
+    min-width: 150px;
+    max-width: 200px;
+    padding: 12px 14px;
     background: linear-gradient(to bottom right, #ffffff, #f8fafc);
 }
 

@@ -3,16 +3,16 @@
 
 /**
  * Go WASM runtime constructor.
- * 
+ *
  * @public
  */
 export interface GoConstructor {
-  new(): GoInstance;
+  new (): GoInstance;
 }
 
 /**
  * Go WASM runtime instance.
- * 
+ *
  * @public
  */
 export interface GoInstance {
@@ -23,7 +23,7 @@ export interface GoInstance {
 
 /**
  * Response from WASM parse function.
- * 
+ *
  * @public
  */
 export interface WasmParseResponse {
@@ -36,7 +36,7 @@ export interface WasmParseResponse {
 
 /**
  * Result of a DOT export containing the DOT string and projected elements/relations.
- * 
+ *
  * @public
  */
 export interface DotResult {
@@ -47,7 +47,7 @@ export interface DotResult {
 
 /**
  * Extended Window interface with WASM-related properties.
- * 
+ *
  * @public
  */
 export interface WindowWithWasm extends Window {
@@ -57,34 +57,35 @@ export interface WindowWithWasm extends Window {
   sruja_dsl_to_mermaid?: (dsl: string) => WasmParseResponse;
   sruja_dsl_to_markdown?: (dsl: string) => WasmParseResponse;
   sruja_dsl_to_likec4?: (dsl: string, filename?: string) => WasmParseResponse;
-  sruja_dsl_to_dot?: (dsl: string, viewLevel?: number, focusNodeId?: string) => WasmParseResponse;
+  sruja_dsl_to_dot?: (
+    dsl: string,
+    viewLevel?: number,
+    focusNodeId?: string,
+    nodeSizesJson?: string
+  ) => WasmParseResponse;
+  sruja_score?: (dsl: string) => WasmParseResponse;
 }
 
 /**
  * Type guard to check if window has WASM properties.
- * 
+ *
  * @public
  * @param win - Window object to check
  * @returns true if window has WASM properties
  */
 export function isWindowWithWasm(win: unknown): win is WindowWithWasm {
-  return (
-    typeof win === 'object' &&
-    win !== null &&
-    'Go' in win
-  );
+  return typeof win === "object" && win !== null && "Go" in win;
 }
 
 /**
  * Safely get window object with WASM types.
- * 
+ *
  * @public
  * @returns WindowWithWasm or null if not in browser
  */
 export function getWindowWithWasm(): WindowWithWasm | null {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return null;
   }
   return window as WindowWithWasm;
 }
-
