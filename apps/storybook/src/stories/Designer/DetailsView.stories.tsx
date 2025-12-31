@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { DetailsView } from "../../../../../apps/designer/src/components/Views/DetailsView";
-import { DetailsView } from "../../../../../apps/designer/src/components/Views/DetailsView";
-import { useArchitectureStore } from "../../../../../apps/designer/src/stores";
+import { useArchitectureStore, useSelectionStore } from "../../../../../apps/designer/src/stores";
 import { useEffect } from "react";
 import type { SrujaModelDump } from "@sruja/shared";
 
