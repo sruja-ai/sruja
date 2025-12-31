@@ -14,12 +14,14 @@ test.describe("Staging Website Navigation", () => {
     await expect(page).toHaveTitle(/Sruja/i);
 
     // Check hero heading
-    const heroHeading = page.locator("h1").filter({ hasText: /Build Better Software Systems/i });
+    const heroHeading = page
+      .locator("h1")
+      .filter({ hasText: /Architecture Editor with Live Code Sync/i });
     await expect(heroHeading).toBeVisible({ timeout: 10_000 });
 
     // Check hero description contains "Sruja"
     const heroDescription = page.locator(".hero p").first();
-    await expect(heroDescription).toContainText(/Sruja/i);
+    await expect(heroDescription).toContainText(/architecture/i);
 
     // Check for audience cards (should be 4 cards in 2 columns)
     const audienceCards = page.locator(".audience-card");

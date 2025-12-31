@@ -160,7 +160,9 @@ test.describe("Critical User Paths on Staging", () => {
     await expect(body).toBeVisible();
 
     // Check hero content is still visible (might be adjusted for mobile)
-    const heroHeading = page.locator("h1").filter({ hasText: /Build Better Software Systems/i });
+    const heroHeading = page
+      .locator("h1")
+      .filter({ hasText: /Architecture Editor with Live Code Sync/i });
     await expect(heroHeading).toBeVisible({ timeout: 10_000 });
   });
 });
