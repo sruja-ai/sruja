@@ -14,7 +14,7 @@ export default function DocSearchBox() {
         apiKey={apiKey}
         // indexName is deprecated in @docsearch/react but still works in v4.3.2
         // Using type assertion to suppress deprecation warning until we upgrade
-        {...({ indexName } as any)}
+        {...({ indexName } as Record<string, unknown>)}
         translations={{
           button: {
             buttonText: "Search",

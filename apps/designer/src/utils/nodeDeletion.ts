@@ -4,10 +4,7 @@ import type { SrujaModelDump } from "@sruja/shared";
 /**
  * Delete a node from the architecture
  */
-export function deleteNodeFromArchitecture(
-  arch: SrujaModelDump,
-  nodeId: string
-): SrujaModelDump {
+export function deleteNodeFromArchitecture(arch: SrujaModelDump, nodeId: string): SrujaModelDump {
   if (!arch.elements) return arch;
 
   // Clone the architecture
@@ -26,7 +23,8 @@ export function deleteNodeFromArchitecture(
   while (added) {
     added = false;
     for (const [id, el] of Object.entries(newArch.elements)) {
-      if (!idsToDelete.has(id) && (el as any).parent && idsToDelete.has((el as any).parent)) {
+      const element = el as { parent?: string };
+      if (!idsToDelete.has(id) && element.parent && idsToDelete.has(element.parent)) {
         idsToDelete.add(id);
         added = true;
       }
@@ -34,15 +32,20 @@ export function deleteNodeFromArchitecture(
   }
 
   // Remove elements
-  idsToDelete.forEach(id => {
+  idsToDelete.forEach((id) => {
     delete newArch.elements[id];
   });
 
   // Remove relations connected to deleted nodes
   // FqnRef format: source/target are { model: string } objects
-  const getFqn = (ref: any): string => typeof ref === 'object' && ref?.model ? ref.model : String(ref || '');
-  newArch.relations = newArch.relations.filter(r =>
-    !idsToDelete.has(getFqn(r.source)) && !idsToDelete.has(getFqn(r.target))
+  const getFqn = (ref: unknown): string => {
+    if (typeof ref === "object" && ref !== null && "model" in ref) {
+      return (ref as { model: string }).model;
+    }
+    return String(ref || "");
+  };
+  newArch.relations = newArch.relations.filter(
+    (r) => !idsToDelete.has(getFqn(r.source)) && !idsToDelete.has(getFqn(r.target))
   );
 
   // Remove reference from parent if needed (not needed for flat list, but good to know)

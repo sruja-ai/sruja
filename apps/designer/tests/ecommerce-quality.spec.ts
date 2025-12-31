@@ -90,14 +90,14 @@ test.describe("ECommerce Platform Quality Measurement", () => {
 
     // Enable debug mode for overlap detection
     await page.evaluate(() => {
-      (window as any).__LAYOUT_DEBUG__ = true;
+      (window as unknown as any).__LAYOUT_DEBUG__ = true;
     });
 
     // Wait for metrics to be available (they're set by ArchitectureCanvas)
-    let layoutMetrics: any = null;
+    let layoutMetrics: Record<string, unknown> | null = null;
     for (let i = 0; i < 10; i++) {
       layoutMetrics = await page.evaluate(() => {
-        return (window as any).__LAYOUT_METRICS__ as any;
+        return (window as unknown as any).__LAYOUT_METRICS__ as Record<string, unknown> | null;
       });
       if (layoutMetrics) break;
       await page.waitForTimeout(500);
@@ -108,13 +108,14 @@ test.describe("ECommerce Platform Quality Measurement", () => {
     }
 
     // Extract overlapping nodes details for debugging
-    const overlappingNodesDetails = layoutMetrics?.overlappingNodes || [];
+    const overlappingNodesDetails =
+      (layoutMetrics?.overlappingNodes as Array<Record<string, unknown>>) || [];
     if (overlappingNodesDetails.length > 0) {
       console.log("\n=== OVERLAPPING NODES DETAILS ===");
-      overlappingNodesDetails.forEach((overlap: any, idx: number) => {
+      overlappingNodesDetails.forEach((overlap, idx: number) => {
         console.log(`${idx + 1}. ${overlap.node1} overlaps ${overlap.node2}`);
         console.log(
-          `   Overlap area: ${overlap.overlapArea?.toFixed(1) || "N/A"}, Percentage: ${overlap.overlapPercentage?.toFixed(1) || "N/A"}%`
+          `   Overlap area: ${typeof overlap.overlapArea === "number" ? overlap.overlapArea.toFixed(1) : "N/A"}, Percentage: ${typeof overlap.overlapPercentage === "number" ? overlap.overlapPercentage.toFixed(1) : "N/A"}%`
         );
       });
       console.log("===================================\n");
@@ -131,11 +132,11 @@ test.describe("ECommerce Platform Quality Measurement", () => {
       spacingViolations: layoutMetrics?.spacingViolations?.length || 0,
       edgeLabelOverlaps: layoutMetrics?.edgeLabelOverlaps || 0,
       clippedNodeLabels: layoutMetrics?.clippedNodeLabels || 0,
-      violations: overlappingNodesDetails.map((o: any) => ({
+      violations: overlappingNodesDetails.map((o) => ({
         type: "node-overlap",
         severity: "high",
-        description: `${o.node1} overlaps ${o.node2}`,
-        affectedNodes: [o.node1, o.node2],
+        description: `${String(o.node1)} overlaps ${String(o.node2)}`,
+        affectedNodes: [String(o.node1), String(o.node2)],
       })),
     };
 

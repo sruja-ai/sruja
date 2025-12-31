@@ -39,8 +39,12 @@ test.describe("Edge Labels Verification", () => {
     // Verify that relations have title fields in the model
     const relationData = await page.evaluate(() => {
       // Access the model from the store or window
-      return (window as any).__MODEL_DATA__ || null;
+      return (window as unknown as any).__MODEL_DATA__ || null;
     });
+
+    if (relationData) {
+      console.log("Relation data verified in model");
+    }
 
     // Check for edge labels in React Flow
     const edgeLabels = page.locator(".react-flow__edge .react-flow__edge-label");
@@ -67,4 +71,3 @@ test.describe("Edge Labels Verification", () => {
     await page.screenshot({ path: "test-results/edge-labels-verification.png", fullPage: true });
   });
 });
-

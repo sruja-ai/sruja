@@ -1,10 +1,10 @@
-import { Disclosure as HDisclosure } from '@headlessui/react'
+import { Disclosure as HDisclosure } from "@headlessui/react";
 
 export type DisclosureProps = {
-  title: string
-  children: any
-  defaultOpen?: boolean
-}
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+};
 
 export function Disclosure({ title, children, defaultOpen }: DisclosureProps) {
   return (
@@ -20,6 +20,5 @@ export function Disclosure({ title, children, defaultOpen }: DisclosureProps) {
         </div>
       )}
     </HDisclosure>
-  )
+  );
 }
-

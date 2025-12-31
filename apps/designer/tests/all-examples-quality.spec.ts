@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test } from "@playwright/test";
 import { writeFileSync, mkdirSync, readdirSync, statSync, readFileSync } from "fs";
 import { join, extname } from "path";
 import LZString from "lz-string";
@@ -62,11 +62,11 @@ test.describe.serial("All Examples Quality Measurement", () => {
 
   try {
     examples = findSrujaFiles(examplesDir);
-  } catch (e) {
+  } catch (_e) {
     // Fallback for different CWD
     try {
       examples = findSrujaFiles(join(process.cwd(), "apps/designer/public/examples"));
-    } catch (e2) {
+    } catch (_e2) {
       console.error("Could not find examples directory");
     }
   }
@@ -121,8 +121,8 @@ User -> Backend "uses"`;
           // Use compressToBase64 to match app's expectation (useProjectSync.ts lines 219)
           const compressed = LZString.compressToBase64(content);
           codeUrlParam = `code=${encodeURIComponent(compressed)}`;
-        } catch (e) {
-          console.error(`Failed to read content for ${example}: ${e}`);
+        } catch (_e) {
+          console.error(`Failed to read content for ${example}: ${_e}`);
           test.skip();
           return;
         }
@@ -136,7 +136,7 @@ User -> Backend "uses"`;
       // We set a shorter timeout because if it hangs, we want to move on and mark as failed/0 score
       try {
         await page.goto(urlWithParams, { waitUntil: "networkidle", timeout: 30000 });
-      } catch (e) {
+      } catch (_e) {
         console.log(
           `Timeout loading ${example}, trying to proceed anyway in case it's just a network idle issue`
         );
@@ -150,12 +150,28 @@ User -> Backend "uses"`;
         await page.waitForTimeout(3000);
 
         // Wait for metrics
-        let diagramQuality: any = null;
+        let diagramQuality: {
+          score?: number;
+          edgeCrossings?: number;
+          nodeOverlaps?: number;
+          labelOverlaps?: number;
+          nodeCount?: number;
+          edgeCount?: number;
+          spacingConsistency?: number;
+        } | null = null;
         for (let i = 0; i < 20; i++) {
           // Increased retries
-          diagramQuality = await page.evaluate(() => {
-            return (window as any).__DIAGRAM_QUALITY__ as any;
-          });
+          diagramQuality = (await page.evaluate(() => {
+            return (window as unknown as any).__DIAGRAM_QUALITY__;
+          })) as {
+            score?: number;
+            edgeCrossings?: number;
+            nodeOverlaps?: number;
+            labelOverlaps?: number;
+            nodeCount?: number;
+            edgeCount?: number;
+            spacingConsistency?: number;
+          } | null;
           if (diagramQuality) break;
           await page.waitForTimeout(500);
         }

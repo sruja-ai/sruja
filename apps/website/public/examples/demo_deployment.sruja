@@ -1,0 +1,65 @@
+// examples/demo_deployment.sruja
+// Demonstrates deployment view and deployment node definitions
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+customer = person "Customer"
+
+ecommerce = system "E-Commerce Platform" {
+  webApp = container "Web Application" {
+    technology "React"
+  }
+  
+  api = container "REST API" {
+    technology "Go"
+  }
+  
+  db = database "PostgreSQL Database" {
+    technology "PostgreSQL 14"
+  }
+}
+
+customer -> ecommerce.webApp "uses"
+
+// Deployment definition
+deployment Prod "Production" {
+  node AWS "AWS Cloud" {
+    node USEast1 "US-East-1" {
+      infrastructure LB "Application Load Balancer"
+      containerInstance webApp
+      containerInstance api
+    }
+    
+    node USWest2 "US-West-2" {
+      infrastructure DB "RDS PostgreSQL"
+      containerInstance db
+    }
+  }
+}
+
+deployment Staging "Staging Environment" {
+  node AWS "AWS Cloud" {
+    node USEast1 "US-East-1" {
+      infrastructure LB "Application Load Balancer"
+      containerInstance webApp
+      containerInstance api
+      infrastructure DB "RDS PostgreSQL"
+      containerInstance db
+    }
+  }
+}
+
+// Views
+view index {
+  title "E-Commerce System"
+  include *
+}
+
+view deployment_view {
+  title "Production Deployment"
+  include *
+}
+

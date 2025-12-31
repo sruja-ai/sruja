@@ -234,11 +234,20 @@ jobs:
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps
+        run: npx playwright install --with-deps chromium
         working-directory: apps/website
 
       - name: Build website
         run: npm run build
+        working-directory: apps/website
+
+      - name: Verify build output
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "::error::Build output directory 'dist' not found!"
+            exit 1
+          fi
+          echo "Build output verified: $(du -sh dist | cut -f1)"
         working-directory: apps/website
 
       - name: Run E2E tests

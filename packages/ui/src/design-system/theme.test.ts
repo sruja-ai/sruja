@@ -1,15 +1,15 @@
 // packages/ui/src/design-system/theme.test.ts
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getTheme, lightTheme, darkTheme } from './theme';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { getTheme, lightTheme, darkTheme } from "./theme";
 
-describe('theme', () => {
+describe("theme", () => {
   beforeEach(() => {
     // Reset window.matchMedia mock
     vi.clearAllMocks();
   });
 
-  describe('lightTheme', () => {
-    it('should have all required theme properties', () => {
+  describe("lightTheme", () => {
+    it("should have all required theme properties", () => {
       expect(lightTheme.background).toBeDefined();
       expect(lightTheme.surface).toBeDefined();
       expect(lightTheme.border).toBeDefined();
@@ -26,19 +26,19 @@ describe('theme', () => {
       expect(lightTheme.semantic.info).toBeDefined();
     });
 
-    it('should have light background color', () => {
-      expect(lightTheme.background).toBe('#ffffff');
-      expect(lightTheme.surface).toBe('#f8fafc');
+    it("should have light background color", () => {
+      expect(lightTheme.background).toBe("#ffffff");
+      expect(lightTheme.surface).toBe("#f8fafc");
     });
 
-    it('should have dark text colors', () => {
-      expect(lightTheme.text.primary).toBe('#0f172a');
-      expect(lightTheme.text.secondary).toBe('#475569');
+    it("should have dark text colors", () => {
+      expect(lightTheme.text.primary).toBe("#0f172a");
+      expect(lightTheme.text.secondary).toBe("#475569");
     });
   });
 
-  describe('darkTheme', () => {
-    it('should have all required theme properties', () => {
+  describe("darkTheme", () => {
+    it("should have all required theme properties", () => {
       expect(darkTheme.background).toBeDefined();
       expect(darkTheme.surface).toBeDefined();
       expect(darkTheme.border).toBeDefined();
@@ -55,40 +55,40 @@ describe('theme', () => {
       expect(darkTheme.semantic.info).toBeDefined();
     });
 
-    it('should have dark background color', () => {
-      expect(darkTheme.background).toBe('#0f172a');
-      expect(darkTheme.surface).toBe('#1e293b');
+    it("should have dark background color", () => {
+      expect(darkTheme.background).toBe("#0f172a");
+      expect(darkTheme.surface).toBe("#1e293b");
     });
 
-    it('should have light text colors', () => {
-      expect(darkTheme.text.primary).toBe('#f1f5f9');
-      expect(darkTheme.text.secondary).toBe('#cbd5e1');
+    it("should have light text colors", () => {
+      expect(darkTheme.text.primary).toBe("#f1f5f9");
+      expect(darkTheme.text.secondary).toBe("#cbd5e1");
     });
   });
 
-  describe('getTheme', () => {
+  describe("getTheme", () => {
     it('should return light theme when mode is "light"', () => {
-      const theme = getTheme('light');
+      const theme = getTheme("light");
       expect(theme).toBe(lightTheme);
     });
 
     it('should return dark theme when mode is "dark"', () => {
-      const theme = getTheme('dark');
+      const theme = getTheme("dark");
       expect(theme).toBe(darkTheme);
     });
 
-    it('should return light theme as default when window is undefined', () => {
+    it("should return light theme as default when window is undefined", () => {
       const originalWindow = global.window;
-      delete (global as any).window;
-      
-      const theme = getTheme('system');
+      delete (global as unknown as { window: unknown }).window;
+
+      const theme = getTheme("system");
       expect(theme).toBe(lightTheme);
-      
-      global.window = originalWindow;
+
+      global.window = originalWindow as Window & typeof globalThis;
     });
 
-    it('should return light theme for system mode when prefers light', () => {
-      Object.defineProperty(window, 'matchMedia', {
+    it("should return light theme for system mode when prefers light", () => {
+      Object.defineProperty(window, "matchMedia", {
         writable: true,
         value: vi.fn().mockImplementation((query: string) => ({
           matches: false, // prefers light
@@ -102,12 +102,12 @@ describe('theme', () => {
         })),
       });
 
-      const theme = getTheme('system');
+      const theme = getTheme("system");
       expect(theme).toBe(lightTheme);
     });
 
-    it('should return dark theme for system mode when prefers dark', () => {
-      Object.defineProperty(window, 'matchMedia', {
+    it("should return dark theme for system mode when prefers dark", () => {
+      Object.defineProperty(window, "matchMedia", {
         writable: true,
         value: vi.fn().mockImplementation((query: string) => ({
           matches: true, // prefers dark
@@ -121,11 +121,11 @@ describe('theme', () => {
         })),
       });
 
-      const theme = getTheme('system');
+      const theme = getTheme("system");
       expect(theme).toBe(darkTheme);
     });
 
-    it('should check prefers-color-scheme media query', () => {
+    it("should check prefers-color-scheme media query", () => {
       const matchMediaSpy = vi.fn().mockImplementation((query: string) => ({
         matches: false,
         media: query,
@@ -137,21 +137,21 @@ describe('theme', () => {
         dispatchEvent: vi.fn(),
       }));
 
-      Object.defineProperty(window, 'matchMedia', {
+      Object.defineProperty(window, "matchMedia", {
         writable: true,
         value: matchMediaSpy,
       });
 
-      getTheme('system');
-      expect(matchMediaSpy).toHaveBeenCalledWith('(prefers-color-scheme: dark)');
+      getTheme("system");
+      expect(matchMediaSpy).toHaveBeenCalledWith("(prefers-color-scheme: dark)");
     });
 
-    it('should default to system mode when no mode provided', () => {
-      Object.defineProperty(window, 'matchMedia', {
+    it("should default to system mode when no mode provided", () => {
+      Object.defineProperty(window, "matchMedia", {
         writable: true,
         value: vi.fn().mockImplementation(() => ({
           matches: false,
-          media: '',
+          media: "",
           onchange: null,
           addListener: vi.fn(),
           removeListener: vi.fn(),

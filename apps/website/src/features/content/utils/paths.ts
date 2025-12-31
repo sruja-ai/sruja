@@ -7,7 +7,7 @@ interface NavigationItem {
   href: string;
 }
 
-interface StaticPathProps<T extends CollectionEntry<any>> {
+interface StaticPathProps<T extends CollectionEntry<string>> {
   entry: T;
   previous: NavigationItem | null;
   next: NavigationItem | null;
@@ -18,7 +18,7 @@ type SortStrategy = "date" | "weight";
 /**
  * Generate static paths for content collections with navigation
  */
-export function generateContentPaths<T extends CollectionEntry<any>>(
+export function generateContentPaths<T extends CollectionEntry<string>>(
   entries: T[],
   basePath: string,
   sortStrategy: SortStrategy = "weight",
@@ -33,7 +33,9 @@ export function generateContentPaths<T extends CollectionEntry<any>>(
     filtered = entries.filter(filterFn);
   }
 
-  const sorted = sortStrategy === "date" ? sortByDate(filtered) : sortByWeight(filtered);
+  const sorted = (
+    sortStrategy === "date" ? sortByDate(filtered as any) : sortByWeight(filtered as any)
+  ) as T[];
 
   return sorted.map((entry: T, index: number) => {
     const prevEntry: T | undefined = index > 0 ? sorted[index - 1] : undefined;
@@ -41,18 +43,18 @@ export function generateContentPaths<T extends CollectionEntry<any>>(
 
     const previous = prevEntry
       ? {
-          title: (prevEntry as CollectionEntry<any>).data.title,
-          href: `${basePath}/${(prevEntry as CollectionEntry<any>).slug}`,
+          title: (prevEntry as CollectionEntry<string>).data.title,
+          href: `${basePath}/${(prevEntry as CollectionEntry<string>).slug}`,
         }
       : null;
     const next = nextEntry
       ? {
-          title: (nextEntry as CollectionEntry<any>).data.title,
-          href: `${basePath}/${(nextEntry as CollectionEntry<any>).slug}`,
+          title: (nextEntry as CollectionEntry<string>).data.title,
+          href: `${basePath}/${(nextEntry as CollectionEntry<string>).slug}`,
         }
       : null;
 
-    const entryAsCollection = entry as CollectionEntry<any>;
+    const entryAsCollection = entry as CollectionEntry<string>;
     return {
       params: { slug: entryAsCollection.slug },
       props: {

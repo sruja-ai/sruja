@@ -1,30 +1,31 @@
 // examples/demo_tags.sruja
 // Tags Showcase Example
 
-specification {
-  element system
-  element container
-  element database
-  element queue
+
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+queue = kind "Queue"
+
+
+
+app = system "Application" {
+  api = container "HTTP API" {
+    tags ["http", "public"]
+  }
+  db = database "PostgreSQL"
+  mq = queue "Events"
 }
 
-model {
-  app = system "Application" {
-    api = container "HTTP API" {
-      tags ["http", "public"]
-    }
-    db = database "PostgreSQL"
-    mq = queue "Events"
-  }
-  
-  app.api -> app.db "reads data from"
-  app.api -> app.db "writes data to"
-  app.api -> app.mq "publishes events to"
+// Relationships with tags
+app.api -> app.db "reads data from" [read, database]
+app.api -> app.db "writes data to" [write, database, critical]
+app.api -> app.mq "publishes events to" [async, events]
+
+
+
+view index {
+  title "Tags Showcase"
+  include *
 }
 
-views {
-  view index {
-    title "Tags Showcase"
-    include *
-  }
-}

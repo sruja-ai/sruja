@@ -38,9 +38,9 @@ describe("antiPatternDetector", () => {
         System3: { id: "System3", kind: "system", title: "System 3", tags: [], links: [] },
       },
       relations: [
-        { source: "System1", target: "System2" } as any,
-        { source: "System2", target: "System3" } as any,
-        { source: "System3", target: "System1" } as any, // Creates cycle
+        { source: "System1", target: "System2" } as { source: string; target: string },
+        { source: "System2", target: "System3" } as { source: string; target: string },
+        { source: "System3", target: "System1" } as { source: string; target: string }, // Creates cycle
       ],
       views: {},
       sruja: { requirements: [], flows: [], scenarios: [], adrs: [] },
@@ -70,12 +70,12 @@ describe("antiPatternDetector", () => {
         System6: { id: "System6", kind: "system", title: "System 6", tags: [], links: [] },
       },
       relations: [
-        { source: "GodSystem", target: "System1" } as any,
-        { source: "GodSystem", target: "System2" } as any,
-        { source: "GodSystem", target: "System3" } as any,
-        { source: "GodSystem", target: "System4" } as any,
-        { source: "GodSystem", target: "System5" } as any,
-        { source: "GodSystem", target: "System6" } as any, // 6 connections > threshold
+        { source: "GodSystem", target: "System1" } as { source: string; target: string },
+        { source: "GodSystem", target: "System2" } as { source: string; target: string },
+        { source: "GodSystem", target: "System3" } as { source: string; target: string },
+        { source: "GodSystem", target: "System4" } as { source: string; target: string },
+        { source: "GodSystem", target: "System5" } as { source: string; target: string },
+        { source: "GodSystem", target: "System6" } as { source: string; target: string }, // 6 connections > threshold
       ],
       views: {},
       sruja: { requirements: [], flows: [], scenarios: [], adrs: [] },
@@ -105,12 +105,12 @@ describe("antiPatternDetector", () => {
         System6: { id: "System6", kind: "system", title: "System 6", tags: [], links: [] },
       },
       relations: [
-        { source: "System1", target: "GodSystem" } as any,
-        { source: "System2", target: "GodSystem" } as any,
-        { source: "System3", target: "GodSystem" } as any,
-        { source: "System4", target: "GodSystem" } as any,
-        { source: "System5", target: "GodSystem" } as any,
-        { source: "System6", target: "GodSystem" } as any, // 6 connections > threshold
+        { source: "System1", target: "GodSystem" } as { source: string; target: string },
+        { source: "System2", target: "GodSystem" } as { source: string; target: string },
+        { source: "System3", target: "GodSystem" } as { source: string; target: string },
+        { source: "System4", target: "GodSystem" } as { source: string; target: string },
+        { source: "System5", target: "GodSystem" } as { source: string; target: string },
+        { source: "System6", target: "GodSystem" } as { source: string; target: string }, // 6 connections > threshold
       ],
       views: {},
       sruja: { requirements: [], flows: [], scenarios: [], adrs: [] },

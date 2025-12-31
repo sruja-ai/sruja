@@ -46,29 +46,29 @@ interface AlgoliaRecord {
 function stripMarkdown(content: string): string {
   return content
     // Remove code blocks
-    .replace(/```[\s\S]*?```/g, '')
+    .replace(/```[\s\S]*?```/g, "")
     // Remove inline code
-    .replace(/`[^`]+`/g, '')
+    .replace(/`[^`]+`/g, "")
     // Remove links but keep text
-    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     // Remove images
-    .replace(/!\[([^\]]*)\]\([^\)]+\)/g, '')
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "")
     // Remove headers
-    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^#{1,6}\s+/gm, "")
     // Remove bold/italic
-    .replace(/\*\*([^\*]+)\*\*/g, '$1')
-    .replace(/\*([^\*]+)\*/g, '$1')
-    .replace(/__([^_]+)__/g, '$1')
-    .replace(/_([^_]+)_/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
     // Remove horizontal rules
-    .replace(/^---$/gm, '')
+    .replace(/^---$/gm, "")
     // Remove list markers
-    .replace(/^[\*\-\+]\s+/gm, '')
-    .replace(/^\d+\.\s+/gm, '')
+    .replace(/^[*\-+]\s+/gm, "")
+    .replace(/^\d+\.\s+/gm, "")
     // Remove blockquotes
-    .replace(/^>\s+/gm, '')
+    .replace(/^>\s+/gm, "")
     // Clean up extra whitespace
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
@@ -91,7 +91,7 @@ function generateUrl(collection: string, slug: string): string {
  */
 async function processDocs(): Promise<AlgoliaRecord[]> {
   const docs = await getCollection('docs');
-  return docs.map((doc: any) => {
+  return docs.map((doc: CollectionEntry<'docs'>) => {
     const content = stripMarkdown(doc.body);
     const category = doc.slug.includes('/')
       ? doc.slug.split('/')[0]
@@ -117,7 +117,7 @@ async function processDocs(): Promise<AlgoliaRecord[]> {
  */
 async function processBlog(): Promise<AlgoliaRecord[]> {
   const posts = await getCollection('blog');
-  return posts.map((post: any) => {
+  return posts.map((post: CollectionEntry<'blog'>) => {
     const content = stripMarkdown(post.body);
     const pubDate = post.data.pubDate
       ? new Date(post.data.pubDate).toISOString().split('T')[0]
@@ -143,7 +143,7 @@ async function processBlog(): Promise<AlgoliaRecord[]> {
  */
 async function processCourses(): Promise<AlgoliaRecord[]> {
   const courses = await getCollection('courses');
-  return courses.map((course: any) => {
+  return courses.map((course: CollectionEntry<'courses'>) => {
     const content = stripMarkdown(course.body);
     const slugParts = course.slug.split('/');
     const category = slugParts.length > 0 ? slugParts[0] : 'courses';
@@ -169,7 +169,7 @@ async function processCourses(): Promise<AlgoliaRecord[]> {
  */
 async function processTutorials(): Promise<AlgoliaRecord[]> {
   const tutorials = await getCollection('tutorials');
-  return tutorials.map((tutorial: any) => {
+  return tutorials.map((tutorial: CollectionEntry<'tutorials'>) => {
     const content = stripMarkdown(tutorial.body);
     const slugParts = tutorial.slug.split('/');
     const category = slugParts.length > 0 ? slugParts[0] : 'tutorials';
@@ -196,7 +196,7 @@ async function processTutorials(): Promise<AlgoliaRecord[]> {
  */
 async function processChallenges(): Promise<AlgoliaRecord[]> {
   const challenges = await getCollection('challenges');
-  return challenges.map((challenge: any) => {
+  return challenges.map((challenge: CollectionEntry<'challenges'>) => {
     const content = stripMarkdown(challenge.body);
 
     return {

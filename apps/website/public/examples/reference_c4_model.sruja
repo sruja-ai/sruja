@@ -1,34 +1,57 @@
 // examples/reference_c4_model.sruja
 // C4 Complete Example
 
-specification {
-  element person
-  element system
-  element container
-  element database
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+
+
+user = person "End User"
+
+webApp = system "Web Application" {
+  api = container "API Service"
+  db = database "Database"
 }
 
-model {
-  user = person "End User"
+user -> webApp "uses"
+user -> webApp.api "authenticates with"
+webApp.api -> webApp.db "validates user in"
+
+
+
+view index {
+  title "C4 Complete Example"
+  include *
   
-  webApp = system "Web Application" {
-    api = container "API Service"
-    db = database "Database"
+  // Layout hints following C4 conventions:
+  // - Persons at top
+  // - Systems in center
+  // - Databases at bottom
+  layout {
+    element user {
+      position { x: 300, y: 50 }
+    }
+    element webApp {
+      position { x: 300, y: 200 }
+    }
   }
-  
-  user -> webApp "uses"
-  user -> webApp.api "authenticates with"
-  webApp.api -> webApp.db "validates user in"
 }
 
-views {
-  view index {
-    title "C4 Complete Example"
-    include *
-  }
+view containers of webApp {
+  title "Web Application Containers"
+  include webApp.*
   
-  view containers of webApp {
-    title "Web Application Containers"
-    include webApp.*
+  // Layout for container view: API on left, Database on right
+  layout {
+    element webApp.api {
+      position { x: 200, y: 150 }
+    }
+    element webApp.db {
+      position { x: 400, y: 150 }
+    }
   }
 }
+

@@ -326,7 +326,7 @@ function addToolbar(pre: HTMLElement, _codeEl: HTMLElement, dsl: string) {
   const editorRoot = createRoot(editorMount);
   const getTheme = () =>
     document.documentElement.getAttribute("data-theme") === "dark" ? "vs-dark" : "vs";
-  let currentTheme: "vs" | "vs-dark" | "hc-black" = getTheme() as any;
+  let currentTheme: "vs" | "vs-dark" | "hc-black" = getTheme() as "vs" | "vs-dark";
 
   // Calculate appropriate height based on content
   const calculateHeight = (content: string) => {
@@ -364,7 +364,7 @@ function addToolbar(pre: HTMLElement, _codeEl: HTMLElement, dsl: string) {
   renderEditor();
   try {
     window.addEventListener("theme-change", () => {
-      currentTheme = getTheme() as any;
+      currentTheme = getTheme() as "vs" | "vs-dark";
       renderEditor();
     });
   } catch (_e) {

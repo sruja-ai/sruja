@@ -1,4 +1,4 @@
-/* global console, global, process, setInterval, clearInterval, setImmediate, setTimeout, clearTimeout, Buffer */
+/* global console, global, process */
 // packages/shared/src/node/wasmAdapter.ts
 // Node.js-compatible WASM adapter for VS Code extension
 // Uses Node.js WebAssembly API instead of browser APIs
@@ -474,7 +474,6 @@ export async function initWasmNode(options?: {
 export async function convertDslToMarkdown(
   dsl: string,
   wasmApi?: NodeWasmApi,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _filename?: string
 ): Promise<string | null> {
   let api = wasmApi;
