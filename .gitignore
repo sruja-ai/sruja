@@ -172,3 +172,7 @@ EXAMPLES_DSL_CONSISTENCY.md
 FEATURE_COVERAGE*.md
 INCONSISTENCY_REPORT.md
 FLAT_SYNTAX_UPDATE_SUMMARY.md
+
+# Developer outputs
+test_output.txt
+tsc_output.txt
