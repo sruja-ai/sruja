@@ -13,20 +13,25 @@ import {
   MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Paper, Group, Stack, ActionIcon, Text, Loader, Button } from "@mantine/core";
+import { Paper, Group, Stack, ActionIcon, Text, Loader, Button, Badge } from "@mantine/core";
 import { useTheme } from "@sruja/ui";
 
-import { useArchitectureStore, useSelectionStore } from "../../stores";
+import { useArchitectureStore, useSelectionStore, useUIStore } from "../../stores";
+import { getArchitectureModel } from "../../models/ArchitectureModel";
 import { trackInteraction } from "@sruja/shared";
-import { layoutWithRefinement } from "./layoutEngine";
+import { layoutAndMeasureQuality } from "./layoutEngine";
 import { SrujaNode } from "./SrujaNode";
 import type { C4Node, C4Level } from "./types";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Edit3 } from "lucide-react";
+import { type LayoutQuality } from "./qualityMetrics";
 
 import { convertDslToDot, type SrujaModelDump } from "@sruja/shared";
+type ElementDump = NonNullable<SrujaModelDump["elements"]>[string];
 import { calculateNodeSize } from "./textMeasure";
 import type { EdgeType } from "./types";
 import SplineEdge from "./SplineEdge";
+import TrafficEdge from "./TrafficEdge";
+import { useViewStore } from "../../stores/viewStore"; // Ensure view store is imported
 
 const nodeTypes: NodeTypes = {
   sruja: SrujaNode,
@@ -34,6 +39,7 @@ const nodeTypes: NodeTypes = {
 
 const edgeTypes: EdgeTypes = {
   spline: SplineEdge,
+  traffic: TrafficEdge,
 };
 
 /**
@@ -113,7 +119,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export const SrujaCanvas = () => {
   // Global Store
-  const model = useArchitectureStore((s) => s.likec4Model) as unknown as SrujaModelDump | null;
+  const model = useArchitectureStore((s) => s.model) as unknown as SrujaModelDump | null;
   const dslSource = useArchitectureStore((s) => s.dslSource) as string | null;
   const currentExampleFile = useArchitectureStore((s) => s.currentExampleFile);
   // Use currentExampleFile or dslSource hash as model identifier for cache invalidation
@@ -141,8 +147,129 @@ export const SrujaCanvas = () => {
     mode === "dark" ||
     (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
+  const activeViewId = useViewStore((s) => s.activeViewId);
+
   // Layout Cache
   const cacheRef = useRef<LayoutCache>({});
+
+  // Store actions
+  const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
+
+  // Chaos Mode State
+  const chaosState = useArchitectureStore((s) => s.chaosState);
+  const setFailedNode = useArchitectureStore((s) => s.setFailedNode);
+  const setChaosEnabled = useArchitectureStore((s) => s.setChaosEnabled);
+  const selectedPersona = useUIStore((s) => s.selectedPersona);
+
+  // Calculate Blast Radius (Impacted Nodes)
+  const impactedNodeIds = useMemo(() => {
+    if (!chaosState.enabled || !chaosState.failedNodeId || !model) return new Set<string>();
+
+    // Use the ArchitectureModel helper we added
+    const archModel = getArchitectureModel();
+    // Ensure archModel is in sync (it should be subscribed, but we can call directly)
+    if (archModel.getModel() !== model) {
+      archModel.updateModel(model);
+    }
+    return archModel.getBlastRadius(chaosState.failedNodeId);
+  }, [chaosState.enabled, chaosState.failedNodeId, model]);
+
+  // Drag and Drop Handlers
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+
+      if (!reactFlowInstance) return;
+
+      const featureData = event.dataTransfer.getData("application/feature");
+      if (!featureData) return;
+
+      try {
+        const feature = JSON.parse(
+          featureData
+        ) as import("../../data/featureTemplates").FeatureTemplate;
+        const position = reactFlowInstance.screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        });
+
+        // Feature dropped - handled
+
+        // Update architecture model with new components from feature
+        updateArchitecture((model) => {
+          const newModel = { ...model };
+          if (!newModel.elements) newModel.elements = {};
+
+          // Helper to generate unique ID
+          const generateId = (base: string) => {
+            let id = base.toLowerCase().replace(/[^a-z0-9]/g, "");
+            if (!newModel.elements[id]) return id;
+            let counter = 1;
+            while (newModel.elements[`${id}${counter}`]) {
+              counter++;
+            }
+            return `${id}${counter}`;
+          };
+
+          // Group new components
+          // If we are drilled down (level > 1) and have a focusNodeId, we add as children
+          const parentId = level > 1 && focusNodeId ? focusNodeId : undefined;
+
+          feature.requiredComponents.forEach((comp, index) => {
+            const id = generateId(comp.name);
+
+            // Map template type to C4 kind
+            let kind = comp.type;
+            const tags: string[] = ["feature:" + feature.id];
+
+            // Normalize kinds
+            if (kind === "service") kind = "container";
+            if (kind === "datastore") {
+              kind = "container";
+              tags.push("database");
+            }
+            if (kind === "queue") {
+              kind = "container";
+              tags.push("queue");
+            }
+
+            // Offset positions slightly for multiple components
+            // Note: Position isn't stored in C4 model, but we set it in metdata for initial layout hint if needed
+            // However, Current layout engine recalculates positions.
+            // We just add to model.
+
+            newModel.elements[id] = {
+              id,
+              title: comp.name,
+              kind: kind as ElementDump["kind"],
+              description: comp.description as any,
+              technology: comp.technology,
+              tags,
+              parent: parentId,
+              // Add metadata for layout engine if we want to preserve dropped position?
+              // The current DOT layout engine might overwrite this, but we can try.
+              metadata: {
+                // @ts-expect-error - position is not in ElementDump type but needed for layout hint
+                position: { x: position.x + index * 40, y: position.y + index * 40 },
+              },
+            };
+          });
+
+          return newModel;
+        });
+
+        trackInteraction("drop", "feature", { featureId: feature.id });
+      } catch (err) {
+        console.error("[SrujaCanvas] Failed to handle drop:", err);
+      }
+    },
+    [reactFlowInstance, updateArchitecture, level, focusNodeId]
+  );
 
   // Get node title helper
   const getNodeTitle = useCallback(
@@ -164,7 +291,9 @@ export const SrujaCanvas = () => {
     }
 
     const computeLayout = async () => {
-      const cacheKey = hashCacheKey(level, focusNodeId, collapsedNodeIds, modelId);
+      const cacheKey =
+        hashCacheKey(level, focusNodeId, collapsedNodeIds, modelId) +
+        (activeViewId ? `:${activeViewId}` : "");
       const cached = cacheRef.current[cacheKey];
 
       // Check cache validity
@@ -183,7 +312,7 @@ export const SrujaCanvas = () => {
         // 1. Generate DOT via Go WASM (with view projection)
         // Use dslSource if available, otherwise fallback cannot proceed
         if (!dslSource) {
-          console.warn("[SrujaCanvas] No DSL source available for DOT generation");
+          // No DSL source available - skipping layout
           setNodes([]);
           setEdges([]);
           return;
@@ -203,26 +332,29 @@ export const SrujaCanvas = () => {
           });
         }
 
-        const result = await convertDslToDot(dslSource, level, focusNodeId, nodeSizes);
+        const result = await convertDslToDot(
+          dslSource,
+          activeViewId ? 0 : level, // If activeViewId set, pass 0 level? Need to confirm WASM behavior
+          activeViewId || focusNodeId,
+          nodeSizes
+        );
 
         if (!result || !result.dot) {
-          console.warn("[SrujaCanvas] DOT generation failed or returned empty");
+          // DOT generation failed - skipping layout
           setNodes([]);
           setEdges([]);
           return;
         }
 
-        console.log("[SrujaCanvas] DOT generated via Go WASM, length:", result.dot.length);
-        console.log("[SrujaCanvas] Projected Relations count:", result.relations.length);
+        // Debug logging removed - use browser devtools if needed
 
         // 2. Layout with iterative refinement
-        const { layoutResult, quality } = await layoutWithRefinement(result.dot, result.relations);
+        const { layoutResult, quality } = await layoutAndMeasureQuality(
+          result.dot,
+          result.relations
+        );
 
-        if (quality) {
-          console.log(
-            `[SrujaCanvas] Layout quality: score=${quality.score.toFixed(2)}, crossings=${quality.edgeCrossings}, overlaps=${quality.nodeOverlaps}`
-          );
-        }
+        // Quality metrics exposed via window.__DIAGRAM_QUALITY__ for e2e tests
 
         // 3. Build C4Nodes from layout result and model metadata
         const c4Nodes: C4Node[] = layoutResult.nodes.map((layoutNode) => {
@@ -245,21 +377,25 @@ export const SrujaCanvas = () => {
         });
 
         // 4. Build edges from projected relations returned by Go
-        const c4Edges = result.relations.map((rel: any, idx: number) => {
-          return {
-            id: `e-${rel.from}-${rel.to}-${idx}`,
-            source: rel.from,
-            target: rel.to,
-            label: rel.label || "",
-            technology: undefined,
-          };
-        });
+        const c4Edges = result.relations.map(
+          (rel: { from: string; to: string; title?: string }, idx: number) => {
+            return {
+              id: `e-${rel.from}-${rel.to}-${idx}`,
+              source: rel.from,
+              target: rel.to,
+              label: (rel as any).label || "",
+              technology: undefined,
+            };
+          }
+        );
 
-        console.log(`[SrujaCanvas] Layout: ${c4Nodes.length} nodes, ${c4Edges.length} edges`);
+        // Layout complete: nodes and edges computed
 
-        // Expose quality metrics to window for e2e tests and UI
-        if (quality && typeof window !== "undefined") {
-          (window as any).__DIAGRAM_QUALITY__ = {
+        // Expose quality metrics to window for e2e tests and UI (dev only)
+        // Quality metrics are developer tools, not user-facing features
+        const isDev = import.meta.env.DEV || import.meta.env.MODE === "development";
+        if (quality && isDev && typeof window !== "undefined") {
+          (window as Window & { __DIAGRAM_QUALITY__?: typeof quality }).__DIAGRAM_QUALITY__ = {
             score: quality.score,
             edgeCrossings: quality.edgeCrossings,
             nodeOverlaps: quality.nodeOverlaps,
@@ -272,8 +408,15 @@ export const SrujaCanvas = () => {
             timestamp: Date.now(),
             nodeCount: c4Nodes.length,
             edgeCount: c4Edges.length,
-            level: level,
+            level: level > 0 ? `L${level}` : "L1",
+          } as LayoutQuality & {
+            level: string;
+            nodeCount: number;
+            edgeCount: number;
+            timestamp: number;
           };
+
+          console.log("[SrujaCanvas] Metrics:", (window as any).__DIAGRAM_QUALITY__);
         }
 
         // Early return if no nodes
@@ -284,18 +427,86 @@ export const SrujaCanvas = () => {
         }
 
         // 5. React Flow Mapping
+        // Check for saved manual positions in view metadata
+        // Try both formats: manual-layout-* (from UI edits) and regular view IDs (from DSL)
+        const viewKey = `manual-layout-${level}-${focusNodeId || "root"}`;
+        const savedPositions = model.views?.[viewKey];
+        // Support both old format (layout.positions) and new format (Layout.Positions)
+        // Type assertion needed because layout positions are not in ParsedView type
+        type ViewWithLayout = typeof savedPositions & {
+          layout?: { positions?: Record<string, { x: number; y: number }> };
+          Layout?: {
+            Positions?: Record<string, { x: number; y: number }>;
+            positions?: Record<string, { x: number; y: number }>;
+          };
+        };
+        const viewWithLayout = savedPositions as ViewWithLayout | undefined;
+        const manualPositionsMap =
+          viewWithLayout?.layout?.positions ||
+          viewWithLayout?.Layout?.Positions ||
+          viewWithLayout?.Layout?.positions ||
+          {};
+
         const nextNodes: RFNode[] = c4Nodes.map((node) => {
           const layout = layoutResult.nodes.find((n) => n.id === node.id);
+
+          // Use saved manual position if available, otherwise use auto-layout
+          // Handle both old format (direct object) and new format (ViewPositionDump)
+          const savedPosition = manualPositionsMap[node.id];
+          let position = { x: 0, y: 0 };
+          if (savedPosition) {
+            // Handle both formats: {x, y} or ViewPositionDump with X, Y
+            const pos = savedPosition as { x?: number; y?: number; X?: number; Y?: number };
+            position = {
+              x: pos.x ?? pos.X ?? 0,
+              y: pos.y ?? pos.Y ?? 0,
+            };
+          } else if (layout) {
+            position = { x: layout.x, y: layout.y };
+          }
+
+          // Chaos Mode Styling
+          const isFailed = chaosState.enabled && chaosState.failedNodeId === node.id;
+          const isImpacted = chaosState.enabled && impactedNodeIds.has(node.id);
+          const isDimmed =
+            chaosState.enabled && !!chaosState.failedNodeId && !isFailed && !isImpacted;
+
+          // Capacity Planning Calculation
+          const capacityState = useArchitectureStore.getState().capacityState;
+          const loadMultiplier = capacityState.userLoad / 100;
+          // Simple heuristic: 3 replicas base * load multiplier
+          // Only for containers (services)
+          const replicas = node.kind === "container" ? Math.ceil(3 * loadMultiplier) : undefined;
+
           return {
             id: node.id,
             type: "sruja",
-            position: {
-              x: layout ? layout.x : 0,
-              y: layout ? layout.y : 0,
-            },
-            data: { ...node, _theme: mode } as C4Node & Record<string, unknown>,
+            position,
+            data: {
+              ...node,
+              _theme: mode,
+              // Pass chaos flags
+              _chaos: {
+                isFailed,
+                isImpacted,
+                isDimmed,
+              },
+              // Pass capacity metrics
+              _capacity: replicas
+                ? {
+                    replicas,
+                    load: capacityState.userLoad,
+                  }
+                : undefined,
+            } as C4Node & Record<string, unknown>,
             width: node.width,
             height: node.height,
+            style: {
+              // Apply z-index boost for important nodes
+              zIndex: isFailed ? 999 : isImpacted ? 998 : 1,
+              opacity: isDimmed ? 0.3 : 1,
+              filter: isDimmed ? "grayscale(0.8)" : "none",
+            },
           };
         });
 
@@ -309,7 +520,7 @@ export const SrujaCanvas = () => {
           const key = `${gvEdge.source}-${gvEdge.target}`;
           gvEdgeMap.set(key, gvEdge.points);
         });
-        console.log(`[SrujaCanvas] Graphviz edge map has ${gvEdgeMap.size} entries`);
+        // Graphviz edge map computed
 
         // Filter and create edges only for nodes that exist
         const rfValidNodeIds = new Set(nextNodes.map((n) => n.id));
@@ -318,9 +529,7 @@ export const SrujaCanvas = () => {
             const sourceExists = rfValidNodeIds.has(edge.source);
             const targetExists = rfValidNodeIds.has(edge.target);
             if (!sourceExists || !targetExists) {
-              console.warn(
-                `[SrujaCanvas] Edge ${edge.id} skipped: source=${edge.source} exists=${sourceExists}, target=${edge.target} exists=${targetExists}`
-              );
+              // Edge skipped: invalid source or target
               return false;
             }
             return true;
@@ -412,38 +621,7 @@ export const SrujaCanvas = () => {
         console.log(
           `[SrujaCanvas] Layout complete: ${nextNodes.length} nodes, ${nextEdges.length} edges (from ${c4Edges.length} projected edges)`
         );
-        if (nextEdges.length > 0) {
-          console.log(
-            "[SrujaCanvas] Sample React Flow edges:",
-            nextEdges.slice(0, 3).map((e) => ({
-              id: e.id,
-              source: e.source,
-              target: e.target,
-              label: e.label,
-              labelShowBg: e.labelShowBg,
-              labelStyle: e.labelStyle,
-              labelBgStyle: e.labelBgStyle,
-              sourceHandle: e.sourceHandle,
-              targetHandle: e.targetHandle,
-            }))
-          );
-          // Log raw C4 edges for comparison
-          console.log(
-            "[SrujaCanvas] Sample C4 edges (projected):",
-            c4Edges.slice(0, 3).map((e) => ({
-              id: e.id,
-              source: e.source,
-              target: e.target,
-              label: e.label,
-            }))
-          );
-        } else if (c4Edges.length > 0) {
-          console.warn(
-            "[SrujaCanvas] WARNING: Had projected edges but none made it to React Flow!"
-          );
-          console.warn("[SrujaCanvas] Projected edges:", c4Edges);
-          console.warn("[SrujaCanvas] Valid node IDs:", Array.from(rfValidNodeIds));
-        }
+        // Edges processed and validated
 
         // Cache the result
         cacheRef.current[cacheKey] = {
@@ -484,9 +662,132 @@ export const SrujaCanvas = () => {
   // Selection store for details panel
   const selectNode = useSelectionStore((s) => s.selectNode);
 
+  // Manual editing: Track node positions for saving
+  const [, setManualPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
+  const [hasManualEdits, setHasManualEdits] = useState(false);
+
+  // Manual editing: Handle node drag end to save positions
+  const onNodeDragStop = useCallback(
+    (_event: React.MouseEvent, node: RFNode) => {
+      // Save position to manual positions map
+      setManualPositions((prev) => {
+        const next = new Map(prev);
+        next.set(node.id, { x: node.position.x, y: node.position.y });
+        return next;
+      });
+      setHasManualEdits(true);
+
+      // Save to architecture store (in view metadata)
+      if (model) {
+        updateArchitecture((model) => {
+          const updatedModel = { ...model };
+
+          // Store positions in view metadata
+          // Use current view context (level + focusNodeId) as view key
+          const viewKey = `manual-layout-${level}-${focusNodeId || "root"}`;
+
+          if (!updatedModel.views) {
+            updatedModel.views = {};
+          } else {
+            // Create mutable copy of views
+            updatedModel.views = { ...updatedModel.views };
+          }
+
+          // Use type assertion to avoid readonly error (since we cloned it, it's safe to mutate our copy)
+          const views = updatedModel.views as Record<string, any>;
+
+          if (!views[viewKey]) {
+            views[viewKey] = {
+              id: viewKey,
+              title: `Manual Layout ${level > 1 ? `L${level}` : "L1"}`,
+              rules: [],
+              nodes: [],
+              edges: [],
+            };
+          }
+
+          type ViewWithLayoutMutable = (typeof views)[string] & {
+            layout?: { positions?: Record<string, { x: number; y: number }> };
+          };
+          const view = views[viewKey] as ViewWithLayoutMutable;
+          if (!view.layout) {
+            view.layout = {};
+          }
+          if (!view.layout.positions) {
+            view.layout.positions = {};
+          }
+
+          view.layout.positions[node.id] = {
+            x: node.position.x,
+            y: node.position.y,
+          };
+
+          return updatedModel;
+        });
+      }
+
+      trackInteraction("manual-edit", "node-position", {
+        nodeId: node.id,
+        position: node.position,
+        level,
+        focusNodeId,
+      });
+    },
+    [model, updateArchitecture, level, focusNodeId]
+  );
+
+  // Check if current view has manual positions
+  useEffect(() => {
+    if (model) {
+      const viewKey = `manual-layout-${level}-${focusNodeId || "root"}`;
+      const savedPositions = model.views?.[viewKey];
+      type ViewWithLayout = typeof savedPositions & {
+        layout?: { positions?: Record<string, { x: number; y: number }> };
+        Layout?: {
+          Positions?: Record<string, { x: number; y: number }>;
+          positions?: Record<string, { x: number; y: number }>;
+        };
+      };
+      const viewWithLayout = savedPositions as ViewWithLayout | undefined;
+      // Support both old format (layout.positions) and new format (Layout.Positions)
+      const positions =
+        viewWithLayout?.layout?.positions ||
+        viewWithLayout?.Layout?.Positions ||
+        viewWithLayout?.Layout?.positions ||
+        {};
+      const hasSaved = positions && Object.keys(positions).length > 0;
+      setHasManualEdits(hasSaved || false);
+    } else {
+      setHasManualEdits(false);
+    }
+  }, [model, level, focusNodeId]);
+
+  // Chaos Mode Interaction Handler
+  const onNodeClickChaos = useCallback(
+    (event: React.MouseEvent, node: RFNode) => {
+      event.stopPropagation(); // prevent standard selection
+      if (chaosState.enabled) {
+        // Toggle failure state
+        if (chaosState.failedNodeId === node.id) {
+          setFailedNode(null);
+        } else {
+          // Only fail 'container' or 'component' nodes, not systems for now (optional)
+          setFailedNode(node.id);
+          trackInteraction("chaos-mode", "fail-node", { nodeId: node.id });
+        }
+      }
+    },
+    [chaosState.enabled, chaosState.failedNodeId, setFailedNode]
+  );
+
   // Navigation Handlers
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: RFNode) => {
+      // Intercept for Chaos Mode
+      if (chaosState.enabled) {
+        onNodeClickChaos(event, node);
+        return;
+      }
       const c4Data = node.data as unknown as C4Node;
 
       // Check if clicking on expand/collapse button (handled separately)
@@ -673,6 +974,19 @@ export const SrujaCanvas = () => {
               </Group>
             ))}
           </Group>
+
+          {/* Manual editing indicator */}
+          {hasManualEdits && (
+            <Badge
+              leftSection={<Edit3 size={12} />}
+              variant="light"
+              color="blue"
+              size="sm"
+              title="This view has manual position adjustments"
+            >
+              Manual Layout
+            </Badge>
+          )}
         </Group>
       </Paper>
 
@@ -709,9 +1023,15 @@ export const SrujaCanvas = () => {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
+        onNodeDragStop={onNodeDragStop}
         onInit={setReactFlowInstance}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        nodesDraggable={true}
+        nodesConnectable={false}
+        elementsSelectable={true}
         fitView
         minZoom={0.1}
         maxZoom={2}
@@ -719,6 +1039,69 @@ export const SrujaCanvas = () => {
         <Background color={backgroundPatternColor} gap={16} />
         <Controls />
       </ReactFlow>
+
+      {/* SRE Chaos Mode Controls */}
+      {selectedPersona === "sre" && (
+        <Paper
+          shadow="md"
+          p="md"
+          radius="md"
+          withBorder
+          style={{
+            position: "absolute",
+            top: 80, // Moved down to avoid breadcrumbs
+            right: 20,
+            zIndex: 1000,
+            width: 300,
+            backgroundColor: isDark ? "rgba(30, 30, 30, 0.95)" : "rgba(255, 255, 255, 0.95)",
+          }}
+        >
+          <Stack>
+            <Group justify="space-between">
+              <Text fw={700} size="sm">
+                Chaos Engineering Mode
+              </Text>
+              <Badge color={chaosState.enabled ? "red" : "gray"}>
+                {chaosState.enabled ? "ACTIVE" : "OFF"}
+              </Badge>
+            </Group>
+
+            <Text size="xs" c="dimmed">
+              Simulate service failures to verify system resilience and identify blast radius.
+            </Text>
+
+            <Button
+              color={chaosState.enabled ? "red" : "blue"}
+              variant={chaosState.enabled ? "outline" : "filled"}
+              onClick={() => {
+                setChaosEnabled(!chaosState.enabled);
+                if (chaosState.enabled) setFailedNode(null); // Reset when disabling
+              }}
+            >
+              {chaosState.enabled ? "Exit Simulation" : "Start Simulation"}
+            </Button>
+
+            {chaosState.enabled && (
+              <Text size="xs" fw={500} c="orange">
+                {chaosState.failedNodeId
+                  ? `Simulating failure: ${getNodeTitle(chaosState.failedNodeId)}`
+                  : "Click any node to simulate failure"}
+              </Text>
+            )}
+
+            {chaosState.enabled && chaosState.failedNodeId && (
+              <Group gap="xs">
+                <Badge variant="dot" color="red">
+                  Failed: 1
+                </Badge>
+                <Badge variant="dot" color="orange">
+                  Impacted: {impactedNodeIds.size}
+                </Badge>
+              </Group>
+            )}
+          </Stack>
+        </Paper>
+      )}
     </div>
   );
 };

@@ -29,49 +29,42 @@ export default function HomeHero() {
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
           <Logo size={56} />
         </div>
-        <h1>Build Better Software Systems</h1>
+        <h1>Architecture Editor with Live Code Sync</h1>
         <p>
-          <strong>Sruja</strong> is an open source architecture-as-code language for defining,
-          visualizing, and validating software architecture. Built by and for the community, with a
-          vision to evolve into a platform for live system review and architectural governance.
+          Edit diagrams or code - changes sync both ways automatically. Like Notion, but for
+          architecture. Version-controlled, validated, beautiful.
         </p>
 
         {/* Value Propositions for Different Audiences */}
         <div className="hero-audiences">
           <div className="audience-card">
-            <strong>For Students</strong>
+            <strong>🔄 Bidirectional Sync</strong>
+            <p>Edit visually → Code updates. Edit code → Diagram updates. Real-time, both ways.</p>
+          </div>
+          <div className="audience-card">
+            <strong>✅ For Everyone</strong>
             <p>
-              Learn system design with real-world examples, production-ready patterns, and hands-on
-              courses.
+              Designers edit visually, developers edit code. Same source of truth,
+              version-controlled in Git.
             </p>
           </div>
           <div className="audience-card">
-            <strong>For Architects</strong>
+            <strong>📊 Built-in Validation</strong>
             <p>
-              Enforce standards, prevent drift, and scale governance across teams with
-              policy-as-code.
+              Cycle detection, orphan detection, unique IDs, and custom governance rules out of the
+              box.
             </p>
           </div>
           <div className="audience-card">
-            <strong>For Product Teams</strong>
-            <p>
-              Link requirements to architecture, track SLOs, and align technical decisions with
-              business goals.
-            </p>
-          </div>
-          <div className="audience-card">
-            <strong>For DevOps</strong>
-            <p>
-              Integrate architecture validation into CI/CD, automate documentation, and model
-              deployments.
-            </p>
+            <strong>🎯 Multiple Outputs</strong>
+            <p>Export to JSON, Markdown, Mermaid, or keep as .sruja files in Git. Your choice.</p>
           </div>
         </div>
 
         <p>
-          Try the <a href={getDesignerUrl()}>Sruja Designer</a> for interactive visualization,
-          explore <a href="/docs/examples">real-world examples</a> from fintech, healthcare, and
-          e-commerce, or start with our <a href="/courses">comprehensive courses</a>.
+          Try the <a href={getDesignerUrl()}>Sruja Designer</a> to see bidirectional sync in action,
+          explore <a href="/docs/examples">real-world examples</a>, or start with our{" "}
+          <a href="/courses">comprehensive courses</a>.
         </p>
         <div className="hero-actions">
           <Button

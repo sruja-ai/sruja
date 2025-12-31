@@ -5,6 +5,7 @@
 Create a modeling language that empowers **all developers** - from students to enterprise architects - to design systems with confidence, while naturally guiding them toward simplicity and preventing over-engineering.
 
 **Core Principles**:
+
 1. **Start simple, stay simple**: A 1st-year CS student should be productive in 10 minutes, and advanced developers should be guided away from unnecessary complexity.
 2. **Empower, don't restrict**: The language should enable all developers, not limit them, but guide them toward good design.
 3. **Approachability first**: Complex concepts should be available but not encouraged unless truly needed.
@@ -13,13 +14,13 @@ Create a modeling language that empowers **all developers** - from students to e
 
 ## Methodology Analysis
 
-| Methodology | Core Concepts | Jargon Level | Student Intuition | Sruja Mapping |
-| :--- | :--- | :--- | :--- | :--- |
-| **C4** | System, Container, Component | Low | "Boxes and lines" - Easy to grasp. | `system`, `container`, `component` |
-| **DDD** | Bounded Context, Aggregate, Entity, Value Object, Domain Event | High | "Aggregate Root" is confusing. "Value Object" is abstract. | *Not currently supported* |
-| **ER (DB)** | Entity, Attribute, Relationship, Table, Column | Medium | "Entity" is standard. "Relationship" is clear. | `data`, `datastore`, `->` (relation) |
-| **API (OpenAPI)** | Path, Method, Schema, Property | Medium | "Endpoint" is clear. "Schema" is clear. | `api`, `data` (as schema) |
-| **DOD** | Data, Struct, Array, Transform | Low | "Data" and "Struct" are very familiar to coders. | `data`, `[]` (arrays) |
+| Methodology       | Core Concepts                                                  | Jargon Level | Student Intuition                                          | Sruja Mapping                        |
+| :---------------- | :------------------------------------------------------------- | :----------- | :--------------------------------------------------------- | :----------------------------------- |
+| **C4**            | System, Container, Component                                   | Low          | "Boxes and lines" - Easy to grasp.                         | `system`, `container`, `component`   |
+| **DDD**           | Bounded Context, Aggregate, Entity, Value Object, Domain Event | High         | "Aggregate Root" is confusing. "Value Object" is abstract. | _Not currently supported_            |
+| **ER (DB)**       | Entity, Attribute, Relationship, Table, Column                 | Medium       | "Entity" is standard. "Relationship" is clear.             | `data`, `datastore`, `->` (relation) |
+| **API (OpenAPI)** | Path, Method, Schema, Property                                 | Medium       | "Endpoint" is clear. "Schema" is clear.                    | `api`, `data` (as schema)            |
+| **DOD**           | Data, Struct, Array, Transform                                 | Low          | "Data" and "Struct" are very familiar to coders.           | `data`, `[]` (arrays)                |
 
 ## The "Unified" Proposal
 
@@ -29,12 +30,13 @@ We need a set of keywords that map to these concepts without forcing the user to
 
 **Problem**: Different methodologies use different terms for logical boundaries.
 
-| Methodology | Term | Sruja Keyword | When to Use |
-| :--- | :--- | :--- | :--- |
-| C4 | Container | `container` | Technical deployment boundary (e.g., "Web Server", "Database") |
-| General | Grouping | `module` | Generic logical grouping (most intuitive) |
+| Methodology | Term      | Sruja Keyword | When to Use                                                    |
+| :---------- | :-------- | :------------ | :------------------------------------------------------------- |
+| C4          | Container | `container`   | Technical deployment boundary (e.g., "Web Server", "Database") |
+| General     | Grouping  | `module`      | Generic logical grouping (most intuitive)                      |
 
-**Decision**: 
+**Decision**:
+
 - **`module`**: Primary keyword for logical grouping. Familiar to Python/JS/Go developers.
 - **`container`**: For C4-style technical containers (deployment units).
 
@@ -44,17 +46,18 @@ We need a set of keywords that map to these concepts without forcing the user to
 
 **Problem**: Entity vs Value Object vs Table vs Struct - all represent "data" but with different semantics.
 
-| Methodology | Term | Sruja Keyword | Semantics |
-| :--- | :--- | :--- | :--- |
-| General | Entity/Struct | `data` (with `id`) | Has identity, mutable |
-| General | Value/Struct | `data` (no `id`) | Immutable, defined by values |
-| ER | Table/Entity | `data` or `datastore` | Persistent storage |
-| DOD | Struct | `data` | In-memory structure |
-| API | Schema | `data` | Request/response structure |
+| Methodology | Term          | Sruja Keyword         | Semantics                    |
+| :---------- | :------------ | :-------------------- | :--------------------------- |
+| General     | Entity/Struct | `data` (with `id`)    | Has identity, mutable        |
+| General     | Value/Struct  | `data` (no `id`)      | Immutable, defined by values |
+| ER          | Table/Entity  | `data` or `datastore` | Persistent storage           |
+| DOD         | Struct        | `data`                | In-memory structure          |
+| API         | Schema        | `data`                | Request/response structure   |
 
 **Decision**: **`data`** is the unified keyword.
 
 **Rules**:
+
 - If `data` has an `id` field → Implicitly an Entity (has identity)
 - If `data` has no `id` → Implicitly a Value Object (value-based)
 - If `data` is in a `datastore` → Implicitly a database table
@@ -66,13 +69,14 @@ We need a set of keywords that map to these concepts without forcing the user to
 
 **Problem**: Different types of actions need different modeling approaches.
 
-| Type | Sruja Keyword | Purpose | Example |
-| :--- | :--- | :--- | :--- |
-| API Endpoint | `api` | External interface | REST endpoint, GraphQL query |
-| Event | `event` | Something that happened | OrderPlaced, PaymentProcessed |
-| Function/Method | (implicit in component) | Internal behavior | Business logic in components |
+| Type            | Sruja Keyword           | Purpose                 | Example                       |
+| :-------------- | :---------------------- | :---------------------- | :---------------------------- |
+| API Endpoint    | `api`                   | External interface      | REST endpoint, GraphQL query  |
+| Event           | `event`                 | Something that happened | OrderPlaced, PaymentProcessed |
+| Function/Method | (implicit in component) | Internal behavior       | Business logic in components  |
 
-**Decision**: 
+**Decision**:
+
 - **`api`**: Explicit API endpoints (students understand "API")
 - **`event`**: Events (something that happened)
 - Component behavior: Implicit (components contain behavior)
@@ -96,98 +100,109 @@ Order -> Payment "Triggers"
 ## Proposed Syntax: "The Universal Model"
 
 ### Level 1: Beginner (C4 Style)
+
 ```sruja
-specification {
-    element person
-    element system
-    element container
+// Element kinds
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+
+// Elements
+user = person "End User"
+
+shop = system "Shop API" {
+    webApp = container "Web Application" {
+        technology "React"
+    }
+
+    db = container "PostgreSQL Database" {
+        technology "PostgreSQL 14"
+    }
 }
 
-model {
-    user = person "End User"
-    
-    shop = system "Shop API" {
-        webApp = container "Web Application" {
-            technology "React"
-        }
-        
-        db = container "PostgreSQL Database" {
-            technology "PostgreSQL 14"
-        }
-    }
-    
-    user -> shop.webApp "Uses"
-    shop.webApp -> shop.db "Reads/Writes"
-}
+// Relationships
+user -> shop.webApp "Uses"
+shop.webApp -> shop.db "Reads/Writes"
 ```
 
-### Level 2: Intermediate (Unified Data + API)
+### Level 2: Intermediate (Detailed Architecture)
+
 ```sruja
-model {
-    ShopAPI = system {
-        Orders = module {
-            // Data structures
-            Order = data {
-                id string
-                total float
-                items OrderItem[]  // Array syntax (DOD style)
-                status string
-            }
-            
-            OrderItem = data {
-                product_id string
-                qty int
-                price float
-            }
-            
-            // API endpoints
-            PlaceOrder = api {
-                method POST
-                path "/orders"
-                request Order
-                response {
-                    order_id string
-                    status string
-                }
-            }
-            
-            // Events
-            OrderPlaced = event {
-                order_id string
-                customer_id string
-            }
-        }
+// Element kinds
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+
+// Architecture
+ShopAPI = system "Shop API" {
+    WebApp = container "Web Application" {
+        technology "React"
+        Cart = component "Shopping Cart"
+        Checkout = component "Checkout Service"
+    }
+
+    API = container "API Gateway" {
+        technology "Node.js"
+    }
+
+    DB = database "PostgreSQL Database" {
+        technology "PostgreSQL 14"
     }
 }
+
+// Relationships
+ShopAPI.WebApp -> ShopAPI.API "Calls"
+ShopAPI.API -> ShopAPI.DB "Reads/Writes"
 ```
 
-### Level 3: Advanced (Extended Features)
+### Level 3: Advanced (Governance + Operations)
+
 ```sruja
-architecture "E-Commerce" {
-    system ShopAPI {
-        module OrderManagement {
-            data Order {
-                id string
-                items OrderItem[]
-                status string
-            }
-            
-            data OrderItem {
-                product_id string
-                qty int
-            }
-            
-            event OrderCreated {
-                order_id string
+// Element kinds
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+// Elements
+Customer = person "Customer"
+
+Shop = system "E-commerce Shop" {
+    description "High-performance e-commerce platform"
+
+    API = container "API Gateway" {
+        technology "Node.js"
+        slo {
+            latency {
+                p95 "200ms"
+                p99 "500ms"
             }
         }
+        scale {
+            min 3
+            max 10
+        }
+    }
+
+    DB = database "PostgreSQL" {
+        technology "PostgreSQL 14"
     }
 }
+
+// Governance
+R1 = requirement functional "Must support 10k concurrent users"
+SecurityPolicy = policy "Encrypt all data" category "security" enforcement "required"
+
+// Relationships
+Customer -> Shop.API "Uses"
+Shop.API -> Shop.DB "Reads/Writes"
 ```
 
 ## Key Design Decisions
 
 ### 1. Progressive Disclosure
+
 - **Beginner**: Start with `system`, `container`, `component` (C4)
 - **Intermediate**: Add `module`, `data`, `api`, `event` (Unified)
 - **Advanced**: Use all features together for complex architectures
@@ -195,22 +210,27 @@ architecture "E-Commerce" {
 **Rationale**: Students can start simple and learn advanced concepts when needed.
 
 ### 2. Arrays: DOD-Style Syntax
+
 Support `[]` syntax (e.g., `items OrderItem[]`) instead of just implied relationships.
 
 **Rationale**: Very familiar to programmers. Makes data structures explicit.
 
 ### 3. Unified `data` Keyword
+
 The `data` keyword represents data structures. The presence of an `id` field indicates an entity with identity.
 
 **Rationale**: Reduces cognitive load. Students can model data structures without learning complex theory.
 
 ### 4. Explicit `api` Keyword
+
 Model APIs alongside data to connect "Backend" to "Database".
 
 **Rationale**: Students understand "APIs". This bridges the gap between data modeling and API design.
 
 ### 5. Context-Aware Semantics
+
 The same keyword (`data`) means different things in different contexts:
+
 - In a `module`: Domain model
 - In a `datastore`: Database table
 - In an `api`: Request/response schema
@@ -223,26 +243,31 @@ The same keyword (`data`) means different things in different contexts:
 ### How Sruja Guides Toward Simplicity
 
 **1. Start Simple**
+
 - Use `system` for technical/deployment modeling (C4 style)
 - Use `module` for logical grouping when needed
 - Keep it simple - don't add complexity unless necessary
 
 **2. Progressive Disclosure**
+
 - Start with basic C4 concepts: `system`, `container`, `component`
 - Add `module`, `data`, `api`, `event` when you need more detail
 - Use only what you need for your use case
 
 **3. Natural Constraints**
+
 - `system` syntax is straightforward for deployment modeling
 - The language guides you to use the right level of detail
 - Simple designs are easier to write than complex ones
 
 **4. Validation & Guidance** (Future)
+
 - Warn if over-engineering simple systems
 - Help users choose the right level of detail
 - Guide toward simplicity
 
 **5. Clear Mental Models**
+
 - `system` = "How is this deployed?" (Physical/Technical)
 - `module` = "How is this organized?" (Logical grouping)
 - Keep it focused on what you're actually modeling
@@ -250,6 +275,7 @@ The same keyword (`data`) means different things in different contexts:
 ## Missing Concepts & Future Considerations
 
 ### Currently Missing (but important):
+
 1. **Constraints/Validation**: How to express "email must be valid", "age > 0"?
 2. **Relationships with Cardinality**: `User -> Order[1:*]` (one-to-many)?
 3. **Inheritance/Polymorphism**: How to model "Payment extends Transaction"?
@@ -259,6 +285,7 @@ The same keyword (`data`) means different things in different contexts:
 7. **Computed Fields**: `total: float = items.sum(price * qty)`
 
 ### Recommendations:
+
 - Add `enum` keyword for enumerations
 - Support `?` for optional fields: `email? string`
 - Support `=` for defaults: `status string = "PENDING"`
@@ -269,6 +296,7 @@ The same keyword (`data`) means different things in different contexts:
 ## Migration Path
 
 ### From C4 to Sruja:
+
 ```sruja
 // C4: System Context
 system "E-Commerce System" {
@@ -281,6 +309,7 @@ system "E-Commerce System" {
 ```
 
 ### From Data Modeling to Sruja:
+
 ```sruja
 // Data structures
 module Orders {
@@ -288,12 +317,12 @@ module Orders {
         id string
         items OrderItem[]
     }
-    
+
     data OrderItem {
         product_id string
         qty int
     }
-    
+
     data ShippingAddress {
         street string
         city string
@@ -302,13 +331,14 @@ module Orders {
 ```
 
 ### From ER to Sruja:
+
 ```sruja
 datastore Database {
     data User {
         id string
         email string
     }
-    
+
     data Order {
         id string
         user_id string  // Foreign key relationship
@@ -323,6 +353,7 @@ datastore Database {
 ### Core Systems Thinking Concepts (Simplified)
 
 Systems thinking is about understanding:
+
 1. **Parts and Relationships**: How components connect and interact
 2. **Boundaries**: What's inside vs outside the system
 3. **Flows**: How information/data moves through the system
@@ -332,6 +363,7 @@ Systems thinking is about understanding:
 ### How Sruja Makes Systems Thinking Simple
 
 **1. Parts and Relationships** (Already Built-In)
+
 ```sruja
 system ShopAPI {
     container WebApp
@@ -340,9 +372,11 @@ system ShopAPI {
 
 ShopAPI.WebApp -> ShopAPI.Database "Reads/Writes"
 ```
+
 **Simple Insight**: Just draw boxes and connect them with arrows. The relationships show how parts interact.
 
 **2. Boundaries** (Natural in Sruja)
+
 ```sruja
 system ShopAPI {  // Inside boundary
     container WebApp
@@ -351,9 +385,11 @@ system ShopAPI {  // Inside boundary
 person User  // Outside boundary
 User -> ShopAPI "Uses"
 ```
+
 **Simple Insight**: `system` defines the boundary. `person` and external systems are outside. Clear and intuitive.
 
 **3. Flows** (Built-In Flow Syntax)
+
 ```sruja
 // Data Flow Diagram (DFD) style — use scenario
 scenario OrderProcess "Order Processing" {
@@ -374,9 +410,11 @@ Customer -> Shop.WebApp "Submits Order"
 Shop.WebApp -> Shop.OrderService "Processes"
 Shop.OrderService -> Shop.PaymentService "Charges"
 ```
+
 **Simple Insight**: Use `flow` for data flows (DFD), `story`/`scenario` for user stories, or simple relationships for basic flows. Events show what happens: `event OrderPlaced`.
 
 **4. Feedback Loops** (Cycles in Relationships)
+
 ```sruja
 // Simple feedback: User action triggers system response
 User -> System "Requests"
@@ -394,7 +432,9 @@ ServiceB -> ServiceA "Responds with Event"
 OrderService -> PaymentService "Charges Payment"
 PaymentService -> OrderService "Confirms Payment"
 ```
+
 **Simple Insight**: When arrows form a cycle, that's a feedback loop. The system responds to itself. **Cycles are valid** in many architectures:
+
 - **Feedback loops**: User interactions, system responses
 - **Event-driven patterns**: Services triggering each other via events
 - **Mutual dependencies**: Microservices that need to communicate bidirectionally
@@ -403,6 +443,7 @@ PaymentService -> OrderService "Confirms Payment"
 **Note**: Sruja allows cycles - they're a natural part of system design. The validator will inform you about cycles but won't block them, as they're often intentional architectural patterns.
 
 **5. Context** (Persons and External Systems)
+
 ```sruja
 person Customer "End User"
 person Admin "System Administrator"
@@ -414,26 +455,30 @@ system PaymentGateway "Third-party service" {
 Customer -> ShopAPI "Uses"
 ShopAPI -> PaymentGateway "Processes payments"
 ```
+
 **Simple Insight**: `person` and `external` show the context - who/what the system interacts with.
 
 ### Progressive Systems Thinking
 
 **Beginner**: Just model the parts and connections
+
 ```sruja
-specification {
-    element system
-    element container
+// Element kinds
+system = kind "System"
+container = kind "Container"
+
+// Elements
+myApp = system "MyApp" {
+    frontend = container "Frontend"
+    backend = container "Backend"
 }
-model {
-    myApp = system "MyApp" {
-        frontend = container "Frontend"
-        backend = container "Backend"
-    }
-    myApp.frontend -> myApp.backend "Calls"
-}
+
+// Relationships
+myApp.frontend -> myApp.backend "Calls"
 ```
 
 **Intermediate**: Add flows and events
+
 ```sruja
 // Simple qualified relationships
 user -> myApp.frontend "Clicks"
@@ -449,6 +494,7 @@ scenario OrderFlow "Order Processing" {
 ```
 
 **Advanced**: Model feedback loops and system behavior
+
 ```sruja
 // Feedback loop: User action -> System response -> User sees result
 story CompleteOrder "Order Completion Flow" {
@@ -475,6 +521,7 @@ scenario PaymentFlow "Payment Processing" {
 - **Do say**: "Use `flow` to show how data moves between components"
 
 **Result**: Developers naturally think in systems without learning theory first. The syntax guides them to see:
+
 - How parts connect (relationships: `->`)
 - What's inside vs outside (boundaries: `system` vs `person`/`external`)
 - How things flow (`flow` for data flows, `story`/`scenario` for user stories, or simple `->` relationships)
@@ -485,11 +532,13 @@ scenario PaymentFlow "Payment Processing" {
 After assessing various design philosophies (Event-Driven Architecture, Hexagonal Architecture, CQRS, BDD, Reactive Systems, etc.) through a strict lens of "does this help developers learn system design?", we found:
 
 ### ✅ Accepted: Simple & Valuable
+
 1. ✅ **Flows and Scenarios**: Already implemented! `flow` for data flows (DFD), `scenario`/`story` for user stories (BDD-style Given-When-Then)
 2. **Optional Fields**: Practical data modeling (`email? string`)
 3. **Enums**: Practical data modeling (`status: OrderStatus`)
 
 ### ❌ Rejected: Too Complex or Unnecessary
+
 - Hexagonal Architecture (Ports & Adapters) - Too abstract
 - Clean Architecture / Layers - Too theoretical
 - CQRS - Too specialized, can use existing `api`
@@ -509,6 +558,7 @@ After assessing various design philosophies (Event-Driven Architecture, Hexagona
 By using `system`, `module`, `data`, `api`, and `event`, we cover 90% of use cases with words that a 1st-year CS student already knows.
 
 **Key Success Metrics**:
+
 - ✅ Can a beginner model a simple system in 10 minutes? **Yes** (C4 style)
 - ✅ Can an intermediate model data + APIs? **Yes** (Unified style)
 - ✅ Can an advanced user model complex architectures? **Yes** (Extended features)
@@ -516,6 +566,7 @@ By using `system`, `module`, `data`, `api`, and `event`, we cover 90% of use cas
 - ✅ Is it approachable for all developers? **Yes** (progressive disclosure)
 
 **Next Steps**:
+
 1. Add `enum` support
 2. Add optional fields (`?` syntax)
 3. Add relationship cardinality

@@ -2,193 +2,175 @@
 // Development and build workflow architecture
 // Describes how Sruja is developed, tested, and deployed
 
-model {
-  import { * } from 'sruja.ai/stdlib'
-  developer = person "Developer" {
-    description "Develops Sruja features and fixes"
-  }
+// Element kinds
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
 
-  maintainer = person "Maintainer" {
-    description "Maintains CI/CD and release processes"
-  }
+// Actors
+Developer = person "Developer" {
+  description "Develops Sruja features and fixes"
+}
 
-  workflow = system "Development Workflow" {
-    description "Processes for developing, testing, and releasing Sruja"
-    tags ["development", "ci-cd"]
+Maintainer = person "Maintainer" {
+  description "Maintains CI/CD and release processes"
+}
 
-    // ========================================================================
-    // Local Development
-    // ========================================================================
+// Main System
+Workflow = system "Development Workflow" {
+  description "Processes for developing, testing, and releasing Sruja"
+  tags ["development", "ci-cd"]
 
-    local = container "Local Development" {
-      technology "Go, Node.js, npm"
-      description "Developer's local environment"
+  // Local Development
+  Local = container "Local Development" {
+    technology "Go, Node.js, npm"
+    description "Developer's local environment"
 
-      gitHooks = component "Git Hooks" {
-        description "Pre-commit hooks for validation"
-        technology "Husky, pre-commit"
-      }
-
-      localBuild = component "Local Build" {
-        description "Building locally before commit"
-        technology "Make, npm, Go"
-      }
-
-      localTests = component "Local Tests" {
-        description "Running tests locally"
-        technology "Go test, Vitest"
-      }
+    GitHooks = component "Git Hooks" {
+      description "Pre-commit hooks for validation"
+      technology "Husky, pre-commit"
     }
 
-    // ========================================================================
-    // CI/CD Pipeline
-    // ========================================================================
+    LocalBuild = component "Local Build" {
+      description "Building locally before commit"
+      technology "Make, npm, Go"
+    }
 
-    cicd = container "CI/CD Pipeline" {
+    LocalTests = component "Local Tests" {
+      description "Running tests locally"
+      technology "Go test, Vitest"
+    }
+  }
+
+  // CI/CD Pipeline
+  CICD = container "CI/CD Pipeline" {
+    technology "GitHub Actions"
+    description "Continuous Integration and Deployment"
+    tags ["ci-cd", "github-actions"]
+
+    GoTests = component "Go Tests" {
+      description "Go unit tests and coverage"
+      technology "Go test, golangci-lint"
+    }
+
+    TSTests = component "TypeScript Tests" {
+      description "TypeScript/JavaScript tests"
+      technology "Vitest, Playwright"
+    }
+
+    SecurityScan = component "Security Scanning" {
+      description "Security vulnerability scanning"
+      technology "Gosec, npm audit, TruffleHog"
+    }
+
+    BuildCheck = component "Build Check" {
+      description "Verifies all packages build"
+      technology "Turbo, Go build"
+    }
+
+    LintCheck = component "Lint Check" {
+      description "Code quality checks"
+      technology "ESLint, golangci-lint"
+    }
+
+    CoverageCheck = component "Coverage Check" {
+      description "Test coverage validation"
+      technology "Codecov, Codacy"
+    }
+
+    BundleSizeCheck = component "Bundle Size Check" {
+      description "Frontend bundle size monitoring"
+      technology "size-limit"
+    }
+  }
+
+  // Release Process
+  Release = container "Release Process" {
+    technology "GoReleaser, GitHub Actions"
+    description "Automated release and publishing"
+    tags ["release", "publishing"]
+
+    VersionBump = component "Version Bump" {
+      description "Automatic version bumping"
+      technology "release-please"
+    }
+
+    BuildArtifacts = component "Build Artifacts" {
+      description "Builds binaries for all platforms"
+      technology "GoReleaser"
+    }
+
+    PublishRelease = component "Publish Release" {
+      description "Publishes to GitHub Releases"
       technology "GitHub Actions"
-      description "Continuous Integration and Deployment"
-      tags ["ci-cd", "github-actions"]
-
-      goTests = component "Go Tests" {
-        description "Go unit tests and coverage"
-        technology "Go test, golangci-lint"
-      }
-
-      tsTests = component "TypeScript Tests" {
-        description "TypeScript/JavaScript tests"
-        technology "Vitest, Playwright"
-      }
-
-      securityScan = component "Security Scanning" {
-        description "Security vulnerability scanning"
-        technology "Gosec, npm audit, TruffleHog"
-      }
-
-      buildCheck = component "Build Check" {
-        description "Verifies all packages build"
-        technology "Turbo, Go build"
-      }
-
-      lintCheck = component "Lint Check" {
-        description "Code quality checks"
-        technology "ESLint, golangci-lint"
-      }
-
-      coverageCheck = component "Coverage Check" {
-        description "Test coverage validation"
-        technology "Codecov, Codacy"
-      }
-
-      bundleSizeCheck = component "Bundle Size Check" {
-        description "Frontend bundle size monitoring"
-        technology "size-limit"
-      }
     }
 
-    // ========================================================================
-    // Release Process
-    // ========================================================================
-
-    release = container "Release Process" {
-      technology "GoReleaser, GitHub Actions"
-      description "Automated release and publishing"
-      tags ["release", "publishing"]
-
-      versionBump = component "Version Bump" {
-        description "Automatic version bumping"
-        technology "release-please"
-      }
-
-      buildArtifacts = component "Build Artifacts" {
-        description "Builds binaries for all platforms"
-        technology "GoReleaser"
-      }
-
-      publishRelease = component "Publish Release" {
-        description "Publishes to GitHub Releases"
-        technology "GitHub Actions"
-      }
-
-      publishNPM = component "Publish NPM" {
-        description "Publishes TypeScript packages"
-        technology "npm publish"
-      }
+    PublishNPM = component "Publish NPM" {
+      description "Publishes TypeScript packages"
+      technology "npm publish"
     }
-
-    // ========================================================================
-    // Testing Infrastructure
-    // ========================================================================
-
-    testing = container "Testing Infrastructure" {
-      technology "Go, Vitest, Playwright"
-      description "Testing tools and infrastructure"
-      tags "testing"
-
-      unitTests = component "Unit Tests" {
-        description "Go and TypeScript unit tests"
-        technology "Go test, Vitest"
-      }
-
-      integrationTests = component "Integration Tests" {
-        description "End-to-end integration tests"
-        technology "Playwright, Go"
-      }
-
-      propertyTests = component "Property-Based Tests" {
-        description "Property-based testing for validation"
-        technology "fast-check, Vitest"
-      }
-
-      exampleTests = component "Example Tests" {
-        description "Validates example .sruja files compile"
-        technology "Go, sruja compile"
-      }
-    }
-
-    // ========================================================================
-    // Relationships
-    // ========================================================================
-
-    local -> cicd "Pushes to"
-    cicd.goTests -> testing.unitTests "Uses"
-    cicd.tsTests -> testing.unitTests "Uses"
-    cicd.tsTests -> testing.integrationTests "Uses"
-
-    cicd -> release "Triggers on tag"
-    release.versionBump -> release.buildArtifacts "Triggers"
-    release.buildArtifacts -> release.publishRelease "Publishes"
-    release.buildArtifacts -> release.publishNPM "Publishes"
-
-    developer -> workflow.local "Uses"
-    developer -> workflow.local.gitHooks "Triggers"
-    developer -> workflow.local.localBuild "Runs"
-    developer -> workflow.local.localTests "Runs"
-
-    maintainer -> workflow.cicd "Manages"
-    maintainer -> workflow.release "Manages"
   }
 
-  metadata {
-    version "0.1.0"
-    description "Development, testing, and deployment processes for Sruja"
-    owner "Sruja Team"
+  // Testing Infrastructure
+  Testing = container "Testing Infrastructure" {
+    technology "Go, Vitest, Playwright"
+    description "Testing tools and infrastructure"
+    tags ["testing"]
+
+    UnitTests = component "Unit Tests" {
+      description "Go and TypeScript unit tests"
+      technology "Go test, Vitest"
+    }
+
+    IntegrationTests = component "Integration Tests" {
+      description "End-to-end integration tests"
+      technology "Playwright, Go"
+    }
+
+    PropertyTests = component "Property-Based Tests" {
+      description "Property-based testing for validation"
+      technology "fast-check, Vitest"
+    }
+
+    ExampleTests = component "Example Tests" {
+      description "Validates example .sruja files compile"
+      technology "Go, sruja compile"
+    }
   }
 }
 
-views {
-  view index {
-    title "Development Workflow"
-    include *
-  }
+// Relationships
+Workflow.Local -> Workflow.CICD "Pushes to"
+Workflow.CICD.GoTests -> Workflow.Testing.UnitTests "Uses"
+Workflow.CICD.TSTests -> Workflow.Testing.UnitTests "Uses"
+Workflow.CICD.TSTests -> Workflow.Testing.IntegrationTests "Uses"
 
-  view cicd of workflow {
-    title "CI/CD Pipeline"
-    include workflow.cicd, workflow.testing
-  }
+Workflow.CICD -> Workflow.Release "Triggers on tag"
+Workflow.Release.VersionBump -> Workflow.Release.BuildArtifacts "Triggers"
+Workflow.Release.BuildArtifacts -> Workflow.Release.PublishRelease "Publishes"
+Workflow.Release.BuildArtifacts -> Workflow.Release.PublishNPM "Publishes"
 
-  view release of workflow {
-    title "Release Process"
-    include workflow.release
-  }
+Developer -> Workflow.Local "Uses"
+Developer -> Workflow.Local.GitHooks "Triggers"
+Developer -> Workflow.Local.LocalBuild "Runs"
+Developer -> Workflow.Local.LocalTests "Runs"
+
+Maintainer -> Workflow.CICD "Manages"
+Maintainer -> Workflow.Release "Manages"
+
+// Views
+view index {
+  title "Development Workflow"
+  include *
 }
 
+view cicd of Workflow {
+  title "CI/CD Pipeline"
+  include Workflow.CICD, Workflow.Testing
+}
+
+view release of Workflow {
+  title "Release Process"
+  include Workflow.Release
+}

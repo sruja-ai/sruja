@@ -158,3 +158,17 @@ pnpm-lock.yaml
 *_FINDINGS.md
 *_INVESTIGATION.md
 *_REVIEW.md
+
+# Generated reports and analysis
+*DIAGRAM_QUALITY_REPORT.md
+lint_output.txt
+lint_final.txt
+**/tests/results/*.json
+sruja.wasm
+
+# Temporary analysis files
+CODE_INCONSISTENCIES.md
+EXAMPLES_DSL_CONSISTENCY.md
+FEATURE_COVERAGE*.md
+INCONSISTENCY_REPORT.md
+FLAT_SYNTAX_UPDATE_SUMMARY.md

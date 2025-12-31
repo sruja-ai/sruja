@@ -22,19 +22,17 @@ Each ADR follows this structure:
 
 ## ADR Index
 
-| Number | Title | Status | Date |
-|--------|-------|--------|------|
-| 001 | [Use Result Type for Error Handling](./001-result-type-error-handling.md) | Accepted | 2024 |
-| 002 | [Monorepo Structure with Turbo](./002-monorepo-structure.md) | Accepted | 2024 |
-| 003 | [WASM for Browser Integration](./003-wasm-browser-integration.md) | Accepted | 2024 |
-| 004 | [LikeC4 Model Format](./004-likec4-model-format.md) | Accepted | 2024 |
+| Number | Title                                                                     | Status   | Date |
+| ------ | ------------------------------------------------------------------------- | -------- | ---- |
+| 001    | [Use Result Type for Error Handling](./001-result-type-error-handling.md) | Accepted | 2024 |
+| 002    | [Monorepo Structure with Turbo](./002-monorepo-structure.md)              | Accepted | 2024 |
+| 003    | [WASM for Browser Integration](./003-wasm-browser-integration.md)         | Accepted | 2024 |
 
 ## Recent ADRs
 
 - **001**: Documents the decision to use Result types for functional error handling
 - **002**: Explains the monorepo structure and tooling choices
 - **003**: Describes WASM integration strategy for browser usage
-- **004**: Documents the choice of LikeC4 as the model format foundation
 
 ## Creating a New ADR
 
@@ -47,4 +45,3 @@ Each ADR follows this structure:
 
 - [ADR GitHub](https://github.com/joelparkerhenderson/architecture-decision-record)
 - [Documenting Architecture Decisions](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
-

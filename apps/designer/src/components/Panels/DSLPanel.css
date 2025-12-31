@@ -103,3 +103,18 @@
         color: var(--code-text, #333);
     }
 }
+
+/* Sync status animation */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+}

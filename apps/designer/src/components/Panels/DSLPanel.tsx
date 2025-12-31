@@ -1,22 +1,22 @@
 // DSL Panel - Shows the source DSL code for the current architecture
 import { useState, useEffect, useCallback } from "react";
-import { FileCode, Copy, Check } from "lucide-react";
+import { FileCode, Copy, Check, AlertCircle } from "lucide-react";
 import { useArchitectureStore, useSelectionStore, useUIStore } from "../../stores";
-import { SrujaMonacoEditor, useTheme, Button } from "@sruja/ui";
-import { convertDslToJson } from "../../wasm";
+import { SrujaMonacoEditor, useTheme, Button, SrujaLoader } from "@sruja/ui";
+import { convertDslToModel } from "../../wasm";
+import type { SrujaModelDump } from "@sruja/shared";
+import type * as monacoTypes from "monaco-editor";
 import "./DSLPanel.css";
 
 export function DSLPanel() {
-  const likec4Model = useArchitectureStore((s) => s.likec4Model);
+  const model = useArchitectureStore((s) => s.model);
   const storeDslSource = useArchitectureStore((s) => s.dslSource);
   const setDslSourceStore = useArchitectureStore((s) => s.setDslSource);
   const loadFromDSL = useArchitectureStore((s) => s.loadFromDSL);
   const { mode } = useTheme();
-  // Initialize local state from store DSL source - use function initializer to get current store value
+  // Initialize local state from store DSL source
   const [dslSource, setDslSourceLocal] = useState<string>(() => {
-    // Get current store value at initialization time
-    const currentStoreDsl = useArchitectureStore.getState().dslSource;
-    return currentStoreDsl || "";
+    return useArchitectureStore.getState().dslSource || "";
   });
   const [loading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +52,7 @@ export function DSLPanel() {
         // This prevents circular updates when DSL is edited manually
         if (storeDslSource !== dslSource) {
           /*
-          console.log("[DSLPanel] Syncing local DSL from store (Builder → DSL sync)", { 
+          // Syncing local DSL from store 
             storeLength: storeDslSource.length, 
             localLength: dslSource.length 
           });
@@ -79,19 +79,19 @@ export function DSLPanel() {
     }
 
     // If no model and no DSL, clear
-    if (!likec4Model && !storeDslSource) {
+    if (!model && !storeDslSource) {
       setDslSourceLocal("");
       return;
     }
 
     // If we have a model but no DSL source, provide a fallback message
-    if (likec4Model && !storeDslSource && !loading) {
-      const archName = likec4Model._metadata?.name || likec4Model.project?.name || "Architecture";
+    if (model && !storeDslSource && !loading) {
+      const archName = model._metadata?.name || model.project?.name || "Architecture";
       setDslSourceLocal(
         `// Architecture: ${archName}\n// DSL source not available for this architecture.\n// This architecture may have been loaded from JSON or a custom file.`
       );
     }
-  }, [likec4Model, storeDslSource, loading]);
+  }, [model, storeDslSource, loading]);
 
   // Debounced DSL update handler
   const handleDSLChange = useCallback(
@@ -117,16 +117,31 @@ export function DSLPanel() {
       setError(null);
       try {
         // console.log("[DSLPanel] Converting DSL to model (DSL → Model → Diagram sync)");
-        const json = await convertDslToJson(dslSource);
+        const json = await convertDslToModel(dslSource);
         if (json) {
           // loadFromDSL updates model, which triggers Diagram to recompute
-          loadFromDSL(json as any, dslSource, "");
+          loadFromDSL(json as SrujaModelDump, dslSource, "");
         } else {
           setError("Failed to parse DSL");
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        setError(`Failed to save DSL: ${message}`);
+        // Try to extract line number and error details from error message
+        const message = err instanceof Error ? err.message : String(err);
+
+        // Parse error message for line numbers (format: "line 42: syntax error")
+        const lineMatch = message.match(/line (\d+)/i);
+        const line = lineMatch ? lineMatch[1] : null;
+
+        // Extract specific error (after colon)
+        const errorMatch = message.match(/:\s*(.+?)$/);
+        const specificError = errorMatch ? errorMatch[1] : message;
+
+        // Build user-friendly error message
+        const friendlyError = line
+          ? `Syntax error at line ${line}: ${specificError}`
+          : `Parse error: ${specificError}`;
+
+        setError(friendlyError);
       } finally {
         setIsSaving(false);
       }
@@ -208,9 +223,13 @@ export function DSLPanel() {
     }
   }, [selectedNodeId, dslSource]);
 
-  const [editorInstance, setEditorInstance] = useState<any>(null);
+  const [editorInstance, setEditorInstance] =
+    useState<monacoTypes.editor.IStandaloneCodeEditor | null>(null);
 
-  const handleEditorDidMount = (_monaco: any, editor: any) => {
+  const handleEditorDidMount = (
+    _monaco: typeof monacoTypes,
+    editor: monacoTypes.editor.IStandaloneCodeEditor
+  ) => {
     setEditorInstance(editor);
   };
 
@@ -293,7 +312,25 @@ export function DSLPanel() {
 
   // ... render logic
 
-  if (!likec4Model) {
+  // Baseline for diff view
+  const baselineModel = useArchitectureStore((s) => s.baselineModel);
+  const [showDiff, setShowDiff] = useState(false);
+  const [baselineDsl, setBaselineDsl] = useState<string | null>(null);
+
+  // Generate baseline DSL when baseline changes or toggle is enabled
+  useEffect(() => {
+    if (baselineModel && showDiff && !baselineDsl) {
+      // Try to convert baseline model to DSL
+      // Since convertModelToDsl is async and we need to import it (or if it's already available)
+      // Let's import it dynamically if strict separation, but here we can stick to standard import in next step
+      // For now, assume convertModelToDsl is available or imported
+      import("../../utils/modelToDsl").then(({ convertModelToDsl }) => {
+        convertModelToDsl(baselineModel).then((dsl) => setBaselineDsl(dsl));
+      });
+    }
+  }, [baselineModel, showDiff, baselineDsl]);
+
+  if (!model) {
     return (
       <div className="dsl-panel empty">
         <p>No architecture loaded</p>
@@ -307,6 +344,78 @@ export function DSLPanel() {
         <div className="dsl-panel-title">
           <FileCode size={18} />
           <span>DSL Source</span>
+          {/* Sync status indicator */}
+          {isSaving && (
+            <div
+              className="sync-status"
+              style={{
+                marginLeft: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                fontSize: "12px",
+                color: "var(--text-secondary)",
+              }}
+            >
+              <SrujaLoader size={14} />
+              <span>Syncing...</span>
+            </div>
+          )}
+          {!isSaving && !error && dslSource && (
+            <div
+              className="sync-status"
+              style={{
+                marginLeft: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                fontSize: "12px",
+                color: "var(--success-color, #10b981)",
+              }}
+            >
+              <Check size={14} />
+              <span>Synced</span>
+            </div>
+          )}
+          {error && (
+            <div
+              className="sync-status"
+              style={{
+                marginLeft: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                fontSize: "12px",
+                color: "var(--error-color, #ef4444)",
+              }}
+            >
+              <AlertCircle size={14} />
+              <span>Error</span>
+            </div>
+          )}
+          {baselineModel && (
+            <div
+              className="dsl-diff-toggle"
+              style={{ marginLeft: 16, display: "flex", alignItems: "center", gap: 8 }}
+            >
+              <label
+                style={{
+                  fontSize: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={showDiff}
+                  onChange={(e) => setShowDiff(e.target.checked)}
+                />
+                Show Diff (vs Baseline)
+              </label>
+            </div>
+          )}
         </div>
         {dslSource && (
           <div className="dsl-panel-actions">
@@ -337,6 +446,7 @@ export function DSLPanel() {
         {!loading && !isSaving && !error && (
           <SrujaMonacoEditor
             value={dslSource || ""}
+            originalValue={showDiff && baselineDsl ? baselineDsl : undefined}
             onChange={handleDSLChange}
             onReady={handleEditorDidMount}
             theme={monacoTheme}

@@ -19,6 +19,7 @@ This step-by-step guide walks you through making your first contribution, even i
 ## Project Overview
 
 Sruja is a monorepo containing:
+
 - **Language and CLI**: Go (Go 1.25+)
 - **Website**: Astro-based with TypeScript/React
 - **Designer**: Interactive diagram designer
@@ -30,12 +31,14 @@ Sruja is a monorepo containing:
 This repository (`sruja-ai/sruja`) is the **main development repository** where all contributions should be made.
 
 **Do not contribute to these deployment-only repositories:**
+
 - `sruja-ai/staging-website` - Staging deployment (auto-updated from `main` branch)
 - `sruja-ai/prod-website` - Production deployment (auto-updated from releases)
 
 These repositories are **automatically updated** by GitHub Actions workflows and contain only built static files for GitHub Pages hosting. They are **read-only** for contributors.
 
 **All contributions should be made to this repository (`sruja-ai/sruja`):**
+
 - ✅ Open issues here
 - ✅ Submit pull requests here
 - ✅ Report bugs here
@@ -52,6 +55,7 @@ The deployment repositories will be automatically updated when your changes are 
 - **Node.js 18+** (for website and TypeScript packages)
 
 Optional:
+
 - `golangci-lint` (installed automatically by `make lint`)
 - `wasm-opt` (optimizes WASM artifacts)
 
@@ -93,6 +97,76 @@ make build
 ```
 
 For more details, see [Development Guide](DEVELOPMENT.md).
+
+## Developer Tools
+
+Sruja includes specialized developer tools located in the `dev-tools/` directory. These are **dev-only tools** not used in production.
+
+### Diagram Quality Tools
+
+Located in `dev-tools/diagram-quality/`, these tools help improve the layout quality of generated architecture diagrams.
+
+**Available tools:**
+
+- `improve-diagram-quality.sh` - Bash script for iterative diagram quality improvement
+- `improve-iteratively.ts` - TypeScript automation for quality measurement workflows
+
+**Usage:**
+
+```bash
+# Run quality improvement tests
+./dev-tools/diagram-quality/improve-diagram-quality.sh
+
+# or using TypeScript automation
+cd apps/designer
+npx tsx ../../dev-tools/diagram-quality/improve-iteratively.ts
+```
+
+**When to use:**
+
+- After modifying DOT generation logic in `pkg/export/dot/`
+- When adding new Graphviz constraints
+- To verify layout quality hasn't regressed
+- During development of layout improvements
+
+**Quality Metrics:**
+Quality metrics are **dev-only features**:
+
+- Visible in development environment (`import.meta.env.DEV`)
+- Hidden in production builds (tree-shaken out)
+- Shows quality score card in UI (dev only)
+- Exposes metrics to `window.__DIAGRAM_QUALITY__` for testing
+
+**Learn more:** See [`dev-tools/README.md`](../dev-tools/README.md) for detailed documentation.
+
+### Dev-Only Code Patterns
+
+When writing code that should only run in development:
+
+**TypeScript/React:**
+
+```typescript
+// Hide UI components in production
+if (import.meta.env.DEV) {
+  // Dev-only component
+}
+
+// Skip expensive calculations in production
+if (import.meta.env.DEV) {
+  const quality = measureQuality(layout);
+}
+```
+
+**Window globals (for testing only):**
+
+```typescript
+// Only expose to window in dev
+if (import.meta.env.DEV) {
+  window.__DIAGRAM_QUALITY__ = qualityMetrics;
+}
+```
+
+**Important:** Do not use `window.__*__` globals in production code. These are for E2E testing only.
 
 ## Working With Examples
 
@@ -249,6 +323,7 @@ To add content to the Sruja website (courses, tutorials, blog posts, etc.), see:
 **📖 [Content Contribution Guide](CONTENT_CONTRIBUTION_GUIDE.md)**
 
 This guide covers:
+
 - Creating courses, tutorials, blogs, and docs
 - Content structure and best practices
 - Validation and workflow

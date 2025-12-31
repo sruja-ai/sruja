@@ -1,7 +1,7 @@
 // apps/designer/src/App.tsx
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Play, Plus } from "lucide-react";
-import { type ArchitectureCanvasRef } from "./components/Canvas";
+// import { type ArchitectureCanvasRef } from "./components/Canvas";
 import { SrujaCanvas } from "./components/SrujaCanvas";
 import "./App.css";
 import "./components/shared/GlobalFocusStyles.css";
@@ -17,6 +17,9 @@ import {
   useHistoryStore,
   useToastStore,
 } from "./stores";
+import { getArchitectureModel } from "./models/ArchitectureModel";
+import { DynamicPersonaView } from "./components/Personas/DynamicPersonaView";
+import type { Persona } from "./components/PersonaSwitcher";
 
 import { useClipboardOperations, useProjectSync, useFileHandlers } from "./hooks";
 import { useTabCounts } from "./hooks/useTabCounts";
@@ -33,6 +36,7 @@ import type { ViewTab } from "./types";
 import { Header } from "./components/Header";
 import { useAppCommands } from "./hooks/useAppCommands";
 import { useAppShortcuts } from "./hooks/useAppShortcuts";
+import { OnboardingTooltip } from "./components/OnboardingTooltip";
 
 const VALID_TABS: ViewTab[] = ["overview", "diagram", "details", "code", "builder", "governance"];
 
@@ -40,13 +44,15 @@ export default function App() {
   // Sync URL state (level, expanded nodes) with view store
   useUrlState();
 
-  const likec4Model = useArchitectureStore((s) => s.likec4Model);
+  const model = useArchitectureStore((s) => s.model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
   const selectedNodeId = useSelectionStore((s) => s.selectedNodeId);
   const undo = useHistoryStore((s) => s.undo);
   const redo = useHistoryStore((s) => s.redo);
   const activeTab = useUIStore((s) => s.activeTab);
   const setActiveTab = useUIStore((s) => s.setActiveTab);
+  const selectedPersona = useUIStore((s) => s.selectedPersona);
+  const setSelectedPersona = useUIStore((s) => s.setSelectedPersona);
   const editMode = useFeatureFlagsStore((s) => s.editMode);
   const setEditMode = useFeatureFlagsStore((s) => s.setEditMode);
 
@@ -61,7 +67,7 @@ export default function App() {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  const canvasRef = useRef<ArchitectureCanvasRef>(null);
+  const canvasRef = useRef<any>(null);
 
   // Hooks for separated logic
   const { isLoadingFile: isSyncLoading, loadDemo } = useProjectSync();
@@ -79,10 +85,10 @@ export default function App() {
     isExporting,
     isSharing,
     fileInputRef,
-  } = useFileHandlers(canvasRef as React.RefObject<ArchitectureCanvasRef>);
+  } = useFileHandlers(canvasRef as React.RefObject<any>);
 
   const { handleCopy, handlePaste, handleDuplicate } = useClipboardOperations(
-    canvasRef as React.RefObject<ArchitectureCanvasRef>
+    canvasRef as React.RefObject<any>
   );
 
   const isLoadingFile = isSyncLoading || isImporting || isExporting || isSharing;
@@ -90,12 +96,57 @@ export default function App() {
   // Set global canvas ref for tag navigation
   useEffect(() => {
     if (canvasRef.current) {
-      setGlobalCanvasRef(canvasRef as React.RefObject<ArchitectureCanvasRef>);
+      setGlobalCanvasRef(canvasRef as React.RefObject<any>);
     }
     return () => {
-      setGlobalCanvasRef({ current: null } as unknown as React.RefObject<ArchitectureCanvasRef>);
+      setGlobalCanvasRef({ current: null } as unknown as React.RefObject<any>);
     };
   }, []);
+
+  // Sync ArchitectureModel with architecture store
+  useEffect(() => {
+    const archModel = getArchitectureModel();
+    if (model) {
+      archModel.updateModel(model);
+    }
+  }, [model]);
+
+  // Render persona view based on selected persona
+  const renderPersonaView = (persona: Persona) => {
+    // Determine props based on persona
+    let title = "Architect View";
+    let description = "Design and govern system structure";
+
+    switch (persona) {
+      case "product":
+        title = "Product View";
+        description = "Feature library, user stories, requirements coverage";
+        break;
+      case "devops":
+        title = "DevOps View";
+        description = "Infrastructure, capacity, cost, deployments";
+        break;
+      case "security":
+        title = "Security View";
+        description = "Trust boundaries, compliance, data flows";
+        break;
+      case "cto":
+        title = "CTO View";
+        description = "Health scores, risks, technical debt";
+        break;
+      case "sre":
+        title = "SRE View";
+        description = "SLOs, error budgets, reliability";
+        break;
+      case "architect":
+      default:
+        title = "Architect View";
+        description = "Design and govern system structure";
+        break;
+    }
+
+    return <DynamicPersonaView persona={persona} title={title} description={description} />;
+  };
 
   // Initialize activeTab from URL on mount
   // If tab param is explicitly set, respect it. Otherwise, only set default if not loading code from URL
@@ -154,12 +205,12 @@ export default function App() {
     }
   }, [selectedNodeId]);
 
-  const counts = useTabCounts(likec4Model);
+  const counts = useTabCounts(model);
 
   // --- Logic Extracted to Hooks ---
   const shortcuts = useAppShortcuts({
     activeTab,
-    likec4Model,
+    model,
     canvasRef,
     handlers: {
       handleExport,
@@ -228,7 +279,7 @@ export default function App() {
           <Header
             isNavOpen={isNavOpen}
             setIsNavOpen={setIsNavOpen}
-            likec4Model={likec4Model}
+            model={model}
             showActions={showActions}
             setShowActions={setShowActions}
             activeTab={activeTab}
@@ -238,6 +289,8 @@ export default function App() {
             selectedNodeId={selectedNodeId}
             isDetailsOpen={isDetailsOpen}
             setIsDetailsOpen={setIsDetailsOpen}
+            selectedPersona={selectedPersona}
+            onPersonaChange={setSelectedPersona}
             handleImport={handleImport}
             handleExport={handleExport}
             handleExportPNG={handleExportPNG}
@@ -266,13 +319,20 @@ export default function App() {
 
             <div className={`center-panel ${editMode === "edit" ? "edit-mode" : ""}`}>
               {/* View Tabs */}
-              {likec4Model && (
+              {model && (
                 <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} counts={counts} />
               )}
 
               {/* Tab Content */}
               <div className="canvas-container">
-                {!likec4Model && !isLoadingFile && (
+                {/* Persona View Overlay - Show when persona is selected and model exists, BUT only on builder/overview tabs */}
+                {model &&
+                  selectedPersona !== "architect" &&
+                  (activeTab === "builder" || activeTab === "overview") && (
+                    <div className="persona-view-overlay">{renderPersonaView(selectedPersona)}</div>
+                  )}
+
+                {!model && !isLoadingFile && (
                   <div className="drop-zone">
                     <Logo size={64} />
                     <h2>Design, visualize, and govern your architecture</h2>
@@ -298,14 +358,14 @@ export default function App() {
                   </div>
                 )}
 
-                {likec4Model && activeTab === "overview" && (
+                {model && activeTab === "overview" && (
                   <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
                     {/* Overview merged into Diagram/Builder, redirects handled in effect */}
                   </div>
                 )}
 
                 {/* Builder Tab */}
-                {likec4Model && activeTab === "builder" && (
+                {model && activeTab === "builder" && (
                   <div role="tabpanel" id="tabpanel-builder" aria-labelledby="tab-builder">
                     <ErrorBoundary
                       fallback={
@@ -324,7 +384,7 @@ export default function App() {
                 )}
 
                 {/* Standard Diagram Tab (Full Screen) */}
-                {likec4Model && activeTab === "diagram" && (
+                {model && activeTab === "diagram" && (
                   <div role="tabpanel" id="tabpanel-diagram" aria-labelledby="tab-diagram">
                     <ErrorBoundary
                       fallback={
@@ -344,7 +404,7 @@ export default function App() {
                       {/* 
                     <ArchitectureCanvas
                       ref={canvasRef}
-                      model={likec4Model}
+                      model={model}
                       dragEnabled={editMode === "edit"}
                       viewId={currentLevel}
                     /> 
@@ -353,7 +413,7 @@ export default function App() {
                   </div>
                 )}
 
-                {likec4Model && activeTab === "details" && (
+                {model && activeTab === "details" && (
                   <div role="tabpanel" id="tabpanel-details" aria-labelledby="tab-details">
                     <ErrorBoundary
                       fallback={
@@ -371,13 +431,13 @@ export default function App() {
                   </div>
                 )}
 
-                {likec4Model && activeTab === "code" && (
+                {model && activeTab === "code" && (
                   <div role="tabpanel" id="tabpanel-code" aria-labelledby="tab-code">
                     <CodePanel />
                   </div>
                 )}
 
-                {likec4Model && activeTab === "governance" && (
+                {model && activeTab === "governance" && (
                   <div role="tabpanel" id="tabpanel-governance" aria-labelledby="tab-governance">
                     <GovernancePanel />
                   </div>
@@ -413,6 +473,9 @@ export default function App() {
             onClose={() => setShowShortcuts(false)}
             shortcuts={modalShortcuts}
           />
+
+          {/* Onboarding Tooltip */}
+          {model && <OnboardingTooltip />}
         </div>
       </PosthogProvider>
     </>
