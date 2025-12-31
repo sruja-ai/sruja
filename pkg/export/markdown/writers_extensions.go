@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sruja-ai/sruja/pkg/engine"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
@@ -165,61 +164,6 @@ func (e *Exporter) writeScenariosAndFlows(sb *strings.Builder, prog *language.Pr
 			}
 		}
 	}
-}
-
-// generateSequenceDiagram generates a Mermaid sequence diagram from scenario steps
-func (e *Exporter) generateSequenceDiagram(steps []*language.ScenarioStep, _ string) string {
-	if len(steps) == 0 {
-		return ""
-	}
-
-	sb := engine.GetStringBuilder()
-	defer engine.PutStringBuilder(sb)
-
-	sb.WriteString("sequenceDiagram\n")
-
-	// Collect unique participants
-	participants := make(map[string]bool)
-	for _, step := range steps {
-		participants[step.From.String()] = true
-		participants[step.To.String()] = true
-	}
-
-	// Add participants
-	participantList := make([]string, 0, len(participants))
-	for p := range participants {
-		participantList = append(participantList, p)
-	}
-	// Simple sort for consistency
-	for i := 0; i < len(participantList)-1; i++ {
-		for j := i + 1; j < len(participantList); j++ {
-			if participantList[i] > participantList[j] {
-				participantList[i], participantList[j] = participantList[j], participantList[i]
-			}
-		}
-	}
-
-	for _, p := range participantList {
-		fmt.Fprintf(sb, "    participant %s\n", sanitizeIDForMermaid(p))
-	}
-	sb.WriteString("\n")
-
-	// Add interactions
-	for _, step := range steps {
-		from := sanitizeIDForMermaid(step.From.String())
-		to := sanitizeIDForMermaid(step.To.String())
-		desc := ""
-		if step.Description != nil {
-			desc = escapeQuotesForMermaid(*step.Description)
-		}
-		if desc != "" {
-			fmt.Fprintf(sb, "    %s->>%s: %s\n", from, to, desc)
-		} else {
-			fmt.Fprintf(sb, "    %s->>%s\n", from, to)
-		}
-	}
-
-	return sb.String()
 }
 
 // Recommendation represents a best practice recommendation

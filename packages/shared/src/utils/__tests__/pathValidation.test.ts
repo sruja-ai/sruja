@@ -42,7 +42,7 @@ describe("validateFilePath", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error).toBeInstanceOf(ValidationError);
-        expect(result.error.message).toContain("path traversal");
+        expect(result.error!.message.toLowerCase()).toContain("path traversal");
       }
     });
 

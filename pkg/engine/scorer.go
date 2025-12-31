@@ -346,6 +346,7 @@ func (s *Scorer) checkTraceability(model *language.Model, scores *CategoryScores
 			if a.Kind == "requirement" {
 				// Requirements parsed through ElementDef
 				// Would need to extract from body if available
+				_ = a // explicit usage
 			}
 			totalElements++
 		}

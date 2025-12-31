@@ -613,7 +613,7 @@ func filterBlockingErrors(diags []diagnostics.Diagnostic) []diagnostics.Diagnost
 }
 
 func formatDiagnostics(diags []diagnostics.Diagnostic) string {
-	var msgs []string
+	msgs := make([]string, 0, len(diags))
 	for i := range diags {
 		d := &diags[i]
 		msgs = append(msgs, diagnostics.FormatDiagnostic(*d))
