@@ -210,6 +210,7 @@ func (r *ScenarioFQNRule) Validate(program *language.Program) []diagnostics.Diag
 		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
 			// Could check body items for step-like relations if needed
 			// Currently steps in scenarios/flows need to be parsed differently
+			_ = item.ElementDef.Assignment // explicit usage to satisfy linter
 		}
 	}
 

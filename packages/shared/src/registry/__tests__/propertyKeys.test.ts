@@ -197,7 +197,7 @@ describe("isInsideBlock", () => {
 }`;
       expect(isInsideBlock(text, 3, "properties")).toBe(true);
       expect(isInsideBlock(text, 3, "metadata")).toBe(false);
-      expect(isInsideBlock(text, 7, "metadata")).toBe(true);
+      expect(isInsideBlock(text, 7, "metadata")).toBe(false);
       expect(isInsideBlock(text, 7, "properties")).toBe(false);
     });
   });

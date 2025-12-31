@@ -121,7 +121,7 @@ func TestGetSuggestionsSlice(t *testing.T) {
 	PutSuggestionsSlice(s2)
 }
 
-func TestPoolsNilSafety(t *testing.T) {
+func TestPoolsNilSafety(_ *testing.T) {
 	// These should not panic
 	PutStringBoolMap(nil)
 	PutStringSliceMap(nil)

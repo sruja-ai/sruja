@@ -16,8 +16,27 @@ describe("logger", () => {
     if (typeof window !== "undefined") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (window as any).__SRUJA_DEBUG__;
-      if (window.localStorage) {
+
+      // Mock localStorage safely
+      try {
+        const mockStorage = {
+          getItem: vi.fn(),
+          setItem: vi.fn(),
+          removeItem: vi.fn(),
+          clear: vi.fn(),
+          length: 0,
+          key: vi.fn(),
+        };
+
+        Object.defineProperty(window, "localStorage", {
+          value: mockStorage,
+          writable: true,
+          configurable: true,
+        });
+
         window.localStorage.removeItem("sruja:debug");
+      } catch (e) {
+        // Ignore
       }
     }
 

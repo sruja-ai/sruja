@@ -45,7 +45,7 @@ func main() {
 			continue
 		}
 
-		content, err := os.ReadFile(path)
+		content, err := os.ReadFile(path) //nolint:gosec // path is trusted
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to read file %s: %v\n", path, err)
 			failed = append(failed, path)

@@ -326,7 +326,7 @@ func Test_Printer_Emits_Metadata_For_All_Elements(t *testing.T) {
 	pr := language.NewPrinter()
 	out := pr.Print(prog)
 	checks := []string{
-		//"model {", // Removed
+		// "model {", // Removed
 		"metadata {",
 		"U = person",
 		"S = system",

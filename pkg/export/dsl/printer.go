@@ -99,25 +99,10 @@ func (p *ModelPrinter) indent() string {
 	return strings.Repeat("  ", p.indentLevel)
 }
 
-func (p *ModelPrinter) writeLine(format string, args ...interface{}) {
+func (p *ModelPrinter) writeLine(line string) {
 	p.sb.WriteString(p.indent())
-	if len(args) == 0 {
-		p.sb.WriteString(format)
-	} else {
-		for i, arg := range args {
-			format = strings.Replace(format, "%s", toString(arg), 1)
-			_ = i
-		}
-		p.sb.WriteString(format)
-	}
+	p.sb.WriteString(line)
 	p.sb.WriteString("\n")
-}
-
-func toString(v interface{}) string {
-	if s, ok := v.(string); ok {
-		return s
-	}
-	return ""
 }
 
 // escapeString escapes quotes and newlines for DSL output.
@@ -213,9 +198,10 @@ func (p *ModelPrinter) printRelation(rel *json.RelationDump) {
 
 	// Determine arrow type
 	arrow := "->"
-	if rel.Kind == "bidirectional" {
+	switch rel.Kind {
+	case "bidirectional":
 		arrow = "<->"
-	} else if rel.Kind == "back" {
+	case "back":
 		arrow = "<-"
 	}
 

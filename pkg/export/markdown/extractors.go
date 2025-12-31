@@ -389,12 +389,7 @@ func extractScenariosAndFlowsFromModel(prog *language.Program) ([]ScenarioInfo, 
 				scenarios = append(scenarios, info)
 			case "flow", "Flow":
 				// FlowInfo structure matches ScenarioInfo
-				flows = append(flows, FlowInfo{
-					ID:          info.ID,
-					Title:       info.Title,
-					Description: info.Description,
-					Steps:       info.Steps,
-				})
+				flows = append(flows, FlowInfo(info))
 			}
 		}
 	}
