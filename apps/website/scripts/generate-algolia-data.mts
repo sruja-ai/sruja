@@ -11,15 +11,16 @@
  *   node scripts/generate-algolia-data.mts
  */
 
-import { getCollection } from 'astro:content';
-import { writeFileSync } from 'fs';
-import { join } from 'path';
+import { writeFileSync, readFileSync, readdirSync, statSync } from 'fs';
+import { join, extname, relative } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import yaml from 'js-yaml';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..');
+const contentDir = join(rootDir, 'src', 'content');
 
 // Site URL - can be overridden via SITE_URL env var
 const SITE_URL = process.env.SITE_URL || 'https://sruja.ai';
@@ -38,6 +39,61 @@ interface AlgoliaRecord {
   weight?: number;
   pubDate?: string;
   authors?: Array<{ name: string; url?: string }>;
+  topic?: string;
+}
+
+/**
+ * Mock for Astro's getCollection to run standalone
+ */
+async function getCollection(collection: string) {
+  const dir = join(contentDir, collection);
+  const items: any[] = [];
+
+  try {
+    const files = getAllFiles(dir);
+    for (const file of files) {
+      if (extname(file) !== '.md' && extname(file) !== '.mdx') continue;
+
+      const content = readFileSync(file, 'utf-8');
+      const parts = content.split('---');
+
+      if (parts.length < 3) continue;
+
+      const frontmatter = yaml.load(parts[1]) as any;
+      const body = parts.slice(2).join('---').trim();
+
+      // Generate slug from file path relative to collection dir
+      const relativePath = relative(dir, file);
+      const slug = relativePath
+        .replace(/\\/g, '/')
+        .replace(/\.mdx?$/, '')
+        .replace(/\/index$/, '');
+
+      items.push({
+        slug,
+        data: frontmatter,
+        body
+      });
+    }
+  } catch (err) {
+    console.warn(`Warning: Could not read collection ${collection}:`, err);
+  }
+
+  return items;
+}
+
+function getAllFiles(dirPath: string, arrayOfFiles: string[] = []): string[] {
+  const files = readdirSync(dirPath);
+
+  files.forEach((file) => {
+    if (statSync(join(dirPath, file)).isDirectory()) {
+      arrayOfFiles = getAllFiles(join(dirPath, file), arrayOfFiles);
+    } else {
+      arrayOfFiles.push(join(dirPath, file));
+    }
+  });
+
+  return arrayOfFiles;
 }
 
 /**
@@ -91,23 +147,23 @@ function generateUrl(collection: string, slug: string): string {
  */
 async function processDocs(): Promise<AlgoliaRecord[]> {
   const docs = await getCollection('docs');
-  return docs.map((doc: CollectionEntry<'docs'>) => {
-    const content = stripMarkdown(doc.body);
+  return docs.map((doc: any) => {
+    const content = stripMarkdown(doc.body || "");
     const category = doc.slug.includes('/')
       ? doc.slug.split('/')[0]
       : 'docs';
 
     return {
       objectID: `docs-${doc.slug}`,
-      title: doc.data.title,
+      title: doc.data?.title || doc.slug,
       content,
       url: generateUrl('docs', doc.slug),
       type: 'documentation',
       category,
-      summary: doc.data.summary,
-      description: doc.data.description,
-      difficulty: doc.data.difficulty,
-      weight: doc.data.weight,
+      summary: doc.data?.summary,
+      description: doc.data?.description,
+      difficulty: doc.data?.difficulty,
+      weight: doc.data?.weight,
     };
   });
 }
@@ -117,23 +173,23 @@ async function processDocs(): Promise<AlgoliaRecord[]> {
  */
 async function processBlog(): Promise<AlgoliaRecord[]> {
   const posts = await getCollection('blog');
-  return posts.map((post: CollectionEntry<'blog'>) => {
-    const content = stripMarkdown(post.body);
-    const pubDate = post.data.pubDate
+  return posts.map((post: any) => {
+    const content = stripMarkdown(post.body || "");
+    const pubDate = post.data?.pubDate
       ? new Date(post.data.pubDate).toISOString().split('T')[0]
       : undefined;
 
     return {
       objectID: `blog-${post.slug}`,
-      title: post.data.title,
+      title: post.data?.title || post.slug,
       content,
       url: generateUrl('blog', post.slug),
       type: 'blog',
-      summary: post.data.description,
-      description: post.data.description,
-      tags: post.data.tags,
+      summary: post.data?.description,
+      description: post.data?.description,
+      tags: post.data?.tags,
       pubDate,
-      authors: post.data.authors,
+      authors: post.data?.authors,
     };
   });
 }
@@ -143,23 +199,23 @@ async function processBlog(): Promise<AlgoliaRecord[]> {
  */
 async function processCourses(): Promise<AlgoliaRecord[]> {
   const courses = await getCollection('courses');
-  return courses.map((course: CollectionEntry<'courses'>) => {
-    const content = stripMarkdown(course.body);
+  return courses.map((course: any) => {
+    const content = stripMarkdown(course.body || "");
     const slugParts = course.slug.split('/');
     const category = slugParts.length > 0 ? slugParts[0] : 'courses';
 
     return {
       objectID: `course-${course.slug}`,
-      title: course.data.title,
+      title: course.data?.title || course.slug,
       content,
       url: generateUrl('courses', course.slug),
       type: 'course',
       category,
-      summary: course.data.summary,
-      description: course.data.description,
-      difficulty: course.data.difficulty,
-      weight: course.data.weight,
-      topic: course.data.topic,
+      summary: course.data?.summary,
+      description: course.data?.description,
+      difficulty: course.data?.difficulty,
+      weight: course.data?.weight,
+      topic: course.data?.topic,
     };
   });
 }
@@ -169,24 +225,24 @@ async function processCourses(): Promise<AlgoliaRecord[]> {
  */
 async function processTutorials(): Promise<AlgoliaRecord[]> {
   const tutorials = await getCollection('tutorials');
-  return tutorials.map((tutorial: CollectionEntry<'tutorials'>) => {
-    const content = stripMarkdown(tutorial.body);
+  return tutorials.map((tutorial: any) => {
+    const content = stripMarkdown(tutorial.body || "");
     const slugParts = tutorial.slug.split('/');
     const category = slugParts.length > 0 ? slugParts[0] : 'tutorials';
 
     return {
       objectID: `tutorial-${tutorial.slug}`,
-      title: tutorial.data.title,
+      title: tutorial.data?.title || tutorial.slug,
       content,
       url: generateUrl('tutorials', tutorial.slug),
       type: 'tutorial',
       category,
-      summary: tutorial.data.summary,
-      description: tutorial.data.description,
-      difficulty: tutorial.data.difficulty,
-      tags: tutorial.data.tags,
-      weight: tutorial.data.weight,
-      topic: tutorial.data.topic,
+      summary: tutorial.data?.summary,
+      description: tutorial.data?.description,
+      difficulty: tutorial.data?.difficulty,
+      tags: tutorial.data?.tags,
+      weight: tutorial.data?.weight,
+      topic: tutorial.data?.topic,
     };
   });
 }
@@ -196,18 +252,18 @@ async function processTutorials(): Promise<AlgoliaRecord[]> {
  */
 async function processChallenges(): Promise<AlgoliaRecord[]> {
   const challenges = await getCollection('challenges');
-  return challenges.map((challenge: CollectionEntry<'challenges'>) => {
-    const content = stripMarkdown(challenge.body);
+  return challenges.map((challenge: any) => {
+    const content = stripMarkdown(challenge.body || "");
 
     return {
       objectID: `challenge-${challenge.slug}`,
-      title: challenge.data.title,
+      title: challenge.data?.title || challenge.slug,
       content,
       url: generateUrl('challenges', challenge.slug),
       type: 'challenge',
-      summary: challenge.data.summary,
-      difficulty: challenge.data.difficulty,
-      topic: challenge.data.topic,
+      summary: challenge.data?.summary,
+      difficulty: challenge.data?.difficulty,
+      topic: challenge.data?.topic,
     };
   });
 }
