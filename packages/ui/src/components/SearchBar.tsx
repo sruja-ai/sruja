@@ -39,7 +39,7 @@ export function SearchBar({
         <div className="flex items-center gap-2 w-full px-3.5 py-2.5 rounded-md border border-[var(--color-border)] bg-[var(--color-background)]">
           <span className="text-[var(--color-text-tertiary)]">⌘K</span>
           <HCombobox.Input
-            ref={inputRef as any}
+            ref={inputRef as unknown as React.RefObject<HTMLInputElement>}
             className="flex-1 bg-transparent outline-none text-[var(--color-text-primary)]"
             placeholder={placeholder}
             value={query}

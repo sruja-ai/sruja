@@ -77,11 +77,11 @@ const meta = {
   },
   tags: ["autodocs"],
   decorators: [
-    (Story) => {
+    (Story: React.ComponentType) => {
       // Mock stores
       useEffect(() => {
         useArchitectureStore.setState({
-          model: mockModel as any,
+          model: mockModel as unknown as Record<string, unknown>,
           dslSource: "// Generated DSL content",
           setDslSource: fn(),
           updateArchitecture: async (_updater) => {},
@@ -139,11 +139,11 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   decorators: [
-    (Story) => {
+    (Story: React.ComponentType) => {
       // Mock with full model
       useEffect(() => {
         useArchitectureStore.setState({
-          model: mockModel as any,
+          model: mockModel as unknown as Record<string, unknown>,
           dslSource: "// Generated DSL content",
           setDslSource: fn(),
           updateArchitecture: async (_updater) => {},
@@ -172,11 +172,11 @@ export const Default: Story = {
 
 export const ViewMode: Story = {
   decorators: [
-    (Story) => {
+    (Story: React.ComponentType) => {
       // Mock with view mode
       useEffect(() => {
         useArchitectureStore.setState({
-          model: mockModel as any,
+          model: mockModel as unknown as Record<string, unknown>,
           dslSource: "// Generated DSL content",
           setDslSource: fn(),
           updateArchitecture: async (_updater) => {},
@@ -205,7 +205,7 @@ export const ViewMode: Story = {
 
 export const EmptyModel: Story = {
   decorators: [
-    (Story) => {
+    (Story: React.ComponentType) => {
       // Mock with empty model
       useEffect(() => {
         useArchitectureStore.setState({
@@ -238,11 +238,11 @@ export const EmptyModel: Story = {
 
 export const WithSidebarOpen: Story = {
   decorators: [
-    (Story) => {
+    (Story: React.ComponentType) => {
       // Mock with sidebar preference
       useEffect(() => {
         useArchitectureStore.setState({
-          model: mockModel as any,
+          model: mockModel as unknown as Record<string, unknown>,
           dslSource: "// Generated DSL content",
           setDslSource: fn(),
           updateArchitecture: async (_updater) => {},
@@ -283,11 +283,11 @@ export const WithSidebarOpen: Story = {
 
 export const Mobile: Story = {
   decorators: [
-    (Story) => {
+    (Story: React.ComponentType) => {
       // Mock for mobile view
       useEffect(() => {
         useArchitectureStore.setState({
-          model: mockModel as any,
+          model: mockModel as unknown as Record<string, unknown>,
           dslSource: "// Generated DSL content",
           setDslSource: fn(),
           updateArchitecture: async (_updater) => {},

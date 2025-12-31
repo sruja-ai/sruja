@@ -42,8 +42,9 @@ function detectCycles(model: SrujaModelDump): AntiPattern[] {
   // Build adjacency list
   const adjacencyList = new Map<string, string[]>();
   for (const rel of relations) {
-    const source = (rel as any).source?.model || (rel as any).source;
-    const target = (rel as any).target?.model || (rel as any).target;
+    // Robust extraction of source and target from FqnRef (string or {model: string})
+    const source = ((rel as any).source?.model || (rel as any).source) as string;
+    const target = ((rel as any).target?.model || (rel as any).target) as string;
 
     if (source && target) {
       if (!adjacencyList.has(source)) {
@@ -118,8 +119,8 @@ function detectGodObjects(model: SrujaModelDump): AntiPattern[] {
   const fanOut = new Map<string, number>();
 
   for (const rel of relations) {
-    const source = (rel as any).source?.model || (rel as any).source;
-    const target = (rel as any).target?.model || (rel as any).target;
+    const source = ((rel as any).source?.model || (rel as any).source) as string;
+    const target = ((rel as any).target?.model || (rel as any).target) as string;
 
     if (source && target) {
       fanOut.set(source, (fanOut.get(source) || 0) + 1);
@@ -136,7 +137,7 @@ function detectGodObjects(model: SrujaModelDump): AntiPattern[] {
 
     if (totalConnections > FAN_THRESHOLD) {
       const element = elements[elementId];
-      const elementType = (element as any)?.kind || "element";
+      const elementType = (element as { kind?: string })?.kind || "element";
 
       const isCritical = totalConnections > 10;
       const patternType = elementType === "component" ? "god-component" : "god-object";

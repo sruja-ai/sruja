@@ -2,13 +2,13 @@
 // Enhanced markdown preview component with preview/raw toggle and copy functionality
 // Can be used across all apps
 
-import { useState, useMemo } from 'react';
-import { Eye, Code, Copy, Check } from 'lucide-react';
-import { MarkdownPreview } from './MarkdownPreview';
-import type { MarkdownPreviewProps } from './MarkdownPreview';
-import './MarkdownPreviewPanel.css';
+import { useState, useMemo } from "react";
+import { Eye, Code, Copy, Check } from "lucide-react";
+import { MarkdownPreview } from "./MarkdownPreview";
+import type { MarkdownPreviewProps } from "./MarkdownPreview";
+import "./MarkdownPreviewPanel.css";
 
-export interface MarkdownPreviewPanelProps extends Omit<MarkdownPreviewProps, 'className'> {
+export interface MarkdownPreviewPanelProps extends Omit<MarkdownPreviewProps, "className"> {
   /** Title to display in the header */
   title?: string;
   /** Show preview/raw toggle buttons */
@@ -30,32 +30,34 @@ export interface MarkdownPreviewPanelProps extends Omit<MarkdownPreviewProps, 'c
   /** Error state */
   error?: string | null;
   /** Initial view mode */
-  defaultViewMode?: 'preview' | 'raw';
+  defaultViewMode?: "preview" | "raw";
   /** Callback when copy is successful */
   onCopy?: () => void;
+  /** Callback when mermaid diagram is expanded */
+  onMermaidExpand?: (svg: string, code: string) => void;
 }
 
 export function MarkdownPreviewPanel({
   content,
-  title = 'Markdown Preview',
+  title = "Markdown Preview",
   showViewToggle = true,
   showCopyButton = true,
   headerContent,
-  className = '',
-  previewClassName = '',
+  className = "",
+  previewClassName = "",
   isLoading = false,
-  loadingMessage = 'Loading...',
-  emptyMessage = 'No content available',
+  loadingMessage = "Loading...",
+  emptyMessage = "No content available",
   error = null,
-  defaultViewMode = 'preview',
+  defaultViewMode = "preview",
   onMermaidExpand,
   onCopy,
 }: MarkdownPreviewPanelProps) {
-  const [viewMode, setViewMode] = useState<'preview' | 'raw'>(defaultViewMode);
+  const [viewMode, setViewMode] = useState<"preview" | "raw">(defaultViewMode);
   const [copied, setCopied] = useState(false);
 
   const markdownSource = useMemo(() => {
-    return content || '';
+    return content || "";
   }, [content]);
 
   const handleCopy = async () => {
@@ -67,7 +69,7 @@ export function MarkdownPreviewPanel({
       onCopy?.();
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error("Failed to copy:", err);
     }
   };
 
@@ -90,8 +92,8 @@ export function MarkdownPreviewPanel({
                 <div className="markdown-view-toggle">
                   <button
                     type="button"
-                    className={`view-toggle-btn ${viewMode === 'preview' ? 'active' : ''}`}
-                    onClick={() => setViewMode('preview')}
+                    className={`view-toggle-btn ${viewMode === "preview" ? "active" : ""}`}
+                    onClick={() => setViewMode("preview")}
                     title="Preview mode"
                     aria-label="Preview mode"
                   >
@@ -100,8 +102,8 @@ export function MarkdownPreviewPanel({
                   </button>
                   <button
                     type="button"
-                    className={`view-toggle-btn ${viewMode === 'raw' ? 'active' : ''}`}
-                    onClick={() => setViewMode('raw')}
+                    className={`view-toggle-btn ${viewMode === "raw" ? "active" : ""}`}
+                    onClick={() => setViewMode("raw")}
                     title="Raw markdown"
                     aria-label="Raw markdown"
                   >
@@ -137,17 +139,13 @@ export function MarkdownPreviewPanel({
       )}
 
       <div className="markdown-preview-panel-content">
-        {isLoading && (
-          <div className="markdown-loading">{loadingMessage}</div>
-        )}
+        {isLoading && <div className="markdown-loading">{loadingMessage}</div>}
 
-        {error && (
-          <div className="markdown-error">{error}</div>
-        )}
+        {error && <div className="markdown-error">{error}</div>}
 
         {!isLoading && !error && hasContent && (
           <>
-            {viewMode === 'preview' ? (
+            {viewMode === "preview" ? (
               <div className={`markdown-preview-container ${previewClassName}`}>
                 <MarkdownPreview content={markdownSource} onMermaidExpand={onMermaidExpand} />
               </div>

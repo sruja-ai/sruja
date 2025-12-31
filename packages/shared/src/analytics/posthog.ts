@@ -48,7 +48,8 @@ export async function initPosthog(cfg: PosthogInit) {
   }
 
   const mod = await import("posthog-js");
-  const ph = ((mod as any).default || (mod as any).posthog) as PosthogClient | undefined;
+  const ph = ((mod as unknown as Record<string, unknown>).default ||
+    (mod as unknown as Record<string, unknown>).posthog) as PosthogClient | undefined;
 
   if (ph && typeof ph.init === "function") {
     ph.init(cfg.apiKey, posthogOptions);

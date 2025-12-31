@@ -261,7 +261,7 @@ export function getNodeColors(type: string, isExternal?: boolean) {
   const isDark = getCurrentTheme() === "dark";
   const colors = currentStyle === "outline" ? C4_COLORS : C4_COLORS_FILLED;
 
-  let nodeColors = (() => {
+  const nodeColors = (() => {
     switch (type) {
       case "person":
         return colors.person;
@@ -304,7 +304,8 @@ export function getNodeColors(type: string, isExternal?: boolean) {
   if (currentStyle === "filled" && !isDark) {
     // For light theme, use darker text colors for better contrast
     // TypeScript: nodeColors always has text property from the color definitions
-    const textColor = ((nodeColors as any).border || (nodeColors as any).text) as string;
+    const textColor = ((nodeColors as { border?: string; text?: string }).border ||
+      (nodeColors as { border?: string; text?: string }).text) as string;
     return {
       ...nodeColors,
       text: textColor, // Use border color (darker) for text in light theme
@@ -356,7 +357,7 @@ export function getPremiumNodeColors(type: string, isExternal?: boolean) {
 }
 
 export function getTagStyles(tags?: string[]) {
-  const style: Record<string, any> = {};
+  const style: Record<string, string> = {};
   if (!tags || tags.length === 0) return style;
   const t = new Set(tags.map((x) => x.toLowerCase()));
   if (t.has("deprecated")) style.borderStyle = "dashed";

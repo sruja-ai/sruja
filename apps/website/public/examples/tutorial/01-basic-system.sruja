@@ -1,0 +1,19 @@
+// examples/tutorial/01-basic-system.sruja
+// Step 1: Basic system with one person and one system
+// This is the simplest possible Sruja diagram
+//
+// Alternative: You can use stdlib imports instead of declaring kinds:
+//   import { * } from 'sruja.ai/stdlib'
+
+person = kind "Person"
+system = kind "System"
+
+user = person "User"
+app = system "Application"
+
+user -> app "uses"
+
+view index {
+    include *
+}
+

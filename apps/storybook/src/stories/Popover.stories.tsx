@@ -1,37 +1,37 @@
-import { Popover } from '../../../../packages/ui/src/components/Popover'
-import { Button } from '../../../../packages/ui/src/components/Button'
-import type { Meta, StoryObj } from '@storybook/react'
+import { Popover } from "../../../../packages/ui/src/components/Popover";
+import { Button } from "../../../../packages/ui/src/components/Button";
+import type { Meta, StoryObj } from "@storybook/react";
 
 const meta: Meta<typeof Popover> = {
-  title: 'Components/Popover',
+  title: "Components/Popover",
   component: Popover,
-  tags: ['autodocs'],
-  parameters: { layout: 'centered' },
+  tags: ["autodocs"],
+  parameters: { layout: "centered" },
   argTypes: {
     trigger: { control: false },
     placement: {
-      control: { type: 'select' },
-      options: ['top', 'bottom', 'left', 'right'],
+      control: { type: "select" },
+      options: ["top", "bottom", "left", "right"],
     },
     children: { control: false },
   },
-}
+};
 
-export default meta
-type Story = StoryObj<typeof Popover>
+export default meta;
+type Story = StoryObj<typeof Popover>;
 
 export const Basic: Story = {
   args: {
     trigger: <Button>Toggle Popover</Button>,
-    placement: 'bottom' as const,
+    placement: "bottom" as const,
     children: <div>Popover content</div>,
   },
-  render: (args: any) => (
+  render: (args) => (
     <div className="bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg shadow-sm p-5">
       <Popover {...args} />
     </div>
   ),
-}
+};
 
 export const Showcase: Story = {
   render: () => (
@@ -58,4 +58,4 @@ export const Showcase: Story = {
       </div>
     </div>
   ),
-}
+};

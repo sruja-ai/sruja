@@ -1,0 +1,37 @@
+// examples/tutorial/03-add-databases.sruja
+// Step 3: Add databases and complete the architecture
+// Shows data persistence layer
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+user = person "User"
+
+app = system "Application" {
+    frontend = container "Frontend" {
+        technology "React"
+    }
+    backend = container "Backend" {
+        technology "Go"
+    }
+    database = database "Database" {
+        technology "PostgreSQL"
+    }
+}
+
+user -> app.frontend "uses"
+app.frontend -> app.backend "calls"
+app.backend -> app.database "reads and writes to"
+
+view index {
+    title "System Context"
+    include *
+}
+
+view containers of app {
+    title "Application Containers"
+    include app.*
+}
+

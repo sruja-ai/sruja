@@ -1,66 +1,66 @@
 // examples/demo_metadata.sruja
 // Metadata Showcase Example
 
-specification {
-  element person
-  element system
-  element container
-  element database
-  element queue
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+queue = kind "Queue"
+
+
+
+billingApi = system "BillingAPI" {
+  metadata {
+    team "Payments"
+    tier "critical"
+    rate_limit_per_ip "50/s"
+    error_budget "99.5%"
+    cloud "aws"
+    lambda_memory "512MB"
+    tracing "enabled"
+  }
+  api = container "API" {
+    metadata {
+      rate_limit "100/s"
+      auth "jwt"
+      upstream "BillingAPI"
+    }
+  }
 }
 
-model {
-  billingApi = system "BillingAPI" {
-    metadata {
-      team "Payments"
-      tier "critical"
-      rate_limit_per_ip "50/s"
-      error_budget "99.5%"
-      cloud "aws"
-      lambda_memory "512MB"
-      tracing "enabled"
-    }
-    api = container "API" {
-      metadata {
-        rate_limit "100/s"
-        auth "jwt"
-        upstream "BillingAPI"
-      }
-    }
+invoiceDb = database "InvoiceDB" {
+  metadata {
+    engine "PostgreSQL"
+    version "14"
+    encryption_at_rest "AES-256"
+    compliance "PCI-DSS"
   }
-  
-  invoiceDb = database "InvoiceDB" {
-    metadata {
-      engine "PostgreSQL"
-      version "14"
-      encryption_at_rest "AES-256"
-      compliance "PCI-DSS"
-    }
-  }
-  
-  events = queue "Events" {
-    metadata {
-      provider "RabbitMQ"
-      durable "true"
-      prefetch "10"
-    }
-  }
-  
-  customer = person "Customer" {
-    metadata {
-      persona "end-user"
-      access_level "standard"
-    }
-  }
-  
-  customer -> billingApi.api "submits billing requests to"
-  billingApi.api -> invoiceDb "stores invoices in"
-  billingApi.api -> events "publishes events to"
 }
 
-views {
-  view index {
-    title "Metadata Showcase"
-    include *
+events = queue "Events" {
+  metadata {
+    provider "RabbitMQ"
+    durable "true"
+    prefetch "10"
   }
 }
+
+customer = person "Customer" {
+  metadata {
+    persona "end-user"
+    access_level "standard"
+  }
+}
+
+customer -> billingApi.api "submits billing requests to"
+billingApi.api -> invoiceDb "stores invoices in"
+billingApi.api -> events "publishes events to"
+
+
+
+view index {
+  title "Metadata Showcase"
+  include *
+}
+

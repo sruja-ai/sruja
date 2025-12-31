@@ -1,4 +1,4 @@
-/* eslint-env node, browser */
+/* global window */
 // packages/shared/src/utils/logger.test.ts
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { logger } from "./logger";
@@ -35,7 +35,7 @@ describe("logger", () => {
         });
 
         window.localStorage.removeItem("sruja:debug");
-      } catch (e) {
+      } catch {
         // Ignore
       }
     }

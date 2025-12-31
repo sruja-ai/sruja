@@ -1,0 +1,43 @@
+// examples/demo_flat.sruja
+// Demonstrating new flat syntax (top-level declarations)
+
+// Specification
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+
+// Model Elements (Top-level)
+User = person "End User"
+
+Backend = system "Backend System" {
+  description "Core backend system"
+  
+  API = container "API Service"
+  DB = container "Database"
+  
+  API -> DB "reads/writes"
+}
+
+// Top-level relationships with forward references
+User -> Frontend "uses"
+Frontend -> Backend.API "calls"
+
+Frontend = system "Frontend Application" {
+  technology "React"
+}
+
+// Governance Elements (Top-level)
+R1 = requirement functional "System must be responsive"
+ADR001 = adr "Use Go" {
+  status "Accepted"
+}
+
+// Views (Top-level)
+view index {
+  include *
+  autolayout lr
+}
+
+view backend_view of Backend {
+  include *
+}

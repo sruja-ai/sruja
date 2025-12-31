@@ -40,17 +40,7 @@ linters:
       - apps/
       - packages/
 run:
-  skip-dirs:
-    - node_modules
-    - apps
-    - packages
-    - examples
-    - third_party
-    - builtin
-  skip-files:
-    - ".*\\.md$"
-    - ".*\\.yaml$"
-    - ".*\\.yml$"
+  timeout: 5m
 formatters:
   exclusions:
     generated: lax

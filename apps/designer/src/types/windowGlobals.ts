@@ -35,41 +35,49 @@ declare global {
  * Type-safe getter for layout engine flag
  */
 export function getLayoutEngineFlag(): boolean {
-  return window.__USE_NEW_LAYOUT_ENGINE__ === "true";
+  if (import.meta.env.DEV) {
+    return (window as any)["__USE_NEW_LAYOUT_ENGINE__"] === "true";
+  }
+  return false;
 }
 
 /**
  * Type-safe setter for layout engine flag
  */
 export function setLayoutEngineFlag(enabled: boolean): void {
-  if (enabled) {
-    window.__USE_NEW_LAYOUT_ENGINE__ = "true";
-  } else {
-    delete window.__USE_NEW_LAYOUT_ENGINE__;
+  if (import.meta.env.DEV) {
+    if (enabled) {
+      (window as any)["__USE_NEW_LAYOUT_ENGINE__"] = "true";
+    } else {
+      delete (window as any)["__USE_NEW_LAYOUT_ENGINE__"];
+    }
   }
 }
-
 
 /**
  * Type-safe getter for performance profiler
  */
 export function getPerformanceProfiler(): PerformanceProfiler | null {
-  return window.__PERFORMANCE_PROFILER__ ?? null;
+  if (import.meta.env.DEV) {
+    return (window as any)["__PERFORMANCE_PROFILER__"] ?? null;
+  }
+  return null;
 }
 
 /**
  * Type-safe setter for performance profiler
  */
 export function setPerformanceProfiler(profiler: PerformanceProfiler): void {
-  window.__PERFORMANCE_PROFILER__ = profiler;
+  if (import.meta.env.DEV) {
+    (window as any)["__PERFORMANCE_PROFILER__"] = profiler;
+  }
 }
 
 /**
  * Type-safe setter for graph state
  */
-export function setGraphState(
-  nodes: Node<C4NodeData>[],
-  edges: Edge[]
-): void {
-  window.__CYBER_GRAPH__ = { nodes, edges };
+export function setGraphState(nodes: Node<C4NodeData>[], edges: Edge[]): void {
+  if (import.meta.env.DEV) {
+    (window as any)["__CYBER_GRAPH__"] = { nodes, edges };
+  }
 }

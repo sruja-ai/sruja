@@ -1,4 +1,8 @@
-# Bidirectional Sync Model: Designer App ↔ DSL
+- name: Run golangci-lint
+  uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+  with:
+  version: latest
+  args: --timeout=5m# Bidirectional Sync Model: Designer App ↔ DSL
 
 **Date**: 2025-01-01  
 **Purpose**: Analysis of bidirectional sync model where DSL is source of truth and Designer App is visual interface  

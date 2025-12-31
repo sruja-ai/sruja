@@ -35,7 +35,11 @@ export function SrujaMonacoEditor({
         className={className}
         onReady={(monaco, editor) => {
           // Pass modified editor to onReady for backward compatibility
-          if (onReady) onReady(monaco, editor.getModifiedEditor() as any);
+          if (onReady)
+            onReady(
+              monaco,
+              editor.getModifiedEditor() as unknown as import("monaco-editor").editor.IStandaloneCodeEditor
+            );
         }}
       />
     );

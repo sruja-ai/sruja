@@ -39,8 +39,10 @@ export function MonacoDiffEditor({
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     // Configure MonacoEnvironment for web workers (Vite-compatible)
-    if (typeof (window as any).MonacoEnvironment === "undefined") {
-      (window as any).MonacoEnvironment = {
+    if (
+      typeof (window as unknown as { MonacoEnvironment: unknown }).MonacoEnvironment === "undefined"
+    ) {
+      (window as unknown as { MonacoEnvironment: Record<string, unknown> }).MonacoEnvironment = {
         getWorker: function (_workerId: string, _label: string) {
           const blob = new Blob(["self.onmessage = () => {}"], { type: "application/javascript" });
           return new Worker(URL.createObjectURL(blob));
@@ -114,7 +116,7 @@ export function MonacoDiffEditor({
       }
       editorRef.current = null;
     };
-  }, [language, theme]);
+  }, [language, theme, modified, onReady, options, original]);
 
   // Update models when props change
   useEffect(() => {

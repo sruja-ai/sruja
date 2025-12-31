@@ -71,11 +71,11 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   decorators: [
-    (Story) => {
+    (Story: React.ComponentType) => {
       // Mock the stores
       useEffect(() => {
         useArchitectureStore.setState({
-          model: mockModel as any,
+          model: mockModel as unknown as Record<string, unknown>,
         });
         useViewStore.setState({
           currentLevel: "L1",
@@ -101,7 +101,7 @@ export const Default: Story = {
 
 export const Collapsed: Story = {
   decorators: [
-    (Story) => {
+    (Story: React.ComponentType) => {
       // Mock localStorage to start collapsed
       const originalLocalStorage = global.localStorage;
       global.localStorage = {
@@ -112,7 +112,7 @@ export const Collapsed: Story = {
       // Mock stores
       useEffect(() => {
         useArchitectureStore.setState({
-          model: mockModel as any,
+          model: mockModel as unknown as Record<string, unknown>,
         });
         useViewStore.setState({
           currentLevel: "L1",
@@ -138,11 +138,11 @@ export const Collapsed: Story = {
 
 export const WithFocus: Story = {
   decorators: [
-    (Story) => {
+    (Story: React.ComponentType) => {
       // Mock stores with focused system
       useEffect(() => {
         useArchitectureStore.setState({
-          model: mockModel as any,
+          model: mockModel as unknown as Record<string, unknown>,
         });
         useViewStore.setState({
           currentLevel: "L2",
@@ -167,11 +167,11 @@ export const WithFocus: Story = {
 
 export const WithEditMode: Story = {
   decorators: [
-    (Story) => {
+    (Story: React.ComponentType) => {
       // Mock stores with edit mode enabled
       useEffect(() => {
         useArchitectureStore.setState({
-          model: mockModel as any,
+          model: mockModel as unknown as Record<string, unknown>,
         });
         useViewStore.setState({
           currentLevel: "L1",
@@ -197,11 +197,11 @@ export const WithEditMode: Story = {
 
 export const Mobile: Story = {
   decorators: [
-    (Story) => {
+    (Story: React.ComponentType) => {
       // Mock stores
       useEffect(() => {
         useArchitectureStore.setState({
-          model: mockModel as any,
+          model: mockModel as unknown as Record<string, unknown>,
         });
         useViewStore.setState({
           currentLevel: "L1",
@@ -234,7 +234,7 @@ export const Mobile: Story = {
 
 export const Empty: Story = {
   decorators: [
-    (Story) => {
+    (Story: React.ComponentType) => {
       // Mock stores with empty model
       useEffect(() => {
         useArchitectureStore.setState({

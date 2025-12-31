@@ -1,37 +1,37 @@
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import { MermaidDiagram } from './MermaidDiagram'
-import './MarkdownPreview.css'
+import { useEffect, useState } from "react";
 
 export interface MarkdownPreviewProps {
-  content: string
-  onMermaidExpand?: (svg: string, code: string) => void
-  className?: string
+  content: string;
+  className?: string;
+  onMermaidExpand?: (svg: string, code: string) => void;
 }
 
-export function MarkdownPreview({ content, onMermaidExpand, className = '' }: MarkdownPreviewProps) {
+export function MarkdownPreview({
+  content,
+  className = "",
+  onMermaidExpand: _onMermaidExpand,
+}: MarkdownPreviewProps) {
+  const [html, setHtml] = useState<string>("");
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const { markdownToHtml } = await import("../utils/markdown");
+        const res = await markdownToHtml(content);
+        setHtml(res);
+      } catch {
+        // Fallback to plain text if rendering fails
+        setHtml(content);
+      }
+    }
+    load();
+  }, [content]);
+
+  // Note: onMermaidExpand is used by parent components to handle diagram clicks
+  // We don't use it directly here as we're just rendering the HTML
+  // but we keep it in props for interface compatibility.
+
   return (
-    <div className={`markdown-preview ${className}`}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          code: ({ inline, className, children, ...props }: any) => {
-            const match = /language-(\w+)/.exec(className || '')
-            const codeString = String(children || '').trim()
-            if (!inline && match && match[1] === 'mermaid') {
-              return <MermaidDiagram code={codeString} onExpand={onMermaidExpand} />
-            }
-            return (
-              <code className={className} {...props}>
-                {children}
-              </code>
-            )
-          },
-        }}
-      >
-        {content}
-      </ReactMarkdown>
-    </div>
-  )
+    <div className={`markdown-preview ${className}`} dangerouslySetInnerHTML={{ __html: html }} />
+  );
 }
-

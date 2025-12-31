@@ -27,8 +27,8 @@ export function sortByDate<T extends AnyCollectionEntry>(entries: T[]): T[] {
 /**
  * Sort entries by weight property (lower weight first)
  */
-export function sortByWeight<T>(entries: T[]): T[] {
-  return [...entries].sort((a: any, b: any) => {
+export function sortByWeight<T extends { data: { weight?: number } }>(entries: T[]): T[] {
+  return [...entries].sort((a, b) => {
     const weightA = a.data?.weight ?? 999;
     const weightB = b.data?.weight ?? 999;
     return weightA - weightB;

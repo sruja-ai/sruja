@@ -2,211 +2,302 @@
 // Real-world SaaS Platform with multiple systems, microservices, and complex hierarchy
 // Tests layout engine with many containers, components, and cross-system relationships
 
-specification {
-  element person
-  element system
-  element container
-  element component
-  element database
-  element queue
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+queue = kind "Queue"
+
+
+
+customer = person "Customer"
+admin = person "Platform Administrator"
+developer = person "Developer"
+
+saaSPlatform = system "SaaS Platform" {
+  webApp = container "Web Application" {
+    description "React-based dashboard for customers"
+    technology "React, TypeScript"
+    dashboard = component "Dashboard"
+    settings = component "Settings"
+    billing = component "Billing"
+    analytics = component "Analytics"
+    dashboard -> aPI "Fetches data"
+    settings -> aPI "Updates settings"
+    billing -> aPI "Manages billing"
+    analytics -> aPI "Fetches analytics"
+  }
+  
+  aPI = container "REST API Gateway" {
+    description "Main API entry point"
+    technology "Go, Gin"
+    authMiddleware = component "Authentication Middleware"
+    rateLimiter = component "Rate Limiter"
+    requestRouter = component "Request Router"
+    responseFormatter = component "Response Formatter"
+    authMiddleware -> userService "Validates tokens"
+    rateLimiter -> redis "Checks limits"
+    requestRouter -> projectService "Routes requests"
+    requestRouter -> billingService "Routes requests"
+    responseFormatter -> responseCache "Caches responses"
+  }
+  
+  userService = container "User Service" {
+    description "Manages users and authentication"
+    technology "Node.js, Express"
+    authAPI = component "Auth API"
+    profileAPI = component "Profile API"
+    sessionManager = component "Session Manager"
+    authAPI -> userDB "Reads/Writes users"
+    profileAPI -> userDB "Updates profiles"
+    sessionManager -> redis "Manages sessions"
+  }
+  
+  projectService = container "Project Service" {
+    description "Manages customer projects"
+    technology "Java, Spring Boot"
+    projectAPI = component "Project API"
+    workspaceManager = component "Workspace Manager"
+    collaborationService = component "Collaboration Service"
+    projectAPI -> projectDB "Reads/Writes projects"
+    workspaceManager -> storageService "Manages storage"
+    collaborationService -> messageQueue "Publishes events"
+  }
+  
+  billingService = container "Billing Service" {
+    description "Handles subscriptions and payments"
+    technology "Python, FastAPI"
+    subscriptionAPI = component "Subscription API"
+    invoiceGenerator = component "Invoice Generator"
+    paymentProcessor = component "Payment Processor"
+    subscriptionAPI -> billingDB "Manages subscriptions"
+    invoiceGenerator -> billingDB "Generates invoices"
+    paymentProcessor -> paymentGateway "Processes payments"
+  }
+  
+  analyticsService = container "Analytics Service" {
+    description "Processes analytics data"
+    technology "Python, Flask"
+    eventCollector = component "Event Collector"
+    dataProcessor = component "Data Processor"
+    reportGenerator = component "Report Generator"
+    eventCollector -> eventQueue "Consumes events"
+    dataProcessor -> analyticsDB "Writes analytics"
+    reportGenerator -> analyticsDB "Reads analytics"
+  }
+  
+  storageService = container "Storage Service" {
+    description "Manages file storage"
+    technology "Go"
+    fileAPI = component "File API"
+    metadataManager = component "Metadata Manager"
+    fileAPI -> objectStorage "Stores files"
+    metadataManager -> metadataDB "Manages metadata"
+  }
+  
+  userDB = database "User Database" {
+    technology "PostgreSQL"
+  }
+  
+  projectDB = database "Project Database" {
+    technology "PostgreSQL"
+  }
+  
+  billingDB = database "Billing Database" {
+    technology "PostgreSQL"
+  }
+  
+  analyticsDB = database "Analytics Database" {
+    technology "ClickHouse"
+  }
+  
+  metadataDB = database "Metadata Database" {
+    technology "PostgreSQL"
+  }
+  
+  messageQueue = queue "Message Queue" {
+    technology "RabbitMQ"
+  }
+  
+  eventQueue = queue "Event Queue" {
+    technology "Kafka"
+  }
+  
+  redis = container "Cache & Sessions" {
+    technology "Redis"
+  }
+  
+  objectStorage = container "Object Storage" {
+    technology "S3-compatible"
+  }
+  
+  responseCache = container "Response Cache" {
+    technology "Redis"
+  }
 }
 
-model {
-  customer = person "Customer"
-  admin = person "Platform Administrator"
-  developer = person "Developer"
-  
-  saaSPlatform = system "SaaS Platform" {
-    webApp = container "Web Application" {
-      description "React-based dashboard for customers"
-      technology "React, TypeScript"
-      dashboard = component "Dashboard"
-      settings = component "Settings"
-      billing = component "Billing"
-      analytics = component "Analytics"
-      dashboard -> aPI "Fetches data"
-      settings -> aPI "Updates settings"
-      billing -> aPI "Manages billing"
-      analytics -> aPI "Fetches analytics"
-    }
-    
-    aPI = container "REST API Gateway" {
-      description "Main API entry point"
-      technology "Go, Gin"
-      authMiddleware = component "Authentication Middleware"
-      rateLimiter = component "Rate Limiter"
-      requestRouter = component "Request Router"
-      responseFormatter = component "Response Formatter"
-      authMiddleware -> userService "Validates tokens"
-      rateLimiter -> redis "Checks limits"
-      requestRouter -> projectService "Routes requests"
-      requestRouter -> billingService "Routes requests"
-      responseFormatter -> responseCache "Caches responses"
-    }
-    
-    userService = container "User Service" {
-      description "Manages users and authentication"
-      technology "Node.js, Express"
-      authAPI = component "Auth API"
-      profileAPI = component "Profile API"
-      sessionManager = component "Session Manager"
-      authAPI -> userDB "Reads/Writes users"
-      profileAPI -> userDB "Updates profiles"
-      sessionManager -> redis "Manages sessions"
-    }
-    
-    projectService = container "Project Service" {
-      description "Manages customer projects"
-      technology "Java, Spring Boot"
-      projectAPI = component "Project API"
-      workspaceManager = component "Workspace Manager"
-      collaborationService = component "Collaboration Service"
-      projectAPI -> projectDB "Reads/Writes projects"
-      workspaceManager -> storageService "Manages storage"
-      collaborationService -> messageQueue "Publishes events"
-    }
-    
-    billingService = container "Billing Service" {
-      description "Handles subscriptions and payments"
-      technology "Python, FastAPI"
-      subscriptionAPI = component "Subscription API"
-      invoiceGenerator = component "Invoice Generator"
-      paymentProcessor = component "Payment Processor"
-      subscriptionAPI -> billingDB "Manages subscriptions"
-      invoiceGenerator -> billingDB "Generates invoices"
-      paymentProcessor -> paymentGateway "Processes payments"
-    }
-    
-    analyticsService = container "Analytics Service" {
-      description "Processes analytics data"
-      technology "Python, Flask"
-      eventCollector = component "Event Collector"
-      dataProcessor = component "Data Processor"
-      reportGenerator = component "Report Generator"
-      eventCollector -> eventQueue "Consumes events"
-      dataProcessor -> analyticsDB "Writes analytics"
-      reportGenerator -> analyticsDB "Reads analytics"
-    }
-    
-    storageService = container "Storage Service" {
-      description "Manages file storage"
-      technology "Go"
-      fileAPI = component "File API"
-      metadataManager = component "Metadata Manager"
-      fileAPI -> objectStorage "Stores files"
-      metadataManager -> metadataDB "Manages metadata"
-    }
-    
-    userDB = database "User Database" {
-      technology "PostgreSQL"
-    }
-    
-    projectDB = database "Project Database" {
-      technology "PostgreSQL"
-    }
-    
-    billingDB = database "Billing Database" {
-      technology "PostgreSQL"
-    }
-    
-    analyticsDB = database "Analytics Database" {
-      technology "ClickHouse"
-    }
-    
-    metadataDB = database "Metadata Database" {
-      technology "PostgreSQL"
-    }
-    
-    messageQueue = queue "Message Queue" {
-      technology "RabbitMQ"
-    }
-    
-    eventQueue = queue "Event Queue" {
-      technology "Kafka"
-    }
-    
-    redis = container "Cache & Sessions" {
-      technology "Redis"
-    }
-    
-    objectStorage = container "Object Storage" {
-      technology "S3-compatible"
-    }
-    
-    responseCache = container "Response Cache" {
-      technology "Redis"
-    }
+paymentGateway = system "Payment Gateway" {
+  description "External payment processing"
+  stripeAPI = container "Stripe API" {
+    technology "Stripe"
   }
-  
-  paymentGateway = system "Payment Gateway" {
-    description "External payment processing"
-    stripeAPI = container "Stripe API" {
-      technology "Stripe"
-    }
-  }
-  
-  notificationService = system "Notification Service" {
-    description "External notification service"
-    emailAPI = container "Email API" {
-      technology "SendGrid"
-    }
-    
-    sMSAPI = container "SMS API" {
-      technology "Twilio"
-    }
-  }
-  
-  // User interactions
-  customer -> saaSPlatform.webApp "Uses platform"
-  admin -> saaSPlatform.aPI "Manages platform"
-  developer -> saaSPlatform.aPI "Uses API"
-  
-  // Internal service communication
-  saaSPlatform.webApp -> saaSPlatform.aPI "API calls"
-  saaSPlatform.aPI -> saaSPlatform.userService "User operations"
-  saaSPlatform.aPI -> saaSPlatform.projectService "Project operations"
-  saaSPlatform.aPI -> saaSPlatform.billingService "Billing operations"
-  saaSPlatform.projectService -> saaSPlatform.storageService "Storage operations"
-  saaSPlatform.billingService -> saaSPlatform.analyticsService "Usage analytics"
-  
-  // Service to database
-  saaSPlatform.userService -> saaSPlatform.userDB "Reads/Writes"
-  saaSPlatform.projectService -> saaSPlatform.projectDB "Reads/Writes"
-  saaSPlatform.billingService -> saaSPlatform.billingDB "Reads/Writes"
-  saaSPlatform.analyticsService -> saaSPlatform.analyticsDB "Writes analytics"
-  saaSPlatform.storageService -> saaSPlatform.metadataDB "Manages metadata"
-  
-  // Cache usage
-  saaSPlatform.aPI -> saaSPlatform.redis "Cache checks"
-  saaSPlatform.userService -> saaSPlatform.redis "Session storage"
-  saaSPlatform.aPI -> saaSPlatform.responseCache "Response caching"
-  
-  // Queue usage
-  saaSPlatform.projectService -> saaSPlatform.messageQueue "Publishes events"
-  saaSPlatform.analyticsService -> saaSPlatform.eventQueue "Consumes events"
-  
-  // External integrations
-  saaSPlatform.billingService -> paymentGateway.stripeAPI "Processes payments"
-  saaSPlatform.projectService -> notificationService.emailAPI "Sends emails"
-  saaSPlatform.projectService -> notificationService.sMSAPI "Sends SMS"
-  
-  // Storage
-  saaSPlatform.storageService -> saaSPlatform.objectStorage "Stores files"
-  
-  requirement REQ001 functional "Support 100k+ customers"
-  requirement REQ002 performance "API response time < 200ms (p95)"
-  requirement REQ003 availability "99.99% uptime SLA"
-  requirement REQ004 scalability "Auto-scale based on load"
 }
 
-views {
-  view index {
-    title "SaaS Platform Architecture"
-    include *
+notificationService = system "Notification Service" {
+  description "External notification service"
+  emailAPI = container "Email API" {
+    technology "SendGrid"
   }
   
-  view containers of saaSPlatform {
-    title "SaaS Platform Containers"
-    include saaSPlatform.*
+  sMSAPI = container "SMS API" {
+    technology "Twilio"
   }
 }
+
+// User interactions
+customer -> saaSPlatform.webApp "Uses platform"
+admin -> saaSPlatform.aPI "Manages platform"
+developer -> saaSPlatform.aPI "Uses API"
+
+// Internal service communication
+saaSPlatform.webApp -> saaSPlatform.aPI "API calls"
+saaSPlatform.aPI -> saaSPlatform.userService "User operations"
+saaSPlatform.aPI -> saaSPlatform.projectService "Project operations"
+saaSPlatform.aPI -> saaSPlatform.billingService "Billing operations"
+saaSPlatform.projectService -> saaSPlatform.storageService "Storage operations"
+saaSPlatform.billingService -> saaSPlatform.analyticsService "Usage analytics"
+
+// Service to database
+saaSPlatform.userService -> saaSPlatform.userDB "Reads/Writes"
+saaSPlatform.projectService -> saaSPlatform.projectDB "Reads/Writes"
+saaSPlatform.billingService -> saaSPlatform.billingDB "Reads/Writes"
+saaSPlatform.analyticsService -> saaSPlatform.analyticsDB "Writes analytics"
+saaSPlatform.storageService -> saaSPlatform.metadataDB "Manages metadata"
+
+// Cache usage
+saaSPlatform.aPI -> saaSPlatform.redis "Cache checks"
+saaSPlatform.userService -> saaSPlatform.redis "Session storage"
+saaSPlatform.aPI -> saaSPlatform.responseCache "Response caching"
+
+// Queue usage
+saaSPlatform.projectService -> saaSPlatform.messageQueue "Publishes events"
+saaSPlatform.analyticsService -> saaSPlatform.eventQueue "Consumes events"
+
+// External integrations
+saaSPlatform.billingService -> paymentGateway.stripeAPI "Processes payments"
+saaSPlatform.projectService -> notificationService.emailAPI "Sends emails"
+saaSPlatform.projectService -> notificationService.sMSAPI "Sends SMS"
+
+// Storage
+saaSPlatform.storageService -> saaSPlatform.objectStorage "Stores files"
+
+REQ001 = requirement functional "Support 100k+ customers"
+REQ002 = requirement performance "API response time < 200ms (p95)"
+REQ003 = requirement availability "99.99% uptime SLA"
+REQ004 = requirement scalability "Auto-scale based on load"
+
+
+
+view index {
+  title "SaaS Platform Architecture"
+  include *
+  
+  // Layout following C4 conventions:
+  // - Persons at top
+  // - Core platform in center
+  // - External services on edges
+  // - Optimized spacing to reduce edge crossings
+  layout {
+    element customer {
+      position { x: 200, y: 50 }
+    }
+    element admin {
+      position { x: 400, y: 50 }
+    }
+    element developer {
+      position { x: 600, y: 50 }
+    }
+    element saaSPlatform {
+      position { x: 400, y: 300 }
+    }
+    element paymentGateway {
+      position { x: 700, y: 300 }
+    }
+    element notificationService {
+      position { x: 100, y: 300 }
+    }
+  }
+}
+
+view containers of saaSPlatform {
+  title "SaaS Platform Containers"
+  include saaSPlatform.*
+  
+  // Layout for containers: Organized by layer (Frontend, API, Services, Data)
+  // Reduces edge crossings and improves readability
+  layout {
+    // Frontend layer
+    element saaSPlatform.webApp {
+      position { x: 200, y: 100 }
+    }
+    
+    // API layer
+    element saaSPlatform.aPI {
+      position { x: 400, y: 100 }
+    }
+    
+    // Service layer (horizontal layout)
+    element saaSPlatform.userService {
+      position { x: 150, y: 250 }
+    }
+    element saaSPlatform.projectService {
+      position { x: 350, y: 250 }
+    }
+    element saaSPlatform.billingService {
+      position { x: 550, y: 250 }
+    }
+    element saaSPlatform.analyticsService {
+      position { x: 200, y: 350 }
+    }
+    element saaSPlatform.storageService {
+      position { x: 400, y: 350 }
+    }
+    
+    // Data layer (bottom)
+    element saaSPlatform.userDB {
+      position { x: 150, y: 500 }
+    }
+    element saaSPlatform.projectDB {
+      position { x: 350, y: 500 }
+    }
+    element saaSPlatform.billingDB {
+      position { x: 550, y: 500 }
+    }
+    element saaSPlatform.analyticsDB {
+      position { x: 200, y: 600 }
+    }
+    element saaSPlatform.metadataDB {
+      position { x: 400, y: 600 }
+    }
+    
+    // Infrastructure
+    element saaSPlatform.redis {
+      position { x: 600, y: 350 }
+    }
+    element saaSPlatform.messageQueue {
+      position { x: 100, y: 350 }
+    }
+    element saaSPlatform.eventQueue {
+      position { x: 300, y: 450 }
+    }
+    element saaSPlatform.objectStorage {
+      position { x: 500, y: 350 }
+    }
+    element saaSPlatform.responseCache {
+      position { x: 650, y: 250 }
+    }
+  }
+}
+

@@ -14,7 +14,12 @@ const createEmptyDump = (): SrujaModelDump => ({
   relations: [],
   views: {},
   sruja: { requirements: [], flows: [], scenarios: [], adrs: [] },
-  _metadata: { name: "Test", version: "1.0", generated: new Date().toISOString(), srujaVersion: "1.0" },
+  _metadata: {
+    name: "Test",
+    version: "1.0",
+    generated: new Date().toISOString(),
+    srujaVersion: "1.0",
+  },
 });
 
 describe("architectureValidator", () => {
@@ -29,7 +34,7 @@ describe("architectureValidator", () => {
     });
 
     it("returns error for empty architecture object (no proper structure)", () => {
-      const result = validateArchitecture({} as any);
+      const result = validateArchitecture({} as SrujaModelDump);
 
       expect(result.isValid).toBe(false);
       expect(result.issues[0].category).toBe("structure");
@@ -56,11 +61,9 @@ describe("architectureValidator", () => {
     it("detects invalid relation references", () => {
       const arch: SrujaModelDump = createEmptyDump();
       arch.elements = {
-        "User": { id: "User", kind: "person", title: "User", tags: [], links: [] }
+        User: { id: "User", kind: "person", title: "User", tags: [], links: [] },
       };
-      arch.relations = [
-        { id: "r1", source: "User", target: "NonExistent", title: "uses" }
-      ];
+      arch.relations = [{ id: "r1", source: "User", target: "NonExistent", title: "uses" }];
 
       const result = validateArchitecture(arch);
 
@@ -72,11 +75,16 @@ describe("architectureValidator", () => {
     it("handles FqnRef object format in relation references", () => {
       const arch: SrujaModelDump = createEmptyDump();
       arch.elements = {
-        "User": { id: "User", kind: "person", title: "User", tags: [], links: [] }
+        User: { id: "User", kind: "person", title: "User", tags: [], links: [] },
       };
       // Test with FqnRef object format: { model: string }
       arch.relations = [
-        { id: "r1", source: { model: "User" }, target: { model: "NonExistent" }, title: "uses" } as any
+        {
+          id: "r1",
+          source: { model: "User" },
+          target: { model: "NonExistent" },
+          title: "uses",
+        } as unknown as { id: string; source: string; target: string; title: string },
       ];
 
       const result = validateArchitecture(arch);
@@ -90,12 +98,10 @@ describe("architectureValidator", () => {
     it("detects orphan elements", () => {
       const arch: SrujaModelDump = createEmptyDump();
       arch.elements = {
-        "System1": { id: "System1", kind: "system", title: "Connected", tags: [], links: [] },
-        "System2": { id: "System2", kind: "system", title: "Orphan", tags: [], links: [] }
+        System1: { id: "System1", kind: "system", title: "Connected", tags: [], links: [] },
+        System2: { id: "System2", kind: "system", title: "Orphan", tags: [], links: [] },
       };
-      arch.relations = [
-        { id: "r1", source: "System1", target: "System1", title: "self" }
-      ];
+      arch.relations = [{ id: "r1", source: "System1", target: "System1", title: "self" }];
 
       const result = validateArchitecture(arch);
 
@@ -110,12 +116,17 @@ describe("architectureValidator", () => {
     it("detects orphan elements with FqnRef object format", () => {
       const arch: SrujaModelDump = createEmptyDump();
       arch.elements = {
-        "System1": { id: "System1", kind: "system", title: "Connected", tags: [], links: [] },
-        "System2": { id: "System2", kind: "system", title: "Orphan", tags: [], links: [] }
+        System1: { id: "System1", kind: "system", title: "Connected", tags: [], links: [] },
+        System2: { id: "System2", kind: "system", title: "Orphan", tags: [], links: [] },
       };
       // Test with FqnRef object format
       arch.relations = [
-        { id: "r1", source: { model: "System1" }, target: { model: "System1" }, title: "self" } as any
+        {
+          id: "r1",
+          source: { model: "System1" },
+          target: { model: "System1" },
+          title: "self",
+        } as unknown as { id: string; source: string; target: string; title: string },
       ];
 
       const result = validateArchitecture(arch);
@@ -131,12 +142,10 @@ describe("architectureValidator", () => {
     it("calculates score based on issues", () => {
       const arch: SrujaModelDump = createEmptyDump();
       arch.elements = {
-        "User": { id: "User", kind: "person", title: "User", tags: [], links: [] },
-        "App": { id: "App", kind: "system", title: "Application", tags: [], links: [] }
+        User: { id: "User", kind: "person", title: "User", tags: [], links: [] },
+        App: { id: "App", kind: "system", title: "Application", tags: [], links: [] },
       };
-      arch.relations = [
-        { id: "r1", source: "User", target: "App", title: "Uses" }
-      ];
+      arch.relations = [{ id: "r1", source: "User", target: "App", title: "Uses" }];
 
       const result = validateArchitecture(arch);
 
@@ -148,10 +157,12 @@ describe("architectureValidator", () => {
     it("validates requirement tag references", () => {
       const arch: SrujaModelDump = createEmptyDump();
       arch.elements = {
-        "App": { id: "App", kind: "system", title: "App", tags: [], links: [] }
+        App: { id: "App", kind: "system", title: "App", tags: [], links: [] },
       };
       arch.sruja!.requirements = [
-        { id: "REQ-1", type: "functional", title: "Test", tags: ["NonExistent"] } as any // Cast to support tags if type definition issues exist
+        { id: "REQ-1", type: "functional", title: "Test", tags: ["NonExistent"] } as unknown as {
+          id: string;
+        },
       ];
 
       const result = validateArchitecture(arch);
@@ -166,7 +177,7 @@ describe("architectureValidator", () => {
     it("validates ADR tag references", () => {
       const arch: SrujaModelDump = createEmptyDump();
       arch.elements = {
-        "App": { id: "App", kind: "system", title: "App", tags: [], links: [] }
+        App: { id: "App", kind: "system", title: "App", tags: [], links: [] },
       };
       arch.sruja!.adrs = [
         {
@@ -176,7 +187,7 @@ describe("architectureValidator", () => {
           context: "",
           decision: "",
           tags: ["BadRef"],
-        } as any, // Cast
+        } as unknown as { id: string }, // Cast
       ];
 
       const result = validateArchitecture(arch);

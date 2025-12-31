@@ -125,11 +125,11 @@ const meta = {
     onClose: fn(),
   },
   decorators: [
-    (Story) => {
+    (Story: React.ComponentType) => {
       // Mock stores
       useEffect(() => {
         useArchitectureStore.setState({
-          model: mockModel as any,
+          model: mockModel as unknown as Record<string, unknown>,
           updateArchitecture: async (_updater) => {},
         });
         useSelectionStore.setState({
@@ -167,7 +167,7 @@ export const SystemNode: Story = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          model: mockModel as any,
+          model: mockModel as unknown as Record<string, unknown>,
           updateArchitecture: async (_updater) => {},
         });
         useSelectionStore.setState({
@@ -202,7 +202,7 @@ export const ContainerNode: Story = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          model: mockModel as any,
+          model: mockModel as unknown as Record<string, unknown>,
           updateArchitecture: async (_updater) => {},
         });
         useSelectionStore.setState({
@@ -239,7 +239,7 @@ export const PersonNode: Story = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          model: mockModel as any,
+          model: mockModel as unknown as Record<string, unknown>,
           updateArchitecture: async (_updater) => {},
         });
         useSelectionStore.setState({
@@ -294,7 +294,7 @@ export const NodeWithNoData: Story = {
               flows: [],
               scenarios: [],
             },
-          } as any,
+          } as unknown as Record<string, unknown>,
           updateArchitecture: async (_updater) => {},
         });
         useSelectionStore.setState({
@@ -331,7 +331,7 @@ export const NoSelection: Story = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          model: mockModel as any,
+          model: mockModel as unknown as Record<string, unknown>,
           updateArchitecture: async (_updater) => {},
         });
         useSelectionStore.setState({

@@ -124,7 +124,7 @@ describe("isValidDotElement", () => {
     for (const kind of validKinds) {
       const element = {
         id: "test",
-        kind: kind as any,
+        kind: kind as "system",
         title: "Test",
         width: 100,
         height: 50,

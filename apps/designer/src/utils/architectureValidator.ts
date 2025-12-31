@@ -42,12 +42,19 @@ export interface ValidationResult {
  */
 function checkBestPractices(model: SrujaModelDump): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
-  const elements = Object.values(model.elements || {}) as any[];
+  const elements = Object.values(model.elements || {}) as Array<{
+    kind?: string;
+    id: string;
+    title?: string;
+    description?: string | { txt: string };
+    metadata?: Record<string, unknown>;
+    properties?: Record<string, unknown>;
+  }>;
   const systems = elements.filter((el) => el.kind === "system");
   const containers = elements.filter((el) => el.kind === "container");
 
   // BP001: Each System should have an overview/description
-  systems.forEach((sys: any) => {
+  systems.forEach((sys) => {
     // Description can be a string or an object with 'txt' property
     const description =
       typeof sys.description === "string" ? sys.description : sys.description?.txt || "";
@@ -95,7 +102,9 @@ function checkBestPractices(model: SrujaModelDump): ValidationIssue[] {
   containers.forEach((container) => {
     // Check if container has SLO block
     // In Dump, SLO might be a field or in sruja extension
-    const hasSlo = (container as any).slo || (model.sruja as any)?.slos?.[container.id];
+    const hasSlo =
+      (container as { slo?: unknown }).slo ||
+      (model.sruja as { slos?: Record<string, unknown> })?.slos?.[container.id];
     if (!hasSlo) {
       issues.push({
         id: `bp-slo-${container.id}`,
@@ -140,14 +149,18 @@ function checkBestPractices(model: SrujaModelDump): ValidationIssue[] {
  */
 function detectOrphanElements(model: SrujaModelDump): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
-  const elements = Object.values(model.elements || {}) as any[];
+  const elements = Object.values(model.elements || {}) as Array<{
+    id: string;
+    title: string;
+    kind: string;
+  }>;
   const connectedPaths = new Set<string>();
 
   // Collect all paths mentioned in relations
-  (model.relations || []).forEach((rel: any) => {
+  (model.relations || []).forEach((rel) => {
     // Handle FqnRef structure: { model: string } or fallback to string
-    const sourceRaw = rel.source || rel.from;
-    const targetRaw = rel.target || rel.to;
+    const sourceRaw = (rel as any).source || (rel as any).from;
+    const targetRaw = (rel as any).target || (rel as any).to;
 
     const source =
       sourceRaw && typeof sourceRaw === "object" && "model" in sourceRaw
@@ -213,11 +226,11 @@ function validateRelationReferences(model: SrujaModelDump): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const validIds = new Set(Object.keys(model.elements || {}));
 
-  (model.relations || []).forEach((rel: any, index) => {
+  (model.relations || []).forEach((rel, index) => {
     // Handle FqnRef structure: { model: string } or fallback to string
     // Also support legacy 'from'/'to' properties
-    const sourceRaw = rel.source || rel.from;
-    const targetRaw = rel.target || rel.to;
+    const sourceRaw = (rel as any).source || (rel as any).from;
+    const targetRaw = (rel as any).target || (rel as any).to;
 
     const source =
       sourceRaw && typeof sourceRaw === "object" && "model" in sourceRaw
@@ -268,7 +281,7 @@ function validateGovernanceReferences(model: SrujaModelDump): ValidationIssue[] 
   const tags = new Set(Object.keys(model.specification?.tags || {}));
 
   // Validate requirement tags
-  (model.sruja?.requirements || []).forEach((req: any) => {
+  (model.sruja?.requirements || []).forEach((req: { id: string; tags?: readonly string[] }) => {
     (req.tags || []).forEach((tag: string) => {
       if (!tags.has(tag)) {
         issues.push({
@@ -285,7 +298,7 @@ function validateGovernanceReferences(model: SrujaModelDump): ValidationIssue[] 
   });
 
   // Validate ADR tags
-  (model.sruja?.adrs || []).forEach((adr: any) => {
+  (model.sruja?.adrs || []).forEach((adr: { id: string; tags?: readonly string[] }) => {
     (adr.tags || []).forEach((tag: string) => {
       if (!tags.has(tag)) {
         issues.push({
