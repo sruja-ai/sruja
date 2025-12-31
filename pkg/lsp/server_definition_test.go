@@ -9,7 +9,7 @@ import (
 
 func TestServerDefinition_ExactAndFallback(t *testing.T) {
 	uri := lsp.DocumentURI("file://defs.sruja")
-	text := "model {\n  system S {\n    container C {\n      component X\n    }\n  }\n}\n"
+	text := "System=kind \"System\" Container=kind \"Container\" Component=kind \"Component\"\n  S = System \"S\" {\n    C = Container \"C\" {\n      X = Component \"X\"\n    }\n  }\n\n"
 	srv := NewServer()
 	_ = srv.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{TextDocument: lsp.TextDocumentItem{URI: uri, Text: text, Version: 1}})
 

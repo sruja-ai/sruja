@@ -21,11 +21,11 @@ func parseDSL(t *testing.T, dsl string) *language.Program {
 }
 
 func TestBuildDescription_DataStore(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			DB = database "Database"
 		}
-	}`
+	`
 	prog := parseDSL(t, dsl)
 
 	explainer := NewExplainer(prog)
@@ -39,11 +39,11 @@ func TestBuildDescription_DataStore(t *testing.T) {
 }
 
 func TestBuildDescription_Queue(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Q = queue "Queue"
 		}
-	}`
+	`
 	prog := parseDSL(t, dsl)
 
 	explainer := NewExplainer(prog)
@@ -63,7 +63,7 @@ func TestBuildDescription_Queue(t *testing.T) {
 func TestBuildDescription_DefaultCase(t *testing.T) {
 	// Test with an unknown element type (nil)
 	prog := &language.Program{
-		Model: &language.ModelBlock{},
+		Model: &language.Model{},
 	}
 	explainer := NewExplainer(prog)
 	desc := explainer.buildDescription(nil)
@@ -73,11 +73,11 @@ func TestBuildDescription_DefaultCase(t *testing.T) {
 }
 
 func TestBuildDescription_SystemWithDataStores(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			DB = database "Database"
 		}
-	}`
+	`
 	prog := parseDSL(t, dsl)
 
 	explainer := NewExplainer(prog)
@@ -91,13 +91,13 @@ func TestBuildDescription_SystemWithDataStores(t *testing.T) {
 }
 
 func TestBuildDescription_ContainerWithComponents(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Cont = container "Container" {
 				Comp = component "Component"
 			}
 		}
-	}`
+	`
 	prog := parseDSL(t, dsl)
 
 	explainer := NewExplainer(prog)

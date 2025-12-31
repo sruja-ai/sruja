@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { useFileHandlers } from "../useFileHandlers";
 import type { SrujaModelDump } from "@sruja/shared";
-import type { ArchitectureCanvasRef } from "../../components/Canvas/LikeC4Canvas";
+import type { ArchitectureCanvasRef } from "../../components/Canvas/types";
 
 // Mock dependencies
 const mockLoadFromDSL = vi.fn();
@@ -68,7 +68,7 @@ vi.mock("../../utils/firebaseShareService", () => ({
 
 vi.mock("../../wasm", () => ({
   convertDslToJson: vi.fn(),
-  convertDslToLikeC4: vi.fn(), // Add this if needed
+  convertDslToModel: vi.fn(), // Add this if needed
 }));
 
 vi.mock("../../utils/errorHandling", () => ({

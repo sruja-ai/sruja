@@ -11,38 +11,38 @@ func TestExporter_Export(t *testing.T) {
 	// Setup a sample program
 	title := "My System"
 	prog := &language.Program{
-		Model: &language.ModelBlock{
+		Model: &language.Model{
 			Items: []language.ModelItem{
 				{
-					ElementDef: &language.LikeC4ElementDef{
-						Definition: &language.LikeC4Definition{
+					ElementDef: &language.ElementDef{
+						Assignment: &language.ElementAssignment{
 							Kind:  "person",
-							Name:  mkStr("User"),
+							Name:  "User",
 							Title: mkStr("End User"),
 						},
 					},
 				},
 				{
-					ElementDef: &language.LikeC4ElementDef{
-						Definition: &language.LikeC4Definition{
+					ElementDef: &language.ElementDef{
+						Assignment: &language.ElementAssignment{
 							Kind:  "system",
-							Name:  mkStr("SystemA"),
+							Name:  "SystemA",
 							Title: &title,
-							Body: &language.LikeC4ElementDefBody{
-								Items: []*language.LikeC4BodyItem{
+							Body: &language.ElementDefBody{
+								Items: []*language.BodyItem{
 									{
-										Element: &language.LikeC4ElementDef{
-											Definition: &language.LikeC4Definition{
+										Element: &language.ElementDef{
+											Assignment: &language.ElementAssignment{
 												Kind:  "container",
-												Name:  mkStr("WebApp"),
+												Name:  "WebApp",
 												Title: mkStr("Web Application"),
-												Body: &language.LikeC4ElementDefBody{
-													Items: []*language.LikeC4BodyItem{
+												Body: &language.ElementDefBody{
+													Items: []*language.BodyItem{
 														{
-															Element: &language.LikeC4ElementDef{
-																Definition: &language.LikeC4Definition{
+															Element: &language.ElementDef{
+																Assignment: &language.ElementAssignment{
 																	Kind:  "component",
-																	Name:  mkStr("UI"),
+																	Name:  "UI",
 																	Title: mkStr("User Interface"),
 																},
 															},
@@ -53,28 +53,28 @@ func TestExporter_Export(t *testing.T) {
 										},
 									},
 									{
-										Element: &language.LikeC4ElementDef{
-											Definition: &language.LikeC4Definition{
+										Element: &language.ElementDef{
+											Assignment: &language.ElementAssignment{
 												Kind:  "database",
-												Name:  mkStr("DB"),
+												Name:  "DB",
 												Title: mkStr("Main DB"),
 											},
 										},
 									},
 									{
-										Element: &language.LikeC4ElementDef{
-											Definition: &language.LikeC4Definition{
+										Element: &language.ElementDef{
+											Assignment: &language.ElementAssignment{
 												Kind:  "queue",
-												Name:  mkStr("Queue1"),
+												Name:  "Queue1",
 												Title: mkStr("Message Queue"),
 											},
 										},
 									},
 									{
-										Element: &language.LikeC4ElementDef{
-											Definition: &language.LikeC4Definition{
+										Element: &language.ElementDef{
+											Assignment: &language.ElementAssignment{
 												Kind:  "external",
-												Name:  mkStr("ExternalSystem"),
+												Name:  "ExternalSystem",
 												Title: mkStr("External System"),
 											},
 										},
@@ -85,19 +85,19 @@ func TestExporter_Export(t *testing.T) {
 					},
 				},
 				{
-					ElementDef: &language.LikeC4ElementDef{
-						Definition: &language.LikeC4Definition{
+					ElementDef: &language.ElementDef{
+						Assignment: &language.ElementAssignment{
 							Kind:  "container",
-							Name:  mkStr("StandaloneCont"),
+							Name:  "StandaloneCont",
 							Title: mkStr("Standalone Container"),
 						},
 					},
 				},
 				{
-					ElementDef: &language.LikeC4ElementDef{
-						Definition: &language.LikeC4Definition{
+					ElementDef: &language.ElementDef{
+						Assignment: &language.ElementAssignment{
 							Kind:  "system",
-							Name:  mkStr("EmptySys"),
+							Name:  "EmptySys",
 							Title: mkStr("Empty System"),
 						},
 					},
@@ -155,13 +155,13 @@ func TestExporter_Config(t *testing.T) {
 	exporter := NewExporter(config)
 	// Create a program with at least one element so the exporter produces output
 	prog := &language.Program{
-		Model: &language.ModelBlock{
+		Model: &language.Model{
 			Items: []language.ModelItem{
 				{
-					ElementDef: &language.LikeC4ElementDef{
-						Definition: &language.LikeC4Definition{
+					ElementDef: &language.ElementDef{
+						Assignment: &language.ElementAssignment{
 							Kind: "system",
-							Name: mkStr("TestSystem"),
+							Name: "TestSystem",
 						},
 					},
 				},
@@ -169,27 +169,27 @@ func TestExporter_Config(t *testing.T) {
 		},
 	}
 	result := exporter.Export(prog)
-	
+
 	// Verify result is not empty
 	if result == "" {
 		t.Fatal("expected non-empty result from exporter")
 	}
-	
+
 	// Verify frontmatter is present
 	if !strings.Contains(result, "---") {
 		t.Errorf("expected frontmatter delimiter '---', got:\n%s", result)
 	}
-	
+
 	// Verify graph direction is correct (TD, not LR)
 	if !strings.Contains(result, "graph TD") {
 		t.Errorf("expected 'graph TD' in output, got:\n%s", result)
 	}
-	
+
 	// Verify theme is in frontmatter (when UseFrontmatter is true)
 	if !strings.Contains(result, "theme: dark") {
 		t.Errorf("expected 'theme: dark' in frontmatter, got:\n%s", result)
 	}
-	
+
 	// Verify direction is in frontmatter (lowercase when UseFrontmatter is true)
 	if !strings.Contains(result, "direction: td") {
 		t.Errorf("expected 'direction: td' in frontmatter, got:\n%s", result)

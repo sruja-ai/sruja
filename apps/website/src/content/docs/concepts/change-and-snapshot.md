@@ -11,38 +11,36 @@ Use `change` to describe modifications; use `snapshot` to capture versioned stat
 ## Syntax
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+system App {
+API = container
+DB = datastore
 }
 
-model {
-  system App {
-    API = container
-    DB = datastore
-  }
-
-  change "Add caching layer" {
-    description "Introduce Redis for hot paths"
-    affects [ App.API ]
-  }
-
-  snapshot v"2025.12" {
-    note "Post‑Black Friday stabilization"
-  }
-
+change "Add caching layer" {
+description "Introduce Redis for hot paths"
+affects [ App.API ]
 }
+
+snapshot v"2025.12" {
+note "Post‑Black Friday stabilization"
+}
+
 ```
 
 ## Guidance
+
 - Keep `change` titles action‑oriented; include `affects` where relevant.
 - Use `snapshot` with clear version strings and a short note.
 - Link ADRs to `change` items for rationale.
 
 ## Related
+
 - `adr` for decisions
 - `deployment` when changes affect runtime topology

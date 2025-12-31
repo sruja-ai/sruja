@@ -1,0 +1,57 @@
+// examples/layouts/manual-positions.sruja
+// Demonstrates capturing manual position adjustments
+// This shows how positions would be stored after manual editing
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+customer = person "Customer"
+
+ecommerce = system "E-Commerce Platform" {
+    webApp = container "Web App" {
+        technology "React"
+    }
+    api = container "API" {
+        technology "Go"
+    }
+    database = database "Database" {
+        technology "PostgreSQL"
+    }
+}
+
+customer -> ecommerce.webApp "uses"
+ecommerce.webApp -> ecommerce.api "calls"
+ecommerce.api -> ecommerce.database "reads from"
+
+view system-context {
+    title "System Context - Manual Layout"
+    include *
+    
+    // NOTE: This syntax is proposed for future implementation
+    // Positions would be captured from manual editing in the UI
+    layout {
+        // Positions captured from manual editing
+        element customer {
+            position { x: 200, y: 50 }
+        }
+        
+        element ecommerce {
+            position { x: 400, y: 200 }
+        }
+        
+        element ecommerce.webApp {
+            position { x: 300, y: 300 }
+        }
+        
+        element ecommerce.api {
+            position { x: 500, y: 300 }
+        }
+        
+        element ecommerce.database {
+            position { x: 400, y: 450 }
+        }
+    }
+}
+

@@ -144,15 +144,20 @@ func (e *Exporter) filterByView(elements []*Element) []*Element {
 		var result []*Element
 		for _, elem := range elements {
 			// Include elements inside the focused system
-			if strings.HasPrefix(elem.ID, focusID+".") {
+			prefixMatch := strings.HasPrefix(elem.ID, focusID+".")
+			idMatch := elem.ID == focusID
+			isExternal := elem.Kind == "system" || elem.Kind == "person"
+
+			switch {
+			case prefixMatch:
 				// Include containers, datastores, queues, and nested systems
 				if elem.Kind == "container" || elem.Kind == "datastore" || elem.Kind == "queue" || elem.Kind == "system" {
 					result = append(result, elem)
 				}
-			} else if elem.ID == focusID {
+			case idMatch:
 				// Include the focused system itself (often as a cluster, but good to have in list)
 				result = append(result, elem)
-			} else if elem.Kind == "system" || elem.Kind == "person" {
+			case isExternal:
 				// Include external systems and persons
 				result = append(result, elem)
 			}
@@ -175,13 +180,18 @@ func (e *Exporter) filterByView(elements []*Element) []*Element {
 		// Filter to elements within focused container + parent containers/systems
 		var result []*Element
 		for _, elem := range elements {
-			if strings.HasPrefix(elem.ID, focusID+".") {
+			prefixMatch := strings.HasPrefix(elem.ID, focusID+".")
+			idMatch := elem.ID == focusID
+			isExternal := elem.Kind == "container" || elem.Kind == "system" || elem.Kind == "person"
+
+			switch {
+			case prefixMatch:
 				if elem.Kind == "component" {
 					result = append(result, elem)
 				}
-			} else if elem.ID == focusID {
+			case idMatch:
 				result = append(result, elem)
-			} else if elem.Kind == "container" || elem.Kind == "system" || elem.Kind == "person" {
+			case isExternal:
 				// Include external things
 				result = append(result, elem)
 			}
@@ -233,6 +243,8 @@ func (e *Exporter) filterRelationsByView(relations []*Relation, visibleElements 
 
 // getVisibleAncestor finds the closest visible parent for an ID.
 // This is a convenience wrapper that calls getVisibleAncestorWithContext without context.
+//
+//nolint:unused // Kept for API compatibility
 func (e *Exporter) getVisibleAncestor(id string, visible map[string]bool) string {
 	return e.getVisibleAncestorWithContext(id, visible, "")
 }
@@ -314,6 +326,8 @@ type Element struct {
 }
 
 // pxToInch converts pixels to inches using 72 DPI (Graphviz default).
+//
+//nolint:unused // Kept for backward compatibility with old writers.go implementation
 func pxToInch(px int) float64 {
 	return float64(px) / 72.0
 }

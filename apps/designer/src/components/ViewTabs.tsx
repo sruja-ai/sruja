@@ -3,7 +3,7 @@ import { Layout, FileCode, List, Hammer, Shield } from "lucide-react";
 import { Button } from "@sruja/ui";
 import type { ViewTab } from "../types";
 import { useFeatureFlagsStore, useArchitectureStore } from "../stores";
-import { getWasmApi } from "@sruja/shared";
+import { getWasmApi, logger } from "@sruja/shared";
 
 interface ViewTabsProps {
   activeTab: ViewTab;
@@ -27,15 +27,44 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
   // Calculate score when DSL changes
   useEffect(() => {
     const calculateScore = async () => {
-      if (!dslSource) return;
+      if (!dslSource) {
+        setScoreCard(null);
+        return;
+      }
+
       try {
         const api = await getWasmApi();
-        if (api) {
-          const result = await api.calculateArchitectureScore(dslSource);
-          setScoreCard(result);
+        if (!api) {
+          setScoreCard(null);
+          return;
         }
+
+        // Validate DSL by attempting to parse it first
+        // This prevents score calculation errors from invalid syntax
+        try {
+          await api.dslToModel(dslSource);
+        } catch (parseError) {
+          // DSL is invalid, clear score card and return early
+          setScoreCard(null);
+          return;
+        }
+
+        // DSL is valid, proceed with score calculation
+        const result = await api.calculateArchitectureScore(dslSource);
+        setScoreCard(result as unknown as ScoreCard);
       } catch (error) {
-        console.error("Failed to calculate score for tabs:", error);
+        // Score calculation failed (but DSL was valid)
+        // This could be due to missing model items or other issues
+        // Clear the score card to avoid showing stale data
+        setScoreCard(null);
+        // Only log in development to avoid noise in production
+        if (process.env.NODE_ENV === "development") {
+          logger.debug("Score calculation skipped", {
+            component: "ViewTabs",
+            action: "calculateScore",
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
     };
     calculateScore();

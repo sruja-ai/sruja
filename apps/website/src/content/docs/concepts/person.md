@@ -11,29 +11,24 @@ A **Person** represents a human user of your software system (e.g., "Customer", 
 ## Syntax
 
 ```sruja
-specification {
-  element person
-}
+person = kind "Person"
 
-model {
-  ID = person "Label" {
-    description "Optional description"
-    tags ["tag1", "tag2"]
-  }
+ID = person "Label" {
+description "Optional description"
+tags ["tag1", "tag2"]
 }
 ```
 
 ## Example
 
 ```sruja
-specification {
-  element person
-}
+person = kind "Person"
 
-model {
-  Customer = person "Bank Customer" {
-    description "A customer of the bank with personal accounts."
-  }
+Customer = person "Bank Customer" {
+description "A customer of the bank with personal accounts."
 }
 ```
+
+```
+
 ```

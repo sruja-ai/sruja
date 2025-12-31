@@ -11,6 +11,7 @@ summary: "Master microservices questions by designing Amazon-style platforms."
 **"Design an e-commerce platform like Amazon that can handle millions of users and products. Use a microservices architecture."**
 
 This is one of the **most common system design interview questions**. It tests:
+
 - System decomposition into microservices
 - Service boundaries and responsibilities
 - Inter-service communication
@@ -19,12 +20,14 @@ This is one of the **most common system design interview questions**. It tests:
 ## Step 1: Clarify Requirements
 
 **You should ask:**
+
 - "What are the core features? Shopping cart, checkout, recommendations?"
 - "What's the scale? Users, products, orders per day?"
 - "What about inventory? Real-time stock management?"
 - "Payment processing? Do we integrate with payment gateways?"
 
 **Interviewer's typical answer:**
+
 - "Core features: Product catalog, shopping cart, checkout, order management, user accounts"
 - "Scale: 100M users, 1B products, 10M orders/day"
 - "Real-time inventory tracking required"
@@ -35,6 +38,7 @@ This is one of the **most common system design interview questions**. It tests:
 **Key insight**: Break down by **business domain**, not technical layers.
 
 **You should identify:**
+
 1. **User Service** - Authentication, profiles
 2. **Product Service** - Catalog, search, recommendations
 3. **Cart Service** - Shopping cart management
@@ -48,173 +52,167 @@ This is one of the **most common system design interview questions**. It tests:
 Model each microservice as a **separate system** within the architecture. This clearly shows service boundaries.
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+Customer = person "Online Customer"
+
+// Each microservice is a separate system
+UserService = system "User Management" {
+AuthAPI = container "Authentication API" {
+  technology "Go, gRPC"
 }
 
-model {
-  Customer = person "Online Customer"
-  
-  // Each microservice is a separate system
-  UserService = system "User Management" {
-    AuthAPI = container "Authentication API" {
-      technology "Go, gRPC"
-    }
-    
-    ProfileAPI = container "Profile API" {
-      technology "Go, gRPC"
-    }
-    
-    UserDB = datastore "User Database" {
-      technology "PostgreSQL"
-    }
-  }
-  
-  ProductService = system "Product Catalog" {
-    ProductAPI = container "Product API" {
-      technology "Java, Spring Boot"
-    }
-    
-    SearchAPI = container "Search API" {
-      technology "Elasticsearch"
-    }
-    
-    RecommendationAPI = container "Recommendation API" {
-      technology "Python, ML"
-    }
-    
-    ProductDB = datastore "Product Database" {
-      technology "PostgreSQL"
-    }
-    
-    SearchIndex = datastore "Search Index" {
-      technology "Elasticsearch"
-    }
-  }
-  
-  CartService = system "Shopping Cart" {
-    CartAPI = container "Cart API" {
-      technology "Node.js, Express"
-    }
-    
-    CartDB = datastore "Cart Database" {
-      technology "Redis"
-      description "In-memory cache for fast cart operations"
-    }
-  }
-  
-  OrderService = system "Order Management" {
-    OrderAPI = container "Order API" {
-      technology "Node.js, Express"
-    }
-    
-    OrderProcessor = container "Order Processor" {
-      technology "Node.js"
-    }
-    
-    OrderDB = datastore "Order Database" {
-      technology "PostgreSQL"
-    }
-    
-    OrderQueue = queue "Order Queue" {
-      technology "Kafka"
-    }
-  }
-  
-  PaymentService = system "Payment Processing" {
-    PaymentAPI = container "Payment API" {
-      technology "Go, gRPC"
-    }
-    
-    PaymentDB = datastore "Payment Database" {
-      technology "PostgreSQL"
-    }
-  }
-  
-  InventoryService = system "Inventory Management" {
-    InventoryAPI = container "Inventory API" {
-      technology "Java, Spring Boot"
-    }
-    
-    InventoryDB = datastore "Inventory Database" {
-      technology "PostgreSQL"
-    }
-  }
-  
-  NotificationService = system "Notifications" {
-    NotificationAPI = container "Notification API" {
-      technology "Python, FastAPI"
-    }
-    
-    EmailQueue = queue "Email Queue" {
-      technology "RabbitMQ"
-    }
-    
-    SMSQueue = queue "SMS Queue" {
-      technology "RabbitMQ"
-    }
-  }
-  
-  // API Gateway - single entry point
-  ECommerceApp = system "E-Commerce Application" {
-    WebApp = container "Web Application" {
-      technology "React, Next.js"
-    }
-    
-    APIGateway = container "API Gateway" {
-      technology "Kong, Nginx"
-      description "Routes requests to appropriate microservices"
-    }
-  }
-  
-  Stripe = system "Stripe Gateway" {
-    tags ["external"]
-  }
-  
-  PayPal = system "PayPal Gateway" {
-    tags ["external"]
-  }
-  
-  // User flow
-  Customer -> ECommerceApp.WebApp "Browses products"
-  ECommerceApp.WebApp -> ECommerceApp.APIGateway "Makes requests"
-  ECommerceApp.APIGateway -> UserService.AuthAPI "Authenticates"
-  ECommerceApp.APIGateway -> ProductService.ProductAPI "Fetches products"
-  ECommerceApp.APIGateway -> ProductService.SearchAPI "Searches products"
-  ECommerceApp.APIGateway -> ProductService.RecommendationAPI "Gets recommendations"
-  
-  // Cart flow
-  ECommerceApp.APIGateway -> CartService.CartAPI "Manages cart"
-  CartService.CartAPI -> CartService.CartDB "Stores cart"
-  
-  // Order flow
-  ECommerceApp.APIGateway -> OrderService.OrderAPI "Creates order"
-  OrderService.OrderAPI -> InventoryService.InventoryAPI "Checks stock"
-  OrderService.OrderAPI -> PaymentService.PaymentAPI "Processes payment"
-  OrderService.OrderAPI -> UserService.ProfileAPI "Gets user info"
-  OrderService.OrderAPI -> OrderService.OrderQueue "Enqueues for processing"
-  OrderService.OrderProcessor -> OrderService.OrderQueue "Processes orders"
-  OrderService.OrderProcessor -> NotificationService.NotificationAPI "Sends confirmation"
-  
-  // Payment flow
-  PaymentService.PaymentAPI -> PaymentService.PaymentDB "Stores transaction"
-  PaymentService.PaymentAPI -> Stripe "Processes cards"
-  PaymentService.PaymentAPI -> PayPal "Processes PayPal"
-  
-  // Notification flow
-  NotificationService.NotificationAPI -> NotificationService.EmailQueue "Sends emails"
-  NotificationService.NotificationAPI -> NotificationService.SMSQueue "Sends SMS"
+ProfileAPI = container "Profile API" {
+  technology "Go, gRPC"
 }
 
-views {
-  view index {
-    include *
-  }
+UserDB = datastore "User Database" {
+  technology "PostgreSQL"
+}
+}
+
+ProductService = system "Product Catalog" {
+ProductAPI = container "Product API" {
+  technology "Java, Spring Boot"
+}
+
+SearchAPI = container "Search API" {
+  technology "Elasticsearch"
+}
+
+RecommendationAPI = container "Recommendation API" {
+  technology "Python, ML"
+}
+
+ProductDB = datastore "Product Database" {
+  technology "PostgreSQL"
+}
+
+SearchIndex = datastore "Search Index" {
+  technology "Elasticsearch"
+}
+}
+
+CartService = system "Shopping Cart" {
+CartAPI = container "Cart API" {
+  technology "Node.js, Express"
+}
+
+CartDB = datastore "Cart Database" {
+  technology "Redis"
+  description "In-memory cache for fast cart operations"
+}
+}
+
+OrderService = system "Order Management" {
+OrderAPI = container "Order API" {
+  technology "Node.js, Express"
+}
+
+OrderProcessor = container "Order Processor" {
+  technology "Node.js"
+}
+
+OrderDB = datastore "Order Database" {
+  technology "PostgreSQL"
+}
+
+OrderQueue = queue "Order Queue" {
+  technology "Kafka"
+}
+}
+
+PaymentService = system "Payment Processing" {
+PaymentAPI = container "Payment API" {
+  technology "Go, gRPC"
+}
+
+PaymentDB = datastore "Payment Database" {
+  technology "PostgreSQL"
+}
+}
+
+InventoryService = system "Inventory Management" {
+InventoryAPI = container "Inventory API" {
+  technology "Java, Spring Boot"
+}
+
+InventoryDB = datastore "Inventory Database" {
+  technology "PostgreSQL"
+}
+}
+
+NotificationService = system "Notifications" {
+NotificationAPI = container "Notification API" {
+  technology "Python, FastAPI"
+}
+
+EmailQueue = queue "Email Queue" {
+  technology "RabbitMQ"
+}
+
+SMSQueue = queue "SMS Queue" {
+  technology "RabbitMQ"
+}
+}
+
+// API Gateway - single entry point
+ECommerceApp = system "E-Commerce Application" {
+WebApp = container "Web Application" {
+  technology "React, Next.js"
+}
+
+APIGateway = container "API Gateway" {
+  technology "Kong, Nginx"
+  description "Routes requests to appropriate microservices"
+}
+}
+
+Stripe = system "Stripe Gateway" {
+tags ["external"]
+}
+
+PayPal = system "PayPal Gateway" {
+tags ["external"]
+}
+
+// User flow
+Customer -> ECommerceApp.WebApp "Browses products"
+ECommerceApp.WebApp -> ECommerceApp.APIGateway "Makes requests"
+ECommerceApp.APIGateway -> UserService.AuthAPI "Authenticates"
+ECommerceApp.APIGateway -> ProductService.ProductAPI "Fetches products"
+ECommerceApp.APIGateway -> ProductService.SearchAPI "Searches products"
+ECommerceApp.APIGateway -> ProductService.RecommendationAPI "Gets recommendations"
+
+// Cart flow
+ECommerceApp.APIGateway -> CartService.CartAPI "Manages cart"
+CartService.CartAPI -> CartService.CartDB "Stores cart"
+
+// Order flow
+ECommerceApp.APIGateway -> OrderService.OrderAPI "Creates order"
+OrderService.OrderAPI -> InventoryService.InventoryAPI "Checks stock"
+OrderService.OrderAPI -> PaymentService.PaymentAPI "Processes payment"
+OrderService.OrderAPI -> UserService.ProfileAPI "Gets user info"
+OrderService.OrderAPI -> OrderService.OrderQueue "Enqueues for processing"
+OrderService.OrderProcessor -> OrderService.OrderQueue "Processes orders"
+OrderService.OrderProcessor -> NotificationService.NotificationAPI "Sends confirmation"
+
+// Payment flow
+PaymentService.PaymentAPI -> PaymentService.PaymentDB "Stores transaction"
+PaymentService.PaymentAPI -> Stripe "Processes cards"
+PaymentService.PaymentAPI -> PayPal "Processes PayPal"
+
+// Notification flow
+NotificationService.NotificationAPI -> NotificationService.EmailQueue "Sends emails"
+NotificationService.NotificationAPI -> NotificationService.SMSQueue "Sends SMS"
+
+view index {
+include *
 }
 ```
 
@@ -241,6 +239,7 @@ views {
 ### 1. Service Decomposition Strategy
 
 **Say**: "I decompose by business domain, not technical layers. Each service owns its data and has clear boundaries. For example:
+
 - User Service owns user data and authentication
 - Product Service owns product catalog and search
 - Order Service owns order lifecycle
@@ -249,6 +248,7 @@ views {
 ### 2. Inter-Service Communication
 
 **Say**: "Services communicate via:
+
 - **Synchronous**: REST/gRPC for real-time operations (checkout, cart)
 - **Asynchronous**: Message queues for eventual consistency (order processing, notifications)
 - **API Gateway**: Single entry point, handles routing, auth, rate limiting"
@@ -256,6 +256,7 @@ views {
 ### 3. Data Consistency
 
 **Say**: "Each service owns its database (database per service pattern). For cross-service operations:
+
 - **Saga pattern**: For distributed transactions (order → payment → inventory)
 - **Eventual consistency**: Acceptable for non-critical paths (notifications)
 - **Strong consistency**: Only within a service (cart operations)"
@@ -263,6 +264,7 @@ views {
 ### 4. API Gateway Pattern
 
 **Say**: "API Gateway provides:
+
 - **Single entry point** for all client requests
 - **Request routing** to appropriate microservices
 - **Authentication/authorization** - validate tokens once
@@ -276,70 +278,64 @@ views {
 Add them to your design (extending the main architecture):
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+Customer = person "Online Customer"
+
+// Existing services (UserService, ProductService, OrderService, etc. from main design)
+ProductService = system "Product Catalog" {
+ProductAPI = container "Product API" {
+  technology "Java, Spring Boot"
+}
 }
 
-model {
-  Customer = person "Online Customer"
-  
-  // Existing services (UserService, ProductService, OrderService, etc. from main design)
-  ProductService = system "Product Catalog" {
-    ProductAPI = container "Product API" {
-      technology "Java, Spring Boot"
-    }
-  }
-  
-  OrderService = system "Order Management" {
-    OrderAPI = container "Order API" {
-      technology "Node.js, Express"
-    }
-  }
-  
-  ECommerceApp = system "E-Commerce Application" {
-    APIGateway = container "API Gateway" {
-      technology "Kong, Nginx"
-    }
-  }
-  
-  // Additional services
-  RecommendationService = system "Recommendations" {
-    RecommendationAPI = container "Recommendation API" {
-      technology "Python, ML"
-    }
-    
-    UserBehaviorDB = datastore "User Behavior Database" {
-      technology "MongoDB"
-      description "Stores user clicks, views, purchases for ML"
-    }
-  }
-  
-  AnalyticsService = system "Analytics" {
-    AnalyticsAPI = container "Analytics API" {
-      technology "Go"
-    }
-    
-    AnalyticsDB = datastore "Analytics Database" {
-      technology "ClickHouse"
-      description "Time-series data for analytics"
-    }
-  }
-  
-  // Show how services interact
-  ECommerceApp.APIGateway -> ProductService.ProductAPI "Gets products"
-  ECommerceApp.APIGateway -> RecommendationService.RecommendationAPI "Gets recommendations"
-  OrderService.OrderAPI -> AnalyticsService.AnalyticsAPI "Tracks order events"
+OrderService = system "Order Management" {
+OrderAPI = container "Order API" {
+  technology "Node.js, Express"
+}
 }
 
-views {
-  view index {
-    include *
-  }
+ECommerceApp = system "E-Commerce Application" {
+APIGateway = container "API Gateway" {
+  technology "Kong, Nginx"
+}
+}
+
+// Additional services
+RecommendationService = system "Recommendations" {
+RecommendationAPI = container "Recommendation API" {
+  technology "Python, ML"
+}
+
+UserBehaviorDB = datastore "User Behavior Database" {
+  technology "MongoDB"
+  description "Stores user clicks, views, purchases for ML"
+}
+}
+
+AnalyticsService = system "Analytics" {
+AnalyticsAPI = container "Analytics API" {
+  technology "Go"
+}
+
+AnalyticsDB = datastore "Analytics Database" {
+  technology "ClickHouse"
+  description "Time-series data for analytics"
+}
+}
+
+// Show how services interact
+ECommerceApp.APIGateway -> ProductService.ProductAPI "Gets products"
+ECommerceApp.APIGateway -> RecommendationService.RecommendationAPI "Gets recommendations"
+OrderService.OrderAPI -> AnalyticsService.AnalyticsAPI "Tracks order events"
+
+view index {
+include *
 }
 ```
 
@@ -365,6 +361,7 @@ Be prepared for:
 ## Exercise: Practice This Question
 
 Design an e-commerce platform and be ready to explain:
+
 1. How you decomposed into services (why these services?)
 2. How services communicate (sync vs async)
 3. How you handle data consistency

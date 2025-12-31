@@ -1,11 +1,12 @@
 // apps/designer/src/stores/architectureStore.ts
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { convertDslToLikeC4, convertDslToMarkdown } from "../wasm";
+import { convertDslToModel, convertDslToMarkdown } from "../wasm";
 import { convertModelToDsl } from "../utils/modelToDsl";
 import { useHistoryStore } from "./historyStore";
 import { safeAsync, handleError, ErrorType } from "../utils/errorHandling";
-import type { SrujaModelDump } from "@sruja/shared";
+import { logger } from "@sruja/shared";
+import type { SrujaModelDump, ParsedView } from "@sruja/shared";
 
 const STORAGE_KEY = "sruja-architecture-data";
 
@@ -16,7 +17,7 @@ const STORAGE_KEY = "sruja-architecture-data";
  * Persists data to localStorage for automatic restoration.
  */
 interface ArchitectureState {
-  likec4Model: SrujaModelDump | null; // Main model data
+  model: SrujaModelDump | null; // Main model data
   convertedMarkdown: string | null; // Cached Markdown converted from DSL
   isLoading: boolean;
   error: string | null;
@@ -25,6 +26,25 @@ interface ArchitectureState {
   sourceType?: "dsl" | "json" | null;
   currentExampleFile?: string | null;
   isConverting: boolean; // Track if conversion is in progress
+
+  // Chaos Mode State
+  chaosState: {
+    enabled: boolean;
+    failedNodeId: string | null;
+  };
+  setChaosEnabled: (enabled: boolean) => void;
+  setFailedNode: (nodeId: string | null) => void;
+
+  // Capacity Planning State
+  capacityState: {
+    userLoad: number; // Percentage 0-500
+    trafficDistribution: Record<string, number>; // Region -> %
+  };
+  setCapacityLoad: (load: number) => void;
+
+  // Baseline for Trend Analysis
+  baselineModel: SrujaModelDump | null;
+  setBaseline: (model?: SrujaModelDump | null) => void;
 
   // Actions
   loadFromDSL: (json: SrujaModelDump, dsl: string, file?: string | null) => Promise<void>;
@@ -42,7 +62,7 @@ interface ArchitectureState {
 export const useArchitectureStore = create<ArchitectureState>()(
   persist(
     (set, get): ArchitectureState => ({
-      likec4Model: null,
+      model: null,
       convertedMarkdown: null,
       isLoading: false,
       error: null,
@@ -51,11 +71,24 @@ export const useArchitectureStore = create<ArchitectureState>()(
       sourceType: null,
       currentExampleFile: null,
       isConverting: false,
+      baselineModel: null,
+
+      // Initial Chaos State
+      chaosState: {
+        enabled: false,
+        failedNodeId: null,
+      },
+
+      // Initial Capacity State
+      capacityState: {
+        userLoad: 100, // 100% nominal load
+        trafficDistribution: { "us-east": 60, "eu-west": 40 },
+      },
 
       loadFromDSL: async (json, dsl, file) => {
         // Store the initial JSON
         set({
-          likec4Model: json,
+          model: json,
           isLoading: false,
           error: null,
           lastLoaded: new Date().toISOString(),
@@ -94,7 +127,7 @@ export const useArchitectureStore = create<ArchitectureState>()(
       loadFromModel: async (json, file) => {
         set({ isConverting: true });
 
-        // Ensure required fields are present for LikeC4 compatibility
+        // Ensure required fields are present for JSON format compatibility
         const updatedJson = {
           ...json,
           _stage: json._stage || ("parsed" as const),
@@ -106,26 +139,26 @@ export const useArchitectureStore = create<ArchitectureState>()(
           globals: json.globals || { predicates: {}, dynamicPredicates: {}, styles: {} },
         };
 
-        // Ensure default views are present
-        if (!updatedJson.views) updatedJson.views = {};
-
-        // CRITICAL: include must be an array of expressions, not an object!
-        // Format: { include: [{ wildcard: true }] } not { include: { wildcard: true } }
+        // CRITICAL: include must be a ViewRuleExpr object, not an array!
+        // Format: { include: { wildcard: true } } not { include: [{ wildcard: true }] }
         const defaultViewConfig = {
-          rules: [{ include: [{ wildcard: true }] }],
+          rules: [{ include: { wildcard: true } }],
           nodes: [],
           edges: [],
         };
 
+        // Create a mutable copy of views to modify
+        const views: Record<string, ParsedView> = updatedJson.views ? { ...updatedJson.views } : {};
+
         // Merge existing views with default config (preserve existing view data)
-        Object.keys(updatedJson.views || {}).forEach((viewId) => {
-          const existingView = (updatedJson.views || {})[viewId] as any;
+        Object.keys(views).forEach((viewId) => {
+          const existingView = views[viewId];
           if (
             !existingView.rules ||
             !Array.isArray(existingView.rules) ||
             existingView.rules.length === 0
           ) {
-            (updatedJson.views as any)[viewId] = {
+            views[viewId] = {
               ...existingView,
               ...defaultViewConfig,
               id: existingView.id || viewId,
@@ -135,38 +168,41 @@ export const useArchitectureStore = create<ArchitectureState>()(
         });
 
         // Add default views if they don't exist
-        if (!updatedJson.views["index"]) {
-          (updatedJson.views as any)["index"] = {
+        if (!views["index"]) {
+          views["index"] = {
             id: "index",
             title: "Index",
             ...defaultViewConfig,
           };
         }
-        if (!updatedJson.views["L1"]) {
-          (updatedJson.views as any)["L1"] = {
+        if (!views["L1"]) {
+          views["L1"] = {
             id: "L1",
             title: "Landscape View (L1)",
             ...defaultViewConfig,
           };
         }
-        if (!updatedJson.views["L2"]) {
-          (updatedJson.views as any)["L2"] = {
+        if (!views["L2"]) {
+          views["L2"] = {
             id: "L2",
             title: "Container View (L2)",
             ...defaultViewConfig,
           };
         }
-        if (!updatedJson.views["L3"]) {
-          (updatedJson.views as any)["L3"] = {
+        if (!views["L3"]) {
+          views["L3"] = {
             id: "L3",
             title: "Component View (L3)",
             ...defaultViewConfig,
           };
         }
 
+        // Assign the modified views back to updatedJson
+        updatedJson.views = views;
+
         // Update model and history
         set({
-          likec4Model: updatedJson,
+          model: updatedJson,
           isLoading: false,
           error: null,
           lastLoaded: new Date().toISOString(),
@@ -202,7 +238,11 @@ export const useArchitectureStore = create<ArchitectureState>()(
             set({ convertedMarkdown: markdown });
           } catch (markdownError) {
             // Markdown conversion failure is non-critical
-            console.warn("Failed to convert DSL to Markdown:", markdownError);
+            logger.warn("Failed to convert DSL to Markdown", {
+              component: "architectureStore",
+              action: "convert_dsl_to_markdown",
+              error: markdownError instanceof Error ? markdownError.message : String(markdownError),
+            });
           }
         } else {
           set({ isConverting: false });
@@ -222,36 +262,40 @@ export const useArchitectureStore = create<ArchitectureState>()(
           get().refreshConvertedJson();
         } else if (!dsl) {
           // Clear converted data if DSL is removed
-          set({ likec4Model: null, convertedMarkdown: null });
+          set({ model: null, convertedMarkdown: null });
         }
       },
 
       refreshConvertedJson: async () => {
         const dsl = get().dslSource;
         if (!dsl) {
-          set({ likec4Model: null, convertedMarkdown: null });
+          set({ model: null, convertedMarkdown: null });
           return;
         }
 
         set({ isConverting: true });
         const { error, data: convertedData } = await safeAsync(
           async () => {
-            // Use LikeC4 export directly
-            let likec4Json: SrujaModelDump | null = null;
+            // Use model export directly
+            let modelJson: SrujaModelDump | null = null;
             try {
-              const likec4Data = await convertDslToLikeC4(dsl);
-              if (likec4Data && typeof likec4Data === "object" && "elements" in likec4Data) {
-                likec4Json = likec4Data as SrujaModelDump;
+              const modelData = await convertDslToModel(dsl);
+              if (modelData && typeof modelData === "object" && "elements" in modelData) {
+                modelJson = modelData as SrujaModelDump;
               }
             } catch (e) {
-              console.error("LikeC4 export failed:", e);
+              logger.error("Model export failed", {
+                component: "architectureStore",
+                action: "export_model",
+                error: e instanceof Error ? e.message : String(e),
+              });
               throw e;
             }
 
             const convertedMarkdown = await convertDslToMarkdown(dsl);
 
             return {
-              likec4Model: likec4Json,
+              model: modelJson,
               convertedMarkdown,
             };
           },
@@ -264,14 +308,14 @@ export const useArchitectureStore = create<ArchitectureState>()(
           set({ isConverting: false });
         } else if (convertedData) {
           set({
-            likec4Model: convertedData.likec4Model,
+            model: convertedData.model,
             convertedMarkdown: convertedData.convertedMarkdown,
             isConverting: false,
           });
 
           // Add to history if successful
-          if (convertedData.likec4Model) {
-            useHistoryStore.getState().push(convertedData.likec4Model);
+          if (convertedData.model) {
+            useHistoryStore.getState().push(convertedData.model);
           }
         } else {
           set({ isConverting: false });
@@ -279,7 +323,7 @@ export const useArchitectureStore = create<ArchitectureState>()(
       },
 
       updateArchitecture: async (updater) => {
-        const currentModel = get().likec4Model;
+        const currentModel = get().model;
 
         // Even if no model exists, allow the updater to create one.
         // This is safe for templates that provide a full initial model.
@@ -291,6 +335,7 @@ export const useArchitectureStore = create<ArchitectureState>()(
             elements: {},
             relations: [],
             views: {},
+            deployments: {},
             specification: { elements: {}, tags: {}, relationships: {} },
             project: { id: "sruja-project", name: "New Project" },
             _metadata: {
@@ -299,13 +344,13 @@ export const useArchitectureStore = create<ArchitectureState>()(
               generated: new Date().toISOString(),
               srujaVersion: "2.0.0",
             },
-          } as any;
+          };
         }
 
         // Update the model
-        // This triggers: Builder → Model → Diagram (via useEffect in LikeC4Canvas)
+        // This triggers: Builder → Model → Diagram (via useEffect in SrujaCanvas)
         const updatedModel = updater(baseModel!);
-        set({ likec4Model: updatedModel, lastLoaded: new Date().toISOString() });
+        set({ model: updatedModel, lastLoaded: new Date().toISOString() });
 
         // Add to history
         useHistoryStore.getState().push(updatedModel);
@@ -335,9 +380,28 @@ export const useArchitectureStore = create<ArchitectureState>()(
         }
       },
 
+      setChaosEnabled: (enabled) =>
+        set((state) => ({
+          chaosState: {
+            ...state.chaosState,
+            enabled,
+            failedNodeId: enabled ? state.chaosState.failedNodeId : null,
+          },
+        })),
+
+      setFailedNode: (nodeId) =>
+        set((state) => ({
+          chaosState: { ...state.chaosState, failedNodeId: nodeId },
+        })),
+
+      setCapacityLoad: (load) =>
+        set((state) => ({
+          capacityState: { ...state.capacityState, userLoad: load },
+        })),
+
       reset: () => {
         set({
-          likec4Model: null,
+          model: null,
           convertedMarkdown: null,
           isLoading: false,
           error: null,
@@ -348,6 +412,15 @@ export const useArchitectureStore = create<ArchitectureState>()(
           isConverting: false,
         });
         useHistoryStore.getState().clear();
+      },
+
+      setBaseline: (model) => {
+        if (model === undefined) {
+          // If no argument, use current model as baseline
+          set({ baselineModel: get().model });
+        } else {
+          set({ baselineModel: model });
+        }
       },
 
       clearProject: () => {
@@ -361,30 +434,38 @@ export const useArchitectureStore = create<ArchitectureState>()(
       partialize: (state) => {
         // Return stable object reference - only create new object if values actually changed
         return {
-          likec4Model: state.likec4Model,
+          model: state.model,
           convertedMarkdown: state.convertedMarkdown,
           lastLoaded: state.lastLoaded,
           dslSource: state.dslSource,
           sourceType: state.sourceType,
           currentExampleFile: state.currentExampleFile,
+          baselineModel: state.baselineModel, // Persist baseline
         };
       },
       // Handle rehydration (when data is loaded from storage)
       onRehydrateStorage: () => (state, error) => {
         if (error) {
-          console.warn("Failed to rehydrate architecture store:", error);
+          logger.warn("Failed to rehydrate architecture store", {
+            component: "architectureStore",
+            action: "rehydrate",
+            error: error instanceof Error ? error.message : String(error),
+          });
         } else if (state) {
           // Clear old syntax DSL from localStorage (old syntax starts with "architecture")
           if (state.dslSource && state.dslSource.trim().startsWith("architecture")) {
-            console.warn("Detected old syntax DSL in localStorage, clearing it.");
+            logger.warn("Detected old syntax DSL in localStorage, clearing it", {
+              component: "architectureStore",
+              action: "clear_old_dsl",
+            });
             state.dslSource = null;
             state.sourceType = null;
-            state.likec4Model = null;
+            state.model = null;
           }
 
-          if (state.likec4Model) {
+          if (state.model) {
             /*
-            console.log(
+            logger.info(
               `Architecture automatically loaded from localStorage (saved: ${state.lastLoaded || "unknown"})`
             );
             */

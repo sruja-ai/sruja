@@ -27,16 +27,16 @@ func TestCompletion_KeywordsAndPrefix(t *testing.T) {
 	}
 	foundSystem := false
 	for _, it := range res.Items {
-		if it.Label == "system" {
+		if it.Label == "System" {
 			foundSystem = true
 			break
 		}
 	}
 	if !foundSystem {
-		t.Fatalf("expected 'system' keyword in completion items")
+		t.Fatalf("expected 'System' keyword in completion items")
 	}
 
-	// With prefix "sys", expect "system" to be suggested
+	// With prefix "sys", expect "System" to be suggested
 	text2 := "sys"
 	_ = s.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{
 		TextDocument: lsp.TextDocumentItem{URI: uri, Text: text2, Version: 2},
@@ -52,13 +52,13 @@ func TestCompletion_KeywordsAndPrefix(t *testing.T) {
 	}
 	foundSystem2 := false
 	for _, it := range res2.Items {
-		if it.Label == "system" {
+		if it.Label == "System" {
 			foundSystem2 = true
 			break
 		}
 	}
 	if !foundSystem2 {
-		t.Fatalf("expected 'system' for prefix 'sys'")
+		t.Fatalf("expected 'System' for prefix 'sys'")
 	}
 }
 

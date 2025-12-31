@@ -27,15 +27,17 @@ interface FormValues {
 
 export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSystemFormProps) {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
-  const data = useArchitectureStore((s) => s.likec4Model);
+  const data = useArchitectureStore((s) => s.model);
   const formRef = useRef<HTMLFormElement>(null);
-
 
   // Initialize form state with validation
   const form = useFormState<FormValues>({
     initialValues: {
       name: (system as any)?.title || initialName || "",
-      description: typeof (system as any)?.description === 'string' ? (system as any).description : ((system as any)?.description?.txt || ""),
+      description:
+        typeof (system as any)?.description === "string"
+          ? (system as any).description
+          : (system as any)?.description?.txt || "",
       customId: false,
       idInput: (system as any)?.id || "",
       isExternal: (system as any)?.tags?.includes("external") || false,
@@ -68,7 +70,9 @@ export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSys
 
         if (!system) {
           // Create Mode
-          targetId = (values.customId ? values.idInput : "") || generateUniqueId(values.name, data, "system");
+          targetId =
+            (values.customId ? values.idInput : "") ||
+            generateUniqueId(values.name, data, "system");
         }
 
         if (!targetId) return model; // Should not happen given generateUniqueId fallback
@@ -81,7 +85,7 @@ export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSys
           title: values.name,
           description: (values.description || undefined) as any,
           tags: tags.length > 0 ? tags : undefined,
-          links: (system as any)?.links
+          links: (system as any)?.links,
           // Preserve other properties if editing?
           // If editing, we should merge.
           // If system exists, we are getting a SystemJSON which is different from ElementDump?
@@ -95,7 +99,7 @@ export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSys
             ...(model.elements[(system as any).id] as any),
             title: values.name,
             description: (values.description || undefined) as any,
-            tags: tags.length > 0 ? tags : undefined
+            tags: tags.length > 0 ? tags : undefined,
           };
         }
 
@@ -110,7 +114,10 @@ export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSys
     if (isOpen) {
       form.setValues({
         name: (system as any)?.title || initialName || "",
-        description: typeof (system as any)?.description === "string" ? (system as any).description : ((system as any)?.description?.txt || ""),
+        description:
+          typeof (system as any)?.description === "string"
+            ? (system as any).description
+            : (system as any)?.description?.txt || "",
         idInput: (system as any)?.id || "",
         customId: false,
         isExternal: (system as any)?.tags?.includes("external") || false,
@@ -118,9 +125,6 @@ export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSys
       form.clearErrors();
     }
   }, [isOpen, system, initialName]); // eslint-disable-line react-hooks/exhaustive-deps
-
-
-
 
   return (
     <SidePanel
@@ -144,12 +148,7 @@ export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSys
         </>
       }
     >
-      <form
-        ref={formRef}
-        id="edit-system-form"
-        onSubmit={form.handleSubmit}
-        className="edit-form"
-      >
+      <form ref={formRef} id="edit-system-form" onSubmit={form.handleSubmit} className="edit-form">
         <FormField
           label="System Name"
           name="name"

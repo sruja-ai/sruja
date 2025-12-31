@@ -10,15 +10,14 @@ import (
 
 func TestServer_ADR_Features(t *testing.T) {
 	dsl := `
-specification {
-	element component
+Component = kind "Component"
+adr = kind "Adr"
+requirement = kind "Requirement"
+
+ADR001 = adr "Test Decision" {
+  status "accepted"
 }
-model {
-	adr ADR001 "Test Decision" {
-		status "Accepted"
-	}
-	component c1
-}
+c1 = Component "c1"
 `
 	s := NewServer()
 	uri := lsp.DocumentURI("file:///test.sruja")
@@ -47,19 +46,13 @@ model {
 	// 2. Verify Hover
 	t.Run("Hover", func(t *testing.T) {
 		// Mock position for "ADR001"
-		// adr ADR001 ...
-		// 0123456789
-		// Line 6 (0-indexed base on dsl string above? Let's check lines)
-		// Line 0: empty
-		// Line 1: specification {
-		// Line 2: element component
-		// Line 3: }
-		// Line 4: model {
-		// Line 5: adr ADR001 "Test Decision" {
+		// 	ADR001 = adr ...
+		// Line 5.
+		// Tab = 1 char. Position 1 (A) to 6 (1).
 
 		val, err := s.Hover(context.Background(), lsp.TextDocumentPositionParams{
 			TextDocument: lsp.TextDocumentIdentifier{URI: uri},
-			Position:     lsp.Position{Line: 5, Character: 6},
+			Position:     lsp.Position{Line: 5, Character: 2},
 		})
 		if err != nil {
 			t.Fatalf("Hover failed: %v", err)
@@ -87,10 +80,10 @@ model {
 		foundAdr := false
 		foundReq := false
 		for _, item := range list.Items {
-			if item.Label == "adr" {
+			if item.Label == "Adr" {
 				foundAdr = true
 			}
-			if item.Label == "requirement" {
+			if item.Label == "Requirement" {
 				foundReq = true
 			}
 		}

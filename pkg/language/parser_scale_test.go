@@ -7,7 +7,7 @@ import (
 )
 
 func TestParser_Scale(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		MySystem = system "System" {
 			WebApp = container "Web App" {
 				technology "Go"
@@ -23,7 +23,7 @@ func TestParser_Scale(t *testing.T) {
 				}
 			}
 		}
-	}`
+	`
 	parser, err := language.NewParser()
 	if err != nil {
 		t.Fatalf("Failed to create parser: %v", err)

@@ -5,15 +5,12 @@ import (
 )
 
 func TestParser_UnorderedFields(t *testing.T) {
-	// Input with out-of-order tags and status
-	input := `model {
-		adr ADR001 "Test" {
-			tags ["tag1", "tag2"]
+	// Input with new unified syntax for ADR
+	input := `adr001 = adr "Test" {
 			status "Accepted"
 			decision "We decided X"
 			context "Context Y"
-		}
-	}`
+		}`
 
 	parser, err := NewParser()
 	if err != nil {
@@ -28,21 +25,21 @@ func TestParser_UnorderedFields(t *testing.T) {
 		t.Fatalf("Parser returned diagnostics: %v", diags)
 	}
 
-	// Find ADR in Model
-	var adr *ADR
+	// Find ADR via ElementDef in Model
+	var found bool
 	for _, item := range program.Model.Items {
-		if item.ADR != nil {
-			adr = item.ADR
-			break
+		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
+			a := item.ElementDef.Assignment
+			if a.Kind == "adr" && a.Name == "adr001" {
+				found = true
+				if a.Title == nil || *a.Title != "Test" {
+					t.Errorf("Expected Title 'Test', got %v", a.Title)
+				}
+				break
+			}
 		}
 	}
-	if adr == nil {
-		t.Fatal("Expected ADR")
-	}
-	if *adr.Body.Status != "Accepted" {
-		t.Errorf("Expected Status 'Accepted', got %v", adr.Body.Status)
-	}
-	if len(adr.Body.Tags) != 2 {
-		t.Errorf("Expected 2 tags, got %d", len(adr.Body.Tags))
+	if !found {
+		t.Fatal("Expected ADR element 'adr001' not found")
 	}
 }

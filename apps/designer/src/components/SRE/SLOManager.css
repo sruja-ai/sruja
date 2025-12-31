@@ -1,0 +1,203 @@
+/* apps/designer/src/components/SRE/SLOManager.css */
+.slo-manager {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-background, #ffffff);
+}
+
+.slo-manager-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-surface, #f1f5f9);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.slo-manager-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary, #1e293b);
+  margin: 0;
+}
+
+.slo-manager-form {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-surface, #f1f5f9);
+}
+
+.slo-form-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.slo-form-select {
+  padding: 8px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 4px;
+  background: var(--color-background, #ffffff);
+  font-size: 13px;
+  color: var(--color-text-primary, #1e293b);
+}
+
+.slo-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.slo-manager-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.slo-manager-empty-subtitle {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.slo-manager-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.slo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.slo-item {
+  padding: 16px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  background: var(--color-background, #ffffff);
+}
+
+.slo-item.slo-met {
+  border-left: 3px solid #22c55e;
+}
+
+.slo-item.slo-at-risk {
+  border-left: 3px solid #f59e0b;
+}
+
+.slo-item.slo-breached {
+  border-left: 3px solid #ef4444;
+}
+
+.slo-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.slo-item-info {
+  flex: 1;
+}
+
+.slo-item-service {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary, #1e293b);
+  margin-bottom: 8px;
+}
+
+.slo-item-type {
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+  text-transform: capitalize;
+}
+
+.slo-item-status {
+  flex-shrink: 0;
+}
+
+.icon-met {
+  color: #22c55e;
+}
+
+.icon-at-risk {
+  color: #f59e0b;
+}
+
+.icon-breached {
+  color: #ef4444;
+}
+
+.slo-item-metrics {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+.slo-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.slo-metric-label {
+  color: var(--color-text-secondary, #6b7280);
+  font-size: 11px;
+}
+
+.slo-metric-value {
+  color: var(--color-text-primary, #1e293b);
+  font-weight: 600;
+}
+
+.slo-item-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--color-surface, #f3f4f6);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.slo-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 3px;
+}
+
+/* Dark mode support */
+[data-theme="dark"] .slo-manager {
+  background: var(--color-background, #0f172a);
+}
+
+[data-theme="dark"] .slo-manager-header {
+  background: var(--color-surface, #1e293b);
+  border-color: var(--color-border, #334155);
+}
+
+[data-theme="dark"] .slo-manager-form {
+  background: var(--color-surface, #1e293b);
+  border-color: var(--color-border, #334155);
+}
+
+[data-theme="dark"] .slo-form-select {
+  background: var(--color-background, #0f172a);
+  border-color: var(--color-border, #334155);
+  color: var(--color-text-primary, #f1f5f9);
+}
+
+[data-theme="dark"] .slo-item {
+  background: var(--color-background, #0f172a);
+  border-color: var(--color-border, #334155);
+}
+
+[data-theme="dark"] .slo-item-bar {
+  background: var(--color-surface, #0f172a);
+}

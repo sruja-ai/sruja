@@ -106,7 +106,7 @@ test.describe("Fix Verification", () => {
     // Verify diagram is visible
     await expect(page.locator(".react-flow")).toBeVisible();
 
-    // Check for SVG elements (LikeC4 renders SVG)
+    // Check for SVG elements
     await page.waitForSelector(".react-flow__node", { timeout: 10000 });
     const nodeCount = await page.locator(".react-flow__node").count();
     expect(nodeCount).toBeGreaterThan(0);

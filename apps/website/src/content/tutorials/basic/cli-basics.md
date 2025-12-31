@@ -25,30 +25,24 @@ export PATH="$HOME/go/bin:$PATH"
 ## Create a Model
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+App = system "My App" {
+Web = container "Web Server"
+DB = datastore "Database"
 }
+User = person "User"
 
-model {
-  App = system "My App" {
-    Web = container "Web Server"
-    DB = datastore "Database"
-  }
-  User = person "User"
+User -> App.Web "Visits"
+App.Web -> App.DB "Reads/Writes"
 
-  User -> App.Web "Visits"
-  App.Web -> App.DB "Reads/Writes"
-}
-
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 

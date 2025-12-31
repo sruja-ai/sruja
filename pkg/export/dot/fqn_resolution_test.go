@@ -12,21 +12,17 @@ import (
 // This addresses the issue where "llm" should resolve to "ragPlatform.llm"
 func TestFQNResolutionForShortNames(t *testing.T) {
 	dsl := `
-specification {
-	element person
-	element system
-	element container
-}
+	Person = kind "Person"
+	System = kind "System"
+	Container = kind "Container"
 
-model {
-	ragPlatform = system "RAG Platform" {
-		gateway = container "API Gateway"
-		llm = system "LLM Provider" {
+	ragPlatform = System "RAG Platform" {
+		gateway = Container "API Gateway"
+		llm = System "LLM Provider" {
 			description "OpenAI GPT-4"
 		}
 		gateway -> llm "Generate answer"
 	}
-}
 `
 	parser, err := language.NewParser()
 	if err != nil {
@@ -79,21 +75,17 @@ model {
 // when there's context (same parent scope)
 func TestShortNameResolutionWithContext(t *testing.T) {
 	dsl := `
-specification {
-	element system
-	element container
-}
+	System = kind "System"
+	Container = kind "Container"
 
-model {
-	platform = system "Platform" {
-		service1 = container "Service 1"
-		service2 = container "Service 2"
-		external = system "External Service"
+	platform = System "Platform" {
+		service1 = Container "Service 1"
+		service2 = Container "Service 2"
+		external = System "External Service"
 		
 		service1 -> service2 "Calls"
 		service1 -> external "Uses"
 	}
-}
 `
 	parser, err := language.NewParser()
 	if err != nil {

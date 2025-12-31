@@ -1,78 +1,58 @@
 ---
-title: "Lesson 3: Defining Interfaces (Contracts)"
+title: "Lesson 3: API-First Design"
 weight: 3
-summary: "Design-first API development using Contracts."
+summary: "Design-first API development using OpenAPI and Sruja together."
 ---
 
-# Lesson 3: Defining Interfaces
+# Lesson 3: API-First Design
 
-Before frontend and backend teams start working, they need to agree on the API. This is where **Contracts** come in.
+Before frontend and backend teams start working, they need to agree on the API. This is where **API-First Design** comes in.
 
 ## API-First Design
-Instead of writing code and then documenting it, we define the contract first. This allows frontend devs to mock the API while backend devs build it.
 
-## Modeling in Sruja
-We can define contracts directly inside our containers.
+Instead of writing code and then documenting it, we define the API schema first using **OpenAPI**. This allows frontend devs to mock the API while backend devs build it.
+
+## Sruja's Role: Architecture Modeling
+
+Sruja models **which services exist and how they connect**. For detailed API schemas (endpoints, request/response structures), use **OpenAPI/Swagger**.
 
 ```sruja
-specification {
-  element system
-  element container
-  element datastore
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+customer = person "Customer"
+
+ecommerce = system "E-Commerce Platform" {
+  api = container "Core API" {
+    technology "Go, Gin"
+    // API schemas defined in openapi.yaml
+  }
+
+  orderDB = database "Order Database" {
+    technology "PostgreSQL"
+  }
+
+  api -> orderDB "reads and writes to"
 }
 
-model {
-  ECommerce = system "E-Commerce Platform" {
-    API = container "Core API" {
-      technology "Go, Gin"
-      
-      contracts {
-        api CreateOrder {
-          endpoint "/orders"
-          method "POST"
-          description "Creates a new customer order."
-          
-          request {
-            items List<OrderItem>
-            paymentMethod string
-          }
-          
-          response {
-            orderId string
-            status string
-          }
-        }
-        
-        api GetOrder {
-          endpoint "/orders/{orderId}"
-          method "GET"
-          description "Retrieves order details by ID"
-        }
-      }
-    }
-    
-    OrderDB = datastore "Order Database" {
-      technology "PostgreSQL"
-    }
-    
-    API -> OrderDB "Reads/Writes"
-  }
-}
+customer -> ecommerce.api "uses"
 
-views {
-  view index {
-    title "API Contracts View"
-    include *
-  }
-  
-  // API-focused view
-  view api {
-    title "API Contracts"
-    include ECommerce.API
-  }
+view index {
+  title "E-Commerce Architecture"
+  include *
 }
 ```
 
+## Best Practice: Separation of Concerns
+
+1. **Sruja**: Models architecture (services, containers, relationships)
+2. **OpenAPI**: Defines API schemas (endpoints, request/response structures)
+3. **Together**: Architecture shows the big picture, OpenAPI shows the details
+
 ## Why this matters
-1.  **Single Source of Truth**: The architecture file *is* the API documentation.
-2.  **Code Generation**: We can potentially generate Go structs or TypeScript interfaces from this definition.
+
+1. **Right tool for the job**: Architecture modeling vs. API specification
+2. **Industry standard**: OpenAPI is widely supported by tools and frameworks
+3. **Code Generation**: Generate Go structs, TypeScript interfaces, and client SDKs from OpenAPI

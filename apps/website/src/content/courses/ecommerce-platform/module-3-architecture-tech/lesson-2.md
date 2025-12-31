@@ -9,39 +9,37 @@ summary: "Choosing technologies and documenting them in Containers."
 We have our domains. Now we need to pick the tools to build them.
 
 ## The Stack
+
 1.  **Frontend**: Next.js (React) - Great for SEO and performance.
 2.  **Backend**: Go (Golang) - High performance, great concurrency for e-commerce.
 3.  **Database**: PostgreSQL - Reliable, ACID compliant (critical for money).
 
 ## Modeling in Sruja
+
 We define these choices in our `container` definitions.
 
 ```sruja
-specification {
-  element system
-  element container
+element system
+element container
+
+Platform = system "E-Commerce Platform" {
+WebApp = container "Storefront & Admin" {
+  technology "Next.js, TypeScript"
+  description "The user-facing application."
 }
 
-model {
-  Platform = system "E-Commerce Platform" {
-    WebApp = container "Storefront & Admin" {
-      technology "Next.js, TypeScript"
-      description "The user-facing application."
-    }
+API = container "Core API" {
+  technology "Go, Gin"
+  description "REST API handling business logic."
+}
 
-    API = container "Core API" {
-      technology "Go, Gin"
-      description "REST API handling business logic."
-    }
+Database = container "Primary DB" {
+  technology "PostgreSQL 15"
+  description "Stores orders, products, and users."
+}
 
-    Database = container "Primary DB" {
-      technology "PostgreSQL 15"
-      description "Stores orders, products, and users."
-    }
-
-    WebApp -> API "JSON/HTTPS"
-    API -> Database "SQL/TCP"
-  }
+WebApp -> API "JSON/HTTPS"
+API -> Database "SQL/TCP"
 }
 ```
 

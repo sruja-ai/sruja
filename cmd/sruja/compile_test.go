@@ -13,15 +13,13 @@ func TestRunCompile(t *testing.T) {
 	validFile := filepath.Join(tmpDir, "valid.sruja")
 	invalidFile := filepath.Join(tmpDir, "invalid.sruja")
 
-	validContent := `model {
-		system S1 "System 1"
-		system S2 "System 2"
-		S1 -> S2 "uses"
-	}`
-	invalidContent := `model {
-		system S1 "System 1"
-		system S1 "Duplicate System"
-	}`
+	validContent := `system = kind "System"
+		S1 = system "System 1"
+		S2 = system "System 2"
+		S1 -> S2 "uses"`
+	invalidContent := `system = kind "System"
+		S1 = system "System 1"
+		S1 = system "Duplicate System"`
 
 	if err := os.WriteFile(validFile, []byte(validContent), 0o644); err != nil {
 		t.Fatal(err)
@@ -96,10 +94,11 @@ func TestRunCompile_Directory(t *testing.T) {
 	mainFile := filepath.Join(tmpDir, "main.sruja")
 	otherFile := filepath.Join(tmpDir, "other.sruja")
 
-	if err := os.WriteFile(mainFile, []byte(`model { system S1 "Sys 1" }`), 0o644); err != nil {
+	if err := os.WriteFile(mainFile, []byte(`system=kind "System"
+S1 = system "Sys 1"`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(otherFile, []byte(`model { system S2 "Sys 2" }`), 0o644); err != nil {
+	if err := os.WriteFile(otherFile, []byte(`S2 = system "Sys 2"`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

@@ -28,7 +28,7 @@ export async function fetchExampleDsl(filename: string): Promise<string> {
 
 /**
  * Legacy: Fetch example JSON (pre-exported)
- * Note: Most examples are now DSL files, use fetchExampleDsl + convertDslToJson instead
+ * Note: Most examples are now DSL files, use fetchExampleDsl + convertDslToModel instead
  */
 export async function fetchExampleJson(filename: string): Promise<object> {
   const text = await loadExampleFile(filename);

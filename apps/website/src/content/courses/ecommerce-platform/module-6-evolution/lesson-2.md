@@ -9,30 +9,28 @@ summary: "Using Deprecation and ADRs to manage legacy code."
 Every codebase has skeletons. The key is to label them.
 
 ## Deprecating Components
+
 We decided to move from `Stripe` to `Adyen` for lower fees. But we can't switch overnight.
 
 ```sruja
-specification {
-  element system
+element system
+
+Stripe = system "Legacy Payment Gateway" {
+metadata {
+  tags ["deprecated"]
+}
+description "Do not use for new features. Migration in progress."
 }
 
-model {
-  Stripe = system "Legacy Payment Gateway" {
-    metadata {
-      tags ["deprecated"]
-    }
-    description "Do not use for new features. Migration in progress."
-  }
-
-  Adyen = system "New Payment Gateway" {
-    metadata {
-      tags ["preferred"]
-    }
-  }
+Adyen = system "New Payment Gateway" {
+metadata {
+  tags ["preferred"]
+}
 }
 ```
 
 ## Governance Policies
+
 We can enforce this with a policy!
 
 ```sruja

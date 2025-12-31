@@ -27,29 +27,41 @@ interface FormValues {
   selectedSystemId: string;
 }
 
-export function EditDataStoreForm({ isOpen, onClose, dataStore, parentSystemId, initialName }: EditDataStoreFormProps) {
+export function EditDataStoreForm({
+  isOpen,
+  onClose,
+  dataStore,
+  parentSystemId,
+  initialName,
+}: EditDataStoreFormProps) {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
-  const data = useArchitectureStore((s) => s.likec4Model);
+  const data = useArchitectureStore((s) => s.model);
   const formRef = useRef<HTMLFormElement>(null);
 
   const allElements = useMemo(() => Object.values(data?.elements || {}) as any[], [data?.elements]);
   const systems = useMemo(() => allElements.filter((e: any) => e.kind === "system"), [allElements]);
 
-
   // Initialize form state
   const form = useFormState<FormValues>({
     initialValues: {
       name: (dataStore as any)?.title || initialName || "",
-      description: typeof (dataStore as any)?.description === 'string' ? (dataStore as any).description : ((dataStore as any)?.description?.txt || ""),
+      description:
+        typeof (dataStore as any)?.description === "string"
+          ? (dataStore as any).description
+          : (dataStore as any)?.description?.txt || "",
       technology: (dataStore as any)?.technology || "",
       customId: false,
       idInput: (dataStore as any)?.id || "",
-      selectedSystemId: parentSystemId || ((dataStore as any)?.id?.includes(".") ? (dataStore as any).id.split(".")[0] : "") || "",
+      selectedSystemId:
+        parentSystemId ||
+        ((dataStore as any)?.id?.includes(".") ? (dataStore as any).id.split(".")[0] : "") ||
+        "",
     },
     validate: (values) => {
       const errors: FormErrors = {};
       if (!values.name.trim()) errors.name = "Name is required";
-      if (!dataStore && !values.selectedSystemId) errors.selectedSystemId = "Parent System is required";
+      if (!dataStore && !values.selectedSystemId)
+        errors.selectedSystemId = "Parent System is required";
       if (values.customId && !values.idInput.trim()) errors.idInput = "ID is required";
 
       if (values.customId && values.idInput.trim() && !dataStore && values.selectedSystemId) {
@@ -67,7 +79,7 @@ export function EditDataStoreForm({ isOpen, onClose, dataStore, parentSystemId, 
         let targetId = (dataStore as any)?.id;
 
         if (!dataStore) {
-          const baseId = values.customId ? values.idInput : (slugify(values.name) || "db");
+          const baseId = values.customId ? values.idInput : slugify(values.name) || "db";
           if (!values.selectedSystemId) return model;
           targetId = `${values.selectedSystemId}.${baseId}` as any;
           let i = 1;
@@ -83,9 +95,13 @@ export function EditDataStoreForm({ isOpen, onClose, dataStore, parentSystemId, 
           id: targetId as any,
           kind: "container",
           title: values.name,
-          description: (typeof values.description === "string" ? values.description : ((values.description as any)?.txt || undefined)) as any,
+          description: (typeof values.description === "string"
+            ? values.description
+            : (values.description as any)?.txt || undefined) as any,
           technology: values.technology || undefined,
-          tags: (dataStore as any)?.tags ? [...new Set([...(dataStore as any).tags, "database"])] : ["database"],
+          tags: (dataStore as any)?.tags
+            ? [...new Set([...(dataStore as any).tags, "database"])]
+            : ["database"],
           links: (dataStore as any)?.links,
           style: {} as any,
         };
@@ -101,11 +117,21 @@ export function EditDataStoreForm({ isOpen, onClose, dataStore, parentSystemId, 
     if (isOpen) {
       form.setValues({
         name: (dataStore as any)?.title || initialName || "",
-        description: typeof (dataStore as any)?.description === "string" ? (dataStore as any).description : ((dataStore as any)?.description && typeof (dataStore as any).description === "object" && "txt" in (dataStore as any).description ? (dataStore as any).description.txt : "") || "",
+        description:
+          typeof (dataStore as any)?.description === "string"
+            ? (dataStore as any).description
+            : ((dataStore as any)?.description &&
+              typeof (dataStore as any).description === "object" &&
+              "txt" in (dataStore as any).description
+                ? (dataStore as any).description.txt
+                : "") || "",
         technology: (dataStore as any)?.technology || "",
         idInput: (dataStore as any)?.id || "",
         customId: false,
-        selectedSystemId: parentSystemId || ((dataStore as any)?.id?.includes(".") ? (dataStore as any).id.split(".")[0] : "") || "",
+        selectedSystemId:
+          parentSystemId ||
+          ((dataStore as any)?.id?.includes(".") ? (dataStore as any).id.split(".")[0] : "") ||
+          "",
       });
       form.clearErrors();
     }
@@ -119,14 +145,26 @@ export function EditDataStoreForm({ isOpen, onClose, dataStore, parentSystemId, 
       size="lg"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} type="button">Cancel</Button>
-          <Button variant="primary" type="submit" form="edit-datastore-form" isLoading={form.isSubmitting}>
+          <Button variant="secondary" onClick={onClose} type="button">
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            type="submit"
+            form="edit-datastore-form"
+            isLoading={form.isSubmitting}
+          >
             {dataStore ? "Update" : "Create"}
           </Button>
         </>
       }
     >
-      <form ref={formRef} id="edit-datastore-form" onSubmit={form.handleSubmit} className="edit-form">
+      <form
+        ref={formRef}
+        id="edit-datastore-form"
+        onSubmit={form.handleSubmit}
+        className="edit-form"
+      >
         {!dataStore && (
           <Select
             label="Parent System *"
@@ -135,7 +173,7 @@ export function EditDataStoreForm({ isOpen, onClose, dataStore, parentSystemId, 
             disabled={!!parentSystemId}
             placeholder="Select System"
             error={form.errors.selectedSystemId}
-            data={systems.map(s => ({ value: s.id, label: s.title || s.id }))}
+            data={systems.map((s) => ({ value: s.id, label: s.title || s.id }))}
           />
         )}
 
@@ -186,7 +224,9 @@ export function EditDataStoreForm({ isOpen, onClose, dataStore, parentSystemId, 
           </>
         )}
 
-        {form.errors.submit && <div className="text-red-500 text-sm mt-2">{form.errors.submit}</div>}
+        {form.errors.submit && (
+          <div className="text-red-500 text-sm mt-2">{form.errors.submit}</div>
+        )}
       </form>
     </SidePanel>
   );

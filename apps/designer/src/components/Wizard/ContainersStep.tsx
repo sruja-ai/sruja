@@ -7,7 +7,7 @@ import { useEffect } from "react";
 import { BestPracticeTip, EditContainerForm, EditDataStoreForm, EditQueueForm } from "../shared"; // Updated imports
 import { RelationsSection } from "./RelationsSection";
 import { GovernanceSection } from "./GovernanceSection";
-import type { ElementDump } from "@sruja/shared";
+import type { ElementDump, RelationDump } from "@sruja/shared";
 import "./WizardSteps.css";
 
 interface ContainersStepProps {
@@ -23,21 +23,29 @@ export function ContainersStep({
   onBack,
   readOnly: _readOnly = false,
 }: ContainersStepProps) {
-  const data = useArchitectureStore((s) => s.likec4Model);
+  const data = useArchitectureStore((s) => s.model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
   const drillDown = useViewStore((s) => s.drillDown);
 
   // Derive systems from flat elements
-  const allElements = useMemo(() => Object.values(data?.elements || {}) as any[], [data?.elements]);
-  const systems = useMemo(() => allElements.filter((e: any) => e.kind === "system"), [allElements]);
+  const allElements = useMemo(
+    () => Object.values(data?.elements || {}) as ElementDump[],
+    [data?.elements]
+  );
+  const systems = useMemo(
+    () => allElements.filter((e: ElementDump) => e.kind === "system"),
+    [allElements]
+  );
 
   // Form state
   // We need to handle case where selectedSystemId might not maintain validity if systems change, but for now init is fine.
-  const [selectedSystemId, setSelectedSystemId] = useState((systems[0] as any)?.id ?? "");
+  const [selectedSystemId, setSelectedSystemId] = useState(
+    (systems[0] as ElementDump | undefined)?.id ?? ""
+  );
 
   // Update selected if empty and systems exist
   if (!selectedSystemId && systems.length > 0) {
-    setSelectedSystemId((systems[0] as any).id);
+    setSelectedSystemId((systems[0] as ElementDump).id);
   }
 
   // Auto-Zoom: Focus diagram on selected system
@@ -57,12 +65,12 @@ export function ContainersStep({
   const [isQueueFormOpen, setIsQueueFormOpen] = useState(false);
   const [editQueue, setEditQueue] = useState<ElementDump | undefined>(undefined);
 
-  const selectedSystem = systems.find((s: any) => s.id === selectedSystemId);
+  const selectedSystem = systems.find((s: ElementDump) => s.id === selectedSystemId);
 
   // Filter children by ID hierarchy (systemId.childId)
   const systemChildren = useMemo(() => {
     if (!selectedSystemId) return [];
-    return allElements.filter((e: any) => {
+    return allElements.filter((e: ElementDump) => {
       if (e.kind === "system" || e.kind === "person" || e.kind === "actor") return false;
       // Check if parent is selectedSystemId. Assuming dot notation or exact parent checking if we had it.
       // Using dot notation: id starts with "systemId." and has no other dots?
@@ -80,9 +88,9 @@ export function ContainersStep({
   // Calculate total L2 elements across all systems for validation
   const totalElements = useMemo(() => {
     // Count all elements that are children of ANY system
-    return allElements.filter((e: any) => {
+    return allElements.filter((e: ElementDump) => {
       const parts = e.id.split(".");
-      return parts.length === 2 && systems.some((s: any) => s.id === parts[0]);
+      return parts.length === 2 && systems.some((s: ElementDump) => s.id === parts[0]);
     }).length;
   }, [allElements, systems]);
 
@@ -91,11 +99,11 @@ export function ContainersStep({
   // Build L2 elements for relations (all containers, datastores, queues across all systems)
   const l2Elements = useMemo(() => {
     return allElements
-      .filter((e: any) => {
+      .filter((e: ElementDump) => {
         const parts = e.id.split(".");
-        return parts.length === 2 && systems.some((s: any) => s.id === parts[0]);
+        return parts.length === 2 && systems.some((s: ElementDump) => s.id === parts[0]);
       })
-      .map((e: any) => ({
+      .map((e: ElementDump) => ({
         id: e.id,
         label: e.title,
         type: e.kind,
@@ -173,7 +181,7 @@ export function ContainersStep({
         <h3>Select System</h3>
         <div className="system-tabs">
           {systems.map((system) => {
-            const count = allElements.filter((e: any) => {
+            const count = allElements.filter((e: ElementDump) => {
               const parts = e.id.split(".");
               return parts.length === 2 && parts[0] === system.id;
             }).length;
@@ -205,7 +213,7 @@ export function ContainersStep({
         </h3>
 
         <div className="items-list">
-          {containers.map((c: any) => (
+          {containers.map((c: ElementDump) => (
             <div key={c.id} className="item-card">
               <Box size={16} className="item-icon container" />
               <div className="item-info">
@@ -238,7 +246,7 @@ export function ContainersStep({
               </div>
             </div>
           ))}
-          {datastores.map((d: any) => (
+          {datastores.map((d: ElementDump) => (
             <div key={d.id} className="item-card">
               <Database size={16} className="item-icon datastore" />
               <div className="item-info">
@@ -270,7 +278,7 @@ export function ContainersStep({
               </div>
             </div>
           ))}
-          {queues.map((q: any) => (
+          {queues.map((q: ElementDump) => (
             <div key={q.id} className="item-card">
               <MessageSquare size={16} className="item-icon queue" />
               <div className="item-info">
@@ -352,7 +360,7 @@ export function ContainersStep({
         <RelationsSection
           fromElements={l2Elements}
           toElements={l2Elements}
-          filterFn={(rel: any) => {
+          filterFn={(rel: RelationDump) => {
             // Show L2 relations (one dot in path = System.Container)
             const srcId =
               typeof rel.source === "object" && rel.source?.model

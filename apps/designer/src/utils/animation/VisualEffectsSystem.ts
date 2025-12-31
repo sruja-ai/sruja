@@ -1,6 +1,6 @@
 /**
  * Visual Effects System
- * 
+ *
  * Handles visual effects for nodes and edges during animation.
  * Applies CSS classes and manages DOM element state.
  */
@@ -21,7 +21,7 @@ export class VisualEffectsSystem {
   }
 
   /**
-   * Scan container for LikeC4 diagram elements
+   * Scan container for diagram elements
    */
   scanElements(): void {
     if (!this.container) {
@@ -31,14 +31,9 @@ export class VisualEffectsSystem {
     this.nodeElements.clear();
     this.edgeElements.clear();
 
-    // Find all node elements (LikeC4 renders nodes with data attributes)
+    // Find all node elements (nodes are rendered with data attributes)
     // Common patterns: [data-element-id], [data-node-id], g[data-id]
-    const nodeSelectors = [
-      '[data-element-id]',
-      '[data-node-id]',
-      'g[data-id]',
-      '.likec4-node',
-    ];
+    const nodeSelectors = ["[data-element-id]", "[data-node-id]", "g[data-id]", ".sruja-node"];
 
     nodeSelectors.forEach((selector) => {
       const elements = this.container!.querySelectorAll<HTMLElement>(selector);
@@ -53,13 +48,9 @@ export class VisualEffectsSystem {
       });
     });
 
-    // Find all edge elements (LikeC4 renders edges as paths or lines)
+    // Find all edge elements (edges are rendered as paths or lines)
     // Common patterns: path elements with data attributes, or lines connecting nodes
-    const edgeSelectors = [
-      'path[data-edge-id]',
-      'path[data-relation-id]',
-      '.likec4-edge',
-    ];
+    const edgeSelectors = ["path[data-edge-id]", "path[data-relation-id]", ".sruja-edge"];
 
     edgeSelectors.forEach((selector) => {
       const elements = this.container!.querySelectorAll<HTMLElement>(selector);
@@ -75,10 +66,10 @@ export class VisualEffectsSystem {
     });
 
     // Also try to find edges by source/target attributes
-    const pathElements = this.container!.querySelectorAll<HTMLElement>('path');
+    const pathElements = this.container!.querySelectorAll<HTMLElement>("path");
     pathElements.forEach((path) => {
-      const source = path.getAttribute('data-source') || path.getAttribute('source');
-      const target = path.getAttribute('data-target') || path.getAttribute('target');
+      const source = path.getAttribute("data-source") || path.getAttribute("source");
+      const target = path.getAttribute("data-target") || path.getAttribute("target");
       if (source && target) {
         const edgeId = `${source}->${target}`;
         if (!this.edgeElements.has(edgeId)) {
@@ -283,4 +274,3 @@ export class VisualEffectsSystem {
     classesToRemove.forEach((cls) => element.classList.remove(cls));
   }
 }
-

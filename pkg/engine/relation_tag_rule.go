@@ -63,8 +63,8 @@ func (r *RelationTagRule) Validate(program *language.Program) []diagnostics.Diag
 		}
 	}
 
-	// Collect all relations from LikeC4 Model
-	_, relations := collectLikeC4Elements(program.Model)
+	// Collect all relations from Model
+	_, relations := collectElements(program.Model)
 
 	// Check all relations
 	for _, rel := range relations {

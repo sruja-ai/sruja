@@ -15,6 +15,10 @@ interface ViewState {
   goUp: () => void;
   goToRoot: () => void;
   toggleExpand: (nodeId: string) => void;
+
+  // View ID Navigation (for DSL Views)
+  activeViewId: string | null;
+  setActiveView: (viewId: string | null) => void;
 }
 
 export const useViewStore = create<ViewState>((set, get) => ({
@@ -23,31 +27,41 @@ export const useViewStore = create<ViewState>((set, get) => ({
   focusedContainerId: null,
   expandedNodes: new Set<string>(),
   breadcrumb: ["Architecture"],
+  activeViewId: null,
+
+  setActiveView: (viewId) => {
+    set({ activeViewId: viewId });
+    // Reset breadcrumbs if going to a specific view?
+    // Maybe keep them but mark as "View Mode"
+  },
 
   setLevel: (level) => {
+    // Setting level clears active explicit view
+    set({ activeViewId: null });
+
     // When setting level manually, ensure navigation state is consistent
     // L2 requires focusedSystemId, L3 requires both focusedSystemId and focusedContainerId
     const state = get();
     if (level === "L1") {
       // Going to L1 clears focused IDs
-      set({ 
+      set({
         currentLevel: level,
         focusedSystemId: null,
         focusedContainerId: null,
-        breadcrumb: ["Architecture"]
+        breadcrumb: ["Architecture"],
       });
     } else if (level === "L2" && state.focusedSystemId) {
       // L2 requires focusedSystemId - keep it, clear focusedContainerId
-      set({ 
+      set({
         currentLevel: level,
         focusedContainerId: null,
-        breadcrumb: ["Architecture", state.focusedSystemId]
+        breadcrumb: ["Architecture", state.focusedSystemId],
       });
     } else if (level === "L3" && state.focusedSystemId && state.focusedContainerId) {
       // L3 requires both - keep them
-      set({ 
+      set({
         currentLevel: level,
-        breadcrumb: ["Architecture", state.focusedSystemId, state.focusedContainerId]
+        breadcrumb: ["Architecture", state.focusedSystemId, state.focusedContainerId],
       });
     } else {
       // Just update level if requirements not met (buttons should be disabled anyway)

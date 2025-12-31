@@ -67,7 +67,7 @@ model {
       technology "Redis"
     }
     
-    // Internal ecommerce system relations (LikeC4 style - can be inside system block)
+    // Internal ecommerce system relations (can be inside system block)
     webApp -> api "calls API"
     api -> productDb "reads product data from"
     api -> orderDb "writes order data to"

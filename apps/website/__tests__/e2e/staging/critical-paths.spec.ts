@@ -10,23 +10,30 @@ test.describe("Critical User Paths on Staging", () => {
     // Start at homepage
     await page.goto("/");
     await expect(page).toHaveTitle(/Sruja/i);
+    await page.waitForLoadState("networkidle");
 
-    // Click "Get Started" button
+    // Find "Get Started" button - wait for it to be visible and enabled
     const getStartedButton = page
-      .locator("a, button")
-      .filter({ hasText: /Get Started/i })
+      .getByRole("button", { name: /Get Started/i })
+      .or(page.locator("a").filter({ hasText: /Get Started/i }))
       .first();
-    if ((await getStartedButton.count()) > 0) {
-      await getStartedButton.click();
-      await page.waitForLoadState("networkidle");
 
-      // Should be on docs/getting-started or similar
-      expect(page.url()).toMatch(/docs|getting-started/i);
+    await expect(getStartedButton).toBeVisible({ timeout: 10_000 });
 
-      // Page should load successfully
-      const body = page.locator("body");
-      await expect(body).not.toContainText(/404|Not Found/i);
-    }
+    // Click the button and wait for navigation
+    // The button may trigger client-side navigation, so we wait for URL change
+    await Promise.all([
+      page.waitForURL(/docs|getting-started/i, { timeout: 20_000 }),
+      getStartedButton.click(),
+    ]);
+
+    // Verify we're on the getting started page
+    await expect(page).toHaveURL(/docs|getting-started/i);
+    await page.waitForLoadState("networkidle");
+
+    // Page should load successfully
+    const body = page.locator("body");
+    await expect(body).not.toContainText(/404|Not Found/i);
   });
 
   test("navigation: homepage -> designer", async ({ page }) => {

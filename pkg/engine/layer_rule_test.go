@@ -16,78 +16,66 @@ func TestLayerViolationRule_Validate(t *testing.T) {
 		{
 			name: "Valid Layering (Web -> API)",
 			dsl: `
-				model {
-					WebApp = container "Web" {
-						metadata { layer "web" }
-					}
-					APIService = container "API" {
-						metadata { layer "api" }
-					}
-					WebApp -> APIService
+				WebApp = container "Web" {
+					metadata { layer "web" }
 				}
+				APIService = container "API" {
+					metadata { layer "api" }
+				}
+				WebApp -> APIService
 			`,
 			expected: 0,
 		},
 		{
 			name: "Invalid Layering (API -> Web)",
 			dsl: `
-				model {
-					WebApp = container "Web" {
-						metadata { layer "web" }
-					}
-					APIService = container "API" {
-						metadata { layer "api" }
-					}
-					APIService -> WebApp
+				WebApp = container "Web" {
+					metadata { layer "web" }
 				}
+				APIService = container "API" {
+					metadata { layer "api" }
+				}
+				APIService -> WebApp
 			`,
 			expected: 1,
 		},
 		{
 			name: "Valid Layering (Name Convention)",
 			dsl: `
-				model {
-					MyWeb = container "Web"
-					MyAPI = container "API"
-					MyWeb -> MyAPI
-				}
+				MyWeb = container "Web"
+				MyAPI = container "API"
+				MyWeb -> MyAPI
 			`,
 			expected: 0,
 		},
 		{
 			name: "Invalid Layering (Name Convention)",
 			dsl: `
-				model {
-					MyWeb = container "Web"
-					MyAPI = container "API"
-					MyAPI -> MyWeb
-				}
+				MyWeb = container "Web"
+				MyAPI = container "API"
+				MyAPI -> MyWeb
 			`,
 			expected: 1,
 		},
 		{
 			name: "Unknown Layers (Ignored)",
 			dsl: `
-				model {
-					A = container "A"
-					B = container "B"
-					A -> B
-				}
+				A = container "A"
+				B = container "B"
+				A -> B
 			`,
 			expected: 0,
 		},
 		{
 			name: "Relaxed Layering (Web -> Data)",
 			dsl: `
-				model {
-					WebApp = container "Web" {
-						metadata { layer "web" }
-					}
-					DB = container "Database" {
-						metadata { layer "data" }
-					}
-					WebApp -> DB
+				WebApp = container "Web" {
+					metadata { layer "web" }
 				}
+				DB = container "Database" {
+					metadata { layer "data" }
+				}
+				WebApp -> DB
 			`,
 			expected: 0, // Skipping layers is allowed in this rule implementation
 		},

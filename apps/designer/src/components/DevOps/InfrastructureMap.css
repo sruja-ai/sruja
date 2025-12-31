@@ -1,0 +1,98 @@
+/* apps/designer/src/components/DevOps/InfrastructureMap.css */
+.infrastructure-map {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-background, #ffffff);
+}
+
+.infrastructure-map-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-surface, #f1f5f9);
+}
+
+.infrastructure-map-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary, #1e293b);
+  margin: 0;
+}
+
+.infrastructure-map-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.infrastructure-map-empty-subtitle {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.infrastructure-map-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.infrastructure-node {
+  margin-bottom: 8px;
+}
+
+.infrastructure-node-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.infrastructure-node-header:hover {
+  background: var(--color-surface, rgba(0, 0, 0, 0.05));
+}
+
+.infrastructure-node-icon {
+  flex-shrink: 0;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.infrastructure-node-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.infrastructure-node-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary, #1e293b);
+}
+
+.infrastructure-node-tech {
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+  margin-top: 2px;
+}
+
+.infrastructure-node-children {
+  margin-top: 4px;
+}
+
+/* Dark mode support */
+[data-theme="dark"] .infrastructure-map {
+  background: var(--color-background, #0f172a);
+}
+
+[data-theme="dark"] .infrastructure-map-header {
+  background: var(--color-surface, #1e293b);
+  border-color: var(--color-border, #334155);
+}
+
+[data-theme="dark"] .infrastructure-node-header:hover {
+  background: var(--color-surface, rgba(255, 255, 255, 0.05));
+}
+

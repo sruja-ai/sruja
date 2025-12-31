@@ -11,76 +11,62 @@ import LiveSrujaBlockWrapper from '@/features/playground/components/LiveSrujaBlo
 ## Elements
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
-}
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+datastore = kind "Datastore"
+queue = kind "Queue"
 
-model {
-  person User
-  system App {
-    container Web
-    container API
-    datastore DB
-  }
-  User -> App.Web "Uses"
-  App.Web -> App.API "Calls"
-  App.API -> App.DB "Reads/Writes"
+User = person "User"
+App = system "App" {
+Web = container "Web"
+API = container "API"
+DB = datastore "DB"
 }
+User -> App.Web "Uses"
+App.Web -> App.API "Calls"
+App.API -> App.DB "Reads/Writes"
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
 ## Component
 
 ```sruja
-specification {
-  element system
-  element container
-  element component
-}
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
 
-model {
-  App = system "App" {
-    Web = container "Web" {
-      Cart = component "Cart"
-    }
-  }
+App = system "App" {
+Web = container "Web" {
+  Cart = component "Cart"
+}
 }
 ```
 
 ## Scenario
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element datastore
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+datastore = kind "Datastore"
+
+User = person "User"
+
+App = system "App" {
+Web = container "Web"
+API = container "API"
+DB = datastore "Database"
 }
 
-model {
-  User = person "User"
-  
-  App = system "App" {
-    Web = container "Web"
-    API = container "API"
-    DB = datastore "Database"
-  }
-  
-  scenario Checkout "Checkout Flow" {
-    User -> App.Web "adds items"
-    App.Web -> App.API "validates"
-    App.API -> App.DB "stores order"
-  }
+scenario Checkout "Checkout Flow" {
+User -> App.Web "adds items"
+App.Web -> App.API "validates"
+App.API -> App.DB "stores order"
 }
 ```
 
@@ -100,4 +86,4 @@ deployment Prod {
 
 ## Try It Live
 
-<LiveSrujaBlockWrapper initialDsl={"architecture \"Shop\" {\n  person User\n  system App {\n    container Web\n    container API\n    datastore DB\n  }\n  User -> App.Web \"Uses\"\n  App.Web -> App.API \"Calls\"\n  App.API -> App.DB \"Reads/Writes\"\n}"} />
+<LiveSrujaBlockWrapper initialDsl={"specification {\n  person = kind \"Person\"\n  system = kind \"System\"\n  container = kind \"Container\"\n  datastore = kind \"Datastore\"\n}\n\nmodel {\n  User = person \"User\"\n  App = system \"App\" {\n    Web = container \"Web\"\n    API = container \"API\"\n    DB = datastore \"DB\"\n  }\n  User -> App.Web \"Uses\"\n  App.Web -> App.API \"Calls\"\n  App.API -> App.DB \"Reads/Writes\"\n}"} />

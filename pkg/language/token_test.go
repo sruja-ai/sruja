@@ -12,13 +12,13 @@ func TestLookupIdent(t *testing.T) {
 		ident    string
 		expected language.TokenType
 	}{
-		// LikeC4 Structure
+		// DSL Structure
 		{"specification", language.TOKEN_SPECIFICATION},
 		{"model", language.TOKEN_MODEL},
 		{"views", language.TOKEN_VIEWS},
 		{"view", language.TOKEN_VIEW},
 
-		// LikeC4 View Predicates
+		// View Predicates
 		{"include", language.TOKEN_INCLUDE},
 		{"exclude", language.TOKEN_EXCLUDE},
 		{"of", language.TOKEN_OF},
@@ -53,7 +53,7 @@ func TestLookupIdent(t *testing.T) {
 
 		// Non-keywords (should return IDENT)
 		{"workspace", language.TOKEN_IDENT}, // workspace removed - not used
-		{"library", language.TOKEN_IDENT},   // library removed - not used with LikeC4
+		{"library", language.TOKEN_IDENT},   // library removed - not used in current syntax
 		{"relation", language.TOKEN_IDENT},
 		{"architecture", language.TOKEN_IDENT},
 		{"datastore", language.TOKEN_IDENT}, // Note: 'database' is keyword, 'datastore' is not

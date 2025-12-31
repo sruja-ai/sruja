@@ -15,17 +15,13 @@ Sruja allows you to capture **Architecture Decision Records (ADRs)** directly wi
 You can define an ADR with a full body describing the context, decision, and consequences.
 
 ```sruja
-specification {
-  element system
-}
+system = kind "System"
 
-model {
-  adr ADR001 "Use PostgreSQL" {
-    status "Accepted"
-    context "We need a relational database with strong consistency guarantees."
-    decision "We will use PostgreSQL 15."
-    consequences "Good ecosystem support, but requires managing migrations."
-  }
+ADR001 = adr "Use PostgreSQL" {
+status "Accepted"
+context "We need a relational database with strong consistency guarantees."
+decision "We will use PostgreSQL 15."
+consequences "Good ecosystem support, but requires managing migrations."
 }
 ```
 
@@ -34,15 +30,10 @@ model {
 You can link an ADR to the elements it affects (System, Container, Component) by referencing its ID inside the element's block.
 
 ```sruja
-specification {
-  element system
-}
+system = kind "System"
 
-model {
-  Backend = system "Backend API" {
-    // Link to the ADR
-    adr ADR001
-  }
+Backend = system "Backend API" {
+// Link to the ADR (via metadata in future)
 }
 ```
 
@@ -51,16 +42,15 @@ model {
 The title is optional if you are just referencing an ADR or if you want to define it later.
 
 ```sruja
-model {
-  adr ADR002
-}
+adr = kind "ADR"
+ADR003 = adr "Deferred Decision"
 ```
 
 ## Fields
 
--   **ID**: Unique identifier (e.g., `ADR001`).
--   **Title**: Short summary of the decision.
--   **Status**: Current status (e.g., `Proposed`, `Accepted`, `Deprecated`).
--   **Context**: The problem statement and background.
--   **Decision**: The choice made.
--   **Consequences**: The pros, cons, and implications of the decision.
+- **ID**: Unique identifier (e.g., `ADR001`).
+- **Title**: Short summary of the decision.
+- **Status**: Current status (e.g., `Proposed`, `Accepted`, `Deprecated`).
+- **Context**: The problem statement and background.
+- **Decision**: The choice made.
+- **Consequences**: The pros, cons, and implications of the decision.

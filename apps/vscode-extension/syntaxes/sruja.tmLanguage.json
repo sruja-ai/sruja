@@ -65,7 +65,7 @@
       "patterns": [
         {
           "name": "keyword.control.sruja",
-          "match": "\\b(architecture|library|system|container|component|person|deployment|queue|datastore|database|external|import|implements|requires|policy|requirement|scenario|story|flow|decision|yes|no|condition|owner|description|metadata|properties|style|adr|contract|constraint|convention|technology|status|context|consequences|category|enforcement|layer|version|type|scale|tags|link|title|date|author|specification|model|views|view|include|exclude|element|relationship|tag|color|of|extends|dynamic|autoLayout|TopBottom|BottomTop|LeftRight|RightLeft|summary|notation)\\b"
+          "match": "\\b(architecture|library|system|container|component|person|deployment|queue|datastore|database|external|import|implements|requires|policy|requirement|scenario|story|flow|decision|yes|no|condition|owner|description|metadata|properties|style|adr|contract|constraint|convention|technology|status|context|consequences|category|enforcement|layer|version|type|scale|tags|link|title|date|author|view|include|exclude|element|relationship|tag|color|of|extends|dynamic|autoLayout|TopBottom|BottomTop|LeftRight|RightLeft|summary|notation)\\b"
         },
         {
           "name": "storage.type.sruja",

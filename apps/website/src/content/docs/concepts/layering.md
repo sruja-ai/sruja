@@ -11,57 +11,48 @@ Layering keeps your architecture modular. Higher layers depend on lower ones, no
 ## Allowed Direction
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+system App {
+container WebApp
+container API
+datastore DB
 }
 
-model {
-  system App {
-    container WebApp
-    container API
-    datastore DB
-  }
+App.WebApp -> App.API "Calls"
+App.API -> App.DB "Reads/Writes"
 
-  App.WebApp -> App.API "Calls"
-  App.API -> App.DB "Reads/Writes"
-}
-
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
 ## Violation Example
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+system App {
+WebApp = container
+API = container
 }
 
-model {
-  system App {
-    WebApp = container
-    API = container
-  }
+App.API -> App.WebApp "Returns UI"
 
-  App.API -> App.WebApp "Returns UI"
-
-}
 ```
 
 This causes a layer violation. Fix by:
+
 - Inverting the dependency (WebApp depends on an interface exposed by API)
 - Using events/messages instead of direct upward calls
 

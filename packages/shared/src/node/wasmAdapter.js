@@ -141,7 +141,7 @@ async function initWasmNode(options) {
   const foldingRangesFn = global.sruja_folding_ranges;
   const mermaidFn = global.sruja_dsl_to_mermaid;
   const markdownFn = global.sruja_dsl_to_markdown;
-  const likec4Fn = global.sruja_dsl_to_likec4;
+  const modelFn = global.sruja_dsl_to_model;
   if (!parseFn || !jsonToDslFn) {
     const missing = [];
     if (!parseFn) missing.push("sruja_parse_dsl");
@@ -261,22 +261,22 @@ async function initWasmNode(options) {
         );
       }
     },
-    dslToLikeC4: async (dsl, filename = "input.sruja") => {
+    dslToModel: async (dsl, filename = "input.sruja") => {
       try {
-        if (!likec4Fn) {
-          throw new Error("sruja_dsl_to_likec4 function not available");
+        if (!modelFn) {
+          throw new Error("sruja_dsl_to_model function not available");
         }
-        const r = likec4Fn(dsl, filename);
+        const r = modelFn(dsl, filename);
         if (!r || !r.ok) {
-          throw new Error(r?.error || "likec4 export failed");
+          throw new Error(r?.error || "model export failed");
         }
         if (!r.data) {
-          throw new Error("likec4 export succeeded but no data returned");
+          throw new Error("model export succeeded but no data returned");
         }
         return r.data;
       } catch (error) {
         throw new Error(
-          `WASM likec4 export failed: ${error instanceof Error ? error.message : String(error)}`
+          `WASM model export failed: ${error instanceof Error ? error.message : String(error)}`
         );
       }
     },

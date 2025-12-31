@@ -1,6 +1,7 @@
 // apps/playground/src/utils/exportDiagram.ts
 import type { ReactFlowInstance, Node } from "@xyflow/react";
 import type { C4NodeData } from "../types";
+import { logger } from "@sruja/shared";
 
 /**
  * Export diagram as PNG using html2canvas
@@ -11,20 +12,18 @@ export async function exportAsPNG(
   filename: string = "diagram.png"
 ): Promise<void> {
   try {
-    // Try to find React Flow viewport or LikeC4 diagram container
-    let viewportElement = containerElement.querySelector(
-      ".react-flow__viewport"
-    ) as HTMLElement;
-    
-    // Fallback to LikeC4 diagram container
+    // Try to find React Flow viewport or diagram container
+    let viewportElement = containerElement.querySelector(".react-flow__viewport") as HTMLElement;
+
+    // Fallback to diagram container
     if (!viewportElement) {
       viewportElement = containerElement.querySelector(
-        ".likec4-diagram-container, .likec4-canvas"
+        ".diagram-container, .canvas"
       ) as HTMLElement;
     }
-    
+
     if (!viewportElement) {
-      throw new Error("Diagram viewport not found (neither React Flow nor LikeC4)");
+      throw new Error("Diagram viewport not found");
     }
 
     // Use html2canvas if available, otherwise use canvas API
@@ -59,7 +58,12 @@ export async function exportAsPNG(
       throw new Error("html2canvas not available. Please install html2canvas for PNG export.");
     }
   } catch (error) {
-    console.error("Failed to export PNG:", error);
+    logger.error("Failed to export PNG", {
+      component: "exportDiagram",
+      action: "exportAsPNG",
+      filename,
+      error: error instanceof Error ? error.message : String(error),
+    });
     throw error;
   }
 }
@@ -176,7 +180,12 @@ export async function exportAsSVG(
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   } catch (error) {
-    console.error("Failed to export SVG:", error);
+    logger.error("Failed to export SVG", {
+      component: "exportDiagram",
+      action: "exportAsSVG",
+      filename,
+      error: error instanceof Error ? error.message : String(error),
+    });
     throw error;
   }
 }

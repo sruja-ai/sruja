@@ -9,10 +9,10 @@ test.describe("Examples Loading", () => {
     const firstExample = page.locator(".example-item").first();
     await firstExample.waitFor({ timeout: 10000 });
     await firstExample.click();
-    await page.waitForSelector(".react-flow, .likec4-canvas", { timeout: 30000 });
-    // Check for LikeC4 diagram content (SVG elements)
-    await page.waitForSelector(".likec4-diagram-container svg, .react-flow svg", { timeout: 10000 });
-    const diagramContent = await page.locator(".likec4-diagram-container svg, .react-flow svg").count();
+    await page.waitForSelector(".react-flow", { timeout: 30000 });
+    // Check for diagram content (SVG elements)
+    await page.waitForSelector(".react-flow svg", { timeout: 10000 });
+    const diagramContent = await page.locator(".react-flow svg").count();
     expect(diagramContent).toBeGreaterThan(0);
   });
 });

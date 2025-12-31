@@ -6,15 +6,15 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-// findElement finds an element by ID in LikeC4 Model.
+// findElement finds an element by ID in Sruja Model.
 func (e *Explainer) findElement(id string) interface{} {
 	if e.program == nil || e.program.Model == nil {
 		return nil
 	}
 
-	// Search for element in LikeC4 Model
-	var findElement func(elem *language.LikeC4ElementDef, currentFQN string) *language.LikeC4ElementDef
-	findElement = func(elem *language.LikeC4ElementDef, currentFQN string) *language.LikeC4ElementDef {
+	// Search for element in Sruja Model
+	var findElement func(elem *language.ElementDef, currentFQN string) *language.ElementDef
+	findElement = func(elem *language.ElementDef, currentFQN string) *language.ElementDef {
 		if elem == nil {
 			return nil
 		}
@@ -106,12 +106,12 @@ func (e *Explainer) findRelations(elementID string) RelationsInfo {
 		return info
 	}
 
-	// Collect all relations from LikeC4 Model
-	// Use internal helper - we need to make collectLikeC4Elements exported or use it differently
+	// Collect all relations from Sruja Model
+	// Use internal helper - we need to make collectElements exported or use it differently
 	// For now, collect relations manually
 	relations := []*language.Relation{}
-	var collectRelations func(elem *language.LikeC4ElementDef)
-	collectRelations = func(elem *language.LikeC4ElementDef) {
+	var collectRelations func(elem *language.ElementDef)
+	collectRelations = func(elem *language.ElementDef) {
 		body := elem.GetBody()
 		if body == nil {
 			return
@@ -147,9 +147,9 @@ func (e *Explainer) extractMetadata(elem interface{}) map[string]string {
 	// Estimate capacity: typically 3-8 metadata entries per element
 	metadata := make(map[string]string, 8)
 
-	// Handle LikeC4ElementDef
-	if likeC4Elem, ok := elem.(*language.LikeC4ElementDef); ok {
-		body := likeC4Elem.GetBody()
+	// Handle ElementDef
+	if elementDef, ok := elem.(*language.ElementDef); ok {
+		body := elementDef.GetBody()
 		if body != nil {
 			for _, item := range body.Items {
 				if item.Metadata != nil {
@@ -190,18 +190,21 @@ func (e *Explainer) extractMetadata(elem interface{}) map[string]string {
 }
 
 // findRelatedADRs finds ADRs that mention the element.
-func (e *Explainer) findRelatedADRs(elementID string) []*language.ADR {
-	var related []*language.ADR
+func (e *Explainer) findRelatedADRs(elementID string) []string {
+	var related []string
 	if e.program == nil || e.program.Model == nil {
 		return related
 	}
 
-	// Search for ADRs in Model items
+	// Search for ADRs in Model items (now via ElementDef)
 	for _, item := range e.program.Model.Items {
-		if item.ADR != nil {
-			// Simple check: if ADR title mentions the element ID
-			if item.ADR.Title != nil && strings.Contains(*item.ADR.Title, elementID) {
-				related = append(related, item.ADR)
+		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
+			a := item.ElementDef.Assignment
+			if a.Kind == "adr" {
+				// Simple check: if ADR title mentions the element ID
+				if a.Title != nil && strings.Contains(*a.Title, elementID) {
+					related = append(related, a.Name)
+				}
 			}
 		}
 	}
@@ -216,22 +219,22 @@ func (e *Explainer) findRelatedScenarios(elementID string) []*ScenarioInfo {
 		return related
 	}
 
-	// Search for scenarios in Model items
+	// Search for scenarios in Model items (now via ElementDef)
 	for _, item := range e.program.Model.Items {
-		if item.Scenario != nil {
-			for _, step := range item.Scenario.Steps {
-				// step.From and step.To are QualifiedIdent - use String() for comparison
-				if step.From.String() == elementID || step.To.String() == elementID {
+		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
+			a := item.ElementDef.Assignment
+			if a.Kind == "scenario" || a.Kind == "story" {
+				// For now, check if title mentions the element
+				if a.Title != nil && strings.Contains(*a.Title, elementID) {
 					title := ""
-					if item.Scenario.Title != nil {
-						title = *item.Scenario.Title
+					if a.Title != nil {
+						title = *a.Title
 					}
 					related = append(related, &ScenarioInfo{
-						ID:    item.Scenario.ID,
+						ID:    a.Name,
 						Label: title,
 						Role:  "participant",
 					})
-					break
 				}
 			}
 		}

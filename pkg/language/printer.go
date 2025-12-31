@@ -34,21 +34,24 @@ func (p *Printer) indent() string {
 
 // Print prints a Program back to DSL format.
 func (p *Printer) Print(program *Program) string {
-	if program == nil || program.Model == nil {
+	if program == nil {
 		return ""
 	}
 	sb := &strings.Builder{}
 
-	// Model block
-	sb.WriteString("model {\n")
-	p.IndentLevel++
-	for _, item := range program.Model.Items {
-		p.PrintModelItem(sb, item)
+	// Specification items
+	if program.Specification != nil {
+		p.PrintSpecification(sb, program.Specification)
 	}
-	p.IndentLevel--
-	sb.WriteString("}\n")
 
-	// Views block
+	// Model items
+	if program.Model != nil {
+		for _, item := range program.Model.Items {
+			p.PrintModelItem(sb, item)
+		}
+	}
+
+	// Views items
 	if program.Views != nil {
 		p.PrintViews(sb, program.Views)
 	}
@@ -56,15 +59,36 @@ func (p *Printer) Print(program *Program) string {
 	return sb.String()
 }
 
+func (p *Printer) PrintSpecification(sb *strings.Builder, spec *Specification) {
+	for _, item := range spec.Items {
+		if item.Element != nil {
+			p.PrintElementKindDef(sb, item.Element)
+		}
+		if item.Tag != nil {
+			p.PrintTagDef(sb, item.Tag)
+		}
+	}
+}
+
+func (p *Printer) PrintElementKindDef(sb *strings.Builder, def *ElementKindDef) {
+	fmt.Fprintf(sb, "%s = kind", def.Name)
+	if def.Title != nil {
+		fmt.Fprintf(sb, " %q", *def.Title)
+	}
+	sb.WriteString("\n")
+}
+
+func (p *Printer) PrintTagDef(sb *strings.Builder, def *TagDef) {
+	fmt.Fprintf(sb, "%s = tag", def.Name)
+	if def.Title != nil {
+		fmt.Fprintf(sb, " %q", *def.Title)
+	}
+	sb.WriteString("\n")
+}
+
 func (p *Printer) PrintModelItem(sb *strings.Builder, item ModelItem) {
 	if item.Import != nil {
 		p.PrintImport(sb, item.Import)
-	}
-	if item.Requirement != nil {
-		p.PrintRequirement(sb, item.Requirement)
-	}
-	if item.ADR != nil {
-		p.PrintADR(sb, item.ADR)
 	}
 	if item.Relation != nil {
 		p.PrintRelation(sb, item.Relation)
@@ -72,28 +96,23 @@ func (p *Printer) PrintModelItem(sb *strings.Builder, item ModelItem) {
 	if item.ElementDef != nil {
 		p.PrintElementDef(sb, item.ElementDef)
 	}
-	if item.Scenario != nil {
-		p.PrintScenario(sb, item.Scenario)
-	}
 }
 
-func (p *Printer) PrintElementDef(sb *strings.Builder, elem *LikeC4ElementDef) {
+func (p *Printer) PrintElementDef(sb *strings.Builder, elem *ElementDef) {
 	indent := p.indent()
-	id := elem.GetID()
-	kind := elem.GetKind()
 
-	if elem.Assignment != nil {
-		fmt.Fprintf(sb, "%s%s = %s", indent, elem.Assignment.Name, kind)
-	} else {
-		fmt.Fprintf(sb, "%s%s", indent, kind)
-		if id != "" {
-			fmt.Fprintf(sb, " %s", id)
-		}
+	if elem.Assignment == nil {
+		return
 	}
 
-	title := elem.GetTitle()
-	if title != nil {
-		fmt.Fprintf(sb, " %q", *title)
+	fmt.Fprintf(sb, "%s%s = %s", indent, elem.Assignment.Name, elem.Assignment.Kind)
+
+	if elem.Assignment.SubKind != nil {
+		fmt.Fprintf(sb, " %s", *elem.Assignment.SubKind)
+	}
+
+	if elem.Assignment.Title != nil {
+		fmt.Fprintf(sb, " %q", *elem.Assignment.Title)
 	}
 
 	body := elem.GetBody()
@@ -110,7 +129,7 @@ func (p *Printer) PrintElementDef(sb *strings.Builder, elem *LikeC4ElementDef) {
 	}
 }
 
-func (p *Printer) PrintBodyItem(sb *strings.Builder, item *LikeC4BodyItem) {
+func (p *Printer) PrintBodyItem(sb *strings.Builder, item *BodyItem) {
 	indent := p.indent()
 	if item.Description != nil {
 		fmt.Fprintf(sb, "%sdescription %q\n", indent, *item.Description)
@@ -146,9 +165,7 @@ func (p *Printer) PrintRelation(sb *strings.Builder, rel *Relation) {
 	sb.WriteString("\n")
 }
 
-func (p *Printer) PrintViews(sb *strings.Builder, views *LikeC4ViewsBlock) {
-	sb.WriteString("\nviews {\n")
-	p.IndentLevel++
+func (p *Printer) PrintViews(sb *strings.Builder, views *Views) {
 	for _, item := range views.Items {
 		if item.View != nil {
 			p.PrintViewDef(sb, item.View)
@@ -157,11 +174,9 @@ func (p *Printer) PrintViews(sb *strings.Builder, views *LikeC4ViewsBlock) {
 			p.PrintStyles(sb, item.Styles)
 		}
 	}
-	p.IndentLevel--
-	sb.WriteString("}\n")
 }
 
-func (p *Printer) PrintViewDef(sb *strings.Builder, v *LikeC4ViewDef) {
+func (p *Printer) PrintViewDef(sb *strings.Builder, v *ViewDef) {
 	indent := p.indent()
 	fmt.Fprintf(sb, "%sview", indent)
 	if v.Name != nil {

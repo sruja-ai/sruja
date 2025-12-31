@@ -32,15 +32,15 @@ func parseDSL(t *testing.T, dsl string) *language.Program {
 }
 
 func TestMarkdownExport_Basic(t *testing.T) {
-	dsl := `model {
-		system OrderService "Order Service" {
+	dsl := `
+		OrderService = System "Order Service" {
 			description "Handles order processing"
-			container API "REST API" {
+			API = Container "REST API" {
 				technology "Go"
 				description "Main API"
 			}
 		}
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 	exporter := NewExporter(DefaultOptions())
@@ -60,14 +60,14 @@ func TestMarkdownExport_Basic(t *testing.T) {
 }
 
 func TestMarkdownExport_WithRequirements(t *testing.T) {
-	dsl := `model {
-		requirement REQ1 functional "Must handle 1000 req/s"
-		requirement REQ2 security "Must use HTTPS"
+	dsl := `
+		REQ1 = Requirement functional "Must handle 1000 req/s"
+		REQ2 = Requirement security "Must use HTTPS"
 		
-		system OrderService "Order Service" {
+		OrderService = System "Order Service" {
 			description "Handles orders"
 		}
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 	exporter := NewExporter(DefaultOptions())
@@ -83,18 +83,18 @@ func TestMarkdownExport_WithRequirements(t *testing.T) {
 }
 
 func TestMarkdownExport_WithADRs(t *testing.T) {
-	dsl := `model {
-		adr ADR001 "Use Go for API" {
+	dsl := `
+		ADR001 = Adr "Use Go for API" {
 			status "accepted"
 			context "Need fast API"
 			decision "Use Go"
 			consequences "Fast development"
 		}
 		
-		system OrderService "Order Service" {
+		OrderService = System "Order Service" {
 			description "Handles orders"
 		}
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 	exporter := NewExporter(DefaultOptions())
@@ -109,17 +109,17 @@ func TestMarkdownExport_WithADRs(t *testing.T) {
 }
 
 func TestMarkdownExport_Scope_System(t *testing.T) {
-	dsl := `model {
-		system OrderService "Order Service" {
+	dsl := `
+		OrderService = System "Order Service" {
 			description "Handles orders"
-			container API "API" {
+			API = Container "API" {
 				technology "Go"
 			}
 		}
-		system PaymentService "Payment Service" {
+		PaymentService = System "Payment Service" {
 			description "Handles payments"
 		}
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 	options := DefaultOptions()
@@ -223,14 +223,14 @@ func TestMarkdownExport_Scope_Parse_Invalid(t *testing.T) {
 }
 
 func TestMarkdownExport_TokenLimit(t *testing.T) {
-	dsl := `model {
-		system OrderService "Order Service" {
+	dsl := `
+		OrderService = System "Order Service" {
 			description "This is a very long description that should be truncated when token limit is applied. It contains many words and should help us test the token optimization feature. Repeating this multiple times to ensure we have enough content to trigger truncation."
-			container API "API" {
+			API = Container "API" {
 				description "Another long description for testing purposes"
 			}
 		}
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 
@@ -260,20 +260,20 @@ func TestMarkdownExport_TokenLimit(t *testing.T) {
 }
 
 func TestMarkdownExport_Context_CodeGeneration(t *testing.T) {
-	dsl := `model {
-		system OrderService "Order Service" {
+	dsl := `
+		OrderService = System "Order Service" {
 			description "Handles orders"
-			container API "REST API" {
+			API = Container "REST API" {
 				technology "Go"
 				description "Main API"
 			}
 		}
-		requirement REQ1 functional "Must be fast"
-		adr ADR1 "Use Go" {
+		REQ1 = Requirement functional "Must be fast"
+		ADR1 = Adr "Use Go" {
 			status "accepted"
 			decision "Use Go"
 		}
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 
@@ -290,17 +290,17 @@ func TestMarkdownExport_Context_CodeGeneration(t *testing.T) {
 }
 
 func TestMarkdownExport_Context_Review(t *testing.T) {
-	dsl := `model {
-		system OrderService "Order Service" {
+	dsl := `
+		OrderService = System "Order Service" {
 			description "Handles orders"
 		}
-		adr ADR1 "Use Go" {
+		ADR1 = Adr "Use Go" {
 			status "accepted"
 			context "Need fast API"
 			decision "Use Go"
 		}
-		requirement REQ1 functional "Must be fast"
-	}`
+		REQ1 = Requirement functional "Must be fast"
+	`
 
 	program := parseDSL(t, dsl)
 
@@ -318,14 +318,14 @@ func TestMarkdownExport_Context_Review(t *testing.T) {
 }
 
 func TestMarkdownExport_Context_Analysis(t *testing.T) {
-	dsl := `model {
-		system OrderService "Order Service" {
+	dsl := `
+		OrderService = System "Order Service" {
 			description "Handles orders"
-			container API "API" {
+			API = Container "API" {
 				technology "Go"
 			}
 		}
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 
@@ -342,16 +342,15 @@ func TestMarkdownExport_Context_Analysis(t *testing.T) {
 }
 
 func TestMarkdownExport_EmptyProgram(t *testing.T) {
-	dsl := `model {
-	}`
+	dsl := ``
 
 	program := parseDSL(t, dsl)
 	exporter := NewExporter(DefaultOptions())
 	output := exporter.Export(program)
 
-	// Empty program should produce some output (at least header)
-	if output == "" {
-		t.Error("Expected some output even for empty program")
+	// Empty program produces empty output in flat syntax
+	if output != "" {
+		t.Errorf("Expected empty output for empty program, got: %q", output)
 	}
 }
 
@@ -376,16 +375,16 @@ func TestMarkdownExport_Options_Default(t *testing.T) {
 }
 
 func TestMarkdownExport_WithPersons(t *testing.T) {
-	dsl := `model {
-		person Customer "Customer" {
+	dsl := `
+		Customer = Person "Customer" {
 			description "End user"
 		}
-		person Admin "Administrator"
+		Admin = Person "Administrator"
 		
-		system OrderService "Order Service" {
+		OrderService = System "Order Service" {
 			description "Handles orders"
 		}
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 	exporter := NewExporter(DefaultOptions())
@@ -401,16 +400,16 @@ func TestMarkdownExport_WithPersons(t *testing.T) {
 }
 
 func TestMarkdownExport_Relationships_AnalysisContext(t *testing.T) {
-	dsl := `model {
-		system OrderService "Order Service" {
+	dsl := `
+		OrderService = System "Order Service" {
 			description "Handles orders"
 			API -> PaymentService "calls"
 		}
-		system PaymentService "Payment Service" {
+		PaymentService = System "Payment Service" {
 			description "Handles payments"
 		}
 		OrderService -> PaymentService "processes payment"
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 	options := DefaultOptions()
@@ -466,11 +465,11 @@ func TestParseScope_EdgeCases(t *testing.T) {
 }
 
 func TestMarkdownExport_WithAllOptionsDisabled(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		sys = system "System" {
 			description "A system"
 		}
-	}`
+	`
 	program := parseDSL(t, dsl)
 	options := DefaultOptions()
 	options.IncludeTOC = false
@@ -489,11 +488,11 @@ func TestMarkdownExport_WithAllOptionsDisabled(t *testing.T) {
 }
 
 func TestMarkdownExport_OptimizeContent(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		sys = system "System" {
 			description "A system"
 		}
-	}`
+	`
 	program := parseDSL(t, dsl)
 	options := DefaultOptions()
 	options.TokenLimit = 100 // Very small limit

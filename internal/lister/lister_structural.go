@@ -4,15 +4,15 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-// ListSystems extracts all systems from a LikeC4 model.
+// ListSystems extracts all systems from a Sruja model.
 func ListSystems(program *language.Program) []SystemInfo {
 	if program == nil || program.Model == nil {
 		return nil
 	}
 
 	var result []SystemInfo
-	var collectSystems func(elem *language.LikeC4ElementDef, parentPrefix string)
-	collectSystems = func(elem *language.LikeC4ElementDef, parentPrefix string) {
+	var collectSystems func(elem *language.ElementDef, parentPrefix string)
+	collectSystems = func(elem *language.ElementDef, parentPrefix string) {
 		if elem == nil {
 			return
 		}
@@ -28,7 +28,7 @@ func ListSystems(program *language.Program) []SystemInfo {
 		}
 
 		// Check if this is a system
-		if elem.GetKind() == "system" {
+		if elem.GetKind() == "system" || elem.GetKind() == "System" {
 			label := id
 			if title := elem.GetTitle(); title != nil {
 				label = *title
@@ -68,15 +68,15 @@ func ListSystems(program *language.Program) []SystemInfo {
 	return result
 }
 
-// ListContainers extracts all containers from a LikeC4 model.
+// ListContainers extracts all containers from a Sruja model.
 func ListContainers(program *language.Program) []ContainerInfo {
 	if program == nil || program.Model == nil {
 		return nil
 	}
 
 	var result []ContainerInfo
-	var collectContainers func(elem *language.LikeC4ElementDef, parentPrefix, systemID string)
-	collectContainers = func(elem *language.LikeC4ElementDef, parentPrefix, systemID string) {
+	var collectContainers func(elem *language.ElementDef, parentPrefix, systemID string)
+	collectContainers = func(elem *language.ElementDef, parentPrefix, systemID string) {
 		if elem == nil {
 			return
 		}
@@ -92,13 +92,15 @@ func ListContainers(program *language.Program) []ContainerInfo {
 		}
 
 		// Update systemID if this is a system
-		if elem.GetKind() == "system" {
+		if elem.GetKind() == "system" || elem.GetKind() == "System" {
 			systemID = qualifiedID
 		}
 
 		// Check if this is a container
 		kind := elem.GetKind()
-		if kind == "container" || kind == "webapp" || kind == "mobile" || kind == "api" || kind == "database" || kind == "queue" {
+		if kind == "container" || kind == "Container" || kind == "webapp" || kind == "Webapp" ||
+			kind == "mobile" || kind == "Mobile" || kind == "api" || kind == "Api" || kind == "API" ||
+			kind == "database" || kind == "Database" || kind == "queue" || kind == "Queue" {
 			label := id
 			if title := elem.GetTitle(); title != nil {
 				label = *title
@@ -139,15 +141,15 @@ func ListContainers(program *language.Program) []ContainerInfo {
 	return result
 }
 
-// ListComponents extracts all components from a LikeC4 model.
+// ListComponents extracts all components from a Sruja model.
 func ListComponents(program *language.Program) []ComponentInfo {
 	if program == nil || program.Model == nil {
 		return nil
 	}
 
 	var result []ComponentInfo
-	var collectComponents func(elem *language.LikeC4ElementDef, parentPrefix, systemID, containerID string)
-	collectComponents = func(elem *language.LikeC4ElementDef, parentPrefix, systemID, containerID string) {
+	var collectComponents func(elem *language.ElementDef, parentPrefix, systemID, containerID string)
+	collectComponents = func(elem *language.ElementDef, parentPrefix, systemID, containerID string) {
 		if elem == nil {
 			return
 		}
@@ -164,18 +166,19 @@ func ListComponents(program *language.Program) []ComponentInfo {
 
 		// Update systemID if this is a system
 		kind := elem.GetKind()
-		if kind == "system" {
+		if kind == "system" || kind == "System" {
 			systemID = qualifiedID
 			containerID = "" // Reset container ID when entering a new system
 		}
 
 		// Update containerID if this is a container
-		if kind == "container" || kind == "webapp" || kind == "mobile" || kind == "api" {
+		if kind == "container" || kind == "Container" || kind == "webapp" || kind == "Webapp" ||
+			kind == "mobile" || kind == "Mobile" || kind == "api" || kind == "Api" || kind == "API" {
 			containerID = qualifiedID
 		}
 
 		// Check if this is a component
-		if kind == "component" {
+		if kind == "component" || kind == "Component" {
 			label := id
 			if title := elem.GetTitle(); title != nil {
 				label = *title

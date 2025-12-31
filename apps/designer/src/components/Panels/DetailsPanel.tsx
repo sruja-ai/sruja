@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@sruja/ui";
 import { useArchitectureStore, useSelectionStore, useUIStore } from "../../stores";
+import type { ElementDump, FqnRef, Requirement, ADR } from "@sruja/shared";
 import "./DetailsPanel.css";
 
 interface DetailsPanelProps {
@@ -19,17 +20,17 @@ interface DetailsPanelProps {
 }
 
 export function DetailsPanel({ onClose }: DetailsPanelProps) {
-  const likec4Model = useArchitectureStore((s) => s.likec4Model);
+  const model = useArchitectureStore((s) => s.model);
   const selectedNodeId = useSelectionStore((s) => s.selectedNodeId);
   const selectNode = useSelectionStore((s) => s.selectNode);
   const setActiveTab = useUIStore((s) => s.setActiveTab);
 
-  if (!selectedNodeId || !likec4Model) {
+  if (!selectedNodeId || !model) {
     return null;
   }
 
   // Find the selected node directly from the flat map
-  const node = likec4Model.elements?.[selectedNodeId] as any;
+  const node = model.elements?.[selectedNodeId] as ElementDump | undefined;
 
   if (!node) {
     return null;
@@ -39,17 +40,18 @@ export function DetailsPanel({ onClose }: DetailsPanelProps) {
   const type = node.kind.charAt(0).toUpperCase() + node.kind.slice(1);
 
   // Calculate dependencies from relations
-  const allRelations = likec4Model.relations || [];
+  const allRelations = model.relations || [];
 
   // Helper to extract FQN from FqnRef or string for backward compatibility
-  const getFqn = (ref: any): string => typeof ref === 'object' && ref?.model ? ref.model : String(ref || '');
+  const getFqn = (ref: FqnRef | string | undefined): string =>
+    typeof ref === "object" && ref?.model ? ref.model : String(ref || "");
 
   // Find incoming relations (what uses this node)
   const incoming = allRelations
     .filter((r) => getFqn(r.target) === selectedNodeId)
     .map((r) => ({
       relation: r,
-      source: likec4Model.elements?.[getFqn(r.source)],
+      source: model.elements?.[getFqn(r.source)],
     }))
     .filter((x) => x.source);
 
@@ -58,49 +60,41 @@ export function DetailsPanel({ onClose }: DetailsPanelProps) {
     .filter((r) => getFqn(r.source) === selectedNodeId)
     .map((r) => ({
       relation: r,
-      target: likec4Model.elements?.[getFqn(r.target)],
+      target: model.elements?.[getFqn(r.target)],
     }))
     .filter((x) => x.target);
 
   // Sruja extensions data
-  const sruja = likec4Model.sruja || {};
+  const sruja = model.sruja || {};
   const allRequirements = sruja.requirements || [];
   const allADRs = sruja.adrs || [];
   const allFlows = sruja.flows || [];
   const allScenarios = sruja.scenarios || [];
 
   // Currently we associate requirements/ADRs by tags matching the Node ID
-  // Wait, did legacy use 'tags' or explicit linking? 
+  // Wait, did legacy use 'tags' or explicit linking?
   // Legacy used: req.tags?.includes(nodeId) OR node.requirements array.
   // SrujaModelDump doesn't carry 'requirements' array on element directly based on shared types.
   // We'll rely on global lists + tags or manual associations.
 
   // Find requirements tagged with this node (case-insensitive)
-  const relatedRequirements = allRequirements.filter((req: any) =>
+  const relatedRequirements = allRequirements.filter((req: Requirement) =>
     req.tags?.some((tag: string) => tag.toLowerCase() === node.id.toLowerCase())
   );
 
   // Find ADRs tagged with this node (case-insensitive)
-  const relatedADRs = allADRs.filter((adr: any) =>
+  const relatedADRs = allADRs.filter((adr: ADR) =>
     adr.tags?.some((tag: string) => tag.toLowerCase() === node.id.toLowerCase())
   );
 
   // Find flows that reference this node in their steps
   const relatedFlows = allFlows.filter((flow) =>
-    flow.steps?.some(
-      (step) =>
-        step.from === node.id ||
-        step.to === node.id
-    )
+    flow.steps?.some((step) => step.from === node.id || step.to === node.id)
   );
 
   // Find scenarios that reference this node in their steps
   const relatedScenarios = allScenarios.filter((scenario) =>
-    scenario.steps?.some(
-      (step) =>
-        step.from === node.id ||
-        step.to === node.id
-    )
+    scenario.steps?.some((step) => step.from === node.id || step.to === node.id)
   );
 
   const getTypeIcon = (_nodeType: string) => {
@@ -110,14 +104,16 @@ export function DetailsPanel({ onClose }: DetailsPanelProps) {
   };
 
   // Helper to count children - iterate all elements to find those with parent === id
-  const children = Object.values(likec4Model.elements || {}).filter((e: any) => (e as any).parent === node.id);
-  const containerCount = children.filter((c: any) => c.kind === 'container').length;
-  const componentCount = children.filter((c: any) => c.kind === 'component').length;
+  const children = Object.values(model.elements || {}).filter(
+    (e) => (e as ElementDump).parent === node.id
+  );
+  const containerCount = children.filter((c) => (c as ElementDump).kind === "container").length;
+  const componentCount = children.filter((c) => (c as ElementDump).kind === "component").length;
 
   return (
     <div className="details-panel">
       <div className="details-header">
-        <h3 className="details-title">{(node as any).title}</h3>
+        <h3 className="details-title">{node.title}</h3>
         <div className="details-actions">
           <Button
             variant="ghost"
@@ -154,13 +150,13 @@ export function DetailsPanel({ onClose }: DetailsPanelProps) {
 
           <div className="detail-row">
             <span className="detail-label">ID</span>
-            <span className="detail-value code">{(node as any).id}</span>
+            <span className="detail-value code">{node.id}</span>
           </div>
 
-          {(node as any).technology && (
+          {node.technology && (
             <div className="detail-row">
               <span className="detail-label">Technology</span>
-              <span className="detail-value">{(node as any).technology}</span>
+              <span className="detail-value">{node.technology}</span>
             </div>
           )}
 
@@ -180,28 +176,26 @@ export function DetailsPanel({ onClose }: DetailsPanelProps) {
           )}
         </div>
 
-        {(node as any).description && (
+        {node.description && (
           <div className="detail-section">
             <div className="section-title">
               <Info size={14} />
               Description
             </div>
             <p className="description-text">
-              {typeof (node as any).description === "string"
-                ? (node as any).description
-                : (node as any).description?.txt || (node as any).description?.md || ""}
+              {typeof node.description === "string" ? node.description : ""}
             </p>
           </div>
         )}
 
-        {(node as any).tags && (node as any).tags.length > 0 && (
+        {node.tags && node.tags.length > 0 && (
           <div className="detail-section">
             <div className="section-title">
               <Tag size={14} />
               Tags
             </div>
             <div className="tags-list">
-              {(node as any).tags.map((tag: any, i: any) => (
+              {node.tags.map((tag: string, i: number) => (
                 <span key={i} className="tag">
                   {tag}
                 </span>
@@ -232,13 +226,15 @@ export function DetailsPanel({ onClose }: DetailsPanelProps) {
                       onClick={() => selectNode(getFqn(inc.relation.source))}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        {getTypeIcon((inc.source as any)?.kind || "")}
+                        {getTypeIcon((inc.source as ElementDump)?.kind || "")}
                         <span className="dep-name">
-                          {(inc.source as any)?.title || getFqn(inc.relation.source)}
+                          {(inc.source as ElementDump)?.title || getFqn(inc.relation.source)}
                         </span>
                       </div>
                       {(inc.relation.title || inc.relation.technology) && (
-                        <span className="dep-desc">{inc.relation.title || inc.relation.technology}</span>
+                        <span className="dep-desc">
+                          {inc.relation.title || inc.relation.technology}
+                        </span>
                       )}
                     </div>
                   ))}
@@ -254,15 +250,21 @@ export function DetailsPanel({ onClose }: DetailsPanelProps) {
                 </h4>
                 <div className="dep-list">
                   {outgoing.map((out, idx) => (
-                    <div key={idx} className="dep-item" onClick={() => selectNode(getFqn(out.relation.target))}>
+                    <div
+                      key={idx}
+                      className="dep-item"
+                      onClick={() => selectNode(getFqn(out.relation.target))}
+                    >
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        {getTypeIcon((out.target as any)?.kind || "")}
+                        {getTypeIcon((out.target as ElementDump)?.kind || "")}
                         <span className="dep-name">
-                          {(out.target as any)?.title || getFqn(out.relation.target)}
+                          {(out.target as ElementDump)?.title || getFqn(out.relation.target)}
                         </span>
                       </div>
                       {(out.relation.title || out.relation.technology) && (
-                        <span className="dep-desc">{out.relation.title || out.relation.technology}</span>
+                        <span className="dep-desc">
+                          {out.relation.title || out.relation.technology}
+                        </span>
                       )}
                     </div>
                   ))}
@@ -304,10 +306,7 @@ export function DetailsPanel({ onClose }: DetailsPanelProps) {
               {relatedADRs.map((adr) => {
                 const isPending = !adr.decision || adr.decision.trim() === "";
                 return (
-                  <div
-                    key={adr.id}
-                    className={`related-item ${isPending ? "pending-action" : ""}`}
-                  >
+                  <div key={adr.id} className={`related-item ${isPending ? "pending-action" : ""}`}>
                     <div className="related-item-header">
                       <span className="related-item-title">{adr.title || adr.id}</span>
                       {isPending && (
@@ -345,9 +344,7 @@ export function DetailsPanel({ onClose }: DetailsPanelProps) {
               {relatedFlows.map((flow) => (
                 <div key={flow.id} className="related-item">
                   <div className="related-item-header">
-                    <span className="related-item-title">
-                      {flow.title || flow.id}
-                    </span>
+                    <span className="related-item-title">{flow.title || flow.id}</span>
                   </div>
                   {flow.description && <p className="related-item-desc">{flow.description}</p>}
                 </div>
@@ -367,9 +364,7 @@ export function DetailsPanel({ onClose }: DetailsPanelProps) {
               {relatedScenarios.map((scenario) => (
                 <div key={scenario.id} className="related-item">
                   <div className="related-item-header">
-                    <span className="related-item-title">
-                      {scenario.title || scenario.id}
-                    </span>
+                    <span className="related-item-title">{scenario.title || scenario.id}</span>
                   </div>
                   {scenario.description && (
                     <p className="related-item-desc">{scenario.description}</p>
@@ -383,5 +378,3 @@ export function DetailsPanel({ onClose }: DetailsPanelProps) {
     </div>
   );
 }
-
-

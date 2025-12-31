@@ -24,7 +24,7 @@ export function BuilderWizard() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [hasSidebarPref, setHasSidebarPref] = useState(false);
   const { score } = useValidation();
-  const data = useArchitectureStore((state) => state.likec4Model);
+  const data = useArchitectureStore((state) => state.model);
   const storeDslSource = useArchitectureStore((s) => s.dslSource);
   const setDslSource = useArchitectureStore((s) => s.setDslSource);
   const isEditMode = useFeatureFlagsStore((s) => s.isEditMode);

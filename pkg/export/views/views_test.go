@@ -7,7 +7,7 @@ import (
 )
 
 func TestApplyViewExpressions_IncludeWildcard(t *testing.T) {
-	dsl := `model {
+	dsl := `
         Backend = system "Backend" {
             API = container "API" {
                 Auth = component "Auth"
@@ -15,13 +15,12 @@ func TestApplyViewExpressions_IncludeWildcard(t *testing.T) {
             DB = database "Database"
             MQ = queue "Events"
         }
-    }`
+    `
 	prog := parseDSL(t, dsl)
 
 	view := &language.View{
-		Type:  "container",
-		Scope: language.QualifiedIdent{Parts: []string{"Backend"}},
-		Name:  "\"Containers\"",
+		Scope: &language.QualifiedIdent{Parts: []string{"Backend"}},
+		Name:  strPtr("\"Containers\""),
 		Expressions: []*language.ViewExpression{
 			{Type: "include", Wildcard: strPtr("*")},
 		},
@@ -48,11 +47,11 @@ func TestApplyViewExpressions_IncludeWildcard(t *testing.T) {
 }
 
 func TestApplyStyles_Tags(t *testing.T) {
-	dsl := `model {
+	dsl := `
         Backend = system "Backend" {
             API = container "API" #api
         }
-    }`
+    `
 	prog := parseDSL(t, dsl)
 
 	// Style block that targets tag "api"
@@ -91,7 +90,7 @@ func TestFindViewByName(t *testing.T) {
 }
 
 func TestApplyViewExpressions_NilView(t *testing.T) {
-	prog := parseDSL(t, `model { sys = system "System" }`)
+	prog := parseDSL(t, `sys = system "System"`)
 	_, err := ApplyViewExpressions(prog, nil)
 	if err == nil {
 		t.Error("ApplyViewExpressions should error on nil view")
@@ -99,17 +98,16 @@ func TestApplyViewExpressions_NilView(t *testing.T) {
 }
 
 func TestApplyViewExpressions_Exclude(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Backend = system "Backend" {
 			API = container "API"
 			DB = database "Database"
 		}
-	}`
+	`
 	prog := parseDSL(t, dsl)
 
 	view := &language.View{
-		Type:  "container",
-		Scope: language.QualifiedIdent{Parts: []string{"Backend"}},
+		Scope: &language.QualifiedIdent{Parts: []string{"Backend"}},
 		Expressions: []*language.ViewExpression{
 			{Type: "include", Wildcard: strPtr("*")},
 			{Type: "exclude", Elements: []language.QualifiedIdent{
@@ -132,17 +130,16 @@ func TestApplyViewExpressions_Exclude(t *testing.T) {
 }
 
 func TestApplyViewExpressions_IncludeElements(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Backend = system "Backend" {
 			API = container "API"
 			DB = database "Database"
 		}
-	}`
+	`
 	prog := parseDSL(t, dsl)
 
 	view := &language.View{
-		Type:  "container",
-		Scope: language.QualifiedIdent{Parts: []string{"Backend"}},
+		Scope: &language.QualifiedIdent{Parts: []string{"Backend"}},
 		Expressions: []*language.ViewExpression{
 			{Type: "include", Elements: []language.QualifiedIdent{
 				{Parts: []string{"Backend", "API"}},
@@ -164,7 +161,7 @@ func TestApplyViewExpressions_IncludeElements(t *testing.T) {
 }
 
 func TestApplyStyles_Nil(t *testing.T) {
-	prog := parseDSL(t, `model { sys = system "System" }`)
+	prog := parseDSL(t, `sys = system "System"`)
 	styles := ApplyStyles(prog, nil)
 	if styles != nil {
 		t.Error("ApplyStyles should return nil for nil viewBlock")
@@ -172,7 +169,7 @@ func TestApplyStyles_Nil(t *testing.T) {
 }
 
 func TestApplyStyles_EmptyStyles(t *testing.T) {
-	prog := parseDSL(t, `model { sys = system "System" }`)
+	prog := parseDSL(t, `sys = system "System"`)
 	viewBlock := &language.ViewBlock{
 		Styles: &language.StylesBlock{},
 	}

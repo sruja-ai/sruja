@@ -21,7 +21,6 @@ func parse2(t *testing.T, dsl string) *language.Program {
 
 func TestValidReferences_NewElements(t *testing.T) {
 	dsl := `
-model {
     App = system "App" {
       Store = database "DB"
       Bus = queue "Queue"
@@ -31,7 +30,7 @@ model {
     User -> Store "reads"
     App -> Bus "publishes"
     App -> Pay "depends"
-}`
+`
 	prog := parse2(t, dsl)
 	errs := (&engine.ValidReferenceRule{}).Validate(prog)
 	if len(errs) != 0 {
@@ -41,13 +40,11 @@ model {
 
 func TestOrphanDetection_NewElementsUsage(t *testing.T) {
 	dsl := `
-model {
     App = system "App" {
       Store = database "DB"
     }
     User = person "User"
     User -> Store "reads"
-}
 `
 	prog := parse2(t, dsl)
 	errs := (&engine.OrphanDetectionRule{}).Validate(prog)

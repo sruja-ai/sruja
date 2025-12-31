@@ -19,7 +19,7 @@ interface SharePanelProps {
 }
 
 export function SharePanel({ isOpen, onClose }: SharePanelProps) {
-  const data = useArchitectureStore((state) => state.likec4Model);
+  const data = useArchitectureStore((state) => state.model);
   const dslSource = useArchitectureStore((s) => s.dslSource);
   const modalRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -114,7 +114,9 @@ export function SharePanel({ isOpen, onClose }: SharePanelProps) {
           const generatedDsl = await convertModelToDsl(data);
           setDsl(generatedDsl);
         } catch (error) {
-          setDsl(`// Error generating DSL: ${error instanceof Error ? error.message : String(error)}`);
+          setDsl(
+            `// Error generating DSL: ${error instanceof Error ? error.message : String(error)}`
+          );
         }
       } else {
         setDsl("");

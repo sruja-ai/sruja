@@ -26,4 +26,4 @@ export function toC4Level(level: string | undefined, fallback: C4Level = "L1"): 
  */
 export type LayoutDirection = "DOWN" | "RIGHT" | "UP" | "LEFT";
 
-// Layout engine types removed - LikeC4 handles all layout internally
+// Layout engine types removed - layout is handled internally

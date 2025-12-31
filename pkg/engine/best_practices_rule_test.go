@@ -16,59 +16,53 @@ func TestDatabaseIsolationRule(t *testing.T) {
 		{
 			name: "Clean Isolation",
 			dsl: `
-model {
-  A = system "System A" {
-    API = container "API"
-    DB = database "DB"
-    API -> DB "Writes"
-  }
-  B = system "System B" {
-    API = container "API"
-    DB = database "DB"
-    API -> DB "Writes"
-  }
-  A.API -> B.API "Calls"
+A = system "System A" {
+API = container "API"
+DB = database "DB"
+API -> DB "Writes"
 }
+B = system "System B" {
+API = container "API"
+DB = database "DB"
+API -> DB "Writes"
+}
+A.API -> B.API "Calls"
 `,
 			expected: nil,
 		},
 		{
 			name: "Violation - Shared DB",
 			dsl: `
-model {
-  A = system "System A" {
-    API = container "API"
-  }
-  B = system "System B" {
-    API = container "API"
-  }
-  SharedDB = database "Shared Database"
-  
-  A.API -> SharedDB "Reads"
-  B.API -> SharedDB "Writes"
+A = system "System A" {
+API = container "API"
 }
+B = system "System B" {
+API = container "API"
+}
+SharedDB = database "Shared Database"
+
+A.API -> SharedDB "Reads"
+B.API -> SharedDB "Writes"
 `,
 			expected: []string{"DataStore 'SharedDB' is accessed by multiple services", "System A", "System B"},
 		},
 		{
 			name: "Allowed Shared DB",
 			dsl: `
-model {
-  A = system "System A" {
-    API = container "API"
-  }
-  B = system "System B" {
-    API = container "API"
-  }
-  SharedDB = database "Shared Database" {
-    metadata {
-      shared "true"
-    }
-  }
-  
-  A.API -> SharedDB "Reads"
-  B.API -> SharedDB "Writes"
+A = system "System A" {
+API = container "API"
 }
+B = system "System B" {
+API = container "API"
+}
+SharedDB = database "Shared Database" {
+metadata {
+  shared "true"
+}
+}
+
+A.API -> SharedDB "Reads"
+B.API -> SharedDB "Writes"
 `,
 			expected: nil,
 		},
@@ -114,36 +108,30 @@ func TestPublicInterfaceDocumentationRule(t *testing.T) {
 		{
 			name: "Documented System",
 			dsl: `
-model {
-  User = person "User"
-  Sys = system "System" {
-    description "Handles things"
-  }
-  User -> Sys "Uses"
+User = person "User"
+Sys = system "System" {
+description "Handles things"
 }
+User -> Sys "Uses"
 `,
 			expected: nil,
 		},
 		{
 			name: "Undocumented System",
 			dsl: `
-model {
-  User = person "User"
-  Sys = system "System" // No description
-  User -> Sys "Uses"
-}
+User = person "User"
+Sys = system "System" // No description
+User -> Sys "Uses"
 `,
 			expected: []string{"System 'Sys' is used by humans but lacks a description"},
 		},
 		{
 			name: "Undocumented Container",
 			dsl: `
-model {
-  User = person "User"
-  Sys = system "System" {
-    Web = container "Web App" // No description, no technology
-    User -> Web "Uses"
-  }
+User = person "User"
+Sys = system "System" {
+Web = container "Web App" // No description, no technology
+User -> Web "Uses"
 }
 `,
 			expected: []string{
@@ -154,15 +142,13 @@ model {
 		{
 			name: "Fully Documented Container",
 			dsl: `
-model {
-  User = person "User"
-  Sys = system "System" {
-    Web = container "Web App" {
-      description "The web interface"
-      technology "React"
-    }
-    User -> Web "Uses"
-  }
+User = person "User"
+Sys = system "System" {
+Web = container "Web App" {
+  description "The web interface"
+  technology "React"
+}
+User -> Web "Uses"
 }
 `,
 			expected: nil,

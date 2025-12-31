@@ -14,42 +14,36 @@ Systems thinking helps you understand how components interact as part of a whole
 Systems thinking starts with understanding **what** the system contains (parts) and **how** they connect (relationships).
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+Customer = person "End User"
+
+Shop = system "E-Commerce System" {
+WebApp = container "Web Application" {
+  technology "React"
 }
 
-model {
-  Customer = person "End User"
-  
-  Shop = system "E-Commerce System" {
-    WebApp = container "Web Application" {
-      technology "React"
-    }
-    
-    API = container "API Service" {
-      technology "Go"
-    }
-    
-    DB = datastore "PostgreSQL Database" {
-      technology "PostgreSQL 14"
-    }
-  }
-  
-  // Relationships show how parts interact
-  Customer -> Shop.WebApp "Uses"
-  Shop.WebApp -> Shop.API "Calls"
-  Shop.API -> Shop.DB "Reads/Writes"
+API = container "API Service" {
+  technology "Go"
 }
 
-views {
-  view index {
-    include *
-  }
+DB = datastore "PostgreSQL Database" {
+  technology "PostgreSQL 14"
+}
+}
+
+// Relationships show how parts interact
+Customer -> Shop.WebApp "Uses"
+Shop.WebApp -> Shop.API "Calls"
+Shop.API -> Shop.DB "Reads/Writes"
+
+view index {
+include *
 }
 ```
 
@@ -60,42 +54,36 @@ views {
 Boundaries define what's **inside** the system vs. what's **outside** (the environment).
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+// Inside boundary: System contains these components
+system Shop {
+container WebApp
+container API
+datastore DB
 }
 
-model {
-  // Inside boundary: System contains these components
-  system Shop {
-    container WebApp
-    container API
-    datastore DB
-  }
-  
-  // Outside boundary: External entities
-  Customer = person "End User"
-  Admin = person "System Administrator"
-  
-  PaymentGateway = system "Third-party Payment Service" {
-    metadata {
-      tags ["external"]
-    }
-  }
-  
-  // Relationships cross boundaries
-  Customer -> Shop.WebApp "Uses"
-  Shop.API -> PaymentGateway "Processes"
+// Outside boundary: External entities
+Customer = person "End User"
+Admin = person "System Administrator"
+
+PaymentGateway = system "Third-party Payment Service" {
+metadata {
+  tags ["external"]
+}
 }
 
-views {
-  view index {
-    include *
-  }
+// Relationships cross boundaries
+Customer -> Shop.WebApp "Uses"
+Shop.API -> PaymentGateway "Processes"
+
+view index {
+include *
 }
 ```
 
@@ -110,42 +98,36 @@ Flows show how information and data **move through** the system. Sruja supports 
 Use `scenario` for data-oriented flows:
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+person Customer
+system Shop {
+container WebApp
+container API
+datastore DB
+}
+system PaymentGateway {
+metadata {
+  tags ["external"]
+}
 }
 
-model {
-  person Customer
-  system Shop {
-    container WebApp
-    container API
-    datastore DB
-  }
-  system PaymentGateway {
-    metadata {
-      tags ["external"]
-    }
-  }
-  
-  scenario OrderProcess "Order Processing" {
-    Customer -> Shop.WebApp "Submits Order"
-    Shop.WebApp -> Shop.API "Sends Order Data"
-    Shop.API -> Shop.DB "Saves Order"
-    Shop.API -> PaymentGateway "Charges Payment"
-    Shop.API -> Shop.WebApp "Returns Result"
-    Shop.WebApp -> Customer "Shows Confirmation"
-  }
+scenario OrderProcess "Order Processing" {
+Customer -> Shop.WebApp "Submits Order"
+Shop.WebApp -> Shop.API "Sends Order Data"
+Shop.API -> Shop.DB "Saves Order"
+Shop.API -> PaymentGateway "Charges Payment"
+Shop.API -> Shop.WebApp "Returns Result"
+Shop.WebApp -> Customer "Shows Confirmation"
 }
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -154,47 +136,41 @@ views {
 Use `scenario` for behavioral flows:
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+Customer = person "End User"
+ECommerce = system "E-Commerce System" {
+CartPage = container "Shopping Cart Page"
+WebApp = container "Web Application"
+API = container "API Service"
+DB = datastore "Database"
+}
+PaymentGateway = system "Payment Service" {
+metadata {
+  tags ["external"]
+}
 }
 
-model {
-  Customer = person "End User"
-  ECommerce = system "E-Commerce System" {
-    CartPage = container "Shopping Cart Page"
-    WebApp = container "Web Application"
-    API = container "API Service"
-    DB = datastore "Database"
-  }
-  PaymentGateway = system "Payment Service" {
-    metadata {
-      tags ["external"]
-    }
-  }
-  
-  story Checkout "User Checkout Flow" {
-    Customer -> ECommerce.CartPage "adds items to cart"
-    ECommerce.CartPage -> ECommerce.WebApp "clicks checkout"
-    ECommerce.WebApp -> ECommerce.API "validates cart"
-    ECommerce.API -> ECommerce.DB "checks inventory"
-    ECommerce.DB -> ECommerce.API "returns stock status"
-    ECommerce.API -> PaymentGateway "processes payment"
-    PaymentGateway -> ECommerce.API "confirms payment"
-    ECommerce.API -> ECommerce.DB "creates order"
-    ECommerce.API -> ECommerce.WebApp "returns order confirmation"
-    ECommerce.WebApp -> Customer "displays success message"
-  }
+story Checkout "User Checkout Flow" {
+Customer -> ECommerce.CartPage "adds items to cart"
+ECommerce.CartPage -> ECommerce.WebApp "clicks checkout"
+ECommerce.WebApp -> ECommerce.API "validates cart"
+ECommerce.API -> ECommerce.DB "checks inventory"
+ECommerce.DB -> ECommerce.API "returns stock status"
+ECommerce.API -> PaymentGateway "processes payment"
+PaymentGateway -> ECommerce.API "confirms payment"
+ECommerce.API -> ECommerce.DB "creates order"
+ECommerce.API -> ECommerce.WebApp "returns order confirmation"
+ECommerce.WebApp -> Customer "displays success message"
 }
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -208,63 +184,53 @@ Feedback loops show how actions create **reactions** that affect future actions.
 
 ```sruja
 // EXPECTED_FAILURE: Layer violation
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+User = person "End User"
+App = system "Application" {
+WebApp = container "Web Application"
+API = container "API Service"
 }
 
-model {
-  User = person "End User"
-  App = system "Application" {
-    WebApp = container "Web Application"
-    API = container "API Service"
-  }
-  
-  // Feedback loop: User action → System response → User reaction
-  User -> App.WebApp "Submits Form"
-  App.WebApp -> App.API "Validates"
-  App.API -> App.WebApp "Returns Validation Result"
-  App.WebApp -> User "Shows Feedback"
-  // The feedback affects user's next action (completing the loop)
+// Feedback loop: User action → System response → User reaction
+User -> App.WebApp "Submits Form"
+App.WebApp -> App.API "Validates"
+App.API -> App.WebApp "Returns Validation Result"
+App.WebApp -> User "Shows Feedback"
+// The feedback affects user's next action (completing the loop)
 
-}
 ```
 
 ### System Feedback Loop
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+person Admin
+system Shop {
+container API
+datastore Inventory
 }
 
-model {
-  person Admin
-  system Shop {
-    container API
-    datastore Inventory
-  }
-  
-  // Event-driven feedback loop
-  Shop.API -> Shop.Inventory "Updates Stock"
-  Shop.Inventory -> Shop.API "Notifies Low Stock"
-  Shop.API -> Admin "Sends Alert"
-  Admin -> Shop.API "Adjusts Inventory"
-  // Creates feedback: API ↔ Inventory ↔ Admin
-}
+// Event-driven feedback loop
+Shop.API -> Shop.Inventory "Updates Stock"
+Shop.Inventory -> Shop.API "Notifies Low Stock"
+Shop.API -> Admin "Sends Alert"
+Admin -> Shop.API "Adjusts Inventory"
+// Creates feedback: API ↔ Inventory ↔ Admin
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -275,60 +241,54 @@ views {
 Context defines the **environment** the system operates in - external dependencies, stakeholders, and surrounding systems.
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+// Internal system
+system Shop {
+WebApp = container "Web Application"
+API = container "API Service"
+DB = datastore "Database"
 }
 
-model {
-  // Internal system
-  system Shop {
-    WebApp = container "Web Application"
-    API = container "API Service"
-    DB = datastore "Database"
-  }
-  
-  // Context: Stakeholders
-  Customer = person "End User"
-  Admin = person "System Administrator"
-  Support = person "Customer Support"
-  
-  // Context: External dependencies
-  PaymentGateway = system "Third-party Payment" {
-    metadata {
-      tags ["external"]
-    }
-  }
-  
-  EmailService = system "Email Notifications" {
-    metadata {
-      tags ["external"]
-    }
-  }
-  
-  AnalyticsService = system "Usage Analytics" {
-    metadata {
-      tags ["external"]
-    }
-  }
-  
-  // Context relationships
-  Customer -> Shop "Uses"
-  Admin -> Shop "Manages"
-  Support -> Shop "Monitors"
-  Shop -> PaymentGateway "Depends on"
-  Shop -> EmailService "Sends notifications"
-  Shop -> AnalyticsService "Tracks usage"
+// Context: Stakeholders
+Customer = person "End User"
+Admin = person "System Administrator"
+Support = person "Customer Support"
+
+// Context: External dependencies
+PaymentGateway = system "Third-party Payment" {
+metadata {
+  tags ["external"]
+}
 }
 
-views {
-  view index {
-    include *
-  }
+EmailService = system "Email Notifications" {
+metadata {
+  tags ["external"]
+}
+}
+
+AnalyticsService = system "Usage Analytics" {
+metadata {
+  tags ["external"]
+}
+}
+
+// Context relationships
+Customer -> Shop "Uses"
+Admin -> Shop "Manages"
+Support -> Shop "Monitors"
+Shop -> PaymentGateway "Depends on"
+Shop -> EmailService "Sends notifications"
+Shop -> AnalyticsService "Tracks usage"
+
+view index {
+include *
 }
 ```
 
@@ -340,75 +300,71 @@ Here's a complete example combining all five concepts:
 
 ```sruja
 // EXPECTED_FAILURE: Layer violation
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+// 1. PARTS AND RELATIONSHIPS
+Customer = person "End User"
+Admin = person "System Administrator"
+
+ECommerce = system "E-Commerce System" {
+WebApp = container "Web Application" {
+  technology "React"
+}
+API = container "API Service" {
+  technology "Go"
+}
+DB = datastore "PostgreSQL Database" {
+  technology "PostgreSQL 14"
+}
 }
 
-model {
-  // 1. PARTS AND RELATIONSHIPS
-  Customer = person "End User"
-  Admin = person "System Administrator"
-  
-  ECommerce = system "E-Commerce System" {
-    WebApp = container "Web Application" {
-      technology "React"
-    }
-    API = container "API Service" {
-      technology "Go"
-    }
-    DB = datastore "PostgreSQL Database" {
-      technology "PostgreSQL 14"
-    }
-  }
-  
-  // 2. BOUNDARIES
-  PaymentGateway = system "Third-party Payment Service" {
-    metadata {
-      tags ["external"]
-    }
-  }
-  
-  // 3. FLOWS
-  scenario OrderProcess "Order Processing" {
-    Customer -> ECommerce.WebApp "Submits Order"
-    ECommerce.WebApp -> ECommerce.API "Sends Order Data"
-    ECommerce.API -> ECommerce.DB "Saves Order"
-    ECommerce.API -> PaymentGateway "Charges Payment"
-    ECommerce.API -> ECommerce.WebApp "Returns Result"
-    ECommerce.WebApp -> Customer "Shows Confirmation"
-  }
-  
-  // 4. FEEDBACK LOOPS
-  Customer -> ECommerce.WebApp "Submits Form"
-  ECommerce.WebApp -> ECommerce.API "Validates"
-  ECommerce.API -> ECommerce.WebApp "Returns Validation Result"
-  ECommerce.WebApp -> Customer "Shows Feedback"
-  
-  ECommerce.API -> ECommerce.DB "Updates Inventory"
-  ECommerce.DB -> ECommerce.API "Notifies Low Stock"
-  ECommerce.API -> Admin "Sends Alert"
-  Admin -> ECommerce.API "Adjusts Inventory"
-  
-  // 5. CONTEXT
-  Support = person "Customer Support"
-  EmailService = system "Email Notifications" {
-    metadata {
-      tags ["external"]
-    }
-  }
-  
-  Customer -> ECommerce "Uses"
-  Admin -> ECommerce "Manages"
-  Support -> ECommerce "Monitors"
-  ECommerce -> PaymentGateway "Depends on"
-  ECommerce -> EmailService "Sends notifications"
-
+// 2. BOUNDARIES
+PaymentGateway = system "Third-party Payment Service" {
+metadata {
+  tags ["external"]
 }
+}
+
+// 3. FLOWS
+scenario OrderProcess "Order Processing" {
+Customer -> ECommerce.WebApp "Submits Order"
+ECommerce.WebApp -> ECommerce.API "Sends Order Data"
+ECommerce.API -> ECommerce.DB "Saves Order"
+ECommerce.API -> PaymentGateway "Charges Payment"
+ECommerce.API -> ECommerce.WebApp "Returns Result"
+ECommerce.WebApp -> Customer "Shows Confirmation"
+}
+
+// 4. FEEDBACK LOOPS
+Customer -> ECommerce.WebApp "Submits Form"
+ECommerce.WebApp -> ECommerce.API "Validates"
+ECommerce.API -> ECommerce.WebApp "Returns Validation Result"
+ECommerce.WebApp -> Customer "Shows Feedback"
+
+ECommerce.API -> ECommerce.DB "Updates Inventory"
+ECommerce.DB -> ECommerce.API "Notifies Low Stock"
+ECommerce.API -> Admin "Sends Alert"
+Admin -> ECommerce.API "Adjusts Inventory"
+
+// 5. CONTEXT
+Support = person "Customer Support"
+EmailService = system "Email Notifications" {
+metadata {
+  tags ["external"]
+}
+}
+
+Customer -> ECommerce "Uses"
+Admin -> ECommerce "Manages"
+Support -> ECommerce "Monitors"
+ECommerce -> PaymentGateway "Depends on"
+ECommerce -> EmailService "Sends notifications"
+
 ```
 
 ## Why Systems Thinking Matters

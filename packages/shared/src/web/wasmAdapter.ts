@@ -3,11 +3,15 @@ import { logger } from "../utils/logger";
 import { ConfigurationError, NetworkError } from "../utils/errors";
 import {
   getWindowWithWasm,
-  type GoConstructor,
   type GoInstance,
   type DotResult,
+  type WasmImportObject,
+  type GoJsImports,
+  type GoConstructor,
+  type ScoreResult,
 } from "./wasmTypes";
 import { isBrowser } from "../utils/env";
+import { ExportError, parseWasmError, validateDotResult } from "./errors";
 
 /**
  * Check if running in development mode.
@@ -30,17 +34,17 @@ function isDevelopmentMode(): boolean {
 
 export type WasmApi = {
   parseDslToJson: (dsl: string, filename?: string) => Promise<string>;
-  printJsonToDsl: (json: string) => Promise<string>;
+  modelToDsl: (modelJson: string) => Promise<string>;
   dslToMermaid: (dsl: string) => Promise<string>;
   dslToMarkdown: (dsl: string) => Promise<string>;
-  dslToLikeC4: (dsl: string, filename?: string) => Promise<string>;
+  dslToModel: (dsl: string, filename?: string) => Promise<string>;
   dslToDot: (
     dsl: string,
     viewLevel?: number,
     focusNodeId?: string,
     nodeSizes?: Record<string, { width: number; height: number }>
   ) => Promise<DotResult>;
-  calculateArchitectureScore: (dsl: string) => Promise<any>;
+  calculateArchitectureScore: (dsl: string) => Promise<ScoreResult>;
 };
 
 async function ensureScript(src: string): Promise<void> {
@@ -159,18 +163,18 @@ export async function initWasm(options?: {
   }
 
   const go: GoInstance = new GoCtor();
-  const importObject: Record<string, unknown> = (go.importObject as Record<string, unknown>) || {};
+  const importObject = (go.importObject || {}) as WasmImportObject;
 
   // Provide gojs alias when missing
-  if (!(importObject as any).gojs) {
-    const envObj = (importObject as any).env || {};
-    (importObject as any).gojs = Object.keys(envObj).length
-      ? envObj
-      : (importObject as any).go || {};
+  if (!importObject.gojs) {
+    const envObj = importObject.env || {};
+    importObject.gojs = Object.keys(envObj).length
+      ? (envObj as unknown as GoJsImports)
+      : (importObject.go as unknown as GoJsImports) || {};
   }
   // Polyfill TinyGo scheduleTimeoutEvent if missing
-  if (!(importObject as any).gojs["runtime.scheduleTimeoutEvent"]) {
-    (importObject as any).gojs["runtime.scheduleTimeoutEvent"] = (ms: number) => {
+  if (importObject.gojs && !importObject.gojs["runtime.scheduleTimeoutEvent"]) {
+    importObject.gojs["runtime.scheduleTimeoutEvent"] = (ms: number) => {
       setTimeout(() => {
         try {
           if (go._resume) {
@@ -222,7 +226,7 @@ export async function initWasm(options?: {
           logger.info("WASM loaded via streaming", { component: "wasm", action: "load_wasm", url });
           // In dev mode, log WASM load info
           if (isDevelopmentMode()) {
-            console.log(
+            console.info(
               `[WASM] ✅ Loaded from ${url}\n` +
                 `[WASM] Cache-busting enabled - new WASM will load automatically after rebuild.\n` +
                 `[WASM] If changes don't appear, try a hard refresh (Ctrl+Shift+R / Cmd+Shift+R)`
@@ -255,7 +259,7 @@ export async function initWasm(options?: {
           });
           // In dev mode, log WASM load info
           if (isDevelopmentMode()) {
-            console.log(
+            console.info(
               `[WASM] ✅ Loaded from ${url} (fallback method)\n` +
                 `[WASM] Cache-busting enabled - new WASM will load automatically after rebuild.\n` +
                 `[WASM] If changes don't appear, try a hard refresh (Ctrl+Shift+R / Cmd+Shift+R)`
@@ -271,7 +275,7 @@ export async function initWasm(options?: {
         logger.info("WASM loaded via arrayBuffer", { component: "wasm", action: "load_wasm", url });
         // In dev mode, log WASM load info
         if (isDevelopmentMode()) {
-          console.log(
+          console.info(
             `[WASM] ✅ Loaded from ${url}\n` +
               `[WASM] Cache-busting enabled - new WASM will load automatically after rebuild.\n` +
               `[WASM] If changes don't appear, try a hard refresh (Ctrl+Shift+R / Cmd+Shift+R)`
@@ -311,7 +315,8 @@ export async function initWasm(options?: {
   // Wait for required functions to be registered
   let retries = 0;
   const maxRetries = 150; // Increased to give more time
-  while (!win.sruja_parse_dsl && retries < maxRetries) {
+  // Check for dslToModel as a signal that WASM is loaded
+  while (!win.sruja_dsl_to_model && retries < maxRetries) {
     await new Promise((r) => setTimeout(r, 50));
     retries++;
   }
@@ -324,20 +329,20 @@ export async function initWasm(options?: {
       retries,
       available,
       missing: {
-        parse: !win.sruja_parse_dsl,
+        model: !win.sruja_dsl_to_model,
         mermaid: !win.sruja_dsl_to_mermaid,
         markdown: !win.sruja_dsl_to_markdown,
       },
     });
   }
 
-  const parseFn = win.sruja_parse_dsl;
-  const jsonToDslFn = win.sruja_json_to_dsl;
+  // const parseFn = win.sruja_parse_dsl; // Deprecated/Removed
   const mermaidFn = win.sruja_dsl_to_mermaid;
   const markdownFn = win.sruja_dsl_to_markdown;
-  const likec4Fn = win.sruja_dsl_to_likec4;
+  const modelFn = win.sruja_dsl_to_model;
+  const modelToDslFn = win.sruja_model_to_dsl;
   const dotFn = win.sruja_dsl_to_dot;
-  const scoreFn = win.sruja_score;
+  const scoreFn = win.sruja_analyze_governance;
 
   // Debug: Log all registered functions
   const allSrujaFunctions = Object.keys(win).filter((k) => k.startsWith("sruja_"));
@@ -348,12 +353,12 @@ export async function initWasm(options?: {
   });
 
   // Require core functions
-  if (!parseFn || !jsonToDslFn || !mermaidFn || !markdownFn) {
+  if (!mermaidFn || !markdownFn || !modelFn || !modelToDslFn) {
     const missing: string[] = [];
-    if (!parseFn) missing.push("sruja_parse_dsl");
-    if (!jsonToDslFn) missing.push("sruja_json_to_dsl");
     if (!mermaidFn) missing.push("sruja_dsl_to_mermaid");
     if (!markdownFn) missing.push("sruja_dsl_to_markdown");
+    if (!modelFn) missing.push("sruja_dsl_to_model");
+    if (!modelToDslFn) missing.push("sruja_model_to_dsl");
     const available = Object.keys(win).filter((k) => k.startsWith("sruja_"));
     const error = new ConfigurationError(
       `WASM functions not found. Missing: ${missing.join(", ")}. Available: ${available.join(", ") || "none"}`,
@@ -377,56 +382,65 @@ export async function initWasm(options?: {
 
   return {
     parseDslToJson: async (dsl: string, filename?: string) => {
+      // Delegate to dslToModel since parseDsl now calls dslToModel in Go
+      // This maintains backward compatibility while removing duplication
       try {
-        const file =
+        const fn =
           filename ||
           (typeof location !== "undefined" ? location.pathname || "input.sruja" : "input.sruja");
-        const r = parseFn(dsl, file);
-        if (!r || !r.ok) {
-          const error = new Error(r?.error || "parse failed");
-          logger.error("WASM parse failed", {
-            component: "wasm",
-            action: "parse_dsl",
-            errorType: "parse_failure",
-            errorCode: r?.error,
-            dslLength: dsl.length,
-            error: error.message,
-          });
-          throw error;
+        if (!modelFn) {
+          throw new ExportError("SYSTEM_5002", "sruja_dsl_to_model function not registered");
         }
-        return r.json || "";
+        const r = modelFn(dsl, fn);
+        if (!r || !r.ok) {
+          const exportError = parseWasmError(r);
+          if (exportError) {
+            logger.error("WASM parse failed", {
+              component: "wasm",
+              action: "parse_dsl",
+              errorType: "parse_failure",
+              errorCode: exportError.code,
+              error: exportError.message,
+              context: exportError.context,
+              dslLength: dsl.length,
+            });
+            throw exportError;
+          }
+          throw new ExportError("PARSE_1001", r?.error || "parse failed");
+        }
+        // Return json field for backward compatibility, but data field also works
+        return (r.json as string) || (r.data as string) || "";
       } catch (error) {
         logger.error("WASM parse exception", {
           component: "wasm",
           action: "parse_dsl",
           errorType: "parse_exception",
           error: error instanceof Error ? error.message : String(error),
+          errorCode: error instanceof ExportError ? error.code : undefined,
         });
         throw error;
       }
     },
-    printJsonToDsl: async (json: string) => {
+    modelToDsl: async (modelJson: string) => {
       try {
-        const r = jsonToDslFn(json);
-        if (!r || !r.ok) {
-          const error = new Error(r?.error || "print failed");
-          logger.error("WASM print failed", {
-            component: "wasm",
-            action: "print_json",
-            errorType: "print_failure",
-            errorCode: r?.error,
-            jsonLength: json.length,
-            error: error.message,
-          });
-          throw error;
+        if (!modelToDslFn) {
+          throw new ExportError("SYSTEM_5002", "sruja_model_to_dsl function not registered");
         }
-        return r.dsl || "";
+        const r = modelToDslFn(modelJson);
+        if (!r || !r.ok) {
+          const exportError = parseWasmError(r);
+          if (exportError) {
+            throw exportError;
+          }
+          throw new ExportError("EXPORT_4001", r?.error || "model to DSL conversion failed");
+        }
+        return (r.data as string) || "";
       } catch (error) {
-        logger.error("WASM print exception", {
+        logger.error("WASM model to DSL exception", {
           component: "wasm",
-          action: "print_json",
-          errorType: "print_exception",
+          action: "model_to_dsl",
           error: error instanceof Error ? error.message : String(error),
+          errorCode: error instanceof ExportError ? error.code : undefined,
         });
         throw error;
       }
@@ -435,16 +449,21 @@ export async function initWasm(options?: {
       try {
         const r = mermaidFn(dsl);
         if (!r || !r.ok) {
-          const errorMsg = r?.error || "mermaid export failed";
-          logger.error("WASM mermaid export failed", {
-            component: "wasm",
-            action: "export_mermaid",
-            error: errorMsg,
-            dslPreview: dsl.substring(0, 200),
-          });
-          throw new Error(errorMsg);
+          const exportError = parseWasmError(r);
+          if (exportError) {
+            logger.error("WASM mermaid export failed", {
+              component: "wasm",
+              action: "export_mermaid",
+              error: exportError.message,
+              errorCode: exportError.code,
+              context: exportError.context,
+              dslPreview: dsl.substring(0, 200),
+            });
+            throw exportError;
+          }
+          throw new ExportError("EXPORT_4001", r?.error || "mermaid export failed");
         }
-        const output = r.data || "";
+        const output = (r.data as string) || "";
         // Validate that we got a non-empty result
         if (!output || output.trim().length === 0) {
           const errorMsg = "mermaid exporter returned empty output";
@@ -454,7 +473,7 @@ export async function initWasm(options?: {
             error: errorMsg,
             dslPreview: dsl.substring(0, 200),
           });
-          throw new Error(errorMsg);
+          throw new ExportError("EXPORT_4002", errorMsg);
         }
         return output;
       } catch (error) {
@@ -462,6 +481,7 @@ export async function initWasm(options?: {
           component: "wasm",
           action: "export_mermaid",
           error: error instanceof Error ? error.message : String(error),
+          errorCode: error instanceof ExportError ? error.code : undefined,
         });
         throw error;
       }
@@ -472,7 +492,7 @@ export async function initWasm(options?: {
         if (!r || !r.ok) {
           throw new Error(r?.error || "markdown export failed");
         }
-        return r.data || "";
+        return (r.data as string) || "";
       } catch (error) {
         logger.error("WASM markdown export exception", {
           component: "wasm",
@@ -482,24 +502,29 @@ export async function initWasm(options?: {
         throw error;
       }
     },
-    dslToLikeC4: async (dsl: string, filename?: string) => {
+    dslToModel: async (dsl: string, filename?: string) => {
       try {
         const fn =
           filename ||
           (typeof location !== "undefined" ? location.pathname || "input.sruja" : "input.sruja");
-        if (!likec4Fn) {
-          throw new Error("sruja_dsl_to_likec4 function not registered");
+        if (!modelFn) {
+          throw new ExportError("SYSTEM_5002", "sruja_dsl_to_model function not registered");
         }
-        const r = likec4Fn(dsl, fn);
+        const r = modelFn(dsl, fn);
         if (!r || !r.ok) {
-          throw new Error(r?.error || "likec4 export failed");
+          const exportError = parseWasmError(r);
+          if (exportError) {
+            throw exportError;
+          }
+          throw new ExportError("EXPORT_4001", r?.error || "model export failed");
         }
-        return r.data || "";
+        return (r.data as string) || "";
       } catch (error) {
-        logger.error("WASM likec4 export exception", {
+        logger.error("WASM model export exception", {
           component: "wasm",
-          action: "export_likec4",
+          action: "export_model",
           error: error instanceof Error ? error.message : String(error),
+          errorCode: error instanceof ExportError ? error.code : undefined,
         });
         throw error;
       }
@@ -512,20 +537,30 @@ export async function initWasm(options?: {
     ) => {
       try {
         if (!dotFn) {
-          throw new Error("sruja_dsl_to_dot function not registered");
+          throw new ExportError("SYSTEM_5002", "sruja_dsl_to_dot function not registered");
         }
-        // Pass viewLevel (default 1) and focusNodeId (default empty string) to WASM
-        const nodeSizesJson = nodeSizes ? JSON.stringify(nodeSizes) : "";
-        const r = dotFn(dsl, viewLevel ?? 1, focusNodeId ?? "", nodeSizesJson);
+        // Pack arguments into config object for WASM
+        const config = {
+          viewLevel: viewLevel ?? 1,
+          focusNodeId: focusNodeId ?? "",
+          nodeSizes: nodeSizes || {},
+        };
+        const r = dotFn(dsl, JSON.stringify(config));
         if (!r || !r.ok) {
-          throw new Error(r?.error || "DOT export failed");
+          const exportError = parseWasmError(r);
+          if (exportError) {
+            throw exportError;
+          }
+          throw new ExportError("EXPORT_4001", r?.error || "DOT export failed");
         }
-        return r.data as DotResult;
+        // Validate and type-check the result
+        return validateDotResult(r.data);
       } catch (error) {
         logger.error("WASM DOT export exception", {
           component: "wasm",
           action: "export_dot",
           error: error instanceof Error ? error.message : String(error),
+          errorCode: error instanceof ExportError ? error.code : undefined,
         });
         throw error;
       }
@@ -533,13 +568,13 @@ export async function initWasm(options?: {
     calculateArchitectureScore: async (dsl: string) => {
       try {
         if (!scoreFn) {
-          throw new Error("sruja_score function not registered");
+          throw new Error("sruja_analyze_governance function not registered");
         }
         const r = scoreFn(dsl);
         if (!r || !r.ok) {
           throw new Error(r?.error || "score calculation failed");
         }
-        return JSON.parse(r.data || "{}");
+        return JSON.parse((r.data as string) || "{}");
       } catch (error) {
         logger.error("WASM score calculation exception", {
           component: "wasm",
@@ -718,5 +753,31 @@ export async function convertDslToDot(
       error: error instanceof Error ? error.message : String(error),
     });
     return null;
+  }
+}
+
+/**
+ * Convert Architecture JSON object to DSL string.
+ * Returns DSL string if successful, throws error otherwise.
+ * Uses Go/WASM converter.
+ */
+export async function convertModelToDsl(model: object): Promise<string> {
+  const api = await getWasmApi();
+  if (!api) {
+    logger.error("WASM not available", { component: "wasm", action: "convert_model_to_dsl" });
+    throw new Error("WASM not available");
+  }
+
+  try {
+    const jsonStr = JSON.stringify(model);
+    return await api.modelToDsl(jsonStr);
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    logger.error("Model to DSL conversion error", {
+      component: "wasm",
+      action: "convert_model_to_dsl",
+      error: errorMsg,
+    });
+    throw error;
   }
 }

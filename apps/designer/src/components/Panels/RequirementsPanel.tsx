@@ -35,16 +35,16 @@ const REQUIREMENT_TYPES: {
   icon: React.ReactNode;
   color: string;
 }[] = [
-    { type: "all", label: "All", icon: <FileText size={14} />, color: "#667eea" },
-    { type: "functional", label: "Functional", icon: <CheckCircle size={14} />, color: "#22c55e" },
-    { type: "performance", label: "Performance", icon: <Gauge size={14} />, color: "#f59e0b" },
-    { type: "security", label: "Security", icon: <Shield size={14} />, color: "#ef4444" },
-    { type: "constraint", label: "Constraint", icon: <Lock size={14} />, color: "#8b5cf6" },
-    { type: "reliability", label: "Reliability", icon: <AlertCircle size={14} />, color: "#06b6d4" },
-  ];
+  { type: "all", label: "All", icon: <FileText size={14} />, color: "#667eea" },
+  { type: "functional", label: "Functional", icon: <CheckCircle size={14} />, color: "#22c55e" },
+  { type: "performance", label: "Performance", icon: <Gauge size={14} />, color: "#f59e0b" },
+  { type: "security", label: "Security", icon: <Shield size={14} />, color: "#ef4444" },
+  { type: "constraint", label: "Constraint", icon: <Lock size={14} />, color: "#8b5cf6" },
+  { type: "reliability", label: "Reliability", icon: <AlertCircle size={14} />, color: "#06b6d4" },
+];
 
 export function RequirementsPanel() {
-  const model = useArchitectureStore((s) => s.likec4Model);
+  const model = useArchitectureStore((s) => s.model);
   const isEditMode = useFeatureFlagsStore((s) => s.isEditMode);
   const [activeType, setActiveType] = useState<RequirementType>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -130,17 +130,23 @@ export function RequirementsPanel() {
 
   // Calculate requirement coverage for traceability
   const requirementCoverage = useMemo(() => {
-    const coverage: Record<string, {
-      elementIds: string[];
-      coverage: number;
-      status: "fulfilled" | "partial" | "missing";
-    }> = {};
+    const coverage: Record<
+      string,
+      {
+        elementIds: string[];
+        coverage: number;
+        status: "fulfilled" | "partial" | "missing";
+      }
+    > = {};
 
     requirements.forEach((req) => {
       const elementIds: string[] = (req as any).tags ?? [];
       const hasLinks = elementIds.length > 0;
-      const status: "fulfilled" | "partial" | "missing" =
-        hasLinks ? (elementIds.length >= 2 ? "fulfilled" : "partial") : "missing";
+      const status: "fulfilled" | "partial" | "missing" = hasLinks
+        ? elementIds.length >= 2
+          ? "fulfilled"
+          : "partial"
+        : "missing";
 
       coverage[req.id] = {
         elementIds,
@@ -185,7 +191,9 @@ export function RequirementsPanel() {
           <div className="coverage-summary">
             <GitBranch size={14} />
             <span className="coverage-label">Coverage:</span>
-            <span className={`coverage-value ${overallCoverage >= 80 ? "good" : overallCoverage >= 50 ? "medium" : "poor"}`}>
+            <span
+              className={`coverage-value ${overallCoverage >= 80 ? "good" : overallCoverage >= 50 ? "medium" : "poor"}`}
+            >
               {overallCoverage}%
             </span>
           </div>
@@ -344,13 +352,11 @@ export function RequirementsPanel() {
                   {coverage && hasLinks && (
                     <div className="requirement-coverage">
                       <div className="coverage-bar">
-                        <div
-                          className="coverage-fill"
-                          style={{ width: `${coverage.coverage}%` }}
-                        />
+                        <div className="coverage-fill" style={{ width: `${coverage.coverage}%` }} />
                       </div>
                       <span className="coverage-text">
-                        {coverage.elementIds.length} element{coverage.elementIds.length !== 1 ? "s" : ""}
+                        {coverage.elementIds.length} element
+                        {coverage.elementIds.length !== 1 ? "s" : ""}
                       </span>
                     </div>
                   )}

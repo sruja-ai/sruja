@@ -5,7 +5,7 @@ import { SrujaLoader } from "@sruja/ui";
 import { initWasm, logger } from "@sruja/shared";
 import { trackEvent, trackInteraction } from "@/shared/utils/analytics";
 import type { SrujaModelDump } from "@sruja/shared";
-import { LikeC4DiagramPreview } from "../../playground/components/LikeC4DiagramPreview";
+import { SrujaDiagramPreview } from "./SrujaDiagramPreview";
 
 export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
   const [dsl, setDsl] = useState(initialDsl);
@@ -32,8 +32,8 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
       };
       const input = normalize(dsl);
       const api = await initWasm();
-      // Use LikeC4 export instead of legacy JSON export
-      const jsonStr = await api.dslToLikeC4(input);
+      // Use model export instead of legacy JSON export
+      const jsonStr = await api.dslToModel(input);
       const parsed = JSON.parse(jsonStr) as SrujaModelDump;
       setData(parsed);
       trackInteraction("success", "render_diagram", { component: "playground" });
@@ -123,7 +123,7 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
             </div>
           )}
           {data ? (
-            <LikeC4DiagramPreview model={data} />
+            <SrujaDiagramPreview model={data} />
           ) : (
             <div
               style={{

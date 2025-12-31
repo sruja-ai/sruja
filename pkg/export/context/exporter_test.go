@@ -20,23 +20,23 @@ func TestExporter_Export(t *testing.T) {
 	//   sys1 -> sys2
 	// }
 	prog := &language.Program{
-		Model: &language.ModelBlock{
+		Model: &language.Model{
 			Items: []language.ModelItem{
 				{
-					ElementDef: &language.LikeC4ElementDef{
-						Definition: &language.LikeC4Definition{
+					ElementDef: &language.ElementDef{
+						Assignment: &language.ElementAssignment{
 							Kind: "system",
-							Name: strPtr("sys1"),
-							Body: &language.LikeC4ElementDefBody{
-								Items: []*language.LikeC4BodyItem{
+							Name: "sys1",
+							Body: &language.ElementDefBody{
+								Items: []*language.BodyItem{
 									{
 										Technology: strPtr("Go"),
 									},
 									{
-										Element: &language.LikeC4ElementDef{
-											Definition: &language.LikeC4Definition{
+										Element: &language.ElementDef{
+											Assignment: &language.ElementAssignment{
 												Kind: "container",
-												Name: strPtr("cont1"),
+												Name: "cont1",
 											},
 										},
 									},
@@ -46,10 +46,10 @@ func TestExporter_Export(t *testing.T) {
 					},
 				},
 				{
-					ElementDef: &language.LikeC4ElementDef{
-						Definition: &language.LikeC4Definition{
+					ElementDef: &language.ElementDef{
+						Assignment: &language.ElementAssignment{
 							Kind: "system",
-							Name: strPtr("sys2"),
+							Name: "sys2",
 						},
 					},
 				},

@@ -29,13 +29,13 @@ const (
 	TOKEN_LBRACKET TokenType = "["
 	TOKEN_RBRACKET TokenType = "]"
 
-	// LikeC4 Structure Keywords
+	// Structure Keywords
 	TOKEN_SPECIFICATION TokenType = "SPECIFICATION"
 	TOKEN_MODEL         TokenType = "MODEL"
 	TOKEN_VIEWS         TokenType = "VIEWS"
 	TOKEN_VIEW          TokenType = "VIEW"
 
-	// LikeC4 View Predicates
+	// View Predicates
 	TOKEN_INCLUDE TokenType = "INCLUDE"
 	TOKEN_EXCLUDE TokenType = "EXCLUDE"
 	TOKEN_OF      TokenType = "OF"
@@ -87,13 +87,13 @@ type Token struct {
 }
 
 var keywords = map[string]TokenType{
-	// LikeC4 Structure
+	// Structure
 	"specification": TOKEN_SPECIFICATION,
 	"model":         TOKEN_MODEL,
 	"views":         TOKEN_VIEWS,
 	"view":          TOKEN_VIEW,
 
-	// LikeC4 View Predicates
+	// View Predicates
 	"include": TOKEN_INCLUDE,
 	"exclude": TOKEN_EXCLUDE,
 	"of":      TOKEN_OF,

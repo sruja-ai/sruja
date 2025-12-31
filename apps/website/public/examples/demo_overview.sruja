@@ -1,5 +1,5 @@
 // examples/demo_overview.sruja
-// Example demonstrating overview block and LikeC4 syntax
+// Example demonstrating overview block and Sruja syntax
 
 specification {
   element person

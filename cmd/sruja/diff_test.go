@@ -15,15 +15,11 @@ func TestRunDiff(t *testing.T) {
 	file1 := filepath.Join(tmpDir, "v1.sruja")
 	file2 := filepath.Join(tmpDir, "v2.sruja")
 
-	// Use LikeC4 syntax
-	v1 := `model {
-		S1 = system "System 1"
-	}`
-	v2 := `model {
-		S1 = system "System 1" {
+	// Use Sruja syntax
+	v1 := `S1 = system "System 1"`
+	v2 := `S1 = system "System 1" {
 			C1 = container "Container 1"
-		}
-	}`
+		}`
 
 	if err := os.WriteFile(file1, []byte(v1), 0o644); err != nil {
 		t.Fatal(err)
@@ -58,13 +54,9 @@ func TestRunDiff_JSON(t *testing.T) {
 	file1 := filepath.Join(tmpDir, "v1.sruja")
 	file2 := filepath.Join(tmpDir, "v2.sruja")
 
-	// Use LikeC4 syntax
-	v1 := `model {
-		S1 = system "System 1"
-	}`
-	v2 := `model {
-		S2 = system "System 2"
-	}`
+	// Use Sruja syntax
+	v1 := `S1 = system "System 1"`
+	v2 := `S2 = system "System 2"`
 
 	if err := os.WriteFile(file1, []byte(v1), 0o644); err != nil {
 		t.Fatal(err)
@@ -114,23 +106,19 @@ func TestRunDiff_Complex(t *testing.T) {
 	file1 := filepath.Join(tmpDir, "v1.sruja")
 	file2 := filepath.Join(tmpDir, "v2.sruja")
 
-	// Use LikeC4 syntax
-	v1 := `model {
-		S1 = system "S1" {
+	// Use Sruja syntax
+	v1 := `S1 = system "S1" {
 			C1 = container "C1" {
 				Comp1 = component "Comp1"
 			}
 			C2 = container "C2"
-		}
-	}`
-	v2 := `model {
-		S1 = system "S1" {
+		}`
+	v2 := `S1 = system "S1" {
 			C1 = container "C1" {
 				Comp2 = component "Comp2"
 			}
 			C3 = container "C3"
-		}
-	}`
+		}`
 
 	if err := os.WriteFile(file1, []byte(v1), 0o644); err != nil {
 		t.Fatal(err)
@@ -157,23 +145,19 @@ func TestRunDiff_Complex(t *testing.T) {
 	}
 }
 
-func TestComputeDiff_LikeC4Syntax(t *testing.T) {
+func TestComputeDiff_SrujaSyntax(t *testing.T) {
 	parser, err := language.NewParser()
 	if err != nil {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	v1 := `model {
-		Backend = system "Backend"
-		Frontend = system "Frontend"
-	}`
-	v2 := `model {
-		Backend = system "Backend" {
+	v1 := `Backend = system "Backend"
+		Frontend = system "Frontend"`
+	v2 := `Backend = system "Backend" {
 			API = container "API"
 		}
 		Frontend = system "Frontend"
-		Database = system "Database"
-	}`
+		Database = system "Database"`
 
 	program1, _, err := parser.Parse("v1.sruja", v1)
 	if err != nil {
@@ -209,7 +193,7 @@ func TestComputeDiff_EmptyModels(t *testing.T) {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	empty := `model {}`
+	empty := ``
 	program1, _, err := parser.Parse("empty.sruja", empty)
 	if err != nil {
 		t.Fatalf("Failed to parse: %v", err)

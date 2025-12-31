@@ -21,7 +21,7 @@ func (r *LayerViolationRule) Validate(program *language.Program) []diagnostics.D
 	}
 
 	// Collect all relations from Model
-	_, relations := collectLikeC4Elements(program.Model)
+	_, relations := collectElements(program.Model)
 
 	// Pre-allocate diagnostics slice
 	estimatedDiags := len(relations) / 10
@@ -135,9 +135,9 @@ func findMetadata(program *language.Program, name string) []*language.MetaEntry 
 		return nil
 	}
 
-	// Search for element by qualified name in LikeC4 Model
-	var findElement func(elem *language.LikeC4ElementDef, currentFQN string) []*language.MetaEntry
-	findElement = func(elem *language.LikeC4ElementDef, currentFQN string) []*language.MetaEntry {
+	// Search for element by qualified name in Model
+	var findElement func(elem *language.ElementDef, currentFQN string) []*language.MetaEntry
+	findElement = func(elem *language.ElementDef, currentFQN string) []*language.MetaEntry {
 		if elem == nil {
 			return nil
 		}

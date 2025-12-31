@@ -1,51 +1,50 @@
 ---
-title: "Lesson 4: Contracts & APIs"
+title: "Lesson 4: API Design & Integration"
 weight: 4
-summary: "Design stable APIs and event schemas for the platform."
+summary: "Design stable APIs and integrate with external services."
 ---
 
-# Lesson 4: Contracts & APIs
+# Lesson 4: API Design & Integration
 
-## Why Contracts?
-Contracts define stable interfaces between services; they reduce coupling and surprises.
+## Why API Design Matters
 
-## Sruja: API & Event Contracts
+Well-designed APIs define stable interfaces between services; they reduce coupling and surprises. However, **API schemas belong in OpenAPI, not in Sruja**.
+
+## Sruja's Role: Architecture Modeling
+
+Sruja focuses on **architectural concerns**: which services exist, how they relate, and what they do. For detailed API schemas, use OpenAPI/Swagger.
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
-}
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+queue = kind "Queue"
 
-model {
-  contracts {
-    api CheckoutAPI {
-      version "v1"
-      endpoint "/checkout" method "POST"
-      request "Cart"
-      response "Order"
-    }
+customer = person "Customer"
 
-    event OrderPlaced {
-      version "v1"
-      topic "orders.placed"
-      payload "Order"
-    }
+ecommerce = system "E-Commerce Platform" {
+  api = container "Checkout API" {
+    technology "Go, Gin"
+    // API details defined in openapi.yaml
+  }
+
+  events = queue "Order Events" {
+    technology "Kafka"
+    // Event schemas defined in AsyncAPI or JSON Schema
   }
 }
 
-views {
-  view index {
-    include *
-  }
-}
+customer -> ecommerce.api "uses"
 ```
 
-## Practice
-- Define an API contract for `AddToCart`.
-- Add an `OrderCancelled` event with payload fields.
+## Best Practice
 
+1. **Model architecture in Sruja**: Services, containers, relationships
+2. **Define API schemas in OpenAPI**: Request/response structures, endpoints
+3. **Link them**: Reference OpenAPI files in your architecture documentation
+
+## Practice
+
+- Model the `AddToCart` service in Sruja
+- Create an OpenAPI spec for the `AddToCart` endpoint
+- Show how they work together

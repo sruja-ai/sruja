@@ -11,11 +11,10 @@ import (
 func TestRunExplain(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
-	content := `model {
-		system S1 "System 1" {
+	content := `system = kind "System"
+		S1 = system "System 1" {
 			description "A test system"
-		}
-	}`
+		}`
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}

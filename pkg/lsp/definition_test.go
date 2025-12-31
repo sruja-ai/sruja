@@ -11,14 +11,14 @@ import (
 func TestDefinition(t *testing.T) {
 	srv := NewServer()
 	uri := lsp.DocumentURI("file:///test.sruja")
-	text := "model {\nsystem S \"System\"\ncontainer C \"Container\"\n}"
+	text := "System=kind \"System\"\nContainer=kind \"Container\"\nS = System \"System\"\nC = Container \"Container\"\n"
 	srv.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{
 		TextDocument: lsp.TextDocumentItem{URI: uri, Text: text, Version: 1},
 	})
 
 	locs, err := srv.Definition(context.Background(), lsp.TextDocumentPositionParams{
 		TextDocument: lsp.TextDocumentIdentifier{URI: uri},
-		Position:     lsp.Position{Line: 1, Character: 8},
+		Position:     lsp.Position{Line: 2, Character: 0},
 	})
 	if err != nil {
 		t.Fatalf("Definition failed: %v", err)
@@ -32,12 +32,12 @@ func TestDefinition_CrossFile(t *testing.T) {
 	srv := NewServer()
 	uriDecl := lsp.DocumentURI("file:///decl.sruja")
 	uriUse := lsp.DocumentURI("file:///use.sruja")
-	textDecl := "model {\nsystem S \"System\"\n}"
-	textUse := "model {\nS -> X\n}"
+	textDecl := "System=kind \"System\"\nS = System \"System\"\n"
+	textUse := "S -> X\n"
 	srv.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{TextDocument: lsp.TextDocumentItem{URI: uriDecl, Text: textDecl, Version: 1}})
 	srv.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{TextDocument: lsp.TextDocumentItem{URI: uriUse, Text: textUse, Version: 1}})
 
-	locs, err := srv.Definition(context.Background(), lsp.TextDocumentPositionParams{TextDocument: lsp.TextDocumentIdentifier{URI: uriUse}, Position: lsp.Position{Line: 1, Character: 0}})
+	locs, err := srv.Definition(context.Background(), lsp.TextDocumentPositionParams{TextDocument: lsp.TextDocumentIdentifier{URI: uriUse}, Position: lsp.Position{Line: 0, Character: 0}})
 	if err != nil {
 		t.Fatalf("Definition failed: %v", err)
 	}

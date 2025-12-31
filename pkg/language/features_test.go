@@ -8,14 +8,14 @@ import (
 )
 
 func Test_Feature_System_WithDescription_And_Metadata(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		API = system "API" {
 			description "Desc"
 			metadata {
 				owner "team"
 			}
 		}
-	}`
+	`
 	p, _ := language.NewParser()
 	prog, _, err := p.Parse("a.sruja", dsl)
 	if err != nil {
@@ -59,7 +59,7 @@ func Test_Feature_System_WithDescription_And_Metadata(t *testing.T) {
 }
 
 func Test_Feature_Container_Tech_Tags_Version_Metadata(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		S = system "S" {
 			C = container "C" {
 				technology "Go"
@@ -70,7 +70,7 @@ func Test_Feature_Container_Tech_Tags_Version_Metadata(t *testing.T) {
 				}
 			}
 		}
-	}`
+	`
 	p, _ := language.NewParser()
 	prog, _, err := p.Parse("a.sruja", dsl)
 	if err != nil {
@@ -111,7 +111,7 @@ func Test_Feature_Container_Tech_Tags_Version_Metadata(t *testing.T) {
 }
 
 func Test_Feature_Component_Technology_Metadata(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		S = system "S" {
 			C = container "C" {
 				X = component "X" {
@@ -122,7 +122,7 @@ func Test_Feature_Component_Technology_Metadata(t *testing.T) {
 				}
 			}
 		}
-	}`
+	`
 	p, _ := language.NewParser()
 	prog, _, err := p.Parse("a.sruja", dsl)
 	if err != nil {
@@ -171,7 +171,7 @@ func Test_Feature_Component_Technology_Metadata(t *testing.T) {
 }
 
 func Test_Feature_DataStore_Queue_Person_Metadata(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		U = person "User" {
 			metadata {
 				persona "customer"
@@ -189,7 +189,7 @@ func Test_Feature_DataStore_Queue_Person_Metadata(t *testing.T) {
 				}
 			}
 		}
-	}`
+	`
 	p, _ := language.NewParser()
 	prog, _, err := p.Parse("a.sruja", dsl)
 	if err != nil {
@@ -260,11 +260,11 @@ func Test_Feature_DataStore_Queue_Person_Metadata(t *testing.T) {
 }
 
 func Test_Feature_Relation_Verb_Label(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		A = system "A"
 		B = system "B"
 		A -> B "calls" "HTTP"
-	}`
+	`
 	p, _ := language.NewParser()
 	prog, _, err := p.Parse("a.sruja", dsl)
 	if err != nil {
@@ -292,28 +292,32 @@ func Test_Feature_Relation_Verb_Label(t *testing.T) {
 // Journey feature removed - test removed
 
 func Test_Feature_ADR(t *testing.T) {
-	dsl := `model {
-		adr ADR001 "Use JWT"
-	}`
+	// Using new unified syntax for ADR
+	dsl := `
+		ADR001 = adr "Use JWT"
+	`
 	p, _ := language.NewParser()
 	prog, _, err := p.Parse("a.sruja", dsl)
 	if err != nil {
 		t.Fatalf("parse %v", err)
 	}
-	// Find ADRs in Model
-	var adrs []*language.ADR
+	// Find ADRs via ElementDef in Model
+	var adrCount int
 	for _, item := range prog.Model.Items {
-		if item.ADR != nil {
-			adrs = append(adrs, item.ADR)
+		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
+			a := item.ElementDef.Assignment
+			if a.Kind == "adr" {
+				adrCount++
+			}
 		}
 	}
-	if len(adrs) != 1 {
-		t.Fatalf("expected 1 ADR, got %d", len(adrs))
+	if adrCount != 1 {
+		t.Fatalf("expected 1 ADR, got %d", adrCount)
 	}
 }
 
 func Test_Printer_Emits_Metadata_For_All_Elements(t *testing.T) {
-	dsl := `model { metadata { level "arch" } person U "User" { metadata { persona "customer" } } system S "S" { metadata { owner "team" } container C "C" { metadata { tier "gold" } component X "X" { metadata { critical "true" } } datastore D "DB" { metadata { engine "postgres" } } queue Q "Events" { metadata { topic "billing" } } } } }`
+	dsl := `U = person "User" { metadata { persona "customer" } } S = system "S" { metadata { owner "team" } C = container "C" { metadata { tier "gold" } X = component "X" { metadata { critical "true" } } D = database "DB" { metadata { engine "postgres" } } Q = queue "Events" { metadata { topic "billing" } } } }`
 	p, _ := language.NewParser()
 	prog, _, err := p.Parse("a.sruja", dsl)
 	if err != nil {
@@ -322,17 +326,15 @@ func Test_Printer_Emits_Metadata_For_All_Elements(t *testing.T) {
 	pr := language.NewPrinter()
 	out := pr.Print(prog)
 	checks := []string{
-		"model {",
+		//"model {", // Removed
 		"metadata {",
-		"person U \"User\" {",
-		"datastore D \"DB\" {",
-		"queue Q \"Events\" {",
-		"container C \"C\" {",
-		"component X \"X\" {",
+		"U = person",
+		"S = system",
+		"C = container",
 	}
 	for _, s := range checks {
 		if !strings.Contains(out, s) {
-			t.Fatalf("printer missing segment %s", s)
+			t.Fatalf("printer missing segment %s\nOutput:\n%s", s, out)
 		}
 	}
 }

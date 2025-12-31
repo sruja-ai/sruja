@@ -4,15 +4,15 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
-// ListPersons extracts all persons from a LikeC4 model.
+// ListPersons extracts all persons from a Sruja model.
 func ListPersons(program *language.Program) []PersonInfo {
 	if program == nil || program.Model == nil {
 		return nil
 	}
 
 	var result []PersonInfo
-	var collectPersons func(elem *language.LikeC4ElementDef, parentPrefix string)
-	collectPersons = func(elem *language.LikeC4ElementDef, parentPrefix string) {
+	var collectPersons func(elem *language.ElementDef, parentPrefix string)
+	collectPersons = func(elem *language.ElementDef, parentPrefix string) {
 		if elem == nil {
 			return
 		}
@@ -29,7 +29,8 @@ func ListPersons(program *language.Program) []PersonInfo {
 
 		// Check if this is a person
 		kind := elem.GetKind()
-		if kind == "person" || kind == "actor" || kind == "user" {
+
+		if kind == "person" || kind == "Person" || kind == "actor" || kind == "Actor" || kind == "user" || kind == "User" {
 			label := id
 			if title := elem.GetTitle(); title != nil {
 				label = *title
@@ -60,15 +61,15 @@ func ListPersons(program *language.Program) []PersonInfo {
 	return result
 }
 
-// ListDataStores extracts all datastores from a LikeC4 model.
+// ListDataStores extracts all datastores from a Sruja model.
 func ListDataStores(program *language.Program) []DataStoreInfo {
 	if program == nil || program.Model == nil {
 		return nil
 	}
 
 	var result []DataStoreInfo
-	var collectDataStores func(elem *language.LikeC4ElementDef, parentPrefix, systemID string)
-	collectDataStores = func(elem *language.LikeC4ElementDef, parentPrefix, systemID string) {
+	var collectDataStores func(elem *language.ElementDef, parentPrefix, systemID string)
+	collectDataStores = func(elem *language.ElementDef, parentPrefix, systemID string) {
 		if elem == nil {
 			return
 		}
@@ -85,12 +86,12 @@ func ListDataStores(program *language.Program) []DataStoreInfo {
 
 		// Update systemID if this is a system
 		kind := elem.GetKind()
-		if kind == "system" {
+		if kind == "system" || kind == "System" {
 			systemID = qualifiedID
 		}
 
 		// Check if this is a datastore/database
-		if kind == "database" || kind == "datastore" {
+		if kind == "database" || kind == "Database" || kind == "datastore" || kind == "Datastore" {
 			label := id
 			if title := elem.GetTitle(); title != nil {
 				label = *title
@@ -122,15 +123,15 @@ func ListDataStores(program *language.Program) []DataStoreInfo {
 	return result
 }
 
-// ListQueues extracts all queues from a LikeC4 model.
+// ListQueues extracts all queues from a Sruja model.
 func ListQueues(program *language.Program) []QueueInfo {
 	if program == nil || program.Model == nil {
 		return nil
 	}
 
 	var result []QueueInfo
-	var collectQueues func(elem *language.LikeC4ElementDef, parentPrefix, systemID string)
-	collectQueues = func(elem *language.LikeC4ElementDef, parentPrefix, systemID string) {
+	var collectQueues func(elem *language.ElementDef, parentPrefix, systemID string)
+	collectQueues = func(elem *language.ElementDef, parentPrefix, systemID string) {
 		if elem == nil {
 			return
 		}
@@ -147,12 +148,12 @@ func ListQueues(program *language.Program) []QueueInfo {
 
 		// Update systemID if this is a system
 		kind := elem.GetKind()
-		if kind == "system" {
+		if kind == "system" || kind == "System" {
 			systemID = qualifiedID
 		}
 
 		// Check if this is a queue
-		if kind == "queue" {
+		if kind == "queue" || kind == "Queue" {
 			label := id
 			if title := elem.GetTitle(); title != nil {
 				label = *title
@@ -184,47 +185,53 @@ func ListQueues(program *language.Program) []QueueInfo {
 	return result
 }
 
-// ListScenarios extracts all scenarios from a LikeC4 model.
+// ListScenarios extracts all scenarios from a Sruja model.
 func ListScenarios(program *language.Program) []ScenarioInfo {
 	if program == nil || program.Model == nil {
 		return nil
 	}
 
 	var result []ScenarioInfo
-	// Scenarios are at the top level of the model, not nested in elements
+	// Scenarios are at the top level of the model via ElementDef
 	for _, item := range program.Model.Items {
-		if item.Scenario != nil {
-			title := ""
-			if item.Scenario.Title != nil {
-				title = *item.Scenario.Title
+		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
+			a := item.ElementDef.Assignment
+			if a.Kind == "scenario" || a.Kind == "Scenario" || a.Kind == "story" || a.Kind == "Story" {
+				title := ""
+				if a.Title != nil {
+					title = *a.Title
+				}
+				result = append(result, ScenarioInfo{
+					ID:    a.Name,
+					Title: title,
+				})
 			}
-			result = append(result, ScenarioInfo{
-				ID:    item.Scenario.ID,
-				Title: title,
-			})
 		}
 	}
 	return result
 }
 
-// ListADRs extracts all ADRs from a LikeC4 model.
+// ListADRs extracts all ADRs from a Sruja model.
 func ListADRs(program *language.Program) []ADRInfo {
 	if program == nil || program.Model == nil {
 		return nil
 	}
 
 	var result []ADRInfo
-	// ADRs are at the top level of the model, not nested in elements
+	// ADRs are at the top level of the model via ElementDef
 	for _, item := range program.Model.Items {
-		if item.ADR != nil {
-			title := ""
-			if item.ADR.Title != nil {
-				title = *item.ADR.Title
+		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
+			a := item.ElementDef.Assignment
+			if a.Kind == "adr" || a.Kind == "Adr" || a.Kind == "ADR" {
+				title := ""
+				if a.Title != nil {
+					title = *a.Title
+				}
+				result = append(result, ADRInfo{
+					ID:    a.Name,
+					Title: title,
+				})
 			}
-			result = append(result, ADRInfo{
-				ID:    item.ADR.ID,
-				Title: title,
-			})
 		}
 	}
 	return result

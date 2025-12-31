@@ -5,7 +5,7 @@ import { useArchitectureStore } from "../../stores/architectureStore";
 import { useToastStore } from "../../stores/toastStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useSelectionStore } from "../../stores/viewStore";
-import { getWasmApi } from "@sruja/shared";
+import { getWasmApi, logger } from "@sruja/shared";
 import "./GovernancePanel.css";
 
 // Interface for ScoreCard returned by WASM
@@ -66,18 +66,52 @@ export function GovernancePanel() {
   };
 
   const calculateScore = async () => {
-    if (!dslSource) return;
+    if (!dslSource) {
+      setScoreCard(null);
+      return;
+    }
 
     setLoading(true);
     try {
       const api = await getWasmApi();
-      if (!api) throw new Error("WASM API not available");
+      if (!api) {
+        setScoreCard(null);
+        return;
+      }
 
+      // Validate DSL by attempting to parse it first
+      // This prevents score calculation errors from invalid syntax
+      try {
+        await api.dslToModel(dslSource);
+      } catch (parseError) {
+        // DSL is invalid, clear score card and return early
+        setScoreCard(null);
+        // Only show toast if user manually triggered the calculation
+        if (loading === false) {
+          showToast("DSL syntax is invalid. Please fix errors before calculating score.", "error");
+        }
+        return;
+      }
+
+      // DSL is valid, proceed with score calculation
       const result = await api.calculateArchitectureScore(dslSource);
-      setScoreCard(result);
+      setScoreCard(result as unknown as ScoreCard);
     } catch (error) {
-      console.error("Failed to calculate score:", error);
-      showToast("Could not calculate architecture score.", "error");
+      // Score calculation failed (but DSL was valid)
+      // Clear score card to avoid showing stale data
+      setScoreCard(null);
+      // Only show toast if user manually triggered the calculation
+      if (loading === false) {
+        showToast("Could not calculate architecture score.", "error");
+      }
+      // Only log in development to avoid noise in production
+      if (process.env.NODE_ENV === "development") {
+        logger.debug("Score calculation failed", {
+          component: "GovernancePanel",
+          action: "calculateScore",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -87,7 +121,7 @@ export function GovernancePanel() {
   useEffect(() => {
     calculateScore();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dslSource]);
 
   const groupedDeductions = useMemo(() => {
     if (!scoreCard) return { Critical: [], Warning: [], Info: [] };

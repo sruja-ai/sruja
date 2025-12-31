@@ -40,7 +40,7 @@ func getDiagnostics(this js.Value, args []js.Value) (ret interface{}) {
 		}
 	}
 
-	// Validator now works directly with LikeC4 AST (no conversion needed)
+	// Validator now works directly with Sruja AST (no conversion needed)
 	if program != nil {
 		validator := engine.NewValidator()
 		validator.RegisterRule(&engine.UniqueIDRule{})
@@ -204,7 +204,7 @@ func score(this js.Value, args []js.Value) (ret interface{}) {
 		return result(false, "", "program is nil")
 	}
 
-	// Scorer now works directly with LikeC4 AST (no conversion needed)
+	// Scorer now works directly with Sruja AST (no conversion needed)
 	scorer := engine.NewScorer()
 	card := scorer.CalculateScore(program)
 

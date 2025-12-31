@@ -29,9 +29,16 @@ interface FormValues {
   selectedContainerId: string;
 }
 
-export function EditComponentForm({ isOpen, onClose, component, parentSystemId, parentContainerId, initialName }: EditComponentFormProps) {
+export function EditComponentForm({
+  isOpen,
+  onClose,
+  component,
+  parentSystemId,
+  parentContainerId,
+  initialName,
+}: EditComponentFormProps) {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
-  const data = useArchitectureStore((s) => s.likec4Model);
+  const data = useArchitectureStore((s) => s.model);
   const formRef = useRef<HTMLFormElement>(null);
 
   const allElements = useMemo(() => Object.values(data?.elements || {}) as any[], [data?.elements]);
@@ -46,11 +53,18 @@ export function EditComponentForm({ isOpen, onClose, component, parentSystemId, 
     initialValues: {
       name: (component as any)?.title || initialName || "",
       technology: (component as any)?.technology || "",
-      description: typeof (component as any)?.description === 'string' ? (component as any).description : ((component as any)?.description?.txt || ""),
+      description:
+        typeof (component as any)?.description === "string"
+          ? (component as any).description
+          : (component as any)?.description?.txt || "",
       customId: false,
       idInput: (component as any)?.id || "",
-      selectedSystemId: parentSystemId || ((component as any)?.id ? (component as any).id.split(".")[0] : "") || "",
-      selectedContainerId: parentContainerId || ((component as any)?.id ? (component as any).id.split(".").slice(0, 2).join(".") : "") || "",
+      selectedSystemId:
+        parentSystemId || ((component as any)?.id ? (component as any).id.split(".")[0] : "") || "",
+      selectedContainerId:
+        parentContainerId ||
+        ((component as any)?.id ? (component as any).id.split(".").slice(0, 2).join(".") : "") ||
+        "",
     },
     validate: (values) => {
       const errors: FormErrors = {};
@@ -77,7 +91,7 @@ export function EditComponentForm({ isOpen, onClose, component, parentSystemId, 
         let targetId = (component as any)?.id;
 
         if (!component) {
-          const baseId = values.customId ? values.idInput : (slugify(values.name) || "component");
+          const baseId = values.customId ? values.idInput : slugify(values.name) || "component";
           if (!values.selectedContainerId) return model;
           targetId = `${values.selectedContainerId}.${baseId}` as any;
           let i = 1;
@@ -93,7 +107,13 @@ export function EditComponentForm({ isOpen, onClose, component, parentSystemId, 
           id: targetId as any,
           kind: "component",
           title: values.name,
-            description: (typeof values.description === "string" ? values.description : ((values.description as any) && typeof (values.description as any) === "object" && "txt" in (values.description as any) ? (values.description as any).txt : undefined)) as any,
+          description: (typeof values.description === "string"
+            ? values.description
+            : (values.description as any) &&
+                typeof (values.description as any) === "object" &&
+                "txt" in (values.description as any)
+              ? (values.description as any).txt
+              : undefined) as any,
           technology: values.technology || undefined,
           tags: (component as any)?.tags,
           links: (component as any)?.links,
@@ -112,11 +132,24 @@ export function EditComponentForm({ isOpen, onClose, component, parentSystemId, 
       form.setValues({
         name: (component as any)?.title || initialName || "",
         technology: (component as any)?.technology || "",
-        description: (typeof (component as any)?.description === "string" ? (component as any).description : ((component as any)?.description && typeof (component as any).description === "object" && "txt" in (component as any).description ? (component as any).description.txt : "")) || "",
+        description:
+          (typeof (component as any)?.description === "string"
+            ? (component as any).description
+            : (component as any)?.description &&
+                typeof (component as any).description === "object" &&
+                "txt" in (component as any).description
+              ? (component as any).description.txt
+              : "") || "",
         idInput: (component as any)?.id || "",
         customId: false,
-        selectedSystemId: parentSystemId || ((component as any)?.id ? (component as any).id.split(".")[0] : "") || "",
-        selectedContainerId: parentContainerId || ((component as any)?.id ? (component as any).id.split(".").slice(0, 2).join(".") : "") || "",
+        selectedSystemId:
+          parentSystemId ||
+          ((component as any)?.id ? (component as any).id.split(".")[0] : "") ||
+          "",
+        selectedContainerId:
+          parentContainerId ||
+          ((component as any)?.id ? (component as any).id.split(".").slice(0, 2).join(".") : "") ||
+          "",
       });
       form.clearErrors();
     }
@@ -125,7 +158,9 @@ export function EditComponentForm({ isOpen, onClose, component, parentSystemId, 
   // Update available containers when system changes
   const currentAvailableContainers = useMemo(() => {
     if (!form.values.selectedSystemId) return [];
-    return allElements.filter((e: any) => e.kind === "container" && e.id.startsWith(form.values.selectedSystemId + "."));
+    return allElements.filter(
+      (e: any) => e.kind === "container" && e.id.startsWith(form.values.selectedSystemId + ".")
+    );
   }, [allElements, form.values.selectedSystemId]);
 
   return (
@@ -136,14 +171,26 @@ export function EditComponentForm({ isOpen, onClose, component, parentSystemId, 
       size="lg"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} type="button">Cancel</Button>
-          <Button variant="primary" type="submit" form="edit-component-form" isLoading={form.isSubmitting}>
+          <Button variant="secondary" onClick={onClose} type="button">
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            type="submit"
+            form="edit-component-form"
+            isLoading={form.isSubmitting}
+          >
             {component ? "Update" : "Create"}
           </Button>
         </>
       }
     >
-      <form ref={formRef} id="edit-component-form" onSubmit={form.handleSubmit} className="edit-form">
+      <form
+        ref={formRef}
+        id="edit-component-form"
+        onSubmit={form.handleSubmit}
+        className="edit-form"
+      >
         {!component && (
           <>
             <Select
@@ -156,7 +203,7 @@ export function EditComponentForm({ isOpen, onClose, component, parentSystemId, 
               disabled={!!parentSystemId}
               placeholder="Select System"
               error={form.errors.selectedSystemId}
-              data={systems.map(s => ({ value: s.id, label: s.title || s.id }))}
+              data={systems.map((s) => ({ value: s.id, label: s.title || s.id }))}
             />
             <Select
               label="Parent Container *"
@@ -165,7 +212,10 @@ export function EditComponentForm({ isOpen, onClose, component, parentSystemId, 
               disabled={!form.values.selectedSystemId || !!parentContainerId}
               placeholder="Select Container"
               error={form.errors.selectedContainerId}
-              data={currentAvailableContainers.map(c => ({ value: c.id, label: c.title || c.id }))}
+              data={currentAvailableContainers.map((c) => ({
+                value: c.id,
+                label: c.title || c.id,
+              }))}
             />
           </>
         )}
@@ -217,7 +267,9 @@ export function EditComponentForm({ isOpen, onClose, component, parentSystemId, 
           </>
         )}
 
-        {form.errors.submit && <div className="text-red-500 text-sm mt-2">{form.errors.submit}</div>}
+        {form.errors.submit && (
+          <div className="text-red-500 text-sm mt-2">{form.errors.submit}</div>
+        )}
       </form>
     </SidePanel>
   );

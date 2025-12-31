@@ -58,9 +58,6 @@ func convertSystem(s *language.System) SystemJSON {
 	if s.SLO != nil {
 		out.SLO = convertSLO(s.SLO)
 	}
-	if len(s.Contracts) > 0 {
-		out.Contracts = convertContracts(s.Contracts)
-	}
 	if len(s.Constraints) > 0 {
 		out.Constraints = convertConstraints(s.Constraints)
 	}
@@ -141,9 +138,6 @@ func convertContainer(c *language.Container) ContainerJSON {
 	}
 	if c.SLO != nil {
 		out.SLO = convertSLO(c.SLO)
-	}
-	if len(c.Contracts) > 0 {
-		out.Contracts = convertContracts(c.Contracts)
 	}
 	if len(c.Constraints) > 0 {
 		out.Constraints = convertConstraints(c.Constraints)

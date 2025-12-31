@@ -1,0 +1,72 @@
+// examples/workflows/manual-editing-workflow.sruja
+// Shows complete workflow: Auto-layout → Manual adjustment → Capture
+// This demonstrates the proposed manual editing workflow
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+customer = person "Customer"
+admin = person "Administrator"
+
+ecommerce = system "E-Commerce Platform" {
+    webApp = container "Web App" {
+        technology "React"
+    }
+    api = container "API" {
+        technology "Go"
+    }
+    database = database "Database" {
+        technology "PostgreSQL"
+    }
+}
+
+customer -> ecommerce.webApp "browses"
+admin -> ecommerce.api "manages"
+ecommerce.webApp -> ecommerce.api "calls"
+ecommerce.api -> ecommerce.database "reads from"
+
+view system-context {
+    title "System Context"
+    include *
+    
+    // WORKFLOW:
+    // 1. Initial auto-generation
+    //    layout {
+    //        strategy "hierarchical"
+    //        direction "top-to-bottom"
+    //    }
+    
+    // 2. User manually adjusts positions in UI (drag & drop)
+    // 3. Positions captured automatically to DSL
+    
+    // NOTE: This syntax is proposed for future implementation
+    layout {
+        // These positions were captured from manual editing
+        element customer {
+            position { x: 150, y: 80 }  // Manually adjusted
+        }
+        
+        element admin {
+            position { x: 450, y: 80 }  // Manually adjusted
+        }
+        
+        element ecommerce {
+            position { x: 300, y: 250 }  // Manually adjusted
+        }
+        
+        element ecommerce.webApp {
+            position { x: 200, y: 350 }  // Manually adjusted
+        }
+        
+        element ecommerce.api {
+            position { x: 400, y: 350 }  // Manually adjusted
+        }
+        
+        element ecommerce.database {
+            position { x: 300, y: 450 }  // Manually adjusted
+        }
+    }
+}
+

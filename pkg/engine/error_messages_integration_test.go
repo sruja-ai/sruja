@@ -48,28 +48,25 @@ func TestErrorMessages_ComprehensiveInvalidExamples(t *testing.T) {
 		{
 			name: "Duplicate system ID",
 			dsl: `
-model {
     API = system "API Service"
     API = system "Duplicate API"
-}`,
+`,
 			expectedErrors:   []string{"duplicate", "API", "previously", "first defined"},
 			checkSuggestions: true,
 		},
 		{
 			name: "Undefined reference",
 			dsl: `
-model {
     API = system "API Service" {
         API -> UnknownSystem "Uses"
     }
-}`,
+`,
 			expectedErrors:   []string{"undefined", "UnknownSystem", "reference"},
 			checkSuggestions: true,
 		},
 		{
 			name: "Invalid SLO duration format",
 			dsl: `
-model {
     API = system "API Service" {
         slo {
             latency {
@@ -77,14 +74,13 @@ model {
             }
         }
     }
-}`,
+`,
 			expectedErrors:   []string{"duration", "p95", "invalid_format"},
 			checkSuggestions: true,
 		},
 		{
 			name: "Invalid property value",
 			dsl: `
-model {
     API = system "API Service" {
         properties {
             "capacity.readReplicas" "not_a_number"
@@ -92,24 +88,22 @@ model {
     }
     Client = system "Client"
     Client -> API "Uses"
-}`,
+`,
 			expectedErrors:   []string{"property", "readReplicas", "invalid"},
 			checkSuggestions: true,
 		},
 		{
 			name: "Orphan element",
 			dsl: `
-model {
     API = system "API Service"
     Unused = system "Unused System"
-}`,
+`,
 			expectedErrors:   []string{"orphan", "unused", "never used"},
 			checkSuggestions: true,
 		},
 		{
 			name: "Layer violation",
 			dsl: `
-model {
     DataLayer = system "Data Layer" {
         metadata { layer "data" }
     }
@@ -117,44 +111,42 @@ model {
         metadata { layer "web" }
     }
     DataLayer -> WebLayer "Invalid"
-}`,
+`,
 			expectedErrors:   []string{"layer", "violation", "depend"},
 			checkSuggestions: true,
 		},
 		{
 			name: "Ambiguous reference in scenario",
 			dsl: `
-model {
-    Order = system "Order System" {
-        API = container "Order API"
+    Order = System "Order System" {
+        API = Container "Order API"
     }
-    Payment = system "Payment System" {
-        API = container "Payment API"
+    Payment = System "Payment System" {
+        API = Container "Payment API"
     }
-    scenario TestScenario "Test Scenario" "Description" {
+    TestScenario = Scenario "Test Scenario" {
+        description "Description"
         Order -> API "Uses"
     }
-}`,
+`,
 			expectedErrors:   []string{"ambiguous", "API", "multiple", "qualified"},
 			checkSuggestions: true,
 		},
 		{
 			name: "External dependency violation",
 			dsl: `
-model {
     Parent = system "Parent System" {
         Child = container "Child Container" {
             Child -> Parent "Invalid"
         }
     }
-}`,
+`,
 			expectedErrors:   []string{"parent", "external", "depend"},
 			checkSuggestions: true,
 		},
 		{
 			name: "Invalid error rate format",
 			dsl: `
-model {
     API = system "API Service" {
         slo {
             errorRate {
@@ -162,14 +154,13 @@ model {
             }
         }
     }
-}`,
+`,
 			expectedErrors:   []string{"percentage", "error", "target"},
 			checkSuggestions: true,
 		},
 		{
 			name: "Invalid throughput format",
 			dsl: `
-model {
     API = system "API Service" {
         slo {
             throughput {
@@ -177,7 +168,7 @@ model {
             }
         }
     }
-}`,
+`,
 			expectedErrors:   []string{"rate", "throughput", "target"},
 			checkSuggestions: true,
 		},
@@ -261,7 +252,6 @@ model {
 // TestErrorMessages_LocationPrecision tests that error locations are precise
 func TestErrorMessages_LocationPrecision(t *testing.T) {
 	dsl := `
-model {
     API = system "API Service" {
         WebApp = container "Web App" {
             Frontend = component "Frontend Component"
@@ -269,7 +259,6 @@ model {
             Frontend = component "Duplicate Frontend"
         }
     }
-}
 `
 	diags, err := parseWithFullValidation(t, dsl)
 
@@ -310,17 +299,15 @@ func TestErrorMessages_SuggestionQuality(t *testing.T) {
 		{
 			name: "Undefined reference should suggest similar elements",
 			dsl: `
-model {
     API = system "API Service"
     APIService = system "API Service Full"
     API -> APIServic "Typo"
-}`,
+`,
 			expectedSuggestionKeywords: []string{"did you mean", "APIService", "check", "defined"},
 		},
 		{
 			name: "Invalid SLO should provide format examples",
 			dsl: `
-model {
     API = system "API Service" {
         slo {
             latency {
@@ -328,16 +315,15 @@ model {
             }
         }
     }
-}`,
+`,
 			expectedSuggestionKeywords: []string{"format", "200ms", "1s", "duration"},
 		},
 		{
 			name: "Duplicate ID should suggest renaming",
 			dsl: `
-model {
     API = system "API Service"
     API = system "Duplicate"
-}`,
+`,
 			expectedSuggestionKeywords: []string{"rename", "unique", "API2"},
 		},
 	}
@@ -380,16 +366,14 @@ model {
 // TestErrorMessages_ContextHelpfulness tests that error context is helpful
 func TestErrorMessages_ContextHelpfulness(t *testing.T) {
 	dsl := `
-model {
-    system API "API Service" {
-        container WebApp "Web App" {
-            component Frontend "Frontend"
+    API = System "API Service" {
+        WebApp = Container "Web App" {
+            Frontend = Component "Frontend"
             // Comment here
-            component Backend "Backend"
-            component Frontend "Duplicate"
+            Backend = Component "Backend"
+            Frontend = Component "Duplicate"
         }
     }
-}
 `
 	diags, err := parseWithFullValidation(t, dsl)
 

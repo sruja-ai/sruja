@@ -11,7 +11,7 @@ import {
 import { useEffect } from "react";
 
 // Mock store data for builder wizard
-const mockLikec4Model = {
+const mockModel = {
   elements: {
     user: { id: "user", title: "External User", kind: "person", technology: "" },
     "web-app": {
@@ -81,7 +81,7 @@ const meta = {
       // Mock stores
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model as any,
+          model: mockModel as any,
           dslSource: "// Generated DSL content",
           setDslSource: fn(),
           updateArchitecture: async (_updater) => {},
@@ -143,7 +143,7 @@ export const Default: Story = {
       // Mock with full model
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model as any,
+          model: mockModel as any,
           dslSource: "// Generated DSL content",
           setDslSource: fn(),
           updateArchitecture: async (_updater) => {},
@@ -176,7 +176,7 @@ export const ViewMode: Story = {
       // Mock with view mode
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model as any,
+          model: mockModel as any,
           dslSource: "// Generated DSL content",
           setDslSource: fn(),
           updateArchitecture: async (_updater) => {},
@@ -209,7 +209,7 @@ export const EmptyModel: Story = {
       // Mock with empty model
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: null,
+          model: null,
           dslSource: "// No DSL content",
           setDslSource: fn(),
           updateArchitecture: async (_updater) => {},
@@ -242,7 +242,7 @@ export const WithSidebarOpen: Story = {
       // Mock with sidebar preference
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model as any,
+          model: mockModel as any,
           dslSource: "// Generated DSL content",
           setDslSource: fn(),
           updateArchitecture: async (_updater) => {},
@@ -287,7 +287,7 @@ export const Mobile: Story = {
       // Mock for mobile view
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model as any,
+          model: mockModel as any,
           dslSource: "// Generated DSL content",
           setDslSource: fn(),
           updateArchitecture: async (_updater) => {},

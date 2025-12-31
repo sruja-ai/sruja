@@ -14,27 +14,25 @@ func BenchmarkScorer(b *testing.B) {
 		b.Fatalf("Failed to create parser: %v", err)
 	}
 
-	dsl := `model {
-		API = system "API Gateway" {
-			description "Main API entry point"
-			WebApp = container "Web Application" {
-				technology "Go"
-				description "Serves HTTP requests"
-			}
-			Database = container "PostgreSQL" {
-				technology "PostgreSQL"
-				description "Primary data store"
-			}
-			WebApp -> Database "reads/writes"
+	dsl := `	API = system "API Gateway" {
+		description "Main API entry point"
+		WebApp = container "Web Application" {
+			technology "Go"
+			description "Serves HTTP requests"
 		}
-		Auth = system "Authentication" {
-			description "Handles authentication"
-			AuthService = container "Auth Service" {
-				technology "Go"
-			}
+		Database = container "PostgreSQL" {
+			technology "PostgreSQL"
+			description "Primary data store"
 		}
-		API -> Auth "authenticates via"
-	}`
+		WebApp -> Database "reads/writes"
+	}
+	Auth = system "Authentication" {
+		description "Handles authentication"
+		AuthService = container "Auth Service" {
+			technology "Go"
+		}
+	}
+	API -> Auth "authenticates via"`
 
 	program, _, err := parser.Parse("bench.sruja", dsl)
 	if err != nil {
@@ -58,28 +56,26 @@ func BenchmarkValidator(b *testing.B) {
 		b.Fatalf("Failed to create parser: %v", err)
 	}
 
-	dsl := `model {
-		API = system "API Gateway" {
-			description "Main API entry point"
-			WebApp = container "Web Application" {
-				technology "Go"
-				description "Serves HTTP requests"
-			}
-			Database = container "PostgreSQL" {
-				technology "PostgreSQL"
-				description "Primary data store"
-			}
-			WebApp -> Database "reads/writes"
+	dsl := `	API = system "API Gateway" {
+		description "Main API entry point"
+		WebApp = container "Web Application" {
+			technology "Go"
+			description "Serves HTTP requests"
 		}
-		Auth = system "Authentication" {
-			description "Handles authentication"  
-			AuthService = container "Auth Service" {
-				technology "Go"
-				description "Authentication microservice"
-			}
+		Database = container "PostgreSQL" {
+			technology "PostgreSQL"
+			description "Primary data store"
 		}
-		API -> Auth "authenticates via"
-	}`
+		WebApp -> Database "reads/writes"
+	}
+	Auth = system "Authentication" {
+		description "Handles authentication"  
+		AuthService = container "Auth Service" {
+			technology "Go"
+			description "Authentication microservice"
+		}
+	}
+	API -> Auth "authenticates via"`
 
 	program, _, err := parser.Parse("bench.sruja", dsl)
 	if err != nil {
@@ -104,17 +100,15 @@ func BenchmarkCycleDetection(b *testing.B) {
 		b.Fatalf("Failed to create parser: %v", err)
 	}
 
-	dsl := `model {
-		A = system "System A" { description "First" }
-		B = system "System B" { description "Second" }
-		C = system "System C" { description "Third" }
-		D = system "System D" { description "Fourth" }
-		E = system "System E" { description "Fifth" }
-		A -> B "uses"
-		B -> C "uses"
-		C -> D "uses"
-		D -> E "uses"
-	}`
+	dsl := `	A = system "System A" { description "First" }
+	B = system "System B" { description "Second" }
+	C = system "System C" { description "Third" }
+	D = system "System D" { description "Fourth" }
+	E = system "System E" { description "Fifth" }
+	A -> B "uses"
+	B -> C "uses"
+	C -> D "uses"
+	D -> E "uses"`
 
 	program, _, err := parser.Parse("bench.sruja", dsl)
 	if err != nil {
@@ -138,23 +132,21 @@ func BenchmarkResolver(b *testing.B) {
 		b.Fatalf("Failed to create parser: %v", err)
 	}
 
-	dsl := `model {
-		API = system "API Gateway" {
-			WebApp = container "Web Application" {
+	dsl := `	API = system "API Gateway" {
+		WebApp = container "Web Application" {
+			technology "Go"
+			Handler = component "Request Handler" {
 				technology "Go"
-				Handler = component "Request Handler" {
-					technology "Go"
-				}
-				Service = component "Business Service" {
-					technology "Go"
-				}
-				Handler -> Service "calls"
 			}
-			Database = container "PostgreSQL" {
-				technology "PostgreSQL"
+			Service = component "Business Service" {
+				technology "Go"
 			}
-			WebApp -> Database "reads"
+			Handler -> Service "calls"
 		}
+		Database = container "PostgreSQL" {
+			technology "PostgreSQL"
+		}
+		WebApp -> Database "reads"
 	}`
 
 	program, _, err := parser.Parse("bench.sruja", dsl)

@@ -12,74 +12,60 @@ Sruja is an architecture DSL. This tutorial introduces its core elements.
 ## Elements
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element datastore
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+datastore = kind "Datastore"
+
+shop = system "Shop API" {
+webApp = container "Web" {
+  description "Gateway layer"
+}
+catalogSvc = container "Catalog"
+mainDB = datastore "Database"
 }
 
-model {
-  shop = system "Shop API" {
-    webApp = container "Web" {
-      description "Gateway layer"
-    }
-    catalogSvc = container "Catalog"
-    mainDB = datastore "Database"
-  }
+user = person "User"
 
-  user = person "User"
+user -> shop.webApp "Uses"
+shop.webApp -> shop.catalogSvc "Routes"
+shop.catalogSvc -> shop.mainDB "Reads/Writes"
 
-  user -> shop.webApp "Uses"
-  shop.webApp -> shop.catalogSvc "Routes"
-  shop.catalogSvc -> shop.mainDB "Reads/Writes"
-}
-
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
 ## Descriptions and Metadata
 
 ```sruja
-specification {
-  element system
-}
+system = kind "System"
 
-model {
-  Payments = system "Payments" {
-    description "Handles payments and refunds"
-    // metadata
-    metadata {
-      team "FinTech"
-      tier "critical"
-    }
-  }
+Payments = system "Payments" {
+description "Handles payments and refunds"
+// metadata
+metadata {
+  team "FinTech"
+  tier "critical"
+}
 }
 ```
 
 ## Component‑level Modeling
 
 ```sruja
-specification {
-  element system
-  element container
-  element component
-}
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
 
-model {
-  App = system "App" {
-    Web = container "Web" {
-      Cart = component "Cart"
-    }
-  }
+App = system "App" {
+Web = container "Web" {
+  Cart = component "Cart"
+}
 }
 ```
 
 ## Next Steps
 
- - Learn [Deployment Modeling](/tutorials/advanced/deployment-modeling) for infrastructure perspective
+- Learn [Deployment Modeling](/tutorials/advanced/deployment-modeling) for infrastructure perspective
 - Take the quiz: [DSL Basics Quiz](/quizzes/dsl-basics)

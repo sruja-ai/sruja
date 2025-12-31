@@ -11,6 +11,7 @@ Let's get our hands dirty. We will set up a professional project structure that 
 ## Real-World Scenario: Starting a New Product
 
 **Context**: You're building Shopify-lite, a multi-tenant e-commerce platform. Before writing code, you need to:
+
 - Align engineering, product, and DevOps on the architecture
 - Document requirements alongside the design
 - Set up a structure that scales as the team grows
@@ -48,6 +49,7 @@ shopify-lite/
 ```
 
 **Why this structure?**
+
 - **Separation of concerns**: Architecture separate from code
 - **Version control**: Track architecture changes over time
 - **CI/CD ready**: Easy to integrate validation
@@ -79,36 +81,30 @@ Create your first file at `architecture/main.sruja`. We'll start with a high-lev
 Before modeling architecture, let's capture product requirements:
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+// Product Requirements (from product team)
+requirement R1 functional "Merchants can create and manage online stores"
+requirement R2 functional "Shoppers can browse products and make purchases"
+requirement R3 functional "Platform processes payments securely"
+requirement R4 nonfunctional "Platform must support 10,000+ stores"
+requirement R5 nonfunctional "Checkout must complete in < 3 seconds"
+requirement R6 nonfunctional "99.9% uptime SLA"
+
+// Business Goals (for product/executive alignment)
+metadata {
+    businessGoal "Enable small businesses to sell online"
+    targetMarket "Small to medium businesses (SMBs)"
+    successMetrics "Number of active stores, GMV (Gross Merchandise Value)"
 }
 
-model {
-    // Product Requirements (from product team)
-    requirement R1 functional "Merchants can create and manage online stores"
-    requirement R2 functional "Shoppers can browse products and make purchases"
-    requirement R3 functional "Platform processes payments securely"
-    requirement R4 nonfunctional "Platform must support 10,000+ stores"
-    requirement R5 nonfunctional "Checkout must complete in < 3 seconds"
-    requirement R6 nonfunctional "99.9% uptime SLA"
-    
-    // Business Goals (for product/executive alignment)
-    metadata {
-        businessGoal "Enable small businesses to sell online"
-        targetMarket "Small to medium businesses (SMBs)"
-        successMetrics "Number of active stores, GMV (Gross Merchandise Value)"
-    }
-}
-
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -117,133 +113,130 @@ views {
 Now let's model the system context:
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+// Product Requirements
+requirement R1 functional "Merchants can create and manage online stores"
+requirement R2 functional "Shoppers can browse products and make purchases"
+requirement R3 functional "Platform processes payments securely"
+requirement R4 nonfunctional "Platform must support 10,000+ stores"
+requirement R5 nonfunctional "Checkout must complete in < 3 seconds"
+requirement R6 nonfunctional "99.9% uptime SLA"
+
+// 1. The System
+Platform = system "E-Commerce Platform" {
+    description "The core multi-tenant e-commerce engine that enables merchants to create stores and shoppers to make purchases."
+
+    // Link to requirements
+    requirement R1
+    requirement R2
+    requirement R3
+    requirement R4
+    requirement R5
+    requirement R6
 }
 
-model {
-    // Product Requirements
-    requirement R1 functional "Merchants can create and manage online stores"
-    requirement R2 functional "Shoppers can browse products and make purchases"
-    requirement R3 functional "Platform processes payments securely"
-    requirement R4 nonfunctional "Platform must support 10,000+ stores"
-    requirement R5 nonfunctional "Checkout must complete in < 3 seconds"
-    requirement R6 nonfunctional "99.9% uptime SLA"
-    
-    // 1. The System
-    Platform = system "E-Commerce Platform" {
-        description "The core multi-tenant e-commerce engine that enables merchants to create stores and shoppers to make purchases."
-        
-        // Link to requirements
-        requirement R1
-        requirement R2
-        requirement R3
-        requirement R4
-        requirement R5
-        requirement R6
-    }
-
-    // 2. The Users (from product personas)
-    Merchant = person "Store Owner" {
-        description "Small business owner who creates and manages their online store"
-    }
-    Shopper = person "Customer" {
-        description "End customer who browses products and makes purchases"
-    }
-
-    // 3. External Systems (from product integrations)
-    Stripe = system "Payment Gateway" {
-        external
-        description "Third-party payment processor (PCI-compliant)"
-    }
-    
-    EmailService = system "Email Service" {
-        external
-        description "Sends transactional emails (order confirmations, etc.)"
-    }
-
-    // 4. High-Level Interactions (user journeys)
-    Merchant -> Platform "Manages Store" {
-        description "Creates products, manages inventory, views analytics"
-    }
-    Shopper -> Platform "Browses & Buys" {
-        description "Browses products, adds to cart, completes checkout"
-    }
-    Platform -> Stripe "Processes Payments" {
-        description "Secure payment processing for customer orders"
-    }
-    Platform -> EmailService "Sends Notifications" {
-        description "Order confirmations, shipping updates"
-    }
-    
-    // 5. Model user journeys as scenarios
-    scenario ShopperCheckout "Shopper Checkout Journey" {
-        Shopper -> Platform "Browses products"
-        Shopper -> Platform "Adds items to cart"
-        Shopper -> Platform "Initiates checkout"
-        Platform -> Stripe "Processes payment"
-        Stripe -> Platform "Confirms payment"
-        Platform -> EmailService "Sends order confirmation"
-        EmailService -> Shopper "Delivers confirmation email"
-    }
-    
-    scenario MerchantManagement "Merchant Store Management" {
-        Merchant -> Platform "Logs into admin dashboard"
-        Merchant -> Platform "Creates new product"
-        Merchant -> Platform "Updates inventory"
-        Merchant -> Platform "Views sales analytics"
-    }
+// 2. The Users (from product personas)
+Merchant = person "Store Owner" {
+    description "Small business owner who creates and manages their online store"
+}
+Shopper = person "Customer" {
+    description "End customer who browses products and makes purchases"
 }
 
-views {
-  // Executive view: Business context
-  view executive {
-    title "Executive Overview"
-    include Merchant Shopper
-    include Platform Stripe EmailService
-  }
-  
-  // Product view: User journeys
-  view product {
-    title "Product View - User Experience"
-    include Merchant Shopper
-    include Platform
-    exclude Stripe EmailService
-  }
-  
-  // Technical view: System integrations
-  view technical {
-    title "Technical View - System Integration"
-    include Platform Stripe EmailService
-    exclude Merchant Shopper
-  }
-  
-  // Default view: Complete system
-  view index {
-    title "Complete System View"
-    include *
-  }
+// 3. External Systems (from product integrations)
+Stripe = system "Payment Gateway" {
+    external
+    description "Third-party payment processor (PCI-compliant)"
+}
+
+EmailService = system "Email Service" {
+    external
+    description "Sends transactional emails (order confirmations, etc.)"
+}
+
+// 4. High-Level Interactions (user journeys)
+Merchant -> Platform "Manages Store" {
+    description "Creates products, manages inventory, views analytics"
+}
+Shopper -> Platform "Browses & Buys" {
+    description "Browses products, adds to cart, completes checkout"
+}
+Platform -> Stripe "Processes Payments" {
+    description "Secure payment processing for customer orders"
+}
+Platform -> EmailService "Sends Notifications" {
+    description "Order confirmations, shipping updates"
+}
+
+// 5. Model user journeys as scenarios
+scenario ShopperCheckout "Shopper Checkout Journey" {
+    Shopper -> Platform "Browses products"
+    Shopper -> Platform "Adds items to cart"
+    Shopper -> Platform "Initiates checkout"
+    Platform -> Stripe "Processes payment"
+    Stripe -> Platform "Confirms payment"
+    Platform -> EmailService "Sends order confirmation"
+    EmailService -> Shopper "Delivers confirmation email"
+}
+
+scenario MerchantManagement "Merchant Store Management" {
+    Merchant -> Platform "Logs into admin dashboard"
+    Merchant -> Platform "Creates new product"
+    Merchant -> Platform "Updates inventory"
+    Merchant -> Platform "Views sales analytics"
+}
+
+// Executive view: Business context
+view executive {
+title "Executive Overview"
+include Merchant Shopper
+include Platform Stripe EmailService
+}
+
+// Product view: User journeys
+view product {
+title "Product View - User Experience"
+include Merchant Shopper
+include Platform
+exclude Stripe EmailService
+}
+
+// Technical view: System integrations
+view technical {
+title "Technical View - System Integration"
+include Platform Stripe EmailService
+exclude Merchant Shopper
+}
+
+// Default view: Complete system
+view index {
+title "Complete System View"
+include *
 }
 ```
 
 ### Why This Approach?
 
 **For Product Teams:**
+
 - Requirements are visible and linked to architecture
 - Business goals are documented
 - Success metrics are clear
 
 **For Engineering:**
+
 - Architecture shows what to build
 - Requirements guide implementation priorities
 - External dependencies are identified early
 
 **For DevOps:**
+
 - Uptime SLA (R6) informs infrastructure planning
 - Performance requirements (R5) guide monitoring setup
 - Scale requirements (R4) inform capacity planning
@@ -262,6 +255,7 @@ sruja export json architecture/main.sruja > docs/architecture.json
 ```
 
 You should see a clean diagram showing:
+
 - Your platform in the center
 - Users (Merchant, Shopper) on the left
 - External systems (Stripe, EmailService) on the right
@@ -280,6 +274,7 @@ sruja tree architecture/main.sruja
 ```
 
 **Common issues to watch for:**
+
 - Missing relations (orphan elements)
 - Invalid references
 - Unclear descriptions
@@ -294,10 +289,10 @@ name: Validate Architecture
 on:
   push:
     paths:
-      - 'architecture/**'
+      - "architecture/**"
   pull_request:
     paths:
-      - 'architecture/**'
+      - "architecture/**"
 
 jobs:
   validate:
@@ -328,6 +323,7 @@ jobs:
 ## Exercise: Create Your Context View
 
 **Tasks:**
+
 1. Create a new project directory
 2. Install Sruja CLI
 3. Create `architecture/main.sruja` with:

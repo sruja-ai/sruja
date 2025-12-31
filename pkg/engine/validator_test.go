@@ -37,10 +37,10 @@ func TestValidator_Validate(t *testing.T) {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	dsl := `model {
+	dsl := `
 		Sys1 = system "System 1"
 		Sys2 = system "System 2"
-	}`
+	`
 
 	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
@@ -64,9 +64,9 @@ func TestValidator_Validate_MultipleRules(_ *testing.T) {
 		return
 	}
 
-	dsl := `model {
+	dsl := `
 		Sys1 = system "System 1"
-	}`
+	`
 
 	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
@@ -93,13 +93,13 @@ func TestCycleDetectionRule_Validate_NoCycle(t *testing.T) {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	dsl := `model {
+	dsl := `
 		A = system "A"
 		B = system "B"
 		C = system "C"
 		A -> B
 		B -> C
-	}`
+	`
 
 	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
@@ -120,12 +120,12 @@ func TestCycleDetectionRule_Validate_Cycle(t *testing.T) {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	dsl := `model {
+	dsl := `
 		A = system "A"
 		B = system "B"
 		A -> B
 		B -> A
-	}`
+	`
 
 	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
@@ -156,14 +156,14 @@ func TestCycleDetectionRule_Validate_SystemRelations(t *testing.T) {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			A = container "A"
 			B = container "B"
 			A -> B
 			B -> A
 		}
-	}`
+	`
 
 	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
@@ -256,10 +256,10 @@ func TestValidator_RegisterDefaultRules_CanValidate(t *testing.T) {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	dsl := `model {
+	dsl := `
 		Sys1 = system "System 1"
 		Sys2 = system "System 2"
-	}`
+	`
 
 	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {

@@ -13,8 +13,8 @@ func (e *Exporter) writeSystems(sb *strings.Builder, arch interface{}, prog *lan
 		Description  *string
 		Systems      []*language.System
 		Persons      []*language.Person
-		Requirements []*language.Requirement
-		ADRs         []*language.ADR
+		Requirements []RequirementInfo
+		ADRs         []ADRInfo
 	})
 	if len(archStruct.Systems) == 0 {
 		return
@@ -88,8 +88,8 @@ func (e *Exporter) writePersons(sb *strings.Builder, arch interface{}) {
 		Description  *string
 		Systems      []*language.System
 		Persons      []*language.Person
-		Requirements []*language.Requirement
-		ADRs         []*language.ADR
+		Requirements []RequirementInfo
+		ADRs         []ADRInfo
 	})
 	if len(archStruct.Persons) == 0 {
 		return

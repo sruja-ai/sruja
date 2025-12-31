@@ -12,45 +12,58 @@ func stringPtr(s string) *string {
 }
 
 func TestMarkdownExport_ScenariosAndFlows(t *testing.T) {
-	// Manually construct program with scenarios and flows to bypass parser limitations
-	// for specific fields like Description on Scenario which seemed to fail parsing
-
+	// construct program using ElementDef
 	desc := "Successful order flow"
 	stepDesc := "Process Payment"
-	scenario := &language.Scenario{
-		ID:          "OrderProcessing",
-		Title:       stringPtr("Order Processing"),
-		Description: &desc,
-		Steps: []*language.ScenarioStep{
-			{
-				From:        language.QualifiedIdent{Parts: []string{"OrderService"}},
-				To:          language.QualifiedIdent{Parts: []string{"PaymentService"}},
-				Description: &stepDesc,
-				Tags:        []string{"fast", "secure"},
+
+	scenarioStep := &language.ScenarioStep{
+		FromParts:   []string{"OrderService"},
+		ToParts:     []string{"PaymentService"},
+		Description: &stepDesc,
+		Tags:        []string{"fast", "secure"},
+	}
+
+	scenarioDef := &language.ElementDef{
+		Assignment: &language.ElementAssignment{
+			Kind:  "scenario",
+			Name:  "OrderProcessing",
+			Title: stringPtr("Order Processing"),
+			Body: &language.ElementDefBody{
+				Items: []*language.BodyItem{
+					{Description: &desc},
+					{Step: scenarioStep},
+				},
 			},
 		},
 	}
 
 	flowDesc := "Daily sync"
 	flowStepDesc := "Sync Data"
-	flow := &language.Flow{
-		ID:          "DataSync",
-		Title:       stringPtr("Data Sync"),
-		Description: &flowDesc,
-		Steps: []*language.ScenarioStep{
-			{
-				From:        language.QualifiedIdent{Parts: []string{"OrderService"}},
-				To:          language.QualifiedIdent{Parts: []string{"PaymentService"}},
-				Description: &flowStepDesc,
+	flowStep := &language.ScenarioStep{
+		FromParts:   []string{"OrderService"},
+		ToParts:     []string{"PaymentService"},
+		Description: &flowStepDesc,
+	}
+
+	flowDef := &language.ElementDef{
+		Assignment: &language.ElementAssignment{
+			Kind:  "flow",
+			Name:  "DataSync",
+			Title: stringPtr("Data Sync"),
+			Body: &language.ElementDefBody{
+				Items: []*language.BodyItem{
+					{Description: &flowDesc},
+					{Step: flowStep},
+				},
 			},
 		},
 	}
 
 	program := &language.Program{
-		Model: &language.ModelBlock{
+		Model: &language.Model{
 			Items: []language.ModelItem{
-				{Scenario: scenario},
-				{Flow: flow},
+				{ElementDef: scenarioDef},
+				{ElementDef: flowDef},
 			},
 		},
 	}
@@ -109,18 +122,18 @@ func TestMarkdownExport_ScenariosAndFlows(t *testing.T) {
 }
 
 func TestMarkdownExport_SequenceDiagram_Complex(t *testing.T) {
-	dsl := `model {
-		system A "System A"
-		system B "System B"
-		system C "System C"
+	dsl := `
+		A = System "System A"
+		B = System "System B"
+		C = System "System C"
 
-		scenario "Complex Flow" {
+		ComplexFlow = Scenario "Complex Flow" {
 			step A -> B
 			step B -> C "Forward"
 			step C -> B "Ack"
 			step B -> A "Done"
 		}
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 	exporter := NewExporter(DefaultOptions())

@@ -27,10 +27,11 @@ export default defineConfig({
       ],
       include: ["src/**/*.{ts,tsx}"],
       thresholds: {
-        lines: 70,
-        functions: 70,
-        branches: 70,
-        statements: 70,
+        // FAANG-level coverage thresholds
+        lines: 90,
+        functions: 90,
+        branches: 85,
+        statements: 90,
       },
     },
   },

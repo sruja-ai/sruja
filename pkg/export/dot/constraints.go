@@ -132,7 +132,7 @@ func BuildConstraints(elements []*Element, relations []*Relation, viewLevel int,
 }
 
 // buildRankConstraints builds rank constraints based on view level.
-// LikeC4 pattern: strict alignment of same-level nodes for professional appearance.
+// Strict alignment of same-level nodes for professional appearance.
 func buildRankConstraints(elements []*Element, viewLevel int) []RankConstraint {
 	var ranks []RankConstraint
 
@@ -143,7 +143,7 @@ func buildRankConstraints(elements []*Element, viewLevel int) []RankConstraint {
 	}
 
 	// L1 (Context View): Persons/actors at top, systems below
-	// LikeC4 ensures all persons align perfectly, all systems align perfectly
+	// Ensures all persons align perfectly, all systems align perfectly
 	if viewLevel == 1 || viewLevel == 0 {
 		// Collect all person-like elements (person, actor, external)
 		var persons []*Element
@@ -215,7 +215,7 @@ func buildRankConstraints(elements []*Element, viewLevel int) []RankConstraint {
 // buildSizeConstraints builds size constraints from elements.
 // FAANG pattern: Larger size for "hub" nodes with many connections.
 func buildSizeConstraints(elements []*Element, relations []*Relation, config Config) []SizeConstraint {
-	var sizes []SizeConstraint
+	sizes := make([]SizeConstraint, 0, len(elements))
 
 	// Calculate node degrees for hub detection
 	degree := make(map[string]int)
@@ -326,7 +326,7 @@ func buildSizeConstraints(elements []*Element, relations []*Relation, config Con
 // buildEdgeConstraints builds edge constraints from relations.
 // FAANG pattern: Use higher weights and minlen to reduce crossings.
 func buildEdgeConstraints(relations []*Relation, config Config, nodeCount int, parentMap map[string]string) []EdgeConstraint {
-	var edges []EdgeConstraint
+	edges := make([]EdgeConstraint, 0, len(relations))
 
 	// Track outgoing edges per node for weight distribution
 	outDegree := make(map[string]int)
@@ -345,7 +345,7 @@ func buildEdgeConstraints(relations []*Relation, config Config, nodeCount int, p
 		// Smarter edge weight based on label AND edge importance
 		// FAANG pattern: More sophisticated weight distribution for crossing reduction
 		if config.UseEdgeWeights {
-			baseWeight := 1
+			var baseWeight int
 
 			// Labeled edges are more important - give them higher weight
 			if rel.Label != "" {

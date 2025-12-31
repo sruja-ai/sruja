@@ -59,20 +59,6 @@ func TestConvertPerson_Complete(t *testing.T) {
 	}
 }
 
-func TestConvertContracts_Multiple(t *testing.T) {
-	contracts := []*language.Contract{
-		{ID: "api1", Kind: "api"},
-		{ID: "event1", Kind: "event"},
-	}
-	result := convertContracts(contracts)
-	if len(result) != 2 {
-		t.Fatalf("expected 2 contracts, got %d", len(result))
-	}
-	if result[0].ID != "api1" || result[1].ID != "event1" {
-		t.Fatalf("contract IDs not correct: %+v", result)
-	}
-}
-
 func TestConvertConstraints_Multiple(t *testing.T) {
 	constraints := []*language.ConstraintEntry{
 		{Key: "security", Value: "TLS required"},
@@ -95,27 +81,6 @@ func TestConvertConventions_Multiple(t *testing.T) {
 	}
 }
 
-func TestConvertSchemaBlock_WithTypes(t *testing.T) {
-	schema := &language.SchemaBlock{
-		Entries: []*language.SchemaEntry{
-			{
-				Key: "userId",
-				Type: &language.TypeSpec{
-					Name:     "string",
-					Optional: "?",
-				},
-			},
-		},
-	}
-	result := convertSchemaBlock(schema)
-	if result == nil || len(result.Entries) != 1 {
-		t.Fatalf("schema not converted: %+v", result)
-	}
-	if !result.Entries[0].Type.Optional {
-		t.Fatalf("optional flag not set: %+v", result.Entries[0].Type)
-	}
-}
-
 func TestConvertPolicies_Multiple(t *testing.T) {
 	policies := []*language.Policy{
 		{ID: "pol1", Description: "Security policy"},
@@ -125,27 +90,14 @@ func TestConvertPolicies_Multiple(t *testing.T) {
 	if len(result) != 2 {
 		t.Fatalf("expected 2 policies, got %d", len(result))
 	}
-}
-
-func TestConvertContractBody_Complete(t *testing.T) {
-	body := &language.ContractBody{
-		Version:  strPtr("1.0"),
-		Status:   strPtr("active"),
-		Endpoint: strPtr("/api/users"),
-		Method:   strPtr("GET"),
-	}
-	result := convertContractBody(body)
-	if result == nil {
-		t.Fatal("expected non-nil result")
-	}
-	if result.Version == nil || *result.Version != "1.0" {
-		t.Fatalf("version not converted: %+v", result.Version)
+	if result[0].ID != "pol1" || result[1].ID != "pol2" {
+		t.Fatalf("policies not converted correctly: %+v", result)
 	}
 }
 
 func TestExporter(t *testing.T) {
 	program := &language.Program{
-		Model: &language.ModelBlock{
+		Model: &language.Model{
 			Items: []language.ModelItem{},
 		},
 	}
@@ -157,8 +109,8 @@ func TestExporter(t *testing.T) {
 		t.Errorf("Export failed: %v", err)
 	}
 
-	// Test ExportAsModelDump
-	dump := exporter.ExportAsModelDump(program)
+	// Test ToModelDump
+	dump := exporter.ToModelDump(program)
 	if dump == nil {
 		t.Error("ExportAsModelDump returned nil")
 	}

@@ -9,4 +9,4 @@ export { useClipboardStore } from "./clipboardStore";
 export { useGridStore, type GridSize } from "./gridStore";
 export { useUISettingsStore } from "./uiSettingsStore";
 export { useToastStore } from "./toastStore";
-// Layout engine store removed - LikeC4 handles all layout internally
+// Layout engine store removed - layout is handled internally

@@ -32,9 +32,9 @@ func (r *PropertiesValidationRule) Validate(program *language.Program) []diagnos
 		"cost.perTransaction.average": func(s string, _ map[string]string) bool { return isCurrency(s) },
 	}
 
-	// Validate properties from LikeC4 elements
-	var validateElementProps func(elem *language.LikeC4ElementDef)
-	validateElementProps = func(elem *language.LikeC4ElementDef) {
+	// Validate properties from elements
+	var validateElementProps func(elem *language.ElementDef)
+	validateElementProps = func(elem *language.ElementDef) {
 		if elem == nil {
 			return
 		}

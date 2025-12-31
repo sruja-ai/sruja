@@ -31,7 +31,7 @@ export function RelationsSection({
   title = "Relations",
   description = "Connect elements to show how they communicate",
 }: RelationsSectionProps) {
-  const data = useArchitectureStore((s) => s.likec4Model);
+  const data = useArchitectureStore((s) => s.model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
 
   const allRelations = data?.relations ?? [];

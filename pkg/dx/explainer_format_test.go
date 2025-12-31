@@ -4,8 +4,6 @@ package dx
 import (
 	"strings"
 	"testing"
-
-	"github.com/sruja-ai/sruja/pkg/language"
 )
 
 func TestFormat(t *testing.T) {
@@ -24,8 +22,8 @@ func TestFormat(t *testing.T) {
 			},
 		},
 		Dependencies: []string{"DB"},
-		ADRs: []*language.ADR{
-			{ID: "ADR001", Title: stringPtr("Test ADR")},
+		ADRs: []string{
+			"ADR001",
 		},
 		Scenarios: []*ScenarioInfo{
 			{ID: "scenario1", Label: "Test Scenario"},

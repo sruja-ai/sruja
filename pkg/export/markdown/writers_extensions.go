@@ -14,8 +14,8 @@ func (e *Exporter) writeRequirements(sb *strings.Builder, arch interface{}) {
 		Description  *string
 		Systems      []*language.System
 		Persons      []*language.Person
-		Requirements []*language.Requirement
-		ADRs         []*language.ADR
+		Requirements []RequirementInfo
+		ADRs         []ADRInfo
 	})
 	if len(archStruct.Requirements) == 0 {
 		return
@@ -25,26 +25,19 @@ func (e *Exporter) writeRequirements(sb *strings.Builder, arch interface{}) {
 	sb.WriteString("This section documents the functional requirements that the system must satisfy.\n\n")
 
 	// Use table format for better readability
-	sb.WriteString("| ID | Type | Description | Tags |\n")
-	sb.WriteString("|----|------|-------------|------|\n")
+	sb.WriteString("| ID | Type | Title |\n")
+	sb.WriteString("|----|------|-------|\n")
 
 	for _, req := range archStruct.Requirements {
 		reqType := "functional"
-		if req.Type != nil {
-			reqType = *req.Type
+		if req.Type != "" {
+			reqType = req.Type
 		}
-		desc := ""
-		if req.Description != nil {
-			desc = *req.Description
-		} else {
-			desc = "Requirement specification"
+		title := req.Title
+		if title == "" {
+			title = "Requirement specification"
 		}
-		tags := ""
-		// Tags may be in Properties or Body.Tags - check both
-		if req.Body != nil && len(req.Body.Tags) > 0 {
-			tags = strings.Join(req.Body.Tags, ", ")
-		}
-		fmt.Fprintf(sb, "| **%s** | %s | %s | %s |\n", req.ID, reqType, desc, tags)
+		fmt.Fprintf(sb, "| **%s** | %s | %s |\n", req.ID, reqType, title)
 	}
 	sb.WriteString("\n")
 }
@@ -55,8 +48,8 @@ func (e *Exporter) writeADRs(sb *strings.Builder, arch interface{}) {
 		Description  *string
 		Systems      []*language.System
 		Persons      []*language.Person
-		Requirements []*language.Requirement
-		ADRs         []*language.ADR
+		Requirements []RequirementInfo
+		ADRs         []ADRInfo
 	})
 	if len(archStruct.ADRs) == 0 {
 		return
@@ -65,59 +58,21 @@ func (e *Exporter) writeADRs(sb *strings.Builder, arch interface{}) {
 	sb.WriteString("## Architecture Decision Records\n\n")
 	sb.WriteString("This section documents significant architectural decisions, their context, and rationale.\n\n")
 
-	// Summary table first
-	if len(archStruct.ADRs) > 0 {
-		sb.WriteString("### ADR Summary\n\n")
-		sb.WriteString("| ID | Title | Status | Tags |\n")
-		sb.WriteString("|----|-------|--------|------|\n")
-		for _, adr := range archStruct.ADRs {
-			title := adr.ID
-			if adr.Title != nil {
-				title = *adr.Title
-			}
-			status := "proposed"
-			if adr.Body != nil && adr.Body.Status != nil {
-				status = *adr.Body.Status
-			}
-			tags := ""
-			if adr.Body != nil && len(adr.Body.Tags) > 0 {
-				tags = strings.Join(adr.Body.Tags, ", ")
-			}
-			fmt.Fprintf(sb, "| [%s](#%s) | %s | %s | %s |\n",
-				adr.ID, strings.ToLower(strings.ReplaceAll(adr.ID, " ", "-")), title, status, tags)
-		}
-		sb.WriteString("\n")
-	}
-
-	// Detailed ADRs
+	// Summary table
+	sb.WriteString("### ADR Summary\n\n")
+	sb.WriteString("| ID | Title |\n")
+	sb.WriteString("|----|-------|\n")
 	for _, adr := range archStruct.ADRs {
-		title := adr.ID
-		if adr.Title != nil {
-			title = *adr.Title
+		title := adr.Title
+		if title == "" {
+			title = adr.ID
 		}
-		adrID := strings.ToLower(strings.ReplaceAll(adr.ID, " ", "-"))
-		fmt.Fprintf(sb, "### %s {#%s}\n\n", title, adrID)
-		if adr.Body != nil {
-			if adr.Body.Status != nil {
-				fmt.Fprintf(sb, "**Status**: %s\n\n", *adr.Body.Status)
-			}
-			if adr.Body.Context != nil {
-				fmt.Fprintf(sb, "**Context**:\n%s\n\n", *adr.Body.Context)
-			}
-			if adr.Body.Decision != nil {
-				fmt.Fprintf(sb, "**Decision**:\n%s\n\n", *adr.Body.Decision)
-			}
-			if adr.Body.Consequences != nil {
-				fmt.Fprintf(sb, "**Consequences**:\n%s\n\n", *adr.Body.Consequences)
-			}
-			if len(adr.Body.Tags) > 0 {
-				fmt.Fprintf(sb, "**Tags**: %s\n\n", strings.Join(adr.Body.Tags, ", "))
-			}
-		}
+		fmt.Fprintf(sb, "| **%s** | %s |\n", adr.ID, title)
 	}
+	sb.WriteString("\n")
 }
 
-// writeScenariosAndFlows writes scenarios and flows section with sequence diagrams
+// writeScenariosAndFlows writes scenarios and flows section
 func (e *Exporter) writeScenariosAndFlows(sb *strings.Builder, prog *language.Program) {
 	scenarios, flows := extractScenariosAndFlowsFromModel(prog)
 	if len(scenarios) == 0 && len(flows) == 0 {
@@ -131,42 +86,47 @@ func (e *Exporter) writeScenariosAndFlows(sb *strings.Builder, prog *language.Pr
 	if len(scenarios) > 0 {
 		sb.WriteString("### User Scenarios\n\n")
 		for _, scenario := range scenarios {
-			title := scenario.ID
-			if scenario.Title != nil {
-				title = *scenario.Title
+			title := scenario.Title
+			if title == "" {
+				title = scenario.ID
 			}
 			fmt.Fprintf(sb, "#### %s\n\n", title)
-
-			if scenario.Description != nil {
-				fmt.Fprintf(sb, "%s\n\n", *scenario.Description)
+			if scenario.Description != "" {
+				fmt.Fprintf(sb, "%s\n\n", scenario.Description)
 			}
 
-			// Generate sequence diagram for scenario
+			// Generate Sequence Diagram
 			if len(scenario.Steps) > 0 {
-				seqDiagram := e.generateSequenceDiagram(scenario.Steps, title)
-				if seqDiagram != "" {
-					sb.WriteString("```mermaid\n")
-					sb.WriteString(seqDiagram)
-					sb.WriteString("\n```\n\n")
+				sb.WriteString("```mermaid\n")
+				sb.WriteString("sequenceDiagram\n")
+				// Collect participants to verify existence or style them? (Optional)
+				// Just render steps
+				for _, step := range scenario.Steps {
+					// Prepare participants (From/To might be FQN, mermaid handles dots usually or simple names)
+					from := sanitizeIDForMermaid(step.From)
+					to := sanitizeIDForMermaid(step.To)
+					desc := escapeQuotesForMermaid(step.Description)
+					if desc == "" {
+						desc = " "
+					}
+					fmt.Fprintf(sb, "    participant %s\n", from)
+					fmt.Fprintf(sb, "    participant %s\n", to)
+					fmt.Fprintf(sb, "    %s->>%s: %s\n", from, to, desc)
 				}
+				sb.WriteString("```\n\n")
 
-				// List steps
+				// Steps Table
 				sb.WriteString("**Steps:**\n\n")
 				for i, step := range scenario.Steps {
-					from := step.From.String()
-					to := step.To.String()
-					desc := ""
-					if step.Description != nil {
-						desc = *step.Description
-					}
-					if desc != "" {
-						fmt.Fprintf(sb, "%d. **%s** → **%s**: %s\n", i+1, from, to, desc)
-					} else {
-						fmt.Fprintf(sb, "%d. **%s** → **%s**\n", i+1, from, to)
-					}
+					tags := ""
 					if len(step.Tags) > 0 {
-						fmt.Fprintf(sb, "   *Tags: %s*\n", strings.Join(step.Tags, ", "))
+						tags = fmt.Sprintf(" Tags: %s", strings.Join(step.Tags, ", "))
 					}
+					desc := step.Description
+					if desc == "" {
+						desc = "Interaction"
+					}
+					fmt.Fprintf(sb, "%d. **%s** to **%s**: %s%s\n", i+1, step.From, step.To, desc, tags)
 				}
 				sb.WriteString("\n")
 			}
@@ -177,41 +137,31 @@ func (e *Exporter) writeScenariosAndFlows(sb *strings.Builder, prog *language.Pr
 	if len(flows) > 0 {
 		sb.WriteString("### Data Flows\n\n")
 		for _, flow := range flows {
-			title := flow.ID
-			if flow.Title != nil {
-				title = *flow.Title
+			title := flow.Title
+			if title == "" {
+				title = flow.ID
 			}
 			fmt.Fprintf(sb, "#### %s\n\n", title)
-
-			if flow.Description != nil {
-				fmt.Fprintf(sb, "%s\n\n", *flow.Description)
+			if flow.Description != "" {
+				fmt.Fprintf(sb, "%s\n\n", flow.Description)
 			}
 
-			// Generate sequence diagram for flow
+			// Generate Sequence Diagram
 			if len(flow.Steps) > 0 {
-				seqDiagram := e.generateSequenceDiagram(flow.Steps, title)
-				if seqDiagram != "" {
-					sb.WriteString("```mermaid\n")
-					sb.WriteString(seqDiagram)
-					sb.WriteString("\n```\n\n")
-				}
-
-				// List steps
-				sb.WriteString("**Data Flow Steps:**\n\n")
-				for i, step := range flow.Steps {
-					from := step.From.String()
-					to := step.To.String()
-					desc := ""
-					if step.Description != nil {
-						desc = *step.Description
+				sb.WriteString("```mermaid\n")
+				sb.WriteString("sequenceDiagram\n")
+				for _, step := range flow.Steps {
+					from := sanitizeIDForMermaid(step.From)
+					to := sanitizeIDForMermaid(step.To)
+					desc := escapeQuotesForMermaid(step.Description)
+					if desc == "" {
+						desc = " "
 					}
-					if desc != "" {
-						fmt.Fprintf(sb, "%d. **%s** → **%s**: %s\n", i+1, from, to, desc)
-					} else {
-						fmt.Fprintf(sb, "%d. **%s** → **%s**\n", i+1, from, to)
-					}
+					fmt.Fprintf(sb, "    participant %s\n", from)
+					fmt.Fprintf(sb, "    participant %s\n", to)
+					fmt.Fprintf(sb, "    %s->>%s: %s\n", from, to, desc)
 				}
-				sb.WriteString("\n")
+				sb.WriteString("```\n\n")
 			}
 		}
 	}

@@ -9,7 +9,7 @@ import {
 import { useEffect } from "react";
 
 // Mock store data for details panel
-const mockLikec4Model = {
+const mockModel = {
   elements: {
     "web-app": {
       id: "web-app",
@@ -129,7 +129,7 @@ const meta = {
       // Mock stores
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model as any,
+          model: mockModel as any,
           updateArchitecture: async (_updater) => {},
         });
         useSelectionStore.setState({
@@ -167,7 +167,7 @@ export const SystemNode: Story = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model as any,
+          model: mockModel as any,
           updateArchitecture: async (_updater) => {},
         });
         useSelectionStore.setState({
@@ -202,7 +202,7 @@ export const ContainerNode: Story = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model as any,
+          model: mockModel as any,
           updateArchitecture: async (_updater) => {},
         });
         useSelectionStore.setState({
@@ -239,7 +239,7 @@ export const PersonNode: Story = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model as any,
+          model: mockModel as any,
           updateArchitecture: async (_updater) => {},
         });
         useSelectionStore.setState({
@@ -276,7 +276,7 @@ export const NodeWithNoData: Story = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: {
+          model: {
             elements: {
               "empty-node": {
                 id: "empty-node",
@@ -331,7 +331,7 @@ export const NoSelection: Story = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model as any,
+          model: mockModel as any,
           updateArchitecture: async (_updater) => {},
         });
         useSelectionStore.setState({
@@ -368,7 +368,7 @@ export const NoModel: Story = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: null,
+          model: null,
           updateArchitecture: async (_updater) => {},
         });
         useSelectionStore.setState({

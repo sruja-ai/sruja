@@ -3,13 +3,13 @@
 
 /**
  * @packageDocumentation
- * 
+ *
  * # Sruja Shared Package
- * 
+ *
  * This package provides shared utilities, types, and adapters for Sruja frontend applications.
- * 
+ *
  * ## Module Organization
- * 
+ *
  * - **types**: Core TypeScript type definitions for architecture models
  * - **utils**: Utility functions (logging, CSS variables, markdown processing)
  * - **builder**: Programmatic API for building architecture models
@@ -18,14 +18,14 @@
  * - **storage**: Browser storage utilities
  * - **documentation**: Documentation loading utilities
  * - **examples**: Example code management
- * 
+ *
  * ## Usage
- * 
+ *
  * ```typescript
  * import { SrujaBuilder, type SrujaModelDump } from '@sruja/shared';
  * import { logger } from '@sruja/shared';
  * ```
- * 
+ *
  * @module
  */
 
@@ -34,7 +34,7 @@
 // ============================================================================
 /**
  * Core type definitions for architecture models, converters, and validation.
- * 
+ *
  * @module types
  */
 export * from "./types";
@@ -44,7 +44,7 @@ export * from "./types";
 // ============================================================================
 /**
  * Utility functions for logging, markdown processing, and CSS variables.
- * 
+ *
  * @module utils
  */
 export * from "./utils";
@@ -54,38 +54,28 @@ export * from "./utils";
 // ============================================================================
 /**
  * Export functionality is provided via WASM adapters in the 'web' module.
- * 
+ *
  * @remarks
  * Use WASM-based exports for markdown and mermaid:
  * ```typescript
- * import { 
- *   convertDslToMarkdown, 
- *   convertDslToMermaid 
+ * import {
+ *   convertDslToMarkdown,
+ *   convertDslToMermaid
  * } from '@sruja/shared/web/wasmAdapter';
- * 
+ *
  * const markdown = await convertDslToMarkdown(dsl);
  * const mermaid = await convertDslToMermaid(dsl);
  * ```
- * 
+ *
  * These use the Go backend implementation for consistency and performance.
  */
-
-// ============================================================================
-// Builder API
-// ============================================================================
-/**
- * Programmatic API for building architecture models.
- * 
- * @module builder
- */
-export * from "./builder";
 
 // ============================================================================
 // Web WASM Adapters
 // ============================================================================
 /**
  * Web-specific WASM adapters for browser environments.
- * 
+ *
  * @module web
  * @remarks
  * Node.js WASM adapter should be imported directly from './node/wasmAdapter'
@@ -99,7 +89,7 @@ export * from "./web/wasmAdapterViewer";
 // ============================================================================
 /**
  * Analytics and error tracking utilities.
- * 
+ *
  * @module analytics
  */
 export * from "./analytics";
@@ -109,7 +99,7 @@ export * from "./analytics";
 // ============================================================================
 /**
  * Browser storage utilities (IndexedDB wrapper).
- * 
+ *
  * @module storage
  */
 export * from "./storage/indexedStore";
@@ -119,7 +109,7 @@ export * from "./storage/indexedStore";
 // ============================================================================
 /**
  * Documentation loading and management utilities.
- * 
+ *
  * @module documentation
  */
 export * from "./documentation";
@@ -129,7 +119,7 @@ export * from "./documentation";
 // ============================================================================
 /**
  * Example code management and loading utilities.
- * 
+ *
  * @module examples
  */
 export * from "./examples";

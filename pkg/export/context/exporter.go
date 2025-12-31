@@ -41,8 +41,8 @@ func (e *Exporter) Export(prog *language.Program) string {
 	f.sb.WriteString("# Architecture Elements\n\n")
 
 	// Recursive helper to visit elements
-	var visitElement func(elDef *language.LikeC4ElementDef, depth int)
-	visitElement = func(elDef *language.LikeC4ElementDef, depth int) {
+	var visitElement func(elDef *language.ElementDef, depth int)
+	visitElement = func(elDef *language.ElementDef, depth int) {
 		name := elDef.GetID()
 		kind := elDef.GetKind()
 
@@ -127,8 +127,8 @@ func (e *Exporter) Export(prog *language.Program) string {
 	}
 
 	// Recursive visitor for relations
-	var visitRelations func(elDef *language.LikeC4ElementDef)
-	visitRelations = func(elDef *language.LikeC4ElementDef) {
+	var visitRelations func(elDef *language.ElementDef)
+	visitRelations = func(elDef *language.ElementDef) {
 		body := elDef.GetBody()
 		if body != nil {
 			for _, item := range body.Items {

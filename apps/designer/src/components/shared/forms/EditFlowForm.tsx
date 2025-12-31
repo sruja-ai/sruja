@@ -23,7 +23,7 @@ interface FormValues {
 
 export function EditFlowForm({ isOpen, onClose, flow }: EditFlowFormProps) {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
-  const data = useArchitectureStore((s) => s.likec4Model);
+  const data = useArchitectureStore((s) => s.model);
   const formRef = useRef<HTMLFormElement>(null);
 
   // Initialize form state

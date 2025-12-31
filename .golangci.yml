@@ -4,9 +4,11 @@ linters:
     - bodyclose
     - gocritic
     - gosec
+    - ineffassign # Detect ineffectual assignments
     - noctx
     - prealloc
     - revive
+    - staticcheck # Additional static analysis
     - unparam
   disable:
     - funlen
@@ -34,6 +36,21 @@ linters:
       - third_party$
       - builtin$
       - examples$
+      - node_modules
+      - apps/
+      - packages/
+run:
+  skip-dirs:
+    - node_modules
+    - apps
+    - packages
+    - examples
+    - third_party
+    - builtin
+  skip-files:
+    - ".*\\.md$"
+    - ".*\\.yaml$"
+    - ".*\\.yml$"
 formatters:
   exclusions:
     generated: lax
@@ -41,3 +58,6 @@ formatters:
       - third_party$
       - builtin$
       - examples$
+      - node_modules
+      - apps/
+      - packages/

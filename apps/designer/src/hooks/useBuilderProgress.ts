@@ -4,16 +4,19 @@ import type { ElementDump, SrujaModelDump, SrujaExtensions } from "@sruja/shared
 import { extractText } from "@sruja/shared";
 
 export function useBuilderProgress() {
-  const model = useArchitectureStore((s) => s.likec4Model) as unknown as SrujaModelDump | null;
+  const model = useArchitectureStore((s) => s.model) as unknown as SrujaModelDump | null;
 
   // Helper to get element by ID (unused)
 
   // Core Data
-  const elements = useMemo(() => Object.values(model?.elements || {}) as ElementDump[], [model?.elements]);
+  const elements = useMemo(
+    () => Object.values(model?.elements || {}) as ElementDump[],
+    [model?.elements]
+  );
   const relations = useMemo(() => model?.relations || [], [model?.relations]);
 
   // Sruja extensions
-  const sruja = useMemo(() => (model?.sruja) || ({} as SrujaExtensions), [model?.sruja]);
+  const sruja = useMemo(() => model?.sruja || ({} as SrujaExtensions), [model?.sruja]);
   const requirements = useMemo(() => sruja.requirements || [], [sruja.requirements]);
   const flows = useMemo(() => sruja.flows || [], [sruja.flows]);
   const scenarios = useMemo(() => sruja.scenarios || [], [sruja.scenarios]);
@@ -24,14 +27,8 @@ export function useBuilderProgress() {
     () => elements.filter((e) => e.kind === "person" || e.kind === "actor"),
     [elements]
   );
-  const allContainers = useMemo(
-    () => elements.filter((e) => e.kind === "container"),
-    [elements]
-  );
-  const componentsAll = useMemo(
-    () => elements.filter((e) => e.kind === "component"),
-    [elements]
-  );
+  const allContainers = useMemo(() => elements.filter((e) => e.kind === "container"), [elements]);
+  const componentsAll = useMemo(() => elements.filter((e) => e.kind === "component"), [elements]);
   const datastores = useMemo(
     () => elements.filter((e) => e.kind === "datastore" || e.kind === "database"),
     [elements]
@@ -75,12 +72,10 @@ export function useBuilderProgress() {
   );
 
   // Documentation Stats
-  const systemsWithDescriptions = systems.filter(
-    (s) => {
-      const desc = extractText(s.description);
-      return !!desc && desc.trim().length > 0;
-    }
-  ).length;
+  const systemsWithDescriptions = systems.filter((s) => {
+    const desc = extractText(s.description);
+    return !!desc && desc.trim().length > 0;
+  }).length;
 
   const containersWithTech = allContainers.filter(
     (c) => !!c.technology && c.technology.trim().length > 0
@@ -93,9 +88,7 @@ export function useBuilderProgress() {
   const l1ReqTagged = useMemo(() => {
     const reqTaggedToLocal = (ids: Set<string>) =>
       requirements.filter((r) => (r.tags || []).some((tag: string) => ids.has(tag))).length;
-    return reqTaggedToLocal(
-      new Set([...persons.map((p) => p.id), ...systems.map((s) => s.id)])
-    );
+    return reqTaggedToLocal(new Set([...persons.map((p) => p.id), ...systems.map((s) => s.id)]));
   }, [requirements, persons, systems]);
 
   const l2ReqTagged = useMemo(() => {

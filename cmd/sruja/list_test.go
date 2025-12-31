@@ -11,13 +11,16 @@ import (
 func TestRunList(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
-	content := `model {
-		system S1 "System 1" {
-			container C1 "Container 1" {
-				component Comp1 "Component 1"
+	content := `
+		system = kind "System"
+		container = kind "Container"
+		component = kind "Component"
+		S1 = system "System 1" {
+			C1 = container "Container 1" {
+				Comp1 = component "Component 1"
 			}
 		}
-	}`
+	`
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}

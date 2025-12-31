@@ -1,0 +1,78 @@
+// E-commerce system example
+// This file demonstrates the new unified Sruja DSL syntax
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+queue = kind "Queue"
+
+// External actors
+customer = person "Customer" {
+  description "End user who browses and purchases products"
+}
+
+admin = person "Administrator" {
+  description "Platform administrator managing products and orders"
+}
+
+// Main e-commerce system
+ecommerce = system "E-Commerce Platform" {
+  description "Comprehensive platform for online retail"
+  
+  webApp = container "Web Application" {
+    description "React-based storefront"
+    technology "React, TypeScript"
+  }
+  
+  api = container "REST API" {
+    description "Core business logic API"
+    technology "Go, Gin"
+  }
+  
+  db = database "PostgreSQL" {
+    description "Primary transactional database"
+    technology "PostgreSQL 15"
+  }
+  
+  cache = database "Redis" {
+    description "Session and cache store"
+    technology "Redis 7"
+  }
+  
+  events = queue "Event Queue" {
+    description "Async event processing"
+    technology "RabbitMQ"
+  }
+}
+
+// External systems
+payments = system "Payment Gateway" {
+  description "External payment processor"
+}
+
+shipping = system "Shipping Provider" {
+  description "External shipping integration"
+}
+
+// Relationships
+customer -> ecommerce.webApp "browses and purchases"
+admin -> ecommerce.webApp "manages products"
+
+ecommerce.webApp -> ecommerce.api "API calls"
+ecommerce.api -> ecommerce.db "reads/writes"
+ecommerce.api -> ecommerce.cache "caches"
+ecommerce.api -> ecommerce.events "publishes events"
+ecommerce.api -> payments "processes payments"
+ecommerce.api -> shipping "creates shipments"
+
+view landscape {
+  title "E-Commerce System Landscape"
+  include *
+}
+
+view containers of ecommerce {
+  title "E-Commerce Containers"
+  include ecommerce.*
+}

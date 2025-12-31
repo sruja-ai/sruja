@@ -7,150 +7,222 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
+// CycleDetectionRule detects circular dependencies in the architecture.
 type CycleDetectionRule struct{}
 
+// Name returns the rule name.
 func (r *CycleDetectionRule) Name() string {
 	return "CycleDetection"
 }
 
+// cycleSuggestions are pre-allocated suggestions for cycle diagnostics.
+// This avoids allocating the same strings repeatedly.
+var cycleSuggestions = []string{
+	"Cycles are valid for feedback loops, event-driven patterns, or mutual dependencies",
+	"If this is unintended, consider breaking the cycle by introducing an intermediate element",
+	"Review the architecture to ensure the cycle represents the intended design",
+}
+
 //nolint:funlen,gocyclo // Validation logic is long and complex
 func (r *CycleDetectionRule) Validate(program *language.Program) []diagnostics.Diagnostic {
-	var diags []diagnostics.Diagnostic
 	if program == nil || program.Model == nil {
-		return diags
+		return nil
 	}
 
-	// Collect all elements and relations from LikeC4 Model
-	defined, relations := collectLikeC4Elements(program.Model)
+	// Collect all elements and relations from Model
+	_, relations := collectElements(program.Model)
 
-	// Pre-allocate adjacency list with estimated capacity
-	estimatedNodes := len(defined)
-	if estimatedNodes < 16 {
-		estimatedNodes = 16
-	}
-	adj := make(map[string][]string, estimatedNodes)
+	// Use pooled adjacency list map
+	adjPtr := GetStringSliceMap()
+	adj := *adjPtr
 
 	// Build adjacency list from relations
-	add := func(from, to string) {
+	for _, rel := range relations {
+		from := rel.From.String()
+		to := rel.To.String()
 		if from != "" && to != "" {
 			adj[from] = append(adj[from], to)
 		}
 	}
 
-	// Add all relations to adjacency list
-	for _, rel := range relations {
-		add(rel.From.String(), rel.To.String())
+	// Use pooled visited and recStack maps
+	visitedPtr := GetStringBoolMap()
+	recStackPtr := GetStringBoolMap()
+	visited := *visitedPtr
+	recStack := *recStackPtr
+
+	// Use pooled location map
+	locMapPtr := GetSourceLocationMap()
+	locMap := *locMapPtr
+
+	// Collect element locations from Model using iterative approach
+	// to avoid closure allocation overhead
+	collectLocationsIterative(program.Model, locMap)
+
+	// Use pooled path slice
+	pathPtr := GetStringSlice()
+	path := *pathPtr
+
+	// Pre-allocate diagnostics slice
+	var diags []diagnostics.Diagnostic
+
+	// Iterative DFS using explicit stack to avoid closure overhead
+	type stackFrame struct {
+		node     string
+		childIdx int
+	}
+	stack := make([]stackFrame, 0, 16)
+
+	for startNode := range adj {
+		if visited[startNode] {
+			continue
+		}
+
+		// Push start node
+		stack = append(stack, stackFrame{node: startNode, childIdx: 0})
+		path = append(path, startNode)
+		visited[startNode] = true
+		recStack[startNode] = true
+
+		for len(stack) > 0 {
+			frame := &stack[len(stack)-1]
+			node := frame.node
+			children := adj[node]
+
+			// Process next child
+			foundUnvisited := false
+			for frame.childIdx < len(children) {
+				child := children[frame.childIdx]
+				frame.childIdx++
+
+				if !visited[child] {
+					// Push child to stack
+					stack = append(stack, stackFrame{node: child, childIdx: 0})
+					path = append(path, child)
+					visited[child] = true
+					recStack[child] = true
+					foundUnvisited = true
+					break
+				} else if recStack[child] {
+					// Found a cycle - construct the cycle path
+					diag := buildCycleDiagnostic(path, child, locMap)
+					diags = append(diags, diag)
+				}
+			}
+
+			if !foundUnvisited {
+				// Pop from stack - all children processed
+				recStack[node] = false
+				path = path[:len(path)-1]
+				stack = stack[:len(stack)-1]
+			}
+		}
 	}
 
-	visited := make(map[string]bool, len(defined))
-	recStack := make(map[string]bool, len(defined))
+	// Return pooled resources
+	*pathPtr = path
+	PutStringSlice(pathPtr)
+	PutStringBoolMap(visitedPtr)
+	PutStringBoolMap(recStackPtr)
+	PutSourceLocationMap(locMapPtr)
+	PutStringSliceMap(adjPtr)
 
-	// Build location map for better error reporting
-	locMap := make(map[string]diagnostics.SourceLocation, len(defined))
+	return diags
+}
 
-	// Collect element locations from LikeC4 Model
-	var collectLocations func(elem *language.LikeC4ElementDef, parentFQN string)
-	collectLocations = func(elem *language.LikeC4ElementDef, parentFQN string) {
+// collectLocationsIterative collects element locations without closures.
+func collectLocationsIterative(model *language.Model, locMap map[string]diagnostics.SourceLocation) {
+	if model == nil {
+		return
+	}
+
+	// Use explicit stack for iterative traversal
+	type frame struct {
+		elem      *language.ElementDef
+		parentFQN string
+	}
+	stack := make([]frame, 0, 16)
+
+	// Initialize with top-level elements
+	for _, item := range model.Items {
+		if item.ElementDef != nil {
+			stack = append(stack, frame{elem: item.ElementDef, parentFQN: ""})
+		}
+	}
+
+	for len(stack) > 0 {
+		// Pop
+		f := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+
+		elem := f.elem
 		if elem == nil {
-			return
+			continue
 		}
 
 		id := elem.GetID()
 		if id == "" {
-			return
+			continue
 		}
 
+		// Build FQN
 		fqn := id
-		if parentFQN != "" {
-			fqn = buildQualifiedID(parentFQN, id)
+		if f.parentFQN != "" {
+			fqn = buildQualifiedID(f.parentFQN, id)
 		}
 
+		// Store location
 		loc := elem.Location()
 		locMap[fqn] = diagnostics.SourceLocation{File: loc.File, Line: loc.Line, Column: loc.Column}
 
-		// Recurse into nested elements
+		// Push children
 		body := elem.GetBody()
 		if body != nil {
 			for _, bodyItem := range body.Items {
 				if bodyItem.Element != nil {
-					collectLocations(bodyItem.Element, fqn)
+					stack = append(stack, frame{elem: bodyItem.Element, parentFQN: fqn})
 				}
 			}
 		}
 	}
+}
 
-	// Collect locations from all top-level elements
-	for _, item := range program.Model.Items {
-		if item.ElementDef != nil {
-			collectLocations(item.ElementDef, "")
+// buildCycleDiagnostic constructs a diagnostic for a detected cycle.
+func buildCycleDiagnostic(path []string, cycleStart string, locMap map[string]diagnostics.SourceLocation) diagnostics.Diagnostic {
+	// Find start index of cycle in path
+	startIdx := -1
+	for i := len(path) - 1; i >= 0; i-- {
+		if path[i] == cycleStart {
+			startIdx = i
+			break
 		}
 	}
 
-	// Optimization: Use a single path slice with backtracking to avoid unnecessary allocations
-	path := make([]string, 0, 16) // Pre-allocate with small capacity
-
-	var dfs func(u string)
-	dfs = func(u string) {
-		visited[u] = true
-		recStack[u] = true
-		path = append(path, u)
-
-		for _, v := range adj[u] {
-			if !visited[v] {
-				dfs(v)
-			} else if recStack[v] {
-				// Found a cycle - construct the cycle path efficiently
-				// Find start index of v in current path
-				startIdx := -1
-				for i := len(path) - 1; i >= 0; i-- {
-					if path[i] == v {
-						startIdx = i
-						break
-					}
-				}
-
-				if startIdx != -1 {
-					// Create source location for the cycle start node
-					loc := locMap[v]
-
-					// Extract the cycle segment efficiently
-					cycleLen := len(path) - startIdx + 1
-					cycleNodes := make([]string, 0, cycleLen)
-					cycleNodes = append(cycleNodes, path[startIdx:]...)
-					cycleNodes = append(cycleNodes, v)
-
-					// Build enhanced error message with cycle path
-					var msgSb strings.Builder
-					cyclePath := strings.Join(cycleNodes, " -> ")
-					msgSb.Grow(len(cyclePath) + 120)
-					msgSb.WriteString("Circular dependency detected: ")
-					msgSb.WriteString(cyclePath)
-
-					var suggestions []string
-					suggestions = append(suggestions, "Cycles are valid for feedback loops, event-driven patterns, or mutual dependencies")
-					suggestions = append(suggestions, "If this is unintended, consider breaking the cycle by introducing an intermediate element")
-					suggestions = append(suggestions, "Review the architecture to ensure the cycle represents the intended design")
-
-					diags = append(diags, diagnostics.Diagnostic{
-						Code:        diagnostics.CodeCycleDetected,
-						Severity:    diagnostics.SeverityInfo,
-						Message:     msgSb.String(),
-						Location:    loc,
-						Suggestions: suggestions,
-					})
-				}
-			}
-		}
-
-		// Backtrack
-		recStack[u] = false
-		path = path[:len(path)-1]
+	if startIdx == -1 {
+		startIdx = 0
 	}
 
-	for node := range adj {
-		if !visited[node] {
-			dfs(node)
+	// Build cycle path string efficiently
+	cycleLen := len(path) - startIdx + 1
+	var sb strings.Builder
+	// Estimate: each node ~20 chars + " -> " (4 chars)
+	sb.Grow(cycleLen*24 + 30)
+	sb.WriteString("Circular dependency detected: ")
+
+	for i := startIdx; i < len(path); i++ {
+		if i > startIdx {
+			sb.WriteString(" -> ")
 		}
+		sb.WriteString(path[i])
 	}
-	return diags
+	sb.WriteString(" -> ")
+	sb.WriteString(cycleStart)
+
+	return diagnostics.Diagnostic{
+		Code:        diagnostics.CodeCycleDetected,
+		Severity:    diagnostics.SeverityInfo,
+		Message:     sb.String(),
+		Location:    locMap[cycleStart],
+		Suggestions: cycleSuggestions, // Use pre-allocated suggestions
+	}
 }

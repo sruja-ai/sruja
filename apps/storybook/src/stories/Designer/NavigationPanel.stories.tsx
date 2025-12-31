@@ -9,7 +9,7 @@ import {
 import { useEffect } from "react";
 
 // Mock store data
-const mockLikec4Model = {
+const mockModel = {
   elements: {
     user: { id: "user", title: "External User", kind: "person" },
     "web-app": {
@@ -75,7 +75,7 @@ export const Default: Story = {
       // Mock the stores
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model as any,
+          model: mockModel as any,
         });
         useViewStore.setState({
           currentLevel: "L1",
@@ -112,7 +112,7 @@ export const Collapsed: Story = {
       // Mock stores
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model as any,
+          model: mockModel as any,
         });
         useViewStore.setState({
           currentLevel: "L1",
@@ -142,7 +142,7 @@ export const WithFocus: Story = {
       // Mock stores with focused system
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model as any,
+          model: mockModel as any,
         });
         useViewStore.setState({
           currentLevel: "L2",
@@ -171,7 +171,7 @@ export const WithEditMode: Story = {
       // Mock stores with edit mode enabled
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model as any,
+          model: mockModel as any,
         });
         useViewStore.setState({
           currentLevel: "L1",
@@ -201,7 +201,7 @@ export const Mobile: Story = {
       // Mock stores
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model as any,
+          model: mockModel as any,
         });
         useViewStore.setState({
           currentLevel: "L1",
@@ -238,7 +238,7 @@ export const Empty: Story = {
       // Mock stores with empty model
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: null,
+          model: null,
         });
         useViewStore.setState({
           currentLevel: "L1",

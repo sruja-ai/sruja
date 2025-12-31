@@ -21,9 +21,9 @@ func (s *Server) DocumentSymbols(_ context.Context, params lsp.DocumentSymbolPar
 
 	var symbols []lsp.SymbolInformation
 
-	// Extract symbols from LikeC4 Model
-	var extractSymbols func(elem *language.LikeC4ElementDef, containerName string)
-	extractSymbols = func(elem *language.LikeC4ElementDef, containerName string) {
+	// Extract symbols from Sruja Model
+	var extractSymbols func(elem *language.ElementDef, containerName string)
+	extractSymbols = func(elem *language.ElementDef, containerName string) {
 		if elem == nil {
 			return
 		}
@@ -36,21 +36,31 @@ func (s *Server) DocumentSymbols(_ context.Context, params lsp.DocumentSymbolPar
 		kind := elem.GetKind()
 		loc := elem.Location()
 
-		// Map LikeC4 kind to LSP symbol kind
+		// Map element kind to LSP symbol kind
 		var lspKind lsp.SymbolKind
 		switch kind {
-		case "system":
+		case "system", "System":
 			lspKind = lsp.SKClass
-		case "container":
+		case "container", "Container":
 			lspKind = lsp.SKModule
-		case "component":
+		case "component", "Component":
 			lspKind = lsp.SKFunction
-		case "database":
+		case "database", "Database", "datastore", "DataStore":
 			lspKind = lsp.SKStruct
-		case "queue":
+		case "queue", "Queue":
 			lspKind = lsp.SKEnum
-		case "person":
+		case "person", "Person", "actor", "Actor", "user", "User":
 			lspKind = lsp.SKInterface
+		case "adr", "Adr", "ADR":
+			lspKind = lsp.SKString
+		case "requirement", "Requirement":
+			lspKind = lsp.SKProperty
+		case "policy", "Policy":
+			lspKind = lsp.SKConstant
+		case "scenario", "Scenario", "story", "Story":
+			lspKind = lsp.SKEvent
+		case "flow", "Flow":
+			lspKind = lsp.SKMethod
 		default:
 			lspKind = lsp.SKVariable
 		}
@@ -87,55 +97,6 @@ func (s *Server) DocumentSymbols(_ context.Context, params lsp.DocumentSymbolPar
 	for _, item := range program.Model.Items {
 		if item.ElementDef != nil {
 			extractSymbols(item.ElementDef, "")
-		}
-		// Also add symbols for other top-level items
-		if item.ADR != nil {
-			loc := item.ADR.Location()
-			adrRange := findIDRange(doc, item.ADR.ID)
-			if adrRange.Start.Line == 0 && adrRange.End.Line == 0 {
-				adrRange = lsp.Range{
-					Start: lsp.Position{Line: int(loc.Line) - 1, Character: int(loc.Column) - 1},
-					End:   lsp.Position{Line: int(loc.Line) - 1, Character: int(loc.Column) - 1 + len(item.ADR.ID)},
-				}
-			}
-			symbols = append(symbols, lsp.SymbolInformation{
-				Name:          item.ADR.ID,
-				Kind:          lsp.SKString,
-				Location:      lsp.Location{URI: params.TextDocument.URI, Range: adrRange},
-				ContainerName: "",
-			})
-		}
-		if item.Requirement != nil {
-			loc := item.Requirement.Location()
-			reqRange := findIDRange(doc, item.Requirement.ID)
-			if reqRange.Start.Line == 0 && reqRange.End.Line == 0 {
-				reqRange = lsp.Range{
-					Start: lsp.Position{Line: int(loc.Line) - 1, Character: int(loc.Column) - 1},
-					End:   lsp.Position{Line: int(loc.Line) - 1, Character: int(loc.Column) - 1 + len(item.Requirement.ID)},
-				}
-			}
-			symbols = append(symbols, lsp.SymbolInformation{
-				Name:          item.Requirement.ID,
-				Kind:          lsp.SKProperty,
-				Location:      lsp.Location{URI: params.TextDocument.URI, Range: reqRange},
-				ContainerName: "",
-			})
-		}
-		if item.Policy != nil {
-			loc := item.Policy.Location()
-			polRange := findIDRange(doc, item.Policy.ID)
-			if polRange.Start.Line == 0 && polRange.End.Line == 0 {
-				polRange = lsp.Range{
-					Start: lsp.Position{Line: int(loc.Line) - 1, Character: int(loc.Column) - 1},
-					End:   lsp.Position{Line: int(loc.Line) - 1, Character: int(loc.Column) - 1 + len(item.Policy.ID)},
-				}
-			}
-			symbols = append(symbols, lsp.SymbolInformation{
-				Name:          item.Policy.ID,
-				Kind:          lsp.SKConstant,
-				Location:      lsp.Location{URI: params.TextDocument.URI, Range: polRange},
-				ContainerName: "",
-			})
 		}
 	}
 

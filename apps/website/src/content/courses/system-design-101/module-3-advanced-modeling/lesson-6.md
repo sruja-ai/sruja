@@ -20,22 +20,18 @@ The `specification` block defines what element types are available in your model
 4. **Organization**: Separates structure definition from instantiation
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
-}
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+datastore = kind "Datastore"
+queue = kind "Queue"
 
-model {
-  // Now you can use any of the declared element types
-  Customer = person "Customer"
-  App = system "Application" {
-    API = container "API"
-    DB = datastore "Database"
-  }
+// Now you can use any of the declared element types
+Customer = person "Customer"
+App = system "Application" {
+API = container "API"
+DB = datastore "Database"
 }
 ```
 
@@ -50,94 +46,88 @@ The `views` block lets you create custom perspectives from a single model. This 
 ### Real-World Example: E-Commerce Platform
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+datastore = kind "Datastore"
+queue = kind "Queue"
+
+Customer = person "Customer"
+Admin = person "Administrator"
+
+ECommerce = system "E-Commerce Platform" {
+WebApp = container "Web Application" {
+  CartComponent = component "Shopping Cart"
+  ProductComponent = component "Product Catalog"
+}
+API = container "API Service" {
+  OrderController = component "Order Controller"
+  PaymentController = component "Payment Controller"
+}
+OrderDB = datastore "Order Database"
+ProductDB = datastore "Product Database"
+Cache = datastore "Redis Cache"
+EventQueue = queue "Event Queue"
 }
 
-model {
-  Customer = person "Customer"
-  Admin = person "Administrator"
-  
-  ECommerce = system "E-Commerce Platform" {
-    WebApp = container "Web Application" {
-      CartComponent = component "Shopping Cart"
-      ProductComponent = component "Product Catalog"
-    }
-    API = container "API Service" {
-      OrderController = component "Order Controller"
-      PaymentController = component "Payment Controller"
-    }
-    OrderDB = datastore "Order Database"
-    ProductDB = datastore "Product Database"
-    Cache = datastore "Redis Cache"
-    EventQueue = queue "Event Queue"
-  }
-  
-  PaymentGateway = system "Payment Gateway" {
-    external true
-  }
-  
-  Customer -> ECommerce.WebApp "Browses"
-  ECommerce.WebApp -> ECommerce.API "Fetches data"
-  ECommerce.API -> ECommerce.OrderDB "Stores orders"
-  ECommerce.API -> ECommerce.Cache "Caches queries"
-  ECommerce.API -> PaymentGateway "Processes payments"
+PaymentGateway = system "Payment Gateway" {
+external true
 }
 
-views {
-  // Executive view: High-level business context
-  view executive {
-    title "Executive Overview"
-    include Customer Admin
-    include ECommerce PaymentGateway
-    exclude ECommerce.WebApp ECommerce.API ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache ECommerce.EventQueue
-  }
-  
-  // Architect view: Container-level architecture
-  view architect {
-    title "Architectural View"
-    include ECommerce ECommerce.WebApp ECommerce.API
-    include ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache ECommerce.EventQueue
-    include PaymentGateway
-    exclude Customer Admin
-    exclude ECommerce.CartComponent ECommerce.ProductComponent ECommerce.OrderController ECommerce.PaymentController
-  }
-  
-  // Developer view: Component-level implementation
-  view developer {
-    title "Developer View"
-    include ECommerce.WebApp ECommerce.WebApp.CartComponent ECommerce.WebApp.ProductComponent
-    include ECommerce.API ECommerce.API.OrderController ECommerce.API.PaymentController
-    include ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache
-    exclude Customer Admin PaymentGateway
-  }
-  
-  // Data flow view: Focus on data dependencies
-  view dataflow {
-    title "Data Flow View"
-    include ECommerce.API ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache ECommerce.EventQueue
-    exclude Customer Admin ECommerce.WebApp PaymentGateway
-  }
-  
-  // User journey view: Customer experience
-  view userjourney {
-    title "User Journey View"
-    include Customer
-    include ECommerce.WebApp ECommerce.API
-    include PaymentGateway
-    exclude Admin ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache ECommerce.EventQueue
-  }
-  
-  // Default view: Complete system
-  view index {
-    title "Complete System View"
-    include *
-  }
+Customer -> ECommerce.WebApp "Browses"
+ECommerce.WebApp -> ECommerce.API "Fetches data"
+ECommerce.API -> ECommerce.OrderDB "Stores orders"
+ECommerce.API -> ECommerce.Cache "Caches queries"
+ECommerce.API -> PaymentGateway "Processes payments"
+
+// Executive view: High-level business context
+view executive {
+title "Executive Overview"
+include Customer Admin
+include ECommerce PaymentGateway
+exclude ECommerce.WebApp ECommerce.API ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache ECommerce.EventQueue
+}
+
+// Architect view: Container-level architecture
+view architect {
+title "Architectural View"
+include ECommerce ECommerce.WebApp ECommerce.API
+include ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache ECommerce.EventQueue
+include PaymentGateway
+exclude Customer Admin
+exclude ECommerce.CartComponent ECommerce.ProductComponent ECommerce.OrderController ECommerce.PaymentController
+}
+
+// Developer view: Component-level implementation
+view developer {
+title "Developer View"
+include ECommerce.WebApp ECommerce.WebApp.CartComponent ECommerce.WebApp.ProductComponent
+include ECommerce.API ECommerce.API.OrderController ECommerce.API.PaymentController
+include ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache
+exclude Customer Admin PaymentGateway
+}
+
+// Data flow view: Focus on data dependencies
+view dataflow {
+title "Data Flow View"
+include ECommerce.API ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache ECommerce.EventQueue
+exclude Customer Admin ECommerce.WebApp PaymentGateway
+}
+
+// User journey view: Customer experience
+view userjourney {
+title "User Journey View"
+include Customer
+include ECommerce.WebApp ECommerce.API
+include PaymentGateway
+exclude Admin ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache ECommerce.EventQueue
+}
+
+// Default view: Complete system
+view index {
+title "Complete System View"
+include *
 }
 ```
 
@@ -155,65 +145,59 @@ Scenarios model behavioral flows—what happens when users interact with your sy
 ### Example: Checkout Flow
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element datastore
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+datastore = kind "Datastore"
+
+Customer = person "Customer"
+
+ECommerce = system "E-Commerce System" {
+WebApp = container "Web Application"
+API = container "API Service"
+OrderDB = datastore "Order Database"
 }
 
-model {
-  Customer = person "Customer"
-  
-  ECommerce = system "E-Commerce System" {
-    WebApp = container "Web Application"
-    API = container "API Service"
-    OrderDB = datastore "Order Database"
-  }
-  
-  Inventory = system "Inventory System" {
-    InventoryService = container "Inventory Service"
-  }
-  
-  PaymentGateway = system "Payment Gateway" {
-    external true
-  }
-  
-  // Model the checkout journey
-  scenario CheckoutFlow "User Checkout Journey" {
-    Customer -> ECommerce.WebApp "Adds items to cart"
-    ECommerce.WebApp -> ECommerce.API "Submits checkout"
-    ECommerce.API -> Inventory.InventoryService "Reserves stock"
-    Inventory.InventoryService -> ECommerce.API "Confirms availability"
-    ECommerce.API -> PaymentGateway "Processes payment"
-    PaymentGateway -> ECommerce.API "Confirms payment"
-    ECommerce.API -> ECommerce.OrderDB "Saves order"
-    ECommerce.API -> ECommerce.WebApp "Returns confirmation"
-    ECommerce.WebApp -> Customer "Shows order confirmation"
-  }
-  
-  // Alternative happy path
-  scenario CheckoutSuccess "Successful Checkout" {
-    Customer -> ECommerce.WebApp "Completes checkout"
-    ECommerce.WebApp -> ECommerce.API "Processes order"
-    ECommerce.API -> Customer "Confirms order"
-  }
-  
-  // Error scenario
-  scenario CheckoutFailure "Checkout Failure" {
-    Customer -> ECommerce.WebApp "Attempts checkout"
-    ECommerce.WebApp -> ECommerce.API "Validates order"
-    ECommerce.API -> Inventory.InventoryService "Checks stock"
-    Inventory.InventoryService -> ECommerce.API "Out of stock"
-    ECommerce.API -> ECommerce.WebApp "Returns error"
-    ECommerce.WebApp -> Customer "Shows out of stock message"
-  }
+Inventory = system "Inventory System" {
+InventoryService = container "Inventory Service"
 }
 
-views {
-  view index {
-    include *
-  }
+PaymentGateway = system "Payment Gateway" {
+external true
+}
+
+// Model the checkout journey
+CheckoutFlow = scenario "User Checkout Journey" {
+Customer -> ECommerce.WebApp "Adds items to cart"
+ECommerce.WebApp -> ECommerce.API "Submits checkout"
+ECommerce.API -> Inventory.InventoryService "Reserves stock"
+Inventory.InventoryService -> ECommerce.API "Confirms availability"
+ECommerce.API -> PaymentGateway "Processes payment"
+PaymentGateway -> ECommerce.API "Confirms payment"
+ECommerce.API -> ECommerce.OrderDB "Saves order"
+ECommerce.API -> ECommerce.WebApp "Returns confirmation"
+ECommerce.WebApp -> Customer "Shows order confirmation"
+}
+
+// Alternative happy path
+CheckoutSuccess = scenario "Successful Checkout" {
+Customer -> ECommerce.WebApp "Completes checkout"
+ECommerce.WebApp -> ECommerce.API "Processes order"
+ECommerce.API -> Customer "Confirms order"
+}
+
+// Error scenario
+CheckoutFailure = scenario "Checkout Failure" {
+Customer -> ECommerce.WebApp "Attempts checkout"
+ECommerce.WebApp -> ECommerce.API "Validates order"
+ECommerce.API -> Inventory.InventoryService "Checks stock"
+Inventory.InventoryService -> ECommerce.API "Out of stock"
+ECommerce.API -> ECommerce.WebApp "Returns error"
+ECommerce.WebApp -> Customer "Shows out of stock message"
+}
+
+view index {
+include *
 }
 ```
 
@@ -231,44 +215,38 @@ Flows model data-oriented processes—how data moves through your system. Use th
 ### Example: Analytics Pipeline
 
 ```sruja
-specification {
-  element system
-  element container
-  element datastore
-  element queue
+system = kind "System"
+container = kind "Container"
+datastore = kind "Datastore"
+queue = kind "Queue"
+
+Analytics = system "Analytics Platform" {
+IngestionService = container "Data Ingestion"
+ProcessingService = container "Data Processing"
+QueryService = container "Query Service"
+EventStream = queue "Event Stream"
+RawDataDB = datastore "Raw Data Store"
+ProcessedDataDB = datastore "Processed Data Warehouse"
 }
 
-model {
-  Analytics = system "Analytics Platform" {
-    IngestionService = container "Data Ingestion"
-    ProcessingService = container "Data Processing"
-    QueryService = container "Query Service"
-    EventStream = queue "Event Stream"
-    RawDataDB = datastore "Raw Data Store"
-    ProcessedDataDB = datastore "Processed Data Warehouse"
-  }
-  
-  // Data flow: Event ingestion pipeline
-  flow EventIngestion "Event Ingestion Pipeline" {
-    Analytics.IngestionService -> Analytics.EventStream "Publishes events"
-    Analytics.EventStream -> Analytics.ProcessingService "Streams events"
-    Analytics.ProcessingService -> Analytics.RawDataDB "Stores raw data"
-    Analytics.ProcessingService -> Analytics.ProcessedDataDB "Stores processed data"
-    Analytics.QueryService -> Analytics.ProcessedDataDB "Queries analytics"
-  }
-  
-  // Batch processing flow
-  flow BatchProcessing "Daily Batch Processing" {
-    Analytics.RawDataDB -> Analytics.ProcessingService "Extracts daily data"
-    Analytics.ProcessingService -> Analytics.ProcessingService "Transforms data"
-    Analytics.ProcessingService -> Analytics.ProcessedDataDB "Loads aggregated data"
-  }
+// Data flow: Event ingestion pipeline
+EventIngestion = flow "Event Ingestion Pipeline" {
+Analytics.IngestionService -> Analytics.EventStream "Publishes events"
+Analytics.EventStream -> Analytics.ProcessingService "Streams events"
+Analytics.ProcessingService -> Analytics.RawDataDB "Stores raw data"
+Analytics.ProcessingService -> Analytics.ProcessedDataDB "Stores processed data"
+Analytics.QueryService -> Analytics.ProcessedDataDB "Queries analytics"
 }
 
-views {
-  view index {
-    include *
-  }
+// Batch processing flow
+BatchProcessing = flow "Daily Batch Processing" {
+Analytics.RawDataDB -> Analytics.ProcessingService "Extracts daily data"
+Analytics.ProcessingService -> Analytics.ProcessingService "Transforms data"
+Analytics.ProcessingService -> Analytics.ProcessedDataDB "Loads aggregated data"
+}
+
+view index {
+include *
 }
 ```
 
@@ -284,75 +262,69 @@ The new DSL format makes it easy to integrate requirements, ADRs, and policies d
 ### Complete Example
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element datastore
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+datastore = kind "Datastore"
+
+Customer = person "Customer"
+
+// Requirements drive architecture
+R1 = requirement "Must handle 10k concurrent users" { tags ["functional"] }
+R2 = requirement "API response < 200ms p95" { tags ["performance"] }
+R3 = requirement "Scale to 1M users" { tags ["scalability"] }
+R4 = requirement "All PII encrypted at rest" { tags ["security"] }
+
+// Architecture decisions documented as ADRs
+ADR001 = adr "Use microservices for independent scaling" {
+status "Accepted"
+context "Need to scale order processing independently from inventory"
+decision "Split into OrderService and InventoryService"
+consequences "Better scalability, increased network complexity"
 }
 
-model {
-  Customer = person "Customer"
-  
-  // Requirements drive architecture
-  requirement R1 functional "Must handle 10k concurrent users"
-  requirement R2 performance "API response < 200ms p95"
-  requirement R3 scalability "Scale to 1M users"
-  requirement R4 security "All PII encrypted at rest"
-  
-  // Architecture decisions documented as ADRs
-  adr ADR001 "Use microservices for independent scaling" {
-    status "Accepted"
-    context "Need to scale order processing independently from inventory"
-    decision "Split into OrderService and InventoryService"
-    consequences "Better scalability, increased network complexity"
-  }
-  
-  adr ADR002 "Use PostgreSQL for strong consistency" {
-    status "Accepted"
-    context "Need ACID transactions for financial data"
-    decision "Use PostgreSQL instead of NoSQL"
-    consequences "Strong consistency, SQL complexity"
-  }
-  
-  // Architecture that satisfies requirements
-  ECommerce = system "E-Commerce Platform" {
-    API = container "API Service" {
-      technology "Go"
-      description "Satisfies R1, R2, R3"
-      adr ADR001 ADR002
-      
-      slo {
-        availability {
-          target "99.99%"
-          window "30 days"
-        }
-        latency {
-          p95 "200ms"
-          p99 "500ms"
-        }
-      }
+ADR002 = adr "Use PostgreSQL for strong consistency" {
+status "Accepted"
+context "Need ACID transactions for financial data"
+decision "Use PostgreSQL instead of NoSQL"
+consequences "Strong consistency, SQL complexity"
+}
+
+// Architecture that satisfies requirements
+ECommerce = system "E-Commerce Platform" {
+API = container "API Service" {
+  technology "Go"
+  description "Satisfies R1, R2, R3"
+  // adr ADR001 ADR002
+
+  slo {
+    availability {
+      target "99.99%"
+      window "30 days"
     }
-    
-    OrderDB = datastore "Order Database" {
-      technology "PostgreSQL"
-      description "Satisfies R4 - encrypted at rest"
-      adr ADR002
+    latency {
+      p95 "200ms"
+      p99 "500ms"
     }
-  }
-  
-  // Policy enforcement
-  policy SecurityPolicy "All databases must be encrypted" {
-    category "security"
-    enforcement "required"
-    description "Compliance requirement for PII data"
   }
 }
 
-views {
-  view index {
-    include *
-  }
+OrderDB = datastore "Order Database" {
+  technology "PostgreSQL"
+  description "Satisfies R4 - encrypted at rest"
+  // adr ADR002
+}
+}
+
+// Policy enforcement
+SecurityPolicy = policy "All databases must be encrypted" {
+category "security"
+enforcement "required"
+description "Compliance requirement for PII data"
+}
+
+view index {
+include *
 }
 ```
 
@@ -369,6 +341,7 @@ views {
 ## Next Steps
 
 Now that you understand the advanced features, you can create production-ready models that:
+
 - Communicate effectively with different audiences
 - Document user journeys and data flows
 - Link requirements to architecture decisions

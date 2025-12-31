@@ -14,37 +14,31 @@ This tutorial shows how to model agent-based systems with orchestrators, planner
 ## Core Structure
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+AgentSystem = system "Agentic System" {
+Orchestrator = container "Agent Orchestrator"
+Planner = container "Planner"
+Executor = container "Executor"
+Tools = container "Tooling API"
+Memory = datastore "Long-Term Memory"
 }
 
-model {
-  AgentSystem = system "Agentic System" {
-    Orchestrator = container "Agent Orchestrator"
-    Planner = container "Planner"
-    Executor = container "Executor"
-    Tools = container "Tooling API"
-    Memory = datastore "Long-Term Memory"
-  }
+User = person "User"
 
-  User = person "User"
+User -> AgentSystem.Orchestrator "Requests task"
+AgentSystem.Orchestrator -> AgentSystem.Planner "Plans steps"
+AgentSystem.Orchestrator -> AgentSystem.Executor "Delegates execution"
+AgentSystem.Executor -> AgentSystem.Tools "Calls tools"
+AgentSystem.Executor -> AgentSystem.Memory "Updates state"
 
-  User -> AgentSystem.Orchestrator "Requests task"
-  AgentSystem.Orchestrator -> AgentSystem.Planner "Plans steps"
-  AgentSystem.Orchestrator -> AgentSystem.Executor "Delegates execution"
-  AgentSystem.Executor -> AgentSystem.Tools "Calls tools"
-  AgentSystem.Executor -> AgentSystem.Memory "Updates state"
-}
-
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -62,23 +56,19 @@ requirement R2 constraint "No PII exfiltration"
 ## Integrate RAG
 
 ```sruja
-specification {
-  element system
-  element container
-  element datastore
+element system
+element container
+element datastore
+
+RAG = system "Retrieval-Augmented Generation" {
+Retriever = container "Retriever"
+Generator = container "Generator"
+VectorDB = datastore "VectorDB"
 }
 
-model {
-  RAG = system "Retrieval-Augmented Generation" {
-    Retriever = container "Retriever"
-    Generator = container "Generator"
-    VectorDB = datastore "VectorDB"
-  }
-  
-  AgentSystem.Executor -> RAG.Retriever "Fetch contexts"
-  RAG.Retriever -> RAG.VectorDB "Search"
-  RAG.Generator -> AgentSystem.Executor "Produce answer"
-}
+AgentSystem.Executor -> RAG.Retriever "Fetch contexts"
+RAG.Retriever -> RAG.VectorDB "Search"
+RAG.Generator -> AgentSystem.Executor "Produce answer"
 ```
 
 ## Next Steps

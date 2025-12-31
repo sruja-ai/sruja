@@ -7,9 +7,10 @@ summary: "Understanding context, containers, and components without special DSL 
 # Lesson 4: Architectural Perspectives
 
 As your system grows, a single diagram becomes too cluttered. You need different "maps" for different audiences:
-*   **Executives:** Need a high-level overview (Context).
-*   **Architects:** Need to see service boundaries (Containers).
-*   **Developers:** Need to see internal details (Components).
+
+- **Executives:** Need a high-level overview (Context).
+- **Architects:** Need to see service boundaries (Containers).
+- **Developers:** Need to see internal details (Components).
 
 Sruja models naturally support multiple perspectives without special keywords. Use the built‑in elements, and tooling presents the right level of detail.
 
@@ -18,90 +19,84 @@ Sruja models naturally support multiple perspectives without special keywords. U
 Sruja's `views` block lets you create custom perspectives from a single model. This is powerful for communicating with different audiences.
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+Customer = person "Customer"
+Admin = person "Administrator"
+
+Shop = system "E-Commerce Shop" {
+WebApp = container "Web Application" {
+  technology "React"
+  CartComponent = component "Shopping Cart"
+  ProductComponent = component "Product Catalog"
+}
+API = container "API Service" {
+  technology "Go"
+  OrderController = component "Order Controller"
+  PaymentController = component "Payment Controller"
+}
+DB = datastore "Database" {
+  technology "PostgreSQL"
+}
+Cache = datastore "Cache" {
+  technology "Redis"
+}
 }
 
-model {
-  Customer = person "Customer"
-  Admin = person "Administrator"
-  
-  Shop = system "E-Commerce Shop" {
-    WebApp = container "Web Application" {
-      technology "React"
-      CartComponent = component "Shopping Cart"
-      ProductComponent = component "Product Catalog"
-    }
-    API = container "API Service" {
-      technology "Go"
-      OrderController = component "Order Controller"
-      PaymentController = component "Payment Controller"
-    }
-    DB = datastore "Database" {
-      technology "PostgreSQL"
-    }
-    Cache = datastore "Cache" {
-      technology "Redis"
-    }
-  }
-  
-  PaymentGateway = system "Payment Gateway" {
-    external true
-  }
-
-  // Relations
-  Customer -> Shop.WebApp "Browses products"
-  Admin -> Shop.WebApp "Manages inventory"
-  Shop.WebApp -> Shop.API "Fetches data"
-  Shop.API -> Shop.DB "Reads/Writes"
-  Shop.API -> Shop.Cache "Caches queries"
-  Shop.API -> PaymentGateway "Processes payments"
+PaymentGateway = system "Payment Gateway" {
+external true
 }
 
-views {
-  // Executive view: High-level context
-  view executive {
-    title "Executive Overview"
-    include Customer Admin
-    include Shop PaymentGateway
-    exclude Shop.WebApp Shop.API Shop.DB Shop.Cache
-  }
-  
-  // Architect view: Container-level architecture
-  view architect {
-    title "Architectural View"
-    include Shop Shop.WebApp Shop.API Shop.DB Shop.Cache
-    include PaymentGateway
-    exclude Customer Admin
-    exclude Shop.CartComponent Shop.ProductComponent Shop.OrderController Shop.PaymentController
-  }
-  
-  // Developer view: Component-level details
-  view developer {
-    title "Developer View"
-    include Shop.WebApp Shop.WebApp.CartComponent Shop.WebApp.ProductComponent
-    include Shop.API Shop.API.OrderController Shop.API.PaymentController
-    include Shop.DB Shop.Cache
-    exclude Customer Admin PaymentGateway
-  }
-  
-  // Data flow view: Focus on data dependencies
-  view dataflow {
-    title "Data Flow View"
-    include Shop.API Shop.DB Shop.Cache
-    exclude Customer Admin Shop.WebApp PaymentGateway
-  }
-  
-  // Default view: Everything
-  view index {
-    title "Complete System View"
-    include *
-  }
+// Relations
+Customer -> Shop.WebApp "Browses products"
+Admin -> Shop.WebApp "Manages inventory"
+Shop.WebApp -> Shop.API "Fetches data"
+Shop.API -> Shop.DB "Reads/Writes"
+Shop.API -> Shop.Cache "Caches queries"
+Shop.API -> PaymentGateway "Processes payments"
+
+// Executive view: High-level context
+view executive {
+title "Executive Overview"
+include Customer Admin
+include Shop PaymentGateway
+exclude Shop.WebApp Shop.API Shop.DB Shop.Cache
+}
+
+// Architect view: Container-level architecture
+view architect {
+title "Architectural View"
+include Shop Shop.WebApp Shop.API Shop.DB Shop.Cache
+include PaymentGateway
+exclude Customer Admin
+exclude Shop.CartComponent Shop.ProductComponent Shop.OrderController Shop.PaymentController
+}
+
+// Developer view: Component-level details
+view developer {
+title "Developer View"
+include Shop.WebApp Shop.WebApp.CartComponent Shop.WebApp.ProductComponent
+include Shop.API Shop.API.OrderController Shop.API.PaymentController
+include Shop.DB Shop.Cache
+exclude Customer Admin PaymentGateway
+}
+
+// Data flow view: Focus on data dependencies
+view dataflow {
+title "Data Flow View"
+include Shop.API Shop.DB Shop.Cache
+exclude Customer Admin Shop.WebApp PaymentGateway
+}
+
+// Default view: Everything
+view index {
+title "Complete System View"
+include *
 }
 ```
 

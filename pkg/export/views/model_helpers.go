@@ -1,5 +1,5 @@
 // pkg/export/views/model_helpers.go
-// Helper functions to extract architecture elements from LikeC4 Model
+// Helper functions to extract architecture elements from Sruja Model
 package views
 
 import (
@@ -23,8 +23,8 @@ func extractSystems(prog *language.Program) []*language.System {
 	return systems
 }
 
-// extractSystemFromElement extracts a System from a LikeC4ElementDef if it's a system
-func extractSystemFromElement(elem *language.LikeC4ElementDef) *language.System {
+// extractSystemFromElement extracts a System from a ElementDef if it's a system
+func extractSystemFromElement(elem *language.ElementDef) *language.System {
 	if elem == nil {
 		return nil
 	}
@@ -72,8 +72,8 @@ func extractSystemFromElement(elem *language.LikeC4ElementDef) *language.System 
 	return sys
 }
 
-// extractContainerFromElement extracts a Container from a LikeC4ElementDef
-func extractContainerFromElement(elem *language.LikeC4ElementDef) *language.Container {
+// extractContainerFromElement extracts a Container from a ElementDef
+func extractContainerFromElement(elem *language.ElementDef) *language.Container {
 	if elem == nil || elem.GetKind() != "container" {
 		return nil
 	}
@@ -114,8 +114,8 @@ func extractContainerFromElement(elem *language.LikeC4ElementDef) *language.Cont
 	return cont
 }
 
-// extractComponentFromElement extracts a Component from a LikeC4ElementDef
-func extractComponentFromElement(elem *language.LikeC4ElementDef) *language.Component {
+// extractComponentFromElement extracts a Component from a ElementDef
+func extractComponentFromElement(elem *language.ElementDef) *language.Component {
 	if elem == nil || elem.GetKind() != "component" {
 		return nil
 	}
@@ -132,8 +132,8 @@ func extractComponentFromElement(elem *language.LikeC4ElementDef) *language.Comp
 	}
 }
 
-// extractDataStoreFromElement extracts a DataStore from a LikeC4ElementDef
-func extractDataStoreFromElement(elem *language.LikeC4ElementDef) *language.DataStore {
+// extractDataStoreFromElement extracts a DataStore from a ElementDef
+func extractDataStoreFromElement(elem *language.ElementDef) *language.DataStore {
 	if elem == nil {
 		return nil
 	}
@@ -154,8 +154,8 @@ func extractDataStoreFromElement(elem *language.LikeC4ElementDef) *language.Data
 	}
 }
 
-// extractQueueFromElement extracts a Queue from a LikeC4ElementDef
-func extractQueueFromElement(elem *language.LikeC4ElementDef) *language.Queue {
+// extractQueueFromElement extracts a Queue from a ElementDef
+func extractQueueFromElement(elem *language.ElementDef) *language.Queue {
 	if elem == nil || elem.GetKind() != "queue" {
 		return nil
 	}
@@ -200,7 +200,7 @@ func extractPersons(prog *language.Program) []*language.Person {
 }
 
 // extractMetadata extracts metadata and tags from element
-func extractMetadata(elem *language.LikeC4ElementDef) []*language.MetaEntry {
+func extractMetadata(elem *language.ElementDef) []*language.MetaEntry {
 	if elem == nil {
 		return nil
 	}
@@ -236,7 +236,7 @@ func extractMetadata(elem *language.LikeC4ElementDef) []*language.MetaEntry {
 	return appendTagsToMetadata(metadata, tags)
 }
 
-func extractTagsFromItem(item *language.LikeC4BodyItem) []string {
+func extractTagsFromItem(item *language.BodyItem) []string {
 	var tags []string
 	if len(item.Tags) > 0 {
 		tags = append(tags, item.Tags...)

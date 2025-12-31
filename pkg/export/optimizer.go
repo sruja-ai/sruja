@@ -47,18 +47,18 @@ func (o *TokenOptimizer) TruncateDescription(desc string, maxTokens int) string 
 
 // PrioritizeElements sorts elements by importance for token optimization
 // Returns: systems, containers, components in priority order
-func PrioritizeElements(program *language.Program) (systems, containers, components []*language.LikeC4ElementDef) {
+func PrioritizeElements(program *language.Program) (systems, containers, components []*language.ElementDef) {
 	if program == nil || program.Model == nil {
 		return nil, nil, nil
 	}
 
-	var collectElements func(elem *language.LikeC4ElementDef)
-	collectElements = func(elem *language.LikeC4ElementDef) {
+	var collectElements func(elem *language.ElementDef)
+	collectElements = func(elem *language.ElementDef) {
 		if elem == nil {
 			return
 		}
 
-		switch elem.GetKind() {
+		switch strings.ToLower(elem.GetKind()) {
 		case "system":
 			systems = append(systems, elem)
 		case "container":
@@ -96,7 +96,7 @@ func FilterByScope(program *language.Program, scopeType, scopeID string) *langua
 
 	// Create a filtered program
 	filtered := &language.Program{
-		Model: &language.ModelBlock{
+		Model: &language.Model{
 			Items: []language.ModelItem{},
 		},
 	}
@@ -106,13 +106,13 @@ func FilterByScope(program *language.Program, scopeType, scopeID string) *langua
 	}
 
 	// Find the scoped element
-	var findElement func(elem *language.LikeC4ElementDef, targetKind, targetID string) *language.LikeC4ElementDef
-	findElement = func(elem *language.LikeC4ElementDef, targetKind, targetID string) *language.LikeC4ElementDef {
+	var findElement func(elem *language.ElementDef, targetKind, targetID string) *language.ElementDef
+	findElement = func(elem *language.ElementDef, targetKind, targetID string) *language.ElementDef {
 		if elem == nil {
 			return nil
 		}
 
-		if elem.GetKind() == targetKind && elem.GetID() == targetID {
+		if strings.EqualFold(elem.GetKind(), targetKind) && elem.GetID() == targetID {
 			return elem
 		}
 
@@ -132,7 +132,7 @@ func FilterByScope(program *language.Program, scopeType, scopeID string) *langua
 	}
 
 	// Search for the scoped element
-	var scopedElement *language.LikeC4ElementDef
+	var scopedElement *language.ElementDef
 	for _, item := range program.Model.Items {
 		if item.ElementDef != nil {
 			if found := findElement(item.ElementDef, scopeType, scopeID); found != nil {
@@ -157,8 +157,11 @@ func FilterByScope(program *language.Program, scopeType, scopeID string) *langua
 
 	// Also include related items (requirements, ADRs) from original program
 	for _, item := range program.Model.Items {
-		if item.Requirement != nil || item.ADR != nil {
-			filtered.Model.Items = append(filtered.Model.Items, item)
+		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
+			kind := item.ElementDef.Assignment.Kind
+			if kind == "requirement" || kind == "adr" || kind == "policy" {
+				filtered.Model.Items = append(filtered.Model.Items, item)
+			}
 		}
 	}
 

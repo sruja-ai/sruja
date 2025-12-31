@@ -10,7 +10,7 @@ import { useEffect } from "react";
 import type { SrujaModelDump } from "@sruja/shared";
 
 // Mock model with comprehensive Sruja extensions
-const mockLikec4Model: SrujaModelDump = {
+const mockModel: SrujaModelDump = {
   _stage: "parsed",
   projectId: "storybook-project",
   project: { id: "storybook-project", name: "Storybook Architecture" },
@@ -107,7 +107,7 @@ const meta = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model,
+          model: mockModel,
         });
         useSelectionStore.setState({
           selectedNodeId: null,
@@ -150,7 +150,7 @@ export const WithNodeSelection: Story = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model,
+          model: mockModel,
         });
         useSelectionStore.setState({
           selectedNodeId: "web-app",
@@ -188,7 +188,7 @@ export const WithTypeFilter: Story = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model,
+          model: mockModel,
         });
         useSelectionStore.setState({
           selectedNodeId: null,

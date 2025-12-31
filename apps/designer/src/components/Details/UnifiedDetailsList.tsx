@@ -4,12 +4,7 @@ import { Target, FileText, Play, Workflow } from "lucide-react";
 import { useArchitectureStore, useUIStore, useSelectionStore } from "../../stores";
 import { useTagNavigation } from "../../hooks/useTagNavigation";
 import { deduplicateRequirements } from "../../utils/deduplicateRequirements";
-import {
-  EditFlowForm,
-  EditRequirementForm,
-  EditADRForm,
-  ConfirmDialog,
-} from "../shared";
+import { EditFlowForm, EditRequirementForm, EditADRForm, ConfirmDialog } from "../shared";
 import type { RequirementDump, ADRDump, ScenarioDump, FlowDump } from "@sruja/shared";
 import { UnifiedItemCard } from "./UnifiedItemCard";
 import type { FilterState, ItemType } from "./DetailsSidebarFilters";
@@ -27,8 +22,12 @@ interface UnifiedDetailsListProps {
   selectedNodeId?: string | null; // Filter by selected node
 }
 
-export function UnifiedDetailsList({ filters, onItemClick, selectedNodeId }: UnifiedDetailsListProps) {
-  const likec4Model = useArchitectureStore((s) => s.likec4Model);
+export function UnifiedDetailsList({
+  filters,
+  onItemClick,
+  selectedNodeId,
+}: UnifiedDetailsListProps) {
+  const model = useArchitectureStore((s) => s.model);
   // const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture); // Unused for now until delete logic is implemented
   const setActiveTab = useUIStore((s) => s.setActiveTab);
   const { navigateToTaggedElement } = useTagNavigation();
@@ -43,11 +42,11 @@ export function UnifiedDetailsList({ filters, onItemClick, selectedNodeId }: Uni
 
   // Get all items
   const allItems = useMemo<UnifiedItem[]>(() => {
-    if (!likec4Model?.sruja) return [];
+    if (!model?.sruja) return [];
 
     // Cast to any because sruja types might be incomplete in @sruja/shared currently
     // We expect them to be there based on usage
-    const sruja = likec4Model.sruja as any;
+    const sruja = model.sruja as any;
 
     const items: UnifiedItem[] = [];
 
@@ -76,7 +75,7 @@ export function UnifiedDetailsList({ filters, onItemClick, selectedNodeId }: Uni
     });
 
     return items;
-  }, [likec4Model]);
+  }, [model]);
 
   // Filter items
   const filteredItems = useMemo(() => {
@@ -100,7 +99,12 @@ export function UnifiedDetailsList({ filters, onItemClick, selectedNodeId }: Uni
             status = hasLinks ? (tags.length >= 2 ? "fulfilled" : "partial") : "missing";
           } else {
             const adrStatus = (item.data as ADRDump).status;
-            status = adrStatus === "accepted" ? "fulfilled" : adrStatus === "deprecated" ? "missing" : "partial";
+            status =
+              adrStatus === "accepted"
+                ? "fulfilled"
+                : adrStatus === "deprecated"
+                  ? "missing"
+                  : "partial";
           }
 
           return filters.statuses.has(status);
@@ -215,7 +219,9 @@ export function UnifiedDetailsList({ filters, onItemClick, selectedNodeId }: Uni
         <FileText size={48} className="empty-icon" />
         <h3>No items found</h3>
         {nodeId ? (
-          <p>No requirements, ADRs, scenarios, or flows tagged with <strong>{nodeId}</strong></p>
+          <p>
+            No requirements, ADRs, scenarios, or flows tagged with <strong>{nodeId}</strong>
+          </p>
         ) : (
           <p>Try adjusting your filters or create new items</p>
         )}
@@ -226,16 +232,19 @@ export function UnifiedDetailsList({ filters, onItemClick, selectedNodeId }: Uni
   return (
     <div className="unified-details-list">
       {nodeId && (
-        <div className="node-filter-badge" style={{
-          padding: '8px 12px',
-          marginBottom: '16px',
-          backgroundColor: 'var(--color-primary-light, #e0f2fe)',
-          borderRadius: '6px',
-          fontSize: '0.875rem',
-          color: 'var(--color-text, #333)',
-        }}>
+        <div
+          className="node-filter-badge"
+          style={{
+            padding: "8px 12px",
+            marginBottom: "16px",
+            backgroundColor: "var(--color-primary-light, #e0f2fe)",
+            borderRadius: "6px",
+            fontSize: "0.875rem",
+            color: "var(--color-text, #333)",
+          }}
+        >
           <strong>Showing items for:</strong> <code>{nodeId}</code>
-          <span style={{ marginLeft: '8px', fontSize: '0.75rem', opacity: 0.7 }}>
+          <span style={{ marginLeft: "8px", fontSize: "0.75rem", opacity: 0.7 }}>
             (Requirements, ADRs, Scenarios, Flows tagged with this node)
           </span>
         </div>
@@ -333,22 +342,14 @@ export function UnifiedDetailsList({ filters, onItemClick, selectedNodeId }: Uni
         <EditRequirementForm
           isOpen={true}
           onClose={() => setEditItem(null)}
-          requirement={(editItem.data as any)}
+          requirement={editItem.data as any}
         />
       )}
       {editItem && editItem.type === "adr" && (
-        <EditADRForm
-          isOpen={true}
-          onClose={() => setEditItem(null)}
-          adr={(editItem.data as any)}
-        />
+        <EditADRForm isOpen={true} onClose={() => setEditItem(null)} adr={editItem.data as any} />
       )}
       {editItem && editItem.type === "flow" && (
-        <EditFlowForm
-          isOpen={true}
-          onClose={() => setEditItem(null)}
-          flow={(editItem.data as any)}
-        />
+        <EditFlowForm isOpen={true} onClose={() => setEditItem(null)} flow={editItem.data as any} />
       )}
 
       {/* Delete Confirmation */}

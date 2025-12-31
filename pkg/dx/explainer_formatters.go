@@ -13,12 +13,12 @@ import (
 func (e *Explainer) buildDescription(elem interface{}) string {
 	var sb strings.Builder
 
-	// Handle LikeC4ElementDef
-	if likeC4Elem, ok := elem.(*language.LikeC4ElementDef); ok {
-		id := likeC4Elem.GetID()
-		kind := likeC4Elem.GetKind()
+	// Handle ElementDef
+	if elementDef, ok := elem.(*language.ElementDef); ok {
+		id := elementDef.GetID()
+		kind := elementDef.GetKind()
 		title := id
-		t := likeC4Elem.GetTitle()
+		t := elementDef.GetTitle()
 		if t != nil {
 			title = *t
 		}
@@ -29,7 +29,7 @@ func (e *Explainer) buildDescription(elem interface{}) string {
 		description := ""
 		technology := ""
 		nestedCounts := make(map[string]int)
-		body := likeC4Elem.GetBody()
+		body := elementDef.GetBody()
 		if body != nil {
 			for _, item := range body.Items {
 				if item.Description != nil {
@@ -197,12 +197,8 @@ func (exp *ElementExplanation) formatADRs(sb *strings.Builder) {
 		return
 	}
 	sb.WriteString("## Related ADRs\n\n")
-	for _, adr := range exp.ADRs {
-		title := ""
-		if adr.Title != nil {
-			title = *adr.Title
-		}
-		fmt.Fprintf(sb, "- **%s**: %s\n", adr.ID, title)
+	for _, adrID := range exp.ADRs {
+		fmt.Fprintf(sb, "- **%s**\n", adrID)
 	}
 	sb.WriteString("\n")
 }

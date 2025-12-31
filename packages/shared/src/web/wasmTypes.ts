@@ -21,8 +21,20 @@ export interface GoInstance {
   _resume?: () => void;
 }
 
+export interface GoJsImports {
+  "runtime.scheduleTimeoutEvent"?: (ms: number) => void;
+  [key: string]: unknown;
+}
+
+export interface WasmImportObject {
+  gojs?: GoJsImports;
+  env?: Record<string, unknown>;
+  go?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 /**
- * Response from WASM parse function.
+ * Response from WASM parse function with structured error handling.
  *
  * @public
  */
@@ -30,8 +42,37 @@ export interface WasmParseResponse {
   readonly ok: boolean;
   readonly json?: string;
   readonly dsl?: string;
-  readonly data?: any; // Changed from string to any to support objects
+  readonly data?: unknown; // Changed from string to known type to support objects
   readonly error?: string;
+  readonly code?: string; // Error code (e.g., "PARSE_1001", "VALID_2001")
+  readonly context?: Record<string, unknown>; // Additional error context
+}
+
+/**
+ * DOT element structure.
+ *
+ * @public
+ */
+export interface DotElement {
+  readonly id: string;
+  readonly kind: "person" | "system" | "container" | "component" | "datastore" | "queue";
+  readonly title: string;
+  readonly technology?: string;
+  readonly description?: string;
+  readonly parentId?: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * DOT relation structure.
+ *
+ * @public
+ */
+export interface DotRelation {
+  readonly from: string;
+  readonly to: string;
+  readonly label?: string;
 }
 
 /**
@@ -41,8 +82,33 @@ export interface WasmParseResponse {
  */
 export interface DotResult {
   readonly dot: string;
-  readonly elements: any[];
-  readonly relations: any[];
+  readonly elements: DotElement[];
+  readonly relations: DotRelation[];
+}
+
+/**
+ * Result of architecture score calculation.
+ *
+ * @public
+ */
+export interface ScoreResult {
+  Score: number;
+  Grade?: string;
+  Categories?: {
+    Structural?: number;
+    Documentation?: number;
+    Complexity?: number;
+    Standardization?: number;
+    Traceability?: number;
+  };
+  Deductions?: Array<{
+    Category: string;
+    Severity: string;
+    Message: string;
+    Rule?: string;
+    Points?: number;
+    Target?: string;
+  }>;
 }
 
 /**
@@ -56,13 +122,10 @@ export interface WindowWithWasm extends Window {
   sruja_json_to_dsl?: (json: string) => WasmParseResponse;
   sruja_dsl_to_mermaid?: (dsl: string) => WasmParseResponse;
   sruja_dsl_to_markdown?: (dsl: string) => WasmParseResponse;
-  sruja_dsl_to_likec4?: (dsl: string, filename?: string) => WasmParseResponse;
-  sruja_dsl_to_dot?: (
-    dsl: string,
-    viewLevel?: number,
-    focusNodeId?: string,
-    nodeSizesJson?: string
-  ) => WasmParseResponse;
+  sruja_dsl_to_model?: (dsl: string, filename?: string) => WasmParseResponse;
+  sruja_dsl_to_dot?: (dsl: string, configJson: string) => WasmParseResponse;
+  sruja_model_to_dsl?: (json: string) => WasmParseResponse;
+  sruja_analyze_governance?: (dsl: string) => WasmParseResponse;
   sruja_score?: (dsl: string) => WasmParseResponse;
 }
 

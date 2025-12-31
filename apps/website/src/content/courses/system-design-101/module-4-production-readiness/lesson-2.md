@@ -14,10 +14,11 @@ summary: "Cloud, On-prem, Containers, and real-world deployment strategies."
 
 ## Logical vs. Physical Architecture
 
-*   **Logical Architecture:** The software components and how they interact (Containers, Components).
-*   **Physical Architecture:** Where those components actually run (Servers, VMs, Kubernetes Pods).
+- **Logical Architecture:** The software components and how they interact (Containers, Components).
+- **Physical Architecture:** Where those components actually run (Servers, VMs, Kubernetes Pods).
 
 **Why it matters**: Understanding this separation helps you:
+
 - Plan migrations (e.g., moving from EC2 to EKS)
 - Model multi-cloud strategies
 - Document disaster recovery plans
@@ -26,37 +27,44 @@ summary: "Cloud, On-prem, Containers, and real-world deployment strategies."
 ## Deployment Strategies: Real-World Trade-offs
 
 ### On-Premises
+
 Running on your own hardware in a data center.
 
 **Real-world use cases:**
+
 - Financial institutions (regulatory compliance)
 - Healthcare systems (HIPAA data residency)
 - Government systems (sovereignty requirements)
 
-*   **Pros:** Total control, security, data sovereignty.
-*   **Cons:** High maintenance, capital expense, slower scaling.
-*   **Cost example:** $500K+ initial investment, 3-5 year hardware refresh cycles
+* **Pros:** Total control, security, data sovereignty.
+* **Cons:** High maintenance, capital expense, slower scaling.
+* **Cost example:** $500K+ initial investment, 3-5 year hardware refresh cycles
 
 ### Cloud (AWS, GCP, Azure)
+
 Renting infrastructure from a provider.
 
 **Real-world use cases:**
+
 - SaaS platforms (99% of modern startups)
 - E-commerce (seasonal scaling)
 - Media streaming (global distribution)
 
-*   **Pros:** Pay-as-you-go, infinite scale, managed services.
-*   **Cons:** Vendor lock-in, variable costs, compliance complexity.
-*   **Cost example:** $5K/month for small SaaS, $50K+ for mid-size, $500K+ for enterprise
+* **Pros:** Pay-as-you-go, infinite scale, managed services.
+* **Cons:** Vendor lock-in, variable costs, compliance complexity.
+* **Cost example:** $5K/month for small SaaS, $50K+ for mid-size, $500K+ for enterprise
 
 ### Containers & Orchestration
+
 Packaging code with dependencies (Docker) and managing them at scale (Kubernetes).
 
 **Real-world adoption:**
+
 - 2024: 70% of enterprises use Kubernetes
 - Common pattern: Docker → Kubernetes → Service Mesh (Istio/Linkerd)
 
 **Production considerations:**
+
 - Resource limits (CPU/memory)
 - Health checks and liveness probes
 - Rolling updates and rollback strategies
@@ -71,83 +79,77 @@ Sruja allows you to map your logical containers to physical deployment nodes, ma
 ### Example: Multi-Region E-Commerce Platform
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
-}
+element person
+element system
+element container
+element component
+element datastore
+element queue
 
-model {
-    ECommerce = system "E-Commerce Platform" {
-        API = container "REST API" {
-            technology "Go"
-            scale {
-                min 3
-                max 100
-                metric "cpu > 70%"
-            }
-        }
-        WebApp = container "React Frontend" {
-            technology "React"
-        }
-        PrimaryDB = datastore "PostgreSQL" {
-            technology "PostgreSQL"
-        }
-        Cache = datastore "Redis" {
-            technology "Redis"
+ECommerce = system "E-Commerce Platform" {
+    API = container "REST API" {
+        technology "Go"
+        scale {
+            min 3
+            max 100
+            metric "cpu > 70%"
         }
     }
+    WebApp = container "React Frontend" {
+        technology "React"
+    }
+    PrimaryDB = datastore "PostgreSQL" {
+        technology "PostgreSQL"
+    }
+    Cache = datastore "Redis" {
+        technology "Redis"
+    }
+}
 
-    // Production deployment across regions
-    deployment Production "Production Environment" {
-        node AWS "AWS Cloud" {
-            // Primary region: US-East-1
-            node USEast1 "US-East-1 (Primary)" {
-                node EKS "EKS Cluster" {
-                    containerInstance API {
-                        replicas 10
-                    }
-                    containerInstance WebApp {
-                        replicas 5
-                    }
+// Production deployment across regions
+deployment Production "Production Environment" {
+    node AWS "AWS Cloud" {
+        // Primary region: US-East-1
+        node USEast1 "US-East-1 (Primary)" {
+            node EKS "EKS Cluster" {
+                containerInstance API {
+                    replicas 10
                 }
-                node RDS "RDS Multi-AZ" {
-                    containerInstance PrimaryDB {
-                        role "primary"
-                    }
-                }
-                node ElastiCache "ElastiCache" {
-                    containerInstance Cache
+                containerInstance WebApp {
+                    replicas 5
                 }
             }
-            
-            // Secondary region: EU-West-1 (for DR and latency)
-            node EUWest1 "EU-West-1 (Secondary)" {
-                node EKS "EKS Cluster" {
-                    containerInstance API {
-                        replicas 5
-                    }
-                    containerInstance WebApp {
-                        replicas 3
-                    }
+            node RDS "RDS Multi-AZ" {
+                containerInstance PrimaryDB {
+                    role "primary"
                 }
-                node RDS "RDS Read Replica" {
-                    containerInstance PrimaryDB {
-                        role "read-replica"
-                    }
+            }
+            node ElastiCache "ElastiCache" {
+                containerInstance Cache
+            }
+        }
+
+        // Secondary region: EU-West-1 (for DR and latency)
+        node EUWest1 "EU-West-1 (Secondary)" {
+            node EKS "EKS Cluster" {
+                containerInstance API {
+                    replicas 5
+                }
+                containerInstance WebApp {
+                    replicas 3
+                }
+            }
+            node RDS "RDS Read Replica" {
+                containerInstance PrimaryDB {
+                    role "read-replica"
                 }
             }
         }
     }
 }
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -156,55 +158,50 @@ views {
 Model your deployment pipeline alongside architecture:
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+CICD = system "CI/CD System" {
+    GitHubActions = container "GitHub Actions" {
+        description "Triggers on push to main branch"
+    }
+    BuildService = container "Build Service" {
+        technology "Docker"
+        description "Builds container images"
+    }
+    TestRunner = container "Test Runner" {
+        description "Runs unit, integration, and E2E tests"
+    }
+    DeployService = container "Deploy Service" {
+        technology "ArgoCD"
+        description "Deploys to Kubernetes clusters"
+    }
+
+    GitHubActions -> BuildService "Builds image"
+    BuildService -> TestRunner "Runs tests"
+    TestRunner -> DeployService "Deploys if tests pass"
 }
 
-model {
-    CICD = system "CI/CD System" {
-        GitHubActions = container "GitHub Actions" {
-            description "Triggers on push to main branch"
-        }
-        BuildService = container "Build Service" {
-            technology "Docker"
-            description "Builds container images"
-        }
-        TestRunner = container "Test Runner" {
-            description "Runs unit, integration, and E2E tests"
-        }
-        DeployService = container "Deploy Service" {
-            technology "ArgoCD"
-            description "Deploys to Kubernetes clusters"
-        }
-        
-        GitHubActions -> BuildService "Builds image"
-        BuildService -> TestRunner "Runs tests"
-        TestRunner -> DeployService "Deploys if tests pass"
-    }
-    
-    // Link deployment to CI/CD
-    // Note: Deployment metadata (CI/CD pipeline, strategy) is modeled in the deployment node
-    deployment Production "Production Deployment" {
-        node Infrastructure "Production Infrastructure" {
-        }
+// Link deployment to CI/CD
+// Note: Deployment metadata (CI/CD pipeline, strategy) is modeled in the deployment node
+deployment Production "Production Deployment" {
+    node Infrastructure "Production Infrastructure" {
     }
 }
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
 ## Real-World Patterns
 
 ### Pattern 1: Blue/Green Deployment
+
 **Use case**: Zero-downtime deployments for critical services
 
 ```sruja
@@ -224,6 +221,7 @@ deployment Production {
 ```
 
 **DevOps workflow:**
+
 1. Deploy new version to Green
 2. Run smoke tests
 3. Switch 10% traffic to Green
@@ -232,6 +230,7 @@ deployment Production {
 6. Keep Blue ready for rollback
 
 ### Pattern 2: Canary Deployment
+
 **Use case**: Gradual rollout with automatic rollback
 
 ```sruja
@@ -251,6 +250,7 @@ deployment Production {
 ```
 
 ### Pattern 3: Multi-Cloud Strategy
+
 **Use case**: Avoiding vendor lock-in, disaster recovery
 
 ```sruja
@@ -276,67 +276,61 @@ deployment Production {
 Define reliability targets directly in your architecture model:
 
 ```sruja
-specification {
-  element system
-  element container
-  element datastore
-}
+element system
+element container
+element datastore
 
-model {
-  ECommerce = system "E-Commerce Platform" {
-    API = container "REST API" {
-      technology "Go"
-      
-      // Define SLOs for production monitoring
-      slo {
-        availability {
-          target "99.99%"
-          window "30 days"
-          current "99.95%"
-          description "Four nines availability target"
-        }
-        latency {
-          p95 "200ms"
-          p99 "500ms"
-          window "7 days"
-          current {
-            p95 "180ms"
-            p99 "450ms"
-          }
-        }
-        errorRate {
-          target "< 0.1%"
-          window "30 days"
-          current "0.05%"
-        }
-        throughput {
-          target "1000 req/s"
-          window "1 hour"
-          current "950 req/s"
-        }
+ECommerce = system "E-Commerce Platform" {
+API = container "REST API" {
+  technology "Go"
+
+  // Define SLOs for production monitoring
+  slo {
+    availability {
+      target "99.99%"
+      window "30 days"
+      current "99.95%"
+      description "Four nines availability target"
+    }
+    latency {
+      p95 "200ms"
+      p99 "500ms"
+      window "7 days"
+      current {
+        p95 "180ms"
+        p99 "450ms"
       }
     }
-    
-    Database = datastore "PostgreSQL" {
-      technology "PostgreSQL"
-      slo {
-        availability {
-          target "99.9%"
-          window "30 days"
-        }
-        latency {
-          p95 "50ms"
-          p99 "100ms"
-        }
-      }
+    errorRate {
+      target "< 0.1%"
+      window "30 days"
+      current "0.05%"
+    }
+    throughput {
+      target "1000 req/s"
+      window "1 hour"
+      current "950 req/s"
     }
   }
 }
 
-views {
-  view index {
-    include *
+Database = datastore "PostgreSQL" {
+  technology "PostgreSQL"
+  slo {
+    availability {
+      target "99.9%"
+      window "30 days"
+    }
+    latency {
+      p95 "50ms"
+      p99 "100ms"
+    }
   }
+}
+}
+
+view index {
+include *
 }
 ```
 
@@ -352,34 +346,30 @@ views {
 Model your observability stack:
 
 ```sruja
-specification {
-  element system
-  element container
+element system
+element container
+
+Observability = system "Observability Stack" {
+Prometheus = container "Metrics" {
+  technology "Prometheus"
+  description "Collects metrics from all services"
+}
+Grafana = container "Dashboards" {
+  technology "Grafana"
+  description "Visualizes metrics and alerts"
+}
+ELK = container "Logging" {
+  technology "Elasticsearch, Logstash, Kibana"
+  description "Centralized logging"
+}
+Jaeger = container "Tracing" {
+  technology "Jaeger"
+  description "Distributed tracing"
+}
 }
 
-model {
-  Observability = system "Observability Stack" {
-    Prometheus = container "Metrics" {
-      technology "Prometheus"
-      description "Collects metrics from all services"
-    }
-    Grafana = container "Dashboards" {
-      technology "Grafana"
-      description "Visualizes metrics and alerts"
-    }
-    ELK = container "Logging" {
-      technology "Elasticsearch, Logstash, Kibana"
-      description "Centralized logging"
-    }
-    Jaeger = container "Tracing" {
-      technology "Jaeger"
-      description "Distributed tracing"
-    }
-  }
-
-  // Link to your services
-  ECommerce.API -> Observability.Prometheus "Exposes metrics"
-}
+// Link to your services
+ECommerce.API -> Observability.Prometheus "Exposes metrics"
 ECommerce.API -> Observability.ELK "Sends logs"
 ECommerce.API -> Observability.Jaeger "Sends traces"
 ```

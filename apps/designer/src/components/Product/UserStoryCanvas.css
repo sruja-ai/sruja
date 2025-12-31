@@ -1,0 +1,155 @@
+/* apps/designer/src/components/Product/UserStoryCanvas.css */
+.user-story-canvas {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-background, #ffffff);
+}
+
+.user-story-canvas-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-surface, #f1f5f9);
+}
+
+.user-story-canvas-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary, #1e293b);
+  margin: 0 0 4px 0;
+}
+
+.user-story-canvas-subtitle {
+  font-size: 12px;
+  color: var(--color-text-secondary, #6b7280);
+  margin: 0;
+}
+
+.user-story-canvas-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.add-story-button {
+  align-self: flex-start;
+}
+
+.add-story-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  background: var(--color-surface, #f1f5f9);
+}
+
+.add-story-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.story-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--color-text-secondary, #6b7280);
+  pointer-events: none;
+}
+
+.story-input {
+  padding-left: 36px;
+  width: 100%;
+}
+
+.add-story-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.user-stories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.user-stories-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.user-stories-empty-subtitle {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.user-story-item {
+  padding: 16px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  background: var(--color-background, #ffffff);
+}
+
+.user-story-item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.user-story-text {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-text-primary, #1e293b);
+  line-height: 1.5;
+}
+
+.user-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.delete-story-button {
+  flex-shrink: 0;
+}
+
+.user-story-mapped {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+/* Dark mode support */
+[data-theme="dark"] .user-story-canvas {
+  background: var(--color-background, #0f172a);
+}
+
+[data-theme="dark"] .user-story-canvas-header {
+  background: var(--color-surface, #1e293b);
+  border-color: var(--color-border, #334155);
+}
+
+[data-theme="dark"] .add-story-form {
+  background: var(--color-surface, #1e293b);
+  border-color: var(--color-border, #334155);
+}
+
+[data-theme="dark"] .user-story-item {
+  background: var(--color-background, #0f172a);
+  border-color: var(--color-border, #334155);
+}

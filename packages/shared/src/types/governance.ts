@@ -3,13 +3,13 @@
 
 /**
  * Sruja governance layer extensions.
- * 
+ *
  * @public
  * @remarks
  * Contains all governance-related artifacts that extend the core architecture model.
  * These extensions support enterprise-level architecture governance, compliance,
  * and operational excellence requirements.
- * 
+ *
  * @example
  * const extensions: SrujaExtensions = { requirements: [], adrs: [], policies: [], slos: [] };
  */
@@ -38,12 +38,12 @@ export interface SrujaExtensions {
 
 /**
  * Requirement definition for functional and non-functional requirements.
- * 
+ *
  * @public
  * @remarks
  * Requirements can be linked to specific architectural elements for traceability.
  * Supports priority and status tracking for requirement management workflows.
- * 
+ *
  * @example
  * const requirement: Requirement = { id: 'req-001', title: 'System must handle 10k concurrent users', type: 'non-functional' };
  */
@@ -68,12 +68,12 @@ export interface Requirement {
 
 /**
  * Architecture Decision Record (ADR).
- * 
+ *
  * @public
  * @remarks
  * Documents important architectural decisions, their context, and consequences.
  * Follows the standard ADR format for decision tracking and knowledge management.
- * 
+ *
  * @example
  * const adr: ADR = { id: 'adr-001', title: 'Use microservices architecture', status: 'accepted' };
  */
@@ -94,16 +94,18 @@ export interface ADR {
   readonly date?: string;
   /** Author or decision maker */
   readonly author?: string;
+  /** Optional tags for grouping or filtering */
+  readonly tags?: ReadonlyArray<string>;
 }
 
 /**
  * Policy definition for security, compliance, or architectural policies.
- * 
+ *
  * @public
  * @remarks
  * Policies define rules and guidelines that must be followed.
  * Can be linked to specific elements and have different enforcement levels.
- * 
+ *
  * @example
  * const policy: Policy = { id: 'policy-001', title: 'All APIs must use HTTPS', category: 'security', enforcement: 'mandatory' };
  */
@@ -124,12 +126,12 @@ export interface Policy {
 
 /**
  * Architectural constraint definition.
- * 
+ *
  * @public
  * @remarks
  * Constraints represent limitations or restrictions that must be considered
  * in architectural decisions (e.g., technology restrictions, regulatory requirements).
- * 
+ *
  * @example
  * const constraint: Constraint = { id: 'constraint-001', description: 'Must use only open-source technologies', type: 'technology' };
  */
@@ -144,12 +146,12 @@ export interface Constraint {
 
 /**
  * Architectural convention definition.
- * 
+ *
  * @public
  * @remarks
  * Conventions represent agreed-upon patterns, naming standards, or practices
  * that teams should follow for consistency.
- * 
+ *
  * @example
  * const convention: Convention = { id: 'conv-001', description: 'All service names must follow pattern' };
  */
@@ -162,12 +164,12 @@ export interface Convention {
 
 /**
  * Contract definition for API or service contracts.
- * 
+ *
  * @public
  * @remarks
  * Contracts define the interface between services, including request/response
  * schemas, error handling, and versioning information.
- * 
+ *
  * @example
  * const contract: Contract = { id: 'contract-001', type: 'api', description: 'Payment service API contract' };
  */
@@ -184,12 +186,12 @@ export interface Contract {
 
 /**
  * User scenario definition (BDD-style user story flows).
- * 
+ *
  * @public
  * @remarks
  * Scenarios describe user interactions and system behaviors in a step-by-step format.
  * Used for documenting user journeys and acceptance criteria.
- * 
+ *
  * @example
  * const scenario: Scenario = { id: 'scenario-001', title: 'User places an order', steps: [] };
  */
@@ -206,12 +208,12 @@ export interface Scenario {
 
 /**
  * Step definition used in Scenario or Flow.
- * 
+ *
  * @public
  * @remarks
  * Represents a single step in a user scenario or data flow.
  * Steps can reference source and target elements to show interaction flow.
- * 
+ *
  * @example
  * const step: Step = { description: 'User authenticates', from: 'user', to: 'system:auth' };
  */
@@ -224,16 +226,18 @@ export interface Step {
   readonly from?: string;
   /** Target element FQN (where the step goes) */
   readonly to?: string;
+  /** Optional tags for grouping or filtering */
+  readonly tags?: ReadonlyArray<string>;
 }
 
 /**
  * Data flow definition (DFD-style flow diagrams).
- * 
+ *
  * @public
  * @remarks
  * Flows describe data movement and processing through the system.
  * Used for documenting data pipelines and transformation processes.
- * 
+ *
  * @example
  * const flow: Flow = { id: 'flow-001', title: 'Order processing flow', steps: [] };
  */
@@ -250,13 +254,13 @@ export interface Flow {
 
 /**
  * Deployment configuration definition.
- * 
+ *
  * @public
  * @remarks
  * Represents deployment infrastructure, including hierarchical deployment nodes,
  * technology stack, and instance configurations. Supports multi-region and
  * multi-environment deployments.
- * 
+ *
  * @example
  * const deployment: Deployment = { id: 'deploy-001', kind: 'kubernetes', title: 'Production deployment' };
  */
@@ -279,12 +283,12 @@ export interface Deployment {
 
 /**
  * Service Level Objective (SLO) definition.
- * 
+ *
  * @public
  * @remarks
  * Defines measurable service quality targets including availability, latency,
  * throughput, and error budgets. Used for operational excellence and SLA management.
- * 
+ *
  * @example
  * const slo: SLO = { id: 'slo-001', target: 99.9, availability: 99.95, latency: '200ms' };
  */
@@ -335,4 +339,3 @@ export type FlowDump = Flow;
 export type DeploymentDump = Deployment;
 /** @deprecated Use `SLO` instead */
 export type SLODump = SLO;
-

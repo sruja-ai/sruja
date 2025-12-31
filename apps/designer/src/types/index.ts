@@ -1,5 +1,5 @@
 // Type definitions for Sruja Designer
-// Supports LikeC4 format exclusively (Legacy format removed)
+// Supports Sruja model format (Legacy format removed)
 
 // ===========================================================================
 // Re-export types from @sruja/shared
@@ -13,15 +13,15 @@ export type {
   PolicyDump,
   ScenarioDump,
   FlowDump,
-  // LikeC4 types
+  // Core types
   Element,
   Relationship,
   ParsedView,
   Specification,
 } from "@sruja/shared";
 
-// Type aliases for backward compatibility (use LikeC4 types directly in new code)
-// These match SrujaModelDump structure which uses LikeC4 types
+// Type aliases for backward compatibility (use core types directly in new code)
+// These match SrujaModelDump structure
 import type { SrujaModelDump } from "@sruja/shared";
 
 export type ElementDump = NonNullable<SrujaModelDump["elements"]>[string]; // Same as Element<any>
@@ -29,10 +29,9 @@ export type RelationDump = NonNullable<SrujaModelDump["relations"]>[number];
 export type ViewDump = NonNullable<SrujaModelDump["views"]>[string]; // Same as ParsedView<any>
 export type SpecificationDump = SrujaModelDump["specification"]; // Same as Specification<any>
 
-export {
-  isLikeC4Format,
-  // isLegacyFormat, // Removed if legacy format is no longer supported
-} from "@sruja/shared";
+// export {
+//   isSrujaModelFormat,
+// } from "@sruja/shared";
 
 // ===========================================================================
 // View & Node Types (UI Specific)

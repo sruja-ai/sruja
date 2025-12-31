@@ -1,37 +1,35 @@
 // pkg/stdlib/core.sruja
-// Standard C4 Element Specifications for Sruja
+// Standard C4 Element Kinds for Sruja
 
-specification {
-  element person {
-    title "Person"
-    description "A human user or actor"
-  }
-
-  element system {
-    title "System"
-    description "A high-level software system"
-  }
-
-  element container {
-    title "Container"
-    description "A deployable unit (app, microservice, etc.)"
-  }
-
-  element component {
-    title "Component"
-    description "A logical part of a container"
-  }
-
-  element database {
-    title "Database"
-    description "A data storage mechanism"
-  }
-
-  element queue {
-    title "Queue"
-    description "An asynchronous message queue or event stream"
-  }
-
-  tag "external"
-  tag "deprecated"
+// Standard C4 element kinds
+person = kind "Person" {
+  description "A human user or actor"
 }
+
+system = kind "System" {
+  description "A high-level software system"
+}
+
+container = kind "Container" {
+  description "A deployable unit (app, microservice, etc.)"
+}
+
+component = kind "Component" {
+  description "A logical part of a container"
+}
+
+database = kind "Database" {
+  description "A data storage mechanism"
+}
+
+datastore = kind "Datastore" {
+  description "A data storage mechanism (alias for database)"
+}
+
+queue = kind "Queue" {
+  description "An asynchronous message queue or event stream"
+}
+
+// Standard tags
+external = tag "External"
+deprecated = tag "Deprecated"

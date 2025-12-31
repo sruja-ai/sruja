@@ -15,20 +15,13 @@ func TestParser_ViewsBlock(t *testing.T) {
 	}{
 		{
 			name: "Simple views block",
-			dsl: `
-specification {
-	element system
-	element container
-}
-model {
+			dsl: `system = kind "System"
+	container = kind "Container"
 	Shop = system "Shop" {
 		WebApp = container "Web Application"
 	}
-}
-views {
-	view index {
-		include Shop.*
-	}
+view index {
+	include Shop.*
 }`,
 			wantErr: false,
 			checkFn: func(p *Program) error {
@@ -36,7 +29,7 @@ views {
 					return fmt.Errorf("Views block is nil")
 				}
 				// Filter for Views (Items can be Styles or Views)
-				var views []*LikeC4ViewDef
+				var views []*ViewDef
 				for _, item := range p.Views.Items {
 					if item.View != nil {
 						views = append(views, item.View)
@@ -71,21 +64,14 @@ views {
 		},
 		{
 			name: "Views block with include elements",
-			dsl: `
-specification {
-	element system
-	element container
-}
-model {
+			dsl: `system = kind "System"
+	container = kind "Container"
 	Shop = system "Shop" {
 		WebApp = container "Web Application"
 		API = container "API Gateway"
 	}
-}
-views {
-	view apiFocus {
-		include Shop.API Shop.WebApp
-	}
+view apiFocus {
+	include Shop.API Shop.WebApp
 }`,
 			wantErr: false,
 			checkFn: func(p *Program) error {
@@ -93,7 +79,7 @@ views {
 					return fmt.Errorf("Views block is nil")
 				}
 				// Find view
-				var view *LikeC4ViewDef
+				var view *ViewDef
 				for _, item := range p.Views.Items {
 					if item.View != nil {
 						view = item.View
@@ -140,26 +126,19 @@ views {
 		},
 		{
 			name: "Views block with styles",
-			dsl: `
-specification {
-	element system
-	element container
-	tag Database
-}
-model {
+			dsl: `system = kind "System"
+	container = kind "Container"
+	Database = tag "Database"
 	Shop = system "Shop" {
 		DB = container "Database" #Database
 	}
+view index {
+	include Shop.*
 }
-views {
-	view index {
-		include Shop.*
-	}
-	styles {
-		element #Database {
-			shape cylinder
-			color "#ff0000"
-		}
+styles {
+	element #Database {
+		shape cylinder
+		color "#ff0000"
 	}
 }`,
 			wantErr: false,
@@ -201,16 +180,11 @@ views {
 		},
 		{
 			name: "Model without views block",
-			dsl: `
-specification {
-	element system
-	element container
-}
-model {
+			dsl: `system = kind "System"
+	container = kind "Container"
 	Shop = system "Shop" {
 		WebApp = container "Web Application"
-	}
-}`,
+	}`,
 			wantErr: false,
 			checkFn: func(p *Program) error {
 				if p.Views != nil {
@@ -237,7 +211,7 @@ model {
 				return
 			}
 
-			// Architecture removed - these tests need to be migrated to LikeC4 syntax
+			// Architecture removed - these tests need to be migrated to Sruja syntax
 			if tt.checkFn != nil {
 				if err := tt.checkFn(program); err != nil {
 					t.Error(err)

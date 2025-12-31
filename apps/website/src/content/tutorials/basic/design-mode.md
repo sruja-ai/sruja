@@ -16,24 +16,18 @@ Design Mode helps you build architecture assets step by step, starting with high
 Start with the high-level context:
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
-}
+element person
+element system
+element container
+element component
+element datastore
+element queue
 
-model {
-  person User
-  system Shop
-}
+person User
+system Shop
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -42,32 +36,26 @@ views {
 Add containers and datastores:
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+person User
+system App {
+WebApp = container "Web Application"
+API = container "API Service"
+DB = datastore "Database"
 }
 
-model {
-  person User
-  system App {
-    WebApp = container "Web Application"
-    API = container "API Service"
-    DB = datastore "Database"
-  }
+User -> App.WebApp "Uses"
+App.WebApp -> App.API "Calls"
+App.API -> App.DB "Reads/Writes"
 
-  User -> App.WebApp "Uses"
-  App.WebApp -> App.API "Calls"
-  App.API -> App.DB "Reads/Writes"
-}
-
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -76,33 +64,27 @@ views {
 Drill down into components:
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+system App {
+container WebApp {
+  component UI
+}
+container API {
+  component Auth
+}
 }
 
-model {
-  system App {
-    container WebApp {
-      component UI
-    }
-    container API {
-      component Auth
-    }
-  }
+// Component‑level interaction
+App.WebApp.UI -> App.API.Auth "Calls"
 
-  // Component‑level interaction
-  App.WebApp.UI -> App.API.Auth "Calls"
-}
-
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -122,6 +104,7 @@ When focused, non‑relevant nodes/edges are dimmed so you can work deeper witho
 ## Share Deep Links
 
 Viewer opens focused views via URL params:
+
 - `?level=1` → Context
 - `?level=2&focus=Shop` → Containers of system `Shop`
 - `?level=3&focus=Shop.API` → Components in container `API` of system `Shop`

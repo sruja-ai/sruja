@@ -24,49 +24,37 @@ policy PolicyID "Description" {
 ## Simple Policy
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
-}
+element person
+element system
+element container
+element component
+element datastore
+element queue
 
-model {
-  policy SecurityPolicy "Enforce TLS 1.3 for all external communications"
-}
+policy SecurityPolicy "Enforce TLS 1.3 for all external communications"
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
 ## Policy with Category and Enforcement
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+policy DataRetentionPolicy "Retain order data for 7 years for tax compliance" {
+category "compliance"
+enforcement "required"
 }
 
-model {
-  policy DataRetentionPolicy "Retain order data for 7 years for tax compliance" {
-    category "compliance"
-    enforcement "required"
-  }
-}
-
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -82,98 +70,80 @@ views {
 ## Example: Security Policies
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+policy TLSEnforcement "All external communications must use TLS 1.3" {
+category "security"
+enforcement "required"
 }
 
-model {
-  policy TLSEnforcement "All external communications must use TLS 1.3" {
-    category "security"
-    enforcement "required"
-  }
-  
-  policy EncryptionAtRest "Sensitive data must be encrypted at rest" {
-    category "security"
-    enforcement "required"
-  }
-  
-  system BankingApp {
-    API = container "API Service"
-    CustomerDB = datastore "Customer Database"
-  }
+policy EncryptionAtRest "Sensitive data must be encrypted at rest" {
+category "security"
+enforcement "required"
 }
 
-views {
-  view index {
-    include *
-  }
+system BankingApp {
+API = container "API Service"
+CustomerDB = datastore "Customer Database"
+}
+
+view index {
+include *
 }
 ```
 
 ## Example: Compliance Policies
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+policy HIPAACompliance "Must comply with HIPAA regulations" {
+category "compliance"
+enforcement "required"
+description "All patient data must be encrypted and access logged"
 }
 
-model {
-  policy HIPAACompliance "Must comply with HIPAA regulations" {
-    category "compliance"
-    enforcement "required"
-    description "All patient data must be encrypted and access logged"
-  }
-  
-  policy DataRetention "Medical records retained for 10 years" {
-    category "compliance"
-    enforcement "required"
-  }
+policy DataRetention "Medical records retained for 10 years" {
+category "compliance"
+enforcement "required"
 }
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
 ## Example: Observability Policies
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+policy Observability "All services must expose health check endpoints" {
+category "observability"
+enforcement "required"
+metadata {
+  metricEndpoint "/health"
+  logLevel "info"
+}
 }
 
-model {
-  policy Observability "All services must expose health check endpoints" {
-    category "observability"
-    enforcement "required"
-    metadata {
-      metricEndpoint "/health"
-      logLevel "info"
-    }
-  }
-}
-
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 

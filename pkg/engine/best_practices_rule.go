@@ -23,8 +23,8 @@ func (r *DatabaseIsolationRule) Validate(program *language.Program) []diagnostic
 		return diags
 	}
 
-	// Collect all relations from LikeC4 Model
-	_, relations := collectLikeC4Elements(program.Model)
+	// Collect all relations from Model
+	_, relations := collectElements(program.Model)
 
 	// 1. Identify all DataStores
 	// Map: DataStore ID -> List of Consumers (System/Container/Component IDs)
@@ -103,9 +103,9 @@ func isTargetDatastore(program *language.Program, name string) bool {
 		return false
 	}
 
-	// Search for database elements in LikeC4 Model
-	var findDatabase func(elem *language.LikeC4ElementDef, currentFQN string) bool
-	findDatabase = func(elem *language.LikeC4ElementDef, currentFQN string) bool {
+	// Search for database elements in Model
+	var findDatabase func(elem *language.ElementDef, currentFQN string) bool
+	findDatabase = func(elem *language.ElementDef, currentFQN string) bool {
 		if elem == nil {
 			return false
 		}
@@ -168,8 +168,8 @@ func isSharedDatastore(program *language.Program, name string) bool {
 	}
 
 	// Search for database element and check its metadata
-	var findAndCheckDatabase func(elem *language.LikeC4ElementDef, currentFQN string) bool
-	findAndCheckDatabase = func(elem *language.LikeC4ElementDef, currentFQN string) bool {
+	var findAndCheckDatabase func(elem *language.ElementDef, currentFQN string) bool
+	findAndCheckDatabase = func(elem *language.ElementDef, currentFQN string) bool {
 		if elem == nil {
 			return false
 		}
@@ -241,8 +241,8 @@ func (r *PublicInterfaceDocumentationRule) Validate(program *language.Program) [
 
 	// 1. Find all person IDs
 	personIDs := make(map[string]bool)
-	var collectPersons func(elem *language.LikeC4ElementDef)
-	collectPersons = func(elem *language.LikeC4ElementDef) {
+	var collectPersons func(elem *language.ElementDef)
+	collectPersons = func(elem *language.ElementDef) {
 		if elem == nil {
 			return
 		}
@@ -294,8 +294,8 @@ func (r *PublicInterfaceDocumentationRule) Validate(program *language.Program) [
 
 	// 3. Validate those items have description/technology
 	// Helper to find element and check documentation
-	var checkElementDoc func(elem *language.LikeC4ElementDef, currentFQN string, targetName string) bool
-	checkElementDoc = func(elem *language.LikeC4ElementDef, currentFQN string, targetName string) bool {
+	var checkElementDoc func(elem *language.ElementDef, currentFQN string, targetName string) bool
+	checkElementDoc = func(elem *language.ElementDef, currentFQN string, targetName string) bool {
 		if elem == nil {
 			return false
 		}

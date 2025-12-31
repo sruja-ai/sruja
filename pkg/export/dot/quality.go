@@ -1,5 +1,9 @@
 // Package dot provides layout quality metrics for iterative refinement.
 //
+// ⚠️ DEVELOPER TOOL ONLY - For offline development use
+// This code is NOT used in production or real-time user workflows.
+// It's meant for developers to measure and improve layout quality during development.
+//
 // This implements FAANG-level quality measurement to drive layout optimization.
 
 package dot
@@ -84,7 +88,7 @@ func (q *LayoutQuality) CalculateScore() {
 // MeasureQuality analyzes a Graphviz layout result and computes quality metrics.
 // Note: This is a placeholder implementation. In a full implementation, we would
 // parse the Graphviz JSON output to compute actual metrics.
-func MeasureQuality(dotOutput string, elements []*Element, relations []*Relation) LayoutQuality {
+func MeasureQuality(_ string, elements []*Element, relations []*Relation) LayoutQuality {
 	quality := LayoutQuality{
 		// For now, we estimate based on graph structure
 		// A full implementation would parse Graphviz JSON output
@@ -114,7 +118,7 @@ func estimateEdgeCrossings(elements []*Element, relations []*Relation) int {
 
 // estimateNodeOverlaps estimates node overlaps.
 // This is a simplified heuristic - a full implementation would use Graphviz output.
-func estimateNodeOverlaps(elements []*Element) int {
+func estimateNodeOverlaps(_ []*Element) int {
 	// If we have proper size constraints, overlaps should be minimal
 	// This is a placeholder - real implementation would parse Graphviz JSON
 	return 0

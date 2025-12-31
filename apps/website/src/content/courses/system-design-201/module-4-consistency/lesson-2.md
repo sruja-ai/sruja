@@ -7,39 +7,34 @@ summary: "Use constraints and conventions to manage consistency trade‑offs."
 # Lesson 2: Consistency via Constraints & Conventions
 
 ## Why Constraints?
+
 They document trade‑offs and prevent accidental coupling across services.
 
 ## Sruja: Guardrails for Consistency
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+constraints {
+rule "No cross‑service transactions"
+rule "Idempotent event handlers"
+}
+conventions {
+naming "kebab-case"
+retries "Exponential backoff (max 3)"
 }
 
-model {
-  constraints {
-    rule "No cross‑service transactions"
-    rule "Idempotent event handlers"
-  }
-  conventions {
-    naming "kebab-case"
-    retries "Exponential backoff (max 3)"
-  }
-}
-
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
 ## Practice
+
 - Add constraints that support your chosen consistency model.
 - Capture conventions for retries, idempotency, and naming.
-

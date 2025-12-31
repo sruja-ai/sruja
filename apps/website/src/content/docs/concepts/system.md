@@ -11,32 +11,24 @@ A **System** represents a software system, which is the highest level of abstrac
 ## Syntax
 
 ```sruja
-specification {
-  element system
-}
+element system
 
-model {
-  ID = system "Label/Name" {
-    description "Optional description"
-    
-    // Link to ADRs
-    adr ADR001
+ID = system "Label/Name" {
+description "Optional description"
 
-    // ... contains containers
-  }
+// Link to ADRs
+adr ADR001
+
+// ... contains containers
 }
 ```
 
 ## Example
 
 ```sruja
-specification {
-  element system
-}
+element system
 
-model {
-  BankingSystem = system "Internet Banking System" {
-    description "Allows customers to view accounts and make payments."
-  }
+BankingSystem = system "Internet Banking System" {
+description "Allows customers to view accounts and make payments."
 }
 ```

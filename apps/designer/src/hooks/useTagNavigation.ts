@@ -2,12 +2,12 @@
 import { useCallback } from "react";
 import { useUIStore } from "../stores/uiStore";
 import { useSelectionStore } from "../stores/viewStore";
-import type { ArchitectureCanvasRef } from "../components/Canvas/LikeC4Canvas";
+// import type { ArchitectureCanvasRef } from "../components/Canvas/types";
 
 // Global ref to canvas - set by App component
-let globalCanvasRef: React.RefObject<ArchitectureCanvasRef> | null = null;
+let globalCanvasRef: React.RefObject<any> | null = null;
 
-export function setGlobalCanvasRef(ref: React.RefObject<ArchitectureCanvasRef>) {
+export function setGlobalCanvasRef(ref: React.RefObject<any>) {
   globalCanvasRef = ref;
 }
 

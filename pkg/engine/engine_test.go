@@ -8,13 +8,11 @@ import (
 
 func TestValidReferences_PersonContainer(t *testing.T) {
 	dsl := `
-model {
-    Customer = person "Customer"
-    Order = system "Order System" {
-      API = container "Order API"
-    }
-    Customer -> API "Uses"
+Customer = person "Customer"
+Order = system "Order System" {
+  API = container "Order API"
 }
+Customer -> API "Uses"
 `
 	program := parse(t, dsl)
 
@@ -55,13 +53,11 @@ func TestRuleNames(t *testing.T) {
 
 func TestOrphanDetection_ParentSystemMarkedUsed(t *testing.T) {
 	dsl := `
-model {
-    Order = system "Order System" {
-      API = container "Order API"
-    }
-    Customer = person "Customer"
-    Customer -> API "Uses"
+Order = system "Order System" {
+  API = container "Order API"
 }
+Customer = person "Customer"
+Customer -> API "Uses"
 `
 	program := parse(t, dsl)
 
@@ -76,10 +72,8 @@ model {
 
 func TestUniqueIDRule_DuplicateIDs(t *testing.T) {
 	dsl := `
-model {
-    A = system "System A" { X = container "X" }
-    B = system "System B" { X = container "X Duplicate" }
-}
+A = system "System A" { X = container "X" }
+B = system "System B" { X = container "X Duplicate" }
 `
 	program := parse(t, dsl)
 

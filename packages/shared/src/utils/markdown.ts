@@ -2,19 +2,19 @@
 // Utility functions for markdown processing
 // Non-React utilities that can be used across all apps
 
-import { isSSR } from './env';
+import { isSSR } from "./env";
 
 /**
  * Copy text to clipboard.
- * 
+ *
  * @public
  * @param text - Text to copy to clipboard
  * @returns Promise resolving to true if successful, false otherwise
- * 
+ *
  * @remarks
  * Only works in browser environments (not Node.js).
  * Uses modern Clipboard API with fallback to execCommand for older browsers.
- * 
+ *
  * @example
  * ```typescript
  * const success = await copyToClipboard('Hello, world!');
@@ -53,7 +53,8 @@ export async function copyToClipboard(text: string): Promise<boolean> {
       const successful = document.execCommand("copy");
       document.body.removeChild(textArea);
       return successful;
-    } catch (err) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_err) {
       document.body.removeChild(textArea);
       return false;
     }
@@ -65,11 +66,11 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 
 /**
  * Extract Mermaid code blocks from markdown.
- * 
+ *
  * @public
  * @param markdown - Markdown content to parse
  * @returns Array of Mermaid diagram code (without the code fence markers)
- * 
+ *
  * @example
  * ```typescript
  * const markdown = '```mermaid\ngraph LR\nA --> B\n```';
@@ -91,12 +92,12 @@ export function extractMermaidBlocks(markdown: string): readonly string[] {
 
 /**
  * Extract code blocks from markdown.
- * 
+ *
  * @public
  * @param markdown - Markdown content to parse
  * @param language - Optional language filter (e.g., 'javascript', 'typescript')
  * @returns Array of code blocks with language and code content
- * 
+ *
  * @example
  * ```typescript
  * const markdown = '```typescript\nconst x = 1;\n```';
@@ -126,19 +127,19 @@ export function extractCodeBlocks(
 
 /**
  * Sanitize markdown content by removing potentially dangerous HTML.
- * 
+ *
  * @public
  * @param markdown - Markdown content to sanitize
  * @returns Sanitized markdown with dangerous HTML removed
- * 
+ *
  * @remarks
  * Removes:
  * - Script tags
  * - Iframe tags
  * - JavaScript: protocol links
- * 
+ *
  * Preserves markdown syntax and safe HTML.
- * 
+ *
  * @example
  * ```typescript
  * const unsafe = '<script>alert("xss")</script># Hello';
@@ -156,14 +157,14 @@ export function sanitizeMarkdown(markdown: string): string {
 
 /**
  * Get word count from markdown (excluding code blocks and inline code).
- * 
+ *
  * @public
  * @param markdown - Markdown content to analyze
  * @returns Word count (excluding code blocks)
- * 
+ *
  * @remarks
  * Removes code blocks, inline code, and markdown syntax before counting words.
- * 
+ *
  * @example
  * ```typescript
  * const count = getMarkdownWordCount('# Hello world\n```code```');
@@ -183,35 +184,38 @@ export function getMarkdownWordCount(markdown: string): number {
 
 /**
  * Get estimated reading time from markdown.
- * 
+ *
  * @public
  * @param markdown - Markdown content to analyze
  * @param wordsPerMinute - Reading speed in words per minute (default: 200)
  * @returns Estimated reading time in minutes (rounded up)
- * 
+ *
  * @example
  * ```typescript
  * const time = getReadingTime(markdown, 250);
  * console.log(`Estimated reading time: ${time} minutes`);
  * ```
  */
-import { READING_TIME } from './constants';
+import { READING_TIME } from "./constants";
 
-export function getReadingTime(markdown: string, wordsPerMinute: number = READING_TIME.DEFAULT_WPM): number {
+export function getReadingTime(
+  markdown: string,
+  wordsPerMinute: number = READING_TIME.DEFAULT_WPM
+): number {
   const wordCount = getMarkdownWordCount(markdown);
   return Math.ceil(wordCount / wordsPerMinute);
 }
 
 /**
  * Format markdown for preview by normalizing line endings.
- * 
+ *
  * @public
  * @param markdown - Raw markdown content
  * @returns Formatted markdown with normalized line endings
- * 
+ *
  * @remarks
  * Converts Windows (CRLF) and old Mac (CR) line endings to Unix (LF) format.
- * 
+ *
  * @example
  * ```typescript
  * const formatted = formatMarkdownForPreview('Line 1\r\nLine 2');

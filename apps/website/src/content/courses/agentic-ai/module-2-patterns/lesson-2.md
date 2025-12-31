@@ -16,36 +16,30 @@ For complex domains, a single agent can get confused. **Multi-Agent Systems (MAS
 A central "Supervisor" agent routes tasks to worker agents and aggregates results.
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+Supervisor = container "Orchestrator"
+
+Coder = container "Coding Agent" {
+description "Writes and executes code"
 }
 
-model {
-  Supervisor = container "Orchestrator"
-
-  Coder = container "Coding Agent" {
-    description "Writes and executes code"
-  }
-  
-  Writer = container "Documentation Agent" {
-    description "Writes summaries"
-  }
-
-  Supervisor -> Coder "Delegates coding tasks"
-  Supervisor -> Writer "Delegates writing tasks"
-  Coder -> Supervisor "Returns result"
-  Writer -> Supervisor "Returns result"
+Writer = container "Documentation Agent" {
+description "Writes summaries"
 }
 
-views {
-  view index {
-    include *
-  }
+Supervisor -> Coder "Delegates coding tasks"
+Supervisor -> Writer "Delegates writing tasks"
+Coder -> Supervisor "Returns result"
+Writer -> Supervisor "Returns result"
+
+view index {
+include *
 }
 ```
 

@@ -42,7 +42,7 @@ export interface UseValidationReturn {
  * Hook for real-time architecture validation
  */
 export function useValidation(): UseValidationReturn {
-  const data = useArchitectureStore((s) => s.likec4Model);
+  const data = useArchitectureStore((s) => s.model);
 
   const result = useMemo(() => validateArchitecture(data), [data]);
 

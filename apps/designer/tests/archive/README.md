@@ -13,7 +13,7 @@ These tests were archived because they may not be relevant to the current state 
 - `examples-search.spec.ts` - Examples functionality covered in `app.spec.ts`
 - `export-and-shortcuts.spec.ts` - Consolidated into `import-export.spec.ts`
 - `import-export-share.spec.ts` - Consolidated into `import-export.spec.ts`
-- `likec4-integration.spec.ts` - Diagram rendering covered in `app.spec.ts`
+- `diagram-integration.spec.ts` - Diagram rendering covered in `app.spec.ts`
 - `navigation-collapse.spec.ts` - Navigation covered in `app.spec.ts`
 - `navigation-panel.spec.ts` - Navigation covered in `app.spec.ts`
 - `settings-and-mode.spec.ts` - Settings functionality can be added if needed
@@ -36,4 +36,3 @@ The current e2e test suite focuses on core functionality:
 ## Restoring Tests
 
 If you need to restore any of these tests, review them against the current app state and update selectors/assertions as needed.
-

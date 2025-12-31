@@ -1,2 +1,2 @@
-export { LikeC4Canvas as ArchitectureCanvas, type ArchitectureCanvasRef } from "./LikeC4Canvas";
+// ArchitectureCanvas component removed - use SrujaCanvas instead
 export { ContextMenu, type ContextMenuAction } from "./ContextMenu";

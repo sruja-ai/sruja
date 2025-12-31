@@ -17,16 +17,19 @@ Sruja allows you to define your software architecture as code. No more dragging 
 Install the Sruja CLI to compile, validate, and export your diagrams.
 
 ### Mac / Linux
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
 ```
 
 ### From Source (Go)
+
 ```bash
 go install github.com/sruja-ai/sruja/cmd/sruja@latest
 ```
 
-*Verify installation:*
+_Verify installation:_
+
 ```bash
 sruja --version
 # Should output something like: sruja version v0.2.0
@@ -39,38 +42,35 @@ sruja --version
 Let's model a simple web application. Create a file named `hello.sruja`.
 
 ### The Code
+
 Copy and paste this into your file:
 
 ```sruja
 // hello.sruja
 
-specification {
-    element system
-    element container
-    element datastore
-    element person
+element system
+element container
+element datastore
+element person
+
+// 1. Define the System
+webApp = system "My Cool Startup" {
+    description "The next big thing."
+
+    frontend = container "React App"
+    api = container "Go Service"
+    db = datastore "PostgreSQL"
+
+    // 2. Define Connections
+    frontend -> api "Requests Data"
+    api -> db "Reads/Writes"
 }
 
-model {
-    // 1. Define the System
-    webApp = system "My Cool Startup" {
-        description "The next big thing."
+// 3. Define Users
+user = person "Early Adopter"
 
-        frontend = container "React App"
-        api = container "Go Service"
-        db = datastore "PostgreSQL"
-
-        // 2. Define Connections
-        frontend -> api "Requests Data"
-        api -> db "Reads/Writes"
-    }
-
-    // 3. Define Users
-    user = person "Early Adopter"
-
-    // 4. Connect User to System
-    user -> webApp.frontend "Visits Website"
-}
+// 4. Connect User to System
+user -> webApp.frontend "Visits Website"
 ```
 
 ### 3. Generate the Diagram
@@ -102,7 +102,7 @@ Let's break down what just happened.
 3.  **`views`**: Creates custom perspectives from your model. Different views for different audiences (executives, architects, developers).
 4.  **`system`**: A high-level collection of software (C4 Level 1).
 5.  **`container`**: A deployable application (e.g., Docker container, Lambda, Database).
-6.  **`->`**: The magic arrow. This defines a relationship. Sruja (and the C4 model) cares deeply about *how* things talk to each other.
+6.  **`->`**: The magic arrow. This defines a relationship. Sruja (and the C4 model) cares deeply about _how_ things talk to each other.
 
 ---
 
@@ -110,6 +110,6 @@ Let's break down what just happened.
 
 You have the tools. Now get the skills.
 
--   🎓 **Learn the Core**: Take the **[System Design 101](/courses/system-design-101)** course to move beyond "Hello World".
--   🏗 **See Real Patterns**: Copy production-ready code from **[Examples](/docs/examples)**.
--   🛠 **Master the CLI**: Learn how to validate constraints in **[CLI Basics](/tutorials/basic/cli-basics)**.
+- 🎓 **Learn the Core**: Take the **[System Design 101](/courses/system-design-101)** course to move beyond "Hello World".
+- 🏗 **See Real Patterns**: Copy production-ready code from **[Examples](/docs/examples)**.
+- 🛠 **Master the CLI**: Learn how to validate constraints in **[CLI Basics](/tutorials/basic/cli-basics)**.

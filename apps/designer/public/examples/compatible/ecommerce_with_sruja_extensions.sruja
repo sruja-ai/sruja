@@ -1,0 +1,105 @@
+// E-commerce system example with Sruja extensions
+// Demonstrates Sruja syntax with Sruja-specific features (requirements, policies, ADRs)
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+queue = kind "Queue"
+
+// External actors
+customer = person "Customer" {
+description "End user who browses and purchases products"
+}
+
+admin = person "Administrator" {
+description "Platform administrator managing products and orders"
+}
+
+// Main e-commerce system
+ecommerce = system "E-Commerce Platform" {
+description "Comprehensive platform for online retail"
+
+webApp = container "Web Application" {
+  description "React-based storefront"
+  technology "React, TypeScript"
+}
+
+api = container "REST API" {
+  description "Core business logic API"
+  technology "Go, Gin"
+}
+
+db = database "PostgreSQL" {
+  description "Primary transactional database"
+  technology "PostgreSQL 15"
+}
+
+cache = database "Redis" {
+  description "Session and cache store"
+  technology "Redis 7"
+}
+
+events = queue "Event Queue" {
+  description "Async event processing"
+  technology "RabbitMQ"
+}
+}
+
+// External systems
+payments = system "Payment Gateway" {
+description "External payment processor"
+}
+
+shipping = system "Shipping Provider" {
+description "External shipping integration"
+}
+
+// Relationships
+customer -> ecommerce.webApp "browses and purchases"
+admin -> ecommerce.webApp "manages products"
+
+ecommerce.webApp -> ecommerce.api "API calls"
+ecommerce.api -> ecommerce.db "reads/writes"
+ecommerce.api -> ecommerce.cache "caches"
+ecommerce.api -> ecommerce.events "publishes events"
+ecommerce.api -> payments "processes payments"
+ecommerce.api -> shipping "creates shipments"
+
+// Sruja extensions (allowed in model block)
+R1 = requirement functional "Persist user data"
+R2 = requirement constraint "Expose public API"
+R3 = requirement performance "Fast checkout flow"
+
+P1 = policy "All API endpoints must use HTTPS" {
+  category "security"
+}
+
+P2 = policy "GDPR compliance required for user data" {
+  category "compliance"
+}
+
+ADR001 = adr "Adopt Stripe for payments" {
+  status "Accepted"
+  context "Need payment processing"
+  decision "Use Stripe API"
+  consequences "Easy integration, good documentation"
+}
+
+S1 = scenario "User purchases product" {
+  step customer -> ecommerce.webApp "adds item to cart"
+  step ecommerce.webApp -> ecommerce.api "proceeds to checkout"
+  step ecommerce.api -> payments "processes payment"
+  step ecommerce.api -> customer "sends order confirmation"
+}
+
+view landscape {
+title "E-Commerce System Landscape"
+include *
+}
+
+view containers of ecommerce {
+title "E-Commerce Containers"
+include ecommerce.*
+}

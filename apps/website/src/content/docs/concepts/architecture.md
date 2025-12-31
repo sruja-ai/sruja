@@ -13,23 +13,17 @@ The `architecture` block is the root element of a Sruja model. It represents the
 ### Explicit Block (Recommended for large projects)
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
-}
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+datastore = kind "Datastore"
+queue = kind "Queue"
 
-model {
-    // ... define systems, persons, etc. here
-}
+// ... define systems, persons, etc. here
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -38,19 +32,14 @@ views {
 For simple examples, you can use a minimal structure:
 
 ```sruja
-specification {
-  element system
-  element person
-}
+system = kind "System"
+person = kind "Person"
 
-model {
-  MySystem = system "My System"
-  User = person "User"
-}
+MySystem = system "My System"
+User = person "User"
 ```
 
 ## Purpose
 
--   **Scope Boundary**: Everything inside is part of the model.
--   **Naming**: Gives a name to the overall architecture.
-
+- **Scope Boundary**: Everything inside is part of the model.
+- **Naming**: Gives a name to the overall architecture.

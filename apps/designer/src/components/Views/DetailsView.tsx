@@ -6,10 +6,11 @@ import { DetailsSidebarFilters, type FilterState } from "../Details/DetailsSideb
 import { UnifiedDetailsList } from "../Details/UnifiedDetailsList";
 import { deduplicateRequirements } from "../../utils/deduplicateRequirements";
 import { Input } from "@sruja/ui";
+import type { Requirement, ADR, Scenario, Flow, SrujaExtensions } from "@sruja/shared";
 import "./DetailsView.css";
 
 export function DetailsView() {
-  const likec4Model = useArchitectureStore((s) => s.likec4Model);
+  const model = useArchitectureStore((s) => s.model);
   const selectedNodeId = useSelectionStore((s) => s.selectedNodeId);
   const [filters, setFilters] = useState<FilterState>({
     types: new Set(),
@@ -45,7 +46,7 @@ export function DetailsView() {
     };
   }, []);
 
-  const sruja = (likec4Model?.sruja as any) || {};
+  const sruja = (model?.sruja as SrujaExtensions | undefined) || {};
 
   // Deduplicate requirements to match what UnifiedDetailsList displays
   const requirements = useMemo(
@@ -60,17 +61,13 @@ export function DetailsView() {
     const adrs = sruja.adrs ?? [];
 
     const tagSet = new Set<string>();
-    requirements.forEach((r: any) => (r.tags ?? []).forEach((t: string) => tagSet.add(t)));
-    adrs.forEach((a: any) => (a.tags ?? []).forEach((t: string) => tagSet.add(t)));
-    scenarios.forEach((s: any) =>
-      (s.steps ?? []).forEach((step: any) =>
-        (step.tags ?? []).forEach((t: string) => tagSet.add(t))
-      )
+    requirements.forEach((r: Requirement) => (r.tags ?? []).forEach((t: string) => tagSet.add(t)));
+    adrs.forEach((a: ADR) => (a.tags ?? []).forEach((t: string) => tagSet.add(t)));
+    scenarios.forEach((s: Scenario) =>
+      (s.steps ?? []).forEach((step) => (step.tags ?? []).forEach((t: string) => tagSet.add(t)))
     );
-    flows.forEach((f: any) =>
-      (f.steps ?? []).forEach((step: any) =>
-        (step.tags ?? []).forEach((t: string) => tagSet.add(t))
-      )
+    flows.forEach((f: Flow) =>
+      (f.steps ?? []).forEach((step) => (step.tags ?? []).forEach((t: string) => tagSet.add(t)))
     );
     return Array.from(tagSet).sort();
   }, [requirements, sruja.adrs, sruja.scenarios, sruja.flows]);

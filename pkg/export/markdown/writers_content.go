@@ -25,8 +25,8 @@ func (e *Exporter) writeTOC(sb *strings.Builder, arch interface{}, prog *languag
 		Description  *string
 		Systems      []*language.System
 		Persons      []*language.Person
-		Requirements []*language.Requirement
-		ADRs         []*language.ADR
+		Requirements []RequirementInfo
+		ADRs         []ADRInfo
 	})
 	if len(archStruct.Systems) > 0 {
 		sb.WriteString("- [System Architecture](#system-architecture)\n")
@@ -80,7 +80,7 @@ func (e *Exporter) writeMetadata(sb *strings.Builder, prog *language.Program) {
 	sb.WriteString("| Format Version | 1.0 |\n")
 	if prog != nil && prog.Model != nil {
 		fileCount := 0
-		if prog.Model.Pos.Filename != "" {
+		if len(prog.Model.Items) > 0 {
 			fileCount = 1
 		}
 		fmt.Fprintf(sb, "| Source Files | %d |\n", fileCount)
@@ -90,8 +90,8 @@ func (e *Exporter) writeMetadata(sb *strings.Builder, prog *language.Program) {
 
 // writeSummaryStatistics writes summary statistics section
 func (e *Exporter) writeSummaryStatistics(sb *strings.Builder, systems []*language.System,
-	persons []*language.Person, requirements []*language.Requirement,
-	adrs []*language.ADR, prog *language.Program) {
+	persons []*language.Person, requirements []RequirementInfo,
+	adrs []ADRInfo, prog *language.Program) {
 	sb.WriteString("## Summary Statistics\n\n")
 
 	// Count containers, components, data stores, queues
@@ -234,8 +234,8 @@ func (e *Exporter) writeGlossary(sb *strings.Builder, prog *language.Program) {
 	// Collect terms from requirements
 	requirements := extractRequirementsFromModel(prog)
 	for _, req := range requirements {
-		if req.Description != nil {
-			extractTermsFromText(*req.Description, terms)
+		if req.Title != "" {
+			extractTermsFromText(req.Title, terms)
 		}
 	}
 

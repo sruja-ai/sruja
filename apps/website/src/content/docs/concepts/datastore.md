@@ -11,29 +11,21 @@ A **DataStore** represents a database, file system, or any other system that sto
 ## Syntax
 
 ```sruja
-specification {
-  element datastore
-}
+datastore = kind "Datastore"
 
-model {
-  ID = datastore "Label" {
-    description "Optional description"
-    technology "Technology"
-  }
+ID = datastore "Label" {
+description "Optional description"
+technology "Technology"
 }
 ```
 
 ## Example
 
 ```sruja
-specification {
-  element datastore
-}
+datastore = kind "Datastore"
 
-model {
-  DB = datastore "Main Database" {
-    technology "PostgreSQL"
-    description "Stores user and order data"
-  }
+DB = datastore "Main Database" {
+technology "PostgreSQL"
+description "Stores user and order data"
 }
 ```

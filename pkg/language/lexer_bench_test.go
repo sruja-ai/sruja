@@ -5,14 +5,11 @@ import (
 )
 
 func BenchmarkLexer_NextToken(b *testing.B) {
-	input := `
-		specification {
-			element system
-			element container
-			element component
-			element person
+	input := `system = kind "System"
+			container = kind "Container"
+			component = kind "Component"
+			person = kind "Person"
 		}
-		model {
 			User = person "User"
 			System = system "System" {
 				Web = container "Web"
@@ -21,9 +18,7 @@ func BenchmarkLexer_NextToken(b *testing.B) {
 			}
 			User -> System.Web "Uses"
 			System.Web -> System.API "Calls"
-			System.API -> System.DB "Reads/Writes"
-		}
-	`
+			System.API -> System.DB "Reads/Writes"`
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		l := NewLexer(input)

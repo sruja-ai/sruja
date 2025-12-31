@@ -12,31 +12,27 @@ func TestExporter_NestedRelations(t *testing.T) {
 	// DSL with deeply nested relations
 	// Note: Explicit source required for relations (parser doesn't support implicit 'this' yet)
 	dsl := `
-specification {
-	element system
-	element container
-	element component
-}
+	System = kind "System"
+	Container = kind "Container"
+	Component = kind "Component"
 
-model {
-	sys = system "System" {
-		db = container "Database"
+	sys = System "System" {
+		db = Container "Database"
 		
-		backend = container "Backend" {
+		backend = Container "Backend" {
 			// Relation defined inside container
 			backend -> db "writes"
 		
-			api = component "API" {
+			api = Component "API" {
 				// Relation defined INSIDE deeply nested element
 				api -> db "reads"
 			}
 			
-			worker = component "Worker" {
+			worker = Component "Worker" {
 				worker -> db "writes async"
 			}
 		}
 	}
-}
 `
 	parser, err := language.NewParser()
 	if err != nil {

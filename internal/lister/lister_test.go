@@ -31,17 +31,18 @@ func TestListSystems(t *testing.T) {
 		},
 		{
 			name: "empty program",
-			prog: &language.Program{Model: &language.ModelBlock{}},
+			prog: &language.Program{Model: &language.Model{}},
 			want: 0,
 		},
 		{
 			name: "with systems",
-			prog: parseDSL(t, `model {
-				S1 = system "System 1" {
+			prog: parseDSL(t, `
+				System = kind "System"
+				S1 = System "System 1" {
 					description "Desc 1"
 				}
-				S2 = system "System 2"
-			}`),
+				S2 = System "System 2"
+			`),
 			want: 2,
 		},
 	}
@@ -60,14 +61,16 @@ func TestListSystems(t *testing.T) {
 }
 
 func TestListContainers(t *testing.T) {
-	dsl := `model {
-		S1 = system "System 1" {
-			C1 = container "Container 1" {
+	dsl := `
+		System = kind "System"
+		Container = kind "Container"
+		S1 = System "System 1" {
+			C1 = Container "Container 1" {
 				description "Test"
 			}
-			C2 = container "Container 2"
+			C2 = Container "Container 2"
 		}
-	}`
+	`
 	prog := parseDSL(t, dsl)
 
 	result := ListContainers(prog)
@@ -83,16 +86,19 @@ func TestListContainers(t *testing.T) {
 }
 
 func TestListComponents(t *testing.T) {
-	dsl := `model {
-		S1 = system "System 1" {
-			Comp1 = component "Component 1"
-			C1 = container "Container 1" {
-				Comp2 = component "Component 2" {
+	dsl := `
+		System = kind "System"
+		Container = kind "Container"
+		Component = kind "Component"
+		S1 = System "System 1" {
+			Comp1 = Component "Component 1"
+			C1 = Container "Container 1" {
+				Comp2 = Component "Component 2" {
 					description "Nested"
 				}
 			}
 		}
-	}`
+	`
 	prog := parseDSL(t, dsl)
 
 	result := ListComponents(prog)
@@ -118,10 +124,11 @@ func TestListComponents(t *testing.T) {
 }
 
 func TestListPersons(t *testing.T) {
-	dsl := `model {
-		User1 = person "End User"
-		Admin1 = person "Administrator"
-	}`
+	dsl := `
+		Person = kind "Person"
+		User1 = Person "End User"
+		Admin1 = Person "Administrator"
+	`
 	prog := parseDSL(t, dsl)
 
 	result := ListPersons(prog)
@@ -134,11 +141,13 @@ func TestListPersons(t *testing.T) {
 }
 
 func TestListDataStores(t *testing.T) {
-	dsl := `model {
-		S1 = system "System 1" {
-			DB1 = database "Database 1"
+	dsl := `
+		System = kind "System"
+		Database = kind "Database"
+		S1 = System "System 1" {
+			DB1 = Database "Database 1"
 		}
-	}`
+	`
 	prog := parseDSL(t, dsl)
 
 	result := ListDataStores(prog)
@@ -151,11 +160,13 @@ func TestListDataStores(t *testing.T) {
 }
 
 func TestListQueues(t *testing.T) {
-	dsl := `model {
-		S1 = system "System 1" {
-			Q1 = queue "Queue 1"
+	dsl := `
+		System = kind "System"
+		Queue = kind "Queue"
+		S1 = System "System 1" {
+			Q1 = Queue "Queue 1"
 		}
-	}`
+	`
 	prog := parseDSL(t, dsl)
 
 	result := ListQueues(prog)
@@ -165,9 +176,12 @@ func TestListQueues(t *testing.T) {
 }
 
 func TestListScenarios(t *testing.T) {
-	dsl := `model {
-		scenario S1 "User Login" "User logs into system"
-	}`
+	dsl := `
+		Scenario = kind "Scenario"
+		S1 = Scenario "User Login" {
+			// description "User logs into system" (if supported inside)
+		}
+	`
 	prog := parseDSL(t, dsl)
 
 	result := ListScenarios(prog)
@@ -177,10 +191,11 @@ func TestListScenarios(t *testing.T) {
 }
 
 func TestListADRs(t *testing.T) {
-	dsl := `model {
-		adr ADR001 "Use JWT"
-		adr ADR002 "ADR002"
-	}`
+	dsl := `
+		Adr = kind "ADR"
+		ADR001 = Adr "Use JWT"
+		ADR002 = Adr "ADR002"
+	`
 	prog := parseDSL(t, dsl)
 
 	result := ListADRs(prog)

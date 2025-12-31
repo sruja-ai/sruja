@@ -25,8 +25,8 @@ func (r *SLOValidationRule) Validate(program *language.Program) []diagnostics.Di
 	// Pre-allocate diagnostics slice with estimated capacity
 	diags := make([]diagnostics.Diagnostic, 0, 10)
 
-	var validateInElement func(elem *language.LikeC4ElementDef)
-	validateInElement = func(elem *language.LikeC4ElementDef) {
+	var validateInElement func(elem *language.ElementDef)
+	validateInElement = func(elem *language.ElementDef) {
 		body := elem.GetBody()
 		if body == nil {
 			return

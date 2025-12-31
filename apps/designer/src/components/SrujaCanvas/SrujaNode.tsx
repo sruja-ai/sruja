@@ -1,13 +1,23 @@
 import { memo } from "react";
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { Tooltip } from "@mantine/core";
-import { Building2, User, Box, Package, Database, MessageSquare, Component } from "lucide-react";
+import {
+  Building2,
+  User,
+  Box,
+  Package,
+  Database,
+  MessageSquare,
+  Component,
+  AlertTriangle,
+  XCircle,
+} from "lucide-react";
 import { getNodeColors } from "../../utils/colorScheme";
 import { useTheme } from "@sruja/ui";
 import type { C4Node } from "./types";
 import "../Nodes/nodes.css";
 
-// SVG Path Helpers derived from LikeC4
+// SVG Path Helpers
 function cylinderSVGPath(diameter: number, height: number, tilt = 0.065) {
   const radius = Math.round(diameter / 2);
   const rx = radius;
@@ -244,6 +254,30 @@ export const SrujaNode = memo(({ data, selected, width, height }: NodeProps<Node
     "webapp",
   ].includes(kind);
 
+  // Compute capacity badge styles if needed
+  const capacity = data._capacity as any;
+  const hasCapacityBadge = capacity && capacity.replicas;
+  const isHighLoad = hasCapacityBadge && capacity.load > 150;
+  const capacityBadgeStyle = hasCapacityBadge
+    ? {
+        position: "absolute" as const,
+        bottom: -10,
+        right: 10,
+        zIndex: 100,
+        backgroundColor: isHighLoad ? "#fee2e2" : "#eff6ff",
+        borderRadius: "12px",
+        padding: "2px 8px",
+        border: `1px solid ${isHighLoad ? "#ef4444" : "#3b82f6"}`,
+        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+        fontSize: 10,
+        fontWeight: 700,
+        color: isHighLoad ? "#b91c1c" : "#1d4ed8",
+        display: "flex",
+        alignItems: "center",
+        gap: "4px",
+      }
+    : null;
+
   return (
     <>
       {/* All target handles (incoming edges) */}
@@ -316,6 +350,48 @@ export const SrujaNode = memo(({ data, selected, width, height }: NodeProps<Node
             {/* If not SVG, render the div container which wraps content */}
             {!isSvgShape ? renderShape() : null}
           </div>
+
+          {/* Chaos Mode Badges */}
+          {data._chaos && (data._chaos as any).isFailed && (
+            <div
+              style={{
+                position: "absolute",
+                top: -10,
+                right: -10,
+                zIndex: 100,
+                backgroundColor: "#fee2e2",
+                borderRadius: "50%",
+                padding: 4,
+                border: "2px solid #ef4444",
+              }}
+            >
+              <XCircle size={20} color="#ef4444" fill="#fee2e2" />
+            </div>
+          )}
+          {data._chaos && (data._chaos as any).isImpacted && (
+            <div
+              style={{
+                position: "absolute",
+                top: -10,
+                right: -10,
+                zIndex: 100,
+                backgroundColor: "#fef3c7",
+                borderRadius: "50%",
+                padding: 4,
+                border: "2px solid #f59e0b",
+              }}
+            >
+              <AlertTriangle size={20} color="#d97706" fill="#fef3c7" />
+            </div>
+          )}
+
+          {/* Capacity Mode Badges */}
+          {hasCapacityBadge && capacityBadgeStyle && (
+            <div style={capacityBadgeStyle}>
+              <Box size={10} />
+              {capacity.replicas} pods
+            </div>
+          )}
 
           {/* Re-implementing simplified content rendering to fix the nesting mess above */}
           <div

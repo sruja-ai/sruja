@@ -70,8 +70,8 @@ func jsonToDSL(this js.Value, args []js.Value) interface{} {
 
 	// Convert JSON back to AST
 	// ConvertFromJSON removed - Architecture struct removed (old syntax no longer supported)
-	// Use LikeC4 importers instead
-	return result(false, "", "JSON to DSL conversion is no longer supported - Architecture struct removed. Use LikeC4 format instead")
+	// Use JSON importers instead
+	return result(false, "", "JSON to DSL conversion is no longer supported - Architecture struct removed. Use Sruja format instead")
 }
 
 func dslToMermaid(this js.Value, args []js.Value) interface{} {

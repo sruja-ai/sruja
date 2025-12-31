@@ -26,10 +26,10 @@ func TestUniqueIDRule_EmptyID(t *testing.T) {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	// Empty ID is not valid in LikeC4 syntax, so we test with a valid model
-	dsl := `model {
+	// Empty ID is not valid in Sruja syntax, so we test with a valid model
+	dsl := `
 		Sys = system "System"
-	}`
+	`
 
 	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
@@ -45,10 +45,10 @@ func TestUniqueIDRule_EmptyID(t *testing.T) {
 }
 
 func TestUniqueIDRule_DuplicateSystems(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		A = system "System A"
 		A = system "System B"
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}
@@ -59,14 +59,14 @@ func TestUniqueIDRule_DuplicateSystems(t *testing.T) {
 }
 
 func TestUniqueIDRule_DuplicateComponents(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Cont = container "Container" {
 				X = component "X"
 				X = component "X Duplicate"
 			}
 		}
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}
@@ -77,12 +77,12 @@ func TestUniqueIDRule_DuplicateComponents(t *testing.T) {
 }
 
 func TestUniqueIDRule_DuplicateDataStores(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			DB = datastore "Database"
 			DB = datastore "Database Duplicate"
 		}
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}
@@ -93,12 +93,12 @@ func TestUniqueIDRule_DuplicateDataStores(t *testing.T) {
 }
 
 func TestUniqueIDRule_DuplicateQueues(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Q = queue "Queue"
 			Q = queue "Queue Duplicate"
 		}
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}
@@ -109,10 +109,10 @@ func TestUniqueIDRule_DuplicateQueues(t *testing.T) {
 }
 
 func TestUniqueIDRule_DuplicatePersons(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		User = person "User"
 		User = person "User Duplicate"
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}
@@ -123,10 +123,10 @@ func TestUniqueIDRule_DuplicatePersons(t *testing.T) {
 }
 
 func TestUniqueIDRule_DuplicateRequirements(t *testing.T) {
-	dsl := `model {
-		requirement R1 performance "Requirement 1"
-		requirement R1 performance "Requirement 2"
-	}`
+	dsl := `
+		R1 = Requirement performance "Requirement 1"
+		R1 = Requirement performance "Requirement 2"
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}
@@ -137,10 +137,10 @@ func TestUniqueIDRule_DuplicateRequirements(t *testing.T) {
 }
 
 func TestUniqueIDRule_DuplicateADRs(t *testing.T) {
-	dsl := `model {
-		adr ADR001 "ADR 1"
-		adr ADR001 "ADR 2"
-	}`
+	dsl := `
+		ADR001 = Adr "ADR 1"
+		ADR001 = Adr "ADR 2"
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}
@@ -151,12 +151,12 @@ func TestUniqueIDRule_DuplicateADRs(t *testing.T) {
 }
 
 func TestUniqueIDRule_CrossLevelDuplicates(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		X = system "System X"
 		Y = system "System Y" {
 			X = container "Container X"
 		}
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.UniqueIDRule{}

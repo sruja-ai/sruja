@@ -41,47 +41,42 @@ Sruja validates:
 Let's validate a real architecture:
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
-}
+element person
+element system
+element container
+element component
+element datastore
+element queue
 
-model {
-    Customer = person "Customer"
-    
-    ECommerce = system "E-Commerce Platform" {
-        WebApp = container "Web Application" {
-            technology "React"
-        }
-        API = container "REST API" {
-            technology "Go"
-        }
-        ProductDB = datastore "Product Database" {
-            technology "PostgreSQL"
-        }
-        OrderDB = datastore "Order Database" {
-            technology "PostgreSQL"
-        }
+Customer = person "Customer"
+
+ECommerce = system "E-Commerce Platform" {
+    WebApp = container "Web Application" {
+        technology "React"
     }
-    
-    Customer -> ECommerce.WebApp "Browses products"
-    ECommerce.WebApp -> ECommerce.API "Calls API"
-    ECommerce.API -> ECommerce.ProductDB "Reads products"
-    ECommerce.API -> ECommerce.OrderDB "Writes orders"
+    API = container "REST API" {
+        technology "Go"
+    }
+    ProductDB = datastore "Product Database" {
+        technology "PostgreSQL"
+    }
+    OrderDB = datastore "Order Database" {
+        technology "PostgreSQL"
+    }
 }
 
-views {
-  view index {
-    include *
-  }
+Customer -> ECommerce.WebApp "Browses products"
+ECommerce.WebApp -> ECommerce.API "Calls API"
+ECommerce.API -> ECommerce.ProductDB "Reads products"
+ECommerce.API -> ECommerce.OrderDB "Writes orders"
+
+view index {
+include *
 }
 ```
 
 **Validation output:**
+
 ```
 ✅ Valid architecture
 ✅ All references valid
@@ -94,6 +89,7 @@ views {
 ### Error 1: Invalid Reference
 
 **Error message:**
+
 ```
 ❌ Invalid reference: ECommerce.API -> ECommerce.NonExistent "Calls"
    Element 'NonExistent' not found in system 'ECommerce'
@@ -102,6 +98,7 @@ views {
 **Problem**: You're referencing an element that doesn't exist.
 
 **Fix:**
+
 ```sruja
 // ❌ Wrong
 ECommerce.API -> ECommerce.NonExistent "Calls"
@@ -115,6 +112,7 @@ ECommerce.API -> ECommerce.ProductDB "Reads"
 ### Error 2: Duplicate ID
 
 **Error message:**
+
 ```
 ❌ Duplicate ID: 'API' found in system 'ECommerce'
    First occurrence: line 5
@@ -124,25 +122,22 @@ ECommerce.API -> ECommerce.ProductDB "Reads"
 **Problem**: Two elements have the same ID in the same scope.
 
 **Fix:**
+
 ```sruja
-specification {
-  element system
-  element container
+element system
+element container
+
+// EXPECTED_FAILURE: unexpected token
+// ❌ Wrong
+ECommerce = system "E-Commerce" {
+API = container "REST API"
+API = container "GraphQL API"  // Duplicate ID!
 }
 
-model {
-  // EXPECTED_FAILURE: unexpected token
-  // ❌ Wrong
-  ECommerce = system "E-Commerce" {
-    API = container "REST API"
-    API = container "GraphQL API"  // Duplicate ID!
-  }
-
-  // ✅ Correct - use unique IDs
-  ECommerce = system "E-Commerce" {
-    RESTAPI = container "REST API"
-    GraphQLAPI = container "GraphQL API"
-  }
+// ✅ Correct - use unique IDs
+ECommerce = system "E-Commerce" {
+RESTAPI = container "REST API"
+GraphQLAPI = container "GraphQL API"
 }
 ```
 
@@ -151,6 +146,7 @@ model {
 ### Error 3: Orphan Element
 
 **Warning message:**
+
 ```
 ⚠️  Orphan element: ECommerce.Cache
    This element is not referenced by any relation
@@ -161,18 +157,21 @@ model {
 **Fix options:**
 
 1. **Add a relation** (if the element should be used):
+
 ```sruja
 // Add relation to use the cache
 ECommerce.API -> ECommerce.Cache "Reads cache"
 ```
 
 2. **Remove the element** (if it's not needed):
+
 ```sruja
 // Remove if not part of current architecture
 // datastore Cache "Cache" { ... }
 ```
 
 3. **Document why it's isolated** (if intentional):
+
 ```sruja
 datastore Cache "Cache" {
     description "Future: Will be used for product catalog caching"
@@ -187,6 +186,7 @@ datastore Cache "Cache" {
 ### Error 4: Constraint Violation
 
 **Error message:**
+
 ```
 ❌ Constraint violation: 'NoDirectDB' violated
    ECommerce.WebApp -> ECommerce.ProductDB "Direct database access"
@@ -196,6 +196,7 @@ datastore Cache "Cache" {
 **Problem**: A constraint rule is being violated.
 
 **Fix:**
+
 ```sruja
 // EXPECTED_FAILURE: Invalid reference
 // ❌ Wrong - violates constraint
@@ -220,35 +221,29 @@ Sruja detects cycles but **doesn't block them** - cycles are valid architectural
 - **Bidirectional flows**: API ↔ Database (read/write)
 
 ```sruja
-specification {
-  element person
-  element system
-}
+element person
+element system
 
-model {
-  // ✅ Valid - feedback loop
-  User = person "User"
-  Platform = system "Platform"
-  User -> Platform "Makes request"
-  Platform -> User "Sends response"
+// ✅ Valid - feedback loop
+User = person "User"
+Platform = system "Platform"
+User -> Platform "Makes request"
+Platform -> User "Sends response"
 
-  // ✅ Valid - event-driven pattern
-  ServiceA = system "Service A"
-  ServiceB = system "Service B"
-  ServiceA -> ServiceB "Publishes event"
-  ServiceB -> ServiceA "Publishes response event"
+// ✅ Valid - event-driven pattern
+ServiceA = system "Service A"
+ServiceB = system "Service B"
+ServiceA -> ServiceB "Publishes event"
+ServiceB -> ServiceA "Publishes response event"
 
-  // ✅ Valid - mutual dependencies
-  PaymentService = system "Payment Service"
-  OrderService = system "Order Service"
-  PaymentService -> OrderService "Updates order status"
-  OrderService -> PaymentService "Requests payment"
-}
+// ✅ Valid - mutual dependencies
+PaymentService = system "Payment Service"
+OrderService = system "Order Service"
+PaymentService -> OrderService "Updates order status"
+OrderService -> PaymentService "Requests payment"
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -259,6 +254,7 @@ The validator will **inform** you about cycles but won't prevent compilation, as
 Sruja suggests simpler syntax when appropriate:
 
 **Example:**
+
 ```
 ℹ️  Simplicity suggestion: Consider using 'system' instead of nested 'container'
    Current: system App { container Web { ... } }
@@ -283,21 +279,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Sruja
         run: |
           curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
           export PATH="$HOME/go/bin:$PATH"
-      
+
       - name: Lint Architecture
         run: |
           sruja lint architecture.sruja
-      
+
       - name: Export Validation Report
         if: always()
         run: |
           sruja lint --json architecture.sruja > lint-report.json
-      
+
       - name: Upload Report
         if: always()
         uses: actions/upload-artifact@v3
@@ -340,46 +336,40 @@ fi
 Use constraints and conventions for custom validation:
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+// Define constraint
+constraint NoDirectDB "Frontend cannot access databases directly" {
+    description "All database access must go through API layer"
 }
 
-model {
-    // Define constraint
-    constraint NoDirectDB "Frontend cannot access databases directly" {
-        description "All database access must go through API layer"
-    }
-    
-    // Apply convention
-    convention LayeredArchitecture {
-        rule "Frontend → API → Database"
-    }
-    
-    system Platform {
-        Frontend = container "React App" {
-            // This will be validated
-        }
-        API = container "REST API"
-        DB = datastore "PostgreSQL"
-        
-        // ✅ Valid
-        Frontend -> API "Calls API"
-        API -> DB "Reads/Writes"
-        
-        // ❌ Will be caught by validator
-        // Frontend -> DB "Direct access"  // Violates constraint
-    }
+// Apply convention
+convention LayeredArchitecture {
+    rule "Frontend → API → Database"
 }
 
-views {
-  view index {
-    include *
-  }
+system Platform {
+    Frontend = container "React App" {
+        // This will be validated
+    }
+    API = container "REST API"
+    DB = datastore "PostgreSQL"
+
+    // ✅ Valid
+    Frontend -> API "Calls API"
+    API -> DB "Reads/Writes"
+
+    // ❌ Will be caught by validator
+    // Frontend -> DB "Direct access"  // Violates constraint
+}
+
+view index {
+include *
 }
 ```
 
@@ -388,26 +378,20 @@ views {
 ### Step 1: Write Architecture
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+system App {
+    container Web
+    datastore DB
 }
 
-model {
-    system App {
-        container Web
-        datastore DB
-    }
-}
-
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -442,6 +426,7 @@ Use validation in CI/CD to catch issues before they reach production.
 **Scenario**: You have an architecture file with several validation errors.
 
 **Tasks:**
+
 1. Run `sruja lint` on a file
 2. Identify all errors and warnings
 3. Fix each error

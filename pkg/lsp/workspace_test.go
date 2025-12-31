@@ -84,21 +84,19 @@ func TestDocument_ApplyChange(t *testing.T) {
 	}
 }
 func TestRebuildDefs_Complex(t *testing.T) {
-	content := `model {
-  system S1 {
-    container C1 {
-      component Comp1
-    }
-  }
-  system S2 {
-    datastore D1
-    queue Q1
-  }
-  person P1
-  adr ADR1
-  requirement REQ1
-  policy POL1
-}`
+	content := `system S1 {
+container C1 {
+  component Comp1
+}
+}
+system S2 {
+datastore D1
+queue Q1
+}
+person P1
+adr ADR1
+requirement REQ1
+policy POL1`
 	doc := NewDocument("file:///test.sruja", content, 1)
 
 	tests := []struct {

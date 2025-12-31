@@ -11,7 +11,7 @@ import (
 
 // buildContent builds initial content for token estimation
 func (e *Exporter) buildContent(systems []*language.System, persons []*language.Person,
-	requirements []*language.Requirement, adrs []*language.ADR, prog *language.Program) string {
+	requirements []RequirementInfo, adrs []ADRInfo, prog *language.Program) string {
 	sb := engine.GetStringBuilder()
 	defer engine.PutStringBuilder(sb)
 
@@ -21,16 +21,16 @@ func (e *Exporter) buildContent(systems []*language.System, persons []*language.
 
 // writeContent writes the main content based on context
 func (e *Exporter) writeContent(sb *strings.Builder, systems []*language.System,
-	persons []*language.Person, requirements []*language.Requirement,
-	adrs []*language.ADR, prog *language.Program) {
+	persons []*language.Person, requirements []RequirementInfo,
+	adrs []ADRInfo, prog *language.Program) {
 
 	arch := &struct {
 		Name         string
 		Description  *string
 		Systems      []*language.System
 		Persons      []*language.Person
-		Requirements []*language.Requirement
-		ADRs         []*language.ADR
+		Requirements []RequirementInfo
+		ADRs         []ADRInfo
 	}{
 		Name:         "Architecture",
 		Systems:      systems,
@@ -161,8 +161,8 @@ func (e *Exporter) writeContentForAnalysis(sb *strings.Builder, arch interface{}
 // optimizeContent applies token optimizations
 func (e *Exporter) optimizeContent(optimizer *exportpkg.TokenOptimizer,
 	systems []*language.System, persons []*language.Person,
-	requirements []*language.Requirement, adrs []*language.ADR,
-	_ *language.Program) ([]*language.System, []*language.Person, []*language.Requirement, []*language.ADR) {
+	requirements []RequirementInfo, adrs []ADRInfo,
+	_ *language.Program) ([]*language.System, []*language.Person, []RequirementInfo, []ADRInfo) {
 
 	// Truncate descriptions
 	for _, sys := range systems {

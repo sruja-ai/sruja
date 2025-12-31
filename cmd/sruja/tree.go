@@ -53,10 +53,10 @@ func runTree(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func printTreeFromModel(w io.Writer, model *language.ModelBlock, prefix string) {
+func printTreeFromModel(w io.Writer, model *language.Model, prefix string) {
 	_, _ = fmt.Fprintf(w, "%sModel\n", prefix)
-	var printElement func(elem *language.LikeC4ElementDef, indent string)
-	printElement = func(elem *language.LikeC4ElementDef, indent string) {
+	var printElement func(elem *language.ElementDef, indent string)
+	printElement = func(elem *language.ElementDef, indent string) {
 		if elem == nil {
 			return
 		}

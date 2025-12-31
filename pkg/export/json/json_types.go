@@ -56,7 +56,6 @@ type ArchitectureBody struct {
 	Style        map[string]string    `json:"style,omitempty"`
 	Constraints  []ConstraintJSON     `json:"constraints,omitempty"`
 	Conventions  []ConventionJSON     `json:"conventions,omitempty"`
-	Contracts    []ContractJSON       `json:"contracts,omitempty"`
 	Policies     []PolicyJSON         `json:"policies,omitempty"`
 	// Views removed - View type not in simplified plan
 	// Views          []ViewJSON          `json:"views,omitempty"
@@ -84,7 +83,6 @@ type SystemJSON struct {
 	Properties  map[string]string   `json:"properties,omitempty"`
 	Style       map[string]string   `json:"style,omitempty"`
 	SLO         *SLOJSON            `json:"slo,omitempty"`
-	Contracts   []ContractJSON      `json:"contracts,omitempty"`
 	Constraints []ConstraintJSON    `json:"constraints,omitempty"`
 	Conventions []ConventionJSON    `json:"conventions,omitempty"`
 }
@@ -105,7 +103,6 @@ type ContainerJSON struct {
 	Style       map[string]string   `json:"style,omitempty"`
 	Scale       *ScaleJSON          `json:"scale,omitempty"`
 	SLO         *SLOJSON            `json:"slo,omitempty"`
-	Contracts   []ContractJSON      `json:"contracts,omitempty"`
 	Constraints []ConstraintJSON    `json:"constraints,omitempty"`
 	Conventions []ConventionJSON    `json:"conventions,omitempty"`
 }
@@ -213,12 +210,6 @@ type DeploymentNodeJSON struct {
 	ID    string `json:"id"`
 	Label string `json:"label,omitempty"`
 }
-type ContractJSON struct {
-	ID    string            `json:"id"`
-	Label string            `json:"label,omitempty"`
-	Kind  string            `json:"kind,omitempty"`
-	Body  *ContractBodyJSON `json:"body,omitempty"`
-}
 type PolicyJSON struct {
 	ID          string   `json:"id"`
 	Label       string   `json:"label,omitempty"`
@@ -312,36 +303,4 @@ type ScaleJSON struct {
 	Min    *int    `json:"min,omitempty"`
 	Max    *int    `json:"max,omitempty"`
 	Metric *string `json:"metric,omitempty"`
-}
-
-type ContractBodyJSON struct {
-	Version      *string          `json:"version,omitempty"`
-	Status       *string          `json:"status,omitempty"`
-	Endpoint     *string          `json:"endpoint,omitempty"`
-	Method       *string          `json:"method,omitempty"`
-	Request      *SchemaBlockJSON `json:"request,omitempty"`
-	Response     *SchemaBlockJSON `json:"response,omitempty"`
-	Errors       []string         `json:"errors,omitempty"`
-	Schema       *SchemaBlockJSON `json:"schema,omitempty"`
-	Retention    *string          `json:"retention,omitempty"`
-	RequestMap   *string          `json:"requestMap,omitempty"`
-	ResponseMap  *string          `json:"responseMap,omitempty"`
-	ErrorMap     []string         `json:"errorMap,omitempty"`
-	EmitsSchema  *string          `json:"emitsSchema,omitempty"`
-	WritesSchema *string          `json:"writesSchema,omitempty"`
-}
-
-type SchemaBlockJSON struct {
-	Entries []SchemaEntryJSON `json:"entries,omitempty"`
-}
-
-type SchemaEntryJSON struct {
-	Key  string        `json:"key"`
-	Type *TypeSpecJSON `json:"type,omitempty"`
-}
-
-type TypeSpecJSON struct {
-	Name     string   `json:"name"`
-	Generics []string `json:"generics,omitempty"`
-	Optional bool     `json:"optional,omitempty"`
 }

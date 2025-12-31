@@ -2,185 +2,185 @@
 // Real-world example: Microservices E-commerce Platform
 // Demonstrates how implied relationships reduce boilerplate in complex architectures
 
-specification {
-  element person
-  element system
-  element container
-  element component
-  element database
-  element queue
-}
 
-model {
-  // External actors
-  customer = person "Customer"
-  admin = person "Administrator"
-  supportAgent = person "Support Agent"
-  
-  // Main system with multiple services
-  ecommerce = system "E-Commerce Platform" {
-    // Frontend services
-    webApp = container "Web Application" {
-      technology "React, TypeScript"
-      productCatalog = component "Product Catalog"
-      shoppingCart = component "Shopping Cart"
-      checkout = component "Checkout Flow"
-    }
-    
-    mobileApp = container "Mobile Application" {
-      technology "React Native"
-      productBrowser = component "Product Browser"
-      cartManager = component "Cart Manager"
-    }
-    
-    // Backend services
-    productService = container "Product Service" {
-      technology "Go, gRPC"
-      productApi = component "Product API"
-      searchEngine = component "Search Engine"
-    }
-    
-    orderService = container "Order Service" {
-      technology "Java, Spring Boot"
-      orderApi = component "Order API"
-      orderProcessor = component "Order Processor"
-    }
-    
-    paymentService = container "Payment Service" {
-      technology "Node.js, Express"
-      paymentApi = component "Payment API"
-      paymentGateway = component "Payment Gateway"
-    }
-    
-    userService = container "User Service" {
-      technology "Python, FastAPI"
-      authApi = component "Authentication API"
-      profileApi = component "Profile API"
-    }
-    
-    // Data stores
-    productDb = database "Product Database" {
-      technology "PostgreSQL"
-    }
-    
-    orderDb = database "Order Database" {
-      technology "PostgreSQL"
-    }
-    
-    userDb = database "User Database" {
-      technology "MongoDB"
-    }
-    
-    cache = database "Redis Cache" {
-      technology "Redis"
-    }
-    
-    // Message queue
-    eventQueue = queue "Event Queue" {
-      technology "Kafka"
-    }
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+queue = kind "Queue"
+
+
+
+// External actors
+customer = person "Customer"
+admin = person "Administrator"
+supportAgent = person "Support Agent"
+
+// Main system with multiple services
+ecommerce = system "E-Commerce Platform" {
+  // Frontend services
+  webApp = container "Web Application" {
+    technology "React, TypeScript"
+    productCatalog = component "Product Catalog"
+    shoppingCart = component "Shopping Cart"
+    checkout = component "Checkout Flow"
   }
   
-  // External services
-  paymentProvider = system "Payment Provider" {
-    metadata {
-      tags ["external"]
-    }
+  mobileApp = container "Mobile Application" {
+    technology "React Native"
+    productBrowser = component "Product Browser"
+    cartManager = component "Cart Manager"
   }
   
-  emailService = system "Email Service" {
-    metadata {
-      tags ["external"]
-    }
+  // Backend services
+  productService = container "Product Service" {
+    technology "Go, gRPC"
+    productApi = component "Product API"
+    searchEngine = component "Search Engine"
   }
   
-  analyticsService = system "Analytics Service" {
-    metadata {
-      tags ["external"]
-    }
+  orderService = container "Order Service" {
+    technology "Java, Spring Boot"
+    orderApi = component "Order API"
+    orderProcessor = component "Order Processor"
   }
   
-  // Relationships - With implied relationships, we only need to define
-  // relationships to specific containers/components, and parent relationships
-  // are automatically inferred
-  
-  // Customer interactions - only define specific container relationships
-  customer -> ecommerce.webApp "browses products via"
-  customer -> ecommerce.webApp.productCatalog "views products in"
-  customer -> ecommerce.webApp.shoppingCart "adds items to"
-  customer -> ecommerce.webApp.checkout "completes purchase via"
-  customer -> ecommerce.mobileApp "uses mobile app"
-  
-  // Service-to-service communication
-  ecommerce.webApp -> ecommerce.productService "fetches products from"
-  ecommerce.webApp -> ecommerce.orderService "creates orders via"
-  ecommerce.webApp -> ecommerce.paymentService "processes payments through"
-  ecommerce.webApp -> ecommerce.userService "authenticates users with"
-  
-  ecommerce.mobileApp -> ecommerce.productService "fetches products from"
-  ecommerce.mobileApp -> ecommerce.orderService "creates orders via"
-  
-  // Service to database relationships
-  ecommerce.productService -> ecommerce.productDb "reads and writes to"
-  ecommerce.productService -> ecommerce.cache "caches products in"
-  ecommerce.orderService -> ecommerce.orderDb "reads and writes to"
-  ecommerce.userService -> ecommerce.userDb "reads and writes to"
-  
-  // Event-driven communication
-  ecommerce.orderService -> ecommerce.eventQueue "publishes order events to"
-  ecommerce.paymentService -> ecommerce.eventQueue "publishes payment events to"
-  
-  // External service integrations
-  ecommerce.paymentService -> paymentProvider "processes payments through"
-  ecommerce.orderService -> emailService "sends order confirmations via"
-  ecommerce.userService -> emailService "sends verification emails via"
-  ecommerce.webApp -> analyticsService "tracks user behavior with"
-  
-  // Admin and support interactions
-  admin -> ecommerce.orderService "manages orders via"
-  admin -> ecommerce.productService "manages products via"
-  supportAgent -> ecommerce.orderService "views order details in"
-  supportAgent -> ecommerce.userService "views user profiles in"
-  
-  // The following relationships are automatically inferred:
-  //   customer -> ecommerce (from customer -> ecommerce.webApp.*)
-  //   customer -> ecommerce (from customer -> ecommerce.mobileApp)
-  //   ecommerce.webApp -> ecommerce (from ecommerce.webApp -> ecommerce.*Service)
-  //   ecommerce.productService -> ecommerce (from ecommerce.productService -> ecommerce.productDb)
-  //   admin -> ecommerce (from admin -> ecommerce.orderService)
-  //   supportAgent -> ecommerce (from supportAgent -> ecommerce.*Service)
-  //   ecommerce -> paymentProvider (from ecommerce.paymentService -> paymentProvider)
-  //   ecommerce -> emailService (from ecommerce.*Service -> emailService)
-  //   ecommerce -> analyticsService (from ecommerce.webApp -> analyticsService)
-  
-  requirement R1 functional "Must handle 100k concurrent users"
-  requirement R2 performance "API response time < 200ms (p95)"
-  requirement R3 availability "99.9% uptime SLA"
-  requirement R4 security "PCI-DSS compliant for payment processing"
-  
-  adr ADR001 "Microservices Architecture" {
-    status "accepted"
-    context "Need independent scaling and deployment"
-    decision "Adopt microservices architecture with service mesh"
-    consequences "Gain: Independent scaling, deployment. Trade-off: Increased complexity, network latency"
+  paymentService = container "Payment Service" {
+    technology "Node.js, Express"
+    paymentApi = component "Payment API"
+    paymentGateway = component "Payment Gateway"
   }
   
-  adr ADR002 "Event-Driven Communication" {
-    status "accepted"
-    context "Services need to communicate asynchronously"
-    decision "Use Kafka for event streaming"
-    consequences "Gain: Loose coupling, scalability. Trade-off: Eventual consistency, complexity"
+  userService = container "User Service" {
+    technology "Python, FastAPI"
+    authApi = component "Authentication API"
+    profileApi = component "Profile API"
+  }
+  
+  // Data stores
+  productDb = database "Product Database" {
+    technology "PostgreSQL"
+  }
+  
+  orderDb = database "Order Database" {
+    technology "PostgreSQL"
+  }
+  
+  userDb = database "User Database" {
+    technology "MongoDB"
+  }
+  
+  cache = database "Redis Cache" {
+    technology "Redis"
+  }
+  
+  // Message queue
+  eventQueue = queue "Event Queue" {
+    technology "Kafka"
   }
 }
 
-views {
-  view index {
-    title "Microservices E-commerce Platform"
-    include *
-  }
-  
-  view containers of ecommerce {
-    title "E-Commerce Containers"
-    include ecommerce.*
+// External services
+paymentProvider = system "Payment Provider" {
+  metadata {
+    tags ["external"]
   }
 }
+
+emailService = system "Email Service" {
+  metadata {
+    tags ["external"]
+  }
+}
+
+analyticsService = system "Analytics Service" {
+  metadata {
+    tags ["external"]
+  }
+}
+
+// Relationships - With implied relationships, we only need to define
+// relationships to specific containers/components, and parent relationships
+// are automatically inferred
+
+// Customer interactions - only define specific container relationships
+customer -> ecommerce.webApp "browses products via"
+customer -> ecommerce.webApp.productCatalog "views products in"
+customer -> ecommerce.webApp.shoppingCart "adds items to"
+customer -> ecommerce.webApp.checkout "completes purchase via"
+customer -> ecommerce.mobileApp "uses mobile app"
+
+// Service-to-service communication
+ecommerce.webApp -> ecommerce.productService "fetches products from"
+ecommerce.webApp -> ecommerce.orderService "creates orders via"
+ecommerce.webApp -> ecommerce.paymentService "processes payments through"
+ecommerce.webApp -> ecommerce.userService "authenticates users with"
+
+ecommerce.mobileApp -> ecommerce.productService "fetches products from"
+ecommerce.mobileApp -> ecommerce.orderService "creates orders via"
+
+// Service to database relationships
+ecommerce.productService -> ecommerce.productDb "reads and writes to"
+ecommerce.productService -> ecommerce.cache "caches products in"
+ecommerce.orderService -> ecommerce.orderDb "reads and writes to"
+ecommerce.userService -> ecommerce.userDb "reads and writes to"
+
+// Event-driven communication
+ecommerce.orderService -> ecommerce.eventQueue "publishes order events to"
+ecommerce.paymentService -> ecommerce.eventQueue "publishes payment events to"
+
+// External service integrations
+ecommerce.paymentService -> paymentProvider "processes payments through"
+ecommerce.orderService -> emailService "sends order confirmations via"
+ecommerce.userService -> emailService "sends verification emails via"
+ecommerce.webApp -> analyticsService "tracks user behavior with"
+
+// Admin and support interactions
+admin -> ecommerce.orderService "manages orders via"
+admin -> ecommerce.productService "manages products via"
+supportAgent -> ecommerce.orderService "views order details in"
+supportAgent -> ecommerce.userService "views user profiles in"
+
+// The following relationships are automatically inferred:
+//   customer -> ecommerce (from customer -> ecommerce.webApp.*)
+//   customer -> ecommerce (from customer -> ecommerce.mobileApp)
+//   ecommerce.webApp -> ecommerce (from ecommerce.webApp -> ecommerce.*Service)
+//   ecommerce.productService -> ecommerce (from ecommerce.productService -> ecommerce.productDb)
+//   admin -> ecommerce (from admin -> ecommerce.orderService)
+//   supportAgent -> ecommerce (from supportAgent -> ecommerce.*Service)
+//   ecommerce -> paymentProvider (from ecommerce.paymentService -> paymentProvider)
+//   ecommerce -> emailService (from ecommerce.*Service -> emailService)
+//   ecommerce -> analyticsService (from ecommerce.webApp -> analyticsService)
+
+R1 = requirement functional "Must handle 100k concurrent users"
+R2 = requirement performance "API response time < 200ms (p95)"
+R3 = requirement availability "99.9% uptime SLA"
+R4 = requirement security "PCI-DSS compliant for payment processing"
+
+ADR001 = adr "Microservices Architecture" {
+  status "accepted"
+  context "Need independent scaling and deployment"
+  decision "Adopt microservices architecture with service mesh"
+  consequences "Gain: Independent scaling, deployment. Trade-off: Increased complexity, network latency"
+}
+
+ADR002 = adr "Event-Driven Communication" {
+  status "accepted"
+  context "Services need to communicate asynchronously"
+  decision "Use Kafka for event streaming"
+  consequences "Gain: Loose coupling, scalability. Trade-off: Eventual consistency, complexity"
+}
+
+
+
+view index {
+  title "Microservices E-commerce Platform"
+  include *
+}
+
+view containers of ecommerce {
+  title "E-Commerce Containers"
+  include ecommerce.*
+}
+

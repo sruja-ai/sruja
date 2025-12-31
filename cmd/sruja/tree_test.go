@@ -11,13 +11,15 @@ import (
 func TestRunTree(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
-	content := `model {
-		system S "System" {
-			container C "Container" {
-				component Comp "Component"
+	content := `
+		container = kind "Container"
+		component = kind "Component"
+		S = system "System" {
+			C = container "Container" {
+				Comp = component "Component"
 			}
 		}
-	}`
+	`
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}

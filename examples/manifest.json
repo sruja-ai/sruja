@@ -71,6 +71,20 @@
       "description": "Reusing components via shared libraries"
     },
     {
+      "file": "demo_stdlib_imports.sruja",
+      "name": "Standard Library Imports",
+      "order": 11,
+      "category": "demo",
+      "description": "Using stdlib imports to avoid manual kind declarations"
+    },
+    {
+      "file": "demo_deployment.sruja",
+      "name": "Deployment",
+      "order": 12,
+      "category": "demo",
+      "description": "Modeling deployment environments and infrastructure"
+    },
+    {
       "file": "pattern_microservices.sruja",
       "name": "Microservices Pattern",
       "order": 20,

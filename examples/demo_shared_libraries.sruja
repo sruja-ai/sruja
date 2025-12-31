@@ -1,20 +1,20 @@
 // examples/demo_shared_libraries.sruja
 // Shared Model Example
 
-specification {
-  element system
-  element database
+
+system = kind "System"
+database = kind "Database"
+
+
+
+shared = system "Shared" {
+  sharedDb = database "Shared DB"
 }
 
-model {
-  shared = system "Shared" {
-    sharedDb = database "Shared DB"
-  }
+
+
+view index {
+  title "Shared Model"
+  include *
 }
 
-views {
-  view index {
-    title "Shared Model"
-    include *
-  }
-}

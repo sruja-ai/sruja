@@ -1,0 +1,142 @@
+/* apps/designer/src/components/SRE/ReliabilityMetrics.css */
+.reliability-metrics {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-background, #ffffff);
+}
+
+.reliability-metrics-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-surface, #f1f5f9);
+}
+
+.reliability-metrics-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary, #1e293b);
+  margin: 0;
+}
+
+.reliability-metrics-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reliability-metric {
+  padding: 16px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  background: var(--color-background, #ffffff);
+}
+
+.reliability-metric.metric-healthy {
+  border-left: 3px solid #22c55e;
+}
+
+.reliability-metric.metric-warning {
+  border-left: 3px solid #f59e0b;
+}
+
+.reliability-metric.metric-critical {
+  border-left: 3px solid #ef4444;
+}
+
+.reliability-metric-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.reliability-metric-info {
+  flex: 1;
+}
+
+.reliability-metric-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary, #1e293b);
+  margin-bottom: 8px;
+}
+
+.reliability-metric-value {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.reliability-metric-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.icon-healthy {
+  color: #22c55e;
+}
+
+.icon-warning {
+  color: #f59e0b;
+}
+
+.icon-critical {
+  color: #ef4444;
+}
+
+.trend-icon {
+  flex-shrink: 0;
+}
+
+.trend-good {
+  color: #22c55e;
+}
+
+.trend-bad {
+  color: #ef4444;
+}
+
+.trend-stable {
+  color: #6b7280;
+}
+
+.reliability-metric-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--color-surface, #f3f4f6);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.reliability-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 3px;
+}
+
+/* Dark mode support */
+[data-theme="dark"] .reliability-metrics {
+  background: var(--color-background, #0f172a);
+}
+
+[data-theme="dark"] .reliability-metrics-header {
+  background: var(--color-surface, #1e293b);
+  border-color: var(--color-border, #334155);
+}
+
+[data-theme="dark"] .reliability-metric {
+  background: var(--color-background, #0f172a);
+  border-color: var(--color-border, #334155);
+}
+
+[data-theme="dark"] .reliability-metric-bar {
+  background: var(--color-surface, #0f172a);
+}

@@ -9,11 +9,11 @@ import (
 )
 
 func TestExplainElement_System(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		API = system "API Service" {
 			description "Main API"
 		}
-	}`
+	`
 	parser, err := language.NewParser()
 	if err != nil {
 		t.Fatalf("Failed to create parser: %v", err)
@@ -40,9 +40,9 @@ func TestExplainElement_System(t *testing.T) {
 }
 
 func TestExplainElement_NotFound(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		API = system "API Service"
-	}`
+	`
 	parser, err := language.NewParser()
 	if err != nil {
 		t.Fatalf("Failed to create parser: %v", err)
@@ -72,11 +72,11 @@ func TestExplainElement_NoArchitecture(t *testing.T) {
 }
 
 func TestExplainElement_Container(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Cont = container "Container"
 		}
-	}`
+	`
 	parser, err := language.NewParser()
 	if err != nil {
 		t.Fatalf("Failed to create parser: %v", err)
@@ -97,7 +97,7 @@ func TestExplainElement_Container(t *testing.T) {
 }
 
 func TestExplainElement_Component(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Cont = container "Container" {
 				Comp = component "Component" {
@@ -105,7 +105,7 @@ func TestExplainElement_Component(t *testing.T) {
 				}
 			}
 		}
-	}`
+	`
 	parser, err := language.NewParser()
 	if err != nil {
 		t.Fatalf("Failed to create parser: %v", err)
@@ -129,9 +129,9 @@ func TestExplainElement_Component(t *testing.T) {
 }
 
 func TestExplainElement_Person(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		User = person "End User"
-	}`
+	`
 	parser, err := language.NewParser()
 	if err != nil {
 		t.Fatalf("Failed to create parser: %v", err)
@@ -152,11 +152,11 @@ func TestExplainElement_Person(t *testing.T) {
 }
 
 func TestFindElement_DataStore(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			DB = database "Database"
 		}
-	}`
+	`
 	parser, err := language.NewParser()
 	if err != nil {
 		t.Fatalf("Failed to create parser: %v", err)
@@ -177,11 +177,11 @@ func TestFindElement_DataStore(t *testing.T) {
 }
 
 func TestFindElement_Queue(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Q = queue "Queue"
 		}
-	}`
+	`
 	parser, err := language.NewParser()
 	if err != nil {
 		t.Fatalf("Failed to create parser: %v", err)
@@ -202,11 +202,11 @@ func TestFindElement_Queue(t *testing.T) {
 }
 
 func TestFindElement_ComponentInSystem(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Comp = component "Component"
 		}
-	}`
+	`
 	parser, err := language.NewParser()
 	if err != nil {
 		t.Fatalf("Failed to create parser: %v", err)

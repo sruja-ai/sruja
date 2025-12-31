@@ -20,8 +20,8 @@ func (r *OrphanDetectionRule) Validate(program *language.Program) []diagnostics.
 		return nil
 	}
 
-	// Collect all elements from LikeC4 Model
-	defined, _ := collectLikeC4Elements(program.Model)
+	// Collect all elements from Model
+	defined, _ := collectElements(program.Model)
 
 	// Maps to store element locations and usage
 	definedLoc := make(map[string]language.SourceLocation, len(defined))
@@ -40,53 +40,24 @@ func (r *OrphanDetectionRule) Validate(program *language.Program) []diagnostics.
 	}
 
 	// --- 1. Populate defined elements & parent relationships ---
-	var registerElement func(elem *language.LikeC4ElementDef, parentFQN string)
-	registerElement = func(elem *language.LikeC4ElementDef, parentFQN string) {
-		if elem == nil {
-			return
-		}
-
-		id := elem.GetID()
-		if id == "" {
-			return
-		}
-
-		fqn := id
-		if parentFQN != "" {
-			fqn = buildQualifiedIDFromParts(parentFQN, id)
-		}
-
-		loc := elem.Location()
-		definedLoc[fqn] = loc
-		if parentFQN != "" {
-			parent[fqn] = parentFQN
-		}
-
-		// Recurse into nested elements
-		body := elem.GetBody()
-		if body != nil {
-			for _, bodyItem := range body.Items {
-				if bodyItem.Element != nil {
-					registerElement(bodyItem.Element, fqn)
-				}
+	// --- 1. Populate defined elements & parent relationships ---
+	for fqn, def := range defined {
+		if def != nil {
+			definedLoc[fqn] = def.Location()
+			if idx := strings.LastIndexByte(fqn, '.'); idx != -1 {
+				parent[fqn] = fqn[:idx]
 			}
 		}
 	}
 
-	// Register all top-level elements
+	// Register other top-level items (governance elements via ElementDef)
 	for _, item := range program.Model.Items {
-		if item.ElementDef != nil {
-			registerElement(item.ElementDef, "")
-		}
-		// Also register other top-level items (scenarios, ADRs, etc.) if they can be referenced
-		if item.Scenario != nil {
-			definedLoc[item.Scenario.ID] = item.Scenario.Location()
-		}
-		if item.ADR != nil {
-			definedLoc[item.ADR.ID] = item.ADR.Location()
-		}
-		if item.Requirement != nil {
-			definedLoc[item.Requirement.ID] = item.Requirement.Location()
+		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
+			a := item.ElementDef.Assignment
+			switch a.Kind {
+			case "scenario", "story", "adr", "requirement", "policy", "flow":
+				definedLoc[a.Name] = item.ElementDef.Location()
+			}
 		}
 	}
 
@@ -105,7 +76,7 @@ func (r *OrphanDetectionRule) Validate(program *language.Program) []diagnostics.
 	// --- 2. Resolve references ---
 	resolve := func(ref, scope string) string {
 		// 1. Try absolute/global match (fast path)
-		if defined[ref] {
+		if defined[ref] != nil {
 			return ref
 		}
 
@@ -113,7 +84,7 @@ func (r *OrphanDetectionRule) Validate(program *language.Program) []diagnostics.
 		currScope := scope
 		for currScope != "" {
 			candidate := buildQualifiedIDFromParts(currScope, ref)
-			if defined[candidate] {
+			if defined[candidate] != nil {
 				return candidate
 			}
 			lastDot := strings.LastIndexByte(currScope, '.')
@@ -133,6 +104,8 @@ func (r *OrphanDetectionRule) Validate(program *language.Program) []diagnostics.
 						if id[len(id)-suffixLen-1] == '.' {
 							return id
 						}
+					} else if len(id) == suffixLen && id == ref {
+						return id
 					}
 				}
 			}

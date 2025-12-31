@@ -9,18 +9,23 @@ export {
   type WasmApi,
 } from "@sruja/shared";
 
-// Helper function to convert DSL to LikeC4 JSON format
-export async function convertDslToLikeC4(dsl: string, filename?: string): Promise<object | null> {
+// Helper function to convert DSL to Sruja model JSON format
+export async function convertDslToModel(dsl: string, filename?: string): Promise<object | null> {
   const { getWasmApi } = await import("@sruja/shared");
   const api = await getWasmApi();
-  if (!api || !api.dslToLikeC4) {
+  if (!api || !api.dslToModel) {
     return null;
   }
   try {
-    const jsonStr = await api.dslToLikeC4(dsl, filename);
+    const jsonStr = await api.dslToModel(dsl, filename);
     return JSON.parse(jsonStr);
   } catch (error) {
-    console.error("Failed to convert DSL to LikeC4 format:", error);
+    const { logger } = await import("@sruja/shared");
+    logger.error("Failed to convert DSL to model format", {
+      component: "wasm",
+      action: "convert_dsl_to_model",
+      error: error instanceof Error ? error.message : String(error),
+    });
     throw error; // Re-throw to preserve error details
   }
 }

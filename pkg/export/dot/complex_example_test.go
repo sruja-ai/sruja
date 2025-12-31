@@ -13,19 +13,15 @@ import (
 func TestComplexExampleWithSpacingImprovements(t *testing.T) {
 	// Create a diagram similar to the e-commerce platform that had overlap issues
 	dsl := `
-specification {
-	element person
-	element system
-}
+	Person = kind "Person"
+	System = kind "System"
 
-model {
-	user = person "User"
-	webapp = system "WebApp"
-	database = system "Database"
+	user = Person "User"
+	webapp = System "WebApp"
+	database = System "Database"
 	
 	user -> webapp "Uses"
 	webapp -> database "Stores data"
-}
 `
 	parser, err := language.NewParser()
 	if err != nil {

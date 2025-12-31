@@ -7,6 +7,7 @@ import (
 	"github.com/sourcegraph/go-lsp"
 	"github.com/sruja-ai/sruja/pkg/engine"
 	"github.com/sruja-ai/sruja/pkg/language"
+	"github.com/sruja-ai/sruja/pkg/stdlib"
 )
 
 type Document struct {
@@ -167,7 +168,11 @@ func (d *Document) rebuildDefs() {
 	for i, line := range d.lines {
 		trimmed := strings.TrimSpace(line)
 		// System
-		if id, ok := extractID(trimmed, "system"); ok {
+		id, ok := extractID(trimmed, "system")
+		if !ok {
+			id, ok = extractID(trimmed, "System")
+		}
+		if ok {
 			col := strings.Index(line, id)
 			if col < 0 {
 				col = 0
@@ -183,7 +188,11 @@ func (d *Document) rebuildDefs() {
 			continue
 		}
 		// Container
-		if id, ok := extractID(trimmed, "container"); ok {
+		id, ok = extractID(trimmed, "container")
+		if !ok {
+			id, ok = extractID(trimmed, "Container")
+		}
+		if ok {
 			col := strings.Index(line, id)
 			if col < 0 {
 				col = 0
@@ -205,7 +214,11 @@ func (d *Document) rebuildDefs() {
 			continue
 		}
 		// Component
-		if id, ok := extractID(trimmed, "component"); ok {
+		id, ok = extractID(trimmed, "component")
+		if !ok {
+			id, ok = extractID(trimmed, "Component")
+		}
+		if ok {
 			col := strings.Index(line, id)
 			if col < 0 {
 				col = 0
@@ -231,7 +244,17 @@ func (d *Document) rebuildDefs() {
 			continue
 		}
 		// DataStore
-		if id, ok := extractID(trimmed, "datastore"); ok {
+		id, ok = extractID(trimmed, "datastore")
+		if !ok {
+			id, ok = extractID(trimmed, "DataStore")
+		}
+		if !ok {
+			id, ok = extractID(trimmed, "database")
+		}
+		if !ok {
+			id, ok = extractID(trimmed, "Database")
+		}
+		if ok {
 			col := strings.Index(line, id)
 			if col < 0 {
 				col = 0
@@ -249,7 +272,11 @@ func (d *Document) rebuildDefs() {
 			continue
 		}
 		// Queue
-		if id, ok := extractID(trimmed, "queue"); ok {
+		id, ok = extractID(trimmed, "queue")
+		if !ok {
+			id, ok = extractID(trimmed, "Queue")
+		}
+		if ok {
 			col := strings.Index(line, id)
 			if col < 0 {
 				col = 0
@@ -267,7 +294,11 @@ func (d *Document) rebuildDefs() {
 			continue
 		}
 		// Person
-		if id, ok := extractID(trimmed, "person"); ok {
+		id, ok = extractID(trimmed, "person")
+		if !ok {
+			id, ok = extractID(trimmed, "Person")
+		}
+		if ok {
 			col := strings.Index(line, id)
 			if col < 0 {
 				col = 0
@@ -279,7 +310,14 @@ func (d *Document) rebuildDefs() {
 			continue
 		}
 		// ADR
-		if id, ok := extractID(trimmed, "adr"); ok {
+		id, ok = extractID(trimmed, "adr")
+		if !ok {
+			id, ok = extractID(trimmed, "Adr")
+		}
+		if !ok {
+			id, ok = extractID(trimmed, "ADR")
+		}
+		if ok {
 			col := strings.Index(line, id)
 			if col < 0 {
 				col = 0
@@ -291,7 +329,11 @@ func (d *Document) rebuildDefs() {
 			continue
 		}
 		// Requirement
-		if id, ok := extractID(trimmed, "requirement"); ok {
+		id, ok = extractID(trimmed, "requirement")
+		if !ok {
+			id, ok = extractID(trimmed, "Requirement")
+		}
+		if ok {
 			col := strings.Index(line, id)
 			if col < 0 {
 				col = 0
@@ -303,7 +345,11 @@ func (d *Document) rebuildDefs() {
 			continue
 		}
 		// Policy
-		if id, ok := extractID(trimmed, "policy"); ok {
+		id, ok = extractID(trimmed, "policy")
+		if !ok {
+			id, ok = extractID(trimmed, "Policy")
+		}
+		if ok {
 			col := strings.Index(line, id)
 			if col < 0 {
 				col = 0
@@ -345,7 +391,9 @@ func (d *Document) rebuildDefs() {
 	}
 }
 
-// EnsureParsed parses the document text and caches the program for reuse
+// EnsureParsed parses the document text and caches the program for reuse.
+// It also loads stdlib and merges imports so that imported kinds are available
+// for LSP features like completion and validation.
 func (d *Document) EnsureParsed() *language.Program {
 	if d.program != nil {
 		return d.program
@@ -359,11 +407,40 @@ func (d *Document) EnsureParsed() *language.Program {
 		return nil
 	}
 
+	// Create a workspace to merge imports (including stdlib)
+	ws := language.NewWorkspace()
+	ws.AddProgram(string(d.URI), program, nil)
+
+	// Load stdlib into workspace for import resolution
+	loadStdLibIntoWorkspace(p, ws)
+
+	// Merge imports from stdlib into the program
+	ws.ResolveAndMergeImports()
+
 	// Resolve references so LSP features work on canonical IDs
 	engine.RunResolution(program)
 
 	d.program = program
 	return program
+}
+
+// loadStdLibIntoWorkspace loads the embedded stdlib files into a workspace.
+func loadStdLibIntoWorkspace(p *language.Parser, ws *language.Workspace) {
+	// Load core.sruja from embedded stdlib
+	stdlibFiles := []string{"core.sruja", "styles.sruja"}
+	for _, filename := range stdlibFiles {
+		content, err := stdlib.FS.ReadFile(filename)
+		if err != nil {
+			continue
+		}
+		path := "sruja.ai/stdlib/" + filename
+		if _, exists := ws.Programs[path]; !exists {
+			prog, diags, err := p.Parse(path, string(content))
+			if err == nil {
+				ws.AddProgram(path, prog, diags)
+			}
+		}
+	}
 }
 
 type Workspace struct {

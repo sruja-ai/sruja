@@ -1,3 +1,0 @@
-Exit prior to config file resolving
-cause
-call config.load() before reading values

@@ -12,25 +12,21 @@ import (
 func TestSpacingImprovements(t *testing.T) {
 	// Use a simple e-commerce example similar to what the quality test uses
 	dsl := `
-specification {
-	element person
-	element system
-}
+	Person = kind "Person"
+	System = kind "System"
 
-model {
-	user = person "User"
+	user = Person "User"
 	
-	webapp = system "Web Application" {
+	webapp = System "Web Application" {
 		technology "React"
 	}
 	
-	database = system "Database" {
+	database = System "Database" {
 		technology "PostgreSQL"
 	}
 	
 	user -> webapp "Uses"
 	webapp -> database "Stores data"
-}
 `
 	parser, err := language.NewParser()
 	if err != nil {
@@ -127,12 +123,9 @@ model {
 func TestAdaptiveSpacing(t *testing.T) {
 	// Create a diagram with more nodes to test adaptive spacing
 	dsl := `
-specification {
-	element person
-	element system
-}
+	person = kind "Person"
+	system = kind "System"
 
-model {
 	p1 = person "User 1"
 	p2 = person "User 2"
 	p3 = person "Admin"
@@ -148,7 +141,6 @@ model {
 	s1 -> s2
 	s2 -> s3
 	s2 -> s4
-}
 `
 	parser, err := language.NewParser()
 	if err != nil {

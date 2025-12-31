@@ -5,11 +5,11 @@ import { MarkdownPreviewPanel } from "@sruja/ui";
 import { useArchitectureStore } from "../../stores";
 
 export function MarkdownPanel() {
-  const likec4Model = useArchitectureStore((s) => s.likec4Model);
+  const model = useArchitectureStore((s) => s.model);
   const convertedMarkdown = useArchitectureStore((s) => s.convertedMarkdown);
   const isConverting = useArchitectureStore((s) => s.isConverting);
 
-  if (!likec4Model) {
+  if (!model) {
     return (
       <div className="markdown-panel empty">
         <p>No architecture loaded</p>

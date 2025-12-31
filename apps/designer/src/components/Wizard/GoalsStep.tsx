@@ -14,7 +14,7 @@ interface GoalsStepProps {
 }
 
 export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
-  const data = useArchitectureStore((s) => s.likec4Model);
+  const data = useArchitectureStore((s) => s.model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
 
   const sruja = (data as any)?.sruja ?? {};
@@ -43,8 +43,8 @@ export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
         ...model,
         sruja: {
           ...currentSruja,
-          goals: [...currentGoals, newGoal.trim()]
-        }
+          goals: [...currentGoals, newGoal.trim()],
+        },
       };
     });
     setNewGoal("");
@@ -59,8 +59,8 @@ export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
         ...model,
         sruja: {
           ...currentSruja,
-          goals: currentGoals.filter((_: string, i: number) => i !== index)
-        }
+          goals: currentGoals.filter((_: string, i: number) => i !== index),
+        },
       };
     });
   };
@@ -74,8 +74,8 @@ export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
         ...model,
         sruja: {
           ...currentSruja,
-          requirements: currentReqs.filter((r: any) => r.id !== id)
-        }
+          requirements: currentReqs.filter((r: any) => r.id !== id),
+        },
       };
     });
   };
@@ -100,7 +100,12 @@ export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
 
       {/* Quick Start with Template */}
       <div className="template-prompt">
-        <Button variant="secondary" size="sm" className="template-prompt-btn" onClick={() => setShowTemplates(true)}>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="template-prompt-btn"
+          onClick={() => setShowTemplates(true)}
+        >
           <LayoutTemplate size={18} />
           <span>Start from a Template</span>
         </Button>
@@ -125,7 +130,13 @@ export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
             <div key={index} className="item-card">
               <span className="item-text">{goal}</span>
               {!readOnly && (
-                <Button variant="ghost" size="sm" className="item-remove" onClick={() => removeGoal(index)} title="Remove goal">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="item-remove"
+                  onClick={() => removeGoal(index)}
+                  title="Remove goal"
+                >
                   <Trash2 size={14} />
                 </Button>
               )}

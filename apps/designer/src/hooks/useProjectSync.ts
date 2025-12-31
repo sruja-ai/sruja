@@ -5,7 +5,7 @@ import { useArchitectureStore, useToastStore, useUIStore } from "../stores";
 import { firebaseShareService } from "../utils/firebaseShareService";
 import { getFirebaseConfig } from "../config/firebase";
 // import { convertJsonToDsl } from "../utils/jsonToDsl"; // Legacy, remove if not needed or update to use new types
-import { convertDslToLikeC4 } from "../wasm";
+import { convertDslToModel } from "../wasm";
 import { getAllExamples, fetchExampleDsl } from "../examples";
 import { safeAsync, handleError, getUserFriendlyMessage, ErrorType } from "../utils/errorHandling";
 import type { SrujaModelDump } from "@sruja/shared";
@@ -46,8 +46,9 @@ export function useProjectSync() {
   useEffect(() => {
     const config = getFirebaseConfig();
     if (config) {
-      firebaseShareService.initialize(config).catch((err) => {
-        console.error("Failed to initialize Firebase:", err);
+      firebaseShareService.initialize(config).catch(() => {
+        // Firebase initialization failure is non-critical, silently handle
+        // The service will gracefully degrade if Firebase is unavailable
       });
     }
   }, []);
@@ -113,7 +114,7 @@ export function useProjectSync() {
       if (targetExample) {
         const content = await fetchExampleDsl(targetExample.file);
         // Assume all examples are now DSL based or can be parsed
-        const model = await convertDslToLikeC4(content);
+        const model = await convertDslToModel(content);
         if (model) {
           loadFromDSL(model as SrujaModelDump, content, targetExample.file);
           // Only set tab if not already specified in URL to avoid flickering
@@ -128,18 +129,15 @@ export function useProjectSync() {
     } catch {}
 
     // Fallback
-    const fallbackDsl = `specification {
-  element person
-  element system
-}
+    const fallbackDsl = `person = kind "Person"
+system = kind "System"
 
-model {
-  user = person "User"
-  web = system "WebApp"
-  user -> web "uses"
-}`;
+user = person "User"
+web = system "WebApp"
+user -> web "uses"
+`;
     const { error: fallbackError, data: fallbackModel } = await safeAsync(
-      () => convertDslToLikeC4(fallbackDsl),
+      () => convertDslToModel(fallbackDsl),
       "Failed to load fallback demo",
       ErrorType.UNKNOWN
     );
@@ -178,7 +176,7 @@ model {
               if (lastReceivedDsl === dsl) return;
               lastReceivedDsl = dsl;
 
-              const model = await convertDslToLikeC4(dsl);
+              const model = await convertDslToModel(dsl);
               if (model) {
                 loadFromDSL(model as SrujaModelDump, dsl, undefined);
                 if (!hasInitialLoad) {
@@ -193,7 +191,7 @@ model {
               }
             } catch (err) {
               if (!hasInitialLoad) {
-                console.error("Failed to load project from URL:", err);
+                // Error already handled by safeAsync wrapper, no need to log again
                 const errorMessage = err instanceof Error ? err.message : "Unknown error";
                 if (errorMessage.includes("Cannot decrypt")) {
                   showToast("Cannot decrypt project. Invalid key or corrupted data.", "error");
@@ -222,7 +220,7 @@ model {
             if (!decompressed) {
               throw new Error("Failed to decompress code parameter");
             }
-            const converted = await convertDslToLikeC4(decompressed);
+            const converted = await convertDslToModel(decompressed);
             if (!converted) {
               throw new Error("Failed to convert decompressed DSL to Model");
             }
@@ -257,7 +255,7 @@ model {
             if (!decompressed) {
               throw new Error("Failed to decompress DSL parameter");
             }
-            const converted = await convertDslToLikeC4(decompressed);
+            const converted = await convertDslToModel(decompressed);
             if (!converted) {
               throw new Error("Failed to convert decompressed DSL to Model");
             }
@@ -286,13 +284,13 @@ model {
       // 4. Load Demo (if no project/share params)
       if (!shareParam) {
         const exampleParam = params.get("example");
-        const { likec4Model, currentExampleFile: currentExample } = useArchitectureStore.getState();
+        const { model, currentExampleFile: currentExample } = useArchitectureStore.getState();
 
         // Load demo if:
         // 1. No model exists, OR
         // 2. Example param is present and differs from current example
         // This ensures examples load correctly in incognito mode (no model) or when switching examples
-        const shouldLoadDemo = !likec4Model || (exampleParam && exampleParam !== currentExample);
+        const shouldLoadDemo = !model || (exampleParam && exampleParam !== currentExample);
         if (shouldLoadDemo) {
           loadDemo();
         }

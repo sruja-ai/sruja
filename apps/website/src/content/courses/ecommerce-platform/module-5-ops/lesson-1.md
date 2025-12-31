@@ -17,6 +17,7 @@ summary: "Production-ready deployment strategies: Blue/Green, Canary, and real-w
 ## Why Deployment Strategies Matter
 
 **Industry statistics:**
+
 - 60% of outages are caused by bad deployments (Gartner, 2023)
 - Average cost of downtime: $5,600/minute for large enterprises
 - 99.9% uptime = 8.76 hours downtime/year (still too much for critical systems)
@@ -28,77 +29,72 @@ summary: "Production-ready deployment strategies: Blue/Green, Canary, and real-w
 ## Blue/Green Deployment
 
 ### Concept
+
 You have two identical environments (Blue and Green). One is live, the other is idle. You deploy to the idle one, test it, and then switch traffic.
 
 ### Real-World Example: E-Commerce Platform
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+ECommerce = system "E-Commerce Platform" {
+    API = container "REST API" {
+        technology "Go"
+        scale {
+            min 10
+            max 200
+        }
+    }
+    PaymentService = container "Payment Service" {
+        technology "Go"
+        description "Critical: Processes all payments"
+    }
+    OrderDB = datastore "Order Database" {
+        technology "PostgreSQL"
+    }
 }
 
-model {
-    ECommerce = system "E-Commerce Platform" {
-        API = container "REST API" {
-            technology "Go"
-            scale {
-                min 10
-                max 200
-            }
+deployment Production "Production Environment" {
+    node Blue "Active Cluster (Blue)" {
+        containerInstance API {
+            replicas 50
+            traffic 100
+            status "active"
         }
-        PaymentService = container "Payment Service" {
-            technology "Go"
-            description "Critical: Processes all payments"
+        containerInstance PaymentService {
+            replicas 20
+            traffic 100
         }
-        OrderDB = datastore "Order Database" {
-            technology "PostgreSQL"
+        containerInstance OrderDB {
+            role "primary"
         }
     }
 
-    deployment Production "Production Environment" {
-        node Blue "Active Cluster (Blue)" {
-            containerInstance API {
-                replicas 50
-                traffic 100
-                status "active"
-            }
-            containerInstance PaymentService {
-                replicas 20
-                traffic 100
-            }
-            containerInstance OrderDB {
-                role "primary"
-            }
+    node Green "Staging Cluster (Green)" {
+        containerInstance API {
+            replicas 50
+            traffic 0
+            status "ready"
         }
-        
-        node Green "Staging Cluster (Green)" {
-            containerInstance API {
-                replicas 50
-                traffic 0
-                status "ready"
-            }
-            containerInstance PaymentService {
-                replicas 20
-                traffic 0
-                status "ready"
-            }
-            containerInstance OrderDB {
-                role "standby"
-                description "Synced from Blue, ready for switch"
-            }
+        containerInstance PaymentService {
+            replicas 20
+            traffic 0
+            status "ready"
+        }
+        containerInstance OrderDB {
+            role "standby"
+            description "Synced from Blue, ready for switch"
         }
     }
 }
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -114,12 +110,14 @@ views {
 ### When to Use Blue/Green
 
 ✅ **Good for:**
+
 - Critical services (payment, authentication)
 - Stateful applications with database replication
 - Zero-downtime requirements
 - Large, infrequent deployments
 
 ❌ **Not ideal for:**
+
 - Frequent small deployments (wasteful)
 - Stateless services (Canary is better)
 - Limited infrastructure budget
@@ -127,6 +125,7 @@ views {
 ### Cost Consideration
 
 **Example**: Running duplicate production environment
+
 - Cost: 2x infrastructure during deployment window
 - Typical window: 1-2 hours
 - Trade-off: Higher cost for lower risk
@@ -134,58 +133,53 @@ views {
 ## Canary Deployment
 
 ### Concept
+
 You roll out the new version to a small percentage of users (e.g., 5%) and monitor for errors. Gradually increase if metrics look good.
 
 ### Real-World Example: API Service
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+API = system "REST API" {
+    APIv1 = container "API v1.2.3" {
+        technology "Go"
+        description "Current stable version"
+    }
+    APIv2 = container "API v1.2.4" {
+        technology "Go"
+        description "New version with performance improvements"
+    }
 }
 
-model {
-    API = system "REST API" {
-        APIv1 = container "API v1.2.3" {
-            technology "Go"
-            description "Current stable version"
-        }
-        APIv2 = container "API v1.2.4" {
-            technology "Go"
-            description "New version with performance improvements"
+deployment Production {
+    node Canary "Canary Cluster" {
+        containerInstance APIv2 {
+            replicas 2
+            traffic 5
+            description "5% of traffic, monitoring error rate"
+            metadata {
+                maxErrorRate "1%"
+                rollbackTrigger "error_rate > 1% or latency_p95 > 500ms"
+            }
         }
     }
 
-    deployment Production {
-        node Canary "Canary Cluster" {
-            containerInstance APIv2 {
-                replicas 2
-                traffic 5
-                description "5% of traffic, monitoring error rate"
-                metadata {
-                    maxErrorRate "1%"
-                    rollbackTrigger "error_rate > 1% or latency_p95 > 500ms"
-                }
-            }
-        }
-        
-        node Stable "Stable Cluster" {
-            containerInstance APIv1 {
-                replicas 38
-                traffic 95
-            }
+    node Stable "Stable Cluster" {
+        containerInstance APIv1 {
+            replicas 38
+            traffic 95
         }
     }
 }
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -194,29 +188,23 @@ views {
 Document the rollout plan in metadata:
 
 ```sruja
-specification {
-  element system
-  element container
-}
+element system
+element container
 
-model {
-  ECommerce = system "E-Commerce Platform" {
-    API = container "API Service" {
-      metadata {
-        deploymentStrategy "Canary"
-        rolloutSteps "5% → 25% → 50% → 100%"
-        stepDuration "15 minutes per step"
-        monitoringWindow "15 minutes between steps"
-        rollbackCriteria "error_rate > 1% OR latency_p95 > 500ms OR cpu > 90%"
-      }
-    }
+ECommerce = system "E-Commerce Platform" {
+API = container "API Service" {
+  metadata {
+    deploymentStrategy "Canary"
+    rolloutSteps "5% → 25% → 50% → 100%"
+    stepDuration "15 minutes per step"
+    monitoringWindow "15 minutes between steps"
+    rollbackCriteria "error_rate > 1% OR latency_p95 > 500ms OR cpu > 90%"
   }
 }
+}
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -238,6 +226,7 @@ views {
 ### When to Use Canary
 
 ✅ **Good for:**
+
 - Stateless services
 - Frequent deployments (multiple per day)
 - A/B testing new features
@@ -245,6 +234,7 @@ views {
 - Limited infrastructure budget
 
 ❌ **Not ideal for:**
+
 - Database schema changes (requires coordination)
 - Breaking API changes (incompatible versions)
 - Services with complex state
@@ -252,6 +242,7 @@ views {
 ## Rolling Deployment
 
 ### Concept
+
 Gradually replace old instances with new ones, one at a time.
 
 ```sruja
@@ -271,6 +262,7 @@ deployment Production {
 ### When to Use Rolling
 
 ✅ **Good for:**
+
 - Kubernetes-native deployments
 - Stateless microservices
 - Cost-effective (no duplicate infrastructure)
@@ -281,33 +273,27 @@ deployment Production {
 Sometimes you don't need a deployment strategy—use feature flags instead:
 
 ```sruja
-specification {
-  element system
-  element container
+element system
+element container
+
+Platform = system "Platform" {
+FeatureFlags = container "Feature Flag Service" {
+  technology "LaunchDarkly, Split.io"
+  description "Controls feature rollout without deployment"
 }
 
-model {
-  Platform = system "Platform" {
-    FeatureFlags = container "Feature Flag Service" {
-      technology "LaunchDarkly, Split.io"
-      description "Controls feature rollout without deployment"
-    }
-    
-    API = container "API Service" {
-      metadata {
-        featureFlags {
-          newPaymentFlow "10% rollout"
-          experimentalSearch "5% rollout"
-        }
-      }
+API = container "API Service" {
+  metadata {
+    featureFlags {
+      newPaymentFlow "10% rollout"
+      experimentalSearch "5% rollout"
     }
   }
 }
+}
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -318,20 +304,16 @@ views {
 Model your observability during deployments:
 
 ```sruja
-specification {
-  element system
-  element container
-}
+element system
+element container
 
-model {
-  Observability = system "Observability Stack" {
-    Prometheus = container "Metrics" {
-      description "Tracks error rate, latency, throughput during deployment"
-    }
-    AlertManager = container "Alerting" {
-      description "Alerts on deployment issues"
-    }
-  }
+Observability = system "Observability Stack" {
+Prometheus = container "Metrics" {
+  description "Tracks error rate, latency, throughput during deployment"
+}
+AlertManager = container "Alerting" {
+  description "Alerts on deployment issues"
+}
 }
 
 // Link monitoring to deployment
@@ -354,7 +336,8 @@ deployment Production {
 
 **Challenge**: Deploy to 100M+ users without downtime
 
-**Solution**: 
+**Solution**:
+
 - Canary deployment to 1% of users
 - Automated analysis of 50+ metrics
 - Automatic rollback if any metric degrades
@@ -375,6 +358,7 @@ deployment Production {
 **Scenario**: You're deploying a new checkout flow for an e-commerce platform. The system processes $1M/hour.
 
 **Tasks:**
+
 1. Choose a deployment strategy (Blue/Green, Canary, or Rolling)
 2. Model it in Sruja with deployment nodes
 3. Add monitoring and rollback criteria

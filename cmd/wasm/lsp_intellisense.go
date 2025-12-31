@@ -57,7 +57,7 @@ func completion(this js.Value, args []js.Value) (ret interface{}) {
 
 	_, program, _ := parseToWorkspace(input, "input.sruja")
 	if program != nil {
-		// Extract symbols from LikeC4 Model block
+		// Extract symbols from Model block
 		symbols := extractSymbolsFromProgram(program)
 		for _, sym := range symbols {
 			keywords = append(keywords, sym.Name)

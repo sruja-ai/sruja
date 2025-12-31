@@ -9,20 +9,25 @@ summary: "Sharding, Write-Behind, Eventual Consistency."
 **Goal:** Design a system to count events (e.g., YouTube views, Facebook likes) at a massive scale (e.g., 1 million writes/sec).
 
 ## The Problem with a Single Database
+
 A standard SQL database (like PostgreSQL) can handle ~2k-5k writes/sec. If we try to update a single row (`UPDATE videos SET views = views + 1 WHERE id = 123`) for every view, the database will lock the row and become a bottleneck.
 
 ## Solutions
 
 ### 1. Sharding (Write Splitting)
+
 Instead of one counter, have $N$ counters for the same video.
-*   Randomly pick a counter from $1$ to $N$ and increment it.
-*   **Total Views** = Sum of all $N$ counters.
+
+- Randomly pick a counter from $1$ to $N$ and increment it.
+- **Total Views** = Sum of all $N$ counters.
 
 ### 2. Write-Behind (Batching)
+
 Don't write to the DB immediately.
-*   Store counts in memory (Redis) or a log (Kafka).
-*   A background worker aggregates them and updates the DB every few seconds.
-*   *Trade-off:* If the server crashes before flushing, you lose a few seconds of data (Eventual Consistency).
+
+- Store counts in memory (Redis) or a log (Kafka).
+- A background worker aggregates them and updates the DB every few seconds.
+- _Trade-off:_ If the server crashes before flushing, you lose a few seconds of data (Eventual Consistency).
 
 ---
 
@@ -31,66 +36,60 @@ Don't write to the DB immediately.
 We can use Sruja to model the "Write-Behind" architecture.
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
-}
+element person
+element system
+element container
+element component
+element datastore
+element queue
 
-model {
-    CounterService = system "View Counter" {
-        API = container "Ingestion API" {
-            technology "Go"
-            description "Receives 'view' events"
-        }
-        
-        EventLog = queue "Kafka" {
-            description "Buffers raw view events"
-        }
-        
-        Worker = container "Aggregator" {
-            technology "Python"
-            description "Reads batch of events, sums them, updates DB"
-            scale { min 5 }
-        }
-        
-        DB = datastore "Counter DB" {
-            technology "Cassandra"
-            description "Stores final counts (Counter Columns)"
-        }
-        
-        Cache = container "Read Cache" {
-            technology "Redis"
-            description "Caches total counts for fast reads"
-        }
-
-        API -> EventLog "Produces events"
-        Worker -> EventLog "Consumes events"
-        Worker -> DB "Updates counts"
-        Worker -> Cache "Updates cache"
+CounterService = system "View Counter" {
+    API = container "Ingestion API" {
+        technology "Go"
+        description "Receives 'view' events"
     }
 
-    User = person "Viewer"
-
-    // Write Path (Eventual Consistency)
-    scenario TrackView "User watches a video" {
-        User -> API "POST /view"
-        API -> EventLog "Produce Event"
-        API -> User "202 Accepted"
-        
-        // Async processing
-        EventLog -> Worker "Consume Batch"
-        Worker -> DB "UPDATE views += batch_size"
-        Worker -> Cache "Invalidate/Update"
+    EventLog = queue "Kafka" {
+        description "Buffers raw view events"
     }
+
+    Worker = container "Aggregator" {
+        technology "Python"
+        description "Reads batch of events, sums them, updates DB"
+        scale { min 5 }
+    }
+
+    DB = datastore "Counter DB" {
+        technology "Cassandra"
+        description "Stores final counts (Counter Columns)"
+    }
+
+    Cache = container "Read Cache" {
+        technology "Redis"
+        description "Caches total counts for fast reads"
+    }
+
+    API -> EventLog "Produces events"
+    Worker -> EventLog "Consumes events"
+    Worker -> DB "Updates counts"
+    Worker -> Cache "Updates cache"
 }
 
-views {
-  view index {
-    include *
-  }
+User = person "Viewer"
+
+// Write Path (Eventual Consistency)
+scenario TrackView "User watches a video" {
+    User -> API "POST /view"
+    API -> EventLog "Produce Event"
+    API -> User "202 Accepted"
+
+    // Async processing
+    EventLog -> Worker "Consume Batch"
+    Worker -> DB "UPDATE views += batch_size"
+    Worker -> Cache "Invalidate/Update"
+}
+
+view index {
+include *
 }
 ```

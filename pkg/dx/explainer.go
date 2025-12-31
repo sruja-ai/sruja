@@ -63,7 +63,7 @@ type ElementExplanation struct {
 	Description  string
 	Relations    RelationsInfo
 	Metadata     map[string]string
-	ADRs         []*language.ADR
+	ADRs         []string // ADR IDs that mention this element
 	Scenarios    []*ScenarioInfo
 	Dependencies []string
 }

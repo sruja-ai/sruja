@@ -27,7 +27,7 @@ func TestOrphanDetectionRule_EmptySystems(t *testing.T) {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	dsl := `model {}`
+	dsl := ``
 
 	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
@@ -42,9 +42,9 @@ func TestOrphanDetectionRule_EmptySystems(t *testing.T) {
 }
 
 func TestOrphanDetectionRule_OrphanSystem(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Orphan = system "Orphan System"
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
@@ -66,11 +66,11 @@ func TestOrphanDetectionRule_OrphanSystem(t *testing.T) {
 }
 
 func TestOrphanDetectionRule_OrphanContainer(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Orphan = container "Orphan Container"
 		}
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
@@ -89,13 +89,13 @@ func TestOrphanDetectionRule_OrphanContainer(t *testing.T) {
 }
 
 func TestOrphanDetectionRule_OrphanComponent(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Cont = container "Container" {
 				Orphan = component "Orphan Component"
 			}
 		}
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
@@ -114,11 +114,11 @@ func TestOrphanDetectionRule_OrphanComponent(t *testing.T) {
 }
 
 func TestOrphanDetectionRule_OrphanDataStore(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Orphan = datastore "Orphan DB"
 		}
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
@@ -137,11 +137,11 @@ func TestOrphanDetectionRule_OrphanDataStore(t *testing.T) {
 }
 
 func TestOrphanDetectionRule_OrphanQueue(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Orphan = queue "Orphan Queue"
 		}
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
@@ -160,9 +160,9 @@ func TestOrphanDetectionRule_OrphanQueue(t *testing.T) {
 }
 
 func TestOrphanDetectionRule_OrphanPerson(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Orphan = person "Orphan Person"
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
@@ -181,12 +181,12 @@ func TestOrphanDetectionRule_OrphanPerson(t *testing.T) {
 }
 
 func TestOrphanDetectionRule_SystemLevelRelations(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Cont = container "Container"
 			Sys -> Cont "Uses"
 		}
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
@@ -199,14 +199,14 @@ func TestOrphanDetectionRule_SystemLevelRelations(t *testing.T) {
 }
 
 func TestOrphanDetectionRule_ContainerLevelRelations(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Cont = container "Container" {
 				Comp = component "Component"
 				Cont -> Comp "Uses"
 			}
 		}
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}
@@ -219,7 +219,7 @@ func TestOrphanDetectionRule_ContainerLevelRelations(t *testing.T) {
 }
 
 func TestOrphanDetectionRule_ComponentLevelRelations(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Cont = container "Container" {
 				Comp1 = component "Component 1"
@@ -227,7 +227,7 @@ func TestOrphanDetectionRule_ComponentLevelRelations(t *testing.T) {
 				Comp1 -> Comp2 "Uses"
 			}
 		}
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.OrphanDetectionRule{}

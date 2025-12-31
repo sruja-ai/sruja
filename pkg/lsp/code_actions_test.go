@@ -11,7 +11,7 @@ import (
 func TestCodeAction_GeneratesActionsForDiagnostics(t *testing.T) {
 	s := NewServer()
 	uri := lsp.DocumentURI("file:///actions.sruja")
-	text := "model {\n  system S {\n    container Cont \"Container\"\n  }\n}\n"
+	text := "System=kind \"System\"\nContainer=kind \"Container\"\nS = System \"S\" {\n    Cont = Container \"Container\"\n}\n"
 	_ = s.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{
 		TextDocument: lsp.TextDocumentItem{URI: uri, Text: text, Version: 1},
 	})
@@ -21,8 +21,8 @@ func TestCodeAction_GeneratesActionsForDiagnostics(t *testing.T) {
 			Code:    diagnostics.CodeReferenceNotFound,
 			Message: "Undefined reference 'Cont1'",
 			Range: lsp.Range{
-				Start: lsp.Position{Line: 2, Character: 14},
-				End:   lsp.Position{Line: 2, Character: 19},
+				Start: lsp.Position{Line: 3, Character: 14}, // Line 3: Cont = ...
+				End:   lsp.Position{Line: 3, Character: 19},
 			},
 		},
 		{
@@ -37,8 +37,8 @@ func TestCodeAction_GeneratesActionsForDiagnostics(t *testing.T) {
 			Code:    diagnostics.CodeOrphanElement,
 			Message: "Orphan element 'Unused'",
 			Range: lsp.Range{
-				Start: lsp.Position{Line: 3, Character: 2},
-				End:   lsp.Position{Line: 3, Character: 8},
+				Start: lsp.Position{Line: 2, Character: 2}, // S
+				End:   lsp.Position{Line: 2, Character: 8},
 			},
 		},
 		{

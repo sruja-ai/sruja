@@ -13,42 +13,38 @@ Service Level Objectives (SLOs) define measurable targets for system performance
 SLOs can be defined at the system or container level:
 
 ```sruja
-specification {
-  element system
-  element container
-}
+element system
+element container
 
-model {
-  API = system "API Service" {
-    WebServer = container "Web Server" {
-      slo {
-        availability {
-          target "99.9%"
-          window "30 days"
-          current "99.95%"
-        }
-        latency {
-          p95 "200ms"
-          p99 "500ms"
-          window "7 days"
-          current {
-            p95 "180ms"
-            p99 "450ms"
-          }
-        }
-        errorRate {
-          target "< 0.1%"
-          window "30 days"
-          current "0.05%"
-        }
-        throughput {
-          target "1000 req/s"
-          window "1 hour"
-          current "950 req/s"
-        }
+API = system "API Service" {
+WebServer = container "Web Server" {
+  slo {
+    availability {
+      target "99.9%"
+      window "30 days"
+      current "99.95%"
+    }
+    latency {
+      p95 "200ms"
+      p99 "500ms"
+      window "7 days"
+      current {
+        p95 "180ms"
+        p99 "450ms"
       }
     }
+    errorRate {
+      target "< 0.1%"
+      window "30 days"
+      current "0.05%"
+    }
+    throughput {
+      target "1000 req/s"
+      window "1 hour"
+      current "950 req/s"
+    }
   }
+}
 }
 ```
 
@@ -134,42 +130,36 @@ slo {
 ## Example
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
-}
+element person
+element system
+element container
+element component
+element datastore
+element queue
 
-model {
-  PaymentService = system "Payment Service" {
-    PaymentAPI = container "Payment API" {
-      technology "Go"
-      slo {
-        availability {
-          target "99.99%"
-          window "30 days"
-        }
-        latency {
-          p95 "100ms"
-          p99 "250ms"
-          window "7 days"
-        }
-        errorRate {
-          target "< 0.01%"
-          window "30 days"
-        }
-      }
+PaymentService = system "Payment Service" {
+PaymentAPI = container "Payment API" {
+  technology "Go"
+  slo {
+    availability {
+      target "99.99%"
+      window "30 days"
+    }
+    latency {
+      p95 "100ms"
+      p99 "250ms"
+      window "7 days"
+    }
+    errorRate {
+      target "< 0.01%"
+      window "30 days"
     }
   }
 }
+}
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 

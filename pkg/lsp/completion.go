@@ -11,9 +11,9 @@ import (
 var keywordList = []string{
 	// Top-level elements
 	"specification", "model", "views", "view",
-	"element", "system", "component", "container", "datastore", "queue", "person",
+	"element", "System", "Component", "Container", "DataStore", "Database", "Queue", "Person",
 	// Extended elements
-	"adr", "requirement", "policy",
+	"Adr", "Requirement", "Policy", "Scenario", "Story", "Flow",
 	// Relationships
 	"relationship", "extend", "include", "exclude", "extends",
 	// Properties & Fields
@@ -47,7 +47,7 @@ func (s *Server) Completion(_ context.Context, params lsp.CompletionParams) (*ls
 	items := make([]lsp.CompletionItem, 0, estimatedItems)
 
 	for _, k := range keywordList {
-		if token == "" || strings.HasPrefix(k, token) {
+		if token == "" || strings.HasPrefix(strings.ToLower(k), strings.ToLower(token)) {
 			addItem(&items, k, lsp.CIKKeyword)
 		}
 	}
@@ -59,15 +59,15 @@ func (s *Server) Completion(_ context.Context, params lsp.CompletionParams) (*ls
 			if id == "" || seen[id] {
 				return
 			}
-			if token == "" || strings.HasPrefix(id, token) {
+			if token == "" || strings.HasPrefix(strings.ToLower(id), strings.ToLower(token)) {
 				addItem(&items, id, lsp.CIKText)
 				seen[id] = true
 			}
 		}
 
-		// Collect all element IDs from LikeC4 Model
-		var collectIDs func(elem *language.LikeC4ElementDef, parentFQN string)
-		collectIDs = func(elem *language.LikeC4ElementDef, parentFQN string) {
+		// Collect all element IDs from Sruja Model
+		var collectIDs func(elem *language.ElementDef, parentFQN string)
+		collectIDs = func(elem *language.ElementDef, parentFQN string) {
 			if elem == nil {
 				return
 			}
@@ -100,13 +100,32 @@ func (s *Server) Completion(_ context.Context, params lsp.CompletionParams) (*ls
 		for _, item := range program.Model.Items {
 			if item.ElementDef != nil {
 				collectIDs(item.ElementDef, "")
+				// Also add governance element IDs (scenarios, flows, etc.)
+				if item.ElementDef.Assignment != nil {
+					a := item.ElementDef.Assignment
+					switch a.Kind {
+					case "scenario", "story", "flow", "adr", "requirement", "policy":
+						add(a.Name)
+					}
+				}
 			}
-			// Also add scenario and flow IDs
-			if item.Scenario != nil {
-				add(item.Scenario.ID)
+		}
+	}
+
+	// Include imported kinds from Specification (e.g., from stdlib)
+	if program != nil && program.Specification != nil {
+		for _, item := range program.Specification.Items {
+			if item.Element != nil {
+				name := item.Element.Name
+				if token == "" || strings.HasPrefix(strings.ToLower(name), strings.ToLower(token)) {
+					addItem(&items, name, lsp.CIKKeyword)
+				}
 			}
-			if item.Flow != nil {
-				add(item.Flow.ID)
+			if item.Tag != nil {
+				name := item.Tag.Name
+				if token == "" || strings.HasPrefix(strings.ToLower(name), strings.ToLower(token)) {
+					addItem(&items, name, lsp.CIKKeyword)
+				}
 			}
 		}
 	}

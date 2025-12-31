@@ -42,10 +42,8 @@ func TestFoldingRanges_NonExistentDocument(t *testing.T) {
 }
 
 func TestFoldingRanges_SimpleBlock(t *testing.T) {
-	text := `model {
-  person User "End User" {
-    description "A user of the system"
-  }
+	text := `person User "End User" {
+description "A user of the system"
 }`
 	ws := NewWorkspace()
 	ws.AddDocument("file:///test.sruja", text, 1)
@@ -64,12 +62,10 @@ func TestFoldingRanges_SimpleBlock(t *testing.T) {
 }
 
 func TestFoldingRanges_NestedBlocks(t *testing.T) {
-	text := `model {
-  system API "API System" {
-    container WebApp "Web Application" {
-      component Auth "Authentication"
-    }
-  }
+	text := `system API "API System" {
+container WebApp "Web Application" {
+  component Auth "Authentication"
+}
 }`
 	ws := NewWorkspace()
 	ws.AddDocument("file:///test.sruja", text, 1)

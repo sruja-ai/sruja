@@ -215,8 +215,8 @@ func indexProgram(prog *language.Program) *indexedArchitecture {
 	}
 	// Index all element IDs from the model
 	if prog != nil && prog.Model != nil {
-		var indexElement func(elem *language.LikeC4ElementDef, prefix string)
-		indexElement = func(elem *language.LikeC4ElementDef, prefix string) {
+		var indexElement func(elem *language.ElementDef, prefix string)
+		indexElement = func(elem *language.ElementDef, prefix string) {
 			if elem == nil {
 				return
 			}

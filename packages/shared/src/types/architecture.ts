@@ -4,51 +4,49 @@
 
 /**
  * @packageDocumentation
- * 
+ *
  * # Architecture Types
- * 
+ *
  * Core TypeScript type definitions for Sruja architecture models.
- * 
+ *
  * ## Module Structure
- * 
+ *
  * This module has been split into focused sub-modules:
  * - **core.ts**: Core model types (ModelMetadata, LayoutData, SrujaModelDump)
  * - **governance.ts**: Governance layer types (Requirement, ADR, Policy, SLO)
  * - **legacy.ts**: Legacy format types (ArchitectureJSON, etc.)
  * - **guards.ts**: Type guards and validation functions
- * 
+ *
  * ## Usage
- * 
+ *
  * ```typescript
  * import type { SrujaModelDump, Requirement, ADR } from '@sruja/shared/types';
- * import { isLikeC4Format, isValidRequirement } from '@sruja/shared/types';
+ * import { isValidRequirement } from '@sruja/shared/types';
  * ```
- * 
+ *
  * @module types/architecture
  */
 
 // ===========================================================================
 // Core Types
 // ===========================================================================
+// Core Types
 export type {
-  // LikeC4 types
+  // Aliases for compatibility
+  SpecificationDump as Specification,
+  ElementKindDump as ElementSpecification,
+  TagDump as TagSpecification,
+  RelationshipKindDump as RelationshipSpecification,
+  // Core types
   Element,
   Relationship,
   ParsedView,
-  Specification,
-  ElementSpecification,
-  TagSpecification,
-  RelationshipSpecification,
-  ElementStyle,
-  Link,
-  ParsedLikeC4ModelData,
-  ComputedLikeC4ModelData,
-  LayoutedLikeC4ModelData,
-  LikeC4ModelDump,
-  Builder,
-  BuilderSpecification,
+  // Dump types
+  SpecificationDump,
+  ElementKindDump,
+  TagDump,
+  RelationshipKindDump,
   // Core Sruja types
-  ProjectDump,
   ModelMetadata,
   LayoutData,
   SrujaModelExtensions,
@@ -56,6 +54,9 @@ export type {
   SrujaRelationDump,
   SrujaModelDump,
   ElementDump,
+  RelationDump,
+  GlobalsDump,
+  DeploymentsDump,
 } from "./core";
 
 // ===========================================================================
@@ -138,7 +139,7 @@ export type {
 // Type Guards and Validation
 // ===========================================================================
 export {
-  isLikeC4Format,
+  isSrujaModelFormat,
   isLegacyFormat,
   isValidRequirement,
   isValidADR,

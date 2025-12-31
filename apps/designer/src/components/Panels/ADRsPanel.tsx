@@ -26,7 +26,7 @@ const STATUS_CONFIG: Record<string, { icon: React.ReactNode; color: string }> = 
 };
 
 export function ADRsPanel() {
-  const likec4Model = useArchitectureStore((s) => s.likec4Model);
+  const model = useArchitectureStore((s) => s.model);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [editADR, setEditADR] = useState<any | undefined>(undefined);
@@ -51,8 +51,8 @@ export function ADRsPanel() {
   const { navigateToTaggedElement } = useTagNavigation();
 
   const adrs = useMemo(() => {
-    return (likec4Model?.sruja as any)?.adrs ?? [];
-  }, [likec4Model]);
+    return (model?.sruja as any)?.adrs ?? [];
+  }, [model]);
 
   const filteredADRs = useMemo(() => {
     let filtered = adrs;
@@ -149,7 +149,12 @@ export function ADRsPanel() {
 
           return (
             <div key={adr.id} className={`adr-card ${isExpanded ? "expanded" : ""}`}>
-              <Button variant="ghost" size="sm" className="adr-header" onClick={() => toggleExpand(adr.id)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="adr-header"
+                onClick={() => toggleExpand(adr.id)}
+              >
                 <span className="adr-id">{adr.id}</span>
                 <span className="adr-title-text">{adr.title}</span>
                 {adr.tags && adr.tags.length > 0 && (

@@ -1,34 +1,40 @@
 // examples/demo_scenarios.sruja
 // User Stories with Qualified Actors
 
-specification {
-  element person
-  element system
-  element container
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+
+
+
+user = person "Customer"
+
+inventory = system "Inventory System"
+
+ecommerce = system "E-Commerce System" {
+  cartPage = container "Cart Page"
 }
 
-model {
-  user = person "Customer"
-  
-  inventory = system "Inventory System"
-  
-  ecommerce = system "E-Commerce System" {
-    cartPage = container "Cart Page"
-  }
-  
-  user -> ecommerce.cartPage "browses and shops via"
-  ecommerce -> inventory "checks stock in"
-  
-  scenario Checkout "User Checkout Flow" {
-    step user -> ecommerce.cartPage "adds item to cart"
-    step ecommerce.cartPage -> ecommerce "clicks checkout"
-    step ecommerce -> inventory "checks stock in"
-  }
+user -> ecommerce.cartPage "browses and shops via"
+ecommerce -> inventory "checks stock in"
+
+Checkout = scenario "User Checkout Flow" {
+  step user -> ecommerce.cartPage "adds item to cart"
+  step ecommerce.cartPage -> ecommerce "clicks checkout"
+  step ecommerce -> inventory "checks stock in"
 }
 
-views {
-  view index {
-    title "User Stories with Qualified Actors"
-    include *
-  }
+// 'story' is an alias for 'scenario' - both work the same way
+LoginStory = story "User Login Flow" {
+  step user -> ecommerce.cartPage "enters credentials"
+  step ecommerce.cartPage -> ecommerce "validates user"
 }
+
+
+
+view index {
+  title "User Stories with Qualified Actors"
+  include *
+}
+

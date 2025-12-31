@@ -11,7 +11,7 @@ test.describe("Template Gallery", () => {
     if (await dropZone.isVisible().catch(() => false)) {
       // Load demo first since we need wizard access
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".react-flow, .likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
     // Switch to Builder tab
