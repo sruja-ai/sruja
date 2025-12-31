@@ -1,7 +1,7 @@
 // apps/website/src/features/content/utils/sorting.ts
 import type { CollectionEntry } from "astro:content";
 
-type AnyCollectionEntry = CollectionEntry<"blog" | "docs" | "courses" | "tutorials">;
+export type AnyCollectionEntry = CollectionEntry<"blog" | "docs" | "courses" | "tutorials">;
 
 /**
  * Sort entries by publication date (newest first)

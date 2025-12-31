@@ -2,7 +2,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Designer App on Staging", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page: _page }) => {
     test.setTimeout(90_000); // Designer may take longer to load
   });
 

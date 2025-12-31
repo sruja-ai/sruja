@@ -159,8 +159,9 @@ function detectOrphanElements(model: SrujaModelDump): ValidationIssue[] {
   // Collect all paths mentioned in relations
   (model.relations || []).forEach((rel) => {
     // Handle FqnRef structure: { model: string } or fallback to string
-    const sourceRaw = (rel as any).source || (rel as any).from;
-    const targetRaw = (rel as any).target || (rel as any).to;
+    const r = rel as Record<string, unknown>;
+    const sourceRaw = r.source || r.from;
+    const targetRaw = r.target || r.to;
 
     const source =
       sourceRaw && typeof sourceRaw === "object" && "model" in sourceRaw
@@ -229,8 +230,9 @@ function validateRelationReferences(model: SrujaModelDump): ValidationIssue[] {
   (model.relations || []).forEach((rel, index) => {
     // Handle FqnRef structure: { model: string } or fallback to string
     // Also support legacy 'from'/'to' properties
-    const sourceRaw = (rel as any).source || (rel as any).from;
-    const targetRaw = (rel as any).target || (rel as any).to;
+    const r = rel as Record<string, unknown>;
+    const sourceRaw = r.source || r.from;
+    const targetRaw = r.target || r.to;
 
     const source =
       sourceRaw && typeof sourceRaw === "object" && "model" in sourceRaw

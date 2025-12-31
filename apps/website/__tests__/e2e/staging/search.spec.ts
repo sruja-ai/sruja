@@ -2,7 +2,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Search Functionality on Staging", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page: _page }) => {
     test.setTimeout(60_000);
   });
 
@@ -19,11 +19,6 @@ test.describe("Search Functionality on Staging", () => {
 
     // Wait a bit for search modal/dropdown to appear
     await page.waitForTimeout(1000);
-
-    // Check if search interface appeared (Algolia search or similar)
-    const searchInput = page
-      .locator('input[type="search"], input[placeholder*="search" i], [role="searchbox"]')
-      .first();
 
     // Search might be available or not - just check page doesn't crash
     const body = page.locator("body");
