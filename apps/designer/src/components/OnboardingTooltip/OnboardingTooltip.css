@@ -1,0 +1,65 @@
+.onboarding-tooltip {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1000;
+    animation: slideInUp 0.3s ease-out;
+}
+
+.onboarding-tooltip-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: var(--bg-primary, #ffffff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    max-width: 400px;
+}
+
+.onboarding-tooltip-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color, #7C3AED);
+    flex-shrink: 0;
+}
+
+.onboarding-tooltip-text {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-primary);
+}
+
+.onboarding-tooltip-text strong {
+    font-weight: 600;
+}
+
+.onboarding-tooltip-close {
+    flex-shrink: 0;
+    padding: 4px;
+    min-width: unset;
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .onboarding-tooltip-content {
+        background: var(--bg-primary, #1f2937);
+        border-color: var(--border-color, #374151);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+}

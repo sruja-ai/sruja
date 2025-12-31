@@ -10,52 +10,110 @@ Sruja is a domain-specific language (DSL) for defining software architecture mod
 
 ### File Structure
 
-A Sruja file can contain:
-
-- An `architecture` block (recommended for complete models)
-- Top-level elements (for reusable components)
-
-### Core Syntax
-
-Sruja uses the LikeC4 syntax structure:
+Sruja uses a **flat syntax** — all declarations are top-level, no wrapper blocks required.
 
 ```sruja
-specification {
-    // Element definitions
-    element person
-    element system
-    element container
-    element component
-}
+// Elements
+User = person "User"
+Shop = system "E-commerce Shop"
 
-model {
-    // Model architecture and relationships
-    customer = person "Customer"
-    backend = system "Backend System"
-    
-    customer -> backend "uses"
-}
+// Relationships
+User -> Shop "uses"
 
-views {
-    // C4 Views
-    view index {
-        include *
-    }
-}
+// Governance
+R1 = requirement functional "Must handle 10k users"
+SecurityPolicy = policy "Encrypt all data" category "security"
 ```
 
+### Element Kinds
+
+Before using elements like `person`, `system`, `container`, etc., you must declare them as **kinds**. This establishes the vocabulary of element types available in your architecture.
+
+```sruja
+// Standard C4 kinds (required at top of file)
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+datastore = kind "Datastore"  // Note: Use 'database' keyword in element declarations, 'datastore' is for custom kinds
+queue = kind "Queue"
+```
+
+**Why kinds?** This allows Sruja to:
+
+- Validate that you're using recognized element types
+- Enable custom element types for domain-specific modeling
+- Provide LSP autocompletion for your declared kinds
+
+#### Custom Kinds
+
+You can define custom element types for your domain:
+
+```sruja
+// Custom kinds for microservices
+microservice = kind "Microservice"
+eventBus = kind "Event Bus"
+gateway = kind "API Gateway"
+
+// Now use them
+Catalog = microservice "Catalog Service"
+Kafka = eventBus "Kafka Cluster"
+```
+
+### Imports
+
+Import kinds and tags from the standard library or other Sruja files.
+
+#### Standard Library Import
+
+```sruja
+// Import all from stdlib
+import { * } from 'sruja.ai/stdlib'
+
+// Now you can use person, system, container, etc. without defining them
+User = person "User"
+Shop = system "Shop"
+```
+
+#### Named Imports
+
+```sruja
+// Import specific kinds only
+import { person, system, container } from 'sruja.ai/stdlib'
+
+User = person "User"
+Shop = system "Shop"
+```
+
+#### Relative Imports
+
+```sruja
+// Import from a local file
+import { * } from './shared-kinds.sruja'
+```
+
+**Note**: When using imports, you don't need to redeclare the imported kinds.
+
 ### Elements
+
+#### Persons
+
+```sruja
+User = person "User" {
+    description "End user of the system"
+}
+```
 
 #### Systems
 
 ```sruja
-system ID "Label" {
+MySystem = system "My System" {
     description "Optional description"
     metadata {
         key "value"
         tags ["tag1", "tag2"]
     }
-    // Containers, components, datastores, queues, etc.
     slo {
         availability {
             target "99.9%"
@@ -69,7 +127,7 @@ system ID "Label" {
 #### Containers
 
 ```sruja
-container ID "Label" {
+MyContainer = container "My Container" {
     technology "Technology stack"
     description "Optional description"
     version "1.0.0"
@@ -85,14 +143,13 @@ container ID "Label" {
             p99 "500ms"
         }
     }
-    // Components
 }
 ```
 
 #### Components
 
 ```sruja
-component ID "Label" {
+MyComponent = component "My Component" {
     technology "Technology"
     description "Optional description"
     scale {
@@ -105,8 +162,8 @@ component ID "Label" {
 #### Data Stores
 
 ```sruja
-datastore ID "Label" {
-    technology "Database type"
+MyDB = database "My Database" {
+    technology "PostgreSQL"
     description "Optional description"
 }
 ```
@@ -114,46 +171,36 @@ datastore ID "Label" {
 #### Queues
 
 ```sruja
-queue ID "Label" {
-    technology "Queue technology"
+MyQueue = queue "My Queue" {
+    technology "RabbitMQ"
     description "Optional description"
 }
 ```
 
-#### Persons
+### Relationships
 
 ```sruja
-person ID "Label" {
-    description "Optional description"
-}
-```
-
-#### Relations
-
-```sruja
+// Basic relationship
 From -> To "Label"
-// When referring to nested elements, use dot notation:
-System.Container -> System.Container.Component "Label"
-// Or with verb
-From -> To verb "Label"
-// Or with tags
+
+// Nested element references use dot notation
+System.Container -> System.Container.Component "calls"
+
+// With tags
 From -> To "Label" [tag1, tag2]
 ```
 
-### Requirements and ADRs
-
-#### Requirements
+### Requirements
 
 ```sruja
-requirement ID functional "Description"
-requirement ID nonfunctional "Description"
-requirement ID constraint "Description"
-requirement ID performance "Description"
-requirement ID security "Description"
+R1 = requirement functional "Description"
+R2 = requirement nonfunctional "Description"
+R3 = requirement constraint "Description"
+R4 = requirement performance "Description"
+R5 = requirement security "Description"
 
 // With body block
-requirement ID functional "Description" {
-    type "functional"
+R6 = requirement functional "Description" {
     description "Detailed description"
     metadata {
         priority "high"
@@ -161,15 +208,10 @@ requirement ID functional "Description" {
 }
 ```
 
-Constraints:
-
-- Requirements are declared at the architecture root only.
-- Declarations at system/container/component level are deprecated and ignored by exporters and UI.
-
-#### ADRs (Architectural Decision Records)
+### ADRs (Architectural Decision Records)
 
 ```sruja
-adr ID "Title" {
+ADR001 = adr "Title" {
     status "accepted"
     context "What situation led to this decision"
     decision "What was decided"
@@ -177,42 +219,38 @@ adr ID "Title" {
 }
 ```
 
-Constraints:
-
-- ADRs are declared at the architecture root only.
-- Declarations at system/container/component level are deprecated and ignored by exporters and UI.
-
 ### Scenarios and Flows
 
 #### Scenarios
 
 ```sruja
-scenario "Scenario Title" {
-    User -> System.WebApp "Credentials"
-    System.WebApp -> System.DB "Verify"
-}
-
-// Or with ID
-scenario Checkout "User Checkout Flow" {
-    User -> ECommerce.CartPage "adds item to cart"
-    ECommerce.CartPage -> ECommerce "clicks checkout"
+MyScenario = scenario "Scenario Title" {
+    step User -> System.WebApp "Credentials"
+    step System.WebApp -> System.DB "Verify"
 }
 
 // 'story' is an alias for 'scenario'
-story Checkout "User Checkout Flow" {
-    User -> ECommerce.CartPage "adds item to cart"
+CheckoutStory = story "User Checkout Flow" {
+    step User -> ECommerce.CartPage "adds item to cart"
 }
 ```
+
+**Note**: The `step` keyword is recommended for clarity, but optional. Both syntaxes work:
+
+- With `step`: `step User -> System.WebApp "action"`
+- Without `step`: `User -> System.WebApp "action"` (inside scenario block)
 
 #### Flows (DFD-style data flows)
 
 ```sruja
-flow OrderProcess "Order Processing" {
-    Customer -> Shop.WebApp "Order Details"
-    Shop.WebApp -> Shop.Database "Save Order"
-    Shop.Database -> Shop.WebApp "Confirmation"
+OrderProcess = flow "Order Processing" {
+    step Customer -> Shop.WebApp "Order Details"
+    step Shop.WebApp -> Shop.Database "Save Order"
+    step Shop.Database -> Shop.WebApp "Confirmation"
 }
 ```
+
+**Note**: Flows use the same syntax as scenarios. The `step` keyword is recommended for clarity.
 
 ### Metadata
 
@@ -270,7 +308,7 @@ slo {
 
 SLO blocks can be defined at:
 
-- Architecture level
+- Architecture level (top-level)
 - System level
 - Container level
 
@@ -288,27 +326,6 @@ Scale blocks can be defined at:
 
 - Container level
 - Component level
-
-### Contracts
-
-```sruja
-contracts {
-    contract CreateOrder api {
-        version "1.0"
-        endpoint "/api/orders"
-        method "POST"
-        request {
-            customerId string
-            items array
-        }
-        response {
-            orderId string
-            status string
-        }
-        errors ["INVALID_REQUEST", "OUT_OF_STOCK"]
-    }
-}
-```
 
 ### Deployment
 
@@ -328,10 +345,10 @@ deployment Prod "Production" {
 #### Policies
 
 ```sruja
-policy SecurityPolicy "Enforce TLS 1.3 for all external communications" category "security" enforcement "required"
+policy SecurityPolicy "Enforce TLS 1.3" category "security" enforcement "required"
 
 // Or with body block
-policy DataRetentionPolicy "Retain order data for 7 years" {
+policy DataRetentionPolicy "Retain data for 7 years" {
     category "compliance"
     enforcement "required"
     description "Detailed policy description"
@@ -358,28 +375,32 @@ conventions {
 
 ### Views (Optional)
 
-Views are **optional** - if not specified, standard C4 views are automatically generated. Views block is only needed for customization.
+Views are **optional** — if not specified, standard C4 views are automatically generated.
 
 ```sruja
-views {
-    container Shop "API Focus" {
-        include Shop.API Shop.DB
-        exclude Shop.WebApp
-        autolayout lr
-    }
+view index {
+    title "System Context"
+    include *
+}
 
-    styles {
-        element "Database" {
-            shape "cylinder"
-            color "#ff0000"
-        }
+view container_view of Shop {
+    title "Shop Containers"
+    include Shop.*
+    exclude Shop.WebApp
+    autolayout lr
+}
+
+styles {
+    element "Database" {
+        shape "cylinder"
+        color "#ff0000"
     }
 }
 ```
 
 ### View Types
 
-- `systemContext` - System context view (C4 L1)
+- `index` - System context view (C4 L1)
 - `container` - Container view (C4 L2)
 - `component` - Component view (C4 L3)
 - `deployment` - Deployment view
@@ -405,108 +426,114 @@ This reduces boilerplate while maintaining clarity.
 ## Complete Example
 
 ```sruja
-specification {
-    element person
-    element system
-    element container
-    element component
-    element datastore
+// Element Kinds (required)
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+datastore = kind "Datastore"  // Note: Use 'database' keyword in element declarations, 'datastore' is for custom kinds
+
+// Overview
+overview {
+    summary "E-commerce platform architecture"
+    audience "Development team"
+    scope "Core shopping and payment functionality"
 }
 
-model {
-    customer = person "Customer"
-    admin = person "Administrator"
+// Elements
+Customer = person "Customer"
+Admin = person "Administrator"
 
-    shop = system "E-commerce Shop" {
-        description "High-performance e-commerce platform"
-        
-        webApp = container "Web Application" {
-            technology "React"
-            cart = component "Shopping Cart"
-            checkout = component "Checkout Service"
+Shop = system "E-commerce Shop" {
+    description "High-performance e-commerce platform"
+
+    WebApp = container "Web Application" {
+        technology "React"
+        Cart = component "Shopping Cart"
+        Checkout = component "Checkout Service"
+    }
+
+    API = container "API Gateway" {
+        technology "Node.js"
+        scale {
+            min 3
+            max 10
         }
-
-        api = container "API Gateway" {
-            technology "Node.js"
-            scale {
-                min 3
-                max 10
+        slo {
+            latency {
+                p95 "200ms"
+                p99 "500ms"
             }
-            slo {
-                latency {
-                    p95 "200ms"
-                    p99 "500ms"
-                }
-            }
-        }
-
-        db = datastore "PostgreSQL Database" {
-            technology "PostgreSQL 14"
         }
     }
 
-    // Relationships
-    customer -> shop.webApp "Browses"
-    shop.webApp -> shop.api "Calls"
-    shop.api -> shop.db "Reads/Writes"
-
-    // Sruja Extensions (Governance & Requirements)
-    requirement R1 functional "Must support 10k concurrent users"
-    requirement R2 constraint "Must use PostgreSQL"
-
-    adr ADR001 "Use microservices architecture" {
-        status "accepted"
-        context "Need to scale different parts independently"
-        decision "Adopt microservices architecture"
-        consequences "Gain: Independent scaling. Trade-off: Increased complexity"
-    }
-
-    policy SecurityPolicy "Enforce TLS 1.3" category "security" enforcement "required"
-
-    constraints {
-        "All APIs must use HTTPS"
-        "Database must be encrypted at rest"
-    }
-
-    conventions {
-        "Use RESTful API design"
-        "Follow semantic versioning"
-    }
-
-    scenario "User purchases item" {
-        customer -> shop.webApp "Adds item to cart"
-        shop.webApp -> shop.api "Submits order"
-        shop.api -> shop.db "Saves order"
-    }
-
-    flow PaymentFlow "Payment processing" {
-        shop.webApp -> shop.api "Validate payment method"
-        shop.api -> paymentGateway "Process payment" // Identifying external system
+    DB = database "PostgreSQL Database" {
+        technology "PostgreSQL 14"
     }
 }
 
-views {
-    view index {
-        title "System Context"
-        include *
-    }
-    
-    view container_view of shop {
-        title "Shop Containers"
-        include shop.*
-    }
+// Relationships
+Customer -> Shop.WebApp "Browses"
+Shop.WebApp -> Shop.API "Calls"
+Shop.API -> Shop.DB "Reads/Writes"
+
+// Requirements
+R1 = requirement functional "Must support 10k concurrent users"
+R2 = requirement constraint "Must use PostgreSQL"
+
+// ADRs
+ADR001 = adr "Use microservices architecture" {
+    status "accepted"
+    context "Need to scale different parts independently"
+    decision "Adopt microservices architecture"
+    consequences "Gain: Independent scaling. Trade-off: Increased complexity"
+}
+
+// Policies
+SecurityPolicy = policy "Enforce TLS 1.3" {
+    category "security"
+    enforcement "required"
+}
+
+// Constraints and Conventions
+constraints {
+    "All APIs must use HTTPS"
+    "Database must be encrypted at rest"
+}
+
+conventions {
+    "Use RESTful API design"
+    "Follow semantic versioning"
+}
+
+// Scenarios
+PurchaseScenario = scenario "User purchases item" {
+    step Customer -> Shop.WebApp "Adds item to cart"
+    step Shop.WebApp -> Shop.API "Submits order"
+    step Shop.API -> Shop.DB "Saves order"
+}
+
+// Views (optional - auto-generated if omitted)
+view index {
+    title "System Context"
+    include *
+}
+
+view container_view of Shop {
+    title "Shop Containers"
+    include Shop.*
 }
 ```
 
 ## Key Rules
 
-1. **IDs**: Must be unique within their scope
-2. **References**: Use dot notation (e.g., `System.Container`)
-3. **Relations**: Can be defined at any level (implied relationships are automatically inferred)
-4. **Metadata**: Freeform key-value pairs
-5. **Descriptions**: Optional string values
-6. **Views**: Optional - C4 views are automatically generated if not specified
-7. **Requirements and ADRs**: Must be declared at architecture root level only
+1. **Flat Syntax**: All declarations are top-level, no `specification {}`, `model {}`, or `views {}` wrapper blocks
+2. **IDs**: Must be unique within their scope
+3. **References**: Use dot notation (e.g., `System.Container`)
+4. **Relations**: Can be defined anywhere (implied relationships are automatically inferred)
+5. **Metadata**: Freeform key-value pairs
+6. **Descriptions**: Optional string values
+7. **Views**: Optional — C4 views are automatically generated if not specified
 8. **SLOs**: Can be defined at architecture, system, or container level
 9. **Scale**: Can be defined at container or component level
 

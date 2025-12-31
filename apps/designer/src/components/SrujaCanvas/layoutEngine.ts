@@ -1,13 +1,8 @@
 import { Graphviz } from "@hpcc-js/wasm-graphviz";
 import type { GraphvizResult } from "./types";
 import { measureQuality, type LayoutQuality } from "./qualityMetrics";
-import {
-  refineLayoutConfig,
-  shouldContinueRefinement,
-  getInitialLayoutConfig,
-  type RefinedLayoutConfig,
-} from "./layoutRefinement";
-import { modifyDotString } from "./dotModifier";
+
+import { logger } from "@sruja/shared";
 
 let graphvizInstance: Graphviz | null = null;
 
@@ -127,18 +122,19 @@ export async function runGraphviz(dot: string): Promise<GraphvizResult> {
     traverseObjects(data.objects);
   }
 
-  // Parse Edges with spline points (LikeC4 approach)
+  // Parse Edges with spline points
   if (data.edges) {
     (data.edges as GraphvizEdge[]).forEach((gvEdge) => {
       const sourceId = gvidToNodeName.get(gvEdge.tail);
       const targetId = gvidToNodeName.get(gvEdge.head);
 
       if (!sourceId || !targetId) {
-        console.warn(
-          "[layoutEngine] Edge has unknown source/target gvid:",
-          gvEdge.tail,
-          gvEdge.head
-        );
+        logger.warn("Edge has unknown source/target gvid", {
+          component: "layoutEngine",
+          action: "parseEdges",
+          tailGvid: gvEdge.tail,
+          headGvid: gvEdge.head,
+        });
         return;
       }
 
@@ -190,7 +186,7 @@ export async function runGraphviz(dot: string): Promise<GraphvizResult> {
     });
   }
 
-  console.log(`[layoutEngine] Parsed ${nodes.length} nodes, ${edges.length} edges from Graphviz`);
+  // Parsed nodes and edges from Graphviz
 
   return {
     nodes,
@@ -210,78 +206,36 @@ export interface LayoutWithQuality {
 }
 
 /**
- * Perform layout with iterative refinement
+ * Perform layout and measure quality metrics
  *
- * This function implements the FAANG-level iterative refinement strategy:
- * 1. Generate initial layout
- * 2. Measure quality
- * 3. Refine constraints if needed
- * 4. Re-layout up to max iterations
- * 5. Return best result
+ * This function:
+ * - Generates diagram layout using Graphviz (one pass, no iteration)
+ * - Measures quality metrics (dev-only, for reporting to E2E tests)
+ * - Does NOT iteratively refine the layout
+ *
+ * For iterative quality improvement, see the development workflow:
+ * - Run E2E tests to get quality scores
+ * - Tune Graphviz configuration/layout engine based on scores
+ * - Test again (manual iteration during development)
+ *
+ * Quality metrics are only calculated in development for developer tooling.
+ * In production, quality measurement is skipped to avoid performance overhead.
  */
-export async function layoutWithRefinement(
+export async function layoutAndMeasureQuality(
   initialDot: string,
   _relations?: any[]
 ): Promise<LayoutWithQuality> {
-  const maxIterations = 3;
-  let bestResult: GraphvizResult | null = null;
-  let bestQuality: LayoutQuality | null = null;
-  let bestIteration = 0;
-  let currentDot = initialDot;
-  let config: RefinedLayoutConfig = getInitialLayoutConfig();
+  // Use standard Graphviz layout directly
+  const layoutResult = await runGraphviz(initialDot);
 
-  for (let iteration = 0; iteration < maxIterations; iteration++) {
-    // Layout with current DOT
-    const layoutResult = await runGraphviz(currentDot);
-
-    // Measure quality
-    const quality = measureQuality(layoutResult);
-
-    console.log(
-      `[layoutEngine] Iteration ${iteration + 1}: ` +
-        `score=${quality.score.toFixed(2)}, ` +
-        `crossings=${quality.edgeCrossings}, ` +
-        `overlaps=${quality.nodeOverlaps}, ` +
-        `alignment=${(quality.rankAlignment * 100).toFixed(0)}%`
-    );
-
-    // Track best result
-    if (!bestResult || quality.score > (bestQuality?.score ?? 0)) {
-      bestResult = layoutResult;
-      bestQuality = quality;
-      bestIteration = iteration + 1;
-    }
-
-    // Check if we should continue refining
-    if (!shouldContinueRefinement(config, quality)) {
-      console.log(
-        `[layoutEngine] Stopping refinement: quality acceptable or max iterations reached`
-      );
-      break;
-    }
-
-    // Refine configuration for next iteration
-    config = refineLayoutConfig(
-      {
-        rankdir: config.rankdir,
-        nodesep: config.nodesep,
-        ranksep: config.ranksep,
-      },
-      quality,
-      config
-    );
-
-    // Modify DOT string with refined options
-    currentDot = modifyDotString(initialDot, {
-      rankdir: config.rankdir,
-      nodesep: config.nodesep,
-      ranksep: config.ranksep,
-    });
-  }
+  // Only measure quality in development (developer tool, not user-facing)
+  // Skip in production to avoid performance overhead
+  const isDev = import.meta.env.DEV || import.meta.env.MODE === "development";
+  const quality = isDev ? measureQuality(layoutResult) : null;
 
   return {
-    layoutResult: bestResult!,
-    quality: bestQuality,
-    iteration: bestIteration,
+    layoutResult,
+    quality,
+    iteration: 1,
   };
 }

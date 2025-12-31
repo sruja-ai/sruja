@@ -21,9 +21,10 @@ test:
 	@go test ./pkg/... ./internal/... ./cmd/sruja ./tests ./scripts/...
 
 # Run tests with coverage (excluding cmd/wasm which requires WASM build constraints)
+# Scripts are excluded from coverage as they are auxiliary tools, not core functionality
 test-coverage:
 	@echo "Running Go tests with coverage..."
-	@go test -coverprofile=coverage.out ./pkg/... ./internal/... ./cmd/sruja ./tests ./scripts/...
+	@go test -coverprofile=coverage.out ./pkg/... ./internal/... ./cmd/sruja ./tests
 	@echo ""
 	@echo "Coverage summary:"
 	@go tool cover -func=coverage.out | tail -1
@@ -114,7 +115,7 @@ wasm:
 # Generate designer examples from .sruja files
 generate-examples:
 	@echo "Generating designer examples..."
-	@go run scripts/generate-playground-examples.go
+	@go run cmd/generate-playground-examples
 
 # Build WASM for website (compression included by default in wasm target)
 build-wasm-compressed: wasm

@@ -1,362 +1,647 @@
 // docs/architecture/sruja-platform.sruja
 // Complete architecture of the Sruja platform
 // This file describes Sruja's own architecture using Sruja DSL
+//
+// NOTE: Element kind definitions and stdlib imports are planned features.
+// When fully supported, this should use: import { * } from 'sruja.ai/stdlib'
+// For now, element kinds are defined explicitly (though parser support is in progress).
+//
+// This file may not compile until kind definitions are fully supported in the parser.
+// It serves as comprehensive documentation of the architecture structure.
 
-import { * } from 'sruja.ai/stdlib'
+// Element kinds (parser support pending)
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
 
-model {
-  architect = person "Software Architect" {
-    description "Uses Sruja to design and document systems"
-  }
+// Actors
+Architect = person "Software Architect" {
+  description "Uses Sruja to design and document systems"
+}
 
-  developer = person "Developer" {
-    description "Uses Sruja CLI and VS Code extension for development"
-  }
+Developer = person "Developer" {
+  description "Uses Sruja CLI and VS Code extension for development"
+}
 
-  contributor = person "Contributor" {
-    description "Contributes to Sruja development"
-  }
+Contributor = person "Contributor" {
+  description "Contributes to Sruja development"
+}
 
-  sruja = system "Sruja Platform" {
-    description "Tools for defining, visualizing, and analyzing software architecture"
-    tags "platform", "architecture-as-code"
+// Main System
+Sruja = system "Sruja Platform" {
+  description "Tools for defining, visualizing, and analyzing software architecture"
+  tags ["platform", "architecture-as-code"]
 
-    // ========================================================================
-    // Backend (Go)
-    // ========================================================================
-    
-    cli = container "Sruja CLI" {
+  // Backend (Go)
+  CLI = container "Sruja CLI" {
+    technology "Go, Cobra"
+    description "Command-line interface for Sruja operations"
+    tags ["cli", "backend"]
+
+    Commands = component "CLI Commands" {
+      description "compile, lint, fmt, export, import, tree, diff, explain, score, change, init, lsp"
       technology "Go, Cobra"
-      description "Command-line interface for Sruja operations"
-      tags "cli", "backend"
-
-      commands = component "CLI Commands" {
-        description "compile, lint, fmt, export, import, tree, diff, explain, score, change, init, lsp"
-        technology "Go, Cobra"
-      }
-
-      wasmBuilder = component "WASM Builder" {
-        description "Builds WebAssembly modules for browser usage"
-        technology "Go, cmd/wasm"
-      }
     }
 
-    language = container "Language Engine" {
-      technology "Go"
-      description "DSL parsing, AST, and language processing"
-      tags "core", "parser"
-
-      lexer = component "Lexer" {
-        description "Tokenizes Sruja DSL input"
-        technology "Go, participle"
-      }
-
-      parser = component "Parser" {
-        description "Parses tokens into Abstract Syntax Tree"
-        technology "Go, participle"
-      }
-
-      ast = component "AST Builder" {
-        description "Builds and manages Abstract Syntax Tree"
-        technology "Go, pkg/language"
-      }
-
-      printer = component "Printer" {
-        description "Formats and prints AST back to DSL"
-        technology "Go, pkg/language/printer"
-      }
-
-      lexer -> parser "Tokenizes"
-      parser -> ast "Builds AST"
-      ast -> printer "Formats"
+    WASMBuilder = component "WASM Builder" {
+      description "Builds WebAssembly modules for browser usage"
+      technology "Go, cmd/wasm"
     }
-
-    engine = container "Validation Engine" {
-      technology "Go"
-      description "Validates architecture models against rules"
-      tags "validation", "rules"
-
-      ruleEngine = component "Rule Engine" {
-        description "Executes validation rules"
-        technology "Go, pkg/engine"
-      }
-
-      cycleDetector = component "Cycle Detector" {
-        description "Detects circular dependencies"
-        technology "Go"
-      }
-
-      referenceResolver = component "Reference Resolver" {
-        description "Resolves and validates references"
-        technology "Go"
-      }
-
-      orphanDetector = component "Orphan Detector" {
-        description "Detects orphaned elements"
-        technology "Go"
-      }
-    }
-
-    export = container "Export System" {
-      technology "Go"
-      description "Exports architecture models to various formats"
-      tags "export"
-
-      jsonExporter = component "JSON Exporter" {
-        description "Exports to JSON format"
-        technology "Go, pkg/export/json"
-      }
-
-      viewGenerator = component "View Generator" {
-        description "Generates views and diagrams"
-        technology "Go, pkg/export/views"
-      }
-    }
-
-    import = container "Import System" {
-      technology "Go"
-      description "Imports architecture models from various formats"
-      tags "import"
-
-      jsonImporter = component "JSON Importer" {
-        description "Imports from JSON format"
-        technology "Go, pkg/import/json"
-      }
-    }
-
-    lsp = container "LSP Server" {
-      technology "Go"
-      description "Language Server Protocol implementation for IDE support"
-      tags "lsp", "ide"
-
-      diagnostics = component "Diagnostics" {
-        description "Error and warning reporting"
-        technology "Go, pkg/lsp"
-      }
-
-      completion = component "Completion" {
-        description "Code completion support"
-        technology "Go, pkg/lsp"
-      }
-
-      hover = component "Hover" {
-        description "Hover information"
-        technology "Go, pkg/lsp"
-      }
-
-      definition = component "Definition" {
-        description "Go to definition support"
-        technology "Go, pkg/lsp"
-      }
-    }
-
-    dx = container "Developer Experience" {
-      technology "Go"
-      description "Developer experience utilities"
-      tags "dx"
-
-      errorEnhancer = component "Error Enhancer" {
-        description "Enhances errors with context"
-        technology "Go, pkg/dx"
-      }
-
-      explainer = component "Explainer" {
-        description "Explains architecture elements"
-        technology "Go, pkg/dx"
-      }
-    }
-
-    // ========================================================================
-    // Frontend (TypeScript)
-    // ========================================================================
-
-    designer = container "Designer Application" {
-      technology "TypeScript, React, Vite"
-      description "Interactive designer for testing Sruja code in browser"
-      tags "frontend", "app"
-
-      canvas = component "Canvas" {
-        description "Diagram rendering canvas"
-        technology "React, @likec4/diagram"
-      }
-
-      editor = component "Code Editor" {
-        description "DSL code editor with LSP support"
-        technology "Monaco Editor"
-      }
-
-      wasmAdapter = component "WASM Adapter" {
-        description "Adapter for WASM backend communication"
-        technology "TypeScript, packages/shared/web"
-      }
-    }
-
-    website = container "Website Application" {
-      technology "Astro, TypeScript"
-      description "Documentation website with playground"
-      tags "frontend", "app", "docs"
-
-      playground = component "Playground" {
-        description "Interactive Sruja playground"
-        technology "Astro, WASM"
-      }
-
-      docs = component "Documentation" {
-        description "Documentation pages"
-        technology "Astro, Markdown"
-      }
-    }
-
-    vscode = container "VS Code Extension" {
-      technology "TypeScript, VS Code API"
-      description "VS Code language support"
-      tags "frontend", "ide"
-
-      languageSupport = component "Language Support" {
-        description "Syntax highlighting, LSP integration"
-        technology "VS Code API"
-      }
-
-      preview = component "Preview" {
-        description "Diagram preview"
-        technology "VS Code Webview"
-      }
-    }
-
-    // ========================================================================
-    // Shared Packages
-    // ========================================================================
-
-    shared = container "Shared Package" {
-      technology "TypeScript"
-      description "Shared utilities and types"
-      tags "package", "shared"
-
-      types = component "Types" {
-        description "TypeScript type definitions"
-        technology "TypeScript, packages/shared/types"
-      }
-
-      utils = component "Utilities" {
-        description "Shared utility functions"
-        technology "TypeScript, packages/shared/utils"
-      }
-
-      builder = component "Builder API" {
-        description "Programmatic API for building models"
-        technology "TypeScript, packages/shared/builder"
-      }
-    }
-
-    ui = container "UI Package" {
-      technology "TypeScript, React"
-      description "UI component library"
-      tags "package", "ui"
-
-      components = component "Components" {
-        description "Reusable UI components"
-        technology "React, packages/ui"
-      }
-    }
-
-    layout = container "Layout Package" {
-      technology "TypeScript"
-      description "Layout algorithms for diagrams"
-      tags "package", "layout"
-
-      algorithms = component "Algorithms" {
-        description "Graph layout algorithms"
-        technology "TypeScript, packages/layout"
-      }
-    }
-
-    diagram = container "Diagram Package" {
-      technology "TypeScript, React"
-      description "Diagram rendering utilities"
-      tags "package", "diagram"
-
-      renderer = component "Renderer" {
-        description "Diagram rendering components"
-        technology "React, @likec4/diagram"
-      }
-    }
-
-    // ========================================================================
-    // Relationships
-    // ========================================================================
-
-    cli -> language "Calls"
-    cli -> engine "Calls"
-    cli -> export "Calls"
-    cli -> import "Calls"
-    cli -> lsp "Starts"
-
-    language.parser -> engine "Validates AST"
-    language.ast -> export "Exports"
-    language.ast -> import "Imports"
-
-    engine -> export "Validates before export"
-    export.jsonExporter -> import.jsonImporter "JSON format"
-
-    designer.wasmAdapter -> cli.wasmBuilder "Uses WASM"
-    designer.canvas -> diagram.renderer "Renders diagrams"
-    designer.editor -> lsp "LSP client"
-
-    website.playground -> cli.wasmBuilder "Uses WASM"
-    website -> shared "Uses"
-
-    vscode.languageSupport -> lsp "LSP client"
-    vscode -> shared "Uses"
-
-    designer -> shared "Uses"
-    designer -> ui "Uses"
-    designer -> layout "Uses"
-    designer -> diagram "Uses"
-
-    diagram.renderer -> layout.algorithms "Uses layout"
-    diagram.renderer -> shared.types "Uses types"
-
-    architect -> sruja.cli "Uses"
-    developer -> sruja.cli "Uses"
-    developer -> sruja.vscode "Uses"
-    contributor -> sruja "Contributes to"
   }
 
-  metadata {
-    version "0.1.0"
-    description "Architecture of the Sruja architecture-as-code platform"
-    owner "Sruja Team"
+  Language = container "Language Engine" {
+    technology "Go"
+    description "DSL parsing, AST, and language processing"
+    tags ["core", "parser"]
+
+    Lexer = component "Lexer" {
+      description "Tokenizes Sruja DSL input"
+      technology "Go, participle"
+    }
+
+    Parser = component "Parser" {
+      description "Parses tokens into Abstract Syntax Tree"
+      technology "Go, participle"
+    }
+
+    AST = component "AST Builder" {
+      description "Builds and manages Abstract Syntax Tree"
+      technology "Go, pkg/language"
+    }
+
+    Printer = component "Printer" {
+      description "Formats and prints AST back to DSL"
+      technology "Go, pkg/language/printer"
+    }
+  }
+
+  Engine = container "Validation Engine" {
+    technology "Go"
+    description "Validates architecture models against rules"
+    tags ["validation", "rules"]
+
+    Validator = component "Validator" {
+      description "Orchestrates validation rules execution"
+      technology "Go, pkg/engine/validator"
+    }
+
+    Scorer = component "Scorer" {
+      description "Calculates architecture health scores"
+      technology "Go, pkg/engine/scorer"
+    }
+
+    // Correctness Rules
+    UniqueIDRule = component "Unique ID Rule" {
+      description "Ensures all elements have unique identifiers"
+      technology "Go, pkg/engine/unique_id_rule"
+    }
+
+    ValidReferenceRule = component "Valid Reference Rule" {
+      description "Validates all references point to existing elements"
+      technology "Go, pkg/engine/valid_ref_rule"
+    }
+
+    CycleDetectionRule = component "Cycle Detection Rule" {
+      description "Detects circular dependencies in architecture"
+      technology "Go, pkg/engine/cycle_rule"
+    }
+
+    OrphanDetectionRule = component "Orphan Detection Rule" {
+      description "Detects elements not connected to the architecture"
+      technology "Go, pkg/engine/orphan_rule"
+    }
+
+    // Best Practice Rules
+    SimplicityRule = component "Simplicity Rule" {
+      description "Enforces proper use of domain, system, container hierarchy"
+      technology "Go, pkg/engine/simplicity_rule"
+    }
+
+    LayerViolationRule = component "Layer Violation Rule" {
+      description "Detects violations of architectural layers"
+      technology "Go, pkg/engine/layer_rule"
+    }
+
+    CompletenessRule = component "Completeness Rule" {
+      description "Checks for missing descriptions and metadata"
+      technology "Go, pkg/engine/completeness_rule"
+    }
+
+    DatabaseIsolationRule = component "Database Isolation Rule" {
+      description "Ensures databases are not directly accessed by multiple containers"
+      technology "Go, pkg/engine/best_practices_rule"
+    }
+
+    PublicInterfaceDocumentationRule = component "Public Interface Documentation Rule" {
+      description "Ensures public interfaces are properly documented"
+      technology "Go, pkg/engine/best_practices_rule"
+    }
+
+    // Governance Rules
+    ScenarioFQNRule = component "Scenario FQN Rule" {
+      description "Validates scenario fully qualified names"
+      technology "Go, pkg/engine/scenario_fqn_rule"
+    }
+
+    RelationTagRule = component "Relation Tag Rule" {
+      description "Validates relation tags"
+      technology "Go, pkg/engine/relation_tag_rule"
+    }
+
+    GovernanceValidationRule = component "Governance Validation Rule" {
+      description "Validates governance elements (requirements, ADRs, policies, scenarios, flows)"
+      technology "Go, pkg/engine/governance_validation_rule"
+    }
+
+    // SLO Rules
+    SLOValidationRule = component "SLO Validation Rule" {
+      description "Validates SLO definitions and constraints"
+      technology "Go, pkg/engine/slo_rule"
+    }
+
+    SLOEnforcementRule = component "SLO Enforcement Rule" {
+      description "Enforces SLO compliance"
+      technology "Go, pkg/engine/slo_enforcement_rule"
+    }
+
+    // Additional Rules
+    PropertiesValidationRule = component "Properties Validation Rule" {
+      description "Validates element properties"
+      technology "Go, pkg/engine/properties_validation_rule"
+    }
+
+    ExternalDependencyRule = component "External Dependency Rule" {
+      description "Validates external dependencies"
+      technology "Go, pkg/engine/external_dependency_rule"
+    }
+
+    Resolver = component "Reference Resolver" {
+      description "Resolves and validates references"
+      technology "Go, pkg/engine/resolver"
+    }
+  }
+
+  Export = container "Export System" {
+    technology "Go"
+    description "Exports architecture models to various formats"
+    tags ["export"]
+
+    JSONExporter = component "JSON Exporter" {
+      description "Exports to JSON format"
+      technology "Go, pkg/export/json"
+    }
+
+    DOTExporter = component "DOT Exporter" {
+      description "Exports to Graphviz DOT format"
+      technology "Go, pkg/export/dot"
+    }
+
+    MarkdownExporter = component "Markdown Exporter" {
+      description "Exports to Markdown format"
+      technology "Go, pkg/export/markdown"
+    }
+
+    MermaidExporter = component "Mermaid Exporter" {
+      description "Exports to Mermaid diagram format"
+      technology "Go, pkg/export/mermaid"
+    }
+
+    DSLExporter = component "DSL Exporter" {
+      description "Exports back to Sruja DSL format"
+      technology "Go, pkg/export/dsl"
+    }
+
+    ContextExporter = component "Context Exporter" {
+      description "Exports context-specific views"
+      technology "Go, pkg/export/context"
+    }
+
+    ViewGenerator = component "View Generator" {
+      description "Generates views and diagrams"
+      technology "Go, pkg/export/views"
+    }
+
+    Optimizer = component "Optimizer" {
+      description "Optimizes export output"
+      technology "Go, pkg/export/optimizer"
+    }
+  }
+
+  Import = container "Import System" {
+    technology "Go"
+    description "Imports architecture models from various formats"
+    tags ["import"]
+
+    JSONImporter = component "JSON Importer" {
+      description "Imports from JSON format"
+      technology "Go, pkg/import/json"
+    }
+  }
+
+  LSP = container "LSP Server" {
+    technology "Go"
+    description "Language Server Protocol implementation for IDE support"
+    tags ["lsp", "ide"]
+
+    Diagnostics = component "Diagnostics" {
+      description "Error and warning reporting"
+      technology "Go, pkg/lsp"
+    }
+
+    Completion = component "Completion" {
+      description "Code completion support"
+      technology "Go, pkg/lsp"
+    }
+
+    Hover = component "Hover" {
+      description "Hover information"
+      technology "Go, pkg/lsp"
+    }
+
+    Definition = component "Definition" {
+      description "Go to definition support"
+      technology "Go, pkg/lsp"
+    }
+  }
+
+  Config = container "Configuration" {
+    technology "Go"
+    description "Configuration management"
+    tags ["config"]
+
+    ConfigManager = component "Config Manager" {
+      description "Manages configuration files and settings"
+      technology "Go, pkg/config"
+    }
+  }
+
+  Diagnostics = container "Diagnostics" {
+    technology "Go"
+    description "Diagnostic system for errors and warnings"
+    tags ["diagnostics"]
+
+    DiagnosticSystem = component "Diagnostic System" {
+      description "Structured error and warning reporting"
+      technology "Go, pkg/diagnostics"
+    }
+  }
+
+  Stdlib = container "Standard Library" {
+    technology "Go, Sruja DSL"
+    description "Standard C4 element definitions and styles"
+    tags ["stdlib", "core"]
+
+    CoreElements = component "Core Elements" {
+      description "Standard C4 element kinds (person, system, container, component, etc.)"
+      technology "Sruja DSL, pkg/stdlib/core.sruja"
+    }
+
+    Styles = component "Styles" {
+      description "Standard styling definitions"
+      technology "Sruja DSL, pkg/stdlib/styles.sruja"
+    }
+  }
+
+  DX = container "Developer Experience" {
+    technology "Go"
+    description "Developer experience utilities"
+    tags ["dx"]
+
+    ErrorEnhancer = component "Error Enhancer" {
+      description "Enhances errors with context"
+      technology "Go, pkg/dx"
+    }
+
+    Explainer = component "Explainer" {
+      description "Explains architecture elements"
+      technology "Go, pkg/dx"
+    }
+
+    CLIFormatter = component "CLI Formatter" {
+      description "Formats output for command-line interface"
+      technology "Go, pkg/dx/cli_format"
+    }
+  }
+
+  // Frontend (TypeScript)
+  Designer = container "Designer Application" {
+    technology "TypeScript, React, Vite"
+    description "Interactive designer for testing Sruja code in browser"
+    tags ["frontend", "app"]
+
+    Canvas = component "Canvas" {
+      description "Diagram rendering canvas"
+      technology "React"
+    }
+
+    Editor = component "Code Editor" {
+      description "DSL code editor with LSP support"
+      technology "Monaco Editor"
+    }
+
+    WASMAdapter = component "WASM Adapter" {
+      description "Adapter for WASM backend communication"
+      technology "TypeScript, packages/shared/web"
+    }
+  }
+
+  Website = container "Website Application" {
+    technology "Astro, TypeScript"
+    description "Documentation website with playground"
+    tags ["frontend", "app", "docs"]
+
+    Playground = component "Playground" {
+      description "Interactive Sruja playground"
+      technology "Astro, WASM"
+    }
+
+    Docs = component "Documentation" {
+      description "Documentation pages"
+      technology "Astro, Markdown"
+    }
+  }
+
+  VSCode = container "VS Code Extension" {
+    technology "TypeScript, VS Code API"
+    description "VS Code language support"
+    tags ["frontend", "ide"]
+
+    LanguageSupport = component "Language Support" {
+      description "Syntax highlighting, LSP integration"
+      technology "VS Code API"
+    }
+
+    Preview = component "Preview" {
+      description "Diagram preview"
+      technology "VS Code Webview"
+    }
+  }
+
+  SocialPublish = container "Social Publish" {
+    technology "TypeScript"
+    description "Social media publishing tools"
+    tags ["frontend", "app", "automation"]
+
+    Publishers = component "Publishers" {
+      description "Publishes to various social platforms (Bluesky, GitHub, LinkedIn, Mastodon, Reddit)"
+      technology "TypeScript, apps/social-publish"
+    }
+  }
+
+  Storybook = container "Storybook" {
+    technology "TypeScript, Storybook"
+    description "Component documentation and visual testing"
+    tags ["frontend", "app", "docs"]
+
+    Stories = component "Stories" {
+      description "Component stories for documentation and testing"
+      technology "Storybook, apps/storybook"
+    }
+  }
+
+  // Shared Packages
+  Shared = container "Shared Package" {
+    technology "TypeScript"
+    description "Shared utilities and types"
+    tags ["package", "shared"]
+
+    Types = component "Types" {
+      description "TypeScript type definitions"
+      technology "TypeScript, packages/shared/types"
+    }
+
+    Utils = component "Utilities" {
+      description "Shared utility functions"
+      technology "TypeScript, packages/shared/utils"
+    }
+
+    Builder = component "Builder API" {
+      description "Programmatic API for building models"
+      technology "TypeScript, packages/shared/builder"
+    }
+  }
+
+  UI = container "UI Package" {
+    technology "TypeScript, React"
+    description "UI component library"
+    tags ["package", "ui"]
+
+    Components = component "Components" {
+      description "Reusable UI components"
+      technology "React, packages/ui"
+    }
+  }
+
+  Layout = container "Layout Package" {
+    technology "TypeScript"
+    description "Layout algorithms for diagrams"
+    tags ["package", "layout"]
+
+    Algorithms = component "Algorithms" {
+      description "Graph layout algorithms"
+      technology "TypeScript, packages/layout"
+    }
+  }
+
+  Diagram = container "Diagram Package" {
+    technology "TypeScript, React"
+    description "Diagram rendering utilities"
+    tags ["package", "diagram"]
+
+    Renderer = component "Renderer" {
+      description "Diagram rendering components"
+      technology "React"
+    }
+  }
+
+  ESLintConfig = container "ESLint Config Package" {
+    technology "TypeScript"
+    description "Shared ESLint configuration"
+    tags ["package", "linting"]
+
+    Config = component "ESLint Config" {
+      description "Shared ESLint rules and configuration"
+      technology "TypeScript, packages/eslint-config"
+    }
   }
 }
 
-views {
-  view index {
-    title "Sruja Platform Overview"
-    include *
-  }
+// Backend relationships
+Sruja.CLI -> Sruja.Language "Calls"
+Sruja.CLI -> Sruja.Engine "Calls"
+Sruja.CLI -> Sruja.Export "Calls"
+Sruja.CLI -> Sruja.Import "Calls"
+Sruja.CLI -> Sruja.LSP "Starts"
+Sruja.CLI -> Sruja.Config "Uses"
+Sruja.CLI -> Sruja.DX "Uses"
 
-  view backend of sruja {
-    title "Backend Components"
-    description "Go backend components and their relationships"
-    include sruja.cli, sruja.language, sruja.engine, sruja.export, sruja.import, sruja.lsp, sruja.dx
-  }
+Sruja.Language.Lexer -> Sruja.Language.Parser "Tokenizes"
+Sruja.Language.Parser -> Sruja.Language.AST "Builds AST"
+Sruja.Language.AST -> Sruja.Language.Printer "Formats"
+Sruja.Language -> Sruja.Stdlib "Uses"
 
-  view frontend of sruja {
-    title "Frontend Applications"
-    description "TypeScript frontend applications"
-    include sruja.designer, sruja.website, sruja.vscode
-  }
+Sruja.Language.Parser -> Sruja.Engine "Validates AST"
+Sruja.Language.AST -> Sruja.Export "Exports"
+Sruja.Language.AST -> Sruja.Import "Imports"
 
-  view packages of sruja {
-    title "Shared Packages"
-    description "TypeScript packages and their relationships"
-    include sruja.shared, sruja.ui, sruja.layout, sruja.diagram
-  }
+Sruja.Engine.Validator -> Sruja.Engine.UniqueIDRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.ValidReferenceRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.CycleDetectionRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.OrphanDetectionRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.SimplicityRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.LayerViolationRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.CompletenessRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.DatabaseIsolationRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.PublicInterfaceDocumentationRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.ScenarioFQNRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.RelationTagRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.GovernanceValidationRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.SLOValidationRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.SLOEnforcementRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.PropertiesValidationRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.ExternalDependencyRule "Executes"
+Sruja.Engine.Validator -> Sruja.Engine.Resolver "Uses"
+Sruja.Engine.Scorer -> Sruja.Engine.Validator "Uses"
+Sruja.Engine -> Sruja.Diagnostics "Uses"
 
-  view dataflow of sruja {
-    title "Data Processing Flow"
-    description "How DSL is processed through the system"
-    include sruja.language, sruja.engine, sruja.export
-  }
+Sruja.Engine -> Sruja.Export "Validates before export"
+Sruja.Export.JSONExporter -> Sruja.Import.JSONImporter "JSON format"
+Sruja.Export.Optimizer -> Sruja.Export "Optimizes"
+
+// Frontend relationships
+Sruja.Designer.WASMAdapter -> Sruja.CLI.WASMBuilder "Uses WASM"
+Sruja.Designer.Canvas -> Sruja.Diagram.Renderer "Renders diagrams"
+Sruja.Designer.Editor -> Sruja.LSP "LSP client"
+Sruja.Designer -> Sruja.Shared "Uses"
+Sruja.Designer -> Sruja.UI "Uses"
+Sruja.Designer -> Sruja.Layout "Uses"
+Sruja.Designer -> Sruja.Diagram "Uses"
+Sruja.Designer -> Sruja.ESLintConfig "Uses"
+
+Sruja.Website.Playground -> Sruja.CLI.WASMBuilder "Uses WASM"
+Sruja.Website -> Sruja.Shared "Uses"
+Sruja.Website -> Sruja.UI "Uses"
+Sruja.Website -> Sruja.ESLintConfig "Uses"
+
+Sruja.VSCode.LanguageSupport -> Sruja.LSP "LSP client"
+Sruja.VSCode -> Sruja.Shared "Uses"
+Sruja.VSCode -> Sruja.ESLintConfig "Uses"
+
+Sruja.SocialPublish -> Sruja.Shared "Uses"
+Sruja.SocialPublish -> Sruja.ESLintConfig "Uses"
+
+Sruja.Storybook -> Sruja.UI "Uses"
+Sruja.Storybook -> Sruja.Shared "Uses"
+Sruja.Storybook -> Sruja.ESLintConfig "Uses"
+
+Sruja.Diagram.Renderer -> Sruja.Layout.Algorithms "Uses layout"
+Sruja.Diagram.Renderer -> Sruja.Shared.Types "Uses types"
+
+// User relationships
+Architect -> Sruja.CLI "Uses"
+Architect -> Sruja.VSCode "Writes DSL"
+Architect -> Sruja.Website.Playground "Visualizes architecture"
+Architect -> Sruja.Website "Reads docs"
+
+Developer -> Sruja.CLI "Runs lint/compile"
+Developer -> Sruja.VSCode "Writes code"
+Developer -> Sruja.Designer "Tests DSL"
+
+Contributor -> Sruja "Contributes to"
+
+// Requirements
+R1 = requirement functional "Must support full C4 model hierarchy"
+R2 = requirement performance "Parsing must be < 100ms for typical files"
+R3 = requirement portability "Core must compile to WASM"
+R4 = requirement functional "Must export to JSON format"
+
+// Architecture Decision Records
+ADR001 = adr "Use Participle for Parsing" {
+  status "Accepted"
+  context "Need a type-safe, declarative parser for Go."
+  decision "Use github.com/alecthomas/participle."
+  consequences "Gain: No external build tools needed, type-safe AST. Trade-off: Less flexibility than ANTLR"
 }
 
+ADR002 = adr "Client-Side Rendering for Playground" {
+  status "Accepted"
+  context "Playground needs to run without a backend server for cost and simplicity"
+  decision "Compile Go engine to WASM and run entirely client-side"
+  consequences "Gain: Zero backend costs, works offline. Trade-off: Larger bundle size, WASM compatibility considerations"
+}
+
+ADR003 = adr "JSON as Primary Export Format" {
+  status "Accepted"
+  context "Need a format that can be consumed by various tools and frontend applications"
+  decision "Use JSON as the primary export format, with TypeScript exporters in frontend apps for other formats"
+  consequences "Gain: Interoperability, easy integration. Trade-off: Frontend apps handle format conversion"
+}
+
+// Policies
+CodeStyle = policy "Go code must be formatted with gofmt" {
+  category "quality"
+  enforcement "required"
+}
+
+NoCycles = policy "Architecture graph must be acyclic" {
+  category "structural"
+  enforcement "strict"
+}
+
+// Flows
+AuthoringFlow = flow "Authoring Architecture" {
+  step Architect -> Sruja.VSCode "Writes DSL"
+  step Sruja.VSCode -> Sruja.LSP "Validates in real-time"
+  step Architect -> Sruja.Website.Playground "Opens preview"
+  step Sruja.Website.Playground -> Sruja.CLI.WASMBuilder "Renders diagram"
+}
+
+CICDFlow = flow "CI/CD Verification" {
+  step Developer -> Sruja.CLI "Pushes code"
+  step Sruja.CLI -> Sruja.Engine "Runs lint"
+  step Sruja.CLI -> Sruja.Export "Runs export json"
+  step Sruja.CLI -> Sruja.Export "Generates artifacts"
+}
+
+// Views
+view index {
+  title "Sruja Platform Overview"
+  include *
+}
+
+view backend of Sruja {
+  title "Backend Components"
+  description "Go backend components and their relationships"
+  include Sruja.CLI, Sruja.Language, Sruja.Engine, Sruja.Export, Sruja.Import, Sruja.LSP, Sruja.DX, Sruja.Config, Sruja.Diagnostics, Sruja.Stdlib
+}
+
+view frontend of Sruja {
+  title "Frontend Applications"
+  description "TypeScript frontend applications"
+  include Sruja.Designer, Sruja.Website, Sruja.VSCode, Sruja.SocialPublish, Sruja.Storybook
+}
+
+view packages of Sruja {
+  title "Shared Packages"
+  description "TypeScript packages and their relationships"
+  include Sruja.Shared, Sruja.UI, Sruja.Layout, Sruja.Diagram, Sruja.ESLintConfig
+}
+
+view validation of Sruja.Engine {
+  title "Validation Rules"
+  description "All validation rules in the engine"
+  include Sruja.Engine.Validator, Sruja.Engine.Scorer, Sruja.Engine.UniqueIDRule, Sruja.Engine.ValidReferenceRule, Sruja.Engine.CycleDetectionRule, Sruja.Engine.OrphanDetectionRule, Sruja.Engine.SimplicityRule, Sruja.Engine.LayerViolationRule, Sruja.Engine.CompletenessRule, Sruja.Engine.DatabaseIsolationRule, Sruja.Engine.PublicInterfaceDocumentationRule, Sruja.Engine.ScenarioFQNRule, Sruja.Engine.RelationTagRule, Sruja.Engine.GovernanceValidationRule, Sruja.Engine.SLOValidationRule, Sruja.Engine.SLOEnforcementRule, Sruja.Engine.PropertiesValidationRule, Sruja.Engine.ExternalDependencyRule, Sruja.Engine.Resolver
+}
+
+view exporters of Sruja.Export {
+  title "Export Formats"
+  description "All export formats supported"
+  include Sruja.Export.JSONExporter, Sruja.Export.DOTExporter, Sruja.Export.MarkdownExporter, Sruja.Export.MermaidExporter, Sruja.Export.DSLExporter, Sruja.Export.ContextExporter, Sruja.Export.ViewGenerator, Sruja.Export.Optimizer
+}
+
+view dataflow of Sruja {
+  title "Data Processing Flow"
+  description "How DSL is processed through the system"
+  include Sruja.Language, Sruja.Engine, Sruja.Export
+}
