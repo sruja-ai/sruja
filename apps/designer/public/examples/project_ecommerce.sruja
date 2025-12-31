@@ -1,177 +1,230 @@
 // examples/project_ecommerce.sruja
 // E-Commerce Platform
 
-specification {
-  element person
-  element system
-  element container
-  element component
-  element database
-  element queue
+import { * } from 'sruja.ai/stdlib'
+
+ecommerce = system "E-Commerce Platform" {
+  description "Comprehensive platform for online retail operations handling browsing, ordering, and payments."
+  metadata {
+    capacity "10M+ users, 1M+ requests/day"
+    scaling "Horizontal Pod Autoscaling (HPA) on K8s"
+    projectedGrowth "2x traffic expected in next 6 months due to holiday season"
+    bottlenecks "Database write IOPS on OrderDB during flash sales"
+    metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
+    logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
+    alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
+    team "E-Commerce Platform Team"
+    owner "platform-team@example.com"
+    version "2.1.0"
+    status "production"
+    scale "10M+ users, 1M+ requests/day"
+    cost "$15k/month operational cost"
+    stakeholders ["product-team@example.com", "security-team@example.com"]
+  }
+  
+  webApp = container "Web Application" {
+    description "React-based storefront for customers to browse and buy products."
+    technology "React"
+    productCatalog = component "Product Catalog"
+    shoppingCart = component "Shopping Cart"
+    checkout = component "Checkout"
+    userAuth = component "User Authentication"
+  }
+  
+  api = container "REST API" {
+    description "Core business logic API exposed to frontend and mobile clients."
+    technology "Go"
+    productService = component "Product Service"
+    orderService = component "Order Service"
+    paymentService = component "Payment Service"
+    authService = component "Authentication Service"
+    notificationService = component "Notification Service"
+    inventoryService = component "Inventory Service"
+  }
+  
+  productDb = database "Product Database"
+  orderDb = database "Order Database"
+  userDb = database "User Database"
+  eventQueue = queue "Event Queue"
+  
+  analyticsService = container "Analytics Service" {
+    technology "Python"
+  }
+  
+  searchEngine = container "Search Engine" {
+    technology "Elasticsearch"
+  }
+  
+  redis = container "Cache" {
+    technology "Redis"
+  }
+  
+  // Internal ecommerce system relations (can be inside system block)
+  webApp -> api "calls API"
+  api -> productDb "reads product data from"
+  api -> orderDb "writes order data to"
+  api -> userDb "reads user data from"
+  api -> userDb "writes user data to"
+  api -> eventQueue "notifies events to"
+  eventQueue -> analyticsService "sends analytics events to"
+  api -> searchEngine "queries products in"
+  api -> redis "reads and writes cache to"
 }
 
-model {
-  ecommerce = system "E-Commerce Platform" {
-    description "Comprehensive platform for online retail operations handling browsing, ordering, and payments."
-    metadata {
-      capacity "10M+ users, 1M+ requests/day"
-      scaling "Horizontal Pod Autoscaling (HPA) on K8s"
-      projectedGrowth "2x traffic expected in next 6 months due to holiday season"
-      bottlenecks "Database write IOPS on OrderDB during flash sales"
-      metrics "Request rate, Error rate, Latency (p95, p99), Saturation"
-      logging "Structured JSON logs -> Fluentd -> Elasticsearch (14 days retention)"
-      alerting "PagerDuty for P0/P1 (Availability < 99.9%, Error Rate > 1%)"
-      team "E-Commerce Platform Team"
-      owner "platform-team@example.com"
-      version "2.1.0"
-      status "production"
-      scale "10M+ users, 1M+ requests/day"
-      cost "$15k/month operational cost"
-      stakeholders ["product-team@example.com", "security-team@example.com"]
-    }
-    
-    webApp = container "Web Application" {
-      description "React-based storefront for customers to browse and buy products."
-      technology "React"
-      productCatalog = component "Product Catalog"
-      shoppingCart = component "Shopping Cart"
-      checkout = component "Checkout"
-      userAuth = component "User Authentication"
-    }
-    
-    api = container "REST API" {
-      description "Core business logic API exposed to frontend and mobile clients."
-      technology "Go"
-      productService = component "Product Service"
-      orderService = component "Order Service"
-      paymentService = component "Payment Service"
-      authService = component "Authentication Service"
-      notificationService = component "Notification Service"
-      inventoryService = component "Inventory Service"
-    }
-    
-    productDb = database "Product Database"
-    orderDb = database "Order Database"
-    userDb = database "User Database"
-    eventQueue = queue "Event Queue"
-    
-    analyticsService = container "Analytics Service" {
-      technology "Python"
-    }
-    
-    searchEngine = container "Search Engine" {
-      technology "Elasticsearch"
-    }
-    
-    redis = container "Cache" {
-      technology "Redis"
-    }
-    
-    // Internal ecommerce system relations (LikeC4 style - can be inside system block)
-    webApp -> api "calls API"
-    api -> productDb "reads product data from"
-    api -> orderDb "writes order data to"
-    api -> userDb "reads user data from"
-    api -> userDb "writes user data to"
-    api -> eventQueue "notifies events to"
-    eventQueue -> analyticsService "sends analytics events to"
-    api -> searchEngine "queries products in"
-    api -> redis "reads and writes cache to"
-  }
-  
-  paymentGateway = system "Payment Gateway" {
-    description "External service for securely processing customer payments."
-    stripeApi = container "Stripe API" {
-      technology "Stripe"
-    }
-  }
-  
-  emailService = system "Email Service" {
-    smtp = container "SMTP Server" {
-      technology "SendGrid"
-    }
-  }
-  
-  cdn = system "Content Delivery Network" {
-    description "Global CDN for caching static assets and reducing latency."
-    cloudFront = container "CloudFront" {
-      description "AWS CloudFront distribution serving static content."
-      technology "AWS"
-    }
-  }
-  
-  customer = person "Customer"
-  admin = person "Administrator"
-  supportAgent = person "Support Agent"
-  
-  // External relationships (top-level, cross-system)
-  customer -> cdn.cloudFront "uses web app via"
-  cdn.cloudFront -> ecommerce.webApp "sends content to"
-  customer -> ecommerce.webApp "reads products from"
-  customer -> ecommerce.webApp "creates orders via"
-  admin -> ecommerce.api "updates products via"
-  admin -> ecommerce.api "reads analytics from"
-  supportAgent -> ecommerce.api "reads order data from"
-  
-  // External system relations
-  ecommerce.api -> paymentGateway.stripeApi "processes payments through"
-  ecommerce.api -> emailService.smtp "sends emails via"
-  
-  // System-level relations (implied from nested relationships)
-  customer -> cdn "uses web app via"
-  cdn.cloudFront -> ecommerce "sends content to"
-  customer -> ecommerce "reads products from"
-  admin -> ecommerce "updates products via"
-  supportAgent -> ecommerce "reads order data from"
-  ecommerce.api -> paymentGateway "processes payments through"
-  ecommerce.api -> emailService "sends emails via"
-  
-  requirement REQ001 functional "Users must be able to browse products by category" {
-    tags ["ecommerce.webApp", "ecommerce.api"]
-  }
-  requirement REQ012 performance "Product catalog page must load in under 2 seconds" {
-    tags ["ecommerce.webApp", "ecommerce.api", "ecommerce.productDb"]
-  }
-  
-  adr ADR005 "Use React for Frontend" {
-    tags ["ecommerce.webApp"]
-    status "Accepted"
-    context "Need interactive UI with real-time updates, large team familiar with React ecosystem."
-    decision "Use React with TypeScript for frontend. Use component-based architecture for reusability."
-    consequences "Gain: Large ecosystem, developer productivity, component reusability. Trade-off: Bundle size, client-side rendering complexity."
-  }
-  
-  policy SecurityPolicy "Enforce TLS 1.3 for all external communications" {
-    category "security"
-    enforcement "required"
-    tags ["ecommerce.api", "paymentGateway"]
-  }
-  
-  flow PaymentFlow "Payment processing flow" {
-    step ecommerce.webApp -> ecommerce.api "payment request to"
-    step ecommerce.api -> paymentGateway.stripeApi "process payment via"
-    step paymentGateway.stripeApi -> ecommerce.api "payment confirmation to"
-    step ecommerce.api -> ecommerce.orderDb "update order status in"
-    step ecommerce.api -> ecommerce.eventQueue "payment event to"
-  }
-  
-  flow OrderFulfillmentFlow "Order fulfillment flow" {
-    step ecommerce.webApp -> ecommerce.api "order request to"
-    step ecommerce.api -> ecommerce.orderDb "save order to"
-    step ecommerce.api -> ecommerce.productDb "reserve inventory in"
-    step ecommerce.api -> ecommerce.eventQueue "order event to"
-    step ecommerce.eventQueue -> ecommerce.analyticsService "analytics data to"
+paymentGateway = system "Payment Gateway" {
+  description "External service for securely processing customer payments."
+  stripeApi = container "Stripe API" {
+    technology "Stripe"
   }
 }
 
-views {
-  view index {
-    title "E-Commerce Platform"
-    include *
-  }
-  
-  view containers of ecommerce {
-    title "E-Commerce Containers"
-    include ecommerce.*
+emailService = system "Email Service" {
+  smtp = container "SMTP Server" {
+    technology "SendGrid"
   }
 }
+
+cdn = system "Content Delivery Network" {
+  description "Global CDN for caching static assets and reducing latency."
+  cloudFront = container "CloudFront" {
+    description "AWS CloudFront distribution serving static content."
+    technology "AWS"
+  }
+}
+
+customer = person "Customer"
+admin = person "Administrator"
+supportAgent = person "Support Agent"
+
+// External relationships (top-level, cross-system)
+customer -> cdn.cloudFront "uses web app via"
+cdn.cloudFront -> ecommerce.webApp "sends content to"
+customer -> ecommerce.webApp "reads products from"
+customer -> ecommerce.webApp "creates orders via"
+admin -> ecommerce.api "updates products via"
+admin -> ecommerce.api "reads analytics from"
+supportAgent -> ecommerce.api "reads order data from"
+
+// External system relations
+ecommerce.api -> paymentGateway.stripeApi "processes payments through"
+ecommerce.api -> emailService.smtp "sends emails via"
+
+// System-level relations (implied from nested relationships)
+customer -> cdn "uses web app via"
+cdn.cloudFront -> ecommerce "sends content to"
+customer -> ecommerce "reads products from"
+admin -> ecommerce "updates products via"
+supportAgent -> ecommerce "reads order data from"
+ecommerce.api -> paymentGateway "processes payments through"
+ecommerce.api -> emailService "sends emails via"
+
+REQ001 = requirement functional "Users must be able to browse products by category" {
+  tags ["ecommerce.webApp", "ecommerce.api"]
+}
+REQ012 = requirement performance "Product catalog page must load in under 2 seconds" {
+  tags ["ecommerce.webApp", "ecommerce.api", "ecommerce.productDb"]
+}
+
+ADR005 = adr "Use React for Frontend" {
+  tags ["ecommerce.webApp"]
+  status "Accepted"
+  context "Need interactive UI with real-time updates, large team familiar with React ecosystem."
+  decision "Use React with TypeScript for frontend. Use component-based architecture for reusability."
+  consequences "Gain: Large ecosystem, developer productivity, component reusability. Trade-off: Bundle size, client-side rendering complexity."
+}
+
+SecurityPolicy = policy "Enforce TLS 1.3 for all external communications" {
+  category "security"
+  enforcement "required"
+  tags ["ecommerce.api", "paymentGateway"]
+}
+
+PaymentFlow = flow "Payment processing flow" {
+  step ecommerce.webApp -> ecommerce.api "payment request to"
+  step ecommerce.api -> paymentGateway.stripeApi "process payment via"
+  step paymentGateway.stripeApi -> ecommerce.api "payment confirmation to"
+  step ecommerce.api -> ecommerce.orderDb "update order status in"
+  step ecommerce.api -> ecommerce.eventQueue "payment event to"
+}
+
+OrderFulfillmentFlow = flow "Order fulfillment flow" {
+  step ecommerce.webApp -> ecommerce.api "order request to"
+  step ecommerce.api -> ecommerce.orderDb "save order to"
+  step ecommerce.api -> ecommerce.productDb "reserve inventory in"
+  step ecommerce.api -> ecommerce.eventQueue "order event to"
+  step ecommerce.eventQueue -> ecommerce.analyticsService "analytics data to"
+}
+
+
+
+view index {
+  title "E-Commerce Platform"
+  include *
+  
+  // Layout following C4 conventions for better quality scores:
+  // - Persons at top (rank 1)
+  // - Core system in center
+  // - External systems on edges
+  // - Proper spacing to reduce crossings
+  layout {
+    element customer {
+      position { x: 300, y: 50 }
+    }
+    element admin {
+      position { x: 100, y: 50 }
+    }
+    element supportAgent {
+      position { x: 500, y: 50 }
+    }
+    element ecommerce {
+      position { x: 300, y: 250 }
+    }
+    element paymentGateway {
+      position { x: 600, y: 250 }
+    }
+    element emailService {
+      position { x: 50, y: 250 }
+    }
+    element cdn {
+      position { x: 300, y: 450 }
+    }
+  }
+}
+
+view containers of ecommerce {
+  title "E-Commerce Containers"
+  include ecommerce.*
+  
+  // Layout for containers: Frontend, API, Services, Databases
+  // Follows data flow pattern for better readability
+  layout {
+    element ecommerce.webApp {
+      position { x: 200, y: 100 }
+    }
+    element ecommerce.api {
+      position { x: 400, y: 100 }
+    }
+    element ecommerce.analyticsService {
+      position { x: 600, y: 100 }
+    }
+    element ecommerce.searchEngine {
+      position { x: 200, y: 250 }
+    }
+    element ecommerce.redis {
+      position { x: 400, y: 250 }
+    }
+    element ecommerce.productDb {
+      position { x: 200, y: 400 }
+    }
+    element ecommerce.orderDb {
+      position { x: 400, y: 400 }
+    }
+    element ecommerce.userDb {
+      position { x: 600, y: 400 }
+    }
+    element ecommerce.eventQueue {
+      position { x: 500, y: 250 }
+    }
+  }
+}
+

@@ -1,0 +1,238 @@
+/* apps/designer/src/components/PersonaSwitcher.css */
+.persona-switcher {
+  position: relative;
+  display: inline-block;
+}
+
+.persona-switcher-main {
+  display: flex;
+  align-items: center;
+}
+
+.persona-switcher-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.persona-switcher-button:hover {
+  background-color: var(--color-bg-hover, rgba(0, 0, 0, 0.05));
+}
+
+.persona-label {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.persona-switcher-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: transparent;
+}
+
+.persona-switcher-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10001;
+  min-width: 320px;
+  max-width: 400px;
+  background: var(--color-bg, #ffffff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.persona-switcher-menu-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-bg-subtle, #f9fafb);
+}
+
+.persona-switcher-menu-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text, #111827);
+  margin-bottom: 4px;
+}
+
+.persona-switcher-menu-subtitle {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.persona-switcher-options {
+  padding: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.persona-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.2s;
+}
+
+.persona-option:hover {
+  background-color: var(--color-bg-hover, rgba(0, 0, 0, 0.05));
+}
+
+.persona-option.selected {
+  background-color: var(--color-primary-subtle, rgba(59, 130, 246, 0.1));
+  border: 1px solid var(--color-primary, #3b82f6);
+}
+
+.persona-option-icon {
+  flex-shrink: 0;
+  color: var(--color-text-secondary, #6b7280);
+  margin-top: 2px;
+}
+
+.persona-option.selected .persona-option-icon {
+  color: var(--color-primary, #3b82f6);
+}
+
+.persona-option-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.persona-option-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text, #111827);
+}
+
+.persona-option.selected .persona-option-label {
+  color: var(--color-primary, #3b82f6);
+  font-weight: 600;
+}
+
+.persona-option-description {
+  font-size: 12px;
+  color: var(--color-text-secondary, #6b7280);
+  line-height: 1.4;
+}
+
+.persona-option-check {
+  flex-shrink: 0;
+  color: var(--color-primary, #3b82f6);
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .persona-switcher-menu {
+    background: var(--color-bg, #1f2937);
+    border-color: var(--color-border, #374151);
+  }
+
+  .persona-switcher-menu-header {
+    background: var(--color-bg-subtle, #111827);
+    border-color: var(--color-border, #374151);
+  }
+
+  .persona-option:hover {
+    background-color: var(--color-bg-hover, rgba(255, 255, 255, 0.05));
+  }
+
+  .persona-option.selected {
+    background-color: var(--color-primary-subtle, rgba(59, 130, 246, 0.15));
+  }
+}
+
+/* Explicit Light Mode Override - to cancel out media query if user forces light mode */
+[data-theme="light"] .persona-switcher-menu {
+  background: #ffffff;
+  border-color: #e5e7eb;
+}
+
+[data-theme="light"] .persona-switcher-menu-header {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+[data-theme="light"] .persona-option:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .persona-option.selected {
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 1px solid #3b82f6;
+}
+
+[data-theme="light"] .persona-switcher-menu-title,
+[data-theme="light"] .persona-option-label {
+  color: #111827;
+}
+
+[data-theme="light"] .persona-switcher-menu-subtitle,
+[data-theme="light"] .persona-option-description,
+[data-theme="light"] .persona-option-icon {
+  color: #6b7280;
+}
+
+[data-theme="light"] .persona-option.selected .persona-option-label {
+  color: #3b82f6;
+}
+
+[data-theme="light"] .persona-option.selected .persona-option-icon {
+  color: #3b82f6;
+}
+
+/* Manual Dark Mode Override */
+[data-theme="dark"] .persona-switcher-menu {
+  background: var(--color-bg, #1f2937);
+  border-color: var(--color-border, #374151);
+}
+
+[data-theme="dark"] .persona-switcher-menu-header {
+  background: var(--color-bg-subtle, #111827);
+  border-color: var(--color-border, #374151);
+}
+
+[data-theme="dark"] .persona-option:hover {
+  background-color: var(--color-bg-hover, rgba(255, 255, 255, 0.05));
+}
+
+[data-theme="dark"] .persona-option.selected {
+  background-color: var(--color-primary-subtle, rgba(59, 130, 246, 0.15));
+}
+
+[data-theme="dark"] .persona-switcher-menu-title,
+[data-theme="dark"] .persona-option-label {
+  color: #f3f4f6;
+}
+
+[data-theme="dark"] .persona-switcher-menu-subtitle,
+[data-theme="dark"] .persona-option-description,
+[data-theme="dark"] .persona-option-icon {
+  color: #9ca3af;
+}
+
+[data-theme="dark"] .persona-option.selected .persona-option-label {
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .persona-option.selected .persona-option-icon {
+  color: #60a5fa;
+}

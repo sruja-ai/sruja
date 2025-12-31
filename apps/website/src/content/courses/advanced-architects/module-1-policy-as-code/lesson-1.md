@@ -11,6 +11,7 @@ summary: "Codify architectural rules as executable constraints that prevent viol
 As teams grow, architectural standards drift. Services violate boundaries, dependencies become circular, and compliance requirements are missed. Manual reviews don't scale.
 
 **Example violations:**
+
 - Frontend directly accessing database (violates layer boundaries)
 - Services in wrong layers (business logic in presentation layer)
 - Circular dependencies between services
@@ -19,6 +20,7 @@ As teams grow, architectural standards drift. Services violate boundaries, depen
 ## Solution: Policy as Code
 
 Sruja lets you codify architectural standards as **constraints** and **conventions** that are:
+
 - ✅ Version-controlled with your code
 - ✅ Validated automatically in CI/CD
 - ✅ Enforced consistently across teams
@@ -29,74 +31,68 @@ Sruja lets you codify architectural standards as **constraints** and **conventio
 Constraints define **hard rules** that must be followed. Violations block CI/CD.
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+// Constraint: Presentation layer cannot access datastores directly
+constraint C1 {
+description "Presentation layer must not access datastores"
+rule "containers in layer 'presentation' must not have relations to datastores"
 }
 
-model {
-  // Constraint: Presentation layer cannot access datastores directly
-  constraint C1 {
-    description "Presentation layer must not access datastores"
-    rule "containers in layer 'presentation' must not have relations to datastores"
-  }
+// Constraint: No circular dependencies
+constraint C2 {
+description "No circular dependencies between services"
+rule "no cycles in service dependencies"
+}
 
-  // Constraint: No circular dependencies
-  constraint C2 {
-    description "No circular dependencies between services"
-    rule "no cycles in service dependencies"
-  }
+// Constraint: Compliance requirement
+constraint C3 {
+description "Payment services must have encryption"
+rule "containers with tag 'payment' must have property 'encryption' = 'AES-256'"
+}
 
-  // Constraint: Compliance requirement
-  constraint C3 {
-    description "Payment services must have encryption"
-    rule "containers with tag 'payment' must have property 'encryption' = 'AES-256'"
-  }
+layering {
+layer Presentation "Presentation Layer" {
+  description "User-facing interfaces"
+}
+layer Business "Business Logic Layer" {
+  description "Core business logic"
+}
+layer Data "Data Access Layer" {
+  description "Data persistence"
+}
+}
 
-  layering {
-    layer Presentation "Presentation Layer" {
-      description "User-facing interfaces"
-    }
-    layer Business "Business Logic Layer" {
-      description "Core business logic"
-    }
-    layer Data "Data Access Layer" {
-      description "Data persistence"
-    }
-  }
+Shop = system "E-Commerce System" {
+WebApp = container "Web Application" {
+  layer Presentation
+  // This would violate C1 if it accessed DB directly
+}
 
-  Shop = system "E-Commerce System" {
-    WebApp = container "Web Application" {
-      layer Presentation
-      // This would violate C1 if it accessed DB directly
-    }
-    
-    PaymentService = container "Payment Service" {
-      layer Business
-      tags ["payment"]
-      properties {
-        encryption "AES-256"  // Required by C3
-      }
-    }
-    
-    DB = datastore "Database" {
-      layer Data
-    }
-
-    // Correct: WebApp -> PaymentService -> DB (respects layers)
-    WebApp -> PaymentService "Processes payments"
-    PaymentService -> DB "Stores transactions"
+PaymentService = container "Payment Service" {
+  layer Business
+  tags ["payment"]
+  properties {
+    encryption "AES-256"  // Required by C3
   }
 }
 
-views {
-  view index {
-    include *
-  }
+DB = datastore "Database" {
+  layer Data
+}
+
+// Correct: WebApp -> PaymentService -> DB (respects layers)
+WebApp -> PaymentService "Processes payments"
+PaymentService -> DB "Stores transactions"
+}
+
+view index {
+include *
 }
 ```
 
@@ -105,45 +101,39 @@ views {
 Conventions define **best practices** and **naming standards**. They're warnings, not blockers.
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+// Convention: Naming standards
+convention N1 {
+description "Service names should follow pattern: <domain>-<function>"
+rule "container names should match pattern /^[a-z]+-[a-z]+$/"
 }
 
-model {
-  // Convention: Naming standards
-  convention N1 {
-    description "Service names should follow pattern: <domain>-<function>"
-    rule "container names should match pattern /^[a-z]+-[a-z]+$/"
-  }
-
-  // Convention: Technology standards
-  convention T1 {
-    description "API services should use REST or gRPC"
-    rule "containers with tag 'api' must have technology matching /REST|gRPC/"
-  }
-
-  Platform = system "Microservices Platform" {
-    container user-service "User Service" {  // ✅ Follows N1
-      tags ["api"]
-      technology "REST"  // ✅ Follows T1
-    }
-    
-    authService = container "Auth Service" {  // ⚠️ Violates N1 (should be auth-service)
-      tags ["api"]
-      technology "GraphQL"  // ⚠️ Violates T1 (should be REST or gRPC)
-    }
-  }
+// Convention: Technology standards
+convention T1 {
+description "API services should use REST or gRPC"
+rule "containers with tag 'api' must have technology matching /REST|gRPC/"
 }
 
-views {
-  view index {
-    include *
-  }
+Platform = system "Microservices Platform" {
+container user-service "User Service" {  // ✅ Follows N1
+  tags ["api"]
+  technology "REST"  // ✅ Follows T1
+}
+
+authService = container "Auth Service" {  // ⚠️ Violates N1 (should be auth-service)
+  tags ["api"]
+  technology "GraphQL"  // ⚠️ Violates T1 (should be REST or gRPC)
+}
+}
+
+view index {
+include *
 }
 ```
 
@@ -152,65 +142,59 @@ views {
 Here's how a large organization enforces standards across teams:
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+// Global constraint: All services must have SLOs
+constraint Global1 {
+description "All production services must define SLOs"
+rule "containers with tag 'production' must have slo block"
 }
 
-model {
-  // Global constraint: All services must have SLOs
-  constraint Global1 {
-    description "All production services must define SLOs"
-    rule "containers with tag 'production' must have slo block"
-  }
-
-  // Team-specific constraint: Payment team standards
-  constraint Payment1 {
-    description "Payment services must be in payment layer"
-    rule "containers with tag 'payment' must have layer 'payment'"
-  }
-
-  // Compliance constraint: HIPAA requirements
-  constraint Compliance1 {
-    description "Healthcare data must be encrypted"
-    rule "datastores with tag 'healthcare' must have property 'encryption' = 'AES-256'"
-  }
-
-  layering {
-    layer payment "Payment Layer"
-    layer healthcare "Healthcare Layer"
-  }
-
-  PaymentSystem = system "Payment System" {
-    PaymentAPI = container "Payment API" {
-      layer payment
-      tags ["payment", "production"]
-      slo {
-        availability { target "99.9%" window "30 days" }
-        latency { p95 "200ms" window "7 days" }
-      }
-    }
-  }
-
-  HealthcareSystem = system "Healthcare System" {
-    PatientDB = datastore "Patient Database" {
-      layer healthcare
-      tags ["healthcare"]
-      properties {
-        encryption "AES-256"
-      }
-    }
-  }
+// Team-specific constraint: Payment team standards
+constraint Payment1 {
+description "Payment services must be in payment layer"
+rule "containers with tag 'payment' must have layer 'payment'"
 }
 
-views {
-  view index {
-    include *
+// Compliance constraint: HIPAA requirements
+constraint Compliance1 {
+description "Healthcare data must be encrypted"
+rule "datastores with tag 'healthcare' must have property 'encryption' = 'AES-256'"
+}
+
+layering {
+layer payment "Payment Layer"
+layer healthcare "Healthcare Layer"
+}
+
+PaymentSystem = system "Payment System" {
+PaymentAPI = container "Payment API" {
+  layer payment
+  tags ["payment", "production"]
+  slo {
+    availability { target "99.9%" window "30 days" }
+    latency { p95 "200ms" window "7 days" }
   }
+}
+}
+
+HealthcareSystem = system "Healthcare System" {
+PatientDB = datastore "Patient Database" {
+  layer healthcare
+  tags ["healthcare"]
+  properties {
+    encryption "AES-256"
+  }
+}
+}
+
+view index {
+include *
 }
 ```
 

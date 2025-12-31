@@ -11,7 +11,7 @@ import type { FilterState } from "../../../../../apps/designer/src/components/De
 import type { SrujaModelDump } from "@sruja/shared";
 
 // Mock model with comprehensive Sruja extensions
-const mockLikec4Model: SrujaModelDump = {
+const mockModel: SrujaModelDump = {
   _stage: "parsed",
   projectId: "storybook-project",
   project: { id: "storybook-project", name: "Storybook Architecture" },
@@ -154,7 +154,7 @@ const meta = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model,
+          model: mockModel,
         });
         useUIStore.setState({
           setActiveTab: fn(),
@@ -201,7 +201,7 @@ export const FilteredByNode: Story = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model,
+          model: mockModel,
         });
         useUIStore.setState({
           setActiveTab: fn(),
@@ -319,7 +319,7 @@ export const EmptyStateWithNode: Story = {
     (Story) => {
       useEffect(() => {
         useArchitectureStore.setState({
-          likec4Model: mockLikec4Model,
+          model: mockModel,
         });
         useUIStore.setState({
           setActiveTab: fn(),

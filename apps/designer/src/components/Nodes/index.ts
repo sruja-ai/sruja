@@ -1,6 +1,5 @@
 // apps/designer/src/components/Nodes/index.ts
-// Note: These node types are no longer used since we use LikeC4 for diagramming
-// Keeping exports for backward compatibility but they won't be used
+// Note: These node types are kept for backward compatibility
 import type { NodeTypes } from "@xyflow/react";
 import { SystemNode } from "./SystemNode";
 import { ContainerNode } from "./ContainerNode";
@@ -10,7 +9,7 @@ import { DataStoreNode } from "./DataStoreNode";
 import { QueueNode } from "./QueueNode";
 import { LaneSeparator } from "./LaneSeparator";
 
-// Register node types (not used with LikeC4, kept for compatibility)
+// Register node types (kept for compatibility)
 export const nodeTypes: NodeTypes = {
   system: SystemNode,
   container: ContainerNode,

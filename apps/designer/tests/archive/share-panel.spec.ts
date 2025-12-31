@@ -9,7 +9,7 @@ test.describe("Share Panel", () => {
     const dropZone = page.locator(".drop-zone");
     if (await dropZone.isVisible().catch(() => false)) {
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".react-flow, .likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
     // Switch to Builder tab
@@ -133,7 +133,7 @@ test.describe("Share URL Loading", () => {
     const dropZone = page.locator(".drop-zone");
     if (await dropZone.isVisible().catch(() => false)) {
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".react-flow, .likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
     // Go to builder and get share URL
@@ -152,9 +152,9 @@ test.describe("Share URL Loading", () => {
     await page.waitForSelector(".app", { timeout: 30000 });
 
     // Should load the diagram
-    await page.waitForSelector(".react-flow, .likec4-canvas", { timeout: 30000 });
-    await page.waitForSelector(".likec4-diagram-container svg, .react-flow svg", { timeout: 10000 });
-    const diagramContent = await page.locator(".likec4-diagram-container svg, .react-flow svg").count();
+    await page.waitForSelector(".react-flow", { timeout: 30000 });
+    await page.waitForSelector(".react-flow svg", { timeout: 10000 });
+    const diagramContent = await page.locator(".react-flow svg").count();
     expect(diagramContent).toBeGreaterThan(0);
   });
 });

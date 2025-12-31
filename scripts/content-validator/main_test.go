@@ -76,7 +76,7 @@ title: "Test"
 	}
 }
 
-func TestValidateDocs_Empty(t *testing.T) {
+func TestValidateDocs_Empty(_ *testing.T) {
 	// Should not panic if docs dir doesn't exist
 	errors := validateDocs()
 	_ = errors

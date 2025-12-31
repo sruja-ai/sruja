@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 import path from "path";
 import fs from "fs";
 import type { Plugin } from "vite";
@@ -12,11 +12,14 @@ function serveMonorepoAssets(): Plugin {
     configureServer(server) {
       server.middlewares.use((req: any, res: any, next: any) => {
         // Serve examples from monorepo root
-        if (req.url?.startsWith("/examples/")) {
+        // Remove query parameters for file lookup
+        const urlPath = req.url?.split("?")[0];
+
+        if (urlPath?.startsWith("/examples/")) {
           const examplesPath = path.resolve(
             __dirname,
             "../../examples",
-            req.url.replace("/examples/", "")
+            urlPath.replace("/examples/", "")
           );
           if (fs.existsSync(examplesPath)) {
             // Prevent caching of example files
@@ -38,13 +41,9 @@ function serveMonorepoAssets(): Plugin {
         if (req.url?.startsWith("/wasm/")) {
           // Remove query parameters for file lookup
           const wasmFile = req.url.split("?")[0].replace("/wasm/", "");
-          
+
           // Try designer's public/wasm first (for graphvizlib.wasm)
-          const designerWasmPath = path.resolve(
-            __dirname,
-            "public/wasm",
-            wasmFile
-          );
+          const designerWasmPath = path.resolve(__dirname, "public/wasm", wasmFile);
           if (fs.existsSync(designerWasmPath)) {
             // Prevent caching of WASM files in development
             res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -68,11 +67,7 @@ function serveMonorepoAssets(): Plugin {
             return;
           }
           // Fallback to website's public/wasm (for sruja.wasm)
-          const websiteWasmPath = path.resolve(
-            __dirname,
-            "../website/public/wasm",
-            wasmFile
-          );
+          const websiteWasmPath = path.resolve(__dirname, "../website/public/wasm", wasmFile);
           if (fs.existsSync(websiteWasmPath)) {
             // Prevent caching of WASM files in development
             res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -103,11 +98,14 @@ function serveMonorepoAssets(): Plugin {
     configurePreviewServer(server) {
       server.middlewares.use((req: any, res: any, next: any) => {
         // Serve examples from monorepo root
-        if (req.url?.startsWith("/examples/")) {
+        // Remove query parameters for file lookup
+        const urlPath = req.url?.split("?")[0];
+
+        if (urlPath?.startsWith("/examples/")) {
           const examplesPath = path.resolve(
             __dirname,
             "../../examples",
-            req.url.replace("/examples/", "")
+            urlPath.replace("/examples/", "")
           );
           if (fs.existsSync(examplesPath)) {
             // Prevent caching of example files
@@ -129,13 +127,9 @@ function serveMonorepoAssets(): Plugin {
         if (req.url?.startsWith("/wasm/")) {
           // Remove query parameters for file lookup
           const wasmFile = req.url.split("?")[0].replace("/wasm/", "");
-          
+
           // Try designer's public/wasm first (for graphvizlib.wasm)
-          const designerWasmPath = path.resolve(
-            __dirname,
-            "public/wasm",
-            wasmFile
-          );
+          const designerWasmPath = path.resolve(__dirname, "public/wasm", wasmFile);
           if (fs.existsSync(designerWasmPath)) {
             // Prevent caching of WASM files in preview mode
             res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -159,11 +153,7 @@ function serveMonorepoAssets(): Plugin {
             return;
           }
           // Fallback to website's public/wasm (for sruja.wasm)
-          const websiteWasmPath = path.resolve(
-            __dirname,
-            "../website/public/wasm",
-            wasmFile
-          );
+          const websiteWasmPath = path.resolve(__dirname, "../website/public/wasm", wasmFile);
           if (fs.existsSync(websiteWasmPath)) {
             // Prevent caching of WASM files in preview mode
             res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -199,7 +189,7 @@ export default defineConfig({
   // For GitHub Pages subdirectory: '/designer/' or '/repo-name/'
   // For root deployment: '/' (default)
   // Default to /designer/ for prod-website deployment
-  base: process.env.BASE_PATH || (process.env.NODE_ENV === 'production' ? '/designer/' : '/'),
+  base: process.env.BASE_PATH || (process.env.NODE_ENV === "production" ? "/designer/" : "/"),
 
   plugins: [
     react(),
@@ -208,11 +198,11 @@ export default defineConfig({
     // Suppress warnings about Node.js modules in dev mode
     // (packages/shared/src/examples/index.ts conditionally imports them)
     {
-      name: 'suppress-node-warnings',
-      enforce: 'pre',
+      name: "suppress-node-warnings",
+      enforce: "pre",
       resolveId(id) {
         // Mark Node.js modules as external to suppress warnings in dev mode
-        if (id === 'fs/promises' || id === 'path' || id === 'url') {
+        if (id === "fs/promises" || id === "path" || id === "url") {
           return { id, external: true };
         }
         return null;
@@ -249,18 +239,18 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'zustand'],
-          'ui-vendor': ['@sruja/ui', 'lucide-react', 'framer-motion'],
-          'diagram-vendor': ['@xyflow/react', '@likec4/diagram'],
-          'core-vendor': ['@likec4/core', '@sruja/shared'],
-          'editor-vendor': ['monaco-editor'],
-          'firebase-vendor': ['firebase/app', 'firebase/firestore', 'firebase/auth'], // Be specific if possible, or just 'firebase'
+          "react-vendor": ["react", "react-dom", "zustand"],
+          "ui-vendor": ["@sruja/ui", "lucide-react", "framer-motion"],
+          "diagram-vendor": ["@xyflow/react"],
+          "core-vendor": ["@sruja/shared"],
+          "editor-vendor": ["monaco-editor"],
+          "firebase-vendor": ["firebase/app", "firebase/firestore", "firebase/auth"], // Be specific if possible, or just 'firebase'
         },
       },
       external: (id) => {
         // Externalize Node.js built-ins that are conditionally imported
         // Don't externalize 'events' - we're polyfilling it
-        if (id === 'fs/promises' || id === 'path' || id === 'url') {
+        if (id === "fs/promises" || id === "path" || id === "url") {
           return true;
         }
         return false;
@@ -268,18 +258,18 @@ export default defineConfig({
       onwarn(warning, warn) {
         // Suppress warnings about externalized Node.js modules
         if (
-          warning.code === 'MODULE_LEVEL_DIRECTIVE' ||
+          warning.code === "MODULE_LEVEL_DIRECTIVE" ||
           (warning.message &&
-            (warning.message.includes('has been externalized for browser compatibility') ||
-              warning.message.includes('fs/promises') ||
-              warning.message.includes('path') ||
-              warning.message.includes('url') ||
-              warning.message.includes('d3-sankey'))) // Suppress d3-sankey warning (optional mermaid dependency)
+            (warning.message.includes("has been externalized for browser compatibility") ||
+              warning.message.includes("fs/promises") ||
+              warning.message.includes("path") ||
+              warning.message.includes("url") ||
+              warning.message.includes("d3-sankey"))) // Suppress d3-sankey warning (optional mermaid dependency)
         ) {
           return;
         }
         // Suppress unresolved import warnings for optional dependencies
-        if (warning.code === 'UNRESOLVED_IMPORT' && warning.message?.includes('d3-sankey')) {
+        if (warning.code === "UNRESOLVED_IMPORT" && warning.message?.includes("d3-sankey")) {
           return;
         }
         warn(warning);

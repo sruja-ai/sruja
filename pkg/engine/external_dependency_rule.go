@@ -20,14 +20,13 @@ func (r *ExternalDependencyRule) Name() string {
 	return "ExternalDependency"
 }
 
-//nolint:funlen,gocyclo // Validation logic is long and complex
 func (r *ExternalDependencyRule) Validate(program *language.Program) []diagnostics.Diagnostic {
 	if program == nil || program.Model == nil {
 		return nil
 	}
 
-	// Collect all elements from LikeC4 Model
-	defined, relations := collectLikeC4Elements(program.Model)
+	// Collect all defined elements (map[fqn]Def) and relations
+	defined, relations := collectElements(program.Model)
 
 	// Pre-allocate diagnostics slice
 	estimatedDiags := len(relations) / 10
@@ -36,57 +35,25 @@ func (r *ExternalDependencyRule) Validate(program *language.Program) []diagnosti
 	}
 	diags := make([]diagnostics.Diagnostic, 0, estimatedDiags)
 
-	// Build parent map: child ID -> parent ID
-	parent := make(map[string]string, len(defined))
-
-	// Build parent relationships from LikeC4 elements
-	var buildParentMap func(elem *language.LikeC4ElementDef, parentFQN string)
-	buildParentMap = func(elem *language.LikeC4ElementDef, parentFQN string) {
-		if elem == nil {
-			return
+	// Helper to get parent ID from FQN
+	getParentID := func(fqn string) string {
+		if idx := strings.LastIndexByte(fqn, '.'); idx != -1 {
+			return fqn[:idx]
 		}
-
-		id := elem.GetID()
-		if id == "" {
-			return
-		}
-
-		fqn := id
-		if parentFQN != "" {
-			fqn = buildQualifiedID(parentFQN, id)
-			parent[fqn] = parentFQN
-		}
-
-		// Recurse into nested elements
-		body := elem.GetBody()
-		if body != nil {
-			for _, bodyItem := range body.Items {
-				if bodyItem.Element != nil {
-					buildParentMap(bodyItem.Element, fqn)
-				}
-			}
-		}
-	}
-
-	// Build parent map from all top-level elements
-	for _, item := range program.Model.Items {
-		if item.ElementDef != nil {
-			buildParentMap(item.ElementDef, "")
-		}
+		return ""
 	}
 
 	// Resolve unqualified ID to qualified ID within scope
 	resolve := func(ref, scope string) string {
-		refStr := ref
 		// 1. Try absolute/global match
-		if defined[refStr] {
-			return refStr
+		if defined[ref] != nil {
+			return ref
 		}
 
 		// 2. Try relative to scope, walking up
 		if scope != "" {
-			candidate := scope + "." + refStr
-			if defined[candidate] {
+			candidate := scope + "." + ref
+			if defined[candidate] != nil {
 				return candidate
 			}
 
@@ -95,28 +62,30 @@ func (r *ExternalDependencyRule) Validate(program *language.Program) []diagnosti
 				prefix := strings.Join(parts[:i], ".")
 				var candidate string
 				if prefix == "" {
-					candidate = refStr
+					candidate = ref
 				} else {
-					candidate = prefix + "." + refStr
+					candidate = prefix + "." + ref
 				}
-				if defined[candidate] {
+				if defined[candidate] != nil {
 					return candidate
 				}
 			}
 		}
 
 		// 3. For architecture-level relations (scope=""), search all defined elements
-		// to find matching IDs (e.g., "API" matches "App.API")
 		if scope == "" {
 			for id := range defined {
-				parts := strings.Split(id, ".")
-				if len(parts) > 0 && parts[len(parts)-1] == refStr {
-					return id
+				if strings.HasSuffix(id, "."+ref) || id == ref {
+					// Conservative match: ensure suffix matches and preceeded by dot or is exact match
+					parts := strings.Split(id, ".")
+					if len(parts) > 0 && parts[len(parts)-1] == ref {
+						return id
+					}
 				}
 			}
 		}
 
-		return refStr // Return original if not resolved
+		return ref // Return original if not resolved
 	}
 
 	// Check all relations with their scopes
@@ -134,26 +103,25 @@ func (r *ExternalDependencyRule) Validate(program *language.Program) []diagnosti
 		toID := resolve(toStr, scope)
 
 		// Check if 'from' is a child and 'to' is its parent
-		if parentID, isChild := parent[fromID]; isChild {
-			if parentID == toID {
-				// Use original unqualified names for error message
-				loc := rel.Location()
-				diags = append(diags, diagnostics.Diagnostic{
-					Code:     diagnostics.CodeValidationRuleError,
-					Severity: diagnostics.SeverityError,
-					Message:  fmt.Sprintf("Element '%s' cannot depend on its parent '%s'. Dependencies must be external.", fromStr, toStr),
-					Suggestions: []string{
-						fmt.Sprintf("Remove the dependency from '%s' to '%s'", fromStr, toStr),
-						"If this is an external dependency, ensure the parent is marked as external",
-						"Consider restructuring to avoid parent-child dependencies",
-					},
-					Location: diagnostics.SourceLocation{
-						File:   loc.File,
-						Line:   loc.Line,
-						Column: loc.Column,
-					},
-				})
-			}
+		parentID := getParentID(fromID)
+		if parentID != "" && parentID == toID {
+			// Use original unqualified names for error message
+			loc := rel.Location()
+			diags = append(diags, diagnostics.Diagnostic{
+				Code:     diagnostics.CodeValidationRuleError,
+				Severity: diagnostics.SeverityError,
+				Message:  fmt.Sprintf("Element '%s' cannot depend on its parent '%s'. Dependencies must be external.", fromStr, toStr),
+				Suggestions: []string{
+					fmt.Sprintf("Remove the dependency from '%s' to '%s'", fromStr, toStr),
+					"If this is an external dependency, ensure the parent is marked as external",
+					"Consider restructuring to avoid parent-child dependencies",
+				},
+				Location: diagnostics.SourceLocation{
+					File:   loc.File,
+					Line:   loc.Line,
+					Column: loc.Column,
+				},
+			})
 		}
 	}
 

@@ -13,7 +13,7 @@ func TestRunFmt(t *testing.T) {
 	file := filepath.Join(tmpDir, "test.sruja")
 
 	// Unformatted content
-	content := `model{system S "S"}`
+	content := "system=kind \"System\"\nS=system \"S\""
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -24,10 +24,7 @@ func TestRunFmt(t *testing.T) {
 		t.Errorf("Expected exit code 0, got %d. Stderr: %s", exitCode, stderr.String())
 	}
 
-	expected := `model {
-  S = system "S"
-}
-`
+	expected := content
 	if stdout.String() != expected {
 		t.Errorf("Expected formatted output:\n%q\nGot:\n%q", expected, stdout.String())
 	}

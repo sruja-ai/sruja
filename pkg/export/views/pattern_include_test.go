@@ -7,14 +7,14 @@ import (
 )
 
 func TestApplyViewExpressions_PatternWildcard(t *testing.T) {
-	dsl := `model {
+	dsl := `
         S = system "Sys" {
             C = container "Cont"
         }
-    }`
+    `
 	prog := parseDSL(t, dsl)
 	pattern := "->Element->"
-	v := &language.View{Type: "container", Scope: language.QualifiedIdent{Parts: []string{"S"}}, Expressions: []*language.ViewExpression{{Type: "include", Pattern: &pattern}}}
+	v := &language.View{Scope: &language.QualifiedIdent{Parts: []string{"S"}}, Expressions: []*language.ViewExpression{{Type: "include", Pattern: &pattern}}}
 	inc, err := ApplyViewExpressions(prog, v)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

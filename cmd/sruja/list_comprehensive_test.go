@@ -12,13 +12,17 @@ func TestListComponents(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `model {
-		system Sys1 "System 1" {
-			container Cont1 "Container 1" {
-				component Comp2 "Component 2"
+	content := `
+
+		system = kind "System"
+		container = kind "Container"
+		component = kind "Component"
+		Sys1 = system "System 1" {
+			Cont1 = container "Container 1" {
+				Comp2 = component "Component 2"
 			}
 		}
-	}`
+	`
 
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -46,10 +50,11 @@ func TestListPersons(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `model {
-		person User1 "End User"
-		person Admin1 "Administrator"
-	}`
+	content := `
+		person = kind "Person"
+		User1 = person "End User"
+		Admin1 = person "Administrator"
+	`
 
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -74,11 +79,13 @@ func TestListDataStores(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `model {
-		system Sys1 "System 1" {
-			datastore DB1 "Database"
+	content := `
+		system = kind "System"
+		datastore = kind "Datastore"
+		Sys1 = system "System 1" {
+			DB1 = datastore "Database"
 		}
-	}`
+	`
 
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -102,11 +109,13 @@ func TestListQueues(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `model {
-		system Sys1 "System 1" {
-			queue Q1 "Event Queue"
+	content := `
+		system = kind "System"
+		queue = kind "Queue"
+		Sys1 = system "System 1" {
+			Q1 = queue "Event Queue"
 		}
-	}`
+	`
 
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -130,11 +139,15 @@ func TestListScenarios(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `model {
-		scenario S1 "User Login" {
+	content := `
+		person = kind "Person"
+		system = kind "System"
+		User = person "User"
+		System = system "System"
+		S1 = scenario "User Login" {
 			User -> System "User enters credentials"
 		}
-	}`
+	`
 
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -158,9 +171,9 @@ func TestListADRs(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `model {
-		adr ADR001 "Use JWT"
-	}`
+	content := `
+		ADR001 = adr "Use JWT"
+	`
 
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -184,9 +197,10 @@ func TestListJSON(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `model {
-		system Sys1 "System 1"
-	}`
+	content := `
+		system = kind "System"
+		Sys1 = system "System 1"
+	`
 
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -217,18 +231,24 @@ func TestListJSONCoverage(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `model {
-		system Sys1 "System 1" {
-			container Cont1 "Container 1" {
-				component Comp1 "Component 1"
-				datastore DB1 "Database 1"
-				queue Q1 "Queue 1"
+	content := `
+		system = kind "System"
+		container = kind "Container"
+		component = kind "Component"
+		datastore = kind "Datastore"
+		queue = kind "Queue"
+		person = kind "Person"
+		Sys1 = system "System 1" {
+			Cont1 = container "Container 1" {
+				Comp1 = component "Component 1"
+				DB1 = datastore "Database 1"
+				Q1 = queue "Queue 1"
 			}
 		}
-		person User "User"
-		scenario S1 "Scenario 1" {}
-		adr ADR1 "Decision 1" {}
-	}`
+		User = person "User"
+		S1 = scenario "Scenario 1" {}
+		ADR1 = adr "Decision 1" {}
+	`
 
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -274,11 +294,13 @@ func TestListContainers(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
 
-	content := `model {
-		system Sys1 "System 1" {
-			container Cont1 "Container 1" {}
+	content := `
+		system = kind "System"
+		container = kind "Container"
+		Sys1 = system "System 1" {
+			Cont1 = container "Container 1" {}
 		}
-	}`
+	`
 
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -329,7 +351,7 @@ func TestListErrors(t *testing.T) {
 	// Test unknown type
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
-	if err := os.WriteFile(file, []byte(`model {}`), 0o644); err != nil {
+	if err := os.WriteFile(file, []byte(``), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

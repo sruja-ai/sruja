@@ -1,6 +1,10 @@
 #!/bin/bash
 # Script to iteratively improve diagram quality based on e2e test scores
 # 
+# ⚠️ DEVELOPER TOOL ONLY - For offline development use
+# This script is NOT used in production or real-time user workflows.
+# It's meant for developers to improve layout algorithms during development.
+#
 # Usage:
 #   ./scripts/improve-diagram-quality.sh [iterations]
 # 

@@ -10,7 +10,6 @@ import (
 	"github.com/sruja-ai/sruja/pkg/engine"
 	ctxexport "github.com/sruja-ai/sruja/pkg/export/context"
 	jexport "github.com/sruja-ai/sruja/pkg/export/json"
-	"github.com/sruja-ai/sruja/pkg/export/likec4"
 	"github.com/sruja-ai/sruja/pkg/export/markdown"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
@@ -41,7 +40,7 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 
 	if exportCmd.NArg() < 2 {
 		_, _ = fmt.Fprintln(stderr, "Usage: sruja export <format> <file>")
-		_, _ = fmt.Fprintln(stderr, "Formats: json, mermaid, markdown, likec4, c4, context")
+		_, _ = fmt.Fprintln(stderr, "Formats: json, mermaid, markdown, context")
 		return 1
 	}
 
@@ -92,7 +91,7 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 	var output string
 	switch format {
 	case "json":
-		exporter := jexport.NewLikeC4Exporter()
+		exporter := jexport.NewExporter()
 		exporter.Extended = *extended
 		output, err = exporter.Export(program)
 	case "markdown":
@@ -129,12 +128,9 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 		exporter := markdown.NewExporter(options)
 		output = exporter.Export(program)
 	case "mermaid":
-		// TODO: Update mermaid exporter to work with LikeC4 AST
-		_, _ = fmt.Fprintf(stderr, "Error: mermaid export not yet updated for LikeC4 syntax\n")
+		// TODO: Update mermaid exporter to work with Sruja AST
+		_, _ = fmt.Fprintf(stderr, "Error: mermaid export not yet updated for Sruja syntax\n")
 		return 1
-	case "likec4", "c4":
-		dslExporter := likec4.NewDSLExporter()
-		output = dslExporter.ExportDSL(program)
 	case "context":
 		opts := ctxexport.Options{
 			Scope:    *scope,
@@ -144,7 +140,7 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 		exporter := ctxexport.NewExporter(opts)
 		output = exporter.Export(program)
 	default:
-		_, _ = fmt.Fprintf(stderr, "Unsupported export format: %s. Supported formats: json, mermaid, markdown, likec4, c4, context\n", format)
+		_, _ = fmt.Fprintf(stderr, "Unsupported export format: %s. Supported formats: json, mermaid, markdown, context\n", format)
 		return 1
 	}
 

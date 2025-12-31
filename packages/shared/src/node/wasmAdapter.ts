@@ -1,3 +1,4 @@
+/* global console, global, process, setInterval, clearInterval, setImmediate, setTimeout, clearTimeout, Buffer */
 // packages/shared/src/node/wasmAdapter.ts
 // Node.js-compatible WASM adapter for VS Code extension
 // Uses Node.js WebAssembly API instead of browser APIs
@@ -38,7 +39,7 @@ export type NodeWasmApi = {
   printJsonToDsl: (json: string) => Promise<string>;
   dslToMermaid: (dsl: string) => Promise<string>;
   dslToMarkdown: (dsl: string) => Promise<string>;
-  dslToLikeC4: (dsl: string, filename?: string) => Promise<string>;
+  dslToModel: (dsl: string, filename?: string) => Promise<string>;
   // LSP functions
   getDiagnostics: (text: string) => Promise<Diagnostic[]>;
   getSymbols: (text: string) => Promise<Symbol[]>;
@@ -143,25 +144,42 @@ export async function initWasmNode(options?: {
 
   console.debug("[WASM] Checking for exported functions...");
   // Check if functions are available on global
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parseFn = (global as any).sruja_parse_dsl;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const jsonToDslFn = (global as any).sruja_json_to_dsl;
 
   // LSP functions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const diagnosticsFn = (global as any).sruja_get_diagnostics;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const symbolsFn = (global as any).sruja_get_symbols;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const hoverFn = (global as any).sruja_hover;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const completionFn = (global as any).sruja_completion;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const goToDefinitionFn = (global as any).sruja_go_to_definition;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const findReferencesFn = (global as any).sruja_find_references;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renameFn = (global as any).sruja_rename;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formatFn = (global as any).sruja_format;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const codeActionsFn = (global as any).sruja_code_actions;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const semanticTokensFn = (global as any).sruja_semantic_tokens;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const documentLinksFn = (global as any).sruja_document_links;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const foldingRangesFn = (global as any).sruja_folding_ranges;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mermaidFn = (global as any).sruja_dsl_to_mermaid;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markdownFn = (global as any).sruja_dsl_to_markdown;
-  const likec4Fn = (global as any).sruja_dsl_to_likec4;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const modelFn = (global as any).sruja_dsl_to_model;
 
   if (!parseFn || !jsonToDslFn) {
     const missing = [];
@@ -290,22 +308,22 @@ export async function initWasmNode(options?: {
         );
       }
     },
-    dslToLikeC4: async (dsl: string, filename: string = "input.sruja"): Promise<string> => {
+    dslToModel: async (dsl: string, filename: string = "input.sruja"): Promise<string> => {
       try {
-        if (!likec4Fn) {
-          throw new Error("sruja_dsl_to_likec4 function not available");
+        if (!modelFn) {
+          throw new Error("sruja_dsl_to_model function not available");
         }
-        const r = likec4Fn(dsl, filename) as { ok: boolean; data?: string; error?: string };
+        const r = modelFn(dsl, filename) as { ok: boolean; data?: string; error?: string };
         if (!r || !r.ok) {
-          throw new Error(r?.error || "likec4 export failed");
+          throw new Error(r?.error || "model export failed");
         }
         if (!r.data) {
-          throw new Error("likec4 export succeeded but no data returned");
+          throw new Error("model export succeeded but no data returned");
         }
         return r.data;
       } catch (error) {
         throw new Error(
-          `WASM likec4 export failed: ${error instanceof Error ? error.message : String(error)}`
+          `WASM model export failed: ${error instanceof Error ? error.message : String(error)}`
         );
       }
     },
@@ -456,6 +474,7 @@ export async function initWasmNode(options?: {
 export async function convertDslToMarkdown(
   dsl: string,
   wasmApi?: NodeWasmApi,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _filename?: string
 ): Promise<string | null> {
   let api = wasmApi;

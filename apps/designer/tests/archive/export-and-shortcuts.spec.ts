@@ -11,10 +11,10 @@ const ensureDemoLoaded = async (page: import("@playwright/test").Page) => {
   const dropZone = page.locator(".drop-zone");
   if (await dropZone.isVisible().catch(() => false)) {
     await page.locator("button.demo-btn").click();
-    await page.waitForSelector(".react-flow, .likec4-canvas", { timeout: 30000 });
+    await page.waitForSelector(".react-flow", { timeout: 30000 });
   }
-  // Ensure diagram content is present to enable export actions (LikeC4 uses SVG)
-  await page.waitForSelector(".likec4-diagram-container svg, .react-flow svg", { timeout: 30000 });
+  // Ensure diagram content is present to enable export actions
+  await page.waitForSelector(".react-flow svg", { timeout: 30000 });
 };
 
 const ctrlOrMeta = process.platform === "darwin" ? "Meta" : "Control";

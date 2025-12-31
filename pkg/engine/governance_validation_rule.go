@@ -16,6 +16,13 @@ func (r *GovernanceValidationRule) Name() string {
 	return "Governance Validation"
 }
 
+// governanceItem represents a parsed governance element with its location
+type governanceItem struct {
+	ID   string
+	Kind string
+	Pos  language.SourceLocation
+}
+
 // Validate checks governance features for:
 // - Unique requirement IDs
 // - Unique ADR IDs
@@ -31,145 +38,61 @@ func (r *GovernanceValidationRule) Validate(prog *language.Program) []diagnostic
 
 	model := prog.Model
 
-	// Validate unique requirement IDs
-	requirementIDs := make(map[string]*language.Requirement)
-	adrIDs := make(map[string]*language.ADR)
-	policyIDs := make(map[string]*language.Policy)
-	scenarioIDs := make(map[string]*language.Scenario)
-	flowIDs := make(map[string]*language.Flow)
-	contractIDs := make(map[string]*language.Contract)
+	// Track IDs by kind
+	seenIDs := make(map[string]map[string]governanceItem) // kind -> id -> item
+	seenIDs["requirement"] = make(map[string]governanceItem)
+	seenIDs["adr"] = make(map[string]governanceItem)
+	seenIDs["policy"] = make(map[string]governanceItem)
+	seenIDs["scenario"] = make(map[string]governanceItem)
+	seenIDs["flow"] = make(map[string]governanceItem)
+
+	seenIDs["contract"] = make(map[string]governanceItem)
 
 	// Iterate through all model items to collect and validate IDs
 	for _, item := range model.Items {
-		// Validate unique requirement IDs
-		if item.Requirement != nil {
-			req := item.Requirement
-			if existing, found := requirementIDs[req.ID]; found {
-				diags = append(diags, diagnostics.Diagnostic{
-					Severity: diagnostics.SeverityError,
-					Message:  fmt.Sprintf("Duplicate requirement ID '%s'", req.ID),
-					Location: diagnostics.SourceLocation{
-						File:   req.Location().File,
-						Line:   req.Location().Line,
-						Column: req.Location().Column,
-					},
-					Code: diagnostics.CodeDuplicateIdentifier,
-					Suggestions: []string{
-						fmt.Sprintf("Requirement '%s' is already defined at line %d", req.ID, existing.Location().Line),
-						"Use a unique ID for each requirement",
-					},
-				})
-			} else {
-				requirementIDs[req.ID] = req
-			}
-		}
+		// Governance elements are now parsed through ElementDef
+		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
+			a := item.ElementDef.Assignment
+			kind := a.Kind
 
-		// Validate unique ADR IDs
-		if item.ADR != nil {
-			adr := item.ADR
-			if existing, found := adrIDs[adr.ID]; found {
-				loc := adr.Location()
-				diags = append(diags, diagnostics.Diagnostic{
-					Severity: diagnostics.SeverityError,
-					Message:  fmt.Sprintf("Duplicate ADR ID '%s'", adr.ID),
-					Location: diagnostics.SourceLocation{File: loc.File, Line: loc.Line, Column: loc.Column},
-					Code:     "duplicate-adr-id",
-					Suggestions: []string{
-						fmt.Sprintf("ADR '%s' is already defined at %s", adr.ID, existing.Location()),
-						"Use a unique ID for each ADR",
-					},
-				})
-			} else {
-				adrIDs[adr.ID] = adr
+			// Check if this is a governance kind
+			kindMap, isGovernance := seenIDs[kind]
+			if !isGovernance {
+				// Also check for "story" which maps to "scenario"
+				if kind == "story" {
+					kind = "scenario"
+					kindMap = seenIDs["scenario"]
+					isGovernance = true
+				}
 			}
-		}
 
-		// Validate unique policy IDs
-		if item.Policy != nil {
-			policy := item.Policy
-			if existing, found := policyIDs[policy.ID]; found {
-				loc := policy.Location()
-				diags = append(diags, diagnostics.Diagnostic{
-					Severity: diagnostics.SeverityError,
-					Message:  fmt.Sprintf("Duplicate policy ID '%s'", policy.ID),
-					Location: diagnostics.SourceLocation{File: loc.File, Line: loc.Line, Column: loc.Column},
-					Code:     "duplicate-policy-id",
-					Suggestions: []string{
-						fmt.Sprintf("Policy '%s' is already defined at %s", policy.ID, existing.Location()),
-						"Use a unique ID for each policy",
-					},
-				})
-			} else {
-				policyIDs[policy.ID] = policy
-			}
-		}
-
-		// Validate unique scenario IDs
-		if item.Scenario != nil {
-			scenario := item.Scenario
-			if scenario.ID == "" {
-				continue
-			}
-			loc := scenario.Location()
-			if existing, found := scenarioIDs[scenario.ID]; found {
-				diags = append(diags, diagnostics.Diagnostic{
-					Severity: diagnostics.SeverityError,
-					Message:  fmt.Sprintf("Duplicate scenario ID '%s'", scenario.ID),
-					Location: diagnostics.SourceLocation{File: loc.File, Line: loc.Line, Column: loc.Column},
-					Code:     "duplicate-scenario-id",
-					Suggestions: []string{
-						fmt.Sprintf("Scenario '%s' is already defined at %s", scenario.ID, existing.Location()),
-						"Use a unique ID for each scenario",
-					},
-				})
-			} else {
-				scenarioIDs[scenario.ID] = scenario
-			}
-		}
-
-		// Validate unique flow IDs
-		if item.Flow != nil {
-			flow := item.Flow
-			if flow.ID == "" {
-				continue
-			}
-			loc := flow.Location()
-			if existing, found := flowIDs[flow.ID]; found {
-				diags = append(diags, diagnostics.Diagnostic{
-					Severity: diagnostics.SeverityError,
-					Message:  fmt.Sprintf("Duplicate flow ID '%s'", flow.ID),
-					Location: diagnostics.SourceLocation{File: loc.File, Line: loc.Line, Column: loc.Column},
-					Code:     "duplicate-flow-id",
-					Suggestions: []string{
-						fmt.Sprintf("Flow '%s' is already defined at %s", flow.ID, existing.Location()),
-						"Use a unique ID for each flow",
-					},
-				})
-			} else {
-				flowIDs[flow.ID] = flow
-			}
-		}
-
-		// Validate unique contract IDs
-		if item.ContractsBlock != nil {
-			for _, contract := range item.ContractsBlock.Contracts {
-				if contract == nil {
+			if isGovernance {
+				id := a.Name
+				if id == "" {
 					continue
 				}
-				loc := contract.Location()
-				if existing, found := contractIDs[contract.ID]; found {
+				loc := item.ElementDef.Location()
+				if existing, found := kindMap[id]; found {
 					diags = append(diags, diagnostics.Diagnostic{
 						Severity: diagnostics.SeverityError,
-						Message:  fmt.Sprintf("Duplicate contract ID '%s'", contract.ID),
-						Location: diagnostics.SourceLocation{File: loc.File, Line: loc.Line, Column: loc.Column},
-						Code:     "duplicate-contract-id",
+						Message:  fmt.Sprintf("Duplicate %s ID '%s'", kind, id),
+						Location: diagnostics.SourceLocation{
+							File:   loc.File,
+							Line:   loc.Line,
+							Column: loc.Column,
+						},
+						Code: diagnostics.CodeDuplicateIdentifier,
 						Suggestions: []string{
-							fmt.Sprintf("Contract '%s' is already defined at %s", contract.ID, existing.Location()),
-							"Use a unique ID for each contract",
+							fmt.Sprintf("%s '%s' is already defined at line %d", kind, id, existing.Pos.Line),
+							fmt.Sprintf("Use a unique ID for each %s", kind),
 						},
 					})
 				} else {
-					contractIDs[contract.ID] = contract
+					kindMap[id] = governanceItem{
+						ID:   id,
+						Kind: kind,
+						Pos:  loc,
+					}
 				}
 			}
 		}

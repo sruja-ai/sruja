@@ -43,13 +43,14 @@ export interface ValidationResult {
 function checkBestPractices(model: SrujaModelDump): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const elements = Object.values(model.elements || {}) as any[];
-  const systems = elements.filter(el => el.kind === "system");
-  const containers = elements.filter(el => el.kind === "container");
+  const systems = elements.filter((el) => el.kind === "system");
+  const containers = elements.filter((el) => el.kind === "container");
 
   // BP001: Each System should have an overview/description
   systems.forEach((sys: any) => {
     // Description can be a string or an object with 'txt' property
-    const description = typeof sys.description === 'string' ? sys.description : sys.description?.txt || "";
+    const description =
+      typeof sys.description === "string" ? sys.description : sys.description?.txt || "";
     if (!description || description.trim().length < 10) {
       issues.push({
         id: `bp-overview-${sys.id}`,
@@ -62,7 +63,7 @@ function checkBestPractices(model: SrujaModelDump): ValidationIssue[] {
     }
 
     // BP002: Metadata completeness (owner, status)
-    // Sruja elements have metadata in system/container items in DSL, 
+    // Sruja elements have metadata in system/container items in DSL,
     // but in Dump they might be in 'metadata' or 'properties'.
     const hasOwner = sys.metadata?.owner || sys.properties?.owner;
     const hasStatus = sys.metadata?.status || sys.properties?.status;
@@ -91,7 +92,7 @@ function checkBestPractices(model: SrujaModelDump): ValidationIssue[] {
   });
 
   // BP003: SLO for critical containers
-  containers.forEach(container => {
+  containers.forEach((container) => {
     // Check if container has SLO block
     // In Dump, SLO might be a field or in sruja extension
     const hasSlo = (container as any).slo || (model.sruja as any)?.slos?.[container.id];
@@ -115,7 +116,8 @@ function checkBestPractices(model: SrujaModelDump): ValidationIssue[] {
       severity: "warning",
       category: "best-practice",
       message: "Architecture lacks behavioral documentation (flows or scenarios)",
-      suggestion: "Add a 'flow' or 'scenario' to document how components interact in key use cases.",
+      suggestion:
+        "Add a 'flow' or 'scenario' to document how components interact in key use cases.",
     });
   }
 
@@ -136,9 +138,7 @@ function checkBestPractices(model: SrujaModelDump): ValidationIssue[] {
 /**
  * Detect orphan elements (elements with no relations)
  */
-function detectOrphanElements(
-  model: SrujaModelDump
-): ValidationIssue[] {
+function detectOrphanElements(model: SrujaModelDump): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const elements = Object.values(model.elements || {}) as any[];
   const connectedPaths = new Set<string>();
@@ -149,17 +149,19 @@ function detectOrphanElements(
     const sourceRaw = rel.source || rel.from;
     const targetRaw = rel.target || rel.to;
 
-    const source = (sourceRaw && typeof sourceRaw === "object" && "model" in sourceRaw)
-      ? sourceRaw.model
-      : typeof sourceRaw === "string"
-        ? sourceRaw
-        : null;
+    const source =
+      sourceRaw && typeof sourceRaw === "object" && "model" in sourceRaw
+        ? sourceRaw.model
+        : typeof sourceRaw === "string"
+          ? sourceRaw
+          : null;
 
-    const target = (targetRaw && typeof targetRaw === "object" && "model" in targetRaw)
-      ? targetRaw.model
-      : typeof targetRaw === "string"
-        ? targetRaw
-        : null;
+    const target =
+      targetRaw && typeof targetRaw === "object" && "model" in targetRaw
+        ? targetRaw.model
+        : typeof targetRaw === "string"
+          ? targetRaw
+          : null;
 
     if (source && typeof source === "string") {
       connectedPaths.add(source);
@@ -176,8 +178,8 @@ function detectOrphanElements(
 
     // Skip groups/systems that contain connected elements
     // In flat map, we check if any other element has this as parent
-    const hasConnectedChildren = elements.some(other =>
-      other.id.startsWith(el.id + ".") && connectedPaths.has(other.id)
+    const hasConnectedChildren = elements.some(
+      (other) => other.id.startsWith(el.id + ".") && connectedPaths.has(other.id)
     );
 
     if (hasConnectedChildren) return;
@@ -188,7 +190,8 @@ function detectOrphanElements(
       category: "orphan",
       elementId: el.id,
       message: `Element "${el.title}" (${el.kind}) has no relations`,
-      suggestion: "Connect this element to others using '->' to show how it fits into the architecture.",
+      suggestion:
+        "Connect this element to others using '->' to show how it fits into the architecture.",
     });
   });
 
@@ -197,7 +200,7 @@ function detectOrphanElements(
 
 /**
  * Detect duplicate IDs at the same level
- * (LikeC4 elements map guarantees unique IDs)
+ * (elements map guarantees unique IDs)
  */
 function detectDuplicateIds(_model: SrujaModelDump): ValidationIssue[] {
   return [];
@@ -206,9 +209,7 @@ function detectDuplicateIds(_model: SrujaModelDump): ValidationIssue[] {
 /**
  * Validate relation references point to existing elements
  */
-function validateRelationReferences(
-  model: SrujaModelDump
-): ValidationIssue[] {
+function validateRelationReferences(model: SrujaModelDump): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const validIds = new Set(Object.keys(model.elements || {}));
 
@@ -218,17 +219,19 @@ function validateRelationReferences(
     const sourceRaw = rel.source || rel.from;
     const targetRaw = rel.target || rel.to;
 
-    const source = (sourceRaw && typeof sourceRaw === "object" && "model" in sourceRaw)
-      ? sourceRaw.model
-      : typeof sourceRaw === "string"
-        ? sourceRaw
-        : String(sourceRaw); // Fallback for edge cases
+    const source =
+      sourceRaw && typeof sourceRaw === "object" && "model" in sourceRaw
+        ? sourceRaw.model
+        : typeof sourceRaw === "string"
+          ? sourceRaw
+          : String(sourceRaw); // Fallback for edge cases
 
-    const target = (targetRaw && typeof targetRaw === "object" && "model" in targetRaw)
-      ? targetRaw.model
-      : typeof targetRaw === "string"
-        ? targetRaw
-        : String(targetRaw); // Fallback for edge cases
+    const target =
+      targetRaw && typeof targetRaw === "object" && "model" in targetRaw
+        ? targetRaw.model
+        : typeof targetRaw === "string"
+          ? targetRaw
+          : String(targetRaw); // Fallback for edge cases
 
     // Only validate if we have valid string IDs
     if (typeof source === "string" && !validIds.has(source)) {
@@ -349,7 +352,7 @@ export function validateArchitecture(model: SrujaModelDump | null): ValidationRe
 
   // Score calculation: Base 100, deduct based on severity
   // Errors: -15, Warnings: -10, Info/BestPractices: -2
-  const deductions = (summary.errors * 15) + (summary.warnings * 10) + (summary.infos * 2);
+  const deductions = summary.errors * 15 + summary.warnings * 10 + summary.infos * 2;
   const score = Math.max(0, Math.min(100, 100 - deductions));
 
   return {

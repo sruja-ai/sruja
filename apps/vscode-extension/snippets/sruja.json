@@ -1,273 +1,270 @@
 {
-    "Architecture": {
-        "prefix": "architecture",
-        "body": [
-            "architecture \"${1:Name}\" {",
-            "\t$0",
-            "}"
-        ],
-        "description": "Define a new architecture"
-    },
-    "System": {
-        "prefix": "system",
-        "body": [
-            "system ${1:ID} \"${2:Label}\" {",
-            "\t$0",
-            "}"
-        ],
-        "description": "Define a system"
-    },
-    "Container": {
-        "prefix": "container",
-        "body": [
-            "container ${1:ID} \"${2:Label}\" {",
-            "\ttechnology \"${3:Technology}\"",
-            "\t$0",
-            "}"
-        ],
-        "description": "Define a container"
-    },
-    "Component": {
-        "prefix": "component",
-        "body": [
-            "component ${1:ID} \"${2:Label}\" {",
-            "\ttechnology \"${3:Technology}\"",
-            "\t$0",
-            "}"
-        ],
-        "description": "Define a component"
-    },
-    "Person": {
-        "prefix": "person",
-        "body": [
-            "person ${1:ID} \"${2:Label}\""
-        ],
-        "description": "Define a person/actor"
-    },
-    "DataStore": {
-        "prefix": "datastore",
-        "body": [
-            "datastore ${1:ID} \"${2:Label}\" {",
-            "\ttechnology \"${3:Technology}\"",
-            "\t$0",
-            "}"
-        ],
-        "description": "Define a data store"
-    },
-    "Queue": {
-        "prefix": "queue",
-        "body": [
-            "queue ${1:ID} \"${2:Label}\" {",
-            "\ttechnology \"${3:Technology}\"",
-            "\t$0",
-            "}"
-        ],
-        "description": "Define a queue"
-    },
-    "Relation": {
-        "prefix": "rel",
-        "body": [
-            "${1:From} -> ${2:To} \"${3:Description}\""
-        ],
-        "description": "Define a relationship"
-    },
-    "Requirement": {
-        "prefix": "requirement",
-        "body": [
-            "requirement ${1:ID} ${2|functional,constraint,performance,security,reliability|} \"${3:Description}\""
-        ],
-        "description": "Define a requirement"
-    },
-    "ADR": {
-        "prefix": "adr",
-        "body": [
-            "adr ${1:ID} \"${2:Title}\" {",
-            "\tstatus \"${3|Proposed,Accepted,Rejected,Deprecated,Superseded|}\"",
-            "\tcontext \"${4:Context}\"",
-            "\tdecision \"${5:Decision}\"",
-            "\tconsequences \"${6:Consequences}\"",
-            "}"
-        ],
-        "description": "Define an Architecture Decision Record"
-    },
-    "Policy": {
-        "prefix": "policy",
-        "body": [
-            "policy ${1:ID} \"${2:Description}\" {",
-            "\tcategory \"${3:Category}\"",
-            "\tenforcement \"${4|required,recommended,optional|}\"",
-            "}"
-        ],
-        "description": "Define a policy"
-    },
-    "Scenario": {
-        "prefix": "scenario",
-        "body": [
-            "scenario \"${1:Title}\" {",
-            "\t$0",
-            "}"
-        ],
-        "description": "Define a scenario"
-    },
-    "Flow": {
-        "prefix": "flow",
-        "body": [
-            "flow ${1:ID} \"${2:Title}\" {",
-            "\tstep \"${3:Step 1}\"",
-            "\tstep \"${4:Step 2}\"",
-            "\t$0",
-            "}"
-        ],
-        "description": "Define a flow"
-    },
-    "Decision": {
-        "prefix": "decision",
-        "body": [
-            "decision ${1:ID} \"${2:Description}\" {",
-            "\tcondition \"${3:Condition}\"",
-            "\tyes -> ${4:TargetID}",
-            "\tno -> ${5:TargetID}",
-            "}"
-        ],
-        "description": "Define a decision point in a flow"
-    },
-    "Requirement Block": {
-        "prefix": "reqblock",
-        "body": [
-            "requirement ${1:ID} \"${2:Title}\" {",
-            "\ttype \"${3|functional,constraint,performance,security,reliability|}\"",
-            "\tdescription \"${4:Description}\"",
-            "}"
-        ],
-        "description": "Define a requirement with block syntax"
-    },
-    "Metadata": {
-        "prefix": "metadata",
-        "body": [
-            "metadata {",
-            "\t$0",
-            "}"
-        ],
-        "description": "Define metadata block"
-    },
-    "Layer": {
-        "prefix": "layer",
-        "body": [
-            "layer \"${1|web,api,service,data,database|}\""
-        ],
-        "description": "Define layer metadata"
-    },
-    "Technology": {
-        "prefix": "tech",
-        "body": [
-            "technology \"${1:Technology}\""
-        ],
-        "description": "Define technology"
-    },
-    "Description": {
-        "prefix": "desc",
-        "body": [
-            "description \"${1:Description}\""
-        ],
-        "description": "Define description"
-    },
-    "LikeC4 Specification": {
-        "prefix": "spec",
-        "body": [
-            "specification {",
-            "\telement person",
-            "\telement system",
-            "\telement container",
-            "\telement component",
-            "\telement database",
-            "\telement queue",
-            "\t$0",
-            "}"
-        ],
-        "description": "LikeC4: Define a specification block"
-    },
-    "LikeC4 Model": {
-        "prefix": "model",
-        "body": [
-            "model {",
-            "\t$0",
-            "}"
-        ],
-        "description": "LikeC4: Define a model block"
-    },
-    "LikeC4 Element": {
-        "prefix": "elem",
-        "body": [
-            "${1:name} = ${2|person,system,container,component,database,queue|} \"${3:Title}\" {",
-            "\tdescription \"${4:Description}\"",
-            "\t$0",
-            "}"
-        ],
-        "description": "LikeC4: Define an element with assignment syntax"
-    },
-    "LikeC4 Views": {
-        "prefix": "views",
-        "body": [
-            "views {",
-            "\tview ${1:index} {",
-            "\t\ttitle \"${2:Title}\"",
-            "\t\tinclude *",
-            "\t}",
-            "\t$0",
-            "}"
-        ],
-        "description": "LikeC4: Define a views block"
-    },
-    "LikeC4 View": {
-        "prefix": "view",
-        "body": [
-            "view ${1:name} {",
-            "\ttitle \"${2:Title}\"",
-            "\tinclude ${3:*}",
-            "\t$0",
-            "}"
-        ],
-        "description": "LikeC4: Define a single view"
-    },
-    "LikeC4 View Of": {
-        "prefix": "viewof",
-        "body": [
-            "view ${1:name} of ${2:Element} {",
-            "\ttitle \"${3:Title}\"",
-            "\tinclude *",
-            "\t$0",
-            "}"
-        ],
-        "description": "LikeC4: Define a view scoped to an element"
-    },
-    "LikeC4 Full Template": {
-        "prefix": "likec4",
-        "body": [
-            "specification {",
-            "\telement person",
-            "\telement system",
-            "\telement container",
-            "\telement component",
-            "\telement database",
-            "}",
-            "",
-            "model {",
-            "\t${1:user} = person \"${2:User}\"",
-            "\t",
-            "\t${3:mySystem} = system \"${4:My System}\" {",
-            "\t\t${5:api} = container \"${6:API}\"",
-            "\t}",
-            "\t",
-            "\t${1:user} -> ${3:mySystem}.${5:api} \"uses\"",
-            "}",
-            "",
-            "views {",
-            "\tview index {",
-            "\t\ttitle \"${7:System Overview}\"",
-            "\t\tinclude *",
-            "\t}",
-            "}"
-        ],
-        "description": "LikeC4: Complete file template with specification, model, and views"
-    }
+  "System": {
+    "prefix": "system",
+    "body": [
+      "${1:name} = system \"${2:Label}\" {",
+      "\tdescription \"${3:Description}\"",
+      "\t$0",
+      "}"
+    ],
+    "description": "Define a system (flattened syntax)"
+  },
+  "Container": {
+    "prefix": "container",
+    "body": [
+      "${1:name} = container \"${2:Label}\" {",
+      "\ttechnology \"${3:Technology}\"",
+      "\tdescription \"${4:Description}\"",
+      "\t$0",
+      "}"
+    ],
+    "description": "Define a container (flattened syntax)"
+  },
+  "Component": {
+    "prefix": "component",
+    "body": [
+      "${1:name} = component \"${2:Label}\" {",
+      "\ttechnology \"${3:Technology}\"",
+      "\tdescription \"${4:Description}\"",
+      "\t$0",
+      "}"
+    ],
+    "description": "Define a component (flattened syntax)"
+  },
+  "Person": {
+    "prefix": "person",
+    "body": ["${1:name} = person \"${2:Label}\""],
+    "description": "Define a person/actor (flattened syntax)"
+  },
+  "Database": {
+    "prefix": "database",
+    "body": [
+      "${1:name} = database \"${2:Label}\" {",
+      "\ttechnology \"${3:Technology}\"",
+      "\tdescription \"${4:Description}\"",
+      "\t$0",
+      "}"
+    ],
+    "description": "Define a database (flattened syntax)"
+  },
+  "Queue": {
+    "prefix": "queue",
+    "body": [
+      "${1:name} = queue \"${2:Label}\" {",
+      "\ttechnology \"${3:Technology}\"",
+      "\tdescription \"${4:Description}\"",
+      "\t$0",
+      "}"
+    ],
+    "description": "Define a queue (flattened syntax)"
+  },
+  "Relation": {
+    "prefix": "rel",
+    "body": ["${1:From} -> ${2:To} \"${3:Description}\""],
+    "description": "Define a relationship"
+  },
+  "Requirement": {
+    "prefix": "requirement",
+    "body": [
+      "requirement ${1:ID} ${2|functional,constraint,performance,security,reliability|} \"${3:Description}\""
+    ],
+    "description": "Define a requirement"
+  },
+  "ADR": {
+    "prefix": "adr",
+    "body": [
+      "adr ${1:ID} \"${2:Title}\" {",
+      "\tstatus \"${3|Proposed,Accepted,Rejected,Deprecated,Superseded|}\"",
+      "\tcontext \"${4:Context}\"",
+      "\tdecision \"${5:Decision}\"",
+      "\tconsequences \"${6:Consequences}\"",
+      "}"
+    ],
+    "description": "Define an Architecture Decision Record"
+  },
+  "Policy": {
+    "prefix": "policy",
+    "body": [
+      "policy ${1:ID} \"${2:Description}\" {",
+      "\tcategory \"${3:Category}\"",
+      "\tenforcement \"${4|required,recommended,optional|}\"",
+      "}"
+    ],
+    "description": "Define a policy"
+  },
+  "Scenario": {
+    "prefix": "scenario",
+    "body": ["scenario \"${1:Title}\" {", "\t$0", "}"],
+    "description": "Define a scenario"
+  },
+  "Flow": {
+    "prefix": "flow",
+    "body": [
+      "flow ${1:ID} \"${2:Title}\" {",
+      "\tstep \"${3:Step 1}\"",
+      "\tstep \"${4:Step 2}\"",
+      "\t$0",
+      "}"
+    ],
+    "description": "Define a flow"
+  },
+  "Decision": {
+    "prefix": "decision",
+    "body": [
+      "decision ${1:ID} \"${2:Description}\" {",
+      "\tcondition \"${3:Condition}\"",
+      "\tyes -> ${4:TargetID}",
+      "\tno -> ${5:TargetID}",
+      "}"
+    ],
+    "description": "Define a decision point in a flow"
+  },
+  "Requirement Block": {
+    "prefix": "reqblock",
+    "body": [
+      "requirement ${1:ID} \"${2:Title}\" {",
+      "\ttype \"${3|functional,constraint,performance,security,reliability|}\"",
+      "\tdescription \"${4:Description}\"",
+      "}"
+    ],
+    "description": "Define a requirement with block syntax"
+  },
+  "Metadata": {
+    "prefix": "metadata",
+    "body": ["metadata {", "\t$0", "}"],
+    "description": "Define metadata block"
+  },
+  "Layer": {
+    "prefix": "layer",
+    "body": ["layer \"${1|web,api,service,data,database|}\""],
+    "description": "Define layer metadata"
+  },
+  "Technology": {
+    "prefix": "tech",
+    "body": ["technology \"${1:Technology}\""],
+    "description": "Define technology"
+  },
+  "Description": {
+    "prefix": "desc",
+    "body": ["description \"${1:Description}\""],
+    "description": "Define description"
+  },
+  "Kind Definition": {
+    "prefix": "kind",
+    "body": ["${1:person} = kind \"${2:Person}\""],
+    "description": "Define an element kind (flattened syntax)"
+  },
+  "Specification Block": {
+    "prefix": "spec",
+    "body": [
+      "specification {",
+      "\t${1:person} = kind \"${2:Person}\"",
+      "\t${3:system} = kind \"${4:System}\"",
+      "\t${5:container} = kind \"${6:Container}\"",
+      "\t$0",
+      "}"
+    ],
+    "description": "Define a specification block (optional - can use flat syntax)"
+  },
+  "Model Block": {
+    "prefix": "model",
+    "body": ["model {", "\t$0", "}"],
+    "description": "Define a model block (optional - can use flat syntax)"
+  },
+  "Element": {
+    "prefix": "elem",
+    "body": [
+      "${1:name} = ${2|person,system,container,component,database,queue|} \"${3:Title}\" {",
+      "\tdescription \"${4:Description}\"",
+      "\t$0",
+      "}"
+    ],
+    "description": "Define an element (flattened syntax - can be at top level)"
+  },
+  "View": {
+    "prefix": "view",
+    "body": ["view ${1:name} {", "\ttitle \"${2:Title}\"", "\tinclude ${3:*}", "\t$0", "}"],
+    "description": "Define a view (flattened syntax - can be at top level)"
+  },
+  "View Of": {
+    "prefix": "viewof",
+    "body": [
+      "view ${1:name} of ${2:Element} {",
+      "\ttitle \"${3:Title}\"",
+      "\tinclude *",
+      "\t$0",
+      "}"
+    ],
+    "description": "Define a view scoped to an element (flattened syntax)"
+  },
+  "Views Block": {
+    "prefix": "views",
+    "body": [
+      "views {",
+      "\tview ${1:index} {",
+      "\t\ttitle \"${2:Title}\"",
+      "\t\tinclude *",
+      "\t}",
+      "\t$0",
+      "}"
+    ],
+    "description": "Define a views block (optional - can use flat syntax)"
+  },
+  "Full Template (Flat)": {
+    "prefix": "sruja",
+    "body": [
+      "// Specification",
+      "${1:person} = kind \"${2:Person}\"",
+      "${3:system} = kind \"${4:System}\"",
+      "${5:container} = kind \"${6:Container}\"",
+      "",
+      "// Model",
+      "${7:user} = person \"${8:User}\"",
+      "",
+      "${9:mySystem} = system \"${10:My System}\" {",
+      "\t${11:api} = container \"${12:API}\" {",
+      "\t\ttechnology \"${13:Technology}\"",
+      "\t}",
+      "}",
+      "",
+      "${7:user} -> ${9:mySystem}.${11:api} \"${14:uses}\"",
+      "",
+      "// Views",
+      "view index {",
+      "\ttitle \"${15:System Overview}\"",
+      "\tinclude *",
+      "}"
+    ],
+    "description": "Complete file template using flattened syntax (no blocks required)"
+  },
+  "Full Template (Blocks)": {
+    "prefix": "srujablocks",
+    "body": [
+      "specification {",
+      "\tperson = kind \"Person\"",
+      "\tsystem = kind \"System\"",
+      "\tcontainer = kind \"Container\"",
+      "}",
+      "",
+      "model {",
+      "\t${1:user} = person \"${2:User}\"",
+      "\t",
+      "\t${3:mySystem} = system \"${4:My System}\" {",
+      "\t\t${5:api} = container \"${6:API}\" {",
+      "\t\t\ttechnology \"${7:Technology}\"",
+      "\t\t}",
+      "\t}",
+      "\t",
+      "\t${1:user} -> ${3:mySystem}.${5:api} \"${8:uses}\"",
+      "}",
+      "",
+      "views {",
+      "\tview index {",
+      "\t\ttitle \"${9:System Overview}\"",
+      "\t\tinclude *",
+      "\t}",
+      "}"
+    ],
+    "description": "Complete file template using block syntax (optional)"
+  }
 }

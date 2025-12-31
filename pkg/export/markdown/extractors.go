@@ -13,7 +13,7 @@ func extractSystemsFromModel(prog *language.Program) []*language.System {
 	}
 	var systems []*language.System
 	for _, item := range prog.Model.Items {
-		if item.ElementDef != nil && item.ElementDef.GetKind() == "system" {
+		if item.ElementDef != nil && (item.ElementDef.GetKind() == "system" || item.ElementDef.GetKind() == "System") {
 			if sys := extractSystemFromElement(item.ElementDef); sys != nil {
 				systems = append(systems, sys)
 			}
@@ -22,8 +22,8 @@ func extractSystemsFromModel(prog *language.Program) []*language.System {
 	return systems
 }
 
-func extractSystemFromElement(elem *language.LikeC4ElementDef) *language.System {
-	if elem == nil || elem.GetKind() != "system" {
+func extractSystemFromElement(elem *language.ElementDef) *language.System {
+	if elem == nil || (elem.GetKind() != "system" && elem.GetKind() != "System") {
 		return nil
 	}
 	id := elem.GetID()
@@ -56,8 +56,8 @@ func extractSystemFromElement(elem *language.LikeC4ElementDef) *language.System 
 	return sys
 }
 
-func extractContainerFromElement(elem *language.LikeC4ElementDef) *language.Container {
-	if elem == nil || elem.GetKind() != "container" {
+func extractContainerFromElement(elem *language.ElementDef) *language.Container {
+	if elem == nil || (elem.GetKind() != "container" && elem.GetKind() != "Container") {
 		return nil
 	}
 	id := elem.GetID()
@@ -84,8 +84,8 @@ func extractContainerFromElement(elem *language.LikeC4ElementDef) *language.Cont
 	return cont
 }
 
-func extractComponentFromElement(elem *language.LikeC4ElementDef) *language.Component {
-	if elem == nil || elem.GetKind() != "component" {
+func extractComponentFromElement(elem *language.ElementDef) *language.Component {
+	if elem == nil || (elem.GetKind() != "component" && elem.GetKind() != "Component") {
 		return nil
 	}
 	id := elem.GetID()
@@ -98,12 +98,12 @@ func extractComponentFromElement(elem *language.LikeC4ElementDef) *language.Comp
 	}
 }
 
-func extractDataStoreFromElement(elem *language.LikeC4ElementDef) *language.DataStore {
+func extractDataStoreFromElement(elem *language.ElementDef) *language.DataStore {
 	if elem == nil {
 		return nil
 	}
 	kind := elem.GetKind()
-	if kind != "database" && kind != "datastore" {
+	if kind != "database" && kind != "datastore" && kind != "Database" && kind != "DataStore" {
 		return nil
 	}
 	id := elem.GetID()
@@ -116,8 +116,8 @@ func extractDataStoreFromElement(elem *language.LikeC4ElementDef) *language.Data
 	}
 }
 
-func extractQueueFromElement(elem *language.LikeC4ElementDef) *language.Queue {
-	if elem == nil || elem.GetKind() != "queue" {
+func extractQueueFromElement(elem *language.ElementDef) *language.Queue {
+	if elem == nil || (elem.GetKind() != "queue" && elem.GetKind() != "Queue") {
 		return nil
 	}
 	id := elem.GetID()
@@ -136,7 +136,11 @@ func extractPersonsFromModel(prog *language.Program) []*language.Person {
 	}
 	var persons []*language.Person
 	for _, item := range prog.Model.Items {
-		if item.ElementDef != nil && item.ElementDef.GetKind() == "person" {
+		kind := ""
+		if item.ElementDef != nil {
+			kind = item.ElementDef.GetKind()
+		}
+		if kind == "person" || kind == "Person" {
 			id := item.ElementDef.GetID()
 			if id != "" {
 				persons = append(persons, &language.Person{
@@ -149,27 +153,56 @@ func extractPersonsFromModel(prog *language.Program) []*language.Person {
 	return persons
 }
 
-func extractRequirementsFromModel(prog *language.Program) []*language.Requirement {
+// RequirementInfo represents minimal requirement info extracted from ElementDef
+type RequirementInfo struct {
+	ID    string
+	Title string
+	Type  string
+}
+
+func extractRequirementsFromModel(prog *language.Program) []RequirementInfo {
 	if prog == nil || prog.Model == nil {
 		return nil
 	}
-	var requirements []*language.Requirement
+	var requirements []RequirementInfo
 	for _, item := range prog.Model.Items {
-		if item.Requirement != nil {
-			requirements = append(requirements, item.Requirement)
+		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
+			a := item.ElementDef.Assignment
+			if a.Kind == "requirement" || a.Kind == "Requirement" {
+				req := RequirementInfo{
+					ID:    a.Name,
+					Title: getString(a.Title),
+				}
+				if a.SubKind != nil {
+					req.Type = *a.SubKind
+				}
+				requirements = append(requirements, req)
+			}
 		}
 	}
 	return requirements
 }
 
-func extractADRsFromModel(prog *language.Program) []*language.ADR {
+// ADRInfo represents minimal ADR info extracted from ElementDef
+type ADRInfo struct {
+	ID    string
+	Title string
+}
+
+func extractADRsFromModel(prog *language.Program) []ADRInfo {
 	if prog == nil || prog.Model == nil {
 		return nil
 	}
-	var adrs []*language.ADR
+	var adrs []ADRInfo
 	for _, item := range prog.Model.Items {
-		if item.ADR != nil {
-			adrs = append(adrs, item.ADR)
+		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
+			a := item.ElementDef.Assignment
+			if a.Kind == "adr" || a.Kind == "Adr" || a.Kind == "ADR" {
+				adrs = append(adrs, ADRInfo{
+					ID:    a.Name,
+					Title: getString(a.Title),
+				})
+			}
 		}
 	}
 	return adrs
@@ -198,8 +231,8 @@ func extractRelationsFromModel(prog *language.Program) []*language.Relation {
 	}
 
 	// Collect relations from element bodies
-	var collectFromElement func(elem *language.LikeC4ElementDef)
-	collectFromElement = func(elem *language.LikeC4ElementDef) {
+	var collectFromElement func(elem *language.ElementDef)
+	collectFromElement = func(elem *language.ElementDef) {
 		if elem == nil {
 			return
 		}
@@ -278,21 +311,91 @@ func relationshipScore(rel *language.Relation) int {
 	return score
 }
 
+// ScenarioStepInfo represents a step in a scenario or flow
+type ScenarioStepInfo struct {
+	From        string
+	To          string
+	Description string
+	Tags        []string
+}
+
+// ScenarioInfo represents generic info extracted from ElementDef
+type ScenarioInfo struct {
+	ID          string
+	Title       string
+	Description string
+	Steps       []ScenarioStepInfo
+}
+
+// FlowInfo represents generic info extracted from ElementDef
+type FlowInfo struct {
+	ID          string
+	Title       string
+	Description string
+	Steps       []ScenarioStepInfo
+}
+
 // extractScenariosAndFlowsFromModel extracts scenarios and flows from the model
-func extractScenariosAndFlowsFromModel(prog *language.Program) ([]*language.Scenario, []*language.Flow) {
+func extractScenariosAndFlowsFromModel(prog *language.Program) ([]ScenarioInfo, []FlowInfo) {
 	if prog == nil || prog.Model == nil {
 		return nil, nil
 	}
 
-	var scenarios []*language.Scenario
-	var flows []*language.Flow
+	var scenarios []ScenarioInfo
+	var flows []FlowInfo
 
 	for _, item := range prog.Model.Items {
-		if item.Scenario != nil {
-			scenarios = append(scenarios, item.Scenario)
-		}
-		if item.Flow != nil {
-			flows = append(flows, item.Flow)
+		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
+			a := item.ElementDef.Assignment
+			var info ScenarioInfo
+			info.ID = a.Name
+			info.Title = getString(a.Title)
+
+			// Extract description from body if available (usually first item description or from tags?)
+			// ElementDef uses Body for properties.
+			body := item.ElementDef.GetBody()
+			if body != nil {
+				for _, bItem := range body.Items {
+					if bItem.Description != nil {
+						info.Description = *bItem.Description
+					}
+					// Check for Steps
+					if bItem.Step != nil {
+						s := bItem.Step
+						step := ScenarioStepInfo{
+							From:        strings.Join(s.FromParts, "."),
+							To:          strings.Join(s.ToParts, "."),
+							Description: getString(s.Description),
+							Tags:        s.Tags,
+						}
+						info.Steps = append(info.Steps, step)
+					}
+					// Also support generic relations as steps if "step" keyword is missing but Relation is present
+					if bItem.Relation != nil {
+						r := bItem.Relation
+						step := ScenarioStepInfo{
+							From:        r.From.String(),
+							To:          r.To.String(),
+							Description: getString(r.Label), // Label usually acts as desc
+							Tags:        r.Tags,
+						}
+						info.Steps = append(info.Steps, step)
+					}
+				}
+			}
+
+			switch a.Kind {
+			case "scenario", "Scenario", "story", "Story":
+				scenarios = append(scenarios, info)
+			case "flow", "Flow":
+				// FlowInfo structure matches ScenarioInfo
+				flows = append(flows, FlowInfo{
+					ID:          info.ID,
+					Title:       info.Title,
+					Description: info.Description,
+					Steps:       info.Steps,
+				})
+			}
 		}
 	}
 

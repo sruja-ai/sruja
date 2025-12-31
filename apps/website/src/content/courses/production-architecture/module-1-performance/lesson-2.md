@@ -11,6 +11,7 @@ summary: "Answer SLO and performance questions with confidence."
 **"Design a payment processing system that can handle 1 million transactions per second with 99.99% availability and < 100ms latency."**
 
 This question tests your understanding of:
+
 - Performance requirements (SLOs)
 - High availability
 - Low latency systems
@@ -19,12 +20,14 @@ This question tests your understanding of:
 ## Step 1: Clarify Requirements
 
 **You should ask:**
+
 - "What's the transaction volume? Peak vs average?"
 - "What's the availability requirement? 99.9% or 99.99%?"
 - "What's the latency requirement? P95 or P99?"
 - "What about consistency? Do we need strong consistency?"
 
 **Interviewer's answer:**
+
 - "1M transactions/second at peak"
 - "99.99% availability (four nines)"
 - "< 100ms p95 latency"
@@ -37,99 +40,93 @@ This is where SLOs (Service Level Objectives) come in. **Interviewers love when 
 Let's model the payment system with explicit SLOs:
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
-}
+element person
+element system
+element container
+element component
+element datastore
+element queue
 
-model {
-  PaymentService = system "Payment Processing" {
-    PaymentAPI = container "Payment API" {
-      technology "Go, gRPC"
-      
-      // This shows production-ready thinking!
-      slo {
-        availability {
-          target "99.99%"
-          window "30 days"
-          current "99.97%"
-        }
-        
-        latency {
-          p95 "100ms"
-          p99 "250ms"
-          window "7 days"
-          current {
-            p95 "85ms"
-            p99 "200ms"
-          }
-        }
-        
-        errorRate {
-          target "< 0.01%"
-          window "30 days"
-          current "0.008%"
-        }
-        
-        throughput {
-          target "1000000 txn/s"
-          window "1 hour"
-          current "950000 txn/s"
-        }
-      }
-      
-      scale {
-        min 100
-        max 10000
-        metric "cpu > 70% or requests_per_second > 500000"
+PaymentService = system "Payment Processing" {
+PaymentAPI = container "Payment API" {
+  technology "Go, gRPC"
+
+  // This shows production-ready thinking!
+  slo {
+    availability {
+      target "99.99%"
+      window "30 days"
+      current "99.97%"
+    }
+
+    latency {
+      p95 "100ms"
+      p99 "250ms"
+      window "7 days"
+      current {
+        p95 "85ms"
+        p99 "200ms"
       }
     }
-    
-    FraudDetection = container "Fraud Detection" {
-      technology "Python, ML"
-      description "Real-time fraud detection"
+
+    errorRate {
+      target "< 0.01%"
+      window "30 days"
+      current "0.008%"
     }
-    
-    PaymentDB = datastore "Payment Database" {
-      technology "PostgreSQL"
-      description "Primary database with 10 read replicas"
-    }
-    
-    Cache = datastore "Payment Cache" {
-      technology "Redis"
-      description "Caches recent transactions"
-    }
-    
-    PaymentQueue = queue "Payment Queue" {
-      technology "Kafka"
-      description "Async payment processing"
+
+    throughput {
+      target "1000000 txn/s"
+      window "1 hour"
+      current "950000 txn/s"
     }
   }
-  
-  Stripe = system "Stripe Gateway" {
-    tags ["external"]
+
+  scale {
+    min 100
+    max 10000
+    metric "cpu > 70% or requests_per_second > 500000"
   }
-  
-  BankAPI = system "Bank API" {
-    tags ["external"]
-  }
-  
-  PaymentService.PaymentAPI -> PaymentService.FraudDetection "Validates"
-  PaymentService.PaymentAPI -> PaymentService.Cache "Checks recent transactions"
-  PaymentService.PaymentAPI -> PaymentService.PaymentDB "Stores transaction"
-  PaymentService.PaymentAPI -> PaymentService.PaymentQueue "Enqueues for async processing"
-  PaymentService.PaymentAPI -> Stripe "Processes payment"
-  PaymentService.PaymentAPI -> BankAPI "Validates with bank"
 }
 
-views {
-  view index {
-    include *
-  }
+FraudDetection = container "Fraud Detection" {
+  technology "Python, ML"
+  description "Real-time fraud detection"
+}
+
+PaymentDB = datastore "Payment Database" {
+  technology "PostgreSQL"
+  description "Primary database with 10 read replicas"
+}
+
+Cache = datastore "Payment Cache" {
+  technology "Redis"
+  description "Caches recent transactions"
+}
+
+PaymentQueue = queue "Payment Queue" {
+  technology "Kafka"
+  description "Async payment processing"
+}
+}
+
+Stripe = system "Stripe Gateway" {
+tags ["external"]
+}
+
+BankAPI = system "Bank API" {
+tags ["external"]
+}
+
+PaymentService.PaymentAPI -> PaymentService.FraudDetection "Validates"
+PaymentService.PaymentAPI -> PaymentService.Cache "Checks recent transactions"
+PaymentService.PaymentAPI -> PaymentService.PaymentDB "Stores transaction"
+PaymentService.PaymentAPI -> PaymentService.PaymentQueue "Enqueues for async processing"
+PaymentService.PaymentAPI -> Stripe "Processes payment"
+PaymentService.PaymentAPI -> BankAPI "Validates with bank"
+
+view index {
+include *
 }
 ```
 
@@ -156,6 +153,7 @@ views {
 ### 1. Availability (99.99% = Four Nines)
 
 **Say**: "99.99% availability means 52.6 minutes of downtime per year. To achieve this, we need:
+
 - Multiple data centers (active-active)
 - Automatic failover
 - Health checks and monitoring
@@ -164,6 +162,7 @@ views {
 ### 2. Latency (< 100ms p95)
 
 **Say**: "To achieve < 100ms latency, we:
+
 - Use in-memory cache (Redis) for hot data
 - Keep database queries simple and indexed
 - Use connection pooling
@@ -173,6 +172,7 @@ views {
 ### 3. Throughput (1M txn/s)
 
 **Say**: "To handle 1M transactions/second:
+
 - Horizontal scaling: 100-10,000 API instances
 - Database sharding by transaction ID
 - Read replicas for scaling reads
@@ -182,6 +182,7 @@ views {
 ### 4. Strong Consistency
 
 **Say**: "Since this is financial data, we need strong consistency:
+
 - All writes go to primary database
 - Read replicas are eventually consistent (ok for reads)
 - Use distributed transactions for critical operations
@@ -194,34 +195,29 @@ views {
 **Interviewer asks**: "How do you ensure 99.99% availability?"
 
 **Your answer with SLO**:
-```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
-}
 
-model {
-  PaymentService = system "Payment Processing" {
-    PaymentAPI = container "Payment API" {
-      slo {
-        availability {
-          target "99.99%"
-          window "30 days"
-          current "99.97%"
-        }
-      }
+```sruja
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+PaymentService = system "Payment Processing" {
+PaymentAPI = container "Payment API" {
+  slo {
+    availability {
+      target "99.99%"
+      window "30 days"
+      current "99.97%"
     }
   }
 }
+}
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -232,34 +228,29 @@ views {
 **Interviewer asks**: "How fast should payments process?"
 
 **Your answer with SLO**:
-```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
-}
 
-model {
-  PaymentService = system "Payment Processing" {
-    PaymentAPI = container "Payment API" {
-      slo {
-        latency {
-          p95 "100ms"
-          p99 "250ms"
-          window "7 days"
-        }
-      }
+```sruja
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+PaymentService = system "Payment Processing" {
+PaymentAPI = container "Payment API" {
+  slo {
+    latency {
+      p95 "100ms"
+      p99 "250ms"
+      window "7 days"
     }
   }
 }
+}
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -270,34 +261,29 @@ views {
 **Interviewer asks**: "What error rate is acceptable?"
 
 **Your answer with SLO**:
-```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
-}
 
-model {
-  PaymentService = system "Payment Processing" {
-    PaymentAPI = container "Payment API" {
-      slo {
-        errorRate {
-          target "< 0.01%"
-          window "30 days"
-          current "0.008%"
-        }
-      }
+```sruja
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+PaymentService = system "Payment Processing" {
+PaymentAPI = container "Payment API" {
+  slo {
+    errorRate {
+      target "< 0.01%"
+      window "30 days"
+      current "0.008%"
     }
   }
 }
+}
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 
@@ -308,6 +294,7 @@ views {
 **Interviewer**: "How many servers do you need for 1M txn/s?"
 
 **Your answer**:
+
 1. "Each transaction requires ~10ms processing = 100 transactions/second per server"
 2. "1M txn/s ÷ 100 = 10,000 servers needed"
 3. "With 2x headroom for spikes and redundancy: ~20,000 servers"
@@ -324,41 +311,35 @@ views {
 Add redundancy to your design:
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+PaymentService = system "Payment Processing" {
+PaymentAPI = container "Payment API" {
+  technology "Go, gRPC"
+  scale {
+    min 100
+    max 10000
+    metric "cpu > 70%"
+  }
+  description "Deployed across 3 data centers (active-active)"
 }
 
-model {
-  PaymentService = system "Payment Processing" {
-    PaymentAPI = container "Payment API" {
-      technology "Go, gRPC"
-      scale {
-        min 100
-        max 10000
-        metric "cpu > 70%"
-      }
-      description "Deployed across 3 data centers (active-active)"
-    }
-    
-    PaymentDB = datastore "Payment Database" {
-      technology "PostgreSQL"
-      description "Primary in US-East, replicas in US-West and EU"
-    }
-  }
-  
-  // Show redundancy
-  PaymentService.PaymentAPI -> PaymentService.PaymentDB "Writes to primary"
+PaymentDB = datastore "Payment Database" {
+  technology "PostgreSQL"
+  description "Primary in US-East, replicas in US-West and EU"
+}
 }
 
-views {
-  view index {
-    include *
-  }
+// Show redundancy
+PaymentService.PaymentAPI -> PaymentService.PaymentDB "Writes to primary"
+
+view index {
+include *
 }
 ```
 
@@ -383,6 +364,7 @@ Be prepared for:
 ## Exercise: Practice This Question
 
 Design a payment system and be ready to explain:
+
 1. How you achieve 99.99% availability
 2. How you keep latency < 100ms
 3. How you handle 1M txn/s

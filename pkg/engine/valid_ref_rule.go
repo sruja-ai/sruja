@@ -20,25 +20,25 @@ func (r *ValidReferenceRule) Validate(program *language.Program) []diagnostics.D
 		return nil
 	}
 
-	// Work directly with LikeC4 Model AST
+	// Work directly with Model AST
 	if program.Model == nil {
 		return nil
 	}
 
 	// Collect all defined elements and relations from Model block
-	defined, relations := collectLikeC4Elements(program.Model)
+	defined, relations := collectElements(program.Model)
 	diags := make([]diagnostics.Diagnostic, 0, len(relations))
 
 	resolve := func(ref, scope string) string {
 		// 1. Try absolute/global match
-		if defined[ref] {
+		if defined[ref] != nil {
 			return ref
 		}
 
 		// 2. Try relative to scope, walking up
 		if scope != "" {
 			candidate := scope + "." + ref
-			if defined[candidate] {
+			if defined[candidate] != nil {
 				return candidate
 			}
 
@@ -51,19 +51,20 @@ func (r *ValidReferenceRule) Validate(program *language.Program) []diagnostics.D
 				} else {
 					candidate = prefix + "." + ref
 				}
-				if defined[candidate] {
+				if defined[candidate] != nil {
 					return candidate
 				}
 			}
 		}
 
 		// 3. For architecture-level relations (scope=""), search all defined elements
-		// to find matching IDs (e.g., "API" matches "Order.API")
 		if scope == "" {
 			for id := range defined {
-				parts := strings.Split(id, ".")
-				if len(parts) > 0 && parts[len(parts)-1] == ref {
-					return id
+				if strings.HasSuffix(id, "."+ref) || id == ref {
+					parts := strings.Split(id, ".")
+					if len(parts) > 0 && parts[len(parts)-1] == ref {
+						return id
+					}
 				}
 			}
 		}
@@ -174,17 +175,17 @@ func (r *ValidReferenceRule) Validate(program *language.Program) []diagnostics.D
 			})
 		}
 	}
-	// Check all relations from Model block
-	for _, rel := range relations {
-		scope := getElementScope(program.Model, rel)
-		checkRel(rel, scope)
+	// Check all relations with scope
+	relationsWithScope := collectAllRelations(program.Model)
+	for _, relScope := range relationsWithScope {
+		checkRel(relScope.Relation, relScope.Scope)
 	}
 
 	return diags
 }
 
 // findSimilarElements finds element IDs similar to the given reference (for typo detection)
-func (r *ValidReferenceRule) findSimilarElements(ref string, defined map[string]bool) []string {
+func (r *ValidReferenceRule) findSimilarElements(ref string, defined map[string]*language.ElementDef) []string {
 	var similar []string
 	refLower := strings.ToLower(ref)
 

@@ -10,28 +10,24 @@ import (
 
 func TestExporter_Export_Comprehensive(t *testing.T) {
 	dsl := `
-specification {
-	element system
-	element container
-	element database
-	element person
-}
+	System = kind "System"
+	Container = kind "Container"
+	Database = kind "Database"
+	Person = kind "Person"
 
-model {
-	user = person "User"
+	user = Person "User"
 	
-	system Cloud {
-		web = container "Web Application" {
+	Cloud = System "Cloud" {
+		web = Container "Web Application" {
 			technology "React"
 		}
-		db = database "Database" {
+		db = Database "Database" {
 			technology "PostgreSQL"
 		}
 		web -> db "Writes"
 	}
 	
 	user -> Cloud.web "Uses"
-}
 `
 	parser, err := language.NewParser()
 	if err != nil {
@@ -191,15 +187,18 @@ func TestExporter_groupByParent_EdgeCases(t *testing.T) {
 
 func TestExporter_Export_L3Focus(t *testing.T) {
 	dsl := `
-model {
-	system S {
-		container C {
-			component C1
+	system = kind "System"
+	container = kind "Container"
+	component = kind "Component"
+	person = kind "Person"
+
+	S = system "S" {
+		C = container "C" {
+			C1 = component "C1"
 		}
 	}
-	person P
+	P = person "P"
 	P -> S.C.C1
-}
 `
 	parser, _ := language.NewParser()
 	prog, _, _ := parser.Parse("l3.sruja", dsl)

@@ -8,7 +8,7 @@ test.describe("Tabs URL Persistence", () => {
     const dropZone = page.locator(".drop-zone");
     if (await dropZone.isVisible().catch(() => false)) {
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".react-flow, .likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
     // In edit mode, the first tab is Builder (Overview merged)

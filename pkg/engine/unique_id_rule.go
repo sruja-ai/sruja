@@ -65,9 +65,9 @@ func (r *UniqueIDRule) Validate(program *language.Program) []diagnostics.Diagnos
 		}
 	}
 
-	// Collect all element IDs from LikeC4 Model
-	var collectIDs func(elem *language.LikeC4ElementDef, parentFQN string)
-	collectIDs = func(elem *language.LikeC4ElementDef, parentFQN string) {
+	// Collect all element IDs from Model
+	var collectIDs func(elem *language.ElementDef, parentFQN string)
+	collectIDs = func(elem *language.ElementDef, parentFQN string) {
 		if elem == nil {
 			return
 		}
@@ -101,16 +101,7 @@ func (r *UniqueIDRule) Validate(program *language.Program) []diagnostics.Diagnos
 	for _, item := range program.Model.Items {
 		if item.ElementDef != nil {
 			collectIDs(item.ElementDef, "")
-		}
-		// Check other top-level items (scenarios, ADRs, etc.)
-		if item.Scenario != nil {
-			checkID(item.Scenario.ID, item.Scenario.Location())
-		}
-		if item.ADR != nil {
-			checkID(item.ADR.ID, item.ADR.Location())
-		}
-		if item.Requirement != nil {
-			checkID(item.Requirement.ID, item.Requirement.Location())
+
 		}
 	}
 

@@ -23,10 +23,18 @@ interface QualityScoreCardProps {
 }
 
 export function QualityScoreCard({ isCollapsed = false }: QualityScoreCardProps) {
+  // Only show quality metrics in development environment
+  // This is a developer tool, not a user-facing feature
+  const isDev = import.meta.env.DEV || import.meta.env.MODE === "development";
+
   const [quality, setQuality] = useState<QualityMetrics | null>(null);
 
-  // Poll for quality metrics updates
+  // Poll for quality metrics updates (only in dev)
   useEffect(() => {
+    // Skip in production
+    if (!isDev) {
+      return;
+    }
     const checkQuality = () => {
       if (typeof window !== "undefined") {
         const metrics = (window as any).__DIAGRAM_QUALITY__ as QualityMetrics | null;
@@ -47,7 +55,12 @@ export function QualityScoreCard({ isCollapsed = false }: QualityScoreCardProps)
     const interval = setInterval(checkQuality, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isDev]);
+
+  // Hide in production
+  if (!isDev) {
+    return null;
+  }
 
   if (!quality) {
     return null;

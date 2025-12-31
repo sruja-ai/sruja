@@ -1,6 +1,8 @@
 package dot
 
 import (
+	"strings"
+
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
@@ -19,8 +21,8 @@ func (e *Exporter) extractAllElements(prog *language.Program) []*Element {
 
 	var elements []*Element
 
-	var extractFromElementDef func(elem *language.LikeC4ElementDef, parentID string)
-	extractFromElementDef = func(elem *language.LikeC4ElementDef, parentID string) {
+	var extractFromElementDef func(elem *language.ElementDef, parentID string)
+	extractFromElementDef = func(elem *language.ElementDef, parentID string) {
 		if elem == nil {
 			return
 		}
@@ -36,7 +38,7 @@ func (e *Exporter) extractAllElements(prog *language.Program) []*Element {
 			fullID = parentID + "." + id
 		}
 
-		kind := elem.GetKind()
+		kind := strings.ToLower(elem.GetKind())
 		// Normalize kinds
 		switch kind {
 		case "database", "db", "storage":
@@ -124,7 +126,7 @@ func extractRelationsFromModel(prog *language.Program) []*Relation {
 	// Helper to extract relations from a list of model items
 	var extractFromItems func(items []language.ModelItem)
 	// Helper to extract relations from a list of body items (needed because types differ)
-	var extractFromBodyItems func(items []*language.LikeC4BodyItem)
+	var extractFromBodyItems func(items []*language.BodyItem)
 
 	extractFromItems = func(items []language.ModelItem) {
 		for _, item := range items {
@@ -153,7 +155,7 @@ func extractRelationsFromModel(prog *language.Program) []*Relation {
 		}
 	}
 
-	extractFromBodyItems = func(items []*language.LikeC4BodyItem) {
+	extractFromBodyItems = func(items []*language.BodyItem) {
 		for _, item := range items {
 			// 1. Direct Relation within body
 			if item.Relation != nil {
@@ -187,7 +189,7 @@ func extractRelationsFromModel(prog *language.Program) []*Relation {
 }
 
 // processRelation processes a single relation AST node and adds it to the relations list.
-func processRelation(rel *language.Relation, contextStack []string, relations *[]*Relation) {
+func processRelation(rel *language.Relation, _ []string, relations *[]*Relation) {
 	if rel == nil {
 		return
 	}
@@ -226,6 +228,8 @@ func processRelation(rel *language.Relation, contextStack []string, relations *[
 
 // calculateNodeSize is deprecated - use MeasureNodeContent instead.
 // Kept for backward compatibility during migration.
+//
+//nolint:unused // Deprecated but kept for backward compatibility
 func (e *Exporter) calculateNodeSize(kind, title, technology string) (width, height int) {
 	// Base sizes by kind
 	switch kind {

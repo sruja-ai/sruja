@@ -10,10 +10,10 @@ import (
 
 func TestGovernanceValidationRule_DuplicateRequirements(t *testing.T) {
 	prog := &language.Program{
-		Model: &language.ModelBlock{
+		Model: &language.Model{
 			Items: []language.ModelItem{
-				{Requirement: &language.Requirement{ID: "REQ001", Pos: lexer.Position{Line: 1}}},
-				{Requirement: &language.Requirement{ID: "REQ001", Pos: lexer.Position{Line: 5}}}, // Duplicate
+				{ElementDef: &language.ElementDef{Assignment: &language.ElementAssignment{Kind: "requirement", Name: "REQ001", Pos: lexer.Position{Line: 1}}}},
+				{ElementDef: &language.ElementDef{Assignment: &language.ElementAssignment{Kind: "requirement", Name: "REQ001", Pos: lexer.Position{Line: 5}}}}, // Duplicate
 			},
 		},
 	}
@@ -37,10 +37,10 @@ func TestGovernanceValidationRule_DuplicateRequirements(t *testing.T) {
 
 func TestGovernanceValidationRule_DuplicateADRs(t *testing.T) {
 	prog := &language.Program{
-		Model: &language.ModelBlock{
+		Model: &language.Model{
 			Items: []language.ModelItem{
-				{ADR: &language.ADR{ID: "ADR001", Pos: lexer.Position{Line: 1}}},
-				{ADR: &language.ADR{ID: "ADR001", Pos: lexer.Position{Line: 10}}}, // Duplicate
+				{ElementDef: &language.ElementDef{Assignment: &language.ElementAssignment{Kind: "adr", Name: "ADR001", Pos: lexer.Position{Line: 1}}}},
+				{ElementDef: &language.ElementDef{Assignment: &language.ElementAssignment{Kind: "adr", Name: "ADR001", Pos: lexer.Position{Line: 10}}}}, // Duplicate
 			},
 		},
 	}
@@ -53,18 +53,18 @@ func TestGovernanceValidationRule_DuplicateADRs(t *testing.T) {
 	}
 
 	if len(diags) > 0 {
-		if diags[0].Code != "duplicate-adr-id" {
-			t.Errorf("Expected code 'duplicate-adr-id', got '%s'", diags[0].Code)
+		if diags[0].Code != "E201" { // Generic duplicate ID code
+			t.Errorf("Expected code 'E201', got '%s'", diags[0].Code)
 		}
 	}
 }
 
 func TestGovernanceValidationRule_DuplicatePolicies(t *testing.T) {
 	prog := &language.Program{
-		Model: &language.ModelBlock{
+		Model: &language.Model{
 			Items: []language.ModelItem{
-				{Policy: &language.Policy{ID: "POL001", Description: "Test", Pos: lexer.Position{Line: 1}}},
-				{Policy: &language.Policy{ID: "POL001", Description: "Test", Pos: lexer.Position{Line: 15}}}, // Duplicate
+				{ElementDef: &language.ElementDef{Assignment: &language.ElementAssignment{Kind: "policy", Name: "POL001", Pos: lexer.Position{Line: 1}}}},
+				{ElementDef: &language.ElementDef{Assignment: &language.ElementAssignment{Kind: "policy", Name: "POL001", Pos: lexer.Position{Line: 15}}}}, // Duplicate
 			},
 		},
 	}
@@ -77,18 +77,18 @@ func TestGovernanceValidationRule_DuplicatePolicies(t *testing.T) {
 	}
 
 	if len(diags) > 0 {
-		if diags[0].Code != "duplicate-policy-id" {
-			t.Errorf("Expected code 'duplicate-policy-id', got '%s'", diags[0].Code)
+		if diags[0].Code != "E201" { // Generic duplicate ID code
+			t.Errorf("Expected code 'E201', got '%s'", diags[0].Code)
 		}
 	}
 }
 
 func TestGovernanceValidationRule_DuplicateScenarios(t *testing.T) {
 	prog := &language.Program{
-		Model: &language.ModelBlock{
+		Model: &language.Model{
 			Items: []language.ModelItem{
-				{Scenario: &language.Scenario{ID: "S001", Pos: lexer.Position{Line: 1}}},
-				{Scenario: &language.Scenario{ID: "S001", Pos: lexer.Position{Line: 20}}}, // Duplicate
+				{ElementDef: &language.ElementDef{Assignment: &language.ElementAssignment{Kind: "scenario", Name: "S001", Pos: lexer.Position{Line: 1}}}},
+				{ElementDef: &language.ElementDef{Assignment: &language.ElementAssignment{Kind: "scenario", Name: "S001", Pos: lexer.Position{Line: 20}}}}, // Duplicate
 			},
 		},
 	}
@@ -101,18 +101,18 @@ func TestGovernanceValidationRule_DuplicateScenarios(t *testing.T) {
 	}
 
 	if len(diags) > 0 {
-		if diags[0].Code != "duplicate-scenario-id" {
-			t.Errorf("Expected code 'duplicate-scenario-id', got '%s'", diags[0].Code)
+		if diags[0].Code != "E201" { // Generic duplicate ID code
+			t.Errorf("Expected code 'E201', got '%s'", diags[0].Code)
 		}
 	}
 }
 
 func TestGovernanceValidationRule_DuplicateFlows(t *testing.T) {
 	prog := &language.Program{
-		Model: &language.ModelBlock{
+		Model: &language.Model{
 			Items: []language.ModelItem{
-				{Flow: &language.Flow{ID: "F001", Pos: lexer.Position{Line: 1}}},
-				{Flow: &language.Flow{ID: "F001", Pos: lexer.Position{Line: 25}}}, // Duplicate
+				{ElementDef: &language.ElementDef{Assignment: &language.ElementAssignment{Kind: "flow", Name: "F001", Pos: lexer.Position{Line: 1}}}},
+				{ElementDef: &language.ElementDef{Assignment: &language.ElementAssignment{Kind: "flow", Name: "F001", Pos: lexer.Position{Line: 25}}}}, // Duplicate
 			},
 		},
 	}
@@ -125,21 +125,21 @@ func TestGovernanceValidationRule_DuplicateFlows(t *testing.T) {
 	}
 
 	if len(diags) > 0 {
-		if diags[0].Code != "duplicate-flow-id" {
-			t.Errorf("Expected code 'duplicate-flow-id', got '%s'", diags[0].Code)
+		if diags[0].Code != "E201" { // Generic duplicate ID code
+			t.Errorf("Expected code 'E201', got '%s'", diags[0].Code)
 		}
 	}
 }
 
 func TestGovernanceValidationRule_UniqueIDs(t *testing.T) {
 	prog := &language.Program{
-		Model: &language.ModelBlock{
+		Model: &language.Model{
 			Items: []language.ModelItem{
-				{Requirement: &language.Requirement{ID: "REQ001", Pos: lexer.Position{Line: 1}}},
-				{Requirement: &language.Requirement{ID: "REQ002", Pos: lexer.Position{Line: 2}}},
-				{ADR: &language.ADR{ID: "ADR001", Pos: lexer.Position{Line: 3}}},
-				{ADR: &language.ADR{ID: "ADR002", Pos: lexer.Position{Line: 4}}},
-				{Policy: &language.Policy{ID: "POL001", Description: "Test", Pos: lexer.Position{Line: 5}}},
+				{ElementDef: &language.ElementDef{Assignment: &language.ElementAssignment{Kind: "requirement", Name: "REQ001", Pos: lexer.Position{Line: 1}}}},
+				{ElementDef: &language.ElementDef{Assignment: &language.ElementAssignment{Kind: "requirement", Name: "REQ002", Pos: lexer.Position{Line: 2}}}},
+				{ElementDef: &language.ElementDef{Assignment: &language.ElementAssignment{Kind: "adr", Name: "ADR001", Pos: lexer.Position{Line: 3}}}},
+				{ElementDef: &language.ElementDef{Assignment: &language.ElementAssignment{Kind: "adr", Name: "ADR002", Pos: lexer.Position{Line: 4}}}},
+				{ElementDef: &language.ElementDef{Assignment: &language.ElementAssignment{Kind: "policy", Name: "POL001", Pos: lexer.Position{Line: 5}}}},
 			},
 		},
 	}
@@ -163,7 +163,7 @@ func TestGovernanceValidationRule_NilProgram(t *testing.T) {
 
 func TestGovernanceValidationRule_EmptyModel(t *testing.T) {
 	prog := &language.Program{
-		Model: &language.ModelBlock{},
+		Model: &language.Model{},
 	}
 
 	rule := &GovernanceValidationRule{}

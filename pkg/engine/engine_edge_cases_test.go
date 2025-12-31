@@ -16,7 +16,6 @@ func TestEngine_EdgeCases(t *testing.T) {
 
 		// Create DSL with many containers
 		var sb strings.Builder
-		sb.WriteString("model {\n")
 		sb.WriteString("  Sys1 = system \"System 1\" {\n")
 		for i := 0; i < 20; i++ {
 			sb.WriteString("    Cont")
@@ -26,7 +25,6 @@ func TestEngine_EdgeCases(t *testing.T) {
 			sb.WriteString("\"\n")
 		}
 		sb.WriteString("  }\n")
-		sb.WriteString("}\n")
 
 		program, _, err := parser.Parse("test.sruja", sb.String())
 		if err != nil {
@@ -47,10 +45,8 @@ func TestEngine_EdgeCases(t *testing.T) {
 			t.Fatalf("Failed to create parser: %v", err)
 		}
 
-		dsl := `model {
-			S1 = system "System 1"
-			S2 = system "System 2"
-		}`
+		dsl := `		S1 = system "System 1"
+		S2 = system "System 2"`
 
 		program, _, err := parser.Parse("test.sruja", dsl)
 		if err != nil {
@@ -71,10 +67,8 @@ func TestEngine_EdgeCases(t *testing.T) {
 			t.Fatalf("Failed to create parser: %v", err)
 		}
 
-		dsl := `model {
-			S1 = system "System 1"
-			S1 -> S1 "self-reference"
-		}`
+		dsl := `		S1 = system "System 1"
+		S1 -> S1 "self-reference"`
 
 		program, _, err := parser.Parse("test.sruja", dsl)
 		if err != nil {
@@ -96,10 +90,8 @@ func TestEngine_EdgeCases(t *testing.T) {
 			t.Fatalf("Failed to create parser: %v", err)
 		}
 
-		dsl := `model {
-			sys1 = system "System 1"
-			SYS1 = system "System 1 (Upper)"
-		}`
+		dsl := `		sys1 = system "System 1"
+		SYS1 = system "System 1 (Upper)"`
 
 		program, _, err := parser.Parse("test.sruja", dsl)
 		if err != nil {

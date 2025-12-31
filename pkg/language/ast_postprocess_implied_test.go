@@ -13,30 +13,24 @@ func TestArchitecture_InferImpliedRelationships(t *testing.T) {
 	}{
 		{
 			name: "Simple implied relationship",
-			dsl: `
-model {
-    person User "User"
-    system API "API Service" {
-        container WebApp "Web Application"
+			dsl: `User = person "User"
+    API = system "API Service" {
+        WebApp = container "Web Application"
     }
     
-    User -> API.WebApp "Uses"
-}`,
+    User -> API.WebApp "Uses"`,
 			expected: 2, // User -> API.WebApp (explicit) + User -> API (implied)
 		},
 		{
 			name: "Multiple implied relationships",
-			dsl: `
-model {
-    person User "User"
-    system Shop "Shop" {
-        container WebApp "Web Application"
-        container API "API Gateway"
+			dsl: `User = person "User"
+    Shop = system "Shop" {
+        WebApp = container "Web Application"
+        API = container "API Gateway"
     }
     
     User -> Shop.WebApp "Uses"
-    Shop.WebApp -> Shop.API "Calls"
-}`,
+    Shop.WebApp -> Shop.API "Calls"`,
 			expected: 3, // User -> Shop.WebApp, Shop.WebApp -> Shop.API (explicit)
 			// + User -> Shop (implied from User -> Shop.WebApp)
 			// Note: Shop.WebApp -> Shop.API does NOT imply Shop -> Shop.API
@@ -44,16 +38,13 @@ model {
 		},
 		{
 			name: "No implied if parent exists",
-			dsl: `
-model {
-    person User "User"
-    system API "API Service" {
-        container WebApp "Web Application"
+			dsl: `User = person "User"
+    API = system "API Service" {
+        WebApp = container "Web Application"
     }
     
     User -> API "Uses"
-    User -> API.WebApp "Uses"
-}`,
+    User -> API.WebApp "Uses"`,
 			expected: 2, // Both explicit, no duplicate implied
 		},
 	}

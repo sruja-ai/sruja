@@ -49,15 +49,14 @@ type Parser struct {
 
 // NewParser creates a new parser instance.
 func NewParser() (*Parser, error) {
-	// Define lexer for Sruja DSL (LikeC4 compatible)
+	// Define lexer for Sruja DSL
 	// This tokenizes the input into keywords, strings, operators, etc.
 	srujaLexer := lexer.MustSimple([]lexer.SimpleRule{
 		{Name: "Comment", Pattern: `//.*|/\*.*?\*/`},
-		// LikeC4: Support both double and single quoted strings
+		// Support both double and single quoted strings
 		{Name: "String", Pattern: `"(\\"|[^"])*"|'(\\'|[^'])*'`},
-		{Name: "Int", Pattern: `\d+`},
-		{Name: "Number", Pattern: `\d+(?:\.\d+)?`},
-		// LikeC4: Tag references like #deprecated
+		{Name: "Number", Pattern: `\d+(\.\d+)?`},
+		// Tag references like #deprecated
 		{Name: "TagRef", Pattern: `#[a-zA-Z_][a-zA-Z0-9_-]*`},
 		{Name: "Story", Pattern: `\bstory\b`},
 		{Name: "Scenario", Pattern: `\bscenario\b`},
@@ -65,10 +64,11 @@ func NewParser() (*Parser, error) {
 		{Name: "Policy", Pattern: `\bpolicy\b`},
 		{Name: "Import", Pattern: `\bimport\b`},
 		{Name: "From", Pattern: `\bfrom\b`},
+		{Name: "Layout", Pattern: `\blayout\b`},
 		{Name: "Wildcard", Pattern: `\*`}, // For view expressions: include *
 		{Name: "Ident", Pattern: `[a-zA-Z_][a-zA-Z0-9_-]*`},
 		{Name: "Dot", Pattern: `\.`},
-		// LikeC4: Support bidirectional and back arrows
+		// Support bidirectional and back arrows
 		{Name: "BiArrow", Pattern: `<->`},
 		{Name: "BackArrow", Pattern: `<-`},
 		{Name: "Arrow", Pattern: `->`},
@@ -123,27 +123,12 @@ func (p *Parser) Parse(filename, text string) (prog *Program, diags []diagnostic
 	}
 
 	// Convert File to Program (Logical Model)
-	prog = &Program{}
-
-	// Collect items from TopLevelItems
-	for _, item := range file.TopLevelItems {
-		// LikeC4 format
-		if item.Specification != nil {
-			prog.Specification = item.Specification
-		}
-		if item.Model != nil {
-			prog.Model = item.Model
-		}
-		if item.Views != nil {
-			prog.Views = item.Views
-		}
-	}
-	// If LikeC4 format was used, return it directly (no conversion needed)
-	if prog.Specification != nil || prog.Model != nil || prog.Views != nil {
-		prog.PostProcess()
-		return prog, nil, nil
+	prog = &Program{
+		Items: file.TopLevelItems,
 	}
 
-	// No valid TopLevelItems found - return empty program
+	// Post-process to merge blocks and items
+	prog.PostProcess()
+
 	return prog, nil, nil
 }

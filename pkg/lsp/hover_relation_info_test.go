@@ -19,11 +19,11 @@ func parseDSL(t *testing.T, dsl string) *language.Program {
 }
 
 func TestFindRelationInfo_ArchitectureLevel(t *testing.T) {
-	dsl := `model {
+	dsl := `
         A = system "A"
         B = system "B"
         A -> B "uses" "HTTP"
-    }`
+    `
 	prog := parseDSL(t, dsl)
 
 	v, l := findRelationInfoInModel(prog.Model, "A", "B")
@@ -33,13 +33,13 @@ func TestFindRelationInfo_ArchitectureLevel(t *testing.T) {
 }
 
 func TestFindRelationInfo_SystemAndContainerLevel(t *testing.T) {
-	dsl := `model {
+	dsl := `
         S = system "System" {
             C = container "Container"
             Q = queue "Queue"
             C -> Q "reads"
         }
-    }`
+    `
 	prog := parseDSL(t, dsl)
 
 	v, l := findRelationInfoInModel(prog.Model, "S.C", "S.Q")

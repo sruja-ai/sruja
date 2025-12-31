@@ -7,11 +7,11 @@ import (
 )
 
 func TestApplyStyles_DefaultSystemTagAndDatastoreTags(t *testing.T) {
-	dsl := `model {
+	dsl := `
         S1 = system "System1" {
             DB = database "Database" #storage
         }
-    }`
+    `
 	prog := parseDSL(t, dsl)
 
 	vb := &language.ViewBlock{Styles: &language.StylesBlock{Styles: []*language.ElementStyle{

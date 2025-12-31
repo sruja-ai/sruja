@@ -13,15 +13,13 @@ func TestRunLint(t *testing.T) {
 	validFile := filepath.Join(tmpDir, "valid.sruja")
 	invalidFile := filepath.Join(tmpDir, "invalid.sruja")
 
-	validContent := `model {
-		system S1 "System 1"
-		system S2 "System 2"
-		S1 -> S2 "uses"
-	}`
-	invalidContent := `model {
-		system S1 "System 1"
-		system S1 "Duplicate System"
-	}`
+	validContent := `system = kind "System"
+		S1 = system "System 1"
+		S2 = system "System 2"
+		S1 -> S2 "uses"`
+	invalidContent := `system = kind "System"
+		S1 = system "System 1"
+		S1 = system "Duplicate System"`
 
 	if err := os.WriteFile(validFile, []byte(validContent), 0o644); err != nil {
 		t.Fatal(err)

@@ -45,6 +45,9 @@ func (p *Parser) ParseWorkspace(rootPath string) (*Workspace, error) {
 		return nil, fmt.Errorf("failed to walk workspace: %w", err)
 	}
 
+	// Merge imports: make imported kinds/tags available in each program's scope
+	ws.ResolveAndMergeImports()
+
 	return ws, nil
 }
 

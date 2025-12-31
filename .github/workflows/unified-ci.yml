@@ -275,10 +275,10 @@ jobs:
 
       - name: Compile examples
         run: |
-          ./sruja compile examples/likec4_example.sruja
+          ./sruja compile examples/compatible/ecommerce.sruja
           ./sruja compile examples/project_ecommerce.sruja
 
       - name: Lint examples
         run: |
-          ./sruja lint examples/likec4_example.sruja
+          ./sruja lint examples/compatible/ecommerce.sruja
           ./sruja lint examples/project_ecommerce.sruja

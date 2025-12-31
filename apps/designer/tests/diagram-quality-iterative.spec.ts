@@ -1,5 +1,9 @@
 // apps/designer/tests/diagram-quality-iterative.spec.ts
 // E2E test for iterative diagram quality improvement based on scores
+//
+// ⚠️ DEVELOPER TOOL ONLY - For offline development use
+// This test is NOT used in production or real-time user workflows.
+// It's meant for developers to measure and improve layout quality during development.
 import { test, expect } from "@playwright/test";
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from "fs";
 import { join } from "path";

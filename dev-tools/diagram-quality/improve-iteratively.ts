@@ -1,5 +1,9 @@
 // apps/designer/scripts/improve-iteratively.ts
 // Iterative improvement script for ecommerce_platform.sruja quality score
+//
+// ⚠️ DEVELOPER TOOL ONLY - For offline development use
+// This script is NOT used in production or real-time user workflows.
+// It's meant for developers to improve layout algorithms during development.
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";

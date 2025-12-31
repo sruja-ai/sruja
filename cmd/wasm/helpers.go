@@ -79,8 +79,8 @@ func extractSymbolsFromProgram(program *language.Program) []Symbol {
 	return symbols
 }
 
-// extractElementSymbols recursively extracts symbols from a LikeC4 element and its children.
-func extractElementSymbols(elem *language.LikeC4ElementDef, parentFQN string, symbols *[]Symbol) {
+// extractElementSymbols recursively extracts symbols from a Sruja element and its children.
+func extractElementSymbols(elem *language.ElementDef, parentFQN string, symbols *[]Symbol) {
 	if elem == nil {
 		return
 	}
@@ -149,7 +149,7 @@ func findHoverInfoFromProgram(program *language.Program, input string, line, col
 	}
 
 	// Search AST for matching element (by ID or fully qualified name)
-	var foundElem *language.LikeC4ElementDef
+	var foundElem *language.ElementDef
 	var searchInElements func(items []language.ModelItem, parentFQN string)
 	searchInElements = func(items []language.ModelItem, parentFQN string) {
 		for _, item := range items {

@@ -20,7 +20,7 @@ async function testFixes() {
     const dropZone = page.locator(".drop-zone");
     if (await dropZone.isVisible().catch(() => false)) {
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
       console.log("✅ Demo loaded\n");
     } else {
       console.log("⚠️  Drop zone not visible, demo may already be loaded\n");
@@ -28,11 +28,11 @@ async function testFixes() {
 
     // Test 3: Diagram renders
     console.log("Test 3: Diagram renders...");
-    await page.waitForSelector(".likec4-canvas", { timeout: 10000 });
-    const canvasVisible = await page.locator(".likec4-canvas").isVisible();
+    await page.waitForSelector(".react-flow", { timeout: 10000 });
+    const canvasVisible = await page.locator(".react-flow").isVisible();
     if (canvasVisible) {
-      await page.waitForSelector(".likec4-diagram-container svg", { timeout: 10000 });
-      const svgCount = await page.locator(".likec4-diagram-container svg").count();
+      await page.waitForSelector(".react-flow svg", { timeout: 10000 });
+      const svgCount = await page.locator(".react-flow svg").count();
       if (svgCount > 0) {
         console.log(`✅ Diagram rendered with ${svgCount} SVG element(s)\n`);
       } else {
@@ -46,12 +46,15 @@ async function testFixes() {
     console.log("Test 4: Code tab shows content...");
     await page.locator('button.view-tab:has-text("Code")').click();
     await page.waitForSelector(".code-panel-container", { timeout: 10000 });
-    
+
     const dslPanel = page.locator(".dsl-panel");
     const isVisible = await dslPanel.isVisible().catch(() => false);
     if (isVisible) {
       const editor = page.locator(".monaco-editor, .dsl-panel-content");
-      const content = await editor.first().textContent().catch(() => "");
+      const content = await editor
+        .first()
+        .textContent()
+        .catch(() => "");
       if (content && content.trim().length > 0) {
         console.log(`✅ Code tab shows content (${content.trim().length} chars)\n`);
       } else {
@@ -65,7 +68,7 @@ async function testFixes() {
     console.log("Test 5: Builder wizard...");
     await page.locator('button.view-tab:has-text("Builder")').click();
     await page.waitForSelector(".builder-wizard", { timeout: 10000 });
-    
+
     const wizardVisible = await page.locator(".builder-wizard").isVisible();
     if (wizardVisible) {
       const steps = page.locator(".wizard-step");
@@ -77,19 +80,21 @@ async function testFixes() {
 
     // Test 6: Template gallery
     console.log("Test 6: Template gallery...");
-    const templateBtn = page.locator('button:has-text("Start from a Template"), .template-prompt-btn');
+    const templateBtn = page.locator(
+      'button:has-text("Start from a Template"), .template-prompt-btn'
+    );
     const templateBtnVisible = await templateBtn.isVisible().catch(() => false);
-    
+
     if (templateBtnVisible) {
       await templateBtn.click();
       await page.waitForSelector(".template-gallery-modal", { timeout: 5000 });
-      
+
       const modalVisible = await page.locator(".template-gallery-modal").isVisible();
       if (modalVisible) {
         const templates = page.locator(".template-card");
         const templateCount = await templates.count();
         console.log(`✅ Template gallery opened with ${templateCount} template(s)\n`);
-        
+
         // Close modal
         await page.locator(".template-close-btn, .template-cancel-btn").first().click();
         await page.waitForTimeout(500);
@@ -101,11 +106,10 @@ async function testFixes() {
     }
 
     console.log("✅ All tests completed!");
-    
+
     // Keep browser open for manual inspection
     console.log("\n📝 Browser will stay open for 10 seconds for manual inspection...");
     await page.waitForTimeout(10000);
-
   } catch (error) {
     console.error("❌ Test failed:", error);
     throw error;
@@ -123,4 +127,3 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 
 export { testFixes };
-

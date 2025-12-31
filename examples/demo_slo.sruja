@@ -1,69 +1,69 @@
 // examples/demo_slo.sruja
 // SLO Example
 
-specification {
-  element system
-  element container
-}
 
-model {
-  requirement R1 performance "Must maintain 99.9% availability"
-  requirement R2 performance "API response time must be under 200ms p95"
+system = kind "System"
+container = kind "Container"
 
-  api = system "API Service" {
+
+
+R1 = requirement performance "Must maintain 99.9% availability"
+R2 = requirement performance "API response time must be under 200ms p95"
+
+api = system "API Service" {
+  slo {
+    availability {
+      target "99.9%"
+      window "30 days"
+      current "99.95%"
+    }
+    latency {
+      p95 "200ms"
+      p99 "500ms"
+      window "7 days"
+      current {
+        p95 "180ms"
+        p99 "420ms"
+      }
+    }
+    errorRate {
+      target "0.1%"
+      window "7 days"
+      current "0.08%"
+    }
+    throughput {
+      target "10000 req/s"
+      window "peak hour"
+      current "8500 req/s"
+    }
+  }
+  
+  webApp = container "Web Application" {
     slo {
       availability {
         target "99.9%"
         window "30 days"
-        current "99.95%"
       }
       latency {
-        p95 "200ms"
-        p99 "500ms"
+        p95 "150ms"
+        p99 "300ms"
         window "7 days"
-        current {
-          p95 "180ms"
-          p99 "420ms"
-        }
-      }
-      errorRate {
-        target "0.1%"
-        window "7 days"
-        current "0.08%"
-      }
-      throughput {
-        target "10000 req/s"
-        window "peak hour"
-        current "8500 req/s"
-      }
-    }
-    
-    webApp = container "Web Application" {
-      slo {
-        availability {
-          target "99.9%"
-          window "30 days"
-        }
-        latency {
-          p95 "150ms"
-          p99 "300ms"
-          window "7 days"
-        }
       }
     }
   }
-  
-  api.webApp -> api "reports metrics to"
 }
 
-views {
-  view index {
-    title "SLO Example"
-    include *
-  }
-  
-  view containers of api {
-    title "API Service Containers"
-    include api.*
-  }
+api.webApp -> api "reports metrics to"
+
+
+
+view index {
+  title "SLO Example"
+  include *
 }
+
+view containers of api {
+  title "API Service Containers"
+  include api.*
+}
+

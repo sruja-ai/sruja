@@ -1,28 +1,28 @@
 // examples/demo_datastores_queues.sruja
 // Queues and DataStore Example
 
-specification {
-  element system
-  element container
-  element queue
-  element database
+
+system = kind "System"
+container = kind "Container"
+queue = kind "Queue"
+database = kind "Database"
+
+
+
+service = system "Service" {
+  api = container "API"
+  mq = queue "Message Queue"
+  db = database "Database"
 }
 
-model {
-  service = system "Service" {
-    api = container "API"
-    mq = queue "Message Queue"
-    db = database "Database"
-  }
-  
-  service.api -> service.mq "publishes messages"
-  service.api -> service.db "reads data"
-  service.api -> service.db "writes data"
+service.api -> service.mq "publishes messages"
+service.api -> service.db "reads data"
+service.api -> service.db "writes data"
+
+
+
+view index {
+  title "Queues and DataStore"
+  include *
 }
 
-views {
-  view index {
-    title "Queues and DataStore"
-    include *
-  }
-}

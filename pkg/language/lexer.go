@@ -43,7 +43,7 @@ func (l *Lexer) NextToken() Token {
 	case '*':
 		tok = newToken(TOKEN_STAR, l.ch, l.line, l.column)
 	case '#':
-		// Tags in LikeC4 start with #
+		// Tags start with #
 		tok.Line = l.line
 		tok.Column = l.column
 		l.readChar() // consume #
@@ -83,7 +83,7 @@ func (l *Lexer) NextToken() Token {
 		tok.Line = l.line
 		tok.Column = l.column // Approximate
 	case '\'':
-		// LikeC4 also supports single-quoted strings
+		// Also supports single-quoted strings
 		tok.Type = TOKEN_STRING
 		tok.Literal = l.readSingleQuoteString()
 		tok.Line = l.line

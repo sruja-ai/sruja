@@ -19,6 +19,7 @@ Customer -> Shop.API "Calls"
 ```
 
 **Benefits:**
+
 - Reduces repetition
 - Follows DRY principle
 - Maintains clarity
@@ -27,28 +28,30 @@ Customer -> Shop.API "Calls"
 
 **File:** `demo_views_customization.sruja`
 
-Demonstrates optional views block for customizing diagrams:
+Demonstrates optional views for customizing diagrams (using flat syntax):
 
 ```sruja
-views {
-    // Custom filtered view
-    container Shop "API Focus" {
-        include Shop.API Shop.DB Shop.Cache
-        exclude Shop.WebApp Shop.PaymentService
-        autolayout lr
-    }
-    
-    // Custom styling
-    styles {
-        element "Database" {
-            shape "cylinder"
-            color "#ff0000"
-        }
+// Custom filtered view (flat syntax - no wrapper block)
+view api_focus of Shop {
+    title "API Focus"
+    include Shop.API Shop.DB Shop.Cache
+    exclude Shop.WebApp Shop.PaymentService
+    autolayout lr
+}
+
+// Custom styling (flat syntax)
+styles {
+    element "Database" {
+        shape "cylinder"
+        color "#ff0000"
     }
 }
 ```
 
+**Note**: Sruja uses flat syntax - views are declared at the top level, not inside a `views {}` wrapper block.
+
 **Key Points:**
+
 - Views are **OPTIONAL** - if omitted, standard C4 views are automatically generated
 - Only needed for customization (filtering, styling, etc.)
 - Aligns with Sruja's "start simple" philosophy

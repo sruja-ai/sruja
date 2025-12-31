@@ -1,0 +1,124 @@
+/* apps/designer/src/components/CTO/HealthScore.css */
+.health-score {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-background, #ffffff);
+}
+
+.health-score-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-surface, #f1f5f9);
+}
+
+.health-score-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary, #1e293b);
+  margin: 0;
+}
+
+.health-score-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.health-dimension {
+  padding: 16px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  background: var(--color-background, #ffffff);
+}
+
+.health-dimension-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.health-dimension-info {
+  flex: 1;
+}
+
+.health-dimension-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary, #1e293b);
+  margin-bottom: 8px;
+}
+
+.health-dimension-factors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.health-factor {
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+  padding: 2px 6px;
+  background: var(--color-surface, #f3f4f6);
+  border-radius: 4px;
+}
+
+.health-dimension-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.health-score-value {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.health-score-icon {
+  flex-shrink: 0;
+}
+
+.health-dimension-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--color-surface, #f3f4f6);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.health-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+/* Dark mode support */
+[data-theme="dark"] .health-score {
+  background: var(--color-background, #0f172a);
+}
+
+[data-theme="dark"] .health-score-header {
+  background: var(--color-surface, #1e293b);
+  border-color: var(--color-border, #334155);
+}
+
+[data-theme="dark"] .health-dimension {
+  background: var(--color-background, #0f172a);
+  border-color: var(--color-border, #334155);
+}
+
+[data-theme="dark"] .health-factor {
+  background: var(--color-surface, #0f172a);
+}
+
+[data-theme="dark"] .health-dimension-bar {
+  background: var(--color-surface, #0f172a);
+}

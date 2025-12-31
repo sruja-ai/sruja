@@ -10,15 +10,13 @@ import (
 func TestExporter_Export_Complexity(t *testing.T) {
 	parser, _ := language.NewParser()
 	dsl := `
-model {
-	system Cloud {
-		container App {
-			component API
+	Cloud = System "Cloud" {
+		App = Container "App" {
+			API = Component "API"
 		}
-		container DB
+		DB = Container "DB"
 	}
 	App.API -> DB "Persists"
-}
 `
 	prog, _, _ := parser.Parse("comp.sruja", dsl)
 
@@ -44,14 +42,12 @@ func TestExporter_EdgeStyling(t *testing.T) {
 
 	// For now, let's just make sure it handles different kinds of elements
 	dsl := `
-model {
-    person P
-    system S
-    container C
-    component Comp
-    database D
-    queue Q
-}
+    P = Person "P"
+    S = System "S"
+    C = Container "C"
+    Comp = Component "Comp"
+    D = Database "D"
+    Q = Queue "Q"
 `
 	parser, _ := language.NewParser()
 	prog, _, _ := parser.Parse("style.sruja", dsl)

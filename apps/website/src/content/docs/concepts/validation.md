@@ -20,33 +20,27 @@ Sruja validates your model to catch issues early.
 ## Example
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+person User
+system App {
+container WebApp
+container API
+datastore DB
 }
 
-model {
-  person User
-  system App {
-    container WebApp
-    container API
-    datastore DB
-  }
+// Valid relations (qualified cross-scope)
+User -> App.WebApp "Uses"
+App.WebApp -> App.API "Calls"
+App.API -> App.DB "Reads/Writes"
 
-  // Valid relations (qualified cross-scope)
-  User -> App.WebApp "Uses"
-  App.WebApp -> App.API "Calls"
-  App.API -> App.DB "Reads/Writes"
-}
-
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 

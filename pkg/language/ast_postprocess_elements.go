@@ -34,9 +34,6 @@ func (s *System) PostProcess() {
 		if item.Metadata != nil {
 			s.Metadata = append(s.Metadata, item.Metadata.Entries...)
 		}
-		if item.ContractsBlock != nil {
-			s.Contracts = append(s.Contracts, item.ContractsBlock.Contracts...)
-		}
 		if item.ConstraintsBlock != nil {
 			s.Constraints = append(s.Constraints, item.ConstraintsBlock.Entries...)
 		}
@@ -95,9 +92,6 @@ func (c *Container) PostProcess() {
 		}
 		if item.Metadata != nil {
 			c.Metadata = append(c.Metadata, item.Metadata.Entries...)
-		}
-		if item.ContractsBlock != nil {
-			c.Contracts = append(c.Contracts, item.ContractsBlock.Contracts...)
 		}
 		if item.ConstraintsBlock != nil {
 			c.Constraints = append(c.Constraints, item.ConstraintsBlock.Entries...)

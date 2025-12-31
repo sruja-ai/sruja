@@ -22,278 +22,272 @@ The platform consists of several key components working together:
 Explore the Sruja architecture itself using the interactive viewer below. This diagram is defined in Sruja DSL!
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+description "The Sruja Architecture-as-Code Platform"
+
+User = person "Architect/Developer" {
+	description "Uses Sruja to design and document systems"
 }
 
-model {
-	description "The Sruja Architecture-as-Code Platform"
+Sruja = system "Sruja Platform" {
+	description "Tools for defining, visualizing, and analyzing software architecture"
 
-	User = person "Architect/Developer" {
-		description "Uses Sruja to design and document systems"
+	CLI = container "Sruja CLI" {
+		technology "Go"
+		description "Command-line interface (cmd/sruja)"
 	}
 
-	Sruja = system "Sruja Platform" {
-		description "Tools for defining, visualizing, and analyzing software architecture"
+	Engine = container "Core Engine" {
+		technology "Go"
+		description "Core logic for validation, scoring, and analysis (pkg/engine)"
 
-		CLI = container "Sruja CLI" {
+		Validation = component "Validation Engine" {
 			technology "Go"
-			description "Command-line interface (cmd/sruja)"
+			description "Validates AST against rules (pkg/engine/rules)"
 		}
 
-		Engine = container "Core Engine" {
+		Scorer = component "Scoring Engine" {
 			technology "Go"
-			description "Core logic for validation, scoring, and analysis (pkg/engine)"
-
-			Validation = component "Validation Engine" {
-				technology "Go"
-				description "Validates AST against rules (pkg/engine/rules)"
-			}
-
-			Scorer = component "Scoring Engine" {
-				technology "Go"
-				description "Calculates architecture health score (pkg/engine/scorer.go)"
-			}
-
-			Policy = component "Policy Engine" {
-				technology "Go"
-				description "Enforces custom policies (future: OPA/Rego)"
-			}
-
-			Scorer -> Validation "uses results from"
-			Validation -> Policy "checks against"
+			description "Calculates architecture health score (pkg/engine/scorer.go)"
 		}
 
-		Language = container "Language Service" {
+		Policy = component "Policy Engine" {
 			technology "Go"
-			description "Parser, AST, and LSP implementation (pkg/language)"
+			description "Enforces custom policies (future: OPA/Rego)"
 		}
 
-		WASM = container "WASM Module" {
-			technology "Go/WASM"
-			description "WebAssembly build of the core engine (cmd/wasm)"
-		}
-
-		VSCode = container "VS Code Extension" {
-			technology "TypeScript"
-			description "Editor extension (apps/vscode-extension)"
-		}
-
-		Designer = container "Sruja Designer" {
-			technology "React/Vite"
-			description "Interactive architecture design tool (apps/designer)"
-		}
-
-		Website = container "Documentation Site" {
-			technology "Astro"
-			description "Project documentation and guides (apps/website)"
-		}
-
-		// Internal Dependencies
-		CLI -> Language "parses DSL using"
-		CLI -> Engine "validates using"
-		CLI -> WASM "builds"
-
-		WASM -> Language "embeds"
-		WASM -> Engine "embeds"
-
-		VSCode -> Language "uses LSP"
-		VSCode -> WASM "uses for LSP and preview"
-
-		Designer -> WASM "uses for parsing/rendering"
-
-		Website -> Designer "embeds"
+		Scorer -> Validation "uses results from"
+		Validation -> Policy "checks against"
 	}
 
-	User -> Sruja.CLI "runs commands"
-	User -> Sruja.VSCode "writes DSL"
-	User -> Sruja.Designer "designs architecture"
-	User -> Sruja.Website "reads docs"
-
-	Browser = system "Web Browser" {
-		description "User's web browser environment"
-		metadata {
-			tags ["external"]
-		}
-		LocalStore = datastore "Local Storage"
+	Language = container "Language Service" {
+		technology "Go"
+		description "Parser, AST, and LSP implementation (pkg/language)"
 	}
 
-	// ADRs
-	adr ADR001 "Use WASM for Client-Side Execution" {
-		status "Accepted"
-		context "We need to run validation and parsing in the browser and VS Code without a backend server."
-		decision "Compile the Go core engine to WebAssembly."
-		consequences "Ensures consistent logic across all platforms but increases build complexity."
+	WASM = container "WASM Module" {
+		technology "Go/WASM"
+		description "WebAssembly build of the core engine (cmd/wasm)"
 	}
 
-  // Deployment
-  deployment Production "Production Environment" {
-    node GitHubPages "GitHub Pages" {
-      containerInstance Pages
-    }
-    node Marketplace "VS Code Marketplace" {
-      containerInstance VSCode
-    }
-    node Releases "GitHub Releases" {
-      containerInstance Releases
-    }
-  }
+	VSCode = container "VS Code Extension" {
+		technology "TypeScript"
+		description "Editor extension (apps/vscode-extension)"
+	}
 
-  GitHub = system "GitHub Platform" {
-    description "Source control, CI/CD, and hosting"
-    Actions = container "GitHub Actions" {
-      technology "YAML/Node"
-      description "CI/CD workflows"
-    }
-    Pages = container "GitHub Pages" {
-      technology "Static Hosting"
-      description "Hosts documentation site"
-    }
-    Releases = container "GitHub Releases" {
-      technology "File Hosting"
-      description "Hosts CLI binaries"
-    }
-    Actions -> Pages "deploys to"
-    Actions -> Releases "publishes to"
-  }
+	Designer = container "Sruja Designer" {
+		technology "React/Vite"
+		description "Interactive architecture design tool (apps/designer)"
+	}
 
+	Website = container "Documentation Site" {
+		technology "Astro"
+		description "Project documentation and guides (apps/website)"
+	}
 
-  User -> GitHub "pushes code to" [Git]
+	// Internal Dependencies
+	CLI -> Language "parses DSL using"
+	CLI -> Engine "validates using"
+	CLI -> WASM "builds"
 
+	WASM -> Language "embeds"
+	WASM -> Engine "embeds"
 
-  // Component Stories
-  story DesignerStory "Using Sruja Designer" {
-    User -> Sruja.Website "visits designer"
-    Sruja.Website -> Sruja.Designer "initializes"
-    Sruja.Designer -> Sruja.WASM "loads engine"
-    Sruja.Designer -> Sruja.WASM "parses DSL"
-    Sruja.Designer -> User "renders interactive diagram"
-  }
+	VSCode -> Language "uses LSP"
+	VSCode -> WASM "uses for LSP and preview"
 
-  story DesignerExports "Exporting from Designer" {
-    User -> Sruja.Designer "clicks export"
-    Sruja.Designer -> Sruja.WASM "requests JSON"
-    Sruja.WASM -> Sruja.Designer "returns JSON data"
-    Sruja.Designer -> User "downloads file"
-  }
+	Designer -> WASM "uses for parsing/rendering"
 
-  // Designer-specific Scenarios
-  scenario DesignerShare "Share From Designer" {
-    User -> Sruja.Designer "edits DSL code"
-    Sruja.Designer -> Browser "updates URL with code"
-    User -> Sruja.Designer "clicks Share button"
-    Sruja.Designer -> Browser "copies shareable URL"
-    User -> User "shares URL with team"
-  }
-
-  scenario DesignerFormatPreview "Preview Multiple Formats" {
-    User -> Sruja.Designer "loads architecture"
-    User -> Sruja.Designer "switches to JSON preview"
-    Sruja.Designer -> Sruja.WASM "parses DSL to JSON"
-    Sruja.Designer -> User "displays JSON export"
-  }
-
-  scenario DesignerResizePanels "Resize Editor and Preview" {
-    User -> Sruja.Designer "opens split view"
-    Sruja.Designer -> User "shows editor and preview side-by-side"
-    User -> Sruja.Designer "drags resize handle"
-    Sruja.Designer -> User "adjusts panel sizes"
-    Sruja.Designer -> Browser "saves panel preference"
-  }
-
-  scenario DesignerLoadExample "Load Example Architecture" {
-    User -> Sruja.Designer "opens examples dropdown"
-    Sruja.Designer -> User "shows available examples"
-    User -> Sruja.Designer "selects example"
-    Sruja.Designer -> Sruja.Website "loads example file"
-    Sruja.Website -> Sruja.Designer "returns DSL content"
-    Sruja.Designer -> Sruja.WASM "parses DSL"
-    Sruja.Designer -> User "displays architecture"
-    Sruja.Designer -> Browser "updates URL with code"
-  }
-
-  scenario DesignerURLState "URL State Management" {
-    User -> Sruja.Designer "edits DSL code" [Input]
-    Sruja.Designer -> Browser "debounces URL update" [Timeout]
-    Browser -> Browser "updates URL hash with code" [HistoryAPI]
-    User -> Browser "refreshes page" [Event]
-    Browser -> Sruja.Designer "loads code from URL" [HashParse]
-    Sruja.Designer -> Sruja.WASM "parses DSL from URL" [FunctionCall]
-    Sruja.Designer -> User "restores architecture state" [DOM]
-  }
-
-  story DesignerEditingStory "Visual Editing in Designer" {
-    User -> Sruja.Designer "opens editor"
-    Sruja.Designer -> Sruja.WASM "loads engine"
-    User -> Sruja.Designer "types DSL code"
-    Sruja.Designer -> Sruja.WASM "validates code"
-    Sruja.WASM -> Sruja.Designer "returns diagnostics"
-    Sruja.Designer -> User "shows errors/diagram"
-  }
-
-  scenario DesignerAutosave "Autosave on Close" {
-    Sruja.Designer -> Browser.LocalStore "save DSL snapshot"
-    User -> Sruja.Designer "closes tab"
-    User -> Sruja.Designer "reopens designer"
-    Sruja.Designer -> Browser.LocalStore "load DSL snapshot"
-    Sruja.Designer -> User "restores session"
-  }
-
-  story DocsStory "Reading Documentation" {
-    User -> Sruja.Website "navigates to page"
-    Sruja.Website -> GitHub.Pages "serves content"
-    Sruja.Website -> User "displays text & code blocks"
-  }
-
-  // Specific Scenarios (The Behavior)
-  scenario CIDev "Continuous Integration (Dev)" {
-    User -> GitHub "pushes to main"
-    GitHub -> GitHub.Actions "triggers CI"
-    GitHub.Actions -> Sruja "builds & tests"
-    GitHub.Actions -> GitHub.Pages "deploys dev site"
-  }
-
-  scenario ReleaseStaging "Release Candidate (Staging)" {
-    User -> GitHub.Actions "dispatches release workflow"
-    GitHub.Actions -> GitHub "creates release/<semVer> branch"
-    GitHub.Actions -> GitHub "creates PR to prod"
-    GitHub.Actions -> GitHub "creates <semVer>-RC1 tag"
-    GitHub.Actions -> Sruja.VSCode "publishes pre-release extension"
-  }
-
-  scenario ReleaseFixes "Release Candidate Fixes" {
-    User -> GitHub "commits fix to release/<semVer>"
-    GitHub -> GitHub.Actions "triggers CI"
-    GitHub.Actions -> GitHub "creates <semVer>-RC2 tag"
-    GitHub.Actions -> Sruja.VSCode "updates pre-release extension"
-  }
-
-  scenario ReleaseProd "Production Release" {
-    User -> GitHub "merges PR to prod"
-    GitHub -> GitHub.Actions "triggers release"
-    GitHub.Actions -> GitHub.Pages "deploys prod site"
-    GitHub.Actions -> Sruja.VSCode "publishes extension"
-    GitHub.Actions -> GitHub.Releases "publishes CLI binaries"
-  }
-
-  scenario HotfixProd "Hotfix to Production" {
-    User -> GitHub.Actions "dispatches hotfix workflow"
-    GitHub.Actions -> GitHub "creates hotfix branch"
-    User -> GitHub "merges hotfix to prod"
-    GitHub.Actions -> GitHub.Pages "deploys prod site"
-    GitHub.Actions -> Sruja.VSCode "publishes patch update"
-  }
+	Website -> Designer "embeds"
 }
 
-views {
-  view index {
-    include *
-  }
+User -> Sruja.CLI "runs commands"
+User -> Sruja.VSCode "writes DSL"
+User -> Sruja.Designer "designs architecture"
+User -> Sruja.Website "reads docs"
+
+Browser = system "Web Browser" {
+	description "User's web browser environment"
+	metadata {
+		tags ["external"]
+	}
+	LocalStore = datastore "Local Storage"
+}
+
+// ADRs
+adr ADR001 "Use WASM for Client-Side Execution" {
+	status "Accepted"
+	context "We need to run validation and parsing in the browser and VS Code without a backend server."
+	decision "Compile the Go core engine to WebAssembly."
+	consequences "Ensures consistent logic across all platforms but increases build complexity."
+}
+
+// Deployment
+deployment Production "Production Environment" {
+node GitHubPages "GitHub Pages" {
+  containerInstance Pages
+}
+node Marketplace "VS Code Marketplace" {
+  containerInstance VSCode
+}
+node Releases "GitHub Releases" {
+  containerInstance Releases
+}
+}
+
+GitHub = system "GitHub Platform" {
+description "Source control, CI/CD, and hosting"
+Actions = container "GitHub Actions" {
+  technology "YAML/Node"
+  description "CI/CD workflows"
+}
+Pages = container "GitHub Pages" {
+  technology "Static Hosting"
+  description "Hosts documentation site"
+}
+Releases = container "GitHub Releases" {
+  technology "File Hosting"
+  description "Hosts CLI binaries"
+}
+Actions -> Pages "deploys to"
+Actions -> Releases "publishes to"
+}
+
+
+User -> GitHub "pushes code to" [Git]
+
+
+// Component Stories
+story DesignerStory "Using Sruja Designer" {
+User -> Sruja.Website "visits designer"
+Sruja.Website -> Sruja.Designer "initializes"
+Sruja.Designer -> Sruja.WASM "loads engine"
+Sruja.Designer -> Sruja.WASM "parses DSL"
+Sruja.Designer -> User "renders interactive diagram"
+}
+
+story DesignerExports "Exporting from Designer" {
+User -> Sruja.Designer "clicks export"
+Sruja.Designer -> Sruja.WASM "requests JSON"
+Sruja.WASM -> Sruja.Designer "returns JSON data"
+Sruja.Designer -> User "downloads file"
+}
+
+// Designer-specific Scenarios
+scenario DesignerShare "Share From Designer" {
+User -> Sruja.Designer "edits DSL code"
+Sruja.Designer -> Browser "updates URL with code"
+User -> Sruja.Designer "clicks Share button"
+Sruja.Designer -> Browser "copies shareable URL"
+User -> User "shares URL with team"
+}
+
+scenario DesignerFormatPreview "Preview Multiple Formats" {
+User -> Sruja.Designer "loads architecture"
+User -> Sruja.Designer "switches to JSON preview"
+Sruja.Designer -> Sruja.WASM "parses DSL to JSON"
+Sruja.Designer -> User "displays JSON export"
+}
+
+scenario DesignerResizePanels "Resize Editor and Preview" {
+User -> Sruja.Designer "opens split view"
+Sruja.Designer -> User "shows editor and preview side-by-side"
+User -> Sruja.Designer "drags resize handle"
+Sruja.Designer -> User "adjusts panel sizes"
+Sruja.Designer -> Browser "saves panel preference"
+}
+
+scenario DesignerLoadExample "Load Example Architecture" {
+User -> Sruja.Designer "opens examples dropdown"
+Sruja.Designer -> User "shows available examples"
+User -> Sruja.Designer "selects example"
+Sruja.Designer -> Sruja.Website "loads example file"
+Sruja.Website -> Sruja.Designer "returns DSL content"
+Sruja.Designer -> Sruja.WASM "parses DSL"
+Sruja.Designer -> User "displays architecture"
+Sruja.Designer -> Browser "updates URL with code"
+}
+
+scenario DesignerURLState "URL State Management" {
+User -> Sruja.Designer "edits DSL code" [Input]
+Sruja.Designer -> Browser "debounces URL update" [Timeout]
+Browser -> Browser "updates URL hash with code" [HistoryAPI]
+User -> Browser "refreshes page" [Event]
+Browser -> Sruja.Designer "loads code from URL" [HashParse]
+Sruja.Designer -> Sruja.WASM "parses DSL from URL" [FunctionCall]
+Sruja.Designer -> User "restores architecture state" [DOM]
+}
+
+story DesignerEditingStory "Visual Editing in Designer" {
+User -> Sruja.Designer "opens editor"
+Sruja.Designer -> Sruja.WASM "loads engine"
+User -> Sruja.Designer "types DSL code"
+Sruja.Designer -> Sruja.WASM "validates code"
+Sruja.WASM -> Sruja.Designer "returns diagnostics"
+Sruja.Designer -> User "shows errors/diagram"
+}
+
+scenario DesignerAutosave "Autosave on Close" {
+Sruja.Designer -> Browser.LocalStore "save DSL snapshot"
+User -> Sruja.Designer "closes tab"
+User -> Sruja.Designer "reopens designer"
+Sruja.Designer -> Browser.LocalStore "load DSL snapshot"
+Sruja.Designer -> User "restores session"
+}
+
+story DocsStory "Reading Documentation" {
+User -> Sruja.Website "navigates to page"
+Sruja.Website -> GitHub.Pages "serves content"
+Sruja.Website -> User "displays text & code blocks"
+}
+
+// Specific Scenarios (The Behavior)
+scenario CIDev "Continuous Integration (Dev)" {
+User -> GitHub "pushes to main"
+GitHub -> GitHub.Actions "triggers CI"
+GitHub.Actions -> Sruja "builds & tests"
+GitHub.Actions -> GitHub.Pages "deploys dev site"
+}
+
+scenario ReleaseStaging "Release Candidate (Staging)" {
+User -> GitHub.Actions "dispatches release workflow"
+GitHub.Actions -> GitHub "creates release/<semVer> branch"
+GitHub.Actions -> GitHub "creates PR to prod"
+GitHub.Actions -> GitHub "creates <semVer>-RC1 tag"
+GitHub.Actions -> Sruja.VSCode "publishes pre-release extension"
+}
+
+scenario ReleaseFixes "Release Candidate Fixes" {
+User -> GitHub "commits fix to release/<semVer>"
+GitHub -> GitHub.Actions "triggers CI"
+GitHub.Actions -> GitHub "creates <semVer>-RC2 tag"
+GitHub.Actions -> Sruja.VSCode "updates pre-release extension"
+}
+
+scenario ReleaseProd "Production Release" {
+User -> GitHub "merges PR to prod"
+GitHub -> GitHub.Actions "triggers release"
+GitHub.Actions -> GitHub.Pages "deploys prod site"
+GitHub.Actions -> Sruja.VSCode "publishes extension"
+GitHub.Actions -> GitHub.Releases "publishes CLI binaries"
+}
+
+scenario HotfixProd "Hotfix to Production" {
+User -> GitHub.Actions "dispatches hotfix workflow"
+GitHub.Actions -> GitHub "creates hotfix branch"
+User -> GitHub "merges hotfix to prod"
+GitHub.Actions -> GitHub.Pages "deploys prod site"
+GitHub.Actions -> Sruja.VSCode "publishes patch update"
+}
+
+view index {
+include *
 }
 ```
 

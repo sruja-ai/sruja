@@ -17,100 +17,94 @@ Governance as Code treats architectural policies (e.g., "All databases must be e
 Sruja validates common architectural concerns automatically:
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
-}
+element person
+element system
+element container
+element component
+element datastore
+element queue
 
-model {
-    PaymentService = system "Payment Service" {
-        API = container "Payment API" {
-            technology "Go"
-            tags ["encrypted", "pci-compliant"]
-            
-            // SLOs for payment processing
-            slo {
-                availability {
-                    target "99.99%"
-                    window "30 days"
-                    current "99.98%"
-                    description "Payment processing must be highly available"
-                }
-                latency {
-                    p95 "100ms"
-                    p99 "200ms"
-                    window "7 days"
-                    current {
-                        p95 "95ms"
-                        p99 "190ms"
-                    }
-                    description "Fast payment processing critical for UX"
-                }
-                errorRate {
-                    target "< 0.01%"
-                    window "30 days"
-                    current "0.008%"
-                    description "Payment errors must be extremely rare"
-                }
-                throughput {
-                    target "500 req/s"
-                    window "1 hour"
-                    current "480 req/s"
-                    description "Handle peak payment volumes"
-                }
+PaymentService = system "Payment Service" {
+    API = container "Payment API" {
+        technology "Go"
+        tags ["encrypted", "pci-compliant"]
+
+        // SLOs for payment processing
+        slo {
+            availability {
+                target "99.99%"
+                window "30 days"
+                current "99.98%"
+                description "Payment processing must be highly available"
             }
-        }
-        
-        DB = datastore "Payment Database" {
-            technology "PostgreSQL"
-            tags ["encrypted", "backed-up"]
-            
-            // Database SLOs
-            slo {
-                availability {
-                    target "99.95%"
-                    window "30 days"
-                    current "99.92%"
+            latency {
+                p95 "100ms"
+                p99 "200ms"
+                window "7 days"
+                current {
+                    p95 "95ms"
+                    p99 "190ms"
                 }
-                latency {
-                    p95 "20ms"
-                    p99 "50ms"
-                    window "7 days"
-                }
+                description "Fast payment processing critical for UX"
+            }
+            errorRate {
+                target "< 0.01%"
+                window "30 days"
+                current "0.008%"
+                description "Payment errors must be extremely rare"
+            }
+            throughput {
+                target "500 req/s"
+                window "1 hour"
+                current "480 req/s"
+                description "Handle peak payment volumes"
             }
         }
     }
 
-    Auditor = person "Security Auditor"
-    Auditor -> PaymentService.API "Reviews"
-    PaymentService.API -> PaymentService.DB "Reads/Writes"
+    DB = datastore "Payment Database" {
+        technology "PostgreSQL"
+        tags ["encrypted", "backed-up"]
+
+        // Database SLOs
+        slo {
+            availability {
+                target "99.95%"
+                window "30 days"
+                current "99.92%"
+            }
+            latency {
+                p95 "20ms"
+                p99 "50ms"
+                window "7 days"
+            }
+        }
+    }
 }
 
-views {
-  view index {
-    title "Payment Service with Governance"
-    include *
-  }
-  
-  // SLO monitoring view
-  view slos {
-    title "SLO Monitoring View"
-    include PaymentService.API PaymentService.DB
-    exclude Auditor
-    description "Focuses on components with SLOs defined"
-  }
-  
-  // Compliance view
-  view compliance {
-    title "Compliance View"
-    include PaymentService.API PaymentService.DB
-    exclude Auditor
-    description "Shows components with compliance tags"
-  }
+Auditor = person "Security Auditor"
+Auditor -> PaymentService.API "Reviews"
+PaymentService.API -> PaymentService.DB "Reads/Writes"
+
+view index {
+title "Payment Service with Governance"
+include *
+}
+
+// SLO monitoring view
+view slos {
+title "SLO Monitoring View"
+include PaymentService.API PaymentService.DB
+exclude Auditor
+description "Focuses on components with SLOs defined"
+}
+
+// Compliance view
+view compliance {
+title "Compliance View"
+include PaymentService.API PaymentService.DB
+exclude Auditor
+description "Shows components with compliance tags"
 }
 ```
 
@@ -122,4 +116,4 @@ The real power comes when you run the Sruja CLI. It can check your architecture 
 sruja validate architecture.sruja
 ```
 
-This ensures that your architecture isn't just a diagram—it's a contract that is continuously verified.
+This ensures that your architecture isn't just a diagram—it's a specification that is continuously verified.

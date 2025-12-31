@@ -37,7 +37,8 @@ func TestCobraIntegration(t *testing.T) {
 		resetCmd()
 		tmpDir := t.TempDir()
 		file := filepath.Join(tmpDir, "test.sruja")
-		err := os.WriteFile(file, []byte(`model {}`), 0o644)
+		err := os.WriteFile(file, []byte(`system = kind "System"
+S = system "S"`), 0o644)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -61,7 +62,8 @@ func TestCobraIntegration(t *testing.T) {
 		resetCmd()
 		tmpDir := t.TempDir()
 		file := filepath.Join(tmpDir, "test.sruja")
-		err := os.WriteFile(file, []byte(`model {}`), 0o644)
+		err := os.WriteFile(file, []byte(`system = kind "System"
+S = system "S"`), 0o644)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -85,7 +87,8 @@ func TestCobraIntegration(t *testing.T) {
 		resetCmd()
 		tmpDir := t.TempDir()
 		file := filepath.Join(tmpDir, "test.sruja")
-		err := os.WriteFile(file, []byte(`model {}`), 0o644)
+		err := os.WriteFile(file, []byte(`system = kind "System"
+S = system "S"`), 0o644)
 		if err != nil {
 			t.Fatal(err)
 		}

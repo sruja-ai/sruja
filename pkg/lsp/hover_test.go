@@ -12,17 +12,24 @@ func TestHover_Elements(t *testing.T) {
 	server := NewServer()
 	uri := lsp.DocumentURI("file:///test.sruja")
 	text := `
-model {
-	system S1 "System 1" {
-		container C1 "Container 1" {
-			component Comp1 "Component 1"
-		}
-		database DB1 "Database 1"
-		queue Q1 "Queue 1"
+
+System = kind "System"
+Container = kind "Container"
+Component = kind "Component"
+Database = kind "DataStore"
+Queue = kind "Queue"
+Person = kind "Person"
+
+S1 = System "System 1" {
+	C1 = Container "Container 1" {
+		Comp1 = Component "Component 1"
 	}
-	person P1 "Person 1"
+	DB1 = Database "Database 1"
+	Q1 = Queue "Queue 1"
 }
+P1 = Person "Person 1"
 `
+
 	server.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{
 		TextDocument: lsp.TextDocumentItem{URI: uri, Text: text},
 	})
@@ -34,13 +41,13 @@ model {
 		wantType  string
 		wantLabel string
 	}{
-		{"System", 2, 9, "System", "System 1"},           // S1
-		{"Container", 3, 13, "Container", "Container 1"}, // C1
-		{"Component", 4, 15, "Component", "Component 1"}, // Comp1
-		{"DataStore", 6, 13, "DataStore", "Database 1"},  // DB1
-		{"Queue", 7, 9, "Queue", "Queue 1"},              // Q1
-		{"Person", 9, 9, "Person", "Person 1"},           // P1
-		{"Unknown", 2, 0, "", ""},                        // "system" keyword (not handled yet)
+		{"System", 9, 2, "System", "System 1"},           // S1
+		{"Container", 10, 3, "Container", "Container 1"}, // C1
+		{"Component", 11, 4, "Component", "Component 1"}, // Comp1
+		{"DataStore", 13, 3, "DataStore", "Database 1"},  // DB1
+		{"Queue", 14, 3, "Queue", "Queue 1"},             // Q1
+		{"Person", 16, 2, "Person", "Person 1"},          // P1
+		{"Unknown", 0, 0, "", ""},                        // whitespace - line 0 is empty
 		{"Whitespace", 0, 0, "", ""},                     // Empty line
 	}
 
@@ -112,9 +119,9 @@ func TestHover_EdgeCases(t *testing.T) {
 func TestHoverArrowRelation(t *testing.T) {
 	s := NewServer()
 	uri := lsp.DocumentURI("file:///hover.sruja")
-	text := "model {\nsystem S \"System\"\ncontainer C \"Container\"\nS -> C \"uses\"\n}"
+	text := "system=kind \"System\" container=kind \"Container\"\n\nS = system \"System\"\nC = container \"Container\"\nS -> C \"uses\"\n"
 	s.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{TextDocument: lsp.TextDocumentItem{URI: uri, Text: text}})
-	h, err := s.Hover(context.Background(), lsp.TextDocumentPositionParams{TextDocument: lsp.TextDocumentIdentifier{URI: uri}, Position: lsp.Position{Line: 3, Character: 3}})
+	h, err := s.Hover(context.Background(), lsp.TextDocumentPositionParams{TextDocument: lsp.TextDocumentIdentifier{URI: uri}, Position: lsp.Position{Line: 4, Character: 3}})
 	if err != nil {
 		t.Fatalf("Hover failed: %v", err)
 	}

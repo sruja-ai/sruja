@@ -14,14 +14,10 @@ func TestDiffJSON(t *testing.T) {
 	file1 := filepath.Join(tmpDir, "v1.sruja")
 	file2 := filepath.Join(tmpDir, "v2.sruja")
 
-	content1 := `model {
-		system Sys1 "System 1"
-	}`
+	content1 := `system Sys1 "System 1"`
 
-	content2 := `model {
-		system Sys1 "System 1"
-		system Sys2 "System 2"
-	}`
+	content2 := `system Sys1 "System 1"
+		system Sys2 "System 2"`
 
 	if err := os.WriteFile(file1, []byte(content1), 0o644); err != nil {
 		t.Fatal(err)
@@ -51,13 +47,9 @@ func TestDiffModified(t *testing.T) {
 	file1 := filepath.Join(tmpDir, "v1.sruja")
 	file2 := filepath.Join(tmpDir, "v2.sruja")
 
-	content1 := `model {
-		system Sys1 "System One"
-	}`
+	content1 := `system Sys1 "System One"`
 
-	content2 := `model {
-		system Sys1 "System 1 Updated"
-	}`
+	content2 := `system Sys1 "System 1 Updated"`
 
 	if err := os.WriteFile(file1, []byte(content1), 0o644); err != nil {
 		t.Fatal(err)
@@ -83,14 +75,10 @@ func TestDiffRemoved(t *testing.T) {
 	file1 := filepath.Join(tmpDir, "v1.sruja")
 	file2 := filepath.Join(tmpDir, "v2.sruja")
 
-	content1 := `model {
-		system Sys1 "System 1"
-		system Sys2 "System 2"
-	}`
+	content1 := `system Sys1 "System 1"
+		system Sys2 "System 2"`
 
-	content2 := `model {
-		system Sys1 "System 1"
-	}`
+	content2 := `system Sys1 "System 1"`
 
 	if err := os.WriteFile(file1, []byte(content1), 0o644); err != nil {
 		t.Fatal(err)

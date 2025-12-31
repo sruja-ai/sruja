@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,9 +24,10 @@ func TestRunInit(t *testing.T) {
 
 	// Test case 1: Init with project name
 	projectName := "test-project"
-	err = runInit(nil, []string{projectName})
-	if err != nil {
-		t.Fatalf("runInit failed: %v", err)
+	var stdout, stderr bytes.Buffer
+	result := runInit([]string{projectName}, &stdout, &stderr)
+	if result != 0 {
+		t.Fatalf("runInit failed with code %d: %s", result, stderr.String())
 	}
 
 	// Verify directory exists
@@ -52,9 +54,11 @@ func TestRunInit(t *testing.T) {
 	}
 
 	// Test case 2: Init with default name
-	err = runInit(nil, []string{})
-	if err != nil {
-		t.Fatalf("runInit failed: %v", err)
+	stdout.Reset()
+	stderr.Reset()
+	result = runInit([]string{}, &stdout, &stderr)
+	if result != 0 {
+		t.Fatalf("runInit failed with code %d: %s", result, stderr.String())
 	}
 
 	defaultName := "my-sruja-project"
@@ -77,8 +81,9 @@ func TestRunInit_Error(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := runInit(nil, []string{blockedName})
-	if err == nil {
-		t.Error("Expected error when project directory is blocked by a file")
+	var stdout, stderr bytes.Buffer
+	result := runInit([]string{blockedName}, &stdout, &stderr)
+	if result == 0 {
+		t.Error("Expected non-zero exit code when project directory is blocked by a file")
 	}
 }

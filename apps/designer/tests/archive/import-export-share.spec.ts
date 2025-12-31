@@ -24,9 +24,9 @@ test.describe("Import, Export, Share", () => {
       mimeType: "text/plain",
       buffer: Buffer.from(demoDsl),
     });
-    await page.waitForSelector(".react-flow, .likec4-canvas", { timeout: 30000 });
-    await page.waitForSelector(".likec4-diagram-container svg, .react-flow svg", { timeout: 10000 });
-    const diagramContent = await page.locator(".likec4-diagram-container svg, .react-flow svg").count();
+    await page.waitForSelector(".react-flow", { timeout: 30000 });
+    await page.waitForSelector(".react-flow svg", { timeout: 10000 });
+    const diagramContent = await page.locator(".react-flow svg").count();
     expect(diagramContent).toBeGreaterThan(0);
   });
 
@@ -34,7 +34,7 @@ test.describe("Import, Export, Share", () => {
     const dropZone = page.locator(".drop-zone");
     if (await dropZone.isVisible().catch(() => false)) {
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".react-flow, .likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
     const [download] = await Promise.all([
       page.waitForEvent("download"),
@@ -52,7 +52,7 @@ test.describe("Import, Export, Share", () => {
     const dropZone = page.locator(".drop-zone");
     if (await dropZone.isVisible().catch(() => false)) {
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".react-flow, .likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
     // Open Actions and click Share
     const actionsBtn = page.locator('button[aria-label="Actions"]');

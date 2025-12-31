@@ -14,16 +14,14 @@ func TestSLOBlockParsing(t *testing.T) {
 	}{
 		{
 			name: "simple SLO with availability",
-			input: `model {
-				system API "API Service" {
+			input: `API = system "API Service" {
 					slo {
 						availability {
 							target "99.9%"
 							window "30 days"
 						}
 					}
-				}
-			}`,
+				}`,
 			wantErr: false,
 			checkSLO: func(slo *SLOBlock) bool {
 				return slo != nil &&
@@ -34,8 +32,7 @@ func TestSLOBlockParsing(t *testing.T) {
 		},
 		{
 			name: "SLO with all fields",
-			input: `model {
-				system API "API Service" {
+			input: `API = system "API Service" {
 					slo {
 						availability {
 							target "99.9%"
@@ -62,8 +59,7 @@ func TestSLOBlockParsing(t *testing.T) {
 							current "8500 req/s"
 						}
 					}
-				}
-			}`,
+				}`,
 			wantErr: false,
 			checkSLO: func(slo *SLOBlock) bool {
 				return slo != nil &&
@@ -107,7 +103,7 @@ func TestSLOBlockParsing(t *testing.T) {
 			var slo *SLOBlock
 			for _, item := range program.Model.Items {
 				if item.ElementDef != nil && item.ElementDef.GetKind() == "system" {
-					// Extract SLO from LikeC4ElementDef body
+					// Extract SLO from ElementDef body
 					body := item.ElementDef.GetBody()
 					if body != nil {
 						for _, bodyItem := range body.Items {

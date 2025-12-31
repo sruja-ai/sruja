@@ -8,7 +8,6 @@ import (
 	"strings"
 	"syscall/js"
 
-	"github.com/sruja-ai/sruja/pkg/export/likec4"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
@@ -31,10 +30,8 @@ func format(this js.Value, args []js.Value) (ret interface{}) {
 	}
 
 	// Printer works directly with Program AST (no conversion needed)
-	// Use LikeC4 DSL exporter for formatting
-	dslExporter := likec4.NewDSLExporter()
-	formatted := dslExporter.ExportDSL(program)
-	ret = lspResult(true, formatted, "")
+	// TODO: Implement Sruja DSL formatter
+	ret = lspResult(true, input, "")
 	return
 }
 
@@ -209,8 +206,8 @@ func foldingRanges(this js.Value, args []js.Value) (ret interface{}) {
 
 	if err == nil && program != nil && program.Model != nil {
 		// Add folding ranges from AST
-		var addElementRanges func(elem *language.LikeC4ElementDef)
-		addElementRanges = func(elem *language.LikeC4ElementDef) {
+		var addElementRanges func(elem *language.ElementDef)
+		addElementRanges = func(elem *language.ElementDef) {
 			if elem == nil {
 				return
 			}

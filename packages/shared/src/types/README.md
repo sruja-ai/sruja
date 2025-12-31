@@ -2,9 +2,9 @@
 
 Type definitions for Sruja architecture models.
 
-## Using LikeC4 Types (Recommended)
+## Using Core Types (Recommended)
 
-**For TypeScript code, use LikeC4's types directly:**
+**For TypeScript code, use core types directly:**
 
 ```typescript
 import type {
@@ -12,11 +12,11 @@ import type {
   Relationship,
   ParsedView,
   Specification,
-  ParsedLikeC4ModelData,
+  ParsedModelData,
   BuilderSpecification,
 } from "@sruja/shared/types";
 
-// Use LikeC4 types in your code
+// Use core types in your code
 const element: Element = { ... };
 const spec: BuilderSpecification = { ... };
 ```
@@ -39,15 +39,16 @@ const dump: SrujaModelDump = { ... };
 
 ## Type Mapping
 
-| LikeC4 Type (TypeScript) | Sruja Dump Type (Go Backend) |
-|---------------------------|------------------------------|
-| `Element` | `ElementDump` |
-| `Relationship` | `RelationDump` |
-| `ParsedView` | `ViewDump` |
-| `Specification` | `SpecificationDump` |
-| `ParsedLikeC4ModelData` | `SrujaModelDump` |
+| Core Type (TypeScript) | Sruja Dump Type (Go Backend) |
+| ---------------------- | ---------------------------- |
+| `Element`              | `ElementDump`                |
+| `Relationship`         | `RelationDump`               |
+| `ParsedView`           | `ViewDump`                   |
+| `Specification`        | `SpecificationDump`          |
+| `ParsedModelData`      | `SrujaModelDump`             |
 
 **Recommendation:**
-- Use LikeC4 types in TypeScript code
+
+- Use core types in TypeScript code
 - Convert to Dump types only when sending to Go backend
 - Use Builder API which handles conversion automatically

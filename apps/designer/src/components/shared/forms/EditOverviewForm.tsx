@@ -26,10 +26,10 @@ interface FormValues {
 
 export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
-  const data = useArchitectureStore((s) => s.likec4Model);
+  const data = useArchitectureStore((s) => s.model);
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Need to be careful mapping from likec4Model if it doesn't have overview yet or it's in sruja
+  // Need to be careful mapping from model if it doesn't have overview yet or it's in sruja
   const sruja = (data as any)?.sruja || {};
   const overview = sruja?.overview;
 
@@ -72,7 +72,9 @@ export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
           sruja: {
             ...sruja,
             description: values.architectureDescription.trim() || undefined,
-            overview: Object.keys(newOverview).some((k) => newOverview[k as keyof typeof newOverview])
+            overview: Object.keys(newOverview).some(
+              (k) => newOverview[k as keyof typeof newOverview]
+            )
               ? newOverview
               : undefined,
           },
@@ -125,7 +127,10 @@ export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
   };
 
   const removeItem = (listName: "goals" | "nonGoals" | "risks", index: number) => {
-    form.setValue(listName, form.values[listName].filter((_, i) => i !== index));
+    form.setValue(
+      listName,
+      form.values[listName].filter((_, i) => i !== index)
+    );
   };
 
   return (
@@ -139,13 +144,23 @@ export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" type="submit" form="edit-overview-form" isLoading={form.isSubmitting}>
+          <Button
+            variant="primary"
+            type="submit"
+            form="edit-overview-form"
+            isLoading={form.isSubmitting}
+          >
             Save
           </Button>
         </>
       }
     >
-      <form ref={formRef} id="edit-overview-form" onSubmit={form.handleSubmit} className="edit-form">
+      <form
+        ref={formRef}
+        id="edit-overview-form"
+        onSubmit={form.handleSubmit}
+        className="edit-form"
+      >
         <FormField
           label="Architecture Description"
           name="architectureDescription"

@@ -11,17 +11,6 @@ func stringPtrMeta(s string) *string {
 	return &s
 }
 
-func TestContract_Location(t *testing.T) {
-	contract := &language.Contract{
-		Kind: "api",
-		ID:   "C1",
-	}
-	loc := contract.Location()
-	if loc.File != "" || loc.Line != 0 || loc.Column != 0 {
-		t.Errorf("Expected empty SourceLocation, got %+v", loc)
-	}
-}
-
 func TestGetLabel_Methods(t *testing.T) {
 	tests := []struct {
 		name string

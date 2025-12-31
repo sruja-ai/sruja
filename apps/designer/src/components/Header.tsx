@@ -17,11 +17,12 @@ import { ThemeToggle, Button, Logo } from "@sruja/ui";
 import type { SrujaModelDump } from "@sruja/shared";
 import type { ViewTab } from "../types";
 import { getWebsiteUrl } from "../utils/website-url";
+import { PersonaSwitcher, type Persona } from "./PersonaSwitcher";
 
 export interface HeaderProps {
   isNavOpen: boolean;
   setIsNavOpen: (open: boolean) => void;
-  likec4Model: SrujaModelDump | null;
+  model: SrujaModelDump | null;
   showActions: boolean;
   setShowActions: (show: boolean) => void;
   activeTab: ViewTab;
@@ -31,6 +32,9 @@ export interface HeaderProps {
   selectedNodeId: string | null;
   isDetailsOpen: boolean;
   setIsDetailsOpen: (open: boolean) => void;
+  // Persona
+  selectedPersona: Persona;
+  onPersonaChange: (persona: Persona) => void;
   // Actions
   handleImport: () => void;
   handleExport: () => void;
@@ -43,7 +47,7 @@ export interface HeaderProps {
 
 export function Header({
   setIsNavOpen,
-  likec4Model,
+  model,
   showActions,
   setShowActions,
   activeTab,
@@ -53,6 +57,8 @@ export function Header({
   selectedNodeId,
   isDetailsOpen,
   setIsDetailsOpen,
+  selectedPersona,
+  onPersonaChange,
   handleImport,
   handleExport,
   handleExportPNG,
@@ -85,40 +91,17 @@ export function Header({
       <div className="header-center">
         <div className="project-pill">
           <span className="project-name">
-            {(likec4Model?._metadata as any)?.name || "Untitled Architecture"}
-          </span>
-          <span className="version-separator">/</span>
-          <span className="version-badge">
-            v{(likec4Model?._metadata as any)?.version || "1.0.0"}
+            {(model?._metadata as any)?.name || "Untitled Architecture"}
           </span>
         </div>
       </div>
 
       <div className="header-right">
-        <div className="external-links">
-          <a
-            href={getWebsiteUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="header-link"
-            title="Sruja Website"
-          >
-            <Button variant="ghost" size="sm" className="action-btn icon-only">
-              <Globe size={18} />
-            </Button>
-          </a>
-          <a
-            href="https://github.com/sruja-ai/sruja"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="header-link"
-            title="GitHub Repository"
-          >
-            <Button variant="ghost" size="sm" className="action-btn icon-only">
-              <Github size={18} />
-            </Button>
-          </a>
-        </div>
+        <PersonaSwitcher
+          selectedPersona={selectedPersona}
+          onPersonaChange={onPersonaChange}
+          className="header-persona-switcher"
+        />
         <div className="actions-dropdown-container">
           <Button
             variant="secondary"
@@ -156,7 +139,7 @@ export function Header({
                   setShowActions(false);
                   handleExport();
                 }}
-                disabled={!likec4Model}
+                disabled={!model}
                 aria-label="Export .sruja file"
                 title="Export .sruja file"
               >
@@ -173,7 +156,7 @@ export function Header({
                       setShowActions(false);
                       void handleExportPNG();
                     }}
-                    disabled={!likec4Model}
+                    disabled={!model}
                     aria-label="Export as PNG"
                     title="Export diagram as PNG image"
                   >
@@ -188,7 +171,7 @@ export function Header({
                       setShowActions(false);
                       void handleExportSVG();
                     }}
-                    disabled={!likec4Model}
+                    disabled={!model}
                     aria-label="Export as SVG"
                     title="Export diagram as SVG image"
                   >
@@ -239,6 +222,46 @@ export function Header({
                 <Plus size={16} />
                 New Project
               </Button>
+
+              <div
+                className="menu-divider"
+                style={{ margin: "4px 0", borderTop: "1px solid var(--border-color)" }}
+              />
+
+              <a
+                href={getWebsiteUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="action-item-link"
+                style={{ textDecoration: "none" }}
+              >
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="action-item"
+                  style={{ width: "100%", justifyContent: "flex-start" }}
+                >
+                  <Globe size={16} />
+                  Website
+                </Button>
+              </a>
+              <a
+                href="https://github.com/sruja-ai/sruja"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="action-item-link"
+                style={{ textDecoration: "none" }}
+              >
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="action-item"
+                  style={{ width: "100%", justifyContent: "flex-start" }}
+                >
+                  <Github size={16} />
+                  GitHub
+                </Button>
+              </a>
             </div>
           )}
         </div>

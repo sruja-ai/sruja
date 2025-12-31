@@ -53,11 +53,11 @@ func (s *Server) FoldingRanges(_ context.Context, params FoldingRangeParams) ([]
 
 	ranges := make([]FoldingRange, 0, 32)
 
-	// Add folding ranges for LikeC4 Model block
+	// Add folding ranges for Sruja Model block
 	if program.Model != nil {
 		// Add folding ranges for elements in Model
-		var addElementRanges func(elem *language.LikeC4ElementDef)
-		addElementRanges = func(elem *language.LikeC4ElementDef) {
+		var addElementRanges func(elem *language.ElementDef)
+		addElementRanges = func(elem *language.ElementDef) {
 			if elem == nil {
 				return
 			}
@@ -91,39 +91,8 @@ func (s *Server) FoldingRanges(_ context.Context, params FoldingRangeParams) ([]
 		for _, item := range program.Model.Items {
 			if item.ElementDef != nil {
 				addElementRanges(item.ElementDef)
-			}
-			// Also add folding ranges for scenarios/flows
-			if item.Scenario != nil {
-				loc := item.Scenario.Location()
-				if loc.Line > 0 {
-					endLine := s.findBlockEnd(doc.Text, loc.Line-1, loc.Column-1)
-					if endLine > loc.Line {
-						startCol := toUint32(loc.Column - 1)
-						kind := FoldingRangeKindRegion
-						ranges = append(ranges, FoldingRange{
-							StartLine:      toUint32(loc.Line - 1),
-							StartCharacter: &startCol,
-							EndLine:        toUint32(endLine - 1),
-							Kind:           &kind,
-						})
-					}
-				}
-			}
-			if item.Flow != nil {
-				loc := item.Flow.Location()
-				if loc.Line > 0 {
-					endLine := s.findBlockEnd(doc.Text, loc.Line-1, loc.Column-1)
-					if endLine > loc.Line {
-						startCol := toUint32(loc.Column - 1)
-						kind := FoldingRangeKindRegion
-						ranges = append(ranges, FoldingRange{
-							StartLine:      toUint32(loc.Line - 1),
-							StartCharacter: &startCol,
-							EndLine:        toUint32(endLine - 1),
-							Kind:           &kind,
-						})
-					}
-				}
+				// Governance elements (scenarios, flows, etc.) that have bodies
+				// are already handled by addElementRanges since they use the same structure
 			}
 		}
 	}

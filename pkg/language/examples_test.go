@@ -10,40 +10,45 @@ import (
 )
 
 func TestAllExamples(t *testing.T) {
-	// Many example files use DDD/Policy/Flow features not yet implemented - skip test
-	// t.Skip("Example files use DDD/Policy/Flow features not yet implemented (deferred to Phase 2 or to be implemented)")
 	examplesDir := "../../examples"
-	files, err := os.ReadDir(examplesDir)
-	if err != nil {
-		t.Fatalf("Failed to read examples directory: %v", err)
-	}
 
 	parser, err := language.NewParser()
 	if err != nil {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	for _, file := range files {
-		if file.IsDir() || !strings.HasSuffix(file.Name(), ".sruja") {
-			continue
+	err = filepath.Walk(examplesDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() || !strings.HasSuffix(path, ".sruja") {
+			return nil
 		}
 
 		// Skip invalid examples intentionally
-		if strings.Contains(file.Name(), "invalid") || strings.Contains(file.Name(), "violation") {
-			continue
+		if strings.Contains(path, "invalid") || strings.Contains(path, "violation") {
+			return nil
 		}
 
-		t.Run(file.Name(), func(t *testing.T) {
-			path := filepath.Join(examplesDir, file.Name())
+		t.Run(path, func(t *testing.T) {
 			content, err := os.ReadFile(path)
 			if err != nil {
-				t.Fatalf("Failed to read file %s: %v", file.Name(), err)
+				t.Fatalf("Failed to read file %s: %v", path, err)
 			}
 
-			_, _, err = parser.Parse(file.Name(), string(content))
+			_, diags, err := parser.Parse(path, string(content))
 			if err != nil {
-				t.Errorf("Failed to parse %s: %v", file.Name(), err)
+				t.Errorf("Failed to parse %s: %v", path, err)
+			}
+			for _, diag := range diags {
+				if diag.Severity == "error" {
+					t.Errorf("Parse error in %s: %s", path, diag.Message)
+				}
 			}
 		})
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Failed to walk examples directory: %v", err)
 	}
 }

@@ -19,7 +19,7 @@ export function SystemContextStep({
   onBack,
   readOnly: _readOnly = false,
 }: SystemContextStepProps) {
-  const data = useArchitectureStore((s) => s.likec4Model);
+  const data = useArchitectureStore((s) => s.model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
 
   // SrujaModelDump uses flat elements map

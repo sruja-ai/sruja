@@ -11,36 +11,35 @@ Scenarios describe behavioral flows as ordered steps. They focus on interactions
 ## Syntax
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+Customer = person "Customer"
+Shop = system "Shop" {
+  WebApp = container "Web App"
+  API = container "API"
+  DB = database "Database"
 }
 
-model {
-  person Customer
-  system Shop {
-    container WebApp
-    container API
-    datastore DB
-  }
-
-  scenario CheckoutFlow "User Checkout" {
-    Customer -> Shop.WebApp "adds items to cart"
-    Shop.WebApp -> Shop.API "submits cart"
-    Shop.API -> Shop.DB "validates and reserves stock"
-    Shop.API -> Shop.WebApp "returns confirmation"
-    Shop.WebApp -> Customer "displays success"
-  }
+// Scenarios using flat syntax
+CheckoutFlow = scenario "User Checkout" {
+  step Customer -> Shop.WebApp "adds items to cart"
+  step Shop.WebApp -> Shop.API "submits cart"
+  step Shop.API -> Shop.DB "validates and reserves stock"
+  step Shop.API -> Shop.WebApp "returns confirmation"
+  step Shop.WebApp -> Customer "displays success"
 }
 
-views {
-  view index {
-    include *
-  }
+// 'story' is an alias for 'scenario'
+LoginStory = story "User Login" {
+  step Customer -> Shop.WebApp "enters credentials"
+  step Shop.WebApp -> Shop.API "validates user"
+}
+
+view index {
+  include *
 }
 ```
 
@@ -69,6 +68,7 @@ flow OrderProcess "Order Processing" {
 ```
 
 **When to use:**
+
 - Use `scenario` for user journeys, business processes, and behavioral flows
 - Use `flow` for data pipelines, ETL processes, and system-to-system data flows
 

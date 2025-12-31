@@ -7,89 +7,84 @@ summary: "Define SLOs and align scale to meet targets."
 # Lesson 4: SLOs & Scale Integration
 
 ## Why SLOs?
+
 SLOs set measurable targets (availability, latency, error rate, throughput). They guide capacity and design.
 
 ## Sruja: SLO + Scale
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element datastore
-}
+element person
+element system
+element container
+element datastore
 
-model {
-  ECommerce = system "E-Commerce Platform" {
-    API = container "API Service" {
-      technology "Go"
-      
-      // Scale configuration aligned with SLOs
-      scale {
-        metric "req/s"
-        min 200
-        max 2000
-        description "Auto-scales to meet throughput SLO"
-      }
-      
-      // SLOs define what "good" looks like
-      slo {
-        availability { 
-          target "99.9%" 
-          window "30 days"
-          current "99.95%"
-        }
-        latency { 
-          p95 "200ms" 
-          p99 "500ms"
-          window "7 days"
-          current {
-            p95 "180ms"
-            p99 "450ms"
-          }
-        }
-        errorRate { 
-          target "< 0.1%" 
-          window "30 days"
-          current "0.05%"
-        }
-        throughput { 
-          target "1000 req/s" 
-          window "1 hour"
-          current "950 req/s"
-        }
+ECommerce = system "E-Commerce Platform" {
+API = container "API Service" {
+  technology "Go"
+
+  // Scale configuration aligned with SLOs
+  scale {
+    metric "req/s"
+    min 200
+    max 2000
+    description "Auto-scales to meet throughput SLO"
+  }
+
+  // SLOs define what "good" looks like
+  slo {
+    availability {
+      target "99.9%"
+      window "30 days"
+      current "99.95%"
+    }
+    latency {
+      p95 "200ms"
+      p99 "500ms"
+      window "7 days"
+      current {
+        p95 "180ms"
+        p99 "450ms"
       }
     }
-    
-    Database = datastore "PostgreSQL" {
-      technology "PostgreSQL"
-      slo {
-        availability {
-          target "99.9%"
-          window "30 days"
-        }
-        latency {
-          p95 "50ms"
-          p99 "100ms"
-        }
-      }
+    errorRate {
+      target "< 0.1%"
+      window "30 days"
+      current "0.05%"
     }
-    
-    API -> Database "Reads/Writes"
+    throughput {
+      target "1000 req/s"
+      window "1 hour"
+      current "950 req/s"
+    }
   }
 }
 
-views {
-  view index {
-    title "Production System with SLOs"
-    include *
+Database = datastore "PostgreSQL" {
+  technology "PostgreSQL"
+  slo {
+    availability {
+      target "99.9%"
+      window "30 days"
+    }
+    latency {
+      p95 "50ms"
+      p99 "100ms"
+    }
   }
-  
-  // SLO monitoring view
-  view slos {
-    title "SLO Monitoring View"
-    include ECommerce.API ECommerce.Database
-  }
+}
+
+API -> Database "Reads/Writes"
+}
+
+view index {
+title "Production System with SLOs"
+include *
+}
+
+// SLO monitoring view
+view slos {
+title "SLO Monitoring View"
+include ECommerce.API ECommerce.Database
 }
 ```
 
@@ -101,6 +96,6 @@ views {
 4. **Multiple SLO types**: Availability, latency, error rate, throughput
 
 ## Practice
+
 - Set `p95` and `availability` targets for the API.
 - Adjust `scale` bounds to keep `throughput` above target.
-

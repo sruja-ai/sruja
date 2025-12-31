@@ -97,7 +97,7 @@ export function measureQuality(result: GraphvizResult, _rawGraphvizJson?: any): 
   // Measure cluster balance (placeholder - would need cluster info)
   const clusterBalance = 0.9; // Assume reasonable balance for now
 
-  // Measure spacing consistency (LikeC4 requires uniform spacing)
+  // Measure spacing consistency (requires uniform spacing)
   const spacingConsistency = measureSpacingConsistency(nodeBoxes);
 
   // Calculate overall score
@@ -376,15 +376,15 @@ function calculateVariance(values: number[], mean: number): number {
 /**
  * Measure rank alignment
  * Checks how well nodes align within ranks (horizontal or vertical)
- * LikeC4 requires very strict alignment - tolerance reduced for better aesthetics
+ * Requires very strict alignment - tolerance reduced for better aesthetics
  */
 function measureRankAlignment(nodeBoxes: BoundingBox[], _result: GraphvizResult): number {
   if (nodeBoxes.length < 2) return 1.0;
 
   // Group nodes by approximate rank (Y position for TB, X position for LR)
   // For simplicity, assume TB layout (rank by Y)
-  // LikeC4 uses stricter tolerance (10px instead of 20px)
-  const tolerance = 10; // Pixels - stricter for LikeC4-level quality
+  // Uses stricter tolerance (10px instead of 20px)
+  const tolerance = 10; // Pixels - stricter for high-quality diagrams
 
   // Group nodes by Y position (ranks)
   const rankGroups = new Map<number, BoundingBox[]>();
@@ -413,7 +413,7 @@ function measureRankAlignment(nodeBoxes: BoundingBox[], _result: GraphvizResult)
     const maxY = Math.max(...yPositions);
     const ySpread = maxY - minY;
 
-    // Stricter alignment: LikeC4 requires <5px spread for perfect alignment
+    // Stricter alignment: requires <5px spread for perfect alignment
     // Alignment score: 1.0 if spread < 5px, decreases linearly
     const perfectThreshold = 5;
     const maxAcceptableSpread = tolerance * 2;
@@ -436,7 +436,7 @@ function measureRankAlignment(nodeBoxes: BoundingBox[], _result: GraphvizResult)
 
 /**
  * Measure spacing consistency
- * LikeC4 requires uniform spacing between nodes for professional appearance
+ * Requires uniform spacing between nodes for professional appearance
  */
 function measureSpacingConsistency(nodeBoxes: BoundingBox[]): number {
   if (nodeBoxes.length < 3) return 1.0;
@@ -460,7 +460,7 @@ function measureSpacingConsistency(nodeBoxes: BoundingBox[]): number {
   const stdDev = Math.sqrt(variance);
 
   // Consistency score: lower stdDev relative to mean = better consistency
-  // LikeC4 requires stdDev < 30% of mean for good consistency
+  // Requires stdDev < 30% of mean for good consistency
   const coefficientOfVariation = stdDev / mean;
   if (coefficientOfVariation <= 0.3) {
     return 1.0;
@@ -473,7 +473,7 @@ function measureSpacingConsistency(nodeBoxes: BoundingBox[]): number {
 
 /**
  * Calculate overall quality score
- * More strict scoring for LikeC4-level aesthetics
+ * More strict scoring for high-quality aesthetics
  */
 function calculateScore(metrics: Omit<LayoutQuality, "score">): number {
   let score = 1.0;
@@ -497,7 +497,7 @@ function calculateScore(metrics: Omit<LayoutQuality, "score">): number {
   }
 
   // Penalize poor rank alignment more strictly (reduces score by up to 0.3)
-  // LikeC4 requires near-perfect alignment (95%+)
+  // Requires near-perfect alignment (95%+)
   if (metrics.rankAlignment < 0.95) {
     score -= (0.95 - metrics.rankAlignment) * 0.3;
   }
@@ -508,7 +508,7 @@ function calculateScore(metrics: Omit<LayoutQuality, "score">): number {
   }
 
   // Penalize poor spacing consistency (reduces score by up to 0.3)
-  // LikeC4 requires uniform spacing for professional appearance
+  // Requires uniform spacing for professional appearance
   if (metrics.spacingConsistency < 0.9) {
     score -= (0.9 - metrics.spacingConsistency) * 0.3;
   }
@@ -528,14 +528,14 @@ function calculateScore(metrics: Omit<LayoutQuality, "score">): number {
 
 /**
  * Check if layout quality needs refinement
- * More strict thresholds for LikeC4-level aesthetics
+ * More strict thresholds for high-quality aesthetics
  */
 export function needsRefinement(quality: LayoutQuality): boolean {
   // Refine if:
-  // 1. Score is below 0.85 (LikeC4-level quality threshold)
-  // 2. Any edge crossings (LikeC4 minimizes crossings)
+  // 1. Score is below 0.85 (high-quality threshold)
+  // 2. Any edge crossings (should be minimized)
   // 3. Any node overlaps (unacceptable)
-  // 4. Rank alignment below 95% (LikeC4 requires near-perfect alignment)
+  // 4. Rank alignment below 95% (requires near-perfect alignment)
   return (
     quality.score < 0.85 ||
     quality.edgeCrossings > 0 ||

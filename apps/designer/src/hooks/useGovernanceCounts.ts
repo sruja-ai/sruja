@@ -24,7 +24,7 @@ export interface GovernanceCounts {
 // ...
 
 export function useGovernanceCounts(): GovernanceCounts {
-  const data = useArchitectureStore((s) => s.likec4Model);
+  const data = useArchitectureStore((s) => s.model);
 
   return useMemo(() => {
     const counts: GovernanceCounts = {};

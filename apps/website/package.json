@@ -45,8 +45,6 @@
     "@astrojs/check": "^0.9.3",
     "@astrojs/mdx": "4.3.12",
     "@astrojs/react": "4.4.2",
-    "@likec4/core": "^1.46.0",
-    "@likec4/diagram": "^1.46.0",
     "@sruja/designer": "*",
     "@sruja/shared": "*",
     "@sruja/ui": "*",

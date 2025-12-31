@@ -9,5 +9,4 @@ estimatedTime: "3–4 hours"
 
 # Agentic AI with Sruja
 
-Learn to design agent-based AI systems with clear boundaries, contracts, and governance using Sruja DSL.
-
+Learn to design agent-based AI systems with clear boundaries, interfaces, and governance using Sruja DSL.

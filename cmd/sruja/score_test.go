@@ -17,20 +17,22 @@ func TestScoreCommand(t *testing.T) {
 	// Create a valid Sruja file with some violations to test scoring
 	validFile := filepath.Join(tempDir, "score_test.sruja")
 	content := `
-model {
-	system Sys {
-		container API {
+	system = kind "System"
+	container = kind "Container"
+	person = kind "Person"
+
+	Sys = system "Sys" {
+		API = container "API" {
 			technology "Go"
 			description "API Service"
 		}
 		// Missing description (violation)
-		container Worker {
+		Worker = container "Worker" {
 			technology "Python"
 		}
 	}
 	// Orphan element (violation)
-	person User
-}
+	User = person "User"
 `
 	err := os.WriteFile(validFile, []byte(content), 0o644)
 	require.NoError(t, err)

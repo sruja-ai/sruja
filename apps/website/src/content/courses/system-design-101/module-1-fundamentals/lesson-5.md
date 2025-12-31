@@ -8,14 +8,16 @@ summary: "Modeling user flows and interactions."
 
 ## Understanding User Journeys
 
-A **User Scenario** describes the series of steps a user takes to achieve a specific goal within your system. While static architecture diagrams show *structure*, user scenarios show *behavior*.
+A **User Scenario** describes the series of steps a user takes to achieve a specific goal within your system. While static architecture diagrams show _structure_, user scenarios show _behavior_.
 
 ### Why Model Scenarios?
+
 1.  **Validation:** Ensures that all components required for a feature actually exist and are connected.
 2.  **Clarity:** Helps stakeholders understand how the system works from a user's perspective.
 3.  **Testing:** Serves as a blueprint for integration and end-to-end tests.
 
 ### Example Scenario: Buying a Ticket
+
 1.  User searches for events.
 2.  User selects a ticket.
 3.  User enters payment details.
@@ -29,44 +31,38 @@ A **User Scenario** describes the series of steps a user takes to achieve a spec
 Sruja provides a dedicated `scenario` keyword to model these interactions explicitly. This allows you to visualize the flow of data across your defined architecture.
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+requirement R1 functional "User can buy a ticket"
+requirement R2 performance "Process payment in < 2s"
+
+// Define the actors and systems first
+User = person "Ticket Buyer"
+
+TicketingApp = system "Ticketing Platform" {
+    WebApp = container "Web Frontend"
+    PaymentService = container "Payment Processor"
+    EmailService = container "Notification Service"
+
+    WebApp -> PaymentService "Process payment"
+    PaymentService -> EmailService "Trigger confirmation"
 }
 
-model {
-    requirement R1 functional "User can buy a ticket"
-    requirement R2 performance "Process payment in < 2s"
-
-    // Define the actors and systems first
-    User = person "Ticket Buyer"
-    
-    TicketingApp = system "Ticketing Platform" {
-        WebApp = container "Web Frontend"
-        PaymentService = container "Payment Processor"
-        EmailService = container "Notification Service"
-
-        WebApp -> PaymentService "Process payment"
-        PaymentService -> EmailService "Trigger confirmation"
-    }
-
-    // Define the scenario
-    scenario BuyTicket "User purchases a concert ticket" {
-        User -> WebApp "Selects ticket"
-        WebApp -> PaymentService "Process payment"
-        PaymentService -> EmailService "Trigger confirmation"
-        EmailService -> User "Send email"
-    }
+// Define the scenario
+scenario BuyTicket "User purchases a concert ticket" {
+    User -> WebApp "Selects ticket"
+    WebApp -> PaymentService "Process payment"
+    PaymentService -> EmailService "Trigger confirmation"
+    EmailService -> User "Send email"
 }
 
-views {
-  view index {
-    include *
-  }
+view index {
+include *
 }
 ```
 

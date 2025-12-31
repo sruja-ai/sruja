@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { FileCode } from "lucide-react";
 import { Button, SearchBar, type SearchItem } from "@sruja/ui";
 import { getAllExamples, fetchExampleDsl } from "../../examples";
-import { convertDslToLikeC4 } from "../../wasm";
+import { convertDslToModel } from "../../wasm";
 import { useArchitectureStore } from "../../stores";
 import { useProjectSync } from "../../hooks/useProjectSync";
 import { trackInteraction } from "@sruja/shared";
@@ -13,11 +13,22 @@ export function ExamplesDropdown() {
   const [error, setError] = useState<string | null>(null);
   const [examples, setExamples] = useState<Array<Example & { isDsl: boolean }>>([]);
   const [query, setQuery] = useState("");
+  const [recentIds, setRecentIds] = useState<string[]>([]);
   const loadFromDSL = useArchitectureStore((s) => s.loadFromDSL);
   const { setIsLoadingFile } = useProjectSync();
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    // Load recent examples from localStorage
+    const stored = localStorage.getItem("sruja-recent-examples");
+    if (stored) {
+      try {
+        setRecentIds(JSON.parse(stored));
+      } catch (e) {
+        console.error("Failed to parse recent examples", e);
+      }
+    }
+
     getAllExamples()
       .then((all) => {
         // Show both DSL and JSON examples (filter out only if explicitly skipped)
@@ -34,6 +45,12 @@ export function ExamplesDropdown() {
     for (const ex of examples) byId.set(ex.file, ex);
     return byId;
   }, [examples]);
+
+  const recentExamples = useMemo(() => {
+    return recentIds
+      .map((id) => itemsIndex.get(id))
+      .filter((ex): ex is Example & { isDsl: boolean } => !!ex);
+  }, [recentIds, itemsIndex]);
 
   const filteredExamples = useMemo(() => {
     const q = query.toLowerCase().trim();
@@ -64,6 +81,14 @@ export function ExamplesDropdown() {
     setIsOpen(false);
     setError(null);
 
+    // Update recent examples
+    const nextRecents = [example.file, ...recentIds.filter((id) => id !== example.file)].slice(
+      0,
+      5
+    );
+    setRecentIds(nextRecents);
+    localStorage.setItem("sruja-recent-examples", JSON.stringify(nextRecents));
+
     // Use global loading state to show loader in main app
     setIsLoadingFile(true);
 
@@ -79,7 +104,7 @@ export function ExamplesDropdown() {
 
       if (example.isDsl) {
         // Parse DSL to Model
-        const data = await convertDslToLikeC4(content, example.file);
+        const data = await convertDslToModel(content, example.file);
         if (!data) throw new Error("Failed to parse DSL to Model");
 
         loadFromDSL(data as SrujaModelDump, content, example.file);
@@ -111,6 +136,21 @@ export function ExamplesDropdown() {
       setIsLoadingFile(false);
     }
   };
+
+  const groupedExamples = useMemo(() => {
+    const groups: Record<string, Array<Example & { isDsl: boolean }>> = {};
+
+    // Add Recents if not searching
+    if (!query.trim() && recentExamples.length > 0) {
+      groups["Recent"] = recentExamples;
+    }
+
+    filteredExamples.forEach((ex) => {
+      (groups[ex.category] ||= []).push(ex);
+    });
+
+    return groups;
+  }, [filteredExamples, recentExamples, query]);
 
   return (
     <div style={{ position: "relative", display: "inline-block" }}>
@@ -165,15 +205,7 @@ export function ExamplesDropdown() {
             </div>
           )}
 
-          {Object.entries(
-            filteredExamples.reduce(
-              (acc, ex) => {
-                (acc[ex.category] ||= []).push(ex);
-                return acc;
-              },
-              {} as Record<string, Array<Example & { isDsl: boolean }>>
-            )
-          ).map(([category, list]) => (
+          {Object.entries(groupedExamples).map(([category, list]) => (
             <div key={category}>
               <div
                 className="example-category"
@@ -183,14 +215,17 @@ export function ExamplesDropdown() {
                   fontWeight: 600,
                   textTransform: "uppercase",
                   letterSpacing: 0.5,
-                  color: "var(--color-text-secondary)",
+                  color:
+                    category === "Recent"
+                      ? "var(--color-primary-500)"
+                      : "var(--color-text-secondary)",
                 }}
               >
                 {category}
               </div>
               {list.map((example) => (
                 <Button
-                  key={example.file}
+                  key={`${category}-${example.file}`}
                   variant="ghost"
                   size="sm"
                   className="example-item"

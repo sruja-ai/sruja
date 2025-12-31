@@ -3,7 +3,7 @@ import { useRef, useState, useCallback } from "react";
 import { useArchitectureStore, useToastStore, useUIStore } from "../stores";
 import { firebaseShareService } from "../utils/firebaseShareService";
 import { convertModelToDsl } from "../utils/modelToDsl";
-import { convertDslToLikeC4 } from "../wasm";
+import { convertDslToModel } from "../wasm";
 import { useProjectSync } from "./useProjectSync";
 import type { SrujaModelDump } from "@sruja/shared";
 import { handleError, getUserFriendlyMessage, safeAsync, ErrorType } from "../utils/errorHandling";
@@ -14,7 +14,7 @@ import { trackInteraction } from "@sruja/shared";
  */
 export function useFileHandlers(canvasRef: React.RefObject<any>) {
   // simplified ref type
-  const likec4Model = useArchitectureStore((s) => s.likec4Model);
+  const model = useArchitectureStore((s) => s.model);
   const storeDslSource = useArchitectureStore((s) => s.dslSource);
   const loadFromDSL = useArchitectureStore((s) => s.loadFromDSL);
   const setActiveTab = useUIStore((s) => s.setActiveTab);
@@ -29,7 +29,7 @@ export function useFileHandlers(canvasRef: React.RefObject<any>) {
   const handleShare = useCallback(async () => {
     setIsSharing(true);
     try {
-      const dsl = storeDslSource || (likec4Model ? await convertModelToDsl(likec4Model) : "");
+      const dsl = storeDslSource || (model ? await convertModelToDsl(model) : "");
       if (!dsl) {
         setIsSharing(false);
         return;
@@ -128,17 +128,17 @@ export function useFileHandlers(canvasRef: React.RefObject<any>) {
     } finally {
       setIsSharing(false);
     }
-  }, [storeDslSource, likec4Model, showToast]);
+  }, [storeDslSource, model, showToast]);
 
   const handleExport = useCallback(async () => {
-    if (!likec4Model) return;
-    const dsl = storeDslSource || (await convertModelToDsl(likec4Model));
+    if (!model) return;
+    const dsl = storeDslSource || (await convertModelToDsl(model));
     const blob = new Blob([dsl], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     // Access name from metadata safe access
-    const name = likec4Model._metadata?.name || "architecture";
+    const name = model._metadata?.name || "architecture";
     a.download = `${name}.sruja`;
     document.body.appendChild(a);
     a.click();
@@ -147,10 +147,10 @@ export function useFileHandlers(canvasRef: React.RefObject<any>) {
 
     // Track export
     trackInteraction("export", "file", { format: "dsl", filename: `${name}.sruja` });
-  }, [likec4Model, storeDslSource]);
+  }, [model, storeDslSource]);
 
   const handleExportPNG = useCallback(async () => {
-    if (!canvasRef.current || !likec4Model) return;
+    if (!canvasRef.current || !model) return;
 
     setIsExporting(true);
     try {
@@ -169,10 +169,10 @@ export function useFileHandlers(canvasRef: React.RefObject<any>) {
     } finally {
       setIsExporting(false);
     }
-  }, [likec4Model, canvasRef, showToast]);
+  }, [model, canvasRef, showToast]);
 
   const handleExportSVG = useCallback(async () => {
-    if (!canvasRef.current || !likec4Model) return;
+    if (!canvasRef.current || !model) return;
 
     setIsExporting(true);
     try {
@@ -191,7 +191,7 @@ export function useFileHandlers(canvasRef: React.RefObject<any>) {
     } finally {
       setIsExporting(false);
     }
-  }, [likec4Model, canvasRef, showToast]);
+  }, [model, canvasRef, showToast]);
 
   const handleImport = useCallback(() => {
     fileInputRef.current?.click();
@@ -204,7 +204,7 @@ export function useFileHandlers(canvasRef: React.RefObject<any>) {
       const { dslSource, currentExampleFile } = useArchitectureStore.getState();
       if (dslSource) {
         const { error, data: json } = await safeAsync(
-          () => convertDslToLikeC4(dslSource),
+          () => convertDslToModel(dslSource),
           "Failed to convert DSL",
           ErrorType.VALIDATION
         );
@@ -236,7 +236,7 @@ export function useFileHandlers(canvasRef: React.RefObject<any>) {
         async () => {
           const text = await file.text();
           const { error: convertError, data: json } = await safeAsync(
-            () => convertDslToLikeC4(text),
+            () => convertDslToModel(text),
             "Failed to parse file",
             ErrorType.VALIDATION
           );
@@ -296,16 +296,12 @@ export function useFileHandlers(canvasRef: React.RefObject<any>) {
   const handleCreateNew = useCallback(async () => {
     setIsLoadingFile(true);
     try {
-      const emptyDsl = `specification {
-  element person
-  element system
-}
-
-model {
-}`;
+      const emptyDsl = `person = kind "Person"
+system = kind "System"
+`;
 
       const { error, data: json } = await safeAsync(
-        () => convertDslToLikeC4(emptyDsl),
+        () => convertDslToModel(emptyDsl),
         "Failed to create project template",
         ErrorType.VALIDATION
       );
@@ -348,20 +344,17 @@ model {
   const handleCreateLocal = useCallback(async () => {
     setIsLoadingFile(true);
     try {
-      const emptyDsl = `specification {
-  element person
-  element system
-}
+      const emptyDsl = `person = kind "Person"
+system = kind "System"
 
-model {
-  user = person "User"
-  web = system "WebApp"
-  user -> web "uses"
-}`;
+user = person "User"
+web = system "WebApp"
+user -> web "uses"
+`;
       // Create full JSON structure from DSL dynamically instead of hardcoding legacy layout
-      // Assuming convertDslToLikeC4 is available locally or we just use DSL
+      // Assuming convertDslToModel is available locally or we just use DSL
       const { data: json } = await safeAsync(
-        () => convertDslToLikeC4(emptyDsl),
+        () => convertDslToModel(emptyDsl),
         "Create Local",
         ErrorType.VALIDATION
       );

@@ -30,10 +30,6 @@
     "./node/wasmAdapter": {
       "import": "./dist/node/wasmAdapter.js",
       "types": "./dist/node/wasmAdapter.d.ts"
-    },
-    "./builder": {
-      "import": "./dist/builder/index.js",
-      "types": "./dist/builder/index.d.ts"
     }
   },
   "scripts": {
@@ -63,7 +59,6 @@
     "typescript": "^5.6.3"
   },
   "dependencies": {
-    "@likec4/core": "^1.46.3",
     "posthog-js": "^1.299.0",
     "vitest": "^4.0.15"
   }

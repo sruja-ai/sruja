@@ -7,6 +7,8 @@ import (
 
 // writeGraphHeader writes the DOT digraph header with global attributes.
 // nodeCount is used for adaptive spacing - more nodes need more spacing.
+//
+//nolint:unused // Old implementation, replaced by constraint-based approach in dot_generator.go
 func (e *Exporter) writeGraphHeader(sb *strings.Builder, nodeCount int) {
 	// Adaptive spacing based on node count
 	// Base: 120px nodesep, 130px ranksep
@@ -15,15 +17,16 @@ func (e *Exporter) writeGraphHeader(sb *strings.Builder, nodeCount int) {
 	rankSep := e.Config.RankSep
 
 	if nodeCount > 3 {
-		// For 4-6 nodes, add 20% spacing
-		if nodeCount <= 6 {
+		switch {
+		case nodeCount <= 6:
+			// For 4-6 nodes, add 20% spacing
 			nodeSep = int(float64(nodeSep) * 1.2)
 			rankSep = int(float64(rankSep) * 1.2)
-		} else if nodeCount <= 10 {
+		case nodeCount <= 10:
 			// For 7-10 nodes, add 40% spacing
 			nodeSep = int(float64(nodeSep) * 1.4)
 			rankSep = int(float64(rankSep) * 1.4)
-		} else {
+		default:
 			// For 11+ nodes, add 60% spacing
 			nodeSep = int(float64(nodeSep) * 1.6)
 			rankSep = int(float64(rankSep) * 1.6)
@@ -37,9 +40,9 @@ func (e *Exporter) writeGraphHeader(sb *strings.Builder, nodeCount int) {
 	fmt.Fprintf(sb, "    ranksep=%.2f,\n", pxToInch(rankSep))
 	sb.WriteString("    layout=\"dot\",\n")
 	sb.WriteString("    compound=true,\n")
-	sb.WriteString("    splines=spline,\n")         // LikeC4: curved splines for natural look
-	sb.WriteString("    TBbalance=min,\n")          // LikeC4: better vertical balance
-	sb.WriteString("    outputorder=nodesfirst,\n") // LikeC4: draw nodes before edges
+	sb.WriteString("    splines=spline,\n")         // Curved splines for natural look
+	sb.WriteString("    TBbalance=min,\n")          // Better vertical balance
+	sb.WriteString("    outputorder=nodesfirst,\n") // Draw nodes before edges
 	sb.WriteString("    newrank=true,\n")           // Better cluster handling
 	sb.WriteString("    pad=0.4,\n")
 	sb.WriteString("    fontname=\"Arial\",\n")
@@ -49,6 +52,8 @@ func (e *Exporter) writeGraphHeader(sb *strings.Builder, nodeCount int) {
 }
 
 // writeGlobalNodeAttributes writes default node attributes.
+//
+//nolint:unused // Old implementation, replaced by constraint-based approach in dot_generator.go
 func (e *Exporter) writeGlobalNodeAttributes(sb *strings.Builder) {
 	sb.WriteString("  node [\n")
 	sb.WriteString("    shape=rect,\n")
@@ -60,6 +65,8 @@ func (e *Exporter) writeGlobalNodeAttributes(sb *strings.Builder) {
 }
 
 // writeGlobalEdgeAttributes writes default edge attributes.
+//
+//nolint:unused // Old implementation, replaced by constraint-based approach in dot_generator.go
 func (e *Exporter) writeGlobalEdgeAttributes(sb *strings.Builder) {
 	sb.WriteString("  edge [\n")
 	sb.WriteString("    fontname=\"Arial\",\n")
@@ -70,6 +77,8 @@ func (e *Exporter) writeGlobalEdgeAttributes(sb *strings.Builder) {
 }
 
 // writeNode writes a single node definition.
+//
+//nolint:unused // Old implementation, replaced by constraint-based approach in dot_generator.go
 func (e *Exporter) writeNode(sb *strings.Builder, elem *Element, indent string) {
 	width := elem.Width
 	if width == 0 {
@@ -90,7 +99,7 @@ func (e *Exporter) writeNode(sb *strings.Builder, elem *Element, indent string) 
 	fmt.Fprintf(sb, "%s  width=%.2f,\n", indent, pxToInch(width))
 	fmt.Fprintf(sb, "%s  height=%.2f", indent, pxToInch(height))
 
-	// Add group attribute for sibling clustering (LikeC4 pattern)
+	// Add group attribute for sibling clustering
 	if elem.ParentID != "" {
 		fmt.Fprintf(sb, ",\n%s  group=\"%s\"", indent, escapeID(elem.ParentID))
 	}
@@ -100,6 +109,8 @@ func (e *Exporter) writeNode(sb *strings.Builder, elem *Element, indent string) 
 }
 
 // writeCluster writes a subgraph cluster for hierarchical grouping.
+//
+//nolint:unused // Old implementation, replaced by constraint-based approach in dot_generator.go
 func (e *Exporter) writeCluster(sb *strings.Builder, parentID string, children []*Element, allElements []*Element) {
 	// Find the parent element for the label
 	var parentTitle string
@@ -127,6 +138,8 @@ func (e *Exporter) writeCluster(sb *strings.Builder, parentID string, children [
 }
 
 // writeRankConstraints writes rank=same constraints for proper alignment.
+//
+//nolint:unused // Old implementation, replaced by constraint-based approach in dot_generator.go
 func (e *Exporter) writeRankConstraints(sb *strings.Builder, elements []*Element) {
 	// Group elements by kind
 	byKind := make(map[string][]*Element)
@@ -211,6 +224,8 @@ func (e *Exporter) writeRankConstraints(sb *strings.Builder, elements []*Element
 }
 
 // writeEdge writes a single edge definition.
+//
+//nolint:unused // Old implementation, replaced by constraint-based approach in dot_generator.go
 func (e *Exporter) writeEdge(sb *strings.Builder, rel *Relation) {
 	attrs := []string{}
 
@@ -241,6 +256,8 @@ func (e *Exporter) writeEdge(sb *strings.Builder, rel *Relation) {
 
 // groupByParent groups elements by their parent ID.
 // Returns root elements (no parent) and a map of parent ID to children.
+//
+//nolint:unused // Old implementation, replaced by constraint-based approach in dot_generator.go
 func (e *Exporter) groupByParent(elements []*Element) ([]*Element, map[string][]*Element) {
 	var rootElements []*Element
 	clusters := make(map[string][]*Element)

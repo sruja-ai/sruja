@@ -38,7 +38,7 @@ func TestParser_EdgeCases(t *testing.T) {
 		},
 		{
 			name:      "Unclosed String",
-			input:     `system S1 "Label`,
+			input:     `S1 = system "Label`,
 			shouldErr: true,
 			errMsg:    "invalid input text",
 		},
@@ -46,7 +46,7 @@ func TestParser_EdgeCases(t *testing.T) {
 			name: "Nested System (Valid in AST but maybe not logic)",
 			input: `
 				system S1 {
-					system S2 "Nested"
+					S2 = system "Nested"
 				}
 			`,
 			shouldErr: true, // Grammar likely doesn't allow system inside system

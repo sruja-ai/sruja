@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/sruja-ai/sruja/pkg/dx"
-	"github.com/sruja-ai/sruja/pkg/export/likec4"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
@@ -61,9 +60,7 @@ func runFmt(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	// Use LikeC4 DSL exporter for formatting
-	dslExporter := likec4.NewDSLExporter()
-	formatted := dslExporter.ExportDSL(program)
-	_, _ = fmt.Fprint(stdout, formatted)
+	// TODO: Implement Sruja DSL formatter
+	_, _ = fmt.Fprint(stdout, string(content))
 	return 0
 }

@@ -23,7 +23,7 @@ func TestWorkspace_New(t *testing.T) {
 func TestWorkspace_AddProgram(t *testing.T) {
 	ws := NewWorkspace()
 	prog := &Program{
-		Model: &ModelBlock{},
+		Model: &Model{},
 	}
 	diags := []diagnostics.Diagnostic{{Message: "test"}}
 
@@ -41,20 +41,20 @@ func TestWorkspace_MergedProgram(t *testing.T) {
 	ws := NewWorkspace()
 
 	prog1 := &Program{
-		Specification: &SpecificationBlock{
-			Items: []SpecificationItem{{Element: &ElementKindDef{Kind: "system"}}},
+		Specification: &Specification{
+			Items: []SpecificationItem{{Element: &ElementKindDef{Name: "system"}}},
 		},
-		Model: &ModelBlock{
-			Items: []ModelItem{{ElementDef: &LikeC4ElementDef{Definition: &LikeC4Definition{Kind: "system", Name: sPtrW("sys1")}}}},
+		Model: &Model{
+			Items: []ModelItem{{ElementDef: &ElementDef{Assignment: &ElementAssignment{Kind: "system", Name: "sys1"}}}},
 		},
 	}
 
 	prog2 := &Program{
-		Model: &ModelBlock{
-			Items: []ModelItem{{ElementDef: &LikeC4ElementDef{Definition: &LikeC4Definition{Kind: "system", Name: sPtrW("sys2")}}}},
+		Model: &Model{
+			Items: []ModelItem{{ElementDef: &ElementDef{Assignment: &ElementAssignment{Kind: "system", Name: "sys2"}}}},
 		},
-		Views: &LikeC4ViewsBlock{
-			Items: []*LikeC4ViewsItem{{View: &LikeC4ViewDef{Name: sPtrW("v1")}}},
+		Views: &Views{
+			Items: []*ViewsItem{{View: &ViewDef{Name: sPtrW("v1")}}},
 		},
 	}
 

@@ -27,9 +27,9 @@ func (r *CompletenessRule) Validate(program *language.Program) []diagnostics.Dia
 	estimatedDiags := 20
 	diags := make([]diagnostics.Diagnostic, 0, estimatedDiags)
 
-	// Helper to check LikeC4 elements
-	var checkElement func(elem *language.LikeC4ElementDef, parentFQN string, hasNested bool)
-	checkElement = func(elem *language.LikeC4ElementDef, parentFQN string, _ bool) {
+	// Helper to check Sruja model elements
+	var checkElement func(elem *language.ElementDef, parentFQN string, hasNested bool)
+	checkElement = func(elem *language.ElementDef, parentFQN string, _ bool) {
 		if elem == nil {
 			return
 		}

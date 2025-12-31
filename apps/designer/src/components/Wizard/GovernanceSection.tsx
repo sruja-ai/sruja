@@ -21,7 +21,7 @@ interface GovernanceSectionProps {
 }
 
 export function GovernanceSection({ elements, levelLabel, filterFn }: GovernanceSectionProps) {
-  const data = useArchitectureStore((s) => s.likec4Model);
+  const data = useArchitectureStore((s) => s.model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
 
   const sruja = (data as any)?.sruja ?? {}; // Dump structure for Sruja extensions
@@ -32,7 +32,9 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
   const uniqueRequirements = deduplicateRequirements(allRequirements as any); // Cast to any because deduplicate might expect legacy types or just id/title
 
   // Filter to show only items tagged with elements at this level
-  const requirements = filterFn ? uniqueRequirements.filter((r: any) => filterFn(r.tags)) : uniqueRequirements;
+  const requirements = filterFn
+    ? uniqueRequirements.filter((r: any) => filterFn(r.tags))
+    : uniqueRequirements;
   const adrs = filterFn ? allAdrs.filter((a: any) => filterFn(a.tags)) : allAdrs; // adr.tags might be missing in interface
 
   const [activeTab, setActiveTab] = useState<"requirements" | "adrs">("requirements");
@@ -45,7 +47,7 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
       const saved = window.localStorage.getItem(key);
       if (saved === "false") setCollapsed(false);
       else if (saved === "true") setCollapsed(true);
-    } catch { }
+    } catch {}
   }, [levelLabel]);
 
   // Requirement form
@@ -79,8 +81,8 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
         ...model,
         sruja: {
           ...currentSruja,
-          requirements: [...currentReqs, newReq]
-        }
+          requirements: [...currentReqs, newReq],
+        },
       };
     });
 
@@ -97,8 +99,8 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
         ...model,
         sruja: {
           ...currentSruja,
-          requirements: currentReqs.filter((r: any) => r.id !== id)
-        }
+          requirements: currentReqs.filter((r: any) => r.id !== id),
+        },
       };
     });
   };
@@ -121,8 +123,8 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
         ...model,
         sruja: {
           ...currentSruja,
-          adrs: [...currentAdrs, newAdr]
-        }
+          adrs: [...currentAdrs, newAdr],
+        },
       };
     });
 
@@ -142,8 +144,8 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
         ...model,
         sruja: {
           ...currentSruja,
-          adrs: currentAdrs.filter((a: any) => a.id !== id)
-        }
+          adrs: currentAdrs.filter((a: any) => a.id !== id),
+        },
       };
     });
   };
@@ -166,7 +168,7 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
               try {
                 const key = `playground:govCollapsed:${levelLabel}`;
                 window.localStorage.setItem(key, next ? "true" : "false");
-              } catch { }
+              } catch {}
               return next;
             });
           }}
@@ -218,7 +220,12 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
                   <span className="item-label">{req.title}</span>
                 </div>
                 {req.tags?.[0] && <span className="item-tag">{req.tags[0]}</span>}
-                <Button variant="ghost" size="sm" className="item-remove" onClick={() => removeRequirement(req.id)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="item-remove"
+                  onClick={() => removeRequirement(req.id)}
+                >
                   <Trash2 size={14} />
                 </Button>
               </div>
@@ -235,7 +242,9 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
             <Select
               label="Type"
               value={reqType}
-              onChange={(value) => setReqType((value || "functional") as "functional" | "nonfunctional")}
+              onChange={(value) =>
+                setReqType((value || "functional") as "functional" | "nonfunctional")
+              }
               data={[
                 { value: "functional", label: "Functional" },
                 { value: "nonfunctional", label: "Non-Functional" },
@@ -258,7 +267,9 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
               variant="secondary"
               onClick={addRequirement}
               disabled={
-                !reqId.trim() || !reqTitle.trim() || allRequirements.some((r) => r.id === reqId.trim())
+                !reqId.trim() ||
+                !reqTitle.trim() ||
+                allRequirements.some((r) => r.id === reqId.trim())
               }
               title={
                 allRequirements.some((r) => r.id === reqId.trim())

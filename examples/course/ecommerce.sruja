@@ -1,16 +1,13 @@
 // examples/course/ecommerce.sruja
 // E-Commerce System
 
-specification {
-  element person
-  element system
-  element container
-  element component
-  element database
-  element queue
-}
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+queue = kind "Queue"
 
-model {
   // Module 2: Context
   customer = person "Online Customer" {
     description "Browses and buys products."
@@ -75,8 +72,8 @@ model {
   ecommerce.api -> paymentGateway "processes payments through"
   ecommerce.api -> emailService "sends emails via"
 
-  // Module 5: Scenarios
-  scenario CheckoutFlow "Checkout Flow" {
+  // Module 5: Scenarios - using new syntax
+  CheckoutFlow = scenario "Checkout Flow" {
     description "User checkout process"
     step customer -> ecommerce.webApp "clicks checkout"
     step ecommerce.webApp -> ecommerce.api "POST /checkout"
@@ -85,17 +82,16 @@ model {
     step ecommerce.api -> ecommerce.events "publishes order created to"
   }
 
-  // Module 7: NFRs
-  requirement R1 performance "API latency < 100ms"
-  adr ADR001 "Use Microservices" {
+  // Module 7: NFRs - using new syntax
+  R1 = requirement performance "API latency < 100ms"
+  R2 = requirement nonfunctional "System must be maintainable and extensible"
+  ADR001 = adr "Use Microservices" {
     status "Accepted"
     context "Need independent scaling"
     decision "Adopt microservices architecture"
     consequences "Better scalability, increased complexity"
   }
-}
 
-views {
   view index {
     title "E-Commerce System"
     include *
@@ -105,4 +101,3 @@ views {
     title "E-Commerce Containers"
     include ecommerce.*
   }
-}

@@ -15,7 +15,7 @@ import (
 // GenerateDOTFromConstraints generates DOT string from constraints.
 func GenerateDOTFromConstraints(
 	elements []*Element,
-	relations []*Relation,
+	_ []*Relation,
 	constraints LayoutConstraints,
 ) string {
 	sb := engine.GetStringBuilder()
@@ -55,7 +55,7 @@ func GenerateDOTFromConstraints(
 }
 
 // writeGraphHeaderFromConstraints writes graph header from constraints.
-func writeGraphHeaderFromConstraints(sb *strings.Builder, constraints LayoutConstraints, nodeCount int) {
+func writeGraphHeaderFromConstraints(sb *strings.Builder, constraints LayoutConstraints, _ int) {
 	sb.WriteString("digraph G {\n")
 	sb.WriteString("  graph [\n")
 	fmt.Fprintf(sb, "    rankdir=\"%s\",\n", constraints.Global.RankDir)
@@ -155,7 +155,7 @@ func writeRankConstraintsFromData(sb *strings.Builder, ranks []RankConstraint) {
 
 	// Add invisible edges for rank ordering (persons above systems, etc.)
 	// This ensures proper vertical ordering with strong constraints
-	// LikeC4 pattern: Use high-weight invisible edges to enforce rank separation
+	// Use high-weight invisible edges to enforce rank separation
 	if len(ranks) >= 2 {
 		// Connect first node of first rank to first node of second rank
 		firstRank := ranks[0]
@@ -166,7 +166,7 @@ func writeRankConstraintsFromData(sb *strings.Builder, ranks []RankConstraint) {
 				escapeID(firstRank.NodeIDs[0]), escapeID(secondRank.NodeIDs[0]))
 		}
 
-		// For LikeC4-level quality, also connect all nodes in first rank to all in second
+		// For high-quality layout, also connect all nodes in first rank to all in second
 		// This creates a stronger constraint for proper vertical ordering
 		if len(firstRank.NodeIDs) > 1 && len(secondRank.NodeIDs) > 1 {
 			// Connect last node of first rank to last node of second rank
@@ -197,7 +197,10 @@ func writeEdgesFromConstraints(sb *strings.Builder, edges []EdgeConstraint) {
 			attrs = append(attrs, "labelfloat=false") // Force space for label to prevent overlap with edge
 
 			// Add label positioning attributes
-			// NOTE: labeldistance is for head/taillabel, not main label. Removing to avoid confusion.
+			// NOTE: labeldistance is primarily for head/taillabel, but can affect main label positioning
+			if edge.Label.Distance != 0 {
+				attrs = append(attrs, fmt.Sprintf("labeldistance=%.2f", edge.Label.Distance))
+			}
 			if edge.Label.Angle != 0 {
 				attrs = append(attrs, fmt.Sprintf("labelangle=%.2f", edge.Label.Angle))
 			}

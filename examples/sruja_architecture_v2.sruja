@@ -1,17 +1,25 @@
 // examples/sruja_architecture_v2.sruja
 // The Sruja Architecture-as-Code Platform
+//
+// ⚠️ DEPRECATED: This file is kept for backward compatibility and as a simplified example.
+// The authoritative and complete architecture documentation is now in:
+// docs/architecture/sruja-platform.sruja
+//
+// This file may be removed in a future version. Please use docs/architecture/sruja-platform.sruja
+// for the most up-to-date and comprehensive architecture documentation.
 
-specification {
-  element person
-  element system
-  element container
-  element component
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+
+
+
+architect = person "Software Architect" {
+  description "Uses Sruja to design and document systems"
 }
 
-model {
-  architect = person "Software Architect" {
-    description "Uses Sruja to design and document systems"
-  }
 
   developer = person "Developer" {
     description "Uses Sruja CLI and VS Code extension for development"
@@ -149,71 +157,73 @@ model {
   developer -> sruja.cli "runs lint/compile"
   developer -> sruja.vscode "writes code"
 
-  requirement R1 functional "Must support full C4 model hierarchy"
-  requirement R2 performance "Parsing must be < 100ms for typical files"
-  requirement R3 portability "Core must compile to WASM"
-  requirement R4 functional "Must export to JSON format"
+  R1 = requirement functional "Must support full C4 model hierarchy"
+  R2 = requirement performance "Parsing must be < 100ms for typical files"
+  R3 = requirement portability "Core must compile to WASM"
+  R4 = requirement functional "Must export to JSON format"
 
-  adr ADR001 "Use Participle for Parsing" {
+  ADR001 = adr "Use Participle for Parsing" {
     status "Accepted"
     context "Need a type-safe, declarative parser for Go."
     decision "Use github.com/alecthomas/participle."
     consequences "Gain: No external build tools needed, type-safe AST. Trade-off: Less flexibility than ANTLR"
   }
 
-  adr ADR002 "Client-Side Rendering for Playground" {
+  ADR002 = adr "Client-Side Rendering for Playground" {
     status "Accepted"
     context "Playground needs to run without a backend server for cost and simplicity"
     decision "Compile Go engine to WASM and run entirely client-side"
     consequences "Gain: Zero backend costs, works offline. Trade-off: Larger bundle size, WASM compatibility considerations"
   }
 
-  adr ADR003 "JSON as Primary Export Format" {
+  ADR003 = adr "JSON as Primary Export Format" {
     status "Accepted"
     context "Need a format that can be consumed by various tools and frontend applications"
     decision "Use JSON as the primary export format, with TypeScript exporters in frontend apps for other formats"
     consequences "Gain: Interoperability, easy integration. Trade-off: Frontend apps handle format conversion"
   }
 
-  policy CodeStyle "Go code must be formatted with gofmt" {
+  CodeStyle = policy "Go code must be formatted with gofmt" {
     category "quality"
     enforcement "required"
   }
 
-  policy NoCycles "Architecture graph must be acyclic" {
+  NoCycles = policy "Architecture graph must be acyclic" {
     category "structural"
     enforcement "strict"
   }
 
-  flow AuthoringFlow "Authoring Architecture" {
+  AuthoringFlow = flow "Authoring Architecture" {
     step architect -> sruja.vscode "writes DSL"
     step sruja.vscode -> sruja.lsp "validates in real-time"
     step architect -> sruja.playground "opens preview"
     step sruja.playground -> sruja.wasm "renders diagram"
   }
 
-  flow CICDFlow "CI/CD Verification" {
+  CICDFlow = flow "CI/CD Verification" {
     step developer -> sruja.cli "pushes code"
     step sruja.cli -> sruja.cli "runs lint"
     step sruja.cli -> sruja.cli "runs export json"
     step sruja.cli -> sruja.cli "generates artifacts"
   }
 
-  metadata {
-    version "0.1.0"
-    owner "Sruja Team"
-    repo "github.com/sruja-ai/sruja"
-  }
+
+// Model-level metadata - move to overview or system level
+// metadata {
+//   version "0.1.0"
+//   owner "Sruja Team"
+//   repo "github.com/sruja-ai/sruja"
+// }
+
+
+
+view index {
+  title "Sruja Architecture"
+  include *
 }
 
-views {
-  view index {
-    title "Sruja Architecture"
-    include *
-  }
-  
-  view containers of sruja {
-    title "Sruja Platform Containers"
-    include sruja.*
-  }
+view containers of sruja {
+  title "Sruja Platform Containers"
+  include sruja.*
 }
+

@@ -10,20 +10,16 @@ import (
 
 func TestExporter_Export_BasicModel(t *testing.T) {
 	dsl := `
-specification {
-	element system
-	element container
-	element database
-}
+	System = kind "System"
+	Container = kind "Container"
+	Database = kind "Database"
 
-model {
-	service = system "Service" {
-		api = container "API"
-		db = database "Database"
+	service = System "Service" {
+		api = Container "API"
+		db = Database "Database"
 	}
 
 	service.api -> service.db "reads data"
-}
 `
 	parser, err := language.NewParser()
 	if err != nil {
@@ -78,7 +74,7 @@ model {
 
 func TestExporter_Export_EmptyModel(t *testing.T) {
 	prog := &language.Program{
-		Model: &language.ModelBlock{},
+		Model: &language.Model{},
 	}
 
 	exporter := dot.NewExporter(dot.DefaultConfig())
@@ -111,12 +107,8 @@ func TestExporter_DefaultConfig(t *testing.T) {
 
 func TestExporter_NodeSizes(t *testing.T) {
 	dsl := `
-specification {
-	element system
-}
-model {
+	system = kind "System"
 	sys = system "My System"
-}
 `
 	parser, err := language.NewParser()
 	if err != nil {

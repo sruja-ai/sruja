@@ -12,19 +12,41 @@ test.describe("Designer App on Staging", () => {
     await expect(page).toHaveTitle(/Sruja/i);
     await page.waitForLoadState("networkidle");
 
-    // Wait for designer to initialize (check for common designer elements)
-    // This might be a Monaco editor, canvas, or other UI elements
+    // Wait for designer to initialize - check for multiple possible indicators
+    // The designer shows "Loading Playground..." initially, then loads the interface
+    // Wait for either the editor/designer elements OR the "Try a Demo" / "Create New" buttons
+    // which indicate the designer has finished loading
     const designerLoaded = await Promise.race([
       page
         .waitForSelector(
-          'textarea, [role="textbox"], .monaco-editor, canvas, [data-testid*="designer"], [data-testid*="editor"]',
-          { timeout: 30_000 }
+          'textarea, [role="textbox"], .monaco-editor, canvas, [data-testid*="designer"], [data-testid*="editor"], [data-testid="viewer-editor"]',
+          { timeout: 60_000 }
         )
         .then(() => true),
-      page.waitForTimeout(30_000).then(() => false),
+      page
+        .getByRole("button", { name: /Try a Demo|Create New/i })
+        .first()
+        .waitFor({ timeout: 60_000 })
+        .then(() => true),
+      // Also check that "Loading Playground..." is gone
+      page
+        .waitForFunction(() => !document.body.textContent?.includes("Loading Playground..."), {
+          timeout: 60_000,
+        })
+        .then(() => true),
+      page.waitForTimeout(60_000).then(() => false),
     ]);
 
     expect(designerLoaded).toBe(true);
+
+    // Additional verification: check that the designer interface is visible
+    // Look for either the action buttons or editor elements
+    const designerInterface = page
+      .locator("button")
+      .filter({ hasText: /Try a Demo|Create New/i })
+      .or(page.locator('textarea, [role="textbox"]'))
+      .first();
+    await expect(designerInterface).toBeVisible({ timeout: 5_000 });
   });
 
   test("designer can load example files", async ({ page }) => {

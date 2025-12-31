@@ -43,7 +43,7 @@ body {
   padding: 0 16px;
   gap: 12px;
   position: relative;
-  z-index: 50;
+  z-index: 200;
   box-shadow: var(--shadow-sm);
 }
 
@@ -168,7 +168,8 @@ body {
   padding: 4px 12px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 9999px; /* Pill shape */
+  border-radius: 9999px;
+  /* Pill shape */
   font-size: 13px;
   color: var(--text-primary);
   transition: all 0.2s ease;
@@ -194,4 +195,3 @@ body {
   font-family: 'Monaco', monospace;
   font-size: 11px;
 }
-

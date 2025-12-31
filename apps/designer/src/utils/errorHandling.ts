@@ -1,5 +1,6 @@
 // apps/designer/src/utils/errorHandling.ts
 // Centralized error handling utilities
+import { logger } from "@sruja/shared";
 
 /**
  * Error types for better error categorization and handling.
@@ -263,7 +264,9 @@ export function handleError(error: unknown, context?: string): AppError {
   }
 
   // Log error with context
-  console.error(`[Error${context ? `: ${context}` : ""}]`, {
+  logger.error(`Error${context ? `: ${context}` : ""}`, {
+    component: context || "unknown",
+    action: "handleError",
     message: appError.message,
     type: appError.type,
     context: appError.context,

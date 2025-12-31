@@ -7,44 +7,39 @@ summary: "Codify guardrails and agreements; enforce consistency."
 # Lesson 2: Policies, Constraints, Conventions
 
 ## Why Governance?
+
 Governance ensures systems remain secure, maintainable, and consistent as they evolve.
 
 ## Sruja: Codify Guardrails
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
-  element component
-  element datastore
-  element queue
+element person
+element system
+element container
+element component
+element datastore
+element queue
+
+policy Security {
+description "Security posture for services"
 }
 
-model {
-  policy Security {
-    description "Security posture for services"
-  }
-
-  constraints {
-    rule "No PII in logs"
-    rule "Only managed Postgres for relational data"
-  }
-
-  conventions {
-    naming "kebab-case for services"
-    tracing "W3C trace context propagated"
-  }
+constraints {
+rule "No PII in logs"
+rule "Only managed Postgres for relational data"
 }
 
-views {
-  view index {
-    include *
-  }
+conventions {
+naming "kebab-case for services"
+tracing "W3C trace context propagated"
+}
+
+view index {
+include *
 }
 ```
 
 ## Practice
+
 - Add a policy describing your security posture.
 - Capture 2–3 constraints and conventions used by your team.
-

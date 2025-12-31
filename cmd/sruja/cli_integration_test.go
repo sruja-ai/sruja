@@ -11,49 +11,55 @@ import (
 
 // comprehensiveDSL returns a comprehensive DSL for integration testing
 func comprehensiveDSL() string {
-	return `model {
-		metadata {
+	return `Person = kind "Person"
+		System = kind "System"
+		Container = kind "Container"
+		Component = kind "Component"
+		Datastore = kind "Datastore"
+		Queue = kind "Queue"
+		Adr = kind "ADR"
+		Requirement = kind "Requirement"
+		Scenario = kind "Scenario"
+		overview {
 			version "1.0.0"
 			owner "Tech Team"
 		}
 
-
-
-		person Customer "Customer" {
+		Customer = Person "Customer" {
 			description "End user"
 		}
 
-		system Backend "Backend System" {
+		Backend = System "Backend System" {
 			description "Core backend services"
 			
-			container API "REST API" {
+			API = Container "REST API" {
 				technology "Go"
 				tags ["api", "rest"]
 				version "2.0.0"
 				
-				component Auth "Authentication" {
+				Auth = Component "Authentication" {
 					technology "JWT"
 					description "Handles authentication"
 				}
 				
-				component Orders "Order Management" {
+				Orders = Component "Order Management" {
 					technology "Go"
 				}
 				
-				datastore Cache "Redis Cache"
-				queue Events "Event Queue"
+				Cache = Datastore "Redis Cache"
+				Events = Queue "Event Queue"
 				
 				Auth -> Orders "forwards to"
 				Auth -> Cache "caches tokens"
 				Orders -> Events "publishes events"
 			}
 			
-			container Worker "Background Worker" {
+			Worker = Container "Background Worker" {
 				technology "Python"
 			}
 			
-			datastore DB "PostgreSQL"
-			queue JobQueue "Job Queue"
+			DB = Datastore "PostgreSQL"
+			JobQueue = Queue "Job Queue"
 			
 			API -> DB "reads/writes"
 			API -> JobQueue "publishes"
@@ -61,8 +67,8 @@ func comprehensiveDSL() string {
 			Worker -> JobQueue "consumes"
 		}
 
-		system Frontend "Frontend" {
-			container Web "Web App" {
+		Frontend = System "Frontend" {
+			Web = Container "Web App" {
 				technology "React"
 			}
 		}
@@ -71,21 +77,21 @@ func comprehensiveDSL() string {
 		Frontend -> Backend "calls" "HTTPS"
 		Frontend.Web -> Backend.API "calls API"
 
-		requirement FR1 functional "User authentication required"
-		requirement NFR1 non_functional "99.9% uptime"
+		FR1 = Requirement "User authentication required" { tags ["functional"] }
+		NFR1 = Requirement "99.9% uptime" { tags ["non_functional"] }
 
-		adr ADR1 "Use microservices" {
+		ADR1 = Adr "Use microservices" {
 			status "Accepted"
 			context "Need to scale"
 			decision "Microservices"
 			consequences "Complexity"
 		}
 
-		scenario Login "User Login" "User logs in" {
+		Login = Scenario "User Login" {
+			// description "User logs in"
 			Customer -> Frontend "Opens app"
 			Frontend -> Backend "Authenticates"
-		}
-	}`
+		}`
 }
 
 // TestCLI_ExportJSON tests the CLI export JSON command with comprehensive DSL
@@ -123,7 +129,7 @@ func TestCLI_ExportJSON(t *testing.T) {
 	personCount := 0
 	for _, e := range elements {
 		elem := e.(map[string]interface{})
-		if elem["kind"] == "person" {
+		if elem["kind"] == "person" || elem["kind"] == "Person" {
 			personCount++
 		}
 	}
@@ -135,7 +141,7 @@ func TestCLI_ExportJSON(t *testing.T) {
 	systemCount := 0
 	for _, e := range elements {
 		elem := e.(map[string]interface{})
-		if elem["kind"] == "system" {
+		if elem["kind"] == "system" || elem["kind"] == "System" {
 			systemCount++
 		}
 	}
@@ -165,7 +171,7 @@ func TestCLI_ExportJSON(t *testing.T) {
 
 	// Validate components are present
 	auth, ok := elements["Backend.API.Auth"].(map[string]interface{})
-	if !ok || auth["kind"] != "component" {
+	if !ok || (auth["kind"] != "component" && auth["kind"] != "Component") {
 		t.Errorf("Backend.API.Auth is not a component or not found")
 	}
 	if auth["parent"] != "Backend.API" {
@@ -174,8 +180,8 @@ func TestCLI_ExportJSON(t *testing.T) {
 
 	// Validate relations
 	relations := result["relations"].([]interface{})
-	if len(relations) != 12 {
-		t.Errorf("Expected 12 relations, got %d", len(relations))
+	if len(relations) != 14 {
+		t.Errorf("Expected 14 relations, got %d", len(relations))
 	}
 
 	// Validate Sruja extensions

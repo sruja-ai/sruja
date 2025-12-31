@@ -1,3 +1,4 @@
+/* global console, global, process, setInterval, clearInterval, setImmediate, setTimeout, clearTimeout, Buffer */
 // packages/shared/src/node/wasmLoader.ts
 // WASM module loading utilities for Node.js
 
@@ -8,7 +9,7 @@ import { pathToFileURL } from "url";
 
 /**
  * Options for loading WASM runtime.
- * 
+ *
  * @public
  */
 export interface WasmLoaderOptions {
@@ -18,11 +19,12 @@ export interface WasmLoaderOptions {
 
 /**
  * Load Go WASM runtime for Node.js.
- * 
+ *
  * @internal
  * @param options - Loading options
  * @returns Go constructor class
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function loadGoRuntime(options?: WasmLoaderOptions): Promise<any> {
   console.debug("[WASM] Loading Go runtime...");
   // Try to find wasm_exec.js in common locations
@@ -55,11 +57,15 @@ export async function loadGoRuntime(options?: WasmLoaderOptions): Promise<any> {
         const resolvedPath = path.resolve(candidate);
         // Use dynamic import instead of require()
         const wasmExec = await import(pathToFileURL(resolvedPath).href);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if ((global as any).Go) {
           console.debug("[WASM] Go runtime loaded successfully");
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return (global as any).Go;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } else if (wasmExec && (wasmExec as any).Go) {
           console.debug("[WASM] Go runtime loaded successfully (from module)");
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return (wasmExec as any).Go;
         } else {
           console.warn("[WASM] wasm_exec.js loaded but Go class not found on global");
@@ -76,16 +82,13 @@ export async function loadGoRuntime(options?: WasmLoaderOptions): Promise<any> {
 
 /**
  * Load WASM module for Node.js (supports compressed files).
- * 
+ *
  * @internal
  * @param wasmPath - Path to WASM file
  * @param options - Loading options
  * @returns Promise that resolves when WASM is loaded and functions are ready
  */
-export async function loadWasmModule(
-  wasmPath: string,
-  options?: WasmLoaderOptions
-): Promise<void> {
+export async function loadWasmModule(wasmPath: string, options?: WasmLoaderOptions): Promise<void> {
   console.debug(`[WASM] Loading WASM module from: ${wasmPath}`);
   const Go = await loadGoRuntime(options);
   const go = new Go();
@@ -111,9 +114,12 @@ export async function loadWasmModule(
   // Use WebAssembly API available in Node.js
   // WebAssembly is available in Node.js 12+ and ES2020+
   // Type assertion needed because TypeScript doesn't always recognize WebAssembly in Node.js context
-   
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const WebAssemblyAPI = (globalThis as any).WebAssembly as {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     compile: (buffer: Buffer) => Promise<any>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     instantiate: (module: any, imports: any) => Promise<any>;
   };
 
@@ -137,7 +143,9 @@ export async function loadWasmModule(
 
     // Poll for functions to be available (they're registered before main() blocks)
     const checkInterval = setInterval(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const hasParseFn = !!(global as any).sruja_parse_dsl;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const hasDiagnosticsFn = !!(global as any).sruja_get_diagnostics;
 
       if (hasParseFn && hasDiagnosticsFn) {
@@ -154,6 +162,7 @@ export async function loadWasmModule(
     const timeout = setTimeout(() => {
       if (!functionsReady) {
         clearInterval(checkInterval);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const hasAnyFn = !!(global as any).sruja_parse_dsl;
         if (hasAnyFn) {
           console.debug("[WASM] Some functions available - continuing despite timeout");
@@ -188,4 +197,3 @@ export async function loadWasmModule(
     }
   });
 }
-

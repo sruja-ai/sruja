@@ -65,12 +65,12 @@ func MeasureText(text string, metrics FontMetrics) float64 {
 	width := 0.0
 	for _, r := range text {
 		// Adjust for character width variations
-		switch {
-		case r == 'i', r == 'l', r == 'I', r == '1', r == '|':
+		switch r {
+		case 'i', 'l', 'I', '1', '|':
 			width += charWidth * 0.4
-		case r == 'm', r == 'w', r == 'M', r == 'W':
+		case 'm', 'w', 'M', 'W':
 			width += charWidth * 1.3
-		case r == ' ', r == '\t':
+		case ' ', '\t':
 			width += charWidth * 0.5
 		default:
 			width += charWidth

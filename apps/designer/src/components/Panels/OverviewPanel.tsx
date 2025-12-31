@@ -26,7 +26,7 @@ import { GoalsSection } from "../../components/Overview/GoalsSection";
 import { MetadataSection } from "../../components/Overview/MetadataSection";
 
 export function OverviewPanel() {
-  const likec4Model = useArchitectureStore((s) => s.likec4Model);
+  const model = useArchitectureStore((s) => s.model);
   const isFeatureEnabled = useFeatureFlagsStore((s) => s.isEnabled);
   const isEditMode = useFeatureFlagsStore((s) => s.isEditMode);
 
@@ -43,9 +43,9 @@ export function OverviewPanel() {
   const [showPolicyForm, setShowPolicyForm] = useState(false);
   const [editPolicy, setEditPolicy] = useState<any>(undefined);
   const [showMetadataForm, setShowMetadataForm] = useState(false);
-  const [editMetadata, setEditMetadata] = useState<
-    { metadata: any; index: number } | undefined
-  >(undefined);
+  const [editMetadata, setEditMetadata] = useState<{ metadata: any; index: number } | undefined>(
+    undefined
+  );
   const [showConstraintForm, setShowConstraintForm] = useState(false);
   const [editConstraint, setEditConstraint] = useState<
     { constraint: any; index: number } | undefined
@@ -58,27 +58,27 @@ export function OverviewPanel() {
   const setPendingAction = useUIStore((s) => s.setPendingAction);
   const setActiveTab = useUIStore((s) => s.setActiveTab);
 
-  const sruja = (likec4Model?.sruja) as any;
+  const sruja = model?.sruja as any;
   const overview = sruja?.overview;
-  const archMetadata = (likec4Model?._metadata as any)?.archMetadata; // custom metadata might be here
-  const architectureName = likec4Model?._metadata?.name || "Architecture";
+  const archMetadata = (model?._metadata as any)?.archMetadata; // custom metadata might be here
+  const architectureName = model?._metadata?.name || "Architecture";
   const description = sruja?.description;
 
   // Calculate counts for quick stats
   const stats = useMemo(() => {
-    if (!likec4Model) return null;
-    const elements = Object.values(likec4Model.elements || {}) as any[];
+    if (!model) return null;
+    const elements = Object.values(model.elements || {}) as any[];
     return {
-      systems: elements.filter((e: any) => e.kind === 'system').length,
-      persons: elements.filter((e: any) => e.kind === 'person').length,
+      systems: elements.filter((e: any) => e.kind === "system").length,
+      persons: elements.filter((e: any) => e.kind === "person").length,
       requirements: sruja?.requirements?.length ?? 0,
       adrs: sruja?.adrs?.length ?? 0,
       policies: sruja?.policies?.length ?? 0,
       flows: sruja?.flows?.length ?? 0,
     };
-  }, [likec4Model, sruja]);
+  }, [model, sruja]);
 
-  if (!likec4Model) {
+  if (!model) {
     return null;
   }
 

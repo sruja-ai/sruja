@@ -7,7 +7,7 @@ import { useEffect } from "react";
 import { BestPracticeTip, EditComponentForm } from "../shared"; // Updated imports
 import { RelationsSection } from "./RelationsSection";
 import { GovernanceSection } from "./GovernanceSection";
-import type { ElementDump } from "@sruja/shared";
+import type { ElementDump, RelationDump } from "@sruja/shared";
 import "./WizardSteps.css";
 
 interface ComponentsStepProps {
@@ -21,7 +21,7 @@ export function ComponentsStep({
   onFinish,
   readOnly: _readOnly = false,
 }: ComponentsStepProps) {
-  const data = useArchitectureStore((s) => s.likec4Model);
+  const data = useArchitectureStore((s) => s.model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
   const drillDown = useViewStore((s) => s.drillDown);
 
@@ -33,10 +33,10 @@ export function ComponentsStep({
     // ID hierarchy: systemId.containerId ... but kind is reliable
     // We need systemId and containerId.
     // Assuming hierarchy is reflected in ID: system.container
-    const containers = allElements.filter((e: any) => e.kind === "container");
+    const containers = allElements.filter((e: ElementDump) => e.kind === "container");
 
     return containers
-      .map((c: any) => {
+      .map((c: ElementDump) => {
         const parts = c.id.split(".");
         // If strict 2 parts: system.container
         const systemId = parts[0];
@@ -74,7 +74,7 @@ export function ComponentsStep({
     if (!selectedPath) return [];
     // Components are children of selectedPath (container ID)
     // ID hierarchy: containerId.componentId (where containerId is system.container)
-    return allElements.filter((e: any) => {
+    return allElements.filter((e: ElementDump) => {
       if (e.kind !== "component") return false;
       // Start with selectedPath + "." ?
       // selectedPath is e.g. "sys1.cont1"
@@ -87,14 +87,14 @@ export function ComponentsStep({
   }, [allElements, selectedPath]);
 
   const totalComponents = useMemo(() => {
-    return allElements.filter((e: any) => e.kind === "component").length;
+    return allElements.filter((e: ElementDump) => e.kind === "component").length;
   }, [allElements]);
 
   // Build L3 elements for relations (all components across all containers)
   const l3Elements = useMemo(() => {
     return allElements
-      .filter((e: any) => e.kind === "component")
-      .map((e: any) => ({
+      .filter((e: ElementDump) => e.kind === "component")
+      .map((e: ElementDump) => ({
         id: e.id,
         label: e.title,
         type: e.kind,
@@ -159,7 +159,7 @@ export function ComponentsStep({
         <h3>Select Container</h3>
         <div className="container-tabs">
           {containerList.map((item) => {
-            const count = allElements.filter((e: any) => {
+            const count = allElements.filter((e: ElementDump) => {
               if (e.kind !== "component") return false;
               // starts with item.label (id) + "."
               return (
@@ -199,7 +199,7 @@ export function ComponentsStep({
         </h3>
 
         <div className="items-list">
-          {components.map((c: any) => (
+          {components.map((c: ElementDump) => (
             <div key={c.id} className="item-card">
               <Puzzle size={16} className="item-icon component" />
               <div className="item-info">
@@ -260,7 +260,7 @@ export function ComponentsStep({
         <RelationsSection
           fromElements={l3Elements}
           toElements={l3Elements}
-          filterFn={(rel: any) => {
+          filterFn={(rel: RelationDump) => {
             // Show L3 relations (two dots in path = System.Container.Component)
             const srcId =
               typeof rel.source === "object" && rel.source?.model

@@ -172,7 +172,7 @@ func (s *Server) generateQuickFixForSyntax(_ *Document, diag lsp.Diagnostic, uri
 }
 
 // findSimilarElementNames finds element names similar to the given name
-func (s *Server) findSimilarElementNames(name string, model *language.ModelBlock) []string {
+func (s *Server) findSimilarElementNames(name string, model *language.Model) []string {
 	if model == nil {
 		return nil
 	}
@@ -180,11 +180,11 @@ func (s *Server) findSimilarElementNames(name string, model *language.ModelBlock
 	var similar []string
 	nameLower := strings.ToLower(name)
 
-	// Collect all element IDs from LikeC4 Model
+	// Collect all element IDs from Sruja Model
 	allIDs := make([]string, 0, 32)
 
-	var collectIDs func(elem *language.LikeC4ElementDef)
-	collectIDs = func(elem *language.LikeC4ElementDef) {
+	var collectIDs func(elem *language.ElementDef)
+	collectIDs = func(elem *language.ElementDef) {
 		if elem == nil {
 			return
 		}

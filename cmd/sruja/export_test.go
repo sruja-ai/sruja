@@ -27,11 +27,11 @@ func getKeys(m map[string]interface{}) []string {
 func TestRunExport(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.sruja")
-	err := os.WriteFile(file, []byte(`model {
-		system Sys "System" {
-			container Cont "Container"
-		}
-	}`), 0o644)
+	err := os.WriteFile(file, []byte(`system = kind "System"
+		container = kind "Container"
+		Sys = system "System" {
+			Cont = container "Container"
+		}`), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,18 +86,18 @@ func TestRunExport(t *testing.T) {
 func TestRunExport_Mermaid(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "mermaid.sruja")
-	err := os.WriteFile(file, []byte(`model {
-        system S "Sys" { container C "Cont" }
-    }`), 0o644)
+	err := os.WriteFile(file, []byte(`system = kind "System"
+		container = kind "Container"
+        S = system "Sys" { C = container "Cont" }`), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	var stdout, stderr bytes.Buffer
-	// Mermaid export is still disabled (not updated for LikeC4 syntax)
+	// Mermaid export is still disabled (not updated for Sruja syntax)
 	exitCode := runExport([]string{"mermaid", file}, &stdout, &stderr)
 	if exitCode == 0 {
-		t.Skip("Mermaid export not yet updated for LikeC4 syntax - skipping test")
+		t.Skip("Mermaid export not yet updated for Sruja syntax - skipping test")
 	}
 	// Expected to fail with error message
 	if !strings.Contains(stderr.String(), "mermaid export not yet updated") {
@@ -108,11 +108,11 @@ func TestRunExport_Mermaid(t *testing.T) {
 func TestRunExport_JSONExtendedViews(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "ext.sruja")
-	err := os.WriteFile(file, []byte(`model {
-        system S "Sys" {
-            container C "Cont"
-        }
-    }`), 0o644)
+	err := os.WriteFile(file, []byte(`system = kind "System"
+		container = kind "Container"
+        S = system "Sys" {
+            C = container "Cont"
+        }`), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,9 +174,8 @@ func TestRunExport_Errors(t *testing.T) {
 func TestRunExport_MarkdownOptions(t *testing.T) {
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "md.sruja")
-	err := os.WriteFile(file, []byte(`model {
-		system Sys "System"
-	}`), 0o644)
+	err := os.WriteFile(file, []byte(`system = kind "System"
+		Sys = system "System"`), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,39 +213,6 @@ func TestRunExport_MarkdownOptions(t *testing.T) {
 	exitCode = runExport([]string{"--token-limit", "100", "markdown", file}, &stdout, &stderr)
 	if exitCode != 0 {
 		t.Errorf("Expected exit code 0 for markdown export with token limit, got %d. Stderr: %s", exitCode, stderr.String())
-	}
-}
-
-func TestRunExport_LikeC4(t *testing.T) {
-	tmpDir := t.TempDir()
-	file := filepath.Join(tmpDir, "likec4.sruja")
-	err := os.WriteFile(file, []byte(`model {
-		system Sys "System"
-	}`), 0o644)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var stdout, stderr bytes.Buffer
-
-	// Test likec4 DSL export
-	exitCode := runExport([]string{"likec4", file}, &stdout, &stderr)
-	if exitCode != 0 {
-		t.Errorf("Expected exit code 0 for likec4 export, got %d. Stderr: %s", exitCode, stderr.String())
-	}
-	if !strings.Contains(stdout.String(), "Sys = system") {
-		t.Errorf("Expected DSL output for likec4 export, got:\n%s", stdout.String())
-	}
-
-	// Test c4 alias
-	stdout.Reset()
-	stderr.Reset()
-	exitCode = runExport([]string{"c4", file}, &stdout, &stderr)
-	if exitCode != 0 {
-		t.Errorf("Expected exit code 0 for c4 export, got %d. Stderr: %s", exitCode, stderr.String())
-	}
-	if !strings.Contains(stdout.String(), "Sys = system") {
-		t.Errorf("Expected DSL output for c4 export, got:\n%s", stdout.String())
 	}
 }
 

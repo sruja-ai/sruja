@@ -1,59 +1,59 @@
 // examples/reference_mvp.sruja
 // Full MVP Example
 
-specification {
-  element person
-  element system
-  element container
-  element component
-  element database
-  element queue
-}
 
-model {
-  customer = person "Customer"
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+queue = kind "Queue"
 
-  app = system "Application" {
-    api = container "HTTP API" {
-      tags ["http", "public"]
-    }
-    db = database "PostgreSQL"
-    mq = queue "Events"
-    web = container "Web App" {
-      technology "React"
-      cart = component "Cart"
-      auth = component "Auth"
-      web.cart -> web.auth "uses"
-    }
+
+
+customer = person "Customer"
+
+app = system "Application" {
+  api = container "HTTP API" {
+    tags ["http", "public"]
   }
-
-  customer -> app.web "uses"
-  customer -> app.api "authenticates with"
-  app.web -> app.api "makes API calls to"
-  app.api -> app.db "reads data from"
-  app.api -> app.db "writes data to"
-  app.api -> app.mq "publishes events to"
-
-  requirement R1 functional "Persist user data"
-  requirement R2 constraint "Expose public API"
-  requirement R3 performance "Fast checkout"
-
-  adr ADR001 "Adopt Stripe for payments" {
-    status "Accepted"
-    context "Need payment processing"
-    decision "Use Stripe API"
-    consequences "Easy integration, good documentation"
+  db = database "PostgreSQL"
+  mq = queue "Events"
+  web = container "Web App" {
+    technology "React"
+    cart = component "Cart"
+    auth = component "Auth"
+    web.cart -> web.auth "uses"
   }
 }
 
-views {
-  view index {
-    title "Full MVP Example"
-    include *
-  }
-  
-  view containers of app {
-    title "Application Containers"
-    include app.*
-  }
+customer -> app.web "uses"
+customer -> app.api "authenticates with"
+app.web -> app.api "makes API calls to"
+app.api -> app.db "reads data from"
+app.api -> app.db "writes data to"
+app.api -> app.mq "publishes events to"
+
+R1 = requirement functional "Persist user data"
+R2 = requirement constraint "Expose public API"
+R3 = requirement performance "Fast checkout"
+
+ADR001 = adr "Adopt Stripe for payments" {
+  status "Accepted"
+  context "Need payment processing"
+  decision "Use Stripe API"
+  consequences "Easy integration, good documentation"
 }
+
+
+
+view index {
+  title "Full MVP Example"
+  include *
+}
+
+view containers of app {
+  title "Application Containers"
+  include app.*
+}
+

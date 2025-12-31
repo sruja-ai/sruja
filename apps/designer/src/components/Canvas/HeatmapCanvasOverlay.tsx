@@ -9,8 +9,8 @@ interface HeatmapCanvasOverlayProps {
 
 /**
  * HeatmapCanvasOverlay - Shows quality heatmap overlay on diagram
- * 
- * NOTE: This component requires ReactFlow and is not compatible with LikeC4 mode.
+ *
+ * NOTE: This component requires ReactFlow.
  * It should only be rendered when ReactFlow is available. The parent component
  * should check for ReactFlow availability before rendering this.
  */

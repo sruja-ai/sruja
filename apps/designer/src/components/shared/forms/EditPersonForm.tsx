@@ -27,15 +27,17 @@ interface FormValues {
 
 export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPersonFormProps) {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
-  const data = useArchitectureStore((s) => s.likec4Model);
+  const data = useArchitectureStore((s) => s.model);
   const formRef = useRef<HTMLFormElement>(null);
-
 
   // Initialize form state
   const form = useFormState<FormValues>({
     initialValues: {
       name: (person as any)?.title || initialName || "",
-      description: typeof (person as any)?.description === 'string' ? (person as any).description : ((person as any)?.description?.txt || ""),
+      description:
+        typeof (person as any)?.description === "string"
+          ? (person as any).description
+          : (person as any)?.description?.txt || "",
       customId: false,
       idInput: (person as any)?.id || "",
       isExternal: (person as any)?.tags?.includes("external") || false,
@@ -43,7 +45,8 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
     validate: (values) => {
       const errors: FormErrors = {};
       if (!values.name.trim()) errors.name = "Name is required";
-      if (values.customId && !values.idInput.trim()) errors.idInput = "ID is required for custom ID";
+      if (values.customId && !values.idInput.trim())
+        errors.idInput = "ID is required for custom ID";
       if (values.customId && values.idInput.trim() && !person) {
         const ids = collectIds(data);
         if (ids.has(values.idInput.trim())) errors.idInput = "ID already exists";
@@ -57,7 +60,9 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
         let targetId = (person as any)?.id;
 
         if (!person) {
-          targetId = (values.customId ? values.idInput : "") || generateUniqueId(values.name, data, "person");
+          targetId =
+            (values.customId ? values.idInput : "") ||
+            generateUniqueId(values.name, data, "person");
         }
 
         if (!targetId) return model;
@@ -70,7 +75,7 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
           title: values.name,
           description: (values.description || undefined) as any,
           tags: tags.length > 0 ? tags : undefined,
-          links: (person as any)?.links
+          links: (person as any)?.links,
         };
 
         if (person && model.elements && model.elements[(person as any).id]) {
@@ -78,7 +83,7 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
             ...(model.elements[(person as any).id] as any),
             title: values.name,
             description: (values.description || undefined) as any,
-            tags: tags.length > 0 ? tags : undefined
+            tags: tags.length > 0 ? tags : undefined,
           };
         }
 
@@ -93,7 +98,10 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
     if (isOpen) {
       form.setValues({
         name: (person as any)?.title || initialName || "",
-        description: typeof (person as any)?.description === "string" ? (person as any).description : ((person as any)?.description?.txt || ""),
+        description:
+          typeof (person as any)?.description === "string"
+            ? (person as any).description
+            : (person as any)?.description?.txt || "",
         idInput: (person as any)?.id || "",
         customId: false,
         isExternal: (person as any)?.tags?.includes("external") || false,
@@ -110,8 +118,15 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
       size="lg"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} type="button">Cancel</Button>
-          <Button variant="primary" type="submit" form="edit-person-form" isLoading={form.isSubmitting}>
+          <Button variant="secondary" onClick={onClose} type="button">
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            type="submit"
+            form="edit-person-form"
+            isLoading={form.isSubmitting}
+          >
             {person ? "Update" : "Create"}
           </Button>
         </>
@@ -153,7 +168,7 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
                 id="person-custom-id"
                 type="checkbox"
                 checked={form.values.customId}
-                onChange={e => form.setValue("customId", e.target.checked)}
+                onChange={(e) => form.setValue("customId", e.target.checked)}
               />
               <label htmlFor="person-custom-id">Set custom ID</label>
             </div>
@@ -170,7 +185,9 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
           </>
         )}
 
-        {form.errors.submit && <div className="text-red-500 text-sm mt-2">{form.errors.submit}</div>}
+        {form.errors.submit && (
+          <div className="text-red-500 text-sm mt-2">{form.errors.submit}</div>
+        )}
       </form>
     </SidePanel>
   );

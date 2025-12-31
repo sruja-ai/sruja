@@ -237,15 +237,16 @@ func TestNextToken_Newline(t *testing.T) {
 }
 
 func TestNextToken_Complex(t *testing.T) {
-	input := `system API "API Service" {}`
+	input := `API = system "API Service" {}`
 	l := language.NewLexer(input)
 
 	tests := []struct {
 		expectedType    language.TokenType
 		expectedLiteral string
 	}{
-		{language.TOKEN_SYSTEM, "system"},
 		{language.TOKEN_IDENT, "API"},
+		{language.TOKEN_ASSIGN, "="},
+		{language.TOKEN_SYSTEM, "system"},
 		{language.TOKEN_STRING, "API Service"},
 		{language.TOKEN_LBRACE, "{"},
 		{language.TOKEN_RBRACE, "}"},
@@ -313,15 +314,16 @@ func TestNextToken_Identifier_WithNumbers(t *testing.T) {
 }
 
 func TestNextToken_MultipleTokens(t *testing.T) {
-	input := `system API "Service" {}`
+	input := `API = system "Service" {}`
 	l := language.NewLexer(input)
 
 	tokens := []language.TokenType{
-		language.TOKEN_SYSTEM,
-		language.TOKEN_IDENT,
-		language.TOKEN_STRING,
-		language.TOKEN_LBRACE,
-		language.TOKEN_RBRACE,
+		language.TOKEN_IDENT,  // API
+		language.TOKEN_ASSIGN, // =
+		language.TOKEN_SYSTEM, // system
+		language.TOKEN_STRING, // "Service"
+		language.TOKEN_LBRACE, // {
+		language.TOKEN_RBRACE, // }
 		language.TOKEN_EOF,
 	}
 

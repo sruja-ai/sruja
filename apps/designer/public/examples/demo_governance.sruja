@@ -1,29 +1,36 @@
 // examples/demo_governance.sruja
 // Governance Example
 
-specification {
-  element system
-}
 
-model {
-  shop = system "Shop" {
-    adr DB_Choice "Database Selection" {
-      status "Accepted"
-      context "Choose between Postgres and Mongo"
-      decision "Use Postgres for relational needs"
-      consequences "Reliable ACID; more ops complexity"
-    }
-  }
-  
-  policy SecurityPolicy "Encrypt data at rest" {
-    category "security"
-    enforcement "required"
+system = kind "System"
+
+
+
+shop = system "Shop" {
+  DB_Choice = adr "Database Selection" {
+    status "Accepted"
+    context "Choose between Postgres and Mongo"
+    decision "Use Postgres for relational needs"
+    consequences "Reliable ACID; more ops complexity"
   }
 }
 
-views {
-  view index {
-    title "Governance Example"
-    include *
-  }
+// Requirements - different types
+R1 = requirement functional "System must process orders"
+R2 = requirement nonfunctional "System must be maintainable and extensible"
+R3 = requirement constraint "Must use PostgreSQL database"
+R4 = requirement performance "API must respond in under 200ms"
+R5 = requirement security "All data must be encrypted at rest"
+
+SecurityPolicy = policy "Encrypt data at rest" {
+  category "security"
+  enforcement "required"
 }
+
+
+
+view index {
+  title "Governance Example"
+  include *
+}
+

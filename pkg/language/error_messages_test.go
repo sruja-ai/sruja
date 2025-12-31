@@ -49,9 +49,9 @@ func parseWithValidation(t *testing.T, dsl string) ([]diagnostics.Diagnostic, er
 // TestParserError_MissingClosingBrace tests error message for missing closing brace
 func TestParserError_MissingClosingBrace(t *testing.T) {
 	dsl := `
-model {
-    system API "API Service" {
-        container WebApp "Web App"
+
+    API = system "API Service" {
+        WebApp = container "Web App"
     // Missing closing brace
 `
 	diags, err := parseWithValidation(t, dsl)
@@ -95,11 +95,9 @@ model {
 // TestParserError_UnexpectedToken tests error message for unexpected token
 func TestParserError_UnexpectedToken(t *testing.T) {
 	dsl := `
-model {
-    system API "API Service" {
+    API = system "API Service" {
         unexpected_field !!
     }
-}
 `
 	diags, err := parseWithValidation(t, dsl)
 
@@ -154,12 +152,10 @@ model {
 // TestParserError_FieldOutOfOrder tests error message for fields out of order
 func TestParserError_FieldOutOfOrder(t *testing.T) {
 	dsl := `
-model {
-    system API "API Service" {
+    API = system "API Service" {
         description "Some description"
-        container WebApp "Web App" {}
+        WebApp = container "Web App" {}
     }
-}
 `
 	diags, err := parseWithValidation(t, dsl)
 
@@ -191,10 +187,8 @@ model {
 // TestValidationError_DuplicateID tests error message for duplicate IDs
 func TestValidationError_DuplicateID(t *testing.T) {
 	dsl := `
-model {
-    system API "API Service" {}
-    system API "Duplicate API" {}
-}
+    API = system "API Service" {}
+    API = system "Duplicate API" {}
 `
 	diags, err := parseWithValidation(t, dsl)
 
@@ -249,11 +243,9 @@ model {
 // TestValidationError_UndefinedReference tests error message for undefined reference
 func TestValidationError_UndefinedReference(t *testing.T) {
 	dsl := `
-model {
-    system API "API Service" {
+    API = system "API Service" {
         API -> UnknownSystem "Uses"
     }
-}
 `
 	diags, err := parseWithValidation(t, dsl)
 
@@ -310,10 +302,8 @@ model {
 // TestValidationError_OrphanElement tests error message for orphan element
 func TestValidationError_OrphanElement(t *testing.T) {
 	dsl := `
-model {
-    system API "API Service" {}
-    system Unused "Unused System" {}
-}
+    API = system "API Service" {}
+    Unused = system "Unused System" {}
 `
 	diags, err := parseWithValidation(t, dsl)
 
@@ -359,15 +349,13 @@ model {
 // TestValidationError_InvalidSLOFormat tests error message for invalid SLO format
 func TestValidationError_InvalidSLOFormat(t *testing.T) {
 	dsl := `
-model {
-    system API "API Service" {
+    API = system "API Service" {
         slo {
             latency {
                 p95 "invalid_duration"
             }
         }
     }
-}
 `
 	diags, err := parseWithValidation(t, dsl)
 
@@ -419,13 +407,11 @@ model {
 // TestValidationError_InvalidProperty tests error message for invalid property
 func TestValidationError_InvalidProperty(t *testing.T) {
 	dsl := `
-model {
-    system API "API Service" {
+    API = system "API Service" {
         properties {
             port "not_a_number"
         }
     }
-}
 `
 	diags, err := parseWithValidation(t, dsl)
 
@@ -472,15 +458,13 @@ model {
 // TestValidationError_LayerViolation tests error message for layer violation
 func TestValidationError_LayerViolation(t *testing.T) {
 	dsl := `
-model {
-    system DataLayer "Data Layer" {
+    DataLayer = system "Data Layer" {
         metadata { layer "data" }
     }
-    system WebLayer "Web Layer" {
+    WebLayer = system "Web Layer" {
         metadata { layer "web" }
     }
     DataLayer -> WebLayer "Invalid dependency"
-}
 `
 	diags, err := parseWithValidation(t, dsl)
 
@@ -532,11 +516,9 @@ model {
 // TestParserError_MalformedRelation tests error message for malformed relation
 func TestParserError_MalformedRelation(t *testing.T) {
 	dsl := `
-model {
-    system API "API Service" {}
-    system DB "Database" {}
+    API = system "API Service" {}
+    DB = system "Database" {}
     API DB "Missing arrow"
-}
 `
 	diags, err := parseWithValidation(t, dsl)
 
@@ -569,17 +551,15 @@ model {
 func TestValidationError_AmbiguousReference(t *testing.T) {
 	// Use scenario instead of flow for better syntax compatibility
 	dsl := `
-model {
-    system Order "Order System" {
-        container API "Order API" {}
+    Order = system "Order System" {
+        API = container "Order API" {}
     }
-    system Payment "Payment System" {
-        container API "Payment API" {}
+    Payment = system "Payment System" {
+        API = container "Payment API" {}
     }
     scenario "Test Scenario" "Description" {
         step Order -> API "Uses"
     }
-}
 `
 	diags, err := parseWithValidation(t, dsl)
 
@@ -652,14 +632,12 @@ model {
 // TestErrorLocation_Precision tests that error locations are precise
 func TestErrorLocation_Precision(t *testing.T) {
 	dsl := `
-model {
-    system API "API Service" {
-        container WebApp "Web App" {
-            component Frontend "Frontend"
-            component Frontend "Duplicate Frontend"
+    API = system "API Service" {
+        WebApp = container "Web App" {
+            Frontend = component "Frontend"
+            Frontend = component "Duplicate Frontend"
         }
     }
-}
 `
 	diags, err := parseWithValidation(t, dsl)
 
@@ -699,11 +677,10 @@ func TestErrorSuggestions_Quality(t *testing.T) {
 		{
 			name: "Undefined reference with similar element",
 			dsl: `
-model {
-    system API "API Service" {}
-    system APIService "API Service Full" {}
+    API = system "API Service" {}
+    APIService = system "API Service Full" {}
     API -> APIServic "Typo in reference"
-}`,
+`,
 			check: func(t *testing.T, diags []diagnostics.Diagnostic) {
 				for _, d := range diags {
 					if strings.Contains(strings.ToLower(d.Message), "undefined") {
@@ -727,15 +704,14 @@ model {
 		{
 			name: "Invalid SLO with format examples",
 			dsl: `
-model {
-    system API "API Service" {
+    API = system "API Service" {
         slo {
             latency {
                 p95 "wrong"
             }
         }
     }
-}`,
+`,
 			check: func(t *testing.T, diags []diagnostics.Diagnostic) {
 				for _, d := range diags {
 					if strings.Contains(strings.ToLower(d.Message), "duration") ||
@@ -774,16 +750,14 @@ model {
 // TestErrorContext_Helpfulness tests that error context is helpful
 func TestErrorContext_Helpfulness(t *testing.T) {
 	dsl := `
-model {
-    system API "API Service" {
-        container WebApp "Web App" {
-            component Frontend "Frontend Component"
+    API = system "API Service" {
+        WebApp = container "Web App" {
+            Frontend = component "Frontend Component"
             // Some comment
-            component Backend "Backend Component"
-            component Frontend "Duplicate Frontend"
+            Backend = component "Backend Component"
+            Frontend = component "Duplicate Frontend"
         }
     }
-}
 `
 	diags, err := parseWithValidation(t, dsl)
 

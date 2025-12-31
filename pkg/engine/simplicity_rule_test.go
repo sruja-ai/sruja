@@ -63,12 +63,12 @@ func TestSimplicityRule_ValidUsage(t *testing.T) {
 	}
 
 	// Valid: System with containers (deployment modeling)
-	dsl1 := `model {
+	dsl1 := `
 		ShopAPI = system "Shop API" {
 			WebApp = container "Web App"
 			Database = container "Database"
 		}
-	}`
+	`
 
 	program1, _, err := parser.Parse("test.sruja", dsl1)
 	if err != nil {
@@ -154,7 +154,7 @@ func TestSimplicityRule_EmptySystems(t *testing.T) {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	dsl := `model {}`
+	dsl := ``
 
 	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
@@ -175,12 +175,12 @@ func TestSimplicityRule_SystemWithMultipleContainerTypes(t *testing.T) {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	dsl := `model {
+	dsl := `
 		ComplexSys = system "Complex System" {
 			Web = container "Web"
 			DB = datastore "Database"
 		}
-	}`
+	`
 
 	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {

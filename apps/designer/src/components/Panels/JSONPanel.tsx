@@ -9,7 +9,7 @@ import { convertModelToDsl } from "../../utils/modelToDsl";
 import "./JSONPanel.css";
 
 export function JSONPanel() {
-  const data = useArchitectureStore((state) => state.likec4Model);
+  const data = useArchitectureStore((state) => state.model);
   // convertedJson removed
   // convertedJson removed
   const isConverting = useArchitectureStore((s) => s.isConverting);
@@ -20,7 +20,7 @@ export function JSONPanel() {
   const [monacoTheme, setMonacoTheme] = useState<"vs" | "vs-dark">("vs");
   // Initialize JSON source from current model data
   const [jsonSource, setJsonSource] = useState<string>(() => {
-    const currentData = useArchitectureStore.getState().likec4Model;
+    const currentData = useArchitectureStore.getState().model;
     if (!currentData) return "";
     try {
       return JSON.stringify(currentData, null, 2);

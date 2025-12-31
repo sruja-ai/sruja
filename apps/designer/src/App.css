@@ -14,3 +14,12 @@
 
 /* Responsive Styles - Media Queries */
 @import "./styles/responsive.css";
+
+/* Persona View Overlay */
+.persona-view-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: var(--color-bg, #ffffff);
+  overflow-y: auto;
+}

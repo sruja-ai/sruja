@@ -1,0 +1,47 @@
+// examples/demo_stdlib_imports.sruja
+// Demonstrates using standard library imports to avoid manual kind declarations
+// This is the recommended approach for standard C4 model elements
+
+// Option 1: Import all standard kinds from stdlib (wildcard)
+import { * } from 'sruja.ai/stdlib'
+
+// Option 2: Import specific kinds only (named imports)
+// import { person, system, container, database, queue } from 'sruja.ai/stdlib'
+
+// Now you can use person, system, container, etc. without declaring them
+User = person "User"
+Admin = person "Administrator"
+
+ECommerce = system "E-Commerce Platform" {
+  description "Main e-commerce system"
+  
+  WebApp = container "Web Application" {
+    technology "React"
+  }
+  
+  API = container "REST API" {
+    technology "Go"
+  }
+  
+  ProductDB = database "Product Database" {
+    technology "PostgreSQL"
+  }
+  
+  OrderQueue = queue "Order Queue" {
+    technology "RabbitMQ"
+  }
+}
+
+// Relationships
+User -> ECommerce.WebApp "browses"
+Admin -> ECommerce.WebApp "manages"
+ECommerce.WebApp -> ECommerce.API "calls"
+ECommerce.API -> ECommerce.ProductDB "reads from"
+ECommerce.API -> ECommerce.OrderQueue "publishes to"
+
+// View
+view index {
+  title "E-Commerce with Stdlib Imports"
+  include *
+}
+

@@ -30,52 +30,52 @@ func TestRelationTagRule_Validate(t *testing.T) {
 	}{
 		{
 			name:        "valid relation tags",
-			input:       `model { API = system "API" DB = system "DB" API -> DB [reads, writes] }`,
+			input:       `API = system "API" DB = system "DB" API -> DB [reads, writes]`,
 			wantWarning: false,
 		},
 		{
 			name:            "invalid relation tag",
-			input:           `model { API = system "API" DB = system "DB" API -> DB [invalidtag] }`,
+			input:           `API = system "API" DB = system "DB" API -> DB [invalidtag]`,
 			wantWarning:     true,
 			warningContains: "Invalid relation tag",
 		},
 		{
 			name:            "multiple invalid tags",
-			input:           `model { API = system "API" DB = system "DB" API -> DB [bad1, bad2] }`,
+			input:           `API = system "API" DB = system "DB" API -> DB [bad1, bad2]`,
 			wantWarning:     true,
 			warningContains: "Invalid relation tag",
 		},
 		{
 			name:        "all allowed tags",
-			input:       `model { API = system "API" DB = system "DB" API -> DB [reads, writes, sends, uses, calls, processes, queries, updates, deletes, creates, triggers, notifies] }`,
+			input:       `API = system "API" DB = system "DB" API -> DB [reads, writes, sends, uses, calls, processes, queries, updates, deletes, creates, triggers, notifies]`,
 			wantWarning: false,
 		},
 		{
 			name:        "case insensitive tags",
-			input:       `model { API = system "API" DB = system "DB" API -> DB [READS, Writes, SeNdS] }`,
+			input:       `API = system "API" DB = system "DB" API -> DB [READS, Writes, SeNdS]`,
 			wantWarning: false,
 		},
 		{
 			name:            "invalid tag in system relation",
-			input:           `model { API = system "API" { API -> API [badtag] } }`,
+			input:           `API = system "API" { API -> API [badtag] }`,
 			wantWarning:     true,
 			warningContains: "Invalid relation tag",
 		},
 		{
 			name:            "invalid tag in container relation",
-			input:           `model { API = system "API" { Web = container "Web" { Web -> Web [badtag] } } }`,
+			input:           `API = system "API" { Web = container "Web" { Web -> Web [badtag] } }`,
 			wantWarning:     true,
 			warningContains: "Invalid relation tag",
 		},
 		{
 			name:            "invalid tag in component relation",
-			input:           `model { API = system "API" { Web = container "Web" { Auth = component "Auth" { Auth -> Auth [badtag] } } } }`,
+			input:           `API = system "API" { Web = container "Web" { Auth = component "Auth" { Auth -> Auth [badtag] } } }`,
 			wantWarning:     true,
 			warningContains: "Invalid relation tag",
 		},
 		{
 			name:        "no tags - valid",
-			input:       `model { API = system "API" DB = system "DB" API -> DB }`,
+			input:       `API = system "API" DB = system "DB" API -> DB`,
 			wantWarning: false,
 		},
 		{
@@ -137,11 +137,9 @@ func TestRelationTagRule_IntegrationWithValidator(t *testing.T) {
 		t.Fatalf("Failed to create parser: %v", err)
 	}
 
-	input := `model {
-		API = system "API"
-		DB = system "DB"
-		API -> DB [invalidtag]
-	}`
+	input := `	API = system "API"
+	DB = system "DB"
+	API -> DB [invalidtag]`
 
 	program, _, err := parser.Parse("test.sruja", input)
 	if err != nil {

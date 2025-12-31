@@ -15,8 +15,8 @@ type Resolver struct {
 	partsCache   map[string][]string // Cache for ID parts (FQN -> []string)
 }
 
-// NewResolverFromModel creates a new resolver instance from a LikeC4 Model.
-func NewResolverFromModel(model *language.ModelBlock) *Resolver {
+// NewResolverFromModel creates a new resolver instance from a Model.
+func NewResolverFromModel(model *language.Model) *Resolver {
 	if model == nil {
 		return &Resolver{
 			defined:      make(map[string]bool, 16),
@@ -26,8 +26,8 @@ func NewResolverFromModel(model *language.ModelBlock) *Resolver {
 		}
 	}
 
-	// Collect all elements
-	defined, _ := collectLikeC4Elements(model)
+	// Collect all elements using our optimized iterative function
+	defined, _ := collectElements(model)
 
 	estimatedElements := len(defined)
 	if estimatedElements < 16 {
@@ -44,63 +44,73 @@ func NewResolverFromModel(model *language.ModelBlock) *Resolver {
 	return r
 }
 
-// indexFromModel builds the lookup maps from LikeC4 Model.
-func (r *Resolver) indexFromModel(model *language.ModelBlock) {
+// indexFromModel builds the lookup maps from Model using iterative traversal.
+func (r *Resolver) indexFromModel(model *language.Model) {
 	if model == nil {
 		return
 	}
 
-	addID := func(id string) {
-		if id == "" {
-			return
+	// Use explicit stack for iterative traversal
+	type frame struct {
+		elem      *language.ElementDef
+		parentFQN string
+	}
+	stack := make([]frame, 0, 16)
+
+	// Initialize with top-level elements
+	for _, item := range model.Items {
+		if item.ElementDef != nil {
+			stack = append(stack, frame{elem: item.ElementDef, parentFQN: ""})
 		}
-		r.defined[id] = true
-		lastDot := strings.LastIndex(id, ".")
-		var suffix string
-		if lastDot == -1 {
-			suffix = id
-		} else {
-			suffix = id[lastDot+1:]
-		}
-		r.suffixMap[suffix] = append(r.suffixMap[suffix], id)
 	}
 
-	// Collect all element IDs from Model
-	var collectIDs func(elem *language.LikeC4ElementDef, parentFQN string)
-	collectIDs = func(elem *language.LikeC4ElementDef, parentFQN string) {
+	// Iterative traversal
+	for len(stack) > 0 {
+		// Pop
+		f := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+
+		elem := f.elem
 		if elem == nil {
-			return
+			continue
 		}
 
 		id := elem.GetID()
 		if id == "" {
-			return
+			continue
 		}
 
+		// Build FQN
 		fqn := id
-		if parentFQN != "" {
-			fqn = buildQualifiedID(parentFQN, id)
+		if f.parentFQN != "" {
+			fqn = buildQualifiedID(f.parentFQN, id)
 		}
 
-		addID(fqn)
+		// Add to defined and suffix maps
+		r.defined[fqn] = true
+		suffix := extractSuffix(fqn)
+		r.suffixMap[suffix] = append(r.suffixMap[suffix], fqn)
 
-		// Recurse into nested elements
+		// Push children
 		body := elem.GetBody()
 		if body != nil {
 			for _, bodyItem := range body.Items {
 				if bodyItem.Element != nil {
-					collectIDs(bodyItem.Element, fqn)
+					stack = append(stack, frame{elem: bodyItem.Element, parentFQN: fqn})
 				}
 			}
 		}
 	}
+}
 
-	// Process all top-level elements
-	for _, item := range model.Items {
-		if item.ElementDef != nil {
-			collectIDs(item.ElementDef, "")
-		}
+// extractSuffix extracts the last part of a qualified ID.
+// Uses string slicing instead of Split for efficiency.
+func extractSuffix(id string) string {
+	lastDot := strings.LastIndex(id, ".")
+	if lastDot == -1 {
+		return id
 	}
+	return id[lastDot+1:]
 }
 
 // resolveID returns the fully qualified ID if the reference is unique/valid,
@@ -122,16 +132,10 @@ func (r *Resolver) resolveID(ref string) string {
 		return ref
 	}
 
-	// Use LastIndex for better performance than Split when we only need the last part
-	lastDot := strings.LastIndex(ref, ".")
-	var suffix string
-	if lastDot == -1 {
-		suffix = ref
-	} else {
-		suffix = ref[lastDot+1:]
-	}
-
+	// Extract suffix and look up
+	suffix := extractSuffix(ref)
 	matches := r.suffixMap[suffix]
+
 	var result string
 	if len(matches) == 1 {
 		result = matches[0]
@@ -156,66 +160,64 @@ func (r *Resolver) getParts(fqn string) []string {
 	return parts
 }
 
-// ResolveModel updates the program model in place (LikeC4 syntax).
-func (r *Resolver) ResolveModel(model *language.ModelBlock) {
+// ResolveModel updates the program model in place (Sruja syntax).
+// Uses iterative traversal to avoid closure allocation overhead.
+func (r *Resolver) ResolveModel(model *language.Model) {
 	if model == nil {
 		return
 	}
 
-	// Helper to update ref
-	updateRef := func(id *language.QualifiedIdent) {
-		if id == nil {
-			return
+	// Use explicit stack for iterative traversal
+	type frame struct {
+		elem *language.ElementDef
+	}
+	stack := make([]frame, 0, 16)
+
+	// Process top-level relations
+	for _, item := range model.Items {
+		if item.Relation != nil {
+			r.updateRef(&item.Relation.From)
+			r.updateRef(&item.Relation.To)
 		}
-		original := id.String()
-		resolved := r.resolveID(original)
-		if resolved != original && resolved != "" {
-			// Update the AST node using cached parts
-			id.Parts = r.getParts(resolved)
+		if item.ElementDef != nil {
+			stack = append(stack, frame{elem: item.ElementDef})
 		}
 	}
 
-	// Update relations in Model
-	var updateRelationsInElement func(elem *language.LikeC4ElementDef)
-	updateRelationsInElement = func(elem *language.LikeC4ElementDef) {
+	// Iterative traversal for nested elements
+	for len(stack) > 0 {
+		// Pop
+		f := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+
+		elem := f.elem
 		body := elem.GetBody()
 		if body == nil {
-			return
+			continue
 		}
 
 		for _, bodyItem := range body.Items {
 			if bodyItem.Relation != nil {
-				updateRef(&bodyItem.Relation.From)
-				updateRef(&bodyItem.Relation.To)
+				r.updateRef(&bodyItem.Relation.From)
+				r.updateRef(&bodyItem.Relation.To)
 			}
 			if bodyItem.Element != nil {
-				updateRelationsInElement(bodyItem.Element)
+				stack = append(stack, frame{elem: bodyItem.Element})
 			}
 		}
 	}
+}
 
-	// Process all items in model
-	for _, item := range model.Items {
-		if item.Relation != nil {
-			updateRef(&item.Relation.From)
-			updateRef(&item.Relation.To)
-		}
-		if item.ElementDef != nil {
-			updateRelationsInElement(item.ElementDef)
-		}
-		// Update scenarios and flows
-		if item.Scenario != nil {
-			for _, step := range item.Scenario.Steps {
-				updateRef(&step.From)
-				updateRef(&step.To)
-			}
-		}
-		if item.Flow != nil {
-			for _, step := range item.Flow.Steps {
-				updateRef(&step.From)
-				updateRef(&step.To)
-			}
-		}
+// updateRef updates a QualifiedIdent to use the resolved fully qualified name.
+func (r *Resolver) updateRef(id *language.QualifiedIdent) {
+	if id == nil {
+		return
+	}
+	original := id.String()
+	resolved := r.resolveID(original)
+	if resolved != original && resolved != "" {
+		// Update the AST node using cached parts
+		id.Parts = r.getParts(resolved)
 	}
 }
 

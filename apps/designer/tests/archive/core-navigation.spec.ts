@@ -7,7 +7,7 @@ test.describe("Core Navigation", () => {
     const dropZone = page.locator(".drop-zone");
     if (await dropZone.isVisible().catch(() => false)) {
       await page.locator("button.demo-btn").click();
-      await page.waitForSelector(".likec4-canvas", { timeout: 30000 });
+      await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
   });
 
@@ -15,7 +15,7 @@ test.describe("Core Navigation", () => {
     await page.locator('button.view-tab:has-text("Builder")').click();
     await expect(page.locator(".builder-wizard")).toBeVisible();
     await page.locator('button.view-tab:has-text("Diagram")').click();
-    await expect(page.locator(".likec4-canvas")).toBeVisible();
+    await expect(page.locator(".react-flow")).toBeVisible();
     await page.locator('button.view-tab:has-text("Details")').click();
     await expect(page.locator(".details-view")).toBeVisible();
     await page.locator('button.view-tab:has-text("Code")').click();

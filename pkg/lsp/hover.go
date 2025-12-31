@@ -101,14 +101,14 @@ func wordBounds(line string, pos int) (int, int) {
 }
 
 //nolint:gocyclo // Recursive search is complex
-func findElementInModel(model *language.ModelBlock, id string) (string, string) {
+func findElementInModel(model *language.Model, id string) (string, string) {
 	if model == nil {
 		return "", ""
 	}
 
-	// Search for element in LikeC4 Model
-	var findElement func(elem *language.LikeC4ElementDef, currentFQN string) (string, string)
-	findElement = func(elem *language.LikeC4ElementDef, currentFQN string) (string, string) {
+	// Search for element in Sruja Model
+	var findElement func(elem *language.ElementDef, currentFQN string) (string, string)
+	findElement = func(elem *language.ElementDef, currentFQN string) (string, string) {
 		if elem == nil {
 			return "", ""
 		}
@@ -131,8 +131,23 @@ func findElementInModel(model *language.ModelBlock, id string) (string, string) 
 			if titlePtr != nil {
 				title = *titlePtr
 			}
-			if kind == "database" || kind == "datastore" {
+			if kind == "database" || kind == "Database" || kind == "datastore" || kind == "DataStore" || kind == "Queue" || kind == "queue" {
+				if kind == "queue" || kind == "Queue" {
+					return "Queue", title
+				}
 				return "DataStore", title
+			}
+			switch kind {
+			case "adr", "Adr", "ADR":
+				return "ADR", title
+			case "requirement", "Requirement":
+				return "Requirement", title
+			case "policy", "Policy":
+				return "Policy", title
+			case "scenario", "Scenario":
+				return "Scenario", title
+			case "flow", "Flow":
+				return "Flow", title
 			}
 			return cases.Title(lang.Und).String(kind), title
 		}
@@ -158,35 +173,28 @@ func findElementInModel(model *language.ModelBlock, id string) (string, string) 
 			if kind, label := findElement(item.ElementDef, ""); kind != "" {
 				return kind, label
 			}
-		}
-		// Also check scenarios, flows, ADRs, etc.
-		if item.Scenario != nil && item.Scenario.ID == id {
-			title := item.Scenario.ID
-			if item.Scenario.Title != nil {
-				title = *item.Scenario.Title
+			// Also check governance elements (scenarios, flows, ADRs, etc.)
+			if item.ElementDef.Assignment != nil {
+				a := item.ElementDef.Assignment
+				if a.Name == id {
+					title := a.Name
+					if a.Title != nil {
+						title = *a.Title
+					}
+					switch a.Kind {
+					case "scenario", "Scenario", "story", "Story":
+						return "Scenario", title
+					case "flow", "Flow":
+						return "Flow", title
+					case "adr", "Adr", "ADR":
+						return "ADR", title
+					case "requirement", "Requirement":
+						return "Requirement", title
+					case "policy", "Policy":
+						return "Policy", title
+					}
+				}
 			}
-			return "Scenario", title
-		}
-		if item.Flow != nil && item.Flow.ID == id {
-			title := item.Flow.ID
-			if item.Flow.Title != nil {
-				title = *item.Flow.Title
-			}
-			return "Flow", title
-		}
-		if item.ADR != nil && item.ADR.ID == id {
-			title := item.ADR.ID
-			if item.ADR.Title != nil {
-				title = *item.ADR.Title
-			}
-			return "ADR", title
-		}
-		if item.Requirement != nil && item.Requirement.ID == id {
-			desc := item.Requirement.ID
-			if item.Requirement.Description != nil {
-				desc = *item.Requirement.Description
-			}
-			return "Requirement", desc
 		}
 	}
 
@@ -200,14 +208,14 @@ type resolvedRel struct {
 }
 
 //nolint:gocyclo // Relation lookup is complex
-func findRelationInfoInModel(model *language.ModelBlock, from string, to string) (string, string) {
+func findRelationInfoInModel(model *language.Model, from string, to string) (string, string) {
 	if model == nil {
 		return "", ""
 	}
 
 	var relations []resolvedRel
-	var collectRelations func(elem *language.LikeC4ElementDef, currentFQN string)
-	collectRelations = func(elem *language.LikeC4ElementDef, currentFQN string) {
+	var collectRelations func(elem *language.ElementDef, currentFQN string)
+	collectRelations = func(elem *language.ElementDef, currentFQN string) {
 		elemID := elem.GetID()
 		fqn := elemID
 		if currentFQN != "" {

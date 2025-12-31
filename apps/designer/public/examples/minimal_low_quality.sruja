@@ -1,11 +1,11 @@
-specification {
-  element component
-  element database
-  element queue
+
+component = kind "Component"
+database = kind "Database"
+queue = kind "Queue"
+
+
+
+sys = system "Legacy System" {
+  api = container "API"
 }
 
-model {
-  sys = system "Legacy System" {
-    api = container "API"
-  }
-}

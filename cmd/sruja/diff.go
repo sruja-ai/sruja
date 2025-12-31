@@ -97,11 +97,11 @@ func computeDiff(program1, program2 *language.Program, _, _ string) *Diff {
 		return diff
 	}
 
-	// Collect systems from LikeC4 Model
-	collectSystems := func(model *language.ModelBlock) map[string]map[string]interface{} {
+	// Collect systems from Model
+	collectSystems := func(model *language.Model) map[string]map[string]interface{} {
 		systems := make(map[string]map[string]interface{})
-		var collectFromElement func(elem *language.LikeC4ElementDef, parentFQN string)
-		collectFromElement = func(elem *language.LikeC4ElementDef, parentFQN string) {
+		var collectFromElement func(elem *language.ElementDef, parentFQN string)
+		collectFromElement = func(elem *language.ElementDef, parentFQN string) {
 			if elem == nil {
 				return
 			}

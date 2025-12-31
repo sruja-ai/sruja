@@ -52,6 +52,26 @@ export default defineConfig({
           return null;
         },
       },
+      {
+        name: "suppress-glob-loader-warnings",
+        enforce: "pre",
+        buildStart() {
+          // Intercept console.warn to suppress duplicate ID warnings from glob-loader
+          // These are false positives from Astro's dev server hot reload
+          const originalWarn = console.warn;
+          const suppressedPattern = /\[glob-loader\].*Duplicate id/;
+
+          console.warn = (...args) => {
+            const message = args[0]?.toString() || "";
+            // Suppress only the specific glob-loader duplicate ID warnings
+            if (suppressedPattern.test(message)) {
+              return; // Suppress this warning
+            }
+            // Allow all other warnings through
+            originalWarn.apply(console, args);
+          };
+        },
+      },
     ],
     server: {
       cors: true,
@@ -85,7 +105,7 @@ export default defineConfig({
         "mermaid",
         "lz-string",
       ],
-      exclude: ["@sruja/shared", "@sruja/ui", "@sruja/designer", "@likec4/core", "@likec4/diagram"],
+      exclude: ["@sruja/shared", "@sruja/ui", "@sruja/designer"],
     },
     ssr: {
       // Static site - no SSR, but Vite still uses this config during build

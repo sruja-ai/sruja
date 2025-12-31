@@ -9,16 +9,17 @@ import (
 
 func TestDocumentSymbols_CollectsHierarchy(t *testing.T) {
 	uri := lsp.DocumentURI("file://test.sruja")
-	text := "model {\n" +
-		"  system S {\n" +
-		"    container C {\n" +
-		"      component X\n" +
+	text := "System=kind \"System\" Container=kind \"Container\" Component=kind \"Component\" Database=kind \"Database\" Queue=kind \"Queue\" Person=kind \"Person\"\n" +
+		"\n" +
+		"  S = System \"S\" {\n" +
+		"    C = Container \"C\" {\n" +
+		"      X = Component \"X\"\n" +
 		"    }\n" +
-		"    database D\n" +
-		"    queue Q\n" +
+		"    D = Database \"D\"\n" +
+		"    Q = Queue \"Q\"\n" +
 		"  }\n" +
-		"  person P \"Person\"\n" +
-		"}\n"
+		"  P = Person \"Person\"\n" +
+		"\n"
 	srv := NewServer()
 	_ = srv.DidOpen(context.Background(), lsp.DidOpenTextDocumentParams{TextDocument: lsp.TextDocumentItem{URI: uri, Text: text, Version: 1}})
 	syms, err := srv.DocumentSymbols(context.Background(), lsp.DocumentSymbolParams{TextDocument: lsp.TextDocumentIdentifier{URI: uri}})
@@ -44,14 +45,14 @@ func TestDocumentSymbols_CollectsHierarchy(t *testing.T) {
 	}
 }
 func TestFindIDRange(t *testing.T) {
-	doc := NewDocument("file://test.sruja", "  system MySystem \"Label\"", 1)
+	doc := NewDocument("file://test.sruja", "  MySystem = System \"Label\"", 1)
 	id := "MySystem"
 	r := findIDRange(doc, id)
-	if r.Start.Character != 9 {
-		t.Errorf("expected start character 9, got %d", r.Start.Character)
+	if r.Start.Character != 2 {
+		t.Errorf("expected start character 2, got %d", r.Start.Character)
 	}
-	if r.End.Character != 17 {
-		t.Errorf("expected end character 17, got %d", r.End.Character)
+	if r.End.Character != 10 {
+		t.Errorf("expected end character 10, got %d", r.End.Character)
 	}
 
 	// Test case where ID is not in line
@@ -62,9 +63,9 @@ func TestFindIDRange(t *testing.T) {
 }
 
 func TestFindNameRange(t *testing.T) {
-	doc := NewDocument("file://test.sruja", "  system MySystem \"Label\"", 1)
+	doc := NewDocument("file://test.sruja", "  MySystem = System \"Label\"", 1)
 	r := findNameRange(doc, "Label")
-	if r.Start.Line != 0 || r.Start.Character != 19 {
+	if r.Start.Line != 0 || r.Start.Character != 21 {
 		t.Errorf("expected range for Label, got %+v", r)
 	}
 

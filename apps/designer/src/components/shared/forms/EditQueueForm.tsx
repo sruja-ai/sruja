@@ -27,9 +27,15 @@ interface FormValues {
   selectedSystemId: string;
 }
 
-export function EditQueueForm({ isOpen, onClose, queue, parentSystemId, initialName }: EditQueueFormProps) {
+export function EditQueueForm({
+  isOpen,
+  onClose,
+  queue,
+  parentSystemId,
+  initialName,
+}: EditQueueFormProps) {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
-  const data = useArchitectureStore((s) => s.likec4Model);
+  const data = useArchitectureStore((s) => s.model);
   const formRef = useRef<HTMLFormElement>(null);
 
   const allElements = useMemo(() => Object.values(data?.elements || {}) as any[], [data?.elements]);
@@ -39,11 +45,17 @@ export function EditQueueForm({ isOpen, onClose, queue, parentSystemId, initialN
   const form = useFormState<FormValues>({
     initialValues: {
       name: (queue as any)?.title || initialName || "",
-      description: typeof (queue as any)?.description === 'string' ? (queue as any).description : ((queue as any)?.description?.txt || ""),
+      description:
+        typeof (queue as any)?.description === "string"
+          ? (queue as any).description
+          : (queue as any)?.description?.txt || "",
       technology: (queue as any)?.technology || "",
       customId: false,
       idInput: (queue as any)?.id || "",
-      selectedSystemId: parentSystemId || ((queue as any)?.id?.includes(".") ? (queue as any).id.split(".")[0] : "") || "",
+      selectedSystemId:
+        parentSystemId ||
+        ((queue as any)?.id?.includes(".") ? (queue as any).id.split(".")[0] : "") ||
+        "",
     },
     validate: (values) => {
       const errors: FormErrors = {};
@@ -67,7 +79,7 @@ export function EditQueueForm({ isOpen, onClose, queue, parentSystemId, initialN
         let targetId = (queue as any)?.id;
 
         if (!queue) {
-          const baseId = values.customId ? values.idInput : (slugify(values.name) || "queue");
+          const baseId = values.customId ? values.idInput : slugify(values.name) || "queue";
           targetId = `${values.selectedSystemId}.${baseId}`;
           // Ensure unique?
           let i = 1;
@@ -86,7 +98,7 @@ export function EditQueueForm({ isOpen, onClose, queue, parentSystemId, initialN
           description: (values.description || undefined) as any,
           technology: values.technology || undefined,
           tags: (queue as any)?.tags,
-          links: (queue as any)?.links
+          links: (queue as any)?.links,
         };
 
         return { ...model, elements: newElements };
@@ -100,11 +112,17 @@ export function EditQueueForm({ isOpen, onClose, queue, parentSystemId, initialN
     if (isOpen) {
       form.setValues({
         name: (queue as any)?.title || initialName || "",
-        description: typeof (queue as any)?.description === "string" ? (queue as any).description : ((queue as any)?.description?.txt || ""),
+        description:
+          typeof (queue as any)?.description === "string"
+            ? (queue as any).description
+            : (queue as any)?.description?.txt || "",
         technology: (queue as any)?.technology || "",
         idInput: (queue as any)?.id || "",
         customId: false,
-        selectedSystemId: parentSystemId || ((queue as any)?.id?.includes(".") ? (queue as any).id.split(".")[0] : "") || "",
+        selectedSystemId:
+          parentSystemId ||
+          ((queue as any)?.id?.includes(".") ? (queue as any).id.split(".")[0] : "") ||
+          "",
       });
       form.clearErrors();
     }
@@ -118,8 +136,15 @@ export function EditQueueForm({ isOpen, onClose, queue, parentSystemId, initialN
       size="lg"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} type="button">Cancel</Button>
-          <Button variant="primary" type="submit" form="edit-queue-form" isLoading={form.isSubmitting}>
+          <Button variant="secondary" onClick={onClose} type="button">
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            type="submit"
+            form="edit-queue-form"
+            isLoading={form.isSubmitting}
+          >
             {queue ? "Update" : "Create"}
           </Button>
         </>
@@ -134,7 +159,7 @@ export function EditQueueForm({ isOpen, onClose, queue, parentSystemId, initialN
             disabled={!!parentSystemId}
             placeholder="Select System"
             error={form.errors.selectedSystemId}
-            data={systems.map(s => ({ value: s.id, label: s.title || s.id }))}
+            data={systems.map((s) => ({ value: s.id, label: s.title || s.id }))}
           />
         )}
 
@@ -185,7 +210,9 @@ export function EditQueueForm({ isOpen, onClose, queue, parentSystemId, initialN
           </>
         )}
 
-        {form.errors.submit && <div className="text-red-500 text-sm mt-2">{form.errors.submit}</div>}
+        {form.errors.submit && (
+          <div className="text-red-500 text-sm mt-2">{form.errors.submit}</div>
+        )}
       </form>
     </SidePanel>
   );

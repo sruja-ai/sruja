@@ -29,18 +29,21 @@ func (r *SLOEnforcementRule) Validate(program *language.Program) []diagnostics.D
 	// Check if there are SLA-related requirements in the model
 	hasSLA := false
 	for _, item := range program.Model.Items {
-		if item.Requirement != nil {
-			if item.Requirement.Type != nil {
-				reqType := strings.ToLower(*item.Requirement.Type)
-				if reqType == "performance" || reqType == "nonfunctional" {
-					if item.Requirement.Description != nil {
-						desc := strings.ToLower(*item.Requirement.Description)
-						if strings.Contains(desc, "sla") ||
-							strings.Contains(desc, "availability") ||
-							strings.Contains(desc, "uptime") ||
-							strings.Contains(desc, "latency") {
-							hasSLA = true
-							break
+		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
+			a := item.ElementDef.Assignment
+			if a.Kind == "requirement" {
+				if a.SubKind != nil {
+					reqType := strings.ToLower(*a.SubKind)
+					if reqType == "performance" || reqType == "nonfunctional" {
+						if a.Title != nil {
+							desc := strings.ToLower(*a.Title)
+							if strings.Contains(desc, "sla") ||
+								strings.Contains(desc, "availability") ||
+								strings.Contains(desc, "uptime") ||
+								strings.Contains(desc, "latency") {
+								hasSLA = true
+								break
+							}
 						}
 					}
 				}
@@ -48,9 +51,9 @@ func (r *SLOEnforcementRule) Validate(program *language.Program) []diagnostics.D
 		}
 	}
 
-	// SLO enforcement for LikeC4 elements would need to check metadata
-	// For now, return empty - SLO blocks are not yet supported in LikeC4 syntax
-	// TODO: Add SLO support to LikeC4 Model block if needed
+	// SLO enforcement for Sruja model elements would need to check metadata
+	// For now, return empty - SLO blocks are not yet supported in Sruja syntax
+	// TODO: Add SLO support to Model block if needed
 
 	_ = hasSLA // Suppress unused variable warning
 

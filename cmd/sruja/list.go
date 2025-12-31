@@ -90,11 +90,11 @@ func runList(args []string, stdout, stderr io.Writer) int {
 }
 
 //nolint:unparam
-func listElementTypeFromModel(model *language.ModelBlock, elementType string, jsonOutput bool, stdout, _ io.Writer) error {
+func listElementTypeFromModel(model *language.Model, elementType string, jsonOutput bool, stdout, _ io.Writer) error {
 	// Extract elements from Model block
 	var elements []map[string]string
-	var collectElements func(elem *language.LikeC4ElementDef, parentID string)
-	collectElements = func(elem *language.LikeC4ElementDef, parentID string) {
+	var collectElements func(elem *language.ElementDef, parentID string)
+	collectElements = func(elem *language.ElementDef, parentID string) {
 		if elem == nil {
 			return
 		}
@@ -138,28 +138,32 @@ func listElementTypeFromModel(model *language.ModelBlock, elementType string, js
 	for _, item := range model.Items {
 		if item.ElementDef != nil {
 			collectElements(item.ElementDef, "")
-		}
-		if elementType == "scenario" && item.Scenario != nil {
-			title := ""
-			if item.Scenario.Title != nil {
-				title = *item.Scenario.Title
+			// Also check for governance elements parsed via ElementDef
+			if item.ElementDef.Assignment != nil {
+				a := item.ElementDef.Assignment
+				if elementType == "scenario" && (a.Kind == "scenario" || a.Kind == "story") {
+					title := ""
+					if a.Title != nil {
+						title = *a.Title
+					}
+					elements = append(elements, map[string]string{
+						"id":    a.Name,
+						"label": title,
+						"kind":  "scenario",
+					})
+				}
+				if elementType == "adr" && a.Kind == "adr" {
+					title := ""
+					if a.Title != nil {
+						title = *a.Title
+					}
+					elements = append(elements, map[string]string{
+						"id":    a.Name,
+						"label": title,
+						"kind":  "adr",
+					})
+				}
 			}
-			elements = append(elements, map[string]string{
-				"id":    item.Scenario.ID,
-				"label": title,
-				"kind":  "scenario",
-			})
-		}
-		if elementType == "adr" && item.ADR != nil {
-			title := ""
-			if item.ADR.Title != nil {
-				title = *item.ADR.Title
-			}
-			elements = append(elements, map[string]string{
-				"id":    item.ADR.ID,
-				"label": title,
-				"kind":  "adr",
-			})
 		}
 	}
 
@@ -190,4 +194,4 @@ func listElementTypeFromModel(model *language.ModelBlock, elementType string, js
 }
 
 // Legacy list functions removed - Architecture struct removed (old syntax no longer supported)
-// Use listElementTypeFromModel instead which works with LikeC4 ModelBlock
+// Use listElementTypeFromModel instead which works with ModelBlock

@@ -160,16 +160,19 @@ func TestTokenOptimizer_TruncateDescription(t *testing.T) {
 }
 
 func TestPrioritizeElements(t *testing.T) {
-	dsl := `model {
-		system Sys1 "System 1" {
-			container Cont1 "Container 1" {
-				component Comp1 "Component 1"
+	dsl := `
+		System = kind "System"
+		Container = kind "Container"
+		Component = kind "Component"
+		Sys1 = System "System 1" {
+			Cont1 = Container "Container 1" {
+				Comp1 = Component "Component 1"
 			}
 		}
-		system Sys2 "System 2" {
-			container Cont2 "Container 2"
+		Sys2 = System "System 2" {
+			Cont2 = Container "Container 2"
 		}
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 	systems, containers, components := PrioritizeElements(program)
@@ -193,14 +196,15 @@ func TestPrioritizeElements(t *testing.T) {
 }
 
 func TestFilterByScope_Full(t *testing.T) {
-	dsl := `model {
-		system OrderService "Order Service" {
+	dsl := `
+		System = kind "System"
+		OrderService = System "Order Service" {
 			description "Handles orders"
 		}
-		system PaymentService "Payment Service" {
+		PaymentService = System "Payment Service" {
 			description "Handles payments"
 		}
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 	filtered := FilterByScope(program, "full", "")
@@ -216,17 +220,19 @@ func TestFilterByScope_Full(t *testing.T) {
 }
 
 func TestFilterByScope_System(t *testing.T) {
-	dsl := `model {
-		system OrderService "Order Service" {
+	dsl := `
+		System = kind "System"
+		Container = kind "Container"
+		OrderService = System "Order Service" {
 			description "Handles orders"
-			container API "API" {
+			API = Container "API" {
 				technology "Go"
 			}
 		}
-		system PaymentService "Payment Service" {
+		PaymentService = System "Payment Service" {
 			description "Handles payments"
 		}
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 	filtered := FilterByScope(program, "system", "OrderService")
@@ -246,11 +252,12 @@ func TestFilterByScope_System(t *testing.T) {
 }
 
 func TestFilterByScope_NotFound(t *testing.T) {
-	dsl := `model {
-		system OrderService "Order Service" {
+	dsl := `
+		System = kind "System"
+		OrderService = System "Order Service" {
 			description "Handles orders"
 		}
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 	filtered := FilterByScope(program, "system", "NonExistent")
@@ -266,8 +273,7 @@ func TestFilterByScope_NotFound(t *testing.T) {
 }
 
 func TestFilterByScope_EmptyProgram(t *testing.T) {
-	dsl := `model {
-	}`
+	dsl := ``
 
 	program := parseDSL(t, dsl)
 	filtered := FilterByScope(program, "system", "OrderService")

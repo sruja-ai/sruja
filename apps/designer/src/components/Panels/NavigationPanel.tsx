@@ -14,7 +14,7 @@ interface NavigationPanelProps {
 }
 
 export function NavigationPanel({ onClose }: NavigationPanelProps) {
-  const likec4Model = useArchitectureStore((s) => s.likec4Model) as SrujaModelDump | null;
+  const model = useArchitectureStore((s) => s.model) as SrujaModelDump | null;
   const currentLevel = useViewStore((s) => s.currentLevel);
   const focusedSystemId = useViewStore((s) => s.focusedSystemId);
   const focusedContainerId = useViewStore((s) => s.focusedContainerId);
@@ -26,7 +26,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   const [filterQuery, setFilterQuery] = useState("");
 
   const { filteredPersons, filteredSystems, getChildren } = useNavigationData({
-    likec4Model,
+    model,
     filterQuery,
   });
 
@@ -99,7 +99,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
           <h3 className="nav-title">Navigation</h3>
         </div>
       )}
-      {!likec4Model && !isCollapsed && (
+      {!model && !isCollapsed && (
         <div className="panel-empty">Load an architecture to see navigation</div>
       )}
       {!isCollapsed && (

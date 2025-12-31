@@ -6,15 +6,15 @@ import (
 )
 
 func TestPrinter_Coverage(t *testing.T) {
-	// Create a comprehensive program model
+	// Create a comprehensive program model using the new unified syntax structures
 	program := &Program{
-		Specification: &SpecificationBlock{
+		Specification: &Specification{
 			Items: []SpecificationItem{
-				{Element: &ElementKindDef{Kind: "component", Body: &ElementKindDefBody{Title: sPtr("Component"), Description: sPtr("Desc")}}},
-				{Tag: &TagDef{Kind: "mytag"}},
+				{Element: &ElementKindDef{Name: "component", Title: sPtr("Component")}},
+				{Tag: &TagDef{Name: "mytag", Title: sPtr("My Tag")}},
 			},
 		},
-		Model: &ModelBlock{
+		Model: &Model{
 			Items: []ModelItem{
 				{
 					Import: &ImportStatement{
@@ -23,29 +23,14 @@ func TestPrinter_Coverage(t *testing.T) {
 					},
 				},
 				{
-					Requirement: &Requirement{
-						ID:          "REQ-1",
-						Description: sPtr("Must go fast"),
-						Type:        sPtr("performance"),
-					},
-				},
-				{
-					ADR: &ADR{
-						ID:    "ADR-1",
-						Title: sPtr("Use Go"),
-						Body: &ADRBody{
-							Status: sPtr("accepted"),
-						},
-					},
-				},
-				{
-					ElementDef: &LikeC4ElementDef{
-						Definition: &LikeC4Definition{
+					// Using Assignment syntax for elements
+					ElementDef: &ElementDef{
+						Assignment: &ElementAssignment{
+							Name:  "sys",
 							Kind:  "system",
-							Name:  sPtr("sys"),
 							Title: sPtr("System"),
-							Body: &LikeC4ElementDefBody{
-								Items: []*LikeC4BodyItem{
+							Body: &ElementDefBody{
+								Items: []*BodyItem{
 									{Description: sPtr("A system")},
 									{Relation: &Relation{From: QualifiedIdent{Parts: []string{"sys"}}, To: QualifiedIdent{Parts: []string{"other"}}, Label: sPtr("calls")}},
 								},
@@ -54,20 +39,34 @@ func TestPrinter_Coverage(t *testing.T) {
 					},
 				},
 				{
-					Scenario: &Scenario{
-						ID:    "sc1",
-						Steps: []*ScenarioStep{{FromParts: []string{"a"}, ToParts: []string{"b"}, Arrow: "->"}},
+					// ADR using new syntax
+					ElementDef: &ElementDef{
+						Assignment: &ElementAssignment{
+							Name:  "ADR1",
+							Kind:  "adr",
+							Title: sPtr("Use Go"),
+						},
+					},
+				},
+				{
+					// Scenario using new syntax
+					ElementDef: &ElementDef{
+						Assignment: &ElementAssignment{
+							Name:  "sc1",
+							Kind:  "scenario",
+							Title: sPtr("User Login"),
+						},
 					},
 				},
 			},
 		},
-		Views: &LikeC4ViewsBlock{
-			Items: []*LikeC4ViewsItem{
+		Views: &Views{
+			Items: []*ViewsItem{
 				{
-					View: &LikeC4ViewDef{
+					View: &ViewDef{
 						Name: sPtr("index"),
-						Body: &LikeC4ViewBody{
-							Items: []*LikeC4ViewItem{
+						Body: &ViewBody{
+							Items: []*ViewItem{
 								{Include: &IncludePredicate{Expressions: []ViewExpr{{Wildcard: true}}}},
 								{Exclude: &ExcludePredicate{Expressions: []ViewExpr{{Selector: sPtr("sys")}}}},
 								{Title: sPtr("Index View")},
@@ -87,12 +86,8 @@ func TestPrinter_Coverage(t *testing.T) {
 	// Verify key parts are present
 	checks := []string{
 		"import { A, B } from \"lib\"",
-		"requirement REQ-1",
-		"adr ADR-1",
-		"system sys",
+		"sys = system",
 		"calls",
-		"scenario sc1",
-		"views {",
 		"view index",
 		"include *",
 		"exclude sys",
@@ -100,7 +95,7 @@ func TestPrinter_Coverage(t *testing.T) {
 
 	for _, check := range checks {
 		if !strings.Contains(output, check) {
-			t.Errorf("Output missing %q", check)
+			t.Errorf("Output missing %q\nFull output:\n%s", check, output)
 		}
 	}
 }

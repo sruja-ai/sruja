@@ -57,7 +57,7 @@ func runImport(args []string, stdout, stderr io.Writer) int {
 			return 0
 		}
 
-		// Fallback to LikeC4-compatible SrujaModelDump
+		// Fallback to SrujaModelDump format
 		var dump jsonexport.SrujaModelDump
 		if err := json.Unmarshal(content, &dump); err == nil && len(dump.Elements) > 0 {
 			for _, elem := range dump.Elements {

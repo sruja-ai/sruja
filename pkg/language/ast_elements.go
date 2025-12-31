@@ -34,7 +34,6 @@ type System struct {
 	Components  []*Component
 	Relations   []*Relation
 	Metadata    []*MetaEntry // Metadata from metadata blocks
-	Contracts   []*Contract
 	Constraints []*ConstraintEntry
 	Conventions []*ConventionEntry
 	Properties  map[string]string
@@ -54,7 +53,6 @@ type SystemItem struct {
 	Queue            *Queue            `parser:"| @@"`
 	Person           *Person           `parser:"| @@"`
 	Metadata         *MetadataBlock    `parser:"| @@"`
-	ContractsBlock   *ContractsBlock   `parser:"| 'contracts' '{' @@ '}'"`
 	ConstraintsBlock *ConstraintsBlock `parser:"| 'constraints' '{' @@ '}'"`
 	ConventionsBlock *ConventionsBlock `parser:"| 'conventions' '{' @@ '}'"`
 	Properties       *PropertiesBlock  `parser:"| @@"`
@@ -97,7 +95,6 @@ type Container struct {
 	Queues      []*Queue
 	Relations   []*Relation
 	Metadata    []*MetaEntry // Metadata from metadata blocks
-	Contracts   []*Contract
 	Constraints []*ConstraintEntry
 	Conventions []*ConventionEntry
 	Version     *string
@@ -120,7 +117,6 @@ type ContainerItem struct {
 	DataStore        *DataStore        `parser:"| @@"`
 	Queue            *Queue            `parser:"| @@"`
 	Metadata         *MetadataBlock    `parser:"| @@"`
-	ContractsBlock   *ContractsBlock   `parser:"| 'contracts' '{' @@ '}'"`
 	ConstraintsBlock *ConstraintsBlock `parser:"| 'constraints' '{' @@ '}'"`
 	ConventionsBlock *ConventionsBlock `parser:"| 'conventions' '{' @@ '}'"`
 	Properties       *PropertiesBlock  `parser:"| @@"`
@@ -173,7 +169,6 @@ type ComponentItem struct {
 	Technology       *string           `parser:"( 'technology' | 'tech' ) @String |"`
 	Metadata         *MetadataBlock    `parser:"@@ |"`
 	Behavior         *BehaviorBlock    `parser:"'behavior' '{' @@* '}' |"`
-	ContractsBlock   *ContractsBlock   `parser:"'contracts' '{' @@ '}' |"`
 	ConstraintsBlock *ConstraintsBlock `parser:"'constraints' '{' @@ '}' |"`
 	ConventionsBlock *ConventionsBlock `parser:"'conventions' '{' @@ '}' |"`
 	DependsOn        *string           `parser:"'depends_on' @Ident |"`

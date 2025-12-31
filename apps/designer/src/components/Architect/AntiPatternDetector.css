@@ -1,0 +1,152 @@
+/* apps/designer/src/components/Architect/AntiPatternDetector.css */
+.anti-pattern-detector {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-background, #ffffff);
+}
+
+.anti-pattern-detector-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-surface, #f1f5f9);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.anti-pattern-detector-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary, #1e293b);
+  margin: 0;
+}
+
+.anti-pattern-detector-stats {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.stat-critical {
+  color: #ef4444;
+}
+
+.stat-warning {
+  color: #f59e0b;
+}
+
+.anti-pattern-detector-clean {
+  padding: 32px;
+  text-align: center;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.clean-icon {
+  color: #22c55e;
+  margin-bottom: 12px;
+}
+
+.anti-pattern-detector-clean-subtitle {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.anti-pattern-detector-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.anti-pattern-item {
+  padding: 16px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  background: var(--color-background, #ffffff);
+}
+
+.anti-pattern-item.anti-pattern-critical {
+  border-left: 3px solid #ef4444;
+}
+
+.anti-pattern-item.anti-pattern-warning {
+  border-left: 3px solid #f59e0b;
+}
+
+.anti-pattern-item.anti-pattern-info {
+  border-left: 3px solid #3b82f6;
+}
+
+.anti-pattern-item-header {
+  display: flex;
+  gap: 12px;
+}
+
+.anti-pattern-item-icon {
+  flex-shrink: 0;
+  color: var(--color-text-secondary, #6b7280);
+  margin-top: 2px;
+}
+
+.anti-pattern-item-content {
+  flex: 1;
+}
+
+.anti-pattern-item-type {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary, #1e293b);
+  text-transform: capitalize;
+  margin-bottom: 6px;
+}
+
+.anti-pattern-item-description {
+  font-size: 12px;
+  color: var(--color-text-primary, #1e293b);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.anti-pattern-item-suggestion {
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.anti-pattern-item-elements {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+/* Dark mode support */
+[data-theme="dark"] .anti-pattern-detector {
+  background: var(--color-background, #0f172a);
+}
+
+[data-theme="dark"] .anti-pattern-detector-header {
+  background: var(--color-surface, #1e293b);
+  border-color: var(--color-border, #334155);
+}
+
+[data-theme="dark"] .anti-pattern-item {
+  background: var(--color-background, #0f172a);
+  border-color: var(--color-border, #334155);
+}

@@ -26,9 +26,9 @@ func TestValidReferenceRule_NilRelation(_ *testing.T) {
 		return
 	}
 
-	dsl := `model {
+	dsl := `
 		Sys = system "System"
-	}`
+	`
 
 	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {
@@ -42,10 +42,10 @@ func TestValidReferenceRule_NilRelation(_ *testing.T) {
 }
 
 func TestValidReferenceRule_UndefinedFrom(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System"
 		Undefined -> Sys "Uses"
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.ValidReferenceRule{}
@@ -66,10 +66,10 @@ func TestValidReferenceRule_UndefinedFrom(t *testing.T) {
 }
 
 func TestValidReferenceRule_UndefinedTo(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System"
 		Sys -> Undefined "Uses"
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.ValidReferenceRule{}
@@ -90,12 +90,12 @@ func TestValidReferenceRule_UndefinedTo(t *testing.T) {
 }
 
 func TestValidReferenceRule_SystemLevelRelations(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Cont = container "Container"
 			Sys -> Cont "Uses"
 		}
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.ValidReferenceRule{}
@@ -106,14 +106,14 @@ func TestValidReferenceRule_SystemLevelRelations(t *testing.T) {
 }
 
 func TestValidReferenceRule_ContainerLevelRelations(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Cont = container "Container" {
 				Comp = component "Component"
 				Cont -> Comp "Uses"
 			}
 		}
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.ValidReferenceRule{}
@@ -124,7 +124,7 @@ func TestValidReferenceRule_ContainerLevelRelations(t *testing.T) {
 }
 
 func TestValidReferenceRule_ComponentLevelRelations(t *testing.T) {
-	dsl := `model {
+	dsl := `
 		Sys = system "System" {
 			Cont = container "Container" {
 				Comp1 = component "Component 1"
@@ -132,7 +132,7 @@ func TestValidReferenceRule_ComponentLevelRelations(t *testing.T) {
 				Comp1 -> Comp2 "Uses"
 			}
 		}
-	}`
+	`
 	program := parse(t, dsl)
 
 	rule := &engine.ValidReferenceRule{}

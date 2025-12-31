@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useClipboardOperations } from "../useClipboardOperations";
 import type { SrujaModelDump } from "@sruja/shared";
-import type { ArchitectureCanvasRef } from "../../components/Canvas/LikeC4Canvas";
+import type { ArchitectureCanvasRef } from "../../components/Canvas/types";
 
 // Mock dependencies
 const mockCopyNode = vi.fn();
@@ -35,10 +35,15 @@ vi.mock("../../stores/architectureStore", () => ({
       },
       relations: [],
       views: {},
-      _metadata: { name: "Test", version: "1.0", generated: new Date().toISOString(), srujaVersion: "0.0.1" },
+      _metadata: {
+        name: "Test",
+        version: "1.0",
+        generated: new Date().toISOString(),
+        srujaVersion: "0.0.1",
+      },
     };
     return selector({
-      likec4Model: mockData,
+      model: mockData,
       updateArchitecture: mockUpdateArchitecture,
     });
   }),
@@ -108,7 +113,11 @@ describe("useClipboardOperations", () => {
 
     result.current.handleCopy();
 
-    expect(mockCopyNode).toHaveBeenCalledWith("system", expect.objectContaining({ id: "System1" }), undefined);
+    expect(mockCopyNode).toHaveBeenCalledWith(
+      "system",
+      expect.objectContaining({ id: "System1" }),
+      undefined
+    );
     expect(mockShowToast).toHaveBeenCalledWith("Copied to clipboard", "success");
   });
 

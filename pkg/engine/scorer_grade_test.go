@@ -13,13 +13,11 @@ func TestScorer_MissingDescriptions_GradeB(t *testing.T) {
 	}
 
 	// Build architecture with multiple missing descriptions to trigger deductions
-	dsl := `model {
-		S = system "System" {
-			C1 = container "Container"
-		}
-		C2 = container "Container"
-		X = component "Comp"
-	}`
+	dsl := `	S = system "System" {
+		C1 = container "Container"
+	}
+	C2 = container "Container"
+	X = component "Comp"`
 
 	program, _, err := parser.Parse("test.sruja", dsl)
 	if err != nil {

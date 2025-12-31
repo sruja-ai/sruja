@@ -6,25 +6,25 @@ import (
 )
 
 func TestMarkdownExport_SystemsStructure(t *testing.T) {
-	dsl := `model {
-		system OrderService "Order Service" {
+	dsl := `
+		OrderService = System "Order Service" {
 			description "Handles orders"
 			
-			container API "API Layer" {
+			API = Container "API Layer" {
 				description "REST API"
 				technology "Go"
 
-				component Handler "Handler" {
+				Handler = Component "Handler" {
 					description "Request handler"
 					technology "Gin"
 				}
 			}
 
-			container DB "Database" {
+			DB = Container "Database" {
 				technology "PostgreSQL"
 			}
 		}
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 	exporter := NewExporter(DefaultOptions())
@@ -51,15 +51,15 @@ func TestMarkdownExport_SystemsStructure(t *testing.T) {
 }
 
 func TestMarkdownExport_Relationships_Prioritization(t *testing.T) {
-	dsl := `model {
-		system A "System A"
-		system B "System B"
-		system C "System C"
+	dsl := `
+		A = System "System A"
+		B = System "System B"
+		C = System "System C"
 
 		A -> B "Calls"
 		B -> C "Forwards"
 		C -> A "Reports"
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 
@@ -80,19 +80,19 @@ func TestMarkdownExport_Relationships_Prioritization(t *testing.T) {
 }
 
 func TestMarkdownExport_Relationships_WithTokenLimit(t *testing.T) {
-	dsl := `model {
-		system A "System A" {
+	dsl := `
+		A = System "System A" {
 			description "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 		}
-		system B "System B"
-		system C "System C"
-		system D "System D"
+		B = System "System B"
+		C = System "System C"
+		D = System "System D"
 
 		A -> B "Rel1"
 		B -> C "Rel2"
 		C -> D "Rel3"
 		D -> A "Rel4"
-	}`
+	`
 
 	program := parseDSL(t, dsl)
 

@@ -35,44 +35,49 @@ export function FeatureSettingsDialog({ isOpen, onClose }: FeatureSettingsDialog
     description: string;
     complexity: "low" | "medium" | "high";
   }> = [
-      {
-        key: "policies",
-        label: "Policies",
-        description: "Architectural rules and constraints",
-        complexity: "low",
-      },
-      {
-        key: "metadata",
-        label: "Metadata",
-        description: "Key-value metadata entries",
-        complexity: "low",
-      },
-      {
-        key: "constraints",
-        label: "Constraints",
-        description: "System constraints and limitations",
-        complexity: "low",
-      },
-      {
-        key: "conventions",
-        label: "Conventions",
-        description: "Coding and naming conventions",
-        complexity: "low",
-      },
-      {
-        key: "deployment",
-        label: "Deployment",
-        description: "Deployment node configurations",
-        complexity: "medium",
-      },
-      {
-        key: "contracts",
-        label: "Contracts",
-        description: "API, event, and data contracts",
-        complexity: "high",
-      },
-      { key: "imports", label: "Imports", description: "LikeC4 cross-project imports", complexity: "medium" },
-    ];
+    {
+      key: "policies",
+      label: "Policies",
+      description: "Architectural rules and constraints",
+      complexity: "low",
+    },
+    {
+      key: "metadata",
+      label: "Metadata",
+      description: "Key-value metadata entries",
+      complexity: "low",
+    },
+    {
+      key: "constraints",
+      label: "Constraints",
+      description: "System constraints and limitations",
+      complexity: "low",
+    },
+    {
+      key: "conventions",
+      label: "Conventions",
+      description: "Coding and naming conventions",
+      complexity: "low",
+    },
+    {
+      key: "deployment",
+      label: "Deployment",
+      description: "Deployment node configurations",
+      complexity: "medium",
+    },
+    {
+      key: "contracts",
+      label: "Contracts",
+      description: "API, event, and data contracts",
+      complexity: "high",
+    },
+    {
+      key: "imports",
+      label: "Imports",
+      description: "Cross-project imports",
+      complexity: "medium",
+    },
+  ];
 
   const getComplexityColor = (complexity: string) => {
     switch (complexity) {
@@ -104,10 +109,14 @@ export function FeatureSettingsDialog({ isOpen, onClose }: FeatureSettingsDialog
         </>
       }
     >
-      <div className="feature-settings" style={{ maxHeight: "70vh", overflowY: "auto", paddingRight: "4px" }}>
+      <div
+        className="feature-settings"
+        style={{ maxHeight: "70vh", overflowY: "auto", paddingRight: "4px" }}
+      >
         <div className="feature-settings-info">
           <p className="feature-settings-description">
-            Configure optional editing features and display preferences. Mandatory features are always enabled.
+            Configure optional editing features and display preferences. Mandatory features are
+            always enabled.
           </p>
         </div>
 
@@ -182,7 +191,9 @@ export function FeatureSettingsDialog({ isOpen, onClose }: FeatureSettingsDialog
                     <span className="feature-setting-card-title">Grid Size</span>
                   </div>
                 </div>
-                <p className="feature-setting-card-description">Size of the grid squares in pixels</p>
+                <p className="feature-setting-card-description">
+                  Size of the grid squares in pixels
+                </p>
                 <div className="feature-setting-options">
                   {([8, 16, 32] as GridSize[]).map((size) => (
                     <Button
@@ -214,7 +225,8 @@ export function FeatureSettingsDialog({ isOpen, onClose }: FeatureSettingsDialog
                   <Switch checked={showMinimap} onChange={setShowMinimap} />
                 </div>
                 <p className="feature-setting-card-description">
-                  Display a minimap overview in the bottom-right corner. Click to jump to different areas of the diagram.
+                  Display a minimap overview in the bottom-right corner. Click to jump to different
+                  areas of the diagram.
                 </p>
               </div>
             </Card>

@@ -147,11 +147,11 @@ type ScaleItem struct {
 }
 
 type ScaleMin struct {
-	Val int `parser:"'min' @Int"`
+	Val int `parser:"'min' @Number"`
 }
 
 type ScaleMax struct {
-	Val int `parser:"'max' @Int"`
+	Val int `parser:"'max' @Number"`
 }
 
 type ScaleMetric struct {
@@ -237,62 +237,14 @@ type SLOThroughput struct {
 }
 
 // ============================================================================
-// Contracts, Constraints, Conventions
+// Constraints, Conventions
 // ============================================================================
 
-type ContractsBlock struct {
-	Contracts []*Contract `parser:"@@*"`
-}
-
-type Contract struct {
-	Pos  lexer.Position
-	Kind string        `parser:"@( 'api' | 'event' | 'data' )"`
-	ID   string        `parser:"@Ident"`
-	L    string        `parser:"'{'"`
-	Body *ContractBody `parser:"@@"`
-	R    string        `parser:"'}'"`
-}
-
-func (c *Contract) Location() SourceLocation {
-	return SourceLocation{File: c.Pos.Filename, Line: c.Pos.Line, Column: c.Pos.Column, Offset: c.Pos.Offset}
-}
-
-type ContractBody struct {
-	Version       *string             `parser:"( 'version' @String )?"`
-	Status        *string             `parser:"( 'status' @String )?"`
-	Endpoint      *string             `parser:"( 'endpoint' @String )?"`
-	Method        *string             `parser:"( 'method' @String )?"`
-	Request       *SchemaBlock        `parser:"( 'request' '{' @@ '}' )?"`
-	Response      *SchemaBlock        `parser:"( 'response' '{' @@ '}' )?"`
-	Errors        []string            `parser:"( 'errors' '[' @String ( ',' @String )* ']' )?"`
-	Schema        *SchemaBlock        `parser:"( 'schema' '{' @@ '}' )?"`
-	Retention     *string             `parser:"( 'retention' @String )?"`
-	RequestMap    *string             `parser:"( 'request_map' @String )?"`
-	ResponseMap   *string             `parser:"( 'response_map' @String )?"`
-	ErrorMap      []string            `parser:"( 'error_map' '[' @String ( ',' @String )* ']' )?"`
-	EmitsSchema   *string             `parser:"( 'emits_schema' @String )?"`
-	WritesSchema  *string             `parser:"( 'writes_schema' @String )?"`
-	Deprecation   *DeprecationBlock   `parser:"( 'deprecation' '{' @@ '}' )?"`
-	Compatibility *CompatibilityBlock `parser:"( 'compatibility' '{' @@ '}' )?"`
-	Guarantees    *GuaranteesBlock    `parser:"( 'guarantees' '{' @@ '}' )?"`
-}
-
-type SchemaBlock struct {
-	Pos     lexer.Position
-	Entries []*SchemaEntry `parser:"@@*"`
-}
-
-type SchemaEntry struct {
-	Key  string    `parser:"@Ident ':'"`
-	Type *TypeSpec `parser:"@@"`
-}
-
-func (s *SchemaBlock) Location() SourceLocation {
-	return SourceLocation{File: s.Pos.Filename, Line: s.Pos.Line, Column: s.Pos.Column, Offset: s.Pos.Offset}
-}
-
 type ConstraintsBlock struct {
+	Pos     lexer.Position
+	LBrace  string             `parser:"'constraints' '{'"`
 	Entries []*ConstraintEntry `parser:"@@*"`
+	RBrace  string             `parser:"'}'"`
 }
 
 type ConstraintEntry struct {
@@ -305,8 +257,15 @@ func (c *ConstraintEntry) Location() SourceLocation {
 	return SourceLocation{File: c.Pos.Filename, Line: c.Pos.Line, Column: c.Pos.Column, Offset: c.Pos.Offset}
 }
 
+func (c *ConstraintsBlock) Location() SourceLocation {
+	return SourceLocation{File: c.Pos.Filename, Line: c.Pos.Line, Column: c.Pos.Column, Offset: c.Pos.Offset}
+}
+
 type ConventionsBlock struct {
+	Pos     lexer.Position
+	LBrace  string             `parser:"'conventions' '{'"`
 	Entries []*ConventionEntry `parser:"@@*"`
+	RBrace  string             `parser:"'}'"`
 }
 
 type ConventionEntry struct {
@@ -319,10 +278,8 @@ func (c *ConventionEntry) Location() SourceLocation {
 	return SourceLocation{File: c.Pos.Filename, Line: c.Pos.Line, Column: c.Pos.Column, Offset: c.Pos.Offset}
 }
 
-type TypeSpec struct {
-	Name     string   `parser:"@Ident"`
-	Generics []string `parser:"( '<' @Ident ( ',' @Ident )* '>' )?"`
-	Optional string   `parser:"( @'?' )?"`
+func (c *ConventionsBlock) Location() SourceLocation {
+	return SourceLocation{File: c.Pos.Filename, Line: c.Pos.Line, Column: c.Pos.Column, Offset: c.Pos.Offset}
 }
 
 type DeprecationBlock struct {

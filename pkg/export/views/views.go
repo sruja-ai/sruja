@@ -31,7 +31,7 @@ func ApplyViewExpressions(prog *language.Program, view *language.View) (map[stri
 			switch {
 			case expr.Wildcard != nil && *expr.Wildcard == "*":
 				// Include all elements in scope
-				includeAllInScope(prog, view.Scope, included)
+				includeAllInScope(prog, *view.Scope, included)
 			case len(expr.Elements) > 0:
 				// Include specific elements
 				for _, elem := range expr.Elements {
@@ -40,7 +40,7 @@ func ApplyViewExpressions(prog *language.Program, view *language.View) (map[stri
 			case expr.Pattern != nil:
 				// Pattern-based include (e.g., "->Element->")
 				// For now, treat as wildcard - full pattern matching can be added later
-				includeAllInScope(prog, view.Scope, included)
+				includeAllInScope(prog, *view.Scope, included)
 			}
 		case "exclude":
 			if len(expr.Elements) > 0 {
@@ -253,11 +253,11 @@ func addTagToElement(tagMap map[string]map[string]bool, tag, elemID string) {
 
 // FindViewByName finds a view by name in the views block.
 // Note: This function works with the old ViewBlock structure.
-// For LikeC4 views, use FindLikeC4ViewByName instead.
+// For views, use FindViewByName instead.
 func FindViewByName(_ *language.Program, _ string) *language.View {
 	// Check old ViewBlock format (if still supported)
 	// For now, return nil as ViewBlock is not part of Program
-	// This function may need to be updated to work with LikeC4ViewsBlock
+	// This function works with ViewsBlock
 	return nil
 }
 

@@ -14,7 +14,7 @@ This directory contains end-to-end tests for the designer app using Playwright. 
   - View tabs visibility and navigation (including Governance tab)
   - URL state persistence
   - Examples menu functionality
-  - **Updated**: Fixed selectors to match actual implementation (ReactFlow instead of LikeC4 canvas)
+  - **Updated**: Fixed selectors to match actual implementation (ReactFlow instead of legacy canvas)
 
 - **`builder.spec.ts`** - Builder wizard:
   - Wizard steps display
@@ -130,7 +130,7 @@ Tests are configured in `playwright.config.ts`:
 
 ## Recent Improvements
 
-See `E2E_IMPROVEMENTS.md` for detailed information about recent test improvements, including:
+Recent test improvements include:
 
 - Fixed selectors to match actual component implementation
 - Corrected base path for test environment
