@@ -2,7 +2,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Staging Website Navigation", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page: _page }) => {
     // Set a longer timeout for staging site
     test.setTimeout(60_000);
   });

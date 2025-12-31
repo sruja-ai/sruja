@@ -33,11 +33,11 @@ function initMermaid() {
         window.addEventListener("theme-change", () => {
           try {
             mermaid.initialize({ theme: getMermaidTheme() });
-          } catch (_e) {
+          } catch {
             void 0;
           }
         });
-      } catch (_e) {
+      } catch {
         void 0;
       }
       mermaidInitialized = true;
@@ -218,7 +218,7 @@ async function renderMermaid(preview: HTMLElement, dsl: string) {
     preview.dataset.tx = "0";
     preview.dataset.ty = "0";
     preview.dataset.inner = "1";
-  } catch (e) {
+  } catch {
     loaderRoot.unmount();
     const msg = e instanceof Error ? e.message : String(e);
 
@@ -300,7 +300,7 @@ function addToolbar(pre: HTMLElement, _codeEl: HTMLElement, dsl: string) {
     try {
       const b64 = encodeURIComponent(LZString.compressToBase64(text));
       window.open(`${designerUrl}?code=${b64}`, "_blank");
-    } catch (e) {
+    } catch {
       window.open(`${designerUrl}?code=${encodeURIComponent(text)}`, "_blank");
     }
     try {
@@ -367,7 +367,7 @@ function addToolbar(pre: HTMLElement, _codeEl: HTMLElement, dsl: string) {
       currentTheme = getTheme() as "vs" | "vs-dark";
       renderEditor();
     });
-  } catch (_e) {
+  } catch {
     void 0;
   }
   pre.style.display = "none";
@@ -436,7 +436,7 @@ function addToolbar(pre: HTMLElement, _codeEl: HTMLElement, dsl: string) {
         window.dispatchEvent(
           new CustomEvent("sruja:event", { detail: { type: "tutorial.diagram_show" } })
         );
-      } catch (_e) {
+      } catch {
         void 0;
       }
       renderOnce();
@@ -450,7 +450,7 @@ function addToolbar(pre: HTMLElement, _codeEl: HTMLElement, dsl: string) {
       window.dispatchEvent(
         new CustomEvent("sruja:event", { detail: { type: "tutorial.diagram_expand" } })
       );
-    } catch (_e) {
+    } catch {
       void 0;
     }
     const overlay = document.createElement("div");
@@ -526,7 +526,7 @@ function addToolbar(pre: HTMLElement, _codeEl: HTMLElement, dsl: string) {
       // Initialize mermaid if needed and render diagram
       initMermaid();
       await renderMermaid(mermaidContainer, text);
-    } catch (e) {
+    } catch {
       overlayRoot.unmount();
       const msg = e instanceof Error ? e.message : String(e);
       const pageTitle =

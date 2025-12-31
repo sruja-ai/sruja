@@ -2,7 +2,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Critical User Paths on Staging", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page: _page }) => {
     test.setTimeout(60_000);
   });
 

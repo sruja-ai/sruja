@@ -43,8 +43,17 @@ function detectCycles(model: SrujaModelDump): AntiPattern[] {
   const adjacencyList = new Map<string, string[]>();
   for (const rel of relations) {
     // Robust extraction of source and target from FqnRef (string or {model: string})
-    const source = ((rel as any).source?.model || (rel as any).source) as string;
-    const target = ((rel as any).target?.model || (rel as any).target) as string;
+    const r = rel as Record<string, unknown>;
+    const source = (
+      r.source && typeof r.source === "object" && "model" in r.source
+        ? (r.source as { model: string }).model
+        : r.source
+    ) as string;
+    const target = (
+      r.target && typeof r.target === "object" && "model" in r.target
+        ? (r.target as { model: string }).model
+        : r.target
+    ) as string;
 
     if (source && target) {
       if (!adjacencyList.has(source)) {
@@ -119,8 +128,18 @@ function detectGodObjects(model: SrujaModelDump): AntiPattern[] {
   const fanOut = new Map<string, number>();
 
   for (const rel of relations) {
-    const source = ((rel as any).source?.model || (rel as any).source) as string;
-    const target = ((rel as any).target?.model || (rel as any).target) as string;
+    // Simplified extraction for count purposes
+    const r = rel as Record<string, unknown>;
+    const source = (
+      r.source && typeof r.source === "object" && "model" in r.source
+        ? (r.source as { model: string }).model
+        : r.source
+    ) as string;
+    const target = (
+      r.target && typeof r.target === "object" && "model" in r.target
+        ? (r.target as { model: string }).model
+        : r.target
+    ) as string;
 
     if (source && target) {
       fanOut.set(source, (fanOut.get(source) || 0) + 1);

@@ -33,27 +33,27 @@ function convertFrontmatter(content: string, filePath: string): { frontmatter: F
   // Extract frontmatter
   const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
   const match = content.match(frontmatterRegex);
-  
+
   if (!match) {
     return { frontmatter: {}, body: content };
   }
 
   const [, frontmatterText, body] = match;
   const frontmatter: Frontmatter = {};
-  
+
   // Parse frontmatter
   frontmatterText.split('\n').forEach(line => {
     const colonIndex = line.indexOf(':');
     if (colonIndex > 0) {
       const key = line.substring(0, colonIndex).trim();
       let value = line.substring(colonIndex + 1).trim();
-      
+
       // Remove quotes if present
-      if ((value.startsWith('"') && value.endsWith('"')) || 
-          (value.startsWith("'") && value.endsWith("'"))) {
+      if ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))) {
         value = value.slice(1, -1);
       }
-      
+
       // Convert to appropriate type
       if (key === 'sidebar_position' || key === 'weight') {
         frontmatter[key === 'sidebar_position' ? 'weight' : key] = parseInt(value) || 999;
@@ -80,7 +80,7 @@ function convertFrontmatter(content: string, filePath: string): { frontmatter: F
   return { frontmatter, body };
 }
 
-function processFile(sourcePath: string, targetPath: string, collectionType: string): void {
+function processFile(sourcePath: string, targetPath: string, _collectionType: string): void {
   if (!existsSync(sourcePath)) {
     console.log(`Skipping missing file: ${sourcePath}`);
     return;

@@ -42,12 +42,18 @@ interface AlgoliaRecord {
   topic?: string;
 }
 
+interface ContentItem {
+  slug: string;
+  data: unknown;
+  body: string;
+}
+
 /**
  * Mock for Astro's getCollection to run standalone
  */
-async function getCollection(collection: string) {
+async function getCollection(collection: string): Promise<ContentItem[]> {
   const dir = join(contentDir, collection);
-  const items: any[] = [];
+  const items: ContentItem[] = [];
 
   try {
     const files = getAllFiles(dir);
@@ -59,7 +65,7 @@ async function getCollection(collection: string) {
 
       if (parts.length < 3) continue;
 
-      const frontmatter = yaml.load(parts[1]) as any;
+      const frontmatter = yaml.load(parts[1]) as Record<string, unknown>;
       const body = parts.slice(2).join('---').trim();
 
       // Generate slug from file path relative to collection dir
@@ -147,7 +153,7 @@ function generateUrl(collection: string, slug: string): string {
  */
 async function processDocs(): Promise<AlgoliaRecord[]> {
   const docs = await getCollection('docs');
-  return docs.map((doc: any) => {
+  return docs.map((doc: ContentItem) => {
     const content = stripMarkdown(doc.body || "");
     const category = doc.slug.includes('/')
       ? doc.slug.split('/')[0]
@@ -173,7 +179,7 @@ async function processDocs(): Promise<AlgoliaRecord[]> {
  */
 async function processBlog(): Promise<AlgoliaRecord[]> {
   const posts = await getCollection('blog');
-  return posts.map((post: any) => {
+  return posts.map((post: ContentItem) => {
     const content = stripMarkdown(post.body || "");
     const pubDate = post.data?.pubDate
       ? new Date(post.data.pubDate).toISOString().split('T')[0]
@@ -199,7 +205,7 @@ async function processBlog(): Promise<AlgoliaRecord[]> {
  */
 async function processCourses(): Promise<AlgoliaRecord[]> {
   const courses = await getCollection('courses');
-  return courses.map((course: any) => {
+  return courses.map((course: ContentItem) => {
     const content = stripMarkdown(course.body || "");
     const slugParts = course.slug.split('/');
     const category = slugParts.length > 0 ? slugParts[0] : 'courses';
@@ -225,7 +231,7 @@ async function processCourses(): Promise<AlgoliaRecord[]> {
  */
 async function processTutorials(): Promise<AlgoliaRecord[]> {
   const tutorials = await getCollection('tutorials');
-  return tutorials.map((tutorial: any) => {
+  return tutorials.map((tutorial: ContentItem) => {
     const content = stripMarkdown(tutorial.body || "");
     const slugParts = tutorial.slug.split('/');
     const category = slugParts.length > 0 ? slugParts[0] : 'tutorials';
@@ -252,7 +258,7 @@ async function processTutorials(): Promise<AlgoliaRecord[]> {
  */
 async function processChallenges(): Promise<AlgoliaRecord[]> {
   const challenges = await getCollection('challenges');
-  return challenges.map((challenge: any) => {
+  return challenges.map((challenge: ContentItem) => {
     const content = stripMarkdown(challenge.body || "");
 
     return {

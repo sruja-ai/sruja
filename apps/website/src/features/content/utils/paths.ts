@@ -1,6 +1,6 @@
 // apps/website/src/features/content/utils/paths.ts
 import type { CollectionEntry } from "astro:content";
-import { sortByDate, sortByWeight } from "./sorting";
+import { sortByDate, sortByWeight, type AnyCollectionEntry } from "./sorting";
 
 interface NavigationItem {
   title: string;
@@ -34,7 +34,9 @@ export function generateContentPaths<T extends CollectionEntry<string>>(
   }
 
   const sorted = (
-    sortStrategy === "date" ? sortByDate(filtered as any) : sortByWeight(filtered as any)
+    sortStrategy === "date"
+      ? sortByDate(filtered as unknown as AnyCollectionEntry[])
+      : sortByWeight(filtered as unknown as Array<{ data: { weight?: number } }>)
   ) as T[];
 
   return sorted.map((entry: T, index: number) => {

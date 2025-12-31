@@ -1,5 +1,5 @@
 // apps/website/src/features/playground/components/LiveSrujaBlock.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { SrujaMonacoEditor } from "@sruja/ui";
 import { SrujaLoader } from "@sruja/ui";
 import { initWasm, logger } from "@sruja/shared";
@@ -13,7 +13,7 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
   const [busy, setBusy] = useState(false);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
 
-  const renderDiagram = async () => {
+  const renderDiagram = useCallback(async () => {
     setBusy(true);
     setErrorHeader(null);
     trackInteraction("click", "render_button", { component: "playground" });
@@ -49,13 +49,13 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
     } finally {
       setBusy(false);
     }
-  };
+  }, [dsl]);
 
   // Initial render
   useEffect(() => {
     renderDiagram();
     trackEvent("live.render_view");
-  }, []);
+  }, [renderDiagram]);
 
   const [theme, setTheme] = useState<"vs" | "vs-dark" | "hc-black">(() =>
     typeof document !== "undefined" &&
@@ -69,13 +69,13 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
     };
     try {
       window.addEventListener("theme-change", handler);
-    } catch (_e) {
+    } catch {
       void 0;
     }
     return () => {
       try {
         window.removeEventListener("theme-change", handler);
-      } catch (_e) {
+      } catch {
         void 0;
       }
     };
