@@ -176,3 +176,7 @@ FLAT_SYNTAX_UPDATE_SUMMARY.md
 # Developer outputs
 test_output.txt
 tsc_output.txt
+
+# Test log files
+*_test_log.txt
+*_failures.txt
