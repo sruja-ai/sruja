@@ -32,11 +32,8 @@ Before creating a view, ask:
 ### 2. Use Include/Exclude Strategically
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "Customer"
 Admin = person "Administrator"
@@ -50,12 +47,14 @@ API = container "API Service" {
   OrderController = component "Order Controller"
   PaymentController = component "Payment Controller"
 }
-OrderDB = datastore "Order Database"
-ProductDB = datastore "Product Database"
+OrderDB = database "Order Database"
+ProductDB = database "Product Database"
 }
 
 PaymentGateway = system "Payment Gateway" {
-external true
+metadata {
+    tags ["external"]
+  }
 }
 
 Customer -> ECommerce.WebApp "Browses"
@@ -66,34 +65,39 @@ ECommerce.API -> PaymentGateway "Processes payments"
 // Executive view: Business context only
 view executive {
 title "Executive Overview"
-include Customer Admin
-include ECommerce PaymentGateway
-exclude ECommerce.WebApp ECommerce.API ECommerce.OrderDB ECommerce.ProductDB
-exclude ECommerce.WebApp.CartComponent ECommerce.WebApp.ProductComponent
-exclude ECommerce.API.OrderController ECommerce.API.PaymentController
-description "High-level business context for executives"
+include Customer
+include Admin
+include ECommerce
+include PaymentGateway
+exclude ECommerce.WebApp
+exclude ECommerce.API
+exclude ECommerce.OrderDB
+exclude ECommerce.ProductDB
 }
 
 // Architect view: Container-level architecture
 view architect {
 title "Architectural View"
-include ECommerce ECommerce.WebApp ECommerce.API
-include ECommerce.OrderDB ECommerce.ProductDB
+include ECommerce
+include ECommerce.WebApp
+include ECommerce.API
+include ECommerce.OrderDB
+include ECommerce.ProductDB
 include PaymentGateway
-exclude Customer Admin
-exclude ECommerce.WebApp.CartComponent ECommerce.WebApp.ProductComponent
-exclude ECommerce.API.OrderController ECommerce.API.PaymentController
-description "Container-level architecture for architects"
+exclude Customer
+exclude Admin
 }
 
 // Developer view: Component-level implementation
 view developer {
 title "Developer View"
-include ECommerce.WebApp ECommerce.WebApp.CartComponent ECommerce.WebApp.ProductComponent
-include ECommerce.API ECommerce.API.OrderController ECommerce.API.PaymentController
-include ECommerce.OrderDB ECommerce.ProductDB
-exclude Customer Admin PaymentGateway
-description "Component-level details for developers"
+include ECommerce.WebApp
+include ECommerce.API
+include ECommerce.OrderDB
+include ECommerce.ProductDB
+exclude Customer
+exclude Admin
+exclude PaymentGateway
 }
 ```
 
@@ -105,25 +109,34 @@ Focus on specific concerns: performance, security, data flow, deployment.
 // Performance view: Components with performance characteristics
 view performance {
 title "Performance View"
-include ECommerce.API ECommerce.OrderDB
-exclude Customer Admin ECommerce.WebApp
-description "Focuses on performance-critical components"
+include ECommerce.API
+include ECommerce.OrderDB
+exclude Customer
+exclude Admin
+exclude ECommerce.WebApp
 }
 
 // Security view: External interactions and data stores
 view security {
 title "Security View"
-include ECommerce.API PaymentGateway ECommerce.OrderDB
-exclude Customer Admin ECommerce.WebApp
-description "Highlights security boundaries and external systems"
+include ECommerce.API
+include PaymentGateway
+include ECommerce.OrderDB
+exclude Customer
+exclude Admin
+exclude ECommerce.WebApp
 }
 
 // Data flow view: Data dependencies
 view dataflow {
 title "Data Flow View"
-include ECommerce.API ECommerce.OrderDB ECommerce.ProductDB
-exclude Customer Admin ECommerce.WebApp PaymentGateway
-description "Shows how data flows through the system"
+include ECommerce.API
+include ECommerce.OrderDB
+include ECommerce.ProductDB
+exclude Customer
+exclude Admin
+exclude ECommerce.WebApp
+exclude PaymentGateway
 }
 ```
 
@@ -197,7 +210,6 @@ view analytics { /* Analytics pipeline */ }
 view index {
 title "Complete System View"
 include *
-description "Complete system overview"
 }
 ```
 
@@ -331,12 +343,8 @@ include PaymentGateway
 ## Real-World Example: E-Commerce Platform
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "Customer"
 Admin = person "Administrator"
@@ -350,14 +358,16 @@ API = container "API Service" {
   OrderController = component "Order Controller"
   PaymentController = component "Payment Controller"
 }
-OrderDB = datastore "Order Database"
-ProductDB = datastore "Product Database"
-Cache = datastore "Redis Cache"
+OrderDB = database "Order Database"
+ProductDB = database "Product Database"
+Cache = database "Redis Cache"
 EventQueue = queue "Event Queue"
 }
 
 PaymentGateway = system "Payment Gateway" {
-external true
+metadata {
+    tags ["external"]
+  }
 }
 
 Customer -> ECommerce.WebApp "Browses"
@@ -384,9 +394,14 @@ exclude ECommerce.WebApp ECommerce.API ECommerce.OrderDB ECommerce.ProductDB ECo
 view product {
 title "Product View - User Journeys"
 include Customer
-include ECommerce.WebApp ECommerce.API
+include ECommerce.WebApp
+include ECommerce.API
 include PaymentGateway
-exclude Admin ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache ECommerce.EventQueue
+exclude Admin
+exclude ECommerce.OrderDB
+exclude ECommerce.ProductDB
+exclude ECommerce.Cache
+exclude ECommerce.EventQueue
 }
 
 // Architect: Container architecture
@@ -401,8 +416,8 @@ exclude Customer Admin
 // Developer: Component details
 view developer {
 title "Developer View"
-include ECommerce.WebApp ECommerce.WebApp.CartComponent ECommerce.WebApp.ProductComponent
-include ECommerce.API ECommerce.API.OrderController ECommerce.API.PaymentController
+include ECommerce.WebApp
+include ECommerce.API
 include ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache
 exclude Customer Admin PaymentGateway
 }
