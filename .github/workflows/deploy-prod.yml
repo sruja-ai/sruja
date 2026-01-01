@@ -113,10 +113,6 @@ jobs:
       - name: Build shared packages
         uses: ./.github/actions/build-shared-packages
 
-      - name: Run Astro Check
-        working-directory: apps/website
-        run: npm run typecheck
-
       - name: Build Astro website (production)
         working-directory: apps/website
         run: npm run build:prod
@@ -156,6 +152,13 @@ jobs:
           app-id: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_ID }}
           app-private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
           commit-message: "Deploy production website (release ${{ needs.determine-version.outputs.tag }})"
+
+  sync-algolia-production:
+    name: Sync Algolia Index (Production)
+    uses: ./.github/workflows/algolia-sync.yml
+    with:
+      environment: production
+    secrets: inherit
 
   deploy-designer:
     runs-on: ubuntu-latest

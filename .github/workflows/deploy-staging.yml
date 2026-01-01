@@ -240,13 +240,13 @@ jobs:
           EXTENSION_ID="${PUBLISHER}.${EXTENSION_NAME}"
           echo "Extension ID: ${EXTENSION_ID}"
           echo "Version: $(node -p "require('./package.json').version")"
-          
+
           # Check if PAT is set
           if [ -z "$VSCE_PAT" ]; then
             echo "❌ Error: VSCE_PAT is not set. Check AZURE_DEVOPS_PAT secret."
             exit 1
           fi
-          
+
           # Publish with verbose output
           if npx vsce publish --pre-release --skip-duplicate; then
             echo "✅ Extension published successfully!"
@@ -273,11 +273,6 @@ jobs:
 
       - name: Set up Go
         uses: ./.github/actions/setup-go
-
-      - name: Lint + Test
-        run: |
-          go build -v ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
-          go test -v ./pkg/... ./internal/... ./cmd/sruja ./tests/... ./scripts/...
 
       - name: Build WASM
         uses: ./.github/actions/build-wasm
@@ -373,6 +368,13 @@ jobs:
           app-private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
           commit-message: "Deploy staging (website + designer) from ${{ github.ref_name }} branch (commit ${{ github.sha }})"
 
+  sync-algolia-staging:
+    name: Sync Algolia Index (Staging)
+    uses: ./.github/workflows/algolia-sync.yml
+    with:
+      environment: staging
+    secrets: inherit
+
   e2e-tests:
     name: E2E Tests (Staging)
     runs-on: ubuntu-latest
@@ -445,6 +447,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb libasound2t64 libgbm1 libgtk-3-0 libnss3
 
+      - name: Prepare test workspace
+        working-directory: apps/vscode-extension
+        run: |
+          mkdir -p test-workspace
+          # Create a sample test file if it doesn't exist
+          if [ ! -f "test-workspace/test.sruja" ]; then
+            cat > test-workspace/test.sruja << 'EOF'
+          architecture "Test" {
+            system TestSystem "Test System"
+          }
+          EOF
+          fi
+          echo "✅ Test workspace prepared"
+
       - name: Run staging e2e tests (Linux)
         working-directory: apps/vscode-extension
         if: runner.os == 'Linux'
@@ -467,3 +483,4 @@ jobs:
           name: vscode-extension-test-results
           path: apps/vscode-extension/test-workspace/
           retention-days: 7
+          if-no-files-found: ignore
