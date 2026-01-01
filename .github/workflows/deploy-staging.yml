@@ -257,6 +257,14 @@ jobs:
             exit 1
           fi
 
+      - name: Publish to Open VSX Registry (RC)
+        uses: HaaLeo/publish-vscode-extension@v2
+        with:
+          pat: ${{ secrets.OPEN_VSX_TOKEN }}
+          packagePath: apps/vscode-extension
+          skipDuplicate: true
+        continue-on-error: true
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
