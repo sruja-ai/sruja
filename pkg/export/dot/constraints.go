@@ -90,9 +90,9 @@ func BuildConstraints(elements []*Element, relations []*Relation, viewLevel int,
 	if len(elements) > 2 {
 		// More aggressive logarithmic scaling to prevent overlaps
 		// Formula: 1.0 + 0.25 * log10(nodeCount) for better adaptation
-		scaleFactor := 1.0 + 0.25*float64(len(elements))/8.0
-		if scaleFactor > 2.2 {
-			scaleFactor = 2.2 // Slightly higher cap for dense diagrams
+		scaleFactor := DynamicScalingBase + DynamicScalingFactor*float64(len(elements))/DynamicScalingDivisor
+		if scaleFactor > DynamicScalingCap {
+			scaleFactor = DynamicScalingCap // Slightly higher cap for dense diagrams
 		}
 		constraints.Global.NodeSep *= scaleFactor
 		constraints.Global.RankSep *= scaleFactor
@@ -101,14 +101,14 @@ func BuildConstraints(elements []*Element, relations []*Relation, viewLevel int,
 	// Additional spacing boost for L1 diagrams with persons and systems
 	// L1 diagrams often have overlapping nodes due to different node sizes
 	if viewLevel == 1 || viewLevel == 0 {
-		constraints.Global.NodeSep *= 1.15 // Extra 15% spacing for L1
-		constraints.Global.RankSep *= 1.20 // Extra 20% vertical spacing for L1
+		constraints.Global.NodeSep *= L1NodeSepScale // Extra 15% spacing for L1
+		constraints.Global.RankSep *= L1RankSepScale // Extra 20% vertical spacing for L1
 	}
 
 	// Use orthogonal splines for dense diagrams to reduce crossings
 	// Switch to polyline earlier for better edge routing and fewer crossings
 	// NOTE: Removed "ortho" as it often causes missing edges in Graphviz WASM.
-	if len(elements) > 8 {
+	if len(elements) > DenseGraphThreshold {
 		constraints.Global.Splines = "polyline" // Polyline for medium/high complexity
 	}
 	// For smaller diagrams, keep "spline" (curved) as it looks better
@@ -236,21 +236,21 @@ func buildSizeConstraints(elements []*Element, relations []*Relation, config Con
 		}
 
 		// Set min/max bounds
-		minWidth, maxWidth := 180.0, 500.0
-		minHeight, maxHeight := 100.0, 300.0
+		minWidth, maxWidth := MinWidthComponent, MaxNodeWidth
+		minHeight, maxHeight := MinHeightComponent, MaxNodeHeight
 
 		// Adjust based on kind
 		switch elem.Kind {
 		case "person":
-			minWidth, minHeight = 200.0, 180.0
+			minWidth, minHeight = MinWidthPerson, MinHeightPerson
 		case "system":
-			minWidth, minHeight = 220.0, 140.0
+			minWidth, minHeight = MinWidthSystem, MinHeightSystem
 		case "container":
-			minWidth, minHeight = 200.0, 120.0
+			minWidth, minHeight = MinWidthContainer, MinHeightContainer
 		case "component":
-			minWidth, minHeight = 180.0, 100.0
+			minWidth, minHeight = MinWidthComponent, MinHeightComponent
 		case "datastore", "queue":
-			minWidth, minHeight = 200.0, 100.0
+			minWidth, minHeight = MinWidthInfrastructure, MinHeightInfrastructure
 		}
 
 		// Hub detection: Increase size for high-degree nodes to allow routing space
@@ -258,9 +258,9 @@ func buildSizeConstraints(elements []*Element, relations []*Relation, config Con
 		if _, hasOverride := config.NodeSizes[elem.ID]; !hasOverride {
 			nodeDegree := degree[elem.ID]
 			// Less aggressive hub scaling to prevent overlap
-			if nodeDegree > 12 {
-				minWidth *= 1.2
-				minHeight *= 1.1
+			if nodeDegree > HubDegreeThreshold {
+				minWidth *= HubScaleWidth
+				minHeight *= HubScaleHeight
 			}
 		}
 
@@ -288,8 +288,8 @@ func buildSizeConstraints(elements []*Element, relations []*Relation, config Con
 
 		// Add buffer padding to width/height to prevent overlaps
 		// This provides extra space around nodes for better spacing
-		bufferWidth := minWidth * 0.05   // 5% buffer
-		bufferHeight := minHeight * 0.05 // 5% buffer
+		bufferWidth := minWidth * BufferPaddingPercent   // 5% buffer
+		bufferHeight := minHeight * BufferPaddingPercent // 5% buffer
 		if width < minWidth {
 			width = minWidth + bufferWidth
 		} else {
@@ -349,22 +349,22 @@ func buildEdgeConstraints(relations []*Relation, config Config, nodeCount int, p
 
 			// Labeled edges are more important - give them higher weight
 			if rel.Label != "" {
-				baseWeight = 25 // Higher priority for labeled edges (was 20)
+				baseWeight = WeightLabeledEdge // Higher priority for labeled edges (was 20)
 			} else {
-				baseWeight = 4 // Slightly higher base weight for unlabeled edges (was 3)
+				baseWeight = WeightUnlabeledEdge // Slightly higher base weight for unlabeled edges (was 3)
 			}
 
 			// Reduce weight for nodes with many outgoing edges (prevents star pattern issues)
 			// But be less aggressive to maintain routing quality
-			if outDegree[rel.From] > 4 {
-				baseWeight = baseWeight * 3 / 4 // Reduce by 1/4 (was 2/3 for >3)
+			if outDegree[rel.From] > HighDegreeThreshold {
+				baseWeight = baseWeight * HighDegreeReductionNumerator / HighDegreeReductionDenominator // Reduce by 1/4 (was 2/3 for >3)
 			}
 
 			// Increase weight for internal edges (same parent) to keep clusters tight
 			if p1, ok1 := parentMap[rel.From]; ok1 && p1 != "" {
 				if p2, ok2 := parentMap[rel.To]; ok2 && p2 != "" {
 					if p1 == p2 {
-						baseWeight += 2 // Boost internal edges
+						baseWeight += WeightInternalBoost // Boost internal edges
 					}
 				}
 			}
@@ -373,7 +373,7 @@ func buildEdgeConstraints(relations []*Relation, config Config, nodeCount int, p
 			// More aggressive minlen settings for better edge routing
 			// Increase minlen for complex diagrams to reduce crossings
 			// More aggressive minlen settings for better edge routing
-			if nodeCount > 20 {
+			if nodeCount > ComplexGraphThreshold {
 				edge.MinLen = 2 // Medium minlen for very complex diagrams
 			} else {
 				edge.MinLen = 1 // Standard length

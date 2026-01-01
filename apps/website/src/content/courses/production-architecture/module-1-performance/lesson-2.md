@@ -40,12 +40,8 @@ This is where SLOs (Service Level Objectives) come in. **Interviewers love when 
 Let's model the payment system with explicit SLOs:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 PaymentService = system "Payment Processing" {
 PaymentAPI = container "Payment API" {
@@ -94,12 +90,12 @@ FraudDetection = container "Fraud Detection" {
   description "Real-time fraud detection"
 }
 
-PaymentDB = datastore "Payment Database" {
+PaymentDB = database "Payment Database" {
   technology "PostgreSQL"
   description "Primary database with 10 read replicas"
 }
 
-Cache = datastore "Payment Cache" {
+Cache = database "Payment Cache" {
   technology "Redis"
   description "Caches recent transactions"
 }
@@ -197,12 +193,8 @@ include *
 **Your answer with SLO**:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 PaymentService = system "Payment Processing" {
 PaymentAPI = container "Payment API" {
@@ -230,12 +222,8 @@ include *
 **Your answer with SLO**:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 PaymentService = system "Payment Processing" {
 PaymentAPI = container "Payment API" {
@@ -263,12 +251,8 @@ include *
 **Your answer with SLO**:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 PaymentService = system "Payment Processing" {
 PaymentAPI = container "Payment API" {
@@ -311,12 +295,8 @@ include *
 Add redundancy to your design:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 PaymentService = system "Payment Processing" {
 PaymentAPI = container "Payment API" {
@@ -329,7 +309,7 @@ PaymentAPI = container "Payment API" {
   description "Deployed across 3 data centers (active-active)"
 }
 
-PaymentDB = datastore "Payment Database" {
+PaymentDB = database "Payment Database" {
   technology "PostgreSQL"
   description "Primary in US-East, replicas in US-West and EU"
 }

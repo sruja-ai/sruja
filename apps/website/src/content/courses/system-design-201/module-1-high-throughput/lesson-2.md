@@ -43,12 +43,8 @@ Where does the rate limiter live?
 In Sruja, we can model the Rate Limiter as a component within the API Gateway, backed by a fast datastore like Redis.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 APIGateway = system "API Gateway" {
     GatewayService = container "Gateway" {
@@ -59,7 +55,7 @@ APIGateway = system "API Gateway" {
         }
     }
 
-    Redis = datastore "Rate Limit Store" {
+    Redis = database "Rate Limit Store" {
         technology "Redis"
         description "Stores token counts per user/IP"
     }
@@ -73,7 +69,7 @@ APIGateway.GatewayService -> Backend "Forward Requests"
 Client = person "Client"
 
 // Scenario: Request allowed (has tokens)
-scenario RateLimitAllowed "Rate Limit Check - Allowed" {
+RateLimitAllowed = scenario "Rate Limit Check - Allowed" {
     Client -> APIGateway.GatewayService "API Request"
     APIGateway.GatewayService -> APIGateway.Redis "DECR user_123_tokens"
     APIGateway.Redis -> APIGateway.GatewayService "Result: 5 (tokens remaining)"
@@ -83,7 +79,7 @@ scenario RateLimitAllowed "Rate Limit Check - Allowed" {
 }
 
 // Scenario: Request rate limited (no tokens)
-scenario RateLimitBlocked "Rate Limit Check - Blocked" {
+RateLimitBlocked = scenario "Rate Limit Check - Blocked" {
     Client -> APIGateway.GatewayService "API Request"
     APIGateway.GatewayService -> APIGateway.Redis "DECR user_123_tokens"
     APIGateway.Redis -> APIGateway.GatewayService "Result: -1 (Empty bucket)"
@@ -91,7 +87,7 @@ scenario RateLimitBlocked "Rate Limit Check - Blocked" {
 }
 
 // Scenario: Token refill (background process)
-scenario TokenRefill "Token Bucket Refill" {
+TokenRefill = scenario "Token Bucket Refill" {
     APIGateway.Redis -> APIGateway.Redis "Add 10 tokens/sec (background)"
     APIGateway.Redis -> APIGateway.Redis "Cap at max bucket size"
 }

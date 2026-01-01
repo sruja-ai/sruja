@@ -5,29 +5,21 @@ difficulty: beginner
 topic: relations
 estimatedTime: "5-10 min"
 initialDsl: |
-  specification {
-    element person
-    element system
-    element container
-    element component
-    element datastore
-    element queue
-    element external
+  person = kind "Person"
+  system = kind "System"
+  container = kind "Container"
+  datastore = kind "Datastore"
+
+  Patient = person "Healthcare Patient"
+
+  HealthPortal = system "Healthcare Portal" {
+    Portal = container "Patient Portal"
+    AppointmentAPI = container "Appointment Service"
+    RecordsDB = datastore "Patient Records Database"
   }
-  
-  model {
-    Patient = person "Healthcare Patient"
-    
-      HealthPortal = system  {
-        Portal = container "Patient Portal"
-        AppointmentAPI = container "Appointment Service"
-        RecordsDB = datastore "Patient Records Database"
-      }
-    
-      // TODO: Connect Patient -> Portal -> AppointmentAPI -> RecordsDB
-      // Think about what each interaction represents
-    
-  }
+
+  // TODO: Connect Patient -> Portal -> AppointmentAPI -> RecordsDB
+  // Think about what each interaction represents
 checks:
   - type: noErrors
     message: "DSL parsed successfully"
@@ -44,33 +36,25 @@ checks:
     target: RecordsDB
     message: "Add relation AppointmentAPI -> RecordsDB"
 hints:
-  - "Start with Patient -> Portal \"Books appointment\""
-  - "Then Portal -> AppointmentAPI \"Requests appointment\""
-  - "Finally AppointmentAPI -> RecordsDB \"Stores appointment\""
+  - 'Start with Patient -> Portal "Books appointment"'
+  - 'Then Portal -> AppointmentAPI "Requests appointment"'
+  - 'Finally AppointmentAPI -> RecordsDB "Stores appointment"'
   - "Remember: all relation labels must be in quotes"
 solution: |
-  specification {
-    element person
-    element system
-    element container
-    element component
-    element datastore
-    element queue
-    element external
+  person = kind "Person"
+  system = kind "System"
+  container = kind "Container"
+  datastore = kind "Datastore"
+
+  Patient = person "Healthcare Patient"
+
+  HealthPortal = system "Healthcare Portal" {
+    Portal = container "Patient Portal"
+    AppointmentAPI = container "Appointment Service"
+    RecordsDB = datastore "Patient Records Database"
   }
-  
-  model {
-    Patient = person "Healthcare Patient"
-    
-      HealthPortal = system  {
-        Portal = container "Patient Portal"
-        AppointmentAPI = container "Appointment Service"
-        RecordsDB = datastore "Patient Records Database"
-      }
-    
-      Patient -> Portal "Books appointment"
-      Portal -> AppointmentAPI "Requests appointment"
-      AppointmentAPI -> RecordsDB "Stores appointment"
-    
-  }
+
+  Patient -> HealthPortal.Portal "Books appointment"
+  HealthPortal.Portal -> HealthPortal.AppointmentAPI "Requests appointment"
+  HealthPortal.AppointmentAPI -> HealthPortal.RecordsDB "Stores appointment"
 ---

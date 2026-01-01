@@ -11,7 +11,8 @@ A **System** represents a software system, which is the highest level of abstrac
 ## Syntax
 
 ```sruja
-element system
+import { * } from 'sruja.ai/stdlib'
+
 
 ID = system "Label/Name" {
 description "Optional description"
@@ -26,7 +27,8 @@ adr ADR001
 ## Example
 
 ```sruja
-element system
+import { * } from 'sruja.ai/stdlib'
+
 
 BankingSystem = system "Internet Banking System" {
 description "Allows customers to view accounts and make payments."

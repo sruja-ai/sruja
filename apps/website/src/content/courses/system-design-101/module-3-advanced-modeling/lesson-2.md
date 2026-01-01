@@ -32,11 +32,8 @@ A message (event) is published to a topic. Multiple subscribers can receive a co
 Sruja supports `queue` as a first-class citizen to model asynchronous communication.
 
 ```sruja
-element person
-element system
-element container
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 User = person "End User"
 
@@ -62,7 +59,7 @@ Notifications = system "Notification System" {
         description "Processes user events for analytics"
     }
 
-    NotificationDB = datastore "Notification Database" {
+    NotificationDB = database "Notification Database" {
         technology "PostgreSQL"
         description "Stores notification preferences and history"
     }
@@ -76,7 +73,7 @@ Notifications = system "Notification System" {
 }
 
 // Model the event flow as a scenario
-scenario UserSignupFlow "User Signup Event Flow" {
+UserSignupFlow = scenario "User Signup Event Flow" {
     User -> AuthService "Submits registration"
     AuthService -> UserEvents "Publishes UserSignedUp"
     UserEvents -> EmailService "Triggers welcome email"
@@ -99,15 +96,18 @@ include *
 // Event flow view: Focus on async communication
 view eventflow {
 title "Event Flow View"
-include Notifications.AuthService Notifications.UserEvents
-include Notifications.EmailService Notifications.AnalyticsService
+include Notifications.AuthService
+include Notifications.UserEvents
+include Notifications.EmailService
+include Notifications.AnalyticsService
 exclude User Notifications.NotificationDB
 }
 
 // Data view: Focus on data storage
 view data {
 title "Data Storage View"
-include Notifications.EmailService Notifications.NotificationDB
+include Notifications.EmailService
+include Notifications.NotificationDB
 include Notifications.AnalyticsService
 exclude Notifications.AuthService Notifications.UserEvents
 }

@@ -44,10 +44,10 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		RankDir:            "TB",
-		NodeSep:            150, // Increased for better horizontal spacing (was 120, increased to prevent overlaps)
-		RankSep:            180, // Increased for better vertical spacing (was 130, increased to prevent overlaps)
-		DefaultNodeWidth:   200,
-		DefaultNodeHeight:  120,
+		NodeSep:            DefaultNodeSep,
+		RankSep:            DefaultRankSep,
+		DefaultNodeWidth:   DefaultNodeWidth,
+		DefaultNodeHeight:  DefaultNodeHeight,
 		UseRankConstraints: true,
 		UseEdgeWeights:     true,
 		ViewLevel:          1, // Default to L1 (Context view)

@@ -37,12 +37,8 @@ We can map these components to Sruja elements:
 - **Memory** -> `datastore`
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 AgentSystem = system "Customer Support Bot" {
 Brain = container "Orchestrator" {

@@ -218,9 +218,9 @@ async function renderMermaid(preview: HTMLElement, dsl: string) {
     preview.dataset.tx = "0";
     preview.dataset.ty = "0";
     preview.dataset.inner = "1";
-  } catch {
+  } catch (err) {
     loaderRoot.unmount();
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = err instanceof Error ? err.message : String(err);
 
     // Extract page context for better error messages
     const pageTitle = document.querySelector("h1")?.textContent || document.title || "Unknown Page";
@@ -258,7 +258,7 @@ async function renderMermaid(preview: HTMLElement, dsl: string) {
         page_title: pageTitle,
         section_title: sectionTitle || "",
         page_path: window.location.pathname,
-        error_type: e instanceof Error ? e.constructor.name : typeof e,
+        error_type: err instanceof Error ? err.constructor.name : typeof err,
         dsl_preview: dsl.substring(0, 200), // First 200 chars for context
       });
     } catch (trackError) {
@@ -526,9 +526,9 @@ function addToolbar(pre: HTMLElement, _codeEl: HTMLElement, dsl: string) {
       // Initialize mermaid if needed and render diagram
       initMermaid();
       await renderMermaid(mermaidContainer, text);
-    } catch {
+    } catch (err) {
       overlayRoot.unmount();
-      const msg = e instanceof Error ? e.message : String(e);
+      const msg = err instanceof Error ? err.message : String(err);
       const pageTitle =
         document.querySelector("h1")?.textContent || document.title || "Unknown Page";
       const errorMessage = `Failed to open designer in "${pageTitle}": ${msg}`;
@@ -538,7 +538,7 @@ function addToolbar(pre: HTMLElement, _codeEl: HTMLElement, dsl: string) {
           error_message: msg,
           page_title: pageTitle,
           page_path: window.location.pathname,
-          error_type: e instanceof Error ? e.constructor.name : typeof e,
+          error_type: err instanceof Error ? err.constructor.name : typeof err,
         });
       } catch (trackError) {
         console.warn("Failed to track error to PostHog:", trackError);

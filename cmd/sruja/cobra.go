@@ -30,7 +30,7 @@ func init() {
 	rootCmd.AddCommand(cmdList)
 	rootCmd.AddCommand(cmdTree)
 	rootCmd.AddCommand(cmdDiff)
-	// cmdChange removed - ChangeBlock and SnapshotBlock removed (old syntax)
+
 	rootCmd.AddCommand(cmdCompletion)
 	rootCmd.AddCommand(cmdLSP)
 	rootCmd.AddCommand(initCmd)
@@ -162,9 +162,6 @@ var cmdDiff = &cobra.Command{
 		return nil
 	},
 }
-
-// cmdChange, cmdChangeCreate, cmdChangeValidate removed
-// ChangeBlock and SnapshotBlock removed (old syntax no longer supported)
 
 var cmdCompletion = &cobra.Command{
 	Use:   "completion [bash|zsh|fish]",

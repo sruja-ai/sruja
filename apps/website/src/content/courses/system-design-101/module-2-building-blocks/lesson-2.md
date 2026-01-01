@@ -46,12 +46,8 @@ Partitioning data across multiple servers (e.g., Users A-M on Server 1, N-Z on S
 Sruja allows you to define the type of database and its role in the system.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 UserDB = container "User Database" {
     technology "PostgreSQL"

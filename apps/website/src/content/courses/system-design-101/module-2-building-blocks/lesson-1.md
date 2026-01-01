@@ -37,12 +37,8 @@ A load balancer sits between clients and servers, distributing incoming network 
 In Sruja, a load balancer is typically modeled as a `container` or `component` that sits in front of your application servers.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 LB = container "Nginx Load Balancer" {
     technology "Nginx"

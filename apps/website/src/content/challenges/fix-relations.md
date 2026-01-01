@@ -5,34 +5,26 @@ difficulty: beginner
 topic: relations
 estimatedTime: "5-10 min"
 initialDsl: |
-  specification {
-    element person
-    element system
-    element container
-    element component
-    element datastore
-    element queue
-    element external
+  person = kind "Person"
+  system = kind "System"
+  container = kind "Container"
+  datastore = kind "Datastore"
+
+  Customer = person "Online Customer"
+
+  ECommerce = system "E-Commerce" {
+    UserService = container "User Management"
+    OrderService = container "Order Processing"
+    PaymentService = container "Payment Processing"
+    UserDB = datastore "User Database"
+    OrderDB = datastore "Order Database"
+    PaymentDB = datastore "Payment Database"
   }
-  
-  model {
-    Customer = person "Online Customer"
-    
-      ECommerce = system  {
-        UserService = container "User Management"
-        OrderService = container "Order Processing"
-        PaymentService = container "Payment Processing"
-        UserDB = datastore "User Database"
-        OrderDB = datastore "Order Database"
-        PaymentDB = datastore "Payment Database"
-      }
-    
-      Customer -> UserService "Logs in"
-    
-      // TODO: Connect services in order flow: UserService -> OrderService -> PaymentService
-      // TODO: Connect each service to its database
-    
-  }
+
+  Customer -> ECommerce.UserService "Logs in"
+
+  // TODO: Connect services in order flow: UserService -> OrderService -> PaymentService
+  // TODO: Connect each service to its database
 checks:
   - type: noErrors
     message: "DSL parsed successfully"
@@ -57,39 +49,31 @@ checks:
     target: PaymentDB
     message: "Add relation PaymentService -> PaymentDB"
 hints:
-  - "Order flow: UserService -> OrderService \"Creates order\""
-  - "Then: OrderService -> PaymentService \"Processes payment\""
-  - "Each service connects to its own DB: Service -> DB \"Reads/Writes\""
+  - 'Order flow: UserService -> OrderService "Creates order"'
+  - 'Then: OrderService -> PaymentService "Processes payment"'
+  - 'Each service connects to its own DB: Service -> DB "Reads/Writes"'
   - "Use descriptive labels for each relation"
 solution: |
-  specification {
-    element person
-    element system
-    element container
-    element component
-    element datastore
-    element queue
-    element external
+  person = kind "Person"
+  system = kind "System"
+  container = kind "Container"
+  datastore = kind "Datastore"
+
+  Customer = person "Online Customer"
+
+  ECommerce = system "E-Commerce" {
+    UserService = container "User Management"
+    OrderService = container "Order Processing"
+    PaymentService = container "Payment Processing"
+    UserDB = datastore "User Database"
+    OrderDB = datastore "Order Database"
+    PaymentDB = datastore "Payment Database"
   }
-  
-  model {
-    Customer = person "Online Customer"
-    
-      ECommerce = system  {
-        UserService = container "User Management"
-        OrderService = container "Order Processing"
-        PaymentService = container "Payment Processing"
-        UserDB = datastore "User Database"
-        OrderDB = datastore "Order Database"
-        PaymentDB = datastore "Payment Database"
-      }
-    
-      Customer -> UserService "Logs in"
-      UserService -> OrderService "Creates order"
-      OrderService -> PaymentService "Processes payment"
-      UserService -> UserDB "Reads/Writes"
-      OrderService -> OrderDB "Reads/Writes"
-      PaymentService -> PaymentDB "Reads/Writes"
-    
-  }
+
+  Customer -> ECommerce.UserService "Logs in"
+  ECommerce.UserService -> ECommerce.OrderService "Creates order"
+  ECommerce.OrderService -> ECommerce.PaymentService "Processes payment"
+  ECommerce.UserService -> ECommerce.UserDB "Reads/Writes"
+  ECommerce.OrderService -> ECommerce.OrderDB "Reads/Writes"
+  ECommerce.PaymentService -> ECommerce.PaymentDB "Reads/Writes"
 ---

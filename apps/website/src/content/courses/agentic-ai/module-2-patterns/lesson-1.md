@@ -22,12 +22,8 @@ This loop continues until the agent decides it has enough information to answer.
 We can model this flow using a `scenario` or `story` in Sruja to visualize the sequence.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 component Agent
 component Tool

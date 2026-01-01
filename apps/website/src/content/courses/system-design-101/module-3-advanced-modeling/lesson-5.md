@@ -17,19 +17,15 @@ Views let you create focused diagrams from a single model. Styles make them visu
 ### Basic Views Example
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 User = person "User"
 
 Shop = system "E-Commerce Shop" {
 WebApp = container "Web Application"
 API = container "API Service"
-DB = datastore "Database"
+DB = database "Database"
 }
 
 User -> Shop.WebApp "Uses"
@@ -45,14 +41,18 @@ include *
 // API-focused view
 view api {
 title "API Focus View"
-include Shop.API Shop.DB
-exclude Shop.WebApp User
+include Shop.API
+include Shop.DB
+exclude Shop.WebApp
+exclude User
 }
 
 // User experience view
 view user {
 title "User Experience View"
-include User Shop.WebApp Shop.API
+include User
+include Shop.WebApp
+include Shop.API
 exclude Shop.DB
 }
 ```
@@ -60,18 +60,16 @@ exclude Shop.DB
 ### Views with Custom Styling
 
 ```sruja
-element person
-element system
-element container
-element datastore
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "Customer"
 
 ECommerce = system "E-Commerce System" {
 WebApp = container "Web Application"
 API = container "API Service"
-OrderDB = datastore "Order Database"
-ProductDB = datastore "Product Database"
+OrderDB = database "Order Database"
+ProductDB = database "Product Database"
 }
 
 Customer -> ECommerce.WebApp "Browses"
@@ -81,7 +79,7 @@ ECommerce.API -> ECommerce.ProductDB "Queries products"
 
 // Global styles
 style {
-element "Datastore" {
+element "Database" {
   shape cylinder
   color "#22c55e"
 }
@@ -101,11 +99,14 @@ include *
 // Data flow view with custom styling
 view dataflow {
 title "Data Flow View"
-include ECommerce.API ECommerce.OrderDB ECommerce.ProductDB
-exclude Customer ECommerce.WebApp
+include ECommerce.API
+include ECommerce.OrderDB
+include ECommerce.ProductDB
+exclude Customer
+exclude ECommerce.WebApp
 
 // View-specific styles override global styles
-styles {
+style {
   element "API" { color "#0ea5e9" }
   relation "Stores" { color "#10b981" }
 }

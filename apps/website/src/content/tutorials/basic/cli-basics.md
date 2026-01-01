@@ -25,16 +25,12 @@ export PATH="$HOME/go/bin:$PATH"
 ## Create a Model
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 App = system "My App" {
 Web = container "Web Server"
-DB = datastore "Database"
+DB = database "Database"
 }
 User = person "User"
 

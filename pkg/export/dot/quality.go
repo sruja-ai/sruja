@@ -108,18 +108,40 @@ func MeasureQuality(_ string, elements []*Element, relations []*Relation) Layout
 // estimateEdgeCrossings estimates edge crossings based on graph structure.
 // This is a simplified heuristic - a full implementation would use Graphviz output.
 func estimateEdgeCrossings(elements []*Element, relations []*Relation) int {
-	// Simple heuristic: more edges = more potential crossings
-	// This is a placeholder - real implementation would parse Graphviz JSON
-	if len(relations) > len(elements)*2 {
-		return len(relations) / 4 // Rough estimate
+	if len(elements) < 2 {
+		return 0
 	}
-	return 0
+
+	// Calculate graph density: E / (V * (V-1))
+	// For directed graphs, max edges is V * (V-1)
+	numNodes := float64(len(elements))
+	maxEdges := numNodes * (numNodes - 1)
+	if maxEdges == 0 {
+		return 0
+	}
+
+	density := float64(len(relations)) / maxEdges
+
+	// Map density to expected crossings
+	// Heuristic: Higher density = significantly more crossings
+	// 0-10% density: very few crossings
+	// >30% density: many crossings
+	if density < 0.1 {
+		return int(float64(len(relations)) * 0.05) // Estimate 5% of edges might cross
+	} else if density < 0.3 {
+		return int(float64(len(relations)) * 0.15) // Estimate 15% of edges might cross
+	} else {
+		return int(float64(len(relations)) * 0.30) // Estimate 30% of edges might cross
+	}
 }
 
 // estimateNodeOverlaps estimates node overlaps.
 // This is a simplified heuristic - a full implementation would use Graphviz output.
-func estimateNodeOverlaps(_ []*Element) int {
-	// If we have proper size constraints, overlaps should be minimal
-	// This is a placeholder - real implementation would parse Graphviz JSON
+func estimateNodeOverlaps(elements []*Element) int {
+	// With proper constraint-based layout, purely algorithmic overlaps should be rare.
+	// However, if we have very many nodes, the probability increases.
+	if len(elements) > 50 {
+		return int(float64(len(elements)) * 0.01) // Estimate 1% overlap for very large graphs
+	}
 	return 0
 }

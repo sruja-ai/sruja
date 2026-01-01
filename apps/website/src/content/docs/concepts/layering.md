@@ -11,17 +11,13 @@ Layering keeps your architecture modular. Higher layers depend on lower ones, no
 ## Allowed Direction
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-system App {
-container WebApp
-container API
-datastore DB
+
+App = system "App" {
+  WebApp = container "Web App"
+  API = container "API"
+  DB = database "Database"
 }
 
 App.WebApp -> App.API "Calls"
@@ -35,16 +31,13 @@ include *
 ## Violation Example
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+// EXPECTED_FAILURE: Layer violation
+import { * } from 'sruja.ai/stdlib'
 
-system App {
-WebApp = container
-API = container
+
+App = system "App" {
+  WebApp = container "Web App"
+  API = container "API Service"
 }
 
 App.API -> App.WebApp "Returns UI"

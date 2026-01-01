@@ -5,28 +5,21 @@ difficulty: intermediate
 topic: async
 estimatedTime: "10-15 min"
 initialDsl: |
-  specification {
-    element person
-    element system
-    element container
-    element component
-    element datastore
-    element queue
-    element external
+  person = kind "Person"
+  system = kind "System"
+  container = kind "Container"
+  component = kind "Component"
+  queue = kind "Queue"
+
+  App = system "App" {
+    API = container "Main API" {
+      // TODO: Add component EmailWorker "Email Processor" here
+    }
+    EmailQueue = queue "RabbitMQ"
   }
-  
-  model {
-    App = system  {
-        API = container "Main API" {
-          // TODO: Add component EmailWorker "Email Processor" here
-        }
-        EmailQueue = queue "RabbitMQ"
-      }
-    
-      // TODO: Connect EmailQueue -> EmailWorker for async processing
-      // TODO: Add external EmailService (like SendGrid) and connect EmailWorker -> EmailService
-    
-  }
+
+  // TODO: Connect App.EmailQueue -> App.API.EmailWorker for async processing
+  // TODO: Add external EmailService system with tags and connect App.API.EmailWorker -> EmailService
 checks:
   - type: noErrors
     message: "DSL parsed successfully"
@@ -45,33 +38,28 @@ checks:
     target: EmailService
     message: "Connect EmailWorker -> EmailService"
 hints:
-  - "Add component EmailWorker \"Email Processor\" inside the API container"
-  - "Queues deliver messages to workers: EmailQueue -> EmailWorker \"Delivers email job\""
-  - "Add external EmailService \"SendGrid\" outside the system block"
-  - "Worker sends emails: EmailWorker -> EmailService \"Sends email\""
+  - 'Add component EmailWorker "Email Processor" inside the API container'
+  - 'Queues deliver messages to workers: App.EmailQueue -> App.API.EmailWorker "Delivers email job"'
+  - 'Add external EmailService as a system with tags ["external"] outside the App system block'
+  - 'Worker sends emails: App.API.EmailWorker -> EmailService "Sends email"'
 solution: |
-  specification {
-    element person
-    element system
-    element container
-    element component
-    element datastore
-    element queue
-    element external
+  person = kind "Person"
+  system = kind "System"
+  container = kind "Container"
+  component = kind "Component"
+  queue = kind "Queue"
+
+  App = system "App" {
+    API = container "Main API" {
+      EmailWorker = component "Email Processor"
+    }
+    EmailQueue = queue "RabbitMQ"
   }
-  
-  model {
-    App = system  {
-        API = container "Main API" {
-          EmailWorker = component "Email Processor"
-        }
-        EmailQueue = queue "RabbitMQ"
-      }
-    
-      EmailService = external "SendGrid"
-    
-      EmailQueue -> EmailWorker "Delivers email job"
-      EmailWorker -> EmailService "Sends email"
-    
+
+  EmailService = system "SendGrid" {
+    tags ["external"]
   }
+
+  App.EmailQueue -> App.API.EmailWorker "Delivers email job"
+  App.API.EmailWorker -> EmailService "Sends email"
 ---

@@ -28,6 +28,17 @@ runs:
         restore-keys: |
           ${{ runner.os }}-go-
       continue-on-error: true
+      id: go-cache
+
+    - name: Clean Go cache on restore failure
+      if: always() && steps.go-cache.outcome == 'failure'
+      shell: bash
+      run: |
+        # Clean up any corrupted cache directories that might cause issues
+        echo "⚠️  Go cache restore failed, cleaning up potentially corrupted cache..."
+        rm -rf ~/.cache/go-build/* 2>/dev/null || true
+        rm -rf ~/go/pkg/mod/cache/* 2>/dev/null || true
+        echo "✅ Cache cleanup completed"
 
     - name: Install Go dependencies
       if: inputs.install-deps == 'true'

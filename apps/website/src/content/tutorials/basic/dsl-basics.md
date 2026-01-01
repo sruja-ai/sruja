@@ -12,10 +12,8 @@ Sruja is an architecture DSL. This tutorial introduces its core elements.
 ## Elements
 
 ```sruja
-person = kind "Person"
-system = kind "System"
-container = kind "Container"
-datastore = kind "Datastore"
+import { * } from 'sruja.ai/stdlib'
+
 
 shop = system "Shop API" {
 webApp = container "Web" {
@@ -39,7 +37,8 @@ include *
 ## Descriptions and Metadata
 
 ```sruja
-system = kind "System"
+import { * } from 'sruja.ai/stdlib'
+
 
 Payments = system "Payments" {
 description "Handles payments and refunds"
@@ -54,9 +53,8 @@ metadata {
 ## Component‑level Modeling
 
 ```sruja
-system = kind "System"
-container = kind "Container"
-component = kind "Component"
+import { * } from 'sruja.ai/stdlib'
+
 
 App = system "App" {
 Web = container "Web" {

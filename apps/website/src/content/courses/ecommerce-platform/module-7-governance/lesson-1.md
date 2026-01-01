@@ -17,20 +17,16 @@ Security isn't something you "add on" at the end. It must be baked into the arch
 Use tags and metadata to make security posture explicit.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-system Shop {
-datastore UserDB {
-  tags ["pii", "encrypted"]
-  metadata {
-    retention "90d"
+
+Shop = system "Shop" {
+  UserDB = datastore "User DB" {
+    tags ["pii", "encrypted"]
+    metadata {
+      retention "90d"
+    }
   }
-}
 }
 
 view index {

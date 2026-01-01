@@ -6,36 +6,32 @@ import (
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
+// MapSlice converts a slice of T to a slice of U using a mapper function.
+func MapSlice[T any, U any](input []T, mapper func(T) U) []U {
+	if len(input) == 0 {
+		return nil
+	}
+	output := make([]U, len(input))
+	for i, v := range input {
+		output[i] = mapper(v)
+	}
+	return output
+}
+
 func convertSystem(s *language.System) SystemJSON {
 	out := SystemJSON{ID: s.ID, Label: s.Label, Description: s.Description}
 
 	if len(s.Containers) > 0 {
-		containers := make([]ContainerJSON, 0, len(s.Containers))
-		for _, c := range s.Containers {
-			containers = append(containers, convertContainer(c))
-		}
-		out.Containers = containers
+		out.Containers = MapSlice(s.Containers, convertContainer)
 	}
 	if len(s.Components) > 0 {
-		comps := make([]ComponentJSON, 0, len(s.Components))
-		for _, c := range s.Components {
-			comps = append(comps, convertComponent(c))
-		}
-		out.Components = comps
+		out.Components = MapSlice(s.Components, convertComponent)
 	}
 	if len(s.DataStores) > 0 {
-		dss := make([]DataStoreJSON, 0, len(s.DataStores))
-		for _, d := range s.DataStores {
-			dss = append(dss, convertDataStore(d))
-		}
-		out.DataStores = dss
+		out.DataStores = MapSlice(s.DataStores, convertDataStore)
 	}
 	if len(s.Queues) > 0 {
-		qs := make([]QueueJSON, 0, len(s.Queues))
-		for _, q := range s.Queues {
-			qs = append(qs, convertQueue(q))
-		}
-		out.Queues = qs
+		out.Queues = MapSlice(s.Queues, convertQueue)
 	}
 	if len(s.Relations) > 0 {
 		rels := make([]RelationJSON, 0, len(s.Relations))
@@ -88,25 +84,13 @@ func convertContainer(c *language.Container) ContainerJSON {
 	}
 
 	if len(c.Components) > 0 {
-		comps := make([]ComponentJSON, 0, len(c.Components))
-		for _, comp := range c.Components {
-			comps = append(comps, convertComponent(comp))
-		}
-		out.Components = comps
+		out.Components = MapSlice(c.Components, convertComponent)
 	}
 	if len(c.DataStores) > 0 {
-		dss := make([]DataStoreJSON, 0, len(c.DataStores))
-		for _, d := range c.DataStores {
-			dss = append(dss, convertDataStore(d))
-		}
-		out.DataStores = dss
+		out.DataStores = MapSlice(c.DataStores, convertDataStore)
 	}
 	if len(c.Queues) > 0 {
-		qs := make([]QueueJSON, 0, len(c.Queues))
-		for _, q := range c.Queues {
-			qs = append(qs, convertQueue(q))
-		}
-		out.Queues = qs
+		out.Queues = MapSlice(c.Queues, convertQueue)
 	}
 	if len(c.Relations) > 0 {
 		rels := make([]RelationJSON, 0, len(c.Relations))

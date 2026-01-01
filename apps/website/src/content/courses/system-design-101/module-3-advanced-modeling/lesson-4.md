@@ -19,12 +19,8 @@ Sruja models naturally support multiple perspectives without special keywords. U
 Sruja's `views` block lets you create custom perspectives from a single model. This is powerful for communicating with different audiences.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "Customer"
 Admin = person "Administrator"
@@ -40,16 +36,18 @@ API = container "API Service" {
   OrderController = component "Order Controller"
   PaymentController = component "Payment Controller"
 }
-DB = datastore "Database" {
+DB = database "Database" {
   technology "PostgreSQL"
 }
-Cache = datastore "Cache" {
+Cache = database "Cache" {
   technology "Redis"
 }
 }
 
 PaymentGateway = system "Payment Gateway" {
-external true
+  metadata {
+    tags ["external"]
+  }
 }
 
 // Relations
@@ -63,9 +61,14 @@ Shop.API -> PaymentGateway "Processes payments"
 // Executive view: High-level context
 view executive {
 title "Executive Overview"
-include Customer Admin
-include Shop PaymentGateway
-exclude Shop.WebApp Shop.API Shop.DB Shop.Cache
+include Customer
+include Admin
+include Shop
+include PaymentGateway
+exclude Shop.WebApp
+exclude Shop.API
+exclude Shop.DB
+exclude Shop.Cache
 }
 
 // Architect view: Container-level architecture

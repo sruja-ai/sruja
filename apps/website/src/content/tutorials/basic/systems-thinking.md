@@ -14,12 +14,8 @@ Systems thinking helps you understand how components interact as part of a whole
 Systems thinking starts with understanding **what** the system contains (parts) and **how** they connect (relationships).
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "End User"
 
@@ -32,7 +28,7 @@ API = container "API Service" {
   technology "Go"
 }
 
-DB = datastore "PostgreSQL Database" {
+DB = database "PostgreSQL Database" {
   technology "PostgreSQL 14"
 }
 }
@@ -54,18 +50,14 @@ include *
 Boundaries define what's **inside** the system vs. what's **outside** (the environment).
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 // Inside boundary: System contains these components
-system Shop {
-container WebApp
-container API
-datastore DB
+Shop = system "Shop" {
+  WebApp = container "Web App"
+  API = container "API"
+  DB = datastore "Database"
 }
 
 // Outside boundary: External entities
@@ -98,26 +90,22 @@ Flows show how information and data **move through** the system. Sruja supports 
 Use `scenario` for data-oriented flows:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+// EXPECTED_FAILURE: Layer violation
+// SKIP_ORPHAN_CHECK
+import { * } from 'sruja.ai/stdlib'
 
-person Customer
-system Shop {
-container WebApp
-container API
-datastore DB
+
+Customer = person "Customer"
+Shop = system "Shop" {
+  WebApp = container "Web App"
+  API = container "API"
+  DB = datastore "Database"
 }
-system PaymentGateway {
-metadata {
+PaymentGateway = system "PaymentGateway" {
   tags ["external"]
 }
-}
 
-scenario OrderProcess "Order Processing" {
+OrderProcess = scenario "Order Processing" {
 Customer -> Shop.WebApp "Submits Order"
 Shop.WebApp -> Shop.API "Sends Order Data"
 Shop.API -> Shop.DB "Saves Order"
@@ -136,19 +124,16 @@ include *
 Use `scenario` for behavioral flows:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+// EXPECTED_FAILURE: Layer violation
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "End User"
 ECommerce = system "E-Commerce System" {
 CartPage = container "Shopping Cart Page"
 WebApp = container "Web Application"
 API = container "API Service"
-DB = datastore "Database"
+DB = database "Database"
 }
 PaymentGateway = system "Payment Service" {
 metadata {
@@ -156,7 +141,7 @@ metadata {
 }
 }
 
-story Checkout "User Checkout Flow" {
+Checkout = story "User Checkout Flow" {
 Customer -> ECommerce.CartPage "adds items to cart"
 ECommerce.CartPage -> ECommerce.WebApp "clicks checkout"
 ECommerce.WebApp -> ECommerce.API "validates cart"
@@ -184,12 +169,12 @@ Feedback loops show how actions create **reactions** that affect future actions.
 
 ```sruja
 // EXPECTED_FAILURE: Layer violation
-element person
-element system
-element container
-element component
-element datastore
-element queue
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+queue = kind "Queue"
 
 User = person "End User"
 App = system "Application" {
@@ -209,17 +194,13 @@ App.WebApp -> User "Shows Feedback"
 ### System Feedback Loop
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-person Admin
-system Shop {
-container API
-datastore Inventory
+
+Admin = person "Administrator"
+Shop = system "Shop" {
+  API = container "API"
+  Inventory = datastore "Inventory"
 }
 
 // Event-driven feedback loop
@@ -241,18 +222,14 @@ include *
 Context defines the **environment** the system operates in - external dependencies, stakeholders, and surrounding systems.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 // Internal system
-system Shop {
-WebApp = container "Web Application"
-API = container "API Service"
-DB = datastore "Database"
+Shop = system "Shop" {
+  WebApp = container "Web Application"
+  API = container "API Service"
+  DB = database "Database"
 }
 
 // Context: Stakeholders
@@ -300,12 +277,12 @@ Here's a complete example combining all five concepts:
 
 ```sruja
 // EXPECTED_FAILURE: Layer violation
-element person
-element system
-element container
-element component
-element datastore
-element queue
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+queue = kind "Queue"
 
 // 1. PARTS AND RELATIONSHIPS
 Customer = person "End User"
@@ -318,7 +295,7 @@ WebApp = container "Web Application" {
 API = container "API Service" {
   technology "Go"
 }
-DB = datastore "PostgreSQL Database" {
+DB = database "PostgreSQL Database" {
   technology "PostgreSQL 14"
 }
 }
@@ -331,7 +308,7 @@ metadata {
 }
 
 // 3. FLOWS
-scenario OrderProcess "Order Processing" {
+OrderProcess = scenario "Order Processing" {
 Customer -> ECommerce.WebApp "Submits Order"
 ECommerce.WebApp -> ECommerce.API "Sends Order Data"
 ECommerce.API -> ECommerce.DB "Saves Order"

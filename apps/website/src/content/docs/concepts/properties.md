@@ -11,21 +11,17 @@ Use `properties` for structured metadata beyond `metadata` labels.
 ## Syntax
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-system App {
-container API {
-  properties {
-    owner "platform-team"
-    repo "github.com/org/app-api"
-    language "go"
+
+App = system "App" {
+  API = container "API" {
+    properties {
+      owner "platform-team"
+      repo "github.com/org/app-api"
+      language "go"
+    }
   }
-}
 }
 
 view index {

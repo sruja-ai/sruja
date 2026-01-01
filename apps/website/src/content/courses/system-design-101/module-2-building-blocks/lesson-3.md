@@ -54,12 +54,8 @@ When the cache is full, what do you remove?
 In Sruja, caches are often modeled as separate containers or components.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 Catalog = system "Product Catalog System" {
     WebApp = container "Storefront" {

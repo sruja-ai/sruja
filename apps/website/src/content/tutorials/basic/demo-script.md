@@ -14,18 +14,14 @@ This tutorial provides a quick 10-minute walkthrough to demonstrate Sruja's core
 Create a simple e-commerce architecture:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-person User
-system Shop {
-container WebApp
-container API
-datastore DB
+
+User = person "User"
+Shop = system "Shop" {
+  WebApp = container "Web App"
+  API = container "API"
+  DB = datastore "Database"
 }
 
 User -> Shop.WebApp "Uses"
@@ -51,8 +47,8 @@ sruja lint architecture.sruja
 Add SLOs and scaling configuration:
 
 ```sruja
-element system
-element container
+import { * } from 'sruja.ai/stdlib'
+
 
 Shop = system "Shop" {
 API = container "API" {

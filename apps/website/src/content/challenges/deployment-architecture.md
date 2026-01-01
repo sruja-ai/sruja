@@ -5,32 +5,24 @@ difficulty: intermediate
 topic: deployment
 estimatedTime: "15-20 min"
 initialDsl: |
-  specification {
-    element person
-    element system
-    element container
-    element component
-    element datastore
-    element queue
-    element external
+  person = kind "Person"
+  system = kind "System"
+  container = kind "Container"
+  datastore = kind "Datastore"
+
+  Viewer = person "Content Viewer"
+
+  CDN = system "CDN" {
+    EdgeServer = container "Edge Server"
+    API = container "Origin API"
+    OriginDB = datastore "Origin Database"
   }
-  
-  model {
-    Viewer = person "Content Viewer"
-    
-      CDN = system  {
-        EdgeServer = container "Edge Server"
-        API = container "Origin API"
-        OriginDB = datastore "Origin Database"
-      }
-    
-      Viewer -> EdgeServer "Requests content"
-      EdgeServer -> API "Fetches from origin"
-      API -> OriginDB "Reads content"
-    
-      // TODO: Add Cache datastore and connect EdgeServer -> Cache and API -> Cache
-    
-  }
+
+  Viewer -> CDN.EdgeServer "Requests content"
+  CDN.EdgeServer -> CDN.API "Fetches from origin"
+  CDN.API -> CDN.OriginDB "Reads content"
+
+  // TODO: Add Cache datastore and connect EdgeServer -> Cache and API -> Cache
 checks:
   - type: noErrors
     message: "DSL parsed successfully"
@@ -46,36 +38,28 @@ checks:
     target: Cache
     message: "Add relation API -> Cache"
 hints:
-  - "Add datastore Cache \"Redis Cache\" inside the CDN system"
-  - "EdgeServer reads from cache: EdgeServer -> Cache \"Reads cached content\""
-  - "API writes to cache: API -> Cache \"Writes content\""
+  - 'Add datastore Cache "Redis Cache" inside the CDN system'
+  - 'EdgeServer reads from cache: EdgeServer -> Cache "Reads cached content"'
+  - 'API writes to cache: API -> Cache "Writes content"'
   - "Cache sits between EdgeServer and API to reduce origin load"
 solution: |
-  specification {
-    element person
-    element system
-    element container
-    element component
-    element datastore
-    element queue
-    element external
+  person = kind "Person"
+  system = kind "System"
+  container = kind "Container"
+  datastore = kind "Datastore"
+
+  Viewer = person "Content Viewer"
+
+  CDN = system "CDN" {
+    EdgeServer = container "Edge Server"
+    API = container "Origin API"
+    Cache = datastore "Redis Cache"
+    OriginDB = datastore "Origin Database"
   }
-  
-  model {
-    Viewer = person "Content Viewer"
-    
-      CDN = system  {
-        EdgeServer = container "Edge Server"
-        API = container "Origin API"
-        Cache = datastore "Redis Cache"
-        OriginDB = datastore "Origin Database"
-      }
-    
-      Viewer -> EdgeServer "Requests content"
-      EdgeServer -> API "Fetches from origin"
-      EdgeServer -> Cache "Reads cached content"
-      API -> OriginDB "Reads content"
-      API -> Cache "Writes content"
-    
-  }
+
+  Viewer -> CDN.EdgeServer "Requests content"
+  CDN.EdgeServer -> CDN.API "Fetches from origin"
+  CDN.EdgeServer -> CDN.Cache "Reads cached content"
+  CDN.API -> CDN.OriginDB "Reads content"
+  CDN.API -> CDN.Cache "Writes content"
 ---

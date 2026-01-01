@@ -13,10 +13,8 @@ Focus on hot paths to reason about scaling, backpressure, and caching. High-thro
 ## Sruja: High‑Throughput View
 
 ```sruja
-element system
-element container
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 Pipeline = system "Data Pipeline" {
 Ingest = container "Ingestion Service" {
@@ -37,12 +35,12 @@ Processor = container "Processing Service" {
   }
 }
 
-Events = datastore "Event Store" {
+Events = database "Event Store" {
   technology "Kafka"
   description "Buffers events for processing"
 }
 
-OutputDB = datastore "Output Database" {
+OutputDB = database "Output Database" {
   technology "ClickHouse"
   description "Stores processed events"
 }
@@ -61,25 +59,28 @@ include *
 // Hot path view: Focus on critical throughput path
 view hotpath {
 title "Hot Path - Throughput Analysis"
-include Pipeline.Ingest Pipeline.Events Pipeline.Processor
+include Pipeline.Ingest
+include Pipeline.Events
+include Pipeline.Processor
 exclude Pipeline.OutputDB
-description "Isolates the critical path for throughput analysis"
 }
 
 // Backpressure view: Components that can cause bottlenecks
 view backpressure {
 title "Backpressure Points"
-include Pipeline.Events Pipeline.Processor
-exclude Pipeline.Ingest Pipeline.OutputDB
-description "Identifies where backpressure can occur"
+include Pipeline.Events
+include Pipeline.Processor
+exclude Pipeline.Ingest
+exclude Pipeline.OutputDB
 }
 
 // Scale view: Components with scaling configuration
 view scale {
 title "Scaling Configuration"
-include Pipeline.Ingest Pipeline.Processor
-exclude Pipeline.Events Pipeline.OutputDB
-description "Shows components with auto-scaling configured"
+include Pipeline.Ingest
+include Pipeline.Processor
+exclude Pipeline.Events
+exclude Pipeline.OutputDB
 }
 ```
 

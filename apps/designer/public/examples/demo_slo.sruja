@@ -53,9 +53,6 @@ api = system "API Service" {
   }
 }
 
-api.webApp -> api "reports metrics to"
-
-
 
 view index {
   title "SLO Example"

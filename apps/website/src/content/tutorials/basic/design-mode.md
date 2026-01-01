@@ -16,15 +16,11 @@ Design Mode helps you build architecture assets step by step, starting with high
 Start with the high-level context:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-person User
-system Shop
+
+User = person "User"
+Shop = system "Shop"
 
 view index {
 include *
@@ -36,18 +32,14 @@ include *
 Add containers and datastores:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-person User
-system App {
+
+User = person "User"
+App = system "App" {
 WebApp = container "Web Application"
 API = container "API Service"
-DB = datastore "Database"
+DB = database "Database"
 }
 
 User -> App.WebApp "Uses"
@@ -64,19 +56,15 @@ include *
 Drill down into components:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-system App {
-container WebApp {
-  component UI
+
+App = system "App" {
+WebApp = container "Web Application" {
+  UI = component "User Interface"
 }
-container API {
-  component Auth
+API = container "API Service" {
+  Auth = component "Auth Service"
 }
 }
 

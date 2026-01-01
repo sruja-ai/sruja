@@ -16,8 +16,8 @@ How should you represent an agent in Sruja? It depends on the scope of your diag
 If your AI is a product that users interact with, model it as a **System**.
 
 ```sruja
-element person
-element system
+import { * } from 'sruja.ai/stdlib'
+
 
 User = person "User"
 AI_Assistant = system "Support Bot"
@@ -34,14 +34,13 @@ include *
 If you are designing the internals, agents are often **Containers** (deployable units).
 
 ```sruja
-element system
-element container
-element datastore
+import { * } from 'sruja.ai/stdlib'
+
 
 AI_Assistant = system "AI Assistant" {
 Router = container "Router Agent"
 Search = container "Search Agent"
-VectorDB = datastore "Memory"
+VectorDB = database "Memory"
 }
 ```
 
@@ -50,9 +49,8 @@ VectorDB = datastore "Memory"
 If you are designing a single agent's logic, the specific tools and chains are **Components**.
 
 ```sruja
-element system
-element container
-element component
+import { * } from 'sruja.ai/stdlib'
+
 
 AI_Assistant = system "AI Assistant" {
 SearchAgent = container "Search Agent" {

@@ -48,10 +48,10 @@ Copy and paste this into your file:
 ```sruja
 // hello.sruja
 
-element system
-element container
-element datastore
-element person
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+person = kind "Person"
 
 // 1. Define the System
 webApp = system "My Cool Startup" {
@@ -59,7 +59,7 @@ webApp = system "My Cool Startup" {
 
     frontend = container "React App"
     api = container "Go Service"
-    db = datastore "PostgreSQL"
+    db = database "PostgreSQL"
 
     // 2. Define Connections
     frontend -> api "Requests Data"
@@ -93,16 +93,14 @@ You have just created a **Diagram-as-Code** artifact! You can paste the content 
 
 Let's break down what just happened.
 
-1.  **`specification`**: Defines the types of elements available in your model. This provides:
-    - **Early Validation**: Catches typos in element types before runtime
-    - **Better Tooling**: Enables autocomplete, validation, and refactoring in your IDE
-    - **Documentation**: Makes available element types explicit and self-documenting
-    - **Organization**: Separates structure definition from instantiation
-2.  **`model`**: The root block where you instantiate your architecture. This is where you define your actual systems, containers, and relationships.
-3.  **`views`**: Creates custom perspectives from your model. Different views for different audiences (executives, architects, developers).
-4.  **`system`**: A high-level collection of software (C4 Level 1).
-5.  **`container`**: A deployable application (e.g., Docker container, Lambda, Database).
-6.  **`->`**: The magic arrow. This defines a relationship. Sruja (and the C4 model) cares deeply about _how_ things talk to each other.
+1.  **Flat Syntax**: Sruja uses a flat syntax where all declarations are top-level. There are no `specification`, `model`, or `views` wrapper blocks required.
+2.  **`kind` Declarations**: Before using elements, you must declare their "kind". This establishes the vocabulary (e.g., `system`, `container`, `person`) and enables:
+    - **Early Validation**: Catches typos in element types.
+    - **Custom Types**: You can define your own kinds like `microservice` or `serverless`.
+3.  **Element Instantiation**: You create instances of kinds using the `=` operator (e.g., `webApp = system "My Cool Startup"`).
+4.  **`->` Relationships**: Defines how things talk to each other. Relationships can be defined anywhere in the file.
+5.  **Nested Elements**: Containers and components can be defined inside a system block `{ ... }`, or referred to using dot notation (e.g., `webApp.frontend`).
+6.  **Views (Implicit/Explicit)**: Sruja automatically generates C4 diagrams for you. You can optionally define `view` blocks for custom perspectives.
 
 ---
 

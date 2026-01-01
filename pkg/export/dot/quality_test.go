@@ -124,6 +124,7 @@ func TestMeasureQuality(t *testing.T) {
 func TestMeasureQuality_ManyRelations(t *testing.T) {
 	elements := []*Element{
 		{ID: "A", Kind: "system", Title: "A"},
+		{ID: "B", Kind: "system", Title: "B"},
 	}
 	// Many relations (more than 2 * elements)
 	relations := make([]*Relation, 10)

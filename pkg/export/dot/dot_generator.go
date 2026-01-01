@@ -67,7 +67,7 @@ func writeGraphHeaderFromConstraints(sb *strings.Builder, constraints LayoutCons
 	sb.WriteString("    TBbalance=min,\n")
 	sb.WriteString("    outputorder=nodesfirst,\n")
 	sb.WriteString("    newrank=true,\n")
-	sb.WriteString("    pad=0.5,\n") // Increased from 0.4 to 0.5 for better margins
+	fmt.Fprintf(sb, "    pad=%.1f,\n", GraphPad)
 	fmt.Fprintf(sb, "    overlap=%s,\n", constraints.Global.Overlap)
 	if constraints.Global.Concentrate {
 		sb.WriteString("    concentrate=true,\n")
@@ -75,8 +75,8 @@ func writeGraphHeaderFromConstraints(sb *strings.Builder, constraints LayoutCons
 	if constraints.Global.Sep > 0 {
 		fmt.Fprintf(sb, "    sep=%.2f,\n", constraints.Global.Sep)
 	}
-	sb.WriteString("    fontname=\"Arial\",\n")
-	sb.WriteString("    fontsize=12,\n")
+	fmt.Fprintf(sb, "    fontname=\"%s\",\n", FontName)
+	fmt.Fprintf(sb, "    fontsize=%d,\n", FontSizeGlobal)
 	sb.WriteString("    dpi=72\n")
 	sb.WriteString("  ];\n\n")
 }
@@ -111,7 +111,7 @@ func writeNodeFromConstraints(sb *strings.Builder, elem *Element, constraints La
 	fmt.Fprintf(sb, "%s  width=%.2f,\n", indent, pxToInchFloat(width))
 	fmt.Fprintf(sb, "%s  height=%.2f", indent, pxToInchFloat(height))
 	// Add margin to nodes for better spacing and overlap prevention
-	fmt.Fprintf(sb, ",\n%s  margin=0.15", indent) // Add margin for better node spacing
+	fmt.Fprintf(sb, ",\n%s  margin=%.2f", indent, MarginNode)
 
 	// Add group attribute for sibling clustering
 	if elem.ParentID != "" {
@@ -191,8 +191,8 @@ func writeEdgesFromConstraints(sb *strings.Builder, edges []EdgeConstraint) {
 			attrs = append(attrs, fmt.Sprintf("label=\"%s\"", escapeLabel(edge.Label.Text)))
 
 			// Add label positioning attributes for FAANG-quality appearance
-			attrs = append(attrs, "fontsize=11")
-			attrs = append(attrs, "fontcolor=\"#4A5568\"") // Subtle gray
+			attrs = append(attrs, fmt.Sprintf("fontsize=%d", FontSizeEdge))
+			attrs = append(attrs, fmt.Sprintf("fontcolor=\"%s\"", ColorSlate700))
 			// attrs = append(attrs, "decorate=true")         // Connect label to edge visually - DISABLED, creates confusion
 			attrs = append(attrs, "labelfloat=false") // Force space for label to prevent overlap with edge
 
@@ -269,20 +269,20 @@ func writeGlobalNodeAttributesFromConstraints(sb *strings.Builder) {
 	sb.WriteString("    shape=rect,\n")
 	sb.WriteString("    fixedsize=true,\n")
 	sb.WriteString("    style=\"filled\",\n")
-	sb.WriteString("    penwidth=0,\n")
-	sb.WriteString("    fontname=\"Arial\"\n")
+	fmt.Fprintf(sb, "    penwidth=%d,\n", PenWidthNode)
+	fmt.Fprintf(sb, "    fontname=\"%s\"\n", FontName)
 	sb.WriteString("  ];\n\n")
 }
 
 // writeGlobalEdgeAttributesFromConstraints writes default edge attributes.
 func writeGlobalEdgeAttributesFromConstraints(sb *strings.Builder) {
 	sb.WriteString("  edge [\n")
-	sb.WriteString("    fontname=\"Arial\",\n")
-	sb.WriteString("    fontsize=11,\n")
-	sb.WriteString("    penwidth=2,\n")
-	sb.WriteString("    arrowsize=0.75,\n")
-	sb.WriteString("    color=\"#596980\",\n")    // Slate 500
-	sb.WriteString("    fontcolor=\"#4A5568\"\n") // Slate 700
+	fmt.Fprintf(sb, "    fontname=\"%s\",\n", FontName)
+	fmt.Fprintf(sb, "    fontsize=%d,\n", FontSizeEdge)
+	fmt.Fprintf(sb, "    penwidth=%d,\n", PenWidthEdge)
+	fmt.Fprintf(sb, "    arrowsize=%.2f,\n", ArrowSize)
+	fmt.Fprintf(sb, "    color=\"%s\",\n", ColorSlate500)
+	fmt.Fprintf(sb, "    fontcolor=\"%s\"\n", ColorSlate700)
 	sb.WriteString("  ];\n\n")
 }
 
@@ -303,13 +303,13 @@ func writeClusterFromConstraints(sb *strings.Builder, parentID string, children 
 	fmt.Fprintf(sb, "  subgraph \"cluster_%s\" {\n", escapeID(parentID))
 	fmt.Fprintf(sb, "    label=\"%s\";\n", escapeLabel(parentTitle))
 	sb.WriteString("    style=\"filled\";\n")
-	sb.WriteString("    color=\"transparent\";\n") // Transparent border
-	sb.WriteString("    bgcolor=\"#f8f9fa\";\n")   // Light gray background
-	sb.WriteString("    margin=40;\n")
+	fmt.Fprintf(sb, "    color=\"%s\";\n", ColorTransparent)
+	fmt.Fprintf(sb, "    bgcolor=\"%s\";\n", ColorGrayBg)
+	fmt.Fprintf(sb, "    margin=%d;\n", MarginCluster)
 	sb.WriteString("    labelloc=\"t\";\n")  // Top
 	sb.WriteString("    labeljust=\"l\";\n") // Left
-	sb.WriteString("    fontsize=14;\n")
-	sb.WriteString("    fontcolor=\"#2D3748\";\n") // Slate 800
+	fmt.Fprintf(sb, "    fontsize=%d;\n", FontSizeCluster)
+	fmt.Fprintf(sb, "    fontcolor=\"%s\";\n", ColorSlate800)
 	sb.WriteString("\n")
 
 	for _, child := range children {

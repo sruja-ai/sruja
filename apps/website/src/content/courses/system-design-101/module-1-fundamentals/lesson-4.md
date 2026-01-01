@@ -33,12 +33,8 @@ In a distributed system, network partitions (P) are inevitable. Therefore, you m
 When defining data stores in Sruja, it is helpful to document their consistency guarantees, especially for distributed databases.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 DataLayer = system "Data Layer" {
     UserDB = container "User Database" {

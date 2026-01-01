@@ -17,6 +17,40 @@ type CategoryScores struct {
 	Standardization int // 10%
 }
 
+// Scoring Constants
+const (
+	// Category Weights
+	WeightStructural      = 0.40
+	WeightDocumentation   = 0.20
+	WeightTraceability    = 0.15
+	WeightComplexity      = 0.15
+	WeightStandardization = 0.10
+
+	// Penalties (Structural)
+	PenaltyCycle             = 30
+	PenaltyLayerViolation    = 15
+	PenaltyOrphanElement     = 10
+	PenaltyInvalidReference  = 20
+	PenaltyGenericValidation = 10
+
+	// Penalties (Documentation & Traceability)
+	PenaltyMissingDescription  = 5
+	PenaltyMissingTechnology   = 5
+	PenaltyMissingMetadata     = 2
+	PenaltyLowTraceability     = 20
+	ThresholdTraceabilityRatio = 0.5
+
+	// Critical Scoring
+	ThresholdCriticalStructural = 50
+	MultiplierCritical          = 0.8
+
+	// Grade Thresholds
+	GradeThresholdA = 90
+	GradeThresholdB = 80
+	GradeThresholdC = 70
+	GradeThresholdD = 60
+)
+
 // ScoreCard represents the result of an architectural score.
 type ScoreCard struct {
 	Score      int
@@ -126,24 +160,24 @@ func (s *Scorer) CalculateScore(program *language.Program) ScoreCard {
 
 		switch d.Code {
 		case diagnostics.CodeCycleDetected:
-			points = 30
+			points = PenaltyCycle
 			rule = "Circular Dependency"
 			severity = diagnostics.SeverityError
 		case diagnostics.CodeLayerViolation:
-			points = 15
+			points = PenaltyLayerViolation
 			rule = "Layer Violation"
 			severity = diagnostics.SeverityWarning
 		case diagnostics.CodeOrphanElement:
-			points = 10
+			points = PenaltyOrphanElement
 			rule = "Orphan Element"
 			severity = diagnostics.SeverityWarning
 		case diagnostics.CodeReferenceNotFound:
-			points = 20
+			points = PenaltyInvalidReference
 			rule = "Invalid Reference"
 			severity = diagnostics.SeverityError
 		default:
 			if d.Severity == diagnostics.SeverityError {
-				points = 10
+				points = PenaltyGenericValidation
 				rule = "Validation Error"
 			}
 		}
@@ -181,15 +215,15 @@ func (s *Scorer) CalculateScore(program *language.Program) ScoreCard {
 
 	// Calculate Final Weighted Score
 	// Structural (40%), Doc (20%), Trace (15%), Complexity (15%), Standard (10%)
-	finalScore := float64(scores.Structural)*0.40 +
-		float64(scores.Documentation)*0.20 +
-		float64(scores.Traceability)*0.15 +
-		float64(scores.Complexity)*0.15 +
-		float64(scores.Standardization)*0.10
+	finalScore := float64(scores.Structural)*WeightStructural +
+		float64(scores.Documentation)*WeightDocumentation +
+		float64(scores.Traceability)*WeightTraceability +
+		float64(scores.Complexity)*WeightComplexity +
+		float64(scores.Standardization)*WeightStandardization
 
 	// Apply critical multiplier if structural is very low
-	if scores.Structural < 50 {
-		finalScore *= 0.8
+	if scores.Structural < ThresholdCriticalStructural {
+		finalScore *= MultiplierCritical
 	}
 
 	score := int(finalScore)
@@ -214,13 +248,13 @@ func (s *Scorer) CalculateScore(program *language.Program) ScoreCard {
 // calculateGrade returns the letter grade for a score.
 func calculateGrade(score int) string {
 	switch {
-	case score >= 90:
+	case score >= GradeThresholdA:
 		return "A"
-	case score >= 80:
+	case score >= GradeThresholdB:
 		return "B"
-	case score >= 70:
+	case score >= GradeThresholdC:
 		return "C"
-	case score >= 60:
+	case score >= GradeThresholdD:
 		return "D"
 	default:
 		return "F"
@@ -289,13 +323,13 @@ func (s *Scorer) checkDocumentation(model *language.Model, scores *CategoryScore
 		if !hasDescription {
 			*deductions = append(*deductions, Deduction{
 				Rule:     "Missing Description",
-				Points:   5,
+				Points:   PenaltyMissingDescription,
 				Message:  formatMissingDescription(elementID),
 				Target:   elementID,
 				Severity: diagnostics.SeverityInfo,
 				Category: "Documentation",
 			})
-			scores.Documentation -= 5
+			scores.Documentation -= PenaltyMissingDescription
 		}
 
 		// Only check technology for containers and components
@@ -304,19 +338,19 @@ func (s *Scorer) checkDocumentation(model *language.Model, scores *CategoryScore
 			if !hasTechnology {
 				*deductions = append(*deductions, Deduction{
 					Rule:     "Missing Technology",
-					Points:   5,
+					Points:   PenaltyMissingTechnology,
 					Message:  formatMissingTechnology(elementID),
 					Target:   elementID,
 					Severity: diagnostics.SeverityInfo,
 					Category: "Documentation",
 				})
-				scores.Documentation -= 5
+				scores.Documentation -= PenaltyMissingTechnology
 			}
 		}
 
 		// Standardization Checks
 		if !hasMetadata {
-			scores.Standardization -= 2
+			scores.Standardization -= PenaltyMissingMetadata
 		}
 
 		// Push children
@@ -352,11 +386,11 @@ func (s *Scorer) checkTraceability(model *language.Model, scores *CategoryScores
 		}
 	}
 
-	if totalElements > 0 && taggedCount < totalElements/2 {
-		scores.Traceability -= 20 // Penalty for low requirement coverage
+	if totalElements > 0 && taggedCount < totalElements/2 { // Using simpler logic for now, could use ThresholdTraceabilityRatio
+		scores.Traceability -= PenaltyLowTraceability // Penalty for low requirement coverage
 		*deductions = append(*deductions, Deduction{
 			Rule:     "Low Traceability",
-			Points:   20,
+			Points:   PenaltyLowTraceability,
 			Message:  "Less than 50% of elements are mapped to requirements",
 			Target:   "requirements",
 			Severity: diagnostics.SeverityWarning,

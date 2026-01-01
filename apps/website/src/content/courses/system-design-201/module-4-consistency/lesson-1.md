@@ -36,12 +36,8 @@ Don't write to the DB immediately.
 We can use Sruja to model the "Write-Behind" architecture.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 CounterService = system "View Counter" {
     API = container "Ingestion API" {
@@ -59,7 +55,7 @@ CounterService = system "View Counter" {
         scale { min 5 }
     }
 
-    DB = datastore "Counter DB" {
+    DB = database "Counter DB" {
         technology "Cassandra"
         description "Stores final counts (Counter Columns)"
     }
@@ -78,15 +74,15 @@ CounterService = system "View Counter" {
 User = person "Viewer"
 
 // Write Path (Eventual Consistency)
-scenario TrackView "User watches a video" {
-    User -> API "POST /view"
-    API -> EventLog "Produce Event"
-    API -> User "202 Accepted"
+TrackView = scenario "User watches a video" {
+    User -> CounterService.API "POST /view"
+    CounterService.API -> CounterService.EventLog "Produce Event"
+    CounterService.API -> User "202 Accepted"
 
     // Async processing
-    EventLog -> Worker "Consume Batch"
-    Worker -> DB "UPDATE views += batch_size"
-    Worker -> Cache "Invalidate/Update"
+    CounterService.EventLog -> CounterService.Worker "Consume Batch"
+    CounterService.Worker -> CounterService.DB "UPDATE views += batch_size"
+    CounterService.Worker -> CounterService.Cache "Invalidate/Update"
 }
 
 view index {

@@ -9,19 +9,22 @@ summary: "A living, executable architecture language for faster decisions, safer
 Sruja is an **open source** architecture-as-code language that helps teams define, validate, and evolve their software architecture. Built by and for the community, Sruja provides a foundation for better architectural governance and can evolve into a platform for live system review and gap analysis.
 
 ## What Sruja Delivers
+
 - **Living architecture**: A concise DSL that stays in sync with reality, version-controlled alongside your code.
 - **Enforceable guardrails**: Lint rules, policies, constraints, and conventions validated in CI/CD.
 - **Decision velocity**: Model, validate, and export diagrams in minutes.
-- **Operational clarity**: Native `slo`, `scale`, `change`, and `snapshot` blocks for production concerns.
+- **Operational clarity**: Native `slo` and `scale` blocks for production concerns, with Git integration for change tracking.
 - **Interoperability**: Export to `markdown`, `mermaid`, `svg`, `json`, `d2` for integration with your toolchain.
 
 ## Why It Wins
+
 - **Open source foundation**: Community-driven development, transparent roadmap, and extensible architecture.
 - **Measurable outcomes**: Fewer incidents, faster reviews, consistent designs across teams.
 - **One source of truth**: Code, docs, and diagrams generated from the same model.
 - **Governance built‑in**: Codify standards and verify in CI, with future support for live system analysis.
 
 ## Quick Proof
+
 ```bash
 sruja fmt architecture.sruja
 sruja lint architecture.sruja
@@ -29,9 +32,10 @@ sruja export markdown architecture.sruja
 ```
 
 ## Adoption Snapshot
+
 - Week 1: baseline model, enable lint in CI.
 - Week 2: add `slo`, `scale`, constraints; export docs.
-- Week 3: introduce views and governance; track `change` and `snapshot`.
+- Week 3: introduce views and governance; track evolution with ADRs, SLOs, and Git.
 
 ## Making the Decision
 
@@ -46,6 +50,7 @@ sruja export markdown architecture.sruja
 **For Investors**: See our **[Investor Deck](/investors/investor-deck)** for market opportunity, solution approach, and investment details.
 
 **Key Questions:**
+
 - Do you have architecture documentation challenges? → [Self-Assessment](/docs/adoption-guide#is-sruja-right-for-your-organization)
 - What's the value for your organization? → [Value Calculator](/docs/adoption-guide#step-2-calculate-value--roi)
 - Is your team ready? → [Technical Fit Assessment](/docs/adoption-guide#step-3-assess-technical-fit)

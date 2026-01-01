@@ -81,12 +81,8 @@ Create your first file at `architecture/main.sruja`. We'll start with a high-lev
 Before modeling architecture, let's capture product requirements:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 // Product Requirements (from product team)
 requirement R1 functional "Merchants can create and manage online stores"
@@ -113,12 +109,8 @@ include *
 Now let's model the system context:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 // Product Requirements
 requirement R1 functional "Merchants can create and manage online stores"
@@ -156,7 +148,7 @@ Stripe = system "Payment Gateway" {
 }
 
 EmailService = system "Email Service" {
-    external
+    tags ["external"]
     description "Sends transactional emails (order confirmations, etc.)"
 }
 
@@ -175,7 +167,7 @@ Platform -> EmailService "Sends Notifications" {
 }
 
 // 5. Model user journeys as scenarios
-scenario ShopperCheckout "Shopper Checkout Journey" {
+ShopperCheckout = scenario "Shopper Checkout Journey" {
     Shopper -> Platform "Browses products"
     Shopper -> Platform "Adds items to cart"
     Shopper -> Platform "Initiates checkout"
@@ -185,7 +177,7 @@ scenario ShopperCheckout "Shopper Checkout Journey" {
     EmailService -> Shopper "Delivers confirmation email"
 }
 
-scenario MerchantManagement "Merchant Store Management" {
+MerchantManagement = scenario "Merchant Store Management" {
     Merchant -> Platform "Logs into admin dashboard"
     Merchant -> Platform "Creates new product"
     Merchant -> Platform "Updates inventory"
@@ -195,16 +187,21 @@ scenario MerchantManagement "Merchant Store Management" {
 // Executive view: Business context
 view executive {
 title "Executive Overview"
-include Merchant Shopper
-include Platform Stripe EmailService
+include Merchant
+include Shopper
+include Platform
+include Stripe
+include EmailService
 }
 
 // Product view: User journeys
 view product {
 title "Product View - User Experience"
-include Merchant Shopper
+include Merchant
+include Shopper
 include Platform
-exclude Stripe EmailService
+exclude Stripe
+exclude EmailService
 }
 
 // Technical view: System integrations

@@ -11,7 +11,8 @@ A **DataStore** represents a database, file system, or any other system that sto
 ## Syntax
 
 ```sruja
-datastore = kind "Datastore"
+import { * } from 'sruja.ai/stdlib'
+
 
 ID = datastore "Label" {
 description "Optional description"
@@ -22,7 +23,8 @@ technology "Technology"
 ## Example
 
 ```sruja
-datastore = kind "Datastore"
+import { * } from 'sruja.ai/stdlib'
+
 
 DB = datastore "Main Database" {
 technology "PostgreSQL"

@@ -22,8 +22,8 @@ This is the highest level of abstraction. It shows your software system as a sin
 - **Audience:** Everyone (Technical & Non-Technical).
 
 ```sruja
-system = kind "System"
-person = kind "Person"
+import { * } from 'sruja.ai/stdlib'
+
 
 App = system "My App"
 User = person "Customer"
@@ -49,9 +49,8 @@ App -> Stripe "Process Payments"
 - **Audience:** Architects, Developers, Ops.
 
 ```sruja
-system = kind "System"
-container = kind "Container"
-datastore = kind "Datastore"
+import { * } from 'sruja.ai/stdlib'
+
 
 App = system "My App" {
 Web = container "React App"

@@ -41,12 +41,8 @@ Sruja validates:
 Let's validate a real architecture:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "Customer"
 
@@ -57,10 +53,10 @@ ECommerce = system "E-Commerce Platform" {
     API = container "REST API" {
         technology "Go"
     }
-    ProductDB = datastore "Product Database" {
+    ProductDB = database "Product Database" {
         technology "PostgreSQL"
     }
-    OrderDB = datastore "Order Database" {
+    OrderDB = database "Order Database" {
         technology "PostgreSQL"
     }
 }
@@ -124,8 +120,8 @@ ECommerce.API -> ECommerce.ProductDB "Reads"
 **Fix:**
 
 ```sruja
-element system
-element container
+import { * } from 'sruja.ai/stdlib'
+
 
 // EXPECTED_FAILURE: unexpected token
 // ❌ Wrong
@@ -221,8 +217,8 @@ Sruja detects cycles but **doesn't block them** - cycles are valid architectural
 - **Bidirectional flows**: API ↔ Database (read/write)
 
 ```sruja
-element person
-element system
+import { * } from 'sruja.ai/stdlib'
+
 
 // ✅ Valid - feedback loop
 User = person "User"
@@ -336,29 +332,23 @@ fi
 Use constraints and conventions for custom validation:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-// Define constraint
-constraint NoDirectDB "Frontend cannot access databases directly" {
-    description "All database access must go through API layer"
+
+// Define constraints
+constraints {
+    "Frontend cannot access databases directly"
 }
 
-// Apply convention
-convention LayeredArchitecture {
-    rule "Frontend → API → Database"
+// Apply conventions
+conventions {
+    "Layered Architecture: Frontend → API → Database"
 }
 
-system Platform {
-    Frontend = container "React App" {
-        // This will be validated
-    }
+Platform = system "Platform" {
+    Frontend = container "React App"
     API = container "REST API"
-    DB = datastore "PostgreSQL"
+    DB = database "PostgreSQL"
 
     // ✅ Valid
     Frontend -> API "Calls API"
@@ -378,16 +368,12 @@ include *
 ### Step 1: Write Architecture
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-system App {
-    container Web
-    datastore DB
+
+App = system "App" {
+    Web = container "Web"
+    DB = datastore "Database"
 }
 
 view index {

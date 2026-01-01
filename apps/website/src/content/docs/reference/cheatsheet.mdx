@@ -77,7 +77,7 @@ deployment Prod {
   node Cloud {
     node Region {
       node Service {
-        containerInstance Web
+        containerInstance App.Web
       }
     }
   }
@@ -86,4 +86,4 @@ deployment Prod {
 
 ## Try It Live
 
-<LiveSrujaBlockWrapper initialDsl={"specification {\n  person = kind \"Person\"\n  system = kind \"System\"\n  container = kind \"Container\"\n  datastore = kind \"Datastore\"\n}\n\nmodel {\n  User = person \"User\"\n  App = system \"App\" {\n    Web = container \"Web\"\n    API = container \"API\"\n    DB = datastore \"DB\"\n  }\n  User -> App.Web \"Uses\"\n  App.Web -> App.API \"Calls\"\n  App.API -> App.DB \"Reads/Writes\"\n}"} />
+<LiveSrujaBlockWrapper initialDsl={"person = kind \"Person\"\nsystem = kind \"System\"\ncontainer = kind \"Container\"\ndatastore = kind \"Datastore\"\n\nUser = person \"User\"\nApp = system \"App\" {\n  Web = container \"Web\"\n  API = container \"API\"\n  DB = datastore \"DB\"\n}\nUser -> App.Web \"Uses\"\nApp.Web -> App.API \"Calls\"\nApp.API -> App.DB \"Reads/Writes\"\n\nview index {\n  include *\n}"} />

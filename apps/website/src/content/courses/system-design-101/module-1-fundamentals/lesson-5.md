@@ -31,15 +31,11 @@ A **User Scenario** describes the series of steps a user takes to achieve a spec
 Sruja provides a dedicated `scenario` keyword to model these interactions explicitly. This allows you to visualize the flow of data across your defined architecture.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-requirement R1 functional "User can buy a ticket"
-requirement R2 performance "Process payment in < 2s"
+
+R1 = requirement functional "User can buy a ticket"
+R2 = requirement performance "Process payment in < 2s"
 
 // Define the actors and systems first
 User = person "Ticket Buyer"
@@ -54,11 +50,11 @@ TicketingApp = system "Ticketing Platform" {
 }
 
 // Define the scenario
-scenario BuyTicket "User purchases a concert ticket" {
-    User -> WebApp "Selects ticket"
-    WebApp -> PaymentService "Process payment"
-    PaymentService -> EmailService "Trigger confirmation"
-    EmailService -> User "Send email"
+BuyTicket = scenario "User purchases a concert ticket" {
+    User -> TicketingApp.WebApp "Selects ticket"
+    TicketingApp.WebApp -> TicketingApp.PaymentService "Process payment"
+    TicketingApp.PaymentService -> TicketingApp.EmailService "Trigger confirmation"
+    TicketingApp.EmailService -> User "Send email"
 }
 
 view index {

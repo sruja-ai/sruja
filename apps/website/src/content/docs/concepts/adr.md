@@ -15,7 +15,8 @@ Sruja allows you to capture **Architecture Decision Records (ADRs)** directly wi
 You can define an ADR with a full body describing the context, decision, and consequences.
 
 ```sruja
-system = kind "System"
+import { * } from 'sruja.ai/stdlib'
+
 
 ADR001 = adr "Use PostgreSQL" {
 status "Accepted"
@@ -30,7 +31,8 @@ consequences "Good ecosystem support, but requires managing migrations."
 You can link an ADR to the elements it affects (System, Container, Component) by referencing its ID inside the element's block.
 
 ```sruja
-system = kind "System"
+import { * } from 'sruja.ai/stdlib'
+
 
 Backend = system "Backend API" {
 // Link to the ADR (via metadata in future)

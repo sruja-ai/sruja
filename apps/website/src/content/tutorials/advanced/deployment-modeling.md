@@ -10,31 +10,26 @@ tags: ["deployment", "infrastructure"]
 Model production environments and map containers onto infrastructure nodes.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-system WebApp {
+
 WebServer = container "Nginx"
 AppServer = container "Python App"
-Database = container "Postgres"
-}
+Database = database "Postgres"
+
 
 deployment Production "Production" {
-node AWS "AWS" {
-  node USEast1 "US-East-1" {
-    node EC2 "EC2 Instance" {
-      containerInstance WebServer
-      containerInstance AppServer
-    }
-    node RDS "RDS" {
-      containerInstance Database
+  node AWS "AWS" {
+    node USEast1 "US-East-1" {
+      node EC2 "EC2 Instance" {
+        containerInstance WebServer
+        containerInstance AppServer
+      }
+      node RDS "RDS" {
+        containerInstance Database
+      }
     }
   }
-}
 }
 
 view index {

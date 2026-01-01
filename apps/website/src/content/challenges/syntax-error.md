@@ -5,30 +5,22 @@ difficulty: beginner
 topic: validation
 estimatedTime: "5-8 min"
 initialDsl: |
-  specification {
-    element person
-    element system
-    element container
-    element component
-    element datastore
-    element queue
-    element external
+  person = kind "Person"
+  system = kind "System"
+  container = kind "Container"
+  datastore = kind "Datastore"
+
+  Rider = person "App User"
+
+  RideApp = system "RideApp" {
+    MobileApp = container "Mobile Application"
+    MatchingService = container "Driver Matching"
+    LocationDB = datastore "Location Database"
   }
-  
-  model {
-    Rider = person "App User"
-    
-      RideApp = system  {
-        MobileApp = container "Mobile Application"
-        MatchingService = container "Driver Matching"
-        LocationDB = datastore "Location Database"
-      }
-    
-      Rider -> MobileApp "Requests ride"
-      MobileApp -> MatchingService Finds driver  // Missing quotes
-      MatchingService -> LocationDB "Queries locations"
-    
-  }
+
+  Rider -> RideApp.MobileApp "Requests ride"
+  RideApp.MobileApp -> RideApp.MatchingService Finds driver  // Missing quotes
+  RideApp.MatchingService -> RideApp.LocationDB "Queries locations"
 checks:
   - type: noErrors
     message: "DSL parsed successfully"
@@ -46,28 +38,20 @@ hints:
   - "All relation labels must be wrapped in double quotes"
   - "Container definitions need proper closing braces"
 solution: |
-  specification {
-    element person
-    element system
-    element container
-    element component
-    element datastore
-    element queue
-    element external
+  person = kind "Person"
+  system = kind "System"
+  container = kind "Container"
+  datastore = kind "Datastore"
+
+  Rider = person "App User"
+
+  RideApp = system "RideApp" {
+    MobileApp = container "Mobile Application"
+    MatchingService = container "Driver Matching"
+    LocationDB = datastore "Location Database"
   }
-  
-  model {
-    Rider = person "App User"
-    
-      RideApp = system  {
-        MobileApp = container "Mobile Application"
-        MatchingService = container "Driver Matching"
-        LocationDB = datastore "Location Database"
-      }
-    
-      Rider -> MobileApp "Requests ride"
-      MobileApp -> MatchingService "Finds driver"
-      MatchingService -> LocationDB "Queries locations"
-    
-  }
+
+  Rider -> RideApp.MobileApp "Requests ride"
+  RideApp.MobileApp -> RideApp.MatchingService "Finds driver"
+  RideApp.MatchingService -> RideApp.LocationDB "Queries locations"
 ---

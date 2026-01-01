@@ -25,8 +25,8 @@ We change `Inventory` from a logical domain inside the monolith to a physical `s
 domain Inventory { ... }
 
 // After
-element system
-element container
+system = kind "System"
+container = kind "Container"
 
 InventoryService = system "Inventory Microservice" {
 API = container "Inventory API"
@@ -39,8 +39,8 @@ Database = container "Inventory DB"
 The `OrderService` can no longer call `Inventory` functions directly. It must make a gRPC call. Update your OpenAPI specs to reflect the new gRPC interfaces.
 
 ```sruja
-element system
-element container
+import { * } from 'sruja.ai/stdlib'
+
 
 OrderService = system "Order Service" {
 // ...

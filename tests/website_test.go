@@ -326,124 +326,12 @@ func extractCodeBlockMetadata(code string) CodeBlockMetadata {
 	return meta
 }
 
-// usesDeferredFeature checks if code uses deferred/unimplemented features
+// usesDeferredFeature is deprecated - all examples should use only supported features
+// This function now always returns false - no skipping should occur
+// All content should be updated to use only supported DSL syntax
 func usesDeferredFeature(code string) bool {
-	// Check for DDD features (deferred to Phase 2)
-	// Match whole words to avoid false positives
-	dddPatterns := []string{
-		"domain ", "context ", "aggregate ", "entity ", "valueObject ", "event ",
-	}
-	for _, pattern := range dddPatterns {
-		if strings.Contains(code, pattern) {
-			return true
-		}
-	}
-
-	// Check for Policy (architecture construct, not yet implemented)
-	if strings.Contains(code, "policy ") {
-		return true
-	}
-
-	// Check for Flow (architecture construct, not yet implemented)
-	if strings.Contains(code, "flow ") {
-		return true
-	}
-
-	// Check for View (removed feature)
-	if strings.Contains(code, "view ") {
-		return true
-	}
-
-	// Check for story blocks that may have syntax issues
-	// Story is supported but some examples have syntax errors
-	if strings.Contains(code, "story ") {
-		// Check if story is inside a system block without proper closing
-		// This is a syntax error in examples, not a feature issue
-		// For now, skip examples with story to avoid false failures
-		// TODO: Fix examples to have correct syntax
-		return true
-	}
-
-	// Split code into lines once for all checks
-	codeLines := strings.Split(code, "\n")
-
-	// Check for unsupported keywords
-	unsupportedKeywords := []string{
-		"module ",  // Not yet implemented
-		"data ",    // Not yet implemented
-		"api ",     // Not yet implemented
-		"external", // Not yet implemented (as a keyword)
-		"slo ",     // Not yet implemented
-	}
-	for _, keyword := range unsupportedKeywords {
-		// Check if keyword appears (not in comments)
-		for _, line := range codeLines {
-			trimmed := strings.TrimSpace(line)
-			if strings.HasPrefix(trimmed, "//") {
-				continue
-			}
-			if strings.Contains(line, keyword) {
-				return true
-			}
-		}
-	}
-
-	// Check for system with invalid syntax
-	// System should be: system ID "Label"? "Description"?
-	// Some examples have syntax errors - check for common patterns
-	for _, line := range codeLines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "//") {
-			continue
-		}
-		// Check if line contains "system" followed by identifier
-		if matched := systemRegexStr.MatchString(trimmed); matched {
-			// Count quoted strings in this line
-			quotedStrings := regexp.MustCompile(`"[^"]*"`).FindAllString(line, -1)
-			// If there are 3+ quoted strings, it's invalid (only 2 allowed: label and description)
-			if len(quotedStrings) >= 3 {
-				return true
-			}
-			// Also check for the specific dfd.sruja pattern: system ID "Label" "Description" {
-			// This might be a parser issue, so skip it for now
-			if len(quotedStrings) == 2 && strings.Contains(line, "{") {
-				// Check if this matches the problematic pattern from dfd.sruja
-				if matched := systemDetailRegex.MatchString(trimmed); matched {
-					return true
-				}
-			}
-		}
-	}
-
-	// Check for qualified names (e.g., Shop.WebApp) - may not be fully supported
-	// But allow them in comments
-	for _, line := range codeLines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "//") {
-			continue // Skip comment lines
-		}
-		// Check for qualified names in non-comment lines
-		if matched := relationRegex.MatchString(line); matched {
-			return true
-		}
-	}
-
-	// Check for old metadata syntax (key: "value" instead of key "value")
-	// This is a syntax error that needs fixing
-	if matched, _ := regexp.MatchString(`\w+\s*:\s*"`, code); matched {
-		// But allow it in comments
-		for _, line := range codeLines {
-			trimmed := strings.TrimSpace(line)
-			if strings.HasPrefix(trimmed, "//") {
-				continue
-			}
-			if matched := propertyRegex.MatchString(line); matched {
-				// This is a syntax error - skip for now, needs to be fixed in examples
-				return true
-			}
-		}
-	}
-
+	// All examples should use only supported features - no skipping logic
+	// Content should be updated to remove any unsupported syntax
 	return false
 }
 
@@ -551,11 +439,7 @@ func TestPlaygroundExamples(t *testing.T) {
 	for name, code := range examples {
 		meta := metadata[name]
 		t.Run(name, func(t *testing.T) {
-			// Skip examples that use deferred/unimplemented features
-			if usesDeferredFeature(code) {
-				t.Skipf("Skipping '%s': uses deferred/unimplemented features (DDD, Policy, Flow, View, or qualified names)", name)
-				return
-			}
+			// All examples should use only supported features - no skipping
 
 			// Tests now only verify parsing and validation (D2/SVG export removed)
 			skipOrphan := meta.SkipOrphanCheck
@@ -602,17 +486,7 @@ func TestCourseCodeBlocks(t *testing.T) {
 	for name, code := range codeBlocks {
 		meta := metadata[name]
 		t.Run(name, func(t *testing.T) {
-			// Skip examples that use deferred/unimplemented features
-			if usesDeferredFeature(code) {
-				t.Skipf("Skipping '%s': uses deferred/unimplemented features", name)
-				return
-			}
-
-			// Skip examples that use deferred/unimplemented features
-			if usesDeferredFeature(code) {
-				t.Skipf("Skipping '%s': uses deferred/unimplemented features", name)
-				return
-			}
+			// All examples should use only supported features - no skipping
 
 			// Use regular compiler with optional orphan check skip
 			skipOrphan := meta.SkipOrphanCheck
@@ -657,12 +531,7 @@ func TestDocsCodeBlocks(t *testing.T) {
 	for name, code := range codeBlocks {
 		meta := metadata[name]
 		t.Run(name, func(t *testing.T) {
-			// Skip examples that use deferred/unimplemented features
-			if usesDeferredFeature(code) {
-				t.Skipf("Skipping '%s': uses deferred/unimplemented features", name)
-				return
-			}
-
+			// All examples should use only supported features - no skipping
 			// Use regular compiler with optional orphan check skip
 			skipOrphan := meta.SkipOrphanCheck
 			err := compileCode("docs-"+name, code, skipOrphan, true)
@@ -706,12 +575,7 @@ func TestTutorialCodeBlocks(t *testing.T) {
 	for name, code := range codeBlocks {
 		meta := metadata[name]
 		t.Run(name, func(t *testing.T) {
-			// Skip examples that use deferred/unimplemented features
-			if usesDeferredFeature(code) {
-				t.Skipf("Skipping '%s': uses deferred/unimplemented features", name)
-				return
-			}
-
+			// All examples should use only supported features - no skipping
 			// Use regular compiler with optional orphan check skip
 			skipOrphan := meta.SkipOrphanCheck
 			err := compileCode("tutorial-"+name, code, skipOrphan, true)
@@ -755,12 +619,7 @@ func TestBlogCodeBlocks(t *testing.T) {
 	for name, code := range codeBlocks {
 		meta := metadata[name]
 		t.Run(name, func(t *testing.T) {
-			// Skip examples that use deferred/unimplemented features
-			if usesDeferredFeature(code) {
-				t.Skipf("Skipping '%s': uses deferred/unimplemented features", name)
-				return
-			}
-
+			// All examples should use only supported features - no skipping
 			// Use regular compiler with optional orphan check skip
 			skipOrphan := meta.SkipOrphanCheck
 			err := compileCode("blog-"+name, code, skipOrphan, true)

@@ -57,10 +57,10 @@ jobs:
               - 'packages/shared/**'
               - 'packages/ui/**'
 
-  go-test:
-    name: Go Tests & Quality
+  go-lint:
+    name: Go Lint & Quality
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     needs: detect-changes
     if: needs.detect-changes.outputs.go == 'true'
 
@@ -74,32 +74,31 @@ jobs:
       - name: Build
         run: go build -v ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
 
-      - name: Run gofmt check
-        run: |
-          if [ "$(gofmt -s -l ./pkg ./internal ./cmd ./scripts | wc -l)" -gt 0 ]; then
-            echo "::error::Code is not formatted. Run 'make fmt' to fix."
-            gofmt -s -l ./pkg ./internal ./cmd ./scripts
-            exit 1
-          fi
-
-      - name: Run go vet
-        run: go vet ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
-
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
-          version: latest
+          version: v2.6.2
           args: --timeout=5m
+
+  go-test:
+    name: Go Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: detect-changes
+    if: needs.detect-changes.outputs.go == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Go
+        uses: ./.github/actions/setup-go
 
       - name: Run tests with coverage
         run: |
-          go test -v -coverprofile=coverage.out ./pkg/... ./internal/... ./cmd/sruja ./tests/... ./scripts/...
+          make test-coverage-check TEST_ARGS="-v"
           echo "### Go Test Summary" >> $GITHUB_STEP_SUMMARY
           go tool cover -func=coverage.out | tail -n 1 | awk '{print "Total Coverage: " $3}' >> $GITHUB_STEP_SUMMARY
-
-      - name: Check coverage threshold
-        run: make test-coverage-check
-        continue-on-error: true
 
       - name: Verify coverage file
         run: |
@@ -116,18 +115,6 @@ jobs:
           coverage-reports: coverage.out
         continue-on-error: true
 
-      - name: Run security scan (govulncheck)
-        run: |
-          command -v govulncheck > /dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
-        continue-on-error: true
-
-      - name: Run security linter (gosec)
-        run: |
-          command -v gosec > /dev/null 2>&1 || go install github.com/securego/gosec/v2/cmd/gosec@latest
-          gosec -quiet ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
-        continue-on-error: true
-
   typescript-lint:
     name: Lint TypeScript/JavaScript
     runs-on: ubuntu-latest
@@ -139,17 +126,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
-      - name: Set up Node.js
-        # Security: Using commit SHA - Get from https://github.com/actions/setup-node/releases (v4.1.0)
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
-        with:
-          node-version: "24"
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-        env:
-          HUSKY: 0
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
 
       - name: Run ESLint
         run: npm run lint
@@ -168,17 +146,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
-      - name: Set up Node.js
-        # Security: Using commit SHA - Get from https://github.com/actions/setup-node/releases (v4.1.0)
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
-        with:
-          node-version: "24"
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-        env:
-          HUSKY: 0
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
 
       - name: Run tests with coverage
         run: npm run test:coverage
@@ -194,10 +163,6 @@ jobs:
           name: typescript-coverage
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Run security audit
-        run: npm audit --audit-level=moderate
-        continue-on-error: true
 
   test-e2e:
     name: E2E Tests
@@ -269,8 +234,8 @@ jobs:
     name: Build Examples
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [detect-changes, go-test]
-    if: needs.detect-changes.outputs.examples == 'true' && needs.go-test.result == 'success'
+    needs: [detect-changes, go-test, go-lint]
+    if: needs.detect-changes.outputs.examples == 'true' && needs.go-test.result == 'success' && needs.go-lint.result == 'success'
 
     steps:
       - name: Checkout code

@@ -9,12 +9,8 @@ summary: "Core constructs and fields for Sruja DSL."
 ## Elements
 
 ```sruja
-person = kind "Person"
-system = kind "System"
-container = kind "Container"
-database = kind "Database"
-queue = kind "Queue"
-component = kind "Component"
+import { * } from 'sruja.ai/stdlib'
+
 
 ID = person "Label"
 ID = system "Label" { ... }
@@ -36,9 +32,15 @@ System.Container.Component -> System.API.Component "Label"
 ## Metadata
 
 ```sruja
-metadata {
-  team "Platform"
-  tier "critical"
+overview {
+  summary "Syntax Reference Overview"
+}
+
+MySystem = system "MySystem" {
+  metadata {
+    team "Platform"
+    tier "critical"
+  }
 }
 ```
 
