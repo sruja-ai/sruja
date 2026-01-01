@@ -11,10 +11,8 @@ Scenarios describe behavioral flows as ordered steps. They focus on interactions
 ## Syntax
 
 ```sruja
-person = kind "Person"
-system = kind "System"
-container = kind "Container"
-database = kind "Database"
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "Customer"
 Shop = system "Shop" {
@@ -53,14 +51,24 @@ Sruja supports two similar constructs for modeling interactions:
 Both use the same syntax with relations between elements, but serve different purposes:
 
 ```sruja
+import { * } from 'sruja.ai/stdlib'
+
+
+Customer = person "Customer"
+Shop = system "Shop" {
+  WebApp = container "Web App"
+  API = container "API"
+  DB = database "Database"
+}
+
 // Scenario: User behavior
-scenario Checkout "User Checkout" {
+Checkout = scenario "User Checkout" {
   Customer -> Shop.WebApp "adds items to cart"
   Shop.WebApp -> Shop.API "submits cart"
 }
 
 // Flow: Data flow
-flow OrderProcess "Order Processing" {
+OrderProcess = flow "Order Processing" {
   Customer -> Shop "Order Details"
   Shop -> Shop.API "Processes"
   Shop.API -> Shop.DB "Save Order"
@@ -74,9 +82,9 @@ flow OrderProcess "Order Processing" {
 
 ## Tips
 
-- Keep step labels short and action‑oriented.
-- Use fully qualified names when referring outside the current context.
-- Use `scenario` for behavior; use `flow` for data flows; use relations for structure.
+- Keep step labels short and action‑oriented
+- Use fully qualified names when referring outside the current context
+- Use `scenario` or `story` for behavior; use `flow` for data flows; use relations for structure
 
 ## See Also
 

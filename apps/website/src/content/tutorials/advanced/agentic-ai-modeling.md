@@ -14,19 +14,15 @@ This tutorial shows how to model agent-based systems with orchestrators, planner
 ## Core Structure
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 AgentSystem = system "Agentic System" {
 Orchestrator = container "Agent Orchestrator"
 Planner = container "Planner"
 Executor = container "Executor"
 Tools = container "Tooling API"
-Memory = datastore "Long-Term Memory"
+Memory = database "Long-Term Memory"
 }
 
 User = person "User"
@@ -45,25 +41,28 @@ include *
 ## Add Governance
 
 ```sruja
-policy Guardrails "Safety Policies" {
+Guardrails = policy "Safety Policies" {
   description "Limit tool calls, enforce approvals, track risky operations"
 }
 
-requirement R1 functional "Explain actions"
-requirement R2 constraint "No PII exfiltration"
+R1 = requirement functional "Explain actions"
+R2 = requirement constraint "No PII exfiltration"
 ```
 
 ## Integrate RAG
 
 ```sruja
-element system
-element container
-element datastore
+import { * } from 'sruja.ai/stdlib'
+
+
+AgentSystem = system "Agent System" {
+  Executor = container "Executor"
+}
 
 RAG = system "Retrieval-Augmented Generation" {
-Retriever = container "Retriever"
-Generator = container "Generator"
-VectorDB = datastore "VectorDB"
+  Retriever = container "Retriever"
+  Generator = container "Generator"
+  VectorDB = database "VectorDB"
 }
 
 AgentSystem.Executor -> RAG.Retriever "Fetch contexts"

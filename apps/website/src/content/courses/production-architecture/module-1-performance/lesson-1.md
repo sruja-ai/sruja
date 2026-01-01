@@ -45,12 +45,8 @@ Start with the core components:
 Let's model this architecture:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 Viewer = person "Video Viewer"
 
@@ -75,11 +71,11 @@ TranscodingService = container "Video Transcoding" {
   description "Converts videos to different formats/qualities"
 }
 
-VideoDB = datastore "Video Metadata Database" {
+VideoDB = database "Video Metadata Database" {
   technology "PostgreSQL"
 }
 
-UserDB = datastore "User Database" {
+UserDB = database "User Database" {
   technology "PostgreSQL"
 }
 }
@@ -103,12 +99,8 @@ include *
 This is where you show your scaling knowledge. Let's add scaling configuration:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 Viewer = person "Video Viewer"
 
@@ -144,7 +136,7 @@ TranscodingService = container "Video Transcoding" {
   description "Converts videos to different formats/qualities"
 }
 
-VideoDB = datastore "Video Metadata Database" {
+VideoDB = database "Video Metadata Database" {
   technology "PostgreSQL"
   // Database scaling: read replicas
   description "Primary database with 5 read replicas for scaling reads"
@@ -199,12 +191,8 @@ include *
 Add caching to your design:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 StreamingPlatform = system "Video Streaming Service" {
 VideoAPI = container "Video API" {
@@ -216,11 +204,11 @@ VideoAPI = container "Video API" {
   }
 }
 
-VideoDB = datastore "Video Metadata Database" {
+VideoDB = database "Video Metadata Database" {
   technology "PostgreSQL"
 }
 
-Cache = datastore "Video Metadata Cache" {
+Cache = database "Video Metadata Cache" {
   technology "Redis"
   description "Caches frequently accessed video metadata"
 }

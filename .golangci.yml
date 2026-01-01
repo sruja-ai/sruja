@@ -3,7 +3,9 @@ linters:
   enable:
     - bodyclose
     - gocritic
+    - gofmt
     - gosec
+    - govet
     - ineffassign # Detect ineffectual assignments
     - noctx
     - prealloc

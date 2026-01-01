@@ -5,31 +5,24 @@ difficulty: beginner
 topic: components
 estimatedTime: "5-10 min"
 initialDsl: |
-  specification {
-    element person
-    element system
-    element container
-    element component
-    element datastore
-    element queue
-    element external
+  person = kind "Person"
+  system = kind "System"
+  container = kind "Container"
+  component = kind "Component"
+  database = kind "Database"
+
+  User = person "Social Media User"
+
+  SocialApp = system "Social App" {
+    FeedService = container "Feed Service" {
+      technology "Python, FastAPI"
+      // TODO: Add component Recommendation "Recommendation Engine" here
+    }
+    UserDB = database "MongoDB"
   }
-  
-  model {
-    User = person "Social Media User"
-    
-      SocialApp = system  {
-        FeedService = container "Feed Service" {
-          technology "Python, FastAPI"
-          // TODO: Add component Recommendation "Recommendation Engine" here
-        }
-        UserDB = datastore "MongoDB"
-      }
-    
-      User -> FeedService "Views feed"
-      FeedService -> UserDB "Queries user data"
-    
-  }
+
+  User -> SocialApp.FeedService "Views feed"
+  SocialApp.FeedService -> SocialApp.UserDB "Queries user data"
 checks:
   - type: noErrors
     message: "DSL parsed successfully"
@@ -38,32 +31,25 @@ checks:
     message: "Create Recommendation component in FeedService"
 hints:
   - "Components are defined inside containers using curly braces"
-  - "Add component Recommendation \"Recommendation Engine\" inside the FeedService block"
+  - 'Add component Recommendation "Recommendation Engine" inside the FeedService block'
   - "Make sure to open the FeedService container block with { before adding the component"
 solution: |
-  specification {
-    element person
-    element system
-    element container
-    element component
-    element datastore
-    element queue
-    element external
+  person = kind "Person"
+  system = kind "System"
+  container = kind "Container"
+  component = kind "Component"
+  database = kind "Database"
+
+  User = person "Social Media User"
+
+  SocialApp = system "Social App" {
+    FeedService = container "Feed Service" {
+      technology "Python, FastAPI"
+      Recommendation = component "Recommendation Engine"
+    }
+    UserDB = database "MongoDB"
   }
-  
-  model {
-    User = person "Social Media User"
-    
-      SocialApp = system  {
-        FeedService = container "Feed Service" {
-          technology "Python, FastAPI"
-          Recommendation = component "Recommendation Engine"
-        }
-        UserDB = datastore "MongoDB"
-      }
-    
-      User -> FeedService "Views feed"
-      FeedService -> UserDB "Queries user data"
-    
-  }
+
+  User -> SocialApp.FeedService "Views feed"
+  SocialApp.FeedService -> SocialApp.UserDB "Queries user data"
 ---

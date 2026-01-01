@@ -11,9 +11,8 @@ Use `requirement` to capture functional, performance, security, and constraint r
 ## Syntax
 
 ```sruja
-person = kind "Person"
-system = kind "System"
-container = kind "Container"
+import { * } from 'sruja.ai/stdlib'
+
 
 // Requirements using flat syntax
 R1 = requirement functional "Support 10k concurrent users"

@@ -13,7 +13,8 @@ Every codebase has skeletons. The key is to label them.
 We decided to move from `Stripe` to `Adyen` for lower fees. But we can't switch overnight.
 
 ```sruja
-element system
+import { * } from 'sruja.ai/stdlib'
+
 
 Stripe = system "Legacy Payment Gateway" {
 metadata {

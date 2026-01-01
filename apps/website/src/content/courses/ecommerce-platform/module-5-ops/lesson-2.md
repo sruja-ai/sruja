@@ -17,10 +17,8 @@ Start reading random logs or guessing which database query is slow.
 Look at your Sruja **User Journey** for "Purchase".
 
 ```sruja
-element person
-element system
-element container
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "Customer"
 
@@ -31,11 +29,13 @@ PaymentQueue = queue "Payment Jobs"
 }
 
 PaymentGateway = system "Payment Gateway" {
-external true
+metadata {
+    tags ["external"]
+  }
 }
 
 // Original synchronous flow (problematic)
-story Purchase "User Purchase Flow" {
+Purchase = story "User Purchase Flow" {
 Customer -> Platform.Checkout "Initiates checkout"
 Platform.Checkout -> PaymentGateway "Process Payment" {
   latency "2s"
@@ -59,10 +59,8 @@ We need to decouple the user request from the payment processing.
 Let's update the architecture:
 
 ```sruja
-element person
-element system
-element container
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "Customer"
 
@@ -73,7 +71,9 @@ PaymentQueue = queue "Payment Jobs"
 }
 
 PaymentGateway = system "Payment Gateway" {
-external true
+metadata {
+    tags ["external"]
+  }
 }
 
 // Updated asynchronous flow
@@ -86,7 +86,7 @@ Platform.PaymentWorker -> PaymentGateway "Processes payment"
 PaymentGateway -> Customer "Sends confirmation email"
 
 // Updated scenario
-story PurchaseAsync "Asynchronous Purchase Flow" {
+PurchaseAsync = story "Asynchronous Purchase Flow" {
 Customer -> Platform.Checkout "Initiates checkout"
 Platform.Checkout -> Platform.PaymentQueue "Enqueues job" {
   latency "10ms"

@@ -9,14 +9,13 @@ summary: "Reusable patterns: request/response, event-driven, saga, CQRS."
 ## Request/Response
 
 ```sruja
-element system
-element container
-element datastore
+import { * } from 'sruja.ai/stdlib'
+
 
 App = system "App" {
 Web = container "Web"
 API = container "API"
-DB = datastore "Database"
+DB = database "Database"
 }
 
 App.Web -> App.API "Calls"
@@ -30,8 +29,8 @@ include *
 ## Event-Driven
 
 ```sruja
-element system
-element container
+import { * } from 'sruja.ai/stdlib'
+
 
 Orders = system "Order System" {
 OrderSvc = container "Order Service"
@@ -49,8 +48,8 @@ include *
 ## Saga
 
 ```sruja
-element system
-element container
+import { * } from 'sruja.ai/stdlib'
+
 
 Orders = system "Order System" {
 OrderSvc = container "Order Service"
@@ -58,7 +57,7 @@ InventorySvc = container "Inventory Service"
 PaymentSvc = container "Payment Service"
 }
 
-scenario CreateOrderSaga "Order Creation Saga" {
+CreateOrderSaga = scenario "Order Creation Saga" {
 Orders.OrderSvc -> Orders.InventorySvc "Reserves stock"
 Orders.InventorySvc -> Orders.OrderSvc "Confirms reserved"
 Orders.OrderSvc -> Orders.PaymentSvc "Charges payment"
@@ -73,15 +72,14 @@ include *
 ## CQRS
 
 ```sruja
-element system
-element container
-element datastore
+import { * } from 'sruja.ai/stdlib'
+
 
 App = system "App" {
 CommandAPI = container "Command API"
 QueryAPI = container "Query API"
-ReadDB = datastore "Read Database"
-WriteDB = datastore "Write Database"
+ReadDB = database "Read Database"
+WriteDB = database "Write Database"
 }
 
 App.CommandAPI -> App.WriteDB "Writes"
@@ -95,15 +93,14 @@ include *
 ## RAG (Retrieval-Augmented Generation)
 
 ```sruja
-element system
-element container
-element datastore
+import { * } from 'sruja.ai/stdlib'
+
 
 AIQA = system "AI Q&A" {
 Indexer = container "Indexer"
 Retriever = container "Retriever"
 Generator = container "Generator"
-VectorDB = datastore "Vector Store"
+VectorDB = database "Vector Store"
 }
 
 AIQA.Indexer -> AIQA.VectorDB "Writes embeddings"
@@ -116,16 +113,15 @@ See `examples/pattern_rag_pipeline.sruja` for a production-ready model.
 ## Agentic Orchestration
 
 ```sruja
-element system
-element container
-element datastore
+import { * } from 'sruja.ai/stdlib'
+
 
 AgentSystem = system "Agent System" {
 Orchestrator = container "Agent Orchestrator"
 Planner = container "Planner"
 Executor = container "Executor"
 Tools = container "Tooling API"
-Memory = datastore "Long-Term Memory"
+Memory = database "Long-Term Memory"
 }
 
 AgentSystem.Orchestrator -> AgentSystem.Planner "Plans tasks"

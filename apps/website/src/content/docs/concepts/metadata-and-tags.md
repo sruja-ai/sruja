@@ -15,7 +15,8 @@ Tags are simple string labels that can be used for filtering, styling, or catego
 ### Syntax
 
 ```sruja
-system = kind "System"
+import { * } from 'sruja.ai/stdlib'
+
 
 API = system "API" {
 tags ["tag1", "tag2"]
@@ -29,7 +30,8 @@ Metadata allows you to attach key-value pairs to elements. This is useful for st
 ### Syntax
 
 ```sruja
-system = kind "System"
+import { * } from 'sruja.ai/stdlib'
+
 
 API = system "API" {
 metadata {
@@ -46,8 +48,10 @@ Most elements (Container, Component, etc.) support a `technology` field to speci
 ### Syntax
 
 ```sruja
-metadata {
+API = system "API" {
+  metadata {
     key "value"
+  }
 }
 ```
 

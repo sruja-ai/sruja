@@ -18,10 +18,8 @@ In Sruja, use `scenario` (and its alias `story`) to model runtime interactions: 
 When modeling a user flow, you focus on the _value_ delivered to the user. Sruja provides the `story` keyword (an alias for `scenario`) to make these definitions semantic and clear.
 
 ```sruja
-element person
-element system
-element container
-element datastore
+import { * } from 'sruja.ai/stdlib'
+
 
 User = person "Customer"
 
@@ -32,7 +30,7 @@ Ticketing = system "Ticketing System" {
     PaymentService = container "Payment Service" {
         technology "Go"
     }
-    TicketDB = datastore "Ticket Database" {
+    TicketDB = database "Ticket Database" {
         technology "PostgreSQL"
     }
 
@@ -41,7 +39,7 @@ Ticketing = system "Ticketing System" {
 }
 
 // High-level user flow
-story BuyTicket "User purchases a ticket" {
+BuyTicket = story "User purchases a ticket" {
     User -> Ticketing.WebApp "Selects ticket"
     Ticketing.WebApp -> Ticketing.PaymentService "Process payment" {
         latency "500ms"
@@ -62,10 +60,8 @@ Notice how we can add properties like `latency` and `protocol` to steps using th
 When modeling technical sequences, you dive deeper into the architecture, showing how `containers` and `components` interact to fulfill a request. You can stick with the `scenario` keyword here.
 
 ```sruja
-element person
-element system
-element container
-element datastore
+import { * } from 'sruja.ai/stdlib'
+
 
 User = person "End User"
 
@@ -76,7 +72,7 @@ AuthSystem = system "Authentication System" {
     AuthServer = container "Auth Server" {
         technology "Node.js, OAuth2"
     }
-    Database = datastore "User Database" {
+    Database = database "User Database" {
         technology "PostgreSQL"
     }
 
@@ -85,7 +81,7 @@ AuthSystem = system "Authentication System" {
 }
 
 // Detailed technical flow
-scenario AuthFlow "Authentication" "Handles OAuth2 login process" {
+AuthFlow = scenario "Authentication" {
     User -> AuthSystem.WebApp "Provides credentials"
     AuthSystem.WebApp -> AuthSystem.AuthServer "Validates token"
     AuthSystem.AuthServer -> AuthSystem.Database "Looks up user"
@@ -108,9 +104,8 @@ Sruja offers flexible syntax to suit your needs:
 Great for quick sketches or simple flows.
 
 ```sruja
-element person
-element system
-element container
+import { * } from 'sruja.ai/stdlib'
+
 
 User = person "User"
 
@@ -118,7 +113,7 @@ AuthSystem = system "Auth System" {
     WebApp = container "Web App"
 }
 
-scenario "Login Failure" {
+LoginFailure = scenario "Login Failure" {
     User -> AuthSystem.WebApp "Enters wrong password"
     AuthSystem.WebApp -> User "Shows error message"
 }
@@ -133,10 +128,8 @@ include *
 Better for documentation and referencing. Includes an ID and optional description.
 
 ```sruja
-element person
-element system
-element container
-element datastore
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "Customer"
 
@@ -159,7 +152,7 @@ Customer -> ECommerce.Cart "Adds items"
 ECommerce.Cart -> Inventory.InventoryService "Checks availability"
 ECommerce.Cart -> ECommerce.Payment "Processes payment"
 
-scenario Checkout "Checkout Process" {
+Checkout = scenario "Checkout Process" {
     description "The complete checkout flow including payment and inventory check."
 
     Customer -> ECommerce.Cart "Initiates checkout"

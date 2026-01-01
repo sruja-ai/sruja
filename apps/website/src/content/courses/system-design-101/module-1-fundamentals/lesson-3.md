@@ -44,12 +44,8 @@ The process of switching to a redundant system upon failure. This can be manual 
 You can explicitly model redundant components in Sruja to visualize your high-availability strategy.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 Payments = system "Payment System" {
     PaymentService = container "Payment Service" {

@@ -11,7 +11,8 @@ A **Component** is a grouping of related functionality encapsulated behind a wel
 ## Syntax
 
 ```sruja
-component = kind "Component"
+import { * } from 'sruja.ai/stdlib'
+
 
 ID = component "Label/Name" {
 technology "Technology"
@@ -22,7 +23,8 @@ technology "Technology"
 ## Example
 
 ```sruja
-component = kind "Component"
+import { * } from 'sruja.ai/stdlib'
+
 
 AuthController = component "Authentication Controller" {
 technology "Spring MVC Rest Controller"

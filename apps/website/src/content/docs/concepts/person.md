@@ -11,7 +11,8 @@ A **Person** represents a human user of your software system (e.g., "Customer", 
 ## Syntax
 
 ```sruja
-person = kind "Person"
+import { * } from 'sruja.ai/stdlib'
+
 
 ID = person "Label" {
 description "Optional description"
@@ -22,7 +23,8 @@ tags ["tag1", "tag2"]
 ## Example
 
 ```sruja
-person = kind "Person"
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "Bank Customer" {
 description "A customer of the bank with personal accounts."

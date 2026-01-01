@@ -55,14 +55,12 @@ Most teams document architecture in static diagrams (Miro, LucidChart, Visio) or
 Here's a simple example to get you started:
 
 ```sruja
-element system
-element container
-element datastore
-element person
+import { * } from 'sruja.ai/stdlib'
+
 
 App = system "My App" {
 Web = container "Web Server"
-DB = datastore "Database"
+DB = database "Database"
 }
 
 User = person "User"

@@ -13,12 +13,8 @@ Translate business expectations into measurable targets; build dashboards around
 ## Sruja: Define SLOs
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 slo {
 availability { target "99.9%" window "30 days" }

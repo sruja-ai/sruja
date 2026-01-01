@@ -54,12 +54,8 @@ The player automatically switches quality based on the user's internet speed.
 We can use Sruja's `deployment` nodes to visualize the global distribution of content.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 YouTube = system "Video Platform" {
     WebApp = container "Web App"
@@ -70,11 +66,11 @@ YouTube = system "Video Platform" {
         scale { min 50 }
     }
 
-    S3 = datastore "Blob Storage" {
+    S3 = database "Blob Storage" {
         description "Stores raw and processed video files"
     }
 
-    MetadataDB = datastore "Metadata DB"
+    MetadataDB = database "Metadata DB"
 
     WebApp -> API "HTTPS"
     API -> MetadataDB "Reads/Writes"

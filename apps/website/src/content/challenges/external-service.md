@@ -5,32 +5,24 @@ difficulty: intermediate
 topic: integration
 estimatedTime: "10-15 min"
 initialDsl: |
-  specification {
-    element person
-    element system
-    element container
-    element component
-    element datastore
-    element queue
-    element external
+  person = kind "Person"
+  system = kind "System"
+  container = kind "Container"
+  database = kind "Database"
+
+  User = person "App User"
+
+  WeatherApp = system "Weather App" {
+    MobileApp = container "Mobile App"
+    WeatherAPI = container "Weather Service API"
+    UserPrefs = database "User Preferences DB"
   }
-  
-  model {
-    User = person "App User"
-    
-      WeatherApp = system  {
-        MobileApp = container "Mobile App"
-        WeatherAPI = container "Weather Service API"
-        UserPrefs = datastore "User Preferences DB"
-      }
-    
-      User -> MobileApp "Checks weather"
-      MobileApp -> WeatherAPI "Requests forecast"
-      WeatherAPI -> UserPrefs "Loads preferences"
-    
-      // TODO: Add external WeatherService and connect WeatherAPI -> WeatherService
-    
-  }
+
+  User -> WeatherApp.MobileApp "Checks weather"
+  WeatherApp.MobileApp -> WeatherApp.WeatherAPI "Requests forecast"
+  WeatherApp.WeatherAPI -> WeatherApp.UserPrefs "Loads preferences"
+
+  // TODO: Add external WeatherService system with tags and connect WeatherAPI -> WeatherService
 checks:
   - type: noErrors
     message: "DSL parsed successfully"
@@ -42,36 +34,30 @@ checks:
     target: WeatherService
     message: "Connect WeatherAPI -> WeatherService"
 hints:
-  - "External services are defined outside system blocks using 'external' keyword"
-  - "Use: external WeatherService \"OpenWeatherMap\""
+  - 'External services are represented as systems with tags ["external"]'
+  - 'Use: WeatherService = system "OpenWeatherMap" { tags ["external"] }'
   - "External services represent third-party APIs you don't control"
-  - "Add relation: WeatherAPI -> WeatherService \"Fetches weather data\""
+  - 'Add relation: WeatherApp.WeatherAPI -> WeatherService "Fetches weather data"'
 solution: |
-  specification {
-    element person
-    element system
-    element container
-    element component
-    element datastore
-    element queue
-    element external
+  person = kind "Person"
+  system = kind "System"
+  container = kind "Container"
+  database = kind "Database"
+
+  User = person "App User"
+
+  WeatherApp = system "Weather App" {
+    MobileApp = container "Mobile App"
+    WeatherAPI = container "Weather Service API"
+    UserPrefs = database "User Preferences DB"
   }
-  
-  model {
-    User = person "App User"
-    
-      WeatherApp = system  {
-        MobileApp = container "Mobile App"
-        WeatherAPI = container "Weather Service API"
-        UserPrefs = datastore "User Preferences DB"
-      }
-    
-      WeatherService = external "OpenWeatherMap"
-    
-      User -> MobileApp "Checks weather"
-      MobileApp -> WeatherAPI "Requests forecast"
-      WeatherAPI -> UserPrefs "Loads preferences"
-      WeatherAPI -> WeatherService "Fetches weather data"
-    
+
+  WeatherService = system "OpenWeatherMap" {
+    tags ["external"]
   }
+
+  User -> WeatherApp.MobileApp "Checks weather"
+  WeatherApp.MobileApp -> WeatherApp.WeatherAPI "Requests forecast"
+  WeatherApp.WeatherAPI -> WeatherApp.UserPrefs "Loads preferences"
+  WeatherApp.WeatherAPI -> WeatherService "Fetches weather data"
 ---

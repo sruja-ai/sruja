@@ -13,12 +13,8 @@ They document trade‑offs and prevent accidental coupling across services.
 ## Sruja: Guardrails for Consistency
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 constraints {
 rule "No cross‑service transactions"

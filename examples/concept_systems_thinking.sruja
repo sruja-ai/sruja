@@ -69,12 +69,10 @@ ecommerce.api -> ecommerce.database "queries products in"
 // Simple feedback: User action triggers system response
 customer -> ecommerce.webApp "submits form to"
 ecommerce.webApp -> ecommerce.api "validates with"
-ecommerce.api -> ecommerce.webApp "returns validation result to"
 ecommerce.webApp -> customer "shows feedback to"
 
 // System feedback: Component A affects Component B, which affects A
 ecommerce.api -> ecommerce.database "updates inventory in"
-ecommerce.database -> ecommerce.api "notifies low stock to"
 ecommerce.api -> admin "sends alert to"
 admin -> ecommerce.api "adjusts inventory via"
 

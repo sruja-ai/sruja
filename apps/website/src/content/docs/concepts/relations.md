@@ -11,10 +11,8 @@ summary: "Relations describe how elements interact with each other."
 ## Syntax
 
 ```sruja
-element system
-element container
-element datastore
-element person
+import { * } from 'sruja.ai/stdlib'
+
 
 // Relations use element IDs
 Source -> Destination "Label"
@@ -33,14 +31,12 @@ technology "HTTPS/JSON"
 ## Example
 
 ```sruja
-element system
-element container
-element datastore
-element person
+import { * } from 'sruja.ai/stdlib'
+
 
 BankingSystem = system "Internet Banking System" {
 WebApp = container "Web Application"
-DB = datastore "Database"
+DB = database "Database"
 }
 
 User = person "User"

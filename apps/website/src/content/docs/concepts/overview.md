@@ -11,12 +11,8 @@ Use `overview` to provide a concise system description shown in docs/exports.
 ## Syntax
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 overview {
 title "E‑Commerce Platform"

@@ -52,12 +52,8 @@ This is one of the **most common system design interview questions**. It tests:
 Model each microservice as a **separate system** within the architecture. This clearly shows service boundaries.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "Online Customer"
 
@@ -71,7 +67,7 @@ ProfileAPI = container "Profile API" {
   technology "Go, gRPC"
 }
 
-UserDB = datastore "User Database" {
+UserDB = database "User Database" {
   technology "PostgreSQL"
 }
 }
@@ -89,11 +85,11 @@ RecommendationAPI = container "Recommendation API" {
   technology "Python, ML"
 }
 
-ProductDB = datastore "Product Database" {
+ProductDB = database "Product Database" {
   technology "PostgreSQL"
 }
 
-SearchIndex = datastore "Search Index" {
+SearchIndex = database "Search Index" {
   technology "Elasticsearch"
 }
 }
@@ -103,7 +99,7 @@ CartAPI = container "Cart API" {
   technology "Node.js, Express"
 }
 
-CartDB = datastore "Cart Database" {
+CartDB = database "Cart Database" {
   technology "Redis"
   description "In-memory cache for fast cart operations"
 }
@@ -118,7 +114,7 @@ OrderProcessor = container "Order Processor" {
   technology "Node.js"
 }
 
-OrderDB = datastore "Order Database" {
+OrderDB = database "Order Database" {
   technology "PostgreSQL"
 }
 
@@ -132,7 +128,7 @@ PaymentAPI = container "Payment API" {
   technology "Go, gRPC"
 }
 
-PaymentDB = datastore "Payment Database" {
+PaymentDB = database "Payment Database" {
   technology "PostgreSQL"
 }
 }
@@ -142,7 +138,7 @@ InventoryAPI = container "Inventory API" {
   technology "Java, Spring Boot"
 }
 
-InventoryDB = datastore "Inventory Database" {
+InventoryDB = database "Inventory Database" {
   technology "PostgreSQL"
 }
 }
@@ -278,12 +274,8 @@ include *
 Add them to your design (extending the main architecture):
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "Online Customer"
 
@@ -312,7 +304,7 @@ RecommendationAPI = container "Recommendation API" {
   technology "Python, ML"
 }
 
-UserBehaviorDB = datastore "User Behavior Database" {
+UserBehaviorDB = database "User Behavior Database" {
   technology "MongoDB"
   description "Stores user clicks, views, purchases for ML"
 }
@@ -323,7 +315,7 @@ AnalyticsAPI = container "Analytics API" {
   technology "Go"
 }
 
-AnalyticsDB = datastore "Analytics Database" {
+AnalyticsDB = database "Analytics Database" {
   technology "ClickHouse"
   description "Time-series data for analytics"
 }

@@ -185,10 +185,10 @@ saaSPlatform.aPI -> saaSPlatform.responseCache "Response caching"
 saaSPlatform.projectService -> saaSPlatform.messageQueue "Publishes events"
 saaSPlatform.analyticsService -> saaSPlatform.eventQueue "Consumes events"
 
-// External integrations
-saaSPlatform.billingService -> paymentGateway.stripeAPI "Processes payments"
-saaSPlatform.projectService -> notificationService.emailAPI "Sends emails"
-saaSPlatform.projectService -> notificationService.sMSAPI "Sends SMS"
+// External integrations (modeled as external systems providing services)
+paymentGateway.stripeAPI -> saaSPlatform.billingService "Provides payment processing"
+notificationService.emailAPI -> saaSPlatform.projectService "Provides email notifications"
+notificationService.sMSAPI -> saaSPlatform.projectService "Provides SMS notifications"
 
 // Storage
 saaSPlatform.storageService -> saaSPlatform.objectStorage "Stores files"

@@ -16,12 +16,8 @@ Autonomous agents can be unpredictable. Architecture-as-Code allows us to define
 Use `requirement` blocks to specify safety properties.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 container Agent
 container BankAPI

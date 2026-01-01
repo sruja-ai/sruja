@@ -11,7 +11,8 @@ A **Queue** represents a message queue, topic, or event stream. It is a speciali
 ## Syntax
 
 ```sruja
-queue = kind "Queue"
+import { * } from 'sruja.ai/stdlib'
+
 
 ID = queue "Label" {
 description "Optional description"
@@ -22,7 +23,8 @@ technology "Technology"
 ## Example
 
 ```sruja
-queue = kind "Queue"
+import { * } from 'sruja.ai/stdlib'
+
 
 Events = queue "Event Stream" {
 technology "Kafka"

@@ -22,14 +22,12 @@ The platform consists of several key components working together:
 Explore the Sruja architecture itself using the interactive viewer below. This diagram is defined in Sruja DSL!
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-description "The Sruja Architecture-as-Code Platform"
+
+RootSystem = system "The Sruja Platform" {
+  tags ["root"]
+}
 
 User = person "Architect/Developer" {
 	description "Uses Sruja to design and document systems"
@@ -112,16 +110,14 @@ User -> Sruja.VSCode "writes DSL"
 User -> Sruja.Designer "designs architecture"
 User -> Sruja.Website "reads docs"
 
-Browser = system "Web Browser" {
+BrowserSystem = system "Web Browser" {
 	description "User's web browser environment"
-	metadata {
-		tags ["external"]
-	}
-	LocalStore = datastore "Local Storage"
+  tags ["external"]
+	LocalStore = database "Local Storage"
 }
 
 // ADRs
-adr ADR001 "Use WASM for Client-Side Execution" {
+ADR001 = adr "Use WASM for Client-Side Execution" {
 	status "Accepted"
 	context "We need to run validation and parsing in the browser and VS Code without a backend server."
 	decision "Compile the Go core engine to WebAssembly."
@@ -130,164 +126,110 @@ adr ADR001 "Use WASM for Client-Side Execution" {
 
 // Deployment
 deployment Production "Production Environment" {
-node GitHubPages "GitHub Pages" {
-  containerInstance Pages
-}
-node Marketplace "VS Code Marketplace" {
-  containerInstance VSCode
-}
-node Releases "GitHub Releases" {
-  containerInstance Releases
-}
+  node GitHubPages "GitHub Pages" {
+    containerInstance RootSystem
+  }
 }
 
-GitHub = system "GitHub Platform" {
-description "Source control, CI/CD, and hosting"
-Actions = container "GitHub Actions" {
-  technology "YAML/Node"
-  description "CI/CD workflows"
-}
-Pages = container "GitHub Pages" {
-  technology "Static Hosting"
-  description "Hosts documentation site"
-}
-Releases = container "GitHub Releases" {
-  technology "File Hosting"
-  description "Hosts CLI binaries"
-}
-Actions -> Pages "deploys to"
-Actions -> Releases "publishes to"
+GitHubSystem = system "GitHub Platform" {
+  description "Source control, CI/CD, and hosting"
+  Actions = container "GitHub Actions" {
+    technology "YAML/Node"
+    description "CI/CD workflows"
+  }
+  Pages = container "GitHub Pages" {
+    technology "Static Hosting"
+    description "Hosts documentation site"
+  }
+  Releases = container "GitHub Releases" {
+    technology "File Hosting"
+    description "Hosts CLI binaries"
+  }
+  Actions -> Pages "deploys to"
+  Actions -> Releases "publishes to"
 }
 
 
-User -> GitHub "pushes code to" [Git]
+User -> GitHubSystem "pushes code to"
 
 
 // Component Stories
-story DesignerStory "Using Sruja Designer" {
-User -> Sruja.Website "visits designer"
-Sruja.Website -> Sruja.Designer "initializes"
-Sruja.Designer -> Sruja.WASM "loads engine"
-Sruja.Designer -> Sruja.WASM "parses DSL"
-Sruja.Designer -> User "renders interactive diagram"
+DesignerStory = story "Using Sruja Designer" {
+  User -> Sruja.Website "visits designer"
+  Sruja.Website -> Sruja.Designer "initializes"
+  Sruja.Designer -> Sruja.WASM "loads engine"
+  Sruja.Designer -> Sruja.WASM "parses DSL"
+  Sruja.Designer -> User "renders interactive diagram"
 }
 
-story DesignerExports "Exporting from Designer" {
-User -> Sruja.Designer "clicks export"
-Sruja.Designer -> Sruja.WASM "requests JSON"
-Sruja.WASM -> Sruja.Designer "returns JSON data"
-Sruja.Designer -> User "downloads file"
+DesignerExports = story "Exporting from Designer" {
+  User -> Sruja.Designer "clicks export"
+  Sruja.Designer -> Sruja.WASM "requests JSON"
+  Sruja.WASM -> Sruja.Designer "returns JSON data"
+  Sruja.Designer -> User "downloads file"
 }
 
 // Designer-specific Scenarios
-scenario DesignerShare "Share From Designer" {
-User -> Sruja.Designer "edits DSL code"
-Sruja.Designer -> Browser "updates URL with code"
-User -> Sruja.Designer "clicks Share button"
-Sruja.Designer -> Browser "copies shareable URL"
-User -> User "shares URL with team"
+DesignerShare = scenario "Share From Designer" {
+  User -> Sruja.Designer "edits DSL code"
+  Sruja.Designer -> BrowserSystem "updates URL with code"
+  User -> Sruja.Designer "clicks Share button"
+  Sruja.Designer -> BrowserSystem "copies shareable URL"
+  User -> User "shares URL with team"
 }
 
-scenario DesignerFormatPreview "Preview Multiple Formats" {
-User -> Sruja.Designer "loads architecture"
-User -> Sruja.Designer "switches to JSON preview"
-Sruja.Designer -> Sruja.WASM "parses DSL to JSON"
-Sruja.Designer -> User "displays JSON export"
+DesignerFormatPreview = scenario "Preview Multiple Formats" {
+  User -> Sruja.Designer "loads architecture"
+  User -> Sruja.Designer "switches to JSON preview"
+  Sruja.Designer -> Sruja.WASM "parses DSL to JSON"
+  Sruja.Designer -> User "displays JSON export"
 }
 
-scenario DesignerResizePanels "Resize Editor and Preview" {
-User -> Sruja.Designer "opens split view"
-Sruja.Designer -> User "shows editor and preview side-by-side"
-User -> Sruja.Designer "drags resize handle"
-Sruja.Designer -> User "adjusts panel sizes"
-Sruja.Designer -> Browser "saves panel preference"
+DesignerURLState = scenario "URL State Management" {
+  User -> Sruja.Designer "edits DSL code"
+  Sruja.Designer -> BrowserSystem "debounces URL update"
+  BrowserSystem -> BrowserSystem "updates URL hash with code"
+  User -> BrowserSystem "refreshes page"
+  BrowserSystem -> Sruja.Designer "loads code from URL"
+  Sruja.Designer -> Sruja.WASM "parses DSL from URL"
+  Sruja.Designer -> User "restores architecture state"
 }
 
-scenario DesignerLoadExample "Load Example Architecture" {
-User -> Sruja.Designer "opens examples dropdown"
-Sruja.Designer -> User "shows available examples"
-User -> Sruja.Designer "selects example"
-Sruja.Designer -> Sruja.Website "loads example file"
-Sruja.Website -> Sruja.Designer "returns DSL content"
-Sruja.Designer -> Sruja.WASM "parses DSL"
-Sruja.Designer -> User "displays architecture"
-Sruja.Designer -> Browser "updates URL with code"
+DesignerEditingStory = story "Visual Editing in Designer" {
+  User -> Sruja.Designer "opens editor"
+  Sruja.Designer -> Sruja.WASM "loads engine"
+  User -> Sruja.Designer "types DSL code"
+  Sruja.Designer -> Sruja.WASM "validates code"
+  Sruja.WASM -> Sruja.Designer "returns diagnostics"
+  Sruja.Designer -> User "shows errors/diagram"
 }
 
-scenario DesignerURLState "URL State Management" {
-User -> Sruja.Designer "edits DSL code" [Input]
-Sruja.Designer -> Browser "debounces URL update" [Timeout]
-Browser -> Browser "updates URL hash with code" [HistoryAPI]
-User -> Browser "refreshes page" [Event]
-Browser -> Sruja.Designer "loads code from URL" [HashParse]
-Sruja.Designer -> Sruja.WASM "parses DSL from URL" [FunctionCall]
-Sruja.Designer -> User "restores architecture state" [DOM]
+DesignerAutosave = scenario "Autosave on Close" {
+  Sruja.Designer -> BrowserSystem.LocalStore "save DSL snapshot"
+  User -> Sruja.Designer "closes tab"
+  User -> Sruja.Designer "reopens designer"
+  Sruja.Designer -> BrowserSystem.LocalStore "load DSL snapshot"
+  Sruja.Designer -> User "restores session"
 }
 
-story DesignerEditingStory "Visual Editing in Designer" {
-User -> Sruja.Designer "opens editor"
-Sruja.Designer -> Sruja.WASM "loads engine"
-User -> Sruja.Designer "types DSL code"
-Sruja.Designer -> Sruja.WASM "validates code"
-Sruja.WASM -> Sruja.Designer "returns diagnostics"
-Sruja.Designer -> User "shows errors/diagram"
+CIDev = scenario "Continuous Integration (Dev)" {
+  User -> GitHubSystem "pushes to main"
+  GitHubSystem -> GitHubSystem.Actions "triggers CI"
+  GitHubSystem.Actions -> Sruja "builds & tests"
+  GitHubSystem.Actions -> GitHubSystem.Pages "deploys dev site"
 }
 
-scenario DesignerAutosave "Autosave on Close" {
-Sruja.Designer -> Browser.LocalStore "save DSL snapshot"
-User -> Sruja.Designer "closes tab"
-User -> Sruja.Designer "reopens designer"
-Sruja.Designer -> Browser.LocalStore "load DSL snapshot"
-Sruja.Designer -> User "restores session"
-}
-
-story DocsStory "Reading Documentation" {
-User -> Sruja.Website "navigates to page"
-Sruja.Website -> GitHub.Pages "serves content"
-Sruja.Website -> User "displays text & code blocks"
-}
-
-// Specific Scenarios (The Behavior)
-scenario CIDev "Continuous Integration (Dev)" {
-User -> GitHub "pushes to main"
-GitHub -> GitHub.Actions "triggers CI"
-GitHub.Actions -> Sruja "builds & tests"
-GitHub.Actions -> GitHub.Pages "deploys dev site"
-}
-
-scenario ReleaseStaging "Release Candidate (Staging)" {
-User -> GitHub.Actions "dispatches release workflow"
-GitHub.Actions -> GitHub "creates release/<semVer> branch"
-GitHub.Actions -> GitHub "creates PR to prod"
-GitHub.Actions -> GitHub "creates <semVer>-RC1 tag"
-GitHub.Actions -> Sruja.VSCode "publishes pre-release extension"
-}
-
-scenario ReleaseFixes "Release Candidate Fixes" {
-User -> GitHub "commits fix to release/<semVer>"
-GitHub -> GitHub.Actions "triggers CI"
-GitHub.Actions -> GitHub "creates <semVer>-RC2 tag"
-GitHub.Actions -> Sruja.VSCode "updates pre-release extension"
-}
-
-scenario ReleaseProd "Production Release" {
-User -> GitHub "merges PR to prod"
-GitHub -> GitHub.Actions "triggers release"
-GitHub.Actions -> GitHub.Pages "deploys prod site"
-GitHub.Actions -> Sruja.VSCode "publishes extension"
-GitHub.Actions -> GitHub.Releases "publishes CLI binaries"
-}
-
-scenario HotfixProd "Hotfix to Production" {
-User -> GitHub.Actions "dispatches hotfix workflow"
-GitHub.Actions -> GitHub "creates hotfix branch"
-User -> GitHub "merges hotfix to prod"
-GitHub.Actions -> GitHub.Pages "deploys prod site"
-GitHub.Actions -> Sruja.VSCode "publishes patch update"
+ReleaseProd = scenario "Production Release" {
+  User -> GitHubSystem "merges PR to prod"
+  GitHubSystem -> GitHubSystem.Actions "triggers release"
+  GitHubSystem.Actions -> GitHubSystem.Pages "deploys prod site"
+  GitHubSystem.Actions -> Sruja.VSCode "publishes extension"
+  GitHubSystem.Actions -> GitHubSystem.Releases "publishes CLI binaries"
 }
 
 view index {
-include *
+  title "Complete System View"
+  include *
 }
 ```
 

@@ -31,12 +31,8 @@ An **Architecture Decision Record (ADR)** is a document that captures an importa
 Sruja treats ADRs as first-class citizens. You can define them directly in your architecture file.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 // Define an ADR
 adr ADR001 "Use Stripe for Payments" {

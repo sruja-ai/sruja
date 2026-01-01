@@ -13,17 +13,13 @@ Use SLOs to set thresholds for alerts and capacity changes.
 ## Sruja: Model SLOs & Validate
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-system API {
-container Gateway {
-  scale { metric "req/s" min 500 max 5000 }
-}
+
+API = system "API Server" {
+  Gateway = container "Gateway" {
+    scale { metric "req/s" min 500 max 5000 }
+  }
 }
 
 slo {

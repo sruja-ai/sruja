@@ -48,12 +48,8 @@ HTTP is request/response (pull). For chat, we need **push**.
 We can use Sruja to model the WebSocket connections and the async message processing.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 requirement R1 functional "Real-time messaging"
 requirement R2 functional "Message history"
@@ -71,12 +67,12 @@ ChatApp = system "WhatsApp Clone" {
         }
     }
 
-    SessionStore = datastore "Session Store" {
+    SessionStore = database "Session Store" {
         technology "Redis"
         description "Maps UserID -> WebSocketServerID"
     }
 
-    MessageDB = datastore "Message History" {
+    MessageDB = database "Message History" {
         technology "Cassandra"
         description "Stores chat logs"
     }

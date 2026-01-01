@@ -48,55 +48,51 @@ This is a **senior/staff level interview question** that tests:
 This is where Sruja's `policy` feature is perfect! Show how you enforce compliance:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 // HIPAA Compliance Policy
-policy HIPAACompliance "All patient data must be encrypted and access logged" {
-category "compliance"
-enforcement "required"
-description "HIPAA requires encryption at rest and in transit, plus audit logging for all patient data access"
+HIPAACompliance = policy "All patient data must be encrypted and access logged" {
+  category "compliance"
+  enforcement "required"
+  description "HIPAA requires encryption at rest and in transit, plus audit logging for all patient data access"
 }
 
 // Security Policy
-policy TLSEnforcement "All external communications must use TLS 1.3" {
-category "security"
-enforcement "required"
-description "Required for HIPAA compliance - all data in transit must be encrypted"
+TLSEnforcement = policy "All external communications must use TLS 1.3" {
+  category "security"
+  enforcement "required"
+  description "Required for HIPAA compliance - all data in transit must be encrypted"
 }
 
-policy EncryptionAtRest "All patient data must be encrypted at rest using AES-256" {
-category "security"
-enforcement "required"
-description "HIPAA requirement - database encryption, file encryption"
+EncryptionAtRest = policy "All patient data must be encrypted at rest using AES-256" {
+  category "security"
+  enforcement "required"
+  description "HIPAA requirement - database encryption, file encryption"
 }
 
 // Access Control Policy
-policy AccessControl "Role-based access control required for all patient data" {
-category "security"
-enforcement "required"
-description "Only authorized healthcare providers can access patient data"
+AccessControl = policy "Role-based access control required for all patient data" {
+  category "security"
+  enforcement "required"
+  description "Only authorized healthcare providers can access patient data"
 }
 
 // Audit Logging Policy
-policy AuditLogging "All access to patient data must be logged" {
-category "compliance"
-enforcement "required"
-description "HIPAA requires audit trails - who accessed what, when, why"
+AuditLogging = policy "All access to patient data must be logged" {
+  category "compliance"
+  enforcement "required"
+  description "HIPAA requires audit trails - who accessed what, when, why"
 }
 
 // Observability Policy
-policy Observability "All services must expose health check and metrics endpoints" {
-category "observability"
-enforcement "required"
-metadata {
-  healthEndpoint "/health"
-  metricsEndpoint "/metrics"
-}
+Observability = policy "All services must expose health check and metrics endpoints" {
+  category "observability"
+  enforcement "required"
+  metadata {
+    healthEndpoint "/health"
+    metricsEndpoint "/metrics"
+  }
 }
 
 HealthcareApp = system "Healthcare Application" {
@@ -118,13 +114,13 @@ BillingAPI = container "Billing API" {
   description "Handles billing - contains PHI (Protected Health Information)"
 }
 
-PatientDB = datastore "Patient Database" {
+PatientDB = database "Patient Database" {
   technology "PostgreSQL"
   tags ["encrypted", "audit-logged"]
   description "Encrypted at rest, all access logged for HIPAA compliance"
 }
 
-AuditLogDB = datastore "Audit Log Database" {
+AuditLogDB = database "Audit Log Database" {
   technology "PostgreSQL"
   description "Stores audit logs - immutable, append-only"
 }
@@ -220,47 +216,41 @@ include *
 Add data retention policy:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-// Existing policies (HIPAACompliance, TLSEnforcement, etc. from main design)
-policy HIPAACompliance "All patient data must be encrypted and access logged" {
-category "compliance"
-enforcement "required"
+
+HIPAACompliance = policy "All patient data must be encrypted and access logged" {
+  category "compliance"
+  enforcement "required"
 }
 
-// Additional policies
-policy DataRetention "Patient records retained for 10 years, then archived" {
-category "compliance"
-enforcement "required"
-description "Legal requirement - records must be retained for 10 years, then moved to cold storage"
+DataRetention = policy "Patient records retained for 10 years, then archived" {
+  category "compliance"
+  enforcement "required"
+  description "Legal requirement - records must be retained for 10 years, then moved to cold storage"
 }
 
-policy RightToDeletion "Support patient right to data deletion (with exceptions)" {
-category "compliance"
-enforcement "required"
-description "GDPR/HIPAA - patients can request data deletion, but some data must be retained for legal reasons"
+RightToDeletion = policy "Support patient right to data deletion (with exceptions)" {
+  category "compliance"
+  enforcement "required"
+  description "GDPR/HIPAA - patients can request data deletion, but some data must be retained for legal reasons"
 }
 
 HealthcareApp = system "Healthcare Application" {
-PatientAPI = container "Patient API" {
-  technology "Go, gRPC"
-  tags ["encrypted", "audit-logged"]
-}
+  PatientAPI = container "Patient API" {
+    technology "Go, gRPC"
+    tags ["encrypted", "audit-logged"]
+  }
 
-PatientDB = datastore "Patient Database" {
-  technology "PostgreSQL"
-  description "Active patient records - 10 year retention"
-}
+  PatientDB = database "Patient Database" {
+    technology "PostgreSQL"
+    description "Active patient records - 10 year retention"
+  }
 
-ArchiveDB = datastore "Archive Database" {
-  technology "S3 Glacier"
-  description "Cold storage for records older than 10 years"
-}
+  ArchiveDB = database "Archive Database" {
+    technology "S3 Glacier"
+    description "Cold storage for records older than 10 years"
+  }
 }
 
 view index {

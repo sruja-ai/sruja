@@ -11,7 +11,7 @@ Policies define architectural rules, standards, and constraints that your system
 ## Syntax
 
 ```sruja
-policy PolicyID "Description" {
+PolicyID = policy "Description" {
   category "category-name"
   enforcement "required" // "required" | "recommended" | "optional"
   description "Detailed description"
@@ -24,37 +24,13 @@ policy PolicyID "Description" {
 ## Simple Policy
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-policy SecurityPolicy "Enforce TLS 1.3 for all external communications"
+
+SecurityPolicy = policy "Enforce TLS 1.3 for all external communications"
 
 view index {
-include *
-}
-```
-
-## Policy with Category and Enforcement
-
-```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
-
-policy DataRetentionPolicy "Retain order data for 7 years for tax compliance" {
-category "compliance"
-enforcement "required"
-}
-
-view index {
-include *
+  include *
 }
 ```
 
@@ -70,80 +46,48 @@ include *
 ## Example: Security Policies
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-policy TLSEnforcement "All external communications must use TLS 1.3" {
-category "security"
-enforcement "required"
+
+TLSEnforcement = policy "All external communications must use TLS 1.3" {
+  category "security"
+  enforcement "required"
 }
 
-policy EncryptionAtRest "Sensitive data must be encrypted at rest" {
-category "security"
-enforcement "required"
+EncryptionAtRest = policy "Sensitive data must be encrypted at rest" {
+  category "security"
+  enforcement "required"
 }
 
-system BankingApp {
-API = container "API Service"
-CustomerDB = datastore "Customer Database"
+BankingApp = system "Banking App" {
+  API = container "API Service"
+  CustomerDB = database "Customer Database"
 }
 
 view index {
-include *
+  include *
 }
 ```
 
 ## Example: Compliance Policies
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-policy HIPAACompliance "Must comply with HIPAA regulations" {
-category "compliance"
-enforcement "required"
-description "All patient data must be encrypted and access logged"
+
+HIPAACompliance = policy "Must comply with HIPAA regulations" {
+  category "compliance"
+  enforcement "required"
+  description "All patient data must be encrypted and access logged"
 }
 
-policy DataRetention "Medical records retained for 10 years" {
-category "compliance"
-enforcement "required"
+DataRetention = policy "Medical records retained for 10 years" {
+  category "compliance"
+  enforcement "required"
 }
 
 view index {
-include *
-}
-```
-
-## Example: Observability Policies
-
-```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
-
-policy Observability "All services must expose health check endpoints" {
-category "observability"
-enforcement "required"
-metadata {
-  metricEndpoint "/health"
-  logLevel "info"
-}
-}
-
-view index {
-include *
+  include *
 }
 ```
 

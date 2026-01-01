@@ -31,12 +31,8 @@ Sruja lets you codify architectural standards as **constraints** and **conventio
 Constraints define **hard rules** that must be followed. Violations block CI/CD.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 // Constraint: Presentation layer cannot access datastores directly
 constraint C1 {
@@ -82,7 +78,7 @@ PaymentService = container "Payment Service" {
   }
 }
 
-DB = datastore "Database" {
+DB = database "Database" {
   layer Data
 }
 
@@ -101,12 +97,8 @@ include *
 Conventions define **best practices** and **naming standards**. They're warnings, not blockers.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 // Convention: Naming standards
 convention N1 {
@@ -142,12 +134,8 @@ include *
 Here's how a large organization enforces standards across teams:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 // Global constraint: All services must have SLOs
 constraint Global1 {
@@ -184,7 +172,7 @@ PaymentAPI = container "Payment API" {
 }
 
 HealthcareSystem = system "Healthcare System" {
-PatientDB = datastore "Patient Database" {
+PatientDB = database "Patient Database" {
   layer healthcare
   tags ["healthcare"]
   properties {

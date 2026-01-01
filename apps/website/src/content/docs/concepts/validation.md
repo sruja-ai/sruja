@@ -20,18 +20,14 @@ Sruja validates your model to catch issues early.
 ## Example
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-person User
-system App {
-container WebApp
-container API
-datastore DB
+
+User = person "User"
+App = system "App" {
+  WebApp = container "Web App"
+  API = container "API"
+  DB = database "Database"
 }
 
 // Valid relations (qualified cross-scope)

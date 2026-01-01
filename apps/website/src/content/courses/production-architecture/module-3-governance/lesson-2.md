@@ -13,14 +13,10 @@ Governance ensures systems remain secure, maintainable, and consistent as they e
 ## Sruja: Codify Guardrails
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-policy Security {
+
+SecurityPolicy = policy "Security Policy" {
 description "Security posture for services"
 }
 

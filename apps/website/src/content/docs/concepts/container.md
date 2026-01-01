@@ -19,7 +19,8 @@ A **Container** represents an application or a data store. It is something that 
 ## Syntax
 
 ```sruja
-container = kind "Container"
+import { * } from 'sruja.ai/stdlib'
+
 
 ID = container "Label/Name" {
 technology "Technology Stack"
@@ -31,8 +32,8 @@ tags ["tag1", "tag2"]
 ## Example
 
 ```sruja
-system = kind "System"
-container = kind "Container"
+import { * } from 'sruja.ai/stdlib'
+
 
 BankingSystem = system "Internet Banking System" {
 WebApp = container "Web Application" {
@@ -47,7 +48,8 @@ WebApp = container "Web Application" {
 Containers can define horizontal scaling properties using the `scale` block:
 
 ```sruja
-container = kind "Container"
+import { * } from 'sruja.ai/stdlib'
+
 
 API = container "API Service" {
 technology "Go, Gin"

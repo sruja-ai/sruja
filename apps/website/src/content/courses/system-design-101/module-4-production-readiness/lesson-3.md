@@ -17,12 +17,8 @@ Governance as Code treats architectural policies (e.g., "All databases must be e
 Sruja validates common architectural concerns automatically:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 PaymentService = system "Payment Service" {
     API = container "Payment API" {
@@ -62,7 +58,7 @@ PaymentService = system "Payment Service" {
         }
     }
 
-    DB = datastore "Payment Database" {
+    DB = database "Payment Database" {
         technology "PostgreSQL"
         tags ["encrypted", "backed-up"]
 

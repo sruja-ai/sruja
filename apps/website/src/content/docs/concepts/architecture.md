@@ -13,12 +13,8 @@ The `architecture` block is the root element of a Sruja model. It represents the
 ### Explicit Block (Recommended for large projects)
 
 ```sruja
-person = kind "Person"
-system = kind "System"
-container = kind "Container"
-component = kind "Component"
-datastore = kind "Datastore"
-queue = kind "Queue"
+import { * } from 'sruja.ai/stdlib'
+
 
 // ... define systems, persons, etc. here
 
@@ -32,8 +28,8 @@ include *
 For simple examples, you can use a minimal structure:
 
 ```sruja
-system = kind "System"
-person = kind "Person"
+import { * } from 'sruja.ai/stdlib'
+
 
 MySystem = system "My System"
 User = person "User"

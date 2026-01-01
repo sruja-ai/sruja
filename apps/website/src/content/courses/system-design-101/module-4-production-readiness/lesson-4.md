@@ -13,10 +13,8 @@ SLOs set measurable targets (availability, latency, error rate, throughput). The
 ## Sruja: SLO + Scale
 
 ```sruja
-element person
-element system
-element container
-element datastore
+import { * } from 'sruja.ai/stdlib'
+
 
 ECommerce = system "E-Commerce Platform" {
 API = container "API Service" {
@@ -27,7 +25,6 @@ API = container "API Service" {
     metric "req/s"
     min 200
     max 2000
-    description "Auto-scales to meet throughput SLO"
   }
 
   // SLOs define what "good" looks like
@@ -59,7 +56,7 @@ API = container "API Service" {
   }
 }
 
-Database = datastore "PostgreSQL" {
+Database = database "PostgreSQL" {
   technology "PostgreSQL"
   slo {
     availability {

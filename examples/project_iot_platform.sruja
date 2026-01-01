@@ -123,7 +123,7 @@ edgeGateway = system "Edge Gateway" {
 
 // User interactions
 deviceOwner -> ioTPlatform.dashboardService "Views data"
-dataAnalyst -> ioTPlatform.dashboardService "Analyzes data"
+ioTPlatform.dashboardService -> dataAnalyst "Provides analytics to"
 systemAdmin -> ioTPlatform.deviceManagementService "Manages devices"
 
 // Data flow

@@ -11,26 +11,22 @@ Use `behavior` to document responsibilities; use `depends_on` to note upstreams.
 ## Syntax
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-system App {
-container API {
-  component CheckoutService {}
-}
 
-datastore DB { tags ["internal"] }
+App = system "App" {
+  API = container "API" {
+    CheckoutService = component "Checkout Service"
+  }
+
+  DB = database "Database" { tags ["internal"] }
 }
 
 // dependency relations at architecture level
 App.API.CheckoutService -> App.DB "reads/writes"
 App.API.CheckoutService -> PaymentGateway "calls"
 
-system PaymentGateway { tags ["external"] }
+PaymentGateway = system "Payment Gateway" { tags ["external"] }
 
 ```
 

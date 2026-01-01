@@ -11,17 +11,15 @@ Define `views` to customize what elements appear and how they render.
 ## Syntax
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
 
-system App {
-container WebApp
-container API
-datastore DB
+App = system "Application" {
+  WebApp = container "Web App"
+  API = container "API"
+  DB = database "Database"
 }
 
 User = person "User"
@@ -30,18 +28,19 @@ User -> App.WebApp "Uses"
 App.WebApp -> App.API "Calls"
 App.API -> App.DB "Reads/Writes"
 
-App = container "API Focus" {
-include App.API App.DB
-exclude App.WebApp
+view api_focus of App {
+  title "API Focus"
+  include App.API App.DB
+  exclude App.WebApp
 }
 
 styles {
-element "Datastore" { shape "cylinder" color "#3b82f6" }
-relationship "Calls" { color "#ef4444" }
+  element "Database" { shape "cylinder" color "#3b82f6" }
+  relationship "Calls" { color "#ef4444" }
 }
 
 view index {
-include *
+  include *
 }
 ```
 

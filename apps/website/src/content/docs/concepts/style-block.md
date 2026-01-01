@@ -11,30 +11,32 @@ Use `style` to set global visual defaults across diagrams and exports.
 ## Syntax
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
 
 style {
-element "Datastore" { shape cylinder color "#22c55e" }
-element "API" { color "#0ea5e9" }
-relation "Calls" { color "#ef4444" }
+  element "Database" { shape cylinder color "#22c55e" }
+  element "Container" { color "#0ea5e9" }
+  relationship "Calls" { color "#ef4444" }
 }
 
-// ... rest of architecture
+App = system "App" {
+  API = container "API"
+  DB = database "DB"
+}
+
+API -> DB "Calls"
 
 view index {
-include *
+  include *
 }
 ```
 
 ## Guidance
 
 - Use a small, consistent palette; prefer semantic colors.
-- Override globally here; adjust per‑view in `views { styles { ... } }` when needed.
+- Override globally here; adjust per‑view in `view SOME_VIEW { styles { ... } }` when needed.
 
 ## Related
 

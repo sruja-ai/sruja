@@ -19,8 +19,8 @@ We have our domains. Now we need to pick the tools to build them.
 We define these choices in our `container` definitions.
 
 ```sruja
-element system
-element container
+import { * } from 'sruja.ai/stdlib'
+
 
 Platform = system "E-Commerce Platform" {
 WebApp = container "Storefront & Admin" {

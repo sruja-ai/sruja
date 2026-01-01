@@ -38,11 +38,7 @@ In Sruja, microservices are typically modeled as separate `container` items with
 ### Basic Example
 
 ```sruja
-element person
-element system
-element container
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
 Customer = person "Customer"
 
@@ -51,7 +47,7 @@ OrderSystem = system "Order Management" {
         technology "Go"
         description "Handles order placement and tracking."
     }
-    OrderDB = datastore "Order Database" {
+    OrderDB = database "Order Database" {
         technology "PostgreSQL"
     }
     OrderService -> OrderDB "Reads/Writes"
@@ -62,7 +58,7 @@ InventorySystem = system "Inventory Management" {
         technology "Java"
         description "Tracks stock levels."
     }
-    InventoryDB = datastore "Inventory Database" {
+    InventoryDB = database "Inventory Database" {
         technology "PostgreSQL"
     }
     InventoryService -> InventoryDB "Reads/Writes"

@@ -22,12 +22,8 @@ For Shopify-lite, we will start with a **Modular Monolith**. We will have clear 
 We don't just make this decision; we _document_ it so future engineers know why.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 // Requirements that drive the architecture decision
 requirement R1 functional "Must support 10,000+ stores"
@@ -86,7 +82,7 @@ Platform = system "E-Commerce Platform" {
         }
     }
 
-    OrderDB = datastore "Order Database" {
+    OrderDB = database "Order Database" {
         technology "PostgreSQL"
         description "Stores orders and transactions"
     }

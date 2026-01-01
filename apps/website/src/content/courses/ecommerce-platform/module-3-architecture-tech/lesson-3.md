@@ -17,10 +17,8 @@ Instead of writing code and then documenting it, we define the API schema first 
 Sruja models **which services exist and how they connect**. For detailed API schemas (endpoints, request/response structures), use **OpenAPI/Swagger**.
 
 ```sruja
-person = kind "Person"
-system = kind "System"
-container = kind "Container"
-database = kind "Database"
+import { * } from 'sruja.ai/stdlib'
+
 
 customer = person "Customer"
 

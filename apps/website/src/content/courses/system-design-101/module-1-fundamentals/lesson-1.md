@@ -80,24 +80,20 @@ Junior engineers search for the "best" database. Senior engineers ask "what are 
 
 In Sruja, we treat requirements as code. This keeps your constraints right next to your architecture.
 
-### Why the Specification Block Matters
+### Why Kinds and Types Matter
 
-The `specification` block isn't just syntax—it provides real benefits:
+In Sruja, you declare **kinds** to establish the vocabulary of your architecture. This isn't just syntax—it provides real benefits:
 
-1. **Early Validation**: If you typo an element type (e.g., `sytem` instead of `system`), Sruja catches it immediately
-2. **Better Tooling**: IDEs can provide autocomplete and validation based on declared element types
-3. **Self-Documentation**: Anyone reading your model knows exactly what element types are available
-4. **Organization**: Separates "what types exist" from "what instances we create"
+1. **Early Validation**: If you typo an element type (e.g., `sytem` instead of `system`), Sruja catches it immediately.
+2. **Better Tooling**: IDEs can provide autocomplete and validation based on your declared kinds.
+3. **Self-Documentation**: Anyone reading your model knows exactly which element types are available.
+4. **Custom Vocabulary**: You can define your own kinds (e.g., `microservice = kind "Microservice"`) to match your domain.
+5. **Flat and Clean**: With Sruja's flat syntax, these declarations live at the top of your file—no `specification` wrapper block required.
 
 ### Example: Requirements-Driven Architecture
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
 // 1. Defining the "What" (Functional)
 requirement R1 functional "Users can post short text messages (tweets)"
@@ -127,7 +123,7 @@ Twitter = system "The Platform" {
         }
     }
 
-    TweetDB = datastore "Tweet Storage" {
+    TweetDB = database "Tweet Storage" {
         technology "Cassandra"
         description "Satisfies R3 - distributed storage for 1PB scale"
     }
@@ -136,7 +132,7 @@ Twitter = system "The Platform" {
 }
 
 // 4. Document the decision
-adr ADR001 "Use Cassandra for tweet storage" {
+ADR001 = adr "Use Cassandra for tweet storage" {
     status "Accepted"
     context "Need to store 1PB of tweets with high write throughput"
     decision "Use Cassandra for distributed, scalable storage"

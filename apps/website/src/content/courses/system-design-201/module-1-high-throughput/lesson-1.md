@@ -45,71 +45,67 @@ How do we generate the alias?
 We can use Sruja to model the system components and the user scenario for redirection.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-requirement R1 functional "Shorten long URL"
-requirement R2 functional "Redirect short URL"
-requirement R3 availability "High availability for redirects"
-requirement R4 latency "Low latency (< 200ms)"
+
+R1 = requirement functional "Shorten long URL"
+R2 = requirement functional "Redirect short URL"
+R3 = requirement availability "High availability for redirects"
+R4 = requirement performance "Low latency (< 200ms)"
 
 // Define the system boundary
 TinyURL = system "TinyURL Service" {
-    WebServer = container "API Server" {
-        technology "Go"
-        scale {
-            min 3
-            max 20
-            metric "cpu > 70%"
-        }
+  WebServer = container "API Server" {
+    technology "Go"
+    scale {
+      min 3
+      max 20
+      metric "cpu > 70%"
     }
+  }
 
-    DB = datastore "UrlStore" {
-        technology "DynamoDB"
-        description "Stores mapping: short_alias -> long_url"
-    }
+  DB = database "UrlStore" {
+    technology "DynamoDB"
+    description "Stores mapping: short_alias -> long_url"
+  }
 
-    Cache = container "Cache" {
-        technology "Redis"
-        description "Caches popular redirects"
-    }
+  Cache = container "Cache" {
+    technology "Redis"
+    description "Caches popular redirects"
+  }
 
-    TinyURL.WebServer -> TinyURL.Cache "Reads"
-    TinyURL.WebServer -> TinyURL.DB "Reads/Writes"
+  WebServer -> Cache "Reads"
+  WebServer -> DB "Reads/Writes"
 }
 
 User = person "User"
 
 // Define the redirection scenario (most common - cache hit)
-scenario RedirectFlowCacheHit "User clicks a short link (cache hit)" {
-    User -> TinyURL.WebServer "GET /xyz"
-    TinyURL.WebServer -> TinyURL.Cache "Check cache for 'xyz'"
-    TinyURL.Cache -> TinyURL.WebServer "Hit: 'http://example.com'"
-    TinyURL.WebServer -> User "301 Redirect (from cache)"
+RedirectFlowCacheHit = scenario "User clicks a short link (cache hit)" {
+  User -> TinyURL.WebServer "GET /xyz"
+  TinyURL.WebServer -> TinyURL.Cache "Check cache for 'xyz'"
+  TinyURL.Cache -> TinyURL.WebServer "Hit: 'http://example.com'"
+  TinyURL.WebServer -> User "301 Redirect (from cache)"
 }
 
 // Cache miss scenario
-scenario RedirectFlowCacheMiss "User clicks a short link (cache miss)" {
-    User -> TinyURL.WebServer "GET /xyz"
-    TinyURL.WebServer -> TinyURL.Cache "Check cache for 'xyz'"
-    TinyURL.Cache -> TinyURL.WebServer "Miss"
-    TinyURL.WebServer -> TinyURL.DB "Get long_url for 'xyz'"
-    TinyURL.DB -> TinyURL.WebServer "Return 'http://example.com'"
-    TinyURL.WebServer -> TinyURL.Cache "Cache the mapping"
-    TinyURL.WebServer -> User "301 Redirect to 'http://example.com'"
+RedirectFlowCacheMiss = scenario "User clicks a short link (cache miss)" {
+  User -> TinyURL.WebServer "GET /xyz"
+  TinyURL.WebServer -> TinyURL.Cache "Check cache for 'xyz'"
+  TinyURL.Cache -> TinyURL.WebServer "Miss"
+  TinyURL.WebServer -> TinyURL.DB "Get long_url for 'xyz'"
+  TinyURL.DB -> TinyURL.WebServer "Return 'http://example.com'"
+  TinyURL.WebServer -> TinyURL.Cache "Cache the mapping"
+  TinyURL.WebServer -> User "301 Redirect to 'http://example.com'"
 }
 
 // URL shortening scenario
-scenario ShortenURL "User creates a short URL" {
-    User -> TinyURL.WebServer "POST /shorten with long_url"
-    TinyURL.WebServer -> TinyURL.WebServer "Generate base62 alias"
-    TinyURL.WebServer -> TinyURL.DB "Store mapping: alias -> long_url"
-    TinyURL.DB -> TinyURL.WebServer "Confirm stored"
-    TinyURL.WebServer -> User "Return short URL"
+ShortenURL = scenario "User creates a short URL" {
+  User -> TinyURL.WebServer "POST /shorten with long_url"
+  TinyURL.WebServer -> TinyURL.WebServer "Generate base62 alias"
+  TinyURL.WebServer -> TinyURL.DB "Store mapping: alias -> long_url"
+  TinyURL.DB -> TinyURL.WebServer "Confirm stored"
+  TinyURL.WebServer -> User "Return short URL"
 }
 
 view index {

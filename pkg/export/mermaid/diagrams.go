@@ -35,15 +35,17 @@ func (e *Exporter) GenerateL1(prog *language.Program) string {
 	for _, sys := range systems {
 		id := sanitizeID(sys.ID)
 		label := escapeQuotes(formatLabel(sys.Label, sys.ID, getString(sys.Description), ""))
-		sb.WriteString(strings.Repeat(" ", 4))
+		sb.WriteString(Indent4)
 		sb.WriteString(id)
 		sb.WriteString("[\"")
 		sb.WriteString(label)
 		sb.WriteString("\"]\n")
-		sb.WriteString(strings.Repeat(" ", 4))
+		sb.WriteString(Indent4)
 		sb.WriteString("class ")
 		sb.WriteString(id)
-		sb.WriteString(" systemStyle\n")
+		sb.WriteString(" ")
+		sb.WriteString(ClassSystem)
+		sb.WriteString("\n")
 	}
 
 	// Write Relations (only those between L1 elements)
@@ -97,15 +99,15 @@ func (e *Exporter) GenerateL2(sys *language.System, prog *language.Program) stri
 
 	// Write Containers
 	for _, cont := range sys.Containers {
-		e.writeContainer(sb, cont, sys.ID, "        ")
+		e.writeContainer(sb, cont, sys.ID, Indent8)
 	}
 	// Write DataStores
 	for _, ds := range sys.DataStores {
-		e.writeDataStore(sb, ds, sys.ID, "        ")
+		e.writeDataStore(sb, ds, sys.ID, Indent8)
 	}
 	// Write Queues
 	for _, q := range sys.Queues {
-		e.writeQueue(sb, q, sys.ID, "        ")
+		e.writeQueue(sb, q, sys.ID, Indent8)
 	}
 	sb.WriteString("    end\n")
 
@@ -214,7 +216,7 @@ func (e *Exporter) GenerateL3(cont *language.Container, systemID string, prog *l
 
 	// Write Components
 	for _, comp := range cont.Components {
-		e.writeComponent(sb, comp, fullContID, "        ")
+		e.writeComponent(sb, comp, fullContID, Indent8)
 	}
 	sb.WriteString("    end\n")
 

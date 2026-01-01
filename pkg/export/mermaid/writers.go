@@ -9,13 +9,7 @@ import (
 
 // Mermaid styles
 const (
-	PersonStyle    = "fill:#ffcccc,stroke:#333,stroke-width:2px,color:#000"
-	SystemStyle    = "fill:#cce5ff,stroke:#333,stroke-width:2px,color:#000"
-	ContainerStyle = "fill:#cce5ff,stroke:#333,stroke-width:2px,color:#000"
-	DatabaseStyle  = "fill:#ccffcc,stroke:#333,stroke-width:2px,color:#000"
-	QueueStyle     = "fill:#ffe5cc,stroke:#333,stroke-width:2px,color:#000"
-	ExternalStyle  = "fill:#eeeeee,stroke:#666,stroke-width:2px,color:#000,stroke-dasharray: 3 3"
-	ComponentStyle = "fill:#e6f7ff,stroke:#333,stroke-width:2px,color:#000"
+// Constants moved to constants.go
 )
 
 func (e *Exporter) writeHeader(sb *strings.Builder) {
@@ -24,7 +18,7 @@ func (e *Exporter) writeHeader(sb *strings.Builder) {
 		if e.Config.Layout != "" {
 			fmt.Fprintf(sb, "  layout: %s\n", e.Config.Layout)
 		}
-		if e.Config.Theme != "" && e.Config.Theme != "default" {
+		if e.Config.Theme != "" && e.Config.Theme != DefaultTheme {
 			fmt.Fprintf(sb, "  theme: %s\n", e.Config.Theme)
 		}
 		if e.Config.Direction != "" {
@@ -34,33 +28,33 @@ func (e *Exporter) writeHeader(sb *strings.Builder) {
 	} else {
 		theme := e.Config.Theme
 		if theme == "" {
-			theme = "default"
+			theme = DefaultTheme
 		}
 		fmt.Fprintf(sb, "%%%%{init: { \"theme\": \"%s\", \"flowchart\": { \"htmlLabels\": true } }}%%%%\n", theme)
 	}
 
 	dir := e.Config.Direction
 	if dir == "" {
-		dir = "LR"
+		dir = DefaultDirection
 	}
 	fmt.Fprintf(sb, "graph %s\n\n", dir)
 }
 
 func (e *Exporter) writeStyles(sb *strings.Builder) {
-	fmt.Fprintf(sb, "    classDef personStyle %s\n", PersonStyle)
-	fmt.Fprintf(sb, "    classDef systemStyle %s\n", SystemStyle)
-	fmt.Fprintf(sb, "    classDef containerStyle %s\n", ContainerStyle)
-	fmt.Fprintf(sb, "    classDef databaseStyle %s\n", DatabaseStyle)
-	fmt.Fprintf(sb, "    classDef queueStyle %s\n", QueueStyle)
-	fmt.Fprintf(sb, "    classDef externalStyle %s\n", ExternalStyle)
-	fmt.Fprintf(sb, "    classDef componentStyle %s\n\n", ComponentStyle)
+	fmt.Fprintf(sb, "    classDef %s %s\n", ClassPerson, StylePerson)
+	fmt.Fprintf(sb, "    classDef %s %s\n", ClassSystem, StyleSystem)
+	fmt.Fprintf(sb, "    classDef %s %s\n", ClassContainer, StyleContainer)
+	fmt.Fprintf(sb, "    classDef %s %s\n", ClassDatabase, StyleDatabase)
+	fmt.Fprintf(sb, "    classDef %s %s\n", ClassQueue, StyleQueue)
+	fmt.Fprintf(sb, "    classDef %s %s\n", ClassExternal, StyleExternal)
+	fmt.Fprintf(sb, "    classDef %s %s\n\n", ClassComponent, StyleComponent)
 }
 
 func (e *Exporter) writePerson(sb *strings.Builder, p *language.Person) {
 	id := sanitizeID(p.ID)
 	label := escapeQuotes(formatLabel(p.Label, p.ID, getString(p.Description), ""))
 	fmt.Fprintf(sb, "    %s[\"%s\"]\n", id, label)
-	fmt.Fprintf(sb, "    class %s personStyle\n", id)
+	fmt.Fprintf(sb, "    class %s %s\n", id, ClassPerson)
 }
 
 func (e *Exporter) writeSystem(sb *strings.Builder, sys *language.System, _ *indexedArchitecture) {
@@ -86,7 +80,7 @@ func (e *Exporter) writeSystem(sb *strings.Builder, sys *language.System, _ *ind
 	} else {
 		label := escapeQuotes(formatLabel(sys.Label, sys.ID, getString(sys.Description), ""))
 		fmt.Fprintf(sb, "    %s[\"%s\"]\n", id, label)
-		fmt.Fprintf(sb, "    class %s systemStyle\n", id)
+		fmt.Fprintf(sb, "    class %s %s\n", id, ClassSystem)
 	}
 }
 
@@ -113,7 +107,7 @@ func (e *Exporter) writeContainer(sb *strings.Builder, cont *language.Container,
 		fmt.Fprintf(sb, "%send\n", indent)
 	} else {
 		fmt.Fprintf(sb, "%s%s[\"%s\"]\n", indent, id, label)
-		fmt.Fprintf(sb, "%sclass %s containerStyle\n", indent, id)
+		fmt.Fprintf(sb, "%sclass %s %s\n", indent, id, ClassContainer)
 	}
 }
 
@@ -125,7 +119,7 @@ func (e *Exporter) writeDataStore(sb *strings.Builder, ds *language.DataStore, p
 	id := sanitizeID(fullID)
 	label := escapeQuotes(formatLabel(ds.Label, ds.ID, getString(ds.Description), getString(ds.Technology)))
 	fmt.Fprintf(sb, "%s%s[(\"%s\")]\n", indent, id, label)
-	fmt.Fprintf(sb, "%sclass %s databaseStyle\n", indent, id)
+	fmt.Fprintf(sb, "%sclass %s %s\n", indent, id, ClassDatabase)
 }
 
 func (e *Exporter) writeQueue(sb *strings.Builder, q *language.Queue, parentID string, indent string) {
@@ -136,7 +130,7 @@ func (e *Exporter) writeQueue(sb *strings.Builder, q *language.Queue, parentID s
 	id := sanitizeID(fullID)
 	label := escapeQuotes(formatLabel(q.Label, q.ID, getString(q.Description), getString(q.Technology)))
 	fmt.Fprintf(sb, "%s%s(\"%s\")\n", indent, id, label)
-	fmt.Fprintf(sb, "%sclass %s queueStyle\n", indent, id)
+	fmt.Fprintf(sb, "%sclass %s %s\n", indent, id, ClassQueue)
 }
 
 func (e *Exporter) writeComponent(sb *strings.Builder, comp *language.Component, parentID string, indent string) {
@@ -147,7 +141,7 @@ func (e *Exporter) writeComponent(sb *strings.Builder, comp *language.Component,
 	id := sanitizeID(fullID)
 	label := escapeQuotes(formatLabel(comp.Label, comp.ID, getString(comp.Description), getString(comp.Technology)))
 	fmt.Fprintf(sb, "%s%s[\"%s\"]\n", indent, id, label)
-	fmt.Fprintf(sb, "%sclass %s componentStyle\n", indent, id)
+	fmt.Fprintf(sb, "%sclass %s %s\n", indent, id, ClassComponent)
 }
 
 func (e *Exporter) writeRelation(sb *strings.Builder, rel *language.Relation, _ *indexedArchitecture) {

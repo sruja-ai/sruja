@@ -14,10 +14,12 @@ func TestDiffJSON(t *testing.T) {
 	file1 := filepath.Join(tmpDir, "v1.sruja")
 	file2 := filepath.Join(tmpDir, "v2.sruja")
 
-	content1 := `system Sys1 "System 1"`
+	content1 := `system = kind "System"
+Sys1 = system "System 1"`
 
-	content2 := `system Sys1 "System 1"
-		system Sys2 "System 2"`
+	content2 := `system = kind "System"
+Sys1 = system "System 1"
+Sys2 = system "System 2"`
 
 	if err := os.WriteFile(file1, []byte(content1), 0o644); err != nil {
 		t.Fatal(err)
@@ -31,6 +33,7 @@ func TestDiffJSON(t *testing.T) {
 
 	if exitCode != 0 {
 		t.Logf("Stderr: %s", stderr.String())
+		t.Fatalf("diff command failed with exit code %d", exitCode)
 	}
 
 	output := stdout.String()
@@ -38,7 +41,7 @@ func TestDiffJSON(t *testing.T) {
 	// Verify JSON structure
 	var result map[string]interface{}
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Logf("Output is not valid JSON: %v. Output: %s", err, output)
+		t.Fatalf("Output is not valid JSON: %v. Output: %s", err, output)
 	}
 }
 
@@ -47,9 +50,11 @@ func TestDiffModified(t *testing.T) {
 	file1 := filepath.Join(tmpDir, "v1.sruja")
 	file2 := filepath.Join(tmpDir, "v2.sruja")
 
-	content1 := `system Sys1 "System One"`
+	content1 := `system = kind "System"
+Sys1 = system "System One"`
 
-	content2 := `system Sys1 "System 1 Updated"`
+	content2 := `system = kind "System"
+Sys1 = system "System 1 Updated"`
 
 	if err := os.WriteFile(file1, []byte(content1), 0o644); err != nil {
 		t.Fatal(err)
@@ -63,11 +68,13 @@ func TestDiffModified(t *testing.T) {
 
 	if exitCode != 0 {
 		t.Logf("Stderr: %s", stderr.String())
+		t.Fatalf("diff command failed with exit code %d", exitCode)
 	}
 
 	output := stdout.String()
-	_ = output
-	// Test passes if command runs
+	if output == "" {
+		t.Error("Expected diff output, got empty string")
+	}
 }
 
 func TestDiffRemoved(t *testing.T) {
@@ -75,10 +82,12 @@ func TestDiffRemoved(t *testing.T) {
 	file1 := filepath.Join(tmpDir, "v1.sruja")
 	file2 := filepath.Join(tmpDir, "v2.sruja")
 
-	content1 := `system Sys1 "System 1"
-		system Sys2 "System 2"`
+	content1 := `system = kind "System"
+Sys1 = system "System 1"
+Sys2 = system "System 2"`
 
-	content2 := `system Sys1 "System 1"`
+	content2 := `system = kind "System"
+Sys1 = system "System 1"`
 
 	if err := os.WriteFile(file1, []byte(content1), 0o644); err != nil {
 		t.Fatal(err)
@@ -92,9 +101,11 @@ func TestDiffRemoved(t *testing.T) {
 
 	if exitCode != 0 {
 		t.Logf("Stderr: %s", stderr.String())
+		t.Fatalf("diff command failed with exit code %d", exitCode)
 	}
 
 	output := stdout.String()
-	_ = output
-	// Test passes if command runs
+	if output == "" {
+		t.Error("Expected diff output, got empty string")
+	}
 }

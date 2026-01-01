@@ -18,13 +18,12 @@ build-cli-only:
 # Run tests (excluding cmd/wasm which requires WASM build constraints)
 test:
 	@echo "Running Go tests..."
-	@go test ./pkg/... ./internal/... ./cmd/sruja ./tests ./scripts/...
+	@go test $(TEST_ARGS) -timeout 10m ./pkg/... ./internal/... ./cmd/sruja ./tests/... ./scripts/...
 
 # Run tests with coverage (excluding cmd/wasm which requires WASM build constraints)
-# Scripts are excluded from coverage as they are auxiliary tools, not core functionality
 test-coverage:
 	@echo "Running Go tests with coverage..."
-	@go test -coverprofile=coverage.out ./pkg/... ./internal/... ./cmd/sruja ./tests
+	@go test $(TEST_ARGS) -timeout 10m -coverprofile=coverage.out ./pkg/... ./internal/... ./cmd/sruja ./tests/... ./scripts/...
 	@echo ""
 	@echo "Coverage summary:"
 	@go tool cover -func=coverage.out | tail -1

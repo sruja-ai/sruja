@@ -11,21 +11,17 @@ Use `scale` to capture expected capacity, concurrency, or throughput ranges.
 ## Syntax
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-system App {
-container API {
-  scale {
-    metric "req/s"
-    min 200
-    max 2000
+
+App = system "App" {
+  API = container "API" {
+    scale {
+      metric "req/s"
+      min 200
+      max 2000
+    }
   }
-}
 }
 
 view index {

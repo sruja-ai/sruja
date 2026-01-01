@@ -30,19 +30,15 @@ Every example here follows our ["FAANG-level" quality standards](/docs/style-gui
 - **Complexity**: Models the "Legacy Core" vs "Modern Interface" pattern often seen in enterprise.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 // --- REQUIREMENTS ---
 // We start with the 'Why'. These drive the architecture.
-requirement R1 functional "Customers must be able to view balances"
-requirement R2 functional "Customers can transfer money internally"
-requirement R3 security "All PII must be encrypted at rest (PCI-DSS)"
-requirement R4 stability "99.99% Availability (Target: <52m downtime/year)"
+R1 = requirement functional "Customers must be able to view balances"
+R2 = requirement functional "Customers can transfer money internally"
+R3 = requirement security "All PII must be encrypted at rest (PCI-DSS)"
+R4 = requirement stability "99.99% Availability (Target: <52m downtime/year)"
 
 // --- ACTORS ---
 Customer = person "Banking Customer" {
@@ -69,7 +65,7 @@ BankingSystem = system "Internet Banking Platform" {
 
     Database = container "Main RDBMS" {
         technology "PostgreSQL"
-        tags "database", "storage"
+        tags ["database", "storage"]
     }
 
     // Relationships
@@ -80,12 +76,12 @@ BankingSystem = system "Internet Banking Platform" {
 
 // --- EXTERNAL SYSTEMS ---
 Mainframe = system "Legacy Core Banking" {
-    external true // This is outside our scope of control
+    tags ["external"] // This is outside our scope of control
     description "The heavy iron that stores the actual money."
 }
 
 EmailSystem = system "Email Service" {
-    external true
+    tags ["external"]
     description "SendGrid / AWS SES"
 }
 
@@ -117,15 +113,11 @@ include *
 - **Caching**: Strategic placement of Redis caches.
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
 
-requirement R1 scale "Handle 100k concurrent users"
-requirement R2 performance "Product pages load in <100ms"
+
+R1 = requirement scale "Handle 100k concurrent users"
+R2 = requirement performance "Product pages load in <100ms"
 
 ShopScale = system "E-Commerce Platform" {
 
@@ -156,7 +148,7 @@ ShopScale = system "E-Commerce Platform" {
         description "Stores hot product data"
     }
 
-    MainDB = datastore "Product Database" {
+    MainDB = database "Product Database" {
         technology "MongoDB"
         description "Flexible schema for diverse product attributes"
     }
