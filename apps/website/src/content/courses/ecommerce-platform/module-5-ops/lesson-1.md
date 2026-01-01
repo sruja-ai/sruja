@@ -35,12 +35,8 @@ You have two identical environments (Blue and Green). One is live, the other is 
 ### Real-World Example: E-Commerce Platform
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 ECommerce = system "E-Commerce Platform" {
     API = container "REST API" {
@@ -54,7 +50,7 @@ ECommerce = system "E-Commerce Platform" {
         technology "Go"
         description "Critical: Processes all payments"
     }
-    OrderDB = datastore "Order Database" {
+    OrderDB = database "Order Database" {
         technology "PostgreSQL"
     }
 }
@@ -139,12 +135,8 @@ You roll out the new version to a small percentage of users (e.g., 5%) and monit
 ### Real-World Example: API Service
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 API = system "REST API" {
     APIv1 = container "API v1.2.3" {
@@ -157,7 +149,7 @@ API = system "REST API" {
     }
 }
 
-deployment Production {
+deployment Production "Production Environment" {
     node Canary "Canary Cluster" {
         containerInstance APIv2 {
             replicas 2
@@ -188,8 +180,8 @@ include *
 Document the rollout plan in metadata:
 
 ```sruja
-element system
-element container
+import { * } from 'sruja.ai/stdlib'
+
 
 ECommerce = system "E-Commerce Platform" {
 API = container "API Service" {
@@ -246,7 +238,7 @@ include *
 Gradually replace old instances with new ones, one at a time.
 
 ```sruja
-deployment Production {
+deployment Production "Production Environment" {
     node Cluster "Kubernetes Cluster" {
         containerInstance API {
             replicas 20
@@ -273,8 +265,8 @@ deployment Production {
 Sometimes you don't need a deployment strategy—use feature flags instead:
 
 ```sruja
-element system
-element container
+import { * } from 'sruja.ai/stdlib'
+
 
 Platform = system "Platform" {
 FeatureFlags = container "Feature Flag Service" {
@@ -283,12 +275,7 @@ FeatureFlags = container "Feature Flag Service" {
 }
 
 API = container "API Service" {
-  metadata {
-    featureFlags {
-      newPaymentFlow "10% rollout"
-      experimentalSearch "5% rollout"
-    }
-  }
+  // Feature flags: newPaymentFlow (10% rollout), experimentalSearch (5% rollout)
 }
 }
 
@@ -304,8 +291,8 @@ include *
 Model your observability during deployments:
 
 ```sruja
-element system
-element container
+import { * } from 'sruja.ai/stdlib'
+
 
 Observability = system "Observability Stack" {
 Prometheus = container "Metrics" {
@@ -317,18 +304,10 @@ AlertManager = container "Alerting" {
 }
 
 // Link monitoring to deployment
-deployment Production {
-    metadata {
-        monitoring {
-            metrics ["error_rate", "latency_p95", "cpu_usage", "request_rate"]
-            alertThresholds {
-                errorRate "> 1%"
-                latencyP95 "> 500ms"
-                cpuUsage "> 90%"
-            }
-            rollbackAutomation true
-        }
-    }
+deployment Production "Production Environment" {
+    // Monitoring: error_rate, latency_p95, cpu_usage, request_rate
+    // Alert thresholds: errorRate > 1%, latencyP95 > 500ms, cpuUsage > 90%
+    // Rollback automation enabled
 }
 ```
 

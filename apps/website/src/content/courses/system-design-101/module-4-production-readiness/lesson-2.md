@@ -79,12 +79,8 @@ Sruja allows you to map your logical containers to physical deployment nodes, ma
 ### Example: Multi-Region E-Commerce Platform
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 ECommerce = system "E-Commerce Platform" {
     API = container "REST API" {
@@ -98,10 +94,10 @@ ECommerce = system "E-Commerce Platform" {
     WebApp = container "React Frontend" {
         technology "React"
     }
-    PrimaryDB = datastore "PostgreSQL" {
+    PrimaryDB = database "PostgreSQL" {
         technology "PostgreSQL"
     }
-    Cache = datastore "Redis" {
+    Cache = database "Redis" {
         technology "Redis"
     }
 }
@@ -158,12 +154,8 @@ include *
 Model your deployment pipeline alongside architecture:
 
 ```sruja
-element person
-element system
-element container
-element component
-element datastore
-element queue
+import { * } from 'sruja.ai/stdlib'
+
 
 CICD = system "CI/CD System" {
     GitHubActions = container "GitHub Actions" {
@@ -276,9 +268,8 @@ deployment Production {
 Define reliability targets directly in your architecture model:
 
 ```sruja
-element system
-element container
-element datastore
+import { * } from 'sruja.ai/stdlib'
+
 
 ECommerce = system "E-Commerce Platform" {
 API = container "REST API" {
@@ -290,7 +281,6 @@ API = container "REST API" {
       target "99.99%"
       window "30 days"
       current "99.95%"
-      description "Four nines availability target"
     }
     latency {
       p95 "200ms"
@@ -314,7 +304,7 @@ API = container "REST API" {
   }
 }
 
-Database = datastore "PostgreSQL" {
+Database = database "PostgreSQL" {
   technology "PostgreSQL"
   slo {
     availability {
@@ -346,8 +336,8 @@ include *
 Model your observability stack:
 
 ```sruja
-element system
-element container
+import { * } from 'sruja.ai/stdlib'
+
 
 Observability = system "Observability Stack" {
 Prometheus = container "Metrics" {
@@ -366,6 +356,10 @@ Jaeger = container "Tracing" {
   technology "Jaeger"
   description "Distributed tracing"
 }
+}
+
+ECommerce = system "E-Commerce" {
+  API = container "API"
 }
 
 // Link to your services
