@@ -1,5 +1,19 @@
 // apps/website/astro.config.mjs
 
+// Suppress glob-loader duplicate ID warnings (false positives from hot reload)
+if (typeof console !== "undefined" && console.warn) {
+  const originalWarn = console.warn;
+  const suppressedPattern = /\[glob-loader\].*Duplicate id/;
+
+  console.warn = (...args) => {
+    const message = args[0]?.toString() || "";
+    if (suppressedPattern.test(message)) {
+      return; // Suppress this warning
+    }
+    originalWarn.apply(console, args);
+  };
+}
+
 import { defineConfig } from "astro/config";
 import react from "@astrojs/react";
 import mdx from "@astrojs/mdx";
@@ -58,18 +72,35 @@ export default defineConfig({
         buildStart() {
           // Intercept console.warn to suppress duplicate ID warnings from glob-loader
           // These are false positives from Astro's dev server hot reload
-          const originalWarn = console.warn;
-          const suppressedPattern = /\[glob-loader\].*Duplicate id/;
+          if (typeof console !== "undefined" && console.warn) {
+            const originalWarn = console.warn;
+            const suppressedPattern = /\[glob-loader\].*Duplicate id/;
 
-          console.warn = (...args) => {
-            const message = args[0]?.toString() || "";
-            // Suppress only the specific glob-loader duplicate ID warnings
-            if (suppressedPattern.test(message)) {
-              return; // Suppress this warning
-            }
-            // Allow all other warnings through
-            originalWarn.apply(console, args);
-          };
+            console.warn = (...args) => {
+              const message = args[0]?.toString() || "";
+              // Suppress only the specific glob-loader duplicate ID warnings
+              if (suppressedPattern.test(message)) {
+                return; // Suppress this warning
+              }
+              // Allow all other warnings through
+              originalWarn.apply(console, args);
+            };
+          }
+        },
+        configureServer(server) {
+          // Also suppress in dev mode
+          if (typeof console !== "undefined" && console.warn) {
+            const originalWarn = console.warn;
+            const suppressedPattern = /\[glob-loader\].*Duplicate id/;
+
+            console.warn = (...args) => {
+              const message = args[0]?.toString() || "";
+              if (suppressedPattern.test(message)) {
+                return;
+              }
+              originalWarn.apply(console, args);
+            };
+          }
         },
       },
     ],
