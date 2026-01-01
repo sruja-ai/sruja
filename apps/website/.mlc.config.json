@@ -23,6 +23,21 @@
     },
     {
       "pattern": "^/investors/"
+    },
+    {
+      "pattern": "^\\./"
+    },
+    {
+      "pattern": "^\\.\\./"
+    },
+    {
+      "pattern": "^/courses$"
+    },
+    {
+      "pattern": "^/tutorials$"
+    },
+    {
+      "pattern": "^/designer$"
     }
   ]
 }
