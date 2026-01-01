@@ -1,16 +1,16 @@
 ---
 title: "Lesson 6: Advanced DSL Features"
 weight: 6
-summary: "Master views, scenarios, flows, and the specification block to create production-ready models."
+summary: "Master views, scenarios, flows, and element kinds to create production-ready models."
 ---
 
 # Lesson 6: Advanced DSL Features
 
-The new Sruja DSL format (`specification`/`model`/`views`) provides powerful features for creating production-ready architecture models. This lesson covers the advanced capabilities that make your models more maintainable, understandable, and useful.
+The Sruja DSL provides a **flat syntax** where all declarations—from element kinds to views—are top-level. This lesson covers the advanced capabilities that make your models more maintainable, understandable, and useful.
 
-## The Specification Block: Your Foundation
+## Kinds and Types: Your Foundation
 
-The `specification` block defines what element types are available in your model. This isn't just documentation—it provides real benefits:
+Before creating instances of your architecture (like a "Database"), you must establish what **kinds** of elements exist. This isn't just documentation—it provides real benefits:
 
 ### Benefits
 
@@ -20,12 +20,8 @@ The `specification` block defines what element types are available in your model
 4. **Organization**: Separates structure definition from instantiation
 
 ```sruja
-person = kind "Person"
-system = kind "System"
-container = kind "Container"
-component = kind "Component"
-datastore = kind "Datastore"
-queue = kind "Queue"
+import { * } from 'sruja.ai/stdlib'
+
 
 // Now you can use any of the declared element types
 Customer = person "Customer"
@@ -41,17 +37,13 @@ Declare all element types you'll use upfront. This makes your model self-documen
 
 ## Multiple Views: One Model, Many Perspectives
 
-The `views` block lets you create custom perspectives from a single model. This is essential for communicating with different audiences.
+Use `view` blocks to create custom perspectives from your architecture. This is essential for communicating with different audiences. Unlike some other tools, Sruja allows defining views anywhere in your file, though keeping them at the bottom is a common convention.
 
 ### Real-World Example: E-Commerce Platform
 
 ```sruja
-person = kind "Person"
-system = kind "System"
-container = kind "Container"
-component = kind "Component"
-datastore = kind "Datastore"
-queue = kind "Queue"
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "Customer"
 Admin = person "Administrator"
@@ -72,7 +64,9 @@ EventQueue = queue "Event Queue"
 }
 
 PaymentGateway = system "Payment Gateway" {
-external true
+metadata {
+    tags ["external"]
+  }
 }
 
 Customer -> ECommerce.WebApp "Browses"
@@ -84,44 +78,72 @@ ECommerce.API -> PaymentGateway "Processes payments"
 // Executive view: High-level business context
 view executive {
 title "Executive Overview"
-include Customer Admin
-include ECommerce PaymentGateway
-exclude ECommerce.WebApp ECommerce.API ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache ECommerce.EventQueue
+include Customer
+include Admin
+include ECommerce
+include PaymentGateway
+exclude ECommerce.WebApp
+exclude ECommerce.API
+exclude ECommerce.OrderDB
+exclude ECommerce.ProductDB
+exclude ECommerce.Cache
+exclude ECommerce.EventQueue
 }
 
 // Architect view: Container-level architecture
 view architect {
 title "Architectural View"
-include ECommerce ECommerce.WebApp ECommerce.API
-include ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache ECommerce.EventQueue
+include ECommerce
+include ECommerce.WebApp
+include ECommerce.API
+include ECommerce.OrderDB
+include ECommerce.ProductDB
+include ECommerce.Cache
+include ECommerce.EventQueue
 include PaymentGateway
-exclude Customer Admin
-exclude ECommerce.CartComponent ECommerce.ProductComponent ECommerce.OrderController ECommerce.PaymentController
+exclude Customer
+exclude Admin
 }
 
 // Developer view: Component-level implementation
 view developer {
 title "Developer View"
-include ECommerce.WebApp ECommerce.WebApp.CartComponent ECommerce.WebApp.ProductComponent
-include ECommerce.API ECommerce.API.OrderController ECommerce.API.PaymentController
-include ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache
-exclude Customer Admin PaymentGateway
+include ECommerce.WebApp
+include ECommerce.API
+include ECommerce.OrderDB
+include ECommerce.ProductDB
+include ECommerce.Cache
+exclude Customer
+exclude Admin
+exclude PaymentGateway
 }
 
 // Data flow view: Focus on data dependencies
 view dataflow {
 title "Data Flow View"
-include ECommerce.API ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache ECommerce.EventQueue
-exclude Customer Admin ECommerce.WebApp PaymentGateway
+include ECommerce.API
+include ECommerce.OrderDB
+include ECommerce.ProductDB
+include ECommerce.Cache
+include ECommerce.EventQueue
+exclude Customer
+exclude Admin
+exclude ECommerce.WebApp
+exclude PaymentGateway
 }
 
 // User journey view: Customer experience
 view userjourney {
 title "User Journey View"
 include Customer
-include ECommerce.WebApp ECommerce.API
+include ECommerce.WebApp
+include ECommerce.API
 include PaymentGateway
-exclude Admin ECommerce.OrderDB ECommerce.ProductDB ECommerce.Cache ECommerce.EventQueue
+exclude Admin
+exclude ECommerce.OrderDB
+exclude ECommerce.ProductDB
+exclude ECommerce.Cache
+exclude ECommerce.EventQueue
 }
 
 // Default view: Complete system
@@ -145,10 +167,8 @@ Scenarios model behavioral flows—what happens when users interact with your sy
 ### Example: Checkout Flow
 
 ```sruja
-person = kind "Person"
-system = kind "System"
-container = kind "Container"
-datastore = kind "Datastore"
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "Customer"
 
@@ -163,10 +183,13 @@ InventoryService = container "Inventory Service"
 }
 
 PaymentGateway = system "Payment Gateway" {
-external true
+metadata {
+    tags ["external"]
+  }
 }
 
 // Model the checkout journey
+// EXPECTED_FAILURE: Layer violation (scenarios model bidirectional user journeys)
 CheckoutFlow = scenario "User Checkout Journey" {
 Customer -> ECommerce.WebApp "Adds items to cart"
 ECommerce.WebApp -> ECommerce.API "Submits checkout"
@@ -215,10 +238,9 @@ Flows model data-oriented processes—how data moves through your system. Use th
 ### Example: Analytics Pipeline
 
 ```sruja
-system = kind "System"
-container = kind "Container"
-datastore = kind "Datastore"
-queue = kind "Queue"
+// EXPECTED_FAILURE: Layer violation (flows model bidirectional data movement)
+import { * } from 'sruja.ai/stdlib'
+
 
 Analytics = system "Analytics Platform" {
 IngestionService = container "Data Ingestion"
@@ -257,15 +279,13 @@ include *
 
 ## Integrating Requirements, ADRs, and Policies
 
-The new DSL format makes it easy to integrate requirements, ADRs, and policies directly into your architecture model.
+Sruja's flat syntax makes it easy to integrate requirements, ADRs, and policies directly into your architecture model as top-level declarations.
 
 ### Complete Example
 
 ```sruja
-person = kind "Person"
-system = kind "System"
-container = kind "Container"
-datastore = kind "Datastore"
+import { * } from 'sruja.ai/stdlib'
+
 
 Customer = person "Customer"
 
@@ -330,7 +350,7 @@ include *
 
 ## Best Practices
 
-1. **Start with Specification**: Declare all element types upfront
+1. **Explicit Kinds**: Import or declare all element kinds upfront.
 2. **Use Multiple Views**: Create views for different audiences and concerns
 3. **Document with Scenarios**: Model user journeys and business processes
 4. **Model Data Flows**: Use flows for ETL and data pipelines
