@@ -1,11 +1,12 @@
 name: Sync Algolia Search Index
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/website/src/content/**"
-      - "apps/website/scripts/generate-algolia-data.mts"
+  workflow_call:
+    inputs:
+      environment:
+        description: "Environment to sync"
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       environment:
@@ -47,16 +48,19 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        working-directory: apps/website
         run: npm ci
+        env:
+          HUSKY: 0
 
       - name: Determine environment
         id: env
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             ENV="${{ github.event.inputs.environment }}"
+          elif [ "${{ github.event_name }}" == "workflow_call" ]; then
+            ENV="${{ inputs.environment }}"
           else
-            # Default to production for main branch
+            # Default to production
             ENV="production"
           fi
           echo "environment=${ENV}" >> $GITHUB_OUTPUT
@@ -135,13 +139,17 @@ jobs:
           RECORD_COUNT=$(jq '. | length' "$DATA_FILE")
           echo "📊 Pushing ${RECORD_COUNT} records..."
 
+          # Format data for Algolia batch API
+          # Batch API expects: {"requests": [{"action": "addObject", "body": {...}}, ...]}
+          BATCH_DATA=$(jq -c '{requests: [.[] | {action: "addObject", body: .}]}' "$DATA_FILE")
+
           # Push to Algolia using batch API
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             "https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${ALGOLIA_INDEX_NAME}/batch" \
             -H "X-Algolia-Application-Id: ${ALGOLIA_APP_ID}" \
             -H "X-Algolia-API-Key: ${ALGOLIA_WRITE_KEY}" \
             -H "Content-Type: application/json" \
-            --data-binary @"${DATA_FILE}")
+            --data-raw "${BATCH_DATA}")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | sed '$d')
