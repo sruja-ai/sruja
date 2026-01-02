@@ -136,6 +136,36 @@ func dslToMermaid(this js.Value, args []js.Value) (ret interface{}) {
 		return resultWithError(memErr)
 	}
 
+	// Parse Configuration
+	viewLevel := 1
+	targetId := ""
+
+	if len(args) > 1 && args[1].Type() == js.TypeString {
+		configJson := args[1].String()
+		if configJson != "" {
+			var cfg struct {
+				ViewLevel int    `json:"viewLevel"`
+				TargetID  string `json:"targetId"`
+			}
+			if err := json.Unmarshal([]byte(configJson), &cfg); err != nil {
+				// Warn but continue with defaults? Or return error?
+				// dslToDot returns error. Let's return error for consistency.
+				parseErr := NewExportError(ErrCodeInvalidArgs, "failed to parse config JSON").WithContext("error", err.Error())
+				metrics.FinishMetrics(false, parseErr, 0, 0, 0)
+				return resultWithError(parseErr)
+			}
+			if cfg.ViewLevel > 0 {
+				viewLevel = cfg.ViewLevel
+			}
+			targetId = cfg.TargetID
+		}
+	}
+
+	if validationErr := ValidateViewLevel(viewLevel); validationErr != nil {
+		metrics.FinishMetrics(false, validationErr, 0, 0, 0)
+		return resultWithError(validationErr)
+	}
+
 	parseResult := parseAndValidate(input, filename)
 	if parseResult.Error != nil {
 		metrics.FinishMetrics(false, parseResult.Error, 0, 0, 0)
@@ -157,9 +187,15 @@ func dslToMermaid(this js.Value, args []js.Value) (ret interface{}) {
 	LogInfo("dslToMermaid", "Starting mermaid export", map[string]interface{}{
 		"filename":  filename,
 		"inputSize": len(input),
+		"viewLevel": viewLevel,
+		"targetId":  targetId,
 	})
 
-	exporter := mermaid.NewExporter(mermaid.DefaultConfig())
+	config := mermaid.DefaultConfig()
+	config.ViewLevel = viewLevel
+	config.TargetID = targetId
+
+	exporter := mermaid.NewExporter(config)
 	output := exporter.Export(parseResult.Program)
 
 	// Validate that we got a non-empty result
@@ -173,9 +209,11 @@ func dslToMermaid(this js.Value, args []js.Value) (ret interface{}) {
 			}
 		}
 		err := NewExportError(ErrCodeExportEmpty,
-			"mermaid exporter returned empty output - no elements found in model").
+			"mermaid exporter returned empty output - no elements found in model or view").
 			WithContext("modelItemCount", modelItemCount).
-			WithContext("elementDefCount", elementDefCount)
+			WithContext("elementDefCount", elementDefCount).
+			WithContext("viewLevel", viewLevel).
+			WithContext("targetId", targetId)
 		metrics.FinishMetrics(false, err, 0, 0, 0)
 		LogError("dslToMermaid", "Empty export output", err.Code, err.Context)
 		return resultWithError(err)
@@ -185,6 +223,7 @@ func dslToMermaid(this js.Value, args []js.Value) (ret interface{}) {
 	elementCount := len(parseResult.Program.Model.Items)
 	relationCount := 0 // Mermaid doesn't return relation count separately
 
+	metrics.ViewLevel = viewLevel
 	metrics.FinishMetrics(true, nil, elementCount, relationCount, len(output))
 	LogInfo("dslToMermaid", "Export completed", map[string]interface{}{
 		"outputSize":   len(output),
@@ -441,6 +480,21 @@ func dslToDot(this js.Value, args []js.Value) (ret interface{}) {
 	config.ViewLevel = viewLevel
 	config.FocusNodeID = focusNodeId
 	config.NodeSizes = nodeSizes
+
+	// Optimize layout based on View Level
+	if viewLevel == 3 {
+		// Component View: Keep TB but increase spacing to prevent overlaps
+		config.RankDir = "TB"
+		// Increase spacing for complex component views
+		config.RankSep = 220
+		config.NodeSep = 180
+	} else {
+		// System/Container View: Hierarchy looks best Top-Bottom
+		config.RankDir = "TB"
+		// Standard spacing
+		config.RankSep = 180
+		config.NodeSep = 150
+	}
 
 	exporter := dot.NewExporter(config)
 	res := exporter.Export(parseResult.Program)

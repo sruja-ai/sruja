@@ -36,7 +36,6 @@ type System struct {
 	Metadata    []*MetaEntry // Metadata from metadata blocks
 	Constraints []*ConstraintEntry
 	Conventions []*ConventionEntry
-	Properties  map[string]string
 	Style       map[string]string
 	Scale       *ScaleBlock
 	SLO         *SLOBlock
@@ -55,7 +54,6 @@ type SystemItem struct {
 	Metadata         *MetadataBlock    `parser:"| @@"`
 	ConstraintsBlock *ConstraintsBlock `parser:"| 'constraints' '{' @@ '}'"`
 	ConventionsBlock *ConventionsBlock `parser:"| 'conventions' '{' @@ '}'"`
-	Properties       *PropertiesBlock  `parser:"| @@"`
 	Style            *StyleDecl        `parser:"| @@"`
 	SLO              *SLOBlock         `parser:"| @@"`
 	Relation         *Relation         `parser:"| @@"`
@@ -98,7 +96,6 @@ type Container struct {
 	Constraints []*ConstraintEntry
 	Conventions []*ConventionEntry
 	Version     *string
-	Properties  map[string]string
 	Style       map[string]string
 	Scale       *ScaleBlock
 	SLO         *SLOBlock
@@ -119,7 +116,6 @@ type ContainerItem struct {
 	Metadata         *MetadataBlock    `parser:"| @@"`
 	ConstraintsBlock *ConstraintsBlock `parser:"| 'constraints' '{' @@ '}'"`
 	ConventionsBlock *ConventionsBlock `parser:"| 'conventions' '{' @@ '}'"`
-	Properties       *PropertiesBlock  `parser:"| @@"`
 	Style            *StyleDecl        `parser:"| @@"`
 	Scale            *ScaleBlock       `parser:"| @@"`
 	SLO              *SLOBlock         `parser:"| @@"`
@@ -155,7 +151,6 @@ type Component struct {
 	Technology *string
 	Relations  []*Relation
 	Metadata   []*MetaEntry // Metadata from metadata blocks
-	Properties map[string]string
 	Style      map[string]string
 	Scale      *ScaleBlock
 }
@@ -168,11 +163,9 @@ func (c *Component) Location() SourceLocation {
 type ComponentItem struct {
 	Technology       *string           `parser:"( 'technology' | 'tech' ) @String |"`
 	Metadata         *MetadataBlock    `parser:"@@ |"`
-	Behavior         *BehaviorBlock    `parser:"'behavior' '{' @@* '}' |"`
 	ConstraintsBlock *ConstraintsBlock `parser:"'constraints' '{' @@ '}' |"`
 	ConventionsBlock *ConventionsBlock `parser:"'conventions' '{' @@ '}' |"`
 	DependsOn        *string           `parser:"'depends_on' @Ident |"`
-	Properties       *PropertiesBlock  `parser:"@@ |"`
 	Style            *StyleDecl        `parser:"@@ |"`
 	Scale            *ScaleBlock       `parser:"@@ |"`
 	Relation         *Relation         `parser:"@@ |"`
@@ -204,7 +197,6 @@ type DataStore struct {
 	Technology *string
 	Relations  []*Relation
 	Metadata   []*MetaEntry
-	Properties map[string]string
 	Style      map[string]string
 }
 
@@ -233,7 +225,6 @@ type Queue struct {
 	Technology *string
 	Relations  []*Relation
 	Metadata   []*MetaEntry
-	Properties map[string]string
 	Style      map[string]string
 }
 
@@ -261,7 +252,6 @@ type Person struct {
 	// Post-processed fields
 	Description *string
 	Metadata    []*MetaEntry
-	Properties  map[string]string
 	Style       map[string]string
 }
 
@@ -271,28 +261,25 @@ func (p *Person) Location() SourceLocation {
 
 // Element item unions for metadata blocks
 type DataStoreItem struct {
-	Technology  *string          `parser:"( 'technology' | 'tech' ) @String |"`
-	Description *string          `parser:"'description' @String |"`
-	Metadata    *MetadataBlock   `parser:"@@ |"`
-	Properties  *PropertiesBlock `parser:"@@ |"`
-	Style       *StyleDecl       `parser:"@@ |"`
-	Scale       *ScaleBlock      `parser:"@@"`
+	Technology  *string        `parser:"( 'technology' | 'tech' ) @String |"`
+	Description *string        `parser:"'description' @String |"`
+	Metadata    *MetadataBlock `parser:"@@ |"`
+	Style       *StyleDecl     `parser:"@@ |"`
+	Scale       *ScaleBlock    `parser:"@@"`
 }
 
 type QueueItem struct {
-	Technology  *string          `parser:"( 'technology' | 'tech' ) @String |"`
-	Description *string          `parser:"'description' @String |"`
-	Metadata    *MetadataBlock   `parser:"@@ |"`
-	Properties  *PropertiesBlock `parser:"@@ |"`
-	Style       *StyleDecl       `parser:"@@ |"`
-	Scale       *ScaleBlock      `parser:"@@"`
+	Technology  *string        `parser:"( 'technology' | 'tech' ) @String |"`
+	Description *string        `parser:"'description' @String |"`
+	Metadata    *MetadataBlock `parser:"@@ |"`
+	Style       *StyleDecl     `parser:"@@ |"`
+	Scale       *ScaleBlock    `parser:"@@"`
 }
 
 type PersonItem struct {
-	Description *string          `parser:"'description' @String |"`
-	Metadata    *MetadataBlock   `parser:"@@ |"`
-	Properties  *PropertiesBlock `parser:"@@ |"`
-	Style       *StyleDecl       `parser:"@@"`
+	Description *string        `parser:"'description' @String |"`
+	Metadata    *MetadataBlock `parser:"@@ |"`
+	Style       *StyleDecl     `parser:"@@"`
 }
 
 // Element is implemented by System, Container, Component, Person, DataStore, Queue

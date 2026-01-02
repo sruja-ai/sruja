@@ -162,8 +162,46 @@ func extractRelationsFromModel(prog *language.Program) []*language.Relation {
 	}
 	var relations []*language.Relation
 	for _, item := range prog.Model.Items {
-		if item.Relation != nil {
-			relations = append(relations, item.Relation)
+		relations = append(relations, extractRelationsFromItem(item)...)
+	}
+	return relations
+}
+
+func extractRelationsFromItem(item language.ModelItem) []*language.Relation {
+	var relations []*language.Relation
+	if item.Relation != nil {
+		relations = append(relations, item.Relation)
+	}
+	// Check inside ElementDef body if present
+	if item.ElementDef != nil && item.ElementDef.Assignment != nil && item.ElementDef.Assignment.Body != nil {
+		for _, bodyItem := range item.ElementDef.Assignment.Body.Items {
+			// Convert BodyItem to ModelItem-like structure or extract directly
+			// BodyItem has Element *ElementDef, Relation *Relation, etc.
+			// Reusing recursive logic needs mapping or duplication.
+			// Simple approach: check Relation and recurse ElementDef
+			if bodyItem.Relation != nil {
+				relations = append(relations, bodyItem.Relation)
+			}
+			if bodyItem.Element != nil {
+				// Construct pseudo ModelItem for recursion, or better, recurse on ElementDef
+				nestedRels := extractRelationsFromElement(bodyItem.Element)
+				relations = append(relations, nestedRels...)
+			}
+		}
+	}
+	return relations
+}
+
+func extractRelationsFromElement(elem *language.ElementDef) []*language.Relation {
+	var relations []*language.Relation
+	if elem.Assignment != nil && elem.Assignment.Body != nil {
+		for _, bodyItem := range elem.Assignment.Body.Items {
+			if bodyItem.Relation != nil {
+				relations = append(relations, bodyItem.Relation)
+			}
+			if bodyItem.Element != nil {
+				relations = append(relations, extractRelationsFromElement(bodyItem.Element)...)
+			}
 		}
 	}
 	return relations

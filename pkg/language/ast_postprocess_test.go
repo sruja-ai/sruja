@@ -135,13 +135,7 @@ func TestPerson_PostProcess_PropertiesAndStyle(t *testing.T) {
 		Label: "End User",
 		Items: []language.PersonItem{
 			{
-				Properties: &language.PropertiesBlock{
-					Entries: []*language.PropertyEntry{
-						{Key: "role", Value: "admin"},
-					},
-				},
-			},
-			{
+
 				Style: &language.StyleDecl{
 					Body: &language.StyleBlock{
 						Entries: []*language.StyleEntry{
@@ -155,12 +149,6 @@ func TestPerson_PostProcess_PropertiesAndStyle(t *testing.T) {
 
 	p.PostProcess()
 
-	if p.Properties == nil {
-		t.Fatal("Properties should be initialized")
-	}
-	if p.Properties["role"] != "admin" {
-		t.Errorf("Expected role='admin', got %q", p.Properties["role"])
-	}
 	if p.Style == nil {
 		t.Fatal("Style should be initialized")
 	}
@@ -177,13 +165,7 @@ func TestQueue_PostProcess_PropertiesAndStyle(t *testing.T) {
 			{
 				Technology: strPtr("RabbitMQ"),
 			},
-			{
-				Properties: &language.PropertiesBlock{
-					Entries: []*language.PropertyEntry{
-						{Key: "durable", Value: "true"},
-					},
-				},
-			},
+			{},
 			{
 				Style: &language.StyleDecl{
 					Body: &language.StyleBlock{
@@ -200,12 +182,6 @@ func TestQueue_PostProcess_PropertiesAndStyle(t *testing.T) {
 
 	if q.Technology == nil || *q.Technology != "RabbitMQ" {
 		t.Error("Technology should be populated")
-	}
-	if q.Properties == nil {
-		t.Fatal("Properties should be initialized")
-	}
-	if q.Properties["durable"] != "true" {
-		t.Errorf("Expected durable='true', got %q", q.Properties["durable"])
 	}
 	if q.Style == nil {
 		t.Fatal("Style should be initialized")
@@ -254,35 +230,6 @@ func TestComponent_PostProcess(t *testing.T) {
 	}
 	if len(comp.Metadata) != 1 {
 		t.Errorf("Expected 1 metadata entry, got %d", len(comp.Metadata))
-	}
-}
-
-func TestComponent_PostProcess_Properties(t *testing.T) {
-	comp := &language.Component{
-		ID:    "Comp",
-		Label: "Component",
-		Items: []language.ComponentItem{
-			{
-				Properties: &language.PropertiesBlock{
-					Entries: []*language.PropertyEntry{
-						{Key: "prop1", Value: "value1"},
-						{Key: "prop2", Value: "value2"},
-					},
-				},
-			},
-		},
-	}
-
-	comp.PostProcess()
-
-	if comp.Properties == nil {
-		t.Fatal("Properties should be initialized")
-	}
-	if comp.Properties["prop1"] != "value1" {
-		t.Errorf("Expected prop1='value1', got %q", comp.Properties["prop1"])
-	}
-	if comp.Properties["prop2"] != "value2" {
-		t.Errorf("Expected prop2='value2', got %q", comp.Properties["prop2"])
 	}
 }
 

@@ -1,5 +1,6 @@
 // apps/playground/src/utils/shareService.ts
 import LZString from "lz-string";
+import { logger } from "@sruja/shared";
 
 const SHARE_STORAGE_KEY = "sruja-shares";
 
@@ -46,7 +47,20 @@ class LocalStorageAdapter implements ShareStorageAdapter {
       shares[entry.id] = entry;
       localStorage.setItem(this.storageKey, JSON.stringify(shares));
     } catch (error) {
-      console.error("Failed to save share to localStorage:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error("Failed to save share to localStorage", {
+        component: "shareService",
+        action: "set",
+        adapter: "LocalStorage",
+        error:
+          error instanceof Error
+            ? {
+                message: error.message,
+                name: error.name,
+                stack: error.stack,
+              }
+            : errorMessage,
+      });
       throw error;
     }
   }
@@ -57,7 +71,21 @@ class LocalStorageAdapter implements ShareStorageAdapter {
       delete shares[shareId];
       localStorage.setItem(this.storageKey, JSON.stringify(shares));
     } catch (error) {
-      console.error("Failed to delete share from localStorage:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error("Failed to delete share from localStorage", {
+        component: "shareService",
+        action: "delete",
+        adapter: "LocalStorage",
+        shareId,
+        error:
+          error instanceof Error
+            ? {
+                message: error.message,
+                name: error.name,
+                stack: error.stack,
+              }
+            : errorMessage,
+      });
       throw error;
     }
   }
@@ -140,7 +168,20 @@ class IndexedDBAdapter implements ShareStorageAdapter {
         request.onsuccess = () => resolve();
       });
     } catch (error) {
-      console.error("Failed to save share to IndexedDB:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error("Failed to save share to IndexedDB", {
+        component: "shareService",
+        action: "set",
+        adapter: "IndexedDB",
+        error:
+          error instanceof Error
+            ? {
+                message: error.message,
+                name: error.name,
+                stack: error.stack,
+              }
+            : errorMessage,
+      });
       throw error;
     }
   }
@@ -157,7 +198,21 @@ class IndexedDBAdapter implements ShareStorageAdapter {
         request.onsuccess = () => resolve();
       });
     } catch (error) {
-      console.error("Failed to delete share from IndexedDB:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error("Failed to delete share from IndexedDB", {
+        component: "shareService",
+        action: "delete",
+        adapter: "IndexedDB",
+        shareId,
+        error:
+          error instanceof Error
+            ? {
+                message: error.message,
+                name: error.name,
+                stack: error.stack,
+              }
+            : errorMessage,
+      });
       throw error;
     }
   }
@@ -216,7 +271,21 @@ class BackendAPIAdapter implements ShareStorageAdapter {
         updatedAt: new Date(data.updated_at || data.updatedAt).getTime(),
       };
     } catch (error) {
-      console.error("Failed to load share from backend:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error("Failed to load share from backend", {
+        component: "shareService",
+        action: "get",
+        adapter: "Backend",
+        shareId,
+        error:
+          error instanceof Error
+            ? {
+                message: error.message,
+                name: error.name,
+                stack: error.stack,
+              }
+            : errorMessage,
+      });
       return null;
     }
   }
@@ -237,7 +306,20 @@ class BackendAPIAdapter implements ShareStorageAdapter {
         throw new Error(`Failed to save share: ${response.statusText}`);
       }
     } catch (error) {
-      console.error("Failed to save share to backend:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error("Failed to save share to backend", {
+        component: "shareService",
+        action: "set",
+        adapter: "Backend",
+        error:
+          error instanceof Error
+            ? {
+                message: error.message,
+                name: error.name,
+                stack: error.stack,
+              }
+            : errorMessage,
+      });
       throw error;
     }
   }
@@ -251,7 +333,21 @@ class BackendAPIAdapter implements ShareStorageAdapter {
         throw new Error(`Failed to delete share: ${response.statusText}`);
       }
     } catch (error) {
-      console.error("Failed to delete share from backend:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error("Failed to delete share from backend", {
+        component: "shareService",
+        action: "delete",
+        adapter: "Backend",
+        shareId,
+        error:
+          error instanceof Error
+            ? {
+                message: error.message,
+                name: error.name,
+                stack: error.stack,
+              }
+            : errorMessage,
+      });
       throw error;
     }
   }
@@ -295,7 +391,13 @@ class CompositeStorageAdapter implements ShareStorageAdapter {
     // Write to all adapters (best effort)
     const promises = this.adapters.map((adapter) =>
       adapter.set(shareId, entry).catch((err) => {
-        console.warn("Failed to write to storage adapter:", err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        logger.warn("Failed to write to storage adapter", {
+          component: "shareService",
+          action: "set",
+          shareId,
+          error: errorMessage,
+        });
       })
     );
     await Promise.allSettled(promises);
@@ -305,7 +407,13 @@ class CompositeStorageAdapter implements ShareStorageAdapter {
     // Delete from all adapters
     const promises = this.adapters.map((adapter) =>
       adapter.delete(shareId).catch((err) => {
-        console.warn("Failed to delete from storage adapter:", err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        logger.warn("Failed to delete from storage adapter", {
+          component: "shareService",
+          action: "delete",
+          shareId,
+          error: errorMessage,
+        });
       })
     );
     await Promise.allSettled(promises);
@@ -473,7 +581,19 @@ class ShareService {
           return decompressed;
         }
       } catch (error) {
-        console.error("Failed to decompress code from URL:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error("Failed to decompress code from URL", {
+          component: "shareService",
+          action: "decompressFromUrl",
+          error:
+            error instanceof Error
+              ? {
+                  message: error.message,
+                  name: error.name,
+                  stack: error.stack,
+                }
+              : errorMessage,
+        });
       }
     }
 

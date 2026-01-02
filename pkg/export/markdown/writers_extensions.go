@@ -239,7 +239,14 @@ func (e *Exporter) analyzeBestPractices(prog *language.Program) []Recommendation
 	for _, sys := range systems {
 		for _, cont := range sys.Containers {
 			hasTech := false
-			if tech, ok := cont.Properties["technology"]; ok && tech != "" {
+			tech := ""
+			for _, item := range cont.Items {
+				if item.Technology != nil {
+					tech = *item.Technology
+					break
+				}
+			}
+			if tech != "" {
 				hasTech = true
 			}
 			if !hasTech {

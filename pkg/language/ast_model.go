@@ -141,15 +141,14 @@ type ElementDefBody struct {
 // BodyItem represents items that can appear inside an element body.
 type BodyItem struct {
 	// Metadata fields (tried first)
-	Description *string          `parser:"'description' ':'? @String |"`
-	Technology  *string          `parser:"( 'technology' | 'tech' ) ':'? @String |"`
-	Tags        []string         `parser:"'tags' ( '[' @String ( ',' @String )* ']' | @String ) |"`
-	Version     *string          `parser:"'version' @String |"`
-	Metadata    *MetadataBlock   `parser:"@@ |"`
-	Properties  *PropertiesBlock `parser:"@@ |"`
-	Styles      *StyleDecl       `parser:"@@ |"`
-	SLO         *SLOBlock        `parser:"@@ |"`
-	Scale       *ScaleBlock      `parser:"@@ |"`
+	Description *string        `parser:"'description' ':'? @String |"`
+	Technology  *string        `parser:"( 'technology' | 'tech' ) ':'? @String |"`
+	Tags        []string       `parser:"'tags' ( '[' @String ( ',' @String )* ']' | @String ) |"`
+	Version     *string        `parser:"'version' @String |"`
+	Metadata    *MetadataBlock `parser:"@@ |"`
+	Styles      *StyleDecl     `parser:"@@ |"`
+	SLO         *SLOBlock      `parser:"@@ |"`
+	Scale       *ScaleBlock    `parser:"@@ |"`
 
 	// ADR body fields
 	Status       *string `parser:"'status' ':'? @String |"`

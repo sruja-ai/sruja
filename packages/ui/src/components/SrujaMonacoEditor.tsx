@@ -1,6 +1,7 @@
 //
 import { MonacoEditor, type MonacoEditorProps } from "./MonacoEditor";
 import { MonacoDiffEditor } from "./MonacoDiffEditor";
+import { logger } from "@sruja/shared";
 // LSP code is browser-only - import dynamically to avoid SSR issues
 
 export type SrujaMonacoEditorProps = Omit<MonacoEditorProps, "language"> & {
@@ -62,10 +63,13 @@ export function SrujaMonacoEditor({
             const wasmApi = createWasmLspApi();
             initializeMonacoWasmLsp(monaco, editor, wasmApi);
           } catch (err) {
-            console.warn(
-              "Failed to initialize WASM LSP (editor will work without LSP features):",
-              err
-            );
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            logger.warn("WASM LSP initialization failed", {
+              component: "SrujaMonacoEditor",
+              feature: "lsp",
+              error: errorMessage,
+              fallbackMode: true,
+            });
           }
         }
         if (onReady) onReady(monaco, editor);

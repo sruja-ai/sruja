@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type * as monacoTypes from "monaco-editor";
+import { logger } from "@sruja/shared";
 import { registerSrujaLanguage } from "./sruja-language";
 
 export type MonacoEditorProps = {
@@ -29,6 +30,16 @@ export function MonacoEditor({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<monacoTypes.editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof import("monaco-editor") | null>(null);
+  const lastValueRef = useRef<string | null>(null);
+  const isInitializingRef = useRef<boolean>(true);
+  const valueRef = useRef<string>(value);
+  // Track when editor is ready to prevent flash during async Monaco load
+  const [isEditorReady, setIsEditorReady] = useState(false);
+
+  // Keep valueRef in sync with value prop
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -105,7 +116,13 @@ export function MonacoEditor({
               registerSrujaLanguage(monaco);
             }
           } catch (err) {
-            console.warn("Failed to register language:", err);
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            logger.warn("Failed to register language", {
+              component: "MonacoEditor",
+              action: "registerLanguage",
+              language,
+              error: errorMessage,
+            });
             return;
           }
 
@@ -127,7 +144,7 @@ export function MonacoEditor({
             // Build editor options with folding explicitly enabled
             // Use 'indentation' strategy which works reliably for JSON and all languages
             const editorOptions = {
-              value,
+              value: valueRef.current,
               language,
               automaticLayout: true,
               minimap: { enabled: false },
@@ -149,6 +166,9 @@ export function MonacoEditor({
             };
 
             editor = monaco.editor.create(containerRef.current, editorOptions);
+            const initialEditorValue = editor.getValue();
+            lastValueRef.current = initialEditorValue;
+            isInitializingRef.current = false;
 
             // Ensure folding is properly initialized after editor creation
             if (editor) {
@@ -205,16 +225,50 @@ export function MonacoEditor({
             editorRef.current = editor;
             subscription = editor.onDidChangeModelContent(() => {
               if (editor && isMounted) {
-                onChange(editor.getValue());
+                const newValue = editor.getValue();
+                // Only fire onChange if content differs from prop value
+                // This prevents sync loops when we programmatically set the value
+                // (if editor content matches prop, it was a programmatic update, not user edit)
+                if (newValue === valueRef.current) {
+                  return;
+                }
+                lastValueRef.current = newValue;
+                onChange(newValue);
               }
             });
             if (onReady && isMounted) onReady(monaco, editor);
+            // Mark editor as ready to hide the placeholder
+            if (isMounted) setIsEditorReady(true);
           } catch (_err) {
-            console.error("Failed to create Monaco editor:", _err);
+            const errorMessage = _err instanceof Error ? _err.message : String(_err);
+            logger.error("Failed to create Monaco editor", {
+              component: "MonacoEditor",
+              action: "createEditor",
+              error:
+                _err instanceof Error
+                  ? {
+                      message: _err.message,
+                      name: _err.name,
+                      stack: _err.stack,
+                    }
+                  : errorMessage,
+            });
           }
         })
         .catch((_err) => {
-          console.error("Failed to load Monaco editor:", _err);
+          const errorMessage = _err instanceof Error ? _err.message : String(_err);
+          logger.error("Failed to load Monaco editor", {
+            component: "MonacoEditor",
+            action: "loadMonaco",
+            error:
+              _err instanceof Error
+                ? {
+                    message: _err.message,
+                    name: _err.name,
+                    stack: _err.stack,
+                  }
+                : errorMessage,
+          });
         });
     };
 
@@ -252,15 +306,35 @@ export function MonacoEditor({
           // Ignore disposal errors
         }
         editorRef.current = null;
+        isInitializingRef.current = true;
       }
     };
-  }, [language, theme, onChange, onReady, options, value]);
+  }, [language, theme, onChange, onReady, options]);
 
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
-    if (editor.getValue() !== value) {
+
+    // Skip updates during initialization to prevent flickering
+    if (isInitializingRef.current) {
+      return;
+    }
+
+    // Skip if we've already synced this exact value
+    if (lastValueRef.current === value) {
+      return;
+    }
+
+    const currentValue = editor.getValue();
+    // Only update if editor content differs from prop value
+    if (currentValue !== value) {
+      lastValueRef.current = value;
       editor.setValue(value);
+      // Note: onDidChangeModelContent will fire but won't call onChange
+      // because the new value === valueRef.current (the prop we just synced from)
+    } else {
+      // Editor already has correct value, just update ref
+      lastValueRef.current = value;
     }
   }, [value]);
 
@@ -271,5 +345,36 @@ export function MonacoEditor({
     monaco.editor.setTheme(theme);
   }, [theme]);
 
-  return <div ref={containerRef} className={className} style={{ height }} />;
+  // Determine background and text colors based on theme
+  const isDarkTheme = theme === "vs-dark" || theme === "hc-black";
+  const placeholderStyle: React.CSSProperties = {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: "auto",
+    padding: "0",
+    margin: 0,
+    fontFamily: "Menlo, Monaco, 'Courier New', monospace",
+    fontSize: "13px",
+    lineHeight: "18px",
+    whiteSpace: "pre",
+    backgroundColor: isDarkTheme ? "#1e1e1e" : "#ffffff",
+    color: isDarkTheme ? "#d4d4d4" : "#000000",
+    // Smooth transition for when editor takes over
+    opacity: isEditorReady ? 0 : 1,
+    pointerEvents: isEditorReady ? "none" : "auto",
+    transition: "opacity 0.1s ease-out",
+    zIndex: isEditorReady ? -1 : 1,
+  };
+
+  return (
+    <div style={{ position: "relative", height }} className={className}>
+      {/* Placeholder shown while Monaco loads - prevents flash */}
+      {!isEditorReady && <pre style={placeholderStyle}>{value}</pre>}
+      {/* Monaco editor container */}
+      <div ref={containerRef} style={{ height: "100%", width: "100%" }} />
+    </div>
+  );
 }

@@ -318,6 +318,13 @@ export const SrujaNode = memo(({ data, selected, width, height }: NodeProps<Node
               <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4 }}>[{technology}]</div>
             )}
             <div style={{ fontSize: 12 }}>{description}</div>
+            {(kind === "system" || kind === "container") &&
+              // Check if drillable based on context (pseudo-logic, ideally passed via props but simple check works)
+              true && (
+                <div style={{ fontSize: 10, marginTop: 6, opacity: 0.7, fontStyle: "italic" }}>
+                  Double-click to drill down
+                </div>
+              )}
           </div>
         }
         multiline

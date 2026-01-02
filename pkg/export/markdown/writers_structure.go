@@ -32,13 +32,6 @@ func (e *Exporter) writeSystems(sb *strings.Builder, arch interface{}, prog *lan
 		}
 
 		// Display properties if available (tags may be in properties)
-		if len(sys.Properties) > 0 {
-			sb.WriteString("**Properties:**\n\n")
-			for key, value := range sys.Properties {
-				fmt.Fprintf(sb, "- `%s`: %s\n", key, value)
-			}
-			sb.WriteString("\n")
-		}
 
 		// Generate L2 diagram (Container View) for this system
 		if len(sys.Containers) > 0 || len(sys.DataStores) > 0 || len(sys.Queues) > 0 {

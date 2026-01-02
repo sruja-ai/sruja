@@ -48,23 +48,6 @@ func (m *MetadataBlock) Location() SourceLocation {
 	return SourceLocation{File: m.Pos.Filename, Line: m.Pos.Line, Column: m.Pos.Column, Offset: m.Pos.Offset}
 }
 
-type PropertiesBlock struct {
-	Pos     lexer.Position
-	LBrace  string           `parser:"'properties' '{'"`
-	Entries []*PropertyEntry `parser:"@@*"`
-	RBrace  string           `parser:"'}'"`
-}
-
-type PropertyEntry struct {
-	Key   string `parser:"( @Ident | @String )"`
-	Sep   string `parser:"( ':' )?"`
-	Value string `parser:"@String"`
-}
-
-func (p *PropertiesBlock) Location() SourceLocation {
-	return SourceLocation{File: p.Pos.Filename, Line: p.Pos.Line, Column: p.Pos.Column, Offset: p.Pos.Offset}
-}
-
 type StyleDecl struct {
 	Pos     lexer.Position
 	Keyword string      `parser:"@( 'style' | 'styles' )"`
@@ -280,38 +263,6 @@ func (c *ConventionEntry) Location() SourceLocation {
 
 func (c *ConventionsBlock) Location() SourceLocation {
 	return SourceLocation{File: c.Pos.Filename, Line: c.Pos.Line, Column: c.Pos.Column, Offset: c.Pos.Offset}
-}
-
-type DeprecationBlock struct {
-	Reason      *string `parser:"( 'reason' @String )?"`
-	Sunset      *string `parser:"( 'sunset' @String )?"`
-	Replacement *string `parser:"( 'replacement' @String )?"`
-}
-
-type CompatibilityBlock struct {
-	BackwardsWith     *string `parser:"( 'backwards_with' @String )?"`
-	ForwardsWith      *string `parser:"( 'forwards_with' @String )?"`
-	BreakingChange    *string `parser:"( 'breaking_change' @String )?"`
-	RequiresMigration *string `parser:"( 'requires_migration' @String )?"`
-	Deprecates        *string `parser:"( 'deprecates' @String )?"`
-}
-
-type GuaranteesBlock struct {
-	Entries []*GuaranteeEntry `parser:"@@*"`
-}
-
-type GuaranteeEntry struct {
-	Key   string `parser:"@Ident"`
-	Value string `parser:"@String"`
-}
-
-type BehaviorBlock struct {
-	Entries []*BehaviorEntry `parser:"@@*"`
-}
-
-type BehaviorEntry struct {
-	Key   string `parser:"@Ident"`
-	Value string `parser:"@String"`
 }
 
 // ============================================================================

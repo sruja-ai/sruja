@@ -93,8 +93,11 @@ func (e *Exporter) writeContainer(sb *strings.Builder, cont *language.Container,
 
 	// Container does not have direct Technology field in AST element struct, but we can look for it
 	tech := ""
-	if t, ok := cont.Properties["technology"]; ok {
-		tech = t
+	for _, item := range cont.Items {
+		if item.Technology != nil {
+			tech = *item.Technology
+			break
+		}
 	}
 	label := escapeQuotes(formatLabel(cont.Label, cont.ID, getString(cont.Description), tech))
 

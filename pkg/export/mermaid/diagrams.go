@@ -1,6 +1,7 @@
 package mermaid
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/sruja-ai/sruja/pkg/engine"
@@ -82,7 +83,8 @@ func (e *Exporter) GenerateL2(sys *language.System, prog *language.Program) stri
 	e.writeHeader(sb)
 	e.writeStyles(sb)
 
-	indexedArch := indexProgram(prog)
+	// indexedArch := indexProgram(prog) // Unused in custom L2 generation
+	lookup := buildElementLookup(prog)
 
 	// Draw the System Boundary
 	id := sanitizeID(sys.ID)
@@ -95,11 +97,30 @@ func (e *Exporter) GenerateL2(sys *language.System, prog *language.Program) stri
 	sb.WriteString("[\"")
 	sb.WriteString(label)
 	sb.WriteString("\"]\n")
-	sb.WriteString("    direction TB\n") // Containers usually look better TB inside system
+	sb.WriteString("    direction TB\n")
 
 	// Write Containers
 	for _, cont := range sys.Containers {
-		e.writeContainer(sb, cont, sys.ID, Indent8)
+		// Use manual writing to avoid recursing into components (like writeContainer does)
+		fullID := cont.ID
+		if sys.ID != "" && !strings.Contains(cont.ID, sys.ID) {
+			fullID = sys.ID + "." + cont.ID
+		}
+		id := sanitizeID(fullID)
+
+		// Determine technology
+		tech := ""
+		for _, item := range cont.Items {
+			if item.Technology != nil {
+				tech = *item.Technology
+				break
+			}
+		}
+
+		label := escapeQuotes(formatLabel(cont.Label, cont.ID, getString(cont.Description), tech))
+
+		fmt.Fprintf(sb, "        %s[\"%s\"]\n", id, label)
+		fmt.Fprintf(sb, "        class %s %s\n", id, ClassContainer)
 	}
 	// Write DataStores
 	for _, ds := range sys.DataStores {
@@ -111,71 +132,92 @@ func (e *Exporter) GenerateL2(sys *language.System, prog *language.Program) stri
 	}
 	sb.WriteString("    end\n")
 
-	// Filter and Write Relations involving these elements
-	// We want relations:
-	// 1. Between containers/datastores/queues of THIS system
-	// 2. From external persons/systems TO these elements
-	// 3. From these elements TO external persons/systems
+	// Relations & External Context
+	// Strategy:
+	// 1. Internal -> Internal: Draw detailed
+	// 2. Internal -> External: Collapse external to its Root (System/Person)
+	// 3. External -> Internal: Collapse external to its Root
 
-	// Collect IDs of internal elements
-	internalIDs := make(map[string]bool)
-	for _, c := range sys.Containers {
-		internalIDs[c.ID] = true
+	internalPrefix := sys.ID + "."
+	isInternal := func(fqn string) bool {
+		return fqn == sys.ID || strings.HasPrefix(fqn, internalPrefix)
 	}
-	for _, d := range sys.DataStores {
-		internalIDs[d.ID] = true
-	}
-	for _, q := range sys.Queues {
-		internalIDs[q.ID] = true
-	}
+
+	externalNodes := make(map[string]*elementInfo)
+	renderedRelations := make(map[string]bool)
 
 	allRelations := extractRelationsFromModel(prog)
 	for _, rel := range allRelations {
 		from := rel.From.String()
 		to := rel.To.String()
 
-		// Full IDs might be relative or absolute, need to check if they Match
-		// The extractors return "simple" IDs inside the struct, but relations use FQN.
-		// For verification simplification, we assume IDs in the model are unique or we align them.
+		fromInternal := isInternal(from)
+		toInternal := isInternal(to)
 
-		// Adjust: In lister/extractors, we might have stored just the ID, not FQN.
-		// But extractRelationsFromModel likely returns FQNs from AST.
-		// Let's assume FQN for safety.
+		if !fromInternal && !toInternal {
+			continue // Skip completely external relations
+		}
 
-		fromSysPrefix := sys.ID + "."
-		toSysPrefix := sys.ID + "."
+		// Resolve effective nodes
+		var effectiveFrom, effectiveTo string
 
-		isFromInternal := from == sys.ID || strings.HasPrefix(from, fromSysPrefix)
-		isToInternal := to == sys.ID || strings.HasPrefix(to, toSysPrefix)
-
-		// Specific check for containers: their ID inside struct is usually simple ID, need to prefix
-		// Actually the extractor sets ID to simple ID.
-		// We need to match against what writeRelation expects.
-
-		// If internal-to-internal
-		if isFromInternal && isToInternal {
-			// Don't show system-to-system self relations unless meaningful
-			if from != sys.ID || to != sys.ID {
-				e.writeRelation(sb, rel, indexedArch)
+		if fromInternal {
+			effectiveFrom = from
+		} else {
+			rootID, _ := lookup.getRoot(from)
+			effectiveFrom = rootID
+			if info, ok := lookup.elements[rootID]; ok {
+				externalNodes[rootID] = info
 			}
-		} else if isFromInternal || isToInternal {
-			// Incoming or Outgoing
-			// For external elements, we might want to render them if we want a complete C4 Container Diagram context.
-			// mermaid/writers.go handles rendering nodes. If we just write a relation to a node that hasn't been drawn, Mermaid might draw a simple box.
-			// Ideally we draw external Person/System nodes.
+		}
 
-			// Let's draw the external node if it's not drawn.
-			// Find external element and draw it (if not already drawn implicitly by styling)
-			// But specialized styling won't apply unless we define the class.
-			// For simplicty in recovery, we'll let mermaid draw default nodes for externals,
-			// OR we could look them up.
+		if toInternal {
+			effectiveTo = to
+		} else {
+			rootID, _ := lookup.getRoot(to)
+			effectiveTo = rootID
+			if info, ok := lookup.elements[rootID]; ok {
+				externalNodes[rootID] = info
+			}
+		}
 
-			// Find external element and draw it (if not already drawn implicitly by styling)
-			// But specialized styling won't apply unless we define the class.
-			// For simplicty in recovery, we'll let mermaid draw default nodes for externals,
-			// OR we could look them up.
+		// Prevent self-loops on the system boundary if they effectively collapse to same thing (unlikely here but possible)
+		if effectiveFrom == effectiveTo {
+			continue
+		}
 
-			e.writeRelation(sb, rel, indexedArch)
+		// Dedup key
+		relKey := effectiveFrom + "->" + effectiveTo + ":" + getString(rel.Label)
+		if renderedRelations[relKey] {
+			continue
+		}
+		renderedRelations[relKey] = true
+
+		// Write Relation (using effective IDs)
+		// We treat 'rel' as template but use computed IDs
+		e.writeCustomRelation(sb, effectiveFrom, effectiveTo, rel)
+	}
+
+	// Write External Nodes
+	for id, info := range externalNodes {
+		// If it's the system itself (shouldn't happen due to isInternal check, but safety)
+		if id == sys.ID {
+			continue
+		}
+
+		sanitized := sanitizeID(id)
+		label := escapeQuotes(info.Label)
+		if label == "" {
+			label = id
+		}
+
+		if info.Kind == "person" || info.Kind == "Person" {
+			fmt.Fprintf(sb, "    %s[\"%s\"]\n", sanitized, label)
+			fmt.Fprintf(sb, "    class %s %s\n", sanitized, ClassPerson)
+		} else {
+			// System
+			fmt.Fprintf(sb, "    %s[\"%s\"]\n", sanitized, label)
+			fmt.Fprintf(sb, "    class %s %s\n", sanitized, ClassSystem)
 		}
 	}
 
@@ -194,7 +236,8 @@ func (e *Exporter) GenerateL3(cont *language.Container, systemID string, prog *l
 	e.writeHeader(sb)
 	e.writeStyles(sb)
 
-	indexedArch := indexProgram(prog)
+	_ = indexProgram(prog) // Keep for compatibility if needed, though we rely on lookup
+	lookup := buildElementLookup(prog)
 
 	fullContID := cont.ID
 	if systemID != "" && !strings.Contains(cont.ID, systemID) {
@@ -220,23 +263,123 @@ func (e *Exporter) GenerateL3(cont *language.Container, systemID string, prog *l
 	}
 	sb.WriteString("    end\n")
 
-	// Write Relations (Internal components)
-	// Similar logic to L2, filter for components inside this container
-	compIDs := make(map[string]bool)
-	prefix := fullContID + "."
-	for _, c := range cont.Components {
-		compIDs[prefix+c.ID] = true // Components usually possess simple IDs in the struct
+	// Relations & Context
+	// Strategy:
+	// 1. Component -> Component (same container): Keep
+	// 2. Component -> sibling Container: Collapse to Container
+	// 3. Component -> External System: Collapse to System
+
+	internalPrefix := fullContID + "."
+	isInternal := func(fqn string) bool {
+		return strings.HasPrefix(fqn, internalPrefix)
 	}
+
+	externalNodes := make(map[string]*elementInfo)
+	renderedRelations := make(map[string]bool)
 
 	allRelations := extractRelationsFromModel(prog)
 	for _, rel := range allRelations {
 		from := rel.From.String()
 		to := rel.To.String()
 
-		if strings.HasPrefix(from, prefix) && strings.HasPrefix(to, prefix) {
-			e.writeRelation(sb, rel, indexedArch)
+		fromInternal := isInternal(from)
+		toInternal := isInternal(to)
+
+		if !fromInternal && !toInternal {
+			continue
+		}
+
+		var effectiveFrom, effectiveTo string
+
+		resolveNode := func(fqn string) string {
+			if isInternal(fqn) {
+				return fqn
+			}
+			// Is it in the same system?
+			if systemID != "" && strings.HasPrefix(fqn, systemID+".") {
+				// Yes, finding containing container
+				// Try to find container
+				contID := lookup.getContainer(fqn)
+				if contID != "" {
+					return contID
+				}
+				// Fallback to whatever found
+				return fqn
+			}
+			// External to system -> System/Person Root
+			root, _ := lookup.getRoot(fqn)
+			return root
+		}
+
+		effectiveFrom = resolveNode(from)
+		effectiveTo = resolveNode(to)
+
+		// track externals
+		if !isInternal(from) {
+			if info, ok := lookup.elements[effectiveFrom]; ok {
+				externalNodes[effectiveFrom] = info
+			}
+		}
+		if !isInternal(to) {
+			if info, ok := lookup.elements[effectiveTo]; ok {
+				externalNodes[effectiveTo] = info
+			}
+		}
+
+		if effectiveFrom == effectiveTo {
+			continue
+		}
+
+		relKey := effectiveFrom + "->" + effectiveTo + ":" + getString(rel.Label)
+		if renderedRelations[relKey] {
+			continue
+		}
+		renderedRelations[relKey] = true
+
+		e.writeCustomRelation(sb, effectiveFrom, effectiveTo, rel)
+	}
+
+	// Write External Nodes
+	for id, info := range externalNodes {
+		if id == fullContID {
+			continue
+		}
+
+		sanitized := sanitizeID(id)
+		label := escapeQuotes(info.Label)
+		if label == "" {
+			label = id
+		}
+
+		kind := info.Kind
+		if kind == "container" || kind == "Container" {
+			fmt.Fprintf(sb, "    %s[\"%s\"]\n", sanitized, label)
+			fmt.Fprintf(sb, "    class %s %s\n", sanitized, ClassContainer)
+		} else if kind == "person" || kind == "Person" {
+			fmt.Fprintf(sb, "    %s[\"%s\"]\n", sanitized, label)
+			fmt.Fprintf(sb, "    class %s %s\n", sanitized, ClassPerson)
+		} else {
+			// System mainly
+			fmt.Fprintf(sb, "    %s[\"%s\"]\n", sanitized, label)
+			fmt.Fprintf(sb, "    class %s %s\n", sanitized, ClassSystem)
 		}
 	}
 
 	return sb.String()
+}
+
+func (e *Exporter) writeCustomRelation(sb *strings.Builder, from, to string, rel *language.Relation) {
+	sFrom := sanitizeID(from)
+	sTo := sanitizeID(to)
+
+	label := getString(rel.Label)
+	if label == "" {
+		label = getString(rel.Verb)
+	}
+
+	if label != "" {
+		fmt.Fprintf(sb, "    %s -->|\"%s\"| %s\n", sFrom, escapeQuotes(label), sTo)
+	} else {
+		fmt.Fprintf(sb, "    %s --> %s\n", sFrom, sTo)
+	}
 }

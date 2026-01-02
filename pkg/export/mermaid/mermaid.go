@@ -1,7 +1,6 @@
 package mermaid
 
 import (
-	"github.com/sruja-ai/sruja/pkg/engine"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
@@ -12,6 +11,8 @@ type Config struct {
 	Look           string
 	Direction      string
 	UseFrontmatter bool
+	ViewLevel      int    // 1=Context, 2=Container, 3=Component
+	TargetID       string // ID of the System (for L2) or Container (for L3) to focus on
 }
 
 // DefaultConfig returns the default Mermaid configuration.
@@ -20,6 +21,7 @@ func DefaultConfig() Config {
 		Layout:    "elk",
 		Theme:     "default",
 		Direction: "LR",
+		ViewLevel: 1,
 	}
 }
 
@@ -39,51 +41,77 @@ func (e *Exporter) Export(prog *language.Program) string {
 		return ""
 	}
 
-	sb := engine.GetStringBuilder()
-	defer engine.PutStringBuilder(sb)
+	// Dispatch based on view level
+	switch e.Config.ViewLevel {
+	case 2:
+		return e.exportL2(prog)
+	case 3:
+		return e.exportL3(prog)
+	default:
+		return e.GenerateL1(prog)
+	}
+}
 
-	e.writeHeader(sb)
-	e.writeStyles(sb)
-
-	// Extract elements from Model
+func (e *Exporter) exportL2(prog *language.Program) string {
 	systems := extractSystemsFromModel(prog)
-	persons := extractPersonsFromModel(prog)
-	containers := extractTopLevelContainers(prog)
-	relations := extractRelationsFromModel(prog)
-
-	// Index things for easier lookup
-	indexedArch := indexProgram(prog)
-
-	// Render persons
-	for _, p := range persons {
-		e.writePerson(sb, p)
-	}
-
-	// Render systems
+	var targetSys *language.System
 	for _, sys := range systems {
-		e.writeSystem(sb, sys, indexedArch)
+		if sys.ID == e.Config.TargetID {
+			targetSys = sys
+			break
+		}
 	}
 
-	// Render standalone containers (not in a system)
-	for _, cont := range containers {
-		e.writeContainer(sb, cont, "", "    ")
-	}
-
-	// Render relations
-	for _, rel := range relations {
-		e.writeRelation(sb, rel, indexedArch)
-	}
-
-	output := sb.String()
-
-	// Validate that we found at least some elements to render
-	// If no elements were found, return empty string to signal an error
-	hasNodes := len(persons) > 0 || len(systems) > 0 || len(containers) > 0
-	if !hasNodes {
-		// No elements found - return empty to signal error
-		// This will be caught by the caller and reported appropriately
+	// If no specific target found but L2 requested, maybe pick the first one?
+	// Or strictly return empty? For now, let's allow finding by ID.
+	// If ID is empty/not found, we can't generate L2 for "nothing".
+	if targetSys == nil {
 		return ""
 	}
 
-	return output
+	return e.GenerateL2(targetSys, prog)
+}
+
+func (e *Exporter) exportL3(prog *language.Program) string {
+	// Need to find the container. Containers are nested in Systems.
+	// We need both the container and its parent system ID for GenerateL3 context.
+	systems := extractSystemsFromModel(prog)
+	var targetCont *language.Container
+	var parentSysID string
+
+	found := false
+	for _, sys := range systems {
+		for _, cont := range sys.Containers {
+			// Container IDs might be full IDs or relative.
+			// extractSystemsFromModel returns Systems with nested Containers properly populated.
+			// Check full ID or relative ID match
+			if cont.ID == e.Config.TargetID || sys.ID+"."+cont.ID == e.Config.TargetID {
+				targetCont = cont
+				parentSysID = sys.ID
+				found = true
+				break
+			}
+		}
+		if found {
+			break
+		}
+	}
+
+	// Also check top-level containers just in case
+	if !found {
+		containers := extractTopLevelContainers(prog)
+		for _, cont := range containers {
+			if cont.ID == e.Config.TargetID {
+				targetCont = cont
+				found = true
+				break
+			}
+		}
+	}
+
+	if targetCont == nil {
+		return ""
+	}
+
+	return e.GenerateL3(targetCont, parentSysID, prog)
 }

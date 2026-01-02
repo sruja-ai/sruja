@@ -3,6 +3,7 @@ import { Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@sruja/ui";
+import { logger } from "@sruja/shared";
 import "./ErrorState.css";
 
 interface Props {
@@ -35,7 +36,18 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
+    logger.error("ErrorBoundary caught an error", {
+      component: "ErrorBoundary",
+      action: "componentDidCatch",
+      error: {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+      },
+      errorInfo: {
+        componentStack: errorInfo.componentStack,
+      },
+    });
     this.setState({
       error,
       errorInfo,
@@ -69,7 +81,14 @@ export class ErrorBoundary extends Component<Props, State> {
               boxShadow: "var(--elevation-3, 0 4px 6px -1px rgba(0, 0, 0, 0.1))",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3, 0.75rem)", marginBottom: "var(--space-4, 1rem)" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "var(--space-3, 0.75rem)",
+                marginBottom: "var(--space-4, 1rem)",
+              }}
+            >
               <AlertCircle size={32} className="error-icon" />
               <h2 className="error-title">Something went wrong</h2>
             </div>

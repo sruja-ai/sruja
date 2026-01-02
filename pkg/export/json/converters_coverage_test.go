@@ -35,9 +35,9 @@ func TestConvertComponent_AllFields(t *testing.T) {
 			{Key: "key1", Value: mkStrCoverage("value1")},
 			{Key: "key2", Array: []string{"a", "b"}},
 		},
-		Properties: map[string]string{"prop1": "val1"},
-		Style:      map[string]string{"color": "#fff"},
-		Scale:      scale,
+
+		Style: map[string]string{"color": "#fff"},
+		Scale: scale,
 	}
 
 	result := convertComponent(comp)
@@ -60,9 +60,7 @@ func TestConvertComponent_AllFields(t *testing.T) {
 	if len(result.Metadata) != 2 {
 		t.Errorf("expected 2 metadata entries, got %d", len(result.Metadata))
 	}
-	if len(result.Properties) != 1 || result.Properties["prop1"] != "val1" {
-		t.Errorf("expected properties, got %v", result.Properties)
-	}
+
 	if len(result.Style) != 1 || result.Style["color"] != "#fff" {
 		t.Errorf("expected style, got %v", result.Style)
 	}
@@ -81,8 +79,8 @@ func TestConvertDataStore_AllFields(t *testing.T) {
 		Metadata: []*language.MetaEntry{
 			{Key: "region", Value: mkStrCoverage("us-east")},
 		},
-		Properties: map[string]string{"backup": "daily"},
-		Style:      map[string]string{"shape": "cylinder"},
+
+		Style: map[string]string{"shape": "cylinder"},
 	}
 
 	result := convertDataStore(ds)
@@ -102,9 +100,7 @@ func TestConvertDataStore_AllFields(t *testing.T) {
 	if len(result.Metadata) != 1 {
 		t.Errorf("expected 1 metadata entry, got %d", len(result.Metadata))
 	}
-	if len(result.Properties) != 1 || result.Properties["backup"] != "daily" {
-		t.Errorf("expected properties, got %v", result.Properties)
-	}
+
 	if len(result.Style) != 1 || result.Style["shape"] != "cylinder" {
 		t.Errorf("expected style, got %v", result.Style)
 	}
@@ -120,8 +116,8 @@ func TestConvertQueue_AllFields(t *testing.T) {
 		Metadata: []*language.MetaEntry{
 			{Key: "durable", Value: mkStrCoverage("true")},
 		},
-		Properties: map[string]string{"ttl": "3600"},
-		Style:      map[string]string{"color": "#00f"},
+
+		Style: map[string]string{"color": "#00f"},
 	}
 
 	result := convertQueue(q)
@@ -141,9 +137,7 @@ func TestConvertQueue_AllFields(t *testing.T) {
 	if len(result.Metadata) != 1 {
 		t.Errorf("expected 1 metadata entry, got %d", len(result.Metadata))
 	}
-	if len(result.Properties) != 1 || result.Properties["ttl"] != "3600" {
-		t.Errorf("expected properties, got %v", result.Properties)
-	}
+
 	if len(result.Style) != 1 || result.Style["color"] != "#00f" {
 		t.Errorf("expected style, got %v", result.Style)
 	}

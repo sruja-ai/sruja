@@ -86,7 +86,7 @@ export const useArchitectureStore = create<ArchitectureState>()(
       },
 
       loadFromDSL: async (json, dsl, file) => {
-        // Store the initial JSON
+        // Store model and DSL in a single atomic update to prevent extra renders
         set({
           model: json,
           isLoading: false,
