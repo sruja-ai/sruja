@@ -228,14 +228,17 @@ func TestPrint_Requirement(t *testing.T) {
 
 	result := Print(model)
 
-	if !strings.Contains(result, `requirement REQ001 functional "Must be fast"`) {
-		t.Error("Expected requirement definition")
+	if !strings.Contains(result, `REQ001 = requirement functional "Must be fast" {`) {
+		t.Error("Expected requirement definition with body")
 	}
 	if !strings.Contains(result, `description "Response time < 100ms"`) {
 		t.Error("Expected requirement description")
 	}
 	if !strings.Contains(result, `priority "high"`) {
 		t.Error("Expected requirement priority")
+	}
+	if !strings.Contains(result, `}`) {
+		t.Error("Expected closing brace for requirement body")
 	}
 }
 
@@ -333,8 +336,8 @@ func TestPrint_Policy(t *testing.T) {
 
 	result := Print(model)
 
-	// Policy format is: policy ID category "Title"
-	if !strings.Contains(result, `policy POL001 security "Encryption Policy"`) {
+	// Policy format is: ID = policy category "Title"
+	if !strings.Contains(result, `POL001 = policy security "Encryption Policy"`) {
 		t.Errorf("Expected policy definition, got: %s", result)
 	}
 	if !strings.Contains(result, `description "All data must be encrypted"`) {

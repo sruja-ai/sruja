@@ -23,7 +23,7 @@ import { trackInteraction, logger } from "@sruja/shared";
 import { runGraphviz, GraphvizLayoutError } from "./layoutEngine";
 import { useToastStore } from "../../stores/toastStore";
 import { handleError } from "../../utils/errorHandling";
-import { measureQuality } from "./qualityMetrics";
+import { measureQuality, measureQualityFromNodes } from "./qualityMetrics";
 import { SrujaNode } from "./SrujaNode";
 import { GroupNode } from "../Nodes/GroupNode";
 import { buildCompoundNodeStructure } from "./compoundNodes";
@@ -436,11 +436,19 @@ export const SrujaCanvas = () => {
           }
         }
 
-        // 4. Measure quality (dev-only) using filtered parent-child relationships
+        // 4. Measure quality (dev-only) - will be recalculated after compound nodes are built
+        // if using compound structure, to account for parent container bounding boxes
         const isDev = import.meta.env.DEV || import.meta.env.MODE === "development";
-        const qualityResult = isDev ? measureQuality(layoutResult, parentChildRelationships) : null;
-        const quality = qualityResult?.quality ?? null;
-        const parentChildContainmentViolations =
+        let qualityResult: {
+          quality: LayoutQuality;
+          parentChildContainmentViolations: Array<{ childId: string; parentId: string }>;
+        } | null = null;
+        if (isDev) {
+          // Initial quality measurement (will be recalculated for compound nodes)
+          qualityResult = measureQuality(layoutResult, parentChildRelationships);
+        }
+        let quality = qualityResult?.quality ?? null;
+        let parentChildContainmentViolations =
           qualityResult?.parentChildContainmentViolations ?? [];
 
         // 5. Build C4Nodes from layout result and model metadata
@@ -679,6 +687,18 @@ export const SrujaCanvas = () => {
             },
           };
         });
+
+        // Recalculate quality metrics using actual rendered positions (for compound nodes)
+        // This ensures parent-child containment is checked against actual parent container bounding boxes
+        if (isDev && hasClusters && nextNodes.length > 0) {
+          const updatedQualityResult = measureQualityFromNodes(
+            nextNodes,
+            layoutResult.edges,
+            parentChildRelationships
+          );
+          quality = updatedQualityResult.quality;
+          parentChildContainmentViolations = updatedQualityResult.parentChildContainmentViolations;
+        }
 
         // Create a map of nodes for quick lookup
         const nodeMap = new Map(nextNodes.map((n) => [n.id, n]));
