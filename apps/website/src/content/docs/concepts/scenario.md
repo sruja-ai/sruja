@@ -41,14 +41,15 @@ view index {
 }
 ```
 
-## Scenario vs Flow
+## Aliases & Semantics
 
-Sruja supports two similar constructs for modeling interactions:
+Sruja provides three keywords that are **structurally identical** (sharing the same underlying AST definition and syntax) but convey different semantic intent:
 
-- **`scenario`**: Models behavioral flows - what happens when a user interacts with the system (user stories, use cases)
-- **`flow`**: Models data flows - how data moves through the system (Data Flow Diagrams, DFD-style)
+- **`scenario`**: Models behavioral flows (e.g., Use Cases, User Journeys).
+- **`story`**: An alias for `scenario` (e.g., User Stories).
+- **`flow`**: Models data movement (e.g., Data Flow Diagrams).
 
-Both use the same syntax with relations between elements, but serve different purposes:
+While the syntax is the same, using the appropriate keyword helps readers understand the _nature_ of the interaction being modeled.
 
 ```sruja
 import { * } from 'sruja.ai/stdlib'

@@ -206,7 +206,7 @@ func TestElements_PostProcess(_ *testing.T) {
 			{Metadata: &MetadataBlock{Entries: []*MetaEntry{{Key: "K", Value: mkStrJSON("V")}}}},
 			{ConstraintsBlock: &ConstraintsBlock{Entries: []*ConstraintEntry{{Key: "K"}}}},
 			{ConventionsBlock: &ConventionsBlock{Entries: []*ConventionEntry{{Key: "K"}}}},
-			{Properties: &PropertiesBlock{Entries: []*PropertyEntry{{Key: "PK", Value: "PV"}}}},
+
 			{Style: &StyleDecl{Body: &StyleBlock{Entries: []*StyleEntry{{Key: "SK", Value: mkStrJSON("SV")}}}}},
 			{SLO: &SLOBlock{}},
 		},
@@ -224,7 +224,7 @@ func TestElements_PostProcess(_ *testing.T) {
 			{Metadata: &MetadataBlock{Entries: []*MetaEntry{{Key: "K", Value: mkStrJSON("V")}}}},
 			{ConstraintsBlock: &ConstraintsBlock{Entries: []*ConstraintEntry{{Key: "K"}}}},
 			{ConventionsBlock: &ConventionsBlock{Entries: []*ConventionEntry{{Key: "K"}}}},
-			{Properties: &PropertiesBlock{Entries: []*PropertyEntry{{Key: "PK", Value: "PV"}}}},
+
 			{Style: &StyleDecl{Body: &StyleBlock{Entries: []*StyleEntry{{Key: "SK", Value: mkStrJSON("SV")}}}}},
 			{Scale: &ScaleBlock{}},
 			{Version: mkStrJSON("1.0")},
@@ -240,7 +240,7 @@ func TestElements_PostProcess(_ *testing.T) {
 			{Description: mkStrJSON("D")},
 			{Relation: &Relation{}},
 			{Metadata: &MetadataBlock{Entries: []*MetaEntry{{Key: "K", Value: mkStrJSON("V")}}}},
-			{Properties: &PropertiesBlock{Entries: []*PropertyEntry{{Key: "PK", Value: "PV"}}}},
+
 			{Style: &StyleDecl{Body: &StyleBlock{Entries: []*StyleEntry{{Key: "SK", Value: mkStrJSON("SV")}}}}},
 			{Scale: &ScaleBlock{}},
 		},
@@ -253,7 +253,7 @@ func TestElements_PostProcess(_ *testing.T) {
 			{Technology: mkStrJSON("T")},
 			{Description: mkStrJSON("D")},
 			{Metadata: &MetadataBlock{Entries: []*MetaEntry{{Key: "K", Value: mkStrJSON("V")}}}},
-			{Properties: &PropertiesBlock{Entries: []*PropertyEntry{{Key: "PK", Value: "PV"}}}},
+
 			{Style: &StyleDecl{Body: &StyleBlock{Entries: []*StyleEntry{{Key: "SK", Value: mkStrJSON("SV")}}}}},
 		},
 	}
@@ -265,7 +265,7 @@ func TestElements_PostProcess(_ *testing.T) {
 			{Technology: mkStrJSON("T")},
 			{Description: mkStrJSON("D")},
 			{Metadata: &MetadataBlock{Entries: []*MetaEntry{{Key: "K", Value: mkStrJSON("V")}}}},
-			{Properties: &PropertiesBlock{Entries: []*PropertyEntry{{Key: "PK", Value: "PV"}}}},
+
 			{Style: &StyleDecl{Body: &StyleBlock{Entries: []*StyleEntry{{Key: "SK", Value: mkStrJSON("SV")}}}}},
 		},
 	}
@@ -276,7 +276,7 @@ func TestElements_PostProcess(_ *testing.T) {
 		Items: []PersonItem{
 			{Description: mkStrJSON("D")},
 			{Metadata: &MetadataBlock{Entries: []*MetaEntry{{Key: "K", Value: mkStrJSON("V")}}}},
-			{Properties: &PropertiesBlock{Entries: []*PropertyEntry{{Key: "PK", Value: "PV"}}}},
+
 			{Style: &StyleDecl{Body: &StyleBlock{Entries: []*StyleEntry{{Key: "SK", Value: mkStrJSON("SV")}}}}},
 		},
 	}

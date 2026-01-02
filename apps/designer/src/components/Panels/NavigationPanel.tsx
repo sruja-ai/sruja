@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { ChevronRight, ChevronLeft, Building2, User, X, Link2 } from "lucide-react";
 import { Input, Button } from "@sruja/ui";
-import { useArchitectureStore, useViewStore } from "../../stores";
+import { logger } from "@sruja/shared";
+import { useArchitectureStore, useViewStore, useSelectionStore } from "../../stores";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
 import { useNavigationData } from "../../hooks/useNavigationData";
 import { NavTreeItem } from "./NavTreeItem";
@@ -21,7 +22,16 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   const drillDown = useViewStore((s) => s.drillDown);
   const goToRoot = useViewStore((s) => s.goToRoot);
   const setLevel = useViewStore((s) => s.setLevel);
+  const selectedNodeId = useSelectionStore((s) => s.selectedNodeId);
+  const selectNode = useSelectionStore((s) => s.selectNode); // Add selectNode action
   const isEditMode = useFeatureFlagsStore((s) => s.isEditMode);
+
+  // Derive selection context
+  const getSelectedElement = () => {
+    if (!selectedNodeId || !model) return null;
+    return model.elements[selectedNodeId];
+  };
+  const selectedElement = getSelectedElement();
 
   const [filterQuery, setFilterQuery] = useState("");
 
@@ -68,28 +78,62 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   // Editing State Stubs
   // --------------------------------------------------------------------------
   const onEditSystem = (_sys: Element) => {
-    console.warn("Edit System not implemented");
+    logger.warn("Action not implemented", {
+      component: "NavigationPanel",
+      action: "edit_system",
+      elementType: "system",
+    });
   };
   const onAddSystem = () => {
-    console.warn("Add System not implemented");
+    logger.warn("Action not implemented", {
+      component: "NavigationPanel",
+      action: "add_system",
+      elementType: "system",
+    });
   };
   const onEditContainer = (_cont: Element) => {
-    console.warn("Edit Container not implemented");
+    logger.warn("Action not implemented", {
+      component: "NavigationPanel",
+      action: "edit_container",
+      elementType: "container",
+    });
   };
   const onAddContainer = (_sysId: string) => {
-    console.warn("Add Container not implemented");
+    logger.warn("Action not implemented", {
+      component: "NavigationPanel",
+      action: "add_container",
+      elementType: "container",
+      systemId: _sysId,
+    });
   };
   const onEditComponent = (_comp: Element) => {
-    console.warn("Edit Component not implemented");
+    logger.warn("Action not implemented", {
+      component: "NavigationPanel",
+      action: "edit_component",
+      elementType: "component",
+    });
   };
   const onAddComponent = (_contId: string) => {
-    console.warn("Add Component not implemented");
+    logger.warn("Action not implemented", {
+      component: "NavigationPanel",
+      action: "add_component",
+      elementType: "component",
+      containerId: _contId,
+    });
   };
   const onEditPerson = (_p: Element) => {
-    console.warn("Edit Person not implemented");
+    logger.warn("Action not implemented", {
+      component: "NavigationPanel",
+      action: "edit_person",
+      elementType: "person",
+    });
   };
   const onAddPerson = () => {
-    console.warn("Add Person not implemented");
+    logger.warn("Action not implemented", {
+      component: "NavigationPanel",
+      action: "add_person",
+      elementType: "person",
+    });
   };
 
   return (
@@ -152,17 +196,32 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
           </button>
           <button
             className={`segment-btn ${currentLevel === "L2" ? "active" : ""}`}
-            disabled={!focusedSystemId}
-            onClick={() => setLevel("L2")}
-            title="Container View - Detailed system internals"
+            title={
+              !focusedSystemId && selectedElement?.kind !== "system"
+                ? "Select a system to view its containers"
+                : "Container View - Detailed system internals"
+            }
+            disabled={!focusedSystemId && selectedElement?.kind !== "system"}
+            onClick={() => {
+              if (focusedSystemId) setLevel("L2");
+              else if (selectedElement?.kind === "system") drillDown(selectedElement.id, "system");
+            }}
           >
             L2
           </button>
           <button
             className={`segment-btn ${currentLevel === "L3" ? "active" : ""}`}
-            disabled={!focusedContainerId}
-            onClick={() => setLevel("L3")}
-            title="Component View - Fine-grained components"
+            title={
+              !focusedContainerId && selectedElement?.kind !== "container"
+                ? "Select a container to view its components"
+                : "Component View - Fine-grained components"
+            }
+            disabled={!focusedContainerId && selectedElement?.kind !== "container"}
+            onClick={() => {
+              if (focusedContainerId) setLevel("L3");
+              else if (selectedElement?.kind === "container")
+                drillDown(selectedElement.id, "container", selectedElement.parent || undefined);
+            }}
           >
             L3
           </button>
@@ -189,7 +248,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
               )}
             </li>
           )}
-          {filteredSystems.map((system: any) => {
+          {filteredSystems.map((system) => {
             const containers = getChildren(system.id, "container");
             const isExpanded = expandedNodes.has(system.id);
             return (
@@ -197,10 +256,13 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                 key={system.id}
                 element={system}
                 isExpanded={isExpanded}
-                isSelected={focusedSystemId === system.id}
+                isSelected={selectedNodeId === system.id}
                 hasChildren={containers.length > 0}
                 onExpand={toggleExpand}
-                onDrillDown={(id) => drillDown(id, "system")}
+                onDrillDown={(id) => {
+                  selectNode(id);
+                  drillDown(id, "system");
+                }}
                 isEditMode={!!isEditMode()}
                 onEdit={onEditSystem}
                 onAddChild={onAddContainer}
@@ -213,10 +275,13 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                       key={container.id}
                       element={container}
                       isExpanded={isContExpanded}
-                      isSelected={focusedContainerId === container.id}
+                      isSelected={selectedNodeId === container.id}
                       hasChildren={components.length > 0}
                       onExpand={toggleExpand}
-                      onDrillDown={(id, _kind, pid) => drillDown(id, "container", pid!)}
+                      onDrillDown={(id, _kind, pid) => {
+                        selectNode(id);
+                        drillDown(id, "container", pid!);
+                      }}
                       isEditMode={!!isEditMode()}
                       onEdit={onEditContainer}
                       onAddChild={onAddComponent}
@@ -227,10 +292,19 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                           key={component.id}
                           element={component}
                           isExpanded={false}
-                          isSelected={false} // Components rarely selected as view root
+                          isSelected={selectedNodeId === component.id}
                           hasChildren={false}
                           onExpand={() => {}}
-                          onDrillDown={() => {}} // Usually L3 is leaf
+                          onDrillDown={(id, _kind, pid) => {
+                            selectNode(id);
+                            // Navigate to parent container view
+                            if (pid) {
+                              drillDown(pid, "container", undefined); // We might need to look up parent's parent for full context? navigateOnClick usually handles ID.
+                              // Wait, drillDown(targetId, kind, parentId? context).
+                              // For L3, we drill down to the CONTAINER (pid).
+                              // drillDown(pid, "container") should set Level 3, Focus pid.
+                            }
+                          }}
                           isEditMode={!!isEditMode()}
                           onEdit={onEditComponent}
                         />
@@ -266,10 +340,13 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
               key={person.id}
               element={person}
               isExpanded={false}
-              isSelected={false}
+              isSelected={selectedNodeId === person.id}
               hasChildren={false}
               onExpand={() => {}}
-              onDrillDown={() => {}} // Persons usually don't have internal views
+              onDrillDown={(id) => {
+                selectNode(id);
+                goToRoot(); // Persons are in L1
+              }}
               isEditMode={!!isEditMode()}
               onEdit={onEditPerson}
             />

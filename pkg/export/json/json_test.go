@@ -31,14 +31,10 @@ func TestConvertQueue_WithProperties(t *testing.T) {
 		ID:         "queue1",
 		Label:      "Event Queue",
 		Technology: strPtr("RabbitMQ"),
-		Properties: map[string]string{"durable": "true"},
 	}
 	result := convertQueue(q)
 	if result.ID != "queue1" {
 		t.Fatalf("queue ID not converted: %+v", result)
-	}
-	if result.Properties == nil || result.Properties["durable"] != "true" {
-		t.Fatalf("properties not converted: %+v", result.Properties)
 	}
 }
 
@@ -47,15 +43,11 @@ func TestConvertPerson_Complete(t *testing.T) {
 		ID:          "user1",
 		Label:       "End User",
 		Description: strPtr("System user"),
-		Properties:  map[string]string{"role": "admin"},
 		Style:       map[string]string{"color": "blue"},
 	}
 	result := convertPerson(p)
 	if result.ID != "user1" || result.Label != "End User" {
 		t.Fatalf("person fields not converted: %+v", result)
-	}
-	if result.Properties["role"] != "admin" {
-		t.Fatalf("properties not converted: %+v", result.Properties)
 	}
 }
 
@@ -146,8 +138,8 @@ func TestConvertSystem_Complete(t *testing.T) {
 		Queues: []*language.Queue{
 			{ID: "q1", Label: "Queue 1"},
 		},
-		Properties: map[string]string{"env": "prod"},
-		Style:      map[string]string{"color": "red"},
+
+		Style: map[string]string{"color": "red"},
 	}
 	result := convertSystem(s)
 	if result.ID != "sys1" || len(result.Containers) != 1 || len(result.Components) != 1 {
@@ -156,7 +148,7 @@ func TestConvertSystem_Complete(t *testing.T) {
 	if len(result.DataStores) != 1 || len(result.Queues) != 1 {
 		t.Fatalf("system nested elements conversion failed: %+v", result)
 	}
-	if result.Properties["env"] != "prod" || result.Style["color"] != "red" {
+	if result.Style["color"] != "red" {
 		t.Fatalf("system properties/style conversion failed: %+v", result)
 	}
 }

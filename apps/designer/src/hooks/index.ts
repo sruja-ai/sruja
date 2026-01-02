@@ -5,3 +5,6 @@ export type { GovernanceCounts } from "./useGovernanceCounts";
 export { useClipboardOperations } from "./useClipboardOperations";
 export { useProjectSync } from "./useProjectSync";
 export { useFileHandlers } from "./useFileHandlers";
+export { useDSLSync } from "./useDSLSync";
+export { useDSLEditor } from "./useDSLEditor";
+export { useDSLDiff } from "./useDSLDiff";

@@ -78,20 +78,7 @@ func TestErrorMessages_ComprehensiveInvalidExamples(t *testing.T) {
 			expectedErrors:   []string{"duration", "p95", "invalid_format"},
 			checkSuggestions: true,
 		},
-		{
-			name: "Invalid property value",
-			dsl: `
-    API = system "API Service" {
-        properties {
-            "capacity.readReplicas" "not_a_number"
-        }
-    }
-    Client = system "Client"
-    Client -> API "Uses"
-`,
-			expectedErrors:   []string{"property", "readReplicas", "invalid"},
-			checkSuggestions: true,
-		},
+
 		{
 			name: "Orphan element",
 			dsl: `

@@ -140,7 +140,14 @@ func (e *Exporter) writeTechnologyStackSummary(sb *strings.Builder, systems []*l
 	for _, sys := range systems {
 		// Check containers
 		for _, cont := range sys.Containers {
-			if tech, ok := cont.Properties["technology"]; ok && tech != "" {
+			tech := ""
+			for _, item := range cont.Items {
+				if item.Technology != nil {
+					tech = *item.Technology
+					break
+				}
+			}
+			if tech != "" {
 				key := fmt.Sprintf("%s.%s", sys.Label, cont.Label)
 				techMap[tech] = append(techMap[tech], key)
 			}

@@ -56,15 +56,7 @@ func (r *PropertiesValidationRule) Validate(program *language.Program) []diagnos
 						diags = append(diags, r.validatePropsMap(props, loc, validators)...)
 					}
 				}
-				if item.Properties != nil {
-					props := make(map[string]string)
-					for _, entry := range item.Properties.Entries {
-						props[entry.Key] = entry.Value
-					}
-					if len(props) > 0 {
-						diags = append(diags, r.validatePropsMap(props, item.Properties.Location(), validators)...)
-					}
-				}
+
 				// Recurse into nested elements
 				if item.Element != nil {
 					validateElementProps(item.Element)

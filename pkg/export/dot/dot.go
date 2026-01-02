@@ -1,11 +1,4 @@
 // Package dot provides Graphviz DOT language export for Sruja diagrams.
-//
-// This package generates DOT language output from Sruja's Program AST,
-// suitable for layout by Graphviz. The output includes:
-// - Hierarchical node structure (persons, systems, containers, components)
-// - Relationship edges with labels
-// - Rank constraints for proper alignment
-// - Layout hints for optimal positioning
 package dot
 
 import (
@@ -86,13 +79,12 @@ func (e *Exporter) Export(prog *language.Program) *ExportResult {
 	sb := engine.GetStringBuilder()
 	defer engine.PutStringBuilder(sb)
 
-	// Extract all elements
-	allElements := e.extractAllElements(prog)
+	// Single source of truth for all elements with properties
+	allElementsMap := e.extractAllElementsMap(prog)
 	allRelations := extractRelationsFromModel(prog)
+	lookup := buildElementLookup(prog)
 
-	// Apply view projection filtering
-	elements := e.filterByView(allElements)
-	relations := e.filterRelationsByView(allRelations, elements)
+	elements, relations := e.computeViewGraph(allElementsMap, allRelations, lookup)
 
 	if len(elements) == 0 {
 		return &ExportResult{}
@@ -112,133 +104,232 @@ func (e *Exporter) Export(prog *language.Program) *ExportResult {
 	}
 }
 
-// filterByView filters elements based on ViewLevel and FocusNodeID.
-func (e *Exporter) filterByView(elements []*Element) []*Element {
+// computeViewGraph determines the visible elements and projected relations for the current view.
+func (e *Exporter) computeViewGraph(allElements map[string]*Element, allRelations []*Relation, lookup *elementLookup) ([]*Element, []*Relation) {
 	level := e.Config.ViewLevel
 	focusID := e.Config.FocusNodeID
 
-	// L1 (Context): Show persons and systems only
+	visibleIDs := make(map[string]bool)
+	var finalElements []*Element
+	var finalRelations []*Relation
+	seenRel := make(map[string]bool)
+
+	// Helper to add element if not already added
+	addElement := func(id string) {
+		if visibleIDs[id] {
+			return
+		}
+		if elem, ok := allElements[id]; ok {
+			visibleIDs[id] = true
+			finalElements = append(finalElements, elem)
+		} else if info, ok := lookup.elements[id]; ok {
+			visibleIDs[id] = true
+			// Create element with required fields
+			newElem := &Element{
+				ID:       info.ID,
+				Kind:     info.Kind,
+				Title:    info.Label,
+				ParentID: info.ParentID,
+				Width:    e.Config.DefaultNodeWidth,
+				Height:   e.Config.DefaultNodeHeight,
+			}
+			// Measure actual content if possible (may improve sizing)
+			width, height := MeasureNodeContent(newElem)
+			newElem.Width = int(width)
+			newElem.Height = int(height)
+			finalElements = append(finalElements, newElem)
+		}
+	}
+
+	// 1. Identify Core Set (Internals)
+	isCore := func(id string) bool { return false }
+
 	if level == 1 || level == 0 {
-		var result []*Element
-		for _, elem := range elements {
+		for id, elem := range allElements {
 			if elem.Kind == "person" || elem.Kind == "system" {
-				result = append(result, elem)
+				addElement(id)
 			}
 		}
-		return result
-	}
-
-	// L2 (Container): Show containers, datastores, queues within focused system
-	if level == 2 {
+		isCore = func(id string) bool {
+			kind := ""
+			if el, ok := allElements[id]; ok {
+				kind = el.Kind
+			} else if info, ok := lookup.elements[id]; ok {
+				kind = info.Kind
+			}
+			return kind == "person" || kind == "system"
+		}
+	} else if level == 2 {
 		if focusID == "" {
-			// No focus - show all L2 elements
-			var result []*Element
-			for _, elem := range elements {
-				if elem.Kind == "container" || elem.Kind == "datastore" || elem.Kind == "queue" || elem.Kind == "system" || elem.Kind == "person" {
-					result = append(result, elem)
+			for id, elem := range allElements {
+				k := elem.Kind
+				if k == "container" || k == "datastore" || k == "queue" || k == "system" || k == "person" {
+					addElement(id)
 				}
 			}
-			return result
-		}
-		// Filter to elements within focused system + external systems/persons
-		var result []*Element
-		for _, elem := range elements {
-			// Include elements inside the focused system
-			prefixMatch := strings.HasPrefix(elem.ID, focusID+".")
-			idMatch := elem.ID == focusID
-			isExternal := elem.Kind == "system" || elem.Kind == "person"
-
-			switch {
-			case prefixMatch:
-				// Include containers, datastores, queues, and nested systems
-				if elem.Kind == "container" || elem.Kind == "datastore" || elem.Kind == "queue" || elem.Kind == "system" {
-					result = append(result, elem)
+			isCore = func(id string) bool { return true }
+		} else {
+			addElement(focusID)
+			internalPrefix := focusID + "."
+			for id, elem := range allElements {
+				if strings.HasPrefix(id, internalPrefix) {
+					if elem.Kind == "container" || elem.Kind == "datastore" || elem.Kind == "queue" {
+						addElement(id)
+					}
 				}
-			case idMatch:
-				// Include the focused system itself (often as a cluster, but good to have in list)
-				result = append(result, elem)
-			case isExternal:
-				// Include external systems and persons
-				result = append(result, elem)
+			}
+			isCore = func(id string) bool {
+				return id == focusID || strings.HasPrefix(id, internalPrefix)
 			}
 		}
-		return result
-	}
-
-	// L3 (Component): Show components within focused container
-	if level == 3 {
+	} else if level == 3 {
 		if focusID == "" {
-			// No focus - show all components
-			var result []*Element
-			for _, elem := range elements {
-				if elem.Kind == "component" || elem.Kind == "container" || elem.Kind == "system" || elem.Kind == "person" {
-					result = append(result, elem)
+			for id := range allElements {
+				addElement(id)
+			}
+			isCore = func(id string) bool { return true }
+		} else {
+			addElement(focusID)
+			internalPrefix := focusID + "."
+			for id := range allElements {
+				if strings.HasPrefix(id, internalPrefix) {
+					if elem, ok := allElements[id]; ok && elem.Kind == "component" {
+						addElement(id)
+					}
 				}
 			}
-			return result
-		}
-		// Filter to elements within focused container + parent containers/systems
-		var result []*Element
-		for _, elem := range elements {
-			prefixMatch := strings.HasPrefix(elem.ID, focusID+".")
-			idMatch := elem.ID == focusID
-			isExternal := elem.Kind == "container" || elem.Kind == "system" || elem.Kind == "person"
-
-			switch {
-			case prefixMatch:
-				if elem.Kind == "component" {
-					result = append(result, elem)
-				}
-			case idMatch:
-				result = append(result, elem)
-			case isExternal:
-				// Include external things
-				result = append(result, elem)
+			isCore = func(id string) bool {
+				return id == focusID || strings.HasPrefix(id, internalPrefix)
 			}
 		}
-		return result
 	}
 
-	return elements
+	// Helper to resolve short name to FQN based on context
+	resolveFQN := func(shortID, contextID string) string {
+		// 1. Exact match in allElements
+		if _, ok := allElements[shortID]; ok {
+			return shortID
+		}
+		// 2. Context-aware suffix match
+		var bestMatch string
+
+		contextScope := ""
+		if contextID != "" {
+			parts := strings.Split(contextID, ".")
+			if len(parts) > 1 {
+				contextScope = strings.Join(parts[:len(parts)-1], ".")
+			} else {
+				contextScope = parts[0]
+			}
+		}
+
+		for id := range allElements {
+			if strings.HasSuffix(id, "."+shortID) {
+				// Prefer match in same scope
+				if contextScope != "" && strings.HasPrefix(id, contextScope+".") {
+					bestMatch = id
+					break
+				}
+				if bestMatch == "" {
+					bestMatch = id
+				}
+			}
+		}
+		if bestMatch != "" {
+			return bestMatch
+		}
+
+		// 3. Fallback to lookup check
+		if _, ok := lookup.elements[shortID]; ok {
+			return shortID
+		}
+		return shortID
+	}
+
+	// 2. Process Relations & Discover Neighbors
+	for _, rel := range allRelations {
+		// Resolve FQNs first
+		fromFQN := resolveFQN(rel.From, "")
+		toFQN := resolveFQN(rel.To, fromFQN)
+
+		project := func(fqn string) string {
+			if isCore(fqn) {
+				return fqn
+			}
+			// External Projection
+			if level == 2 {
+				root, _ := lookup.getRoot(fqn)
+				return root
+			}
+			if level == 3 {
+				contID := lookup.getContainer(fqn)
+				if contID != "" && contID != focusID {
+					// Check if container shares same root?
+					// Ideally we check if it is "sibling".
+					return contID
+				}
+				root, _ := lookup.getRoot(fqn)
+				return root
+			}
+			root, _ := lookup.getRoot(fqn)
+			return root
+		}
+
+		source := project(fromFQN)
+		target := project(toFQN)
+
+		if source == "" || target == "" || source == target {
+			continue
+		}
+
+		// Visibility Check: Must connect to Scope
+		connectsToScope := false
+		if isCore(source) {
+			connectsToScope = true
+		}
+		if isCore(target) {
+			connectsToScope = true
+		}
+
+		if !connectsToScope && (visibleIDs[source] || visibleIDs[target]) {
+			connectsToScope = true
+		}
+
+		if !connectsToScope {
+			continue
+		}
+
+		// Add external nodes
+		if !visibleIDs[source] {
+			addElement(source)
+		}
+		if !visibleIDs[target] {
+			addElement(target)
+		}
+
+		key := fmt.Sprintf("%s->%s:%s", source, target, rel.Label)
+		if !seenRel[key] {
+			proj := Relation{
+				From:  source,
+				To:    target,
+				Label: rel.Label,
+			}
+			finalRelations = append(finalRelations, &proj)
+			seenRel[key] = true
+		}
+	}
+
+	return finalElements, finalRelations
 }
 
-// filterRelationsByView filters relations to only include those between visible elements (projected).
-func (e *Exporter) filterRelationsByView(relations []*Relation, visibleElements []*Element) []*Relation {
-	// Build set of visible element IDs
-	visible := make(map[string]bool)
-	for _, elem := range visibleElements {
-		visible[elem.ID] = true
+// extractAllElementsMap returns a map of all elements keyed by ID.
+func (e *Exporter) extractAllElementsMap(prog *language.Program) map[string]*Element {
+	list := e.extractAllElements(prog)
+	m := make(map[string]*Element)
+	for _, el := range list {
+		m[el.ID] = el
 	}
-
-	var result []*Relation
-	seen := make(map[string]bool)
-
-	for _, rel := range relations {
-		// Find visible ancestors for source and target
-		// Pass the source ID to help resolve short names in the same scope
-		source := e.getVisibleAncestorWithContext(rel.From, visible, "")
-		// Use the resolved source as context for target resolution (if available)
-		// This helps resolve short names in the same scope as the resolved source
-		contextForTarget := source
-		if contextForTarget == "" {
-			contextForTarget = rel.From
-		}
-		target := e.getVisibleAncestorWithContext(rel.To, visible, contextForTarget)
-
-		// Create projected relation if both found and different
-		if source != "" && target != "" && source != target {
-			// Avoid duplicate edges between same nodes with same label
-			key := fmt.Sprintf("%s->%s:%s", source, target, rel.Label)
-			if !seen[key] {
-				projected := *rel
-				projected.From = source
-				projected.To = target
-				result = append(result, &projected)
-				seen[key] = true
-			}
-		}
-	}
-	return result
+	return m
 }
 
 // getVisibleAncestor finds the closest visible parent for an ID.

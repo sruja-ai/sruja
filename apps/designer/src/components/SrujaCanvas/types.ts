@@ -57,6 +57,13 @@ export interface LayoutOptions {
   ranksep: number;
 }
 
+export interface GraphvizCluster {
+  /** Bounding box as "llx,lly,urx,ury" string from Graphviz */
+  bb?: string;
+  /** Array of child node IDs within this cluster */
+  children: string[];
+}
+
 export interface GraphvizResult {
   nodes: Array<{
     id: string;
@@ -76,4 +83,6 @@ export interface GraphvizResult {
   }>;
   width: number;
   height: number;
+  /** Cluster information for parent-child relationships (parentId -> cluster info) */
+  clusters?: Record<string, GraphvizCluster>;
 }

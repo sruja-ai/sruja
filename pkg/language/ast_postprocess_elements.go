@@ -40,14 +40,7 @@ func (s *System) PostProcess() {
 		if item.ConventionsBlock != nil {
 			s.Conventions = append(s.Conventions, item.ConventionsBlock.Entries...)
 		}
-		if item.Properties != nil {
-			if s.Properties == nil {
-				s.Properties = make(map[string]string)
-			}
-			for _, prop := range item.Properties.Entries {
-				s.Properties[prop.Key] = prop.Value
-			}
-		}
+
 		if item.Style != nil && item.Style.Body != nil {
 			if s.Style == nil {
 				s.Style = make(map[string]string)
@@ -99,14 +92,7 @@ func (c *Container) PostProcess() {
 		if item.ConventionsBlock != nil {
 			c.Conventions = append(c.Conventions, item.ConventionsBlock.Entries...)
 		}
-		if item.Properties != nil {
-			if c.Properties == nil {
-				c.Properties = make(map[string]string)
-			}
-			for _, prop := range item.Properties.Entries {
-				c.Properties[prop.Key] = prop.Value
-			}
-		}
+
 		if item.Style != nil && item.Style.Body != nil {
 			if c.Style == nil {
 				c.Style = make(map[string]string)
@@ -147,14 +133,7 @@ func (c *Component) PostProcess() {
 		if item.Metadata != nil {
 			c.Metadata = append(c.Metadata, item.Metadata.Entries...)
 		}
-		if item.Properties != nil {
-			if c.Properties == nil {
-				c.Properties = make(map[string]string)
-			}
-			for _, prop := range item.Properties.Entries {
-				c.Properties[prop.Key] = prop.Value
-			}
-		}
+
 		if item.Style != nil && item.Style.Body != nil {
 			if c.Style == nil {
 				c.Style = make(map[string]string)
@@ -184,14 +163,7 @@ func (d *DataStore) PostProcess() {
 		if it.Metadata != nil {
 			d.Metadata = append(d.Metadata, it.Metadata.Entries...)
 		}
-		if it.Properties != nil {
-			if d.Properties == nil {
-				d.Properties = make(map[string]string)
-			}
-			for _, prop := range it.Properties.Entries {
-				d.Properties[prop.Key] = prop.Value
-			}
-		}
+
 		if it.Style != nil && it.Style.Body != nil {
 			if d.Style == nil {
 				d.Style = make(map[string]string)
@@ -217,14 +189,7 @@ func (q *Queue) PostProcess() {
 		if it.Metadata != nil {
 			q.Metadata = append(q.Metadata, it.Metadata.Entries...)
 		}
-		if it.Properties != nil {
-			if q.Properties == nil {
-				q.Properties = make(map[string]string)
-			}
-			for _, prop := range it.Properties.Entries {
-				q.Properties[prop.Key] = prop.Value
-			}
-		}
+
 		if it.Style != nil && it.Style.Body != nil {
 			if q.Style == nil {
 				q.Style = make(map[string]string)
@@ -247,14 +212,7 @@ func (p *Person) PostProcess() {
 		if it.Metadata != nil {
 			p.Metadata = append(p.Metadata, it.Metadata.Entries...)
 		}
-		if it.Properties != nil {
-			if p.Properties == nil {
-				p.Properties = make(map[string]string)
-			}
-			for _, prop := range it.Properties.Entries {
-				p.Properties[prop.Key] = prop.Value
-			}
-		}
+
 		if it.Style != nil && it.Style.Body != nil {
 			if p.Style == nil {
 				p.Style = make(map[string]string)

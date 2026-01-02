@@ -1,12 +1,12 @@
 ---
-title: "Behavior and depends_on"
+title: "Explicit Dependencies"
 weight: 21
-summary: "Describe component behavior and upstream dependencies explicitly."
+summary: "Note upstream dependencies explicitly."
 ---
 
-# Behavior and depends_on
+# Explicit Dependencies
 
-Use `behavior` to document responsibilities; use `depends_on` to note upstreams.
+Use `depends_on` to note upstreams when a full relation is overkill or for static dependencies.
 
 ## Syntax
 

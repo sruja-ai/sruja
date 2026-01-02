@@ -79,14 +79,7 @@ func (e *Exporter) Export(prog *language.Program) string {
 						}
 					}
 				}
-				// Properties block
-				if item.Properties != nil {
-					for _, entry := range item.Properties.Entries {
-						if isRelevantMetadata(entry.Key) {
-							el.Metadata[entry.Key] = entry.Value
-						}
-					}
-				}
+
 			}
 		}
 

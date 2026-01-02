@@ -2,6 +2,19 @@
 .nav-item-row {
     display: flex;
     align-items: center;
+    padding: 2px 4px;
+    border-radius: 4px;
+    cursor: default;
+}
+
+.nav-item-row:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.nav-item-row.selected {
+    background-color: rgba(37, 99, 235, 0.1);
+    /* blue-600 with opacity */
+    color: var(--highlight-color, #2563eb);
 }
 
 .guided-builder {
@@ -55,3 +68,39 @@
     color: var(--text-primary);
 }
 
+.nav-item-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px;
+    padding: 4px 6px;
+}
+
+.nav-item-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.nav-item-row:hover .nav-item-actions {
+    opacity: 1;
+}
+
+.nav-edit-btn,
+.nav-add-btn {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+}
+
+.nav-edit-btn:hover,
+.nav-add-btn:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-tertiary);
+}

@@ -445,9 +445,14 @@ export async function initWasm(options?: {
         throw error;
       }
     },
-    dslToMermaid: async (dsl: string) => {
+    dslToMermaid: async (dsl: string, viewLevel?: number, targetId?: string) => {
       try {
-        const r = mermaidFn(dsl);
+        // Pack arguments into config object for WASM
+        const config = {
+          viewLevel: viewLevel ?? 1,
+          targetId: targetId ?? "",
+        };
+        const r = mermaidFn(dsl, JSON.stringify(config));
         if (!r || !r.ok) {
           const exportError = parseWasmError(r);
           if (exportError) {

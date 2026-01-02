@@ -25,9 +25,9 @@ queue = kind "Queue"
       tags ["frontend"]
       
       // Module 7: Properties & Styles
-      properties {
-        "framework" "Next.js"
-        "hosting" "Vercel"
+      metadata {
+        framework "Next.js"
+        hosting "Vercel"
       }
       style {
         shape "browser"
@@ -51,9 +51,9 @@ queue = kind "Queue"
 
     db = database "Product Database" {
       technology "PostgreSQL"
-      properties {
-        "version" "15"
-        "storage" "100GB"
+      metadata {
+        version "15"
+        storage "100GB"
       }
     }
 

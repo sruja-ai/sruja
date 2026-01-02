@@ -21,25 +21,22 @@ var (
 // This avoids the overhead of rebuilding the parser for each parse operation.
 // The parser is built once and reused for all subsequent calls.
 //
-// Panics if parser initialization fails, which should never happen in production
-// as the parser grammar is statically defined. If this panics, it indicates a
+// Returns an error if parser initialization fails. This should never happen in production
+// as the parser grammar is statically defined. If this returns an error, it indicates a
 // critical bug in the parser definition.
 //
 // Example:
 //
-//	parser := language.DefaultParser()
+//	parser, err := language.DefaultParser()
+//	if err != nil {
+//		return fmt.Errorf("failed to initialize parser: %w", err)
+//	}
 //	program, diags, err := parser.Parse("example.sruja", dslText)
-func DefaultParser() *Parser {
+func DefaultParser() (*Parser, error) {
 	cachedParserOnce.Do(func() {
 		cachedParser, cachedParserErr = NewParser()
 	})
-	if cachedParserErr != nil {
-		// Parser initialization failure indicates a critical bug in the grammar definition.
-		// This should never happen in production, but we panic with a clear error message
-		// to aid debugging during development.
-		panic(fmt.Sprintf("failed to initialize parser (this indicates a bug in parser grammar): %v", cachedParserErr))
-	}
-	return cachedParser
+	return cachedParser, cachedParserErr
 }
 
 // Parser parses Sruja DSL text into an AST (Abstract Syntax Tree).

@@ -120,7 +120,7 @@ export interface WindowWithWasm extends Window {
   Go?: GoConstructor;
   sruja_parse_dsl?: (dsl: string, filename?: string) => WasmParseResponse;
   sruja_json_to_dsl?: (json: string) => WasmParseResponse;
-  sruja_dsl_to_mermaid?: (dsl: string) => WasmParseResponse;
+  sruja_dsl_to_mermaid?: (dsl: string, configJson?: string) => WasmParseResponse;
   sruja_dsl_to_markdown?: (dsl: string) => WasmParseResponse;
   sruja_dsl_to_model?: (dsl: string, filename?: string) => WasmParseResponse;
   sruja_dsl_to_dot?: (dsl: string, configJson: string) => WasmParseResponse;

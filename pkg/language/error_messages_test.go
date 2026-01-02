@@ -404,57 +404,6 @@ func TestValidationError_InvalidSLOFormat(t *testing.T) {
 	}
 }
 
-// TestValidationError_InvalidProperty tests error message for invalid property
-func TestValidationError_InvalidProperty(t *testing.T) {
-	dsl := `
-    API = system "API Service" {
-        properties {
-            port "not_a_number"
-        }
-    }
-`
-	diags, err := parseWithValidation(t, dsl)
-
-	if err != nil {
-		t.Fatalf("Parsing should succeed: %v", err)
-	}
-
-	// Should have validation error for invalid property
-	foundPropertyError := false
-	for _, d := range diags {
-		if strings.Contains(strings.ToLower(d.Message), "property") &&
-			(strings.Contains(d.Message, "port") || strings.Contains(d.Message, "invalid")) {
-			foundPropertyError = true
-
-			// Check for property-specific suggestions
-			if len(d.Suggestions) == 0 {
-				t.Error("Expected suggestions for invalid property error")
-			} else {
-				// Check suggestions mention port format
-				hasPortSuggestion := false
-				for _, s := range d.Suggestions {
-					if strings.Contains(strings.ToLower(s), "port") ||
-						strings.Contains(strings.ToLower(s), "integer") ||
-						strings.Contains(s, "8080") ||
-						strings.Contains(s, "443") {
-						hasPortSuggestion = true
-						t.Logf("Found property suggestion: %s", s)
-						break
-					}
-				}
-				if !hasPortSuggestion {
-					t.Logf("Port-specific suggestion not found, but got: %v", d.Suggestions)
-				}
-			}
-			break
-		}
-	}
-
-	if !foundPropertyError {
-		t.Logf("Property error not found (may be acceptable), diagnostics: %v", diags)
-	}
-}
-
 // TestValidationError_LayerViolation tests error message for layer violation
 func TestValidationError_LayerViolation(t *testing.T) {
 	dsl := `

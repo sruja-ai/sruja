@@ -45,9 +45,6 @@ func convertSystem(s *language.System) SystemJSON {
 		out.Relations = rels
 	}
 
-	if len(s.Properties) > 0 {
-		out.Properties = s.Properties
-	}
 	if len(s.Style) > 0 {
 		out.Style = s.Style
 	}
@@ -111,9 +108,6 @@ func convertContainer(c *language.Container) ContainerJSON {
 		out.Metadata = meta
 	}
 
-	if len(c.Properties) > 0 {
-		out.Properties = c.Properties
-	}
 	if len(c.Style) > 0 {
 		out.Style = c.Style
 	}
@@ -160,9 +154,6 @@ func convertComponent(c *language.Component) ComponentJSON {
 		out.Metadata = meta
 	}
 
-	if len(c.Properties) > 0 {
-		out.Properties = c.Properties
-	}
 	if len(c.Style) > 0 {
 		out.Style = c.Style
 	}
@@ -204,9 +195,7 @@ func convertPerson(p *language.Person) PersonJSON {
 		}
 		out.Metadata = meta
 	}
-	if len(p.Properties) > 0 {
-		out.Properties = p.Properties
-	}
+
 	if len(p.Style) > 0 {
 		out.Style = p.Style
 	}
@@ -227,9 +216,7 @@ func convertDataStore(d *language.DataStore) DataStoreJSON {
 		}
 		out.Metadata = meta
 	}
-	if len(d.Properties) > 0 {
-		out.Properties = d.Properties
-	}
+
 	if len(d.Style) > 0 {
 		out.Style = d.Style
 	}
@@ -250,9 +237,7 @@ func convertQueue(q *language.Queue) QueueJSON {
 		}
 		out.Metadata = meta
 	}
-	if len(q.Properties) > 0 {
-		out.Properties = q.Properties
-	}
+
 	if len(q.Style) > 0 {
 		out.Style = q.Style
 	}

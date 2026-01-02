@@ -3,6 +3,7 @@ import {
   ReactFlow,
   Background,
   Controls,
+  MiniMap,
   useNodesState,
   useEdgesState,
   type Node as RFNode,
@@ -18,12 +19,17 @@ import { useTheme } from "@sruja/ui";
 
 import { useArchitectureStore, useSelectionStore, useUIStore } from "../../stores";
 import { getArchitectureModel } from "../../models/ArchitectureModel";
-import { trackInteraction } from "@sruja/shared";
-import { layoutAndMeasureQuality } from "./layoutEngine";
+import { trackInteraction, logger } from "@sruja/shared";
+import { runGraphviz, GraphvizLayoutError } from "./layoutEngine";
+import { useToastStore } from "../../stores/toastStore";
+import { handleError } from "../../utils/errorHandling";
+import { measureQuality } from "./qualityMetrics";
 import { SrujaNode } from "./SrujaNode";
+import { GroupNode } from "../Nodes/GroupNode";
+import { buildCompoundNodeStructure } from "./compoundNodes";
 import type { C4Node, C4Level } from "./types";
 import { ArrowLeft, Edit3 } from "lucide-react";
-import { type LayoutQuality } from "./qualityMetrics";
+import { type LayoutQuality, type ParentChildRelationships } from "./qualityMetrics";
 
 import { convertDslToDot, type SrujaModelDump } from "@sruja/shared";
 type ElementDump = NonNullable<SrujaModelDump["elements"]>[string];
@@ -35,6 +41,7 @@ import { useViewStore } from "../../stores/viewStore"; // Ensure view store is i
 
 const nodeTypes: NodeTypes = {
   sruja: SrujaNode,
+  group: GroupNode, // Parent container nodes
 };
 
 const edgeTypes: EdgeTypes = {
@@ -126,9 +133,31 @@ export const SrujaCanvas = () => {
   const modelId =
     currentExampleFile || (dslSource ? `${dslSource.length}-${dslSource.substring(0, 50)}` : null);
 
-  // View State
-  const [level, setLevel] = useState<C4Level>(1);
-  const [focusNodeId, setFocusNodeId] = useState<string | undefined>(undefined);
+  // View State (from Store)
+  const currentLevelInfo = useViewStore((s) => s.currentLevel);
+  const focusedSystemId = useViewStore((s) => s.focusedSystemId);
+  const focusedContainerId = useViewStore((s) => s.focusedContainerId);
+
+  // Derive numeric level and focus node ID for compatibility with existing layout logic
+  const level = useMemo(() => {
+    switch (currentLevelInfo) {
+      case "L1":
+        return 1;
+      case "L2":
+        return 2;
+      case "L3":
+        return 3;
+      default:
+        return 1;
+    }
+  }, [currentLevelInfo]);
+
+  const focusNodeId = useMemo(() => {
+    if (level === 3) return focusedContainerId || undefined;
+    if (level === 2) return focusedSystemId || undefined;
+    return undefined;
+  }, [level, focusedSystemId, focusedContainerId]);
+
   // Collapse/expand state - managed via left navigation (UI panel removed)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [collapsedNodeIds, _setCollapsedNodeIds] = useState<Set<string>>(new Set());
@@ -265,7 +294,19 @@ export const SrujaCanvas = () => {
 
         trackInteraction("drop", "feature", { featureId: feature.id });
       } catch (err) {
-        console.error("[SrujaCanvas] Failed to handle drop:", err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        logger.error("Failed to handle drop", {
+          component: "SrujaCanvas",
+          action: "handleDrop",
+          error:
+            err instanceof Error
+              ? {
+                  message: err.message,
+                  name: err.name,
+                  stack: err.stack,
+                }
+              : errorMessage,
+        });
       }
     },
     [reactFlowInstance, updateArchitecture, level, focusNodeId]
@@ -343,20 +384,68 @@ export const SrujaCanvas = () => {
           // DOT generation failed - skipping layout
           setNodes([]);
           setEdges([]);
+          setIsComputing(false);
           return;
         }
 
         // Debug logging removed - use browser devtools if needed
 
         // 2. Layout with iterative refinement
-        const { layoutResult, quality } = await layoutAndMeasureQuality(
-          result.dot,
-          result.relations
-        );
+        // Note: parent-child relationships will be extracted AFTER layout using only visible nodes
+        let layoutResult;
+        try {
+          layoutResult = await runGraphviz(result.dot);
+        } catch (layoutError) {
+          // Handle Graphviz layout errors with user-friendly messages
+          handleError(layoutError, "SrujaCanvas.computeLayout.runGraphviz");
+
+          // Show error toast to user
+          const showToast = useToastStore.getState().showToast;
+          showToast(
+            layoutError instanceof GraphvizLayoutError
+              ? layoutError.message
+              : "Failed to generate diagram layout. Please check your architecture model for errors.",
+            "error",
+            8000 // Longer duration for error messages
+          );
+
+          // Clear diagram and stop computation
+          setNodes([]);
+          setEdges([]);
+          setIsComputing(false);
+          return;
+        }
+
+        // 3. Extract parent-child relationships ONLY from visible nodes in current view
+        // This ensures L2/L3 views only show relationships within the focused scope
+        const visibleNodeIds = new Set(layoutResult.nodes.map((n) => n.id));
+        const parentChildRelationships: ParentChildRelationships = {
+          childToParent: new Map<string, string>(),
+        };
+        if (model && model.elements) {
+          for (const element of Object.values(model.elements)) {
+            // Only include relationships where BOTH child and parent are visible in current view
+            if (
+              element.parent &&
+              typeof element.parent === "string" &&
+              visibleNodeIds.has(element.id) &&
+              visibleNodeIds.has(element.parent)
+            ) {
+              parentChildRelationships.childToParent.set(element.id, element.parent);
+            }
+          }
+        }
+
+        // 4. Measure quality (dev-only) using filtered parent-child relationships
+        const isDev = import.meta.env.DEV || import.meta.env.MODE === "development";
+        const qualityResult = isDev ? measureQuality(layoutResult, parentChildRelationships) : null;
+        const quality = qualityResult?.quality ?? null;
+        const parentChildContainmentViolations =
+          qualityResult?.parentChildContainmentViolations ?? [];
+
+        // 5. Build C4Nodes from layout result and model metadata
 
         // Quality metrics exposed via window.__DIAGRAM_QUALITY__ for e2e tests
-
-        // 3. Build C4Nodes from layout result and model metadata
         const c4Nodes: C4Node[] = layoutResult.nodes.map((layoutNode) => {
           // Get element metadata from model
           const element = model.elements[layoutNode.id];
@@ -393,13 +482,13 @@ export const SrujaCanvas = () => {
 
         // Expose quality metrics to window for e2e tests and UI (dev only)
         // Quality metrics are developer tools, not user-facing features
-        const isDev = import.meta.env.DEV || import.meta.env.MODE === "development";
         if (quality && isDev && typeof window !== "undefined") {
-          (window as Window & { __DIAGRAM_QUALITY__?: typeof quality }).__DIAGRAM_QUALITY__ = {
+          const qualityMetrics = {
             score: quality.score,
             edgeCrossings: quality.edgeCrossings,
             nodeOverlaps: quality.nodeOverlaps,
             labelOverlaps: quality.labelOverlaps,
+            parentChildContainment: quality.parentChildContainment,
             avgEdgeLength: quality.avgEdgeLength,
             edgeLengthVariance: quality.edgeLengthVariance,
             rankAlignment: quality.rankAlignment,
@@ -416,7 +505,25 @@ export const SrujaCanvas = () => {
             timestamp: number;
           };
 
-          console.log("[SrujaCanvas] Metrics:", (window as any).__DIAGRAM_QUALITY__);
+          (window as Window & { __DIAGRAM_QUALITY__?: typeof qualityMetrics }).__DIAGRAM_QUALITY__ =
+            qualityMetrics;
+
+          // Also expose to __LAYOUT_METRICS__ for e2e tests (matches test expectations)
+          (
+            window as Window & {
+              __LAYOUT_METRICS__?: Record<string, unknown>;
+            }
+          ).__LAYOUT_METRICS__ = {
+            ...qualityMetrics,
+            // Export detailed parent-child containment violations as array (expected by tests)
+            parentChildContainment: parentChildContainmentViolations,
+          };
+
+          logger.debug("Diagram quality metrics", {
+            component: "SrujaCanvas",
+            action: "calculateLayout",
+            metrics: (window as { __DIAGRAM_QUALITY__?: unknown }).__DIAGRAM_QUALITY__,
+          });
         }
 
         // Early return if no nodes
@@ -447,65 +554,128 @@ export const SrujaCanvas = () => {
           viewWithLayout?.Layout?.positions ||
           {};
 
-        const nextNodes: RFNode[] = c4Nodes.map((node) => {
-          const layout = layoutResult.nodes.find((n) => n.id === node.id);
+        // Build compound node structure if clusters are available
+        // This creates parent nodes as visual containers with children inside
+        let nextNodes: RFNode[];
+        const hasClusters = layoutResult.clusters && Object.keys(layoutResult.clusters).length > 0;
 
-          // Use saved manual position if available, otherwise use auto-layout
-          // Handle both old format (direct object) and new format (ViewPositionDump)
-          const savedPosition = manualPositionsMap[node.id];
-          let position = { x: 0, y: 0 };
-          if (savedPosition) {
-            // Handle both formats: {x, y} or ViewPositionDump with X, Y
-            const pos = savedPosition as { x?: number; y?: number; X?: number; Y?: number };
-            position = {
-              x: pos.x ?? pos.X ?? 0,
-              y: pos.y ?? pos.Y ?? 0,
-            };
-          } else if (layout) {
-            position = { x: layout.x, y: layout.y };
+        // Log structure decision in dev mode (isDev is defined later in this function)
+        const logStructure =
+          typeof import.meta !== "undefined" &&
+          (import.meta.env?.DEV || import.meta.env?.MODE === "development");
+        if (logStructure && typeof window !== "undefined") {
+          if (hasClusters && layoutResult.clusters) {
+            console.log(
+              `[SrujaCanvas] Using compound node structure with ${Object.keys(layoutResult.clusters).length} clusters`
+            );
+          } else {
+            console.log("[SrujaCanvas] No clusters found - using flat node structure");
           }
+        }
 
-          // Chaos Mode Styling
+        if (hasClusters) {
+          // Use compound node structure (parent containers with children)
+          nextNodes = buildCompoundNodeStructure(layoutResult, c4Nodes, manualPositionsMap);
+        } else {
+          // Fallback to flat structure (no clusters available)
+          nextNodes = c4Nodes.map((node) => {
+            const layout = layoutResult.nodes.find((n) => n.id === node.id);
+
+            // Use saved manual position if available, otherwise use auto-layout
+            // Handle both old format (direct object) and new format (ViewPositionDump)
+            const savedPosition = manualPositionsMap[node.id];
+            let position = { x: 0, y: 0 };
+            if (savedPosition) {
+              // Handle both formats: {x, y} or ViewPositionDump with X, Y
+              const pos = savedPosition as { x?: number; y?: number; X?: number; Y?: number };
+              position = {
+                x: pos.x ?? pos.X ?? 0,
+                y: pos.y ?? pos.Y ?? 0,
+              };
+            } else if (layout) {
+              position = { x: layout.x, y: layout.y };
+            }
+
+            // Chaos Mode Styling
+            const isFailed = chaosState.enabled && chaosState.failedNodeId === node.id;
+            const isImpacted = chaosState.enabled && impactedNodeIds.has(node.id);
+            const isDimmed =
+              chaosState.enabled && !!chaosState.failedNodeId && !isFailed && !isImpacted;
+
+            // Capacity Planning Calculation
+            const capacityState = useArchitectureStore.getState().capacityState;
+            const loadMultiplier = capacityState.userLoad / 100;
+            // Simple heuristic: 3 replicas base * load multiplier
+            // Only for containers (services)
+            const replicas = node.kind === "container" ? Math.ceil(3 * loadMultiplier) : undefined;
+
+            return {
+              id: node.id,
+              type: "sruja",
+              position,
+              data: {
+                ...node,
+                _theme: mode,
+                // Pass chaos flags
+                _chaos: {
+                  isFailed,
+                  isImpacted,
+                  isDimmed,
+                },
+                // Pass capacity metrics
+                _capacity: replicas
+                  ? {
+                      replicas,
+                      load: capacityState.userLoad,
+                    }
+                  : undefined,
+              } as C4Node & Record<string, unknown>,
+              width: node.width,
+              height: node.height,
+              style: {
+                // Apply z-index boost for important nodes
+                zIndex: isFailed ? 999 : isImpacted ? 998 : 1,
+                opacity: isDimmed ? 0.3 : 1,
+                filter: isDimmed ? "grayscale(0.8)" : "none",
+              },
+            };
+          });
+        }
+
+        // Apply chaos styling and capacity metrics to all nodes (both flat and compound)
+        nextNodes = nextNodes.map((node) => {
           const isFailed = chaosState.enabled && chaosState.failedNodeId === node.id;
           const isImpacted = chaosState.enabled && impactedNodeIds.has(node.id);
           const isDimmed =
             chaosState.enabled && !!chaosState.failedNodeId && !isFailed && !isImpacted;
 
-          // Capacity Planning Calculation
           const capacityState = useArchitectureStore.getState().capacityState;
           const loadMultiplier = capacityState.userLoad / 100;
-          // Simple heuristic: 3 replicas base * load multiplier
-          // Only for containers (services)
-          const replicas = node.kind === "container" ? Math.ceil(3 * loadMultiplier) : undefined;
+          const replicas =
+            node.data?.kind === "container" ? Math.ceil(3 * loadMultiplier) : undefined;
 
           return {
-            id: node.id,
-            type: "sruja",
-            position,
+            ...node,
             data: {
-              ...node,
+              ...node.data,
               _theme: mode,
-              // Pass chaos flags
               _chaos: {
                 isFailed,
                 isImpacted,
                 isDimmed,
               },
-              // Pass capacity metrics
               _capacity: replicas
                 ? {
                     replicas,
                     load: capacityState.userLoad,
                   }
                 : undefined,
-            } as C4Node & Record<string, unknown>,
-            width: node.width,
-            height: node.height,
+            },
             style: {
-              // Apply z-index boost for important nodes
-              zIndex: isFailed ? 999 : isImpacted ? 998 : 1,
-              opacity: isDimmed ? 0.3 : 1,
-              filter: isDimmed ? "grayscale(0.8)" : "none",
+              ...node.style,
+              zIndex: isFailed ? 999 : isImpacted ? 998 : (node.style?.zIndex ?? 1),
+              opacity: isDimmed ? 0.3 : (node.style?.opacity ?? 1),
+              filter: isDimmed ? "grayscale(0.8)" : (node.style?.filter ?? "none"),
             },
           };
         });
@@ -638,7 +808,17 @@ export const SrujaCanvas = () => {
           reactFlowInstance?.fitView({ padding: 0.2 });
         }, 100);
       } catch (err) {
-        console.error("Layout failed:", err);
+        // Fallback error handling for unexpected errors
+        handleError(err, "SrujaCanvas.computeLayout");
+        const showToast = useToastStore.getState().showToast;
+        showToast(
+          "An unexpected error occurred while generating the diagram. Please try again.",
+          "error",
+          8000
+        );
+        // Clear diagram on error
+        setNodes([]);
+        setEdges([]);
       } finally {
         setIsComputing(false);
       }
@@ -799,56 +979,41 @@ export const SrujaCanvas = () => {
       // Select the node to open details panel
       selectNode(node.id);
 
-      // Logic: Drill down if possible (but still select the node)
-      if (level === 1 && c4Data.kind === "system" && c4Data.navigateOnClick) {
-        const targetId = c4Data.navigateOnClick;
-        setFocusNodeId(targetId);
-        setLevel(2);
-        trackInteraction("drill-down", "node", {
-          fromLevel: 1,
-          toLevel: 2,
-          nodeId: node.id,
-          nodeKind: c4Data.kind,
-        });
-      } else if (level === 2 && c4Data.kind === "container" && c4Data.navigateOnClick) {
-        const targetId = c4Data.navigateOnClick;
-        setFocusNodeId(targetId);
-        setLevel(3);
-        trackInteraction("drill-down", "node", {
-          fromLevel: 2,
-          toLevel: 3,
-          nodeId: node.id,
-          nodeKind: c4Data.kind,
-        });
-      } else {
-        // Just selecting a node without drilling down
-        trackInteraction("select", "node", { nodeId: node.id, nodeKind: c4Data.kind, level });
+      // Select the node to open details panel
+      selectNode(node.id);
+
+      // Just selecting a node without drill-down (Single Click behavior)
+      trackInteraction("select", "node", { nodeId: node.id, nodeKind: c4Data.kind, level });
+
+      // Handle double click for drill down
+      const clickTime = Date.now();
+      const lastClick = (node as any)._lastClick || 0;
+      (node as any)._lastClick = clickTime;
+
+      if (clickTime - lastClick < 300) {
+        // Double click detected
+        const c4Node = node.data as unknown as C4Node;
+        if (c4Node.kind === "system") {
+          useViewStore.getState().drillDown(c4Node.id, "system");
+        } else if (c4Node.kind === "container") {
+          const parentId = focusNodeId; // Use current focus as parent for container
+          useViewStore.getState().drillDown(c4Node.id, "container", parentId);
+        }
       }
     },
-    [level, selectNode, setFocusNodeId, setLevel]
+    [level, selectNode, focusNodeId, chaosState.enabled, onNodeClickChaos]
   );
 
   const onGoUp = useCallback(() => {
     const previousLevel = level;
-    if (level === 3 && model && focusNodeId) {
-      // L3 -> L2: Find parent system
-      const container = model.elements[focusNodeId];
-      if (container?.parent) {
-        const parentId = container.parent;
-        setFocusNodeId(parentId);
-        setLevel(2);
-        trackInteraction("navigate", "level", { from: previousLevel, to: 2, nodeId: parentId });
-        return;
-      }
-    }
-
-    if (level === 2) {
-      // L2 -> L1: Clear focus
-      setLevel(1);
-      setFocusNodeId(undefined);
+    if (level === 3) {
+      useViewStore.getState().goUp();
+      trackInteraction("navigate", "level", { from: previousLevel, to: 2, nodeId: focusNodeId }); // focusNodeId is the container being exited
+    } else if (level === 2) {
+      useViewStore.getState().goToRoot(); // or goUp(), same effect from L2
       trackInteraction("navigate", "level", { from: previousLevel, to: 1 });
     }
-  }, [level, focusNodeId, model]);
+  }, [level, focusNodeId]);
 
   // Build breadcrumb path
   const breadcrumbPath = useMemo(() => {
@@ -895,24 +1060,41 @@ export const SrujaCanvas = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [level, onGoUp]);
 
+  // Expose navigation methods on window for e2e testing
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // @ts-expect-error - Adding test helpers
+      window.navigateCanvas = (targetLevel: number, targetId?: string) => {
+        const store = useViewStore.getState();
+        if (targetLevel === 1) {
+          store.goToRoot();
+        } else if (targetLevel === 2) {
+          if (targetId) store.drillDown(targetId, "system");
+        } else if (targetLevel === 3) {
+          if (targetId) store.drillDown(targetId, "container");
+        }
+      };
+    }
+  }, []);
+
   const handleBreadcrumbClick = useCallback(
     (targetLevel: C4Level, targetId?: string) => {
       const previousLevel = level;
+      const store = useViewStore.getState();
+
+      // targetLevel is C4Level (number: 1, 2, 3)
       if (targetLevel === 1) {
-        setLevel(1 as C4Level);
-        setFocusNodeId(undefined);
+        store.goToRoot();
         trackInteraction("navigate", "breadcrumb", { from: previousLevel, to: 1 });
       } else if (targetLevel === 2 && targetId) {
-        setLevel(2 as C4Level);
-        setFocusNodeId(targetId);
+        store.drillDown(targetId, "system");
         trackInteraction("navigate", "breadcrumb", {
           from: previousLevel,
           to: 2,
           nodeId: targetId,
         });
       } else if (targetLevel === 3 && targetId) {
-        setLevel(3 as C4Level);
-        setFocusNodeId(targetId);
+        store.drillDown(targetId, "container");
         trackInteraction("navigate", "breadcrumb", {
           from: previousLevel,
           to: 3,
@@ -1037,7 +1219,37 @@ export const SrujaCanvas = () => {
         maxZoom={2}
       >
         <Background color={backgroundPatternColor} gap={16} />
-        <Controls />
+        <Controls
+          className="sruja-controls"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "4px",
+            padding: "4px",
+            backgroundColor: isDark ? "#1a1a1a" : "#fff",
+            border: `1px solid ${isDark ? "#333" : "#ddd"}`,
+            borderRadius: "4px",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+          }}
+        />
+        <MiniMap
+          nodeStrokeColor={(n) => {
+            if (n.type === "input") return "#0041d0";
+            if (n.type === "output") return "#ff0072";
+            if (n.type === "default") return "#1a192b";
+            return "#eee";
+          }}
+          nodeColor={(n) => {
+            if (n.style?.background) return n.style.background as string;
+            return "#fff";
+          }}
+          nodeBorderRadius={2}
+          maskColor={isDark ? "rgba(0,0,0,0.3)" : "rgba(240,240,240,0.3)"}
+          style={{
+            backgroundColor: isDark ? "#1a1a1a" : "#fff",
+            border: `1px solid ${isDark ? "#333" : "#ddd"}`,
+          }}
+        />
       </ReactFlow>
 
       {/* SRE Chaos Mode Controls */}

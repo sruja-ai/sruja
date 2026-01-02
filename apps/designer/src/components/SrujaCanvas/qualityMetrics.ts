@@ -13,6 +13,22 @@
 import type { GraphvizResult } from "./types";
 
 /**
+ * Parent-child relationship mapping
+ */
+export interface ParentChildRelationships {
+  /** Map of child node ID to parent node ID */
+  childToParent: Map<string, string>;
+}
+
+/**
+ * Detailed information about a parent-child containment violation
+ */
+export interface ParentChildContainmentViolation {
+  childId: string;
+  parentId: string;
+}
+
+/**
  * Layout quality metrics
  */
 export interface LayoutQuality {
@@ -22,6 +38,8 @@ export interface LayoutQuality {
   nodeOverlaps: number;
   /** Number of label overlaps with nodes (should be 0) */
   labelOverlaps: number;
+  /** Number of child nodes that are not contained within their parent's bounding box */
+  parentChildContainment: number;
   /** Average edge length */
   avgEdgeLength: number;
   /** Variance in edge lengths (lower is better for consistency) */
@@ -60,8 +78,21 @@ interface EdgeSegment {
 
 /**
  * Measure layout quality from Graphviz result
+ * Returns both the quality metrics and detailed violation information
  */
-export function measureQuality(result: GraphvizResult, _rawGraphvizJson?: any): LayoutQuality {
+export interface QualityMeasurementResult {
+  quality: LayoutQuality;
+  parentChildContainmentViolations: ParentChildContainmentViolation[];
+}
+
+/**
+ * Measure layout quality from Graphviz result
+ */
+export function measureQuality(
+  result: GraphvizResult,
+  parentChildRelationships?: ParentChildRelationships,
+  _rawGraphvizJson?: any
+): QualityMeasurementResult {
   const nodes = result.nodes;
   const edges = result.edges;
 
@@ -76,6 +107,9 @@ export function measureQuality(result: GraphvizResult, _rawGraphvizJson?: any): 
     centerY: node.y + node.height / 2,
   }));
 
+  // Build node map for quick lookup
+  const nodeMap = new Map(nodeBoxes.map((box) => [box.id, box]));
+
   // Count edge crossings
   const edgeCrossings = countEdgeCrossings(edges, nodeBoxes);
 
@@ -84,6 +118,12 @@ export function measureQuality(result: GraphvizResult, _rawGraphvizJson?: any): 
 
   // Count label overlaps (simplified - would need label positions from Graphviz)
   const labelOverlaps = estimateLabelOverlaps(edges, nodeBoxes);
+
+  // Count parent-child containment violations and get detailed violations
+  const containmentResult = parentChildRelationships
+    ? findParentChildContainmentViolations(nodeBoxes, nodeMap, parentChildRelationships)
+    : { count: 0, violations: [] };
+  const parentChildContainment = containmentResult.count;
 
   // Calculate edge length statistics
   const edgeLengths = calculateEdgeLengths(edges, nodeBoxes);
@@ -105,6 +145,7 @@ export function measureQuality(result: GraphvizResult, _rawGraphvizJson?: any): 
     edgeCrossings,
     nodeOverlaps,
     labelOverlaps,
+    parentChildContainment,
     avgEdgeLength,
     edgeLengthVariance,
     rankAlignment,
@@ -112,16 +153,22 @@ export function measureQuality(result: GraphvizResult, _rawGraphvizJson?: any): 
     spacingConsistency,
   });
 
-  return {
+  const quality: LayoutQuality = {
     edgeCrossings,
     nodeOverlaps,
     labelOverlaps,
+    parentChildContainment,
     avgEdgeLength,
     edgeLengthVariance,
     rankAlignment,
     clusterBalance,
     spacingConsistency,
     score,
+  };
+
+  return {
+    quality,
+    parentChildContainmentViolations: containmentResult.violations,
   };
 }
 
@@ -271,6 +318,65 @@ function boxesOverlap(box1: BoundingBox, box2: BoundingBox): boolean {
     box1.y + box1.height < box2.y ||
     box2.y + box2.height < box1.y
   );
+}
+
+/**
+ * Check if a child bounding box is completely contained within a parent bounding box
+ * A child is contained if all its corners are inside the parent's bounds
+ */
+function isBoxContained(child: BoundingBox, parent: BoundingBox): boolean {
+  const childLeft = child.x;
+  const childRight = child.x + child.width;
+  const childTop = child.y;
+  const childBottom = child.y + child.height;
+
+  const parentLeft = parent.x;
+  const parentRight = parent.x + parent.width;
+  const parentTop = parent.y;
+  const parentBottom = parent.y + parent.height;
+
+  // Child is contained if all its bounds are within parent's bounds
+  // Using <= to allow edge-touching (child can be exactly at parent's edge)
+  return (
+    childLeft >= parentLeft &&
+    childRight <= parentRight &&
+    childTop >= parentTop &&
+    childBottom <= parentBottom
+  );
+}
+
+/**
+ * Find parent-child containment violations
+ * Checks if child nodes are properly contained within their parent's bounding box
+ * Returns both the count and detailed violation information
+ */
+function findParentChildContainmentViolations(
+  _nodeBoxes: BoundingBox[], // Not used directly, but nodeMap is built from it
+  nodeMap: Map<string, BoundingBox>,
+  relationships: ParentChildRelationships
+): { count: number; violations: ParentChildContainmentViolation[] } {
+  const violations: ParentChildContainmentViolation[] = [];
+
+  // Iterate through all child-to-parent mappings
+  for (const [childId, parentId] of relationships.childToParent.entries()) {
+    const childBox = nodeMap.get(childId);
+    const parentBox = nodeMap.get(parentId);
+
+    // Skip if either node is not in the layout (might be filtered out by view level)
+    if (!childBox || !parentBox) {
+      continue;
+    }
+
+    // Check if child is contained within parent
+    if (!isBoxContained(childBox, parentBox)) {
+      violations.push({ childId, parentId });
+    }
+  }
+
+  return {
+    count: violations.length,
+    violations,
+  };
 }
 
 /**
@@ -496,6 +602,13 @@ function calculateScore(metrics: Omit<LayoutQuality, "score">): number {
     score -= penalty;
   }
 
+  // Penalize parent-child containment violations heavily (each violation reduces score by 0.25, max 0.7 reduction)
+  // This is critical for proper diagram hierarchy visualization
+  if (metrics.parentChildContainment > 0) {
+    const penalty = Math.min(metrics.parentChildContainment * 0.25, 0.7);
+    score -= penalty;
+  }
+
   // Penalize poor rank alignment more strictly (reduces score by up to 0.3)
   // Requires near-perfect alignment (95%+)
   if (metrics.rankAlignment < 0.95) {
@@ -535,11 +648,13 @@ export function needsRefinement(quality: LayoutQuality): boolean {
   // 1. Score is below 0.85 (high-quality threshold)
   // 2. Any edge crossings (should be minimized)
   // 3. Any node overlaps (unacceptable)
-  // 4. Rank alignment below 95% (requires near-perfect alignment)
+  // 4. Any parent-child containment violations (critical for hierarchy)
+  // 5. Rank alignment below 95% (requires near-perfect alignment)
   return (
     quality.score < 0.85 ||
     quality.edgeCrossings > 0 ||
     quality.nodeOverlaps > 0 ||
+    quality.parentChildContainment > 0 ||
     quality.rankAlignment < 0.95
   );
 }
@@ -549,6 +664,12 @@ export function needsRefinement(quality: LayoutQuality): boolean {
  */
 export function getRefinementSuggestions(quality: LayoutQuality): string[] {
   const suggestions: string[] = [];
+
+  if (quality.parentChildContainment > 0) {
+    suggestions.push(
+      `Fix parent-child containment (${quality.parentChildContainment} child nodes outside parent bounds)`
+    );
+  }
 
   if (quality.nodeOverlaps > 0) {
     suggestions.push(`Increase node spacing (${quality.nodeOverlaps} overlaps detected)`);

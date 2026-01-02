@@ -152,9 +152,7 @@ func (p *Printer) PrintBodyItem(sb *strings.Builder, item *BodyItem) {
 	if item.SLO != nil {
 		p.PrintSLO(sb, item.SLO)
 	}
-	if item.Properties != nil {
-		p.PrintProperties(sb, item.Properties)
-	}
+
 }
 
 func (p *Printer) PrintRelation(sb *strings.Builder, rel *Relation) {
@@ -253,11 +251,6 @@ func (p *Printer) PrintScale(sb *strings.Builder, _ *ScaleBlock) {
 
 func (p *Printer) PrintSLO(sb *strings.Builder, _ *SLOBlock) {
 	fmt.Fprintf(sb, "%sslo {\n", p.indent())
-	sb.WriteString(p.indent() + "}\n")
-}
-
-func (p *Printer) PrintProperties(sb *strings.Builder, _ *PropertiesBlock) {
-	fmt.Fprintf(sb, "%sproperties {\n", p.indent())
 	sb.WriteString(p.indent() + "}\n")
 }
 

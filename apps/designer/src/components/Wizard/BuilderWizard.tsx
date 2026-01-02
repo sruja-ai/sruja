@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { Share2, Eye } from "lucide-react";
 import { Button } from "@sruja/ui";
+import { logger } from "@sruja/shared";
+import type { Element } from "@sruja/shared";
 import { WizardStepper } from "./WizardStepper";
 import type { WizardStep } from "./WizardStepper";
 import { GoalsStep } from "./GoalsStep";
@@ -26,6 +28,7 @@ export function BuilderWizard() {
   const { score } = useValidation();
   const data = useArchitectureStore((state) => state.model);
   const storeDslSource = useArchitectureStore((s) => s.dslSource);
+  const sourceType = useArchitectureStore((s) => s.sourceType);
   const setDslSource = useArchitectureStore((s) => s.setDslSource);
   const isEditMode = useFeatureFlagsStore((s) => s.isEditMode);
 
@@ -57,10 +60,20 @@ export function BuilderWizard() {
           setCurrentDsl(dsl);
         }
       } catch (error) {
-        console.error("Error generating DSL:", error);
-        setCurrentDsl(
-          `// Error generating DSL: ${error instanceof Error ? error.message : "Unknown error"}`
-        );
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error("DSL generation failed", {
+          component: "BuilderWizard",
+          action: "generateDSL",
+          error:
+            error instanceof Error
+              ? {
+                  message: error.message,
+                  name: error.name,
+                  stack: error.stack,
+                }
+              : errorMessage,
+        });
+        setCurrentDsl(`// Error generating DSL: ${errorMessage}`);
       }
     };
 
@@ -69,6 +82,12 @@ export function BuilderWizard() {
 
   // Ensure DSL is stored when generated (so it persists across tab changes)
   useEffect(() => {
+    // Skip updating if DSL was manually edited (sourceType === "dsl")
+    // This prevents a loop between Builder and DSL panel
+    if (sourceType === "dsl") {
+      return;
+    }
+
     if (currentDsl && currentDsl.trim().length > 0 && !currentDsl.startsWith("//")) {
       // Only update if we don't have a stored DSL source or if it's different
       if (!storeDslSource || storeDslSource !== currentDsl) {
@@ -78,31 +97,34 @@ export function BuilderWizard() {
         }
       }
     }
-  }, [currentDsl, storeDslSource, setDslSource]);
+  }, [currentDsl, storeDslSource, setDslSource, sourceType]);
 
   // Calculate completion status for each step
   const steps: WizardStep[] = useMemo(() => {
     // SrujaModelDump uses flat elements map
-    const elements = data?.elements ? Object.values(data.elements) : [];
+    const elements: Element[] = data?.elements ? Object.values(data.elements) : [];
 
     // Requirements are in sruja.requirements
     const requirements = data?.sruja?.requirements ?? [];
     // Goals removed as they are not in SrujaModelDump and assume Requirements cover it.
 
-    const systems = elements.filter((e: any) => e.kind === "system");
-    const persons = elements.filter(
-      (e: any) => e.kind === "person" || e.kind === "actor" || e.kind === "user"
-    );
-    const allContainers = elements.filter(
-      (e: any) =>
-        e.kind === "container" ||
-        e.kind === "webapp" ||
-        e.kind === "mobile" ||
-        e.kind === "api" ||
-        e.kind === "database" ||
-        e.kind === "queue"
-    );
-    const allComponents = elements.filter((e: any) => e.kind === "component");
+    // Type guard functions for element filtering
+    const isSystem = (e: Element): boolean => e.kind === "system";
+    const isPerson = (e: Element): boolean =>
+      e.kind === "person" || e.kind === "actor" || e.kind === "user";
+    const isContainer = (e: Element): boolean =>
+      e.kind === "container" ||
+      e.kind === "webapp" ||
+      e.kind === "mobile" ||
+      e.kind === "api" ||
+      e.kind === "database" ||
+      e.kind === "queue";
+    const isComponent = (e: Element): boolean => e.kind === "component";
+
+    const systems = elements.filter(isSystem);
+    const persons = elements.filter(isPerson);
+    const allContainers = elements.filter(isContainer);
+    const allComponents = elements.filter(isComponent);
 
     const scenarios = data?.sruja?.scenarios ?? [];
 
