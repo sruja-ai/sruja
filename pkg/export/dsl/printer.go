@@ -303,30 +303,34 @@ func (p *ModelPrinter) printRequirement(req *json.RequirementDump) {
 	if req.Type != "" {
 		typeStr = " " + req.Type
 	}
-	p.writeLine("requirement " + req.ID + typeStr + " \"" + escapeString(req.Title) + "\"")
 
-	if req.Description != "" {
+	// Check if requirement has a body
+	hasBody := req.Description != "" || req.Priority != "" || req.Status != "" || len(req.Elements) > 0
+
+	if hasBody {
+		p.writeLine(req.ID + " = requirement" + typeStr + " \"" + escapeString(req.Title) + "\" {")
 		p.indentLevel++
-		p.writeLine("description \"" + escapeString(req.Description) + "\"")
+
+		if req.Description != "" {
+			p.writeLine("description \"" + escapeString(req.Description) + "\"")
+		}
+		if req.Priority != "" {
+			p.writeLine("priority \"" + escapeString(req.Priority) + "\"")
+		}
+		if req.Status != "" {
+			p.writeLine("status \"" + escapeString(req.Status) + "\"")
+		}
+		if len(req.Elements) > 0 {
+			p.sb.WriteString(p.indent())
+			p.sb.WriteString("elements [")
+			p.sb.WriteString(strings.Join(req.Elements, ", "))
+			p.sb.WriteString("]\n")
+		}
+
 		p.indentLevel--
-	}
-	if req.Priority != "" {
-		p.indentLevel++
-		p.writeLine("priority \"" + escapeString(req.Priority) + "\"")
-		p.indentLevel--
-	}
-	if req.Status != "" {
-		p.indentLevel++
-		p.writeLine("status \"" + escapeString(req.Status) + "\"")
-		p.indentLevel--
-	}
-	if len(req.Elements) > 0 {
-		p.indentLevel++
-		p.sb.WriteString(p.indent())
-		p.sb.WriteString("elements [")
-		p.sb.WriteString(strings.Join(req.Elements, ", "))
-		p.sb.WriteString("]\n")
-		p.indentLevel--
+		p.writeLine("}")
+	} else {
+		p.writeLine(req.ID + " = requirement" + typeStr + " \"" + escapeString(req.Title) + "\"")
 	}
 }
 
@@ -335,25 +339,31 @@ func (p *ModelPrinter) printPolicy(policy *json.PolicyDump) {
 	if policy.Category != "" {
 		catStr = " " + policy.Category
 	}
-	p.writeLine("policy " + policy.ID + catStr + " \"" + escapeString(policy.Title) + "\"")
 
-	if policy.Description != "" {
+	// Check if policy has a body
+	hasBody := policy.Description != "" || policy.Enforcement != "" || len(policy.Elements) > 0
+
+	if hasBody {
+		p.writeLine(policy.ID + " = policy" + catStr + " \"" + escapeString(policy.Title) + "\" {")
 		p.indentLevel++
-		p.writeLine("description \"" + escapeString(policy.Description) + "\"")
+
+		if policy.Description != "" {
+			p.writeLine("description \"" + escapeString(policy.Description) + "\"")
+		}
+		if policy.Enforcement != "" {
+			p.writeLine("enforcement \"" + escapeString(policy.Enforcement) + "\"")
+		}
+		if len(policy.Elements) > 0 {
+			p.sb.WriteString(p.indent())
+			p.sb.WriteString("elements [")
+			p.sb.WriteString(strings.Join(policy.Elements, ", "))
+			p.sb.WriteString("]\n")
+		}
+
 		p.indentLevel--
-	}
-	if policy.Enforcement != "" {
-		p.indentLevel++
-		p.writeLine("enforcement \"" + escapeString(policy.Enforcement) + "\"")
-		p.indentLevel--
-	}
-	if len(policy.Elements) > 0 {
-		p.indentLevel++
-		p.sb.WriteString(p.indent())
-		p.sb.WriteString("elements [")
-		p.sb.WriteString(strings.Join(policy.Elements, ", "))
-		p.sb.WriteString("]\n")
-		p.indentLevel--
+		p.writeLine("}")
+	} else {
+		p.writeLine(policy.ID + " = policy" + catStr + " \"" + escapeString(policy.Title) + "\"")
 	}
 }
 

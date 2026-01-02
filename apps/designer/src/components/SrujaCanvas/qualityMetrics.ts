@@ -11,6 +11,7 @@
  */
 
 import type { GraphvizResult } from "./types";
+import type { Node as RFNode } from "@xyflow/react";
 
 /**
  * Parent-child relationship mapping
@@ -83,6 +84,125 @@ interface EdgeSegment {
 export interface QualityMeasurementResult {
   quality: LayoutQuality;
   parentChildContainmentViolations: ParentChildContainmentViolation[];
+}
+
+/**
+ * Measure layout quality from React Flow nodes (with compound structure)
+ * This version accounts for parent-child relationships in compound nodes
+ */
+export function measureQualityFromNodes(
+  nodes: RFNode[],
+  edges: GraphvizResult["edges"],
+  parentChildRelationships?: ParentChildRelationships
+): QualityMeasurementResult {
+  // Build a map of all nodes for quick lookup
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+
+  // Convert React Flow nodes to absolute positions
+  // For nodes with parentId, convert relative position to absolute
+  const nodeBoxes: BoundingBox[] = nodes.map((node) => {
+    let absoluteX = node.position.x;
+    let absoluteY = node.position.y;
+
+    // If node has a parent, add parent's position to get absolute position
+    if (node.parentId) {
+      const parent = nodeMap.get(node.parentId);
+      if (parent) {
+        absoluteX = parent.position.x + node.position.x;
+        absoluteY = parent.position.y + node.position.y;
+      }
+    }
+
+    const width = (node.width as number) || 200;
+    const height = (node.height as number) || 120;
+
+    return {
+      id: node.id,
+      x: absoluteX,
+      y: absoluteY,
+      width,
+      height,
+      centerX: absoluteX + width / 2,
+      centerY: absoluteY + height / 2,
+    };
+  });
+
+  // Build node map for quick lookup
+  const boxMap = new Map(nodeBoxes.map((box) => [box.id, box]));
+
+  // Count edge crossings
+  const edgeCrossings = countEdgeCrossings(edges, nodeBoxes);
+
+  // Count node overlaps
+  const nodeOverlaps = countNodeOverlaps(nodeBoxes);
+
+  // Count label overlaps (simplified - would need label positions from Graphviz)
+  const labelOverlaps = estimateLabelOverlaps(edges, nodeBoxes);
+
+  // Count parent-child containment violations and get detailed violations
+  const containmentResult = parentChildRelationships
+    ? findParentChildContainmentViolations(nodeBoxes, boxMap, parentChildRelationships)
+    : { count: 0, violations: [] };
+  const parentChildContainment = containmentResult.count;
+
+  // Calculate edge length statistics
+  const edgeLengths = calculateEdgeLengths(edges, nodeBoxes);
+  const avgEdgeLength =
+    edgeLengths.length > 0 ? edgeLengths.reduce((a, b) => a + b, 0) / edgeLengths.length : 0;
+  const edgeLengthVariance = calculateVariance(edgeLengths, avgEdgeLength);
+
+  // Measure rank alignment (how well nodes align horizontally/vertically)
+  // Create a minimal GraphvizResult for compatibility
+  const mockResult: GraphvizResult = {
+    nodes: nodeBoxes.map((box) => ({
+      id: box.id,
+      x: box.x,
+      y: box.y,
+      width: box.width,
+      height: box.height,
+    })),
+    edges,
+    width: 0,
+    height: 0,
+  };
+  const rankAlignment = measureRankAlignment(nodeBoxes, mockResult);
+
+  // Measure cluster balance (placeholder - would need cluster info)
+  const clusterBalance = 0.9; // Assume reasonable balance for now
+
+  // Measure spacing consistency (requires uniform spacing)
+  const spacingConsistency = measureSpacingConsistency(nodeBoxes);
+
+  // Calculate overall score
+  const score = calculateScore({
+    edgeCrossings,
+    nodeOverlaps,
+    labelOverlaps,
+    parentChildContainment,
+    avgEdgeLength,
+    edgeLengthVariance,
+    rankAlignment,
+    clusterBalance,
+    spacingConsistency,
+  });
+
+  const quality: LayoutQuality = {
+    edgeCrossings,
+    nodeOverlaps,
+    labelOverlaps,
+    parentChildContainment,
+    avgEdgeLength,
+    edgeLengthVariance,
+    rankAlignment,
+    clusterBalance,
+    spacingConsistency,
+    score,
+  };
+
+  return {
+    quality,
+    parentChildContainmentViolations: containmentResult.violations,
+  };
 }
 
 /**
