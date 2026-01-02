@@ -142,7 +142,10 @@ export function buildCompoundNodeStructure(
     // Create parent container node (group node)
     // Use the bounding box dimensions, but ensure minimum size
     // Add padding to ensure children are fully visible
-    const padding = 40; // Padding around children
+    // Increase padding for complex diagrams with many children
+    const basePadding = 40; // Base padding around children
+    const childCount = cluster.children.length;
+    const padding = childCount >= 5 ? basePadding + 20 : basePadding; // Extra padding for complex clusters
     const minWidth = 300;
     const minHeight = 200;
     const width = Math.max(bb.width + padding * 2, minWidth);
@@ -224,7 +227,14 @@ export function buildCompoundNodeStructure(
     // If this node has a parent, convert absolute position to relative position
     // React Flow expects child positions to be relative to parent's top-left corner
     // Account for parent container padding
-    const parentPadding = 40; // Should match padding in parent creation
+    // Calculate padding based on parent's child count (should match parent creation logic)
+    const baseParentPadding = 40;
+    let parentPadding = baseParentPadding;
+    if (parentId) {
+      const parentCluster = clusters[parentId];
+      const parentChildCount = parentCluster ? parentCluster.children.length : 0;
+      parentPadding = parentChildCount >= 5 ? baseParentPadding + 20 : baseParentPadding;
+    }
     let position = absolutePosition;
     if (parentId && parentNode) {
       position = {
