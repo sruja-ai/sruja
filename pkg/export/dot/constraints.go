@@ -72,6 +72,13 @@ type LayoutConstraints struct {
 
 // BuildConstraints builds layout constraints from elements and relations.
 func BuildConstraints(elements []*Element, relations []*Relation, viewLevel int, config Config) LayoutConstraints {
+	// Determine initial edge separation based on relation count
+	// Increase edge separation for diagrams with many edges to reduce label overlaps
+	initialSep := 0.4
+	if len(relations) > 10 {
+		initialSep = 0.5 // More separation for edge labels
+	}
+
 	constraints := LayoutConstraints{
 		Global: GlobalConstraints{
 			NodeSep:     pxToInchFloat(float64(config.NodeSep)),
@@ -80,29 +87,78 @@ func BuildConstraints(elements []*Element, relations []*Relation, viewLevel int,
 			RankDir:     config.RankDir,
 			Overlap:     "false",
 			Concentrate: len(relations) > 6, // Bundle parallel edges earlier for better routing (was > 8)
-			Sep:         0.4,                // Increased separation for less crowding (was 0.3)
+			Sep:         initialSep,         // Increased separation for less crowding (was 0.3)
 		},
 		ViewLevel: viewLevel,
 	}
 
 	// Adaptive spacing based on node count (logarithmic for FAANG-quality)
 	// Increased base scaling factor to prevent overlaps in denser diagrams
+	// Use more uniform scaling to improve spacing consistency
 	if len(elements) > 2 {
-		// More aggressive logarithmic scaling to prevent overlaps
+		// More uniform logarithmic scaling to prevent overlaps while maintaining consistency
 		// Formula: 1.0 + 0.25 * log10(nodeCount) for better adaptation
 		scaleFactor := DynamicScalingBase + DynamicScalingFactor*float64(len(elements))/DynamicScalingDivisor
 		if scaleFactor > DynamicScalingCap {
 			scaleFactor = DynamicScalingCap // Slightly higher cap for dense diagrams
 		}
+		// Apply uniform scaling to both dimensions to maintain consistency
 		constraints.Global.NodeSep *= scaleFactor
-		constraints.Global.RankSep *= scaleFactor
+		constraints.Global.RankSep *= scaleFactor * 1.1 // Slightly more vertical spacing for better rank separation
 	}
 
-	// Additional spacing boost for L1 diagrams with persons and systems
-	// L1 diagrams often have overlapping nodes due to different node sizes
+	// Additional aggressive spacing boost for very complex diagrams (20+ nodes)
+	// This helps prevent overlaps and improves readability in large diagrams
+	// Use more uniform multipliers to improve spacing consistency
+	if len(elements) >= ComplexGraphThreshold {
+		// More uniform spacing boost for very complex diagrams
+		// Slightly reduced multipliers to maintain better consistency
+		constraints.Global.NodeSep *= 1.25 // Reduced from 1.30 for better consistency
+		constraints.Global.RankSep *= 1.30 // Reduced from 1.35, more uniform ratio
+	}
+
+	// Level-specific spacing improvements
+	// L1 (Context View): Persons and systems - different node sizes cause overlaps
+	// Use more uniform scaling to improve spacing consistency
 	if viewLevel == 1 || viewLevel == 0 {
 		constraints.Global.NodeSep *= L1NodeSepScale // Extra 15% spacing for L1
 		constraints.Global.RankSep *= L1RankSepScale // Extra 20% vertical spacing for L1
+		// Additional boost for L1 diagrams with many nodes to prevent overlaps
+		// More uniform multipliers for better consistency
+		if len(elements) >= 8 {
+			constraints.Global.NodeSep *= 1.15 // Reduced from 1.20 for better consistency
+			constraints.Global.RankSep *= 1.20 // Reduced from 1.25, more uniform ratio
+		}
+	}
+
+	// L2 (Container View): Containers within systems - need spacing for complex hierarchies
+	// Use uniform scaling ratios to improve spacing consistency
+	if viewLevel == 2 {
+		// L2 diagrams often have many containers and need better spacing
+		if len(elements) >= 8 {
+			constraints.Global.NodeSep *= 1.15 // Extra 15% for complex L2 diagrams
+			constraints.Global.RankSep *= 1.18 // Slightly reduced from 1.20 for better consistency
+		}
+		// Very complex L2 diagrams (15+ containers) need even more spacing
+		if len(elements) >= 15 {
+			constraints.Global.NodeSep *= 1.10 // Additional 10% boost
+			constraints.Global.RankSep *= 1.12 // Reduced from 1.15, more uniform ratio
+		}
+	}
+
+	// L3 (Component View): Components within containers - dense layouts need spacing
+	// Use uniform scaling to improve spacing consistency
+	if viewLevel == 3 {
+		// L3 diagrams are typically dense with many components
+		if len(elements) >= 6 {
+			constraints.Global.NodeSep *= 1.15 // Extra 15% for L3 diagrams
+			constraints.Global.RankSep *= 1.16 // Slightly reduced from 1.18 for better consistency
+		}
+		// Complex L3 diagrams (12+ components) need more spacing
+		if len(elements) >= 12 {
+			constraints.Global.NodeSep *= 1.10 // Additional 10% boost
+			constraints.Global.RankSep *= 1.10 // Reduced from 1.12, more uniform ratio
+		}
 	}
 
 	// Use orthogonal splines for dense diagrams to reduce crossings
@@ -110,6 +166,12 @@ func BuildConstraints(elements []*Element, relations []*Relation, viewLevel int,
 	// NOTE: Removed "ortho" as it often causes missing edges in Graphviz WASM.
 	if len(elements) > DenseGraphThreshold {
 		constraints.Global.Splines = "polyline" // Polyline for medium/high complexity
+	}
+	// For very complex diagrams, use spline with better routing
+	if len(elements) >= ComplexGraphThreshold {
+		constraints.Global.Splines = "spline" // Curved splines work better for very complex diagrams
+		// Increase separation for better edge routing
+		constraints.Global.Sep = 0.5 // Increased from 0.4 for better edge separation
 	}
 	// For smaller diagrams, keep "spline" (curved) as it looks better
 
@@ -147,6 +209,7 @@ func buildRankConstraints(elements []*Element, viewLevel int) []RankConstraint {
 
 	// L1 (Context View): Persons/actors at top, systems below
 	// Ensures all persons align perfectly, all systems align perfectly
+	// Improved alignment for better spacing consistency
 	if viewLevel == 1 || viewLevel == 0 {
 		// Collect all person-like elements (person, actor, external)
 		var persons []*Element
@@ -168,7 +231,8 @@ func buildRankConstraints(elements []*Element, viewLevel int) []RankConstraint {
 
 		// Removed: rank=same for systems.
 		// Allowing Graphviz to determine vertical hierarchy between systems (e.g. System -> External System)
-		// yields better results for Context diagrams.
+		// yields better results for Context diagrams. Forcing all systems to same rank can create
+		// worse layouts when systems have relationships that suggest different ranks.
 	}
 
 	// L2 (Container View): Containers, datastores, queues
@@ -374,10 +438,10 @@ func buildEdgeConstraints(relations []*Relation, config Config, nodeCount int, p
 
 			// Increase minlen for complex diagrams to reduce crossings
 			// More aggressive minlen settings for better edge routing
-			// Increase minlen for complex diagrams to reduce crossings
-			// More aggressive minlen settings for better edge routing
 			if nodeCount > ComplexGraphThreshold {
-				edge.MinLen = 2 // Medium minlen for very complex diagrams
+				edge.MinLen = 3 // Increased minlen for very complex diagrams to reduce crossings
+			} else if nodeCount > DenseGraphThreshold {
+				edge.MinLen = 2 // Medium minlen for dense diagrams
 			} else {
 				edge.MinLen = 1 // Standard length
 			}
@@ -389,16 +453,26 @@ func buildEdgeConstraints(relations []*Relation, config Config, nodeCount int, p
 
 		// Edge label positioning
 		if rel.Label != "" {
+			// Increase label distance for complex diagrams to reduce overlaps
+			labelDistance := 1.5 // Default distance in inches
+			if nodeCount > DenseGraphThreshold {
+				labelDistance = 2.0 // More distance for dense diagrams
+			}
+			if nodeCount >= ComplexGraphThreshold {
+				labelDistance = 2.5 // Even more distance for very complex diagrams
+			}
+
 			edge.Label = EdgeLabel{
 				Text:     rel.Label,
-				Distance: 1.5, // Default distance in inches
+				Distance: labelDistance,
 				Angle:    0,   // Parallel to edge
 				Position: 0.5, // Middle of edge
 			}
 
 			// For long labels, adjust positioning
 			if len(rel.Label) > 30 {
-				edge.Label.Angle = 90 // Perpendicular for long labels
+				edge.Label.Angle = 90                     // Perpendicular for long labels
+				edge.Label.Distance = labelDistance + 0.5 // Extra distance for perpendicular labels
 			}
 		}
 

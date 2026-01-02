@@ -363,7 +363,12 @@ func writeClusterFromConstraints(sb *strings.Builder, parentID string, children 
 	fmt.Fprintf(sb, "    penwidth=%d;\n", penwidth)
 
 	// Increase margin for deeper nesting to improve visual separation
+	// For complex diagrams, add extra margin to prevent child nodes from touching cluster boundaries
 	margin := MarginCluster + depth*2
+	// Add extra margin for complex diagrams (20+ nodes) to improve containment
+	if len(children) >= 5 {
+		margin += 10 // Extra 10px margin for clusters with many children
+	}
 	fmt.Fprintf(sb, "    margin=%d;\n", margin)
 
 	sb.WriteString("    labelloc=\"t\";\n")  // Top
