@@ -33,21 +33,39 @@ func GenerateDOTFromConstraints(
 	// Group elements by parent for cluster generation
 	rootElements, clusters := groupByParent(elements)
 
+	// Flatten L3 views to prevent Graphviz layout crashes ("missing node" in cluster)
+	// L3 views already focus on a single container, so internal clustering is unnecessary
+	// and often harmful to the layout engine.
+	if constraints.ViewLevel == 3 {
+		for _, children := range clusters {
+			rootElements = append(rootElements, children...)
+		}
+		// Clear clusters
+		clusters = make(map[string][]*Element)
+	}
+
+	// Build parentMap for cross-cluster edge detection and depth calculation
+	parentMap := make(map[string]string)
+	for _, elem := range elements {
+		parentMap[elem.ID] = elem.ParentID
+	}
+
 	// Write root-level nodes
 	for _, elem := range rootElements {
 		writeNodeFromConstraints(sb, elem, constraints, "  ")
 	}
 
-	// Write clusters (subgraphs)
+	// Write clusters (subgraphs) with depth-based styling
 	for parentID, children := range clusters {
-		writeClusterFromConstraints(sb, parentID, children, elements, constraints)
+		depth := calculateClusterDepth(parentID, parentMap)
+		writeClusterFromConstraints(sb, parentID, children, elements, constraints, depth)
 	}
 
 	// Write rank constraints
 	writeRankConstraintsFromData(sb, constraints.Ranks)
 
 	// Write edges from constraints
-	writeEdgesFromConstraints(sb, constraints.Edges)
+	writeEdgesFromConstraints(sb, constraints.Edges, parentMap)
 
 	sb.WriteString("}\n")
 
@@ -182,7 +200,7 @@ func writeRankConstraintsFromData(sb *strings.Builder, ranks []RankConstraint) {
 }
 
 // writeEdgesFromConstraints writes edges from constraint data.
-func writeEdgesFromConstraints(sb *strings.Builder, edges []EdgeConstraint) {
+func writeEdgesFromConstraints(sb *strings.Builder, edges []EdgeConstraint, parentMap map[string]string) {
 	for _, edge := range edges {
 		attrs := []string{}
 
@@ -228,6 +246,18 @@ func writeEdgesFromConstraints(sb *strings.Builder, edges []EdgeConstraint) {
 		}
 		if edge.Ports.Head != "" {
 			toPort = ":" + edge.Ports.Head
+		}
+
+		// Add lhead/ltail for cross-cluster edges
+		// These attributes clip edges to cluster boundaries when compound=true
+		fromParent := parentMap[edge.From]
+		toParent := parentMap[edge.To]
+
+		// Only add lhead/ltail when edge crosses cluster boundaries
+		// (i.e., when parents are different and both are non-empty)
+		if fromParent != "" && toParent != "" && fromParent != toParent {
+			attrs = append(attrs, fmt.Sprintf("ltail=\"cluster_%s\"", escapeID(fromParent)))
+			attrs = append(attrs, fmt.Sprintf("lhead=\"cluster_%s\"", escapeID(toParent)))
 		}
 
 		// Add constraint attribute
@@ -286,8 +316,24 @@ func writeGlobalEdgeAttributesFromConstraints(sb *strings.Builder) {
 	sb.WriteString("  ];\n\n")
 }
 
+// calculateClusterDepth calculates the nesting depth of a cluster.
+// Depth 0 = root level (no parent), depth 1 = nested one level, etc.
+func calculateClusterDepth(parentID string, parentMap map[string]string) int {
+	depth := 0
+	current := parentID
+	for current != "" {
+		parent, exists := parentMap[current]
+		if !exists || parent == "" {
+			break
+		}
+		depth++
+		current = parent
+	}
+	return depth
+}
+
 // writeClusterFromConstraints writes a subgraph cluster for hierarchical grouping.
-func writeClusterFromConstraints(sb *strings.Builder, parentID string, children []*Element, allElements []*Element, constraints LayoutConstraints) {
+func writeClusterFromConstraints(sb *strings.Builder, parentID string, children []*Element, allElements []*Element, constraints LayoutConstraints, depth int) {
 	// Find the parent element for the label
 	var parentTitle string
 	for _, elem := range allElements {
@@ -305,7 +351,21 @@ func writeClusterFromConstraints(sb *strings.Builder, parentID string, children 
 	sb.WriteString("    style=\"filled\";\n")
 	fmt.Fprintf(sb, "    color=\"%s\";\n", ColorTransparent)
 	fmt.Fprintf(sb, "    bgcolor=\"%s\";\n", ColorGrayBg)
-	fmt.Fprintf(sb, "    margin=%d;\n", MarginCluster)
+
+	// Depth-based styling for visual hierarchy
+	// Top-level clusters (depth 0) get thicker borders, nested clusters get thinner
+	var penwidth int
+	if depth == 0 {
+		penwidth = 2 // Top-level clusters
+	} else {
+		penwidth = 1 // Nested clusters
+	}
+	fmt.Fprintf(sb, "    penwidth=%d;\n", penwidth)
+
+	// Increase margin for deeper nesting to improve visual separation
+	margin := MarginCluster + depth*2
+	fmt.Fprintf(sb, "    margin=%d;\n", margin)
+
 	sb.WriteString("    labelloc=\"t\";\n")  // Top
 	sb.WriteString("    labeljust=\"l\";\n") // Left
 	fmt.Fprintf(sb, "    fontsize=%d;\n", FontSizeCluster)
