@@ -128,6 +128,9 @@ func BuildConstraints(elements []*Element, relations []*Relation, viewLevel int,
 	// Build edge constraints with crossing reduction hints
 	constraints.Edges = buildEdgeConstraints(relations, config, len(elements), parentMap)
 
+	// Add invisible edges between sibling clusters to keep them together
+	constraints.Edges = addSiblingClusterConstraints(constraints.Edges, elements, parentMap)
+
 	return constraints
 }
 
@@ -400,6 +403,46 @@ func buildEdgeConstraints(relations []*Relation, config Config, nodeCount int, p
 		}
 
 		edges = append(edges, edge)
+	}
+
+	return edges
+}
+
+// addSiblingClusterConstraints adds invisible edges between sibling clusters to keep them together.
+// Inspired by PlantUML's "together" keyword, this groups sibling clusters visually.
+func addSiblingClusterConstraints(edges []EdgeConstraint, elements []*Element, parentMap map[string]string) []EdgeConstraint {
+	// Identify elements that will become clusters (elements that have children)
+	hasChildren := make(map[string]bool)
+	for _, elem := range elements {
+		if elem.ParentID != "" {
+			hasChildren[elem.ParentID] = true
+		}
+	}
+
+	// Group sibling clusters by their parent
+	siblingsByParent := make(map[string][]string)
+	for _, elem := range elements {
+		if hasChildren[elem.ID] {
+			// This element will become a cluster (it has children)
+			parent := elem.ParentID
+			siblingsByParent[parent] = append(siblingsByParent[parent], elem.ID)
+		}
+	}
+
+	// Add invisible edges between first and last sibling to keep clusters together
+	for parent, siblings := range siblingsByParent {
+		if len(siblings) > 1 && parent != "" {
+			// Only add constraints for siblings that share a parent (not root-level elements)
+			first := siblings[0]
+			last := siblings[len(siblings)-1]
+			edges = append(edges, EdgeConstraint{
+				From:          first,
+				To:            last,
+				Weight:        1000, // High priority to keep siblings together
+				MinLen:        1,
+				AffectsLayout: true,
+			})
+		}
 	}
 
 	return edges
