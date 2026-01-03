@@ -520,18 +520,63 @@ func dslToDot(this js.Value, args []js.Value) (ret interface{}) {
 	})
 
 	// Convert Elements to []map[string]interface{} for JS compatibility
+	// Validate and log each element to help debug validation issues
 	elements := make([]interface{}, len(res.Elements))
 	for i, elem := range res.Elements {
-		elements[i] = map[string]interface{}{
-			"id":          elem.ID,
-			"kind":        elem.Kind,
-			"title":       elem.Title,
-			"technology":  elem.Technology,
-			"description": elem.Description,
-			"parentId":    elem.ParentID,
-			"width":       elem.Width,
-			"height":      elem.Height,
+		// Validate element before conversion
+		if elem.ID == "" {
+			LogWarn("dslToDot", fmt.Sprintf("Element at index %d has empty ID", i), map[string]interface{}{
+				"index": i,
+				"kind":  elem.Kind,
+			})
 		}
+		if elem.Kind == "" {
+			LogWarn("dslToDot", fmt.Sprintf("Element at index %d has empty Kind", i), map[string]interface{}{
+				"index": i,
+				"id":    elem.ID,
+			})
+		}
+		if elem.Title == "" {
+			LogWarn("dslToDot", fmt.Sprintf("Element at index %d has empty Title", i), map[string]interface{}{
+				"index": i,
+				"id":    elem.ID,
+				"kind":  elem.Kind,
+			})
+		}
+		if elem.Width <= 0 {
+			LogWarn("dslToDot", fmt.Sprintf("Element at index %d has invalid Width: %d", i, elem.Width), map[string]interface{}{
+				"index": i,
+				"id":    elem.ID,
+				"width": elem.Width,
+			})
+		}
+		if elem.Height <= 0 {
+			LogWarn("dslToDot", fmt.Sprintf("Element at index %d has invalid Height: %d", i, elem.Height), map[string]interface{}{
+				"index":  i,
+				"id":     elem.ID,
+				"height": elem.Height,
+			})
+		}
+
+		// Convert to map, ensuring all fields are properly typed
+		// TypeScript validation expects:
+		// - Required: id (string), kind (string), title (string), width (number >= 0), height (number >= 0)
+		// - Optional: technology (string | undefined), description (string | undefined), parentId (string | undefined)
+		elementMap := map[string]interface{}{
+			"id":     elem.ID,
+			"kind":   elem.Kind,
+			"title":  elem.Title,
+			"width":  elem.Width,  // int converts to number in JS
+			"height": elem.Height, // int converts to number in JS
+		}
+
+		// Add optional fields - TypeScript validation allows undefined, but also accepts empty strings
+		// We'll include them as empty strings if not set, which should be fine
+		elementMap["technology"] = elem.Technology
+		elementMap["description"] = elem.Description
+		elementMap["parentId"] = elem.ParentID
+
+		elements[i] = elementMap
 	}
 
 	// Convert Relations to []map[string]interface{} for JS compatibility

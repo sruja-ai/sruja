@@ -490,7 +490,7 @@ export const SrujaCanvas = () => {
 
         // Expose quality metrics to window for e2e tests and UI (dev only)
         // Quality metrics are developer tools, not user-facing features
-        if (quality && isDev && typeof window !== "undefined") {
+        if (quality && typeof window !== "undefined") {
           const qualityMetrics = {
             score: quality.score,
             edgeCrossings: quality.edgeCrossings,
@@ -690,7 +690,7 @@ export const SrujaCanvas = () => {
 
         // Recalculate quality metrics using actual rendered positions (for compound nodes)
         // This ensures parent-child containment is checked against actual parent container bounding boxes
-        if (isDev && hasClusters && nextNodes.length > 0) {
+        if (hasClusters && nextNodes.length > 0) {
           const updatedQualityResult = measureQualityFromNodes(
             nextNodes,
             layoutResult.edges,

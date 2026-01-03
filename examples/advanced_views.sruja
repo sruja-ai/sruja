@@ -1,0 +1,124 @@
+// examples/advanced_views.sruja
+// Demonstrates advanced view features:
+// - Layout configurations with manual positions
+// - Extended styling with tag filters
+// - Multiple layout presets
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+
+// Elements
+Customer = person "Customer"
+Admin = person "Administrator"
+
+Shop = system "E-Commerce Shop" {
+    WebApp = container "Web Application" {
+        Cart = component "Shopping Cart"
+        Checkout = component "Checkout Service"
+        Catalog = component "Product Catalog"
+    }
+    API = container "REST API" {
+        Auth = component "Authentication"
+        Orders = component "Order Handler"
+    }
+    DB = database "PostgreSQL"
+    Cache = database "Redis Cache"
+}
+
+// Relationships
+Customer -> Shop.WebApp "browses"
+Admin -> Shop.WebApp "manages"
+Shop.WebApp -> Shop.API "calls"
+Shop.API -> Shop.DB "reads/writes"
+Shop.API -> Shop.Cache "reads"
+Shop.WebApp.Cart -> Shop.API.Auth "validates"
+Shop.API.Auth -> Shop.API.Orders "authorizes"
+Shop.WebApp.Checkout -> Shop.API.Orders "creates orders"
+
+// ============================================================================
+// VIEW 1: System Context (L1)
+// Demonstrates: Simple layout with manual positions
+// ============================================================================
+view index {
+    title "E-Commerce System Context"
+    include *
+    
+    layout {
+        // Manual positions for key elements
+        element Customer {
+            position { x: 150, y: 50 }
+        }
+        element Admin {
+            position { x: 450, y: 50 }
+        }
+        element Shop {
+            position { x: 300, y: 200 }
+        }
+    }
+}
+
+// ============================================================================
+// VIEW 2: Container View (L2)
+// Demonstrates: Grid preset layout, tag-based styling
+// ============================================================================
+view containers of Shop {
+    title "E-Commerce Containers"
+    include Shop.*
+    
+    styles {
+        element "Web Application" {
+            shape rectangle
+            color "#3498db"
+        }
+        element "REST API" {
+            shape rectangle
+            color "#9b59b6"
+        }
+        element "Database" {
+            shape cylinder
+            color "#e74c3c"
+        }
+    }
+}
+
+// ============================================================================
+// VIEW 3: Component View (L2)
+// Demonstrates: Manual positions for components
+// ============================================================================
+view components of API {
+    title "API Gateway Components"
+    include Shop.API.*
+    
+    layout {
+        element Auth {
+            position { x: 300, y: 50 }
+        }
+        element Orders {
+            position { x: 300, y: 200 }
+        }
+    }
+}
+
+// ============================================================================
+// VIEW 4: WebApp Components (L2)
+// Demonstrates: Manual positions
+// ============================================================================
+view components of WebApp {
+    title "Web Application Components"
+    include Shop.WebApp.*
+    
+    layout {
+        element Cart {
+            position { x: 150, y: 100 }
+        }
+        element Checkout {
+            position { x: 350, y: 100 }
+        }
+        element Catalog {
+            position { x: 250, y: 250 }
+        }
+    }
+}

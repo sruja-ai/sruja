@@ -66,6 +66,8 @@ interface GraphvizObject {
   bb?: string; // Bounding box "llx,lly,urx,ury" (for clusters)
   objects?: GraphvizObject[];
   subgraphs?: GraphvizObject[];
+  nodes?: GraphvizObject[];
+  edges?: GraphvizObject[];
 }
 
 /**
@@ -223,6 +225,11 @@ export async function runGraphviz(dot: string): Promise<GraphvizResult> {
           const childIds: string[] = [];
           const collectChildren = (objs: GraphvizObject[]) => {
             objs.forEach((childObj) => {
+              // Log what we're seeing
+              if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
+                // Too verbose for loop? Just log basic counts or first item
+              }
+
               // Collect node IDs (nodes have names that don't start with "cluster_")
               if (childObj.name && !childObj.name.startsWith("cluster_")) {
                 const childId = childObj.name.replace(/"/g, "");
@@ -230,14 +237,21 @@ export async function runGraphviz(dot: string): Promise<GraphvizResult> {
                   childIds.push(childId);
                 }
               }
-              // Recurse into nested objects and subgraphs
+              // Recurse into nested objects and subgraphs and nodes
               if (childObj.objects) collectChildren(childObj.objects);
               if (childObj.subgraphs) collectChildren(childObj.subgraphs);
+              if (childObj.nodes) collectChildren(childObj.nodes);
             });
           };
 
+          if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
+            // Debug logging kept minimal
+            // console.log(`[layoutEngine] Inspecting cluster ${clusterName} keys:`, Object.keys(obj));
+          }
+
           if (obj.objects) collectChildren(obj.objects);
           if (obj.subgraphs) collectChildren(obj.subgraphs);
+          if (obj.nodes) collectChildren(obj.nodes);
 
           // Store cluster info (bb, children) for later use
           clusters.set(parentId, {

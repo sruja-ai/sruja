@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { type NodeProps, type Node } from "@xyflow/react";
+import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import type { C4Node } from "../../components/SrujaCanvas/types";
 import { getNodeColors } from "../../utils/colorScheme";
 import "./nodes.css";
@@ -73,6 +73,66 @@ function GroupNodeComponent({ data, selected, width, height }: GroupNodeProps) {
       >
         Container
       </div>
+
+      {/* All target handles (incoming edges) - same as SrujaNode */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="target-top"
+        className="c4-handle"
+        style={{ opacity: 0 }}
+      />
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="target-right"
+        className="c4-handle"
+        style={{ opacity: 0 }}
+      />
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="target-bottom"
+        className="c4-handle"
+        style={{ opacity: 0 }}
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="target-left"
+        className="c4-handle"
+        style={{ opacity: 0 }}
+      />
+
+      {/* All source handles (outgoing edges) - same as SrujaNode */}
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="source-top"
+        className="c4-handle"
+        style={{ opacity: 0 }}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="source-right"
+        className="c4-handle"
+        style={{ opacity: 0 }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="source-bottom"
+        className="c4-handle"
+        style={{ opacity: 0 }}
+      />
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="source-left"
+        className="c4-handle"
+        style={{ opacity: 0 }}
+      />
     </div>
   );
 }

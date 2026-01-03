@@ -34,7 +34,7 @@ func TestBuildConstraints(t *testing.T) {
 			elements[i] = &Element{ID: "Node", Kind: "component"}
 		}
 
-		constraints := BuildConstraints(elements, nil, 3, config) // L3 view (no L1 boost)
+		constraints := BuildConstraints(elements, nil, 3, config) // L3 view
 
 		// Expected scaling: 1.0 + 0.25 * (10/8) = 1.3125
 		baseSep := pxToInchFloat(float64(config.NodeSep))
@@ -44,9 +44,13 @@ func TestBuildConstraints(t *testing.T) {
 		if constraints.Global.NodeSep <= baseSep {
 			t.Error("Expected increased NodeSep for dense graph")
 		}
-		if constraints.Global.Splines != "polyline" {
-			t.Errorf("Expected polyline splines for dense graph, got %s", constraints.Global.Splines)
+		// Round 3: L3 uses spline for better crossing reduction (not polyline)
+		if constraints.Global.Splines != "spline" {
+			t.Errorf("Expected spline for L3 dense graph (Round 3 strategy), got %s", constraints.Global.Splines)
 		}
+		// Apply L3 Round 1 spacing: multiply by 1.15 (L3NodeSepScale) then 1.10 for >=15 (but only 10 nodes here so no extra boost)
+		expectedNodeSep *= L3NodeSepScale
+		// Note: ComplexGraphThreshold is 20 now, so 10 nodes doesn't trigger extra boost.
 		// Allow some float precision difference
 		if constraints.Global.NodeSep < expectedNodeSep-0.001 || constraints.Global.NodeSep > expectedNodeSep+0.001 {
 			t.Errorf("Expected NodeSep approx %v, got %v", expectedNodeSep, constraints.Global.NodeSep)
