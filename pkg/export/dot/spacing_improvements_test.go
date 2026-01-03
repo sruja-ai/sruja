@@ -50,9 +50,8 @@ func TestSpacingImprovements(t *testing.T) {
 	dotOutput := result.DOT
 
 	// Test 1: Verify improved base spacing values
-	// Expected: nodesep should be ~2.08 (150px / 72 DPI = 2.08 inches)
-	// Expected: ranksep should be ~2.50 (180px / 72 DPI = 2.50 inches)
-	// We'll check they're at least greater than the old values (120/72=1.67, 130/72=1.81)
+	// Expected: nodesep should be ~1.52 (110px / 72 DPI)
+	// Expected: ranksep should be ~1.66 (120px / 72 DPI)
 	t.Run("Base spacing increased", func(t *testing.T) {
 		// Extract nodesep value
 		nodesepIdx := strings.Index(dotOutput, "nodesep=")
@@ -71,25 +70,24 @@ func TestSpacingImprovements(t *testing.T) {
 			t.Error("ranksep attribute missing")
 		}
 
-		// Verify the values are at least above old minimums
-		// We can't easily parse floats, so we check the DOT looks correct
-		// For 150px: 150/72 = 2.08, so should see "2.08" or "2.09"
-		if !strings.Contains(dotOutput, "nodesep=2.") && !strings.Contains(dotOutput, "nodesep=1.9") {
+		// Verify the values are reasonable for compact layout
+		// For 60px: 60/72 = 0.83, so should see "0.83"
+		if !strings.Contains(dotOutput, "nodesep=0.") && !strings.Contains(dotOutput, "nodesep=1.") {
 			t.Logf("DOT snippet around nodesep: %s", extractAround(dotOutput, "nodesep", 30))
 		}
 	})
 
-	// Test 2: Verify node margins are added
-	t.Run("Node margins added", func(t *testing.T) {
-		if !strings.Contains(dotOutput, "margin=") {
-			t.Error("margin attribute missing from nodes (expected margin=0.15)")
+	// Test 2: Verify node margins are handled by HTML (margin=0)
+	t.Run("Node margins handled by HTML", func(t *testing.T) {
+		if !strings.Contains(dotOutput, "margin=0") {
+			t.Error("margin=0 missing from nodes (expected HTML padding)")
 		}
 	})
 
-	// Test 3: Verify graph padding increased
-	t.Run("Graph padding increased", func(t *testing.T) {
-		if !strings.Contains(dotOutput, "pad=0.5") {
-			t.Error("Expected pad=0.5 (was 0.4), but not found")
+	// Test 3: Verify graph padding is compact
+	t.Run("Graph padding compact", func(t *testing.T) {
+		if !strings.Contains(dotOutput, "pad=0.2") {
+			t.Error("Expected pad=0.2 (compact), but not found")
 		}
 	})
 
@@ -100,22 +98,29 @@ func TestSpacingImprovements(t *testing.T) {
 		}
 	})
 
-	// Test 5: Verify separation value increased
-	t.Run("Separation increased", func(t *testing.T) {
-		if !strings.Contains(dotOutput, "sep=0.4") {
-			t.Error("Expected sep=0.4 (was 0.3), but not found")
+	// Test 5: Verify separation value compact
+	t.Run("Separation compact", func(t *testing.T) {
+		if !strings.Contains(dotOutput, "sep=0.1") {
+			t.Error("Expected sep=0.1 (compact), but not found")
 		}
 	})
 
 	// Test 6: Verify edge weights are present for labeled edges
 	t.Run("Edge weights for labeled edges", func(t *testing.T) {
-		// Both edges have labels, so they should have high weights (25)
-		if !strings.Contains(dotOutput, "weight=25") || !strings.Contains(dotOutput, "weight=") {
-			t.Logf("Expected weight=25 for labeled edges. DOT snippet: %s", extractAround(dotOutput, "weight", 30))
+		// Both edges have labels, so they should have moderate weights (10)
+		if !strings.Contains(dotOutput, "weight=10") || !strings.Contains(dotOutput, "weight=") {
+			t.Logf("Expected weight=10 for labeled edges. DOT snippet: %s", extractAround(dotOutput, "weight", 30))
 		}
 	})
 
-	// Test 7: Print DOT output for manual inspection
+	// Test 7: Verify HTML Labels
+	t.Run("HTML Labels Used", func(t *testing.T) {
+		if !strings.Contains(dotOutput, "label=<") || !strings.Contains(dotOutput, "<TABLE") {
+			t.Error("Expected HTML labels (label=<...<TABLE...), but not found")
+		}
+	})
+
+	// Test 8: Print DOT output for manual inspection
 	t.Logf("Generated DOT output:\n%s", dotOutput)
 }
 
@@ -160,10 +165,9 @@ func TestAdaptiveSpacing(t *testing.T) {
 	dotOutput := result.DOT
 
 	// With 7 nodes, adaptive spacing should apply
-	// Base: 150px nodesep = 2.08 inches
-	// With 7 nodes: scaleFactor = 1.0 + 0.25 * 7/8 = 1.21875
-	// nodesep should be ~2.54 inches
-	// Plus L1 boost: 2.54 * 1.15 = ~2.92 inches
+	// Base: 110px nodesep = 1.52 inches
+	// With 7 nodes: scaleFactor logic applies
+	// We just verify it's generated successfully and has reasonable values
 
 	t.Logf("DOT output for 7-node diagram:\n%s", dotOutput)
 
