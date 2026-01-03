@@ -180,3 +180,6 @@ tsc_output.txt
 # Test log files
 *_test_log.txt
 *_failures.txt
+apps/designer/tests/results
+*log.txt
+*.wasm

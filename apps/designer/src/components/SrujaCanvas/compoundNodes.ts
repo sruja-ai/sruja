@@ -226,20 +226,17 @@ export function buildCompoundNodeStructure(
 
     // If this node has a parent, convert absolute position to relative position
     // React Flow expects child positions to be relative to parent's top-left corner
-    // Account for parent container padding
-    // Calculate padding based on parent's child count (should match parent creation logic)
-    const baseParentPadding = 40;
-    let parentPadding = baseParentPadding;
-    if (parentId) {
-      const parentCluster = clusters[parentId];
-      const parentChildCount = parentCluster ? parentCluster.children.length : 0;
-      parentPadding = parentChildCount >= 5 ? baseParentPadding + 20 : baseParentPadding;
-    }
+    // If this node has a parent, convert absolute position to relative position
+    // React Flow expects child positions to be relative to parent's top-left corner
+    // The parent node position already accounts for padding, so just subtract it
     let position = absolutePosition;
     if (parentId && parentNode) {
+      // Parent node position starts at (bb.x - padding, bb.y - padding)
+      // So relative position = absolutePosition - parentNode.position
+      // No need to add padding again - it's implicitly handled by parent's negative offset
       position = {
-        x: absolutePosition.x - parentNode.position.x + parentPadding,
-        y: absolutePosition.y - parentNode.position.y + parentPadding,
+        x: absolutePosition.x - parentNode.position.x,
+        y: absolutePosition.y - parentNode.position.y,
       };
     }
 

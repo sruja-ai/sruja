@@ -1,0 +1,22 @@
+// examples/test_views.sruja
+// Simple test file for view features
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+
+User = person "User"
+Shop = system "Shop" {
+    Web = container "Web"
+    API = container "API"
+}
+
+User -> Shop.Web "uses"
+
+view index {
+    include *
+}
+
+view containers of Shop {
+    include Shop.*
+}

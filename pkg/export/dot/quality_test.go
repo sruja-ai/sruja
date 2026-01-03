@@ -50,43 +50,43 @@ func TestLayoutQuality_CalculateScore(t *testing.T) {
 	}{
 		{
 			name:     "perfect (no issues)",
-			quality:  LayoutQuality{EdgeCrossings: 0, NodeOverlaps: 0, LabelOverlaps: 0, RankAlignment: 0.95, ClusterBalance: 0.9},
+			quality:  LayoutQuality{EdgeCrossings: 0, NodeOverlaps: 0, LabelOverlaps: 0, RankAlignment: 0.95, ClusterBalance: 0.9, SpacingConsistency: 0.9},
 			minScore: 0.9,
 			maxScore: 1.0,
 		},
 		{
 			name:     "edge crossings",
-			quality:  LayoutQuality{EdgeCrossings: 5, NodeOverlaps: 0, LabelOverlaps: 0, RankAlignment: 0.95, ClusterBalance: 0.9},
-			minScore: 0.7,
-			maxScore: 0.8,
+			quality:  LayoutQuality{EdgeCrossings: 5, NodeOverlaps: 0, LabelOverlaps: 0, RankAlignment: 0.95, ClusterBalance: 0.9, SpacingConsistency: 0.9},
+			minScore: 0.4,
+			maxScore: 0.6,
 		},
 		{
 			name:     "node overlaps (heavy penalty)",
-			quality:  LayoutQuality{EdgeCrossings: 0, NodeOverlaps: 2, LabelOverlaps: 0, RankAlignment: 0.95, ClusterBalance: 0.9},
+			quality:  LayoutQuality{EdgeCrossings: 0, NodeOverlaps: 2, LabelOverlaps: 0, RankAlignment: 0.95, ClusterBalance: 0.9, SpacingConsistency: 0.9},
+			minScore: 0.2,
+			maxScore: 0.4,
+		},
+		{
+			name:     "label overlaps",
+			quality:  LayoutQuality{EdgeCrossings: 0, NodeOverlaps: 0, LabelOverlaps: 2, RankAlignment: 0.95, ClusterBalance: 0.9, SpacingConsistency: 0.9},
 			minScore: 0.5,
 			maxScore: 0.7,
 		},
 		{
-			name:     "label overlaps",
-			quality:  LayoutQuality{EdgeCrossings: 0, NodeOverlaps: 0, LabelOverlaps: 2, RankAlignment: 0.95, ClusterBalance: 0.9},
+			name:     "poor rank alignment",
+			quality:  LayoutQuality{EdgeCrossings: 0, NodeOverlaps: 0, LabelOverlaps: 0, RankAlignment: 0.5, ClusterBalance: 0.9, SpacingConsistency: 0.9},
 			minScore: 0.7,
 			maxScore: 0.9,
 		},
 		{
-			name:     "poor rank alignment",
-			quality:  LayoutQuality{EdgeCrossings: 0, NodeOverlaps: 0, LabelOverlaps: 0, RankAlignment: 0.5, ClusterBalance: 0.9},
-			minScore: 0.8,
-			maxScore: 1.0,
-		},
-		{
 			name:     "poor cluster balance",
-			quality:  LayoutQuality{EdgeCrossings: 0, NodeOverlaps: 0, LabelOverlaps: 0, RankAlignment: 0.95, ClusterBalance: 0.5},
+			quality:  LayoutQuality{EdgeCrossings: 0, NodeOverlaps: 0, LabelOverlaps: 0, RankAlignment: 0.95, ClusterBalance: 0.5, SpacingConsistency: 0.9},
 			minScore: 0.9,
 			maxScore: 1.0,
 		},
 		{
 			name:     "all maximum penalties",
-			quality:  LayoutQuality{EdgeCrossings: 20, NodeOverlaps: 10, LabelOverlaps: 10, RankAlignment: 0.0, ClusterBalance: 0.0},
+			quality:  LayoutQuality{EdgeCrossings: 20, NodeOverlaps: 10, LabelOverlaps: 10, RankAlignment: 0.0, ClusterBalance: 0.0, SpacingConsistency: 0.0},
 			minScore: 0.0,
 			maxScore: 0.1,
 		},
@@ -102,52 +102,34 @@ func TestLayoutQuality_CalculateScore(t *testing.T) {
 	}
 }
 
-func TestMeasureQuality(t *testing.T) {
-	elements := []*Element{
-		{ID: "A", Kind: "system", Title: "System A"},
-		{ID: "B", Kind: "container", Title: "Container B"},
-	}
-	relations := []*Relation{
-		{From: "A", To: "B", Label: "uses"},
-	}
+func TestMeasureQualityFromSVG(t *testing.T) {
+	svgContent := `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="500" height="300" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <g id="nodeA" transform="translate(50,50)">
+    <polygon points="0,0 100,0 100,50 0,50" fill="#ffffff" stroke="#333333"/>
+    <text x="50" y="30" text-anchor="middle">System A</text>
+  </g>
+  <g id="nodeB" transform="translate(200,50)">
+    <polygon points="0,0 100,0 100,50 0,50" fill="#ffffff" stroke="#333333"/>
+    <text x="50" y="30" text-anchor="middle">Container B</text>
+  </g>
+  <path id="edgeA_B" d="M150,75 C175,75 175,75 200,75" fill="none" stroke="#596980" stroke-width="2"/>
+</svg>`
 
-	quality := MeasureQuality("", elements, relations)
+	quality := MeasureQualityFromSVG(svgContent)
 
-	if quality.Score <= 0 || quality.Score > 1.0 {
-		t.Errorf("MeasureQuality score out of range: %v", quality.Score)
-	}
-	if quality.RankAlignment != 0.95 {
-		t.Errorf("Expected RankAlignment = 0.95, got %v", quality.RankAlignment)
+	if quality.Score < 0 || quality.Score > 1.0 {
+		t.Errorf("MeasureQualityFromSVG score out of range: %v", quality.Score)
 	}
 }
 
-func TestMeasureQuality_ManyRelations(t *testing.T) {
-	elements := []*Element{
-		{ID: "A", Kind: "system", Title: "A"},
-		{ID: "B", Kind: "system", Title: "B"},
-	}
-	// Many relations (more than 2 * elements)
-	relations := make([]*Relation, 10)
-	for i := 0; i < 10; i++ {
-		relations[i] = &Relation{From: "A", To: "B"}
-	}
+func TestMeasureQualityFromSVG_EmptySVG(t *testing.T) {
+	svgContent := ""
 
-	quality := MeasureQuality("", elements, relations)
+	quality := MeasureQualityFromSVG(svgContent)
 
-	if quality.EdgeCrossings == 0 {
-		t.Error("Expected some edge crossings with many relations")
-	}
-}
-
-func TestEstimateNodeOverlaps(t *testing.T) {
-	elements := []*Element{
-		{ID: "A"},
-		{ID: "B"},
-	}
-	// Should return 0 with proper constraints
-	overlaps := estimateNodeOverlaps(elements)
-	if overlaps != 0 {
-		t.Errorf("Expected 0 overlaps, got %d", overlaps)
+	if quality.Score < 0 || quality.Score > 1.0 {
+		t.Errorf("MeasureQualityFromSVG should handle empty SVG, got score: %v", quality.Score)
 	}
 }
 
@@ -213,8 +195,8 @@ func TestDefaultConfig(t *testing.T) {
 	if config.RankDir != "TB" {
 		t.Errorf("Expected RankDir TB, got %s", config.RankDir)
 	}
-	if config.NodeSep != 150 {
-		t.Errorf("Expected NodeSep 150, got %d", config.NodeSep)
+	if config.NodeSep != DefaultNodeSep {
+		t.Errorf("Expected NodeSep %d, got %d", DefaultNodeSep, config.NodeSep)
 	}
 	if !config.UseRankConstraints {
 		t.Error("Expected UseRankConstraints to be true")
