@@ -91,11 +91,11 @@ func TestExporter_DefaultConfig(t *testing.T) {
 	if config.RankDir != "TB" {
 		t.Errorf("Expected RankDir=TB, got %s", config.RankDir)
 	}
-	if config.NodeSep != 150 {
-		t.Errorf("Expected NodeSep=150, got %d", config.NodeSep)
+	if config.NodeSep != dot.DefaultNodeSep {
+		t.Errorf("Expected NodeSep=%d, got %d", dot.DefaultNodeSep, config.NodeSep)
 	}
-	if config.RankSep != 180 {
-		t.Errorf("Expected RankSep=180, got %d", config.RankSep)
+	if config.RankSep != dot.DefaultRankSep {
+		t.Errorf("Expected RankSep=%d, got %d", dot.DefaultRankSep, config.RankSep)
 	}
 	if !config.UseRankConstraints {
 		t.Error("Expected UseRankConstraints=true")

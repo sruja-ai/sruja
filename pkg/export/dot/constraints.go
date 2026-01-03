@@ -20,6 +20,8 @@ type SizeConstraint struct {
 	MinWidth, MaxWidth, MinHeight, MaxHeight float64
 	// Preferred size (used if within bounds)
 	PreferredWidth, PreferredHeight float64
+	// Fixed position (for manual layout positions)
+	FixedX, FixedY float64
 }
 
 // EdgePorts defines edge attachment points.
@@ -72,12 +74,6 @@ type LayoutConstraints struct {
 
 // BuildConstraints builds layout constraints from elements and relations.
 func BuildConstraints(elements []*Element, relations []*Relation, viewLevel int, config Config) LayoutConstraints {
-	// Determine initial edge separation based on relation count
-	// Increase edge separation for diagrams with many edges to reduce label overlaps
-	initialSep := 0.4
-	if len(relations) > 10 {
-		initialSep = 0.5 // More separation for edge labels
-	}
 
 	constraints := LayoutConstraints{
 		Global: GlobalConstraints{
@@ -86,8 +82,8 @@ func BuildConstraints(elements []*Element, relations []*Relation, viewLevel int,
 			Splines:     "spline",
 			RankDir:     config.RankDir,
 			Overlap:     "false",
-			Concentrate: len(relations) > 6, // Bundle parallel edges earlier for better routing (was > 8)
-			Sep:         initialSep,         // Increased separation for less crowding (was 0.3)
+			Concentrate: len(relations) > 8, // Bundle parallel edges slightly later
+			Sep:         0.1,                // Reduced from initialSep logic to standard small separation
 		},
 		ViewLevel: viewLevel,
 	}
@@ -131,49 +127,61 @@ func BuildConstraints(elements []*Element, relations []*Relation, viewLevel int,
 		}
 	}
 
-	// L2 (Container View): Containers within systems - need spacing for complex hierarchies
-	// Use uniform scaling ratios to improve spacing consistency
+	// L2 (Container View): Containers within systems
+	// L2 benefits more from edge routing than spacing
+	// Use polyline splines and edge routing optimizations instead of excessive spacing
 	if viewLevel == 2 {
-		// L2 diagrams often have many containers and need better spacing
-		if len(elements) >= 8 {
-			constraints.Global.NodeSep *= 1.15 // Extra 15% for complex L2 diagrams
-			constraints.Global.RankSep *= 1.18 // Slightly reduced from 1.20 for better consistency
-		}
-		// Very complex L2 diagrams (15+ containers) need even more spacing
-		if len(elements) >= 15 {
-			constraints.Global.NodeSep *= 1.10 // Additional 10% boost
-			constraints.Global.RankSep *= 1.12 // Reduced from 1.15, more uniform ratio
-		}
-	}
-
-	// L3 (Component View): Components within containers - dense layouts need spacing
-	// Use uniform scaling to improve spacing consistency
-	if viewLevel == 3 {
-		// L3 diagrams are typically dense with many components
+		// L2 needs polyline for better edge routing (reduces crossings)
 		if len(elements) >= 6 {
-			constraints.Global.NodeSep *= 1.15 // Extra 15% for L3 diagrams
-			constraints.Global.RankSep *= 1.16 // Slightly reduced from 1.18 for better consistency
+			constraints.Global.NodeSep *= 1.10 // Reduced from 1.20 - less spacing, better routing
+			constraints.Global.RankSep *= 1.12 // Reduced from 1.25
 		}
-		// Complex L3 diagrams (12+ components) need more spacing
+		// Very complex L2 diagrams - focus on routing, not spacing
 		if len(elements) >= 12 {
-			constraints.Global.NodeSep *= 1.10 // Additional 10% boost
-			constraints.Global.RankSep *= 1.10 // Reduced from 1.12, more uniform ratio
+			constraints.Global.NodeSep *= 1.12 // Additional boost (reduced from 1.20)
+			constraints.Global.RankSep *= 1.15 // Additional vertical spacing (reduced from 1.25)
+		}
+		// Use polyline for complex L2 to reduce edge crossings
+		if len(elements) >= 8 {
+			constraints.Global.Splines = "polyline" // Force polyline for better L2 routing
 		}
 	}
 
-	// Use orthogonal splines for dense diagrams to reduce crossings
-	// Switch to polyline earlier for better edge routing and fewer crossings
-	// NOTE: Removed "ortho" as it often causes missing edges in Graphviz WASM.
-	if len(elements) > DenseGraphThreshold {
-		constraints.Global.Splines = "polyline" // Polyline for medium/high complexity
+	// L3 (Component View): Components within containers
+	// Round 1 strategy: aggressive spacing for better crossing reduction
+	// L3 (Component View): Components within containers
+	if viewLevel == 3 {
+		// Standard spacing for L3
+		if len(elements) >= 5 {
+			constraints.Global.NodeSep *= L3NodeSepScale
+			constraints.Global.RankSep *= L3RankSepScale
+		}
+		// Complex L3 - moderate spacing increase
+		if len(elements) >= 15 {
+			constraints.Global.NodeSep *= 1.10
+			constraints.Global.RankSep *= 1.15
+		}
 	}
-	// For very complex diagrams, use spline with better routing
-	if len(elements) >= ComplexGraphThreshold {
-		constraints.Global.Splines = "spline" // Curved splines work better for very complex diagrams
-		// Increase separation for better edge routing
-		constraints.Global.Sep = 0.5 // Increased from 0.4 for better edge separation
+
+	// Spline configuration based on view level and complexity
+	// L2 benefits from polyline for better edge routing
+	// L3 uses spline with higher minlen for better aesthetics
+	// Spline configuration
+	// Standardize on spline (curves) for better aesthetics.
+	// Only use polyline (angular) for L2/L3 if it's extremely dense to avoid crossing through nodes.
+	constraints.Global.Splines = "spline"
+
+	if viewLevel == 2 {
+		nodeCountForDensity := float64(len(elements))
+		if nodeCountForDensity < 1 {
+			nodeCountForDensity = 1
+		}
+		edgeDensity := float64(len(relations)) / nodeCountForDensity
+		// Only use polyline for extremely dense graphs where curves might be confusing
+		if edgeDensity > 2.0 && len(elements) >= 20 {
+			constraints.Global.Splines = "polyline"
+		}
 	}
-	// For smaller diagrams, keep "spline" (curved) as it looks better
 
 	// Build rank constraints
 	constraints.Ranks = buildRankConstraints(elements, viewLevel)
@@ -188,7 +196,7 @@ func BuildConstraints(elements []*Element, relations []*Relation, viewLevel int,
 	}
 
 	// Build edge constraints with crossing reduction hints
-	constraints.Edges = buildEdgeConstraints(relations, config, len(elements), parentMap)
+	constraints.Edges = buildEdgeConstraints(relations, config, len(elements), parentMap, viewLevel)
 
 	// Add invisible edges between sibling clusters to keep them together
 	constraints.Edges = addSiblingClusterConstraints(constraints.Edges, elements, parentMap)
@@ -259,20 +267,33 @@ func buildRankConstraints(elements []*Element, viewLevel int) []RankConstraint {
 			})
 			// Note: We don't use "max" because sometimes you want them side-by-side with lowest component
 		}
+
+		// For complex L2 diagrams (12+ containers), add additional rank grouping
+		// to reduce edge crossings by keeping closely related containers on the same rank
+		if len(elements) >= 12 && len(elements) <= 25 {
+			// For moderately complex L2, group containers by their immediate relationships
+			// This is done via edge weights which influence rank assignment
+		}
 	}
 
 	// L3 (Component View): Components
 	if viewLevel == 3 {
 		components := byKind["component"]
 		if len(components) > 0 {
-			nodeIDs := make([]string, len(components))
-			for i, c := range components {
-				nodeIDs[i] = c.ID
+			// For simple L3 diagrams (under 8 components), align all on same rank
+			// For complex L3, let Graphviz determine hierarchy based on edges
+			if len(components) <= 8 {
+				nodeIDs := make([]string, len(components))
+				for i, c := range components {
+					nodeIDs[i] = c.ID
+				}
+				ranks = append(ranks, RankConstraint{
+					Type:    "same",
+					NodeIDs: nodeIDs,
+				})
 			}
-			ranks = append(ranks, RankConstraint{
-				Type:    "same",
-				NodeIDs: nodeIDs,
-			})
+			// For complex L3, only add rank constraints for components that are
+			// strongly connected (bidirectional edges suggest same-level communication)
 		}
 	}
 
@@ -281,6 +302,7 @@ func buildRankConstraints(elements []*Element, viewLevel int) []RankConstraint {
 
 // buildSizeConstraints builds size constraints from elements.
 // FAANG pattern: Larger size for "hub" nodes with many connections.
+// Also handles manual position overrides from layout blocks.
 func buildSizeConstraints(elements []*Element, relations []*Relation, config Config) []SizeConstraint {
 	sizes := make([]SizeConstraint, 0, len(elements))
 
@@ -300,6 +322,13 @@ func buildSizeConstraints(elements []*Element, relations []*Relation, config Con
 		if size, ok := config.NodeSizes[elem.ID]; ok {
 			width = size.Width
 			height = size.Height
+		}
+
+		// Check for manual position override
+		fixedX, fixedY := float64(0), float64(0)
+		if pos, ok := config.ElementPositions[elem.ID]; ok {
+			fixedX = pos.X
+			fixedY = pos.Y
 		}
 
 		// Set min/max bounds
@@ -347,6 +376,8 @@ func buildSizeConstraints(elements []*Element, relations []*Relation, config Con
 				MaxHeight:       maxHeight,
 				PreferredWidth:  width,
 				PreferredHeight: height,
+				FixedX:          fixedX,
+				FixedY:          fixedY,
 			})
 			continue
 		}
@@ -384,6 +415,8 @@ func buildSizeConstraints(elements []*Element, relations []*Relation, config Con
 			MaxHeight:       maxHeight,
 			PreferredWidth:  width,
 			PreferredHeight: height,
+			FixedX:          fixedX,
+			FixedY:          fixedY,
 		})
 	}
 
@@ -392,7 +425,7 @@ func buildSizeConstraints(elements []*Element, relations []*Relation, config Con
 
 // buildEdgeConstraints builds edge constraints from relations.
 // FAANG pattern: Use higher weights and minlen to reduce crossings.
-func buildEdgeConstraints(relations []*Relation, config Config, nodeCount int, parentMap map[string]string) []EdgeConstraint {
+func buildEdgeConstraints(relations []*Relation, config Config, nodeCount int, parentMap map[string]string, viewLevel int) []EdgeConstraint {
 	edges := make([]EdgeConstraint, 0, len(relations))
 
 	// Track outgoing edges per node for weight distribution
@@ -437,13 +470,33 @@ func buildEdgeConstraints(relations []*Relation, config Config, nodeCount int, p
 			}
 
 			// Increase minlen for complex diagrams to reduce crossings
-			// More aggressive minlen settings for better edge routing
-			if nodeCount > ComplexGraphThreshold {
-				edge.MinLen = 3 // Increased minlen for very complex diagrams to reduce crossings
-			} else if nodeCount > DenseGraphThreshold {
-				edge.MinLen = 2 // Medium minlen for dense diagrams
+			// L2 uses polyline for better routing, L3 uses higher minlen
+			// Increase minlen slightly for complex diagrams, but cap at 2-3
+			if nodeCount >= ComplexGraphThreshold {
+				edge.MinLen = 2 // Moderate separation (was 4)
+			} else if nodeCount >= DenseGraphThreshold {
+				edge.MinLen = 1 // Standard (was 3)
 			} else {
-				edge.MinLen = 1 // Standard length
+				edge.MinLen = 1
+			}
+
+			// Level-specific edge routing optimizations
+			if viewLevel == 2 && nodeCount >= 12 {
+				edge.MinLen = 2
+			}
+			if viewLevel == 3 && nodeCount >= 15 {
+				edge.MinLen = 2
+			}
+
+			// For very long distance edges in complex graphs, maybe bump to 3, but rarely.
+			// Extreme case handling: very dense diagrams
+			nodeCountForDensity := nodeCount
+			if nodeCountForDensity < 1 {
+				nodeCountForDensity = 1
+			}
+			edgeDensity := float64(len(relations)) / float64(nodeCountForDensity)
+			if edgeDensity > 2.0 && nodeCount >= 20 {
+				edge.MinLen = 2
 			}
 
 			edge.Weight = baseWeight
@@ -470,9 +523,8 @@ func buildEdgeConstraints(relations []*Relation, config Config, nodeCount int, p
 			}
 
 			// For long labels, adjust positioning
-			if len(rel.Label) > 30 {
-				edge.Label.Angle = 90                     // Perpendicular for long labels
-				edge.Label.Distance = labelDistance + 0.5 // Extra distance for perpendicular labels
+			if len(rel.Label) > 40 {
+				edge.Label.Angle = 0 // Keep parallel, avoids twisting reading
 			}
 		}
 

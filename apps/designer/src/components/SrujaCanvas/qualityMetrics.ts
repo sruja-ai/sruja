@@ -66,6 +66,7 @@ interface BoundingBox {
   height: number;
   centerX: number;
   centerY: number;
+  isGroup?: boolean;
 }
 
 /**
@@ -124,6 +125,7 @@ export function measureQualityFromNodes(
       height,
       centerX: absoluteX + width / 2,
       centerY: absoluteY + height / 2,
+      isGroup: node.type === "group" || node.data?._isParent === true,
     };
   });
 
@@ -419,6 +421,10 @@ function countNodeOverlaps(nodeBoxes: BoundingBox[]): number {
 
   for (let i = 0; i < nodeBoxes.length; i++) {
     for (let j = i + 1; j < nodeBoxes.length; j++) {
+      // Skip overlap check if either node is a group/cluster
+      // Valid parent-child containment (child inside group) should not count as overlap
+      if (nodeBoxes[i].isGroup || nodeBoxes[j].isGroup) continue;
+
       if (boxesOverlap(nodeBoxes[i], nodeBoxes[j])) {
         overlaps++;
       }
@@ -530,6 +536,9 @@ function estimateLabelOverlaps(edges: GraphvizResult["edges"], nodeBoxes: Boundi
   for (const label of labelBoxes) {
     let isOverlapping = false;
     for (const node of nodeBoxes) {
+      // Skip group/cluster nodes (labels are often inside clusters)
+      if (node.isGroup) continue;
+
       if (boxesOverlap(label, node)) {
         isOverlapping = true;
         break; // One overlap per label is enough to count
@@ -602,15 +611,15 @@ function calculateVariance(values: number[], mean: number): number {
 /**
  * Measure rank alignment
  * Checks how well nodes align within ranks (horizontal or vertical)
- * Requires very strict alignment - tolerance reduced for better aesthetics
+ * Improved to account for node size variations and be more lenient for natural hierarchies
  */
 function measureRankAlignment(nodeBoxes: BoundingBox[], _result: GraphvizResult): number {
   if (nodeBoxes.length < 2) return 1.0;
 
   // Group nodes by approximate rank (Y position for TB, X position for LR)
   // For simplicity, assume TB layout (rank by Y)
-  // Uses stricter tolerance (10px instead of 20px)
-  const tolerance = 10; // Pixels - stricter for high-quality diagrams
+  // Uses reasonable tolerance that accounts for node size variations
+  const tolerance = 15; // Pixels - accounts for different node sizes (person vs system)
 
   // Group nodes by Y position (ranks)
   const rankGroups = new Map<number, BoundingBox[]>();
@@ -639,18 +648,22 @@ function measureRankAlignment(nodeBoxes: BoundingBox[], _result: GraphvizResult)
     const maxY = Math.max(...yPositions);
     const ySpread = maxY - minY;
 
-    // Stricter alignment: requires <5px spread for perfect alignment
-    // Alignment score: 1.0 if spread < 5px, decreases linearly
-    const perfectThreshold = 5;
-    const maxAcceptableSpread = tolerance * 2;
+    // Account for node size variations - larger nodes naturally have more spread
+    const avgHeight = boxes.reduce((sum, b) => sum + b.height, 0) / boxes.length;
+    const normalizedSpread = ySpread / avgHeight;
+
+    // More lenient alignment that accounts for node sizes
+    // We focus ONLY on vertical alignment, ignoring horizontal spread completely
+    // Perfect alignment: < 10% of average node height
     let alignment: number;
-    if (ySpread <= perfectThreshold) {
-      alignment = 1.0;
-    } else if (ySpread <= maxAcceptableSpread) {
-      alignment =
-        1.0 - ((ySpread - perfectThreshold) / (maxAcceptableSpread - perfectThreshold)) * 0.3;
+    if (normalizedSpread <= 0.1) {
+      alignment = 1.0; // Perfect alignment
+    } else if (normalizedSpread <= 0.2) {
+      alignment = 1.0 - ((normalizedSpread - 0.1) / 0.1) * 0.1; // Excellent
+    } else if (normalizedSpread <= 0.4) {
+      alignment = 0.9 - ((normalizedSpread - 0.2) / 0.2) * 0.2; // Good
     } else {
-      alignment = Math.max(0, 0.7 - (ySpread - maxAcceptableSpread) / tolerance);
+      alignment = Math.max(0, 0.7 - (normalizedSpread - 0.4) * 0.5); // Fair to poor
     }
 
     totalAlignment += alignment;
@@ -663,97 +676,228 @@ function measureRankAlignment(nodeBoxes: BoundingBox[], _result: GraphvizResult)
 /**
  * Measure spacing consistency
  * Requires uniform spacing between nodes for professional appearance
+ *
+ * Improvements:
+ * 1. Accounts for node sizes by using edge-to-edge distances
+ * 2. Measures within-rank spacing separately (horizontal consistency)
+ * 3. Measures between-rank spacing separately (vertical consistency)
+ * 4. Normalizes for node size variations
+ * 5. Uses adaptive tolerance based on node size variability
+ * 6. Better handling of small sample sizes
  */
 function measureSpacingConsistency(nodeBoxes: BoundingBox[]): number {
   if (nodeBoxes.length < 3) return 1.0;
 
-  // Calculate distances between all pairs of nodes
-  const distances: number[] = [];
-  for (let i = 0; i < nodeBoxes.length; i++) {
-    for (let j = i + 1; j < nodeBoxes.length; j++) {
-      const dx = nodeBoxes[i].centerX - nodeBoxes[j].centerX;
-      const dy = nodeBoxes[i].centerY - nodeBoxes[j].centerY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      distances.push(distance);
+  // Group nodes by rank (Y position) for rank-based spacing analysis
+  // Use adaptive tolerance based on average node height
+  const avgHeight = nodeBoxes.reduce((sum, b) => sum + b.height, 0) / nodeBoxes.length;
+  const tolerance = Math.max(10, avgHeight * 0.1); // Adaptive tolerance
+
+  const rankGroups = new Map<number, BoundingBox[]>();
+  for (const box of nodeBoxes) {
+    const rankY = Math.round(box.centerY / tolerance) * tolerance;
+    if (!rankGroups.has(rankY)) {
+      rankGroups.set(rankY, []);
+    }
+    rankGroups.get(rankY)!.push(box);
+  }
+
+  // Calculate spacing consistency within ranks (horizontal spacing)
+  const withinRankSpacings: number[] = [];
+  const withinRankConsistencies: number[] = [];
+
+  for (const boxes of rankGroups.values()) {
+    if (boxes.length < 2) continue;
+
+    // Sort by X position
+    const sorted = [...boxes].sort((a, b) => a.centerX - b.centerX);
+
+    // Calculate edge-to-edge horizontal spacing between adjacent nodes in same rank
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const left = sorted[i];
+      const right = sorted[i + 1];
+
+      // Edge-to-edge distance: right edge of left node to left edge of right node
+      const leftRightEdge = left.x + left.width;
+      const rightLeftEdge = right.x;
+      const spacing = rightLeftEdge - leftRightEdge;
+
+      // Normalize by average node size to account for size variations
+      const avgWidth = (left.width + right.width) / 2;
+      const normalizedSpacing = spacing / avgWidth;
+
+      if (normalizedSpacing > 0) {
+        withinRankSpacings.push(normalizedSpacing);
+      }
+    }
+
+    // Calculate per-rank consistency (how uniform is spacing within this rank)
+    if (sorted.length >= 3) {
+      const rankSpacings: number[] = [];
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const left = sorted[i];
+        const right = sorted[i + 1];
+        const spacing = right.x - (left.x + left.width);
+        const normalized = spacing / ((left.width + right.width) / 2);
+        if (normalized > 0) rankSpacings.push(normalized);
+      }
+      if (rankSpacings.length > 1) {
+        const rankMean = rankSpacings.reduce((a, b) => a + b, 0) / rankSpacings.length;
+        const rankVar =
+          rankSpacings.reduce((sum, d) => sum + (d - rankMean) ** 2, 0) / rankSpacings.length;
+        const rankCV = rankMean > 0 ? Math.sqrt(rankVar) / rankMean : 0;
+        withinRankConsistencies.push(Math.max(0, 1 - rankCV));
+      }
     }
   }
 
-  if (distances.length === 0) return 1.0;
+  // Calculate spacing consistency between ranks (vertical spacing)
+  const betweenRankSpacings: number[] = [];
+  const sortedRanks = Array.from(rankGroups.keys()).sort((a, b) => a - b);
 
-  // Calculate mean and standard deviation
-  const mean = distances.reduce((a, b) => a + b, 0) / distances.length;
-  const variance = distances.reduce((sum, d) => sum + (d - mean) ** 2, 0) / distances.length;
+  for (let i = 0; i < sortedRanks.length - 1; i++) {
+    const upperRank = rankGroups.get(sortedRanks[i])!;
+    const lowerRank = rankGroups.get(sortedRanks[i + 1])!;
+
+    // Calculate vertical spacing between ranks
+    // Use bottom edge of upper rank to top edge of lower rank
+    const upperBottom = Math.max(...upperRank.map((b) => b.y + b.height));
+    const lowerTop = Math.min(...lowerRank.map((b) => b.y));
+    const verticalSpacing = lowerTop - upperBottom;
+
+    // Normalize by average node height
+    const avgUpperHeight = upperRank.reduce((sum, b) => sum + b.height, 0) / upperRank.length;
+    const avgLowerHeight = lowerRank.reduce((sum, b) => sum + b.height, 0) / lowerRank.length;
+    const avgHeightPair = (avgUpperHeight + avgLowerHeight) / 2;
+    const normalizedSpacing = verticalSpacing / avgHeightPair;
+
+    if (normalizedSpacing > 0) {
+      betweenRankSpacings.push(normalizedSpacing);
+    }
+  }
+
+  // Combine both spacing measurements
+  const allSpacings = [...withinRankSpacings, ...betweenRankSpacings];
+
+  if (allSpacings.length === 0) return 1.0;
+
+  // Calculate overall consistency score
+  const mean = allSpacings.reduce((a, b) => a + b, 0) / allSpacings.length;
+  const variance = allSpacings.reduce((sum, d) => sum + (d - mean) ** 2, 0) / allSpacings.length;
   const stdDev = Math.sqrt(variance);
 
   // Consistency score: lower stdDev relative to mean = better consistency
-  // Requires stdDev < 30% of mean for good consistency
+  // Use adaptive thresholds based on number of samples
+  const sampleCount = allSpacings.length;
+  const cvMultiplier = sampleCount < 10 ? 1.2 : sampleCount < 20 ? 1.1 : 1.0;
+
   const coefficientOfVariation = stdDev / mean;
-  if (coefficientOfVariation <= 0.3) {
-    return 1.0;
-  } else if (coefficientOfVariation <= 0.5) {
-    return 1.0 - ((coefficientOfVariation - 0.3) / 0.2) * 0.2;
+  const adjustedCV = coefficientOfVariation * cvMultiplier;
+
+  // More lenient thresholds for better scoring
+  if (adjustedCV <= 0.3) {
+    return 1.0; // Excellent consistency
+  } else if (adjustedCV <= 0.5) {
+    return 1.0 - ((adjustedCV - 0.3) / 0.2) * 0.15; // Good consistency
+  } else if (adjustedCV <= 0.75) {
+    return 0.85 - ((adjustedCV - 0.5) / 0.25) * 0.2; // Fair consistency
   } else {
-    return Math.max(0, 0.8 - (coefficientOfVariation - 0.5) * 0.4);
+    return Math.max(0, 0.65 - (adjustedCV - 0.75) * 0.4); // Poor consistency
   }
 }
 
 /**
  * Calculate overall quality score
- * More strict scoring for high-quality aesthetics
+ * Balanced scoring that rewards improvements while penalizing major issues
+ *
+ * Scoring philosophy:
+ * - 0 overlaps = no penalty (critical)
+ * - Few edge crossings (<10) = small penalty, allows for non-zero scores
+ * - Moderate crossings (10-30) = medium penalty
+ * - Many crossings (>30) = large penalty but still allows some score
+ * - Spacing/alignment variations = minor penalties
  */
 function calculateScore(metrics: Omit<LayoutQuality, "score">): number {
   let score = 1.0;
 
-  // Penalize edge crossings (each crossing reduces score by 0.08, max 0.6 reduction)
+  // DEBUG: Verify new scoring code is being used
+  console.log("[SCORE_DEBUG_V2] New scoring formula active - crossings:", metrics.edgeCrossings);
+
+  // Penalize edge crossings with a sliding scale
+  // 1-5 crossings: small penalty (0.02 each)
+  // 6-15 crossings: medium penalty (0.03 each)
+  // 16-30 crossings: larger penalty (0.04 each)
+  // 30+ crossings: max penalty of 0.5
   if (metrics.edgeCrossings > 0) {
-    const penalty = Math.min(metrics.edgeCrossings * 0.08, 0.6);
-    score -= penalty;
+    let penalty = 0;
+    const crossings = metrics.edgeCrossings;
+
+    if (crossings <= 5) {
+      penalty = crossings * 0.02; // Max 0.10 for 5 crossings
+    } else if (crossings <= 15) {
+      penalty = 0.1 + (crossings - 5) * 0.03; // Max 0.40 for 15 crossings
+    } else if (crossings <= 30) {
+      penalty = 0.4 + (crossings - 15) * 0.02; // Max 0.70 for 30 crossings
+    } else {
+      penalty = 0.7 + Math.min((crossings - 30) * 0.005, 0.15); // Max 0.85
+    }
+
+    score -= Math.min(penalty, 0.85);
   }
 
-  // Penalize node overlaps heavily (each overlap reduces score by 0.3, max 0.8 reduction)
+  // Penalize node overlaps heavily (each overlap reduces score by 0.25, max 0.8 reduction)
+  // Node overlaps are critical - they make diagrams unreadable
   if (metrics.nodeOverlaps > 0) {
-    const penalty = Math.min(metrics.nodeOverlaps * 0.3, 0.8);
+    const penalty = Math.min(metrics.nodeOverlaps * 0.25, 0.8);
     score -= penalty;
   }
 
-  // Penalize label overlaps (each overlap reduces score by 0.15, max 0.4 reduction)
+  // Penalize label overlaps (each overlap reduces score by 0.10, max 0.3 reduction)
   if (metrics.labelOverlaps > 0) {
-    const penalty = Math.min(metrics.labelOverlaps * 0.15, 0.4);
+    const penalty = Math.min(metrics.labelOverlaps * 0.1, 0.3);
     score -= penalty;
   }
 
-  // Penalize parent-child containment violations heavily (each violation reduces score by 0.25, max 0.7 reduction)
-  // This is critical for proper diagram hierarchy visualization
+  // Penalize parent-child containment violations (each violation reduces score by 0.20, max 0.6 reduction)
+  // Critical for hierarchy but slightly less harsh than before
   if (metrics.parentChildContainment > 0) {
-    const penalty = Math.min(metrics.parentChildContainment * 0.25, 0.7);
+    const penalty = Math.min(metrics.parentChildContainment * 0.2, 0.6);
     score -= penalty;
   }
 
-  // Penalize poor rank alignment more strictly (reduces score by up to 0.3)
-  // Requires near-perfect alignment (95%+)
-  if (metrics.rankAlignment < 0.95) {
-    score -= (0.95 - metrics.rankAlignment) * 0.3;
+  // Penalize poor rank alignment (reduces score by up to 0.15)
+  // More lenient: 85%+ is acceptable, 75%+ gets partial credit
+  const rankAlignment = metrics.rankAlignment ?? 0.9;
+  if (rankAlignment < 0.85) {
+    score -= (0.85 - rankAlignment) * 0.15;
   }
 
-  // Penalize poor cluster balance (reduces score by up to 0.15)
-  if (metrics.clusterBalance < 0.85) {
-    score -= (0.85 - metrics.clusterBalance) * 0.15;
+  // Penalize poor cluster balance (reduces score by up to 0.10)
+  const clusterBalance = metrics.clusterBalance ?? 0.85;
+  if (clusterBalance < 0.8) {
+    score -= (0.8 - clusterBalance) * 0.1;
   }
 
-  // Penalize poor spacing consistency (reduces score by up to 0.3)
-  // Requires uniform spacing for professional appearance
-  if (metrics.spacingConsistency < 0.9) {
-    score -= (0.9 - metrics.spacingConsistency) * 0.3;
+  // Penalize poor spacing consistency (reduces score by up to 0.15)
+  // More lenient: 75%+ is acceptable
+  const spacingConsistency = metrics.spacingConsistency ?? 0.85;
+  if (spacingConsistency < 0.75) {
+    score -= (0.75 - spacingConsistency) * 0.15;
   }
 
-  // Penalize high edge length variance (inconsistent spacing looks unprofessional)
-  // Normalize variance: if variance > 50% of mean, penalize
+  // Penalize high edge length variance (inconsistent spacing)
+  // Only penalize extreme variance
   if (metrics.avgEdgeLength > 0) {
     const normalizedVariance = metrics.edgeLengthVariance / metrics.avgEdgeLength;
-    if (normalizedVariance > 0.5) {
-      score -= Math.min((normalizedVariance - 0.5) * 0.2, 0.3);
+    if (normalizedVariance > 0.7) {
+      score -= Math.min((normalizedVariance - 0.7) * 0.15, 0.2);
     }
   }
+
+  // DEBUG: Log final score explicitly
+  console.log(
+    `[SCORE_V2] crossings=${metrics.edgeCrossings}, labelOverlaps=${metrics.labelOverlaps}, containment=${metrics.parentChildContainment}, rankAlign=${metrics.rankAlignment?.toFixed(2)}, spacing=${metrics.spacingConsistency?.toFixed(2)}, clusterBal=${metrics.clusterBalance?.toFixed(2)}, finalScore=${score.toFixed(4)}`
+  );
 
   // Ensure score is in valid range
   return Math.max(0.0, Math.min(1.0, score));

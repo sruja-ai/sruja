@@ -62,6 +62,8 @@ type View struct {
 	Expressions []*ViewExpression `parser:"@@*"`
 	Autolayout  *string           `parser:"( 'autolayout' @Ident )?"`
 	Layout      *LayoutBlock      `parser:"( @@ )?"`
+	Navigation  *NavigationBlock  `parser:"( @@ )?"`
+	Styles      *ExtendedStyles   `parser:"( @@ )?"`
 	RBrace      string            `parser:"'}'"`
 }
 
@@ -151,12 +153,20 @@ type StyleProperty struct {
 //	    element system {
 //	        position { x: 400, y: 200 }
 //	    }
+//	    spacing { x: 150, y: 120 }
+//	    preset "grid"
+//	    direction "TB"
 //	}
 type LayoutBlock struct {
-	Pos      lexer.Position
-	LBrace   string           `parser:"'layout' '{'"`
-	Elements []*ElementLayout `parser:"@@*"`
-	RBrace   string           `parser:"'}'"`
+	Pos       lexer.Position
+	LBrace    string           `parser:"'layout' '{'"`
+	Direction *string          `parser:"( 'direction' @('TB' | 'LR' | 'BT' | 'RL') )?"`
+	Preset    *string          `parser:"( 'preset' @('auto' | 'hierarchical' | 'grid' | 'radial' | 'force') )?"`
+	Spacing   *SpacingCfg      `parser:"( 'spacing' @@ )?"`
+	RankSep   *int             `parser:"( 'ranksep' @Number )?"`
+	NodeSep   *int             `parser:"( 'nodesep' @Number )?"`
+	Elements  []*ElementLayout `parser:"@@*"`
+	RBrace    string           `parser:"'}'"`
 }
 
 func (l *LayoutBlock) Location() SourceLocation {
@@ -209,4 +219,164 @@ func (p *PositionHint) Y() float64 {
 
 func (p *PositionHint) Location() SourceLocation {
 	return SourceLocation{File: p.Pos.Filename, Line: p.Pos.Line, Column: p.Pos.Column, Offset: p.Pos.Offset}
+}
+
+// ============================================================================
+// Enhanced View Features (Spacing, Navigation, Extended Styling)
+// ============================================================================
+
+// LayoutConfig represents enhanced layout configuration for a view.
+//
+// Example DSL:
+//
+//	layout {
+//	    spacing { x: 150, y: 120 }
+//	    ranksep 180
+//	    nodesep 100
+//	    direction "LR"
+//	    preset "grid"
+//	}
+type LayoutConfig struct {
+	Pos       lexer.Position
+	LBrace    string           `parser:"'layout' '{'"`
+	Direction *string          `parser:"| 'direction' @('TB' | 'LR' | 'BT' | 'RL')"`
+	Preset    *string          `parser:"| 'preset' @('auto' | 'hierarchical' | 'grid' | 'radial' | 'force')"`
+	Spacing   *SpacingCfg      `parser:"| 'spacing' @@"`
+	RankSep   *int             `parser:"| 'ranksep' @Number"`
+	NodeSep   *int             `parser:"| 'nodesep' @Number"`
+	Elements  []*ElementLayout `parser:"@@*"`
+	RBrace    string           `parser:"'}'"`
+}
+
+// SpacingCfg represents spacing configuration.
+type SpacingCfg struct {
+	Pos    lexer.Position
+	LBrace string `parser:"'spacing' '{'"`
+	XVal   string `parser:"'x' ':' @Number"`
+	YVal   string `parser:"',' 'y' ':' @Number"`
+	RBrace string `parser:"'}'"`
+}
+
+// Spacing returns the X and Y spacing values.
+func (s *SpacingCfg) Spacing() (float64, float64) {
+	x, _ := strconv.ParseFloat(s.XVal, 64)
+	y, _ := strconv.ParseFloat(s.YVal, 64)
+	return x, y
+}
+
+// NavigationBlock represents navigation links between views.
+//
+// Example DSL:
+//
+//	navigation {
+//	    up "index"
+//	    down "containers" of Shop
+//	    related "deployment" of Prod
+//	    sidebar [
+//	        "components" of API,
+//	        "deployment" of Prod
+//	    ]
+//	}
+type NavigationBlock struct {
+	Pos    lexer.Position
+	LBrace string            `parser:"'navigation' '{'"`
+	Links  []*NavigationLink `parser:"@@*"`
+	RBrace string            `parser:"'}'"`
+}
+
+// NavigationLink represents a navigation link.
+type NavigationLink struct {
+	Pos       lexer.Position
+	Direction string            `parser:"@('up' | 'down' | 'related' | 'sidebar')"`
+	ViewRefs  []*QualifiedIdent `parser:"@@+"`
+	Comma     string            `parser:"( ',' )?"`
+}
+
+// ViewRef returns the first view reference.
+func (n *NavigationLink) ViewRef() *QualifiedIdent {
+	if len(n.ViewRefs) > 0 {
+		return n.ViewRefs[0]
+	}
+	return nil
+}
+
+// ExtendedStyles represents extended styling for views.
+//
+// Example DSL:
+//
+//	styles {
+//	    element "Database" {
+//	        shape cylinder
+//	        color "#ff0000"
+//	        strokeWidth 2
+//	        opacity 0.8
+//	    }
+//
+//	    element [tag=critical] {
+//	        color "#ff0000"
+//	        strokeWidth 3
+//	    }
+//
+//	    edge [tag=async] {
+//	        style dashed
+//	        color "#666666"
+//	    }
+//	}
+type ExtendedStyles struct {
+	Pos    lexer.Position
+	LBrace string               `parser:"'styles' '{'"`
+	Rules  []*ExtendedStyleRule `parser:"@@*"`
+	RBrace string               `parser:"'}'"`
+}
+
+// ExtendedStyleRule represents an extended style rule with tag support.
+type ExtendedStyleRule struct {
+	Pos    lexer.Position
+	Target string       `parser:"@('element' | 'relationship' | 'edge' | 'person' | 'system' | 'container' | 'component')"`
+	Tag    *TagFilter   `parser:"( '[' @@ ']' )?"`
+	LBrace string       `parser:"'{'"`
+	Props  []*StyleProp `parser:"@@*"`
+	RBrace string       `parser:"'}'"`
+}
+
+// TagFilter represents a tag-based filter.
+type TagFilter struct {
+	Pos   lexer.Position
+	Key   string `parser:"@Ident"`
+	Equal string `parser:"'='"`
+	Value string `parser:"@String"`
+}
+
+// StyleProp represents a style property.
+type StyleProp struct {
+	Pos   lexer.Position
+	Key   string  `parser:"@Ident"`
+	Value *string `parser:"( @String | @Number | @Color )?"`
+}
+
+// Color represents a color value.
+type Color string
+
+// ============================================================================
+// View Metadata
+// ============================================================================
+
+// ViewMeta represents metadata for a view.
+//
+// Example DSL:
+//
+//	view index {
+//	    title "System Context Diagram"
+//	    description "Shows the overall system structure and external users"
+//	    link "https://docs.example.com/architecture"
+//	    tags ["context", "overview"]
+//	}
+type ViewMeta struct {
+	Pos         lexer.Position
+	LBrace      string    `parser:"'meta' '{'"`
+	Title       *string   `parser:"| 'title' @String"`
+	Description *string   `parser:"| 'description' @String"`
+	Link        *string   `parser:"| 'link' @String"`
+	Tags        []*string `parser:"| 'tags' '[' ( @String ','? )* ']'"`
+	RBrace      string    `parser:"'}'"`
 }

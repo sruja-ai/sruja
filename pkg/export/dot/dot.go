@@ -31,7 +31,22 @@ type Config struct {
 	FocusNodeID string
 	// NodeSizes provides explicit size overrides for nodes (ID -> {W, H})
 	NodeSizes map[string]struct{ Width, Height float64 }
+	// ElementPositions provides explicit position overrides for nodes (ID -> {X, Y})
+	// These are manual positions set by the user via layout blocks
+	ElementPositions map[string]struct{ X, Y float64 }
+	// LayoutStrategy specifies the layout strategy to use
+	// Options: "auto" (default), "hierarchical", "radial", "grid"
+	LayoutStrategy string
 }
+
+// LayoutStrategy constants
+const (
+	LayoutStrategyAuto         = "auto"
+	LayoutStrategyHierarchical = "hierarchical"
+	LayoutStrategyRadial       = "radial"
+	LayoutStrategyGrid         = "grid"
+	LayoutStrategyForce        = "force"
+)
 
 // DefaultConfig returns the default DOT configuration.
 func DefaultConfig() Config {
@@ -90,6 +105,11 @@ func (e *Exporter) Export(prog *language.Program) *ExportResult {
 		return &ExportResult{}
 	}
 
+	// Extract positions from views if not already set in config
+	if len(e.Config.ElementPositions) == 0 {
+		e.Config.ElementPositions = e.extractPositionsFromViews(prog)
+	}
+
 	// Build constraints (FAANG-level constraint-based approach)
 	constraints := BuildConstraints(elements, relations, e.Config.ViewLevel, e.Config)
 
@@ -104,6 +124,48 @@ func (e *Exporter) Export(prog *language.Program) *ExportResult {
 	}
 }
 
+// extractPositionsFromViews extracts manual layout positions from all views in the program.
+func (e *Exporter) extractPositionsFromViews(prog *language.Program) map[string]struct{ X, Y float64 } {
+	positions := make(map[string]struct{ X, Y float64 })
+
+	if prog.Views == nil || len(prog.Views.Items) == 0 {
+		return positions
+	}
+
+	// Iterate through all views to find layout blocks
+	for _, item := range prog.Views.Items {
+		if item == nil || item.View == nil || item.View.Body == nil {
+			continue
+		}
+
+		// Extract positions from LayoutBlock
+		for _, bodyItem := range item.View.Body.Items {
+			if bodyItem == nil || bodyItem.Layout == nil {
+				continue
+			}
+
+			for _, elemLayout := range bodyItem.Layout.Elements {
+				if elemLayout == nil || elemLayout.Position == nil {
+					continue
+				}
+
+				// Get the element ID (FQN)
+				elemID := elemLayout.Element.String()
+				if elemID == "" {
+					continue
+				}
+
+				positions[elemID] = struct{ X, Y float64 }{
+					X: elemLayout.Position.X(),
+					Y: elemLayout.Position.Y(),
+				}
+			}
+		}
+	}
+
+	return positions
+}
+
 // computeViewGraph determines the visible elements and projected relations for the current view.
 func (e *Exporter) computeViewGraph(allElements map[string]*Element, allRelations []*Relation, lookup *elementLookup) ([]*Element, []*Relation) {
 	level := e.Config.ViewLevel
@@ -114,6 +176,54 @@ func (e *Exporter) computeViewGraph(allElements map[string]*Element, allRelation
 	var finalRelations []*Relation
 	seenRel := make(map[string]bool)
 
+	// Helper to normalize element kind (shared logic)
+	normalizeKind := func(kind string) string {
+		normalized := strings.ToLower(kind)
+		switch normalized {
+		case "database", "db", "storage":
+			return "datastore"
+		case "mq":
+			return "queue"
+		case "actor":
+			return "person"
+		default:
+			return normalized
+		}
+	}
+
+	// Helper to ensure element is valid (normalize kind, ensure title, ensure dimensions)
+	ensureElementValid := func(elem *Element) *Element {
+		// Normalize kind (must be lowercase and valid)
+		elem.Kind = normalizeKind(elem.Kind)
+		// Validate kind is in allowed list
+		validKinds := map[string]bool{
+			"person": true, "system": true, "container": true,
+			"component": true, "datastore": true, "queue": true,
+		}
+		if !validKinds[elem.Kind] {
+			// Fallback to system if kind is invalid
+			elem.Kind = "system"
+		}
+		// Ensure title is not empty (required field)
+		if elem.Title == "" {
+			elem.Title = elem.ID
+		}
+		// Ensure dimensions are valid (must be positive numbers)
+		if elem.Width <= 0 {
+			elem.Width = e.Config.DefaultNodeWidth
+		}
+		if elem.Height <= 0 {
+			elem.Height = e.Config.DefaultNodeHeight
+		}
+		// Ensure ID is not empty (required field)
+		if elem.ID == "" {
+			// This shouldn't happen, but add safeguard
+			elem.ID = "unknown"
+			elem.Title = "Unknown Element"
+		}
+		return elem
+	}
+
 	// Helper to add element if not already added
 	addElement := func(id string) {
 		if visibleIDs[id] {
@@ -121,22 +231,37 @@ func (e *Exporter) computeViewGraph(allElements map[string]*Element, allRelation
 		}
 		if elem, ok := allElements[id]; ok {
 			visibleIDs[id] = true
+			// Ensure element is valid before adding
+			ensureElementValid(elem)
 			finalElements = append(finalElements, elem)
 		} else if info, ok := lookup.elements[id]; ok {
 			visibleIDs[id] = true
+			// Normalize kind
+			kind := normalizeKind(info.Kind)
+			// Ensure title is not empty (fallback to ID) - must be set before MeasureNodeContent
+			title := info.Label
+			if title == "" {
+				title = info.ID
+			}
 			// Create element with required fields
 			newElem := &Element{
 				ID:       info.ID,
-				Kind:     info.Kind,
-				Title:    info.Label,
+				Kind:     kind,
+				Title:    title,
 				ParentID: info.ParentID,
-				Width:    e.Config.DefaultNodeWidth,
-				Height:   e.Config.DefaultNodeHeight,
+				// Technology and Description are optional, leave as empty strings
+				Technology:  "",
+				Description: "",
+				Width:       e.Config.DefaultNodeWidth,
+				Height:      e.Config.DefaultNodeHeight,
 			}
 			// Measure actual content if possible (may improve sizing)
+			// Title is already set, so measurement should work correctly
 			width, height := MeasureNodeContent(newElem)
 			newElem.Width = int(width)
 			newElem.Height = int(height)
+			// Ensure element is valid before adding (double-check all fields)
+			ensureElementValid(newElem)
 			finalElements = append(finalElements, newElem)
 		}
 	}
@@ -316,6 +441,32 @@ func (e *Exporter) computeViewGraph(allElements map[string]*Element, allRelation
 			}
 			finalRelations = append(finalRelations, &proj)
 			seenRel[key] = true
+		}
+	}
+
+	// Final validation pass: ensure all elements are valid before returning
+	// This catches any elements that might have been missed in earlier validation
+	// We validate in-place to maintain element order and indices
+	for _, elem := range finalElements {
+		// Re-validate each element (ensures all fields are correct)
+		ensureElementValid(elem)
+
+		// Double-check critical fields (defensive programming)
+		if elem.ID == "" {
+			// This should never happen after ensureElementValid, but add safeguard
+			elem.ID = fmt.Sprintf("unknown_%d", len(finalElements))
+		}
+		if elem.Kind == "" {
+			elem.Kind = "system" // Fallback
+		}
+		if elem.Title == "" {
+			elem.Title = elem.ID // Fallback
+		}
+		if elem.Width <= 0 {
+			elem.Width = e.Config.DefaultNodeWidth
+		}
+		if elem.Height <= 0 {
+			elem.Height = e.Config.DefaultNodeHeight
 		}
 	}
 
