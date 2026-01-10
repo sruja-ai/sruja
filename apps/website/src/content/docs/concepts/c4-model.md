@@ -53,9 +53,9 @@ import { * } from 'sruja.ai/stdlib'
 
 
 App = system "My App" {
-Web = container "React App"
-API = container "Go Service"
-DB = datastore "PostgreSQL"
+    Web = container "React App"
+    API = container "Go Service"
+    DB = database "PostgreSQL"
 }
 ```
 

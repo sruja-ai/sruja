@@ -2,6 +2,7 @@ import { useMemo, type RefObject } from "react";
 // import type { ArchitectureCanvasRef } from "../components/Canvas";
 import type { SrujaModelDump } from "@sruja/shared";
 import type { ViewTab } from "../types";
+import type { CanvasHandle } from "../components/SrujaCanvas/types";
 
 export interface ShortcutDefinition {
   key: string;
@@ -16,7 +17,7 @@ export interface ShortcutDefinition {
 interface UseAppShortcutsProps {
   activeTab: ViewTab;
   model: SrujaModelDump | null;
-  canvasRef: RefObject<any>;
+  canvasRef: RefObject<CanvasHandle | null>;
   handlers: {
     handleExport: () => void;
     handleExportPNG: () => Promise<void>;

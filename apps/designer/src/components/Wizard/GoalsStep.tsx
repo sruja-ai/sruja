@@ -5,7 +5,7 @@ import { useArchitectureStore } from "../../stores/architectureStore";
 import { BestPracticeTip, EditRequirementForm } from "../shared";
 import { TemplateGallery } from "./TemplateGallery";
 import { deduplicateRequirements } from "../../utils/deduplicateRequirements";
-import type { RequirementDump } from "@sruja/shared";
+import type { RequirementDump, SrujaModelDump } from "@sruja/shared";
 import "./WizardSteps.css";
 
 interface GoalsStepProps {
@@ -17,12 +17,13 @@ export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
   const data = useArchitectureStore((s) => s.model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
 
-  const sruja = (data as any)?.sruja ?? {};
+  const sruja = (data as SrujaModelDump)?.sruja ?? {};
   // Goals are in sruja.goals
-  const goals = sruja.goals ?? [];
-  const allRequirements: RequirementDump[] = sruja.requirements ?? [];
+  // Fix for type mismatch with SrujaExtensions from shared
+  const goals = (sruja as unknown as { goals?: string[] }).goals ?? [];
+  const allRequirements: RequirementDump[] = [...(sruja.requirements ?? [])];
   // Deduplicate requirements to prevent rendering duplicates
-  const requirements = deduplicateRequirements(allRequirements as any);
+  const requirements = deduplicateRequirements(allRequirements);
 
   const [newGoal, setNewGoal] = useState("");
   const [showTemplates, setShowTemplates] = useState(false);
@@ -37,7 +38,7 @@ export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
     if (!newGoal.trim() || !data) return;
 
     updateArchitecture((model) => {
-      const currentSruja = (model as any).sruja || {};
+      const currentSruja = (model as SrujaModelDump).sruja || {};
       const currentGoals = currentSruja.goals || [];
       return {
         ...model,
@@ -53,7 +54,7 @@ export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
   const removeGoal = (index: number) => {
     if (!data) return;
     updateArchitecture((model) => {
-      const currentSruja = (model as any).sruja || {};
+      const currentSruja = (model as SrujaModelDump).sruja || {};
       const currentGoals = currentSruja.goals || [];
       return {
         ...model,
@@ -68,13 +69,13 @@ export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
   const removeRequirement = (id: string) => {
     if (!data) return;
     updateArchitecture((model) => {
-      const currentSruja = (model as any).sruja || {};
+      const currentSruja = (model as SrujaModelDump).sruja || {};
       const currentReqs = currentSruja.requirements || [];
       return {
         ...model,
         sruja: {
           ...currentSruja,
-          requirements: currentReqs.filter((r: any) => r.id !== id),
+          requirements: currentReqs.filter((r) => r.id !== id),
         },
       };
     });
@@ -171,7 +172,7 @@ export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
         <p className="section-description">Specific functional and non-functional requirements</p>
 
         <div className="items-list">
-          {requirements.map((req: any) => (
+          {requirements.map((req: RequirementDump) => (
             <div key={req.id} className="item-card">
               <span className={`item-type ${req.type ?? "functional"}`}>
                 {req.type === "non-functional" ? "NFR" : "FR"}

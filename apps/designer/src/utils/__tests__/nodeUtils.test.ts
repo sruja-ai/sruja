@@ -26,7 +26,10 @@ describe("nodeUtils", () => {
     });
 
     it("should handle many existing IDs", () => {
-      const existingIds = new Set<string>(Array.from({ length: 100 }, (_, i) => `test-id-${i}`));
+      const existingIds = new Set<string>([
+        "test-id",
+        ...Array.from({ length: 100 }, (_, i) => `test-id-${i}`),
+      ]);
       expect(generateUniqueId("test-id", existingIds)).toBe("test-id-100");
     });
   });
@@ -63,7 +66,8 @@ describe("nodeUtils", () => {
     it("should return null for architecture without elements", () => {
       const archWithoutElements: SrujaModelDump = {
         specification: { tags: {}, elements: {} },
-        elements: undefined as any,
+        // @ts-expect-error - Testing runtime check for undefined elements
+        elements: undefined,
         relations: [],
         views: {},
         sruja: { requirements: [], flows: [], scenarios: [], adrs: [] },
@@ -135,7 +139,8 @@ describe("nodeUtils", () => {
     it("should return empty set for architecture without elements", () => {
       const archWithoutElements: SrujaModelDump = {
         specification: { tags: {}, elements: {} },
-        elements: undefined as any,
+        // @ts-expect-error - Testing runtime check for undefined elements
+        elements: undefined,
         relations: [],
         views: {},
         sruja: { requirements: [], flows: [], scenarios: [], adrs: [] },

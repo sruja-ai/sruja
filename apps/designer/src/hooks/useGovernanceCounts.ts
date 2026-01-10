@@ -23,8 +23,16 @@ export interface GovernanceCounts {
 
 // ...
 
+import type {
+  RequirementDump,
+  ADRDump,
+  ScenarioDump,
+  FlowDump,
+  SrujaModelDump,
+} from "@sruja/shared";
+
 export function useGovernanceCounts(): GovernanceCounts {
-  const data = useArchitectureStore((s) => s.model);
+  const data = useArchitectureStore((s) => s.model) as SrujaModelDump | null;
 
   return useMemo(() => {
     const counts: GovernanceCounts = {};
@@ -33,12 +41,12 @@ export function useGovernanceCounts(): GovernanceCounts {
     if (!data?.sruja) return counts;
 
     const requirements = data.sruja.requirements ?? [];
-    const adrs = (data as any).sruja.adrs ?? [];
+    const adrs = data.sruja.adrs ?? [];
     const scenarios = data.sruja.scenarios ?? [];
-    const flows = scenarios;
+    const flows = data.sruja.flows ?? [];
 
     // Count requirements per element
-    requirements.forEach((req: any) => {
+    requirements.forEach((req: RequirementDump) => {
       (req.tags ?? []).forEach((tag: string) => {
         if (!counts[tag]) {
           counts[tag] = { requirementCount: 0, adrCount: 0, scenarioCount: 0, flowCount: 0 };
@@ -48,8 +56,10 @@ export function useGovernanceCounts(): GovernanceCounts {
     });
 
     // Count ADRs per element
-    adrs.forEach((adr: any) => {
-      (adr.tags ?? []).forEach((tag: string) => {
+    adrs.forEach((adr: ADRDump) => {
+      // Tags might be missing in interface but present in runtime
+      const tags = ((adr as unknown as { tags?: string[] }).tags || []) as string[];
+      tags.forEach((tag: string) => {
         if (!counts[tag]) {
           counts[tag] = { requirementCount: 0, adrCount: 0, scenarioCount: 0, flowCount: 0 };
         }
@@ -58,9 +68,12 @@ export function useGovernanceCounts(): GovernanceCounts {
     });
 
     // Count scenarios per element (from scenario steps)
-    scenarios.forEach((scenario: any) => {
-      (scenario.steps ?? []).forEach((step: any) => {
-        (step.tags ?? []).forEach((tag: string) => {
+    scenarios.forEach((scenario: ScenarioDump) => {
+      (scenario.steps ?? []).forEach((step) => {
+        const from = step.from;
+        const to = step.to;
+        [from, to].forEach((tag) => {
+          if (!tag) return;
           if (!counts[tag]) {
             counts[tag] = { requirementCount: 0, adrCount: 0, scenarioCount: 0, flowCount: 0 };
           }
@@ -70,9 +83,12 @@ export function useGovernanceCounts(): GovernanceCounts {
     });
 
     // Count flows per element (from flow steps)
-    flows.forEach((flow: any) => {
-      (flow.steps ?? []).forEach((step: any) => {
-        (step.tags ?? []).forEach((tag: string) => {
+    flows.forEach((flow: FlowDump) => {
+      (flow.steps ?? []).forEach((step) => {
+        const from = step.from;
+        const to = step.to;
+        [from, to].forEach((tag) => {
+          if (!tag) return;
           if (!counts[tag]) {
             counts[tag] = { requirementCount: 0, adrCount: 0, scenarioCount: 0, flowCount: 0 };
           }

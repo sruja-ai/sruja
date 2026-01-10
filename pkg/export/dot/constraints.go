@@ -5,6 +5,13 @@
 
 package dot
 
+import (
+	"fmt"
+	"strings"
+
+	"github.com/sruja-ai/sruja/pkg/export/views"
+)
+
 // RankConstraint defines rank alignment constraints for nodes.
 type RankConstraint struct {
 	// Type is "min", "max", or "same"
@@ -73,17 +80,17 @@ type LayoutConstraints struct {
 }
 
 // BuildConstraints builds layout constraints from elements and relations.
-func BuildConstraints(elements []*Element, relations []*Relation, viewLevel int, config Config) LayoutConstraints {
+func BuildConstraints(elements []*views.Element, relations []*views.Relation, viewLevel int, config Config) LayoutConstraints {
 
 	constraints := LayoutConstraints{
 		Global: GlobalConstraints{
 			NodeSep:     pxToInchFloat(float64(config.NodeSep)),
 			RankSep:     pxToInchFloat(float64(config.RankSep)),
-			Splines:     "spline",
+			Splines:     "ortho",
 			RankDir:     config.RankDir,
 			Overlap:     "false",
-			Concentrate: len(relations) > 8, // Bundle parallel edges slightly later
-			Sep:         0.1,                // Reduced from initialSep logic to standard small separation
+			Concentrate: false, // Disabled due to Graphviz crashes ("concentrate=true may not work correctly")
+			Sep:         0.1,   // Reduced from initialSep logic to standard small separation
 		},
 		ViewLevel: viewLevel,
 	}
@@ -169,18 +176,21 @@ func BuildConstraints(elements []*Element, relations []*Relation, viewLevel int,
 	// Spline configuration
 	// Standardize on spline (curves) for better aesthetics.
 	// Only use polyline (angular) for L2/L3 if it's extremely dense to avoid crossing through nodes.
-	constraints.Global.Splines = "spline"
+	constraints.Global.Splines = "ortho"
 
+	// Simplified spline logic: always use ortho for cleaner architecture diagrams
+	// Only fall back if specifically requested (future config)
 	if viewLevel == 2 {
 		nodeCountForDensity := float64(len(elements))
 		if nodeCountForDensity < 1 {
 			nodeCountForDensity = 1
 		}
-		edgeDensity := float64(len(relations)) / nodeCountForDensity
-		// Only use polyline for extremely dense graphs where curves might be confusing
-		if edgeDensity > 2.0 && len(elements) >= 20 {
-			constraints.Global.Splines = "polyline"
-		}
+		// Ortho handles density reasonably well for block diagrams
+		constraints.Global.Splines = "ortho"
+	}
+	if viewLevel == 3 {
+		// L3 uses spline for better crossing reduction (Round 3 strategy)
+		constraints.Global.Splines = "spline"
 	}
 
 	// Build rank constraints
@@ -206,11 +216,11 @@ func BuildConstraints(elements []*Element, relations []*Relation, viewLevel int,
 
 // buildRankConstraints builds rank constraints based on view level.
 // Strict alignment of same-level nodes for professional appearance.
-func buildRankConstraints(elements []*Element, viewLevel int) []RankConstraint {
+func buildRankConstraints(elements []*views.Element, viewLevel int) []RankConstraint {
 	var ranks []RankConstraint
 
 	// Group elements by kind
-	byKind := make(map[string][]*Element)
+	byKind := make(map[string][]*views.Element)
 	for _, elem := range elements {
 		byKind[elem.Kind] = append(byKind[elem.Kind], elem)
 	}
@@ -220,7 +230,7 @@ func buildRankConstraints(elements []*Element, viewLevel int) []RankConstraint {
 	// Improved alignment for better spacing consistency
 	if viewLevel == 1 || viewLevel == 0 {
 		// Collect all person-like elements (person, actor, external)
-		var persons []*Element
+		var persons []*views.Element
 		persons = append(persons, byKind["person"]...)
 		persons = append(persons, byKind["actor"]...)
 		persons = append(persons, byKind["external"]...)
@@ -303,7 +313,7 @@ func buildRankConstraints(elements []*Element, viewLevel int) []RankConstraint {
 // buildSizeConstraints builds size constraints from elements.
 // FAANG pattern: Larger size for "hub" nodes with many connections.
 // Also handles manual position overrides from layout blocks.
-func buildSizeConstraints(elements []*Element, relations []*Relation, config Config) []SizeConstraint {
+func buildSizeConstraints(elements []*views.Element, relations []*views.Relation, config Config) []SizeConstraint {
 	sizes := make([]SizeConstraint, 0, len(elements))
 
 	// Calculate node degrees for hub detection
@@ -386,8 +396,10 @@ func buildSizeConstraints(elements []*Element, relations []*Relation, config Con
 
 		// Add buffer padding to width/height to prevent overlaps
 		// This provides extra space around nodes for better spacing
-		bufferWidth := minWidth * BufferPaddingPercent   // 5% buffer
-		bufferHeight := minHeight * BufferPaddingPercent // 5% buffer
+		// Buffer padding causes edge gaps (edges stop before visual node).
+		// Removing buffer to ensure edges touch the node boundary.
+		bufferWidth := 0.0
+		bufferHeight := 0.0
 		if width < minWidth {
 			width = minWidth + bufferWidth
 		} else {
@@ -425,57 +437,108 @@ func buildSizeConstraints(elements []*Element, relations []*Relation, config Con
 
 // buildEdgeConstraints builds edge constraints from relations.
 // FAANG pattern: Use higher weights and minlen to reduce crossings.
-func buildEdgeConstraints(relations []*Relation, config Config, nodeCount int, parentMap map[string]string, viewLevel int) []EdgeConstraint {
+// NOW WITH EDGE MERGING: Bundles parallel edges into single summary edges.
+func buildEdgeConstraints(relations []*views.Relation, config Config, nodeCount int, parentMap map[string]string, viewLevel int) []EdgeConstraint {
 	edges := make([]EdgeConstraint, 0, len(relations))
 
-	// Track outgoing edges per node for weight distribution
-	outDegree := make(map[string]int)
-	for _, rel := range relations {
-		outDegree[rel.From]++
-	}
+	// Track outgoing edges per node for weight distribution and merging
+	outDegree := make(map[string]int)                  // Count of merged edges
+	rawRelations := make(map[string][]*views.Relation) // Group raw relations by "From->To" key
 
 	for _, rel := range relations {
+		key := rel.From + "->" + rel.To
+		rawRelations[key] = append(rawRelations[key], rel)
+	}
+
+	// Iterate over unique connections (merged edges)
+	for _, rels := range rawRelations {
+		if len(rels) == 0 {
+			continue
+		}
+
+		// Use the first relation as the base
+		baseRel := rels[0]
+
+		// Update degree count (counting the MERGED edge as 1)
+		outDegree[baseRel.From]++
+
+		// Merge labels
+		var mergedLabel string
+
+		// Collect unique labels
+		uniqueLabels := make(map[string]bool)
+		for _, r := range rels {
+			if r.Label != "" {
+				uniqueLabels[r.Label] = true
+			}
+			// basic heuristic: if label starts with number, it might be a flow step
+			// but for now we treat all equally
+		}
+
+		if len(uniqueLabels) == 0 {
+			mergedLabel = ""
+		} else if len(uniqueLabels) == 1 {
+			// Single unique label
+			for l := range uniqueLabels {
+				mergedLabel = l
+			}
+		} else {
+			// Multiple different labels
+			if len(uniqueLabels) <= 3 {
+				// Join short list
+				labels := make([]string, 0, len(uniqueLabels))
+				for l := range uniqueLabels {
+					labels = append(labels, l)
+				}
+				mergedLabel = strings.Join(labels, ",\\n") // Use newline for separation
+			} else {
+				// Summary for many labels
+				mergedLabel = fmt.Sprintf("%d interactions", len(uniqueLabels))
+			}
+		}
+
 		edge := EdgeConstraint{
-			From:          rel.From,
-			To:            rel.To,
+			From:          baseRel.From,
+			To:            baseRel.To,
 			AffectsLayout: true,
 			MinLen:        1,
 		}
 
 		// Smarter edge weight based on label AND edge importance
-		// FAANG pattern: More sophisticated weight distribution for crossing reduction
 		if config.UseEdgeWeights {
 			var baseWeight int
 
-			// Labeled edges are more important - give them higher weight
-			if rel.Label != "" {
-				baseWeight = WeightLabeledEdge // Higher priority for labeled edges (was 20)
+			// Labeled edges are more important
+			if mergedLabel != "" {
+				baseWeight = WeightLabeledEdge
 			} else {
-				baseWeight = WeightUnlabeledEdge // Slightly higher base weight for unlabeled edges (was 3)
+				baseWeight = WeightUnlabeledEdge
+			}
+
+			// Boost weight for multiple connections (stronger bond)
+			if len(rels) > 1 {
+				baseWeight += len(rels) * 2 // Add weight for each parallel connection
 			}
 
 			// Reduce weight for nodes with many outgoing edges (prevents star pattern issues)
-			// But be less aggressive to maintain routing quality
-			if outDegree[rel.From] > HighDegreeThreshold {
-				baseWeight = baseWeight * HighDegreeReductionNumerator / HighDegreeReductionDenominator // Reduce by 1/4 (was 2/3 for >3)
+			if outDegree[baseRel.From] > HighDegreeThreshold {
+				baseWeight = baseWeight * HighDegreeReductionNumerator / HighDegreeReductionDenominator
 			}
 
 			// Increase weight for internal edges (same parent) to keep clusters tight
-			if p1, ok1 := parentMap[rel.From]; ok1 && p1 != "" {
-				if p2, ok2 := parentMap[rel.To]; ok2 && p2 != "" {
+			if p1, ok1 := parentMap[baseRel.From]; ok1 && p1 != "" {
+				if p2, ok2 := parentMap[baseRel.To]; ok2 && p2 != "" {
 					if p1 == p2 {
-						baseWeight += WeightInternalBoost // Boost internal edges
+						baseWeight += WeightInternalBoost
 					}
 				}
 			}
 
 			// Increase minlen for complex diagrams to reduce crossings
-			// L2 uses polyline for better routing, L3 uses higher minlen
-			// Increase minlen slightly for complex diagrams, but cap at 2-3
 			if nodeCount >= ComplexGraphThreshold {
-				edge.MinLen = 2 // Moderate separation (was 4)
+				edge.MinLen = 2
 			} else if nodeCount >= DenseGraphThreshold {
-				edge.MinLen = 1 // Standard (was 3)
+				edge.MinLen = 1
 			} else {
 				edge.MinLen = 1
 			}
@@ -488,43 +551,32 @@ func buildEdgeConstraints(relations []*Relation, config Config, nodeCount int, p
 				edge.MinLen = 2
 			}
 
-			// For very long distance edges in complex graphs, maybe bump to 3, but rarely.
-			// Extreme case handling: very dense diagrams
-			nodeCountForDensity := nodeCount
-			if nodeCountForDensity < 1 {
-				nodeCountForDensity = 1
-			}
-			edgeDensity := float64(len(relations)) / float64(nodeCountForDensity)
-			if edgeDensity > 2.0 && nodeCount >= 20 {
-				edge.MinLen = 2
-			}
-
 			edge.Weight = baseWeight
 		} else {
 			edge.Weight = 1
 		}
 
 		// Edge label positioning
-		if rel.Label != "" {
+		if mergedLabel != "" {
 			// Increase label distance for complex diagrams to reduce overlaps
-			labelDistance := 1.5 // Default distance in inches
+			labelDistance := 1.5
 			if nodeCount > DenseGraphThreshold {
-				labelDistance = 2.0 // More distance for dense diagrams
+				labelDistance = 2.0
 			}
 			if nodeCount >= ComplexGraphThreshold {
-				labelDistance = 2.5 // Even more distance for very complex diagrams
+				labelDistance = 2.5
 			}
 
 			edge.Label = EdgeLabel{
-				Text:     rel.Label,
+				Text:     mergedLabel,
 				Distance: labelDistance,
 				Angle:    0,   // Parallel to edge
 				Position: 0.5, // Middle of edge
 			}
 
-			// For long labels, adjust positioning
-			if len(rel.Label) > 40 {
-				edge.Label.Angle = 0 // Keep parallel, avoids twisting reading
+			// Adjust simple Angle 0 for stability
+			if len(mergedLabel) > 40 {
+				edge.Label.Angle = 0
 			}
 		}
 
@@ -536,7 +588,7 @@ func buildEdgeConstraints(relations []*Relation, config Config, nodeCount int, p
 
 // addSiblingClusterConstraints adds invisible edges between sibling clusters to keep them together.
 // Inspired by PlantUML's "together" keyword, this groups sibling clusters visually.
-func addSiblingClusterConstraints(edges []EdgeConstraint, elements []*Element, parentMap map[string]string) []EdgeConstraint {
+func addSiblingClusterConstraints(edges []EdgeConstraint, elements []*views.Element, parentMap map[string]string) []EdgeConstraint {
 	// Identify elements that will become clusters (elements that have children)
 	hasChildren := make(map[string]bool)
 	for _, elem := range elements {

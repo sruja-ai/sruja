@@ -16,11 +16,11 @@ import { * } from 'sruja.ai/stdlib'
 
 
 shop = system "Shop API" {
-webApp = container "Web" {
-  description "Gateway layer"
-}
-catalogSvc = container "Catalog"
-mainDB = datastore "Database"
+    webApp = container "Web" {
+        description "Gateway layer"
+    }
+    catalogSvc = container "Catalog"
+    mainDB = database "Database"
 }
 
 user = person "User"

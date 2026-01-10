@@ -12,18 +12,47 @@ queue = kind "Queue"
 
 
 
-customer = person "Customer"
-admin = person "Platform Administrator"
-developer = person "Developer"
+customer = person "Customer" {
+  description "SaaS user"
+  metadata { tags ["REQ001"] }
+}
+admin = person "Platform Administrator" {
+  description "Manages platform"
+  metadata { tags ["REQ003"] }
+}
+developer = person "Developer" {
+  description "API consumer"
+  metadata { tags ["REQ002"] }
+}
 
 saaSPlatform = system "SaaS Platform" {
+  description "Enterprise SaaS Solution"
+  metadata { tags ["REQ001"] }
   webApp = container "Web Application" {
     description "React-based dashboard for customers"
     technology "React, TypeScript"
-    dashboard = component "Dashboard"
-    settings = component "Settings"
-    billing = component "Billing"
-    analytics = component "Analytics"
+    metadata { 
+      tags ["REQ001"] 
+      base_replicas "5"
+    }
+    dashboard = component "Dashboard" {
+      description "Main UI"
+      technology "React Component"
+      metadata { tags ["REQ001"] }
+    }
+    settings = component "Settings" {
+      description "User preferences"
+      technology "React Component"
+    }
+    billing = component "Billing" {
+      description "Payment UI"
+      technology "React Component"
+    }
+    analytics = component "Analytics" {
+      description "Charts and graphs"
+      technology "React Component"
+      metadata { tags ["REQ001"] }
+    }
     dashboard -> aPI "Fetches data"
     settings -> aPI "Updates settings"
     billing -> aPI "Manages billing"
@@ -33,10 +62,25 @@ saaSPlatform = system "SaaS Platform" {
   aPI = container "REST API Gateway" {
     description "Main API entry point"
     technology "Go, Gin"
-    authMiddleware = component "Authentication Middleware"
-    rateLimiter = component "Rate Limiter"
-    requestRouter = component "Request Router"
-    responseFormatter = component "Response Formatter"
+    metadata { base_replicas "3" }
+    authMiddleware = component "Authentication Middleware" {
+      description "Validates JWTs"
+      technology "Gin Middleware"
+      metadata { tags ["REQ003"] }
+    }
+    rateLimiter = component "Rate Limiter" {
+      description "Token bucket limiter"
+      technology "Go Library"
+      metadata { tags ["REQ002"] }
+    }
+    requestRouter = component "Request Router" {
+      description "Routes to services"
+      technology "Gin Router"
+    }
+    responseFormatter = component "Response Formatter" {
+      description "Standardizes JSON"
+      technology "Go Library"
+    }
     authMiddleware -> userService "Validates tokens"
     rateLimiter -> redis "Checks limits"
     requestRouter -> projectService "Routes requests"
@@ -47,9 +91,20 @@ saaSPlatform = system "SaaS Platform" {
   userService = container "User Service" {
     description "Manages users and authentication"
     technology "Node.js, Express"
-    authAPI = component "Auth API"
-    profileAPI = component "Profile API"
-    sessionManager = component "Session Manager"
+    metadata { base_replicas "2" }
+    authAPI = component "Auth API" {
+      description "Login endpoints"
+      technology "Express"
+      metadata { tags ["REQ003"] }
+    }
+    profileAPI = component "Profile API" {
+      description "User profile management"
+      technology "Express"
+    }
+    sessionManager = component "Session Manager" {
+      description "Redis session handling"
+      technology "Node.js Library"
+    }
     authAPI -> userDB "Reads/Writes users"
     profileAPI -> userDB "Updates profiles"
     sessionManager -> redis "Manages sessions"
@@ -58,9 +113,19 @@ saaSPlatform = system "SaaS Platform" {
   projectService = container "Project Service" {
     description "Manages customer projects"
     technology "Java, Spring Boot"
-    projectAPI = component "Project API"
-    workspaceManager = component "Workspace Manager"
-    collaborationService = component "Collaboration Service"
+    projectAPI = component "Project API" {
+      description "CRUD for projects"
+      technology "Spring MVC"
+      metadata { tags ["REQ001"] }
+    }
+    workspaceManager = component "Workspace Manager" {
+      description "Project isolation"
+      technology "Spring Service"
+    }
+    collaborationService = component "Collaboration Service" {
+      description "Real-time updates"
+      technology "WebSocket"
+    }
     projectAPI -> projectDB "Reads/Writes projects"
     workspaceManager -> storageService "Manages storage"
     collaborationService -> messageQueue "Publishes events"
@@ -69,9 +134,20 @@ saaSPlatform = system "SaaS Platform" {
   billingService = container "Billing Service" {
     description "Handles subscriptions and payments"
     technology "Python, FastAPI"
-    subscriptionAPI = component "Subscription API"
-    invoiceGenerator = component "Invoice Generator"
-    paymentProcessor = component "Payment Processor"
+    metadata { base_replicas "1" }
+    subscriptionAPI = component "Subscription API" {
+      description "Plan management"
+      technology "FastAPI"
+    }
+    invoiceGenerator = component "Invoice Generator" {
+      description "PDF generation"
+      technology "Python PDF"
+    }
+    paymentProcessor = component "Payment Processor" {
+      description "Stripe integration"
+      technology "Stripe SDK"
+      metadata { tags ["REQ004"] }
+    }
     subscriptionAPI -> billingDB "Manages subscriptions"
     invoiceGenerator -> billingDB "Generates invoices"
     paymentProcessor -> paymentGateway "Processes payments"
@@ -80,9 +156,20 @@ saaSPlatform = system "SaaS Platform" {
   analyticsService = container "Analytics Service" {
     description "Processes analytics data"
     technology "Python, Flask"
-    eventCollector = component "Event Collector"
-    dataProcessor = component "Data Processor"
-    reportGenerator = component "Report Generator"
+    metadata { base_replicas "4" }
+    eventCollector = component "Event Collector" {
+      description "Ingests raw events"
+      technology "Flask"
+      metadata { tags ["REQ004"] }
+    }
+    dataProcessor = component "Data Processor" {
+      description "ETL pipeline"
+      technology "Pandas"
+    }
+    reportGenerator = component "Report Generator" {
+      description "Scheduled reports"
+      technology "Python"
+    }
     eventCollector -> eventQueue "Consumes events"
     dataProcessor -> analyticsDB "Writes analytics"
     reportGenerator -> analyticsDB "Reads analytics"
@@ -91,75 +178,104 @@ saaSPlatform = system "SaaS Platform" {
   storageService = container "Storage Service" {
     description "Manages file storage"
     technology "Go"
-    fileAPI = component "File API"
-    metadataManager = component "Metadata Manager"
+    fileAPI = component "File API" {
+      description "Upload/Download"
+      technology "Go HTTP"
+    }
+    metadataManager = component "Metadata Manager" {
+      description "File properties"
+      technology "Go"
+    }
     fileAPI -> objectStorage "Stores files"
     metadataManager -> metadataDB "Manages metadata"
   }
   
   userDB = database "User Database" {
     technology "PostgreSQL"
+    description "User & Auth data"
+    metadata { tags ["REQ003"] }
   }
   
   projectDB = database "Project Database" {
     technology "PostgreSQL"
+    description "Project metadata"
+    metadata { tags ["REQ001"] }
   }
   
   billingDB = database "Billing Database" {
     technology "PostgreSQL"
+    description "Invoices & Plans"
   }
   
   analyticsDB = database "Analytics Database" {
     technology "ClickHouse"
+    description "OLAP store"
+    metadata { tags ["REQ004"] }
   }
   
   metadataDB = database "Metadata Database" {
     technology "PostgreSQL"
+    description "File Index"
   }
   
   messageQueue = queue "Message Queue" {
     technology "RabbitMQ"
+    description "Task buffer"
+    metadata { tags ["REQ003"] }
   }
   
   eventQueue = queue "Event Queue" {
     technology "Kafka"
+    description "Event stream"
+    metadata { tags ["REQ004"] }
   }
   
   redis = container "Cache & Sessions" {
     technology "Redis"
+    description "Hot data cache"
+    metadata { tags ["REQ002"] }
   }
   
   objectStorage = container "Object Storage" {
     technology "S3-compatible"
+    description "Blob store"
   }
   
   responseCache = container "Response Cache" {
     technology "Redis"
+    description "API response cache"
+    metadata { tags ["REQ002"] }
   }
 }
 
 paymentGateway = system "Payment Gateway" {
   description "External payment processing"
-  stripeAPI = container "Stripe API" {
+  stripeIntegration = container "Stripe Integration" {
     technology "Stripe"
+    description "Payment provider"
+    metadata { tags ["external"] }
   }
 }
 
 notificationService = system "Notification Service" {
   description "External notification service"
-  emailAPI = container "Email API" {
+  emailProvider = container "Email Provider" {
     technology "SendGrid"
+    description "Email delivery"
+    metadata { tags ["external"] }
   }
   
-  sMSAPI = container "SMS API" {
+  smsProvider = container "SMS Provider" {
     technology "Twilio"
+    description "SMS delivery"
+    metadata { tags ["external"] }
   }
 }
 
-// User interactions
-customer -> saaSPlatform.webApp "Uses platform"
-admin -> saaSPlatform.aPI "Manages platform"
-developer -> saaSPlatform.aPI "Uses API"
+// User interactions (FAANG pattern: single entry point)
+customer -> saaSPlatform.webApp "uses platform via"
+admin -> saaSPlatform.webApp "manages platform via"
+developer -> saaSPlatform.aPI "integrates with"
 
 // Internal service communication
 saaSPlatform.webApp -> saaSPlatform.aPI "API calls"
@@ -185,10 +301,10 @@ saaSPlatform.aPI -> saaSPlatform.responseCache "Response caching"
 saaSPlatform.projectService -> saaSPlatform.messageQueue "Publishes events"
 saaSPlatform.analyticsService -> saaSPlatform.eventQueue "Consumes events"
 
-// External integrations (modeled as external systems providing services)
-paymentGateway.stripeAPI -> saaSPlatform.billingService "Provides payment processing"
-notificationService.emailAPI -> saaSPlatform.projectService "Provides email notifications"
-notificationService.sMSAPI -> saaSPlatform.projectService "Provides SMS notifications"
+// External integrations (internal services call external APIs)
+saaSPlatform.billingService -> paymentGateway.stripeIntegration "Processes payments through"
+saaSPlatform.projectService -> notificationService.emailProvider "Sends email via"
+saaSPlatform.projectService -> notificationService.smsProvider "Sends SMS via"
 
 // Storage
 saaSPlatform.storageService -> saaSPlatform.objectStorage "Stores files"

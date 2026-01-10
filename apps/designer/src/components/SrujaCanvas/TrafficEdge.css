@@ -8,7 +8,41 @@
     }
 }
 
-.traffic-edge-anim {
-    /* This class ensures the animation is active */
-    stroke-linecap: round;
+/* Animation Edge States */
+
+/* Active/Highlighted: Currently traversing */
+.animation-edge-active,
+.animation-edge-highlighted {
+    stroke: #2563eb !important;
+    stroke-width: 3px !important;
+    opacity: 1 !important;
+    z-index: 100;
+}
+
+[data-theme="dark"] .animation-edge-active,
+[data-theme="dark"] .animation-edge-highlighted {
+    stroke: #3b82f6 !important;
+}
+
+/* Flow Animation */
+.animation-edge-flow-forward {
+    animation: traffic-flow 1s linear infinite;
+    stroke-dasharray: 10, 5;
+}
+
+.animation-edge-flow-backward {
+    animation: traffic-flow 1s linear infinite reverse;
+    stroke-dasharray: 10, 5;
+}
+
+/* Visited */
+.animation-edge-visited {
+    stroke: #10b981 !important;
+    stroke-width: 2px !important;
+    opacity: 0.8 !important;
+    stroke-dasharray: 0;
+}
+
+[data-theme="dark"] .animation-edge-visited {
+    stroke: #10b981 !important;
 }

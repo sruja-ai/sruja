@@ -1,8 +1,11 @@
 // apps/designer/src/components/CTO/RiskAssessment.tsx
-import { useMemo } from "react";
-import { AlertTriangle, TrendingUp, Shield } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertTriangle, TrendingUp, Shield, Filter } from "lucide-react";
+import { Button, Badge } from "@sruja/ui";
+import { useArchitectureStore } from "../../stores";
 import { getArchitectureModel } from "../../models/ArchitectureModel";
 import { detectAntiPatterns } from "../../utils/antiPatternDetector";
+import type { Priority } from "../../types";
 import "./RiskAssessment.css";
 
 type RiskLevel = "critical" | "high" | "medium" | "low";
@@ -15,24 +18,42 @@ interface Risk {
   probability: RiskLevel;
   impact: RiskLevel;
   overall: RiskLevel;
+  priority: Priority;
   mitigation?: string;
+  actionable?: string; // One-line actionable mitigation
+}
+
+function getPriority(overall: RiskLevel): Priority {
+  if (overall === "critical" || overall === "high") return "high";
+  if (overall === "medium") return "medium";
+  return "low";
 }
 
 export function RiskAssessment() {
+  const storeModel = useArchitectureStore((s) => s.model);
   const model = getArchitectureModel();
-  const architectureModel = model.getModel();
-  const nodes = model.getNodes();
-  const relations = model.getRelations();
-  const policies = model.getPolicies();
+  const [showOnlyHigh, setShowOnlyHigh] = useState(true);
+
+  // Memoize model data to prevent infinite loops
+  const { architectureModel, nodes, relations, policies } = useMemo(() => {
+    const archModel = model.getModel();
+    return {
+      architectureModel: archModel,
+      nodes: archModel?.elements ? new Map(Object.entries(archModel.elements)) : new Map(),
+      relations: archModel?.relations || [],
+      policies: model.getPolicies(),
+    };
+  }, [storeModel, model]);
 
   // Assess risks across multiple dimensions
   const risks = useMemo<Risk[]>(() => {
     const riskList: Risk[] = [];
 
     // 1. Security risks
-    const publicFacingComponents = Array.from(nodes.values()).filter((n: any) => {
-      const tags = n.tags || [];
-      const tech = (n.technology || "").toLowerCase();
+    const publicFacingComponents = Array.from(nodes.values()).filter((n) => {
+      const node = n as unknown as { tags?: string[]; technology?: string };
+      const tags = node.tags || [];
+      const tech = (node.technology || "").toLowerCase();
       return (
         tags.some((t: string) => t.toLowerCase().includes("public")) ||
         tech.includes("api") ||
@@ -41,11 +62,13 @@ export function RiskAssessment() {
     });
 
     if (publicFacingComponents.length > 0) {
-      const hasAuth = policies.some((p: any) => {
-        const name = (p.name || "").toLowerCase();
+      const hasAuth = policies.some((p) => {
+        const policy = p as unknown as { name?: string };
+        const name = (policy.name || "").toLowerCase();
         return name.includes("auth") || name.includes("access");
       });
 
+      const overall = hasAuth ? "medium" : "high";
       riskList.push({
         id: "risk-security-public",
         category: "security",
@@ -53,7 +76,9 @@ export function RiskAssessment() {
         description: `${publicFacingComponents.length} public-facing components may lack proper authentication`,
         probability: hasAuth ? "medium" : "high",
         impact: "high",
-        overall: hasAuth ? "medium" : "high",
+        overall,
+        priority: getPriority(overall),
+        actionable: "Add OAuth/JWT authentication to public-facing components",
         mitigation:
           "Implement authentication and authorization policies for all public-facing components",
       });
@@ -72,6 +97,8 @@ export function RiskAssessment() {
         probability: "high",
         impact: "high",
         overall: "high",
+        priority: "high",
+        actionable: "Break cycles using event-driven patterns or message queues",
         mitigation:
           "Refactor to break cycles using event-driven patterns or intermediate components",
       });
@@ -91,6 +118,8 @@ export function RiskAssessment() {
         probability: "medium",
         impact: "medium",
         overall: "medium",
+        priority: "medium",
+        actionable: "Split into smaller, focused components",
         mitigation: "Split high-fan-in/fan-out components into smaller, focused components",
       });
     }
@@ -107,6 +136,8 @@ export function RiskAssessment() {
         probability: "medium",
         impact: "medium",
         overall: "medium",
+        priority: "medium",
+        actionable: "Reduce coupling by introducing service boundaries or message queues",
         mitigation: "Consider simplifying architecture by reducing coupling between components",
       });
     }
@@ -123,6 +154,8 @@ export function RiskAssessment() {
         probability: "medium",
         impact: "high",
         overall: "medium",
+        priority: "medium",
+        actionable: "Define security, performance, and compliance policies",
         mitigation:
           "Define and enforce architectural policies for security, performance, and compliance",
       });
@@ -138,8 +171,18 @@ export function RiskAssessment() {
       medium: risks.filter((r) => r.overall === "medium").length,
       low: risks.filter((r) => r.overall === "low").length,
       total: risks.length,
+      highPriority: risks.filter((r) => r.priority === "high").length,
+      mediumPriority: risks.filter((r) => r.priority === "medium").length,
+      lowPriority: risks.filter((r) => r.priority === "low").length,
     };
   }, [risks]);
+
+  const filteredRisks = useMemo(() => {
+    if (showOnlyHigh) {
+      return risks.filter((r) => r.priority === "high");
+    }
+    return risks;
+  }, [risks, showOnlyHigh]);
 
   const getCategoryIcon = (category: Risk["category"]) => {
     switch (category) {
@@ -177,60 +220,82 @@ export function RiskAssessment() {
   return (
     <div className="risk-assessment">
       <div className="risk-assessment-header">
-        <h3 className="risk-assessment-title">
-          <AlertTriangle size={18} />
-          Risk Assessment
-        </h3>
-        <div className="risk-assessment-stats">
-          {riskStats.critical > 0 && (
-            <span className="risk-stat risk-critical">{riskStats.critical} Critical</span>
-          )}
-          {riskStats.high > 0 && <span className="risk-stat risk-high">{riskStats.high} High</span>}
+        <div className="risk-assessment-title-row">
+          <h3 className="risk-assessment-title">
+            <AlertTriangle size={18} />
+            Architecture Risks
+          </h3>
+          <div className="risk-assessment-stats">
+            {riskStats.highPriority > 0 && (
+              <Badge color="error" className="priority-badge">
+                {riskStats.highPriority} High
+              </Badge>
+            )}
+            {riskStats.mediumPriority > 0 && (
+              <Badge color="warning" className="priority-badge">
+                {riskStats.mediumPriority} Medium
+              </Badge>
+            )}
+          </div>
         </div>
+        {risks.length > 0 && (
+          <div className="risk-assessment-filters">
+            <Button
+              variant={showOnlyHigh ? "primary" : "ghost"}
+              size="sm"
+              onClick={() => setShowOnlyHigh(!showOnlyHigh)}
+            >
+              <Filter size={12} />
+              {showOnlyHigh ? "Showing High Priority" : "Show All"}
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="risk-assessment-content">
-        {risks.map((risk) => (
-          <div key={risk.id} className={`risk-item risk-${risk.overall}`}>
-            <div className="risk-item-header">
-              <div className="risk-item-meta">
-                <span className="risk-category-wrapper">
-                  {getCategoryIcon(risk.category)}
-                  <span className="risk-category-label">{risk.category}</span>
-                </span>
-                <span className={`risk-badge risk-badge-${risk.overall}`}>{risk.overall}</span>
-              </div>
-              <h4 className="risk-item-title">{risk.title}</h4>
-            </div>
-
-            <div className="risk-item-body">
-              <p className="risk-item-description">{risk.description}</p>
-
-              <div className="risk-item-metrics">
-                <div className="risk-metric">
-                  <span className="risk-metric-label">Probability</span>
-                  <span className={`risk-metric-value text-${risk.probability}`}>
-                    {risk.probability}
-                  </span>
-                </div>
-                <div className="risk-metric-divider" />
-                <div className="risk-metric">
-                  <span className="risk-metric-label">Impact</span>
-                  <span className={`risk-metric-value text-${risk.impact}`}>{risk.impact}</span>
-                </div>
-              </div>
-            </div>
-
-            {risk.mitigation && (
-              <div className="risk-item-footer">
-                <div className="risk-mitigation-box">
-                  <span className="mitigation-label">Mitigation Strategy</span>
-                  <p className="mitigation-text">{risk.mitigation}</p>
-                </div>
-              </div>
-            )}
+        {filteredRisks.length === 0 ? (
+          <div className="risk-assessment-empty">
+            <Shield size={32} className="empty-icon" />
+            <p>
+              {risks.length === 0 ? "No significant risks identified." : "No high priority risks."}
+            </p>
           </div>
-        ))}
+        ) : (
+          filteredRisks.map((risk) => (
+            <div key={risk.id} className={`risk-item risk-${risk.overall}`}>
+              <div className="risk-item-header">
+                <div className="risk-item-meta">
+                  <span className="risk-category-wrapper">
+                    {getCategoryIcon(risk.category)}
+                    <span className="risk-category-label">{risk.category}</span>
+                  </span>
+                  <Badge
+                    color={
+                      risk.priority === "high"
+                        ? "error"
+                        : risk.priority === "medium"
+                          ? "warning"
+                          : "neutral"
+                    }
+                    className="priority-badge-small"
+                  >
+                    {risk.priority}
+                  </Badge>
+                </div>
+                <h4 className="risk-item-title">{risk.title}</h4>
+              </div>
+
+              <div className="risk-item-body">
+                <p className="risk-item-description">{risk.description}</p>
+                {risk.actionable && (
+                  <div className="risk-item-actionable">
+                    <strong>Mitigate:</strong> {risk.actionable}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

@@ -6,10 +6,12 @@ import type {
   ADR,
   Flow,
   Policy,
-  Constraint,
-  Convention,
   SrujaExtensions,
   Element,
+  MetadataEntryJSON,
+  OverviewJSON,
+  ConstraintJSON,
+  ConventionJSON,
 } from "@sruja/shared";
 import { useArchitectureStore, useUIStore } from "../../stores";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
@@ -54,31 +56,24 @@ export function OverviewPanel() {
   const [editPolicy, setEditPolicy] = useState<Policy | undefined>(undefined);
   const [showMetadataForm, setShowMetadataForm] = useState(false);
   const [editMetadata, setEditMetadata] = useState<
-    { metadata: Record<string, string>; index: number } | undefined
+    { metadata: MetadataEntryJSON; index: number } | undefined
   >(undefined);
   const [showConstraintForm, setShowConstraintForm] = useState(false);
   const [editConstraint, setEditConstraint] = useState<
-    { constraint: Constraint; index: number } | undefined
+    { constraint: ConstraintJSON; index: number } | undefined
   >(undefined);
   const [showConventionForm, setShowConventionForm] = useState(false);
   const [editConvention, setEditConvention] = useState<
-    { convention: Convention; index: number } | undefined
+    { convention: ConventionJSON; index: number } | undefined
   >(undefined);
 
   const setPendingAction = useUIStore((s) => s.setPendingAction);
   const setActiveTab = useUIStore((s) => s.setActiveTab);
 
   const sruja: SrujaExtensions | undefined = model?.sruja;
-  const overview = sruja?.requirements?.[0]; // Note: overview structure may need verification
-  const archMetadataRaw = model?._metadata
-    ? (model._metadata as { archMetadata?: Record<string, string> }).archMetadata
-    : undefined;
-  // Convert Record<string, string> to array format expected by components
-  const archMetadata = archMetadataRaw
-    ? Object.entries(archMetadataRaw).map(([key, value]) => ({ key, value }))
-    : undefined;
+  const overview = sruja?.overview;
+  const archMetadata = sruja?.metadata;
   const architectureName = model?._metadata?.name || "Architecture";
-  const description = undefined; // Note: description field location may need verification
 
   // Type guard functions for element filtering
   const isSystem = (e: Element): boolean => e.kind === "system";
@@ -125,9 +120,9 @@ export function OverviewPanel() {
     <div className="overview-panel">
       <OverviewHero
         architectureName={architectureName}
-        description={description}
-        overview={overview}
-        archMetadata={archMetadata}
+        description={sruja?.description}
+        overview={overview as unknown as OverviewJSON | undefined}
+        archMetadata={archMetadata as unknown as MetadataEntryJSON[] | undefined}
         onEditOverview={() => setShowOverviewForm(true)}
       />
 
@@ -209,19 +204,19 @@ export function OverviewPanel() {
         Passing 'any' for now to suppressing type errors. 
       */}
       <MetadataSection
-        metadata={archMetadata}
+        metadata={archMetadata as unknown as MetadataEntryJSON[] | undefined}
         onAddMetadata={() => {
           setEditMetadata(undefined);
           setShowMetadataForm(true);
         }}
-        onEditMetadata={(meta: any, index: number) => {
+        onEditMetadata={(meta: MetadataEntryJSON, index: number) => {
           setEditMetadata({ metadata: meta, index });
           setShowMetadataForm(true);
         }}
         onDeleteMetadata={handleDeleteMetadata}
       />
 
-      <GoalsSection overview={overview} />
+      <GoalsSection overview={overview as unknown as OverviewJSON | undefined} />
 
       <PoliciesSection
         policies={sruja?.policies ? [...sruja.policies] : undefined}
@@ -237,12 +232,16 @@ export function OverviewPanel() {
       />
 
       <ConstraintsSection
-        constraints={sruja?.constraints ? [...sruja.constraints] : undefined}
+        constraints={
+          sruja?.constraints
+            ? sruja.constraints.map((c) => ({ key: c.id, value: c.description ?? "" }))
+            : undefined
+        }
         onAddConstraint={() => {
           setEditConstraint(undefined);
           setShowConstraintForm(true);
         }}
-        onEditConstraint={(constraint: Constraint, index: number) => {
+        onEditConstraint={(constraint: ConstraintJSON, index: number) => {
           setEditConstraint({ constraint, index });
           setShowConstraintForm(true);
         }}
@@ -250,19 +249,23 @@ export function OverviewPanel() {
       />
 
       <ConventionsSection
-        conventions={sruja?.conventions ? [...sruja.conventions] : undefined}
+        conventions={
+          sruja?.conventions
+            ? sruja.conventions.map((c) => ({ key: c.id, value: c.description ?? "" }))
+            : undefined
+        }
         onAddConvention={() => {
           setEditConvention(undefined);
           setShowConventionForm(true);
         }}
-        onEditConvention={(convention: Convention, index: number) => {
+        onEditConvention={(convention: ConventionJSON, index: number) => {
           setEditConvention({ convention, index });
           setShowConventionForm(true);
         }}
         onDeleteConvention={handleDeleteConvention}
       />
 
-      {/* Edit Forms - using any for props type compat temporarily */}
+      {/* Edit Forms - All form components are properly typed */}
       <EditRequirementForm
         isOpen={showRequirementForm}
         onClose={() => {
@@ -321,7 +324,11 @@ export function OverviewPanel() {
           setShowConventionForm(false);
           setEditConvention(undefined);
         }}
-        convention={editConvention?.convention}
+        convention={
+          editConvention?.convention
+            ? { id: editConvention.convention.key, description: editConvention.convention.value }
+            : undefined
+        }
         conventionIndex={editConvention?.index}
       />
     </div>

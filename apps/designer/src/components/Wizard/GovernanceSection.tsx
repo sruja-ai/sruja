@@ -3,7 +3,7 @@ import { FileText, ClipboardList, Plus, Trash2, ChevronDown, ChevronUp } from "l
 import { Button, Input, Select } from "@sruja/ui";
 import { useArchitectureStore } from "../../stores/architectureStore";
 import { deduplicateRequirements } from "../../utils/deduplicateRequirements";
-import type { RequirementDump, ADRDump } from "@sruja/shared";
+import type { RequirementDump, ADRDump, SrujaModelDump } from "@sruja/shared";
 import "./WizardSteps.css";
 
 interface ElementOption {
@@ -24,18 +24,20 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
   const data = useArchitectureStore((s) => s.model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
 
-  const sruja = (data as any)?.sruja ?? {}; // Dump structure for Sruja extensions
-  const allRequirements: RequirementDump[] = sruja.requirements ?? [];
-  const allAdrs: ADRDump[] = sruja.adrs ?? [];
+  const sruja = (data as SrujaModelDump)?.sruja ?? {}; // Dump structure for Sruja extensions
+  const allRequirements: RequirementDump[] = [...(sruja.requirements ?? [])];
+  const allAdrs: ADRDump[] = [...(sruja.adrs ?? [])];
 
   // Deduplicate requirements first, then filter
-  const uniqueRequirements = deduplicateRequirements(allRequirements as any); // Cast to any because deduplicate might expect legacy types or just id/title
+  const uniqueRequirements = deduplicateRequirements(allRequirements);
 
   // Filter to show only items tagged with elements at this level
   const requirements = filterFn
-    ? uniqueRequirements.filter((r: any) => filterFn(r.tags))
+    ? uniqueRequirements.filter((r) => filterFn((r as { tags?: string[] }).tags))
     : uniqueRequirements;
-  const adrs = filterFn ? allAdrs.filter((a: any) => filterFn(a.tags)) : allAdrs; // adr.tags might be missing in interface
+  const adrs = filterFn
+    ? allAdrs.filter((a) => filterFn((a as { tags?: string[] }).tags))
+    : allAdrs;
 
   const [activeTab, setActiveTab] = useState<"requirements" | "adrs">("requirements");
   const [expandedAdr, setExpandedAdr] = useState<string | null>(null);
@@ -67,7 +69,7 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
   const addRequirement = () => {
     if (!reqId.trim() || !reqTitle.trim() || !data) return;
     if (allRequirements.some((r) => r.id === reqId.trim())) return;
-    const newReq: any = {
+    const newReq: RequirementDump = {
       id: reqId.trim(),
       type: reqType,
       title: reqTitle.trim(),
@@ -75,7 +77,7 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
     };
 
     updateArchitecture((model) => {
-      const currentSruja = (model as any).sruja || {};
+      const currentSruja = (model as SrujaModelDump).sruja || {};
       const currentReqs = currentSruja.requirements || [];
       return {
         ...model,
@@ -93,13 +95,13 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
 
   const removeRequirement = (id: string) => {
     updateArchitecture((model) => {
-      const currentSruja = (model as any).sruja || {};
+      const currentSruja = (model as SrujaModelDump).sruja || {};
       const currentReqs = currentSruja.requirements || [];
       return {
         ...model,
         sruja: {
           ...currentSruja,
-          requirements: currentReqs.filter((r: any) => r.id !== id),
+          requirements: currentReqs.filter((r) => r.id !== id),
         },
       };
     });
@@ -107,17 +109,17 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
 
   const addAdr = () => {
     if (!adrId.trim() || !adrTitle.trim() || !data) return;
-    const newAdr: any = {
+    const newAdr: ADRDump = {
       id: adrId.trim(),
       title: adrTitle.trim(),
-      status: adrStatus,
+      status: adrStatus as "accepted" | "rejected" | "proposed" | "deprecated",
       context: adrContext.trim() || undefined,
       decision: adrDecision.trim() || undefined,
       tags: adrTag ? [adrTag] : undefined,
     };
 
     updateArchitecture((model) => {
-      const currentSruja = (model as any).sruja || {};
+      const currentSruja = (model as SrujaModelDump).sruja || {};
       const currentAdrs = currentSruja.adrs || [];
       return {
         ...model,
@@ -138,13 +140,13 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
 
   const removeAdr = (id: string) => {
     updateArchitecture((model) => {
-      const currentSruja = (model as any).sruja || {};
+      const currentSruja = (model as SrujaModelDump).sruja || {};
       const currentAdrs = currentSruja.adrs || [];
       return {
         ...model,
         sruja: {
           ...currentSruja,
-          adrs: currentAdrs.filter((a: any) => a.id !== id),
+          adrs: currentAdrs.filter((a) => a.id !== id),
         },
       };
     });
@@ -208,7 +210,7 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
           <p className="section-description">Define requirements linked to {levelLabel} elements</p>
 
           <div className="items-list">
-            {requirements.map((req: any) => (
+            {requirements.map((req: RequirementDump) => (
               <div key={req.id} className="item-card">
                 <span
                   className={`item-type ${req.type === "functional" ? "functional" : "non-functional"}`}
@@ -289,7 +291,7 @@ export function GovernanceSection({ elements, levelLabel, filterFn }: Governance
           <p className="section-description">Document architectural decisions for {levelLabel}</p>
 
           <div className="items-list">
-            {adrs.map((adr: any) => (
+            {adrs.map((adr: ADRDump) => (
               <div key={adr.id} className="item-card adr-card-mini">
                 <div
                   className="adr-header-mini"

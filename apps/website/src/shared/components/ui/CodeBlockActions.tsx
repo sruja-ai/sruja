@@ -142,8 +142,10 @@ async function renderMermaid(preview: HTMLElement, dsl: string) {
         // Try to extract more information from the JSON to help debug
         try {
           const parsed = JSON.parse(jsonStr);
-          const modelItems = parsed?.model?.items || [];
-          const hasElements = modelItems.length > 0;
+          // JSON structure has 'elements' (map) and 'relations' (array), not 'model.items'
+          const elements = parsed?.elements || {};
+          const elementCount = Object.keys(elements).length;
+          const hasElements = elementCount > 0;
           if (!hasElements) {
             throw new Error(
               "Mermaid export failed: No elements found in model. Please ensure your DSL defines systems, containers, or other elements."
@@ -152,8 +154,8 @@ async function renderMermaid(preview: HTMLElement, dsl: string) {
           // Log diagnostic info only in development/debug mode
           if (process.env.NODE_ENV === "development") {
             console.error(
-              "[CodeBlockActions] Parsing succeeded but mermaid export returned empty. Model items:",
-              modelItems.length
+              "[CodeBlockActions] Parsing succeeded but mermaid export returned empty. Element count:",
+              elementCount
             );
           }
         } catch (jsonError) {

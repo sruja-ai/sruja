@@ -39,19 +39,19 @@ describe("form utils", () => {
   });
 
   describe("collectIds", () => {
-    const createMockDump = (elements: Record<string, any> = {}): SrujaModelDump => ({
-      specification: { tags: {}, elements: {} },
+    const createMockDump = (elements: Record<string, unknown> = {}): SrujaModelDump => ({
+      specification: { tags: {}, elements: {}, relationships: {} },
       elements,
       relations: [],
       views: {},
       sruja: { requirements: [], flows: [], scenarios: [], adrs: [] },
-      _metadata: { name: "Test", version: "1.0", generated: "", srujaVersion: "" }
+      _metadata: { name: "Test", version: "1.0", generated: "", srujaVersion: "" },
     });
 
     it("should collect element IDs", () => {
       const data = createMockDump({
-        "Person1": { id: "Person1", kind: "person", title: "P1", tags: [], links: [] },
-        "System1": { id: "System1", kind: "system", title: "S1", tags: [], links: [] }
+        Person1: { id: "Person1", kind: "person", title: "P1", tags: [], links: [] },
+        System1: { id: "System1", kind: "system", title: "S1", tags: [], links: [] },
       });
 
       const ids = collectIds(data);
@@ -67,8 +67,8 @@ describe("form utils", () => {
 
   describe("generateUniqueId", () => {
     const createMockDump = (existingIds: string[]): SrujaModelDump => {
-      const elements: Record<string, any> = {};
-      existingIds.forEach(id => {
+      const elements: Record<string, unknown> = {};
+      existingIds.forEach((id) => {
         elements[id] = { id, kind: "system", title: id, tags: [], links: [] };
       });
       return {
@@ -77,7 +77,7 @@ describe("form utils", () => {
         relations: [],
         views: {},
         sruja: { requirements: [], flows: [], scenarios: [], adrs: [] },
-        _metadata: { name: "Test", version: "1.0", generated: "", srujaVersion: "" }
+        _metadata: { name: "Test", version: "1.0", generated: "", srujaVersion: "" },
       };
     };
 

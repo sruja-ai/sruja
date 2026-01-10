@@ -79,7 +79,8 @@ export const SrujaNode = memo(({ data, selected, width, height }: NodeProps<Node
 
   // Ensure title is always a string (fallback to id or 'Untitled')
   const displayTitle = title || data.id || "Untitled";
-  const isExternal = metadata?.tags?.includes("external") || kind === "external" || false;
+  const isExternal =
+    (metadata?.tags as string[] | undefined)?.includes("external") || kind === "external" || false;
   const colors = getNodeColors(kind === "external" ? "system" : kind, isExternal);
 
   // Use shared UI theme to determine if we're in light mode and get theme colors
@@ -254,8 +255,10 @@ export const SrujaNode = memo(({ data, selected, width, height }: NodeProps<Node
     "webapp",
   ].includes(kind);
 
-  // Compute capacity badge styles if needed
-  const capacity = data._capacity as any;
+  // Determine capacity and chaos state
+  const capacity = data._capacity as { replicas?: number; load: number } | undefined;
+  const chaos = data._chaos as { isFailed?: boolean; isImpacted?: boolean } | undefined;
+
   const hasCapacityBadge = capacity && capacity.replicas;
   const isHighLoad = hasCapacityBadge && capacity.load > 150;
   const capacityBadgeStyle = hasCapacityBadge
@@ -332,7 +335,11 @@ export const SrujaNode = memo(({ data, selected, width, height }: NodeProps<Node
         withinPortal
         disabled={!description && !technology}
       >
-        <div style={{ width: "100%", height: "100%", position: "relative" }}>
+        <div
+          style={{ width: "100%", height: "100%", position: "relative" }}
+          data-element-id={data.id}
+          className={`sruja-node ${data._animationState || ""}`}
+        >
           {/* SVG Background layer - for person nodes, icon is rendered here */}
           {isSvgShape && (
             <div style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none" }}>
@@ -359,7 +366,7 @@ export const SrujaNode = memo(({ data, selected, width, height }: NodeProps<Node
           </div>
 
           {/* Chaos Mode Badges */}
-          {data._chaos && (data._chaos as any).isFailed && (
+          {chaos && chaos.isFailed && (
             <div
               style={{
                 position: "absolute",
@@ -375,7 +382,7 @@ export const SrujaNode = memo(({ data, selected, width, height }: NodeProps<Node
               <XCircle size={20} color="#ef4444" fill="#fee2e2" />
             </div>
           )}
-          {data._chaos && (data._chaos as any).isImpacted && (
+          {chaos && chaos.isImpacted && (
             <div
               style={{
                 position: "absolute",

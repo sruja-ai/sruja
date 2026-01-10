@@ -5,8 +5,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "npm run typecheck && SRUJA_WASM_VARIANT=full npm run ensure:wasm && astro dev",
-    "dev:full": "SRUJA_WASM_VARIANT=full npm run ensure:wasm && astro dev",
+    "dev": "npm run build:examples && npm run typecheck && SRUJA_WASM_VARIANT=full npm run ensure:wasm && astro dev",
+    "dev:full": "npm run build:examples && SRUJA_WASM_VARIANT=full npm run ensure:wasm && astro dev",
     "start": "astro dev",
     "build": "npm run typecheck && npm run build:examples && astro build",
     "build:examples": "mkdir -p public/examples && cp -R ../../examples/* public/examples/",
@@ -54,7 +54,6 @@
     "@docsearch/css": "4.3.2",
     "astro": "^5.16.5",
     "buffer": "^6.0.3",
-    "jspdf": "^3.0.4",
     "lucide-react": "^0.555.0",
     "lz-string": "^1.5.0",
     "mermaid": "^10.7.0",

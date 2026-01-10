@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { C4Level, ViewTab, ViewMode } from "../types";
-import type { FlowDump } from "@sruja/shared";
+import type { FlowDump, ScenarioDump } from "@sruja/shared";
 
 interface ViewState {
   currentLevel: C4Level;
@@ -136,11 +136,13 @@ export const useViewStore = create<ViewState>((set, get) => ({
 // Selection store for selected nodes and active flows
 interface SelectionState {
   selectedNodeId: string | null;
-  activeFlow: FlowDump | null;
-  flowStep: number;
-  isFlowPlaying: boolean;
+  activeAnimation: FlowDump | ScenarioDump | null;
+  animationStep: number;
+  isAnimationPlaying: boolean;
 
   activeRequirement: string | null;
+  activeTab: ViewTab;
+  viewMode: ViewMode;
 
   // Actions
   selectNode: (id: string | null) => void;
@@ -153,25 +155,25 @@ interface SelectionState {
    */
   setViewMode: (mode: ViewMode) => void;
   /**
-   * Set the active flow for animation
+   * Set the active animation (Flow or Scenario)
    */
-  setActiveFlow: (flow: FlowDump | null) => void;
+  setActiveAnimation: (animation: FlowDump | ScenarioDump | null) => void;
   setActiveRequirement: (reqId: string | null) => void;
-  setFlowStep: (step: number) => void;
-  playFlow: () => void;
-  pauseFlow: () => void;
+  setAnimationStep: (step: number) => void;
+  playAnimation: () => void;
+  pauseAnimation: () => void;
   nextStep: () => void;
   prevStep: () => void;
 }
 
 export const useSelectionStore = create<SelectionState>((set, get) => ({
   selectedNodeId: null,
-  activeFlow: null,
+  activeAnimation: null,
   activeRequirement: null,
-  flowStep: 0,
-  isFlowPlaying: false,
-  activeTab: "Diagram", // Added default
-  viewMode: "Designer", // Added default
+  animationStep: 0,
+  isAnimationPlaying: false,
+  activeTab: "diagram", // Added default
+  viewMode: "designer", // Added default
 
   selectNode: (id) => {
     set({ selectedNodeId: id });
@@ -180,34 +182,34 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
   setActiveTab: (tab) => set((state) => ({ ...state, activeTab: tab })),
   setViewMode: (mode) => set((state) => ({ ...state, viewMode: mode })),
 
-  setActiveFlow: (flow) => {
-    set({ activeFlow: flow, isFlowPlaying: !!flow, flowStep: 0 });
+  setActiveAnimation: (animation) => {
+    set({ activeAnimation: animation, isAnimationPlaying: !!animation, animationStep: 0 });
   },
 
   setActiveRequirement: (reqId) => {
-    set({ activeRequirement: reqId, selectedNodeId: null, activeFlow: null }); // Clear others
+    set({ activeRequirement: reqId, selectedNodeId: null, activeAnimation: null }); // Clear others
   },
 
-  setFlowStep: (step) => {
-    set({ flowStep: step });
+  setAnimationStep: (step) => {
+    set({ animationStep: step });
   },
 
-  playFlow: () => {
-    set({ isFlowPlaying: true });
+  playAnimation: () => {
+    set({ isAnimationPlaying: true });
   },
 
-  pauseFlow: () => {
-    set({ isFlowPlaying: false });
+  pauseAnimation: () => {
+    set({ isAnimationPlaying: false });
   },
 
   nextStep: () => {
     const state = get();
-    const maxStep = (state.activeFlow?.steps?.length ?? 1) - 1;
-    set({ flowStep: Math.min(state.flowStep + 1, maxStep) });
+    const maxStep = (state.activeAnimation?.steps?.length ?? 1) - 1;
+    set({ animationStep: Math.min(state.animationStep + 1, maxStep) });
   },
 
   prevStep: () => {
     const state = get();
-    set({ flowStep: Math.max(state.flowStep - 1, 0) });
+    set({ animationStep: Math.max(state.animationStep - 1, 0) });
   },
 }));

@@ -93,7 +93,7 @@ export function GuidedBuilderPanel() {
       )}
 
       {/* Governance Widget */}
-      <div className="guided-section governance-widget" onClick={() => setActiveTab("governance")}>
+      <div className="guided-section governance-widget" onClick={() => setActiveTab("overview")}>
         <div className="guided-section-header">
           <div className="guided-section-title-group">
             <Shield size={18} className="text-blue-500" />

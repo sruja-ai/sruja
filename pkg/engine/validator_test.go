@@ -220,14 +220,14 @@ func TestValidator_RegisterDefaultRules(t *testing.T) {
 
 	// Verify some key rules are present by checking their names
 	expectedRuleNames := map[string]bool{
-		"Unique IDs":                  false,
-		"Valid References":            false,
-		"CycleDetection":              false,
-		"OrphanDetection":             false,
-		"SimplicityGuidance":          false,
-		"Layer Violation":             false,
-		"ScenarioReferenceValidation": false,
-		"SLO Validation":              false,
+		"Unique IDs":          false,
+		"Valid References":    false,
+		"CycleDetection":      false,
+		"OrphanDetection":     false,
+		"SimplicityGuidance":  false,
+		"Layer Violation":     false,
+		"Scenario Validation": false,
+		"SLO Validation":      false,
 	}
 
 	for _, rule := range v.Rules {

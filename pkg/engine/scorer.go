@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -43,6 +44,10 @@ const (
 	// Critical Scoring
 	ThresholdCriticalStructural = 50
 	MultiplierCritical          = 0.8
+
+	// Complexity Thresholds
+	ThresholdHighComplexity = 10 // Max fan-in + fan-out
+	PenaltyHighComplexity   = 10
 
 	// Grade Thresholds
 	GradeThresholdA = 90
@@ -152,11 +157,16 @@ func (s *Scorer) CalculateScore(program *language.Program) ScoreCard {
 
 	// 1. Structural Integrity (40%) - Validation Rules
 	diags := s.validator.Validate(program)
+
+	orphanCount := 0
+	var orphanExamples []string
+
 	for i := range diags {
 		d := &diags[i]
 		points := 0
 		rule := ""
 		severity := d.Severity
+		isAggregated := false
 
 		switch d.Code {
 		case diagnostics.CodeCycleDetected:
@@ -171,6 +181,16 @@ func (s *Scorer) CalculateScore(program *language.Program) ScoreCard {
 			points = PenaltyOrphanElement
 			rule = "Orphan Element"
 			severity = diagnostics.SeverityWarning
+			// Aggregate orphans
+			orphanCount++
+			if len(orphanExamples) < 3 {
+				target := formatTarget(d.Location.File, d.Location.Line)
+				// formatTarget includes file:line. Maybe just use element name if available in message?
+				// The message usually says "Element 'X' is not connected..."
+				// Let's use the message to extract name or just use file:line as example
+				orphanExamples = append(orphanExamples, target)
+			}
+			isAggregated = true
 		case diagnostics.CodeReferenceNotFound:
 			points = PenaltyInvalidReference
 			rule = "Invalid Reference"
@@ -183,17 +203,37 @@ func (s *Scorer) CalculateScore(program *language.Program) ScoreCard {
 		}
 
 		if points > 0 {
-			target := formatTarget(d.Location.File, d.Location.Line)
-			deductions = append(deductions, Deduction{
-				Rule:     rule,
-				Points:   points,
-				Message:  d.Message,
-				Target:   target,
-				Severity: severity,
-				Category: "Structural",
-			})
 			scores.Structural -= points
+			if !isAggregated {
+				target := formatTarget(d.Location.File, d.Location.Line)
+				deductions = append(deductions, Deduction{
+					Rule:     rule,
+					Points:   points,
+					Message:  d.Message,
+					Target:   target,
+					Severity: severity,
+					Category: "Structural",
+				})
+			}
 		}
+	}
+
+	// Add Aggregated Structural Deductions
+	if orphanCount > 0 {
+		exampleStr := strings.Join(orphanExamples, "', '")
+		msg := fmt.Sprintf("%d orphan elements found (not connected to anything) (-%d pts each) (e.g., at '%s'...)", orphanCount, PenaltyOrphanElement, exampleStr)
+		if orphanCount <= 3 {
+			msg = fmt.Sprintf("%d orphan elements found (at '%s') (-%d pts each)", orphanCount, exampleStr, PenaltyOrphanElement)
+		}
+
+		deductions = append(deductions, Deduction{
+			Rule:     "Orphan Elements",
+			Points:   PenaltyOrphanElement * orphanCount,
+			Message:  msg,
+			Target:   "model",
+			Severity: diagnostics.SeverityWarning,
+			Category: "Structural",
+		})
 	}
 
 	// 2. Documentation Depth (20%) & Standardization (10%)
@@ -204,6 +244,11 @@ func (s *Scorer) CalculateScore(program *language.Program) ScoreCard {
 	// 3. Traceability (15%) - Requirement Coverage
 	if program.Model != nil {
 		s.checkTraceability(program.Model, &scores, &deductions)
+	}
+
+	// 4. Complexity (15%) - Fan-in/Fan-out
+	if program.Model != nil {
+		s.checkComplexity(program.Model, &scores, &deductions)
 	}
 
 	// Ensure categories don't go below 0
@@ -281,6 +326,13 @@ func (s *Scorer) checkDocumentation(model *language.Model, scores *CategoryScore
 		}
 	}
 
+	// Aggregation variables
+	missingDescCount := 0
+	var missingDescExamples []string
+	missingTechCount := 0
+	var missingTechExamples []string
+	missingMetaCount := 0
+
 	for len(stack) > 0 {
 		// Pop
 		f := stack[len(stack)-1]
@@ -320,37 +372,32 @@ func (s *Scorer) checkDocumentation(model *language.Model, scores *CategoryScore
 			}
 		}
 
-		if !hasDescription {
-			*deductions = append(*deductions, Deduction{
-				Rule:     "Missing Description",
-				Points:   PenaltyMissingDescription,
-				Message:  formatMissingDescription(elementID),
-				Target:   elementID,
-				Severity: diagnostics.SeverityInfo,
-				Category: "Documentation",
-			})
+		kind := strings.ToLower(elem.GetKind())
+		shouldCheckDoc := kind != "requirement" && kind != "policy" && kind != "adr" && kind != "scenario" && kind != "story" && kind != "flow" && kind != "model" && kind != "views" && kind != "import"
+
+		if shouldCheckDoc && !hasDescription {
 			scores.Documentation -= PenaltyMissingDescription
+			missingDescCount++
+			if len(missingDescExamples) < 3 {
+				missingDescExamples = append(missingDescExamples, elementID)
+			}
 		}
 
 		// Only check technology for containers and components
-		kind := elem.GetKind()
 		if kind == "container" || kind == "component" {
 			if !hasTechnology {
-				*deductions = append(*deductions, Deduction{
-					Rule:     "Missing Technology",
-					Points:   PenaltyMissingTechnology,
-					Message:  formatMissingTechnology(elementID),
-					Target:   elementID,
-					Severity: diagnostics.SeverityInfo,
-					Category: "Documentation",
-				})
 				scores.Documentation -= PenaltyMissingTechnology
+				missingTechCount++
+				if len(missingTechExamples) < 3 {
+					missingTechExamples = append(missingTechExamples, elementID)
+				}
 			}
 		}
 
 		// Standardization Checks
 		if !hasMetadata {
 			scores.Standardization -= PenaltyMissingMetadata
+			missingMetaCount++
 		}
 
 		// Push children
@@ -362,6 +409,41 @@ func (s *Scorer) checkDocumentation(model *language.Model, scores *CategoryScore
 			}
 		}
 	}
+
+	// Add Aggregated Deductions
+	if missingDescCount > 0 {
+		exampleStr := strings.Join(missingDescExamples, "', '")
+		msg := fmt.Sprintf("%d elements are missing descriptions (-%d pts each) (e.g., '%s'...)", missingDescCount, PenaltyMissingDescription, exampleStr)
+		if missingDescCount <= 3 {
+			msg = fmt.Sprintf("%d elements are missing descriptions (-%d pts each) ('%s')", missingDescCount, PenaltyMissingDescription, exampleStr)
+		}
+
+		*deductions = append(*deductions, Deduction{
+			Rule:     "Missing Description",
+			Points:   PenaltyMissingDescription * missingDescCount,
+			Message:  msg,
+			Target:   "model", // Target is model or multiple
+			Severity: diagnostics.SeverityInfo,
+			Category: "Documentation",
+		})
+	}
+
+	if missingTechCount > 0 {
+		exampleStr := strings.Join(missingTechExamples, "', '")
+		msg := fmt.Sprintf("%d components/containers are missing technology stack (-%d pts each) (e.g., '%s'...)", missingTechCount, PenaltyMissingTechnology, exampleStr)
+		if missingTechCount <= 3 {
+			msg = fmt.Sprintf("%d components/containers are missing technology stack (-%d pts each) ('%s')", missingTechCount, PenaltyMissingTechnology, exampleStr)
+		}
+
+		*deductions = append(*deductions, Deduction{
+			Rule:     "Missing Technology",
+			Points:   PenaltyMissingTechnology * missingTechCount,
+			Message:  msg,
+			Target:   "model",
+			Severity: diagnostics.SeverityInfo,
+			Category: "Documentation",
+		})
+	}
 }
 
 // checkTraceability checks requirement coverage.
@@ -370,31 +452,272 @@ func (s *Scorer) checkTraceability(model *language.Model, scores *CategoryScores
 		return
 	}
 
-	totalElements := 0
-	taggedCount := 0
+	elements := make(map[string]bool)
+	linkedElements := make(map[string]bool)
+	requirements := make(map[string]bool)
 
-	// Count elements and tagged elements
+	// Single pass to collect elements, requirements, and relations
+	type frame struct {
+		elem *language.ElementDef
+	}
+	stack := make([]frame, 0, 16)
+
+	// Initialize with model items
 	for _, item := range model.Items {
-		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
-			a := item.ElementDef.Assignment
-			if a.Kind == "requirement" {
-				// Requirements parsed through ElementDef
-				// Would need to extract from body if available
-				_ = a // explicit usage
-			}
-			totalElements++
+		if item.ElementDef != nil {
+			stack = append(stack, frame{elem: item.ElementDef})
 		}
 	}
 
-	if totalElements > 0 && taggedCount < totalElements/2 { // Using simpler logic for now, could use ThresholdTraceabilityRatio
-		scores.Traceability -= PenaltyLowTraceability // Penalty for low requirement coverage
+	for len(stack) > 0 {
+		f := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+
+		elem := f.elem
+		if elem == nil {
+			continue
+		}
+		id := elem.GetID()
+		kind := strings.ToLower(elem.GetKind())
+
+		// Track requirements specifically
+		if kind == "requirement" {
+			requirements[id] = true
+		} else if kind != "model" && kind != "views" && kind != "import" {
+			// It's a structural element
+			elements[id] = true
+		}
+
+		// Recurse
+		body := elem.GetBody()
+		if body != nil {
+			for _, item := range body.Items {
+				if item.Element != nil {
+					stack = append(stack, frame{elem: item.Element})
+				}
+			}
+		}
+	}
+
+	// Function to check a relation
+	checkRelation := func(fromID string, toID string) {
+		// If pointing TO a requirement
+		if requirements[toID] {
+			linkedElements[fromID] = true // This element is linked
+		}
+		// If THIS is a requirement pointing to something
+		if requirements[fromID] {
+			linkedElements[toID] = true // That element is linked
+		}
+	}
+
+	// Pass 2: Check relations (both top-level and nested)
+	// 2a. Top-level relations
+	for _, item := range model.Items {
+		if item.Relation != nil {
+			r := item.Relation
+			fromParts := r.From.Parts
+			toParts := r.To.Parts
+			if len(fromParts) > 0 && len(toParts) > 0 {
+				checkRelation(fromParts[len(fromParts)-1], toParts[len(toParts)-1])
+			}
+		}
+	}
+
+	// 2b. Nested relations
+	stack = make([]frame, 0, 16)
+	for _, item := range model.Items {
+		if item.ElementDef != nil {
+			stack = append(stack, frame{elem: item.ElementDef})
+		}
+	}
+
+	for len(stack) > 0 {
+		f := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		elem := f.elem
+		if elem == nil {
+			continue
+		}
+		id := elem.GetID()
+
+		// Tags Check: Does this element have a tag that matches a requirement ID?
+		tags := elem.GetTagRefs()
+		for _, t := range tags {
+			if requirements[t] {
+				linkedElements[id] = true
+			}
+		}
+
+		// Relation Check
+		body := elem.GetBody()
+		if body != nil {
+			for _, item := range body.Items {
+				if item.Relation != nil {
+					toParts := item.Relation.To.Parts
+					if len(toParts) > 0 {
+						toID := toParts[len(toParts)-1]
+						checkRelation(id, toID)
+					}
+				}
+				if item.Element != nil {
+					stack = append(stack, frame{elem: item.Element})
+				}
+			}
+		}
+	}
+
+	totalCount := len(elements)
+	linkedCount := len(linkedElements)
+
+	if totalCount > 0 && float64(linkedCount)/float64(totalCount) < ThresholdTraceabilityRatio {
+		scores.Traceability -= PenaltyLowTraceability
 		*deductions = append(*deductions, Deduction{
 			Rule:     "Low Traceability",
 			Points:   PenaltyLowTraceability,
-			Message:  "Less than 50% of elements are mapped to requirements",
-			Target:   "requirements",
+			Message:  fmt.Sprintf("%.0f%% of elements are mapped to requirements (target 50%%)", float64(linkedCount)/float64(totalCount)*100),
+			Target:   "model",
 			Severity: diagnostics.SeverityWarning,
 			Category: "Traceability",
+		})
+	}
+}
+
+// checkComplexity calculates fan-in and fan-out to penalize God objects.
+func (s *Scorer) checkComplexity(model *language.Model, scores *CategoryScores, deductions *[]Deduction) {
+	if model == nil {
+		return
+	}
+
+	// Map of ElementID -> Connection Count
+	connections := make(map[string]int)
+	// Map to get kind/location for reporting
+	elementInfo := make(map[string]*language.ElementDef)
+
+	type frame struct {
+		elem *language.ElementDef
+	}
+	stack := make([]frame, 0, 16)
+
+	for _, item := range model.Items {
+		if item.ElementDef != nil {
+			stack = append(stack, frame{elem: item.ElementDef})
+		}
+	}
+
+	for len(stack) > 0 {
+		f := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		elem := f.elem
+		if elem == nil {
+			continue
+		}
+		id := elem.GetID()
+		elementInfo[id] = elem
+
+		// Recurse to find all elements first
+		body := elem.GetBody()
+		if body != nil {
+			for _, item := range body.Items {
+				if item.Element != nil {
+					stack = append(stack, frame{elem: item.Element})
+				}
+			}
+		}
+	}
+
+	// Helper to count connection
+	countConnection := func(fromID, toID string) {
+		connections[fromID]++
+		connections[toID]++
+	}
+
+	// Pass 1: Top-level relations
+	for _, item := range model.Items {
+		if item.Relation != nil {
+			r := item.Relation
+			fromParts := r.From.Parts
+			toParts := r.To.Parts
+			if len(fromParts) > 0 && len(toParts) > 0 {
+				countConnection(fromParts[len(fromParts)-1], toParts[len(toParts)-1])
+			}
+		}
+	}
+
+	// Pass 2: Nested relations
+	stack = make([]frame, 0, 16)
+	for _, item := range model.Items {
+		if item.ElementDef != nil {
+			stack = append(stack, frame{elem: item.ElementDef})
+		}
+	}
+
+	for len(stack) > 0 {
+		f := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		elem := f.elem
+		if elem == nil {
+			continue
+		}
+		id := elem.GetID()
+
+		// Count relations
+		body := elem.GetBody()
+		if body != nil {
+			for _, item := range body.Items {
+				if item.Relation != nil {
+					// Outgoing relation from this element
+					toParts := item.Relation.To.Parts
+					if len(toParts) > 0 {
+						toID := toParts[len(toParts)-1]
+						countConnection(id, toID)
+					}
+				}
+				if item.Element != nil {
+					stack = append(stack, frame{elem: item.Element})
+				}
+			}
+		}
+	}
+
+	// Check for high complexity
+	highComplexityCount := 0
+	var highComplexityExamples []string
+
+	for id, count := range connections {
+		// Only penalize components/containers, not systems/requirements usually
+		info, ok := elementInfo[id]
+		if !ok {
+			continue
+		}
+		kind := strings.ToLower(info.GetKind())
+		if kind != "component" && kind != "container" {
+			continue
+		}
+
+		if count > ThresholdHighComplexity {
+			scores.Complexity -= PenaltyHighComplexity
+			highComplexityCount++
+			if len(highComplexityExamples) < 3 {
+				highComplexityExamples = append(highComplexityExamples, id)
+			}
+		}
+	}
+
+	if highComplexityCount > 0 {
+		exampleStr := strings.Join(highComplexityExamples, "', '")
+		msg := fmt.Sprintf("%d elements have too many connections (> %d) (-%d pts each) (e.g., '%s'...)", highComplexityCount, ThresholdHighComplexity, PenaltyHighComplexity, exampleStr)
+		if highComplexityCount <= 3 {
+			msg = fmt.Sprintf("%d elements have too many connections (> %d) (-%d pts each) ('%s')", highComplexityCount, ThresholdHighComplexity, PenaltyHighComplexity, exampleStr)
+		}
+
+		*deductions = append(*deductions, Deduction{
+			Rule:     "High Complexity",
+			Points:   PenaltyHighComplexity * highComplexityCount,
+			Message:  msg,
+			Target:   "model", // model-wide warning
+			Severity: diagnostics.SeverityWarning,
+			Category: "Complexity",
 		})
 	}
 }

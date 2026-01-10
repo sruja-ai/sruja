@@ -2,9 +2,18 @@
 // apps/website/src/pages/index.astro
 import Layout from '../layouts/Layout.astro';
 import HomeHero from '@/features/home/components/HomeHero';
+import { generateOrganizationSchema, generateWebsiteSchema } from '@/utils/seo';
+
+const structuredData = [generateOrganizationSchema(), generateWebsiteSchema()];
 ---
 
-<Layout title="Sruja Learn" description="Documentation, courses, tutorials, and blogs for Sruja.">
+<Layout
+  title="Sruja - Architecture-as-Code for the AI Era"
+  description="Developer-friendly language for defining, visualizing, and validating software architecture. Create beautiful architecture diagrams that sync bidirectionally with code, making your architecture AI-assistable and always up-to-date."
+  url="/"
+  type="website"
+  structuredData={structuredData}
+>
   <HomeHero client:load />
 </Layout>
 

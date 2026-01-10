@@ -50,25 +50,21 @@ curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install
 **Create `example.sruja`:**
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+
+user = person "User" {
+  description "End user of the application"
 }
 
-model {
-  user = person "User" {
-    description "End user of the application"
+app = system "My App" {
+  web = container "Web Server" {
+    technology "Node.js"
   }
-
-  app = system "My App" {
-    web = container "Web Server" {
-      technology "Node.js"
-    }
-  }
-
-  user -> app.web "visits"
 }
+
+user -> app.web "visits"
 ```
 
 **Export & validate:**

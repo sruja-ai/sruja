@@ -1,11 +1,11 @@
 // apps/designer/src/components/Product/RequirementTraceabilityView.tsx
 import { useState, useMemo, useCallback } from "react";
 import { Target, CheckCircle, AlertCircle, XCircle } from "lucide-react";
-import { Button } from "@sruja/ui";
+import { Button, Badge } from "@sruja/ui";
 import { useArchitectureStore } from "../../stores";
 import { useTagNavigation } from "../../hooks/useTagNavigation";
 import { deduplicateRequirements } from "../../utils/deduplicateRequirements";
-import type { RequirementDump } from "@sruja/shared";
+import type { RequirementDump, SrujaModelDump } from "@sruja/shared";
 import "./RequirementTraceabilityView.css";
 
 interface RequirementTraceabilityViewProps {
@@ -26,7 +26,7 @@ export function RequirementTraceabilityView({
 
   // Deduplicate requirements by ID
   const requirements = useMemo(() => {
-    const reqs = (model?.sruja as any)?.requirements || [];
+    const reqs = (model?.sruja as SrujaModelDump["sruja"])?.requirements || [];
     return deduplicateRequirements(reqs);
   }, [model]);
 
@@ -42,7 +42,7 @@ export function RequirementTraceabilityView({
     > = {};
 
     requirements.forEach((req) => {
-      const elementIds: string[] = (req as any).tags ?? [];
+      const elementIds: string[] = (req as { tags?: string[] }).tags ?? [];
       const hasLinks = elementIds.length > 0;
       const status: "fulfilled" | "partial" | "missing" = hasLinks
         ? elementIds.length >= 2
@@ -68,7 +68,7 @@ export function RequirementTraceabilityView({
       setIsAnimating(true);
       setSelectedRequirement(requirement.id);
 
-      const elementIds: string[] = (requirement as any).tags ?? [];
+      const elementIds: string[] = (requirement as { tags?: string[] }).tags ?? [];
       const highlightedSet = new Set(elementIds);
 
       setHighlightedElements(highlightedSet);
@@ -147,64 +147,102 @@ export function RequirementTraceabilityView({
       <div className="traceability-content">
         <div className="requirements-panel">
           <div className="requirements-list">
-            {requirements.map((req) => {
-              const coverage = requirementCoverage[req.id];
-              const isSelected = selectedRequirement === req.id;
-              const hasLinks = (coverage?.elementIds.length ?? 0) > 0;
+            {/* Show missing/partial requirements first (High priority), then fulfilled */}
+            {requirements
+              .sort((a, b) => {
+                const aCoverage = requirementCoverage[a.id];
+                const bCoverage = requirementCoverage[b.id];
+                const aStatus = aCoverage?.status || "missing";
+                const bStatus = bCoverage?.status || "missing";
+                if (aStatus === "missing" && bStatus !== "missing") return -1;
+                if (aStatus === "partial" && bStatus === "fulfilled") return -1;
+                return 0;
+              })
+              .map((req) => {
+                const coverage = requirementCoverage[req.id];
+                const isSelected = selectedRequirement === req.id;
+                const hasLinks = (coverage?.elementIds.length ?? 0) > 0;
+                const status = coverage?.status || "missing";
 
-              return (
-                <div
-                  key={req.id}
-                  className={`requirement-card ${isSelected ? "selected" : ""} ${coverage?.status || "missing"}`}
-                  onClick={() => handleRequirementClick(req)}
-                >
-                  <div className="requirement-header">
-                    <div className="requirement-id">{req.id}</div>
-                    <div className={`status-badge ${coverage?.status || "missing"}`}>
-                      {coverage?.status === "fulfilled" ? (
-                        <CheckCircle size={14} />
-                      ) : coverage?.status === "partial" ? (
-                        <AlertCircle size={14} />
-                      ) : (
-                        <XCircle size={14} />
-                      )}
-                      <span>{coverage?.status || "missing"}</span>
-                    </div>
-                  </div>
-                  <div className="requirement-title">{req.title}</div>
-                  {coverage && (
-                    <div className="requirement-coverage">
-                      <div className="coverage-bar">
-                        <div className="coverage-fill" style={{ width: `${coverage.coverage}%` }} />
+                return (
+                  <div
+                    key={req.id}
+                    className={`requirement-card ${isSelected ? "selected" : ""} ${status}`}
+                    onClick={() => handleRequirementClick(req)}
+                  >
+                    <div className="requirement-header">
+                      <div className="requirement-id-row">
+                        <div className="requirement-id">{req.id}</div>
+                        {status === "missing" && (
+                          <Badge color="error" className="priority-badge-small">
+                            High
+                          </Badge>
+                        )}
+                        {status === "partial" && (
+                          <Badge color="warning" className="priority-badge-small">
+                            Medium
+                          </Badge>
+                        )}
                       </div>
-                      <span className="coverage-text">
-                        {coverage.elementIds.length} element
-                        {coverage.elementIds.length !== 1 ? "s" : ""}
-                      </span>
+                      <div className={`status-badge ${status}`}>
+                        {status === "fulfilled" ? (
+                          <CheckCircle size={14} />
+                        ) : status === "partial" ? (
+                          <AlertCircle size={14} />
+                        ) : (
+                          <XCircle size={14} />
+                        )}
+                        <span>{status}</span>
+                      </div>
                     </div>
-                  )}
-                  {hasLinks && (
-                    <div className="linked-elements">
-                      {coverage.elementIds.map((elementId) => (
-                        <Button
-                          key={elementId}
-                          variant="ghost"
-                          size="sm"
-                          className="element-tag"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleElementClick(elementId);
-                          }}
-                          title={`Navigate to ${elementId}`}
-                        >
-                          {elementId}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    <div className="requirement-title">{req.title}</div>
+                    {status !== "fulfilled" && (
+                      <div className="requirement-actionable">
+                        <strong>Fix:</strong> Link requirement to components via tags:{" "}
+                        <code>{req.id} #componentId</code>
+                      </div>
+                    )}
+                    {coverage && (
+                      <div className="requirement-coverage">
+                        <div className="coverage-bar">
+                          <div
+                            className="coverage-fill"
+                            style={{ width: `${coverage.coverage}%` }}
+                          />
+                        </div>
+                        <span className="coverage-text">
+                          {coverage.elementIds.length} element
+                          {coverage.elementIds.length !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    )}
+                    {hasLinks && (
+                      <div className="linked-elements">
+                        {coverage.elementIds.slice(0, 3).map((elementId) => (
+                          <Button
+                            key={elementId}
+                            variant="ghost"
+                            size="sm"
+                            className="element-tag"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleElementClick(elementId);
+                            }}
+                            title={`Navigate to ${elementId}`}
+                          >
+                            {elementId}
+                          </Button>
+                        ))}
+                        {coverage.elementIds.length > 3 && (
+                          <span className="more-elements">
+                            +{coverage.elementIds.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
           </div>
         </div>
 

@@ -2,12 +2,12 @@
 // Refactored to use Mantine form components
 
 import { useEffect, useRef } from "react";
+import { slugify } from "../../../utils/slugify";
 import { useArchitectureStore } from "../../../stores";
 import type { ElementDump } from "@sruja/shared";
 import { SidePanel } from "../SidePanel";
 import { Button } from "@sruja/ui";
 import { FormField, useFormState, type FormErrors } from "./";
-import { collectIds, generateUniqueId } from "./utils";
 import "../EditForms.css";
 
 interface EditPersonFormProps {
@@ -33,14 +33,14 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
   // Initialize form state
   const form = useFormState<FormValues>({
     initialValues: {
-      name: (person as any)?.title || initialName || "",
+      name: person?.title || initialName || "",
       description:
-        typeof (person as any)?.description === "string"
-          ? (person as any).description
-          : (person as any)?.description?.txt || "",
+        typeof person?.description === "string"
+          ? person.description
+          : (person?.description as unknown as { txt: string })?.txt || "",
       customId: false,
-      idInput: (person as any)?.id || "",
-      isExternal: (person as any)?.tags?.includes("external") || false,
+      idInput: person?.id || "",
+      isExternal: person?.tags?.includes("external") || false,
     },
     validate: (values) => {
       const errors: FormErrors = {};
@@ -48,8 +48,7 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
       if (values.customId && !values.idInput.trim())
         errors.idInput = "ID is required for custom ID";
       if (values.customId && values.idInput.trim() && !person) {
-        const ids = collectIds(data);
-        if (ids.has(values.idInput.trim())) errors.idInput = "ID already exists";
+        if (data?.elements?.[values.idInput.trim()]) errors.idInput = "ID already exists";
       }
       return errors;
     },
@@ -57,12 +56,15 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
       await updateArchitecture((model) => {
         const newElements = { ...model.elements };
 
-        let targetId = (person as any)?.id;
+        let targetId = person?.id;
 
         if (!person) {
-          targetId =
-            (values.customId ? values.idInput : "") ||
-            generateUniqueId(values.name, data, "person");
+          targetId = values.customId ? values.idInput.trim() : slugify(values.name) || "person";
+          let i = 1;
+          const originalId = targetId;
+          while (newElements[targetId as string]) {
+            targetId = `${originalId}-${i++}`;
+          }
         }
 
         if (!targetId) return model;
@@ -70,19 +72,20 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
         const tags = values.isExternal ? ["external"] : [];
 
         newElements[targetId] = {
-          id: targetId as any,
+          id: targetId,
           kind: "person",
           title: values.name,
-          description: (values.description || undefined) as any,
+          description: typeof values.description === "string" ? values.description : undefined,
           tags: tags.length > 0 ? tags : undefined,
-          links: (person as any)?.links,
+          links: person?.links,
+          style: {},
         };
 
-        if (person && model.elements && model.elements[(person as any).id]) {
+        if (person && model.elements && model.elements[person.id]) {
           newElements[targetId] = {
-            ...(model.elements[(person as any).id] as any),
+            ...(model.elements[person.id] as ElementDump),
             title: values.name,
-            description: (values.description || undefined) as any,
+            description: typeof values.description === "string" ? values.description : undefined,
             tags: tags.length > 0 ? tags : undefined,
           };
         }
@@ -97,14 +100,14 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
   useEffect(() => {
     if (isOpen) {
       form.setValues({
-        name: (person as any)?.title || initialName || "",
+        name: person?.title || initialName || "",
         description:
-          typeof (person as any)?.description === "string"
-            ? (person as any).description
-            : (person as any)?.description?.txt || "",
-        idInput: (person as any)?.id || "",
+          (typeof person?.description === "string"
+            ? person.description
+            : (person?.description as unknown as { txt: string })?.txt || "") || "",
+        idInput: person?.id || "",
         customId: false,
-        isExternal: (person as any)?.tags?.includes("external") || false,
+        isExternal: person?.tags?.includes("external") || false,
       });
       form.clearErrors();
     }

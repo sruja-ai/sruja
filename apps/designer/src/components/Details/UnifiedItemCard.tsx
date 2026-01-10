@@ -1,6 +1,16 @@
 // apps/designer/src/components/Details/UnifiedItemCard.tsx
 import { useMemo } from "react";
-import { Target, FileText, Play, Workflow, CheckCircle, AlertCircle, XCircle, Edit, Trash2 } from "lucide-react";
+import {
+  Target,
+  FileText,
+  Play,
+  Workflow,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  Edit,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@sruja/ui";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
 import type { ADRDump, ScenarioDump, FlowDump } from "@sruja/shared";
@@ -13,21 +23,35 @@ interface UnifiedItemCardProps {
   onTagClick?: (tag: string) => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  /**
+   * Handler for playing animation (if supported)
+   */
+  onPlay?: () => void;
 }
 
-export function UnifiedItemCard({ item, onClick, onTagClick, onEdit, onDelete }: UnifiedItemCardProps) {
+export function UnifiedItemCard({
+  item,
+  onClick,
+  onTagClick,
+  onEdit,
+  onDelete,
+  onPlay,
+}: UnifiedItemCardProps) {
   const isEditMode = useFeatureFlagsStore((s) => s.isEditMode);
 
   // Calculate coverage and status
   const { coverage, status, elementCount } = useMemo(() => {
     // Note: Assuming 'tags' might be missing on types currently or defined as undefined.
     // Casting to any to safely access if type doesn't have it yet, or accessing directly if it does.
-    const tags = ((item.data as any).tags || []) as string[];
+    const tags = ((item.data as { tags?: string[] }).tags || []) as string[];
     const hasLinks = tags.length > 0;
 
     if (item.type === "requirement") {
-      const status: "fulfilled" | "partial" | "missing" =
-        hasLinks ? (tags.length >= 2 ? "fulfilled" : "partial") : "missing";
+      const status: "fulfilled" | "partial" | "missing" = hasLinks
+        ? tags.length >= 2
+          ? "fulfilled"
+          : "partial"
+        : "missing";
       const coverage = hasLinks ? Math.min(100, (tags.length / 3) * 100) : 0;
       return { coverage, status, elementCount: tags.length };
     } else if (item.type === "adr") {
@@ -40,11 +64,19 @@ export function UnifiedItemCard({ item, onClick, onTagClick, onEdit, onDelete }:
     } else if (item.type === "scenario") {
       const scenario = item.data as ScenarioDump;
       const stepCount = scenario.steps?.length ?? 0;
-      return { coverage: stepCount > 0 ? 100 : 0, status: "fulfilled" as const, elementCount: stepCount };
+      return {
+        coverage: stepCount > 0 ? 100 : 0,
+        status: "fulfilled" as const,
+        elementCount: stepCount,
+      };
     } else {
       const flow = item.data as FlowDump;
       const stepCount = flow.steps?.length ?? 0;
-      return { coverage: stepCount > 0 ? 100 : 0, status: "fulfilled" as const, elementCount: stepCount };
+      return {
+        coverage: stepCount > 0 ? 100 : 0,
+        status: "fulfilled" as const,
+        elementCount: stepCount,
+      };
     }
   }, [item]);
 
@@ -55,9 +87,9 @@ export function UnifiedItemCard({ item, onClick, onTagClick, onEdit, onDelete }:
       case "adr":
         return <FileText size={16} />;
       case "scenario":
-        return <Play size={16} />;
+        return <Play size={16} className="text-blue-500" />;
       case "flow":
-        return <Workflow size={16} />;
+        return <Workflow size={16} className="text-purple-500" />;
     }
   };
 
@@ -72,14 +104,19 @@ export function UnifiedItemCard({ item, onClick, onTagClick, onEdit, onDelete }:
     }
   };
 
-  const title = (item.data.title) || item.data.id || "Untitled";
-  const description = (item.data as any).description;
-  const tags = ((item.data as any).tags || []) as string[];
+  const title = item.data.title || item.data.id || "Untitled";
+  const description = (item.data as { description?: string }).description;
+  const tags = ((item.data as { tags?: string[] }).tags || []) as string[];
 
   return (
     <div
       className={`unified-item-card ${item.type} ${status}`}
-      onClick={onClick}
+      onClick={() => {
+        if (item.type === "scenario" || item.type === "flow") {
+          onPlay?.();
+        }
+        onClick?.();
+      }}
     >
       <div className="item-header">
         <div className="item-icon-type">
@@ -147,7 +184,8 @@ export function UnifiedItemCard({ item, onClick, onTagClick, onEdit, onDelete }:
       {(item.type === "scenario" || item.type === "flow") && (
         <div className="item-steps">
           <span className="steps-count">
-            {(item.data as ScenarioDump | FlowDump).steps?.length ?? 0} step{((item.data as ScenarioDump | FlowDump).steps?.length ?? 0) !== 1 ? "s" : ""}
+            {(item.data as ScenarioDump | FlowDump).steps?.length ?? 0} step
+            {((item.data as ScenarioDump | FlowDump).steps?.length ?? 0) !== 1 ? "s" : ""}
           </span>
         </div>
       )}

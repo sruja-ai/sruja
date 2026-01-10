@@ -25,4 +25,5 @@ const (
 	CodeDuplicateIdentifier = "E201" // Alias for CodeDuplicateID
 	CodeReferenceNotFound   = "E202" // Alias for CodeUndefinedRef
 	CodeBestPractice        = "W001" // Best practice warning
+	CodePolicyViolation     = "E401" // Policy violation
 )

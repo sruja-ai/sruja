@@ -3,7 +3,7 @@
 
 import { useEffect } from "react";
 import { useArchitectureStore } from "../../../stores";
-import type { RequirementDump } from "@sruja/shared";
+import type { RequirementDump, SrujaModelDump } from "@sruja/shared";
 import { Button, Listbox } from "@sruja/ui";
 import type { ListOption } from "@sruja/ui";
 import { SidePanel } from "../SidePanel";
@@ -31,7 +31,9 @@ export function EditRequirementForm({ isOpen, onClose, requirement }: EditRequir
   const form = useFormState<FormValues>({
     initialValues: {
       id: requirement?.id || "",
-      type: REQUIREMENT_TYPES.find((t) => t.id === (requirement?.type || "functional")) || REQUIREMENT_TYPES[0],
+      type:
+        REQUIREMENT_TYPES.find((t) => t.id === (requirement?.type || "functional")) ||
+        REQUIREMENT_TYPES[0],
       title: requirement?.title || "",
       description: requirement?.description || "",
     },
@@ -49,18 +51,18 @@ export function EditRequirementForm({ isOpen, onClose, requirement }: EditRequir
     },
     onSubmit: async (values) => {
       await updateArchitecture((model) => {
-        const sruja = (model as any).sruja || {};
-        const requirements = [...(sruja.requirements || [])];
+        const sruja = (model as SrujaModelDump).sruja || {};
+        const requirements = [...(sruja.requirements || [])] as RequirementDump[];
 
         const newRequirement: RequirementDump = {
           id: values.id.trim(),
-          type: values.type?.id,
+          type: values.type?.id as RequirementDump["type"],
           title: values.title.trim(),
           description: values.description.trim() || undefined,
         };
 
         if (requirement) {
-          const index = requirements.findIndex((r: any) => r.id === requirement.id);
+          const index = requirements.findIndex((r) => r.id === requirement.id);
           if (index >= 0) {
             requirements[index] = newRequirement;
           }
@@ -85,7 +87,9 @@ export function EditRequirementForm({ isOpen, onClose, requirement }: EditRequir
     if (isOpen) {
       form.setValues({
         id: requirement?.id || "",
-        type: REQUIREMENT_TYPES.find((t) => t.id === (requirement?.type || "functional")) || REQUIREMENT_TYPES[0],
+        type:
+          REQUIREMENT_TYPES.find((t) => t.id === (requirement?.type || "functional")) ||
+          REQUIREMENT_TYPES[0],
         title: requirement?.title || "",
         description: requirement?.description || "",
       });
@@ -117,7 +121,12 @@ export function EditRequirementForm({ isOpen, onClose, requirement }: EditRequir
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" type="submit" form="edit-requirement-form" isLoading={form.isSubmitting}>
+          <Button
+            variant="primary"
+            type="submit"
+            form="edit-requirement-form"
+            isLoading={form.isSubmitting}
+          >
             {requirement ? "Update" : "Add"}
           </Button>
         </>

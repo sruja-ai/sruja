@@ -3,6 +3,7 @@
 
 import { useEffect, useRef } from "react";
 import { useArchitectureStore } from "../../../stores";
+import type { Convention } from "@sruja/shared";
 import { Button } from "@sruja/ui";
 import { SidePanel } from "../SidePanel";
 import { FormField, useFormState, type FormErrors } from "./";
@@ -11,7 +12,7 @@ import "../EditForms.css";
 interface EditConventionFormProps {
   isOpen: boolean;
   onClose: () => void;
-  convention?: any; // ConventionDump
+  convention?: Convention;
   conventionIndex?: number;
 }
 
@@ -32,8 +33,8 @@ export function EditConventionForm({
   // Initialize form state
   const form = useFormState<FormValues>({
     initialValues: {
-      key: convention?.key || "",
-      value: convention?.value || "",
+      key: convention?.id || "",
+      value: convention?.description || "",
     },
     validate: (values) => {
       const errors: FormErrors = {};
@@ -43,12 +44,12 @@ export function EditConventionForm({
     },
     onSubmit: async (values) => {
       await updateArchitecture((model) => {
-        const sruja = (model as any).sruja || {};
+        const sruja = model.sruja || {};
         const conventions = [...(sruja.conventions || [])];
 
-        const newConvention = {
-          key: values.key.trim(),
-          value: values.value.trim(),
+        const newConvention: Convention = {
+          id: values.key.trim(),
+          description: values.value.trim(),
         };
 
         if (convention && conventionIndex !== undefined) {
@@ -70,15 +71,19 @@ export function EditConventionForm({
   });
 
   // Reset form when opening/switching contexts
+  // Note: form.setValues and form.clearErrors are stable (wrapped in useCallback with empty deps)
+  // so they don't need to be in the dependency array
   useEffect(() => {
     if (isOpen) {
       form.setValues({
-        key: convention?.key || "",
-        value: convention?.value || "",
+        key: convention?.id || "",
+        value: convention?.description || "",
       });
       form.clearErrors();
     }
-  }, [isOpen, convention]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // form.setValues and form.clearErrors are stable callbacks from useFormState
+  }, [isOpen, convention]);
 
   // Handle Escape key
   useEffect(() => {
@@ -104,13 +109,23 @@ export function EditConventionForm({
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" type="submit" form="edit-convention-form" isLoading={form.isSubmitting}>
+          <Button
+            variant="primary"
+            type="submit"
+            form="edit-convention-form"
+            isLoading={form.isSubmitting}
+          >
             {convention ? "Update" : "Add"}
           </Button>
         </>
       }
     >
-      <form ref={formRef} id="edit-convention-form" onSubmit={form.handleSubmit} className="edit-form">
+      <form
+        ref={formRef}
+        id="edit-convention-form"
+        onSubmit={form.handleSubmit}
+        className="edit-form"
+      >
         <FormField
           label="Key"
           name="key"

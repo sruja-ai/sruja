@@ -74,6 +74,13 @@ func extractContainerFromElement(elem *language.ElementDef) *language.Container 
 			if bodyItem.Description != nil {
 				cont.Description = bodyItem.Description
 			}
+			// Extract technology from body items
+			if bodyItem.Technology != nil {
+				// Add technology to container Items for downstream processing
+				cont.Items = append(cont.Items, language.ContainerItem{
+					Technology: bodyItem.Technology,
+				})
+			}
 			if bodyItem.Element != nil {
 				if comp := extractComponentFromElement(bodyItem.Element); comp != nil {
 					cont.Components = append(cont.Components, comp)
@@ -183,10 +190,14 @@ func extractRequirementsFromModel(prog *language.Program) []RequirementInfo {
 	return requirements
 }
 
-// ADRInfo represents minimal ADR info extracted from ElementDef
+// ADRInfo represents ADR info extracted from ElementDef
 type ADRInfo struct {
-	ID    string
-	Title string
+	ID           string
+	Title        string
+	Status       string
+	Context      string
+	Decision     string
+	Consequences string
 }
 
 func extractADRsFromModel(prog *language.Program) []ADRInfo {
@@ -198,10 +209,29 @@ func extractADRsFromModel(prog *language.Program) []ADRInfo {
 		if item.ElementDef != nil && item.ElementDef.Assignment != nil {
 			a := item.ElementDef.Assignment
 			if a.Kind == "adr" || a.Kind == "Adr" || a.Kind == "ADR" {
-				adrs = append(adrs, ADRInfo{
+				adr := ADRInfo{
 					ID:    a.Name,
 					Title: getString(a.Title),
-				})
+				}
+				// Extract ADR details from body
+				body := item.ElementDef.GetBody()
+				if body != nil {
+					for _, bItem := range body.Items {
+						if bItem.Status != nil {
+							adr.Status = *bItem.Status
+						}
+						if bItem.Context != nil {
+							adr.Context = *bItem.Context
+						}
+						if bItem.Decision != nil {
+							adr.Decision = *bItem.Decision
+						}
+						if bItem.Consequences != nil {
+							adr.Consequences = *bItem.Consequences
+						}
+					}
+				}
+				adrs = append(adrs, adr)
 			}
 		}
 	}
@@ -418,17 +448,54 @@ func extractTermsFromText(text string, terms map[string]string) {
 	// In a production system, you'd use NLP or a predefined glossary
 	// For now, we'll look for common acronyms and technical terms
 
+	// Common words to skip
+	skipWords := map[string]bool{
+		"API": true, "HTTP": true, "HTTPS": true, "JSON": true, "XML": true,
+		"REST": true, "SQL": true, "NOSQL": true, "CLI": true, "GUI": true,
+		"SDK": true, "UI": true, "UX": true, "SLA": true, "SLO": true,
+		"CPU": true, "RAM": true, "IO": true, "OS": true, "VM": true,
+		"THE": true, "AND": true, "FOR": true, "NOT": true, "ARE": true,
+		"BUT": true, "HAS": true, "WAS": true, "ALL": true, "CAN": true,
+		"HAD": true, "HER": true, "HIS": true, "HOW": true, "ITS": true,
+		"MAY": true, "NEW": true, "NOW": true, "OLD": true, "OUR": true,
+		"OUT": true, "OWN": true, "SAY": true, "SHE": true, "TOO": true,
+		"USE": true, "WAY": true, "WHO": true, "BOY": true, "DID": true,
+		"GET": true, "LET": true, "PUT": true, "SAT": true, "TOP": true,
+		"YES": true, "BIG": true, "END": true, "RUN": true, "ANY": true,
+		"ADD": true, "SET": true, "REQ": true, "REQ/S": true,
+	}
+
 	// Common patterns: ALL_CAPS words, words in quotes, etc.
 	words := strings.Fields(text)
 	for _, word := range words {
 		// Remove punctuation
 		word = strings.Trim(word, ".,;:!?()[]{}\"'")
-		if len(word) > 2 {
-			// Check for acronyms (all caps, 2+ chars)
-			if strings.ToUpper(word) == word && len(word) >= 2 {
-				if _, exists := terms[word]; !exists {
-					terms[word] = "Acronym or technical term (definition to be added)"
-				}
+
+		// Skip if too short
+		if len(word) < 3 {
+			continue
+		}
+
+		// Skip if it contains numbers or symbols (except hyphens inside)
+		hasInvalidChar := false
+		for _, r := range word {
+			if !((r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || r == '-') {
+				hasInvalidChar = true
+				break
+			}
+		}
+		if hasInvalidChar {
+			continue
+		}
+
+		// Check for acronyms (all caps, 3+ chars)
+		if strings.ToUpper(word) == word && len(word) >= 3 {
+			// Skip common words
+			if skipWords[word] {
+				continue
+			}
+			if _, exists := terms[word]; !exists {
+				terms[word] = "Acronym or technical term"
 			}
 		}
 	}

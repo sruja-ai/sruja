@@ -38,67 +38,73 @@ export function EditQueueForm({
   const data = useArchitectureStore((s) => s.model);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const allElements = useMemo(() => Object.values(data?.elements || {}) as any[], [data?.elements]);
-  const systems = useMemo(() => allElements.filter((e: any) => e.kind === "system"), [allElements]);
+  const allElements = useMemo(
+    () => Object.values(data?.elements || {}) as ElementDump[],
+    [data?.elements]
+  );
+  const systems = useMemo(() => allElements.filter((e) => e.kind === "system"), [allElements]);
 
   // Initialize form state
   const form = useFormState<FormValues>({
     initialValues: {
-      name: (queue as any)?.title || initialName || "",
+      name: queue?.title || initialName || "",
+      technology: queue?.technology || "",
       description:
-        typeof (queue as any)?.description === "string"
-          ? (queue as any).description
-          : (queue as any)?.description?.txt || "",
-      technology: (queue as any)?.technology || "",
+        typeof queue?.description === "string"
+          ? queue.description
+          : (queue?.description as unknown as { txt: string })?.txt || "",
       customId: false,
-      idInput: (queue as any)?.id || "",
-      selectedSystemId:
-        parentSystemId ||
-        ((queue as any)?.id?.includes(".") ? (queue as any).id.split(".")[0] : "") ||
-        "",
+      idInput: queue?.id || "",
+      selectedSystemId: parentSystemId || (queue?.id ? queue.id.split(".")[0] : "") || "",
     },
     validate: (values) => {
       const errors: FormErrors = {};
       if (!values.name.trim()) errors.name = "Name is required";
-      if (!queue && !values.selectedSystemId) errors.selectedSystemId = "Parent System is required";
+      if (!queue && !values.selectedSystemId) {
+        errors.selectedSystemId = "Parent System is required";
+      }
       if (values.customId && !values.idInput.trim()) errors.idInput = "ID is required";
 
       if (values.customId && values.idInput.trim() && !queue && values.selectedSystemId) {
-        // Check collision
         const fullId = `${values.selectedSystemId}.${values.idInput.trim()}`;
         if (data?.elements?.[fullId]) {
           errors.idInput = "ID already exists in this system";
         }
       }
+
       return errors;
     },
     onSubmit: async (values) => {
       await updateArchitecture((model) => {
         const newElements = { ...model.elements };
 
-        let targetId = (queue as any)?.id;
+        let targetId = queue?.id;
 
         if (!queue) {
           const baseId = values.customId ? values.idInput : slugify(values.name) || "queue";
+          if (!values.selectedSystemId) return model;
           targetId = `${values.selectedSystemId}.${baseId}`;
-          // Ensure unique?
           let i = 1;
           const originalId = targetId;
-          while (newElements[targetId]) {
+          while (newElements[targetId as string]) {
             targetId = `${originalId}-${i++}`;
           }
         }
 
         if (!targetId) return model;
 
-        newElements[targetId] = {
-          id: targetId as any,
-          kind: "queue",
+        const tags = queue?.tags ? [...queue.tags] : [];
+        if (!tags.includes("queue")) tags.push("queue");
+
+        newElements[targetId as string] = {
+          id: targetId,
+          kind: "container",
           title: values.name,
-          description: (values.description || undefined) as any,
+          description: typeof values.description === "string" ? values.description : undefined,
           technology: values.technology || undefined,
-          tags: (queue as any)?.tags,
-          links: (queue as any)?.links,
+          tags: tags,
+          links: queue?.links,
+          style: {},
         };
 
         return { ...model, elements: newElements };
@@ -111,18 +117,15 @@ export function EditQueueForm({
   useEffect(() => {
     if (isOpen) {
       form.setValues({
-        name: (queue as any)?.title || initialName || "",
+        name: queue?.title || initialName || "",
+        technology: queue?.technology || "",
         description:
-          typeof (queue as any)?.description === "string"
-            ? (queue as any).description
-            : (queue as any)?.description?.txt || "",
-        technology: (queue as any)?.technology || "",
-        idInput: (queue as any)?.id || "",
+          (typeof queue?.description === "string"
+            ? queue.description
+            : (queue?.description as unknown as { txt: string })?.txt || "") || "",
+        idInput: queue?.id || "",
         customId: false,
-        selectedSystemId:
-          parentSystemId ||
-          ((queue as any)?.id?.includes(".") ? (queue as any).id.split(".")[0] : "") ||
-          "",
+        selectedSystemId: parentSystemId || (queue?.id ? queue.id.split(".")[0] : "") || "",
       });
       form.clearErrors();
     }

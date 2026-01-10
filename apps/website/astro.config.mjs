@@ -22,8 +22,88 @@ import { nodePolyfills } from "vite-plugin-node-polyfills";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Plugin to watch example files for HMR
+function watchExampleFiles() {
+  return {
+    name: "watch-example-files",
+    configureServer(server) {
+      // Watch example files for HMR
+      const examplesRootPath = path.resolve(__dirname, "../../examples");
+      const websiteExamplesPath = path.resolve(__dirname, "public/examples");
+
+      const watchExampleFiles = (dir, basePath) => {
+        if (!fs.existsSync(dir)) return null;
+
+        // Watch directory recursively
+        const watcher = fs.watch(dir, { recursive: true }, (eventType, filename) => {
+          if (!filename) return;
+
+          // Only watch .sruja and .json files
+          if (!filename.endsWith(".sruja") && !filename.endsWith(".json")) {
+            return;
+          }
+
+          const fullPath = path.join(dir, filename);
+
+          // Skip if it's a directory
+          try {
+            const stat = fs.statSync(fullPath);
+            if (!stat.isFile()) return;
+          } catch {
+            return;
+          }
+
+          // Convert to URL path
+          const relativePath = path.relative(basePath, fullPath);
+          const urlPath = `/examples/${relativePath.replace(/\\/g, "/")}`;
+
+          // Trigger HMR for all connected clients
+          if (server.ws) {
+            server.ws.send({
+              type: "update",
+              updates: [
+                {
+                  type: "js-update",
+                  path: urlPath,
+                  acceptedPath: urlPath,
+                  timestamp: Date.now(),
+                },
+              ],
+            });
+
+            // Also send a custom HMR event that can be handled by the app
+            server.ws.send({
+              type: "custom",
+              event: "example-file-changed",
+              data: { path: urlPath, filename },
+            });
+          }
+        });
+
+        return watcher;
+      };
+
+      // Watch both example directories
+      const watchers = [];
+      const rootWatcher = watchExampleFiles(examplesRootPath, examplesRootPath);
+      const websiteWatcher = watchExampleFiles(websiteExamplesPath, websiteExamplesPath);
+
+      if (rootWatcher) watchers.push(rootWatcher);
+      if (websiteWatcher) watchers.push(websiteWatcher);
+
+      // Clean up watchers on server close
+      if (server.httpServer) {
+        server.httpServer.once("close", () => {
+          watchers.forEach((watcher) => watcher.close());
+        });
+      }
+    },
+  };
+}
 
 // https://astro.build/config
 // Access Node.js process.env (available in Astro config context at build time)
@@ -56,6 +136,7 @@ export default defineConfig({
     plugins: [
       tailwindcss(),
       nodePolyfills(),
+      watchExampleFiles(),
       {
         name: "suppress-node-resolve",
         enforce: "pre",

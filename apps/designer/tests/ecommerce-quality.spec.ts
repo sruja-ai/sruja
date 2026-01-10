@@ -90,14 +90,17 @@ test.describe("ECommerce Platform Quality Measurement", () => {
 
     // Enable debug mode for overlap detection
     await page.evaluate(() => {
-      (window as unknown as any).__LAYOUT_DEBUG__ = true;
+      (window as unknown as { __LAYOUT_DEBUG__: boolean }).__LAYOUT_DEBUG__ = true;
     });
 
     // Wait for metrics to be available (they're set by ArchitectureCanvas)
     let layoutMetrics: Record<string, unknown> | null = null;
     for (let i = 0; i < 10; i++) {
       layoutMetrics = await page.evaluate(() => {
-        return (window as unknown as any).__LAYOUT_METRICS__ as Record<string, unknown> | null;
+        return (window as unknown as { __LAYOUT_METRICS__: unknown }).__LAYOUT_METRICS__ as Record<
+          string,
+          unknown
+        > | null;
       });
       if (layoutMetrics) break;
       await page.waitForTimeout(500);

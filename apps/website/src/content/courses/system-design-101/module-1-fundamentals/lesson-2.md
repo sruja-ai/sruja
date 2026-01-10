@@ -81,7 +81,7 @@ ECommerce = system "E-Commerce System" {
         }
     }
 
-    Database = container "Primary DB" {
+    Database = database "Primary DB" {
         technology "PostgreSQL"
         // Describing Vertical Scaling via comments/description
         description "Running on a massive AWS r5.24xlarge instance (Vertical Scaling)"

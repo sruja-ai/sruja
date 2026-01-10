@@ -106,12 +106,9 @@ func includeAllInScope(prog *language.Program, scope language.QualifiedIdent, in
 				included[buildQualifiedID(sys.ID, q.ID)] = true
 			}
 
-			// Include all components
-			for _, cont := range sys.Containers {
-				for _, comp := range cont.Components {
-					included[buildQualifiedID(sys.ID, cont.ID, comp.ID)] = true
-				}
-			}
+			// Components are NOT included by default in System scope (L2 view)
+			// to maintain strict C4 abstraction layers.
+			// Users must explicitly include components if they want a mixed view.
 			return
 		}
 	}

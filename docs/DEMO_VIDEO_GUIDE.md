@@ -30,29 +30,25 @@
 **1. Prepare Example Architecture**:
 
 ```sruja
-specification {
-  element person
-  element system
-  element container
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+
+user = person "User" {
+  description "Application user"
 }
 
-model {
-  user = person "User" {
-    description "Application user"
+app = system "E-Commerce App" {
+  web = container "Web App" {
+    technology "React"
   }
-
-  app = system "E-Commerce App" {
-    web = container "Web App" {
-      technology "React"
-    }
-    db = container "Database" {
-     technology "PostgreSQL"
-    }
+  db = container "Database" {
+   technology "PostgreSQL"
   }
-
-  user -> app.web "browses"
-  app.web -> app.db "reads/writes"
 }
+
+user -> app.web "browses"
+app.web -> app.db "reads/writes"
 ```
 
 **2. Browser Setup**:

@@ -37,7 +37,7 @@ import { * } from 'sruja.ai/stdlib'
 
 
 DataLayer = system "Data Layer" {
-    UserDB = container "User Database" {
+    UserDB = database "User Database" {
         technology "Cassandra"
         // Explicitly stating the consistency model
         description "configured with replication factor 3. Uses eventual consistency for high availability."
@@ -46,7 +46,7 @@ DataLayer = system "Data Layer" {
         tags ["AP-System", "Eventual-Consistency"]
     }
 
-    BillingDB = container "Billing Database" {
+    BillingDB = database "Billing Database" {
         technology "PostgreSQL"
         description "Single primary with synchronous replication to ensure strong consistency."
         tags ["CP-System", "Strong-Consistency"]

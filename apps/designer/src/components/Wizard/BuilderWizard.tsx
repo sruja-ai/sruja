@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Share2, Eye } from "lucide-react";
 import { Button } from "@sruja/ui";
 import { logger } from "@sruja/shared";
-import type { Element } from "@sruja/shared";
+import type { ElementDump } from "@sruja/shared";
 import { WizardStepper } from "./WizardStepper";
 import type { WizardStep } from "./WizardStepper";
 import { GoalsStep } from "./GoalsStep";
@@ -10,6 +10,7 @@ import { SystemContextStep } from "./SystemContextStep";
 import { ContainersStep } from "./ContainersStep";
 import { ComponentsStep } from "./ComponentsStep";
 import { FlowsStep } from "./FlowsStep";
+import { RolesViewsStep } from "./RolesViewsStep";
 import { DslPreview } from "./DslPreview";
 import { ValidationPanel } from "./ValidationPanel";
 import { SharePanel } from "./SharePanel";
@@ -102,24 +103,24 @@ export function BuilderWizard() {
   // Calculate completion status for each step
   const steps: WizardStep[] = useMemo(() => {
     // SrujaModelDump uses flat elements map
-    const elements: Element[] = data?.elements ? Object.values(data.elements) : [];
+    const elements: ElementDump[] = data?.elements ? Object.values(data.elements) : [];
 
     // Requirements are in sruja.requirements
     const requirements = data?.sruja?.requirements ?? [];
     // Goals removed as they are not in SrujaModelDump and assume Requirements cover it.
 
     // Type guard functions for element filtering
-    const isSystem = (e: Element): boolean => e.kind === "system";
-    const isPerson = (e: Element): boolean =>
+    const isSystem = (e: ElementDump): boolean => e.kind === "system";
+    const isPerson = (e: ElementDump): boolean =>
       e.kind === "person" || e.kind === "actor" || e.kind === "user";
-    const isContainer = (e: Element): boolean =>
+    const isContainer = (e: ElementDump): boolean =>
       e.kind === "container" ||
       e.kind === "webapp" ||
       e.kind === "mobile" ||
       e.kind === "api" ||
       e.kind === "database" ||
       e.kind === "queue";
-    const isComponent = (e: Element): boolean => e.kind === "component";
+    const isComponent = (e: ElementDump): boolean => e.kind === "component";
 
     const systems = elements.filter(isSystem);
     const persons = elements.filter(isPerson);
@@ -133,6 +134,10 @@ export function BuilderWizard() {
     const hasContainers = allContainers.length > 0;
     const hasComponents = allComponents.length > 0;
     const hasFlows = scenarios.length > 0;
+
+    // Check for roles
+    const roles = elements.filter((e) => e.kind === "role");
+    const hasRoles = roles.length > 0;
 
     return [
       {
@@ -168,6 +173,13 @@ export function BuilderWizard() {
         label: "Flows",
         description: "Scenarios",
         isComplete: hasFlows,
+        isLocked: false,
+      },
+      {
+        id: "roles-views",
+        label: "Roles & Views",
+        description: "Organizational roles",
+        isComplete: hasRoles,
         isLocked: false,
       },
     ];
@@ -239,7 +251,7 @@ export function BuilderWizard() {
   };
 
   useEffect(() => {
-    if (currentStep === 4 && !hasSidebarPref && !showSidebar) {
+    if ((currentStep === 4 || currentStep === 5) && !hasSidebarPref && !showSidebar) {
       setShowSidebar(true);
       // Don't auto-persist this as user preference yet, just local conveniences
     }
@@ -297,6 +309,7 @@ export function BuilderWizard() {
             <ComponentsStep onBack={prevStep} onFinish={nextStep} readOnly={!isEditMode()} />
           )}
           {currentStep === 4 && <FlowsStep onBack={prevStep} readOnly={!isEditMode()} />}
+          {currentStep === 5 && <RolesViewsStep onBack={prevStep} readOnly={!isEditMode()} />}
         </div>
 
         {/* Preview Sidebar (Documentation, Validation, DSL) */}

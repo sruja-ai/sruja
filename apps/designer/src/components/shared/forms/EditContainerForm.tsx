@@ -7,7 +7,7 @@ import type { ElementDump } from "@sruja/shared";
 import { SidePanel } from "../SidePanel";
 import { Button, Select, Checkbox } from "@sruja/ui";
 import { FormField, useFormState, type FormErrors } from "./";
-import { slugify } from "./utils";
+import { slugify } from "../../../utils/slugify";
 import "../EditForms.css";
 
 interface EditContainerFormProps {
@@ -25,7 +25,10 @@ interface FormValues {
   customId: boolean;
   idInput: string;
   selectedSystemId: string;
+  type: ContainerType;
 }
+
+type ContainerType = "container" | "database" | "queue";
 
 export function EditContainerForm({
   isOpen,
@@ -38,76 +41,85 @@ export function EditContainerForm({
   const data = useArchitectureStore((s) => s.model);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const allElements = useMemo(() => Object.values(data?.elements || {}) as any[], [data?.elements]);
-  const systems = useMemo(() => allElements.filter((e: any) => e.kind === "system"), [allElements]);
+  const allElements = useMemo(
+    () => Object.values(data?.elements || {}) as ElementDump[],
+    [data?.elements]
+  );
+  const systems = useMemo(() => allElements.filter((e) => e.kind === "system"), [allElements]);
 
   // Initialize form state
   const form = useFormState<FormValues>({
     initialValues: {
-      name: (container as any)?.title || initialName || "",
-      technology: (container as any)?.technology || "",
+      name: container?.title || initialName || "",
+      technology: container?.technology || "",
       description:
-        typeof (container as any)?.description === "string"
-          ? (container as any).description
-          : (container as any)?.description?.txt || "",
+        typeof container?.description === "string"
+          ? container.description
+          : (container?.description as unknown as { txt: string })?.txt || "",
       customId: false,
-      idInput: (container as any)?.id || "",
-      selectedSystemId:
-        parentSystemId ||
-        ((container as any)?.id?.includes(".") ? (container as any).id.split(".")[0] : "") ||
-        "",
+      idInput: container?.id || "",
+      selectedSystemId: parentSystemId || (container?.id ? container.id.split(".")[0] : "") || "",
+      type: (container?.tags?.includes("queue")
+        ? "queue"
+        : container?.tags?.includes("database")
+          ? "database"
+          : "container") as ContainerType,
     },
     validate: (values) => {
       const errors: FormErrors = {};
       if (!values.name.trim()) errors.name = "Name is required";
-      if (!container && !values.selectedSystemId)
+      if (!container && !values.selectedSystemId) {
         errors.selectedSystemId = "Parent System is required";
+      }
       if (values.customId && !values.idInput.trim()) errors.idInput = "ID is required";
 
       if (values.customId && values.idInput.trim() && !container && values.selectedSystemId) {
-        // Check collision
         const fullId = `${values.selectedSystemId}.${values.idInput.trim()}`;
         if (data?.elements?.[fullId]) {
           errors.idInput = "ID already exists in this system";
         }
       }
+
       return errors;
     },
     onSubmit: async (values) => {
       await updateArchitecture((model) => {
         const newElements = { ...model.elements };
 
-        let targetId = (container as any)?.id;
+        let targetId = container?.id;
 
         if (!container) {
           const baseId = values.customId ? values.idInput : slugify(values.name) || "container";
           if (!values.selectedSystemId) return model;
-          targetId = `${values.selectedSystemId}.${baseId}` as any;
-          // Ensure unique?
+          targetId = `${values.selectedSystemId}.${baseId}`;
           let i = 1;
           const originalId = targetId;
           while (newElements[targetId as string]) {
-            targetId = `${originalId}-${i++}` as any;
+            targetId = `${originalId}-${i++}`;
           }
         }
 
         if (!targetId) return model;
 
+        const tags = container?.tags ? [...container.tags] : [];
+        // Manage type tags
+        const typeTags = ["database", "queue"];
+        typeTags.forEach((t) => {
+          const idx = tags.indexOf(t);
+          if (idx > -1) tags.splice(idx, 1);
+        });
+        if (values.type === "database") tags.push("database");
+        if (values.type === "queue") tags.push("queue");
+
         newElements[targetId as string] = {
-          id: targetId as any,
+          id: targetId,
           kind: "container",
           title: values.name,
-          description: (typeof values.description === "string"
-            ? values.description
-            : (values.description as any) &&
-                typeof (values.description as any) === "object" &&
-                "txt" in (values.description as any)
-              ? (values.description as any).txt
-              : undefined) as any,
+          description: typeof values.description === "string" ? values.description : undefined,
           technology: values.technology || undefined,
-          tags: (container as any)?.tags,
-          links: (container as any)?.links,
-          style: {} as any,
+          tags: tags,
+          links: container?.links,
+          style: {},
         };
 
         return { ...model, elements: newElements };
@@ -120,22 +132,20 @@ export function EditContainerForm({
   useEffect(() => {
     if (isOpen) {
       form.setValues({
-        name: (container as any)?.title || initialName || "",
-        technology: (container as any)?.technology || "",
+        name: container?.title || initialName || "",
+        technology: container?.technology || "",
         description:
-          typeof (container as any)?.description === "string"
-            ? (container as any).description
-            : ((container as any)?.description &&
-              typeof (container as any).description === "object" &&
-              "txt" in (container as any).description
-                ? (container as any).description.txt
-                : "") || "",
-        idInput: (container as any)?.id || "",
+          (typeof container?.description === "string"
+            ? container.description
+            : (container?.description as unknown as { txt: string })?.txt || "") || "",
+        idInput: container?.id || "",
         customId: false,
-        selectedSystemId:
-          parentSystemId ||
-          ((container as any)?.id?.includes(".") ? (container as any).id.split(".")[0] : "") ||
-          "",
+        selectedSystemId: parentSystemId || (container?.id ? container.id.split(".")[0] : "") || "",
+        type: (container?.tags?.includes("queue")
+          ? "queue"
+          : container?.tags?.includes("database")
+            ? "database"
+            : "container") as ContainerType,
       });
       form.clearErrors();
     }

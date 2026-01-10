@@ -164,6 +164,10 @@ func collectAllRelations(model *language.Model) []RelationWithScope {
 
 // CollectElementsWithCapacity is like collectElements but allows caller to specify expected capacity.
 // Use when the caller knows approximate architecture size for better allocation efficiency.
+//
+// Example:
+//
+//	elements, relations := CollectElementsWithCapacity(model, 100)
 func CollectElementsWithCapacity(model *language.Model, expectedElements int) (map[string]*language.ElementDef, []*language.Relation) {
 	if model == nil {
 		return make(map[string]*language.ElementDef), nil

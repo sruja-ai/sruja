@@ -22,9 +22,11 @@ overview {
 
 customer = person "Customer" {
   description "Reports issues, requests refunds, tracks orders"
+  metadata { tags ["R1"] }
 }
 supportAgent = person "Support Agent" {
   description "Approves sensitive actions, handles escalations"
+  metadata { tags ["R3"] }
 }
 
 commerce = system "E-commerce" {
@@ -43,8 +45,15 @@ commerce = system "E-commerce" {
     description "Order management and fulfillment API"
     scale { min 4 max 10 }
     slo { latency { p95 "300ms" p99 "800ms" } }
-    ordersRead = component "Order read endpoints"
-    ordersWrite = component "Order write endpoints"
+    ordersRead = component "Orders Read" {
+        description "Order read endpoints"
+        technology "Express"
+    }
+    ordersWrite = component "Orders Write" {
+        description "Order write endpoints"
+        technology "Express"
+        metadata { tags ["R4"] }
+    }
   }
 
   ordersDB = database "Orders Database" {
@@ -64,19 +73,29 @@ support = system "Support Operations" {
   ticketing = container "Ticketing System" {
     technology "Zendesk"
     description "Customer support tickets and workflows"
-    ticketAPI = component "Ticket CRUD and macros"
+    ticketAPI = component "Ticket API" {
+        description "Ticket CRUD and macros"
+        technology "Zendesk API"
+        metadata { tags ["R1"] }
+    }
   }
 
   cRM = container "CRM" {
     technology "Salesforce"
     description "Customer profiles and entitlements"
-    cRMAPI = component "Contact, case, entitlement APIs"
+    cRMAPI = component "CRM API" {
+        description "Contact, case, entitlement APIs"
+        technology "Salesforce API"
+    }
   }
 
   email = container "Transactional Email" {
     technology "SendGrid"
     description "Outbound communications and notifications"
-    emailAPI = component "Email send and templates"
+    emailAPI = component "Email API" {
+        description "Email send and templates"
+        technology "SendGrid API"
+    }
   }
 }
 
@@ -90,16 +109,36 @@ agentic = system "Agentic Platform" {
     tags ["api","backend"]
     scale { min 2 max 6 metric "cpu > 65%" }
     slo { latency { p95 "1200ms" p99 "2500ms" } }
-    requestHandler = component "Validates and receives tasks"
-    streamServer = component "SSE/WebSocket streams"
+    requestHandler = component "Request Handler" {
+        description "Validates and receives tasks"
+        technology "Express Middleware"
+        metadata { tags ["R1"] }
+    }
+    streamServer = component "Stream Server" {
+        description "SSE/WebSocket streams"
+        technology "ws"
+        metadata { tags ["R2"] }
+    }
   }
 
   orchestrator = container "Task Orchestrator" {
     technology "Go"
     description "Lifecycle control, routing, safety checks, trace context"
-    plannerRouter = component "Planner routing and retries"
-    safetyGate = component "Pre-execution guardrails"
-    memoryManager = component "Retrieval hooks and updates"
+    plannerRouter = component "Planner Router" {
+        description "Planner routing and retries"
+        technology "Go"
+        metadata { tags ["R1"] }
+    }
+    safetyGate = component "Safety Gate" {
+        description "Pre-execution guardrails"
+        technology "Go"
+        metadata { tags ["R3"] }
+    }
+    memoryManager = component "Memory Manager" {
+        description "Retrieval hooks and updates"
+        technology "Go"
+        metadata { tags ["R1"] }
+    }
     slo { availability { target "99.9%" window "30d" } }
   }
 
@@ -107,33 +146,80 @@ agentic = system "Agentic Platform" {
     technology "Python"
     description "Generates plans and selects tools"
     scale { min 3 max 10 }
-    reActPlanner = component "Reason+Act planning"
-    toTPlanner = component "Tree-of-Thought for complex cases"
-    toolSelector = component "Tool allowlist and selection"
+    reActPlanner = component "ReAct Planner" {
+        description "Reason+Act planning"
+        technology "LangChain"
+        metadata { tags ["R1"] }
+    }
+    toTPlanner = component "ToT Planner" {
+        description "Tree-of-Thought for complex cases"
+        technology "LangChain"
+    }
+    toolSelector = component "Tool Selector" {
+        description "Tool allowlist and selection"
+        technology "Python"
+        metadata { tags ["R3"] }
+    }
   }
 
   tools = container "Support Tools" {
     technology "Mixed"
     description "External tools invoked by agents"
-    webBrowser = component "Web search and scraping"
-    databaseQuery = component "Structured data access"
-    codeRunner = component "Ephemeral code execution"
-    emailSender = component "Templated email dispatch"
+    webBrowser = component "Web Browser" {
+        description "Web search and scraping"
+        technology "Playwright"
+        metadata { tags ["R1"] }
+    }
+    databaseQuery = component "Database Query" {
+        description "Structured data access"
+        technology "SQLAlchemy"
+        metadata { tags ["R1"] }
+    }
+    codeRunner = component "Code Runner" {
+        description "Ephemeral code execution"
+        technology "Python Sandbox"
+        metadata { tags ["R3"] }
+    }
+    emailSender = component "Email Sender" {
+        description "Templated email dispatch"
+        technology "SMTP"
+        metadata { tags ["R1"] }
+    }
   }
 
   executor = container "Execution Sandbox" {
     technology "Docker"
     description "Network-restricted sandbox for code execution"
-    sandboxRuntime = component "Runtime with quotas"
-    traceEmitter = component "Execution traces"
+    sandboxRuntime = component "Sandbox Runtime" {
+        description "Runtime with quotas"
+        technology "gVisor"
+        metadata { tags ["R3"] }
+    }
+    traceEmitter = component "Trace Emitter" {
+        description "Execution traces"
+        technology "OpenTelemetry"
+        metadata { tags ["R2"] }
+    }
   }
 
   monitor = container "Telemetry & Policy" {
     technology "Go"
     description "Metrics, logs, policy evaluation, audit trail"
-    policyEngine = component "Evaluates enforcement rules"
-    metricsCollector = component "Latency, error rate, throughput"
-    auditLog = component "Immutable audit trail"
+    policyEngine = component "Policy Engine" {
+        description "Evaluates enforcement rules"
+        technology "OPA"
+        metadata { tags ["R3"] }
+    }
+    metricsCollector = component "Metrics Collector" {
+        description "Latency, error rate, throughput"
+        technology "Prometheus"
+        metadata { tags ["R2"] }
+    }
+    auditLog = component "Audit Log" {
+        description "Immutable audit trail"
+        technology "TimescaleDB"
+        metadata { tags ["R3", "R1"] }
+    }
   }
 
   vectorDB = database "Vector Store" {
@@ -170,13 +256,32 @@ agentic = system "Agentic Platform" {
 
 external = system "External Services" {
   description "Third-party APIs"
-  payments = container "Stripe"
-  commerceHost = container "Shopify"
-  searchAPI = container "Search API"
-  carriers = container "Carrier APIs"
+  payments = container "Stripe" {
+    technology "Stripe API"
+    description "Payment processing"
+    metadata { tags ["external", "R4"] }
+  }
+  commerceHost = container "Shopify" {
+    technology "Shopify API"
+    description "E-commerce platform"
+    metadata { tags ["external"] }
+  }
+  searchAPI = container "Search API" {
+    technology "Elasticsearch"
+    description "Product search"
+    metadata { tags ["external"] }
+  }
+  carriers = container "Carrier APIs" {
+    technology "FedEx/UPS API"
+    description "Shipping tracking"
+    metadata { tags ["external"] }
+  }
 }
 
 customer -> commerce.shopFrontend "Places orders"
+commerce.shopFrontend -> commerce.orderAPI "Create order"
+commerce.orderAPI -> commerce.shippingAPI "Shipping quote"
+commerce.orderAPI -> commerce.ordersDB "Persist order"
 customer -> support.ticketing "Submits ticket"
 supportAgent -> support.ticketing "Works tickets"
 supportAgent -> agentic.aPI "Approves actions"
@@ -185,8 +290,8 @@ agentic.aPI -> support.ticketing "Create/update tickets"
 agentic.tools.databaseQuery -> commerce.ordersDB "Read order state"
 agentic.tools.webBrowser -> external.searchAPI "Query"
 agentic.tools.webBrowser -> external.carriers "Track shipment"
-agentic.tools.emailSender -> support.email "Send email"
-agentic.tools.databaseQuery -> support.cRM "Fetch customer profile"
+agentic.tools.emailSender -> support.email.emailAPI "Send email"
+support.cRM.cRMAPI -> agentic.tools.databaseQuery "queries via"
 agentic.tools.codeRunner -> agentic.executor "Invoke code"
 agentic.tools.databaseQuery -> external.commerceHost "Fetch order"
 agentic.tools.databaseQuery -> external.payments "Payment lookup"

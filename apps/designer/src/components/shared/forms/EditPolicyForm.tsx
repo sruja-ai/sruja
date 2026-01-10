@@ -4,6 +4,7 @@
 import { useEffect, useRef } from "react";
 import { useArchitectureStore } from "../../../stores";
 import { Button } from "@sruja/ui";
+import type { Policy, SrujaModelDump } from "@sruja/shared";
 import { SidePanel } from "../SidePanel";
 import { FormField, useFormState, type FormErrors } from "./";
 import "../EditForms.css";
@@ -11,7 +12,7 @@ import "../EditForms.css";
 interface EditPolicyFormProps {
   isOpen: boolean;
   onClose: () => void;
-  policy?: any; // PolicyDump
+  policy?: Policy;
 }
 
 interface FormValues {
@@ -30,7 +31,7 @@ export function EditPolicyForm({ isOpen, onClose, policy }: EditPolicyFormProps)
   const form = useFormState<FormValues>({
     initialValues: {
       id: policy?.id || "",
-      label: policy?.title || policy?.label || "",
+      label: policy?.title || "",
       description: policy?.description || "",
       category: policy?.category || "",
       enforcement: policy?.enforcement || "",
@@ -49,19 +50,19 @@ export function EditPolicyForm({ isOpen, onClose, policy }: EditPolicyFormProps)
     },
     onSubmit: async (values) => {
       await updateArchitecture((model) => {
-        const sruja = (model as any).sruja || {};
-        const policies = [...(sruja.policies || [])];
+        const sruja = (model as SrujaModelDump).sruja || {};
+        const policies = [...(sruja.policies || [])] as Policy[];
 
         const newPolicy = {
-          id: values.id.trim(),
-          title: values.label.trim() || undefined,
-          description: values.description.trim() || undefined,
-          category: values.category.trim() || undefined,
-          enforcement: values.enforcement.trim() || undefined,
+          id: policy?.id || "",
+          title: values.label,
+          description: values.description || undefined,
+          category: values.category || undefined,
+          enforcement: values.enforcement || undefined,
         };
 
         if (policy) {
-          const index = policies.findIndex((p: any) => p.id === policy.id);
+          const index = policies.findIndex((p) => p.id === policy.id);
           if (index >= 0) {
             policies[index] = newPolicy;
           }
@@ -86,7 +87,7 @@ export function EditPolicyForm({ isOpen, onClose, policy }: EditPolicyFormProps)
     if (isOpen) {
       form.setValues({
         id: policy?.id || "",
-        label: policy?.title || policy?.label || "",
+        label: policy?.title || "",
         description: policy?.description || "",
         category: policy?.category || "",
         enforcement: policy?.enforcement || "",
@@ -119,7 +120,12 @@ export function EditPolicyForm({ isOpen, onClose, policy }: EditPolicyFormProps)
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" type="submit" form="edit-policy-form" isLoading={form.isSubmitting}>
+          <Button
+            variant="primary"
+            type="submit"
+            form="edit-policy-form"
+            isLoading={form.isSubmitting}
+          >
             {policy ? "Update" : "Add"}
           </Button>
         </>

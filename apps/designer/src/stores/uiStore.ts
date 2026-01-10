@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { ViewTab } from "../types";
-import type { Persona } from "../components/PersonaSwitcher";
+import type { Role } from "../components/RoleSwitcher";
 
 export type PendingActionType =
   | "create-requirement"
@@ -16,9 +16,9 @@ interface UIState {
   activeTab: ViewTab;
   setActiveTab: (tab: ViewTab) => void;
 
-  // Persona view state
-  selectedPersona: Persona;
-  setSelectedPersona: (persona: Persona) => void;
+  // Role view state
+  selectedRole: Role;
+  setSelectedRole: (role: Role) => void;
 
   // Code Panel state managed globally for deep linking
   codeTab: CodeSubTab;
@@ -38,8 +38,8 @@ export const useUIStore = create<UIState>()(
       activeTab: "overview", // Default will be set by App.tsx from URL
       setActiveTab: (tab) => set({ activeTab: tab }),
 
-      selectedPersona: "architect", // Default to architect view
-      setSelectedPersona: (persona) => set({ selectedPersona: persona }),
+      selectedRole: "architect", // Default to architect view
+      setSelectedRole: (role) => set({ selectedRole: role }),
 
       codeTab: "dsl",
       setCodeTab: (tab) => set({ codeTab: tab }),
@@ -54,7 +54,7 @@ export const useUIStore = create<UIState>()(
       name: "sruja-ui-state",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        selectedPersona: state.selectedPersona,
+        selectedRole: state.selectedRole,
       }),
     }
   )

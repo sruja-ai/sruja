@@ -7,7 +7,7 @@ import type { ElementDump } from "@sruja/shared";
 import { SidePanel } from "../SidePanel";
 import { Button, Select, Checkbox } from "@sruja/ui";
 import { FormField, useFormState, type FormErrors } from "./";
-import { slugify } from "./utils";
+import { slugify } from "../../../utils/slugify";
 import "../EditForms.css";
 
 interface EditDataStoreFormProps {
@@ -38,30 +38,31 @@ export function EditDataStoreForm({
   const data = useArchitectureStore((s) => s.model);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const allElements = useMemo(() => Object.values(data?.elements || {}) as any[], [data?.elements]);
-  const systems = useMemo(() => allElements.filter((e: any) => e.kind === "system"), [allElements]);
+  const allElements = useMemo(
+    () => Object.values(data?.elements || {}) as ElementDump[],
+    [data?.elements]
+  );
+  const systems = useMemo(() => allElements.filter((e) => e.kind === "system"), [allElements]);
 
   // Initialize form state
   const form = useFormState<FormValues>({
     initialValues: {
-      name: (dataStore as any)?.title || initialName || "",
+      name: dataStore?.title || initialName || "",
+      technology: dataStore?.technology || "",
       description:
-        typeof (dataStore as any)?.description === "string"
-          ? (dataStore as any).description
-          : (dataStore as any)?.description?.txt || "",
-      technology: (dataStore as any)?.technology || "",
+        typeof dataStore?.description === "string"
+          ? dataStore.description
+          : (dataStore?.description as unknown as { txt: string })?.txt || "",
       customId: false,
-      idInput: (dataStore as any)?.id || "",
-      selectedSystemId:
-        parentSystemId ||
-        ((dataStore as any)?.id?.includes(".") ? (dataStore as any).id.split(".")[0] : "") ||
-        "",
+      idInput: dataStore?.id || "",
+      selectedSystemId: parentSystemId || (dataStore?.id ? dataStore.id.split(".")[0] : "") || "",
     },
     validate: (values) => {
       const errors: FormErrors = {};
       if (!values.name.trim()) errors.name = "Name is required";
-      if (!dataStore && !values.selectedSystemId)
+      if (!dataStore && !values.selectedSystemId) {
         errors.selectedSystemId = "Parent System is required";
+      }
       if (values.customId && !values.idInput.trim()) errors.idInput = "ID is required";
 
       if (values.customId && values.idInput.trim() && !dataStore && values.selectedSystemId) {
@@ -70,40 +71,40 @@ export function EditDataStoreForm({
           errors.idInput = "ID already exists in this system";
         }
       }
+
       return errors;
     },
     onSubmit: async (values) => {
       await updateArchitecture((model) => {
         const newElements = { ...model.elements };
 
-        let targetId = (dataStore as any)?.id;
+        let targetId = dataStore?.id;
 
         if (!dataStore) {
           const baseId = values.customId ? values.idInput : slugify(values.name) || "db";
           if (!values.selectedSystemId) return model;
-          targetId = `${values.selectedSystemId}.${baseId}` as any;
+          targetId = `${values.selectedSystemId}.${baseId}`;
           let i = 1;
           const originalId = targetId;
           while (newElements[targetId as string]) {
-            targetId = `${originalId}-${i++}` as any;
+            targetId = `${originalId}-${i++}`;
           }
         }
 
         if (!targetId) return model;
 
+        const tags = dataStore?.tags ? [...dataStore.tags] : [];
+        if (!tags.includes("database")) tags.push("database");
+
         newElements[targetId as string] = {
-          id: targetId as any,
+          id: targetId,
           kind: "container",
           title: values.name,
-          description: (typeof values.description === "string"
-            ? values.description
-            : (values.description as any)?.txt || undefined) as any,
+          description: typeof values.description === "string" ? values.description : undefined,
           technology: values.technology || undefined,
-          tags: (dataStore as any)?.tags
-            ? [...new Set([...(dataStore as any).tags, "database"])]
-            : ["database"],
-          links: (dataStore as any)?.links,
-          style: {} as any,
+          tags: tags,
+          links: dataStore?.links,
+          style: {},
         };
 
         return { ...model, elements: newElements };
@@ -116,22 +117,15 @@ export function EditDataStoreForm({
   useEffect(() => {
     if (isOpen) {
       form.setValues({
-        name: (dataStore as any)?.title || initialName || "",
+        name: dataStore?.title || initialName || "",
+        technology: dataStore?.technology || "",
         description:
-          typeof (dataStore as any)?.description === "string"
-            ? (dataStore as any).description
-            : ((dataStore as any)?.description &&
-              typeof (dataStore as any).description === "object" &&
-              "txt" in (dataStore as any).description
-                ? (dataStore as any).description.txt
-                : "") || "",
-        technology: (dataStore as any)?.technology || "",
-        idInput: (dataStore as any)?.id || "",
+          (typeof dataStore?.description === "string"
+            ? dataStore.description
+            : (dataStore?.description as unknown as { txt: string })?.txt || "") || "",
+        idInput: dataStore?.id || "",
         customId: false,
-        selectedSystemId:
-          parentSystemId ||
-          ((dataStore as any)?.id?.includes(".") ? (dataStore as any).id.split(".")[0] : "") ||
-          "",
+        selectedSystemId: parentSystemId || (dataStore?.id ? dataStore.id.split(".")[0] : "") || "",
       });
       form.clearErrors();
     }

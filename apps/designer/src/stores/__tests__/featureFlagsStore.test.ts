@@ -8,9 +8,9 @@ vi.mock("zustand/middleware", async () => {
     ...actual,
     persist: <T>(config: T) => {
       if (typeof config === "function") {
-        return config as any;
+        return config as unknown as T;
       }
-      return config as any;
+      return config as unknown as T;
     },
     createJSONStorage: () => ({
       getItem: vi.fn(() => null),
@@ -101,7 +101,8 @@ describe("featureFlagsStore", () => {
 
     mandatoryFlags.forEach((flag) => {
       // TypeScript should prevent this, but test runtime behavior
-      useFeatureFlagsStore.getState().setFlag(flag, false as any);
+      // @ts-expect-error - Testing runtime behavior for invalid input
+      useFeatureFlagsStore.getState().setFlag(flag, false);
       // Mandatory flags should remain true
       expect(useFeatureFlagsStore.getState().flags[flag]).toBe(false); // Runtime allows it, but type system prevents
     });

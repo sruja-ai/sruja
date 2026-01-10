@@ -1,0 +1,70 @@
+// examples/kafka-architecture.sruja
+// Kafka Architecture
+
+cluster = kind "Cluster"
+broker = kind "Broker"
+topic = kind "Topic"
+partition = kind "Partition"
+producer = kind "Producer"
+consumer = kind "Consumer"
+group = kind "Consumer Group"
+registry = kind "Schema Registry"
+storage = kind "Storage"
+system = kind "System"
+
+kafka_cluster = cluster "Kafka Cluster" {
+    broker1 = broker "Broker 1" {
+        tech "Scala/Java"
+        description "Kafka Server"
+        storage1 = storage "Local Log Storage"
+    }
+    broker2 = broker "Broker 2" {
+        tech "Scala/Java"
+        storage2 = storage "Local Log Storage"
+    }
+    
+    controller = broker "Controller" {
+        description "Manages partition leaders"
+    }
+}
+
+zookeeper = system "ZooKeeper" {
+    tech "Java"
+    description "Cluster coordination and metadata management"
+}
+
+schema_reg = registry "Confluent Schema Registry" {
+    tech "Java"
+}
+
+app_producer = producer "Order Service" {
+    tech "Java/Spring"
+}
+
+app_consumer = consumer "Inventory Service" {
+    tech "Go"
+}
+
+orders_topic = topic "orders-v1" {
+    p0 = partition "Partition 0"
+    p1 = partition "Partition 1"
+}
+
+// Relationships
+app_producer -> orders_topic "Publishes orders"
+app_producer -> schema_reg "Fetches schemas"
+
+orders_topic -> kafka_cluster "Distributed across brokers"
+kafka_cluster -> zookeeper "Coordinates via"
+
+app_consumer -> orders_topic "Subscribes to"
+app_consumer -> schema_reg "Checks schema compatibility"
+
+view context of kafka_cluster {
+    include *
+}
+
+view internals of kafka_cluster {
+    include kafka_cluster
+    include orders_topic
+}

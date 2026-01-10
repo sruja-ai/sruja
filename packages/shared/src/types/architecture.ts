@@ -96,6 +96,7 @@ export type {
   ArchitectureJSON,
   MetadataJSON,
   MetadataEntryJSON,
+  MetadataEntry,
   ArchitectureBody,
   NavigationJSON,
   ViewsJSON,

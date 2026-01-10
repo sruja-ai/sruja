@@ -14,11 +14,17 @@ interface EditFlowFormProps {
   flow?: FlowDump;
 }
 
+interface FlowStep {
+  from: string;
+  to: string;
+  description?: string;
+}
+
 interface FormValues {
   id: string;
   title: string;
   description: string;
-  steps: any[];
+  steps: FlowStep[];
 }
 
 export function EditFlowForm({ isOpen, onClose, flow }: EditFlowFormProps) {
@@ -32,7 +38,11 @@ export function EditFlowForm({ isOpen, onClose, flow }: EditFlowFormProps) {
       id: flow?.id || "",
       title: flow?.title || "",
       description: flow?.description || "",
-      steps: [...(flow?.steps || [])] as any[],
+      steps: (flow?.steps || []).map((s) => ({
+        from: s.from || "",
+        to: s.to || "",
+        description: s.description || "",
+      })),
     },
     validate: (values) => {
       const errors: FormErrors = {};
@@ -56,11 +66,11 @@ export function EditFlowForm({ isOpen, onClose, flow }: EditFlowFormProps) {
           title: values.title.trim(),
           description: values.description.trim() || undefined,
           steps: values.steps
-            .filter((s) => s.from && s.to && s.from.trim() !== "" && s.to.trim() !== "")
-            .map((s) => ({
+            .filter((s: FlowStep) => s.from && s.to && s.from.trim() !== "" && s.to.trim() !== "")
+            .map((s: FlowStep) => ({
               from: s.from,
               to: s.to,
-              description: s.description || undefined,
+              description: s.description || "",
             })),
         };
 
@@ -86,17 +96,25 @@ export function EditFlowForm({ isOpen, onClose, flow }: EditFlowFormProps) {
   });
 
   // Reset form when opening/switching contexts
+  // Note: form.setValues and form.clearErrors are stable (wrapped in useCallback with empty deps)
+  // so they don't need to be in the dependency array
   useEffect(() => {
     if (isOpen) {
       form.setValues({
         id: flow?.id || "",
         title: flow?.title || "",
         description: flow?.description || "",
-        steps: [...(flow?.steps || [])] as any[],
+        steps: (flow?.steps || []).map((s) => ({
+          from: s.from || "",
+          to: s.to || "",
+          description: s.description || "",
+        })),
       });
       form.clearErrors();
     }
-  }, [isOpen, flow, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // form.setValues and form.clearErrors are stable callbacks from useFormState
+  }, [isOpen, flow]);
 
   // Handle Escape key
   useEffect(() => {

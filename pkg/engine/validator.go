@@ -7,6 +7,7 @@ package engine
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/sruja-ai/sruja/pkg/diagnostics"
@@ -20,14 +21,26 @@ const (
 	DefaultConcurrency = 10
 )
 
-// Rule defines the interface for validation rules.
-// Each rule validates a specific aspect of the architecture (e.g., cycle detection, unique IDs).
+// Rule defines the base interface for all validation logic.
+// Each rule validates a specific aspect of the architecture.
 type Rule interface {
 	// Name returns the human-readable name of the validation rule.
 	Name() string
 	// Validate runs the validation rule against the program and returns diagnostics.
 	// Returns an empty slice if no issues are found.
 	Validate(program *language.Program) []diagnostics.Diagnostic
+}
+
+// ValidatorRule represents a strict correctness check (e.g. syntax, cycles).
+// Violations usually result in Errors.
+type ValidatorRule interface {
+	Rule
+}
+
+// AnalysisRule represents a best-practice or linting check (e.g. simplicity).
+// Violations usually result in Warnings or Info.
+type AnalysisRule interface {
+	Rule
 }
 
 // Validator manages a collection of validation rules and executes them concurrently.
@@ -68,7 +81,7 @@ func (v *Validator) RegisterDefaultRules() {
 	v.RegisterRule(&OrphanDetectionRule{})
 	v.RegisterRule(&SimplicityRule{})
 	v.RegisterRule(&LayerViolationRule{})
-	v.RegisterRule(&ScenarioFQNRule{})
+	v.RegisterRule(&ScenarioValidationRule{})
 
 	// New Best Practice Rules
 	v.RegisterRule(&DatabaseIsolationRule{})
@@ -104,7 +117,20 @@ func (v *Validator) RegisterDefaultRules() {
 //	    fmt.Printf("Error: %s\n", diag.Message)
 //	}
 func (v *Validator) Validate(program *language.Program) []diagnostics.Diagnostic {
+	elementCount := 0
+	if program != nil && program.Model != nil {
+		elementCount = len(program.Model.Items)
+	}
+
+	slog.Info("starting validation",
+		"rules_count", len(v.Rules),
+		"elements_count", elementCount,
+		"concurrency", v.config.concurrency,
+		"timeout_seconds", v.config.timeout.Seconds(),
+	)
+
 	if len(v.Rules) == 0 {
+		slog.Warn("no validation rules registered", "elements_count", elementCount)
 		return nil
 	}
 
@@ -117,6 +143,11 @@ func (v *Validator) Validate(program *language.Program) []diagnostics.Diagnostic
 	if concurrency == 0 {
 		concurrency = DefaultConcurrency
 	}
+
+	slog.Debug("validation configuration",
+		"timeout", timeout.String(),
+		"concurrency", concurrency,
+	)
 
 	// Create context with timeout to prevent hanging
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -137,6 +168,7 @@ func (v *Validator) Validate(program *language.Program) []diagnostics.Diagnostic
 			case sem <- struct{}{}:
 				defer func() { <-sem }() // Release
 			case <-ctx.Done():
+				slog.Debug("validation cancelled", "rule", r.Name())
 				return
 			}
 
@@ -145,5 +177,12 @@ func (v *Validator) Validate(program *language.Program) []diagnostics.Diagnostic
 	}
 
 	// Collect results
-	return collectResults(ctx, errChan, panicChan, len(v.Rules))
+	diagnostics := collectResults(ctx, errChan, panicChan, len(v.Rules))
+
+	slog.Info("validation completed",
+		"diagnostics_count", len(diagnostics),
+		"rules_executed", len(v.Rules),
+	)
+
+	return diagnostics
 }

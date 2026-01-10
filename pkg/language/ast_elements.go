@@ -259,6 +259,48 @@ func (p *Person) Location() SourceLocation {
 	return SourceLocation{File: p.Pos.Filename, Line: p.Pos.Line, Column: p.Pos.Column, Offset: p.Pos.Offset}
 }
 
+// ============================================================================
+// Role
+// ============================================================================
+
+// Role represents a role (organizational role/team) declaration.
+//
+// A role is an organizational role or team that views the architecture
+// through a specific lens. Roles are optional and can be referenced in views
+// via tags to filter views by role.
+//
+// Example DSL:
+//
+//	role devops "DevOps Team" {
+//	  description "Infrastructure and deployment team"
+//	}
+//
+//	view deployment_view {
+//	  tags ["devops"]  // References the role element
+//	  include ...
+//	}
+type Role struct {
+	Pos   lexer.Position
+	ID    string     `parser:"'role' @Ident"`
+	Label string     `parser:"( @String )?"`
+	Items []RoleItem `parser:"( '{' @@* '}' )?"`
+
+	// Post-processed fields
+	Description *string
+	Metadata    []*MetaEntry
+	Style       map[string]string
+}
+
+func (r *Role) Location() SourceLocation {
+	return SourceLocation{File: r.Pos.Filename, Line: r.Pos.Line, Column: r.Pos.Column, Offset: r.Pos.Offset}
+}
+
+type RoleItem struct {
+	Description *string        `parser:"'description' @String |"`
+	Metadata    *MetadataBlock `parser:"@@ |"`
+	Style       *StyleDecl     `parser:"@@"`
+}
+
 // Element item unions for metadata blocks
 type DataStoreItem struct {
 	Technology  *string        `parser:"( 'technology' | 'tech' ) @String |"`
@@ -282,7 +324,7 @@ type PersonItem struct {
 	Style       *StyleDecl     `parser:"@@"`
 }
 
-// Element is implemented by System, Container, Component, Person, DataStore, Queue
+// Element is implemented by System, Container, Component, Person, Role, DataStore, Queue
 type Element interface {
 	ASTNode
 	GetID() string
@@ -293,6 +335,7 @@ func (s *System) GetID() string    { return s.ID }
 func (c *Container) GetID() string { return c.ID }
 func (c *Component) GetID() string { return c.ID }
 func (p *Person) GetID() string    { return p.ID }
+func (r *Role) GetID() string      { return r.ID }
 func (d *DataStore) GetID() string { return d.ID }
 func (q *Queue) GetID() string     { return q.ID }
 
@@ -300,6 +343,7 @@ func (s *System) GetLabel() string    { return s.Label }
 func (c *Container) GetLabel() string { return c.Label }
 func (c *Component) GetLabel() string { return c.Label }
 func (p *Person) GetLabel() string    { return p.Label }
+func (r *Role) GetLabel() string      { return r.Label }
 func (d *DataStore) GetLabel() string { return d.Label }
 func (q *Queue) GetLabel() string     { return q.Label }
 

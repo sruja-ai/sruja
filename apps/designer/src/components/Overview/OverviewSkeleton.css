@@ -1,0 +1,85 @@
+/* apps/designer/src/components/Overview/OverviewSkeleton.css */
+
+.overview-skeleton {
+  padding: var(--space-6, 1.5rem);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.overview-skeleton-hero {
+  padding: var(--space-6, 1.5rem);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--card-bg, #ffffff);
+  margin-bottom: var(--space-6, 1.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+[data-theme="dark"] .overview-skeleton-hero {
+  background: var(--card-bg, #1e293b);
+  border-color: var(--border-color, #475569);
+}
+
+.overview-skeleton-card {
+  padding: var(--space-5, 1.25rem);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--card-bg, #ffffff);
+  margin-bottom: var(--space-6, 1.5rem);
+}
+
+[data-theme="dark"] .overview-skeleton-card {
+  background: var(--card-bg, #1e293b);
+  border-color: var(--border-color, #475569);
+}
+
+.overview-skeleton-stats {
+  margin-top: var(--space-4, 1rem);
+}
+
+.overview-skeleton-stats-row {
+  display: flex;
+  gap: var(--space-4, 1rem);
+  margin-bottom: var(--space-6, 1.5rem);
+  flex-wrap: wrap;
+}
+
+.overview-skeleton-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-4, 1rem);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--card-bg, #ffffff);
+  flex: 1;
+  min-width: 200px;
+}
+
+[data-theme="dark"] .overview-skeleton-stat {
+  background: var(--card-bg, #1e293b);
+  border-color: var(--border-color, #475569);
+}
+
+.overview-skeleton-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4, 1rem);
+}
+
+.overview-skeleton-nav-card {
+  padding: var(--space-4, 1rem);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--card-bg, #ffffff);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+[data-theme="dark"] .overview-skeleton-nav-card {
+  background: var(--card-bg, #1e293b);
+  border-color: var(--border-color, #475569);
+}

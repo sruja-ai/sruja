@@ -291,7 +291,7 @@ func metaAll(metadata []*MetaEntry) map[string]string {
 }
 
 func metaMap(metadata []*MetaEntry, prefix string) map[string]string {
-	result := make(map[string]string)
+	result := make(map[string]string, len(metadata))
 	for _, meta := range metadata {
 		if len(meta.Key) >= len(prefix) && meta.Key[:len(prefix)] == prefix {
 			if meta.Value != nil {

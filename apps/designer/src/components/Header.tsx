@@ -17,7 +17,7 @@ import { ThemeToggle, Button, Logo } from "@sruja/ui";
 import type { SrujaModelDump } from "@sruja/shared";
 import type { ViewTab } from "../types";
 import { getWebsiteUrl } from "../utils/website-url";
-import { PersonaSwitcher, type Persona } from "./PersonaSwitcher";
+// RoleSwitcher removed - role selection is now in the Roles tab
 
 export interface HeaderProps {
   isNavOpen: boolean;
@@ -32,9 +32,7 @@ export interface HeaderProps {
   selectedNodeId: string | null;
   isDetailsOpen: boolean;
   setIsDetailsOpen: (open: boolean) => void;
-  // Persona
-  selectedPersona: Persona;
-  onPersonaChange: (persona: Persona) => void;
+  // Role selection removed - now handled in Roles tab
   // Actions
   handleImport: () => void;
   handleExport: () => void;
@@ -57,8 +55,6 @@ export function Header({
   selectedNodeId,
   isDetailsOpen,
   setIsDetailsOpen,
-  selectedPersona,
-  onPersonaChange,
   handleImport,
   handleExport,
   handleExportPNG,
@@ -91,17 +87,12 @@ export function Header({
       <div className="header-center">
         <div className="project-pill">
           <span className="project-name">
-            {(model?._metadata as any)?.name || "Untitled Architecture"}
+            {(model?._metadata as { name?: string })?.name || "Untitled Architecture"}
           </span>
         </div>
       </div>
 
       <div className="header-right">
-        <PersonaSwitcher
-          selectedPersona={selectedPersona}
-          onPersonaChange={onPersonaChange}
-          className="header-persona-switcher"
-        />
         <div className="actions-dropdown-container">
           <Button
             variant="secondary"

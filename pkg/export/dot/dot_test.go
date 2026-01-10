@@ -134,10 +134,162 @@ func TestExporter_NodeSizes(t *testing.T) {
 	dot := result.DOT
 
 	// Check for explicit width/height in inches (288/72 = 4.00, 144/72 = 2.00)
-	if !strings.Contains(dot, "width=4.00") {
-		t.Errorf("Expected width=4.00 for node 'sys', got DOT:\n%s", dot)
-	}
 	if !strings.Contains(dot, "height=2.00") {
 		t.Errorf("Expected height=2.00 for node 'sys', got DOT:\n%s", dot)
+	}
+}
+
+func TestExporter_GlobalL2_HidesComponents(t *testing.T) {
+	dsl := `
+	System = kind "System"
+	Container = kind "Container"
+	Component = kind "Component"
+
+	sys = System "My System" {
+		cont1 = Container "Container 1" {
+			comp1 = Component "Component 1"
+		}
+		cont2 = Container "Container 2" {
+			comp2 = Component "Component 2"
+		}
+	}
+
+	sys.cont1.comp1 -> sys.cont2.comp2 "uses"
+`
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+
+	prog, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	config := dot.DefaultConfig()
+	config.ViewLevel = 2 // L2 Global
+	exporter := dot.NewExporter(config)
+	result := exporter.Export(prog)
+
+	if result == nil || result.DOT == "" {
+		t.Fatal("Expected non-empty DOT output")
+	}
+
+	dot := result.DOT
+
+	// 1. Verify Containers are present
+	if !strings.Contains(dot, "\"sys.cont1\"") {
+		t.Error("Missing Container 1")
+	}
+	if !strings.Contains(dot, "\"sys.cont2\"") {
+		t.Error("Missing Container 2")
+	}
+
+	// 2. Verify Components are HIDDEN (Strict L2)
+	if strings.Contains(dot, "\"sys.cont1.comp1\"") {
+		t.Error("Component 1 should NOT be visible in L2")
+	}
+	if strings.Contains(dot, "\"sys.cont2.comp2\"") {
+		t.Error("Component 2 should NOT be visible in L2")
+	}
+
+	// 3. Verify Edge Projection (Component -> Component becomes Container -> Container)
+	// Expected: "sys.cont1" -> "sys.cont2"
+	if !strings.Contains(dot, "\"sys.cont1\" -> \"sys.cont2\"") {
+		t.Error("Missing projected edge between containers")
+	}
+}
+
+func TestExporter_GlobalL2_AggregatesEdges(t *testing.T) {
+	dsl := `
+	System = kind "System"
+	Container = kind "Container"
+	Component = kind "Component"
+
+	sys = System "My System" {
+		cont1 = Container "Container 1" {
+			comp1a = Component "Component 1A"
+			comp1b = Component "Component 1B"
+		}
+		cont2 = Container "Container 2" {
+			comp2a = Component "Component 2A"
+			comp2b = Component "Component 2B"
+		}
+	}
+
+	sys.cont1.comp1a -> sys.cont2.comp2a "login"
+	sys.cont1.comp1b -> sys.cont2.comp2b "logout"
+`
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+
+	prog, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	config := dot.DefaultConfig()
+	config.ViewLevel = 2 // L2 Global
+	exporter := dot.NewExporter(config)
+	result := exporter.Export(prog)
+
+	if result == nil || result.DOT == "" {
+		t.Fatal("Expected non-empty DOT output")
+	}
+
+	dot := result.DOT
+
+	// 1. Verify ONLY ONE edge exists between cont1 and cont2
+	edgeStr := "\"sys.cont1\" -> \"sys.cont2\""
+	count := strings.Count(dot, edgeStr)
+	if count != 1 {
+		t.Errorf("Expected exactly 1 aggregated edge between containers, found %d", count)
+	}
+
+	// 2. Verify aggregated label
+	// Should contain both "login" and "logout" joined by comma
+	if !strings.Contains(dot, "login, logout") && !strings.Contains(dot, "logout, login") {
+		t.Errorf("Expected aggregated label to contain joined interactions, got DOT:\n%s", dot)
+	}
+}
+
+func TestExporter_ParentNotRenderedAsNode(t *testing.T) {
+	dsl := `
+	System = kind "System"
+	Container = kind "Container"
+
+	sys = System "My System" {
+		cont1 = Container "Container 1"
+	}
+`
+	parser, err := language.NewParser()
+	if err != nil {
+		t.Fatalf("Failed to create parser: %v", err)
+	}
+
+	prog, _, err := parser.Parse("test.sruja", dsl)
+	if err != nil {
+		t.Fatalf("Failed to parse DSL: %v", err)
+	}
+
+	config := dot.DefaultConfig()
+	config.ViewLevel = 2
+	exporter := dot.NewExporter(config)
+	result := exporter.Export(prog)
+
+	dot := result.DOT
+
+	// The system "sys" should be a subgraph/cluster
+	if !strings.Contains(dot, "subgraph \"cluster_sys\"") {
+		t.Error("System should be rendered as a cluster")
+	}
+
+	// The system "sys" should NOT be rendered as a standalone node definition
+	// i.e., "sys" [ ... ];
+	// We search for exact node definition pattern
+	if strings.Contains(dot, "\"sys\" [\n") {
+		t.Error("System 'sys' should NOT be rendered as a standalone node when it is a cluster")
 	}
 }

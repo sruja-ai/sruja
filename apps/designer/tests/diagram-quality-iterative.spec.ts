@@ -70,7 +70,8 @@ test.describe("Diagram Quality Iterative Improvement", () => {
       let quality: QualityMetrics | null = null;
       for (let attempt = 0; attempt < 20; attempt++) {
         quality = await page.evaluate(() => {
-          return (window as any).__DIAGRAM_QUALITY__ as QualityMetrics | null;
+          return (window as unknown as { __DIAGRAM_QUALITY__: unknown })
+            .__DIAGRAM_QUALITY__ as QualityMetrics | null;
         });
 
         if (quality && quality.timestamp) {
@@ -246,7 +247,7 @@ test.describe("Diagram Quality Iterative Improvement", () => {
 
   test("generate quality improvement summary", async () => {
     // This test generates a summary after all quality tests run
-    const summary: Record<string, any> = {};
+    const summary: Record<string, unknown> = {};
 
     examples.forEach(({ file }) => {
       const historyFile = join(resultsDir, `${file}-history.json`);

@@ -1,0 +1,67 @@
+// examples/airflow-architecture.sruja
+// Apache Airflow Architecture
+
+node = kind "Node"
+process = kind "Process"
+db = kind "Database"
+ui = kind "Web Interface"
+storage = kind "File Storage"
+system = kind "System"
+
+airflow = system "Apache Airflow" {
+    webserver = ui "Webserver" {
+        tech "Flask/Gunicorn"
+        description "GUI for monitoring and managing DAGs"
+    }
+    
+    scheduler = process "Scheduler" {
+        tech "Python"
+        description "Orchestrates DAG runs and task instances"
+    }
+    
+    executor = process "Executor" {
+        tech "Celery/Kubernetes"
+        description "Mechanism for executing tasks"
+    }
+    
+    metadata_db = db "Metadata Database" {
+        tech "PostgreSQL"
+        description "Central store for all Airflow metadata"
+    }
+    
+    dag_storage = storage "DAG Files" {
+        description "Python scripts defining DAGs"
+    }
+    
+    worker_cluster = node "Worker Fleet" {
+        worker1 = process "Worker 1"
+        worker2 = process "Worker 2"
+    }
+}
+
+external_sources = system "External Data Sources" {
+    s3 = storage "S3 Bucket"
+    snowflake = db "Snowflake Data Warehouse"
+}
+
+// Relationships
+scheduler -> metadata_db "Polls for tasks"
+scheduler -> executor "Queues tasks"
+
+executor -> worker_cluster "Distributes workload"
+worker_cluster -> metadata_db "Updates task status"
+worker_cluster -> external_sources "Fetches/Writes data"
+
+webserver -> metadata_db "Reads status for UI"
+
+scheduler -> dag_storage "Parses DAGs"
+webserver -> dag_storage "Reads DAG structure"
+
+view airflow_overview of airflow {
+    include airflow.*
+    include external_sources
+}
+
+view control_plane of airflow {
+    include webserver, scheduler, metadata_db, executor
+}

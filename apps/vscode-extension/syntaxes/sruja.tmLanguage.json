@@ -65,11 +65,15 @@
       "patterns": [
         {
           "name": "keyword.control.sruja",
-          "match": "\\b(architecture|library|system|container|component|person|deployment|queue|datastore|database|external|import|implements|requires|policy|requirement|scenario|story|flow|decision|yes|no|condition|owner|description|metadata|properties|style|adr|contract|constraint|convention|technology|status|context|consequences|category|enforcement|layer|version|type|scale|tags|link|title|date|author|view|include|exclude|element|relationship|tag|color|of|extends|dynamic|autoLayout|TopBottom|BottomTop|LeftRight|RightLeft|summary|notation)\\b"
+          "match": "\\b(architecture|library|system|container|component|person|deployment|deploymentNode|node|containerInstance|infrastructure|instanceId|queue|datastore|database|external|import|from|implements|requires|policy|requirement|scenario|story|flow|decision|yes|no|condition|owner|description|metadata|properties|style|styles|adr|contract|constraint|convention|technology|tech|status|context|consequences|category|enforcement|layer|version|type|scale|tags|link|title|date|author|view|extends|include|exclude|element|relationship|edge|tag|color|of|role|dynamic|autolayout|preset|ranksep|nodesep|direction|spacing|position|x|y|TopBottom|BottomTop|LeftRight|RightLeft|summary|notation)\\b"
         },
         {
           "name": "storage.type.sruja",
           "match": "\\b(Database|Queue|Cache|FileSystem|API|Service|Web|Mobile|Desktop|IoT|Messaging|Stream|Function|Serverless)\\b"
+        },
+        {
+          "name": "constant.language.boolean.sruja",
+          "match": "\\b(true|false)\\b"
         },
         {
           "name": "entity.name.tag.hash.sruja",

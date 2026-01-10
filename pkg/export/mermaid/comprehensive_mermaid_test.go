@@ -22,6 +22,7 @@ func TestExporter_Export_Complexity(t *testing.T) {
 
 	config := DefaultConfig()
 	config.Direction = "TD"
+	config.ViewLevel = 3
 	exporter := NewExporter(config)
 	result := exporter.Export(prog)
 

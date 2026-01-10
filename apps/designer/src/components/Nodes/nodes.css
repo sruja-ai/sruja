@@ -111,12 +111,14 @@
 
 /* For person nodes, allow slightly wider text to match the larger icon */
 .person-node .node-content {
-    max-width: 130px; /* Person icon is 115px wide */
+    max-width: 130px;
+    /* Person icon is 115px wide */
 }
 
 /* For system nodes, use available width minus padding to prevent text overflow */
 .system-node .node-content {
-    max-width: calc(100% - 24px); /* Account for 12px padding on each side */
+    max-width: calc(100% - 24px);
+    /* Account for 12px padding on each side */
 }
 
 .node-label {
@@ -629,4 +631,221 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+/* Animation States */
+
+/* Active/Highlighted: Currently playing step - with smooth pulse */
+.animation-node-active,
+.animation-node-highlighted {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.6), var(--node-shadow-hover) !important;
+    border-color: #2563eb !important;
+    z-index: 100 !important;
+    background: #fff !important;
+    animation: pulse-highlight 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-highlight {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.6), 0 4px 12px rgba(37, 99, 235, 0.2);
+        transform: scale(1);
+    }
+
+    50% {
+        box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.3), 0 8px 20px rgba(37, 99, 235, 0.3);
+        transform: scale(1.02);
+    }
+}
+
+[data-theme="dark"] .animation-node-active,
+[data-theme="dark"] .animation-node-highlighted {
+    background: #1e293b !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.6), 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Visited: Already processed in the flow - subtle green glow */
+.animation-node-visited {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3) !important;
+    transition: all 0.3s ease;
+}
+
+[data-theme="dark"] .animation-node-visited {
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4), 0 2px 8px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* Pending: Future steps (optional, usually default state) */
+.animation-node-pending {
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+/* Dimmed: When we want to focus on active nodes */
+.animation-mode .c4-node:not(.animation-node-active):not(.animation-node-highlighted):not(.animation-node-visited) {
+    opacity: 0.35;
+    filter: grayscale(0.6);
+    transition: all 0.4s ease;
+}
+
+/* ============================================================================
+   Edge Animation States
+   ============================================================================ */
+
+/* Active edge - glowing effect */
+.animation-edge-active path,
+.animation-edge-highlighted path {
+    stroke: #3b82f6 !important;
+    stroke-width: 3px !important;
+    filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.6));
+    animation: edge-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes edge-pulse {
+
+    0%,
+    100% {
+        stroke-opacity: 1;
+        filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.5));
+    }
+
+    50% {
+        stroke-opacity: 0.8;
+        filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.8));
+    }
+}
+
+/* Visited edge - subtle green */
+.animation-edge-visited path {
+    stroke: #10b981 !important;
+    stroke-width: 2px !important;
+    stroke-opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+/* Edge flow animation marker */
+.animation-edge-flow-forward path {
+    stroke-dasharray: 8, 4;
+    animation: edge-flow-forward 0.8s linear infinite;
+}
+
+@keyframes edge-flow-forward {
+    from {
+        stroke-dashoffset: 12;
+    }
+
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+/* Idle edge in animation mode - dimmed */
+.animation-mode .react-flow__edge:not(.animation-edge-active):not(.animation-edge-highlighted):not(.animation-edge-visited) path {
+    stroke-opacity: 0.3 !important;
+    transition: stroke-opacity 0.3s ease;
+}
+
+/* ============================================================================
+   Step Description Overlay Styles
+   ============================================================================ */
+
+.step-overlay {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    padding: 16px 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    z-index: 1000;
+    max-width: 500px;
+    text-align: center;
+    animation: slide-up 0.3s ease-out;
+}
+
+[data-theme="dark"] .step-overlay {
+    background: rgba(30, 41, 59, 0.95);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+@keyframes slide-up {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+.step-overlay .step-number {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+[data-theme="dark"] .step-overlay .step-number {
+    color: #94a3b8;
+}
+
+.step-overlay .step-from-to {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.step-overlay .step-from,
+.step-overlay .step-to {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f172a;
+    background: #f1f5f9;
+    padding: 4px 12px;
+    border-radius: 8px;
+}
+
+[data-theme="dark"] .step-overlay .step-from,
+[data-theme="dark"] .step-overlay .step-to {
+    color: #f8fafc;
+    background: #334155;
+}
+
+.step-overlay .step-arrow {
+    font-size: 18px;
+    color: #3b82f6;
+    animation: arrow-pulse 1s ease-in-out infinite;
+}
+
+@keyframes arrow-pulse {
+
+    0%,
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    50% {
+        transform: translateX(4px);
+        opacity: 0.7;
+    }
+}
+
+.step-overlay .step-description {
+    font-size: 14px;
+    color: #475569;
+    line-height: 1.5;
+}
+
+[data-theme="dark"] .step-overlay .step-description {
+    color: #cbd5e1;
 }

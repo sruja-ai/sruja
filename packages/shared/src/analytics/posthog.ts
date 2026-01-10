@@ -94,7 +94,7 @@ export function identify(id: string, properties?: Record<string, unknown>) {
   }
 }
 
-export function isReady() {
+export function isReady(): boolean {
   if (ready) return true;
   if (typeof window !== "undefined") {
     const win = window as unknown as Window & { posthog?: PosthogClient };

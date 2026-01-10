@@ -30,6 +30,7 @@ export function UnifiedDetailsList({
   const model = useArchitectureStore((s) => s.model);
   // const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture); // Unused for now until delete logic is implemented
   const setActiveTab = useUIStore((s) => s.setActiveTab);
+  const setActiveAnimation = useSelectionStore((s) => s.setActiveAnimation);
   const { navigateToTaggedElement } = useTagNavigation();
 
   const storeNodeId = useSelectionStore((s) => s.selectedNodeId);
@@ -44,9 +45,8 @@ export function UnifiedDetailsList({
   const allItems = useMemo<UnifiedItem[]>(() => {
     if (!model?.sruja) return [];
 
-    // Cast to any because sruja types might be incomplete in @sruja/shared currently
-    // We expect them to be there based on usage
-    const sruja = model.sruja as any;
+    // Cast to compatible type if necessary, or assume it matches
+    const sruja = model.sruja || {};
 
     const items: UnifiedItem[] = [];
 
@@ -90,15 +90,17 @@ export function UnifiedDetailsList({
     if (filters.statuses.size > 0) {
       filtered = filtered.filter((item) => {
         if (item.type === "requirement" || item.type === "adr") {
-          // Using safe access via 'any' or assuming updated types
-          const tags = (item.data as any).tags ?? [];
+          // Using safe access with type guard logic
+          // Extend types locally if they are missing from imported RequirementsDump
+          const itemData = item.data as { tags?: string[]; status?: string };
+          const tags = itemData.tags ?? [];
           const hasLinks = tags.length > 0;
           let status: "fulfilled" | "partial" | "missing";
 
           if (item.type === "requirement") {
             status = hasLinks ? (tags.length >= 2 ? "fulfilled" : "partial") : "missing";
           } else {
-            const adrStatus = (item.data as ADRDump).status;
+            const adrStatus = itemData.status;
             status =
               adrStatus === "accepted"
                 ? "fulfilled"
@@ -116,7 +118,8 @@ export function UnifiedDetailsList({
     // Filter by tags
     if (filters.tags.size > 0) {
       filtered = filtered.filter((item) => {
-        const itemTags = ((item.data as any).tags || []) as string[];
+        const itemData = item.data as { tags?: string[] };
+        const itemTags = itemData.tags || [];
         return Array.from(filters.tags).some((tag) => itemTags.includes(tag));
       });
     }
@@ -125,7 +128,10 @@ export function UnifiedDetailsList({
     if (nodeId) {
       filtered = filtered.filter((item) => {
         // Check if item is tagged with the node ID
-        const itemTags = ((item.data as any).tags || []) as string[];
+        // RequirementDump, ADRDump, etc should have tags if they follow the schema
+        // If strict types don't show tags, we might need a richer type or extend it
+        const itemData = item.data as { tags?: string[]; steps?: { from: string; to: string }[] };
+        const itemTags = itemData.tags ?? [];
         if (itemTags.includes(nodeId)) {
           return true;
         }
@@ -144,9 +150,10 @@ export function UnifiedDetailsList({
     if (filters.searchQuery.trim()) {
       const query = filters.searchQuery.toLowerCase();
       filtered = filtered.filter((item) => {
-        const id = item.data.id?.toLowerCase() || "";
-        const title = (item.data.title || "").toLowerCase();
-        const description = ((item.data as any).description || "").toLowerCase();
+        const itemData = item.data as { id?: string; title?: string; description?: string };
+        const id = itemData.id?.toLowerCase() || "";
+        const title = (itemData.title || "").toLowerCase();
+        const description = (itemData.description || "").toLowerCase();
         return id.includes(query) || title.includes(query) || description.includes(query);
       });
     }
@@ -177,7 +184,8 @@ export function UnifiedDetailsList({
     // Navigate to diagram if scenario/flow
     if (item.type === "scenario" || item.type === "flow") {
       setActiveTab("diagram");
-      // Could trigger flow/scenario playback here
+      // Trigger animation playback
+      setActiveAnimation(item.data as ScenarioDump | FlowDump);
     }
   };
 
@@ -308,6 +316,10 @@ export function UnifiedDetailsList({
                   onTagClick={handleTagClick}
                   onEdit={() => handleEdit(item)}
                   onDelete={() => handleDelete(item)}
+                  onPlay={() => {
+                    setActiveTab("diagram");
+                    setActiveAnimation(item.data as ScenarioDump);
+                  }}
                 />
               ))}
             </div>
@@ -329,6 +341,10 @@ export function UnifiedDetailsList({
                   onTagClick={handleTagClick}
                   onEdit={() => handleEdit(item)}
                   onDelete={() => handleDelete(item)}
+                  onPlay={() => {
+                    setActiveTab("diagram");
+                    setActiveAnimation(item.data as FlowDump);
+                  }}
                 />
               ))}
             </div>
@@ -342,14 +358,22 @@ export function UnifiedDetailsList({
         <EditRequirementForm
           isOpen={true}
           onClose={() => setEditItem(null)}
-          requirement={editItem.data as any}
+          requirement={editItem.data as RequirementDump}
         />
       )}
       {editItem && editItem.type === "adr" && (
-        <EditADRForm isOpen={true} onClose={() => setEditItem(null)} adr={editItem.data as any} />
+        <EditADRForm
+          isOpen={true}
+          onClose={() => setEditItem(null)}
+          adr={editItem.data as ADRDump}
+        />
       )}
       {editItem && editItem.type === "flow" && (
-        <EditFlowForm isOpen={true} onClose={() => setEditItem(null)} flow={editItem.data as any} />
+        <EditFlowForm
+          isOpen={true}
+          onClose={() => setEditItem(null)}
+          flow={editItem.data as FlowDump}
+        />
       )}
 
       {/* Delete Confirmation */}

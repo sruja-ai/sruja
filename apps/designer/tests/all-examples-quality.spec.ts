@@ -213,7 +213,7 @@ test.describe.serial("All Examples Quality Measurement", () => {
           for (let i = 0; i < 20; i++) {
             // Increased retries
             diagramQuality = (await page.evaluate(() => {
-              return (window as unknown as any).__DIAGRAM_QUALITY__;
+              return (window as unknown as { __DIAGRAM_QUALITY__: unknown }).__DIAGRAM_QUALITY__;
             })) as {
               score?: number;
               edgeCrossings?: number;

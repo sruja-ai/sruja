@@ -354,7 +354,7 @@ export function validateArchitecture(model: SrujaModelDump | null): ValidationRe
       severity: "warning",
       category: "structure",
       message: "Architecture has no elements",
-      suggestion: "Start by adding a system or a persona.",
+      suggestion: "Start by adding a system or a role.",
     });
   }
 

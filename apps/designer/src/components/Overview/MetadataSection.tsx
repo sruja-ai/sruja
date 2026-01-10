@@ -2,11 +2,12 @@ import { useMemo } from "react";
 import { Plus, Edit } from "lucide-react";
 import { Button } from "@sruja/ui";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
+import type { MetadataEntryJSON } from "@sruja/shared";
 
 interface MetadataSectionProps {
-  metadata: any[] | undefined;
+  metadata: MetadataEntryJSON[] | undefined;
   onAddMetadata: () => void;
-  onEditMetadata: (metadata: any, index: number) => void;
+  onEditMetadata: (metadata: MetadataEntryJSON, index: number) => void;
   onDeleteMetadata: (index: number, key: string) => void;
 }
 

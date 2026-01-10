@@ -106,6 +106,11 @@ export const darkTheme: ThemeColors = {
 };
 
 export function getTheme(mode: ThemeMode = "system"): ThemeColors {
+  if (mode !== "light" && mode !== "dark" && mode !== "system") {
+    console.warn(`[theme] Invalid theme mode: "${mode}", defaulting to "system"`);
+    mode = "system";
+  }
+
   if (mode === "system") {
     if (typeof window !== "undefined") {
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;

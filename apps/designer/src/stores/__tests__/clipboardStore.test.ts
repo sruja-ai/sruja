@@ -1,27 +1,16 @@
 // apps/designer/src/stores/__tests__/clipboardStore.test.ts
 import { describe, it, expect, beforeEach } from "vitest";
 import { useClipboardStore } from "../clipboardStore";
-import type { SystemJSON, ContainerJSON, ComponentJSON, PersonJSON } from "../../types";
+import type { ElementDump } from "../../types";
 
 describe("clipboardStore", () => {
-  const mockSystem: SystemJSON = {
+  const mockSystem: ElementDump = {
     id: "System1",
-    label: "Test System",
-  };
-
-  const mockContainer: ContainerJSON = {
-    id: "Container1",
-    label: "Test Container",
-  };
-
-  const mockComponent: ComponentJSON = {
-    id: "Component1",
-    label: "Test Component",
-  };
-
-  const mockPerson: PersonJSON = {
-    id: "Person1",
-    label: "Test Person",
+    kind: "system",
+    title: "Test System",
+    technology: "",
+    tags: [],
+    links: [],
   };
 
   beforeEach(() => {
@@ -34,70 +23,39 @@ describe("clipboardStore", () => {
     expect(state.hasClipboard()).toBe(false);
   });
 
-  it("should copy system to clipboard", () => {
+  it("should copy elements to clipboard", () => {
     const { copyNode } = useClipboardStore.getState();
-    copyNode("system", mockSystem);
+    copyNode("System1", [mockSystem]);
 
     const state = useClipboardStore.getState();
     expect(state.clipboard).not.toBeNull();
-    expect(state.clipboard?.type).toBe("system");
-    expect(state.clipboard?.data).toEqual(mockSystem);
+    expect(state.clipboard?.rootId).toBe("System1");
+    expect(state.clipboard?.elements).toHaveLength(1);
+    expect(state.clipboard?.elements[0]).toEqual(mockSystem);
     expect(state.hasClipboard()).toBe(true);
-  });
-
-  it("should copy container to clipboard with parent ID", () => {
-    const { copyNode } = useClipboardStore.getState();
-    copyNode("container", mockContainer, "System1");
-
-    const state = useClipboardStore.getState();
-    expect(state.clipboard).not.toBeNull();
-    expect(state.clipboard?.type).toBe("container");
-    expect(state.clipboard?.data).toEqual(mockContainer);
-    expect(state.clipboard?.parentId).toBe("System1");
-  });
-
-  it("should copy component to clipboard with parent IDs", () => {
-    const { copyNode } = useClipboardStore.getState();
-    copyNode("component", mockComponent, "System1:Container1");
-
-    const state = useClipboardStore.getState();
-    expect(state.clipboard).not.toBeNull();
-    expect(state.clipboard?.type).toBe("component");
-    expect(state.clipboard?.data).toEqual(mockComponent);
-    expect(state.clipboard?.parentId).toBe("System1:Container1");
-  });
-
-  it("should copy person to clipboard", () => {
-    const { copyNode } = useClipboardStore.getState();
-    copyNode("person", mockPerson);
-
-    const state = useClipboardStore.getState();
-    expect(state.clipboard).not.toBeNull();
-    expect(state.clipboard?.type).toBe("person");
-    expect(state.clipboard?.data).toEqual(mockPerson);
   });
 
   it("should deep clone clipboard data", () => {
     const { copyNode } = useClipboardStore.getState();
-    const systemWithNested = {
+    const systemWithNested: ElementDump = {
       ...mockSystem,
-      containers: [mockContainer],
+      title: "Test System",
     };
-    copyNode("system", systemWithNested);
+    copyNode("System1", [systemWithNested]);
 
     const state = useClipboardStore.getState();
-    const clipboardData = state.clipboard?.data as SystemJSON;
+    const clipboardData = state.clipboard?.elements[0] as ElementDump;
 
     // Modify original
-    systemWithNested.label = "Modified";
+    systemWithNested.title = "Modified";
 
     // Clipboard data should be unchanged (deep clone)
-    expect(clipboardData.label).toBe("Test System");
+    expect(clipboardData.title).toBe("Test System");
   });
 
   it("should clear clipboard", () => {
     const { copyNode, clearClipboard } = useClipboardStore.getState();
-    copyNode("system", mockSystem);
+    copyNode("System1", [mockSystem]);
     expect(useClipboardStore.getState().hasClipboard()).toBe(true);
 
     clearClipboard();
@@ -107,11 +65,19 @@ describe("clipboardStore", () => {
 
   it("should overwrite previous clipboard when copying new item", () => {
     const { copyNode } = useClipboardStore.getState();
-    copyNode("system", mockSystem);
-    copyNode("person", mockPerson);
+    copyNode("System1", [mockSystem]);
+    copyNode("System2", [
+      {
+        ...mockSystem,
+        id: "System2",
+        title: "Another",
+      },
+    ]);
 
     const state = useClipboardStore.getState();
-    expect(state.clipboard?.type).toBe("person");
-    expect(state.clipboard?.data).toEqual(mockPerson);
+    expect(state.clipboard?.rootId).toBe("System2");
+    expect(state.clipboard?.elements[0]?.id).toBe("System2");
   });
+
+  // Legacy API tests removed; updated to new clipboard schema (rootId, elements)
 });

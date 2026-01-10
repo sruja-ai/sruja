@@ -81,17 +81,66 @@ func (e *Exporter) buildSrujaExtensionsFromProgram(program *language.Program) *S
 			case "scenario", "Scenario", "story", "Story":
 				hasContent = true
 				sc := ScenarioDump{
-					ID:    a.Name,
-					Title: ptrToString(a.Title),
+					ID:          a.Name,
+					Title:       ptrToString(a.Title),
+					Description: "", // Description can be extracted from body if needed
+				}
+				// Extract steps from body if present (for inline scenarios)
+				if a.Body != nil {
+					for _, bodyItem := range a.Body.Items {
+						if bodyItem.Step != nil {
+							sc.Steps = append(sc.Steps, convertScenarioStepToStepDump(bodyItem.Step))
+						}
+					}
 				}
 				ext.Scenarios = append(ext.Scenarios, sc)
 			case "flow", "Flow":
 				hasContent = true
-				ext.Flows = append(ext.Flows, FlowDump{
-					ID:    a.Name,
-					Title: ptrToString(a.Title),
-				})
+				flow := FlowDump{
+					ID:          a.Name,
+					Title:       ptrToString(a.Title),
+					Description: "", // Description can be extracted from body if needed
+				}
+				// Extract steps from body if present (for inline flows)
+				if a.Body != nil {
+					for _, bodyItem := range a.Body.Items {
+						if bodyItem.Step != nil {
+							flow.Steps = append(flow.Steps, convertScenarioStepToStepDump(bodyItem.Step))
+						}
+					}
+				}
+				ext.Flows = append(ext.Flows, flow)
 			}
+		}
+
+		// Handle top-level scenarios
+		if item.Scenario != nil {
+			hasContent = true
+			sc := ScenarioDump{
+				ID:          item.Scenario.ID,
+				Title:       ptrToString(item.Scenario.Title),
+				Description: ptrToString(item.Scenario.Description),
+			}
+			// Extract steps from scenario.Steps (populated during PostProcess)
+			for _, step := range item.Scenario.Steps {
+				sc.Steps = append(sc.Steps, convertScenarioStepToStepDump(step))
+			}
+			ext.Scenarios = append(ext.Scenarios, sc)
+		}
+
+		// Handle top-level flows
+		if item.Flow != nil {
+			hasContent = true
+			flow := FlowDump{
+				ID:          item.Flow.ID,
+				Title:       ptrToString(item.Flow.Title),
+				Description: ptrToString(item.Flow.Description),
+			}
+			// Extract steps from flow.Steps (populated during PostProcess)
+			for _, step := range item.Flow.Steps {
+				flow.Steps = append(flow.Steps, convertScenarioStepToStepDump(step))
+			}
+			ext.Flows = append(ext.Flows, flow)
 		}
 
 		if item.DeploymentNode != nil {
@@ -161,4 +210,31 @@ func (e *Exporter) buildSpecification(program *language.Program) SpecificationDu
 		}
 	}
 	return spec
+}
+
+// convertScenarioStepToStepDump converts a language.ScenarioStep to StepDump format
+func convertScenarioStepToStepDump(step *language.ScenarioStep) StepDump {
+	stepDump := StepDump{
+		Description: ptrToString(step.Description),
+	}
+
+	// Convert From QualifiedIdent to string
+	if len(step.From.Parts) > 0 {
+		stepDump.From = step.From.String()
+	} else if len(step.FromParts) > 0 {
+		// Fallback to FromParts if From is not populated (shouldn't happen after PostProcess, but be safe)
+		fromQualified := language.QualifiedIdent{Parts: step.FromParts}
+		stepDump.From = fromQualified.String()
+	}
+
+	// Convert To QualifiedIdent to string
+	if len(step.To.Parts) > 0 {
+		stepDump.To = step.To.String()
+	} else if len(step.ToParts) > 0 {
+		// Fallback to ToParts if To is not populated (shouldn't happen after PostProcess, but be safe)
+		toQualified := language.QualifiedIdent{Parts: step.ToParts}
+		stepDump.To = toQualified.String()
+	}
+
+	return stepDump
 }

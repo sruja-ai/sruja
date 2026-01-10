@@ -1,4 +1,14 @@
 export type C4Level = 1 | 2 | 3;
+
+export interface CanvasHandle {
+  exportAsPNG: () => Promise<void>;
+  exportAsSVG: () => Promise<void>;
+  fitView: () => void;
+  zoomToSelection: () => void;
+  zoomToActualSize: () => void;
+  focusNode: (nodeId: string) => void;
+}
+
 export type C4NodeKind =
   | "system"
   | "container"
@@ -25,7 +35,7 @@ export interface C4Node {
   collapsed?: boolean;
   /** Link to parent system/container for navigation (upstream ID) */
   navigateOnClick?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   [key: string]: unknown; // Index signature for React Flow compatibility
 }
 

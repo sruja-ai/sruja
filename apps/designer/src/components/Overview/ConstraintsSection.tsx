@@ -1,11 +1,12 @@
 import { AlertOctagon, Plus, Edit } from "lucide-react";
 import { Button } from "@sruja/ui";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
+import type { ConstraintJSON } from "@sruja/shared";
 
 interface ConstraintsSectionProps {
-  constraints: any[] | undefined;
+  constraints: ConstraintJSON[] | undefined;
   onAddConstraint: () => void;
-  onEditConstraint: (constraint: any, index: number) => void;
+  onEditConstraint: (constraint: ConstraintJSON, index: number) => void;
   onDeleteConstraint: (index: number, key: string) => void;
 }
 

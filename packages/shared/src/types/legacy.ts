@@ -290,6 +290,12 @@ export interface ConventionJSON {
   value: string;
 }
 
+export interface MetadataEntry {
+  key: string;
+  value?: string;
+  array?: ReadonlyArray<string>;
+}
+
 export interface ScenarioNav {
   id: string;
   label?: string;
@@ -342,4 +348,3 @@ export interface ScaleJSON {
   max?: number;
   metric?: string;
 }
-

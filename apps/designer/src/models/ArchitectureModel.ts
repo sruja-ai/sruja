@@ -10,22 +10,22 @@ import type {
   ParsedView,
   ModelMetadata,
 } from "@sruja/shared";
-import type { Persona } from "../components/PersonaSwitcher";
+import type { Role } from "../components/RoleSwitcher";
 
 /**
- * Core architecture model shared across all persona views.
+ * Core architecture model shared across all role views.
  *
  * This class provides a unified interface to the architecture data,
- * allowing different persona views to access the same underlying model
+ * allowing different role views to access the same underlying model
  * while presenting it through different lenses.
  */
 export class ArchitectureModel {
   private model: SrujaModelDump | null = null;
-  private listeners: Map<Persona, Set<(model: SrujaModelDump | null) => void>> = new Map();
+  private listeners: Map<Role, Set<(model: SrujaModelDump | null) => void>> = new Map();
 
   /**
    * Update the underlying architecture model.
-   * Notifies all registered persona view listeners.
+   * Notifies all registered role view listeners.
    */
   updateModel(model: SrujaModelDump | null): void {
     this.model = model;
@@ -40,25 +40,25 @@ export class ArchitectureModel {
   }
 
   /**
-   * Register a listener for a specific persona view.
+   * Register a listener for a specific role view.
    * Returns an unsubscribe function.
    */
-  subscribe(persona: Persona, callback: (model: SrujaModelDump | null) => void): () => void {
-    if (!this.listeners.has(persona)) {
-      this.listeners.set(persona, new Set());
+  subscribe(role: Role, callback: (model: SrujaModelDump | null) => void): () => void {
+    if (!this.listeners.has(role)) {
+      this.listeners.set(role, new Set());
     }
-    this.listeners.get(persona)!.add(callback);
+    this.listeners.get(role)!.add(callback);
 
     // Immediately call with current model
     callback(this.model);
 
     // Return unsubscribe function
     return () => {
-      const personaListeners = this.listeners.get(persona);
-      if (personaListeners) {
-        personaListeners.delete(callback);
-        if (personaListeners.size === 0) {
-          this.listeners.delete(persona);
+      const roleListeners = this.listeners.get(role);
+      if (roleListeners) {
+        roleListeners.delete(callback);
+        if (roleListeners.size === 0) {
+          this.listeners.delete(role);
         }
       }
     };
@@ -68,12 +68,12 @@ export class ArchitectureModel {
    * Notify all listeners of model changes.
    */
   private notifyListeners(): void {
-    for (const [persona, callbacks] of this.listeners.entries()) {
+    for (const [role, callbacks] of this.listeners.entries()) {
       for (const callback of callbacks) {
         try {
           callback(this.model);
         } catch (error) {
-          console.error(`Error in persona view listener (${persona}):`, error);
+          console.error(`Error in role view listener (${role}):`, error);
         }
       }
     }
@@ -169,11 +169,13 @@ export class ArchitectureModel {
     const getADRCount = (m: SrujaModelDump) => {
       let count = 0;
       // From metadata
-      if ((m._metadata as any)?.adrs) count += (m._metadata as any).adrs.length;
+      if ((m._metadata as unknown as Record<string, unknown>)?.adrs)
+        count += ((m._metadata as unknown as Record<string, unknown>).adrs as unknown[]).length;
       // From specification elements
       if (m.specification?.elements) {
         for (const spec of Object.values(m.specification.elements)) {
-          if ((spec as any).adrs) count += (spec as any).adrs.length;
+          if ((spec as unknown as Record<string, unknown>).adrs)
+            count += ((spec as unknown as Record<string, unknown>).adrs as unknown[]).length;
         }
       }
       return count;
@@ -186,7 +188,8 @@ export class ArchitectureModel {
       let count = 0;
       if (m.specification?.elements) {
         for (const spec of Object.values(m.specification.elements)) {
-          if ((spec as any).policies) count += (spec as any).policies.length;
+          if ((spec as unknown as Record<string, unknown>).policies)
+            count += ((spec as unknown as Record<string, unknown>).policies as unknown[]).length;
         }
       }
       return count;
@@ -252,7 +255,10 @@ export class ArchitectureModel {
 
   /**
    * Get views filtered by a specific tag.
-   * Useful for finding views tagged with #persona:sre or #scenario:failure
+   * Tags are simple strings like "devops", "sre", "failure-scenario", etc.
+   *
+   * @param tag - The tag to filter by (e.g., "devops", "sre", "engineering-manager")
+   * @returns Views that have this tag
    */
   getViewsByTag(tag: string): ParsedView[] {
     const views = this.getViews();
@@ -260,12 +266,67 @@ export class ArchitectureModel {
   }
 
   /**
-   * Get views associated with a specific Persona.
-   * Maps persona to tag (e.g., 'sre' -> '#persona:sre')
+   * Discover all role elements from the model.
+   * Roles are elements with kind="role" defined in the DSL.
+   *
+   * @returns Array of role element IDs
+   *
+   * Example: If DSL has `role devops "DevOps Team"`, this returns ["devops"]
    */
-  getViewsByPersona(persona: Persona): ParsedView[] {
-    const tag = `#persona:${persona.toLowerCase()}`;
-    return this.getViewsByTag(tag);
+  discoverRoles(): string[] {
+    if (!this.model?.elements) {
+      return [];
+    }
+
+    const roles: string[] = [];
+    for (const [id, element] of Object.entries(this.model.elements)) {
+      if (element.kind === "role") {
+        roles.push(id);
+      }
+    }
+
+    return roles.sort();
+  }
+
+  /**
+   * Discover all unique tags from views.
+   * Returns all tags found in views, which can represent roles, teams, or any categorization.
+   *
+   * @returns Array of unique tag values found in all views
+   *
+   * Example: If views have tags ["devops", "sre", "engineering-manager"],
+   * this returns ["devops", "engineering-manager", "sre"] (sorted)
+   */
+  discoverTags(): string[] {
+    const views = this.getViews();
+    const tagSet = new Set<string>();
+
+    for (const view of Object.values(views)) {
+      if (view.tags) {
+        for (const tag of view.tags) {
+          if (tag) {
+            tagSet.add(tag);
+          }
+        }
+      }
+    }
+
+    return Array.from(tagSet).sort();
+  }
+
+  /**
+   * Get views associated with a specific Role.
+   * Filters views by checking if their tags reference a role element.
+   *
+   * @param role - Role element ID (e.g., 'devops', 'sre')
+   * @returns Views that have this role ID in their tags
+   *
+   * Example: If DSL has `role devops "DevOps Team"` and a view has `tags ["devops"]`,
+   * calling getViewsByRole("devops") will return that view.
+   */
+  getViewsByRole(role: Role | string): ParsedView[] {
+    // Simple tag matching - just look for the role name as a tag
+    return this.getViewsByTag(role.toLowerCase());
   }
 }
 

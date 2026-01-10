@@ -8,7 +8,7 @@ vi.mock("zustand/middleware", async () => {
   const actual = await vi.importActual<typeof import("zustand/middleware")>("zustand/middleware");
   return {
     ...actual,
-    persist: <T>(config: T) => config as any,
+    persist: <T>(config: T) => config as unknown as T,
   };
 });
 
@@ -29,26 +29,41 @@ describe("useUrlState", () => {
   const originalHistory = window.history;
 
   beforeEach(() => {
-    // Mock window.location
-    delete (window as any).location;
-    window.location = {
-      ...originalLocation,
-      search: "",
-      pathname: "/",
-    } as Location;
-
-    // Mock window.history
-    window.history = {
-      ...originalHistory,
-      replaceState: vi.fn(),
-    } as unknown as History;
+    Object.defineProperty(window.location, "search", {
+      value: "",
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(window.location, "pathname", {
+      value: "/",
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(window.history, "replaceState", {
+      value: vi.fn(),
+      configurable: true,
+      writable: true,
+    });
 
     vi.clearAllMocks();
   });
 
   afterEach(() => {
-    window.location = originalLocation;
-    window.history = originalHistory;
+    Object.defineProperty(window.location, "search", {
+      value: originalLocation.search,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(window.location, "pathname", {
+      value: originalLocation.pathname,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(window.history, "replaceState", {
+      value: originalHistory.replaceState,
+      configurable: true,
+      writable: true,
+    });
   });
 
   it("should initialize without errors", () => {
@@ -58,14 +73,22 @@ describe("useUrlState", () => {
 
   it("should read level from URL on mount", async () => {
     window.location.search = "?level=L2";
-    const { useViewStore } = await import("../stores/viewStore");
+    const { useViewStore } = await import("../../stores/viewStore");
     const mockSetLevel = vi.fn();
     vi.mocked(useViewStore).mockImplementation((selector) => {
       const state = {
         currentLevel: "L1" as const,
+        focusedSystemId: null,
+        focusedContainerId: null,
         expandedNodes: new Set<string>(),
         setLevel: mockSetLevel,
+        drillDown: vi.fn(),
+        goUp: vi.fn(),
+        goToRoot: vi.fn(),
         toggleExpand: vi.fn(),
+        breadcrumb: [],
+        activeViewId: null,
+        setActiveView: vi.fn(),
       };
       return selector(state);
     });
@@ -79,14 +102,22 @@ describe("useUrlState", () => {
 
   it("should read expanded nodes from URL on mount", async () => {
     window.location.search = "?expanded=System1,System2";
-    const { useViewStore } = await import("../stores/viewStore");
+    const { useViewStore } = await import("../../stores/viewStore");
     const mockToggleExpand = vi.fn();
     vi.mocked(useViewStore).mockImplementation((selector) => {
       const state = {
         currentLevel: "L1" as const,
+        focusedSystemId: null,
+        focusedContainerId: null,
         expandedNodes: new Set<string>(),
         setLevel: vi.fn(),
         toggleExpand: mockToggleExpand,
+        drillDown: vi.fn(),
+        goUp: vi.fn(),
+        goToRoot: vi.fn(),
+        breadcrumb: [],
+        activeViewId: null,
+        setActiveView: vi.fn(),
       };
       return selector(state);
     });
@@ -99,16 +130,24 @@ describe("useUrlState", () => {
   });
 
   it("should update URL when level changes", async () => {
-    const { useViewStore } = await import("../stores/viewStore");
-    let currentLevel = "L1" as const;
+    const { useViewStore } = await import("../../stores/viewStore");
+    let currentLevel: "L1" | "L2" | "L3" | "L4" = "L1";
     const mockSetLevel = vi.fn();
 
     vi.mocked(useViewStore).mockImplementation((selector) => {
       const state = {
         currentLevel,
+        focusedSystemId: null,
+        focusedContainerId: null,
         expandedNodes: new Set<string>(),
         setLevel: mockSetLevel,
         toggleExpand: vi.fn(),
+        drillDown: vi.fn(),
+        goUp: vi.fn(),
+        goToRoot: vi.fn(),
+        breadcrumb: [],
+        activeViewId: null,
+        setActiveView: vi.fn(),
       };
       return selector(state);
     });
@@ -125,15 +164,23 @@ describe("useUrlState", () => {
   });
 
   it("should update URL when expanded nodes change", async () => {
-    const { useViewStore } = await import("../stores/viewStore");
+    const { useViewStore } = await import("../../stores/viewStore");
     let expandedNodes = new Set<string>();
 
     vi.mocked(useViewStore).mockImplementation((selector) => {
       const state = {
         currentLevel: "L1" as const,
+        focusedSystemId: null,
+        focusedContainerId: null,
         expandedNodes,
         setLevel: vi.fn(),
         toggleExpand: vi.fn(),
+        drillDown: vi.fn(),
+        goUp: vi.fn(),
+        goToRoot: vi.fn(),
+        breadcrumb: [],
+        activeViewId: null,
+        setActiveView: vi.fn(),
       };
       return selector(state);
     });
@@ -150,16 +197,24 @@ describe("useUrlState", () => {
   });
 
   it("should handle popstate events", async () => {
-    const { useViewStore } = await import("../stores/viewStore");
+    const { useViewStore } = await import("../../stores/viewStore");
     const mockSetLevel = vi.fn();
     const mockToggleExpand = vi.fn();
 
     vi.mocked(useViewStore).mockImplementation((selector) => {
       const state = {
         currentLevel: "L1" as const,
+        focusedSystemId: null,
+        focusedContainerId: null,
         expandedNodes: new Set<string>(),
         setLevel: mockSetLevel,
         toggleExpand: mockToggleExpand,
+        drillDown: vi.fn(),
+        goUp: vi.fn(),
+        goToRoot: vi.fn(),
+        breadcrumb: [],
+        activeViewId: null,
+        setActiveView: vi.fn(),
       };
       return selector(state);
     });
@@ -178,15 +233,23 @@ describe("useUrlState", () => {
 
   it("should handle invalid level values gracefully", async () => {
     window.location.search = "?level=INVALID";
-    const { useViewStore } = await import("../stores/viewStore");
+    const { useViewStore } = await import("../../stores/viewStore");
     const mockSetLevel = vi.fn();
 
     vi.mocked(useViewStore).mockImplementation((selector) => {
       const state = {
         currentLevel: "L1" as const,
+        focusedSystemId: null,
+        focusedContainerId: null,
         expandedNodes: new Set<string>(),
         setLevel: mockSetLevel,
         toggleExpand: vi.fn(),
+        drillDown: vi.fn(),
+        goUp: vi.fn(),
+        goToRoot: vi.fn(),
+        breadcrumb: [],
+        activeViewId: null,
+        setActiveView: vi.fn(),
       };
       return selector(state);
     });
@@ -201,15 +264,23 @@ describe("useUrlState", () => {
 
   it("should handle empty expanded parameter", async () => {
     window.location.search = "?expanded=";
-    const { useViewStore } = await import("../stores/viewStore");
+    const { useViewStore } = await import("../../stores/viewStore");
     const mockToggleExpand = vi.fn();
 
     vi.mocked(useViewStore).mockImplementation((selector) => {
       const state = {
         currentLevel: "L1" as const,
+        focusedSystemId: null,
+        focusedContainerId: null,
         expandedNodes: new Set<string>(),
         setLevel: vi.fn(),
         toggleExpand: mockToggleExpand,
+        drillDown: vi.fn(),
+        goUp: vi.fn(),
+        goToRoot: vi.fn(),
+        breadcrumb: [],
+        activeViewId: null,
+        setActiveView: vi.fn(),
       };
       return selector(state);
     });
@@ -223,15 +294,23 @@ describe("useUrlState", () => {
   });
 
   it("should remove expanded from URL when empty", async () => {
-    const { useViewStore } = await import("../stores/viewStore");
+    const { useViewStore } = await import("../../stores/viewStore");
     let expandedNodes = new Set<string>(["System1"]);
 
     vi.mocked(useViewStore).mockImplementation((selector) => {
       const state = {
         currentLevel: "L1" as const,
+        focusedSystemId: null,
+        focusedContainerId: null,
         expandedNodes,
         setLevel: vi.fn(),
         toggleExpand: vi.fn(),
+        drillDown: vi.fn(),
+        goUp: vi.fn(),
+        goToRoot: vi.fn(),
+        breadcrumb: [],
+        activeViewId: null,
+        setActiveView: vi.fn(),
       };
       return selector(state);
     });
@@ -243,9 +322,11 @@ describe("useUrlState", () => {
     rerender();
 
     await waitFor(() => {
-      const replaceStateCall = (window.history.replaceState as any).mock.calls[0];
-      if (replaceStateCall) {
-        const url = replaceStateCall[2] as string;
+      const mockReplaceState = window.history.replaceState as unknown as ReturnType<typeof vi.fn>;
+      const calls = mockReplaceState.mock.calls;
+      const lastCall = calls[calls.length - 1];
+      if (lastCall) {
+        const url = lastCall[2] as string;
         expect(url).not.toContain("expanded=");
       }
     });

@@ -2,12 +2,18 @@ import { Shield, Plus, Edit } from "lucide-react";
 import { Button } from "@sruja/ui";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
 import { useSelectionStore } from "../../stores";
+import type { Policy } from "@sruja/shared";
+
+interface ExtendedPolicy extends Policy {
+  tags?: string[];
+  label?: string;
+}
 
 interface PoliciesSectionProps {
-  policies: any[] | undefined;
+  policies: ExtendedPolicy[] | undefined;
   policyCount: number;
   onAddPolicy: () => void;
-  onEditPolicy: (policy: any) => void;
+  onEditPolicy: (policy: ExtendedPolicy) => void;
 }
 
 export function PoliciesSection({
@@ -23,7 +29,7 @@ export function PoliciesSection({
 
   const filteredPolicies = policies?.filter((p) => {
     if (!selectedNodeId) return true;
-    return p.tags?.includes(selectedNodeId);
+    return (p as ExtendedPolicy).tags?.includes(selectedNodeId);
   });
 
   if (!isFeatureEnabled("policies") || policyCount <= 0) return null;
@@ -79,7 +85,9 @@ export function PoliciesSection({
           <div key={policy.id} className="policy-card">
             <div className="policy-card-content">
               <span className="policy-id">{policy.id}</span>
-              <span className="policy-label">{policy.label || policy.description}</span>
+              <span className="policy-label">
+                {(policy as ExtendedPolicy).label || policy.description || policy.title}
+              </span>
             </div>
             {isEditMode() && (
               <div className="policy-card-actions">

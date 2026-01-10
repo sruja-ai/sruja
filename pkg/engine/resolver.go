@@ -18,11 +18,12 @@ type Resolver struct {
 // NewResolverFromModel creates a new resolver instance from a Model.
 func NewResolverFromModel(model *language.Model) *Resolver {
 	if model == nil {
+		// Return a functional but empty resolver to avoid panics
 		return &Resolver{
-			defined:      make(map[string]bool, 16),
-			suffixMap:    make(map[string][]string, 8),
-			resolveCache: make(map[string]string, 16),
-			partsCache:   make(map[string][]string, 16),
+			defined:      make(map[string]bool),
+			suffixMap:    make(map[string][]string),
+			resolveCache: make(map[string]string),
+			partsCache:   make(map[string][]string),
 		}
 	}
 
@@ -221,7 +222,13 @@ func (r *Resolver) updateRef(id *language.QualifiedIdent) {
 	}
 }
 
-// RunResolution is a convenience entry point for a single program
+// RunResolution is a convenience entry point for a single program.
+// It resolves all ambiguous references in the program's model to their fully qualified names.
+//
+// Example:
+//
+//	program, _ := parser.Parse("example.sruja", src)
+//	engine.RunResolution(program)
 func RunResolution(program *language.Program) {
 	if program == nil || program.Model == nil {
 		return

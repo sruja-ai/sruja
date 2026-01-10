@@ -149,110 +149,73 @@ export function GovernanceScore() {
       </div>
 
       <div className="governance-score-breakdown">
-        <div className="score-dimension">
-          <div className="score-dimension-header">
-            <span className="score-dimension-label">Structural</span>
-            <span
-              className="score-dimension-value"
-              style={{ color: getScoreColor(score.structural) }}
-            >
-              {score.structural}/100
-            </span>
+        {/* Show only categories that need improvement (below 80) sorted by worst first */}
+        {[
+          {
+            name: "Structural",
+            value: score.structural,
+            actionable: "Fix cycles, orphans, and layer violations",
+          },
+          {
+            name: "Documentation",
+            value: score.documentation,
+            actionable: "Add descriptions and technology to components",
+          },
+          {
+            name: "Traceability",
+            value: score.traceability,
+            actionable: "Link requirements to components via tags",
+          },
+          {
+            name: "Complexity",
+            value: score.complexity,
+            actionable: "Reduce coupling and split high-fan components",
+          },
+          {
+            name: "Standardization",
+            value: score.standardization,
+            actionable: "Add metadata to components",
+          },
+        ]
+          .filter((dim) => dim.value < 80) // Only show categories needing improvement
+          .sort((a, b) => a.value - b.value) // Sort worst first
+          .slice(0, 3) // Show top 3 worst categories
+          .map((dimension) => (
+            <div key={dimension.name} className="score-dimension">
+              <div className="score-dimension-header">
+                <span className="score-dimension-label">{dimension.name}</span>
+                <span
+                  className="score-dimension-value"
+                  style={{ color: getScoreColor(dimension.value) }}
+                >
+                  {dimension.value}/100
+                </span>
+              </div>
+              <div className="score-bar">
+                <div
+                  className="score-bar-fill"
+                  style={{
+                    width: `${dimension.value}%`,
+                    backgroundColor: getScoreColor(dimension.value),
+                  }}
+                />
+              </div>
+              <div className="score-dimension-actionable">
+                <strong>Improve:</strong> {dimension.actionable}
+              </div>
+            </div>
+          ))}
+        {[
+          { name: "Structural", value: score.structural },
+          { name: "Documentation", value: score.documentation },
+          { name: "Traceability", value: score.traceability },
+          { name: "Complexity", value: score.complexity },
+          { name: "Standardization", value: score.standardization },
+        ].filter((dim) => dim.value < 80).length === 0 && (
+          <div className="score-all-good">
+            <p>All categories are healthy (≥80/100)</p>
           </div>
-          <div className="score-bar">
-            <div
-              className="score-bar-fill"
-              style={{
-                width: `${score.structural}%`,
-                backgroundColor: getScoreColor(score.structural),
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="score-dimension">
-          <div className="score-dimension-header">
-            <span className="score-dimension-label">Documentation</span>
-            <span
-              className="score-dimension-value"
-              style={{ color: getScoreColor(score.documentation) }}
-            >
-              {score.documentation}/100
-            </span>
-          </div>
-          <div className="score-bar">
-            <div
-              className="score-bar-fill"
-              style={{
-                width: `${score.documentation}%`,
-                backgroundColor: getScoreColor(score.documentation),
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="score-dimension">
-          <div className="score-dimension-header">
-            <span className="score-dimension-label">Traceability</span>
-            <span
-              className="score-dimension-value"
-              style={{ color: getScoreColor(score.traceability) }}
-            >
-              {score.traceability}/100
-            </span>
-          </div>
-          <div className="score-bar">
-            <div
-              className="score-bar-fill"
-              style={{
-                width: `${score.traceability}%`,
-                backgroundColor: getScoreColor(score.traceability),
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="score-dimension">
-          <div className="score-dimension-header">
-            <span className="score-dimension-label">Complexity</span>
-            <span
-              className="score-dimension-value"
-              style={{ color: getScoreColor(score.complexity) }}
-            >
-              {score.complexity}/100
-            </span>
-          </div>
-          <div className="score-bar">
-            <div
-              className="score-bar-fill"
-              style={{
-                width: `${score.complexity}%`,
-                backgroundColor: getScoreColor(score.complexity),
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="score-dimension">
-          <div className="score-dimension-header">
-            <span className="score-dimension-label">Standardization</span>
-            <span
-              className="score-dimension-value"
-              style={{ color: getScoreColor(score.standardization) }}
-            >
-              {score.standardization}/100
-            </span>
-          </div>
-          <div className="score-bar">
-            <div
-              className="score-bar-fill"
-              style={{
-                width: `${score.standardization}%`,
-                backgroundColor: getScoreColor(score.standardization),
-              }}
-            />
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

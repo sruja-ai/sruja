@@ -42,8 +42,12 @@ export function useBuilderProgress() {
 
   // Relationship Checks
   // Helper to extract FQN from FqnRef or string for backward compatibility
-  const getFqn = (ref: any): string =>
-    typeof ref === "object" && ref?.model ? ref.model : String(ref || "");
+  const getFqn = (ref: string | { model: string } | unknown): string => {
+    if (typeof ref === "object" && ref !== null && "model" in ref) {
+      return (ref as { model: string }).model;
+    }
+    return String(ref || "");
+  };
 
   const hasL1Relations = useMemo(
     () =>
@@ -175,7 +179,7 @@ export function useBuilderProgress() {
   };
 
   const layeringViolations = 0; // Disabled for now until metadata resolution is rebuilt
-  const layeringViolationDetails: any[] = [];
+  const layeringViolationDetails: unknown[] = [];
 
   // Overall Completion
   const l1Complete = persons.length > 0 && systems.length > 0 && hasL1Relations;

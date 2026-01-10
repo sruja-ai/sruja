@@ -16,7 +16,7 @@ import { useArchitectureStore, useUIStore, useSelectionStore } from "../../store
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
 import { EditRequirementForm, ConfirmDialog } from "../shared";
 import { Input, Button } from "@sruja/ui";
-import type { RequirementDump } from "@sruja/shared";
+import type { RequirementDump, SrujaModelDump } from "@sruja/shared";
 import { useTagNavigation } from "../../hooks/useTagNavigation";
 import { deduplicateRequirements } from "../../utils/deduplicateRequirements";
 import "./RequirementsPanel.css";
@@ -76,7 +76,7 @@ export function RequirementsPanel() {
   const requirements = useMemo(() => {
     if (!model) return [];
 
-    const reqs = (model.sruja as any)?.requirements || [];
+    const reqs = (model.sruja as SrujaModelDump["sruja"])?.requirements || [];
 
     // Deduplicate by ID to prevent showing duplicates
     return deduplicateRequirements(reqs);
@@ -87,7 +87,7 @@ export function RequirementsPanel() {
 
     // Filter by selected node - RequirementDump might not have tags for linking to elements directly in standard model, but maybe it does. Assuming tags for now but safely.
     if (selectedNodeId) {
-      filtered = filtered.filter((r) => (r as any).tags?.includes(selectedNodeId));
+      filtered = filtered.filter((r) => (r as { tags?: string[] }).tags?.includes(selectedNodeId));
     }
 
     // Filter by type
@@ -117,7 +117,7 @@ export function RequirementsPanel() {
     // Let's filter by selection first for counts.
     let baseList = requirements;
     if (selectedNodeId) {
-      baseList = baseList.filter((r) => (r as any).tags?.includes(selectedNodeId));
+      baseList = baseList.filter((r) => (r as { tags?: string[] }).tags?.includes(selectedNodeId));
     }
 
     const counts: Record<string, number> = { all: baseList.length };
@@ -140,7 +140,7 @@ export function RequirementsPanel() {
     > = {};
 
     requirements.forEach((req) => {
-      const elementIds: string[] = (req as any).tags ?? [];
+      const elementIds: string[] = (req as { tags?: string[] }).tags ?? [];
       const hasLinks = elementIds.length > 0;
       const status: "fulfilled" | "partial" | "missing" = hasLinks
         ? elementIds.length >= 2
@@ -360,25 +360,26 @@ export function RequirementsPanel() {
                       </span>
                     </div>
                   )}
-                  {(req as any).tags && (req as any).tags.length > 0 && (
-                    <div className="req-tags">
-                      {(req as any).tags.map((tag: any) => (
-                        <Button
-                          key={tag}
-                          variant="ghost"
-                          size="sm"
-                          className="req-tag clickable"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigateToTaggedElement(tag);
-                          }}
-                          title={`Navigate to ${tag} in diagram`}
-                        >
-                          {tag}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
+                  {(req as { tags?: string[] }).tags &&
+                    (req as { tags?: string[] }).tags!.length > 0 && (
+                      <div className="req-tags">
+                        {(req as { tags?: string[] }).tags!.map((tag) => (
+                          <Button
+                            key={tag}
+                            variant="ghost"
+                            size="sm"
+                            className="req-tag clickable"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigateToTaggedElement(tag);
+                            }}
+                            title={`Navigate to ${tag} in diagram`}
+                          >
+                            {tag}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                 </div>
               );
             })}
@@ -403,9 +404,9 @@ export function RequirementsPanel() {
         onConfirm={async () => {
           if (deleteRequirement) {
             await updateArchitecture((model) => {
-              const sruja = (model as any).sruja || {};
+              const sruja = (model as SrujaModelDump).sruja || {};
               const requirements = (sruja.requirements || []).filter(
-                (r: any) => r.id !== deleteRequirement.id
+                (r) => r.id !== deleteRequirement.id
               );
               return {
                 ...model,

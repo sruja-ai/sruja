@@ -27,7 +27,7 @@ func NewServer() *Server {
 	v.RegisterRule(&engine.OrphanDetectionRule{})
 	v.RegisterRule(&engine.SimplicityRule{})
 	v.RegisterRule(&engine.LayerViolationRule{})
-	v.RegisterRule(&engine.ScenarioFQNRule{})
+	v.RegisterRule(&engine.ScenarioValidationRule{})
 	return &Server{
 		workspace: NewWorkspace(),
 		validator: v,

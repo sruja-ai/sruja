@@ -29,11 +29,10 @@ export function SystemContextStep({
   );
 
   const persons = useMemo(
-    () =>
-      elements.filter((e: any) => e.kind === "person" || e.kind === "actor" || e.kind === "user"),
+    () => elements.filter((e) => e.kind === "person" || e.kind === "actor" || e.kind === "user"),
     [elements]
   );
-  const systems = useMemo(() => elements.filter((e: any) => e.kind === "system"), [elements]);
+  const systems = useMemo(() => elements.filter((e) => e.kind === "system"), [elements]);
 
   // Form state
   const [isPersonFormOpen, setIsPersonFormOpen] = useState(false);
@@ -65,22 +64,20 @@ export function SystemContextStep({
 
   const isExternal = (system: ElementDump) => {
     return (
-      (system as any).tags?.includes("external") ||
-      (system as any).links?.some(
-        (m: any) => m.title === "external" // link structure differs from legacy metadata
-      )
+      (system.tags && system.tags.includes("external")) ||
+      (system.links && system.links.some((m) => m.title === "external"))
     );
     // Legacy metadata is gone. Check tags mostly.
   };
 
   // Elements for relations (L1: persons and systems)
   const personElements = useMemo(
-    () => persons.map((p: any) => ({ id: p.id, label: p.title || p.id, type: "person" })),
+    () => persons.map((p) => ({ id: p.id, label: p.title || p.id, type: "person" })),
     [persons]
   );
 
   const systemElements = useMemo(
-    () => systems.map((s: any) => ({ id: s.id, label: s.title || s.id, type: "system" })),
+    () => systems.map((s) => ({ id: s.id, label: s.title || s.id, type: "system" })),
     [systems]
   );
 
@@ -132,7 +129,7 @@ export function SystemContextStep({
         <p className="section-description">People or roles that interact with your system</p>
 
         <div className="items-list">
-          {persons.map((person: any) => (
+          {persons.map((person: ElementDump) => (
             <div key={person.id} className="item-card">
               <Users size={16} className="item-icon" />
               <div className="item-info">
@@ -192,7 +189,7 @@ export function SystemContextStep({
         </p>
 
         <div className="items-list">
-          {systems.map((system: any) => (
+          {systems.map((system: ElementDump) => (
             <div key={system.id} className={`item-card ${isExternal(system) ? "external" : ""}`}>
               <Building2 size={16} className="item-icon" />
               <div className="item-info">

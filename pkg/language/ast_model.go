@@ -46,6 +46,11 @@ type Model struct {
 type ModelItem struct {
 	Import           *ImportStatement  `parser:"@@ |"`
 	Extend           *ExtendElement    `parser:"@@ |"`
+	Scenario         *Scenario         `parser:"@@ |"`
+	Flow             *Flow             `parser:"@@ |"`
+	Requirement      *Requirement      `parser:"@@ |"`
+	ADR              *ADR              `parser:"@@ |"`
+	Policy           *Policy           `parser:"@@ |"`
 	DeploymentNode   *DeploymentNode   `parser:"@@ |"`
 	Overview         *OverviewBlock    `parser:"@@ |"`
 	ConstraintsBlock *ConstraintsBlock `parser:"@@ |"`
@@ -87,7 +92,7 @@ type ElementDef struct {
 type ElementAssignment struct {
 	Pos     lexer.Position
 	Name    string          `parser:"@Ident '='"`
-	Kind    string          `parser:"@( 'person' | 'system' | 'container' | 'component' | 'database' | 'queue' | 'policy' | 'requirement' | 'adr' | 'flow' | 'scenario' | 'story' | Ident )"`
+	Kind    string          `parser:"@( 'person' | 'role' | 'system' | 'container' | 'component' | 'database' | 'queue' | 'policy' | 'requirement' | 'adr' | 'flow' | 'scenario' | 'story' | Ident )"`
 	SubKind *string         `parser:"( @Ident )?"` // For requirement type: functional, security, etc.
 	Title   *string         `parser:"( @String )?"`
 	TagRefs []string        `parser:"@TagRef*"`
@@ -123,10 +128,25 @@ func (e *ElementDef) GetBody() *ElementDefBody {
 }
 
 func (e *ElementDef) GetTagRefs() []string {
+	var tags []string
 	if e.Assignment != nil {
-		return e.Assignment.TagRefs
+		tags = append(tags, e.Assignment.TagRefs...)
+
+		if e.Assignment.Body != nil {
+			for _, item := range e.Assignment.Body.Items {
+				tags = append(tags, item.Tags...)
+				tags = append(tags, item.TagRefs...)
+				if item.Metadata != nil {
+					for _, entry := range item.Metadata.Entries {
+						if entry.Key == "tags" {
+							tags = append(tags, entry.Array...)
+						}
+					}
+				}
+			}
+		}
 	}
-	return nil
+	return tags
 }
 
 func (e *ElementDef) Location() SourceLocation {
@@ -210,12 +230,14 @@ type ViewsItem struct {
 
 // ViewDef represents a view definition.
 type ViewDef struct {
-	Pos     lexer.Position
-	Name    *string         `parser:"'view' ( @Ident )?"`
-	Extends *string         `parser:"( 'extends' @Ident )?"`
-	Of      *QualifiedIdent `parser:"( 'of' @@ )?"`
-	Title   *string         `parser:"( 'title' @String )?"`
-	Body    *ViewBody       `parser:"( '{' @@ '}' )?"`
+	Pos         lexer.Position
+	Name        *string         `parser:"'view' ( @Ident )?"`
+	Extends     *string         `parser:"( 'extends' @Ident )?"`
+	Of          *QualifiedIdent `parser:"( 'of' @@ )?"`
+	Title       *string         `parser:"( 'title' @String )?"`
+	Description *string         `parser:"( 'description' @String )?"`
+	Tags        []string        `parser:"( 'tags' '[' @String ( ',' @String )* ']' )?"`
+	Body        *ViewBody       `parser:"( '{' @@ '}' )?"`
 }
 
 func (v *ViewDef) PostProcess() {
@@ -231,11 +253,14 @@ type ViewBody struct {
 
 // ViewItem represents items that can appear inside a view body.
 type ViewItem struct {
-	Include *IncludePredicate `parser:"@@"`
-	Exclude *ExcludePredicate `parser:"| @@"`
-	Title   *string           `parser:"| 'title' @String"`
-	Style   *ViewStyle        `parser:"| @@"`
-	Layout  *LayoutBlock      `parser:"| @@"`
+	Include     *IncludePredicate `parser:"@@"`
+	Exclude     *ExcludePredicate `parser:"| @@"`
+	Title       *string           `parser:"| 'title' @String"`
+	Description *string           `parser:"| 'description' @String"`
+	Tags        []string          `parser:"| 'tags' '[' @String ( ',' @String )* ']'"`
+	Metadata    *MetadataBlock    `parser:"| @@"`
+	Style       *ViewStyle        `parser:"| @@"`
+	Layout      *LayoutBlock      `parser:"| @@"`
 }
 
 type IncludePredicate struct {

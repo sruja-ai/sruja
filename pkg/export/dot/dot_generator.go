@@ -10,12 +10,13 @@ import (
 	"strings"
 
 	"github.com/sruja-ai/sruja/pkg/engine"
+	"github.com/sruja-ai/sruja/pkg/export/views"
 )
 
 // GenerateDOTFromConstraints generates DOT string from constraints.
 func GenerateDOTFromConstraints(
-	elements []*Element,
-	_ []*Relation,
+	elements []*views.Element,
+	_ []*views.Relation,
 	constraints LayoutConstraints,
 ) string {
 	sb := engine.GetStringBuilder()
@@ -37,11 +38,8 @@ func GenerateDOTFromConstraints(
 	// L3 views already focus on a single container, so internal clustering is unnecessary
 	// and often harmful to the layout engine.
 	if constraints.ViewLevel == 3 {
-		for _, children := range clusters {
-			rootElements = append(rootElements, children...)
-		}
 		// Clear clusters
-		clusters = make(map[string][]*Element)
+		clusters = make(map[string][]*views.Element)
 	}
 
 	// Build parentMap for cross-cluster edge detection and depth calculation
@@ -49,6 +47,16 @@ func GenerateDOTFromConstraints(
 	for _, elem := range elements {
 		parentMap[elem.ID] = elem.ParentID
 	}
+
+	// Filter out root elements that are also clusters (parents)
+	// This prevents rendering a parent as both a Node AND a Cluster/Subgraph
+	var filteredRoots []*views.Element
+	for _, elem := range rootElements {
+		if _, isCluster := clusters[elem.ID]; !isCluster {
+			filteredRoots = append(filteredRoots, elem)
+		}
+	}
+	rootElements = filteredRoots
 
 	// Write root-level nodes
 	for _, elem := range rootElements {
@@ -100,7 +108,7 @@ func writeGraphHeaderFromConstraints(sb *strings.Builder, constraints LayoutCons
 }
 
 // writeNodeFromConstraints writes a node from constraints.
-func writeNodeFromConstraints(sb *strings.Builder, elem *Element, constraints LayoutConstraints, indent string) {
+func writeNodeFromConstraints(sb *strings.Builder, elem *views.Element, constraints LayoutConstraints, indent string) {
 	// Find size constraint for this node
 	var width, height float64
 	var fixedX, fixedY float64
@@ -189,30 +197,11 @@ func writeRankConstraintsFromData(sb *strings.Builder, ranks []RankConstraint) {
 		fmt.Fprintf(sb, "  { rank=%s; %s }%s\n", rank.Type, strings.Join(ids, "; "), comment)
 	}
 
-	// Add invisible edges for rank ordering (persons above systems, etc.)
-	// This ensures proper vertical ordering with strong constraints
-	// Use high-weight invisible edges to enforce rank separation
-	if len(ranks) >= 2 {
-		// Connect first node of first rank to first node of second rank
-		firstRank := ranks[0]
-		secondRank := ranks[1]
-		if len(firstRank.NodeIDs) > 0 && len(secondRank.NodeIDs) > 0 {
-			// Use very high weight to ensure rank ordering is respected
-			fmt.Fprintf(sb, "  \"%s\" -> \"%s\" [style=invis, weight=1000, minlen=2];  // Rank ordering\n",
-				escapeID(firstRank.NodeIDs[0]), escapeID(secondRank.NodeIDs[0]))
-		}
-
-		// For high-quality layout, also connect all nodes in first rank to all in second
-		// This creates a stronger constraint for proper vertical ordering
-		if len(firstRank.NodeIDs) > 1 && len(secondRank.NodeIDs) > 1 {
-			// Connect last node of first rank to last node of second rank
-			// This helps maintain alignment across the entire rank
-			lastFirst := firstRank.NodeIDs[len(firstRank.NodeIDs)-1]
-			lastSecond := secondRank.NodeIDs[len(secondRank.NodeIDs)-1]
-			fmt.Fprintf(sb, "  \"%s\" -> \"%s\" [style=invis, weight=1000, minlen=2];  // Rank alignment\n",
-				escapeID(lastFirst), escapeID(lastSecond))
-		}
-	}
+	// Invisible edges for rank ordering are REMOVED.
+	// LikeC4 strategy: Graphviz's dot engine handles ranking naturally.
+	// Forcing rigid alignment with high-weight invisible edges often causes
+	// unnecessary edge crossings and "twisted" layouts.
+	// We rely on the natural flow of the graph + explicit rank groupings above.
 
 	sb.WriteString("\n")
 }
@@ -350,9 +339,9 @@ func getBundleIndex(edge EdgeConstraint, group []EdgeConstraint) int {
 }
 
 // groupByParent groups elements by their parent ID (helper function).
-func groupByParent(elements []*Element) ([]*Element, map[string][]*Element) {
-	var rootElements []*Element
-	clusters := make(map[string][]*Element)
+func groupByParent(elements []*views.Element) ([]*views.Element, map[string][]*views.Element) {
+	var rootElements []*views.Element
+	clusters := make(map[string][]*views.Element)
 
 	for _, elem := range elements {
 		if elem.ParentID == "" {
@@ -406,7 +395,7 @@ func calculateClusterDepth(parentID string, parentMap map[string]string) int {
 
 // writeClusterFromConstraints writes a subgraph cluster for hierarchical grouping.
 // Enhanced with depth-based visual hierarchy and improved containment.
-func writeClusterFromConstraints(sb *strings.Builder, parentID string, children []*Element, allElements []*Element, constraints LayoutConstraints, depth int) {
+func writeClusterFromConstraints(sb *strings.Builder, parentID string, children []*views.Element, allElements []*views.Element, constraints LayoutConstraints, depth int) {
 	// Find the parent element for the label
 	var parentTitle string
 	for _, elem := range allElements {
@@ -483,4 +472,14 @@ func writeClusterFromConstraints(sb *strings.Builder, parentID string, children 
 	}
 
 	sb.WriteString("  }\n\n")
+}
+
+// escapeID escapes an ID for DOT format.
+func escapeID(id string) string {
+	return strings.ReplaceAll(id, "\"", "\\\"")
+}
+
+// escapeLabel escapes a label string for DOT format.
+func escapeLabel(label string) string {
+	return strings.ReplaceAll(label, "\"", "\\\"")
 }

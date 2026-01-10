@@ -26,7 +26,7 @@ func TestStringPtrToIntPtr(t *testing.T) {
 
 func TestConvertSystemMinimal(t *testing.T) {
 	sys := &language.System{ID: "sys1", Label: "System 1", Description: nil}
-	out := convertSystem(sys)
+	out := systemToJSON(sys)
 	if out.ID != "sys1" || out.Label != "System 1" || out.Description != nil {
 		t.Fatalf("system fields not copied correctly: %+v", out)
 	}
@@ -43,7 +43,7 @@ func TestConvertContainerAndComponent(t *testing.T) {
 	rel := &language.Relation{From: language.QualifiedIdent{Parts: []string{"c1"}}, To: language.QualifiedIdent{Parts: []string{"c2"}}}
 	// container with component and relation
 	cont := &language.Container{ID: "cont1", Label: "Cont", Description: nil, Components: []*language.Component{comp}, Relations: []*language.Relation{rel}}
-	out := convertContainer(cont)
+	out := containerToJSON(cont)
 	if out.ID != "cont1" || out.Label != "Cont" {
 		t.Fatalf("container fields mismatch: %+v", out)
 	}
@@ -169,12 +169,12 @@ func TestConvertPerson(t *testing.T) {
 			{Key: "role", Value: strPtr("admin")},
 		},
 	}
-	out := convertPerson(person)
+	out := personToJSON(person)
 	if out.ID != "p1" || out.Label != "Person 1" {
-		t.Fatalf("convertPerson fields incorrect")
+		t.Fatalf("personToJSON fields incorrect")
 	}
 	if out.Description == nil || *out.Description != "A person" {
-		t.Fatalf("convertPerson description incorrect")
+		t.Fatalf("personToJSON description incorrect")
 	}
 }
 
@@ -185,12 +185,12 @@ func TestConvertDataStore(t *testing.T) {
 		Description: strPtr("A database"),
 		Technology:  strPtr("PostgreSQL"),
 	}
-	out := convertDataStore(ds)
+	out := dataStoreToJSON(ds)
 	if out.ID != "ds1" || out.Label != "Database" {
-		t.Fatalf("convertDataStore fields incorrect")
+		t.Fatalf("dataStoreToJSON fields incorrect")
 	}
 	if out.Technology == nil || *out.Technology != "PostgreSQL" {
-		t.Fatalf("convertDataStore technology incorrect")
+		t.Fatalf("dataStoreToJSON technology incorrect")
 	}
 }
 
@@ -201,12 +201,12 @@ func TestConvertQueue(t *testing.T) {
 		Description: strPtr("A queue"),
 		Technology:  strPtr("RabbitMQ"),
 	}
-	out := convertQueue(q)
+	out := queueToJSON(q)
 	if out.ID != "q1" || out.Label != "Queue" {
-		t.Fatalf("convertQueue fields incorrect")
+		t.Fatalf("queueToJSON fields incorrect")
 	}
 	if out.Technology == nil || *out.Technology != "RabbitMQ" {
-		t.Fatalf("convertQueue technology incorrect")
+		t.Fatalf("queueToJSON technology incorrect")
 	}
 }
 

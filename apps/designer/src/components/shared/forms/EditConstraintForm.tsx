@@ -3,8 +3,7 @@
 
 import { useEffect, useRef } from "react";
 import { useArchitectureStore } from "../../../stores";
-// Assuming ConstraintDump structure or defining locally if needed
-// import type { ConstraintDump } from "@sruja/shared";
+import type { Constraint, ConstraintJSON } from "@sruja/shared";
 import { Button } from "@sruja/ui";
 import { SidePanel } from "../SidePanel";
 import { FormField, useFormState, type FormErrors } from "./";
@@ -13,7 +12,7 @@ import "../EditForms.css";
 interface EditConstraintFormProps {
   isOpen: boolean;
   onClose: () => void;
-  constraint?: any; // ConstraintDump
+  constraint?: ConstraintJSON;
   constraintIndex?: number;
 }
 
@@ -45,12 +44,12 @@ export function EditConstraintForm({
     },
     onSubmit: async (values) => {
       await updateArchitecture((model) => {
-        const sruja = (model as any).sruja || {};
-        const constraints = [...(sruja.constraints || [])];
+        const sruja = model.sruja || {};
+        const constraints = [...(sruja.constraints || [])] as Constraint[];
 
-        const newConstraint = {
-          key: values.key.trim(),
-          value: values.value.trim(),
+        const newConstraint: Constraint = {
+          id: values.key.trim(),
+          description: values.value.trim(),
         };
 
         if (constraint && constraintIndex !== undefined) {
@@ -72,6 +71,8 @@ export function EditConstraintForm({
   });
 
   // Reset form when opening/switching contexts
+  // Note: form.setValues and form.clearErrors are stable (wrapped in useCallback with empty deps)
+  // so they don't need to be in the dependency array
   useEffect(() => {
     if (isOpen) {
       form.setValues({
@@ -80,7 +81,9 @@ export function EditConstraintForm({
       });
       form.clearErrors();
     }
-  }, [isOpen, constraint]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // form.setValues and form.clearErrors are stable callbacks from useFormState
+  }, [isOpen, constraint]);
 
   // Handle Escape key
   useEffect(() => {
@@ -106,13 +109,23 @@ export function EditConstraintForm({
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" type="submit" form="edit-constraint-form" isLoading={form.isSubmitting}>
+          <Button
+            variant="primary"
+            type="submit"
+            form="edit-constraint-form"
+            isLoading={form.isSubmitting}
+          >
             {constraint ? "Update" : "Add"}
           </Button>
         </>
       }
     >
-      <form ref={formRef} id="edit-constraint-form" onSubmit={form.handleSubmit} className="edit-form">
+      <form
+        ref={formRef}
+        id="edit-constraint-form"
+        onSubmit={form.handleSubmit}
+        className="edit-form"
+      >
         <FormField
           label="Key"
           name="key"

@@ -32,7 +32,7 @@ func parseWithValidation(t *testing.T, dsl string) ([]diagnostics.Diagnostic, er
 		validator.RegisterRule(&engine.OrphanDetectionRule{})
 		validator.RegisterRule(&engine.SimplicityRule{})
 		validator.RegisterRule(&engine.LayerViolationRule{})
-		validator.RegisterRule(&engine.ScenarioFQNRule{})
+		validator.RegisterRule(&engine.ScenarioValidationRule{})
 		validator.RegisterRule(&engine.PropertiesValidationRule{})
 		validator.RegisterRule(&engine.SLOValidationRule{})
 		// Best practices rule may not be exported, skip for now

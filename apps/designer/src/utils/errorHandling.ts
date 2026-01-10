@@ -67,6 +67,7 @@ export class NetworkError extends AppError {
     super(message, ErrorType.NETWORK, { ...context, statusCode });
     this.name = "NetworkError";
     this.statusCode = statusCode;
+    Object.setPrototypeOf(this, NetworkError.prototype);
   }
 }
 
@@ -91,6 +92,7 @@ export class ValidationError extends AppError {
     super(message, ErrorType.VALIDATION, { ...context, field });
     this.name = "ValidationError";
     this.field = field;
+    Object.setPrototypeOf(this, ValidationError.prototype);
   }
 }
 
@@ -314,12 +316,13 @@ export function handleError(error: unknown, context?: string): AppError {
  * ```
  */
 export function isRetryableError(error: unknown): boolean {
-  if (error instanceof NetworkError) {
-    // Retry on 5xx errors, not on 4xx
-    return error.statusCode !== undefined && error.statusCode >= 500;
-  }
-  if (error instanceof AppError) {
-    return error.type === ErrorType.NETWORK;
+  if (error instanceof AppError && error.type === ErrorType.NETWORK) {
+    // Retry on 5xx errors and common transient 4xx (408, 429)
+    const statusCode = (error as NetworkError).statusCode;
+    if (statusCode !== undefined) {
+      return statusCode >= 500 || statusCode === 408 || statusCode === 429;
+    }
+    return true;
   }
   return false;
 }
@@ -348,7 +351,7 @@ export function getUserFriendlyMessage(error: unknown): string {
   if (error instanceof AppError) {
     switch (error.type) {
       case ErrorType.NETWORK:
-        return "Network error. Please check your connection and try again.";
+        return error.message || "Network error. Please check your connection and try again.";
       case ErrorType.VALIDATION:
         return error.message || "Invalid input. Please check your data.";
       case ErrorType.PERMISSION:
@@ -361,6 +364,9 @@ export function getUserFriendlyMessage(error: unknown): string {
   }
   if (error instanceof Error) {
     return error.message;
+  }
+  if (typeof error === "object" && error !== null && "message" in error) {
+    return (error as { message: string }).message;
   }
   return "An unexpected error occurred.";
 }

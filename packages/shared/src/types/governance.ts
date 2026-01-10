@@ -13,6 +13,36 @@
  * @example
  * const extensions: SrujaExtensions = { requirements: [], adrs: [], policies: [], slos: [] };
  */
+/**
+ * Overview data for architecture documentation.
+ */
+export interface Overview {
+  /** High-level summary */
+  readonly summary?: string;
+  /** Target audience */
+  readonly audience?: string;
+  /** Architecture scope */
+  readonly scope?: string;
+  /** High-level goals */
+  readonly goals?: ReadonlyArray<string>;
+  /** Out of scope items */
+  readonly nonGoals?: ReadonlyArray<string>;
+  /** Risks and concerns */
+  readonly risks?: ReadonlyArray<string>;
+}
+
+/**
+ * Metadata entry with optional array values.
+ */
+export interface MetadataEntry {
+  /** Metadata key */
+  readonly key: string;
+  /** Single value (if not array) */
+  readonly value?: string;
+  /** Array values (if array type) */
+  readonly array?: ReadonlyArray<string>;
+}
+
 export interface SrujaExtensions {
   /** Functional and non-functional requirements */
   readonly requirements?: ReadonlyArray<Requirement>;
@@ -34,6 +64,14 @@ export interface SrujaExtensions {
   readonly deployments?: ReadonlyArray<Deployment>;
   /** Service Level Objectives */
   readonly slos?: ReadonlyArray<SLO>;
+  /** High-level goals */
+  readonly goals?: ReadonlyArray<string>;
+  /** Architecture overview */
+  readonly overview?: Overview;
+  /** Architecture description */
+  readonly description?: string;
+  /** Metadata entries */
+  readonly metadata?: ReadonlyArray<MetadataEntry>;
 }
 
 /**
@@ -145,6 +183,14 @@ export interface Constraint {
 }
 
 /**
+ * Architectural constraint definition (legacy format).
+ */
+export interface ConstraintJSON {
+  readonly key: string;
+  readonly value: string;
+}
+
+/**
  * Architectural convention definition.
  *
  * @public
@@ -160,6 +206,14 @@ export interface Convention {
   readonly id: string;
   /** Convention description (required) */
   readonly description: string;
+}
+
+/**
+ * Architectural convention definition (legacy format).
+ */
+export interface ConventionJSON {
+  readonly key: string;
+  readonly value: string;
 }
 
 /**

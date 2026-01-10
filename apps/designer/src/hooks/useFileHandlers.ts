@@ -9,10 +9,12 @@ import type { SrujaModelDump } from "@sruja/shared";
 import { handleError, getUserFriendlyMessage, safeAsync, ErrorType } from "../utils/errorHandling";
 import { trackInteraction } from "@sruja/shared";
 
+import type { CanvasHandle } from "../components/SrujaCanvas/types";
+
 /**
  * Hook for handling file operations: import, export, share, and create new projects.
  */
-export function useFileHandlers(canvasRef: React.RefObject<any>) {
+export function useFileHandlers(canvasRef: React.RefObject<CanvasHandle | null>) {
   // simplified ref type
   const model = useArchitectureStore((s) => s.model);
   const storeDslSource = useArchitectureStore((s) => s.dslSource);

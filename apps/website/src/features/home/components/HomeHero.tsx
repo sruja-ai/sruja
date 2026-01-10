@@ -29,35 +29,48 @@ export default function HomeHero() {
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
           <Logo size={56} />
         </div>
-        <h1>Architecture Editor with Live Code Sync</h1>
+        <h1>The Standard for Architecture-as-Code</h1>
         <p>
-          Edit diagrams or code - changes sync both ways automatically. Like Notion, but for
-          architecture. Version-controlled, validated, beautiful.
+          Design, validate, and document your software architecture as code. Bridge the gap between
+          system design and implementation with a platform built for modern engineering teams.
         </p>
 
-        {/* Value Propositions for Different Audiences */}
+        {/* Why Sruja? */}
+        <div style={{ margin: "2.5rem 0 1.5rem", maxWidth: "700px", marginInline: "auto" }}>
+          <p style={{ fontSize: "1.1rem", color: "var(--color-text-primary)", fontWeight: 500 }}>
+            Traditional diagrams rot. Wikis get outdated. Sruja keeps your architecture live, valid,
+            and version-controlled.
+          </p>
+        </div>
+
         <div className="hero-audiences">
           <div className="audience-card">
-            <strong>🔄 Bidirectional Sync</strong>
-            <p>Edit visually → Code updates. Edit code → Diagram updates. Real-time, both ways.</p>
-          </div>
-          <div className="audience-card">
-            <strong>✅ For Everyone</strong>
+            <strong>🔄 Prevent Drift</strong>
             <p>
-              Designers edit visually, developers edit code. Same source of truth,
-              version-controlled in Git.
+              Code and architecture stay in sync automatically. Bidirectional updates mean your
+              diagrams never lie.
             </p>
           </div>
           <div className="audience-card">
-            <strong>📊 Built-in Validation</strong>
+            <strong>✅ Single Source of Truth</strong>
             <p>
-              Cycle detection, orphan detection, unique IDs, and custom governance rules out of the
-              box.
+              Version-controlled in Git. Keep your design, implementation, and documentation aligned
+              in one place.
             </p>
           </div>
           <div className="audience-card">
-            <strong>🎯 Multiple Outputs</strong>
-            <p>Export to JSON, Markdown, Mermaid, or keep as .sruja files in Git. Your choice.</p>
+            <strong>🛡️ Enforce Standards</strong>
+            <p>
+              Define governance rules as code. Automated linting ensures every service meets your
+              architectural standards.
+            </p>
+          </div>
+          <div className="audience-card">
+            <strong>👁️ Visualize Anything</strong>
+            <p>
+              Generate Context, Container, Component, and Deployment views from a single model.
+              Export to C4, Mermaid, and more.
+            </p>
           </div>
         </div>
 

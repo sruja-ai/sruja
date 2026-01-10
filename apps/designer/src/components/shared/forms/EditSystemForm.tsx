@@ -7,7 +7,7 @@ import type { ElementDump } from "@sruja/shared";
 import { SidePanel } from "../SidePanel";
 import { Button } from "@sruja/ui";
 import { FormField, useFormState, type FormErrors } from "./";
-import { collectIds, generateUniqueId } from "./utils";
+import { slugify } from "../../../utils/slugify";
 import "../EditForms.css";
 
 interface EditSystemFormProps {
@@ -33,29 +33,28 @@ export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSys
   // Initialize form state with validation
   const form = useFormState<FormValues>({
     initialValues: {
-      name: (system as any)?.title || initialName || "",
+      name: system?.title || initialName || "",
       description:
-        typeof (system as any)?.description === "string"
-          ? (system as any).description
-          : (system as any)?.description?.txt || "",
+        typeof system?.description === "string"
+          ? system.description
+          : (system?.description as unknown as { txt: string })?.txt || "",
       customId: false,
-      idInput: (system as any)?.id || "",
-      isExternal: (system as any)?.tags?.includes("external") || false,
+      idInput: system?.id || "",
+      isExternal: system?.tags?.includes("external") || false,
     },
     validate: (values) => {
       const errors: FormErrors = {};
 
       if (!values.name.trim()) {
-        errors.name = "System name is required";
+        errors.name = "Name is required";
       }
 
       if (values.customId && !values.idInput.trim()) {
-        errors.idInput = "ID is required when custom ID is checked";
+        errors.idInput = "ID is required";
       }
 
       if (values.customId && values.idInput.trim() && !system) {
-        const ids = collectIds(data);
-        if (ids.has(values.idInput.trim())) {
+        if (data?.elements?.[values.idInput.trim()]) {
           errors.idInput = "ID already exists";
         }
       }
@@ -66,39 +65,38 @@ export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSys
       await updateArchitecture((model) => {
         const newElements = { ...model.elements };
 
-        let targetId = (system as any)?.id;
+        let targetId = system?.id;
 
         if (!system) {
           // Create Mode
-          targetId =
-            (values.customId ? values.idInput : "") ||
-            generateUniqueId(values.name, data, "system");
+          targetId = values.customId ? values.idInput.trim() : slugify(values.name) || "system";
+          let i = 1;
+          const originalId = targetId;
+          while (newElements[targetId as string]) {
+            targetId = `${originalId}-${i++}`;
+          }
         }
 
-        if (!targetId) return model; // Should not happen given generateUniqueId fallback
+        if (!targetId) return model;
 
         const tags = values.isExternal ? ["external"] : [];
 
-        newElements[targetId] = {
-          id: targetId as any,
+        newElements[targetId as string] = {
+          id: targetId,
           kind: "system",
           title: values.name,
-          description: (values.description || undefined) as any,
+          description: typeof values.description === "string" ? values.description : undefined,
           tags: tags.length > 0 ? tags : undefined,
-          links: (system as any)?.links,
-          // Preserve other properties if editing?
-          // If editing, we should merge.
-          // If system exists, we are getting a SystemJSON which is different from ElementDump?
-          // Actually system passed to props is SystemJSON from legacy types?
-          // Wait, we need to check what SystemJSON is or if we should update Props too.
+          links: system?.links,
+          style: {},
         };
 
         // If editing, merge existing props?
-        if (system && model.elements && model.elements[(system as any).id]) {
-          newElements[targetId] = {
-            ...(model.elements[(system as any).id] as any),
+        if (system && model.elements && model.elements[system.id]) {
+          newElements[targetId as string] = {
+            ...(model.elements[system.id] as ElementDump),
             title: values.name,
-            description: (values.description || undefined) as any,
+            description: typeof values.description === "string" ? values.description : undefined,
             tags: tags.length > 0 ? tags : undefined,
           };
         }
@@ -113,14 +111,14 @@ export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSys
   useEffect(() => {
     if (isOpen) {
       form.setValues({
-        name: (system as any)?.title || initialName || "",
+        name: system?.title || initialName || "",
         description:
-          typeof (system as any)?.description === "string"
-            ? (system as any).description
-            : (system as any)?.description?.txt || "",
-        idInput: (system as any)?.id || "",
+          (typeof system?.description === "string"
+            ? system.description
+            : (system?.description as unknown as { txt: string })?.txt || "") || "",
+        idInput: system?.id || "",
         customId: false,
-        isExternal: (system as any)?.tags?.includes("external") || false,
+        isExternal: system?.tags?.includes("external") || false,
       });
       form.clearErrors();
     }

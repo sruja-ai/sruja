@@ -22,6 +22,11 @@ type TopLevelItem struct {
 	KindDef     *ElementKindDef   `parser:"@@"`
 	TagDef      *TagDef           `parser:"| @@"`
 	ElementDef  *ElementDef       `parser:"| @@"`
+	Scenario    *Scenario         `parser:"| @@"`
+	Flow        *Flow             `parser:"| @@"`
+	Requirement *Requirement      `parser:"| @@"`
+	ADR         *ADR              `parser:"| @@"`
+	Policy      *Policy           `parser:"| @@"`
 	ViewDef     *ViewDef          `parser:"| @@"`
 	Relation    *Relation         `parser:"| @@"`
 	Import      *ImportStatement  `parser:"| @@"`
@@ -88,6 +93,26 @@ func (p *Program) PostProcess() {
 		if item.Extend != nil {
 			p.ensureModel()
 			p.Model.Items = append(p.Model.Items, ModelItem{Extend: item.Extend})
+		}
+		if item.Scenario != nil {
+			p.ensureModel()
+			p.Model.Items = append(p.Model.Items, ModelItem{Scenario: item.Scenario})
+		}
+		if item.Flow != nil {
+			p.ensureModel()
+			p.Model.Items = append(p.Model.Items, ModelItem{Flow: item.Flow})
+		}
+		if item.Requirement != nil {
+			p.ensureModel()
+			p.Model.Items = append(p.Model.Items, ModelItem{Requirement: item.Requirement})
+		}
+		if item.ADR != nil {
+			p.ensureModel()
+			p.Model.Items = append(p.Model.Items, ModelItem{ADR: item.ADR})
+		}
+		if item.Policy != nil {
+			p.ensureModel()
+			p.Model.Items = append(p.Model.Items, ModelItem{Policy: item.Policy})
 		}
 		if item.Styles != nil {
 			// Styles can belong to Model or Views?
@@ -243,8 +268,23 @@ func isRelParentChild(parent, child QualifiedIdent) bool {
 }
 
 func (m *ModelItem) PostProcess() {
-	if m.Import != nil {
-		m.Import.PostProcess()
+	if m.Extend != nil {
+		// No post-harvest needed yet?
+	}
+	if m.Scenario != nil {
+		m.Scenario.PostProcess()
+	}
+	if m.Flow != nil {
+		m.Flow.PostProcess()
+	}
+	if m.Requirement != nil {
+		m.Requirement.PostProcess()
+	}
+	if m.ADR != nil {
+		m.ADR.PostProcess()
+	}
+	if m.Policy != nil {
+		m.Policy.PostProcess()
 	}
 	if m.DeploymentNode != nil {
 		m.DeploymentNode.PostProcess()

@@ -37,12 +37,16 @@ func TestApplyViewExpressions_IncludeWildcard(t *testing.T) {
 		"Backend.API",
 		"Backend.DB",
 		"Backend.MQ",
-		"Backend.API.Auth",
 	}
 	for _, id := range checks {
 		if !included[id] {
 			t.Errorf("Expected element '%s' to be included", id)
 		}
+	}
+
+	// Components should NOT be included by default in System scope
+	if included["Backend.API.Auth"] {
+		t.Error("Component 'Backend.API.Auth' should NOT be included in default System scope")
 	}
 }
 

@@ -249,6 +249,8 @@
   color: var(--text-secondary);
   background: var(--glass-bg);
   backdrop-filter: blur(4px);
+  z-index: 500;
+  /* Ensure loader appears above tab content */
 }
 
 .loading p {
@@ -776,4 +778,3 @@
 .details-panel-wrapper {
   position: relative;
 }
-

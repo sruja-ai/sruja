@@ -145,7 +145,7 @@ describe("antiPatternDetector", () => {
       relations: Array.from({ length: 11 }, (_, i) => ({
         source: "GodSystem",
         target: `System${i + 1}`,
-      })) as any,
+      })) as { source: string; target: string }[],
       views: {},
       sruja: { requirements: [], flows: [], scenarios: [], adrs: [] },
       _metadata: {
@@ -172,9 +172,9 @@ describe("antiPatternDetector", () => {
         System3: { id: "System3", kind: "system", title: "System 3", tags: [], links: [] },
       },
       relations: [
-        { source: "System1", target: "System2" } as any,
-        { source: "System2", target: "System3" } as any,
-        { source: "System3", target: "System1" } as any,
+        { source: "System1", target: "System2" },
+        { source: "System2", target: "System3" },
+        { source: "System3", target: "System1" },
       ],
       views: {},
       sruja: { requirements: [], flows: [], scenarios: [], adrs: [] },
@@ -204,9 +204,9 @@ describe("antiPatternDetector", () => {
         System3: { id: "System3", kind: "system", title: "System 3", tags: [], links: [] },
       },
       relations: [
-        { source: "System1", target: "System2" } as any,
-        { source: "System2", target: "System3" } as any,
-        { source: "System3", target: "System1" } as any,
+        { source: "System1", target: "System2" },
+        { source: "System2", target: "System3" },
+        { source: "System3", target: "System1" },
       ],
       views: {},
       sruja: { requirements: [], flows: [], scenarios: [], adrs: [] },

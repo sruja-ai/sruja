@@ -1,13 +1,13 @@
 // apps/website/src/content/config.ts
-import { defineCollection, z } from 'astro:content';
+import { defineCollection, z } from "astro:content";
 
 const docs = defineCollection({
-  type: 'content',
+  type: "content",
   schema: z.object({
     title: z.string(),
     weight: z.number().optional(),
     summary: z.string().optional(),
-    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+    difficulty: z.enum(["beginner", "intermediate", "advanced"]).optional(),
     topic: z.string().optional(),
     estimatedTime: z.string().optional(),
     description: z.string().optional(),
@@ -15,7 +15,7 @@ const docs = defineCollection({
 });
 
 const blog = defineCollection({
-  type: 'content',
+  type: "content",
   schema: z.object({
     title: z.string(),
     authors: z
@@ -30,25 +30,28 @@ const blog = defineCollection({
       .optional(),
     tags: z.array(z.string()).optional(),
     description: z.string().optional(),
+    summary: z.string().optional(),
+    image: z.string().optional(),
     pubDate: z.coerce.date().optional(),
+    modifiedDate: z.coerce.date().optional(),
   }),
 });
 
 const courses = defineCollection({
-  type: 'content',
+  type: "content",
   schema: z.object({
     title: z.string(),
     weight: z.number().optional(),
     summary: z.string().optional(),
     description: z.string().optional(),
-    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+    difficulty: z.enum(["beginner", "intermediate", "advanced"]).optional(),
     topic: z.string().optional(),
     estimatedTime: z.string().optional(),
   }),
 });
 
 const tutorials = defineCollection({
-  type: 'content',
+  type: "content",
   schema: z.object({
     title: z.string(),
     weight: z.number().optional(),
@@ -56,14 +59,14 @@ const tutorials = defineCollection({
     tags: z.array(z.string()).optional(),
     aliases: z.array(z.string()).optional(),
     description: z.string().optional(),
-    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+    difficulty: z.enum(["beginner", "intermediate", "advanced"]).optional(),
     topic: z.string().optional(),
     estimatedTime: z.string().optional(),
   }),
 });
 
 const quizzes = defineCollection({
-  type: 'data',
+  type: "data",
   schema: z.object({
     title: z.string(),
     slug: z.string(),
@@ -81,17 +84,17 @@ const quizzes = defineCollection({
 });
 
 const challenges = defineCollection({
-  type: 'content',
+  type: "content",
   schema: z.object({
     title: z.string(),
     summary: z.string().optional(),
-    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+    difficulty: z.enum(["beginner", "intermediate", "advanced"]).optional(),
     topic: z.string().optional(),
     estimatedTime: z.string().optional(),
     initialDsl: z.string(),
     checks: z.array(
       z.object({
-        type: z.enum(['relationExists', 'noErrors', 'elementExists']),
+        type: z.enum(["relationExists", "noErrors", "elementExists"]),
         source: z.string().optional(),
         target: z.string().optional(),
         label: z.string().optional(),
@@ -105,7 +108,7 @@ const challenges = defineCollection({
 });
 
 const investors = defineCollection({
-  type: 'content',
+  type: "content",
   schema: z.object({
     title: z.string(),
     weight: z.number().optional(),
@@ -115,12 +118,12 @@ const investors = defineCollection({
 });
 
 const templates = defineCollection({
-  type: 'content',
+  type: "content",
   schema: z.object({
     title: z.string(),
     summary: z.string().optional(),
     estimated_time: z.string().optional(),
-    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+    difficulty: z.enum(["beginner", "intermediate", "advanced"]).optional(),
     tags: z.array(z.string()).optional(),
     prerequisites: z.array(z.string()).optional(),
     learning_objectives: z.array(z.string()).optional(),

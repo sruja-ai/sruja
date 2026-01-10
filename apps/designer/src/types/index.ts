@@ -84,8 +84,17 @@ export interface C4NodeData {
   pendingActionCount?: number;
 }
 
-export type ViewTab = "overview" | "diagram" | "details" | "code" | "builder" | "governance";
+export type ViewTab = "overview" | "diagram" | "code" | "builder" | "details" | "roles";
 export type ViewMode = "designer" | "present";
+
+// ===========================================================================
+// Common Component Types
+// ===========================================================================
+
+/**
+ * Priority level for issues, risks, and actionable items across components
+ */
+export type Priority = "high" | "medium" | "low";
 
 // ===========================================================================
 // Re-export additional type definitions

@@ -36,7 +36,7 @@ system = kind "System"
 container = kind "Container"
 component = kind "Component"
 database = kind "Database"
-datastore = kind "Datastore"  // Note: Use 'database' keyword in element declarations, 'datastore' is for custom kinds
+datastore = kind "Datastore"  // Alias for 'database', but 'database' is the preferred standard
 queue = kind "Queue"
 ```
 
@@ -431,7 +431,7 @@ person = kind "Person"
 system = kind "System"
 container = kind "Container"
 component = kind "Component"
-datastore = kind "Datastore"  // Note: Use 'database' keyword in element declarations, 'datastore' is for custom kinds
+datastore = kind "Datastore"  // Alias for 'database'
 
 // Overview
 overview {

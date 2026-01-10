@@ -17,7 +17,7 @@ func TestConvertDataStore_WithMetadata(t *testing.T) {
 			{Key: "version", Value: strPtr("14")},
 		},
 	}
-	result := convertDataStore(ds)
+	result := dataStoreToJSON(ds)
 	if result.ID != "db1" || result.Label != "Database" {
 		t.Fatalf("basic fields not converted correctly: %+v", result)
 	}
@@ -32,7 +32,7 @@ func TestConvertQueue_WithProperties(t *testing.T) {
 		Label:      "Event Queue",
 		Technology: strPtr("RabbitMQ"),
 	}
-	result := convertQueue(q)
+	result := queueToJSON(q)
 	if result.ID != "queue1" {
 		t.Fatalf("queue ID not converted: %+v", result)
 	}
@@ -45,7 +45,7 @@ func TestConvertPerson_Complete(t *testing.T) {
 		Description: strPtr("System user"),
 		Style:       map[string]string{"color": "blue"},
 	}
-	result := convertPerson(p)
+	result := personToJSON(p)
 	if result.ID != "user1" || result.Label != "End User" {
 		t.Fatalf("person fields not converted: %+v", result)
 	}
@@ -141,7 +141,7 @@ func TestConvertSystem_Complete(t *testing.T) {
 
 		Style: map[string]string{"color": "red"},
 	}
-	result := convertSystem(s)
+	result := systemToJSON(s)
 	if result.ID != "sys1" || len(result.Containers) != 1 || len(result.Components) != 1 {
 		t.Fatalf("system conversion failed: %+v", result)
 	}

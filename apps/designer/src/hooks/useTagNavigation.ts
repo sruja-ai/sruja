@@ -1,13 +1,13 @@
-// apps/designer/src/hooks/useTagNavigation.ts
 import { useCallback } from "react";
 import { useUIStore } from "../stores/uiStore";
 import { useSelectionStore } from "../stores/viewStore";
 // import type { ArchitectureCanvasRef } from "../components/Canvas/types";
+import type { CanvasHandle } from "../components/SrujaCanvas/types";
 
 // Global ref to canvas - set by App component
-let globalCanvasRef: React.RefObject<any> | null = null;
+let globalCanvasRef: React.RefObject<CanvasHandle | null> | null = null;
 
-export function setGlobalCanvasRef(ref: React.RefObject<any>) {
+export function setGlobalCanvasRef(ref: React.RefObject<CanvasHandle | null>) {
   globalCanvasRef = ref;
 }
 

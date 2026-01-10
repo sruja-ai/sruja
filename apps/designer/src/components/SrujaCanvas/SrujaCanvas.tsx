@@ -17,7 +17,7 @@ import "@xyflow/react/dist/style.css";
 import { Paper, Group, Stack, ActionIcon, Text, Loader, Button, Badge } from "@mantine/core";
 import { useTheme } from "@sruja/ui";
 
-import { useArchitectureStore, useSelectionStore, useUIStore } from "../../stores";
+import { useArchitectureStore, useSelectionStore } from "../../stores";
 import { getArchitectureModel } from "../../models/ArchitectureModel";
 import { trackInteraction, logger } from "@sruja/shared";
 import { runGraphviz, GraphvizLayoutError } from "./layoutEngine";
@@ -28,7 +28,7 @@ import { SrujaNode } from "./SrujaNode";
 import { GroupNode } from "../Nodes/GroupNode";
 import { buildCompoundNodeStructure } from "./compoundNodes";
 import type { C4Node, C4Level } from "./types";
-import { ArrowLeft, Edit3 } from "lucide-react";
+import { ArrowLeft, Edit3, Zap } from "lucide-react";
 import { type LayoutQuality, type ParentChildRelationships } from "./qualityMetrics";
 
 import { convertDslToDot, type SrujaModelDump } from "@sruja/shared";
@@ -38,6 +38,10 @@ import type { EdgeType } from "./types";
 import SplineEdge from "./SplineEdge";
 import TrafficEdge from "./TrafficEdge";
 import { useViewStore } from "../../stores/viewStore"; // Ensure view store is imported
+import { AnimationController } from "../../utils/animation/AnimationController";
+import { VisualEffectsSystem } from "../../utils/animation/VisualEffectsSystem";
+import { AnimationControls } from "../Canvas/AnimationControls";
+import { StepDescriptionOverlay } from "../Canvas/StepDescriptionOverlay";
 
 const nodeTypes: NodeTypes = {
   sruja: SrujaNode,
@@ -125,6 +129,9 @@ interface LayoutCache {
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export const SrujaCanvas = () => {
+  // Layout Cache Ref
+  const cacheRef = useRef<LayoutCache>({});
+
   // Global Store
   const model = useArchitectureStore((s) => s.model) as unknown as SrujaModelDump | null;
   const dslSource = useArchitectureStore((s) => s.dslSource) as string | null;
@@ -162,6 +169,7 @@ export const SrujaCanvas = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [collapsedNodeIds, _setCollapsedNodeIds] = useState<Set<string>>(new Set());
   const [isComputing, setIsComputing] = useState(false);
+  const [showChaosPanel, setShowChaosPanel] = useState(false);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
 
   // React Flow State
@@ -178,8 +186,160 @@ export const SrujaCanvas = () => {
 
   const activeViewId = useViewStore((s) => s.activeViewId);
 
-  // Layout Cache
-  const cacheRef = useRef<LayoutCache>({});
+  // Animation State
+  const activeAnimation = useSelectionStore((s) => s.activeAnimation);
+  const isAnimationPlaying = useSelectionStore((s) => s.isAnimationPlaying);
+  const animationStep = useSelectionStore((s) => s.animationStep);
+  const setAnimationStep = useSelectionStore((s) => s.setAnimationStep);
+
+  // Animation Controller Ref
+  const animationControllerRef = useRef<AnimationController | null>(null);
+  const visualEffectsRef = useRef<VisualEffectsSystem | null>(null);
+
+  // Initialize Visual Effects System
+  useEffect(() => {
+    // We bind to document body or a specific container if possible,
+    // but VisualEffectsSystem typically works on DOM elements with data-id attributes
+    visualEffectsRef.current = new VisualEffectsSystem();
+    return () => {
+      visualEffectsRef.current?.reset();
+    };
+  }, []);
+
+  // Manage Animation Controller Lifecycle
+  useEffect(() => {
+    if (activeAnimation) {
+      if (!animationControllerRef.current) {
+        animationControllerRef.current = new AnimationController({
+          model: model,
+          onStepChange: (step, _data) => {
+            setAnimationStep(step);
+          },
+          onStateChange: (state) => {
+            // Sync visual effects
+            if (visualEffectsRef.current) {
+              visualEffectsRef.current.updateStepVisuals(
+                state.activeNodes,
+                state.activeEdges,
+                state.visitedNodes,
+                state.visitedEdges
+              );
+            }
+          },
+        });
+      }
+
+      // Update source and model
+      animationControllerRef.current.setModel(model);
+      animationControllerRef.current.setSource(activeAnimation);
+
+      // Sync initial state
+      if (isAnimationPlaying) {
+        animationControllerRef.current.play();
+      } else {
+        animationControllerRef.current.pause();
+      }
+
+      animationControllerRef.current.goToStep(animationStep);
+    } else {
+      // Cleanup if animation stopped
+      if (animationControllerRef.current) {
+        animationControllerRef.current.destroy();
+        animationControllerRef.current = null;
+      }
+      if (visualEffectsRef.current) {
+        visualEffectsRef.current.reset();
+      }
+    }
+
+    return () => {
+      // Cleanup on unmount or change
+      // We don't destroy here to avoid flickering on re-renders,
+      // relying on the activeAnimation check above for main lifecycle
+    };
+  }, [activeAnimation, model]); // Re-create/update when source or model changes
+
+  // Sync Store Control Actions to Controller
+  useEffect(() => {
+    const controller = animationControllerRef.current;
+    if (!controller || !activeAnimation) return;
+
+    if (isAnimationPlaying && !controller.isPlaying()) {
+      controller.play();
+    } else if (!isAnimationPlaying && controller.isPlaying()) {
+      controller.pause();
+    }
+  }, [isAnimationPlaying, activeAnimation]);
+
+  // Sync Store Step Navigation to Controller
+  useEffect(() => {
+    const controller = animationControllerRef.current;
+    if (!controller || !activeAnimation) return;
+
+    // Only update if different to avoid loops
+    if (controller.getCurrentStep() !== animationStep) {
+      controller.goToStep(animationStep);
+    }
+  }, [animationStep, activeAnimation]);
+
+  // Update node animation states when animation step changes
+  // This uses React state instead of DOM manipulation for better performance
+  useEffect(() => {
+    if (!activeAnimation || !activeAnimation.steps) {
+      // Clear animation states from all nodes
+      setNodes((currentNodes) =>
+        currentNodes.map((node) => ({
+          ...node,
+          data: { ...node.data, _animationState: "" },
+          className: (node.className || "")
+            .replace(/animation-mode|animation-node-\w+/g, "")
+            .trim(),
+        }))
+      );
+      return;
+    }
+
+    const steps = activeAnimation.steps;
+    const currentStepData = steps[animationStep];
+
+    // Build sets of active/visited nodes
+    const activeNodes = new Set<string>();
+    const visitedNodes = new Set<string>();
+
+    // Current step nodes are active
+    if (currentStepData) {
+      if (currentStepData.from) activeNodes.add(currentStepData.from);
+      if (currentStepData.to) activeNodes.add(currentStepData.to);
+    }
+
+    // Previous steps nodes are visited
+    for (let i = 0; i < animationStep; i++) {
+      const step = steps[i];
+      if (step?.from) visitedNodes.add(step.from);
+      if (step?.to) visitedNodes.add(step.to);
+    }
+
+    // Remove active nodes from visited (active takes precedence)
+    activeNodes.forEach((id) => visitedNodes.delete(id));
+
+    // Update nodes with animation state
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        let animationClass = "";
+        if (activeNodes.has(node.id)) {
+          animationClass = "animation-node-highlighted";
+        } else if (visitedNodes.has(node.id)) {
+          animationClass = "animation-node-visited";
+        }
+
+        return {
+          ...node,
+          data: { ...node.data, _animationState: animationClass },
+          className: `animation-mode ${animationClass}`.trim(),
+        };
+      })
+    );
+  }, [activeAnimation, animationStep, setNodes]);
 
   // Store actions
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
@@ -188,7 +348,7 @@ export const SrujaCanvas = () => {
   const chaosState = useArchitectureStore((s) => s.chaosState);
   const setFailedNode = useArchitectureStore((s) => s.setFailedNode);
   const setChaosEnabled = useArchitectureStore((s) => s.setChaosEnabled);
-  const selectedPersona = useUIStore((s) => s.selectedPersona);
+  // Role selection removed - now handled in Roles tab
 
   // Calculate Blast Radius (Impacted Nodes)
   const impactedNodeIds = useMemo(() => {
@@ -276,7 +436,7 @@ export const SrujaCanvas = () => {
               id,
               title: comp.name,
               kind: kind as ElementDump["kind"],
-              description: comp.description as any,
+              description: typeof comp.description === "string" ? comp.description : undefined,
               technology: comp.technology,
               tags,
               parent: parentId,
@@ -375,9 +535,10 @@ export const SrujaCanvas = () => {
 
         const result = await convertDslToDot(
           dslSource,
-          activeViewId ? 0 : level, // If activeViewId set, pass 0 level? Need to confirm WASM behavior
-          activeViewId || focusNodeId,
-          nodeSizes
+          activeViewId ? 1 : level, // Default to L1 when using a view definition
+          activeViewId ? undefined : focusNodeId, // Don't pass focusNodeId when using viewId
+          nodeSizes,
+          activeViewId || undefined // Pass the view ID to load the view definition
         );
 
         if (!result || !result.dot) {
@@ -470,6 +631,7 @@ export const SrujaCanvas = () => {
             level: level as C4Level,
             width: measuredSize?.width || layoutNode.width || 200,
             height: measuredSize?.height || layoutNode.height || 120,
+            metadata: element?.metadata ?? undefined,
           };
         });
 
@@ -480,7 +642,7 @@ export const SrujaCanvas = () => {
               id: `e-${rel.from}-${rel.to}-${idx}`,
               source: rel.from,
               target: rel.to,
-              label: (rel as any).label || "",
+              label: (rel as { label?: string }).label || "",
               technology: undefined,
             };
           }
@@ -513,12 +675,13 @@ export const SrujaCanvas = () => {
             timestamp: number;
           };
 
-          (window as Window & { __DIAGRAM_QUALITY__?: typeof qualityMetrics }).__DIAGRAM_QUALITY__ =
-            qualityMetrics;
+          (
+            window as unknown as { __DIAGRAM_QUALITY__?: typeof qualityMetrics }
+          ).__DIAGRAM_QUALITY__ = qualityMetrics;
 
           // Also expose to __LAYOUT_METRICS__ for e2e tests (matches test expectations)
           (
-            window as Window & {
+            window as unknown as {
               __LAYOUT_METRICS__?: Record<string, unknown>;
             }
           ).__LAYOUT_METRICS__ = {
@@ -530,7 +693,7 @@ export const SrujaCanvas = () => {
           logger.debug("Diagram quality metrics", {
             component: "SrujaCanvas",
             action: "calculateLayout",
-            metrics: (window as { __DIAGRAM_QUALITY__?: unknown }).__DIAGRAM_QUALITY__,
+            metrics: (window as unknown as { __DIAGRAM_QUALITY__?: unknown }).__DIAGRAM_QUALITY__,
           });
         }
 
@@ -573,11 +736,11 @@ export const SrujaCanvas = () => {
           (import.meta.env?.DEV || import.meta.env?.MODE === "development");
         if (logStructure && typeof window !== "undefined") {
           if (hasClusters && layoutResult.clusters) {
-            console.log(
+            console.debug(
               `[SrujaCanvas] Using compound node structure with ${Object.keys(layoutResult.clusters).length} clusters`
             );
           } else {
-            console.log("[SrujaCanvas] No clusters found - using flat node structure");
+            console.debug("[SrujaCanvas] No clusters found - using flat node structure");
           }
         }
 
@@ -613,9 +776,14 @@ export const SrujaCanvas = () => {
             // Capacity Planning Calculation
             const capacityState = useArchitectureStore.getState().capacityState;
             const loadMultiplier = capacityState.userLoad / 100;
-            // Simple heuristic: 3 replicas base * load multiplier
+            // Smart Scaling: Check for base_replicas in metadata, default to 3
             // Only for containers (services)
-            const replicas = node.kind === "container" ? Math.ceil(3 * loadMultiplier) : undefined;
+            const metaBase = node.metadata?.base_replicas || node.metadata?.replicas;
+            const baseReplicas = metaBase ? parseInt(String(metaBase), 10) : 3;
+            const replicas =
+              node.kind === "container" && !isNaN(baseReplicas)
+                ? Math.ceil(baseReplicas * loadMultiplier)
+                : undefined;
 
             return {
               id: node.id,
@@ -659,8 +827,15 @@ export const SrujaCanvas = () => {
 
           const capacityState = useArchitectureStore.getState().capacityState;
           const loadMultiplier = capacityState.userLoad / 100;
+
+          const metadata = node.data?.metadata as Record<string, unknown> | undefined;
+          const metaBase = metadata?.base_replicas || metadata?.replicas;
+          const baseReplicas = metaBase ? parseInt(String(metaBase), 10) : 3;
+
           const replicas =
-            node.data?.kind === "container" ? Math.ceil(3 * loadMultiplier) : undefined;
+            node.data?.kind === "container" && !isNaN(baseReplicas)
+              ? Math.ceil(baseReplicas * loadMultiplier)
+              : undefined;
 
           return {
             ...node,
@@ -808,7 +983,7 @@ export const SrujaCanvas = () => {
           });
 
         // Debug logging
-        console.log(
+        console.debug(
           `[SrujaCanvas] Layout complete: ${nextNodes.length} nodes, ${nextEdges.length} edges (from ${c4Edges.length} projected edges)`
         );
         // Edges processed and validated
@@ -894,7 +1069,17 @@ export const SrujaCanvas = () => {
           }
 
           // Use type assertion to avoid readonly error (since we cloned it, it's safe to mutate our copy)
-          const views = updatedModel.views as Record<string, any>;
+          // Define standard view type extended with layout
+          type ViewWithLayoutMutable = {
+            id: string;
+            title?: string;
+            rules?: unknown[];
+            nodes?: string[];
+            edges?: string[];
+            layout?: { positions?: Record<string, { x: number; y: number }> };
+          };
+
+          const views = updatedModel.views as Record<string, ViewWithLayoutMutable>;
 
           if (!views[viewKey]) {
             views[viewKey] = {
@@ -906,10 +1091,7 @@ export const SrujaCanvas = () => {
             };
           }
 
-          type ViewWithLayoutMutable = (typeof views)[string] & {
-            layout?: { positions?: Record<string, { x: number; y: number }> };
-          };
-          const view = views[viewKey] as ViewWithLayoutMutable;
+          const view = views[viewKey];
           if (!view.layout) {
             view.layout = {};
           }
@@ -1007,8 +1189,9 @@ export const SrujaCanvas = () => {
 
       // Handle double click for drill down
       const clickTime = Date.now();
-      const lastClick = (node as any)._lastClick || 0;
-      (node as any)._lastClick = clickTime;
+      const nodeWithClick = node as RFNode & { _lastClick?: number };
+      const lastClick = nodeWithClick._lastClick || 0;
+      nodeWithClick._lastClick = clickTime;
 
       if (clickTime - lastClick < 300) {
         // Double click detected
@@ -1134,9 +1317,9 @@ export const SrujaCanvas = () => {
 
   return (
     <div className="w-full h-full relative" style={{ backgroundColor: bgColor }}>
-      {/* Breadcrumb / Navigation Header */}
+      {/* Navigation Header (Left) */}
       <Paper
-        shadow="md"
+        shadow="sm"
         p="xs"
         withBorder
         style={{
@@ -1146,6 +1329,7 @@ export const SrujaCanvas = () => {
           zIndex: 10,
           backgroundColor: paperBg,
           backdropFilter: "blur(8px)",
+          borderRadius: "8px", // Sleek rounding
         }}
       >
         <Group gap="xs" align="center">
@@ -1176,7 +1360,25 @@ export const SrujaCanvas = () => {
               </Group>
             ))}
           </Group>
+        </Group>
+      </Paper>
 
+      {/* Tools Toolbar (Right) */}
+      <Paper
+        shadow="sm"
+        p="xs"
+        withBorder
+        style={{
+          position: "absolute",
+          top: 16,
+          right: 16,
+          zIndex: 10,
+          backgroundColor: paperBg,
+          backdropFilter: "blur(8px)",
+          borderRadius: "8px",
+        }}
+      >
+        <Group gap="xs">
           {/* Manual editing indicator */}
           {hasManualEdits && (
             <Badge
@@ -1189,6 +1391,17 @@ export const SrujaCanvas = () => {
               Manual Layout
             </Badge>
           )}
+
+          {/* Chaos Mode Toggle */}
+          <ActionIcon
+            variant={showChaosPanel || chaosState.enabled ? "filled" : "subtle"}
+            color={chaosState.enabled ? "red" : "gray"}
+            onClick={() => setShowChaosPanel(!showChaosPanel)}
+            title="Toggle Chaos Engineering Mode"
+            size="sm"
+          >
+            <Zap size={16} />
+          </ActionIcon>
         </Group>
       </Paper>
 
@@ -1272,8 +1485,8 @@ export const SrujaCanvas = () => {
         />
       </ReactFlow>
 
-      {/* SRE Chaos Mode Controls */}
-      {selectedPersona === "sre" && (
+      {/* SRE Chaos Mode Controls - Available for all users */}
+      {(showChaosPanel || chaosState.enabled) && (
         <Paper
           shadow="md"
           p="md"
@@ -1281,11 +1494,12 @@ export const SrujaCanvas = () => {
           withBorder
           style={{
             position: "absolute",
-            top: 80, // Moved down to avoid breadcrumbs
-            right: 20,
+            top: 60, // Aligned below the top-right tools toolbar
+            right: 16, // Aligned with the right edge
             zIndex: 1000,
             width: 300,
             backgroundColor: isDark ? "rgba(30, 30, 30, 0.95)" : "rgba(255, 255, 255, 0.95)",
+            backdropFilter: "blur(8px)", // Consistent glass effect
           }}
         >
           <Stack>
@@ -1293,7 +1507,7 @@ export const SrujaCanvas = () => {
               <Text fw={700} size="sm">
                 Chaos Engineering Mode
               </Text>
-              <Badge color={chaosState.enabled ? "red" : "gray"}>
+              <Badge color={chaosState.enabled ? "error" : "neutral"}>
                 {chaosState.enabled ? "ACTIVE" : "OFF"}
               </Badge>
             </Group>
@@ -1323,16 +1537,35 @@ export const SrujaCanvas = () => {
 
             {chaosState.enabled && chaosState.failedNodeId && (
               <Group gap="xs">
-                <Badge variant="dot" color="red">
-                  Failed: 1
-                </Badge>
-                <Badge variant="dot" color="orange">
-                  Impacted: {impactedNodeIds.size}
-                </Badge>
+                <Badge color="error">Failed: 1</Badge>
+                <Badge color="warning">Impacted: {impactedNodeIds.size}</Badge>
               </Group>
             )}
           </Stack>
         </Paper>
+      )}
+      {/* Animation Controls & Overlay */}
+      {activeAnimation && (
+        <>
+          <div
+            style={{
+              position: "absolute",
+              bottom: "20px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 5,
+              pointerEvents: "auto", // Ensure clicks work
+            }}
+          >
+            <AnimationControls animation={activeAnimation} />
+          </div>
+
+          <StepDescriptionOverlay
+            currentStep={animationStep}
+            totalSteps={activeAnimation.steps?.length ?? 0}
+            stepData={activeAnimation.steps?.[animationStep] ?? null}
+          />
+        </>
       )}
     </div>
   );

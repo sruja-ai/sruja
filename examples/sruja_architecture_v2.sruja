@@ -23,10 +23,12 @@ architect = person "Software Architect" {
 
   developer = person "Developer" {
     description "Uses Sruja CLI and VS Code extension for development"
+    metadata { tags ["R3"] }
   }
 
   sruja = system "Sruja Platform" {
     description "Tools for defining, visualizing, and analyzing software architecture"
+    metadata { tags ["R1"] }
 
     cli = container "Sruja CLI" {
       technology "Go (Cobra)"
@@ -34,7 +36,12 @@ architect = person "Software Architect" {
 
       commands = component "Commands" {
         description "compile, lint, fmt, export, import, tree, diff, explain, score, change"
+        technology "Cobra Command"
+        metadata { tags ["R1"] }
       }
+      commands -> language.parser "Parses files"
+      commands -> engine.validation "Validates AST"
+      commands -> export.jsonExporter "Exports JSON"
     }
 
     engine = container "Core Engine" {
@@ -44,6 +51,7 @@ architect = person "Software Architect" {
       validation = component "Validation Engine" {
         technology "Go"
         description "Validates AST against rules (pkg/engine)"
+        metadata { tags ["R1"] }
       }
 
       scorer = component "Scoring Engine" {
@@ -54,6 +62,7 @@ architect = person "Software Architect" {
       resolver = component "Reference Resolver" {
         technology "Go"
         description "Resolves references and relationships (pkg/engine/resolver.go)"
+        metadata { tags ["R1"] }
       }
 
       scorer -> validation "uses results from"
@@ -67,6 +76,7 @@ architect = person "Software Architect" {
       parser = component "Parser" {
         technology "Go"
         description "Parses .sruja files into AST (pkg/language/parser.go)"
+        metadata { tags ["R2"] }
       }
 
       ast = component "AST" {
@@ -89,7 +99,11 @@ architect = person "Software Architect" {
 
       handler = component "LSP Handler" {
         description "Handles textDocument/didChange, hover, definition, completion, etc."
+        technology "LSP"
+        metadata { tags ["R2"] }
       }
+      handler -> language.parser "Parses changes"
+      handler -> engine.validation "Validates code"
     }
 
     export = container "Exporters" {
@@ -98,11 +112,16 @@ architect = person "Software Architect" {
 
       jsonExporter = component "JSON Exporter" {
         description "Exports architecture to JSON format (pkg/export/json)"
+        technology "Go"
+        metadata { tags ["R4"] }
       }
+      jsonExporter -> language.ast "Reads AST"
 
       viewGenerator = component "View Generator" {
         description "Generates custom views (pkg/export/views)"
+        technology "Go"
       }
+      viewGenerator -> language.ast "Reads AST"
     }
 
     wasm = container "WASM Module" {
@@ -118,7 +137,9 @@ architect = person "Software Architect" {
     designer = container "Sruja Designer" {
       technology "React/Vite"
       description "Interactive designer for testing Sruja code (apps/designer)"
+      metadata { tags ["R3"] }
     }
+    designer -> wasm "Validates and renders"
 
     website = container "Documentation Site" {
       technology "Astro"
@@ -127,6 +148,8 @@ architect = person "Software Architect" {
 
     playground = container "Playground" {
       description "Interactive playground for testing DSL (embedded in website)"
+      technology "React"
+      metadata { tags ["R3"] }
     }
 
     // Internal Dependencies

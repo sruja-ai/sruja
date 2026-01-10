@@ -36,7 +36,7 @@ export function DSLPanel() {
   }
 
   return (
-    <div className="dsl-panel">
+    <div className="dsl-panel" data-testid="dsl-panel-container">
       <DSLPanelHeader
         dslSource={dslSource}
         error={error}
@@ -47,7 +47,7 @@ export function DSLPanel() {
         onToggleDiff={setShowDiff}
       />
 
-      <div className="dsl-panel-content">
+      <div className="dsl-panel-content" data-testid="dsl-editor-content">
         {isSaving && <div className="dsl-loading">Saving DSL changes...</div>}
         {error && <div className="dsl-error">{error}</div>}
         {/* Always render editor to prevent unmount/remount flicker */}
