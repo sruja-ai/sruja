@@ -4,21 +4,25 @@ import * as fs from "fs";
 import { SrujaPreviewProvider } from "./previewProvider";
 import { initializeWasmLsp, debugWasmLsp } from "./wasmLspProvider";
 
+const STATUS_BAR_PRIORITY = 100;
+const STATUS_BAR_ALIGNMENT = vscode.StatusBarAlignment.Right;
+
 let statusBarItem: vscode.StatusBarItem;
 let previewProvider: SrujaPreviewProvider;
+let outputChannel: vscode.OutputChannel;
 
-export function activate(context: vscode.ExtensionContext) {
+export function activate(context: vscode.ExtensionContext): void {
   try {
-    console.info("Sruja extension activating...");
+    outputChannel = vscode.window.createOutputChannel("Sruja");
+    outputChannel.appendLine("Sruja extension activating...");
 
-    // Check if this is first activation
     const isFirstActivation = !context.globalState.get("sruja.hasActivated", false);
     if (isFirstActivation) {
       context.globalState.update("sruja.hasActivated", true);
       showWelcomeMessage(context);
     }
 
-    statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+    statusBarItem = vscode.window.createStatusBarItem(STATUS_BAR_ALIGNMENT, STATUS_BAR_PRIORITY);
     statusBarItem.command = "sruja.previewArchitecture";
     updateStatusBar("Initializing...", "$(sync~spin)");
     statusBarItem.show();
@@ -30,7 +34,6 @@ export function activate(context: vscode.ExtensionContext) {
     );
     context.subscriptions.push(registration);
 
-    // Update preview on save
     vscode.workspace.onDidSaveTextDocument((doc) => {
       if (doc.languageId === "sruja") {
         const previewUri = getPreviewUri(doc.uri);
@@ -48,14 +51,12 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(previewCmd, debugCmd, updateStatusCmd);
 
-    // Listen for active editor changes to update status bar
     vscode.window.onDidChangeActiveTextEditor(() => {
       updateStatusBarWithDiagnostics();
     });
 
-    console.info("Sruja extension commands registered");
+    outputChannel.appendLine("Sruja extension commands registered");
 
-    // Initialize WASM-based LSP (no CLI dependency)
     vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
@@ -69,26 +70,26 @@ export function activate(context: vscode.ExtensionContext) {
           await initializeWasmLsp(context);
           progress.report({ increment: 100, message: "Ready!" });
 
-          console.info("WASM LSP initialization completed");
+          outputChannel.appendLine("WASM LSP initialization completed");
           updateStatusBar("Ready", "$(check)");
-          // Update status bar with initial diagnostics
           updateStatusBarWithDiagnostics();
         } catch (error: unknown) {
           progress.report({ increment: 100, message: "Initialization failed" });
           const errMsg = error instanceof Error ? error.message : String(error);
           const stack = error instanceof Error ? error.stack : undefined;
-          console.error("Failed to initialize WASM LSP:", errMsg);
+          outputChannel.appendLine(`Failed to initialize WASM LSP: ${errMsg}`);
           if (stack) {
-            console.error("Stack:", stack);
+            outputChannel.appendLine(`Stack: ${stack}`);
           }
           updateStatusBar("Error", "$(error)");
           vscode.window.showErrorMessage(
-            `Failed to initialize Sruja Language Server: ${errMsg}. Check "Sruja WASM LSP" output channel for details.`
+            `Failed to initialize Sruja Language Server: ${errMsg}. Check "Sruja" output channel for details.`
           );
         }
       }
     );
   } catch (e) {
+    outputChannel?.appendLine(`Failed to activate Sruja extension: ${String(e)}`);
     console.error("Failed to activate Sruja extension:", e);
     vscode.window.showErrorMessage(`Sruja extension activation failed: ${e}`);
   }
@@ -99,7 +100,7 @@ export function deactivate(): Thenable<void> | undefined {
   return undefined;
 }
 
-function updateStatusBar(text: string, icon?: string) {
+function updateStatusBar(text: string, icon?: string): void {
   if (!statusBarItem) return;
   statusBarItem.text = icon ? `${icon} Sruja: ${text}` : `Sruja: ${text}`;
   if (text.includes("Error")) {
@@ -110,8 +111,7 @@ function updateStatusBar(text: string, icon?: string) {
   statusBarItem.tooltip = `Sruja Language Support - ${text}`;
 }
 
-// Update status bar with diagnostics count
-export function updateStatusBarWithDiagnostics() {
+export function updateStatusBarWithDiagnostics(): void {
   if (!statusBarItem) return;
 
   const editor = vscode.window.activeTextEditor;
@@ -141,7 +141,7 @@ function getPreviewUri(uri: vscode.Uri): vscode.Uri {
   return vscode.Uri.parse(`${SrujaPreviewProvider.scheme}:${uri.path}.md?${query}`);
 }
 
-async function previewArchitecture(_context: vscode.ExtensionContext) {
+async function previewArchitecture(_context: vscode.ExtensionContext): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     vscode.window.showErrorMessage("No active editor");
@@ -154,7 +154,6 @@ async function previewArchitecture(_context: vscode.ExtensionContext) {
     return;
   }
 
-  // Handle unsaved files - save first if dirty
   if (doc.isUntitled) {
     vscode.window.showErrorMessage("Please save the file before previewing");
     return;
@@ -173,7 +172,6 @@ async function previewArchitecture(_context: vscode.ExtensionContext) {
     }
   }
 
-  // Verify file exists
   if (!fs.existsSync(doc.uri.fsPath)) {
     vscode.window.showErrorMessage("File not found. Please save the file first.");
     return;
@@ -182,7 +180,6 @@ async function previewArchitecture(_context: vscode.ExtensionContext) {
   const previewUri = getPreviewUri(doc.uri);
 
   try {
-    // Trigger preview update to refresh content
     if (previewProvider) {
       previewProvider.update(previewUri);
     }
@@ -190,11 +187,12 @@ async function previewArchitecture(_context: vscode.ExtensionContext) {
     await vscode.commands.executeCommand("markdown.showPreview", previewUri);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    outputChannel?.appendLine(`Failed to open preview: ${errorMessage}`);
     vscode.window.showErrorMessage(`Failed to open preview: ${errorMessage}`);
   }
 }
 
-async function showWelcomeMessage(_context: vscode.ExtensionContext) {
+async function showWelcomeMessage(_context: vscode.ExtensionContext): Promise<void> {
   const action = await vscode.window.showInformationMessage(
     "Welcome to Sruja! 🎉",
     "Get Started",
@@ -203,16 +201,15 @@ async function showWelcomeMessage(_context: vscode.ExtensionContext) {
   );
 
   if (action === "Get Started") {
-    // Open a sample file or show quick start
     const sampleContent = `architecture "My Architecture" {
   person User "User"
-  
+
   system MySystem "My System" {
     container API "API" {
       technology "Node.js"
     }
   }
-  
+
   User -> MySystem.API "uses"
 }`;
 

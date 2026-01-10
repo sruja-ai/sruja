@@ -14,8 +14,8 @@ test.describe("Code Panel", () => {
       await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
-    // Switch to Code tab
-    await page.locator('button.view-tab:has-text("Code")').click();
+    // Switch to Code tab - use data-testid
+    await page.getByTestId("tab-code").click();
     await page.waitForSelector(".code-panel-container", { timeout: 10000 });
   });
 

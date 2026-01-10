@@ -36,11 +36,21 @@ func runRuleWithTimeout(
 	// Run validation in a goroutine that respects context cancellation
 	diagsChan := make(chan []diagnostics.Diagnostic, 1)
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				panicChan <- fmt.Sprintf("Rule %s panicked: %v", rule.Name(), rec)
+				close(diagsChan)
+			}
+		}()
 		diagsChan <- rule.Validate(program)
 	}()
 
 	select {
-	case diags := <-diagsChan:
+	case diags, ok := <-diagsChan:
+		if !ok {
+			// Channel closed = panic occurred and handled
+			return
+		}
 		errChan <- diags
 	case <-ctx.Done():
 		// Timeout occurred - create a diagnostic for this rule

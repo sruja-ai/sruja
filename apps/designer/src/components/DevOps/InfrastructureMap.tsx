@@ -2,6 +2,7 @@
 import { useMemo } from "react";
 import { Server, Globe, Database, Box } from "lucide-react";
 import { getArchitectureModel } from "../../models/ArchitectureModel";
+import type { Element } from "@sruja/shared";
 import "./InfrastructureMap.css";
 
 interface InfrastructureNode {
@@ -11,7 +12,20 @@ interface InfrastructureNode {
   children?: InfrastructureNode[];
   componentId?: string;
   technology?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
+}
+
+interface ExtendedElement extends Element, Record<string, unknown> {}
+
+interface DeploymentData {
+  kind?: string;
+  deployment?: DeploymentData;
+  region?: string;
+  label?: string;
+  cluster?: string;
+  id?: string;
+  componentId?: string;
+  containerInstance?: string;
 }
 
 export function InfrastructureMap() {
@@ -29,11 +43,12 @@ export function InfrastructureMap() {
     // Extract deployment information from model elements
     // Deployments might be stored in elements or as separate deployment nodes
     for (const [, node] of nodes.entries()) {
-      const nodeData = node as any;
+      const nodeData = node as unknown as ExtendedElement;
 
       // Check if this is a deployment node
       if (nodeData.kind === "deployment" || nodeData.deployment) {
-        const deploymentData = nodeData.deployment || nodeData;
+        const deploymentData: DeploymentData = (nodeData.deployment ||
+          nodeData) as unknown as DeploymentData;
         const region = deploymentData.region || deploymentData.label || "default";
         const cluster = deploymentData.cluster || deploymentData.id || "default-cluster";
 
@@ -63,13 +78,13 @@ export function InfrastructureMap() {
         // Add components deployed to this cluster
         const componentId = deploymentData.componentId || deploymentData.containerInstance;
         if (componentId && nodes.has(componentId)) {
-          const component = nodes.get(componentId) as any;
+          const component = nodes.get(componentId) as unknown as ExtendedElement;
           clusterNode.children!.push({
             id: componentId,
             type: "component",
             name: componentId,
             componentId,
-            technology: component.technology,
+            technology: typeof component.technology === "string" ? component.technology : undefined,
             metadata: component,
           });
         }
@@ -81,8 +96,8 @@ export function InfrastructureMap() {
       const componentsByTech = new Map<string, InfrastructureNode[]>();
 
       for (const [nodeId, node] of nodes.entries()) {
-        const nodeData = node as any;
-        const tech = nodeData.technology || "unknown";
+        const nodeData = node as unknown as ExtendedElement;
+        const tech = typeof nodeData.technology === "string" ? nodeData.technology : "unknown";
 
         if (!componentsByTech.has(tech)) {
           componentsByTech.set(tech, []);

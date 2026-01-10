@@ -5,8 +5,6 @@ import {
   Link2,
   Search,
   Plus,
-  Edit,
-  Trash2,
   CheckCircle,
   Clock,
   XCircle,
@@ -41,21 +39,25 @@ export function ADRManager() {
     if (!newADR.title.trim()) return;
 
     updateArchitecture((model) => {
-      const newModel = { ...model } as any;
-      if (!newModel._metadata) newModel._metadata = { name: "Architecture" };
-      if (!newModel._metadata.adrs) newModel._metadata.adrs = [];
+      const existingADRs = model.sruja?.adrs || [];
+      const id = `ADR-${String(existingADRs.length + 1).padStart(3, "0")}`;
 
-      const id = `ADR-${String(newModel._metadata.adrs.length + 1).padStart(3, "0")}`;
-
-      newModel._metadata.adrs.push({
-        id,
-        title: newADR.title,
-        decision: newADR.decision,
-        status: newADR.status,
-        date: new Date().toISOString().split("T")[0],
-      });
-
-      return newModel;
+      return {
+        ...model,
+        sruja: {
+          ...model.sruja,
+          adrs: [
+            ...existingADRs,
+            {
+              id,
+              title: newADR.title,
+              decision: newADR.decision,
+              status: newADR.status as "proposed" | "accepted" | "rejected" | "superseded",
+              date: new Date().toISOString().split("T")[0],
+            },
+          ],
+        },
+      };
     });
 
     setNewADR({ title: "", decision: "", status: "proposed" });
@@ -64,17 +66,21 @@ export function ADRManager() {
 
   // Map ADRs to their affected components
   const adrsWithComponents = useMemo<ADRWithComponents[]>(() => {
-    return adrs.map((adr: any) => {
-      const adrId = adr.id || adr.name || "unknown";
+    return adrs.map((adr) => {
+      const adrId = adr.id || "unknown";
       const affectedComponents: string[] = [];
 
       // Find components linked to this ADR via tags or metadata
       for (const [nodeId, node] of nodes.entries()) {
-        const nodeData = node as any;
+        const nodeData = node as unknown as {
+          tags?: string[];
+          metadata?: { adrs?: string[] };
+          adrs?: { id: string }[];
+        };
         if (
           nodeData.tags?.includes(adrId) ||
           nodeData.metadata?.adrs?.includes(adrId) ||
-          nodeData.adrs?.some((a: any) => a.id === adrId)
+          nodeData.adrs?.some((a) => a.id === adrId)
         ) {
           affectedComponents.push(nodeId);
         }
@@ -82,9 +88,9 @@ export function ADRManager() {
 
       return {
         id: adrId,
-        title: adr.title || adr.name || adrId,
+        title: adr.title || adrId,
         status: adr.status || "proposed",
-        decision: adr.decision || adr.description,
+        decision: adr.decision || adr.context,
         affectedComponents,
       };
     });
@@ -204,46 +210,60 @@ export function ADRManager() {
       </div>
 
       <div className="adr-manager-list">
-        {filteredADRs.map((adr) => {
-          const status = statusConfig[adr.status || "proposed"] || statusConfig.proposed;
-          const isSelected = selectedADR === adr.id;
+        {filteredADRs.length === 0 ? (
+          <div className="adr-manager-empty-state">
+            <BookOpen size={24} className="empty-icon" />
+            <p>No ADRs match your search.</p>
+          </div>
+        ) : (
+          filteredADRs.map((adr) => {
+            const status = statusConfig[adr.status || "proposed"] || statusConfig.proposed;
+            const isSelected = selectedADR === adr.id;
 
-          return (
-            <div
-              key={adr.id}
-              className={`adr-item ${isSelected ? "selected" : ""}`}
-              onClick={() => setSelectedADR(isSelected ? null : adr.id)}
-            >
-              <div className="adr-item-header">
-                <Badge color={status.color} className="adr-item-status">
-                  {status.icon}
-                  <span style={{ marginLeft: "4px" }}>{adr.status || "proposed"}</span>
-                </Badge>
-                <div className="adr-item-content">
-                  <div className="adr-item-id">{adr.id}</div>
-                  <div className="adr-item-title">{adr.title}</div>
-                  {adr.decision && <div className="adr-item-decision">{adr.decision}</div>}
+            return (
+              <div
+                key={adr.id}
+                className={`adr-item ${isSelected ? "selected" : ""}`}
+                onClick={() => setSelectedADR(isSelected ? null : adr.id)}
+              >
+                <div className="adr-item-header">
+                  <Badge color={status.color} className="adr-item-status">
+                    {status.icon}
+                    <span style={{ marginLeft: "4px" }}>{adr.status || "proposed"}</span>
+                  </Badge>
+                  <div className="adr-item-content">
+                    <div className="adr-item-id-row">
+                      <div className="adr-item-id">{adr.id}</div>
+                      {(adr.status === "superseded" || adr.status === "deprecated") && (
+                        <Badge color="warning" className="priority-badge-small">
+                          Review needed
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="adr-item-title">{adr.title}</div>
+                    {adr.decision && (
+                      <div className="adr-item-decision">
+                        {adr.decision.length > 100
+                          ? `${adr.decision.substring(0, 100)}...`
+                          : adr.decision}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="adr-item-actions">
-                  <Button variant="ghost" size="sm" className="action-button">
-                    <Edit size={14} />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="action-button">
-                    <Trash2 size={14} />
-                  </Button>
-                </div>
+                {adr.affectedComponents.length > 0 && (
+                  <div className="adr-item-components">
+                    <Link2 size={12} />
+                    <span>
+                      Affects: {adr.affectedComponents.slice(0, 3).join(", ")}
+                      {adr.affectedComponents.length > 3 &&
+                        ` (+${adr.affectedComponents.length - 3} more)`}
+                    </span>
+                  </div>
+                )}
               </div>
-              {adr.affectedComponents.length > 0 && (
-                <div className="adr-item-components">
-                  <Link2 size={12} />
-                  <span>
-                    {adr.affectedComponents.length} affected: {adr.affectedComponents.join(", ")}
-                  </span>
-                </div>
-              )}
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );

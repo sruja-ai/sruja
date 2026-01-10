@@ -4,6 +4,8 @@
 import { useEffect, useRef } from "react";
 import { useArchitectureStore } from "../../../stores";
 import { Button, Input } from "@sruja/ui";
+import type { SrujaExtensions } from "@sruja/shared";
+
 import { SidePanel } from "../SidePanel";
 import { FormField, useFormState } from "./";
 import { X } from "lucide-react";
@@ -25,12 +27,12 @@ interface FormValues {
 }
 
 export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
-  const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
+  const { updateArchitecture } = useArchitectureStore();
   const data = useArchitectureStore((s) => s.model);
   const formRef = useRef<HTMLFormElement>(null);
 
   // Need to be careful mapping from model if it doesn't have overview yet or it's in sruja
-  const sruja = (data as any)?.sruja || {};
+  const sruja = data?.sruja as SrujaExtensions | undefined;
   const overview = sruja?.overview;
 
   // Initialize form state
@@ -40,15 +42,13 @@ export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
       summary: overview?.summary || "",
       audience: overview?.audience || "",
       scope: overview?.scope || "",
-      goals: overview?.goals || [],
-      nonGoals: overview?.nonGoals || [],
-      risks: overview?.risks || [],
+      goals: overview?.goals ? [...overview.goals] : [""],
+      nonGoals: overview?.nonGoals ? [...overview.nonGoals] : [""],
+      risks: overview?.risks ? [...overview.risks] : [""],
     },
-    validate: () => ({}), // No validation needed for overview
+    // ...
     onSubmit: async (values) => {
       await updateArchitecture((model) => {
-        const sruja = (model as any).sruja || {};
-
         const newOverview = {
           summary: values.summary.trim() || undefined,
           audience: values.audience.trim() || undefined,
@@ -67,16 +67,17 @@ export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
               : undefined,
         };
 
+        // Check if newOverview has any non-undefined properties
+        const hasOverviewContent = Object.values(newOverview).some(
+          (val) => val !== undefined && (!Array.isArray(val) || val.length > 0)
+        );
+
         return {
           ...model,
           sruja: {
-            ...sruja,
+            ...(model?.sruja || {}),
             description: values.architectureDescription.trim() || undefined,
-            overview: Object.keys(newOverview).some(
-              (k) => newOverview[k as keyof typeof newOverview]
-            )
-              ? newOverview
-              : undefined,
+            overview: hasOverviewContent ? newOverview : undefined,
           },
         };
       });
@@ -85,23 +86,27 @@ export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
   });
 
   // Reset form when opening/switching contexts
+  // Note: form.setValues and form.clearErrors are stable (wrapped in useCallback with empty deps)
+  // so they don't need to be in the dependency array
   useEffect(() => {
     if (isOpen) {
-      const sruja = (data as any)?.sruja || {};
-      const overview = sruja?.overview;
+      const currentSruja = data?.sruja as SrujaExtensions | undefined;
+      const currentOverview = currentSruja?.overview;
 
       form.setValues({
-        architectureDescription: sruja?.description || "",
-        summary: overview?.summary || "",
-        audience: overview?.audience || "",
-        scope: overview?.scope || "",
-        goals: overview?.goals || [],
-        nonGoals: overview?.nonGoals || [],
-        risks: overview?.risks || [],
+        architectureDescription: currentSruja?.description || "",
+        summary: currentOverview?.summary || "",
+        audience: currentOverview?.audience || "",
+        scope: currentOverview?.scope || "",
+        goals: currentOverview?.goals ? ([...currentOverview.goals] as string[]) : [],
+        nonGoals: currentOverview?.nonGoals ? ([...currentOverview.nonGoals] as string[]) : [],
+        risks: currentOverview?.risks ? ([...currentOverview.risks] as string[]) : [],
       });
       form.clearErrors();
     }
-  }, [isOpen, data]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // form.setValues and form.clearErrors are stable callbacks from useFormState
+  }, [isOpen, data]);
 
   // Handle Escape key
   useEffect(() => {

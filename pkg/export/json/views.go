@@ -81,6 +81,14 @@ func (e *Exporter) convertViewsFromProgram(dump *SrujaModelDump, program *langua
 			if v.Title != nil {
 				viewTitle = *v.Title
 			}
+			viewDescription := ""
+			if v.Description != nil {
+				viewDescription = *v.Description
+			}
+			viewTags := []string{}
+			if len(v.Tags) > 0 {
+				viewTags = append(viewTags, v.Tags...)
+			}
 			viewOf := ""
 			if v.Of != nil {
 				viewOf = v.Of.String()
@@ -91,6 +99,16 @@ func (e *Exporter) convertViewsFromProgram(dump *SrujaModelDump, program *langua
 			var layoutPositions map[string]map[string]interface{}
 			if v.Body != nil {
 				for _, bitem := range v.Body.Items {
+					// Check for title, description, and tags in body (override top-level)
+					if bitem.Title != nil {
+						viewTitle = *bitem.Title
+					}
+					if bitem.Description != nil {
+						viewDescription = *bitem.Description
+					}
+					if len(bitem.Tags) > 0 {
+						viewTags = bitem.Tags
+					}
 					if bitem.Include != nil {
 						expr := &ViewRuleExpr{}
 						for _, vexpr := range bitem.Include.Expressions {
@@ -145,9 +163,9 @@ func (e *Exporter) convertViewsFromProgram(dump *SrujaModelDump, program *langua
 			viewDump := ViewDump{
 				ID:          viewID,
 				Title:       viewTitle,
-				Description: "", // Not capturing description in View struct currently
+				Description: viewDescription,
 				ViewOf:      viewOf,
-				Tags:        []string{},
+				Tags:        viewTags,
 				Rules:       rules,
 				Nodes:       []NodeDump{}, // Critical: Initialize as empty slice to avoid null
 				Edges:       []EdgeDump{}, // Critical: Initialize as empty slice to avoid null

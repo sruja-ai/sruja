@@ -6,6 +6,12 @@ import ContentDetail from '@/features/content/components/ContentDetail.astro';
 import ContentNavigation from '@/features/content/components/ContentNavigation.astro';
 import { generateContentPaths } from '@/features/content/utils/paths';
 import { formatContentDate, formatContentDateISO } from '@/features/content/utils/dates';
+import {
+  generateArticleSchema,
+  getCanonicalUrl,
+  generateBreadcrumbSchema,
+} from '@/utils/seo';
+import { envConfig } from '@/config/env';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog');
@@ -31,11 +37,62 @@ const { post, previous, next } = Astro.props as Props;
 const { Content } = await post.render();
 const pubDate = formatContentDate(post.data.pubDate);
 const pubDateISO = formatContentDateISO(post.data.pubDate);
+const modifiedDateISO = post.data.modifiedDate
+  ? formatContentDateISO(post.data.modifiedDate) || undefined
+  : undefined;
+
+const siteUrl = envConfig.siteUrl || 'https://sruja.ai';
+const postUrl = `/blogs/${post.slug}`;
+const canonicalUrl = getCanonicalUrl(postUrl, siteUrl);
+
+// Use summary or description for meta description
+const metaDescription = post.data.summary || post.data.description || '';
+
+// Generate structured data
+const articleSchema = generateArticleSchema({
+  title: post.data.title,
+  description: metaDescription,
+  url: canonicalUrl,
+  image: post.data.image,
+  type: 'article',
+  publishedTime: pubDateISO || undefined,
+  modifiedTime: modifiedDateISO,
+  authors: post.data.authors?.map((author: any) => ({
+    name: author.name,
+    url: author.url,
+  })),
+  tags: post.data.tags,
+  canonical: canonicalUrl,
+});
+
+const breadcrumbSchema = generateBreadcrumbSchema([
+  { name: 'Home', url: '/' },
+  { name: 'Blog', url: '/blogs' },
+  { name: post.data.title, url: postUrl },
+]);
+
+const structuredData = [articleSchema, breadcrumbSchema];
 ---
 
-<Layout title={post.data.title} description={post.data.description}>
+<Layout
+  title={post.data.title}
+  description={metaDescription}
+  image={post.data.image}
+  url={postUrl}
+  type="article"
+  publishedTime={pubDateISO || undefined}
+  modifiedTime={modifiedDateISO}
+  authors={post.data.authors?.map((author: any) => ({
+    name: author.name,
+    url: author.url,
+  }))}
+  tags={post.data.tags}
+  canonical={canonicalUrl}
+  structuredData={structuredData}
+>
   <ContentDetail
     title={post.data.title}
+    summary={post.data.summary}
     tags={post.data.tags}
     date={pubDate || undefined}
     dateISO={pubDateISO || undefined}

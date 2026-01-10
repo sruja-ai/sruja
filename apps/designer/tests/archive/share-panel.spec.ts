@@ -43,13 +43,17 @@ test.describe("Share Panel", () => {
 
   test("copies URL to clipboard", async ({ page }) => {
     // Mock clipboard in page context
+    // Mock clipboard in page context
     await page.evaluate(() => {
-      (window as any).__COPIED__ = "";
+      Object.defineProperty(window, "__COPIED__", { value: "", writable: true });
       const orig = navigator.clipboard.writeText;
-      (navigator.clipboard as any).writeText = async (text: string) => {
-        (window as any).__COPIED__ = text;
-        if (orig) return orig.call(navigator.clipboard, text);
-      };
+      Object.defineProperty(navigator.clipboard, "writeText", {
+        value: async (text: string) => {
+          (window as unknown as { __COPIED__: string }).__COPIED__ = text;
+          if (orig) return orig.call(navigator.clipboard, text);
+        },
+        writable: true,
+      });
     });
 
     await page.locator(".share-btn").click();
@@ -62,7 +66,9 @@ test.describe("Share Panel", () => {
     await expect(copyBtn).toContainText("Copied!");
 
     // Verify clipboard content
-    const copied = await page.evaluate(() => (window as any).__COPIED__);
+    const copied = await page.evaluate(
+      () => (window as unknown as { __COPIED__: string }).__COPIED__
+    );
     expect(copied).toContain("?share=");
   });
 

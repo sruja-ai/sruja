@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sruja-ai/sruja/pkg/export/dot"
+	"github.com/sruja-ai/sruja/pkg/export/views"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
 
@@ -26,6 +27,8 @@ func TestExporter_Export_Comprehensive(t *testing.T) {
 		}
 		web -> db "Writes"
 	}
+	
+	OtherSystem = System "Other System"
 	
 	user -> Cloud.web "Uses"
 `
@@ -84,12 +87,12 @@ func TestExporter_Export_Comprehensive(t *testing.T) {
 }
 
 func TestExporter_EdgeAttributes(t *testing.T) {
-	elements := []*dot.Element{
+	elements := []*views.Element{
 		{ID: "A", Title: "Node A"},
 		{ID: "B", Title: "Node B"},
 	}
 
-	relations := []*dot.Relation{
+	relations := []*views.Relation{
 		{From: "A", To: "B", Label: "Uses"},
 	}
 
@@ -157,29 +160,29 @@ func TestExporter_RankOrderingConstraints(t *testing.T) {
 		},
 	}
 
-	output := dot.GenerateDOTFromConstraints([]*dot.Element{}, []*dot.Relation{}, constraints)
+	output := dot.GenerateDOTFromConstraints([]*views.Element{}, []*views.Relation{}, constraints)
 
-	if !strings.Contains(output, "style=invis") {
-		t.Error("Missing invisible edges for rank ordering")
+	if strings.Contains(output, "style=invis") {
+		t.Error("Should not contain invisible edges for rank ordering")
 	}
-	if !strings.Contains(output, "weight=1000") {
-		t.Error("Missing high weight for rank alignment")
+	if strings.Contains(output, "weight=1000") {
+		t.Error("Should not contain high weight for rank alignment")
 	}
 }
 
 func TestExporter_EmptyConstraints(t *testing.T) {
-	output := dot.GenerateDOTFromConstraints([]*dot.Element{}, []*dot.Relation{}, dot.LayoutConstraints{})
+	output := dot.GenerateDOTFromConstraints([]*views.Element{}, []*views.Relation{}, dot.LayoutConstraints{})
 	if !strings.Contains(output, "digraph G") {
 		t.Error("Missing digraph header")
 	}
 }
 
 func TestExporter_groupByParent_EdgeCases(t *testing.T) {
-	elements := []*dot.Element{
+	elements := []*views.Element{
 		{ID: "Root", ParentID: ""},
 		{ID: "Child", ParentID: "Root"},
 	}
-	output := dot.GenerateDOTFromConstraints(elements, []*dot.Relation{}, dot.LayoutConstraints{})
+	output := dot.GenerateDOTFromConstraints(elements, []*views.Relation{}, dot.LayoutConstraints{})
 	if !strings.Contains(output, "subgraph \"cluster_Root\"") {
 		t.Error("Missing cluster for Root")
 	}

@@ -31,7 +31,7 @@ export function NavTreeItem({
 }: NavTreeItemProps) {
   // Safe parent check - Element type from @sruja/shared might have strict parent type
   // Use simple any cast just for the parent access if strictly typed as FqnRef
-  const parentId = (element as any).parent as string | undefined;
+  const parentId = (element as { parent?: string }).parent;
 
   return (
     <li className="nav-item-group">

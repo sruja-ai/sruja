@@ -177,14 +177,14 @@ func TestEscapeLabel(t *testing.T) {
 
 func TestPxToInch(t *testing.T) {
 	// 72 DPI means 72 pixels = 1 inch
-	result := pxToInch(72)
+	result := pxToInchFloat(72)
 	if result != 1.0 {
-		t.Errorf("pxToInch(72) = %v, want 1.0", result)
+		t.Errorf("pxToInchFloat(72) = %v, want 1.0", result)
 	}
 
-	result = pxToInch(144)
+	result = pxToInchFloat(144)
 	if result != 2.0 {
-		t.Errorf("pxToInch(144) = %v, want 2.0", result)
+		t.Errorf("pxToInchFloat(144) = %v, want 2.0", result)
 	}
 }
 

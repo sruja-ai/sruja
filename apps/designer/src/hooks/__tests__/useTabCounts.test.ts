@@ -20,7 +20,8 @@ describe("useTabCounts", () => {
       elements: {},
       relations: [],
       views: {},
-      sruja: undefined as any,
+      // @ts-expect-error - Testing runtime tolerance for missing property
+      sruja: undefined,
       _metadata: {
         name: "Test",
         version: "1.0",
@@ -107,8 +108,10 @@ describe("useTabCounts", () => {
       relations: [],
       views: {},
       sruja: {
-        requirements: undefined as any,
-        adrs: undefined as any,
+        // @ts-expect-error - Testing runtime tolerance
+        requirements: undefined,
+        // @ts-expect-error - Testing runtime tolerance
+        adrs: undefined,
         flows: [],
         scenarios: [],
       },

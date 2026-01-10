@@ -2,18 +2,30 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useClipboardOperations } from "../useClipboardOperations";
-import type { SrujaModelDump } from "@sruja/shared";
+import type { SrujaModelDump, ElementDump } from "@sruja/shared";
 import type { ArchitectureCanvasRef } from "../../components/Canvas/types";
 
 // Mock dependencies
-const mockCopyNode = vi.fn();
-const mockUpdateArchitecture = vi.fn();
-const mockSelectNode = vi.fn();
-const mockShowToast = vi.fn();
-const mockGenerateUniqueId = vi.fn();
-const mockGetAllNodeIds = vi.fn();
-const mockFindNodeInArchitecture = vi.fn();
-const mockGetReactFlowInstance = vi.fn();
+const h = vi.hoisted(() => ({
+  mockCopyNode: vi.fn(),
+  mockUpdateArchitecture: vi.fn(),
+  mockSelectNode: vi.fn(),
+  mockShowToast: vi.fn(),
+  mockGenerateUniqueId: vi.fn(),
+  mockGetAllNodeIds: vi.fn(),
+  mockFindNodeInArchitecture: vi.fn(),
+  mockGetReactFlowInstance: vi.fn(),
+}));
+const {
+  mockCopyNode,
+  mockUpdateArchitecture,
+  mockSelectNode,
+  mockShowToast,
+  mockGenerateUniqueId,
+  mockGetAllNodeIds,
+  mockFindNodeInArchitecture,
+  mockGetReactFlowInstance,
+} = h;
 
 vi.mock("../../stores/clipboardStore", () => ({
   useClipboardStore: vi.fn((selector) => {
@@ -71,9 +83,9 @@ vi.mock("../../stores/toastStore", () => ({
 }));
 
 vi.mock("../../utils/nodeUtils", () => ({
-  generateUniqueId: mockGenerateUniqueId,
-  getAllNodeIds: mockGetAllNodeIds,
-  findNodeInArchitecture: mockFindNodeInArchitecture,
+  generateUniqueId: h.mockGenerateUniqueId,
+  getAllNodeIds: h.mockGetAllNodeIds,
+  findNodeInArchitecture: h.mockFindNodeInArchitecture,
 }));
 
 describe("useClipboardOperations", () => {
@@ -113,11 +125,7 @@ describe("useClipboardOperations", () => {
 
     result.current.handleCopy();
 
-    expect(mockCopyNode).toHaveBeenCalledWith(
-      "system",
-      expect.objectContaining({ id: "System1" }),
-      undefined
-    );
+    expect(mockCopyNode).toHaveBeenCalledWith("System1", expect.any(Array));
     expect(mockShowToast).toHaveBeenCalledWith("Copied to clipboard", "success");
   });
 
@@ -127,8 +135,10 @@ describe("useClipboardOperations", () => {
     vi.mocked(useClipboardStore).mockImplementation((selector) => {
       return selector({
         clipboard: {
-          type: "system" as const,
-          data: { id: "System2", label: "Copied System" },
+          rootId: "System2",
+          elements: [
+            { id: "System2", kind: "system", title: "Copied System", tags: [], links: [] },
+          ],
         },
         copyNode: mockCopyNode,
         clearClipboard: vi.fn(),
@@ -146,12 +156,12 @@ describe("useClipboardOperations", () => {
   it("should duplicate selected node", async () => {
     // Mock clipboard to be set after copy
     const { useClipboardStore } = await import("../../stores/clipboardStore");
-    let clipboardState: any = null;
+    let clipboardState: { rootId: string; elements: ElementDump[] } | null = null;
     vi.mocked(useClipboardStore).mockImplementation((selector) => {
       return selector({
         clipboard: clipboardState,
-        copyNode: (type: any, data: any) => {
-          clipboardState = { type, data };
+        copyNode: (_rootId: string, _elements: ElementDump[]) => {
+          clipboardState = { rootId: _rootId, elements: _elements };
         },
         clearClipboard: vi.fn(),
         hasClipboard: vi.fn(() => !!clipboardState),
@@ -172,7 +182,7 @@ describe("useClipboardOperations", () => {
       return selector({
         selectedNodeId: null,
         selectNode: mockSelectNode,
-      } as any);
+      } as unknown as ReturnType<typeof useSelectionStore.getState>);
     });
 
     const { result } = renderHook(() => useClipboardOperations(mockCanvasRef));

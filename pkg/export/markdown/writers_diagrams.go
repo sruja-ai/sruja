@@ -1,6 +1,8 @@
 package markdown
 
 import (
+	"strings"
+
 	"github.com/sruja-ai/sruja/pkg/export/mermaid"
 	"github.com/sruja-ai/sruja/pkg/language"
 )
@@ -14,15 +16,24 @@ func (e *Exporter) getMermaid() *mermaid.Exporter {
 
 func (e *Exporter) generateL1Diagram(prog *language.Program) string {
 	m := e.getMermaid()
-	return m.GenerateL1(prog)
+	m.Config.ViewLevel = 1
+	return m.Export(prog)
 }
 
 func (e *Exporter) generateL2Diagram(sys *language.System, prog *language.Program) string {
 	m := e.getMermaid()
-	return m.GenerateL2(sys, prog)
+	m.Config.ViewLevel = 2
+	m.Config.TargetID = sys.ID
+	return m.Export(prog)
 }
 
 func (e *Exporter) generateL3Diagram(cont *language.Container, systemID string, prog *language.Program) string {
 	m := e.getMermaid()
-	return m.GenerateL3(cont, systemID, prog)
+	m.Config.ViewLevel = 3
+	id := cont.ID
+	if systemID != "" && !strings.Contains(cont.ID, systemID) {
+		id = systemID + "." + cont.ID
+	}
+	m.Config.TargetID = id
+	return m.Export(prog)
 }

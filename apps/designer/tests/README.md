@@ -65,6 +65,57 @@ This directory contains end-to-end tests for the designer app using Playwright. 
 
 - **`ecommerce-quality.spec.ts`** - Quality measurement (specialized test)
 
+- **`role-views.spec.ts`** - Role-based views and role switcher:
+  - Role switcher functionality
+  - Role-specific views (Product, Architect, DevOps, Security, CTO, SRE)
+  - Role view content and scenarios
+  - Empty states when no roles defined
+
+- **`keyboard-shortcuts.spec.ts`** - Keyboard shortcuts:
+  - Export shortcuts (Ctrl+S)
+  - Import shortcut (Ctrl+O)
+  - Undo/Redo shortcuts (Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y)
+  - Command palette (Ctrl+K)
+  - Canvas navigation (Ctrl+0, Ctrl+=, Ctrl+1)
+  - Copy/Paste/Duplicate (Ctrl+C, Ctrl+V, Ctrl+D)
+  - Help shortcuts (?)
+  - Escape key handling
+
+- **`canvas-interactions.spec.ts`** - Canvas interactions:
+  - Zoom controls (zoom in/out)
+  - Pan and drag functionality
+  - Node selection and deselection
+  - Context menu (right-click)
+  - Multi-select (Ctrl+Click, Shift+Click)
+  - Node interactions (double-click drill-down, hover tooltips)
+  - Edge interactions
+
+- **`builder-wizard-detailed.spec.ts`** - Enhanced builder wizard tests:
+  - Wizard structure and step indicators
+  - Step navigation (next, previous, jump to step)
+  - Form interactions and validation
+  - DSL preview toggle and updates
+  - Wizard completion flow
+  - State persistence across tab switches
+
+- **`overview-tab.spec.ts`** - Overview tab features:
+  - Hero section (architecture name, description)
+  - Stats row and statistics
+  - Governance widget
+  - Metadata section
+  - Quick navigation cards
+  - Sections (goals, constraints, policies)
+
+- **`details-filters.spec.ts`** - Details panel filters:
+  - Filter sidebar display
+  - Type filters (requirement, ADR, scenario, flow)
+  - Status filters (fulfilled, partial, missing)
+  - Tag filters
+  - Search functionality
+  - Clear filters
+  - Filter statistics
+  - Filtered items display
+
 ### Archived Tests
 
 See `archive/README.md` for details on archived tests that were consolidated or may not be relevant to the current app state.

@@ -7,12 +7,15 @@ test.describe("Share & Export", () => {
 
     // Mock clipboard in page context
     await page.evaluate(() => {
-      (window as any).__COPIED__ = "";
+      Object.defineProperty(window, "__COPIED__", { value: "", writable: true });
       const orig = navigator.clipboard.writeText;
-      (navigator.clipboard as any).writeText = async (text: string) => {
-        (window as any).__COPIED__ = text;
-        if (orig) return orig.call(navigator.clipboard, text);
-      };
+      Object.defineProperty(navigator.clipboard, "writeText", {
+        value: async (text: string) => {
+          (window as unknown as { __COPIED__: string }).__COPIED__ = text;
+          if (orig) return orig.call(navigator.clipboard, text);
+        },
+        writable: true,
+      });
     });
 
     // Ensure demo is loaded
@@ -38,9 +41,12 @@ test.describe("Share & Export", () => {
 
     // Validate captured text
     await expect
-      .poll(async () => page.evaluate(() => (window as any).__COPIED__ as string), {
-        timeout: 10000,
-      })
+      .poll(
+        async () => page.evaluate(() => (window as unknown as { __COPIED__: string }).__COPIED__),
+        {
+          timeout: 10000,
+        }
+      )
       .toMatch(/\bshare=/);
   });
 

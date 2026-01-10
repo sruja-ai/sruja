@@ -267,7 +267,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                 onEdit={onEditSystem}
                 onAddChild={onAddContainer}
               >
-                {containers.map((container: any) => {
+                {containers.map((container) => {
                   const components = getChildren(container.id, "component");
                   const isContExpanded = expandedNodes.has(container.id);
                   return (
@@ -287,7 +287,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                       onAddChild={onAddComponent}
                     >
                       {/* Components (Leaf nodes) */}
-                      {components.map((component: any) => (
+                      {components.map((component) => (
                         <NavTreeItem
                           key={component.id}
                           element={component}
@@ -335,7 +335,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
               )}
             </li>
           )}
-          {filteredPersons.map((person: any) => (
+          {filteredPersons.map((person) => (
             <NavTreeItem
               key={person.id}
               element={person}

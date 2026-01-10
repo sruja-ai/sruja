@@ -45,11 +45,8 @@ export function useProjectSync() {
   // Initialize Firebase on mount
   useEffect(() => {
     const config = getFirebaseConfig();
-    if (config) {
-      firebaseShareService.initialize(config).catch(() => {
-        // Firebase initialization failure is non-critical, silently handle
-        // The service will gracefully degrade if Firebase is unavailable
-      });
+    if (config && typeof firebaseShareService.initialize === "function") {
+      firebaseShareService.initialize(config).catch(() => {});
     }
   }, []);
 
@@ -126,7 +123,10 @@ export function useProjectSync() {
           return;
         }
       }
-    } catch {}
+    } catch (err) {
+      // Log error but continue to fallback
+      console.error("[useProjectSync] Failed to load example:", err);
+    }
 
     // Fallback
     const fallbackDsl = `person = kind "Person"
@@ -152,6 +152,47 @@ user -> web "uses"
     }
     setIsLoadingFile(false);
   }, [loadFromDSL, setActiveTab, showToast]);
+
+  // HMR: Listen for example file changes and reload
+  useEffect(() => {
+    // Only in development with HMR enabled
+    if (import.meta.hot) {
+      const handleExampleChange = async (event: {
+        data?: { path?: string; filename?: string };
+      }) => {
+        const params = new URLSearchParams(window.location.search);
+        const exampleParam = params.get("example");
+
+        // Only reload if we're viewing an example and it matches the changed file
+        if (exampleParam && event.data?.filename) {
+          const changedFilename = event.data.filename.replace(/^examples\//, "").replace(/^\//, "");
+          if (exampleParam === changedFilename || changedFilename.endsWith(exampleParam)) {
+            // Force reload the example by fetching fresh content
+            showToast(`Example file changed, reloading...`, "info");
+            try {
+              // Fetch with aggressive cache-busting
+              const content = await fetchExampleDsl(exampleParam);
+              const model = await convertDslToModel(content);
+              if (model) {
+                loadFromDSL(model as SrujaModelDump, content, exampleParam);
+              }
+            } catch (err) {
+              showToast(
+                `Failed to reload example: ${err instanceof Error ? err.message : "Unknown error"}`,
+                "error"
+              );
+            }
+          }
+        }
+      };
+
+      import.meta.hot.on("example-file-changed", handleExampleChange);
+
+      return () => {
+        import.meta.hot?.off("example-file-changed", handleExampleChange);
+      };
+    }
+  }, [loadFromDSL, showToast]);
 
   // Unified initialization logic (Load from URL or Demo)
   useEffect(() => {
@@ -284,13 +325,16 @@ user -> web "uses"
       // 4. Load Demo (if no project/share params)
       if (!shareParam) {
         const exampleParam = params.get("example");
-        const { model, currentExampleFile: currentExample } = useArchitectureStore.getState();
+        const model =
+          typeof useArchitectureStore.getState === "function"
+            ? useArchitectureStore.getState().model
+            : null;
 
         // Load demo if:
         // 1. No model exists, OR
-        // 2. Example param is present and differs from current example
-        // This ensures examples load correctly in incognito mode (no model) or when switching examples
-        const shouldLoadDemo = !model || (exampleParam && exampleParam !== currentExample);
+        // 2. Example param is present (always reload to get fresh content - important for HMR/dev)
+        // This ensures examples load correctly and always get fresh file content
+        const shouldLoadDemo = !model || exampleParam;
         if (shouldLoadDemo) {
           loadDemo();
         }

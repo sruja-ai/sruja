@@ -37,7 +37,8 @@ export function QualityScoreCard({ isCollapsed = false }: QualityScoreCardProps)
     }
     const checkQuality = () => {
       if (typeof window !== "undefined") {
-        const metrics = (window as any).__DIAGRAM_QUALITY__ as QualityMetrics | null;
+        const metrics = (window as unknown as { __DIAGRAM_QUALITY__: QualityMetrics })
+          .__DIAGRAM_QUALITY__;
         if (metrics && metrics.timestamp) {
           // Only update if metrics are fresh (within last 30 seconds)
           const age = Date.now() - metrics.timestamp;

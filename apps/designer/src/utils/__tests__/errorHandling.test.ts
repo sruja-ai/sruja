@@ -182,9 +182,9 @@ describe("errorHandling", () => {
     });
 
     it("should return default message for unknown error types", () => {
-      expect(getUserFriendlyMessage("String error")).toBe("An unexpected error occurred");
-      expect(getUserFriendlyMessage(null)).toBe("An unexpected error occurred");
-      expect(getUserFriendlyMessage(undefined)).toBe("An unexpected error occurred");
+      expect(getUserFriendlyMessage("String error")).toBe("An unexpected error occurred.");
+      expect(getUserFriendlyMessage(null)).toBe("An unexpected error occurred.");
+      expect(getUserFriendlyMessage(undefined)).toBe("An unexpected error occurred.");
     });
 
     it("should return message from error object with message property", () => {

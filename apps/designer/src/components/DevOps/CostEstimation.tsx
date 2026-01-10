@@ -50,7 +50,7 @@ export function CostEstimation() {
 
     // Estimate costs based on components
     for (const [nodeId, node] of nodes.entries()) {
-      const nodeData = node as any;
+      const nodeData = node;
       const tech = (nodeData.technology || "").toLowerCase();
 
       // Compute costs (estimate based on component type)
@@ -64,14 +64,14 @@ export function CostEstimation() {
       if (nodeData.kind === "datastore" || tech.includes("database") || tech.includes("db")) {
         // Estimate storage size (default 100GB per datastore)
         const estimatedGB = nodeData.metadata?.storage || 100;
-        storage += estimatedGB * DEFAULT_COSTS.storage.gb;
+        storage += Number(estimatedGB) * DEFAULT_COSTS.storage.gb;
       }
 
       // Network costs (estimate based on relations)
       // Simplified: assume each relation represents some network traffic
       const relations = model.getRelations();
       const componentRelations = relations.filter(
-        (r: any) =>
+        (r) =>
           (r.source?.model === nodeId || r.target?.model === nodeId) &&
           r.source?.model !== r.target?.model
       );
@@ -93,11 +93,9 @@ export function CostEstimation() {
   const resourceBreakdown = useMemo<ResourceCost[]>(() => {
     const resources: ResourceCost[] = [];
     const componentCount = Array.from(nodes.values()).filter(
-      (n: any) => n.kind === "component" || n.kind === "container"
+      (n) => n.kind === "component" || n.kind === "container"
     ).length;
-    const datastoreCount = Array.from(nodes.values()).filter(
-      (n: any) => n.kind === "datastore"
-    ).length;
+    const datastoreCount = Array.from(nodes.values()).filter((n) => n.kind === "datastore").length;
 
     if (componentCount > 0) {
       resources.push({

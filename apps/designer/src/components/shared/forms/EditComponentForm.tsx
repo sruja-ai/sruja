@@ -7,7 +7,7 @@ import type { ElementDump } from "@sruja/shared";
 import { SidePanel } from "../SidePanel";
 import { Button, Select, Checkbox } from "@sruja/ui";
 import { FormField, useFormState, type FormErrors } from "./";
-import { slugify } from "./utils";
+import { slugify } from "../../../utils/slugify";
 import "../EditForms.css";
 
 interface EditComponentFormProps {
@@ -41,8 +41,11 @@ export function EditComponentForm({
   const data = useArchitectureStore((s) => s.model);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const allElements = useMemo(() => Object.values(data?.elements || {}) as any[], [data?.elements]);
-  const systems = useMemo(() => allElements.filter((e: any) => e.kind === "system"), [allElements]);
+  const allElements = useMemo(
+    () => Object.values(data?.elements || {}) as ElementDump[],
+    [data?.elements]
+  );
+  const systems = useMemo(() => allElements.filter((e) => e.kind === "system"), [allElements]);
 
   // Derive containers for selected system
   // We can't do this easily inside the component body if selectedSystemId is in form state.
@@ -51,19 +54,18 @@ export function EditComponentForm({
   // Initialize form state
   const form = useFormState<FormValues>({
     initialValues: {
-      name: (component as any)?.title || initialName || "",
-      technology: (component as any)?.technology || "",
+      name: component?.title || initialName || "",
+      technology: component?.technology || "",
       description:
-        typeof (component as any)?.description === "string"
-          ? (component as any).description
-          : (component as any)?.description?.txt || "",
+        typeof component?.description === "string"
+          ? component.description
+          : (component?.description as unknown as { txt: string })?.txt || "",
       customId: false,
-      idInput: (component as any)?.id || "",
-      selectedSystemId:
-        parentSystemId || ((component as any)?.id ? (component as any).id.split(".")[0] : "") || "",
+      idInput: component?.id || "",
+      selectedSystemId: parentSystemId || (component?.id ? component.id.split(".")[0] : "") || "",
       selectedContainerId:
         parentContainerId ||
-        ((component as any)?.id ? (component as any).id.split(".").slice(0, 2).join(".") : "") ||
+        (component?.id ? component.id.split(".").slice(0, 2).join(".") : "") ||
         "",
     },
     validate: (values) => {
@@ -88,36 +90,30 @@ export function EditComponentForm({
       await updateArchitecture((model) => {
         const newElements = { ...model.elements };
 
-        let targetId = (component as any)?.id;
+        let targetId = component?.id;
 
         if (!component) {
           const baseId = values.customId ? values.idInput : slugify(values.name) || "component";
           if (!values.selectedContainerId) return model;
-          targetId = `${values.selectedContainerId}.${baseId}` as any;
+          targetId = `${values.selectedContainerId}.${baseId}`;
           let i = 1;
           const originalId = targetId;
           while (newElements[targetId as string]) {
-            targetId = `${originalId}-${i++}` as any;
+            targetId = `${originalId}-${i++}`;
           }
         }
 
         if (!targetId) return model;
 
         newElements[targetId as string] = {
-          id: targetId as any,
+          id: targetId,
           kind: "component",
           title: values.name,
-          description: (typeof values.description === "string"
-            ? values.description
-            : (values.description as any) &&
-                typeof (values.description as any) === "object" &&
-                "txt" in (values.description as any)
-              ? (values.description as any).txt
-              : undefined) as any,
+          description: typeof values.description === "string" ? values.description : undefined,
           technology: values.technology || undefined,
-          tags: (component as any)?.tags,
-          links: (component as any)?.links,
-          style: {} as any,
+          tags: component?.tags,
+          links: component?.links,
+          style: {},
         };
 
         return { ...model, elements: newElements };
@@ -130,25 +126,18 @@ export function EditComponentForm({
   useEffect(() => {
     if (isOpen) {
       form.setValues({
-        name: (component as any)?.title || initialName || "",
-        technology: (component as any)?.technology || "",
+        name: component?.title || initialName || "",
+        technology: component?.technology || "",
         description:
-          (typeof (component as any)?.description === "string"
-            ? (component as any).description
-            : (component as any)?.description &&
-                typeof (component as any).description === "object" &&
-                "txt" in (component as any).description
-              ? (component as any).description.txt
-              : "") || "",
-        idInput: (component as any)?.id || "",
+          (typeof component?.description === "string"
+            ? component.description
+            : (component?.description as unknown as { txt: string })?.txt || "") || "",
+        idInput: component?.id || "",
         customId: false,
-        selectedSystemId:
-          parentSystemId ||
-          ((component as any)?.id ? (component as any).id.split(".")[0] : "") ||
-          "",
+        selectedSystemId: parentSystemId || (component?.id ? component.id.split(".")[0] : "") || "",
         selectedContainerId:
           parentContainerId ||
-          ((component as any)?.id ? (component as any).id.split(".").slice(0, 2).join(".") : "") ||
+          (component?.id ? component.id.split(".").slice(0, 2).join(".") : "") ||
           "",
       });
       form.clearErrors();
@@ -159,7 +148,7 @@ export function EditComponentForm({
   const currentAvailableContainers = useMemo(() => {
     if (!form.values.selectedSystemId) return [];
     return allElements.filter(
-      (e: any) => e.kind === "container" && e.id.startsWith(form.values.selectedSystemId + ".")
+      (e) => e.kind === "container" && e.id.startsWith(form.values.selectedSystemId + ".")
     );
   }, [allElements, form.values.selectedSystemId]);
 

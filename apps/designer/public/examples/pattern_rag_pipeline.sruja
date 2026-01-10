@@ -30,35 +30,75 @@ dataAdmin = person "Data Administrator" {
 
 ragPlatform = system "RAG Platform" {
   description "End-to-end RAG system"
+  metadata { tags ["R1"] }
 
   ui = container "Chat Interface" {
     technology "React/Tailwind"
     description "Chatbot UI with citation support"
-    chatWindow = component "Message stream"
-    citationViewer = component "Source document preview"
+    chatWindow = component "Chat Window" {
+        description "Message stream"
+        technology "React Component"
+        metadata { tags ["R4"] }
+    }
+    citationViewer = component "Citation Viewer" {
+        description "Source document preview"
+        technology "PDF.js"
+        metadata { tags ["R4"] }
+    }
   }
 
   gateway = container "API Gateway" {
     technology "Python/FastAPI"
     description "Orchestrates retrieval and generation"
+    metadata { tags ["R1"] }
     slo { latency { p95 "2s" p99 "5s" } }
-    queryPreprocessor = component "Rewrites queries for better retrieval"
-    guardrails = component "Input/Output safety checks"
+    queryPreprocessor = component "Query Preprocessor" {
+        description "Rewrites queries for better retrieval"
+        technology "LangChain"
+        metadata { tags ["R1"] }
+    }
+    guardrails = component "Guardrails" {
+        description "Input/Output safety checks"
+        technology "NeMo Guardrails"
+        metadata { tags ["R3"] }
+    }
   }
 
   ingestion = container "Ingestion Service" {
     technology "Python/LangChain"
     description "Processes documents into vectors"
-    pdfLoader = component "Parses PDFs"
-    chunker = component "Splits text (RecursiveCharacterTextSplitter)"
-    embedder = component "Generates embeddings (OpenAI/Cohere)"
+    metadata { tags ["R2"] }
+    pdfLoader = component "PDF Loader" {
+        description "Parses PDFs"
+        technology "PyMuPDF"
+        metadata { tags ["R2"] }
+    }
+    chunker = component "Chunker" {
+        description "Splits text"
+        technology "RecursiveCharacterTextSplitter"
+        metadata { tags ["R2"] }
+    }
+    embedder = component "Embedder" {
+        description "Generates embeddings"
+        technology "OpenAI Ada"
+        metadata { tags ["R1"] }
+    }
   }
 
   retrieval = container "Retrieval Service" {
     technology "Python"
     description "Semantic search and reranking"
-    hybridSearch = component "Keyword + Vector search"
-    reranker = component "Cross-encoder reranking (Cohere)"
+    metadata { tags ["R1"] }
+    hybridSearch = component "Hybrid Search" {
+        description "Keyword + Vector search"
+        technology "Pinecone"
+        metadata { tags ["R1"] }
+    }
+    reranker = component "Reranker" {
+        description "Cross-encoder reranking"
+        technology "Cohere Rerank"
+        metadata { tags ["R1"] }
+    }
   }
 
   vectorDb = database "Vector Database" {
@@ -103,9 +143,23 @@ ragPlatform = system "RAG Platform" {
 }
 
 internalSources = system "Internal Data Sources" {
-  sharePoint = container "SharePoint"
-  confluence = container "Confluence"
-  googleDrive = container "Google Drive"
+  description "Enterprise knowledge repositories"
+  metadata { tags ["external"] }
+  sharePoint = container "SharePoint" {
+      technology "Microsoft Graph API"
+      description "Corporate data source"
+      metadata { tags ["R3"] }
+  }
+  confluence = container "Confluence" {
+      technology "Atlassian API"
+      description "Wiki data source"
+      metadata { tags ["R3"] }
+  }
+  googleDrive = container "Google Drive" {
+      technology "Google Drive API"
+      description "File storage"
+      metadata { tags ["R3"] }
+  }
 }
 
 // User Flows
@@ -115,6 +169,9 @@ ragPlatform.ui -> ragPlatform.gateway "Submit query"
 // Admin Flows
 dataAdmin -> ragPlatform.ingestion "Configure sources"
 internalSources.sharePoint -> ragPlatform.ingestionQueue "Webhook/Sync"
+internalSources.confluence -> ragPlatform.ingestionQueue "Sync"
+internalSources.googleDrive -> ragPlatform.ingestionQueue "Sync"
+ragPlatform.gateway.guardrails -> ragPlatform.gateway.queryPreprocessor "Safe query"
 
 // Scenarios
 AnswerQuestion = scenario "Answer Question" {
@@ -138,6 +195,12 @@ IngestionFlow = flow "Document Indexing" {
   step ingestion.chunker -> ingestion.embedder "Chunks"
   step ingestion.embedder -> vectorDb "Vectors"
 }
+
+// Requirements
+R1 = requirement functional "Provide accurate answers from internal docs"
+R2 = requirement performance "Ensure data freshness < 1hr"
+R3 = requirement security "Enforce access controls"
+R4 = requirement compliance "All answers must include citations"
 
 // Governance
 ACLPolicy = policy "Users can only retrieve docs they have access to" {

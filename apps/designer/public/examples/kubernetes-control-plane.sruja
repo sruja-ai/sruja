@@ -1,0 +1,52 @@
+// examples/kubernetes-control-plane.sruja
+// Kubernetes Control Plane
+
+node = kind "Node"
+control_plane = kind "Control Plane"
+worker_node = kind "Worker Node"
+process = kind "Process"
+db = kind "Database"
+system = kind "System"
+
+k8s_cluster = system "Kubernetes Cluster" {
+    master_node = control_plane "Master Node" {
+        api_server = process "kube-apiserver" {
+            tech "Go"
+            description "Frontend for the Kubernetes control plane"
+        }
+        
+        etcd_db = db "etcd" {
+            tech "Go"
+            description "Consistent and highly-available key value store"
+        }
+        
+        scheduler = process "kube-scheduler" {
+            tech "Go"
+            description "Watches for newly created Pods with no assigned node"
+        }
+        
+        controller_manager = process "kube-controller-manager" {
+            tech "Go"
+            description "Runs controller processes"
+        }
+    }
+    
+    nodes = node "Worker Nodes" {
+        node1 = worker_node "Node 01" {
+            kubelet1 = process "kubelet"
+            proxy1 = process "kube-proxy"
+        }
+        node2 = worker_node "Node 02" {
+            kubelet2 = process "kubelet"
+            proxy2 = process "kube-proxy"
+        }
+    }
+}
+
+// Direct Cluster internal relations
+k8s_cluster.master_node.api_server -> k8s_cluster.master_node.etcd_db "Persists state"
+k8s_cluster.nodes.node1.kubelet1 -> k8s_cluster.master_node.api_server "Reports status"
+
+view logical_cluster of k8s_cluster {
+    include k8s_cluster
+}

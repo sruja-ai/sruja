@@ -40,12 +40,12 @@ test.describe("Designer App - Core Functionality", () => {
       await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
-    // Verify all tabs are present
-    await expect(page.locator('button.view-tab:has-text("Builder")')).toBeVisible();
-    await expect(page.locator('button.view-tab:has-text("Diagram")')).toBeVisible();
-    await expect(page.locator('button.view-tab:has-text("Details")')).toBeVisible();
-    await expect(page.locator('button.view-tab:has-text("Code")')).toBeVisible();
-    await expect(page.locator('button.view-tab:has-text("Governance")')).toBeVisible();
+    // Verify all tabs are present - use data-testid
+    await expect(page.getByTestId("tab-builder")).toBeVisible();
+    await expect(page.getByTestId("tab-diagram")).toBeVisible();
+    await expect(page.getByTestId("tab-details")).toBeVisible();
+    await expect(page.getByTestId("tab-code")).toBeVisible();
+    await expect(page.getByTestId("tab-roles")).toBeVisible();
   });
 
   test("navigates between view tabs", async ({ page }) => {
@@ -56,25 +56,25 @@ test.describe("Designer App - Core Functionality", () => {
       await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
-    // Test Builder tab
-    await page.locator('button.view-tab:has-text("Builder")').click();
+    // Test Builder tab - use data-testid
+    await page.getByTestId("tab-builder").click();
     await expect(page.locator(".builder-wizard")).toBeVisible({ timeout: 5000 });
 
-    // Test Diagram tab
-    await page.locator('button.view-tab:has-text("Diagram")').click();
+    // Test Diagram tab - use data-testid
+    await page.getByTestId("tab-diagram").click();
     await expect(page.locator(".react-flow")).toBeVisible({ timeout: 5000 });
 
-    // Test Details tab
-    await page.locator('button.view-tab:has-text("Details")').click();
+    // Test Details tab - use data-testid
+    await page.getByTestId("tab-details").click();
     await expect(page.locator(".details-view-unified")).toBeVisible({ timeout: 5000 });
 
-    // Test Code tab
-    await page.locator('button.view-tab:has-text("Code")').click();
+    // Test Code tab - use data-testid
+    await page.getByTestId("tab-code").click();
     await expect(page.locator(".code-panel-container")).toBeVisible({ timeout: 5000 });
 
-    // Test Governance tab
-    await page.locator('button.view-tab:has-text("Governance")').click();
-    await expect(page.locator('[role="tabpanel"][id="tabpanel-governance"]')).toBeVisible({
+    // Test Roles tab - use data-testid
+    await page.getByTestId("tab-roles").click();
+    await expect(page.locator('[role="tabpanel"][id="tabpanel-roles"]')).toBeVisible({
       timeout: 5000,
     });
   });
@@ -87,20 +87,20 @@ test.describe("Designer App - Core Functionality", () => {
       await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
-    // Switch to Builder tab
-    await page.locator('button.view-tab:has-text("Builder")').click();
+    // Switch to Builder tab - use data-testid
+    await page.getByTestId("tab-builder").click();
     await expect.poll(async () => page.url()).toMatch(/\btab=builder\b/);
 
-    // Switch to Diagram tab
-    await page.locator('button.view-tab:has-text("Diagram")').click();
+    // Switch to Diagram tab - use data-testid
+    await page.getByTestId("tab-diagram").click();
     await expect.poll(async () => page.url()).toMatch(/\btab=diagram\b/);
 
-    // Switch to Details tab
-    await page.locator('button.view-tab:has-text("Details")').click();
+    // Switch to Details tab - use data-testid
+    await page.getByTestId("tab-details").click();
     await expect.poll(async () => page.url()).toMatch(/\btab=details\b/);
 
-    // Switch to Code tab
-    await page.locator('button.view-tab:has-text("Code")').click();
+    // Switch to Code tab - use data-testid
+    await page.getByTestId("tab-code").click();
     await expect.poll(async () => page.url()).toMatch(/\btab=code\b/);
   });
 

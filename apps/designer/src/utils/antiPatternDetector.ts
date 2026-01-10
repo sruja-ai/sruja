@@ -150,8 +150,9 @@ function detectGodObjects(model: SrujaModelDump): AntiPattern[] {
   // Threshold for God object detection
   const FAN_THRESHOLD = 5; // Elements with >5 connections
 
-  for (const [elementId, outCount] of fanOut.entries()) {
+  for (const elementId of Object.keys(elements)) {
     const inCount = fanIn.get(elementId) || 0;
+    const outCount = fanOut.get(elementId) || 0;
     const totalConnections = inCount + outCount;
 
     if (totalConnections > FAN_THRESHOLD) {

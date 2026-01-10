@@ -60,6 +60,10 @@ const (
 	// Booleans
 	TOKEN_TRUE  TokenType = "TRUE"
 	TOKEN_FALSE TokenType = "FALSE"
+	TOKEN_STEP  TokenType = "STEP"
+	TOKEN_FLOW  TokenType = "FLOW"
+	TOKEN_ACTOR TokenType = "ACTOR"
+	TOKEN_KIND  TokenType = "KIND"
 
 	// Sruja-specific keywords (still in use)
 	TOKEN_RELATION      TokenType = "RELATION"
@@ -134,6 +138,10 @@ var keywords = map[string]TokenType{
 	// Legacy plural forms (not used in parser)
 	"requirements": TOKEN_REQUIREMENTS,
 	"adrs":         TOKEN_ADRS,
+	"step":         TOKEN_STEP,
+	"flow":         TOKEN_FLOW,
+	"actor":        TOKEN_ACTOR,
+	"kind":         TOKEN_KIND,
 }
 
 func LookupIdent(ident string) TokenType {

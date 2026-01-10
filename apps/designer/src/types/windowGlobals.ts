@@ -36,7 +36,8 @@ declare global {
  */
 export function getLayoutEngineFlag(): boolean {
   if (import.meta.env.DEV) {
-    return (window as any)["__USE_NEW_LAYOUT_ENGINE__"] === "true";
+    // eslint-disable-next-line no-restricted-syntax
+    return window.__USE_NEW_LAYOUT_ENGINE__ === "true";
   }
   return false;
 }
@@ -47,9 +48,11 @@ export function getLayoutEngineFlag(): boolean {
 export function setLayoutEngineFlag(enabled: boolean): void {
   if (import.meta.env.DEV) {
     if (enabled) {
-      (window as any)["__USE_NEW_LAYOUT_ENGINE__"] = "true";
+      // eslint-disable-next-line no-restricted-syntax
+      window.__USE_NEW_LAYOUT_ENGINE__ = "true";
     } else {
-      delete (window as any)["__USE_NEW_LAYOUT_ENGINE__"];
+      // eslint-disable-next-line no-restricted-syntax
+      delete window.__USE_NEW_LAYOUT_ENGINE__;
     }
   }
 }
@@ -59,7 +62,8 @@ export function setLayoutEngineFlag(enabled: boolean): void {
  */
 export function getPerformanceProfiler(): PerformanceProfiler | null {
   if (import.meta.env.DEV) {
-    return (window as any)["__PERFORMANCE_PROFILER__"] ?? null;
+    // eslint-disable-next-line no-restricted-syntax
+    return window.__PERFORMANCE_PROFILER__ ?? null;
   }
   return null;
 }
@@ -69,7 +73,8 @@ export function getPerformanceProfiler(): PerformanceProfiler | null {
  */
 export function setPerformanceProfiler(profiler: PerformanceProfiler): void {
   if (import.meta.env.DEV) {
-    (window as any)["__PERFORMANCE_PROFILER__"] = profiler;
+    // eslint-disable-next-line no-restricted-syntax
+    window.__PERFORMANCE_PROFILER__ = profiler;
   }
 }
 
@@ -78,6 +83,7 @@ export function setPerformanceProfiler(profiler: PerformanceProfiler): void {
  */
 export function setGraphState(nodes: Node<C4NodeData>[], edges: Edge[]): void {
   if (import.meta.env.DEV) {
-    (window as any)["__CYBER_GRAPH__"] = { nodes, edges };
+    // eslint-disable-next-line no-restricted-syntax
+    window.__CYBER_GRAPH__ = { nodes, edges };
   }
 }

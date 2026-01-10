@@ -6,21 +6,36 @@ import { FormField } from "../FormField";
 
 // Mock Mantine components
 vi.mock("@sruja/ui", () => ({
-  Input: ({ label, value, onChange, error, disabled, helperText, ...props }: any) => (
+  Input: ({
+    label,
+    value,
+    onChange,
+    error,
+    disabled,
+    helperText,
+    ...props
+  }: React.ComponentProps<"input"> & { label?: string; error?: string; helperText?: string }) => (
     <div data-testid="input-wrapper">
       {label && <label>{label}</label>}
-      <input
-        data-testid="input"
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        {...props}
-      />
+      <input data-testid="input" value={value} onChange={onChange} disabled={disabled} {...props} />
       {error && <span data-testid="error">{error}</span>}
       {helperText && <span data-testid="helper">{helperText}</span>}
     </div>
   ),
-  Textarea: ({ label, value, onChange, error, disabled, helperText, rows, ...props }: any) => (
+  Textarea: ({
+    label,
+    value,
+    onChange,
+    error,
+    disabled,
+    helperText,
+    rows,
+    ...props
+  }: React.ComponentProps<"textarea"> & {
+    label?: string;
+    error?: string;
+    helperText?: string;
+  }) => (
     <div data-testid="textarea-wrapper">
       {label && <label>{label}</label>}
       <textarea

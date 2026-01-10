@@ -4,6 +4,7 @@
 import { useEffect, useRef } from "react";
 import { useArchitectureStore } from "../../../stores";
 import { Button, Input } from "@sruja/ui";
+import type { SrujaModelDump, MetadataEntryJSON } from "@sruja/shared";
 import { SidePanel } from "../SidePanel";
 import { FormField, useFormState, type FormErrors } from "./";
 import { X } from "lucide-react";
@@ -12,7 +13,7 @@ import "../EditForms.css";
 interface EditMetadataFormProps {
   isOpen: boolean;
   onClose: () => void;
-  metadata?: any; // MetadataDump
+  metadata?: MetadataEntryJSON;
   metadataIndex?: number;
 }
 
@@ -51,10 +52,12 @@ export function EditMetadataForm({
     },
     onSubmit: async (values) => {
       await updateArchitecture((model) => {
-        const sruja = (model as any).sruja || {};
-        const metadataList = [...(sruja.metadata || [])];
+        const sruja = (model as SrujaModelDump).sruja || {};
+        const metadataList = [
+          ...((sruja as SrujaModelDump).sruja?.metadata || []),
+        ] as MetadataEntryJSON[];
 
-        const newMetadata = {
+        const newMetadata: MetadataEntryJSON = {
           key: values.key.trim(),
           value: values.isArray ? undefined : values.value.trim() || undefined,
           array: values.isArray ? values.arrayValues.filter((v) => v.trim()) : undefined,
@@ -79,6 +82,8 @@ export function EditMetadataForm({
   });
 
   // Reset form when opening/switching contexts
+  // Note: form.setValues and form.clearErrors are stable (wrapped in useCallback with empty deps)
+  // so they don't need to be in the dependency array
   useEffect(() => {
     if (isOpen) {
       form.setValues({
@@ -89,7 +94,9 @@ export function EditMetadataForm({
       });
       form.clearErrors();
     }
-  }, [isOpen, metadata]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // form.setValues and form.clearErrors are stable callbacks from useFormState
+  }, [isOpen, metadata]);
 
   // Handle Escape key
   useEffect(() => {
@@ -115,7 +122,10 @@ export function EditMetadataForm({
   };
 
   const removeArrayItem = (index: number) => {
-    form.setValue("arrayValues", form.values.arrayValues.filter((_, i) => i !== index));
+    form.setValue(
+      "arrayValues",
+      form.values.arrayValues.filter((_, i) => i !== index)
+    );
   };
 
   return (
@@ -129,13 +139,23 @@ export function EditMetadataForm({
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" type="submit" form="edit-metadata-form" isLoading={form.isSubmitting}>
+          <Button
+            variant="primary"
+            type="submit"
+            form="edit-metadata-form"
+            isLoading={form.isSubmitting}
+          >
             {metadata ? "Update" : "Add"}
           </Button>
         </>
       }
     >
-      <form ref={formRef} id="edit-metadata-form" onSubmit={form.handleSubmit} className="edit-form">
+      <form
+        ref={formRef}
+        id="edit-metadata-form"
+        onSubmit={form.handleSubmit}
+        className="edit-form"
+      >
         <FormField
           label="Key"
           name="key"
@@ -195,7 +215,9 @@ export function EditMetadataForm({
               </Button>
             </div>
             {form.errors.arrayValues && (
-              <div className="mt-1 text-xs text-[var(--color-error-500)]">{form.errors.arrayValues}</div>
+              <div className="mt-1 text-xs text-[var(--color-error-500)]">
+                {form.errors.arrayValues}
+              </div>
             )}
           </div>
         )}

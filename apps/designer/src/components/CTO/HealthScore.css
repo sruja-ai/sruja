@@ -10,6 +10,65 @@
   padding: 16px;
   border-bottom: 1px solid var(--color-border, #e5e7eb);
   background: var(--color-surface, #f1f5f9);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.health-score-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.health-score-filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.priority-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+}
+
+.priority-badge-small {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+  margin-left: 8px;
+}
+
+.health-dimension-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.health-dimension-actionable {
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--color-surface, #f8f9fa);
+  border-left: 3px solid var(--color-primary, #3b82f6);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.health-dimension-actionable strong {
+  color: var(--color-text-primary, #1e293b);
+}
+
+.health-score-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.empty-icon {
+  margin-bottom: 12px;
 }
 
 .health-score-title {

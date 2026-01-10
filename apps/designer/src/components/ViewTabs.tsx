@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
-import { Layout, FileCode, List, Hammer, Shield } from "lucide-react";
+import { Layout, FileCode, List, Hammer, Users, Home } from "lucide-react";
 import { Button } from "@sruja/ui";
 import type { ViewTab } from "../types";
-import { useFeatureFlagsStore, useArchitectureStore } from "../stores";
-import { getWasmApi, logger } from "@sruja/shared";
+import { useFeatureFlagsStore } from "../stores";
 
 interface ViewTabsProps {
   activeTab: ViewTab;
@@ -14,79 +12,11 @@ interface ViewTabsProps {
   };
 }
 
-interface ScoreCard {
-  Score: number;
-  Grade: string;
-}
-
 export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
   const editMode = useFeatureFlagsStore((s) => s.editMode);
-  const dslSource = useArchitectureStore((s) => s.dslSource);
-  const [scoreCard, setScoreCard] = useState<ScoreCard | null>(null);
 
-  // Calculate score when DSL changes
-  useEffect(() => {
-    const calculateScore = async () => {
-      if (!dslSource) {
-        setScoreCard(null);
-        return;
-      }
-
-      try {
-        const api = await getWasmApi();
-        if (!api) {
-          setScoreCard(null);
-          return;
-        }
-
-        // Validate DSL by attempting to parse it first
-        // This prevents score calculation errors from invalid syntax
-        try {
-          await api.dslToModel(dslSource);
-        } catch (parseError) {
-          // DSL is invalid, clear score card and return early
-          setScoreCard(null);
-          return;
-        }
-
-        // DSL is valid, proceed with score calculation
-        const result = await api.calculateArchitectureScore(dslSource);
-        setScoreCard(result as unknown as ScoreCard);
-      } catch (error) {
-        // Score calculation failed (but DSL was valid)
-        // This could be due to missing model items or other issues
-        // Clear the score card to avoid showing stale data
-        setScoreCard(null);
-        // Only log in development to avoid noise in production
-        if (process.env.NODE_ENV === "development") {
-          logger.debug("Score calculation skipped", {
-            component: "ViewTabs",
-            action: "calculateScore",
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
-    };
-    calculateScore();
-  }, [dslSource]);
-
-  const getGradeColor = (grade: string) => {
-    switch (grade) {
-      case "A":
-        return "var(--mantine-color-green-filled)";
-      case "B":
-        return "var(--mantine-color-blue-filled)";
-      case "C":
-        return "var(--mantine-color-yellow-filled)";
-      case "D":
-        return "var(--mantine-color-red-filled)";
-      default:
-        return "var(--mantine-color-gray-filled)";
-    }
-  };
-
-  // Builder is now always visible (first tab)
-  const tabs: ViewTab[] = ["builder", "diagram", "details", "code", "governance"];
+  // Tabs order: Frequency-based - Overview, Diagram, Code (most used), then Builder, Details, Roles
+  const tabs: ViewTab[] = ["overview", "diagram", "code", "builder", "details", "roles"];
 
   const index = tabs.indexOf(activeTab);
 
@@ -111,6 +41,23 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
       onKeyDown={handleKeyDown}
     >
       <Button
+        variant={activeTab === "overview" ? "secondary" : "ghost"}
+        size="sm"
+        className={`view-tab ${activeTab === "overview" ? "active" : ""}`}
+        onClick={() => onTabChange("overview")}
+        role="tab"
+        aria-selected={activeTab === "overview"}
+        id="tab-overview"
+        data-testid="tab-overview"
+        aria-controls="tabpanel-overview"
+        title="Overview - Architecture summary and quick navigation"
+      >
+        <div className="view-tab-content">
+          <Home size={16} />
+          <span>Overview</span>
+        </div>
+      </Button>
+      <Button
         variant={
           activeTab === "builder" && editMode === "edit"
             ? "primary"
@@ -124,6 +71,7 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
         role="tab"
         aria-selected={activeTab === "builder"}
         id="tab-builder"
+        data-testid="tab-builder"
         aria-controls="tabpanel-builder"
         title={
           editMode === "edit"
@@ -145,6 +93,7 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
         role="tab"
         aria-selected={activeTab === "diagram"}
         id="tab-diagram"
+        data-testid="tab-diagram"
         aria-controls="tabpanel-diagram"
         title="Diagram - Visual architecture diagram and layout"
       >
@@ -161,6 +110,7 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
         role="tab"
         aria-selected={activeTab === "details"}
         id="tab-details"
+        data-testid="tab-details"
         aria-controls="tabpanel-details"
         title="Details - Requirements, ADRs, scenarios, and flows"
       >
@@ -180,6 +130,7 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
         role="tab"
         aria-selected={activeTab === "code"}
         id="tab-code"
+        data-testid="tab-code"
         aria-controls="tabpanel-code"
         title="Code - View and edit Sruja DSL source code"
       >
@@ -189,31 +140,20 @@ export function ViewTabs({ activeTab, onTabChange, counts }: ViewTabsProps) {
         </div>
       </Button>
       <Button
-        variant={activeTab === "governance" ? "secondary" : "ghost"}
+        variant={activeTab === "roles" ? "secondary" : "ghost"}
         size="sm"
-        className={`view-tab ${activeTab === "governance" ? "active" : ""}`}
-        onClick={() => onTabChange("governance")}
+        className={`view-tab ${activeTab === "roles" ? "active" : ""}`}
+        onClick={() => onTabChange("roles")}
         role="tab"
-        aria-selected={activeTab === "governance"}
-        id="tab-governance"
-        aria-controls="tabpanel-governance"
-        title="Governance - Architecture health score and recommendations"
+        aria-selected={activeTab === "roles"}
+        id="tab-roles"
+        data-testid="tab-roles"
+        aria-controls="tabpanel-roles"
+        title="Roles - View architecture through different role perspectives"
       >
         <div className="view-tab-content">
-          <Shield size={16} />
-          <span>Governance</span>
-          {scoreCard && (
-            <span
-              className="tab-badge"
-              style={{
-                backgroundColor: getGradeColor(scoreCard.Grade),
-                color: "#fff",
-                fontWeight: "bold",
-              }}
-            >
-              {scoreCard.Grade}
-            </span>
-          )}
+          <Users size={16} />
+          <span>Roles</span>
         </div>
       </Button>
     </div>

@@ -18,20 +18,20 @@ func MapSlice[T any, U any](input []T, mapper func(T) U) []U {
 	return output
 }
 
-func convertSystem(s *language.System) SystemJSON {
+func systemToJSON(s *language.System) SystemJSON {
 	out := SystemJSON{ID: s.ID, Label: s.Label, Description: s.Description}
 
 	if len(s.Containers) > 0 {
-		out.Containers = MapSlice(s.Containers, convertContainer)
+		out.Containers = MapSlice(s.Containers, containerToJSON)
 	}
 	if len(s.Components) > 0 {
-		out.Components = MapSlice(s.Components, convertComponent)
+		out.Components = MapSlice(s.Components, componentToJSON)
 	}
 	if len(s.DataStores) > 0 {
-		out.DataStores = MapSlice(s.DataStores, convertDataStore)
+		out.DataStores = MapSlice(s.DataStores, dataStoreToJSON)
 	}
 	if len(s.Queues) > 0 {
-		out.Queues = MapSlice(s.Queues, convertQueue)
+		out.Queues = MapSlice(s.Queues, queueToJSON)
 	}
 	if len(s.Relations) > 0 {
 		rels := make([]RelationJSON, 0, len(s.Relations))
@@ -62,7 +62,7 @@ func convertSystem(s *language.System) SystemJSON {
 }
 
 //nolint:gocyclo // Conversion logic is complex but straightforward
-func convertContainer(c *language.Container) ContainerJSON {
+func containerToJSON(c *language.Container) ContainerJSON {
 	out := ContainerJSON{
 		ID:          c.ID,
 		Label:       c.Label,
@@ -81,13 +81,13 @@ func convertContainer(c *language.Container) ContainerJSON {
 	}
 
 	if len(c.Components) > 0 {
-		out.Components = MapSlice(c.Components, convertComponent)
+		out.Components = MapSlice(c.Components, componentToJSON)
 	}
 	if len(c.DataStores) > 0 {
-		out.DataStores = MapSlice(c.DataStores, convertDataStore)
+		out.DataStores = MapSlice(c.DataStores, dataStoreToJSON)
 	}
 	if len(c.Queues) > 0 {
-		out.Queues = MapSlice(c.Queues, convertQueue)
+		out.Queues = MapSlice(c.Queues, queueToJSON)
 	}
 	if len(c.Relations) > 0 {
 		rels := make([]RelationJSON, 0, len(c.Relations))
@@ -127,7 +127,7 @@ func convertContainer(c *language.Container) ContainerJSON {
 	return out
 }
 
-func convertComponent(c *language.Component) ComponentJSON {
+func componentToJSON(c *language.Component) ComponentJSON {
 	out := ComponentJSON{
 		ID:          c.ID,
 		Label:       c.Label,
@@ -182,7 +182,7 @@ func strVal(s *string) string {
 	return *s
 }
 
-func convertPerson(p *language.Person) PersonJSON {
+func personToJSON(p *language.Person) PersonJSON {
 	out := PersonJSON{
 		ID:          p.ID,
 		Label:       p.Label,
@@ -202,7 +202,7 @@ func convertPerson(p *language.Person) PersonJSON {
 	return out
 }
 
-func convertDataStore(d *language.DataStore) DataStoreJSON {
+func dataStoreToJSON(d *language.DataStore) DataStoreJSON {
 	out := DataStoreJSON{
 		ID:          d.ID,
 		Label:       d.Label,
@@ -223,7 +223,7 @@ func convertDataStore(d *language.DataStore) DataStoreJSON {
 	return out
 }
 
-func convertQueue(q *language.Queue) QueueJSON {
+func queueToJSON(q *language.Queue) QueueJSON {
 	out := QueueJSON{
 		ID:          q.ID,
 		Label:       q.Label,

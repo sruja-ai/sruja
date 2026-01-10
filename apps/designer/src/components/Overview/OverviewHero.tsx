@@ -1,12 +1,13 @@
 import { Edit } from "lucide-react";
 import { Button } from "@sruja/ui";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
+import type { OverviewJSON, MetadataEntryJSON } from "@sruja/shared";
 
 interface OverviewHeroProps {
   architectureName?: string;
   description?: string;
-  overview?: any; // was OverviewJSON
-  archMetadata?: any[]; // was MetadataEntry[]
+  overview?: OverviewJSON;
+  archMetadata?: MetadataEntryJSON[];
   onEditOverview: () => void;
 }
 
@@ -19,14 +20,21 @@ export function OverviewHero({
 }: OverviewHeroProps) {
   const isEditMode = useFeatureFlagsStore((s) => s.isEditMode);
 
+  // Use architecture name as primary title, fallback to "Architecture" if not available
+  const displayName = architectureName || "Architecture";
+  const hasContent = description || overview?.summary;
+
   return (
     <div className="overview-hero">
       <div className="overview-hero-header">
-        <div>
-          <h1 className="overview-title">Sruja Architecture</h1>
-          {architectureName && <h2 className="overview-architecture-name">{architectureName}</h2>}
-          {description && <p className="overview-description">{description}</p>}
-          {overview?.summary && <p className="overview-summary">{overview.summary}</p>}
+        <div className="overview-hero-content">
+          <h1 className="overview-title">{displayName}</h1>
+          {hasContent && (
+            <div className="overview-hero-text">
+              {description && <p className="overview-description">{description}</p>}
+              {overview?.summary && <p className="overview-summary">{overview.summary}</p>}
+            </div>
+          )}
         </div>
         <div className="overview-hero-actions">
           {isEditMode() && (overview || archMetadata) && (

@@ -69,6 +69,27 @@
   gap: 16px;
 }
 
+.score-dimension-actionable {
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--color-surface, #f8f9fa);
+  border-left: 3px solid var(--color-primary, #3b82f6);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.score-dimension-actionable strong {
+  color: var(--color-text-primary, #1e293b);
+}
+
+.score-all-good {
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-secondary, #64748b);
+  font-size: 14px;
+}
+
 .score-dimension {
   display: flex;
   flex-direction: column;

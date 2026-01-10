@@ -87,12 +87,25 @@ func parseArgs(args []js.Value) (input, filename string, err *ExportError) {
 	filename = defaultFilename
 	if len(args) >= 2 {
 		if fn := args[1].String(); fn != "" {
-			if validationErr := ValidateFilename(fn); validationErr != nil {
-				return "", "", validationErr
+			// Check if args[1] looks like JSON config (starts with '{' or '[')
+			// If so, skip filename validation and use default filename
+			// The config parsing logic in dslToMermaid will handle it
+			trimmed := fn
+			for len(trimmed) > 0 && (trimmed[0] == ' ' || trimmed[0] == '\t' || trimmed[0] == '\n' || trimmed[0] == '\r') {
+				trimmed = trimmed[1:]
 			}
-			filename = SanitizeFilename(fn)
-			if filename == "" {
+			if len(trimmed) > 0 && (trimmed[0] == '{' || trimmed[0] == '[') {
+				// This is JSON config, not a filename - use default filename
 				filename = defaultFilename
+			} else {
+				// This might be a filename - validate it
+				if validationErr := ValidateFilename(fn); validationErr != nil {
+					return "", "", validationErr
+				}
+				filename = SanitizeFilename(fn)
+				if filename == "" {
+					filename = defaultFilename
+				}
 			}
 		}
 	}
@@ -380,6 +393,7 @@ func dslToDot(this js.Value, args []js.Value) (ret interface{}) {
 	// Parse Configuration
 	viewLevel := 1
 	focusNodeId := ""
+	viewId := "" // DSL view definition ID (e.g., "architect_overview")
 	var nodeSizes map[string]struct{ Width, Height float64 }
 
 	if len(args) > 1 {
@@ -390,6 +404,7 @@ func dslToDot(this js.Value, args []js.Value) (ret interface{}) {
 				var cfg struct {
 					ViewLevel   int                                        `json:"viewLevel"`
 					FocusNodeId string                                     `json:"focusNodeId"`
+					ViewId      string                                     `json:"viewId"`
 					NodeSizes   map[string]struct{ Width, Height float64 } `json:"nodeSizes"`
 				}
 				if err := json.Unmarshal([]byte(configJson), &cfg); err != nil {
@@ -402,6 +417,7 @@ func dslToDot(this js.Value, args []js.Value) (ret interface{}) {
 					viewLevel = cfg.ViewLevel
 				}
 				focusNodeId = cfg.FocusNodeId
+				viewId = cfg.ViewId
 
 				if len(cfg.NodeSizes) > 0 {
 					nodeSizes = make(map[string]struct{ Width, Height float64 })
@@ -472,6 +488,7 @@ func dslToDot(this js.Value, args []js.Value) (ret interface{}) {
 	LogInfo("dslToDot", "Starting DOT export", map[string]interface{}{
 		"viewLevel":   viewLevel,
 		"focusNodeId": focusNodeId,
+		"viewId":      viewId,
 		"inputSize":   len(input),
 	})
 
@@ -479,6 +496,7 @@ func dslToDot(this js.Value, args []js.Value) (ret interface{}) {
 	config := dot.DefaultConfig()
 	config.ViewLevel = viewLevel
 	config.FocusNodeID = focusNodeId
+	config.ViewID = viewId
 	config.NodeSizes = nodeSizes
 
 	// Optimize layout based on View Level
@@ -503,7 +521,8 @@ func dslToDot(this js.Value, args []js.Value) (ret interface{}) {
 		err := NewExportError(ErrCodeExportEmpty,
 			"DOT exporter returned empty output - no elements found for this view").
 			WithContext("viewLevel", viewLevel).
-			WithContext("focusNodeId", focusNodeId)
+			WithContext("focusNodeId", focusNodeId).
+			WithContext("viewId", viewId)
 		metrics.FinishMetrics(false, err, 0, 0, 0)
 		LogError("dslToDot", "Empty export output", err.Code, err.Context)
 		return resultWithError(err)

@@ -2,6 +2,8 @@ package dot
 
 import (
 	"testing"
+
+	"github.com/sruja-ai/sruja/pkg/export/views"
 )
 
 func TestBuildConstraints(t *testing.T) {
@@ -15,7 +17,7 @@ func TestBuildConstraints(t *testing.T) {
 	})
 
 	t.Run("L1 Context View Spacing", func(t *testing.T) {
-		elements := []*Element{
+		elements := []*views.Element{
 			{ID: "A", Kind: "person"},
 			{ID: "B", Kind: "system"},
 		}
@@ -29,9 +31,9 @@ func TestBuildConstraints(t *testing.T) {
 
 	t.Run("Dense Graph Scaling", func(t *testing.T) {
 		// Create enough nodes to trigger dynamic scaling
-		elements := make([]*Element, 10)
+		elements := make([]*views.Element, 10)
 		for i := 0; i < 10; i++ {
-			elements[i] = &Element{ID: "Node", Kind: "component"}
+			elements[i] = &views.Element{ID: "Node", Kind: "component"}
 		}
 
 		constraints := BuildConstraints(elements, nil, 3, config) // L3 view
@@ -58,15 +60,15 @@ func TestBuildConstraints(t *testing.T) {
 	})
 
 	t.Run("Hub Detection", func(t *testing.T) {
-		elements := []*Element{
+		elements := []*views.Element{
 			{ID: "Hub", Kind: "system", Width: 200, Height: 100},
 			{ID: "Other", Kind: "system", Width: 200, Height: 100},
 		}
 
 		// Create many connections to Hub
-		relations := make([]*Relation, HubDegreeThreshold+1)
+		relations := make([]*views.Relation, HubDegreeThreshold+1)
 		for i := 0; i < HubDegreeThreshold+1; i++ {
-			relations[i] = &Relation{From: "Hub", To: "Other", Label: "rel"}
+			relations[i] = &views.Relation{From: "Hub", To: "Other", Label: "rel"}
 		}
 
 		constraints := BuildConstraints(elements, relations, 2, config)

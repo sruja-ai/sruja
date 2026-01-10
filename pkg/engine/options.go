@@ -19,13 +19,20 @@ type validatorConfig struct {
 
 // WithTimeout sets a custom timeout for validation.
 // Default is 30 seconds.
+// Minimum timeout: 1 second. Maximum: 5 minutes.
 //
 // Example:
 //
 //	validator := NewValidatorWithOptions(WithTimeout(10 * time.Second))
 func WithTimeout(d time.Duration) ValidatorOption {
 	return func(c *validatorConfig) {
-		c.timeout = d
+		if d <= 0 {
+			c.timeout = DefaultValidationTimeout
+		} else if d > 5*time.Minute {
+			c.timeout = 5 * time.Minute
+		} else {
+			c.timeout = d
+		}
 	}
 }
 
@@ -37,7 +44,11 @@ func WithTimeout(d time.Duration) ValidatorOption {
 //	validator := NewValidatorWithOptions(WithConcurrency(5))
 func WithConcurrency(n int) ValidatorOption {
 	return func(c *validatorConfig) {
-		if n > 0 {
+		if n <= 0 {
+			c.concurrency = DefaultConcurrency
+		} else if n > 100 {
+			c.concurrency = 100 // reasonable upper bound
+		} else {
 			c.concurrency = n
 		}
 	}

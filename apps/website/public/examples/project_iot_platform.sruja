@@ -12,17 +12,39 @@ queue = kind "Queue"
 
 
 
-deviceOwner = person "Device Owner"
-dataAnalyst = person "Data Analyst"
-systemAdmin = person "System Administrator"
+deviceOwner = person "Device Owner" {
+  description "Smart home user"
+  metadata { tags ["REQ001"] }
+}
+dataAnalyst = person "Data Analyst" {
+  description "Analyzes device trends"
+  metadata { tags ["REQ002"] }
+}
+systemAdmin = person "System Administrator" {
+  description "Platform operations"
+  metadata { tags ["REQ003"] }
+}
 
 ioTPlatform = system "IoT Platform" {
+  description "Enterprise IoT Management"
+  metadata { tags ["REQ001"] }
   deviceGateway = container "Device Gateway" {
     description "Manages device connections"
     technology "MQTT Broker"
-    connectionManager = component "Connection Manager"
-    messageRouter = component "Message Router"
-    protocolAdapter = component "Protocol Adapter"
+    connectionManager = component "Connection Manager" {
+      description "Handles device connectivity"
+      technology "Netty"
+      metadata { tags ["REQ001"] }
+    }
+    messageRouter = component "Message Router" {
+      description "Routes telemetry"
+      technology "Erlang"
+      metadata { tags ["REQ002"] }
+    }
+    protocolAdapter = component "Protocol Adapter" {
+      description "Translates MQTT/CoAP"
+      technology "Java"
+    }
     connectionManager -> messageBroker "Routes messages"
     messageRouter -> deviceRegistry "Queries devices"
     protocolAdapter -> messageBroker "Publishes messages"
@@ -31,9 +53,19 @@ ioTPlatform = system "IoT Platform" {
   ingestionService = container "Ingestion Service" {
     description "Processes incoming data"
     technology "Go"
-    messageConsumer = component "Message Consumer"
-    dataValidator = component "Data Validator"
-    dataNormalizer = component "Data Normalizer"
+    messageConsumer = component "Message Consumer" {
+      description "Consumes raw telemetry"
+      technology "Go Worker"
+      metadata { tags ["REQ002"] }
+    }
+    dataValidator = component "Data Validator" {
+      description "Validates schema"
+      technology "Go Library"
+    }
+    dataNormalizer = component "Data Normalizer" {
+      description "Standardizes units"
+      technology "Go Library"
+    }
     messageConsumer -> messageBroker "Consumes messages"
     dataValidator -> deviceRegistry "Validates devices"
     dataNormalizer -> timeSeriesDB "Writes data"
@@ -42,9 +74,19 @@ ioTPlatform = system "IoT Platform" {
   deviceManagementService = container "Device Management Service" {
     description "Manages device lifecycle"
     technology "Java, Spring Boot"
-    deviceAPI = component "Device API"
-    provisioningService = component "Provisioning Service"
-    firmwareManager = component "Firmware Manager"
+    deviceAPI = component "Device API" {
+      description "Device CRUD"
+      technology "Spring MVC"
+    }
+    provisioningService = component "Provisioning Service" {
+      description "New device setup"
+      technology "Spring Cloud"
+    }
+    firmwareManager = component "Firmware Manager" {
+      description "OTA Updates"
+      technology "Spring Cloud"
+      metadata { tags ["REQ003"] }
+    }
     deviceAPI -> deviceRegistry "Manages devices"
     provisioningService -> deviceRegistry "Registers devices"
     firmwareManager -> objectStorage "Stores firmware"
@@ -53,9 +95,20 @@ ioTPlatform = system "IoT Platform" {
   analyticsService = container "Analytics Service" {
     description "Real-time and batch analytics"
     technology "Python, Spark"
-    streamProcessor = component "Stream Processor"
-    batchProcessor = component "Batch Processor"
-    alertEngine = component "Alert Engine"
+    streamProcessor = component "Stream Processor" {
+      description "Real-time aggregation"
+      technology "Spark Streaming"
+      metadata { tags ["REQ002"] }
+    }
+    batchProcessor = component "Batch Processor" {
+      description "Nightly reports"
+      technology "Spark SQL"
+    }
+    alertEngine = component "Alert Engine" {
+      description "Threshold monitoring"
+      technology "Python"
+      metadata { tags ["REQ004"] }
+    }
     streamProcessor -> messageBroker "Processes streams"
     batchProcessor -> timeSeriesDB "Reads historical data"
     alertEngine -> notificationService "Sends alerts"
@@ -64,8 +117,15 @@ ioTPlatform = system "IoT Platform" {
   ruleEngine = container "Rule Engine" {
     description "Executes business rules"
     technology "Node.js"
-    ruleEvaluator = component "Rule Evaluator"
-    actionExecutor = component "Action Executor"
+    ruleEvaluator = component "Rule Evaluator" {
+      description "Evaluates logic"
+      technology "Node.js VM"
+      metadata { tags ["REQ004"] }
+    }
+    actionExecutor = component "Action Executor" {
+      description "Triggers side-effects"
+      technology "Node.js"
+    }
     ruleEvaluator -> timeSeriesDB "Queries data"
     actionExecutor -> deviceGateway "Sends commands"
   }
@@ -73,44 +133,62 @@ ioTPlatform = system "IoT Platform" {
   dashboardService = container "Dashboard Service" {
     description "Provides web dashboard"
     technology "React"
-    dashboardAPI = component "Dashboard API"
-    visualizationEngine = component "Visualization Engine"
+    dashboardAPI = component "Dashboard API" {
+      description "Backend for UI"
+      technology "Express"
+    }
+    visualizationEngine = component "Visualization Engine" {
+      description "Chart generation"
+      technology "D3.js"
+    }
     dashboardAPI -> timeSeriesDB "Queries data"
     visualizationEngine -> dashboardAPI "Fetches data"
   }
   
   deviceRegistry = database "Device Registry" {
     technology "PostgreSQL"
+    description "Device inventory"
+    metadata { tags ["REQ001"] }
   }
   
   timeSeriesDB = database "Time Series Database" {
     technology "InfluxDB"
+    description "Telemetry storage"
+    metadata { tags ["REQ002"] }
   }
   
   metadataDB = database "Metadata Database" {
     technology "PostgreSQL"
+    description "Configuration storage"
   }
   
   messageBroker = queue "Message Broker" {
     technology "Kafka"
+    description "Central event bus"
+    metadata { tags ["REQ002"] }
   }
   
   objectStorage = container "Object Storage" {
     technology "S3"
+    description "Binary blob storage"
   }
 }
 
 notificationService = system "Notification Service" {
+  description "Alert delivery"
   emailService = container "Email Service" {
     technology "SendGrid"
+    description "Email delivery"
   }
   
   sMSService = container "SMS Service" {
     technology "Twilio"
+    description "SMS delivery"
   }
   
   pushService = container "Push Service" {
     technology "Firebase"
+    description "Push notifications"
   }
 }
 
@@ -118,13 +196,19 @@ edgeGateway = system "Edge Gateway" {
   description "On-premise edge gateway"
   edgeProcessor = container "Edge Processor" {
     technology "Docker"
+    description "Local processing"
+    metadata { tags ["REQ004"] }
   }
 }
 
-// User interactions
-deviceOwner -> ioTPlatform.dashboardService "Views data"
-dataAnalyst -> ioTPlatform.dashboardService "Analyzes data"
-systemAdmin -> ioTPlatform.deviceManagementService "Manages devices"
+// User interactions (FAANG pattern: single entry point - Dashboard)
+// User interactions (FAANG pattern: single entry point - Dashboard)
+deviceOwner -> ioTPlatform.dashboardService "views device data via"
+ioTPlatform.dashboardService -> dataAnalyst "provides analytics to"
+systemAdmin -> ioTPlatform.dashboardService "manages system via"
+
+// Dashboard routes to internal services
+ioTPlatform.dashboardService -> ioTPlatform.deviceManagementService "manages devices via"
 
 // Data flow
 edgeGateway -> ioTPlatform.deviceGateway "Sends telemetry"
@@ -133,6 +217,7 @@ ioTPlatform.ingestionService -> ioTPlatform.timeSeriesDB "Stores data"
 
 // Device management
 ioTPlatform.deviceManagementService -> ioTPlatform.deviceRegistry "Manages registry"
+ioTPlatform.deviceManagementService -> ioTPlatform.metadataDB "Reads config"
 ioTPlatform.deviceGateway -> ioTPlatform.deviceRegistry "Queries devices"
 
 // Analytics flow

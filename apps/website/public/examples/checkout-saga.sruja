@@ -1,0 +1,64 @@
+// examples/checkout-saga.sruja
+// Checkout Saga Pattern
+
+actor = kind "Actor"
+service = kind "Service"
+db = kind "Database"
+queue = kind "Message Queue"
+system = kind "System"
+
+customer = actor "Customer"
+
+checkout_system = system "Checkout Architecture" {
+    api_gateway = service "API Gateway"
+    
+    order_service = service "Order Service" {
+        tech "Node.js"
+        order_db = db "Order DB"
+    }
+    
+    payment_service = service "Payment Service" {
+        tech "Go"
+        payment_db = db "Payment DB"
+    }
+    
+    inventory_service = service "Inventory Service" {
+        tech "Java"
+        inv_db = db "Inventory DB"
+    }
+    
+    saga_orchestrator = service "Saga Orchestrator" {
+        tech "Temporal"
+        description "Manages the state of the checkout transaction"
+    }
+    
+    event_bus = queue "Event Bus" {
+        tech "Kafka"
+    }
+}
+
+// Happy Path Scenario
+customer -> api_gateway "Submit Order"
+api_gateway -> order_service "Create Pending Order"
+order_service -> saga_orchestrator "Start Saga"
+
+saga_orchestrator -> inventory_service "Reserve Items"
+inventory_service -> saga_orchestrator "Items Reserved"
+
+saga_orchestrator -> payment_service "Process Payment"
+payment_service -> saga_orchestrator "Success"
+
+saga_orchestrator -> order_service "Finalize Order"
+
+// Failure Recovery Scenario
+saga_orchestrator -> payment_service "Process Payment"
+payment_service -> saga_orchestrator "Payment Rejected"
+
+saga_orchestrator -> inventory_service "Undo Reservation (Compensate)"
+inventory_service -> saga_orchestrator "Reserved Items Released"
+
+saga_orchestrator -> order_service "Mark Order Cancelled"
+
+view checkout_overview of checkout_system {
+    include *
+}

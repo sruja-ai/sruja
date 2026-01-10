@@ -42,7 +42,8 @@ export type WasmApi = {
     dsl: string,
     viewLevel?: number,
     focusNodeId?: string,
-    nodeSizes?: Record<string, { width: number; height: number }>
+    nodeSizes?: Record<string, { width: number; height: number }>,
+    viewId?: string
   ) => Promise<DotResult>;
   calculateArchitectureScore: (dsl: string) => Promise<ScoreResult>;
 };
@@ -538,7 +539,8 @@ export async function initWasm(options?: {
       dsl: string,
       viewLevel?: number,
       focusNodeId?: string,
-      nodeSizes?: Record<string, { width: number; height: number }>
+      nodeSizes?: Record<string, { width: number; height: number }>,
+      viewId?: string
     ) => {
       try {
         if (!dotFn) {
@@ -548,6 +550,7 @@ export async function initWasm(options?: {
         const config = {
           viewLevel: viewLevel ?? 1,
           focusNodeId: focusNodeId ?? "",
+          viewId: viewId ?? "",
           nodeSizes: nodeSizes || {},
         };
         const r = dotFn(dsl, JSON.stringify(config));
@@ -736,12 +739,15 @@ export async function convertDslToMermaid(dsl: string): Promise<string | null> {
  * @param dsl - The DSL source string
  * @param viewLevel - C4 view level (1=Context, 2=Container, 3=Component). Default 1.
  * @param focusNodeId - Node ID to focus on for L2/L3 views (optional)
+ * @param nodeSizes - Optional node size overrides
+ * @param viewId - Optional DSL view definition ID to load (e.g., "architect_overview")
  */
 export async function convertDslToDot(
   dsl: string,
   viewLevel?: number,
   focusNodeId?: string,
-  nodeSizes?: Record<string, { width: number; height: number }>
+  nodeSizes?: Record<string, { width: number; height: number }>,
+  viewId?: string
 ): Promise<DotResult | null> {
   const api = await getWasmApi();
   if (!api) {
@@ -750,7 +756,7 @@ export async function convertDslToDot(
   }
 
   try {
-    return await api.dslToDot(dsl, viewLevel, focusNodeId, nodeSizes);
+    return await api.dslToDot(dsl, viewLevel, focusNodeId, nodeSizes, viewId);
   } catch (error) {
     logger.error("DSL to DOT conversion error", {
       component: "wasm",

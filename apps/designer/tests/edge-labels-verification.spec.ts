@@ -39,7 +39,7 @@ test.describe("Edge Labels Verification", () => {
     // Verify that relations have title fields in the model
     const relationData = await page.evaluate(() => {
       // Access the model from the store or window
-      return (window as unknown as any).__MODEL_DATA__ || null;
+      return (window as unknown as { __MODEL_DATA__: unknown }).__MODEL_DATA__ || null;
     });
 
     if (relationData) {

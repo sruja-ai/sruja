@@ -43,15 +43,17 @@
     "@mantine/core": "^8.3.10",
     "@mantine/hooks": "^8.3.10",
     "@sruja/shared": "*",
+    "marked": "^16.4.2",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.17"
   },
   "devDependencies": {
     "@sruja/eslint-config": "*",
-    "@testing-library/jest-dom": "^6.0.0",
     "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.0.0",
     "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.5.0",
+    "@types/marked": "^5.0.2",
     "@types/node": "^22.7.9",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

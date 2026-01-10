@@ -187,6 +187,15 @@ func (p *Parser) enhanceErrorMessage(msg string, pos lexer.Position) (string, []
 		"technology":   "Technology should come after the container/component definition",
 	}
 
+	// Handle "Missing opening {" errors specifically
+	if strings.Contains(strings.ToLower(msg), "missing opening") && strings.Contains(msg, "{") {
+		enhancedMsg = "Missing opening brace '{'. A closing brace '}' was found without a matching opening brace."
+		suggestions = append(suggestions, "Check that all opening braces '{' have matching closing braces '}'")
+		suggestions = append(suggestions, "Ensure element definitions with bodies start with '{' after the element declaration")
+		suggestions = append(suggestions, "Example: system MySystem \"My System\" { ... }")
+		return enhancedMsg, suggestions
+	}
+
 	// Check for specific error patterns
 	if strings.Contains(msg, "unexpected token") && token != "" {
 		if hint, ok := knownKeywords[token]; ok {

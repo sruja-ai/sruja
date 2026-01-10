@@ -213,7 +213,7 @@ export function measureQualityFromNodes(
 export function measureQuality(
   result: GraphvizResult,
   parentChildRelationships?: ParentChildRelationships,
-  _rawGraphvizJson?: any
+  _rawGraphvizJson?: unknown
 ): QualityMeasurementResult {
   const nodes = result.nodes;
   const edges = result.edges;
@@ -821,6 +821,8 @@ function calculateScore(metrics: Omit<LayoutQuality, "score">): number {
   let score = 1.0;
 
   // DEBUG: Verify new scoring code is being used
+  // eslint-disable-next-line no-console
+  // eslint-disable-next-line no-console
   console.log("[SCORE_DEBUG_V2] New scoring formula active - crossings:", metrics.edgeCrossings);
 
   // Penalize edge crossings with a sliding scale
@@ -895,6 +897,7 @@ function calculateScore(metrics: Omit<LayoutQuality, "score">): number {
   }
 
   // DEBUG: Log final score explicitly
+  // eslint-disable-next-line no-console
   console.log(
     `[SCORE_V2] crossings=${metrics.edgeCrossings}, labelOverlaps=${metrics.labelOverlaps}, containment=${metrics.parentChildContainment}, rankAlign=${metrics.rankAlignment?.toFixed(2)}, spacing=${metrics.spacingConsistency?.toFixed(2)}, clusterBal=${metrics.clusterBalance?.toFixed(2)}, finalScore=${score.toFixed(4)}`
   );

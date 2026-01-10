@@ -14,8 +14,8 @@ test.describe("DSL Sync on Tab Switch", () => {
       await page.waitForSelector(".react-flow", { timeout: 30000 });
     }
 
-    // Go to Code tab first time
-    await page.locator('button.view-tab:has-text("Code")').click();
+    // Go to Code tab first time - use data-testid
+    await page.getByTestId("tab-code").click();
     await page.waitForSelector(".code-panel-container", { timeout: 10000 });
     await page.waitForSelector(".dsl-panel", { timeout: 5000 });
 
@@ -28,13 +28,13 @@ test.describe("DSL Sync on Tab Switch", () => {
     expect(initialContent).toBeTruthy();
     expect(initialContent?.trim().length || 0).toBeGreaterThan(0);
 
-    // Switch to Diagram tab
-    await page.locator('button.view-tab:has-text("Diagram")').click();
+    // Switch to Diagram tab - use data-testid
+    await page.getByTestId("tab-diagram").click();
     await page.waitForSelector(".react-flow", { timeout: 10000 });
     await page.waitForTimeout(500); // Allow component to unmount
 
-    // Switch back to Code tab
-    await page.locator('button.view-tab:has-text("Code")').click();
+    // Switch back to Code tab - use data-testid
+    await page.getByTestId("tab-code").click();
     await page.waitForSelector(".code-panel-container", { timeout: 10000 });
     await page.waitForSelector(".dsl-panel", { timeout: 5000 });
 
@@ -75,8 +75,8 @@ test.describe("DSL Sync on Tab Switch", () => {
     // Wait for diagram to load
     await page.waitForSelector(".react-flow", { timeout: 30000 });
 
-    // Go to Code tab
-    await page.locator('button.view-tab:has-text("Code")').click();
+    // Go to Code tab - use data-testid
+    await page.getByTestId("tab-code").click();
     await page.waitForSelector(".dsl-panel", { timeout: 10000 });
 
     // Verify DSL is visible
@@ -91,10 +91,10 @@ test.describe("DSL Sync on Tab Switch", () => {
     expect(content).toBeTruthy();
     expect(content?.trim().length || 0).toBeGreaterThan(0);
 
-    // Switch away and back
-    await page.locator('button.view-tab:has-text("Diagram")').click();
+    // Switch away and back - use data-testid
+    await page.getByTestId("tab-diagram").click();
     await page.waitForTimeout(500);
-    await page.locator('button.view-tab:has-text("Code")').click();
+    await page.getByTestId("tab-code").click();
     await page.waitForSelector(".dsl-panel", { timeout: 10000 });
     await page.waitForTimeout(1000);
 

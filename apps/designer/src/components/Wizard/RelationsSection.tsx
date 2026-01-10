@@ -54,9 +54,9 @@ export function RelationsSection({
     const newId = `rel_${Math.random().toString(36).substr(2, 9)}`;
 
     const newRelation: RelationDump = {
-      id: newId as any,
-      source: { model: fromId } as any,
-      target: { model: toId } as any,
+      id: newId,
+      source: { model: fromId },
+      target: { model: toId },
       title: label.trim() || undefined,
     };
 

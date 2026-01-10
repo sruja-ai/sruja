@@ -40,7 +40,7 @@ func TestConvertComponent_AllFields(t *testing.T) {
 		Scale: scale,
 	}
 
-	result := convertComponent(comp)
+	result := componentToJSON(comp)
 
 	if result.ID != "comp1" {
 		t.Errorf("expected ID comp1, got %s", result.ID)
@@ -83,7 +83,7 @@ func TestConvertDataStore_AllFields(t *testing.T) {
 		Style: map[string]string{"shape": "cylinder"},
 	}
 
-	result := convertDataStore(ds)
+	result := dataStoreToJSON(ds)
 
 	if result.ID != "ds1" {
 		t.Errorf("expected ID ds1, got %s", result.ID)
@@ -120,7 +120,7 @@ func TestConvertQueue_AllFields(t *testing.T) {
 		Style: map[string]string{"color": "#00f"},
 	}
 
-	result := convertQueue(q)
+	result := queueToJSON(q)
 
 	if result.ID != "q1" {
 		t.Errorf("expected ID q1, got %s", result.ID)
@@ -292,7 +292,7 @@ func TestConvertSystem_AllFields(t *testing.T) {
 			{ID: "c1", Label: "C1"},
 		},
 	}
-	result := convertSystem(sys)
+	result := systemToJSON(sys)
 	if result.ID != "sys1" {
 		t.Errorf("expected ID sys1, got %s", result.ID)
 	}
@@ -315,7 +315,7 @@ func TestConvertContainer_AllFields(t *testing.T) {
 			{ID: "q1", Label: "Q1"},
 		},
 	}
-	result := convertContainer(cont)
+	result := containerToJSON(cont)
 	if result.ID != "cont1" {
 		t.Errorf("expected ID cont1, got %s", result.ID)
 	}
@@ -329,7 +329,7 @@ func TestConvertPerson_AllFields(t *testing.T) {
 		ID:    "p1",
 		Label: "Person",
 	}
-	result := convertPerson(p)
+	result := personToJSON(p)
 	if result.ID != "p1" {
 		t.Errorf("expected ID p1, got %s", result.ID)
 	}

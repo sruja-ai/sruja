@@ -5,7 +5,7 @@ import { Play, Plus } from "lucide-react";
 import { SrujaCanvas } from "./components/SrujaCanvas";
 import "./App.css";
 import "./components/shared/GlobalFocusStyles.css";
-import { NavigationPanel, DetailsPanel, CodePanel, GovernancePanel } from "./components/Panels";
+import { NavigationPanel, DetailsPanel, CodePanel } from "./components/Panels";
 import { BuilderWizard } from "./components/Wizard";
 import { CommandPalette, ShortcutsModal, ErrorBoundary, SentryInit } from "./components/shared";
 import { ToastContainer, Logo, SrujaLoader, PosthogProvider } from "@sruja/ui"; // Consolidated imports
@@ -18,8 +18,8 @@ import {
   useToastStore,
 } from "./stores";
 import { getArchitectureModel } from "./models/ArchitectureModel";
-import { DynamicPersonaView } from "./components/Personas/DynamicPersonaView";
-import type { Persona } from "./components/PersonaSwitcher";
+import { DynamicRoleView } from "./components/Roles/DynamicRoleView";
+import { OverviewTab } from "./components/Overview/OverviewTab";
 
 import { useClipboardOperations, useProjectSync, useFileHandlers } from "./hooks";
 import { useTabCounts } from "./hooks/useTabCounts";
@@ -31,6 +31,7 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { setGlobalCanvasRef } from "./hooks/useTagNavigation";
 import { trackInteraction } from "@sruja/shared";
 import type { ViewTab } from "./types";
+import type { CanvasHandle } from "./components/SrujaCanvas/types";
 
 // New components and hooks
 import { Header } from "./components/Header";
@@ -38,7 +39,7 @@ import { useAppCommands } from "./hooks/useAppCommands";
 import { useAppShortcuts } from "./hooks/useAppShortcuts";
 import { OnboardingTooltip } from "./components/OnboardingTooltip";
 
-const VALID_TABS: ViewTab[] = ["overview", "diagram", "details", "code", "builder", "governance"];
+const VALID_TABS: ViewTab[] = ["overview", "diagram", "code", "builder", "details", "roles"];
 
 export default function App() {
   // Sync URL state (level, expanded nodes) with view store
@@ -51,8 +52,7 @@ export default function App() {
   const redo = useHistoryStore((s) => s.redo);
   const activeTab = useUIStore((s) => s.activeTab);
   const setActiveTab = useUIStore((s) => s.setActiveTab);
-  const selectedPersona = useUIStore((s) => s.selectedPersona);
-  const setSelectedPersona = useUIStore((s) => s.setSelectedPersona);
+  // Role selection removed from global store - now handled in Roles tab
   const editMode = useFeatureFlagsStore((s) => s.editMode);
   const setEditMode = useFeatureFlagsStore((s) => s.setEditMode);
 
@@ -67,7 +67,7 @@ export default function App() {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  const canvasRef = useRef<any>(null);
+  const canvasRef = useRef<CanvasHandle | null>(null);
 
   // Hooks for separated logic
   const { isLoadingFile: isSyncLoading, loadDemo } = useProjectSync();
@@ -85,21 +85,19 @@ export default function App() {
     isExporting,
     isSharing,
     fileInputRef,
-  } = useFileHandlers(canvasRef as React.RefObject<any>);
+  } = useFileHandlers(canvasRef);
 
-  const { handleCopy, handlePaste, handleDuplicate } = useClipboardOperations(
-    canvasRef as React.RefObject<any>
-  );
+  const { handleCopy, handlePaste, handleDuplicate } = useClipboardOperations(canvasRef);
 
   const isLoadingFile = isSyncLoading || isImporting || isExporting || isSharing;
 
   // Set global canvas ref for tag navigation
   useEffect(() => {
     if (canvasRef.current) {
-      setGlobalCanvasRef(canvasRef as React.RefObject<any>);
+      setGlobalCanvasRef(canvasRef);
     }
     return () => {
-      setGlobalCanvasRef({ current: null } as unknown as React.RefObject<any>);
+      setGlobalCanvasRef({ current: null });
     };
   }, []);
 
@@ -111,42 +109,7 @@ export default function App() {
     }
   }, [model]);
 
-  // Render persona view based on selected persona
-  const renderPersonaView = (persona: Persona) => {
-    // Determine props based on persona
-    let title = "Architect View";
-    let description = "Design and govern system structure";
-
-    switch (persona) {
-      case "product":
-        title = "Product View";
-        description = "Feature library, user stories, requirements coverage";
-        break;
-      case "devops":
-        title = "DevOps View";
-        description = "Infrastructure, capacity, cost, deployments";
-        break;
-      case "security":
-        title = "Security View";
-        description = "Trust boundaries, compliance, data flows";
-        break;
-      case "cto":
-        title = "CTO View";
-        description = "Health scores, risks, technical debt";
-        break;
-      case "sre":
-        title = "SRE View";
-        description = "SLOs, error budgets, reliability";
-        break;
-      case "architect":
-      default:
-        title = "Architect View";
-        description = "Design and govern system structure";
-        break;
-    }
-
-    return <DynamicPersonaView persona={persona} title={title} description={description} />;
-  };
+  // Role view rendering removed - now handled directly in DynamicRoleView component
 
   // Initialize activeTab from URL on mount
   // If tab param is explicitly set, respect it. Otherwise, only set default if not loading code from URL
@@ -162,9 +125,7 @@ export default function App() {
     } else if (tabParam === "guided") {
       setActiveTab("builder");
       return;
-    } else if (tabParam === "overview") {
-      setActiveTab(editMode === "edit" ? "builder" : "diagram");
-      return;
+      // Overview tab is now a real tab, no redirect needed
     } else if (tabParam && VALID_TABS.includes(tabParam as ViewTab)) {
       setActiveTab(tabParam as ViewTab);
       return;
@@ -172,8 +133,9 @@ export default function App() {
 
     // If no explicit tab param, only set default if we're NOT loading code from URL
     // (to avoid flickering - useProjectSync will handle tab setting for code params)
+    // Default to Overview tab as landing page
     if (!hasCodeParam) {
-      setActiveTab(editMode === "edit" ? "builder" : "diagram");
+      setActiveTab("overview");
     }
   }, [setActiveTab, editMode]);
 
@@ -289,8 +251,6 @@ export default function App() {
             selectedNodeId={selectedNodeId}
             isDetailsOpen={isDetailsOpen}
             setIsDetailsOpen={setIsDetailsOpen}
-            selectedPersona={selectedPersona}
-            onPersonaChange={setSelectedPersona}
             handleImport={handleImport}
             handleExport={handleExport}
             handleExportPNG={handleExportPNG}
@@ -325,13 +285,6 @@ export default function App() {
 
               {/* Tab Content */}
               <div className="canvas-container">
-                {/* Persona View Overlay - Show when persona is selected and model exists, BUT only on builder/overview tabs */}
-                {model &&
-                  selectedPersona !== "architect" &&
-                  (activeTab === "builder" || activeTab === "overview") && (
-                    <div className="persona-view-overlay">{renderPersonaView(selectedPersona)}</div>
-                  )}
-
                 {!model && !isLoadingFile && (
                   <div className="drop-zone">
                     <Logo size={64} />
@@ -358,9 +311,22 @@ export default function App() {
                   </div>
                 )}
 
-                {model && activeTab === "overview" && (
+                {/* Overview Tab - Landing page with high-level context */}
+                {activeTab === "overview" && (
                   <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
-                    {/* Overview merged into Diagram/Builder, redirects handled in effect */}
+                    <ErrorBoundary
+                      fallback={
+                        <div
+                          className="error-state"
+                          style={{ padding: "2rem", textAlign: "center" }}
+                        >
+                          <h2>Overview Error</h2>
+                          <p>Failed to load overview. Please try refreshing the page.</p>
+                        </div>
+                      }
+                    >
+                      <OverviewTab />
+                    </ErrorBoundary>
                   </div>
                 )}
 
@@ -437,9 +403,22 @@ export default function App() {
                   </div>
                 )}
 
-                {model && activeTab === "governance" && (
-                  <div role="tabpanel" id="tabpanel-governance" aria-labelledby="tab-governance">
-                    <GovernancePanel />
+                {/* Roles Tab */}
+                {model && activeTab === "roles" && (
+                  <div role="tabpanel" id="tabpanel-roles" aria-labelledby="tab-roles">
+                    <ErrorBoundary
+                      fallback={
+                        <div
+                          className="error-state"
+                          style={{ padding: "2rem", textAlign: "center" }}
+                        >
+                          <h2>Roles View Error</h2>
+                          <p>Failed to load roles view. Please try refreshing the page.</p>
+                        </div>
+                      }
+                    >
+                      <DynamicRoleView />
+                    </ErrorBoundary>
                   </div>
                 )}
               </div>

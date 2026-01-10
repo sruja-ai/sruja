@@ -25,38 +25,93 @@ ecommerce = system "E-Commerce Platform" {
   webApp = container "Web Application" {
     description "React-based storefront for customers to browse and buy products."
     technology "React"
-    productCatalog = component "Product Catalog"
-    shoppingCart = component "Shopping Cart"
-    checkout = component "Checkout"
-    userAuth = component "User Authentication"
+    productCatalog = component "Product Catalog" {
+        description "Browsing and searching products"
+        technology "React Component"
+        metadata { tags ["REQ001", "REQ012"] }
+    }
+    shoppingCart = component "Shopping Cart" {
+        description "Cart management"
+        technology "React Component"
+    }
+    checkout = component "Checkout" {
+        description "Order checkout process"
+        technology "React Component"
+        metadata { tags ["SecurityPolicy"] }
+    }
+    userAuth = component "User Authentication" {
+        description "Login/Signup forms"
+        technology "React Component"
+        metadata { tags ["SecurityPolicy"] }
+    }
   }
   
   api = container "REST API" {
     description "Core business logic API exposed to frontend and mobile clients."
     technology "Go"
-    productService = component "Product Service"
-    orderService = component "Order Service"
-    paymentService = component "Payment Service"
-    authService = component "Authentication Service"
-    notificationService = component "Notification Service"
-    inventoryService = component "Inventory Service"
+    productService = component "Product Service" {
+        description "Catalog management API"
+        technology "Go"
+        metadata { tags ["REQ001", "REQ012"] }
+    }
+    orderService = component "Order Service" {
+        description "Order processing API"
+        technology "Go"
+    }
+    paymentService = component "Payment Service" {
+        description "Payment integration"
+        technology "Go"
+        metadata { tags ["SecurityPolicy"] }
+    }
+    authService = component "Authentication Service" {
+        description "User identity management"
+        technology "Go"
+        metadata { tags ["SecurityPolicy"] }
+    }
+    notificationService = component "Notification Service" {
+        description "Email/SMS notifications"
+        technology "Go"
+    }
+    inventoryService = component "Inventory Service" {
+        description "Stock management"
+        technology "Go"
+    }
   }
   
-  productDb = database "Product Database"
-  orderDb = database "Order Database"
-  userDb = database "User Database"
-  eventQueue = queue "Event Queue"
+  productDb = database "Product Database" {
+      technology "PostgreSQL"
+      description "Catalog data"
+      metadata { tags ["REQ001"] }
+  }
+  orderDb = database "Order Database" {
+      technology "PostgreSQL"
+      description "Order history"
+  }
+  userDb = database "User Database" {
+      technology "PostgreSQL"
+      description "User profiles"
+      metadata { tags ["SecurityPolicy"] }
+  }
+  eventQueue = queue "Event Queue" {
+      technology "Kafka"
+      description "Async event bus"
+  }
   
   analyticsService = container "Analytics Service" {
     technology "Python"
+    description "Data processing service"
   }
   
   searchEngine = container "Search Engine" {
     technology "Elasticsearch"
+    description "Full-text product search"
+    metadata { tags ["REQ001"] }
   }
   
   redis = container "Cache" {
     technology "Redis"
+    description "Session and product cache"
+    metadata { tags ["REQ012"] }
   }
   
   // Internal ecommerce system relations (can be inside system block)
@@ -75,12 +130,15 @@ paymentGateway = system "Payment Gateway" {
   description "External service for securely processing customer payments."
   stripeApi = container "Stripe API" {
     technology "Stripe"
+    description "Payment processing"
+    metadata { tags ["SecurityPolicy"] }
   }
 }
 
 emailService = system "Email Service" {
   smtp = container "SMTP Server" {
     technology "SendGrid"
+    description "Email delivery"
   }
 }
 
@@ -92,31 +150,71 @@ cdn = system "Content Delivery Network" {
   }
 }
 
-customer = person "Customer"
-admin = person "Administrator"
-supportAgent = person "Support Agent"
+customer = person "Customer" {
+  description "Online shopper"
+}
+admin = person "Administrator" {
+  description "System administrator"
+  metadata { tags ["SecurityPolicy"] }
+}
+supportAgent = person "Support Agent" {
+  description "Customer support representative"
+}
 
-// External relationships (top-level, cross-system)
-customer -> cdn.cloudFront "uses web app via"
-cdn.cloudFront -> ecommerce.webApp "sends content to"
-customer -> ecommerce.webApp "reads products from"
-customer -> ecommerce.webApp "creates orders via"
-admin -> ecommerce.api "updates products via"
-admin -> ecommerce.api "reads analytics from"
-supportAgent -> ecommerce.api "reads order data from"
+// Roles for role-based views
+product = role "Product Manager" {
+  description "Feature library, user stories, requirements coverage, product roadmaps"
+}
 
-// External system relations
-ecommerce.api -> paymentGateway.stripeApi "processes payments through"
-ecommerce.api -> emailService.smtp "sends emails via"
+devops = role "DevOps Team" {
+  description "Infrastructure, capacity planning, cost optimization, deployments, monitoring"
+}
 
-// System-level relations (implied from nested relationships)
-customer -> cdn "uses web app via"
-cdn.cloudFront -> ecommerce "sends content to"
-customer -> ecommerce "reads products from"
-admin -> ecommerce "updates products via"
-supportAgent -> ecommerce "reads order data from"
-ecommerce.api -> paymentGateway "processes payments through"
-ecommerce.api -> emailService "sends emails via"
+security = role "Security Engineer" {
+  description "Trust boundaries, compliance, data flows, security policies, vulnerability management"
+}
+
+cto = role "CTO" {
+  description "Health scores, risks, technical debt, strategic decisions, team alignment"
+}
+
+architect = role "System Architect" {
+  description "Design and govern system structure, architectural patterns, technology choices"
+}
+
+developer = role "Developer" {
+  description "Implementation details, API contracts, service interactions, code structure"
+}
+
+// External relationships (FAANG pattern: single entry point per actor)
+// Customers access the system through CDN -> WebApp
+customer -> cdn.cloudFront "accesses storefront via"
+cdn.cloudFront -> ecommerce.webApp "serves content from"
+
+// Admin and Support access through the WebApp (which has admin dashboard)
+admin -> ecommerce.webApp "manages platform via"
+supportAgent -> ecommerce.webApp "handles support via"
+
+// Internal: WebApp calls API for all operations
+// Web -> API
+ecommerce.webApp.productCatalog -> ecommerce.api.productService "Browse"
+ecommerce.webApp.shoppingCart -> ecommerce.api.orderService "Manage cart"
+ecommerce.webApp.checkout -> ecommerce.api.paymentService "Process payment"
+ecommerce.webApp.userAuth -> ecommerce.api.authService "Login"
+
+// API -> Data & External
+ecommerce.api.productService -> ecommerce.productDb "Read/Write"
+ecommerce.api.orderService -> ecommerce.orderDb "Write order"
+ecommerce.api.authService -> ecommerce.userDb "Verify user"
+ecommerce.api.paymentService -> paymentGateway.stripeApi "Charge"
+ecommerce.api.notificationService -> emailService.smtp "Send email"
+ecommerce.api.productService -> ecommerce.searchEngine "Index"
+ecommerce.api.productService -> ecommerce.redis "Cache"
+ecommerce.api.orderService -> ecommerce.eventQueue "Publish event"
+ecommerce.eventQueue -> ecommerce.analyticsService "Process"
+
+// External system integrations
+// External integrations handled above
 
 REQ001 = requirement functional "Users must be able to browse products by category" {
   tags ["ecommerce.webApp", "ecommerce.api"]
@@ -226,5 +324,53 @@ view containers of ecommerce {
       position { x: 500, y: 250 }
     }
   }
+}
+
+// ============================================================================
+// Role-Based Views
+// ============================================================================
+
+// Architect View: Full system structure for architectural decisions
+view architect_overview {
+  title "System Architecture Overview"
+  description "High-level system context for architectural governance"
+  tags ["architect", "cto"]
+  include *
+}
+
+// Developer View: API and service interactions
+view developer_view of ecommerce {
+  title "Service Architecture"
+  description "Container-level view for development teams"
+  tags ["developer", "architect"]
+  include ecommerce.*
+}
+
+// DevOps View: Infrastructure and deployment focus
+view devops_view of ecommerce {
+  title "Infrastructure View"
+  description "Deployment topology and infrastructure components"
+  tags ["devops"]
+  include ecommerce.api ecommerce.webApp
+  include ecommerce.redis ecommerce.eventQueue
+  include ecommerce.productDb ecommerce.orderDb ecommerce.userDb
+}
+
+// Security View: Trust boundaries and data flows
+view security_view {
+  title "Security Architecture"
+  description "Trust boundaries, data flows, and security controls"
+  tags ["security", "cto"]
+  include ecommerce.api ecommerce.userDb
+  include paymentGateway
+}
+
+// Product View: User-facing components
+view product_view {
+  title "Product Features"
+  description "User-facing components and customer journey"
+  tags ["product"]
+  include customer admin supportAgent
+  include ecommerce.webApp cdn
 }
 

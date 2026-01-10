@@ -1,11 +1,12 @@
 import { Tag, Plus, Edit } from "lucide-react";
 import { Button } from "@sruja/ui";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
+import type { ConventionJSON } from "@sruja/shared";
 
 interface ConventionsSectionProps {
-  conventions: any[] | undefined;
+  conventions: ConventionJSON[] | undefined;
   onAddConvention: () => void;
-  onEditConvention: (convention: any, index: number) => void;
+  onEditConvention: (convention: ConventionJSON, index: number) => void;
   onDeleteConvention: (index: number, key: string) => void;
 }
 

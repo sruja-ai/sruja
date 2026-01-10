@@ -1,7 +1,8 @@
 import { Target, Ban, AlertTriangle, Tag, Layers } from "lucide-react";
+import type { OverviewJSON } from "@sruja/shared";
 
 interface GoalsSectionProps {
-  overview: any | undefined; // was OverviewJSON
+  overview: OverviewJSON | undefined;
 }
 
 export function GoalsSection({ overview }: GoalsSectionProps) {

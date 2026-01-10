@@ -28,9 +28,23 @@ type Props = {
 
 const { tutorial, previous, next } = Astro.props as Props;
 const { Content } = await tutorial.render();
+
+import { getCanonicalUrl } from '@/utils/seo';
+import { envConfig } from '@/config/env';
+
+const siteUrl = envConfig.siteUrl || 'https://sruja.ai';
+const tutorialUrl = `/tutorials/${tutorial.slug}`;
+const canonicalUrl = getCanonicalUrl(tutorialUrl, siteUrl);
+const metaDescription = tutorial.data.summary || tutorial.data.description || '';
 ---
 
-<Layout title={tutorial.data.title} description={tutorial.data.summary || tutorial.data.description}>
+<Layout
+  title={tutorial.data.title}
+  description={metaDescription}
+  url={tutorialUrl}
+  canonical={canonicalUrl}
+  tags={tutorial.data.tags}
+>
   <ContentDetail
     title={tutorial.data.title}
     summary={tutorial.data.summary}

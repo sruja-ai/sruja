@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useArchitectureStore, useUIStore, useSelectionStore } from "../../stores";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
+import type { ADRDump, SrujaModelDump } from "@sruja/shared";
 import { EditADRForm, ConfirmDialog } from "../shared";
 import { Input, Button } from "@sruja/ui";
 import { useTagNavigation } from "../../hooks/useTagNavigation";
@@ -29,9 +30,9 @@ export function ADRsPanel() {
   const model = useArchitectureStore((s) => s.model);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [editADR, setEditADR] = useState<any | undefined>(undefined);
+  const [editADR, setEditADR] = useState<ADRDump | undefined>(undefined);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [deleteADR, setDeleteADR] = useState<any | undefined>(undefined);
+  const [deleteADR, setDeleteADR] = useState<ADRDump | undefined>(undefined);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
   const isEditMode = useFeatureFlagsStore((s) => s.isEditMode);
@@ -51,7 +52,7 @@ export function ADRsPanel() {
   const { navigateToTaggedElement } = useTagNavigation();
 
   const adrs = useMemo(() => {
-    return (model?.sruja as any)?.adrs ?? [];
+    return (model?.sruja as SrujaModelDump["sruja"])?.adrs ?? [];
   }, [model]);
 
   const filteredADRs = useMemo(() => {
@@ -59,20 +60,20 @@ export function ADRsPanel() {
 
     // Filter by selected node
     if (selectedNodeId) {
-      filtered = filtered.filter((a: any) => a.tags?.includes(selectedNodeId));
+      filtered = filtered.filter((a) => (a as { tags?: string[] }).tags?.includes(selectedNodeId));
     }
 
     if (!searchQuery.trim()) return filtered;
 
     const query = searchQuery.toLowerCase();
     return filtered.filter(
-      (adr: any) =>
+      (adr) =>
         adr.id?.toLowerCase().includes(query) ||
         adr.title?.toLowerCase().includes(query) ||
         adr.status?.toLowerCase().includes(query) ||
-        adr.context?.toLowerCase().includes(query) ||
-        adr.decision?.toLowerCase().includes(query) ||
-        adr.consequences?.toLowerCase().includes(query)
+        (adr as ADRDump).context?.toLowerCase().includes(query) ||
+        (adr as ADRDump).decision?.toLowerCase().includes(query) ||
+        (adr as ADRDump).consequences?.toLowerCase().includes(query)
     );
   }, [adrs, searchQuery, selectedNodeId]);
 
@@ -142,7 +143,7 @@ export function ADRsPanel() {
       </div>
 
       <div className="adrs-list">
-        {filteredADRs.map((adr: any) => {
+        {filteredADRs.map((adr) => {
           const isExpanded = expandedId === adr.id;
           const status = adr.status?.toLowerCase() || "proposed";
           const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.proposed;
@@ -259,9 +260,9 @@ export function ADRsPanel() {
         }}
         onConfirm={async () => {
           if (deleteADR) {
-            await updateArchitecture((model: any) => {
-              const sruja = model.sruja || {};
-              const adrs = (sruja.adrs || []).filter((a: any) => a.id !== deleteADR.id);
+            await updateArchitecture((model) => {
+              const sruja = (model as SrujaModelDump).sruja || {};
+              const adrs = (sruja.adrs || []).filter((a) => a.id !== deleteADR.id);
               return {
                 ...model,
                 sruja: {

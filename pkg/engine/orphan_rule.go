@@ -133,6 +133,15 @@ func (r *OrphanDetectionRule) Validate(program *language.Program) []diagnostics.
 
 	// --- 4. Identify Orphans ---
 	for id := range defined {
+		// Skip governance elements
+		def := defined[id]
+		if def != nil {
+			kind := strings.ToLower(def.GetKind())
+			if kind == "requirement" || kind == "policy" || kind == "scenario" || kind == "story" || kind == "adr" || kind == "flow" {
+				continue
+			}
+		}
+
 		if used[id] {
 			continue
 		}

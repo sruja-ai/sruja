@@ -9,9 +9,9 @@ vi.mock("zustand/middleware", async () => {
     persist: <T>(config: T) => {
       // Return config directly (bypass persistence in tests)
       if (typeof config === "function") {
-        return config as any;
+        return config as unknown as T;
       }
-      return config as any;
+      return config as unknown as T;
     },
     createJSONStorage: () => ({
       getItem: vi.fn(() => null),
@@ -79,6 +79,9 @@ vi.mock("../../utils/jsonToDsl", () => ({
   convertJsonToDsl: vi.fn().mockResolvedValue("system TestSystem"),
 }));
 
+vi.mock("../../utils/modelToDsl", () => ({
+  convertModelToDsl: vi.fn().mockResolvedValue("system TestSystem"),
+}));
 describe("architectureStore", () => {
   const mockArchitecture: SrujaModelDump = {
     specification: { tags: {}, elements: {} },
@@ -133,8 +136,8 @@ describe("architectureStore", () => {
 
   it("should update architecture", async () => {
     useArchitectureStore.getState().reset();
-    const { convertJsonToDsl } = await import("../../utils/jsonToDsl");
-    vi.mocked(convertJsonToDsl).mockResolvedValue("system UpdatedSystem");
+    const modelToDsl = await import("../../utils/modelToDsl");
+    vi.mocked(modelToDsl.convertModelToDsl).mockResolvedValue("system UpdatedSystem");
 
     // First load some data
     await useArchitectureStore.getState().loadFromDSL(mockArchitecture, "system TestSystem");
@@ -171,16 +174,151 @@ describe("architectureStore", () => {
   });
 
   it("should handle conversion errors gracefully", async () => {
-    const { convertDslToModel } = await import("../../wasm");
-    vi.mocked(convertDslToModel).mockRejectedValue(new Error("Conversion failed"));
+    const wasm = await import("../../wasm");
+    vi.mocked(wasm.convertDslToModel).mockRejectedValue(new Error("Conversion failed"));
+    const shared = await import("@sruja/shared");
+    const errorSpy = vi.spyOn(shared.logger, "error").mockImplementation(() => {});
 
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    await useArchitectureStore.getState().loadFromDSL(mockArchitecture, "invalid dsl");
+    await useArchitectureStore.getState().setDslSource("invalid dsl", "test.sruja");
+    await new Promise<void>((resolve) => {
+      const check = () => {
+        const s = useArchitectureStore.getState();
+        if (!s.isConverting) resolve();
+        else setTimeout(check, 10);
+      };
+      check();
+    });
 
     // Should not throw, but log error
-    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
 
-    consoleErrorSpy.mockRestore();
+  describe("Bidirectional Sync", () => {
+    it("Builder → DSL: updateArchitecture converts model to DSL", async () => {
+      useArchitectureStore.getState().reset();
+      const modelToDsl = await import("../../utils/modelToDsl");
+      vi.mocked(modelToDsl.convertModelToDsl).mockResolvedValue("system SyncedSystem");
+
+      const updater = (model: SrujaModelDump): SrujaModelDump => {
+        return {
+          ...model,
+          elements: {
+            ...model.elements,
+            newsystem: {
+              id: "newsystem",
+              kind: "system",
+              title: "SyncedSystem",
+              technology: "",
+              tags: [],
+              links: [],
+            },
+          },
+        };
+      };
+
+      await useArchitectureStore.getState().updateArchitecture(updater);
+
+      const state = useArchitectureStore.getState();
+      expect(state.dslSource).toBe("system SyncedSystem");
+      expect(state.model?.elements["newsystem"]?.title).toBe("SyncedSystem");
+      expect(modelToDsl.convertModelToDsl).toHaveBeenCalled();
+    });
+
+    it("DSL → Model: setDslSource converts DSL to model", async () => {
+      useArchitectureStore.getState().reset();
+      const { convertDslToModel } = await import("../../wasm");
+      const mockModel: SrujaModelDump = {
+        ...mockArchitecture,
+        elements: {
+          test: {
+            id: "test",
+            kind: "system",
+            title: "TestSystem",
+            technology: "",
+            tags: [],
+            links: [],
+          },
+        },
+      };
+      vi.mocked(convertDslToModel).mockResolvedValue(mockModel);
+
+      const dsl = "system TestSystem";
+      await useArchitectureStore.getState().setDslSource(dsl, "test.sruja");
+      await new Promise<void>((resolve) => {
+        const check = () => {
+          const s = useArchitectureStore.getState();
+          if (!s.isConverting) resolve();
+          else setTimeout(check, 10);
+        };
+        check();
+      });
+      const state = useArchitectureStore.getState();
+      expect(state.model).toEqual(mockModel);
+      expect(convertDslToModel).toHaveBeenCalledWith(dsl);
+      expect(state.dslSource).toBe(dsl);
+    });
+
+    it("round-trip: Model → DSL → Model preserves data", async () => {
+      useArchitectureStore.getState().reset();
+      const { convertModelToDsl } = await import("../../utils/modelToDsl");
+      const { convertDslToModel } = await import("../../wasm");
+      vi.mocked(convertModelToDsl).mockResolvedValue("system System1");
+
+      const originalModel: SrujaModelDump = {
+        elements: {
+          sys1: {
+            id: "sys1",
+            kind: "system",
+            title: "System1",
+            technology: "",
+            tags: [],
+            links: [],
+          },
+        },
+        relations: [],
+        views: {},
+        _metadata: {
+          name: "Test",
+          version: "1.0",
+          generated: new Date().toISOString(),
+          srujaVersion: "1.0",
+        },
+      };
+
+      // Load model
+      await useArchitectureStore.getState().loadFromModel(originalModel);
+
+      // Get DSL
+      const dslSource = useArchitectureStore.getState().dslSource;
+      expect(dslSource).toContain("System1");
+
+      // Simulate DSL round-trip
+      vi.mocked(convertDslToModel).mockResolvedValue(originalModel);
+      await useArchitectureStore.getState().setDslSource(dslSource!, null);
+      await new Promise<void>((resolve) => {
+        const check = () => {
+          const s = useArchitectureStore.getState();
+          if (!s.isConverting) resolve();
+          else setTimeout(check, 10);
+        };
+        check();
+      });
+
+      // Verify model preserved
+      const finalModel = useArchitectureStore.getState().model;
+      expect(finalModel?.elements["sys1"]?.title).toBe("System1");
+    });
+
+    it("sets correct sourceType for DSL updates", async () => {
+      useArchitectureStore.getState().reset();
+      const { convertDslToModel } = await import("../../wasm");
+      vi.mocked(convertDslToModel).mockResolvedValue(mockArchitecture);
+
+      await useArchitectureStore.getState().setDslSource("system Test", "test.sruja");
+
+      const state = useArchitectureStore.getState();
+      expect(state.sourceType).toBe("dsl");
+    });
   });
 });

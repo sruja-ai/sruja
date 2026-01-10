@@ -59,16 +59,48 @@ func (e *Exporter) writeADRs(sb *strings.Builder, arch interface{}) {
 
 	// Summary table
 	sb.WriteString("### ADR Summary\n\n")
-	sb.WriteString("| ID | Title |\n")
-	sb.WriteString("|----|-------|\n")
+	sb.WriteString("| ID | Title | Status |\n")
+	sb.WriteString("|----|-------|--------|\n")
 	for _, adr := range archStruct.ADRs {
 		title := adr.Title
 		if title == "" {
 			title = adr.ID
 		}
-		fmt.Fprintf(sb, "| **%s** | %s |\n", adr.ID, title)
+		status := adr.Status
+		if status == "" {
+			status = "proposed"
+		}
+		fmt.Fprintf(sb, "| **%s** | %s | %s |\n", adr.ID, title, status)
 	}
 	sb.WriteString("\n")
+
+	// Detailed ADR sections
+	for _, adr := range archStruct.ADRs {
+		title := adr.Title
+		if title == "" {
+			title = adr.ID
+		}
+		fmt.Fprintf(sb, "### %s: %s\n\n", adr.ID, title)
+
+		if adr.Status != "" {
+			fmt.Fprintf(sb, "**Status:** %s\n\n", adr.Status)
+		}
+
+		if adr.Context != "" {
+			sb.WriteString("**Context:**\n\n")
+			fmt.Fprintf(sb, "%s\n\n", adr.Context)
+		}
+
+		if adr.Decision != "" {
+			sb.WriteString("**Decision:**\n\n")
+			fmt.Fprintf(sb, "%s\n\n", adr.Decision)
+		}
+
+		if adr.Consequences != "" {
+			sb.WriteString("**Consequences:**\n\n")
+			fmt.Fprintf(sb, "%s\n\n", adr.Consequences)
+		}
+	}
 }
 
 // writeScenariosAndFlows writes scenarios and flows section

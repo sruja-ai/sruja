@@ -53,12 +53,12 @@ Payments = system "Payment System" {
     }
 
     // Modeling a primary and standby database
-    PrimaryDB = container "Primary Database" {
+    PrimaryDB = database "Primary Database" {
         technology "MySQL"
         tags ["primary"]
     }
 
-    StandbyDB = container "Standby Database" {
+    StandbyDB = database "Standby Database" {
         technology "MySQL"
         tags ["standby"]
         description "Replicates from PrimaryDB. Promoted to primary if PrimaryDB fails."

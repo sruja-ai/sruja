@@ -118,6 +118,7 @@ export function buildCompoundNodeStructure(
 
     // Debug logging in dev mode
     if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
+      // eslint-disable-next-line no-console
       console.log(`[buildCompoundNodeStructure] Creating parent container:`, {
         parentId,
         bb,

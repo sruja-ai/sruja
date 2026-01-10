@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+
+import type { ElementDump } from "@sruja/shared";
 import type { SrujaModelDump } from "@sruja/shared";
 
 interface UseNavigationDataProps {
@@ -29,7 +31,9 @@ export function useNavigationData({ model, filterQuery }: UseNavigationDataProps
 
   // Helper to find children
   const getChildren = (parentId: string, kind: string) =>
-    allElements.filter((e) => (e as any).parent === parentId && e.kind === kind);
+    allElements.filter(
+      (e) => (e as ElementDump & { parent?: string }).parent === parentId && e.kind === kind
+    );
 
   return {
     allElements,

@@ -21,7 +21,7 @@ export function renderWithProviders(ui: ReactElement, options?: Omit<RenderOptio
 /**
  * Create a mock function with proper typing
  */
-export function createMockFn<T extends (...args: any[]) => any>(
+export function createMockFn<T extends (...args: unknown[]) => unknown>(
   implementation?: T
 ): ReturnType<typeof vi.fn<T>> {
   return vi.fn(implementation) as ReturnType<typeof vi.fn<T>>;
@@ -38,9 +38,14 @@ export async function waitForAsync(ms = 0) {
 /**
  * Create a mock SrujaModelDump for testing
  */
-export function createMockModel(overrides?: Partial<any>): any {
+import type { SrujaModelDump } from "@sruja/shared";
+
+/**
+ * Create a mock SrujaModelDump for testing
+ */
+export function createMockModel(overrides?: Partial<SrujaModelDump>): SrujaModelDump {
   return {
-    specification: { tags: {}, elements: {} },
+    specification: { tags: {}, elements: {}, relationships: {} },
     elements: {},
     relations: [],
     views: {},
@@ -50,6 +55,8 @@ export function createMockModel(overrides?: Partial<any>): any {
       flows: [],
       scenarios: [],
     },
+    deployments: {},
+    project: { id: "test-project", name: "Test Project" },
     _metadata: {
       name: "Test Architecture",
       version: "1.0.0",
@@ -57,7 +64,7 @@ export function createMockModel(overrides?: Partial<any>): any {
       srujaVersion: "1.0",
     },
     ...overrides,
-  };
+  } as SrujaModelDump;
 }
 
 /**

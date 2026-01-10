@@ -15,8 +15,8 @@
 /* Responsive Styles - Media Queries */
 @import "./styles/responsive.css";
 
-/* Persona View Overlay */
-.persona-view-overlay {
+/* Role View Overlay */
+.role-view-overlay {
   position: absolute;
   inset: 0;
   z-index: 100;

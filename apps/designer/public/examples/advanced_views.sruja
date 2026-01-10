@@ -43,7 +43,6 @@ Shop.WebApp.Checkout -> Shop.API.Orders "creates orders"
 // Demonstrates: Simple layout with manual positions
 // ============================================================================
 view index {
-    title "E-Commerce System Context"
     include *
     
     layout {
@@ -65,23 +64,7 @@ view index {
 // Demonstrates: Grid preset layout, tag-based styling
 // ============================================================================
 view containers of Shop {
-    title "E-Commerce Containers"
     include Shop.*
-    
-    styles {
-        element "Web Application" {
-            shape rectangle
-            color "#3498db"
-        }
-        element "REST API" {
-            shape rectangle
-            color "#9b59b6"
-        }
-        element "Database" {
-            shape cylinder
-            color "#e74c3c"
-        }
-    }
 }
 
 // ============================================================================
@@ -89,9 +72,7 @@ view containers of Shop {
 // Demonstrates: Manual positions for components
 // ============================================================================
 view components of API {
-    title "API Gateway Components"
-    include Shop.API.*
-    
+    include Shop.API
     layout {
         element Auth {
             position { x: 300, y: 50 }
@@ -107,9 +88,7 @@ view components of API {
 // Demonstrates: Manual positions
 // ============================================================================
 view components of WebApp {
-    title "Web Application Components"
-    include Shop.WebApp.*
-    
+    include Shop.WebApp
     layout {
         element Cart {
             position { x: 150, y: 100 }

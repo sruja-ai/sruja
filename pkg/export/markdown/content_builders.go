@@ -51,7 +51,40 @@ func (e *Exporter) writeContent(sb *strings.Builder, systems []*language.System,
 	if arch.Description != nil {
 		fmt.Fprintf(sb, "%s\n\n", *arch.Description)
 	} else {
-		sb.WriteString("This document provides a comprehensive overview of the system architecture, including system components, user roles, functional requirements, and key architectural decisions.\n\n")
+		// Smart summary generation
+		if len(systems) > 0 {
+			sb.WriteString("This architecture documentation describes the design of ")
+
+			// List systems
+			var sysNames []string
+			for _, s := range systems {
+				sysNames = append(sysNames, fmt.Sprintf("**%s**", s.Label))
+			}
+
+			if len(sysNames) == 1 {
+				sb.WriteString(sysNames[0])
+			} else if len(sysNames) == 2 {
+				sb.WriteString(sysNames[0] + " and " + sysNames[1])
+			} else {
+				sb.WriteString(strings.Join(sysNames[:len(sysNames)-1], ", ") + ", and " + sysNames[len(sysNames)-1])
+			}
+			sb.WriteString(".\n\n")
+
+			// Add descriptions if available (up to first 3 to avoid wall of text)
+			count := 0
+			for _, s := range systems {
+				if s.Description != nil && *s.Description != "" {
+					fmt.Fprintf(sb, "- **%s**: %s\n", s.Label, *s.Description)
+					count++
+					if count >= 3 {
+						break
+					}
+				}
+			}
+			sb.WriteString("\nIt details the system components, user roles, functional requirements, and key architectural decisions.\n\n")
+		} else {
+			sb.WriteString("This document provides a comprehensive overview of the system architecture, including system components, user roles, functional requirements, and key architectural decisions.\n\n")
+		}
 	}
 
 	// Metadata section

@@ -11,8 +11,71 @@
   border-bottom: 1px solid var(--color-border, #e5e7eb);
   background: var(--color-surface, #f1f5f9);
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.trust-boundaries-title-row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.priority-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+}
+
+.trust-violations-list {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.trust-violation-item {
+  padding: 12px;
+  border: 1px solid #ef4444;
+  border-left: 3px solid #ef4444;
+  border-radius: 6px;
+  background: #fef2f2;
+}
+
+.trust-violation-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.trust-violation-content {
+  flex: 1;
+}
+
+.trust-violation-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.trust-violation-details {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.trust-violation-actionable {
+  font-size: 12px;
+  color: #475569;
+  padding: 6px;
+  background: #ffffff;
+  border-radius: 4px;
+}
+
+.trust-violation-actionable strong {
+  color: #1e293b;
 }
 
 .trust-boundaries-title {

@@ -125,19 +125,16 @@ These are bigger contributions - consider opening a discussion or issue first:
 ### For Beginners
 
 1. **Add an Example**
+
    ```bash
    # 1. Create a new file
    vim examples/my-architecture.sruja
-   
+
    # 2. Add your architecture
-   specification {
-       element system
-   }
-   model {
-       # ... your code ...
-       sys = system "My System"
-   }
-   
+   system = kind "System"
+
+   sys = system "My System"
+
    # 3. Add to manifest.json
    # 4. Test it: ./bin/sruja compile examples/my-architecture.sruja
    # 5. Submit PR
@@ -208,4 +205,3 @@ This way, maintainers can guide you and you won't waste time on something that m
 - 📝 **Open an Issue**: Discuss your idea first
 
 Remember: **No contribution is too small!** Even fixing a typo helps the project. 🚀
-

@@ -54,20 +54,21 @@ export function EditADRForm({ isOpen, onClose, adr }: EditADRFormProps) {
     },
     onSubmit: async (values) => {
       await updateArchitecture((model) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sruja = (model as any).sruja || {};
-        const adrs = [...(sruja.adrs || [])];
+        const adrs = [...(sruja.adrs || [])] as ADRDump[];
 
         const newADR: ADRDump = {
           id: values.id.trim(),
           title: values.title.trim(),
-          status: values.status?.id,
+          status: values.status?.id as ADRDump["status"],
           context: values.context.trim() || undefined,
           decision: values.decision.trim() || undefined,
           consequences: values.consequences.trim() || undefined,
         };
 
         if (adr) {
-          const index = adrs.findIndex((a: any) => a.id === adr.id);
+          const index = adrs.findIndex((a) => a.id === adr.id);
           if (index >= 0) {
             adrs[index] = newADR;
           }
@@ -126,7 +127,12 @@ export function EditADRForm({ isOpen, onClose, adr }: EditADRFormProps) {
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" type="submit" form="edit-adr-form" isLoading={form.isSubmitting}>
+          <Button
+            variant="primary"
+            type="submit"
+            form="edit-adr-form"
+            isLoading={form.isSubmitting}
+          >
             {adr ? "Update" : "Add"}
           </Button>
         </>

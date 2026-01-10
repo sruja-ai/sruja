@@ -8,9 +8,9 @@ vi.mock("zustand/middleware", async () => {
     ...actual,
     persist: <T>(config: T) => {
       if (typeof config === "function") {
-        return config as any;
+        return config as unknown as T;
       }
-      return config as any;
+      return config as unknown as T;
     },
     createJSONStorage: () => ({
       getItem: vi.fn(() => null),
@@ -22,14 +22,14 @@ vi.mock("zustand/middleware", async () => {
 
 import { useUIStore } from "../uiStore";
 import type { ViewTab } from "../../types";
-import type { Persona } from "../../components/PersonaSwitcher";
+import type { Role } from "../../components/RoleSwitcher";
 
 describe("uiStore", () => {
   beforeEach(() => {
     // Reset store before each test
     useUIStore.setState({
       activeTab: "overview",
-      selectedPersona: "architect",
+      selectedRole: "architect",
       codeTab: "dsl",
       targetLine: null,
       pendingAction: null,
@@ -40,7 +40,7 @@ describe("uiStore", () => {
     const state = useUIStore.getState();
 
     expect(state.activeTab).toBe("overview");
-    expect(state.selectedPersona).toBe("architect");
+    expect(state.selectedRole).toBe("architect");
     expect(state.codeTab).toBe("dsl");
     expect(state.targetLine).toBeNull();
     expect(state.pendingAction).toBeNull();
@@ -56,11 +56,11 @@ describe("uiStore", () => {
   });
 
   it("should set selected persona", () => {
-    const personas: Persona[] = ["product", "architect", "devops", "security", "cto", "sre"];
+    const roles: Role[] = ["product", "architect", "devops", "security", "cto", "sre"];
 
-    personas.forEach((persona) => {
-      useUIStore.getState().setSelectedPersona(persona);
-      expect(useUIStore.getState().selectedPersona).toBe(persona);
+    roles.forEach((role) => {
+      useUIStore.getState().setSelectedRole(role);
+      expect(useUIStore.getState().selectedRole).toBe(role);
     });
   });
 
@@ -104,14 +104,14 @@ describe("uiStore", () => {
 
   it("should handle multiple state updates independently", () => {
     useUIStore.getState().setActiveTab("diagram");
-    useUIStore.getState().setSelectedPersona("product");
+    useUIStore.getState().setSelectedRole("product");
     useUIStore.getState().setCodeTab("json");
     useUIStore.getState().setTargetLine(100);
     useUIStore.getState().setPendingAction("create-adr");
 
     const state = useUIStore.getState();
     expect(state.activeTab).toBe("diagram");
-    expect(state.selectedPersona).toBe("product");
+    expect(state.selectedRole).toBe("product");
     expect(state.codeTab).toBe("json");
     expect(state.targetLine).toBe(100);
     expect(state.pendingAction).toBe("create-adr");
@@ -120,13 +120,13 @@ describe("uiStore", () => {
   it("should allow chaining state updates", () => {
     useUIStore.setState({
       activeTab: "details",
-      selectedPersona: "devops",
+      selectedRole: "devops",
       codeTab: "markdown",
     });
 
     const state = useUIStore.getState();
     expect(state.activeTab).toBe("details");
-    expect(state.selectedPersona).toBe("devops");
+    expect(state.selectedRole).toBe("devops");
     expect(state.codeTab).toBe("markdown");
   });
 });

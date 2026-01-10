@@ -19,10 +19,10 @@ describe("viewStore", () => {
     // Reset selection store
     useSelectionStore.setState({
       selectedNodeId: null,
-      activeFlow: null,
+      activeAnimation: null,
       activeRequirement: null,
-      flowStep: 0,
-      isFlowPlaying: false,
+      animationStep: 0,
+      isAnimationPlaying: false,
     });
   });
 
@@ -190,10 +190,10 @@ describe("viewStore", () => {
       const state = useSelectionStore.getState();
 
       expect(state.selectedNodeId).toBeNull();
-      expect(state.activeFlow).toBeNull();
+      expect(state.activeAnimation).toBeNull();
       expect(state.activeRequirement).toBeNull();
-      expect(state.flowStep).toBe(0);
-      expect(state.isFlowPlaying).toBe(false);
+      expect(state.animationStep).toBe(0);
+      expect(state.isAnimationPlaying).toBe(false);
     });
 
     it("should select node", () => {
@@ -204,34 +204,34 @@ describe("viewStore", () => {
       expect(useSelectionStore.getState().selectedNodeId).toBeNull();
     });
 
-    it("should set active flow", () => {
+    it("should set active animation", () => {
       const flow: FlowDump = {
         id: "flow1",
         title: "Test Flow",
         steps: [],
       };
 
-      useSelectionStore.getState().setActiveFlow(flow);
+      useSelectionStore.getState().setActiveAnimation(flow);
 
       const state = useSelectionStore.getState();
-      expect(state.activeFlow).toEqual(flow);
-      expect(state.isFlowPlaying).toBe(true);
-      expect(state.flowStep).toBe(0);
+      expect(state.activeAnimation).toEqual(flow);
+      expect(state.isAnimationPlaying).toBe(true);
+      expect(state.animationStep).toBe(0);
     });
 
-    it("should clear active flow", () => {
+    it("should clear active animation", () => {
       const flow: FlowDump = {
         id: "flow1",
         title: "Test Flow",
         steps: [],
       };
 
-      useSelectionStore.getState().setActiveFlow(flow);
-      useSelectionStore.getState().setActiveFlow(null);
+      useSelectionStore.getState().setActiveAnimation(flow);
+      useSelectionStore.getState().setActiveAnimation(null);
 
       const state = useSelectionStore.getState();
-      expect(state.activeFlow).toBeNull();
-      expect(state.isFlowPlaying).toBe(false);
+      expect(state.activeAnimation).toBeNull();
+      expect(state.isAnimationPlaying).toBe(false);
     });
 
     it("should set active requirement and clear others", () => {
@@ -242,29 +242,29 @@ describe("viewStore", () => {
       };
 
       useSelectionStore.getState().selectNode("Node1");
-      useSelectionStore.getState().setActiveFlow(flow);
+      useSelectionStore.getState().setActiveAnimation(flow);
       useSelectionStore.getState().setActiveRequirement("Req1");
 
       const state = useSelectionStore.getState();
       expect(state.activeRequirement).toBe("Req1");
       expect(state.selectedNodeId).toBeNull();
-      expect(state.activeFlow).toBeNull();
+      expect(state.activeAnimation).toBeNull();
     });
 
-    it("should set flow step", () => {
-      useSelectionStore.getState().setFlowStep(5);
-      expect(useSelectionStore.getState().flowStep).toBe(5);
+    it("should set animation step", () => {
+      useSelectionStore.getState().setAnimationStep(5);
+      expect(useSelectionStore.getState().animationStep).toBe(5);
     });
 
-    it("should play flow", () => {
-      useSelectionStore.getState().playFlow();
-      expect(useSelectionStore.getState().isFlowPlaying).toBe(true);
+    it("should play animation", () => {
+      useSelectionStore.getState().playAnimation();
+      expect(useSelectionStore.getState().isAnimationPlaying).toBe(true);
     });
 
-    it("should pause flow", () => {
-      useSelectionStore.getState().playFlow();
-      useSelectionStore.getState().pauseFlow();
-      expect(useSelectionStore.getState().isFlowPlaying).toBe(false);
+    it("should pause animation", () => {
+      useSelectionStore.getState().playAnimation();
+      useSelectionStore.getState().pauseAnimation();
+      expect(useSelectionStore.getState().isAnimationPlaying).toBe(false);
     });
 
     it("should go to next step", () => {
@@ -272,36 +272,36 @@ describe("viewStore", () => {
         id: "flow1",
         title: "Test Flow",
         steps: [
-          { id: "step1", title: "Step 1" },
-          { id: "step2", title: "Step 2" },
-          { id: "step3", title: "Step 3" },
+          { from: "A", to: "B", description: "Step 1" },
+          { from: "B", to: "C", description: "Step 2" },
+          { from: "C", to: "D", description: "Step 3" },
         ],
       };
 
-      useSelectionStore.getState().setActiveFlow(flow);
-      useSelectionStore.getState().setFlowStep(0);
+      useSelectionStore.getState().setActiveAnimation(flow);
+      useSelectionStore.getState().setAnimationStep(0);
 
       useSelectionStore.getState().nextStep();
-      expect(useSelectionStore.getState().flowStep).toBe(1);
+      expect(useSelectionStore.getState().animationStep).toBe(1);
 
       useSelectionStore.getState().nextStep();
-      expect(useSelectionStore.getState().flowStep).toBe(2);
+      expect(useSelectionStore.getState().animationStep).toBe(2);
 
       useSelectionStore.getState().nextStep();
-      expect(useSelectionStore.getState().flowStep).toBe(2); // Should not exceed max
+      expect(useSelectionStore.getState().animationStep).toBe(2); // Should not exceed max
     });
 
     it("should go to previous step", () => {
-      useSelectionStore.getState().setFlowStep(2);
+      useSelectionStore.getState().setAnimationStep(2);
 
       useSelectionStore.getState().prevStep();
-      expect(useSelectionStore.getState().flowStep).toBe(1);
+      expect(useSelectionStore.getState().animationStep).toBe(1);
 
       useSelectionStore.getState().prevStep();
-      expect(useSelectionStore.getState().flowStep).toBe(0);
+      expect(useSelectionStore.getState().animationStep).toBe(0);
 
       useSelectionStore.getState().prevStep();
-      expect(useSelectionStore.getState().flowStep).toBe(0); // Should not go below 0
+      expect(useSelectionStore.getState().animationStep).toBe(0); // Should not go below 0
     });
   });
 });

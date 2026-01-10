@@ -1,11 +1,12 @@
 /**
  * Animation Controller
- * 
+ *
  * Manages animation state, timing, and playback for flow animations.
  * Provides controls for play, pause, step navigation, and configuration.
  */
 
-import type { FlowDump, Step } from "@sruja/shared";
+import type { FlowDump, ScenarioDump, SrujaModelDump, StepDump } from "@sruja/shared";
+import { resolveFqnToNodeId } from "../fqnResolver";
 
 export type NodeState = "idle" | "active" | "highlighted" | "visited" | "pending";
 export type EdgeState = "idle" | "active" | "highlighted" | "visited";
@@ -30,19 +31,20 @@ export interface AnimationConfig {
   autoAdvance?: boolean;
   loop?: boolean;
   animationSpeed?: number;
-  onStepChange?: (step: number, stepData: Step | null) => void;
+  onStepChange?: (step: number, stepData: StepDump | null) => void;
   onStateChange?: (state: AnimationState) => void;
+  model?: SrujaModelDump | null; // Added model for FQN resolution
 }
 
 export class AnimationController {
-  private flow: FlowDump | null = null;
+  private source: FlowDump | ScenarioDump | null = null;
   private state: AnimationState;
-  private config: Required<AnimationConfig>;
+  private config: Required<AnimationConfig> & { model: SrujaModelDump | null };
   private autoAdvanceTimer: ReturnType<typeof setTimeout> | null = null;
   private prefersReducedMotion: boolean;
 
   constructor(config: AnimationConfig = {}) {
-    this.prefersReducedMotion = 
+    this.prefersReducedMotion =
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -54,6 +56,7 @@ export class AnimationController {
       animationSpeed: config.animationSpeed ?? 1.0,
       onStepChange: config.onStepChange ?? (() => {}),
       onStateChange: config.onStateChange ?? (() => {}),
+      model: config.model ?? null,
     };
 
     this.state = {
@@ -84,10 +87,10 @@ export class AnimationController {
   }
 
   /**
-   * Set the active flow for animation
+   * Set the active source (flow or scenario) for animation
    */
-  setFlow(flow: FlowDump | null): void {
-    this.flow = flow;
+  setSource(source: FlowDump | ScenarioDump | null): void {
+    this.source = source;
     this.stop();
     this.state.currentStep = 0;
     this.clearAll();
@@ -95,17 +98,24 @@ export class AnimationController {
   }
 
   /**
-   * Get the current flow
+   * Update the model reference (needed for FQN resolution if model changes)
    */
-  getFlow(): FlowDump | null {
-    return this.flow;
+  setModel(model: SrujaModelDump | null): void {
+    this.config.model = model;
+  }
+
+  /**
+   * Get the current source
+   */
+  getSource(): FlowDump | ScenarioDump | null {
+    return this.source;
   }
 
   /**
    * Start animation playback
    */
   play(): void {
-    if (!this.flow || !this.hasSteps()) {
+    if (!this.source || !this.hasSteps()) {
       return;
     }
 
@@ -144,11 +154,11 @@ export class AnimationController {
    * Advance to next step
    */
   nextStep(): void {
-    if (!this.flow || !this.hasSteps()) {
+    if (!this.source || !this.hasSteps()) {
       return;
     }
 
-    const totalSteps = this.flow.steps?.length ?? 0;
+    const totalSteps = this.source.steps?.length ?? 0;
     if (this.state.currentStep >= totalSteps - 1) {
       if (this.state.loop) {
         this.state.currentStep = 0;
@@ -174,7 +184,7 @@ export class AnimationController {
    * Go to previous step
    */
   prevStep(): void {
-    if (!this.flow || !this.hasSteps()) {
+    if (!this.source || !this.hasSteps()) {
       return;
     }
 
@@ -195,13 +205,13 @@ export class AnimationController {
    * Jump to specific step
    */
   goToStep(step: number): void {
-    if (!this.flow || !this.hasSteps()) {
+    if (!this.source || !this.hasSteps()) {
       return;
     }
 
-    const totalSteps = this.flow.steps?.length ?? 0;
+    const totalSteps = this.source.steps?.length ?? 0;
     const clampedStep = Math.max(0, Math.min(step, totalSteps - 1));
-    
+
     if (clampedStep !== this.state.currentStep) {
       this.state.currentStep = clampedStep;
       this.updateStepVisuals();
@@ -271,17 +281,17 @@ export class AnimationController {
    * Get total number of steps
    */
   getTotalSteps(): number {
-    return this.flow?.steps?.length ?? 0;
+    return this.source?.steps?.length ?? 0;
   }
 
   /**
    * Get current step data
    */
-  getCurrentStepData(): Step | null {
-    if (!this.flow?.steps) {
+  getCurrentStepData(): StepDump | null {
+    if (!this.source?.steps) {
       return null;
     }
-    return this.flow.steps[this.state.currentStep] ?? null;
+    return this.source.steps[this.state.currentStep] ?? null;
   }
 
   /**
@@ -337,12 +347,12 @@ export class AnimationController {
   // Private methods
 
   private hasSteps(): boolean {
-    return (this.flow?.steps?.length ?? 0) > 0;
+    return (this.source?.steps?.length ?? 0) > 0;
   }
 
   private scheduleNextStep(): void {
     this.clearAutoAdvanceTimer();
-    
+
     const duration = this.state.stepDuration / this.state.animationSpeed;
     this.autoAdvanceTimer = setTimeout(() => {
       if (this.state.isPlaying) {
@@ -359,47 +369,69 @@ export class AnimationController {
   }
 
   private updateStepVisuals(): void {
-    if (!this.flow?.steps) {
+    if (!this.source?.steps) {
       return;
     }
 
-    const currentStep = this.flow.steps[this.state.currentStep];
+    const steps = this.source.steps;
+    const currentStep = steps[this.state.currentStep];
     if (!currentStep) {
       return;
     }
+
+    // Helper to get node ID (handles FQN resolution)
+    const getNodeId = (ref: string): string => {
+      // If we have a model, try to resolve FQN
+      if (this.config.model) {
+        const resolved = resolveFqnToNodeId(ref, this.config.model);
+        if (resolved) return resolved;
+      }
+      return ref; // Fallback to raw string
+    };
 
     // Clear previous active nodes/edges
     this.state.activeNodes.clear();
     this.state.activeEdges.clear();
 
+    const fromId = currentStep.from ? getNodeId(currentStep.from) : null;
+    const toId = currentStep.to ? getNodeId(currentStep.to) : null;
+
     // Add current step nodes
-    if (currentStep.from) {
-      this.state.activeNodes.add(currentStep.from);
-      this.state.visitedNodes.add(currentStep.from);
+    if (fromId) {
+      this.state.activeNodes.add(fromId);
+      this.state.visitedNodes.add(fromId);
     }
-    if (currentStep.to) {
-      this.state.activeNodes.add(currentStep.to);
-      this.state.visitedNodes.add(currentStep.to);
+    if (toId) {
+      this.state.activeNodes.add(toId);
+      this.state.visitedNodes.add(toId);
     }
 
     // Create edge ID from step (format: "from->to")
-    if (currentStep.from && currentStep.to) {
-      const edgeId = `${currentStep.from}->${currentStep.to}`;
+    if (fromId && toId) {
+      // Note: Edge IDs in ReactFlow might be different (e.g. "e-from-to-0").
+      // VisualEffectsSystem usually matches on data-edge-source/target or similar?
+      // Or we need to construct the ID precisely.
+      // Current implementation used constructs like `${from}->${to}` which matches traffic edges?
+      // Let's stick to the existing convention: `${from}->${to}`
+      const edgeId = `${fromId}->${toId}`;
       this.state.activeEdges.add(edgeId);
       this.state.visitedEdges.add(edgeId);
     }
 
     // Mark previous steps as visited
     for (let i = 0; i < this.state.currentStep; i++) {
-      const step = this.flow.steps[i];
-      if (step?.from) {
-        this.state.visitedNodes.add(step.from);
+      const step = steps[i];
+      const sFrom = step?.from ? getNodeId(step.from) : null;
+      const sTo = step?.to ? getNodeId(step.to) : null;
+
+      if (sFrom) {
+        this.state.visitedNodes.add(sFrom);
       }
-      if (step?.to) {
-        this.state.visitedNodes.add(step.to);
+      if (sTo) {
+        this.state.visitedNodes.add(sTo);
       }
-      if (step?.from && step?.to) {
-        const edgeId = `${step.from}->${step.to}`;
+      if (sFrom && sTo) {
+        const edgeId = `${sFrom}->${sTo}`;
         this.state.visitedEdges.add(edgeId);
       }
     }
@@ -421,4 +453,3 @@ export class AnimationController {
     this.config.onStateChange(this.state);
   }
 }
-
