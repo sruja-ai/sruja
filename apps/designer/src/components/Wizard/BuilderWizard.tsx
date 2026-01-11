@@ -1,32 +1,31 @@
 import { useState, useMemo, useEffect } from "react";
-import { Share2, Eye } from "lucide-react";
-import { Button } from "@sruja/ui";
 import { logger } from "@sruja/shared";
 import type { ElementDump } from "@sruja/shared";
-import { WizardStepper } from "./WizardStepper";
-import type { WizardStep } from "./WizardStepper";
+import { WizardStepper, type WizardStep } from "./WizardStepper";
 import { GoalsStep } from "./GoalsStep";
 import { SystemContextStep } from "./SystemContextStep";
 import { ContainersStep } from "./ContainersStep";
 import { ComponentsStep } from "./ComponentsStep";
 import { FlowsStep } from "./FlowsStep";
 import { RolesViewsStep } from "./RolesViewsStep";
-import { DslPreview } from "./DslPreview";
-import { ValidationPanel } from "./ValidationPanel";
+// import { DslPreview } from "./DslPreview"; // Handled by Right Pane now
+// import { ValidationPanel } from "./ValidationPanel"; // Handled by Right Pane now
+// import { DocumentationPanel } from "./DocumentationPanel"; // Handled by Right Pane now
 import { SharePanel } from "./SharePanel";
-import { DocumentationPanel } from "./DocumentationPanel";
 import { useArchitectureStore } from "../../stores/architectureStore";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
-import { useValidation } from "../../hooks/useValidation";
+import { useUIStore } from "../../stores"; // Import UI Store
 import { convertModelToDsl } from "../../utils/modelToDsl";
 import "./BuilderWizard.css";
 
 export function BuilderWizard() {
-  const [currentStep, setCurrentStep] = useState(0);
   const [showShare, setShowShare] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false);
-  const [hasSidebarPref, setHasSidebarPref] = useState(false);
-  const { score } = useValidation();
+
+  // Use global store for step state
+  const builderStepId = useUIStore((s) => s.builderStep);
+  const setBuilderStepId = useUIStore((s) => s.setBuilderStep);
+
+  // const { score } = useValidation();
   const data = useArchitectureStore((state) => state.model);
   const storeDslSource = useArchitectureStore((s) => s.dslSource);
   const sourceType = useArchitectureStore((s) => s.sourceType);
@@ -185,114 +184,46 @@ export function BuilderWizard() {
     ];
   }, [data]);
 
-  // Initialize state from local storage on mount (Metadata persistence deprecated/removed for now)
-  useEffect(() => {
-    // Load step from local storage
-    const storedStep = window.localStorage.getItem("playground:wizard:step");
-    if (storedStep) {
-      const step = parseInt(storedStep, 10);
-      if (!isNaN(step) && step >= 0 && step < steps.length) {
-        setCurrentStep(step);
-      }
-    }
-
-    // Load sidebar pref from local storage
-    const pref = window.localStorage.getItem("playground:previewSidebar");
-    if (pref === "on") {
-      setShowSidebar(true);
-      setHasSidebarPref(true);
-    } else if (pref === "off") {
-      setShowSidebar(false);
-      setHasSidebarPref(true);
-    }
-  }, [steps.length]); // Run on mount or when steps change
-  // Actually, we only want to load on mount or when we switch projects (loaded data changes significantly)
-  // But since we write back to metadata, we need to avoid reading back our own writes in a loop.
-  // The simple way: Only read on initial load of a new architecture.
-  // We can track the last loaded ID or similar?
-  // Limitation: If another user updates the step, we might want to sync it?
-  // For now, let's load once per session/project load.
-  // We can use a ref to track if we've initialized for the current data signature.
-
-  // Helper to update metadata (now local storage)
-  const updateMetadata = (key: string, value: string) => {
-    // Map keys to local storage keys if needed, or just use raw
-    if (key === "playground:wizard:step") {
-      window.localStorage.setItem("playground:wizard:step", value);
-    } else if (key === "playground:wizard:sidebar") {
-      // Handled by specific sidebar logic usually
-    }
-    // We don't update store metadata anymore as SrujaModelDump structure differs
-  };
+  // Derive numeric index from store ID
+  const currentStep = useMemo(() => {
+    const idx = steps.findIndex((s) => s.id === builderStepId);
+    return idx >= 0 ? idx : 0;
+  }, [steps, builderStepId]);
 
   const goToStep = (stepIndex: number) => {
     if (!steps[stepIndex].isLocked) {
-      setCurrentStep(stepIndex);
-      if (isEditMode()) {
-        updateMetadata("playground:wizard:step", stepIndex.toString());
-      }
+      setBuilderStepId(steps[stepIndex].id);
     }
   };
 
   const nextStep = () => {
     if (currentStep < steps.length - 1) {
       const next = currentStep + 1;
-      setCurrentStep(next);
-      updateMetadata("playground:wizard:step", next.toString());
+      setBuilderStepId(steps[next].id);
     }
   };
 
   const prevStep = () => {
     if (currentStep > 0) {
       const prev = currentStep - 1;
-      setCurrentStep(prev);
-      updateMetadata("playground:wizard:step", prev.toString());
+      setBuilderStepId(steps[prev].id);
     }
   };
 
-  useEffect(() => {
-    if ((currentStep === 4 || currentStep === 5) && !hasSidebarPref && !showSidebar) {
-      setShowSidebar(true);
-      // Don't auto-persist this as user preference yet, just local conveniences
-    }
-  }, [currentStep, hasSidebarPref, showSidebar]);
-
   return (
     <div className={`builder-wizard ${isEditMode() ? "edit-mode" : "view-mode"}`}>
-      {!isEditMode() && (
-        <div className="builder-view-mode-banner">
-          <Eye size={16} />
-          <span>View Mode - This is a read-only guide. Switch to edit mode to make changes.</span>
-        </div>
-      )}
+      {/* 
+        Removed "View Mode" banner as it is prominent in split view context.
+        The UI itself should look clean.
+      */}
       <WizardStepper
         steps={steps}
         currentStep={currentStep}
         onStepClick={goToStep}
+        onClose={() => useUIStore.getState().setLeftPaneContent("none")}
         extraActions={
-          <>
-            <Button
-              variant={showSidebar ? "primary" : "ghost"}
-              size="sm"
-              className={`preview-toggle-btn ${showSidebar ? "active" : ""}`}
-              onClick={() => {
-                setShowSidebar((v) => {
-                  const next = !v;
-                  if (isEditMode()) {
-                    updateMetadata("playground:wizard:sidebar", next.toString());
-                  }
-                  try {
-                    window.localStorage.setItem("playground:previewSidebar", next ? "on" : "off");
-                    setHasSidebarPref(true);
-                  } catch {}
-                  return next;
-                });
-              }}
-              title="Toggle preview sidebar (DSL, Documentation, Validation)"
-            >
-              {showSidebar ? "Hide Preview & Docs" : "Show Preview & Docs"}
-            </Button>
-          </>
+          // Simplified: No preview toggle anymore as it's controlled by Layout
+          null
         }
       />
 
@@ -311,34 +242,6 @@ export function BuilderWizard() {
           {currentStep === 4 && <FlowsStep onBack={prevStep} readOnly={!isEditMode()} />}
           {currentStep === 5 && <RolesViewsStep onBack={prevStep} readOnly={!isEditMode()} />}
         </div>
-
-        {/* Preview Sidebar (Documentation, Validation, DSL) */}
-        {showSidebar && (
-          <div className="wizard-sidebar">
-            <div className="sidebar-actions">
-              <Button variant="ghost" size="sm" onClick={() => setShowSidebar(!showSidebar)}>
-                <Eye size={16} />
-                {showSidebar ? "Hide Details" : "Show Details"}
-              </Button>
-              <div
-                className={`quality-badge ${score >= 80 ? "good" : score >= 50 ? "avg" : "poor"}`}
-              >
-                <div className="quality-label">Quality Score</div>
-                <div className="quality-value">{score}</div>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => setShowShare(!showShare)}>
-                <Share2 size={14} />
-                Share
-              </Button>
-            </div>
-            {/* Documentation Panel - Step-specific help */}
-            <DocumentationPanel stepId={steps[currentStep]?.id || "goals"} compact />
-            {/* Validation Panel - Quality checks */}
-            <ValidationPanel compact />
-            {/* DSL Preview - Generated code */}
-            <DslPreview dsl={currentDsl} />
-          </div>
-        )}
       </div>
 
       <SharePanel isOpen={showShare} onClose={() => setShowShare(false)} />

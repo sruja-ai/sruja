@@ -65,7 +65,7 @@ describe("uiStore", () => {
   });
 
   it("should set code tab", () => {
-    const codeTabs: Array<"dsl" | "json" | "markdown"> = ["dsl", "json", "markdown"];
+    const codeTabs: Array<"dsl" | "markdown"> = ["dsl", "markdown"];
 
     codeTabs.forEach((tab) => {
       useUIStore.getState().setCodeTab(tab);
@@ -105,14 +105,14 @@ describe("uiStore", () => {
   it("should handle multiple state updates independently", () => {
     useUIStore.getState().setActiveTab("diagram");
     useUIStore.getState().setSelectedRole("product");
-    useUIStore.getState().setCodeTab("json");
+    useUIStore.getState().setCodeTab("dsl");
     useUIStore.getState().setTargetLine(100);
     useUIStore.getState().setPendingAction("create-adr");
 
     const state = useUIStore.getState();
     expect(state.activeTab).toBe("diagram");
     expect(state.selectedRole).toBe("product");
-    expect(state.codeTab).toBe("json");
+    expect(state.codeTab).toBe("dsl");
     expect(state.targetLine).toBe(100);
     expect(state.pendingAction).toBe("create-adr");
   });

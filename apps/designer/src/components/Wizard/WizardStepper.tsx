@@ -1,5 +1,4 @@
-import { Check, Lock } from "lucide-react";
-import { Button } from "@sruja/ui";
+import { X } from "lucide-react";
 import "./WizardStepper.css";
 
 export interface WizardStep {
@@ -14,6 +13,7 @@ interface WizardStepperProps {
   steps: WizardStep[];
   currentStep: number;
   onStepClick: (stepIndex: number) => void;
+  onClose?: () => void;
   extraActions?: React.ReactNode;
 }
 
@@ -21,60 +21,82 @@ export function WizardStepper({
   steps,
   currentStep,
   onStepClick,
+  onClose,
   extraActions,
 }: WizardStepperProps) {
-  const progress = (currentStep / (steps.length - 1)) * 100;
-  const completedSteps = steps.filter((s) => s.isComplete).length;
+  const currentLabel = steps[currentStep]?.label || "";
 
   return (
-    <div className="wizard-stepper">
-      {/* Progress Bar */}
-      <div className="wizard-progress">
-        <div className="wizard-progress-track">
-          <div className="wizard-progress-fill" style={{ width: `${progress}%` }} />
+    <div className="wizard-progress-container">
+      {/* Header with Title and Counter */}
+      <div className="wizard-progress-header">
+        <div className="current-step-info">
+          <span className="current-step-label">{currentLabel}</span>
+          {/* <span className="current-step-desc"> - {currentDesc}</span> */}
         </div>
-        <span className="wizard-progress-text">
-          {completedSteps}/{steps.length} complete
-        </span>
-        {extraActions && <div className="wizard-actions">{extraActions}</div>}
+
+        <div
+          className="wizard-header-actions"
+          style={{ display: "flex", alignItems: "center", gap: "8px" }}
+        >
+          <div className="step-counter">
+            Step {currentStep + 1} of {steps.length}
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="wizard-close-btn"
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--text-tertiary)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "4px",
+                borderRadius: "4px",
+                marginLeft: "8px",
+              }}
+              title="Close Wizard"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Steps */}
-      <div className="wizard-steps">
+      {/* The Progress Track */}
+      <div className="progress-track">
         {steps.map((step, index) => {
           const isActive = index === currentStep;
-          const isPast = index < currentStep;
-          const isClickable = step.isComplete || index <= currentStep;
+          const isCompleted = step.isComplete || index < currentStep;
+          const isLocked = step.isLocked;
 
           return (
-            <Button
+            <div
               key={step.id}
-              variant={isActive ? "primary" : "ghost"}
-              size="sm"
-              className={`wizard-step ${isActive ? "active" : ""} ${isPast ? "past" : ""} ${step.isComplete ? "complete" : ""} ${step.isLocked ? "locked" : ""}`}
-              onClick={() => isClickable && onStepClick(index)}
-              disabled={step.isLocked && !isClickable}
-              title={step.description}
-            >
-              <div className="wizard-step-indicator">
-                {step.isComplete ? (
-                  <Check size={16} />
-                ) : step.isLocked ? (
-                  <Lock size={14} />
-                ) : (
-                  <span className="wizard-step-number">{index + 1}</span>
-                )}
-              </div>
-              <div className="wizard-step-content">
-                <span className="wizard-step-label">{step.label}</span>
-                {step.description && (
-                  <span className="wizard-step-description">{step.description}</span>
-                )}
-              </div>
-            </Button>
+              className={`progress-segment 
+                            ${isActive ? "active" : ""} 
+                            ${isCompleted ? "completed" : ""} 
+                            ${isLocked ? "locked" : ""}
+                        `}
+              onClick={() => !isLocked && onStepClick(index)}
+              title={`${step.label}${isLocked ? " (Locked)" : ""}`}
+            />
           );
         })}
       </div>
+
+      {/* Optional: Extra Actions (like Share) */}
+      {extraActions && (
+        <div
+          className="wizard-extra-actions"
+          style={{ marginTop: "8px", display: "flex", justifyContent: "flex-end" }}
+        >
+          {extraActions}
+        </div>
+      )}
     </div>
   );
 }

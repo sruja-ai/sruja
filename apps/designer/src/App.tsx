@@ -1,13 +1,13 @@
 // apps/designer/src/App.tsx
-import { useState, useEffect, useRef, useMemo } from "react";
-import { Play, Plus } from "lucide-react";
-// import { type ArchitectureCanvasRef } from "./components/Canvas";
+import { useEffect, useRef, useState, useMemo } from "react";
+import { Play, Plus, PanelLeft, PanelRight } from "lucide-react";
 import { SrujaCanvas } from "./components/SrujaCanvas";
 import "./App.css";
 import "./components/shared/GlobalFocusStyles.css";
 import { NavigationPanel, InspectorPanel, CodePanel, MarkdownPanel } from "./components/Panels";
 import { BuilderWizard } from "./components/Wizard";
 import { ErrorBoundary, SentryInit } from "./components/shared";
+import { SplitLayout } from "./components/Layout/SplitLayout";
 import {
   ToastContainer,
   Logo,
@@ -15,7 +15,7 @@ import {
   PosthogProvider,
   CommandPalette,
   ShortcutsModal,
-} from "@sruja/ui";
+} from "@sruja/ui"; // Assuming these exports exist or adjust imports
 import {
   useArchitectureStore,
   useSelectionStore,
@@ -30,11 +30,9 @@ import { OverviewTab } from "./components/Overview/OverviewTab";
 
 import { useClipboardOperations, useProjectSync, useFileHandlers } from "./hooks";
 import { DetailsView } from "./components/Views/DetailsView";
-import { ViewTabs } from "./components/ViewTabs";
 import { useUrlState } from "./hooks/useUrlState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { setGlobalCanvasRef } from "./hooks/useTagNavigation";
-import { trackInteraction } from "@sruja/shared";
 import type { ViewTab } from "./types";
 import type { CanvasHandle } from "./components/SrujaCanvas/types";
 
@@ -43,16 +41,6 @@ import { Header } from "./components/Header";
 import { useAppCommands } from "./hooks/useAppCommands";
 import { useAppShortcuts } from "./hooks/useAppShortcuts";
 import { OnboardingTooltip } from "./components/OnboardingTooltip";
-
-const VALID_TABS: ViewTab[] = [
-  "overview",
-  "diagram",
-  "code",
-  "docs",
-  "builder",
-  "details",
-  "roles",
-];
 
 export default function App() {
   // Sync URL state (level, expanded nodes) with view store
@@ -63,19 +51,27 @@ export default function App() {
   const selectedNodeId = useSelectionStore((s) => s.selectedNodeId);
   const undo = useHistoryStore((s) => s.undo);
   const redo = useHistoryStore((s) => s.redo);
+
+  // Split View & Layout State
+  const leftPane = useUIStore((s) => s.leftPaneContent);
+  const rightPane = useUIStore((s) => s.rightPaneContent);
   const activeTab = useUIStore((s) => s.activeTab);
   const setActiveTab = useUIStore((s) => s.setActiveTab);
-  // Role selection removed from global store - now handled in Roles tab
+
+  const isNavVisible = useUIStore((s) => s.isNavigationVisible);
+  const isInspectorVisible = useUIStore((s) => s.isInspectorVisible);
+  const toggleNav = useUIStore((s) => s.toggleNavigation);
+  const toggleInspector = useUIStore((s) => s.toggleInspector);
+
   const editMode = useFeatureFlagsStore((s) => s.editMode);
   const setEditMode = useFeatureFlagsStore((s) => s.setEditMode);
 
   const toasts = useToastStore((s) => s.toasts);
   const removeToast = useToastStore((s) => s.removeToast);
 
-  const [isNavOpen, setIsNavOpen] = useState(false);
-  // isDetailsOpen removed - InspectorPanel handles its own state
+  // Local UI state
+  const [isNavOpen, setIsNavOpen] = useState(false); // For mobile drawer?
   const [showActions, setShowActions] = useState(false);
-
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -121,62 +117,38 @@ export default function App() {
     }
   }, [model]);
 
-  // Role view rendering removed - now handled directly in DynamicRoleView component
+  // Init Store
+  useEffect(() => {
+    // Check if we need to load example
+    const store = useArchitectureStore.getState();
+    if (!store.model) {
+      // Fallback or explicit init if store method exists
+      // store.init({});
+    }
+  }, []);
 
-  // Initialize activeTab from URL on mount
-  // If tab param is explicitly set, respect it. Otherwise, only set default if not loading code from URL
+  // Handle URL tabs for backward compatibility
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get("tab");
-    const hasCodeParam = params.get("code") || params.get("dsl") || params.get("share");
-
-    // If tab is explicitly set in URL, always respect it
-    if (tabParam === "requirements" || tabParam === "adrs") {
-      setActiveTab("details");
-      return;
-    } else if (tabParam === "guided") {
-      setActiveTab("builder");
-      return;
-      // Overview tab is now a real tab, no redirect needed
-    } else if (tabParam && VALID_TABS.includes(tabParam as ViewTab)) {
+    if (tabParam && tabParam !== activeTab) {
+      // This will now trigger the split view logic in UIStore via setActiveTab
       setActiveTab(tabParam as ViewTab);
-      return;
     }
+  }, []);
 
-    // If no explicit tab param, only set default if we're NOT loading code from URL
-    // (to avoid flickering - useProjectSync will handle tab setting for code params)
-    // Default to Overview tab as landing page
-    if (!hasCodeParam) {
-      setActiveTab("overview");
-    }
-  }, [setActiveTab, editMode]);
-
-  // Sync URL when activeTab changes (skip during initial load to avoid flickering)
+  // Sync activeTab to URL
   useEffect(() => {
-    // Skip URL sync if we're still loading (to prevent flickering during initialization)
-    if (isLoadingFile) {
-      return;
-    }
-
+    if (isLoadingFile) return;
     const params = new URLSearchParams(window.location.search);
-    const previousTab = params.get("tab");
-    if (previousTab !== activeTab) {
+    if (params.get("tab") !== activeTab) {
       params.set("tab", activeTab);
       const newUrl = `${window.location.pathname}?${params.toString()}`;
       window.history.replaceState({}, "", newUrl);
-
-      // Track tab change (only if tab actually changed, not on initial load)
-      if (previousTab && previousTab !== activeTab) {
-        trackInteraction("switch", "tab", { from: previousTab, to: activeTab });
-      }
     }
   }, [activeTab, isLoadingFile]);
 
-  // Auto-open Details Panel logic removed - Inspector auto-expands internally on selection
-
-  // counts variable removed - no longer needed in simplified tabs
-
-  // --- Logic Extracted to Hooks ---
+  // Shortcuts & Commands
   const shortcuts = useAppShortcuts({
     activeTab,
     model,
@@ -199,7 +171,7 @@ export default function App() {
     },
   });
 
-  useKeyboardShortcuts(shortcuts);
+  useKeyboardShortcuts(shortcuts); // Global hotkeys
 
   const commandPaletteCommands = useAppCommands({
     activeTab,
@@ -226,6 +198,87 @@ export default function App() {
     });
   }, [shortcuts]);
 
+  // Render Helpers
+  const renderContent = (type: string) => {
+    if (!model && !isLoadingFile) {
+      if (type === "diagram" || type === "builder") {
+        // Show empty state only in main view if nothing loaded
+        return (
+          <div className="drop-zone">
+            <Logo size={64} />
+            <h2>Design, visualize, and govern your architecture</h2>
+            <p>
+              Start from a demo or template, or import a <code>.sruja</code> file.
+            </p>
+            <div className="empty-state-actions">
+              <button className="demo-btn large" onClick={() => void loadDemo()}>
+                <Play size={18} />
+                Try a Demo
+              </button>
+              <button className="upload-btn large" onClick={() => void handleCreateLocal()}>
+                <Plus size={18} />
+                Create New
+              </button>
+            </div>
+          </div>
+        );
+      }
+      return null;
+    }
+
+    if (isLoadingFile) {
+      return (
+        <div className="loading">
+          <SrujaLoader size={64} />
+          <p>Loading architecture...</p>
+        </div>
+      );
+    }
+
+    switch (type) {
+      case "builder":
+        return (
+          <ErrorBoundary fallback={<div className="error-state">Builder Error</div>}>
+            <BuilderWizard />
+          </ErrorBoundary>
+        );
+      case "code":
+        return <CodePanel />;
+      case "diagram":
+        // Refactored Diagram View wrapper
+        return (
+          <div
+            className="canvas-wrapper-full"
+            style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}
+          >
+            <ErrorBoundary fallback={<div className="error-state">Canvas Error</div>}>
+              <SrujaCanvas />
+            </ErrorBoundary>
+          </div>
+        );
+      case "docs":
+        return <MarkdownPanel />;
+      case "overview":
+        return <OverviewTab />;
+      case "details":
+        return <DetailsView />;
+      case "roles":
+        return <DynamicRoleView />;
+      default:
+        // Default to diagram if unsure, or specific pages
+        return (
+          <div
+            className="canvas-wrapper-full"
+            style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}
+          >
+            <ErrorBoundary fallback={<div className="error-state">Canvas Error</div>}>
+              <SrujaCanvas />
+            </ErrorBoundary>
+          </div>
+        );
+    }
+  };
+
   return (
     <>
       <SentryInit />
@@ -233,9 +286,8 @@ export default function App() {
         apiKey={import.meta.env.VITE_POSTHOG_KEY || ""}
         host={import.meta.env.VITE_POSTHOG_HOST}
       >
-        <div className="app-container">
+        <div className={`app-container ${editMode === "edit" ? "edit-mode" : "view-mode"}`}>
           <ToastContainer toasts={toasts} onClose={removeToast} />
-          {/* ... existing content ... */}
           <input
             type="file"
             ref={fileInputRef}
@@ -255,8 +307,6 @@ export default function App() {
             editMode={editMode}
             setEditMode={setEditMode}
             selectedNodeId={selectedNodeId}
-            selectedNodeId={selectedNodeId}
-            // isDetailsOpen removed for Inspector
             isDetailsOpen={false}
             setIsDetailsOpen={() => {}}
             handleImport={handleImport}
@@ -269,202 +319,78 @@ export default function App() {
             onOpenCommandPalette={() => setShowCommandPalette(true)}
           />
 
-          {/* Mobile Overlay - Only for Nav now */}
-          {isNavOpen && (
-            <div
-              className="mobile-overlay"
-              onClick={() => {
-                setIsNavOpen(false);
-                // setIsDetailsOpen(false);
-              }}
-            />
-          )}
+          {isNavOpen && <div className="mobile-overlay" onClick={() => setIsNavOpen(false)} />}
 
-          {/* Main Content */}
           <main className="app-main">
-            {useUIStore((s) => s.isNavigationVisible) && (
-              <div className={`navigation-panel-wrapper ${isNavOpen ? "open" : ""}`}>
-                <NavigationPanel onClose={() => setIsNavOpen(false)} />
+            {/* LEFT SIDEBAR: Navigation */}
+            <div className={`sidebar-container left ${isNavVisible ? "open" : "closed"}`}>
+              <div className="sidebar-content">
+                <NavigationPanel onClose={toggleNav} />
               </div>
-            )}
+              {/* Collapsed State Toggle */}
+              {!isNavVisible && (
+                <div className="collapsed-bar left" onClick={toggleNav} title="Open Explorer">
+                  <PanelLeft size={20} />
+                </div>
+              )}
+            </div>
 
-            <div className={`center-panel ${editMode === "edit" ? "edit-mode" : ""}`}>
-              {/* Tab Content */}
+            {/* CENTER: Main Stage (Split View) */}
+            <div className="center-stage">
               <div className="canvas-container">
-                {!model && !isLoadingFile && (
-                  <div className="drop-zone">
-                    <Logo size={64} />
-                    <h2>Design, visualize, and govern your architecture</h2>
-                    <p>
-                      Start from a demo or template, or import a <code>.sruja</code> file.
-                    </p>
-                    <div className="empty-state-actions">
-                      <button className="demo-btn large" onClick={() => void loadDemo()}>
-                        <Play size={18} />
-                        Try a Demo
-                      </button>
-                      <button className="upload-btn large" onClick={() => void handleCreateLocal()}>
-                        <Plus size={18} />
-                        Create New
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {isLoadingFile && (
-                  <div className="loading">
-                    <SrujaLoader size={64} />
-                    <p>Loading architecture...</p>
-                  </div>
-                )}
-
-                {/* Overview Tab - Landing page with high-level context */}
-                {activeTab === "overview" && (
-                  <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
-                    <ErrorBoundary
-                      fallback={
-                        <div
-                          className="error-state"
-                          style={{ padding: "2rem", textAlign: "center" }}
-                        >
-                          <h2>Overview Error</h2>
-                          <p>Failed to load overview. Please try refreshing the page.</p>
-                        </div>
-                      }
-                    >
-                      <OverviewTab />
-                    </ErrorBoundary>
-                  </div>
-                )}
-
-                {/* Builder Tab */}
-                {model && activeTab === "builder" && (
-                  <div role="tabpanel" id="tabpanel-builder" aria-labelledby="tab-builder">
-                    <ErrorBoundary
-                      fallback={
-                        <div
-                          className="error-state"
-                          style={{ padding: "2rem", textAlign: "center" }}
-                        >
-                          <h2>Builder Error</h2>
-                          <p>Failed to load the builder wizard. Please try refreshing the page.</p>
-                        </div>
-                      }
-                    >
-                      <BuilderWizard />
-                    </ErrorBoundary>
-                  </div>
-                )}
-
-                {/* Standard Diagram Tab (Full Screen) */}
-                {model && activeTab === "diagram" && (
-                  <div role="tabpanel" id="tabpanel-diagram" aria-labelledby="tab-diagram">
-                    <ErrorBoundary
-                      fallback={
-                        <div
-                          className="error-state"
-                          style={{ padding: "2rem", textAlign: "center" }}
-                        >
-                          <h2>Canvas Error</h2>
-                          <p>
-                            Failed to render the architecture canvas. Please try refreshing the
-                            page.
-                          </p>
-                        </div>
-                      }
-                    >
-                      <SrujaCanvas />
-                      {/* 
-                    <ArchitectureCanvas
-                      ref={canvasRef}
-                      model={model}
-                      dragEnabled={editMode === "edit"}
-                      viewId={currentLevel}
-                    /> 
-                    */}
-                    </ErrorBoundary>
-                  </div>
-                )}
-
-                {model && activeTab === "details" && (
-                  <div role="tabpanel" id="tabpanel-details" aria-labelledby="tab-details">
-                    <ErrorBoundary
-                      fallback={
-                        <div
-                          className="error-state"
-                          style={{ padding: "2rem", textAlign: "center" }}
-                        >
-                          <h2>Details Error</h2>
-                          <p>Failed to load details view. Please try refreshing the page.</p>
-                        </div>
-                      }
-                    >
-                      <DetailsView />
-                    </ErrorBoundary>
-                  </div>
-                )}
-
-                {model && activeTab === "code" && (
-                  <div role="tabpanel" id="tabpanel-code" aria-labelledby="tab-code">
-                    <CodePanel />
-                  </div>
-                )}
-
-                {/* Docs Tab - Direct Markdown View */}
-                {model && activeTab === "docs" && (
-                  <div role="tabpanel" id="tabpanel-docs" aria-labelledby="tab-docs">
-                    <MarkdownPanel />
-                  </div>
-                )}
-
-                {/* Roles Tab */}
-                {model && activeTab === "roles" && (
-                  <div role="tabpanel" id="tabpanel-roles" aria-labelledby="tab-roles">
-                    <ErrorBoundary
-                      fallback={
-                        <div
-                          className="error-state"
-                          style={{ padding: "2rem", textAlign: "center" }}
-                        >
-                          <h2>Roles View Error</h2>
-                          <p>Failed to load roles view. Please try refreshing the page.</p>
-                        </div>
-                      }
-                    >
-                      <DynamicRoleView />
-                    </ErrorBoundary>
-                  </div>
+                {/* Logic for Split vs Single View */}
+                {activeTab === "builder" || activeTab === "code" ? (
+                  <SplitLayout
+                    leftContent={renderContent(activeTab)}
+                    rightContent={renderContent(rightPane)}
+                    isLeftVisible={leftPane !== "none"}
+                    onCollapse={() => useUIStore.getState().setLeftPaneContent("none")}
+                    onExpand={() =>
+                      useUIStore
+                        .getState()
+                        .setLeftPaneContent(activeTab === "builder" ? "builder" : "code")
+                    }
+                  />
+                ) : /* Single View for other tabs or purely visual states */
+                activeTab === "overview" ? (
+                  renderContent("overview")
+                ) : activeTab === "details" ? (
+                  renderContent("details")
+                ) : activeTab === "roles" ? (
+                  renderContent("roles")
+                ) : (
+                  renderContent(rightPane)
                 )}
               </div>
             </div>
 
-            <div className="inspector-panel-wrapper">
-              <ErrorBoundary
-                fallback={
-                  <div className="error-state" style={{ padding: "2rem", textAlign: "center" }}>
-                    <h2>Inspector Error</h2>
-                    <p>Failed to load the inspector. Please try refreshing.</p>
-                  </div>
-                }
-              >
-                {useUIStore((s) => s.isInspectorVisible) && <InspectorPanel />}
-              </ErrorBoundary>
+            {/* RIGHT SIDEBAR: Inspector */}
+            <div className={`sidebar-container right ${isInspectorVisible ? "open" : "closed"}`}>
+              <div className="sidebar-content">
+                <InspectorPanel />
+              </div>
+              {!isInspectorVisible && (
+                <div
+                  className="collapsed-bar right"
+                  onClick={toggleInspector}
+                  title="Open Inspector"
+                >
+                  <PanelRight size={20} />
+                </div>
+              )}
             </div>
           </main>
 
-          {/* Modals & Dialogs */}
           <CommandPalette
             isOpen={showCommandPalette}
             onClose={() => setShowCommandPalette(false)}
             commands={commandPaletteCommands}
           />
-
           <ShortcutsModal
             isOpen={showShortcuts}
             onClose={() => setShowShortcuts(false)}
             shortcuts={modalShortcuts}
           />
-
-          {/* Onboarding Tooltip */}
           {model && <OnboardingTooltip />}
         </div>
       </PosthogProvider>

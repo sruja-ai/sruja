@@ -4,7 +4,6 @@ import {
   PanelRight,
   MoreHorizontal,
   Search,
-  Command,
   Share2,
   Plus,
   Upload,
@@ -73,12 +72,17 @@ export function Header({
             variant="ghost"
             size="sm"
             className="action-btn icon-only"
-            onClick={() => useUIStore.getState().toggleNavigation()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              useUIStore.getState().toggleNavigation();
+            }}
             title={
               useUIStore.getState().isNavigationVisible
                 ? "Close Navigation (Alt/Opt + B)"
                 : "Open Navigation (Alt/Opt + B)"
             }
+            type="button"
           >
             <PanelLeft size={18} />
           </Button>
@@ -86,7 +90,12 @@ export function Header({
             variant="ghost"
             size="sm"
             className="mobile-menu-btn"
-            onClick={() => setIsNavOpen(true)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsNavOpen(true);
+            }}
+            type="button"
           >
             <Menu size={20} />
           </Button>
@@ -241,12 +250,17 @@ export function Header({
           variant="ghost"
           size="sm"
           className="action-btn icon-only"
-          onClick={() => useUIStore.getState().toggleInspector()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            useUIStore.getState().toggleInspector();
+          }}
           title={
             useUIStore.getState().isInspectorVisible
               ? "Close Inspector (Alt/Opt + I)"
               : "Open Inspector (Alt/Opt + I)"
           }
+          type="button"
         >
           <PanelRight size={18} />
         </Button>
