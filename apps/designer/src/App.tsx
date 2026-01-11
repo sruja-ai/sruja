@@ -31,7 +31,6 @@ import { OverviewTab } from "./components/Overview/OverviewTab";
 import { useClipboardOperations, useProjectSync, useFileHandlers } from "./hooks";
 import { DetailsView } from "./components/Views/DetailsView";
 import { ViewTabs } from "./components/ViewTabs";
-import { FeatureSettingsDialog } from "./components/Overview/FeatureSettingsDialog";
 import { useUrlState } from "./hooks/useUrlState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { setGlobalCanvasRef } from "./hooks/useTagNavigation";
@@ -75,7 +74,6 @@ export default function App() {
 
   const [isNavOpen, setIsNavOpen] = useState(false);
   // isDetailsOpen removed - InspectorPanel handles its own state
-  const [showSettings, setShowSettings] = useState(false);
   const [showActions, setShowActions] = useState(false);
 
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -198,7 +196,6 @@ export default function App() {
       setShowCommandPalette,
       setShowShortcuts,
       setShowActions,
-      setShowSettings,
     },
   });
 
@@ -254,9 +251,9 @@ export default function App() {
             showActions={showActions}
             setShowActions={setShowActions}
             activeTab={activeTab}
+            setActiveTab={setActiveTab}
             editMode={editMode}
             setEditMode={setEditMode}
-            setShowSettings={setShowSettings}
             selectedNodeId={selectedNodeId}
             selectedNodeId={selectedNodeId}
             // isDetailsOpen removed for Inspector
@@ -292,9 +289,6 @@ export default function App() {
             )}
 
             <div className={`center-panel ${editMode === "edit" ? "edit-mode" : ""}`}>
-              {/* View Tabs */}
-              {model && <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} />}
-
               {/* Tab Content */}
               <div className="canvas-container">
                 {!model && !isLoadingFile && (
@@ -458,8 +452,6 @@ export default function App() {
           </main>
 
           {/* Modals & Dialogs */}
-          <FeatureSettingsDialog isOpen={showSettings} onClose={() => setShowSettings(false)} />
-
           <CommandPalette
             isOpen={showCommandPalette}
             onClose={() => setShowCommandPalette(false)}

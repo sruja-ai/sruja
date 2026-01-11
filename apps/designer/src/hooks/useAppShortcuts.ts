@@ -33,7 +33,6 @@ interface UseAppShortcutsProps {
     setShowCommandPalette: (show: boolean) => void;
     setShowShortcuts: (show: boolean) => void;
     setShowActions: (show: boolean) => void;
-    setShowSettings: (show: boolean) => void;
   };
 }
 
@@ -166,7 +165,6 @@ export function useAppShortcuts({
         key: "Escape",
         action: () => {
           ui.setShowActions(false);
-          ui.setShowSettings(false);
         },
         description: "Close dialogs",
         preventDefault: false,
