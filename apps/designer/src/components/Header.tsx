@@ -13,6 +13,10 @@ import {
   RefreshCw,
   Eye,
   Edit3,
+  Hammer,
+  Workflow,
+  FileCode,
+  FileText,
 } from "lucide-react";
 import { ExamplesDropdown } from "./shared";
 import { ThemeToggle, Button, Logo } from "@sruja/ui";
@@ -110,7 +114,78 @@ export function Header({
 
       {/* Center: Navigation Tabs */}
       <div className="header-center">
-        {model && <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} />}
+        {model && (
+          <div
+            className="header-tabs-container"
+            style={{
+              display: "flex",
+              gap: "24px",
+              alignItems: "center",
+              width: "100%",
+              justifyContent: "center",
+            }}
+          >
+            {/* Editor Controls (Left) */}
+            <div
+              className="tab-group editor-group"
+              style={{ display: "flex", gap: "8px", alignItems: "center" }}
+            >
+              <span
+                className="tab-group-label"
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  color: "var(--text-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                Editor
+              </span>
+              <ViewTabs
+                activeId={useUIStore((s) => s.activeEditor)}
+                onTabChange={(id) =>
+                  useUIStore
+                    .getState()
+                    .setActiveEditor(id === useUIStore.getState().activeEditor ? null : (id as any))
+                }
+                tabs={[
+                  { id: "builder", icon: <Hammer size={16} />, label: "Builder" },
+                  { id: "code", icon: <FileCode size={16} />, label: "Code" },
+                ]}
+              />
+            </div>
+
+            <div className="divider-vertical" style={{ height: "24px" }} />
+
+            {/* View Controls (Right) */}
+            <div
+              className="tab-group view-group"
+              style={{ display: "flex", gap: "8px", alignItems: "center" }}
+            >
+              <span
+                className="tab-group-label"
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  color: "var(--text-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                View
+              </span>
+              <ViewTabs
+                activeId={useUIStore((s) => s.activeView)}
+                onTabChange={(id) => useUIStore.getState().setActiveView(id as any)}
+                tabs={[
+                  { id: "diagram", icon: <Workflow size={16} />, label: "Diagram" },
+                  { id: "docs", icon: <FileText size={16} />, label: "Docs" },
+                ]}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Right: Actions & Tools */}

@@ -39,9 +39,10 @@
 }
 
 .sidebar-container.closed {
-    width: 48px;
-    /* Slim bar width */
-    background: var(--bg-surface-alt, #f1f5f9);
+    width: 0;
+    /* Fully hidden */
+    border: none;
+    background: var(--bg-surface, white);
 }
 
 .sidebar-content {
@@ -50,7 +51,8 @@
     opacity: 1;
     transition: opacity 0.2s ease;
     min-width: 260px;
-    min-height: 0; /* Critical for flex scrolling - allows flex child to shrink */
+    min-height: 0;
+    /* Critical for flex scrolling - allows flex child to shrink */
     display: flex;
     flex-direction: column;
     /* Prevent reflow during collapse animation */
