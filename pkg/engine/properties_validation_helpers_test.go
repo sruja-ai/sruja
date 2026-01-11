@@ -6,6 +6,34 @@ import (
 	"testing"
 )
 
+func TestIsInteger(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		{"0", true},
+		{"123", true},
+		{"999999", true},
+		{"-1", false},
+		{"1.5", false},
+		{"abc", false},
+		{"12a", false},
+		{"a12", false},
+		{"", false},
+		{" 123", false},
+		{"123 ", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := isInteger(tt.input)
+			if result != tt.expected {
+				t.Errorf("isInteger(%q) = %v, want %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestIsPercentage(t *testing.T) {
 	tests := []struct {
 		input    string
