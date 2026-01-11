@@ -53,7 +53,7 @@ func TestProgram_PostProcess_TopLevelItems(t *testing.T) {
 	assert.True(t, policyFound)
 }
 
-func TestModelItem_PostProcess_Internal(t *testing.T) {
+func TestModelItem_PostProcess_Internal(_ *testing.T) {
 	items := []ModelItem{
 		{Scenario: &Scenario{ID: "S1"}},
 		{Flow: &Flow{ID: "F1"}},

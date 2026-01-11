@@ -251,10 +251,10 @@ func isRelationWithoutDefinitions(code string) bool {
 
 // compile regex once for performance
 var (
-	systemRegexStr    = regexp.MustCompile(`system\s+\w+`)
-	systemDetailRegex = regexp.MustCompile(`system\s+\w+\s+"[^"]+"\s+"[^"]+"\s+{`)
-	relationRegex     = regexp.MustCompile(`\b\w+\.\w+\b`)
-	propertyRegex     = regexp.MustCompile(`\w+\s*:\s*"`)
+	_ = regexp.MustCompile(`system\s+\w+`)
+	_ = regexp.MustCompile(`system\s+\w+\s+"[^"]+"\s+"[^"]+"\s+{`)
+	_ = regexp.MustCompile(`\b\w+\.\w+\b`)
+	_ = regexp.MustCompile(`\w+\s*:\s*"`)
 )
 
 // CodeBlockMetadata holds metadata extracted from code blocks
@@ -324,15 +324,6 @@ func extractCodeBlockMetadata(code string) CodeBlockMetadata {
 	}
 
 	return meta
-}
-
-// usesDeferredFeature is deprecated - all examples should use only supported features
-// This function now always returns false - no skipping should occur
-// All content should be updated to use only supported DSL syntax
-func usesDeferredFeature(code string) bool {
-	// All examples should use only supported features - no skipping logic
-	// Content should be updated to remove any unsupported syntax
-	return false
 }
 
 // compileCode compiles Sruja code and returns error if compilation fails

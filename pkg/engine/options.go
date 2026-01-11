@@ -26,11 +26,12 @@ type validatorConfig struct {
 //	validator := NewValidatorWithOptions(WithTimeout(10 * time.Second))
 func WithTimeout(d time.Duration) ValidatorOption {
 	return func(c *validatorConfig) {
-		if d <= 0 {
+		switch {
+		case d <= 0:
 			c.timeout = DefaultValidationTimeout
-		} else if d > 5*time.Minute {
+		case d > 5*time.Minute:
 			c.timeout = 5 * time.Minute
-		} else {
+		default:
 			c.timeout = d
 		}
 	}
@@ -44,11 +45,12 @@ func WithTimeout(d time.Duration) ValidatorOption {
 //	validator := NewValidatorWithOptions(WithConcurrency(5))
 func WithConcurrency(n int) ValidatorOption {
 	return func(c *validatorConfig) {
-		if n <= 0 {
+		switch {
+		case n <= 0:
 			c.concurrency = DefaultConcurrency
-		} else if n > 100 {
+		case n > 100:
 			c.concurrency = 100 // reasonable upper bound
-		} else {
+		default:
 			c.concurrency = n
 		}
 	}

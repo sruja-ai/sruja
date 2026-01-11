@@ -118,30 +118,6 @@ func formatTarget(file string, line int) string {
 	return sb.String()
 }
 
-// formatMissingDescription formats the "missing description" message.
-func formatMissingDescription(elementID string) string {
-	const prefix = "Element '"
-	const suffix = "' is missing a description"
-	var sb strings.Builder
-	sb.Grow(len(prefix) + len(elementID) + len(suffix))
-	sb.WriteString(prefix)
-	sb.WriteString(elementID)
-	sb.WriteString(suffix)
-	return sb.String()
-}
-
-// formatMissingTechnology formats the "missing technology" message.
-func formatMissingTechnology(elementID string) string {
-	const prefix = "Element '"
-	const suffix = "' is missing technology stack"
-	var sb strings.Builder
-	sb.Grow(len(prefix) + len(elementID) + len(suffix))
-	sb.WriteString(prefix)
-	sb.WriteString(elementID)
-	sb.WriteString(suffix)
-	return sb.String()
-}
-
 // CalculateScore calculates the architecture score for a program.
 func (s *Scorer) CalculateScore(program *language.Program) ScoreCard {
 	// Initialize category scores (start at 100 for each)

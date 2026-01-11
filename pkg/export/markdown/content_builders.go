@@ -61,11 +61,12 @@ func (e *Exporter) writeContent(sb *strings.Builder, systems []*language.System,
 				sysNames = append(sysNames, fmt.Sprintf("**%s**", s.Label))
 			}
 
-			if len(sysNames) == 1 {
+			switch len(sysNames) {
+			case 1:
 				sb.WriteString(sysNames[0])
-			} else if len(sysNames) == 2 {
+			case 2:
 				sb.WriteString(sysNames[0] + " and " + sysNames[1])
-			} else {
+			default:
 				sb.WriteString(strings.Join(sysNames[:len(sysNames)-1], ", ") + ", and " + sysNames[len(sysNames)-1])
 			}
 			sb.WriteString(".\n\n")

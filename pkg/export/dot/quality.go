@@ -294,7 +294,7 @@ func countEdgeCrossingsFromSVG(nodes []SVGNode, edges []SVGEdge) int {
 }
 
 // parseEdgePoints parses edge points from SVG edge.
-func parseEdgePoints(edge SVGEdge, nodeMap map[string]SVGNode) []Point {
+func parseEdgePoints(edge SVGEdge, _ map[string]SVGNode) []Point {
 	var points []Point
 
 	// Parse path data if available
@@ -438,7 +438,7 @@ type Bounds struct {
 }
 
 // countLabelOverlapsFromSVG counts label overlaps from SVG.
-func countLabelOverlapsFromSVG(nodes []SVGNode, edges []SVGEdge) int {
+func countLabelOverlapsFromSVG(_ []SVGNode, _ []SVGEdge) int {
 	// Simplified: check if any text elements overlap with nodes
 	overlaps := 0
 
@@ -543,13 +543,14 @@ func calculateRankAlignmentFromSVG(nodes []SVGNode) float64 {
 		// We DO NOT penalize horizontal spread (width of the row/rank),
 		// as wide ranks are natural and valid in diagrams.
 		var rankScore float64
-		if ySpread < avgHeight*0.1 {
+		switch {
+		case ySpread < avgHeight*0.1:
 			rankScore = 1.0
-		} else if ySpread < avgHeight*0.2 {
+		case ySpread < avgHeight*0.2:
 			rankScore = 0.9
-		} else if ySpread < avgHeight*0.4 {
+		case ySpread < avgHeight*0.4:
 			rankScore = 0.75
-		} else {
+		default:
 			rankScore = 0.5
 		}
 
@@ -561,18 +562,6 @@ func calculateRankAlignmentFromSVG(nodes []SVGNode) float64 {
 		return 1.0
 	}
 	return totalScore / float64(rankCount)
-}
-
-// averageNodeWidth calculates the average width of nodes.
-func averageNodeWidth(nodes []SVGNode) float64 {
-	if len(nodes) == 0 {
-		return 0
-	}
-	sum := 0.0
-	for _, n := range nodes {
-		sum += n.Width
-	}
-	return sum / float64(len(nodes))
 }
 
 // averageNodeHeight calculates the average height of nodes.
@@ -619,14 +608,16 @@ func calculateSpacingConsistencyFromSVG(nodes []SVGNode) float64 {
 	cv := math.Sqrt(variance(spacings, mean)) / mean
 
 	// Convert to score (lower CV = higher score)
-	if cv < 0.2 {
+	switch {
+	case cv < 0.2:
 		return 1.0
-	} else if cv < 0.4 {
+	case cv < 0.4:
 		return 0.9
-	} else if cv < 0.6 {
+	case cv < 0.6:
 		return 0.75
+	default:
+		return 0.5
 	}
-	return 0.5
 }
 
 // areVerticallyAligned checks if two nodes are approximately vertically aligned.
@@ -669,12 +660,14 @@ func calculateClusterBalanceFromSVG(svg SVGRoot) float64 {
 	cv := math.Sqrt(variance(sizes, mean)) / mean
 
 	// Convert to score (lower variance = higher score)
-	if cv < 0.3 {
+	switch {
+	case cv < 0.3:
 		return 1.0
-	} else if cv < 0.5 {
+	case cv < 0.5:
 		return 0.85
-	} else if cv < 0.7 {
+	case cv < 0.7:
 		return 0.7
+	default:
+		return 0.5
 	}
-	return 0.5
 }

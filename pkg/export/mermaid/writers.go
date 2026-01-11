@@ -100,13 +100,6 @@ func (e *Exporter) writeRelation(sb *strings.Builder, rel *views.Relation) {
 
 // Helpers
 
-func getString(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
-
 func sanitizeID(id string) string {
 	return strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {

@@ -44,7 +44,7 @@ func (e *Exporter) Generate(elements []*views.Element, relations []*views.Relati
 	return sb.String()
 }
 
-func (e *Exporter) writeSubgraph(sb *strings.Builder, parent *views.Element, clusters map[string][]*views.Element, elementMap map[string]*views.Element, indent string) {
+func (e *Exporter) writeSubgraph(sb *strings.Builder, parent *views.Element, clusters map[string][]*views.Element, _ map[string]*views.Element, indent string) {
 	id := sanitizeID(parent.ID)
 	label := escapeQuotes(parent.Title)
 	if label == "" {
@@ -57,7 +57,7 @@ func (e *Exporter) writeSubgraph(sb *strings.Builder, parent *views.Element, clu
 	children := clusters[parent.ID]
 	for _, child := range children {
 		if _, isCluster := clusters[child.ID]; isCluster {
-			e.writeSubgraph(sb, child, clusters, elementMap, indent+Indent4)
+			e.writeSubgraph(sb, child, clusters, nil, indent+Indent4)
 		} else {
 			e.writeAnyElement(sb, child, indent+Indent4)
 		}
