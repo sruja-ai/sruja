@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronRight, ChevronLeft, Info, Layers } from "lucide-react";
+import { Info, Layers } from "lucide-react";
 import { Button } from "@sruja/ui";
 import { useSelectionStore } from "../../../stores";
 import { ProjectInspector } from "./ProjectInspector";

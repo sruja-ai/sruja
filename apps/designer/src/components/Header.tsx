@@ -13,6 +13,7 @@ import {
   Globe,
   PanelLeft,
   PanelRight,
+  MoreHorizontal,
 } from "lucide-react";
 import { Breadcrumb, ExamplesDropdown } from "./shared";
 import { ThemeToggle, Button, Logo } from "@sruja/ui";
@@ -105,7 +106,7 @@ export function Header({
             aria-expanded={showActions}
             title="Actions & Export"
           >
-            <Menu size={18} />
+            <MoreHorizontal size={18} />
             <span className="btn-label">Actions</span>
           </Button>
           {showActions && (

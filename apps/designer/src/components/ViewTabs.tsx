@@ -1,4 +1,4 @@
-import { Layout, FileCode, FileText } from "lucide-react";
+import { Workflow, FileCode, FileText } from "lucide-react";
 import { Button } from "@sruja/ui";
 import type { ViewTab } from "../types";
 import "./ViewTabs.css";
@@ -14,7 +14,7 @@ interface ViewTabsProps {
  */
 export function ViewTabs({ activeTab, onTabChange }: ViewTabsProps) {
   const tabs: { id: ViewTab; icon: React.ReactNode; label: string }[] = [
-    { id: "diagram", icon: <Layout size={16} />, label: "Diagram" },
+    { id: "diagram", icon: <Workflow size={16} />, label: "Diagram" },
     { id: "code", icon: <FileCode size={16} />, label: "Code" },
     { id: "docs", icon: <FileText size={16} />, label: "Docs" },
   ];
