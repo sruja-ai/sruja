@@ -172,7 +172,7 @@ export function ExamplesDropdown() {
           style={{
             position: "absolute",
             top: "calc(100% + 4px)",
-            right: 0,
+            left: 0,
             width: 420,
             maxHeight: 520,
             overflowY: "auto",

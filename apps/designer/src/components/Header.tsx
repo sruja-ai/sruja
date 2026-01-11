@@ -3,7 +3,6 @@ import {
   PanelLeft,
   PanelRight,
   MoreHorizontal,
-  Search,
   Share2,
   Plus,
   Upload,
@@ -191,16 +190,6 @@ export function Header({
       {/* Right: Actions & Tools */}
       <div className="header-right">
         {/* Search */}
-        <button
-          className="header-search-btn"
-          onClick={onOpenCommandPalette}
-          title="Search commands (⌘K)"
-        >
-          <Search size={16} />
-          <span className="search-shortcut">⌘K</span>
-        </button>
-
-        <div className="divider-vertical" />
 
         {/* Mode Toggle */}
         {activeTab !== "overview" && model && (
