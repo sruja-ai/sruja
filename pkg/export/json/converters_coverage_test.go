@@ -283,6 +283,7 @@ func TestConvertScale_Nil(t *testing.T) {
 }
 
 func TestConvertSystem_AllFields(t *testing.T) {
+	verb := "uses"
 	sys := &language.System{
 		ID:          "sys1",
 		Label:       "System",
@@ -291,20 +292,6 @@ func TestConvertSystem_AllFields(t *testing.T) {
 		Containers: []*language.Container{
 			{ID: "c1", Label: "C1"},
 		},
-	}
-	result := systemToJSON(sys)
-	if result.ID != "sys1" {
-		t.Errorf("expected ID sys1, got %s", result.ID)
-	}
-	if len(result.Containers) != 1 {
-		t.Errorf("expected 1 container, got %d", len(result.Containers))
-	}
-}
-
-func TestConvertContainer_AllFields(t *testing.T) {
-	cont := &language.Container{
-		ID:    "cont1",
-		Label: "Container",
 		Components: []*language.Component{
 			{ID: "comp1", Label: "Comp1"},
 		},
@@ -314,13 +301,149 @@ func TestConvertContainer_AllFields(t *testing.T) {
 		Queues: []*language.Queue{
 			{ID: "q1", Label: "Q1"},
 		},
+		Relations: []*language.Relation{
+			{
+				From:  language.QualifiedIdent{Parts: []string{"sys1", "c1"}},
+				To:    language.QualifiedIdent{Parts: []string{"ds1"}},
+				Verb:  &verb,
+				Label: mkStrCoverage("accesses"),
+			},
+		},
+		Style: map[string]string{"color": "#ff0000"},
+		SLO: &language.SLOBlock{
+			Availability: &language.SLOAvailability{
+				Target: mkStrCoverage("99.9%"),
+			},
+		},
+		Constraints: []*language.ConstraintEntry{
+			{Key: "constraint1", Value: "value1"},
+		},
+		Conventions: []*language.ConventionEntry{
+			{Key: "convention1", Value: "value1"},
+		},
+	}
+	result := systemToJSON(sys)
+	if result.ID != "sys1" {
+		t.Errorf("expected ID sys1, got %s", result.ID)
+	}
+	if len(result.Containers) != 1 {
+		t.Errorf("expected 1 container, got %d", len(result.Containers))
+	}
+	if len(result.Components) != 1 {
+		t.Errorf("expected 1 component, got %d", len(result.Components))
+	}
+	if len(result.DataStores) != 1 {
+		t.Errorf("expected 1 datastore, got %d", len(result.DataStores))
+	}
+	if len(result.Queues) != 1 {
+		t.Errorf("expected 1 queue, got %d", len(result.Queues))
+	}
+	if len(result.Relations) != 1 {
+		t.Errorf("expected 1 relation, got %d", len(result.Relations))
+	}
+	if len(result.Style) != 1 {
+		t.Errorf("expected 1 style entry, got %d", len(result.Style))
+	}
+	if result.SLO == nil {
+		t.Error("expected SLO to be set")
+	}
+	if len(result.Constraints) != 1 {
+		t.Errorf("expected 1 constraint, got %d", len(result.Constraints))
+	}
+	if len(result.Conventions) != 1 {
+		t.Errorf("expected 1 convention, got %d", len(result.Conventions))
+	}
+}
+
+func TestConvertContainer_AllFields(t *testing.T) {
+	tech := "Go"
+	version := "1.0.0"
+	verb := "calls"
+	cont := &language.Container{
+		ID:          "cont1",
+		Label:       "Container",
+		Description: mkStrCoverage("Container description"),
+		Version:     &version,
+		Items: []language.ContainerItem{
+			{Technology: &tech, Tags: []string{"tag1", "tag2"}},
+		},
+		Components: []*language.Component{
+			{ID: "comp1", Label: "Comp1"},
+		},
+		DataStores: []*language.DataStore{
+			{ID: "ds1", Label: "DS1"},
+		},
+		Queues: []*language.Queue{
+			{ID: "q1", Label: "Q1"},
+		},
+		Relations: []*language.Relation{
+			{
+				From:  language.QualifiedIdent{Parts: []string{"cont1", "comp1"}},
+				To:    language.QualifiedIdent{Parts: []string{"ds1"}},
+				Verb:  &verb,
+				Label: mkStrCoverage("reads from"),
+			},
+		},
+		Metadata: []*language.MetaEntry{
+			{Key: "key1", Value: mkStrCoverage("value1")},
+		},
+		Style: map[string]string{"color": "#00ff00"},
+		Scale: &language.ScaleBlock{
+			Min:    mkInt(1),
+			Max:    mkInt(5),
+			Metric: mkStrCoverage("instances"),
+		},
+		SLO: &language.SLOBlock{
+			Availability: &language.SLOAvailability{
+				Target: mkStrCoverage("99.9%"),
+			},
+		},
+		Constraints: []*language.ConstraintEntry{
+			{Key: "constraint1", Value: "value1"},
+		},
+		Conventions: []*language.ConventionEntry{
+			{Key: "convention1", Value: "value1"},
+		},
 	}
 	result := containerToJSON(cont)
 	if result.ID != "cont1" {
 		t.Errorf("expected ID cont1, got %s", result.ID)
 	}
+	if result.Technology == nil || *result.Technology != "Go" {
+		t.Errorf("expected technology Go, got %v", result.Technology)
+	}
+	if len(result.Tags) != 2 {
+		t.Errorf("expected 2 tags, got %d", len(result.Tags))
+	}
 	if len(result.Components) != 1 {
 		t.Errorf("expected 1 component, got %d", len(result.Components))
+	}
+	if len(result.DataStores) != 1 {
+		t.Errorf("expected 1 datastore, got %d", len(result.DataStores))
+	}
+	if len(result.Queues) != 1 {
+		t.Errorf("expected 1 queue, got %d", len(result.Queues))
+	}
+	if len(result.Relations) != 1 {
+		t.Errorf("expected 1 relation, got %d", len(result.Relations))
+	}
+	if len(result.Metadata) != 1 {
+		t.Errorf("expected 1 metadata entry, got %d", len(result.Metadata))
+	}
+	if len(result.Style) != 1 {
+		t.Errorf("expected 1 style entry, got %d", len(result.Style))
+	}
+	if result.Scale == nil {
+		t.Error("expected Scale to be set")
+	}
+	if result.SLO == nil {
+		t.Error("expected SLO to be set")
+	}
+	if len(result.Constraints) != 1 {
+		t.Errorf("expected 1 constraint, got %d", len(result.Constraints))
+	}
+	if len(result.Conventions) != 1 {
+		t.Errorf("expected 1 convention, got %d", len(result.Conventions))
 	}
 }
 
@@ -336,13 +459,29 @@ func TestConvertPerson_AllFields(t *testing.T) {
 }
 
 func TestConvertPolicy_AllFields(t *testing.T) {
+	category := "security"
+	enforcement := "required"
 	p := &language.Policy{
 		ID:          "pol1",
 		Description: "Desc",
+		Category:    &category,
+		Enforcement: &enforcement,
+		Body: &language.PolicyBody{
+			Tags: []string{"tag1", "tag2"},
+		},
 	}
 	result := convertPolicy(p)
 	if result.ID != "pol1" {
 		t.Errorf("expected ID pol1, got %s", result.ID)
+	}
+	if result.Category != "security" {
+		t.Errorf("expected category security, got %s", result.Category)
+	}
+	if result.Enforcement != "required" {
+		t.Errorf("expected enforcement required, got %s", result.Enforcement)
+	}
+	if len(result.Tags) != 2 {
+		t.Errorf("expected 2 tags, got %d", len(result.Tags))
 	}
 }
 

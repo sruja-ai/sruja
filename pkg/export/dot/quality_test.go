@@ -217,3 +217,385 @@ func TestNewExporter(t *testing.T) {
 		t.Error("Config not set correctly")
 	}
 }
+
+func TestAbs(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    float64
+		expected float64
+	}{
+		{"positive", 5.0, 5.0},
+		{"negative", -5.0, 5.0},
+		{"zero", 0.0, 0.0},
+		{"small positive", 0.1, 0.1},
+		{"small negative", -0.1, 0.1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := abs(tt.input)
+			if got != tt.expected {
+				t.Errorf("abs(%v) = %v, want %v", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestPointsEqual(t *testing.T) {
+	tests := []struct {
+		name     string
+		p1       Point
+		p2       Point
+		expected bool
+	}{
+		{"identical", Point{X: 10, Y: 20}, Point{X: 10, Y: 20}, true},
+		{"within epsilon", Point{X: 10, Y: 20}, Point{X: 10.5, Y: 20.5}, true},
+		{"outside epsilon", Point{X: 10, Y: 20}, Point{X: 12, Y: 22}, false},
+		{"x different", Point{X: 10, Y: 20}, Point{X: 15, Y: 20}, false},
+		{"y different", Point{X: 10, Y: 20}, Point{X: 10, Y: 25}, false},
+		{"far apart", Point{X: 0, Y: 0}, Point{X: 100, Y: 100}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := pointsEqual(tt.p1, tt.p2)
+			if got != tt.expected {
+				t.Errorf("pointsEqual(%v, %v) = %v, want %v", tt.p1, tt.p2, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestEdgesShareNode(t *testing.T) {
+	tests := []struct {
+		name  string
+		path1 []Point
+		path2 []Point
+		want  bool
+	}{
+		{
+			name:  "share start point",
+			path1: []Point{{0, 0}, {10, 10}},
+			path2: []Point{{0, 0}, {20, 20}},
+			want:  true,
+		},
+		{
+			name:  "share end point",
+			path1: []Point{{0, 0}, {10, 10}},
+			path2: []Point{{5, 5}, {10, 10}},
+			want:  true,
+		},
+		{
+			name:  "first start matches second end",
+			path1: []Point{{0, 0}, {10, 10}},
+			path2: []Point{{10, 10}, {20, 20}},
+			want:  true,
+		},
+		{
+			name:  "first end matches second start",
+			path1: []Point{{0, 0}, {10, 10}},
+			path2: []Point{{10, 10}, {20, 20}},
+			want:  true,
+		},
+		{
+			name:  "no shared points",
+			path1: []Point{{0, 0}, {10, 10}},
+			path2: []Point{{20, 20}, {30, 30}},
+			want:  false,
+		},
+		{
+			name:  "empty path1",
+			path1: []Point{},
+			path2: []Point{{0, 0}, {10, 10}},
+			want:  false,
+		},
+		{
+			name:  "empty path2",
+			path1: []Point{{0, 0}, {10, 10}},
+			path2: []Point{},
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := edgesShareNode(tt.path1, tt.path2)
+			if got != tt.want {
+				t.Errorf("edgesShareNode() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDirection(t *testing.T) {
+	tests := []struct {
+		name     string
+		p1       Point
+		p2       Point
+		p3       Point
+		expected float64
+	}{
+		{"collinear horizontal", Point{X: 0, Y: 0}, Point{X: 1, Y: 0}, Point{X: 2, Y: 0}, 0.0},
+		{"collinear vertical", Point{X: 0, Y: 0}, Point{X: 0, Y: 1}, Point{X: 0, Y: 2}, 0.0},
+		{"left turn", Point{X: 0, Y: 0}, Point{X: 1, Y: 0}, Point{X: 1, Y: 1}, 1.0},
+		{"right turn", Point{X: 0, Y: 0}, Point{X: 1, Y: 0}, Point{X: 1, Y: -1}, -1.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := direction(tt.p1, tt.p2, tt.p3)
+			if tt.expected != 0.0 && (got > 0) != (tt.expected > 0) {
+				t.Errorf("direction(%v, %v, %v) = %v, expected sign %v", tt.p1, tt.p2, tt.p3, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestLineSegmentsIntersect(t *testing.T) {
+	tests := []struct {
+		name string
+		p1   Point
+		p2   Point
+		p3   Point
+		p4   Point
+		want bool
+	}{
+		{
+			name: "intersecting",
+			p1:   Point{X: 0, Y: 0},
+			p2:   Point{X: 2, Y: 2},
+			p3:   Point{X: 0, Y: 2},
+			p4:   Point{X: 2, Y: 0},
+			want: true,
+		},
+		{
+			name: "parallel horizontal",
+			p1:   Point{X: 0, Y: 0},
+			p2:   Point{X: 2, Y: 0},
+			p3:   Point{X: 0, Y: 1},
+			p4:   Point{X: 2, Y: 1},
+			want: false,
+		},
+		{
+			name: "parallel vertical",
+			p1:   Point{X: 0, Y: 0},
+			p2:   Point{X: 0, Y: 2},
+			p3:   Point{X: 1, Y: 0},
+			p4:   Point{X: 1, Y: 2},
+			want: false,
+		},
+		{
+			name: "non-intersecting",
+			p1:   Point{X: 0, Y: 0},
+			p2:   Point{X: 1, Y: 1},
+			p3:   Point{X: 2, Y: 2},
+			p4:   Point{X: 3, Y: 3},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := lineSegmentsIntersect(tt.p1, tt.p2, tt.p3, tt.p4)
+			if got != tt.want {
+				t.Errorf("lineSegmentsIntersect() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPolylinesCross(t *testing.T) {
+	tests := []struct {
+		name  string
+		poly1 []Point
+		poly2 []Point
+		want  bool
+	}{
+		{
+			name:  "crossing polylines",
+			poly1: []Point{{0, 0}, {2, 2}},
+			poly2: []Point{{0, 2}, {2, 0}},
+			want:  true,
+		},
+		{
+			name:  "non-crossing",
+			poly1: []Point{{0, 0}, {1, 1}},
+			poly2: []Point{{2, 2}, {3, 3}},
+			want:  false,
+		},
+		{
+			name:  "parallel polylines",
+			poly1: []Point{{0, 0}, {2, 0}},
+			poly2: []Point{{0, 1}, {2, 1}},
+			want:  false,
+		},
+		{
+			name:  "single point poly1",
+			poly1: []Point{{0, 0}},
+			poly2: []Point{{0, 1}, {1, 1}},
+			want:  false,
+		},
+		{
+			name:  "single point poly2",
+			poly1: []Point{{0, 0}, {1, 1}},
+			poly2: []Point{{0, 1}},
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := polylinesCross(tt.poly1, tt.poly2)
+			if got != tt.want {
+				t.Errorf("polylinesCross() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetBounds(t *testing.T) {
+	tests := []struct {
+		name     string
+		node     SVGNode
+		expected Bounds
+	}{
+		{
+			name:     "basic node",
+			node:     SVGNode{X: 10, Y: 20, Width: 100, Height: 50},
+			expected: Bounds{Left: 8, Right: 112, Top: 18, Bottom: 72},
+		},
+		{
+			name:     "zero position",
+			node:     SVGNode{X: 0, Y: 0, Width: 50, Height: 30},
+			expected: Bounds{Left: -2, Right: 52, Top: -2, Bottom: 32},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getBounds(tt.node)
+			if got.Left != tt.expected.Left || got.Right != tt.expected.Right ||
+				got.Top != tt.expected.Top || got.Bottom != tt.expected.Bottom {
+				t.Errorf("getBounds() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestBoxesOverlap(t *testing.T) {
+	tests := []struct {
+		name string
+		n1   SVGNode
+		n2   SVGNode
+		want bool
+	}{
+		{
+			name: "overlapping",
+			n1:   SVGNode{X: 10, Y: 10, Width: 50, Height: 50},
+			n2:   SVGNode{X: 30, Y: 30, Width: 50, Height: 50},
+			want: true,
+		},
+		{
+			name: "not overlapping",
+			n1:   SVGNode{X: 10, Y: 10, Width: 50, Height: 50},
+			n2:   SVGNode{X: 100, Y: 100, Width: 50, Height: 50},
+			want: false,
+		},
+		{
+			name: "one inside other",
+			n1:   SVGNode{X: 10, Y: 10, Width: 100, Height: 100},
+			n2:   SVGNode{X: 30, Y: 30, Width: 20, Height: 20},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := boxesOverlap(tt.n1, tt.n2)
+			if got != tt.want {
+				t.Errorf("boxesOverlap() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAverageNodeHeight(t *testing.T) {
+	tests := []struct {
+		name  string
+		nodes []SVGNode
+		want  float64
+	}{
+		{
+			name:  "empty slice",
+			nodes: []SVGNode{},
+			want:  0.0,
+		},
+		{
+			name:  "single node",
+			nodes: []SVGNode{{Height: 50}},
+			want:  50.0,
+		},
+		{
+			name:  "multiple nodes",
+			nodes: []SVGNode{{Height: 30}, {Height: 50}, {Height: 70}},
+			want:  50.0,
+		},
+		{
+			name:  "same heights",
+			nodes: []SVGNode{{Height: 40}, {Height: 40}, {Height: 40}},
+			want:  40.0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := averageNodeHeight(tt.nodes)
+			if got != tt.want {
+				t.Errorf("averageNodeHeight() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAreVerticallyAligned(t *testing.T) {
+	tests := []struct {
+		name string
+		n1   SVGNode
+		n2   SVGNode
+		want bool
+	}{
+		{
+			name: "aligned within tolerance",
+			n1:   SVGNode{Y: 10, Height: 20}, // center at Y=20
+			n2:   SVGNode{Y: 20, Height: 20}, // center at Y=30, diff=10 < 20
+			want: true,
+		},
+		{
+			name: "perfectly aligned",
+			n1:   SVGNode{Y: 10, Height: 20}, // center at Y=20
+			n2:   SVGNode{Y: 10, Height: 20}, // center at Y=20
+			want: true,
+		},
+		{
+			name: "not aligned",
+			n1:   SVGNode{Y: 10, Height: 20}, // center at Y=20
+			n2:   SVGNode{Y: 50, Height: 20}, // center at Y=60, diff=40
+			want: false,
+		},
+		{
+			name: "just outside tolerance",
+			n1:   SVGNode{Y: 10, Height: 20}, // center at Y=20
+			n2:   SVGNode{Y: 31, Height: 20}, // center at Y=41, diff=21
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := areVerticallyAligned(tt.n1, tt.n2)
+			if got != tt.want {
+				t.Errorf("areVerticallyAligned() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
