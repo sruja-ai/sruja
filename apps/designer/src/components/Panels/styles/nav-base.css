@@ -6,7 +6,7 @@
     border-right: 1px solid var(--border-color);
     height: 100%;
     min-height: 0;
-    overflow-y: auto;
+    overflow: hidden; /* Changed from overflow-y: auto - let child handle scrolling */
     display: flex;
     flex-direction: column;
     transition: width var(--transition-slow, 0.3s cubic-bezier(0.4, 0, 0.2, 1));

@@ -1,13 +1,10 @@
 import {
   Info,
-  Tag,
-  ArrowDownLeft,
-  ArrowUpRight,
-  ShieldCheck,
-  FileText,
-  FileCode,
-  Play,
-  Workflow,
+  ArrowDownLeft, // Restored
+  ArrowUpRight, // Restored
+  ShieldCheck, // Restored
+  FileText, // Restored
+  FileCode, // Restored
   ArrowLeft,
   Plus,
 } from "lucide-react";
@@ -56,8 +53,6 @@ export function ElementInspector() {
   const sruja = model.sruja || {};
   const allRequirements = sruja.requirements || [];
   const allADRs = sruja.adrs || [];
-  const allFlows = sruja.flows || [];
-  const allScenarios = sruja.scenarios || [];
 
   const relatedRequirements = allRequirements.filter((req: Requirement) =>
     req.tags?.some((tag: string) => tag.toLowerCase() === node.id.toLowerCase())
@@ -67,22 +62,9 @@ export function ElementInspector() {
     adr.tags?.some((tag: string) => tag.toLowerCase() === node.id.toLowerCase())
   );
 
-  const relatedFlows = allFlows.filter((flow) =>
-    flow.steps?.some((step) => step.from === node.id || step.to === node.id)
-  );
-
-  const relatedScenarios = allScenarios.filter((scenario) =>
-    scenario.steps?.some((step) => step.from === node.id || step.to === node.id)
-  );
-
   const getTypeIcon = (_nodeType: string) => <Info size={12} />;
 
   // Children
-  const children = Object.values(model.elements || {}).filter(
-    (e) => (e as ElementDump).parent === node.id
-  );
-  const containerCount = children.filter((c) => (c as ElementDump).kind === "container").length;
-  const componentCount = children.filter((c) => (c as ElementDump).kind === "component").length;
 
   return (
     <div className="inspector-content-wrapper">

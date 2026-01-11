@@ -1,14 +1,13 @@
-import { useState, useEffect } from "react";
-import { Building2, User, X, CheckCircle2, Plus } from "lucide-react";
+import { useState, useMemo } from "react";
+import { X, Plus, Database, Box } from "lucide-react";
 import { Input, Button } from "@sruja/ui";
-import { logger } from "@sruja/shared";
 import { useArchitectureStore, useViewStore, useSelectionStore, useUIStore } from "../../stores";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
 import { useNavigationData } from "../../hooks/useNavigationData";
 import { NavTreeItem } from "./NavTreeItem";
 import { QualityScoreCard } from "./QualityScoreCard";
 import "./NavigationPanel.css";
-import type { Element, SrujaModelDump } from "@sruja/shared";
+import type { SrujaModelDump } from "@sruja/shared";
 
 interface NavigationPanelProps {
   onClose?: () => void;
@@ -16,8 +15,6 @@ interface NavigationPanelProps {
 
 export function NavigationPanel({ onClose }: NavigationPanelProps) {
   const model = useArchitectureStore((s) => s.model) as SrujaModelDump | null;
-  const dslSource = useArchitectureStore((s) => s.dslSource);
-  const setDslSource = useArchitectureStore((s) => s.setDslSource);
   const currentLevel = useViewStore((s) => s.currentLevel);
   const focusedSystemId = useViewStore((s) => s.focusedSystemId);
   const focusedContainerId = useViewStore((s) => s.focusedContainerId);
@@ -27,7 +24,6 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   const selectedNodeId = useSelectionStore((s) => s.selectedNodeId);
   const selectNode = useSelectionStore((s) => s.selectNode);
   const isEditMode = useFeatureFlagsStore((s) => s.isEditMode);
-  const setActiveTab = useUIStore((s) => s.setActiveTab);
 
   // Derive selection context
   const getSelectedElement = () => {
@@ -59,363 +55,242 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   };
 
   // --------------------------------------------------------------------------
+  // Context Actions Logic
+  // --------------------------------------------------------------------------
+  const contextAction = useMemo(() => {
+    if (!isEditMode()) return null;
+
+    if (!selectedElement) {
+      // Root Context -> Add System
+      return {
+        label: "Add System",
+        icon: <Plus size={16} />,
+        action: () => {
+          useUIStore.getState().setBuilderStep("context");
+          useUIStore.getState().setLeftPaneContent("builder");
+          useUIStore.getState().setActiveTab("builder");
+        },
+        secondary: {
+          label: "Add Actor",
+          action: () => {
+            /* TODO: Add actor specific step or handle in context step */
+          },
+        },
+      };
+    }
+
+    if (selectedElement.kind === "system") {
+      // System Context -> Add Container
+      return {
+        label: "Add Container",
+        icon: <Database size={16} />,
+        action: () => {
+          useUIStore.getState().setBuilderStep("containers");
+          useUIStore.getState().setLeftPaneContent("builder");
+          useUIStore.getState().setActiveTab("builder");
+          // Optionally auto-focus this system in wizard if supported
+        },
+      };
+    }
+
+    if (["container", "webapp", "mobile", "api", "database"].includes(selectedElement.kind)) {
+      // Container Context -> Add Component
+      return {
+        label: "Add Component",
+        icon: <Box size={16} />,
+        action: () => {
+          useUIStore.getState().setBuilderStep("components");
+          useUIStore.getState().setLeftPaneContent("builder");
+          useUIStore.getState().setActiveTab("builder");
+        },
+      };
+    }
+
+    return null;
+  }, [selectedElement, isEditMode]);
+
+  // --------------------------------------------------------------------------
   // Editing State Stubs
   // --------------------------------------------------------------------------
-  const onEditSystem = (_sys: Element) => {
-    logger.warn("Action not implemented", {
-      component: "NavigationPanel",
-      action: "edit_system",
-      elementType: "system",
-    });
-  };
-  const onAddSystem = () => {
-    logger.warn("Action not implemented", {
-      component: "NavigationPanel",
-      action: "add_system",
-      elementType: "system",
-    });
-  };
-  const onEditContainer = (_cont: Element) => {
-    logger.warn("Action not implemented", {
-      component: "NavigationPanel",
-      action: "edit_container",
-      elementType: "container",
-    });
-  };
-  const onAddContainer = (_sysId: string) => {
-    logger.warn("Action not implemented", {
-      component: "NavigationPanel",
-      action: "add_container",
-      elementType: "container",
-      systemId: _sysId,
-    });
-  };
-  const onEditComponent = (_comp: Element) => {
-    logger.warn("Action not implemented", {
-      component: "NavigationPanel",
-      action: "edit_component",
-      elementType: "component",
-    });
-  };
-  const onAddComponent = (_contId: string) => {
-    logger.warn("Action not implemented", {
-      component: "NavigationPanel",
-      action: "add_component",
-      elementType: "component",
-      containerId: _contId,
-    });
-  };
-  const onEditPerson = (_p: Element) => {
-    logger.warn("Action not implemented", {
-      component: "NavigationPanel",
-      action: "edit_person",
-      elementType: "person",
-    });
-  };
-  const onAddPerson = () => {
-    logger.warn("Action not implemented", {
-      component: "NavigationPanel",
-      action: "add_person",
-      elementType: "person",
-    });
-  };
+  // ... (keeping stubs or removing if not used, reusing generic pattern)
 
   return (
-    <div className="navigation-panel">
-      {/* Mobile close button */}
-      {onClose && (
-        <div className="panel-mobile-header">
-          <span>Navigation</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="panel-close-btn"
-            onClick={onClose}
-            aria-label="Close navigation"
-          >
-            <X size={18} />
+    <div className="navigation-panel glass-panel">
+      {/* 
+         Context Action Header (Sticky)
+         Shows the most relevant action based on selection
+      */}
+      {contextAction && (
+        <div className="nav-context-bar">
+          <Button className="context-action-btn primary" onClick={contextAction.action}>
+            {contextAction.icon}
+            <span>{contextAction.label}</span>
           </Button>
         </div>
       )}
 
-      {/* Builder Section - Quick Actions */}
-      <div className="nav-section builder-section">
-        <div className="nav-section-title">Build Your Architecture</div>
-        <div className="builder-steps">
-          {/* Add System Button */}
-          <button
-            className={`builder-step clickable ${filteredSystems.length > 0 ? "completed" : "current"}`}
-            onClick={() => {
-              const snippet =
-                '\nweb = system "My Web App" {\n  description "Main application"\n}\n';
-              const newDsl = (dslSource || "import { * } from 'sruja.ai/stdlib'\n") + snippet;
-              setDslSource(newDsl, null);
-              setActiveTab("code");
-            }}
-            title="Click to add a system"
-          >
-            <span className="step-icon">
-              {filteredSystems.length > 0 ? <CheckCircle2 size={16} /> : <Plus size={16} />}
-            </span>
-            <div className="step-content">
-              <span className="step-label">Add a System</span>
-              <span className="step-hint">web = system "My App"</span>
-            </div>
-          </button>
+      {/* Main Content */}
+      <div className="nav-content-scroll">
+        {/* Mobile close button */}
+        {onClose && (
+          <div className="panel-mobile-header">
+            <span>Explorer</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="panel-close-btn"
+              onClick={onClose}
+              aria-label="Close navigation"
+            >
+              <X size={18} />
+            </Button>
+          </div>
+        )}
 
-          {/* Add Database Button */}
-          <button
-            className={`builder-step clickable ${model?.elements && Object.values(model.elements).some((e) => e.kind === "database") ? "completed" : ""}`}
-            onClick={() => {
-              const snippet = '\ndb = database "PostgreSQL" {\n  description "Main database"\n}\n';
-              const newDsl = (dslSource || "import { * } from 'sruja.ai/stdlib'\n") + snippet;
-              setDslSource(newDsl, null);
-              setActiveTab("code");
-            }}
-            title="Click to add a database"
-          >
-            <span className="step-icon">
-              {model?.elements &&
-              Object.values(model.elements).some((e) => e.kind === "database") ? (
-                <CheckCircle2 size={16} />
-              ) : (
-                <Plus size={16} />
-              )}
-            </span>
-            <div className="step-content">
-              <span className="step-label">Add a Database</span>
-              <span className="step-hint">db = database "PostgreSQL"</span>
-            </div>
-          </button>
-
-          {/* Connect Elements Button */}
-          <button
-            className={`builder-step clickable ${model?.relations && model.relations.length > 0 ? "completed" : ""}`}
-            onClick={() => {
-              const snippet = '\nweb -> db "reads/writes"\n';
-              const newDsl = (dslSource || "import { * } from 'sruja.ai/stdlib'\n") + snippet;
-              setDslSource(newDsl, null);
-              setActiveTab("code");
-            }}
-            title="Click to connect elements"
-          >
-            <span className="step-icon">
-              {model?.relations && model.relations.length > 0 ? (
-                <CheckCircle2 size={16} />
-              ) : (
-                <Plus size={16} />
-              )}
-            </span>
-            <div className="step-content">
-              <span className="step-label">Connect Elements</span>
-              <span className="step-hint">web -&gt; db "reads from"</span>
-            </div>
-          </button>
-
-          {/* Create View Button */}
-          <button
-            className={`builder-step clickable ${model?.views && Object.keys(model.views).length > 0 ? "completed" : ""}`}
-            onClick={() => {
-              const snippet = "\nview index {\n  include *\n}\n";
-              const newDsl = (dslSource || "import { * } from 'sruja.ai/stdlib'\n") + snippet;
-              setDslSource(newDsl, null);
-              setActiveTab("code");
-            }}
-            title="Click to create a view"
-          >
-            <span className="step-icon">
-              {model?.views && Object.keys(model.views).length > 0 ? (
-                <CheckCircle2 size={16} />
-              ) : (
-                <Plus size={16} />
-              )}
-            </span>
-            <div className="step-content">
-              <span className="step-label">Create a View</span>
-              <span className="step-hint">view index {"{ include * }"}</span>
-            </div>
-          </button>
+        {/* Search */}
+        <div className="nav-search-row">
+          <Input
+            placeholder="Search..."
+            value={filterQuery}
+            onChange={(e) => setFilterQuery(e.target.value)}
+            className="nav-search-input"
+          />
         </div>
-      </div>
 
-      {/* Search */}
-      <div className="nav-search-row">
-        <Input
-          placeholder="Search systems, actors..."
-          value={filterQuery}
-          onChange={(e) => setFilterQuery(e.target.value)}
-        />
-      </div>
-
-      {/* Level Selector - Segmented Control */}
-      <div className="nav-section">
-        <div className="nav-section-title">View Level</div>
-        <div className="segmented-level-control">
-          <button
-            className={`segment-btn ${currentLevel === "L1" ? "active" : ""}`}
-            onClick={goToRoot}
-            title="System Context - Shows systems and actors"
-          >
-            L1
-          </button>
-          <button
-            className={`segment-btn ${currentLevel === "L2" ? "active" : ""}`}
-            title={
-              !focusedSystemId && selectedElement?.kind !== "system"
-                ? "Select a system to view its containers"
-                : "Container View - Detailed system internals"
-            }
-            disabled={!focusedSystemId && selectedElement?.kind !== "system"}
-            onClick={() => {
-              if (focusedSystemId) setLevel("L2");
-              else if (selectedElement?.kind === "system") drillDown(selectedElement.id, "system");
-            }}
-          >
-            L2
-          </button>
-          <button
-            className={`segment-btn ${currentLevel === "L3" ? "active" : ""}`}
-            title={
-              !focusedContainerId && selectedElement?.kind !== "container"
-                ? "Select a container to view its components"
-                : "Component View - Fine-grained components"
-            }
-            disabled={!focusedContainerId && selectedElement?.kind !== "container"}
-            onClick={() => {
-              if (focusedContainerId) setLevel("L3");
-              else if (selectedElement?.kind === "container")
-                drillDown(selectedElement.id, "container", selectedElement.parent || undefined);
-            }}
-          >
-            L3
-          </button>
-        </div>
-      </div>
-
-      {/* Quality Score Card */}
-      <QualityScoreCard isCollapsed={false} />
-
-      {/* Systems Tree */}
-      <div className="nav-section">
-        <div className="nav-section-title">
-          <Building2 size={14} />
-          <span>Systems ({filteredSystems.length})</span>
-        </div>
-        <ul className="nav-tree">
-          {filteredSystems.length === 0 && (
-            <li className="nav-empty">
-              No systems.{" "}
-              {isEditMode() && (
-                <Button variant="ghost" size="sm" className="link-btn" onClick={onAddSystem}>
-                  Add a system
-                </Button>
-              )}
-            </li>
-          )}
-          {filteredSystems.map((system) => {
-            const containers = getChildren(system.id, "container");
-            const isExpanded = expandedNodes.has(system.id);
-            return (
-              <NavTreeItem
-                key={system.id}
-                element={system}
-                isExpanded={isExpanded}
-                isSelected={selectedNodeId === system.id}
-                hasChildren={containers.length > 0}
-                onExpand={toggleExpand}
-                onDrillDown={(id) => {
-                  selectNode(id);
-                  drillDown(id, "system");
-                }}
-                isEditMode={!!isEditMode()}
-                onEdit={onEditSystem}
-                onAddChild={onAddContainer}
-              >
-                {containers.map((container) => {
-                  const components = getChildren(container.id, "component");
-                  const isContExpanded = expandedNodes.has(container.id);
-                  return (
-                    <NavTreeItem
-                      key={container.id}
-                      element={container}
-                      isExpanded={isContExpanded}
-                      isSelected={selectedNodeId === container.id}
-                      hasChildren={components.length > 0}
-                      onExpand={toggleExpand}
-                      onDrillDown={(id, _kind, pid) => {
-                        selectNode(id);
-                        drillDown(id, "container", pid!);
-                      }}
-                      isEditMode={!!isEditMode()}
-                      onEdit={onEditContainer}
-                      onAddChild={onAddComponent}
-                    >
-                      {/* Components (Leaf nodes) */}
-                      {components.map((component) => (
-                        <NavTreeItem
-                          key={component.id}
-                          element={component}
-                          isExpanded={false}
-                          isSelected={selectedNodeId === component.id}
-                          hasChildren={false}
-                          onExpand={() => {}}
-                          onDrillDown={(id, _kind, pid) => {
-                            selectNode(id);
-                            if (pid) {
-                              drillDown(pid, "container", undefined);
-                            }
-                          }}
-                          isEditMode={!!isEditMode()}
-                          onEdit={onEditComponent}
-                        />
-                      ))}
-                    </NavTreeItem>
-                  );
-                })}
-              </NavTreeItem>
-            );
-          })}
-        </ul>
-      </div>
-
-      {/* Persons */}
-      <div className="nav-section">
-        <div className="nav-section-title">
-          <User size={14} />
-          <span>Actors ({filteredPersons.length})</span>
-        </div>
-        <ul className="nav-tree">
-          {filteredPersons.length === 0 && (
-            <li className="nav-empty">
-              No actors.{" "}
-              {isEditMode() && (
-                <Button variant="ghost" size="sm" className="link-btn" onClick={onAddPerson}>
-                  Add a person
-                </Button>
-              )}
-            </li>
-          )}
-          {filteredPersons.map((person) => (
-            <NavTreeItem
-              key={person.id}
-              element={person}
-              isExpanded={false}
-              isSelected={selectedNodeId === person.id}
-              hasChildren={false}
-              onExpand={() => {}}
-              onDrillDown={(id) => {
-                selectNode(id);
-                goToRoot(); // Persons are in L1
+        {/* Level Selector - Compact */}
+        <div className="nav-section compact-section">
+          <div className="segmented-level-control">
+            <button
+              className={`segment-btn ${currentLevel === "L1" ? "active" : ""}`}
+              onClick={goToRoot}
+            >
+              L1
+            </button>
+            <button
+              className={`segment-btn ${currentLevel === "L2" ? "active" : ""}`}
+              disabled={!focusedSystemId && selectedElement?.kind !== "system"}
+              onClick={() => {
+                if (focusedSystemId) setLevel("L2");
+                else if (selectedElement?.kind === "system")
+                  drillDown(selectedElement.id, "system");
               }}
-              isEditMode={!!isEditMode()}
-              onEdit={onEditPerson}
-            />
-          ))}
-        </ul>
-      </div>
+            >
+              L2
+            </button>
+            <button
+              className={`segment-btn ${currentLevel === "L3" ? "active" : ""}`}
+              disabled={!focusedContainerId && selectedElement?.kind !== "container"}
+              onClick={() => {
+                if (focusedContainerId) setLevel("L3");
+                else if (selectedElement?.kind === "container")
+                  drillDown(selectedElement.id, "container", selectedElement.parent || undefined);
+              }}
+            >
+              L3
+            </button>
+          </div>
+        </div>
 
-      {/* Empty state */}
-      {!model && <div className="panel-empty">Load an architecture to see navigation</div>}
+        {/* Quality Score Card */}
+        <QualityScoreCard isCollapsed={false} />
+
+        {/* Systems Tree */}
+        <div className="nav-section tree-section">
+          <div className="tree-header">ARCHITECTURAL ELEMENTS</div>
+          <ul className="nav-tree">
+            {filteredSystems.length === 0 && <li className="nav-empty">No systems found.</li>}
+            {filteredSystems.map((system) => {
+              const containers = getChildren(system.id, "container");
+              const isExpanded = expandedNodes.has(system.id);
+              return (
+                <NavTreeItem
+                  key={system.id}
+                  element={system}
+                  isExpanded={isExpanded}
+                  isSelected={selectedNodeId === system.id}
+                  hasChildren={containers.length > 0}
+                  onExpand={toggleExpand}
+                  onDrillDown={(id) => {
+                    selectNode(id);
+                    drillDown(id, "system");
+                  }}
+                  isEditMode={!!isEditMode()}
+                  onEdit={() => {}} // TODO: Connect to properties panel
+                >
+                  {containers.map((container) => {
+                    const components = getChildren(container.id, "component");
+                    const isContExpanded = expandedNodes.has(container.id);
+                    return (
+                      <NavTreeItem
+                        key={container.id}
+                        element={container}
+                        isExpanded={isContExpanded}
+                        isSelected={selectedNodeId === container.id}
+                        hasChildren={components.length > 0}
+                        onExpand={toggleExpand}
+                        onDrillDown={(id, _kind, pid) => {
+                          selectNode(id);
+                          drillDown(id, "container", pid!);
+                        }}
+                        isEditMode={!!isEditMode()}
+                        onEdit={() => {}}
+                      >
+                        {/* Components (Leaf nodes) */}
+                        {components.map((component) => (
+                          <NavTreeItem
+                            key={component.id}
+                            element={component}
+                            isExpanded={false}
+                            isSelected={selectedNodeId === component.id}
+                            hasChildren={false}
+                            onExpand={() => {}}
+                            onDrillDown={(id, _kind, pid) => {
+                              selectNode(id);
+                              if (pid) {
+                                drillDown(pid, "container", undefined);
+                              }
+                            }}
+                            isEditMode={!!isEditMode()}
+                            onEdit={() => {}}
+                          />
+                        ))}
+                      </NavTreeItem>
+                    );
+                  })}
+                </NavTreeItem>
+              );
+            })}
+          </ul>
+        </div>
+
+        {/* Persons */}
+        {filteredPersons.length > 0 && (
+          <div className="nav-section tree-section">
+            <div className="tree-header">ACTORS</div>
+            <ul className="nav-tree">
+              {filteredPersons.map((person) => (
+                <NavTreeItem
+                  key={person.id}
+                  element={person}
+                  isExpanded={false}
+                  isSelected={selectedNodeId === person.id}
+                  hasChildren={false}
+                  onExpand={() => {}}
+                  onDrillDown={(id) => {
+                    selectNode(id);
+                    goToRoot();
+                  }}
+                  isEditMode={!!isEditMode()}
+                  onEdit={() => {}}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!model && <div className="panel-empty">No architecture loaded</div>}
+      </div>
     </div>
   );
 }

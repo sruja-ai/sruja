@@ -3,6 +3,7 @@ import { Box, Database, MessageSquare, Plus, Trash2, Building2, Edit } from "luc
 import { Button } from "@sruja/ui"; // Removed Input
 import { useArchitectureStore } from "../../stores/architectureStore";
 import { useViewStore } from "../../stores/viewStore";
+import { useSelectionStore } from "../../stores";
 import { useEffect } from "react";
 import { BestPracticeTip } from "@sruja/ui";
 import "@sruja/ui/components/BestPracticeTip.css";
@@ -25,8 +26,8 @@ export function ContainersStep({
   onBack,
   readOnly: _readOnly = false,
 }: ContainersStepProps) {
-  const data = useArchitectureStore((s) => s.model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
+  const data = useArchitectureStore((s) => s.model);
   const drillDown = useViewStore((s) => s.drillDown);
 
   // Derive systems from flat elements
@@ -41,9 +42,27 @@ export function ContainersStep({
 
   // Form state
   // We need to handle case where selectedSystemId might not maintain validity if systems change, but for now init is fine.
-  const [selectedSystemId, setSelectedSystemId] = useState(
-    (systems[0] as ElementDump | undefined)?.id ?? ""
-  );
+  // Infer initial system selection:
+  // 1. Check if a specific system is selected in global state (e.g. user right-clicked "MySystem" -> "Add Container")
+  // 2. Fallback to first system
+  const globalSelectedId = useSelectionStore((s) => s.selectedNodeId);
+
+  const initialSystemId = useMemo(() => {
+    if (globalSelectedId && data?.elements?.[globalSelectedId]?.kind === "system") {
+      return globalSelectedId;
+    }
+    if (systems.length > 0) return systems[0].id; // Fallback
+    return "";
+  }, [globalSelectedId, systems, data]);
+
+  const [selectedSystemId, setSelectedSystemId] = useState(initialSystemId);
+
+  // Sync if initial changes (e.g. user navigates then opens wizard)
+  useEffect(() => {
+    if (initialSystemId && !selectedSystemId) {
+      setSelectedSystemId(initialSystemId);
+    }
+  }, [initialSystemId]);
 
   // Update selected if empty and systems exist
   if (!selectedSystemId && systems.length > 0) {

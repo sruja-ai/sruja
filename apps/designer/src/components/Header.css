@@ -13,6 +13,7 @@
     position: relative;
     z-index: 50;
     transition: all 0.2s ease;
+    pointer-events: auto; /* Ensure header is interactive */
 }
 
 [data-theme="dark"] .app-header {
@@ -139,6 +140,9 @@
     min-width: 32px;
     padding: 0 8px;
     font-size: 13px;
+    pointer-events: auto; /* Ensure buttons are clickable */
+    position: relative;
+    z-index: 1;
 }
 
 .action-btn.primary {

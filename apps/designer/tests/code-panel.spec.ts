@@ -24,20 +24,14 @@ test.describe("Code Panel", () => {
     await expect(codePanel).toBeVisible();
   });
 
-  test("code panel has tabs (DSL, JSON, Markdown)", async ({ page }) => {
-    // Look for code tabs
-    const dslTab = page.locator('button:has-text("DSL"), .code-tab:has-text("DSL")');
-    const jsonTab = page.locator('button:has-text("JSON"), .code-tab:has-text("JSON")');
-    const markdownTab = page.locator('button:has-text("Markdown"), .code-tab:has-text("Markdown")');
+  test("code panel displays DSL editor", async ({ page }) => {
+    // Code panel now only shows DSL editor (no tabs)
+    const dslPanel = page.locator(".dsl-panel, [data-testid='dsl-panel-container']");
 
-    // At least one tab should be visible
-    await Promise.race([
-      dslTab.isVisible().then(() => true),
-      jsonTab.isVisible().then(() => true),
-      markdownTab.isVisible().then(() => true),
-    ]).catch(() => false);
+    // DSL panel should be visible
+    await expect(dslPanel.first()).toBeVisible();
 
-    // Code panel should be visible regardless
+    // Code panel container should be visible
     await expect(page.locator(".code-panel-container")).toBeVisible();
   });
 

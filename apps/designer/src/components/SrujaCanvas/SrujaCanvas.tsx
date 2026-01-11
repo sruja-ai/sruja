@@ -653,7 +653,8 @@ export const SrujaCanvas = () => {
           activeViewId ? 1 : level, // Default to L1 when using a view definition
           activeViewId ? undefined : focusNodeId, // Don't pass focusNodeId when using viewId
           nodeSizes,
-          activeViewId || undefined // Pass the view ID to load the view definition
+          activeViewId || undefined, // Pass the view ID to load the view definition
+          currentExampleFile || undefined // Pass filename
         );
 
         if (!result || !result.dot) {

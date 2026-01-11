@@ -3,6 +3,7 @@ import { Puzzle, Plus, Trash2, Box, ChevronRight, Edit } from "lucide-react";
 import { Button } from "@sruja/ui"; // Removed Input
 import { useArchitectureStore } from "../../stores/architectureStore";
 import { useViewStore } from "../../stores/viewStore";
+import { useSelectionStore } from "../../stores";
 import { useEffect } from "react";
 import { BestPracticeTip } from "@sruja/ui";
 import "@sruja/ui/components/BestPracticeTip.css";
@@ -53,13 +54,27 @@ export function ComponentsStep({
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [allElements]);
 
+  // Infer initial container selection
+  const globalSelectedId = useSelectionStore((s) => s.selectedNodeId);
+
+  const initialContainerId = useMemo(() => {
+    if (globalSelectedId && data?.elements?.[globalSelectedId]?.kind === "container") {
+      return globalSelectedId;
+    }
+    if (containerList.length > 0) return containerList[0].label;
+    return "";
+  }, [globalSelectedId, containerList, data]);
+
   // Form state
   // selectedPath is actually the container ID (full path)
-  const [selectedPath, setSelectedPath] = useState(containerList[0]?.label ?? "");
+  const [selectedPath, setSelectedPath] = useState(initialContainerId);
 
-  if (!selectedPath && containerList.length > 0) {
-    setSelectedPath(containerList[0].label);
-  }
+  // Sync if initial changes
+  useEffect(() => {
+    if (initialContainerId && !selectedPath) {
+      setSelectedPath(initialContainerId);
+    }
+  }, [initialContainerId]);
 
   // Auto-Zoom: Focus diagram on selected container
   useEffect(() => {
