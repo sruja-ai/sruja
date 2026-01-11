@@ -91,7 +91,7 @@ export function Header({
         <Breadcrumb />
       </div>
 
-      <div className="header-center">
+      <div className="header-center" style={{ minWidth: 0, flex: "0 1 auto", padding: "0 8px" }}>
         <Button
           variant="ghost"
           className="command-palette-trigger"
