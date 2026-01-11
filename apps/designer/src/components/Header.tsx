@@ -9,7 +9,6 @@ import {
   Download,
   Image,
   Code,
-  RefreshCw,
   Eye,
   Edit3,
   Hammer,
@@ -257,6 +256,7 @@ export function Header({
                 <Upload size={16} /> Import
               </Button>
               <div className="menu-divider" />
+
               <Button
                 variant="ghost"
                 className="menu-item"
@@ -265,7 +265,7 @@ export function Header({
                   setShowActions(false);
                 }}
               >
-                <Download size={16} /> Export JSON
+                <Download size={16} /> Export DSL
               </Button>
               <Button
                 variant="ghost"
@@ -287,21 +287,6 @@ export function Header({
               >
                 <Code size={16} /> Export SVG
               </Button>
-              {model && (
-                <>
-                  <div className="menu-divider" />
-                  <Button
-                    variant="ghost"
-                    className="menu-item"
-                    onClick={() => {
-                      reloadFromDsl();
-                      setShowActions(false);
-                    }}
-                  >
-                    <RefreshCw size={16} /> Reload DSL
-                  </Button>
-                </>
-              )}
             </div>
           )}
         </div>
