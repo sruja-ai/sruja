@@ -1,5 +1,4 @@
 import React from "react";
-import { Transition } from "@headlessui/react";
 
 export type CardProps = {
   title?: string;
@@ -51,21 +50,11 @@ export function Card({
       {footer && <div className="mt-4 pt-4 border-t border-[var(--color-border)]">{footer}</div>}
     </div>
   );
-  return (
-    <Transition
-      appear
-      show
-      enter="ease-out duration-200"
-      enterFrom="opacity-0 translate-y-1"
-      enterTo="opacity-100 translate-y-0"
-    >
-      {href ? (
-        <a href={href} className="no-underline">
-          {content}
-        </a>
-      ) : (
-        content
-      )}
-    </Transition>
+  return href ? (
+    <a href={href} className="no-underline">
+      {content}
+    </a>
+  ) : (
+    content
   );
 }

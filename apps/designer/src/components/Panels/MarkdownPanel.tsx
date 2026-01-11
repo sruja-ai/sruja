@@ -20,9 +20,8 @@ export function MarkdownPanel() {
   return (
     <MarkdownPreviewPanel
       content={convertedMarkdown || ""}
-      title="Markdown Representation"
+      title="Architecture Documentation"
       isLoading={isConverting}
-      loadingMessage="Converting DSL to Markdown..."
       emptyMessage="Markdown representation not available"
       className="markdown-panel"
       defaultViewMode="preview"

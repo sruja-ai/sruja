@@ -2,7 +2,9 @@ import { useState, useMemo } from "react";
 import { Users, Building2, Plus, Trash2, ExternalLink, Edit } from "lucide-react";
 import { Button } from "@sruja/ui"; // Removed Input
 import { useArchitectureStore } from "../../stores/architectureStore";
-import { BestPracticeTip, EditPersonForm, EditSystemForm } from "../shared"; // Updated imports
+import { BestPracticeTip } from "@sruja/ui";
+import "@sruja/ui/components/BestPracticeTip.css";
+import { EditPersonForm, EditSystemForm } from "../shared";
 import { RelationsSection } from "./RelationsSection";
 import { GovernanceSection } from "./GovernanceSection";
 import type { ElementDump } from "@sruja/shared";

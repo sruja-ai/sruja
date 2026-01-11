@@ -266,7 +266,6 @@ export function DynamicRoleView({ role: initialRole }: DynamicRoleViewProps = {}
                             <Button
                               rightSection={<ArrowRight size={14} />}
                               variant="light"
-                              fullWidth
                               mt="md"
                               color={isFailureScenario ? "red" : "blue"}
                             >

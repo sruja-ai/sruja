@@ -633,47 +633,107 @@
     justify-content: center;
 }
 
-/* Animation States */
+/* ============================================================================
+   ByteByteGo-Style Animation States
+   ============================================================================ */
 
-/* Active/Highlighted: Currently playing step - with smooth pulse */
+/* Active/Highlighted: Currently playing step - Beautiful glowing pulse effect */
 .animation-node-active,
 .animation-node-highlighted {
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.6), var(--node-shadow-hover) !important;
-    border-color: #2563eb !important;
+    /* Enhanced glow with multiple layers for depth */
+    box-shadow: 
+        0 0 0 4px rgba(59, 130, 246, 0.4),
+        0 0 0 8px rgba(59, 130, 246, 0.2),
+        0 0 20px rgba(59, 130, 246, 0.3),
+        0 4px 16px rgba(0, 0, 0, 0.15),
+        var(--node-shadow-hover) !important;
+    border-color: #3b82f6 !important;
+    border-width: 2.5px !important;
     z-index: 100 !important;
-    background: #fff !important;
-    animation: pulse-highlight 1.5s ease-in-out infinite;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+    transform: scale(1);
+    animation: 
+        node-pulse-glow 2s cubic-bezier(0.4, 0, 0.2, 1) infinite,
+        node-enter 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes pulse-highlight {
-
-    0%,
-    100% {
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.6), 0 4px 12px rgba(37, 99, 235, 0.2);
+@keyframes node-pulse-glow {
+    0%, 100% {
+        box-shadow: 
+            0 0 0 4px rgba(59, 130, 246, 0.5),
+            0 0 0 8px rgba(59, 130, 246, 0.25),
+            0 0 24px rgba(59, 130, 246, 0.4),
+            0 6px 20px rgba(59, 130, 246, 0.25),
+            0 4px 16px rgba(0, 0, 0, 0.15);
         transform: scale(1);
     }
-
     50% {
-        box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.3), 0 8px 20px rgba(37, 99, 235, 0.3);
-        transform: scale(1.02);
+        box-shadow: 
+            0 0 0 6px rgba(59, 130, 246, 0.6),
+            0 0 0 12px rgba(59, 130, 246, 0.3),
+            0 0 32px rgba(59, 130, 246, 0.5),
+            0 8px 28px rgba(59, 130, 246, 0.35),
+            0 6px 20px rgba(0, 0, 0, 0.2);
+        transform: scale(1.03);
+    }
+}
+
+@keyframes node-enter {
+    from {
+        opacity: 0.5;
+        transform: scale(0.95);
+        filter: blur(4px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
     }
 }
 
 [data-theme="dark"] .animation-node-active,
 [data-theme="dark"] .animation-node-highlighted {
-    background: #1e293b !important;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.6), 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+    box-shadow: 
+        0 0 0 4px rgba(96, 165, 250, 0.5),
+        0 0 0 8px rgba(96, 165, 250, 0.25),
+        0 0 24px rgba(96, 165, 250, 0.4),
+        0 6px 20px rgba(96, 165, 250, 0.3),
+        0 4px 16px rgba(0, 0, 0, 0.4) !important;
+    border-color: #60a5fa !important;
 }
 
-/* Visited: Already processed in the flow - subtle green glow */
+/* Visited: Already processed - Smooth green glow with fade-in */
 .animation-node-visited {
     border-color: #10b981 !important;
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3) !important;
-    transition: all 0.3s ease;
+    border-width: 2px !important;
+    box-shadow: 
+        0 0 0 2px rgba(16, 185, 129, 0.4),
+        0 0 12px rgba(16, 185, 129, 0.2),
+        0 2px 8px rgba(16, 185, 129, 0.1) !important;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: node-visited-enter 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.02) 100%) !important;
+}
+
+@keyframes node-visited-enter {
+    from {
+        opacity: 0.7;
+        transform: scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 [data-theme="dark"] .animation-node-visited {
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4), 0 2px 8px rgba(16, 185, 129, 0.2) !important;
+    box-shadow: 
+        0 0 0 2px rgba(16, 185, 129, 0.5),
+        0 0 16px rgba(16, 185, 129, 0.3),
+        0 2px 10px rgba(16, 185, 129, 0.2) !important;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%) !important;
 }
 
 /* Pending: Future steps (optional, usually default state) */
@@ -682,114 +742,249 @@
     transition: opacity 0.3s ease;
 }
 
-/* Dimmed: When we want to focus on active nodes */
+/* Dimmed: When we want to focus on active nodes - Smooth fade out */
 .animation-mode .c4-node:not(.animation-node-active):not(.animation-node-highlighted):not(.animation-node-visited) {
-    opacity: 0.35;
-    filter: grayscale(0.6);
-    transition: all 0.4s ease;
+    opacity: 0.25;
+    filter: grayscale(0.8) blur(1px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: scale(0.97);
+}
+
+/* Smooth entrance when animation starts */
+.animation-mode .c4-node {
+    animation: node-fade-in 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes node-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 /* ============================================================================
-   Edge Animation States
+   ByteByteGo-Style Edge Animation States
    ============================================================================ */
 
-/* Active edge - glowing effect */
+/* Active edge - Beautiful glowing effect with smooth pulse */
 .animation-edge-active path,
 .animation-edge-highlighted path {
-    stroke: #3b82f6 !important;
-    stroke-width: 3px !important;
-    filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.6));
-    animation: edge-pulse 1.5s ease-in-out infinite;
+    stroke: url(#edge-gradient-blue) !important;
+    stroke-width: 4px !important;
+    filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.7)) drop-shadow(0 0 4px rgba(59, 130, 246, 0.5));
+    animation: 
+        edge-pulse-glow 2s cubic-bezier(0.4, 0, 0.2, 1) infinite,
+        edge-flow-smooth 1.5s linear infinite;
+    stroke-dasharray: 12, 6;
+    opacity: 1 !important;
+    z-index: 50;
 }
 
-@keyframes edge-pulse {
+/* SVG Gradient for edges */
+.animation-mode svg defs {
+    position: absolute;
+}
 
-    0%,
-    100% {
+@keyframes edge-pulse-glow {
+    0%, 100% {
+        stroke-width: 4px;
+        filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.7)) drop-shadow(0 0 4px rgba(59, 130, 246, 0.5));
         stroke-opacity: 1;
-        filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.5));
     }
-
     50% {
-        stroke-opacity: 0.8;
-        filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.8));
+        stroke-width: 5px;
+        filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.9)) drop-shadow(0 0 8px rgba(59, 130, 246, 0.7));
+        stroke-opacity: 0.95;
     }
 }
 
-/* Visited edge - subtle green */
-.animation-edge-visited path {
-    stroke: #10b981 !important;
-    stroke-width: 2px !important;
-    stroke-opacity: 0.8;
-    transition: all 0.3s ease;
-}
-
-/* Edge flow animation marker */
-.animation-edge-flow-forward path {
-    stroke-dasharray: 8, 4;
-    animation: edge-flow-forward 0.8s linear infinite;
-}
-
-@keyframes edge-flow-forward {
+@keyframes edge-flow-smooth {
     from {
-        stroke-dashoffset: 12;
+        stroke-dashoffset: 18;
     }
-
     to {
         stroke-dashoffset: 0;
     }
 }
 
-/* Idle edge in animation mode - dimmed */
+[data-theme="dark"] .animation-edge-active path,
+[data-theme="dark"] .animation-edge-highlighted path {
+    stroke: url(#edge-gradient-blue-dark) !important;
+    filter: drop-shadow(0 0 10px rgba(96, 165, 250, 0.8)) drop-shadow(0 0 6px rgba(96, 165, 250, 0.6));
+}
+
+/* Visited edge - Smooth green with subtle glow */
+.animation-edge-visited path {
+    stroke: #10b981 !important;
+    stroke-width: 2.5px !important;
+    stroke-opacity: 0.85;
+    filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.3));
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: edge-visited-enter 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes edge-visited-enter {
+    from {
+        stroke-opacity: 0.5;
+        stroke-width: 2px;
+    }
+    to {
+        stroke-opacity: 0.85;
+        stroke-width: 2.5px;
+    }
+}
+
+[data-theme="dark"] .animation-edge-visited path {
+    stroke: #34d399 !important;
+    filter: drop-shadow(0 0 6px rgba(52, 211, 153, 0.4));
+}
+
+/* Edge flow animation marker - Smooth flowing effect */
+.animation-edge-flow-forward path {
+    stroke-dasharray: 16, 8;
+    animation: edge-flow-forward-smooth 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    stroke-linecap: round;
+}
+
+@keyframes edge-flow-forward-smooth {
+    from {
+        stroke-dashoffset: 24;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.animation-edge-flow-backward path {
+    stroke-dasharray: 16, 8;
+    animation: edge-flow-backward-smooth 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    stroke-linecap: round;
+}
+
+@keyframes edge-flow-backward-smooth {
+    from {
+        stroke-dashoffset: 0;
+    }
+    to {
+        stroke-dashoffset: 24;
+    }
+}
+
+/* Idle edge in animation mode - Smoothly dimmed */
 .animation-mode .react-flow__edge:not(.animation-edge-active):not(.animation-edge-highlighted):not(.animation-edge-visited) path {
-    stroke-opacity: 0.3 !important;
-    transition: stroke-opacity 0.3s ease;
+    stroke-opacity: 0.2 !important;
+    filter: grayscale(0.6);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Edge entrance animation */
+.animation-mode .react-flow__edge {
+    animation: edge-fade-in 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes edge-fade-in {
+    from {
+        stroke-opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        stroke-opacity: 1;
+        transform: scale(1);
+    }
 }
 
 /* ============================================================================
-   Step Description Overlay Styles
+   ByteByteGo-Style Step Description Overlay
    ============================================================================ */
 
 .step-overlay {
     position: fixed;
-    bottom: 100px;
+    bottom: 120px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(12px);
-    border-radius: 16px;
-    padding: 16px 24px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-radius: 20px;
+    padding: 20px 32px;
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.15),
+        0 0 0 1px rgba(255, 255, 255, 0.8),
+        0 0 40px rgba(59, 130, 246, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
     z-index: 1000;
-    max-width: 500px;
+    max-width: 580px;
+    width: calc(100% - 40px);
     text-align: center;
-    animation: slide-up 0.3s ease-out;
+    animation: 
+        overlay-slide-up 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+        overlay-glow-pulse 3s ease-in-out infinite;
+    border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+@keyframes overlay-slide-up {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(30px) scale(0.9);
+        filter: blur(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(1);
+        filter: blur(0);
+    }
+}
+
+@keyframes overlay-glow-pulse {
+    0%, 100% {
+        box-shadow: 
+            0 20px 60px rgba(0, 0, 0, 0.15),
+            0 0 0 1px rgba(255, 255, 255, 0.8),
+            0 0 40px rgba(59, 130, 246, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    50% {
+        box-shadow: 
+            0 20px 60px rgba(0, 0, 0, 0.15),
+            0 0 0 1px rgba(255, 255, 255, 0.8),
+            0 0 50px rgba(59, 130, 246, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
 }
 
 [data-theme="dark"] .step-overlay {
-    background: rgba(30, 41, 59, 0.95);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
-}
-
-@keyframes slide-up {
-    from {
-        opacity: 0;
-        transform: translateX(-50%) translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-    }
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.95) 100%);
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.1),
+        0 0 40px rgba(96, 165, 250, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(96, 165, 250, 0.2);
 }
 
 .step-overlay .step-number {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 700;
     color: #64748b;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
+    animation: step-number-fade-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes step-number-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 [data-theme="dark"] .step-overlay .step-number {
@@ -800,50 +995,121 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    margin-bottom: 8px;
+    gap: 16px;
+    margin-bottom: 12px;
+    animation: step-from-to-slide 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+
+@keyframes step-from-to-slide {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 .step-overlay .step-from,
 .step-overlay .step-to {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 700;
     color: #0f172a;
-    background: #f1f5f9;
-    padding: 4px 12px;
-    border-radius: 8px;
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    padding: 8px 16px;
+    border-radius: 12px;
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: step-node-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes step-node-pop {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.step-overlay .step-from {
+    animation-delay: 0.2s;
+}
+
+.step-overlay .step-to {
+    animation-delay: 0.3s;
+}
+
+.step-overlay .step-from:hover,
+.step-overlay .step-to:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 [data-theme="dark"] .step-overlay .step-from,
 [data-theme="dark"] .step-overlay .step-to {
     color: #f8fafc;
-    background: #334155;
+    background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(148, 163, 184, 0.3);
 }
 
 .step-overlay .step-arrow {
-    font-size: 18px;
+    font-size: 24px;
     color: #3b82f6;
-    animation: arrow-pulse 1s ease-in-out infinite;
+    font-weight: 300;
+    animation: arrow-flow 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.4));
+    margin: 0 4px;
 }
 
-@keyframes arrow-pulse {
-
-    0%,
-    100% {
-        transform: translateX(0);
+@keyframes arrow-flow {
+    0%, 100% {
+        transform: translateX(0) scale(1);
         opacity: 1;
     }
-
     50% {
-        transform: translateX(4px);
-        opacity: 0.7;
+        transform: translateX(6px) scale(1.1);
+        opacity: 0.8;
     }
+}
+
+[data-theme="dark"] .step-overlay .step-arrow {
+    color: #60a5fa;
+    filter: drop-shadow(0 0 6px rgba(96, 165, 250, 0.5));
 }
 
 .step-overlay .step-description {
-    font-size: 14px;
+    font-size: 15px;
     color: #475569;
-    line-height: 1.5;
+    line-height: 1.6;
+    font-weight: 500;
+    animation: step-description-fade 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.2s both;
+    margin-top: 4px;
+}
+
+@keyframes step-description-fade {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 [data-theme="dark"] .step-overlay .step-description {

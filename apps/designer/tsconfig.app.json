@@ -26,5 +26,5 @@
     "noUncheckedSideEffectImports": true
   },
   "include": ["src"],
-  "exclude": ["../../packages", "**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "**/__tests__/**"]
+  "exclude": ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "**/__tests__/**"]
 }

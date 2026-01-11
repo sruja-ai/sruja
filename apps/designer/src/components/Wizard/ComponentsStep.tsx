@@ -4,7 +4,9 @@ import { Button } from "@sruja/ui"; // Removed Input
 import { useArchitectureStore } from "../../stores/architectureStore";
 import { useViewStore } from "../../stores/viewStore";
 import { useEffect } from "react";
-import { BestPracticeTip, EditComponentForm } from "../shared"; // Updated imports
+import { BestPracticeTip } from "@sruja/ui";
+import "@sruja/ui/components/BestPracticeTip.css";
+import { EditComponentForm } from "../shared";
 import { RelationsSection } from "./RelationsSection";
 import { GovernanceSection } from "./GovernanceSection";
 import type { ElementDump, RelationDump } from "@sruja/shared";

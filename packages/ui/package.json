@@ -19,7 +19,10 @@
     "./components": {
       "import": "./dist/components/index.js",
       "types": "./dist/components/index.d.ts"
-    }
+    },
+    "./components/Skeleton.css": "./dist/components/Skeleton.css",
+    "./components/BestPracticeTip.css": "./dist/components/BestPracticeTip.css",
+    "./components/WizardStepper.css": "./dist/components/WizardStepper.css"
   },
   "scripts": {
     "build": "rimraf dist && tsc && npm run copy-css",
@@ -39,11 +42,11 @@
     }
   ],
   "dependencies": {
-    "@headlessui/react": "^2.2.9",
     "@mantine/core": "^8.3.10",
     "@mantine/hooks": "^8.3.10",
     "@sruja/shared": "*",
     "marked": "^16.4.2",
+    "mermaid": "^11.12.2",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.17"
   },

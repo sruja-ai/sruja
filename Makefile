@@ -301,6 +301,11 @@ help-svgs:
 	@echo "  - examples-svg/containers/   - Container view SVGs"
 	@echo "  - test-outputs/             - Legacy output directory"
 
+# Test all DSL examples (compile, dot export, markdown export)
+test-examples:
+	@echo "Testing all DSL examples..."
+	@./scripts/test-all-examples.sh
+
 # Show general help
 help:
 	@echo "Sruja Makefile Commands:"
@@ -310,6 +315,7 @@ help:
 	@echo "  make test               - Run tests"
 	@echo "  make test-coverage      - Run tests with coverage"
 	@echo "  make test-coverage-html - Generate HTML coverage report"
+	@echo "  make test-examples      - Test all DSL examples (compile, dot, markdown)"
 	@echo "  make clean              - Remove build artifacts"
 	@echo ""
 	@echo "Code Quality:"

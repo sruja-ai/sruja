@@ -1,79 +1,30 @@
-specification {
-  element person
-  element system
-  element container
-  element component
-  element database
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+
+user = person "End User"
+
+authSystem = system "Authentication System" {
+  authAPI = container "Authentication API" {
+    loginService = component "Login Service"
+    tokenService = component "Token Service"
+  }
+  
+  userDB = database "User Database"
 }
 
-model {
-  user = person "End User"
-  
-  authSystem = system "Authentication System" {
-    authAPI = container "Authentication API" {
-      loginService = component "Login Service"
-      tokenService = component "Token Service"
-    }
-    
-    userDB = database "User Database"
-  }
-  
-  scenario "User Login Flow" {
-    user -> authSystem.authAPI "submits credentials"
-    authSystem.authAPI -> authSystem.userDB "validates user"
-    authSystem.userDB -> authSystem.authAPI "returns user data"
-    authSystem.authAPI -> user "returns JWT token"
-  }
-  
-  scenario "Authentication Flow" {
-    user -> authSystem.authAPI.loginService "POST /login"
-    authSystem.authAPI.loginService -> authSystem.userDB "SELECT user"
-    authSystem.authAPI.loginService -> authSystem.authAPI.tokenService "generate token"
-    authSystem.authAPI.tokenService -> user "return JWT"
-  }
+LoginFlow = scenario "User Login Flow" {
+  step user -> authSystem.authAPI "submits credentials"
+  step authSystem.authAPI -> authSystem.userDB "validates user"
+  step authSystem.userDB -> authSystem.authAPI "returns user data"
+  step authSystem.authAPI -> user "returns JWT token"
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+AuthenticationFlow = scenario "Authentication Flow" {
+  step user -> authSystem.authAPI.loginService "POST /login"
+  step authSystem.authAPI.loginService -> authSystem.userDB "SELECT user"
+  step authSystem.authAPI.loginService -> authSystem.authAPI.tokenService "generate token"
+  step authSystem.authAPI.tokenService -> user "return JWT"
+}

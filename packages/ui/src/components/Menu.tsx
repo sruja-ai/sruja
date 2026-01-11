@@ -1,8 +1,6 @@
-// packages/ui/src/components/Menu.tsx
-import { Fragment } from 'react';
-import type { ReactNode } from 'react';
-import { Menu as HeadlessMenu, Transition } from '@headlessui/react';
-import { cn } from '../utils/cn';
+import type { ReactNode } from "react";
+import { Menu as MantineMenu } from "@mantine/core";
+import { cn } from "../utils/cn";
 
 export interface MenuItem {
   /** Item label */
@@ -20,74 +18,61 @@ export interface MenuItem {
 }
 
 export interface MenuProps {
-  /** Button/content that triggers the menu */
+  /** Button/content that triggers menu */
   trigger: ReactNode;
   /** Menu items */
   items: MenuItem[];
   /** Menu placement */
-  placement?: 'left' | 'right' | 'top' | 'bottom';
+  placement?: "left" | "right" | "top" | "bottom";
 }
 
-const placementClasses = {
-  bottom: 'top-full mt-2',
-  top: 'bottom-full mb-2',
-  right: 'left-full ml-2',
-  left: 'right-full mr-2',
+const placementMap: Record<
+  NonNullable<MenuProps["placement"]>,
+  React.ComponentProps<typeof MantineMenu>["position"]
+> = {
+  bottom: "bottom",
+  top: "top",
+  right: "right",
+  left: "left",
 };
 
-export function Menu({ trigger, items, placement = 'bottom' }: MenuProps) {
+export function Menu({ trigger, items, placement = "bottom" }: MenuProps) {
   return (
-    <HeadlessMenu as="div" className="relative inline-block text-left">
-      <HeadlessMenu.Button as={Fragment}>{trigger}</HeadlessMenu.Button>
+    <MantineMenu position={placementMap[placement]}>
+      <MantineMenu.Target>{trigger}</MantineMenu.Target>
 
-      <Transition
-        as={Fragment}
-        enter="transition ease-out duration-100"
-        enterFrom="transform opacity-0 scale-95"
-        enterTo="transform opacity-100 scale-100"
-        leave="transition ease-in duration-75"
-        leaveFrom="transform opacity-100 scale-100"
-        leaveTo="transform opacity-0 scale-95"
+      <MantineMenu.Dropdown
+        className={cn(
+          "bg-[var(--color-background)] border border-[var(--color-border)]",
+          "min-w-[200px]"
+        )}
       >
-        <HeadlessMenu.Items
-          className={cn(
-            'absolute z-50',
-            placementClasses[placement],
-            'min-w-[200px]',
-            'bg-[var(--color-background)] border border-[var(--color-border)] rounded-md shadow-lg',
-            'py-1'
-          )}
-        >
-          {items.map((item, index) => (
-            <Fragment key={index}>
-              {item.divider && index > 0 && (
-                <div className="h-px bg-[var(--color-border)] my-1" />
+        {items.map((item, index) => (
+          <>
+            {item.divider && index > 0 && (
+              <MantineMenu.Divider className="bg-[var(--color-border)]" />
+            )}
+            <MantineMenu.Item
+              key={index}
+              onClick={item.onClick}
+              disabled={item.disabled}
+              color={item.danger ? "red" : undefined}
+              leftSection={item.icon}
+              className={cn(
+                "text-sm",
+                "border-none text-left",
+                item.disabled
+                  ? "text-[var(--color-text-tertiary)] opacity-50 cursor-not-allowed"
+                  : item.danger
+                    ? "text-[var(--color-error-500)]"
+                    : "text-[var(--color-text-primary)]"
               )}
-              <HeadlessMenu.Item disabled={item.disabled}>
-                {({ active, disabled }) => (
-                  <button
-                    onClick={item.onClick}
-                    disabled={disabled || item.disabled}
-                    className={cn(
-                      'w-full flex items-center gap-3 px-4 py-2 text-sm',
-                      'border-none text-left transition-all',
-                      disabled || item.disabled
-                        ? 'text-[var(--color-text-tertiary)] opacity-50 cursor-not-allowed'
-                        : item.danger
-                        ? 'text-[var(--color-error-500)]'
-                        : 'text-[var(--color-text-primary)]',
-                      active && !disabled && 'bg-[var(--color-surface)]'
-                    )}
-                  >
-                    {item.icon && <span className="flex items-center">{item.icon}</span>}
-                    <span>{item.label}</span>
-                  </button>
-                )}
-              </HeadlessMenu.Item>
-            </Fragment>
-          ))}
-        </HeadlessMenu.Items>
-      </Transition>
-    </HeadlessMenu>
+            >
+              {item.label}
+            </MantineMenu.Item>
+          </>
+        ))}
+      </MantineMenu.Dropdown>
+    </MantineMenu>
   );
 }

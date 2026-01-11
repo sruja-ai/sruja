@@ -286,13 +286,21 @@ export const SrujaCanvas = () => {
   // This uses React state instead of DOM manipulation for better performance
   useEffect(() => {
     if (!activeAnimation || !activeAnimation.steps) {
-      // Clear animation states from all nodes
+      // Clear animation states from all nodes and edges
       setNodes((currentNodes) =>
         currentNodes.map((node) => ({
           ...node,
           data: { ...node.data, _animationState: "" },
           className: (node.className || "")
             .replace(/animation-mode|animation-node-\w+/g, "")
+            .trim(),
+        }))
+      );
+      setEdges((currentEdges) =>
+        currentEdges.map((edge) => ({
+          ...edge,
+          className: (edge.className || "")
+            .replace(/animation-mode|animation-edge-\w+/g, "")
             .trim(),
         }))
       );
@@ -322,6 +330,26 @@ export const SrujaCanvas = () => {
     // Remove active nodes from visited (active takes precedence)
     activeNodes.forEach((id) => visitedNodes.delete(id));
 
+    // Build sets of active/visited edges based on step connections
+    const activeEdges = new Set<string>();
+    const visitedEdges = new Set<string>();
+
+    // Current step edge
+    if (currentStepData?.from && currentStepData?.to) {
+      activeEdges.add(`${currentStepData.from}->${currentStepData.to}`);
+    }
+
+    // Previous step edges
+    for (let i = 0; i < animationStep; i++) {
+      const step = steps[i];
+      if (step?.from && step?.to) {
+        visitedEdges.add(`${step.from}->${step.to}`);
+      }
+    }
+
+    // Remove active edges from visited (active takes precedence)
+    activeEdges.forEach((id) => visitedEdges.delete(id));
+
     // Update nodes with animation state
     setNodes((currentNodes) =>
       currentNodes.map((node) => {
@@ -339,7 +367,94 @@ export const SrujaCanvas = () => {
         };
       })
     );
-  }, [activeAnimation, animationStep, setNodes]);
+
+    // Update edges with animation state (ByteByteGo-style)
+    setEdges((currentEdges) =>
+      currentEdges.map((edge) => {
+        // Match edge by source->target pattern
+        const edgeKey = `${edge.source}->${edge.target}`;
+        let animationClass = "";
+
+        if (activeEdges.has(edgeKey)) {
+          animationClass = "animation-edge-highlighted animation-edge-flow-forward";
+        } else if (visitedEdges.has(edgeKey)) {
+          animationClass = "animation-edge-visited";
+        }
+
+        return {
+          ...edge,
+          className: `animation-mode ${animationClass}`.trim(),
+        };
+      })
+    );
+  }, [activeAnimation, animationStep, setNodes, setEdges]);
+
+  // Auto-zoom to active nodes (ByteByteGo-style focus effect)
+  // Using a ref to track last zoomed step to prevent infinite loops
+  const lastZoomedStepRef = useRef<number>(-1);
+  const zoomTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!activeAnimation || !activeAnimation.steps || !reactFlowInstance || !isAnimationPlaying) {
+      lastZoomedStepRef.current = -1; // Reset on animation stop
+      return;
+    }
+
+    // Only zoom if step actually changed
+    if (lastZoomedStepRef.current === animationStep) return;
+    lastZoomedStepRef.current = animationStep;
+
+    // Clear any pending zoom
+    if (zoomTimeoutRef.current) {
+      clearTimeout(zoomTimeoutRef.current);
+    }
+
+    const steps = activeAnimation.steps;
+    const currentStepData = steps[animationStep];
+    if (!currentStepData || (!currentStepData.from && !currentStepData.to)) return;
+
+    // Delay zoom to let nodes update and render first
+    zoomTimeoutRef.current = setTimeout(() => {
+      // Find active nodes in the DOM (avoids state dependency issues)
+      const activeNodeIds: string[] = [];
+      if (currentStepData.from) activeNodeIds.push(currentStepData.from);
+      if (currentStepData.to && currentStepData.to !== currentStepData.from) {
+        activeNodeIds.push(currentStepData.to);
+      }
+
+      const activeElements = activeNodeIds
+        .map((id) => {
+          const el = document.querySelector(`[data-id="${id}"]`);
+          if (!el) return null;
+          const rect = el.getBoundingClientRect();
+          const flowPosition = reactFlowInstance.screenToFlowPosition({
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+          });
+          return { x: flowPosition.x, y: flowPosition.y };
+        })
+        .filter((pos): pos is NonNullable<typeof pos> => pos !== null);
+
+      if (activeElements.length > 0) {
+        // Calculate center of active nodes
+        const avgX = activeElements.reduce((sum, n) => sum + n.x, 0) / activeElements.length;
+        const avgY = activeElements.reduce((sum, n) => sum + n.y, 0) / activeElements.length;
+
+        // Smooth zoom and pan (ByteByteGo-style auto-focus)
+        reactFlowInstance.setCenter(avgX, avgY, {
+          duration: 800,
+          zoom: Math.min(reactFlowInstance.getZoom() || 1, 1.2),
+        });
+      }
+    }, 600); // Delay to let animations and DOM updates settle
+
+    return () => {
+      if (zoomTimeoutRef.current) {
+        clearTimeout(zoomTimeoutRef.current);
+        zoomTimeoutRef.current = null;
+      }
+    };
+  }, [activeAnimation, animationStep, isAnimationPlaying, reactFlowInstance]);
 
   // Store actions
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);

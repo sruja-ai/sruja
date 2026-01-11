@@ -1,9 +1,6 @@
-// packages/ui/src/components/MarkdownPreviewPanel.tsx
-// Enhanced markdown preview component with preview/raw toggle and copy functionality
-// Can be used across all apps
-
 import { useState, useMemo } from "react";
-import { Eye, Code, Copy, Check } from "lucide-react";
+import { ActionIcon, Group, Text, Stack, Alert, LoadingOverlay, Code } from "@mantine/core";
+import { Eye, Copy, Check } from "lucide-react";
 import { MarkdownPreview } from "./MarkdownPreview";
 import type { MarkdownPreviewProps } from "./MarkdownPreview";
 import "./MarkdownPreviewPanel.css";
@@ -23,8 +20,6 @@ export interface MarkdownPreviewPanelProps extends Omit<MarkdownPreviewProps, "c
   previewClassName?: string;
   /** Loading state */
   isLoading?: boolean;
-  /** Loading message */
-  loadingMessage?: string;
   /** Empty state message */
   emptyMessage?: string;
   /** Error state */
@@ -46,7 +41,6 @@ export function MarkdownPreviewPanel({
   className = "",
   previewClassName = "",
   isLoading = false,
-  loadingMessage = "Loading...",
   emptyMessage = "No content available",
   error = null,
   defaultViewMode = "preview",
@@ -87,61 +81,51 @@ export function MarkdownPreviewPanel({
           )}
           {headerContent}
           {showActions && (
-            <div className="markdown-preview-panel-actions">
+            <Group gap="xs">
               {showViewToggle && (
-                <div className="markdown-view-toggle">
-                  <button
-                    type="button"
-                    className={`view-toggle-btn ${viewMode === "preview" ? "active" : ""}`}
+                <Group gap="xs" className="markdown-view-toggle">
+                  <ActionIcon
+                    variant={viewMode === "preview" ? "filled" : "subtle"}
                     onClick={() => setViewMode("preview")}
                     title="Preview mode"
                     aria-label="Preview mode"
                   >
                     <Eye size={14} />
-                    <span>Preview</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`view-toggle-btn ${viewMode === "raw" ? "active" : ""}`}
+                  </ActionIcon>
+                  <ActionIcon
+                    variant={viewMode === "raw" ? "filled" : "subtle"}
                     onClick={() => setViewMode("raw")}
                     title="Raw markdown"
                     aria-label="Raw markdown"
                   >
-                    <Code size={14} />
-                    <span>Raw</span>
-                  </button>
-                </div>
+                    <Code />
+                  </ActionIcon>
+                </Group>
               )}
               {showCopyButton && (
-                <button
-                  type="button"
-                  className="markdown-copy-btn"
+                <ActionIcon
+                  variant="default"
                   onClick={handleCopy}
                   title="Copy to clipboard"
                   aria-label="Copy to clipboard"
+                  color={copied ? "green" : "blue"}
                 >
-                  {copied ? (
-                    <>
-                      <Check size={14} />
-                      <span>Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={14} />
-                      <span>Copy</span>
-                    </>
-                  )}
-                </button>
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                </ActionIcon>
               )}
-            </div>
+            </Group>
           )}
         </div>
       )}
 
       <div className="markdown-preview-panel-content">
-        {isLoading && <div className="markdown-loading">{loadingMessage}</div>}
+        <LoadingOverlay visible={isLoading} />
 
-        {error && <div className="markdown-error">{error}</div>}
+        {error && (
+          <Alert color="red" className="markdown-error">
+            {error}
+          </Alert>
+        )}
 
         {!isLoading && !error && hasContent && (
           <>
@@ -150,17 +134,21 @@ export function MarkdownPreviewPanel({
                 <MarkdownPreview content={markdownSource} onMermaidExpand={onMermaidExpand} />
               </div>
             ) : (
-              <pre className="markdown-raw">
-                <code>{markdownSource}</code>
-              </pre>
+              <Stack className="markdown-raw" p="md">
+                <Text component="pre" size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                  {markdownSource}
+                </Text>
+              </Stack>
             )}
           </>
         )}
 
         {!isLoading && !error && !hasContent && (
-          <div className="markdown-empty">
-            <p>{emptyMessage}</p>
-          </div>
+          <Stack p="xl" align="center" className="markdown-empty">
+            <Text c="dimmed" size="sm">
+              {emptyMessage}
+            </Text>
+          </Stack>
         )}
       </div>
     </div>

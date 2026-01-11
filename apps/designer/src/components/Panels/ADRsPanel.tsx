@@ -14,7 +14,8 @@ import {
 import { useArchitectureStore, useUIStore, useSelectionStore } from "../../stores";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
 import type { ADRDump, SrujaModelDump } from "@sruja/shared";
-import { EditADRForm, ConfirmDialog } from "../shared";
+import { ConfirmDialog } from "@sruja/ui";
+import { EditADRForm } from "../shared";
 import { Input, Button } from "@sruja/ui";
 import { useTagNavigation } from "../../hooks/useTagNavigation";
 import "./ADRsPanel.css";
