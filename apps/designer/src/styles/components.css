@@ -807,6 +807,7 @@
 }
 
 /* Command Palette Trigger in Header */
+/* Command Palette Trigger in Header */
 .command-palette-trigger {
   display: flex;
   align-items: center;
@@ -819,7 +820,10 @@
   font-size: 13px;
   height: 32px;
   transition: all 0.2s ease;
-  min-width: 280px;
+  min-width: 0;
+  /* Allow shrinking */
+  max-width: 400px;
+  flex: 1;
   justify-content: space-between;
   cursor: pointer;
 }
@@ -834,6 +838,7 @@
 
 .command-palette-trigger .search-icon {
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .command-palette-trigger .project-name {
@@ -843,6 +848,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .command-palette-trigger .kbd-shortcut {
@@ -856,11 +862,32 @@
   font-size: 10px;
   color: var(--text-muted);
   font-family: var(--font-mono);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 [data-theme="dark"] .command-palette-trigger .kbd-shortcut {
   background: #333;
   border-color: #444;
+}
+
+@media (max-width: 1000px) {
+  .command-palette-trigger .kbd-shortcut {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .command-palette-trigger .project-name {
+    display: none;
+  }
+
+  .command-palette-trigger {
+    padding: 6px;
+    justify-content: center;
+    width: 32px;
+    flex: 0 0 32px;
+  }
 }
 
 .upload-btn.large {
@@ -875,6 +902,12 @@
 }
 
 /* Mobile Menu Button */
+@media (max-width: 1000px) {
+  .btn-label {
+    display: none !important;
+  }
+}
+
 .mobile-menu-btn {
   display: none;
   background: none;
