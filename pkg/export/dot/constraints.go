@@ -181,10 +181,6 @@ func BuildConstraints(elements []*views.Element, relations []*views.Relation, vi
 	// Simplified spline logic: always use ortho for cleaner architecture diagrams
 	// Only fall back if specifically requested (future config)
 	if viewLevel == 2 {
-		nodeCountForDensity := float64(len(elements))
-		if nodeCountForDensity < 1 {
-			nodeCountForDensity = 1
-		}
 		// Ortho handles density reasonably well for block diagrams
 		constraints.Global.Splines = "ortho"
 	}
@@ -278,12 +274,6 @@ func buildRankConstraints(elements []*views.Element, viewLevel int) []RankConstr
 			// Note: We don't use "max" because sometimes you want them side-by-side with lowest component
 		}
 
-		// For complex L2 diagrams (12+ containers), add additional rank grouping
-		// to reduce edge crossings by keeping closely related containers on the same rank
-		if len(elements) >= 12 && len(elements) <= 25 {
-			// For moderately complex L2, group containers by their immediate relationships
-			// This is done via edge weights which influence rank assignment
-		}
 	}
 
 	// L3 (Component View): Components
@@ -475,24 +465,21 @@ func buildEdgeConstraints(relations []*views.Relation, config Config, nodeCount 
 			// but for now we treat all equally
 		}
 
-		if len(uniqueLabels) == 0 {
+		switch len(uniqueLabels) {
+		case 0:
 			mergedLabel = ""
-		} else if len(uniqueLabels) == 1 {
-			// Single unique label
+		case 1:
 			for l := range uniqueLabels {
 				mergedLabel = l
 			}
-		} else {
-			// Multiple different labels
+		default:
 			if len(uniqueLabels) <= 3 {
-				// Join short list
 				labels := make([]string, 0, len(uniqueLabels))
 				for l := range uniqueLabels {
 					labels = append(labels, l)
 				}
-				mergedLabel = strings.Join(labels, ",\\n") // Use newline for separation
+				mergedLabel = strings.Join(labels, ",\\n")
 			} else {
-				// Summary for many labels
 				mergedLabel = fmt.Sprintf("%d interactions", len(uniqueLabels))
 			}
 		}
@@ -534,12 +521,10 @@ func buildEdgeConstraints(relations []*views.Relation, config Config, nodeCount 
 				}
 			}
 
-			// Increase minlen for complex diagrams to reduce crossings
-			if nodeCount >= ComplexGraphThreshold {
+			switch {
+			case nodeCount >= ComplexGraphThreshold:
 				edge.MinLen = 2
-			} else if nodeCount >= DenseGraphThreshold {
-				edge.MinLen = 1
-			} else {
+			default:
 				edge.MinLen = 1
 			}
 
@@ -588,7 +573,7 @@ func buildEdgeConstraints(relations []*views.Relation, config Config, nodeCount 
 
 // addSiblingClusterConstraints adds invisible edges between sibling clusters to keep them together.
 // Inspired by PlantUML's "together" keyword, this groups sibling clusters visually.
-func addSiblingClusterConstraints(edges []EdgeConstraint, elements []*views.Element, parentMap map[string]string) []EdgeConstraint {
+func addSiblingClusterConstraints(edges []EdgeConstraint, elements []*views.Element, _ map[string]string) []EdgeConstraint {
 	// Identify elements that will become clusters (elements that have children)
 	hasChildren := make(map[string]bool)
 	for _, elem := range elements {

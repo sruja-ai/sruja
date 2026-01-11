@@ -152,9 +152,10 @@ func (e *ViewEngine) computeViewGraph(prog *language.Program, allElements map[st
 		}
 	}
 
-	isCore := func(id string) bool { return false }
+	isCore := func(_ string) bool { return false }
 
-	if level <= 1 {
+	switch level {
+	case 1:
 		for id, elem := range allElements {
 			if elem.Kind == "person" || elem.Kind == "system" {
 				addElement(id)
@@ -170,7 +171,7 @@ func (e *ViewEngine) computeViewGraph(prog *language.Program, allElements map[st
 			kind = normalizeKind(kind)
 			return kind == "person" || kind == "system"
 		}
-	} else if level == 2 {
+	case 2:
 		isL2Element := func(id string) bool {
 			kind := ""
 			if elem, ok := allElements[id]; ok {
@@ -201,12 +202,12 @@ func (e *ViewEngine) computeViewGraph(prog *language.Program, allElements map[st
 				return id == focusID || (strings.HasPrefix(id, internalPrefix) && isL2Element(id))
 			}
 		}
-	} else if level == 3 {
+	case 3:
 		if focusID == "" {
 			for id := range allElements {
 				addElement(id)
 			}
-			isCore = func(id string) bool { return true }
+			isCore = func(_ string) bool { return true }
 		} else {
 			addElement(focusID)
 			internalPrefix := focusID + "."
@@ -223,7 +224,7 @@ func (e *ViewEngine) computeViewGraph(prog *language.Program, allElements map[st
 		}
 	}
 
-	var projectedRelations []*Relation
+	projectedRelations := make([]*Relation, 0, len(allRelations))
 	for _, rel := range allRelations {
 		fromFQN := lookup.ResolveFQN(rel.From, "")
 		toFQN := lookup.ResolveFQN(rel.To, fromFQN)

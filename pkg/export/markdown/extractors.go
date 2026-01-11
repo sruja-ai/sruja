@@ -479,10 +479,11 @@ func extractTermsFromText(text string, terms map[string]string) {
 		// Skip if it contains numbers or symbols (except hyphens inside)
 		hasInvalidChar := false
 		for _, r := range word {
-			if !((r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || r == '-') {
-				hasInvalidChar = true
-				break
+			if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || r == '-' {
+				continue
 			}
+			hasInvalidChar = true
+			break
 		}
 		if hasInvalidChar {
 			continue

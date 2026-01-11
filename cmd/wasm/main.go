@@ -159,6 +159,7 @@ func dslToMermaid(this js.Value, args []js.Value) (ret interface{}) {
 			var cfg struct {
 				ViewLevel int    `json:"viewLevel"`
 				TargetID  string `json:"targetId"`
+				Filename  string `json:"filename"`
 			}
 			if err := json.Unmarshal([]byte(configJson), &cfg); err != nil {
 				// Warn but continue with defaults? Or return error?
@@ -171,6 +172,9 @@ func dslToMermaid(this js.Value, args []js.Value) (ret interface{}) {
 				viewLevel = cfg.ViewLevel
 			}
 			targetId = cfg.TargetID
+			if cfg.Filename != "" {
+				filename = cfg.Filename
+			}
 		}
 	}
 
@@ -394,6 +398,7 @@ func dslToDot(this js.Value, args []js.Value) (ret interface{}) {
 	viewLevel := 1
 	focusNodeId := ""
 	viewId := "" // DSL view definition ID (e.g., "architect_overview")
+	filename := defaultFilename
 	var nodeSizes map[string]struct{ Width, Height float64 }
 
 	if len(args) > 1 {
@@ -406,6 +411,7 @@ func dslToDot(this js.Value, args []js.Value) (ret interface{}) {
 					FocusNodeId string                                     `json:"focusNodeId"`
 					ViewId      string                                     `json:"viewId"`
 					NodeSizes   map[string]struct{ Width, Height float64 } `json:"nodeSizes"`
+					Filename    string                                     `json:"filename"`
 				}
 				if err := json.Unmarshal([]byte(configJson), &cfg); err != nil {
 					parseErr := NewExportError(ErrCodeInvalidArgs, "failed to parse config JSON").WithContext("error", err.Error())
@@ -418,6 +424,9 @@ func dslToDot(this js.Value, args []js.Value) (ret interface{}) {
 				}
 				focusNodeId = cfg.FocusNodeId
 				viewId = cfg.ViewId
+				if cfg.Filename != "" {
+					filename = cfg.Filename // Update the default filename to the one provided
+				}
 
 				if len(cfg.NodeSizes) > 0 {
 					nodeSizes = make(map[string]struct{ Width, Height float64 })
@@ -468,7 +477,7 @@ func dslToDot(this js.Value, args []js.Value) (ret interface{}) {
 		return resultWithError(validationErr)
 	}
 
-	parseResult := parseAndValidate(input, defaultFilename)
+	parseResult := parseAndValidate(input, filename)
 	if parseResult.Error != nil {
 		metrics.FinishMetrics(false, parseResult.Error, 0, 0, 0)
 		LogError("dslToDot", "Parse failed", parseResult.Error.Code, parseResult.Error.Context)

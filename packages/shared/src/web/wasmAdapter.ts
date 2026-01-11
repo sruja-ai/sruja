@@ -43,7 +43,8 @@ export type WasmApi = {
     viewLevel?: number,
     focusNodeId?: string,
     nodeSizes?: Record<string, { width: number; height: number }>,
-    viewId?: string
+    viewId?: string,
+    filename?: string
   ) => Promise<DotResult>;
   calculateArchitectureScore: (dsl: string) => Promise<ScoreResult>;
 };
@@ -540,7 +541,8 @@ export async function initWasm(options?: {
       viewLevel?: number,
       focusNodeId?: string,
       nodeSizes?: Record<string, { width: number; height: number }>,
-      viewId?: string
+      viewId?: string,
+      filename?: string
     ) => {
       try {
         if (!dotFn) {
@@ -552,6 +554,9 @@ export async function initWasm(options?: {
           focusNodeId: focusNodeId ?? "",
           viewId: viewId ?? "",
           nodeSizes: nodeSizes || {},
+          filename:
+            filename ||
+            (typeof location !== "undefined" ? location.pathname || "input.sruja" : "input.sruja"),
         };
         const r = dotFn(dsl, JSON.stringify(config));
         if (!r || !r.ok) {
@@ -747,7 +752,8 @@ export async function convertDslToDot(
   viewLevel?: number,
   focusNodeId?: string,
   nodeSizes?: Record<string, { width: number; height: number }>,
-  viewId?: string
+  viewId?: string,
+  filename?: string
 ): Promise<DotResult | null> {
   const api = await getWasmApi();
   if (!api) {
@@ -756,7 +762,7 @@ export async function convertDslToDot(
   }
 
   try {
-    return await api.dslToDot(dsl, viewLevel, focusNodeId, nodeSizes, viewId);
+    return await api.dslToDot(dsl, viewLevel, focusNodeId, nodeSizes, viewId, filename);
   } catch (error) {
     logger.error("DSL to DOT conversion error", {
       component: "wasm",

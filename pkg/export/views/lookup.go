@@ -140,23 +140,11 @@ func (l *ElementLookup) GetContainer(fqn string) string {
 			return fqn
 		}
 
-		currentInfo := info
-		for {
-			if currentInfo.ParentID == "" {
-				break
-			}
-
-			parentInfo, ok := l.Elements[currentInfo.ParentID]
-			if !ok {
-				break
-			}
-
-			kind := strings.ToLower(parentInfo.Kind)
+		for currentInfo, ok := info, true; ok && currentInfo.ParentID != ""; currentInfo, ok = l.Elements[currentInfo.ParentID] {
+			kind := strings.ToLower(currentInfo.Kind)
 			if kind == "container" || kind == "datastore" || kind == "queue" {
 				return currentInfo.ParentID
 			}
-
-			currentInfo = parentInfo
 		}
 	}
 

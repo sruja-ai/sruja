@@ -25,9 +25,6 @@ export type { MenuProps, MenuItem as MenuItemType } from "./Menu";
 export { Popover } from "./Popover";
 export type { PopoverProps } from "./Popover";
 
-// Headless UI components (unstyled, for advanced usage)
-export * from "./headless-ui";
-
 export { Card } from "./Card";
 export type { CardProps } from "./Card";
 export { Badge } from "./Badge";

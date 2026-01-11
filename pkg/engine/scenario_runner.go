@@ -27,7 +27,7 @@ func NewScenarioRunner(prog *language.Program) *ScenarioRunner {
 }
 
 // ValidateScenario validates a single scenario/story/flow.
-func (r *ScenarioRunner) ValidateScenario(sID string, title *string, steps []*language.ScenarioStep) []diagnostics.Diagnostic {
+func (r *ScenarioRunner) ValidateScenario(_ string, _ *string, steps []*language.ScenarioStep) []diagnostics.Diagnostic {
 	var diags []diagnostics.Diagnostic
 
 	for _, step := range steps {

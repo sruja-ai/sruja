@@ -268,9 +268,6 @@ func isRelParentChild(parent, child QualifiedIdent) bool {
 }
 
 func (m *ModelItem) PostProcess() {
-	if m.Extend != nil {
-		// No post-harvest needed yet?
-	}
 	if m.Scenario != nil {
 		m.Scenario.PostProcess()
 	}

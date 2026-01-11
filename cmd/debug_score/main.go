@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/sruja-ai/sruja/pkg/engine"
 	"github.com/sruja-ai/sruja/pkg/language"
@@ -14,6 +16,11 @@ func main() {
 		os.Exit(1)
 	}
 	file := os.Args[1]
+	cleanFile := filepath.Clean(file)
+	if filepath.IsAbs(cleanFile) || cleanFile != file || strings.Contains(file, "..") {
+		fmt.Println("Error: absolute paths and path traversal are not allowed")
+		os.Exit(1)
+	}
 	data, err := os.ReadFile(file)
 	if err != nil {
 		panic(err)

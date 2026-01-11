@@ -3,14 +3,13 @@ linters:
   enable:
     - bodyclose
     - gocritic
-    - gofmt
     - gosec
     - govet
-    - ineffassign # Detect ineffectual assignments
+    - ineffassign
     - noctx
     - prealloc
     - revive
-    - staticcheck # Additional static analysis
+    - staticcheck
     - unparam
   disable:
     - funlen
@@ -44,6 +43,8 @@ linters:
 run:
   timeout: 5m
 formatters:
+  enable:
+    - gofmt
   exclusions:
     generated: lax
     paths:

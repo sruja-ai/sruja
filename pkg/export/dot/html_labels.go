@@ -7,7 +7,7 @@ import (
 
 // buildNodeHTML generates the HTML label for a node.
 // It creates a table with rows for Title, Technology, and Description.
-func buildNodeHTML(title, kind, technology, description string) string {
+func buildNodeHTML(title, kind, technology, _ string) string {
 	var sb strings.Builder
 
 	// Main table container

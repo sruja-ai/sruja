@@ -17,7 +17,7 @@ type mockRule struct {
 }
 
 func (m *mockRule) Name() string { return m.name }
-func (m *mockRule) Validate(p *language.Program) []diagnostics.Diagnostic {
+func (m *mockRule) Validate(_ *language.Program) []diagnostics.Diagnostic {
 	if m.delay > 0 {
 		time.Sleep(m.delay)
 	}

@@ -152,3 +152,152 @@ func TestConvertSystem_Complete(t *testing.T) {
 		t.Fatalf("system properties/style conversion failed: %+v", result)
 	}
 }
+
+func TestWrapper(t *testing.T) {
+	program := &language.Program{
+		Model: &language.Model{
+			Items: []language.ModelItem{
+				{
+					ElementDef: &language.ElementDef{
+						Assignment: &language.ElementAssignment{
+							Kind:  "system",
+							Name:  "SystemA",
+							Title: strPtr("System A"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	wrapper := NewWrapper()
+
+	if wrapper == nil {
+		t.Fatal("NewWrapper returned nil")
+	}
+
+	wrapper.Extended = true
+
+	_, err := wrapper.Export(program)
+	if err != nil {
+		t.Errorf("Wrapper.Export failed: %v", err)
+	}
+
+	dump := wrapper.ExportAsModelDump(program)
+	if dump == nil {
+		t.Error("ExportAsModelDump returned nil")
+	}
+
+	_, err = wrapper.ExportCompact(program)
+	if err != nil {
+		t.Errorf("Wrapper.ExportCompact failed: %v", err)
+	}
+}
+
+func TestWrapper_NoExtended(t *testing.T) {
+	program := &language.Program{
+		Model: &language.Model{
+			Items: []language.ModelItem{},
+		},
+	}
+
+	wrapper := NewWrapper()
+	wrapper.Extended = false
+
+	_, err := wrapper.Export(program)
+	if err != nil {
+		t.Errorf("Wrapper.Export with Extended=false failed: %v", err)
+	}
+
+	dump := wrapper.ExportAsModelDump(program)
+	if dump == nil {
+		t.Error("ExportAsModelDump returned nil")
+	}
+
+	_, err = wrapper.ExportCompact(program)
+	if err != nil {
+		t.Errorf("Wrapper.ExportCompact with Extended=false failed: %v", err)
+	}
+}
+
+func TestWrapper_EmptyProgram(t *testing.T) {
+	program := &language.Program{
+		Model: &language.Model{
+			Items: []language.ModelItem{},
+		},
+	}
+
+	wrapper := NewWrapper()
+
+	_, err := wrapper.Export(program)
+	if err != nil {
+		t.Errorf("Wrapper.Export with empty program failed: %v", err)
+	}
+
+	dump := wrapper.ExportAsModelDump(program)
+	if dump == nil {
+		t.Error("ExportAsModelDump returned nil for empty program")
+	}
+
+	_, err = wrapper.ExportCompact(program)
+	if err != nil {
+		t.Errorf("Wrapper.ExportCompact with empty program failed: %v", err)
+	}
+}
+
+func TestExporter_ExtendedFlag(t *testing.T) {
+	program := &language.Program{
+		Model: &language.Model{
+			Items: []language.ModelItem{
+				{
+					ElementDef: &language.ElementDef{
+						Assignment: &language.ElementAssignment{
+							Kind:  "person",
+							Name:  "User",
+							Title: strPtr("End User"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	exporter := NewExporter()
+	exporter.Extended = true
+
+	result, err := exporter.Export(program)
+	if err != nil {
+		t.Errorf("Exporter.Export with Extended=true failed: %v", err)
+	}
+
+	if result == "" {
+		t.Error("Expected non-empty result")
+	}
+
+	dump := exporter.ToModelDump(program)
+	if dump == nil {
+		t.Error("ToModelDump returned nil")
+		return
+	}
+
+	if dump.Elements == nil {
+		t.Error("Expected Elements map in dump")
+	}
+}
+
+func TestExporter_NilModel(t *testing.T) {
+	program := &language.Program{
+		Model: nil,
+	}
+
+	exporter := NewExporter()
+	_, err := exporter.Export(program)
+	if err != nil {
+		t.Errorf("Exporter.Export with nil model failed: %v", err)
+	}
+
+	dump := exporter.ToModelDump(program)
+	if dump == nil {
+		t.Error("ToModelDump returned nil for nil model")
+	}
+}
