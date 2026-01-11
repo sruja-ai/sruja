@@ -1,28 +1,27 @@
 import {
   Menu,
-  Info,
-  RefreshCw,
-  Edit,
-  Eye,
-  Settings,
-  Share2,
-  Plus,
-  Upload,
-  Download,
-  Github,
-  Globe,
   PanelLeft,
   PanelRight,
   MoreHorizontal,
   Search,
   Command,
+  Share2,
+  Plus,
+  Upload,
+  Download,
+  Image,
+  Code,
+  RefreshCw,
+  Eye,
+  Edit3,
 } from "lucide-react";
-import { Breadcrumb, ExamplesDropdown } from "./shared";
+import { ExamplesDropdown } from "./shared";
 import { ThemeToggle, Button, Logo } from "@sruja/ui";
 import type { SrujaModelDump } from "@sruja/shared";
 import type { ViewTab } from "../types";
-import { getWebsiteUrl } from "../utils/website-url";
 import { useUIStore } from "../stores";
+import { ViewTabs } from "./ViewTabs";
+import "./Header.css";
 
 export interface HeaderProps {
   isNavOpen: boolean;
@@ -31,14 +30,12 @@ export interface HeaderProps {
   showActions: boolean;
   setShowActions: (show: boolean) => void;
   activeTab: ViewTab;
+  setActiveTab: (tab: ViewTab) => void;
   editMode: "view" | "edit";
   setEditMode: (mode: "view" | "edit") => void;
-  setShowSettings: (show: boolean) => void;
   selectedNodeId: string | null;
   isDetailsOpen: boolean;
   setIsDetailsOpen: (open: boolean) => void;
-  // Role selection removed - now handled in Roles tab
-  // Actions
   handleImport: () => void;
   handleExport: () => void;
   handleExportPNG: () => Promise<void>;
@@ -55,12 +52,9 @@ export function Header({
   showActions,
   setShowActions,
   activeTab,
+  setActiveTab,
   editMode,
   setEditMode,
-  setShowSettings,
-  selectedNodeId,
-  isDetailsOpen,
-  setIsDetailsOpen,
   handleImport,
   handleExport,
   handleExportPNG,
@@ -72,296 +66,190 @@ export function Header({
 }: HeaderProps) {
   return (
     <header className="app-header">
+      {/* Left: Logo & Nav Toggle */}
       <div className="header-left">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mobile-menu-btn"
-          onClick={() => setIsNavOpen(true)}
-          aria-label="Open menu"
-        >
-          <Menu size={20} />
-        </Button>
-        <div className="app-branding">
-          <Logo size={24} />
-          <h1 className="app-title">
-            Sruja<span>Designer</span>
-          </h1>
-        </div>
-        <Breadcrumb />
-      </div>
-
-      <div className="header-center" style={{ minWidth: 0, flex: "0 1 auto", padding: "0 8px" }}>
-        <Button
-          variant="ghost"
-          className="command-palette-trigger"
-          onClick={onOpenCommandPalette}
-          title="Search commands (⌘K)"
-        >
-          <Search size={14} className="search-icon" />
-          <span className="project-name">
-            {(model?._metadata as { name?: string })?.name || "Untitled Architecture"}
-          </span>
-          <div className="kbd-shortcut">
-            <Command size={10} />
-            <span>K</span>
-          </div>
-        </Button>
-      </div>
-
-      <div className="header-right">
-        <div className="actions-dropdown-container">
+        <div className="layout-controls">
           <Button
-            variant="secondary"
-            size="sm"
-            className="action-btn"
-            onClick={() => setShowActions(!showActions)}
-            aria-label="Actions"
-            aria-expanded={showActions}
-            title="Actions & Export"
-          >
-            <MoreHorizontal size={18} />
-            <span className="btn-label">Actions</span>
-          </Button>
-          {showActions && (
-            <div className="actions-menu">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="action-item"
-                onClick={() => {
-                  setShowActions(false);
-                  handleImport();
-                }}
-                aria-label="Import .sruja file"
-                title="Import existing .sruja file"
-              >
-                <Upload size={16} />
-                Import .sruja
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="action-item"
-                onClick={() => {
-                  setShowActions(false);
-                  handleExport();
-                }}
-                disabled={!model}
-                aria-label="Export .sruja file"
-                title="Export .sruja file"
-              >
-                <Download size={16} />
-                Export .sruja
-              </Button>
-              {activeTab === "diagram" && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="action-item"
-                    onClick={() => {
-                      setShowActions(false);
-                      void handleExportPNG();
-                    }}
-                    disabled={!model}
-                    aria-label="Export as PNG"
-                    title="Export diagram as PNG image"
-                  >
-                    <Download size={16} />
-                    Export PNG
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="action-item"
-                    onClick={() => {
-                      setShowActions(false);
-                      void handleExportSVG();
-                    }}
-                    disabled={!model}
-                    aria-label="Export as SVG"
-                    title="Export diagram as SVG image"
-                  >
-                    <Download size={16} />
-                    Export SVG
-                  </Button>
-                </>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="action-item"
-                onClick={() => {
-                  setShowActions(false);
-                  void reloadFromDsl();
-                }}
-                aria-label="Refresh from source"
-                title="Refresh from source"
-              >
-                <RefreshCw size={16} />
-                Refresh from source
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="action-item"
-                onClick={() => {
-                  setShowActions(false);
-                  void handleShareHeader();
-                }}
-                aria-label="Copy shareable URL"
-                title="Copy shareable URL - Anyone with the link can view and edit. We cannot recover it if you lose it."
-              >
-                <Share2 size={16} />
-                Share
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="action-item"
-                onClick={() => {
-                  setShowActions(false);
-                  void handleCreateNewRemote();
-                }}
-                aria-label="Create new project"
-                title="Create a new empty project"
-              >
-                <Plus size={16} />
-                New Project
-              </Button>
-
-              <div
-                className="menu-divider"
-                style={{ margin: "4px 0", borderTop: "1px solid var(--border-color)" }}
-              />
-
-              <a
-                href={getWebsiteUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="action-item-link"
-                style={{ textDecoration: "none" }}
-              >
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="action-item"
-                  style={{ width: "100%", justifyContent: "flex-start" }}
-                >
-                  <Globe size={16} />
-                  Website
-                </Button>
-              </a>
-              <a
-                href="https://github.com/sruja-ai/sruja"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="action-item-link"
-                style={{ textDecoration: "none" }}
-              >
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="action-item"
-                  style={{ width: "100%", justifyContent: "flex-start" }}
-                >
-                  <Github size={16} />
-                  GitHub
-                </Button>
-              </a>
-            </div>
-          )}
-        </div>
-
-        <div className="mode-toggle-group">
-          <Button
-            variant={editMode === "view" ? "primary" : "ghost"}
-            size="sm"
-            className={`mode-btn ${editMode === "view" ? "active" : ""}`}
-            onClick={() => setEditMode("view")}
-            title="View Mode - Browse and explore architecture"
-            aria-pressed={editMode === "view"}
-          >
-            <Eye size={16} />
-            <span className="mode-label">View</span>
-          </Button>
-          <Button
-            variant={editMode === "edit" ? "primary" : "ghost"}
-            size="sm"
-            className={`mode-btn ${editMode === "edit" ? "active" : ""}`}
-            onClick={() => setEditMode("edit")}
-            title="Edit Mode - Modify and design architecture"
-            aria-pressed={editMode === "edit"}
-          >
-            <Edit size={16} />
-            <span className="mode-label">Edit</span>
-          </Button>
-        </div>
-
-        {/* Layout Controls - VS Code Style */}
-        <div
-          className="layout-controls"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            marginRight: 8,
-            borderRight: "1px solid var(--border)",
-            paddingRight: 8,
-          }}
-        >
-          <Button
-            variant={useUIStore((s) => s.isNavigationVisible) ? "secondary" : "ghost"}
+            variant="ghost"
             size="sm"
             className="action-btn icon-only"
-            onClick={() =>
-              useUIStore
-                .getState()
-                .setIsNavigationVisible(!useUIStore.getState().isNavigationVisible)
+            onClick={() => useUIStore.getState().toggleNavigation()}
+            title={
+              useUIStore.getState().isNavigationVisible
+                ? "Close Navigation (Alt/Opt + B)"
+                : "Open Navigation (Alt/Opt + B)"
             }
-            title="Toggle Left Panel (Command+B)"
-            aria-label="Toggle Navigation"
-            style={{ marginRight: 2 }}
           >
             <PanelLeft size={18} />
           </Button>
           <Button
-            variant={useUIStore((s) => s.isInspectorVisible) ? "secondary" : "ghost"}
+            variant="ghost"
             size="sm"
-            className="action-btn icon-only"
-            onClick={() =>
-              useUIStore.getState().setIsInspectorVisible(!useUIStore.getState().isInspectorVisible)
-            }
-            title="Toggle Right Panel (Command+Alt+B)"
-            aria-label="Toggle Inspector"
+            className="mobile-menu-btn"
+            onClick={() => setIsNavOpen(true)}
           >
-            <PanelRight size={18} />
+            <Menu size={20} />
           </Button>
         </div>
-
-        <ThemeToggle iconOnly />
+        <div className="logo-section">
+          <Logo size={22} />
+          <span className="app-title">Sruja</span>
+        </div>
+        <div className="divider-vertical" />
         <ExamplesDropdown />
+      </div>
+
+      {/* Center: Navigation Tabs */}
+      <div className="header-center">
+        {model && <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} />}
+      </div>
+
+      {/* Right: Actions & Tools */}
+      <div className="header-right">
+        {/* Search */}
+        <button
+          className="header-search-btn"
+          onClick={onOpenCommandPalette}
+          title="Search commands (⌘K)"
+        >
+          <Search size={16} />
+          <span className="search-shortcut">⌘K</span>
+        </button>
+
+        <div className="divider-vertical" />
+
+        {/* Mode Toggle */}
+        {activeTab !== "overview" && model && (
+          <div className="mode-toggle-group">
+            <button
+              className={`mode-btn ${editMode === "view" ? "active" : ""}`}
+              onClick={() => setEditMode("view")}
+              title="View Mode"
+            >
+              <Eye size={15} />
+            </button>
+            <button
+              className={`mode-btn ${editMode === "edit" ? "active" : ""}`}
+              onClick={() => setEditMode("edit")}
+              title="Edit Mode"
+            >
+              <Edit3 size={15} />
+            </button>
+          </div>
+        )}
+
+        {/* Primary Share Action */}
         <Button
           variant="ghost"
           size="sm"
           className="action-btn icon-only"
-          onClick={() => setShowSettings(true)}
-          title="Feature Settings"
-          aria-label="Feature Settings"
+          onClick={handleShareHeader}
+          title="Share Project"
         >
-          <Settings size={18} />
+          <Share2 size={16} />
         </Button>
-        {selectedNodeId && (
+
+        {/* More Menu */}
+        <div className="actions-dropdown-wrapper">
           <Button
             variant="ghost"
             size="sm"
-            className="mobile-menu-btn"
-            onClick={() => setIsDetailsOpen(!isDetailsOpen)}
-            aria-label="Toggle details"
+            className="action-btn icon-only"
+            onClick={() => setShowActions(!showActions)}
+            title="More Actions"
           >
-            <Info size={20} />
+            <MoreHorizontal size={18} />
           </Button>
-        )}
+
+          {showActions && (
+            <div className="actions-menu">
+              <Button
+                variant="ghost"
+                className="menu-item"
+                onClick={() => {
+                  handleCreateNewRemote();
+                  setShowActions(false);
+                }}
+              >
+                <Plus size={16} /> New Project
+              </Button>
+              <Button
+                variant="ghost"
+                className="menu-item"
+                onClick={() => {
+                  handleImport();
+                  setShowActions(false);
+                }}
+              >
+                <Upload size={16} /> Import
+              </Button>
+              <div className="menu-divider" />
+              <Button
+                variant="ghost"
+                className="menu-item"
+                onClick={() => {
+                  handleExport();
+                  setShowActions(false);
+                }}
+              >
+                <Download size={16} /> Export JSON
+              </Button>
+              <Button
+                variant="ghost"
+                className="menu-item"
+                onClick={() => {
+                  handleExportPNG();
+                  setShowActions(false);
+                }}
+              >
+                <Image size={16} /> Export PNG
+              </Button>
+              <Button
+                variant="ghost"
+                className="menu-item"
+                onClick={() => {
+                  handleExportSVG();
+                  setShowActions(false);
+                }}
+              >
+                <Code size={16} /> Export SVG
+              </Button>
+              {model && (
+                <>
+                  <div className="menu-divider" />
+                  <Button
+                    variant="ghost"
+                    className="menu-item"
+                    onClick={() => {
+                      reloadFromDsl();
+                      setShowActions(false);
+                    }}
+                  >
+                    <RefreshCw size={16} /> Reload DSL
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="divider-vertical" />
+
+        <ThemeToggle iconOnly />
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="action-btn icon-only"
+          onClick={() => useUIStore.getState().toggleInspector()}
+          title={
+            useUIStore.getState().isInspectorVisible
+              ? "Close Inspector (Alt/Opt + I)"
+              : "Open Inspector (Alt/Opt + I)"
+          }
+        >
+          <PanelRight size={18} />
+        </Button>
       </div>
     </header>
   );

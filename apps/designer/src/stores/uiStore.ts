@@ -40,8 +40,10 @@ interface UIState {
   // Layout Visibility Controls
   isNavigationVisible: boolean;
   setIsNavigationVisible: (visible: boolean) => void;
+  toggleNavigation: () => void;
   isInspectorVisible: boolean;
   setIsInspectorVisible: (visible: boolean) => void;
+  toggleInspector: () => void;
 
   // Pending action to execute after tab switch or component mount
   pendingAction: PendingActionType;
@@ -73,8 +75,11 @@ export const useUIStore = create<UIState>()(
 
       isNavigationVisible: true,
       setIsNavigationVisible: (visible) => set({ isNavigationVisible: visible }),
+      toggleNavigation: () => set((state) => ({ isNavigationVisible: !state.isNavigationVisible })),
+
       isInspectorVisible: true,
       setIsInspectorVisible: (visible) => set({ isInspectorVisible: visible }),
+      toggleInspector: () => set((state) => ({ isInspectorVisible: !state.isInspectorVisible })),
 
       pendingAction: null,
       setPendingAction: (action) => set({ pendingAction: action }),
