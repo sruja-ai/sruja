@@ -54,8 +54,8 @@ export { Select } from "./Select";
 export type { SelectProps } from "./Select";
 export { Textarea } from "./Textarea";
 export type { TextareaProps } from "./Textarea";
-export { Skeleton } from "./Skeleton";
-export type { SkeletonProps } from "./Skeleton";
+export { Skeleton, SkeletonCard, SkeletonList } from "./Skeleton";
+export type { SkeletonProps, SkeletonCardProps, SkeletonListProps } from "./Skeleton";
 export { SearchBar } from "./SearchBar";
 export type { SearchBarProps, SearchItem } from "./SearchBar";
 export { SearchDialog } from "./SearchDialog";
@@ -81,3 +81,19 @@ export type { SrujaLoaderProps } from "./SrujaLoader";
 export { ToastComponent } from "./Toast";
 export { ToastContainer } from "./ToastContainer";
 export type { Toast, ToastType } from "./Toast";
+
+// Advanced components
+export { BestPracticeTip } from "./BestPracticeTip";
+export type { TipVariant, BestPracticeTipProps } from "./BestPracticeTip";
+
+export { ConfirmDialog } from "./ConfirmDialog";
+export type { ConfirmDialogProps } from "./ConfirmDialog";
+
+export { CommandPalette } from "./CommandPalette";
+export type { Command, CommandPaletteProps } from "./CommandPalette";
+
+export { ShortcutsModal } from "./ShortcutsModal";
+export type { Shortcut, ShortcutsModalProps } from "./ShortcutsModal";
+
+export { WizardStepper } from "./WizardStepper";
+export type { WizardStep, WizardStepperProps } from "./WizardStepper";

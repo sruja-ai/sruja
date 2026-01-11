@@ -1,8 +1,7 @@
 export { Breadcrumb } from "./Breadcrumb";
 export { ExamplesDropdown } from "./ExamplesDropdown";
-export { CommandPalette, type Command } from "./CommandPalette";
-export { ShortcutsModal, type Shortcut } from "./ShortcutsModal";
-export { Skeleton, SkeletonCard, SkeletonList } from "./Skeleton";
+// CommandPalette and ShortcutsModal moved to @sruja/ui
+// Skeleton, SkeletonCard, SkeletonList moved to @sruja/ui
 export {
   EditRequirementForm,
   EditADRForm,
@@ -19,8 +18,8 @@ export {
   EditDataStoreForm,
   EditQueueForm,
 } from "./forms";
-export { ConfirmDialog } from "./ConfirmDialog";
+// ConfirmDialog moved to @sruja/ui
 export { SidePanel } from "./SidePanel";
 export { ErrorBoundary } from "./ErrorBoundary";
 export { SentryInit } from "./SentryInit";
-export { BestPracticeTip } from "./BestPracticeTip";
+// BestPracticeTip moved to @sruja/ui

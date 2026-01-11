@@ -1,0 +1,13 @@
+/* ViewTabs.css - Simplified Canvas/Code tabs */
+
+.view-tabs-simple {
+    display: flex;
+    gap: var(--space-2, 0.5rem);
+    padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.view-tabs-simple .view-tab {
+    padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+}

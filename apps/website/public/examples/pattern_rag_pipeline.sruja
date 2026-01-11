@@ -189,11 +189,11 @@ AnswerQuestion = scenario "Answer Question" {
 }
 
 IngestionFlow = flow "Document Indexing" {
-  step internalSources -> ingestionQueue "New Document Event"
-  step ingestionQueue -> ingestion.pdfLoader "Process"
-  step ingestion.pdfLoader -> ingestion.chunker "Text"
-  step ingestion.chunker -> ingestion.embedder "Chunks"
-  step ingestion.embedder -> vectorDb "Vectors"
+  step internalSources -> ragPlatform.ingestionQueue "New Document Event"
+  step ragPlatform.ingestionQueue -> ragPlatform.ingestion.pdfLoader "Process"
+  step ragPlatform.ingestion.pdfLoader -> ragPlatform.ingestion.chunker "Text"
+  step ragPlatform.ingestion.chunker -> ragPlatform.ingestion.embedder "Chunks"
+  step ragPlatform.ingestion.embedder -> ragPlatform.vectorDb "Vectors"
 }
 
 // Requirements

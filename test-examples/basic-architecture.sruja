@@ -1,83 +1,32 @@
-specification {
-  element person
-  element system
-  element container
-  element component
-  element database
-  element queue
-}
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+queue = kind "Queue"
 
-model {
-  customer = person "Online Shopper"
-  admin = person "System Administrator"
-  
-  webApp = system "Web Application" {
-    frontend = container "React Frontend" {
-      shoppingCart = component "Shopping Cart Component"
-      productCatalog = component "Product Catalog Component"
-    }
-    
-    api = container "REST API" {
-      orderService = component "Order Management"
-      paymentService = component "Payment Processing"
-    }
-    
-    db = database "PostgreSQL Database"
-    events = queue "Event Queue"
+customer = person "Online Shopper"
+admin = person "System Administrator"
+
+webApp = system "Web Application" {
+  frontend = container "React Frontend" {
+    shoppingCart = component "Shopping Cart Component"
+    productCatalog = component "Product Catalog Component"
   }
   
-  paymentGateway = system "External Payment Gateway" {
-    external
+  api = container "REST API" {
+    orderService = component "Order Management"
+    paymentService = component "Payment Processing"
   }
   
-  customer -> webApp "browses products"
-  webApp -> paymentGateway "processes payments"
-  admin -> webApp "manages inventory"
+  db = database "PostgreSQL Database"
+  events = queue "Event Queue"
 }
 
+paymentGateway = system "External Payment Gateway" {
+  description "External payment processing service"
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+customer -> webApp "browses products"
+webApp -> paymentGateway "processes payments"
+admin -> webApp "manages inventory"

@@ -4,7 +4,8 @@ import { CheckCircle, AlertCircle, Info } from "lucide-react";
 import { useArchitectureStore } from "../../../stores/architectureStore";
 import { useViewStore } from "../../../stores/viewStore";
 import { useFeatureFlagsStore } from "../../../stores/featureFlagsStore";
-import { BestPracticeTip } from "../../shared";
+import { BestPracticeTip } from "@sruja/ui";
+import "@sruja/ui/components/BestPracticeTip.css";
 import { useBuilderProgress } from "../../../hooks/useBuilderProgress";
 import type { SrujaModelDump } from "@sruja/shared";
 

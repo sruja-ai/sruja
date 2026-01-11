@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import { useArchitectureStore, useUIStore, useSelectionStore } from "../../stores";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
-import { EditRequirementForm, ConfirmDialog } from "../shared";
+import { ConfirmDialog } from "@sruja/ui";
+import { EditRequirementForm } from "../shared";
 import { Input, Button } from "@sruja/ui";
 import type { RequirementDump, SrujaModelDump } from "@sruja/shared";
 import { useTagNavigation } from "../../hooks/useTagNavigation";

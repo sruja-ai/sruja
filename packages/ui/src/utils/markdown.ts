@@ -1,54 +1,39 @@
 // packages/ui/src/utils/markdown.ts
 /**
- * Simple markdown to HTML converter for Sruja UI components.
- * This is a basic implementation that handles headers, lists, code, and mermaid.
+ * Markdown to HTML converter for Sruja UI components.
+ * Uses 'marked' library for proper markdown parsing with GFM (GitHub Flavored Markdown).
+ */
+import { marked } from "marked";
+
+// Configure marked for GitHub Flavored Markdown (includes tables)
+marked.setOptions({
+  gfm: true, // Enable GitHub Flavored Markdown (tables, strikethrough, etc.)
+  breaks: true, // Treat single newlines as <br>
+});
+
+/**
+ * Convert markdown to HTML with support for:
+ * - Tables (GFM)
+ * - Code blocks with syntax highlighting classes
+ * - Mermaid diagrams (rendered as divs, needs Mermaid.js to render)
+ * - Headers, lists, bold, italic, links, etc.
  */
 export async function markdownToHtml(markdown: string): Promise<string> {
   if (!markdown) return "";
 
-  // This is a placeholder for a real markdown parser.
-  // In a real app, you'd use marked, micromark, or similar.
-  // We'll do simple regex replacements for basic markdown.
+  try {
+    // Pre-process: Convert mermaid code blocks to divs that can be rendered by Mermaid.js
+    const processedMarkdown = markdown.replace(
+      /```mermaid\n([\s\S]*?)```/g,
+      '<pre class="mermaid">$1</pre>'
+    );
 
-  let html = markdown
-    // Escape HTML special characters
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-
-  // Headers
-  html = html.replace(/^# (.*$)/gm, "<h1>$1</h1>");
-  html = html.replace(/^## (.*$)/gm, "<h2>$1</h2>");
-  html = html.replace(/^### (.*$)/gm, "<h3>$1</h3>");
-
-  // Bold / Italic
-  html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-  html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
-
-  // Lists
-  html = html.replace(/^- (.*$)/gm, "<ul><li>$1</li></ul>");
-  html = html.replace(/^\d+\. (.*$)/gm, "<ol><li>$1</li></ol>");
-  // Cleanup adjacent lists (very basic)
-  html = html.replace(/<\/ul>\n<ul>/g, "\n");
-  html = html.replace(/<\/ol>\n<ol>/g, "\n");
-
-  // Mermaid blocks
-  html = html.replace(/```mermaid\n([\s\S]*?)```/g, '<div class="mermaid">$1</div>');
-
-  // Code blocks
-  html = html.replace(
-    /```(\w+)?\n([\s\S]*?)```/g,
-    '<pre><code class="language-$1">$2</code></pre>'
-  );
-
-  // Inline code
-  html = html.replace(/`(.*?)`/g, "<code>$1</code>");
-
-  // Paragraphs
-  html = html.replace(/^(?!<[a-z])(.*)$/gm, "<p>$1</p>");
-  html = html.replace(/<\/p>\n<p>/g, "<br/>");
-
-  return html;
+    // Parse markdown to HTML using marked
+    const html = await marked.parse(processedMarkdown);
+    return html;
+  } catch (error) {
+    console.error("Markdown parsing error:", error);
+    // Fallback to escaped text
+    return `<pre>${markdown.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`;
+  }
 }

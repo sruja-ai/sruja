@@ -1,4 +1,4 @@
-import { Disclosure as HDisclosure } from "@headlessui/react";
+import { Accordion as MantineAccordion } from "@mantine/core";
 
 export type DisclosureProps = {
   title: string;
@@ -8,17 +8,19 @@ export type DisclosureProps = {
 
 export function Disclosure({ title, children, defaultOpen }: DisclosureProps) {
   return (
-    <HDisclosure defaultOpen={defaultOpen}>
-      {() => (
-        <div className="border border-[var(--color-border)] rounded-md">
-          <HDisclosure.Button className="w-full text-left px-3.5 py-2.5 bg-[var(--color-background)]">
-            <span className="text-[var(--color-text-primary)] font-medium">{title}</span>
-          </HDisclosure.Button>
-          <HDisclosure.Panel className="px-3.5 py-2.5 bg-[var(--color-surface)]">
-            {children}
-          </HDisclosure.Panel>
-        </div>
-      )}
-    </HDisclosure>
+    <MantineAccordion
+      defaultValue={defaultOpen ? "0" : undefined}
+      classNames={{
+        item: "border border-[var(--color-border)] rounded-md overflow-hidden",
+        control: "px-4 py-3 hover:bg-[var(--color-surface)] text-left",
+        content: "px-4 py-3 bg-[var(--color-surface)]",
+        label: "text-[var(--color-text-primary)] font-medium",
+      }}
+    >
+      <MantineAccordion.Item value="0">
+        <MantineAccordion.Control>{title}</MantineAccordion.Control>
+        <MantineAccordion.Panel>{children}</MantineAccordion.Panel>
+      </MantineAccordion.Item>
+    </MantineAccordion>
   );
 }

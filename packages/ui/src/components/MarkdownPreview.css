@@ -11,12 +11,12 @@
 }
 
 /* Typography - Headings with refined hierarchy */
-.markdown-preview :global(h1),
-.markdown-preview :global(h2),
-.markdown-preview :global(h3),
-.markdown-preview :global(h4),
-.markdown-preview :global(h5),
-.markdown-preview :global(h6) {
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
   margin-top: 2em;
   margin-bottom: 0.75em;
   font-weight: 700;
@@ -25,7 +25,7 @@
   letter-spacing: -0.02em;
 }
 
-.markdown-preview :global(h1) {
+.markdown-preview h1 {
   font-size: 2.5em;
   margin-top: 0;
   margin-bottom: 1.25em;
@@ -39,7 +39,7 @@
   background-position: left bottom;
 }
 
-.markdown-preview :global(h2) {
+.markdown-preview h2 {
   font-size: 2em;
   margin-top: 2.5em;
   margin-bottom: 1em;
@@ -48,7 +48,7 @@
   border-bottom: 1px solid var(--color-border, var(--border-color, #e2e8f0));
 }
 
-.markdown-preview :global(h3) {
+.markdown-preview h3 {
   font-size: 1.5em;
   margin-top: 2em;
   margin-bottom: 0.875em;
@@ -56,7 +56,7 @@
   color: var(--color-text-primary, var(--text-primary, #1a1a1a));
 }
 
-.markdown-preview :global(h4) {
+.markdown-preview h4 {
   font-size: 1.25em;
   margin-top: 1.75em;
   margin-bottom: 0.75em;
@@ -64,7 +64,7 @@
   color: var(--color-text-primary, var(--text-primary, #1a1a1a));
 }
 
-.markdown-preview :global(h5) {
+.markdown-preview h5 {
   font-size: 1.125em;
   margin-top: 1.5em;
   margin-bottom: 0.625em;
@@ -75,7 +75,7 @@
   font-size: 0.875em;
 }
 
-.markdown-preview :global(h6) {
+.markdown-preview h6 {
   font-size: 1em;
   margin-top: 1.5em;
   margin-bottom: 0.5em;
@@ -84,13 +84,13 @@
 }
 
 /* Paragraphs with refined spacing */
-.markdown-preview :global(p) {
+.markdown-preview p {
   margin-bottom: 1.25em;
   line-height: 1.8;
   color: var(--color-text-primary, var(--text-primary, #1a1a1a));
 }
 
-.markdown-preview :global(p:first-of-type) {
+.markdown-preview p:first-of-type {
   margin-top: 0;
   font-size: 1.125em;
   line-height: 1.75;
@@ -98,26 +98,26 @@
 }
 
 /* Lists with elegant styling */
-.markdown-preview :global(ul),
-.markdown-preview :global(ol) {
+.markdown-preview ul,
+.markdown-preview ol {
   margin-top: 1em;
   margin-bottom: 1.5em;
   padding-left: 2em;
   line-height: 1.9;
 }
 
-.markdown-preview :global(ul) {
+.markdown-preview ul {
   list-style: none;
   padding-left: 1.5em;
 }
 
-.markdown-preview :global(ul li) {
+.markdown-preview ul li {
   position: relative;
   margin-bottom: 0.5em;
   padding-left: 1.5em;
 }
 
-.markdown-preview :global(ul li::before) {
+.markdown-preview ul li::before {
   content: "•";
   position: absolute;
   left: 0;
@@ -127,18 +127,18 @@
   line-height: 1.4;
 }
 
-.markdown-preview :global(ol) {
+.markdown-preview ol {
   counter-reset: list-counter;
 }
 
-.markdown-preview :global(ol li) {
+.markdown-preview ol li {
   position: relative;
   margin-bottom: 0.5em;
   padding-left: 2em;
   counter-increment: list-counter;
 }
 
-.markdown-preview :global(ol li::before) {
+.markdown-preview ol li::before {
   content: counter(list-counter) ".";
   position: absolute;
   left: 0;
@@ -147,22 +147,22 @@
   min-width: 1.5em;
 }
 
-.markdown-preview :global(li > p) {
+.markdown-preview li > p {
   margin-bottom: 0.625em;
 }
 
-.markdown-preview :global(li > p:last-child) {
+.markdown-preview li > p:last-child {
   margin-bottom: 0;
 }
 
-.markdown-preview :global(li > ul),
-.markdown-preview :global(li > ol) {
+.markdown-preview li > ul,
+.markdown-preview li > ol {
   margin-top: 0.75em;
   margin-bottom: 0.75em;
 }
 
 /* Code with elegant styling */
-.markdown-preview :global(code) {
+.markdown-preview code {
   background: var(--color-surface, var(--bg-tertiary, #f1f5f9));
   padding: 0.2em 0.5em;
   border-radius: 4px;
@@ -173,7 +173,7 @@
   border: 1px solid var(--color-border, var(--border-color, #e2e8f0));
 }
 
-.markdown-preview :global(pre) {
+.markdown-preview pre {
   background: var(--color-surface, var(--bg-tertiary, #f8fafc));
   padding: 1.5em;
   border-radius: 12px;
@@ -186,7 +186,7 @@
   position: relative;
 }
 
-.markdown-preview :global(pre::before) {
+.markdown-preview pre::before {
   content: "";
   position: absolute;
   top: 0;
@@ -197,7 +197,7 @@
   border-radius: 12px 12px 0 0;
 }
 
-.markdown-preview :global(pre code) {
+.markdown-preview pre code {
   background: transparent;
   padding: 0;
   border: none;
@@ -207,7 +207,7 @@
 }
 
 /* Tables with refined design */
-.markdown-preview :global(table) {
+.markdown-preview table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
@@ -219,15 +219,15 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.markdown-preview :global(th),
-.markdown-preview :global(td) {
+.markdown-preview th,
+.markdown-preview td {
   padding: 0.875em 1.25em;
   text-align: left;
   line-height: 1.6;
   border-bottom: 1px solid var(--color-border, var(--border-color, #e2e8f0));
 }
 
-.markdown-preview :global(th) {
+.markdown-preview th {
   background: linear-gradient(to bottom, var(--color-surface, var(--bg-secondary, #f8fafc)), var(--color-background, #ffffff));
   font-weight: 600;
   color: var(--color-text-primary, var(--text-primary, #1a1a1a));
@@ -237,25 +237,25 @@
   border-bottom: 2px solid var(--color-border, var(--border-color, #e2e8f0));
 }
 
-.markdown-preview :global(td) {
+.markdown-preview td {
   color: var(--color-text-primary, var(--text-primary, #1a1a1a));
 }
 
-.markdown-preview :global(tr:last-child td) {
+.markdown-preview tr:last-child td {
   border-bottom: none;
 }
 
-.markdown-preview :global(tr:nth-child(even)) {
+.markdown-preview tr:nth-child(even) {
   background: var(--color-surface, var(--bg-secondary, #f8fafc));
 }
 
-.markdown-preview :global(tr:hover) {
+.markdown-preview tr:hover {
   background: var(--color-surface, var(--bg-tertiary, #f1f5f9));
   transition: background-color 0.15s ease;
 }
 
 /* Blockquotes with elegant design */
-.markdown-preview :global(blockquote) {
+.markdown-preview blockquote {
   border-left: 3px solid var(--color-primary, #7c3aed);
   padding: 1.25em 1.75em;
   margin: 2em 0;
@@ -268,7 +268,7 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
-.markdown-preview :global(blockquote::before) {
+.markdown-preview blockquote::before {
   content: '\201C';
   position: absolute;
   left: 0.5em;
@@ -280,18 +280,18 @@
   line-height: 1;
 }
 
-.markdown-preview :global(blockquote p) {
+.markdown-preview blockquote p {
   margin-bottom: 0.75em;
   position: relative;
   z-index: 1;
 }
 
-.markdown-preview :global(blockquote p:last-child) {
+.markdown-preview blockquote p:last-child {
   margin-bottom: 0;
 }
 
 /* Links with refined hover effects */
-.markdown-preview :global(a) {
+.markdown-preview a {
   color: var(--color-primary, #7c3aed);
   text-decoration: none;
   border-bottom: 1.5px solid transparent;
@@ -299,13 +299,13 @@
   font-weight: 500;
 }
 
-.markdown-preview :global(a:hover) {
+.markdown-preview a:hover {
   border-bottom-color: var(--color-primary, #7c3aed);
   color: var(--color-primary-hover, #6d28d9);
 }
 
 /* Horizontal Rules with elegant styling */
-.markdown-preview :global(hr) {
+.markdown-preview hr {
   border: none;
   height: 1px;
   background: linear-gradient(to right, transparent, var(--color-border, var(--border-color, #e2e8f0)), transparent);
@@ -313,7 +313,7 @@
   position: relative;
 }
 
-.markdown-preview :global(hr::after) {
+.markdown-preview hr::after {
   content: "◆";
   position: absolute;
   left: 50%;
@@ -326,7 +326,7 @@
 }
 
 /* Images with elegant borders */
-.markdown-preview :global(img) {
+.markdown-preview img {
   max-width: 100%;
   height: auto;
   margin: 2em 0;
@@ -336,28 +336,46 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.markdown-preview :global(img:hover) {
+.markdown-preview img:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
 }
 
 /* Strong and Emphasis */
-.markdown-preview :global(strong) {
+.markdown-preview strong {
   font-weight: 600;
   color: var(--color-text-primary, var(--text-primary, #1a1a1a));
 }
 
-.markdown-preview :global(em) {
+.markdown-preview em {
   font-style: italic;
   color: var(--color-text-primary, var(--text-primary, #1a1a1a));
 }
 
 /* Mermaid Diagrams */
-.markdown-preview :global(.mermaid) {
+.markdown-preview .mermaid,
+.markdown-preview .mermaid-rendered {
   margin: 2.5em 0;
   text-align: center;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: auto;
+  background: var(--color-surface, var(--bg-secondary, #f8fafc));
+  padding: 1.5em;
+  border: 1px solid var(--color-border, var(--border-color, #e2e8f0));
+}
+
+.markdown-preview .mermaid-rendered svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-preview .mermaid-error {
+  background: var(--color-error-bg, #fef2f2);
+  border-color: var(--color-error, #ef4444);
+  color: var(--color-error, #ef4444);
+  font-family: monospace;
+  white-space: pre-wrap;
+  text-align: left;
 }
 
 /* Dark theme support */
@@ -365,105 +383,105 @@
   color: var(--color-text-primary, var(--text-primary, #f1f5f9));
 }
 
-[data-theme="dark"] .markdown-preview :global(h1),
-[data-theme="dark"] .markdown-preview :global(h2),
-[data-theme="dark"] .markdown-preview :global(h3),
-[data-theme="dark"] .markdown-preview :global(h4),
-[data-theme="dark"] .markdown-preview :global(h5),
-[data-theme="dark"] .markdown-preview :global(h6) {
+[data-theme="dark"] .markdown-preview h1,
+[data-theme="dark"] .markdown-preview h2,
+[data-theme="dark"] .markdown-preview h3,
+[data-theme="dark"] .markdown-preview h4,
+[data-theme="dark"] .markdown-preview h5,
+[data-theme="dark"] .markdown-preview h6 {
   color: var(--color-text-primary, var(--text-primary, #f1f5f9));
   border-color: var(--color-border, var(--border-color, #334155));
 }
 
-[data-theme="dark"] .markdown-preview :global(h1) {
+[data-theme="dark"] .markdown-preview h1 {
   background: linear-gradient(to right, var(--color-primary, #a78bfa), transparent);
 }
 
-[data-theme="dark"] .markdown-preview :global(p) {
+[data-theme="dark"] .markdown-preview p {
   color: var(--color-text-primary, var(--text-primary, #f1f5f9));
 }
 
-[data-theme="dark"] .markdown-preview :global(p:first-of-type) {
+[data-theme="dark"] .markdown-preview p:first-of-type {
   color: var(--color-text-secondary, var(--text-secondary, #cbd5e1));
 }
 
-[data-theme="dark"] .markdown-preview :global(ul li::before),
-[data-theme="dark"] .markdown-preview :global(ol li::before) {
+[data-theme="dark"] .markdown-preview ul li::before,
+[data-theme="dark"] .markdown-preview ol li::before {
   color: var(--color-primary, #a78bfa);
 }
 
-[data-theme="dark"] .markdown-preview :global(code) {
+[data-theme="dark"] .markdown-preview code {
   background: var(--color-surface, var(--bg-tertiary, #1e293b));
   border-color: var(--color-border, var(--border-color, #334155));
   color: var(--color-primary, #a78bfa);
 }
 
-[data-theme="dark"] .markdown-preview :global(pre) {
+[data-theme="dark"] .markdown-preview pre {
   background: var(--color-surface, var(--bg-tertiary, #1e293b));
   border-color: var(--color-border, var(--border-color, #334155));
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-[data-theme="dark"] .markdown-preview :global(pre::before) {
+[data-theme="dark"] .markdown-preview pre::before {
   background: linear-gradient(90deg, var(--color-primary, #a78bfa), var(--color-primary-500, #c4b5fd));
 }
 
-[data-theme="dark"] .markdown-preview :global(pre code) {
+[data-theme="dark"] .markdown-preview pre code {
   color: var(--color-text-primary, var(--text-primary, #f1f5f9));
 }
 
-[data-theme="dark"] .markdown-preview :global(table) {
+[data-theme="dark"] .markdown-preview table {
   border-color: var(--color-border, var(--border-color, #334155));
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-[data-theme="dark"] .markdown-preview :global(th),
-[data-theme="dark"] .markdown-preview :global(td) {
+[data-theme="dark"] .markdown-preview th,
+[data-theme="dark"] .markdown-preview td {
   border-color: var(--color-border, var(--border-color, #334155));
 }
 
-[data-theme="dark"] .markdown-preview :global(th) {
+[data-theme="dark"] .markdown-preview th {
   background: linear-gradient(to bottom, var(--color-surface, var(--bg-secondary, #1e293b)), var(--color-background, #0f172a));
 }
 
-[data-theme="dark"] .markdown-preview :global(tr:nth-child(even)) {
+[data-theme="dark"] .markdown-preview tr:nth-child(even) {
   background: var(--color-surface, var(--bg-secondary, #1e293b));
 }
 
-[data-theme="dark"] .markdown-preview :global(tr:hover) {
+[data-theme="dark"] .markdown-preview tr:hover {
   background: var(--color-surface, var(--bg-tertiary, #334155));
 }
 
-[data-theme="dark"] .markdown-preview :global(blockquote) {
+[data-theme="dark"] .markdown-preview blockquote {
   background: linear-gradient(to right, rgba(167, 139, 250, 0.1), transparent);
   border-left-color: var(--color-primary, #a78bfa);
   color: var(--color-text-primary, var(--text-primary, #f1f5f9));
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-[data-theme="dark"] .markdown-preview :global(blockquote::before) {
+[data-theme="dark"] .markdown-preview blockquote::before {
   color: var(--color-primary, #a78bfa);
 }
 
-[data-theme="dark"] .markdown-preview :global(hr) {
+[data-theme="dark"] .markdown-preview hr {
   background: linear-gradient(to right, transparent, var(--color-border, var(--border-color, #334155)), transparent);
 }
 
-[data-theme="dark"] .markdown-preview :global(hr::after) {
+[data-theme="dark"] .markdown-preview hr::after {
   background: var(--color-background, #0f172a);
   color: var(--color-text-tertiary, var(--text-muted, #64748b));
 }
 
-[data-theme="dark"] .markdown-preview :global(img) {
+[data-theme="dark"] .markdown-preview img {
   border-color: var(--color-border, var(--border-color, #334155));
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
 }
 
-[data-theme="dark"] .markdown-preview :global(a) {
+[data-theme="dark"] .markdown-preview a {
   color: var(--color-primary, #a78bfa);
 }
 
-[data-theme="dark"] .markdown-preview :global(a:hover) {
+[data-theme="dark"] .markdown-preview a:hover {
   border-bottom-color: var(--color-primary, #a78bfa);
   color: var(--color-primary-hover, #c4b5fd);
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/sruja-ai/sruja/pkg/engine"
 	ctxexport "github.com/sruja-ai/sruja/pkg/export/context"
+	dexport "github.com/sruja-ai/sruja/pkg/export/dot"
 	jexport "github.com/sruja-ai/sruja/pkg/export/json"
 	"github.com/sruja-ai/sruja/pkg/export/markdown"
 	"github.com/sruja-ai/sruja/pkg/language"
@@ -40,7 +41,7 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 
 	if exportCmd.NArg() < 2 {
 		_, _ = fmt.Fprintln(stderr, "Usage: sruja export <format> <file>")
-		_, _ = fmt.Fprintln(stderr, "Formats: json, mermaid, markdown, context")
+		_, _ = fmt.Fprintln(stderr, "Formats: json, mermaid, markdown, context, dot")
 		return 1
 	}
 
@@ -94,6 +95,15 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 		exporter := jexport.NewExporter()
 		exporter.Extended = *extended
 		output, err = exporter.Export(program)
+	case "dot":
+		config := dexport.DefaultConfig()
+		exporter := dexport.NewExporter(config)
+		result := exporter.Export(program)
+		if result == nil {
+			_, _ = fmt.Fprintf(stderr, "Error: DOT export returned nil result\n")
+			return 1
+		}
+		output = result.DOT
 	case "markdown":
 		// Parse scope if provided
 		var scopeObj *markdown.Scope
@@ -140,7 +150,7 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 		exporter := ctxexport.NewExporter(opts)
 		output = exporter.Export(program)
 	default:
-		_, _ = fmt.Fprintf(stderr, "Unsupported export format: %s. Supported formats: json, mermaid, markdown, context\n", format)
+		_, _ = fmt.Fprintf(stderr, "Unsupported export format: %s. Supported formats: json, mermaid, markdown, context, dot\n", format)
 		return 1
 	}
 

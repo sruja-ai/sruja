@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Target, Lightbulb, Plus, Trash2, LayoutTemplate, Edit } from "lucide-react";
 import { Button, Input } from "@sruja/ui"; // Removed Input if not used, but it is used.
 import { useArchitectureStore } from "../../stores/architectureStore";
-import { BestPracticeTip, EditRequirementForm } from "../shared";
+import { BestPracticeTip } from "@sruja/ui";
+import "@sruja/ui/components/BestPracticeTip.css";
+import { EditRequirementForm } from "../shared";
 import { TemplateGallery } from "./TemplateGallery";
 import { deduplicateRequirements } from "../../utils/deduplicateRequirements";
 import type { RequirementDump, SrujaModelDump } from "@sruja/shared";

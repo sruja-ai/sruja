@@ -298,8 +298,10 @@ export function useFileHandlers(canvasRef: React.RefObject<CanvasHandle | null>)
   const handleCreateNew = useCallback(async () => {
     setIsLoadingFile(true);
     try {
-      const emptyDsl = `person = kind "Person"
-system = kind "System"
+      // Use stdlib import so users don't need to declare kinds manually
+      const emptyDsl = `import { * } from 'sruja.ai/stdlib'
+
+// Start building your architecture!
 `;
 
       const { error, data: json } = await safeAsync(
@@ -346,12 +348,18 @@ system = kind "System"
   const handleCreateLocal = useCallback(async () => {
     setIsLoadingFile(true);
     try {
-      const emptyDsl = `person = kind "Person"
-system = kind "System"
+      // Use stdlib import for beginner-friendly defaults
+      const emptyDsl = `import { * } from 'sruja.ai/stdlib'
 
+// Your first architecture!
 user = person "User"
 web = system "WebApp"
 user -> web "uses"
+
+view index {
+  title "My Architecture"
+  include *
+}
 `;
       // Create full JSON structure from DSL dynamically instead of hardcoding legacy layout
       // Assuming convertDslToModel is available locally or we just use DSL

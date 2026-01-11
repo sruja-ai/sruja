@@ -84,7 +84,7 @@ export interface C4NodeData {
   pendingActionCount?: number;
 }
 
-export type ViewTab = "overview" | "diagram" | "code" | "builder" | "details" | "roles";
+export type ViewTab = "overview" | "diagram" | "code" | "docs" | "builder" | "details" | "roles";
 export type ViewMode = "designer" | "present";
 
 // ===========================================================================

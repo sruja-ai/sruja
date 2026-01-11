@@ -1,5 +1,6 @@
 // apps/designer/src/components/Overview/OverviewSkeleton.tsx
-import { Skeleton, SkeletonCard } from "../shared/Skeleton";
+import { Skeleton, SkeletonCard } from "@sruja/ui";
+import "@sruja/ui/components/Skeleton.css";
 import "./OverviewSkeleton.css";
 
 export function OverviewSkeleton() {

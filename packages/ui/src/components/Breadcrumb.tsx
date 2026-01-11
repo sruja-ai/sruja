@@ -1,30 +1,30 @@
-// packages/ui/src/components/Breadcrumb.tsx
-import type { ReactNode } from 'react'
-import { ChevronRight, Home } from 'lucide-react'
-import { vx } from '../utils/variants'
+import type { ReactNode } from "react";
+import { Breadcrumbs, Anchor } from "@mantine/core";
+import { Home, ChevronRight } from "lucide-react";
+import { cn } from "../utils/cn";
 
 export interface BreadcrumbItem {
-  /** Unique identifier for the breadcrumb item */
-  id: string
+  /** Unique identifier for breadcrumb item */
+  id: string;
   /** Display label */
-  label: string
+  label: string;
 }
 
 export interface BreadcrumbProps {
   /** Array of breadcrumb items */
-  items: BreadcrumbItem[]
+  items: BreadcrumbItem[];
   /** Callback fired when a breadcrumb item is clicked */
-  onItemClick: (id: string) => void
+  onItemClick: (id: string) => void;
   /** Callback fired when home/root is clicked */
-  onHomeClick?: () => void
+  onHomeClick?: () => void;
   /** Custom home icon */
-  homeIcon?: ReactNode
+  homeIcon?: ReactNode;
   /** Custom separator between items */
-  separator?: ReactNode
+  separator?: ReactNode;
   /** Whether to show home button */
-  showHome?: boolean
+  showHome?: boolean;
   /** Additional CSS classes */
-  className?: string
+  className?: string;
 }
 
 export function Breadcrumb({
@@ -34,51 +34,46 @@ export function Breadcrumb({
   homeIcon,
   separator,
   showHome = true,
-  className = '',
+  className = "",
 }: BreadcrumbProps) {
-  const baseClasses = 'flex items-center gap-1 text-sm'
-  const itemClasses = 'px-2 py-1 rounded-md transition-colors cursor-pointer text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface)]'
-  const activeItemClasses = 'text-[var(--color-text-primary)] font-medium pointer-events-none'
-  const separatorClasses = 'text-[var(--color-text-tertiary)]'
+  const breadcrumbItems = items.map((item, index) => {
+    const isLast = index === items.length - 1;
+    return (
+      <Anchor
+        key={item.id}
+        onClick={(e) => {
+          e.preventDefault();
+          onItemClick(item.id);
+        }}
+        href={isLast ? undefined : "#"}
+        className={cn(
+          "text-sm transition-colors",
+          isLast
+            ? "text-[var(--color-text-primary)] font-medium pointer-events-none"
+            : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+        )}
+      >
+        {item.label}
+      </Anchor>
+    );
+  });
 
   return (
-    <nav className={vx(baseClasses, className)} aria-label="Breadcrumb">
+    <Breadcrumbs className={className} separator={separator || <ChevronRight size={14} />}>
       {showHome && (
-        <>
-          <button
-            onClick={onHomeClick || (() => onItemClick('root'))}
-            className={vx(itemClasses, 'flex items-center')}
-            aria-label="Home"
-          >
-            {homeIcon || <Home size={16} />}
-          </button>
-          {items.length > 0 && (
-            <span className={separatorClasses}>
-              {separator || <ChevronRight size={14} />}
-            </span>
-          )}
-        </>
+        <Anchor
+          onClick={(e) => {
+            e.preventDefault();
+            onHomeClick?.() || onItemClick("root");
+          }}
+          href="#"
+          className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+          aria-label="Home"
+        >
+          {homeIcon || <Home size={16} />}
+        </Anchor>
       )}
-      {items.map((item, index) => {
-        const isLast = index === items.length - 1
-        return (
-          <div key={item.id} className="flex items-center gap-1">
-            <button
-              onClick={() => onItemClick(item.id)}
-              className={vx(itemClasses, isLast && activeItemClasses)}
-              aria-current={isLast ? 'page' : undefined}
-            >
-              {item.label}
-            </button>
-            {!isLast && (
-              <span className={separatorClasses}>
-                {separator || <ChevronRight size={14} />}
-              </span>
-            )}
-          </div>
-        )
-      })}
-    </nav>
-  )
+      {breadcrumbItems}
+    </Breadcrumbs>
+  );
 }
-

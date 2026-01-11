@@ -142,7 +142,7 @@ export function FeatureSettingsDialog({ isOpen, onClose }: FeatureSettingsDialog
                     </div>
                     <Switch
                       checked={flags[feature.key] === true}
-                      onChange={(checked) => setFlag(feature.key, checked)}
+                      onChange={(event) => setFlag(feature.key, event.currentTarget.checked)}
                     />
                   </div>
                   <p className="feature-setting-card-description">{feature.description}</p>
@@ -162,7 +162,10 @@ export function FeatureSettingsDialog({ isOpen, onClose }: FeatureSettingsDialog
                   <div className="feature-setting-card-title-group">
                     <span className="feature-setting-card-title">Show Grid</span>
                   </div>
-                  <Switch checked={gridEnabled} onChange={setGridEnabled} />
+                  <Switch
+                    checked={gridEnabled}
+                    onChange={(event) => setGridEnabled(event.currentTarget.checked)}
+                  />
                 </div>
                 <p className="feature-setting-card-description">
                   Display a visual grid overlay on the canvas for better alignment
@@ -176,7 +179,11 @@ export function FeatureSettingsDialog({ isOpen, onClose }: FeatureSettingsDialog
                   <div className="feature-setting-card-title-group">
                     <span className="feature-setting-card-title">Snap to Grid</span>
                   </div>
-                  <Switch checked={snapToGrid} onChange={setSnapToGrid} disabled={!gridEnabled} />
+                  <Switch
+                    checked={snapToGrid}
+                    onChange={(event) => setSnapToGrid(event.currentTarget.checked)}
+                    disabled={!gridEnabled}
+                  />
                 </div>
                 <p className="feature-setting-card-description">
                   Automatically align nodes to grid positions when dragging
@@ -222,7 +229,10 @@ export function FeatureSettingsDialog({ isOpen, onClose }: FeatureSettingsDialog
                   <div className="feature-setting-card-title-group">
                     <span className="feature-setting-card-title">Show MiniMap</span>
                   </div>
-                  <Switch checked={showMinimap} onChange={setShowMinimap} />
+                  <Switch
+                    checked={showMinimap}
+                    onChange={(event) => setShowMinimap(event.currentTarget.checked)}
+                  />
                 </div>
                 <p className="feature-setting-card-description">
                   Display a minimap overview in the bottom-right corner. Click to jump to different

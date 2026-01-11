@@ -142,7 +142,7 @@ ioTPlatform = system "IoT Platform" {
       technology "D3.js"
     }
     dashboardAPI -> timeSeriesDB "Queries data"
-    visualizationEngine -> dashboardAPI "Fetches data"
+    visualizationEngine -> timeSeriesDB "Fetches metrics for charts"
   }
   
   deviceRegistry = database "Device Registry" {

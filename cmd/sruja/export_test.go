@@ -49,6 +49,18 @@ func TestRunExport(t *testing.T) {
 		t.Errorf("Expected valid JSON output, got error: %v. Output: %s", err, stdout.String())
 	}
 
+	// Test DOT export
+	stdout.Reset()
+	stderr.Reset()
+	exitCode = runExport([]string{"dot", file}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Errorf("Expected exit code 0 for DOT export, got %d. Stderr: %s", exitCode, stderr.String())
+	}
+	dotOutput := stdout.String()
+	if !strings.Contains(dotOutput, "digraph") {
+		t.Errorf("Expected DOT output to contain 'digraph', got: %s", dotOutput[:min(200, len(dotOutput))])
+	}
+
 	// Test Markdown export (now enabled)
 	stdout.Reset()
 	stderr.Reset()
