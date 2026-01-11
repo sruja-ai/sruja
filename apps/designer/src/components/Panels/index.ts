@@ -10,3 +10,4 @@ export { MarkdownPanel } from "./MarkdownPanel";
 export { CodePanel } from "./CodePanel";
 export { GovernancePanel } from "./GovernancePanel";
 export { QualityScoreCard } from "./QualityScoreCard";
+export { InspectorPanel } from "./Inspector/InspectorPanel";

@@ -1,0 +1,162 @@
+.inspector-panel {
+    width: 300px;
+    height: 100%;
+    background: var(--surface-1);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* Position handled by parent grid/flex */
+}
+
+.inspector-panel.collapsed {
+    width: 48px;
+    /* VS Code style thin strip */
+    /* No translate - stays on screen */
+}
+
+/* Remove trigger styles as we don't need them anymore */
+
+.inspector-header {
+    padding: 0.75rem 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+    min-height: 50px;
+}
+
+.inspector-panel.collapsed .inspector-header {
+    flex-direction: column-reverse;
+    /* Put stack mechanics: toggle at bottom, icon at top */
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+.inspector-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-1);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.inspector-panel.collapsed .panel-label {
+    display: none;
+    /* Hide text in collapsed mode */
+}
+
+.panel-icon {
+    /* Ensure icon stays visible and centered */
+    min-width: 20px;
+    color: var(--primary);
+}
+
+.inspector-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.inspector-panel.collapsed .inspector-actions {
+    /* Align toggle button in the strip */
+    flex-direction: column;
+}
+
+.inspector-content-container {
+    flex: 1;
+    overflow: hidden;
+    /* Hide scrollbars during transition */
+    opacity: 1;
+    transition: opacity 0.2s;
+}
+
+.inspector-panel.collapsed .inspector-content-container {
+    opacity: 0;
+    pointer-events: none;
+    display: none;
+    /* Fully remove from flow */
+}
+
+.inspector-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.inspector-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.collapse-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-3);
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.collapse-btn:hover {
+    color: var(--text-1);
+    background: var(--surface-hover);
+}
+
+/* Common Section Styles */
+.inspector-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.inspector-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-3);
+    letter-spacing: 0.05em;
+}
+
+.inspector-item {
+    background: var(--surface-2);
+    border-radius: 6px;
+    padding: 0.75rem;
+    border: 1px solid transparent;
+    transition: border-color 0.2s;
+}
+
+.inspector-item:hover {
+    border-color: var(--border-hover);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .inspector-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 85%;
+        max-width: 320px;
+        border-left: none;
+        box-shadow: -4px 0 16px rgba(0, 0, 0, 0.2);
+    }
+}

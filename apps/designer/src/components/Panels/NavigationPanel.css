@@ -6,6 +6,9 @@
 /* Base panel styles */
 @import "./styles/nav-base.css";
 
+/* Mode Tabs - Create / Explore / Govern */
+@import "./styles/nav-mode-tabs.css";
+
 /* Navigation Panel Header */
 @import "./styles/nav-header.css";
 

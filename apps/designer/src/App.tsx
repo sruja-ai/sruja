@@ -5,10 +5,17 @@ import { Play, Plus } from "lucide-react";
 import { SrujaCanvas } from "./components/SrujaCanvas";
 import "./App.css";
 import "./components/shared/GlobalFocusStyles.css";
-import { NavigationPanel, DetailsPanel, CodePanel } from "./components/Panels";
+import { NavigationPanel, InspectorPanel, CodePanel, MarkdownPanel } from "./components/Panels";
 import { BuilderWizard } from "./components/Wizard";
-import { CommandPalette, ShortcutsModal, ErrorBoundary, SentryInit } from "./components/shared";
-import { ToastContainer, Logo, SrujaLoader, PosthogProvider } from "@sruja/ui"; // Consolidated imports
+import { ErrorBoundary, SentryInit } from "./components/shared";
+import {
+  ToastContainer,
+  Logo,
+  SrujaLoader,
+  PosthogProvider,
+  CommandPalette,
+  ShortcutsModal,
+} from "@sruja/ui";
 import {
   useArchitectureStore,
   useSelectionStore,
@@ -22,7 +29,6 @@ import { DynamicRoleView } from "./components/Roles/DynamicRoleView";
 import { OverviewTab } from "./components/Overview/OverviewTab";
 
 import { useClipboardOperations, useProjectSync, useFileHandlers } from "./hooks";
-import { useTabCounts } from "./hooks/useTabCounts";
 import { DetailsView } from "./components/Views/DetailsView";
 import { ViewTabs } from "./components/ViewTabs";
 import { FeatureSettingsDialog } from "./components/Overview/FeatureSettingsDialog";
@@ -39,7 +45,15 @@ import { useAppCommands } from "./hooks/useAppCommands";
 import { useAppShortcuts } from "./hooks/useAppShortcuts";
 import { OnboardingTooltip } from "./components/OnboardingTooltip";
 
-const VALID_TABS: ViewTab[] = ["overview", "diagram", "code", "builder", "details", "roles"];
+const VALID_TABS: ViewTab[] = [
+  "overview",
+  "diagram",
+  "code",
+  "docs",
+  "builder",
+  "details",
+  "roles",
+];
 
 export default function App() {
   // Sync URL state (level, expanded nodes) with view store
@@ -60,7 +74,7 @@ export default function App() {
   const removeToast = useToastStore((s) => s.removeToast);
 
   const [isNavOpen, setIsNavOpen] = useState(false);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  // isDetailsOpen removed - InspectorPanel handles its own state
   const [showSettings, setShowSettings] = useState(false);
   const [showActions, setShowActions] = useState(false);
 
@@ -160,14 +174,9 @@ export default function App() {
     }
   }, [activeTab, isLoadingFile]);
 
-  // Auto-open Details Panel when a node is selected
-  useEffect(() => {
-    if (selectedNodeId) {
-      setIsDetailsOpen(true);
-    }
-  }, [selectedNodeId]);
+  // Auto-open Details Panel logic removed - Inspector auto-expands internally on selection
 
-  const counts = useTabCounts(model);
+  // counts variable removed - no longer needed in simplified tabs
 
   // --- Logic Extracted to Hooks ---
   const shortcuts = useAppShortcuts({
@@ -249,8 +258,10 @@ export default function App() {
             setEditMode={setEditMode}
             setShowSettings={setShowSettings}
             selectedNodeId={selectedNodeId}
-            isDetailsOpen={isDetailsOpen}
-            setIsDetailsOpen={setIsDetailsOpen}
+            selectedNodeId={selectedNodeId}
+            // isDetailsOpen removed for Inspector
+            isDetailsOpen={false}
+            setIsDetailsOpen={() => {}}
             handleImport={handleImport}
             handleExport={handleExport}
             handleExportPNG={handleExportPNG}
@@ -260,28 +271,28 @@ export default function App() {
             handleCreateNewRemote={handleCreateNewRemote}
           />
 
-          {/* Mobile Overlay */}
-          {(isNavOpen || isDetailsOpen) && (
+          {/* Mobile Overlay - Only for Nav now */}
+          {isNavOpen && (
             <div
               className="mobile-overlay"
               onClick={() => {
                 setIsNavOpen(false);
-                setIsDetailsOpen(false);
+                // setIsDetailsOpen(false);
               }}
             />
           )}
 
           {/* Main Content */}
           <main className="app-main">
-            <div className={`navigation-panel-wrapper ${isNavOpen ? "open" : ""}`}>
-              <NavigationPanel onClose={() => setIsNavOpen(false)} />
-            </div>
+            {useUIStore((s) => s.isNavigationVisible) && (
+              <div className={`navigation-panel-wrapper ${isNavOpen ? "open" : ""}`}>
+                <NavigationPanel onClose={() => setIsNavOpen(false)} />
+              </div>
+            )}
 
             <div className={`center-panel ${editMode === "edit" ? "edit-mode" : ""}`}>
               {/* View Tabs */}
-              {model && (
-                <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} counts={counts} />
-              )}
+              {model && <ViewTabs activeTab={activeTab} onTabChange={setActiveTab} />}
 
               {/* Tab Content */}
               <div className="canvas-container">
@@ -403,6 +414,13 @@ export default function App() {
                   </div>
                 )}
 
+                {/* Docs Tab - Direct Markdown View */}
+                {model && activeTab === "docs" && (
+                  <div role="tabpanel" id="tabpanel-docs" aria-labelledby="tab-docs">
+                    <MarkdownPanel />
+                  </div>
+                )}
+
                 {/* Roles Tab */}
                 {model && activeTab === "roles" && (
                   <div role="tabpanel" id="tabpanel-roles" aria-labelledby="tab-roles">
@@ -424,16 +442,16 @@ export default function App() {
               </div>
             </div>
 
-            <div className={`details-panel-wrapper ${isDetailsOpen ? "open" : ""}`}>
+            <div className="inspector-panel-wrapper">
               <ErrorBoundary
                 fallback={
                   <div className="error-state" style={{ padding: "2rem", textAlign: "center" }}>
-                    <h2>Details Panel Error</h2>
-                    <p>Failed to load the details panel. Please try closing and reopening it.</p>
+                    <h2>Inspector Error</h2>
+                    <p>Failed to load the inspector. Please try refreshing.</p>
                   </div>
                 }
               >
-                <DetailsPanel onClose={() => setIsDetailsOpen(false)} />
+                {useUIStore((s) => s.isInspectorVisible) && <InspectorPanel />}
               </ErrorBoundary>
             </div>
           </main>

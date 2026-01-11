@@ -85,7 +85,12 @@ function serveMonorepoAssets(): Plugin {
         ) => {
           // Serve examples from public/examples first, then monorepo root
           // Remove query parameters for file lookup
-          const urlPath = req.url?.split("?")[0];
+          let urlPath = req.url?.split("?")[0];
+
+          // Handle /designer prefix if present (for dev server access at /designer/)
+          if (urlPath?.startsWith("/designer/")) {
+            urlPath = urlPath.replace("/designer", "");
+          }
 
           if (urlPath?.startsWith("/examples/")) {
             const relativePath = urlPath.replace("/examples/", "");
@@ -103,9 +108,9 @@ function serveMonorepoAssets(): Plugin {
               res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
               res.setHeader("Pragma", "no-cache");
               res.setHeader("Expires", "0");
-              if (req.url.endsWith(".json")) {
+              if (req.url?.endsWith(".json")) {
                 res.setHeader("Content-Type", "application/json");
-              } else if (req.url.endsWith(".png")) {
+              } else if (req.url?.endsWith(".png")) {
                 res.setHeader("Content-Type", "image/png");
               } else {
                 res.setHeader("Content-Type", "text/plain");
@@ -115,9 +120,9 @@ function serveMonorepoAssets(): Plugin {
             }
           }
           // Serve wasm from apps/designer/public/wasm first, then apps/website/public/wasm
-          if (req.url?.startsWith("/wasm/")) {
+          if (urlPath?.startsWith("/wasm/")) {
             // Remove query parameters for file lookup
-            const wasmFile = req.url.split("?")[0].replace("/wasm/", "");
+            const wasmFile = urlPath.replace("/wasm/", "");
 
             // Try designer's public/wasm first (for graphvizlib.wasm)
             const designerWasmPath = path.resolve(__dirname, "public/wasm", wasmFile);
@@ -312,9 +317,28 @@ export default defineConfig({
 
   // Resolve aliases
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
+    alias: [
+      { find: "@", replacement: path.resolve(__dirname, "./src") },
+      // Handle all component CSS files dynamically
+      {
+        find: /^@sruja\/ui\/components\/(.*)\.css$/,
+        replacement: path.resolve(__dirname, "../../packages/ui/src/components/$1.css"),
+      },
+      {
+        find: "@sruja/ui/design-system/styles.css",
+        replacement: path.resolve(__dirname, "../../packages/ui/src/design-system/styles.css"),
+      },
+      { find: "@sruja/ui", replacement: path.resolve(__dirname, "../../packages/ui/src/index.ts") },
+      // Handle subpath imports for shared package
+      {
+        find: "@sruja/shared/lsp",
+        replacement: path.resolve(__dirname, "../../packages/shared/src/lsp/index.ts"),
+      },
+      {
+        find: "@sruja/shared",
+        replacement: path.resolve(__dirname, "../../packages/shared/src/index.ts"),
+      },
+    ],
     dedupe: ["react", "react-dom"],
   },
 
