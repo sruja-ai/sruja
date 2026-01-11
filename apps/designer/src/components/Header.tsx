@@ -11,13 +11,15 @@ import {
   Download,
   Github,
   Globe,
+  PanelLeft,
+  PanelRight,
 } from "lucide-react";
 import { Breadcrumb, ExamplesDropdown } from "./shared";
 import { ThemeToggle, Button, Logo } from "@sruja/ui";
 import type { SrujaModelDump } from "@sruja/shared";
 import type { ViewTab } from "../types";
 import { getWebsiteUrl } from "../utils/website-url";
-// RoleSwitcher removed - role selection is now in the Roles tab
+import { useUIStore } from "../stores";
 
 export interface HeaderProps {
   isNavOpen: boolean;
@@ -281,6 +283,47 @@ export function Header({
             <span className="mode-label">Edit</span>
           </Button>
         </div>
+
+        {/* Layout Controls - VS Code Style */}
+        <div
+          className="layout-controls"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            marginRight: 8,
+            borderRight: "1px solid var(--border)",
+            paddingRight: 8,
+          }}
+        >
+          <Button
+            variant={useUIStore((s) => s.isNavigationVisible) ? "secondary" : "ghost"}
+            size="sm"
+            className="action-btn icon-only"
+            onClick={() =>
+              useUIStore
+                .getState()
+                .setIsNavigationVisible(!useUIStore.getState().isNavigationVisible)
+            }
+            title="Toggle Left Panel (Command+B)"
+            aria-label="Toggle Navigation"
+            style={{ marginRight: 2 }}
+          >
+            <PanelLeft size={18} />
+          </Button>
+          <Button
+            variant={useUIStore((s) => s.isInspectorVisible) ? "secondary" : "ghost"}
+            size="sm"
+            className="action-btn icon-only"
+            onClick={() =>
+              useUIStore.getState().setIsInspectorVisible(!useUIStore.getState().isInspectorVisible)
+            }
+            title="Toggle Right Panel (Command+Alt+B)"
+            aria-label="Toggle Inspector"
+          >
+            <PanelRight size={18} />
+          </Button>
+        </div>
+
         <ThemeToggle iconOnly />
         <ExamplesDropdown />
         <Button

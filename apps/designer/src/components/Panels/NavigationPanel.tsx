@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { ChevronRight, ChevronLeft, Building2, User, X, Link2 } from "lucide-react";
+import { Building2, User, X, CheckCircle2, Plus } from "lucide-react";
 import { Input, Button } from "@sruja/ui";
 import { logger } from "@sruja/shared";
-import { useArchitectureStore, useViewStore, useSelectionStore } from "../../stores";
+import { useArchitectureStore, useViewStore, useSelectionStore, useUIStore } from "../../stores";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
 import { useNavigationData } from "../../hooks/useNavigationData";
 import { NavTreeItem } from "./NavTreeItem";
@@ -16,6 +16,8 @@ interface NavigationPanelProps {
 
 export function NavigationPanel({ onClose }: NavigationPanelProps) {
   const model = useArchitectureStore((s) => s.model) as SrujaModelDump | null;
+  const dslSource = useArchitectureStore((s) => s.dslSource);
+  const setDslSource = useArchitectureStore((s) => s.setDslSource);
   const currentLevel = useViewStore((s) => s.currentLevel);
   const focusedSystemId = useViewStore((s) => s.focusedSystemId);
   const focusedContainerId = useViewStore((s) => s.focusedContainerId);
@@ -23,8 +25,9 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   const goToRoot = useViewStore((s) => s.goToRoot);
   const setLevel = useViewStore((s) => s.setLevel);
   const selectedNodeId = useSelectionStore((s) => s.selectedNodeId);
-  const selectNode = useSelectionStore((s) => s.selectNode); // Add selectNode action
+  const selectNode = useSelectionStore((s) => s.selectNode);
   const isEditMode = useFeatureFlagsStore((s) => s.isEditMode);
+  const setActiveTab = useUIStore((s) => s.setActiveTab);
 
   // Derive selection context
   const getSelectedElement = () => {
@@ -42,25 +45,6 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
 
   // Track expanded nodes locally
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
-
-  // Collapsed state with localStorage persistence
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("navigation-panel-collapsed");
-      return saved === "true";
-    }
-    return false;
-  });
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("navigation-panel-collapsed", String(isCollapsed));
-    }
-  }, [isCollapsed]);
-
-  const toggleCollapse = () => {
-    setIsCollapsed((prev) => !prev);
-  };
 
   const toggleExpand = (id: string) => {
     setExpandedNodes((prev) => {
@@ -137,37 +121,8 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
   };
 
   return (
-    <div className={`navigation-panel ${isCollapsed ? "collapsed" : ""}`}>
-      {!isCollapsed && (
-        <div className="nav-header">
-          <h3 className="nav-title">Navigation</h3>
-        </div>
-      )}
-      {!model && !isCollapsed && (
-        <div className="panel-empty">Load an architecture to see navigation</div>
-      )}
-      {!isCollapsed && (
-        <div className="nav-search-row">
-          <Input
-            placeholder="Search systems, actors..."
-            value={filterQuery}
-            onChange={(e) => setFilterQuery(e.target.value)}
-          />
-        </div>
-      )}
-
-      {/* Collapse Toggle */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="nav-collapse-btn"
-        onClick={toggleCollapse}
-        aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"}
-        title={isCollapsed ? "Expand navigation" : "Collapse navigation"}
-      >
-        {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-      </Button>
-
+    <div className="navigation-panel">
+      {/* Mobile close button */}
       {onClose && (
         <div className="panel-mobile-header">
           <span>Navigation</span>
@@ -183,10 +138,119 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
         </div>
       )}
 
+      {/* Builder Section - Quick Actions */}
+      <div className="nav-section builder-section">
+        <div className="nav-section-title">Build Your Architecture</div>
+        <div className="builder-steps">
+          {/* Add System Button */}
+          <button
+            className={`builder-step clickable ${filteredSystems.length > 0 ? "completed" : "current"}`}
+            onClick={() => {
+              const snippet =
+                '\nweb = system "My Web App" {\n  description "Main application"\n}\n';
+              const newDsl = (dslSource || "import { * } from 'sruja.ai/stdlib'\n") + snippet;
+              setDslSource(newDsl, null);
+              setActiveTab("code");
+            }}
+            title="Click to add a system"
+          >
+            <span className="step-icon">
+              {filteredSystems.length > 0 ? <CheckCircle2 size={16} /> : <Plus size={16} />}
+            </span>
+            <div className="step-content">
+              <span className="step-label">Add a System</span>
+              <span className="step-hint">web = system "My App"</span>
+            </div>
+          </button>
+
+          {/* Add Database Button */}
+          <button
+            className={`builder-step clickable ${model?.elements && Object.values(model.elements).some((e) => e.kind === "database") ? "completed" : ""}`}
+            onClick={() => {
+              const snippet = '\ndb = database "PostgreSQL" {\n  description "Main database"\n}\n';
+              const newDsl = (dslSource || "import { * } from 'sruja.ai/stdlib'\n") + snippet;
+              setDslSource(newDsl, null);
+              setActiveTab("code");
+            }}
+            title="Click to add a database"
+          >
+            <span className="step-icon">
+              {model?.elements &&
+              Object.values(model.elements).some((e) => e.kind === "database") ? (
+                <CheckCircle2 size={16} />
+              ) : (
+                <Plus size={16} />
+              )}
+            </span>
+            <div className="step-content">
+              <span className="step-label">Add a Database</span>
+              <span className="step-hint">db = database "PostgreSQL"</span>
+            </div>
+          </button>
+
+          {/* Connect Elements Button */}
+          <button
+            className={`builder-step clickable ${model?.relations && model.relations.length > 0 ? "completed" : ""}`}
+            onClick={() => {
+              const snippet = '\nweb -> db "reads/writes"\n';
+              const newDsl = (dslSource || "import { * } from 'sruja.ai/stdlib'\n") + snippet;
+              setDslSource(newDsl, null);
+              setActiveTab("code");
+            }}
+            title="Click to connect elements"
+          >
+            <span className="step-icon">
+              {model?.relations && model.relations.length > 0 ? (
+                <CheckCircle2 size={16} />
+              ) : (
+                <Plus size={16} />
+              )}
+            </span>
+            <div className="step-content">
+              <span className="step-label">Connect Elements</span>
+              <span className="step-hint">web -&gt; db "reads from"</span>
+            </div>
+          </button>
+
+          {/* Create View Button */}
+          <button
+            className={`builder-step clickable ${model?.views && Object.keys(model.views).length > 0 ? "completed" : ""}`}
+            onClick={() => {
+              const snippet = "\nview index {\n  include *\n}\n";
+              const newDsl = (dslSource || "import { * } from 'sruja.ai/stdlib'\n") + snippet;
+              setDslSource(newDsl, null);
+              setActiveTab("code");
+            }}
+            title="Click to create a view"
+          >
+            <span className="step-icon">
+              {model?.views && Object.keys(model.views).length > 0 ? (
+                <CheckCircle2 size={16} />
+              ) : (
+                <Plus size={16} />
+              )}
+            </span>
+            <div className="step-content">
+              <span className="step-label">Create a View</span>
+              <span className="step-hint">view index {"{ include * }"}</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="nav-search-row">
+        <Input
+          placeholder="Search systems, actors..."
+          value={filterQuery}
+          onChange={(e) => setFilterQuery(e.target.value)}
+        />
+      </div>
+
       {/* Level Selector - Segmented Control */}
       <div className="nav-section">
-        {!isCollapsed && <div className="nav-section-title">View Level</div>}
-        <div className={`segmented-level-control ${isCollapsed ? "collapsed" : ""}`}>
+        <div className="nav-section-title">View Level</div>
+        <div className="segmented-level-control">
           <button
             className={`segment-btn ${currentLevel === "L1" ? "active" : ""}`}
             onClick={goToRoot}
@@ -229,13 +293,13 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
       </div>
 
       {/* Quality Score Card */}
-      <QualityScoreCard isCollapsed={isCollapsed} />
+      <QualityScoreCard isCollapsed={false} />
 
       {/* Systems Tree */}
       <div className="nav-section">
         <div className="nav-section-title">
           <Building2 size={14} />
-          {!isCollapsed && <span>Systems ({filteredSystems.length})</span>}
+          <span>Systems ({filteredSystems.length})</span>
         </div>
         <ul className="nav-tree">
           {filteredSystems.length === 0 && (
@@ -297,12 +361,8 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                           onExpand={() => {}}
                           onDrillDown={(id, _kind, pid) => {
                             selectNode(id);
-                            // Navigate to parent container view
                             if (pid) {
-                              drillDown(pid, "container", undefined); // We might need to look up parent's parent for full context? navigateOnClick usually handles ID.
-                              // Wait, drillDown(targetId, kind, parentId? context).
-                              // For L3, we drill down to the CONTAINER (pid).
-                              // drillDown(pid, "container") should set Level 3, Focus pid.
+                              drillDown(pid, "container", undefined);
                             }
                           }}
                           isEditMode={!!isEditMode()}
@@ -322,7 +382,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
       <div className="nav-section">
         <div className="nav-section-title">
           <User size={14} />
-          {!isCollapsed && <span>Actors ({filteredPersons.length})</span>}
+          <span>Actors ({filteredPersons.length})</span>
         </div>
         <ul className="nav-tree">
           {filteredPersons.length === 0 && (
@@ -354,16 +414,8 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
         </ul>
       </div>
 
-      {/* Quick Links to Details Tab */}
-      {!isCollapsed && (
-        <div className="nav-section">
-          <div className="nav-section-title">
-            <Link2 size={14} />
-            <span>Governance</span>
-          </div>
-          <div className="nav-governance-hint">Select an item to view governance details.</div>
-        </div>
-      )}
+      {/* Empty state */}
+      {!model && <div className="panel-empty">Load an architecture to see navigation</div>}
     </div>
   );
 }
