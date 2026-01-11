@@ -269,6 +269,7 @@ export default function App() {
             reloadFromDsl={reloadFromDsl}
             handleShareHeader={handleShareHeader}
             handleCreateNewRemote={handleCreateNewRemote}
+            onOpenCommandPalette={() => setShowCommandPalette(true)}
           />
 
           {/* Mobile Overlay - Only for Nav now */}

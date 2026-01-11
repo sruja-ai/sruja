@@ -14,6 +14,8 @@ import {
   PanelLeft,
   PanelRight,
   MoreHorizontal,
+  Search,
+  Command,
 } from "lucide-react";
 import { Breadcrumb, ExamplesDropdown } from "./shared";
 import { ThemeToggle, Button, Logo } from "@sruja/ui";
@@ -44,6 +46,7 @@ export interface HeaderProps {
   reloadFromDsl: () => Promise<void>;
   handleShareHeader: () => Promise<void>;
   handleCreateNewRemote: () => Promise<void>;
+  onOpenCommandPalette: () => void;
 }
 
 export function Header({
@@ -65,6 +68,7 @@ export function Header({
   reloadFromDsl,
   handleShareHeader,
   handleCreateNewRemote,
+  onOpenCommandPalette,
 }: HeaderProps) {
   return (
     <header className="app-header">
@@ -88,11 +92,21 @@ export function Header({
       </div>
 
       <div className="header-center">
-        <div className="project-pill">
+        <Button
+          variant="ghost"
+          className="command-palette-trigger"
+          onClick={onOpenCommandPalette}
+          title="Search commands (⌘K)"
+        >
+          <Search size={14} className="search-icon" />
           <span className="project-name">
             {(model?._metadata as { name?: string })?.name || "Untitled Architecture"}
           </span>
-        </div>
+          <div className="kbd-shortcut">
+            <Command size={10} />
+            <span>K</span>
+          </div>
+        </Button>
       </div>
 
       <div className="header-right">

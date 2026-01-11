@@ -806,6 +806,63 @@
   }
 }
 
+/* Command Palette Trigger in Header */
+.command-palette-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  height: 32px;
+  transition: all 0.2s ease;
+  min-width: 280px;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.command-palette-trigger:hover {
+  background: var(--bg-secondary);
+  border-color: var(--highlight-color);
+  /* Subtle highlight on hover */
+  color: var(--text-primary);
+  box-shadow: 0 0 0 1px var(--highlight-color-alpha-20, rgba(59, 130, 246, 0.2));
+}
+
+.command-palette-trigger .search-icon {
+  color: var(--text-muted);
+}
+
+.command-palette-trigger .project-name {
+  flex: 1;
+  text-align: left;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.command-palette-trigger .kbd-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+[data-theme="dark"] .command-palette-trigger .kbd-shortcut {
+  background: #333;
+  border-color: #444;
+}
+
 .upload-btn.large {
   padding: var(--space-3, 0.75rem) var(--space-6, 1.5rem);
   font-size: var(--text-base, 1rem);
