@@ -13,7 +13,8 @@
     position: relative;
     z-index: 50;
     transition: all 0.2s ease;
-    pointer-events: auto; /* Ensure header is interactive */
+    pointer-events: auto;
+    /* Ensure header is interactive */
 }
 
 [data-theme="dark"] .app-header {
@@ -140,7 +141,8 @@
     min-width: 32px;
     padding: 0 8px;
     font-size: 13px;
-    pointer-events: auto; /* Ensure buttons are clickable */
+    pointer-events: auto;
+    /* Ensure buttons are clickable */
     position: relative;
     z-index: 1;
 }
@@ -154,4 +156,48 @@
 .action-btn.primary:hover {
     background: var(--highlight-hover);
     transform: translateY(-1px);
+}
+
+/* Actions Dropdown */
+.actions-dropdown-wrapper {
+    position: relative;
+}
+
+.actions-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 200px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 8px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    padding: 6px;
+    z-index: 1000;
+    animation: fadeIn 0.15s ease-out;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.menu-item:hover {
+    background: var(--bg-secondary);
+}
+
+.menu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 4px 0;
 }
