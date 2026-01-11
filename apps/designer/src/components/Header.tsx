@@ -128,18 +128,6 @@ export function Header({
               className="tab-group editor-group"
               style={{ display: "flex", gap: "8px", alignItems: "center" }}
             >
-              <span
-                className="tab-group-label"
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  color: "var(--text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                Editor
-              </span>
               <ViewTabs
                 activeId={useUIStore((s) => s.activeEditor)}
                 onTabChange={(id) =>
@@ -154,25 +142,13 @@ export function Header({
               />
             </div>
 
-            <div className="divider-vertical" style={{ height: "24px" }} />
+            <div className="divider-vertical" style={{ height: "20px", margin: "0 8px" }} />
 
             {/* View Controls (Right) */}
             <div
               className="tab-group view-group"
               style={{ display: "flex", gap: "8px", alignItems: "center" }}
             >
-              <span
-                className="tab-group-label"
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  color: "var(--text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                View
-              </span>
               <ViewTabs
                 activeId={useUIStore((s) => s.activeView)}
                 onTabChange={(id) => useUIStore.getState().setActiveView(id as any)}
