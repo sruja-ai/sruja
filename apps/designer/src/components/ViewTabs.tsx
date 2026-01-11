@@ -4,33 +4,31 @@ import type { ViewTab } from "../types";
 import "./ViewTabs.css";
 
 interface ViewTabsProps {
-  activeTab: ViewTab;
-  onTabChange: (tab: ViewTab) => void;
+  activeId: string | null;
+  onTabChange: (id: string) => void;
+  tabs: { id: string; icon: React.ReactNode; label: string }[];
+  className?: string;
 }
 
 /**
- * ViewTabs - Three parent tabs: Diagram, Code, Docs
- * No sub-tabs for simplicity
+ * ViewTabs - Generic tab strip component
  */
-export function ViewTabs({ activeTab, onTabChange }: ViewTabsProps) {
-  const tabs: { id: ViewTab; icon: React.ReactNode; label: string }[] = [
-    { id: "builder", icon: <Hammer size={16} />, label: "Builder" },
-    { id: "diagram", icon: <Workflow size={16} />, label: "Diagram" },
-    { id: "code", icon: <FileCode size={16} />, label: "Code" },
-    { id: "docs", icon: <FileText size={16} />, label: "Docs" },
-  ];
-
+export function ViewTabs({ activeId, onTabChange, tabs, className = "" }: ViewTabsProps) {
   return (
-    <div className="view-tabs view-tabs-simple" role="tablist" aria-label="View tabs">
+    <div
+      className={`view-tabs view-tabs-simple ${className}`}
+      role="tablist"
+      aria-label="View tabs"
+    >
       {tabs.map((tab) => (
         <Button
           key={tab.id}
-          variant={activeTab === tab.id ? "secondary" : "ghost"}
+          variant={activeId === tab.id ? "secondary" : "ghost"}
           size="sm"
-          className={`view-tab ${activeTab === tab.id ? "active" : ""}`}
+          className={`view-tab ${activeId === tab.id ? "active" : ""}`}
           onClick={() => onTabChange(tab.id)}
           role="tab"
-          aria-selected={activeTab === tab.id}
+          aria-selected={activeId === tab.id}
           id={`tab-${tab.id}`}
           data-testid={`tab-${tab.id}`}
           aria-controls={`tabpanel-${tab.id}`}

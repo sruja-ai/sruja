@@ -338,29 +338,17 @@ export default function App() {
             {/* CENTER: Main Stage (Split View) */}
             <div className="center-stage">
               <div className="canvas-container">
-                {/* Logic for Split vs Single View */}
-                {activeTab === "builder" || activeTab === "code" ? (
-                  <SplitLayout
-                    leftContent={renderContent(activeTab)}
-                    rightContent={renderContent(rightPane)}
-                    isLeftVisible={leftPane !== "none"}
-                    onCollapse={() => useUIStore.getState().setLeftPaneContent("none")}
-                    onExpand={() =>
-                      useUIStore
-                        .getState()
-                        .setLeftPaneContent(activeTab === "builder" ? "builder" : "code")
-                    }
-                  />
-                ) : /* Single View for other tabs or purely visual states */
-                activeTab === "overview" ? (
-                  renderContent("overview")
-                ) : activeTab === "details" ? (
-                  renderContent("details")
-                ) : activeTab === "roles" ? (
-                  renderContent("roles")
-                ) : (
-                  renderContent(rightPane)
-                )}
+                {/* Logic for Split vs Single View
+                    Left Pane: Controlled by activeEditor ("builder" | "code" | null)
+                    Right Pane: Controlled by activeView ("diagram" | "docs" | ...)
+                 */}
+                <SplitLayout
+                  leftContent={renderContent(useUIStore((s) => s.activeEditor) || "none")}
+                  rightContent={renderContent(useUIStore((s) => s.activeView) || "diagram")}
+                  isLeftVisible={!!useUIStore((s) => s.activeEditor)}
+                  onCollapse={() => useUIStore.getState().setActiveEditor(null)}
+                  onExpand={() => useUIStore.getState().setActiveEditor("builder")} // Default re-expand to builder? Or last used?
+                />
               </div>
             </div>
 

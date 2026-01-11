@@ -24,6 +24,12 @@ interface UIState {
   activeTab: ViewTab;
   setActiveTab: (tab: ViewTab) => void;
 
+  // New Split Controls
+  activeEditor: "builder" | "code" | null;
+  setActiveEditor: (editor: "builder" | "code" | null) => void;
+  activeView: "diagram" | "docs" | "overview" | "details" | "roles" | null; // Null means nothing? Or always have a view? Usually Diagram.
+  setActiveView: (view: "diagram" | "docs" | "overview" | "details" | "roles") => void;
+
   // Split View State
   layoutMode: LayoutMode;
   setLayoutMode: (mode: LayoutMode) => void;
@@ -71,52 +77,68 @@ interface UIState {
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
+      activeEditor: null,
+      setActiveEditor: (editor) =>
+        set((state) => {
+          // Toggle logic handled by caller or here? Let's make it direct setter.
+          // Caller handles toggle.
+          // Update leftPaneContent based on editor
+          const left = editor === null ? "none" : editor;
+
+          return {
+            activeEditor: editor,
+            leftPaneContent: left,
+            // Sync activeTab for legacy
+            activeTab: editor ? editor : (state.activeView as ViewTab),
+          };
+        }),
+
+      activeView: "diagram",
+      setActiveView: (view) =>
+        set((state) => {
+          const right = view === "diagram" ? "diagram" : view === "docs" ? "docs" : "diagram";
+
+          return {
+            activeView: view,
+            rightPaneContent: right as RightPaneContent,
+            // Sync activeTab for legacy
+            activeTab: state.activeEditor ? state.activeEditor : (view as ViewTab),
+          };
+        }),
+
       activeTab: "diagram", // Default to diagram for new layout
       setActiveTab: (tab) =>
         set((state) => {
           // Map legacy tabs to split view state
-          let left: LeftPaneContent = state.leftPaneContent;
-          let right: RightPaneContent = "diagram";
+          let activeEditor = state.activeEditor;
+          let activeView = state.activeView;
 
-          if (tab === "builder") {
-            // Toggle logic: if already on builder tab, toggle the pane
-            if (state.activeTab === "builder") {
-              left = state.leftPaneContent === "builder" ? "none" : "builder";
+          if (tab === "builder" || tab === "code") {
+            // Toggle logic
+            if (activeEditor === tab) {
+              activeEditor = null;
             } else {
-              left = "builder";
+              activeEditor = tab;
             }
-          } else if (tab === "code") {
-            // Toggle logic for code tab
-            if (state.activeTab === "code") {
-              left = state.leftPaneContent === "code" ? "none" : "code";
-            } else {
-              left = "code";
-            }
-          } else if (tab === "docs") {
-            right = "docs";
-            left = "none"; // Fullscreen docs usually
-          } else if (tab === "diagram") {
-            // Toggle logic for diagram tab (maybe user wants to toggle right pane?
-            // but diagram is usually the main view.
-            // For now, let's keep it simple: reset left pane.
-            // Or wait, if we are in builder mode and click diagram, we probably just want to switch right pane to diagram?
-            // The request was about "builder, properties, diagram".
-            // If I am in builder, and I click builder, it collapses.
-
-            // If I am in Builder tab (activeTab=builder), left=builder, right=diagram.
-            // If I click Diagram tab, activeTab becomes diagram. left=none, right=diagram.
-
-            left = "none";
-            right = "diagram";
-          } else if (tab === "overview" || tab === "details" || tab === "roles") {
-            // These might need specific handling or be treated as "overlays" or just "diagram" area content
-            // For now, let's treat them as full right-pane content or legacy full screen
-            left = "none";
-            // We might need to extend RightPaneContent if we want them in split view
+          } else if (
+            tab === "diagram" ||
+            tab === "docs" ||
+            tab === "overview" ||
+            tab === "details" ||
+            tab === "roles"
+          ) {
+            activeView = tab;
           }
+
+          const left = activeEditor ? activeEditor : "none";
+          // right layout logic
+          let right: RightPaneContent = "diagram";
+          if (activeView === "docs") right = "docs";
 
           return {
             activeTab: tab,
+            activeEditor,
+            activeView,
             leftPaneContent: left,
             rightPaneContent: right,
           };
