@@ -53,8 +53,6 @@ export default function App() {
   const redo = useHistoryStore((s) => s.redo);
 
   // Split View & Layout State
-  const leftPane = useUIStore((s) => s.leftPaneContent);
-  const rightPane = useUIStore((s) => s.rightPaneContent);
   const activeTab = useUIStore((s) => s.activeTab);
   const setActiveTab = useUIStore((s) => s.setActiveTab);
 
