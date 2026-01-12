@@ -38,10 +38,20 @@ func (e *ViewEngine) ComputeView(prog *language.Program) *ViewResult {
 
 	allElements := make(map[string]*Element)
 	for _, el := range ExtractAllElements(prog) {
-		allElements[el.ID] = el
+		if el != nil && el.ID != "" {
+			allElements[el.ID] = el
+		}
 	}
 	allRelations := ExtractRelationsFromModel(prog)
 	lookup := BuildElementLookup(prog)
+
+	// If no elements were extracted, return empty result early
+	if len(allElements) == 0 {
+		return &ViewResult{
+			Elements:  []*Element{},
+			Relations: []*Relation{},
+		}
+	}
 
 	elements, relations := e.computeViewGraph(prog, allElements, allRelations, lookup)
 
@@ -157,7 +167,10 @@ func (e *ViewEngine) computeViewGraph(prog *language.Program, allElements map[st
 	switch level {
 	case 1:
 		for id, elem := range allElements {
-			if elem.Kind == "person" || elem.Kind == "system" {
+			normalizedKind := normalizeKind(elem.Kind)
+			if normalizedKind == "person" || normalizedKind == "system" {
+				// Ensure kind is normalized before adding
+				elem.Kind = normalizedKind
 				addElement(id)
 			}
 		}
@@ -356,21 +369,49 @@ func (e *ViewEngine) computeViewGraph(prog *language.Program, allElements map[st
 		finalRelations = filteredRelations
 	}
 
+	// Fallback: If no elements were found for the requested level, include all elements
+	// This prevents empty exports when level-based filtering is too restrictive
+	if len(finalElements) == 0 && len(allElements) > 0 {
+		// Include all top-level elements (persons and systems) as a fallback
+		for _, elem := range allElements {
+			normalizedKind := normalizeKind(elem.Kind)
+			if normalizedKind == "person" || normalizedKind == "system" {
+				elem.Kind = normalizedKind
+				ensureElementValid(elem)
+				finalElements = append(finalElements, elem)
+			}
+		}
+		// If still empty, include all elements regardless of kind
+		if len(finalElements) == 0 {
+			for _, elem := range allElements {
+				normalizedKind := normalizeKind(elem.Kind)
+				elem.Kind = normalizedKind
+				ensureElementValid(elem)
+				finalElements = append(finalElements, elem)
+			}
+		}
+	}
+
 	return finalElements, finalRelations
 }
 
 func (e *ViewEngine) computeViewGraphFromViewDef(prog *language.Program, viewID string, allElements map[string]*Element, allRelations []*Relation, lookup *ElementLookup) ([]*Element, []*Relation) {
 	var viewDef *language.ViewDef
-	if prog.Views != nil {
+	if prog.Views != nil && viewID != "" {
+		viewIDLower := strings.ToLower(viewID)
 		for _, item := range prog.Views.Items {
-			if item != nil && item.View != nil && item.View.Name != nil && *item.View.Name == viewID {
-				viewDef = item.View
-				break
+			if item != nil && item.View != nil && item.View.Name != nil {
+				viewNameLower := strings.ToLower(*item.View.Name)
+				if viewNameLower == viewIDLower {
+					viewDef = item.View
+					break
+				}
 			}
 		}
 	}
 
 	if viewDef == nil {
+		// View not found or viewID is empty - fall back to level-based filtering
 		var finalElements []*Element
 		for _, elem := range allElements {
 			if elem.Kind == "person" || elem.Kind == "system" {
@@ -475,6 +516,20 @@ func (e *ViewEngine) computeViewGraphFromViewDef(prog *language.Program, viewID 
 		delete(includedIDs, id)
 	}
 
+	normalizeKind := func(kind string) string {
+		normalized := strings.ToLower(kind)
+		switch normalized {
+		case "database", "db", "storage":
+			return "datastore"
+		case "mq":
+			return "queue"
+		case "actor":
+			return "person"
+		default:
+			return normalized
+		}
+	}
+
 	validKinds := map[string]bool{
 		"person": true, "system": true, "container": true,
 		"component": true, "datastore": true, "queue": true,
@@ -483,9 +538,12 @@ func (e *ViewEngine) computeViewGraphFromViewDef(prog *language.Program, viewID 
 	var finalElements []*Element
 	for id := range includedIDs {
 		if elem, ok := allElements[id]; ok {
-			if !validKinds[elem.Kind] {
+			normalizedKind := normalizeKind(elem.Kind)
+			if !validKinds[normalizedKind] {
 				continue
 			}
+			// Update the element's kind to normalized version
+			elem.Kind = normalizedKind
 			if elem.Title == "" {
 				elem.Title = elem.ID
 			}
@@ -495,6 +553,29 @@ func (e *ViewEngine) computeViewGraphFromViewDef(prog *language.Program, viewID 
 				elem.Height = int(h)
 			}
 			finalElements = append(finalElements, elem)
+		} else if info, ok := lookup.Elements[id]; ok {
+			// Element not in allElements but exists in lookup - create it
+			normalizedKind := normalizeKind(info.Kind)
+			if !validKinds[normalizedKind] {
+				continue
+			}
+			newElem := &Element{
+				ID:          info.ID,
+				Kind:        normalizedKind,
+				Title:       info.Label,
+				ParentID:    info.ParentID,
+				Technology:  "",
+				Description: "",
+			}
+			if newElem.Title == "" {
+				newElem.Title = newElem.ID
+			}
+			if newElem.Width <= 0 || newElem.Height <= 0 {
+				w, h := MeasureNodeContent(newElem)
+				newElem.Width = int(w)
+				newElem.Height = int(h)
+			}
+			finalElements = append(finalElements, newElem)
 		}
 	}
 
@@ -541,6 +622,39 @@ func (e *ViewEngine) computeViewGraphFromViewDef(prog *language.Program, viewID 
 		if !seenRelations[key] {
 			seenRelations[key] = true
 			uniqueRelations = append(uniqueRelations, rel)
+		}
+	}
+
+	// If view was found but no elements matched, fall back to showing all elements
+	// This prevents empty exports when view definitions don't match any elements
+	// Note: viewDef is guaranteed to be non-nil here since we return early if it's nil
+	if len(finalElements) == 0 && viewDef.Body != nil {
+		// Check if the view had any include statements
+		hasInclude := false
+		for _, item := range viewDef.Body.Items {
+			if item != nil && item.Include != nil && len(item.Include.Expressions) > 0 {
+				hasInclude = true
+				break
+			}
+		}
+
+		// If include was specified but nothing matched, include all elements as fallback
+		if hasInclude {
+			for _, elem := range allElements {
+				normalizedKind := normalizeKind(elem.Kind)
+				if validKinds[normalizedKind] {
+					elem.Kind = normalizedKind
+					if elem.Title == "" {
+						elem.Title = elem.ID
+					}
+					if elem.Width <= 0 || elem.Height <= 0 {
+						w, h := MeasureNodeContent(elem)
+						elem.Width = int(w)
+						elem.Height = int(h)
+					}
+					finalElements = append(finalElements, elem)
+				}
+			}
 		}
 	}
 

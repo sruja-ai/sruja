@@ -1,21 +1,21 @@
 import { useState } from "react";
-import { Target, Lightbulb, Plus, Trash2, LayoutTemplate, Edit } from "lucide-react";
-import { Button, Input } from "@sruja/ui"; // Removed Input if not used, but it is used.
+import { Target, Lightbulb, Plus, Trash2, Edit } from "lucide-react";
+import { Button, Input } from "@sruja/ui";
 import { useArchitectureStore } from "../../stores/architectureStore";
 import { BestPracticeTip } from "@sruja/ui";
 import "@sruja/ui/components/BestPracticeTip.css";
 import { EditRequirementForm } from "../shared";
-import { TemplateGallery } from "./TemplateGallery";
 import { deduplicateRequirements } from "../../utils/deduplicateRequirements";
 import type { RequirementDump, SrujaModelDump } from "@sruja/shared";
 import "./WizardSteps.css";
 
 interface GoalsStepProps {
   onNext: () => void;
+  onBack?: () => void;
   readOnly?: boolean;
 }
 
-export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
+export function GoalsStep({ onNext, onBack, readOnly = false }: GoalsStepProps) {
   const data = useArchitectureStore((s) => s.model);
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
 
@@ -28,7 +28,6 @@ export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
   const requirements = deduplicateRequirements(allRequirements);
 
   const [newGoal, setNewGoal] = useState("");
-  const [showTemplates, setShowTemplates] = useState(false);
 
   // Requirement Form State
   const [isRequirementFormOpen, setIsRequirementFormOpen] = useState(false);
@@ -91,7 +90,10 @@ export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
         </div>
         <div className="step-header-content">
           <h2>Define Goals & Requirements</h2>
-          <p>What are you building and why? Start with the business context.</p>
+          <p>
+            Formalize your architecture by adding goals & requirements and tagging them to your
+            elements.
+          </p>
         </div>
       </div>
 
@@ -101,21 +103,7 @@ export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
         requirement={editRequirement}
       />
 
-      {/* Quick Start with Template */}
-      <div className="template-prompt">
-        <Button
-          variant="secondary"
-          size="sm"
-          className="template-prompt-btn"
-          onClick={() => setShowTemplates(true)}
-        >
-          <LayoutTemplate size={18} />
-          <span>Start from a Template</span>
-        </Button>
-        <span className="template-prompt-hint">or define your own below</span>
-      </div>
-
-      <TemplateGallery isOpen={showTemplates} onClose={() => setShowTemplates(false)} />
+      {/* Template option removed from final step - users should have already built architecture */}
 
       {/* Goals Section */}
       <div className="step-section">
@@ -230,18 +218,31 @@ export function GoalsStep({ onNext, readOnly = false }: GoalsStepProps) {
         later.
       </BestPracticeTip>
 
+      <BestPracticeTip variant="info" show={!isComplete && !readOnly} stepId="goals-final">
+        💡 <strong>Formalize your architecture:</strong> Now that you've built your architecture,
+        add goals & requirements and tag them to your elements (systems, containers, components).
+        This creates traceability - you can see which requirements each element fulfills.
+      </BestPracticeTip>
+
       {/* Navigation */}
       <div className="step-navigation">
+        {onBack && (
+          <Button variant="secondary" onClick={onBack}>
+            ← Back
+          </Button>
+        )}
         <div className="step-nav-hint">
           {isComplete
-            ? "Ready to define your system context!"
+            ? "Great! You've formalized your architecture with goals & requirements."
             : readOnly
               ? "No goals or requirements defined yet"
-              : "Add at least one goal or requirement to continue"}
+              : "Add goals & requirements to document what your architecture achieves"}
         </div>
-        <Button variant="primary" onClick={onNext} disabled={!readOnly && !isComplete}>
-          Continue to System Context →
-        </Button>
+        {!readOnly && (
+          <Button variant="primary" onClick={onNext} disabled={false}>
+            Finish →
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -20,6 +20,7 @@ import "./BuilderWizard.css";
 
 export function BuilderWizard() {
   const [showShare, setShowShare] = useState(false);
+  const [quickStartMode, setQuickStartMode] = useState<boolean | null>(null);
 
   // Use global store for step state
   const builderStepId = useUIStore((s) => s.builderStep);
@@ -140,13 +141,6 @@ export function BuilderWizard() {
 
     return [
       {
-        id: "goals",
-        label: "Define",
-        description: "Goals & requirements",
-        isComplete: hasGoalsOrReqs,
-        isLocked: false,
-      },
-      {
         id: "context",
         label: "Context",
         description: "Actors & systems",
@@ -181,19 +175,38 @@ export function BuilderWizard() {
         isComplete: hasRoles,
         isLocked: false,
       },
+      {
+        id: "goals",
+        label: "Define",
+        description: "Goals & requirements",
+        isComplete: hasGoalsOrReqs,
+        isLocked: false,
+      },
     ];
   }, [data]);
+
+  // Check if we should show welcome/quick start option
+  // Show if: no elements exist yet AND user hasn't chosen a mode
+  const shouldShowWelcome = useMemo(() => {
+    const elements = data?.elements ? Object.values(data.elements) : [];
+    return elements.length === 0 && quickStartMode === null;
+  }, [data?.elements, quickStartMode]);
 
   // Derive numeric index from store ID
   const currentStep = useMemo(() => {
     const idx = steps.findIndex((s) => s.id === builderStepId);
+    // Default to first step (Context) if not found
     return idx >= 0 ? idx : 0;
   }, [steps, builderStepId]);
 
   const goToStep = (stepIndex: number) => {
-    if (!steps[stepIndex].isLocked) {
-      setBuilderStepId(steps[stepIndex].id);
+    // Allow jumping to any step, but show a warning if prerequisites aren't met
+    const step = steps[stepIndex];
+    if (step.isLocked) {
+      // Still allow navigation but user should know prerequisites aren't met
+      // This gives flexibility while maintaining guidance
     }
+    setBuilderStepId(step.id);
   };
 
   const nextStep = () => {
@@ -209,6 +222,61 @@ export function BuilderWizard() {
       setBuilderStepId(steps[prev].id);
     }
   };
+
+  // Handle quick start mode selection
+  const handleQuickStart = () => {
+    setQuickStartMode(true);
+    setBuilderStepId("context"); // Start with context (C4 Level 1)
+  };
+
+  const handleGuidedMode = () => {
+    setQuickStartMode(false);
+    setBuilderStepId("context"); // Start with context (C4 Level 1)
+  };
+
+  // Show welcome screen for new users
+  if (shouldShowWelcome) {
+    return (
+      <div className={`builder-wizard ${isEditMode() ? "edit-mode" : "view-mode"}`}>
+        <div className="welcome-step">
+          <div className="welcome-header">
+            <h2>Build Your Architecture</h2>
+            <p>Choose how you'd like to get started</p>
+          </div>
+
+          <div className="welcome-options">
+            <div className="welcome-card">
+              <h3>🚀 Quick Start</h3>
+              <p>Build your architecture visually, then formalize it with goals & requirements.</p>
+              <ul>
+                <li>✓ Start with C4 architecture (Context → Containers → Components)</li>
+                <li>✓ See your diagram as you build</li>
+                <li>✓ Add goals & requirements at the end</li>
+                <li>✓ Tag requirements to architecture elements</li>
+              </ul>
+              <button className="btn-primary" onClick={handleQuickStart}>
+                Start Building
+              </button>
+            </div>
+
+            <div className="welcome-card">
+              <h3>📚 Guided Mode</h3>
+              <p>Step-by-step wizard following C4 model structure.</p>
+              <ul>
+                <li>✓ Follow C4 model (Context → Containers → Components)</li>
+                <li>✓ Add flows and roles</li>
+                <li>✓ Formalize with goals & requirements at the end</li>
+                <li>✓ Complete documentation</li>
+              </ul>
+              <button className="btn-secondary" onClick={handleGuidedMode}>
+                Start Guided Mode
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`builder-wizard ${isEditMode() ? "edit-mode" : "view-mode"}`}>
@@ -229,18 +297,20 @@ export function BuilderWizard() {
 
       <div className="wizard-content">
         <div className="wizard-main">
-          {currentStep === 0 && <GoalsStep onNext={nextStep} readOnly={!isEditMode()} />}
-          {currentStep === 1 && (
+          {currentStep === 0 && (
             <SystemContextStep onNext={nextStep} onBack={prevStep} readOnly={!isEditMode()} />
           )}
-          {currentStep === 2 && (
+          {currentStep === 1 && (
             <ContainersStep onNext={nextStep} onBack={prevStep} readOnly={!isEditMode()} />
           )}
-          {currentStep === 3 && (
+          {currentStep === 2 && (
             <ComponentsStep onBack={prevStep} onFinish={nextStep} readOnly={!isEditMode()} />
           )}
-          {currentStep === 4 && <FlowsStep onBack={prevStep} readOnly={!isEditMode()} />}
-          {currentStep === 5 && <RolesViewsStep onBack={prevStep} readOnly={!isEditMode()} />}
+          {currentStep === 3 && <FlowsStep onBack={prevStep} readOnly={!isEditMode()} />}
+          {currentStep === 4 && <RolesViewsStep onBack={prevStep} readOnly={!isEditMode()} />}
+          {currentStep === 5 && (
+            <GoalsStep onNext={nextStep} onBack={prevStep} readOnly={!isEditMode()} />
+          )}
         </div>
       </div>
 

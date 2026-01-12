@@ -1,10 +1,10 @@
 // apps/designer/src/components/shared/forms/EditRequirementForm.tsx
 // Refactored to use Mantine form components
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useArchitectureStore } from "../../../stores";
-import type { RequirementDump, SrujaModelDump } from "@sruja/shared";
-import { Button, Listbox } from "@sruja/ui";
+import type { RequirementDump, SrujaModelDump, ElementDump } from "@sruja/shared";
+import { Button, Listbox, Select } from "@sruja/ui";
 import type { ListOption } from "@sruja/ui";
 import { SidePanel } from "../SidePanel";
 import { FormField, useFormState, type FormErrors } from "./";
@@ -15,6 +15,8 @@ interface EditRequirementFormProps {
   isOpen: boolean;
   onClose: () => void;
   requirement?: RequirementDump;
+  /** Optional: Pre-select element to tag this requirement to */
+  preSelectedElementId?: string;
 }
 
 interface FormValues {
@@ -22,12 +24,35 @@ interface FormValues {
   type: ListOption | null;
   title: string;
   description: string;
+  tags: string[];
 }
 
-export function EditRequirementForm({ isOpen, onClose, requirement }: EditRequirementFormProps) {
+export function EditRequirementForm({
+  isOpen,
+  onClose,
+  requirement,
+  preSelectedElementId,
+}: EditRequirementFormProps) {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);
+  const data = useArchitectureStore((s) => s.model);
+
+  // Get all elements for tagging
+  const elementOptions = useMemo(() => {
+    const elements = data?.elements ? (Object.values(data.elements) as ElementDump[]) : [];
+    return elements.map((el) => ({
+      value: el.id,
+      label: `${el.id}${el.title ? ` (${el.title})` : ""}`,
+    }));
+  }, [data?.elements]);
 
   // Initialize form state
+  const initialTags = useMemo(() => {
+    if (preSelectedElementId) {
+      return [preSelectedElementId];
+    }
+    return (requirement as { tags?: string[] })?.tags || [];
+  }, [requirement, preSelectedElementId]);
+
   const form = useFormState<FormValues>({
     initialValues: {
       id: requirement?.id || "",
@@ -36,6 +61,7 @@ export function EditRequirementForm({ isOpen, onClose, requirement }: EditRequir
         REQUIREMENT_TYPES[0],
       title: requirement?.title || "",
       description: requirement?.description || "",
+      tags: initialTags,
     },
     validate: (values) => {
       const errors: FormErrors = {};
@@ -59,6 +85,7 @@ export function EditRequirementForm({ isOpen, onClose, requirement }: EditRequir
           type: values.type?.id as RequirementDump["type"],
           title: values.title.trim(),
           description: values.description.trim() || undefined,
+          tags: values.tags.length > 0 ? values.tags : undefined,
         };
 
         if (requirement) {
@@ -92,6 +119,7 @@ export function EditRequirementForm({ isOpen, onClose, requirement }: EditRequir
           REQUIREMENT_TYPES[0],
         title: requirement?.title || "",
         description: requirement?.description || "",
+        tags: initialTags,
       });
       form.clearErrors();
     }
@@ -165,6 +193,31 @@ export function EditRequirementForm({ isOpen, onClose, requirement }: EditRequir
           rows={4}
           placeholder="Requirement description"
         />
+        {elementOptions.length > 0 && (
+          <div className="form-field">
+            <label className="form-label">
+              Tag to Architecture Elements <span className="text-muted">(optional)</span>
+            </label>
+            <p className="form-hint text-sm text-muted mb-2">
+              Link this requirement to specific architecture elements (systems, containers,
+              components) for traceability
+            </p>
+            <Select
+              label=""
+              value={form.values.tags.length > 0 ? form.values.tags[0] : ""}
+              onChange={(value) => {
+                form.setValue("tags", value ? [value] : []);
+              }}
+              data={elementOptions.map((opt) => ({ value: opt.value, label: opt.label }))}
+              placeholder="Select element to tag..."
+            />
+            {form.values.tags.length > 0 && (
+              <div className="mt-2 text-sm text-muted">
+                Tagged to: <code>{form.values.tags[0]}</code>
+              </div>
+            )}
+          </div>
+        )}
         {form.errors.submit && (
           <div className="text-sm text-[var(--color-error-500)] mt-2">{form.errors.submit}</div>
         )}

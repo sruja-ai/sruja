@@ -146,8 +146,14 @@ export function ContainersStep({
     return (
       <div className="wizard-step-content">
         <div className="step-placeholder">
-          <h2>No Systems Defined</h2>
-          <p>Go back and add at least one system to add containers to.</p>
+          <h2>No Systems Defined Yet</h2>
+          <p>
+            You need to add at least one system first. Go back to the previous step to add systems.
+          </p>
+          <p className="placeholder-hint">
+            💡 <strong>Tip:</strong> A system is your main application or service (e.g., "E-commerce
+            Platform", "Mobile App")
+          </p>
           <div className="step-navigation">
             <Button variant="secondary" onClick={onBack}>
               ← Back to Systems
@@ -171,8 +177,11 @@ export function ContainersStep({
       </div>
 
       <BestPracticeTip variant="tip" show={totalElements === 0} stepId="containers">
-        <strong>C4 Level 2</strong> — Containers are deployable units: web apps, APIs, databases,
-        queues. Example: "React Frontend", "Node.js API", "PostgreSQL Database"
+        <strong>What are Containers?</strong> — Containers are the deployable parts of your system.
+        Think of them as the building blocks: web apps, APIs, databases, and message queues.
+        <br />
+        <strong>Examples:</strong> "React Frontend", "Node.js API", "PostgreSQL Database", "Redis
+        Queue"
       </BestPracticeTip>
 
       <EditContainerForm
@@ -232,6 +241,29 @@ export function ContainersStep({
             {containers.length + datastores.length + queues.length}
           </span>
         </h3>
+
+        {containers.length === 0 && datastores.length === 0 && queues.length === 0 && (
+          <div className="empty-state-hint">
+            <p>
+              💡 <strong>Getting Started:</strong> Add containers, databases, or queues to this
+              system. For example:
+            </p>
+            <ul className="example-list">
+              <li>
+                • <strong>Web App</strong> - User-facing application (React, Vue, etc.)
+              </li>
+              <li>
+                • <strong>API Server</strong> - Backend API (Node.js, Python, etc.)
+              </li>
+              <li>
+                • <strong>Database</strong> - Data storage (PostgreSQL, MongoDB, etc.)
+              </li>
+              <li>
+                • <strong>Queue</strong> - Message queue (RabbitMQ, Redis, etc.)
+              </li>
+            </ul>
+          </div>
+        )}
 
         <div className="items-list">
           {containers.map((c: ElementDump) => (
@@ -400,6 +432,12 @@ export function ContainersStep({
           description="Connect containers within or across systems (e.g., API → Database)"
         />
       )}
+
+      <BestPracticeTip variant="info" show={l2Elements.length > 0} stepId="containers-progress">
+        Great progress! You have {l2Elements.length} container-level element(s). Continue building
+        your architecture, then add goals & requirements in the final step to formalize and tag them
+        to your elements.
+      </BestPracticeTip>
 
       {/* L2 Governance */}
       {l2Elements.length > 0 && (

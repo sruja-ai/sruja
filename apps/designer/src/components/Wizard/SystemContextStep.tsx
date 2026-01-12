@@ -105,8 +105,11 @@ export function SystemContextStep({
         show={persons.length === 0 && systems.length === 0}
         stepId="context"
       >
-        <strong>Start with actors</strong> — Identify who uses your system: Users, Admins, External
-        Services. This is C4 Level 1 (System Context).
+        <strong>Getting Started:</strong> Think about who uses your system and what your system
+        does.
+        <br />
+        <strong>Examples:</strong> Actors like "Customer", "Admin", or "Mobile App". Systems like
+        "E-commerce Platform" or "Payment Service".
       </BestPracticeTip>
 
       {/* Modals */}
@@ -128,7 +131,28 @@ export function SystemContextStep({
           Actors (Persons)
           <span className="count-badge">{persons.length}</span>
         </h3>
-        <p className="section-description">People or roles that interact with your system</p>
+        <p className="section-description">
+          People or roles that interact with your system. Examples: Customer, Admin, Mobile App User
+        </p>
+
+        {persons.length === 0 && (
+          <div className="empty-state-hint">
+            <p>
+              💡 <strong>Tip:</strong> Start by adding who uses your system. For example:
+            </p>
+            <ul className="example-list">
+              <li>
+                • <strong>Customer</strong> - People who buy products
+              </li>
+              <li>
+                • <strong>Admin</strong> - People who manage the system
+              </li>
+              <li>
+                • <strong>Mobile App</strong> - External application
+              </li>
+            </ul>
+          </div>
+        )}
 
         <div className="items-list">
           {persons.map((person: ElementDump) => (
@@ -187,8 +211,29 @@ export function SystemContextStep({
           <span className="count-badge">{systems.length}</span>
         </h3>
         <p className="section-description">
-          Your main system and any external systems it interacts with
+          Your main system and any external systems it interacts with. Examples: "E-commerce
+          Platform", "Payment Service", "Email Service"
         </p>
+
+        {systems.length === 0 && (
+          <div className="empty-state-hint">
+            <p>
+              💡 <strong>Tip:</strong> Add your main system and any external services it uses. For
+              example:
+            </p>
+            <ul className="example-list">
+              <li>
+                • <strong>E-commerce Platform</strong> - Your main application
+              </li>
+              <li>
+                • <strong>Payment Service</strong> - External payment provider (mark as external)
+              </li>
+              <li>
+                • <strong>Email Service</strong> - External email provider (mark as external)
+              </li>
+            </ul>
+          </div>
+        )}
 
         <div className="items-list">
           {systems.map((system: ElementDump) => (
@@ -273,8 +318,8 @@ export function SystemContextStep({
                 : String(rel.target || "");
             return !srcFqn.includes(".") && !tgtFqn.includes(".");
           }}
-          title="L1 Relations"
-          description="Connect actors to systems (e.g., User → WebApp)"
+          title="Connect Actors to Systems"
+          description="Show how actors interact with your systems (e.g., User → WebApp, Admin → API)"
         />
       )}
 

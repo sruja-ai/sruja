@@ -25,6 +25,7 @@ export function WizardStepper({
   extraActions,
 }: WizardStepperProps) {
   const currentLabel = steps[currentStep]?.label || "";
+  const currentDesc = steps[currentStep]?.description || "";
 
   return (
     <div className="wizard-progress-container">
@@ -32,7 +33,7 @@ export function WizardStepper({
       <div className="wizard-progress-header">
         <div className="current-step-info">
           <span className="current-step-label">{currentLabel}</span>
-          {/* <span className="current-step-desc"> - {currentDesc}</span> */}
+          {currentDesc && <span className="current-step-desc"> - {currentDesc}</span>}
         </div>
 
         <div
@@ -81,9 +82,37 @@ export function WizardStepper({
                             ${isCompleted ? "completed" : ""} 
                             ${isLocked ? "locked" : ""}
                         `}
-              onClick={() => !isLocked && onStepClick(index)}
-              title={`${step.label}${isLocked ? " (Locked)" : ""}`}
+              onClick={() => onStepClick(index)}
+              title={`${step.label}${step.description ? ` - ${step.description}` : ""}${isLocked ? " (Prerequisites not met)" : ""}`}
             />
+          );
+        })}
+      </div>
+
+      {/* Step Labels Row - Clickable Steps */}
+      <div className="step-labels-row">
+        {steps.map((step, index) => {
+          const isActive = index === currentStep;
+          const isCompleted = step.isComplete || index < currentStep;
+          const isLocked = step.isLocked;
+
+          return (
+            <button
+              key={step.id}
+              type="button"
+              className={`step-label-button
+                            ${isActive ? "active" : ""} 
+                            ${isCompleted ? "completed" : ""} 
+                            ${isLocked ? "locked" : ""}
+                        `}
+              onClick={() => onStepClick(index)}
+              disabled={false}
+              title={`${step.label}${step.description ? ` - ${step.description}` : ""}${isLocked ? " (Prerequisites not met)" : ""}`}
+            >
+              <span className="step-label-number">{index + 1}</span>
+              <span className="step-label-text">{step.label}</span>
+              {isCompleted && !isActive && <span className="step-label-check">✓</span>}
+            </button>
           );
         })}
       </div>
