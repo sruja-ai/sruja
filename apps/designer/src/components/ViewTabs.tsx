@@ -1,6 +1,4 @@
-import { Workflow, FileCode, FileText, Hammer } from "lucide-react";
 import { Button } from "@sruja/ui";
-import type { ViewTab } from "../types";
 import "./ViewTabs.css";
 
 interface ViewTabsProps {

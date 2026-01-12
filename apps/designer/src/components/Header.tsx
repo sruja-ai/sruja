@@ -60,10 +60,8 @@ export function Header({
   handleExport,
   handleExportPNG,
   handleExportSVG,
-  reloadFromDsl,
   handleShareHeader,
   handleCreateNewRemote,
-  onOpenCommandPalette,
 }: HeaderProps) {
   return (
     <header className="app-header">
