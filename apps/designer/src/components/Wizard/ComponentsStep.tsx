@@ -133,8 +133,15 @@ export function ComponentsStep({
     return (
       <div className="wizard-step-content">
         <div className="step-placeholder">
-          <h2>No Containers Defined</h2>
-          <p>Go back and add at least one container to add components to.</p>
+          <h2>No Containers Defined Yet</h2>
+          <p>
+            You need to add at least one container first. Go back to the previous step to add
+            containers.
+          </p>
+          <p className="placeholder-hint">
+            💡 <strong>Tip:</strong> Components are optional. You can skip this step if you don't
+            need detailed internal architecture.
+          </p>
           <div className="step-navigation">
             <Button variant="secondary" onClick={onBack}>
               ← Back to Containers
@@ -153,7 +160,7 @@ export function ComponentsStep({
         </div>
         <div className="step-header-content">
           <h2>Add Components</h2>
-          <p>Define the internal components within each container. This is C4 Level 3.</p>
+          <p>Define the internal building blocks within each container (optional detail level).</p>
         </div>
       </div>
 
@@ -167,8 +174,14 @@ export function ComponentsStep({
       />
 
       <BestPracticeTip variant="tip" show={totalComponents === 0} stepId="components">
-        <strong>Components are optional</strong> — Only add L3 detail for containers that need it.
-        Examples: "AuthService", "PaymentProcessor", "OrderValidator"
+        <strong>What are Components?</strong> — Components are the internal building blocks inside
+        containers.
+        <br />
+        <strong>Examples:</strong> "AuthService" (inside API Server), "PaymentProcessor" (inside API
+        Server), "OrderValidator" (inside API Server)
+        <br />
+        <strong>Note:</strong> This is optional - only add components if you need detailed internal
+        architecture.
       </BestPracticeTip>
 
       {/* Container Selector */}
@@ -214,6 +227,31 @@ export function ComponentsStep({
           Components in {selectedPath}
           <span className="count-badge">{components.length}</span>
         </h3>
+
+        {components.length === 0 && (
+          <div className="empty-state-hint">
+            <p>
+              💡 <strong>Tip:</strong> Components are optional. Only add them if you need to show
+              internal details of this container.
+            </p>
+            <ul className="example-list">
+              <li>
+                • <strong>AuthService</strong> - Handles authentication
+              </li>
+              <li>
+                • <strong>PaymentProcessor</strong> - Processes payments
+              </li>
+              <li>
+                • <strong>OrderValidator</strong> - Validates orders
+              </li>
+            </ul>
+            <p
+              style={{ marginTop: "0.75rem", fontSize: "0.8125rem", color: "var(--text-tertiary)" }}
+            >
+              You can skip this step and continue if you don't need component-level detail.
+            </p>
+          </div>
+        )}
 
         <div className="items-list">
           {components.map((c: ElementDump) => (
