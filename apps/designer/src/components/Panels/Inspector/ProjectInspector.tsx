@@ -1,4 +1,5 @@
-import { Shield, FileText, Play } from "lucide-react";
+import { Shield, FileText, Play, LayoutDashboard, Users } from "lucide-react";
+import { useUIStore } from "../../../stores";
 import { Button } from "@sruja/ui";
 import { GovernanceScore } from "../../Architect/GovernanceScore";
 import { useArchitectureStore } from "../../../stores";
@@ -14,7 +15,7 @@ export function ProjectInspector() {
   const relationCount = model.relations?.length ?? 0;
 
   return (
-    <div className="inspector-content-wrapper">
+    <div className="inspector-content">
       {/* Governance Score Widget */}
       <section className="inspector-section">
         <GovernanceScore />
@@ -47,6 +48,23 @@ export function ProjectInspector() {
           <span>Quick Actions</span>
         </div>
         <div className="flex flex-col gap-2">
+          <Button
+            variant="outline"
+            className="justify-start gap-2"
+            onClick={() => useUIStore.getState().setActiveTab("overview")}
+          >
+            <LayoutDashboard size={14} />
+            <span>Full Dashboard</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="justify-start gap-2"
+            onClick={() => useUIStore.getState().setActiveTab("roles")}
+          >
+            <Users size={14} />
+            <span>Manage Roles</span>
+          </Button>
+          <div className="h-px bg-gray-100 my-1" />
           <Button variant="outline" className="justify-start gap-2">
             <Shield size={14} />
             <span>Verifications</span>
