@@ -32,6 +32,7 @@ export function ViewTabs({ activeId, onTabChange, tabs, className = "" }: ViewTa
           id={`tab-${tab.id}`}
           data-testid={`tab-${tab.id}`}
           aria-controls={`tabpanel-${tab.id}`}
+          title={tab.label}
         >
           <div className="view-tab-content">
             {tab.icon}

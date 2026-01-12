@@ -102,7 +102,12 @@ export function Header({
             <Menu size={20} />
           </Button>
         </div>
-        <div className="logo-section">
+        <div
+          className="logo-section"
+          onClick={() => setActiveTab("overview")}
+          style={{ cursor: "pointer" }}
+          title="Go to Overview"
+        >
           <Logo size={22} />
           <span className="app-title">Sruja</span>
         </div>

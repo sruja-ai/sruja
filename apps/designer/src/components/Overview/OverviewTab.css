@@ -2,7 +2,11 @@
 
 .overview-tab {
   width: 100%;
+  /* Flexbox adaptation for SplitLayout */
+  flex: 1;
+  min-height: 0;
   height: 100%;
+  /* Keep height 100% as backup, but min-height: 0 is key for flex */
   overflow-y: auto;
   overflow-x: hidden;
   background: var(--color-background, #ffffff);
@@ -40,6 +44,7 @@
     opacity: 0;
     transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -57,7 +62,7 @@
   align-items: stretch;
 }
 
-.governance-widget-wrapper > * {
+.governance-widget-wrapper>* {
   height: 100%;
 }
 
