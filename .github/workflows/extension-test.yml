@@ -35,6 +35,12 @@ jobs:
           cache: "npm"
           cache-dependency-path: package-lock.json
 
+      - name: Set up Go
+        uses: ./.github/actions/setup-go
+
+      - name: Build WASM
+        uses: ./.github/actions/build-wasm
+
       - name: Install dependencies
         run: npm ci
 
@@ -47,7 +53,7 @@ jobs:
         run: npm test
         if: runner.os != 'Linux'
         continue-on-error: true
-      
+
       - name: Test Summary
         if: always()
         run: |
