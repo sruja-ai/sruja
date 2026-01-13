@@ -171,6 +171,12 @@ jobs:
       - name: Set up Node.js
         uses: ./.github/actions/setup-node
 
+      - name: Set up Go
+        uses: ./.github/actions/setup-go
+
+      - name: Build WASM
+        uses: ./.github/actions/build-wasm
+
       - name: Build designer app
         run: npm run build
         working-directory: apps/designer
