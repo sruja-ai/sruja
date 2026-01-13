@@ -821,7 +821,7 @@ function calculateScore(metrics: Omit<LayoutQuality, "score">): number {
   let score = 1.0;
 
   // DEBUG: Verify new scoring code is being used
-  // eslint-disable-next-line no-console
+
   // eslint-disable-next-line no-console
   console.log("[SCORE_DEBUG_V2] New scoring formula active - crossings:", metrics.edgeCrossings);
 

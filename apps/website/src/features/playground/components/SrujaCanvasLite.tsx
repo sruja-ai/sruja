@@ -73,8 +73,8 @@ async function runLayout(dot: string): Promise<LayoutResult> {
     objs.forEach((obj) => {
       if (obj.pos && obj.name && !obj.name.startsWith("cluster_")) {
         const [gx, gy] = obj.pos.split(",").map(Number);
-        const w = parseFloat(obj.width) * 72;
-        const h = parseFloat(obj.height) * 72;
+        const w = parseFloat(obj.width || "0") * 72;
+        const h = parseFloat(obj.height || "0") * 72;
 
         // Convert to React Flow coordinates (invert Y)
         const x = gx - w / 2;

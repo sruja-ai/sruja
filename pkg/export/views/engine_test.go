@@ -121,6 +121,78 @@ func TestViewEngine_ComputeView_L2Focus(t *testing.T) {
 	}
 }
 
+func TestViewEngine_ComputeView_L2NonExistentFocus(t *testing.T) {
+	dsl := `
+		System = system "System" {
+			API = container "API"
+			DB = database "DB"
+		}
+	`
+	prog := parseDSL(t, dsl)
+
+	engine := NewViewEngine(ViewConfig{ViewLevel: 2, FocusNodeID: "NonExistent"})
+	res := engine.ComputeView(prog)
+
+	if len(res.Elements) != 0 {
+		t.Errorf("Expected empty elements for non-existent L2 focus, got %d elements", len(res.Elements))
+	}
+	if len(res.Relations) != 0 {
+		t.Errorf("Expected empty relations for non-existent L2 focus, got %d relations", len(res.Relations))
+	}
+}
+
+func TestViewEngine_ComputeView_L3NonExistentFocus(t *testing.T) {
+	dsl := `
+		System = system "System" {
+			API = container "API" {
+				Auth = component "Auth"
+			}
+		}
+	`
+	prog := parseDSL(t, dsl)
+
+	engine := NewViewEngine(ViewConfig{ViewLevel: 3, FocusNodeID: "NonExistent"})
+	res := engine.ComputeView(prog)
+
+	if len(res.Elements) != 0 {
+		t.Errorf("Expected empty elements for non-existent L3 focus, got %d elements", len(res.Elements))
+	}
+	if len(res.Relations) != 0 {
+		t.Errorf("Expected empty relations for non-existent L3 focus, got %d relations", len(res.Relations))
+	}
+}
+
+func TestViewEngine_ComputeView_NonExistentViewID(t *testing.T) {
+	dsl := `
+		System = system "System" {
+			API = container "API"
+			DB = database "DB"
+		}
+		User = person "User"
+	`
+	prog := parseDSL(t, dsl)
+
+	// Test with a ViewID that doesn't exist - should fall back to level-based filtering
+	engine := NewViewEngine(ViewConfig{ViewLevel: 1, ViewID: "NonExistentView"})
+	res := engine.ComputeView(prog)
+
+	// Should fall back to L1 filtering (person and system elements)
+	foundSystem := false
+	foundUser := false
+	for _, el := range res.Elements {
+		if el.ID == "System" {
+			foundSystem = true
+		}
+		if el.ID == "User" {
+			foundUser = true
+		}
+	}
+
+	if !foundSystem || !foundUser {
+		t.Errorf("Expected System and User in fallback L1 view, got System=%v, User=%v", foundSystem, foundUser)
+	}
+}
+
 func TestViewEngine_ComputeView_L3Focus(t *testing.T) {
 	dsl := `
 		System = system "System" {

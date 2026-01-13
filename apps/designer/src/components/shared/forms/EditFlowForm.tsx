@@ -112,7 +112,7 @@ export function EditFlowForm({ isOpen, onClose, flow }: EditFlowFormProps) {
       });
       form.clearErrors();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     // form.setValues and form.clearErrors are stable callbacks from useFormState
   }, [isOpen, flow]);
 
