@@ -1,6 +1,7 @@
 import { ArrowRight, Plus } from "lucide-react";
 import { Button } from "@sruja/ui";
 import { useArchitectureStore } from "../../stores/architectureStore";
+import { BestPracticeTip } from "../shared/BestPracticeTip";
 import "./WizardSteps.css";
 
 interface FlowsStepProps {

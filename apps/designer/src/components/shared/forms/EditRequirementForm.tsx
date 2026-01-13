@@ -7,7 +7,7 @@ import type { RequirementDump, SrujaModelDump, ElementDump } from "@sruja/shared
 import { Button, Listbox, Select } from "@sruja/ui";
 import type { ListOption } from "@sruja/ui";
 import { SidePanel } from "../SidePanel";
-import { FormField, useFormState, type FormErrors } from "./";
+import { FormField, useFormState, type FormErrors, NameField, DescriptionField } from "./";
 import { REQUIREMENT_TYPES } from "./constants";
 import "../EditForms.css";
 
@@ -176,20 +176,16 @@ export function EditRequirementForm({
           value={form.values.type}
           onChange={(value) => form.setValue("type", value)}
         />
-        <FormField
-          name="title"
+        <NameField
           label="Title"
           value={form.values.title}
           onChange={(value) => form.setValue("title", value)}
-          placeholder="Requirement title"
           error={form.errors.title}
+          placeholder="Requirement title"
         />
-        <FormField
-          name="description"
-          label="Description"
+        <DescriptionField
           value={form.values.description}
           onChange={(value) => form.setValue("description", value)}
-          type="textarea"
           rows={4}
           placeholder="Requirement description"
         />

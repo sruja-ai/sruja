@@ -62,7 +62,7 @@ export function validateHeadingHierarchy(
  */
 export function countInternalLinks(content: string, baseUrl: string = "https://sruja.ai"): number {
   // Match markdown links: [text](/path) or [text](https://sruja.ai/path)
-  const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\)]+|\/[^\)]+)\)/g;
+  const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^)]+|\/[^)]+)\)/g;
   let count = 0;
   let match;
 
@@ -89,7 +89,7 @@ export function extractKeywords(
   const cleanContent = content
     .replace(/```[\s\S]*?```/g, "") // Remove code blocks
     .replace(/`[^`]+`/g, "") // Remove inline code
-    .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1") // Convert links to text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // Convert links to text
     .replace(/[#*_~`]/g, "") // Remove markdown formatting
     .toLowerCase();
 

@@ -3,9 +3,7 @@
     "module": "commonjs",
     "target": "ES2020",
     "outDir": "./out",
-    "lib": [
-      "ES2020"
-    ],
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "sourceMap": true,
     "esModuleInterop": true,
     "moduleResolution": "node",
@@ -15,15 +13,8 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@sruja/shared/*": [
-        "../../packages/shared/src/*"
-      ]
+      "@sruja/shared/*": ["../../packages/shared/src/*"]
     }
   },
-  "exclude": [
-    "node_modules",
-    ".vscode-test",
-    "scripts",
-    "eslint.config.ts"
-  ]
+  "exclude": ["node_modules", ".vscode-test", "scripts", "eslint.config.ts"]
 }

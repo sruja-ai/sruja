@@ -82,7 +82,7 @@ export function MonacoEditor({
           timeoutId = setTimeout(checkAndInit, 50);
           return;
         }
-      } catch (_e) {
+      } catch {
         // Container might be in shadow DOM or detached
         timeoutId = setTimeout(checkAndInit, 50);
         return;
@@ -104,7 +104,7 @@ export function MonacoEditor({
             ) {
               return;
             }
-          } catch (_e) {
+          } catch {
             return;
           }
 
@@ -136,7 +136,7 @@ export function MonacoEditor({
             ) {
               return;
             }
-          } catch (_e) {
+          } catch {
             return;
           }
 
@@ -176,7 +176,7 @@ export function MonacoEditor({
               setTimeout(() => {
                 try {
                   editor?.layout();
-                } catch (_err) {
+                } catch {
                   // Ignore layout errors
                 }
               }, 100);
@@ -288,7 +288,7 @@ export function MonacoEditor({
       if (editor) {
         try {
           editor.dispose();
-        } catch (_err) {
+        } catch {
           // Ignore disposal errors
         }
         editor = null;
@@ -302,7 +302,7 @@ export function MonacoEditor({
             cleanup();
           }
           editorRef.current.dispose();
-        } catch (_err) {
+        } catch {
           // Ignore disposal errors
         }
         editorRef.current = null;

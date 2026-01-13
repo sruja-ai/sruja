@@ -143,7 +143,7 @@ func (l *ElementLookup) GetContainer(fqn string) string {
 		for currentInfo, ok := info, true; ok && currentInfo.ParentID != ""; currentInfo, ok = l.Elements[currentInfo.ParentID] {
 			kind := strings.ToLower(currentInfo.Kind)
 			if kind == "container" || kind == "datastore" || kind == "queue" {
-				return currentInfo.ParentID
+				return currentInfo.ID
 			}
 		}
 	}

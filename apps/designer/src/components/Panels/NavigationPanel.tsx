@@ -163,8 +163,9 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
             <button
               className={`segment-btn ${currentLevel === "L1" ? "active" : ""}`}
               onClick={goToRoot}
+              title="System Context - Actors and Systems"
             >
-              L1
+              <span className="level-label">Context</span>
             </button>
             <button
               className={`segment-btn ${currentLevel === "L2" ? "active" : ""}`}
@@ -174,8 +175,9 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                 else if (selectedElement?.kind === "system")
                   drillDown(selectedElement.id, "system");
               }}
+              title="Containers - Apps, Databases, Queues"
             >
-              L2
+              <span className="level-label">Containers</span>
             </button>
             <button
               className={`segment-btn ${currentLevel === "L3" ? "active" : ""}`}
@@ -185,8 +187,9 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                 else if (selectedElement?.kind === "container")
                   drillDown(selectedElement.id, "container", selectedElement.parent || undefined);
               }}
+              title="Components - Internal Building Blocks"
             >
-              L3
+              <span className="level-label">Components</span>
             </button>
           </div>
         </div>
@@ -196,9 +199,21 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
 
         {/* Systems Tree */}
         <div className="nav-section tree-section">
-          <div className="tree-header">ARCHITECTURAL ELEMENTS</div>
+          <div className="tree-header">
+            <span>Systems & Containers</span>
+            <span className="tree-header-hint" title="Your main applications and their parts">
+              ℹ️
+            </span>
+          </div>
           <ul className="nav-tree">
-            {filteredSystems.length === 0 && <li className="nav-empty">No systems found.</li>}
+            {filteredSystems.length === 0 && (
+              <li className="nav-empty">
+                <div className="nav-empty-content">
+                  <p>No systems found.</p>
+                  <p className="nav-empty-hint">💡 Start by adding systems in the Builder tab</p>
+                </div>
+              </li>
+            )}
             {filteredSystems.map((system) => {
               const containers = getChildren(system.id, "container");
               const isExpanded = expandedNodes.has(system.id);
@@ -266,7 +281,15 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
         {/* Persons */}
         {filteredPersons.length > 0 && (
           <div className="nav-section tree-section">
-            <div className="tree-header">ACTORS</div>
+            <div className="tree-header">
+              <span>Actors</span>
+              <span
+                className="tree-header-hint"
+                title="People or external systems that use your system"
+              >
+                ℹ️
+              </span>
+            </div>
             <ul className="nav-tree">
               {filteredPersons.map((person) => (
                 <NavTreeItem
@@ -289,7 +312,16 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
         )}
 
         {/* Empty state */}
-        {!model && <div className="panel-empty">No architecture loaded</div>}
+        {!model && (
+          <div className="panel-empty">
+            <div className="panel-empty-content">
+              <p>No architecture loaded</p>
+              <p className="panel-empty-hint">
+                💡 Go to the <strong>Builder</strong> tab to start creating your architecture
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

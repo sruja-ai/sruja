@@ -4,7 +4,7 @@ import { useArchitectureStore } from "../../../stores";
 import { SidePanel } from "../SidePanel";
 import { ArrowRight, Trash2, Plus } from "lucide-react";
 import { Button, Input } from "@sruja/ui";
-import { FormField, useFormState, type FormErrors } from "./";
+import { FormField, useFormState, type FormErrors, NameField, DescriptionField } from "./";
 import type { FlowDump, SrujaModelDump /* ScenarioStepDump unavailable */ } from "@sruja/shared";
 import "../EditForms.css";
 
@@ -181,21 +181,16 @@ export function EditFlowForm({ isOpen, onClose, flow }: EditFlowFormProps) {
           placeholder="F1"
           error={form.errors.id}
         />
-        <FormField
+        <NameField
           label="Title"
-          name="title"
           value={form.values.title}
           onChange={(value) => form.setValue("title", value)}
-          required
-          placeholder="Flow title"
           error={form.errors.title}
+          placeholder="Flow title"
         />
-        <FormField
-          label="Description"
-          name="description"
+        <DescriptionField
           value={form.values.description}
           onChange={(value) => form.setValue("description", value)}
-          type="textarea"
           rows={3}
           placeholder="Flow description"
         />

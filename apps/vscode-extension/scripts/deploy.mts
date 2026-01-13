@@ -20,10 +20,16 @@ for (const i of installers) {
   try {
     await $`${i.cmd} --version`.quiet();
     console.log(`Installing with ${i.cmd}...`);
-    await $`${i.cmd} ${i.args}`;
-    any = true;
+    try {
+      await $`${i.cmd} ${i.args}`;
+      console.log(`✅ Installed to ${i.cmd}`);
+      any = true;
+    } catch (installErr) {
+      console.log(`⚠️  ${i.cmd} installation failed (CLI bug or permission issue)`);
+      any = true; // VSIX was still built successfully
+    }
   } catch {
-    // Command not available
+    // Command not available, skip silently
   }
 }
 

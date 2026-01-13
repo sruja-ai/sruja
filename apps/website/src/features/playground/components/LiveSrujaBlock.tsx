@@ -1,22 +1,51 @@
 // apps/website/src/features/playground/components/LiveSrujaBlock.tsx
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { SrujaMonacoEditor } from "@sruja/ui";
 import { SrujaLoader } from "@sruja/ui";
 import { initWasm, logger } from "@sruja/shared";
 import { trackEvent, trackInteraction } from "@/shared/utils/analytics";
-import type { SrujaModelDump } from "@sruja/shared";
+import type { SrujaModelDump, DotResult } from "@sruja/shared";
 import { SrujaDiagramPreview } from "./SrujaDiagramPreview";
 
 export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
-  const [dsl, setDsl] = useState(initialDsl);
+  const [dsl, setDsl] = useState(() => {
+    // If the input is already clean (no pervasive indentation), return it
+    if (!initialDsl.includes("\n")) return initialDsl;
+
+    const lines = initialDsl.split("\n");
+    // Ignore first/last empty lines often caused by template literals
+    let start = 0;
+    while (start < lines.length && lines[start].trim() === "") start++;
+    let end = lines.length - 1;
+    while (end >= start && lines[end].trim() === "") end--;
+
+    if (start > end) return ""; // All empty
+
+    const relevantLines = lines.slice(start, end + 1);
+
+    // Calculate minimum indentation of non-empty lines
+    const minIndent = relevantLines.reduce((min, line) => {
+      if (line.trim() === "") return min;
+      const match = line.match(/^(\s*)/);
+      return Math.min(min, match ? match[1].length : 0);
+    }, Infinity);
+
+    // If unreasonable indent (e.g. infinite or 0), just return trimmed
+    if (minIndent === Infinity || minIndent === 0) return relevantLines.join("\n");
+
+    return relevantLines
+      .map((line) => (line.length >= minIndent ? line.slice(minIndent) : line))
+      .join("\n");
+  });
   const [data, setData] = useState<SrujaModelDump | null>(null);
+  const [dotResult, setDotResult] = useState<DotResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
+  const isInitialRender = useRef(true);
 
   const renderDiagram = useCallback(async () => {
     setBusy(true);
     setErrorHeader(null);
-    trackInteraction("click", "render_button", { component: "playground" });
 
     try {
       const normalize = (s: string) => {
@@ -25,18 +54,33 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
           .replace(/[“”]/g, '"')
           .replace(/[’]/g, "'")
           .replace(/\u2013|\u2014/g, "-");
+
+        // Split and trim trailing whitespace, but keep leading whitespace for indentation
         return basic
           .split(/\r?\n/)
           .map((line) => line.replace(/^\s*\d+\s*[→:.-]\s?/, ""))
-          .join("\n");
+          .join("\n")
+          .trim();
       };
       const input = normalize(dsl);
       const api = await initWasm();
-      // Use model export instead of legacy JSON export
+
+      // Get model dump for general info
       const jsonStr = await api.dslToModel(input);
       const parsed = JSON.parse(jsonStr) as SrujaModelDump;
       setData(parsed);
-      trackInteraction("success", "render_diagram", { component: "playground" });
+
+      // Get DOT result for layout/rendering
+      try {
+        const dot = await api.dslToDot(input);
+        setDotResult(dot);
+      } catch (mErr) {
+        logger.warn("Failed to generate DOT for playground", { error: mErr });
+      }
+
+      if (!isInitialRender.current) {
+        trackInteraction("success", "render_diagram", { component: "playground" });
+      }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       setErrorHeader(msg);
@@ -48,6 +92,7 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
       });
     } finally {
       setBusy(false);
+      isInitialRender.current = false;
     }
   }, [dsl]);
 
@@ -55,7 +100,18 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
   useEffect(() => {
     renderDiagram();
     trackEvent("live.render_view");
-  }, [renderDiagram]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounced auto-render on change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isInitialRender.current) {
+        renderDiagram();
+      }
+    }, 1000); // 1s debounce for live preview
+    return () => clearTimeout(timer);
+  }, [dsl, renderDiagram]);
 
   const [theme, setTheme] = useState<"vs" | "vs-dark" | "hc-black">(() =>
     typeof document !== "undefined" &&
@@ -99,7 +155,14 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
             value={dsl}
             onChange={(v) => setDsl(v || "")}
             theme={theme}
-            options={{ minimap: { enabled: false }, wordWrap: "on", fontSize: 14 }}
+            options={{
+              minimap: { enabled: false },
+              wordWrap: "on",
+              fontSize: 14,
+              tabSize: 2,
+              insertSpaces: true,
+              detectIndentation: false,
+            }}
             height="640px"
           />
         </div>
@@ -122,8 +185,8 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
               Failed to render: {errorHeader}
             </div>
           )}
-          {data ? (
-            <SrujaDiagramPreview model={data} />
+          {dotResult ? (
+            <SrujaDiagramPreview model={data!} dotResult={dotResult} />
           ) : (
             <div
               style={{
@@ -138,33 +201,6 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
             </div>
           )}
         </div>
-      </div>
-      <div
-        style={{
-          padding: 8,
-          display: "flex",
-          gap: 8,
-          justifyContent: "flex-end",
-          borderTop: "1px solid var(--color-border)",
-        }}
-      >
-        <button
-          onClick={() => {
-            trackInteraction("click", "render_button", { component: "playground" });
-            renderDiagram();
-          }}
-          disabled={busy}
-          style={{
-            padding: "8px 12px",
-            border: "1px solid var(--color-border)",
-            borderRadius: 6,
-            background: "var(--color-background)",
-            cursor: "pointer",
-            opacity: busy ? 0.7 : 1,
-          }}
-        >
-          {busy ? "Rendering..." : "Render Diagram"}
-        </button>
       </div>
     </div>
   );

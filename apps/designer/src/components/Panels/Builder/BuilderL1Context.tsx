@@ -7,14 +7,8 @@ import { useFeatureFlagsStore } from "../../../stores/featureFlagsStore";
 import { BestPracticeTip } from "@sruja/ui";
 import "@sruja/ui/components/BestPracticeTip.css";
 import { useBuilderProgress } from "../../../hooks/useBuilderProgress";
+import { slugify } from "../../../utils/slugify";
 import type { SrujaModelDump } from "@sruja/shared";
-
-const slugify = (text: string) =>
-  text
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 
 export function BuilderL1Context() {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);

@@ -35,6 +35,14 @@ export function OverviewHero({
               {overview?.summary && <p className="overview-summary">{overview.summary}</p>}
             </div>
           )}
+          {!hasContent && isEditMode() && (
+            <div className="overview-hero-empty-hint">
+              <p>
+                💡 <strong>Tip:</strong> Add a description to explain what this architecture does
+                and why it exists.
+              </p>
+            </div>
+          )}
         </div>
         <div className="overview-hero-actions">
           {isEditMode() && (overview || archMetadata) && (

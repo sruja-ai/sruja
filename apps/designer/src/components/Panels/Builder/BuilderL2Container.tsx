@@ -5,14 +5,8 @@ import { useArchitectureStore } from "../../../stores/architectureStore";
 import { useViewStore } from "../../../stores/viewStore";
 import { useFeatureFlagsStore } from "../../../stores/featureFlagsStore";
 import { useBuilderProgress } from "../../../hooks/useBuilderProgress";
+import { slugify } from "../../../utils/slugify";
 import type { SrujaModelDump } from "@sruja/shared";
-
-const slugify = (text: string) =>
-  text
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 
 export function BuilderL2Container() {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);

@@ -85,9 +85,10 @@ func TestSLOValidationRule_ValidateAvailability(t *testing.T) {
 			errCount := 0
 			warnCount := 0
 			for _, d := range diags {
-				if d.Severity == diagnostics.SeverityError {
+				switch d.Severity {
+				case diagnostics.SeverityError:
 					errCount++
-				} else if d.Severity == diagnostics.SeverityWarning {
+				case diagnostics.SeverityWarning:
 					warnCount++
 				}
 			}

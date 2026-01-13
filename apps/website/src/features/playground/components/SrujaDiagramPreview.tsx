@@ -1,14 +1,29 @@
-// apps/website/src/features/playground/components/SrujaDiagramPreview.tsx
-// Simple diagram preview component for website playground
-import type { SrujaModelDump } from "@sruja/shared";
+import type { SrujaModelDump, DotResult } from "@sruja/shared";
+import { SrujaCanvasLite } from "./SrujaCanvasLite";
 
 interface SrujaDiagramPreviewProps {
   model: SrujaModelDump;
+  dotResult?: DotResult | null;
 }
 
-export function SrujaDiagramPreview({ model }: SrujaDiagramPreviewProps) {
+export function SrujaDiagramPreview({ model, dotResult }: SrujaDiagramPreviewProps) {
   const elements = model.elements ? Object.values(model.elements) : [];
+  const elementMap = model.elements || {}; // Map of FQN -> Element
   const relations = model.relations || [];
+
+  if (dotResult) {
+    return (
+      <div
+        style={{
+          height: "100%",
+          width: "100%",
+          background: "var(--color-background-secondary)",
+        }}
+      >
+        <SrujaCanvasLite dotResult={dotResult} />
+      </div>
+    );
+  }
 
   if (elements.length === 0) {
     return (
@@ -67,12 +82,31 @@ export function SrujaDiagramPreview({ model }: SrujaDiagramPreviewProps) {
             <strong>Relations ({relations.length})</strong>
           </div>
           <div style={{ display: "grid", gap: 4, fontSize: 13 }}>
-            {relations.map((rel, idx) => (
-              <div key={idx} style={{ color: "var(--color-text-secondary)" }}>
-                {String(rel.source)} → {String(rel.target)}
-                {rel.title ? `: ${rel.title}` : ""}
-              </div>
-            ))}
+            {relations.map((rel, idx) => {
+              // Handle FqnRef objects (from SrujaRelationDump) or string FQNs
+              const sourceFqn =
+                typeof rel.source === "string"
+                  ? rel.source
+                  : (rel.source as { model?: string })?.model || String(rel.source);
+              const targetFqn =
+                typeof rel.target === "string"
+                  ? rel.target
+                  : (rel.target as { model?: string })?.model || String(rel.target);
+
+              // Find elements by FQN (key in the Record) or by id
+              const sourceElem = elementMap[sourceFqn] || elements.find((e) => e.id === sourceFqn);
+              const targetElem = elementMap[targetFqn] || elements.find((e) => e.id === targetFqn);
+
+              const sourceName = sourceElem?.title || sourceElem?.id || sourceFqn;
+              const targetName = targetElem?.title || targetElem?.id || targetFqn;
+
+              return (
+                <div key={idx} style={{ color: "var(--color-text-secondary)" }}>
+                  {sourceName} → {targetName}
+                  {rel.title ? `: ${rel.title}` : ""}
+                </div>
+              );
+            })}
           </div>
         </>
       )}
