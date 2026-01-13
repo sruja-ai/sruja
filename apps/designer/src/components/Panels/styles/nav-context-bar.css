@@ -58,6 +58,20 @@
     padding: 16px 16px 8px;
     letter-spacing: 0.05em;
     text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tree-header-hint {
+    font-size: 0.65rem;
+    cursor: help;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.tree-header-hint:hover {
+    opacity: 1;
 }
 
 /* Compact Level Selector */

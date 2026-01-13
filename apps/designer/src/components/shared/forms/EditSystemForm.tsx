@@ -1,12 +1,20 @@
 // apps/designer/src/components/shared/forms/EditSystemForm.tsx
 // Refactored to use Mantine form components and useFormState hook
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { useArchitectureStore } from "../../../stores";
 import type { ElementDump } from "@sruja/shared";
 import { SidePanel } from "../SidePanel";
 import { Button } from "@sruja/ui";
-import { FormField, useFormState, type FormErrors } from "./";
+import {
+  useFormState,
+  type FormErrors,
+  NameField,
+  DescriptionField,
+  CustomIdField,
+  useFormReset,
+  extractDescription,
+} from "./";
 import { slugify } from "../../../utils/slugify";
 import "../EditForms.css";
 
@@ -34,10 +42,7 @@ export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSys
   const form = useFormState<FormValues>({
     initialValues: {
       name: system?.title || initialName || "",
-      description:
-        typeof system?.description === "string"
-          ? system.description
-          : (system?.description as unknown as { txt: string })?.txt || "",
+      description: extractDescription(system),
       customId: false,
       idInput: system?.id || "",
       isExternal: system?.tags?.includes("external") || false,
@@ -85,7 +90,7 @@ export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSys
           id: targetId,
           kind: "system",
           title: values.name,
-          description: typeof values.description === "string" ? values.description : undefined,
+          description: values.description || undefined,
           tags: tags.length > 0 ? tags : undefined,
           links: system?.links,
           style: {},
@@ -96,7 +101,7 @@ export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSys
           newElements[targetId as string] = {
             ...(model.elements[system.id] as ElementDump),
             title: values.name,
-            description: typeof values.description === "string" ? values.description : undefined,
+            description: values.description || undefined,
             tags: tags.length > 0 ? tags : undefined,
           };
         }
@@ -108,21 +113,18 @@ export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSys
   });
 
   // Reset form when opening/switching contexts
-  useEffect(() => {
-    if (isOpen) {
-      form.setValues({
-        name: system?.title || initialName || "",
-        description:
-          (typeof system?.description === "string"
-            ? system.description
-            : (system?.description as unknown as { txt: string })?.txt || "") || "",
-        idInput: system?.id || "",
-        customId: false,
-        isExternal: system?.tags?.includes("external") || false,
-      });
-      form.clearErrors();
-    }
-  }, [isOpen, system, initialName]); // eslint-disable-line react-hooks/exhaustive-deps
+  useFormReset(
+    form,
+    isOpen,
+    {
+      name: system?.title || initialName || "",
+      description: extractDescription(system),
+      idInput: system?.id || "",
+      customId: false,
+      isExternal: system?.tags?.includes("external") || false,
+    },
+    [system, initialName]
+  );
 
   return (
     <SidePanel
@@ -147,23 +149,17 @@ export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSys
       }
     >
       <form ref={formRef} id="edit-system-form" onSubmit={form.handleSubmit} className="edit-form">
-        <FormField
+        <NameField
           label="System Name"
-          name="name"
           value={form.values.name}
           onChange={(value) => form.setValue("name", value)}
-          required
-          placeholder="e.g. Payment Gateway"
           error={form.errors.name}
+          placeholder="e.g. Payment Gateway"
         />
 
-        <FormField
-          label="Description"
-          name="description"
+        <DescriptionField
           value={form.values.description}
           onChange={(value) => form.setValue("description", value)}
-          type="textarea"
-          rows={3}
           placeholder="What does this system do?"
         />
 
@@ -178,28 +174,18 @@ export function EditSystemForm({ isOpen, onClose, system, initialName }: EditSys
         </div>
 
         {!system && (
-          <>
-            <div className="form-group checkbox-row">
-              <input
-                id="system-custom-id"
-                type="checkbox"
-                checked={form.values.customId}
-                onChange={(e) => form.setValue("customId", e.target.checked)}
-              />
-              <label htmlFor="system-custom-id">Set custom ID</label>
-            </div>
-            {form.values.customId && (
-              <FormField
-                label="ID"
-                name="idInput"
-                value={form.values.idInput}
-                onChange={(value) => form.setValue("idInput", value)}
-                required
-                placeholder="e.g. payment_gateway"
-                error={form.errors.idInput}
-              />
-            )}
-          </>
+          <CustomIdField
+            useCustomId={form.values.customId}
+            onUseCustomIdChange={(checked) => form.setValue("customId", checked)}
+            idValue={form.values.idInput}
+            onIdChange={(value) => form.setValue("idInput", value)}
+            error={form.errors.idInput}
+            options={{
+              placeholder: "e.g. payment_gateway",
+              checkboxLabel: "Set custom ID",
+              inputLabel: "ID",
+            }}
+          />
         )}
 
         {form.errors.submit && (

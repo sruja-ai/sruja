@@ -128,8 +128,20 @@ export async function loadWasmModule(wasmPath: string, options?: WasmLoaderOptio
   console.debug("[WASM] WASM module compiled");
 
   console.debug("[WASM] Instantiating WASM module...");
-  const instance = await WebAssemblyAPI.instantiate(wasmModule, go.importObject);
+  const instantiateResult = await WebAssemblyAPI.instantiate(wasmModule, go.importObject);
+
+  // When instantiate() is called with a Module, it returns WebAssembly.Instance directly
+  // When called with bytes, it returns {instance, module}
+  // Handle both cases for robustness
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const instance = (instantiateResult as any).instance || instantiateResult;
   console.debug("[WASM] WASM module instantiated");
+
+  // Verify instance is valid
+  if (!instance) {
+    throw new Error("WASM instantiation returned null or undefined instance");
+  }
+  console.debug("[WASM] Instance validated");
 
   // Run the Go program - note: Go WASM main() typically blocks on a channel
   // to keep the program alive, so go.run() will never return.
@@ -140,6 +152,7 @@ export async function loadWasmModule(wasmPath: string, options?: WasmLoaderOptio
   return new Promise<void>((resolve, reject) => {
     let functionsReady = false;
     const startTime = Date.now();
+    let goRunStarted = false;
 
     // Poll for functions to be available (they're registered before main() blocks)
     const checkInterval = setInterval(() => {
@@ -162,8 +175,19 @@ export async function loadWasmModule(wasmPath: string, options?: WasmLoaderOptio
     const timeout = setTimeout(() => {
       if (!functionsReady) {
         clearInterval(checkInterval);
+        // Check what functions are available for debugging
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const globalObj = global as any;
+        const availableFunctions = Object.keys(globalObj).filter((k) => k.startsWith("sruja_"));
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const hasAnyFn = !!(global as any).sruja_parse_dsl;
+
+        console.error("[WASM] Timeout waiting for functions to register", {
+          goRunStarted,
+          availableFunctions,
+          hasAnyFn,
+        });
+
         if (hasAnyFn) {
           console.debug("[WASM] Some functions available - continuing despite timeout");
           resolve();
@@ -175,8 +199,14 @@ export async function loadWasmModule(wasmPath: string, options?: WasmLoaderOptio
     }, 10000);
 
     // Start go.run() - it will block, but functions should be registered quickly
+    // go.run() starts the Go program which blocks internally, but JavaScript event loop continues
+    // Functions are registered before the blocking occurs
     try {
-      // Run in setImmediate to avoid blocking the current tick
+      goRunStarted = true;
+      console.debug("[WASM] Calling go.run()...");
+
+      // Call go.run() in setImmediate to avoid blocking the current execution context
+      // but still allow the event loop to process the interval checks
       setImmediate(() => {
         try {
           go.run(instance);
@@ -190,7 +220,7 @@ export async function loadWasmModule(wasmPath: string, options?: WasmLoaderOptio
         }
       });
     } catch (error) {
-      console.error("[WASM] Failed to start go.run():", error);
+      console.error("[WASM] Failed to schedule go.run():", error);
       clearInterval(checkInterval);
       clearTimeout(timeout);
       reject(error);

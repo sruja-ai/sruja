@@ -7,6 +7,7 @@ package dot
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/sruja-ai/sruja/pkg/export/views"
@@ -478,7 +479,8 @@ func buildEdgeConstraints(relations []*views.Relation, config Config, nodeCount 
 				for l := range uniqueLabels {
 					labels = append(labels, l)
 				}
-				mergedLabel = strings.Join(labels, ",\\n")
+				sort.Strings(labels)
+				mergedLabel = strings.Join(labels, ", ")
 			} else {
 				mergedLabel = fmt.Sprintf("%d interactions", len(uniqueLabels))
 			}

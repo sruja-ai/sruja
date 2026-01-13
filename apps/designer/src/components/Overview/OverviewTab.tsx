@@ -54,7 +54,8 @@ export function OverviewTab() {
               No Architecture Loaded
             </Text>
             <Text size="sm" c="dimmed" ta="center">
-              Load an example, import a .sruja file, or start building in the Builder tab.
+              Get started by going to the <strong>Builder</strong> tab to create your architecture
+              step-by-step, or load an example to see how it works.
             </Text>
           </Stack>
         </Paper>
@@ -127,7 +128,7 @@ export function OverviewTab() {
                     Builder
                   </Text>
                   <Text size="xs" c="dimmed" lineClamp={1} className="nav-card-description">
-                    Step-by-step design guide
+                    Build your architecture step-by-step
                   </Text>
                 </div>
                 <ArrowRight size={16} className="nav-card-arrow" />
@@ -150,7 +151,7 @@ export function OverviewTab() {
                     Diagram
                   </Text>
                   <Text size="xs" c="dimmed" lineClamp={1} className="nav-card-description">
-                    Visual architecture diagram
+                    View your architecture as a diagram
                   </Text>
                 </div>
                 <ArrowRight size={16} className="nav-card-arrow" />
@@ -173,7 +174,7 @@ export function OverviewTab() {
                     Code
                   </Text>
                   <Text size="xs" c="dimmed" lineClamp={1} className="nav-card-description">
-                    View and edit DSL code
+                    View and edit architecture code
                   </Text>
                 </div>
                 <ArrowRight size={16} className="nav-card-arrow" />
@@ -197,7 +198,7 @@ export function OverviewTab() {
                     Details
                   </Text>
                   <Text size="xs" c="dimmed" lineClamp={1} className="nav-card-description">
-                    Requirements, ADRs, flows
+                    Requirements, decisions, and flows
                   </Text>
                 </div>
                 <ArrowRight size={16} className="nav-card-arrow" />

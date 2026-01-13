@@ -12,6 +12,26 @@
     align-items: center;
     justify-content: center;
     color: var(--text-secondary);
+    padding: 40px 20px;
+}
+
+.dsl-empty-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+    max-width: 400px;
+}
+
+.dsl-empty-hint {
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+}
+
+.dsl-empty-hint strong {
+    color: var(--text-primary);
+    font-weight: 600;
 }
 
 .dsl-panel-header {

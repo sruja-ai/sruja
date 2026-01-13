@@ -64,7 +64,11 @@ export function Breadcrumb({
         <Anchor
           onClick={(e) => {
             e.preventDefault();
-            onHomeClick?.() || onItemClick("root");
+            if (onHomeClick) {
+              onHomeClick();
+            } else {
+              onItemClick("root");
+            }
           }}
           href="#"
           className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"

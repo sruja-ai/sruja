@@ -1,7 +1,7 @@
 // apps/website/src/pages/sitemap.xml.ts
 // Dynamic sitemap generation for all content collections
 
-import { getCollection } from "astro:content";
+import { getCollection, type CollectionEntry } from "astro:content";
 import type { APIRoute } from "astro";
 import { envConfig } from "@/config/env";
 
@@ -37,8 +37,19 @@ export const GET: APIRoute = async () => {
   };
 
   // Helper to get last modified date for content
-  const getLastMod = (entry: any): string => {
-    return formatDate(entry.data.modifiedDate || entry.data.pubDate || entry.data.publishedDate);
+  const getLastMod = (
+    entry:
+      | CollectionEntry<"blog">
+      | CollectionEntry<"docs">
+      | CollectionEntry<"courses">
+      | CollectionEntry<"tutorials">
+      | CollectionEntry<"challenges">
+  ): string => {
+    return formatDate(
+      entry.data.modifiedDate ||
+        (entry.data as { pubDate?: Date; publishedDate?: Date }).pubDate ||
+        (entry.data as { publishedDate?: Date }).publishedDate
+    );
   };
 
   // Build sitemap entries
@@ -60,7 +71,7 @@ export const GET: APIRoute = async () => {
   });
 
   // Add blog posts
-  blogs.forEach((post: any) => {
+  blogs.forEach((post: CollectionEntry<"blog">) => {
     sitemapEntries.push({
       loc: `${siteUrl}/blogs/${post.slug}`,
       lastmod: getLastMod(post),
@@ -70,7 +81,7 @@ export const GET: APIRoute = async () => {
   });
 
   // Add docs
-  docs.forEach((doc: any) => {
+  docs.forEach((doc: CollectionEntry<"docs">) => {
     sitemapEntries.push({
       loc: `${siteUrl}/docs/${doc.slug}`,
       lastmod: getLastMod(doc),
@@ -80,7 +91,7 @@ export const GET: APIRoute = async () => {
   });
 
   // Add courses
-  courses.forEach((course: any) => {
+  courses.forEach((course: CollectionEntry<"courses">) => {
     sitemapEntries.push({
       loc: `${siteUrl}/courses/${course.slug}`,
       lastmod: getLastMod(course),
@@ -90,7 +101,7 @@ export const GET: APIRoute = async () => {
   });
 
   // Add tutorials
-  tutorials.forEach((tutorial: any) => {
+  tutorials.forEach((tutorial: CollectionEntry<"tutorials">) => {
     sitemapEntries.push({
       loc: `${siteUrl}/tutorials/${tutorial.slug}`,
       lastmod: getLastMod(tutorial),
@@ -100,7 +111,7 @@ export const GET: APIRoute = async () => {
   });
 
   // Add challenges
-  challenges.forEach((challenge: any) => {
+  challenges.forEach((challenge: CollectionEntry<"challenges">) => {
     sitemapEntries.push({
       loc: `${siteUrl}/challenges/${challenge.slug}`,
       lastmod: getLastMod(challenge),

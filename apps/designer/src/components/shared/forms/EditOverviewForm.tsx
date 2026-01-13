@@ -7,7 +7,7 @@ import { Button, Input } from "@sruja/ui";
 import type { SrujaExtensions } from "@sruja/shared";
 
 import { SidePanel } from "../SidePanel";
-import { FormField, useFormState } from "./";
+import { FormField, useFormState, DescriptionField } from "./";
 import { X } from "lucide-react";
 import "../EditForms.css";
 
@@ -166,21 +166,17 @@ export function EditOverviewForm({ isOpen, onClose }: EditOverviewFormProps) {
         onSubmit={form.handleSubmit}
         className="edit-form"
       >
-        <FormField
+        <DescriptionField
           label="Architecture Description"
-          name="architectureDescription"
           value={form.values.architectureDescription}
           onChange={(value) => form.setValue("architectureDescription", value)}
-          type="textarea"
           rows={3}
           placeholder="Purpose, scope, and high-level context of the architecture"
         />
-        <FormField
+        <DescriptionField
           label="Summary"
-          name="summary"
           value={form.values.summary}
           onChange={(value) => form.setValue("summary", value)}
-          type="textarea"
           rows={3}
           placeholder="High-level architecture summary"
         />

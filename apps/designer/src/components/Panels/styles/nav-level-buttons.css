@@ -22,6 +22,14 @@
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.level-label {
+    font-size: 11px;
+    font-weight: 500;
 }
 
 .segment-btn:hover:not(:disabled) {

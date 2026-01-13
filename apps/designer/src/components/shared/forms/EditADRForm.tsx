@@ -7,7 +7,7 @@ import type { ADRDump } from "@sruja/shared";
 import { SidePanel } from "../SidePanel";
 import { Button, Listbox } from "@sruja/ui";
 import type { ListOption } from "@sruja/ui";
-import { FormField, useFormState, type FormErrors } from "./";
+import { FormField, useFormState, type FormErrors, NameField, DescriptionField } from "./";
 import { ADR_STATUSES } from "./constants";
 import "../EditForms.css";
 
@@ -148,14 +148,12 @@ export function EditADRForm({ isOpen, onClose, adr }: EditADRFormProps) {
           placeholder="ADR-001"
           error={form.errors.id}
         />
-        <FormField
+        <NameField
           label="Title"
-          name="title"
           value={form.values.title}
           onChange={(value) => form.setValue("title", value)}
-          required
-          placeholder="ADR title"
           error={form.errors.title}
+          placeholder="ADR title"
         />
         <Listbox
           label="Status"
@@ -163,30 +161,24 @@ export function EditADRForm({ isOpen, onClose, adr }: EditADRFormProps) {
           value={form.values.status}
           onChange={(value) => form.setValue("status", value)}
         />
-        <FormField
+        <DescriptionField
           label="Context"
-          name="context"
           value={form.values.context}
           onChange={(value) => form.setValue("context", value)}
-          type="textarea"
           rows={4}
           placeholder="The context and forces that led to this decision"
         />
-        <FormField
+        <DescriptionField
           label="Decision"
-          name="decision"
           value={form.values.decision}
           onChange={(value) => form.setValue("decision", value)}
-          type="textarea"
           rows={4}
           placeholder="The decision that was made"
         />
-        <FormField
+        <DescriptionField
           label="Consequences"
-          name="consequences"
           value={form.values.consequences}
           onChange={(value) => form.setValue("consequences", value)}
-          type="textarea"
           rows={4}
           placeholder="The consequences of this decision"
         />

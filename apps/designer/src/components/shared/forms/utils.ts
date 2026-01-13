@@ -74,3 +74,32 @@ export function generateUniqueId(
   }
   return candidate;
 }
+
+/**
+ * Extract description text from an ElementDump.
+ *
+ * Handles both string descriptions and object descriptions with a `txt` property.
+ * This is a common pattern in the codebase where descriptions can be either:
+ * - A plain string: "Description text"
+ * - An object: { txt: "Description text" }
+ *
+ * @param element - ElementDump to extract description from (optional)
+ * @returns Extracted description string, or empty string if not found
+ *
+ * @example
+ * ```tsx
+ * const description = extractDescription(element);
+ * // Returns "Description text" or ""
+ * ```
+ */
+export function extractDescription(element?: ElementDump): string {
+  if (!element?.description) return "";
+
+  if (typeof element.description === "string") {
+    return element.description;
+  }
+
+  // Handle object format: { txt: "..." }
+  const descriptionObj = element.description as unknown as { txt?: string };
+  return descriptionObj?.txt || "";
+}

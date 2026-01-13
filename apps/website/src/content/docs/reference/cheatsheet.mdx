@@ -11,62 +11,55 @@ import LiveSrujaBlockWrapper from '@/features/playground/components/LiveSrujaBlo
 ## Elements
 
 ```sruja
-person = kind "Person"
-system = kind "System"
-container = kind "Container"
-component = kind "Component"
-datastore = kind "Datastore"
-queue = kind "Queue"
+import { * } from 'sruja.ai/stdlib'
 
 User = person "User"
 App = system "App" {
-Web = container "Web"
-API = container "API"
-DB = datastore "DB"
+    Web = container "Web"
+    API = container "API"
+    DB = database "DB"
 }
 User -> App.Web "Uses"
 App.Web -> App.API "Calls"
 App.API -> App.DB "Reads/Writes"
 
 view index {
-include *
+    include *
 }
 ```
+
+> [!TIP]
+> The `import { * } from 'sruja.ai/stdlib'` line provides all standard kinds. You can also declare kinds manually if needed: `person = kind "Person"`, `system = kind "System"`, etc.
 
 ## Component
 
 ```sruja
-system = kind "System"
-container = kind "Container"
-component = kind "Component"
+import { * } from 'sruja.ai/stdlib'
 
 App = system "App" {
-Web = container "Web" {
-  Cart = component "Cart"
-}
+    Web = container "Web" {
+        Cart = component "Cart"
+    }
 }
 ```
 
 ## Scenario
 
 ```sruja
-person = kind "Person"
-system = kind "System"
-container = kind "Container"
-datastore = kind "Datastore"
+import { * } from 'sruja.ai/stdlib'
 
 User = person "User"
 
 App = system "App" {
-Web = container "Web"
-API = container "API"
-DB = datastore "Database"
+    Web = container "Web"
+    API = container "API"
+    DB = database "Database"
 }
 
 scenario Checkout "Checkout Flow" {
-User -> App.Web "adds items"
-App.Web -> App.API "validates"
-App.API -> App.DB "stores order"
+    User -> App.Web "adds items"
+    App.Web -> App.API "validates"
+    App.API -> App.DB "stores order"
 }
 ```
 
@@ -86,4 +79,4 @@ deployment Prod {
 
 ## Try It Live
 
-<LiveSrujaBlockWrapper initialDsl={"person = kind \"Person\"\nsystem = kind \"System\"\ncontainer = kind \"Container\"\ndatastore = kind \"Datastore\"\n\nUser = person \"User\"\nApp = system \"App\" {\n  Web = container \"Web\"\n  API = container \"API\"\n  DB = datastore \"DB\"\n}\nUser -> App.Web \"Uses\"\nApp.Web -> App.API \"Calls\"\nApp.API -> App.DB \"Reads/Writes\"\n\nview index {\n  include *\n}"} />
+<LiveSrujaBlockWrapper initialDsl={"import { * } from 'sruja.ai/stdlib'\n\nUser = person \"User\"\nApp = system \"App\" {\n  Web = container \"Web\"\n  API = container \"API\"\n  DB = database \"DB\"\n}\nUser -> App.Web \"Uses\"\nApp.Web -> App.API \"Calls\"\nApp.API -> App.DB \"Reads/Writes\"\n\nview index {\n  include *\n}"} />

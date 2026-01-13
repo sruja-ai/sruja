@@ -4,6 +4,7 @@ import { Button, Logo, MantineProvider } from "@sruja/ui";
 import "@sruja/ui/design-system/styles.css";
 import AlgoliaSearch from "@/features/search/components/AlgoliaSearch";
 import { getDesignerUrl } from "@/utils/designer-url";
+import LiveSrujaBlock from "@/features/playground/components/LiveSrujaBlock";
 
 export default function HomeHero() {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -29,11 +30,52 @@ export default function HomeHero() {
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
           <Logo size={56} />
         </div>
-        <h1>The Standard for Architecture-as-Code</h1>
+        <h1>Write Code. Get Diagrams. Never Outdated.</h1>
         <p>
-          Design, validate, and document your software architecture as code. Bridge the gap between
-          system design and implementation with a platform built for modern engineering teams.
+          Design, validate, and document your software architecture as code. Write simple text, get
+          beautiful diagrams that stay in sync with your code.
         </p>
+
+        {/* Interactive Demo */}
+        <div
+          style={{
+            margin: "3rem 0 2rem",
+            maxWidth: "900px",
+            marginInline: "auto",
+          }}
+        >
+          <p
+            style={{
+              fontSize: "1rem",
+              color: "var(--color-text-primary)",
+              marginBottom: "1.5rem",
+              fontWeight: 600,
+              textAlign: "center",
+            }}
+          >
+            ✨ Try it live: Edit the code and watch the diagram update automatically
+          </p>
+          <LiveSrujaBlock
+            initialDsl={[
+              "import { * } from 'sruja.ai/stdlib'",
+              "",
+              'User = person "Customer"',
+              'App = system "E-commerce Platform" {',
+              '  Web = container "React App"',
+              '  API = container "Node.js API"',
+              '  DB = database "PostgreSQL"',
+              "}",
+              "",
+              'User -> App.Web "Visits"',
+              'App.Web -> App.API "Calls"',
+              'App.API -> App.DB "Stores Data"',
+              "",
+              "view index {",
+              "  include *",
+              "}",
+            ].join("\n")}
+          />
+        </div>
 
         {/* Why Sruja? */}
         <div style={{ margin: "2.5rem 0 1.5rem", maxWidth: "700px", marginInline: "auto" }}>
@@ -82,12 +124,16 @@ export default function HomeHero() {
         <div className="hero-actions">
           <Button
             variant="primary"
+            onClick={() => (window.location.href = getDesignerUrl())}
+            style={{ fontSize: "1.1rem", padding: "0.75rem 1.5rem" }}
+          >
+            🚀 Try Now in Designer
+          </Button>
+          <Button
+            variant="secondary"
             onClick={() => (window.location.href = "/docs/getting-started")}
           >
             Get Started
-          </Button>
-          <Button variant="secondary" onClick={() => (window.location.href = getDesignerUrl())}>
-            Open Designer
           </Button>
           <Button variant="outline" onClick={() => (window.location.href = "/docs/examples")}>
             View Examples

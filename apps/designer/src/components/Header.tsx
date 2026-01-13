@@ -63,6 +63,12 @@ export function Header({
   handleShareHeader,
   handleCreateNewRemote,
 }: HeaderProps) {
+  // Call hooks at the top level (not conditionally)
+  const activeEditor = useUIStore((s) => s.activeEditor);
+  const activeView = useUIStore((s) => s.activeView);
+  const setActiveEditor = useUIStore((s) => s.setActiveEditor);
+  const setActiveView = useUIStore((s) => s.setActiveView);
+
   return (
     <header className="app-header">
       {/* Left: Logo & Nav Toggle */}
@@ -132,12 +138,11 @@ export function Header({
               style={{ display: "flex", gap: "8px", alignItems: "center" }}
             >
               <ViewTabs
-                activeId={useUIStore((s) => s.activeEditor)}
-                onTabChange={(id) =>
-                  useUIStore
-                    .getState()
-                    .setActiveEditor(id === useUIStore.getState().activeEditor ? null : (id as any))
-                }
+                activeId={activeEditor}
+                onTabChange={(id) => {
+                  const newEditor = id === activeEditor ? null : (id as "builder" | "code" | null);
+                  setActiveEditor(newEditor);
+                }}
                 tabs={[
                   { id: "builder", icon: <Hammer size={16} />, label: "Builder" },
                   { id: "code", icon: <FileCode size={16} />, label: "Code" },
@@ -153,8 +158,11 @@ export function Header({
               style={{ display: "flex", gap: "8px", alignItems: "center" }}
             >
               <ViewTabs
-                activeId={useUIStore((s) => s.activeView)}
-                onTabChange={(id) => useUIStore.getState().setActiveView(id as any)}
+                activeId={activeView}
+                onTabChange={(id) => {
+                  const newView = id as "diagram" | "docs" | "overview" | "details" | "roles";
+                  setActiveView(newView);
+                }}
                 tabs={[
                   { id: "diagram", icon: <Workflow size={16} />, label: "Diagram" },
                   { id: "docs", icon: <FileText size={16} />, label: "Docs" },

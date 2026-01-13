@@ -56,13 +56,21 @@ export function StatsRow({ stats, onAddRequirement, onAddADR }: StatsRowProps) {
           <Info size={22} />
         </div>
         <span className="stat-value">{stats.adrs}</span>
-        <span className="stat-label">ADRs</span>
+        <span className="stat-label">
+          ADRs
+          <span
+            className="stat-label-hint"
+            title="Architectural Decision Records - Document important technical decisions"
+          >
+            ℹ️
+          </span>
+        </span>
         <Button
           variant="ghost"
           size="sm"
           className="stat-add-btn"
           onClick={onAddADR}
-          title="Add ADR"
+          title="Add Architectural Decision Record"
         >
           <Plus size={14} />
         </Button>

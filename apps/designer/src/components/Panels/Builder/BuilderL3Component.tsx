@@ -4,14 +4,8 @@ import { Info, Plus } from "lucide-react";
 import { useArchitectureStore } from "../../../stores/architectureStore";
 import { useFeatureFlagsStore } from "../../../stores/featureFlagsStore";
 import { useBuilderProgress } from "../../../hooks/useBuilderProgress";
+import { slugify } from "../../../utils/slugify";
 import type { SrujaModelDump } from "@sruja/shared";
-
-const slugify = (text: string) =>
-  text
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 
 export function BuilderL3Component() {
   const updateArchitecture = useArchitectureStore((s) => s.updateArchitecture);

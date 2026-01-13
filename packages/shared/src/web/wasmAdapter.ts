@@ -10,6 +10,7 @@ import {
   type GoConstructor,
   type ScoreResult,
 } from "./wasmTypes";
+export * from "./wasmTypes";
 import { isBrowser } from "../utils/env";
 import { ExportError, parseWasmError, validateDotResult } from "./errors";
 

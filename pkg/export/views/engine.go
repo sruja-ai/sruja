@@ -204,6 +204,12 @@ func (e *ViewEngine) computeViewGraph(prog *language.Program, allElements map[st
 			}
 			isCore = isL2Element
 		} else {
+			// Check if focusID exists before proceeding
+			if _, exists := allElements[focusID]; !exists {
+				if _, existsInLookup := lookup.Elements[focusID]; !existsInLookup {
+					return []*Element{}, []*Relation{}
+				}
+			}
 			addElement(focusID)
 			internalPrefix := focusID + "."
 			for id := range allElements {
@@ -222,6 +228,12 @@ func (e *ViewEngine) computeViewGraph(prog *language.Program, allElements map[st
 			}
 			isCore = func(_ string) bool { return true }
 		} else {
+			// Check if focusID exists before proceeding
+			if _, exists := allElements[focusID]; !exists {
+				if _, existsInLookup := lookup.Elements[focusID]; !existsInLookup {
+					return []*Element{}, []*Relation{}
+				}
+			}
 			addElement(focusID)
 			internalPrefix := focusID + "."
 			for id := range allElements {

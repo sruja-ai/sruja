@@ -30,7 +30,13 @@ export function DSLPanel() {
   if (!model) {
     return (
       <div className="dsl-panel empty">
-        <p>No architecture loaded</p>
+        <div className="dsl-empty-content">
+          <p>No architecture loaded</p>
+          <p className="dsl-empty-hint">
+            💡 Go to the <strong>Builder</strong> tab to start creating your architecture, or load
+            an example.
+          </p>
+        </div>
       </div>
     );
   }

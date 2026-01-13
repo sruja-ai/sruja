@@ -19,7 +19,7 @@ Most teams document architecture in static diagrams (Miro, LucidChart, Visio) or
 
 - **Version Control:** Commit your architecture to Git.
 - **Validation:** CI/CD checks for circular dependencies and rule violations.
-- **Consistency:** Based on the **[C4 Model](/docs/concepts/c4-model)** for clear, hierarchical abstractions.
+- **Consistency:** Based on the **[C4 Model](/docs/concepts/c4-model)** for clear, hierarchical abstractions. (See [Glossary](/docs/glossary) for definitions of key terms.)
 
 ## Who is Sruja For?
 
@@ -34,7 +34,7 @@ Most teams document architecture in static diagrams (Miro, LucidChart, Visio) or
 - **Enforce architectural standards** with policy-as-code
 - **Prevent architectural drift** through automated validation
 - **Scale governance** across multiple teams without manual reviews
-- **Document decisions** with ADRs (Architecture Decision Records)
+- **Document decisions** with [ADRs (Architecture Decision Records)](/docs/concepts/adr)
 
 ### Product Teams
 
@@ -57,10 +57,9 @@ Here's a simple example to get you started:
 ```sruja
 import { * } from 'sruja.ai/stdlib'
 
-
 App = system "My App" {
-Web = container "Web Server"
-DB = database "Database"
+    Web = container "Web Server"
+    DB = database "Database"
 }
 
 User = person "User"
@@ -69,7 +68,7 @@ User -> App.Web "Visits"
 App.Web -> App.DB "Reads/Writes"
 
 view index {
-include *
+    include *
 }
 ```
 

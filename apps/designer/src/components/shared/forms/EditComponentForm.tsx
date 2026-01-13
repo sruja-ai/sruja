@@ -1,12 +1,22 @@
 // apps/designer/src/components/shared/forms/EditComponentForm.tsx
 // Refactored to use Mantine form components
 
-import { useEffect, useRef, useMemo } from "react";
+import { useRef, useMemo } from "react";
 import { useArchitectureStore } from "../../../stores";
 import type { ElementDump } from "@sruja/shared";
 import { SidePanel } from "../SidePanel";
-import { Button, Select, Checkbox } from "@sruja/ui";
-import { FormField, useFormState, type FormErrors } from "./";
+import { Button } from "@sruja/ui";
+import {
+  useFormState,
+  type FormErrors,
+  NameField,
+  DescriptionField,
+  TechnologyField,
+  CustomIdField,
+  ParentSelectField,
+  useFormReset,
+  extractDescription,
+} from "./";
 import { slugify } from "../../../utils/slugify";
 import "../EditForms.css";
 
@@ -56,10 +66,7 @@ export function EditComponentForm({
     initialValues: {
       name: component?.title || initialName || "",
       technology: component?.technology || "",
-      description:
-        typeof component?.description === "string"
-          ? component.description
-          : (component?.description as unknown as { txt: string })?.txt || "",
+      description: extractDescription(component),
       customId: false,
       idInput: component?.id || "",
       selectedSystemId: parentSystemId || (component?.id ? component.id.split(".")[0] : "") || "",
@@ -109,7 +116,7 @@ export function EditComponentForm({
           id: targetId,
           kind: "component",
           title: values.name,
-          description: typeof values.description === "string" ? values.description : undefined,
+          description: values.description || undefined,
           technology: values.technology || undefined,
           tags: component?.tags,
           links: component?.links,
@@ -123,26 +130,23 @@ export function EditComponentForm({
   });
 
   // Reset form when opening/switching contexts
-  useEffect(() => {
-    if (isOpen) {
-      form.setValues({
-        name: component?.title || initialName || "",
-        technology: component?.technology || "",
-        description:
-          (typeof component?.description === "string"
-            ? component.description
-            : (component?.description as unknown as { txt: string })?.txt || "") || "",
-        idInput: component?.id || "",
-        customId: false,
-        selectedSystemId: parentSystemId || (component?.id ? component.id.split(".")[0] : "") || "",
-        selectedContainerId:
-          parentContainerId ||
-          (component?.id ? component.id.split(".").slice(0, 2).join(".") : "") ||
-          "",
-      });
-      form.clearErrors();
-    }
-  }, [isOpen, component, parentSystemId, parentContainerId, initialName]); // eslint-disable-line react-hooks/exhaustive-deps
+  useFormReset(
+    form,
+    isOpen,
+    {
+      name: component?.title || initialName || "",
+      technology: component?.technology || "",
+      description: extractDescription(component),
+      idInput: component?.id || "",
+      customId: false,
+      selectedSystemId: parentSystemId || (component?.id ? component.id.split(".")[0] : "") || "",
+      selectedContainerId:
+        parentContainerId ||
+        (component?.id ? component.id.split(".").slice(0, 2).join(".") : "") ||
+        "",
+    },
+    [component, parentSystemId, parentContainerId, initialName]
+  );
 
   // Update available containers when system changes
   const currentAvailableContainers = useMemo(() => {
@@ -182,78 +186,64 @@ export function EditComponentForm({
       >
         {!component && (
           <>
-            <Select
-              label="Parent System *"
+            <ParentSelectField
+              label="Parent System"
               value={form.values.selectedSystemId}
               onChange={(value) => {
                 form.setValue("selectedSystemId", value || "");
                 form.setValue("selectedContainerId", ""); // Reset container when system changes
               }}
-              disabled={!!parentSystemId}
-              placeholder="Select System"
+              options={systems.map((s) => ({ value: s.id, label: s.title || s.id }))}
               error={form.errors.selectedSystemId}
-              data={systems.map((s) => ({ value: s.id, label: s.title || s.id }))}
+              placeholder="Select System"
+              required
+              disabled={!!parentSystemId}
             />
-            <Select
-              label="Parent Container *"
+            <ParentSelectField
+              label="Parent Container"
               value={form.values.selectedContainerId}
               onChange={(value) => form.setValue("selectedContainerId", value || "")}
-              disabled={!form.values.selectedSystemId || !!parentContainerId}
-              placeholder="Select Container"
-              error={form.errors.selectedContainerId}
-              data={currentAvailableContainers.map((c) => ({
+              options={currentAvailableContainers.map((c) => ({
                 value: c.id,
                 label: c.title || c.id,
               }))}
+              error={form.errors.selectedContainerId}
+              placeholder="Select Container"
+              required
+              disabled={!form.values.selectedSystemId || !!parentContainerId}
             />
           </>
         )}
 
-        <FormField
-          label="Name"
-          name="name"
+        <NameField
           value={form.values.name}
           onChange={(value) => form.setValue("name", value)}
-          required
           error={form.errors.name}
         />
 
-        <FormField
-          label="Technology"
-          name="technology"
+        <TechnologyField
           value={form.values.technology}
           onChange={(value) => form.setValue("technology", value)}
           placeholder="e.g. Redux, JpaRepository"
         />
 
-        <FormField
-          label="Description"
-          name="description"
+        <DescriptionField
           value={form.values.description}
           onChange={(value) => form.setValue("description", value)}
-          type="textarea"
-          rows={3}
         />
 
         {!component && (
-          <>
-            <Checkbox
-              id="component-custom-id"
-              label="Set custom ID"
-              checked={form.values.customId}
-              onChange={(e) => form.setValue("customId", e.currentTarget.checked)}
-            />
-            {form.values.customId && (
-              <FormField
-                label="ID"
-                name="idInput"
-                value={form.values.idInput}
-                onChange={(value) => form.setValue("idInput", value)}
-                required
-                error={form.errors.idInput}
-              />
-            )}
-          </>
+          <CustomIdField
+            useCustomId={form.values.customId}
+            onUseCustomIdChange={(checked) => form.setValue("customId", checked)}
+            idValue={form.values.idInput}
+            onIdChange={(value) => form.setValue("idInput", value)}
+            error={form.errors.idInput}
+            options={{
+              checkboxLabel: "Set custom ID",
+              inputLabel: "ID",
+            }}
+          />
         )}
 
         {form.errors.submit && (

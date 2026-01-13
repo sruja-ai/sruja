@@ -6,7 +6,7 @@ import { useArchitectureStore } from "../../../stores";
 import { Button } from "@sruja/ui";
 import type { Policy, SrujaModelDump } from "@sruja/shared";
 import { SidePanel } from "../SidePanel";
-import { FormField, useFormState, type FormErrors } from "./";
+import { FormField, useFormState, type FormErrors, NameField, DescriptionField } from "./";
 import "../EditForms.css";
 
 interface EditPolicyFormProps {
@@ -141,20 +141,16 @@ export function EditPolicyForm({ isOpen, onClose, policy }: EditPolicyFormProps)
           placeholder="SecurityPolicy"
           error={form.errors.id}
         />
-        <FormField
+        <NameField
           label="Label"
-          name="label"
           value={form.values.label}
           onChange={(value) => form.setValue("label", value)}
-          placeholder="Policy label"
           error={form.errors.label}
+          placeholder="Policy label"
         />
-        <FormField
-          label="Description"
-          name="description"
+        <DescriptionField
           value={form.values.description}
           onChange={(value) => form.setValue("description", value)}
-          type="textarea"
           rows={3}
           placeholder="Policy description"
         />

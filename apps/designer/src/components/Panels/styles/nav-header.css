@@ -95,9 +95,22 @@
 }
 
 .nav-empty {
-    padding: 6px 12px;
+    padding: 12px 16px;
     font-size: 12px;
     color: var(--text-secondary);
+}
+
+.nav-empty-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+}
+
+.nav-empty-hint {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    font-style: italic;
 }
 
 .link-btn {
@@ -203,6 +216,23 @@
     color: var(--text-muted);
     text-align: center;
     font-size: 13px;
+}
+
+.panel-empty-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.panel-empty-hint {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.panel-empty-hint strong {
+    color: var(--text-primary);
+    font-weight: 600;
 }
 
 .nav-section {

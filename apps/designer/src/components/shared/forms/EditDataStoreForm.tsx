@@ -1,12 +1,22 @@
 // apps/designer/src/components/shared/forms/EditDataStoreForm.tsx
 // Refactored to use Mantine form components
 
-import { useEffect, useRef, useMemo } from "react";
+import { useRef, useMemo } from "react";
 import { useArchitectureStore } from "../../../stores";
 import type { ElementDump } from "@sruja/shared";
 import { SidePanel } from "../SidePanel";
-import { Button, Select, Checkbox } from "@sruja/ui";
-import { FormField, useFormState, type FormErrors } from "./";
+import { Button } from "@sruja/ui";
+import {
+  useFormState,
+  type FormErrors,
+  NameField,
+  DescriptionField,
+  TechnologyField,
+  CustomIdField,
+  ParentSelectField,
+  useFormReset,
+  extractDescription,
+} from "./";
 import { slugify } from "../../../utils/slugify";
 import "../EditForms.css";
 
@@ -49,10 +59,7 @@ export function EditDataStoreForm({
     initialValues: {
       name: dataStore?.title || initialName || "",
       technology: dataStore?.technology || "",
-      description:
-        typeof dataStore?.description === "string"
-          ? dataStore.description
-          : (dataStore?.description as unknown as { txt: string })?.txt || "",
+      description: extractDescription(dataStore),
       customId: false,
       idInput: dataStore?.id || "",
       selectedSystemId: parentSystemId || (dataStore?.id ? dataStore.id.split(".")[0] : "") || "",
@@ -100,7 +107,7 @@ export function EditDataStoreForm({
           id: targetId,
           kind: "container",
           title: values.name,
-          description: typeof values.description === "string" ? values.description : undefined,
+          description: values.description || undefined,
           technology: values.technology || undefined,
           tags: tags,
           links: dataStore?.links,
@@ -114,22 +121,19 @@ export function EditDataStoreForm({
   });
 
   // Reset form when opening/switching contexts
-  useEffect(() => {
-    if (isOpen) {
-      form.setValues({
-        name: dataStore?.title || initialName || "",
-        technology: dataStore?.technology || "",
-        description:
-          (typeof dataStore?.description === "string"
-            ? dataStore.description
-            : (dataStore?.description as unknown as { txt: string })?.txt || "") || "",
-        idInput: dataStore?.id || "",
-        customId: false,
-        selectedSystemId: parentSystemId || (dataStore?.id ? dataStore.id.split(".")[0] : "") || "",
-      });
-      form.clearErrors();
-    }
-  }, [isOpen, dataStore, parentSystemId, initialName]); // eslint-disable-line react-hooks/exhaustive-deps
+  useFormReset(
+    form,
+    isOpen,
+    {
+      name: dataStore?.title || initialName || "",
+      technology: dataStore?.technology || "",
+      description: extractDescription(dataStore),
+      idInput: dataStore?.id || "",
+      customId: false,
+      selectedSystemId: parentSystemId || (dataStore?.id ? dataStore.id.split(".")[0] : "") || "",
+    },
+    [dataStore, parentSystemId, initialName]
+  );
 
   return (
     <SidePanel
@@ -160,62 +164,47 @@ export function EditDataStoreForm({
         className="edit-form"
       >
         {!dataStore && (
-          <Select
-            label="Parent System *"
+          <ParentSelectField
+            label="Parent System"
             value={form.values.selectedSystemId}
             onChange={(value) => form.setValue("selectedSystemId", value || "")}
-            disabled={!!parentSystemId}
-            placeholder="Select System"
+            options={systems.map((s) => ({ value: s.id, label: s.title || s.id }))}
             error={form.errors.selectedSystemId}
-            data={systems.map((s) => ({ value: s.id, label: s.title || s.id }))}
+            placeholder="Select System"
+            required
+            disabled={!!parentSystemId}
           />
         )}
 
-        <FormField
-          label="Name"
-          name="name"
+        <NameField
           value={form.values.name}
           onChange={(value) => form.setValue("name", value)}
-          required
           error={form.errors.name}
         />
 
-        <FormField
-          label="Technology"
-          name="technology"
+        <TechnologyField
           value={form.values.technology}
           onChange={(value) => form.setValue("technology", value)}
           placeholder="e.g. PostgreSQL, Redis"
         />
 
-        <FormField
-          label="Description"
-          name="description"
+        <DescriptionField
           value={form.values.description}
           onChange={(value) => form.setValue("description", value)}
-          type="textarea"
-          rows={3}
         />
 
         {!dataStore && (
-          <>
-            <Checkbox
-              id="ds-custom-id"
-              label="Set custom ID"
-              checked={form.values.customId}
-              onChange={(e) => form.setValue("customId", e.currentTarget.checked)}
-            />
-            {form.values.customId && (
-              <FormField
-                label="ID"
-                name="idInput"
-                value={form.values.idInput}
-                onChange={(value) => form.setValue("idInput", value)}
-                required
-                error={form.errors.idInput}
-              />
-            )}
-          </>
+          <CustomIdField
+            useCustomId={form.values.customId}
+            onUseCustomIdChange={(checked) => form.setValue("customId", checked)}
+            idValue={form.values.idInput}
+            onIdChange={(value) => form.setValue("idInput", value)}
+            error={form.errors.idInput}
+            options={{
+              checkboxLabel: "Set custom ID",
+              inputLabel: "ID",
+            }}
+          />
         )}
 
         {form.errors.submit && (

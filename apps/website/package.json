@@ -49,6 +49,7 @@
     "@sruja/shared": "*",
     "@sruja/ui": "*",
     "@xyflow/react": "^12.10.0",
+    "@hpcc-js/wasm-graphviz": "^1.17.0",
     "algoliasearch": "^5.45.0",
     "@docsearch/react": "4.3.2",
     "@docsearch/css": "4.3.2",

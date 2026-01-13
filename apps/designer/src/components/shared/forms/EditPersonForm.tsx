@@ -1,13 +1,21 @@
 // apps/designer/src/components/shared/forms/EditPersonForm.tsx
 // Refactored to use Mantine form components
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { slugify } from "../../../utils/slugify";
 import { useArchitectureStore } from "../../../stores";
 import type { ElementDump } from "@sruja/shared";
 import { SidePanel } from "../SidePanel";
 import { Button } from "@sruja/ui";
-import { FormField, useFormState, type FormErrors } from "./";
+import {
+  useFormState,
+  type FormErrors,
+  NameField,
+  DescriptionField,
+  CustomIdField,
+  useFormReset,
+  extractDescription,
+} from "./";
 import "../EditForms.css";
 
 interface EditPersonFormProps {
@@ -34,10 +42,7 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
   const form = useFormState<FormValues>({
     initialValues: {
       name: person?.title || initialName || "",
-      description:
-        typeof person?.description === "string"
-          ? person.description
-          : (person?.description as unknown as { txt: string })?.txt || "",
+      description: extractDescription(person),
       customId: false,
       idInput: person?.id || "",
       isExternal: person?.tags?.includes("external") || false,
@@ -75,7 +80,7 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
           id: targetId,
           kind: "person",
           title: values.name,
-          description: typeof values.description === "string" ? values.description : undefined,
+          description: values.description || undefined,
           tags: tags.length > 0 ? tags : undefined,
           links: person?.links,
           style: {},
@@ -85,7 +90,7 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
           newElements[targetId] = {
             ...(model.elements[person.id] as ElementDump),
             title: values.name,
-            description: typeof values.description === "string" ? values.description : undefined,
+            description: values.description || undefined,
             tags: tags.length > 0 ? tags : undefined,
           };
         }
@@ -97,21 +102,18 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
   });
 
   // Reset form when opening/switching contexts
-  useEffect(() => {
-    if (isOpen) {
-      form.setValues({
-        name: person?.title || initialName || "",
-        description:
-          (typeof person?.description === "string"
-            ? person.description
-            : (person?.description as unknown as { txt: string })?.txt || "") || "",
-        idInput: person?.id || "",
-        customId: false,
-        isExternal: person?.tags?.includes("external") || false,
-      });
-      form.clearErrors();
-    }
-  }, [isOpen, person, initialName]); // eslint-disable-line react-hooks/exhaustive-deps
+  useFormReset(
+    form,
+    isOpen,
+    {
+      name: person?.title || initialName || "",
+      description: extractDescription(person),
+      idInput: person?.id || "",
+      customId: false,
+      isExternal: person?.tags?.includes("external") || false,
+    },
+    [person, initialName]
+  );
 
   return (
     <SidePanel
@@ -136,22 +138,15 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
       }
     >
       <form ref={formRef} id="edit-person-form" onSubmit={form.handleSubmit} className="edit-form">
-        <FormField
-          label="Name"
-          name="name"
+        <NameField
           value={form.values.name}
           onChange={(value) => form.setValue("name", value)}
-          required
           error={form.errors.name}
         />
 
-        <FormField
-          label="Description"
-          name="description"
+        <DescriptionField
           value={form.values.description}
           onChange={(value) => form.setValue("description", value)}
-          type="textarea"
-          rows={3}
         />
 
         <div className="form-group checkbox-row">
@@ -165,27 +160,17 @@ export function EditPersonForm({ isOpen, onClose, person, initialName }: EditPer
         </div>
 
         {!person && (
-          <>
-            <div className="form-group checkbox-row">
-              <input
-                id="person-custom-id"
-                type="checkbox"
-                checked={form.values.customId}
-                onChange={(e) => form.setValue("customId", e.target.checked)}
-              />
-              <label htmlFor="person-custom-id">Set custom ID</label>
-            </div>
-            {form.values.customId && (
-              <FormField
-                label="ID"
-                name="idInput"
-                value={form.values.idInput}
-                onChange={(value) => form.setValue("idInput", value)}
-                required
-                error={form.errors.idInput}
-              />
-            )}
-          </>
+          <CustomIdField
+            useCustomId={form.values.customId}
+            onUseCustomIdChange={(checked) => form.setValue("customId", checked)}
+            idValue={form.values.idInput}
+            onIdChange={(value) => form.setValue("idInput", value)}
+            error={form.errors.idInput}
+            options={{
+              checkboxLabel: "Set custom ID",
+              inputLabel: "ID",
+            }}
+          />
         )}
 
         {form.errors.submit && (
