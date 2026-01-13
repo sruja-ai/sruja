@@ -141,7 +141,9 @@ jobs:
 
           # Format data for Algolia batch API
           # Batch API expects: {"requests": [{"action": "addObject", "body": {...}}, ...]}
-          BATCH_DATA=$(jq -c '{requests: [.[] | {action: "addObject", body: .}]}' "$DATA_FILE")
+          # Format data for Algolia batch API
+          # Batch API expects: {"requests": [{"action": "addObject", "body": {...}}, ...]}
+          jq -c '{requests: [.[] | {action: "addObject", body: .}]}' "$DATA_FILE" > algolia-batch.json
 
           # Push to Algolia using batch API
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
@@ -149,7 +151,7 @@ jobs:
             -H "X-Algolia-Application-Id: ${ALGOLIA_APP_ID}" \
             -H "X-Algolia-API-Key: ${ALGOLIA_WRITE_KEY}" \
             -H "Content-Type: application/json" \
-            --data-raw "${BATCH_DATA}")
+            --data-binary @algolia-batch.json)
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | sed '$d')

@@ -203,7 +203,7 @@ But we're sharing Sruja now because we believe the conversation about architectu
 
 Ready to see what bidirectional architecture sync feels like?
 
-**[Try Sruja Designer →](https://designer.sruja.ai)** (no signup required)
+**[Try Sruja Designer →](https://sruja.ai/designer)** (no signup required)
 
 Open it in your browser, create a simple architecture, and watch the code tab update as you drag components around. Then edit the code, and watch the diagram update. It's the "Notion moment" for architecture—that feeling when you realize this is how it should have worked all along.
 
@@ -235,7 +235,7 @@ This is just the beginning.
 - **AI needs structured data**: AI assistants can't help with architecture when it's locked in images—they need machine-readable, structured formats
 - **Bidirectional sync is the solution**: Like Notion for documents, architecture tools should let everyone work in their preferred way (visual or code) with automatic sync
 - **Sruja is in alpha**: We're building the future of architecture documentation, and we'd love your feedback
-- **Try it today**: [Sruja Designer](https://designer.sruja.ai) is free, works in your browser, and requires no signup
+- **Try it today**: [Sruja Designer](https://sruja.ai/designer) is free, works in your browser, and requires no signup
 
 ## Further Reading
 

@@ -166,7 +166,7 @@ export const SrujaCanvas = () => {
   }, [level, focusedSystemId, focusedContainerId]);
 
   // Collapse/expand state - managed via left navigation (UI panel removed)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const [collapsedNodeIds, _setCollapsedNodeIds] = useState<Set<string>>(new Set());
   const [isComputing, setIsComputing] = useState(false);
   const [showChaosPanel, setShowChaosPanel] = useState(false);
@@ -511,7 +511,7 @@ export const SrujaCanvas = () => {
 
           // Helper to generate unique ID
           const generateId = (base: string) => {
-            let id = base.toLowerCase().replace(/[^a-z0-9]/g, "");
+            const id = base.toLowerCase().replace(/[^a-z0-9]/g, "");
             if (!newModel.elements[id]) return id;
             let counter = 1;
             while (newModel.elements[`${id}${counter}`]) {

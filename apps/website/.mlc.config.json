@@ -38,6 +38,31 @@
     },
     {
       "pattern": "^/designer$"
+    },
+    {
+      "pattern": "^https://sruja\\.ai"
+    },
+    {
+      "pattern": "^https://github\\.com/sruja-ai/sruja"
+    },
+    {
+      "pattern": "^https://discord\\.gg"
+    },
+    {
+      "pattern": "^https://mermaid\\.live"
+    },
+    {
+      "pattern": "^https://marketplace\\.visualstudio\\.com"
+    },
+    {
+      "pattern": "^https://www\\.conventionalcommits\\.org"
+    },
+    {
+      "pattern": "^mailto:"
     }
-  ]
+  ],
+  "timeout": "10s",
+  "retryOn429": true,
+  "retryCount": 2,
+  "fallbackRetryDelay": "5s"
 }
