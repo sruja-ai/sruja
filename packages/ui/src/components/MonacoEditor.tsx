@@ -270,6 +270,15 @@ export function MonacoEditor({
                 : errorMessage,
           });
         });
+
+      // Ensure fonts are remeasured when loaded to prevent cursor misalignment
+      if (typeof document !== "undefined" && document.fonts) {
+        document.fonts.ready.then(() => {
+          if (monacoRef.current) {
+            monacoRef.current.editor.remeasureFonts();
+          }
+        });
+      }
     };
 
     // Start checking after a small delay to ensure DOM is ready

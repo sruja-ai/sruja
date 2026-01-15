@@ -132,12 +132,15 @@ export function buildCompoundNodeStructure(
     // Use manual position if available, otherwise use calculated from bounding box
     const savedPosition = manualPositionsMap[parentId];
     let absolutePosition = { x: bb.x, y: bb.y };
+    let isManualPosition = false;
     if (savedPosition) {
       const pos = savedPosition as { x?: number; y?: number; X?: number; Y?: number };
       absolutePosition = {
+        // Fallback to bb.x if pos.x is undefined (though it shouldn't be for a saved position)
         x: pos.x ?? pos.X ?? bb.x,
         y: pos.y ?? pos.Y ?? bb.y,
       };
+      isManualPosition = true;
     }
 
     // Create parent container node (group node)
@@ -159,16 +162,23 @@ export function buildCompoundNodeStructure(
       // This parent is nested - position relative to grandparent
       const grandParentPadding = 40; // Match padding used in grandparent
       position = {
-        x: absolutePosition.x - grandParentNode.position.x + grandParentPadding,
-        y: absolutePosition.y - grandParentNode.position.y + grandParentPadding,
+        x:
+          absolutePosition.x -
+          grandParentNode.position.x +
+          (isManualPosition ? 0 : grandParentPadding),
+        y:
+          absolutePosition.y -
+          grandParentNode.position.y +
+          (isManualPosition ? 0 : grandParentPadding),
       };
-    } else {
-      // Top-level parent - adjust position to account for padding (move left and up)
+    } else if (!isManualPosition) {
+      // Top-level parent (auto-layout) - adjust position to account for padding (move left and up)
       position = {
         x: absolutePosition.x - padding,
         y: absolutePosition.y - padding,
       };
     }
+    // If it's a manual position and not nested, it's already absolute React Flow coordinates
 
     nodes.push({
       id: parentId,

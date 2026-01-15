@@ -75,7 +75,7 @@ export function registerSrujaLanguage(monaco: typeof import("monaco-editor")) {
       { open: '"', close: '"' },
     ],
     indentationRules: {
-      increaseIndentPattern: /^.*\{[^}]*$/,
+      increaseIndentPattern: /^.*\{\s*(\/\/.*)?$/,
       decreaseIndentPattern: /^\s*\}/,
     },
   });

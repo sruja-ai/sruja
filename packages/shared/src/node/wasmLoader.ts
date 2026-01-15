@@ -192,11 +192,11 @@ export async function loadWasmModule(wasmPath: string, options?: WasmLoaderOptio
           console.debug("[WASM] Some functions available - continuing despite timeout");
           resolve();
         } else {
-          console.error("[WASM] No functions registered after 10 seconds");
-          reject(new Error("WASM functions not registered after 10 seconds"));
+          console.error("[WASM] No functions registered after 30 seconds");
+          reject(new Error("WASM functions not registered after 30 seconds"));
         }
       }
-    }, 10000);
+    }, 30000);
 
     // Start go.run() - it will block, but functions should be registered quickly
     // go.run() starts the Go program which blocks internally, but JavaScript event loop continues

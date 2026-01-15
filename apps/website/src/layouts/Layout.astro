@@ -1,8 +1,9 @@
 ---
 // apps/website/src/layouts/Layout.astro
 import Navbar from '@/shared/components/layout/Navbar';
-import PosthogInit from '@/shared/components/PosthogInit.astro';
-import SentryInit from '@/shared/components/SentryInit.astro';
+import { PosthogInit as PosthogInitComponent } from '@/shared/components/PosthogInit';
+import { SentryInit as SentryInitComponent } from '@/shared/components/SentryInit';
+import { envConfig } from '@/config/env';
 import '@sruja/ui/design-system/styles.css';
 import {
   getPageTitle,
@@ -10,7 +11,6 @@ import {
   getOGImageUrl,
   truncateDescription,
 } from '@/utils/seo';
-import { envConfig } from '@/config/env';
 
 interface Props {
   title?: string;
@@ -108,8 +108,8 @@ const ogImage = getOGImageUrl(image, siteUrl);
       <script type="application/ld+json" is:inline set:html={JSON.stringify(structuredData)} />
     ) : null}
     
-    <PosthogInit />
-    <SentryInit />
+    <PosthogInitComponent client:only="react" apiKey={envConfig.posthog?.apiKey} host={envConfig.posthog?.host} />
+    <SentryInitComponent client:only="react" />
     <script is:inline>
       (function() {
         const applyTheme = () => {

@@ -54,6 +54,17 @@ interface ArchitectureState {
   updateArchitecture: (updater: (arch: SrujaModelDump) => SrujaModelDump) => Promise<void>; // Update architecture and sync DSL
   reset: () => void;
   clearProject: () => void; // Reset everything to empty state
+
+  // Visual editing actions
+  addNode: (
+    nodeType: "person" | "system" | "container" | "component" | "datastore" | "queue",
+    name: string,
+    parentId?: string,
+    position?: { x: number; y: number }
+  ) => Promise<void>;
+  addRelation: (fromId: string, toId: string, label?: string) => Promise<void>;
+  deleteNodes: (nodeIds: string[]) => Promise<void>;
+  deleteRelations: (relationIds: string[]) => Promise<void>;
 }
 
 /**
@@ -426,6 +437,202 @@ export const useArchitectureStore = create<ArchitectureState>()(
       clearProject: () => {
         get().reset();
         localStorage.removeItem(STORAGE_KEY);
+      },
+
+      // Visual editing actions
+      addNode: async (nodeType, name, parentId, _position) => {
+        const currentModel = get().model;
+        if (!currentModel) {
+          // Initialize empty model if needed
+          await get().loadFromModel({
+            _stage: "parsed",
+            elements: {},
+            relations: [],
+            views: {},
+            deployments: {},
+            specification: { elements: {}, tags: {}, relationships: {} },
+            project: { id: "sruja-project", name: "New Project" },
+            _metadata: {
+              name: "Untitled",
+              version: "1.0.0",
+              generated: new Date().toISOString(),
+              srujaVersion: "2.0.0",
+            },
+          });
+        }
+
+        await get().updateArchitecture((model) => {
+          const updatedModel = { ...model };
+          if (!updatedModel.elements) {
+            updatedModel.elements = {};
+          }
+
+          // Generate a unique ID (simple approach: lowercase name with spaces replaced)
+          const baseId = name.toLowerCase().replace(/\s+/g, "");
+          let nodeId = baseId;
+          let counter = 1;
+          while (updatedModel.elements[nodeId]) {
+            nodeId = `${baseId}${counter}`;
+            counter++;
+          }
+
+          // Create element based on type
+          const element: import("@sruja/shared").ElementDump = {
+            id: nodeId,
+            title: name,
+            kind: nodeType,
+            description: "",
+            metadata: {},
+          };
+
+          // Always add to flat elements map (model uses flat structure)
+          updatedModel.elements[nodeId] = element;
+
+          // Handle parent relationship for nested elements (if parentId provided)
+          // Note: The model structure is flat, but we can set parent reference if needed
+          // For now, we'll create top-level elements and let the DSL generator handle nesting
+          if (parentId && updatedModel.elements[parentId]) {
+            const parent = updatedModel.elements[parentId];
+            if (!parent.children) {
+              parent.children = {};
+            }
+            // Also add to parent's children for hierarchical structure
+            parent.children[nodeId] = element;
+          }
+
+          // Save initial position in view metadata if provided
+          // Note: View key will be set by the caller based on current view context
+          // For now, we'll save to a default L1 view, but this should be passed as parameter
+          // The position will be saved when the node is dragged or when view context is available
+
+          return updatedModel;
+        });
+      },
+
+      addRelation: async (fromId, toId, label = "") => {
+        const currentModel = get().model;
+        if (!currentModel) {
+          logger.warn("Cannot add relation: no model loaded");
+          return;
+        }
+
+        // Verify both nodes exist
+        if (!currentModel.elements?.[fromId] || !currentModel.elements?.[toId]) {
+          logger.warn("Cannot add relation: source or target node not found", {
+            fromId,
+            toId,
+          });
+          return;
+        }
+
+        await get().updateArchitecture((model) => {
+          const updatedModel = { ...model };
+          if (!updatedModel.relations) {
+            updatedModel.relations = [];
+          }
+
+          // Check if relation already exists
+          const existingRelation = updatedModel.relations.find(
+            (r) => r.source.model === fromId && r.target.model === toId
+          );
+          if (existingRelation) {
+            // Update existing relation label if provided
+            if (label) {
+              existingRelation.title = label;
+            }
+            return updatedModel;
+          }
+
+          // Add new relation
+          const relation: import("@sruja/shared").RelationDump = {
+            id: `rel-${fromId}-${toId}-${Date.now()}`,
+            source: { model: fromId },
+            target: { model: toId },
+            title: label || "",
+          };
+          updatedModel.relations = [...updatedModel.relations, relation];
+
+          return updatedModel;
+        });
+      },
+
+      deleteNodes: async (nodeIds) => {
+        const currentModel = get().model;
+        if (!currentModel) {
+          return;
+        }
+
+        await get().updateArchitecture((model) => {
+          const updatedModel = { ...model };
+          if (!updatedModel.elements) {
+            return updatedModel;
+          }
+
+          // Collect all node IDs to delete (including children)
+          const nodesToDelete = new Set<string>(nodeIds);
+          const collectChildren = (parentId: string) => {
+            const element = updatedModel.elements?.[parentId];
+            if (element?.children) {
+              Object.keys(element.children).forEach((childId) => {
+                nodesToDelete.add(childId);
+                collectChildren(childId);
+              });
+            }
+          };
+
+          nodeIds.forEach((nodeId) => collectChildren(nodeId));
+
+          // Remove elements
+          const updatedElements = { ...updatedModel.elements };
+          nodesToDelete.forEach((nodeId) => {
+            delete updatedElements[nodeId];
+            // Also remove from parent's children if exists
+            Object.values(updatedElements).forEach((element) => {
+              if (element.children?.[nodeId]) {
+                const updatedChildren = { ...element.children };
+                delete updatedChildren[nodeId];
+                element.children =
+                  Object.keys(updatedChildren).length > 0 ? updatedChildren : undefined;
+              }
+            });
+          });
+          updatedModel.elements = updatedElements;
+
+          // Remove relations involving deleted nodes
+          if (updatedModel.relations) {
+            updatedModel.relations = updatedModel.relations.filter(
+              (r) => !nodesToDelete.has(r.source.model) && !nodesToDelete.has(r.target.model)
+            );
+          }
+
+          return updatedModel;
+        });
+      },
+
+      deleteRelations: async (relationIds) => {
+        // Note: relationIds can be indices or we can match by from/to
+        // For simplicity, we'll match by from/to pairs
+        const currentModel = get().model;
+        if (!currentModel?.relations) {
+          return;
+        }
+
+        await get().updateArchitecture((model) => {
+          const updatedModel = { ...model };
+          if (!updatedModel.relations) {
+            return updatedModel;
+          }
+
+          // If relationIds are indices, remove by index
+          // Otherwise, treat as from:to pairs
+          const idsToDelete = new Set(relationIds);
+          updatedModel.relations = updatedModel.relations.filter((relation, index) => {
+            const relationKey = `${relation.source.model}:${relation.target.model}`;
+            return !idsToDelete.has(relationKey) && !idsToDelete.has(String(index));
+          });
+
+          return updatedModel;
+        });
       },
     }),
     {

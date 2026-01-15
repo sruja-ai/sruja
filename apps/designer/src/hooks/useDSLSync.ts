@@ -31,20 +31,27 @@ export function useDSLSync() {
 
   // Handle DSL changes with debouncing and validation
   const handleDSLChange = useCallback(
-    async (newDsl: string) => {
+    (newDsl: string) => {
+      // Immediate UI update
       setLocalDslSource(newDsl);
       setError(null);
-      setIsSaving(true);
-
-      // Update store immediately for UI responsiveness
       setDslSource(newDsl);
+    },
+    [setDslSource]
+  );
 
+  // Debounced model sync
+  useEffect(() => {
+    if (dslSource === null) return;
+
+    const timer = setTimeout(async () => {
+      setIsSaving(true);
       try {
         // Attempt to parse and convert DSL to model
-        const model = await convertDslToModel(newDsl);
+        const model = await convertDslToModel(dslSource);
         if (model && typeof model === "object" && "elements" in model) {
           // Load the model into the store
-          await loadFromDSL(model as SrujaModelDump, newDsl);
+          await loadFromDSL(model as SrujaModelDump, dslSource);
           setError(null);
         } else {
           setError("Failed to parse DSL. Please check the syntax.");
@@ -60,9 +67,10 @@ export function useDSLSync() {
       } finally {
         setIsSaving(false);
       }
-    },
-    [setDslSource, loadFromDSL]
-  );
+    }, 1000); // 1s debounce
+
+    return () => clearTimeout(timer);
+  }, [dslSource, loadFromDSL]);
 
   return {
     dslSource,

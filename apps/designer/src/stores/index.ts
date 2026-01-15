@@ -9,4 +9,6 @@ export { useClipboardStore } from "./clipboardStore";
 export { useGridStore, type GridSize } from "./gridStore";
 export { useUISettingsStore } from "./uiSettingsStore";
 export { useToastStore } from "./toastStore";
+export { useVisualEditorStore } from "./visualEditorStore";
+export type { VisualEditorTool, SrujaNodeType } from "./visualEditorStore";
 // Layout engine store removed - layout is handled internally
