@@ -11,6 +11,7 @@ import {
   type NodeTypes,
   type EdgeTypes,
   type ReactFlowInstance,
+  type Node as FlowNode,
   MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -28,6 +29,7 @@ import { SrujaNode } from "./SrujaNode";
 import { GroupNode } from "../Nodes/GroupNode";
 import { buildCompoundNodeStructure } from "./compoundNodes";
 import type { C4Node, C4Level } from "./types";
+import type { C4NodeData } from "../../types";
 import { ArrowLeft, Edit3, Zap } from "lucide-react";
 import { type LayoutQuality, type ParentChildRelationships } from "./qualityMetrics";
 
@@ -45,6 +47,7 @@ import { StepDescriptionOverlay } from "../Canvas/StepDescriptionOverlay";
 import type { Connection } from "@xyflow/react";
 import { VisualEditorToolbar } from "../VisualEditor/VisualEditorToolbar";
 import { NodePalette } from "../VisualEditor/NodePalette";
+import { PositionPreservation } from "../../utils/positionPreservation";
 
 const nodeTypes: NodeTypes = {
   sruja: SrujaNode,
@@ -126,10 +129,21 @@ interface LayoutCache {
     nodes: RFNode[];
     edges: RFEdge[];
     timestamp: number;
+    layoutSignature: string;
   };
 }
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function buildLayoutSignature(
+  contextKey: string,
+  nodes: Array<{ id: string }>,
+  relations: Array<{ from: string; to: string }>
+): string {
+  const nodeKey = nodes.map((node) => node.id).sort().join("|");
+  const relationKey = relations.map((rel) => `${rel.from}->${rel.to}`).sort().join("|");
+  return `${contextKey}:${nodeKey}:${relationKey}`;
+}
 
 export const SrujaCanvas = () => {
   // Layout Cache Ref
@@ -192,11 +206,16 @@ export const SrujaCanvas = () => {
     () => `${level}:${focusNodeId || "root"}:${activeViewId || "default"}`,
     [level, focusNodeId, activeViewId]
   );
+  const storedViewport = useViewStore((s) => s.viewportByContext[fitContextKey]);
+  const setViewportForContext = useViewStore((s) => s.setViewportForContext);
 
   useEffect(() => {
     shouldAutoFitRef.current = true;
     userInteractedRef.current = false;
     lastFocusedSelectionRef.current = null;
+    positionPreservationRef.current.clear();
+    previousLayoutSignatureRef.current = null;
+    appliedViewportContextRef.current = null;
   }, [fitContextKey]);
 
   // Animation State
@@ -214,6 +233,9 @@ export const SrujaCanvas = () => {
   const shouldAutoFitRef = useRef(true);
   const userInteractedRef = useRef(false);
   const lastFocusedSelectionRef = useRef<string | null>(null);
+  const positionPreservationRef = useRef(new PositionPreservation());
+  const previousLayoutSignatureRef = useRef<string | null>(null);
+  const appliedViewportContextRef = useRef<string | null>(null);
 
   // Initialize Visual Effects System
   useEffect(() => {
@@ -502,6 +524,15 @@ export const SrujaCanvas = () => {
     userInteractedRef.current = true;
   }, []);
 
+  const onMoveEnd = useCallback(
+    (event: MouseEvent | TouchEvent | null, viewport: { x: number; y: number; zoom: number }) => {
+      if (!event || !viewport) return;
+      userInteractedRef.current = true;
+      setViewportForContext(fitContextKey, viewport);
+    },
+    [fitContextKey, setViewportForContext]
+  );
+
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "copy";
@@ -629,12 +660,24 @@ export const SrujaCanvas = () => {
     }, 100);
   }, [reactFlowInstance]);
 
+  useEffect(() => {
+    if (!reactFlowInstance || !storedViewport) return;
+    if (appliedViewportContextRef.current === fitContextKey) return;
+    if (userInteractedRef.current) return;
+    appliedViewportContextRef.current = fitContextKey;
+    shouldAutoFitRef.current = false;
+    userInteractedRef.current = true;
+    reactFlowInstance.setViewport(storedViewport, { duration: 0 });
+  }, [fitContextKey, reactFlowInstance, storedViewport]);
+
   // Pipeline Execution with Caching
   // Include theme in dependencies to force re-render when theme changes
   useEffect(() => {
     if (!model) {
       setNodes([]);
       setEdges([]);
+      positionPreservationRef.current.clear();
+      previousLayoutSignatureRef.current = null;
       return;
     }
 
@@ -649,6 +692,10 @@ export const SrujaCanvas = () => {
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
         setNodes(cached.nodes);
         setEdges(cached.edges);
+        positionPreservationRef.current.updateFromNodes(
+          cached.nodes as unknown as FlowNode<C4NodeData>[]
+        );
+        previousLayoutSignatureRef.current = cached.layoutSignature;
         queueAutoFit();
         return;
       }
@@ -795,6 +842,11 @@ export const SrujaCanvas = () => {
         );
 
         // Layout complete: nodes and edges computed
+        const layoutSignature = buildLayoutSignature(
+          fitContextKey,
+          layoutResult.nodes,
+          result.relations
+        );
 
         // Expose quality metrics to window for e2e tests and UI (dev only)
         // Quality metrics are developer tools, not user-facing features
@@ -847,6 +899,8 @@ export const SrujaCanvas = () => {
         if (c4Nodes.length === 0) {
           setNodes([]);
           setEdges([]);
+          positionPreservationRef.current.clear();
+          previousLayoutSignatureRef.current = null;
           return;
         }
 
@@ -1036,6 +1090,23 @@ export const SrujaCanvas = () => {
           };
         });
 
+        const shouldPreservePositions =
+          previousLayoutSignatureRef.current === layoutSignature &&
+          !isManualMode &&
+          Object.keys(manualPositionsMap).length === 0;
+
+        if (shouldPreservePositions) {
+          const { stableNodeIds } = positionPreservationRef.current.detectChanges(
+            nextNodes as unknown as FlowNode<C4NodeData>[],
+            new Set<string>(),
+            new Set<string>()
+          );
+          nextNodes = positionPreservationRef.current.applyPreservedPositions(
+            nextNodes as unknown as FlowNode<C4NodeData>[],
+            stableNodeIds
+          ) as unknown as RFNode[];
+        }
+
         // Recalculate quality metrics using actual rendered positions (for compound nodes)
         // This ensures parent-child containment is checked against actual parent container bounding boxes
         if (hasClusters && nextNodes.length > 0) {
@@ -1170,10 +1241,16 @@ export const SrujaCanvas = () => {
           nodes: nextNodes,
           edges: nextEdges,
           timestamp: Date.now(),
+          layoutSignature,
         };
 
         setNodes(nextNodes);
         setEdges(nextEdges);
+
+        positionPreservationRef.current.updateFromNodes(
+          nextNodes as unknown as FlowNode<C4NodeData>[]
+        );
+        previousLayoutSignatureRef.current = layoutSignature;
 
         queueAutoFit();
       } catch (err) {
@@ -1200,6 +1277,7 @@ export const SrujaCanvas = () => {
     level,
     focusNodeId,
     collapsedNodeIds,
+    fitContextKey,
     setNodes,
     setEdges,
     reactFlowInstance,
@@ -1936,6 +2014,7 @@ export const SrujaCanvas = () => {
           onConnect={onConnect}
           onNodesDelete={onNodesDelete}
           onMoveStart={onMoveStart}
+          onMoveEnd={onMoveEnd}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           nodesDraggable={isManualMode}

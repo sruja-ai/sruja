@@ -8,6 +8,7 @@ interface ViewState {
   focusedContainerId: string | null;
   expandedNodes: Set<string>;
   breadcrumb: string[];
+  viewportByContext: Record<string, { x: number; y: number; zoom: number }>;
 
   // Navigation actions
   setLevel: (level: C4Level) => void;
@@ -15,6 +16,10 @@ interface ViewState {
   goUp: () => void;
   goToRoot: () => void;
   toggleExpand: (nodeId: string) => void;
+  setViewportForContext: (
+    contextKey: string,
+    viewport: { x: number; y: number; zoom: number }
+  ) => void;
 
   // View ID Navigation (for DSL Views)
   activeViewId: string | null;
@@ -28,11 +33,21 @@ export const useViewStore = create<ViewState>((set, get) => ({
   expandedNodes: new Set<string>(),
   breadcrumb: ["Architecture"],
   activeViewId: null,
+  viewportByContext: {},
 
   setActiveView: (viewId) => {
     set({ activeViewId: viewId });
     // Reset breadcrumbs if going to a specific view?
     // Maybe keep them but mark as "View Mode"
+  },
+
+  setViewportForContext: (contextKey, viewport) => {
+    set((state) => ({
+      viewportByContext: {
+        ...state.viewportByContext,
+        [contextKey]: viewport,
+      },
+    }));
   },
 
   setLevel: (level) => {

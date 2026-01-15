@@ -14,6 +14,7 @@ describe("viewStore", () => {
       expandedNodes: new Set<string>(),
       breadcrumb: ["Architecture"],
       activeViewId: null,
+      viewportByContext: {},
     });
 
     // Reset selection store
@@ -37,6 +38,7 @@ describe("viewStore", () => {
       expect(state.expandedNodes.size).toBe(0);
       expect(state.breadcrumb).toEqual(["Architecture"]);
       expect(state.activeViewId).toBeNull();
+      expect(state.viewportByContext).toEqual({});
     });
 
     it("should set level", () => {
