@@ -35,7 +35,6 @@ import { type LayoutQuality, type ParentChildRelationships } from "./qualityMetr
 
 import { convertDslToDot, type SrujaModelDump } from "@sruja/shared";
 type ElementDump = NonNullable<SrujaModelDump["elements"]>[string];
-import { calculateNodeSize } from "./textMeasure";
 import type { EdgeType } from "./types";
 import SplineEdge from "./SplineEdge";
 import TrafficEdge from "./TrafficEdge";
@@ -57,6 +56,13 @@ import {
   getManualLayoutViewKey,
 } from "./layoutUtils";
 import { updateManualLayoutPosition } from "./manualLayout";
+import {
+  buildC4Edges,
+  buildC4Nodes,
+  buildNodeSizeMap,
+  buildParentChildRelationships,
+  exposeQualityMetrics,
+} from "./layoutPipeline";
 
 const nodeTypes: NodeTypes = {
   sruja: SrujaNode,
@@ -648,18 +654,7 @@ export const SrujaCanvas = () => {
         }
 
         // Pre-calculate node sizes for accurate layout
-        const nodeSizes: Record<string, { width: number; height: number }> = {};
-        if (model) {
-          Object.values(model.elements).forEach((elem) => {
-            const size = calculateNodeSize(
-              elem.title,
-              elem.technology ?? undefined,
-              typeof elem.description === "string" ? elem.description : undefined,
-              elem.kind
-            );
-            nodeSizes[elem.id] = size;
-          });
-        }
+        const nodeSizes = buildNodeSizeMap(model);
 
         const result = await convertDslToDot(
           dslSource,
@@ -709,22 +704,7 @@ export const SrujaCanvas = () => {
         // 3. Extract parent-child relationships ONLY from visible nodes in current view
         // This ensures L2/L3 views only show relationships within the focused scope
         const visibleNodeIds = new Set(layoutResult.nodes.map((n) => n.id));
-        const parentChildRelationships: ParentChildRelationships = {
-          childToParent: new Map<string, string>(),
-        };
-        if (model && model.elements) {
-          for (const element of Object.values(model.elements)) {
-            // Only include relationships where BOTH child and parent are visible in current view
-            if (
-              element.parent &&
-              typeof element.parent === "string" &&
-              visibleNodeIds.has(element.id) &&
-              visibleNodeIds.has(element.parent)
-            ) {
-              parentChildRelationships.childToParent.set(element.id, element.parent);
-            }
-          }
-        }
+        const parentChildRelationships = buildParentChildRelationships(model, visibleNodeIds);
 
         // 4. Measure quality (dev-only) - will be recalculated after compound nodes are built
         // if using compound structure, to account for parent container bounding boxes
@@ -744,38 +724,15 @@ export const SrujaCanvas = () => {
         // 5. Build C4Nodes from layout result and model metadata
 
         // Quality metrics exposed via window.__DIAGRAM_QUALITY__ for e2e tests
-        const c4Nodes: C4Node[] = layoutResult.nodes.map((layoutNode) => {
-          // Get element metadata from model
-          const element = model.elements[layoutNode.id];
-          const kind = element?.kind?.toLowerCase() || "container";
-
-          const measuredSize = nodeSizes[layoutNode.id];
-
-          return {
-            id: layoutNode.id,
-            kind: kind as C4Node["kind"],
-            title: element?.title || layoutNode.id,
-            technology: element?.technology ?? undefined,
-            description: typeof element?.description === "string" ? element.description : undefined,
-            level: level as C4Level,
-            width: measuredSize?.width || layoutNode.width || 200,
-            height: measuredSize?.height || layoutNode.height || 120,
-            metadata: element?.metadata ?? undefined,
-          };
+        const c4Nodes = buildC4Nodes({
+          layoutResult,
+          model,
+          nodeSizes,
+          level: level as C4Level,
         });
 
         // 4. Build edges from projected relations returned by Go
-        const c4Edges = result.relations.map(
-          (rel: { from: string; to: string; title?: string }, idx: number) => {
-            return {
-              id: `e-${rel.from}-${rel.to}-${idx}`,
-              source: rel.from,
-              target: rel.to,
-              label: (rel as { label?: string }).label || "",
-              technology: undefined,
-            };
-          }
-        );
+        const c4Edges = buildC4Edges(result.relations);
 
         // Layout complete: nodes and edges computed
         const layoutSignature = buildLayoutSignature(
@@ -786,48 +743,13 @@ export const SrujaCanvas = () => {
 
         // Expose quality metrics to window for e2e tests and UI (dev only)
         // Quality metrics are developer tools, not user-facing features
-        if (quality && typeof window !== "undefined") {
-          const qualityMetrics = {
-            score: quality.score,
-            edgeCrossings: quality.edgeCrossings,
-            nodeOverlaps: quality.nodeOverlaps,
-            labelOverlaps: quality.labelOverlaps,
-            parentChildContainment: quality.parentChildContainment,
-            avgEdgeLength: quality.avgEdgeLength,
-            edgeLengthVariance: quality.edgeLengthVariance,
-            rankAlignment: quality.rankAlignment,
-            clusterBalance: quality.clusterBalance,
-            spacingConsistency: quality.spacingConsistency,
-            timestamp: Date.now(),
-            nodeCount: c4Nodes.length,
-            edgeCount: c4Edges.length,
-            level: level > 0 ? `L${level}` : "L1",
-          } as LayoutQuality & {
-            level: string;
-            nodeCount: number;
-            edgeCount: number;
-            timestamp: number;
-          };
-
-          (
-            window as unknown as { __DIAGRAM_QUALITY__?: typeof qualityMetrics }
-          ).__DIAGRAM_QUALITY__ = qualityMetrics;
-
-          // Also expose to __LAYOUT_METRICS__ for e2e tests (matches test expectations)
-          (
-            window as unknown as {
-              __LAYOUT_METRICS__?: Record<string, unknown>;
-            }
-          ).__LAYOUT_METRICS__ = {
-            ...qualityMetrics,
-            // Export detailed parent-child containment violations as array (expected by tests)
-            parentChildContainment: parentChildContainmentViolations,
-          };
-
-          logger.debug("Diagram quality metrics", {
-            component: "SrujaCanvas",
-            action: "calculateLayout",
-            metrics: (window as unknown as { __DIAGRAM_QUALITY__?: unknown }).__DIAGRAM_QUALITY__,
+        if (quality) {
+          exposeQualityMetrics({
+            quality,
+            parentChildContainmentViolations,
+            c4Nodes,
+            c4Edges,
+            level,
           });
         }
 
