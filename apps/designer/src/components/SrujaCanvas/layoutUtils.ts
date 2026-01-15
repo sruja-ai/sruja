@@ -16,6 +16,14 @@ export type CapacityState = {
   userLoad: number;
 };
 
+export function getManualLayoutViewKey(level: number, focusNodeId: string | undefined): string {
+  return `manual-layout-${level}-${focusNodeId || "root"}`;
+}
+
+export function getLevelViewKey(level: number): string {
+  return `L${level}`;
+}
+
 /**
  * Select optimal handle positions based on node positions.
  * Chooses the closest sides between source and target nodes.
@@ -102,8 +110,8 @@ export function getManualPositionsMap({
   focusNodeId: string | undefined;
   isManualMode: boolean;
 }): { manualPositionsMap: ManualPositionsMap; hasManualPositions: boolean } {
-  const manualViewKey = `manual-layout-${level}-${focusNodeId || "root"}`;
-  const levelViewKey = `L${level}`;
+  const manualViewKey = getManualLayoutViewKey(level, focusNodeId);
+  const levelViewKey = getLevelViewKey(level);
 
   const tryGetPositions = (view: unknown): ManualPositionsMap | undefined => {
     if (!view) return undefined;
