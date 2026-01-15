@@ -1,20 +1,51 @@
 // DSL Panel - Shows the source DSL code for the current architecture
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import type * as monacoTypes from "monaco-editor";
 import { useArchitectureStore } from "../../stores";
+import { useUIStore } from "../../stores/uiStore";
 import { SrujaMonacoEditor } from "@sruja/ui";
-import { useDSLSync, useDSLEditor, useDSLDiff } from "../../hooks";
+import { useDSLSync, useDSLEditor, useDSLDiff, useDslSelectionSync } from "../../hooks";
 import { DSLPanelHeader } from "./DSLPanelHeader";
 import "./DSLPanel.css";
 
 export function DSLPanel() {
   const model = useArchitectureStore((s) => s.model);
   const { dslSource, error, isSaving, handleDSLChange } = useDSLSync();
-  const { monacoTheme, handleEditorDidMount } = useDSLEditor(dslSource);
+  const { monacoTheme, handleEditorDidMount: baseEditorDidMount } = useDSLEditor(dslSource);
   const { showDiff, baselineDsl, setShowDiff } = useDSLDiff();
   const [copied, setCopied] = useState(false);
+  const [monacoInstance, setMonacoInstance] =
+    useState<typeof import("monaco-editor") | null>(null);
+  const [editorInstance, setEditorInstance] =
+    useState<monacoTypes.editor.IStandaloneCodeEditor | null>(null);
+  const targetLine = useUIStore((s) => s.targetLine);
+  const setTargetLine = useUIStore((s) => s.setTargetLine);
 
   // Memoize value to prevent unnecessary re-renders
   const editorValue = useMemo(() => dslSource || "", [dslSource]);
+
+  const handleEditorDidMount = useCallback(
+    (monaco: typeof import("monaco-editor"), editor: monacoTypes.editor.IStandaloneCodeEditor) => {
+      setMonacoInstance(monaco);
+      setEditorInstance(editor);
+      baseEditorDidMount(monaco, editor);
+    },
+    [baseEditorDidMount]
+  );
+
+  useDslSelectionSync({
+    editor: editorInstance,
+    monaco: monacoInstance,
+    dslSource,
+    model,
+  });
+
+  useEffect(() => {
+    if (!targetLine || !editorInstance) return;
+    editorInstance.revealLineInCenterIfOutsideViewport(targetLine);
+    editorInstance.setPosition({ lineNumber: targetLine, column: 1 });
+    setTargetLine(null);
+  }, [editorInstance, setTargetLine, targetLine]);
 
   const handleCopy = async () => {
     if (!dslSource) return;

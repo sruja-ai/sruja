@@ -117,6 +117,14 @@
     color: var(--code-text, #d4d4d4);
 }
 
+.monaco-editor .dsl-selection-highlight {
+    background: rgba(59, 130, 246, 0.15);
+}
+
+[data-theme="dark"] .monaco-editor .dsl-selection-highlight {
+    background: rgba(96, 165, 250, 0.2);
+}
+
 @media (prefers-color-scheme: light) {
     .dsl-code {
         background: var(--code-bg, #f5f5f5);

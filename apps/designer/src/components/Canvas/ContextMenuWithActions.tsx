@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { ContextMenu } from "./ContextMenu";
 import { useNodeContextMenu } from "./useNodeContextMenu";
 import { useClipboardStore } from "../../stores/clipboardStore";
+import type { SelectionSource } from "../../stores/viewStore";
 import { findNodeInArchitecture, getAllNodeIds, generateUniqueId } from "../../utils/nodeUtils";
 import { deleteNodeFromArchitecture } from "../../utils/nodeDeletion";
 import type { SrujaModelDump, ElementDump } from "../../types";
@@ -14,7 +15,7 @@ interface ContextMenuWithActionsProps {
   updateArchitecture: (updater: (arch: SrujaModelDump) => SrujaModelDump) => Promise<void>;
   data: SrujaModelDump | null;
   selectedNodeId: string | null;
-  selectNode: (id: string | null) => void;
+  selectNode: (id: string | null, source?: SelectionSource) => void;
 }
 
 // Logic extracted for reusability (duplicate action) and testing
@@ -185,7 +186,7 @@ export function ContextMenuWithActions({
       });
 
       if (selectedNodeId === targetNodeId) {
-        selectNode(null);
+        selectNode(null, "diagram");
       }
     },
     [data, selectedNodeId, selectNode, updateArchitecture]

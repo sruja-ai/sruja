@@ -188,16 +188,32 @@ export const SrujaCanvas = () => {
     (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   const activeViewId = useViewStore((s) => s.activeViewId);
+  const fitContextKey = useMemo(
+    () => `${level}:${focusNodeId || "root"}:${activeViewId || "default"}`,
+    [level, focusNodeId, activeViewId]
+  );
+
+  useEffect(() => {
+    shouldAutoFitRef.current = true;
+    userInteractedRef.current = false;
+    lastFocusedSelectionRef.current = null;
+  }, [fitContextKey]);
 
   // Animation State
   const activeAnimation = useSelectionStore((s) => s.activeAnimation);
   const isAnimationPlaying = useSelectionStore((s) => s.isAnimationPlaying);
   const animationStep = useSelectionStore((s) => s.animationStep);
   const setAnimationStep = useSelectionStore((s) => s.setAnimationStep);
+  const selectedNodeId = useSelectionStore((s) => s.selectedNodeId);
+  const selectionSource = useSelectionStore((s) => s.selectionSource);
+  const { activeTool, selectedNodeType, setActiveTool, isManualMode } = useVisualEditorStore();
 
   // Animation Controller Ref
   const animationControllerRef = useRef<AnimationController | null>(null);
   const visualEffectsRef = useRef<VisualEffectsSystem | null>(null);
+  const shouldAutoFitRef = useRef(true);
+  const userInteractedRef = useRef(false);
+  const lastFocusedSelectionRef = useRef<string | null>(null);
 
   // Initialize Visual Effects System
   useEffect(() => {
@@ -482,6 +498,10 @@ export const SrujaCanvas = () => {
   }, [chaosState.enabled, chaosState.failedNodeId, model]);
 
   // Drag and Drop Handlers
+  const onMoveStart = useCallback(() => {
+    userInteractedRef.current = true;
+  }, []);
+
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "copy";
@@ -600,6 +620,15 @@ export const SrujaCanvas = () => {
     [model]
   );
 
+  const queueAutoFit = useCallback(() => {
+    if (!reactFlowInstance) return;
+    if (!shouldAutoFitRef.current || userInteractedRef.current) return;
+    shouldAutoFitRef.current = false;
+    setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
+    }, 100);
+  }, [reactFlowInstance]);
+
   // Pipeline Execution with Caching
   // Include theme in dependencies to force re-render when theme changes
   useEffect(() => {
@@ -620,10 +649,7 @@ export const SrujaCanvas = () => {
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
         setNodes(cached.nodes);
         setEdges(cached.edges);
-        // Fit view after a short delay to ensure nodes are rendered
-        setTimeout(() => {
-          reactFlowInstance?.fitView({ padding: 0.2 });
-        }, 100);
+        queueAutoFit();
         return;
       }
 
@@ -1149,10 +1175,7 @@ export const SrujaCanvas = () => {
         setNodes(nextNodes);
         setEdges(nextEdges);
 
-        // Fit view after layout
-        setTimeout(() => {
-          reactFlowInstance?.fitView({ padding: 0.2 });
-        }, 100);
+        queueAutoFit();
       } catch (err) {
         // Fallback error handling for unexpected errors
         handleError(err, "SrujaCanvas.computeLayout");
@@ -1180,16 +1203,51 @@ export const SrujaCanvas = () => {
     setNodes,
     setEdges,
     reactFlowInstance,
+    activeViewId,
+    isManualMode,
+    queueAutoFit,
     mode,
     isDark,
     uiTheme,
   ]); // Include modelId to invalidate cache when model changes
 
+  useEffect(() => {
+    setNodes((currentNodes) => {
+      let didChange = false;
+      const nextNodes = currentNodes.map((node) => {
+        const shouldSelect = !!selectedNodeId && node.id === selectedNodeId;
+        if (node.selected !== shouldSelect) {
+          didChange = true;
+          return { ...node, selected: shouldSelect };
+        }
+        return node;
+      });
+      return didChange ? nextNodes : currentNodes;
+    });
+  }, [selectedNodeId, setNodes]);
+
+  useEffect(() => {
+    if (!selectedNodeId || !reactFlowInstance) return;
+    if (selectionSource !== "code" && selectionSource !== "navigation") return;
+    if (lastFocusedSelectionRef.current === selectedNodeId) return;
+
+    const targetNode = nodes.find((node) => node.id === selectedNodeId);
+    if (!targetNode) return;
+
+    const centerX = targetNode.position.x + (targetNode.width ?? 0) / 2;
+    const centerY = targetNode.position.y + (targetNode.height ?? 0) / 2;
+    lastFocusedSelectionRef.current = selectedNodeId;
+
+    reactFlowInstance.setCenter(centerX, centerY, {
+      duration: 300,
+      zoom: Math.max(reactFlowInstance.getZoom(), 1),
+    });
+  }, [nodes, reactFlowInstance, selectedNodeId, selectionSource]);
+
   // Selection store for details panel
   const selectNode = useSelectionStore((s) => s.selectNode);
 
   // Visual editor store
-  const { activeTool, selectedNodeType, setActiveTool, isManualMode } = useVisualEditorStore();
   const addNode = useArchitectureStore((s) => s.addNode);
   const addRelation = useArchitectureStore((s) => s.addRelation);
   const deleteNodes = useArchitectureStore((s) => s.deleteNodes);
@@ -1607,10 +1665,7 @@ export const SrujaCanvas = () => {
       }
 
       // Select the node to open details panel
-      selectNode(node.id);
-
-      // Select the node to open details panel
-      selectNode(node.id);
+      selectNode(node.id, "diagram");
 
       // Just selecting a node without drill-down (Single Click behavior)
       trackInteraction("select", "node", { nodeId: node.id, nodeKind: c4Data.kind, level });
@@ -1880,12 +1935,12 @@ export const SrujaCanvas = () => {
           onPaneClick={onPaneClick}
           onConnect={onConnect}
           onNodesDelete={onNodesDelete}
+          onMoveStart={onMoveStart}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           nodesDraggable={isManualMode}
           nodesConnectable={activeTool === "connect"}
           elementsSelectable={true}
-          fitView
           minZoom={0.1}
           maxZoom={2}
         >

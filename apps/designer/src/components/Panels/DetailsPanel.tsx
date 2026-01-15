@@ -130,7 +130,7 @@ export function DetailsPanel({ onClose }: DetailsPanelProps) {
             size="sm"
             className="close-btn"
             onClick={() => {
-              selectNode(null);
+              selectNode(null, "navigation");
               onClose?.();
             }}
             aria-label="Close details"
@@ -223,7 +223,7 @@ export function DetailsPanel({ onClose }: DetailsPanelProps) {
                     <div
                       key={idx}
                       className="dep-item"
-                      onClick={() => selectNode(getFqn(inc.relation.source))}
+                      onClick={() => selectNode(getFqn(inc.relation.source), "navigation")}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         {getTypeIcon((inc.source as ElementDump)?.kind || "")}
@@ -253,7 +253,7 @@ export function DetailsPanel({ onClose }: DetailsPanelProps) {
                     <div
                       key={idx}
                       className="dep-item"
-                      onClick={() => selectNode(getFqn(out.relation.target))}
+                      onClick={() => selectNode(getFqn(out.relation.target), "navigation")}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         {getTypeIcon((out.target as ElementDump)?.kind || "")}

@@ -226,7 +226,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                   hasChildren={containers.length > 0}
                   onExpand={toggleExpand}
                   onDrillDown={(id) => {
-                    selectNode(id);
+                    selectNode(id, "navigation");
                     drillDown(id, "system");
                   }}
                   isEditMode={!!isEditMode()}
@@ -244,7 +244,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                         hasChildren={components.length > 0}
                         onExpand={toggleExpand}
                         onDrillDown={(id, _kind, pid) => {
-                          selectNode(id);
+                          selectNode(id, "navigation");
                           drillDown(id, "container", pid!);
                         }}
                         isEditMode={!!isEditMode()}
@@ -260,7 +260,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                             hasChildren={false}
                             onExpand={() => {}}
                             onDrillDown={(id, _kind, pid) => {
-                              selectNode(id);
+                              selectNode(id, "navigation");
                               if (pid) {
                                 drillDown(pid, "container", undefined);
                               }
@@ -300,7 +300,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
                   hasChildren={false}
                   onExpand={() => {}}
                   onDrillDown={(id) => {
-                    selectNode(id);
+                    selectNode(id, "navigation");
                     goToRoot();
                   }}
                   isEditMode={!!isEditMode()}

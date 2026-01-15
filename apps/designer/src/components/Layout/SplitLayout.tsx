@@ -91,48 +91,54 @@ export function SplitLayout({
 
   return (
     <div className={`split-layout-container ${isResizing ? "resizing" : ""}`} ref={containerRef}>
+      <div
+        className="split-pane left-pane"
+        style={{
+          width: isLeftVisible ? `${splitPos}%` : 0,
+          display: isLeftVisible ? "flex" : "none",
+        }}
+        aria-hidden={!isLeftVisible}
+      >
+        {leftContent}
+      </div>
+
       {isLeftVisible ? (
-        <>
-          <div className="split-pane left-pane" style={{ width: `${splitPos}%` }}>
-            {leftContent}
-          </div>
-          <div className="split-resizer" onMouseDown={startResizing} title="Drag to resize">
-            <div className="resizer-handle" />
-            {onCollapse && (
-              <button
-                className="split-collapse-btn"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onCollapse();
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onMouseUp={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                title="Collapse panel"
-                type="button"
+        <div className="split-resizer" onMouseDown={startResizing} title="Drag to resize">
+          <div className="resizer-handle" />
+          {onCollapse && (
+            <button
+              className="split-collapse-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onCollapse();
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onMouseUp={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              title="Collapse panel"
+              type="button"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-              </button>
-            )}
-          </div>
-        </>
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+          )}
+        </div>
       ) : (
         /* Collapsed Gutter */
         <div className="split-collapsed-gutter">

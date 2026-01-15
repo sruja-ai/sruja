@@ -94,7 +94,7 @@ export function BuilderWizard() {
       if (!storeDslSource || storeDslSource !== currentDsl) {
         // Only store if it's a valid DSL (not an error message)
         if (!currentDsl.includes("Error") && !currentDsl.includes("No architecture")) {
-          setDslSource(currentDsl, null);
+          setDslSource(currentDsl, null, { syncModel: false });
         }
       }
     }

@@ -61,7 +61,7 @@ export function GovernanceWidget() {
     }
 
     // Fallback: If no line but just ID (e.g. "web.api"), select it
-    selectNode(target);
+    selectNode(target, "navigation");
     setCodeTab("dsl");
     setActiveTab("code");
   };

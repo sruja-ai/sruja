@@ -4,11 +4,21 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { convertDslToModel, convertDslToMarkdown } from "../wasm";
 import { convertModelToDsl } from "../utils/modelToDsl";
 import { useHistoryStore } from "./historyStore";
-import { safeAsync, handleError, ErrorType } from "../utils/errorHandling";
+import { safeAsync, handleError, ErrorType, AppError } from "../utils/errorHandling";
 import { logger } from "@sruja/shared";
 import type { SrujaModelDump, ParsedView } from "@sruja/shared";
 
 const STORAGE_KEY = "sruja-architecture-data";
+
+type DslSyncOptions = {
+  syncModel?: boolean;
+};
+
+type RefreshOptions = {
+  includeMarkdown?: boolean;
+};
+
+let conversionCounter = 0;
 
 /**
  * Architecture store state interface.
@@ -49,8 +59,8 @@ interface ArchitectureState {
   // Actions
   loadFromDSL: (json: SrujaModelDump, dsl: string, file?: string | null) => Promise<void>;
   loadFromModel: (json: SrujaModelDump, file?: string | null) => Promise<void>;
-  setDslSource: (dsl: string | null, file?: string | null) => void;
-  refreshConvertedJson: () => Promise<void>; // Refresh JSON when DSL changes
+  setDslSource: (dsl: string | null, file?: string | null, options?: DslSyncOptions) => Promise<void>;
+  refreshConvertedJson: (options?: RefreshOptions) => Promise<{ error: string | null }>; // Refresh JSON when DSL changes
   updateArchitecture: (updater: (arch: SrujaModelDump) => SrujaModelDump) => Promise<void>; // Update architecture and sync DSL
   reset: () => void;
   clearProject: () => void; // Reset everything to empty state
@@ -264,26 +274,28 @@ export const useArchitectureStore = create<ArchitectureState>()(
         }
       },
 
-      setDslSource: async (dsl, file) => {
+      setDslSource: async (dsl, file, options) => {
         const currentDsl = get().dslSource;
+        const shouldSync = options?.syncModel !== false;
         set({ dslSource: dsl, sourceType: dsl ? "dsl" : null, currentExampleFile: file ?? null });
 
         // If DSL changed, refresh converted JSON and Markdown
-        if (dsl && dsl !== currentDsl) {
+        if (dsl && dsl !== currentDsl && shouldSync) {
           get().refreshConvertedJson();
         } else if (!dsl) {
           // Clear converted data if DSL is removed
-          set({ model: null, convertedMarkdown: null });
+          set({ model: null, convertedMarkdown: null, error: null });
         }
       },
 
-      refreshConvertedJson: async () => {
+      refreshConvertedJson: async (options) => {
         const dsl = get().dslSource;
         if (!dsl) {
-          set({ model: null, convertedMarkdown: null });
-          return;
+          set({ model: null, convertedMarkdown: null, error: null, isConverting: false });
+          return { error: null };
         }
 
+        const conversionId = (conversionCounter += 1);
         set({ isConverting: true });
         const { error, data: convertedData } = await safeAsync(
           async () => {
@@ -303,7 +315,10 @@ export const useArchitectureStore = create<ArchitectureState>()(
               throw e;
             }
 
-            const convertedMarkdown = await convertDslToMarkdown(dsl);
+            const shouldUpdateMarkdown = options?.includeMarkdown !== false;
+            const convertedMarkdown = shouldUpdateMarkdown
+              ? await convertDslToMarkdown(dsl)
+              : get().convertedMarkdown;
 
             return {
               model: modelJson,
@@ -314,22 +329,36 @@ export const useArchitectureStore = create<ArchitectureState>()(
           ErrorType.VALIDATION
         );
 
+        if (conversionId !== conversionCounter) {
+          return { error: null };
+        }
+
         if (error) {
           handleError(error, "architectureStore.refreshConvertedJson");
-          set({ isConverting: false });
+          const errorMessage =
+            error instanceof AppError && error.context?.originalError
+              ? String(error.context.originalError)
+              : error instanceof Error
+                ? error.message
+                : String(error);
+          set({ isConverting: false, error: errorMessage });
+          return { error: errorMessage };
         } else if (convertedData) {
           set({
             model: convertedData.model,
-            convertedMarkdown: convertedData.convertedMarkdown,
+            convertedMarkdown: convertedData.convertedMarkdown ?? null,
             isConverting: false,
+            error: null,
           });
 
           // Add to history if successful
           if (convertedData.model) {
             useHistoryStore.getState().push(convertedData.model);
           }
+          return { error: null };
         } else {
           set({ isConverting: false });
+          return { error: null };
         }
       },
 

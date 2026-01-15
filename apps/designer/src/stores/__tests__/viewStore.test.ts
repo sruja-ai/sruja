@@ -19,6 +19,7 @@ describe("viewStore", () => {
     // Reset selection store
     useSelectionStore.setState({
       selectedNodeId: null,
+      selectionSource: "unknown",
       activeAnimation: null,
       activeRequirement: null,
       animationStep: 0,
@@ -199,9 +200,11 @@ describe("viewStore", () => {
     it("should select node", () => {
       useSelectionStore.getState().selectNode("Node1");
       expect(useSelectionStore.getState().selectedNodeId).toBe("Node1");
+      expect(useSelectionStore.getState().selectionSource).toBe("unknown");
 
-      useSelectionStore.getState().selectNode(null);
+      useSelectionStore.getState().selectNode(null, "navigation");
       expect(useSelectionStore.getState().selectedNodeId).toBeNull();
+      expect(useSelectionStore.getState().selectionSource).toBe("navigation");
     });
 
     it("should set active animation", () => {

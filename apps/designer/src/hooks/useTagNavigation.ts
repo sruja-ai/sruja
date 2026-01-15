@@ -26,7 +26,7 @@ export function useTagNavigation() {
       setActiveTab("diagram");
 
       // Select the node
-      selectNode(tagId);
+      selectNode(tagId, "navigation");
 
       // Zoom to the node after a short delay to ensure it's rendered
       setTimeout(() => {

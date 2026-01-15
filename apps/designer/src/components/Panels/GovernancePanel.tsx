@@ -60,7 +60,7 @@ export function GovernancePanel() {
 
     // Fallback: If no line but just ID (e.g. "web.api"), select it
     // which triggers DSLPanel's own ID-to-line lookup
-    selectNode(target);
+    selectNode(target, "navigation");
     setCodeTab("dsl");
     setActiveTab("code");
   };

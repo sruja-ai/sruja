@@ -8,3 +8,4 @@ export { useFileHandlers } from "./useFileHandlers";
 export { useDSLSync } from "./useDSLSync";
 export { useDSLEditor } from "./useDSLEditor";
 export { useDSLDiff } from "./useDSLDiff";
+export { useDslSelectionSync } from "./useDslSelectionSync";

@@ -136,6 +136,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
 // Selection store for selected nodes and active flows
 interface SelectionState {
   selectedNodeId: string | null;
+  selectionSource: SelectionSource;
   activeAnimation: FlowDump | ScenarioDump | null;
   animationStep: number;
   isAnimationPlaying: boolean;
@@ -145,7 +146,7 @@ interface SelectionState {
   viewMode: ViewMode;
 
   // Actions
-  selectNode: (id: string | null) => void;
+  selectNode: (id: string | null, source?: SelectionSource) => void;
   /**
    * Set the active view (Diagram, Code, etc.)
    */
@@ -166,8 +167,11 @@ interface SelectionState {
   prevStep: () => void;
 }
 
+export type SelectionSource = "diagram" | "code" | "navigation" | "unknown";
+
 export const useSelectionStore = create<SelectionState>((set, get) => ({
   selectedNodeId: null,
+  selectionSource: "unknown",
   activeAnimation: null,
   activeRequirement: null,
   animationStep: 0,
@@ -175,8 +179,8 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
   activeTab: "diagram", // Added default
   viewMode: "designer", // Added default
 
-  selectNode: (id) => {
-    set({ selectedNodeId: id });
+  selectNode: (id, source = "unknown") => {
+    set({ selectedNodeId: id, selectionSource: source });
   },
 
   setActiveTab: (tab) => set((state) => ({ ...state, activeTab: tab })),
@@ -187,7 +191,12 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
   },
 
   setActiveRequirement: (reqId) => {
-    set({ activeRequirement: reqId, selectedNodeId: null, activeAnimation: null }); // Clear others
+    set({
+      activeRequirement: reqId,
+      selectedNodeId: null,
+      selectionSource: "unknown",
+      activeAnimation: null,
+    }); // Clear others
   },
 
   setAnimationStep: (step) => {

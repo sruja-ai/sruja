@@ -73,7 +73,7 @@ export function ElementInspector() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => selectNode(null)}
+          onClick={() => selectNode(null, "navigation")}
           className="text-gray-500 hover:text-gray-900 -ml-2"
         >
           <ArrowLeft size={16} className="mr-1" />
@@ -133,7 +133,7 @@ export function ElementInspector() {
                 <div
                   key={idx}
                   className="inspector-item cursor-pointer hover:bg-gray-100 p-2"
-                  onClick={() => selectNode(getFqn(inc.relation.source))}
+                  onClick={() => selectNode(getFqn(inc.relation.source), "navigation")}
                 >
                   <div className="flex items-center gap-2 text-sm font-medium">
                     {getTypeIcon((inc.source as ElementDump)?.kind || "")}
@@ -158,7 +158,7 @@ export function ElementInspector() {
                 <div
                   key={idx}
                   className="inspector-item cursor-pointer hover:bg-gray-100 p-2"
-                  onClick={() => selectNode(getFqn(out.relation.target))}
+                  onClick={() => selectNode(getFqn(out.relation.target), "navigation")}
                 >
                   <div className="flex items-center gap-2 text-sm font-medium">
                     {getTypeIcon((out.target as ElementDump)?.kind || "")}
