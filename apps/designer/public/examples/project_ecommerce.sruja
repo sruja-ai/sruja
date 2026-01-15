@@ -28,7 +28,7 @@ ecommerce = system "E-Commerce Platform" {
     productCatalog = component "Product Catalog" {
         description "Browsing and searching products"
         technology "React Component"
-        metadata { tags ["REQ001", "REQ012"] }
+        metadata { tags ["REQ001_ECommerce", "REQ012"] }
     }
     shoppingCart = component "Shopping Cart" {
         description "Cart management"
@@ -52,7 +52,7 @@ ecommerce = system "E-Commerce Platform" {
     productService = component "Product Service" {
         description "Catalog management API"
         technology "Go"
-        metadata { tags ["REQ001", "REQ012"] }
+        metadata { tags ["REQ001_ECommerce", "REQ012"] }
     }
     orderService = component "Order Service" {
         description "Order processing API"
@@ -81,7 +81,7 @@ ecommerce = system "E-Commerce Platform" {
   productDb = database "Product Database" {
       technology "PostgreSQL"
       description "Catalog data"
-      metadata { tags ["REQ001"] }
+      metadata { tags ["REQ001_ECommerce"] }
   }
   orderDb = database "Order Database" {
       technology "PostgreSQL"
@@ -105,7 +105,7 @@ ecommerce = system "E-Commerce Platform" {
   searchEngine = container "Search Engine" {
     technology "Elasticsearch"
     description "Full-text product search"
-    metadata { tags ["REQ001"] }
+    metadata { tags ["REQ001_ECommerce"] }
   }
   
   redis = container "Cache" {
@@ -216,7 +216,7 @@ ecommerce.eventQueue -> ecommerce.analyticsService "Process"
 // External system integrations
 // External integrations handled above
 
-REQ001 = requirement functional "Users must be able to browse products by category" {
+REQ001_ECommerce = requirement functional "Users must be able to browse products by category" {
   tags ["ecommerce.webApp", "ecommerce.api"]
 }
 REQ012 = requirement performance "Product catalog page must load in under 2 seconds" {

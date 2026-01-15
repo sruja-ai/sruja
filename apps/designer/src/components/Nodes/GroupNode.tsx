@@ -27,13 +27,14 @@ function GroupNodeComponent({ data, selected, width, height }: GroupNodeProps) {
       style={{
         width: nodeWidth,
         height: nodeHeight,
-        backgroundColor: "transparent",
+        backgroundColor: "rgba(255, 255, 255, 0.01)", // Nearly transparent to capture events
         borderColor: colors.border,
         borderWidth: 2,
         borderStyle: "dashed",
         borderRadius: 8,
         position: "relative",
         boxShadow: selected ? `0 0 0 2px ${colors.border}` : undefined,
+        pointerEvents: "all", // Ensure the container captures drag events
       }}
     >
       {/* Header showing parent container label */}

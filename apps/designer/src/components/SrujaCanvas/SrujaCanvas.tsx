@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -17,7 +17,7 @@ import "@xyflow/react/dist/style.css";
 import { Paper, Group, Stack, ActionIcon, Text, Loader, Button, Badge } from "@mantine/core";
 import { useTheme } from "@sruja/ui";
 
-import { useArchitectureStore, useSelectionStore } from "../../stores";
+import { useArchitectureStore, useSelectionStore, useVisualEditorStore } from "../../stores";
 import { getArchitectureModel } from "../../models/ArchitectureModel";
 import { trackInteraction, logger } from "@sruja/shared";
 import { runGraphviz, GraphvizLayoutError } from "./layoutEngine";
@@ -42,6 +42,9 @@ import { AnimationController } from "../../utils/animation/AnimationController";
 import { VisualEffectsSystem } from "../../utils/animation/VisualEffectsSystem";
 import { AnimationControls } from "../Canvas/AnimationControls";
 import { StepDescriptionOverlay } from "../Canvas/StepDescriptionOverlay";
+import type { Connection } from "@xyflow/react";
+import { VisualEditorToolbar } from "../VisualEditor/VisualEditorToolbar";
+import { NodePalette } from "../VisualEditor/NodePalette";
 
 const nodeTypes: NodeTypes = {
   sruja: SrujaNode,
@@ -609,7 +612,8 @@ export const SrujaCanvas = () => {
     const computeLayout = async () => {
       const cacheKey =
         hashCacheKey(level, focusNodeId, collapsedNodeIds, modelId) +
-        (activeViewId ? `:${activeViewId}` : "");
+        (activeViewId ? `:${activeViewId}` : "") +
+        (isManualMode ? ":manual" : ":auto");
       const cached = cacheRef.current[cacheKey];
 
       // Check cache validity
@@ -822,24 +826,51 @@ export const SrujaCanvas = () => {
 
         // 5. React Flow Mapping
         // Check for saved manual positions in view metadata
-        // Try both formats: manual-layout-* (from UI edits) and regular view IDs (from DSL)
-        const viewKey = `manual-layout-${level}-${focusNodeId || "root"}`;
-        const savedPositions = model.views?.[viewKey];
-        // Support both old format (layout.positions) and new format (Layout.Positions)
-        // Type assertion needed because layout positions are not in ParsedView type
-        type ViewWithLayout = typeof savedPositions & {
-          layout?: { positions?: Record<string, { x: number; y: number }> };
-          Layout?: {
-            Positions?: Record<string, { x: number; y: number }>;
-            positions?: Record<string, { x: number; y: number }>;
+        // Priority: 1) manual-layout-* (from UI edits), 2) regular view IDs (from DSL), 3) level-based views (L1, L2, L3)
+        const manualViewKey = `manual-layout-${level}-${focusNodeId || "root"}`;
+        const levelViewKey = `L${level}`;
+
+        // Try multiple view keys to find positions
+        const tryGetPositions = (
+          view: any
+        ): Record<string, { x: number; y: number }> | undefined => {
+          if (!view) return undefined;
+          type ViewWithLayout = typeof view & {
+            layout?: { positions?: Record<string, { x: number; y: number }> };
+            Layout?: {
+              Positions?: Record<string, { x: number; y: number }>;
+              positions?: Record<string, { x: number; y: number }>;
+            };
           };
+          const viewWithLayout = view as ViewWithLayout | undefined;
+          return (
+            viewWithLayout?.layout?.positions ||
+            viewWithLayout?.Layout?.Positions ||
+            viewWithLayout?.Layout?.positions
+          );
         };
-        const viewWithLayout = savedPositions as ViewWithLayout | undefined;
-        const manualPositionsMap =
-          viewWithLayout?.layout?.positions ||
-          viewWithLayout?.Layout?.Positions ||
-          viewWithLayout?.Layout?.positions ||
-          {};
+
+        // Check manual-layout view first (UI edits) - ONLY if in manual mode or if explicit manual positions exist
+        let manualPositionsMap: Record<string, { x: number; y: number }> = {};
+        if (isManualMode) {
+          manualPositionsMap = tryGetPositions(model.views?.[manualViewKey]) || {};
+        }
+
+        // If no positions found, check level-based view (L1, L2, L3 from DSL)
+        if (Object.keys(manualPositionsMap).length === 0) {
+          manualPositionsMap = tryGetPositions(model.views?.[levelViewKey]) || {};
+        }
+
+        // If still no positions, check all views for layout blocks (from DSL) - ONLY if in manual mode
+        if (isManualMode && Object.keys(manualPositionsMap).length === 0 && model.views) {
+          for (const [_viewId, view] of Object.entries(model.views)) {
+            const positions = tryGetPositions(view);
+            if (positions && Object.keys(positions).length > 0) {
+              // Merge positions from all views (later views override earlier ones)
+              manualPositionsMap = { ...manualPositionsMap, ...positions };
+            }
+          }
+        }
 
         // Build compound node structure if clusters are available
         // This creates parent nodes as visual containers with children inside
@@ -1054,8 +1085,12 @@ export const SrujaCanvas = () => {
 
             // Use SplineEdge if points are available for high fidelity
             // Graphviz spline coordinates are now reliable with node sizing
+            // BUT: If in manual mode or using saved positions, splines won't match node positions
             const splinePoints = gvEdgeMap.get(`${edge.source}-${edge.target}`);
-            const useSpline = splinePoints && splinePoints.length > 0;
+            // Disable splines if in manual mode or if we have manual positions loaded
+            const hasManualPositions = Object.keys(manualPositionsMap).length > 0;
+            const useSpline =
+              splinePoints && splinePoints.length > 0 && !isManualMode && !hasManualPositions;
 
             const finalEdgeType = useSpline ? "spline" : "smoothstep";
 
@@ -1153,6 +1188,13 @@ export const SrujaCanvas = () => {
   // Selection store for details panel
   const selectNode = useSelectionStore((s) => s.selectNode);
 
+  // Visual editor store
+  const { activeTool, selectedNodeType, setActiveTool, isManualMode } = useVisualEditorStore();
+  const addNode = useArchitectureStore((s) => s.addNode);
+  const addRelation = useArchitectureStore((s) => s.addRelation);
+  const deleteNodes = useArchitectureStore((s) => s.deleteNodes);
+  const showToast = useToastStore((s) => s.showToast);
+
   // Manual editing: Track node positions for saving
   const [, setManualPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   const [hasManualEdits, setHasManualEdits] = useState(false);
@@ -1232,6 +1274,276 @@ export const SrujaCanvas = () => {
       });
     },
     [model, updateArchitecture, level, focusNodeId]
+  );
+
+  // Visual editing: Handle pane click for node creation
+  const handlePaneInteraction = useCallback(
+    (event: React.MouseEvent | MouseEvent) => {
+      // Only proceed if in create-node mode with selected type
+      if (activeTool === "create-node" && selectedNodeType && reactFlowInstance) {
+        // Prevent default to avoid conflicts
+        event.preventDefault?.();
+        event.stopPropagation?.();
+
+        const point = reactFlowInstance.screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        });
+
+        // Generate a default name based on type
+        const defaultName = `${selectedNodeType.charAt(0).toUpperCase() + selectedNodeType.slice(1)} ${Date.now().toString().slice(-4)}`;
+
+        logger.debug("Creating node", {
+          component: "SrujaCanvas",
+          nodeType: selectedNodeType,
+          name: defaultName,
+          position: point,
+        });
+
+        // Create the node first
+        addNode(selectedNodeType, defaultName, undefined, point)
+          .then(async () => {
+            // After node is created, save its position in view metadata
+            // Use the same view key format as onNodeDragStop
+            const viewKey = `manual-layout-${level}-${focusNodeId || "root"}`;
+
+            // Get the node ID - need to wait for the node to be created first
+            // The node ID will be generated by addNode, so we need to get it from the model
+            // For now, we'll save the position after a short delay to ensure the node exists
+            // A better approach would be to return the nodeId from addNode, but for now this works
+            setTimeout(async () => {
+              const currentModel = useArchitectureStore.getState().model;
+              if (!currentModel) return;
+
+              // Find the node we just created (it will have the name we used)
+              const nodeId = Object.keys(currentModel.elements || {}).find(
+                (id) => currentModel.elements?.[id]?.title === defaultName
+              );
+
+              if (!nodeId) {
+                logger.warn("Could not find created node to save position", {
+                  component: "SrujaCanvas",
+                  nodeName: defaultName,
+                });
+                return;
+              }
+
+              // Save position in view metadata
+              await updateArchitecture((model) => {
+                const updatedModel = { ...model };
+
+                if (!updatedModel.views) {
+                  updatedModel.views = {};
+                } else {
+                  updatedModel.views = { ...updatedModel.views };
+                }
+
+                type ViewWithLayoutMutable = {
+                  id: string;
+                  title?: string;
+                  rules?: unknown[];
+                  nodes?: string[];
+                  edges?: string[];
+                  layout?: { positions?: Record<string, { x: number; y: number }> };
+                };
+
+                const views = updatedModel.views as Record<string, ViewWithLayoutMutable>;
+
+                if (!views[viewKey]) {
+                  views[viewKey] = {
+                    id: viewKey,
+                    title: `Manual Layout ${level > 1 ? `L${level}` : "L1"}`,
+                    rules: [],
+                    nodes: [],
+                    edges: [],
+                  };
+                }
+
+                const view = views[viewKey];
+                if (!view.layout) {
+                  view.layout = {};
+                }
+                if (!view.layout.positions) {
+                  view.layout.positions = {};
+                }
+
+                // Save the initial position
+                view.layout.positions[nodeId] = {
+                  x: point.x,
+                  y: point.y,
+                };
+
+                return updatedModel;
+              });
+            }, 100); // Small delay to ensure node is created
+
+            showToast(`Created ${selectedNodeType} "${defaultName}"`, "success");
+            // Reset tool to select after creation
+            setActiveTool("select");
+          })
+          .catch((error) => {
+            logger.error("Failed to create node", {
+              component: "SrujaCanvas",
+              action: "handlePaneInteraction",
+              error: error instanceof Error ? error.message : String(error),
+            });
+            showToast(
+              `Failed to create node: ${error instanceof Error ? error.message : String(error)}`,
+              "error"
+            );
+          });
+      }
+    },
+    [
+      activeTool,
+      selectedNodeType,
+      reactFlowInstance,
+      addNode,
+      updateArchitecture,
+      setActiveTool,
+      showToast,
+      level,
+      focusNodeId,
+    ]
+  );
+
+  const onPaneClick = useCallback(
+    (event: React.MouseEvent) => {
+      console.log("[SrujaCanvas] onPaneClick FIRED", {
+        activeTool,
+        selectedNodeType,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        target: event.target,
+      });
+      handlePaneInteraction(event);
+    },
+    [handlePaneInteraction]
+  );
+
+  // Alternative approach: Add direct event listener to pane element as fallback
+  // This handles cases where React Flow's onPaneClick doesn't fire
+  useEffect(() => {
+    if (!reactFlowInstance || activeTool !== "create-node" || !selectedNodeType) {
+      return;
+    }
+
+    let cleanup: (() => void) | undefined;
+
+    // Wait a bit for React Flow to render
+    const timeoutId = setTimeout(() => {
+      // Try multiple selectors to find the pane
+      const reactFlowPane = document.querySelector(".react-flow__pane") as HTMLElement;
+      const reactFlowWrapper = document.querySelector(".react-flow") as HTMLElement;
+
+      if (!reactFlowPane && !reactFlowWrapper) {
+        console.warn("[SrujaCanvas] Could not find React Flow pane element");
+        return;
+      }
+
+      const targetElement = reactFlowPane || reactFlowWrapper;
+
+      const handlePaneClick = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+
+        // Ignore clicks on UI elements
+        if (
+          target.closest(".react-flow__node") ||
+          target.closest(".react-flow__edge") ||
+          target.closest(".react-flow__controls") ||
+          target.closest(".react-flow__minimap") ||
+          target.closest('[data-testid="visual-editor-toolbar"]') ||
+          target.closest('[data-testid="node-palette"]') ||
+          target.closest('[class*="mantine"]') // Ignore Mantine UI components
+        ) {
+          return;
+        }
+
+        // Only handle clicks on pane/background
+        if (
+          target.classList.contains("react-flow__pane") ||
+          target.classList.contains("react-flow__background") ||
+          target === targetElement ||
+          (!target.closest(".react-flow__node") && !target.closest(".react-flow__edge"))
+        ) {
+          console.log("[SrujaCanvas] Direct pane click handler fired (fallback)", {
+            activeTool,
+            selectedNodeType,
+            targetClass: target.className,
+            targetTag: target.tagName,
+            clientX: e.clientX,
+            clientY: e.clientY,
+          });
+          e.stopPropagation();
+          handlePaneInteraction(e);
+        }
+      };
+
+      targetElement.addEventListener("click", handlePaneClick, true); // Use capture phase
+
+      cleanup = () => {
+        targetElement.removeEventListener("click", handlePaneClick, true);
+      };
+    }, 100); // Small delay to ensure DOM is ready
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (cleanup) {
+        cleanup();
+      }
+    };
+  }, [reactFlowInstance, activeTool, selectedNodeType, handlePaneInteraction]);
+
+  // Visual editing: Handle connection creation
+  const onConnect = useCallback(
+    (params: Connection) => {
+      const { source, target } = params;
+      if (source && target && activeTool === "connect") {
+        addRelation(source, target, "")
+          .then(() => {
+            showToast("Connection created", "success");
+            // Reset tool to select after connection
+            setActiveTool("select");
+          })
+          .catch((error) => {
+            logger.error("Failed to create connection", {
+              component: "SrujaCanvas",
+              action: "onConnect",
+              error: error instanceof Error ? error.message : String(error),
+            });
+            showToast(
+              `Failed to create connection: ${error instanceof Error ? error.message : String(error)}`,
+              "error"
+            );
+          });
+      }
+    },
+    [activeTool, addRelation, setActiveTool, showToast]
+  );
+
+  // Visual editing: Handle node deletion
+  const onNodesDelete = useCallback(
+    (deleted: RFNode[]) => {
+      if (deleted.length > 0) {
+        const nodeIds = deleted.map((node) => node.id);
+        deleteNodes(nodeIds)
+          .then(() => {
+            showToast(`Deleted ${nodeIds.length} node(s)`, "success");
+          })
+          .catch((error) => {
+            logger.error("Failed to delete nodes", {
+              component: "SrujaCanvas",
+              action: "onNodesDelete",
+              error: error instanceof Error ? error.message : String(error),
+            });
+            showToast(
+              `Failed to delete nodes: ${error instanceof Error ? error.message : String(error)}`,
+              "error"
+            );
+          });
+      }
+    },
+    [deleteNodes, showToast]
   );
 
   // Check if current view has manual positions
@@ -1548,58 +1860,103 @@ export const SrujaCanvas = () => {
         </div>
       )}
 
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={onNodeClick}
-        onNodeDragStop={onNodeDragStop}
-        onInit={setReactFlowInstance}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        nodesDraggable={true}
-        nodesConnectable={false}
-        elementsSelectable={true}
-        fitView
-        minZoom={0.1}
-        maxZoom={2}
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          position: "relative",
+        }}
       >
-        <Background color={backgroundPatternColor} gap={16} />
-        <Controls
-          className="sruja-controls"
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeClick={onNodeClick}
+          onNodeDragStop={onNodeDragStop}
+          onInit={setReactFlowInstance}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onPaneClick={onPaneClick}
+          onConnect={onConnect}
+          onNodesDelete={onNodesDelete}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          nodesDraggable={isManualMode}
+          nodesConnectable={activeTool === "connect"}
+          elementsSelectable={true}
+          fitView
+          minZoom={0.1}
+          maxZoom={2}
+        >
+          <Background color={backgroundPatternColor} gap={16} />
+          <Controls
+            className="sruja-controls"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "4px",
+              padding: "4px",
+              backgroundColor: isDark ? "#1a1a1a" : "#fff",
+              border: `1px solid ${isDark ? "#333" : "#ddd"}`,
+              borderRadius: "4px",
+              boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+            }}
+          />
+          <MiniMap
+            nodeStrokeColor={(n) => {
+              if (n.type === "input") return "#0041d0";
+              if (n.type === "output") return "#ff0072";
+              if (n.type === "default") return "#1a192b";
+              return "#eee";
+            }}
+            nodeColor={(n) => {
+              if (n.style?.background) return n.style.background as string;
+              return "#fff";
+            }}
+            nodeBorderRadius={2}
+            maskColor={isDark ? "rgba(0,0,0,0.3)" : "rgba(240,240,240,0.3)"}
+            style={{
+              backgroundColor: isDark ? "#1a1a1a" : "#fff",
+              border: `1px solid ${isDark ? "#333" : "#ddd"}`,
+            }}
+          />
+        </ReactFlow>
+      </div>
+
+      {/* Visual Editor Toolbar */}
+      <Paper
+        shadow="md"
+        p="sm"
+        radius="md"
+        withBorder
+        data-testid="visual-editor-toolbar"
+        style={{
+          position: "absolute",
+          top: 16,
+          left: 16,
+          zIndex: 1000,
+          backgroundColor: isDark ? "rgba(30, 30, 30, 0.95)" : "rgba(255, 255, 255, 0.95)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <VisualEditorToolbar />
+      </Paper>
+
+      {/* Node Palette - Show when create-node tool is active */}
+      {activeTool === "create-node" && (
+        <div
+          data-testid="node-palette"
           style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "4px",
-            padding: "4px",
-            backgroundColor: isDark ? "#1a1a1a" : "#fff",
-            border: `1px solid ${isDark ? "#333" : "#ddd"}`,
-            borderRadius: "4px",
-            boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+            position: "absolute",
+            top: 80,
+            left: 16,
+            zIndex: 1000,
           }}
-        />
-        <MiniMap
-          nodeStrokeColor={(n) => {
-            if (n.type === "input") return "#0041d0";
-            if (n.type === "output") return "#ff0072";
-            if (n.type === "default") return "#1a192b";
-            return "#eee";
-          }}
-          nodeColor={(n) => {
-            if (n.style?.background) return n.style.background as string;
-            return "#fff";
-          }}
-          nodeBorderRadius={2}
-          maskColor={isDark ? "rgba(0,0,0,0.3)" : "rgba(240,240,240,0.3)"}
-          style={{
-            backgroundColor: isDark ? "#1a1a1a" : "#fff",
-            border: `1px solid ${isDark ? "#333" : "#ddd"}`,
-          }}
-        />
-      </ReactFlow>
+        >
+          <NodePalette />
+        </div>
+      )}
 
       {/* SRE Chaos Mode Controls - Available for all users */}
       {(showChaosPanel || chaosState.enabled) && (

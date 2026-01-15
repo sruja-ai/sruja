@@ -8,11 +8,12 @@ import type { SrujaModelDump, DotResult } from "@sruja/shared";
 import { SrujaDiagramPreview } from "./SrujaDiagramPreview";
 
 export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
-  const [dsl, setDsl] = useState(() => {
+  // Helper to normalize indentation
+  const normalizeDsl = useCallback((input: string) => {
     // If the input is already clean (no pervasive indentation), return it
-    if (!initialDsl.includes("\n")) return initialDsl;
+    if (!input.includes("\n")) return input.trim();
 
-    const lines = initialDsl.split("\n");
+    const lines = input.split("\n");
     // Ignore first/last empty lines often caused by template literals
     let start = 0;
     while (start < lines.length && lines[start].trim() === "") start++;
@@ -30,20 +31,47 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
       return Math.min(min, match ? match[1].length : 0);
     }, Infinity);
 
-    // If unreasonable indent (e.g. infinite or 0), just return trimmed
-    if (minIndent === Infinity || minIndent === 0) return relevantLines.join("\n");
+    // Only strip indentation if ALL non-empty lines have the same leading indentation
+    if (minIndent === Infinity || minIndent === 0) {
+      return relevantLines.join("\n");
+    }
 
+    // Check if all non-empty lines start with at least minIndent spaces
+    const allHaveMinIndent = relevantLines.every((line) => {
+      if (line.trim() === "") return true;
+      return line.length >= minIndent && line.slice(0, minIndent).trim() === "";
+    });
+
+    if (!allHaveMinIndent) {
+      // Relative indentation exists, preserve it
+      return relevantLines.join("\n");
+    }
+
+    // All lines have the same leading indentation, strip it
     return relevantLines
       .map((line) => (line.length >= minIndent ? line.slice(minIndent) : line))
       .join("\n");
-  });
+  }, []);
+
+  const [dsl, setDsl] = useState(() => normalizeDsl(initialDsl));
+
+  // React to prop changes (e.g. HMR or parent updates)
+  useEffect(() => {
+    setDsl(normalizeDsl(initialDsl));
+  }, [initialDsl, normalizeDsl]);
   const [data, setData] = useState<SrujaModelDump | null>(null);
   const [dotResult, setDotResult] = useState<DotResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
   const isInitialRender = useRef(true);
+  const dslRef = useRef(dsl);
 
-  const renderDiagram = useCallback(async () => {
+  // Keep ref in sync with state
+  useEffect(() => {
+    dslRef.current = dsl;
+  }, [dsl]);
+
+  const renderDiagram = useCallback(async (inputDsl: string) => {
     setBusy(true);
     setErrorHeader(null);
 
@@ -62,7 +90,7 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
           .join("\n")
           .trim();
       };
-      const input = normalize(dsl);
+      const input = normalize(inputDsl);
       const api = await initWasm();
 
       // Get model dump for general info
@@ -94,24 +122,44 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
       setBusy(false);
       isInitialRender.current = false;
     }
-  }, [dsl]);
+  }, []);
 
   // Initial render
   useEffect(() => {
-    renderDiagram();
+    renderDiagram(dsl);
     trackEvent("live.render_view");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const pendingUpdateRef = useRef<boolean>(false);
+
   // Debounced auto-render on change
   useEffect(() => {
+    // Flag that we have a pending update
+    pendingUpdateRef.current = true;
+
     const timer = setTimeout(() => {
-      if (!isInitialRender.current) {
-        renderDiagram();
+      if (busy) {
+        // If busy, we rely on the effect below to pick it up later
+        return;
       }
-    }, 1000); // 1s debounce for live preview
+
+      if (!isInitialRender.current) {
+        pendingUpdateRef.current = false;
+        renderDiagram(dslRef.current);
+      }
+    }, 1500); // 1.5s delay to allow typing to finish
+
     return () => clearTimeout(timer);
-  }, [dsl, renderDiagram]);
+  }, [dsl, busy, renderDiagram]);
+
+  // Effect to retry rendering if we were busy when the timeout fired
+  useEffect(() => {
+    if (!busy && pendingUpdateRef.current && !isInitialRender.current) {
+      pendingUpdateRef.current = false;
+      renderDiagram(dslRef.current);
+    }
+  }, [busy, renderDiagram]);
 
   const [theme, setTheme] = useState<"vs" | "vs-dark" | "hc-black">(() =>
     typeof document !== "undefined" &&
@@ -162,6 +210,10 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
               tabSize: 2,
               insertSpaces: true,
               detectIndentation: false,
+              formatOnPaste: true,
+              formatOnType: false,
+              autoIndent: "full",
+              trimAutoWhitespace: true,
             }}
             height="640px"
           />

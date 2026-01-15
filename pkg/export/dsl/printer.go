@@ -2,6 +2,7 @@
 package dsl
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -532,8 +533,45 @@ func (p *ModelPrinter) printView(view *json.ViewDump) {
 		p.sb.WriteString("]\n")
 	}
 
+	// Layout block with positions (for manual editing support)
+	if view.Layout != nil && len(view.Layout.Positions) > 0 {
+		p.writeLine("layout {")
+		p.indentLevel++
+
+		// Sort element IDs for consistent output
+		elementIDs := make([]string, 0, len(view.Layout.Positions))
+		for id := range view.Layout.Positions {
+			elementIDs = append(elementIDs, id)
+		}
+		sort.Strings(elementIDs)
+
+		// Print position for each element
+		for _, elementID := range elementIDs {
+			pos := view.Layout.Positions[elementID]
+			p.writeLine("element " + elementID + " {")
+			p.indentLevel++
+			// Use X, Y (capital) to match ViewPositionDump format
+			p.writeLine("position { x: " + formatFloat(pos.X) + ", y: " + formatFloat(pos.Y) + " }")
+			p.indentLevel--
+			p.writeLine("}")
+		}
+
+		p.indentLevel--
+		p.writeLine("}")
+	}
+
 	p.indentLevel--
 	p.writeLine("}")
+}
+
+// formatFloat formats a float64 for DSL output, removing unnecessary decimals
+func formatFloat(f float64) string {
+	// If it's a whole number, print without decimals
+	if f == float64(int64(f)) {
+		return strings.TrimSuffix(strings.TrimSuffix(fmt.Sprintf("%.1f", f), "0"), ".")
+	}
+	// Otherwise, print with reasonable precision
+	return fmt.Sprintf("%.2f", f)
 }
 
 // extractName gets the short name from a fully qualified ID.

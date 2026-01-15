@@ -22,6 +22,7 @@ export interface Element {
   metadata?: Record<string, string> | null;
   style?: ElementStyle | null;
   parent?: string | null;
+  children?: Record<string, Element> | null;
 }
 
 export interface ElementStyle {
