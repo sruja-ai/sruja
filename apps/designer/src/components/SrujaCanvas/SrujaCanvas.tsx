@@ -48,6 +48,13 @@ import type { Connection } from "@xyflow/react";
 import { VisualEditorToolbar } from "../VisualEditor/VisualEditorToolbar";
 import { NodePalette } from "../VisualEditor/NodePalette";
 import { PositionPreservation } from "../../utils/positionPreservation";
+import {
+  applyChaosAndCapacity,
+  buildLayoutSignature,
+  getManualPositionsMap,
+  hashCacheKey,
+  selectOptimalHandles,
+} from "./layoutUtils";
 
 const nodeTypes: NodeTypes = {
   sruja: SrujaNode,
@@ -59,70 +66,6 @@ const edgeTypes: EdgeTypes = {
   traffic: TrafficEdge,
 };
 
-/**
- * Select optimal handle positions based on node positions.
- * Chooses the closest sides between source and target nodes.
- */
-function selectOptimalHandles(
-  sourceNode: RFNode,
-  targetNode: RFNode
-): { sourceHandle: string; targetHandle: string } {
-  const sourceX = sourceNode.position.x + (sourceNode.width || 0) / 2;
-  const sourceY = sourceNode.position.y + (sourceNode.height || 0) / 2;
-  const targetX = targetNode.position.x + (targetNode.width || 0) / 2;
-  const targetY = targetNode.position.y + (targetNode.height || 0) / 2;
-
-  const dx = targetX - sourceX;
-  const dy = targetY - sourceY;
-  const absDx = Math.abs(dx);
-  const absDy = Math.abs(dy);
-
-  // Determine primary direction
-  let sourceHandle: string;
-  let targetHandle: string;
-
-  if (absDx > absDy) {
-    // Horizontal layout - prefer left/right
-    if (dx > 0) {
-      // Target is to the right
-      sourceHandle = "source-right";
-      targetHandle = "target-left";
-    } else {
-      // Target is to the left
-      sourceHandle = "source-left";
-      targetHandle = "target-right";
-    }
-  } else {
-    // Vertical layout - prefer top/bottom
-    if (dy > 0) {
-      // Target is below
-      sourceHandle = "source-bottom";
-      targetHandle = "target-top";
-    } else {
-      // Target is above
-      sourceHandle = "source-top";
-      targetHandle = "target-bottom";
-    }
-  }
-
-  return { sourceHandle, targetHandle };
-}
-
-/**
- * Simple hash function for cache keys
- * Includes model identifier to invalidate cache when model changes
- */
-function hashCacheKey(
-  level: C4Level,
-  focusNodeId: string | undefined,
-  collapsedNodeIds: Set<string>,
-  modelId?: string | null
-): string {
-  const collapsedArray = Array.from(collapsedNodeIds).sort().join(",");
-  // Include modelId in cache key to ensure cache is invalidated when model changes
-  const modelHash = modelId ? modelId.substring(0, 16) : "no-model";
-  return `${level}:${focusNodeId || ""}:${collapsedArray}:${modelHash}`;
-}
 
 interface LayoutCache {
   [key: string]: {
@@ -134,16 +77,6 @@ interface LayoutCache {
 }
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-function buildLayoutSignature(
-  contextKey: string,
-  nodes: Array<{ id: string }>,
-  relations: Array<{ from: string; to: string }>
-): string {
-  const nodeKey = nodes.map((node) => node.id).sort().join("|");
-  const relationKey = relations.map((rel) => `${rel.from}->${rel.to}`).sort().join("|");
-  return `${contextKey}:${nodeKey}:${relationKey}`;
-}
 
 export const SrujaCanvas = () => {
   // Layout Cache Ref
@@ -504,6 +437,7 @@ export const SrujaCanvas = () => {
   const chaosState = useArchitectureStore((s) => s.chaosState);
   const setFailedNode = useArchitectureStore((s) => s.setFailedNode);
   const setChaosEnabled = useArchitectureStore((s) => s.setChaosEnabled);
+  const capacityState = useArchitectureStore((s) => s.capacityState);
   // Role selection removed - now handled in Roles tab
 
   // Calculate Blast Radius (Impacted Nodes)
@@ -907,50 +841,12 @@ export const SrujaCanvas = () => {
         // 5. React Flow Mapping
         // Check for saved manual positions in view metadata
         // Priority: 1) manual-layout-* (from UI edits), 2) regular view IDs (from DSL), 3) level-based views (L1, L2, L3)
-        const manualViewKey = `manual-layout-${level}-${focusNodeId || "root"}`;
-        const levelViewKey = `L${level}`;
-
-        // Try multiple view keys to find positions
-        const tryGetPositions = (
-          view: any
-        ): Record<string, { x: number; y: number }> | undefined => {
-          if (!view) return undefined;
-          type ViewWithLayout = typeof view & {
-            layout?: { positions?: Record<string, { x: number; y: number }> };
-            Layout?: {
-              Positions?: Record<string, { x: number; y: number }>;
-              positions?: Record<string, { x: number; y: number }>;
-            };
-          };
-          const viewWithLayout = view as ViewWithLayout | undefined;
-          return (
-            viewWithLayout?.layout?.positions ||
-            viewWithLayout?.Layout?.Positions ||
-            viewWithLayout?.Layout?.positions
-          );
-        };
-
-        // Check manual-layout view first (UI edits) - ONLY if in manual mode or if explicit manual positions exist
-        let manualPositionsMap: Record<string, { x: number; y: number }> = {};
-        if (isManualMode) {
-          manualPositionsMap = tryGetPositions(model.views?.[manualViewKey]) || {};
-        }
-
-        // If no positions found, check level-based view (L1, L2, L3 from DSL)
-        if (Object.keys(manualPositionsMap).length === 0) {
-          manualPositionsMap = tryGetPositions(model.views?.[levelViewKey]) || {};
-        }
-
-        // If still no positions, check all views for layout blocks (from DSL) - ONLY if in manual mode
-        if (isManualMode && Object.keys(manualPositionsMap).length === 0 && model.views) {
-          for (const [_viewId, view] of Object.entries(model.views)) {
-            const positions = tryGetPositions(view);
-            if (positions && Object.keys(positions).length > 0) {
-              // Merge positions from all views (later views override earlier ones)
-              manualPositionsMap = { ...manualPositionsMap, ...positions };
-            }
-          }
-        }
+        const { manualPositionsMap, hasManualPositions } = getManualPositionsMap({
+          model,
+          level,
+          focusNodeId,
+          isManualMode,
+        });
 
         // Build compound node structure if clusters are available
         // This creates parent nodes as visual containers with children inside
@@ -994,106 +890,32 @@ export const SrujaCanvas = () => {
               position = { x: layout.x, y: layout.y };
             }
 
-            // Chaos Mode Styling
-            const isFailed = chaosState.enabled && chaosState.failedNodeId === node.id;
-            const isImpacted = chaosState.enabled && impactedNodeIds.has(node.id);
-            const isDimmed =
-              chaosState.enabled && !!chaosState.failedNodeId && !isFailed && !isImpacted;
-
-            // Capacity Planning Calculation
-            const capacityState = useArchitectureStore.getState().capacityState;
-            const loadMultiplier = capacityState.userLoad / 100;
-            // Smart Scaling: Check for base_replicas in metadata, default to 3
-            // Only for containers (services)
-            const metaBase = node.metadata?.base_replicas || node.metadata?.replicas;
-            const baseReplicas = metaBase ? parseInt(String(metaBase), 10) : 3;
-            const replicas =
-              node.kind === "container" && !isNaN(baseReplicas)
-                ? Math.ceil(baseReplicas * loadMultiplier)
-                : undefined;
-
             return {
               id: node.id,
               type: "sruja",
               position,
               data: {
                 ...node,
-                _theme: mode,
-                // Pass chaos flags
-                _chaos: {
-                  isFailed,
-                  isImpacted,
-                  isDimmed,
-                },
-                // Pass capacity metrics
-                _capacity: replicas
-                  ? {
-                      replicas,
-                      load: capacityState.userLoad,
-                    }
-                  : undefined,
               } as C4Node & Record<string, unknown>,
               width: node.width,
               height: node.height,
-              style: {
-                // Apply z-index boost for important nodes
-                zIndex: isFailed ? 999 : isImpacted ? 998 : 1,
-                opacity: isDimmed ? 0.3 : 1,
-                filter: isDimmed ? "grayscale(0.8)" : "none",
-              },
             };
           });
         }
 
         // Apply chaos styling and capacity metrics to all nodes (both flat and compound)
-        nextNodes = nextNodes.map((node) => {
-          const isFailed = chaosState.enabled && chaosState.failedNodeId === node.id;
-          const isImpacted = chaosState.enabled && impactedNodeIds.has(node.id);
-          const isDimmed =
-            chaosState.enabled && !!chaosState.failedNodeId && !isFailed && !isImpacted;
-
-          const capacityState = useArchitectureStore.getState().capacityState;
-          const loadMultiplier = capacityState.userLoad / 100;
-
-          const metadata = node.data?.metadata as Record<string, unknown> | undefined;
-          const metaBase = metadata?.base_replicas || metadata?.replicas;
-          const baseReplicas = metaBase ? parseInt(String(metaBase), 10) : 3;
-
-          const replicas =
-            node.data?.kind === "container" && !isNaN(baseReplicas)
-              ? Math.ceil(baseReplicas * loadMultiplier)
-              : undefined;
-
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              _theme: mode,
-              _chaos: {
-                isFailed,
-                isImpacted,
-                isDimmed,
-              },
-              _capacity: replicas
-                ? {
-                    replicas,
-                    load: capacityState.userLoad,
-                  }
-                : undefined,
-            },
-            style: {
-              ...node.style,
-              zIndex: isFailed ? 999 : isImpacted ? 998 : (node.style?.zIndex ?? 1),
-              opacity: isDimmed ? 0.3 : (node.style?.opacity ?? 1),
-              filter: isDimmed ? "grayscale(0.8)" : (node.style?.filter ?? "none"),
-            },
-          };
+        nextNodes = applyChaosAndCapacity({
+          nodes: nextNodes,
+          chaosState,
+          impactedNodeIds,
+          capacityState,
+          themeMode: mode,
         });
 
         const shouldPreservePositions =
           previousLayoutSignatureRef.current === layoutSignature &&
           !isManualMode &&
-          Object.keys(manualPositionsMap).length === 0;
+          !hasManualPositions;
 
         if (shouldPreservePositions) {
           const { stableNodeIds } = positionPreservationRef.current.detectChanges(
@@ -1185,7 +1007,6 @@ export const SrujaCanvas = () => {
             // BUT: If in manual mode or using saved positions, splines won't match node positions
             const splinePoints = gvEdgeMap.get(`${edge.source}-${edge.target}`);
             // Disable splines if in manual mode or if we have manual positions loaded
-            const hasManualPositions = Object.keys(manualPositionsMap).length > 0;
             const useSpline =
               splinePoints && splinePoints.length > 0 && !isManualMode && !hasManualPositions;
 
