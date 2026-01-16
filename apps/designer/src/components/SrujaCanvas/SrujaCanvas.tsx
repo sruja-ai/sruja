@@ -31,7 +31,7 @@ import { buildCompoundNodeStructure } from "./compoundNodes";
 import type { C4Node, C4Level } from "./types";
 import type { C4NodeData } from "../../types";
 import { ArrowLeft, Edit3, Zap } from "lucide-react";
-import { type LayoutQuality, type ParentChildRelationships } from "./qualityMetrics";
+import { type LayoutQuality } from "./qualityMetrics";
 
 import { convertDslToDot, type SrujaModelDump } from "@sruja/shared";
 type ElementDump = NonNullable<SrujaModelDump["elements"]>[string];
@@ -73,7 +73,6 @@ const edgeTypes: EdgeTypes = {
   spline: SplineEdge,
   traffic: TrafficEdge,
 };
-
 
 interface LayoutCache {
   [key: string]: {
@@ -889,7 +888,7 @@ export const SrujaCanvas = () => {
             }
             return true;
           })
-          .map((edge) => {
+          .flatMap((edge): RFEdge[] => {
             const sourceNode = nodeMap.get(edge.source);
             const targetNode = nodeMap.get(edge.target);
 
@@ -898,26 +897,70 @@ export const SrujaCanvas = () => {
               // Theme-aware fallback edge colors using shared UI theme
               const edgeColor = isDark ? uiTheme.neutral[600] : uiTheme.neutral[600];
 
-              return {
-                id: edge.id,
+              return [
+                {
+                  id: edge.id,
+                  source: edge.source,
+                  target: edge.target,
+                  sourceHandle: "source-bottom",
+                  targetHandle: "target-top",
+                  type: "smoothstep" as EdgeType,
+                  animated: false,
+                  style: { stroke: edgeColor, strokeWidth: 2 },
+                  markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    color: edgeColor,
+                    width: 20,
+                    height: 20,
+                  },
+                },
+              ];
+            }
+
+            // Validate nodes have required properties before selecting handles
+            if (
+              !sourceNode.position ||
+              !targetNode.position ||
+              typeof sourceNode.position.x !== "number" ||
+              typeof sourceNode.position.y !== "number" ||
+              typeof targetNode.position.x !== "number" ||
+              typeof targetNode.position.y !== "number"
+            ) {
+              console.warn("[SrujaCanvas] Invalid node positions for edge", {
+                edgeId: edge.id,
                 source: edge.source,
                 target: edge.target,
-                sourceHandle: "source-bottom",
-                targetHandle: "target-top",
-                type: "smoothstep" as EdgeType,
-                animated: false,
-                style: { stroke: edgeColor, strokeWidth: 2 },
-                markerEnd: {
-                  type: MarkerType.ArrowClosed,
-                  color: edgeColor,
-                  width: 20,
-                  height: 20,
-                },
-              };
+                sourceNode: sourceNode.position,
+                targetNode: targetNode.position,
+              });
+              // Skip this edge if nodes don't have valid positions
+              return [];
             }
 
             // Select optimal handles based on node positions
-            const { sourceHandle, targetHandle } = selectOptimalHandles(sourceNode, targetNode);
+            const handleResult = selectOptimalHandles(sourceNode, targetNode);
+            // Ensure handles are always valid strings (defensive check)
+            const sourceHandle = handleResult?.sourceHandle || "source-bottom";
+            const targetHandle = handleResult?.targetHandle || "target-top";
+
+            // Validate handles are not null/undefined/empty strings
+            if (
+              !sourceHandle ||
+              !targetHandle ||
+              typeof sourceHandle !== "string" ||
+              typeof targetHandle !== "string"
+            ) {
+              console.warn("[SrujaCanvas] Invalid handles detected", {
+                edgeId: edge.id,
+                source: edge.source,
+                target: edge.target,
+                sourceHandle,
+                targetHandle,
+                handleResult,
+              });
+              // Skip this edge if handles are invalid
+              return [];
+            }
 
             // Theme-aware edge colors using shared UI theme
             const edgeColor = isDark ? uiTheme.neutral[600] : uiTheme.neutral[600]; // slate-600 for both themes
@@ -937,42 +980,44 @@ export const SrujaCanvas = () => {
             const finalEdgeType = useSpline ? "spline" : "smoothstep";
 
             const hasLabel = edge.label && edge.label.trim().length > 0;
-            return {
-              id: edge.id,
-              source: edge.source,
-              target: edge.target,
-              // Always use handles so React Flow maintains connections when nodes move
-              sourceHandle: sourceHandle,
-              targetHandle: targetHandle,
-              type: finalEdgeType,
-              data: useSpline ? { points: splinePoints, label: edge.label } : undefined,
-              ...(hasLabel && {
-                label: edge.label,
-                labelShowBg: true,
-                labelStyle: {
-                  color: labelColor,
-                  fontWeight: 600,
-                  fontSize: "12px",
-                  textShadow: "0 1px 2px rgba(0, 0, 0, 0.2)", // Add subtle text shadow for better readability
+            return [
+              {
+                id: edge.id,
+                source: edge.source,
+                target: edge.target,
+                // Always use handles so React Flow maintains connections when nodes move
+                sourceHandle: sourceHandle,
+                targetHandle: targetHandle,
+                type: finalEdgeType,
+                data: useSpline ? { points: splinePoints, label: edge.label } : undefined,
+                ...(hasLabel && {
+                  label: edge.label,
+                  labelShowBg: true,
+                  labelStyle: {
+                    color: labelColor,
+                    fontWeight: 600,
+                    fontSize: "12px",
+                    textShadow: "0 1px 2px rgba(0, 0, 0, 0.2)", // Add subtle text shadow for better readability
+                  },
+                  labelBgStyle: {
+                    backgroundColor: labelBgColor,
+                    opacity: 0.95,
+                    padding: "4px 8px",
+                    borderRadius: "6px",
+                    border: `1px solid ${isDark ? "#1e40af" : "#1d4ed8"}`, // Slightly darker border for definition
+                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.15)", // Add shadow for depth
+                  },
+                }),
+                animated: false,
+                style: { stroke: edgeColor, strokeWidth: 2 },
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                  color: edgeColor,
+                  width: 20,
+                  height: 20,
                 },
-                labelBgStyle: {
-                  backgroundColor: labelBgColor,
-                  opacity: 0.95,
-                  padding: "4px 8px",
-                  borderRadius: "6px",
-                  border: `1px solid ${isDark ? "#1e40af" : "#1d4ed8"}`, // Slightly darker border for definition
-                  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.15)", // Add shadow for depth
-                },
-              }),
-              animated: false,
-              style: { stroke: edgeColor, strokeWidth: 2 },
-              markerEnd: {
-                type: MarkerType.ArrowClosed,
-                color: edgeColor,
-                width: 20,
-                height: 20,
               },
-            };
+            ];
           });
 
         // Debug logging
@@ -1142,9 +1187,6 @@ export const SrujaCanvas = () => {
         addNode(selectedNodeType, defaultName, undefined, point)
           .then(async () => {
             // After node is created, save its position in view metadata
-            // Use the same view key format as onNodeDragStop
-            const viewKey = getManualLayoutViewKey(level, focusNodeId);
-
             // Get the node ID - need to wait for the node to be created first
             // The node ID will be generated by addNode, so we need to get it from the model
             // For now, we'll save the position after a short delay to ensure the node exists
@@ -1210,7 +1252,7 @@ export const SrujaCanvas = () => {
 
   const onPaneClick = useCallback(
     (event: React.MouseEvent) => {
-      console.log("[SrujaCanvas] onPaneClick FIRED", {
+      console.debug("[SrujaCanvas] onPaneClick FIRED", {
         activeTool,
         selectedNodeType,
         clientX: event.clientX,
@@ -1219,7 +1261,7 @@ export const SrujaCanvas = () => {
       });
       handlePaneInteraction(event);
     },
-    [handlePaneInteraction]
+    [handlePaneInteraction, activeTool, selectedNodeType]
   );
 
   // Alternative approach: Add direct event listener to pane element as fallback
@@ -1267,7 +1309,7 @@ export const SrujaCanvas = () => {
           target === targetElement ||
           (!target.closest(".react-flow__node") && !target.closest(".react-flow__edge"))
         ) {
-          console.log("[SrujaCanvas] Direct pane click handler fired (fallback)", {
+          console.debug("[SrujaCanvas] Direct pane click handler fired (fallback)", {
             activeTool,
             selectedNodeType,
             targetClass: target.className,

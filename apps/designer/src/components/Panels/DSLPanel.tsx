@@ -1,5 +1,5 @@
 // DSL Panel - Shows the source DSL code for the current architecture
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import type * as monacoTypes from "monaco-editor";
 import { useArchitectureStore } from "../../stores";
 import { useUIStore } from "../../stores/uiStore";
@@ -14,8 +14,7 @@ export function DSLPanel() {
   const { monacoTheme, handleEditorDidMount: baseEditorDidMount } = useDSLEditor(dslSource);
   const { showDiff, baselineDsl, setShowDiff } = useDSLDiff();
   const [copied, setCopied] = useState(false);
-  const [monacoInstance, setMonacoInstance] =
-    useState<typeof import("monaco-editor") | null>(null);
+  const [monacoInstance, setMonacoInstance] = useState<typeof import("monaco-editor") | null>(null);
   const [editorInstance, setEditorInstance] =
     useState<monacoTypes.editor.IStandaloneCodeEditor | null>(null);
   const targetLine = useUIStore((s) => s.targetLine);

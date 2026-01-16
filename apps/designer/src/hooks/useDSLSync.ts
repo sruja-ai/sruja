@@ -19,18 +19,41 @@ export function useDSLSync() {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const pendingSyncRef = useRef(false);
+  const isInternalUpdateRef = useRef(false);
 
-  // Sync with store when store's dslSource changes externally
+  // Sync with store when store's dslSource changes externally (but not from our own updates)
+  // Use ref to track previous store value to detect actual changes
+  const prevStoreDslSourceRef = useRef<string | null>(storeDslSource || null);
+
   useEffect(() => {
-    if (storeDslSource !== dslSource) {
-      setLocalDslSource(storeDslSource || null);
-      setError(null);
+    // Skip if this update came from our own handleDSLChange
+    if (isInternalUpdateRef.current) {
+      isInternalUpdateRef.current = false;
+      prevStoreDslSourceRef.current = storeDslSource || null;
+      return;
     }
-  }, [storeDslSource, dslSource]);
+
+    // Only update if store value actually changed (content-wise, not just reference)
+    const currentStoreDsl = storeDslSource || null;
+    const prevStoreDsl = prevStoreDslSourceRef.current;
+
+    // Check if content actually changed (not just reference)
+    if (currentStoreDsl !== prevStoreDsl) {
+      // Only update local state if content is different from what we have
+      // This prevents flickering when model→DSL conversion produces same content
+      if (currentStoreDsl !== dslSource) {
+        setLocalDslSource(currentStoreDsl);
+        setError(null);
+      }
+      prevStoreDslSourceRef.current = currentStoreDsl;
+    }
+  }, [storeDslSource, dslSource]); // Include dslSource to compare content
 
   // Handle DSL changes with debouncing and validation
   const handleDSLChange = useCallback(
     (newDsl: string) => {
+      // Mark this as an internal update to prevent sync loop
+      isInternalUpdateRef.current = true;
       // Immediate UI update
       setLocalDslSource(newDsl);
       setError(null);
