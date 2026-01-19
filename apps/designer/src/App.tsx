@@ -33,7 +33,6 @@ import { DetailsView } from "./components/Views/DetailsView";
 import { useUrlState } from "./hooks/useUrlState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { setGlobalCanvasRef } from "./hooks/useTagNavigation";
-import type { ViewTab } from "./types";
 import type { CanvasHandle } from "./components/SrujaCanvas/types";
 
 // New components and hooks
@@ -124,27 +123,6 @@ export default function App() {
       // store.init({});
     }
   }, []);
-
-  // Handle URL tabs for backward compatibility
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get("tab");
-    if (tabParam && tabParam !== activeTab) {
-      // This will now trigger the split view logic in UIStore via setActiveTab
-      setActiveTab(tabParam as ViewTab);
-    }
-  }, []);
-
-  // Sync activeTab to URL
-  useEffect(() => {
-    if (isLoadingFile) return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("tab") !== activeTab) {
-      params.set("tab", activeTab);
-      const newUrl = `${window.location.pathname}?${params.toString()}`;
-      window.history.replaceState({}, "", newUrl);
-    }
-  }, [activeTab, isLoadingFile]);
 
   // Shortcuts & Commands
   const shortcuts = useAppShortcuts({

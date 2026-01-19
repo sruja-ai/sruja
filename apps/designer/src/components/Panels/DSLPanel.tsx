@@ -13,6 +13,9 @@ export function DSLPanel() {
   const { showDiff, baselineDsl, setShowDiff } = useDSLDiff();
   const [copied, setCopied] = useState(false);
 
+  // Memoize editor options to prevent re-creation of editor on every render
+  const editorOptions = useMemo(() => ({ readOnly: false }), []);
+
   // Memoize value to prevent unnecessary re-renders
   const editorValue = useMemo(() => dslSource || "", [dslSource]);
 
@@ -65,7 +68,7 @@ export function DSLPanel() {
           theme={monacoTheme}
           height="100%"
           enableLsp={true}
-          options={{ readOnly: false }}
+          options={editorOptions}
         />
       </div>
     </div>

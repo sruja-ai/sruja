@@ -1,17 +1,23 @@
-// apps/playground/src/hooks/useUrlState.ts
+// apps/designer/src/hooks/useUrlState.ts
 import { useEffect, useRef, useCallback } from "react";
 import { useViewStore } from "../stores/viewStore";
+import { useUIStore } from "../stores/uiStore";
 import { toC4Level } from "../types/layout";
+import type { ViewTab } from "../types";
 
 /**
  * Syncs view state with URL search parameters for easy testing and sharing
- * URL format: ?level=L1&expanded=System1,System2
+ * URL format: ?level=L1&expanded=System1,System2&tab=code
  */
 export function useUrlState() {
   const currentLevel = useViewStore((s) => s.currentLevel);
   const expandedNodes = useViewStore((s) => s.expandedNodes);
   const setLevel = useViewStore((s) => s.setLevel);
   const toggleExpand = useViewStore((s) => s.toggleExpand);
+
+  const activeTab = useUIStore((s) => s.activeTab);
+  const setActiveTab = useUIStore((s) => s.setActiveTab);
+
   const isInitialized = useRef(false);
   const lastSearchRef = useRef<string | null>(null);
 
@@ -21,6 +27,11 @@ export function useUrlState() {
     const levelParam = params.get("level");
     if (levelParam && ["L1", "L2", "L3"].includes(levelParam)) {
       setLevel(toC4Level(levelParam));
+    }
+
+    const tabParam = params.get("tab");
+    if (tabParam) {
+      setActiveTab(tabParam as ViewTab);
     }
 
     const expandedParam = params.get("expanded");
@@ -40,7 +51,7 @@ export function useUrlState() {
         }
       });
     }
-  }, [expandedNodes, setLevel, toggleExpand]);
+  }, [expandedNodes, setLevel, toggleExpand, setActiveTab]);
 
   // Read from URL on mount only
   useEffect(() => {
@@ -72,6 +83,13 @@ export function useUrlState() {
     // Update level
     params.set("level", currentLevel);
 
+    // Update tab
+    if (activeTab) {
+      params.set("tab", activeTab);
+    } else {
+      params.delete("tab");
+    }
+
     // Update expanded nodes
     const expandedArray = Array.from(expandedNodes);
     if (expandedArray.length > 0) {
@@ -86,5 +104,5 @@ export function useUrlState() {
       window.history.replaceState({}, "", newUrl);
       lastSearchRef.current = `?${params.toString()}`;
     }
-  }, [currentLevel, expandedNodes]);
+  }, [currentLevel, expandedNodes, activeTab]);
 }
