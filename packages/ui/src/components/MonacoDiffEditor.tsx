@@ -116,7 +116,15 @@ export function MonacoDiffEditor({
       }
       editorRef.current = null;
     };
-  }, [language, theme, modified, onReady, options, original]);
+  }, [language, theme, onReady]);
+
+  // Update editor options when they change
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (editor) {
+      editor.updateOptions(options);
+    }
+  }, [options]);
 
   // Update models when props change
   useEffect(() => {

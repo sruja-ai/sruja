@@ -113,7 +113,11 @@ export function GovernanceWidget() {
 
   // Calculate score on mount and when DSL changes
   useEffect(() => {
-    calculateScore();
+    const timer = setTimeout(() => {
+      calculateScore();
+    }, 1000); // Debounce calculation to avoid flickering on rapid changes
+
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dslSource]);
 
@@ -146,6 +150,8 @@ export function GovernanceWidget() {
     }
   };
 
+  // Only show loading if we don't have a scorecard yet (initial load)
+  // Otherwise show stale data while recalculating (prevents flickering)
   if (loading && !scoreCard) {
     return (
       <Paper withBorder p="md" radius="md">

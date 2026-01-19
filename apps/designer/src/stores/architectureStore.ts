@@ -97,6 +97,11 @@ export const useArchitectureStore = create<ArchitectureState>()(
       },
 
       loadFromDSL: async (json, dsl, file) => {
+        const currentState = get();
+        // Only update dslSource if it's actually different to prevent unnecessary reloads
+        // This is important when user edits: we parse and call loadFromDSL with same DSL
+        const shouldUpdateDsl = currentState.dslSource !== dsl;
+
         // Store model and DSL in a single atomic update to prevent extra renders
         set({
           model: json,
@@ -104,7 +109,8 @@ export const useArchitectureStore = create<ArchitectureState>()(
           error: null,
           lastLoaded: new Date().toISOString(),
           sourceType: "dsl",
-          dslSource: dsl,
+          // Only update dslSource if it changed (prevents circular updates)
+          ...(shouldUpdateDsl && { dslSource: dsl }),
           currentExampleFile: file,
         });
 
@@ -265,13 +271,13 @@ export const useArchitectureStore = create<ArchitectureState>()(
       },
 
       setDslSource: async (dsl, file) => {
-        const currentDsl = get().dslSource;
-        set({ dslSource: dsl, sourceType: dsl ? "dsl" : null, currentExampleFile: file ?? null });
+        set({
+          dslSource: dsl,
+          sourceType: dsl ? "dsl" : null,
+          currentExampleFile: file ?? null,
+        });
 
-        // If DSL changed, refresh converted JSON and Markdown
-        if (dsl && dsl !== currentDsl) {
-          get().refreshConvertedJson();
-        } else if (!dsl) {
+        if (!dsl) {
           // Clear converted data if DSL is removed
           set({ model: null, convertedMarkdown: null });
         }

@@ -19,6 +19,13 @@ playwright-report/
 *.test
 *.out
 *.log
+test-outputs/
+test-log.txt
+result_log.txt
+lint_output.txt
+lint_final.txt
+tests/results/
+coverage.html
 
 # Environment variables
 .env
@@ -73,6 +80,7 @@ pids/
 *.dylib
 /sruja
 cmd_sruja.out
+bin/
 
 # Go test files
 *.test
@@ -90,6 +98,12 @@ all_coverage.out
 *.swp
 *.swo
 *~
+manual_review.md
+DIAGRAM_QUALITY_REPORT.md
+RESEARCH_FINDINGS.md
+*.wasm
+*.wasm.br
+*.wasm.gz
 
 # Architecture documentation build outputs
 docs/architecture/*.json
@@ -99,87 +113,7 @@ docs/architecture/*.svg
 # Playwright MCP
 .playwright-mcp/
 
-# Codacy
+# Agent and Shared folders
+.agent/
+.shared/
 .codacy/
-*.codacy
-
-# Storybook
-storybook-static/
-
-# TypeScript
-*.tsbuildinfo
-
-# Vite
-.vite/
-
-# Turbo
-.turbo/
-
-# Hugo
-.hugo_build.lock
-
-# HTML test outputs (but keep website and public HTML files)
-test-outputs/*.html
-test_*.html
-*.html
-!apps/*/index.html
-!apps/website/src/**/*.html
-!apps/website/public/**/*.html
-!public/**/*.html
-
-# Test markdown
-test.md
-test.mmd
-test.sruja
-
-# WASM build outputs (these are generated from Go source via `make wasm`)
-# WASM files are large (~5MB each) and can be regenerated, so they should not be committed
-# They are built automatically via ensure-wasm.mjs scripts in apps
-wasm/*.wasm
-apps/*/public/wasm/*.wasm
-apps/*/public/wasm/*.wasm.br
-apps/*/public/wasm/*.wasm.gz
-apps/*/dist/wasm/*.wasm
-apps/*/public/*.wasm
-apps/*/public/*.wasm.br
-apps/*/public/*.wasm.gz
-apps/*/wasm/*.wasm
-apps/*/wasm/*.wasm.gz
-
-# Binary files
-bin/
-*.bin
-
-# Lock files (keep package-lock.json but ignore pnpm-lock.yaml in root)
-# package-lock.json is tracked
-pnpm-lock.yaml
-
-# Temporary documentation (if any remain)
-*_FINDINGS.md
-*_INVESTIGATION.md
-*_REVIEW.md
-
-# Generated reports and analysis
-*DIAGRAM_QUALITY_REPORT.md
-lint_output.txt
-lint_final.txt
-**/tests/results/*.json
-sruja.wasm
-
-# Temporary analysis files
-CODE_INCONSISTENCIES.md
-EXAMPLES_DSL_CONSISTENCY.md
-FEATURE_COVERAGE*.md
-INCONSISTENCY_REPORT.md
-FLAT_SYNTAX_UPDATE_SUMMARY.md
-
-# Developer outputs
-test_output.txt
-tsc_output.txt
-
-# Test log files
-*_test_log.txt
-*_failures.txt
-apps/designer/tests/results
-*log.txt
-*.wasm

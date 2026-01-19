@@ -8,7 +8,7 @@ import "./CodePanel.css";
 export function CodePanel() {
   return (
     <div className="code-panel-container">
-      <DSLPanel key="dsl-panel" />
+      <DSLPanel />
     </div>
   );
 }

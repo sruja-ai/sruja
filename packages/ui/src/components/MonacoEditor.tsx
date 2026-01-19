@@ -318,7 +318,15 @@ export function MonacoEditor({
         isInitializingRef.current = true;
       }
     };
-  }, [language, theme, onChange, onReady, options]);
+  }, [language, theme, onReady]);
+
+  // Update editor options when they change without recreating the editor
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (editor) {
+      editor.updateOptions(options);
+    }
+  }, [options]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -337,8 +345,31 @@ export function MonacoEditor({
     const currentValue = editor.getValue();
     // Only update if editor content differs from prop value
     if (currentValue !== value) {
+      // Preserve cursor position when programmatically updating value
+      // This prevents cursor from jumping to the beginning when value prop changes
+      const position = editor.getPosition();
+      const scrollTop = editor.getScrollTop();
+      const scrollLeft = editor.getScrollLeft();
+
       lastValueRef.current = value;
       editor.setValue(value);
+
+      // Restore cursor position if it was valid
+      if (position) {
+        // Ensure position is still valid after setValue (line numbers might have changed)
+        const model = editor.getModel();
+        if (model) {
+          const lineCount = model.getLineCount();
+          const validLine = Math.min(position.lineNumber, lineCount);
+          const validColumn = Math.min(position.column, model.getLineLength(validLine) + 1);
+          editor.setPosition({ lineNumber: validLine, column: validColumn });
+        }
+      }
+
+      // Restore scroll position
+      editor.setScrollTop(scrollTop);
+      editor.setScrollLeft(scrollLeft);
+
       // Note: onDidChangeModelContent will fire but won't call onChange
       // because the new value === valueRef.current (the prop we just synced from)
     } else {
