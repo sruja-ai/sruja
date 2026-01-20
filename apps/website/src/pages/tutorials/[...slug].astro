@@ -33,7 +33,7 @@ import { getCanonicalUrl } from '@/utils/seo';
 import { envConfig } from '@/config/env';
 
 const siteUrl = envConfig.siteUrl || 'https://sruja.ai';
-const tutorialUrl = `/tutorials/${tutorial.slug}`;
+const tutorialUrl = `/tutorials/${tutorial.id}`;
 const canonicalUrl = getCanonicalUrl(tutorialUrl, siteUrl);
 const metaDescription = tutorial.data.summary || tutorial.data.description || '';
 ---

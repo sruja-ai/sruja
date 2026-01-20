@@ -1,8 +1,10 @@
-// apps/website/src/content/config.ts
-import { defineCollection, z } from "astro:content";
+// apps/website/src/content.config.ts
+import { defineCollection } from "astro:content";
+import { z } from "astro/zod";
+import { glob } from "astro/loaders";
 
 const docs = defineCollection({
-  type: "content",
+  loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/docs" }),
   schema: z.object({
     title: z.string(),
     weight: z.number().optional(),
@@ -15,7 +17,7 @@ const docs = defineCollection({
 });
 
 const blog = defineCollection({
-  type: "content",
+  loader: glob({ pattern: "**/*.md", base: "./src/content/blog" }),
   schema: z.object({
     title: z.string(),
     authors: z
@@ -38,7 +40,7 @@ const blog = defineCollection({
 });
 
 const courses = defineCollection({
-  type: "content",
+  loader: glob({ pattern: "**/*.md", base: "./src/content/courses" }),
   schema: z.object({
     title: z.string(),
     weight: z.number().optional(),
@@ -51,7 +53,7 @@ const courses = defineCollection({
 });
 
 const tutorials = defineCollection({
-  type: "content",
+  loader: glob({ pattern: "**/*.md", base: "./src/content/tutorials" }),
   schema: z.object({
     title: z.string(),
     weight: z.number().optional(),
@@ -66,7 +68,7 @@ const tutorials = defineCollection({
 });
 
 const quizzes = defineCollection({
-  type: "data",
+  loader: glob({ pattern: "**/*.json", base: "./src/content/quizzes" }),
   schema: z.object({
     title: z.string(),
     slug: z.string(),
@@ -84,7 +86,7 @@ const quizzes = defineCollection({
 });
 
 const challenges = defineCollection({
-  type: "content",
+  loader: glob({ pattern: "**/*.md", base: "./src/content/challenges" }),
   schema: z.object({
     title: z.string(),
     summary: z.string().optional(),
@@ -108,7 +110,7 @@ const challenges = defineCollection({
 });
 
 const investors = defineCollection({
-  type: "content",
+  loader: glob({ pattern: "**/*.md", base: "./src/content/investors" }),
   schema: z.object({
     title: z.string(),
     weight: z.number().optional(),
@@ -118,7 +120,7 @@ const investors = defineCollection({
 });
 
 const templates = defineCollection({
-  type: "content",
+  loader: glob({ pattern: "**/*.md", base: "./src/content/templates" }),
   schema: z.object({
     title: z.string(),
     summary: z.string().optional(),

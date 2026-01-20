@@ -11,8 +11,8 @@ const tutorials = await getCollection('tutorials');
 const sortedTutorials: CollectionEntry<'tutorials'>[] = sortByWeight(tutorials);
 
 // Categorize tutorials
-const basicTutorials: CollectionEntry<'tutorials'>[] = sortedTutorials.filter((t: CollectionEntry<'tutorials'>) => t.slug.startsWith('basic/'));
-const advancedTutorials: CollectionEntry<'tutorials'>[] = sortedTutorials.filter((t: CollectionEntry<'tutorials'>) => t.slug.startsWith('advanced/'));
+const basicTutorials: CollectionEntry<'tutorials'>[] = sortedTutorials.filter((t: CollectionEntry<'tutorials'>) => t.id.startsWith('basic/'));
+const advancedTutorials: CollectionEntry<'tutorials'>[] = sortedTutorials.filter((t: CollectionEntry<'tutorials'>) => t.id.startsWith('advanced/'));
 
 const basicItems = transformToContentListItems(basicTutorials, '/tutorials', {
   linkText: 'Read Tutorial →',

@@ -155,15 +155,15 @@ async function processDocs(): Promise<AlgoliaRecord[]> {
   const docs = await getCollection('docs');
   return docs.map((doc: ContentItem) => {
     const content = stripMarkdown(doc.body || "");
-    const category = doc.slug.includes('/')
-      ? doc.slug.split('/')[0]
+    const category = doc.id.includes('/')
+      ? doc.id.split('/')[0]
       : 'docs';
 
     return {
-      objectID: `docs-${doc.slug}`,
-      title: doc.data?.title || doc.slug,
+      objectID: `docs-${doc.id}`,
+      title: doc.data?.title || doc.id,
       content,
-      url: generateUrl('docs', doc.slug),
+      url: generateUrl('docs', doc.id),
       type: 'documentation',
       category,
       summary: doc.data?.summary,
@@ -186,10 +186,10 @@ async function processBlog(): Promise<AlgoliaRecord[]> {
       : undefined;
 
     return {
-      objectID: `blog-${post.slug}`,
-      title: post.data?.title || post.slug,
+      objectID: `blog-${post.id}`,
+      title: post.data?.title || post.id,
       content,
-      url: generateUrl('blog', post.slug),
+      url: generateUrl('blog', post.id),
       type: 'blog',
       summary: post.data?.description,
       description: post.data?.description,
@@ -207,14 +207,14 @@ async function processCourses(): Promise<AlgoliaRecord[]> {
   const courses = await getCollection('courses');
   return courses.map((course: ContentItem) => {
     const content = stripMarkdown(course.body || "");
-    const slugParts = course.slug.split('/');
+    const slugParts = course.id.split('/');
     const category = slugParts.length > 0 ? slugParts[0] : 'courses';
 
     return {
-      objectID: `course-${course.slug}`,
-      title: course.data?.title || course.slug,
+      objectID: `course-${course.id}`,
+      title: course.data?.title || course.id,
       content,
-      url: generateUrl('courses', course.slug),
+      url: generateUrl('courses', course.id),
       type: 'course',
       category,
       summary: course.data?.summary,
@@ -233,14 +233,14 @@ async function processTutorials(): Promise<AlgoliaRecord[]> {
   const tutorials = await getCollection('tutorials');
   return tutorials.map((tutorial: ContentItem) => {
     const content = stripMarkdown(tutorial.body || "");
-    const slugParts = tutorial.slug.split('/');
+    const slugParts = tutorial.id.split('/');
     const category = slugParts.length > 0 ? slugParts[0] : 'tutorials';
 
     return {
-      objectID: `tutorial-${tutorial.slug}`,
-      title: tutorial.data?.title || tutorial.slug,
+      objectID: `tutorial-${tutorial.id}`,
+      title: tutorial.data?.title || tutorial.id,
       content,
-      url: generateUrl('tutorials', tutorial.slug),
+      url: generateUrl('tutorials', tutorial.id),
       type: 'tutorial',
       category,
       summary: tutorial.data?.summary,
@@ -262,10 +262,10 @@ async function processChallenges(): Promise<AlgoliaRecord[]> {
     const content = stripMarkdown(challenge.body || "");
 
     return {
-      objectID: `challenge-${challenge.slug}`,
-      title: challenge.data?.title || challenge.slug,
+      objectID: `challenge-${challenge.id}`,
+      title: challenge.data?.title || challenge.id,
       content,
-      url: generateUrl('challenges', challenge.slug),
+      url: generateUrl('challenges', challenge.id),
       type: 'challenge',
       summary: challenge.data?.summary,
       difficulty: challenge.data?.difficulty,

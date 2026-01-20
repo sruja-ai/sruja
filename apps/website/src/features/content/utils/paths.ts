@@ -46,19 +46,19 @@ export function generateContentPaths<T extends CollectionEntry<string>>(
     const previous = prevEntry
       ? {
           title: (prevEntry as CollectionEntry<string>).data.title,
-          href: `${basePath}/${(prevEntry as CollectionEntry<string>).slug}`,
+          href: `${basePath}/${(prevEntry as CollectionEntry<string>).id}`,
         }
       : null;
     const next = nextEntry
       ? {
           title: (nextEntry as CollectionEntry<string>).data.title,
-          href: `${basePath}/${(nextEntry as CollectionEntry<string>).slug}`,
+          href: `${basePath}/${(nextEntry as CollectionEntry<string>).id}`,
         }
       : null;
 
     const entryAsCollection = entry as CollectionEntry<string>;
     return {
-      params: { slug: entryAsCollection.slug },
+      params: { slug: entryAsCollection.id },
       props: {
         entry,
         previous,

@@ -163,22 +163,45 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
 
   const [theme, setTheme] = useState<"vs" | "vs-dark" | "hc-black">(() =>
     typeof document !== "undefined" &&
-    document.documentElement.getAttribute("data-theme") === "dark"
+    (document.documentElement.getAttribute("data-theme") === "dark" ||
+      document.documentElement.classList.contains("dark"))
       ? "vs-dark"
       : "vs"
   );
   useEffect(() => {
+    const getIsDark = () =>
+      document.documentElement.getAttribute("data-theme") === "dark" ||
+      document.documentElement.classList.contains("dark");
+
     const handler = () => {
-      setTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "vs-dark" : "vs");
+      setTheme(getIsDark() ? "vs-dark" : "vs");
     };
     try {
       window.addEventListener("theme-change", handler);
     } catch {
       void 0;
     }
+
+    // Also react to class/attribute toggles (e.g. `html.dark`)
+    let observer: MutationObserver | null = null;
+    try {
+      observer = new MutationObserver(() => handler());
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class", "data-theme"],
+      });
+    } catch {
+      observer = null;
+    }
+
     return () => {
       try {
         window.removeEventListener("theme-change", handler);
+      } catch {
+        void 0;
+      }
+      try {
+        observer?.disconnect();
       } catch {
         void 0;
       }
@@ -187,7 +210,13 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
 
   return (
     <div
-      style={{ border: "1px solid var(--color-border)", borderRadius: 8, overflow: "hidden" }}
+      style={{
+        border: "1px solid var(--color-border)",
+        borderRadius: 8,
+        overflow: "hidden",
+        background: "var(--color-surface, #ffffff)",
+        color: "var(--color-text-primary, #0f172a)",
+      }}
       data-testid="viewer-editor"
     >
       <div
@@ -203,6 +232,7 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
             value={dsl}
             onChange={(v) => setDsl(v || "")}
             theme={theme}
+            enableLsp={false}
             options={{
               minimap: { enabled: false },
               wordWrap: "on",
@@ -214,6 +244,11 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
               formatOnType: false,
               autoIndent: "full",
               trimAutoWhitespace: true,
+              glyphMargin: false,
+              lineNumbersMinChars: 2,
+              lineDecorationsWidth: 0,
+              // Keep folding, but don’t reserve extra space for experimental features
+              stickyScroll: { enabled: false },
             }}
             height="640px"
           />

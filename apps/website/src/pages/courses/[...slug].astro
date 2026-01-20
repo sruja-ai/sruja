@@ -12,15 +12,15 @@ export async function getStaticPaths() {
   // Add alias paths for course overview pages (e.g., /courses/<course-name>)
   const byCourse = new Map<string, CollectionEntry<'courses'>[]>();
   for (const entry of courses) {
-    const courseName = entry.slug.split('/')[0];
+    const courseName = entry.id.split('/')[0];
     const arr = byCourse.get(courseName) || [];
     arr.push(entry);
     byCourse.set(courseName, arr);
   }
   const overviewAliases = Array.from(byCourse.entries()).map(([courseName, entries]) => {
     // Prefer course-overview, else first module-overview, else first lesson by weight
-    const courseOverview = entries.find(e => e.slug.endsWith('/course-overview'));
-    const moduleOverview = entries.find(e => e.slug.includes('/module-') && e.slug.endsWith('/module-overview'));
+    const courseOverview = entries.find(e => e.id.endsWith('/course-overview'));
+    const moduleOverview = entries.find(e => e.id.includes('/module-') && e.id.endsWith('/module-overview'));
     const sorted = entries.slice().sort((a, b) => (a.data.weight ?? 999) - (b.data.weight ?? 999));
     const fallback = sorted[0];
     const chosen = courseOverview || moduleOverview || fallback;
@@ -61,7 +61,7 @@ import { getCanonicalUrl } from '@/utils/seo';
 import { envConfig } from '@/config/env';
 
 const siteUrl = envConfig.siteUrl || 'https://sruja.ai';
-const courseUrl = `/courses/${course.slug}`;
+const courseUrl = `/courses/${course.id}`;
 const canonicalUrl = getCanonicalUrl(courseUrl, siteUrl);
 const metaDescription = course.data.summary || course.data.description || '';
 ---

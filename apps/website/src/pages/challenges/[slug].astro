@@ -11,9 +11,9 @@ export async function getStaticPaths() {
   return challenges.map((entry: any, index: number) => {
     const previous = index > 0 ? challenges[index - 1] : null
     const next = index < challenges.length - 1 ? challenges[index + 1] : null
-    const slug = entry.id.replace(/\.md$/, '')
-    const prevSlug = previous ? previous.id.replace(/\.md$/, '') : null
-    const nextSlug = next ? next.id.replace(/\.md$/, '') : null
+    const slug = entry.id
+    const prevSlug = previous ? previous.id : null
+    const nextSlug = next ? next.id : null
     return {
       params: { slug },
       props: {

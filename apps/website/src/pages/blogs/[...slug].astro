@@ -42,7 +42,7 @@ const modifiedDateISO = post.data.modifiedDate
   : undefined;
 
 const siteUrl = envConfig.siteUrl || 'https://sruja.ai';
-const postUrl = `/blogs/${post.slug}`;
+const postUrl = `/blogs/${post.id}`;
 const canonicalUrl = getCanonicalUrl(postUrl, siteUrl);
 
 // Use summary or description for meta description

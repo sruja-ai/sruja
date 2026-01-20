@@ -29,7 +29,7 @@ export function transformToContentListItem<T extends AnyCollectionEntry>(
 
   const item: ContentListItem = {
     title: entryTyped.data.title,
-    href: `${basePath}/${entryTyped.slug}`,
+    href: `${basePath}/${entryTyped.id}`,
     summary: entryTyped.data.summary,
     tags: entryTyped.data.tags,
   };

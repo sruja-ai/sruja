@@ -150,6 +150,13 @@ export function MonacoEditor({
               minimap: { enabled: false },
               theme,
               scrollBeyondLastLine: false,
+              // Keep the left gutter compact by default.
+              // Monaco can otherwise reserve a lot of space for decorations/glyphs depending on environment.
+              glyphMargin: false,
+              lineNumbersMinChars: 3,
+              lineDecorationsWidth: 12,
+              // Avoid reserving extra vertical space/features by default.
+              stickyScroll: { enabled: false },
               // Explicitly enable folding with indentation strategy (works for JSON)
               foldingHighlight: true,
               foldingImportsByDefault: false,
@@ -166,6 +173,20 @@ export function MonacoEditor({
             };
 
             editor = monaco.editor.create(containerRef.current, editorOptions);
+
+            // Re-apply compact gutter options after creation.
+            // In some Monaco builds/environments, gutter sizing options can be ignored at construction time.
+            try {
+              editor.updateOptions({
+                glyphMargin: false,
+                lineNumbersMinChars: 3,
+                lineDecorationsWidth: 12,
+                stickyScroll: { enabled: false },
+              });
+            } catch {
+              // Ignore option update errors
+            }
+
             const initialEditorValue = editor.getValue();
             lastValueRef.current = initialEditorValue;
             isInitializingRef.current = false;

@@ -17,7 +17,7 @@ export async function getStaticPaths() {
     '/docs', 
     'weight',
     (doc: CollectionEntry<'docs'>) => {
-      const slugParts = doc.slug.split('/');
+      const slugParts = doc.id.split('/');
       return !excludedSlugs.includes(slugParts[0]);
     }
   );
@@ -42,7 +42,7 @@ const { doc, previous, next } = Astro.props as Props;
 const { Content } = await doc.render();
 
 const siteUrl = envConfig.siteUrl || 'https://sruja.ai';
-const docUrl = `/docs/${doc.slug}`;
+const docUrl = `/docs/${doc.id}`;
 const canonicalUrl = getCanonicalUrl(docUrl, siteUrl);
 const metaDescription = doc.data.summary || doc.data.description || '';
 
@@ -50,7 +50,7 @@ const metaDescription = doc.data.summary || doc.data.description || '';
 const breadcrumbSchema = generateBreadcrumbSchema([
   { name: 'Home', url: '/' },
   { name: 'Docs', url: '/docs' },
-  ...doc.slug.split('/').map((part: string, index: number, parts: string[]) => {
+  ...doc.id.split('/').map((part: string, index: number, parts: string[]) => {
     const path = `/docs/${parts.slice(0, index + 1).join('/')}`;
     return { name: part.charAt(0).toUpperCase() + part.slice(1).replace(/-/g, ' '), url: path };
   }),
