@@ -17,7 +17,7 @@ const topics = Array.from(new Set(challenges.map((c) => c.data.topic).filter(Boo
       {challenges
         .sort((a: CollectionEntry<'challenges'>, b: CollectionEntry<'challenges'>) => (a.data.title || '').localeCompare(b.data.title || ''))
         .map((c) => (
-        <a class="challenge-card" href={`/challenges/${c.slug}`} data-slug={c.slug} data-difficulty={c.data.difficulty} data-topic={c.data.topic}>
+        <a class="challenge-card" href={`/challenges/${c.id}`} data-slug={c.id} data-difficulty={c.data.difficulty} data-topic={c.data.topic}>
           <div class="challenge-meta">
             {c.data.difficulty && <span class={`pill ${c.data.difficulty}`}>{c.data.difficulty}</span>}
             {c.data.topic && <span class="pill topic">{c.data.topic}</span>}

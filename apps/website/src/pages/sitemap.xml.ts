@@ -73,7 +73,7 @@ export const GET: APIRoute = async () => {
   // Add blog posts
   blogs.forEach((post: CollectionEntry<"blog">) => {
     sitemapEntries.push({
-      loc: `${siteUrl}/blogs/${post.slug}`,
+      loc: `${siteUrl}/blogs/${post.id}`,
       lastmod: getLastMod(post),
       changefreq: "monthly",
       priority: 0.7,
@@ -83,7 +83,7 @@ export const GET: APIRoute = async () => {
   // Add docs
   docs.forEach((doc: CollectionEntry<"docs">) => {
     sitemapEntries.push({
-      loc: `${siteUrl}/docs/${doc.slug}`,
+      loc: `${siteUrl}/docs/${doc.id}`,
       lastmod: getLastMod(doc),
       changefreq: "weekly",
       priority: 0.9,
@@ -93,7 +93,7 @@ export const GET: APIRoute = async () => {
   // Add courses
   courses.forEach((course: CollectionEntry<"courses">) => {
     sitemapEntries.push({
-      loc: `${siteUrl}/courses/${course.slug}`,
+      loc: `${siteUrl}/courses/${course.id}`,
       lastmod: getLastMod(course),
       changefreq: "monthly",
       priority: 0.8,
@@ -103,7 +103,7 @@ export const GET: APIRoute = async () => {
   // Add tutorials
   tutorials.forEach((tutorial: CollectionEntry<"tutorials">) => {
     sitemapEntries.push({
-      loc: `${siteUrl}/tutorials/${tutorial.slug}`,
+      loc: `${siteUrl}/tutorials/${tutorial.id}`,
       lastmod: getLastMod(tutorial),
       changefreq: "monthly",
       priority: 0.8,
@@ -113,7 +113,7 @@ export const GET: APIRoute = async () => {
   // Add challenges
   challenges.forEach((challenge: CollectionEntry<"challenges">) => {
     sitemapEntries.push({
-      loc: `${siteUrl}/challenges/${challenge.slug}`,
+      loc: `${siteUrl}/challenges/${challenge.id}`,
       lastmod: getLastMod(challenge),
       changefreq: "monthly",
       priority: 0.7,

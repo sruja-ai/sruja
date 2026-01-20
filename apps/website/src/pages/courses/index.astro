@@ -31,7 +31,7 @@ const coursesMap = new Map<string, Course>();
 
 // First pass: find course overview files to get proper titles
 allLessons.forEach((lesson: CollectionEntry<'courses'>) => {
-  const slugParts = lesson.slug.split('/');
+  const slugParts = lesson.id.split('/');
   
   // Check if this is a course-overview file (e.g., "advanced-architects/course-overview")
   if (slugParts.length === 2 && slugParts[1] === 'course-overview') {
@@ -52,7 +52,7 @@ allLessons.forEach((lesson: CollectionEntry<'courses'>) => {
 
 // Second pass: process lessons and modules
 allLessons.forEach((lesson: CollectionEntry<'courses'>) => {
-  const slugParts = lesson.slug.split('/');
+  const slugParts = lesson.id.split('/');
   
   if (slugParts.length >= 3) {
     const courseName = slugParts[0];
@@ -82,7 +82,7 @@ allLessons.forEach((lesson: CollectionEntry<'courses'>) => {
     
     // Add lesson
     module.lessons.push({
-      slug: lesson.slug,
+      slug: lesson.id,
       title: lesson.data.title,
       summary: lesson.data.summary,
       weight: lesson.data.weight,

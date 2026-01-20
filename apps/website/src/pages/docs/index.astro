@@ -11,15 +11,15 @@ const allDocs = await getCollection('docs');
 const sortedDocs: CollectionEntry<'docs'>[] = sortByWeight(allDocs);
 
 // Categorize docs by weight ranges
-const gettingStarted: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 0 && d.data.weight < 10 && !d.slug.includes('/'));
-const guides: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 20 && d.data.weight < 50 && !d.slug.includes('/'));
-const reference: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 50 && d.data.weight < 70 && !d.slug.includes('/'));
-const examples: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 80 && d.data.weight < 90 && !d.slug.includes('/'));
-const community: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 90 && d.data.weight < 100 && !d.slug.includes('/'));
-const styleGuide: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 100 && !d.slug.includes('/'));
+const gettingStarted: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 0 && d.data.weight < 10 && !d.id.includes('/'));
+const guides: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 20 && d.data.weight < 50 && !d.id.includes('/'));
+const reference: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 50 && d.data.weight < 70 && !d.id.includes('/'));
+const examples: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 80 && d.data.weight < 90 && !d.id.includes('/'));
+const community: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 90 && d.data.weight < 100 && !d.id.includes('/'));
+const styleGuide: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.data.weight !== undefined && d.data.weight >= 100 && !d.id.includes('/'));
 
 // Concepts (in subfolder)
-const concepts: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.slug.startsWith('concepts/'));
+const concepts: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.id.startsWith('concepts/'));
 const coreConcepts: CollectionEntry<'docs'>[] = concepts.filter(d => {
   const weight = d.data.weight || 999;
   return weight >= 10 && weight < 20;
@@ -46,7 +46,7 @@ const advancedFeatures: CollectionEntry<'docs'>[] = concepts.filter(d => {
 });
 
 // Reference subfolder
-const referenceDocs: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.slug.startsWith('reference/'));
+const referenceDocs: CollectionEntry<'docs'>[] = sortedDocs.filter((d: CollectionEntry<'docs'>) => d.id.startsWith('reference/'));
 ---
 
 <Layout title="Documentation" description="Complete Sruja documentation and guides.">
@@ -86,7 +86,7 @@ const referenceDocs: CollectionEntry<'docs'>[] = sortedDocs.filter((d: Collectio
               >
                 <div class="concept-links">
                   {coreConcepts.map((doc) => (
-                    <a href={`/docs/${doc.slug}`} class="concept-link">{doc.data.title}</a>
+                    <a href={`/docs/${doc.id}`} class="concept-link">{doc.data.title}</a>
                   ))}
                 </div>
               </ExpandableCard>
@@ -99,7 +99,7 @@ const referenceDocs: CollectionEntry<'docs'>[] = sortedDocs.filter((d: Collectio
               >
                 <div class="concept-links">
                   {relationsConcepts.map((doc) => (
-                    <a href={`/docs/${doc.slug}`} class="concept-link">{doc.data.title}</a>
+                    <a href={`/docs/${doc.id}`} class="concept-link">{doc.data.title}</a>
                   ))}
                 </div>
               </ExpandableCard>
@@ -112,7 +112,7 @@ const referenceDocs: CollectionEntry<'docs'>[] = sortedDocs.filter((d: Collectio
               >
                 <div class="concept-links">
                   {advancedConcepts.map((doc) => (
-                    <a href={`/docs/${doc.slug}`} class="concept-link">{doc.data.title}</a>
+                    <a href={`/docs/${doc.id}`} class="concept-link">{doc.data.title}</a>
                   ))}
                 </div>
               </ExpandableCard>
@@ -125,7 +125,7 @@ const referenceDocs: CollectionEntry<'docs'>[] = sortedDocs.filter((d: Collectio
               >
                 <div class="concept-links">
                   {metadataConcepts.map((doc) => (
-                    <a href={`/docs/${doc.slug}`} class="concept-link">{doc.data.title}</a>
+                    <a href={`/docs/${doc.id}`} class="concept-link">{doc.data.title}</a>
                   ))}
                 </div>
               </ExpandableCard>
@@ -138,7 +138,7 @@ const referenceDocs: CollectionEntry<'docs'>[] = sortedDocs.filter((d: Collectio
               >
                 <div class="concept-links">
                   {governanceConcepts.map((doc) => (
-                    <a href={`/docs/${doc.slug}`} class="concept-link">{doc.data.title}</a>
+                    <a href={`/docs/${doc.id}`} class="concept-link">{doc.data.title}</a>
                   ))}
                 </div>
               </ExpandableCard>
@@ -151,7 +151,7 @@ const referenceDocs: CollectionEntry<'docs'>[] = sortedDocs.filter((d: Collectio
               >
                 <div class="concept-links">
                   {advancedFeatures.map((doc) => (
-                    <a href={`/docs/${doc.slug}`} class="concept-link">{doc.data.title}</a>
+                    <a href={`/docs/${doc.id}`} class="concept-link">{doc.data.title}</a>
                   ))}
                 </div>
               </ExpandableCard>

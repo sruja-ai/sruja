@@ -39,6 +39,29 @@ const structuredData = [generateOrganizationSchema(), generateWebsiteSchema()];
     line-height: 1.6;
   }
 
+  /* Fix Monaco editor gap issue on homepage - force compact gutter */
+  :global(.hero .monaco-editor .glyph-margin) {
+    display: none !important;
+  }
+
+  /* Force margin to be minimal - just enough for line numbers (typically ~40-50px) */
+  :global(.hero .monaco-editor .margin) {
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+  }
+
+  /* Ensure line numbers are compact */
+  :global(.hero .monaco-editor .line-numbers) {
+    width: auto !important;
+    padding-right: 8px !important;
+  }
+
+  /* Remove any extra spacing in margin overlays */
+  :global(.hero .monaco-editor .margin-view-overlays) {
+    width: 100% !important;
+  }
+
   :global(.hero a) {
     color: var(--color-primary);
     text-decoration: none;

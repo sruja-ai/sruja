@@ -13,7 +13,7 @@ interface CourseSummary { name: string; title: string; modules: Set<string>; }
 const coursesMap = new Map<string, CourseSummary>();
 
 lessons.forEach((lesson: CollectionEntry<'courses'>) => {
-  const [courseName, moduleName] = lesson.slug.split('/');
+  const [courseName, moduleName] = lesson.id.split('/');
   if (!courseName) return;
   if (!coursesMap.has(courseName)) {
     coursesMap.set(courseName, {
@@ -102,7 +102,7 @@ const sortedPosts = posts.sort((a: CollectionEntry<'blog'>, b: CollectionEntry<'
           <div class="learn-items">
             {sortedTutorials.map((tutorial: any) => (
               <article class="learn-item">
-                <h3><a href={`/tutorials/${tutorial.slug}`}>{tutorial.data.title}</a></h3>
+                <h3><a href={`/tutorials/${tutorial.id}`}>{tutorial.data.title}</a></h3>
                 {tutorial.data.summary && <p>{tutorial.data.summary}</p>}
               </article>
             ))}
@@ -127,7 +127,7 @@ const sortedPosts = posts.sort((a: CollectionEntry<'blog'>, b: CollectionEntry<'
                 : null;
               return (
                 <article class="learn-item">
-                  <h3><a href={`/blogs/${post.slug}`}>{post.data.title}</a></h3>
+                  <h3><a href={`/blogs/${post.id}`}>{post.data.title}</a></h3>
                   {pubDate && <time class="learn-date">{pubDate}</time>}
                   {post.data.summary && <p>{post.data.summary}</p>}
                 </article>

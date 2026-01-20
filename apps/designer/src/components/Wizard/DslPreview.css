@@ -92,7 +92,7 @@
 /* Code Block */
 .dsl-preview-code {
     margin: 0;
-    padding: 1rem;
+    padding: 0.5rem;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
     font-size: 0.8125rem;
     line-height: 1.6;

@@ -14,7 +14,25 @@ export function DSLPanel() {
   const [copied, setCopied] = useState(false);
 
   // Memoize editor options to prevent re-creation of editor on every render
-  const editorOptions = useMemo(() => ({ readOnly: false }), []);
+  const editorOptions = useMemo(
+    () => ({
+      readOnly: false,
+      glyphMargin: false,
+      lineNumbersMinChars: 3,
+      padding: { top: 0, bottom: 0 },
+      minimap: { enabled: false },
+      tabSize: 2,
+      detectIndentation: false,
+      insertSpaces: true,
+      folding: true,
+      foldingHighlight: false,
+      foldingStrategy: "indentation" as const,
+      showFoldingControls: "mouseover" as const,
+      renderLineHighlight: "none" as const,
+      scrollBeyondLastLine: false,
+    }),
+    []
+  );
 
   // Memoize value to prevent unnecessary re-renders
   const editorValue = useMemo(() => dslSource || "", [dslSource]);

@@ -53,7 +53,7 @@ export default function HomeHero() {
               textAlign: "center",
             }}
           >
-            ✨ Try it live: Edit the code and watch the diagram update automatically
+            {"✨ Try it live: Edit the code and watch the diagram update automatically"}
           </p>
           <LiveSrujaBlock
             initialDsl={`import { * } from 'sruja.ai/stdlib'

@@ -16,7 +16,7 @@ const total = challenges.length
         .sort((a: CollectionEntry<'challenges'>, b: CollectionEntry<'challenges'>) => (a.data.title || '').localeCompare(b.data.title || ''))
         .map((c) => (
           <li>
-            <a href={`/challenges/${c.slug}`}>{c.data.title}</a>
+            <a href={`/challenges/${c.id}`}>{c.data.title}</a>
           </li>
         ))}
     </ul>

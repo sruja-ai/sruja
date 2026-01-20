@@ -79,6 +79,7 @@
     overflow: hidden;
     position: relative;
     min-height: 0;
+    padding: 0;
 }
 
 .dsl-loading,
@@ -95,7 +96,7 @@
 
 .dsl-code {
     margin: 0;
-    padding: 16px;
+    padding: 0;
     background: var(--bg-color);
     color: var(--text-primary);
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;

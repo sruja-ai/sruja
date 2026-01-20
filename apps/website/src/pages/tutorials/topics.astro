@@ -29,7 +29,7 @@ const topicsEntries = Object.entries(topicsMap).sort(([a], [b]) => a.localeCompa
           <ul>
             {items.sort((a: TutorialEntry, b: TutorialEntry) => (a.data.weight || 999) - (b.data.weight || 999)).map((it: TutorialEntry) => (
               <li>
-                <a href={`/tutorials/${it.slug}`}>{it.data.title}</a>
+                <a href={`/tutorials/${it.id}`}>{it.data.title}</a>
                 {it.data.summary && <span class="summary"> — {it.data.summary}</span>}
               </li>
             ))}
