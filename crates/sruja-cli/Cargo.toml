@@ -1,0 +1,21 @@
+[package]
+name = "sruja-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "sruja"
+path = "src/main.rs"
+
+[dependencies]
+sruja-diagnostics = { path = "../sruja-diagnostics" }
+sruja-language = { path = "../sruja-language" }
+sruja-engine = { path = "../sruja-engine" }
+sruja-export = { path = "../sruja-export" }
+sruja-lsp = { path = "../sruja-lsp" }
+clap = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
