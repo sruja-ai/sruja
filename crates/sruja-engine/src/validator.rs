@@ -70,7 +70,15 @@ impl Validator {
         self.register_rule(crate::rules::ValidRefRule);
         self.register_rule(crate::rules::CycleDetectionRule);
         self.register_rule(crate::rules::OrphanDetectionRule);
-        // Add more default rules as we migrate them
+        self.register_rule(crate::rules::SimplicityRule);
+        // TODO: Add remaining rules as we migrate them:
+        // - LayerViolationRule
+        // - ScenarioValidationRule
+        // - DatabaseIsolationRule
+        // - PublicInterfaceDocumentationRule
+        // - SLOValidationRule
+        // - PropertiesValidationRule
+        // - GovernanceValidationRule
     }
 
     /// Validate a program with all registered rules
