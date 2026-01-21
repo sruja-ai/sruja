@@ -7,6 +7,7 @@ use sruja_diagnostics::format_diagnostic;
 use sruja_engine::Validator;
 use sruja_export::json::{Exporter as JsonExporter, ExportError as JsonExportError};
 use sruja_export::mermaid::{MermaidConfig, MermaidExporter};
+use sruja_export::dot::{DotConfig, DotExporter};
 use sruja_language::Parser;
 use sruja_lsp::server::run_stdio;
 use thiserror::Error;
@@ -128,6 +129,15 @@ pub async fn export(
             });
             let mmd = exporter.export(&program);
             println!("{}", mmd);
+        }
+        "dot" => {
+            let exporter = DotExporter::new(DotConfig {
+                view_level,
+                target_id: target.map(|s| s.to_string()),
+                ..DotConfig::default()
+            });
+            let dot = exporter.export(&program);
+            println!("{}", dot);
         }
         _ => {
             return Err(CliError::Export(JsonExportError::Export(
