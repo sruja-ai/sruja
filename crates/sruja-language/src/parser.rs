@@ -194,6 +194,7 @@ fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBody> {
                         ElementBodyItem::Description(d) => body.description = Some(d),
                         ElementBodyItem::Technology(t) => body.technology = Some(t),
                         ElementBodyItem::Metadata(m) => body.metadata = m.entries,
+                        ElementBodyItem::Slo(s) => body.slo = Some(s),
                         // Add more handlers
                         _ => {}
                     }
@@ -211,6 +212,7 @@ enum ElementBodyItem {
     Description(String),
     Technology(String),
     Metadata(MetadataBlock),
+    Slo(SloBlock),
     // Add more
 }
 
@@ -225,7 +227,204 @@ fn parse_element_body_item(input: &str) -> IResult<&str, ElementBodyItem> {
             ElementBodyItem::Technology,
         ),
         map(parse_metadata_block, ElementBodyItem::Metadata),
+        map(parse_slo_block, ElementBodyItem::Slo),
     ))(input)
+}
+
+/// Parse an SLO block: slo { availability { ... } latency { ... } errorRate { ... } throughput { ... } }
+fn parse_slo_block(input: &str) -> IResult<&str, SloBlock> {
+    let (input, _) = tag("slo")(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, items) = delimited(
+        char('{'),
+        many0(preceded(ws, parse_slo_item)),
+        preceded(ws0, char('}')),
+    )(input)?;
+
+    let mut slo = SloBlock {
+        location: SourceLocation::new(String::new(), 0, 0),
+        availability: None,
+        latency: None,
+        error_rate: None,
+        throughput: None,
+    };
+
+    for item in items {
+        match item {
+            SloItem::Availability(a) => slo.availability = Some(a),
+            SloItem::Latency(l) => slo.latency = Some(l),
+            SloItem::ErrorRate(e) => slo.error_rate = Some(e),
+            SloItem::Throughput(t) => slo.throughput = Some(t),
+        }
+    }
+
+    Ok((input, slo))
+}
+
+#[derive(Debug, Clone)]
+enum SloItem {
+    Availability(SloAvailability),
+    Latency(SloLatency),
+    ErrorRate(SloErrorRate),
+    Throughput(SloThroughput),
+}
+
+fn parse_slo_item(input: &str) -> IResult<&str, SloItem> {
+    alt((
+        map(parse_slo_availability, SloItem::Availability),
+        map(parse_slo_latency, SloItem::Latency),
+        map(parse_slo_error_rate, SloItem::ErrorRate),
+        map(parse_slo_throughput, SloItem::Throughput),
+    ))(input)
+}
+
+fn parse_slo_availability(input: &str) -> IResult<&str, SloAvailability> {
+    let (input, _) = tag("availability")(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, entries) = delimited(
+        char('{'),
+        many0(preceded(ws, parse_kv_string)),
+        preceded(ws0, char('}')),
+    )(input)?;
+
+    let mut out = SloAvailability {
+        target: None,
+        window: None,
+        current: None,
+    };
+
+    for (k, v) in entries {
+        match k.as_str() {
+            "target" => out.target = Some(v),
+            "window" => out.window = Some(v),
+            "current" => out.current = Some(v),
+            _ => {}
+        }
+    }
+
+    Ok((input, out))
+}
+
+fn parse_slo_latency(input: &str) -> IResult<&str, SloLatency> {
+    let (input, _) = tag("latency")(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, items) = delimited(
+        char('{'),
+        many0(preceded(ws, parse_latency_item)),
+        preceded(ws0, char('}')),
+    )(input)?;
+
+    let mut out = SloLatency {
+        p95: None,
+        p99: None,
+        window: None,
+        current: None,
+    };
+
+    for item in items {
+        match item {
+            LatencyItem::P95(v) => out.p95 = Some(v),
+            LatencyItem::P99(v) => out.p99 = Some(v),
+            LatencyItem::Window(v) => out.window = Some(v),
+            LatencyItem::Current(c) => out.current = Some(c),
+        }
+    }
+
+    Ok((input, out))
+}
+
+#[derive(Debug, Clone)]
+enum LatencyItem {
+    P95(String),
+    P99(String),
+    Window(String),
+    Current(SloCurrent),
+}
+
+fn parse_latency_item(input: &str) -> IResult<&str, LatencyItem> {
+    alt((
+        map(preceded(tag("p95"), preceded(ws1, parse_string)), LatencyItem::P95),
+        map(preceded(tag("p99"), preceded(ws1, parse_string)), LatencyItem::P99),
+        map(preceded(tag("window"), preceded(ws1, parse_string)), LatencyItem::Window),
+        map(parse_slo_current, LatencyItem::Current),
+    ))(input)
+}
+
+fn parse_slo_current(input: &str) -> IResult<&str, SloCurrent> {
+    let (input, _) = tag("current")(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, entries) = delimited(
+        char('{'),
+        many0(preceded(ws, parse_kv_string)),
+        preceded(ws0, char('}')),
+    )(input)?;
+
+    let mut out = SloCurrent { p95: None, p99: None };
+    for (k, v) in entries {
+        match k.as_str() {
+            "p95" => out.p95 = Some(v),
+            "p99" => out.p99 = Some(v),
+            _ => {}
+        }
+    }
+    Ok((input, out))
+}
+
+fn parse_slo_error_rate(input: &str) -> IResult<&str, SloErrorRate> {
+    let (input, _) = tag("errorRate")(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, entries) = delimited(
+        char('{'),
+        many0(preceded(ws, parse_kv_string)),
+        preceded(ws0, char('}')),
+    )(input)?;
+
+    let mut out = SloErrorRate {
+        target: None,
+        window: None,
+        current: None,
+    };
+    for (k, v) in entries {
+        match k.as_str() {
+            "target" => out.target = Some(v),
+            "window" => out.window = Some(v),
+            "current" => out.current = Some(v),
+            _ => {}
+        }
+    }
+    Ok((input, out))
+}
+
+fn parse_slo_throughput(input: &str) -> IResult<&str, SloThroughput> {
+    let (input, _) = tag("throughput")(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, entries) = delimited(
+        char('{'),
+        many0(preceded(ws, parse_kv_string)),
+        preceded(ws0, char('}')),
+    )(input)?;
+
+    let mut out = SloThroughput {
+        target: None,
+        window: None,
+        current: None,
+    };
+    for (k, v) in entries {
+        match k.as_str() {
+            "target" => out.target = Some(v),
+            "window" => out.window = Some(v),
+            "current" => out.current = Some(v),
+            _ => {}
+        }
+    }
+    Ok((input, out))
+}
+
+fn parse_kv_string(input: &str) -> IResult<&str, (String, String)> {
+    let (input, key) = parse_identifier(input)?;
+    let (input, _) = ws1(input)?;
+    let (input, value) = parse_string(input)?;
+    Ok((input, (key, value)))
 }
 
 /// Parse a scenario: (scenario | story) [ID] [Title] [Description] [{ Steps }]
