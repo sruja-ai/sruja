@@ -18,11 +18,40 @@ impl Rule for ValidRefRule {
     fn validate(&self, program: &Program) -> Vec<Diagnostic> {
         let mut diagnostics = Vec::new();
 
-        // TODO: Collect all element IDs from program
-        // TODO: Check all relation references point to valid elements
-        // TODO: Report undefined references
+        // Collect all element IDs from program
+        let (elements, relations) = sruja_language::collect_elements(program);
+        let element_ids: HashSet<String> = elements.keys().cloned().collect();
 
-        // For now, this is a placeholder
+        // Check all relation references point to valid elements
+        for rel in &relations {
+            let from = rel.from.as_string();
+            let to = rel.to.as_string();
+
+            if !element_ids.contains(&from) {
+                diagnostics.push(Diagnostic::new(
+                    sruja_diagnostics::codes::CODE_UNDEFINED_REF,
+                    Severity::Error,
+                    format!("Reference '{}' in relation does not exist", from),
+                    rel.location.clone(),
+                ).with_suggestions(vec![
+                    format!("Element '{}' must be defined before it can be referenced", from),
+                    "Check for typos or missing element definitions".to_string(),
+                ]));
+            }
+
+            if !element_ids.contains(&to) {
+                diagnostics.push(Diagnostic::new(
+                    sruja_diagnostics::codes::CODE_UNDEFINED_REF,
+                    Severity::Error,
+                    format!("Reference '{}' in relation does not exist", to),
+                    rel.location.clone(),
+                ).with_suggestions(vec![
+                    format!("Element '{}' must be defined before it can be referenced", to),
+                    "Check for typos or missing element definitions".to_string(),
+                ]));
+            }
+        }
+
         diagnostics
     }
 }

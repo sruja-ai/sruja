@@ -22,15 +22,15 @@ impl Rule for UniqueIdRule {
         let mut diagnostics = Vec::new();
 
         // Helper to check if an ID is duplicate
-        let mut check_id = |id: &str, loc: SourceLocation| {
+        let mut check_id = |id: &str, loc: &SourceLocation| {
             if id.is_empty() {
                 return;
             }
 
             if let Some(existing) = seen_ids.get(id) {
                 let msg = format!(
-                    "Duplicate identifier '{}'. First defined at {}",
-                    id, existing
+                    "Duplicate identifier '{}'. First defined at line {}:{}",
+                    id, existing.line, existing.column
                 );
 
                 let suggestions = vec![
@@ -42,16 +42,19 @@ impl Rule for UniqueIdRule {
                     sruja_diagnostics::codes::CODE_DUPLICATE_ID,
                     Severity::Error,
                     msg,
-                    loc,
+                    loc.clone(),
                 ).with_suggestions(suggestions));
             } else {
-                seen_ids.insert(id.to_string(), loc);
+                seen_ids.insert(id.to_string(), loc.clone());
             }
         };
 
-        // Collect all element IDs from program
-        // TODO: Implement element collection once AST traversal is ready
-        // For now, this is a placeholder that will be expanded as we migrate more
+        // Collect all elements and check for duplicates
+        let (elements, _relations) = sruja_language::collect_elements(program);
+        
+        for (fqn, elem) in &elements {
+            check_id(fqn, &elem.location);
+        }
 
         diagnostics
     }

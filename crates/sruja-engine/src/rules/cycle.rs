@@ -23,8 +23,13 @@ impl Rule for CycleDetectionRule {
         // Build adjacency list from relations
         let mut adj: HashMap<String, Vec<String>> = HashMap::new();
 
-        // TODO: Collect relations from program
-        // For now, this is a placeholder
+        // Collect all relations from program
+        let relations = sruja_language::collect_all_relations(program);
+        for rel in &relations {
+            let from = rel.from.as_string();
+            let to = rel.to.as_string();
+            adj.entry(from).or_insert_with(Vec::new).push(to);
+        }
 
         // Detect cycles using DFS
         let mut visited = HashSet::new();
