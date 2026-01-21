@@ -3,6 +3,7 @@ members = [
     "crates/sruja-diagnostics",
     "crates/sruja-language",
     "crates/sruja-engine",
+    "crates/sruja-export",
 ]
 resolver = "2"
 
