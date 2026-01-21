@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 sruja-language = { path = "../sruja-language" }
-sruja-engine = { path = "../sruja-engine" }
+sruja-engine = { path = "../sruja-engine", default-features = false }
 sruja-export = { path = "../sruja-export" }
 sruja-diagnostics = { path = "../sruja-diagnostics" }
 wasm-bindgen = "0.2"

@@ -11,7 +11,11 @@ sruja-diagnostics = { path = "../sruja-diagnostics" }
 sruja-language = { path = "../sruja-language" }
 serde = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, optional = true }
+
+[features]
+default = ["async"]
+async = ["tokio"]
 
 [dev-dependencies]
 tokio-test = "0.4"
