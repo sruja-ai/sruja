@@ -71,8 +71,8 @@ impl Validator {
         self.register_rule(crate::rules::CycleDetectionRule);
         self.register_rule(crate::rules::OrphanDetectionRule);
         self.register_rule(crate::rules::SimplicityRule);
+        self.register_rule(crate::rules::LayerViolationRule);
         // TODO: Add remaining rules as we migrate them:
-        // - LayerViolationRule
         // - ScenarioValidationRule
         // - DatabaseIsolationRule
         // - PublicInterfaceDocumentationRule
