@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use sruja_diagnostics::SourceLocation;
+use std::collections::HashMap;
 
 /// Main program structure containing all parsed items
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -101,17 +102,12 @@ pub enum ElementKind {
     Component,
     Database,
     Queue,
-    Policy,
-    Requirement,
-    Adr,
-    Flow,
-    Scenario,
-    Story,
-    Custom(String), // For custom kinds
+    ExternalSystem,
+    DataStore,
 }
 
 impl ElementKind {
-    pub fn as_str(&self) -> &str {
+    pub fn to_string(&self) -> String {
         match self {
             ElementKind::Person => "person",
             ElementKind::Role => "role",
@@ -120,18 +116,14 @@ impl ElementKind {
             ElementKind::Component => "component",
             ElementKind::Database => "database",
             ElementKind::Queue => "queue",
-            ElementKind::Policy => "policy",
-            ElementKind::Requirement => "requirement",
-            ElementKind::Adr => "adr",
-            ElementKind::Flow => "flow",
-            ElementKind::Scenario => "scenario",
-            ElementKind::Story => "story",
-            ElementKind::Custom(s) => s,
+            ElementKind::ExternalSystem => "externalSystem",
+            ElementKind::DataStore => "datastore",
         }
+        .to_string()
     }
 }
 
-/// Element definition body
+/// Element definition body containing nested items
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ElementDefBody {
     pub description: Option<String>,
@@ -168,30 +160,14 @@ pub struct System {
     pub label: Option<String>,
     pub description: Option<String>,
     pub items: Vec<SystemItem>,
-    // Post-processed fields
-    pub containers: Vec<Container>,
-    pub data_stores: Vec<DataStore>,
-    pub queues: Vec<Queue>,
-    pub persons: Vec<Person>,
-    pub components: Vec<Component>,
-    pub relations: Vec<Relation>,
-    pub metadata: Vec<MetaEntry>,
 }
 
-/// Items in a system
+/// Items that can appear in a system
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SystemItem {
     Container(Container),
-    DataStore(DataStore),
-    Queue(Queue),
-    Person(Person),
-    Metadata(MetadataBlock),
-    Constraints(ConstraintsBlock),
-    Conventions(ConventionsBlock),
-    Style(StyleDecl),
-    Slo(SloBlock),
+    Component(Component),
     Relation(Relation),
-    Description(String),
 }
 
 /// Container element
@@ -202,64 +178,19 @@ pub struct Container {
     pub label: Option<String>,
     pub description: Option<String>,
     pub technology: Option<String>,
-    pub tags: Vec<String>,
-    pub version: Option<String>,
     pub items: Vec<ContainerItem>,
 }
 
-/// Items in a container
+/// Items that can appear in a container
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContainerItem {
     Component(Component),
-    DataStore(DataStore),
-    Queue(Queue),
-    Technology(String),
-    Tags(Vec<String>),
-    Version(String),
-    Metadata(MetadataBlock),
-    Constraints(ConstraintsBlock),
-    Conventions(ConventionsBlock),
-    Style(StyleDecl),
-    Scale(ScaleBlock),
-    Slo(SloBlock),
     Relation(Relation),
-    Description(String),
 }
 
 /// Component element
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Component {
-    pub location: SourceLocation,
-    pub id: String,
-    pub label: Option<String>,
-    pub description: Option<String>,
-    pub technology: Option<String>,
-    pub metadata: Vec<MetaEntry>,
-    pub relations: Vec<Relation>,
-}
-
-/// Person element
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Person {
-    pub location: SourceLocation,
-    pub id: String,
-    pub label: Option<String>,
-    pub description: Option<String>,
-}
-
-/// DataStore element
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DataStore {
-    pub location: SourceLocation,
-    pub id: String,
-    pub label: Option<String>,
-    pub description: Option<String>,
-    pub technology: Option<String>,
-}
-
-/// Queue element
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Queue {
     pub location: SourceLocation,
     pub id: String,
     pub label: Option<String>,
@@ -280,7 +211,7 @@ pub struct Relation {
 }
 
 /// Qualified identifier (e.g., "System.Container" or just "System")
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct QualifiedIdent {
     pub parts: Vec<String>,
 }
@@ -298,6 +229,12 @@ impl QualifiedIdent {
 
     pub fn as_string(&self) -> String {
         self.parts.join(".")
+    }
+}
+
+impl std::fmt::Display for QualifiedIdent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_string())
     }
 }
 
@@ -321,7 +258,7 @@ pub enum ImportElement {
 pub struct Scenario {
     pub location: SourceLocation,
     pub id: String,
-    pub label: Option<String>,
+    pub title: String,
     pub description: Option<String>,
     pub steps: Vec<ScenarioStep>,
 }
@@ -329,24 +266,21 @@ pub struct Scenario {
 /// Scenario step
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScenarioStep {
-    pub actor: String,
-    pub action: String,
+    pub from: Option<QualifiedIdent>,
+    pub to: Option<QualifiedIdent>,
+    pub description: Option<String>,
+    pub tags: Vec<String>,
+    pub order: Option<usize>,
 }
 
-/// Flow definition
+/// Flow definition (alias for Scenario)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Flow {
     pub location: SourceLocation,
     pub id: String,
-    pub label: Option<String>,
-    pub steps: Vec<FlowStep>,
-}
-
-/// Flow step
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FlowStep {
-    pub actor: String,
-    pub action: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub steps: Vec<ScenarioStep>,
 }
 
 /// Requirement definition
@@ -354,9 +288,10 @@ pub struct FlowStep {
 pub struct Requirement {
     pub location: SourceLocation,
     pub id: String,
-    pub kind: Option<String>, // functional, nonfunctional, etc.
-    pub label: Option<String>,
+    pub title: String,
+    pub r#type: String, // functional, performance, security, constraint
     pub description: Option<String>,
+    pub tags: Vec<String>,
 }
 
 /// ADR (Architecture Decision Record)
@@ -364,8 +299,11 @@ pub struct Requirement {
 pub struct Adr {
     pub location: SourceLocation,
     pub id: String,
-    pub label: Option<String>,
-    pub description: Option<String>,
+    pub title: String,
+    pub status: Option<String>,
+    pub context: Option<String>,
+    pub decision: Option<String>,
+    pub consequences: Option<String>,
 }
 
 /// Policy definition
@@ -373,7 +311,9 @@ pub struct Adr {
 pub struct Policy {
     pub location: SourceLocation,
     pub id: String,
-    pub label: Option<String>,
+    pub title: String,
+    pub category: String,
+    pub enforcement: String,
     pub description: Option<String>,
 }
 
@@ -383,15 +323,37 @@ pub struct ViewDef {
     pub location: SourceLocation,
     pub id: String,
     pub title: Option<String>,
-    pub includes: Vec<String>,
-    pub excludes: Vec<String>,
+    pub description: Option<String>,
+    pub view_of: Option<QualifiedIdent>,
+    pub tags: Vec<String>,
+    pub rules: Vec<ViewRule>,
+}
+
+/// View rule
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewRule {
+    pub include: Option<ViewRuleExpr>,
+    pub exclude: Option<ViewRuleExpr>,
+}
+
+/// View rule expression
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewRuleExpr {
+    pub wildcard: bool,
+    pub recursive: bool,
+    pub elements: Vec<String>,
 }
 
 /// Overview block
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OverviewBlock {
     pub location: SourceLocation,
-    pub entries: Vec<MetaEntry>,
+    pub summary: Option<String>,
+    pub audience: Option<String>,
+    pub scope: Option<String>,
+    pub goals: Vec<String>,
+    pub non_goals: Vec<String>,
+    pub risks: Vec<String>,
 }
 
 /// Deployment node
@@ -400,14 +362,8 @@ pub struct DeploymentNode {
     pub location: SourceLocation,
     pub id: String,
     pub label: Option<String>,
-    pub items: Vec<DeploymentItem>,
-}
-
-/// Deployment item
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DeploymentItem {
-    DeploymentNode(DeploymentNode),
-    Container(String), // Container ID reference
+    pub technology: Option<String>,
+    pub children: Vec<DeploymentNode>,
 }
 
 /// Constraints block
@@ -420,8 +376,8 @@ pub struct ConstraintsBlock {
 /// Constraint entry
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConstraintEntry {
-    pub element: String,
-    pub constraint: String,
+    pub key: String,
+    pub value: String,
 }
 
 /// Conventions block
@@ -434,146 +390,31 @@ pub struct ConventionsBlock {
 /// Convention entry
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConventionEntry {
-    pub element: String,
-    pub convention: String,
+    pub key: String,
+    pub value: String,
 }
 
 /// Extend element
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExtendElement {
     pub location: SourceLocation,
-    pub id: QualifiedIdent,
-    pub body: ElementDefBody,
+    pub target: QualifiedIdent,
+    pub assignments: Vec<ElementAssignment>,
 }
 
 /// Style declaration
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StyleDecl {
     pub location: SourceLocation,
-    pub keyword: String, // "style" or "styles"
-    pub body: StyleBlock,
-}
-
-/// Style block
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StyleBlock {
-    pub location: SourceLocation,
-    pub entries: Vec<StyleEntry>,
-}
-
-/// Style entry
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StyleEntry {
-    pub key: String,
-    pub value: Option<String>,
-    pub body: Option<StyleBlock>,
-}
-
-/// Metadata block
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MetadataBlock {
-    pub location: SourceLocation,
-    pub entries: Vec<MetaEntry>,
-}
-
-/// Metadata entry
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MetaEntry {
-    pub location: SourceLocation,
-    pub key: String,
-    pub value: Option<String>,
-    pub array: Vec<String>,
-}
-
-/// Scale block
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ScaleBlock {
-    pub location: SourceLocation,
-    pub items: Vec<ScaleItem>,
-}
-
-/// Scale item
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ScaleItem {
-    Min(i32),
-    Max(i32),
-    Metric(String),
-}
-
-/// SLO block
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SloBlock {
-    pub location: SourceLocation,
-    pub items: Vec<SloItem>,
-}
-
-/// SLO item
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SloItem {
-    Availability(SloAvailability),
-    Latency(SloLatency),
-    ErrorRate(SloErrorRate),
-    Throughput(SloThroughput),
-    Cost(SloCost),
-}
-
-/// SLO Availability
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SloAvailability {
-    pub target: Option<String>,
-    pub window: Option<String>,
-    pub current: Option<String>,
-}
-
-/// SLO Latency
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SloLatency {
-    pub p95: Option<String>,
-    pub p99: Option<String>,
-    pub window: Option<String>,
-    pub current: Option<SloCurrent>,
-}
-
-/// SLO Current
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SloCurrent {
-    pub p95: Option<String>,
-    pub p99: Option<String>,
-}
-
-/// SLO Error Rate
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SloErrorRate {
-    pub target: Option<String>,
-    pub window: Option<String>,
-}
-
-/// SLO Throughput
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SloThroughput {
-    pub target: Option<String>,
-    pub window: Option<String>,
-}
-
-/// SLO Cost
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SloCost {
-    pub target: Option<String>,
-    pub window: Option<String>,
+    pub selector: String,
+    pub properties: HashMap<String, String>,
 }
 
 /// Element kind definition
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ElementKindDef {
     pub location: SourceLocation,
-    pub name: String,
-    pub title: Option<String>,
-    pub body: Option<ElementKindDefBody>,
-}
-
-/// Element kind definition body
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ElementKindDefBody {
+    pub kind: ElementKind,
     pub title: Option<String>,
     pub description: Option<String>,
     pub technology: Option<String>,
@@ -584,6 +425,86 @@ pub struct ElementKindDefBody {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TagDef {
     pub location: SourceLocation,
-    pub name: String,
-    pub title: Option<String>,
+    pub id: String,
+    pub color: Option<String>,
+}
+
+/// Metadata block
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MetadataBlock {
+    pub location: SourceLocation,
+    pub entries: Vec<MetaEntry>,
+}
+
+/// Metadata entry
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MetaEntry {
+    pub key: String,
+    pub value: Option<String>,
+}
+
+/// Style block
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StyleBlock {
+    pub location: SourceLocation,
+    pub properties: HashMap<String, String>,
+}
+
+/// Scale block
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScaleBlock {
+    pub location: SourceLocation,
+    pub min: Option<usize>,
+    pub max: Option<usize>,
+    pub metric: Option<String>,
+}
+
+/// SLO block
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SloBlock {
+    pub location: SourceLocation,
+    pub availability: Option<SloAvailability>,
+    pub latency: Option<SloLatency>,
+    pub error_rate: Option<SloErrorRate>,
+    pub throughput: Option<SloThroughput>,
+}
+
+/// SLO Availability
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SloAvailability {
+    pub target: String,
+    pub window: String,
+    pub current: Option<String>,
+}
+
+/// SLO Latency
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SloLatency {
+    pub p95: String,
+    pub p99: String,
+    pub window: String,
+    pub current: Option<SloCurrent>,
+}
+
+/// SLO Current
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SloCurrent {
+    pub p95: String,
+    pub p99: String,
+}
+
+/// SLO Error Rate
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SloErrorRate {
+    pub target: String,
+    pub window: String,
+    pub current: Option<String>,
+}
+
+/// SLO Throughput
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SloThroughput {
+    pub target: String,
+    pub window: String,
+    pub current: Option<String>,
 }
