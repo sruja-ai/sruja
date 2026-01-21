@@ -5,7 +5,9 @@
 pub mod json;
 pub mod mermaid;
 pub mod dot;
+pub mod markdown;
 
 pub use json::{Exporter, ExportResult};
 pub use mermaid::MermaidExporter;
 pub use dot::DotExporter;
+pub use markdown::MarkdownExporter;

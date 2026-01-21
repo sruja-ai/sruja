@@ -8,6 +8,7 @@ use sruja_engine::Validator;
 use sruja_export::json::{Exporter as JsonExporter, ExportError as JsonExportError};
 use sruja_export::mermaid::{MermaidConfig, MermaidExporter};
 use sruja_export::dot::{DotConfig, DotExporter};
+use sruja_export::markdown::{MarkdownExporter, MarkdownOptions};
 use sruja_language::Parser;
 use sruja_lsp::server::run_stdio;
 use thiserror::Error;
@@ -138,6 +139,11 @@ pub async fn export(
             });
             let dot = exporter.export(&program);
             println!("{}", dot);
+        }
+        "markdown" => {
+            let exporter = MarkdownExporter::new(MarkdownOptions::default());
+            let md = exporter.export(&program);
+            println!("{}", md);
         }
         _ => {
             return Err(CliError::Export(JsonExportError::Export(
