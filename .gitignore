@@ -82,6 +82,12 @@ pids/
 cmd_sruja.out
 bin/
 
+# Rust build outputs
+target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
 # Go test files
 *.test
 *.out
