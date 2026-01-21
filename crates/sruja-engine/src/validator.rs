@@ -78,7 +78,7 @@ impl Validator {
         self.register_rule(crate::rules::PublicInterfaceDocumentationRule);
         self.register_rule(crate::rules::SloValidationRule);
         self.register_rule(crate::rules::PropertiesValidationRule);
-        // - GovernanceValidationRule
+        self.register_rule(crate::rules::GovernanceValidationRule);
     }
 
     /// Validate a program with all registered rules
