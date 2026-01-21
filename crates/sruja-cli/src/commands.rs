@@ -5,7 +5,7 @@ use std::path::Path;
 
 use sruja_diagnostics::format_diagnostic;
 use sruja_engine::Validator;
-use sruja_export::json::Exporter as JsonExporter;
+use sruja_export::json::{Exporter as JsonExporter, ExportError as JsonExportError};
 use sruja_language::Parser;
 use sruja_lsp::server::run_stdio;
 use thiserror::Error;
@@ -19,7 +19,7 @@ pub enum CliError {
     #[error("Validation error: {0}")]
     Validation(String),
     #[error("Export error: {0}")]
-    Export(#[from] sruja_export::json::ExportError),
+    Export(#[from] JsonExportError),
 }
 
 /// Print version information
@@ -114,7 +114,7 @@ pub async fn export(format: &str, file: &str, extended: bool) -> Result<(), CliE
             println!("{}", json);
         }
         _ => {
-            return Err(CliError::Export(sruja_export::json::ExportError::Export(
+            return Err(CliError::Export(JsonExportError::Export(
                 format!("Unsupported export format: {}", format)
             )));
         }
