@@ -7,6 +7,14 @@ use std::collections::HashMap;
 
 use crate::ast::*;
 
+/// A relation paired with the scope (parent FQN) it was declared within.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RelationWithScope {
+    pub relation: Relation,
+    /// Parent FQN for nested relations; empty for top-level.
+    pub scope: String,
+}
+
 /// Collect all element definitions from a program keyed by fully qualified name (FQN)
 /// Returns a map of FQN -> ElementDef and a vector of all relations
 pub fn collect_elements(program: &Program) -> (HashMap<String, ElementDef>, Vec<Relation>) {
@@ -83,7 +91,7 @@ pub fn build_qualified_id(parent: &str, id: &str) -> String {
     }
 }
 
-/// Collect all relations from a program with their scope
+/// Collect all relations from a program (no scope information).
 pub fn collect_all_relations(program: &Program) -> Vec<Relation> {
     let (_elements, relations) = collect_elements(program);
     
@@ -97,6 +105,65 @@ pub fn collect_all_relations(program: &Program) -> Vec<Relation> {
     }
     
     all_relations
+}
+
+/// Collect all relations from a program with their scope (parent FQN).
+///
+/// This mirrors the Go engine behavior where nested relations inherit scope.
+pub fn collect_relations_with_scope(program: &Program) -> Vec<RelationWithScope> {
+    let mut out: Vec<RelationWithScope> = Vec::new();
+
+    // Use iterative traversal with explicit stack.
+    #[derive(Clone)]
+    struct Frame {
+        elem: ElementDef,
+        parent: String,
+    }
+
+    let mut stack: Vec<Frame> = Vec::new();
+
+    // Top-level items
+    for item in &program.items {
+        match item {
+            TopLevelItem::Relation(rel) => out.push(RelationWithScope {
+                relation: rel.clone(),
+                scope: String::new(),
+            }),
+            TopLevelItem::ElementDef(elem) => stack.push(Frame {
+                elem: elem.clone(),
+                parent: String::new(),
+            }),
+            _ => {}
+        }
+    }
+
+    while let Some(frame) = stack.pop() {
+        let elem = frame.elem;
+        let id = elem.assignment.name.clone();
+        if id.is_empty() {
+            continue;
+        }
+
+        let fqn = build_qualified_id(&frame.parent, &id);
+
+        if let Some(body) = &elem.assignment.body {
+            for item in &body.items {
+                match item {
+                    ElementDefBodyItem::Relation(rel) => out.push(RelationWithScope {
+                        relation: rel.clone(),
+                        scope: fqn.clone(),
+                    }),
+                    ElementDefBodyItem::ElementDef(nested) => stack.push(Frame {
+                        elem: nested.clone(),
+                        parent: fqn.clone(),
+                    }),
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    out
 }
 
 /// Get element location from various AST types
