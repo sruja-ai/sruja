@@ -472,39 +472,39 @@ pub struct SloBlock {
 /// SLO Availability
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SloAvailability {
-    pub target: String,
-    pub window: String,
+    pub target: Option<String>,
+    pub window: Option<String>,
     pub current: Option<String>,
 }
 
 /// SLO Latency
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SloLatency {
-    pub p95: String,
-    pub p99: String,
-    pub window: String,
+    pub p95: Option<String>,
+    pub p99: Option<String>,
+    pub window: Option<String>,
     pub current: Option<SloCurrent>,
 }
 
 /// SLO Current
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SloCurrent {
-    pub p95: String,
-    pub p99: String,
+    pub p95: Option<String>,
+    pub p99: Option<String>,
 }
 
 /// SLO Error Rate
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SloErrorRate {
-    pub target: String,
-    pub window: String,
+    pub target: Option<String>,
+    pub window: Option<String>,
     pub current: Option<String>,
 }
 
 /// SLO Throughput
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SloThroughput {
-    pub target: String,
-    pub window: String,
+    pub target: Option<String>,
+    pub window: Option<String>,
     pub current: Option<String>,
 }
