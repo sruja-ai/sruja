@@ -77,7 +77,7 @@ impl Validator {
         // TODO: Add remaining rules as we migrate them:
         self.register_rule(crate::rules::PublicInterfaceDocumentationRule);
         self.register_rule(crate::rules::SloValidationRule);
-        // - PropertiesValidationRule
+        self.register_rule(crate::rules::PropertiesValidationRule);
         // - GovernanceValidationRule
     }
 
