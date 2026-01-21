@@ -30,11 +30,28 @@ impl Document {
     pub fn apply_change(&mut self, change: TextDocumentContentChangeEvent) {
         match change.range {
             Some(range) => {
-                // Incremental update
-                let start = self.text.lines().take(range.start.line as usize).collect::<Vec<_>>().join("\n").len() + range.start.character as usize;
-                let end = self.text.lines().take(range.end.line as usize).collect::<Vec<_>>().join("\n").len() + range.end.character as usize;
-                
-                self.text.replace_range(start..end, &change.text);
+                // Incremental update - compute byte offsets
+                let lines: Vec<&str> = self.text.lines().collect();
+                let mut start_offset = 0;
+                for i in 0..range.start.line.min(lines.len() as u32) {
+                    start_offset += lines[i as usize].len() + 1; // +1 for newline
+                }
+                start_offset += range.start.character as usize;
+
+                let mut end_offset = 0;
+                for i in 0..range.end.line.min(lines.len() as u32) {
+                    end_offset += lines[i as usize].len() + 1; // +1 for newline
+                }
+                end_offset += range.end.character as usize;
+
+                // Apply change
+                let start = start_offset.min(self.text.len());
+                let end = end_offset.min(self.text.len());
+                let mut new_text = String::with_capacity(self.text.len() - (end - start) + change.text.len());
+                new_text.push_str(&self.text[..start]);
+                new_text.push_str(&change.text);
+                new_text.push_str(&self.text[end..]);
+                self.text = new_text;
             }
             None => {
                 // Full document update
@@ -89,12 +106,21 @@ impl Workspace {
         self.documents.write().await.remove(uri);
     }
 
-    pub async fn get_document(&self, uri: &Url) -> Option<Arc<Document>> {
-        self.documents.read().await.get(uri).map(|d| Arc::new(d.clone()))
+    pub async fn get_document(&self, uri: &Url) -> Option<Document> {
+        self.documents.read().await.get(uri).cloned()
     }
 
     pub async fn get_program(&self, uri: &Url) -> Option<Program> {
         self.documents.read().await.get(uri)?.program.clone()
+    }
+
+    pub async fn get_text(&self, uri: &Url) -> Option<String> {
+        self.documents.read().await.get(uri).map(|d| d.text.clone())
+    }
+
+    pub async fn get_line(&self, uri: &Url, line: u32) -> Option<String> {
+        let doc = self.documents.read().await.get(uri)?;
+        doc.text.lines().nth(line as usize).map(|s| s.to_string())
     }
 }
 
