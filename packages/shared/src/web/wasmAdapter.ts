@@ -13,6 +13,7 @@ import {
 export * from "./wasmTypes";
 import { isBrowser } from "../utils/env";
 import { ExportError, parseWasmError, validateDotResult } from "./errors";
+import { initRustWasm } from "./wasmAdapterRust";
 
 /**
  * Check if running in development mode.
@@ -635,6 +636,20 @@ export async function initWasmAuto(options?: {
 
   initPromise = (async () => {
     const base = options?.base ?? detectBaseUrl();
+    // Rust-first: try wasm-bindgen bundle. If it fails, fall back to Go WASM.
+    try {
+      wasmApi = await initRustWasm({ base });
+      logger.info("Initialized Rust WASM backend", { component: "wasm", action: "init", base });
+      return wasmApi;
+    } catch (error) {
+      logger.warn("Rust WASM init failed, falling back to Go WASM", {
+        component: "wasm",
+        action: "init_fallback",
+        base,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
     wasmApi = await initWasm({ ...options, base });
     return wasmApi;
   })();
