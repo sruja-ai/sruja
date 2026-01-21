@@ -6,6 +6,7 @@ use std::path::Path;
 use sruja_diagnostics::format_diagnostic;
 use sruja_engine::Validator;
 use sruja_export::json::{Exporter as JsonExporter, ExportError as JsonExportError};
+use sruja_export::mermaid::{MermaidConfig, MermaidExporter};
 use sruja_language::Parser;
 use sruja_lsp::server::run_stdio;
 use thiserror::Error;
@@ -112,6 +113,12 @@ pub async fn export(format: &str, file: &str, extended: bool) -> Result<(), CliE
             let exporter = JsonExporter::with_extended(extended);
             let json = exporter.export(&program)?;
             println!("{}", json);
+        }
+        "mermaid" => {
+            // NOTE: view-level focus not yet ported; exports full graph.
+            let exporter = MermaidExporter::new(MermaidConfig::default());
+            let mmd = exporter.export(&program);
+            println!("{}", mmd);
         }
         _ => {
             return Err(CliError::Export(JsonExportError::Export(
