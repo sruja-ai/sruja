@@ -93,7 +93,7 @@ pub struct ElementAssignment {
 }
 
 /// Element kinds
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ElementKind {
     Person,
     Role,
@@ -104,6 +104,15 @@ pub enum ElementKind {
     Queue,
     ExternalSystem,
     DataStore,
+    // Governance / behavioral kinds (parsed as ElementDefs in Go model)
+    Policy,
+    Requirement,
+    Adr,
+    Flow,
+    Scenario,
+    Story,
+    /// Custom kinds (specification-defined)
+    Custom(String),
 }
 
 impl ElementKind {
@@ -118,6 +127,13 @@ impl ElementKind {
             ElementKind::Queue => "queue",
             ElementKind::ExternalSystem => "externalSystem",
             ElementKind::DataStore => "datastore",
+            ElementKind::Policy => "policy",
+            ElementKind::Requirement => "requirement",
+            ElementKind::Adr => "adr",
+            ElementKind::Flow => "flow",
+            ElementKind::Scenario => "scenario",
+            ElementKind::Story => "story",
+            ElementKind::Custom(k) => k.as_str(),
         }
         .to_string()
     }
