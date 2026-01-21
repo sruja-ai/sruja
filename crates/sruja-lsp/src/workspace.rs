@@ -61,7 +61,7 @@ impl Document {
     }
 
     pub fn parse(&mut self) {
-        let mut parser = Parser::new();
+        let parser = Parser::new(self.uri.to_string());
         match parser.parse(&self.text) {
             Ok(program) => {
                 self.program = Some(program);
