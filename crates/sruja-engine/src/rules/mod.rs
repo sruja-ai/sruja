@@ -9,6 +9,7 @@ pub mod layer_violation;
 pub mod scenario_validation;
 pub mod database_isolation;
 pub mod public_interface_documentation;
+pub mod slo_validation;
 
 pub use unique_id::UniqueIdRule;
 pub use cycle::CycleDetectionRule;
@@ -19,3 +20,4 @@ pub use layer_violation::LayerViolationRule;
 pub use scenario_validation::ScenarioValidationRule;
 pub use database_isolation::DatabaseIsolationRule;
 pub use public_interface_documentation::PublicInterfaceDocumentationRule;
+pub use slo_validation::SloValidationRule;
