@@ -45,6 +45,21 @@ enum Commands {
         /// Path to .sruja file
         file: String,
     },
+    /// List elements from a file
+    List {
+        /// Path to .sruja file
+        file: String,
+    },
+    /// Print architecture tree
+    Tree {
+        /// Path to .sruja file
+        file: String,
+    },
+    /// Initialize a new Sruja project
+    Init {
+        /// Project name (optional)
+        name: Option<String>,
+    },
     /// Start LSP server (stdio)
     Lsp {
         /// Use stdio transport
@@ -71,6 +86,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Fmt { file } => commands::fmt(&file).await,
         Commands::Lsp { .. } => commands::lsp().await,
         Commands::Compile { file } => commands::compile(&file).await,
+        Commands::List { file } => commands::list(&file).await,
+        Commands::Tree { file } => commands::tree(&file).await,
+        Commands::Init { name } => commands::init(name.as_deref()).await,
     };
 
     match result {

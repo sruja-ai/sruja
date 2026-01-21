@@ -169,8 +169,123 @@ pub async fn export(
 
 /// Format a Sruja file
 pub async fn fmt(file: &str) -> Result<(), CliError> {
-    // TODO: Implement formatting
+    // TODO: Implement formatting (pretty-print using DSL printer)
     eprintln!("Formatting not yet implemented");
+    Ok(())
+}
+
+/// List elements from a file
+pub async fn list(file: &str) -> Result<(), CliError> {
+    let content = fs::read_to_string(file)?;
+    let parser = Parser::new(file.to_string());
+    
+    let program = match parser.parse(&content) {
+        Ok(program) => program,
+        Err(diagnostics) => {
+            for diag in &diagnostics {
+                eprintln!("{}", format_diagnostic(diag));
+            }
+            return Err(CliError::Parse(format!("Parsing failed with {} errors", diagnostics.len())));
+        }
+    };
+
+    let (elements, _relations) = sruja_language::collect_elements(&program);
+    
+    println!("Elements:");
+    for (fqn, elem) in &elements {
+        let kind = elem.assignment.kind.to_string();
+        let title = elem.assignment.title.clone().unwrap_or_else(|| elem.assignment.name.clone());
+        println!("  {} ({}) - {}", fqn, kind, title);
+    }
+    
+    Ok(())
+}
+
+/// Print architecture tree
+pub async fn tree(file: &str) -> Result<(), CliError> {
+    let content = fs::read_to_string(file)?;
+    let parser = Parser::new(file.to_string());
+    
+    let program = match parser.parse(&content) {
+        Ok(program) => program,
+        Err(diagnostics) => {
+            for diag in &diagnostics {
+                eprintln!("{}", format_diagnostic(diag));
+            }
+            return Err(CliError::Parse(format!("Parsing failed with {} errors", diagnostics.len())));
+        }
+    };
+
+    let (elements, _relations) = sruja_language::collect_elements(&program);
+    
+    // Build parent->children map
+    use std::collections::BTreeMap;
+    let mut children: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut roots: Vec<String> = Vec::new();
+    
+    for fqn in elements.keys() {
+        if let Some(parent) = parent_fqn(fqn) {
+            if elements.contains_key(&parent) {
+                children.entry(parent).or_default().push(fqn.clone());
+            } else {
+                roots.push(fqn.clone());
+            }
+        } else {
+            roots.push(fqn.clone());
+        }
+    }
+    
+    // Print tree
+    for root in roots {
+        print_tree_node(&root, &elements, &children, 0);
+    }
+    
+    Ok(())
+}
+
+fn parent_fqn(fqn: &str) -> Option<String> {
+    fqn.rfind('.').map(|idx| fqn[..idx].to_string())
+}
+
+fn print_tree_node(
+    fqn: &str,
+    elements: &std::collections::HashMap<String, sruja_language::ElementDef>,
+    children: &std::collections::BTreeMap<String, Vec<String>>,
+    depth: usize,
+) {
+    let indent = "  ".repeat(depth);
+    if let Some(elem) = elements.get(fqn) {
+        let kind = elem.assignment.kind.to_string();
+        let title = elem.assignment.title.clone().unwrap_or_else(|| elem.assignment.name.clone());
+        println!("{}{} ({}) - {}", indent, fqn, kind, title);
+        
+        if let Some(kids) = children.get(fqn) {
+            for kid in kids {
+                print_tree_node(kid, elements, children, depth + 1);
+            }
+        }
+    }
+}
+
+/// Initialize a new Sruja project
+pub async fn init(name: Option<&str>) -> Result<(), CliError> {
+    let project_name = name.unwrap_or("my-architecture");
+    let filename = format!("{}.sruja", project_name);
+    
+    let template = format!(
+        r#"// {project_name} Architecture
+
+// Define your systems
+system {project_name} {{
+    description "Main system for {project_name}"
+}}
+
+// Add more elements, relations, scenarios, etc.
+"#
+    );
+    
+    fs::write(&filename, template)?;
+    println!("Created {}", filename);
     Ok(())
 }
 
