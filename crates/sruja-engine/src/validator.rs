@@ -75,7 +75,7 @@ impl Validator {
         self.register_rule(crate::rules::ScenarioValidationRule);
         self.register_rule(crate::rules::DatabaseIsolationRule);
         // TODO: Add remaining rules as we migrate them:
-        // - PublicInterfaceDocumentationRule
+        self.register_rule(crate::rules::PublicInterfaceDocumentationRule);
         // - SLOValidationRule
         // - PropertiesValidationRule
         // - GovernanceValidationRule
