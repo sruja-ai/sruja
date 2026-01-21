@@ -19,3 +19,4 @@ sruja-lsp = { path = "../sruja-lsp" }
 clap = { workspace = true }
 tokio = { workspace = true }
 thiserror = { workspace = true }
+serde_json = "1.0"
