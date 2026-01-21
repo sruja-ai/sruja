@@ -13,6 +13,7 @@ use nom::{
     IResult,
 };
 use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
+use std::collections::HashMap;
 
 use crate::ast::*;
 use crate::token::lookup_ident;
@@ -191,10 +192,16 @@ fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBody> {
                 // Process items and populate body fields
                 for item in items {
                     match item {
-                        ElementBodyItem::Description(d) => body.description = Some(d),
-                        ElementBodyItem::Technology(t) => body.technology = Some(t),
-                        ElementBodyItem::Metadata(m) => body.metadata = m.entries,
-                        ElementBodyItem::Slo(s) => body.slo = Some(s),
+                        ElementDefBodyItem::Description(d) => body.description = Some(d),
+                        ElementDefBodyItem::Technology(t) => body.technology = Some(t),
+                        ElementDefBodyItem::Metadata(m) => body.metadata = m.entries,
+                        ElementDefBodyItem::Slo(s) => body.slo = Some(s),
+                        ElementDefBodyItem::ElementDef(e) => body.items.push(ElementDefBodyItem::ElementDef(e)),
+                        ElementDefBodyItem::Relation(r) => body.items.push(ElementDefBodyItem::Relation(r)),
+                        ElementDefBodyItem::Constraints(c) => body.constraints = c.entries,
+                        ElementDefBodyItem::Conventions(c) => body.conventions = c.entries,
+                        ElementDefBodyItem::Style(s) => body.style = Some(s),
+                        ElementDefBodyItem::Scale(s) => body.scale = Some(s),
                         // Add more handlers
                         _ => {}
                     }
@@ -206,28 +213,24 @@ fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBody> {
     )(input)
 }
 
-/// Items in element body
-#[derive(Debug, Clone)]
-enum ElementBodyItem {
-    Description(String),
-    Technology(String),
-    Metadata(MetadataBlock),
-    Slo(SloBlock),
-    // Add more
-}
-
-fn parse_element_body_item(input: &str) -> IResult<&str, ElementBodyItem> {
+fn parse_element_body_item(input: &str) -> IResult<&str, ElementDefBodyItem> {
     alt((
         map(
             preceded(alt((tag("description"), tag("desc"))), preceded(ws1, parse_string)),
-            ElementBodyItem::Description,
+            ElementDefBodyItem::Description,
         ),
         map(
             preceded(alt((tag("technology"), tag("tech"))), preceded(ws1, parse_string)),
-            ElementBodyItem::Technology,
+            ElementDefBodyItem::Technology,
         ),
-        map(parse_metadata_block, ElementBodyItem::Metadata),
-        map(parse_slo_block, ElementBodyItem::Slo),
+        map(parse_metadata_block, |m| ElementDefBodyItem::Metadata(m)),
+        map(parse_slo_block, ElementDefBodyItem::Slo),
+        map(parse_element_def, ElementDefBodyItem::ElementDef),
+        map(parse_relation, ElementDefBodyItem::Relation),
+        map(parse_constraints_block, ElementDefBodyItem::Constraints),
+        map(parse_conventions_block, ElementDefBodyItem::Conventions),
+        map(parse_style_decl, ElementDefBodyItem::Style),
+        map(parse_scale_block, ElementDefBodyItem::Scale),
     ))(input)
 }
 
@@ -677,6 +680,117 @@ fn parse_view_expression(input: &str) -> IResult<&str, Vec<String>> {
     ))(input)
 }
 
+/// Parse constraints block: constraints { key "value" ... }
+fn parse_constraints_block(input: &str) -> IResult<&str, ConstraintsBlock> {
+    let (input, _) = tag("constraints")(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, entries) = delimited(
+        char('{'),
+        many0(preceded(ws, parse_constraint_entry)),
+        preceded(ws0, char('}')),
+    )(input)?;
+    Ok((
+        input,
+        ConstraintsBlock {
+            location: SourceLocation::new(String::new(), 0, 0),
+            entries,
+        },
+    ))
+}
+
+fn parse_constraint_entry(input: &str) -> IResult<&str, ConstraintEntry> {
+    let (input, key) = parse_identifier(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, value) = parse_string(input)?;
+    Ok((input, ConstraintEntry { key, value }))
+}
+
+/// Parse conventions block: conventions { key "value" ... }
+fn parse_conventions_block(input: &str) -> IResult<&str, ConventionsBlock> {
+    let (input, _) = tag("conventions")(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, entries) = delimited(
+        char('{'),
+        many0(preceded(ws, parse_convention_entry)),
+        preceded(ws0, char('}')),
+    )(input)?;
+    Ok((
+        input,
+        ConventionsBlock {
+            location: SourceLocation::new(String::new(), 0, 0),
+            entries,
+        },
+    ))
+}
+
+fn parse_convention_entry(input: &str) -> IResult<&str, ConventionEntry> {
+    let (input, key) = parse_identifier(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, value) = parse_string(input)?;
+    Ok((input, ConventionEntry { key, value }))
+}
+
+/// Parse style declaration: style selector { property "value" ... }
+fn parse_style_decl(input: &str) -> IResult<&str, StyleDecl> {
+    let (input, _) = tag("style")(input)?;
+    let (input, _) = ws1(input)?;
+    let (input, selector) = parse_identifier(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, properties) = delimited(
+        char('{'),
+        many0(preceded(ws, parse_kv_string)),
+        preceded(ws0, char('}')),
+    )(input)?;
+    let mut props_map = HashMap::new();
+    for (k, v) in properties {
+        props_map.insert(k, v);
+    }
+    Ok((
+        input,
+        StyleDecl {
+            location: SourceLocation::new(String::new(), 0, 0),
+            selector,
+            properties: props_map,
+        },
+    ))
+}
+
+/// Parse scale block: scale { min 1 max 10 metric "instances" }
+fn parse_scale_block(input: &str) -> IResult<&str, ScaleBlock> {
+    let (input, _) = tag("scale")(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, items) = delimited(
+        char('{'),
+        many0(preceded(ws, parse_scale_item)),
+        preceded(ws0, char('}')),
+    )(input)?;
+    let mut scale = ScaleBlock {
+        location: SourceLocation::new(String::new(), 0, 0),
+        min: None,
+        max: None,
+        metric: None,
+    };
+    for (key, value) in items {
+        match key.as_str() {
+            "min" => scale.min = value.parse().ok(),
+            "max" => scale.max = value.parse().ok(),
+            "metric" => scale.metric = Some(value),
+            _ => {}
+        }
+    }
+    Ok((input, scale))
+}
+
+fn parse_scale_item(input: &str) -> IResult<&str, (String, String)> {
+    let (input, key) = parse_identifier(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, value) = alt((
+        parse_string,
+        map(parse_identifier, |s| s),
+    ))(input)?;
+    Ok((input, (key, value)))
+}
+
 /// Parse a relation: From -> To [Label] [Tags]
 fn parse_relation(input: &str) -> IResult<&str, Relation> {
     let (input, from) = parse_qualified_ident(input)?;
@@ -768,25 +882,17 @@ fn parse_metadata_block(input: &str) -> IResult<&str, MetadataBlock> {
     ))
 }
 
-/// Parse a metadata entry: key [value | array]
+/// Parse a metadata entry: key [value]
 fn parse_metadata_entry(input: &str) -> IResult<&str, MetaEntry> {
     let (input, key) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
-    
-    let (input, value_or_array) = opt(alt((
-        map(parse_string, |s| (Some(s), Vec::new())),
-        map(parse_string_array, |arr| (None, arr)),
-    )))(input)?;
-    
-    let (value, array) = value_or_array.unwrap_or((None, Vec::new()));
+    let (input, value) = opt(parse_string)(input)?;
     
     Ok((
         input,
         MetaEntry {
-            location: SourceLocation::new(String::new(), 0, 0), // TODO: track position
             key,
             value,
-            array,
         },
     ))
 }
