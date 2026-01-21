@@ -5,21 +5,27 @@
 //! so this implementation exports the full graph for now and keeps the same
 //! visual conventions (styles/classes).
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use sruja_language::{collect_elements, Program, Relation};
+use sruja_language::{collect_elements, ElementKind, Program, Relation};
 
 use super::constants::*;
 
 #[derive(Debug, Clone)]
 pub struct MermaidConfig {
     pub direction: String, // "LR" etc.
+    /// 1=context, 2=container, 3=component
+    pub view_level: u8,
+    /// Optional node to focus on (system for L2, container for L3)
+    pub target_id: Option<String>,
 }
 
 impl Default for MermaidConfig {
     fn default() -> Self {
         Self {
             direction: "LR".to_string(),
+            view_level: 1,
+            target_id: None,
         }
     }
 }
@@ -47,6 +53,9 @@ impl MermaidExporter {
     }
 
     fn generate(&self, elements: &HashMap<String, sruja_language::ElementDef>, relations: &[Relation]) -> String {
+        // Filter/project elements and relations per Go views engine semantics (subset).
+        let (view_elements, view_relations) = compute_view(elements, relations, self.config.view_level, self.config.target_id.as_deref());
+
         let mut out = String::new();
         out.push_str(&format!("graph {}\n", self.config.direction));
         out.push('\n');
@@ -58,9 +67,9 @@ impl MermaidExporter {
         let mut children: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
         let mut roots: BTreeSet<String> = BTreeSet::new();
 
-        for fqn in elements.keys() {
+        for fqn in view_elements.keys() {
             if let Some(parent) = parent_fqn(fqn) {
-                if elements.contains_key(&parent) {
+                if view_elements.contains_key(&parent) {
                     children.entry(parent).or_default().insert(fqn.clone());
                 } else {
                     roots.insert(fqn.clone());
@@ -72,14 +81,14 @@ impl MermaidExporter {
 
         for root in roots {
             if children.contains_key(&root) {
-                self.write_subgraph(&mut out, &root, elements, &children, INDENT4);
+                self.write_subgraph(&mut out, &root, &view_elements, &children, INDENT4);
             } else {
-                self.write_node(&mut out, &root, elements, INDENT4);
+                self.write_node(&mut out, &root, &view_elements, INDENT4);
             }
         }
 
         out.push('\n');
-        for rel in relations {
+        for rel in &view_relations {
             self.write_relation(&mut out, rel);
         }
 
@@ -155,6 +164,218 @@ impl MermaidExporter {
             }
             _ => out.push_str(&format!("{INDENT4}{from} --> {to}\n")),
         }
+    }
+}
+
+fn normalize_kind(kind: &str) -> &str {
+    match kind.to_lowercase().as_str() {
+        "database" | "db" | "storage" => "datastore",
+        "mq" => "queue",
+        "actor" => "person",
+        other => other,
+    }
+}
+
+fn compute_view(
+    elements: &HashMap<String, sruja_language::ElementDef>,
+    relations: &[Relation],
+    mut level: u8,
+    mut focus: Option<&str>,
+) -> (HashMap<String, sruja_language::ElementDef>, Vec<Relation>) {
+    // Auto-detect L2 (Go behavior): if L1, no focus, exactly one system and it has children.
+    if level <= 1 && focus.is_none() {
+        let systems: Vec<String> = elements
+            .iter()
+            .filter_map(|(id, e)| {
+                if normalize_kind(&e.assignment.kind.to_string()) == "system" {
+                    Some(id.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if systems.len() == 1 {
+            let sys = &systems[0];
+            let prefix = format!("{}.", sys);
+            let has_children = elements.keys().any(|id| id.starts_with(&prefix));
+            if has_children {
+                level = 2;
+                focus = Some(sys.as_str());
+            }
+        }
+    }
+
+    // Determine core set.
+    let mut visible: HashSet<String> = HashSet::new();
+
+    let mut is_core = |id: &str| -> bool {
+        match level {
+            1 => {
+                if let Some(e) = elements.get(id) {
+                    let k = normalize_kind(&e.assignment.kind.to_string());
+                    k == "person" || k == "system"
+                } else {
+                    false
+                }
+            }
+            2 => {
+                if id == focus.unwrap_or("") {
+                    return true;
+                }
+                if let Some(e) = elements.get(id) {
+                    let k = normalize_kind(&e.assignment.kind.to_string());
+                    k == "container" || k == "datastore" || k == "queue" || k == "system" || k == "person"
+                } else {
+                    false
+                }
+            }
+            _ => true,
+        }
+    };
+
+    let add_element = |visible: &mut HashSet<String>, id: &str| {
+        if elements.contains_key(id) {
+            visible.insert(id.to_string());
+        }
+    };
+
+    match level {
+        1 => {
+            for id in elements.keys() {
+                if is_core(id) {
+                    add_element(&mut visible, id);
+                }
+            }
+        }
+        2 => {
+            if let Some(focus_id) = focus {
+                if !elements.contains_key(focus_id) {
+                    return (HashMap::new(), Vec::new());
+                }
+                add_element(&mut visible, focus_id);
+                let prefix = format!("{}.", focus_id);
+                for id in elements.keys() {
+                    if id.starts_with(&prefix) && is_core(id) {
+                        add_element(&mut visible, id);
+                    }
+                }
+            } else {
+                for id in elements.keys() {
+                    if is_core(id) {
+                        add_element(&mut visible, id);
+                    }
+                }
+            }
+        }
+        3 => {
+            // L3: if focus, include focus and all descendants; otherwise all.
+            if let Some(focus_id) = focus {
+                if !elements.contains_key(focus_id) {
+                    return (HashMap::new(), Vec::new());
+                }
+                add_element(&mut visible, focus_id);
+                let prefix = format!("{}.", focus_id);
+                for id in elements.keys() {
+                    if id.starts_with(&prefix) {
+                        add_element(&mut visible, id);
+                    }
+                }
+            } else {
+                for id in elements.keys() {
+                    add_element(&mut visible, id);
+                }
+            }
+        }
+        _ => {}
+    }
+
+    // Relation projection (simplified from Go views engine).
+    let mut projected: Vec<Relation> = Vec::new();
+    for rel in relations {
+        let from = rel.from.as_string();
+        let to = rel.to.as_string();
+        let source = project_id(&from, level, focus, elements);
+        let target = project_id(&to, level, focus, elements);
+        if source.is_empty() || target.is_empty() || source == target {
+            continue;
+        }
+        if source.starts_with(&(target.clone() + ".")) || target.starts_with(&(source.clone() + ".")) {
+            continue;
+        }
+        if !visible.contains(&source) && !visible.contains(&target) {
+            continue;
+        }
+        visible.insert(source.clone());
+        visible.insert(target.clone());
+
+        projected.push(Relation {
+            location: rel.location.clone(),
+            from: sruja_language::QualifiedIdent::qualified(source.split('.').map(|s| s.to_string()).collect()),
+            to: sruja_language::QualifiedIdent::qualified(target.split('.').map(|s| s.to_string()).collect()),
+            label: rel.label.clone(),
+            description: rel.description.clone(),
+            technology: rel.technology.clone(),
+            tags: rel.tags.clone(),
+        });
+    }
+
+    // Build filtered element map
+    let mut out_elems: HashMap<String, sruja_language::ElementDef> = HashMap::new();
+    for id in visible {
+        if let Some(e) = elements.get(&id) {
+            out_elems.insert(id, e.clone());
+        }
+    }
+
+    (out_elems, projected)
+}
+
+fn project_id(
+    fqn: &str,
+    level: u8,
+    focus: Option<&str>,
+    elements: &HashMap<String, sruja_language::ElementDef>,
+) -> String {
+    if elements.contains_key(fqn) {
+        if level == 2 {
+            if let Some(c) = get_container(fqn, elements) {
+                return c;
+            }
+            return get_root(fqn);
+        }
+        if level == 3 {
+            if let Some(c) = get_container(fqn, elements) {
+                if Some(c.as_str()) != focus {
+                    return c;
+                }
+            }
+            return get_root(fqn);
+        }
+        return fqn.to_string();
+    }
+    // fallback: root
+    get_root(fqn)
+}
+
+fn get_root(fqn: &str) -> String {
+    fqn.split('.').next().unwrap_or(fqn).to_string()
+}
+
+fn get_container(
+    fqn: &str,
+    elements: &HashMap<String, sruja_language::ElementDef>,
+) -> Option<String> {
+    // Walk up ancestors: fqn, parent, grandparent...
+    let mut cur = fqn.to_string();
+    loop {
+        if let Some(e) = elements.get(&cur) {
+            if normalize_kind(&e.assignment.kind.to_string()) == "container" {
+                return Some(cur);
+            }
+        }
+        let Some(p) = parent_fqn(&cur) else { return None };
+        cur = p;
     }
 }
 
