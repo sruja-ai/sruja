@@ -2,6 +2,8 @@
 //!
 //! Ensures all references in relations point to valid elements.
 
+use std::collections::HashSet;
+
 use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
 use sruja_language::Program;
 
