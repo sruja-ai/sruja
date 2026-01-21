@@ -1,0 +1,17 @@
+[package]
+name = "sruja-engine"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+sruja-diagnostics = { path = "../sruja-diagnostics" }
+sruja-language = { path = "../sruja-language" }
+serde = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+tokio-test = "0.4"
