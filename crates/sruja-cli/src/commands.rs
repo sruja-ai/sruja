@@ -93,7 +93,13 @@ pub async fn lint(file: &str) -> Result<(), CliError> {
 }
 
 /// Export a Sruja file to various formats
-pub async fn export(format: &str, file: &str, extended: bool) -> Result<(), CliError> {
+pub async fn export(
+    format: &str,
+    file: &str,
+    extended: bool,
+    view_level: u8,
+    target: Option<&str>,
+) -> Result<(), CliError> {
     let content = fs::read_to_string(file)?;
     let parser = Parser::new(file.to_string());
     
@@ -115,8 +121,11 @@ pub async fn export(format: &str, file: &str, extended: bool) -> Result<(), CliE
             println!("{}", json);
         }
         "mermaid" => {
-            // NOTE: view-level focus not yet ported; exports full graph.
-            let exporter = MermaidExporter::new(MermaidConfig::default());
+            let exporter = MermaidExporter::new(MermaidConfig {
+                view_level,
+                target_id: target.map(|s| s.to_string()),
+                ..MermaidConfig::default()
+            });
             let mmd = exporter.export(&program);
             println!("{}", mmd);
         }

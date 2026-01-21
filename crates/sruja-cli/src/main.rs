@@ -33,6 +33,12 @@ enum Commands {
         /// Include pre-computed views in JSON output
         #[arg(long)]
         extended: bool,
+        /// Mermaid view level (1=context, 2=container, 3=component)
+        #[arg(long, default_value_t = 1)]
+        view_level: u8,
+        /// Mermaid focus node ID for view levels 2/3
+        #[arg(long)]
+        target: Option<String>,
     },
     /// Format a Sruja file
     Fmt {
@@ -59,7 +65,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = match cli.command {
         Commands::Version => commands::version(),
         Commands::Lint { file } => commands::lint(&file).await,
-        Commands::Export { format, file, extended } => commands::export(&format, &file, extended).await,
+        Commands::Export { format, file, extended, view_level, target } => {
+            commands::export(&format, &file, extended, view_level, target.as_deref()).await
+        }
         Commands::Fmt { file } => commands::fmt(&file).await,
         Commands::Lsp { .. } => commands::lsp().await,
         Commands::Compile { file } => commands::compile(&file).await,
