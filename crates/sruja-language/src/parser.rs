@@ -245,7 +245,7 @@ fn parse_scenario(input: &str) -> IResult<&str, Scenario> {
         Scenario {
             location: SourceLocation::new(String::new(), 0, 0),
             id: id.unwrap_or_default(),
-            label: title,
+            title: title.unwrap_or_default(),
             description,
             steps: steps.unwrap_or_default(),
         },
@@ -269,17 +269,24 @@ fn parse_scenario_step(input: &str) -> IResult<&str, ScenarioStep> {
     let (input, _) = ws0(input)?;
     let (input, to) = parse_qualified_ident(input)?;
     let (input, _) = ws0(input)?;
-    let (input, action) = opt(parse_string)(input)?;
+    let (input, description) = opt(parse_string)(input)?;
     let (input, _) = ws0(input)?;
     let (input, tags) = opt(parse_tag_array)(input)?;
     let (input, _) = ws0(input)?;
-    let (input, order) = opt(preceded(tag("order"), preceded(ws1, parse_string)))(input)?;
+    let (input, order_raw) = opt(preceded(tag("order"), preceded(ws1, parse_string)))(input)?;
+
+    let order = order_raw
+        .as_deref()
+        .and_then(|s| s.parse::<usize>().ok());
 
     Ok((
         input,
         ScenarioStep {
-            actor: from.as_string(),
-            action: action.unwrap_or_else(|| to.as_string()),
+            from: Some(from),
+            to: Some(to),
+            description,
+            tags: tags.unwrap_or_default(),
+            order,
         },
     ))
 }
@@ -301,14 +308,15 @@ fn parse_flow(input: &str) -> IResult<&str, Flow> {
         Flow {
             location: SourceLocation::new(String::new(), 0, 0),
             id: id.unwrap_or_default(),
-            label: title,
+            title: title.unwrap_or_default(),
+            description,
             steps: steps.unwrap_or_default(),
         },
     ))
 }
 
 /// Parse flow body
-fn parse_flow_body(input: &str) -> IResult<&str, Vec<FlowStep>> {
+fn parse_flow_body(input: &str) -> IResult<&str, Vec<ScenarioStep>> {
     delimited(
         preceded(ws0, char('{')),
         many0(preceded(ws, parse_flow_step)),
@@ -317,19 +325,22 @@ fn parse_flow_body(input: &str) -> IResult<&str, Vec<FlowStep>> {
 }
 
 /// Parse flow step: From -> To [Description]
-fn parse_flow_step(input: &str) -> IResult<&str, FlowStep> {
+fn parse_flow_step(input: &str) -> IResult<&str, ScenarioStep> {
     let (input, from) = parse_qualified_ident(input)?;
     let (input, _) = preceded(ws0, tag("->"))(input)?;
     let (input, _) = ws0(input)?;
     let (input, to) = parse_qualified_ident(input)?;
     let (input, _) = ws0(input)?;
-    let (input, action) = opt(parse_string)(input)?;
+    let (input, description) = opt(parse_string)(input)?;
 
     Ok((
         input,
-        FlowStep {
-            actor: from.as_string(),
-            action: action.unwrap_or_else(|| to.as_string()),
+        ScenarioStep {
+            from: Some(from),
+            to: Some(to),
+            description,
+            tags: Vec::new(),
+            order: None,
         },
     ))
 }
