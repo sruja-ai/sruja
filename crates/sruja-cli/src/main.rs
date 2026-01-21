@@ -60,6 +60,39 @@ enum Commands {
         /// Project name (optional)
         name: Option<String>,
     },
+    /// Show differences between two architecture files
+    Diff {
+        /// First file
+        file1: String,
+        /// Second file
+        file2: String,
+        /// Output format (text or json)
+        #[arg(long, default_value = "text")]
+        format: String,
+    },
+    /// Explain an element
+    Explain {
+        /// Element ID to explain
+        element_id: String,
+        /// Path to .sruja file
+        #[arg(long)]
+        file: Option<String>,
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Import from external format
+    Import {
+        /// Format (json)
+        format: String,
+        /// File to import
+        file: String,
+    },
+    /// Calculate architecture health score
+    Score {
+        /// Path to .sruja file
+        file: Option<String>,
+    },
     /// Start LSP server (stdio)
     Lsp {
         /// Use stdio transport
@@ -89,6 +122,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::List { file } => commands::list(&file).await,
         Commands::Tree { file } => commands::tree(&file).await,
         Commands::Init { name } => commands::init(name.as_deref()).await,
+        Commands::Diff { file1, file2, format } => commands::diff(&file1, &file2, &format).await,
+        Commands::Explain { element_id, file, json } => commands::explain(&element_id, file.as_deref(), json).await,
+        Commands::Import { format, file } => commands::import(&format, &file).await,
+        Commands::Score { file } => commands::score(file.as_deref()).await,
     };
 
     match result {

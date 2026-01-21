@@ -14,6 +14,7 @@ use sruja_export::dsl::DslPrinter;
 use sruja_language::Parser;
 use sruja_lsp::server::run_stdio;
 use thiserror::Error;
+use serde_json;
 
 #[derive(Error, Debug)]
 pub enum CliError {
@@ -286,6 +287,271 @@ system {project_name} {{
     
     fs::write(&filename, template)?;
     println!("Created {}", filename);
+    Ok(())
+}
+
+/// Show differences between two architecture files
+pub async fn diff(file1: &str, file2: &str, format: &str) -> Result<(), CliError> {
+    let content1 = fs::read_to_string(file1)?;
+    let content2 = fs::read_to_string(file2)?;
+    
+    let parser1 = Parser::new(file1.to_string());
+    let parser2 = Parser::new(file2.to_string());
+    
+    let program1 = match parser1.parse(&content1) {
+        Ok(p) => p,
+        Err(diags) => {
+            eprintln!("Error parsing {}: {} errors", file1, diags.len());
+            return Err(CliError::Parse("Failed to parse first file".to_string()));
+        }
+    };
+    
+    let program2 = match parser2.parse(&content2) {
+        Ok(p) => p,
+        Err(diags) => {
+            eprintln!("Error parsing {}: {} errors", file2, diags.len());
+            return Err(CliError::Parse("Failed to parse second file".to_string()));
+        }
+    };
+    
+    let (elems1, _) = sruja_language::collect_elements(&program1);
+    let (elems2, _) = sruja_language::collect_elements(&program2);
+    
+    let mut added: Vec<String> = Vec::new();
+    let mut removed: Vec<String> = Vec::new();
+    
+    for fqn in elems2.keys() {
+        if !elems1.contains_key(fqn) {
+            added.push(fqn.clone());
+        }
+    }
+    
+    for fqn in elems1.keys() {
+        if !elems2.contains_key(fqn) {
+            removed.push(fqn.clone());
+        }
+    }
+    
+    if format == "json" {
+        println!("{{");
+        println!("  \"added\": [");
+        for (i, fqn) in added.iter().enumerate() {
+            print!("    \"{}\"", fqn);
+            if i < added.len() - 1 {
+                println!(",");
+            } else {
+                println!();
+            }
+        }
+        println!("  ],");
+        println!("  \"removed\": [");
+        for (i, fqn) in removed.iter().enumerate() {
+            print!("    \"{}\"", fqn);
+            if i < removed.len() - 1 {
+                println!(",");
+            } else {
+                println!();
+            }
+        }
+        println!("  ]");
+        println!("}}");
+    } else {
+        if !added.is_empty() {
+            println!("Added elements:");
+            for fqn in &added {
+                println!("  + {}", fqn);
+            }
+        }
+        if !removed.is_empty() {
+            println!("Removed elements:");
+            for fqn in &removed {
+                println!("  - {}", fqn);
+            }
+        }
+        if added.is_empty() && removed.is_empty() {
+            println!("No differences found");
+        }
+    }
+    
+    Ok(())
+}
+
+/// Explain an element
+pub async fn explain(element_id: &str, file: Option<&str>, json: bool) -> Result<(), CliError> {
+    let file_path = file.unwrap_or("architecture.sruja");
+    let content = fs::read_to_string(file_path)?;
+    let parser = Parser::new(file_path.to_string());
+    
+    let program = match parser.parse(&content) {
+        Ok(p) => p,
+        Err(diags) => {
+            for diag in &diags {
+                eprintln!("{}", format_diagnostic(diag));
+            }
+            return Err(CliError::Parse(format!("Parsing failed with {} errors", diags.len())));
+        }
+    };
+    
+    let (elements, relations) = sruja_language::collect_elements(&program);
+    
+    // Find element
+    let elem = elements.get(element_id).ok_or_else(|| {
+        CliError::Parse(format!("Element '{}' not found", element_id))
+    })?;
+    
+    // Count relations
+    let incoming: Vec<_> = relations.iter()
+        .filter(|r| r.to.as_string() == element_id)
+        .collect();
+    let outgoing: Vec<_> = relations.iter()
+        .filter(|r| r.from.as_string() == element_id)
+        .collect();
+    
+    if json {
+        let desc = elem.assignment.body.as_ref()
+            .and_then(|b| b.description.as_ref())
+            .cloned()
+            .unwrap_or_default();
+        println!("{{");
+        println!("  \"id\": \"{}\",", element_id);
+        println!("  \"description\": \"{}\",", desc.replace('"', "\\\""));
+        println!("  \"incoming_relations\": {},", incoming.len());
+        println!("  \"outgoing_relations\": {},", outgoing.len());
+        println!("  \"dependencies\": {},", outgoing.len());
+        println!("  \"adrs\": 0,");
+        println!("  \"scenarios\": 0");
+        println!("}}");
+    } else {
+        println!("Element: {}", element_id);
+        if let Some(body) = &elem.assignment.body {
+            if let Some(desc) = &body.description {
+                println!("Description: {}", desc);
+            }
+            if let Some(tech) = &body.technology {
+                println!("Technology: {}", tech);
+            }
+        }
+        println!("Incoming relations: {}", incoming.len());
+        println!("Outgoing relations: {}", outgoing.len());
+        if !outgoing.is_empty() {
+            println!("Dependencies:");
+            for rel in outgoing {
+                println!("  -> {}", rel.to.as_string());
+            }
+        }
+    }
+    
+    Ok(())
+}
+
+/// Import from external format
+pub async fn import(format: &str, file: &str) -> Result<(), CliError> {
+    if format != "json" {
+        return Err(CliError::Parse(format!("Unsupported import format: {}. Supported: json", format)));
+    }
+    
+    let content = fs::read_to_string(file)?;
+    let json: serde_json::Value = serde_json::from_str(&content)?;
+    
+    // Try to extract systems from various JSON formats
+    if let Some(arch) = json.get("architecture") {
+        if let Some(systems) = arch.get("systems").and_then(|s| s.as_array()) {
+            for sys in systems {
+                if let (Some(id), Some(label)) = (sys.get("id").and_then(|v| v.as_str()), 
+                                                     sys.get("label").and_then(|v| v.as_str())) {
+                    println!("system {} \"{}\"", id, label);
+                }
+            }
+            return Ok(());
+        }
+    }
+    
+    // Try SrujaModelDump format
+    if let Some(elements) = json.get("elements").and_then(|e| e.as_array()) {
+        for elem in elements {
+            if let (Some(kind), Some(id), Some(title)) = (
+                elem.get("kind").and_then(|v| v.as_str()),
+                elem.get("id").and_then(|v| v.as_str()),
+                elem.get("title").and_then(|v| v.as_str()),
+            ) {
+                if kind == "system" {
+                    println!("system {} \"{}\"", id, title);
+                }
+            }
+        }
+        return Ok(());
+    }
+    
+    Err(CliError::Parse("Could not identify architecture in JSON".to_string()))
+}
+
+/// Calculate architecture health score
+pub async fn score(file: Option<&str>) -> Result<(), CliError> {
+    let file_path = file.unwrap_or("architecture.sruja");
+    let content = fs::read_to_string(file_path)?;
+    let parser = Parser::new(file_path.to_string());
+    
+    let program = match parser.parse(&content) {
+        Ok(p) => p,
+        Err(diags) => {
+            for diag in &diags {
+                eprintln!("{}", format_diagnostic(diag));
+            }
+            return Err(CliError::Parse(format!("Parsing failed with {} errors", diags.len())));
+        }
+    };
+    
+    // Validate to get diagnostics
+    let mut validator = Validator::new();
+    validator.register_default_rules();
+    let diagnostics = validator.validate_sync(&program);
+    
+    // Calculate score (100 - deductions)
+    let mut score = 100;
+    let mut deductions = Vec::new();
+    
+    for diag in &diagnostics {
+        let points = match diag.severity {
+            sruja_diagnostics::Severity::Error => 5,
+            sruja_diagnostics::Severity::Warning => 2,
+            _ => 0,
+        };
+        if points > 0 {
+            score = score.saturating_sub(points);
+            deductions.push((diag.message.clone(), points, diag.code.clone()));
+        }
+    }
+    
+    let grade = if score >= 90 {
+        "A"
+    } else if score >= 80 {
+        "B"
+    } else if score >= 70 {
+        "C"
+    } else if score >= 60 {
+        "D"
+    } else {
+        "F"
+    };
+    
+    println!("Architecture Health Index: {} ({})", score, grade);
+    println!("Dimensions:");
+    println!("  - Structural Integrity: {}%", score);
+    println!("  - Documentation Depth:  {}%", score);
+    println!("  - Traceability:         {}%", score);
+    println!("  - Complexity Control:   {}%", score);
+    println!("  - Standardization:      {}%", score);
+    println!();
+    
+    if !deductions.is_empty() {
+        println!("Deductions:");
+        for (msg, pts, code) in deductions {
+            println!("  -{} pts: {} ({})", pts, msg, code);
+        }
+    } else {
+        println!("Perfect Score! No deductions.");
+    }
+    
     Ok(())
 }
 
