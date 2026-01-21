@@ -7,5 +7,6 @@
 pub mod server;
 pub mod workspace;
 pub mod diagnostics;
+pub mod features;
 
 pub use server::SrujaLanguageServer;
