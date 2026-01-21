@@ -71,6 +71,14 @@ impl Document {
             }
         }
     }
+
+    pub fn get_line(&self, line: usize) -> Option<&str> {
+        self.text.lines().nth(line)
+    }
+
+    pub fn lines(&self) -> Vec<&str> {
+        self.text.lines().collect()
+    }
 }
 
 /// Workspace managing all open documents

@@ -12,6 +12,7 @@ use sruja_engine::Validator;
 use sruja_language::Parser;
 
 use crate::diagnostics::convert_diagnostics_to_lsp;
+use crate::features::*;
 use crate::workspace::Workspace;
 
 /// Sruja Language Server
@@ -136,48 +137,216 @@ impl LanguageServer for SrujaLanguageServer {
             .await;
     }
 
-    async fn hover(&self, _params: HoverParams) -> Result<Option<Hover>> {
-        // TODO: Implement hover
-        Ok(None)
+    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
+        let uri = params.text_document_position_params.text_document.uri.clone();
+        let doc = match self.workspace.get_document(&uri).await {
+            Some(d) => d,
+            None => return Ok(None),
+        };
+        
+        let line = params.text_document_position_params.position.line as usize;
+        let character = params.text_document_position_params.position.character as usize;
+        
+        // Parse program
+        let text = doc.text.clone();
+        let parser = Parser::new(uri.to_string());
+        let program = match parser.parse(&text) {
+            Ok(p) => p,
+            Err(_) => return Ok(None),
+        };
+        
+        Ok(get_hover(&doc, &program, line, character))
     }
 
-    async fn completion(&self, _params: CompletionParams) -> Result<Option<CompletionResponse>> {
-        // TODO: Implement completion
-        Ok(None)
+    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        let uri = params.text_document_position.text_document.uri.clone();
+        let doc = match self.workspace.get_document(&uri).await {
+            Some(d) => d,
+            None => return Ok(None),
+        };
+        
+        let line = params.text_document_position.position.line as usize;
+        let character = params.text_document_position.position.character as usize;
+        
+        // Parse program
+        let text = doc.text.clone();
+        let parser = Parser::new(uri.to_string());
+        let program = match parser.parse(&text) {
+            Ok(p) => p,
+            Err(_) => Program::default(),
+        };
+        
+        let items = get_completion(&doc, &program, line, character);
+        Ok(Some(CompletionResponse::Array(items)))
     }
 
-    async fn goto_definition(&self, _params: GotoDefinitionParams) -> Result<Option<GotoDefinitionResponse>> {
-        // TODO: Implement definition
-        Ok(None)
+    async fn goto_definition(&self, params: GotoDefinitionParams) -> Result<Option<GotoDefinitionResponse>> {
+        let uri = params.text_document_position_params.text_document.uri.clone();
+        let doc = match self.workspace.get_document(&uri).await {
+            Some(d) => d,
+            None => return Ok(None),
+        };
+        
+        let line = params.text_document_position_params.position.line as usize;
+        let character = params.text_document_position_params.position.character as usize;
+        
+        let line_text = match doc.get_line(line) {
+            Some(l) => l,
+            None => return Ok(None),
+        };
+        
+        let (start, end) = word_bounds(&line_text, character);
+        let word = line_text[start..end].trim();
+        
+        if word.is_empty() {
+            return Ok(None);
+        }
+        
+        // Parse program
+        let text = doc.text.clone();
+        let parser = Parser::new(uri.to_string());
+        let program = match parser.parse(&text) {
+            Ok(p) => p,
+            Err(_) => return Ok(None),
+        };
+        
+        if let Some(location) = find_definition(&doc, &program, word) {
+            Ok(Some(GotoDefinitionResponse::Scalar(location)))
+        } else {
+            Ok(None)
+        }
     }
 
-    async fn references(&self, _params: ReferenceParams) -> Result<Option<Vec<Location>>> {
-        // TODO: Implement references
-        Ok(None)
+    async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {
+        let uri = params.text_document_position.text_document.uri.clone();
+        let doc = match self.workspace.get_document(&uri).await {
+            Some(d) => d,
+            None => return Ok(None),
+        };
+        
+        let line = params.text_document_position.position.line as usize;
+        let character = params.text_document_position.position.character as usize;
+        
+        let line_text = match doc.get_line(line) {
+            Some(l) => l,
+            None => return Ok(None),
+        };
+        
+        let (start, end) = word_bounds(&line_text, character);
+        let word = line_text[start..end].trim();
+        
+        if word.is_empty() {
+            return Ok(None);
+        }
+        
+        // Parse program
+        let text = doc.text.clone();
+        let parser = Parser::new(uri.to_string());
+        let program = match parser.parse(&text) {
+            Ok(p) => p,
+            Err(_) => return Ok(None),
+        };
+        
+        let locations = find_references(&doc, &program, word);
+        Ok(Some(locations))
     }
 
-    async fn document_symbol(&self, _params: DocumentSymbolParams) -> Result<Option<DocumentSymbolResponse>> {
-        // TODO: Implement document symbols
-        Ok(None)
+    async fn document_symbol(&self, params: DocumentSymbolParams) -> Result<Option<DocumentSymbolResponse>> {
+        let uri = params.text_document.uri.clone();
+        let doc = match self.workspace.get_document(&uri).await {
+            Some(d) => d,
+            None => return Ok(None),
+        };
+        
+        // Parse program
+        let text = doc.text.clone();
+        let parser = Parser::new(uri.to_string());
+        let program = match parser.parse(&text) {
+            Ok(p) => p,
+            Err(_) => return Ok(None),
+        };
+        
+        let symbols = get_document_symbols(&doc, &program);
+        Ok(Some(DocumentSymbolResponse::Nested(symbols)))
     }
 
     async fn workspace_symbol(&self, _params: WorkspaceSymbolParams) -> Result<Option<Vec<SymbolInformation>>> {
-        // TODO: Implement workspace symbols
+        // TODO: Implement workspace symbols (search across all files)
         Ok(None)
     }
 
-    async fn formatting(&self, _params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
-        // TODO: Implement formatting
-        Ok(None)
+    async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
+        let uri = params.text_document.uri.clone();
+        let doc = match self.workspace.get_document(&uri).await {
+            Some(d) => d,
+            None => return Ok(None),
+        };
+        
+        // Parse program
+        let text = doc.text.clone();
+        let parser = Parser::new(uri.to_string());
+        let program = match parser.parse(&text) {
+            Ok(p) => p,
+            Err(_) => return Ok(None),
+        };
+        
+        format_document(&doc, &program)
     }
 
-    async fn rename(&self, _params: RenameParams) -> Result<Option<WorkspaceEdit>> {
-        // TODO: Implement rename
-        Ok(None)
+    async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
+        let uri = params.text_document_position.text_document.uri.clone();
+        let doc = match self.workspace.get_document(&uri).await {
+            Some(d) => d,
+            None => return Ok(None),
+        };
+        
+        let line = params.text_document_position.position.line as usize;
+        let character = params.text_document_position.position.character as usize;
+        
+        let line_text = match doc.get_line(line) {
+            Some(l) => l,
+            None => return Ok(None),
+        };
+        
+        let (start, end) = word_bounds(&line_text, character);
+        let old_name = line_text[start..end].trim();
+        
+        if old_name.is_empty() {
+            return Ok(None);
+        }
+        
+        // Find all references
+        let text = doc.text.clone();
+        let parser = Parser::new(uri.to_string());
+        let program = match parser.parse(&text) {
+            Ok(p) => p,
+            Err(_) => return Ok(None),
+        };
+        
+        let locations = find_references(&doc, &program, old_name);
+        
+        // Create text edits
+        let mut changes = std::collections::HashMap::new();
+        let mut edits = Vec::new();
+        
+        for location in locations {
+            edits.push(TextEdit {
+                range: location.range,
+                new_text: params.new_name.clone(),
+            });
+        }
+        
+        changes.insert(uri, edits);
+        
+        Ok(Some(WorkspaceEdit {
+            changes: Some(changes),
+            document_changes: None,
+            change_annotations: None,
+        }))
     }
 
     async fn code_action(&self, _params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
-        // TODO: Implement code actions
+        // TODO: Implement code actions (quick fixes)
         Ok(None)
     }
 }
