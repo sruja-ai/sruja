@@ -1,4 +1,4 @@
-.PHONY: build test test-coverage clean install lint fmt help build-rust test-rust
+.PHONY: build test test-coverage clean install lint fmt help build-rust test-rust wasm wasm-tiny
 
 GOLANGCI_LINT_VERSION = v2.6.2
 GOLANGCI = $(shell go env GOPATH)/bin/golangci-lint
@@ -82,6 +82,27 @@ lint:
 		exit 1; \
 	fi
 
+# Build WASM for website
+wasm:
+	@echo "Building Rust WASM for website..."
+	@if command -v cargo >/dev/null 2>&1; then \
+		if ! command -v wasm-pack >/dev/null 2>&1; then \
+			echo "⚠️  wasm-pack not found. Installing..."; \
+			cargo install wasm-pack || (echo "❌ Failed to install wasm-pack. Please install manually: cargo install wasm-pack"; exit 1); \
+		fi; \
+		wasm-pack build --target web --out-dir ../../apps/website/public/wasm/rust crates/sruja-wasm --release || \
+		(cargo build --target wasm32-unknown-unknown --release -p sruja-wasm && \
+		 echo "⚠️  wasm-pack failed, but WASM built. You may need to manually copy files."); \
+		echo "✅ WASM build complete"; \
+	else \
+		echo "❌ Cargo not found. Please install Rust: https://rustup.rs/"; \
+		exit 1; \
+	fi
+
+# Build tiny WASM variant (minimal features)
+wasm-tiny: wasm
+	@echo "✅ Tiny WASM variant (same as full for now)"
+
 # Show help
 help:
 	@echo "Sruja Rust Migration - Build Commands:"
@@ -92,6 +113,10 @@ help:
 	@echo "  make test-coverage      - Run tests with coverage (if available)"
 	@echo "  make clean              - Remove build artifacts"
 	@echo "  make install            - Install Rust dependencies"
+	@echo ""
+	@echo "WASM Build:"
+	@echo "  make wasm               - Build Rust WASM for website"
+	@echo "  make wasm-tiny          - Build tiny WASM variant"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  make lint               - Run Rust linter (clippy)"
