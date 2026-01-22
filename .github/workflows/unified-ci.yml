@@ -19,7 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      go: ${{ steps.filter.outputs.go }}
       typescript: ${{ steps.filter.outputs.typescript }}
       examples: ${{ steps.filter.outputs.examples }}
       website: ${{ steps.filter.outputs.website }}
@@ -31,17 +30,6 @@ jobs:
         id: filter
         with:
           filters: |
-            go:
-              - 'pkg/**'
-              - 'cmd/**'
-              - 'internal/**'
-              - 'scripts/**'
-              - 'tests/**'
-              - 'go.mod'
-              - 'go.sum'
-              - 'Makefile'
-              - '.golangci.yml'
-              - '.github/actions/**'
             typescript:
               - 'apps/**'
               - 'packages/**'
@@ -50,70 +38,10 @@ jobs:
               - 'tsconfig.json'
             examples:
               - 'examples/**'
-              - 'pkg/**'
-              - 'cmd/**'
             website:
               - 'apps/website/**'
               - 'packages/shared/**'
               - 'packages/ui/**'
-
-  go-lint:
-    name: Go Lint & Quality
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: detect-changes
-    if: needs.detect-changes.outputs.go == 'true'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Set up Go
-        uses: ./.github/actions/setup-go
-
-      - name: Build
-        run: go build -v ./pkg/... ./internal/... ./cmd/sruja ./scripts/...
-
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
-        with:
-          version: v2.6.2
-          args: --timeout=5m
-
-  go-test:
-    name: Go Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: detect-changes
-    if: needs.detect-changes.outputs.go == 'true'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Set up Go
-        uses: ./.github/actions/setup-go
-
-      - name: Run tests with coverage
-        run: |
-          make test-coverage-check TEST_ARGS="-v"
-          echo "### Go Test Summary" >> $GITHUB_STEP_SUMMARY
-          go tool cover -func=coverage.out | tail -n 1 | awk '{print "Total Coverage: " $3}' >> $GITHUB_STEP_SUMMARY
-
-      - name: Verify coverage file
-        run: |
-          if [ ! -f coverage.out ]; then
-            echo "❌ coverage.out not found!"
-            exit 1
-          fi
-
-      - name: Upload coverage to Codacy
-        uses: codacy/codacy-coverage-reporter-action@89d6c85cfafaec52c72b6c5e8b2878d33104c699 # v1.3.0
-        if: always() && hashFiles('coverage.out') != ''
-        with:
-          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
-          coverage-reports: coverage.out
-        continue-on-error: true
 
   typescript-lint:
     name: Lint TypeScript/JavaScript
@@ -234,25 +162,9 @@ jobs:
     name: Build Examples
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [detect-changes, go-test, go-lint]
-    if: needs.detect-changes.outputs.examples == 'true' && needs.go-test.result == 'success' && needs.go-lint.result == 'success'
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.examples == 'true'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Set up Go
-        uses: ./.github/actions/setup-go
-
-      - name: Build CLI
-        run: go build -o sruja ./cmd/sruja
-
-      - name: Compile examples
-        run: |
-          ./sruja compile examples/compatible/ecommerce.sruja
-          ./sruja compile examples/project_ecommerce.sruja
-
-      - name: Lint examples
-        run: |
-          ./sruja lint examples/compatible/ecommerce.sruja
-          ./sruja lint examples/project_ecommerce.sruja

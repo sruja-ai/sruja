@@ -2,7 +2,7 @@
 //!
 //! Validates that users are using the right perspective for their modeling goals.
 
-use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
+use sruja_diagnostics::Diagnostic;
 use sruja_language::Program;
 
 use crate::validator::Rule;

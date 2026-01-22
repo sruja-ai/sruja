@@ -135,13 +135,78 @@ export default defineConfig({
   vite: {
     plugins: [
       tailwindcss(),
-      nodePolyfills(),
-      watchExampleFiles(),
+      nodePolyfills({
+        // Include module polyfill for path-browserify compatibility
+        globals: {
+          Buffer: true,
+          global: true,
+          process: true,
+        },
+        protocolImports: true,
+        // Exclude Node.js built-ins from polyfills - we want to use real modules in content config
+        // Also exclude CommonJS modules that cause issues in module runner context
+        // These should use Node.js native modules instead of browser polyfills
+        // The polyfills will still be available for browser code if needed via other mechanisms
+        exclude: [
+          "path",
+          "fs",
+          "util",
+          "stream-http",
+          "http",
+          "https",
+          "events", // CommonJS module used by node-stdlib-browser
+          "stream", // Node.js built-in
+        ],
+      }),
       {
-        name: "suppress-node-resolve",
+        name: "handle-commonjs-externals",
         enforce: "pre",
         resolveId(id) {
-          if (id === "fs/promises" || id === "path" || id === "url") {
+          // Mark CommonJS packages as external so Node.js handles them natively with require()
+          // This prevents vite-plugin-node-polyfills from trying to polyfill them
+          if (
+            id === "stream-http" ||
+            id.startsWith("stream-http/") ||
+            id === "events" ||
+            id.startsWith("events/")
+          ) {
+            return { id, external: true };
+          }
+          return null;
+        },
+      },
+      watchExampleFiles(),
+      {
+        name: "force-node-modules-in-content-config",
+        enforce: "pre",
+        resolveId(id, importer) {
+          // Force Node.js built-ins to use real modules in content config context
+          // This prevents browserify polyfills from being used, which have compatibility issues
+          // Check if this is being imported in content config or Astro content loader context
+          const isContentConfigContext =
+            importer &&
+            (importer.includes("content.config") ||
+              importer.includes("content/loaders") ||
+              importer.includes("content/utils") ||
+              importer.includes("astro/dist/content") ||
+              importer.includes("astro/dist/core/sync") ||
+              importer.includes("astro/dist/core/errors"));
+
+          if (isContentConfigContext) {
+            // Force real Node.js modules for content collection sync and Astro internals
+            if (
+              id === "path" ||
+              id === "fs" ||
+              id === "fs/promises" ||
+              id === "url" ||
+              id === "util"
+            ) {
+              return { id, external: true };
+            }
+          }
+
+          // Mark other Node.js built-ins as external in general
+          if (id === "fs/promises" || id === "url" || id === "util") {
             return { id, external: true };
           }
           return null;
@@ -218,14 +283,42 @@ export default defineConfig({
         "lz-string",
       ],
       exclude: ["@sruja/shared", "@sruja/ui", "@sruja/designer"],
+      // Ensure CommonJS modules are properly transformed during optimization
+      esbuildOptions: {
+        // This helps esbuild handle CommonJS modules
+        format: "esm",
+      },
     },
     ssr: {
       // Static site - no SSR, but Vite still uses this config during build
       // Add packages to noExternal so Vite processes them (needed for CSS and module resolution)
       // React must remain external to prevent multiple instances
+      // Add packages to noExternal so Vite processes them (needed for CSS and module resolution)
+      // React must remain external to prevent multiple instances
       noExternal: ["@sruja/ui", "@sruja/shared", "monaco-editor"],
       // Keep React external to ensure single instance
-      external: ["react", "react-dom", "react/jsx-runtime", "react-dom/client"],
+      // Also keep Node.js built-ins external for content config context
+      external: [
+        "react",
+        "react-dom",
+        "react/jsx-runtime",
+        "react-dom/client",
+        "path",
+        "fs",
+        "fs/promises",
+        "url",
+        "util",
+        "stream-http", // Externalize so Node.js handles it natively (dependency of vite-plugin-node-polyfills)
+        "events", // Externalize CommonJS module
+      ],
+    },
+    build: {
+      // Enable CommonJS transformation for mixed ESM/CJS modules
+      // This helps Vite handle CommonJS modules like stream-http properly
+      commonjsOptions: {
+        transformMixedEsModules: true,
+        include: [/node_modules/],
+      },
     },
     resolve: {
       conditions: ["import", "module", "browser", "default"],
@@ -236,6 +329,9 @@ export default defineConfig({
       alias: {
         // Map CSS import to actual file path
         "node:buffer": "buffer",
+        // Use Node.js built-ins in SSR/build context
+        // Alias npm 'util' package to Node.js built-in 'util' to avoid CommonJS issues
+        util: "node:util",
         // Feature-based path aliases
         "@": path.resolve(__dirname, "./src"),
         "@/features": path.resolve(__dirname, "./src/features"),

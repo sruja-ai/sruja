@@ -29,6 +29,7 @@ pub trait Rule: Send + Sync {
 /// Validator manages and executes validation rules
 pub struct Validator {
     rules: Vec<Arc<dyn Rule>>,
+    #[allow(dead_code)]
     options: ValidatorOptions,
 }
 

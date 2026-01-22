@@ -9,7 +9,7 @@ Architecture‑as‑code standard with open‑core model: free CLI + language; c
 - Core OSS: exporters (Mermaid, PlantUML, C4‑PlantUML, Structurizr), validation packs, LSP + VS Code.
 - Cloud: collaboration, registry, policy engine, integrations, advanced rendering.
 - Enterprise: SSO/SAML, audit logs, compliance, on‑prem.
-- Releases: signed binaries, SBOM, Homebrew/Scoop/Winget; GoReleaser v2 with installer‑compatible archives.
+- Releases: signed binaries, SBOM, Homebrew/Scoop/Winget; cargo build with installer‑compatible archives.
 
 ## 90‑Day Plan
 
@@ -31,4 +31,3 @@ Architecture‑as‑code standard with open‑core model: free CLI + language; c
 
 - Governance/RFCs; contributor onboarding; curated templates; training/certification.
 - Tiers: Free, Pro (Cloud), Enterprise; training, templates, support.
-

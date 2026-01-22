@@ -112,7 +112,9 @@ function analyzeMetrics(metrics: QualityMetrics[]) {
 
   if (totalOverlaps > 0) {
     recommendations.push(`🔴 CRITICAL: ${totalOverlaps} node overlaps detected`);
-    recommendations.push("   → Increase nodesep/ranksep in pkg/export/dot/constraints.go");
+    recommendations.push(
+      "   → Increase nodesep/ranksep in crates/sruja-core/src/export/dot/constraints.rs"
+    );
     recommendations.push("   → Increase L1NodeSepScale and L1RankSepScale for L1 diagrams");
     recommendations.push("   → Increase DynamicScalingFactor for more aggressive spacing\n");
   }
@@ -140,7 +142,9 @@ function analyzeMetrics(metrics: QualityMetrics[]) {
 
   if (totalContainment > 0) {
     recommendations.push(`🔴 CRITICAL: ${totalContainment} parent-child containment violations`);
-    recommendations.push("   → Increase cluster margins in dot_generator.go");
+    recommendations.push(
+      "   → Increase cluster margins in crates/sruja-core/src/export/dot/dot_generator.rs"
+    );
     recommendations.push("   → Increase compound node padding in compoundNodes.ts\n");
   }
 
@@ -161,8 +165,8 @@ function analyzeMetrics(metrics: QualityMetrics[]) {
 
   console.log("1. Review recommendations above");
   console.log("2. Make code changes in:");
-  console.log("   - pkg/export/dot/constraints.go");
-  console.log("   - pkg/export/dot/dot_generator.go");
+  console.log("   - crates/sruja-core/src/export/dot/constraints.rs");
+  console.log("   - crates/sruja-core/src/export/dot/dot_generator.rs");
   console.log("   - apps/designer/src/components/SrujaCanvas/compoundNodes.ts");
   console.log("3. Rebuild WASM: make wasm");
   console.log("4. Test in browser: npm run dev");

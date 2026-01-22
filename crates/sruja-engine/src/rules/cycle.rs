@@ -2,7 +2,7 @@
 //!
 //! Detects circular dependencies in the architecture.
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 
 use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
 use sruja_language::Program;

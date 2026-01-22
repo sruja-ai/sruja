@@ -7,7 +7,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use sruja_language::{collect_elements, ElementKind, Program, Relation};
+use sruja_language::{collect_elements, Program, Relation};
 
 use super::constants::*;
 
@@ -54,7 +54,8 @@ impl MermaidExporter {
 
     fn generate(&self, elements: &HashMap<String, sruja_language::ElementDef>, relations: &[Relation]) -> String {
         // Filter/project elements and relations per Go views engine semantics (subset).
-        let (view_elements, view_relations) = compute_view(elements, relations, self.config.view_level, self.config.target_id.as_deref());
+        let (view_elements, view_relations) =
+            compute_view(elements, relations, self.config.view_level, self.config.target_id.clone());
 
         let mut out = String::new();
         out.push_str(&format!("graph {}\n", self.config.direction));
@@ -167,12 +168,13 @@ impl MermaidExporter {
     }
 }
 
-fn normalize_kind(kind: &str) -> &str {
-    match kind.to_lowercase().as_str() {
-        "database" | "db" | "storage" => "datastore",
-        "mq" => "queue",
-        "actor" => "person",
-        other => other,
+fn normalize_kind(kind: &str) -> String {
+    let lower = kind.to_lowercase();
+    match lower.as_str() {
+        "database" | "db" | "storage" => "datastore".to_string(),
+        "mq" => "queue".to_string(),
+        "actor" => "person".to_string(),
+        _ => lower,
     }
 }
 
@@ -180,14 +182,15 @@ fn compute_view(
     elements: &HashMap<String, sruja_language::ElementDef>,
     relations: &[Relation],
     mut level: u8,
-    mut focus: Option<&str>,
+    mut focus: Option<String>,
 ) -> (HashMap<String, sruja_language::ElementDef>, Vec<Relation>) {
     // Auto-detect L2 (Go behavior): if L1, no focus, exactly one system and it has children.
     if level <= 1 && focus.is_none() {
         let systems: Vec<String> = elements
             .iter()
             .filter_map(|(id, e)| {
-                if normalize_kind(&e.assignment.kind.to_string()) == "system" {
+                let kind_str = e.assignment.kind.to_string();
+                if normalize_kind(&kind_str) == "system" {
                     Some(id.clone())
                 } else {
                     None
@@ -201,7 +204,7 @@ fn compute_view(
             let has_children = elements.keys().any(|id| id.starts_with(&prefix));
             if has_children {
                 level = 2;
-                focus = Some(sys.as_str());
+                focus = Some(sys.clone());
             }
         }
     }
@@ -209,22 +212,24 @@ fn compute_view(
     // Determine core set.
     let mut visible: HashSet<String> = HashSet::new();
 
-    let mut is_core = |id: &str| -> bool {
+    let is_core = |id: &str| -> bool {
         match level {
             1 => {
                 if let Some(e) = elements.get(id) {
-                    let k = normalize_kind(&e.assignment.kind.to_string());
+                    let kind_str = e.assignment.kind.to_string();
+                    let k = normalize_kind(&kind_str);
                     k == "person" || k == "system"
                 } else {
                     false
                 }
             }
             2 => {
-                if id == focus.unwrap_or("") {
+                if id == focus.as_deref().unwrap_or("") {
                     return true;
                 }
                 if let Some(e) = elements.get(id) {
-                    let k = normalize_kind(&e.assignment.kind.to_string());
+                    let kind_str = e.assignment.kind.to_string();
+                    let k = normalize_kind(&kind_str);
                     k == "container" || k == "datastore" || k == "queue" || k == "system" || k == "person"
                 } else {
                     false
@@ -249,7 +254,7 @@ fn compute_view(
             }
         }
         2 => {
-            if let Some(focus_id) = focus {
+            if let Some(focus_id) = focus.as_deref() {
                 if !elements.contains_key(focus_id) {
                     return (HashMap::new(), Vec::new());
                 }
@@ -270,7 +275,7 @@ fn compute_view(
         }
         3 => {
             // L3: if focus, include focus and all descendants; otherwise all.
-            if let Some(focus_id) = focus {
+            if let Some(focus_id) = focus.as_deref() {
                 if !elements.contains_key(focus_id) {
                     return (HashMap::new(), Vec::new());
                 }
@@ -291,12 +296,13 @@ fn compute_view(
     }
 
     // Relation projection (simplified from Go views engine).
+    let focus_ref = focus.as_deref();
     let mut projected: Vec<Relation> = Vec::new();
     for rel in relations {
         let from = rel.from.as_string();
         let to = rel.to.as_string();
-        let source = project_id(&from, level, focus, elements);
-        let target = project_id(&to, level, focus, elements);
+        let source = project_id(&from, level, focus_ref, elements);
+        let target = project_id(&to, level, focus_ref, elements);
         if source.is_empty() || target.is_empty() || source == target {
             continue;
         }
@@ -420,7 +426,7 @@ fn format_label(elem: &sruja_language::ElementDef) -> String {
         (String::new(), String::new())
     };
 
-    let mut lines = vec![title];
+    let mut lines = vec![title.clone()];
     if !desc.is_empty() {
         lines.push(desc);
     }

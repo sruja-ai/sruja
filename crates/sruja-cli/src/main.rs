@@ -104,6 +104,48 @@ enum Commands {
         /// Path to .sruja file
         file: String,
     },
+    /// Validate architecture against rules
+    Validate {
+        /// Path to .sruja file or directory
+        file: String,
+        /// External constraint files
+        #[arg(long, short = 'c')]
+        constraints: Vec<String>,
+        /// Fail on violations
+        #[arg(long)]
+        fail_on_violations: bool,
+        /// Output as JSON
+        #[arg(long)]
+        format_json: bool,
+    },
+    /// Change management
+    Change {
+        #[command(subcommand)]
+        action: ChangeAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum ChangeAction {
+    /// Create a new change record
+    Create {
+        /// Title of the change
+        title: String,
+        /// Description of the change
+        #[arg(long, short = 'd')]
+        description: Option<String>,
+        /// Context/background
+        #[arg(long, short = 'c')]
+        context: Option<String>,
+        /// Status (proposed, approved, rejected, implemented)
+        #[arg(long, short = 's', default_value = "proposed")]
+        status: String,
+    },
+    /// Validate a change record
+    Validate {
+        /// Path to change file
+        file: String,
+    },
 }
 
 #[tokio::main]
@@ -113,17 +155,52 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = match cli.command {
         Commands::Version => commands::version(),
         Commands::Lint { file } => commands::lint(&file).await,
-        Commands::Export { format, file, extended, view_level, target } => {
-            commands::export(&format, &file, extended, view_level, target.as_deref()).await
-        }
+        Commands::Export {
+            format,
+            file,
+            extended,
+            view_level,
+            target,
+        } => commands::export(&format, &file, extended, view_level, target.as_deref()).await,
         Commands::Fmt { file } => commands::fmt(&file).await,
         Commands::Lsp { .. } => commands::lsp().await,
         Commands::Compile { file } => commands::compile(&file).await,
+        Commands::Validate {
+            file,
+            constraints,
+            fail_on_violations,
+            format_json,
+        } => commands::validate(&file, constraints, fail_on_violations, format_json).await,
+        Commands::Change { action } => match action {
+            ChangeAction::Create {
+                title,
+                description,
+                context,
+                status,
+            } => {
+                commands::change_create(
+                    &title,
+                    description.as_deref(),
+                    context.as_deref(),
+                    status.as_deref(),
+                )
+                .await
+            }
+            ChangeAction::Validate { file } => commands::change_validate(&file).await,
+        },
         Commands::List { file } => commands::list(&file).await,
         Commands::Tree { file } => commands::tree(&file).await,
         Commands::Init { name } => commands::init(name.as_deref()).await,
-        Commands::Diff { file1, file2, format } => commands::diff(&file1, &file2, &format).await,
-        Commands::Explain { element_id, file, json } => commands::explain(&element_id, file.as_deref(), json).await,
+        Commands::Diff {
+            file1,
+            file2,
+            format,
+        } => commands::diff(&file1, &file2, &format).await,
+        Commands::Explain {
+            element_id,
+            file,
+            json,
+        } => commands::explain(&element_id, file.as_deref(), json).await,
         Commands::Import { format, file } => commands::import(&format, &file).await,
         Commands::Score { file } => commands::score(file.as_deref()).await,
     };

@@ -1,8 +1,5 @@
 .PHONY: build test test-coverage clean install lint fmt help build-rust test-rust wasm wasm-tiny
 
-GOLANGCI_LINT_VERSION = v2.6.2
-GOLANGCI = $(shell go env GOPATH)/bin/golangci-lint
-
 # Build Rust libraries
 build-rust:
 	@echo "Building Rust libraries..."

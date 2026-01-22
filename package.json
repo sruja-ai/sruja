@@ -45,5 +45,93 @@
   "packageManager": "npm@10.2.4",
   "engines": {
     "node": ">=22.12.0"
+  },
+  "overrides": {
+    "lodash-es": "4.17.23",
+    "lodash": "4.17.23",
+    "elliptic": "6.6.1",
+    "diff": "8.0.3",
+    "mocha": {
+      "diff": "8.0.3"
+    },
+    "browserify-sign": {
+      "elliptic": "6.6.1"
+    },
+    "create-ecdh": {
+      "elliptic": "6.6.1"
+    },
+    "crypto-browserify": {
+      "browserify-sign": {
+        "elliptic": "6.6.1"
+      },
+      "create-ecdh": {
+        "elliptic": "6.6.1"
+      }
+    },
+    "node-stdlib-browser": {
+      "crypto-browserify": {
+        "browserify-sign": {
+          "elliptic": "6.6.1"
+        },
+        "create-ecdh": {
+          "elliptic": "6.6.1"
+        }
+      }
+    },
+    "yaml-language-server": {
+      "lodash": "4.17.23"
+    },
+    "volar-service-yaml": {
+      "yaml-language-server": {
+        "lodash": "4.17.23"
+      }
+    },
+    "@astrojs/language-server": {
+      "volar-service-yaml": {
+        "yaml-language-server": {
+          "lodash": "4.17.23"
+        }
+      }
+    },
+    "@chevrotain/gast": {
+      "lodash-es": "4.17.23"
+    },
+    "@chevrotain/cst-dts-gen": {
+      "lodash-es": "4.17.23",
+      "@chevrotain/gast": {
+        "lodash-es": "4.17.23"
+      }
+    },
+    "chevrotain": {
+      "lodash-es": "4.17.23",
+      "@chevrotain/gast": {
+        "lodash-es": "4.17.23"
+      },
+      "@chevrotain/cst-dts-gen": {
+        "lodash-es": "4.17.23"
+      }
+    },
+    "langium": {
+      "chevrotain": {
+        "lodash-es": "4.17.23"
+      }
+    },
+    "@mermaid-js/parser": {
+      "langium": {
+        "chevrotain": {
+          "lodash-es": "4.17.23"
+        }
+      }
+    },
+    "mermaid": {
+      "lodash-es": "4.17.23",
+      "@mermaid-js/parser": {
+        "langium": {
+          "chevrotain": {
+            "lodash-es": "4.17.23"
+          }
+        }
+      }
+    }
   }
 }

@@ -72,30 +72,11 @@ pids/
 # Yarn Integrity file
 .yarn-integrity
 
-# Go build outputs
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-/sruja
-cmd_sruja.out
-bin/
-
 # Rust build outputs
 target/
 Cargo.lock
 **/*.rs.bk
 *.pdb
-
-# Go test files
-*.test
-*.out
-
-# Go coverage
-coverage.out
-*_coverage.out
-all_coverage.out
 
 # Temporary files
 *.tmp

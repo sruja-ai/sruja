@@ -302,10 +302,9 @@ jobs:
 
 ```yaml
 validate-architecture:
-  image: golang:1.21
+  image: rust:1.70
   script:
-    - curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-    - export PATH="$HOME/go/bin:$PATH"
+    - cargo install sruja --git https://github.com/sruja-ai/sruja
     - sruja lint architecture.sruja
   only:
     - merge_requests

@@ -145,12 +145,10 @@ sruja export markdown example.sruja
 
 ```
 sruja/
-├── cmd/
-│   └── sruja/            # CLI tool
-├── pkg/                  # Go packages
-│   ├── engine/           # Validation engine
-│   ├── language/         # Parser, AST, lexer
-│   └── export/           # Exporters (JSON, Markdown, etc.)
+├── crates/               # Rust crates
+│   ├── sruja-core/       # Core parsing and validation engine
+│   ├── sruja-wasm/       # WebAssembly bindings
+│   └── sruja-lsp/        # Language Server Protocol
 ├── apps/                 # Frontend applications
 │   ├── designer/         # 🎨 Interactive visual designer
 │   ├── website/          # Documentation site
@@ -167,14 +165,14 @@ sruja/
 
 ### Prerequisites
 
-- **Go >= 1.25**
+- **Rust >= 1.70**
 - **Node.js >= 18**
 
 ### Setup
 
 ```bash
 # Install dependencies
-go mod download
+cargo fetch
 npm install
 
 # Setup git hooks (recommended)
@@ -192,7 +190,7 @@ npm run dev
 
 ```bash
 make test          # Run all tests
-make test-go       # Go tests only
+make test-rust     # Rust tests only
 make test-coverage # With coverage report
 ```
 

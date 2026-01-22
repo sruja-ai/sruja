@@ -5,7 +5,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use sruja_language::{collect_elements, ElementKind, Program, Relation};
+use sruja_language::{collect_elements, Program, Relation};
 
 use super::constants::*;
 
@@ -16,6 +16,9 @@ pub struct DotConfig {
     pub rank_sep: f64,
     pub view_level: u8,
     pub target_id: Option<String>,
+    pub node_sizes: std::collections::HashMap<String, (f64, f64)>, // width, height for specific nodes
+    pub view_id: Option<String>, // Optional view definition ID
+    pub filename: Option<String>, // Optional filename for error reporting
 }
 
 impl Default for DotConfig {
@@ -26,6 +29,9 @@ impl Default for DotConfig {
             rank_sep: DEFAULT_RANK_SEP,
             view_level: 1,
             target_id: None,
+            node_sizes: std::collections::HashMap::new(),
+            view_id: None,
+            filename: None,
         }
     }
 }
@@ -54,7 +60,7 @@ impl DotExporter {
             &elements,
             &relations,
             self.config.view_level,
-            self.config.target_id.as_deref(),
+            self.config.target_id.clone(),
         );
 
         self.generate(&view_elements, &view_relations)
@@ -86,7 +92,7 @@ impl DotExporter {
         out.push_str(&format!("    fontsize={},\n", FONT_SIZE_GLOBAL));
         out.push_str(&format!("    fontcolor=\"{}\",\n", COLOR_SLATE_700));
         out.push_str("    shape=box,\n");
-        out.push_str("    style=rounded,filled\n");
+        out.push_str("    style=\"rounded,filled\"\n");
         out.push_str("  ];\n\n");
 
         out.push_str("  edge [\n");
@@ -98,14 +104,16 @@ impl DotExporter {
         out.push_str(&format!("    arrowsize={:.2}\n", ARROW_SIZE));
         out.push_str("  ];\n\n");
 
-        // Build clusters
+        // Build clusters and parent map
         let mut children: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
         let mut roots: BTreeSet<String> = BTreeSet::new();
+        let mut parent_map: HashMap<String, String> = HashMap::new();
 
         for fqn in elements.keys() {
             if let Some(parent) = parent_fqn(fqn) {
                 if elements.contains_key(&parent) {
-                    children.entry(parent).or_default().insert(fqn.clone());
+                    children.entry(parent.clone()).or_default().insert(fqn.clone());
+                    parent_map.insert(fqn.clone(), parent);
                 } else {
                     roots.insert(fqn.clone());
                 }
@@ -128,7 +136,7 @@ impl DotExporter {
 
         // Write edges
         for rel in relations {
-            self.write_edge(&mut out, rel);
+            self.write_edge(&mut out, rel, &parent_map);
         }
 
         out.push_str("}\n");
@@ -139,7 +147,12 @@ impl DotExporter {
         let Some(elem) = elements.get(fqn) else { return };
         let id = escape_id(fqn);
         let label = build_html_label(elem);
-        let (width, height) = get_node_size(elem);
+        // Use custom node size if provided, otherwise calculate default
+        let (width, height) = if let Some((w, h)) = self.config.node_sizes.get(fqn) {
+            (*w, *h)
+        } else {
+            get_node_size(elem)
+        };
 
         out.push_str(&format!("  \"{}\" [\n", id));
         out.push_str(&format!("    label=<{}>,\n", label));
@@ -170,10 +183,15 @@ impl DotExporter {
         out.push_str(&format!("    fontsize={};\n", FONT_SIZE_GLOBAL + 2));
 
         for child in children {
-            if let Some(e) = elements.get(child) {
-                let child_id = escape_id(child);
-                let child_label = build_html_label(e);
-                let (width, height) = get_node_size(e);
+                if let Some(e) = elements.get(child) {
+                    let child_id = escape_id(child);
+                    let child_label = build_html_label(e);
+                    // Use custom node size if provided, otherwise calculate default
+                    let (width, height) = if let Some((w, h)) = self.config.node_sizes.get(child) {
+                        (*w, *h)
+                    } else {
+                        get_node_size(e)
+                    };
                 out.push_str(&format!("    \"{}\" [\n", child_id));
                 out.push_str(&format!("      label=<{}>,\n", child_label));
                 if width > 0.0 {
@@ -190,21 +208,50 @@ impl DotExporter {
         out.push_str("  }\n");
     }
 
-    fn write_edge(&self, out: &mut String, rel: &Relation) {
-        let from = escape_id(&rel.from.as_string());
-        let to = escape_id(&rel.to.as_string());
+    fn write_edge(
+        &self,
+        out: &mut String,
+        rel: &Relation,
+        parent_map: &HashMap<String, String>,
+    ) {
+        let from = rel.from.as_string();
+        let to = rel.to.as_string();
+        let from_id = escape_id(&from);
+        let to_id = escape_id(&to);
         let label = rel.label.as_ref().or(rel.description.as_ref());
-        match label {
-            Some(l) if !l.is_empty() => {
-                out.push_str(&format!(
-                    "  \"{}\" -> \"{}\" [label=\"{}\"];\n",
-                    from,
-                    to,
-                    escape_quotes(l)
-                ));
+
+        // Collect edge attributes
+        let mut attrs: Vec<String> = Vec::new();
+
+        // Add label if present
+        if let Some(l) = label {
+            if !l.is_empty() {
+                attrs.push(format!("label=\"{}\"", escape_quotes(l)));
             }
-            _ => out.push_str(&format!("  \"{}\" -> \"{}\";\n", from, to)),
         }
+
+        // Add lhead/ltail for cross-cluster edges
+        // These attributes clip edges to cluster boundaries when compound=true
+        let from_parent = parent_map.get(&from);
+        let to_parent = parent_map.get(&to);
+
+        // Only add lhead/ltail when edge crosses cluster boundaries
+        // (i.e., when parents are different and both are non-empty)
+        if let (Some(fp), Some(tp)) = (from_parent, to_parent) {
+            if fp != tp {
+                attrs.push(format!("ltail=\"cluster_{}\"", escape_id(fp)));
+                attrs.push(format!("lhead=\"cluster_{}\"", escape_id(tp)));
+            }
+        }
+
+        // Build edge statement
+        let attrs_str = if attrs.is_empty() {
+            String::new()
+        } else {
+            format!(" [{}]", attrs.join(", "))
+        };
+
+        out.push_str(&format!("  \"{}\" -> \"{}\"{};\n", from_id, to_id, attrs_str));
     }
 }
 
@@ -213,13 +260,14 @@ fn compute_view(
     elements: &HashMap<String, sruja_language::ElementDef>,
     relations: &[Relation],
     mut level: u8,
-    mut focus: Option<&str>,
+    mut focus: Option<String>,
 ) -> (HashMap<String, sruja_language::ElementDef>, Vec<Relation>) {
     if level <= 1 && focus.is_none() {
         let systems: Vec<String> = elements
             .iter()
             .filter_map(|(id, e)| {
-                if normalize_kind(&e.assignment.kind.to_string()) == "system" {
+                let kind_str = e.assignment.kind.to_string();
+                if normalize_kind(&kind_str) == "system" {
                     Some(id.clone())
                 } else {
                     None
@@ -233,7 +281,7 @@ fn compute_view(
             let has_children = elements.keys().any(|id| id.starts_with(&prefix));
             if has_children {
                 level = 2;
-                focus = Some(sys.as_str());
+                focus = Some(sys.clone());
             }
         }
     }
@@ -244,18 +292,20 @@ fn compute_view(
         match level {
             1 => {
                 if let Some(e) = elements.get(id) {
-                    let k = normalize_kind(&e.assignment.kind.to_string());
+                    let kind_str = e.assignment.kind.to_string();
+                    let k = normalize_kind(&kind_str);
                     k == "person" || k == "system"
                 } else {
                     false
                 }
             }
             2 => {
-                if id == focus.unwrap_or("") {
+                if id == focus.as_deref().unwrap_or("") {
                     return true;
                 }
                 if let Some(e) = elements.get(id) {
-                    let k = normalize_kind(&e.assignment.kind.to_string());
+                    let kind_str = e.assignment.kind.to_string();
+                    let k = normalize_kind(&kind_str);
                     k == "container" || k == "datastore" || k == "queue" || k == "system" || k == "person"
                 } else {
                     false
@@ -274,7 +324,7 @@ fn compute_view(
             }
         }
         2 => {
-            if let Some(focus_id) = focus {
+            if let Some(focus_id) = focus.as_deref() {
                 if !elements.contains_key(focus_id) {
                     return (HashMap::new(), Vec::new());
                 }
@@ -294,7 +344,7 @@ fn compute_view(
             }
         }
         3 => {
-            if let Some(focus_id) = focus {
+            if let Some(focus_id) = focus.as_deref() {
                 if !elements.contains_key(focus_id) {
                     return (HashMap::new(), Vec::new());
                 }
@@ -314,12 +364,13 @@ fn compute_view(
         _ => {}
     }
 
+    let focus_ref = focus.as_deref();
     let mut projected: Vec<Relation> = Vec::new();
     for rel in relations {
         let from = rel.from.as_string();
         let to = rel.to.as_string();
-        let source = project_id(&from, level, focus, elements);
-        let target = project_id(&to, level, focus, elements);
+        let source = project_id(&from, level, focus_ref, elements);
+        let target = project_id(&to, level, focus_ref, elements);
         if source.is_empty() || target.is_empty() || source == target {
             continue;
         }
@@ -353,12 +404,13 @@ fn compute_view(
     (out_elems, projected)
 }
 
-fn normalize_kind(kind: &str) -> &str {
-    match kind.to_lowercase().as_str() {
-        "database" | "db" | "storage" => "datastore",
-        "mq" => "queue",
-        "actor" => "person",
-        other => other,
+fn normalize_kind(kind: &str) -> String {
+    let lower = kind.to_lowercase();
+    match lower.as_str() {
+        "database" | "db" | "storage" => "datastore".to_string(),
+        "mq" => "queue".to_string(),
+        "actor" => "person".to_string(),
+        _ => lower,
     }
 }
 
@@ -399,7 +451,8 @@ fn get_container(
     let mut cur = fqn.to_string();
     loop {
         if let Some(e) = elements.get(&cur) {
-            if normalize_kind(&e.assignment.kind.to_string()) == "container" {
+            let kind_str = e.assignment.kind.to_string();
+            if normalize_kind(&kind_str) == "container" {
                 return Some(cur);
             }
         }
@@ -465,8 +518,9 @@ fn escape_html(s: &str) -> String {
 }
 
 fn get_node_size(elem: &sruja_language::ElementDef) -> (f64, f64) {
-    let kind = normalize_kind(&elem.assignment.kind.to_string());
-    match kind {
+    let kind_str = elem.assignment.kind.to_string();
+    let kind = normalize_kind(&kind_str);
+    match kind.as_str() {
         "person" => (MIN_WIDTH_PERSON, MIN_HEIGHT_PERSON),
         "system" => (MIN_WIDTH_SYSTEM, MIN_HEIGHT_SYSTEM),
         "container" => (MIN_WIDTH_CONTAINER, MIN_HEIGHT_CONTAINER),

@@ -1,6 +1,6 @@
 //! Markdown export options (ported from Go)
 
-use crate::mermaid::MermaidConfig;
+use crate::mermaid::exporter::MermaidConfig;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ContextType {

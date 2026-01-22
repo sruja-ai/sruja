@@ -34,10 +34,7 @@ on:
       - "package-lock.json"
       # Build infrastructure
       - "Makefile"
-      - "go.mod"
-      - "go.sum"
-      - "cmd/**"
-      - "pkg/**"
+      - "crates/**"
       - "internal/**"
       # Workflow and action changes
       - ".github/workflows/deploy-staging.yml"
@@ -161,10 +158,10 @@ jobs:
           # Create signed tag if GPG is configured, otherwise unsigned
           if [ -n "${GPG_KEY_ID:-}" ]; then
             TAG_MESSAGE="Release candidate: $RC_TAG (commit ${{ github.sha }})"
-            
+
             # Set up GPG for non-interactive use
             export GPG_TTY=$(tty 2>/dev/null || echo /dev/console)
-            
+
             # Try to create signed tag - GPG should use cached passphrase from setup-gpg action
             # If that fails, fall back to unsigned tag
             if git tag -s "$RC_TAG" -m "$TAG_MESSAGE" 2>&1; then
@@ -190,9 +187,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Set up Go
-        uses: ./.github/actions/setup-go
 
       - name: Build WASM
         uses: ./.github/actions/build-wasm
@@ -278,9 +272,6 @@ jobs:
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-node
-
-      - name: Set up Go
-        uses: ./.github/actions/setup-go
 
       - name: Build WASM
         uses: ./.github/actions/build-wasm
@@ -434,9 +425,6 @@ jobs:
         uses: ./.github/actions/setup-node
         with:
           install-deps: "false"
-
-      - name: Set up Go
-        uses: ./.github/actions/setup-go
 
       - name: Build WASM
         uses: ./.github/actions/build-wasm

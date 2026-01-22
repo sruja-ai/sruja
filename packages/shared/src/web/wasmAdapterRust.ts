@@ -8,9 +8,17 @@ type RustWasmModule = {
   default: (
     moduleOrPath?: RequestInfo | URL | Response | BufferSource | WebAssembly.Module
   ) => Promise<unknown>;
+  init_panic_hook?: () => void;
   sruja_dsl_to_model: (dsl: string, filename?: string) => string;
   sruja_dsl_to_mermaid: (dsl: string, configJson?: string) => string;
-  sruja_dsl_to_dot: (dsl: string, viewLevel?: number, targetId?: string) => string;
+  sruja_dsl_to_dot: (
+    dsl: string,
+    viewLevel?: number,
+    targetId?: string,
+    nodeSizesJson?: string,
+    viewId?: string,
+    filename?: string
+  ) => string;
   sruja_dsl_to_markdown: (dsl: string) => string;
   sruja_model_to_dsl: (modelJson: string) => string;
   sruja_get_diagnostics: (dsl: string, filename?: string) => string;
@@ -94,9 +102,36 @@ function buildDotResultFromModel(modelJson: string, dot: string): DotResult {
 
 async function dynamicImportRustWasm(jsUrl: string): Promise<RustWasmModule> {
   try {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore - dynamic URL import for public asset
-    return (await import(/* @vite-ignore */ jsUrl)) as RustWasmModule;
+    // Files in public/ cannot be imported as modules in Vite/Astro
+    // We need to fetch the module code and create a blob URL for import
+    if (typeof window !== "undefined") {
+      // Browser environment: fetch and create blob URL
+      const response = await fetch(jsUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch WASM module: ${response.statusText}`);
+      }
+      const code = await response.text();
+
+      // Create a blob URL for the module code
+      const blob = new Blob([code], { type: "application/javascript" });
+      const blobUrl = URL.createObjectURL(blob);
+
+      try {
+        // Import from the blob URL (this works because it's not in public/)
+        const module = await import(blobUrl);
+        // Clean up the blob URL after import
+        URL.revokeObjectURL(blobUrl);
+        return module as RustWasmModule;
+      } catch (importError) {
+        URL.revokeObjectURL(blobUrl);
+        throw importError;
+      }
+    } else {
+      // SSR/Node environment: use direct import (won't work in production but that's OK)
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore - dynamic URL import for public asset in SSR
+      return (await import(/* @vite-ignore */ jsUrl)) as RustWasmModule;
+    }
   } catch (e) {
     throw new NetworkError("Failed to import Rust WASM JS loader", {
       url: jsUrl,
@@ -119,6 +154,10 @@ export async function initRustWasm(options?: { base?: string }): Promise<WasmApi
   const mod = await dynamicImportRustWasm(jsUrl);
   try {
     await mod.default(wasmUrl);
+    // Initialize panic hook for better error messages
+    if (typeof mod.init_panic_hook === "function") {
+      mod.init_panic_hook();
+    }
   } catch (e) {
     throw new ConfigurationError("Failed to initialize Rust WASM module", {
       configKey: "rust_wasm_init",
@@ -161,12 +200,16 @@ export async function initRustWasm(options?: { base?: string }): Promise<WasmApi
       dsl: string,
       viewLevel?: number,
       focusNodeId?: string,
-      _nodeSizes?: Record<string, { width: number; height: number }>,
-      _viewId?: string,
+      nodeSizes?: Record<string, { width: number; height: number }>,
+      viewId?: string,
       filename?: string
     ) => {
       const modelJson = wrapRustCall(() => mod.sruja_dsl_to_model(dsl, filename));
-      const dot = wrapRustCall(() => mod.sruja_dsl_to_dot(dsl, viewLevel, focusNodeId));
+      // Pass node sizes as JSON string, viewId, and filename
+      const nodeSizesJson = nodeSizes ? JSON.stringify(nodeSizes) : undefined;
+      const dot = wrapRustCall(() =>
+        mod.sruja_dsl_to_dot(dsl, viewLevel, focusNodeId, nodeSizesJson, viewId, filename)
+      );
       return buildDotResultFromModel(modelJson, dot);
     },
     calculateArchitectureScore: async (dsl: string) => {

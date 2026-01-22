@@ -56,7 +56,6 @@ The deployment repositories will be automatically updated when your changes are 
 
 Optional:
 
-- `golangci-lint` (installed automatically by `make lint`)
 - `wasm-opt` (optimizes WASM artifacts)
 
 ### Quick Setup

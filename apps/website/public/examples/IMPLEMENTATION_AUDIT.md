@@ -26,7 +26,7 @@ The `pkg/lsp` implementation is a professional-grade Language Server. It support
 
 ### C. Geometric Quality Control
 
-The `dot` exporter uses a unique `quality.go` system that parses SVG output to measure:
+The `dot` exporter uses a unique quality system that parses SVG output to measure:
 
 - **Edge Crossings**: Mathematically identifies where lines cross (minimizing visual clutter).
 - **Parent-Child Containment**: Geometrically verifies that child nodes are physically inside their parents' bounds.

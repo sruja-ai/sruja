@@ -76,7 +76,7 @@ impl Rule for PublicInterfaceDocumentationRule {
         let mut diags: Vec<Diagnostic> = Vec::new();
         for target in accessed {
             if let Some(elem) = find_element(&elements, &target) {
-                let kind = elem.assignment.kind;
+                let kind = elem.assignment.kind.clone();
                 if kind != ElementKind::System && kind != ElementKind::Container {
                     continue;
                 }

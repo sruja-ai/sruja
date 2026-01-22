@@ -3,7 +3,6 @@
 //! This module defines the Abstract Syntax Tree structures that represent
 //! parsed Sruja DSL code.
 
-use serde::{Deserialize, Serialize};
 use sruja_diagnostics::SourceLocation;
 use std::collections::HashMap;
 

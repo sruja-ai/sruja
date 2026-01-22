@@ -36,14 +36,14 @@ impl MarkdownExporter {
 
         let mut requirements: Vec<_> = Vec::new();
         let mut adrs: Vec<_> = Vec::new();
-        let mut scenarios: Vec<_> = Vec::new();
+        let mut scenarios: Vec<String> = Vec::new();
 
         for item in &program.items {
             match item {
                 sruja_language::TopLevelItem::Requirement(r) => requirements.push(r),
                 sruja_language::TopLevelItem::Adr(a) => adrs.push(a),
-                sruja_language::TopLevelItem::Scenario(s) => scenarios.push(s),
-                sruja_language::TopLevelItem::Flow(f) => scenarios.push(&f.id), // Treat flow as scenario
+                sruja_language::TopLevelItem::Scenario(s) => scenarios.push(s.id.clone()),
+                sruja_language::TopLevelItem::Flow(f) => scenarios.push(f.id.clone()), // Treat flow as scenario
                 _ => {}
             }
         }
@@ -182,7 +182,7 @@ impl MarkdownExporter {
         }
     }
 
-    fn write_scenarios(&self, out: &mut String, _scenarios: &[&str]) {
+    fn write_scenarios(&self, out: &mut String, _scenarios: &[String]) {
         // TODO: Implement scenario writing
         out.push_str("## Scenarios\n\n");
         out.push_str("_Scenarios section will be populated._\n\n");

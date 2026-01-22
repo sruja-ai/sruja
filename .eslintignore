@@ -1,2 +1,1 @@
-# Go template HTML files - contain template syntax that looks like invalid JS
-pkg/export/html/*.html
+

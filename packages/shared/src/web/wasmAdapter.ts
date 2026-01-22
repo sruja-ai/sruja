@@ -626,31 +626,15 @@ function detectBaseUrl(): string {
  * Initialize WASM with auto-detected base URL.
  * Uses singleton pattern to ensure WASM is only initialized once.
  */
-export async function initWasmAuto(options?: {
-  base?: string;
-  skipGoLoad?: boolean;
-}): Promise<WasmApi> {
+export async function initWasmAuto(options?: { base?: string }): Promise<WasmApi> {
   if (wasmApi) return wasmApi;
 
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
     const base = options?.base ?? detectBaseUrl();
-    // Rust-first: try wasm-bindgen bundle. If it fails, fall back to Go WASM.
-    try {
-      wasmApi = await initRustWasm({ base });
-      logger.info("Initialized Rust WASM backend", { component: "wasm", action: "init", base });
-      return wasmApi;
-    } catch (error) {
-      logger.warn("Rust WASM init failed, falling back to Go WASM", {
-        component: "wasm",
-        action: "init_fallback",
-        base,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-
-    wasmApi = await initWasm({ ...options, base });
+    wasmApi = await initRustWasm({ base });
+    logger.info("Initialized Rust WASM backend", { component: "wasm", action: "init", base });
     return wasmApi;
   })();
 

@@ -2,9 +2,9 @@
 //!
 //! Detects elements that are not referenced by any relations.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
-use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
+use sruja_diagnostics::{Diagnostic, Severity};
 use sruja_language::Program;
 
 use crate::validator::Rule;

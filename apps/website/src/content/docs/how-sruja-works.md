@@ -46,17 +46,17 @@ Sruja = system "Sruja Platform" {
 		description "Core logic for validation, scoring, and analysis (pkg/engine)"
 
 		Validation = component "Validation Engine" {
-			technology "Go"
-			description "Validates AST against rules (pkg/engine/rules)"
+			technology "Rust"
+			description "Validates AST against rules (crates/sruja-core/src/engine/rules)"
 		}
 
 		Scorer = component "Scoring Engine" {
-			technology "Go"
-			description "Calculates architecture health score (pkg/engine/scorer.go)"
+			technology "Rust"
+			description "Calculates architecture health score (crates/sruja-core/src/engine/scorer)"
 		}
 
 		Policy = component "Policy Engine" {
-			technology "Go"
+			technology "Rust"
 			description "Enforces custom policies (future: OPA/Rego)"
 		}
 

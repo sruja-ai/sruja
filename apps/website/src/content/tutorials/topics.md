@@ -28,4 +28,3 @@ summary: "Browse tutorials by topic tags."
 ## Release
 
 {{< tutorials-by-tag "release" >}}
-{{< tutorials-by-tag "goreleaser" >}}

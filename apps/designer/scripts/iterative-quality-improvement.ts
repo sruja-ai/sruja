@@ -170,7 +170,7 @@ function generateImprovements(analysis: ReturnType<typeof analyzeMetrics>): stri
 
   // Specific improvements based on issues
   if (analysis.issues.some((i) => i.includes("overlaps"))) {
-    improvements.push("Consider increasing L1NodeSepScale and L1RankSepScale in constants.go");
+    improvements.push("Consider increasing L1NodeSepScale and L1RankSepScale in constants.rs");
     improvements.push(
       "Increase DynamicScalingFactor or reduce DynamicScalingDivisor for more aggressive scaling"
     );
@@ -191,7 +191,7 @@ function generateImprovements(analysis: ReturnType<typeof analyzeMetrics>): stri
   }
 
   if (analysis.issues.some((i) => i.includes("containment"))) {
-    improvements.push("Increase cluster margins in dot_generator.go");
+    improvements.push("Increase cluster margins in dot_generator.rs");
     improvements.push("Increase compound node padding in compoundNodes.ts");
   }
 

@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 
 use crate::ast::*;
+use sruja_diagnostics::SourceLocation;
 
 /// A relation paired with the scope (parent FQN) it was declared within.
 #[derive(Debug, Clone, PartialEq, Eq)]

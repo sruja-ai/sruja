@@ -82,7 +82,6 @@ export * from "./utils";
  * to avoid bundling issues in browser environments.
  */
 export * from "./web/wasmAdapter";
-export * from "./web/wasmAdapterViewer";
 
 // ============================================================================
 // Analytics

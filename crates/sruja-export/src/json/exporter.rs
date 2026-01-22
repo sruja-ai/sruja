@@ -3,9 +3,11 @@
 //! This module provides the Exporter struct that converts Sruja Program AST to JSON.
 
 use std::collections::HashMap;
+
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::SystemTime;
 
-use sruja_language::{Program, collect_elements, build_qualified_id};
+use sruja_language::{Program, collect_elements};
 
 use crate::json::types::*;
 
@@ -217,7 +219,7 @@ impl Exporter {
     }
 
     /// Convert views from program
-    fn convert_views_from_program(&self, dump: &mut SrujaModelDump, program: &Program) {
+    fn convert_views_from_program(&self, _dump: &mut SrujaModelDump, _program: &Program) {
         // TODO: Implement view conversion
         // This will need to process ViewDef items from the program
     }
@@ -322,11 +324,20 @@ impl Default for Exporter {
 }
 
 /// Generate ISO 8601 timestamp
+#[cfg(target_arch = "wasm32")]
+fn timestamp() -> String {
+    // In WASM, use js_sys::Date for time
+    let date = js_sys::Date::new_0();
+    date.to_iso_string().as_string().unwrap_or_else(|| String::from("1970-01-01T00:00:00Z"))
+}
+
+/// Generate ISO 8601 timestamp
+#[cfg(not(target_arch = "wasm32"))]
 fn timestamp() -> String {
     // Simple RFC3339 format - in production, use chrono crate
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .map(|d| {
+        .map(|_d| {
             // For now, return a placeholder. In production, use chrono::DateTime::from()
             // to format as RFC3339 properly
             format!("1970-01-01T00:00:00Z")

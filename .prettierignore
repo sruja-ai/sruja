@@ -18,15 +18,9 @@ coverage/
 *.wasm.gz
 *.wasm.br
 
-# Go template files
-pkg/export/html/*.html
+
 
 # Documentation
 CHANGELOG.md
 
 # Lock files
-go.sum
-
-
-# Go template files - autoformatter breaks {{ }} syntax
-pkg/export/html/template*.html

@@ -49,9 +49,9 @@ Workflow = system "Development Workflow" {
     description "Continuous Integration and Deployment"
     tags ["ci-cd", "github-actions"]
 
-    GoTests = component "Go Tests" {
-      description "Go unit tests and coverage"
-      technology "Go test, golangci-lint"
+    RustTests = component "Rust Tests" {
+      description "Rust unit tests and coverage"
+      technology "cargo test, cargo clippy"
     }
 
     TSTests = component "TypeScript Tests" {
@@ -66,12 +66,12 @@ Workflow = system "Development Workflow" {
 
     BuildCheck = component "Build Check" {
       description "Verifies all packages build"
-      technology "Turbo, Go build"
+      technology "Turbo, cargo build"
     }
 
     LintCheck = component "Lint Check" {
       description "Code quality checks"
-      technology "ESLint, golangci-lint"
+      technology "ESLint, cargo clippy"
     }
 
     CoverageCheck = component "Coverage Check" {
@@ -87,7 +87,7 @@ Workflow = system "Development Workflow" {
 
   // Release Process
   Release = container "Release Process" {
-    technology "GoReleaser, GitHub Actions"
+    technology "cargo, GitHub Actions"
     description "Automated release and publishing"
     tags ["release", "publishing"]
 
@@ -98,7 +98,7 @@ Workflow = system "Development Workflow" {
 
     BuildArtifacts = component "Build Artifacts" {
       description "Builds binaries for all platforms"
-      technology "GoReleaser"
+      technology "cargo build --release"
     }
 
     PublishRelease = component "Publish Release" {

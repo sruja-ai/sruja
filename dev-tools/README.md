@@ -92,7 +92,7 @@ The quality measurement system evaluates diagrams on several dimensions:
 
    ```bash
    # Edit layout logic
-   vim pkg/export/dot/builder.go
+   vim crates/sruja-core/src/export/dot/builder.rs
    ```
 
 2. **Rebuild WASM**:

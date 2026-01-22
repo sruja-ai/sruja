@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 
 use sruja_diagnostics::{Diagnostic, Severity};
-use sruja_language::{collect_elements, ElementDef, ElementKind, Program};
+use sruja_language::{collect_elements, ElementKind, Program};
 
 use crate::validator::Rule;
 

@@ -1,18 +1,25 @@
 //! Sruja WASM bindings for browser usage
 //!
 //! This crate provides WebAssembly bindings for Sruja functionality,
-//! allowing the website and other frontend applications to use Sruja
-//! in the browser.
+//! allowing to website and other frontend applications to use Sruja
+//! in browser.
 
 use wasm_bindgen::prelude::*;
 use sruja_language::Parser;
 use sruja_engine::Validator;
 use sruja_export::json::Exporter as JsonExporter;
-use sruja_export::mermaid::{MermaidExporter, MermaidConfig};
+use sruja_export::mermaid::{MermaidExporter};
+use sruja_export::mermaid::exporter::MermaidConfig;
 use sruja_export::dot::{DotExporter, DotConfig};
 use sruja_export::markdown::{MarkdownExporter, MarkdownOptions};
-use sruja_export::dsl::DslPrinter;
 use serde_json::json;
+
+/// Initialize panic hook for better error messages in WASM
+/// This should be called once when WASM module is loaded
+#[wasm_bindgen]
+pub fn init_panic_hook() {
+    console_error_panic_hook::set_once();
+}
 
 #[wasm_bindgen]
 extern "C" {
@@ -20,24 +27,31 @@ extern "C" {
     fn log(s: &str);
 }
 
-macro_rules! console_log {
-    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
-}
+// Unused macro - kept for potential future debugging
+// macro_rules! console_log {
+//     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+// }
 
 #[wasm_bindgen]
 pub fn sruja_dsl_to_model(dsl: &str, filename: Option<String>) -> Result<String, JsValue> {
-    let parser = Parser::new(filename.unwrap_or_else(|| "input.sruja".to_string()));
+    let filename = filename.unwrap_or_else(|| "input.sruja".to_string());
+    let parser = Parser::new(filename.clone());
     let program = parser.parse(dsl).map_err(|e| {
-        JsValue::from_str(&format!("Parse error: {:?}", e))
+        let error_msg = if e.is_empty() {
+            "Parse error: unknown error".to_string()
+        } else {
+            format!("Parse error: {}", e.iter()
+                .map(|d| format!("{}: {}", d.code, d.message))
+                .collect::<Vec<_>>()
+                .join("; "))
+        };
+        JsValue::from_str(&error_msg)
     })?;
     
     let exporter = JsonExporter::new();
-    let result = exporter.export(&program).map_err(|e| {
-        JsValue::from_str(&format!("Export error: {:?}", e))
-    })?;
-    
-    serde_json::to_string(&result).map_err(|e| {
-        JsValue::from_str(&format!("JSON error: {:?}", e))
+    // export() already returns a JSON string, so we return it directly
+    exporter.export(&program).map_err(|e| {
+        JsValue::from_str(&format!("Export error: {}", e))
     })
 }
 
@@ -65,16 +79,47 @@ pub fn sruja_dsl_to_mermaid(dsl: &str, config_json: Option<String>) -> Result<St
 }
 
 #[wasm_bindgen]
-pub fn sruja_dsl_to_dot(dsl: &str, view_level: Option<u8>, target_id: Option<String>) -> Result<String, JsValue> {
-    let parser = Parser::new("input.sruja".to_string());
+pub fn sruja_dsl_to_dot(
+    dsl: &str,
+    view_level: Option<u8>,
+    target_id: Option<String>,
+    node_sizes_json: Option<String>,
+    view_id: Option<String>,
+    filename: Option<String>,
+) -> Result<String, JsValue> {
+    let filename = filename.unwrap_or_else(|| "input.sruja".to_string());
+    let parser = Parser::new(filename.clone());
     let program = parser.parse(dsl).map_err(|e| {
         JsValue::from_str(&format!("Parse error: {:?}", e))
     })?;
     
+    // Parse node_sizes JSON if provided
+    let mut node_sizes = std::collections::HashMap::new();
+    if let Some(sizes_json) = node_sizes_json {
+        if let Ok(sizes) = serde_json::from_str::<serde_json::Value>(&sizes_json) {
+            if let Some(obj) = sizes.as_object() {
+                for (key, value) in obj {
+                    if let Some(arr) = value.as_array() {
+                        if arr.len() >= 2 {
+                            if let (Some(w), Some(h)) = (arr.get(0).and_then(|v| v.as_f64()), arr.get(1).and_then(|v| v.as_f64())) {
+                                node_sizes.insert(key.clone(), (w, h));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
     let dot_config = DotConfig {
+        rank_dir: "TB".to_string(),
+        node_sep: 0.5,
+        rank_sep: 0.8,
         view_level: view_level.unwrap_or(1),
         target_id,
-        ..DotConfig::default()
+        node_sizes,
+        view_id,
+        filename: Some(filename),
     };
     
     let exporter = DotExporter::new(dot_config);
@@ -120,7 +165,8 @@ pub fn sruja_model_to_dsl(model_json: &str) -> Result<String, JsValue> {
 
 #[wasm_bindgen]
 pub fn sruja_get_diagnostics(dsl: &str, filename: Option<String>) -> Result<String, JsValue> {
-    let parser = Parser::new(filename.unwrap_or_else(|| "input.sruja".to_string()));
+    let filename = filename.unwrap_or_else(|| "input.sruja".to_string());
+    let parser = Parser::new(filename.clone());
     let (parse_diagnostics, program) = match parser.parse(dsl) {
         Ok(p) => (Vec::new(), Some(p)),
         Err(diags) => (diags, None),
@@ -136,10 +182,12 @@ pub fn sruja_get_diagnostics(dsl: &str, filename: Option<String>) -> Result<Stri
     }
     
     let diagnostics_json: Vec<serde_json::Value> = all_diagnostics.iter().map(|d| {
+        // We currently only have (line, column) in `SourceLocation`; use a 1-character span.
+        let end_character = d.location.column.saturating_add(1);
         json!({
             "range": {
                 "start": {"line": d.location.line as u32, "character": d.location.column as u32},
-                "end": {"line": d.location.line as u32, "character": (d.location.column + d.location.length) as u32}
+                "end": {"line": d.location.line as u32, "character": end_character as u32}
             },
             "severity": if d.severity == sruja_diagnostics::Severity::Error { 1 } else { 2 },
             "code": d.code.clone(),
@@ -165,7 +213,7 @@ pub fn sruja_calculate_architecture_score(dsl: &str) -> Result<String, JsValue> 
     let diagnostics = validator.validate_sync(&program);
     
     // Calculate score (100 - deductions)
-    let mut score = 100;
+    let mut score: i32 = 100;
     let mut deductions = Vec::new();
     
     for diag in &diagnostics {

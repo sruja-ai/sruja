@@ -14,17 +14,20 @@ Integrate Sruja into your CI/CD pipeline to automatically validate architecture,
 ## Why CI/CD Integration?
 
 **For DevOps teams:**
+
 - Catch architecture violations before they reach production
 - Automate documentation generation
 - Enforce architectural standards across teams
 - Reduce manual review overhead
 
 **For software architects:**
+
 - Ensure architectural decisions are documented
 - Prevent architectural drift
 - Scale governance across multiple teams
 
 **For product teams:**
+
 - Keep architecture docs up-to-date automatically
 - Track architecture changes over time
 - Ensure compliance with requirements
@@ -34,6 +37,7 @@ Integrate Sruja into your CI/CD pipeline to automatically validate architecture,
 **Challenge**: A team of 50 engineers across 10 microservices. Architecture documentation is outdated, and violations happen frequently.
 
 **Solution**: Integrate Sruja validation into CI/CD to:
+
 - Validate architecture on every PR
 - Generate updated documentation automatically
 - Block merges if constraints are violated
@@ -95,7 +99,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history for diff
+          fetch-depth: 0 # Full history for diff
 
       - name: Install Sruja
         run: |
@@ -172,10 +176,9 @@ stages:
 
 validate-architecture:
   stage: validate
-  image: golang:1.21
+  image: rust:1.70
   before_script:
-    - curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-    - export PATH="$HOME/go/bin:$PATH"
+    - cargo install sruja --git https://github.com/sruja-ai/sruja
   script:
     - sruja lint architecture.sruja
     - sruja export markdown architecture.sruja > architecture.md
@@ -195,7 +198,7 @@ validate-architecture:
 ```groovy
 pipeline {
     agent any
-    
+
     stages {
         stage('Validate Architecture') {
             steps {
@@ -206,7 +209,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Generate Documentation') {
             steps {
                 sh '''
@@ -216,14 +219,14 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Archive Documentation') {
             steps {
                 archiveArtifacts artifacts: 'architecture.*', fingerprint: true
             }
         }
     }
-    
+
     post {
         failure {
             emailext (
@@ -244,33 +247,31 @@ version: 2.1
 jobs:
   validate-architecture:
     docker:
-      - image: golang:1.21
+      - image: rust:1.70
     steps:
       - checkout
       - run:
           name: Install Sruja
           command: |
-            curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-            export PATH="$HOME/go/bin:$PATH"
+            cargo install sruja --git https://github.com/sruja-ai/sruja
       - run:
           name: Validate
           command: |
-            export PATH="$HOME/go/bin:$PATH"
             sruja lint architecture.sruja
       - run:
           name: Generate Docs
           command: |
-            export PATH="$HOME/go/bin:$PATH"
             sruja export markdown architecture.sruja > architecture.md
       - store_artifacts:
           path: architecture.md
+```
 
 workflows:
-  version: 2
-  validate:
-    jobs:
-      - validate-architecture
-```
+version: 2
+validate:
+jobs: - validate-architecture
+
+````
 
 ## Pre-commit Hooks
 
@@ -300,7 +301,7 @@ mv architecture.formatted.sruja architecture.sruja
 git add architecture.sruja
 
 exit 0
-```
+````
 
 Or use pre-commit framework:
 
@@ -328,7 +329,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'architecture.sruja'
+      - "architecture.sruja"
 
 jobs:
   update-docs:
@@ -367,7 +368,7 @@ name: Track Architecture Changes
 on:
   pull_request:
     paths:
-      - 'architecture.sruja'
+      - "architecture.sruja"
 
 jobs:
   track-changes:
@@ -386,15 +387,15 @@ jobs:
         run: |
           # Get base version
           git show origin/${{ github.base_ref }}:architecture.sruja > base.sruja
-          
+
           # Export both versions
           sruja export json base.sruja > base.json
           sruja export json architecture.sruja > current.json
-          
+
           # Compare (using jq or custom script)
           echo "## Architecture Changes" >> $GITHUB_STEP_SUMMARY
           echo "Comparing base and current architecture..." >> $GITHUB_STEP_SUMMARY
-          
+
       - name: Comment Changes
         uses: actions/github-script@v6
         with:
@@ -492,6 +493,7 @@ jobs:
 ## Exercise: Set Up CI/CD Integration
 
 **Tasks:**
+
 1. Choose a CI/CD platform (GitHub Actions, GitLab CI, etc.)
 2. Create a workflow that validates architecture on every PR
 3. Add documentation generation

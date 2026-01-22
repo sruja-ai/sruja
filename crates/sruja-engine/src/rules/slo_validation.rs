@@ -5,7 +5,7 @@
 //! - Emits CODE_VALIDATION_RULE_ERROR diagnostics with severity aligned to Go.
 
 use sruja_diagnostics::{Diagnostic, Severity};
-use sruja_language::{collect_elements, ElementDef, Program, SloBlock};
+use sruja_language::{collect_elements, Program, SloBlock};
 
 use crate::validator::Rule;
 
@@ -285,7 +285,8 @@ fn is_valid_duration(s: &str) -> bool {
 }
 
 fn is_valid_time_window(s: &str) -> bool {
-    let parts: Vec<&str> = s.trim().to_lowercase().split_whitespace().collect();
+    let lower = s.trim().to_lowercase();
+    let parts: Vec<&str> = lower.split_whitespace().collect();
     if parts.len() != 2 {
         return false;
     }
