@@ -5,6 +5,7 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "Parser and AST implementation for Sruja DSL"
 
 [dependencies]
 sruja-diagnostics = { path = "../sruja-diagnostics" }

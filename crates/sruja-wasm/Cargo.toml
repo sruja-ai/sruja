@@ -5,6 +5,7 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "WebAssembly bindings for Sruja DSL parser and validation engine"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

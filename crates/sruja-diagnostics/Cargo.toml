@@ -5,6 +5,7 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "Diagnostics and error reporting for Sruja DSL parsing and validation"
 
 [lib]
 name = "sruja_diagnostics"

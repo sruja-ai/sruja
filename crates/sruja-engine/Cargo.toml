@@ -5,6 +5,7 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "Validation engine with rules for Sruja DSL architecture analysis"
 
 [dependencies]
 sruja-diagnostics = { path = "../sruja-diagnostics" }

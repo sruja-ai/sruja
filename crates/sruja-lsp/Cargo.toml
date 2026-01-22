@@ -5,6 +5,7 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "Language Server Protocol implementation for Sruja DSL with IDE integration"
 
 [dependencies]
 sruja-diagnostics = { path = "../sruja-diagnostics" }
