@@ -32,7 +32,7 @@ function createWasmError(errorMsg: string): string {
 WASM parser failed: ${errorMsg}
 
 **Troubleshooting:**
-1. Ensure WASM files are bundled with extension (\`wasm/sruja.wasm\` and \`wasm/wasm_exec.js\`)
+1. Ensure WASM files are bundled with extension (\`wasm/rust/sruja_wasm.js\` and \`wasm/rust/sruja_wasm_bg.wasm\`)
 2. Check that extension was built correctly: \`npm run vscode:prepublish\`
 3. Verify WASM files exist in extension directory
 4. Try rebuilding: \`make wasm && npm run vscode:prepublish\``;

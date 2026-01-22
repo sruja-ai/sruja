@@ -127,7 +127,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build && npm run copy-wasm",
-    "copy-wasm": "mkdir -p wasm && (cp ../../apps/website/public/wasm/sruja.wasm.gz wasm/ 2>/dev/null && echo '✅ Copied compressed WASM (1.4M vs 4.8M)' || (cp ../../apps/website/public/wasm/sruja.wasm wasm/ 2>/dev/null && echo '⚠️  Using uncompressed WASM (run make wasm to generate compressed version)') || echo 'Warning: sruja.wasm not found, run make wasm first') && (cp ../../apps/website/public/wasm/wasm_exec.js wasm/ 2>/dev/null || echo 'Warning: wasm_exec.js not found')",
+    "copy-wasm": "mkdir -p wasm/rust && (cp ../../apps/website/public/wasm/rust/sruja_wasm.js wasm/rust/ && cp ../../apps/website/public/wasm/rust/sruja_wasm_bg.wasm wasm/rust/ && echo '✅ Copied Rust WASM files') || echo 'Warning: Rust WASM files not found, run make wasm first'",
     "compile": "tsc -p ./",
     "bundle": "tsx ./scripts/bundle.mts",
     "watch": "tsc -watch -p ./",

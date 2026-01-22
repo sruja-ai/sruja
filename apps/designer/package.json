@@ -14,7 +14,7 @@
     "dev:rebuild-wasm": "cd ../.. && make wasm && cd apps/designer && npm run copy:wasm && npm run dev",
     "build": "npm run typecheck && npm run copy:examples && npm run copy:wasm && vite build",
     "copy:examples": "rm -rf public/examples && cp -R ../../examples public/examples",
-    "copy:wasm": "mkdir -p public/wasm && cp ../../apps/website/public/wasm/sruja.wasm public/wasm/ && cp ../../apps/website/public/wasm/wasm_exec.js public/wasm/",
+    "copy:wasm": "mkdir -p public/wasm/rust && cp ../../apps/website/public/wasm/rust/sruja_wasm.js public/wasm/rust/ && cp ../../apps/website/public/wasm/rust/sruja_wasm_bg.wasm public/wasm/rust/",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "test": "vitest run",

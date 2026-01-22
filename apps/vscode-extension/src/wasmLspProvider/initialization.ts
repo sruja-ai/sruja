@@ -9,7 +9,7 @@ let wasmApi: Awaited<ReturnType<typeof initWasmNode>> | null = null;
 
 /**
  * Gets the current WASM API instance.
- * 
+ *
  * @returns The WASM API instance or null if not initialized
  */
 export function getWasmApi() {
@@ -18,7 +18,7 @@ export function getWasmApi() {
 
 /**
  * Sets the WASM API instance (for testing or re-initialization).
- * 
+ *
  * @param api - The WASM API instance to set
  */
 export function setWasmApi(api: Awaited<ReturnType<typeof initWasmNode>> | null) {
@@ -27,35 +27,33 @@ export function setWasmApi(api: Awaited<ReturnType<typeof initWasmNode>> | null)
 
 /**
  * Verifies that required WASM files exist.
- * 
+ *
  * @param extensionPath - Path to the VS Code extension
  * @throws Error if required files are missing
  */
 function verifyWasmFiles(extensionPath: string): void {
   const wasmPath = path.join(extensionPath, "wasm", "sruja.wasm.gz");
   const wasmPathUncompressed = path.join(extensionPath, "wasm", "sruja.wasm");
-  const wasmExecPath = path.join(extensionPath, "wasm", "wasm_exec.js");
+  const wasmJsPath = path.join(extensionPath, "wasm", "rust", "sruja_wasm.js");
+  const wasmBgPath = path.join(extensionPath, "wasm", "rust", "sruja_wasm_bg.wasm");
 
   log(`Extension path: ${extensionPath}`);
   log(`Checking WASM files:`);
-  log(`  - ${wasmPath}: ${fs.existsSync(wasmPath) ? "✅ Found" : "❌ Missing"}`);
-  log(
-    `  - ${wasmPathUncompressed}: ${fs.existsSync(wasmPathUncompressed) ? "✅ Found" : "❌ Missing"}`
-  );
-  log(`  - ${wasmExecPath}: ${fs.existsSync(wasmExecPath) ? "✅ Found" : "❌ Missing"}`);
+  log(`  - ${wasmJsPath}: ${fs.existsSync(wasmJsPath) ? "✅ Found" : "❌ Missing"}`);
+  log(`  - ${wasmBgPath}: ${fs.existsSync(wasmBgPath) ? "✅ Found" : "❌ Missing"}`);
 
   if (!fs.existsSync(wasmPath) && !fs.existsSync(wasmPathUncompressed)) {
     throw new Error(`WASM file not found. Expected at: ${wasmPath} or ${wasmPathUncompressed}`);
   }
 
-  if (!fs.existsSync(wasmExecPath)) {
-    throw new Error(`wasm_exec.js not found. Expected at: ${wasmExecPath}`);
+  if (!fs.existsSync(wasmJsPath) || !fs.existsSync(wasmBgPath)) {
+    throw new Error(`Rust WASM files not found. Expected at: ${wasmJsPath} and ${wasmBgPath}`);
   }
 }
 
 /**
  * Tests all WASM LSP functions to verify they work correctly.
- * 
+ *
  * @returns Record of test results for each function
  */
 async function testWasmFunctions(): Promise<Record<string, { success: boolean; error?: string }>> {
@@ -212,10 +210,10 @@ async function testWasmFunctions(): Promise<Record<string, { success: boolean; e
 
 /**
  * Initializes the WASM LSP module.
- * 
+ *
  * @param context - VS Code extension context
  * @throws Error if initialization fails
- * 
+ *
  * @remarks
  * This function:
  * 1. Creates output channel for logging
@@ -241,7 +239,7 @@ export async function initializeWasm(context: vscode.ExtensionContext): Promise<
   log("WASM files verified. Initializing WASM module...");
   log("Calling initWasmNode...");
   const initStartTime = Date.now();
-  
+
   // Show progress in output channel
   log("⏳ Loading WASM module (this may take a few seconds on first load)...");
 
@@ -258,9 +256,12 @@ export async function initializeWasm(context: vscode.ExtensionContext): Promise<
     wasmApi = await Promise.race([initPromise, timeoutPromise]);
     const initDuration = Date.now() - initStartTime;
     log(`✅ WASM module loaded successfully (took ${initDuration}ms)`);
-    
+
     if (initDuration > 2000) {
-      log(`⚠️  WASM loading took ${initDuration}ms - consider using compressed WASM for faster startup`, "warn");
+      log(
+        `⚠️  WASM loading took ${initDuration}ms - consider using compressed WASM for faster startup`,
+        "warn"
+      );
     }
   } catch (initError) {
     const initDuration = Date.now() - initStartTime;
@@ -292,4 +293,3 @@ export async function initializeWasm(context: vscode.ExtensionContext): Promise<
   // Test all LSP functions
   await testWasmFunctions();
 }
-

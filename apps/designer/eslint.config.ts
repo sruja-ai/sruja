@@ -11,7 +11,7 @@ export default tsConfig(
     ignores: [
       "dist",
       "postcss.config.cjs",
-      "public/wasm/wasm_exec.js",
+      "public/wasm/rust/sruja_wasm.js",
       "scripts/**/*",
       "eslint_designer_output.txt",
     ],

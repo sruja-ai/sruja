@@ -5,8 +5,8 @@
 ../**/*
 ../../*
 ../../**/*
-!../../apps/website/public/wasm/sruja.wasm.gz
-!../../apps/website/public/wasm/wasm_exec.js
+!../../apps/website/public/wasm/rust/sruja_wasm.js
+!../../apps/website/public/wasm/rust/sruja_wasm_bg.wasm
 
 # Exclude source files (only include compiled output)
 src/**
@@ -40,8 +40,8 @@ tests/**
 ../../apps/storybook/**
 ../../apps/vscode-extension/**
 ../../apps/website/**
-!../../apps/website/public/wasm/sruja.wasm.gz
-!../../apps/website/public/wasm/wasm_exec.js
+!../../apps/website/public/wasm/rust/sruja_wasm.js
+!../../apps/website/public/wasm/rust/sruja_wasm_bg.wasm
 
 # Exclude packages (we only need the compiled output)
 ../../packages/**
@@ -82,4 +82,3 @@ tests/**
 # - LICENSE.txt
 # - sruja-logo.png
 # - package.json (required)
-
