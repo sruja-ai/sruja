@@ -10,6 +10,7 @@ repository.workspace = true
 sruja-diagnostics = { path = "../sruja-diagnostics" }
 sruja-language = { path = "../sruja-language" }
 sruja-engine = { path = "../sruja-engine" }
+sruja-export = { path = "../sruja-export" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

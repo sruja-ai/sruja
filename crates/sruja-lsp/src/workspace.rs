@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use sruja_language::{Program, Parser};
+use sruja_language::{Parser, Program};
 use tower_lsp::lsp_types::*;
 
 /// Document in the workspace
@@ -25,6 +25,26 @@ impl Document {
             text,
             program: None,
         }
+    }
+
+    /// Get the document URI
+    pub fn uri(&self) -> &Url {
+        &self.uri
+    }
+
+    /// Get the document version
+    pub fn version(&self) -> i32 {
+        self.version
+    }
+
+    /// Get the document text
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    /// Get the parsed program if available
+    pub fn program(&self) -> Option<&Program> {
+        self.program.as_ref()
     }
 
     pub fn apply_change(&mut self, change: TextDocumentContentChangeEvent) {
@@ -47,7 +67,8 @@ impl Document {
                 // Apply change
                 let start = start_offset.min(self.text.len());
                 let end = end_offset.min(self.text.len());
-                let mut new_text = String::with_capacity(self.text.len() - (end - start) + change.text.len());
+                let mut new_text =
+                    String::with_capacity(self.text.len() - (end - start) + change.text.len());
                 new_text.push_str(&self.text[..start]);
                 new_text.push_str(&change.text);
                 new_text.push_str(&self.text[end..]);
@@ -99,7 +120,12 @@ impl Workspace {
         self.documents.write().await.insert(uri, doc);
     }
 
-    pub async fn update_document(&self, uri: &Url, version: i32, changes: Vec<TextDocumentContentChangeEvent>) {
+    pub async fn update_document(
+        &self,
+        uri: &Url,
+        version: i32,
+        changes: Vec<TextDocumentContentChangeEvent>,
+    ) {
         let mut docs = self.documents.write().await;
         if let Some(doc) = docs.get_mut(uri) {
             doc.version = version;
@@ -127,8 +153,8 @@ impl Workspace {
     }
 
     pub async fn get_line(&self, uri: &Url, line: u32) -> Option<String> {
-        let doc = self.documents.read().await.get(uri)?;
-        doc.text.lines().nth(line as usize).map(|s| s.to_string())
+        let text = self.documents.read().await.get(uri)?.text.clone();
+        text.lines().nth(line as usize).map(|s| s.to_string())
     }
 }
 

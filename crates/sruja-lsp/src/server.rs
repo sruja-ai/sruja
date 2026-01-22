@@ -6,10 +6,10 @@
 use async_trait::async_trait;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
-use tower_lsp::{Client, LanguageServer, LspService, Server};
+use tower_lsp::{Client, ClientSocket, LanguageServer, LspService, Server};
 
 use sruja_engine::Validator;
-use sruja_language::Parser;
+use sruja_language::{Parser, Program};
 
 use crate::diagnostics::convert_diagnostics_to_lsp;
 use crate::features::*;
@@ -26,7 +26,7 @@ impl SrujaLanguageServer {
     pub fn new(client: Client) -> Self {
         let mut validator = Validator::new();
         validator.register_default_rules();
-        
+
         Self {
             client,
             workspace: Workspace::new(),
@@ -43,7 +43,7 @@ impl SrujaLanguageServer {
         // Parse the document
         let parser = Parser::new(uri.to_string());
         let mut diagnostics = Vec::new();
-        
+
         match parser.parse(&text) {
             Ok(program) => {
                 // Get parser diagnostics (none if successful)
@@ -53,7 +53,7 @@ impl SrujaLanguageServer {
             }
             Err(parse_diagnostics) => {
                 diagnostics = convert_diagnostics_to_lsp(&parse_diagnostics);
-                
+
                 // Try to parse partially for validation
                 // For now, skip validation if parse failed
             }
@@ -78,7 +78,7 @@ impl LanguageServer for SrujaLanguageServer {
                 text_document_sync: Some(TextDocumentSyncCapability::Options(
                     TextDocumentSyncOptions {
                         open_close: Some(true),
-                        change: Some(TextDocumentSyncKind::INCR),
+                        change: Some(TextDocumentSyncKind::INCREMENTAL),
                         will_save: None,
                         will_save_wait_until: None,
                         save: None,
@@ -93,7 +93,6 @@ impl LanguageServer for SrujaLanguageServer {
                 definition_provider: Some(OneOf::Left(true)),
                 references_provider: Some(OneOf::Left(true)),
                 document_symbol_provider: Some(OneOf::Left(true)),
-                workspace_symbol_provider: Some(OneOf::Left(true)),
                 document_formatting_provider: Some(OneOf::Left(true)),
                 rename_provider: Some(OneOf::Left(true)),
                 code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
@@ -103,7 +102,9 @@ impl LanguageServer for SrujaLanguageServer {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        self.client.log_message(MessageType::INFO, "Sruja LSP server initialized").await;
+        self.client
+            .log_message(MessageType::INFO, "Sruja LSP server initialized")
+            .await;
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -113,7 +114,11 @@ impl LanguageServer for SrujaLanguageServer {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let uri = params.text_document.uri.clone();
         self.workspace
-            .add_document(uri.clone(), params.text_document.text, params.text_document.version)
+            .add_document(
+                uri.clone(),
+                params.text_document.text,
+                params.text_document.version,
+            )
             .await;
         self.publish_diagnostics(uri).await;
     }
@@ -130,23 +135,25 @@ impl LanguageServer for SrujaLanguageServer {
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
         let uri = params.text_document.uri.clone();
         self.workspace.remove_document(&uri).await;
-        
+
         // Clear diagnostics
-        self.client
-            .publish_diagnostics(uri, vec![], None)
-            .await;
+        self.client.publish_diagnostics(uri, vec![], None).await;
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-        let uri = params.text_document_position_params.text_document.uri.clone();
+        let uri = params
+            .text_document_position_params
+            .text_document
+            .uri
+            .clone();
         let doc = match self.workspace.get_document(&uri).await {
             Some(d) => d,
             None => return Ok(None),
         };
-        
+
         let line = params.text_document_position_params.position.line as usize;
         let character = params.text_document_position_params.position.character as usize;
-        
+
         // Parse program
         let text = doc.text.clone();
         let parser = Parser::new(uri.to_string());
@@ -154,7 +161,7 @@ impl LanguageServer for SrujaLanguageServer {
             Ok(p) => p,
             Err(_) => return Ok(None),
         };
-        
+
         Ok(get_hover(&doc, &program, line, character))
     }
 
@@ -164,10 +171,10 @@ impl LanguageServer for SrujaLanguageServer {
             Some(d) => d,
             None => return Ok(None),
         };
-        
+
         let line = params.text_document_position.position.line as usize;
         let character = params.text_document_position.position.character as usize;
-        
+
         // Parse program
         let text = doc.text.clone();
         let parser = Parser::new(uri.to_string());
@@ -175,33 +182,40 @@ impl LanguageServer for SrujaLanguageServer {
             Ok(p) => p,
             Err(_) => Program::default(),
         };
-        
+
         let items = get_completion(&doc, &program, line, character);
         Ok(Some(CompletionResponse::Array(items)))
     }
 
-    async fn goto_definition(&self, params: GotoDefinitionParams) -> Result<Option<GotoDefinitionResponse>> {
-        let uri = params.text_document_position_params.text_document.uri.clone();
+    async fn goto_definition(
+        &self,
+        params: GotoDefinitionParams,
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        let uri = params
+            .text_document_position_params
+            .text_document
+            .uri
+            .clone();
         let doc = match self.workspace.get_document(&uri).await {
             Some(d) => d,
             None => return Ok(None),
         };
-        
+
         let line = params.text_document_position_params.position.line as usize;
         let character = params.text_document_position_params.position.character as usize;
-        
+
         let line_text = match doc.get_line(line) {
             Some(l) => l,
             None => return Ok(None),
         };
-        
+
         let (start, end) = word_bounds(&line_text, character);
         let word = line_text[start..end].trim();
-        
+
         if word.is_empty() {
             return Ok(None);
         }
-        
+
         // Parse program
         let text = doc.text.clone();
         let parser = Parser::new(uri.to_string());
@@ -209,7 +223,7 @@ impl LanguageServer for SrujaLanguageServer {
             Ok(p) => p,
             Err(_) => return Ok(None),
         };
-        
+
         if let Some(location) = find_definition(&doc, &program, word) {
             Ok(Some(GotoDefinitionResponse::Scalar(location)))
         } else {
@@ -223,22 +237,22 @@ impl LanguageServer for SrujaLanguageServer {
             Some(d) => d,
             None => return Ok(None),
         };
-        
+
         let line = params.text_document_position.position.line as usize;
         let character = params.text_document_position.position.character as usize;
-        
+
         let line_text = match doc.get_line(line) {
             Some(l) => l,
             None => return Ok(None),
         };
-        
+
         let (start, end) = word_bounds(&line_text, character);
         let word = line_text[start..end].trim();
-        
+
         if word.is_empty() {
             return Ok(None);
         }
-        
+
         // Parse program
         let text = doc.text.clone();
         let parser = Parser::new(uri.to_string());
@@ -246,18 +260,21 @@ impl LanguageServer for SrujaLanguageServer {
             Ok(p) => p,
             Err(_) => return Ok(None),
         };
-        
+
         let locations = find_references(&doc, &program, word);
         Ok(Some(locations))
     }
 
-    async fn document_symbol(&self, params: DocumentSymbolParams) -> Result<Option<DocumentSymbolResponse>> {
+    async fn document_symbol(
+        &self,
+        params: DocumentSymbolParams,
+    ) -> Result<Option<DocumentSymbolResponse>> {
         let uri = params.text_document.uri.clone();
         let doc = match self.workspace.get_document(&uri).await {
             Some(d) => d,
             None => return Ok(None),
         };
-        
+
         // Parse program
         let text = doc.text.clone();
         let parser = Parser::new(uri.to_string());
@@ -265,14 +282,9 @@ impl LanguageServer for SrujaLanguageServer {
             Ok(p) => p,
             Err(_) => return Ok(None),
         };
-        
+
         let symbols = get_document_symbols(&doc, &program);
         Ok(Some(DocumentSymbolResponse::Nested(symbols)))
-    }
-
-    async fn workspace_symbol(&self, _params: WorkspaceSymbolParams) -> Result<Option<Vec<SymbolInformation>>> {
-        // TODO: Implement workspace symbols (search across all files)
-        Ok(None)
     }
 
     async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
@@ -281,7 +293,7 @@ impl LanguageServer for SrujaLanguageServer {
             Some(d) => d,
             None => return Ok(None),
         };
-        
+
         // Parse program
         let text = doc.text.clone();
         let parser = Parser::new(uri.to_string());
@@ -289,8 +301,8 @@ impl LanguageServer for SrujaLanguageServer {
             Ok(p) => p,
             Err(_) => return Ok(None),
         };
-        
-        format_document(&doc, &program)
+
+        Ok(format_document(&doc, &program))
     }
 
     async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
@@ -299,22 +311,22 @@ impl LanguageServer for SrujaLanguageServer {
             Some(d) => d,
             None => return Ok(None),
         };
-        
+
         let line = params.text_document_position.position.line as usize;
         let character = params.text_document_position.position.character as usize;
-        
+
         let line_text = match doc.get_line(line) {
             Some(l) => l,
             None => return Ok(None),
         };
-        
+
         let (start, end) = word_bounds(&line_text, character);
         let old_name = line_text[start..end].trim();
-        
+
         if old_name.is_empty() {
             return Ok(None);
         }
-        
+
         // Find all references
         let text = doc.text.clone();
         let parser = Parser::new(uri.to_string());
@@ -322,22 +334,22 @@ impl LanguageServer for SrujaLanguageServer {
             Ok(p) => p,
             Err(_) => return Ok(None),
         };
-        
+
         let locations = find_references(&doc, &program, old_name);
-        
+
         // Create text edits
         let mut changes = std::collections::HashMap::new();
         let mut edits = Vec::new();
-        
+
         for location in locations {
             edits.push(TextEdit {
                 range: location.range,
                 new_text: params.new_name.clone(),
             });
         }
-        
+
         changes.insert(uri, edits);
-        
+
         Ok(Some(WorkspaceEdit {
             changes: Some(changes),
             document_changes: None,
@@ -352,7 +364,7 @@ impl LanguageServer for SrujaLanguageServer {
 }
 
 /// Create and start the LSP server
-pub fn create_lsp_service() -> LspService<SrujaLanguageServer> {
+pub fn create_lsp_service() -> (LspService<SrujaLanguageServer>, ClientSocket) {
     LspService::new(|client| SrujaLanguageServer::new(client))
 }
 
@@ -363,4 +375,5 @@ pub async fn run_stdio() -> Result<()> {
 
     let (service, socket) = create_lsp_service();
     Server::new(stdin, stdout, socket).serve(service).await;
+    Ok(())
 }

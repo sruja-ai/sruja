@@ -9,9 +9,9 @@ use sruja_engine::Validator;
 use sruja_export::context::ContextExporter;
 use sruja_export::dot::{DotConfig, DotExporter};
 use sruja_export::dsl::DslPrinter;
-use sruja_export::json::{ExportError as JsonExportError, Exporter as JsonExporter};
+use sruja_export::json::exporter::{ExportError as JsonExportError, Exporter as JsonExporter};
 use sruja_export::markdown::{MarkdownExporter, MarkdownOptions};
-use sruja_export::mermaid::{MermaidConfig, MermaidExporter};
+use sruja_export::mermaid::exporter::{MermaidConfig, MermaidExporter};
 use sruja_language::Parser;
 use sruja_lsp::server::run_stdio;
 use thiserror::Error;
@@ -26,6 +26,8 @@ pub enum CliError {
     Validation(String),
     #[error("Export error: {0}")]
     Export(#[from] JsonExportError),
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
 }
 
 /// Print version information
@@ -183,7 +185,7 @@ pub async fn export(
 }
 
 /// Format a Sruja file
-pub async fn fmt(file: &str) -> Result<(), CliError> {
+pub async fn fmt(_file: &str) -> Result<(), CliError> {
     // TODO: Implement formatting (pretty-print using DSL printer)
     eprintln!("Formatting not yet implemented");
     Ok(())
@@ -553,7 +555,7 @@ pub async fn score(file: Option<&str>) -> Result<(), CliError> {
     let diagnostics = validator.validate_sync(&program);
 
     // Calculate score (100 - deductions)
-    let mut score = 100;
+    let mut score: u32 = 100;
     let mut deductions = Vec::new();
 
     for diag in &diagnostics {
@@ -604,9 +606,9 @@ pub async fn score(file: Option<&str>) -> Result<(), CliError> {
 /// Change management commands
 pub async fn change_create(
     title: &str,
-    description: Option<&str>,
-    context: Option<&str>,
-    status: Option<&str>,
+    description: Option<String>,
+    context: Option<String>,
+    status: Option<String>,
 ) -> Result<(), CliError> {
     use chrono::Utc;
 
@@ -616,9 +618,15 @@ pub async fn change_create(
     // Create changes directory if it doesn't exist
     fs::create_dir_all("changes")?;
 
-    let status_value = status.unwrap_or("proposed");
-    let desc_value = description.unwrap_or("TODO: Add description");
-    let context_value = context.unwrap_or("TODO: Add context");
+    let status_value = status.as_ref().map(|s| s.as_str()).unwrap_or("proposed");
+    let desc_value = description
+        .as_ref()
+        .map(|s| s.as_str())
+        .unwrap_or("TODO: Add description");
+    let context_value = context
+        .as_ref()
+        .map(|s| s.as_str())
+        .unwrap_or("TODO: Add context");
 
     let template = format!(
         r#"# {title}
@@ -627,11 +635,14 @@ pub async fn change_create(
 **Date:** {date}
 **Author:** {author}
 
+## Description
+{description}
+
 ## Context
 {context}
 
 ## Decision
-<!-- Describe the architectural decision here -->
+<!-- Describe your architectural decision here -->
 
 ## Consequences
 ### Positive
@@ -646,6 +657,7 @@ pub async fn change_create(
         author = std::env::var("USER")
             .or_else(|_| std::env::var("USERNAME"))
             .unwrap_or_else(|_| "Unknown".to_string()),
+        description = desc_value,
         context = context_value
     );
 
@@ -713,7 +725,8 @@ pub async fn validate(
 
     // Check if it's a directory
     if file_path.is_dir() {
-        return validate_directory(file, constraints, fail_on_violations, format_json).await;
+        let files = collect_sruja_files(file_path)?;
+        return validate_files(&files, constraints, fail_on_violations, format_json).await;
     }
 
     // Validate single file
@@ -814,41 +827,51 @@ pub async fn validate(
     }
 }
 
-/// Validate all .sruja files in a directory
-async fn validate_directory(
-    dir: &Path,
-    constraints: Vec<String>,
-    fail_on_violations: bool,
-    format_json: bool,
-) -> Result<(), CliError> {
+/// Collect all .sruja files from a directory recursively
+fn collect_sruja_files(dir: &Path) -> Result<Vec<String>, CliError> {
+    let mut files = Vec::new();
     let entries = fs::read_dir(dir)?;
-    let mut results = Vec::new();
 
     for entry in entries {
         let entry = entry?;
         let path = entry.path();
 
         if path.is_dir() {
-            // Recursively validate subdirectories
-            validate_directory(&path, constraints, fail_on_violations, format_json).await?;
+            // Recursively collect from subdirectories
+            let sub_files = collect_sruja_files(&path)?;
+            files.extend(sub_files);
         } else if let Some(ext) = path.extension() {
-            if ext == "sruja" {
-                let file_path = path.to_string_lossy();
-                match validate(&file_path, constraints, false, true).await {
-                    Ok(()) => {
-                        results.push((file_path.clone(), true));
-                    }
-                    Err(_) => {
-                        results.push((file_path.clone(), false));
-                    }
-                }
+            if ext == std::ffi::OsStr::new("sruja") {
+                files.push(path.to_string_lossy().to_string());
+            }
+        }
+    }
+
+    Ok(files)
+}
+
+/// Validate a list of files and produce summary
+async fn validate_files(
+    files: &[String],
+    constraints: Vec<String>,
+    fail_on_violations: bool,
+    format_json: bool,
+) -> Result<(), CliError> {
+    let mut results = Vec::new();
+
+    for file_path in files {
+        match validate_single_file(file_path, &constraints).await {
+            Ok(()) => {
+                results.push((file_path.clone(), true));
+            }
+            Err(_) => {
+                results.push((file_path.clone(), false));
             }
         }
     }
 
     if format_json {
         let output = serde_json::json!({
-            "directory": dir.display(),
             "total_files": results.len(),
             "valid": results.iter().filter(|(_, valid)| *valid).count(),
             "files": results
@@ -869,6 +892,75 @@ async fn validate_directory(
     }
 
     Ok(())
+}
+
+/// Validate a single file without recursion
+async fn validate_single_file(file: &str, constraints: &[String]) -> Result<(), CliError> {
+    let content = fs::read_to_string(file)?;
+    let parser = Parser::new(file.to_string());
+
+    // Parse file
+    let program = match parser.parse(&content) {
+        Ok(program) => program,
+        Err(diagnostics) => {
+            for diag in &diagnostics {
+                eprintln!("{}", format_diagnostic(diag));
+            }
+            return Err(CliError::Parse(format!(
+                "Parsing failed with {} errors",
+                diagnostics.len()
+            )));
+        }
+    };
+
+    // Validate to get diagnostics
+    let mut validator = Validator::new();
+    validator.register_default_rules();
+    let diagnostics = validator.validate_sync(&program);
+
+    // Calculate score (100 - deductions)
+    let mut score: u32 = 100;
+    let mut deductions = Vec::new();
+
+    for diag in &diagnostics {
+        let points = match diag.severity {
+            sruja_diagnostics::Severity::Error => 5,
+            sruja_diagnostics::Severity::Warning => 2,
+            _ => 0,
+        };
+        if points > 0 {
+            score = score.saturating_sub(points);
+            deductions.push((diag.message.clone(), points, diag.code.clone()));
+        }
+    }
+
+    let grade = if score >= 90 {
+        "A"
+    } else if score >= 80 {
+        "B"
+    } else if score >= 70 {
+        "C"
+    } else if score >= 60 {
+        "D"
+    } else {
+        "F"
+    };
+
+    // Print summary
+    println!("{}: {}/100 ({})", file, score, grade);
+
+    for (msg, points, code) in &deductions {
+        println!("  - {} (-{} points) [{}]", msg, points, code);
+    }
+
+    if score < 60 {
+        Err(CliError::Validation(format!(
+            "Architecture score is too low: {}/100",
+            score
+        )))
+    } else {
+        Ok(())
+    }
 }
 
 /// Compile a Sruja file

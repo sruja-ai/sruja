@@ -42,16 +42,20 @@ impl Parser {
                     } else {
                         trimmed.to_string()
                     };
-                    
+
                     // Count lines to provide better error location
                     let lines_before_remaining = input.len() - remaining.len();
                     let line_number = input[..lines_before_remaining].matches('\n').count();
                     let line_number_u32 = line_number.min(u32::MAX as usize) as u32;
-                    
+
                     return Err(vec![Diagnostic::new(
                         sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
                         Severity::Error,
-                        format!("Unexpected input remaining at line {}: {}", line_number + 1, preview.replace('\n', "\\n").replace('\r', "\\r")),
+                        format!(
+                            "Unexpected input remaining at line {}: {}",
+                            line_number + 1,
+                            preview.replace('\n', "\\n").replace('\r', "\\r")
+                        ),
                         SourceLocation::new(self.filename.clone(), line_number_u32, 0),
                     )]);
                 }
@@ -60,11 +64,19 @@ impl Parser {
             Err(e) => {
                 // Try to extract more information from the nom error
                 let error_msg = match &e {
-                    nom::Err::Error(err) => format!("Parse error at position {}: {:?}", err.input.len(), err.code),
-                    nom::Err::Failure(err) => format!("Parse failure at position {}: {:?}", err.input.len(), err.code),
+                    nom::Err::Error(err) => format!(
+                        "Parse error at position {}: {:?}",
+                        err.input.len(),
+                        err.code
+                    ),
+                    nom::Err::Failure(err) => format!(
+                        "Parse failure at position {}: {:?}",
+                        err.input.len(),
+                        err.code
+                    ),
                     nom::Err::Incomplete(_) => "Incomplete input".to_string(),
                 };
-                
+
                 Err(vec![Diagnostic::new(
                     sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
                     Severity::Error,
@@ -83,7 +95,7 @@ fn skip_whitespace_and_comments(input: &str) -> IResult<&str, ()> {
         // Skip whitespace
         let (new_input, _) = multispace0(input)?;
         input = new_input;
-        
+
         // Try to skip comment
         let comment_result: IResult<&str, &str> = alt((
             // Single-line comment: // ...
@@ -91,7 +103,7 @@ fn skip_whitespace_and_comments(input: &str) -> IResult<&str, ()> {
             // Multi-line comment: /* ... */
             delimited(tag("/*"), take_until("*/"), tag("*/")),
         ))(input);
-        
+
         match comment_result {
             Ok((new_input, _)) => {
                 input = new_input;
@@ -123,14 +135,14 @@ fn parse_program(input: &str) -> IResult<&str, Program> {
     let (input, _) = ws(input)?;
     let mut items = Vec::new();
     let mut current = input;
-    
+
     loop {
         // Skip whitespace
         let (rest, _) = ws(current)?;
         if rest.is_empty() {
             break;
         }
-        
+
         // Try to parse a top-level item
         match parse_top_level_item(rest) {
             Ok((next, item)) => {
@@ -152,7 +164,7 @@ fn parse_program(input: &str) -> IResult<&str, Program> {
             }
         }
     }
-    
+
     Ok((current, Program::with_items(Program::new(), items)))
 }
 
@@ -174,18 +186,20 @@ fn parse_top_level_item(input: &str) -> IResult<&str, TopLevelItem> {
         map(parse_adr, TopLevelItem::Adr),
         map(parse_policy, TopLevelItem::Policy),
         map(parse_view, TopLevelItem::View),
-        map(parse_metadata_block, |m| TopLevelItem::ElementDef(ElementDef {
-            location: m.location.clone(),
-            assignment: ElementAssignment {
+        map(parse_metadata_block, |m| {
+            TopLevelItem::ElementDef(ElementDef {
                 location: m.location.clone(),
-                name: "metadata".to_string(),
-                kind: ElementKind::Custom("metadata".to_string()),
-                sub_kind: None,
-                title: None,
-                tag_refs: Vec::new(),
-                body: None,
-            },
-        })), // Temporary conversion
+                assignment: ElementAssignment {
+                    location: m.location.clone(),
+                    name: "metadata".to_string(),
+                    kind: ElementKind::Custom("metadata".to_string()),
+                    sub_kind: None,
+                    title: None,
+                    tag_refs: Vec::new(),
+                    body: None,
+                },
+            })
+        }), // Temporary conversion
     ))(input)
 }
 
@@ -199,7 +213,7 @@ fn parse_kind_def(input: &str) -> IResult<&str, ElementKindDef> {
     let (input, _) = ws0(input)?;
     let (input, title) = opt(parse_string)(input)?;
     let (input, _) = ws0(input)?;
-    
+
     // For now, just parse the kind from the identifier
     let kind = match id.to_lowercase().as_str() {
         "person" => ElementKind::Person,
@@ -213,7 +227,7 @@ fn parse_kind_def(input: &str) -> IResult<&str, ElementKindDef> {
         "datastore" => ElementKind::DataStore,
         _ => ElementKind::Custom(id.clone()),
     };
-    
+
     Ok((
         input,
         ElementKindDef {
@@ -364,7 +378,7 @@ fn parse_kv_string_block(input: &str) -> IResult<&str, Vec<(String, String)>> {
 fn parse_overview_block(input: &str) -> IResult<&str, OverviewBlock> {
     let (input, _) = tag("overview")(input)?;
     let (input, _) = ws0(input)?;
-    
+
     // Consume the entire block including nested braces/brackets
     // We'll find the matching closing brace by counting depth
     if !input.starts_with('{') {
@@ -373,11 +387,11 @@ fn parse_overview_block(input: &str) -> IResult<&str, OverviewBlock> {
             nom::error::ErrorKind::Char,
         )));
     }
-    
+
     let mut depth = 0;
     let mut in_string = false;
     let mut escape = false;
-    
+
     for (i, ch) in input.char_indices() {
         if escape {
             escape = false;
@@ -411,7 +425,7 @@ fn parse_overview_block(input: &str) -> IResult<&str, OverviewBlock> {
             _ => {}
         }
     }
-    
+
     // No matching brace found
     Err(nom::Err::Error(nom::error::Error::new(
         input,
@@ -432,7 +446,7 @@ fn parse_element_def(input: &str) -> IResult<&str, ElementDef> {
     let (input, _) = ws0(input)?;
     let (input, tag_refs) = many0(parse_tag_ref)(input)?;
     let (input, _) = ws0(input)?;
-    
+
     // If there's a '{' after whitespace, we must parse the body (or consume it)
     // This prevents "Unexpected input remaining" errors when body parsing fails
     let (input, body) = if input.trim_start().starts_with('{') {
@@ -446,7 +460,7 @@ fn parse_element_def(input: &str) -> IResult<&str, ElementDef> {
                 let mut in_string = false;
                 let mut escape = false;
                 let mut consumed = 0;
-                
+
                 for (i, ch) in input.char_indices() {
                     if escape {
                         escape = false;
@@ -466,7 +480,7 @@ fn parse_element_def(input: &str) -> IResult<&str, ElementDef> {
                         _ => {}
                     }
                 }
-                
+
                 if consumed > 0 {
                     (&input[consumed..], None)
                 } else {
@@ -522,24 +536,24 @@ fn parse_element_kind(input: &str) -> IResult<&str, ElementKind> {
 /// Parse element definition body
 fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBody> {
     let (input, _) = preceded(ws0, char('{'))(input)?;
-    
+
     // Parse body items, but be lenient - if an item fails to parse, skip it and continue
     let mut items = Vec::new();
     let mut current = input;
-    
+
     loop {
         // Skip whitespace
         let (rest, _) = ws(current)?;
         if rest.is_empty() {
             break;
         }
-        
+
         // Check if we've reached the closing brace
         if rest.trim_start().starts_with('}') {
             current = rest;
             break;
         }
-        
+
         // Try to parse an item
         match parse_element_body_item(rest) {
             Ok((next, item)) => {
@@ -563,11 +577,11 @@ fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBody> {
             }
         }
     }
-    
+
     // Skip whitespace before closing brace
     let (input, _) = ws0(current)?;
     let (input, _) = char('}')(input)?;
-    
+
     // Process items and populate body fields
     let mut body = ElementDefBody::default();
     for item in items {
@@ -595,18 +609,24 @@ fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBody> {
             _ => {}
         }
     }
-    
+
     Ok((input, body))
 }
 
 fn parse_element_body_item(input: &str) -> IResult<&str, ElementDefBodyItem> {
     alt((
         map(
-            preceded(alt((tag("description"), tag("desc"))), preceded(ws1, parse_string)),
+            preceded(
+                alt((tag("description"), tag("desc"))),
+                preceded(ws1, parse_string),
+            ),
             ElementDefBodyItem::Description,
         ),
         map(
-            preceded(alt((tag("technology"), tag("tech"))), preceded(ws1, parse_string)),
+            preceded(
+                alt((tag("technology"), tag("tech"))),
+                preceded(ws1, parse_string),
+            ),
             ElementDefBodyItem::Technology,
         ),
         map(parse_metadata_block, |m| ElementDefBodyItem::Metadata(m)),
@@ -732,9 +752,18 @@ enum LatencyItem {
 
 fn parse_latency_item(input: &str) -> IResult<&str, LatencyItem> {
     alt((
-        map(preceded(tag("p95"), preceded(ws1, parse_string)), LatencyItem::P95),
-        map(preceded(tag("p99"), preceded(ws1, parse_string)), LatencyItem::P99),
-        map(preceded(tag("window"), preceded(ws1, parse_string)), LatencyItem::Window),
+        map(
+            preceded(tag("p95"), preceded(ws1, parse_string)),
+            LatencyItem::P95,
+        ),
+        map(
+            preceded(tag("p99"), preceded(ws1, parse_string)),
+            LatencyItem::P99,
+        ),
+        map(
+            preceded(tag("window"), preceded(ws1, parse_string)),
+            LatencyItem::Window,
+        ),
         map(parse_slo_current, LatencyItem::Current),
     ))(input)
 }
@@ -748,7 +777,10 @@ fn parse_slo_current(input: &str) -> IResult<&str, SloCurrent> {
         preceded(ws0, char('}')),
     )(input)?;
 
-    let mut out = SloCurrent { p95: None, p99: None };
+    let mut out = SloCurrent {
+        p95: None,
+        p99: None,
+    };
     for (k, v) in entries {
         match k.as_str() {
             "p95" => out.p95 = Some(v),
@@ -863,9 +895,7 @@ fn parse_scenario_step(input: &str) -> IResult<&str, ScenarioStep> {
     let (input, _) = ws0(input)?;
     let (input, order_raw) = opt(preceded(tag("order"), preceded(ws1, parse_string)))(input)?;
 
-    let order = order_raw
-        .as_deref()
-        .and_then(|s| s.parse::<usize>().ok());
+    let order = order_raw.as_deref().and_then(|s| s.parse::<usize>().ok());
 
     Ok((
         input,
@@ -975,7 +1005,12 @@ fn parse_requirement_property(input: &str) -> IResult<&str, ()> {
     // Currently we accept these properties for forward-compatibility, but the nom-based
     // parser doesn't materialize them into the `Requirement` struct yet.
     preceded(
-        alt((tag("type"), tag("description"), tag("tags"), tag("metadata"))),
+        alt((
+            tag("type"),
+            tag("description"),
+            tag("tags"),
+            tag("metadata"),
+        )),
         preceded(
             ws0,
             alt((
@@ -1028,7 +1063,13 @@ fn parse_adr_body(input: &str) -> IResult<&str, ()> {
 fn parse_adr_property(input: &str) -> IResult<&str, ()> {
     // Forward-compatibility: accept ADR properties even if we don't materialize them yet.
     preceded(
-        alt((tag("status"), tag("context"), tag("decision"), tag("consequences"), tag("tags"))),
+        alt((
+            tag("status"),
+            tag("context"),
+            tag("decision"),
+            tag("consequences"),
+            tag("tags"),
+        )),
         preceded(
             ws0,
             alt((map(parse_string, |_| ()), map(parse_tag_array, |_| ()))),
@@ -1067,22 +1108,22 @@ fn parse_view(input: &str) -> IResult<&str, ViewDef> {
     let (input, _) = ws1(input)?;
     let (input, id) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
-    
+
     // Handle optional "of target" syntax: `view id of target`
     let (input, view_of) = opt(preceded(
         preceded(ws0, tag("of")),
         preceded(ws1, parse_qualified_ident),
     ))(input)?;
     let (input, _) = ws0(input)?;
-    
+
     // Parse body block if present
     let (input, body_fields) = opt(parse_view_body)(input)?;
-    
+
     let mut title = None;
     let mut includes = None;
     let mut excludes = None;
     let mut description = None;
-    
+
     if let Some(fields) = body_fields {
         for (k, v) in fields {
             match k.as_str() {
@@ -1103,7 +1144,7 @@ fn parse_view(input: &str) -> IResult<&str, ViewDef> {
             }
         }
     }
-    
+
     let to_expr = |elements: Vec<String>| ViewRuleExpr {
         wildcard: elements.len() == 1 && elements[0] == "*",
         recursive: false,
@@ -1142,12 +1183,12 @@ fn parse_view_body(input: &str) -> IResult<&str, Vec<(String, String)>> {
     if !input.starts_with('{') {
         return Ok((input, Vec::new()));
     }
-    
+
     // Use brace-counting to find the matching closing brace (same as overview)
     let mut depth = 0;
     let mut in_string = false;
     let mut escape = false;
-    
+
     for (i, ch) in input.char_indices() {
         if escape {
             escape = false;
@@ -1172,7 +1213,7 @@ fn parse_view_body(input: &str) -> IResult<&str, Vec<(String, String)>> {
             _ => {}
         }
     }
-    
+
     // No matching brace found
     Err(nom::Err::Error(nom::error::Error::new(
         input,
@@ -1292,10 +1333,7 @@ fn parse_scale_block(input: &str) -> IResult<&str, ScaleBlock> {
 fn parse_scale_item(input: &str) -> IResult<&str, (String, String)> {
     let (input, key) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
-    let (input, value) = alt((
-        parse_string,
-        map(parse_identifier, |s| s),
-    ))(input)?;
+    let (input, value) = alt((parse_string, map(parse_identifier, |s| s)))(input)?;
     Ok((input, (key, value)))
 }
 
@@ -1310,7 +1348,10 @@ fn parse_relation(input: &str) -> IResult<&str, Relation> {
     let (input, _) = ws0(input)?;
     let (input, description) = opt(parse_string)(input)?;
     let (input, _) = ws0(input)?;
-    let (input, technology) = opt(preceded(alt((tag("technology"), tag("tech"))), preceded(ws1, parse_string)))(input)?;
+    let (input, technology) = opt(preceded(
+        alt((tag("technology"), tag("tech"))),
+        preceded(ws1, parse_string),
+    ))(input)?;
     let (input, _) = ws0(input)?;
     let (input, tags) = opt(parse_tag_array)(input)?;
 
@@ -1332,10 +1373,10 @@ fn parse_relation(input: &str) -> IResult<&str, Relation> {
 fn parse_qualified_ident(input: &str) -> IResult<&str, QualifiedIdent> {
     let (input, first) = parse_identifier(input)?;
     let (input, rest) = many0(preceded(char('.'), parse_identifier))(input)?;
-    
+
     let mut parts = vec![first];
     parts.extend(rest);
-    
+
     Ok((input, QualifiedIdent::qualified(parts)))
 }
 
@@ -1345,7 +1386,10 @@ fn parse_import(input: &str) -> IResult<&str, ImportStatement> {
     let (input, _) = ws1(input)?;
     let (input, elements) = delimited(
         char('{'),
-        separated_list0(preceded(ws0, char(',')), preceded(ws0, parse_import_element)),
+        separated_list0(
+            preceded(ws0, char(',')),
+            preceded(ws0, parse_import_element),
+        ),
         preceded(ws0, char('}')),
     )(input)?;
     let (input, _) = ws1(input)?;
@@ -1395,14 +1439,8 @@ fn parse_metadata_entry(input: &str) -> IResult<&str, MetaEntry> {
     let (input, key) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
     let (input, value) = opt(parse_string)(input)?;
-    
-    Ok((
-        input,
-        MetaEntry {
-            key,
-            value,
-        },
-    ))
+
+    Ok((input, MetaEntry { key, value }))
 }
 
 /// Parse a tag reference: #Ident
@@ -1457,8 +1495,14 @@ mod tests {
 
     #[test]
     fn test_parse_identifier() {
-        assert_eq!(parse_identifier("mySystem"), Ok(("", "mySystem".to_string())));
-        assert_eq!(parse_identifier("my-system_123"), Ok(("", "my-system_123".to_string())));
+        assert_eq!(
+            parse_identifier("mySystem"),
+            Ok(("", "mySystem".to_string()))
+        );
+        assert_eq!(
+            parse_identifier("my-system_123"),
+            Ok(("", "my-system_123".to_string()))
+        );
     }
 
     #[test]
@@ -1518,7 +1562,7 @@ mod tests {
         assert!(result.is_ok());
         let (_, scenario) = result.unwrap();
         assert_eq!(scenario.id, "LoginFlow");
-        assert_eq!(scenario.label, Some("User Login".to_string()));
+        assert_eq!(scenario.title, "User Login".to_string());
         assert_eq!(scenario.steps.len(), 2);
     }
 

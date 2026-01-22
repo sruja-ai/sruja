@@ -5,7 +5,6 @@
 mod commands;
 
 use clap::{Parser, Subcommand};
-use commands::*;
 
 #[derive(Parser)]
 #[command(name = "sruja")]
@@ -138,8 +137,8 @@ enum ChangeAction {
         #[arg(long, short = 'c')]
         context: Option<String>,
         /// Status (proposed, approved, rejected, implemented)
-        #[arg(long, short = 's', default_value = "proposed")]
-        status: String,
+        #[arg(long, short = 's')]
+        status: Option<String>,
     },
     /// Validate a change record
     Validate {
@@ -177,15 +176,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 description,
                 context,
                 status,
-            } => {
-                commands::change_create(
-                    &title,
-                    description.as_deref(),
-                    context.as_deref(),
-                    status.as_deref(),
-                )
-                .await
-            }
+            } => commands::change_create(&title, description, context, status).await,
             ChangeAction::Validate { file } => commands::change_validate(&file).await,
         },
         Commands::List { file } => commands::list(&file).await,

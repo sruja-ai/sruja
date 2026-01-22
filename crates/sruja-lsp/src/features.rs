@@ -1,3 +1,7 @@
+use crate::workspace::Document;
+use sruja_language::ast::*;
+use tower_lsp::lsp_types::*;
+
 /// Find word boundaries at a position in a line
 pub fn word_bounds(line: &str, pos: usize) -> (usize, usize) {
     let pos = pos.min(line.len());
@@ -14,6 +18,28 @@ pub fn word_bounds(line: &str, pos: usize) -> (usize, usize) {
 
 fn is_ident_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_' || c == '-' || c == '.'
+}
+
+/// Collect elements from a program for quick lookup
+fn collect_elements(
+    program: &Program,
+) -> (std::collections::HashMap<String, ElementDef>, Vec<Relation>) {
+    let mut elements = std::collections::HashMap::new();
+    let mut relations = Vec::new();
+
+    for item in &program.items {
+        match item {
+            TopLevelItem::ElementDef(elem) => {
+                elements.insert(elem.assignment.name.clone(), elem.clone());
+            }
+            TopLevelItem::Relation(rel) => {
+                relations.push(rel.clone());
+            }
+            _ => {}
+        }
+    }
+
+    (elements, relations)
 }
 
 /// Get the last token before the cursor position
@@ -96,7 +122,7 @@ pub fn get_hover(
     }
 
     let (start, end) = word_bounds(&line_text, character);
-    let word = line_text[start..end].trim();
+    let word: &str = line_text[start..end].trim();
 
     // Check if hovering over an element
     if !word.is_empty() {
@@ -188,7 +214,7 @@ pub fn get_completion(
     }
 
     let before = &line_text[..character];
-    let token = last_token(before);
+    let token: String = last_token(before);
 
     let mut items = Vec::new();
 
@@ -278,7 +304,7 @@ pub fn find_definition(doc: &Document, program: &Program, id: &str) -> Option<Lo
     // Try to find the element
     if elements.contains_key(id) {
         // Find the line where this element is declared
-        for (line_idx, line) in doc.lines.iter().enumerate() {
+        for (line_idx, line) in doc.lines().iter().enumerate() {
             let trimmed = line.trim();
             let keywords = vec![
                 "system",
@@ -294,7 +320,7 @@ pub fn find_definition(doc: &Document, program: &Program, id: &str) -> Option<Lo
                     if rest.starts_with(id) {
                         if let Some(col) = line.find(id) {
                             return Some(Location {
-                                uri: doc.uri.clone(),
+                                uri: doc.uri().clone(),
                                 range: Range {
                                     start: Position {
                                         line: line_idx as u32,
@@ -321,7 +347,7 @@ pub fn find_references(doc: &Document, program: &Program, id: &str) -> Vec<Locat
     let mut locations = Vec::new();
 
     // Search in document text
-    for (line_idx, line) in doc.lines.iter().enumerate() {
+    for (line_idx, line) in doc.lines().iter().enumerate() {
         let mut search_pos = 0;
         while let Some(pos) = line[search_pos..].find(id) {
             let abs_pos = search_pos + pos;
@@ -329,7 +355,7 @@ pub fn find_references(doc: &Document, program: &Program, id: &str) -> Vec<Locat
             let (start, end) = word_bounds(line, abs_pos);
             if line[start..end] == *id {
                 locations.push(Location {
-                    uri: doc.uri.clone(),
+                    uri: doc.uri().clone(),
                     range: Range {
                         start: Position {
                             line: line_idx as u32,
@@ -359,9 +385,9 @@ pub fn get_document_symbols(doc: &Document, program: &Program) -> Vec<DocumentSy
             ElementKind::System => SymbolKind::CLASS,
             ElementKind::Container => SymbolKind::MODULE,
             ElementKind::Component => SymbolKind::FUNCTION,
-            ElementKind::Person => SymbolKind::USER,
-            ElementKind::Database | ElementKind::Datastore => SymbolKind::DATABASE,
-            ElementKind::Queue => SymbolKind::QUEUE,
+            ElementKind::Person => SymbolKind::OBJECT,
+            ElementKind::Database | ElementKind::DataStore => SymbolKind::STRUCT,
+            ElementKind::Queue => SymbolKind::OBJECT,
             _ => SymbolKind::OBJECT,
         };
 
@@ -373,7 +399,7 @@ pub fn get_document_symbols(doc: &Document, program: &Program) -> Vec<DocumentSy
 
         // Find line number
         let mut line = 0;
-        for (line_idx, line_text) in doc.lines.iter().enumerate() {
+        for (line_idx, line_text) in doc.lines().iter().enumerate() {
             if line_text.contains(&elem.assignment.name) {
                 line = line_idx;
                 break;
@@ -405,7 +431,8 @@ pub fn get_document_symbols(doc: &Document, program: &Program) -> Vec<DocumentSy
                 },
             },
             children: None,
-            ..Default::default()
+            tags: None,
+            deprecated: None,
         });
     }
 
@@ -419,17 +446,18 @@ pub fn format_document(doc: &Document, program: &Program) -> Option<Vec<TextEdit
     let printer = DslPrinter::new();
     let formatted = printer.print(program);
 
-    Some(vec![TextEdit {
+    let text_edits: Vec<TextEdit> = vec![TextEdit {
         range: Range {
             start: Position {
                 line: 0,
                 character: 0,
             },
             end: Position {
-                line: doc.lines.len() as u32,
+                line: doc.lines().len() as u32,
                 character: 0,
             },
         },
         new_text: formatted,
-    }])
+    }];
+    Some(text_edits)
 }
