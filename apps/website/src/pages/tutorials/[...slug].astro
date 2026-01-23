@@ -1,6 +1,6 @@
 ---
 // apps/website/src/pages/tutorials/[...slug].astro
-import { getCollection, type CollectionEntry } from 'astro:content';
+import { getCollection, type CollectionEntry, render } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 import ContentDetail from '@/features/content/components/ContentDetail.astro';
 import ContentNavigation from '@/features/content/components/ContentNavigation.astro';
@@ -27,7 +27,7 @@ type Props = {
 };
 
 const { tutorial, previous, next } = Astro.props as Props;
-const { Content } = await tutorial.render();
+const { Content } = await render(tutorial);
 
 import { getCanonicalUrl } from '@/utils/seo';
 import { envConfig } from '@/config/env';

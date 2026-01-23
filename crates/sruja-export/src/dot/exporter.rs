@@ -9,6 +9,7 @@ use sruja_language::{collect_elements, Program, Relation};
 
 use super::constants::*;
 
+
 #[derive(Debug, Clone)]
 pub struct DotConfig {
     pub rank_dir: String, // "TB" or "LR"
@@ -175,7 +176,7 @@ impl DotExporter {
     ) {
         let id = escape_id(parent);
         let label = display_title(parent, elements);
-        out.push_str(&format!("  subgraph cluster_{} {{\n", id));
+        out.push_str(&format!("  subgraph \"cluster_{}\" {{\n", id));
         out.push_str(&format!("    label=\"{}\";\n", escape_quotes(&label)));
         out.push_str(&format!("    style=filled;\n"));
         out.push_str(&format!("    fillcolor=\"{}\";\n", COLOR_GRAY_BG));
@@ -421,6 +422,9 @@ fn project_id(
     elements: &HashMap<String, sruja_language::ElementDef>,
 ) -> String {
     if elements.contains_key(fqn) {
+        if level == 1 {
+            return get_root(fqn);
+        }
         if level == 2 {
             if let Some(c) = get_container(fqn, elements) {
                 return c;

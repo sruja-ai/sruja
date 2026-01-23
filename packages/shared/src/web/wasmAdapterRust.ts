@@ -6,7 +6,13 @@ import type { WasmApi } from "./wasmAdapter";
 
 type RustWasmModule = {
   default: (
-    moduleOrPath?: RequestInfo | URL | Response | BufferSource | WebAssembly.Module
+    moduleOrPath?:
+      | RequestInfo
+      | URL
+      | Response
+      | BufferSource
+      | WebAssembly.Module
+      | { module_or_path: RequestInfo | URL | Response | BufferSource | WebAssembly.Module }
   ) => Promise<unknown>;
   init_panic_hook?: () => void;
   sruja_dsl_to_model: (dsl: string, filename?: string) => string;
@@ -153,7 +159,7 @@ export async function initRustWasm(options?: { base?: string }): Promise<WasmApi
 
   const mod = await dynamicImportRustWasm(jsUrl);
   try {
-    await mod.default(wasmUrl);
+    await mod.default({ module_or_path: wasmUrl });
     // Initialize panic hook for better error messages
     if (typeof mod.init_panic_hook === "function") {
       mod.init_panic_hook();

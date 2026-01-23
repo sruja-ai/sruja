@@ -15,6 +15,7 @@ The server will start at `http://localhost:4321` (or the port shown in terminal)
 ### 2. Access the Viewer
 
 Open your browser and navigate to:
+
 ```
 http://localhost:4321/viewer
 ```
@@ -22,14 +23,17 @@ http://localhost:4321/viewer
 ## Testing Scenarios
 
 ### Test 1: Empty Viewer (Default State)
+
 - **URL**: `http://localhost:4321/viewer`
 - **Expected**: Empty editor, no viewer content, no HTML preview
 - **Action**: Type DSL code in the editor
 
 ### Test 2: Basic DSL Editing
+
 - **URL**: `http://localhost:4321/viewer`
 - **Steps**:
   1. Paste this DSL in the editor:
+
   ```sruja
   architecture "Test System" {
       system App "My App" {
@@ -42,6 +46,7 @@ http://localhost:4321/viewer
       Web -> DB "Reads/Writes"
   }
   ```
+
   2. Wait for auto-parsing (should happen automatically)
   3. **Verify**:
      - Viewer shows diagram with User, Web, DB nodes
@@ -54,7 +59,7 @@ First, compress your DSL code using LZ-String:
 
 ```javascript
 // In browser console or Node.js
-const LZString = require('lz-string'); // or import in browser
+const LZString = require("lz-string"); // or import in browser
 const dsl = `architecture "Test System" {
     system App "My App" {
         container Web "Web Server"
@@ -72,7 +77,7 @@ console.log(compressed);
 ```
 
 - **URL**: `http://localhost:4321/viewer?code=<compressed-base64>`
-- **Expected**: 
+- **Expected**:
   - Code loads automatically in editor
   - Viewer displays diagram
   - HTML preview shows generated HTML
@@ -86,33 +91,43 @@ console.log(compressed);
 
 - **URL**: `http://localhost:4321/viewer?data=<url-encoded-json>`
 - **Example JSON**:
+
 ```json
 {
   "architecture": {
     "name": "Test System",
-    "systems": [{
-      "id": "App",
-      "label": "My App",
-      "containers": [{
-        "id": "Web",
-        "label": "Web Server"
-      }],
-      "datastores": [{
-        "id": "DB",
-        "label": "Database"
-      }]
-    }],
-    "persons": [{
-      "id": "User",
-      "label": "User"
-    }],
+    "systems": [
+      {
+        "id": "App",
+        "label": "My App",
+        "containers": [
+          {
+            "id": "Web",
+            "label": "Web Server"
+          }
+        ],
+        "datastores": [
+          {
+            "id": "DB",
+            "label": "Database"
+          }
+        ]
+      }
+    ],
+    "persons": [
+      {
+        "id": "User",
+        "label": "User"
+      }
+    ],
     "relations": [
-      {"from": "User", "to": "Web", "label": "Visits"},
-      {"from": "Web", "to": "DB", "label": "Reads/Writes"}
+      { "from": "User", "to": "Web", "label": "Visits" },
+      { "from": "Web", "to": "DB", "label": "Reads/Writes" }
     ]
   }
 }
 ```
+
 - **Expected**: JSON loads, converts to DSL (if WASM ready), displays in viewer
 
 ### Test 6: URL to Fetch JSON
@@ -123,6 +138,7 @@ console.log(compressed);
 ### Test 7: View Modes
 
 Test all view mode buttons:
+
 - **Split View**: Editor on left, Viewer on right
 - **Editor Only**: Full editor
 - **Viewer Only**: Full viewer
@@ -140,11 +156,13 @@ Test all view mode buttons:
 ### Test 9: Error Handling
 
 1. Type invalid DSL:
+
 ```sruja
 architecture "Test" {
     invalid syntax here
 }
 ```
+
 2. **Verify**:
    - Error message appears in toolbar
    - Viewer doesn't break
@@ -152,7 +170,7 @@ architecture "Test" {
 
 ### Test 10: WASM Loading
 
-- **Expected**: 
+- **Expected**:
   - "Loading WASM..." message appears briefly on first load
   - WASM loads successfully
   - No console errors
@@ -160,6 +178,7 @@ architecture "Test" {
 ## Example Test DSL Code
 
 ### Simple Web App
+
 ```sruja
 architecture "Simple Web App" {
     system App "Web Application" {
@@ -174,6 +193,7 @@ architecture "Simple Web App" {
 ```
 
 ### Multi-System Architecture
+
 ```sruja
 architecture "E-commerce Platform" {
     system Shop "Online Shop" {
@@ -182,11 +202,11 @@ architecture "E-commerce Platform" {
         datastore Catalog "Product Catalog"
         datastore Orders "Order Database"
     }
-    
+
     system Payment "Payment Gateway" {
         container PaymentAPI "Payment API"
     }
-    
+
     person Customer "Customer"
     person Admin "Administrator"
 
@@ -215,32 +235,36 @@ const dsl = `architecture "Test" {
 
 // Compress
 const compressed = LZString.compressToBase64(dsl);
-console.log('Compressed:', compressed);
+console.log("Compressed:", compressed);
 
 // Test URL
 const url = `/viewer?code=${encodeURIComponent(compressed)}`;
-console.log('Test URL:', url);
+console.log("Test URL:", url);
 
 // Decompress (verify)
 const decompressed = LZString.decompressFromBase64(compressed);
-console.log('Decompressed matches:', decompressed === dsl);
+console.log("Decompressed matches:", decompressed === dsl);
 ```
 
 ## Common Issues & Solutions
 
 ### Issue: Viewer not loading
-- **Check**: WASM files exist at `/wasm/sruja.wasm` and `/wasm/wasm_exec.js`
-- **Solution**: Ensure WASM files are in `apps/website/public/wasm/`
+
+- **Check**: WASM files exist at `/wasm/rust/sruja_wasm.js` and `/wasm/rust/sruja_wasm_bg.wasm`
+- **Solution**: Run `make wasm` and ensure files are in `apps/website/public/wasm/rust/`
 
 ### Issue: Code parameter not working
+
 - **Check**: Code is LZ-String compressed base64, not plain text
 - **Solution**: Use `LZString.compressToBase64()` before encoding in URL
 
 ### Issue: HTML preview blank
+
 - **Check**: Console for errors
 - **Solution**: Ensure CDN URLs are accessible or use local bundles
 
 ### Issue: Viewer not updating
+
 - **Check**: WASM is loaded (`wasmApiRef.current` exists)
 - **Solution**: Wait for WASM to load before typing
 
@@ -279,4 +303,3 @@ curl "http://localhost:4321/viewer?code=..." | grep -q "architecture" && echo "â
 - [ ] WASM loads successfully
 - [ ] No console errors
 - [ ] Theme switching works (if implemented)
-

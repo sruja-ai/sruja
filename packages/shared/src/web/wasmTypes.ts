@@ -1,37 +1,5 @@
 // packages/shared/src/web/wasmTypes.ts
-// Type definitions for WASM integration
-
-/**
- * Go WASM runtime constructor.
- *
- * @public
- */
-export interface GoConstructor {
-  new (): GoInstance;
-}
-
-/**
- * Go WASM runtime instance.
- *
- * @public
- */
-export interface GoInstance {
-  importObject?: Record<string, unknown>;
-  run(instance: WebAssembly.Instance): void;
-  _resume?: () => void;
-}
-
-export interface GoJsImports {
-  "runtime.scheduleTimeoutEvent"?: (ms: number) => void;
-  [key: string]: unknown;
-}
-
-export interface WasmImportObject {
-  gojs?: GoJsImports;
-  env?: Record<string, unknown>;
-  go?: Record<string, unknown>;
-  [key: string]: unknown;
-}
+// Type definitions for WASM integration (Rust backend only)
 
 /**
  * Response from WASM parse function with structured error handling.
@@ -112,32 +80,21 @@ export interface ScoreResult {
 }
 
 /**
- * Extended Window interface with WASM-related properties.
+ * Extended Window interface for browser WASM usage.
  *
  * @public
  */
-export interface WindowWithWasm extends Window {
-  Go?: GoConstructor;
-  sruja_parse_dsl?: (dsl: string, filename?: string) => WasmParseResponse;
-  sruja_json_to_dsl?: (json: string) => WasmParseResponse;
-  sruja_dsl_to_mermaid?: (dsl: string, configJson?: string) => WasmParseResponse;
-  sruja_dsl_to_markdown?: (dsl: string) => WasmParseResponse;
-  sruja_dsl_to_model?: (dsl: string, filename?: string) => WasmParseResponse;
-  sruja_dsl_to_dot?: (dsl: string, configJson: string) => WasmParseResponse;
-  sruja_model_to_dsl?: (json: string) => WasmParseResponse;
-  sruja_analyze_governance?: (dsl: string) => WasmParseResponse;
-  sruja_score?: (dsl: string) => WasmParseResponse;
-}
+export interface WindowWithWasm extends Window {}
 
 /**
- * Type guard to check if window has WASM properties.
+ * Type guard to check if window is available (browser environment).
  *
  * @public
  * @param win - Window object to check
- * @returns true if window has WASM properties
+ * @returns true if window exists
  */
 export function isWindowWithWasm(win: unknown): win is WindowWithWasm {
-  return typeof win === "object" && win !== null && "Go" in win;
+  return typeof win === "object" && win !== null && typeof (win as Window).document !== "undefined";
 }
 
 /**

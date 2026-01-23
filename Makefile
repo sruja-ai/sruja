@@ -90,6 +90,20 @@ wasm:
 		wasm-pack build --target web --out-dir ../../apps/website/public/wasm/rust crates/sruja-wasm --release || \
 		(cargo build --target wasm32-unknown-unknown --release -p sruja-wasm && \
 		 echo "⚠️  wasm-pack failed, but WASM built. You may need to manually copy files."); \
+		if command -v wasm-opt >/dev/null 2>&1; then \
+			echo "Optimizing WASM with wasm-opt..."; \
+			wasm-opt -O3 --strip-debug \
+				apps/website/public/wasm/rust/sruja_wasm_bg.wasm \
+				-o apps/website/public/wasm/rust/sruja_wasm_bg.wasm.tmp && \
+			mv apps/website/public/wasm/rust/sruja_wasm_bg.wasm.tmp \
+				apps/website/public/wasm/rust/sruja_wasm_bg.wasm; \
+			echo "✅ WASM optimized"; \
+			ls -lh apps/website/public/wasm/rust/sruja_wasm_bg.wasm; \
+		else \
+			echo "⚠️  wasm-opt not found. Install with: npm install -g wasm-opt"; \
+			echo "   Skipping optimization (WASM will be ~25% larger)"; \
+			ls -lh apps/website/public/wasm/rust/sruja_wasm_bg.wasm; \
+		fi; \
 		echo "✅ WASM build complete"; \
 	else \
 		echo "❌ Cargo not found. Please install Rust: https://rustup.rs/"; \

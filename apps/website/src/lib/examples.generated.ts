@@ -1,7 +1,6 @@
 // Auto-generated from examples/manifest.json - DO NOT EDIT MANUALLY
-// Run: go run scripts/generate-playground-examples.go
 
-import type { PlaygroundExample } from './types';
+import type { PlaygroundExample } from "./types";
 
 export const EXAMPLES: PlaygroundExample[] = [
   {
@@ -76,7 +75,7 @@ architecture "E-Commerce Platform" {
     ECommerce.API -> PaymentGateway.StripeAPI "Process payment"
     ECommerce.API -> ECommerce.OrderDB "Save order"
   }
-}`
+}`,
   },
   {
     name: "Queues & DataStore",
@@ -90,7 +89,7 @@ architecture "E-Commerce Platform" {
   Service.API -> Service.MQ publishes "Publishes messages"
   Service.API -> Service.DB reads "Reads data"
   Service.API -> Service.DB writes "Writes data"
-}`
+}`,
   },
   {
     name: "Tags & Filtering",
@@ -105,7 +104,7 @@ architecture "E-Commerce Platform" {
   App.API -> App.DB reads "Reads data"
   App.API -> App.DB writes "Writes data"
   App -> App.MQ publishes "Publishes events"
-}`
+}`,
   },
   {
     name: "Metadata",
@@ -152,7 +151,7 @@ architecture "E-Commerce Platform" {
       access_level "standard"
     }
   }
-}`
+}`,
   },
   {
     name: "Implied Relationships",
@@ -320,7 +319,7 @@ architecture "Microservices E-commerce Platform" {
     decision "Use Kafka for event streaming"
     consequences "Gain: Loose coupling, scalability. Trade-off: Eventual consistency, complexity"
   }
-}`
+}`,
   },
   {
     name: "Views Customization",
@@ -560,7 +559,7 @@ architecture "SaaS Analytics Platform" {
   requirement R2 performance "Query response time < 500ms (p95)"
   requirement R3 scalability "Must scale to 10TB+ data"
   requirement R4 reliability "99.99% uptime SLA"
-}`
+}`,
   },
   {
     name: "Governance",
@@ -575,7 +574,7 @@ architecture "SaaS Analytics Platform" {
   }
 
   policy SecurityPolicy "Encrypt data at rest" category "security" enforcement "required"
-}`
+}`,
   },
   {
     name: "Service Level Objectives",
@@ -626,7 +625,7 @@ architecture "SaaS Analytics Platform" {
       }
     }
   }
-}`
+}`,
   },
   {
     name: "Scenarios",
@@ -642,7 +641,7 @@ architecture "SaaS Analytics Platform" {
         ECommerce.CartPage -> ECommerce "clicks checkout"
         ECommerce -> Inventory "Check Stock"
     }
-}`
+}`,
   },
   {
     name: "Shared Libraries",
@@ -650,7 +649,7 @@ architecture "SaaS Analytics Platform" {
   system Shared "Shared" {
     datastore SharedDB "Shared DB"
   }
-}`
+}`,
   },
   {
     name: "Microservices Pattern",
@@ -874,7 +873,7 @@ architecture "E-commerce Microservices Platform" {
   requirement R2 performance "API response time < 300ms (p95)"
   requirement R3 availability "99.9% uptime"
   requirement R4 scalability "Scale to 10x traffic during sales events"
-}`
+}`,
   },
   {
     name: "RAG Pipeline",
@@ -1022,7 +1021,7 @@ architecture "E-commerce Microservices Platform" {
     decision "Implement Hybrid Search (Sparse + Dense vectors)."
     consequences "Higher storage cost, better retrieval accuracy."
   }
-}`
+}`,
   },
   {
     name: "Agentic AI",
@@ -1354,7 +1353,7 @@ architecture "E-commerce Microservices Platform" {
     Agentic.Planner -> Agentic.Tools.EmailSender "Email"
     Agentic.Tools.EmailSender -> Support.Email "Send"
   }
-}`
+}`,
   },
   {
     name: "E-Commerce Platform",
@@ -1504,7 +1503,7 @@ architecture "E-commerce Microservices Platform" {
     version "1.0.0"
     status "production"
   }
-}`
+}`,
   },
   {
     name: "IoT Platform",
@@ -1649,7 +1648,7 @@ architecture "IoT Platform Architecture" {
   requirement REQ002 performance "Process 100k messages/second"
   requirement REQ003 reliability "99.9% message delivery"
   requirement REQ004 latency "Sub-second rule execution"
-}`
+}`,
   },
   {
     name: "SaaS Platform",
@@ -1833,7 +1832,7 @@ architecture "SaaS Platform Architecture" {
   requirement REQ002 performance "API response time < 200ms (p95)"
   requirement REQ003 availability "99.99% uptime SLA"
   requirement REQ004 scalability "Auto-scale based on load"
-}`
+}`,
   },
   {
     name: "C4 Model",
@@ -1862,7 +1861,7 @@ architecture "SaaS Platform Architecture" {
   User -> WebApp "Uses"
   User -> WebApp.API "Credentials"
   WebApp.API -> WebApp.DB "Validate User"
-}`
+}`,
   },
   {
     name: "MVP Reference",
@@ -1895,7 +1894,7 @@ architecture "SaaS Platform Architecture" {
   requirement R3 performance "Fast checkout"
 
   adr ADR001 "Adopt Stripe for payments"
-}`
+}`,
   },
   {
     name: "Systems Thinking",
@@ -2057,7 +2056,7 @@ architecture "SaaS Platform Architecture" {
     
     adr ADR001 "Use microservices architecture for scalability"
     adr ADR002 "Use PostgreSQL for strong consistency requirements"
-}`
+}`,
   },
   {
     name: "Sruja Architecture",
@@ -2255,7 +2254,7 @@ architecture "SaaS Platform Architecture" {
     owner "Sruja Team"
     repo "github.com/sruja-ai/sruja"
   }
-}`
+}`,
   },
   {
     name: "Course: E-Commerce",
@@ -2353,6 +2352,6 @@ architecture "SaaS Platform Architecture" {
     // Module 7: NFRs
     requirement R1 performance "API latency < 100ms"
     adr ADR001 "Use Microservices"
-}`
-  }
+}`,
+  },
 ];

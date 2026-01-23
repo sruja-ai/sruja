@@ -18,6 +18,7 @@ import { defineConfig } from "astro/config";
 import react from "@astrojs/react";
 import mdx from "@astrojs/mdx";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
+import { compression } from "vite-plugin-compression2";
 
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -249,6 +250,12 @@ export default defineConfig({
           }
         },
       },
+      compression({ algorithm: "gzip", exclude: [/\.(br)$/, /\.(gz)$/, /\.(html)$/] }),
+      compression({
+        algorithm: "brotliCompress",
+        exclude: [/\.(br)$/, /\.(gz)$/, /\.(html)$/],
+        deleteOriginalAssets: false,
+      }),
     ],
     server: {
       cors: true,

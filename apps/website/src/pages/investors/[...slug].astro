@@ -1,6 +1,6 @@
 ---
 // apps/website/src/pages/investors/[...slug].astro
-import { getCollection, type CollectionEntry } from 'astro:content';
+import { getCollection, type CollectionEntry, render } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 import ContentDetail from '@/features/content/components/ContentDetail.astro';
 import ContentNavigation from '@/features/content/components/ContentNavigation.astro';
@@ -31,7 +31,7 @@ type Props = {
 };
 
 const { doc, previous, next } = Astro.props as Props;
-const { Content } = await doc.render();
+const { Content } = await render(doc);
 ---
 
 <Layout title={doc.data.title} description={doc.data.summary || doc.data.description}>

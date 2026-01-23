@@ -20,7 +20,7 @@ This guide helps you debug issues with the WASM-based LSP implementation.
 
 **Symptoms:**
 
-- Error: "WASM file not found" or "wasm_exec.js not found"
+- Error: "WASM file not found" or "Failed to import Rust WASM JS loader"
 - Output channel shows missing file paths
 
 **Solution:**
@@ -29,9 +29,11 @@ This guide helps you debug issues with the WASM-based LSP implementation.
   ```bash
   npm run copy-wasm
   ```
-- Check that `wasm/` directory exists in extension root with:
-  - `sruja.wasm.gz` or `sruja.wasm`
-  - `wasm_exec.js`
+- Check that `wasm/rust/` directory exists in extension root with:
+  - `sruja_wasm.js`
+  - `sruja_wasm_bg.wasm`
+
+**Note:** Go WASM support has been removed. Node/VS Code uses Rust WASM only. If you see "Go WASM support has been removed", Node adapter requires `wasm-pack --target nodejs`; use browser (Designer/Website) for Rust WASM.
 
 ### 2. WASM Functions Not Available
 
@@ -43,8 +45,7 @@ This guide helps you debug issues with the WASM-based LSP implementation.
 **Solution:**
 
 - Verify WASM module loaded correctly (check output channel)
-- Check that Go WASM exports match expected function names:
-  - `sruja_get_diagnostics`
+- Rust WASM exports: `sruja_get_diagnostics`
   - `sruja_hover`
   - `sruja_completion`
   - `sruja_go_to_definition`
