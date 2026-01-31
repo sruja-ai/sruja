@@ -49,7 +49,7 @@ ioTPlatform = system "IoT Platform" {
     messageRouter -> deviceRegistry "Queries devices"
     protocolAdapter -> messageBroker "Publishes messages"
   }
-  
+
   ingestionService = container "Ingestion Service" {
     description "Processes incoming data"
     technology "Go"
@@ -70,7 +70,7 @@ ioTPlatform = system "IoT Platform" {
     dataValidator -> deviceRegistry "Validates devices"
     dataNormalizer -> timeSeriesDB "Writes data"
   }
-  
+
   deviceManagementService = container "Device Management Service" {
     description "Manages device lifecycle"
     technology "Java, Spring Boot"
@@ -91,7 +91,7 @@ ioTPlatform = system "IoT Platform" {
     provisioningService -> deviceRegistry "Registers devices"
     firmwareManager -> objectStorage "Stores firmware"
   }
-  
+
   analyticsService = container "Analytics Service" {
     description "Real-time and batch analytics"
     technology "Python, Spark"
@@ -113,7 +113,7 @@ ioTPlatform = system "IoT Platform" {
     batchProcessor -> timeSeriesDB "Reads historical data"
     alertEngine -> notificationService "Sends alerts"
   }
-  
+
   ruleEngine = container "Rule Engine" {
     description "Executes business rules"
     technology "Node.js"
@@ -129,7 +129,7 @@ ioTPlatform = system "IoT Platform" {
     ruleEvaluator -> timeSeriesDB "Queries data"
     actionExecutor -> deviceGateway "Sends commands"
   }
-  
+
   dashboardService = container "Dashboard Service" {
     description "Provides web dashboard"
     technology "React"
@@ -144,30 +144,30 @@ ioTPlatform = system "IoT Platform" {
     dashboardAPI -> timeSeriesDB "Queries data"
     visualizationEngine -> timeSeriesDB "Fetches metrics for charts"
   }
-  
+
   deviceRegistry = database "Device Registry" {
     technology "PostgreSQL"
     description "Device inventory"
     metadata { tags ["REQ001"] }
   }
-  
+
   timeSeriesDB = database "Time Series Database" {
     technology "InfluxDB"
     description "Telemetry storage"
     metadata { tags ["REQ002"] }
   }
-  
+
   metadataDB = database "Metadata Database" {
     technology "PostgreSQL"
     description "Configuration storage"
   }
-  
+
   messageBroker = queue "Message Broker" {
     technology "Kafka"
     description "Central event bus"
     metadata { tags ["REQ002"] }
   }
-  
+
   objectStorage = container "Object Storage" {
     technology "S3"
     description "Binary blob storage"
@@ -180,12 +180,12 @@ notificationService = system "Notification Service" {
     technology "SendGrid"
     description "Email delivery"
   }
-  
+
   sMSService = container "SMS Service" {
     technology "Twilio"
     description "SMS delivery"
   }
-  
+
   pushService = container "Push Service" {
     technology "Firebase"
     description "Push notifications"
@@ -241,16 +241,3 @@ REQ001 = requirement functional "Handle 1M+ devices"
 REQ002 = requirement performance "Process 100k messages/second"
 REQ003 = requirement reliability "99.9% message delivery"
 REQ004 = requirement latency "Sub-second rule execution"
-
-
-
-view index {
-  title "IoT Platform Architecture"
-  include *
-}
-
-view containers of ioTPlatform {
-  title "IoT Platform Containers"
-  include ioTPlatform.*
-}
-

@@ -10,11 +10,3 @@ database = kind "Database"
 shared = system "Shared" {
   sharedDb = database "Shared DB"
 }
-
-
-
-view index {
-  title "Shared Model"
-  include *
-}
-

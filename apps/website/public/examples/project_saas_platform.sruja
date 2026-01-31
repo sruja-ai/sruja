@@ -31,8 +31,8 @@ saaSPlatform = system "SaaS Platform" {
   webApp = container "Web Application" {
     description "React-based dashboard for customers"
     technology "React, TypeScript"
-    metadata { 
-      tags ["REQ001"] 
+    metadata {
+      tags ["REQ001"]
       base_replicas "5"
     }
     dashboard = component "Dashboard" {
@@ -58,7 +58,7 @@ saaSPlatform = system "SaaS Platform" {
     billing -> aPI "Manages billing"
     analytics -> aPI "Fetches analytics"
   }
-  
+
   aPI = container "REST API Gateway" {
     description "Main API entry point"
     technology "Go, Gin"
@@ -87,7 +87,7 @@ saaSPlatform = system "SaaS Platform" {
     requestRouter -> billingService "Routes requests"
     responseFormatter -> responseCache "Caches responses"
   }
-  
+
   userService = container "User Service" {
     description "Manages users and authentication"
     technology "Node.js, Express"
@@ -109,7 +109,7 @@ saaSPlatform = system "SaaS Platform" {
     profileAPI -> userDB "Updates profiles"
     sessionManager -> redis "Manages sessions"
   }
-  
+
   projectService = container "Project Service" {
     description "Manages customer projects"
     technology "Java, Spring Boot"
@@ -130,7 +130,7 @@ saaSPlatform = system "SaaS Platform" {
     workspaceManager -> storageService "Manages storage"
     collaborationService -> messageQueue "Publishes events"
   }
-  
+
   billingService = container "Billing Service" {
     description "Handles subscriptions and payments"
     technology "Python, FastAPI"
@@ -152,7 +152,7 @@ saaSPlatform = system "SaaS Platform" {
     invoiceGenerator -> billingDB "Generates invoices"
     paymentProcessor -> paymentGateway "Processes payments"
   }
-  
+
   analyticsService = container "Analytics Service" {
     description "Processes analytics data"
     technology "Python, Flask"
@@ -174,7 +174,7 @@ saaSPlatform = system "SaaS Platform" {
     dataProcessor -> analyticsDB "Writes analytics"
     reportGenerator -> analyticsDB "Reads analytics"
   }
-  
+
   storageService = container "Storage Service" {
     description "Manages file storage"
     technology "Go"
@@ -189,58 +189,58 @@ saaSPlatform = system "SaaS Platform" {
     fileAPI -> objectStorage "Stores files"
     metadataManager -> metadataDB "Manages metadata"
   }
-  
+
   userDB = database "User Database" {
     technology "PostgreSQL"
     description "User & Auth data"
     metadata { tags ["REQ003"] }
   }
-  
+
   projectDB = database "Project Database" {
     technology "PostgreSQL"
     description "Project metadata"
     metadata { tags ["REQ001"] }
   }
-  
+
   billingDB = database "Billing Database" {
     technology "PostgreSQL"
     description "Invoices & Plans"
   }
-  
+
   analyticsDB = database "Analytics Database" {
     technology "ClickHouse"
     description "OLAP store"
     metadata { tags ["REQ004"] }
   }
-  
+
   metadataDB = database "Metadata Database" {
     technology "PostgreSQL"
     description "File Index"
   }
-  
+
   messageQueue = queue "Message Queue" {
     technology "RabbitMQ"
     description "Task buffer"
     metadata { tags ["REQ003"] }
   }
-  
+
   eventQueue = queue "Event Queue" {
     technology "Kafka"
     description "Event stream"
     metadata { tags ["REQ004"] }
   }
-  
+
   redis = container "Cache & Sessions" {
     technology "Redis"
     description "Hot data cache"
     metadata { tags ["REQ002"] }
   }
-  
+
   objectStorage = container "Object Storage" {
     technology "S3-compatible"
     description "Blob store"
   }
-  
+
   responseCache = container "Response Cache" {
     technology "Redis"
     description "API response cache"
@@ -264,7 +264,7 @@ notificationService = system "Notification Service" {
     description "Email delivery"
     metadata { tags ["external"] }
   }
-  
+
   smsProvider = container "SMS Provider" {
     technology "Twilio"
     description "SMS delivery"
@@ -313,107 +313,3 @@ REQ001 = requirement functional "Support 100k+ customers"
 REQ002 = requirement performance "API response time < 200ms (p95)"
 REQ003 = requirement availability "99.99% uptime SLA"
 REQ004 = requirement scalability "Auto-scale based on load"
-
-
-
-view index {
-  title "SaaS Platform Architecture"
-  include *
-  
-  // Layout following C4 conventions:
-  // - Persons at top
-  // - Core platform in center
-  // - External services on edges
-  // - Optimized spacing to reduce edge crossings
-  layout {
-    element customer {
-      position { x: 200, y: 50 }
-    }
-    element admin {
-      position { x: 400, y: 50 }
-    }
-    element developer {
-      position { x: 600, y: 50 }
-    }
-    element saaSPlatform {
-      position { x: 400, y: 300 }
-    }
-    element paymentGateway {
-      position { x: 700, y: 300 }
-    }
-    element notificationService {
-      position { x: 100, y: 300 }
-    }
-  }
-}
-
-view containers of saaSPlatform {
-  title "SaaS Platform Containers"
-  include saaSPlatform.*
-  
-  // Layout for containers: Organized by layer (Frontend, API, Services, Data)
-  // Reduces edge crossings and improves readability
-  layout {
-    // Frontend layer
-    element saaSPlatform.webApp {
-      position { x: 200, y: 100 }
-    }
-    
-    // API layer
-    element saaSPlatform.aPI {
-      position { x: 400, y: 100 }
-    }
-    
-    // Service layer (horizontal layout)
-    element saaSPlatform.userService {
-      position { x: 150, y: 250 }
-    }
-    element saaSPlatform.projectService {
-      position { x: 350, y: 250 }
-    }
-    element saaSPlatform.billingService {
-      position { x: 550, y: 250 }
-    }
-    element saaSPlatform.analyticsService {
-      position { x: 200, y: 350 }
-    }
-    element saaSPlatform.storageService {
-      position { x: 400, y: 350 }
-    }
-    
-    // Data layer (bottom)
-    element saaSPlatform.userDB {
-      position { x: 150, y: 500 }
-    }
-    element saaSPlatform.projectDB {
-      position { x: 350, y: 500 }
-    }
-    element saaSPlatform.billingDB {
-      position { x: 550, y: 500 }
-    }
-    element saaSPlatform.analyticsDB {
-      position { x: 200, y: 600 }
-    }
-    element saaSPlatform.metadataDB {
-      position { x: 400, y: 600 }
-    }
-    
-    // Infrastructure
-    element saaSPlatform.redis {
-      position { x: 600, y: 350 }
-    }
-    element saaSPlatform.messageQueue {
-      position { x: 100, y: 350 }
-    }
-    element saaSPlatform.eventQueue {
-      position { x: 300, y: 450 }
-    }
-    element saaSPlatform.objectStorage {
-      position { x: 500, y: 350 }
-    }
-    element saaSPlatform.responseCache {
-      position { x: 650, y: 250 }
-    }
-  }
-}
-

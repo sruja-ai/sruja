@@ -18,19 +18,23 @@ pub struct RelationWithScope {
 
 /// Collect all element definitions from a program keyed by fully qualified name (FQN)
 /// Returns a map of FQN -> ElementDef and a vector of all relations
+///
+/// This is a two-pass approach:
+/// 1. First pass: Collect all elements with their FQDNs
+/// 2. Second pass: Resolve relation endpoints to FQDNs based on scope
 pub fn collect_elements(program: &Program) -> (HashMap<String, ElementDef>, Vec<Relation>) {
     let estimated_elements = program.items.len() * 4;
     let capacity = estimated_elements.max(16);
-    
+
     let mut elements: HashMap<String, ElementDef> = HashMap::with_capacity(capacity);
-    let mut relations: Vec<Relation> = Vec::with_capacity(capacity / 2);
+    let mut relations_with_scope: Vec<(Relation, String)> = Vec::with_capacity(capacity / 2);
 
     // Use iterative traversal with explicit stack
     struct Frame {
         elem: ElementDef,
         parent: String,
     }
-    
+
     let mut stack: Vec<Frame> = Vec::new();
 
     // Initialize with top-level elements
@@ -43,17 +47,17 @@ pub fn collect_elements(program: &Program) -> (HashMap<String, ElementDef>, Vec<
                 });
             }
             TopLevelItem::Relation(rel) => {
-                relations.push(rel.clone());
+                relations_with_scope.push((rel.clone(), String::new()));
             }
             _ => {}
         }
     }
 
-    // Iterative traversal
+    // First pass: Collect all elements (iterative traversal)
     while let Some(frame) = stack.pop() {
         let elem = frame.elem;
         let id = elem.assignment.name.clone();
-        
+
         if id.is_empty() {
             continue;
         }
@@ -72,13 +76,19 @@ pub fn collect_elements(program: &Program) -> (HashMap<String, ElementDef>, Vec<
                         });
                     }
                     ElementDefBodyItem::Relation(rel) => {
-                        relations.push(rel.clone());
+                        relations_with_scope.push((rel.clone(), fqn.clone()));
                     }
                     _ => {}
                 }
             }
         }
     }
+
+    // Second pass: Resolve relation endpoints to FQDNs
+    let relations: Vec<Relation> = relations_with_scope
+        .into_iter()
+        .map(|(rel, scope)| resolve_relation_fqns(rel, &scope, &elements))
+        .collect();
 
     (elements, relations)
 }
@@ -93,19 +103,11 @@ pub fn build_qualified_id(parent: &str, id: &str) -> String {
 }
 
 /// Collect all relations from a program (no scope information).
+///
+/// All relation endpoints are resolved to fully qualified names.
 pub fn collect_all_relations(program: &Program) -> Vec<Relation> {
     let (_elements, relations) = collect_elements(program);
-    
-    // Add top-level relations
-    let mut all_relations = relations;
-    
-    for item in &program.items {
-        if let TopLevelItem::Relation(rel) = item {
-            all_relations.push(rel.clone());
-        }
-    }
-    
-    all_relations
+    relations
 }
 
 /// Collect all relations from a program with their scope (parent FQN).
@@ -165,6 +167,54 @@ pub fn collect_relations_with_scope(program: &Program) -> Vec<RelationWithScope>
     }
 
     out
+}
+
+/// Resolve relation endpoints to fully qualified names based on scope
+///
+/// When a relation is defined inside an element body, the endpoint names
+/// are relative to that scope. This function resolves them to FQDNs by:
+/// 1. Checking if the name already exists as a fully qualified name
+/// 2. Checking if the name exists in the elements map
+/// 3. Prepending the scope if neither match, and checking if the scoped name exists
+/// 4. Returning the original name if no match is found (for external references)
+pub fn resolve_relation_fqns(
+    rel: Relation,
+    scope: &str,
+    elements: &HashMap<String, ElementDef>,
+) -> Relation {
+    let resolve = |ident: &QualifiedIdent| -> String {
+        let name = ident.as_string();
+
+        // If it's already a fully qualified name that exists, use it
+        if elements.contains_key(&name) {
+            return name;
+        }
+
+        // If it's a simple name that exists at the top level, use it
+        if !name.contains('.') && elements.contains_key(&name) {
+            return name;
+        }
+
+        // Try resolving with the scope
+        if !scope.is_empty() {
+            let scoped = format!("{}.{}", scope, name);
+            if elements.contains_key(&scoped) {
+                return scoped;
+            }
+        }
+
+        // Return the original name (might be an external reference or error)
+        name
+    };
+
+    let from_fqn = resolve(&rel.from);
+    let to_fqn = resolve(&rel.to);
+
+    Relation {
+        from: QualifiedIdent::qualified(from_fqn.split('.').map(|s| s.to_string()).collect()),
+        to: QualifiedIdent::qualified(to_fqn.split('.').map(|s| s.to_string()).collect()),
+        ..rel
+    }
 }
 
 /// Get element location from various AST types

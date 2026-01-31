@@ -26,55 +26,55 @@ ecommerce = system "E-Commerce Platform" {
     shoppingCart = component "Shopping Cart"
     checkout = component "Checkout Flow"
   }
-  
+
   mobileApp = container "Mobile Application" {
     technology "React Native"
     productBrowser = component "Product Browser"
     cartManager = component "Cart Manager"
   }
-  
+
   // Backend services
   productService = container "Product Service" {
     technology "Go, gRPC"
     productApi = component "Product API"
     searchEngine = component "Search Engine"
   }
-  
+
   orderService = container "Order Service" {
     technology "Java, Spring Boot"
     orderApi = component "Order API"
     orderProcessor = component "Order Processor"
   }
-  
+
   paymentService = container "Payment Service" {
     technology "Node.js, Express"
     paymentApi = component "Payment API"
     paymentGateway = component "Payment Gateway"
   }
-  
+
   userService = container "User Service" {
     technology "Python, FastAPI"
     authApi = component "Authentication API"
     profileApi = component "Profile API"
   }
-  
+
   // Data stores
   productDb = database "Product Database" {
     technology "PostgreSQL"
   }
-  
+
   orderDb = database "Order Database" {
     technology "PostgreSQL"
   }
-  
+
   userDb = database "User Database" {
     technology "MongoDB"
   }
-  
+
   cache = database "Redis Cache" {
     technology "Redis"
   }
-  
+
   // Message queue
   eventQueue = queue "Event Queue" {
     technology "Kafka"
@@ -171,16 +171,3 @@ ADR002 = adr "Event-Driven Communication" {
   decision "Use Kafka for event streaming"
   consequences "Gain: Loose coupling, scalability. Trade-off: Eventual consistency, complexity"
 }
-
-
-
-view index {
-  title "Microservices E-commerce Platform"
-  include *
-}
-
-view containers of ecommerce {
-  title "E-Commerce Containers"
-  include ecommerce.*
-}
-

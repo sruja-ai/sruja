@@ -44,16 +44,3 @@ ADR001 = adr "Adopt Stripe for payments" {
   decision "Use Stripe API"
   consequences "Easy integration, good documentation"
 }
-
-
-
-view index {
-  title "Full MVP Example"
-  include *
-}
-
-view containers of app {
-  title "Application Containers"
-  include app.*
-}
-

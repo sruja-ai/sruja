@@ -30,24 +30,33 @@ export function setWasmApi(api: Awaited<ReturnType<typeof initWasmNode>> | null)
  *
  * @param extensionPath - Path to the VS Code extension
  * @throws Error if required files are missing
+ * 
+ * @remarks
+ * Checks for Rust WASM files built with wasm-pack --target nodejs:
+ * - wasm/rust/sruja_wasm.js (CommonJS module)
+ * - wasm/rust/sruja_wasm_bg.wasm (WASM binary)
  */
 function verifyWasmFiles(extensionPath: string): void {
-  const wasmPath = path.join(extensionPath, "wasm", "sruja.wasm.gz");
-  const wasmPathUncompressed = path.join(extensionPath, "wasm", "sruja.wasm");
   const wasmJsPath = path.join(extensionPath, "wasm", "rust", "sruja_wasm.js");
   const wasmBgPath = path.join(extensionPath, "wasm", "rust", "sruja_wasm_bg.wasm");
 
   log(`Extension path: ${extensionPath}`);
-  log(`Checking WASM files:`);
+  log(`Checking Rust WASM files (Node.js target):`);
   log(`  - ${wasmJsPath}: ${fs.existsSync(wasmJsPath) ? "✅ Found" : "❌ Missing"}`);
   log(`  - ${wasmBgPath}: ${fs.existsSync(wasmBgPath) ? "✅ Found" : "❌ Missing"}`);
 
-  if (!fs.existsSync(wasmPath) && !fs.existsSync(wasmPathUncompressed)) {
-    throw new Error(`WASM file not found. Expected at: ${wasmPath} or ${wasmPathUncompressed}`);
+  if (!fs.existsSync(wasmJsPath)) {
+    throw new Error(
+      `Rust WASM JS file not found at: ${wasmJsPath}\n` +
+        `Build with: wasm-pack build --target nodejs --out-dir wasm/rust crates/sruja-wasm --release`
+    );
   }
 
-  if (!fs.existsSync(wasmJsPath) || !fs.existsSync(wasmBgPath)) {
-    throw new Error(`Rust WASM files not found. Expected at: ${wasmJsPath} and ${wasmBgPath}`);
+  if (!fs.existsSync(wasmBgPath)) {
+    throw new Error(
+      `Rust WASM binary file not found at: ${wasmBgPath}\n` +
+        `Build with: wasm-pack build --target nodejs --out-dir wasm/rust crates/sruja-wasm --release`
+    );
   }
 }
 

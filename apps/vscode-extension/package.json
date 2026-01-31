@@ -127,7 +127,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build && npm run copy-wasm",
-    "copy-wasm": "mkdir -p wasm/rust && (cp ../../apps/website/public/wasm/rust/sruja_wasm.js wasm/rust/ && cp ../../apps/website/public/wasm/rust/sruja_wasm_bg.wasm wasm/rust/ && echo '✅ Copied Rust WASM files') || echo 'Warning: Rust WASM files not found, run make wasm first'",
+    "copy-wasm": "mkdir -p wasm/rust && if [ -f wasm-build/sruja_wasm.js ] && [ -f wasm-build/sruja_wasm_bg.wasm ]; then cp wasm-build/sruja_wasm.js wasm/rust/ && cp wasm-build/sruja_wasm_bg.wasm wasm/rust/ && echo '✅ Copied Rust WASM files (Node.js target)'; else echo '❌ Rust WASM files missing. Build with: make wasm-nodejs'; exit 1; fi",
     "compile": "tsc -p ./",
     "bundle": "tsx ./scripts/bundle.mts",
     "watch": "tsc -watch -p ./",

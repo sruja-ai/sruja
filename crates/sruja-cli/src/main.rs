@@ -3,6 +3,7 @@
 //! Command-line interface for the Sruja DSL tool.
 
 mod commands;
+mod modules;
 
 use clap::{Parser, Subcommand};
 
@@ -179,9 +180,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             } => commands::change_create(&title, description, context, status).await,
             ChangeAction::Validate { file } => commands::change_validate(&file).await,
         },
-        Commands::List { file } => commands::list(&file).await,
+        Commands::List { file } => commands::list_elements(&file).await,
         Commands::Tree { file } => commands::tree(&file).await,
-        Commands::Init { name } => commands::init(name.as_deref()).await,
+        Commands::Init { name } => commands::init_project(name.as_deref()).await,
         Commands::Diff {
             file1,
             file2,

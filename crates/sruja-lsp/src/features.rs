@@ -343,7 +343,7 @@ pub fn find_definition(doc: &Document, program: &Program, id: &str) -> Option<Lo
 }
 
 /// Find all references to an identifier
-pub fn find_references(doc: &Document, program: &Program, id: &str) -> Vec<Location> {
+pub fn find_references(doc: &Document, _program: &Program, id: &str) -> Vec<Location> {
     let mut locations = Vec::new();
 
     // Search in document text
@@ -406,6 +406,7 @@ pub fn get_document_symbols(doc: &Document, program: &Program) -> Vec<DocumentSy
             }
         }
 
+        #[allow(deprecated)]
         symbols.push(DocumentSymbol {
             name: fqn.clone(),
             detail: Some(title),

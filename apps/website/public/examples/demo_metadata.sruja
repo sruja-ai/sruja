@@ -56,11 +56,3 @@ customer = person "Customer" {
 customer -> billingApi.api "submits billing requests to"
 billingApi.api -> invoiceDb "stores invoices in"
 billingApi.api -> events "publishes events to"
-
-
-
-view index {
-  title "Metadata Showcase"
-  include *
-}
-

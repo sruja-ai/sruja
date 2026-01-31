@@ -1,7 +1,7 @@
 import { logger } from "../utils/logger";
 import { ConfigurationError, NetworkError } from "../utils/errors";
 import { ExportError } from "./errors";
-import type { DotResult, DotElement, DotRelation, ScoreResult } from "./wasmTypes";
+import type { DotElement, DotRelation, ScoreResult } from "./wasmTypes";
 import type { WasmApi } from "./wasmAdapter";
 
 type RustWasmModule = {
@@ -18,6 +18,14 @@ type RustWasmModule = {
   sruja_dsl_to_model: (dsl: string, filename?: string) => string;
   sruja_dsl_to_mermaid: (dsl: string, configJson?: string) => string;
   sruja_dsl_to_dot: (
+    dsl: string,
+    viewLevel?: number,
+    targetId?: string,
+    nodeSizesJson?: string,
+    viewId?: string,
+    filename?: string
+  ) => string;
+  sruja_dsl_to_dot_with_relations: (
     dsl: string,
     viewLevel?: number,
     targetId?: string,
@@ -61,50 +69,6 @@ function defaultSizeForKind(kind: DotElement["kind"]): { width: number; height: 
   }
 }
 
-function buildDotResultFromModel(modelJson: string, dot: string): DotResult {
-  const parsed = JSON.parse(modelJson) as {
-    elements?: Record<
-      string,
-      {
-        id: string;
-        kind: string;
-        title: string;
-        description?: string | null;
-        technology?: string | null;
-        parent?: string | null;
-      }
-    >;
-    relations?: Array<{
-      source: string;
-      target: string;
-      title?: string | null;
-      description?: string | null;
-    }>;
-  };
-
-  const elements: DotElement[] = Object.values(parsed.elements || {}).map((e) => {
-    const kind = normalizeDotKind(e.kind);
-    const { width, height } = defaultSizeForKind(kind);
-    return {
-      id: e.id,
-      kind,
-      title: e.title,
-      technology: e.technology ?? undefined,
-      description: e.description ?? undefined,
-      parentId: e.parent ?? undefined,
-      width,
-      height,
-    };
-  });
-
-  const relations: DotRelation[] = (parsed.relations || []).map((r) => ({
-    from: r.source,
-    to: r.target,
-    label: r.title ?? r.description ?? undefined,
-  }));
-
-  return { dot, elements, relations };
-}
 
 async function dynamicImportRustWasm(jsUrl: string): Promise<RustWasmModule> {
   try {
@@ -210,13 +174,106 @@ export async function initRustWasm(options?: { base?: string }): Promise<WasmApi
       viewId?: string,
       filename?: string
     ) => {
-      const modelJson = wrapRustCall(() => mod.sruja_dsl_to_model(dsl, filename));
-      // Pass node sizes as JSON string, viewId, and filename
+      // Use the new function that returns both DOT and projected relations
       const nodeSizesJson = nodeSizes ? JSON.stringify(nodeSizes) : undefined;
-      const dot = wrapRustCall(() =>
-        mod.sruja_dsl_to_dot(dsl, viewLevel, focusNodeId, nodeSizesJson, viewId, filename)
-      );
-      return buildDotResultFromModel(modelJson, dot);
+      
+      // Check if the new function exists, fallback to old function if not
+      let resultJson: string;
+      if (typeof mod.sruja_dsl_to_dot_with_relations === "function") {
+        resultJson = wrapRustCall(() =>
+          mod.sruja_dsl_to_dot_with_relations(dsl, viewLevel, focusNodeId, nodeSizesJson, viewId, filename)
+        );
+      } else {
+        // Fallback: use old function and build from model (for backward compatibility)
+        logger.warn("sruja_dsl_to_dot_with_relations not available, using fallback", {
+          component: "wasm",
+          action: "dslToDot",
+        });
+        const modelJson = wrapRustCall(() => mod.sruja_dsl_to_model(dsl, filename));
+        const dot = wrapRustCall(() =>
+          mod.sruja_dsl_to_dot(dsl, viewLevel, focusNodeId, nodeSizesJson, viewId, filename)
+        );
+        // Parse model to get relations (unprojected, but better than nothing)
+        const modelParsed = JSON.parse(modelJson) as {
+          elements?: Record<string, any>;
+          relations?: Array<{ source: string; target: string; title?: string | null }>;
+        };
+        const elements: DotElement[] = Object.values(modelParsed.elements || {}).map((e: any) => {
+          const kind = normalizeDotKind(e.kind);
+          const { width, height } = defaultSizeForKind(kind);
+          return {
+            id: e.id,
+            kind,
+            title: e.title,
+            technology: e.technology ?? undefined,
+            description: e.description ?? undefined,
+            parentId: e.parent ?? undefined,
+            width,
+            height,
+          };
+        });
+        const relations: DotRelation[] = (modelParsed.relations || []).map((r) => ({
+          from: r.source,
+          to: r.target,
+          label: r.title ?? undefined,
+        }));
+        return { dot, elements, relations };
+      }
+      
+      const parsed = JSON.parse(resultJson) as {
+        dot: string;
+        elements: Record<
+          string,
+          {
+            id: string;
+            kind: string;
+            title: string;
+            description?: string | null;
+            technology?: string | null;
+            parent?: string | null;
+          }
+        >;
+        relations: Array<{
+          from: string;
+          to: string;
+          label?: string | null;
+        }>;
+      };
+      
+      // Debug logging
+      logger.debug("DOT export result", {
+        component: "wasm",
+        action: "dslToDot",
+        hasDot: !!parsed.dot,
+        elementsCount: Object.keys(parsed.elements || {}).length,
+        relationsCount: parsed.relations?.length || 0,
+        sampleRelations: parsed.relations?.slice(0, 3),
+      });
+      
+      // Build elements from projected elements (these match the DOT output)
+      const elements: DotElement[] = Object.values(parsed.elements || {}).map((e) => {
+        const kind = normalizeDotKind(e.kind);
+        const { width, height } = defaultSizeForKind(kind);
+        return {
+          id: e.id,
+          kind,
+          title: e.title,
+          technology: e.technology ?? undefined,
+          description: e.description ?? undefined,
+          parentId: e.parent ?? undefined,
+          width,
+          height,
+        };
+      });
+      
+      // Use projected relations from the DOT exporter (these match the projected elements)
+      const relations: DotRelation[] = (parsed.relations || []).map((r) => ({
+        from: r.from,
+        to: r.to,
+        label: r.label ?? undefined,
+      }));
+      
+      return { dot: parsed.dot, elements, relations };
     },
     calculateArchitectureScore: async (dsl: string) => {
       const raw = wrapRustCall(() => mod.sruja_calculate_architecture_score(dsl));

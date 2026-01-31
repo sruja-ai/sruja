@@ -22,11 +22,11 @@ ecommerce = system "E-Commerce System" {
   webApp = container "Web Application" {
     technology "React"
   }
-  
+
   api = container "API Service" {
     technology "Go"
   }
-  
+
   database = database "PostgreSQL Database" {
     technology "PostgreSQL 14"
   }
@@ -108,11 +108,3 @@ ADR002 = adr "Use PostgreSQL for strong consistency requirements" {
   decision "Use PostgreSQL"
   consequences "Strong consistency, SQL complexity"
 }
-
-
-
-view index {
-  title "Systems Thinking Example"
-  include *
-}
-

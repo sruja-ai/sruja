@@ -121,7 +121,7 @@ ragPlatform = system "RAG Platform" {
     technology "RabbitMQ"
     description "Decouples upload from processing"
   }
-  
+
   // Internal Flows
   gateway.queryPreprocessor -> retrieval.hybridSearch "Search"
   retrieval.hybridSearch -> vectorDb "KNN Search"
@@ -137,7 +137,7 @@ ragPlatform = system "RAG Platform" {
     description "OpenAI GPT-4 or Azure OpenAI"
     metadata { tags ["external", "cost-sensitive"] }
   }
-  
+
   gateway -> llm "Generate answer"
   ingestion.embedder -> llm "Get embeddings"
 }
@@ -223,16 +223,3 @@ ADR001 = adr "Hybrid Search" {
   decision "Implement Hybrid Search (Sparse + Dense vectors)."
   consequences "Higher storage cost, better retrieval accuracy."
 }
-
-
-
-view index {
-  title "Enterprise RAG Pipeline"
-  include *
-}
-
-view containers of ragPlatform {
-  title "RAG Platform Containers"
-  include ragPlatform.*
-}
-

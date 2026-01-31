@@ -24,8 +24,7 @@ pub struct SrujaLanguageServer {
 
 impl SrujaLanguageServer {
     pub fn new(client: Client) -> Self {
-        let mut validator = Validator::new();
-        validator.register_default_rules();
+        let validator = Validator::with_default_rules();
 
         Self {
             client,
@@ -40,24 +39,22 @@ impl SrujaLanguageServer {
             None => return,
         };
 
-        // Parse the document
+        // Parse document
         let parser = Parser::new(uri.to_string());
-        let mut diagnostics = Vec::new();
 
-        match parser.parse(&text) {
+        let diagnostics = match parser.parse(&text) {
             Ok(program) => {
                 // Get parser diagnostics (none if successful)
                 // Run validation
                 let validation_diagnostics = self.validator.validate_sync(&program);
-                diagnostics = convert_diagnostics_to_lsp(&validation_diagnostics);
+                convert_diagnostics_to_lsp(&validation_diagnostics)
             }
             Err(parse_diagnostics) => {
-                diagnostics = convert_diagnostics_to_lsp(&parse_diagnostics);
-
                 // Try to parse partially for validation
                 // For now, skip validation if parse failed
+                convert_diagnostics_to_lsp(&parse_diagnostics)
             }
-        }
+        };
 
         // Publish diagnostics
         self.client
@@ -359,11 +356,15 @@ impl LanguageServer for SrujaLanguageServer {
 
     async fn code_action(&self, _params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
         // TODO: Implement code actions (quick fixes)
+        // This will provide quick fixes for common errors like:
+        // - Create missing elements
+        // - Add missing descriptions
+        // - Fix duplicate IDs
         Ok(None)
     }
 }
 
-/// Create and start the LSP server
+/// Create and start LSP server
 pub fn create_lsp_service() -> (LspService<SrujaLanguageServer>, ClientSocket) {
     LspService::new(|client| SrujaLanguageServer::new(client))
 }

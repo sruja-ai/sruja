@@ -26,11 +26,3 @@ SecurityPolicy = policy "Encrypt data at rest" {
   category "security"
   enforcement "required"
 }
-
-
-
-view index {
-  title "Governance Example"
-  include *
-}
-

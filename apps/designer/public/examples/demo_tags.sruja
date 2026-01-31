@@ -21,11 +21,3 @@ app = system "Application" {
 app.api -> app.db "reads data from" [read, database]
 app.api -> app.db "writes data to" [write, database, critical]
 app.api -> app.mq "publishes events to" [async, events]
-
-
-
-view index {
-  title "Tags Showcase"
-  include *
-}
-

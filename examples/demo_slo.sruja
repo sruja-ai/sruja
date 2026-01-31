@@ -37,7 +37,7 @@ api = system "API Service" {
       current "8500 req/s"
     }
   }
-  
+
   webApp = container "Web Application" {
     slo {
       availability {
@@ -52,15 +52,3 @@ api = system "API Service" {
     }
   }
 }
-
-
-view index {
-  title "SLO Example"
-  include *
-}
-
-view containers of api {
-  title "API Service Containers"
-  include api.*
-}
-

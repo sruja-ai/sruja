@@ -18,11 +18,3 @@ service = system "Service" {
 service.api -> service.mq "publishes messages"
 service.api -> service.db "reads data"
 service.api -> service.db "writes data"
-
-
-
-view index {
-  title "Queues and DataStore"
-  include *
-}
-

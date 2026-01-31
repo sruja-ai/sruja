@@ -16,6 +16,8 @@ use sruja_language::Parser;
 use sruja_lsp::server::run_stdio;
 use thiserror::Error;
 
+use crate::modules::collect_sruja_files;
+
 #[derive(Error, Debug)]
 pub enum CliError {
     #[error("IO error: {0}")]
@@ -57,8 +59,7 @@ pub async fn lint(file: &str) -> Result<(), CliError> {
     };
 
     // Validate
-    let mut validator = Validator::new();
-    validator.register_default_rules();
+    let validator = Validator::with_default_rules();
     let diagnostics = validator.validate_sync(&program);
 
     if diagnostics.is_empty() {
@@ -142,6 +143,7 @@ pub async fn export(
         }
         "mermaid" => {
             let exporter = MermaidExporter::new(MermaidConfig {
+                direction: "LR".to_string(),
                 view_level,
                 target_id: target.map(|s| s.to_string()),
                 ..MermaidConfig::default()
@@ -192,7 +194,7 @@ pub async fn fmt(_file: &str) -> Result<(), CliError> {
 }
 
 /// List elements from a file
-pub async fn list(file: &str) -> Result<(), CliError> {
+pub async fn list_elements(file: &str) -> Result<(), CliError> {
     let content = fs::read_to_string(file)?;
     let parser = Parser::new(file.to_string());
 
@@ -299,7 +301,7 @@ fn print_tree_node(
 }
 
 /// Initialize a new Sruja project
-pub async fn init(name: Option<&str>) -> Result<(), CliError> {
+pub async fn init_project(name: Option<&str>) -> Result<(), CliError> {
     let project_name = name.unwrap_or("my-architecture");
     let filename = format!("{}.sruja", project_name);
 
@@ -550,8 +552,7 @@ pub async fn score(file: Option<&str>) -> Result<(), CliError> {
     };
 
     // Validate to get diagnostics
-    let mut validator = Validator::new();
-    validator.register_default_rules();
+    let validator = Validator::with_default_rules();
     let diagnostics = validator.validate_sync(&program);
 
     // Calculate score (100 - deductions)
@@ -748,8 +749,7 @@ pub async fn validate(
     };
 
     // Validate with default rules
-    let mut validator = Validator::new();
-    validator.register_default_rules();
+    let validator = Validator::with_default_rules();
 
     // Add constraints if provided
     for constraint_path in constraints {
@@ -827,29 +827,6 @@ pub async fn validate(
     }
 }
 
-/// Collect all .sruja files from a directory recursively
-fn collect_sruja_files(dir: &Path) -> Result<Vec<String>, CliError> {
-    let mut files = Vec::new();
-    let entries = fs::read_dir(dir)?;
-
-    for entry in entries {
-        let entry = entry?;
-        let path = entry.path();
-
-        if path.is_dir() {
-            // Recursively collect from subdirectories
-            let sub_files = collect_sruja_files(&path)?;
-            files.extend(sub_files);
-        } else if let Some(ext) = path.extension() {
-            if ext == std::ffi::OsStr::new("sruja") {
-                files.push(path.to_string_lossy().to_string());
-            }
-        }
-    }
-
-    Ok(files)
-}
-
 /// Validate a list of files and produce summary
 async fn validate_files(
     files: &[String],
@@ -895,7 +872,7 @@ async fn validate_files(
 }
 
 /// Validate a single file without recursion
-async fn validate_single_file(file: &str, constraints: &[String]) -> Result<(), CliError> {
+async fn validate_single_file(file: &str, _constraints: &[String]) -> Result<(), CliError> {
     let content = fs::read_to_string(file)?;
     let parser = Parser::new(file.to_string());
 
@@ -914,8 +891,7 @@ async fn validate_single_file(file: &str, constraints: &[String]) -> Result<(), 
     };
 
     // Validate to get diagnostics
-    let mut validator = Validator::new();
-    validator.register_default_rules();
+    let validator = Validator::with_default_rules();
     let diagnostics = validator.validate_sync(&program);
 
     // Calculate score (100 - deductions)
@@ -986,8 +962,7 @@ pub async fn compile(file: &str) -> Result<(), CliError> {
     };
 
     // Validate
-    let mut validator = Validator::new();
-    validator.register_default_rules();
+    let validator = Validator::with_default_rules();
     let diagnostics = validator.validate_sync(&program);
 
     if diagnostics.is_empty() {

@@ -12,6 +12,10 @@ import {
   type EdgeTypes,
   type ReactFlowInstance,
   MarkerType,
+  SmoothStepEdge,
+  BezierEdge,
+  StraightEdge,
+  StepEdge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Paper, Group, Stack, ActionIcon, Text, Loader, Button, Badge } from "@mantine/core";
@@ -52,13 +56,24 @@ const nodeTypes: NodeTypes = {
 };
 
 const edgeTypes: EdgeTypes = {
+  // Custom edge types
   spline: SplineEdge,
   traffic: TrafficEdge,
+  // Default React Flow edge types (needed when custom edgeTypes are provided)
+  smoothstep: SmoothStepEdge,
+  bezier: BezierEdge,
+  straight: StraightEdge,
+  step: StepEdge,
+  default: BezierEdge, // Default fallback
 };
 
 /**
  * Select optimal handle positions based on node positions.
  * Chooses the closest sides between source and target nodes.
+ *
+ * Note: Handle IDs must match ConnectionPorts component:
+ * - Source handles: "st" (top), "sr" (right), "sb" (bottom), "sl" (left)
+ * - Target handles: "t" (top), "r" (right), "b" (bottom), "l" (left)
  */
 function selectOptimalHandles(
   sourceNode: RFNode,
@@ -82,23 +97,23 @@ function selectOptimalHandles(
     // Horizontal layout - prefer left/right
     if (dx > 0) {
       // Target is to the right
-      sourceHandle = "source-right";
-      targetHandle = "target-left";
+      sourceHandle = "sr"; // source-right
+      targetHandle = "l"; // target-left
     } else {
       // Target is to the left
-      sourceHandle = "source-left";
-      targetHandle = "target-right";
+      sourceHandle = "sl"; // source-left
+      targetHandle = "r"; // target-right
     }
   } else {
     // Vertical layout - prefer top/bottom
     if (dy > 0) {
       // Target is below
-      sourceHandle = "source-bottom";
-      targetHandle = "target-top";
+      sourceHandle = "sb"; // source-bottom
+      targetHandle = "t"; // target-top
     } else {
       // Target is above
-      sourceHandle = "source-top";
-      targetHandle = "target-bottom";
+      sourceHandle = "st"; // source-top
+      targetHandle = "b"; // target-bottom
     }
   }
 
@@ -148,6 +163,9 @@ export const SrujaCanvas = () => {
   const focusedSystemId = useViewStore((s) => s.focusedSystemId);
   const focusedContainerId = useViewStore((s) => s.focusedContainerId);
 
+  // Visual editor store (needed for isManualMode in useEffect)
+  const { activeTool, selectedNodeType, setActiveTool, isManualMode } = useVisualEditorStore();
+
   // Derive numeric level and focus node ID for compatibility with existing layout logic
   const level = useMemo(() => {
     switch (currentLevelInfo) {
@@ -188,6 +206,7 @@ export const SrujaCanvas = () => {
     (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   const activeViewId = useViewStore((s) => s.activeViewId);
+  const setActiveView = useViewStore((s) => s.setActiveView);
 
   // Animation State
   const activeAnimation = useSelectionStore((s) => s.activeAnimation);
@@ -609,6 +628,17 @@ export const SrujaCanvas = () => {
       return;
     }
 
+    // Clear stale activeViewId if it doesn't exist in model.views
+    // This can happen when view blocks are removed from DSL files
+    // and activeViewId still contains a reference from a previous state
+    if (activeViewId && !model.views?.[activeViewId]) {
+      console.log("[SrujaCanvas] Clearing stale activeViewId", {
+        activeViewId,
+        availableViews: Object.keys(model.views || {}),
+      });
+      setActiveView(null);
+    }
+
     const computeLayout = async () => {
       const cacheKey =
         hashCacheKey(level, focusNodeId, collapsedNodeIds, modelId) +
@@ -654,10 +684,15 @@ export const SrujaCanvas = () => {
 
         const result = await convertDslToDot(
           dslSource,
-          activeViewId ? 1 : level, // Default to L1 when using a view definition
-          activeViewId ? undefined : focusNodeId, // Don't pass focusNodeId when using viewId
+          // Only use L1 (view_level: 1) when activeViewId is set AND exists in model.views
+          // Otherwise, use the current level (L1, L2, L3)
+          // This ensures edges render correctly when view blocks have been removed from DSL
+          activeViewId && model?.views?.[activeViewId] ? 1 : level,
+          // Don't pass focusNodeId when using a valid view
+          activeViewId && model?.views?.[activeViewId] ? undefined : focusNodeId,
           nodeSizes,
-          activeViewId || undefined, // Pass the view ID to load the view definition
+          // Only pass viewId if it exists in model.views
+          activeViewId && model?.views?.[activeViewId] ? activeViewId : undefined,
           currentExampleFile || undefined // Pass filename
         );
 
@@ -667,6 +702,31 @@ export const SrujaCanvas = () => {
           setEdges([]);
           setIsComputing(false);
           return;
+        }
+
+        // Ensure relations array exists and log for debugging
+        if (!result.relations || result.relations.length === 0) {
+          console.warn("[SrujaCanvas] No relations returned from convertDslToDot", {
+            result: result,
+            hasDot: !!result.dot,
+            hasElements: !!result.elements,
+            elementsCount: result.elements?.length || 0,
+            relationsCount: result.relations?.length || 0,
+            relations: result.relations,
+            level: level,
+            focusNodeId: focusNodeId,
+            activeViewId: activeViewId,
+            isManualMode: isManualMode,
+          });
+        } else {
+          console.debug("[SrujaCanvas] Relations received", {
+            relationsCount: result.relations.length,
+            sampleRelations: result.relations.slice(0, 3),
+            level: level,
+            focusNodeId: focusNodeId,
+            activeViewId: activeViewId,
+            isManualMode: isManualMode,
+          });
         }
 
         // Debug logging removed - use browser devtools if needed
@@ -756,7 +816,9 @@ export const SrujaCanvas = () => {
         });
 
         // 4. Build edges from projected relations returned by Go
-        const c4Edges = result.relations.map(
+        // Ensure relations array exists and is an array
+        const relations = result.relations || [];
+        const c4Edges = relations.map(
           (rel: { from: string; to: string; title?: string }, idx: number) => {
             return {
               id: `e-${rel.from}-${rel.to}-${idx}`,
@@ -767,6 +829,18 @@ export const SrujaCanvas = () => {
             };
           }
         );
+
+        // Debug logging for edge creation
+        if (import.meta.env.DEV || import.meta.env.MODE === "development") {
+          console.debug("[SrujaCanvas] Edge creation", {
+            relationsCount: relations.length,
+            c4EdgesCount: c4Edges.length,
+            relations: relations.slice(0, 5), // Log first 5 for debugging
+            resultRelations: result.relations?.slice(0, 5), // Log relations from result
+            hasResultRelations: !!result.relations,
+            resultRelationsType: typeof result.relations,
+          });
+        }
 
         // Layout complete: nodes and edges computed
 
@@ -1036,12 +1110,36 @@ export const SrujaCanvas = () => {
 
         // Filter and create edges only for nodes that exist
         const rfValidNodeIds = new Set(nextNodes.map((n) => n.id));
+
+        // Debug: Log node IDs and edge sources/targets
+        if (import.meta.env.DEV || import.meta.env.MODE === "development") {
+          console.debug("[SrujaCanvas] Edge filtering", {
+            validNodeIds: Array.from(rfValidNodeIds).slice(0, 10), // First 10 for debugging
+            c4EdgesCount: c4Edges.length,
+            sampleEdges: c4Edges.slice(0, 5).map((e) => ({
+              source: e.source,
+              target: e.target,
+              sourceExists: rfValidNodeIds.has(e.source),
+              targetExists: rfValidNodeIds.has(e.target),
+            })),
+          });
+        }
+
         const nextEdges: RFEdge[] = c4Edges
           .filter((edge) => {
             const sourceExists = rfValidNodeIds.has(edge.source);
             const targetExists = rfValidNodeIds.has(edge.target);
             if (!sourceExists || !targetExists) {
               // Edge skipped: invalid source or target
+              if (import.meta.env.DEV || import.meta.env.MODE === "development") {
+                console.warn("[SrujaCanvas] Edge skipped", {
+                  edgeId: edge.id,
+                  source: edge.source,
+                  target: edge.target,
+                  sourceExists,
+                  targetExists,
+                });
+              }
               return false;
             }
             return true;
@@ -1052,6 +1150,7 @@ export const SrujaCanvas = () => {
 
             if (!sourceNode || !targetNode) {
               // Fallback to default handles if nodes not found
+              // Use handle IDs that match ConnectionPorts: "sb" (source-bottom), "t" (target-top)
               // Theme-aware fallback edge colors using shared UI theme
               const edgeColor = isDark ? uiTheme.neutral[600] : uiTheme.neutral[600];
 
@@ -1059,8 +1158,8 @@ export const SrujaCanvas = () => {
                 id: edge.id,
                 source: edge.source,
                 target: edge.target,
-                sourceHandle: "source-bottom",
-                targetHandle: "target-top",
+                sourceHandle: "sb", // source-bottom (matches ConnectionPorts)
+                targetHandle: "t", // target-top (matches ConnectionPorts)
                 type: "smoothstep" as EdgeType,
                 animated: false,
                 style: { stroke: edgeColor, strokeWidth: 2 },
@@ -1137,6 +1236,20 @@ export const SrujaCanvas = () => {
         console.debug(
           `[SrujaCanvas] Layout complete: ${nextNodes.length} nodes, ${nextEdges.length} edges (from ${c4Edges.length} projected edges)`
         );
+
+        // Additional debug logging for edge types
+        if (import.meta.env.DEV || import.meta.env.MODE === "development") {
+          const edgeTypeCounts = nextEdges.reduce(
+            (acc, edge) => {
+              acc[edge.type || "unknown"] = (acc[edge.type || "unknown"] || 0) + 1;
+              return acc;
+            },
+            {} as Record<string, number>
+          );
+          console.debug("[SrujaCanvas] Edge type distribution", edgeTypeCounts);
+          console.debug("[SrujaCanvas] Sample edges", nextEdges.slice(0, 3));
+        }
+
         // Edges processed and validated
 
         // Cache the result
@@ -1183,13 +1296,12 @@ export const SrujaCanvas = () => {
     mode,
     isDark,
     uiTheme,
+    activeViewId,
+    isManualMode,
   ]); // Include modelId to invalidate cache when model changes
 
   // Selection store for details panel
   const selectNode = useSelectionStore((s) => s.selectNode);
-
-  // Visual editor store
-  const { activeTool, selectedNodeType, setActiveTool, isManualMode } = useVisualEditorStore();
   const addNode = useArchitectureStore((s) => s.addNode);
   const addRelation = useArchitectureStore((s) => s.addRelation);
   const deleteNodes = useArchitectureStore((s) => s.deleteNodes);

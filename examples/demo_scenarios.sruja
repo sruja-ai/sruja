@@ -30,11 +30,3 @@ LoginStory = story "User Login Flow" {
   step user -> ecommerce.cartPage "enters credentials"
   step ecommerce.cartPage -> ecommerce "validates user"
 }
-
-
-
-view index {
-  title "User Stories with Qualified Actors"
-  include *
-}
-

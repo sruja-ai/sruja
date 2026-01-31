@@ -9,7 +9,6 @@ use sruja_language::{collect_elements, Program, Relation};
 
 use super::constants::*;
 
-
 #[derive(Debug, Clone)]
 pub struct DotConfig {
     pub rank_dir: String, // "TB" or "LR"
@@ -18,7 +17,7 @@ pub struct DotConfig {
     pub view_level: u8,
     pub target_id: Option<String>,
     pub node_sizes: std::collections::HashMap<String, (f64, f64)>, // width, height for specific nodes
-    pub view_id: Option<String>, // Optional view definition ID
+    pub view_id: Option<String>,                                   // Optional view definition ID
     pub filename: Option<String>, // Optional filename for error reporting
 }
 
@@ -58,13 +57,48 @@ impl DotExporter {
 
         // Apply view-level filtering (reuse Mermaid logic)
         let (view_elements, view_relations) = compute_view(
+            program,
             &elements,
             &relations,
             self.config.view_level,
             self.config.target_id.clone(),
+            self.config.view_id.clone(),
         );
 
         self.generate(&view_elements, &view_relations)
+    }
+
+    /// Export DOT format along with elements and relations for debugging/testing
+    pub fn export_with_relations(
+        &self,
+        program: &Program,
+    ) -> (
+        String,
+        HashMap<String, sruja_language::ElementDef>,
+        Vec<Relation>,
+    ) {
+        if program.items.is_empty() {
+            return (String::new(), HashMap::new(), Vec::new());
+        }
+
+        let (elements, relations) = collect_elements(program);
+        if elements.is_empty() {
+            return (String::new(), HashMap::new(), Vec::new());
+        }
+
+        // Apply view-level filtering (reuse Mermaid logic)
+        let (view_elements, view_relations) = compute_view(
+            program,
+            &elements,
+            &relations,
+            self.config.view_level,
+            self.config.target_id.clone(),
+            self.config.view_id.clone(),
+        );
+
+        let dot_output = self.generate(&view_elements, &view_relations);
+
+        (dot_output, view_elements, view_relations)
     }
 
     fn generate(
@@ -76,8 +110,14 @@ impl DotExporter {
         out.push_str("digraph G {\n");
         out.push_str("  graph [\n");
         out.push_str(&format!("    rankdir=\"{}\",\n", self.config.rank_dir));
-        out.push_str(&format!("    nodesep={:.2},\n", self.config.node_sep / 72.0));
-        out.push_str(&format!("    ranksep={:.2},\n", self.config.rank_sep / 72.0));
+        out.push_str(&format!(
+            "    nodesep={:.2},\n",
+            self.config.node_sep / 72.0
+        ));
+        out.push_str(&format!(
+            "    ranksep={:.2},\n",
+            self.config.rank_sep / 72.0
+        ));
         out.push_str("    layout=\"dot\",\n");
         out.push_str("    compound=true,\n");
         out.push_str("    splines=ortho,\n");
@@ -113,7 +153,10 @@ impl DotExporter {
         for fqn in elements.keys() {
             if let Some(parent) = parent_fqn(fqn) {
                 if elements.contains_key(&parent) {
-                    children.entry(parent.clone()).or_default().insert(fqn.clone());
+                    children
+                        .entry(parent.clone())
+                        .or_default()
+                        .insert(fqn.clone());
                     parent_map.insert(fqn.clone(), parent);
                 } else {
                     roots.insert(fqn.clone());
@@ -144,8 +187,15 @@ impl DotExporter {
         out
     }
 
-    fn write_node(&self, out: &mut String, fqn: &str, elements: &HashMap<String, sruja_language::ElementDef>) {
-        let Some(elem) = elements.get(fqn) else { return };
+    fn write_node(
+        &self,
+        out: &mut String,
+        fqn: &str,
+        elements: &HashMap<String, sruja_language::ElementDef>,
+    ) {
+        let Some(elem) = elements.get(fqn) else {
+            return;
+        };
         let id = escape_id(fqn);
         let label = build_html_label(elem);
         // Use custom node size if provided, otherwise calculate default
@@ -184,15 +234,15 @@ impl DotExporter {
         out.push_str(&format!("    fontsize={};\n", FONT_SIZE_GLOBAL + 2));
 
         for child in children {
-                if let Some(e) = elements.get(child) {
-                    let child_id = escape_id(child);
-                    let child_label = build_html_label(e);
-                    // Use custom node size if provided, otherwise calculate default
-                    let (width, height) = if let Some((w, h)) = self.config.node_sizes.get(child) {
-                        (*w, *h)
-                    } else {
-                        get_node_size(e)
-                    };
+            if let Some(e) = elements.get(child) {
+                let child_id = escape_id(child);
+                let child_label = build_html_label(e);
+                // Use custom node size if provided, otherwise calculate default
+                let (width, height) = if let Some((w, h)) = self.config.node_sizes.get(child) {
+                    (*w, *h)
+                } else {
+                    get_node_size(e)
+                };
                 out.push_str(&format!("    \"{}\" [\n", child_id));
                 out.push_str(&format!("      label=<{}>,\n", child_label));
                 if width > 0.0 {
@@ -209,12 +259,7 @@ impl DotExporter {
         out.push_str("  }\n");
     }
 
-    fn write_edge(
-        &self,
-        out: &mut String,
-        rel: &Relation,
-        parent_map: &HashMap<String, String>,
-    ) {
+    fn write_edge(&self, out: &mut String, rel: &Relation, parent_map: &HashMap<String, String>) {
         let from = rel.from.as_string();
         let to = rel.to.as_string();
         let from_id = escape_id(&from);
@@ -252,16 +297,21 @@ impl DotExporter {
             format!(" [{}]", attrs.join(", "))
         };
 
-        out.push_str(&format!("  \"{}\" -> \"{}\"{};\n", from_id, to_id, attrs_str));
+        out.push_str(&format!(
+            "  \"{}\" -> \"{}\"{};\n",
+            from_id, to_id, attrs_str
+        ));
     }
 }
 
 // Reuse view computation from Mermaid (same logic)
 fn compute_view(
+    program: &sruja_language::Program,
     elements: &HashMap<String, sruja_language::ElementDef>,
     relations: &[Relation],
     mut level: u8,
     mut focus: Option<String>,
+    view_id: Option<String>,
 ) -> (HashMap<String, sruja_language::ElementDef>, Vec<Relation>) {
     if level <= 1 && focus.is_none() {
         let systems: Vec<String> = elements
@@ -289,6 +339,56 @@ fn compute_view(
 
     let mut visible: HashSet<String> = HashSet::new();
 
+    // If a custom view is specified, use its rules instead of level-based logic
+    if let Some(ref view_id_str) = view_id {
+        // Find view definition in program
+        let view_def = program.items.iter().find_map(|item| {
+            if let sruja_language::TopLevelItem::View(view_def) = item {
+                if view_def.id == *view_id_str {
+                    Some(view_def)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        });
+
+        if let Some(vd) = view_def {
+            // Apply view rules
+            for rule in &vd.rules {
+                // Handle include rules
+                if let Some(ref include_expr) = rule.include {
+                    if include_expr.wildcard {
+                        // include *: include all elements
+                        for id in elements.keys() {
+                            visible.insert(id.clone());
+                        }
+                    } else {
+                        // include specific elements
+                        for elem_id in &include_expr.elements {
+                            if elements.contains_key(elem_id) {
+                                visible.insert(elem_id.clone());
+                            }
+                        }
+                    }
+                }
+
+                // Handle exclude rules
+                if let Some(ref exclude_expr) = rule.exclude {
+                    if exclude_expr.wildcard {
+                        // exclude *: clear everything (should be rare)
+                        visible.clear();
+                    } else {
+                        for elem_id in &exclude_expr.elements {
+                            visible.remove(elem_id);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     let is_core = |id: &str| -> bool {
         match level {
             1 => {
@@ -307,7 +407,11 @@ fn compute_view(
                 if let Some(e) = elements.get(id) {
                     let kind_str = e.assignment.kind.to_string();
                     let k = normalize_kind(&kind_str);
-                    k == "container" || k == "datastore" || k == "queue" || k == "system" || k == "person"
+                    k == "container"
+                        || k == "datastore"
+                        || k == "queue"
+                        || k == "system"
+                        || k == "person"
                 } else {
                     false
                 }
@@ -375,19 +479,20 @@ fn compute_view(
         if source.is_empty() || target.is_empty() || source == target {
             continue;
         }
-        if source.starts_with(&(target.clone() + ".")) || target.starts_with(&(source.clone() + ".")) {
+        if source.starts_with(&(target.clone() + "."))
+            || target.starts_with(&(source.clone() + "."))
+        {
             continue;
         }
-        if !visible.contains(&source) && !visible.contains(&target) {
-            continue;
-        }
-        visible.insert(source.clone());
-        visible.insert(target.clone());
 
         projected.push(Relation {
             location: rel.location.clone(),
-            from: sruja_language::QualifiedIdent::qualified(source.split('.').map(|s| s.to_string()).collect()),
-            to: sruja_language::QualifiedIdent::qualified(target.split('.').map(|s| s.to_string()).collect()),
+            from: sruja_language::QualifiedIdent::qualified(
+                source.split('.').map(|s| s.to_string()).collect(),
+            ),
+            to: sruja_language::QualifiedIdent::qualified(
+                target.split('.').map(|s| s.to_string()).collect(),
+            ),
             label: rel.label.clone(),
             description: rel.description.clone(),
             technology: rel.technology.clone(),
@@ -460,7 +565,9 @@ fn get_container(
                 return Some(cur);
             }
         }
-        let Some(p) = parent_fqn(&cur) else { return None };
+        let Some(p) = parent_fqn(&cur) else {
+            return None;
+        };
         cur = p;
     }
 }

@@ -12,11 +12,11 @@ ecommerce = system "E-Commerce Platform" {
   webApp = container "Web Application" {
     technology "React"
   }
-  
+
   api = container "REST API" {
     technology "Go"
   }
-  
+
   db = database "PostgreSQL Database" {
     technology "PostgreSQL 14"
   }
@@ -32,7 +32,7 @@ deployment Prod "Production" {
       containerInstance webApp
       containerInstance api
     }
-    
+
     node USWest2 "US-West-2" {
       infrastructure DB "RDS PostgreSQL"
       containerInstance db
@@ -51,15 +51,3 @@ deployment Staging "Staging Environment" {
     }
   }
 }
-
-// Views
-view index {
-  title "E-Commerce System"
-  include *
-}
-
-view deployment_view {
-  title "Production Deployment"
-  include *
-}
-

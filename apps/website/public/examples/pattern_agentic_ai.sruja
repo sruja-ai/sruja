@@ -360,7 +360,7 @@ conventions {
 //   availability { target "99.9%" window "30d" }
 // }
 
-// Model-level contracts block - move to system level if needed  
+// Model-level contracts block - move to system level if needed
 // contracts {
 //   contract SubmitSupportRequest {
 //     type "api"
@@ -416,16 +416,3 @@ TriageFlow = flow "Data flow for triage" {
   step agentic.planner -> agentic.tools.emailSender "Email"
   step agentic.tools.emailSender -> support.email "Send"
 }
-
-
-
-view index {
-  title "Customer Support AI Agents"
-  include *
-}
-
-view containers of agentic {
-  title "Agentic Platform Containers"
-  include agentic.*
-}
-

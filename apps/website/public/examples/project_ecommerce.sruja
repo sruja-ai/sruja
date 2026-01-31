@@ -21,7 +21,7 @@ ecommerce = system "E-Commerce Platform" {
     cost "$15k/month operational cost"
     stakeholders ["product-team@example.com", "security-team@example.com"]
   }
-  
+
   webApp = container "Web Application" {
     description "React-based storefront for customers to browse and buy products."
     technology "React"
@@ -45,7 +45,7 @@ ecommerce = system "E-Commerce Platform" {
         metadata { tags ["SecurityPolicy"] }
     }
   }
-  
+
   api = container "REST API" {
     description "Core business logic API exposed to frontend and mobile clients."
     technology "Go"
@@ -77,7 +77,7 @@ ecommerce = system "E-Commerce Platform" {
         technology "Go"
     }
   }
-  
+
   productDb = database "Product Database" {
       technology "PostgreSQL"
       description "Catalog data"
@@ -96,24 +96,24 @@ ecommerce = system "E-Commerce Platform" {
       technology "Kafka"
       description "Async event bus"
   }
-  
+
   analyticsService = container "Analytics Service" {
     technology "Python"
     description "Data processing service"
   }
-  
+
   searchEngine = container "Search Engine" {
     technology "Elasticsearch"
     description "Full-text product search"
     metadata { tags ["REQ001_ECommerce"] }
   }
-  
+
   redis = container "Cache" {
     technology "Redis"
     description "Session and product cache"
     metadata { tags ["REQ012"] }
   }
-  
+
   // Internal ecommerce system relations (can be inside system block)
   webApp -> api "calls API"
   api -> productDb "reads product data from"
@@ -252,125 +252,3 @@ OrderFulfillmentFlow = flow "Order fulfillment flow" {
   step ecommerce.api -> ecommerce.eventQueue "order event to"
   step ecommerce.eventQueue -> ecommerce.analyticsService "analytics data to"
 }
-
-
-
-view index {
-  title "E-Commerce Platform"
-  include *
-  
-  // Layout following C4 conventions for better quality scores:
-  // - Persons at top (rank 1)
-  // - Core system in center
-  // - External systems on edges
-  // - Proper spacing to reduce crossings
-  layout {
-    element customer {
-      position { x: 300, y: 50 }
-    }
-    element admin {
-      position { x: 100, y: 50 }
-    }
-    element supportAgent {
-      position { x: 500, y: 50 }
-    }
-    element ecommerce {
-      position { x: 300, y: 250 }
-    }
-    element paymentGateway {
-      position { x: 600, y: 250 }
-    }
-    element emailService {
-      position { x: 50, y: 250 }
-    }
-    element cdn {
-      position { x: 300, y: 450 }
-    }
-  }
-}
-
-view containers of ecommerce {
-  title "E-Commerce Containers"
-  include ecommerce.*
-  
-  // Layout for containers: Frontend, API, Services, Databases
-  // Follows data flow pattern for better readability
-  layout {
-    element ecommerce.webApp {
-      position { x: 200, y: 100 }
-    }
-    element ecommerce.api {
-      position { x: 400, y: 100 }
-    }
-    element ecommerce.analyticsService {
-      position { x: 600, y: 100 }
-    }
-    element ecommerce.searchEngine {
-      position { x: 200, y: 250 }
-    }
-    element ecommerce.redis {
-      position { x: 400, y: 250 }
-    }
-    element ecommerce.productDb {
-      position { x: 200, y: 400 }
-    }
-    element ecommerce.orderDb {
-      position { x: 400, y: 400 }
-    }
-    element ecommerce.userDb {
-      position { x: 600, y: 400 }
-    }
-    element ecommerce.eventQueue {
-      position { x: 500, y: 250 }
-    }
-  }
-}
-
-// ============================================================================
-// Role-Based Views
-// ============================================================================
-
-// Architect View: Full system structure for architectural decisions
-view architect_overview {
-  title "System Architecture Overview"
-  description "High-level system context for architectural governance"
-  tags ["architect", "cto"]
-  include *
-}
-
-// Developer View: API and service interactions
-view developer_view of ecommerce {
-  title "Service Architecture"
-  description "Container-level view for development teams"
-  tags ["developer", "architect"]
-  include ecommerce.*
-}
-
-// DevOps View: Infrastructure and deployment focus
-view devops_view of ecommerce {
-  title "Infrastructure View"
-  description "Deployment topology and infrastructure components"
-  tags ["devops"]
-  include ecommerce.api ecommerce.webApp
-  include ecommerce.redis ecommerce.eventQueue
-  include ecommerce.productDb ecommerce.orderDb ecommerce.userDb
-}
-
-// Security View: Trust boundaries and data flows
-view security_view {
-  title "Security Architecture"
-  description "Trust boundaries, data flows, and security controls"
-  tags ["security", "cto"]
-  include ecommerce.api ecommerce.userDb
-  include paymentGateway
-}
-
-// Product View: User-facing components
-view product_view {
-  title "Product Features"
-  description "User-facing components and customer journey"
-  tags ["product"]
-  include customer admin supportAgent
-  include ecommerce.webApp cdn
-}
-

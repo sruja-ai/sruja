@@ -32,7 +32,7 @@ ecommerce = system "E-Commerce Platform" {
     scale "10M+ users, 1M+ requests/day"
     cost "$15k/month operational cost"
   }
-  
+
   webApp = container "Web Application" {
     technology "React"
   }
@@ -86,53 +86,3 @@ CheckoutFlow = flow "Customer Checkout Flow" {
   step ecommerce.api -> paymentGateway.stripeApi "processes payment"
   step ecommerce.api -> ecommerce.orderDb "saves order"
 }
-
-
-
-view index {
-  title "E-Commerce Platform Overview"
-  include *
-  
-  // Layout following C4 conventions:
-  // - Persons at top (customer, admin)
-  // - Core system in center (ecommerce)
-  // - External systems on edges (paymentGateway)
-  // - Proper spacing for readability
-  layout {
-    element customer {
-      position { x: 200, y: 50 }
-    }
-    element admin {
-      position { x: 500, y: 50 }
-    }
-    element ecommerce {
-      position { x: 350, y: 200 }
-    }
-    element paymentGateway {
-      position { x: 600, y: 200 }
-    }
-  }
-}
-
-view containers of ecommerce {
-  title "E-Commerce Containers"
-  include ecommerce.*
-  
-  // Layout for containers: Web App, API, Databases
-  // Follows data flow: Web App -> API -> Databases
-  layout {
-    element ecommerce.webApp {
-      position { x: 200, y: 100 }
-    }
-    element ecommerce.api {
-      position { x: 400, y: 100 }
-    }
-    element ecommerce.productDb {
-      position { x: 300, y: 250 }
-    }
-    element ecommerce.orderDb {
-      position { x: 500, y: 250 }
-    }
-  }
-}
-

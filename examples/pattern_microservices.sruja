@@ -30,14 +30,14 @@ admin = person "Platform Administrator" {
 ecommerce = system "E-Commerce Platform" {
   description "A scalable microservices platform for online retail"
   metadata { flags ["R1", "R4"] }
-  
+
   // API Gateway
   // API Gateway
   apiGateway = container "API Gateway" {
     technology "Kong"
     description "Entry point for all external traffic"
     tags ["R1", "R2", "R4"] // Scalability & Performance requirements
-    
+
     routing = component "Routing" {
         description "Routes requests to appropriate services based on path"
         technology "Kong Plugin"
@@ -53,12 +53,12 @@ ecommerce = system "E-Commerce Platform" {
         tags ["R1", "R4"]
     }
   }
-  
+
   // Core Services
   catalogService = container "Catalog Service" {
     technology "Java, Spring Boot"
     description "Manages product catalog information"
-    
+
     productApi = component "Product API" {
       description "API for product retrieval"
       technology "Spring MVC"
@@ -79,11 +79,11 @@ ecommerce = system "E-Commerce Platform" {
         technology "Spring MVC"
     }
   }
-  
+
   inventoryService = container "Inventory Service" {
     technology "Go"
     description "Tracks product stock levels"
-    
+
     stockApi = component "Stock API" {
         description "Real-time stock checking"
         technology "Gin"
@@ -95,11 +95,11 @@ ecommerce = system "E-Commerce Platform" {
         tags ["R3"]
     }
   }
-  
+
   cartService = container "Cart Service" {
     technology "Node.js"
     description "Manages user shopping carts"
-    
+
     cartApi = component "Cart API" {
         description "CRUD operations for cart"
         technology "Express"
@@ -109,12 +109,12 @@ ecommerce = system "E-Commerce Platform" {
         technology "Express-Session"
     }
   }
-  
+
   orderService = container "Order Service" {
     technology "Java, Spring Boot"
     description "Orchestrates order processing"
     tags ["R1"] // High throughput required
-    
+
     orderApi = component "Order API" {
         description "Order placement endpoints"
         technology "Spring MVC"
@@ -128,12 +128,12 @@ ecommerce = system "E-Commerce Platform" {
         technology "Spring Integration"
     }
   }
-  
+
   paymentService = container "Payment Service" {
     technology "Go"
     description "Handles payment processing"
     tags ["R3"] // High availability
-    
+
     paymentApi = component "Payment API" {
         description "Payment gateway integration"
         technology "Go Standard Lib"
@@ -143,11 +143,11 @@ ecommerce = system "E-Commerce Platform" {
         technology "Go Worker"
     }
   }
-  
+
   userService = container "User Service" {
     technology "Python, FastAPI"
     description "Manages user profiles and authentication"
-    
+
     authApi = component "Auth API" {
         description "Login/Signup endpoints"
         technology "FastAPI"
@@ -162,11 +162,11 @@ ecommerce = system "E-Commerce Platform" {
         technology "FastAPI"
     }
   }
-  
+
   notificationService = container "Notification Service" {
     technology "Node.js"
     description "Sends emails, SMS, and push notifications"
-    
+
     emailSender = component "Email Sender" {
         description "SMTP Client"
         technology "Nodemailer"
@@ -180,45 +180,45 @@ ecommerce = system "E-Commerce Platform" {
         technology "Firebase Admin SDK"
     }
   }
-  
+
   // Data Stores
   catalogDb = database "Catalog Database" {
     technology "PostgreSQL"
     description "Stores product information"
     metadata { tags ["R1"] }
   }
-  
+
   inventoryDb = database "Inventory Database" {
     technology "PostgreSQL"
     description "Stores inventory stock"
     metadata { tags ["R3"] }
   }
-  
+
   cartDb = database "Cart Database" {
     technology "Redis"
     description "Stores temporary cart sessions"
     metadata { tags ["R2"] }
   }
-  
+
   orderDb = database "Order Database" {
     technology "PostgreSQL"
     description "Stores order history"
     metadata { tags ["R1"] }
   }
-  
+
   userDb = database "User Database" {
     technology "MongoDB"
     description "Stores user profiles"
     metadata { tags ["R3"] }
   }
-  
+
   // Message Queue
   orderEvents = queue "Order Events" {
     technology "Kafka"
     description "Order processing events"
     metadata { tags ["R1"] }
   }
-  
+
   notificationQueue = queue "Notification Queue" {
     technology "RabbitMQ"
     description "Async notification channel"
@@ -336,143 +336,3 @@ R1 = requirement functional "Must handle 50k orders/day"
 R2 = requirement performance "API response time < 300ms (p95)"
 R3 = requirement availability "99.9% uptime"
 R4 = requirement scalability "Scale to 10x traffic during sales events"
-
-
-
-view index {
-  title "E-commerce Microservices Platform"
-  include *
-  
-  // Layout optimized for microservices architecture:
-  // - Persons at top
-  // - API Gateway as entry point
-  // - Services organized by domain
-  // - External systems on edges
-  layout {
-    element customer {
-      position { x: 300, y: 50 }
-    }
-    element merchant {
-      position { x: 100, y: 50 }
-    }
-    element admin {
-      position { x: 500, y: 50 }
-    }
-    element ecommerce {
-      position { x: 300, y: 300 }
-    }
-    element paymentProvider {
-      position { x: 600, y: 300 }
-    }
-    element shippingProvider {
-      position { x: 50, y: 300 }
-    }
-    element emailService {
-      position { x: 300, y: 550 }
-    }
-  }
-}
-
-// View for API team: Focus on API Gateway and services
-view api of ecommerce {
-  title "API Architecture"
-  include ecommerce.apiGateway
-  include ecommerce.catalogService ecommerce.cartService
-  include ecommerce.orderService ecommerce.paymentService
-  include ecommerce.userService
-  exclude ecommerce.inventoryService ecommerce.notificationService
-  
-  // Layout for API view: Gateway in center, services around it
-  layout {
-    element ecommerce.apiGateway {
-      position { x: 400, y: 150 }
-    }
-    element ecommerce.catalogService {
-      position { x: 200, y: 250 }
-    }
-    element ecommerce.cartService {
-      position { x: 400, y: 250 }
-    }
-    element ecommerce.orderService {
-      position { x: 600, y: 250 }
-    }
-    element ecommerce.paymentService {
-      position { x: 300, y: 350 }
-    }
-    element ecommerce.userService {
-      position { x: 500, y: 350 }
-    }
-  }
-}
-
-// View for data team: Focus on data flow
-view data of ecommerce {
-  title "Data Architecture"
-  include ecommerce.catalogService ecommerce.inventoryService
-  include ecommerce.orderService ecommerce.userService
-  include ecommerce.catalogDb ecommerce.inventoryDb
-  include ecommerce.orderDb ecommerce.userDb
-  include ecommerce.orderEvents ecommerce.notificationQueue
-  
-  // Layout for data view: Services on top, databases below, queues in between
-  layout {
-    // Service layer
-    element ecommerce.catalogService {
-      position { x: 200, y: 100 }
-    }
-    element ecommerce.inventoryService {
-      position { x: 400, y: 100 }
-    }
-    element ecommerce.orderService {
-      position { x: 600, y: 100 }
-    }
-    element ecommerce.userService {
-      position { x: 300, y: 200 }
-    }
-    
-    // Queue layer
-    element ecommerce.orderEvents {
-      position { x: 400, y: 300 }
-    }
-    element ecommerce.notificationQueue {
-      position { x: 500, y: 300 }
-    }
-    
-    // Database layer
-    element ecommerce.catalogDb {
-      position { x: 200, y: 450 }
-    }
-    element ecommerce.inventoryDb {
-      position { x: 400, y: 450 }
-    }
-    element ecommerce.orderDb {
-      position { x: 600, y: 450 }
-    }
-    element ecommerce.userDb {
-      position { x: 300, y: 550 }
-    }
-  }
-}
-
-// View for operations: Focus on external dependencies
-view external of ecommerce {
-  title "External Dependencies"
-  include ecommerce paymentProvider shippingProvider emailService
-  
-  // Layout for external view: Core system in center, externals around
-  layout {
-    element ecommerce {
-      position { x: 400, y: 250 }
-    }
-    element paymentProvider {
-      position { x: 600, y: 200 }
-    }
-    element shippingProvider {
-      position { x: 200, y: 200 }
-    }
-    element emailService {
-      position { x: 400, y: 400 }
-    }
-  }
-}
-

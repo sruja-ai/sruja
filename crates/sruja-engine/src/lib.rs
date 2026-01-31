@@ -4,7 +4,13 @@
 //! It checks for correctness, best practices, and potential issues.
 
 pub mod rules;
+pub mod utils;
 pub mod validator;
 
-pub use validator::{Validator, ValidatorOptions, Rule};
-pub use rules::*;
+// Re-export key public types
+pub use validator::{Rule, Validator};
+
+// Re-export common utilities for convenience
+pub use utils::{
+    element_exists, extract_tags, find_element, has_tag, resolve_layer, ElementFinder,
+};

@@ -22,7 +22,7 @@ kafka_cluster = cluster "Kafka Cluster" {
         tech "Scala/Java"
         storage2 = storage "Local Log Storage"
     }
-    
+
     controller = broker "Controller" {
         description "Manages partition leaders"
     }
@@ -59,12 +59,3 @@ kafka_cluster -> zookeeper "Coordinates via"
 
 app_consumer -> orders_topic "Subscribes to"
 app_consumer -> schema_reg "Checks schema compatibility"
-
-view context of kafka_cluster {
-    include *
-}
-
-view internals of kafka_cluster {
-    include kafka_cluster
-    include orders_topic
-}

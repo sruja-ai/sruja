@@ -14,23 +14,23 @@ k8s_cluster = system "Kubernetes Cluster" {
             tech "Go"
             description "Frontend for the Kubernetes control plane"
         }
-        
+
         etcd_db = db "etcd" {
             tech "Go"
             description "Consistent and highly-available key value store"
         }
-        
+
         scheduler = process "kube-scheduler" {
             tech "Go"
             description "Watches for newly created Pods with no assigned node"
         }
-        
+
         controller_manager = process "kube-controller-manager" {
             tech "Go"
             description "Runs controller processes"
         }
     }
-    
+
     nodes = node "Worker Nodes" {
         node1 = worker_node "Node 01" {
             kubelet1 = process "kubelet"
@@ -46,7 +46,3 @@ k8s_cluster = system "Kubernetes Cluster" {
 // Direct Cluster internal relations
 k8s_cluster.master_node.api_server -> k8s_cluster.master_node.etcd_db "Persists state"
 k8s_cluster.nodes.node1.kubelet1 -> k8s_cluster.master_node.api_server "Reports status"
-
-view logical_cluster of k8s_cluster {
-    include k8s_cluster
-}

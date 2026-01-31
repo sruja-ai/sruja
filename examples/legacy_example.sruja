@@ -26,16 +26,3 @@ ecommerce = system "E-Commerce Platform" {
 customer -> ecommerce.webApp "browses products"
 ecommerce.webApp -> ecommerce.api "makes API calls"
 ecommerce.api -> ecommerce.db "reads/writes data"
-
-
-
-view landscape {
-  title "System Landscape"
-  include *
-}
-
-view ecommerce of ecommerce {
-  title "E-Commerce Containers"
-  include ecommerce.**
-}
-

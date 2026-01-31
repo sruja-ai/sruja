@@ -11,27 +11,27 @@ customer = actor "Customer"
 
 checkout_system = system "Checkout Architecture" {
     api_gateway = service "API Gateway"
-    
+
     order_service = service "Order Service" {
         tech "Node.js"
         order_db = db "Order DB"
     }
-    
+
     payment_service = service "Payment Service" {
         tech "Go"
         payment_db = db "Payment DB"
     }
-    
+
     inventory_service = service "Inventory Service" {
         tech "Java"
         inv_db = db "Inventory DB"
     }
-    
+
     saga_orchestrator = service "Saga Orchestrator" {
         tech "Temporal"
         description "Manages the state of the checkout transaction"
     }
-    
+
     event_bus = queue "Event Bus" {
         tech "Kafka"
     }
@@ -58,7 +58,3 @@ saga_orchestrator -> inventory_service "Undo Reservation (Compensate)"
 inventory_service -> saga_orchestrator "Reserved Items Released"
 
 saga_orchestrator -> order_service "Mark Order Cancelled"
-
-view checkout_overview of checkout_system {
-    include *
-}

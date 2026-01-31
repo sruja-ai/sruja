@@ -26,14 +26,14 @@ analyticsPlatform = system "Analytics Platform" {
     reportGenerator = component "Report Generator"
     dataExplorer = component "Data Explorer"
   }
-  
+
   adminPanel = container "Admin Panel" {
     technology "React"
     tags ["frontend", "admin"]
     userManagement = component "User Management"
     billingManagement = component "Billing Management"
   }
-  
+
   // API Layer
   api = container "REST API" {
     technology "Node.js, Express"
@@ -42,14 +42,14 @@ analyticsPlatform = system "Analytics Platform" {
     authMiddleware = component "Auth Middleware"
     rateLimiter = component "Rate Limiter"
   }
-  
+
   graphqlApi = container "GraphQL API" {
     technology "Node.js, Apollo"
     tags ["backend", "api"]
     schemaResolver = component "Schema Resolver"
     dataLoader = component "Data Loader"
   }
-  
+
   // Processing Services
   dataIngestion = container "Data Ingestion Service" {
     technology "Go"
@@ -58,7 +58,7 @@ analyticsPlatform = system "Analytics Platform" {
     dataTransformer = component "Data Transformer"
     batchProcessor = component "Batch Processor"
   }
-  
+
   queryService = container "Query Service" {
     technology "Go"
     tags ["backend", "processing"]
@@ -66,14 +66,14 @@ analyticsPlatform = system "Analytics Platform" {
     queryOptimizer = component "Query Optimizer"
     resultAggregator = component "Result Aggregator"
   }
-  
+
   alertService = container "Alert Service" {
     technology "Python"
     tags ["backend", "processing"]
     ruleEngine = component "Rule Engine"
     notificationSender = component "Notification Sender"
   }
-  
+
   // Data Layer
   timeSeriesDb = database "Time Series Database" {
     technology "InfluxDB"
@@ -81,28 +81,28 @@ analyticsPlatform = system "Analytics Platform" {
       tags ["Database", "TimeSeries"]
     }
   }
-  
+
   dataWarehouse = database "Data Warehouse" {
     technology "Snowflake"
     metadata {
       tags ["Database", "Warehouse"]
     }
   }
-  
+
   metadataDb = database "Metadata Database" {
     technology "PostgreSQL"
     metadata {
       tags ["Database", "Relational"]
     }
   }
-  
+
   cache = database "Cache Layer" {
     technology "Redis"
     metadata {
       tags ["Database", "Cache"]
     }
   }
-  
+
   // Message Queue
   eventStream = queue "Event Stream" {
     technology "Kafka"
@@ -110,7 +110,7 @@ analyticsPlatform = system "Analytics Platform" {
       tags ["Queue", "Streaming"]
     }
   }
-  
+
   taskQueue = queue "Task Queue" {
     technology "RabbitMQ"
     metadata {
@@ -160,129 +160,3 @@ R1 = requirement functional "Must support 1M events/minute ingestion"
 R2 = requirement performance "Query response time < 500ms (p95)"
 R3 = requirement scalability "Must scale to 10TB+ data"
 R4 = requirement reliability "99.99% uptime SLA"
-
-
-
-view index {
-  title "Analytics Platform Overview"
-  include *
-  
-  // Layout optimized for analytics platform:
-  // - Users at top
-  // - Platform in center
-  // - External services on edges
-  layout {
-    element endUser {
-      position { x: 200, y: 50 }
-    }
-    element dataAnalyst {
-      position { x: 400, y: 50 }
-    }
-    element devopsEngineer {
-      position { x: 600, y: 50 }
-    }
-    element productManager {
-      position { x: 300, y: 50 }
-    }
-    element analyticsPlatform {
-      position { x: 400, y: 300 }
-    }
-    element paymentGateway {
-      position { x: 700, y: 300 }
-    }
-    element emailProvider {
-      position { x: 100, y: 300 }
-    }
-  }
-}
-
-// View for developers: Focus on API and processing services
-view developer of analyticsPlatform {
-  title "Developer View"
-  include analyticsPlatform.api analyticsPlatform.graphqlApi
-  include analyticsPlatform.queryService analyticsPlatform.dataIngestion
-  include analyticsPlatform.alertService
-  exclude analyticsPlatform.dashboard analyticsPlatform.adminPanel
-  
-  // Layout for developer view: APIs on left, services in center, processing on right
-  layout {
-    element analyticsPlatform.api {
-      position { x: 150, y: 150 }
-    }
-    element analyticsPlatform.graphqlApi {
-      position { x: 300, y: 150 }
-    }
-    element analyticsPlatform.queryService {
-      position { x: 450, y: 150 }
-    }
-    element analyticsPlatform.dataIngestion {
-      position { x: 600, y: 150 }
-    }
-    element analyticsPlatform.alertService {
-      position { x: 375, y: 300 }
-    }
-  }
-}
-
-// View for product managers: Focus on user-facing components
-view product of analyticsPlatform {
-  title "Product View"
-  include analyticsPlatform.dashboard analyticsPlatform.adminPanel
-  include analyticsPlatform.api analyticsPlatform.graphqlApi
-  exclude analyticsPlatform.dataIngestion analyticsPlatform.alertService
-  
-  // Layout for product view: Frontend components prominent, APIs below
-  layout {
-    element analyticsPlatform.dashboard {
-      position { x: 200, y: 100 }
-    }
-    element analyticsPlatform.adminPanel {
-      position { x: 400, y: 100 }
-    }
-    element analyticsPlatform.api {
-      position { x: 250, y: 250 }
-    }
-    element analyticsPlatform.graphqlApi {
-      position { x: 450, y: 250 }
-    }
-  }
-}
-
-// View for data engineers: Focus on data flow
-view dataflow of analyticsPlatform {
-  title "Data Flow View"
-  include analyticsPlatform.dataIngestion
-  include analyticsPlatform.timeSeriesDb analyticsPlatform.dataWarehouse
-  include analyticsPlatform.eventStream analyticsPlatform.taskQueue
-  include analyticsPlatform.queryService
-  
-  // Layout for data flow: Top-to-bottom flow pattern
-  layout {
-    element analyticsPlatform.dataIngestion {
-      position { x: 300, y: 100 }
-    }
-    element analyticsPlatform.eventStream {
-      position { x: 200, y: 200 }
-    }
-    element analyticsPlatform.taskQueue {
-      position { x: 400, y: 200 }
-    }
-    element analyticsPlatform.queryService {
-      position { x: 300, y: 300 }
-    }
-    element analyticsPlatform.timeSeriesDb {
-      position { x: 200, y: 450 }
-    }
-    element analyticsPlatform.dataWarehouse {
-      position { x: 400, y: 450 }
-    }
-  }
-}
-
-// Component view (C4 L3) - shows components within a container
-view component_view of dashboard {
-  title "Dashboard Components"
-  include dashboard.*
-  autolayout lr
-}
-

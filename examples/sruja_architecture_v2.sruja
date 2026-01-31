@@ -237,16 +237,3 @@ architect = person "Software Architect" {
 //   owner "Sruja Team"
 //   repo "github.com/sruja-ai/sruja"
 // }
-
-
-
-view index {
-  title "Sruja Architecture"
-  include *
-}
-
-view containers of sruja {
-  title "Sruja Platform Containers"
-  include sruja.*
-}
-

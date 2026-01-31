@@ -16,12 +16,13 @@ pub fn convert_diagnostics_to_lsp(
                 Severity::Warning => DiagnosticSeverity::WARNING,
                 Severity::Info => DiagnosticSeverity::INFORMATION,
                 Severity::Error => DiagnosticSeverity::ERROR,
+                _ => DiagnosticSeverity::HINT,
             };
 
             // Calculate end position for better range highlighting
             let start_line = d.location.line.saturating_sub(1);
             let start_char = d.location.column.saturating_sub(1);
-            let mut end_line = start_line;
+            let end_line = start_line;
             let mut end_char = start_char + 1; // Default to single character
 
             // Try to estimate token length for better highlighting using context

@@ -12,11 +12,3 @@ Shop = system "Shop" {
 }
 
 User -> Shop.Web "uses"
-
-view index {
-    include *
-}
-
-view containers of Shop {
-    include Shop.*
-}
