@@ -174,6 +174,12 @@ export async function convertDslToModel(dsl: string, filename?: string): Promise
 }
 
 /**
+ * Convert DSL string to Architecture JSON object.
+ * Alias for {@link convertDslToModel} for backward compatibility.
+ */
+export const convertDslToJson = convertDslToModel;
+
+/**
  * Convert DSL string to Markdown string.
  * Returns markdown string if successful, null on error.
  * Uses Go/WASM markdown exporter.
