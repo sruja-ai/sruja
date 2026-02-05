@@ -1,9 +1,10 @@
-import { Shield, FileText, Play, LayoutDashboard, Users } from "lucide-react";
+import { Shield, FileText, Layout, Hammer, FileCode, ShieldCheck } from "lucide-react";
 import { useUIStore } from "../../../stores";
 import { Button } from "@sruja/ui";
-import { GovernanceScore } from "../../Architect/GovernanceScore";
+import { GovernanceScore } from "../../non-core/governance/GovernanceScore";
 import { useArchitectureStore } from "../../../stores";
 import type { SrujaModelDump } from "@sruja/shared";
+import { studioScope } from "../../../config/studioScope";
 
 export function ProjectInspector() {
   const model = useArchitectureStore((s) => s.model) as SrujaModelDump;
@@ -17,9 +18,11 @@ export function ProjectInspector() {
   return (
     <div className="inspector-content">
       {/* Governance Score Widget */}
-      <section className="inspector-section">
-        <GovernanceScore />
-      </section>
+      {studioScope.inspectorGovernance && (
+        <section className="inspector-section">
+          <GovernanceScore />
+        </section>
+      )}
 
       {/* Project Stats */}
       <section className="inspector-section">
@@ -51,32 +54,50 @@ export function ProjectInspector() {
           <Button
             variant="outline"
             className="justify-start gap-2"
-            onClick={() => useUIStore.getState().setActiveTab("overview")}
+            onClick={() => useUIStore.getState().setActiveTab("diagram")}
           >
-            <LayoutDashboard size={14} />
-            <span>Full Dashboard</span>
+            <Layout size={14} />
+            <span>Diagram</span>
           </Button>
           <Button
             variant="outline"
             className="justify-start gap-2"
-            onClick={() => useUIStore.getState().setActiveTab("roles")}
+            onClick={() => useUIStore.getState().setActiveTab("review")}
           >
-            <Users size={14} />
-            <span>Manage Roles</span>
+            <ShieldCheck size={14} />
+            <span>Review</span>
           </Button>
           <div className="h-px bg-gray-100 my-1" />
-          <Button variant="outline" className="justify-start gap-2">
-            <Shield size={14} />
-            <span>Verifications</span>
+          <Button
+            variant="outline"
+            className="justify-start gap-2"
+            onClick={() => useUIStore.getState().setActiveTab("builder")}
+          >
+            <Hammer size={14} />
+            <span>Builder</span>
           </Button>
-          <Button variant="outline" className="justify-start gap-2">
+          <Button
+            variant="outline"
+            className="justify-start gap-2"
+            onClick={() => useUIStore.getState().setActiveTab("code")}
+          >
+            <FileCode size={14} />
+            <span>Code</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="justify-start gap-2"
+            onClick={() => useUIStore.getState().setActiveTab("docs")}
+          >
             <FileText size={14} />
-            <span>Generate Docs</span>
+            <span>Output</span>
           </Button>
-          <Button variant="outline" className="justify-start gap-2">
-            <Play size={14} />
-            <span>Run Simulation</span>
-          </Button>
+          {studioScope.verificationsAction && (
+            <Button variant="outline" className="justify-start gap-2" disabled>
+              <Shield size={14} />
+              <span>Verifications (coming soon)</span>
+            </Button>
+          )}
         </div>
       </section>
     </div>

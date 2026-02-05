@@ -11,6 +11,18 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
+    "./utils": {
+      "import": "./dist/utils/index.js",
+      "types": "./dist/utils/index.d.ts"
+    },
+    "./utils/result": {
+      "import": "./dist/utils/result.js",
+      "types": "./dist/utils/result.d.ts"
+    },
+    "./utils/errors": {
+      "import": "./dist/utils/errors.js",
+      "types": "./dist/utils/errors.d.ts"
+    },
     "./lsp": {
       "import": "./dist/lsp/index.js",
       "types": "./dist/lsp/index.d.ts"

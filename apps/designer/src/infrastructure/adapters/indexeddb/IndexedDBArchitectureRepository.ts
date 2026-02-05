@@ -7,11 +7,7 @@
  * @module infrastructure/adapters/indexeddb
  */
 
-import type {
-  SrujaModelDump,
-  Element,
-  Relationship,
-} from '@sruja/shared';
+import type { SrujaModelDump } from "@sruja/shared";
 import {
   ValidationError,
   NetworkError,
@@ -19,8 +15,8 @@ import {
   ok,
   err,
   type Result,
-} from '@sruja/shared/utils';
-import { ArchitectureAggregate } from '../../../domain/aggregates/ArchitectureAggregate';
+} from "@sruja/shared/utils";
+import { ArchitectureAggregate } from "../../../domain/aggregates/ArchitectureAggregate";
 import type {
   ArchitectureRepository,
   QueryOptions,
@@ -31,25 +27,21 @@ import type {
   RepositoryConfig,
   RepositoryEventMap,
   ArchitectureEventMap,
-  RepositoryError,
-  ArchitectureNotFoundError,
-  ConcurrentModificationError,
-  RepositoryValidationError,
-  StorageQuotaExceededError,
-} from '../../../domain/repositories/ArchitectureRepository';
+} from "../../../domain/repositories/ArchitectureRepository";
+import { StorageQuotaExceededError } from "../../../domain/repositories/ArchitectureRepository";
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const DB_NAME = 'sruja-architecture-db';
+const DB_NAME = "sruja-architecture-db";
 const DB_VERSION = 1;
-const STORE_ARCHITECTURES = 'architectures';
-const STORE_METADATA = 'metadata';
-const STORE_VERSIONS = 'versions';
-const STORE_SNAPSHOTS = 'snapshots';
-const STORE_TAGS_INDEX = 'tags-index';
-const STORE_SEARCH_INDEX = 'search-index';
+const STORE_ARCHITECTURES = "architectures";
+const STORE_METADATA = "metadata";
+const STORE_VERSIONS = "versions";
+const STORE_SNAPSHOTS = "snapshots";
+const STORE_TAGS_INDEX = "tags-index";
+const STORE_SEARCH_INDEX = "search-index";
 
 const DEFAULT_CONFIG: Required<RepositoryConfig> = {
   cacheEnabled: true,
@@ -93,6 +85,8 @@ interface ArchitectureRecord {
  * IndexedDB store schema for version history
  */
 interface VersionRecord {
+  /** Unique key for IndexedDB (architectureId-version) */
+  id: string;
   /** Architecture ID this version belongs to */
   architectureId: string;
   /** Version identifier */
@@ -100,7 +94,7 @@ interface VersionRecord {
   /** Serialized architecture */
   aggregate: string;
   /** Metadata snapshot */
-  metadata: ArchitectureRecord['metadata'];
+  metadata: ArchitectureRecord["metadata"];
   /** When this version was created */
   createdAt: string;
   /** Optional user-provided label */
@@ -118,7 +112,7 @@ interface SnapshotRecord {
   /** Serialized architecture */
   aggregate: string;
   /** Metadata snapshot */
-  metadata: ArchitectureRecord['metadata'];
+  metadata: ArchitectureRecord["metadata"];
   /** When this snapshot was created */
   createdAt: string;
   /** Optional user-provided label */
@@ -203,10 +197,8 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   private config: Required<RepositoryConfig>;
   private cache: Map<string, CacheEntry> = new Map();
   private eventHandlers: Map<string, Set<EventHandler<unknown>>> = new Map();
-  private architectureEventHandlers: Map<
-    string,
-    Map<string, Set<EventHandler<unknown>>>
-  > = new Map();
+  private architectureEventHandlers: Map<string, Map<string, Set<EventHandler<unknown>>>> =
+    new Map();
   private isInitialized = false;
   private initPromise: Promise<Result<void, ConfigurationError>> | null = null;
 
@@ -253,7 +245,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
         request.onerror = () => {
           reject(
             new ConfigurationError(
-              `Failed to open IndexedDB: ${request.error?.message || 'Unknown error'}`
+              `Failed to open IndexedDB: ${request.error?.message || "Unknown error"}`
             )
           );
         };
@@ -271,8 +263,8 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
       this.db = db;
       this.isInitialized = true;
 
-      this.emit('initialized', { timestamp: new Date().toISOString() });
-      this.emit('connected', { timestamp: new Date().toISOString() });
+      this.emit("initialized", { timestamp: new Date().toISOString() });
+      this.emit("connected", { timestamp: new Date().toISOString() });
 
       return ok(undefined);
     } catch (error) {
@@ -281,7 +273,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
         error instanceof ConfigurationError
           ? error
           : new ConfigurationError(
-              `Failed to initialize repository: ${error instanceof Error ? error.message : 'Unknown error'}`
+              `Failed to initialize repository: ${error instanceof Error ? error.message : "Unknown error"}`
             )
       );
     }
@@ -296,11 +288,11 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   private createSchema(db: IDBDatabase): void {
     // Architectures store
     if (!db.objectStoreNames.contains(STORE_ARCHITECTURES)) {
-      const store = db.createObjectStore(STORE_ARCHITECTURES, { keyPath: 'id' });
-      store.createIndex('name', 'metadata.name', { unique: false });
-      store.createIndex('updatedAt', 'metadata.updatedAt', { unique: false });
-      store.createIndex('starred', 'metadata.starred', { unique: false });
-      store.createIndex('tags', 'metadata.tags', {
+      const store = db.createObjectStore(STORE_ARCHITECTURES, { keyPath: "id" });
+      store.createIndex("name", "metadata.name", { unique: false });
+      store.createIndex("updatedAt", "metadata.updatedAt", { unique: false });
+      store.createIndex("starred", "metadata.starred", { unique: false });
+      store.createIndex("tags", "metadata.tags", {
         unique: false,
         multiEntry: true,
       });
@@ -308,33 +300,33 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
 
     // Metadata store
     if (!db.objectStoreNames.contains(STORE_METADATA)) {
-      db.createObjectStore(STORE_METADATA, { keyPath: 'key' });
+      db.createObjectStore(STORE_METADATA, { keyPath: "key" });
     }
 
     // Versions store
     if (!db.objectStoreNames.contains(STORE_VERSIONS)) {
-      const store = db.createObjectStore(STORE_VERSIONS, { keyPath: 'id' });
-      store.createIndex('architectureId', 'architectureId', { unique: false });
-      store.createIndex('createdAt', 'createdAt', { unique: false });
+      const store = db.createObjectStore(STORE_VERSIONS, { keyPath: "id" });
+      store.createIndex("architectureId", "architectureId", { unique: false });
+      store.createIndex("createdAt", "createdAt", { unique: false });
     }
 
     // Snapshots store
     if (!db.objectStoreNames.contains(STORE_SNAPSHOTS)) {
-      const store = db.createObjectStore(STORE_SNAPSHOTS, { keyPath: 'id' });
-      store.createIndex('architectureId', 'architectureId', { unique: false });
+      const store = db.createObjectStore(STORE_SNAPSHOTS, { keyPath: "id" });
+      store.createIndex("architectureId", "architectureId", { unique: false });
     }
 
     // Tags index store
     if (!db.objectStoreNames.contains(STORE_TAGS_INDEX)) {
-      const store = db.createObjectStore(STORE_TAGS_INDEX, { keyPath: 'tag' });
+      db.createObjectStore(STORE_TAGS_INDEX, { keyPath: "tag" });
     }
 
     // Search index store
     if (!db.objectStoreNames.contains(STORE_SEARCH_INDEX)) {
       const store = db.createObjectStore(STORE_SEARCH_INDEX, {
-        keyPath: 'architectureId',
+        keyPath: "architectureId",
       });
-      store.createIndex('searchableText', 'searchableText', { unique: false });
+      store.createIndex("searchableText", "searchableText", { unique: false });
     }
   }
 
@@ -353,14 +345,14 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
       this.initPromise = null;
       this.cache.clear();
 
-      this.emit('closed', { timestamp: new Date().toISOString() });
-      this.emit('disconnected', { timestamp: new Date().toISOString() });
+      this.emit("closed", { timestamp: new Date().toISOString() });
+      this.emit("disconnected", { timestamp: new Date().toISOString() });
 
       return ok(undefined);
     } catch (error) {
       return err(
         new NetworkError(
-          `Failed to close repository: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to close repository: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -387,24 +379,36 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   /**
    * Saves an architecture aggregate
    */
-  async save(aggregate: ArchitectureAggregate): Promise<Result<string, ValidationError | NetworkError | ConfigurationError>> {
+  async save(
+    aggregate: ArchitectureAggregate
+  ): Promise<Result<string, ValidationError | NetworkError | ConfigurationError>> {
     const initResult = await this.ensureInitialized();
     if (!initResult.ok) {
       return err(initResult.error);
     }
 
     try {
-      const id = aggregate.metadata.name
+      const meta = aggregate.metadata ?? {
+        name: "Untitled",
+        version: "1.0.0",
+        generated: new Date().toISOString(),
+        srujaVersion: "1.0.0",
+      };
+      const id = meta.name
         .toLowerCase()
-        .replace(/[^a-z0-9]/g, '-')
+        .replace(/[^a-z0-9]/g, "-")
         .substring(0, 50);
 
       return this.saveWithId(id, aggregate);
     } catch (error) {
       return err(
-        error instanceof ValidationError || error instanceof NetworkError || error instanceof ConfigurationError
+        error instanceof ValidationError ||
+          error instanceof NetworkError ||
+          error instanceof ConfigurationError
           ? error
-          : new ValidationError(`Failed to save architecture: ${error instanceof Error ? error.message : 'Unknown error'}`)
+          : new ValidationError(
+              `Failed to save architecture: ${error instanceof Error ? error.message : "Unknown error"}`
+            )
       );
     }
   }
@@ -422,12 +426,17 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     }
 
     if (!this.db) {
-      return err(new ConfigurationError('Database not initialized'));
+      return err(new ConfigurationError("Database not initialized"));
     }
 
     try {
       const dump = aggregate.toDump();
-      const metadata = aggregate.metadata;
+      const meta = aggregate.metadata ?? {
+        name: "Untitled",
+        version: "1.0.0",
+        generated: new Date().toISOString(),
+        srujaVersion: "1.0.0",
+      };
 
       // Serialize aggregate
       const aggregateString = JSON.stringify(dump);
@@ -436,28 +445,35 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
         : aggregateString.length;
 
       // Check storage quota
-      const existing = await this.getRecord(id);
-      const totalSize = compressedSize - (existing?.size || 0);
+      const existing = await this.getRecord<ArchitectureRecord>(STORE_ARCHITECTURES, id);
+      const totalSize = compressedSize - (existing?.size ?? 0);
       if (totalSize > 0) {
         const quotaCheck = await this.checkStorageQuota(totalSize);
         if (!quotaCheck.ok) {
-          return err(quotaCheck.error);
+          return err(
+            new NetworkError(
+              quotaCheck.error instanceof Error
+                ? quotaCheck.error.message
+                : "Storage quota exceeded"
+            )
+          );
         }
       }
 
-      // Prepare record
+      // Prepare record (ArchitectureRecord metadata extends ModelMetadata with UI fields)
+      const now = new Date().toISOString();
       const record: ArchitectureRecord = {
         id,
         aggregate: aggregateString,
         metadata: {
-          name: metadata.name || 'Untitled',
-          description: metadata.description,
-          version: metadata.version || '1.0.0',
+          name: meta.name || "Untitled",
+          description: undefined,
+          version: meta.version || "1.0.0",
           tags: [],
-          createdAt: metadata.createdAt || new Date().toISOString(),
-          updatedAt: metadata.updatedAt || new Date().toISOString(),
+          createdAt: meta.generated || now,
+          updatedAt: meta.generated || now,
           elementCount: Object.keys(dump.elements || {}).length,
-          relationshipCount: (dump.relations || []).length,
+          relationshipCount: (dump.relations ?? []).length,
           starred: false,
         },
         size: compressedSize,
@@ -466,11 +482,13 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
 
       // Check for concurrent modification
       if (existing && existing.lastModified > 0) {
-        const clientModified = metadata.updatedAt
-          ? new Date(metadata.updatedAt).getTime()
-          : 0;
+        const clientModified = meta.generated ? new Date(meta.generated).getTime() : 0;
         if (clientModified < existing.lastModified && clientModified > 0) {
-          return err(new ConcurrentModificationError(id));
+          return err(
+            new ValidationError(
+              `Architecture '${id}' was modified by another user. Please refresh and try again.`
+            )
+          );
         }
       }
 
@@ -493,29 +511,26 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
 
       // Emit events
       const isNew = !existing;
-      this.emit('created', {
-        timestamp: new Date().toISOString(),
-        id,
-        name: record.metadata.name,
-      });
-
-      if (!isNew) {
-        this.emitArchitecture(id, 'updated', {
+      if (isNew) {
+        this.emitArchitecture(id, "created", {
           timestamp: new Date().toISOString(),
           id,
           name: record.metadata.name,
-          changes: ['metadata'],
+        });
+      } else {
+        this.emitArchitecture(id, "updated", {
+          timestamp: new Date().toISOString(),
+          id,
+          name: record.metadata.name,
+          changes: ["metadata"],
         });
       }
 
       return ok(id);
     } catch (error) {
-      if (error instanceof ConcurrentModificationError) {
-        return err(error);
-      }
       return err(
         new ValidationError(
-          `Failed to save architecture: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to save architecture: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -524,7 +539,9 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   /**
    * Finds an architecture by ID
    */
-  async findById(id: string): Promise<Result<ArchitectureAggregate, ValidationError | NetworkError>> {
+  async findById(
+    id: string
+  ): Promise<Result<ArchitectureAggregate, ValidationError | NetworkError>> {
     const initResult = await this.ensureInitialized();
     if (!initResult.ok) {
       return err(initResult.error);
@@ -541,9 +558,9 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     }
 
     try {
-      const record = await this.getRecord(id);
+      const record = await this.getRecord<ArchitectureRecord>(STORE_ARCHITECTURES, id);
       if (!record) {
-        return err(new ArchitectureNotFoundError(id));
+        return err(new ValidationError(`Architecture '${id}' not found`));
       }
 
       const dump: SrujaModelDump = JSON.parse(record.aggregate);
@@ -568,7 +585,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     } catch (error) {
       return err(
         new ValidationError(
-          `Failed to load architecture: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to load architecture: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -577,27 +594,29 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   /**
    * Finds an architecture by name
    */
-  async findByName(name: string): Promise<Result<ArchitectureAggregate, ValidationError | NetworkError>> {
+  async findByName(
+    name: string
+  ): Promise<Result<ArchitectureAggregate, ValidationError | NetworkError>> {
     if (!this.db) {
-      return err(new ConfigurationError('Database not initialized'));
+      return err(new ConfigurationError("Database not initialized"));
     }
 
     try {
       const results = await this.queryRecords<ArchitectureRecord>(
         STORE_ARCHITECTURES,
-        'name',
+        "name",
         name
       );
 
       if (results.length === 0) {
-        return err(new ArchitectureNotFoundError(name));
+        return err(new ValidationError(`Architecture with name '${name}' not found`));
       }
 
       return this.findById(results[0].id);
     } catch (error) {
       return err(
         new ValidationError(
-          `Failed to find architecture by name: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to find architecture by name: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -613,13 +632,13 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     }
 
     if (!this.db) {
-      return err(new ConfigurationError('Database not initialized'));
+      return err(new ConfigurationError("Database not initialized"));
     }
 
     try {
-      const record = await this.getRecord(id);
+      const record = await this.getRecord<ArchitectureRecord>(STORE_ARCHITECTURES, id);
       if (!record) {
-        return err(new ArchitectureNotFoundError(id));
+        return err(new ValidationError(`Architecture '${id}' not found`));
       }
 
       // Delete from main store
@@ -629,11 +648,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
       await this.deleteRecord(STORE_SEARCH_INDEX, id);
 
       // Delete versions
-      const versions = await this.queryRecords<VersionRecord>(
-        STORE_VERSIONS,
-        'architectureId',
-        id
-      );
+      const versions = await this.queryRecords<VersionRecord>(STORE_VERSIONS, "architectureId", id);
       for (const version of versions) {
         await this.deleteRecord(STORE_VERSIONS, version.id);
       }
@@ -641,7 +656,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
       // Delete snapshots
       const snapshots = await this.queryRecords<SnapshotRecord>(
         STORE_SNAPSHOTS,
-        'architectureId',
+        "architectureId",
         id
       );
       for (const snapshot of snapshots) {
@@ -652,7 +667,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
       this.cache.delete(id);
 
       // Emit event
-      this.emitArchitecture(id, 'deleted', {
+      this.emitArchitecture(id, "deleted", {
         timestamp: new Date().toISOString(),
         id,
         name: record.metadata.name,
@@ -662,7 +677,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     } catch (error) {
       return err(
         new ValidationError(
-          `Failed to delete architecture: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to delete architecture: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -676,7 +691,11 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     if (result.ok) {
       return ok(true);
     }
-    if (result.error instanceof ArchitectureNotFoundError) {
+    if (
+      !result.ok &&
+      result.error instanceof ValidationError &&
+      result.error.message.includes("not found")
+    ) {
       return ok(false);
     }
     return err(result.error);
@@ -689,18 +708,22 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   /**
    * Finds all architectures with optional filtering and pagination
    */
-  async findAll(options?: QueryOptions): Promise<Result<PaginatedResult<ArchitectureAggregate>, ValidationError | NetworkError>> {
+  async findAll(
+    options?: QueryOptions
+  ): Promise<Result<PaginatedResult<ArchitectureAggregate>, ValidationError | NetworkError>> {
     const initResult = await this.ensureInitialized();
     if (!initResult.ok) {
       return err(initResult.error);
     }
 
     if (!this.db) {
-      return err(new ConfigurationError('Database not initialized'));
+      return err(new ConfigurationError("Database not initialized"));
     }
 
     try {
-      const store = this.db.transaction(STORE_ARCHITECTURES, 'readonly').objectStore(STORE_ARCHITECTURES);
+      const store = this.db
+        .transaction(STORE_ARCHITECTURES, "readonly")
+        .objectStore(STORE_ARCHITECTURES);
       const request = store.getAll();
       const records: ArchitectureRecord[] = await new Promise((resolve, reject) => {
         request.onsuccess = () => resolve(request.result);
@@ -711,22 +734,22 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
       let filtered = [...records];
       if (options?.name) {
         const searchLower = options.name.toLowerCase();
-        filtered = filtered.filter(r => r.metadata.name.toLowerCase().includes(searchLower));
+        filtered = filtered.filter((r) => r.metadata.name.toLowerCase().includes(searchLower));
       }
       if (options?.tags && options.tags.length > 0) {
-        filtered = filtered.filter(r =>
-          options.tags!.every(tag => r.metadata.tags.includes(tag))
+        filtered = filtered.filter((r) =>
+          options.tags!.every((tag) => r.metadata.tags.includes(tag))
         );
       }
 
       // Apply sorting
-      const sortBy = options?.sortBy || 'updatedAt';
-      const sortOrder = options?.sortOrder || 'desc';
+      const sortBy = options?.sortBy || "updatedAt";
+      const sortOrder = options?.sortOrder || "desc";
       filtered.sort((a, b) => {
         const aVal = a.metadata[sortBy];
         const bVal = b.metadata[sortBy];
         const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
-        return sortOrder === 'desc' ? -comparison : comparison;
+        return sortOrder === "desc" ? -comparison : comparison;
       });
 
       // Apply pagination
@@ -735,11 +758,10 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
       const paginatedItems = filtered.slice(offset, offset + limit);
 
       // Load aggregates
-      const items = await Promise.all(
-        paginatedItems.map(record => this.findById(record.id))
-      );
-      const successfulItems = items.filter((r): r is Result<ArchitectureAggregate, never> => r.ok)
-        .map(r => r.value);
+      const items = await Promise.all(paginatedItems.map((record) => this.findById(record.id)));
+      const successfulItems = items
+        .filter((r): r is { ok: true; value: ArchitectureAggregate } => r.ok)
+        .map((r) => r.value);
 
       const metadata: PaginationMetadata = {
         total: filtered.length,
@@ -754,7 +776,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     } catch (error) {
       return err(
         new ValidationError(
-          `Failed to find architectures: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to find architectures: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -763,28 +785,36 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   /**
    * Finds architecture summaries (lightweight objects)
    */
-  async findAllSummaries(options?: QueryOptions): Promise<Result<PaginatedResult<ArchitectureSummary>, ValidationError | NetworkError>> {
+  async findAllSummaries(
+    options?: QueryOptions
+  ): Promise<Result<PaginatedResult<ArchitectureSummary>, ValidationError | NetworkError>> {
     const result = await this.findAll(options);
     if (!result.ok) {
       return err(result.error);
     }
 
-    const summaries: ArchitectureSummary[] = result.value.items.map(aggregate => {
-      const metadata = aggregate.metadata;
+    const defaultMeta = {
+      name: "Untitled",
+      version: "1.0.0",
+      generated: new Date().toISOString(),
+      srujaVersion: "1.0.0",
+    };
+    const summaries: ArchitectureSummary[] = result.value.items.map((aggregate) => {
+      const meta = aggregate.metadata ?? defaultMeta;
       const dump = aggregate.toDump();
       return {
-        id: aggregate.metadata.name
+        id: meta.name
           .toLowerCase()
-          .replace(/[^a-z0-9]/g, '-')
+          .replace(/[^a-z0-9]/g, "-")
           .substring(0, 50),
-        name: metadata.name || 'Untitled',
-        description: metadata.description,
-        version: metadata.version || '1.0.0',
+        name: meta.name || "Untitled",
+        description: undefined,
+        version: meta.version || "1.0.0",
         tags: [],
-        createdAt: metadata.createdAt || new Date().toISOString(),
-        updatedAt: metadata.updatedAt || new Date().toISOString(),
+        createdAt: meta.generated || new Date().toISOString(),
+        updatedAt: meta.generated || new Date().toISOString(),
         elementCount: Object.keys(dump.elements || {}).length,
-        relationshipCount: (dump.relations || []).length,
+        relationshipCount: (dump.relations ?? []).length,
       };
     });
 
@@ -802,11 +832,13 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     options?: QueryOptions
   ): Promise<Result<PaginatedResult<ArchitectureAggregate>, ValidationError | NetworkError>> {
     if (!this.db) {
-      return err(new ConfigurationError('Database not initialized'));
+      return err(new ConfigurationError("Database not initialized"));
     }
 
     try {
-      const store = this.db.transaction(STORE_SEARCH_INDEX, 'readonly').objectStore(STORE_SEARCH_INDEX);
+      const store = this.db
+        .transaction(STORE_SEARCH_INDEX, "readonly")
+        .objectStore(STORE_SEARCH_INDEX);
       const request = store.getAll();
       const indexRecords: SearchIndexRecord[] = await new Promise((resolve, reject) => {
         request.onsuccess = () => resolve(request.result);
@@ -815,16 +847,17 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
 
       // Full-text search
       const searchLower = searchTerm.toLowerCase();
-      const matches = indexRecords.filter(r =>
+      const matches = indexRecords.filter((r) =>
         r.searchableText.toLowerCase().includes(searchLower)
       );
 
       // Load matching aggregates
       const items = await Promise.all(
-        matches.slice(0, options?.limit || 50).map(r => this.findById(r.architectureId))
+        matches.slice(0, options?.limit || 50).map((r) => this.findById(r.architectureId))
       );
-      const successfulItems = items.filter((r): r is Result<ArchitectureAggregate, never> => r.ok)
-        .map(r => r.value);
+      const successfulItems = items
+        .filter((r): r is { ok: true; value: ArchitectureAggregate } => r.ok)
+        .map((r) => r.value);
 
       const metadata: PaginationMetadata = {
         total: matches.length,
@@ -839,7 +872,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     } catch (error) {
       return err(
         new ValidationError(
-          `Failed to search architectures: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to search architectures: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -861,10 +894,12 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   /**
    * Gets recently updated architectures
    */
-  async getRecent(limit?: number): Promise<Result<ArchitectureSummary[], ValidationError | NetworkError>> {
+  async getRecent(
+    limit?: number
+  ): Promise<Result<ArchitectureSummary[], ValidationError | NetworkError>> {
     const result = await this.findAllSummaries({
-      sortBy: 'updatedAt',
-      sortOrder: 'desc',
+      sortBy: "updatedAt",
+      sortOrder: "desc",
       limit: limit || 10,
     });
 
@@ -878,7 +913,9 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   /**
    * Gets starred/favorite architectures
    */
-  async getStarred(options?: QueryOptions): Promise<Result<PaginatedResult<ArchitectureAggregate>, ValidationError | NetworkError>> {
+  async getStarred(
+    options?: QueryOptions
+  ): Promise<Result<PaginatedResult<ArchitectureAggregate>, ValidationError | NetworkError>> {
     // Note: Current schema doesn't support starred filter directly
     // This would need to be implemented with proper indexing
     return this.findAll(options);
@@ -949,14 +986,15 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
 
     const ids: string[] = [];
     for (const dump of dumps) {
-      if (options?.validate) {
-        const validation = ArchitectureAggregate.fromDump(dump);
-        if (!validation.ok) {
-          return err(validation.error);
+      const parsed = ArchitectureAggregate.fromDump(dump);
+      if (!parsed.ok) {
+        if (options?.validate) {
+          return err(parsed.error);
         }
+        continue;
       }
-
-      const result = await this.save(validation.ok ? validation.value : ArchitectureAggregate.fromDump(dump).value!);
+      const aggregate = parsed.value;
+      const result = await this.save(aggregate);
       if (!result.ok) {
         return err(result.error);
       }
@@ -975,46 +1013,44 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
    */
   async updateMetadata(
     id: string,
-    metadata: Partial<SrujaModelDump['metadata']>
+    metadata: Partial<NonNullable<SrujaModelDump["_metadata"]>>
   ): Promise<Result<void, ValidationError | NetworkError>> {
     const result = await this.findById(id);
     if (!result.ok) {
       return err(result.error);
     }
-
-    const aggregate = result.value;
-    const updatedMetadata = {
-      ...aggregate.metadata,
-      ...metadata,
-      updatedAt: new Date().toISOString(),
-    };
-
-    // This is a simplified implementation - in reality, we'd need
-    // to update the aggregate's metadata directly
+    // Simplified: metadata updates would require aggregate mutation support
+    void metadata;
     return ok(undefined);
   }
 
   /**
    * Adds tags to an architecture
    */
-  async addTags(id: string, tags: string[]): Promise<Result<void, ValidationError | NetworkError>> {
-    // Implementation similar to updateMetadata
+  async addTags(
+    _id: string,
+    _tags: string[]
+  ): Promise<Result<void, ValidationError | NetworkError>> {
     return ok(undefined);
   }
 
   /**
    * Removes tags from an architecture
    */
-  async removeTags(id: string, tags: string[]): Promise<Result<void, ValidationError | NetworkError>> {
-    // Implementation similar to updateMetadata
+  async removeTags(
+    _id: string,
+    _tags: string[]
+  ): Promise<Result<void, ValidationError | NetworkError>> {
     return ok(undefined);
   }
 
   /**
    * Sets the star/favorite status
    */
-  async setStarred(id: string, starred: boolean): Promise<Result<void, ValidationError | NetworkError>> {
-    // Implementation similar to updateMetadata
+  async setStarred(
+    _id: string,
+    _starred: boolean
+  ): Promise<Result<void, ValidationError | NetworkError>> {
     return ok(undefined);
   }
 
@@ -1025,22 +1061,21 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   /**
    * Gets version history for an architecture
    */
-  async getVersionHistory(id: string, limit?: number): Promise<Result<ArchitectureSummary[], ValidationError | NetworkError>> {
+  async getVersionHistory(
+    id: string,
+    limit?: number
+  ): Promise<Result<ArchitectureSummary[], ValidationError | NetworkError>> {
     if (!this.db) {
-      return err(new ConfigurationError('Database not initialized'));
+      return err(new ConfigurationError("Database not initialized"));
     }
 
     try {
-      const versions = await this.queryRecords<VersionRecord>(
-        STORE_VERSIONS,
-        'architectureId',
-        id
-      );
+      const versions = await this.queryRecords<VersionRecord>(STORE_VERSIONS, "architectureId", id);
 
       const summaries: ArchitectureSummary[] = versions
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, limit || 10)
-        .map(v => ({
+        .map((v) => ({
           id: v.version,
           name: v.metadata.name,
           description: v.metadata.description,
@@ -1056,7 +1091,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     } catch (error) {
       return err(
         new ValidationError(
-          `Failed to get version history: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get version history: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -1065,21 +1100,20 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   /**
    * Restores an architecture to a specific version
    */
-  async restoreVersion(id: string, version: string): Promise<Result<ArchitectureAggregate, ValidationError | NetworkError>> {
+  async restoreVersion(
+    id: string,
+    version: string
+  ): Promise<Result<ArchitectureAggregate, ValidationError | NetworkError>> {
     if (!this.db) {
-      return err(new ConfigurationError('Database not initialized'));
+      return err(new ConfigurationError("Database not initialized"));
     }
 
     try {
-      const versions = await this.queryRecords<VersionRecord>(
-        STORE_VERSIONS,
-        'architectureId',
-        id
-      );
-      const versionRecord = versions.find(v => v.version === version);
+      const versions = await this.queryRecords<VersionRecord>(STORE_VERSIONS, "architectureId", id);
+      const versionRecord = versions.find((v) => v.version === version);
 
       if (!versionRecord) {
-        return err(new ArchitectureNotFoundError(version));
+        return err(new ValidationError(`Version '${version}' not found`));
       }
 
       const dump: SrujaModelDump = JSON.parse(versionRecord.aggregate);
@@ -1095,7 +1129,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
         return err(saveResult.error);
       }
 
-      this.emitArchitecture(id, 'restored', {
+      this.emitArchitecture(id, "restored", {
         timestamp: new Date().toISOString(),
         id,
         fromVersion: version,
@@ -1105,7 +1139,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     } catch (error) {
       return err(
         new ValidationError(
-          `Failed to restore version: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to restore version: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -1114,14 +1148,17 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   /**
    * Creates a snapshot/backup of an architecture
    */
-  async createSnapshot(id: string, label?: string): Promise<Result<string, ValidationError | NetworkError>> {
+  async createSnapshot(
+    id: string,
+    label?: string
+  ): Promise<Result<string, ValidationError | NetworkError>> {
     const result = await this.findById(id);
     if (!result.ok) {
       return err(result.error);
     }
 
     if (!this.db) {
-      return err(new ConfigurationError('Database not initialized'));
+      return err(new ConfigurationError("Database not initialized"));
     }
 
     try {
@@ -1129,28 +1166,35 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
       const dump = aggregate.toDump();
       const snapshotId = `${id}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
+      const meta = aggregate.metadata ?? {
+        name: "Untitled",
+        version: "1.0.0",
+        generated: new Date().toISOString(),
+        srujaVersion: "1.0.0",
+      };
+      const now = new Date().toISOString();
       const snapshot: SnapshotRecord = {
         id: snapshotId,
         architectureId: id,
         aggregate: JSON.stringify(dump),
         metadata: {
-          name: aggregate.metadata.name || 'Untitled',
-          description: aggregate.metadata.description,
-          version: aggregate.metadata.version || '1.0.0',
+          name: meta.name || "Untitled",
+          description: undefined,
+          version: meta.version || "1.0.0",
           tags: [],
-          createdAt: aggregate.metadata.createdAt || new Date().toISOString(),
-          updatedAt: aggregate.metadata.updatedAt || new Date().toISOString(),
+          createdAt: meta.generated || now,
+          updatedAt: meta.generated || now,
           elementCount: Object.keys(dump.elements || {}).length,
-          relationshipCount: (dump.relations || []).length,
+          relationshipCount: (dump.relations ?? []).length,
           starred: false,
         },
-        createdAt: new Date().toISOString(),
+        createdAt: now,
         label,
       };
 
       await this.putRecord(STORE_SNAPSHOTS, snapshot);
 
-      this.emitArchitecture(id, 'snapshot-created', {
+      this.emitArchitecture(id, "snapshot-created", {
         timestamp: new Date().toISOString(),
         id,
         snapshotId,
@@ -1161,7 +1205,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     } catch (error) {
       return err(
         new ValidationError(
-          `Failed to create snapshot: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to create snapshot: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -1170,15 +1214,17 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   /**
    * Restores from a snapshot
    */
-  async restoreSnapshot(snapshotId: string): Promise<Result<ArchitectureAggregate, ValidationError | NetworkError>> {
+  async restoreSnapshot(
+    snapshotId: string
+  ): Promise<Result<ArchitectureAggregate, ValidationError | NetworkError>> {
     if (!this.db) {
-      return err(new ConfigurationError('Database not initialized'));
+      return err(new ConfigurationError("Database not initialized"));
     }
 
     try {
       const snapshot = await this.getRecord<SnapshotRecord>(STORE_SNAPSHOTS, snapshotId);
       if (!snapshot) {
-        return err(new ArchitectureNotFoundError(snapshotId));
+        return err(new ValidationError(`Snapshot '${snapshotId}' not found`));
       }
 
       const dump: SrujaModelDump = JSON.parse(snapshot.aggregate);
@@ -1194,7 +1240,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
         return err(saveResult.error);
       }
 
-      this.emitArchitecture(snapshot.architectureId, 'restored', {
+      this.emitArchitecture(snapshot.architectureId, "restored", {
         timestamp: new Date().toISOString(),
         id: snapshot.architectureId,
         fromSnapshot: snapshotId,
@@ -1204,7 +1250,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     } catch (error) {
       return err(
         new ValidationError(
-          `Failed to restore snapshot: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to restore snapshot: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -1219,7 +1265,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
    */
   async getStatistics(): Promise<Result<ArchitectureStatistics, ValidationError | NetworkError>> {
     if (!this.db) {
-      return err(new ConfigurationError('Database not initialized'));
+      return err(new ConfigurationError("Database not initialized"));
     }
 
     try {
@@ -1244,16 +1290,15 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
         architecturesByTag,
         recentUpdates: summaries.value.items.slice(0, 10),
         storageUsed: totalStorage,
-        averageElementCount: summaries.value.items.length > 0
-          ? totalElements / summaries.value.items.length
-          : 0,
+        averageElementCount:
+          summaries.value.items.length > 0 ? totalElements / summaries.value.items.length : 0,
       };
 
       return ok(statistics);
     } catch (error) {
       return err(
         new ValidationError(
-          `Failed to get statistics: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get statistics: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -1262,13 +1307,15 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   /**
    * Gets the count of architectures
    */
-  async count(options?: QueryOptions): Promise<Result<number, ValidationError | NetworkError>> {
+  async count(_options?: QueryOptions): Promise<Result<number, ValidationError | NetworkError>> {
     if (!this.db) {
-      return err(new ConfigurationError('Database not initialized'));
+      return err(new ConfigurationError("Database not initialized"));
     }
 
     try {
-      const store = this.db.transaction(STORE_ARCHITECTURES, 'readonly').objectStore(STORE_ARCHITECTURES);
+      const store = this.db
+        .transaction(STORE_ARCHITECTURES, "readonly")
+        .objectStore(STORE_ARCHITECTURES);
       const request = store.count();
       const count = await new Promise<number>((resolve, reject) => {
         request.onsuccess = () => resolve(request.result);
@@ -1279,7 +1326,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     } catch (error) {
       return err(
         new ValidationError(
-          `Failed to count architectures: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to count architectures: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -1290,14 +1337,14 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
    */
   async getAllTags(): Promise<Result<string[], ValidationError | NetworkError>> {
     if (!this.db) {
-      return err(new ConfigurationError('Database not initialized'));
+      return err(new ConfigurationError("Database not initialized"));
     }
 
     try {
-      const store = this.db.transaction(STORE_TAGS_INDEX, 'readonly').objectStore(STORE_TAGS_INDEX);
+      const store = this.db.transaction(STORE_TAGS_INDEX, "readonly").objectStore(STORE_TAGS_INDEX);
       const request = store.getAllKeys();
       const tags: string[] = await new Promise((resolve, reject) => {
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => resolve(Array.from(request.result as IDBValidKey[], String));
         request.onerror = () => reject(request.error);
       });
 
@@ -1305,7 +1352,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     } catch (error) {
       return err(
         new ValidationError(
-          `Failed to get all tags: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get all tags: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -1314,13 +1361,15 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   /**
    * Gets tag usage statistics
    */
-  async getTagStatistics(): Promise<Result<Record<string, number>, ValidationError | NetworkError>> {
+  async getTagStatistics(): Promise<
+    Result<Record<string, number>, ValidationError | NetworkError>
+  > {
     if (!this.db) {
-      return err(new ConfigurationError('Database not initialized'));
+      return err(new ConfigurationError("Database not initialized"));
     }
 
     try {
-      const store = this.db.transaction(STORE_TAGS_INDEX, 'readonly').objectStore(STORE_TAGS_INDEX);
+      const store = this.db.transaction(STORE_TAGS_INDEX, "readonly").objectStore(STORE_TAGS_INDEX);
       const request = store.getAll();
       const records: TagIndexRecord[] = await new Promise((resolve, reject) => {
         request.onsuccess = () => resolve(request.result);
@@ -1336,7 +1385,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     } catch (error) {
       return err(
         new ValidationError(
-          `Failed to get tag statistics: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get tag statistics: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -1352,7 +1401,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
   async clearCache(): Promise<Result<void, ConfigurationError>> {
     this.cache.clear();
 
-    this.emit('cache-cleared', { timestamp: new Date().toISOString() });
+    this.emit("cache-cleared", { timestamp: new Date().toISOString() });
 
     return ok(undefined);
   }
@@ -1384,10 +1433,10 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
       this.eventHandlers.set(key, new Set());
     }
 
-    this.eventHandlers.get(key)!.add(handler);
+    this.eventHandlers.get(key)!.add(handler as EventHandler<unknown>);
 
     return () => {
-      this.eventHandlers.get(key)?.delete(handler);
+      this.eventHandlers.get(key)?.delete(handler as EventHandler<unknown>);
     };
   }
 
@@ -1410,10 +1459,13 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
       handlers.set(key, new Set());
     }
 
-    handlers.get(key)!.add(handler);
+    handlers.get(key)!.add(handler as EventHandler<unknown>);
 
     return () => {
-      this.architectureEventHandlers.get(architectureId)?.get(key)?.delete(handler);
+      this.architectureEventHandlers
+        .get(architectureId)
+        ?.get(key)
+        ?.delete(handler as EventHandler<unknown>);
     };
   }
 
@@ -1443,7 +1495,7 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
       return undefined;
     }
 
-    const store = this.db.transaction(storeName, 'readonly').objectStore(storeName);
+    const store = this.db.transaction(storeName, "readonly").objectStore(storeName);
     const request = store.get(key);
 
     return new Promise((resolve, reject) => {
@@ -1459,10 +1511,10 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
    */
   private async putRecord<T>(storeName: string, record: T): Promise<void> {
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error("Database not initialized");
     }
 
-    const store = this.db.transaction(storeName, 'readwrite').objectStore(storeName);
+    const store = this.db.transaction(storeName, "readwrite").objectStore(storeName);
     const request = store.put(record);
 
     return new Promise((resolve, reject) => {
@@ -1478,10 +1530,10 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
    */
   private async deleteRecord(storeName: string, key: string): Promise<void> {
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error("Database not initialized");
     }
 
-    const store = this.db.transaction(storeName, 'readwrite').objectStore(storeName);
+    const store = this.db.transaction(storeName, "readwrite").objectStore(storeName);
     const request = store.delete(key);
 
     return new Promise((resolve, reject) => {
@@ -1495,16 +1547,12 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
    *
    * @private
    */
-  private async queryRecords<T>(
-    storeName: string,
-    indexName: string,
-    key: string
-  ): Promise<T[]> {
+  private async queryRecords<T>(storeName: string, indexName: string, key: string): Promise<T[]> {
     if (!this.db) {
       return [];
     }
 
-    const store = this.db.transaction(storeName, 'readonly').objectStore(storeName);
+    const store = this.db.transaction(storeName, "readonly").objectStore(storeName);
     const index = store.index(indexName);
     const request = index.getAll(key);
 
@@ -1525,17 +1573,14 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     }
 
     // Build search index
-    const elementNames = Object.values(dump.elements || {}).map(el => el.name);
-    const searchableText = [
-      dump.metadata?.name || '',
-      dump.metadata?.description || '',
-      ...elementNames,
-    ].join(' ').toLowerCase();
+    const meta = dump._metadata;
+    const elementNames = Object.values(dump.elements || {}).map((el) => el.title);
+    const searchableText = [meta?.name || "", "", ...elementNames].join(" ").toLowerCase();
 
     const searchIndex: SearchIndexRecord = {
       architectureId: id,
-      name: dump.metadata?.name || '',
-      description: dump.metadata?.description,
+      name: meta?.name || "",
+      description: undefined,
       elementNames,
       searchableText,
     };
@@ -1548,9 +1593,11 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
    *
    * @private
    */
-  private async checkStorageQuota(additionalSize: number): Promise<Result<void, StorageQuotaExceededError>> {
+  private async checkStorageQuota(
+    additionalSize: number
+  ): Promise<Result<void, StorageQuotaExceededError>> {
     try {
-      if ('storage' in navigator && 'estimate' in navigator.storage) {
+      if ("storage" in navigator && "estimate" in navigator.storage) {
         const estimate = await navigator.storage.estimate();
         const usage = estimate.usage || 0;
         const quota = estimate.quota || 0;
@@ -1587,8 +1634,8 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
     }
 
     // Sort by last accessed time and evict oldest
-    const entries = Array.from(this.cache.entries()).sort((a, b) =>
-      a[1].lastAccessed - b[1].lastAccessed
+    const entries = Array.from(this.cache.entries()).sort(
+      (a, b) => a[1].lastAccessed - b[1].lastAccessed
     );
 
     const toEvict = entries.slice(0, this.cache.size - this.config.cacheMaxSize);
@@ -1654,7 +1701,9 @@ export class IndexedDBArchitectureRepository implements ArchitectureRepository {
  * @param config - Optional repository configuration
  * @returns A new repository instance (not yet initialized)
  */
-export function createIndexedDBRepository(config?: Partial<RepositoryConfig>): IndexedDBArchitectureRepository {
+export function createIndexedDBRepository(
+  config?: Partial<RepositoryConfig>
+): IndexedDBArchitectureRepository {
   return new IndexedDBArchitectureRepository(config);
 }
 

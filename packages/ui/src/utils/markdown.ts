@@ -22,9 +22,10 @@ export async function markdownToHtml(markdown: string): Promise<string> {
   if (!markdown) return "";
 
   try {
-    // Pre-process: Convert mermaid code blocks to divs that can be rendered by Mermaid.js
+    // Pre-process: Convert mermaid code blocks so Mermaid.js can render them.
+    // Match ```mermaid followed by any newline (\n or \r\n) so exporter output works cross-platform.
     const processedMarkdown = markdown.replace(
-      /```mermaid\n([\s\S]*?)```/g,
+      /```mermaid\r?\n([\s\S]*?)```/g,
       '<pre class="mermaid">$1</pre>'
     );
 

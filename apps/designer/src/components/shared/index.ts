@@ -1,5 +1,4 @@
 export { Breadcrumb } from "./Breadcrumb";
-export { ExamplesDropdown } from "./ExamplesDropdown";
 // CommandPalette and ShortcutsModal moved to @sruja/ui
 // Skeleton, SkeletonCard, SkeletonList moved to @sruja/ui
 export {

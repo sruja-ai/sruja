@@ -7,7 +7,7 @@
 //! # Examples
 //!
 //! ```rust
-//! use sruja_diagnostics::{Diagnostic, Severity, SourceLocation, BasicErrorReporter};
+//! use sruja_diagnostics::{Diagnostic, Severity, SourceLocation, BasicErrorReporter, ErrorReporter};
 //!
 //! let mut reporter = BasicErrorReporter::new();
 //! let diag = Diagnostic::new(

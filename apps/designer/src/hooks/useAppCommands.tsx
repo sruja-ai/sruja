@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Eye, Download, Upload } from "lucide-react";
+import { Eye, Download, Upload, ShieldCheck } from "lucide-react";
 import type { ViewTab } from "../types";
 import type { Command } from "@sruja/ui";
 
@@ -23,15 +23,6 @@ export function useAppCommands({
   return useMemo<Command[]>(() => {
     const cmds: Command[] = [
       {
-        id: "tab-overview",
-        label: "Go to Overview",
-        description: "View architecture overview",
-        icon: <Eye size={16} />,
-        category: "navigation",
-        action: () => setActiveTab("overview"),
-        keywords: ["overview", "summary"],
-      },
-      {
         id: "tab-diagram",
         label: "Go to Diagram",
         description: "View architecture diagram",
@@ -39,15 +30,6 @@ export function useAppCommands({
         category: "navigation",
         action: () => setActiveTab("diagram"),
         keywords: ["diagram", "visual", "graph"],
-      },
-      {
-        id: "tab-details",
-        label: "Go to Details",
-        description: "View detailed information",
-        icon: <Eye size={16} />,
-        category: "navigation",
-        action: () => setActiveTab("details"),
-        keywords: ["details", "info"],
       },
       {
         id: "tab-code",
@@ -66,6 +48,24 @@ export function useAppCommands({
         category: "navigation",
         action: () => setActiveTab("builder"),
         keywords: ["builder", "wizard"],
+      },
+      {
+        id: "tab-output",
+        label: "Go to Output",
+        description: "View generated docs / markdown output",
+        icon: <Eye size={16} />,
+        category: "navigation",
+        action: () => setActiveTab("docs"),
+        keywords: ["output", "docs", "markdown"],
+      },
+      {
+        id: "tab-review",
+        label: "Go to Review",
+        description: "Best practices review (quality, anti-patterns, policies)",
+        icon: <ShieldCheck size={16} />,
+        category: "navigation",
+        action: () => setActiveTab("review"),
+        keywords: ["review", "quality", "governance", "best practices"],
       },
       {
         id: "export-json",

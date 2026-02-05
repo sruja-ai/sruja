@@ -158,7 +158,14 @@ impl MermaidExporter {
     fn write_relation(&self, out: &mut String, rel: &Relation) {
         let from = sanitize_id(&rel.from.as_string());
         let to = sanitize_id(&rel.to.as_string());
-        let label = rel.label.as_ref().or(rel.description.as_ref()).map(|s| escape_quotes(s));
+        let label = rel
+            .label
+            .as_ref()
+            .or(rel.description.as_ref())
+            .map(|s| {
+                let one_line = first_line_truncated(s, MAX_EDGE_LABEL_CHARS);
+                escape_quotes(newlines_to_br(&one_line))
+            });
         match label {
             Some(l) if !l.is_empty() => {
                 out.push_str(&format!("{INDENT4}{from} -->|\"{l}\"| {to}\n"));
@@ -401,11 +408,50 @@ fn escape_quotes(s: impl AsRef<str>) -> String {
     s.as_ref().replace('"', "\\\"")
 }
 
+/// Truncate a single line at word boundary; add ellipsis if truncated.
+fn truncate_line(s: &str, max_chars: usize) -> String {
+    let s = s.trim();
+    if s.len() <= max_chars {
+        return s.to_string();
+    }
+    let truncated = &s[..max_chars.saturating_sub(1)];
+    if let Some(last_space) = truncated.rfind(|c: char| c.is_whitespace()) {
+        format!("{}…", truncated[..last_space].trim_end())
+    } else {
+        format!("{}…", truncated)
+    }
+}
+
+/// Take first line of text, optionally truncated; normalize newlines to space.
+fn first_line_truncated(s: &str, max_chars: usize) -> String {
+    let first = s
+        .lines()
+        .next()
+        .map(|l| l.trim())
+        .unwrap_or("")
+        .replace('\r', " ");
+    truncate_line(
+        &first.replace('\n', " ").replace("  ", " "),
+        max_chars,
+    )
+}
+
+/// Replace newlines and literal `\n` with `<br>` so Mermaid renders line breaks in node labels.
+fn newlines_to_br(s: impl AsRef<str>) -> String {
+    let s = s.as_ref();
+    let s = s.replace("\\n", "<br>");
+    let s = s.replace("\r\n", "<br>");
+    let s = s.replace('\r', "<br>");
+    s.replace('\n', "<br>")
+}
+
 fn display_title(fqn: &str, elements: &HashMap<String, sruja_language::ElementDef>) -> String {
-    elements
+    let raw = elements
         .get(fqn)
         .and_then(|e| e.assignment.title.clone())
-        .unwrap_or_else(|| leaf_id(fqn).to_string())
+        .unwrap_or_else(|| leaf_id(fqn).to_string());
+    let normalized = newlines_to_br(&raw);
+    first_line_truncated(&normalized.replace("<br>", " "), MAX_SUBGRAPH_TITLE_CHARS)
 }
 
 fn leaf_id(fqn: &str) -> &str {
@@ -413,7 +459,8 @@ fn leaf_id(fqn: &str) -> &str {
 }
 
 fn format_label(elem: &sruja_language::ElementDef) -> String {
-    // Similar to Go: Title + optional description/technology in the label.
+    // Best practice: keep node labels short so Mermaid can wrap/display without cutoff.
+    // Title (primary), then up to one line of description, then technology; max MAX_NODE_LINES.
     let title = elem
         .assignment
         .title
@@ -426,16 +473,28 @@ fn format_label(elem: &sruja_language::ElementDef) -> String {
         (String::new(), String::new())
     };
 
-    let mut lines = vec![title.clone()];
-    if !desc.is_empty() {
-        lines.push(desc);
+    let title_flat = title.replace('\n', " ").replace('\r', " ");
+    let line1 = truncate_line(title_flat.trim(), MAX_NODE_LINE_CHARS);
+    let mut lines = vec![line1];
+
+    if lines.len() < MAX_NODE_LINES && !desc.is_empty() {
+        let desc_line = first_line_truncated(&desc, MAX_NODE_LINE_CHARS);
+        if !desc_line.is_empty() {
+            lines.push(desc_line);
+        }
     }
-    if !tech.is_empty() {
-        lines.push(tech);
+    if lines.len() < MAX_NODE_LINES && !tech.is_empty() {
+        let tech_line = truncate_line(tech.trim(), MAX_NODE_LINE_CHARS);
+        if !tech_line.is_empty() {
+            lines.push(tech_line);
+        }
     }
     if lines.len() == 1 && title != id {
-        lines.push(id);
+        let id_line = truncate_line(&id, MAX_NODE_LINE_CHARS);
+        if !id_line.is_empty() && lines.len() < MAX_NODE_LINES {
+            lines.push(id_line);
+        }
     }
-    lines.join("\\n")
+    lines.join("<br>")
 }
 

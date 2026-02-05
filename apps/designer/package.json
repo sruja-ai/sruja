@@ -36,11 +36,9 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "@hpcc-js/wasm-graphviz": "^1.17.0",
     "@mantine/core": "^8.3.10",
     "@sruja/shared": "*",
     "@sruja/ui": "*",
-    "@xyflow/react": "^12.10.0",
     "events": "^3.3.0",
     "firebase": "^12.6.0",
     "framer-motion": "^11.18.2",

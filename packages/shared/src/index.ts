@@ -49,6 +49,9 @@ export * from "./types";
  */
 export * from "./utils";
 
+// Explicit re-exports for consumers that import from '@sruja/shared'
+export { logger } from "./utils/logger";
+
 // ============================================================================
 // Exporters (via WASM)
 // ============================================================================
@@ -92,6 +95,17 @@ export * from "./web/wasmAdapter";
  * @module analytics
  */
 export * from "./analytics";
+
+// Explicit re-exports for PostHog and auto-tracking
+export {
+  initPosthog,
+  capture,
+  identify,
+  isReady,
+  getPosthog,
+  type PosthogInit,
+} from "./analytics/posthog";
+export { enableAutoTracking } from "./analytics/auto";
 
 // ============================================================================
 // Storage

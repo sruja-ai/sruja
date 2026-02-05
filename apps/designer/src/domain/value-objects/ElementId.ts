@@ -7,16 +7,7 @@
  * @module domain/value-objects
  */
 
-import { ValidationError, ok, err, type Result } from '@sruja/shared/utils';
-
-/**
- * Branded type for element IDs to prevent accidental misuse
- *
- * @remarks
- * This type cannot be constructed directly - use ElementId.create() or ElementId.unsafe()
- * to ensure validation.
- */
-export type ElementId = string & { readonly __brand: unique symbol };
+import { ValidationError, ok, err, type Result } from "@sruja/shared/utils";
 
 /**
  * Regular expression for valid element IDs
@@ -67,32 +58,32 @@ export class ElementId {
     // Check for empty or whitespace-only strings
     const trimmed = value.trim();
     if (trimmed.length === 0) {
-      return err(new ValidationError('Element ID cannot be empty'));
+      return err(new ValidationError("Element ID cannot be empty"));
     }
 
     // Check length (after trimming whitespace)
     if (trimmed.length > 100) {
-      return err(new ValidationError('Element ID cannot exceed 100 characters'));
+      return err(new ValidationError("Element ID cannot exceed 100 characters"));
     }
 
     // Validate format
     if (!ELEMENT_ID_REGEX.test(trimmed)) {
       return err(
         new ValidationError(
-          'Element ID must start with a letter and contain only letters, numbers, hyphens, and underscores'
+          "Element ID must start with a letter and contain only letters, numbers, hyphens, and underscores"
         )
       );
     }
 
     // Check for reserved prefixes (future-proofing)
-    const reservedPrefixes = ['system-', 'internal-', 'temp-'];
+    const reservedPrefixes = ["system-", "internal-", "temp-"];
     for (const prefix of reservedPrefixes) {
       if (trimmed.startsWith(prefix)) {
         return err(new ValidationError(`Element ID cannot start with reserved prefix '${prefix}'`));
       }
     }
 
-    return ok(trimmed as ElementId);
+    return ok(new ElementId(trimmed));
   }
 
   /**
@@ -108,7 +99,7 @@ export class ElementId {
    * @returns An ElementId instance
    */
   static unsafe(value: string): ElementId {
-    return value as ElementId;
+    return new ElementId(value);
   }
 
   /**
@@ -132,13 +123,12 @@ export class ElementId {
   static generate(prefix: string, suffix?: string): ElementId {
     const safePrefix = prefix
       .toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$|' + '/g, '');
+      .replace(/[^a-z0-9]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$|' + '/g, "");
 
     const uniqueSuffix =
-      suffix ??
-      `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}`;
+      suffix ?? `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}`;
 
     return ElementId.unsafe(`${safePrefix}-${uniqueSuffix}`);
   }
@@ -153,11 +143,11 @@ export class ElementId {
     // Convert name to a valid ID format
     const id = name
       .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
+      .replace(/[^a-z0-9\s-]/g, "") // Remove special chars
       .trim()
-      .replace(/\s+/g, '-') // Convert spaces to hyphens
-      .replace(/-+/g, '-') // Collapse multiple hyphens
-      .replace(/^-|-$|' + '/g, ''); // Remove leading/trailing hyphens
+      .replace(/\s+/g, "-") // Convert spaces to hyphens
+      .replace(/-+/g, "-") // Collapse multiple hyphens
+      .replace(/^-|-$|' + '/g, ""); // Remove leading/trailing hyphens
 
     return this.create(id);
   }
@@ -174,20 +164,15 @@ export class ElementId {
 
   /**
    * The underlying string value
-   *
-   * @remarks
-   * Access via .value to convert to string when needed
    */
-  readonly value: ElementId;
+  readonly value: string;
 
   /**
-   * Private constructor - use static factory methods
-   *
-   * @private
+   * Constructor - prefer ElementId.create() or ElementId.unsafe()
    */
-  private constructor(value: ElementId) {
+  constructor(value: string) {
     this.value = value;
-    Object.freeze(this); // Make immutable
+    Object.freeze(this);
   }
 
   /**
@@ -217,7 +202,7 @@ export class ElementId {
    * @returns True if equal
    */
   equals(other: ElementId | string): boolean {
-    const otherValue = typeof other === 'string' ? other : other.value;
+    const otherValue = typeof other === "string" ? other : other.value;
     return this.value === otherValue;
   }
 
@@ -227,11 +212,8 @@ export class ElementId {
    * @returns The prefix or empty string if none
    */
   getPrefix(): string {
-    const lastSeparator = Math.max(
-      this.value.lastIndexOf('-'),
-      this.value.lastIndexOf('_')
-    );
-    return lastSeparator > 0 ? this.value.substring(0, lastSeparator) : '';
+    const lastSeparator = Math.max(this.value.lastIndexOf("-"), this.value.lastIndexOf("_"));
+    return lastSeparator > 0 ? this.value.substring(0, lastSeparator) : "";
   }
 
   /**
@@ -240,10 +222,7 @@ export class ElementId {
    * @returns The suffix or the full ID if no separator
    */
   getSuffix(): string {
-    const lastSeparator = Math.max(
-      this.value.lastIndexOf('-'),
-      this.value.lastIndexOf('_')
-    );
+    const lastSeparator = Math.max(this.value.lastIndexOf("-"), this.value.lastIndexOf("_"));
     return lastSeparator >= 0 ? this.value.substring(lastSeparator + 1) : this.value;
   }
 
@@ -262,24 +241,24 @@ export class ElementId {
    * @returns The string value
    */
   [Symbol.toStringTag](): string {
-    return 'ElementId';
+    return "ElementId";
   }
 }
 
 /**
- * Type guard to check if a value is an ElementId
+ * Type guard to check if a value is an ElementId instance
  *
  * @param value - The value to check
  * @returns True if the value is an ElementId
  */
 export function isElementId(value: unknown): value is ElementId {
-  return typeof value === 'string' && ELEMENT_ID_REGEX.test(value);
+  return value instanceof ElementId;
 }
 
 /**
  * Utility function to assert a value is an ElementId
  *
- * @throws ValidationError if the value is not a valid ElementId
+ * @throws ValidationError if the value is not an ElementId instance
  * @param value - The value to assert
  * @returns The value as ElementId
  */
@@ -287,5 +266,5 @@ export function assertElementId(value: unknown): ElementId {
   if (!isElementId(value)) {
     throw new ValidationError(`Invalid ElementId: ${String(value)}`);
   }
-  return value as ElementId;
+  return value;
 }

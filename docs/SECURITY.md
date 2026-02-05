@@ -22,6 +22,11 @@ Sruja uses automated security scanning in CI:
 - Runs on: Push, PR, weekly schedule
 - Location: `.github/workflows/security.yml`
 
+#### Known audit findings (9: 6 low, 3 moderate)
+
+- **Elliptic (6 low)** – Transitive via `vite-plugin-node-polyfills` → `node-stdlib-browser` → `crypto-browserify`. We **override** `elliptic` to **6.6.1** (patched) in root `package.json`, so the installed version is safe. npm audit still reports the chain by declaration.
+- **ESLint &lt;9.26.0 (3 moderate)** – In **unimported** (dev-only, optional: `check:unused:files`). Unimported pins an older `@typescript-eslint/parser` that depends on eslint 8. No upstream fix without replacing unimported; impact is limited to dev tooling (stack overflow when serializing circular refs). Acceptable for optional dev dependency.
+
 ### Dependency Review
 
 - **Dependency Review Action**: Reviews dependency changes in PRs

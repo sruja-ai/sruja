@@ -29,6 +29,8 @@ export function useDSLSync() {
   const isInitialMountRef = useRef(true);
   // Track timeout for clearing processing flag
   const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Track the current parsing attempt to avoid race conditions
+  const currentParseRef = useRef<number>(0);
 
   // Sync with store when store's dslSource changes externally (from builder, not from editor)
   useEffect(() => {
@@ -100,7 +102,16 @@ export function useDSLSync() {
   useEffect(() => {
     if (dslSource === null) return;
 
+    // Adaptive debounce: shorter for typing, longer for structural changes
+    const debounceTime = dslSource.length < 100 ? 100 : dslSource.length < 500 ? 300 : 1000;
+
+    const parseAttempt = ++currentParseRef.current;
     const timer = setTimeout(async () => {
+      // Skip if this is not the latest parse attempt
+      if (parseAttempt !== currentParseRef.current) {
+        return;
+      }
+
       setIsSaving(true);
       try {
         // Attempt to parse and convert DSL to model
@@ -124,15 +135,23 @@ export function useDSLSync() {
       } finally {
         setIsSaving(false);
       }
-    }, 1000); // 1s debounce
+    }, debounceTime);
 
     return () => clearTimeout(timer);
   }, [dslSource, loadFromDSL]);
 
+  // Return sync state and handlers
   return {
     dslSource,
     error,
     isSaving,
     handleDSLChange,
+    // Add sync status for visualization
+    syncStatus: {
+      isProcessing: isProcessingUserEditRef.current,
+      isSyncing: isSaving,
+      hasError: error !== null,
+      lastSync: new Date().toISOString(),
+    },
   };
 }

@@ -149,7 +149,7 @@ web.api -> web.db "queries"
     // Test at L3 (Component level with no focus)
     let (l3_relations, _) = parse_and_get_edges(dsl, 3, None);
 
-    // At L3, we see the full hierarchy
+    // At L3, we see the full hierarchy; sibling edge web.api -> web.db is shown
     println!("L3 Relations:");
     for rel in &l3_relations {
         println!(
@@ -160,14 +160,15 @@ web.api -> web.db "queries"
         );
     }
 
-    // Hierarchical edges are filtered out by the hierarchical edge check
-    // This is intentional behavior - edges between parent-child are not shown
-    // to avoid visual clutter
+    // At L3 with no focus, sibling edges (web.api -> web.db) are shown.
+    // Parent-child edges are filtered by the hierarchical check.
     assert_eq!(
         l3_relations.len(),
-        0,
-        "L3 should have no edges (hierarchical edges filtered)"
+        1,
+        "L3 should have 1 edge (web.api -> web.db, sibling edge)"
     );
+    assert_eq!(l3_relations[0].from.as_string(), "web.api");
+    assert_eq!(l3_relations[0].to.as_string(), "web.db");
 }
 
 /// Test 4: Edge visibility across different views

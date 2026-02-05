@@ -12,6 +12,13 @@ export type WasmApi = {
   dslToMermaid: (dsl: string) => Promise<string>;
   dslToMarkdown: (dsl: string) => Promise<string>;
   dslToModel: (dsl: string, filename?: string) => Promise<string>;
+  incrementalParse: (
+    dsl: string,
+    changeStart: number,
+    changeEnd: number,
+    existingAstJson: string,
+    contextLines: number
+  ) => Promise<string>;
   dslToDot: (
     dsl: string,
     viewLevel?: number,
@@ -92,26 +99,72 @@ export async function getWasmApi(): Promise<WasmApi | null> {
 }
 
 /**
+ * Convert DSL string to Architecture JSON object using incremental parsing.
+ * Returns parsed JSON object if successful, null on error.
+ * @param dsl - The full DSL string
+ * @param changeStart - Starting position of the change
+ * @param changeEnd - Ending position of the change
+ * @param existingAstJson - Existing AST as JSON string
+ * @param contextLines - Number of context lines to parse around the change
+ * @param filename - Optional filename for error reporting
+ */
+export async function incrementalParse(
+  dsl: string,
+  changeStart: number,
+  changeEnd: number,
+  existingAstJson: string,
+  contextLines: number,
+  filename?: string
+): Promise<object | null> {
+  const api = await getWasmApi();
+  if (!api) {
+    logger.error("WASM not available", { component: "wasm", action: "incremental_parse" });
+    return null;
+  }
+
+  try {
+    const jsonString = await api.incrementalParse(
+      dsl,
+      changeStart,
+      changeEnd,
+      existingAstJson,
+      contextLines
+    );
+    return JSON.parse(jsonString);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error("Incremental parse error", {
+      component: "wasm",
+      action: "incremental_parse",
+      error: errorMessage,
+      filename: filename || "unknown",
+    });
+    // Re-throw with more context so the caller can show a better error message
+    throw new Error(`Incremental parse failed${filename ? ` (${filename})` : ""}: ${errorMessage}`);
+  }
+}
+
+/**
  * Convert DSL string to Architecture JSON object.
  * Returns parsed JSON object if successful, null on error.
  * @param dsl - The DSL string to parse
  * @param filename - Optional filename for error reporting (defaults to location.pathname or 'input.sruja')
  */
-export async function convertDslToJson(dsl: string, filename?: string): Promise<object | null> {
+export async function convertDslToModel(dsl: string, filename?: string): Promise<object | null> {
   const api = await getWasmApi();
   if (!api) {
-    logger.error("WASM not available", { component: "wasm", action: "convert_dsl_to_json" });
+    logger.error("WASM not available", { component: "wasm", action: "convert_dsl_to_model" });
     return null;
   }
 
   try {
-    const jsonString = await api.parseDslToJson(dsl, filename);
+    const jsonString = await api.dslToModel(dsl, filename);
     return JSON.parse(jsonString);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("DSL parse error", {
       component: "wasm",
-      action: "convert_dsl_to_json",
+      action: "convert_dsl_to_model",
       error: errorMessage,
       filename: filename || "unknown",
     });

@@ -5,6 +5,7 @@ import "@sruja/ui/design-system/styles.css";
 import AlgoliaSearch from "@/features/search/components/AlgoliaSearch";
 import { getDesignerUrl } from "@/utils/designer-url";
 import LiveSrujaBlock from "@/features/playground/components/LiveSrujaBlock";
+import { HERO_INITIAL_DSL } from "../heroInitialDsl";
 
 export default function HomeHero() {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -55,25 +56,7 @@ export default function HomeHero() {
           >
             {"✨ Try it live: Edit the code and watch the diagram update automatically"}
           </p>
-          <LiveSrujaBlock
-            initialDsl={`import { * } from 'sruja.ai/stdlib'
-
-User = person "Customer"
-App = system "E-commerce Platform" {
-  Web = container "React App"
-  API = container "Node.js API"
-  DB = database "PostgreSQL"
-}
-
-User -> App.Web "Visits"
-App.Web -> App.API "Calls"
-App.API -> App.DB "Stores Data"
-
-view index {
-  include *
-}
-`}
-          />
+          <LiveSrujaBlock initialDsl={HERO_INITIAL_DSL} />
         </div>
 
         {/* Why Sruja? */}

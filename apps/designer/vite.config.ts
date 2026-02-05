@@ -124,7 +124,7 @@ function serveMonorepoAssets(): Plugin {
             // Remove query parameters for file lookup
             const wasmFile = urlPath.replace("/wasm/", "");
 
-            // Try designer's public/wasm first (for graphvizlib.wasm)
+            // Try designer's public/wasm first
             const designerWasmPath = path.resolve(__dirname, "public/wasm", wasmFile);
             if (fs.existsSync(designerWasmPath)) {
               // Prevent caching of WASM files in development
@@ -221,7 +221,7 @@ function serveMonorepoAssets(): Plugin {
             // Remove query parameters for file lookup
             const wasmFile = req.url.split("?")[0].replace("/wasm/", "");
 
-            // Try designer's public/wasm first (for graphvizlib.wasm)
+            // Try designer's public/wasm first
             const designerWasmPath = path.resolve(__dirname, "public/wasm", wasmFile);
             if (fs.existsSync(designerWasmPath)) {
               // Prevent caching of WASM files in preview mode

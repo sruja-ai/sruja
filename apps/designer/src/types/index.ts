@@ -84,8 +84,8 @@ export interface C4NodeData {
   pendingActionCount?: number;
 }
 
-export type ViewTab = "overview" | "diagram" | "code" | "docs" | "builder" | "details" | "roles";
-export type ViewMode = "designer" | "present";
+// Core app navigation (slim mode)
+export type ViewTab = "diagram" | "docs" | "review" | "code" | "builder";
 
 // ===========================================================================
 // Common Component Types

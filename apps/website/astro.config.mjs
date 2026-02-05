@@ -258,7 +258,18 @@ export default defineConfig({
       }),
     ],
     server: {
+      port: 4321,
+      strictPort: true,
+      // Defines the origin of generated asset URLs and HMR WebSocket during development.
+      // Without this, the client can try ws://localhost:5173 and asset URLs may point to the wrong host.
+      origin: "http://localhost:4321",
       cors: true,
+      hmr: {
+        protocol: "ws",
+        host: "localhost",
+        port: 4321,
+        clientPort: 4321,
+      },
       watch: {
         // Watch workspace packages for changes
         ignored: [
@@ -334,7 +345,8 @@ export default defineConfig({
       // Explicitly handle CSS imports from packages
       extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json", ".css"],
       alias: {
-        // Map CSS import to actual file path
+        // React: no explicit alias — rely on dedupe so Vite pre-bundles React (ESM). Explicit
+        // path alias caused "module is not defined" (raw CJS in browser) and malformed stack paths.
         "node:buffer": "buffer",
         // Use Node.js built-ins in SSR/build context
         // Alias npm 'util' package to Node.js built-in 'util' to avoid CommonJS issues

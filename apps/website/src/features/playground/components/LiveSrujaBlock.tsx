@@ -4,52 +4,40 @@ import { SrujaMonacoEditor } from "@sruja/ui";
 import { SrujaLoader } from "@sruja/ui";
 import { initWasm, logger } from "@sruja/shared";
 import { trackEvent, trackInteraction } from "@/shared/utils/analytics";
-import type { SrujaModelDump, DotResult } from "@sruja/shared";
+import type { SrujaModelDump } from "@sruja/shared";
 import { SrujaDiagramPreview } from "./SrujaDiagramPreview";
 
 export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
-  // Helper to normalize indentation
+  // Dedent: strip the minimum leading indentation so the block has no excess left margin.
+  // Handles template literals where the first line has no indent (e.g. `\n  code`) and the rest do.
   const normalizeDsl = useCallback((input: string) => {
-    // If the input is already clean (no pervasive indentation), return it
     if (!input.includes("\n")) return input.trim();
 
     const lines = input.split("\n");
-    // Ignore first/last empty lines often caused by template literals
     let start = 0;
     while (start < lines.length && lines[start].trim() === "") start++;
     let end = lines.length - 1;
     while (end >= start && lines[end].trim() === "") end--;
 
-    if (start > end) return ""; // All empty
+    if (start > end) return "";
 
     const relevantLines = lines.slice(start, end + 1);
 
-    // Calculate minimum indentation of non-empty lines
-    const minIndent = relevantLines.reduce((min, line) => {
-      if (line.trim() === "") return min;
-      const match = line.match(/^(\s*)/);
-      return Math.min(min, match ? match[1].length : 0);
-    }, Infinity);
+    // Minimum indentation among lines that have any leading space.
+    const leadingCounts = relevantLines
+      .filter((line) => line.trim() !== "")
+      .map((line) => line.match(/^(\s*)/)?.[1].length ?? 0);
+    const minIndent =
+      leadingCounts.length === 0 ? 0 : Math.min(...leadingCounts.filter((n) => n > 0), Infinity);
+    // Only strip template-literal indent (>= 4 spaces). Never strip 2-space code indent.
+    const strip = minIndent !== Infinity && minIndent >= 4 ? minIndent : 0;
 
-    // Only strip indentation if ALL non-empty lines have the same leading indentation
-    if (minIndent === Infinity || minIndent === 0) {
-      return relevantLines.join("\n");
-    }
-
-    // Check if all non-empty lines start with at least minIndent spaces
-    const allHaveMinIndent = relevantLines.every((line) => {
-      if (line.trim() === "") return true;
-      return line.length >= minIndent && line.slice(0, minIndent).trim() === "";
-    });
-
-    if (!allHaveMinIndent) {
-      // Relative indentation exists, preserve it
-      return relevantLines.join("\n");
-    }
-
-    // All lines have the same leading indentation, strip it
     return relevantLines
-      .map((line) => (line.length >= minIndent ? line.slice(minIndent) : line))
+      .map((line) => {
+        const leading = line.match(/^(\s*)/)?.[1].length ?? 0;
+        if (strip > 0 && leading >= strip) return line.slice(strip);
+        return line.trimStart();
+      })
       .join("\n");
   }, []);
 
@@ -60,7 +48,7 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
     setDsl(normalizeDsl(initialDsl));
   }, [initialDsl, normalizeDsl]);
   const [data, setData] = useState<SrujaModelDump | null>(null);
-  const [dotResult, setDotResult] = useState<DotResult | null>(null);
+  const [mermaidCode, setMermaidCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
   const isInitialRender = useRef(true);
@@ -98,12 +86,13 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
       const parsed = JSON.parse(jsonStr) as SrujaModelDump;
       setData(parsed);
 
-      // Get DOT result for layout/rendering
+      // Get Mermaid for diagram (use existing tool)
       try {
-        const dot = await api.dslToDot(input);
-        setDotResult(dot);
+        const mermaid = await api.dslToMermaid(input);
+        setMermaidCode(mermaid || null);
       } catch (mErr) {
-        logger.warn("Failed to generate DOT for playground", { error: mErr });
+        logger.warn("Failed to generate Mermaid for playground", { error: mErr });
+        setMermaidCode(null);
       }
 
       if (!isInitialRender.current) {
@@ -240,9 +229,9 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
               tabSize: 2,
               insertSpaces: true,
               detectIndentation: false,
-              formatOnPaste: true,
+              formatOnPaste: false,
               formatOnType: false,
-              autoIndent: "full",
+              autoIndent: "none",
               trimAutoWhitespace: true,
               glyphMargin: false,
               lineNumbersMinChars: 2,
@@ -272,8 +261,8 @@ export default function LiveSrujaBlock({ initialDsl }: { initialDsl: string }) {
               Failed to render: {errorHeader}
             </div>
           )}
-          {dotResult ? (
-            <SrujaDiagramPreview model={data!} dotResult={dotResult} />
+          {mermaidCode ? (
+            <SrujaDiagramPreview model={data!} mermaidCode={mermaidCode} />
           ) : (
             <div
               style={{

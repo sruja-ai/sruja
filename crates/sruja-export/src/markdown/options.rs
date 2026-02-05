@@ -35,6 +35,8 @@ impl Scope {
 pub struct MarkdownOptions {
     pub include_toc: bool,
     pub include_overview: bool,
+    /// When true, embed Mermaid diagram code blocks (context + optional container/component views) so they render in Markdown viewers (e.g. GitHub, VS Code).
+    pub include_mermaid_diagrams: bool,
     pub include_systems: bool,
     pub include_deployments: bool,
     pub include_persons: bool,
@@ -56,6 +58,7 @@ impl Default for MarkdownOptions {
         Self {
             include_toc: true,
             include_overview: true,
+            include_mermaid_diagrams: true,
             include_systems: true,
             include_deployments: true,
             include_persons: true,

@@ -309,33 +309,13 @@ fn compute_view(
     program: &sruja_language::Program,
     elements: &HashMap<String, sruja_language::ElementDef>,
     relations: &[Relation],
-    mut level: u8,
-    mut focus: Option<String>,
+    level: u8,
+    focus: Option<String>,
     view_id: Option<String>,
 ) -> (HashMap<String, sruja_language::ElementDef>, Vec<Relation>) {
-    if level <= 1 && focus.is_none() {
-        let systems: Vec<String> = elements
-            .iter()
-            .filter_map(|(id, e)| {
-                let kind_str = e.assignment.kind.to_string();
-                if normalize_kind(&kind_str) == "system" {
-                    Some(id.clone())
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        if systems.len() == 1 {
-            let sys = &systems[0];
-            let prefix = format!("{}.", sys);
-            let has_children = elements.keys().any(|id| id.starts_with(&prefix));
-            if has_children {
-                level = 2;
-                focus = Some(sys.clone());
-            }
-        }
-    }
+    // Do not auto-promote L1 to L2 when there is a single system with children.
+    // Callers that want container view (e.g. designer) must request level 2 with focus explicitly.
+    // At L1, project_id collapses all FQNs to root so nested edges (e.g. web.api -> web.db) become self-loops and are filtered.
 
     let mut visible: HashSet<String> = HashSet::new();
 
@@ -469,7 +449,29 @@ fn compute_view(
         _ => {}
     }
 
+    // Expand visible to include relation endpoints that connect to visible nodes
+    // (e.g. at L2 with focus=system_a, include "user" when we have user -> system_a)
     let focus_ref = focus.as_deref();
+    let mut expanded = true;
+    while expanded {
+        expanded = false;
+        for rel in relations.iter() {
+            let from = rel.from.as_string();
+            let to = rel.to.as_string();
+            let source = project_id(&from, level, focus_ref, elements);
+            let target = project_id(&to, level, focus_ref, elements);
+            if source.is_empty() || target.is_empty() || source == target {
+                continue;
+            }
+            if visible.contains(&source) && elements.contains_key(&target) && visible.insert(target.clone()) {
+                expanded = true;
+            }
+            if visible.contains(&target) && elements.contains_key(&source) && visible.insert(source.clone()) {
+                expanded = true;
+            }
+        }
+    }
+
     let mut projected: Vec<Relation> = Vec::new();
     for rel in relations {
         let from = rel.from.as_string();
@@ -482,6 +484,10 @@ fn compute_view(
         if source.starts_with(&(target.clone() + "."))
             || target.starts_with(&(source.clone() + "."))
         {
+            continue;
+        }
+        // Only include edge if both endpoints are in the visible set
+        if !visible.contains(&source) || !visible.contains(&target) {
             continue;
         }
 
@@ -526,10 +532,11 @@ fn project_id(
     focus: Option<&str>,
     elements: &HashMap<String, sruja_language::ElementDef>,
 ) -> String {
+    // At L1 always collapse to root so we never emit full FQN (avoids web.api -> web.db at L1)
+    if level == 1 {
+        return get_root(fqn);
+    }
     if elements.contains_key(fqn) {
-        if level == 1 {
-            return get_root(fqn);
-        }
         if level == 2 {
             if let Some(c) = get_container(fqn, elements) {
                 return c;
@@ -537,6 +544,10 @@ fn project_id(
             return get_root(fqn);
         }
         if level == 3 {
+            // Show all levels: keep full FQN so edges between siblings (e.g. API -> DB) are preserved
+            if focus.is_none() {
+                return fqn.to_string();
+            }
             if let Some(c) = get_container(fqn, elements) {
                 if Some(c.as_str()) != focus {
                     return c;

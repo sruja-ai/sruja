@@ -8,10 +8,10 @@
  * @module domain/repositories
  */
 
-import type { SrujaModelDump } from '@sruja/shared';
-import { ArchitectureAggregate } from '../aggregates/ArchitectureAggregate';
-import { ValidationError, NetworkError, ConfigurationError } from '@sruja/shared/utils/errors';
-import { ok, err, type Result } from '@sruja/shared/utils/result';
+import type { SrujaModelDump } from "@sruja/shared";
+import { ArchitectureAggregate } from "../aggregates/ArchitectureAggregate";
+import type { ValidationError, NetworkError, ConfigurationError } from "@sruja/shared/utils/errors";
+import type { Result } from "@sruja/shared/utils/result";
 
 /**
  * Options for querying architectures
@@ -26,9 +26,9 @@ export interface QueryOptions {
   /** Offset for pagination */
   offset?: number;
   /** Sort field */
-  sortBy?: 'name' | 'createdAt' | 'updatedAt';
+  sortBy?: "name" | "createdAt" | "updatedAt";
   /** Sort direction */
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 }
 
 /**
@@ -195,7 +195,9 @@ export interface ArchitectureRepository {
    * @param aggregate - The architecture aggregate to save
    * @returns Result containing the saved ID or error
    */
-  save(aggregate: ArchitectureAggregate): Promise<Result<string, ValidationError | NetworkError | ConfigurationError>>;
+  save(
+    aggregate: ArchitectureAggregate
+  ): Promise<Result<string, ValidationError | NetworkError | ConfigurationError>>;
 
   /**
    * Saves or updates an architecture with a specific ID
@@ -251,7 +253,9 @@ export interface ArchitectureRepository {
    * @param options - Query options for filtering and pagination
    * @returns Result containing paginated results or error
    */
-  findAll(options?: QueryOptions): Promise<Result<PaginatedResult<ArchitectureAggregate>, ValidationError | NetworkError>>;
+  findAll(
+    options?: QueryOptions
+  ): Promise<Result<PaginatedResult<ArchitectureAggregate>, ValidationError | NetworkError>>;
 
   /**
    * Finds architecture summaries (lightweight objects)
@@ -261,7 +265,9 @@ export interface ArchitectureRepository {
    * @param options - Query options for filtering and pagination
    * @returns Result containing paginated summaries or error
    */
-  findAllSummaries(options?: QueryOptions): Promise<Result<PaginatedResult<ArchitectureSummary>, ValidationError | NetworkError>>;
+  findAllSummaries(
+    options?: QueryOptions
+  ): Promise<Result<PaginatedResult<ArchitectureSummary>, ValidationError | NetworkError>>;
 
   /**
    * Searches architectures by text
@@ -272,7 +278,10 @@ export interface ArchitectureRepository {
    * @param options - Query options for filtering and pagination
    * @returns Result containing paginated results or error
    */
-  search(searchTerm: string, options?: QueryOptions): Promise<Result<PaginatedResult<ArchitectureAggregate>, ValidationError | NetworkError>>;
+  search(
+    searchTerm: string,
+    options?: QueryOptions
+  ): Promise<Result<PaginatedResult<ArchitectureAggregate>, ValidationError | NetworkError>>;
 
   /**
    * Finds architectures by tags
@@ -281,7 +290,10 @@ export interface ArchitectureRepository {
    * @param options - Query options for filtering and pagination
    * @returns Result containing paginated results or error
    */
-  findByTags(tags: string[], options?: QueryOptions): Promise<Result<PaginatedResult<ArchitectureAggregate>, ValidationError | NetworkError>>;
+  findByTags(
+    tags: string[],
+    options?: QueryOptions
+  ): Promise<Result<PaginatedResult<ArchitectureAggregate>, ValidationError | NetworkError>>;
 
   /**
    * Gets recently updated architectures
@@ -297,7 +309,9 @@ export interface ArchitectureRepository {
    * @param options - Query options for filtering and pagination
    * @returns Result containing paginated results or error
    */
-  getStarred(options?: QueryOptions): Promise<Result<PaginatedResult<ArchitectureAggregate>, ValidationError | NetworkError>>;
+  getStarred(
+    options?: QueryOptions
+  ): Promise<Result<PaginatedResult<ArchitectureAggregate>, ValidationError | NetworkError>>;
 
   // =========================================================================
   // Bulk Operations
@@ -353,7 +367,7 @@ export interface ArchitectureRepository {
    */
   updateMetadata(
     id: string,
-    metadata: Partial<SrujaModelDump['metadata']>
+    metadata: Partial<NonNullable<SrujaModelDump["_metadata"]>>
   ): Promise<Result<void, ValidationError | NetworkError>>;
 
   /**
@@ -394,7 +408,10 @@ export interface ArchitectureRepository {
    * @param limit - Maximum number of versions to return
    * @returns Result containing array of version summaries or error
    */
-  getVersionHistory(id: string, limit?: number): Promise<Result<ArchitectureSummary[], ValidationError | NetworkError>>;
+  getVersionHistory(
+    id: string,
+    limit?: number
+  ): Promise<Result<ArchitectureSummary[], ValidationError | NetworkError>>;
 
   /**
    * Restores an architecture to a specific version
@@ -403,7 +420,10 @@ export interface ArchitectureRepository {
    * @param version - The version to restore
    * @returns Result containing the restored aggregate or error
    */
-  restoreVersion(id: string, version: string): Promise<Result<ArchitectureAggregate, ValidationError | NetworkError>>;
+  restoreVersion(
+    id: string,
+    version: string
+  ): Promise<Result<ArchitectureAggregate, ValidationError | NetworkError>>;
 
   /**
    * Creates a snapshot/backup of an architecture
@@ -412,7 +432,10 @@ export interface ArchitectureRepository {
    * @param label - Optional label for the snapshot
    * @returns Result containing the snapshot ID or error
    */
-  createSnapshot(id: string, label?: string): Promise<Result<string, ValidationError | NetworkError>>;
+  createSnapshot(
+    id: string,
+    label?: string
+  ): Promise<Result<string, ValidationError | NetworkError>>;
 
   /**
    * Restores from a snapshot
@@ -420,7 +443,9 @@ export interface ArchitectureRepository {
    * @param snapshotId - The snapshot ID
    * @returns Result containing the restored aggregate or error
    */
-  restoreSnapshot(snapshotId: string): Promise<Result<ArchitectureAggregate, ValidationError | NetworkError>>;
+  restoreSnapshot(
+    snapshotId: string
+  ): Promise<Result<ArchitectureAggregate, ValidationError | NetworkError>>;
 
   // =========================================================================
   // Statistics & Analytics
@@ -513,26 +538,26 @@ export interface ArchitectureRepository {
  * Repository event types
  */
 export type RepositoryEventType =
-  | 'initialized'
-  | 'closed'
-  | 'connected'
-  | 'disconnected'
-  | 'error'
-  | 'cache-cleared';
+  | "initialized"
+  | "closed"
+  | "connected"
+  | "disconnected"
+  | "error"
+  | "cache-cleared";
 
 /**
  * Architecture event types
  */
 export type ArchitectureEventType =
-  | 'created'
-  | 'updated'
-  | 'deleted'
-  | 'starred'
-  | 'unstarred'
-  | 'tagged'
-  | 'untagged'
-  | 'snapshot-created'
-  | 'restored';
+  | "created"
+  | "updated"
+  | "deleted"
+  | "starred"
+  | "unstarred"
+  | "tagged"
+  | "untagged"
+  | "snapshot-created"
+  | "restored";
 
 /**
  * Repository event data
@@ -543,7 +568,7 @@ export interface RepositoryEventMap {
   connected: { timestamp: string };
   disconnected: { timestamp: string; error?: Error };
   error: { timestamp: string; error: Error; context?: unknown };
-  'cache-cleared': { timestamp: string };
+  "cache-cleared": { timestamp: string };
 }
 
 /**
@@ -557,7 +582,7 @@ export interface ArchitectureEventMap {
   unstarred: { timestamp: string; id: string; name: string };
   tagged: { timestamp: string; id: string; name: string; tags: string[] };
   untagged: { timestamp: string; id: string; name: string; tags: string[] };
-  'snapshot-created': { timestamp: string; id: string; snapshotId: string; label?: string };
+  "snapshot-created": { timestamp: string; id: string; snapshotId: string; label?: string };
   restored: { timestamp: string; id: string; fromVersion?: string; fromSnapshot?: string };
 }
 
@@ -569,9 +594,11 @@ export interface ArchitectureEventMap {
  * Repository-specific errors
  */
 export class RepositoryError extends Error {
-  constructor(message: string, public readonly code: string) {
+  readonly code: string;
+  constructor(message: string, code: string) {
     super(message);
-    this.name = 'RepositoryError';
+    this.name = "RepositoryError";
+    this.code = code;
   }
 }
 
@@ -580,8 +607,8 @@ export class RepositoryError extends Error {
  */
 export class ArchitectureNotFoundError extends RepositoryError {
   constructor(id: string) {
-    super(`Architecture '${id}' not found`, 'ARCHITECTURE_NOT_FOUND');
-    this.name = 'ArchitectureNotFoundError';
+    super(`Architecture '${id}' not found`, "ARCHITECTURE_NOT_FOUND");
+    this.name = "ArchitectureNotFoundError";
   }
 }
 
@@ -590,8 +617,8 @@ export class ArchitectureNotFoundError extends RepositoryError {
  */
 export class ConcurrentModificationError extends RepositoryError {
   constructor(id: string) {
-    super(`Architecture '${id}' was modified by another user`, 'CONCURRENT_MODIFICATION');
-    this.name = 'ConcurrentModificationError';
+    super(`Architecture '${id}' was modified by another user`, "CONCURRENT_MODIFICATION");
+    this.name = "ConcurrentModificationError";
   }
 }
 
@@ -599,9 +626,11 @@ export class ConcurrentModificationError extends RepositoryError {
  * Repository validation error
  */
 export class RepositoryValidationError extends RepositoryError {
-  constructor(message: string, public readonly details?: unknown) {
-    super(message, 'REPOSITORY_VALIDATION_ERROR');
-    this.name = 'RepositoryValidationError';
+  readonly details?: unknown;
+  constructor(message: string, details?: unknown) {
+    super(message, "REPOSITORY_VALIDATION_ERROR");
+    this.name = "RepositoryValidationError";
+    this.details = details;
   }
 }
 
@@ -610,7 +639,10 @@ export class RepositoryValidationError extends RepositoryError {
  */
 export class StorageQuotaExceededError extends RepositoryError {
   constructor() {
-    super('Storage quota exceeded. Please delete some architectures or upgrade storage.', 'STORAGE_QUOTA_EXCEEDED');
-    this.name = 'StorageQuotaExceededError';
+    super(
+      "Storage quota exceeded. Please delete some architectures or upgrade storage.",
+      "STORAGE_QUOTA_EXCEEDED"
+    );
+    this.name = "StorageQuotaExceededError";
   }
 }

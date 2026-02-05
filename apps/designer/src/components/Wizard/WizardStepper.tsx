@@ -7,6 +7,7 @@ export interface WizardStep {
   description?: string;
   isComplete: boolean;
   isLocked: boolean;
+  isOptional?: boolean;
 }
 
 interface WizardStepperProps {
@@ -24,8 +25,10 @@ export function WizardStepper({
   onClose,
   extraActions,
 }: WizardStepperProps) {
-  const currentLabel = steps[currentStep]?.label || "";
-  const currentDesc = steps[currentStep]?.description || "";
+  const currentStepInfo = steps[currentStep];
+  const currentLabel = currentStepInfo?.label || "";
+  const currentDesc = currentStepInfo?.description || "";
+  const currentOptional = currentStepInfo?.isOptional === true;
 
   return (
     <div className="wizard-progress-container">
@@ -34,6 +37,7 @@ export function WizardStepper({
         <div className="current-step-info">
           <span className="current-step-label">{currentLabel}</span>
           {currentDesc && <span className="current-step-desc"> - {currentDesc}</span>}
+          {currentOptional && <span className="step-optional-pill">Optional</span>}
         </div>
 
         <div
@@ -111,6 +115,7 @@ export function WizardStepper({
             >
               <span className="step-label-number">{index + 1}</span>
               <span className="step-label-text">{step.label}</span>
+              {step.isOptional && <span className="step-optional-badge">Optional</span>}
               {isCompleted && !isActive && <span className="step-label-check">✓</span>}
             </button>
           );

@@ -2,6 +2,8 @@
 //!
 //! Provides reusable functions for file I/O, parsing, and collection operations.
 
+#![allow(dead_code)]
+
 use std::fs;
 use std::path::Path;
 
@@ -11,6 +13,7 @@ use sruja_language::{Parser, Program};
 use crate::commands::CliError;
 
 /// Result type for file operations that includes the program content and any parse diagnostics
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct ParseResult {
     /// The parsed program
@@ -21,6 +24,7 @@ pub struct ParseResult {
     pub content: String,
 }
 
+#[allow(dead_code)]
 impl ParseResult {
     /// Check if parsing was successful (no errors)
     pub fn is_success(&self) -> bool {

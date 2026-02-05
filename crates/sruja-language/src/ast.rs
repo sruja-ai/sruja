@@ -91,6 +91,22 @@ pub struct ElementAssignment {
     pub body: Option<ElementDefBody>,
 }
 
+impl ElementAssignment {
+    /// Create an element assignment with name and kind (for tests and examples).
+    #[must_use]
+    pub fn new(name: impl Into<String>, kind: ElementKind) -> Self {
+        Self {
+            location: SourceLocation::new(String::new(), 0, 0),
+            name: name.into(),
+            kind,
+            sub_kind: None,
+            title: None,
+            tag_refs: Vec::new(),
+            body: None,
+        }
+    }
+}
+
 /// Element kinds
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ElementKind {
@@ -522,4 +538,18 @@ pub struct SloThroughput {
     pub target: Option<String>,
     pub window: Option<String>,
     pub current: Option<String>,
+}
+
+/// Result of an incremental parse: updated AST plus change metadata and timing.
+/// Used when re-parsing only a context window around an edit and merging with the existing AST.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IncrementalParseResult {
+    /// The merged/updated program AST.
+    pub updated_ast: Program,
+    /// Names of elements that were added or modified.
+    pub changed_elements: Vec<String>,
+    /// Line ranges that were affected (start_line, end_line) for incremental UI updates.
+    pub changed_ranges: Vec<(usize, usize)>,
+    /// Parsing time in milliseconds (for metrics and adaptive debouncing).
+    pub parsing_time_ms: u64,
 }

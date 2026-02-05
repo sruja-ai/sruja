@@ -1,0 +1,69 @@
+# Reusable composite action: build Sruja CLI and run lint (and optionally export)
+# on .sruja files. Use after actions/checkout.
+#
+# In this repo: build from workspace (cargo build -p sruja-cli).
+# Elsewhere: document cargo install from git or use a published binary when available.
+
+name: "Sruja Validate"
+description: "Build Sruja CLI and run lint (and optionally export) on .sruja files"
+
+inputs:
+  working-directory:
+    description: "Repository root relative to GITHUB_WORKSPACE (e.g. . or monorepo subdir)"
+    required: false
+    default: "."
+  files:
+    description: "Glob for .sruja files to validate (e.g. examples/**/*.sruja or **/*.sruja)"
+    required: false
+    default: "**/*.sruja"
+  run-export:
+    description: "If true, also run sruja export markdown for each file (outputs next to source)"
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: ""
+    - name: Cache Rust
+      uses: swatinem/rust-cache@2
+      with:
+        workspace: ${{ inputs.working-directory }}
+    - name: Build Sruja CLI
+      shell: bash
+      run: cargo build --release -p sruja-cli
+      working-directory: ${{ github.workspace }}/${{ inputs.working-directory }}
+    - name: Lint Sruja files
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.working-directory }}
+      run: |
+        set -e
+        shopt -s globstar nullglob
+        count=0
+        for f in ${{ inputs.files }}; do
+          if [[ -f "$f" ]]; then
+            echo "Linting $f"
+            ./target/release/sruja lint "$f"
+            count=$((count + 1))
+          fi
+        done
+        if [[ $count -eq 0 ]]; then
+          echo "No .sruja files matched pattern: ${{ inputs.files }}"
+        fi
+    - name: Export Sruja files (markdown)
+      if: inputs.run-export == 'true'
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.working-directory }}
+      run: |
+        set -e
+        shopt -s globstar nullglob
+        for f in ${{ inputs.files }}; do
+          if [[ -f "$f" ]]; then
+            out="${f%.sruja}.md"
+            echo "Exporting $f -> $out"
+            ./target/release/sruja export markdown "$f" > "$out" || true
+          fi
+        done

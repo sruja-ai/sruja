@@ -7,18 +7,13 @@
  * @module application/use-cases
  */
 
-import type {
-  SrujaModelDump,
-  Element,
-  Relationship,
-  ParsedView,
-} from '@sruja/shared';
-import { ok, err, type Result } from '@sruja/shared/utils/result';
-import { ValidationError, ConfigurationError } from '@sruja/shared/utils/errors';
-import { ArchitectureAggregate } from '../../domain/aggregates/ArchitectureAggregate';
-import { ArchitectureValidationService, ValidationReport } from '../../domain/services/ArchitectureValidationService';
-import type { ElementId } from '../../domain/value-objects/ElementId';
-import { ElementRelationship, RelationshipKind } from '../../domain/value-objects/ElementRelationship';
+import type { SrujaModelDump, Element, Relationship, ParsedView } from "@sruja/shared";
+import { ok, err, type Result } from "@sruja/shared/utils/result";
+import { ValidationError } from "@sruja/shared/utils/errors";
+import { ArchitectureAggregate } from "../../domain/aggregates/ArchitectureAggregate";
+import { ArchitectureValidationService } from "../../domain/services/ArchitectureValidationService";
+import type { ValidationReport } from "../../domain/services/ArchitectureValidationService";
+import { RelationshipKind } from "../../domain/value-objects/ElementRelationship";
 
 /**
  * Result of element creation/update operation
@@ -133,7 +128,7 @@ export class ArchitectureUseCases {
    * @param name - The name of the architecture
    * @returns Result containing the architecture aggregate or error
    */
-  createEmptyModel(name: string = 'Untitled'): Result<ArchitectureAggregate, ValidationError> {
+  createEmptyModel(name: string = "Untitled"): Result<ArchitectureAggregate, ValidationError> {
     return ArchitectureAggregate.createEmpty(name);
   }
 
@@ -176,7 +171,7 @@ export class ArchitectureUseCases {
     // Count relationships by kind
     const relationshipsByKind: Record<string, number> = {};
     for (const rel of relationships) {
-      const kind = rel.kind || 'unspecified';
+      const kind = rel.kind || "unspecified";
       relationshipsByKind[kind] = (relationshipsByKind[kind] || 0) + 1;
     }
 
@@ -295,21 +290,20 @@ export class ArchitectureUseCases {
 
     // Filter by kind
     if (options.kind) {
-      results = results.filter(el => el.kind === options.kind);
+      results = results.filter((el) => el.kind === options.kind);
     }
 
     // Filter by tag
     if (options.tag) {
-      results = results.filter(el => el.tags?.includes(options.tag!));
+      results = results.filter((el) => el.tags?.includes(options.tag!));
     }
 
     // Search by term
     if (options.searchTerm) {
       const term = options.searchTerm.toLowerCase();
       results = results.filter(
-        el =>
-          el.name.toLowerCase().includes(term) ||
-          el.description?.toLowerCase().includes(term)
+        (el) =>
+          el.title.toLowerCase().includes(term) || el.description?.toLowerCase().includes(term)
       );
     }
 
@@ -343,15 +337,19 @@ export class ArchitectureUseCases {
     options?: {
       kind?: RelationshipKind | string;
       technology?: string;
-      direction?: 'forward' | 'backward' | 'bidirectional' | 'none';
+      direction?: "forward" | "backward" | "bidirectional" | "none";
       metadata?: Record<string, unknown>;
     }
   ): Result<RelationshipOperationResult, ValidationError> {
+    const relId = `${sourceId}->${targetId}`;
     const result = aggregate.addRelationship(sourceId, targetId, {
-      description,
-      kind: options?.kind,
-      technology: options?.technology,
-      ...(options?.metadata && { metadata: options.metadata }),
+      id: relId,
+      description: description ?? null,
+      kind: options?.kind ?? null,
+      technology: options?.technology ?? null,
+      ...(options?.metadata && {
+        metadata: options.metadata as Record<string, string> | null | undefined,
+      }),
     });
 
     if (!result.ok) {
@@ -361,11 +359,11 @@ export class ArchitectureUseCases {
     // Get the created relationship
     const relationships = result.value.getRelationships();
     const relationship = relationships.find(
-      rel => rel.source === sourceId && rel.target === targetId
+      (rel) => rel.source === sourceId && rel.target === targetId
     );
 
     if (!relationship) {
-      return err(new ValidationError('Failed to retrieve created relationship'));
+      return err(new ValidationError("Failed to retrieve created relationship"));
     }
 
     return ok({
@@ -397,11 +395,11 @@ export class ArchitectureUseCases {
     // Get the updated relationship
     const relationships = result.value.getRelationships();
     const relationship = relationships.find(
-      rel => rel.source === sourceId && rel.target === targetId
+      (rel) => rel.source === sourceId && rel.target === targetId
     );
 
     if (!relationship) {
-      return err(new ValidationError('Failed to retrieve updated relationship'));
+      return err(new ValidationError("Failed to retrieve updated relationship"));
     }
 
     return ok({
@@ -539,7 +537,7 @@ export class ArchitectureUseCases {
   duplicateElements(
     aggregate: ArchitectureAggregate,
     elementIds: string[],
-    idPrefix: string = 'copy-'
+    idPrefix: string = "copy-"
   ): Result<ArchitectureAggregate, ValidationError> {
     let currentAggregate = aggregate;
     const idMap = new Map<string, string>();
@@ -557,7 +555,7 @@ export class ArchitectureUseCases {
       const newElement: Element = {
         ...element,
         id: newId,
-        name: `${element.name} (Copy)`,
+        title: `${element.title} (Copy)`,
       };
 
       const result = currentAggregate.addElement(newElement);
@@ -578,10 +576,12 @@ export class ArchitectureUseCases {
         const newSourceId = idMap.get(rel.source)!;
         const newTargetId = idMap.get(rel.target)!;
 
+        const relId = `${newSourceId}->${newTargetId}`;
         const result = currentAggregate.addRelationship(newSourceId, newTargetId, {
-          description: rel.description,
-          kind: rel.kind,
-          technology: rel.technology,
+          id: relId,
+          description: rel.description ?? null,
+          kind: rel.kind ?? null,
+          technology: rel.technology ?? null,
         });
 
         if (!result.ok) {
@@ -632,11 +632,7 @@ export class ArchitectureUseCases {
    * @param toId - Target element ID
    * @returns Array of element IDs representing the path, or empty if no path exists
    */
-  findShortestPath(
-    aggregate: ArchitectureAggregate,
-    fromId: string,
-    toId: string
-  ): string[] {
+  findShortestPath(aggregate: ArchitectureAggregate, fromId: string, toId: string): string[] {
     const elements = aggregate.getAllElements();
     const relationships = aggregate.getRelationships();
 
@@ -769,7 +765,7 @@ export class ArchitectureUseCases {
         return 1;
       }
 
-      const maxChildDepth = Math.max(...childIds.map(child => getDepth(child)));
+      const maxChildDepth = Math.max(...childIds.map((child) => getDepth(child)));
       const depth = maxChildDepth + 1;
       memo.set(id, depth);
       return depth;

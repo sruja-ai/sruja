@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { ViewTab } from "../types";
-import type { Role } from "../components/RoleSwitcher";
 
 export type PendingActionType =
   | "create-requirement"
@@ -12,13 +11,6 @@ export type PendingActionType =
 
 export type CodeSubTab = "dsl" | "markdown";
 
-// Mode-First Navigation: Create, Explore, Govern
-export type NavigationMode = "create" | "explore" | "govern";
-
-export type LayoutMode = "split" | "single";
-export type LeftPaneContent = "builder" | "code" | "none";
-export type RightPaneContent = "diagram" | "docs" | "none";
-
 interface UIState {
   // Legacy support mapping
   activeTab: ViewTab;
@@ -27,32 +19,16 @@ interface UIState {
   // New Split Controls
   activeEditor: "builder" | "code" | null;
   setActiveEditor: (editor: "builder" | "code" | null) => void;
-  activeView: "diagram" | "docs" | "overview" | "details" | "roles" | null; // Null means nothing? Or always have a view? Usually Diagram.
-  setActiveView: (view: "diagram" | "docs" | "overview" | "details" | "roles") => void;
-
-  // Split View State
-  layoutMode: LayoutMode;
-  setLayoutMode: (mode: LayoutMode) => void;
-  leftPaneContent: LeftPaneContent;
-  setLeftPaneContent: (content: LeftPaneContent) => void;
-  rightPaneContent: RightPaneContent;
-  setRightPaneContent: (content: RightPaneContent) => void;
+  activeView: "diagram" | "docs" | "review";
+  setActiveView: (view: "diagram" | "docs" | "review") => void;
 
   // Builder State
   builderStep: string;
   setBuilderStep: (step: string) => void;
 
-  // Mode-first navigation (replaces tab-switching paradigm)
-  navigationMode: NavigationMode;
-  setNavigationMode: (mode: NavigationMode) => void;
-
   // Beginner mode - kept for onboarding tour compatibility
   beginnerMode: boolean;
   setBeginnerMode: (enabled: boolean) => void;
-
-  // Role view state
-  selectedRole: Role;
-  setSelectedRole: (role: Role) => void;
 
   // Code Panel state managed globally for deep linking
   codeTab: CodeSubTab;
@@ -80,14 +56,8 @@ export const useUIStore = create<UIState>()(
       activeEditor: null,
       setActiveEditor: (editor) =>
         set((state) => {
-          // Toggle logic handled by caller or here? Let's make it direct setter.
-          // Caller handles toggle.
-          // Update leftPaneContent based on editor
-          const left = editor === null ? "none" : editor;
-
           return {
             activeEditor: editor,
-            leftPaneContent: left,
             // Sync activeTab for legacy
             activeTab: editor ? editor : (state.activeView as ViewTab),
           };
@@ -95,18 +65,12 @@ export const useUIStore = create<UIState>()(
 
       activeView: "diagram",
       setActiveView: (view) =>
-        set((state) => {
-          const right = view === "diagram" ? "diagram" : view === "docs" ? "docs" : "diagram";
+        set((state) => ({
+          activeView: view,
+          activeTab: state.activeEditor ? state.activeEditor : (view as ViewTab),
+        })),
 
-          return {
-            activeView: view,
-            rightPaneContent: right as RightPaneContent,
-            // Sync activeTab for legacy
-            activeTab: state.activeEditor ? state.activeEditor : (view as ViewTab),
-          };
-        }),
-
-      activeTab: "diagram", // Default to diagram for new layout
+      activeTab: "diagram",
       setActiveTab: (tab) =>
         set((state) => {
           // Map legacy tabs to split view state
@@ -120,52 +84,23 @@ export const useUIStore = create<UIState>()(
             } else {
               activeEditor = tab;
             }
-          } else if (
-            tab === "diagram" ||
-            tab === "docs" ||
-            tab === "overview" ||
-            tab === "details" ||
-            tab === "roles"
-          ) {
+          } else if (tab === "diagram" || tab === "docs" || tab === "review") {
             activeView = tab;
           }
-
-          const left = activeEditor ? activeEditor : "none";
-          // right layout logic
-          let right: RightPaneContent = "diagram";
-          if (activeView === "docs") right = "docs";
 
           return {
             activeTab: tab,
             activeEditor,
             activeView,
-            leftPaneContent: left,
-            rightPaneContent: right,
           };
         }),
-
-      layoutMode: "split",
-      setLayoutMode: (mode) => set({ layoutMode: mode }),
-
-      leftPaneContent: "none",
-      setLeftPaneContent: (content) => set({ leftPaneContent: content }),
-
-      rightPaneContent: "diagram",
-      setRightPaneContent: (content) => set({ rightPaneContent: content }),
 
       builderStep: "goals",
       setBuilderStep: (step) => set({ builderStep: step }),
 
-      // Default to "create" mode for beginners
-      navigationMode: "create",
-      setNavigationMode: (mode) => set({ navigationMode: mode }),
-
       // Beginner mode enabled by default for new users
       beginnerMode: true,
       setBeginnerMode: (enabled) => set({ beginnerMode: enabled }),
-
-      selectedRole: "architect", // Default to architect view
-      setSelectedRole: (role) => set({ selectedRole: role }),
 
       codeTab: "dsl",
       setCodeTab: (tab) => set({ codeTab: tab }),
@@ -188,14 +123,12 @@ export const useUIStore = create<UIState>()(
       name: "sruja-ui-state",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        selectedRole: state.selectedRole,
         beginnerMode: state.beginnerMode,
-        navigationMode: state.navigationMode,
         isNavigationVisible: state.isNavigationVisible,
         isInspectorVisible: state.isInspectorVisible,
-        layoutMode: state.layoutMode,
-        leftPaneContent: state.leftPaneContent,
-        rightPaneContent: state.rightPaneContent,
+        // Persist view/editor preferences so the app stays in the last-used layout.
+        activeEditor: state.activeEditor,
+        activeView: state.activeView,
       }),
     }
   )

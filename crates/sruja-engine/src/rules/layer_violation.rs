@@ -256,11 +256,8 @@ impl Rule for LayerViolationRule {
 ///
 /// # Example
 ///
-/// ```rust
-/// let map = build_layer_index_map();
-/// assert_eq!(map.get("web"), Some(&0));  // Highest layer
-/// assert_eq!(map.get("database"), Some(&4));  // Lowest layer
-/// ```
+/// Layer order is fixed: web (0), api (1), service (2), data (3), database (4).
+/// The map is built internally; this function is not part of the public API.
 fn build_layer_index_map() -> HashMap<String, usize> {
     LAYER_HIERARCHY
         .iter()

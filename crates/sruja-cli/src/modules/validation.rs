@@ -6,6 +6,8 @@
 //! - Formatting and reporting diagnostics
 //! - Supporting batch validation operations
 
+#![allow(dead_code)]
+
 use sruja_diagnostics::{format_diagnostic, Diagnostic, Severity};
 use sruja_engine::Validator;
 use sruja_language::Program;
@@ -35,6 +37,7 @@ impl Default for ValidationConfig {
 }
 
 /// Result of a validation operation
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct ValidationResult {
     /// Whether validation passed (no errors)
@@ -53,6 +56,7 @@ pub struct ValidationResult {
     pub info_count: usize,
 }
 
+#[allow(dead_code)]
 impl ValidationResult {
     /// Create a new validation result from diagnostics
     pub fn new(diagnostics: Vec<Diagnostic>, config: &ValidationConfig) -> Self {
@@ -181,6 +185,7 @@ pub fn validate_program(program: &Program, config: &ValidationConfig) -> Validat
 ///
 /// # Returns
 /// A `ValidationResult` with full diagnostics and metadata
+#[allow(dead_code)]
 pub fn validate_file(program: &Program, config: &ValidationConfig) -> ValidationResult {
     validate_program(program, config)
 }
@@ -223,6 +228,7 @@ pub fn validate_batch(
 }
 
 /// Result of batch validation across multiple files
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct BatchValidationResult {
     /// Total number of files validated
@@ -239,6 +245,7 @@ pub struct BatchValidationResult {
     pub results: Vec<(String, ValidationResult)>,
 }
 
+#[allow(dead_code)]
 impl BatchValidationResult {
     /// Get all failed file paths
     pub fn failed_file_paths(&self) -> Vec<&str> {
@@ -262,6 +269,7 @@ impl BatchValidationResult {
 /// Diagnostic formatter for CLI output
 pub struct DiagnosticFormatter;
 
+#[allow(dead_code)]
 impl DiagnosticFormatter {
     /// Format all diagnostics from a validation result
     ///
@@ -505,8 +513,6 @@ mod tests {
 
     #[test]
     fn test_batch_validation() {
-        use std::collections::HashMap;
-
         // Create mock programs (using empty programs for simplicity)
         let program1 = Program::default();
         let program2 = Program::default();
@@ -538,7 +544,8 @@ mod tests {
 
         let formatted = DiagnosticFormatter::format_result(&result, false);
         assert_eq!(formatted.len(), 1);
-        assert!(formatted[0].contains("✗"));
+        // format_diagnostic from sruja-diagnostics emits "[code] Error: message", not "✗"
+        assert!(formatted[0].contains("Error"));
         assert!(formatted[0].contains("Test error"));
     }
 

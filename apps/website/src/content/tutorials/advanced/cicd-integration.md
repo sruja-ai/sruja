@@ -45,7 +45,24 @@ Integrate Sruja into your CI/CD pipeline to automatically validate architecture,
 
 ## GitHub Actions Integration
 
-### Basic Setup
+Sruja’s CLI is written in Rust. In CI you can either build from source in this repo or install from the Git repo with `cargo install`. A reusable composite action is available in the Sruja repo for building and validating.
+
+### Using the Sruja repo reusable action (this repository)
+
+If your workflow runs inside the [sruja](https://github.com/sruja-ai/sruja) repo, use the composite action so the CLI is built once and lint/export run on your files:
+
+```yaml
+- uses: actions/checkout@v4
+- uses: ./.github/actions/sruja-validate
+  with:
+    working-directory: .
+    files: "examples/**/*.sruja" # or '**/*.sruja'
+    run-export: "false"
+```
+
+### Basic setup (any repository)
+
+Install the CLI from the Sruja Git repo with Cargo, then run `sruja lint` and `sruja export`:
 
 ```yaml
 name: Architecture Validation
@@ -63,14 +80,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Sruja
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-          echo "$HOME/go/bin" >> $GITHUB_PATH
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Sruja CLI
+        run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja
 
       - name: Validate Architecture
-        run: |
-          sruja lint architecture.sruja
+        run: sruja lint architecture.sruja
 
       - name: Export Documentation
         run: |
@@ -101,10 +117,10 @@ jobs:
         with:
           fetch-depth: 0 # Full history for diff
 
-      - name: Install Sruja
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-          echo "$HOME/go/bin" >> $GITHUB_PATH
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Sruja CLI
+        run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja
 
       - name: Validate Architecture
         id: validate
@@ -158,14 +174,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Sruja
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-          echo "$HOME/go/bin" >> $GITHUB_PATH
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Sruja CLI
+        run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja
 
       - name: Validate ${{ matrix.architecture }}
-        run: |
-          sruja lint ${{ matrix.architecture }}
+        run: sruja lint ${{ matrix.architecture }}
 ```
 
 ## GitLab CI Integration
@@ -178,7 +193,7 @@ validate-architecture:
   stage: validate
   image: rust:1.70
   before_script:
-    - cargo install sruja --git https://github.com/sruja-ai/sruja
+    - cargo install sruja-cli --git https://github.com/sruja-ai/sruja
   script:
     - sruja lint architecture.sruja
     - sruja export markdown architecture.sruja > architecture.md
@@ -200,20 +215,20 @@ pipeline {
     agent any
 
     stages {
+        stage('Install Sruja CLI') {
+            steps {
+                sh 'cargo install sruja-cli --git https://github.com/sruja-ai/sruja'
+            }
+        }
         stage('Validate Architecture') {
             steps {
-                sh '''
-                    curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-                    export PATH="$HOME/go/bin:$PATH"
-                    sruja lint architecture.sruja
-                '''
+                sh 'sruja lint architecture.sruja'
             }
         }
 
         stage('Generate Documentation') {
             steps {
                 sh '''
-                    export PATH="$HOME/go/bin:$PATH"
                     sruja export markdown architecture.sruja > architecture.md
                     sruja export json architecture.sruja > architecture.json
                 '''
@@ -251,59 +266,51 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install Sruja
-          command: |
-            cargo install sruja --git https://github.com/sruja-ai/sruja
+          name: Install Sruja CLI
+          command: cargo install sruja-cli --git https://github.com/sruja-ai/sruja
       - run:
           name: Validate
-          command: |
-            sruja lint architecture.sruja
+          command: sruja lint architecture.sruja
       - run:
           name: Generate Docs
-          command: |
-            sruja export markdown architecture.sruja > architecture.md
+          command: sruja export markdown architecture.sruja > architecture.md
       - store_artifacts:
           path: architecture.md
-```
 
 workflows:
-version: 2
-validate:
-jobs: - validate-architecture
-
-````
+  version: 2
+  validate:
+    jobs:
+      - validate-architecture
+```
 
 ## Pre-commit Hooks
 
-Validate before every commit locally:
+Validate before every commit locally. Ensure the Sruja CLI is on your PATH (e.g. `cargo install sruja-cli --git https://github.com/sruja-ai/sruja` or build from the Sruja repo):
 
 ```bash
 #!/bin/sh
 # .git/hooks/pre-commit
 
-# Install Sruja if not present
 if ! command -v sruja &> /dev/null; then
-    echo "Installing Sruja..."
-    curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-    export PATH="$HOME/go/bin:$PATH"
+    echo "Sruja CLI not found. Install with: cargo install sruja-cli --git https://github.com/sruja-ai/sruja"
+    exit 1
 fi
 
-# Validate architecture
 sruja lint architecture.sruja
 if [ $? -ne 0 ]; then
     echo "❌ Architecture validation failed. Fix errors before committing."
     exit 1
 fi
 
-# Format architecture file
 sruja fmt architecture.sruja > architecture.formatted.sruja
 mv architecture.formatted.sruja architecture.sruja
 git add architecture.sruja
 
 exit 0
-````
+```
 
-Or use pre-commit framework:
+Or use the pre-commit framework (requires Sruja on PATH):
 
 ```yaml
 # .pre-commit-config.yaml
@@ -312,7 +319,7 @@ repos:
     hooks:
       - id: sruja-lint
         name: Sruja Lint
-        entry: bash -c 'curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash && export PATH="$HOME/go/bin:$PATH" && sruja lint'
+        entry: sruja lint
         language: system
         files: \.sruja$
         pass_filenames: true
@@ -339,10 +346,10 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Sruja
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-          echo "$HOME/go/bin" >> $GITHUB_PATH
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Sruja CLI
+        run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja
 
       - name: Generate Documentation
         run: |
@@ -378,21 +385,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Sruja
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-          echo "$HOME/go/bin" >> $GITHUB_PATH
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Sruja CLI
+        run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja
 
       - name: Compare Architectures
         run: |
-          # Get base version
           git show origin/${{ github.base_ref }}:architecture.sruja > base.sruja
-
-          # Export both versions
           sruja export json base.sruja > base.json
           sruja export json architecture.sruja > current.json
-
-          # Compare (using jq or custom script)
           echo "## Architecture Changes" >> $GITHUB_STEP_SUMMARY
           echo "Comparing base and current architecture..." >> $GITHUB_STEP_SUMMARY
 
@@ -434,26 +436,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Sruja
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-          echo "$HOME/go/bin" >> $GITHUB_PATH
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Sruja CLI
+        run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja
 
       - name: Validate ${{ matrix.service }}
-        run: |
-          sruja lint services/${{ matrix.service }}/architecture.sruja
-
-      - name: Check Constraints
-        run: |
-          sruja lint --strict services/${{ matrix.service }}/architecture.sruja
-          if [ $? -ne 0 ]; then
-            echo "❌ Constraint violations found. PR cannot be merged."
-            exit 1
-          fi
+        run: sruja lint services/${{ matrix.service }}/architecture.sruja
 
       - name: Generate Service Docs
-        run: |
-          sruja export markdown services/${{ matrix.service }}/architecture.sruja > docs/services/${{ matrix.service }}.md
+        run: sruja export markdown services/${{ matrix.service }}/architecture.sruja > docs/services/${{ matrix.service }}.md
 
   validate-platform:
     runs-on: ubuntu-latest
@@ -461,14 +453,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Sruja
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-          echo "$HOME/go/bin" >> $GITHUB_PATH
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Sruja CLI
+        run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja
 
       - name: Validate Platform Architecture
-        run: |
-          sruja lint platform-architecture.sruja
+        run: sruja lint platform-architecture.sruja
 
       - name: Generate Platform Docs
         run: |

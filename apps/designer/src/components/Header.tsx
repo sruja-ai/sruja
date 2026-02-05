@@ -12,16 +12,18 @@ import {
   Eye,
   Edit3,
   Hammer,
-  Workflow,
   FileCode,
   FileText,
+  Layout,
+  ShieldCheck,
 } from "lucide-react";
-import { ExamplesDropdown } from "./shared";
+import { ExamplesDropdown } from "./non-core/navigation/ExamplesDropdown";
 import { ThemeToggle, Button, Logo } from "@sruja/ui";
 import type { SrujaModelDump } from "@sruja/shared";
 import type { ViewTab } from "../types";
 import { useUIStore } from "../stores";
 import { ViewTabs } from "./ViewTabs";
+import { studioScope } from "../config/studioScope";
 import "./Header.css";
 
 export interface HeaderProps {
@@ -52,7 +54,6 @@ export function Header({
   model,
   showActions,
   setShowActions,
-  activeTab,
   setActiveTab,
   editMode,
   setEditMode,
@@ -108,15 +109,19 @@ export function Header({
         </div>
         <div
           className="logo-section"
-          onClick={() => setActiveTab("overview")}
+          onClick={() => setActiveTab("diagram")}
           style={{ cursor: "pointer" }}
-          title="Go to Overview"
+          title="Go to Diagram"
         >
           <Logo size={22} />
           <span className="app-title">Sruja</span>
         </div>
-        <div className="divider-vertical" />
-        <ExamplesDropdown />
+        {studioScope.examples && (
+          <>
+            <div className="divider-vertical" />
+            <ExamplesDropdown />
+          </>
+        )}
       </div>
 
       {/* Center: Navigation Tabs */}
@@ -152,20 +157,18 @@ export function Header({
 
             <div className="divider-vertical" style={{ height: "20px", margin: "0 8px" }} />
 
-            {/* View Controls (Right) */}
+            {/* Views */}
             <div
               className="tab-group view-group"
               style={{ display: "flex", gap: "8px", alignItems: "center" }}
             >
               <ViewTabs
                 activeId={activeView}
-                onTabChange={(id) => {
-                  const newView = id as "diagram" | "docs" | "overview" | "details" | "roles";
-                  setActiveView(newView);
-                }}
+                onTabChange={(id) => setActiveView(id as "diagram" | "docs" | "review")}
                 tabs={[
-                  { id: "diagram", icon: <Workflow size={16} />, label: "Diagram" },
-                  { id: "docs", icon: <FileText size={16} />, label: "Docs" },
+                  { id: "diagram", icon: <Layout size={16} />, label: "Diagram" },
+                  { id: "docs", icon: <FileText size={16} />, label: "Output" },
+                  { id: "review", icon: <ShieldCheck size={16} />, label: "Review" },
                 ]}
               />
             </div>
@@ -178,7 +181,7 @@ export function Header({
         {/* Search */}
 
         {/* Mode Toggle */}
-        {activeTab !== "overview" && model && (
+        {studioScope.review && model && (
           <div className="mode-toggle-group">
             <button
               className={`mode-btn ${editMode === "view" ? "active" : ""}`}
@@ -198,15 +201,17 @@ export function Header({
         )}
 
         {/* Primary Share Action */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="action-btn icon-only"
-          onClick={handleShareHeader}
-          title="Share Project"
-        >
-          <Share2 size={16} />
-        </Button>
+        {studioScope.share && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="action-btn icon-only"
+            onClick={handleShareHeader}
+            title="Share Project"
+          >
+            <Share2 size={16} />
+          </Button>
+        )}
 
         {/* More Menu */}
         <div className="actions-dropdown-wrapper">
@@ -222,58 +227,68 @@ export function Header({
 
           {showActions && (
             <div className="actions-menu">
-              <Button
-                variant="ghost"
-                className="menu-item"
-                onClick={() => {
-                  handleCreateNewRemote();
-                  setShowActions(false);
-                }}
-              >
-                <Plus size={16} /> New Project
-              </Button>
-              <Button
-                variant="ghost"
-                className="menu-item"
-                onClick={() => {
-                  handleImport();
-                  setShowActions(false);
-                }}
-              >
-                <Upload size={16} /> Import
-              </Button>
+              {studioScope.builder && (
+                <Button
+                  variant="ghost"
+                  className="menu-item"
+                  onClick={() => {
+                    handleCreateNewRemote();
+                    setShowActions(false);
+                  }}
+                >
+                  <Plus size={16} /> New Project
+                </Button>
+              )}
+              {studioScope.builder && (
+                <Button
+                  variant="ghost"
+                  className="menu-item"
+                  onClick={() => {
+                    handleImport();
+                    setShowActions(false);
+                  }}
+                >
+                  <Upload size={16} /> Import
+                </Button>
+              )}
               <div className="menu-divider" />
 
-              <Button
-                variant="ghost"
-                className="menu-item"
-                onClick={() => {
-                  handleExport();
-                  setShowActions(false);
-                }}
-              >
-                <Download size={16} /> Export DSL
-              </Button>
-              <Button
-                variant="ghost"
-                className="menu-item"
-                onClick={() => {
-                  handleExportPNG();
-                  setShowActions(false);
-                }}
-              >
-                <Image size={16} /> Export PNG
-              </Button>
-              <Button
-                variant="ghost"
-                className="menu-item"
-                onClick={() => {
-                  handleExportSVG();
-                  setShowActions(false);
-                }}
-              >
-                <Code size={16} /> Export SVG
-              </Button>
+              {studioScope.export && (
+                <Button
+                  variant="ghost"
+                  className="menu-item"
+                  onClick={() => {
+                    handleExport();
+                    setShowActions(false);
+                  }}
+                >
+                  <Download size={16} /> Export DSL
+                </Button>
+              )}
+              {studioScope.export && (
+                <Button
+                  variant="ghost"
+                  className="menu-item"
+                  onClick={() => {
+                    handleExportPNG();
+                    setShowActions(false);
+                  }}
+                >
+                  <Image size={16} /> Export PNG
+                </Button>
+              )}
+              {studioScope.export && (
+                <Button
+                  variant="ghost"
+                  className="menu-item"
+                  onClick={() => {
+                    handleExportSVG();
+                    setShowActions(false);
+                  }}
+                >
+                  <Code size={16} /> Export SVG
+                </Button>
+              )}
             </div>
           )}
         </div>

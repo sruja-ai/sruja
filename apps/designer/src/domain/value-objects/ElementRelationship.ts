@@ -7,50 +7,39 @@
  * @module domain/value-objects
  */
 
-import { ElementId, isElementId, type ElementId as ElementIdType } from './ElementId';
-import { ValidationError, ok, err, type Result } from '@sruja/shared/utils';
+import { ElementId, type ElementId as ElementIdType } from "./ElementId";
+import { ValidationError, ok, err, type Result } from "@sruja/shared/utils";
 
 /**
- * Valid relationship kinds for architecture elements
- *
- * These are the standard relationship types used in C4-style architecture diagrams.
+ * Valid relationship kinds for architecture elements (const object for erasableSyntaxOnly).
  */
-export enum RelationshipKind {
-  /** Uses or depends on */
-  USES = 'uses',
-  /** Delivers to */
-  DELIVERS = 'delivers',
-  /** Reads data from */
-  READS = 'reads',
-  /** Writes data to */
-  WRITES = 'writes',
-  /** Triggers or invokes */
-  TRIGGERS = 'triggers',
-  /** Contains (for parent-child relationships) */
-  CONTAINS = 'contains',
-  /** Inherits from */
-  INHERITS = 'inherits',
-  /** Implements */
-  IMPLEMENTS = 'implements',
-  /** Communicates with */
-  COMMUNICATES = 'communicates',
-  /** General relationship */
-  RELATES = 'relates',
-}
+export const RelationshipKind = {
+  USES: "uses",
+  DELIVERS: "delivers",
+  READS: "reads",
+  WRITES: "writes",
+  TRIGGERS: "triggers",
+  CONTAINS: "contains",
+  INHERITS: "inherits",
+  IMPLEMENTS: "implements",
+  COMMUNICATES: "communicates",
+  RELATES: "relates",
+} as const;
+
+export type RelationshipKind = (typeof RelationshipKind)[keyof typeof RelationshipKind];
 
 /**
- * Valid relationship direction for visualization
+ * Valid relationship direction for visualization (const object for erasableSyntaxOnly).
  */
-export enum RelationshipDirection {
-  /** Relationship flows from source to target */
-  FORWARD = 'forward',
-  /** Relationship flows from target to source */
-  BACKWARD = 'backward',
-  /** Relationship is bidirectional */
-  BIDIRECTIONAL = 'bidirectional',
-  /** No direction shown */
-  NONE = 'none',
-}
+export const RelationshipDirection = {
+  FORWARD: "forward",
+  BACKWARD: "backward",
+  BIDIRECTIONAL: "bidirectional",
+  NONE: "none",
+} as const;
+
+export type RelationshipDirection =
+  (typeof RelationshipDirection)[keyof typeof RelationshipDirection];
 
 /**
  * Type for relationship identifier (combination of source and target)
@@ -127,22 +116,22 @@ export class ElementRelationship {
     // Validate description
     const trimmedDescription = description.trim();
     if (trimmedDescription.length === 0) {
-      return err(new ValidationError('Relationship description cannot be empty'));
+      return err(new ValidationError("Relationship description cannot be empty"));
     }
     if (trimmedDescription.length > 500) {
-      return err(new ValidationError('Relationship description cannot exceed 500 characters'));
+      return err(new ValidationError("Relationship description cannot exceed 500 characters"));
     }
 
     // Prevent self-relationships (unless explicitly allowed for certain kinds)
     if (source === target && options.kind !== RelationshipKind.CONTAINS) {
-      return err(new ValidationError('Cannot create relationship between element and itself'));
+      return err(new ValidationError("Cannot create relationship between element and itself"));
     }
 
     // Validate technology if provided
     if (options.technology !== undefined) {
       const trimmedTech = options.technology.trim();
       if (trimmedTech.length > 100) {
-        return err(new ValidationError('Relationship technology cannot exceed 100 characters'));
+        return err(new ValidationError("Relationship technology cannot exceed 100 characters"));
       }
     }
 
@@ -151,7 +140,7 @@ export class ElementRelationship {
     if (kind !== undefined) {
       // Normalize string values to known kinds if they match
       const kindLower = kind.toLowerCase();
-      const knownKind = Object.values(RelationshipKind).find(k => k === kindLower);
+      const knownKind = Object.values(RelationshipKind).find((k) => k === kindLower);
       if (knownKind) {
         kind = knownKind;
       }
@@ -212,12 +201,8 @@ export class ElementRelationship {
    * @returns True if valid
    */
   static isValidId(value: string): boolean {
-    const parts = value.split('->');
-    return (
-      parts.length === 2 &&
-      ElementId.isValid(parts[0]) &&
-      ElementId.isValid(parts[1])
-    );
+    const parts = value.split("->");
+    return parts.length === 2 && ElementId.isValid(parts[0]) && ElementId.isValid(parts[1]);
   }
 
   /**
@@ -272,7 +257,7 @@ export class ElementRelationship {
     description: string,
     kind?: RelationshipKind | string,
     technology?: string,
-    direction = RelationshipDirection.FORWARD,
+    direction: RelationshipDirection = RelationshipDirection.FORWARD,
     metadata: Record<string, unknown> = {}
   ) {
     this.id = id;
@@ -307,7 +292,7 @@ export class ElementRelationship {
    * @returns True if the relationship involves this element
    */
   involves(elementId: string | ElementIdType): boolean {
-    const id = typeof elementId === 'string' ? elementId : elementId.value;
+    const id = typeof elementId === "string" ? elementId : elementId.value;
     return this.source.value === id || this.target.value === id;
   }
 
@@ -380,10 +365,10 @@ export class ElementRelationship {
   updateDescription(newDescription: string): Result<ElementRelationship, ValidationError> {
     const trimmed = newDescription.trim();
     if (trimmed.length === 0) {
-      return err(new ValidationError('Relationship description cannot be empty'));
+      return err(new ValidationError("Relationship description cannot be empty"));
     }
     if (trimmed.length > 500) {
-      return err(new ValidationError('Relationship description cannot exceed 500 characters'));
+      return err(new ValidationError("Relationship description cannot exceed 500 characters"));
     }
 
     return ok(
@@ -410,7 +395,7 @@ export class ElementRelationship {
     if (newTechnology !== undefined) {
       const trimmed = newTechnology.trim();
       if (trimmed.length > 100) {
-        return err(new ValidationError('Relationship technology cannot exceed 100 characters'));
+        return err(new ValidationError("Relationship technology cannot exceed 100 characters"));
       }
       return ok(
         new ElementRelationship(
@@ -560,8 +545,8 @@ export class ElementRelationship {
    * @returns String representation
    */
   toString(): string {
-    const techPart = this.technology ? ` [${this.technology}]` : '';
-    const kindPart = this.kind ? ` (${this.kind})` : '';
+    const techPart = this.technology ? ` [${this.technology}]` : "";
+    const kindPart = this.kind ? ` (${this.kind})` : "";
     return `${this.source.value} --${this.description}${techPart}${kindPart}--> ${this.target.value}`;
   }
 
@@ -569,7 +554,7 @@ export class ElementRelationship {
    * Symbol for string conversion
    */
   [Symbol.toStringTag](): string {
-    return 'ElementRelationship';
+    return "ElementRelationship";
   }
 }
 
@@ -603,9 +588,7 @@ export function assertElementRelationship(value: unknown): ElementRelationship {
  * @param relationship - The relationship to reverse
  * @returns A new reversed relationship
  */
-export function createReverseRelationship(
-  relationship: ElementRelationship
-): ElementRelationship {
+export function createReverseRelationship(relationship: ElementRelationship): ElementRelationship {
   return relationship.reverse();
 }
 
@@ -616,10 +599,7 @@ export function createReverseRelationship(
  * @param b - Second relationship
  * @returns True if they represent the same relationship
  */
-export function relationshipsEqual(
-  a: ElementRelationship,
-  b: ElementRelationship
-): boolean {
+export function relationshipsEqual(a: ElementRelationship, b: ElementRelationship): boolean {
   return (
     a.id === b.id &&
     a.description === b.description &&

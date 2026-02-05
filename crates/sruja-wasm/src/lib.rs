@@ -58,6 +58,55 @@ pub fn sruja_dsl_to_model(dsl: &str, filename: Option<String>) -> Result<String,
         .map_err(|e| JsValue::from_str(&format!("Export error: {}", e)))
 }
 
+/// Incremental parse: re-parses DSL and returns updated model JSON plus change metadata.
+/// When `existing_ast_json` is not yet used for true incremental merge (Program (de)serialization
+/// is future work), this performs a full parse and returns the same shape for API compatibility.
+#[wasm_bindgen]
+pub fn sruja_incremental_parse(
+    dsl: &str,
+    _change_start: u32,
+    _change_end: u32,
+    _existing_ast_json: &str,
+    _context_lines: u32,
+    filename: Option<String>,
+) -> Result<String, JsValue> {
+    let start = std::time::Instant::now();
+    let filename = filename.unwrap_or_else(|| "input.sruja".to_string());
+    let parser = Parser::new(filename.clone());
+    let program = parser.parse(dsl).map_err(|e| {
+        let error_msg = if e.is_empty() {
+            "Parse error: unknown error".to_string()
+        } else {
+            format!(
+                "Parse error: {}",
+                e.iter()
+                    .map(|d| format!("{}: {}", d.code, d.message))
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            )
+        };
+        JsValue::from_str(&error_msg)
+    })?;
+
+    let exporter = JsonExporter::new();
+    let model_json = exporter
+        .export(&program)
+        .map_err(|e| JsValue::from_str(&format!("Export error: {}", e)))?;
+
+    let elapsed_ms = start.elapsed().as_millis() as u64;
+    let result = json!({
+        "updated_ast": serde_json::from_str::<serde_json::Value>(&model_json)
+            .unwrap_or(serde_json::Value::Object(serde_json::Map::new())),
+        "changed_elements": serde_json::Value::Array(vec![]),
+        "changed_ranges": serde_json::Value::Array(vec![serde_json::Value::Array(vec![
+            serde_json::json!(0),
+            serde_json::json!(0),
+        ])]),
+        "parsing_time_ms": elapsed_ms,
+    });
+    serde_json::to_string(&result).map_err(|e| JsValue::from_str(&format!("JSON error: {:?}", e)))
+}
+
 #[wasm_bindgen]
 pub fn sruja_dsl_to_mermaid(dsl: &str, config_json: Option<String>) -> Result<String, JsValue> {
     let parser = Parser::new("input.sruja".to_string());

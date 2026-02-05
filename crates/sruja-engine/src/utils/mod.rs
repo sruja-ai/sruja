@@ -55,14 +55,15 @@ use std::collections::HashMap;
 ///
 /// ```rust
 /// use sruja_engine::utils::find_element;
-/// use sruja_language::{ElementDef, Assignment, ElementKind};
+/// use sruja_language::{ElementDef, ElementAssignment, ElementKind};
+/// use sruja_diagnostics::SourceLocation;
 /// use std::collections::HashMap;
 ///
 /// # fn setup() -> HashMap<String, ElementDef> {
 /// #     let mut elements = HashMap::new();
 /// #     let elem = ElementDef {
-/// #         assignment: Assignment::new("container", ElementKind::Container),
-/// #         location: Default::default(),
+/// #         assignment: ElementAssignment::new("container", ElementKind::Container),
+/// #         location: SourceLocation::new(String::new(), 0, 0),
 /// #     };
 /// #     elements.insert("system.container".to_string(), elem);
 /// #     elements
@@ -119,14 +120,15 @@ pub fn find_element<'a>(
 ///
 /// ```rust
 /// use sruja_engine::utils::element_exists;
-/// use sruja_language::{ElementDef, Assignment, ElementKind};
+/// use sruja_language::{ElementDef, ElementAssignment, ElementKind};
+/// use sruja_diagnostics::SourceLocation;
 /// use std::collections::HashMap;
 ///
 /// # fn setup() -> HashMap<String, ElementDef> {
 /// #     let mut elements = HashMap::new();
 /// #     elements.insert("system.service".to_string(), ElementDef {
-/// #         assignment: Assignment::new("service", ElementKind::Service),
-/// #         location: Default::default(),
+/// #         assignment: ElementAssignment::new("service", ElementKind::Component),
+/// #         location: SourceLocation::new(String::new(), 0, 0),
 /// #     });
 /// #     elements
 /// # }
@@ -150,14 +152,15 @@ pub fn element_exists(elements: &HashMap<String, ElementDef>, name: &str) -> boo
 ///
 /// ```rust
 /// use sruja_engine::utils::ElementFinder;
-/// use sruja_language::{ElementDef, Assignment, ElementKind};
+/// use sruja_language::{ElementDef, ElementAssignment, ElementKind};
+/// use sruja_diagnostics::SourceLocation;
 /// use std::collections::HashMap;
 ///
 /// # fn setup() -> HashMap<String, ElementDef> {
 /// #     let mut elements = HashMap::new();
 /// #     elements.insert("System.Container".to_string(), ElementDef {
-/// #         assignment: Assignment::new("Container", ElementKind::Container),
-/// #         location: Default::default(),
+/// #         assignment: ElementAssignment::new("Container", ElementKind::Container),
+/// #         location: SourceLocation::new(String::new(), 0, 0),
 /// #     });
 /// #     elements
 /// # }
@@ -279,14 +282,15 @@ impl<'a> ElementFinder<'a> {
 ///
 /// ```rust
 /// use sruja_engine::utils::extract_tags;
-/// use sruja_language::{ElementDef, Assignment, ElementKind};
+/// use sruja_language::{ElementDef, ElementAssignment, ElementKind};
+/// use sruja_diagnostics::SourceLocation;
 ///
 /// # fn setup() -> ElementDef {
-/// #     let mut assignment = Assignment::new("service", ElementKind::Service);
+/// #     let mut assignment = ElementAssignment::new("service", ElementKind::Component);
 /// #     assignment.tag_refs = vec!["#api".to_string(), "#external".to_string()];
 /// #     ElementDef {
 /// #         assignment,
-/// #         location: Default::default(),
+/// #         location: SourceLocation::new(String::new(), 0, 0),
 /// #     }
 /// # }
 /// let elem = setup();
@@ -350,12 +354,13 @@ pub fn extract_tags(elem: &ElementDef) -> Vec<String> {
 ///
 /// ```rust
 /// use sruja_engine::utils::has_tag;
-/// use sruja_language::{ElementDef, Assignment, ElementKind};
+/// use sruja_language::{ElementDef, ElementAssignment, ElementKind};
+/// use sruja_diagnostics::SourceLocation;
 ///
 /// # fn setup() -> ElementDef {
-/// #     let mut assignment = Assignment::new("service", ElementKind::Service);
+/// #     let mut assignment = ElementAssignment::new("service", ElementKind::Component);
 /// #     assignment.tag_refs = vec!["#api".to_string()];
-/// #     ElementDef { assignment, location: Default::default() }
+/// #     ElementDef { assignment, location: SourceLocation::new(String::new(), 0, 0) }
 /// # }
 /// let elem = setup();
 ///
@@ -391,14 +396,15 @@ pub fn has_tag(elem: &ElementDef, tag_name: &str) -> bool {
 ///
 /// ```rust
 /// use sruja_engine::utils::resolve_layer;
-/// use sruja_language::{ElementDef, Assignment, ElementKind};
+/// use sruja_language::{ElementDef, ElementAssignment, ElementKind};
+/// use sruja_diagnostics::SourceLocation;
 /// use std::collections::HashMap;
 ///
 /// # fn setup() -> HashMap<String, ElementDef> {
 /// #     let mut elements = HashMap::new();
 /// #     elements.insert("web.server".to_string(), ElementDef {
-/// #         assignment: Assignment::new("server", ElementKind::Container),
-/// #         location: Default::default(),
+/// #         assignment: ElementAssignment::new("server", ElementKind::Container),
+/// #         location: SourceLocation::new(String::new(), 0, 0),
 /// #     });
 /// #     elements
 /// # }

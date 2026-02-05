@@ -352,7 +352,7 @@
   color: var(--color-text-primary, var(--text-primary, #1a1a1a));
 }
 
-/* Mermaid Diagrams */
+/* Mermaid Diagrams – aligned with design system surface/border */
 .markdown-preview .mermaid,
 .markdown-preview .mermaid-rendered {
   margin: 2.5em 0;
@@ -364,9 +364,13 @@
   border: 1px solid var(--color-border, var(--border-color, #e2e8f0));
 }
 
-.markdown-preview .mermaid-rendered svg {
-  max-width: 100%;
-  height: auto;
+/* SVG overflow/label fixes live in MermaidDiagram.css (.mermaid-diagram-wrapper) */
+
+/* Dark mode: Mermaid container box (margin, border, background) */
+[data-theme="dark"] .markdown-preview .mermaid,
+[data-theme="dark"] .markdown-preview .mermaid-rendered {
+  background: var(--color-surface, #1e293b);
+  border-color: var(--color-border, #334155);
 }
 
 .markdown-preview .mermaid-error {

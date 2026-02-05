@@ -14,15 +14,16 @@ This step-by-step guide walks you through making your first contribution, even i
 - 🐛 **Find Issues**: [Good First Issues](https://github.com/sruja-ai/sruja/labels/good%20first%20issue)
 - 📖 **Development Guide**: [Development Practices](DEVELOPMENT.md)
 - 📝 **Content Guide**: [Content Contribution Guide](CONTENT_CONTRIBUTION_GUIDE.md)
+- 📐 **Simplification direction**: [Mermaid + GitHub CI focus](SIMPLIFY-STRATEGY.md) — we are simplifying diagram rendering (Mermaid-only) and focusing on GitHub CI; good to know when contributing to diagram or CI areas.
 - 💬 **Get Help**: [Discord](https://discord.gg/VNrvHPV5) | [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
 
 ## Project Overview
 
 Sruja is a monorepo containing:
 
-- **Language and CLI**: Go (Go 1.25+)
+- **Language and CLI**: Rust (parser, validator, export; CLI via `crates/sruja-cli`)
 - **Website**: Astro-based with TypeScript/React
-- **Designer**: Interactive diagram designer
+- **Designer**: Diagram designer (simplifying to Mermaid-based rendering; see [SIMPLIFY-STRATEGY.md](SIMPLIFY-STRATEGY.md))
 - **VS Code Extension**: Language support
 - **Examples**: Real-world architecture examples
 
@@ -50,7 +51,7 @@ The deployment repositories will be automatically updated when your changes are 
 
 ### Prerequisites
 
-- **Go >= 1.25** (CI uses `1.25.4`)
+- **Rust** (stable; CI uses Rust for CLI and WASM)
 - **Git**
 - **Node.js 18+** (for website and TypeScript packages)
 
@@ -247,7 +248,7 @@ Optional scope: `feat(language): …`
 - Avoid breaking public APIs; document changes clearly when necessary
 - Maintain meaningful test coverage
 - Explicit error handling; avoid panics in library code
-- Keep dependencies minimal and pinned via `go.mod`
+- Keep dependencies minimal; pin where appropriate (Cargo.lock for Rust, package-lock.json for Node)
 - Follow the **[Design Philosophy](DESIGN_PHILOSOPHY.md)** when proposing language changes.
 
 ## Ways to Contribute

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { C4Level, ViewTab, ViewMode } from "../types";
+import type { C4Level, ViewTab } from "../types";
 import type { FlowDump, ScenarioDump } from "@sruja/shared";
 
 interface ViewState {
@@ -140,9 +140,7 @@ interface SelectionState {
   animationStep: number;
   isAnimationPlaying: boolean;
 
-  activeRequirement: string | null;
   activeTab: ViewTab;
-  viewMode: ViewMode;
 
   // Actions
   selectNode: (id: string | null) => void;
@@ -151,14 +149,9 @@ interface SelectionState {
    */
   setActiveTab: (tab: ViewTab) => void;
   /**
-   * Set the view mode (Designer, Present)
-   */
-  setViewMode: (mode: ViewMode) => void;
-  /**
    * Set the active animation (Flow or Scenario)
    */
   setActiveAnimation: (animation: FlowDump | ScenarioDump | null) => void;
-  setActiveRequirement: (reqId: string | null) => void;
   setAnimationStep: (step: number) => void;
   playAnimation: () => void;
   pauseAnimation: () => void;
@@ -169,25 +162,18 @@ interface SelectionState {
 export const useSelectionStore = create<SelectionState>((set, get) => ({
   selectedNodeId: null,
   activeAnimation: null,
-  activeRequirement: null,
   animationStep: 0,
   isAnimationPlaying: false,
   activeTab: "diagram", // Added default
-  viewMode: "designer", // Added default
 
   selectNode: (id) => {
     set({ selectedNodeId: id });
   },
 
   setActiveTab: (tab) => set((state) => ({ ...state, activeTab: tab })),
-  setViewMode: (mode) => set((state) => ({ ...state, viewMode: mode })),
 
   setActiveAnimation: (animation) => {
     set({ activeAnimation: animation, isAnimationPlaying: !!animation, animationStep: 0 });
-  },
-
-  setActiveRequirement: (reqId) => {
-    set({ activeRequirement: reqId, selectedNodeId: null, activeAnimation: null }); // Clear others
   },
 
   setAnimationStep: (step) => {

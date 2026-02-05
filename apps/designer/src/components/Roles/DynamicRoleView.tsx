@@ -20,7 +20,8 @@ import { ArrowRight, Layout, AlertTriangle, Zap, Users } from "lucide-react";
 import "./RoleView.css";
 
 // Role-specific components
-import { GovernanceScore, PolicyEnforcement, AntiPatternDetector, ADRManager } from "../Architect";
+import { AntiPatternDetector, ADRManager } from "../Architect";
+import { GovernanceScore, PolicyEnforcement } from "../non-core/governance";
 import { SLOManager } from "../SRE";
 import { HealthScore, RiskAssessment, TechnicalDebt } from "../CTO";
 import { CostEstimation } from "../DevOps";

@@ -93,7 +93,8 @@
 //! let diagnostics = validator.validate_sync(&program);
 //!
 //! // Check for errors
-//! let has_errors = diagnostics.iter().any(|d| d.is_error());
+//! use sruja_diagnostics::Severity;
+//! let has_errors = diagnostics.iter().any(|d| d.severity == Severity::Error);
 //! println!("Has errors: {}", has_errors);
 //! ```
 //!
@@ -107,15 +108,16 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
+//!     use std::sync::Arc;
+//!     let source = r#"
+//!         user = person "User"
+//!         web = system "Web App"
+//!         user -> web "uses"
+//!     "#;
 //!     let parser = Parser::new("example.sruja".to_string());
-//!     let program = parser.parse(source).unwrap();
-//!
+//!     let program = Arc::new(parser.parse(source).unwrap());
 //!     let validator = Validator::with_default_rules();
-//!
-//!     // Validate asynchronously (rules run in parallel)
-//!     let diagnostics = validator.validate(&program).await;
-//!
-//!     // Process diagnostics...
+//!     let diagnostics = validator.validate(program).await;
 //! }
 //! ```
 //!
@@ -199,6 +201,8 @@
 //! Exclude specific rules that don't apply to your context:
 //!
 //! ```rust
+//! use sruja_engine::Validator;
+//!
 //! let validator = Validator::builder()
 //!     .with_default_rules()
 //!     .exclude_rule("Layer Violation")  // For flat architectures
@@ -220,9 +224,11 @@
 //! many rules, especially when rules are CPU-intensive:
 //!
 //! ```rust
+//! use sruja_engine::Validator;
+//!
 //! let validator = Validator::builder()
 //!     .with_parallel(true)
-//!     .with_max_parallelism(num_cpus::get())
+//!     .with_max_parallelism(4)
 //!     .build();
 //! ```
 //!
@@ -241,13 +247,26 @@
 //! through the [`Diagnostic`] system:
 //!
 //! ```rust
+//! use sruja_engine::Validator;
+//! use sruja_language::Parser;
+//! use sruja_diagnostics::Severity;
+//!
+//! let source = r#"
+//! user = person "User"
+//! web = system "Web"
+//! user -> web "uses"
+//! "#;
+//! let parser = Parser::new("example.sruja".to_string());
+//! let program = parser.parse(source).unwrap();
+//! let validator = Validator::with_default_rules();
 //! let diagnostics = validator.validate_sync(&program);
 //!
-//! for diagnostic in diagnostics {
+//! for diagnostic in &diagnostics {
 //!     match diagnostic.severity {
 //!         Severity::Error => eprintln!("❌ {}", diagnostic),
 //!         Severity::Warning => eprintln!("⚠️  {}", diagnostic),
 //!         Severity::Info => println!("ℹ️  {}", diagnostic),
+//!         _ => {}
 //!     }
 //! }
 //! ```
@@ -267,12 +286,12 @@
 //!
 //!     let parser = Parser::new(path.to_string_lossy().to_string());
 //!     let program = parser.parse(&source)
-//!         .map_err(|e| format!("Parse error: {}", e))?;
+//!         .map_err(|e| format!("Parse error: {} diagnostic(s)", e.len()))?;
 //!
 //!     let validator = Validator::with_default_rules();
 //!     let diagnostics = validator.validate_sync(&program);
 //!
-//!     if diagnostics.iter().any(|d| d.is_error()) {
+//!     if diagnostics.iter().any(|d| d.severity == sruja_diagnostics::Severity::Error) {
 //!         Err(format!("Found {} validation errors", diagnostics.len()))
 //!     } else {
 //!         Ok(())
@@ -285,20 +304,12 @@
 //! The validator integrates seamlessly with the LSP for real-time validation:
 //!
 //! ```rust
-//! use tower_lsp::lsp_types::Diagnostic as LspDiagnostic;
 //! use sruja_engine::Validator;
+//! use sruja_diagnostics::Diagnostic;
 //!
-//! fn convert_diagnostics(diagnostics: Vec<sruja_diagnostics::Diagnostic>)
-//!     -> Vec<LspDiagnostic>
-//! {
-//!     diagnostics.into_iter()
-//!         .map(|diag| LspDiagnostic {
-//!             range: convert_range(diag.location),
-//!             severity: Some(convert_severity(diag.severity)),
-//!             message: diag.message,
-//!             ..Default::default()
-//!         })
-//!         .collect()
+//! // Map Sruja diagnostics to your LSP client (e.g. range, severity, message).
+//! fn _example_convert(diag: &Diagnostic) -> (u32, u32, String) {
+//!     (diag.location.line, diag.location.column, diag.message.clone())
 //! }
 //! ```
 //!
@@ -413,26 +424,31 @@ pub trait Rule: Send + Sync {
     /// # Examples
     ///
     /// ```rust
+    /// use sruja_engine::validator::Rule;
+    /// use sruja_language::Program;
     /// use sruja_diagnostics::{Diagnostic, Severity, SourceLocation, codes};
     ///
-    /// fn validate(&self, program: &Program) -> Vec<Diagnostic> {
-    ///     let mut diagnostics = Vec::new();
-    ///
-    ///     for item in &program.items {
-    ///         if let Some(issue) = self.check_item(item) {
-    ///             diagnostics.push(
-    ///                 Diagnostic::new(
-    ///                     codes::CODE_SYNTAX_ERROR,
-    ///                     Severity::Error,
-    ///                     "Issue description",
-    ///                     issue.location,
-    ///                 )
-    ///                 .with_suggestions(vec!["Fix suggestion".to_string()])
-    ///             );
+    /// struct ExampleRule;
+    /// impl Rule for ExampleRule {
+    ///     fn name(&self) -> &str { "Example" }
+    ///     fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    ///         let mut diagnostics = Vec::new();
+    ///         for item in &program.items {
+    ///             if let sruja_language::TopLevelItem::ElementDef(elem) = item {
+    ///                 diagnostics.push(
+    ///                     Diagnostic::new(
+    ///                         codes::CODE_SYNTAX_ERROR,
+    ///                         Severity::Error,
+    ///                         "Issue description",
+    ///                         elem.location.clone(),
+    ///                     )
+    ///                     .with_suggestions(vec!["Fix suggestion".to_string()])
+    ///                 );
+    ///                 break;
+    ///             }
     ///         }
+    ///         diagnostics
     ///     }
-    ///
-    ///     diagnostics
     /// }
     /// ```
     fn validate(&self, program: &Program) -> Vec<Diagnostic>;
@@ -513,6 +529,14 @@ impl Validator {
     /// use sruja_engine::Validator;
     /// use std::sync::Arc;
     /// use sruja_engine::validator::Rule;
+    /// use sruja_language::Program;
+    /// use sruja_diagnostics::Diagnostic;
+    ///
+    /// struct MyCustomRule;
+    /// impl Rule for MyCustomRule {
+    ///     fn name(&self) -> &str { "My Rule" }
+    ///     fn validate(&self, _: &Program) -> Vec<Diagnostic> { vec![] }
+    /// }
     ///
     /// let mut validator = Validator::new();
     /// validator.register_rule(Arc::new(MyCustomRule));
@@ -615,6 +639,15 @@ impl Validator {
     /// ```rust
     /// use sruja_engine::Validator;
     /// use std::sync::Arc;
+    /// use sruja_engine::validator::Rule;
+    /// use sruja_language::Program;
+    /// use sruja_diagnostics::Diagnostic;
+    ///
+    /// struct MyCustomRule;
+    /// impl Rule for MyCustomRule {
+    ///     fn name(&self) -> &str { "My Rule" }
+    ///     fn validate(&self, _: &Program) -> Vec<Diagnostic> { vec![] }
+    /// }
     ///
     /// let mut validator = Validator::new();
     /// validator.register_rule(Arc::new(MyCustomRule));
@@ -650,11 +683,15 @@ impl Validator {
     ///
     /// ```rust
     /// use sruja_engine::Validator;
+    /// use sruja_language::Parser;
     ///
+    /// let source = r#"user = person "User" web = system "Web" user -> web "uses" "#;
+    /// let parser = Parser::new("example.sruja".to_string());
+    /// let program = parser.parse(source).unwrap();
     /// let validator = Validator::with_default_rules();
     /// let diagnostics = validator.validate_sync(&program);
     ///
-    /// for diagnostic in diagnostics {
+    /// for diagnostic in &diagnostics {
     ///     println!("{}", diagnostic);
     /// }
     /// ```
@@ -706,15 +743,19 @@ impl Validator {
     ///
     /// ```rust
     /// use sruja_engine::Validator;
+    /// use sruja_language::Parser;
+    /// use std::sync::Arc;
     ///
     /// #[tokio::main]
     /// async fn main() {
+    ///     let source = r#"user = person "User" web = system "Web" user -> web "uses" "#;
+    ///     let parser = Parser::new("example.sruja".to_string());
+    ///     let program = Arc::new(parser.parse(source).unwrap());
     ///     let validator = Validator::builder()
     ///         .with_default_rules()
     ///         .with_parallel(true)
     ///         .build();
-    ///
-    ///     let diagnostics = validator.validate(&program).await;
+    ///     let diagnostics = validator.validate(program).await;
     /// }
     /// ```
     #[cfg(feature = "async")]
@@ -811,6 +852,15 @@ impl Default for Validator {
 /// ```rust
 /// use sruja_engine::Validator;
 /// use std::sync::Arc;
+/// use sruja_engine::validator::Rule;
+/// use sruja_language::Program;
+/// use sruja_diagnostics::Diagnostic;
+///
+/// struct MyCustomRule;
+/// impl Rule for MyCustomRule {
+///     fn name(&self) -> &str { "My Rule" }
+///     fn validate(&self, _: &Program) -> Vec<Diagnostic> { vec![] }
+/// }
 ///
 /// let validator = Validator::builder()
 ///     .with_default_rules()
@@ -864,6 +914,15 @@ impl ValidatorBuilder {
     /// ```rust
     /// use sruja_engine::Validator;
     /// use std::sync::Arc;
+    /// use sruja_engine::validator::Rule;
+    /// use sruja_language::Program;
+    /// use sruja_diagnostics::Diagnostic;
+    ///
+    /// struct MyCustomRule;
+    /// impl Rule for MyCustomRule {
+    ///     fn name(&self) -> &str { "My Rule" }
+    ///     fn validate(&self, _: &Program) -> Vec<Diagnostic> { vec![] }
+    /// }
     ///
     /// let validator = Validator::builder()
     ///     .with_default_rules()
@@ -1019,13 +1078,15 @@ impl ValidatorBuilder {
     ///
     /// ```rust
     /// use sruja_engine::Validator;
+    /// use sruja_language::Parser;
     ///
     /// let validator = Validator::builder()
     ///     .with_default_rules()
     ///     .with_parallel(true)
     ///     .build();
     ///
-    /// // Use the validator
+    /// let source = r#"user = person "User" web = system "Web" user -> web "uses" "#;
+    /// let program = Parser::new("example.sruja".to_string()).parse(source).unwrap();
     /// let diagnostics = validator.validate_sync(&program);
     /// ```
     pub fn build(self) -> Validator {

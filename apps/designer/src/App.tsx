@@ -8,6 +8,7 @@ import { NavigationPanel, InspectorPanel, CodePanel, MarkdownPanel } from "./com
 import { BuilderWizard } from "./components/Wizard";
 import { ErrorBoundary, SentryInit } from "./components/shared";
 import { SplitLayout } from "./components/Layout/SplitLayout";
+import { BestPracticesView } from "./components/Review/BestPracticesView";
 import {
   ToastContainer,
   Logo,
@@ -25,11 +26,8 @@ import {
   useToastStore,
 } from "./stores";
 import { getArchitectureModel } from "./models/ArchitectureModel";
-import { DynamicRoleView } from "./components/Roles/DynamicRoleView";
-import { OverviewTab } from "./components/Overview/OverviewTab";
 
 import { useClipboardOperations, useProjectSync, useFileHandlers } from "./hooks";
-import { DetailsView } from "./components/Views/DetailsView";
 import { useUrlState } from "./hooks/useUrlState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { setGlobalCanvasRef } from "./hooks/useTagNavigation";
@@ -39,7 +37,8 @@ import type { CanvasHandle } from "./components/SrujaCanvas/types";
 import { Header } from "./components/Header";
 import { useAppCommands } from "./hooks/useAppCommands";
 import { useAppShortcuts } from "./hooks/useAppShortcuts";
-import { OnboardingTooltip } from "./components/OnboardingTooltip";
+import { OnboardingTooltip } from "./components/non-core/onboarding/OnboardingTooltip";
+import { studioScope } from "./config/studioScope";
 
 export default function App() {
   // Sync URL state (level, expanded nodes) with view store
@@ -228,18 +227,14 @@ export default function App() {
             style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}
           >
             <ErrorBoundary fallback={<div className="error-state">Canvas Error</div>}>
-              <SrujaCanvas />
+              <SrujaCanvas ref={canvasRef} />
             </ErrorBoundary>
           </div>
         );
       case "docs":
         return <MarkdownPanel />;
-      case "overview":
-        return <OverviewTab />;
-      case "details":
-        return <DetailsView />;
-      case "roles":
-        return <DynamicRoleView />;
+      case "review":
+        return <BestPracticesView />;
       default:
         // Default to diagram if unsure, or specific pages
         return (
@@ -248,7 +243,7 @@ export default function App() {
             style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}
           >
             <ErrorBoundary fallback={<div className="error-state">Canvas Error</div>}>
-              <SrujaCanvas />
+              <SrujaCanvas ref={canvasRef} />
             </ErrorBoundary>
           </div>
         );
@@ -345,17 +340,21 @@ export default function App() {
             </div>
           </main>
 
-          <CommandPalette
-            isOpen={showCommandPalette}
-            onClose={() => setShowCommandPalette(false)}
-            commands={commandPaletteCommands}
-          />
-          <ShortcutsModal
-            isOpen={showShortcuts}
-            onClose={() => setShowShortcuts(false)}
-            shortcuts={modalShortcuts}
-          />
-          {model && <OnboardingTooltip />}
+          {studioScope.commandPalette && (
+            <CommandPalette
+              isOpen={showCommandPalette}
+              onClose={() => setShowCommandPalette(false)}
+              commands={commandPaletteCommands}
+            />
+          )}
+          {studioScope.shortcutsModal && (
+            <ShortcutsModal
+              isOpen={showShortcuts}
+              onClose={() => setShowShortcuts(false)}
+              shortcuts={modalShortcuts}
+            />
+          )}
+          {studioScope.onboarding && model && <OnboardingTooltip />}
         </div>
       </PosthogProvider>
     </>

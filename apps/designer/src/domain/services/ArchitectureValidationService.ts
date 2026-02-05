@@ -8,38 +8,18 @@
  * @module domain/services
  */
 
-import type {
-  SrujaModelDump,
-  Element,
-  Relationship,
-  ParsedView,
-  Requirement,
-  ADR,
-  Policy,
-  Scenario,
-  Flow,
-} from '@sruja/shared';
-import {
-  ValidationError,
-  ConfigurationError,
-  ok,
-  err,
-  type Result,
-} from '@sruja/shared/utils';
-import { ElementId } from '../value-objects/ElementId';
-import { RelationshipKind } from '../value-objects/ElementRelationship';
+import type { SrujaModelDump, Element, Relationship, ParsedView, Requirement } from "@sruja/shared";
+import { ElementId } from "../value-objects/ElementId";
+import { RelationshipKind } from "../value-objects/ElementRelationship";
 
-/**
- * Validation severity levels
- */
-export enum ValidationSeverity {
-  /** Critical error that prevents model from being used */
-  ERROR = 'error',
-  /** Warning that should be addressed but doesn't block usage */
-  WARNING = 'warning',
-  /** Informational suggestion for improvement */
-  INFO = 'info',
-}
+/** Validation severity levels (const object for erasableSyntaxOnly). */
+export const ValidationSeverity = {
+  ERROR: "error",
+  WARNING: "warning",
+  INFO: "info",
+} as const;
+
+export type ValidationSeverity = (typeof ValidationSeverity)[keyof typeof ValidationSeverity];
 
 /**
  * Validation result with severity and location
@@ -155,10 +135,16 @@ export class ArchitectureValidationService {
       }
     }
 
-    // Validate relationships
+    // Validate relationships (normalize FqnRef to string for validation)
     if (model.relations) {
-      for (let i = 0; i < model.relations.length; i++) {
-        issues.push(...this.validateRelationship(i, model.relations[i], model.elements));
+      const relationsAsPlain = model.relations.map((r) => ({
+        ...r,
+        id: r.id,
+        source: typeof r.source === "string" ? r.source : r.source.model,
+        target: typeof r.target === "string" ? r.target : r.target.model,
+      }));
+      for (let i = 0; i < relationsAsPlain.length; i++) {
+        issues.push(...this.validateRelationship(i, relationsAsPlain[i], model.elements));
       }
     }
 
@@ -199,41 +185,41 @@ export class ArchitectureValidationService {
       issues.push({
         severity: ValidationSeverity.ERROR,
         message: `Invalid element ID: ${idValidation.error.message}`,
-        code: 'INVALID_ELEMENT_ID',
+        code: "INVALID_ELEMENT_ID",
         elementId: id,
         path: `elements.${id}.id`,
       });
     }
 
-    // Validate name
+    // Validate title
     if (this.rules.validateElementNames) {
-      if (!element.name || element.name.trim().length === 0) {
+      if (!element.title || element.title.trim().length === 0) {
         issues.push({
           severity: ValidationSeverity.ERROR,
-          message: 'Element name cannot be empty',
-          code: 'EMPTY_ELEMENT_NAME',
+          message: "Element title cannot be empty",
+          code: "EMPTY_ELEMENT_NAME",
           elementId: id,
-          path: `elements.${id}.name`,
+          path: `elements.${id}.title`,
         });
       } else {
-        const nameLength = element.name.trim().length;
+        const nameLength = element.title.trim().length;
         if (nameLength < this.rules.minNameLength) {
           issues.push({
             severity: ValidationSeverity.WARNING,
-            message: `Element name should be at least ${this.rules.minNameLength} characters`,
-            code: 'SHORT_ELEMENT_NAME',
+            message: `Element title should be at least ${this.rules.minNameLength} characters`,
+            code: "SHORT_ELEMENT_NAME",
             elementId: id,
-            path: `elements.${id}.name`,
+            path: `elements.${id}.title`,
             suggestion: `Consider a more descriptive name (current: ${nameLength} characters)`,
           });
         }
         if (nameLength > this.rules.maxNameLength) {
           issues.push({
             severity: ValidationSeverity.ERROR,
-            message: `Element name cannot exceed ${this.rules.maxNameLength} characters`,
-            code: 'LONG_ELEMENT_NAME',
+            message: `Element title cannot exceed ${this.rules.maxNameLength} characters`,
+            code: "LONG_ELEMENT_NAME",
             elementId: id,
-            path: `elements.${id}.name`,
+            path: `elements.${id}.title`,
           });
         }
       }
@@ -243,8 +229,8 @@ export class ArchitectureValidationService {
     if (!element.kind || element.kind.trim().length === 0) {
       issues.push({
         severity: ValidationSeverity.ERROR,
-        message: 'Element kind cannot be empty',
-        code: 'EMPTY_ELEMENT_KIND',
+        message: "Element kind cannot be empty",
+        code: "EMPTY_ELEMENT_KIND",
         elementId: id,
         path: `elements.${id}.kind`,
       });
@@ -252,13 +238,13 @@ export class ArchitectureValidationService {
 
     // Validate metadata
     if (this.rules.requireMetadata) {
-      const requiredFields = ['description', 'technology'];
+      const requiredFields = ["description", "technology"];
       for (const field of requiredFields) {
         if (!element[field as keyof Element]) {
           issues.push({
             severity: ValidationSeverity.WARNING,
             message: `Element is missing required metadata field: ${field}`,
-            code: 'MISSING_METADATA',
+            code: "MISSING_METADATA",
             elementId: id,
             path: `elements.${id}.${field}`,
             suggestion: `Add a ${field} to improve documentation`,
@@ -292,14 +278,14 @@ export class ArchitectureValidationService {
       issues.push({
         severity: ValidationSeverity.ERROR,
         message: `Invalid source element ID: ${sourceIdValidation.error.message}`,
-        code: 'INVALID_SOURCE_ID',
+        code: "INVALID_SOURCE_ID",
         path: `${path}.source`,
       });
     } else if (elements && !elements[relationship.source]) {
       issues.push({
         severity: ValidationSeverity.ERROR,
         message: `Source element '${relationship.source}' does not exist`,
-        code: 'SOURCE_NOT_FOUND',
+        code: "SOURCE_NOT_FOUND",
         path: `${path}.source`,
       });
     }
@@ -310,14 +296,14 @@ export class ArchitectureValidationService {
       issues.push({
         severity: ValidationSeverity.ERROR,
         message: `Invalid target element ID: ${targetIdValidation.error.message}`,
-        code: 'INVALID_TARGET_ID',
+        code: "INVALID_TARGET_ID",
         path: `${path}.target`,
       });
     } else if (elements && !elements[relationship.target]) {
       issues.push({
         severity: ValidationSeverity.ERROR,
         message: `Target element '${relationship.target}' does not exist`,
-        code: 'TARGET_NOT_FOUND',
+        code: "TARGET_NOT_FOUND",
         path: `${path}.target`,
       });
     }
@@ -327,10 +313,10 @@ export class ArchitectureValidationService {
       if (!relationship.description || relationship.description.trim().length === 0) {
         issues.push({
           severity: ValidationSeverity.WARNING,
-          message: 'Relationship description is empty',
-          code: 'EMPTY_RELATIONSHIP_DESCRIPTION',
+          message: "Relationship description is empty",
+          code: "EMPTY_RELATIONSHIP_DESCRIPTION",
           path: `${path}.description`,
-          suggestion: 'Add a description to clarify the relationship',
+          suggestion: "Add a description to clarify the relationship",
         });
       }
     }
@@ -339,8 +325,8 @@ export class ArchitectureValidationService {
     if (relationship.source === relationship.target) {
       issues.push({
         severity: ValidationSeverity.ERROR,
-        message: 'Relationship cannot connect an element to itself',
-        code: 'SELF_RELATIONSHIP',
+        message: "Relationship cannot connect an element to itself",
+        code: "SELF_RELATIONSHIP",
         path: `${path}`,
       });
     }
@@ -352,9 +338,9 @@ export class ArchitectureValidationService {
         issues.push({
           severity: ValidationSeverity.WARNING,
           message: `Unknown relationship kind: '${relationship.kind}'`,
-          code: 'UNKNOWN_RELATIONSHIP_KIND',
+          code: "UNKNOWN_RELATIONSHIP_KIND",
           path: `${path}.kind`,
-          suggestion: `Use one of: ${validKinds.join(', ')}`,
+          suggestion: `Use one of: ${validKinds.join(", ")}`,
         });
       }
     }
@@ -382,8 +368,8 @@ export class ArchitectureValidationService {
     if (!viewName || viewName.trim().length === 0) {
       issues.push({
         severity: ValidationSeverity.ERROR,
-        message: 'View name cannot be empty',
-        code: 'EMPTY_VIEW_NAME',
+        message: "View name cannot be empty",
+        code: "EMPTY_VIEW_NAME",
         path: `views`,
       });
     }
@@ -392,51 +378,51 @@ export class ArchitectureValidationService {
     if (!view.title || view.title.trim().length === 0) {
       issues.push({
         severity: ValidationSeverity.WARNING,
-        message: 'View title is empty',
-        code: 'EMPTY_VIEW_TITLE',
+        message: "View title is empty",
+        code: "EMPTY_VIEW_TITLE",
         path: `${path}.title`,
       });
     }
 
-    // Validate element references
-    if (elements && view.elements) {
-      for (const elementRef of view.elements) {
-        const id = typeof elementRef === 'string' ? elementRef : elementRef.id;
+    // Validate node (element) references
+    if (elements && view.nodes) {
+      for (const node of view.nodes) {
+        const id = node.element ?? node.id;
         if (!elements[id]) {
           issues.push({
             severity: ValidationSeverity.ERROR,
             message: `View references non-existent element: '${id}'`,
-            code: 'VIEW_ELEMENT_NOT_FOUND',
+            code: "VIEW_ELEMENT_NOT_FOUND",
             elementId: id,
-            path: `${path}.elements`,
+            path: `${path}.nodes`,
           });
         }
       }
     }
 
-    // Validate relationship references
-    if (elements && view.relationships) {
-      for (const rel of view.relationships) {
-        const sourceId = typeof rel.source === 'string' ? rel.source : rel.source.id;
-        const targetId = typeof rel.target === 'string' ? rel.target : rel.target.id;
+    // Validate edge (relationship) references
+    if (elements && view.edges) {
+      for (const edge of view.edges) {
+        const sourceId = edge.source;
+        const targetId = edge.target;
 
         if (!elements[sourceId]) {
           issues.push({
             severity: ValidationSeverity.ERROR,
-            message: `View relationship references non-existent source element: '${sourceId}'`,
-            code: 'VIEW_RELATIONSHIP_SOURCE_NOT_FOUND',
+            message: `View edge references non-existent source element: '${sourceId}'`,
+            code: "VIEW_RELATIONSHIP_SOURCE_NOT_FOUND",
             elementId: sourceId,
-            path: `${path}.relationships`,
+            path: `${path}.edges`,
           });
         }
 
         if (!elements[targetId]) {
           issues.push({
             severity: ValidationSeverity.ERROR,
-            message: `View relationship references non-existent target element: '${targetId}'`,
-            code: 'VIEW_RELATIONSHIP_TARGET_NOT_FOUND',
+            message: `View edge references non-existent target element: '${targetId}'`,
+            code: "VIEW_RELATIONSHIP_TARGET_NOT_FOUND",
             elementId: targetId,
-            path: `${path}.relationships`,
+            path: `${path}.edges`,
           });
         }
       }
@@ -453,7 +439,7 @@ export class ArchitectureValidationService {
    */
   validateSpecification(specification: any): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
-    const path = 'specification';
+    const path = "specification";
 
     // Validate requirements
     if (specification.requirements) {
@@ -462,16 +448,16 @@ export class ArchitectureValidationService {
         if (!req.id || req.id.trim().length === 0) {
           issues.push({
             severity: ValidationSeverity.ERROR,
-            message: 'Requirement ID cannot be empty',
-            code: 'EMPTY_REQUIREMENT_ID',
+            message: "Requirement ID cannot be empty",
+            code: "EMPTY_REQUIREMENT_ID",
             path: `${path}.requirements[${i}].id`,
           });
         }
         if (!req.title || req.title.trim().length === 0) {
           issues.push({
             severity: ValidationSeverity.WARNING,
-            message: 'Requirement title is empty',
-            code: 'EMPTY_REQUIREMENT_TITLE',
+            message: "Requirement title is empty",
+            code: "EMPTY_REQUIREMENT_TITLE",
             path: `${path}.requirements[${i}].title`,
           });
         }
@@ -494,52 +480,59 @@ export class ArchitectureValidationService {
       return issues;
     }
 
+    // Normalize relations (FqnRef -> string) for validation helpers
+    const relationsNormalized: Relationship[] = (model.relations ?? []).map((r) => {
+      const source = typeof r.source === "string" ? r.source : r.source.model;
+      const target = typeof r.target === "string" ? r.target : r.target.model;
+      return { ...r, id: r.id, source, target };
+    });
+
     // Detect cycles
     if (this.rules.detectCycles) {
-      const cycles = this.detectCycles(model.elements, model.relations);
-      cycles.forEach(cycle => {
+      const cycles = this.detectCycles(model.elements, relationsNormalized);
+      cycles.forEach((cycle) => {
         issues.push({
           severity: ValidationSeverity.ERROR,
-          message: `Cyclic dependency detected: ${cycle.join(' → ')}`,
-          code: 'CYCLIC_DEPENDENCY',
-          suggestion: 'Break the cycle by removing or redirecting one relationship',
+          message: `Cyclic dependency detected: ${cycle.join(" → ")}`,
+          code: "CYCLIC_DEPENDENCY",
+          suggestion: "Break the cycle by removing or redirecting one relationship",
         });
       });
     }
 
     // Detect orphan elements
     if (this.rules.detectOrphans) {
-      const orphans = this.detectOrphanElements(model.elements, model.relations);
-      orphans.forEach(id => {
+      const orphans = this.detectOrphanElements(model.elements, relationsNormalized);
+      orphans.forEach((id) => {
         issues.push({
           severity: ValidationSeverity.WARNING,
           message: `Element '${id}' has no relationships and may be isolated`,
-          code: 'ORPHAN_ELEMENT',
+          code: "ORPHAN_ELEMENT",
           elementId: id,
-          suggestion: 'Connect this element to the rest of the architecture',
+          suggestion: "Connect this element to the rest of the architecture",
         });
       });
     }
 
     // Validate nesting depth
-    const maxDepth = this.validateNestingDepth(model.elements, model.relations);
+    const maxDepth = this.validateNestingDepth(model.elements, relationsNormalized);
     if (maxDepth > this.rules.maxNestingDepth) {
       issues.push({
         severity: ValidationSeverity.WARNING,
         message: `Maximum nesting depth (${maxDepth}) exceeds recommended limit (${this.rules.maxNestingDepth})`,
-        code: 'EXCESSIVE_NESTING_DEPTH',
-        suggestion: 'Consider flattening the architecture by reducing nested containers',
+        code: "EXCESSIVE_NESTING_DEPTH",
+        suggestion: "Consider flattening the architecture by reducing nested containers",
       });
     }
 
     // Detect duplicate relationships
-    const duplicates = this.detectDuplicateRelationships(model.relations);
-    duplicates.forEach(dup => {
+    const duplicates = this.detectDuplicateRelationships(relationsNormalized);
+    duplicates.forEach((dup) => {
       issues.push({
         severity: ValidationSeverity.WARNING,
         message: `Duplicate relationship detected between '${dup.source}' and '${dup.target}'`,
-        code: 'DUPLICATE_RELATIONSHIP',
-        suggestion: 'Remove duplicate relationships to avoid ambiguity',
+        code: "DUPLICATE_RELATIONSHIP",
+        suggestion: "Remove duplicate relationships to avoid ambiguity",
       });
     });
 
@@ -566,17 +559,19 @@ export class ArchitectureValidationService {
     if (elementCount > 0 && relationshipCount === 0) {
       issues.push({
         severity: ValidationSeverity.WARNING,
-        message: 'Architecture has elements but no relationships',
-        code: 'NO_RELATIONSHIPS',
-        suggestion: 'Add relationships to show how elements interact',
+        message: "Architecture has elements but no relationships",
+        code: "NO_RELATIONSHIPS",
+        suggestion: "Add relationships to show how elements interact",
       });
     }
 
-    // Check for over-connected elements
+    // Check for over-connected elements (FqnRef has .model for string)
     const connectionCounts = new Map<string, number>();
     for (const rel of model.relations) {
-      connectionCounts.set(rel.source, (connectionCounts.get(rel.source) || 0) + 1);
-      connectionCounts.set(rel.target, (connectionCounts.get(rel.target) || 0) + 1);
+      const src = typeof rel.source === "string" ? rel.source : rel.source.model;
+      const tgt = typeof rel.target === "string" ? rel.target : rel.target.model;
+      connectionCounts.set(src, (connectionCounts.get(src) || 0) + 1);
+      connectionCounts.set(tgt, (connectionCounts.get(tgt) || 0) + 1);
     }
 
     connectionCounts.forEach((count, id) => {
@@ -584,9 +579,9 @@ export class ArchitectureValidationService {
         issues.push({
           severity: ValidationSeverity.WARNING,
           message: `Element '${id}' has ${count} connections, which may indicate high coupling`,
-          code: 'HIGH_COUPLING',
+          code: "HIGH_COUPLING",
           elementId: id,
-          suggestion: 'Consider refactoring to reduce coupling',
+          suggestion: "Consider refactoring to reduce coupling",
         });
       }
     });
@@ -606,34 +601,34 @@ export class ArchitectureValidationService {
     if (!model.elements) {
       issues.push({
         severity: ValidationSeverity.ERROR,
-        message: 'Model is missing elements',
-        code: 'MISSING_ELEMENTS',
-        path: 'model.elements',
+        message: "Model is missing elements",
+        code: "MISSING_ELEMENTS",
+        path: "model.elements",
       });
     }
 
     if (!model.relations) {
       issues.push({
         severity: ValidationSeverity.ERROR,
-        message: 'Model is missing relations',
-        code: 'MISSING_RELATIONS',
-        path: 'model.relations',
+        message: "Model is missing relations",
+        code: "MISSING_RELATIONS",
+        path: "model.relations",
       });
     }
 
-    if (!model.metadata) {
+    if (!model._metadata) {
       issues.push({
         severity: ValidationSeverity.WARNING,
-        message: 'Model is missing metadata',
-        code: 'MISSING_METADATA',
-        path: 'model.metadata',
+        message: "Model is missing metadata",
+        code: "MISSING_METADATA",
+        path: "model._metadata",
       });
-    } else if (!model.metadata.name || model.metadata.name.trim().length === 0) {
+    } else if (!model._metadata.name || model._metadata.name.trim().length === 0) {
       issues.push({
         severity: ValidationSeverity.WARNING,
-        message: 'Model metadata is missing name',
-        code: 'MISSING_MODEL_NAME',
-        path: 'model.metadata.name',
+        message: "Model metadata is missing name",
+        code: "MISSING_MODEL_NAME",
+        path: "model._metadata.name",
       });
     }
 
@@ -648,10 +643,7 @@ export class ArchitectureValidationService {
    * @param relations - Array of relationships
    * @returns Array of cycles found (each cycle is an array of element IDs)
    */
-  private detectCycles(
-    elements: Record<string, Element>,
-    relations: Relationship[]
-  ): string[][] {
+  private detectCycles(elements: Record<string, Element>, relations: Relationship[]): string[][] {
     const cycles: string[][] = [];
     const visited = new Set<string>();
     const recursionStack = new Set<string>();
@@ -716,7 +708,7 @@ export class ArchitectureValidationService {
       connected.add(rel.target);
     }
 
-    return Object.keys(elements).filter(id => !connected.has(id));
+    return Object.keys(elements).filter((id) => !connected.has(id));
   }
 
   /**
@@ -756,7 +748,7 @@ export class ArchitectureValidationService {
         return 1;
       }
 
-      const maxChildDepth = Math.max(...childIds.map(child => getDepth(child)));
+      const maxChildDepth = Math.max(...childIds.map((child) => getDepth(child)));
       const depth = maxChildDepth + 1;
       memo.set(id, depth);
       return depth;
@@ -795,8 +787,8 @@ export class ArchitectureValidationService {
     }
 
     return Array.from(keyCounts.values())
-      .filter(entry => entry.count > 1)
-      .map(entry => ({
+      .filter((entry) => entry.count > 1)
+      .map((entry) => ({
         source: entry.source,
         target: entry.target,
         count: entry.count,
@@ -811,8 +803,8 @@ export class ArchitectureValidationService {
    * @returns A validation report
    */
   private createReport(issues: ValidationIssue[]): ValidationReport {
-    const errors = issues.filter(issue => issue.severity === ValidationSeverity.ERROR);
-    const warnings = issues.filter(issue => issue.severity === ValidationSeverity.WARNING);
+    const errors = issues.filter((issue) => issue.severity === ValidationSeverity.ERROR);
+    const warnings = issues.filter((issue) => issue.severity === ValidationSeverity.WARNING);
 
     // Calculate quality score (0-100)
     // Start at 100, subtract for errors (-10) and warnings (-2)

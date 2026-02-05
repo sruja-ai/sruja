@@ -117,12 +117,7 @@ test.describe("Rust WASM Backend Integration", () => {
     // Check if WASM functions are registered in window
     const wasmFunctions = await page.evaluate(() => {
       const win = window as any;
-      const functions = [
-        "sruja_dsl_to_model",
-        "sruja_dsl_to_mermaid",
-        "sruja_dsl_to_dot",
-        "sruja_dsl_to_markdown",
-      ];
+      const functions = ["sruja_dsl_to_model", "sruja_dsl_to_mermaid", "sruja_dsl_to_markdown"];
       return functions.filter((fn) => typeof win[fn] === "function");
     });
 

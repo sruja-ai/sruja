@@ -1,38 +1,42 @@
 import React, { useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { SrujaLoader, SrujaMonacoEditor } from "@sruja/ui";
+import { SrujaLoader, SrujaMonacoEditor, getIsDark, getMermaidConfig } from "@sruja/ui";
 import { initWasm, capture, convertDslToMermaid } from "@sruja/shared";
-// Removed DiagramPreview import - using mermaid only for expand
 import mermaid from "mermaid";
 import * as LZString from "lz-string";
 import { getDesignerUrl } from "@/utils/designer-url";
 
-let mermaidInitialized = false;
-function getMermaidTheme() {
-  try {
-    const mode = document.documentElement.getAttribute("data-theme") || "";
-    return mode === "dark" ? "dark" : "default";
-  } catch {
-    return "default";
-  }
-}
+let mermaidThemeListenerAttached = false;
+
+/** Initialize Mermaid with Sruja design-system theme (light/dark). */
 function initMermaid() {
   try {
+    const isDark = getIsDark();
+    const config = getMermaidConfig(isDark);
     mermaid.initialize({
-      startOnLoad: false,
-      theme: getMermaidTheme(),
-      securityLevel: "loose",
+      ...config,
       flowchart: {
+        ...config.flowchart,
         useMaxWidth: true,
         htmlLabels: true,
         subGraphTitleMargin: { top: 10, bottom: 20 },
       },
     });
-    if (!mermaidInitialized) {
+    if (!mermaidThemeListenerAttached) {
       try {
         window.addEventListener("theme-change", () => {
           try {
-            mermaid.initialize({ theme: getMermaidTheme() });
+            const dark = getIsDark();
+            const cfg = getMermaidConfig(dark);
+            mermaid.initialize({
+              ...cfg,
+              flowchart: {
+                ...cfg.flowchart,
+                useMaxWidth: true,
+                htmlLabels: true,
+                subGraphTitleMargin: { top: 10, bottom: 20 },
+              },
+            });
           } catch {
             void 0;
           }
@@ -40,7 +44,7 @@ function initMermaid() {
       } catch {
         void 0;
       }
-      mermaidInitialized = true;
+      mermaidThemeListenerAttached = true;
     }
   } catch {}
 }

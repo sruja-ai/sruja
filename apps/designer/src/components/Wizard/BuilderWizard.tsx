@@ -2,20 +2,21 @@ import { useState, useMemo, useEffect } from "react";
 import { logger } from "@sruja/shared";
 import type { ElementDump } from "@sruja/shared";
 import { WizardStepper, type WizardStep } from "./WizardStepper";
-import { GoalsStep } from "./GoalsStep";
 import { SystemContextStep } from "./SystemContextStep";
 import { ContainersStep } from "./ContainersStep";
 import { ComponentsStep } from "./ComponentsStep";
-import { FlowsStep } from "./FlowsStep";
-import { RolesViewsStep } from "./RolesViewsStep";
+import { GoalsStep } from "../non-core/wizard/GoalsStep";
+import { FlowsStep } from "../non-core/wizard/FlowsStep";
+import { RolesViewsStep } from "../non-core/wizard/RolesViewsStep";
 // import { DslPreview } from "./DslPreview"; // Handled by Right Pane now
 // import { ValidationPanel } from "./ValidationPanel"; // Handled by Right Pane now
 // import { DocumentationPanel } from "./DocumentationPanel"; // Handled by Right Pane now
-import { SharePanel } from "./SharePanel";
+import { SharePanel } from "../non-core/wizard/SharePanel";
 import { useArchitectureStore } from "../../stores/architectureStore";
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
 import { useUIStore } from "../../stores"; // Import UI Store
 import { convertModelToDsl } from "../../utils/modelToDsl";
+import { studioScope } from "../../config/studioScope";
 import "./BuilderWizard.css";
 
 export function BuilderWizard() {
@@ -139,7 +140,7 @@ export function BuilderWizard() {
     const roles = elements.filter((e) => e.kind === "role");
     const hasRoles = roles.length > 0;
 
-    return [
+    const baseSteps: WizardStep[] = [
       {
         id: "context",
         label: "Context",
@@ -161,28 +162,42 @@ export function BuilderWizard() {
         isComplete: hasComponents,
         isLocked: !hasContainers,
       },
-      {
+    ];
+
+    if (studioScope.builderFlows) {
+      baseSteps.push({
         id: "flows",
         label: "Flows",
-        description: "Scenarios",
+        description: "Scenarios (optional)",
         isComplete: hasFlows,
         isLocked: false,
-      },
-      {
+        isOptional: true,
+      });
+    }
+
+    if (studioScope.builderRoles) {
+      baseSteps.push({
         id: "roles-views",
         label: "Roles & Views",
-        description: "Organizational roles",
+        description: "Role perspectives (optional)",
         isComplete: hasRoles,
         isLocked: false,
-      },
-      {
+        isOptional: true,
+      });
+    }
+
+    if (studioScope.builderGoals) {
+      baseSteps.push({
         id: "goals",
         label: "Define",
-        description: "Goals & requirements",
+        description: "Goals & requirements (optional)",
         isComplete: hasGoalsOrReqs,
         isLocked: false,
-      },
-    ];
+        isOptional: true,
+      });
+    }
+
+    return baseSteps;
   }, [data]);
 
   // Check if we should show welcome/quick start option
@@ -198,6 +213,8 @@ export function BuilderWizard() {
     // Default to first step (Context) if not found
     return idx >= 0 ? idx : 0;
   }, [steps, builderStepId]);
+
+  const activeStepId = steps[currentStep]?.id;
 
   const goToStep = (stepIndex: number) => {
     // Allow jumping to any step, but show a warning if prerequisites aren't met
@@ -247,12 +264,12 @@ export function BuilderWizard() {
           <div className="welcome-options">
             <div className="welcome-card">
               <h3>🚀 Quick Start</h3>
-              <p>Build your architecture visually, then formalize it with goals & requirements.</p>
+              <p>Build your architecture visually and iterate as you go.</p>
               <ul>
                 <li>✓ Start with C4 architecture (Context → Containers → Components)</li>
                 <li>✓ See your diagram as you build</li>
-                <li>✓ Add goals & requirements at the end</li>
-                <li>✓ Tag requirements to architecture elements</li>
+                {studioScope.builderGoals && <li>✓ Add goals & requirements at the end</li>}
+                {studioScope.builderGoals && <li>✓ Tag requirements to architecture elements</li>}
               </ul>
               <button className="btn-primary" onClick={handleQuickStart}>
                 Start Building
@@ -264,9 +281,11 @@ export function BuilderWizard() {
               <p>Step-by-step wizard following C4 model structure.</p>
               <ul>
                 <li>✓ Follow C4 model (Context → Containers → Components)</li>
-                <li>✓ Add flows and roles</li>
-                <li>✓ Formalize with goals & requirements at the end</li>
-                <li>✓ Complete documentation</li>
+                {studioScope.builderFlows && <li>✓ Add flows and scenarios (optional)</li>}
+                {studioScope.builderRoles && <li>✓ Add roles and views (optional)</li>}
+                {studioScope.builderGoals && (
+                  <li>✓ Formalize with goals & requirements (optional)</li>
+                )}
               </ul>
               <button className="btn-secondary" onClick={handleGuidedMode}>
                 Start Guided Mode
@@ -288,7 +307,7 @@ export function BuilderWizard() {
         steps={steps}
         currentStep={currentStep}
         onStepClick={goToStep}
-        onClose={() => useUIStore.getState().setLeftPaneContent("none")}
+        onClose={() => useUIStore.getState().setActiveEditor(null)}
         extraActions={
           // Simplified: No preview toggle anymore as it's controlled by Layout
           null
@@ -297,24 +316,30 @@ export function BuilderWizard() {
 
       <div className="wizard-content">
         <div className="wizard-main">
-          {currentStep === 0 && (
+          {activeStepId === "context" && (
             <SystemContextStep onNext={nextStep} onBack={prevStep} readOnly={!isEditMode()} />
           )}
-          {currentStep === 1 && (
+          {activeStepId === "containers" && (
             <ContainersStep onNext={nextStep} onBack={prevStep} readOnly={!isEditMode()} />
           )}
-          {currentStep === 2 && (
+          {activeStepId === "components" && (
             <ComponentsStep onBack={prevStep} onFinish={nextStep} readOnly={!isEditMode()} />
           )}
-          {currentStep === 3 && <FlowsStep onBack={prevStep} readOnly={!isEditMode()} />}
-          {currentStep === 4 && <RolesViewsStep onBack={prevStep} readOnly={!isEditMode()} />}
-          {currentStep === 5 && (
+          {studioScope.builderFlows && activeStepId === "flows" && (
+            <FlowsStep onBack={prevStep} onNext={nextStep} readOnly={!isEditMode()} />
+          )}
+          {studioScope.builderRoles && activeStepId === "roles-views" && (
+            <RolesViewsStep onBack={prevStep} onNext={nextStep} readOnly={!isEditMode()} />
+          )}
+          {studioScope.builderGoals && activeStepId === "goals" && (
             <GoalsStep onNext={nextStep} onBack={prevStep} readOnly={!isEditMode()} />
           )}
         </div>
       </div>
 
-      <SharePanel isOpen={showShare} onClose={() => setShowShare(false)} />
+      {studioScope.builderShare && (
+        <SharePanel isOpen={showShare} onClose={() => setShowShare(false)} />
+      )}
     </div>
   );
 }

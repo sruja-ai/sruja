@@ -5,9 +5,10 @@ import { useArchitectureStore, useViewStore, useSelectionStore, useUIStore } fro
 import { useFeatureFlagsStore } from "../../stores/featureFlagsStore";
 import { useNavigationData } from "../../hooks/useNavigationData";
 import { NavTreeItem } from "./NavTreeItem";
-import { QualityScoreCard } from "./QualityScoreCard";
+import { QualityScoreCard } from "../non-core/navigation/QualityScoreCard";
 import "./NavigationPanel.css";
 import type { SrujaModelDump } from "@sruja/shared";
+import { studioScope } from "../../config/studioScope";
 
 interface NavigationPanelProps {
   onClose?: () => void;
@@ -67,7 +68,6 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
         icon: <Plus size={16} />,
         action: () => {
           useUIStore.getState().setBuilderStep("context");
-          useUIStore.getState().setLeftPaneContent("builder");
           useUIStore.getState().setActiveTab("builder");
         },
         secondary: {
@@ -86,7 +86,6 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
         icon: <Database size={16} />,
         action: () => {
           useUIStore.getState().setBuilderStep("containers");
-          useUIStore.getState().setLeftPaneContent("builder");
           useUIStore.getState().setActiveTab("builder");
           // Optionally auto-focus this system in wizard if supported
         },
@@ -100,7 +99,6 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
         icon: <Box size={16} />,
         action: () => {
           useUIStore.getState().setBuilderStep("components");
-          useUIStore.getState().setLeftPaneContent("builder");
           useUIStore.getState().setActiveTab("builder");
         },
       };
@@ -195,7 +193,7 @@ export function NavigationPanel({ onClose }: NavigationPanelProps) {
         </div>
 
         {/* Quality Score Card */}
-        <QualityScoreCard isCollapsed={false} />
+        {studioScope.qualityScoreCard && <QualityScoreCard isCollapsed={false} />}
 
         {/* Systems Tree */}
         <div className="nav-section tree-section">

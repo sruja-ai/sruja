@@ -13,17 +13,11 @@ import type {
   Relationship,
   ParsedView,
   Specification,
-  Requirement,
-  ADR,
-  Policy,
-  Scenario,
-  Flow,
-} from '@sruja/shared';
+} from "@sruja/shared";
 
-import { ElementId } from '../value-objects/ElementId';
-import { ElementRelationship } from '../value-objects/ElementRelationship';
-import { ValidationError, SrujaError } from '@sruja/shared/utils';
-import { ok, err, type Result } from '@sruja/shared/utils/result';
+import { ElementId } from "../value-objects/ElementId";
+import { ValidationError } from "@sruja/shared/utils";
+import { ok, err, type Result } from "@sruja/shared/utils/result";
 
 /**
  * Architecture aggregate root
@@ -46,7 +40,7 @@ export class ArchitectureAggregate {
     try {
       // Validate the dump structure
       if (!dump.elements || !dump.relations) {
-        return err(new ValidationError('Invalid model dump: missing elements or relations'));
+        return err(new ValidationError("Invalid model dump: missing elements or relations"));
       }
 
       // Create value objects for elements
@@ -55,20 +49,28 @@ export class ArchitectureAggregate {
         elements.set(id, element);
       }
 
-      // Create value objects for relationships
-      const relationships: Relationship[] = (dump.relations || []).map(rel => ({
+      // Map relations (FqnRef source/target) to Relationship[] (string source/target)
+      const relations = dump.relations ?? [];
+      const relationships: Relationship[] = relations.map((rel) => ({
         ...rel,
-        source: rel.source,
-        target: rel.target,
+        id: rel.id,
+        source: typeof rel.source === "string" ? rel.source : rel.source.model,
+        target: typeof rel.target === "string" ? rel.target : rel.target.model,
       }));
 
+      const defaultMetadata = {
+        name: "Untitled",
+        version: "1.0.0",
+        generated: new Date().toISOString(),
+        srujaVersion: "1.0.0",
+      } as const;
       const aggregate = new ArchitectureAggregate(
-        dump.metadata || { name: 'Untitled', version: '1.0.0' },
+        dump._metadata ?? defaultMetadata,
         elements,
         relationships,
-        dump.views || {},
+        dump.views ?? {},
         dump.specification,
-        dump.extensions
+        dump.sruja
       );
 
       // Validate business rules
@@ -81,7 +83,7 @@ export class ArchitectureAggregate {
     } catch (error) {
       return err(
         new ValidationError(
-          `Failed to create architecture aggregate: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to create architecture aggregate: ${error instanceof Error ? error.message : "Unknown error"}`
         )
       );
     }
@@ -90,26 +92,40 @@ export class ArchitectureAggregate {
   /**
    * Creates a new empty ArchitectureAggregate
    */
-  static createEmpty(name: string = 'Untitled'): Result<ArchitectureAggregate, ValidationError> {
+  static createEmpty(name: string = "Untitled"): Result<ArchitectureAggregate, ValidationError> {
     const metadata = {
       name,
-      version: '1.0.0',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+      version: "1.0.0",
+      generated: new Date().toISOString(),
+      srujaVersion: "1.0.0",
+    } as const;
 
     const aggregate = new ArchitectureAggregate(metadata, new Map(), [], {}, undefined, undefined);
     return ok(aggregate);
   }
 
+  public readonly metadata: SrujaModelDump["_metadata"];
+  private readonly elements: Map<string, Element>;
+  private readonly relationships: Relationship[];
+  private readonly views: Record<string, ParsedView>;
+  public readonly specification?: Specification;
+  public readonly sruja?: SrujaModelDump["sruja"];
+
   private constructor(
-    public readonly metadata: SrujaModelDump['metadata'],
-    private readonly elements: Map<string, Element>,
-    private readonly relationships: Relationship[],
-    private readonly views: Record<string, ParsedView>,
-    public readonly specification?: Specification,
-    public readonly extensions?: SrujaModelDump['extensions']
-  ) {}
+    metadata: SrujaModelDump["_metadata"],
+    elements: Map<string, Element>,
+    relationships: Relationship[],
+    views: Record<string, ParsedView>,
+    specification?: Specification,
+    sruja?: SrujaModelDump["sruja"]
+  ) {
+    this.metadata = metadata;
+    this.elements = elements;
+    this.relationships = relationships;
+    this.views = views;
+    this.specification = specification;
+    this.sruja = sruja;
+  }
 
   // =========================================================================
   // Element Operations
@@ -134,15 +150,15 @@ export class ArchitectureAggregate {
     }
 
     // Validate element structure
-    if (!element.name || element.name.trim() === '') {
-      return err(new ValidationError('Element name cannot be empty'));
+    if (!element.title || element.title.trim() === "") {
+      return err(new ValidationError("Element title cannot be empty"));
     }
 
     // Create new elements map (immutable)
     const newElements = new Map(this.elements);
     newElements.set(element.id, element);
 
-    return this.clone({ elements: newElements });
+    return ok(this.clone({ elements: newElements }));
   }
 
   /**
@@ -152,7 +168,10 @@ export class ArchitectureAggregate {
    * @param updates - Partial updates to apply
    * @returns Result containing new aggregate or validation error
    */
-  updateElement(id: string, updates: Partial<Element>): Result<ArchitectureAggregate, ValidationError> {
+  updateElement(
+    id: string,
+    updates: Partial<Element>
+  ): Result<ArchitectureAggregate, ValidationError> {
     const element = this.elements.get(id);
     if (!element) {
       return err(new ValidationError(`Element with ID '${id}' not found`));
@@ -165,15 +184,15 @@ export class ArchitectureAggregate {
       id, // ID cannot be changed
     };
 
-    // Validate name if updated
-    if (updates.name !== undefined && updates.name.trim() === '') {
-      return err(new ValidationError('Element name cannot be empty'));
+    // Validate title if updated
+    if (updates.title !== undefined && updates.title.trim() === "") {
+      return err(new ValidationError("Element title cannot be empty"));
     }
 
     const newElements = new Map(this.elements);
     newElements.set(id, updatedElement);
 
-    return this.clone({ elements: newElements });
+    return ok(this.clone({ elements: newElements }));
   }
 
   /**
@@ -194,13 +213,15 @@ export class ArchitectureAggregate {
 
     // Remove all relationships connected to this element
     const newRelationships = this.relationships.filter(
-      rel => rel.source !== id && rel.target !== id
+      (rel) => rel.source !== id && rel.target !== id
     );
 
-    return this.clone({
-      elements: newElements,
-      relationships: newRelationships,
-    });
+    return ok(
+      this.clone({
+        elements: newElements,
+        relationships: newRelationships,
+      })
+    );
   }
 
   /**
@@ -229,7 +250,7 @@ export class ArchitectureAggregate {
    * @returns Array of matching elements
    */
   findElementsByKind(kind: string): Element[] {
-    return this.getAllElements().filter(el => el.kind === kind);
+    return this.getAllElements().filter((el) => el.kind === kind);
   }
 
   /**
@@ -239,9 +260,7 @@ export class ArchitectureAggregate {
    * @returns Array of matching elements
    */
   findElementsByTag(tag: string): Element[] {
-    return this.getAllElements().filter(el =>
-      el.tags && el.tags.includes(tag)
-    );
+    return this.getAllElements().filter((el) => el.tags && el.tags.includes(tag));
   }
 
   // =========================================================================
@@ -259,7 +278,7 @@ export class ArchitectureAggregate {
   addRelationship(
     sourceId: string,
     targetId: string,
-    relationship: Omit<Relationship, 'source' | 'target'>
+    relationship: Omit<Relationship, "source" | "target">
   ): Result<ArchitectureAggregate, ValidationError> {
     // Validate both elements exist
     if (!this.elements.has(sourceId)) {
@@ -271,15 +290,17 @@ export class ArchitectureAggregate {
 
     // Prevent self-relationships
     if (sourceId === targetId) {
-      return err(new ValidationError('Cannot create relationship between element and itself'));
+      return err(new ValidationError("Cannot create relationship between element and itself"));
     }
 
     // Check for duplicate relationship
     const duplicateExists = this.relationships.some(
-      rel => rel.source === sourceId && rel.target === targetId
+      (rel) => rel.source === sourceId && rel.target === targetId
     );
     if (duplicateExists) {
-      return err(new ValidationError(`Relationship already exists between '${sourceId}' and '${targetId}'`));
+      return err(
+        new ValidationError(`Relationship already exists between '${sourceId}' and '${targetId}'`)
+      );
     }
 
     const newRelationship: Relationship = {
@@ -289,7 +310,7 @@ export class ArchitectureAggregate {
     };
 
     const newRelationships = [...this.relationships, newRelationship];
-    return this.clone({ relationships: newRelationships });
+    return ok(this.clone({ relationships: newRelationships }));
   }
 
   /**
@@ -306,11 +327,13 @@ export class ArchitectureAggregate {
     updates: Partial<Relationship>
   ): Result<ArchitectureAggregate, ValidationError> {
     const index = this.relationships.findIndex(
-      rel => rel.source === sourceId && rel.target === targetId
+      (rel) => rel.source === sourceId && rel.target === targetId
     );
 
     if (index === -1) {
-      return err(new ValidationError(`Relationship not found between '${sourceId}' and '${targetId}'`));
+      return err(
+        new ValidationError(`Relationship not found between '${sourceId}' and '${targetId}'`)
+      );
     }
 
     const existing = this.relationships[index];
@@ -324,7 +347,7 @@ export class ArchitectureAggregate {
     const newRelationships = [...this.relationships];
     newRelationships[index] = updated;
 
-    return this.clone({ relationships: newRelationships });
+    return ok(this.clone({ relationships: newRelationships }));
   }
 
   /**
@@ -334,20 +357,25 @@ export class ArchitectureAggregate {
    * @param targetId - Target element ID
    * @returns Result containing new aggregate or validation error
    */
-  removeRelationship(sourceId: string, targetId: string): Result<ArchitectureAggregate, ValidationError> {
+  removeRelationship(
+    sourceId: string,
+    targetId: string
+  ): Result<ArchitectureAggregate, ValidationError> {
     const index = this.relationships.findIndex(
-      rel => rel.source === sourceId && rel.target === targetId
+      (rel) => rel.source === sourceId && rel.target === targetId
     );
 
     if (index === -1) {
-      return err(new ValidationError(`Relationship not found between '${sourceId}' and '${targetId}'`));
+      return err(
+        new ValidationError(`Relationship not found between '${sourceId}' and '${targetId}'`)
+      );
     }
 
     const newRelationships = this.relationships.filter(
-      rel => !(rel.source === sourceId && rel.target === targetId)
+      (rel) => !(rel.source === sourceId && rel.target === targetId)
     );
 
-    return this.clone({ relationships: newRelationships });
+    return ok(this.clone({ relationships: newRelationships }));
   }
 
   /**
@@ -366,9 +394,7 @@ export class ArchitectureAggregate {
    * @returns Array of relationships where the element is source or target
    */
   getRelationshipsForElement(elementId: string): Relationship[] {
-    return this.relationships.filter(
-      rel => rel.source === elementId || rel.target === elementId
-    );
+    return this.relationships.filter((rel) => rel.source === elementId || rel.target === elementId);
   }
 
   /**
@@ -378,7 +404,7 @@ export class ArchitectureAggregate {
    * @returns Array of upstream relationships
    */
   getUpstreamRelationships(elementId: string): Relationship[] {
-    return this.relationships.filter(rel => rel.target === elementId);
+    return this.relationships.filter((rel) => rel.target === elementId);
   }
 
   /**
@@ -388,7 +414,7 @@ export class ArchitectureAggregate {
    * @returns Array of downstream relationships
    */
   getDownstreamRelationships(elementId: string): Relationship[] {
-    return this.relationships.filter(rel => rel.source === elementId);
+    return this.relationships.filter((rel) => rel.source === elementId);
   }
 
   // =========================================================================
@@ -405,12 +431,16 @@ export class ArchitectureAggregate {
     for (const rel of this.relationships) {
       if (!this.elements.has(rel.source)) {
         return err(
-          new ValidationError(`Relationship references non-existent source element: '${rel.source}'`)
+          new ValidationError(
+            `Relationship references non-existent source element: '${rel.source}'`
+          )
         );
       }
       if (!this.elements.has(rel.target)) {
         return err(
-          new ValidationError(`Relationship references non-existent target element: '${rel.target}'`)
+          new ValidationError(
+            `Relationship references non-existent target element: '${rel.target}'`
+          )
         );
       }
     }
@@ -419,7 +449,9 @@ export class ArchitectureAggregate {
     const cycles = this.detectCycles();
     if (cycles.length > 0) {
       return err(
-        new ValidationError(`Cyclic dependencies detected: ${cycles.map(c => c.join(' -> ')).join(', ')}`)
+        new ValidationError(
+          `Cyclic dependencies detected: ${cycles.map((c) => c.join(" -> ")).join(", ")}`
+        )
       );
     }
 
@@ -479,8 +511,8 @@ export class ArchitectureAggregate {
    */
   findOrphanElements(): string[] {
     return this.getAllElements()
-      .filter(el => this.getRelationshipsForElement(el.id).length === 0)
-      .map(el => el.id);
+      .filter((el) => this.getRelationshipsForElement(el.id).length === 0)
+      .map((el) => el.id);
   }
 
   // =========================================================================
@@ -496,7 +528,7 @@ export class ArchitectureAggregate {
    */
   setView(name: string, view: ParsedView): Result<ArchitectureAggregate, ValidationError> {
     const newViews = { ...this.views, [name]: view };
-    return this.clone({ views: newViews });
+    return ok(this.clone({ views: newViews }));
   }
 
   /**
@@ -512,7 +544,7 @@ export class ArchitectureAggregate {
 
     const newViews = { ...this.views };
     delete newViews[name];
-    return this.clone({ views: newViews });
+    return ok(this.clone({ views: newViews }));
   }
 
   /**
@@ -549,13 +581,19 @@ export class ArchitectureAggregate {
       elements[id] = element;
     }
 
+    const relations = this.relationships.map((rel) => ({
+      ...rel,
+      source: { model: rel.source },
+      target: { model: rel.target },
+    }));
+
     return {
       elements,
-      relations: this.relationships,
+      relations,
       views: this.views,
-      metadata: this.metadata,
+      _metadata: this.metadata,
       specification: this.specification,
-      extensions: this.extensions,
+      sruja: this.sruja,
     };
   }
 
@@ -570,18 +608,20 @@ export class ArchitectureAggregate {
    * @param updates - Fields to update
    * @returns New aggregate instance
    */
-  private clone(updates: Partial<{
-    elements: Map<string, Element>;
-    relationships: Relationship[];
-    views: Record<string, ParsedView>;
-  }>): ArchitectureAggregate {
+  private clone(
+    updates: Partial<{
+      elements: Map<string, Element>;
+      relationships: Relationship[];
+      views: Record<string, ParsedView>;
+    }>
+  ): ArchitectureAggregate {
     return new ArchitectureAggregate(
       this.metadata,
       updates.elements ?? this.elements,
       updates.relationships ?? this.relationships,
       updates.views ?? this.views,
       this.specification,
-      this.extensions
+      this.sruja
     );
   }
 }

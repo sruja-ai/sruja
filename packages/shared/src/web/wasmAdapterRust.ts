@@ -37,6 +37,14 @@ type RustWasmModule = {
   sruja_model_to_dsl: (modelJson: string) => string;
   sruja_get_diagnostics: (dsl: string, filename?: string) => string;
   sruja_calculate_architecture_score: (dsl: string) => string;
+  sruja_incremental_parse: (
+    dsl: string,
+    changeStart: number,
+    changeEnd: number,
+    existingAstJson: string,
+    contextLines: number,
+    filename?: string
+  ) => string;
 };
 
 function normalizeDotKind(kind: string): DotElement["kind"] {
@@ -68,7 +76,6 @@ function defaultSizeForKind(kind: DotElement["kind"]): { width: number; height: 
       return { width: 200, height: 120 };
   }
 }
-
 
 async function dynamicImportRustWasm(jsUrl: string): Promise<RustWasmModule> {
   try {
@@ -176,12 +183,19 @@ export async function initRustWasm(options?: { base?: string }): Promise<WasmApi
     ) => {
       // Use the new function that returns both DOT and projected relations
       const nodeSizesJson = nodeSizes ? JSON.stringify(nodeSizes) : undefined;
-      
+
       // Check if the new function exists, fallback to old function if not
       let resultJson: string;
       if (typeof mod.sruja_dsl_to_dot_with_relations === "function") {
         resultJson = wrapRustCall(() =>
-          mod.sruja_dsl_to_dot_with_relations(dsl, viewLevel, focusNodeId, nodeSizesJson, viewId, filename)
+          mod.sruja_dsl_to_dot_with_relations(
+            dsl,
+            viewLevel,
+            focusNodeId,
+            nodeSizesJson,
+            viewId,
+            filename
+          )
         );
       } else {
         // Fallback: use old function and build from model (for backward compatibility)
@@ -219,7 +233,7 @@ export async function initRustWasm(options?: { base?: string }): Promise<WasmApi
         }));
         return { dot, elements, relations };
       }
-      
+
       const parsed = JSON.parse(resultJson) as {
         dot: string;
         elements: Record<
@@ -239,7 +253,7 @@ export async function initRustWasm(options?: { base?: string }): Promise<WasmApi
           label?: string | null;
         }>;
       };
-      
+
       // Debug logging
       logger.debug("DOT export result", {
         component: "wasm",
@@ -249,7 +263,7 @@ export async function initRustWasm(options?: { base?: string }): Promise<WasmApi
         relationsCount: parsed.relations?.length || 0,
         sampleRelations: parsed.relations?.slice(0, 3),
       });
-      
+
       // Build elements from projected elements (these match the DOT output)
       const elements: DotElement[] = Object.values(parsed.elements || {}).map((e) => {
         const kind = normalizeDotKind(e.kind);
@@ -265,15 +279,34 @@ export async function initRustWasm(options?: { base?: string }): Promise<WasmApi
           height,
         };
       });
-      
+
       // Use projected relations from the DOT exporter (these match the projected elements)
       const relations: DotRelation[] = (parsed.relations || []).map((r) => ({
         from: r.from,
         to: r.to,
         label: r.label ?? undefined,
       }));
-      
+
       return { dot: parsed.dot, elements, relations };
+    },
+    incrementalParse: async (
+      dsl: string,
+      changeStart: number,
+      changeEnd: number,
+      existingAstJson: string,
+      contextLines: number,
+      filename?: string
+    ) => {
+      return wrapRustCall(() =>
+        mod.sruja_incremental_parse(
+          dsl,
+          changeStart,
+          changeEnd,
+          existingAstJson,
+          contextLines,
+          filename
+        )
+      );
     },
     calculateArchitectureScore: async (dsl: string) => {
       const raw = wrapRustCall(() => mod.sruja_calculate_architecture_score(dsl));
