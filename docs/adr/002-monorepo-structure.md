@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded. The repo is no longer a monorepo: there is no root `package.json`, no `apps/` or `packages/` layout. The VS Code extension lives at **`extension/`**; Rust crates remain in **`crates/`**.
 
 ## Context
 

@@ -94,7 +94,7 @@ include_dir = "0.7"  ✅ Present
 
 ### ✅ 5. VS Code Extension Verification
 
-**File:** `apps/vscode-extension/src/extension.ts`
+**File:** `extension/src/extension.ts`
 
 **Changes Verified:**
 
@@ -108,7 +108,7 @@ include_dir = "0.7"  ✅ Present
 **Compilation Result:**
 
 ```bash
-cd apps/vscode-extension && npm run compile
+cd extension && npm run compile
 > Output: (no errors) ✅
 ```
 

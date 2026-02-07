@@ -6,7 +6,7 @@ Sruja is an **architecture-as-code tool for the AI SDLC process**—not a diagra
 2. **CLI** (`sruja-cli`) – validate, export, run from terminal
 3. **WASM** (`sruja-wasm`) – browser/Node export and parsing
 4. **mdBook** (`book/`) – **this is the website** (no separate Astro/React site)
-5. **VS Code extension** (`apps/vscode-extension`) – edit, preview, LSP
+5. **VS Code extension** (`extension/`) – edit, preview, LSP
 
 Nothing else is in scope (no designer app, no storybook, no social-publish, no separate website app).
 
@@ -24,7 +24,7 @@ Nothing else is in scope (no designer app, no storybook, no social-publish, no s
 | **crates/sruja-lsp** | LSP server (used by VS Code extension) |
 | **crates/sruja-engine** | Validation rules (if CLI/extension use them; otherwise can be removed or slimmed) |
 | **book/** | mdBook source; build output = deployed website |
-| **apps/vscode-extension** | VS Code extension (preview, LSP, snippets) |
+| **extension/** | VS Code extension (preview, LSP, snippets) |
 | **packages/shared** | Minimal: only what the VS Code extension needs (Node WASM adapter, types, utils). No browser/React. |
 | **packages/eslint-config** | Lint config for the extension (and any remaining TS). |
 | **packages/tsconfig** | Base TS configs. |
@@ -40,7 +40,7 @@ Nothing else is in scope (no designer app, no storybook, no social-publish, no s
 | **apps/storybook** | Remove if present. |
 | **apps/social-publish** | Remove if present. |
 | **packages/shared** | Slim: drop browser-only paths (e.g. `web/wasmAdapter.ts` if only extension uses Node adapter), PostHog/analytics if not used, heavy unused exports. Keep Node WASM adapter, LSP shim, types/utils used by extension. |
-| **Root package.json workspaces** | Change to `["apps/vscode-extension", "packages/shared", "packages/eslint-config"]` (drop ui and any removed apps). |
+| **Root package.json** | Not used; npm is only used in `extension/`. |
 | **Turbo / build scripts** | Adjust so `build` only builds shared + extension; no website/ui/storybook targets. |
 | **sruja-engine** | Keep if CLI or extension run validation; else remove and have CLI only parse/export. |
 

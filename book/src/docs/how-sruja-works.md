@@ -76,7 +76,7 @@ Sruja = system "Sruja Platform" {
 
 	VSCode = container "VS Code Extension" {
 		technology "TypeScript"
-		description "Editor extension (apps/vscode-extension)"
+		description "Editor extension (extension/)"
 	}
 
 	Book = container "Documentation" {

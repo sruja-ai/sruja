@@ -31,7 +31,7 @@ runs:
     - name: Cache Rust
       uses: Swatinem/rust-cache@v2
       with:
-        workspace: ${{ inputs.working-directory }}
+        workspaces: ${{ inputs.working-directory }}
     - name: Build Sruja CLI
       shell: bash
       run: cargo build --release -p sruja-cli

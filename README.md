@@ -149,13 +149,7 @@ sruja/
 │   ├── sruja-core/       # Core parsing and validation engine
 │   ├── sruja-wasm/       # WebAssembly bindings
 │   └── sruja-lsp/        # Language Server Protocol
-├── apps/                 # Frontend applications
-│   ├── designer/         # 🎨 Interactive visual designer
-│   ├── website/          # Documentation site
-│   └── vscode-extension/ # VS Code support
-├── packages/             # TypeScript packages
-│   ├── shared/           # Shared utilities
-│   └── ui/               # UI components
+├── extension/            # VS Code extension (preview, LSP, snippets)
 └── examples/             # Example .sruja files
 ```
 

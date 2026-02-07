@@ -230,7 +230,7 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 - 1st-year CS students productive in 10 minutes
 - Progressive disclosure (simple → advanced)
 - Rich error messages guide users
-- VS Code extension with full LSP support (autocomplete, go-to-definition, rename, find references, and more) - see [VS Code Extension Guide](docs/vscode-extension)
+- VS Code extension with full LSP support (autocomplete, go-to-definition, rename, find references, and more) - see [VS Code Extension Guide](vscode)
 
 ### "We don't have compliance requirements"
 

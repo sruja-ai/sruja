@@ -44,7 +44,7 @@ sruja init my-project
 
 ### 3. VS Code Extension Integration
 
-Modified `apps/vscode-extension/src/extension.ts`:
+Modified `extension/src/extension.ts`:
 
 - Added `ensureAiIntegrationFiles()` function
 - Files are installed on first `.sruja` file open/save in workspace
@@ -68,7 +68,7 @@ Modified `apps/vscode-extension/src/extension.ts`:
 
 ### VS Code Extension
 
-- **Embedded content:** `apps/vscode-extension/src/extension.ts`
+- **Embedded content:** `extension/src/extension.ts`
   - Files embedded directly in `ensureAiIntegrationFiles()` function
 
 ### Documentation

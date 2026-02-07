@@ -66,6 +66,11 @@ docs/architecture/*.json
 docs/architecture/*.png
 docs/architecture/*.svg
 
+# mdbook: build output; Mermaid assets (run make book-deps to get mermaid.min.js)
+book/book/
+book/mermaid.min.js
+book/mermaid-init.js
+
 # Playwright MCP
 .playwright-mcp/
 

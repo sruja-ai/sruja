@@ -344,10 +344,9 @@ sruja/
 │       │   └── .architecture-skill.md
 │       └── src/
 │           └── commands.rs                # Auto-installs files on init
-└── apps/
-    └── vscode-extension/
-        └── src/
-            └── extension.ts               # Auto-installs files on open/save
+└── extension/
+    └── src/
+        └── extension.ts                   # Auto-installs files on open/save
 ```
 
 ---
