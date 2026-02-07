@@ -29,7 +29,7 @@ runs:
       with:
         components: ""
     - name: Cache Rust
-      uses: swatinem/rust-cache@2
+      uses: Swatinem/rust-cache@v2
       with:
         workspace: ${{ inputs.working-directory }}
     - name: Build Sruja CLI

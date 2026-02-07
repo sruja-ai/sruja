@@ -46,6 +46,15 @@ db = datastore "Database" {
 
 After generating, run: `sruja lint file.sruja`.
 
+## AI code editor: check after every iteration
+
+After **every** code iteration (each time you apply an edit to a `.sruja` file):
+
+1. **Run validation in the editor** – Invoke **Sruja: Run validation (check after AI/edit)** so the editor runs `sruja lint` on the current file and shows diagnostics. This ensures the file stays valid and per standards defined in the project’s .sruja files.
+2. **Or save the file** – Saving also triggers validation (debounced on type). For immediate feedback after an AI edit, prefer running the command.
+
+Do not skip validation between iterations; catch errors before the next edit.
+
 ## Advanced architecture guidance
 
 For patterns, trade-offs, and anti-patterns (e.g. monolith vs microservices, event-driven):

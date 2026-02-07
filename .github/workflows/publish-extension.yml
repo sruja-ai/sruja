@@ -1,0 +1,48 @@
+# Publish VS Code extension to Open VSX Registry (open-vsx.org).
+# Uses org/repo secret: OPEN_VSX_TOKEN (Personal Access Token from open-vsx.org).
+name: Publish extension to Open VSX
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build and publish to Open VSX
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set extension version from release tag
+        if: github.event_name == 'release'
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#v}"
+          cd extension && npm pkg set version="$VERSION"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install extension dependencies
+        run: |
+          cd extension
+          npm install
+
+      - name: Compile extension
+        run: npm run compile
+        working-directory: extension
+
+      - name: Package VSIX
+        run: npx --yes @vscode/vsce package --no-dependencies
+        working-directory: extension
+
+      - name: Publish to Open VSX Registry
+        run: npx --yes ovsx publish extension/*.vsix --pat "$OPEN_VSX_TOKEN"
+        env:
+          OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}

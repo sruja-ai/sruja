@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, simplify]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, simplify]
 
 permissions:
   contents: read
@@ -14,163 +14,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  detect-changes:
-    name: Detect Changed Files
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      typescript: ${{ steps.filter.outputs.typescript }}
-      examples: ${{ steps.filter.outputs.examples }}
-      website: ${{ steps.filter.outputs.website }}
-    steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          fetch-depth: 0
-      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
-        id: filter
-        with:
-          filters: |
-            typescript:
-              - 'apps/**'
-              - 'packages/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'tsconfig.json'
-            examples:
-              - 'examples/**'
-            website:
-              - 'apps/website/**'
-              - 'packages/shared/**'
-              - 'packages/ui/**'
-
-  typescript-lint:
-    name: Lint TypeScript/JavaScript
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: detect-changes
-    if: needs.detect-changes.outputs.typescript == 'true'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-node
-
-      - name: Run ESLint
-        run: npm run lint
-
-      - name: Run Astro Check
-        run: npm run typecheck --workspace=apps/website
-
-  typescript-test:
-    name: Test TypeScript/JavaScript
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: detect-changes
-    if: needs.detect-changes.outputs.typescript == 'true'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-node
-
-      - name: Run tests with coverage
-        run: npm run test:coverage
-        continue-on-error: true
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
-        with:
-          files: |
-            packages/shared/coverage/lcov.info
-            packages/ui/coverage/lcov.info
-          flags: typescript
-          name: typescript-coverage
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-  test-e2e:
-    name: E2E Tests
+  rust:
+    name: Rust build, test, format, lint
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: detect-changes
-    if: needs.detect-changes.outputs.website == 'true'
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Set up Node.js
-        # Security: Using commit SHA - Get from https://github.com/actions/setup-node/releases (v4.1.0)
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
-          node-version: "24"
-          cache: "npm"
+          components: clippy
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release
+      - name: Test
+        run: cargo test
+      - name: Format (code per standards in .sruja)
+        run: cargo fmt -- --check
+      - name: Lint
+        run: cargo clippy -- -D warnings
 
-      - name: Install dependencies
-        run: npm ci
-        env:
-          HUSKY: 0
-
-      - name: Build shared packages
-        run: npm run build --workspace=packages/shared --workspace=packages/ui
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('apps/website/package-lock.json') }}
-
-      - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-        working-directory: apps/website
-
-      - name: Build website
-        run: npm run build
-        working-directory: apps/website
-
-      - name: Verify build output
-        run: |
-          if [ ! -d "dist" ]; then
-            echo "::error::Build output directory 'dist' not found!"
-            exit 1
-          fi
-          echo "Build output verified: $(du -sh dist | cut -f1)"
-        working-directory: apps/website
-
-      - name: Run E2E tests
-        run: npm run test:e2e
-        working-directory: apps/website
-        env:
-          CI: true
-          PLAYWRIGHT_BASE_URL: "http://localhost:4321"
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: playwright-report
-          path: apps/website/playwright-report/
-          retention-days: 30
-
-  build-examples:
-    name: Build Examples
+  sruja-files:
+    name: Sruja files (lint)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [detect-changes]
-    if: needs.detect-changes.outputs.examples == 'true'
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Validate Sruja examples
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Validate all .sruja files
         uses: ./.github/actions/sruja-validate
         with:
           working-directory: .
-          files: "examples/**/*.sruja"
+          files: "**/*.sruja"

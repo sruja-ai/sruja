@@ -24,7 +24,7 @@ Workflow = system "Development Workflow" {
 
   // Local Development
   Local = container "Local Development" {
-    technology "Go, Node.js, npm"
+    technology "Rust, Node.js, npm"
     description "Developer's local environment"
 
     GitHooks = component "Git Hooks" {
@@ -34,12 +34,12 @@ Workflow = system "Development Workflow" {
 
     LocalBuild = component "Local Build" {
       description "Building locally before commit"
-      technology "Make, npm, Go"
+      technology "cargo, npm"
     }
 
     LocalTests = component "Local Tests" {
       description "Running tests locally"
-      technology "Go test, Vitest"
+      technology "cargo test, Vitest"
     }
   }
 
@@ -61,7 +61,7 @@ Workflow = system "Development Workflow" {
 
     SecurityScan = component "Security Scanning" {
       description "Security vulnerability scanning"
-      technology "Gosec, npm audit, TruffleHog"
+      technology "cargo audit, npm audit, TruffleHog"
     }
 
     BuildCheck = component "Build Check" {
@@ -114,18 +114,18 @@ Workflow = system "Development Workflow" {
 
   // Testing Infrastructure
   Testing = container "Testing Infrastructure" {
-    technology "Go, Vitest, Playwright"
+    technology "Rust, Vitest, Playwright"
     description "Testing tools and infrastructure"
     tags ["testing"]
 
     UnitTests = component "Unit Tests" {
-      description "Go and TypeScript unit tests"
-      technology "Go test, Vitest"
+      description "Rust and TypeScript unit tests"
+      technology "cargo test, Vitest"
     }
 
     IntegrationTests = component "Integration Tests" {
       description "End-to-end integration tests"
-      technology "Playwright, Go"
+      technology "Playwright"
     }
 
     PropertyTests = component "Property-Based Tests" {
@@ -134,15 +134,15 @@ Workflow = system "Development Workflow" {
     }
 
     ExampleTests = component "Example Tests" {
-      description "Validates example .sruja files compile"
-      technology "Go, sruja compile"
+      description "Validates example .sruja files"
+      technology "cargo, sruja-cli"
     }
   }
 }
 
 // Relationships
 Workflow.Local -> Workflow.CICD "Pushes to"
-Workflow.CICD.GoTests -> Workflow.Testing.UnitTests "Uses"
+Workflow.CICD.RustTests -> Workflow.Testing.UnitTests "Uses"
 Workflow.CICD.TSTests -> Workflow.Testing.UnitTests "Uses"
 Workflow.CICD.TSTests -> Workflow.Testing.IntegrationTests "Uses"
 

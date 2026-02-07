@@ -14,18 +14,19 @@ This step-by-step guide walks you through making your first contribution, even i
 - 🐛 **Find Issues**: [Good First Issues](https://github.com/sruja-ai/sruja/labels/good%20first%20issue)
 - 📖 **Development Guide**: [Development Practices](DEVELOPMENT.md)
 - 📝 **Content Guide**: [Content Contribution Guide](CONTENT_CONTRIBUTION_GUIDE.md)
-- 📐 **Simplification direction**: [Mermaid + GitHub CI focus](SIMPLIFY-STRATEGY.md) — we are simplifying diagram rendering (Mermaid-only) and focusing on GitHub CI; good to know when contributing to diagram or CI areas.
+- 📐 **Stack**: Rust (CLI, LSP, engine, export), mdBook (docs). VS Code extension connects to the Rust LSP.
 - 💬 **Get Help**: [Discord](https://discord.gg/VNrvHPV5) | [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
 
 ## Project Overview
 
-Sruja is a monorepo containing:
+Sruja is a Rust-focused repo containing:
 
-- **Language and CLI**: Rust (parser, validator, export; CLI via `crates/sruja-cli`)
-- **Website**: Astro-based with TypeScript/React
-- **Designer**: Diagram designer (simplifying to Mermaid-based rendering; see [SIMPLIFY-STRATEGY.md](SIMPLIFY-STRATEGY.md))
-- **VS Code Extension**: Language support
-- **Examples**: Real-world architecture examples
+- **Language and CLI**: Parser, validator, export; CLI via `crates/sruja-cli`
+- **LSP**: `crates/sruja-lsp` – Language Server (for future VS Code extension integration)
+- **Book**: mdBook documentation in `book/`
+- **Examples**: Real-world architecture examples in `examples/`
+
+The **VS Code extension** will be reimplemented to integrate with the Rust LSP (diagnostics, syntax highlighting, symbol navigation, go to definition, markdown export). No Node/TypeScript app code remains.
 
 ### ⚠️ Important: Deployment Repositories
 
@@ -51,13 +52,13 @@ The deployment repositories will be automatically updated when your changes are 
 
 ### Prerequisites
 
-- **Rust** (stable; CI uses Rust for CLI and WASM)
+- **Rust** (stable)
 - **Git**
-- **Node.js 18+** (for website and TypeScript packages)
 
 Optional:
 
 - `wasm-opt` (optimizes WASM artifacts)
+- `wasm-pack` (for `make wasm` / `make wasm-nodejs`)
 
 ### Quick Setup
 
@@ -102,68 +103,13 @@ For more details, see [Development Guide](DEVELOPMENT.md).
 
 Sruja includes specialized developer tools located in the `dev-tools/` directory. These are **dev-only tools** not used in production.
 
-### Diagram Quality Tools
+### Diagram and export
 
-Located in `dev-tools/diagram-quality/`, these tools help improve the layout quality of generated architecture diagrams.
-
-**Available tools:**
-
-- `improve-diagram-quality.sh` - Bash script for iterative diagram quality improvement
-- `improve-iteratively.ts` - TypeScript automation for quality measurement workflows
-
-**Usage:**
+Diagram export is handled by the Rust crate `sruja-export` (Mermaid, etc.). To test changes:
 
 ```bash
-# Run quality improvement tests
-./dev-tools/diagram-quality/improve-diagram-quality.sh
-
-# or using TypeScript automation
-cd apps/designer
-npx tsx ../../dev-tools/diagram-quality/improve-iteratively.ts
-```
-
-**When to use:**
-
-- After modifying DOT generation logic in `pkg/export/dot/`
-- When adding new Graphviz constraints
-- To verify layout quality hasn't regressed
-- During development of layout improvements
-
-**Quality Metrics:**
-Quality metrics are **dev-only features**:
-
-- Visible in development environment (`import.meta.env.DEV`)
-- Hidden in production builds (tree-shaken out)
-- Shows quality score card in UI (dev only)
-- Exposes metrics to `window.__DIAGRAM_QUALITY__` for testing
-
-**Learn more:** See [`dev-tools/README.md`](../dev-tools/README.md) for detailed documentation.
-
-### Dev-Only Code Patterns
-
-When writing code that should only run in development:
-
-**TypeScript/React:**
-
-```typescript
-// Hide UI components in production
-if (import.meta.env.DEV) {
-  // Dev-only component
-}
-
-// Skip expensive calculations in production
-if (import.meta.env.DEV) {
-  const quality = measureQuality(layout);
-}
-```
-
-**Window globals (for testing only):**
-
-```typescript
-// Only expose to window in dev
-if (import.meta.env.DEV) {
-  window.__DIAGRAM_QUALITY__ = qualityMetrics;
-}
+cargo build --release -p sruja-cli
+./target/release/sruja export mermaid path/to/file.sruja
 ```
 
 **Important:** Do not use `window.__*__` globals in production code. These are for E2E testing only.
@@ -248,7 +194,7 @@ Optional scope: `feat(language): …`
 - Avoid breaking public APIs; document changes clearly when necessary
 - Maintain meaningful test coverage
 - Explicit error handling; avoid panics in library code
-- Keep dependencies minimal; pin where appropriate (Cargo.lock for Rust, package-lock.json for Node)
+- Keep dependencies minimal; pin where appropriate (Cargo.lock for Rust)
 - Follow the **[Design Philosophy](DESIGN_PHILOSOPHY.md)** when proposing language changes.
 
 ## Ways to Contribute
@@ -318,16 +264,11 @@ You can start working on these right away! Open a draft PR to show what you're w
 
 ## Contributing Content
 
-To add content to the Sruja website (courses, tutorials, blog posts, etc.), see:
+To add or edit docs, courses, and tutorials (mdBook in `book/`), see:
 
 **📖 [Content Contribution Guide](CONTENT_CONTRIBUTION_GUIDE.md)**
 
-This guide covers:
-
-- Creating courses, tutorials, blogs, and docs
-- Content structure and best practices
-- Validation and workflow
-- Troubleshooting
+Covers content structure, validation, and workflow.
 
 ## Reporting Issues
 

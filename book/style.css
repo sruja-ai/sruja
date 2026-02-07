@@ -1,0 +1,182 @@
+/* Sruja docs – custom overrides for a polished docs-site look */
+
+/* ---- Typography & layout ---- */
+:root {
+    --content-max-width: 820px;
+    --page-padding: 24px;
+    --sidebar-target-width: 280px;
+    --menu-bar-height: 56px;
+}
+
+/* System font stack: readable and fast */
+html {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Content area: comfortable reading */
+.content {
+    line-height: 1.7;
+    font-size: 1.6rem;
+}
+
+.content h1 {
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-block-end: 0.5em;
+    padding-block-end: 0.4em;
+    border-block-end: 2px solid var(--table-border-color);
+}
+
+.content h2 {
+    font-size: 1.85rem;
+    font-weight: 600;
+    margin-block-start: 2.2em;
+    margin-block-end: 0.6em;
+}
+
+.content h3 {
+    font-size: 1.45rem;
+    font-weight: 600;
+    margin-block-start: 2em;
+}
+
+.content p {
+    margin-block-end: 1.2em;
+}
+
+/* ---- Light theme: warm, clean docs feel ---- */
+.light {
+    --bg: hsl(36, 20%, 98%);
+    --fg: hsl(220, 15%, 18%);
+    --sidebar-bg: hsl(36, 15%, 96%);
+    --sidebar-fg: hsl(220, 12%, 28%);
+    --sidebar-active: hsl(220, 65%, 45%);
+    --sidebar-non-existant: hsl(220, 8%, 55%);
+    --sidebar-spacer: hsl(36, 12%, 92%);
+    --links: hsl(220, 65%, 42%);
+    --inline-code-color: hsl(260, 45%, 38%);
+    --quote-bg: hsl(36, 25%, 94%);
+    --quote-border: hsl(36, 20%, 85%);
+    --table-border-color: hsl(36, 15%, 90%);
+    --table-header-bg: hsl(36, 15%, 92%);
+    --table-alternate-bg: hsl(36, 18%, 97%);
+    --theme-popup-bg: hsl(36, 15%, 96%);
+    --theme-popup-border: hsl(36, 12%, 88%);
+    --theme-hover: hsl(36, 18%, 92%);
+    --searchbar-bg: hsl(36, 15%, 96%);
+    --searchresults-li-bg: hsl(220, 40%, 96%);
+    --search-mark-bg: hsl(45, 90%, 88%);
+    --sidebar-header-border-color: hsl(220, 65%, 45%);
+}
+
+/* ---- Dark (navy) theme: easy on the eyes ---- */
+.navy {
+    --bg: hsl(224, 22%, 9%);
+    --fg: hsl(220, 15%, 88%);
+    --sidebar-bg: hsl(224, 20%, 12%);
+    --sidebar-fg: hsl(220, 12%, 82%);
+    --sidebar-active: hsl(200, 70%, 55%);
+    --quote-bg: hsl(224, 18%, 14%);
+    --quote-border: hsl(224, 18%, 22%);
+    --links: hsl(200, 75%, 55%);
+    --inline-code-color: hsl(160, 45%, 75%);
+}
+
+/* ---- Code blocks ---- */
+.content pre {
+    border-radius: 8px;
+    padding: 1.2em 1.4em;
+    margin-block: 1.4em;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.light .content pre {
+    background: hsl(220, 14%, 96%);
+    border: 1px solid hsl(220, 12%, 90%);
+}
+
+.content pre code {
+    font-size: 0.9em;
+    line-height: 1.55;
+}
+
+.content :not(pre) > code {
+    padding: 0.18em 0.45em;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.light .content :not(pre) > code {
+    background: hsl(36, 25%, 92%);
+    border: 1px solid hsl(36, 15%, 88%);
+}
+
+.navy .content :not(pre) > code {
+    background: hsl(224, 18%, 18%);
+    border: 1px solid hsl(224, 18%, 25%);
+}
+
+/* ---- Blockquotes & callouts ---- */
+.content blockquote {
+    border-inline-start-width: 4px;
+    border-radius: 0 6px 6px 0;
+    padding: 1em 1.2em;
+    margin-block: 1.4em;
+}
+
+/* ---- Menu bar: subtle but clear ---- */
+#mdbook-menu-bar {
+    box-shadow: 0 1px 0 var(--table-border-color);
+}
+
+.light #mdbook-menu-bar {
+    border-block-end-color: hsl(36, 15%, 90%);
+}
+
+/* ---- Sidebar ---- */
+.chapter-item.active > .chapter-item-flex {
+    font-weight: 600;
+}
+
+/* ---- Tables ---- */
+.content table {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.content thead th {
+    padding: 0.65em 1em;
+    font-weight: 600;
+}
+
+.content tbody td {
+    padding: 0.6em 1em;
+}
+
+/* ---- Lists ---- */
+.content ul, .content ol {
+    margin-block-end: 1.2em;
+    padding-inline-start: 1.6em;
+}
+
+.content li {
+    margin-block-end: 0.35em;
+}
+
+/* ---- Links ---- */
+.content a {
+    text-underline-offset: 2px;
+}
+
+.content a:hover {
+    text-decoration-thickness: 2px;
+}
+
+/* ---- Horizontal rule ---- */
+.content hr {
+    border: none;
+    border-block-start: 1px solid var(--table-border-color);
+    margin-block: 2em;
+}

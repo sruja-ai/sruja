@@ -5,7 +5,7 @@ inputs:
     description: "Path to the site contents to deploy"
     required: true
   target-repo:
-    description: "Target repository (owner/repo)"
+    description: "Target repository name (e.g. sruja-website); owner is sruja-ai"
     required: true
   target-branch:
     description: "Target branch to deploy to"

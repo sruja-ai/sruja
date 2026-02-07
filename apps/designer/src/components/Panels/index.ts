@@ -1,9 +1,0 @@
-export { NavigationPanel } from "./NavigationPanel";
-export { DetailsPanel } from "./DetailsPanel";
-export { RequirementsPanel } from "./RequirementsPanel";
-export { ADRsPanel } from "./ADRsPanel";
-export { DSLPanel } from "./DSLPanel";
-export { MarkdownPanel } from "./MarkdownPanel";
-export { CodePanel } from "./CodePanel";
-export { GovernancePanel } from "./GovernancePanel";
-export { InspectorPanel } from "./Inspector/InspectorPanel";

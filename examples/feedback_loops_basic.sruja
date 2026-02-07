@@ -1,0 +1,72 @@
+// examples/feedback_loops_basic.sruja
+// Feedback Loops Example - Demonstrates reinforcing and balancing loops
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+
+// ============================================================================
+// ELEMENTS
+// ============================================================================
+customer = person "Customer"
+manager = person "Product Manager"
+
+ecommerce = system "E-Commerce System" {
+  webApp = container "Web Application" {
+    technology "React"
+  }
+
+  api = container "API Service" {
+    technology "Rust"
+  }
+
+  database = database "PostgreSQL Database" {
+    technology "PostgreSQL 14"
+  }
+}
+
+analytics = system "Analytics Service" {
+  metadata {
+    tags ["external"]
+  }
+}
+
+// ============================================================================
+// RELATIONSHIPS (structural)
+// ============================================================================
+customer -> ecommerce.webApp "uses"
+ecommerce.webApp -> ecommerce.api "calls"
+ecommerce.api -> ecommerce.database "stores data in"
+ecommerce.api -> analytics "sends events to"
+manager -> ecommerce.api "monitors"
+
+// ============================================================================
+// FEEDBACK LOOPS
+// ============================================================================
+
+// REINFORCING LOOP R1: Growth Loop
+// Customer usage generates data, which improves experience, driving more usage
+GrowthLoop = feedback "R1: Growth Loop" {
+  loop_type "reinforcing"
+  loop_id "R1"
+  description "Customer usage generates data, which improves personalization, driving more usage"
+
+  customer -> ecommerce.webApp "submits order"
+  ecommerce.webApp -> ecommerce.api "logs transaction"
+  ecommerce.api -> analytics "sends usage data"
+  analytics -> ecommerce.webApp "provides personalization"
+  ecommerce.webApp -> customer "receives personalized experience"
+}
+
+// BALANCING LOOP B1: Quality Control Loop
+// Manager monitoring ensures quality doesn't drift
+QualityControlLoop = feedback "B1: Quality Control Loop" {
+  loop_type "balancing"
+  loop_id "B1"
+  description "Manager monitoring detects quality issues and triggers corrective actions"
+
+  ecommerce.api -> ecommerce.database "updates inventory"
+  ecommerce.api -> manager "sends alerts to"
+  manager -> ecommerce.api "adjusts configuration"
+  ecommerce.api -> ecommerce.database "optimizes"
+}

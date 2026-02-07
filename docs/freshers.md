@@ -119,7 +119,7 @@ Available elements:
 
 **Implementation:**
 
-- Extend `pkg/dx/errors.go` with suggestion logic.
+- Extend error/suggestion logic in the Rust/TS LSP layer.
 - Expose suggestions via LSP hover/quickfix.
 
 ---
@@ -130,7 +130,7 @@ Add contextual help icons next to key concepts (Kinds, Containers, Views).
 
 **Implementation:**
 
-- Create `apps/designer/src/components/HelpTooltip.tsx`.
+- Add HelpTooltip in the VS Code extension or shared UI package.
 - Map keywords to explanations in a config file.
 
 ---

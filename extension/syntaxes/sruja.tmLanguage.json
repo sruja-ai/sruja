@@ -1,0 +1,45 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Sruja",
+  "scopeName": "source.sruja",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#keywords" },
+    { "include": "#relations" },
+    { "include": "#strings" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [{
+        "name": "comment.line.sruja",
+        "match": "//.*$"
+      }]
+    },
+    "keywords": {
+      "patterns": [{
+        "name": "keyword.control.sruja",
+        "match": "\\b(system|container|component|person|database|datastore|queue|relation|description|technology|tags|metadata|requirement|adr|policy|scenario|story|flow)\\b"
+      }]
+    },
+    "relations": {
+      "patterns": [{
+        "name": "keyword.operator.arrow.sruja",
+        "match": "->"
+      }]
+    },
+    "strings": {
+      "patterns": [{
+        "name": "string.quoted.double.sruja",
+        "begin": "\"",
+        "end": "\""
+      }]
+    },
+    "identifiers": {
+      "patterns": [{
+        "name": "variable.other.sruja",
+        "match": "\\b[A-Za-z_][A-Za-z0-9_.-]*\\b"
+      }]
+    }
+  }
+}

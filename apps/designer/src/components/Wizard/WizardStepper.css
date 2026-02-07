@@ -1,8 +1,0 @@
-@import "./wizard-compact.css";
-
-/* Legacy styles kept for reference but overridden by structure changes */
-.wizard-stepper {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-}

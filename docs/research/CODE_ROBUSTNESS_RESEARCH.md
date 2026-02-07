@@ -145,7 +145,7 @@ match item {
     TopLevelItem::Flow(f) => {
         diags.extend(runner.validate_steps(&f.steps, &f.location));
     }
-    // TODO(parity): Go also validates inline steps inside element bodies.
+    // TODO(parity): Engine also validates inline steps inside element bodies.
     _ => {}
 }
 ```

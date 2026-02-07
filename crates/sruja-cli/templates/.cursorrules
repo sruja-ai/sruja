@@ -1,0 +1,57 @@
+# Sruja DSL Rules for AI Code Generation
+
+When generating or modifying Sruja architecture DSL (.sruja files), follow these rules.
+
+## DSL Structure
+
+1. **Define before use** – Every referenced component must be defined before use in relationships.
+2. **Double quotes** – All string values: names, descriptions, technology labels.
+3. **Pattern** – `[kind] "[name]" { ... }` (e.g. `container "API" { ... }`).
+4. **Nesting** – Systems inside architecture, containers/datastores inside systems.
+5. **Relationships** – `source -> target "label"`; one per line; descriptive labels.
+
+## Component kinds
+
+```sruja
+user = person "User" {
+  description "End user of the application"
+}
+
+app = system "My App" {
+  description "Main application system"
+}
+
+web = container "Web Server" {
+  technology "Node.js"
+  description "HTTP server handling requests"
+}
+
+db = datastore "Database" {
+  technology "PostgreSQL"
+  description "Primary data store"
+}
+```
+
+## Rules
+
+- **Every component** – Has a `description`.
+- **Every container** – Has `technology` (e.g. "PostgreSQL", "React").
+- **Relationship labels** – Be specific: "HTTPS", "gRPC", "reads from", "publishes events to".
+- **No orphans** – Every component participates in at least one relationship.
+- **No circular dependencies** – Between systems.
+- **Unique IDs** – Component IDs must be unique.
+- **Style** – 2 spaces, blank lines between sections.
+
+## Validation
+
+After generating, run: `sruja lint file.sruja`.
+
+## Advanced architecture guidance
+
+For patterns, trade-offs, and anti-patterns (e.g. monolith vs microservices, event-driven):
+
+```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
+```
+
+See also: `docs/AI_EDITOR_INTEGRATION.md`, `docs/LANGUAGE_SPECIFICATION.md`, `examples/`.

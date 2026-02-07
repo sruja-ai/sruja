@@ -1,22 +1,6 @@
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
-
 # Build outputs
 dist/
 build/
-*.tsbuildinfo
-.next/
-out/
-.turbo/
-
-# Test outputs
-coverage/
-.nyc_output/
-test-results/
-playwright-report/
-*.test
 *.out
 *.log
 test-outputs/
@@ -25,7 +9,6 @@ result_log.txt
 lint_output.txt
 lint_final.txt
 tests/results/
-coverage.html
 
 # Environment variables
 .env
@@ -45,11 +28,6 @@ coverage.html
 # Logs
 logs/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
 # Runtime data
 pids/
@@ -57,26 +35,12 @@ pids/
 *.seed
 *.pid.lock
 
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# Rust build outputs
+# Rust (Cargo) — per https://github.com/github/gitignore/blob/main/Rust.gitignore
 target/
-Cargo.lock
+debug
 **/*.rs.bk
 *.pdb
+**/mutants.out*/
 
 # Temporary files
 *.tmp
@@ -91,6 +55,8 @@ RESEARCH_FINDINGS.md
 *.wasm
 *.wasm.br
 *.wasm.gz
+crates/sruja-wasm/pkg/
+crates/sruja-wasm/pkg-nodejs/
 
 # Architecture documentation build outputs
 docs/architecture/*.json

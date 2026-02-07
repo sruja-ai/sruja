@@ -1,0 +1,43 @@
+# Sruja docs – Rust-based (mdBook). No TypeScript/Node.
+# Install: cargo install mdbook
+# Build: mdbook build
+# Serve (live): mdbook serve
+
+[book]
+title = "Sruja"
+authors = ["Sruja contributors"]
+language = "en"
+src = "src"
+description = "Architecture as code. Define, validate, export, and preview with CLI and VS Code."
+
+[build]
+build-dir = "book"
+
+# Mermaid: run `mdbook-mermaid install .` from the book directory once to copy mermaid.min.js and mermaid-init.js
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+renderer = ["html"]
+
+# Sruja export: run sruja export commands to generate markdown on-demand
+[preprocessor.sruja-export]
+command = "./sruja-export-preproc.sh"
+renderer = ["html"]
+
+# WASM is NOT copied by a preprocessor (render wipes the build dir after preprocess).
+# Use make book-serve (runs serve.sh) which copies WASM after build and re-copies every 1s while serving.
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+smart-punctuation = false
+additional-css = ["style.css"]
+additional-js = ["mermaid.min.js", "mermaid-init.js", "code-block-actions.js", "google-analytics.js"]
+git-repository-url = "https://github.com/sruja-ai/sruja"
+edit-url-template = "https://github.com/sruja-ai/sruja/edit/main/book/{path}"
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.html.search]
+enable = true

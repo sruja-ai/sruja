@@ -149,10 +149,12 @@ impl Parser {
         match parse_program(context_section) {
             Ok((_remaining, new_program)) => {
                 // Merge the new AST with the existing AST
-                let merged_ast = self.smart_merge_asts(existing_ast, &new_program, context_start_line);
-                
+                let merged_ast =
+                    self.smart_merge_asts(existing_ast, &new_program, context_start_line);
+
                 // Analyze what changed
-                let (changed_elements, changed_ranges) = self.analyze_changes(existing_ast, &merged_ast);
+                let (changed_elements, changed_ranges) =
+                    self.analyze_changes(existing_ast, &merged_ast);
 
                 let elapsed = start.elapsed().as_millis() as u64;
 
@@ -168,9 +170,7 @@ impl Parser {
                 let error_msg = match &e {
                     nom::Err::Error(err) => {
                         // Calculate line number within the context section
-                        let context_line = context_section[..err.input.len()]
-                            .matches('\n')
-                            .count();
+                        let context_line = context_section[..err.input.len()].matches('\n').count();
                         format!(
                             "Parse error in context section at line {}: {:?}",
                             context_line + 1,
@@ -178,9 +178,7 @@ impl Parser {
                         )
                     }
                     nom::Err::Failure(err) => {
-                        let context_line = context_section[..err.input.len()]
-                            .matches('\n')
-                            .count();
+                        let context_line = context_section[..err.input.len()].matches('\n').count();
                         format!(
                             "Parse failure in context section at line {}: {:?}",
                             context_line + 1,
@@ -208,7 +206,12 @@ impl Parser {
     /// - Adding new elements
     /// - Removing deleted elements
     /// - Maintaining proper parent-child relationships
-    fn smart_merge_asts(&self, existing_ast: &Program, new_ast: &Program, context_line_offset: usize) -> Program {
+    fn smart_merge_asts(
+        &self,
+        existing_ast: &Program,
+        new_ast: &Program,
+        context_line_offset: usize,
+    ) -> Program {
         let mut merged_ast = existing_ast.clone();
         let mut element_map = HashMap::new();
 
@@ -224,11 +227,15 @@ impl Parser {
             match item {
                 TopLevelItem::ElementDef(new_elem) => {
                     let elem_name = &new_elem.assignment.name;
-                    
+
                     // Check if element exists in existing AST
                     if element_map.contains_key(elem_name) {
                         // Update existing element
-                        self.update_existing_element(&mut merged_ast, new_elem, context_line_offset);
+                        self.update_existing_element(
+                            &mut merged_ast,
+                            new_elem,
+                            context_line_offset,
+                        );
                     } else {
                         // Add new element
                         self.add_new_element(&mut merged_ast, new_elem, context_line_offset);
@@ -248,7 +255,12 @@ impl Parser {
     }
 
     /// Update an existing element in the AST (apply context line offset to the updated element).
-    fn update_existing_element(&self, ast: &mut Program, new_elem: &ElementDef, line_offset: usize) {
+    fn update_existing_element(
+        &self,
+        ast: &mut Program,
+        new_elem: &ElementDef,
+        line_offset: usize,
+    ) {
         let offset = line_offset as i32;
         for item in ast.items.iter_mut() {
             if let TopLevelItem::ElementDef(elem) = item {
@@ -278,26 +290,38 @@ impl Parser {
     }
 
     /// Analyze changes between two ASTs to determine what was modified
-    fn analyze_changes(&self, old_ast: &Program, new_ast: &Program) -> (Vec<String>, Vec<(usize, usize)>) {
+    fn analyze_changes(
+        &self,
+        old_ast: &Program,
+        new_ast: &Program,
+    ) -> (Vec<String>, Vec<(usize, usize)>) {
         let mut changed_elements = Vec::new();
         let mut changed_ranges = Vec::new();
 
         // Compare elements
-        let old_elements: HashMap<_, _> = old_ast.items.iter().filter_map(|item| {
-            if let TopLevelItem::ElementDef(elem) = item {
-                Some((elem.assignment.name.clone(), item))
-            } else {
-                None
-            }
-        }).collect();
+        let old_elements: HashMap<_, _> = old_ast
+            .items
+            .iter()
+            .filter_map(|item| {
+                if let TopLevelItem::ElementDef(elem) = item {
+                    Some((elem.assignment.name.clone(), item))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
-        let new_elements: HashMap<_, _> = new_ast.items.iter().filter_map(|item| {
-            if let TopLevelItem::ElementDef(elem) = item {
-                Some((elem.assignment.name.clone(), item))
-            } else {
-                None
-            }
-        }).collect();
+        let new_elements: HashMap<_, _> = new_ast
+            .items
+            .iter()
+            .filter_map(|item| {
+                if let TopLevelItem::ElementDef(elem) = item {
+                    Some((elem.assignment.name.clone(), item))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         // Find added/removed/modified elements
         for (name, new_item) in &new_elements {
@@ -305,8 +329,9 @@ impl Parser {
                 if let Some(old_item) = old_elements.get(name) {
                     if let TopLevelItem::ElementDef(old_elem) = old_item {
                         // Check if element was modified
-                        if old_elem.assignment.title != new_elem.assignment.title ||
-                           old_elem.assignment.kind != new_elem.assignment.kind {
+                        if old_elem.assignment.title != new_elem.assignment.title
+                            || old_elem.assignment.kind != new_elem.assignment.kind
+                        {
                             changed_elements.push(name.clone());
                         }
                     }
@@ -620,68 +645,83 @@ fn parse_kv_string_block(input: &str) -> IResult<&str, Vec<(String, String)>> {
 
 /// Parse an overview block.
 ///
-/// The designer demo content uses `overview { ... }` as an extension. For now we
-/// primarily need to **consume** the syntax so parsing can proceed; exporters can
-/// incrementally start using these fields over time.
-///
-/// Uses a simple approach: consume everything between the opening and closing braces.
-/// This handles arrays, nested structures, etc. by consuming the entire block content.
+/// The designer demo content uses `overview { ... }` as an extension.
+/// This parser extracts all fields: summary, audience, scope, goals, non_goals, risks.
 fn parse_overview_block(input: &str) -> IResult<&str, OverviewBlock> {
     let (input, _) = tag("overview")(input)?;
     let (input, _) = ws0(input)?;
 
-    // Consume the entire block including nested braces/brackets
-    // We'll find the matching closing brace by counting depth
-    if !input.starts_with('{') {
-        return Err(nom::Err::Error(nom::error::Error::new(
-            input,
-            nom::error::ErrorKind::Char,
-        )));
-    }
+    // Parse the body with individual fields
+    let (input, items) = delimited(
+        preceded(ws0, char('{')),
+        many0(preceded(ws, parse_overview_item)),
+        preceded(ws0, char('}')),
+    )(input)?;
 
-    let mut depth = 0;
-    let mut in_string = false;
-    let mut escape = false;
+    let mut overview = OverviewBlock {
+        location: SourceLocation::new(String::new(), 0, 0),
+        summary: None,
+        audience: None,
+        scope: None,
+        goals: Vec::new(),
+        non_goals: Vec::new(),
+        risks: Vec::new(),
+    };
 
-    for (i, ch) in input.char_indices() {
-        if escape {
-            escape = false;
-            continue;
-        }
-        match ch {
-            '\\' => escape = true,
-            '"' => in_string = !in_string,
-            '{' if !in_string => {
-                depth += 1;
-            }
-            '}' if !in_string => {
-                depth -= 1;
-                if depth == 0 {
-                    // Found matching closing brace
-                    let remaining = &input[i + 1..];
-                    return Ok((
-                        remaining,
-                        OverviewBlock {
-                            location: SourceLocation::new(String::new(), 0, 0),
-                            summary: None,
-                            audience: None,
-                            scope: None,
-                            goals: Vec::new(),
-                            non_goals: Vec::new(),
-                            risks: Vec::new(),
-                        },
-                    ));
-                }
-            }
-            _ => {}
+    for item in items {
+        match item {
+            OverviewItem::Summary(s) => overview.summary = Some(s),
+            OverviewItem::Audience(a) => overview.audience = Some(a),
+            OverviewItem::Scope(s) => overview.scope = Some(s),
+            OverviewItem::Goals(g) => overview.goals = g,
+            OverviewItem::NonGoals(ng) => overview.non_goals = ng,
+            OverviewItem::Risks(r) => overview.risks = r,
         }
     }
 
-    // No matching brace found
-    Err(nom::Err::Error(nom::error::Error::new(
-        input,
-        nom::error::ErrorKind::Tag,
-    )))
+    Ok((input, overview))
+}
+
+#[derive(Debug, Clone)]
+enum OverviewItem {
+    Summary(String),
+    Audience(String),
+    Scope(String),
+    Goals(Vec<String>),
+    NonGoals(Vec<String>),
+    Risks(Vec<String>),
+}
+
+fn parse_overview_item(input: &str) -> IResult<&str, OverviewItem> {
+    alt((
+        map(
+            preceded(tag("summary"), preceded(ws1, parse_string)),
+            OverviewItem::Summary,
+        ),
+        map(
+            preceded(tag("audience"), preceded(ws1, parse_string)),
+            OverviewItem::Audience,
+        ),
+        map(
+            preceded(tag("scope"), preceded(ws1, parse_string)),
+            OverviewItem::Scope,
+        ),
+        map(
+            preceded(tag("goals"), preceded(ws1, parse_string_array)),
+            OverviewItem::Goals,
+        ),
+        map(
+            preceded(
+                alt((tag("nonGoals"), tag("non_goals"))),
+                preceded(ws1, parse_string_array),
+            ),
+            OverviewItem::NonGoals,
+        ),
+        map(
+            preceded(tag("risks"), preceded(ws1, parse_string_array)),
+            OverviewItem::Risks,
+        ),
+    ))(input)
 }
 
 /// Parse an element definition: Name = Kind [SubKind] [Label] [#tags...] [Body]
@@ -1381,14 +1421,30 @@ fn parse_view(input: &str) -> IResult<&str, ViewDef> {
                 "title" => title = Some(v),
                 "include" => {
                     // Parse include expression from string
-                    if v == "*" {
+                    // Supports: "*", "Element", "Element.Element", "Element1 Element2"
+                    if v.trim() == "*" {
                         includes = Some(vec!["*".to_string()]);
                     } else {
-                        includes = Some(v.split(',').map(|s| s.trim().to_string()).collect());
+                        // Split by whitespace (handles space-separated elements)
+                        // Also handles comma-separated for flexibility
+                        let elements = v
+                            .split(&[',', ' '][..])
+                            .map(|s| s.trim())
+                            .filter(|s| !s.is_empty())
+                            .map(|s| s.to_string())
+                            .collect();
+                        includes = Some(elements);
                     }
                 }
                 "exclude" => {
-                    excludes = Some(v.split(',').map(|s| s.trim().to_string()).collect());
+                    // Parse exclude expression from string
+                    let elements = v
+                        .split(&[',', ' '][..])
+                        .map(|s| s.trim())
+                        .filter(|s| !s.is_empty())
+                        .map(|s| s.to_string())
+                        .collect();
+                    excludes = Some(elements);
                 }
                 "description" => description = Some(v),
                 _ => {} // Ignore other fields like "layout" for now
@@ -1428,48 +1484,53 @@ fn parse_view(input: &str) -> IResult<&str, ViewDef> {
 }
 
 /// Parse view body: `{ title "..."; include ...; layout { ... } }`
-/// Consumes the entire body, handling nested braces for layout blocks.
-/// For now, just consumes the block; field extraction can be added later.
+/// Extracts fields from the view body including title, description, include, exclude
 fn parse_view_body(input: &str) -> IResult<&str, Vec<(String, String)>> {
     if !input.starts_with('{') {
         return Ok((input, Vec::new()));
     }
 
-    // Use brace-counting to find the matching closing brace (same as overview)
-    let mut depth = 0;
-    let mut in_string = false;
-    let mut escape = false;
+    let (input, items) = delimited(
+        preceded(ws0, char('{')),
+        many0(preceded(ws, parse_view_body_item)),
+        preceded(ws0, char('}')),
+    )(input)?;
 
-    for (i, ch) in input.char_indices() {
-        if escape {
-            escape = false;
-            continue;
-        }
-        match ch {
-            '\\' => escape = true,
-            '"' => in_string = !in_string,
-            '{' if !in_string => {
-                depth += 1;
-            }
-            '}' if !in_string => {
-                depth -= 1;
-                if depth == 0 {
-                    // Found matching closing brace
-                    let remaining = &input[i + 1..];
-                    // For now, return empty fields - we'll extract them later if needed
-                    // This allows parsing to proceed without panicking
-                    return Ok((remaining, Vec::new()));
-                }
-            }
-            _ => {}
-        }
-    }
+    Ok((input, items))
+}
 
-    // No matching brace found
-    Err(nom::Err::Error(nom::error::Error::new(
-        input,
-        nom::error::ErrorKind::Tag,
-    )))
+fn parse_view_body_item(input: &str) -> IResult<&str, (String, String)> {
+    let (input, key) = parse_identifier(input)?;
+    let (input, _) = ws0(input)?;
+
+    // Check if the next token is a string or identifier
+    let (input, value) = if input.starts_with('"') {
+        // It's a quoted string (for title, description)
+        map(parse_string, |s| s)(input)?
+    } else {
+        // It's an identifier or identifier list (for include/exclude)
+        map(parse_view_identifier_or_wildcard, |s| s)(input)?
+    };
+
+    Ok((input, (key, value)))
+}
+
+fn parse_view_identifier_or_wildcard(input: &str) -> IResult<&str, String> {
+    // Parse either a wildcard (*) or a qualified identifier
+    // Also handle comma-separated lists like "Element1, Element2"
+    alt((
+        value("*".to_string(), char('*')),
+        // Parse a qualified identifier (e.g., "System.Container")
+        map(parse_qualified_ident, |q| q.as_string()),
+        // Parse multiple identifiers separated by whitespace
+        map(separated_list1(ws1, parse_qualified_ident), |idents| {
+            idents
+                .iter()
+                .map(|q| q.as_string())
+                .collect::<Vec<_>>()
+                .join(" ")
+        }),
+    ))(input)
 }
 
 #[allow(dead_code)]
@@ -1685,11 +1746,18 @@ fn parse_metadata_block(input: &str) -> IResult<&str, MetadataBlock> {
     ))
 }
 
-/// Parse a metadata entry: key [value]
+/// Parse a metadata entry: key "value" or key ["value1", "value2"]
 fn parse_metadata_entry(input: &str) -> IResult<&str, MetaEntry> {
     let (input, key) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
-    let (input, value) = opt(parse_string)(input)?;
+
+    // Parse either a string or a string array
+    let (input, value) = alt((
+        // Parse array: ["item1", "item2"]
+        map(parse_string_array, |arr| Some(arr.join(", "))),
+        // Parse single string: "value"
+        map(parse_string, |s| Some(s)),
+    ))(input)?;
 
     Ok((input, MetaEntry { key, value }))
 }
@@ -1839,7 +1907,7 @@ mod tests {
         // Change "B" title to "B Updated" (edit in second line)
         let edited = "A = system \"A\"\nB = system \"B Updated\"\nA -> B \"uses\"\n";
         let change_start = 22; // start of "B"
-        let change_end = 35;   // end of "B Updated"
+        let change_end = 35; // end of "B Updated"
         let result = parser.parse_incrementally(edited, change_start, change_end, &existing, 2);
         assert!(result.is_ok(), "incremental parse should succeed");
         let inc = result.unwrap();
@@ -1871,11 +1939,16 @@ mod tests {
             let edited = format!("A = system \"A\"\nB = system \"{title}\"\nA -> B \"uses\"\n");
             let change_start = 22;
             let change_end = 22 + title.len();
-            let result = parser.parse_incrementally(&edited, change_start, change_end, &current_ast, 2);
+            let result =
+                parser.parse_incrementally(&edited, change_start, change_end, &current_ast, 2);
             assert!(result.is_ok(), "cycle {} should succeed", i);
             let inc = result.unwrap();
             current_ast = inc.updated_ast;
-            assert!(!current_ast.items.is_empty(), "cycle {}: ast should be non-empty", i);
+            assert!(
+                !current_ast.items.is_empty(),
+                "cycle {}: ast should be non-empty",
+                i
+            );
         }
     }
 
@@ -1900,8 +1973,16 @@ mod tests {
             .iter()
             .filter(|i| matches!(i, TopLevelItem::ElementDef(_)))
             .count();
-        assert!(elem_count >= 100, "expected at least 100 elements, got {}", elem_count);
+        assert!(
+            elem_count >= 100,
+            "expected at least 100 elements, got {}",
+            elem_count
+        );
         // Debug builds can be slow; 5s is a generous cap to avoid flakiness
-        assert!(elapsed_ms < 5000, "large parse took {} ms (target <5s in debug)", elapsed_ms);
+        assert!(
+            elapsed_ms < 5000,
+            "large parse took {} ms (target <5s in debug)",
+            elapsed_ms
+        );
     }
 }

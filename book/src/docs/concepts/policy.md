@@ -1,0 +1,128 @@
+---
+title: "Policy"
+weight: 50
+summary: "Define architectural rules and constraints that must be followed."
+---
+
+# Policy
+
+Policies define architectural rules, standards, and constraints that your system must follow. They help enforce best practices, compliance requirements, and organizational standards directly in your architecture model.
+
+## Syntax
+
+```sruja
+PolicyID = policy "Description" {
+  category "category-name"
+  enforcement "required" // "required" | "recommended" | "optional"
+  description "Detailed description"
+  metadata {
+    // Additional metadata
+  }
+}
+```
+
+## Simple Policy
+
+```sruja
+import { * } from 'sruja.ai/stdlib'
+
+
+SecurityPolicy = policy "Enforce TLS 1.3 for all external communications"
+
+view index {
+  include *
+}
+```
+
+## Policy Fields
+
+- **`ID`**: Unique identifier for the policy (e.g., `SecurityPolicy`, `GDPR_Compliance`)
+- **`Description`**: Human-readable description of the policy
+- **`category`** (optional): Policy category (e.g., "security", "compliance", "performance")
+- **`enforcement`** (optional): Enforcement level ("required", "recommended", "optional")
+- **`description`** (optional): Detailed description within the policy body
+- **`metadata`** (optional): Additional metadata key-value pairs
+
+## Example: Security Policies
+
+```sruja
+import { * } from 'sruja.ai/stdlib'
+
+
+TLSEnforcement = policy "All external communications must use TLS 1.3" {
+  category "security"
+  enforcement "required"
+}
+
+EncryptionAtRest = policy "Sensitive data must be encrypted at rest" {
+  category "security"
+  enforcement "required"
+}
+
+BankingApp = system "Banking App" {
+  API = container "API Service"
+  CustomerDB = database "Customer Database"
+}
+
+view index {
+  include *
+}
+```
+
+## Example: Compliance Policies
+
+```sruja
+import { * } from 'sruja.ai/stdlib'
+
+
+HIPAACompliance = policy "Must comply with HIPAA regulations" {
+  category "compliance"
+  enforcement "required"
+  description "All patient data must be encrypted and access logged"
+}
+
+DataRetention = policy "Medical records retained for 10 years" {
+  category "compliance"
+  enforcement "required"
+}
+
+view index {
+  include *
+}
+```
+
+## Policy Categories
+
+Common policy categories include:
+
+- **`security`**: Security standards and practices
+- **`compliance`**: Regulatory and legal requirements
+- **`performance`**: Performance standards and SLAs
+- **`observability`**: Monitoring, logging, and metrics requirements
+- **`architecture`**: Architectural patterns and principles
+- **`data`**: Data handling and privacy requirements
+
+## Enforcement Levels
+
+- **`required`**: Policy must be followed (non-negotiable)
+- **`recommended`**: Policy should be followed (best practice)
+- **`optional`**: Policy is a guideline (suggested)
+
+## Benefits
+
+- **Documentation**: Policies are part of your architecture, not separate documents
+- **Validation**: Can be validated against actual implementations
+- **Communication**: Clear standards for development teams
+- **Compliance**: Track regulatory and organizational requirements
+- **Governance**: Enforce architectural decisions and patterns
+
+## Note on Rules
+
+The `rule` keyword inside policies is not yet implemented. For now, policies serve as documentation and can be validated manually or through external tooling.
+
+## See Also
+
+- [Architecture](docs/concepts/architecture.md)
+- [System](docs/concepts/system.md)
+- [Requirements](docs/concepts/requirements.md)
+- [ADR](docs/concepts/adr.md)

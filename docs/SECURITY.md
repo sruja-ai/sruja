@@ -10,12 +10,6 @@
 
 Sruja uses automated security scanning in CI:
 
-### Go Security
-
-- **Gosec**: Static analysis security scanner for Go code
-- Runs on: Push, PR, weekly schedule
-- Location: `.github/workflows/security.yml`
-
 ### JavaScript/TypeScript Security
 
 - **npm audit**: Dependency vulnerability scanning
@@ -59,7 +53,7 @@ We will respond within 48 hours and work with you to resolve the issue.
 1. **Never commit secrets**: API keys, passwords, tokens, etc.
 2. **Validate inputs**: Use validation utilities from `@sruja/shared/utils/validation`
 3. **Sanitize file paths**: Use `validateFilePath` from `@sruja/shared/utils/pathValidation`
-4. **Keep dependencies updated**: Run `npm audit` and `go mod tidy` regularly
+4. **Keep dependencies updated**: Run `npm audit` and `cargo update` regularly
 5. **Review security reports**: Check CI security scan results
 
 ### For Users
@@ -153,5 +147,5 @@ Security updates will be:
 ## References
 
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
-- [Go Security Best Practices](https://go.dev/doc/security/best-practices)
 - [Node.js Security Best Practices](https://nodejs.org/en/docs/guides/security/)
+- [Rust Security Best Practices](https://rust-lang.github.io/rust-clippy/)
