@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.2.0...sruja-v0.2.1) (2026-02-07)
+
+
+### Bug Fixes
+
+* resolve lint E205 orphans and E204 cycle in causal loops ([1fe168d](https://github.com/sruja-ai/sruja/commit/1fe168db16497be53aacdea3941e1b1eed45b4f6))
+
 ## [0.2.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.1.0...sruja-v0.2.0) (2026-02-07)
 
 
