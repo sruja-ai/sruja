@@ -74,7 +74,14 @@ impl MarkdownExporter {
 
         // Write TOC
         if self.options.include_toc {
-            self.write_toc(&mut out, &systems, &persons, &requirements, &adrs, !scenario_items.is_empty());
+            self.write_toc(
+                &mut out,
+                &systems,
+                &persons,
+                &requirements,
+                &adrs,
+                !scenario_items.is_empty(),
+            );
         }
 
         // Write overview
@@ -162,7 +169,9 @@ impl MarkdownExporter {
             }
         }
 
-        out.push_str("_Architecture overview (descriptions) will be populated from overview blocks._\n\n");
+        out.push_str(
+            "_Architecture overview (descriptions) will be populated from overview blocks._\n\n",
+        );
     }
 
     fn write_systems(
@@ -177,7 +186,11 @@ impl MarkdownExporter {
         }
         out.push_str("## Systems\n\n");
         for (sys_fqn, sys) in systems_with_fqn {
-            let title = sys.assignment.title.clone().unwrap_or_else(|| sys.assignment.name.clone());
+            let title = sys
+                .assignment
+                .title
+                .clone()
+                .unwrap_or_else(|| sys.assignment.name.clone());
             out.push_str(&format!("### {}\n\n", title));
             if let Some(body) = &sys.assignment.body {
                 if let Some(desc) = &body.description {
@@ -260,7 +273,11 @@ impl MarkdownExporter {
         }
         out.push_str("## Persons\n\n");
         for person in persons {
-            let title = person.assignment.title.clone().unwrap_or_else(|| person.assignment.name.clone());
+            let title = person
+                .assignment
+                .title
+                .clone()
+                .unwrap_or_else(|| person.assignment.name.clone());
             out.push_str(&format!("### {}\n\n", title));
             if let Some(body) = &person.assignment.body {
                 if let Some(desc) = &body.description {

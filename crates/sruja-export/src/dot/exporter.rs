@@ -463,10 +463,16 @@ fn compute_view(
             if source.is_empty() || target.is_empty() || source == target {
                 continue;
             }
-            if visible.contains(&source) && elements.contains_key(&target) && visible.insert(target.clone()) {
+            if visible.contains(&source)
+                && elements.contains_key(&target)
+                && visible.insert(target.clone())
+            {
                 expanded = true;
             }
-            if visible.contains(&target) && elements.contains_key(&source) && visible.insert(source.clone()) {
+            if visible.contains(&target)
+                && elements.contains_key(&source)
+                && visible.insert(source.clone())
+            {
                 expanded = true;
             }
         }

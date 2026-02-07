@@ -6,4 +6,4 @@ pub mod exporter;
 #[cfg(test)]
 mod edge_rendering_test;
 
-pub use exporter::{DotExporter, DotConfig};
+pub use exporter::{DotConfig, DotExporter};

@@ -122,9 +122,11 @@ AICodingAssistants = system "AI Coding Assistants" {
   description "External AI coding assistants (GitHub Copilot, Cursor, ChatGPT, Claude, etc.)"
   Copilot = container "GitHub Copilot" {
     description "GitHub Copilot AI coding assistant"
+    technology "VS Code Extension"
   }
   Cursor = container "Cursor AI" {
     description "Cursor AI coding assistant with IDE integration"
+    technology "VS Code Extension"
   }
   ChatGPT = container "ChatGPT" {
     description "OpenAI ChatGPT for code generation"
@@ -153,11 +155,13 @@ ContextProvisioningSystem.PIMExtractor.PIMValidator -> ContextProvisioningSystem
 ContextProvisioningSystem.ContextFormatter.FormatRouter -> ContextProvisioningSystem.ContextFormatter.MarkdownFormatter "Markdown format"
 ContextProvisioningSystem.ContextFormatter.FormatRouter -> ContextProvisioningSystem.ContextFormatter.JSONFormatter "JSON format"
 ContextProvisioningSystem.ContextFormatter.FormatRouter -> ContextProvisioningSystem.ContextFormatter.PromptFormatter "Prompt format"
-ContextProvisioningSystem.ContextFormatter.MarkdownFormatter -> ContextProvisioningSystem.ContextFormatter.TokenOptimizer "Optimizes tokens"
-ContextProvisioningSystem.ContextFormatter.JSONFormatter -> ContextProvisioningSystem.ContextFormatter.TokenOptimizer "Optimizes tokens"
-ContextProvisioningSystem.ContextFormatter.PromptFormatter -> ContextProvisioningSystem.ContextFormatter.TokenOptimizer "Optimizes tokens"
+ContextProvisioningSystem.ContextFormatter.TokenOptimizer -> ContextProvisioningSystem.ContextFormatter.MarkdownFormatter "Optimizes markdown tokens"
+ContextProvisioningSystem.ContextFormatter.TokenOptimizer -> ContextProvisioningSystem.ContextFormatter.JSONFormatter "Optimizes JSON tokens"
+ContextProvisioningSystem.ContextFormatter.TokenOptimizer -> ContextProvisioningSystem.ContextFormatter.PromptFormatter "Optimizes prompt tokens"
+ContextProvisioningSystem.CLI.TraceCmd -> ContextProvisioningSystem.TraceabilityManager.LinkQuery "Queries links"
+ContextProvisioningSystem.CLI.TraceCmd -> ContextProvisioningSystem.TraceabilityManager.ImpactAnalyzer "Requests impact analysis"
 ContextProvisioningSystem.TraceabilityManager.LinkStore -> ContextProvisioningSystem.TraceabilityManager.LinkQuery "Provides links"
-ContextProvisioningSystem.TraceabilityManager.LinkQuery -> ContextProvisioningSystem.TraceabilityManager.ImpactAnalyzer "Analyzes relationships"
+ContextProvisioningSystem.TraceabilityManager.LinkQuery -> ContextProvisioningSystem.TraceabilityManager.ImpactAnalyzer "Provides link relationships"
 ContextProvisioningSystem.OptionalAIAssistant.LLMClient -> ContextProvisioningSystem.OptionalAIAssistant.DSLTranslator "Provides LLM access"
 ContextProvisioningSystem.OptionalAIAssistant.LLMClient -> ContextProvisioningSystem.OptionalAIAssistant.ArchitectureAdvisor "Provides LLM access"
 ContextProvisioningSystem.PIMExtractor.PIMValidator -> ContextProvisioningSystem.ValidationEngine.EnhancedPIMValidator "Validates PIM"
@@ -165,16 +169,12 @@ ContextProvisioningSystem.ValidationEngine.EnhancedPIMValidator -> ContextProvis
 ContextProvisioningSystem.ContextFormatter.FormatRouter -> ContextProvisioningSystem.LSPIntegration.ContextProvider "Provides formatted context"
 ContextProvisioningSystem.LSPIntegration.ContextProvider -> ContextProvisioningSystem.LSPIntegration.HoverEnhancer "Enhances hover with context"
 ContextProvisioningSystem.ContextFormatter.TokenOptimizer -> ContextProvisioningSystem.CLI.ContextExportCmd "Exports context"
-ContextProvisioningSystem.TraceabilityManager.ImpactAnalyzer -> ContextProvisioningSystem.CLI.TraceCmd "Provides traceability"
 ContextProvisioningSystem.OptionalAIAssistant.DSLTranslator -> ContextProvisioningSystem.CLI.OptionalAICmd "Provides AI features"
 ContextProvisioningSystem.PIMExtractor -> ContextProvisioningSystem.ContextFormatter "PIM to format"
 ContextProvisioningSystem.ContextFormatter -> ContextProvisioningSystem.TraceabilityManager "Tracks context exports"
 ContextProvisioningSystem.ValidationEngine -> ContextProvisioningSystem.ContextFormatter "Validated PIM"
 
-// User interactions
-Developer -> ContextProvisioningSystem.CLI.ContextExportCmd "Exports context"
-Developer -> ContextProvisioningSystem.CLI.TraceCmd "Queries traceability"
-Developer -> ContextProvisioningSystem.OptionalAIAssistant.DSLTranslator "Gets DSL help"
+// User interactions - See stories for detailed workflows
 
 // Context flow to AI assistants
 ContextProvisioningSystem.ContextFormatter.MarkdownFormatter -> AICodingAssistants.Copilot "Markdown context"
@@ -197,7 +197,6 @@ DeveloperWorkspace.Codebase -> ContextProvisioningSystem.TraceabilityManager.Lin
 ExportContext = story "Export Context for System" {
   Developer -> ContextProvisioningSystem.CLI.ContextExportCmd "runs: sruja context export --system=OrderService --format=markdown"
   ContextProvisioningSystem.CLI.ContextExportCmd -> ContextProvisioningSystem.ContextFormatter.MarkdownFormatter "formats context"
-  ContextProvisioningSystem.ContextFormatter.MarkdownFormatter -> Developer "provides Markdown context"
 }
 
 UseContextWithAI = story "Use Context with AI Assistant" {

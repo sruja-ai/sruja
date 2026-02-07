@@ -11,7 +11,7 @@ use std::collections::{HashMap, HashSet};
 
 use sruja_diagnostics::{Diagnostic, Severity};
 use sruja_language::{
-    collect_elements, collect_relations_with_scope, build_qualified_id, ElementDef, ElementKind,
+    build_qualified_id, collect_elements, collect_relations_with_scope, ElementDef, ElementKind,
     Program,
 };
 
@@ -105,12 +105,9 @@ impl Rule for PublicInterfaceDocumentationRule {
                             elem.location.clone(),
                         )
                         .with_suggestions(vec![
-                            format!(
-                                "Add a description to {} '{}'",
-                                kind.to_string(),
-                                id
-                            ),
-                            "Public interfaces should be well-documented for API consumers".to_string(),
+                            format!("Add a description to {} '{}'", kind.to_string(), id),
+                            "Public interfaces should be well-documented for API consumers"
+                                .to_string(),
                         ]),
                     );
                 }
@@ -139,14 +136,21 @@ impl Rule for PublicInterfaceDocumentationRule {
     }
 }
 
-fn find_element<'a>(elements: &'a HashMap<String, ElementDef>, name: &str) -> Option<&'a ElementDef> {
+fn find_element<'a>(
+    elements: &'a HashMap<String, ElementDef>,
+    name: &str,
+) -> Option<&'a ElementDef> {
     if let Some(e) = elements.get(name) {
         return Some(e);
     }
     let suffix = format!(".{}", name);
-    elements
-        .iter()
-        .find_map(|(k, e)| if k == name || k.ends_with(&suffix) { Some(e) } else { None })
+    elements.iter().find_map(|(k, e)| {
+        if k == name || k.ends_with(&suffix) {
+            Some(e)
+        } else {
+            None
+        }
+    })
 }
 
 fn extract_desc_tech(elem: &ElementDef) -> (String, String) {
@@ -179,4 +183,3 @@ fn extract_desc_tech(elem: &ElementDef) -> (String, String) {
 
     (desc, tech)
 }
-

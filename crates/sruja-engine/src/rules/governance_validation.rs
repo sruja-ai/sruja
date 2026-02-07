@@ -28,7 +28,14 @@ impl Rule for GovernanceValidationRule {
 
         // kind -> id -> first definition
         let mut seen: HashMap<&'static str, HashMap<String, FirstSeen>> = HashMap::new();
-        for k in ["requirement", "adr", "policy", "scenario", "flow", "contract"] {
+        for k in [
+            "requirement",
+            "adr",
+            "policy",
+            "scenario",
+            "flow",
+            "contract",
+        ] {
             seen.insert(k, HashMap::new());
         }
 
@@ -54,17 +61,15 @@ impl Rule for GovernanceValidationRule {
                         loc.clone(),
                     )
                     .with_suggestions(vec![
-                        format!("{} '{}' is already defined at line {}", kind_key, id, existing.line),
+                        format!(
+                            "{} '{}' is already defined at line {}",
+                            kind_key, id, existing.line
+                        ),
                         format!("Use a unique ID for each {}", kind_key),
                     ]),
                 );
             } else {
-                entry.insert(
-                    id,
-                    FirstSeen {
-                        line: loc.line,
-                    },
-                );
+                entry.insert(id, FirstSeen { line: loc.line });
             }
         }
 
@@ -89,4 +94,3 @@ fn normalize_governance_kind(kind: &ElementKind) -> Option<&'static str> {
         _ => None,
     }
 }
-

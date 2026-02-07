@@ -36,7 +36,11 @@ impl Rule for DatabaseIsolationRule {
             }
 
             let source_name = rel.from.as_string();
-            let source_root = source_name.split('.').next().unwrap_or(&source_name).to_string();
+            let source_root = source_name
+                .split('.')
+                .next()
+                .unwrap_or(&source_name)
+                .to_string();
 
             db_usage
                 .entry(target_name.clone())
@@ -90,8 +94,12 @@ fn is_target_database(elements: &HashMap<String, ElementDef>, name: &str) -> boo
 }
 
 fn is_shared_database(elements: &HashMap<String, ElementDef>, name: &str) -> bool {
-    let Some(e) = find_element(elements, name) else { return false };
-    let Some(body) = &e.assignment.body else { return false };
+    let Some(e) = find_element(elements, name) else {
+        return false;
+    };
+    let Some(body) = &e.assignment.body else {
+        return false;
+    };
     body.metadata.iter().any(|m| {
         m.key == "shared"
             && m.value
@@ -101,17 +109,26 @@ fn is_shared_database(elements: &HashMap<String, ElementDef>, name: &str) -> boo
     })
 }
 
-fn find_element_location(elements: &HashMap<String, ElementDef>, name: &str) -> Option<SourceLocation> {
+fn find_element_location(
+    elements: &HashMap<String, ElementDef>,
+    name: &str,
+) -> Option<SourceLocation> {
     find_element(elements, name).map(|e| e.location.clone())
 }
 
-fn find_element<'a>(elements: &'a HashMap<String, ElementDef>, name: &str) -> Option<&'a ElementDef> {
+fn find_element<'a>(
+    elements: &'a HashMap<String, ElementDef>,
+    name: &str,
+) -> Option<&'a ElementDef> {
     if let Some(e) = elements.get(name) {
         return Some(e);
     }
     let suffix = format!(".{}", name);
-    elements
-        .iter()
-        .find_map(|(fqn, e)| if fqn == name || fqn.ends_with(&suffix) { Some(e) } else { None })
+    elements.iter().find_map(|(fqn, e)| {
+        if fqn == name || fqn.ends_with(&suffix) {
+            Some(e)
+        } else {
+            None
+        }
+    })
 }
-

@@ -42,7 +42,9 @@ impl ContextExporter {
             }
             "security" => {
                 out.push_str("# Security Architecture Review\n\n");
-                out.push_str("This document provides a security-focused view of the architecture.\n\n");
+                out.push_str(
+                    "This document provides a security-focused view of the architecture.\n\n",
+                );
             }
             _ => {
                 out.push_str("# System Architecture Context\n\n");
@@ -53,7 +55,11 @@ impl ContextExporter {
         if !systems.is_empty() {
             out.push_str("## Systems\n\n");
             for sys in systems {
-                let title = sys.assignment.title.clone().unwrap_or_else(|| sys.assignment.name.clone());
+                let title = sys
+                    .assignment
+                    .title
+                    .clone()
+                    .unwrap_or_else(|| sys.assignment.name.clone());
                 out.push_str(&format!("### {}\n\n", title));
                 if let Some(body) = &sys.assignment.body {
                     if let Some(desc) = &body.description {
@@ -70,7 +76,11 @@ impl ContextExporter {
         if !persons.is_empty() {
             out.push_str("## Actors\n\n");
             for person in persons {
-                let title = person.assignment.title.clone().unwrap_or_else(|| person.assignment.name.clone());
+                let title = person
+                    .assignment
+                    .title
+                    .clone()
+                    .unwrap_or_else(|| person.assignment.name.clone());
                 out.push_str(&format!("- **{}**: ", title));
                 if let Some(body) = &person.assignment.body {
                     if let Some(desc) = &body.description {
@@ -95,7 +105,10 @@ impl ContextExporter {
                 }
             }
             if relations.len() > 10 {
-                out.push_str(&format!("\n... and {} more relationships\n", relations.len() - 10));
+                out.push_str(&format!(
+                    "\n... and {} more relationships\n",
+                    relations.len() - 10
+                ));
             }
             out.push('\n');
         }

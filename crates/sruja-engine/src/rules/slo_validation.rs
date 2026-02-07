@@ -36,7 +36,10 @@ impl Rule for SloValidationRule {
     }
 }
 
-fn validate_slo_block(slo: &SloBlock, fallback_loc: &sruja_diagnostics::SourceLocation) -> Vec<Diagnostic> {
+fn validate_slo_block(
+    slo: &SloBlock,
+    fallback_loc: &sruja_diagnostics::SourceLocation,
+) -> Vec<Diagnostic> {
     let mut diags: Vec<Diagnostic> = Vec::with_capacity(5);
 
     // At least one SLO type present
@@ -60,7 +63,10 @@ fn validate_slo_block(slo: &SloBlock, fallback_loc: &sruja_diagnostics::SourceLo
                 diags.push(Diagnostic::new(
                     sruja_diagnostics::codes::CODE_VALIDATION_RULE_ERROR,
                     Severity::Error,
-                    format!("Availability target '{}' must be a percentage (e.g., '99.9%')", target),
+                    format!(
+                        "Availability target '{}' must be a percentage (e.g., '99.9%')",
+                        target
+                    ),
                     fallback_loc.clone(),
                 ));
             }
@@ -83,7 +89,10 @@ fn validate_slo_block(slo: &SloBlock, fallback_loc: &sruja_diagnostics::SourceLo
                 diags.push(Diagnostic::new(
                     sruja_diagnostics::codes::CODE_VALIDATION_RULE_ERROR,
                     Severity::Error,
-                    format!("Availability current '{}' must be a percentage (e.g., '99.95%')", current),
+                    format!(
+                        "Availability current '{}' must be a percentage (e.g., '99.95%')",
+                        current
+                    ),
                     fallback_loc.clone(),
                 ));
             }
@@ -97,12 +106,16 @@ fn validate_slo_block(slo: &SloBlock, fallback_loc: &sruja_diagnostics::SourceLo
                     Diagnostic::new(
                         sruja_diagnostics::codes::CODE_VALIDATION_RULE_ERROR,
                         Severity::Error,
-                        format!("Latency p95 '{}' must be a duration (e.g., '200ms', '1s')", p95),
+                        format!(
+                            "Latency p95 '{}' must be a duration (e.g., '200ms', '1s')",
+                            p95
+                        ),
                         fallback_loc.clone(),
                     )
                     .with_suggestions(vec![
                         "Use duration format: '200ms', '1s', '500ms', '2s'".to_string(),
-                        "Common values: '100ms' (fast), '200ms' (good), '500ms' (acceptable)".to_string(),
+                        "Common values: '100ms' (fast), '200ms' (good), '500ms' (acceptable)"
+                            .to_string(),
                     ]),
                 );
             }
@@ -113,7 +126,10 @@ fn validate_slo_block(slo: &SloBlock, fallback_loc: &sruja_diagnostics::SourceLo
                     Diagnostic::new(
                         sruja_diagnostics::codes::CODE_VALIDATION_RULE_ERROR,
                         Severity::Error,
-                        format!("Latency p99 '{}' must be a duration (e.g., '500ms', '2s')", p99),
+                        format!(
+                            "Latency p99 '{}' must be a duration (e.g., '500ms', '2s')",
+                            p99
+                        ),
                         fallback_loc.clone(),
                     )
                     .with_suggestions(vec![
@@ -152,7 +168,9 @@ fn validate_slo_block(slo: &SloBlock, fallback_loc: &sruja_diagnostics::SourceLo
                             format!("Latency current p95 '{}' must be a duration", p95),
                             fallback_loc.clone(),
                         )
-                        .with_suggestions(vec!["Use duration format: '200ms', '1s', '500ms'".to_string()]),
+                        .with_suggestions(vec![
+                            "Use duration format: '200ms', '1s', '500ms'".to_string(),
+                        ]),
                     );
                 }
             }
@@ -165,7 +183,9 @@ fn validate_slo_block(slo: &SloBlock, fallback_loc: &sruja_diagnostics::SourceLo
                             format!("Latency current p99 '{}' must be a duration", p99),
                             fallback_loc.clone(),
                         )
-                        .with_suggestions(vec!["Use duration format: '500ms', '2s', '1s'".to_string()]),
+                        .with_suggestions(vec![
+                            "Use duration format: '500ms', '2s', '1s'".to_string(),
+                        ]),
                     );
                 }
             }
@@ -179,12 +199,16 @@ fn validate_slo_block(slo: &SloBlock, fallback_loc: &sruja_diagnostics::SourceLo
                     Diagnostic::new(
                         sruja_diagnostics::codes::CODE_VALIDATION_RULE_ERROR,
                         Severity::Error,
-                        format!("Error rate target '{}' must be a percentage (e.g., '0.1%')", target),
+                        format!(
+                            "Error rate target '{}' must be a percentage (e.g., '0.1%')",
+                            target
+                        ),
                         fallback_loc.clone(),
                     )
                     .with_suggestions(vec![
                         "Use percentage format: '0.1%', '0.01%', '1%'".to_string(),
-                        "Common targets: '0.1%' (99.9% success), '0.01%' (99.99% success)".to_string(),
+                        "Common targets: '0.1%' (99.9% success), '0.01%' (99.99% success)"
+                            .to_string(),
                     ]),
                 );
             }
@@ -198,7 +222,9 @@ fn validate_slo_block(slo: &SloBlock, fallback_loc: &sruja_diagnostics::SourceLo
                         format!("Error rate window '{}' should be a time period", window),
                         fallback_loc.clone(),
                     )
-                    .with_suggestions(vec!["Use time period format: '7 days', '30 days', '1 week'".to_string()]),
+                    .with_suggestions(vec![
+                        "Use time period format: '7 days', '30 days', '1 week'".to_string(),
+                    ]),
                 );
             }
         }
@@ -211,7 +237,9 @@ fn validate_slo_block(slo: &SloBlock, fallback_loc: &sruja_diagnostics::SourceLo
                         format!("Error rate current '{}' must be a percentage", current),
                         fallback_loc.clone(),
                     )
-                    .with_suggestions(vec!["Use percentage format: '0.1%', '0.5%', '1%'".to_string()]),
+                    .with_suggestions(vec![
+                        "Use percentage format: '0.1%', '0.5%', '1%'".to_string(),
+                    ]),
                 );
             }
         }
@@ -246,7 +274,9 @@ fn validate_slo_block(slo: &SloBlock, fallback_loc: &sruja_diagnostics::SourceLo
                         format!("Throughput window '{}' should be a time period", window),
                         fallback_loc.clone(),
                     )
-                    .with_suggestions(vec!["Use time period format: '1 hour', '1 day', '1 week'".to_string()]),
+                    .with_suggestions(vec![
+                        "Use time period format: '1 hour', '1 day', '1 week'".to_string(),
+                    ]),
                 );
             }
         }
@@ -259,7 +289,9 @@ fn validate_slo_block(slo: &SloBlock, fallback_loc: &sruja_diagnostics::SourceLo
                         format!("Throughput current '{}' should be a rate", current),
                         fallback_loc.clone(),
                     )
-                    .with_suggestions(vec!["Use rate format: '5000 req/s', '1000/s', '200 ops/min'".to_string()]),
+                    .with_suggestions(vec![
+                        "Use rate format: '5000 req/s', '1000/s', '200 ops/min'".to_string(),
+                    ]),
                 );
             }
         }
@@ -270,7 +302,9 @@ fn validate_slo_block(slo: &SloBlock, fallback_loc: &sruja_diagnostics::SourceLo
 
 fn is_valid_percentage(s: &str) -> bool {
     let s = s.trim();
-    let Some(num) = s.strip_suffix('%') else { return false };
+    let Some(num) = s.strip_suffix('%') else {
+        return false;
+    };
     is_number(num)
 }
 
@@ -302,7 +336,9 @@ fn is_valid_time_window(s: &str) -> bool {
 fn is_valid_rate(s: &str) -> bool {
     // Very small parser matching Go's regex: ^\d+(\s+\w+)?/\w+$
     let s = s.trim();
-    let Some((lhs, rhs)) = s.split_once('/') else { return false };
+    let Some((lhs, rhs)) = s.split_once('/') else {
+        return false;
+    };
     if rhs.trim().is_empty() {
         return false;
     }
@@ -347,4 +383,3 @@ fn is_number(s: &str) -> bool {
     }
     seen_digit
 }
-

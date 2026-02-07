@@ -7,9 +7,7 @@ use sruja_language::ast::ScenarioStep;
 
 /// Escape a string for use inside Mermaid participant/label (avoid quotes and newlines).
 fn escape_mermaid(s: &str) -> String {
-    s.replace(['"', '\n', '\r'], " ")
-        .trim()
-        .to_string()
+    s.replace(['"', '\n', '\r'], " ").trim().to_string()
 }
 
 /// Generate Mermaid sequence diagram for a scenario (id, title, steps).
@@ -87,7 +85,13 @@ fn scenario_steps_to_sequence_diagram(steps: &[ScenarioStep]) -> String {
 
 fn sanitize_id(s: &str) -> String {
     s.chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect::<String>()
 }
 

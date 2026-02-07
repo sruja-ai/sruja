@@ -7,7 +7,7 @@ use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::SystemTime;
 
-use sruja_language::{Program, collect_elements};
+use sruja_language::{collect_elements, Program};
 
 use crate::json::types::*;
 
@@ -126,7 +126,11 @@ impl Exporter {
     }
 
     /// Convert elements to ElementDump
-    fn convert_elements(&self, dump: &mut SrujaModelDump, elements: &HashMap<String, sruja_language::ElementDef>) {
+    fn convert_elements(
+        &self,
+        dump: &mut SrujaModelDump,
+        elements: &HashMap<String, sruja_language::ElementDef>,
+    ) {
         for (fqn, elem) in elements {
             let kind = elem.assignment.kind.to_string();
             let title = elem.assignment.name.clone();
@@ -134,7 +138,7 @@ impl Exporter {
             let technology = self.extract_technology(&elem);
             let tags = self.extract_tags(&elem);
             let metadata = self.extract_metadata(&elem);
-            
+
             // Determine parent FQN
             let parent = if let Some(dot_idx) = fqn.rfind('.') {
                 Some(fqn[..dot_idx].to_string())
@@ -164,7 +168,7 @@ impl Exporter {
         for (idx, rel) in relations.iter().enumerate() {
             let from_fqn = rel.from.as_string();
             let to_fqn = rel.to.as_string();
-            
+
             let id = format!("rel_{}", idx);
             let title = rel.label.clone().or_else(|| rel.description.clone());
             let technology = rel.technology.clone();
@@ -192,13 +196,17 @@ impl Exporter {
 
     /// Extract description from element body
     fn extract_description(&self, elem: &sruja_language::ElementDef) -> Option<String> {
-        elem.assignment.body.as_ref()
+        elem.assignment
+            .body
+            .as_ref()
             .and_then(|body| body.description.clone())
     }
 
     /// Extract technology from element body
     fn extract_technology(&self, elem: &sruja_language::ElementDef) -> Option<String> {
-        elem.assignment.body.as_ref()
+        elem.assignment
+            .body
+            .as_ref()
             .and_then(|body| body.technology.clone())
     }
 
@@ -209,11 +217,14 @@ impl Exporter {
 
     /// Extract metadata from element body
     fn extract_metadata(&self, elem: &sruja_language::ElementDef) -> HashMap<String, String> {
-        elem.assignment.body.as_ref()
+        elem.assignment
+            .body
+            .as_ref()
             .map(|body| {
-                body.metadata.iter().map(|e| {
-                    (e.key.clone(), e.value.clone().unwrap_or_default())
-                }).collect::<HashMap<_, _>>()
+                body.metadata
+                    .iter()
+                    .map(|e| (e.key.clone(), e.value.clone().unwrap_or_default()))
+                    .collect::<HashMap<_, _>>()
             })
             .unwrap_or_default()
     }
@@ -235,14 +246,17 @@ impl Exporter {
                         id: scenario.id.clone(),
                         title: scenario.title.clone(),
                         description: scenario.description.clone(),
-                        steps: scenario.steps.iter().enumerate().map(|(idx, step)| {
-                            StepDump {
+                        steps: scenario
+                            .steps
+                            .iter()
+                            .enumerate()
+                            .map(|(idx, step)| StepDump {
                                 id: Some(format!("step_{}", idx)),
                                 description: step.description.clone().unwrap_or_default(),
                                 from: step.from.as_ref().map(|q| q.as_string()),
                                 to: step.to.as_ref().map(|q| q.as_string()),
-                            }
-                        }).collect(),
+                            })
+                            .collect(),
                     });
                 }
                 sruja_language::TopLevelItem::Flow(flow) => {
@@ -250,14 +264,17 @@ impl Exporter {
                         id: flow.id.clone(),
                         title: flow.title.clone(),
                         description: flow.description.clone(),
-                        steps: flow.steps.iter().enumerate().map(|(idx, step)| {
-                            StepDump {
+                        steps: flow
+                            .steps
+                            .iter()
+                            .enumerate()
+                            .map(|(idx, step)| StepDump {
                                 id: Some(format!("step_{}", idx)),
                                 description: step.description.clone().unwrap_or_default(),
                                 from: step.from.as_ref().map(|q| q.as_string()),
                                 to: step.to.as_ref().map(|q| q.as_string()),
-                            }
-                        }).collect(),
+                            })
+                            .collect(),
                     });
                 }
                 sruja_language::TopLevelItem::Requirement(req) => {
@@ -295,10 +312,14 @@ impl Exporter {
                 }
                 sruja_language::TopLevelItem::Import(import) => {
                     extensions.imports.push(ImportDump {
-                        elements: import.elements.iter().map(|e| match e {
-                            sruja_language::ImportElement::Ident(ident) => ident.clone(),
-                            sruja_language::ImportElement::Wildcard => "*".to_string(),
-                        }).collect(),
+                        elements: import
+                            .elements
+                            .iter()
+                            .map(|e| match e {
+                                sruja_language::ImportElement::Ident(ident) => ident.clone(),
+                                sruja_language::ImportElement::Wildcard => "*".to_string(),
+                            })
+                            .collect(),
                         from: import.from.clone(),
                     });
                 }
@@ -306,12 +327,13 @@ impl Exporter {
             }
         }
 
-        if !extensions.scenarios.is_empty() 
+        if !extensions.scenarios.is_empty()
             || !extensions.flows.is_empty()
             || !extensions.requirements.is_empty()
             || !extensions.adrs.is_empty()
             || !extensions.policies.is_empty()
-            || !extensions.imports.is_empty() {
+            || !extensions.imports.is_empty()
+        {
             dump.sruja = Some(extensions);
         }
     }
@@ -328,7 +350,9 @@ impl Default for Exporter {
 fn timestamp() -> String {
     // In WASM, use js_sys::Date for time
     let date = js_sys::Date::new_0();
-    date.to_iso_string().as_string().unwrap_or_else(|| String::from("1970-01-01T00:00:00Z"))
+    date.to_iso_string()
+        .as_string()
+        .unwrap_or_else(|| String::from("1970-01-01T00:00:00Z"))
 }
 
 /// Generate ISO 8601 timestamp

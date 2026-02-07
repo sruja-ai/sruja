@@ -40,7 +40,9 @@ impl Rule for PropertiesValidationRule {
 
 fn extract_props(elem: &ElementDef) -> HashMap<String, String> {
     let mut props: HashMap<String, String> = HashMap::new();
-    let Some(body) = &elem.assignment.body else { return props };
+    let Some(body) = &elem.assignment.body else {
+        return props;
+    };
 
     for entry in &body.metadata {
         if let Some(v) = &entry.value {
@@ -50,7 +52,10 @@ fn extract_props(elem: &ElementDef) -> HashMap<String, String> {
     props
 }
 
-fn validate_props_map(props: &HashMap<String, String>, loc: &sruja_diagnostics::SourceLocation) -> Vec<Diagnostic> {
+fn validate_props_map(
+    props: &HashMap<String, String>,
+    loc: &sruja_diagnostics::SourceLocation,
+) -> Vec<Diagnostic> {
     let mut diags: Vec<Diagnostic> = Vec::new();
 
     for (k, v) in props {
@@ -59,18 +64,27 @@ fn validate_props_map(props: &HashMap<String, String>, loc: &sruja_diagnostics::
                 let mut suggestions: Vec<String> = Vec::new();
                 match k.as_str() {
                     "port" => {
-                        suggestions.push("Port must be a valid integer between 1 and 65535".to_string());
+                        suggestions
+                            .push("Port must be a valid integer between 1 and 65535".to_string());
                         suggestions.push("Example: '8080' or '443'".to_string());
                     }
                     "version" => {
-                        suggestions.push("Version should follow semantic versioning (e.g., '1.0.0', '2.1.3')".to_string());
+                        suggestions.push(
+                            "Version should follow semantic versioning (e.g., '1.0.0', '2.1.3')"
+                                .to_string(),
+                        );
                     }
                     "url" => {
-                        suggestions.push("URL must be a valid URL format (e.g., 'https://example.com')".to_string());
+                        suggestions.push(
+                            "URL must be a valid URL format (e.g., 'https://example.com')"
+                                .to_string(),
+                        );
                     }
                     _ => {
                         suggestions.push(format!("Check the expected format for property '{}'", k));
-                        suggestions.push("Refer to the DSL documentation for valid property values".to_string());
+                        suggestions.push(
+                            "Refer to the DSL documentation for valid property values".to_string(),
+                        );
                     }
                 }
 
@@ -110,14 +124,18 @@ fn is_integer(s: &str) -> bool {
 
 fn is_percentage(s: &str) -> bool {
     let s = s.trim();
-    let Some(num) = s.strip_suffix('%') else { return false };
+    let Some(num) = s.strip_suffix('%') else {
+        return false;
+    };
     is_number(num)
 }
 
 fn is_currency(s: &str) -> bool {
     // Go regex: ^\$\d{1,3}(,\d{3})*(\.\d+)?$
     let s = s.trim();
-    let Some(rest) = s.strip_prefix('$') else { return false };
+    let Some(rest) = s.strip_prefix('$') else {
+        return false;
+    };
     let (whole, frac) = rest.split_once('.').unwrap_or((rest, ""));
 
     // Validate whole part: groups of 1-3 digits then optional ,### groups
@@ -140,7 +158,10 @@ fn is_currency(s: &str) -> bool {
 
 fn validate_instance_type(s: &str, props: &HashMap<String, String>) -> bool {
     // Go uses provider-specific regexes; we implement equivalent checks without regex deps.
-    let provider = props.get("capacity.instanceProvider").map(|s| s.as_str()).unwrap_or("");
+    let provider = props
+        .get("capacity.instanceProvider")
+        .map(|s| s.as_str())
+        .unwrap_or("");
     match provider {
         "aws" => is_aws_instance_type(s),
         "gcp" => is_gcp_instance_type(s),
@@ -152,7 +173,9 @@ fn validate_instance_type(s: &str, props: &HashMap<String, String>) -> bool {
 fn is_aws_instance_type(s: &str) -> bool {
     // Regex: ^[a-z][0-9][a-z]?\.(?:nano|micro|small|medium|large|xlarge|\d+xlarge)$
     let s = s.trim();
-    let Some((family, size)) = s.split_once('.') else { return false };
+    let Some((family, size)) = s.split_once('.') else {
+        return false;
+    };
     let fam: Vec<char> = family.chars().collect();
     if fam.len() < 2 || fam.len() > 3 {
         return false;
@@ -167,7 +190,9 @@ fn is_aws_instance_type(s: &str) -> bool {
         "nano" | "micro" | "small" | "medium" | "large" | "xlarge" => true,
         _ => {
             // \d+xlarge
-            let Some(num) = size.strip_suffix("xlarge") else { return false };
+            let Some(num) = size.strip_suffix("xlarge") else {
+                return false;
+            };
             let num = num.trim_end_matches('x').trim();
             !num.is_empty() && num.chars().all(|c| c.is_ascii_digit())
         }
@@ -193,7 +218,9 @@ fn is_gcp_instance_type(s: &str) -> bool {
 fn is_azure_instance_type(s: &str) -> bool {
     // Regex: ^Standard_[A-Za-z0-9]+$
     let s = s.trim();
-    let Some(rest) = s.strip_prefix("Standard_") else { return false };
+    let Some(rest) = s.strip_prefix("Standard_") else {
+        return false;
+    };
     !rest.is_empty() && rest.chars().all(|c| c.is_ascii_alphanumeric())
 }
 
@@ -217,4 +244,3 @@ fn is_number(s: &str) -> bool {
     }
     seen_digit
 }
-

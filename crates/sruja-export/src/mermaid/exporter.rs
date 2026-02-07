@@ -52,10 +52,18 @@ impl MermaidExporter {
         self.generate(&elements, &relations)
     }
 
-    fn generate(&self, elements: &HashMap<String, sruja_language::ElementDef>, relations: &[Relation]) -> String {
+    fn generate(
+        &self,
+        elements: &HashMap<String, sruja_language::ElementDef>,
+        relations: &[Relation],
+    ) -> String {
         // Filter/project elements and relations per Go views engine semantics (subset).
-        let (view_elements, view_relations) =
-            compute_view(elements, relations, self.config.view_level, self.config.target_id.clone());
+        let (view_elements, view_relations) = compute_view(
+            elements,
+            relations,
+            self.config.view_level,
+            self.config.target_id.clone(),
+        );
 
         let mut out = String::new();
         out.push_str(&format!("graph {}\n", self.config.direction));
@@ -99,11 +107,17 @@ impl MermaidExporter {
     fn write_styles(&self, out: &mut String) {
         out.push_str(&format!("classDef {} {}\n", CLASS_PERSON, STYLE_PERSON));
         out.push_str(&format!("classDef {} {}\n", CLASS_SYSTEM, STYLE_SYSTEM));
-        out.push_str(&format!("classDef {} {}\n", CLASS_CONTAINER, STYLE_CONTAINER));
+        out.push_str(&format!(
+            "classDef {} {}\n",
+            CLASS_CONTAINER, STYLE_CONTAINER
+        ));
         out.push_str(&format!("classDef {} {}\n", CLASS_DATABASE, STYLE_DATABASE));
         out.push_str(&format!("classDef {} {}\n", CLASS_QUEUE, STYLE_QUEUE));
         out.push_str(&format!("classDef {} {}\n", CLASS_EXTERNAL, STYLE_EXTERNAL));
-        out.push_str(&format!("classDef {} {}\n", CLASS_COMPONENT, STYLE_COMPONENT));
+        out.push_str(&format!(
+            "classDef {} {}\n",
+            CLASS_COMPONENT, STYLE_COMPONENT
+        ));
     }
 
     fn write_subgraph(
@@ -122,7 +136,13 @@ impl MermaidExporter {
         if let Some(kids) = children.get(parent) {
             for child in kids {
                 if children.contains_key(child) {
-                    self.write_subgraph(out, child, elements, children, &format!("{indent}{INDENT4}"));
+                    self.write_subgraph(
+                        out,
+                        child,
+                        elements,
+                        children,
+                        &format!("{indent}{INDENT4}"),
+                    );
                 } else {
                     self.write_node(out, child, elements, &format!("{indent}{INDENT4}"));
                 }
@@ -131,8 +151,16 @@ impl MermaidExporter {
         out.push_str(&format!("{indent}end\n"));
     }
 
-    fn write_node(&self, out: &mut String, fqn: &str, elements: &HashMap<String, sruja_language::ElementDef>, indent: &str) {
-        let Some(elem) = elements.get(fqn) else { return };
+    fn write_node(
+        &self,
+        out: &mut String,
+        fqn: &str,
+        elements: &HashMap<String, sruja_language::ElementDef>,
+        indent: &str,
+    ) {
+        let Some(elem) = elements.get(fqn) else {
+            return;
+        };
         let kind = elem.assignment.kind.to_string().to_lowercase();
 
         let id = sanitize_id(fqn);
@@ -158,14 +186,10 @@ impl MermaidExporter {
     fn write_relation(&self, out: &mut String, rel: &Relation) {
         let from = sanitize_id(&rel.from.as_string());
         let to = sanitize_id(&rel.to.as_string());
-        let label = rel
-            .label
-            .as_ref()
-            .or(rel.description.as_ref())
-            .map(|s| {
-                let one_line = first_line_truncated(s, MAX_EDGE_LABEL_CHARS);
-                escape_quotes(newlines_to_br(&one_line))
-            });
+        let label = rel.label.as_ref().or(rel.description.as_ref()).map(|s| {
+            let one_line = first_line_truncated(s, MAX_EDGE_LABEL_CHARS);
+            escape_quotes(newlines_to_br(&one_line))
+        });
         match label {
             Some(l) if !l.is_empty() => {
                 out.push_str(&format!("{INDENT4}{from} -->|\"{l}\"| {to}\n"));
@@ -237,7 +261,11 @@ fn compute_view(
                 if let Some(e) = elements.get(id) {
                     let kind_str = e.assignment.kind.to_string();
                     let k = normalize_kind(&kind_str);
-                    k == "container" || k == "datastore" || k == "queue" || k == "system" || k == "person"
+                    k == "container"
+                        || k == "datastore"
+                        || k == "queue"
+                        || k == "system"
+                        || k == "person"
                 } else {
                     false
                 }
@@ -313,7 +341,9 @@ fn compute_view(
         if source.is_empty() || target.is_empty() || source == target {
             continue;
         }
-        if source.starts_with(&(target.clone() + ".")) || target.starts_with(&(source.clone() + ".")) {
+        if source.starts_with(&(target.clone() + "."))
+            || target.starts_with(&(source.clone() + "."))
+        {
             continue;
         }
         if !visible.contains(&source) && !visible.contains(&target) {
@@ -324,8 +354,12 @@ fn compute_view(
 
         projected.push(Relation {
             location: rel.location.clone(),
-            from: sruja_language::QualifiedIdent::qualified(source.split('.').map(|s| s.to_string()).collect()),
-            to: sruja_language::QualifiedIdent::qualified(target.split('.').map(|s| s.to_string()).collect()),
+            from: sruja_language::QualifiedIdent::qualified(
+                source.split('.').map(|s| s.to_string()).collect(),
+            ),
+            to: sruja_language::QualifiedIdent::qualified(
+                target.split('.').map(|s| s.to_string()).collect(),
+            ),
             label: rel.label.clone(),
             description: rel.description.clone(),
             technology: rel.technology.clone(),
@@ -387,7 +421,9 @@ fn get_container(
                 return Some(cur);
             }
         }
-        let Some(p) = parent_fqn(&cur) else { return None };
+        let Some(p) = parent_fqn(&cur) else {
+            return None;
+        };
         cur = p;
     }
 }
@@ -400,7 +436,13 @@ fn parent_fqn(fqn: &str) -> Option<String> {
 fn sanitize_id(id: &str) -> String {
     // Mermaid ids can't contain '.'; keep stable mapping.
     id.chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
@@ -430,10 +472,7 @@ fn first_line_truncated(s: &str, max_chars: usize) -> String {
         .map(|l| l.trim())
         .unwrap_or("")
         .replace('\r', " ");
-    truncate_line(
-        &first.replace('\n', " ").replace("  ", " "),
-        max_chars,
-    )
+    truncate_line(&first.replace('\n', " ").replace("  ", " "), max_chars)
 }
 
 /// Replace newlines and literal `\n` with `<br>` so Mermaid renders line breaks in node labels.
@@ -468,7 +507,10 @@ fn format_label(elem: &sruja_language::ElementDef) -> String {
         .unwrap_or_else(|| elem.assignment.name.clone());
     let id = elem.assignment.name.clone();
     let (desc, tech) = if let Some(body) = &elem.assignment.body {
-        (body.description.clone().unwrap_or_default(), body.technology.clone().unwrap_or_default())
+        (
+            body.description.clone().unwrap_or_default(),
+            body.technology.clone().unwrap_or_default(),
+        )
     } else {
         (String::new(), String::new())
     };
@@ -497,4 +539,3 @@ fn format_label(elem: &sruja_language::ElementDef) -> String {
     }
     lines.join("<br>")
 }
-

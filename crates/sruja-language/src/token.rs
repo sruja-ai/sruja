@@ -15,21 +15,21 @@ pub enum TokenType {
     Number,
 
     // Operators
-    Assign,      // =
-    Arrow,       // ->
-    BackArrow,   // <-
-    BiArrow,     // <->
+    Assign,    // =
+    Arrow,     // ->
+    BackArrow, // <-
+    BiArrow,   // <->
 
     // Delimiters
-    Colon,     // :
-    Comma,     // ,
-    Dot,       // .
-    Star,      // *
-    TagRef,    // #tagname
-    LBrace,    // {
-    RBrace,    // }
-    LBracket,  // [
-    RBracket,  // ]
+    Colon,    // :
+    Comma,    // ,
+    Dot,      // .
+    Star,     // *
+    TagRef,   // #tagname
+    LBrace,   // {
+    RBrace,   // }
+    LBracket, // [
+    RBracket, // ]
 
     // Structure Keywords
     Specification,

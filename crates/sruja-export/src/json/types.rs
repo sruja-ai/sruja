@@ -44,7 +44,10 @@ pub struct ProjectDump {
 pub struct GlobalsDump {
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub predicates: HashMap<String, serde_json::Value>,
-    #[serde(rename = "dynamicPredicates", skip_serializing_if = "HashMap::is_empty")]
+    #[serde(
+        rename = "dynamicPredicates",
+        skip_serializing_if = "HashMap::is_empty"
+    )]
     pub dynamic_predicates: HashMap<String, serde_json::Value>,
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub styles: HashMap<String, serde_json::Value>,

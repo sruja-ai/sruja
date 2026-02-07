@@ -249,9 +249,7 @@ pub struct QualifiedIdent {
 
 impl QualifiedIdent {
     pub fn simple(ident: String) -> Self {
-        Self {
-            parts: vec![ident],
-        }
+        Self { parts: vec![ident] }
     }
 
     pub fn qualified(parts: Vec<String>) -> Self {

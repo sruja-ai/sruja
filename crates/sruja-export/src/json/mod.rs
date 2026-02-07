@@ -2,8 +2,8 @@
 //!
 //! This module provides functionality to export Sruja Program AST to JSON format.
 
-pub mod types;
 pub mod exporter;
+pub mod types;
 
-pub use exporter::{Exporter, ExportResult};
+pub use exporter::{ExportResult, Exporter};
 pub use types::*;

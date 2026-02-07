@@ -56,7 +56,7 @@ impl Rule for CycleDetectionRule {
                         // Cycle detected
                         let cycle_start = path.iter().position(|x| x == neighbor).unwrap();
                         let cycle: Vec<String> = path[cycle_start..].to_vec();
-                        
+
                         diagnostics.push(Diagnostic::new(
                             sruja_diagnostics::codes::CODE_CYCLE_DETECTED,
                             Severity::Error,
@@ -76,7 +76,14 @@ impl Rule for CycleDetectionRule {
 
         for node in adj.keys() {
             if !visited.contains(node) {
-                dfs(node, &adj, &mut visited, &mut rec_stack, &mut path, &mut diagnostics);
+                dfs(
+                    node,
+                    &adj,
+                    &mut visited,
+                    &mut rec_stack,
+                    &mut path,
+                    &mut diagnostics,
+                );
             }
         }
 

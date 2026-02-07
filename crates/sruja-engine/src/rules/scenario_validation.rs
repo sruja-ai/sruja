@@ -55,11 +55,19 @@ impl<'a> ScenarioRunner<'a> {
         Self { elements }
     }
 
-    fn validate_steps(&self, steps: &[ScenarioStep], fallback_loc: &SourceLocation) -> Vec<Diagnostic> {
+    fn validate_steps(
+        &self,
+        steps: &[ScenarioStep],
+        fallback_loc: &SourceLocation,
+    ) -> Vec<Diagnostic> {
         let mut diags: Vec<Diagnostic> = Vec::new();
 
         for step in steps {
-            let from_fqn = step.from.as_ref().map(|q| q.as_string()).unwrap_or_default();
+            let from_fqn = step
+                .from
+                .as_ref()
+                .map(|q| q.as_string())
+                .unwrap_or_default();
             let to_fqn = step.to.as_ref().map(|q| q.as_string()).unwrap_or_default();
 
             let from_exists = self.element_exists(&from_fqn);
@@ -103,7 +111,9 @@ impl<'a> ScenarioRunner<'a> {
         }
         // Allow leaf-id match as fallback (parity-ish; Go uses exact FQN from parts)
         let suffix = format!(".{}", fqn);
-        self.elements.keys().any(|k| k == fqn || k.ends_with(&suffix))
+        self.elements
+            .keys()
+            .any(|k| k == fqn || k.ends_with(&suffix))
     }
 
     fn check_policies(
@@ -158,7 +168,11 @@ impl<'a> ScenarioRunner<'a> {
             for m in &body.metadata {
                 if (m.key == "tags" || m.key == "tag") && m.value.is_some() {
                     let v = m.value.as_ref().unwrap().trim().trim_matches('"');
-                    tags.extend(v.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()));
+                    tags.extend(
+                        v.split(',')
+                            .map(|s| s.trim().to_string())
+                            .filter(|s| !s.is_empty()),
+                    );
                 }
             }
         }
@@ -171,9 +185,13 @@ impl<'a> ScenarioRunner<'a> {
             return Some(e);
         }
         let suffix = format!(".{}", fqn);
-        self.elements
-            .iter()
-            .find_map(|(k, e)| if k == fqn || k.ends_with(&suffix) { Some(e) } else { None })
+        self.elements.iter().find_map(|(k, e)| {
+            if k == fqn || k.ends_with(&suffix) {
+                Some(e)
+            } else {
+                None
+            }
+        })
     }
 }
 
@@ -181,4 +199,3 @@ fn has_tag(tags: &[String], target: &str) -> bool {
     let target = target.to_lowercase();
     tags.iter().any(|t| t.trim().to_lowercase() == target)
 }
-
