@@ -192,6 +192,8 @@ AICodingAssistants.Cursor -> DeveloperWorkspace.Codebase "Generated code"
 // Traceability flow
 Developer -> ContextProvisioningSystem.TraceabilityManager.LinkStore "Links code to DSL"
 DeveloperWorkspace.Codebase -> ContextProvisioningSystem.TraceabilityManager.LinkStore "Tracks code files"
+Developer -> ContextProvisioningSystem.CLI "runs commands"
+ContextProvisioningSystem.ContextFormatter -> ContextProvisioningSystem.LSPIntegration "provides formatted context"
 
 // Stories/Flows
 ExportContext = story "Export Context for System" {
@@ -221,3 +223,6 @@ REQ_TOKEN_OPTIMIZATION = requirement performance "Context must be optimized for 
 REQ_TRACEABILITY = requirement functional "System must track relationships between DSL elements and generated code"
 REQ_LSP_INTEGRATION = requirement functional "System must provide context via LSP for IDE integration"
 REQ_BACKWARD_COMPAT = requirement constraint "New features must not break existing Sruja functionality"
+
+// Requirement traceability
+REQ_TRACEABILITY -> TrackTraceability "satisfied by"

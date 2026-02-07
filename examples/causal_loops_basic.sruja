@@ -121,3 +121,8 @@ GrowthUnderinvestment = causal_loop "Growth and Underinvestment" {
     polarity "+"
   }
 }
+
+// Cross-loop connections (ensures all elements participate in relations)
+customerDemand -> demand "drives"
+demand -> inventoryLevel "inventory depletion"
+GrowthUnderinvestment -> ProductivityLoop "archetype"
