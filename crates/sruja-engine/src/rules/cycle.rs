@@ -66,6 +66,7 @@ impl Rule for CycleDetectionRule {
         fn dfs(
             node: &str,
             adj: &HashMap<String, Vec<String>>,
+            elements: &HashMap<String, sruja_language::ElementDef>,
             visited: &mut HashSet<String>,
             rec_stack: &mut HashSet<String>,
             path: &mut Vec<String>,
@@ -78,11 +79,33 @@ impl Rule for CycleDetectionRule {
             if let Some(neighbors) = adj.get(node) {
                 for neighbor in neighbors {
                     if !visited.contains(neighbor) {
-                        dfs(neighbor, adj, visited, rec_stack, path, diagnostics);
+                        dfs(
+                            neighbor,
+                            adj,
+                            elements,
+                            visited,
+                            rec_stack,
+                            path,
+                            diagnostics,
+                        );
                     } else if rec_stack.contains(neighbor) {
                         // Cycle detected
                         let cycle_start = path.iter().position(|x| x == neighbor).unwrap();
                         let cycle: Vec<String> = path[cycle_start..].to_vec();
+
+                        // Skip cycles where all nodes are variables (causal/feedback loops)
+                        let all_variables = cycle.iter().all(|node| {
+                            elements.get(node).map_or(false, |e| {
+                                matches!(
+                                    &e.assignment.kind,
+                                    ElementKind::Custom(k) if k == "variable"
+                                )
+                            })
+                        });
+                        if all_variables {
+                            // Likely intentional causal loop; do not report
+                            continue;
+                        }
 
                         diagnostics.push(Diagnostic::new(
                             sruja_diagnostics::codes::CODE_CYCLE_DETECTED,
@@ -106,6 +129,7 @@ impl Rule for CycleDetectionRule {
                 dfs(
                     node,
                     &adj,
+                    &elements,
                     &mut visited,
                     &mut rec_stack,
                     &mut path,
