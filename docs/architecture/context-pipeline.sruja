@@ -188,6 +188,8 @@ Developer -> AICodingAssistants.Copilot "Uses context to generate code"
 Developer -> AICodingAssistants.Cursor "Uses context to generate code"
 AICodingAssistants.Copilot -> DeveloperWorkspace.Codebase "Generated code"
 AICodingAssistants.Cursor -> DeveloperWorkspace.Codebase "Generated code"
+ContextProvisioningSystem.OptionalAIAssistant -> ContextProvisioningSystem "provides AI features"
+ContextProvisioningSystem -> DeveloperWorkspace "provides context to workspace"
 
 // Traceability flow
 Developer -> ContextProvisioningSystem.TraceabilityManager.LinkStore "Links code to DSL"
@@ -196,13 +198,20 @@ Developer -> ContextProvisioningSystem.CLI "runs commands"
 ContextProvisioningSystem.ContextFormatter -> ContextProvisioningSystem.LSPIntegration "provides formatted context"
 
 // Stories/Flows
+Developer -> ExportContext "initiates"
+Developer -> UseContextWithAI "initiates"
+Developer -> TrackTraceability "initiates"
+Developer -> LSPContextProvision "initiates"
 ExportContext = story "Export Context for System" {
   Developer -> ContextProvisioningSystem.CLI.ContextExportCmd "runs: sruja context export --system=OrderService --format=markdown"
   ContextProvisioningSystem.CLI.ContextExportCmd -> ContextProvisioningSystem.ContextFormatter.MarkdownFormatter "formats context"
+  ContextProvisioningSystem.CLI.ContextExportCmd -> ContextProvisioningSystem.DSLParser "parses DSL"
+  ContextProvisioningSystem.DSLParser -> ContextProvisioningSystem.JSONExport "exports to JSON"
 }
 
 UseContextWithAI = story "Use Context with AI Assistant" {
   Developer -> AICodingAssistants.Copilot "provides context + code request"
+  ContextProvisioningSystem -> AICodingAssistants "provides context"
   AICodingAssistants.Copilot -> DeveloperWorkspace.Codebase "generates code with architecture awareness"
 }
 
@@ -215,6 +224,7 @@ TrackTraceability = story "Track Traceability" {
 LSPContextProvision = story "LSP Context Provision" {
   Developer -> ContextProvisioningSystem.LSPIntegration.HoverEnhancer "hovers over DSL element"
   ContextProvisioningSystem.LSPIntegration.ContextProvider -> AICodingAssistants.Cursor "provides context automatically"
+  ContextProvisioningSystem.LSPIntegration -> ContextProvisioningSystem "integrates with context system"
 }
 
 // Requirements
@@ -226,3 +236,7 @@ REQ_BACKWARD_COMPAT = requirement constraint "New features must not break existi
 
 // Requirement traceability
 REQ_TRACEABILITY -> TrackTraceability "satisfied by"
+REQ_CONTEXT_EXPORT -> ExportContext "satisfied by"
+REQ_TOKEN_OPTIMIZATION -> ContextProvisioningSystem.ContextFormatter.TokenOptimizer "satisfied by"
+REQ_LSP_INTEGRATION -> LSPContextProvision "satisfied by"
+REQ_BACKWARD_COMPAT -> ContextProvisioningSystem "satisfied by"

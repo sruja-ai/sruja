@@ -37,7 +37,7 @@ impl Default for Program {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopLevelItem {
     /// Element definition: person, system, container, component, etc.
-    ElementDef(ElementDef),
+    ElementDef(Box<ElementDef>),
     /// Relation between elements
     Relation(Relation),
     /// Import statement
@@ -130,27 +130,26 @@ pub enum ElementKind {
     Custom(String),
 }
 
-impl ElementKind {
-    pub fn to_string(&self) -> String {
+impl std::fmt::Display for ElementKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ElementKind::Person => "person",
-            ElementKind::Role => "role",
-            ElementKind::System => "system",
-            ElementKind::Container => "container",
-            ElementKind::Component => "component",
-            ElementKind::Database => "database",
-            ElementKind::Queue => "queue",
-            ElementKind::ExternalSystem => "externalSystem",
-            ElementKind::DataStore => "datastore",
-            ElementKind::Policy => "policy",
-            ElementKind::Requirement => "requirement",
-            ElementKind::Adr => "adr",
-            ElementKind::Flow => "flow",
-            ElementKind::Scenario => "scenario",
-            ElementKind::Story => "story",
-            ElementKind::Custom(k) => k.as_str(),
+            ElementKind::Person => write!(f, "person"),
+            ElementKind::Role => write!(f, "role"),
+            ElementKind::System => write!(f, "system"),
+            ElementKind::Container => write!(f, "container"),
+            ElementKind::Component => write!(f, "component"),
+            ElementKind::Database => write!(f, "database"),
+            ElementKind::Queue => write!(f, "queue"),
+            ElementKind::ExternalSystem => write!(f, "externalSystem"),
+            ElementKind::DataStore => write!(f, "datastore"),
+            ElementKind::Policy => write!(f, "policy"),
+            ElementKind::Requirement => write!(f, "requirement"),
+            ElementKind::Adr => write!(f, "adr"),
+            ElementKind::Flow => write!(f, "flow"),
+            ElementKind::Scenario => write!(f, "scenario"),
+            ElementKind::Story => write!(f, "story"),
+            ElementKind::Custom(k) => write!(f, "{}", k),
         }
-        .to_string()
     }
 }
 
@@ -171,7 +170,7 @@ pub struct ElementDefBody {
 /// Items that can appear in an element body
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ElementDefBodyItem {
-    ElementDef(ElementDef),
+    ElementDef(Box<ElementDef>),
     Relation(Relation),
     Description(String),
     Technology(String),
@@ -180,7 +179,7 @@ pub enum ElementDefBodyItem {
     Conventions(ConventionsBlock),
     Style(StyleDecl),
     Scale(ScaleBlock),
-    Slo(SloBlock),
+    Slo(Box<SloBlock>),
 }
 
 /// System element (specialized ElementDef)

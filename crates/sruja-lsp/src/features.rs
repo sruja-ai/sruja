@@ -30,7 +30,7 @@ fn collect_elements(
     for item in &program.items {
         match item {
             TopLevelItem::ElementDef(elem) => {
-                elements.insert(elem.assignment.name.clone(), elem.clone());
+                elements.insert(elem.assignment.name.clone(), (**elem).clone());
             }
             TopLevelItem::Relation(rel) => {
                 relations.push(rel.clone());

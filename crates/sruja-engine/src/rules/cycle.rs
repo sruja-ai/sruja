@@ -7,12 +7,17 @@
 use std::collections::{HashMap, HashSet};
 
 use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
-use sruja_language::{collect_elements, collect_relations_with_scope, resolve_relation_fqns, ElementKind, Program};
+use sruja_language::{
+    collect_elements, collect_relations_with_scope, resolve_relation_fqns, ElementKind, Program,
+};
 
 use crate::validator::Rule;
 
 /// Returns true if the scope (parent FQN) refers to a causal_loop element.
-fn is_scope_causal_loop(scope: &str, elements: &HashMap<String, sruja_language::ElementDef>) -> bool {
+fn is_scope_causal_loop(
+    scope: &str,
+    elements: &HashMap<String, sruja_language::ElementDef>,
+) -> bool {
     if scope.is_empty() {
         return false;
     }

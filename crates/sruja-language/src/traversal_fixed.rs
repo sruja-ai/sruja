@@ -42,12 +42,28 @@ pub fn collect_elements(program: &Program) -> (HashMap<String, ElementDef>, Vec<
         match item {
             TopLevelItem::ElementDef(elem) => {
                 stack.push(Frame {
-                    elem: elem.clone(),
+                    elem: (**elem).clone(),
                     parent: String::new(),
                 });
             }
             TopLevelItem::Relation(rel) => {
                 relations_with_scope.push((rel.clone(), String::new()));
+            }
+            TopLevelItem::Requirement(req) => {
+                let elem_def = ElementDef {
+                    location: req.location.clone(),
+                    assignment: ElementAssignment {
+                        location: req.location.clone(),
+                        name: req.id.clone(),
+                        kind: ElementKind::Requirement,
+                        sub_kind: Some(req.r#type.clone()),
+                        title: Some(req.title.clone()),
+                        tag_refs: req.tags.clone(),
+                        body: None,
+                    },
+                };
+                let fqn = req.id.clone();
+                elements.insert(fqn, elem_def);
             }
             _ => {}
         }
@@ -63,7 +79,7 @@ pub fn collect_elements(program: &Program) -> (HashMap<String, ElementDef>, Vec<
         }
 
         let fqn = build_qualified_id(&frame.parent, &id);
-        elements.insert(fqn.clone(), elem.clone());
+        elements.insert(fqn.clone(), (**elem).clone());
 
         // Process body items
         if let Some(body) = &elem.assignment.body {
@@ -71,7 +87,7 @@ pub fn collect_elements(program: &Program) -> (HashMap<String, ElementDef>, Vec<
                 match item {
                     ElementDefBodyItem::ElementDef(nested_elem) => {
                         stack.push(Frame {
-                            elem: nested_elem.clone(),
+                            elem: (**nested_elem).clone(),
                             parent: fqn.clone(),
                         });
                     }
@@ -133,7 +149,7 @@ pub fn collect_relations_with_scope(program: &Program) -> Vec<RelationWithScope>
                 scope: String::new(),
             }),
             TopLevelItem::ElementDef(elem) => stack.push(Frame {
-                elem: elem.clone(),
+                elem: (**elem).clone(),
                 parent: String::new(),
             }),
             _ => {}

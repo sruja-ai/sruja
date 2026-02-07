@@ -279,7 +279,7 @@ impl Parser {
         let off = line_offset as i32;
         elem.location.line = (elem.location.line as i32 + off).max(0) as u32;
         elem.assignment.location.line = (elem.assignment.location.line as i32 + off).max(0) as u32;
-        ast.items.push(TopLevelItem::ElementDef(elem));
+        ast.items.push(TopLevelItem::ElementDef(Box::new(elem)));
     }
 
     /// Add a new relation to the AST with line numbers adjusted by context offset.
@@ -453,7 +453,7 @@ fn parse_top_level_item(input: &str) -> IResult<&str, TopLevelItem> {
         map(parse_adr_assignment, TopLevelItem::Adr),
         map(parse_policy_assignment, TopLevelItem::Policy),
         map(parse_overview_block, TopLevelItem::Overview),
-        map(parse_element_def, TopLevelItem::ElementDef),
+        map(parse_element_def, |e| TopLevelItem::ElementDef(Box::new(e))),
         map(parse_relation, TopLevelItem::Relation),
         map(parse_import, TopLevelItem::Import),
         map(parse_scenario, TopLevelItem::Scenario),
@@ -463,7 +463,7 @@ fn parse_top_level_item(input: &str) -> IResult<&str, TopLevelItem> {
         map(parse_policy, TopLevelItem::Policy),
         map(parse_view, TopLevelItem::View),
         map(parse_metadata_block, |m| {
-            TopLevelItem::ElementDef(ElementDef {
+            TopLevelItem::ElementDef(Box::new(ElementDef {
                 location: m.location.clone(),
                 assignment: ElementAssignment {
                     location: m.location.clone(),
@@ -474,7 +474,7 @@ fn parse_top_level_item(input: &str) -> IResult<&str, TopLevelItem> {
                     tag_refs: Vec::new(),
                     body: None,
                 },
-            })
+            }))
         }), // Temporary conversion
     ))(input)
 }
@@ -880,7 +880,7 @@ fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBody> {
             ElementDefBodyItem::Description(d) => body.description = Some(d),
             ElementDefBodyItem::Technology(t) => body.technology = Some(t),
             ElementDefBodyItem::Metadata(m) => body.metadata = m.entries,
-            ElementDefBodyItem::Slo(s) => body.slo = Some(s),
+            ElementDefBodyItem::Slo(s) => body.slo = Some(*s),
             ElementDefBodyItem::ElementDef(e) => body.items.push(ElementDefBodyItem::ElementDef(e)),
             ElementDefBodyItem::Relation(r) => body.items.push(ElementDefBodyItem::Relation(r)),
             ElementDefBodyItem::Constraints(c) => body.constraints = c.entries,
@@ -920,9 +920,11 @@ fn parse_element_body_item(input: &str) -> IResult<&str, ElementDefBodyItem> {
             ),
             ElementDefBodyItem::Technology,
         ),
-        map(parse_metadata_block, |m| ElementDefBodyItem::Metadata(m)),
-        map(parse_slo_block, ElementDefBodyItem::Slo),
-        map(parse_element_def, ElementDefBodyItem::ElementDef),
+        map(parse_metadata_block, ElementDefBodyItem::Metadata),
+        map(parse_slo_block, |s| ElementDefBodyItem::Slo(Box::new(s))),
+        map(parse_element_def, |e| {
+            ElementDefBodyItem::ElementDef(Box::new(e))
+        }),
         map(parse_relation, ElementDefBodyItem::Relation),
         map(parse_constraints_block, ElementDefBodyItem::Constraints),
         map(parse_conventions_block, ElementDefBodyItem::Conventions),
@@ -1469,7 +1471,7 @@ fn parse_view(input: &str) -> IResult<&str, ViewDef> {
             id,
             title,
             description,
-            view_of: view_of.map(|q| q),
+            view_of,
             tags: Vec::new(),
             rules: if includes.is_none() && excludes.is_none() {
                 Vec::new()
@@ -1756,7 +1758,7 @@ fn parse_metadata_entry(input: &str) -> IResult<&str, MetaEntry> {
         // Parse array: ["item1", "item2"]
         map(parse_string_array, |arr| Some(arr.join(", "))),
         // Parse single string: "value"
-        map(parse_string, |s| Some(s)),
+        map(parse_string, Some),
     ))(input)?;
 
     Ok((input, MetaEntry { key, value }))
