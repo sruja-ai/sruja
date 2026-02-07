@@ -14,7 +14,7 @@ fn test_cross_cluster_edge_attributes() {
     let program = Program {
         items: vec![
             // Parent element (cluster)
-            TopLevelItem::ElementDef(ElementDef {
+            TopLevelItem::ElementDef(Box::new(ElementDef {
                 location: dummy_location(),
                 assignment: sruja_language::ElementAssignment {
                     location: dummy_location(),
@@ -25,9 +25,9 @@ fn test_cross_cluster_edge_attributes() {
                     tag_refs: vec![],
                     body: None,
                 },
-            }),
+            })),
             // Child element in cluster
-            TopLevelItem::ElementDef(ElementDef {
+            TopLevelItem::ElementDef(Box::new(ElementDef {
                 location: dummy_location(),
                 assignment: sruja_language::ElementAssignment {
                     location: dummy_location(),
@@ -38,9 +38,9 @@ fn test_cross_cluster_edge_attributes() {
                     tag_refs: vec![],
                     body: None,
                 },
-            }),
+            })),
             // Another parent element (different cluster)
-            TopLevelItem::ElementDef(ElementDef {
+            TopLevelItem::ElementDef(Box::new(ElementDef {
                 location: dummy_location(),
                 assignment: sruja_language::ElementAssignment {
                     location: dummy_location(),
@@ -51,9 +51,9 @@ fn test_cross_cluster_edge_attributes() {
                     tag_refs: vec![],
                     body: None,
                 },
-            }),
+            })),
             // Child element in second cluster
-            TopLevelItem::ElementDef(ElementDef {
+            TopLevelItem::ElementDef(Box::new(ElementDef {
                 location: dummy_location(),
                 assignment: sruja_language::ElementAssignment {
                     location: dummy_location(),
@@ -64,7 +64,7 @@ fn test_cross_cluster_edge_attributes() {
                     tag_refs: vec![],
                     body: None,
                 },
-            }),
+            })),
             // Relation between services in different clusters
             TopLevelItem::Relation(Relation {
                 location: dummy_location(),
@@ -115,7 +115,7 @@ fn test_same_cluster_edge_no_attributes() {
     let program = Program {
         items: vec![
             // Parent element (cluster)
-            TopLevelItem::ElementDef(ElementDef {
+            TopLevelItem::ElementDef(Box::new(ElementDef {
                 location: dummy_location(),
                 assignment: sruja_language::ElementAssignment {
                     location: dummy_location(),
@@ -126,9 +126,9 @@ fn test_same_cluster_edge_no_attributes() {
                     tag_refs: vec![],
                     body: None,
                 },
-            }),
+            })),
             // Child element in cluster
-            TopLevelItem::ElementDef(ElementDef {
+            TopLevelItem::ElementDef(Box::new(ElementDef {
                 location: dummy_location(),
                 assignment: sruja_language::ElementAssignment {
                     location: dummy_location(),
@@ -139,9 +139,9 @@ fn test_same_cluster_edge_no_attributes() {
                     tag_refs: vec![],
                     body: None,
                 },
-            }),
+            })),
             // Another child element in same cluster
-            TopLevelItem::ElementDef(ElementDef {
+            TopLevelItem::ElementDef(Box::new(ElementDef {
                 location: dummy_location(),
                 assignment: sruja_language::ElementAssignment {
                     location: dummy_location(),
@@ -152,7 +152,7 @@ fn test_same_cluster_edge_no_attributes() {
                     tag_refs: vec![],
                     body: None,
                 },
-            }),
+            })),
             // Relation between services in the same cluster
             TopLevelItem::Relation(Relation {
                 location: dummy_location(),
@@ -201,7 +201,7 @@ fn test_fqdn_edge_resolution_nested_elements() {
     let program = Program {
         items: vec![
             // Parent system with nested containers
-            TopLevelItem::ElementDef(ElementDef {
+            TopLevelItem::ElementDef(Box::new(ElementDef {
                 location: dummy_location(),
                 assignment: sruja_language::ElementAssignment {
                     location: dummy_location(),
@@ -221,7 +221,7 @@ fn test_fqdn_edge_resolution_nested_elements() {
                         slo: None,
                         items: vec![
                             // Nested container API
-                            sruja_language::ElementDefBodyItem::ElementDef(ElementDef {
+                            sruja_language::ElementDefBodyItem::ElementDef(Box::new(ElementDef {
                                 location: dummy_location(),
                                 assignment: sruja_language::ElementAssignment {
                                     location: dummy_location(),
@@ -232,9 +232,9 @@ fn test_fqdn_edge_resolution_nested_elements() {
                                     tag_refs: vec![],
                                     body: None,
                                 },
-                            }),
+                            })),
                             // Nested container DB
-                            sruja_language::ElementDefBodyItem::ElementDef(ElementDef {
+                            sruja_language::ElementDefBodyItem::ElementDef(Box::new(ElementDef {
                                 location: dummy_location(),
                                 assignment: sruja_language::ElementAssignment {
                                     location: dummy_location(),
@@ -245,7 +245,7 @@ fn test_fqdn_edge_resolution_nested_elements() {
                                     tag_refs: vec![],
                                     body: None,
                                 },
-                            }),
+                            })),
                             // Relation with simple names inside the body
                             sruja_language::ElementDefBodyItem::Relation(Relation {
                                 location: dummy_location(),
@@ -259,9 +259,9 @@ fn test_fqdn_edge_resolution_nested_elements() {
                         ],
                     }),
                 },
-            }),
+            })),
             // Another system with nested container
-            TopLevelItem::ElementDef(ElementDef {
+            TopLevelItem::ElementDef(Box::new(ElementDef {
                 location: dummy_location(),
                 assignment: sruja_language::ElementAssignment {
                     location: dummy_location(),
@@ -279,21 +279,23 @@ fn test_fqdn_edge_resolution_nested_elements() {
                         style: None,
                         scale: None,
                         slo: None,
-                        items: vec![sruja_language::ElementDefBodyItem::ElementDef(ElementDef {
-                            location: dummy_location(),
-                            assignment: sruja_language::ElementAssignment {
+                        items: vec![sruja_language::ElementDefBodyItem::ElementDef(Box::new(
+                            ElementDef {
                                 location: dummy_location(),
-                                name: "WebApp".to_string(),
-                                kind: ElementKind::Container,
-                                sub_kind: None,
-                                title: Some("Web Application".to_string()),
-                                tag_refs: vec![],
-                                body: None,
+                                assignment: sruja_language::ElementAssignment {
+                                    location: dummy_location(),
+                                    name: "WebApp".to_string(),
+                                    kind: ElementKind::Container,
+                                    sub_kind: None,
+                                    title: Some("Web Application".to_string()),
+                                    tag_refs: vec![],
+                                    body: None,
+                                },
                             },
-                        })],
+                        ))],
                     }),
                 },
-            }),
+            })),
             // Cross-system relation with FQDN notation
             TopLevelItem::Relation(Relation {
                 location: dummy_location(),
