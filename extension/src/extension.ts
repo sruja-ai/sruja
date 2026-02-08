@@ -7,6 +7,7 @@ import * as vscode from "vscode";
 
 import { getSkills, getSkillsRoot } from "./skills";
 import { SrujaSkillsTreeProvider } from "./skillsTree";
+import { exportMarkdownFromWasm, getDiagnosticsFromWasm } from "./wasm";
 
 const execFileAsync = promisify(execFile);
 
@@ -64,7 +65,7 @@ async function runLint(
       srujaPath,
       ["lint", filePath],
       { encoding: "utf8", timeout: 15000, maxBuffer: 2 * 1024 * 1024 },
-      (err, _stdout, stderr) => {
+      (err: Error | null, _stdout: string, stderr: string) => {
         const out = typeof stderr === "string" ? stderr : err?.message ?? "";
         resolve({ stderr: out });
       }
@@ -72,18 +73,35 @@ async function runLint(
   });
 }
 
+/** Use WASM for lint/export unless user explicitly set sruja.lsp.path. WASM is always shipped with the extension. */
+function useWasm(context: vscode.ExtensionContext): boolean {
+  const config = vscode.workspace.getConfiguration("sruja").get<string>("lsp.path");
+  return !config?.trim();
+}
+
 async function updateDiagnostics(
-  doc: vscode.TextDocument,
-  srujaPath: string
+  context: vscode.ExtensionContext,
+  doc: vscode.TextDocument
 ): Promise<void> {
   if (doc.languageId !== "sruja" || doc.uri.scheme !== "file") return;
   if (!diagnosticCollection) return;
 
   const uri = doc.uri;
-  let filePath = doc.uri.fsPath;
+  const filename = doc.uri.fsPath;
 
+  if (useWasm(context)) {
+    try {
+      const diags = await getDiagnosticsFromWasm(context, doc.getText(), filename);
+      diagnosticCollection.set(uri, diags);
+    } catch {
+      diagnosticCollection.set(uri, []);
+    }
+    return;
+  }
+
+  const srujaPath = getSrujaPath(context);
   if (doc.isDirty) {
-    const tmp = path.join(os.tmpdir(), `sruja-lint-${path.basename(filePath)}`);
+    const tmp = path.join(os.tmpdir(), `sruja-lint-${path.basename(filename)}`);
     await fs.promises.writeFile(tmp, doc.getText(), "utf8");
     try {
       const { stderr } = await runLint(srujaPath, tmp);
@@ -95,13 +113,15 @@ async function updateDiagnostics(
     return;
   }
 
-  const { stderr } = await runLint(srujaPath, filePath);
+  const { stderr } = await runLint(srujaPath, filename);
   const diags = parseLintStderr(stderr, uri.toString());
   diagnosticCollection.set(uri, diags);
 }
 
-function getSrujaPath(): string {
-  return vscode.workspace.getConfiguration("sruja").get<string>("lsp.path") ?? "sruja";
+function getSrujaPath(context: vscode.ExtensionContext): string {
+  const config = vscode.workspace.getConfiguration("sruja").get<string>("lsp.path");
+  if (config?.trim()) return config.trim();
+  return "sruja";
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -110,7 +130,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const runLintForDoc = (doc: vscode.TextDocument) => {
     if (doc.languageId !== "sruja") return;
-    updateDiagnostics(doc, getSrujaPath()).catch((err) => {
+    updateDiagnostics(context, doc).catch((err) => {
       if (diagnosticCollection && doc.uri) {
         diagnosticCollection.set(doc.uri, [
           new vscode.Diagnostic(
@@ -177,7 +197,7 @@ export function activate(context: vscode.ExtensionContext): void {
         pendingLint.delete(key);
       }
       try {
-        await updateDiagnostics(doc, getSrujaPath());
+        await updateDiagnostics(context, doc);
         const diags = diagnosticCollection?.get(doc.uri) ?? [];
         const errors = diags.filter((d) => d.severity === vscode.DiagnosticSeverity.Error).length;
         const warnings = diags.filter((d) => d.severity === vscode.DiagnosticSeverity.Warning).length;
@@ -304,23 +324,44 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       const doc = editor.document;
+      const dsl = doc.getText();
       const filePath = doc.uri.scheme === "file" ? doc.uri.fsPath : path.join(os.tmpdir(), "document.sruja");
       const outPath = filePath.replace(/\.sruja$/i, ".md");
-      const cliPath = getSrujaPath();
-      let inputPath = filePath;
-      let tmpPath: string | null = null;
-      if (doc.isDirty || doc.uri.scheme !== "file") {
-        tmpPath = path.join(os.tmpdir(), `sruja-export-${path.basename(filePath)}`);
-        await fs.promises.writeFile(tmpPath, doc.getText(), "utf8");
-        inputPath = tmpPath;
+
+      let stdout: string | null = null;
+      if (useWasm(context)) {
+        stdout = await exportMarkdownFromWasm(context, dsl);
+        if (stdout === null) {
+          vscode.window.showErrorMessage(
+            "Sruja WASM could not load. Reinstall the extension or set sruja.lsp.path to use the Sruja CLI."
+          );
+          return;
+        }
+      } else {
+        const cliPath = getSrujaPath(context);
+        let inputPath = filePath;
+        let tmpPath: string | null = null;
+        if (doc.isDirty || doc.uri.scheme !== "file") {
+          tmpPath = path.join(os.tmpdir(), `sruja-export-${path.basename(filePath)}`);
+          await fs.promises.writeFile(tmpPath, dsl, "utf8");
+          inputPath = tmpPath;
+        }
+        try {
+          const result = await execFileAsync(cliPath, ["export", "markdown", inputPath], {
+            encoding: "utf8",
+          });
+          const out = Array.isArray(result) ? result[0] : (result as { stdout?: string }).stdout;
+          stdout = out ?? "";
+        } finally {
+          if (tmpPath) await fs.promises.unlink(tmpPath).catch(() => {});
+        }
+      }
+
+      if (stdout === null || stdout === undefined) {
+        vscode.window.showErrorMessage("Export to Markdown failed.");
+        return;
       }
       try {
-        const { stdout } = await execFileAsync(cliPath, [
-          "export",
-          "markdown",
-          inputPath,
-        ]);
-        if (tmpPath) await fs.promises.unlink(tmpPath).catch(() => {});
         const mdDoc = await vscode.workspace.openTextDocument({
           content: stdout,
           language: "markdown",
@@ -338,7 +379,6 @@ export function activate(context: vscode.ExtensionContext): void {
           await vscode.window.showTextDocument(saved);
         }
       } catch (err: unknown) {
-        if (tmpPath) await fs.promises.unlink(tmpPath).catch(() => {});
         const msg = err instanceof Error ? err.message : String(err);
         vscode.window.showErrorMessage(`Export to Markdown failed: ${msg}`);
       }

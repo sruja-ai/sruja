@@ -1,0 +1,122 @@
+# Reusable composite action: build skill-lint and run validation on skill files.
+# Use after actions/checkout.
+#
+# In this repo: build from workspace (cargo build -p skill-lint).
+# Elsewhere: document cargo install from git or use a published binary when available.
+
+name: "Skill-Lint Validate"
+description: "Build skill-lint CLI and run validation checks on skill files"
+
+inputs:
+  working-directory:
+    description: "Repository root relative to GITHUB_WORKSPACE (e.g. . or monorepo subdir)"
+    required: false
+    default: "."
+  files:
+    description: "Glob for skill markdown files to validate (e.g. skills/**/*.md or skills/rust-skills/**/*.md)"
+    required: false
+    default: "skills/**/*.md"
+  check-links:
+    description: "If true, run link checking (HTTP validation)"
+    required: false
+    default: "true"
+  check-xrefs:
+    description: "If true, run cross-reference validation"
+    required: false
+    default: "true"
+  test-code:
+    description: "If true, test code examples in skill files"
+    required: false
+    default: "true"
+  check-format:
+    description: "If true, run format check on skill files"
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: ""
+    - name: Cache Rust
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: ${{ inputs.working-directory }}
+    - name: Build skill-lint
+      shell: bash
+      run: cargo build --release -p skill-lint
+      working-directory: ${{ github.workspace }}/${{ inputs.working-directory }}
+    - name: Check links
+      if: inputs.check-links == 'true'
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.working-directory }}
+      run: |
+        set -e
+        shopt -s globstar nullglob
+        count=0
+        for f in ${{ inputs.files }}; do
+          if [[ -f "$f" ]]; then
+            echo "Checking links in $f"
+            ./target/release/skill-lint check-links "$f" || true
+            count=$((count + 1))
+          fi
+        done
+        if [[ $count -eq 0 ]]; then
+          echo "No skill files matched pattern: ${{ inputs.files }}"
+        fi
+    - name: Check cross-references
+      if: inputs.check-xrefs == 'true'
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.working-directory }}
+      run: |
+        set -e
+        shopt -s globstar nullglob
+        count=0
+        for f in ${{ inputs.files }}; do
+          if [[ -f "$f" ]]; then
+            echo "Checking cross-references in $f"
+            ./target/release/skill-lint check-xrefs "$f" || true
+            count=$((count + 1))
+          fi
+        done
+        if [[ $count -eq 0 ]]; then
+          echo "No skill files matched pattern: ${{ inputs.files }}"
+        fi
+    - name: Test code examples
+      if: inputs.test-code == 'true'
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.working-directory }}
+      run: |
+        set -e
+        shopt -s globstar nullglob
+        count=0
+        for f in ${{ inputs.files }}; do
+          if [[ -f "$f" ]]; then
+            echo "Testing code examples in $f"
+            ./target/release/skill-lint test "$f" || true
+            count=$((count + 1))
+          fi
+        done
+        if [[ $count -eq 0 ]]; then
+          echo "No skill files matched pattern: ${{ inputs.files }}"
+        fi
+    - name: Check formatting
+      if: inputs.check-format == 'true'
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.working-directory }}
+      run: |
+        set -e
+        shopt -s globstar nullglob
+        count=0
+        for f in ${{ inputs.files }}; do
+          if [[ -f "$f" ]]; then
+            echo "Checking format of $f"
+            ./target/release/skill-lint format --check "$f" || true
+            count=$((count + 1))
+          fi
+        done
+        if [[ $count -eq 0 ]]; then
+          echo "No skill files matched pattern: ${{ inputs.files }}"
+        fi

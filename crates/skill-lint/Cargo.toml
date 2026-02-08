@@ -1,0 +1,33 @@
+[package]
+name = "skill-lint"
+version = "0.2.2"
+edition = "2021"
+authors = ["Sruja Contributors"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/sruja-ai/sruja"
+
+[[bin]]
+name = "skill-lint"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+thiserror = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+jsonschema = "0.17"
+glob = "0.3"
+regex = "1.10"
+walkdir = "2.4"
+colored = "2.1"
+anyhow = "1.0"
+reqwest = { version = "0.12", features = ["rustls-tls"] }
+url = "2.5"
+pulldown-cmark = "0.12"
+syn = { version = "2.0", features = ["full", "extra-traits"] }
+chrono = "0.4"
+
+[dev-dependencies]
+tempfile = "3.8"

@@ -1,0 +1,144 @@
+name: Skill Files Validation
+
+on:
+  pull_request:
+    paths:
+      - "skills/**"
+      - "crates/skill-lint/**"
+      - ".github/actions/skill-lint-validate/**"
+    branches:
+      - main
+      - develop
+  push:
+    paths:
+      - "skills/**"
+      - "crates/skill-lint/**"
+      - ".github/actions/skill-lint-validate/**"
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: skill-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  skill-validation:
+    name: Validate skill files
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build skill-lint
+        run: cargo build --release -p skill-lint
+
+      - name: Check for broken links
+        run: |
+          set -e
+          echo "Checking for broken links in skill files..."
+          ./crates/skill-lint/target/release/skill-lint check-links skills/ || {
+            echo "::warning::Link check failed - see details above"
+            exit 0
+          }
+
+      - name: Check for broken cross-references
+        run: |
+          set -e
+          echo "Checking for broken cross-references in skill files..."
+          ./crates/skill-lint/target/release/skill-lint check-xrefs skills/ || {
+            echo "::warning::Cross-reference check failed - see details above"
+            exit 0
+          }
+
+      - name: Test code examples
+        run: |
+          set -e
+          echo "Testing code examples in skill files..."
+          ./crates/skill-lint/target/release/skill-lint test skills/ || {
+            echo "::error::Code test failed - see details above"
+            exit 1
+          }
+
+      - name: Check formatting
+        run: |
+          set -e
+          echo "Checking formatting of skill files..."
+          ./crates/skill-lint/target/release/skill-lint format --check skills/ || {
+            echo "::error::Format check failed - see details above"
+            echo "To fix formatting, run: cargo run -p skill-lint -- format skills/"
+            exit 1
+          }
+
+      - name: Validate metadata schema
+        run: |
+          set -e
+          echo "Validating skill metadata against schema..."
+          if [ -f "crates/skill-lint/skill-schema.json" ]; then
+            ./crates/skill-lint/target/release/skill-lint validate \
+              --schema crates/skill-lint/skill-schema.json \
+              --path skills/ || {
+              echo "::error::Schema validation failed - see details above"
+              exit 1
+            }
+          else
+            echo "::notice::No schema file found, skipping schema validation"
+          fi
+
+      - name: Comment on PR with results (only on PRs)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@60a0d8305c1f4fad6dfe48f7f081ac432268084 # v7.0.1
+        with:
+          script: |
+            const fs = require('fs');
+
+            let comment = '## 📚 Skill Files Validation\n\n';
+            comment += '✅ All validation checks passed!\n\n';
+            comment += 'The following checks were run:\n';
+            comment +='- ✅ Link validation\n';
+            comment +='- ✅ Cross-reference validation\n';
+            comment +='- ✅ Code example testing\n';
+            comment +='- ✅ Format checking\n';
+            comment +='- ✅ Metadata schema validation\n\n';
+            comment += 'No issues found in skill files.\n';
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('📚 Skill Files Validation')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }

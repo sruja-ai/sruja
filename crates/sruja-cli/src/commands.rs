@@ -618,12 +618,8 @@ pub async fn change_create(
     fs::create_dir_all("changes")?;
 
     let status_value = status.as_deref().unwrap_or("proposed");
-    let desc_value = description
-        .as_deref()
-        .unwrap_or("TODO: Add description");
-    let context_value = context
-        .as_deref()
-        .unwrap_or("TODO: Add context");
+    let desc_value = description.as_deref().unwrap_or("TODO: Add description");
+    let context_value = context.as_deref().unwrap_or("TODO: Add context");
 
     let template = format!(
         r#"# {title}
@@ -940,7 +936,7 @@ pub async fn compile(file: &str) -> Result<(), CliError> {
     let content = fs::read_to_string(file)?;
     let parser = Parser::new(file.to_string());
 
-    // Parse the file
+    // Parse file
     let program = match parser.parse(&content) {
         Ok(program) => {
             println!("✓ Parsing successful");
@@ -988,5 +984,52 @@ pub async fn compile(file: &str) -> Result<(), CliError> {
         "✓ Compilation successful (with {} warning(s))",
         diagnostics.len()
     );
+    Ok(())
+}
+
+/// Skills commands
+pub async fn skills_list(path: &str, limit: Option<usize>) -> Result<(), CliError> {
+    let skills_path = Path::new(path);
+
+    if !skills_path.exists() {
+        return Err(CliError::Parse(format!("Skills directory not found: {}", path)));
+    }
+
+    use crate::modules::skills::{load_filtered_skills, OutputFormat, SkillFilter};
+
+    let mut filter = SkillFilter::new();
+    filter.output_format = OutputFormat::Markdown;
+    filter.limit = limit;
+
+    let output = load_filtered_skills(skills_path, &filter)
+        .map_err(|e| CliError::Parse(e))?;
+
+    println!("{}", output);
+    Ok(())
+}
+
+/// Suggest rules for a project
+pub async fn skills_suggest(
+    skills_path: &str,
+    project_path: &str,
+    count: usize,
+) -> Result<(), CliError> {
+    use crate::modules::skills::suggest_rules;
+
+    let skills_dir = Path::new(skills_path);
+    let project_dir = Path::new(project_path);
+
+    if !skills_dir.exists() {
+        return Err(CliError::Parse(format!("Skills directory not found: {}", skills_path)));
+    }
+
+    if !project_dir.exists() {
+        return Err(CliError::Parse(format!("Project directory not found: {}", project_path)));
+    }
+
+    let output = suggest_rules(skills_dir, project_dir, count, None)
+        .map_err(|e| CliError::Parse(e))?;
+
+    println!("{}", output);
     Ok(())
 }

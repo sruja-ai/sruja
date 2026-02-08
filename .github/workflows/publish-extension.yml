@@ -24,6 +24,10 @@ jobs:
           TAG="${{ github.event.release.tag_name }}"
           VERSION="${TAG#v}"
           cd extension && npm pkg set version="$VERSION"
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -33,6 +37,9 @@ jobs:
         run: |
           cd extension
           npm install
+
+      - name: Copy WASM and LICENSE into extension
+        run: bash extension/scripts/copy-assets.sh
 
       - name: Compile extension
         run: npm run compile

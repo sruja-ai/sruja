@@ -33,8 +33,8 @@
       "properties": {
         "sruja.lsp.path": {
           "type": "string",
-          "default": "sruja",
-          "description": "Path to the Sruja CLI binary (lint and export)."
+          "default": "",
+          "description": "Path to the Sruja CLI binary. If set, lint and export use the CLI; otherwise bundled WASM is used."
         },
         "sruja.skills.path": {
           "type": "string",
@@ -68,9 +68,13 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "copy:assets": "bash scripts/copy-assets.sh",
+    "package": "npm run copy:assets && npm run compile && npx --yes @vscode/vsce package --no-dependencies",
+    "install:vsix": "npm run package && echo '\nInstall in Cursor/VS Code: Extensions → ⋯ → Install from VSIX... → select extension/*.vsix\n'"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "@types/vscode": "^1.85.0",
     "typescript": "~5.6.0"
   },

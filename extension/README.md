@@ -1,28 +1,20 @@
 # Sruja Language Support
 
-VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architecture DSL. Diagnostics run **inside the extension** by calling the Sruja CLI (no separate LSP process).
+VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architecture DSL. **Lint and Markdown export run in-process using bundled WebAssembly** (no CLI required). You can optionally use the Sruja CLI by setting `sruja.lsp.path`.
 
 ## Features
 
-- **Diagnostics** – Lint runs in the extension via `sruja lint`; errors and warnings appear in the editor (Problems panel, underlines). Supports unsaved buffers (writes to a temp file for lint). Debounced on type; pending lint is cancelled when the document is closed.
+- **Diagnostics** – Lint runs in the extension via bundled WASM (or `sruja lint` if `sruja.lsp.path` is set). Errors and warnings appear in the editor (Problems panel, underlines). Supports unsaved buffers. Debounced on type; pending lint is cancelled when the document is closed.
 - **Syntax highlighting** – TextMate grammar for keywords, relations, strings, comments
 - **Language configuration** – Comment toggling (`//`), bracket matching and autoclosing, **word pattern** for double‑click selection, **indentation rules** for `{`/`}`, **folding** with `// #region` / `// #endregion` markers
 - **Snippets** – Kind declarations (person, system, container, database), elements, relations (`->`), views, description blocks
-- **Generate Markdown from DSL** – Run **Sruja: Export to Markdown** (or right-click in a .sruja file): generates Markdown from the current document (saved or unsaved), opens it in the editor, and optionally saves to a `.md` file next to the source.
+- **Generate Markdown from DSL** – Run **Sruja: Export to Markdown** (or right-click in a .sruja file): generates Markdown via bundled WASM (or CLI), opens it in the editor, and optionally saves to a `.md` file next to the source.
 - **AI features (skills & rules)** – Browse skills, open SKILL.md / AGENTS.md, list and open rules, copy rule or agent guide to clipboard for use with AI assistants (e.g. Cursor, Copilot). **Multi‑root workspaces**: skills are collected from every folder that has a `skills` subfolder.
 - **Workspace support** – Extension runs in the workspace (remote/SSH); supports untrusted workspaces.
 
 ## Requirements
 
-- **Sruja CLI** on `PATH`, or set `sruja.lsp.path` in settings.
-
-  From this repo:
-  ```bash
-  cargo build --release -p sruja-cli
-  # "sruja.lsp.path": "/path/to/sruja2/target/release/sruja"
-  ```
-
-  Or: `cargo install --path crates/sruja-cli`
+- **None** for lint and export when using the published extension (bundled WASM). Optionally set **`sruja.lsp.path`** to use the Sruja CLI instead (e.g. for a specific binary or when developing the extension without running `copy-assets`).
 
 ## Commands
 
@@ -44,7 +36,7 @@ VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architectur
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `sruja.lsp.path` | `sruja` | Path to the Sruja CLI binary (used for lint and export). |
+| `sruja.lsp.path` | (empty) | Path to the Sruja CLI binary. If set, lint and export use the CLI instead of bundled WASM. |
 | `sruja.skills.path` | (empty) | Path to skills folder for AI rules. Empty = use workspace `skills` or extension `skills`. |
 
 ## Publishing to Open VSX
@@ -67,7 +59,7 @@ Run from VS Code (F5). Ensure the Sruja CLI is on PATH or set `sruja.lsp.path`. 
    ```bash
    cargo build --release -p sruja-cli
    ```
-   Ensure `target/release/sruja` is on `PATH` or set `sruja.lsp.path` in VS Code settings to its full path.
+   For lint and export: run `npm run copy:assets` from the extension directory (copies WASM into `extension/wasm/`), or set `sruja.lsp.path` to your Sruja CLI binary.
 
 2. **Launch the extension**  
    Open this repo in VS Code, press **F5** (or Run → Start Debugging). A new VS Code window opens with the extension loaded (“Extension Development Host” in the title).
@@ -85,6 +77,6 @@ Run from VS Code (F5). Ensure the Sruja CLI is on PATH or set `sruja.lsp.path`. 
    | **Commands** | Command Palette → “Sruja:” to see all commands (Open Skills Overview, List Rules, Copy Rule for AI, etc.). |
 
 4. **If something fails:**  
-   - **Lint/Export not running:** Confirm CLI path (`which sruja` or `sruja --version`) and `sruja.lsp.path` in settings.  
+   - **Lint/Export not running:** If using WASM, ensure `extension/wasm/` exists (run `npm run copy:assets`). If using CLI, confirm `sruja.lsp.path` or `sruja` on PATH.  
    - **No diagnostics:** Ensure the file has a `.sruja` extension and the document language is “Sruja”.  
    - **Debug output:** Run → Start Debugging (F5) and check the “Debug Console” in the *original* window for errors.

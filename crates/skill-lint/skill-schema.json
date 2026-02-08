@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Skill Rule Metadata Schema",
+  "description": "Schema for validating metadata in skill rule markdown files",
+  "type": "object",
+  "required": ["metadata"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": [
+        "complexity",
+        "frequency",
+        "confidence",
+        "category",
+        "level"
+      ],
+      "properties": {
+        "complexity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "Complexity level (1-5)"
+        },
+        "frequency": {
+          "type": "string",
+          "enum": ["rare", "uncommon", "common", "very common"],
+          "description": "How often this rule is applicable"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "very high"],
+          "description": "Confidence level of the rule"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low"],
+          "description": "Impact category of the rule"
+        },
+        "level": {
+          "type": "string",
+          "enum": ["beginner", "intermediate", "advanced"],
+          "description": "Difficulty level for understanding the rule"
+        },
+        "applicable": {
+          "type": "object",
+          "properties": {
+            "is_async": {
+              "type": "boolean",
+              "default": false
+            },
+            "embedded": {
+              "type": "boolean",
+              "default": false
+            },
+            "wasm": {
+              "type": "boolean",
+              "default": false
+            },
+            "web": {
+              "type": "boolean",
+              "default": false
+            },
+            "cli": {
+              "type": "boolean",
+              "default": false
+            },
+            "library": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "rust_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+.*",
+          "description": "Minimum Rust version (e.g., 1.56+)"
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Alternative approaches"
+        },
+        "related_rules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Related rule IDs"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags for categorization"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

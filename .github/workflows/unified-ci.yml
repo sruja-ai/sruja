@@ -46,3 +46,19 @@ jobs:
         with:
           working-directory: .
           files: "**/*.sruja"
+
+  skill-files:
+    name: Skill files (validate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Validate all skill markdown files
+        uses: ./.github/actions/skill-lint-validate
+        with:
+          working-directory: .
+          files: "skills/**/*.md"
+          check-links: "true"
+          check-xrefs: "true"
+          test-code: "true"
+          check-format: "true"

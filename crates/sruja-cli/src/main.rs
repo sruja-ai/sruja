@@ -123,15 +123,20 @@ enum Commands {
         #[command(subcommand)]
         action: ChangeAction,
     },
+    /// Skills and rules management
+    Skills {
+        #[command(subcommand)]
+        action: SkillsAction,
+    },
 }
 
 #[derive(Subcommand)]
 enum ChangeAction {
     /// Create a new change record
     Create {
-        /// Title of the change
+        /// Title of change
         title: String,
-        /// Description of the change
+        /// Description of change
         #[arg(long, short = 'd')]
         description: Option<String>,
         /// Context/background
@@ -145,6 +150,31 @@ enum ChangeAction {
     Validate {
         /// Path to change file
         file: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum SkillsAction {
+    /// List filtered skills
+    List {
+        /// Path to skills directory
+        #[arg(short, long, default_value = "skills/rust-skills")]
+        path: String,
+        /// Limit number of results
+        #[arg(short, long)]
+        limit: Option<usize>,
+    },
+    /// Suggest rules for a project
+    Suggest {
+        /// Path to skills directory
+        #[arg(short, long, default_value = "skills/rust-skills")]
+        skills_path: String,
+        /// Path to project directory
+        #[arg(short, long, default_value = ".")]
+        project_path: String,
+        /// Number of rules to suggest
+        #[arg(short, long, default_value_t = 10)]
+        count: usize,
     },
 }
 
@@ -195,6 +225,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         } => commands::explain(&element_id, file.as_deref(), json).await,
         Commands::Import { format, file } => commands::import(&format, &file).await,
         Commands::Score { file } => commands::score(file.as_deref()).await,
+        Commands::Skills { action } => match action {
+            SkillsAction::List {
+                path,
+                limit,
+            } => commands::skills_list(&path, limit).await,
+            SkillsAction::Suggest {
+                skills_path,
+                project_path,
+                count,
+            } => commands::skills_suggest(&skills_path, &project_path, count).await,
+        },
     };
 
     match result {

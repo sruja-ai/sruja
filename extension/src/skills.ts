@@ -50,8 +50,8 @@ export function getSkills(context: vscode.ExtensionContext): SkillInfo[] {
 
   for (const root of roots) {
     const names = fs.readdirSync(root.fsPath, { withFileTypes: true })
-      .filter((d) => d.isDirectory() && !d.name.startsWith("."))
-      .map((d) => d.name);
+      .filter((d: fs.Dirent) => d.isDirectory() && !d.name.startsWith("."))
+      .map((d: fs.Dirent) => d.name);
 
     for (const name of names) {
       const skillDir = path.join(root.fsPath, name);
@@ -72,7 +72,7 @@ export function getSkills(context: vscode.ExtensionContext): SkillInfo[] {
 
       if (fs.existsSync(rulesDir) && fs.statSync(rulesDir).isDirectory()) {
         const ruleFiles = fs.readdirSync(rulesDir)
-          .filter((f) => f.endsWith(".md"))
+          .filter((f: string) => f.endsWith(".md"))
           .sort();
         for (const f of ruleFiles) {
           const label = f.replace(/\.md$/, "");
