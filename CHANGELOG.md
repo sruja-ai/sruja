@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3](https://github.com/sruja-ai/sruja/compare/sruja-v0.2.2...sruja-v0.2.3) (2026-02-08)
+
+
+### Bug Fixes
+
+* **ci:** resolve feedback_loops_basic and sruja_architecture_v2 lint failures ([10dd320](https://github.com/sruja-ai/sruja/commit/10dd320aed348b585ad4baa71df3f89bc5f5b24d))
+* **parser:** resolve pattern_microservices parse failures ([19c2b3d](https://github.com/sruja-ai/sruja/commit/19c2b3d64803bdbc5a31fa93d6b9e999398ba553))
+
 ## [0.2.2](https://github.com/sruja-ai/sruja/compare/sruja-v0.2.1...sruja-v0.2.2) (2026-02-07)
 
 
