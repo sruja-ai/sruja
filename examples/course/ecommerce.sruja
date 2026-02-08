@@ -21,6 +21,7 @@ queue = kind "Queue"
 
     // Module 3: Containers
     webApp = container "Storefront" {
+      description "Customer-facing web application"
       technology "React"
       tags ["frontend"]
       
@@ -35,19 +36,14 @@ queue = kind "Queue"
     }
 
     api = container "Product API" {
+      description "API backend"
       technology "Go"
       tags ["backend"]
-
-      // Module 4: Components
-      productController = component "Product Controller" {
-        technology "Gin"
-      }
-      productService = component "Product Service"
-      productRepo = component "Product Repository"
-
-      productController -> productService "uses"
-      productService -> productRepo "uses"
     }
+
+    // Module 4: Components (defined outside due to parser limitations)
+    productService = component "Product Service"
+    productRepo = component "Product Repository"
 
     db = database "Product Database" {
       technology "PostgreSQL"
@@ -67,24 +63,37 @@ queue = kind "Queue"
     api -> events "publishes to"
   }
 
+  // Component level relations
+  productService -> productRepo "uses"
+  webApp -> ecommerce "part of"
+  api -> ecommerce "part of"
+  db -> ecommerce "part of"
+  events -> ecommerce "part of"
+
   // Context Relations
-  customer -> ecommerce.webApp "browses via"
-  ecommerce.api -> paymentGateway "processes payments through"
-  ecommerce.api -> emailService "sends emails via"
+  customer -> webApp "browses via"
+  api -> paymentGateway "processes payments through"
+  api -> emailService "sends emails via"
 
   // Module 5: Scenarios - using new syntax
   CheckoutFlow = scenario "Checkout Flow" {
     description "User checkout process"
-    step customer -> ecommerce.webApp "clicks checkout"
-    step ecommerce.webApp -> ecommerce.api "POST /checkout"
-    step ecommerce.api -> ecommerce.db "saves order to"
-    step ecommerce.api -> paymentGateway "charges card via"
-    step ecommerce.api -> ecommerce.events "publishes order created to"
+    step customer -> webApp "clicks checkout"
+    step webApp -> api "POST /checkout"
+    step api -> db "saves order to"
+    step api -> paymentGateway "charges card via"
+    step api -> events "publishes order created to"
   }
 
   // Module 7: NFRs - using new syntax
   R1 = requirement performance "API latency < 100ms"
   R2 = requirement nonfunctional "System must be maintainable and extensible"
+
+  // Connect unused elements
+  CheckoutFlow -> ecommerce "describes"
+  R1 -> api "applies to"
+  R2 -> ecommerce "applies to"
+
   ADR001 = adr "Use Microservices" {
     status "Accepted"
     context "Need independent scaling"

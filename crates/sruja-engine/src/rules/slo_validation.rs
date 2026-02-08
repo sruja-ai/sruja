@@ -24,7 +24,7 @@ impl Rule for SloValidationRule {
         let (elements, _relations) = collect_elements(program);
         let mut diags: Vec<Diagnostic> = Vec::with_capacity(10);
 
-        for (_fqn, elem) in &elements {
+        for elem in elements.values() {
             if let Some(body) = &elem.assignment.body {
                 if let Some(slo) = &body.slo {
                     diags.extend(validate_slo_block(slo, &elem.location));

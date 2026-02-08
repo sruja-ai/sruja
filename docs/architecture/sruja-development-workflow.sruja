@@ -137,9 +137,20 @@ Testing_ExampleTests = component "Example Tests" {
 
 // Relationships
 Local -> CICD "Pushes to"
-CICD_RustTests -> Testing_UnitTests "Uses"
-CICD_TSTests -> Testing_UnitTests "Uses"
-CICD_TSTests -> Testing_IntegrationTests "Uses"
+CICD -> CICD_BuildCheck "Runs"
+CICD -> CICD_SecurityScan "Runs"
+CICD -> CICD_BundleSizeCheck "Runs"
+CICD -> CICD_CoverageCheck "Runs"
+CICD -> CICD_LintCheck "Runs"
+CICD -> CICD_RustTests "Runs"
+CICD -> CICD_TSTests "Runs"
+CICD_RustTests -> Testing "Validates"
+CICD_TSTests -> Testing "Validates"
+CICD -> Testing "Triggers"
+Testing_UnitTests -> Testing "Part of"
+Testing_IntegrationTests -> Testing "Part of"
+Testing_PropertyTests -> Testing "Part of"
+Testing_ExampleTests -> Testing "Part of"
 
 CICD -> Release "Triggers on tag"
 Release_VersionBump -> Release_BuildArtifacts "Triggers"

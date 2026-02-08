@@ -2,18 +2,13 @@
 
 use crate::mermaid::exporter::MermaidConfig;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ContextType {
+    #[default]
     Default,
     CodeGeneration,
     Review,
     Analysis,
-}
-
-impl Default for ContextType {
-    fn default() -> Self {
-        Self::Default
-    }
 }
 
 #[derive(Debug, Clone)]

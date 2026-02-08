@@ -67,14 +67,26 @@ ecommerce.api -> ecommerce.database "queries products in"
 // Feedback loops show how actions create reactions
 
 // Simple feedback: User action triggers system response
-customer -> ecommerce.webApp "submits form to"
-ecommerce.webApp -> ecommerce.api "validates with"
-ecommerce.webApp -> customer "shows feedback to"
+UserInteraction = causal_loop "User Interaction Loop" {
+  loop_type "balancing"
+  loop_id "B1"
+  description "User submits form, system validates and shows feedback"
+
+  customer -> ecommerce.webApp "submits form to"
+  ecommerce.webApp -> ecommerce.api "validates with"
+  ecommerce.webApp -> customer "shows feedback to"
+}
 
 // System feedback: Component A affects Component B, which affects A
-ecommerce.api -> ecommerce.database "updates inventory in"
-ecommerce.api -> admin "sends alert to"
-admin -> ecommerce.api "adjusts inventory via"
+AdminFeedback = causal_loop "Admin Feedback Loop" {
+  loop_type "balancing"
+  loop_id "B2"
+  description "System alerts admin about inventory issues, admin adjusts"
+
+  ecommerce.api -> ecommerce.database "updates inventory in"
+  ecommerce.api -> admin "sends alert to"
+  admin -> ecommerce.api "adjusts inventory via"
+}
 
 // ============================================================================
 // 5. CONTEXT
@@ -95,6 +107,11 @@ ecommerce -> analyticsService "tracks usage with"
 R1 = requirement functional "System must handle 10k concurrent users"
 R2 = requirement constraint "Must use PostgreSQL for data persistence"
 R3 = requirement performance "API response time must be < 100ms"
+
+// Connect requirements to system elements
+R1 -> ecommerce "applies to"
+R2 -> ecommerce "applies to"
+R3 -> ecommerce.api "applies to"
 
 ADR001 = adr "Use microservices architecture for scalability" {
   status "Accepted"

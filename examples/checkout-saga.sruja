@@ -41,20 +41,38 @@ checkout_system = system "Checkout Architecture" {
 customer -> api_gateway "Submit Order"
 api_gateway -> order_service "Create Pending Order"
 order_service -> saga_orchestrator "Start Saga"
+order_service -> order_db "Stores"
+payment_service -> payment_db "Stores"
+inventory_service -> inv_db "Stores"
+api_gateway -> event_bus "Publishes Events"
+checkout_system -> saga_flow "Contains"
+saga_orchestrator -> checkout_system "Part of"
+order_service -> checkout_system "Part of"
+payment_service -> checkout_system "Part of"
+inventory_service -> checkout_system "Part of"
+inventory_service -> saga_orchestrator "Receives Requests"
 
-saga_orchestrator -> inventory_service "Reserve Items"
-inventory_service -> saga_orchestrator "Items Reserved"
+// Saga orchestration uses circular request/response patterns
+// Wrapped in saga_flow to indicate intentional circular dependencies
+saga_flow = causal_loop "Saga Orchestration Flow" {
+  loop_type "balancing"
+  loop_id "S1"
+  description "Saga orchestrator coordinates services with compensating transactions"
 
-saga_orchestrator -> payment_service "Process Payment"
-payment_service -> saga_orchestrator "Success"
+  saga_orchestrator -> inventory_service "Reserve Items"
+  inventory_service -> saga_orchestrator "Items Reserved"
 
-saga_orchestrator -> order_service "Finalize Order"
+  saga_orchestrator -> payment_service "Process Payment"
+  payment_service -> saga_orchestrator "Success"
 
-// Failure Recovery Scenario
-saga_orchestrator -> payment_service "Process Payment"
-payment_service -> saga_orchestrator "Payment Rejected"
+  saga_orchestrator -> order_service "Finalize Order"
 
-saga_orchestrator -> inventory_service "Undo Reservation (Compensate)"
-inventory_service -> saga_orchestrator "Reserved Items Released"
+  // Failure recovery with compensation
+  saga_orchestrator -> payment_service "Process Payment"
+  payment_service -> saga_orchestrator "Payment Rejected"
 
-saga_orchestrator -> order_service "Mark Order Cancelled"
+  saga_orchestrator -> inventory_service "Undo Reservation (Compensate)"
+  inventory_service -> saga_orchestrator "Reserved Items Released"
+
+  saga_orchestrator -> order_service "Mark Order Cancelled"
+}

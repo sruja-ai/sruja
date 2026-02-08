@@ -97,7 +97,7 @@ user -> web.api "authenticates"
     // The key fix: edges should not be filtered out if EITHER endpoint is not visible
     // Previously (with &&), edges were only kept if BOTH endpoints were visible
     // Now (with ||), edges are kept if BOTH endpoints are visible
-    assert!(relations.len() >= 1, "Should have at least 1 edge at L2");
+    assert!(!relations.is_empty(), "Should have at least 1 edge at L2");
 
     // Check that user -> web edge exists
     let user_to_web = relations
@@ -210,7 +210,7 @@ system_a.api -> system_b.db "cross-system call"
         println!("  {} -> {}", rel.from.as_string(), rel.to.as_string());
     }
     assert!(
-        l2_a_relations.len() >= 1,
+        !l2_a_relations.is_empty(),
         "L2 with system_a focus should have edges"
     );
 
@@ -224,7 +224,7 @@ system_a.api -> system_b.db "cross-system call"
         println!("  {} -> {}", rel.from.as_string(), rel.to.as_string());
     }
     assert!(
-        l2_b_relations.len() >= 1,
+        !l2_b_relations.is_empty(),
         "L2 with system_b focus should have edges"
     );
 }
@@ -432,7 +432,7 @@ platform.app.web.controller -> platform.app.db "queries"
 
         // At least one edge should exist at each level
         assert!(
-            relations.len() > 0 || level == 1,
+            !relations.is_empty() || level == 1,
             "Should have edges at L{}",
             level
         );

@@ -6,7 +6,7 @@
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_until, take_while, take_while1},
-    character::complete::{char, multispace0, multispace1},
+    character::complete::{char, digit1, multispace0, multispace1},
     combinator::{map, opt, recognize, value},
     multi::{many0, separated_list0, separated_list1},
     sequence::{delimited, pair, preceded},
@@ -852,17 +852,13 @@ fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBody> {
                 current = next;
             }
             Err(_) => {
-                // Item parsing failed - try to skip until next potential item or closing brace
-                // This handles unknown syntax gracefully
-                if let Some(close_pos) = rest.find('}') {
-                    // Found closing brace - we're done
-                    current = &rest[close_pos..];
-                    break;
-                } else if let Some(newline_pos) = rest.find('\n') {
-                    // Skip to next line and try again
+                // Item parsing failed - skip to next line and try again.
+                // Do NOT use find('}') - it would match nested braces (e.g. inside
+                // "container { component { } }") and truncate the body incorrectly.
+                if let Some(newline_pos) = rest.find('\n') {
                     current = &rest[newline_pos + 1..];
                 } else {
-                    // No more content, break
+                    // No newline (e.g. last line of file or inline) - cannot recover
                     break;
                 }
             }
@@ -894,6 +890,7 @@ fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBody> {
                 })
             }
             ElementDefBodyItem::Scale(s) => body.scale = Some(s),
+            ElementDefBodyItem::Tags(_) => {} // Consumed, not stored
             // All other body items are handled above
             // This catch-all is kept for future extensibility
             #[allow(unreachable_patterns)]
@@ -930,6 +927,19 @@ fn parse_element_body_item(input: &str) -> IResult<&str, ElementDefBodyItem> {
         map(parse_conventions_block, ElementDefBodyItem::Conventions),
         map(parse_style_decl, ElementDefBodyItem::Style),
         map(parse_scale_block, ElementDefBodyItem::Scale),
+        map(
+            preceded(
+                alt((tag("tags"), tag("tag"))),
+                preceded(
+                    ws0,
+                    opt(alt((
+                        parse_string_array,
+                        parse_tag_array,
+                    ))),
+                ),
+            ),
+            |t| ElementDefBodyItem::Tags(t.unwrap_or_default()),
+        ),
     ))(input)
 }
 
@@ -1647,7 +1657,11 @@ fn parse_scale_block(input: &str) -> IResult<&str, ScaleBlock> {
 fn parse_scale_item(input: &str) -> IResult<&str, (String, String)> {
     let (input, key) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
-    let (input, value) = alt((parse_string, map(parse_identifier, |s| s)))(input)?;
+    let (input, value) = alt((
+        parse_string,
+        map(parse_identifier, |s| s),
+        map(digit1, |s: &str| s.to_string()),
+    ))(input)?;
     Ok((input, (key, value)))
 }
 
@@ -1748,15 +1762,17 @@ fn parse_metadata_block(input: &str) -> IResult<&str, MetadataBlock> {
     ))
 }
 
-/// Parse a metadata entry: key "value" or key ["value1", "value2"]
+/// Parse a metadata entry: key "value" or key ["value1", "value2"] or key [ident1, ident2]
 fn parse_metadata_entry(input: &str) -> IResult<&str, MetaEntry> {
     let (input, key) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
 
-    // Parse either a string or a string array
+    // Parse either a string, string array, or identifier array
     let (input, value) = alt((
-        // Parse array: ["item1", "item2"]
+        // Parse string array: ["item1", "item2"]
         map(parse_string_array, |arr| Some(arr.join(", "))),
+        // Parse identifier array: [R1, R2, R4] (common in metadata { flags/tags })
+        map(parse_tag_array, |arr| Some(arr.join(", "))),
         // Parse single string: "value"
         map(parse_string, Some),
     ))(input)?;

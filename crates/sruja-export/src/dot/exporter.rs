@@ -228,7 +228,7 @@ impl DotExporter {
         let label = display_title(parent, elements);
         out.push_str(&format!("  subgraph \"cluster_{}\" {{\n", id));
         out.push_str(&format!("    label=\"{}\";\n", escape_quotes(&label)));
-        out.push_str(&format!("    style=filled;\n"));
+        out.push_str("    style=filled;\n");
         out.push_str(&format!("    fillcolor=\"{}\";\n", COLOR_GRAY_BG));
         out.push_str(&format!("    fontcolor=\"{}\";\n", COLOR_SLATE_800));
         out.push_str(&format!("    fontsize={};\n", FONT_SIZE_GLOBAL + 2));
@@ -582,9 +582,7 @@ fn get_container(
                 return Some(cur);
             }
         }
-        let Some(p) = parent_fqn(&cur) else {
-            return None;
-        };
+        let p = parent_fqn(&cur)?;
         cur = p;
     }
 }

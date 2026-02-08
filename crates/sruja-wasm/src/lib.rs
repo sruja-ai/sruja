@@ -154,7 +154,7 @@ pub fn sruja_dsl_to_dot(
                     if let Some(arr) = value.as_array() {
                         if arr.len() >= 2 {
                             if let (Some(w), Some(h)) = (
-                                arr.get(0).and_then(|v| v.as_f64()),
+                                arr.first().and_then(|v| v.as_f64()),
                                 arr.get(1).and_then(|v| v.as_f64()),
                             ) {
                                 node_sizes.insert(key.clone(), (w, h));
@@ -206,7 +206,7 @@ pub fn sruja_dsl_to_dot_with_relations(
                     if let Some(arr) = value.as_array() {
                         if arr.len() >= 2 {
                             if let (Some(w), Some(h)) = (
-                                arr.get(0).and_then(|v| v.as_f64()),
+                                arr.first().and_then(|v| v.as_f64()),
                                 arr.get(1).and_then(|v| v.as_f64()),
                             ) {
                                 node_sizes.insert(key.clone(), (w, h));
@@ -260,11 +260,7 @@ pub fn sruja_dsl_to_dot_with_relations(
                 .body
                 .as_ref()
                 .and_then(|b| b.technology.clone());
-            let parent = if let Some(dot_idx) = fqn.rfind('.') {
-                Some(fqn[..dot_idx].to_string())
-            } else {
-                None
-            };
+            let parent = fqn.rfind('.').map(|dot_idx| fqn[..dot_idx].to_string());
 
             (
                 fqn.clone(),
@@ -406,8 +402,8 @@ fn write_element(dsl: &mut String, id: &str, elem: &serde_json::Value, indent: u
     // Check if element has a body (nested elements or additional properties)
     let has_body = description.is_some()
         || technology.is_some()
-        || tags.map_or(false, |t| !t.is_empty())
-        || metadata.map_or(false, |m| !m.is_empty())
+        || tags.is_some_and(|t| !t.is_empty())
+        || metadata.is_some_and(|m| !m.is_empty())
         || style.is_some();
 
     // Write element declaration
@@ -515,7 +511,7 @@ fn write_relation(dsl: &mut String, rel: &serde_json::Value) {
 
     // Check if relation has a body
     let has_body =
-        description.is_some() || technology.is_some() || tags.map_or(false, |t| !t.is_empty());
+        description.is_some() || technology.is_some() || tags.is_some_and(|t| !t.is_empty());
 
     if has_body {
         dsl.push_str(" {");
@@ -566,9 +562,9 @@ fn write_view(dsl: &mut String, view_id: &str, view: &serde_json::Value) {
 
     // Check if view has a body
     let has_body = description.is_some()
-        || element_ids.map_or(false, |ids| !ids.is_empty())
-        || include.map_or(false, |ids| !ids.is_empty())
-        || exclude.map_or(false, |ids| !ids.is_empty());
+        || element_ids.is_some_and(|ids| !ids.is_empty())
+        || include.is_some_and(|ids| !ids.is_empty())
+        || exclude.is_some_and(|ids| !ids.is_empty());
 
     if has_body {
         dsl.push_str(" {");
@@ -639,8 +635,8 @@ pub fn sruja_get_diagnostics(dsl: &str, filename: Option<String>) -> Result<Stri
         let end_character = d.location.column.saturating_add(1);
         json!({
             "range": {
-                "start": {"line": d.location.line as u32, "character": d.location.column as u32},
-                "end": {"line": d.location.line as u32, "character": end_character as u32}
+                "start": {"line": d.location.line, "character": d.location.column},
+                "end": {"line": d.location.line, "character": end_character}
             },
             "severity": if d.severity == sruja_diagnostics::Severity::Error { 1 } else { 2 },
             "code": d.code.clone(),

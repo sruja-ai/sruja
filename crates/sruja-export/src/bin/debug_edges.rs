@@ -181,7 +181,7 @@ fn test_level(
     if edge_count_in_dot > 0 && relations.is_empty() {
         println!("⚠️  WARNING: DOT has edges but relations array is empty!");
         println!("   This indicates a bug in export_with_relations()");
-    } else if edge_count_in_dot == 0 && relations.len() > 0 {
+    } else if edge_count_in_dot == 0 && !relations.is_empty() {
         println!("⚠️  WARNING: Relations array has edges but DOT has none!");
         println!("   This indicates a bug in DOT generation");
     }
@@ -255,14 +255,14 @@ fn analyze_projection(
             }
 
             // Check for hierarchical relationships
-            if from.contains('.') || to.contains('.') {
-                if from.starts_with(&format!("{}.", to)) || to.starts_with(&format!("{}.", from)) {
-                    println!("    ⚠️  {} -> {} is HIERARCHICAL (parent-child)", from, to);
-                    if is_projected {
-                        println!("      ERROR: Should have been filtered out!");
-                    } else {
-                        println!("      Correctly filtered out");
-                    }
+            if (from.contains('.') || to.contains('.'))
+                && (from.starts_with(&format!("{}.", to)) || to.starts_with(&format!("{}.", from)))
+            {
+                println!("    ⚠️  {} -> {} is HIERARCHICAL (parent-child)", from, to);
+                if is_projected {
+                    println!("      ERROR: Should have been filtered out!");
+                } else {
+                    println!("      Correctly filtered out");
                 }
             }
         }
@@ -307,21 +307,15 @@ fn analyze_projection(
         let from_visible = visible_elements.contains_key(&from);
         let to_visible = visible_elements.contains_key(&to);
 
-        if !from_visible && from_kind.is_some() {
-            println!(
-                "   {} -> {} blocked by kind: {}",
-                from,
-                to,
-                from_kind.unwrap()
-            );
+        if !from_visible {
+            if let Some(k) = from_kind {
+                println!("   {} -> {} blocked by kind: {}", from, to, k);
+            }
         }
-        if !to_visible && to_kind.is_some() {
-            println!(
-                "   {} -> {} blocked by kind: {}",
-                from,
-                to,
-                to_kind.unwrap()
-            );
+        if !to_visible {
+            if let Some(k) = to_kind {
+                println!("   {} -> {} blocked by kind: {}", from, to, k);
+            }
         }
     }
 

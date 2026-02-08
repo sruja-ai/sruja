@@ -215,12 +215,12 @@ fn collect_referenced_elements(relations: &[sruja_language::Relation]) -> HashSe
         // Only add leaf IDs for names that contain dots (i.e., are fully qualified)
         // This prevents false matches where leaf IDs accidentally match other elements
         if source_name.contains('.') {
-            if let Some(leaf) = source_name.split('.').last() {
+            if let Some(leaf) = source_name.split('.').next_back() {
                 referenced.insert(leaf.to_string());
             }
         }
         if target_name.contains('.') {
-            if let Some(leaf) = target_name.split('.').last() {
+            if let Some(leaf) = target_name.split('.').next_back() {
                 referenced.insert(leaf.to_string());
             }
         }
@@ -297,7 +297,7 @@ fn element_is_referenced(
 
     // Check for leaf ID match (for nested elements)
     // e.g., "container" matches for "system.container"
-    if let Some(leaf_id) = fully_qualified_name.split('.').last() {
+    if let Some(leaf_id) = fully_qualified_name.split('.').next_back() {
         if referenced_elements.contains(leaf_id) {
             return true;
         }

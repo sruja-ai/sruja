@@ -121,7 +121,7 @@ pub fn get_hover(
         return None;
     }
 
-    let (start, end) = word_bounds(&line_text, character);
+    let (start, end) = word_bounds(line_text, character);
     let word: &str = line_text[start..end].trim();
 
     // Check if hovering over an element
@@ -150,7 +150,7 @@ pub fn get_hover(
     // Check if hovering over an arrow (relation)
     if let Some(arrow_idx) = line_text.find("->") {
         if character >= arrow_idx && character < arrow_idx + 2 {
-            let (left_start, left_end) = word_bounds(&line_text, arrow_idx);
+            let (left_start, left_end) = word_bounds(line_text, arrow_idx);
             let left = line_text[left_start..left_end].trim();
 
             let mut right_pos = arrow_idx + 2;
@@ -159,7 +159,7 @@ pub fn get_hover(
             {
                 right_pos += 1;
             }
-            let (right_start, right_end) = word_bounds(&line_text, right_pos);
+            let (right_start, right_end) = word_bounds(line_text, right_pos);
             let right = line_text[right_start..right_end].trim();
 
             if !left.is_empty() && !right.is_empty() {
@@ -254,9 +254,9 @@ pub fn get_completion(
     let (elements, _) = collect_elements(program);
     let mut seen = std::collections::HashSet::new();
 
-    for (fqn, _) in &elements {
+    for fqn in elements.keys() {
         // Add short name
-        if let Some(short) = fqn.split('.').last() {
+        if let Some(short) = fqn.split('.').next_back() {
             if !seen.contains(short) {
                 seen.insert(short.to_string());
                 if token.is_empty() || short.to_lowercase().starts_with(&token.to_lowercase()) {
@@ -315,8 +315,8 @@ pub fn find_definition(doc: &Document, program: &Program, id: &str) -> Option<Lo
                 "person",
             ];
             for keyword in keywords {
-                if trimmed.starts_with(keyword) {
-                    let rest = trimmed[keyword.len()..].trim();
+                if let Some(stripped) = trimmed.strip_prefix(keyword) {
+                    let rest = stripped.trim();
                     if rest.starts_with(id) {
                         if let Some(col) = line.find(id) {
                             return Some(Location {

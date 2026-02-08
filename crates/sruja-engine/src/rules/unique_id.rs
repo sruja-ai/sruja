@@ -80,17 +80,14 @@ fn check_nested_elements<F>(
     F: FnMut(&str, &SourceLocation),
 {
     for item in &body.items {
-        match item {
-            ElementDefBodyItem::ElementDef(elem) => {
-                let fqn = format!("{}.{}", parent_fqn, elem.assignment.name);
-                check_id(&fqn, &elem.location);
+        if let ElementDefBodyItem::ElementDef(elem) = item {
+            let fqn = format!("{}.{}", parent_fqn, elem.assignment.name);
+            check_id(&fqn, &elem.location);
 
-                // Recursively check deeper nested elements
-                if let Some(nested_body) = &elem.assignment.body {
-                    check_nested_elements(nested_body, &fqn, check_id);
-                }
+            // Recursively check deeper nested elements
+            if let Some(nested_body) = &elem.assignment.body {
+                check_nested_elements(nested_body, &fqn, check_id);
             }
-            _ => {}
         }
     }
 }

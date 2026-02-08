@@ -180,6 +180,8 @@ pub enum ElementDefBodyItem {
     Style(StyleDecl),
     Scale(ScaleBlock),
     Slo(Box<SloBlock>),
+    /// Tags on an element (parsed but not stored in ElementDefBody; consumed to avoid parse failures)
+    Tags(Vec<String>),
 }
 
 /// System element (specialized ElementDef)

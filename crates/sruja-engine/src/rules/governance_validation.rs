@@ -41,7 +41,7 @@ impl Rule for GovernanceValidationRule {
 
         let mut diags: Vec<Diagnostic> = Vec::new();
 
-        for (_fqn, elem) in &elements {
+        for elem in elements.values() {
             let kind_key = normalize_governance_kind(&elem.assignment.kind);
             let Some(kind_key) = kind_key else { continue };
 

@@ -81,8 +81,10 @@ fn test_cross_cluster_edge_attributes() {
         ],
     };
 
-    let mut config = super::DotConfig::default();
-    config.view_level = 3; // Show all levels
+    let config = super::DotConfig {
+        view_level: 3, // Show all levels
+        ..Default::default()
+    };
     let exporter = DotExporter::new(config);
     let dot_output = exporter.export(&program);
 
@@ -169,8 +171,10 @@ fn test_same_cluster_edge_no_attributes() {
         ],
     };
 
-    let mut config = super::DotConfig::default();
-    config.view_level = 3; // Show all levels
+    let config = super::DotConfig {
+        view_level: 3, // Show all levels
+        ..Default::default()
+    };
     let exporter = DotExporter::new(config);
     let dot_output = exporter.export(&program);
 
@@ -309,8 +313,10 @@ fn test_fqdn_edge_resolution_nested_elements() {
         ],
     };
 
-    let mut config = super::DotConfig::default();
-    config.view_level = 3; // Show all levels
+    let config = super::DotConfig {
+        view_level: 3, // Show all levels
+        ..Default::default()
+    };
     let exporter = DotExporter::new(config);
 
     let dot_output = exporter.export(&program);

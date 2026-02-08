@@ -3,7 +3,6 @@
 use std::fs;
 use std::path::Path;
 
-use serde_json;
 use sruja_diagnostics::format_diagnostic;
 use sruja_engine::Validator;
 use sruja_export::context::ContextExporter;
@@ -146,7 +145,6 @@ pub async fn export(
                 direction: "LR".to_string(),
                 view_level,
                 target_id: target.map(|s| s.to_string()),
-                ..MermaidConfig::default()
             });
             let mmd = exporter.export(&program);
             println!("{}", mmd);
@@ -619,14 +617,12 @@ pub async fn change_create(
     // Create changes directory if it doesn't exist
     fs::create_dir_all("changes")?;
 
-    let status_value = status.as_ref().map(|s| s.as_str()).unwrap_or("proposed");
+    let status_value = status.as_deref().unwrap_or("proposed");
     let desc_value = description
-        .as_ref()
-        .map(|s| s.as_str())
+        .as_deref()
         .unwrap_or("TODO: Add description");
     let context_value = context
-        .as_ref()
-        .map(|s| s.as_str())
+        .as_deref()
         .unwrap_or("TODO: Add context");
 
     let template = format!(

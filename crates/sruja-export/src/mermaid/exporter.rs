@@ -421,9 +421,7 @@ fn get_container(
                 return Some(cur);
             }
         }
-        let Some(p) = parent_fqn(&cur) else {
-            return None;
-        };
+        let p = parent_fqn(&cur)?;
         cur = p;
     }
 }
@@ -515,7 +513,7 @@ fn format_label(elem: &sruja_language::ElementDef) -> String {
         (String::new(), String::new())
     };
 
-    let title_flat = title.replace('\n', " ").replace('\r', " ");
+    let title_flat = title.replace(['\n', '\r'], " ");
     let line1 = truncate_line(title_flat.trim(), MAX_NODE_LINE_CHARS);
     let mut lines = vec![line1];
 

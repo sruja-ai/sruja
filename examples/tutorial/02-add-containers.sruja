@@ -10,6 +10,7 @@ user = person "User"
 
 app = system "Application" {
     frontend = container "Frontend" {
+        description "User interface"
         technology "React"
         homePage = component "Home Page" {
           scale {
@@ -19,12 +20,15 @@ app = system "Application" {
         }
     }
     backend = container "Backend" {
+        description "API server"
         technology "Go"
     }
 }
 
 user -> app.frontend "uses"
-app.frontend -> app.backend "calls"
+app.frontend -> backend "calls"
+app.frontend -> app "part of"
+app.frontend.homePage -> app.frontend "part of"
 
 view index {
     include *

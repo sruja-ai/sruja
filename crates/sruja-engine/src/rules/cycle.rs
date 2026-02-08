@@ -55,7 +55,7 @@ impl Rule for CycleDetectionRule {
         for rel in &relations {
             let from = rel.from.as_string();
             let to = rel.to.as_string();
-            adj.entry(from).or_insert_with(Vec::new).push(to);
+            adj.entry(from).or_default().push(to);
         }
 
         // Detect cycles using DFS
@@ -95,7 +95,7 @@ impl Rule for CycleDetectionRule {
 
                         // Skip cycles where all nodes are variables (causal/feedback loops)
                         let all_variables = cycle.iter().all(|node| {
-                            elements.get(node).map_or(false, |e| {
+                            elements.get(node).is_some_and(|e| {
                                 matches!(
                                     &e.assignment.kind,
                                     ElementKind::Custom(k) if k == "variable"

@@ -166,13 +166,15 @@ impl<'a> ScenarioRunner<'a> {
         // 2) Metadata tags: metadata { tag "a,b" } or tags "a,b"
         if let Some(body) = &elem.assignment.body {
             for m in &body.metadata {
-                if (m.key == "tags" || m.key == "tag") && m.value.is_some() {
-                    let v = m.value.as_ref().unwrap().trim().trim_matches('"');
-                    tags.extend(
-                        v.split(',')
-                            .map(|s| s.trim().to_string())
-                            .filter(|s| !s.is_empty()),
-                    );
+                if m.key == "tags" || m.key == "tag" {
+                    if let Some(val) = m.value.as_ref() {
+                        let v = val.trim().trim_matches('"');
+                        tags.extend(
+                            v.split(',')
+                                .map(|s| s.trim().to_string())
+                                .filter(|s| !s.is_empty()),
+                        );
+                    }
                 }
             }
         }

@@ -26,7 +26,7 @@ impl Rule for PropertiesValidationRule {
         let (elements, _relations) = collect_elements(program);
         let mut diags: Vec<Diagnostic> = Vec::with_capacity(16);
 
-        for (_fqn, elem) in &elements {
+        for elem in elements.values() {
             let props = extract_props(elem);
             if props.is_empty() {
                 continue;

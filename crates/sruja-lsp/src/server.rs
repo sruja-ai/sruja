@@ -9,7 +9,7 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, ClientSocket, LanguageServer, LspService, Server};
 
 use sruja_engine::Validator;
-use sruja_language::{Parser, Program};
+use sruja_language::Parser;
 
 use crate::diagnostics::convert_diagnostics_to_lsp;
 use crate::features::*;
@@ -175,10 +175,7 @@ impl LanguageServer for SrujaLanguageServer {
         // Parse program
         let text = doc.text.clone();
         let parser = Parser::new(uri.to_string());
-        let program = match parser.parse(&text) {
-            Ok(p) => p,
-            Err(_) => Program::default(),
-        };
+        let program = parser.parse(&text).unwrap_or_default();
 
         let items = get_completion(&doc, &program, line, character);
         Ok(Some(CompletionResponse::Array(items)))
@@ -206,7 +203,7 @@ impl LanguageServer for SrujaLanguageServer {
             None => return Ok(None),
         };
 
-        let (start, end) = word_bounds(&line_text, character);
+        let (start, end) = word_bounds(line_text, character);
         let word = line_text[start..end].trim();
 
         if word.is_empty() {
@@ -243,7 +240,7 @@ impl LanguageServer for SrujaLanguageServer {
             None => return Ok(None),
         };
 
-        let (start, end) = word_bounds(&line_text, character);
+        let (start, end) = word_bounds(line_text, character);
         let word = line_text[start..end].trim();
 
         if word.is_empty() {
@@ -317,7 +314,7 @@ impl LanguageServer for SrujaLanguageServer {
             None => return Ok(None),
         };
 
-        let (start, end) = word_bounds(&line_text, character);
+        let (start, end) = word_bounds(line_text, character);
         let old_name = line_text[start..end].trim();
 
         if old_name.is_empty() {
@@ -366,7 +363,7 @@ impl LanguageServer for SrujaLanguageServer {
 
 /// Create and start LSP server
 pub fn create_lsp_service() -> (LspService<SrujaLanguageServer>, ClientSocket) {
-    LspService::new(|client| SrujaLanguageServer::new(client))
+    LspService::new(SrujaLanguageServer::new)
 }
 
 /// Run the LSP server on stdio

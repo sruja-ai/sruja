@@ -134,17 +134,13 @@ impl Exporter {
         for (fqn, elem) in elements {
             let kind = elem.assignment.kind.to_string();
             let title = elem.assignment.name.clone();
-            let description = self.extract_description(&elem);
-            let technology = self.extract_technology(&elem);
-            let tags = self.extract_tags(&elem);
-            let metadata = self.extract_metadata(&elem);
+            let description = self.extract_description(elem);
+            let technology = self.extract_technology(elem);
+            let tags = self.extract_tags(elem);
+            let metadata = self.extract_metadata(elem);
 
             // Determine parent FQN
-            let parent = if let Some(dot_idx) = fqn.rfind('.') {
-                Some(fqn[..dot_idx].to_string())
-            } else {
-                None
-            };
+            let parent = fqn.rfind('.').map(|dot_idx| fqn[..dot_idx].to_string());
 
             let element_dump = ElementDump {
                 id: fqn.clone(),
@@ -364,7 +360,7 @@ fn timestamp() -> String {
         .map(|_d| {
             // For now, return a placeholder. In production, use chrono::DateTime::from()
             // to format as RFC3339 properly
-            format!("1970-01-01T00:00:00Z")
+            "1970-01-01T00:00:00Z".to_string()
         })
         .unwrap_or_else(|_| String::from("1970-01-01T00:00:00Z"))
 }

@@ -134,4 +134,127 @@ Frontend.WebApp -> Backend.API "calls API"
             "Relation 'calls API' to should be Backend.API"
         );
     }
+
+    #[test]
+    fn test_parse_nested_containers_under_system() {
+        // Minimal case: system with multiple nested containers (matches pattern_microservices structure)
+        let input = r#"
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+queue = kind "Queue"
+
+customer = person "Customer" {
+  description "End user purchasing products"
+  metadata { tags ["R1", "R2"] }
+}
+
+merchant = person "Merchant" {
+  description "Seller managing inventory"
+  metadata { tags ["R1"] }
+}
+
+admin = person "Platform Administrator" {
+  description "Admin managing the platform"
+  metadata { tags ["R3"] }
+}
+
+ecommerce = system "E-Commerce Platform" {
+  metadata { flags ["R1", "R4"] }
+  apiGateway = container "API Gateway" {
+    technology "Kong"
+  }
+  catalogService = container "Catalog Service" {
+    technology "Java, Spring Boot"
+    description "Manages product catalog information"
+
+    productApi = component "Product API" {
+      description "API for product retrieval"
+      technology "Spring MVC"
+      scale { min 2 max 5 metric "request rate > 1000 req/s" }
+      tags ["R1", "R2"]
+    }
+    searchApi = component "Search API" {
+        description "Full-text search for products"
+        technology "Elasticsearch Client"
+        tags ["R4"]
+    }
+    categoryApi = component "Category API" {
+        description "Manages product categories"
+        technology "Spring MVC"
+    }
+  }
+  inventoryService = container "Inventory Service" {
+    technology "Go"
+    stockApi = component "Stock API" {}
+  }
+  cartService = container "Cart Service" {
+    technology "Node.js"
+  }
+  catalogDb = database "Catalog Database" {
+    technology "PostgreSQL"
+    metadata { tags ["R1"] }
+  }
+}
+
+paymentProvider = system "Payment Provider" {
+  description "Third-party payment gateway"
+  metadata {
+    tags ["external", "R3"]
+  }
+}
+"#;
+        let parser = Parser::new("test.sruja".to_string());
+        let result = parser.parse(input);
+        assert!(result.is_ok(), "Should parse");
+
+        let program = result.unwrap();
+        let (elements, _) = collect_elements(&program);
+
+        assert!(elements.contains_key("ecommerce"), "ecommerce");
+        assert!(elements.contains_key("ecommerce.apiGateway"), "apiGateway");
+        assert!(elements.contains_key("ecommerce.catalogService"), "catalogService");
+        assert!(elements.contains_key("ecommerce.catalogService.productApi"), "productApi");
+        assert!(elements.contains_key("ecommerce.inventoryService"), "inventoryService");
+        assert!(elements.contains_key("ecommerce.inventoryService.stockApi"), "stockApi");
+    }
+
+    #[test]
+    fn test_parse_pattern_microservices_collects_nested_elements() {
+        let content = include_str!("../../../examples/pattern_microservices.sruja");
+        let parser = Parser::new("examples/pattern_microservices.sruja".to_string());
+        let result = parser.parse(content);
+        assert!(result.is_ok(), "pattern_microservices.sruja should parse");
+
+        let program = result.unwrap();
+        let (elements, _) = collect_elements(&program);
+
+        // Must have ecommerce system and its nested containers (relations reference ecommerce.X)
+        let expected = [
+            "ecommerce",
+            "ecommerce.apiGateway",
+            "ecommerce.catalogService",
+            "ecommerce.inventoryService",
+            "ecommerce.cartService",
+            "ecommerce.orderService",
+            "ecommerce.paymentService",
+            "ecommerce.userService",
+            "ecommerce.notificationService",
+            "ecommerce.catalogDb",
+            "ecommerce.inventoryDb",
+            "ecommerce.cartDb",
+            "ecommerce.orderDb",
+            "ecommerce.userDb",
+        ];
+        for fqn in expected {
+            assert!(
+                elements.contains_key(fqn),
+                "Expected element '{}' not found. Have: {:?}",
+                fqn,
+                elements.keys().collect::<Vec<_>>()
+            );
+        }
+    }
 }

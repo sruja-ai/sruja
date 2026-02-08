@@ -146,14 +146,16 @@ impl DslPrinter {
             out.push(' ');
         }
         if !scenario.title.is_empty() {
-            out.push_str("\"");
+            out.push('"');
             out.push_str(&scenario.title);
-            out.push_str("\" ");
+            out.push('"');
+            out.push(' ');
         }
         if let Some(desc) = &scenario.description {
-            out.push_str("\"");
+            out.push('"');
             out.push_str(desc);
-            out.push_str("\" ");
+            out.push('"');
+            out.push(' ');
         }
         if !scenario.steps.is_empty() {
             out.push_str("{\n");
@@ -184,14 +186,16 @@ impl DslPrinter {
             out.push(' ');
         }
         if !flow.title.is_empty() {
-            out.push_str("\"");
+            out.push('"');
             out.push_str(&flow.title);
-            out.push_str("\" ");
+            out.push('"');
+            out.push(' ');
         }
         if let Some(desc) = &flow.description {
-            out.push_str("\"");
+            out.push('"');
             out.push_str(desc);
-            out.push_str("\" ");
+            out.push('"');
+            out.push(' ');
         }
         if !flow.steps.is_empty() {
             out.push_str("{\n");
