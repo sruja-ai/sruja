@@ -630,20 +630,23 @@ pub fn sruja_get_diagnostics(dsl: &str, filename: Option<String>) -> Result<Stri
         all_diagnostics.extend(validation_diagnostics);
     }
 
-    let diagnostics_json: Vec<serde_json::Value> = all_diagnostics.iter().map(|d| {
-        // We currently only have (line, column) in `SourceLocation`; use a 1-character span.
-        let end_character = d.location.column.saturating_add(1);
-        json!({
-            "range": {
-                "start": {"line": d.location.line, "character": d.location.column},
-                "end": {"line": d.location.line, "character": end_character}
-            },
-            "severity": if d.severity == sruja_diagnostics::Severity::Error { 1 } else { 2 },
-            "code": d.code.clone(),
-            "message": d.message.clone(),
-            "source": "sruja"
+    let diagnostics_json: Vec<serde_json::Value> = all_diagnostics
+        .iter()
+        .map(|d| {
+            // We currently only have (line, column) in `SourceLocation`; use a 1-character span.
+            let end_character = d.location.column.saturating_add(1);
+            json!({
+                "range": {
+                    "start": {"line": d.location.line, "character": d.location.column},
+                    "end": {"line": d.location.line, "character": end_character}
+                },
+                "severity": if d.severity == sruja_diagnostics::Severity::Error { 1 } else { 2 },
+                "code": d.code.clone(),
+                "message": d.message.clone(),
+                "source": "sruja"
+            })
         })
-    }).collect();
+        .collect();
 
     serde_json::to_string(&diagnostics_json)
         .map_err(|e| JsValue::from_str(&format!("JSON error: {:?}", e)))

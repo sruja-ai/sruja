@@ -34,9 +34,7 @@ impl Rule for PublicInterfaceDocumentationRule {
         // 1) Collect all person IDs (leaf IDs) from all elements.
         let mut person_ids: HashSet<String> = HashSet::new();
         for elem in elements.values() {
-            if elem.assignment.kind == ElementKind::Person
-                && !elem.assignment.name.is_empty()
-            {
+            if elem.assignment.kind == ElementKind::Person && !elem.assignment.name.is_empty() {
                 person_ids.insert(elem.assignment.name.clone());
             }
         }

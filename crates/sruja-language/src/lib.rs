@@ -215,10 +215,22 @@ paymentProvider = system "Payment Provider" {
 
         assert!(elements.contains_key("ecommerce"), "ecommerce");
         assert!(elements.contains_key("ecommerce.apiGateway"), "apiGateway");
-        assert!(elements.contains_key("ecommerce.catalogService"), "catalogService");
-        assert!(elements.contains_key("ecommerce.catalogService.productApi"), "productApi");
-        assert!(elements.contains_key("ecommerce.inventoryService"), "inventoryService");
-        assert!(elements.contains_key("ecommerce.inventoryService.stockApi"), "stockApi");
+        assert!(
+            elements.contains_key("ecommerce.catalogService"),
+            "catalogService"
+        );
+        assert!(
+            elements.contains_key("ecommerce.catalogService.productApi"),
+            "productApi"
+        );
+        assert!(
+            elements.contains_key("ecommerce.inventoryService"),
+            "inventoryService"
+        );
+        assert!(
+            elements.contains_key("ecommerce.inventoryService.stockApi"),
+            "stockApi"
+        );
     }
 
     #[test]

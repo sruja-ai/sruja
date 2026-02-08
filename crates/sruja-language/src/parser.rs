@@ -410,12 +410,12 @@ fn ws1(input: &str) -> IResult<&str, ()> {
 fn parse_program(input: &str) -> IResult<&str, Program> {
     let (input, _) = ws(input)?;
     let mut items = Vec::new();
-    let mut current = input;
-
+    let mut remaining = input;
     loop {
-        // Skip whitespace
-        let (rest, _) = ws(current)?;
+        // Skip whitespace and comments
+        let (rest, _) = ws(remaining)?;
         if rest.is_empty() {
+            remaining = rest;
             break;
         }
 
@@ -423,25 +423,20 @@ fn parse_program(input: &str) -> IResult<&str, Program> {
         match parse_top_level_item(rest) {
             Ok((next, item)) => {
                 items.push(item);
-                current = next;
+                remaining = next;
             }
             Err(_) => {
                 // Parsing failed - try to skip to the next line and continue
-                // This allows the parser to recover from syntax errors in one item
-                // and continue parsing the rest
                 if let Some(newline_pos) = rest.find('\n') {
-                    // Skip to the next line
-                    current = &rest[newline_pos + 1..];
+                    remaining = &rest[newline_pos + 1..];
                 } else {
-                    // No more newlines, we're done (or at the end)
-                    // Return what we've parsed so far
                     break;
                 }
             }
         }
     }
 
-    Ok((current, Program::with_items(Program::new(), items)))
+    Ok((remaining, Program::with_items(Program::new(), items)))
 }
 
 /// Parse a top-level item
@@ -930,13 +925,7 @@ fn parse_element_body_item(input: &str) -> IResult<&str, ElementDefBodyItem> {
         map(
             preceded(
                 alt((tag("tags"), tag("tag"))),
-                preceded(
-                    ws0,
-                    opt(alt((
-                        parse_string_array,
-                        parse_tag_array,
-                    ))),
-                ),
+                preceded(ws0, opt(alt((parse_string_array, parse_tag_array)))),
             ),
             |t| ElementDefBodyItem::Tags(t.unwrap_or_default()),
         ),

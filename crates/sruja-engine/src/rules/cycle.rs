@@ -13,8 +13,9 @@ use sruja_language::{
 
 use crate::validator::Rule;
 
-/// Returns true if the scope (parent FQN) refers to a causal_loop element.
-fn is_scope_causal_loop(
+/// Returns true if the scope (parent FQN) refers to a causal_loop or feedback element.
+/// Cycles are intentional in feedback loops (systems thinking).
+fn is_scope_feedback_loop(
     scope: &str,
     elements: &HashMap<String, sruja_language::ElementDef>,
 ) -> bool {
@@ -25,7 +26,10 @@ fn is_scope_causal_loop(
         Some(e) => e,
         None => return false,
     };
-    matches!(&elem.assignment.kind, ElementKind::Custom(k) if k == "causal_loop")
+    matches!(
+        &elem.assignment.kind,
+        ElementKind::Custom(k) if k == "causal_loop" || k == "feedback"
+    )
 }
 
 /// Rule that detects circular dependencies
@@ -43,10 +47,10 @@ impl Rule for CycleDetectionRule {
         let (elements, _) = collect_elements(program);
         let relations_with_scope = collect_relations_with_scope(program);
 
-        // Exclude relations inside causal_loop elements; cycles are intentional there
+        // Exclude relations inside causal_loop/feedback elements; cycles are intentional there
         let relations: Vec<_> = relations_with_scope
             .into_iter()
-            .filter(|rws| !is_scope_causal_loop(&rws.scope, &elements))
+            .filter(|rws| !is_scope_feedback_loop(&rws.scope, &elements))
             .map(|rws| resolve_relation_fqns(rws.relation, &rws.scope, &elements))
             .collect();
 
