@@ -63,8 +63,16 @@ pub async fn run(path: PathBuf) -> Result<()> {
         let content = std::fs::read_to_string(file_path)?;
         let display_path = file_path.display().to_string();
 
-        results.extend(check_xrefs_in_metadata(&content, &display_path, &rule_files));
-        results.extend(check_xrefs_in_body(&content, &display_path, file_path.parent().unwrap_or(Path::new(""))));
+        results.extend(check_xrefs_in_metadata(
+            &content,
+            &display_path,
+            &rule_files,
+        ));
+        results.extend(check_xrefs_in_body(
+            &content,
+            &display_path,
+            file_path.parent().unwrap_or(Path::new("")),
+        ));
     }
 
     for result in &results {
@@ -77,7 +85,11 @@ pub async fn run(path: PathBuf) -> Result<()> {
     println!("{}", "=".repeat(50));
     println!("{}", "Cross-Reference Check Summary:".bold());
     println!("  Total references: {}", total_refs.to_string().white());
-    println!("  {}: {}", "Valid".green(), (total_refs - broken_refs).to_string().green());
+    println!(
+        "  {}: {}",
+        "Valid".green(),
+        (total_refs - broken_refs).to_string().green()
+    );
     println!("  {}: {}", "Broken".red(), broken_refs.to_string().red());
 
     if broken_refs > 0 {
@@ -93,12 +105,13 @@ pub async fn run(path: PathBuf) -> Result<()> {
                     XrefStatus::Ok => unreachable!(),
                 };
 
+                println!("\n{}{}", result.file.yellow(), line_info);
                 println!(
-                    "\n{}{}",
-                    result.file.yellow(),
-                    line_info
+                    "  {} {} - {}",
+                    "✗".red(),
+                    result.reference.cyan(),
+                    status_msg
                 );
-                println!("  {} {} - {}", "✗".red(), result.reference.cyan(), status_msg);
             }
         }
 
@@ -116,10 +129,7 @@ fn extract_rule_id(file_path: &str, content: &str) -> Option<String> {
         if let Ok(yaml) = serde_yaml::from_str::<Value>(&frontmatter) {
             if let Some(_metadata) = yaml.get("metadata") {
                 let path = PathBuf::from(file_path);
-                let file_name = path
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("");
+                let file_name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
 
                 return Some(file_name.to_string());
             }
@@ -169,11 +179,11 @@ fn check_xrefs_in_metadata(
                                     status,
                                 });
                             }
-                            }
                         }
                     }
+                }
 
-                    if let Some(alternatives) = _metadata.get("alternatives") {
+                if let Some(alternatives) = _metadata.get("alternatives") {
                     if let Some(alt_array) = alternatives.as_sequence() {
                         for item in alt_array {
                             if let Some(rule_id) = item.as_str() {
@@ -201,11 +211,7 @@ fn check_xrefs_in_metadata(
     results
 }
 
-fn check_xrefs_in_body(
-    content: &str,
-    file_path: &str,
-    base_path: &Path,
-) -> Vec<XrefCheckResult> {
+fn check_xrefs_in_body(content: &str, file_path: &str, base_path: &Path) -> Vec<XrefCheckResult> {
     let mut results = Vec::new();
 
     let link_regex = Regex::new(r"\[`([^\]]+)`\]\(([^\)]+)\)").unwrap();

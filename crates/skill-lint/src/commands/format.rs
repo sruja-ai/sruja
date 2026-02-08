@@ -60,9 +60,21 @@ pub async fn run(path: PathBuf, check_only: bool) -> Result<()> {
     println!("{}", "=".repeat(50));
     println!("{}", "Format Summary:".bold());
     println!("  Total files: {}", total_files.to_string().white());
-    println!("  {}: {}", "Formatted".yellow(), formatted_files.to_string().yellow());
-    println!("  {}: {}", "Already correct".green(), (total_files - formatted_files).to_string().green());
-    println!("  {}: {}", "Issues found".cyan(), total_issues.to_string().cyan());
+    println!(
+        "  {}: {}",
+        "Formatted".yellow(),
+        formatted_files.to_string().yellow()
+    );
+    println!(
+        "  {}: {}",
+        "Already correct".green(),
+        (total_files - formatted_files).to_string().green()
+    );
+    println!(
+        "  {}: {}",
+        "Issues found".cyan(),
+        total_issues.to_string().cyan()
+    );
 
     if check_only && formatted_files > 0 {
         println!();
@@ -158,7 +170,8 @@ fn format_content(content: &str) -> ContentFormatResult {
 fn format_frontmatter(frontmatter: &str) -> String {
     let lines: Vec<&str> = frontmatter.lines().collect();
 
-    if lines.len() < 2 || !lines[0].starts_with("---") || !lines[lines.len() - 1].starts_with("---") {
+    if lines.len() < 2 || !lines[0].starts_with("---") || !lines[lines.len() - 1].starts_with("---")
+    {
         return frontmatter.to_string();
     }
 

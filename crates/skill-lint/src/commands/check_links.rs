@@ -80,7 +80,11 @@ pub async fn run(path: PathBuf) -> Result<()> {
     println!("{}", "=".repeat(50));
     println!("{}", "Link Check Summary:".bold());
     println!("  Total links: {}", total_links.to_string().white());
-    println!("  {}: {}", "Valid".green(), (total_links - broken_links).to_string().green());
+    println!(
+        "  {}: {}",
+        "Valid".green(),
+        (total_links - broken_links).to_string().green()
+    );
     println!("  {}: {}", "Broken".red(), broken_links.to_string().red());
 
     if broken_links > 0 {
@@ -102,7 +106,15 @@ pub async fn run(path: PathBuf) -> Result<()> {
                     "\n{}{} {}",
                     result.file.yellow(),
                     line_info,
-                    format!("({})", if result.is_external { "external" } else { "internal" }).dimmed()
+                    format!(
+                        "({})",
+                        if result.is_external {
+                            "external"
+                        } else {
+                            "internal"
+                        }
+                    )
+                    .dimmed()
                 );
                 println!("  {} {}", "✗".red(), result.link.cyan());
                 println!("  {} {}", "Reason:".red(), status_msg);
@@ -124,7 +136,11 @@ struct PendingLinkCheck {
     is_external: bool,
 }
 
-fn check_links_in_content(content: &str, _file: &str, mut current_line: usize) -> Vec<PendingLinkCheck> {
+fn check_links_in_content(
+    content: &str,
+    _file: &str,
+    mut current_line: usize,
+) -> Vec<PendingLinkCheck> {
     let mut checks = Vec::new();
     let parser = Parser::new(content);
 

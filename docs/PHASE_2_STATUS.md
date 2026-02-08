@@ -464,3 +464,321 @@ Phase 2 is **fully aligned** when:
 - **Both work**: The choice depends on use case and team preference
 - **CI/CD uses skill-lint**: This is correct for validation
 - **Users can choose**: Use skill-lint for rich features, sruja-cli for simplicity
+
+---
+
+## Appendix A: Command Reference
+
+### skill-lint Commands
+
+```bash
+# Validation
+skill-lint check <path>              # Validate skill files
+skill-lint check-links <path>        # Check all markdown links
+skill-lint check-xrefs <path>        # Check cross-references
+skill-lint check-code <path>         # Test code examples
+skill-lint check-format <path>       # Check formatting
+
+# Testing
+skill-lint test <path>               # Test code examples
+
+# Formatting
+skill-lint format <path>             # Format skill files
+
+# Suggestions
+skill-lint suggest --project <path> --limit <n>
+skill-lint suggest --file <path> --top --limit <n>
+
+# Full validation
+skill-lint validate <path>           # Run all checks
+```
+
+### sruja-cli skills Commands
+
+```bash
+# List available skills
+sruja skills list                    # List all skills
+sruja skills list --limit <n>        # Limit output
+sruja skills list --format json      # JSON output
+sruja skills list --format concise  # Concise output
+
+# Suggest relevant skills
+sruja skills suggest                 # Suggest based on current dir
+sruja skills suggest --count <n>     # Limit suggestions
+sruja skills suggest --project-path <path>  # Analyze specific project
+sruja skills suggest --level <level>  # Filter by level
+```
+
+---
+
+## Appendix B: Common Workflows
+
+### Workflow 1: Creating a New Skill
+
+```bash
+# 1. Create the skill file
+vim skills/rust-skills/rules/my-new-rule.md
+
+# 2. Validate the skill
+skill-lint check skills/rust-skills/rules/my-new-rule.md
+
+# 3. Test code examples
+skill-lint test skills/rust-skills/rules/my-new-rule.md
+
+# 4. Format the file
+skill-lint format skills/rust-skills/rules/my-new-rule.md
+
+# 5. Run full validation
+skill-lint validate skills/rust-skills
+```
+
+### Workflow 2: Finding Relevant Skills for a Project
+
+```bash
+# Quick list (simple)
+sruja skills list --limit 10
+
+# Context-aware suggestions
+sruja skills suggest --project-path ./my-rust-project --count 10
+
+# Advanced suggestions (with learning)
+skill-lint suggest --project ./my-rust-project --limit 10
+```
+
+### Workflow 3: Pre-commit Validation
+
+```bash
+# Validate all changes
+skill-lint check skills/rust-skills
+
+# Run full validation suite
+skill-lint validate skills/rust-skills
+
+# Check specific type
+skill-lint check-links skills/rust-skills
+skill-lint check-xrefs skills/rust-skills
+```
+
+### Workflow 4: CI/CD Integration
+
+```yaml
+# .github/workflows/skill-validation.yml
+name: Skill Validation
+
+on:
+  push:
+    paths:
+      - "skills/**"
+  pull_request:
+    paths:
+      - "skills/**"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo build --release --package skill-lint
+      - run: cargo run --package skill-lint -- validate skills/
+```
+
+---
+
+## Appendix C: Troubleshooting
+
+### Issue: skill-lint fails to compile
+
+**Symptom:** Compilation errors when building skill-lint
+
+**Solutions:**
+
+1. Check workspace configuration in Cargo.toml
+2. Ensure skill-lint is in workspace members
+3. Remove duplicate `[workspace]` sections
+4. Run `cargo clean && cargo build`
+
+### Issue: sruja skills suggest returns no results
+
+**Symptom:** Empty skill suggestions
+
+**Solutions:**
+
+1. Check project-path is correct
+2. Ensure project has Rust files
+3. Try increasing count/limit
+4. Check skill files exist in skills/rust-skills/
+
+### Issue: CI/CD workflow fails
+
+**Symptom:** GitHub Actions validation fails
+
+**Solutions:**
+
+1. Check workflow YAML syntax
+2. Ensure skill-lint binary builds successfully
+3. Verify skill files pass local validation first
+4. Check runner permissions
+
+### Issue: Link checking fails
+
+**Symptom:** Broken or invalid links detected
+
+**Solutions:**
+
+1. Update broken URLs
+2. Use relative paths for internal links
+3. Check for typos in reference IDs
+4. Verify external links are accessible
+
+### Issue: Code example testing fails
+
+**Symptom:** Code examples don't compile or run
+
+**Solutions:**
+
+1. Check code syntax
+2. Ensure required dependencies are specified
+3. Update code for current Rust version
+4. Add proper imports in examples
+
+---
+
+## Appendix D: Known Issues and Limitations
+
+### skill-lint Limitations
+
+1. **Learning Database**: Currently in-memory only, no persistence
+2. **Metadata Parsing**: Some edge cases in complex YAML
+3. **Code Testing**: Limited to Rust code, no multi-language support
+4. **Performance**: Not optimized for very large skill sets (1000+ rules)
+
+### sruja-cli skills Limitations
+
+1. **No Metadata**: Does not parse YAML metadata in skill files
+2. **Level-only Filtering**: Only filters by level, not by tags/categories
+3. **Simple Scoring**: Relevance scoring is basic, no learning system
+4. **Output Formats**: Limited to Markdown, JSON, and Concise
+
+### Known Issues
+
+1. **Duplicate Rules**: Both tools may suggest same rules
+2. **Context Detection**: May misclassify project type in edge cases
+3. **Link Checking**: External link checking requires network access
+4. **Code Testing**: Requires Rust toolchain installed
+
+---
+
+## Appendix E: Phase 3 Readiness Checklist
+
+### Prerequisites for Phase 3 (IDE Integration)
+
+- [ ] skill-lint API stabilized with clear interfaces
+- [ ] Rule metadata format finalized and documented
+- [ ] Project context analysis API exposed for IDE use
+- [ ] Learning system persistence layer implemented
+- [ ] Performance benchmarks established
+- [ ] Export format specifications documented
+
+### Technical Requirements
+
+1. **VSCode Extension**
+   - Extension manifest prepared
+   - Language server protocol (LSP) support needed
+   - Inline diagnostics integration
+   - Command palette integration
+
+2. **Rust-Analyzer Integration**
+   - Diagnostic format compatible with rust-analyzer
+   - Rule-to-diagnostic mapping defined
+   - Severity levels configured
+   - Suppression mechanism designed
+
+3. **Open Standards**
+   - Export format (JSON) specification
+   - Skill interchange format defined
+   - Versioning strategy for skill sets
+   - Compatibility guarantees documented
+
+### Estimated Phase 3 Effort
+
+| Component        | Estimated Time   | Complexity |
+| ---------------- | ---------------- | ---------- |
+| VSCode Extension | 20-30 hours      | High       |
+| rust-analyzer    | 15-25 hours      | High       |
+| Export Standards | 10-15 hours      | Medium     |
+| Documentation    | 10-15 hours      | Low        |
+| Testing          | 15-20 hours      | Medium     |
+| **Total**        | **70-105 hours** |            |
+
+---
+
+## Appendix F: Configuration Examples
+
+### skill-lint Configuration
+
+```toml
+# ~/.config/skill-lint/config.toml
+
+[general]
+max_errors = 100
+verbose = false
+color_output = true
+
+[learning]
+enabled = true
+database_path = "~/.local/share/skill-lint/learning.db"
+max_history = 10000
+
+[validation]
+check_links = true
+check_xrefs = true
+test_code = true
+check_format = true
+
+[suggestions]
+default_limit = 10
+relevance_threshold = 0.5
+```
+
+### sruja-cli Configuration
+
+```toml
+# ~/.config/sruja/skills.toml
+
+[general]
+default_level = "all"
+max_suggestions = 10
+output_format = "markdown"
+
+[projects]
+# Auto-detect project type
+detect_type = true
+
+[filters]
+# Default filters to apply
+exclude_levels = []
+include_tags = []
+```
+
+---
+
+## Appendix G: Glossary
+
+- **Skill**: A reusable rule or guideline for coding best practices
+- **Rule**: A specific coding guideline with metadata (level, priority, category)
+- **skill-lint**: Validation and testing tool for skill files
+- **sruja-cli skills**: Simplified skill discovery and suggestion tool
+- **Learning System**: Tracks rule usage to improve suggestions over time
+- **Project Context**: Analysis of codebase to determine relevant skills
+- **Cross-reference**: Links between related rules within skill set
+- **Metadata**: Structured data about rules (level, frequency, complexity, etc.)
+- **CI/CD**: Continuous Integration/Continuous Deployment pipeline
+- **LSP**: Language Server Protocol for IDE integration
+
+---
+
+**Document Version:** 2.0
+**Last Updated:** 2026-02-08
+**Maintainer:** Development Team
+**Status:** Phase 2 In Progress - Alignment Phase

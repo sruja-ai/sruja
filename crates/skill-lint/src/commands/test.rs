@@ -108,8 +108,16 @@ pub async fn run(path: PathBuf, generate_code: bool) -> Result<()> {
     println!("{}", "=".repeat(50));
     println!("{}", "Code Test Summary:".bold());
     println!("  Total examples: {}", total_examples.to_string().white());
-    println!("  {}: {}", "Passed".green(), (total_examples - failed_examples).to_string().green());
-    println!("  {}: {}", "Failed".red(), failed_examples.to_string().red());
+    println!(
+        "  {}: {}",
+        "Passed".green(),
+        (total_examples - failed_examples).to_string().green()
+    );
+    println!(
+        "  {}: {}",
+        "Failed".red(),
+        failed_examples.to_string().red()
+    );
 
     if failed_examples > 0 {
         println!();
@@ -124,12 +132,13 @@ pub async fn run(path: PathBuf, generate_code: bool) -> Result<()> {
                     CodeTestStatus::Ok => unreachable!(),
                 };
 
+                println!("\n{}{}", result.file.yellow(), line_info);
                 println!(
-                    "\n{}{}",
-                    result.file.yellow(),
-                    line_info
+                    "  {} {} ({})",
+                    "✗".red(),
+                    "code block".cyan(),
+                    result.code_type
                 );
-                println!("  {} {} ({})", "✗".red(), "code block".cyan(), result.code_type);
                 println!("  {} {}", "Error:".red(), status_msg);
             }
         }

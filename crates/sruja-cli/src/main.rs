@@ -226,10 +226,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Import { format, file } => commands::import(&format, &file).await,
         Commands::Score { file } => commands::score(file.as_deref()).await,
         Commands::Skills { action } => match action {
-            SkillsAction::List {
-                path,
-                limit,
-            } => commands::skills_list(&path, limit).await,
+            SkillsAction::List { path, limit } => commands::skills_list(&path, limit).await,
             SkillsAction::Suggest {
                 skills_path,
                 project_path,

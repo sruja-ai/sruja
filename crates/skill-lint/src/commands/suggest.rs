@@ -35,9 +35,18 @@ pub async fn run(
     let project_context = analyzer.analyze_project(&proj_path)?;
     println!("\n{}", "Project Context:".bold());
     println!("  Language: {}", project_context.language.cyan());
-    println!("  Tech Stack: {}", format!("{:?}", project_context.tech_stack).cyan());
-    println!("  Frameworks: {}", format!("{:?}", project_context.frameworks).cyan());
-    println!("  Patterns: {}", format!("{:?}", project_context.patterns).cyan());
+    println!(
+        "  Tech Stack: {}",
+        format!("{:?}", project_context.tech_stack).cyan()
+    );
+    println!(
+        "  Frameworks: {}",
+        format!("{:?}", project_context.frameworks).cyan()
+    );
+    println!(
+        "  Patterns: {}",
+        format!("{:?}", project_context.patterns).cyan()
+    );
     println!("  Async: {}", bool_str(project_context.async_usage));
     println!("  WASM: {}", bool_str(project_context.wasm_usage));
     println!("  Embedded: {}", bool_str(project_context.embedded_usage));
@@ -69,16 +78,26 @@ pub async fn run(
     println!("{}", "=".repeat(60));
 
     if suggestions.is_empty() {
-        println!("\n{}", "No suggestions available for this context.".yellow());
+        println!(
+            "\n{}",
+            "No suggestions available for this context.".yellow()
+        );
         return Ok(());
     }
 
     for (i, suggestion) in suggestions.iter().enumerate() {
-        println!("\n{} {}", format!("{}. ", i + 1).bold(), suggestion.rule_id.cyan());
+        println!(
+            "\n{} {}",
+            format!("{}. ", i + 1).bold(),
+            suggestion.rule_id.cyan()
+        );
         let relevance_str = format!("{:.2}", suggestion.relevance_score);
         println!("{}", format!("  Relevance: {}%", relevance_str).yellow());
         println!("{}", format!("  Priority: {}", suggestion.priority).green());
-        println!("{}", format!("  Confidence: {}", suggestion.confidence).green());
+        println!(
+            "{}",
+            format!("  Confidence: {}", suggestion.confidence).green()
+        );
         println!("\n  {}", "Reasoning:".bold());
         for reason in suggestion.reasoning.iter() {
             println!("    • {}", reason.dimmed().to_string());
@@ -96,11 +115,18 @@ async fn show_top_rules(analyzer: &mut ContextAnalyzer, limit: usize) -> Result<
     println!("{}", "=".repeat(60));
 
     for (i, suggestion) in suggestions.iter().enumerate() {
-        println!("\n{} {}", format!("{}. ", i + 1).bold(), suggestion.rule_id.cyan());
+        println!(
+            "\n{} {}",
+            format!("{}. ", i + 1).bold(),
+            suggestion.rule_id.cyan()
+        );
         let relevance_str = format!("{:.2}", suggestion.relevance_score);
         println!("{}", format!("  Relevance: {}", relevance_str).yellow());
         println!("{}", format!("  Priority: {}", suggestion.priority).green());
-        println!("{}", format!("  Confidence: {}", suggestion.confidence).green());
+        println!(
+            "{}",
+            format!("  Confidence: {}", suggestion.confidence).green()
+        );
         println!("\n  {}", "Reasoning:".bold());
         for reason in suggestion.reasoning.iter() {
             println!("    • {}", reason.dimmed());
