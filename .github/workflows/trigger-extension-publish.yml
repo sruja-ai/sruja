@@ -1,0 +1,16 @@
+# When a release is published, run the extension publish workflow (with the release version).
+# Needed because tags/releases created by GITHUB_TOKEN do not trigger other workflows;
+# this workflow runs on release and explicitly invokes the publish.
+name: Trigger extension publish on release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  call-publish:
+    name: Publish extension (release)
+    uses: ./.github/workflows/publish-extension.yml
+    with:
+      version: ${{ github.event.release.tag_name }}
+    secrets: inherit

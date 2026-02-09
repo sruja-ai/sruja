@@ -11,7 +11,8 @@
 | **skill-pr-check.yml** | PR (skills) | Validate only changed skill files. |
 | **security.yml** | push/PR + weekly Mon | cargo audit, dependency-review (PRs), TruffleHog. |
 | **release-please.yml** | push to main | Update CHANGELOG and create release PR from conventional commits. |
-| **publish-extension.yml** | release published / manual | Build VS Code extension and publish to **Open VSX Registry** (open-vsx.org). |
+| **publish-extension.yml** | push tag v* / manual / workflow_call | Build VS Code extension; publish to Open VSX and (if `AZURE_DEVOPS_PAT` set) Visual Studio Marketplace. |
+| **trigger-extension-publish.yml** | release published | Calls publish-extension with release version so extension publishes when a release is created (e.g. by Release Please). |
 
 ## Standards defined in .sruja → CI checks
 
@@ -75,10 +76,10 @@ The **publish-extension** workflow builds the extension and publishes it to the 
 
 **Triggers**
 
-- **Push a version tag:** `git tag v0.3.5 && git push origin v0.3.5` — workflow runs and publishes that version to Open VSX and (if `AZURE_DEVOPS_PAT` is set) Visual Studio Marketplace. Easiest way to publish.
-- **Release published:** Click **Publish release** (not “Save as draft”) — same as above, version from tag.
-- **Manual:** **Actions → Publish extension to Open VSX → Run workflow.** Optionally set the **version** input; if empty, `extension/package.json` is used.
+- **Release published (e.g. Release Please):** **Trigger extension publish on release** runs on `release: published` and calls this workflow with the release tag version. Use this when releases are created by a workflow (tags pushed by `GITHUB_TOKEN` do not trigger other workflows).
+- **Manual:** **Actions → Publish extension to Open VSX → Run workflow.** Set the **version** input (e.g. `0.3.5`) or leave empty to use `extension/package.json`.
+- **Push tag yourself:** `git tag v0.3.5 && git push origin v0.3.5` — only triggers if the tag push is from your machine (not from another workflow).
 
-**Visual Studio Marketplace:** The [listing](https://marketplace.visualstudio.com/items?itemName=SrujaAI.sruja) updates only when the workflow runs and secret **`AZURE_DEVOPS_PAT`** is set. If the workflow didn’t run, push a tag or run manually. If it ran but Marketplace didn’t update, add `AZURE_DEVOPS_PAT` (Azure DevOps PAT with Marketplace → Manage).
+**Visual Studio Marketplace:** The [listing](https://marketplace.visualstudio.com/items?itemName=SrujaAI.sruja) updates when this workflow runs and **`AZURE_DEVOPS_PAT`** is set.
 
 **Recommendation:** Add `extension/package-lock.json` (run `npm install` in `extension/` and commit the lock file) for reproducible builds; the workflow currently uses `npm install` without a lock file.

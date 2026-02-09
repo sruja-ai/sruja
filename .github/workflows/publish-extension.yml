@@ -1,5 +1,6 @@
 # Publish VS Code extension to Open VSX and/or Visual Studio Marketplace.
-# Trigger: (1) Push tag v* (e.g. git push origin v0.3.5), (2) Publish release, or (3) Manual run.
+# Trigger: (1) Manual run, (2) Release published (see trigger-extension-publish.yml), (3) Push tag v* (only if tag pushed by you, not by a workflow).
+# Note: Tags pushed by GITHUB_TOKEN (e.g. Release Please) do NOT trigger workflows; use trigger-extension-publish.yml to run on release.
 # Secrets: OPEN_VSX_TOKEN, AZURE_DEVOPS_PAT (Azure DevOps PAT with Marketplace → Manage).
 name: Publish extension to Open VSX
 
@@ -7,13 +8,17 @@ on:
   push:
     tags:
       - "v*"
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       version:
         description: "Extension version (e.g. 0.3.5). Leave empty to use package.json."
         required: false
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        description: "Extension version (e.g. 0.3.5)."
+        required: true
         type: string
 
 permissions:
@@ -34,10 +39,10 @@ jobs:
 
       - name: Set extension version
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            TAG="${{ github.event.release.tag_name }}"
-            VERSION="${TAG#v}"
-            echo "Using release tag version: $VERSION"
+          if [ "${{ github.event_name }}" = "workflow_call" ] && [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+            VERSION="${VERSION#v}"
+            echo "Using workflow_call version: $VERSION"
           elif [ "${{ github.event_name }}" = "push" ] && [ -n "${{ github.ref_name }}" ]; then
             TAG="${{ github.ref_name }}"
             VERSION="${TAG#v}"
