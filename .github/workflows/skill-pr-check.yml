@@ -61,7 +61,7 @@ jobs:
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             if [ -f "$file" ]; then
               echo "::group::Checking links in $file"
-              ./crates/skill-lint/target/release/skill-lint check-links "$file" || {
+              ./target/release/skill-lint check-links "$file" || {
                 echo "::warning file=$file::Link check failed"
               }
               echo "::endgroup::"
@@ -75,7 +75,7 @@ jobs:
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             if [ -f "$file" ]; then
               echo "::group::Checking cross-references in $file"
-              ./crates/skill-lint/target/release/skill-lint check-xrefs "$file" || {
+              ./target/release/skill-lint check-xrefs "$file" || {
                 echo "::warning file=$file::Cross-reference check failed"
               }
               echo "::endgroup::"
@@ -90,7 +90,7 @@ jobs:
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             if [ -f "$file" ]; then
               echo "::group::Testing code examples in $file"
-              ./crates/skill-lint/target/release/skill-lint test "$file" || {
+              ./target/release/skill-lint test "$file" || {
                 echo "::error file=$file::Code test failed"
                 failed=1
               }
@@ -108,7 +108,7 @@ jobs:
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             if [ -f "$file" ]; then
               echo "::group::Checking format of $file"
-              ./crates/skill-lint/target/release/skill-lint format --check "$file" || {
+              ./target/release/skill-lint format --check "$file" || {
                 echo "::error file=$file::Format check failed"
                 echo "To fix: cargo run -p skill-lint -- format '$file'"
               }

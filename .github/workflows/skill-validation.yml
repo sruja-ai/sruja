@@ -51,7 +51,7 @@ jobs:
         run: |
           set -e
           echo "Checking for broken links in skill files..."
-          ./crates/skill-lint/target/release/skill-lint check-links skills/ || {
+          ./target/release/skill-lint check-links skills/ || {
             echo "::warning::Link check failed - see details above"
             exit 0
           }
@@ -60,7 +60,7 @@ jobs:
         run: |
           set -e
           echo "Checking for broken cross-references in skill files..."
-          ./crates/skill-lint/target/release/skill-lint check-xrefs skills/ || {
+          ./target/release/skill-lint check-xrefs skills/ || {
             echo "::warning::Cross-reference check failed - see details above"
             exit 0
           }
@@ -68,7 +68,7 @@ jobs:
       - name: Test code examples
         run: |
           echo "Testing code examples in skill files..."
-          OUTPUT=$(./crates/skill-lint/target/release/skill-lint test skills/ 2>&1) || EXIT=$?
+          OUTPUT=$(./target/release/skill-lint test skills/ 2>&1) || EXIT=$?
           echo "$OUTPUT"
           # Pass when there are no Rust code blocks to test (e.g. sruja-architecture only has ```sruja)
           if echo "$OUTPUT" | grep -q "Total examples: 0"; then
@@ -86,7 +86,7 @@ jobs:
         run: |
           set -e
           echo "Checking formatting of skill files..."
-          ./crates/skill-lint/target/release/skill-lint format --check skills/ || {
+          ./target/release/skill-lint format --check skills/ || {
             echo "::error::Format check failed - see details above"
             echo "To fix formatting, run: cargo run -p skill-lint -- format skills/"
             exit 1
@@ -97,7 +97,7 @@ jobs:
           set -e
           echo "Validating skill metadata against schema..."
           if [ -f "crates/skill-lint/skill-schema.json" ]; then
-            ./crates/skill-lint/target/release/skill-lint validate \
+            ./target/release/skill-lint validate \
               --schema crates/skill-lint/skill-schema.json \
               --path skills/ || {
               echo "::error::Schema validation failed - see details above"
