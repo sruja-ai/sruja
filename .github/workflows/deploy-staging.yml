@@ -1,0 +1,75 @@
+# Deploy mdBook site to sruja-ai/staging-website on push to main.
+# Uses existing secrets: SRUJA_WEBSITE_DEPLOY_APP_ID, SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "book/**"
+      - "crates/sruja-wasm/**"
+      - "crates/sruja-cli/**"
+      - "crates/sruja-export/**"
+      - "crates/sruja-language/**"
+      - "crates/sruja-engine/**"
+      - "examples/**"
+      - ".github/workflows/deploy-staging.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy to staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install mdbook and preprocessors
+        run: |
+          cargo install mdbook mdbook-mermaid
+          which mdbook mdbook-mermaid
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
+
+      - name: Build sruja CLI (for preprocessor)
+        run: cargo build --release -p sruja-cli
+
+      - name: Build WASM (web target for book)
+        run: |
+          wasm-pack build --target web --out-dir pkg crates/sruja-wasm --release
+          mkdir -p book/wasm/rust
+          cp pkg/sruja_wasm.js pkg/sruja_wasm_bg.wasm book/wasm/rust/
+
+      - name: Build book
+        run: |
+          export PATH="$PWD/target/release:$PATH"
+          cd book
+          mdbook build
+          cd ..
+
+      - name: Copy WASM into book output
+        run: bash book/copy-wasm.sh book/book
+
+      - name: Deploy to staging-website
+        uses: ./.github/actions/deploy-to-github-pages
+        with:
+          site-path: book/book
+          target-repo: staging-website
+          target-branch: main
+          app-id: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_ID }}
+          app-private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
+          commit-message: "deploy: staging from sruja-ai/sruja@${{ github.sha }}"

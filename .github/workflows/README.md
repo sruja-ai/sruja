@@ -5,9 +5,9 @@
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | **unified-ci.yml** | push/PR to main, develop, simplify | Rust: build, test, **format** (`cargo fmt --check`), clippy. **Sruja files**: lint all `**/*.sruja`. Code and .sruja are checked against standards defined in .sruja (e.g. `CodeStyle` → rustfmt, `NoCycles` → sruja lint). |
+| **deploy-staging.yml** | push to main (book, crates, examples) / manual | Build mdBook + WASM, deploy to `sruja-ai/staging-website` via `deploy-to-github-pages`. |
 | **security.yml** | push/PR + weekly Mon | cargo audit, dependency-review (PRs), TruffleHog. |
 | **release-please.yml** | push to main | Update CHANGELOG and create release PR from conventional commits. |
-| **hn-review.yml** | on release / manual | Prepare HN post. |
 | **publish-extension.yml** | release published / manual | Build VS Code extension and publish to **Open VSX Registry** (open-vsx.org). |
 
 ## Standards defined in .sruja → CI checks
@@ -30,6 +30,20 @@ To add a new code-level standard: (1) add or reference the policy in the archite
 | **sruja-validate** | Rust toolchain, build sruja-cli, lint .sruja files (glob configurable), optional markdown export. |
 | **deploy-to-github-pages** | Checkout target repo, copy site contents, push. |
 | **setup-gpg** | GPG for signing. |
+
+## Deploy to Staging
+
+The **deploy-staging** workflow builds the mdBook site (book + WASM) and deploys to `sruja-ai/staging-website` on push to `main`.
+
+**Prerequisites**
+
+1. GitHub App with write access to `sruja-ai/staging-website`.
+2. Repo secrets: `SRUJA_WEBSITE_DEPLOY_APP_ID`, `SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY` (likely already configured from prior deployment setup).
+
+**Triggers**
+
+- **Push to main:** When paths under `book/`, `crates/`, `examples/` change.
+- **Manual:** **Actions → Deploy to Staging → Run workflow.**
 
 ## Publishing the VS Code extension (Open VSX)
 
