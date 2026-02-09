@@ -68,7 +68,7 @@ jobs:
           cd ..
 
       - name: Copy WASM into book output
-        run: ./book/copy-wasm.sh book/book
+        run: ./book/copy-wasm.sh book
 
       - name: Verify WASM in book output (required for staging)
         run: |
