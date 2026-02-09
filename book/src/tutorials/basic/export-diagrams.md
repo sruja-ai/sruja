@@ -55,5 +55,3 @@ See the Mermaid exporter in `crates/sruja-export/src/mermaid/` for options.
 
 - **Mermaid**: For Markdown-first workflows and lightweight sharing
 - **Studio**: For interactive exploration and richer documentation
-
-**Note**: Sruja Designer provides interactive diagrams and editing capabilities.

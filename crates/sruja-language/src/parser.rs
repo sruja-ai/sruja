@@ -640,7 +640,6 @@ fn parse_kv_string_block(input: &str) -> IResult<&str, Vec<(String, String)>> {
 
 /// Parse an overview block.
 ///
-/// The designer demo content uses `overview { ... }` as an extension.
 /// This parser extracts all fields: summary, audience, scope, goals, non_goals, risks.
 fn parse_overview_block(input: &str) -> IResult<&str, OverviewBlock> {
     let (input, _) = tag("overview")(input)?;

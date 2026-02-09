@@ -314,7 +314,7 @@ fn compute_view(
     view_id: Option<String>,
 ) -> (HashMap<String, sruja_language::ElementDef>, Vec<Relation>) {
     // Do not auto-promote L1 to L2 when there is a single system with children.
-    // Callers that want container view (e.g. designer) must request level 2 with focus explicitly.
+    // Callers that want container view must request level 2 with focus explicitly.
     // At L1, project_id collapses all FQNs to root so nested edges (e.g. web.api -> web.db) become self-loops and are filtered.
 
     let mut visible: HashSet<String> = HashSet::new();

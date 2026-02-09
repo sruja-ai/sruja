@@ -1,8 +1,8 @@
-# Sruja - Architecture Editor with Live Code Sync
+# Sruja - Architecture-as-Code Tool
 
 [![TypeScript Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg?flag=typescript)](https://codecov.io/gh/sruja-ai/sruja)
 
-**Visual architecture editing with live code sync** - edit diagrams or code, changes sync both ways automatically.
+**Architecture-as-code for the AI SDLC process** - define architecture in `.sruja` files; validate and export to Markdown and Mermaid diagrams.
 
 > **⚠️ Alpha Release**: Sruja is under active development. APIs may change.
 
@@ -10,36 +10,25 @@
 
 ## Why Sruja?
 
-### 🔄 **Bidirectional Sync** - Like Notion for Architecture
+### 🔄 **Architecture-as-Code** - Version Controlled, Validated, Exported
 
 Most architecture tools make you choose:
 
 - ❌ Visual editor (Draw.io) - no code, no version control
-- ❌ Code-only (Mermaid, PlantUML) - no visual editing
-- ❌ One-way sync (Structurizr) - code → view only
+- ❌ Code-only (Mermaid, PlantUML) - no validation, manual diagram updates
 
 **Sruja does both:**
 
-- ✅ Edit visually → Code updates in real-time
-- ✅ Edit code → Diagram updates automatically
-- ✅ Version-controlled `.sruja` files in Git
-- ✅ Works for your entire team (designers, developers, PMs)
-
-**Try it now**: [Sruja Designer](https://designer.sruja.ai) (no signup required)
+- ✅ Define architecture in `.sruja` files - version-controlled in Git
+- ✅ Built-in validation - catch issues before they reach production
+- ✅ Export to Markdown and Mermaid - integrate into your docs
+- ✅ Works for developers and CI/CD pipelines
 
 ---
 
 ## Quick Start
 
-### Option 1: Visual Editor (Fastest)
-
-1. Open [Sruja Designer](https://designer.sruja.ai)
-2. Create architecture visually (drag & drop)
-3. Switch to **Code tab** - see the DSL
-4. Edit either way - they sync automatically
-5. Export `.sruja` file → Commit to Git
-
-### Option 2: CLI (For Developers)
+### Install CLI
 
 **Install:**
 
@@ -79,10 +68,9 @@ sruja export markdown example.sruja
 
 ## Features
 
-### 🎨 Visual + Code, Together
+### 🎨 Code-First Architecture Tool
 
-- **Interactive Designer**: Web-based visual editor
-- **Live Code Sync**: Changes sync bidirectionally (visual ↔ code)
+- **DSL**: Simple architecture definition language
 - **Export/Import**: `.sruja` files work with Git
 
 ### ✅ Built-in Validation
@@ -110,16 +98,15 @@ sruja export markdown example.sruja
 
 ## Comparison
 
-| Feature                | Draw.io | Mermaid | Structurizr  | PlantUML | **Sruja** |
-| ---------------------- | ------- | ------- | ------------ | -------- | --------- |
-| Visual editor          | ✅      | ❌      | ⚠️ View only | ❌       | ✅        |
-| Code-backed            | ❌      | ✅      | ✅           | ✅       | ✅        |
-| **Bidirectional sync** | ❌      | ❌      | ❌           | ❌       | **✅**    |
-| Real-time feedback     | ❌      | ❌      | ❌           | ❌       | **✅**    |
-| Version control        | ❌      | ✅      | ✅           | ✅       | ✅        |
-| Export/Import          | ✅      | ❌      | ⚠️ Limited   | ❌       | ✅        |
+| Feature             | Draw.io | Mermaid | Structurizr | PlantUML | **Sruja** |
+| ------------------- | ------- | ------- | ----------- | -------- | --------- |
+| Code-backed         | ❌      | ✅      | ✅          | ✅       | ✅        |
+| Built-in validation | ❌      | ❌      | ❌          | ❌       | **✅**    |
+| Version control     | ❌      | ✅      | ✅          | ✅       | ✅        |
+| Export to Mermaid   | ✅      | ✅      | ❌          | ✅       | ✅        |
+| Export to Markdown  | ❌      | ❌      | ❌          | ❌       | **✅**    |
 
-**Unique advantage**: True bidirectional visual ↔ code sync
+**Unique advantage**: Built-in validation with architecture-as-code workflow
 
 ---
 
@@ -149,7 +136,7 @@ sruja/
 │   ├── sruja-core/       # Core parsing and validation engine
 │   ├── sruja-wasm/       # WebAssembly bindings
 │   └── sruja-lsp/        # Language Server Protocol
-├── extension/            # VS Code extension (preview, LSP, snippets)
+├── extension/            # VS Code extension (syntax highlighting, diagnostics)
 └── examples/             # Example .sruja files
 ```
 
@@ -174,10 +161,6 @@ make setup-hooks
 
 # Build CLI
 make build
-
-# Run designer locally
-cd apps/designer
-npm run dev
 ```
 
 ### Testing
@@ -239,6 +222,5 @@ Apache 2.0
 ## Links
 
 - **Website**: https://sruja.ai
-- **Designer**: https://designer.sruja.ai
 - **Discord**: https://discord.gg/VNrvHPV5
 - **GitHub**: https://github.com/sruja-ai/sruja
