@@ -70,6 +70,17 @@ jobs:
       - name: Copy WASM into book output
         run: ./book/copy-wasm.sh book/book
 
+      - name: Verify WASM in book output (required for staging)
+        run: |
+          WASM_DIR="book/book/wasm/rust"
+          if ! test -f "$WASM_DIR/sruja_wasm.js" || ! test -f "$WASM_DIR/sruja_wasm_bg.wasm"; then
+            echo "::error::WASM files missing in $WASM_DIR - staging would serve broken 'Show diagram'"
+            ls -la "$WASM_DIR" 2>/dev/null || true
+            exit 1
+          fi
+          echo "WASM present in book output (will be deployed):"
+          ls -la "$WASM_DIR"
+
       - name: Deploy to staging-website
         uses: ./.github/actions/deploy-to-github-pages
         with:
