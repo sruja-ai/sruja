@@ -1,11 +1,17 @@
-# Publish VS Code extension to Open VSX Registry (open-vsx.org).
-# Uses org/repo secret: OPEN_VSX_TOKEN (Personal Access Token from open-vsx.org).
+# Publish VS Code extension to Open VSX and/or Visual Studio Marketplace.
+# Trigger: (1) Publish a release (not draft) or (2) Actions → Run workflow (manual).
+# Secrets: OPEN_VSX_TOKEN (open-vsx.org PAT), AZURE_DEVOPS_PAT (Azure DevOps PAT with Marketplace → Manage).
 name: Publish extension to Open VSX
 
 on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Extension version (e.g. 0.3.5). Leave empty to use package.json."
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -18,20 +24,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
-      - name: Set extension version from release tag
-        if: github.event_name == 'release'
-        run: |
-          TAG="${{ github.event.release.tag_name }}"
-          VERSION="${TAG#v}"
-          cd extension && npm pkg set version="$VERSION"
-      - name: Setup Rust
-        uses: dtolnay/rust-action@stable
-      - name: Install wasm-pack
-        run: cargo install wasm-pack
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+
+      - name: Set extension version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            VERSION="${TAG#v}"
+            echo "Using release tag version: $VERSION"
+          elif [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+            echo "Using manual version: $VERSION"
+          else
+            echo "Using version from package.json"
+            exit 0
+          fi
+          [ -z "$VERSION" ] || (cd extension && npm pkg set version="$VERSION")
+
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
 
       - name: Install extension dependencies
         run: |
@@ -53,3 +69,14 @@ jobs:
         run: npx --yes ovsx publish extension/*.vsix --pat "$OPEN_VSX_TOKEN"
         env:
           OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
+
+      - name: Publish to Visual Studio Marketplace
+        run: |
+          if [ -z "$AZURE_DEVOPS_PAT" ]; then
+            echo "AZURE_DEVOPS_PAT not set - skipping Visual Studio Marketplace"
+            exit 0
+          fi
+          npx --yes @vscode/vsce publish --no-dependencies --pat "$AZURE_DEVOPS_PAT"
+        working-directory: extension
+        env:
+          AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}

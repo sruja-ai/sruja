@@ -1,0 +1,80 @@
+# Deploy mdBook site to sruja-ai/sruja-website (production). Manual only.
+# Uses same secrets as staging; GitHub App must have write access to sruja-website.
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy to production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install mdbook and preprocessors
+        run: |
+          cargo install mdbook mdbook-mermaid
+          which mdbook mdbook-mermaid
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
+
+      - name: Build sruja CLI (for preprocessor)
+        run: cargo build --release -p sruja-cli
+
+      - name: Build WASM (web target for book)
+        run: |
+          PKG_DIR="${{ github.workspace }}/crates/sruja-wasm/pkg"
+          wasm-pack build --target web --out-dir "$PKG_DIR" crates/sruja-wasm --release
+          if ! test -f "$PKG_DIR/sruja_wasm.js" || ! test -f "$PKG_DIR/sruja_wasm_bg.wasm"; then
+            echo "WASM build did not produce expected artifacts in $PKG_DIR"
+            ls -la "$PKG_DIR" 2>/dev/null || true
+            exit 1
+          fi
+          echo "WASM artifacts OK: $PKG_DIR"
+
+      - name: Build book
+        run: |
+          export PATH="$PWD/target/release:$PATH"
+          cd book
+          mdbook build
+          cd ..
+
+      - name: Copy WASM into book output
+        run: ./book/copy-wasm.sh book
+
+      - name: Verify WASM in book output (required for production)
+        run: |
+          WASM_DIR="book/book/wasm/rust"
+          if ! test -f "$WASM_DIR/sruja_wasm.js" || ! test -f "$WASM_DIR/sruja_wasm_bg.wasm"; then
+            echo "::error::WASM files missing in $WASM_DIR - production would serve broken 'Show diagram'"
+            ls -la "$WASM_DIR" 2>/dev/null || true
+            exit 1
+          fi
+          echo "WASM present in book output (will be deployed):"
+          ls -la "$WASM_DIR"
+
+      - name: Deploy to production (sruja-website)
+        uses: ./.github/actions/deploy-to-github-pages
+        with:
+          site-path: book/book
+          target-repo: sruja-website
+          target-branch: main
+          app-id: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_ID }}
+          app-private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
+          commit-message: "deploy: production from sruja-ai/sruja@${{ github.sha }}"

@@ -6,6 +6,9 @@
 |----------|---------|---------|
 | **unified-ci.yml** | push/PR to main, develop, simplify | Rust: build, test, **format** (`cargo fmt --check`), clippy. **Sruja files**: lint all `**/*.sruja`. Code and .sruja are checked against standards defined in .sruja (e.g. `CodeStyle` → rustfmt, `NoCycles` → sruja lint). |
 | **deploy-staging.yml** | push to main (book, crates, examples) / manual | Build mdBook + WASM, deploy to `sruja-ai/staging-website` via `deploy-to-github-pages`. |
+| **deploy-production.yml** | manual only | Same build as staging; deploy to `sruja-ai/sruja-website` (production, sruja.ai). |
+| **skill-validation.yml** | push/PR (skills, skill-lint) | Validate skill files: links, xrefs, code examples, format, schema. |
+| **skill-pr-check.yml** | PR (skills) | Validate only changed skill files. |
 | **security.yml** | push/PR + weekly Mon | cargo audit, dependency-review (PRs), TruffleHog. |
 | **release-please.yml** | push to main | Update CHANGELOG and create release PR from conventional commits. |
 | **publish-extension.yml** | release published / manual | Build VS Code extension and publish to **Open VSX Registry** (open-vsx.org). |
@@ -45,6 +48,19 @@ The **deploy-staging** workflow builds the mdBook site (book + WASM) and deploys
 - **Push to main:** When paths under `book/`, `crates/`, `examples/` change.
 - **Manual:** **Actions → Deploy to Staging → Run workflow.**
 
+## Deploy to Production
+
+The **deploy-production** workflow builds the same mdBook site (book + WASM) and deploys to `sruja-ai/sruja-website` (production at https://sruja.ai).
+
+**Prerequisites**
+
+1. GitHub App used for staging must have write access to `sruja-ai/sruja-website` (same secrets: `SRUJA_WEBSITE_DEPLOY_APP_ID`, `SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY`).
+2. Target repo `sruja-ai/sruja-website` must exist; CNAME for sruja.ai if using custom domain.
+
+**Triggers**
+
+- **Manual only:** **Actions → Deploy to Production → Run workflow** to promote to production (uses the branch/ref you select when running).
+
 ## Publishing the VS Code extension (Open VSX)
 
 The **publish-extension** workflow builds the extension and publishes it to the [Open VSX Registry](https://open-vsx.org) (used by VS Codium and other editors).
@@ -54,11 +70,12 @@ The **publish-extension** workflow builds the extension and publishes it to the 
 1. Create an [Eclipse Foundation account](https://accounts.eclipse.org) (GitHub username should match).
 2. Sign the [Publisher Agreement](https://open-vsx.org) (log in with GitHub, then link Eclipse account in profile).
 3. In [open-vsx.org](https://open-vsx.org) → profile → **Access Tokens**, create a Personal Access Token.
-4. Ensure org (or repo) secret **`OPEN_VSX_TOKEN`** exists with that token. (Org already has this secret; no change needed if it’s available to this repo.)
+4. Ensure org (or repo) secret **`OPEN_VSX_TOKEN`** exists with that token.
+5. For **Visual Studio Marketplace** (marketplace.visualstudio.com): Create an [Azure DevOps PAT](https://dev.azure.com) with **Marketplace → Manage** scope and set org/repo secret **`AZURE_DEVOPS_PAT`**. If unset, the workflow skips Marketplace and only publishes to Open VSX.
 
 **Triggers**
 
-- **Release published:** Creating a release (e.g. from a release PR) runs the workflow and publishes the extension. The extension version is set from the release tag (e.g. `v0.2.0` → `0.2.0`).
-- **Manual:** **Actions → Publish extension to Open VSX → Run workflow.** Uses the version in `extension/package.json`.
+- **Release published:** Click **Publish release** (not “Save as draft”) so the `release.published` event fires. The workflow runs and sets the extension version from the tag (e.g. `v0.3.5` → `0.3.5`). If it doesn’t run, confirm the workflow file is on the default branch and the release is **Published**.
+- **Manual:** **Actions → Publish extension to Open VSX → Run workflow.** Optionally set the **version** input (e.g. `0.3.5`); if empty, `extension/package.json` version is used.
 
 **Recommendation:** Add `extension/package-lock.json` (run `npm install` in `extension/` and commit the lock file) for reproducible builds; the workflow currently uses `npm install` without a lock file.
