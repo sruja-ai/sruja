@@ -99,16 +99,20 @@ runs:
             echo "✅ CNAME restored"
           fi
 
-          # Verify assets directory was copied (Astro now builds to /assets instead of /_astro)
-          if [ ! -d "target/assets" ] && [ ! -d "target/_astro" ]; then
-            echo "❌ Error: Neither assets nor _astro directory found after copy"
+          # Verify site structure: Astro uses /assets or /_astro; mdBook uses index.html + book/
+          if [ -d "target/assets" ] || [ -d "target/_astro" ]; then
+            echo "✅ Asset directory verified (Astro)"
+          elif [ -f "target/index.html" ] && [ -d "target/book" ]; then
+            echo "✅ Site structure verified (mdBook)"
+          else
+            echo "❌ Error: Unrecognized site structure after copy"
+            echo "Expected: Astro (assets/ or _astro/) or mdBook (index.html + book/)"
             echo "Source directory contents:"
             ls -la ${{ inputs.site-path }}/
             echo "Target directory contents:"
             ls -la target/
             exit 1
           fi
-          echo "✅ Asset directory verified"
           # Ensure .nojekyll exists to prevent Jekyll from processing underscore directories
           touch target/.nojekyll
           
