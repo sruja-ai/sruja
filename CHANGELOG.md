@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4](https://github.com/sruja-ai/sruja/compare/sruja-v0.3.3...sruja-v0.3.4) (2026-02-09)
+
+
+### Bug Fixes
+
+* **ci:** copy-wasm arg is relative to book/ so use 'book' not 'book/book' ([d6649ee](https://github.com/sruja-ai/sruja/commit/d6649eee592688a73c4e6c53d17edc06448d3b83))
+
 ## [0.3.3](https://github.com/sruja-ai/sruja/compare/sruja-v0.3.2...sruja-v0.3.3) (2026-02-09)
 
 
