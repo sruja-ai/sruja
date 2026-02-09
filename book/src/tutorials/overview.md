@@ -17,6 +17,6 @@ Step-by-step guides to get things done with Sruja.
 - [Deployment modeling](advanced/deployment-modeling.md)
 - [CI/CD integration](advanced/cicd-integration.md)
 - [Agentic AI modeling](advanced/agentic-ai-modeling.md)
-- [Extending the CLI (Rust)](advanced/extending-cli-with-cobra.md)
+- [Extending the CLI (Rust)](advanced/extending-cli-rust.md)
 
 Combine with the [Beginner path](../docs/beginner-path.md) or [Courses](courses/overview.md) for a full learning path.

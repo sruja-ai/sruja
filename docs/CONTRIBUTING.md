@@ -289,6 +289,6 @@ When reporting bugs or requesting features:
 
 ## Additional Resources
 
-- **Architecture**: See [ARCHITECTURE.md](ARCHITECTURE.md) for code organization
+- **Architecture**: See [architecture/README.md](architecture/README.md) for architecture overview and [crates/sruja-engine/ARCHITECTURE.md](../crates/sruja-engine/ARCHITECTURE.md) for engine internals
 - **Design Philosophy**: See [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md) for language design principles
 - **Language Spec**: See [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) for complete DSL reference

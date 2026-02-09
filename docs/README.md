@@ -11,7 +11,7 @@ This directory contains essential documentation for contributors and developers.
 
 **Development:**
 - [DEVELOPMENT.md](DEVELOPMENT.md) - Development setup, testing, coverage, bundle size
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Code organization and structure
+- [architecture/README.md](architecture/README.md) - Architecture overview and .sruja diagrams (code organization)
 
 **Content Creation:**
 - [CONTENT_CONTRIBUTION_GUIDE.md](CONTENT_CONTRIBUTION_GUIDE.md) - Creating courses, tutorials, blogs
@@ -22,6 +22,7 @@ This directory contains essential documentation for contributors and developers.
 
 - [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) - Complete Sruja DSL reference
 - [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md) - Language design principles
+- [AI_DOCS_INDEX.md](AI_DOCS_INDEX.md) - Index of all AI integration docs (start here for AI)
 - [AI_ASSISTANT_GUIDE.md](AI_ASSISTANT_GUIDE.md) - Using AI assistants with Sruja
 
 ## Internal Documentation

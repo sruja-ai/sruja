@@ -163,7 +163,7 @@
 - [Deployment modeling](tutorials/advanced/deployment-modeling.md)
 - [CI/CD integration](tutorials/advanced/cicd-integration.md)
 - [Agentic AI modeling](tutorials/advanced/agentic-ai-modeling.md)
-- [Extending the CLI (Rust)](tutorials/advanced/extending-cli-with-cobra.md)
+- [Extending the CLI (Rust)](tutorials/advanced/extending-cli-rust.md)
 
 # Challenges
 

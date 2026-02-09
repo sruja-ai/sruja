@@ -12,7 +12,7 @@ Use this checklist before publishing any course, tutorial, blog, or doc. It rais
 - [ ] Avoid jargon or define it in context; include a glossary link if needed
 - [ ] Inclusive, concise language; active voice
 - [ ] Uses consistent terminology from `docs/LANGUAGE_SPECIFICATION.md`
-- [ ] Ran `make content-validate` and fixed warnings
+- [ ] Ran `make book-build` (or `mdbook build` in `book/`) and fixed build/link warnings
 
 ## Courses
 - [ ] Course overview explains audience, prerequisites, and outcomes
@@ -51,9 +51,9 @@ Use this checklist before publishing any course, tutorial, blog, or doc. It rais
 - [ ] No reliance on color alone to convey meaning
 
 ## Definition of Done
-- [ ] `make content-validate` passes
+- [ ] `make book-build` passes (from repo root)
 - [ ] All TODO placeholders removed
 - [ ] Code blocks validated locally where applicable
-- [ ] Internal links tested locally (`apps/website` dev)
+- [ ] Internal links tested locally (`make book-serve` or `mdbook serve` in `book/`)
 
 Tip: Prefer concrete examples and visuals over abstract descriptions. If a reader can replicate the outcome in 5–10 minutes, it’s a great learning resource.

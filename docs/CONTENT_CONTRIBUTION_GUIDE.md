@@ -1,17 +1,17 @@
 # Content Contribution Guide
 
-Complete guide for contributing content to the Sruja website (Astro-based).
+Complete guide for contributing content to the Sruja docs site (mdBook in `book/`).
 
 ## Quick Start
 
 ```bash
-# Create content using Make commands
-make content-tutorial NAME="my-tutorial"
-make content-blog NAME="my-blog-post"
-make content-course NAME="my-course"
+# Install mdBook (once)
+make book-deps   # or: cargo install mdbook mdbook-mermaid
 
-# Validate all content
-make content-validate
+# Add or edit content under book/src/ (see Content Structure below)
+# Then build and verify
+make book-build
+make book-serve  # optional: preview at http://localhost:3000
 ```
 
 ## Content Types
@@ -26,124 +26,91 @@ Step-by-step how-to guides:
 - **Structure**: Single page with steps
 - **Use Case**: "How to do X" guides
 
-### Blog Posts
-News, updates, and articles:
-- **Structure**: Single page with date
-- **Use Case**: Announcements, thoughts, case studies
-
 ### Documentation Pages
-Reference documentation:
-- **Structure**: Single page or nested pages
-- **Use Case**: API reference, concepts, guides
+Reference and concepts:
+- **Structure**: Single page or nested under `book/src/docs/`
+- **Use Case**: API reference, concepts, adoption guides
+
+### Challenges
+Hands-on exercises:
+- **Structure**: Single page with goal and optional hints
+- **Location**: `book/src/challenges/`
+
+## Content Structure (mdBook)
+
+All user-facing content lives under **`book/src/`**:
+
+```
+book/src/
+├── courses/
+│   └── course-name/
+│       ├── course-overview.md
+│       └── module-N-name/
+│           ├── module-overview.md
+│           └── lesson-1.md, lesson-2.md, ...
+├── tutorials/
+│   ├── overview.md
+│   ├── basic/
+│   │   └── tutorial-name.md
+│   └── advanced/
+│       └── tutorial-name.md
+├── docs/
+│   ├── concepts/
+│   ├── reference/
+│   └── ... (intro, getting-started, adoption, etc.)
+├── challenges/
+│   ├── overview.md
+│   └── challenge-name.md
+├── reference/
+│   └── cli.md, language.md, language-spec.md
+└── SUMMARY.md   # ← Add new pages here for navigation
+```
 
 ## Creating Content
 
-### Using Make Commands (Recommended)
+### Adding a Tutorial
 
-```bash
-# Courses
-make content-course NAME="course-name"
-make content-module COURSE="course-name" NAME="module-name"
-make content-lesson COURSE="course-name" MODULE="module-name" NAME="lesson-name"
+1. Create a new `.md` file under `book/src/tutorials/basic/` or `book/src/tutorials/advanced/`.
+2. Add frontmatter (e.g. `title`, `weight`, `summary`, `tags`) and content.
+3. Add an entry in `book/src/SUMMARY.md` under the Tutorials section.
+4. Optionally add a link in `book/src/tutorials/overview.md`.
+5. Run `make book-build` to verify.
 
-# Other content
-make content-tutorial NAME="tutorial-name"
-make content-blog NAME="blog-post-name"
-make content-doc NAME="doc-name"
+### Adding a Course or Module
 
-# Validation
-make content-validate
-```
+1. Create a directory under `book/src/courses/<course-name>/` (e.g. `module-2-new-topic/`).
+2. Add `module-overview.md` and `lesson-1.md`, `lesson-2.md`, etc.
+3. Add entries in `book/src/SUMMARY.md` under the course.
+4. Link from the course’s `course-overview.md` and from the previous module’s “Next” section.
+5. Run `make book-build` to verify.
 
-### Using Go Scripts Directly
+### Adding a Challenge
 
-```bash
-go run scripts/content-generator/main.go <command> [args]
-go run scripts/content-validator/main.go
-```
-
-## Content Structure
-
-```
-apps/website/src/content/
-├── courses/
-│   └── course-name/
-│       └── module-name/
-│           ├── module-overview.md  # Module landing page
-│           └── lesson-1.md         # Lesson content
-├── tutorials/
-│   └── tutorial-name.md
-├── blog/
-│   └── YYYY-MM-DD-post-name.md
-└── docs/
-    └── doc-name.md
-```
-
-## Workflow Examples
-
-### Creating a Course
-
-```bash
-# 1. Create course
-make content-course NAME="system-design-301"
-
-# 2. Create modules
-make content-module COURSE="system-design-301" NAME="fundamentals"
-
-# 3. Create lessons
-make content-lesson COURSE="system-design-301" MODULE="fundamentals" NAME="lesson-1"
-
-# 4. Edit generated files
-# 5. Validate
-make content-validate
-```
-
-### Adding a Blog Post
-
-```bash
-# 1. Create blog post
-make content-blog NAME="announcing-sruja-v1"
-
-# 2. Edit the generated file
-# 3. Set draft: false when ready
-# 4. Validate
-make content-validate
-```
+1. Create `book/src/challenges/challenge-name.md`.
+2. Add to `book/src/SUMMARY.md` and to `book/src/challenges/overview.md`.
+3. Run `make book-build` to verify.
 
 ## Frontmatter Guidelines
 
-All content files require frontmatter at the top. Astro uses content collections with schema validation:
+Book pages can use YAML frontmatter for title and metadata (mdBook does not require a fixed schema):
 
 ```yaml
 ---
 title: "Your Title"
-summary: "Brief description (1-2 sentences)"
-weight: 1  # Optional: For menu ordering (lower = earlier)
+weight: 10
+summary: "Brief description (1-2 sentences)."
+tags: ["cli", "getting-started"]
+difficulty: "beginner"
 ---
 ```
 
-### Required Fields
+### Suggested Fields
 
-- `title` - Human-readable title (required by Astro schema)
-
-### Optional Fields
-
-**For all content:**
-- `summary` - Brief description (1-2 sentences)
-- `weight` - For menu ordering (lower = earlier)
-- `description` - Extended description
-
-**For blog posts:**
-- `pubDate` - Publication date (auto-set to current date by generator)
-- `authors` - Array of author objects
-- `tags` - Array of tag strings
-
-**For courses/tutorials:**
-- `difficulty` - `beginner`, `intermediate`, or `advanced`
-- `topic` - Topic category
-- `estimatedTime` - Estimated reading time
-
-Note: Astro validates frontmatter against the schema defined in `apps/website/src/content/config.ts`
+- `title` - Page title
+- `summary` - Short description (used in some themes)
+- `weight` - Ordering (lower = earlier in sidebar)
+- `tags` - For discoverability (e.g. in tutorials overview)
+- `difficulty` - For tutorials/courses: `beginner`, `intermediate`, `advanced`
 
 ## Content Best Practices
 
@@ -182,78 +149,56 @@ Note: Astro validates frontmatter against the schema defined in `apps/website/sr
 
 ### Linking Content
 
-Use standard Markdown links for internal content:
+Use relative Markdown links from `book/src/`. Paths are relative to the current file or book root:
 
 ```markdown
-[Link to lesson](/courses/course-name/module-name/lesson-1)
-[Link to module](/courses/course-name/module-name)
-[Link to tutorial](/tutorials/tutorial-name)
+[Beginner path](../docs/beginner-path.md)
+[CLI basics](basic/cli-basics.md)
+[Module 1](module-1-fundamentals/module-overview.md)
 ```
 
-Or use Astro's `getCollection` API in components for dynamic linking.
+See existing tutorials and course lessons for examples.
 
 ## Validation
 
-Always validate content before committing:
+Before committing, build the book to catch broken links and errors:
 
 ```bash
-make content-validate
+make book-build
 ```
 
-The validator checks:
-- ✅ Frontmatter format
-- ✅ Required fields (title, summary)
-- ✅ File structure
-- ⚠️  TODO placeholders (warns but doesn't fail)
+Optionally serve locally to check navigation and links:
+
+```bash
+make book-serve
+```
 
 ## Troubleshooting
 
-### "Course already exists"
-The generator prevents overwriting. Delete the existing directory/file and recreate, or use a different name.
+### Broken links in mdBook
 
-### "Module does not exist"
-Create the parent course/module first:
-```bash
-make content-course NAME="my-course"
-make content-module COURSE="my-course" NAME="my-module"
-```
+Check built output in `book/book/`. Use consistent relative paths (e.g. from `tutorials/basic/`, use `../advanced/deployment-modeling.md` for another tutorial).
 
-### Validation Errors
+### Page not showing in sidebar
 
-Common issues:
-- Missing frontmatter: Add `---` delimiters
-- Missing title: Add `title: "Your Title"` in frontmatter
-- Missing summary: Add `summary: "Your summary"` in frontmatter
+Every new page must be listed in `book/src/SUMMARY.md` in the correct section.
 
-Run `make content-validate` to see specific errors.
+### Build fails
 
-## Templates
-
-Generated content includes templates with:
-- Proper frontmatter structure
-- TODO placeholders for content
-- Standard sections for each type
-
-Templates located at: `scripts/content-generator/templates/`
-
-## Tools Available
-
-- **Content Generator**: Automatically scaffolds new content with proper structure
-- **Content Validator**: Validates frontmatter and file structure
-- **Templates**: Pre-configured templates for each content type
-- **Make Commands**: Easy-to-use commands for common tasks
+Run `mdbook build` from the `book/` directory to see the exact error (often a broken link or invalid Markdown).
 
 ## Complete Workflow
 
-1. Create content structure using Make commands
-2. Edit generated files and replace TODO placeholders
-3. Update parent `module-overview.md` files to link to new lessons (if needed)
-4. Validate with `make content-validate`
-5. Test locally with `cd apps/website && npm run dev`
-6. Commit and push
+1. Add or edit files under `book/src/` (tutorials, courses, docs, challenges).
+2. Update `book/src/SUMMARY.md` so new pages appear in the sidebar.
+3. Update overview or course-overview pages with links to new content.
+4. Run `make book-build` and fix any errors.
+5. Optionally run `make book-serve` to preview.
+6. Commit and push.
 
 ## Additional Resources
 
-- [Astro Content Collections](https://docs.astro.build/en/guides/content-collections/) - Astro content management
-- [Astro Documentation](https://docs.astro.build/) - Astro features and APIs
+- [mdBook Documentation](https://rust-lang.github.io/mdBook/) - mdBook format and commands
+- [CONTENT_STYLE_GUIDE.md](CONTENT_STYLE_GUIDE.md) - Voice, structure, and Sruja conventions
+- [CONTENT_QUALITY_CHECKLIST.md](CONTENT_QUALITY_CHECKLIST.md) - Checklist before publishing
 
