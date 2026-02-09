@@ -50,7 +50,7 @@ The **deploy-staging** workflow builds the mdBook site (book + WASM) and deploys
 
 ## Deploy to Production
 
-The **deploy-production** workflow builds the same mdBook site (book + WASM) and deploys to `sruja-ai/sruja-website` (production at https://sruja.ai).
+The **deploy-production** workflow builds the same mdBook site (book + WASM) and deploys to `sruja-ai/sruja-website` (production at https://sruja.ai). It **always checks out and builds from `main`**, so production is a promote of what’s already on staging.
 
 **Prerequisites**
 
@@ -59,7 +59,7 @@ The **deploy-production** workflow builds the same mdBook site (book + WASM) and
 
 **Triggers**
 
-- **Manual only:** **Actions → Deploy to Production → Run workflow** to promote to production (uses the branch/ref you select when running).
+- **Manual only:** **Actions → Deploy to Production → Run workflow.** Validates on staging first, then run this to promote **main** to production.
 
 ## Publishing the VS Code extension (Open VSX)
 
@@ -75,7 +75,10 @@ The **publish-extension** workflow builds the extension and publishes it to the 
 
 **Triggers**
 
-- **Release published:** Click **Publish release** (not “Save as draft”) so the `release.published` event fires. The workflow runs and sets the extension version from the tag (e.g. `v0.3.5` → `0.3.5`). If it doesn’t run, confirm the workflow file is on the default branch and the release is **Published**.
-- **Manual:** **Actions → Publish extension to Open VSX → Run workflow.** Optionally set the **version** input (e.g. `0.3.5`); if empty, `extension/package.json` version is used.
+- **Push a version tag:** `git tag v0.3.5 && git push origin v0.3.5` — workflow runs and publishes that version to Open VSX and (if `AZURE_DEVOPS_PAT` is set) Visual Studio Marketplace. Easiest way to publish.
+- **Release published:** Click **Publish release** (not “Save as draft”) — same as above, version from tag.
+- **Manual:** **Actions → Publish extension to Open VSX → Run workflow.** Optionally set the **version** input; if empty, `extension/package.json` is used.
+
+**Visual Studio Marketplace:** The [listing](https://marketplace.visualstudio.com/items?itemName=SrujaAI.sruja) updates only when the workflow runs and secret **`AZURE_DEVOPS_PAT`** is set. If the workflow didn’t run, push a tag or run manually. If it ran but Marketplace didn’t update, add `AZURE_DEVOPS_PAT` (Azure DevOps PAT with Marketplace → Manage).
 
 **Recommendation:** Add `extension/package-lock.json` (run `npm install` in `extension/` and commit the lock file) for reproducible builds; the workflow currently uses `npm install` without a lock file.

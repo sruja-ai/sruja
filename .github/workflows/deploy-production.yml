@@ -1,4 +1,5 @@
 # Deploy mdBook site to sruja-ai/sruja-website (production). Manual only.
+# Always builds from main (same as staging); promote after validating staging.
 # Uses same secrets as staging; GitHub App must have write access to sruja-website.
 name: Deploy to Production
 
@@ -18,8 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Checkout
+      - name: Checkout main
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: main
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable

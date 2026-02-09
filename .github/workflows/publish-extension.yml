@@ -1,9 +1,12 @@
 # Publish VS Code extension to Open VSX and/or Visual Studio Marketplace.
-# Trigger: (1) Publish a release (not draft) or (2) Actions → Run workflow (manual).
-# Secrets: OPEN_VSX_TOKEN (open-vsx.org PAT), AZURE_DEVOPS_PAT (Azure DevOps PAT with Marketplace → Manage).
+# Trigger: (1) Push tag v* (e.g. git push origin v0.3.5), (2) Publish release, or (3) Manual run.
+# Secrets: OPEN_VSX_TOKEN, AZURE_DEVOPS_PAT (Azure DevOps PAT with Marketplace → Manage).
 name: Publish extension to Open VSX
 
 on:
+  push:
+    tags:
+      - "v*"
   release:
     types: [published]
   workflow_dispatch:
@@ -35,6 +38,10 @@ jobs:
             TAG="${{ github.event.release.tag_name }}"
             VERSION="${TAG#v}"
             echo "Using release tag version: $VERSION"
+          elif [ "${{ github.event_name }}" = "push" ] && [ -n "${{ github.ref_name }}" ]; then
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#v}"
+            echo "Using pushed tag version: $VERSION"
           elif [ -n "${{ inputs.version }}" ]; then
             VERSION="${{ inputs.version }}"
             echo "Using manual version: $VERSION"
