@@ -1,7 +1,7 @@
-use crate::context::{ContextAnalyzer, FileContext, ProjectContext};
+use crate::context::ContextAnalyzer;
 use crate::error::Result;
 use colored::Colorize;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub async fn run(
     path: PathBuf,
@@ -28,8 +28,8 @@ pub async fn run(
     }
 
     let proj_path = project_path.unwrap_or_else(|| {
-        let current_dir = std::env::current_dir().unwrap_or(PathBuf::from("."));
-        current_dir
+        
+        std::env::current_dir().unwrap_or(PathBuf::from("."))
     });
 
     let project_context = analyzer.analyze_project(&proj_path)?;
@@ -64,7 +64,7 @@ pub async fn run(
             Some(fc)
         } else {
             println!("\n{}", "Warning:".yellow().bold());
-            println!("  File not found: {}", fp.display().to_string());
+            println!("  File not found: {}", fp.display());
             None
         }
     } else {
@@ -100,7 +100,7 @@ pub async fn run(
         );
         println!("\n  {}", "Reasoning:".bold());
         for reason in suggestion.reasoning.iter() {
-            println!("    • {}", reason.dimmed().to_string());
+            println!("    • {}", reason.dimmed());
         }
     }
 

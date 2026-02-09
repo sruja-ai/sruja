@@ -8,7 +8,6 @@ pub mod filter;
 pub mod loader;
 pub mod suggest;
 
-pub use context::{analyze_project_context, ProjectContext};
 pub use filter::{OutputFormat, SkillFilter};
 pub use loader::load_filtered_skills;
 pub use suggest::suggest_rules;

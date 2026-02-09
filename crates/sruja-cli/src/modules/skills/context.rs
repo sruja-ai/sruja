@@ -63,7 +63,7 @@ fn calculate_complexity(src_path: &Path) -> f32 {
     if let Ok(entries) = fs::read_dir(src_path) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().map_or(false, |ext| ext == "rs") {
+            if path.extension().is_some_and(|ext| ext == "rs") {
                 if let Ok(content) = fs::read_to_string(&path) {
                     let lines = content.lines().count();
                     let functions = content.matches("fn ").count();

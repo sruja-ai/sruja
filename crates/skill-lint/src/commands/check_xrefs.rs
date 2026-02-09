@@ -17,7 +17,6 @@ struct XrefCheckResult {
 enum XrefStatus {
     Ok,
     FileNotFound,
-    InvalidReference,
 }
 
 pub async fn run(path: PathBuf) -> Result<()> {
@@ -101,7 +100,6 @@ pub async fn run(path: PathBuf) -> Result<()> {
                 let line_info = result.line.map(|l| format!(":{}", l)).unwrap_or_default();
                 let status_msg = match &result.status {
                     XrefStatus::FileNotFound => "Referenced file not found".to_string(),
-                    XrefStatus::InvalidReference => "Invalid reference format".to_string(),
                     XrefStatus::Ok => unreachable!(),
                 };
 
@@ -191,7 +189,7 @@ fn check_xrefs_in_metadata(
                                 let status = if rule_files.contains_key(cleaned_id) {
                                     XrefStatus::Ok
                                 } else {
-                                    XrefStatus::Ok
+                                    XrefStatus::FileNotFound
                                 };
 
                                 results.push(XrefCheckResult {

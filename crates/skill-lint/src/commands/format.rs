@@ -227,7 +227,7 @@ fn format_body(content: &str) -> String {
         }
 
         if trimmed.is_empty() {
-            if formatted.last().map_or(false, |l| !l.is_empty()) {
+            if formatted.last().is_some_and(|l| !l.is_empty()) {
                 formatted.push("");
             }
         } else {
@@ -235,7 +235,7 @@ fn format_body(content: &str) -> String {
         }
     }
 
-    while formatted.last().map_or(false, |l| l.is_empty()) {
+    while formatted.last().is_some_and(|l| l.is_empty()) {
         formatted.pop();
     }
 

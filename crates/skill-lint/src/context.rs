@@ -46,6 +46,12 @@ pub struct ContextAnalyzer {
     pub usage_stats: HashMap<String, RuleUsageStats>,
 }
 
+impl Default for ContextAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ContextAnalyzer {
     pub fn new() -> Self {
         Self {

@@ -14,7 +14,6 @@ struct CodeTestResult {
 #[derive(Debug)]
 enum CodeTestStatus {
     Ok,
-    ParseError(String),
     InvalidSyntax(String),
 }
 
@@ -127,7 +126,6 @@ pub async fn run(path: PathBuf, generate_code: bool) -> Result<()> {
             if !matches!(result.status, CodeTestStatus::Ok) {
                 let line_info = result.line.map(|l| format!(":{}", l)).unwrap_or_default();
                 let status_msg = match &result.status {
-                    CodeTestStatus::ParseError(msg) => format!("Parse error: {}", msg),
                     CodeTestStatus::InvalidSyntax(msg) => format!("Syntax error: {}", msg),
                     CodeTestStatus::Ok => unreachable!(),
                 };

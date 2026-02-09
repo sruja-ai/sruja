@@ -2,7 +2,7 @@
 //!
 //! Simple file-based skill discovery without complex metadata parsing.
 
-use crate::modules::skills::filter::{Category, Level, OutputFormat, SkillFilter};
+use crate::modules::skills::filter::{Level, OutputFormat, SkillFilter};
 use std::fs;
 use std::path::Path;
 
