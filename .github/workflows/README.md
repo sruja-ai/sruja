@@ -6,7 +6,7 @@
 |----------|---------|---------|
 | **unified-ci.yml** | push/PR to main, develop, simplify | Rust: build, test, **format** (`cargo fmt --check`), clippy. **Sruja files**: lint all `**/*.sruja`. Code and .sruja are checked against standards defined in .sruja (e.g. `CodeStyle` → rustfmt, `NoCycles` → sruja lint). |
 | **deploy-staging.yml** | push to main (book, crates, examples) / manual | Build mdBook + WASM, deploy to `sruja-ai/staging-website` via `deploy-to-github-pages`. |
-| **deploy-production.yml** | manual only | Same build as staging; deploy to `sruja-ai/sruja-website` (production, sruja.ai). |
+| **deploy-production.yml** | manual only | Same build as staging; deploy to `sruja-ai/prod-website` (production, sruja.ai). |
 | **skill-validation.yml** | push/PR (skills, skill-lint) | Validate skill files: links, xrefs, code examples, format, schema. |
 | **skill-pr-check.yml** | PR (skills) | Validate only changed skill files. |
 | **security.yml** | push/PR + weekly Mon | cargo audit, dependency-review (PRs), TruffleHog. |
@@ -51,12 +51,12 @@ The **deploy-staging** workflow builds the mdBook site (book + WASM) and deploys
 
 ## Deploy to Production
 
-The **deploy-production** workflow builds the same mdBook site (book + WASM) and deploys to `sruja-ai/sruja-website` (production at https://sruja.ai). It **always checks out and builds from `main`**, so production is a promote of what’s already on staging.
+The **deploy-production** workflow builds the same mdBook site (book + WASM) and deploys to `sruja-ai/prod-website` (production at https://sruja.ai). It **always checks out and builds from `main`**, so production is a promote of what’s already on staging.
 
 **Prerequisites**
 
-1. GitHub App used for staging must have write access to `sruja-ai/sruja-website` (same secrets: `SRUJA_WEBSITE_DEPLOY_APP_ID`, `SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY`).
-2. Target repo `sruja-ai/sruja-website` must exist; CNAME for sruja.ai if using custom domain.
+1. GitHub App (credentials in `SRUJA_WEBSITE_DEPLOY_APP_ID` / `SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY`) must be installed with access to **staging-website** and **prod-website**.
+2. Target repo `sruja-ai/prod-website` must exist; CNAME for sruja.ai if using custom domain.
 
 **Triggers**
 

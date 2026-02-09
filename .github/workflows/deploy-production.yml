@@ -1,6 +1,6 @@
-# Deploy mdBook site to sruja-ai/sruja-website (production). Manual only.
+# Deploy mdBook site to sruja-ai/prod-website (production). Manual only.
 # Always builds from main (same as staging); promote after validating staging.
-# Uses same secrets as staging; GitHub App must have write access to sruja-website.
+# Uses same secrets as staging; GitHub App must have write access to prod-website.
 name: Deploy to Production
 
 on:
@@ -72,11 +72,11 @@ jobs:
           echo "WASM present in book output (will be deployed):"
           ls -la "$WASM_DIR"
 
-      - name: Deploy to production (sruja-website)
+      - name: Deploy to production (prod-website)
         uses: ./.github/actions/deploy-to-github-pages
         with:
           site-path: book/book
-          target-repo: sruja-website
+          target-repo: prod-website
           target-branch: main
           app-id: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_ID }}
           app-private-key: ${{ secrets.SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY }}
