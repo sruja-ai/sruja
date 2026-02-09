@@ -17,7 +17,7 @@ if [ ! -f "$WASM_SRC/sruja_wasm.js" ] || [ ! -f "$WASM_SRC/sruja_wasm_bg.wasm" ]
     echo "⚠️  wasm-pack not found. Install: cargo install wasm-pack"
     exit 1
   fi
-  wasm-pack build --target nodejs --out-dir crates/sruja-wasm/pkg-nodejs crates/sruja-wasm --release
+  wasm-pack build --target nodejs --out-dir pkg-nodejs crates/sruja-wasm --release
 fi
 mkdir -p "$EXT_DIR/wasm"
 cp "$WASM_SRC/sruja_wasm.js" "$WASM_SRC/sruja_wasm_bg.wasm" "$EXT_DIR/wasm/"
