@@ -49,10 +49,7 @@ jobs:
         run: cargo build --release -p sruja-cli
 
       - name: Build WASM (web target for book)
-        run: |
-          wasm-pack build --target web --out-dir pkg crates/sruja-wasm --release
-          mkdir -p book/wasm/rust
-          cp pkg/sruja_wasm.js pkg/sruja_wasm_bg.wasm book/wasm/rust/
+        run: wasm-pack build --target web --out-dir pkg crates/sruja-wasm --release
 
       - name: Build book
         run: |
