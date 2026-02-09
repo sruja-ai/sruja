@@ -67,12 +67,20 @@ jobs:
 
       - name: Test code examples
         run: |
-          set -e
           echo "Testing code examples in skill files..."
-          ./crates/skill-lint/target/release/skill-lint test skills/ || {
+          OUTPUT=$(./crates/skill-lint/target/release/skill-lint test skills/ 2>&1) || EXIT=$?
+          echo "$OUTPUT"
+          # Pass when there are no Rust code blocks to test (e.g. sruja-architecture only has ```sruja)
+          if echo "$OUTPUT" | grep -q "Total examples: 0"; then
+            echo "No Rust code blocks to test - step passed."
+            exit 0
+          fi
+          # Otherwise fail if the command failed
+          if echo "$OUTPUT" | grep -q "code example(s) failed"; then
             echo "::error::Code test failed - see details above"
             exit 1
-          }
+          fi
+          exit "${EXIT:-0}"
 
       - name: Check formatting
         run: |
