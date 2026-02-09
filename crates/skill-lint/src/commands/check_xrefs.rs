@@ -188,10 +188,9 @@ fn check_xrefs_in_metadata(
                                 let cleaned_id = rule_id.trim().trim_matches('`');
                                 // Only validate if it looks like a rule ID (lowercase-with-hyphens)
                                 // Descriptive text like "Use Option for missing values" is skipped
-                                if !cleaned_id
-                                    .chars()
-                                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
-                                {
+                                if !cleaned_id.chars().all(|c| {
+                                    c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'
+                                }) {
                                     continue;
                                 }
                                 let status = if rule_files.contains_key(cleaned_id) {

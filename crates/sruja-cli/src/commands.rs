@@ -988,11 +988,7 @@ pub async fn compile(file: &str) -> Result<(), CliError> {
 }
 
 /// Skills commands
-pub async fn skills_list(
-    path: &str,
-    limit: Option<usize>,
-    format: &str,
-) -> Result<(), CliError> {
+pub async fn skills_list(path: &str, limit: Option<usize>, format: &str) -> Result<(), CliError> {
     let skills_path = Path::new(path);
 
     if !skills_path.exists() {
@@ -1045,8 +1041,7 @@ pub async fn skills_suggest(
         )));
     }
 
-    let output =
-        suggest_rules(skills_dir, project_dir, count, None).map_err(CliError::Parse)?;
+    let output = suggest_rules(skills_dir, project_dir, count, None).map_err(CliError::Parse)?;
 
     println!("{}", output);
     Ok(())

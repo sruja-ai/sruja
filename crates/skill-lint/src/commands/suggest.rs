@@ -27,10 +27,8 @@ pub async fn run(
         return show_top_rules(&mut analyzer, limit).await;
     }
 
-    let proj_path = project_path.unwrap_or_else(|| {
-        
-        std::env::current_dir().unwrap_or(PathBuf::from("."))
-    });
+    let proj_path =
+        project_path.unwrap_or_else(|| std::env::current_dir().unwrap_or(PathBuf::from(".")));
 
     let project_context = analyzer.analyze_project(&proj_path)?;
     println!("\n{}", "Project Context:".bold());
