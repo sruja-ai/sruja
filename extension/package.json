@@ -5,29 +5,72 @@
   "version": "0.1.0",
   "publisher": "sruja-ai",
   "license": "Apache-2.0",
-  "repository": { "type": "git", "url": "https://github.com/sruja-ai/sruja.git" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sruja-ai/sruja.git"
+  },
   "homepage": "https://github.com/sruja-ai/sruja/blob/main/extension/README.md",
-  "bugs": { "url": "https://github.com/sruja-ai/sruja/issues" },
-  "keywords": ["sruja", "architecture", "dsl", "c4", "diagram", "lint", "snippets"],
-  "engines": { "vscode": "^1.85.0" },
-  "categories": ["Programming Languages", "Snippets", "Linters", "Formatters"],
-  "activationEvents": ["onLanguage:sruja", "onView:srujaSkillsView"],
+  "bugs": {
+    "url": "https://github.com/sruja-ai/sruja/issues"
+  },
+  "keywords": [
+    "sruja",
+    "architecture",
+    "dsl",
+    "c4",
+    "diagram",
+    "lint",
+    "snippets"
+  ],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Linters",
+    "Formatters"
+  ],
+  "activationEvents": [
+    "onLanguage:sruja",
+    "onView:srujaSkillsView"
+  ],
   "main": "./out/extension.js",
-  "extensionKind": ["workspace"],
-  "capabilities": { "untrustedWorkspaces": { "supported": true } },
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
   "contributes": {
-    "languages": [{
-      "id": "sruja",
-      "aliases": ["Sruja", "sruja"],
-      "extensions": [".sruja"],
-      "configuration": "./language-configuration.json"
-    }],
-    "grammars": [{
-      "language": "sruja",
-      "scopeName": "source.sruja",
-      "path": "./syntaxes/sruja.tmLanguage.json"
-    }],
-    "snippets": [{ "language": "sruja", "path": "./snippets/sruja.json" }],
+    "languages": [
+      {
+        "id": "sruja",
+        "aliases": [
+          "Sruja",
+          "sruja"
+        ],
+        "extensions": [
+          ".sruja"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "sruja",
+        "scopeName": "source.sruja",
+        "path": "./syntaxes/sruja.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "sruja",
+        "path": "./snippets/sruja.json"
+      }
+    ],
     "configuration": {
       "title": "Sruja",
       "properties": {
@@ -44,25 +87,54 @@
       }
     },
     "commands": [
-      { "command": "sruja.runValidation", "title": "Sruja: Run validation (check after AI/edit)" },
-      { "command": "sruja.exportMarkdown", "title": "Sruja: Export to Markdown" },
-      { "command": "sruja.openSkillsOverview", "title": "Sruja: Open Skills Overview" },
-      { "command": "sruja.openAgentGuide", "title": "Sruja: Open Agent Guide (AGENTS.md)" },
-      { "command": "sruja.listRules", "title": "Sruja: List Rules…" },
-      { "command": "sruja.copyRuleForAI", "title": "Sruja: Copy Rule for AI" },
-      { "command": "sruja.copyAgentGuideForAI", "title": "Sruja: Copy Agent Guide for AI" }
+      {
+        "command": "sruja.runValidation",
+        "title": "Sruja: Run validation (check after AI/edit)"
+      },
+      {
+        "command": "sruja.exportMarkdown",
+        "title": "Sruja: Export to Markdown"
+      },
+      {
+        "command": "sruja.openSkillsOverview",
+        "title": "Sruja: Open Skills Overview"
+      },
+      {
+        "command": "sruja.openAgentGuide",
+        "title": "Sruja: Open Agent Guide (AGENTS.md)"
+      },
+      {
+        "command": "sruja.listRules",
+        "title": "Sruja: List Rules…"
+      },
+      {
+        "command": "sruja.copyRuleForAI",
+        "title": "Sruja: Copy Rule for AI"
+      },
+      {
+        "command": "sruja.copyAgentGuideForAI",
+        "title": "Sruja: Copy Agent Guide for AI"
+      }
     ],
     "menus": {
       "editor/context": [
-        { "command": "sruja.runValidation", "when": "editorLangId == sruja" },
-        { "command": "sruja.exportMarkdown", "when": "editorLangId == sruja" }
+        {
+          "command": "sruja.runValidation",
+          "when": "editorLangId == sruja"
+        },
+        {
+          "command": "sruja.exportMarkdown",
+          "when": "editorLangId == sruja"
+        }
       ]
     },
     "views": {
-      "explorer": [{
-        "id": "srujaSkillsView",
-        "name": "Sruja Skills"
-      }]
+      "explorer": [
+        {
+          "id": "srujaSkillsView",
+          "name": "Sruja Skills"
+        }
+      ]
     }
   },
   "scripts": {
@@ -74,9 +146,9 @@
     "install:vsix": "npm run package && echo '\nInstall in Cursor/VS Code: Extensions → ⋯ → Install from VSIX... → select extension/*.vsix\n'"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^25.0.0",
     "@types/vscode": "^1.85.0",
-    "typescript": "~5.6.0"
+    "typescript": "~5.9.0"
   },
   "dependencies": {}
 }

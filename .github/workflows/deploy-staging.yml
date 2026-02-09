@@ -50,12 +50,15 @@ jobs:
         run: cargo build --release -p sruja-cli
 
       - name: Build WASM (web target for book)
-        run: wasm-pack build --target web --out-dir crates/sruja-wasm/pkg crates/sruja-wasm --release
-
-      - name: Verify WASM artifacts
         run: |
-          test -f crates/sruja-wasm/pkg/sruja_wasm.js && test -f crates/sruja-wasm/pkg/sruja_wasm_bg.wasm || \
-            { echo "WASM build did not produce expected artifacts"; ls -la crates/sruja-wasm/pkg 2>/dev/null || true; exit 1; }
+          PKG_DIR="${{ github.workspace }}/crates/sruja-wasm/pkg"
+          wasm-pack build --target web --out-dir "$PKG_DIR" crates/sruja-wasm --release
+          if ! test -f "$PKG_DIR/sruja_wasm.js" || ! test -f "$PKG_DIR/sruja_wasm_bg.wasm"; then
+            echo "WASM build did not produce expected artifacts in $PKG_DIR"
+            ls -la "$PKG_DIR" 2>/dev/null || true
+            exit 1
+          fi
+          echo "WASM artifacts OK: $PKG_DIR"
 
       - name: Build book
         run: |

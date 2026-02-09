@@ -145,7 +145,7 @@ impl SkillChecker {
 
     fn validate_schema(&self, metadata: &serde_yaml::Value) -> Result<()> {
         let metadata_json = serde_json::to_value(metadata)?;
-        let schema = jsonschema::JSONSchema::compile(&self.metadata_schema)
+        let schema = jsonschema::Validator::new(&self.metadata_schema)
             .map_err(|e| crate::error::SkillLintError::SchemaValidation(e.to_string()))?;
         let result = schema.validate(&metadata_json);
 
