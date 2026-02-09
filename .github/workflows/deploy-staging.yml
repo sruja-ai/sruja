@@ -52,6 +52,11 @@ jobs:
       - name: Build WASM (web target for book)
         run: wasm-pack build --target web --out-dir crates/sruja-wasm/pkg crates/sruja-wasm --release
 
+      - name: Verify WASM artifacts
+        run: |
+          test -f crates/sruja-wasm/pkg/sruja_wasm.js && test -f crates/sruja-wasm/pkg/sruja_wasm_bg.wasm || \
+            { echo "WASM build did not produce expected artifacts"; ls -la crates/sruja-wasm/pkg 2>/dev/null || true; exit 1; }
+
       - name: Build book
         run: |
           export PATH="$PWD/target/release:$PATH"
@@ -60,8 +65,7 @@ jobs:
           cd ..
 
       - name: Copy WASM into book output
-        run: |
-          cd book && ./copy-wasm.sh book
+        run: ./book/copy-wasm.sh book/book
 
       - name: Deploy to staging-website
         uses: ./.github/actions/deploy-to-github-pages

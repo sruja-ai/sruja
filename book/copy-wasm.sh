@@ -7,7 +7,12 @@
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BOOK_ROOT="$SCRIPT_DIR"
-REPO_ROOT="$(cd "$BOOK_ROOT/.." && pwd)"
+# In CI, use GITHUB_WORKSPACE so path resolution is unambiguous regardless of cwd
+if [ -n "${GITHUB_WORKSPACE:-}" ] && [ -d "${GITHUB_WORKSPACE}" ]; then
+  REPO_ROOT="$GITHUB_WORKSPACE"
+else
+  REPO_ROOT="$(cd "$BOOK_ROOT/.." && pwd)"
+fi
 # Resolve output dir to absolute path so copy works regardless of cwd
 if [ -n "$1" ]; then
   case "$1" in
