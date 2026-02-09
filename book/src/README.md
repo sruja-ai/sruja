@@ -1,6 +1,45 @@
 # Sruja
 
-**Architecture-as-code for the AI SDLC process.** Define architecture in `.sruja` files; validate, document, and keep it in sync with your workflow. We’re a tool for the lifecycle—not a diagramming product.
+**Architecture-as-code for the AI SDLC process.** Define architecture in `.sruja` files; validate, document, and keep it in sync with your workflow. We're a tool for the lifecycle—not a diagramming product.
+
+## Why Sruja?
+
+### The Problem
+
+Most architecture tools make you choose:
+
+- **Visual-only tools** (Draw.io) – no code, no version control, hard to maintain
+- **Code-only tools** (Mermaid, PlantUML) – no visual editing, steep learning curve
+- **One-way sync** (Structurizr) – code → view only, no visual editing
+- **Stale diagrams** – architecture drifts from reality, documentation gets outdated
+
+### Our Solution
+
+Sruja gives you **both** visual editing and code-backed architecture:
+
+| Feature                 | What you get                                                                      |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| **Bidirectional sync**  | Edit visually → code updates instantly; edit code → diagrams update automatically |
+| **Version-controlled**  | `.sruja` files in Git, with proper code review workflows                          |
+| **Team-friendly**       | Designers, developers, PMs all work in their preferred way                        |
+| **Built-in validation** | Catch architecture issues before they reach production                            |
+| **Multiple exports**    | JSON, Markdown, Mermaid – integrate into your existing toolchain                  |
+
+### Who It's For
+
+- **Engineering teams** who need architecture as part of their SDLC
+- **Tech leads** who want to enforce architectural standards
+- **Platform engineers** building guardrails for distributed teams
+- **AI agents** that need to reason about system architecture
+
+## How We Work
+
+1. **Define** your architecture in `.sruja` files (or use the visual designer)
+2. **Validate** with built-in checks (cycles, orphans, unique IDs)
+3. **Export** to JSON, Markdown, or diagrams
+4. **Integrate** into CI/CD, docs, and your IDE workflow
+
+We're **ultra simple** – minimal surface area, no unnecessary apps or frameworks – and **highly functional** – what we ship works reliably for its scope.
 
 ## Stack
 
