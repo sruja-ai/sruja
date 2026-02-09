@@ -46,7 +46,7 @@ Comprehensive roadmap for transforming Rust Skills and Sruja Architecture guidel
 **Implementation:**
 
 ````yaml
-# skills/rust-skills/rules/own-borrow-over-clone.md
+# skills/sruja-architecture/rules/principle-separation.md
 ---
 metadata:
   complexity: 3           # 1-5: implementation difficulty
@@ -112,25 +112,14 @@ fn process(data: Vec<i32>) {
 
 ```
 
-skills/rust-skills/
-├── beginner/
-│ ├── AGENTS.md # Quick reference (10-20 rules)
-│ └── rules/
-│ ├── err-result-over-panic.md
-│ ├── err-no-unwrap-prod.md
-│ ├── own-slice-over-vec.md
-│ └── ...
-├── intermediate/
-│ ├── AGENTS.md # Standard patterns (50-80 rules)
-│ └── rules/
-│ ├── async-tokio-runtime.md
-│ ├── mem-with-capacity.md
-│ └── ...
-└── advanced/
-├── AGENTS.md # Optimization (remaining rules)
+skills/sruja-architecture/
+├── AGENTS.md   # Full compiled guide
+├── SKILL.md    # Skill description
 └── rules/
-├── opt-inline-always-rare.md
-├── perf-black-box-bench.md
+├── principle-separation.md
+├── component-person.md
+├── pattern-monolith.md
+├── anti-god-component.md
 └── ...
 
 ````
@@ -150,9 +139,7 @@ skills/rust-skills/
 4. Add cross-references between levels
 
 **Deliverables:**
-- `skills/rust-skills/beginner/AGENTS.md`
-- `skills/rust-skills/intermediate/AGENTS.md`
-- `skills/rust-skills/advanced/AGENTS.md`
+- `skills/sruja-architecture/AGENTS.md`
 
 ---
 
@@ -335,7 +322,7 @@ fn process_millions(data: &[i32]) -> Vec<i32> {
 
 ```bash
 # Validate skill files
-skill-lint check skills/rrust-skills/
+skill-lint check skills/sruja-architecture/
 
 # Validate against schema
 skill-lint validate --schema schema/skill-metadata.json
@@ -347,7 +334,7 @@ skill-lint test --generate-code
 skill-lint check-links
 
 # Format skill files
-skill-lint format skills/rust-skills/
+skill-lint format skills/sruja-architecture/
 ````
 
 **Implementation:**

@@ -438,7 +438,7 @@ if (typeof window !== "undefined") {
 - Many are empty or only log to console
 - Error boundaries exist but may not cover all cases
 
-**Recommendation:** Standardize error handling patterns across both codebases following `rust-skills` guidelines.
+**Recommendation:** Standardize error handling patterns across both codebases following Rust best practices (Clippy, thiserror, anyhow).
 
 ### 2. Documentation Gaps
 

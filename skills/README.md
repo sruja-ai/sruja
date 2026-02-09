@@ -98,7 +98,6 @@ To contribute new skills or improve existing ones:
 Planned skills for Sruja:
 
 - `sruja-validation` - Architecture validation rules and checks
-- `sruja-rust-best-practices` - Rust coding guidelines for Sruja core
 - `sruja-migration` - Patterns for architecture migrations
 - `sruja-security` - Security architecture patterns
 

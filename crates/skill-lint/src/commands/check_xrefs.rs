@@ -186,6 +186,14 @@ fn check_xrefs_in_metadata(
                         for item in alt_array {
                             if let Some(rule_id) = item.as_str() {
                                 let cleaned_id = rule_id.trim().trim_matches('`');
+                                // Only validate if it looks like a rule ID (lowercase-with-hyphens)
+                                // Descriptive text like "Use Option for missing values" is skipped
+                                if !cleaned_id
+                                    .chars()
+                                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+                                {
+                                    continue;
+                                }
                                 let status = if rule_files.contains_key(cleaned_id) {
                                     XrefStatus::Ok
                                 } else {
@@ -223,7 +231,16 @@ fn check_xrefs_in_body(content: &str, file_path: &str, base_path: &Path) -> Vec<
                     continue;
                 }
 
-                let resolved_path = base_path.join(target);
+                // Links use rules/rule-id.md relative to the dir containing rules/.
+                // For files inside rules/, base_path is rules/ so base_path.join("rules/xxx")
+                // would yield rules/rules/xxx (wrong). Use parent only when we're in a rules/ dir.
+                let in_rules_dir = base_path.file_name().and_then(|n| n.to_str()) == Some("rules");
+                let resolution_base = if target.starts_with("rules/") && in_rules_dir {
+                    base_path.parent().unwrap_or(base_path)
+                } else {
+                    base_path
+                };
+                let resolved_path = resolution_base.join(target);
                 let status = if resolved_path.exists() {
                     XrefStatus::Ok
                 } else {

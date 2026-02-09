@@ -158,7 +158,7 @@ enum SkillsAction {
     /// List filtered skills
     List {
         /// Path to skills directory
-        #[arg(short, long, default_value = "skills/rust-skills")]
+        #[arg(short, long, default_value = "skills/sruja-architecture")]
         path: String,
         /// Limit number of results
         #[arg(short, long)]
@@ -170,7 +170,7 @@ enum SkillsAction {
     /// Suggest rules for a project
     Suggest {
         /// Path to skills directory
-        #[arg(short, long, default_value = "skills/rust-skills")]
+        #[arg(short, long, default_value = "skills/sruja-architecture")]
         skills_path: String,
         /// Path to project directory
         #[arg(short, long, default_value = ".")]

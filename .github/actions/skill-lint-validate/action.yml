@@ -13,7 +13,7 @@ inputs:
     required: false
     default: "."
   files:
-    description: "Glob for skill markdown files to validate (e.g. skills/**/*.md or skills/rust-skills/**/*.md)"
+    description: "Glob for skill markdown files to validate (e.g. skills/**/*.md or skills/sruja-architecture/**/*.md)"
     required: false
     default: "skills/**/*.md"
   check-links:

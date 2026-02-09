@@ -126,7 +126,7 @@ sruja skills suggest --project-path /path/to/project
 
 - AI_ERA_SDLC_ENHANCEMENT_PLAN.md documents original plan
 - Phase 2.3 simplified not documented in main plan
-- skills/rust-skills has metadata but not all tools use it
+- skills/sruja-architecture has metadata and rule files
 
 **Needed:**
 
@@ -151,7 +151,7 @@ sruja skills suggest --project-path /path/to/project
 
    ```bash
    # Test skill-lint validation
-   skill-lint check skills/rust-skills
+   skill-lint check skills/sruja-architecture
 
    # Test skill-lint suggestions
    skill-lint suggest --project . --limit 5
@@ -231,7 +231,7 @@ crates/sruja-cli/tests/skills/
    - Provide quick start examples
    - Document when to use each tool
 
-3. `skills/rust-skills/README.md`
+3. `skills/README.md`
    - Update to reflect new tooling
    - Add workflow examples
    - Document skill creation guidelines
@@ -257,7 +257,7 @@ crates/sruja-cli/tests/skills/
 
 ### For Creating Skills
 
-1. Write skill file in `skills/rust-skills/rules/`
+1. Write skill file in `skills/sruja-architecture/rules/`
 2. Validate with `skill-lint check`
 3. Test code examples with `skill-lint test`
 4. Format with `skill-lint format`
@@ -296,9 +296,8 @@ crates/sruja-cli/tests/skills/
 
 ```
 docs/training/
-├── rust-skills-basics.md      # Update with new commands
-├── rust-skills-intermediate.md # Add practical exercises
-└── rust-skills-workflow.md    # Document tooling workflow
+├── sruja-architecture-basics.md  # Update with new commands
+├── sruja-architecture-workflow.md # Document tooling workflow
 ```
 
 **Exercises to Add:**
@@ -306,9 +305,9 @@ docs/training/
 ```markdown
 ## Exercise 1: Skill File Validation
 
-Task: Validate the skills in `skills/rust-skills/`
+Task: Validate the skills in `skills/sruja-architecture/`
 Commands:
-skill-lint check skills/rust-skills
+skill-lint check skills/sruja-architecture
 Expected: All checks pass
 
 ## Exercise 2: Project Context Analysis
@@ -324,12 +323,12 @@ Expected: Relevant skills suggested
 Task: Create a new skill rule
 Steps:
 
-1. Create `skills/rust-skills/rules/your-rule.md`
+1. Create `skills/sruja-architecture/rules/your-rule.md`
 2. Add metadata (complexity, frequency, level, etc.)
 3. Write rule description and examples
-4. Validate: `skill-lint check skills/rust-skills/rules/your-rule.md`
-5. Test: `skill-lint test skills/rust-skills/rules/your-rule.md`
-6. Format: `skill-lint format skills/rust-skills/rules/your-rule.md`
+4. Validate: `skill-lint check skills/sruja-architecture/rules/your-rule.md`
+5. Test: `skill-lint test skills/sruja-architecture/rules/your-rule.md`
+6. Format: `skill-lint format skills/sruja-architecture/rules/your-rule.md`
    Expected: Skill passes all checks
 
 ## Exercise 4: CI/CD Integration
@@ -517,19 +516,19 @@ sruja skills suggest --level <level>  # Filter by level
 
 ```bash
 # 1. Create the skill file
-vim skills/rust-skills/rules/my-new-rule.md
+vim skills/sruja-architecture/rules/my-new-rule.md
 
 # 2. Validate the skill
-skill-lint check skills/rust-skills/rules/my-new-rule.md
+skill-lint check skills/sruja-architecture/rules/my-new-rule.md
 
 # 3. Test code examples
-skill-lint test skills/rust-skills/rules/my-new-rule.md
+skill-lint test skills/sruja-architecture/rules/my-new-rule.md
 
 # 4. Format the file
-skill-lint format skills/rust-skills/rules/my-new-rule.md
+skill-lint format skills/sruja-architecture/rules/my-new-rule.md
 
 # 5. Run full validation
-skill-lint validate skills/rust-skills
+skill-lint validate skills/sruja-architecture
 ```
 
 ### Workflow 2: Finding Relevant Skills for a Project
@@ -549,14 +548,14 @@ skill-lint suggest --project ./my-rust-project --limit 10
 
 ```bash
 # Validate all changes
-skill-lint check skills/rust-skills
+skill-lint check skills/sruja-architecture
 
 # Run full validation suite
-skill-lint validate skills/rust-skills
+skill-lint validate skills/sruja-architecture
 
 # Check specific type
-skill-lint check-links skills/rust-skills
-skill-lint check-xrefs skills/rust-skills
+skill-lint check-links skills/sruja-architecture
+skill-lint check-xrefs skills/sruja-architecture
 ```
 
 ### Workflow 4: CI/CD Integration
@@ -607,7 +606,7 @@ jobs:
 1. Check project-path is correct
 2. Ensure project has Rust files
 3. Try increasing count/limit
-4. Check skill files exist in skills/rust-skills/
+4. Check skill files exist in skills/sruja-architecture/
 
 ### Issue: CI/CD workflow fails
 

@@ -109,5 +109,4 @@ npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 
 ## Related Skills
 
-- `sruja-rust-best-practices` - Rust coding guidelines for Sruja core
 - `sruja-validation` - Architecture validation rules and checks
