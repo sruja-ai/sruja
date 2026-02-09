@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.6](https://github.com/sruja-ai/sruja/compare/sruja-v0.3.5...sruja-v0.3.6) (2026-02-09)
+
+
+### Bug Fixes
+
+* **ci:** use dtolnay/rust-toolchain in publish-extension; internal-docs next-steps ([a04bc12](https://github.com/sruja-ai/sruja/commit/a04bc12aedae27fd09f2ce6fa7b957618f43377f))
+
 ## [0.3.5](https://github.com/sruja-ai/sruja/compare/sruja-v0.3.4...sruja-v0.3.5) (2026-02-09)
 
 
