@@ -99,14 +99,12 @@ runs:
             echo "✅ CNAME restored"
           fi
 
-          # Verify site structure: Astro uses /assets or /_astro; mdBook uses index.html + book/
-          if [ -d "target/assets" ] || [ -d "target/_astro" ]; then
-            echo "✅ Asset directory verified (Astro)"
-          elif [ -f "target/index.html" ] && [ -d "target/book" ]; then
+          # Verify site structure: mdBook has index.html at root (no Astro)
+          if [ -f "target/index.html" ]; then
             echo "✅ Site structure verified (mdBook)"
           else
             echo "❌ Error: Unrecognized site structure after copy"
-            echo "Expected: Astro (assets/ or _astro/) or mdBook (index.html + book/)"
+            echo "Expected: index.html at root (mdBook output)"
             echo "Source directory contents:"
             ls -la ${{ inputs.site-path }}/
             echo "Target directory contents:"
