@@ -1,6 +1,6 @@
 # Publish VS Code extension to Open VSX and/or Visual Studio Marketplace.
-# Trigger: (1) Manual run, (2) Release published (see trigger-extension-publish.yml), (3) Push tag v* (only if tag pushed by you, not by a workflow).
-# Note: Tags pushed by GITHUB_TOKEN (e.g. Release Please) do NOT trigger workflows; use trigger-extension-publish.yml to run on release.
+# To run now: Actions → Publish extension to Open VSX → Run workflow (optional: set version input).
+# Also runs when a release is published (trigger-extension-publish.yml calls this) or when you push a tag v* from your machine.
 # Secrets: OPEN_VSX_TOKEN, AZURE_DEVOPS_PAT (Azure DevOps PAT with Marketplace → Manage).
 name: Publish extension to Open VSX
 
