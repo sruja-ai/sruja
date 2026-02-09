@@ -64,7 +64,7 @@ The **deploy-production** workflow builds the same mdBook site (book + WASM) and
 
 ## Publishing the VS Code extension (Open VSX)
 
-The **publish-extension** workflow builds the extension and publishes it to the [Open VSX Registry](https://open-vsx.org) (used by VS Codium and other editors).
+The **publish-extension** workflow builds the extension and publishes it to the [Open VSX Registry](https://open-vsx.org) (used by VS Codium and other editors). Open VSX uses publisher **srujaai** (extension id: `srujaai.sruja-language-support`).
 
 **Prerequisites**
 
@@ -80,6 +80,8 @@ The **publish-extension** workflow builds the extension and publishes it to the 
 - **Manual:** **Actions → Publish extension to Open VSX → Run workflow.** Set the **version** input (e.g. `0.3.5`) or leave empty to use `extension/package.json`.
 - **Push tag yourself:** `git tag v0.3.5 && git push origin v0.3.5` — only triggers if the tag push is from your machine (not from another workflow).
 
-**Visual Studio Marketplace:** The [listing](https://marketplace.visualstudio.com/items?itemName=SrujaAI.sruja) updates when this workflow runs and **`AZURE_DEVOPS_PAT`** is set.
+**Registries:**
+- **VS Code (Visual Studio Marketplace):** [Sruja – SrujaAI.sruja](https://marketplace.visualstudio.com/items?itemName=SrujaAI.sruja) — the official listing for VS Code users. Updates when this workflow runs and **`AZURE_DEVOPS_PAT`** is set (publisher/name in `extension/package.json` must match the Marketplace listing to update it).
+- **Open VSX:** Publisher **srujaai**, extension id `srujaai.sruja-language-support` (used by VS Codium and other editors).
 
 **Recommendation:** Add `extension/package-lock.json` (run `npm install` in `extension/` and commit the lock file) for reproducible builds; the workflow currently uses `npm install` without a lock file.

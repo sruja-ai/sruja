@@ -3,7 +3,7 @@
   "displayName": "Sruja Language Support",
   "description": "Sruja: diagnostics, syntax highlighting, snippets, markdown export, and AI features (skills, rules)",
   "version": "0.1.0",
-  "publisher": "sruja-ai",
+  "publisher": "srujaai",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

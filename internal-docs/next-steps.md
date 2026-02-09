@@ -1,4 +1,42 @@
-Top 10 AI-SDLC Features for Sruja
+# Sruja: Vision and Next Steps
+
+## Why Sruja (AI-era focus)
+
+Sruja is designed for a world where **change is fast and things can break**. Teams need:
+
+| Need | What Sruja provides |
+|------|---------------------|
+| **Track architecture changes** | `.sruja` in Git = versioned, diffable history of what the system is and was |
+| **Visual representation** | Export to Mermaid/Markdown + diagram preview so everyone sees the same picture |
+| **Rollback / plan / scale** | Compare versions, understand impact, plan migrations from a single source of truth |
+| **Review and improve** | Lint, validation, and (future) AI review against patterns and anti-patterns |
+| **Compliance** | Architecture as evidence: policies, ADRs, and checks in CI so compliance is easier |
+
+**North star:** Keep control of your architecture when change is fast — see it, track it, roll back, plan, review, and stay compliant. Stay **ultra simple** in surface area; every feature should serve this.
+
+---
+
+## What Sruja already does (today)
+
+| Capability | How |
+|------------|-----|
+| Track (versioned history) | `.sruja` in Git — diff and history come from Git, not yet from Sruja CLI |
+| Visualize | `sruja export` (Mermaid, Markdown, JSON) + VS Code diagram preview |
+| Review | `sruja lint` (validation, cycles, orphans) + sruja-architecture rules in editor |
+| Rollback / plan / scale | Not yet — no `sruja diff`, no migration planner, no impact query |
+| Compliance | Policies and ADRs can be described in DSL; no automated checks or CI gates yet |
+
+So the biggest gaps for the stated vision are: **version diff / impact**, **policy checks in CI**, and **migration/planning** — without adding a heavy platform.
+
+---
+
+## Candidate features (evaluate against vision)
+
+The list below is **not** ordered by vision. Each item should be accepted only if it clearly serves a pillar and can be done simply. Conflicting guidance is resolved in the "How features map to the vision" section.
+
+---
+
+## Top 10 AI-SDLC Features (candidate list)
 
 1. Architecture Knowledge Graph 🎯 HIGH PRIORITY
 
@@ -186,7 +224,21 @@ Phase 3 (Medium-term - Q3 2026): 7. Multi-Agent Architecture Orchestrator - Buil
 
 Phase 4 (Long-term - Q4 2026): 10. Architecture-Integrated Code Generation - Full DSL-to-code pipeline
 
-Why These Features Matter
+## How features map to the vision
+
+| Vision pillar | Features that serve it | Keep simple |
+|---------------|------------------------|-------------|
+| **Track changes** | Knowledge graph (evolution over time), compliance/policy (audit), observability (drift) | Prefer Git + `sruja diff` / query over a separate graph DB |
+| **Visualize** | Export (existing), automated docs, diagram preview | Already in scope; enhance, don’t add new surfaces |
+| **Rollback / plan / scale** | Spec-driven generator, migration planner, impact analysis | One CLI path per use case (e.g. `sruja migrate --plan`) |
+| **Review and improve** | AI reviewer, lint/validation (existing), RAG over examples | Extend `sruja lint`; optional AI layer, no full agent platform |
+| **Compliance** | Policy checking, ADRs, CI gates, documentation | Policies in DSL + CI; only add OPA if a concrete need appears |
+
+Use this to trim: Prefer `sruja diff` + CLI query over a graph DB. Defer #5, #9, #10. Add architecture diff as candidate. Compliance = high priority. If a feature does not clearly serve a pillar, defer or drop it.
+
+---
+
+Why These Features Matter (only when aligned to the five pillars)
 
 Market Opportunity:
 
@@ -212,3 +264,15 @@ Developer Value:
 Reduced cognitive load for complex systems
 Automated documentation keeps teams in sync
 AI-assisted decision-making with full context
+
+---
+
+## Critical analysis (summary)
+
+- **Vision and pillars are clear and useful** — track, visualize, rollback/plan, review, compliance. They match "AI era, things move fast, need control and compliance."
+- **Doc had contradictions:** "Keep simple" said prefer `sruja diff` over a graph DB, but #1 still pushed Neo4j/Memgraph as high priority. Resolved by stating decisions explicitly (prefer diff + CLI query; defer full graph, #5, #9, #10).
+- **Ordering was wrong:** The list was never ordered by vision pillars; that claim was removed. Compliance is a pillar but was buried at #7 and Phase 2 — now called out as high priority.
+- **Rollback was under-specified:** Vision needs "compare versions, rollback" but there was no candidate for architecture diff. Now called out as a missing, first-class candidate.
+- **Phase 1 vs vision:** Phase 1 (RAG, Spec-driven, AI Reviewer) is still not reordered to put compliance and diff higher; use the mapping table and "Use this to trim" to reprioritise.
+- **Impact claims ("10x", "5x")** are unvalidated; treat as aspirational, not evidence.
+- **Bottom line:** The doc makes sense **if** you use the vision and mapping table to trim and reorder. Ignore the raw "Top 10" and phased list unless a feature clearly serves a pillar and can be done simply.
