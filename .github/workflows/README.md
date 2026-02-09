@@ -64,7 +64,7 @@ The **deploy-production** workflow builds the same mdBook site (book + WASM) and
 
 ## Publishing the VS Code extension (Open VSX)
 
-The **publish-extension** workflow builds the extension and publishes it to the [Open VSX Registry](https://open-vsx.org) (used by VS Codium and other editors). Open VSX uses publisher **srujaai** (extension id: `srujaai.sruja-language-support`).
+The **publish-extension** workflow builds the extension and publishes to Open VSX and (optionally) the Visual Studio Marketplace. **`extension/package.json`** uses **publisher `SrujaAI`** and **name `sruja`** so that the existing [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=SrujaAI.sruja) listing is updated rather than creating a new extension.
 
 **Prerequisites**
 
@@ -81,7 +81,7 @@ The **publish-extension** workflow builds the extension and publishes it to the 
 - **Push tag yourself:** `git tag v0.3.5 && git push origin v0.3.5` — only triggers if the tag push is from your machine (not from another workflow).
 
 **Registries:**
-- **VS Code (Visual Studio Marketplace):** [Sruja – SrujaAI.sruja](https://marketplace.visualstudio.com/items?itemName=SrujaAI.sruja) — the official listing for VS Code users. Updates when this workflow runs and **`AZURE_DEVOPS_PAT`** is set (publisher/name in `extension/package.json` must match the Marketplace listing to update it).
-- **Open VSX:** Publisher **srujaai**, extension id `srujaai.sruja-language-support` (used by VS Codium and other editors).
+- **VS Code (Visual Studio Marketplace):** [Sruja – SrujaAI.sruja](https://marketplace.visualstudio.com/items?itemName=SrujaAI.sruja) — updates when this workflow runs and **`AZURE_DEVOPS_PAT`** is set. The PAT must be for the **SrujaAI** publisher so the existing listing is updated (not a new one).
+- **Open VSX:** Same extension; may appear as [srujaai/sruja](https://open-vsx.org/extension/srujaai/sruja) (lowercase) due to registry normalization. Used by VS Codium and other editors.
 
 **Recommendation:** Add `extension/package-lock.json` (run `npm install` in `extension/` and commit the lock file) for reproducible builds; the workflow currently uses `npm install` without a lock file.
