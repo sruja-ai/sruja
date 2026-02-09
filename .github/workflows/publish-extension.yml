@@ -56,8 +56,10 @@ jobs:
           fi
           [ -z "$VERSION" ] || (cd extension && npm pkg set version="$VERSION")
 
-      - name: Setup Rust
-        uses: dtolnay/rust-action@stable
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
       - name: Install wasm-pack
         run: cargo install wasm-pack
 
