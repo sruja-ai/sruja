@@ -50,7 +50,7 @@ jobs:
         run: cargo build --release -p sruja-cli
 
       - name: Build WASM (web target for book)
-        run: wasm-pack build --target web --out-dir pkg crates/sruja-wasm --release
+        run: wasm-pack build --target web --out-dir crates/sruja-wasm/pkg crates/sruja-wasm --release
 
       - name: Build book
         run: |
@@ -60,7 +60,8 @@ jobs:
           cd ..
 
       - name: Copy WASM into book output
-        run: bash book/copy-wasm.sh book/book
+        run: |
+          cd book && ./copy-wasm.sh book
 
       - name: Deploy to staging-website
         uses: ./.github/actions/deploy-to-github-pages
