@@ -18,6 +18,7 @@ interface WasmDiagnostic {
 interface SrujaWasmModule {
   sruja_get_diagnostics(dsl: string, filename?: string | null): string;
   sruja_dsl_to_markdown(dsl: string): string;
+  sruja_dsl_to_mermaid(dsl: string, config_json?: string | null): string;
   init_panic_hook(): void;
 }
 
@@ -106,6 +107,24 @@ export async function exportMarkdownFromWasm(
 
   try {
     return mod.sruja_dsl_to_markdown(dsl);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Export DSL to Mermaid diagram using WASM. Returns null if WASM not ready or on error.
+ */
+export async function getMermaidFromWasm(
+  context: vscode.ExtensionContext,
+  dsl: string,
+  configJson?: string | null
+): Promise<string | null> {
+  const mod = await initWasm(context);
+  if (!mod) return null;
+
+  try {
+    return mod.sruja_dsl_to_mermaid(dsl, configJson ?? null);
   } catch {
     return null;
   }

@@ -83,6 +83,8 @@ jobs:
         working-directory: extension
 
       - name: Publish to Open VSX Registry
+        if: ${{ secrets.OPEN_VSX_TOKEN != '' }}
+        continue-on-error: true
         run: npx --yes ovsx publish extension/*.vsix --pat "$OPEN_VSX_TOKEN"
         env:
           OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}

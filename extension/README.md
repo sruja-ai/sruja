@@ -9,6 +9,7 @@ VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architectur
 - **Language configuration** – Comment toggling (`//`), bracket matching and autoclosing, **word pattern** for double‑click selection, **indentation rules** for `{`/`}`, **folding** with `// #region` / `// #endregion` markers
 - **Snippets** – Kind declarations (person, system, container, database), elements, relations (`->`), views, description blocks
 - **Generate Markdown from DSL** – Run **Sruja: Export to Markdown** (or right-click in a .sruja file): generates Markdown via bundled WASM (or CLI), opens it in the editor, and optionally saves to a `.md` file next to the source.
+- **Diagram preview** – Run **Sruja: Open Diagram Preview** (or the preview icon in the editor title when a .sruja file is active): renders the architecture as a Mermaid diagram in a side panel using bundled WASM.
 - **AI features (skills & rules)** – Browse skills, open SKILL.md / AGENTS.md, list and open rules, copy rule or agent guide to clipboard for use with AI assistants (e.g. Cursor, Copilot). **Multi‑root workspaces**: skills are collected from every folder that has a `skills` subfolder.
 - **Workspace support** – Extension runs in the workspace (remote/SSH); supports untrusted workspaces.
 
@@ -22,6 +23,7 @@ VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architectur
 |--------|-------------|
 | **Sruja: Run validation (check after AI/edit)** | Run `sruja lint` on the active .sruja file now (unsaved content is linted via temp file). Use after every AI code iteration to ensure the file is valid and per standards. |
 | **Sruja: Export to Markdown** | Export the active .sruja file to Markdown (opens in editor; optional save to `.md`) |
+| **Sruja: Open Diagram Preview** | Render the active .sruja file as a Mermaid diagram in a webview (uses bundled WASM) |
 | **Sruja: Open Skills Overview** | Open SKILL.md for a skill (quick-pick if multiple) |
 | **Sruja: Open Agent Guide (AGENTS.md)** | Open AGENTS.md for a skill |
 | **Sruja: List Rules…** | Quick-pick list of all rules; open selected rule |
@@ -80,3 +82,17 @@ Run from VS Code (F5). Ensure the Sruja CLI is on PATH or set `sruja.lsp.path`. 
    - **Lint/Export not running:** If using WASM, ensure `extension/wasm/` exists (run `npm run copy:assets`). If using CLI, confirm `sruja.lsp.path` or `sruja` on PATH.  
    - **No diagnostics:** Ensure the file has a `.sruja` extension and the document language is “Sruja”.  
    - **Debug output:** Run → Start Debugging (F5) and check the “Debug Console” in the *original* window for errors.
+
+## Cursor “Open Preview” / “Error Generating Preview”
+
+In Cursor (or VS Code), if you use a built-in **Open Preview** on a `.sruja` file and see:
+
+- **“WASM parser failed: WASM functions not registered after 10 seconds”**
+- **“Ensure WASM files are bundled (wasm/sruja.wasm and wasm/wasm_exec.js)”**
+
+that preview expects a different (Go-based) WASM setup. This extension uses **Rust** WASM (`wasm/sruja_wasm.js` and `wasm/sruja_wasm_bg.wasm`). Use the extension’s own preview instead:
+
+- **Command Palette** → **Sruja: Open Diagram Preview**, or  
+- With a `.sruja` file active, click the **preview/diagram** icon in the editor title bar.
+
+That command uses the bundled Rust WASM to export to Mermaid and renders it in a webview. No `sruja.wasm` or `wasm_exec.js` required.

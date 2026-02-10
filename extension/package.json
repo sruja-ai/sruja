@@ -97,6 +97,10 @@
         "title": "Sruja: Export to Markdown"
       },
       {
+        "command": "sruja.openDiagramPreview",
+        "title": "Sruja: Open Diagram Preview"
+      },
+      {
         "command": "sruja.openSkillsOverview",
         "title": "Sruja: Open Skills Overview"
       },
@@ -125,6 +129,16 @@
         },
         {
           "command": "sruja.exportMarkdown",
+          "when": "editorLangId == sruja"
+        },
+        {
+          "command": "sruja.openDiagramPreview",
+          "when": "editorLangId == sruja"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "sruja.openDiagramPreview",
           "when": "editorLangId == sruja"
         }
       ]
