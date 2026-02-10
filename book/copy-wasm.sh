@@ -44,7 +44,12 @@ if [ -n "$WASM_SRC" ]; then
   fi
   mkdir -p "$OUTPUT_DIR/wasm/rust"
   cp "$WASM_SRC/sruja_wasm.js" "$WASM_SRC/sruja_wasm_bg.wasm" "$OUTPUT_DIR/wasm/rust/"
-  echo "Copied WASM into book output ($OUTPUT_DIR/wasm/rust/)"
+  for ext in gz br; do
+    if [ -f "$WASM_SRC/sruja_wasm_bg.wasm.$ext" ]; then
+      cp "$WASM_SRC/sruja_wasm_bg.wasm.$ext" "$OUTPUT_DIR/wasm/rust/"
+    fi
+  done
+  echo "Copied WASM (and .gz/.br if present) into book output ($OUTPUT_DIR/wasm/rust/)"
 fi
 # Copy Sruja logo into book output (for sidebar and pages)
 if [ -f "$BOOK_ROOT/sruja-logo.png" ]; then

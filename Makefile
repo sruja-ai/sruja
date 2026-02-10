@@ -92,6 +92,8 @@ wasm:
 		if command -v wasm-opt >/dev/null 2>&1; then \
 			wasm-opt --enable-bulk-memory -Oz --strip-debug $(WASM_PKG)/sruja_wasm_bg.wasm -o $(WASM_PKG)/sruja_wasm_bg.wasm.tmp && mv $(WASM_PKG)/sruja_wasm_bg.wasm.tmp $(WASM_PKG)/sruja_wasm_bg.wasm; \
 		fi; \
+		gzip -9 -k -f $(WASM_PKG)/sruja_wasm_bg.wasm 2>/dev/null || true; \
+		if command -v brotli >/dev/null 2>&1; then brotli -q 11 -k -f $(WASM_PKG)/sruja_wasm_bg.wasm; fi; \
 		echo "✅ WASM build complete ($(WASM_PKG)/)"; \
 	else \
 		echo "❌ Cargo not found. Please install Rust: https://rustup.rs/"; exit 1; \

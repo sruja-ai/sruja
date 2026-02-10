@@ -37,6 +37,35 @@
     return doFetch();
   }
 
+  function decompressGzipStream(stream) {
+    if (typeof DecompressionStream === "undefined") return null;
+    try {
+      return stream.pipeThrough(new DecompressionStream("gzip"));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function fetchWasmBytes(base) {
+    var gzUrl = base + "sruja_wasm_bg.wasm.gz";
+    return fetch(gzUrl)
+      .then(function (r) {
+        if (!r.ok) throw new Error("gz not found");
+        return r.body;
+      })
+      .then(function (body) {
+        var decompressed = decompressGzipStream(body);
+        if (!decompressed) throw new Error("DecompressionStream not supported");
+        return new Response(decompressed).arrayBuffer();
+      })
+      .then(function (buf) {
+        return new Uint8Array(buf);
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+
   function loadWasm() {
     if (wasmModule) return Promise.resolve(wasmModule);
     if (wasmInitPromise) return wasmInitPromise;
@@ -51,11 +80,16 @@
         return import(blobUrl).then(
           function (mod) {
             URL.revokeObjectURL(blobUrl);
-            var init = mod.default({ module_or_path: wasmUrl });
-            return (init && typeof init.then === "function" ? init : Promise.resolve()).then(function () {
-              if (typeof mod.init_panic_hook === "function") mod.init_panic_hook();
-              wasmModule = mod;
-              return mod;
+            return fetchWasmBytes(base).then(function (wasmBytes) {
+              var moduleOrPath = wasmBytes
+                ? WebAssembly.compile(wasmBytes)
+                : wasmUrl;
+              var init = mod.default({ module_or_path: moduleOrPath });
+              return (init && typeof init.then === "function" ? init : Promise.resolve()).then(function () {
+                if (typeof mod.init_panic_hook === "function") mod.init_panic_hook();
+                wasmModule = mod;
+                return mod;
+              });
             });
           },
           function (e) {
