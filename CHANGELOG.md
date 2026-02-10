@@ -5,6 +5,15 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.6.0...sruja-v0.6.1) (2026-02-10)
+
+
+### Bug Fixes
+
+* **ci:** avoid secrets context in step condition ([1536b06](https://github.com/sruja-ai/sruja/commit/1536b06e37c940172b8143e2e3bd4fe76bab98d6))
+* **ci:** declare reusable-workflow secrets ([9878863](https://github.com/sruja-ai/sruja/commit/9878863c0d9141de5dbfa68a0f69659c4a1b36ff))
+* **ci:** don’t block Marketplace publish on Open VSX ([45e8456](https://github.com/sruja-ai/sruja/commit/45e84563a3d1272b4550ac0318a65ac2874e5771))
+
 ## [0.6.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.5.0...sruja-v0.6.0) (2026-02-10)
 
 
