@@ -31,8 +31,8 @@ jobs:
 
       - name: Install mdbook and preprocessors
         run: |
-          cargo install mdbook mdbook-mermaid
-          which mdbook mdbook-mermaid
+          cargo install mdbook mdbook-mermaid mdbook-frontmatter-strip
+          which mdbook mdbook-mermaid mdbook-frontmatter-strip
 
       - name: Install wasm-pack
         run: cargo install wasm-pack

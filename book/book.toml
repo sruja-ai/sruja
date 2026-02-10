@@ -14,8 +14,9 @@ description = "Architecture as code. Define, validate, export, and preview with 
 build-dir = "book"
 
 # Strip YAML front matter (title, weight, summary) so it is not rendered in HTML.
-# Install: cargo install mdbook-frontmatter-strip
+# Install: cargo install mdbook-frontmatter-strip (optional: skip if not installed)
 [preprocessor.frontmatter-strip]
+optional = true
 renderer = ["html"]
 
 # Mermaid: run `mdbook-mermaid install .` from the book directory once to copy mermaid.min.js and mermaid-init.js
