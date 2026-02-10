@@ -7,9 +7,15 @@ db = kind "Database"
 ui = kind "Web Interface"
 storage = kind "File Storage"
 system = kind "System"
+person = kind "Person"
+
+operator = person "Data Engineer" {
+  description "Operates and monitors Airflow pipelines"
+}
 
 airflow = system "Apache Airflow" {
-    webserver = ui "Webserver" {
+  description "Workflow orchestration platform for scheduling and monitoring data pipelines"
+  webserver = ui "Webserver" {
         tech "Flask/Gunicorn"
         description "GUI for monitoring and managing DAGs"
     }
@@ -45,12 +51,20 @@ external_sources = system "External Data Sources" {
 }
 
 // Relationships
+operator -> airflow "Manages and monitors pipelines"
+
 scheduler -> metadata_db "Polls for tasks"
 scheduler -> executor "Queues tasks"
 
 executor -> worker_cluster "Distributes workload"
+executor -> worker1 "Dispatches tasks"
+executor -> worker2 "Dispatches tasks"
 worker_cluster -> metadata_db "Updates task status"
 worker_cluster -> external_sources "Fetches/Writes data"
+worker1 -> metadata_db "Updates task status"
+worker2 -> metadata_db "Updates task status"
+worker1 -> s3 "Reads/writes data"
+worker2 -> snowflake "Queries and loads data"
 
 webserver -> metadata_db "Reads status for UI"
 
