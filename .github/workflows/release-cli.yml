@@ -1,13 +1,24 @@
 # Build Sruja CLI for multiple platforms and attach binaries + install script to the GitHub Release.
-# Runs when a release is published (e.g. by release-please). Does not create the release.
+# Triggered by: (1) release published, or (2) workflow_dispatch (used when release-please creates
+# a release, since GITHUB_TOKEN-created releases do not trigger other workflows).
 name: Build and attach CLI to release
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag (e.g. v0.6.1). Required when dispatched from release-please or manually."
+        required: true
+        type: string
 
 permissions:
   contents: write
+
+env:
+  # Use dispatch input when run via workflow_dispatch; otherwise use release event.
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.event.release.tag_name }}
 
 jobs:
   build:
@@ -49,7 +60,7 @@ jobs:
       - name: Pack archive (Linux/macOS)
         if: matrix.os_id != 'windows'
         run: |
-          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${{ env.RELEASE_TAG }}"
           VERSION="${VERSION#v}"
           mkdir -p staging
           cp target/release/sruja staging/
@@ -58,7 +69,7 @@ jobs:
       - name: Pack archive (Windows)
         if: matrix.os_id == 'windows'
         run: |
-          $version = "${{ github.event.release.tag_name }}" -replace '^v',''
+          $version = "${{ env.RELEASE_TAG }}" -replace '^v',''
           Compress-Archive -Path target/release/sruja.exe -DestinationPath "sruja-$version-${{ matrix.os_id }}-${{ matrix.arch }}.zip"
         shell: pwsh
 
@@ -93,7 +104,7 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
           files: upload/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

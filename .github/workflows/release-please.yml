@@ -21,3 +21,17 @@ jobs:
         with:
           config-file: release-please-config.json
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Releases created by GITHUB_TOKEN do not trigger other workflows, so we
+      # explicitly trigger the CLI build and extension publish when a release is created.
+      - name: Trigger release CLI build
+        if: steps.release.outputs.release_created == 'true'
+        run: gh workflow run release-cli.yml -f version="${{ steps.release.outputs.tag_name }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger extension publish
+        if: steps.release.outputs.release_created == 'true'
+        run: gh workflow run publish-extension.yml -f version="${{ steps.release.outputs.tag_name }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
