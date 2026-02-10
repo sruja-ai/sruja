@@ -27,12 +27,8 @@ concurrency:
   group: release-cli-${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && inputs.version || github.event.release.tag_name || github.run_id }}
   cancel-in-progress: false
 
-env:
-  # Use input when run via workflow_dispatch or workflow_call; otherwise use release event.
-  RELEASE_TAG: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && inputs.version || github.event.release.tag_name }}
-
 jobs:
-  # Normalize version for artifact filenames (sruja-v0.7.2 -> 0.7.2); RELEASE_TAG stays full for gh-release.
+  # Normalize version for artifact filenames (sruja-v0.7.2 -> 0.7.2); tag stays full for gh-release.
   set-version:
     name: Set version for artifacts
     runs-on: ubuntu-latest
@@ -41,10 +37,18 @@ jobs:
       tag: ${{ steps.v.outputs.tag }}
     steps:
       - id: v
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          TAG="${{ env.RELEASE_TAG }}"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$EVENT_NAME" = "workflow_call" ]; then
+            TAG="$INPUT_VERSION"
+          else
+            TAG="$EVENT_RELEASE_TAG"
+          fi
           if [ -z "$TAG" ]; then
-            echo "::error::No release tag (RELEASE_TAG) set. workflow_call must pass version; release event must have tag."
+            echo "::error::No release tag. workflow_call/workflow_dispatch must pass version; release event must have tag. EVENT_NAME=$EVENT_NAME"
             exit 1
           fi
           V="${TAG#sruja-}"
