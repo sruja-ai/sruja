@@ -43,7 +43,7 @@ VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architectur
 
 ## Publishing to Open VSX
 
-The extension is published to the [Open VSX Registry](https://open-vsx.org) via GitHub Actions when a release is published (see [.github/workflows/README.md](../.github/workflows/README.md)). Uses org secret **`OPEN_VSX_TOKEN`** (Personal Access Token from open-vsx.org). On release, the extension version is taken from the release tag (e.g. `v0.2.0` → `0.2.0`).
+The extension is published to the [Open VSX Registry](https://open-vsx.org) via GitHub Actions when a release is published (see [.github/workflows/README.md](../.github/workflows/README.md)). Uses org secret **`OPEN_VSX_TOKEN`** (Personal Access Token from open-vsx.org). On release, the extension version is taken from the release tag (e.g. `sruja-v0.7.7` or `v0.2.0` → `0.7.7` / `0.2.0`).
 
 **Cursor users:** Cursor’s marketplace (`marketplace.cursorapi.com`) mirrors Open VSX and can lag behind. If you don’t see the latest version in Cursor, install from [Open VSX](https://open-vsx.org/extension/srujaai/sruja) or use **Install from VSIX** with the `.vsix` download from that page.
 

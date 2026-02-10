@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install the Sruja CLI from GitHub Releases.
 # Usage: curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-#        curl -fsSL .../install.sh | bash -s -- v0.6.1
+#        curl -fsSL .../install.sh | bash -s -- sruja-v0.7.7   # or v0.6.1, or omit for latest
 set -e
 
 REPO="${SRUJA_REPO:-sruja-ai/sruja}"
@@ -17,8 +17,9 @@ if [ "$VERSION" = "latest" ]; then
   fi
 fi
 
-# Version for asset filename (no leading v)
-VER="${VERSION#v}"
+# Version for asset filename (e.g. sruja-v0.7.6 or v0.6.1 -> 0.7.6 / 0.6.1)
+VER="${VERSION#sruja-}"
+VER="${VER#v}"
 
 # Detect OS and arch
 OS=""
