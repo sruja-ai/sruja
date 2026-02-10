@@ -774,7 +774,10 @@ pub async fn validate(
                 eprintln!("Errors in constraint file {}:", constraint_path);
                 let mut constraint_diagnostics = constraint_diagnostics;
                 if !format_json {
-                    enrich_diagnostics_with_source(&constraint_content, &mut constraint_diagnostics);
+                    enrich_diagnostics_with_source(
+                        &constraint_content,
+                        &mut constraint_diagnostics,
+                    );
                 }
                 for diag in &constraint_diagnostics {
                     eprintln!("  {}", format_diagnostic(diag));
