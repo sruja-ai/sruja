@@ -277,9 +277,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Sruja
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-          export PATH="$HOME/go/bin:$PATH"
+        run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja --locked
 
       - name: Lint Architecture
         run: |

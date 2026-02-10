@@ -60,10 +60,10 @@ shopify-lite/
 If you haven't already, install the Sruja CLI:
 
 ```bash
-# Quick install
-curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
+# From Git (requires Rust)
+cargo install sruja-cli --git https://github.com/sruja-ai/sruja
 
-# Or from source: cargo install --path crates/sruja-cli (from repo root)
+# Or build from source: git clone https://github.com/sruja-ai/sruja.git && cd sruja && make build
 
 # Verify installation
 sruja --version
@@ -296,9 +296,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Sruja
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-          echo "$HOME/go/bin" >> $GITHUB_PATH
+        run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja --locked
       - name: Validate Architecture
         run: sruja lint architecture/main.sruja
       - name: Generate Docs

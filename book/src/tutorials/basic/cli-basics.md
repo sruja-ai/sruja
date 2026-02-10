@@ -11,17 +11,29 @@ This tutorial teaches the essential Sruja CLI commands for day‑to‑day work.
 
 ## Install and Verify
 
+**Option A – install script (downloads from [GitHub Releases](https://github.com/sruja-ai/sruja/releases)):**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
 sruja --version
 ```
 
-If `sruja` is not found, ensure the install directory is in your `PATH`:
+**Option B – from Git (requires Rust):**
 
 ```bash
-# If installed via install script, ensure ~/.local/bin (or script’s target) is in PATH
-export PATH="$HOME/.local/bin:$PATH"
+cargo install sruja-cli --git https://github.com/sruja-ai/sruja
+sruja --version
 ```
+
+**Option C – build from source:**
+
+```bash
+git clone https://github.com/sruja-ai/sruja.git && cd sruja && make build
+# Add target/release to PATH or copy target/release/sruja to a directory on PATH
+sruja --version
+```
+
+If `sruja` is not found, ensure the install directory is on your `PATH` (install script uses `~/.local/bin` by default; Option B uses `~/.cargo/bin`; Option C uses `target/release`).
 
 ## Create a Model
 

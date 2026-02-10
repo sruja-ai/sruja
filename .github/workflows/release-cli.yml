@@ -1,0 +1,99 @@
+# Build Sruja CLI for multiple platforms and attach binaries + install script to the GitHub Release.
+# Runs when a release is published (e.g. by release-please). Does not create the release.
+name: Build and attach CLI to release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.os_id }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            os_id: linux
+            arch: x86_64
+            artifact_name: sruja-linux-x86_64
+          - runner: macos-14
+            os_id: darwin
+            arch: aarch64
+            artifact_name: sruja-darwin-aarch64
+          - runner: macos-13
+            os_id: darwin
+            arch: x86_64
+            artifact_name: sruja-darwin-x86_64
+          - runner: windows-latest
+            os_id: windows
+            arch: x86_64
+            artifact_name: sruja-windows-x86_64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build CLI
+        run: cargo build --release -p sruja-cli
+
+      - name: Pack archive (Linux/macOS)
+        if: matrix.os_id != 'windows'
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"
+          mkdir -p staging
+          cp target/release/sruja staging/
+          cd staging && tar czf "../sruja-${VERSION}-${{ matrix.os_id }}-${{ matrix.arch }}.tar.gz" sruja && cd ..
+
+      - name: Pack archive (Windows)
+        if: matrix.os_id == 'windows'
+        run: |
+          $version = "${{ github.event.release.tag_name }}" -replace '^v',''
+          Compress-Archive -Path target/release/sruja.exe -DestinationPath "sruja-$version-${{ matrix.os_id }}-${{ matrix.arch }}.zip"
+        shell: pwsh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: sruja-*
+
+  upload-release:
+    name: Attach assets to release
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Prepare release assets
+        run: |
+          echo "Artifacts to attach:"
+          find release-assets -type f
+          mkdir -p upload
+          find release-assets -type f \( -name '*.tar.gz' -o -name '*.zip' \) -exec cp {} upload/ \;
+          cp scripts/install.sh upload/
+          ls -la upload/
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: upload/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

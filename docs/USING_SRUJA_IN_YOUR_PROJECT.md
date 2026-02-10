@@ -13,17 +13,25 @@ This guide is for **teams and organizations** that want to use Sruja in their ow
 
 ### CLI
 
-**Option A – from Git (recommended for now):**
+**Option A – install script (downloads from [GitHub Releases](https://github.com/sruja-ai/sruja/releases)):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
+```
+
+**Option B – from Git (requires Rust):**
 
 ```bash
 cargo install sruja-cli --git https://github.com/sruja-ai/sruja
 ```
 
-**Option B – install script (if available in repo):**
+**Option C – build from source:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
+git clone https://github.com/sruja-ai/sruja.git && cd sruja && make build
 ```
+
+Ensure the install directory is on your `PATH` (install script uses `~/.local/bin` by default; Option B uses `~/.cargo/bin`; Option C uses `target/release`).
 
 **Check:**
 

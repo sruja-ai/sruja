@@ -30,11 +30,25 @@ Most architecture tools make you choose:
 
 ### Install CLI
 
-**Install:**
+**Option A – install script (downloads binary from [GitHub Releases](https://github.com/sruja-ai/sruja/releases)):**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
 ```
+
+**Option B – from Git (requires Rust):**
+
+```bash
+cargo install sruja-cli --git https://github.com/sruja-ai/sruja
+```
+
+**Option C – build from source:**
+
+```bash
+git clone https://github.com/sruja-ai/sruja.git && cd sruja && make build
+```
+
+Then ensure the install directory is on your `PATH` (install script uses `~/.local/bin` by default; Option B uses `~/.cargo/bin`; Option C uses `target/release`).
 
 **Create `example.sruja`:**
 

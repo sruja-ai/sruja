@@ -16,18 +16,26 @@ Sruja allows you to define your software architecture as code. No more dragging 
 
 Install the Sruja CLI to compile, validate, and export your diagrams.
 
-### Mac / Linux
+### Option A – install script (downloads from [GitHub Releases](https://github.com/sruja-ai/sruja/releases))
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
 ```
 
-### From Source (Rust)
+### Option B – from Git (requires Rust)
+
+```bash
+cargo install sruja-cli --git https://github.com/sruja-ai/sruja
+```
+
+### Option C – build from source
 
 ```bash
 git clone https://github.com/sruja-ai/sruja.git && cd sruja
 make build
 ```
+
+Ensure the `sruja` binary is on your `PATH` (install script uses `~/.local/bin` by default).
 
 _Verify installation:_
 

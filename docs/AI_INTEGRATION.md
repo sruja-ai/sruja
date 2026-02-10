@@ -297,7 +297,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Sruja
-        run: curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
+        run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja --locked
       - name: Lint all Sruja files
         run: find . -name '*.sruja' -exec sruja lint {} \;
 ```

@@ -136,7 +136,7 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 **Activities:**
 
 1. Review Sruja documentation
-2. Install CLI: `curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash`
+2. Install CLI: `curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash` (or from Git: `cargo install sruja-cli --git https://github.com/sruja-ai/sruja`; or build from source: `git clone https://github.com/sruja-ai/sruja.git && cd sruja && make build`)
 3. Model a simple existing system
 4. Install VS Code extension for syntax highlighting and diagnostics
 

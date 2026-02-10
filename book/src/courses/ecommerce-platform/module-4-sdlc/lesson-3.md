@@ -17,7 +17,7 @@ steps:
     uses: actions/checkout@v3
 
   - name: Install Sruja
-    run: curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
+    run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja --locked
 
   - name: Validate Architecture
     run: sruja validate architecture/

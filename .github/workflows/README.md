@@ -13,6 +13,7 @@
 | **release-please.yml** | push to main | Update CHANGELOG and create release PR from conventional commits. |
 | **publish-extension.yml** | push tag v* / manual / workflow_call | Build VS Code extension; publish to Open VSX and (if `AZURE_DEVOPS_PAT` set) Visual Studio Marketplace. |
 | **trigger-extension-publish.yml** | release published | Calls publish-extension with release version so extension publishes when a release is created (e.g. by Release Please). |
+| **release-cli.yml** | release published | Build Sruja CLI for Linux (x86_64), macOS (x86_64, aarch64), and Windows (x86_64); attach binaries and `scripts/install.sh` to the GitHub Release. |
 
 ## Standards defined in .sruja → CI checks
 
@@ -85,3 +86,23 @@ The **publish-extension** workflow builds the extension and publishes to Open VS
 - **Open VSX:** Same extension; may appear as [srujaai/sruja](https://open-vsx.org/extension/srujaai/sruja) (lowercase) due to registry normalization. Used by VS Codium and other editors.
 
 **Recommendation:** Add `extension/package-lock.json` (run `npm install` in `extension/` and commit the lock file) for reproducible builds; the workflow currently uses `npm install` without a lock file.
+
+## CLI release assets
+
+When a release is published (e.g. by Release Please), **release-cli.yml** runs and:
+
+1. Builds the Sruja CLI (`cargo build --release -p sruja-cli`) on Linux (x86_64), macOS (x86_64 and aarch64), and Windows (x86_64).
+2. Packs each binary into a tarball (`.tar.gz`) or Windows `.zip`.
+3. Attaches all artifacts plus **scripts/install.sh** to the existing GitHub Release.
+
+Users can install the CLI by running the install script (which downloads the appropriate binary from the release):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
+```
+
+Or download a specific version:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash -s -- v0.6.1
+```

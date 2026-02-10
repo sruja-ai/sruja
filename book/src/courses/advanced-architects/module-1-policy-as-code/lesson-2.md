@@ -31,9 +31,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Install Sruja
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja --locked
       
       - name: Validate Architecture
         run: |
@@ -54,9 +52,9 @@ jobs:
 architecture-validation:
   image: alpine:latest
   before_script:
-    - apk add --no-cache curl bash
-    - curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-    - export PATH="$HOME/.local/bin:$PATH"
+    - apk add --no-cache rust cargo
+    - cargo install sruja-cli --git https://github.com/sruja-ai/sruja --locked
+    - export PATH="$HOME/.cargo/bin:$PATH"
   script:
     - sruja fmt architecture.sruja
     - sruja lint architecture.sruja
@@ -113,8 +111,8 @@ Catch violations before they're committed:
 
 # Install Sruja if not available
 if ! command -v sruja &> /dev/null; then
-  curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-  export PATH="$HOME/.local/bin:$PATH"
+  cargo install sruja-cli --git https://github.com/sruja-ai/sruja --locked
+  export PATH="$HOME/.cargo/bin:$PATH"
 fi
 
 # Validate architecture
