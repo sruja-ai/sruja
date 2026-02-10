@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.9](https://github.com/sruja-ai/sruja/compare/sruja-v0.7.8...sruja-v0.7.9) (2026-02-10)
+
+
+### Bug Fixes
+
+* **workflows:** use input version first and only use ref when it's a version tag ([a96792f](https://github.com/sruja-ai/sruja/commit/a96792f4aa26485f15f1331932e42b47fd0ead5a))
+
 ## [0.7.8](https://github.com/sruja-ai/sruja/compare/sruja-v0.7.7...sruja-v0.7.8) (2026-02-10)
 
 
