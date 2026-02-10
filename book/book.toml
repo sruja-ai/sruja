@@ -1,5 +1,5 @@
 # Sruja docs – Rust-based (mdBook). No TypeScript/Node.
-# Install: cargo install mdbook
+# Install: cargo install mdbook mdbook-frontmatter-strip
 # Build: mdbook build
 # Serve (live): mdbook serve
 
@@ -12,6 +12,11 @@ description = "Architecture as code. Define, validate, export, and preview with 
 
 [build]
 build-dir = "book"
+
+# Strip YAML front matter (title, weight, summary) so it is not rendered in HTML.
+# Install: cargo install mdbook-frontmatter-strip
+[preprocessor.frontmatter-strip]
+renderer = ["html"]
 
 # Mermaid: run `mdbook-mermaid install .` from the book directory once to copy mermaid.min.js and mermaid-init.js
 [preprocessor.mermaid]

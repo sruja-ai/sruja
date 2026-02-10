@@ -12,10 +12,12 @@ The Sruja VS Code extension provides comprehensive language support for `.sruja`
 
 ### From VS Code Marketplace
 
+**[Install directly](https://marketplace.visualstudio.com/items?itemName=SrujaAI.sruja)** (opens the extension page), or:
+
 1. Open VS Code
 2. Go to Extensions (`Cmd+Shift+X` or `Ctrl+Shift+X`)
 3. Search for "Sruja"
-4. Click **Install** on "Sruja DSL Language Support"
+4. Click **Install** on "Sruja"
 
 ### From VSIX File
 

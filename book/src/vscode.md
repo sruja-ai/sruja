@@ -6,4 +6,4 @@ The Sruja VS Code extension provides:
 - **Diagnostics** (errors, warnings) via the language server
 - **WASM-based diagram preview** – render diagrams from your DSL in the editor (no web server)
 
-Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/) (search for "Sruja") or build from source in `extension/`.
+Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=SrujaAI.sruja) or build from source in `extension/`.
