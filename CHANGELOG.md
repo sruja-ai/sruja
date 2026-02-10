@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.5.0...sruja-v0.6.0) (2026-02-10)
+
+
+### Features
+
+* **book:** add Sruja 32x32 favicon for docs (sruja.ai) ([5fcaa87](https://github.com/sruja-ai/sruja/commit/5fcaa8706df292faf7a7e21ae3222d0b92e82866))
+
 ## [0.5.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.4.1...sruja-v0.5.0) (2026-02-10)
 
 
