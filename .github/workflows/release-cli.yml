@@ -21,13 +21,35 @@ on:
 permissions:
   contents: write
 
+# Avoid this run being cancelled when another release is triggered (e.g. two merges to main).
+# Each release tag gets its own group; we never cancel a run in progress.
+concurrency:
+  group: release-cli-${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && inputs.version || github.event.release.tag_name || github.run_id }}
+  cancel-in-progress: false
+
 env:
   # Use input when run via workflow_dispatch or workflow_call; otherwise use release event.
   RELEASE_TAG: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && inputs.version || github.event.release.tag_name }}
 
 jobs:
+  # Normalize version for artifact filenames (sruja-v0.7.2 -> 0.7.2); RELEASE_TAG stays full for gh-release.
+  set-version:
+    name: Set version for artifacts
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - id: v
+        run: |
+          TAG="${{ env.RELEASE_TAG }}"
+          V="${TAG#sruja-}"
+          V="${V#v}"
+          echo "version=$V" >> $GITHUB_OUTPUT
+          echo "RELEASE_TAG=$TAG -> artifact version=$V"
+
   build:
     name: Build ${{ matrix.os_id }}-${{ matrix.arch }}
+    needs: set-version
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -41,10 +63,7 @@ jobs:
             os_id: darwin
             arch: aarch64
             artifact_name: sruja-darwin-aarch64
-          - runner: macos-13
-            os_id: darwin
-            arch: x86_64
-            artifact_name: sruja-darwin-x86_64
+          # macos-13 (Intel) is no longer supported by GitHub; ship aarch64 only for macOS
           - runner: windows-latest
             os_id: windows
             arch: x86_64
@@ -65,8 +84,7 @@ jobs:
       - name: Pack archive (Linux/macOS)
         if: matrix.os_id != 'windows'
         run: |
-          VERSION="${{ env.RELEASE_TAG }}"
-          VERSION="${VERSION#v}"
+          VERSION="${{ needs.set-version.outputs.version }}"
           mkdir -p staging
           cp target/release/sruja staging/
           cd staging && tar czf "../sruja-${VERSION}-${{ matrix.os_id }}-${{ matrix.arch }}.tar.gz" sruja && cd ..
@@ -74,7 +92,7 @@ jobs:
       - name: Pack archive (Windows)
         if: matrix.os_id == 'windows'
         run: |
-          $version = "${{ env.RELEASE_TAG }}" -replace '^v',''
+          $version = "${{ needs.set-version.outputs.version }}"
           Compress-Archive -Path target/release/sruja.exe -DestinationPath "sruja-$version-${{ matrix.os_id }}-${{ matrix.arch }}.zip"
         shell: pwsh
 
@@ -84,10 +102,21 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: sruja-*
 
+  build-failed:
+    name: Build failed
+    runs-on: ubuntu-latest
+    needs: [set-version, build]
+    if: always() && needs.build.result == 'failure'
+    steps:
+      - run: |
+          echo "::error::One or more build matrix jobs failed. 'Attach assets to release' was skipped."
+          echo "Check the failed job(s) above: Build linux-x86_64, Build darwin-aarch64, or Build windows-x86_64."
+          exit 1
+
   upload-release:
     name: Attach assets to release
     runs-on: ubuntu-latest
-    needs: build
+    needs: [set-version, build]
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
