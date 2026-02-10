@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.4.1...sruja-v0.5.0) (2026-02-10)
+
+
+### Features
+
+* **book:** add home icon to top nav linking to book index ([a80e123](https://github.com/sruja-ai/sruja/commit/a80e123f8b2701066a946afa1cddf66862aea742))
+
 ## [0.4.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.4.0...sruja-v0.4.1) (2026-02-10)
 
 
