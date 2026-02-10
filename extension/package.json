@@ -1,8 +1,8 @@
 {
   "name": "sruja",
-  "displayName": "Sruja Language Support",
+  "displayName": "Sruja",
   "description": "Sruja: diagnostics, syntax highlighting, snippets, markdown export, and AI features (skills, rules)",
-  "version": "0.1.0",
+  "version": "0.3.6",
   "publisher": "SrujaAI",
   "license": "Apache-2.0",
   "repository": {
