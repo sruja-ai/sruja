@@ -367,6 +367,8 @@ export function activate(context: vscode.ExtensionContext): void {
           language: "markdown",
         });
         await vscode.window.showTextDocument(mdDoc, { preview: false });
+        // Open the Markdown preview so the user sees the full rendered document (not only the diagram).
+        await vscode.commands.executeCommand("markdown.showPreview", mdDoc.uri);
         const save = await vscode.window.showInformationMessage(
           "Markdown generated from DSL. Save to file?",
           "Save",
