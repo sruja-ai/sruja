@@ -13,7 +13,7 @@
 | **release-please.yml** | push to main | Update CHANGELOG and create release PR from conventional commits. |
 | **publish-extension.yml** | push tag v* / manual / workflow_call | Build VS Code extension; publish to Open VSX and (if `AZURE_DEVOPS_PAT` set) Visual Studio Marketplace. |
 | **trigger-extension-publish.yml** | release published | Calls publish-extension with release version so extension publishes when a release is created (e.g. by Release Please). |
-| **release-cli.yml** | release published, or **workflow_dispatch** (from release-please) | Build Sruja CLI for Linux (x86_64), macOS (x86_64, aarch64), and Windows (x86_64); attach binaries and `scripts/install.sh` to the GitHub Release. Triggered explicitly by **release-please** when it creates a release (releases created by GITHUB_TOKEN do not trigger other workflows). |
+| **release-cli.yml** | release published, **workflow_call** (from release-please), or **workflow_dispatch** (manual) | Build Sruja CLI for Linux (x86_64), macOS (x86_64, aarch64), and Windows (x86_64); attach binaries and `scripts/install.sh` to the GitHub Release. **release-please** calls this via `workflow_call` when it creates a release (GITHUB_TOKEN cannot trigger `workflow_dispatch`). |
 
 ## Standards defined in .sruja → CI checks
 
@@ -89,7 +89,7 @@ The **publish-extension** workflow builds the extension and publishes to Open VS
 
 ## CLI release assets
 
-When a release is published, **release-cli.yml** runs. Because releases created by the default `GITHUB_TOKEN` (e.g. by Release Please) [do not trigger other workflows](https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow), **release-please.yml** explicitly dispatches both **release-cli.yml** and **publish-extension.yml** with the new tag when it creates a release. So after Release Please merges a release PR:
+When a release is published, **release-cli.yml** runs. Because releases created by `GITHUB_TOKEN` do not trigger other workflows and `GITHUB_TOKEN` cannot trigger `workflow_dispatch` (403), **release-please.yml** calls both **release-cli.yml** and **publish-extension.yml** via **workflow_call** when it creates a release, so they run in the same Actions run. After Release Please merges a release PR:
 
 1. Builds the Sruja CLI (`cargo build --release -p sruja-cli`) on Linux (x86_64), macOS (x86_64 and aarch64), and Windows (x86_64).
 2. Packs each binary into a tarball (`.tar.gz`) or Windows `.zip`.

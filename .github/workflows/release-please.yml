@@ -13,6 +13,9 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      release_created: ${{ steps.release.outputs.release_created }}
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
@@ -22,16 +25,21 @@ jobs:
           config-file: release-please-config.json
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Releases created by GITHUB_TOKEN do not trigger other workflows, so we
-      # explicitly trigger the CLI build and extension publish when a release is created.
-      - name: Trigger release CLI build
-        if: steps.release.outputs.release_created == 'true'
-        run: gh workflow run release-cli.yml -f version="${{ steps.release.outputs.tag_name }}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # GITHUB_TOKEN cannot trigger workflow_dispatch (403). Call workflows directly so they run in this run.
+  build-cli:
+    name: Build and attach CLI
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    uses: ./.github/workflows/release-cli.yml
+    with:
+      version: ${{ needs.release-please.outputs.tag_name }}
+    secrets: inherit
 
-      - name: Trigger extension publish
-        if: steps.release.outputs.release_created == 'true'
-        run: gh workflow run publish-extension.yml -f version="${{ steps.release.outputs.tag_name }}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  publish-extension:
+    name: Publish extension
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    uses: ./.github/workflows/publish-extension.yml
+    with:
+      version: ${{ needs.release-please.outputs.tag_name }}
+    secrets: inherit

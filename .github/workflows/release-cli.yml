@@ -1,6 +1,5 @@
 # Build Sruja CLI for multiple platforms and attach binaries + install script to the GitHub Release.
-# Triggered by: (1) release published, or (2) workflow_dispatch (used when release-please creates
-# a release, since GITHUB_TOKEN-created releases do not trigger other workflows).
+# Triggered by: (1) release published, (2) workflow_call (from release-please), or (3) workflow_dispatch (manual).
 name: Build and attach CLI to release
 
 on:
@@ -9,7 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release tag (e.g. v0.6.1). Required when dispatched from release-please or manually."
+        description: "Release tag (e.g. v0.6.1). Required when dispatched manually."
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        description: "Release tag (e.g. v0.6.1 or sruja-v0.7.1)."
         required: true
         type: string
 
@@ -17,8 +22,8 @@ permissions:
   contents: write
 
 env:
-  # Use dispatch input when run via workflow_dispatch; otherwise use release event.
-  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.event.release.tag_name }}
+  # Use input when run via workflow_dispatch or workflow_call; otherwise use release event.
+  RELEASE_TAG: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && inputs.version || github.event.release.tag_name }}
 
 jobs:
   build:
