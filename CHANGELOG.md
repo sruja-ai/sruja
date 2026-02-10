@@ -5,6 +5,19 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.6.1...sruja-v0.7.0) (2026-02-10)
+
+
+### Features
+
+* better error messages for lint/validate (DSL roadmap [#1](https://github.com/sruja-ai/sruja/issues/1)) ([931e3e8](https://github.com/sruja-ai/sruja/commit/931e3e8cbb99f3adbab2cc706aaf25f1d91bf70f))
+* **release:** build CLI for GitHub Releases and add install script ([a592ca8](https://github.com/sruja-ai/sruja/commit/a592ca8038a96c6b5306d59d7b72a5e1182e7829))
+
+
+### Bug Fixes
+
+* **extension:** open Markdown preview after Export to Markdown ([1748ce3](https://github.com/sruja-ai/sruja/commit/1748ce3985cf7fae05a9160a01cd2be4d872b336))
+
 ## [0.6.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.6.0...sruja-v0.6.1) (2026-02-10)
 
 
