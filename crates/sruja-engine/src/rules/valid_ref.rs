@@ -45,11 +45,13 @@
 //!
 //! The above would produce:
 //! ```text
-//! [E202] Error: Reference 'api' in relation does not exist
+//! [E202] Error: Undefined element 'api' in relation (invalid target reference)
 //!   --> example.sruja:3:8
 //!
 //!   = Help: Element 'api' must be defined before it can be referenced
-//!          Check for typos or missing element definitions
+//!          Run `sruja tree example.sruja` to list defined element IDs
+//!          Check for typos or spelling mistakes in the reference
+//!          Did you mean: 'web'
 //! ```
 //!
 //! ## Nested Element References
@@ -176,6 +178,7 @@ fn validate_relation(
             source_name,
             relation,
             true, // is_source
+            element_ids,
             diagnostics,
         );
     }
@@ -186,6 +189,7 @@ fn validate_relation(
             target_name,
             relation,
             false, // is_target
+            element_ids,
             diagnostics,
         );
     }
@@ -245,6 +249,7 @@ fn element_exists_by_id(
 /// * `reference_name` - The name of the undefined element being referenced
 /// * `relation` - The relation containing the invalid reference
 /// * `is_source` - Whether this is the source (true) or target (false) of the relation
+/// * `element_ids` - Set of all valid element IDs (used for "Did you mean?" suggestions)
 /// * `diagnostics` - Output vector to collect the diagnostic
 ///
 /// # Side Effects
@@ -254,27 +259,36 @@ fn add_undefined_reference_diagnostic(
     reference_name: String,
     relation: &Relation,
     is_source: bool,
+    element_ids: &HashSet<String>,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
     // Construct a descriptive message that clearly indicates the problem
     let role = if is_source { "source" } else { "target" };
     let message = format!(
-        "Reference '{}' in relation does not exist (invalid {} reference)",
+        "Undefined element '{}' in relation (invalid {} reference)",
         reference_name, role
     );
 
     // Generate context that shows the problematic relation
-    let relation_context = format!(
-        "{} -> {}",
-        relation.from.as_string(),
-        relation.to.as_string()
-    );
+    let relation_context = match &relation.label {
+        Some(label) if !label.trim().is_empty() => format!(
+            "{} -> {} \"{}\"",
+            relation.from.as_string(),
+            relation.to.as_string(),
+            label
+        ),
+        _ => format!("{} -> {}", relation.from.as_string(), relation.to.as_string()),
+    };
 
     // Create actionable suggestions to help the developer resolve the issue
-    let suggestions = vec![
+    let mut suggestions = vec![
         format!(
             "Element '{}' must be defined before it can be referenced",
             reference_name
+        ),
+        format!(
+            "Run `sruja tree {}` to list defined element IDs",
+            relation.location.file
         ),
         "Check for typos or spelling mistakes in the reference".to_string(),
         format!(
@@ -283,6 +297,20 @@ fn add_undefined_reference_diagnostic(
         ),
         "For nested elements, use the fully qualified name (e.g., 'system.container')".to_string(),
     ];
+
+    // Suggest likely intended elements (best-effort, avoids noisy guesses).
+    let ids_vec: Vec<String> = element_ids.iter().cloned().collect();
+    let candidates = best_reference_candidates(&reference_name, ids_vec);
+    if !candidates.is_empty() {
+        suggestions.push(format!(
+            "Did you mean: {}",
+            candidates
+                .into_iter()
+                .map(|c| format!("'{}'", c))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
 
     // Build and add the diagnostic with full context
     diagnostics.push(
@@ -295,6 +323,84 @@ fn add_undefined_reference_diagnostic(
         .with_context(vec![relation_context])
         .with_suggestions(suggestions),
     );
+}
+
+fn best_reference_candidates(reference: &str, element_ids: Vec<String>) -> Vec<String> {
+    if element_ids.is_empty() {
+        return Vec::new();
+    }
+
+    let reference_lc = reference.to_lowercase();
+
+    // Prefer exact (case-insensitive) leaf matches first.
+    let mut exact_leaf: Vec<String> = element_ids
+        .iter()
+        .filter(|id| leaf_id(id).eq_ignore_ascii_case(&reference_lc))
+        .cloned()
+        .collect();
+    exact_leaf.sort();
+    if !exact_leaf.is_empty() {
+        return exact_leaf.into_iter().take(3).collect();
+    }
+
+    // Otherwise, score by edit distance against the leaf ID.
+    let mut scored: Vec<(usize, String)> = element_ids
+        .into_iter()
+        .map(|id| {
+            let leaf = leaf_id(&id).to_lowercase();
+            (levenshtein(&reference_lc, &leaf), id)
+        })
+        .collect();
+
+    scored.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+
+    let mut out = Vec::with_capacity(3);
+    for (dist, id) in scored {
+        if out.len() >= 3 {
+            break;
+        }
+        // Keep suggestions reasonably tight to avoid noise.
+        if dist <= 3 || id.to_lowercase().contains(&reference_lc) {
+            out.push(id);
+        }
+    }
+    out
+}
+
+fn leaf_id(id: &str) -> &str {
+    id.rsplit('.').next().unwrap_or(id)
+}
+
+/// Levenshtein edit distance (O(n*m)), fine for small strings and small element sets.
+fn levenshtein(a: &str, b: &str) -> usize {
+    if a == b {
+        return 0;
+    }
+    if a.is_empty() {
+        return b.chars().count();
+    }
+    if b.is_empty() {
+        return a.chars().count();
+    }
+
+    let a_chars: Vec<char> = a.chars().collect();
+    let b_chars: Vec<char> = b.chars().collect();
+
+    let mut prev: Vec<usize> = (0..=b_chars.len()).collect();
+    let mut curr: Vec<usize> = vec![0; b_chars.len() + 1];
+
+    for (i, ca) in a_chars.iter().enumerate() {
+        curr[0] = i + 1;
+        for (j, cb) in b_chars.iter().enumerate() {
+            let cost = if ca == cb { 0 } else { 1 };
+            curr[j + 1] = (prev[j + 1] + 1)
+                .min(curr[j] + 1)
+                .min(prev[j] + cost);
+        }
+        prev.clone_from_slice(&curr);
+    }
+
+    prev[b_chars.len()]
 }
 
 #[cfg(test)]
@@ -441,6 +547,22 @@ api -> web "calls"
             .suggestions
             .iter()
             .any(|s| s.contains("defined before")));
+        assert!(
+            diagnostics[0]
+                .suggestions
+                .iter()
+                .any(|s| s.contains("sruja tree")),
+            "Expected a suggestion to run `sruja tree` to list elements"
+        );
+        // "Did you mean" should suggest 'web' (only defined element) for undefined 'api'
+        assert!(
+            diagnostics[0]
+                .suggestions
+                .iter()
+                .any(|s| s.contains("Did you mean") && s.contains("web")),
+            "Expected 'Did you mean' suggestion with 'web': {:?}",
+            diagnostics[0].suggestions
+        );
     }
 
     #[test]

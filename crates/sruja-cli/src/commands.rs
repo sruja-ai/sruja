@@ -16,6 +16,7 @@ use sruja_lsp::server::run_stdio;
 use thiserror::Error;
 
 use crate::modules::collect_sruja_files;
+use crate::modules::validation::enrich_diagnostics_with_source;
 
 #[derive(Error, Debug)]
 pub enum CliError {
@@ -45,8 +46,9 @@ pub async fn lint(file: &str) -> Result<(), CliError> {
     // Parse the file
     let program = match parser.parse(&content) {
         Ok(program) => program,
-        Err(diagnostics) => {
+        Err(mut diagnostics) => {
             // Print parse diagnostics
+            enrich_diagnostics_with_source(&content, &mut diagnostics);
             for diag in &diagnostics {
                 eprintln!("{}", format_diagnostic(diag));
             }
@@ -59,7 +61,8 @@ pub async fn lint(file: &str) -> Result<(), CliError> {
 
     // Validate
     let validator = Validator::with_default_rules();
-    let diagnostics = validator.validate_sync(&program);
+    let mut diagnostics = validator.validate_sync(&program);
+    enrich_diagnostics_with_source(&content, &mut diagnostics);
 
     if diagnostics.is_empty() {
         println!("✓ No issues found");
@@ -123,7 +126,8 @@ pub async fn export(
     // Parse the file
     let program = match parser.parse(&content) {
         Ok(program) => program,
-        Err(diagnostics) => {
+        Err(mut diagnostics) => {
+            enrich_diagnostics_with_source(&content, &mut diagnostics);
             for diag in &diagnostics {
                 eprintln!("{}", format_diagnostic(diag));
             }
@@ -198,7 +202,8 @@ pub async fn list_elements(file: &str) -> Result<(), CliError> {
 
     let program = match parser.parse(&content) {
         Ok(program) => program,
-        Err(diagnostics) => {
+        Err(mut diagnostics) => {
+            enrich_diagnostics_with_source(&content, &mut diagnostics);
             for diag in &diagnostics {
                 eprintln!("{}", format_diagnostic(diag));
             }
@@ -232,7 +237,8 @@ pub async fn tree(file: &str) -> Result<(), CliError> {
 
     let program = match parser.parse(&content) {
         Ok(program) => program,
-        Err(diagnostics) => {
+        Err(mut diagnostics) => {
+            enrich_diagnostics_with_source(&content, &mut diagnostics);
             for diag in &diagnostics {
                 eprintln!("{}", format_diagnostic(diag));
             }
@@ -330,16 +336,22 @@ pub async fn diff(file1: &str, file2: &str, format: &str) -> Result<(), CliError
 
     let program1 = match parser1.parse(&content1) {
         Ok(p) => p,
-        Err(diags) => {
-            eprintln!("Error parsing {}: {} errors", file1, diags.len());
+        Err(mut diags) => {
+            enrich_diagnostics_with_source(&content1, &mut diags);
+            for diag in &diags {
+                eprintln!("{}", format_diagnostic(diag));
+            }
             return Err(CliError::Parse("Failed to parse first file".to_string()));
         }
     };
 
     let program2 = match parser2.parse(&content2) {
         Ok(p) => p,
-        Err(diags) => {
-            eprintln!("Error parsing {}: {} errors", file2, diags.len());
+        Err(mut diags) => {
+            enrich_diagnostics_with_source(&content2, &mut diags);
+            for diag in &diags {
+                eprintln!("{}", format_diagnostic(diag));
+            }
             return Err(CliError::Parse("Failed to parse second file".to_string()));
         }
     };
@@ -414,7 +426,8 @@ pub async fn explain(element_id: &str, file: Option<&str>, json: bool) -> Result
 
     let program = match parser.parse(&content) {
         Ok(p) => p,
-        Err(diags) => {
+        Err(mut diags) => {
+            enrich_diagnostics_with_source(&content, &mut diags);
             for diag in &diags {
                 eprintln!("{}", format_diagnostic(diag));
             }
@@ -538,7 +551,8 @@ pub async fn score(file: Option<&str>) -> Result<(), CliError> {
 
     let program = match parser.parse(&content) {
         Ok(p) => p,
-        Err(diags) => {
+        Err(mut diags) => {
+            enrich_diagnostics_with_source(&content, &mut diags);
             for diag in &diags {
                 eprintln!("{}", format_diagnostic(diag));
             }
@@ -729,7 +743,10 @@ pub async fn validate(
     // Parse file
     let program = match parser.parse(&content) {
         Ok(program) => program,
-        Err(diagnostics) => {
+        Err(mut diagnostics) => {
+            if !format_json {
+                enrich_diagnostics_with_source(&content, &mut diagnostics);
+            }
             for diag in &diagnostics {
                 eprintln!("{}", format_diagnostic(diag));
             }
@@ -755,6 +772,10 @@ pub async fn validate(
             let constraint_diagnostics = validator.validate_sync(&constraint_program);
             if !constraint_diagnostics.is_empty() {
                 eprintln!("Errors in constraint file {}:", constraint_path);
+                let mut constraint_diagnostics = constraint_diagnostics;
+                if !format_json {
+                    enrich_diagnostics_with_source(&constraint_content, &mut constraint_diagnostics);
+                }
                 for diag in &constraint_diagnostics {
                     eprintln!("  {}", format_diagnostic(diag));
                 }
@@ -766,7 +787,10 @@ pub async fn validate(
         }
     }
 
-    let diagnostics = validator.validate_sync(&program);
+    let mut diagnostics = validator.validate_sync(&program);
+    if !format_json {
+        enrich_diagnostics_with_source(&content, &mut diagnostics);
+    }
 
     if format_json {
         let output = serde_json::json!({
@@ -942,7 +966,8 @@ pub async fn compile(file: &str) -> Result<(), CliError> {
             println!("✓ Parsing successful");
             program
         }
-        Err(diagnostics) => {
+        Err(mut diagnostics) => {
+            enrich_diagnostics_with_source(&content, &mut diagnostics);
             for diag in &diagnostics {
                 eprintln!("{}", format_diagnostic(diag));
             }
@@ -955,7 +980,8 @@ pub async fn compile(file: &str) -> Result<(), CliError> {
 
     // Validate
     let validator = Validator::with_default_rules();
-    let diagnostics = validator.validate_sync(&program);
+    let mut diagnostics = validator.validate_sync(&program);
+    enrich_diagnostics_with_source(&content, &mut diagnostics);
 
     if diagnostics.is_empty() {
         println!("✓ Validation successful");
