@@ -4,7 +4,7 @@
 
 **Architecture-as-code for the AI SDLC process** – define architecture in `.sruja` files; validate and export to Markdown and Mermaid diagrams.
 
-> **Beta** – Sruja is under active development. We welcome feedback; APIs may still evolve.
+> ⚠️ **Beta** – Sruja is under active development. APIs may change.
 
 ---
 
