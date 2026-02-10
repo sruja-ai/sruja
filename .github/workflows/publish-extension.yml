@@ -45,21 +45,42 @@ jobs:
       - name: Set extension version
         run: |
           if [ "${{ github.event_name }}" = "workflow_call" ] && [ -n "${{ inputs.version }}" ]; then
-            VERSION="${{ inputs.version }}"
-            VERSION="${VERSION#v}"
-            echo "Using workflow_call version: $VERSION"
+            RAW="${{ inputs.version }}"
+            echo "Using workflow_call version (raw): $RAW"
           elif [ "${{ github.event_name }}" = "push" ] && [ -n "${{ github.ref_name }}" ]; then
-            TAG="${{ github.ref_name }}"
-            VERSION="${TAG#v}"
-            echo "Using pushed tag version: $VERSION"
+            RAW="${{ github.ref_name }}"
+            echo "Using pushed tag version (raw): $RAW"
           elif [ -n "${{ inputs.version }}" ]; then
-            VERSION="${{ inputs.version }}"
-            echo "Using manual version: $VERSION"
+            RAW="${{ inputs.version }}"
+            echo "Using manual version (raw): $RAW"
           else
-            echo "Using version from package.json"
-            exit 0
+            RAW=""
           fi
-          [ -z "$VERSION" ] || (cd extension && npm pkg set version="$VERSION")
+          # Normalize: strip tag prefix (e.g. sruja-v0.7.1 -> v0.7.1) then strip v
+          if [ -n "$RAW" ]; then
+            VERSION="$RAW"
+            VERSION="${VERSION#sruja-}"
+            VERSION="${VERSION#v}"
+            echo "Normalized version: $VERSION"
+          else
+            VERSION=""
+          fi
+          # Validate version is semver (major.minor.patch); vsce rejects e.g. "main"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            if [ -n "$VERSION" ]; then
+              echo "::error::Invalid version format '$RAW' -> '$VERSION'. Expected semver (e.g., 1.2.3 or sruja-v0.7.1)"
+            else
+              echo "No version input; checking extension/package.json..."
+              VERSION=$(cd extension && npm pkg get version --omit=optional | sed 's/"//g')
+              echo "package.json version: $VERSION"
+            fi
+            if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+              echo "::error::Extension version must be semver (major.minor.patch). Got: '$VERSION'. Fix extension/package.json or pass a valid version."
+              exit 1
+            fi
+          fi
+          (cd extension && npm pkg set version="$VERSION")
+          echo "Set extension version to $VERSION"
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable

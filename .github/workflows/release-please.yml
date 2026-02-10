@@ -38,7 +38,7 @@ jobs:
   publish-extension:
     name: Publish extension
     needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
+    if: needs.release-please.outputs.release_created == 'true' && startsWith(needs.release-please.outputs.tag_name, 'v')
     uses: ./.github/workflows/publish-extension.yml
     with:
       version: ${{ needs.release-please.outputs.tag_name }}
