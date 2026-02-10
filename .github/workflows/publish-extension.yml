@@ -20,6 +20,11 @@ on:
         description: "Extension version (e.g. 0.3.5)."
         required: true
         type: string
+    secrets:
+      OPEN_VSX_TOKEN:
+        required: false
+      AZURE_DEVOPS_PAT:
+        required: false
 
 permissions:
   contents: read
