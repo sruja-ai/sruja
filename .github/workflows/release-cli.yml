@@ -142,7 +142,6 @@ jobs:
           find release-assets -type f
           mkdir -p upload
           find release-assets -type f \( -name '*.tar.gz' -o -name '*.zip' \) -exec cp {} upload/ \;
-          cp scripts/install.sh upload/
           ls -la upload/
 
       - name: Upload to GitHub Release
