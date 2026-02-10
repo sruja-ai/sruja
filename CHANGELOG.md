@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.3.7...sruja-v0.4.0) (2026-02-10)
+
+
+### Features
+
+* **book:** add gzip/brotli WASM compression for smaller transfer ([3675aa6](https://github.com/sruja-ai/sruja/commit/3675aa658a789b12312f79081ad19c3376bd490a))
+* WASM size reduction, extension icon, mdBook logo ([3ded042](https://github.com/sruja-ai/sruja/commit/3ded0429c58148ff5c2e1a5a84334c9659964776))
+
 ## [0.3.7](https://github.com/sruja-ai/sruja/compare/sruja-v0.3.6...sruja-v0.3.7) (2026-02-09)
 
 
