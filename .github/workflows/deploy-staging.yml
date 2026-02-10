@@ -64,7 +64,7 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq binaryen brotli
           PKG_DIR="${{ github.workspace }}/crates/sruja-wasm/pkg"
-          wasm-opt --enable-bulk-memory -Oz --strip-debug \
+          wasm-opt --enable-bulk-memory --enable-sign-ext -Oz --strip-debug \
             "$PKG_DIR/sruja_wasm_bg.wasm" -o "$PKG_DIR/sruja_wasm_bg.wasm.tmp"
           mv "$PKG_DIR/sruja_wasm_bg.wasm.tmp" "$PKG_DIR/sruja_wasm_bg.wasm"
           echo "wasm-opt applied (smaller .wasm for deploy)"
