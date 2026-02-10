@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.7](https://github.com/sruja-ai/sruja/compare/sruja-v0.7.6...sruja-v0.7.7) (2026-02-10)
+
+
+### Bug Fixes
+
+* **release-cli:** use INPUT_VERSION when non-empty (workflow_call sees push) ([8a3c751](https://github.com/sruja-ai/sruja/commit/8a3c751cda4b078ceec5673c8f4c1a753be593d1))
+
 ## [0.7.6](https://github.com/sruja-ai/sruja/compare/sruja-v0.7.5...sruja-v0.7.6) (2026-02-10)
 
 
