@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.7.0...sruja-v0.7.1) (2026-02-10)
+
+
+### Bug Fixes
+
+* **release:** auto-trigger CLI build and extension publish from release-please ([00ba9b4](https://github.com/sruja-ai/sruja/commit/00ba9b41b6e603c774a60e3309aedfa2d143b0a8))
+
 ## [0.7.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.6.1...sruja-v0.7.0) (2026-02-10)
 
 
