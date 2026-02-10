@@ -1,7 +1,7 @@
 /**
  * mdBook: add "Show diagram" / "Preview" button on code blocks.
  * - language-mermaid: button renders Mermaid diagram below the block.
- * - language-sruja: button runs WASM (dslToMermaid), then renders Mermaid; optional "Copy Mermaid" / "Show Markdown".
+ * - language-sruja: button runs WASM (dslToMermaid), then renders Mermaid; "Preview" shows exported markdown as rendered HTML; optional "Copy Mermaid" / "Copy Markdown".
  * Requires: Mermaid loaded (e.g. mdbook-mermaid). For Sruja, WASM at (path_to_root + "wasm/rust/") or SRUJA_WASM_BASE.
  */
 (function () {
@@ -9,6 +9,33 @@
 
   var wasmModule = null;
   var wasmInitPromise = null;
+  var markedPromise = null;
+
+  function loadMarked() {
+    if (typeof window.marked !== "undefined") return Promise.resolve(window.marked);
+    if (markedPromise) return markedPromise;
+    markedPromise = new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js";
+      s.crossOrigin = "anonymous";
+      s.onload = function () {
+        if (window.marked) {
+          if (window.marked.setOptions) window.marked.setOptions({ gfm: true });
+          resolve(window.marked);
+        } else reject(new Error("marked not found"));
+      };
+      s.onerror = function () { reject(new Error("Failed to load marked")); };
+      document.head.appendChild(s);
+    });
+    return markedPromise;
+  }
+
+  function renderMarkdownToHtml(md) {
+    return loadMarked().then(function (marked) {
+      var out = marked.parse(md || "", { async: false });
+      return typeof out === "string" ? Promise.resolve(out) : (out && out.then ? out : Promise.resolve(""));
+    });
+  }
 
   function getWasmBase() {
     if (typeof window.SRUJA_WASM_BASE !== "undefined") return window.SRUJA_WASM_BASE;
@@ -204,15 +231,20 @@
     var copyMermaidBtn = document.createElement("button");
     copyMermaidBtn.textContent = "Copy Mermaid";
     addButtonStyles(copyMermaidBtn);
-    var showMdBtn = document.createElement("button");
-    showMdBtn.textContent = "Show Markdown";
-    addButtonStyles(showMdBtn);
+    var previewBtn = document.createElement("button");
+    previewBtn.textContent = "Preview";
+    addButtonStyles(previewBtn);
+    var copyMdBtn = document.createElement("button");
+    copyMdBtn.textContent = "Copy Markdown";
+    addButtonStyles(copyMdBtn);
     toolbar.appendChild(showBtn);
     toolbar.appendChild(copyMermaidBtn);
-    toolbar.appendChild(showMdBtn);
+    toolbar.appendChild(previewBtn);
+    toolbar.appendChild(copyMdBtn);
     wrapper.appendChild(toolbar);
 
     var preview = document.createElement("div");
+    preview.className = "sruja-preview";
     preview.style.cssText =
       "margin-top:12px;padding:12px;border:1px solid var(--table-border-color);border-radius:8px;" +
       "background:var(--quote-bg);overflow:auto;display:none;";
@@ -256,35 +288,46 @@
         });
     };
 
+    copyMdBtn.onclick = function () {
+      (lastMarkdown ? Promise.resolve(lastMarkdown) : runWasm("markdown"))
+        .then(function (text) {
+          return navigator.clipboard.writeText(text || "").then(function () {
+            copyMdBtn.textContent = "Copied!";
+            setTimeout(function () { copyMdBtn.textContent = "Copy Markdown"; }, 1500);
+          });
+        })
+        .catch(function (err) {
+          alert("Failed: " + (err.message || String(err)));
+        });
+    };
+
     function resetButtons() {
       showBtn.textContent = "Show diagram";
-      showMdBtn.textContent = "Show Markdown";
+      previewBtn.textContent = "Preview";
     }
 
-    showMdBtn.onclick = function () {
+    previewBtn.onclick = function () {
       if (preview.style.display === "none" || preview.dataset.viewMode === "diagram") {
         preview.style.display = "block";
         preview.dataset.viewMode = "markdown";
-        preview.innerHTML = "<p>Loading Markdown...</p>";
+        preview.innerHTML = "<p>Loading preview…</p>";
         (lastMarkdown ? Promise.resolve(lastMarkdown) : runWasm("markdown"))
           .then(function (text) {
-            var pre = document.createElement("pre");
-            pre.style.cssText = "background:var(--bg);color:var(--fg);padding:12px;border-radius:6px;overflow:auto;max-height:500px;";
-            var code = document.createElement("code");
-            code.className = "language-markdown";
-            code.textContent = text || "";
-            pre.appendChild(code);
-            preview.innerHTML = "";
-            preview.appendChild(pre);
-            showMdBtn.textContent = "Hide Markdown";
-            showBtn.textContent = "Show diagram";
+            return renderMarkdownToHtml(text).then(function (html) {
+              preview.innerHTML = html || "";
+              preview.classList.add("sruja-preview-rendered");
+              previewBtn.textContent = "Hide preview";
+              showBtn.textContent = "Show diagram";
+            });
           })
           .catch(function (err) {
+            preview.classList.remove("sruja-preview-rendered");
             preview.innerHTML = "<p style='color:var(--blockquote-caution-color)'>" + (err.message || String(err)) + "</p>";
           });
       } else {
         preview.style.display = "none";
         preview.dataset.viewMode = "";
+        preview.classList.remove("sruja-preview-rendered");
         resetButtons();
       }
     };
@@ -303,7 +346,7 @@
               }
             });
             showBtn.textContent = "Hide diagram";
-            showMdBtn.textContent = "Show Markdown";
+            previewBtn.textContent = "Preview";
           })
           .catch(function (err) {
             var msg = (err.message || String(err));

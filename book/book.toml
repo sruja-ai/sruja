@@ -4,7 +4,7 @@
 # Serve (live): mdbook serve
 
 [book]
-title = "Sruja"
+title = "Sruja (beta)"
 authors = ["Sruja contributors"]
 language = "en"
 src = "src"

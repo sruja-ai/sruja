@@ -20,11 +20,11 @@
   var a = document.createElement("a");
   a.href = prefix + "index.html";
   a.className = "sruja-nav-logo";
-  a.setAttribute("title", "Sruja – Home");
+  a.setAttribute("title", "Sruja (beta) – Home");
   a.setAttribute("aria-label", "Go to home");
   var img = document.createElement("img");
   img.src = prefix + "sruja-logo.png";
-  img.alt = "Sruja";
+  img.alt = "Sruja (beta)";
   img.className = "sruja-nav-logo-img";
   a.appendChild(img);
   leftButtons.insertBefore(a, leftButtons.firstChild);
