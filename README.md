@@ -1,28 +1,21 @@
-# Sruja - Architecture-as-Code Tool
+# Sruja (beta) – Architecture-as-Code Tool
 
 [![TypeScript Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg?flag=typescript)](https://codecov.io/gh/sruja-ai/sruja)
 
-**Architecture-as-code for the AI SDLC process** - define architecture in `.sruja` files; validate and export to Markdown and Mermaid diagrams.
+**Architecture-as-code for the AI SDLC process** – define architecture in `.sruja` files; validate and export to Markdown and Mermaid diagrams.
 
-> **⚠️ Alpha Release**: Sruja is under active development. APIs may change.
+> **Beta** – Sruja is under active development. We welcome feedback; APIs may still evolve.
 
 ---
 
 ## Why Sruja?
 
-### 🔄 **Architecture-as-Code** - Version Controlled, Validated, Exported
+### 🔄 **Architecture-as-Code** – Version controlled, validated, exported
 
-Most architecture tools make you choose:
-
-- ❌ Visual editor (Draw.io) - no code, no version control
-- ❌ Code-only (Mermaid, PlantUML) - no validation, manual diagram updates
-
-**Sruja does both:**
-
-- ✅ Define architecture in `.sruja` files - version-controlled in Git
-- ✅ Built-in validation - catch issues before they reach production
-- ✅ Export to Markdown and Mermaid - integrate into your docs
-- ✅ Works for developers and CI/CD pipelines
+- Define architecture in `.sruja` files – version-controlled in Git
+- Built-in validation – catch issues before they reach production
+- Export to Markdown and Mermaid – integrate into your docs
+- Works for developers and CI/CD pipelines
 
 ---
 
@@ -107,20 +100,6 @@ sruja export markdown example.sruja
 - **Code Formatter**: `sruja fmt`
 - **Tree View**: `sruja tree`
 - **CLI**: Full command-line interface
-
----
-
-## Comparison
-
-| Feature             | Draw.io | Mermaid | Structurizr | PlantUML | **Sruja** |
-| ------------------- | ------- | ------- | ----------- | -------- | --------- |
-| Code-backed         | ❌      | ✅      | ✅          | ✅       | ✅        |
-| Built-in validation | ❌      | ❌      | ❌          | ❌       | **✅**    |
-| Version control     | ❌      | ✅      | ✅          | ✅       | ✅        |
-| Export to Mermaid   | ✅      | ✅      | ❌          | ✅       | ✅        |
-| Export to Markdown  | ❌      | ❌      | ❌          | ❌       | **✅**    |
-
-**Unique advantage**: Built-in validation with architecture-as-code workflow
 
 ---
 
