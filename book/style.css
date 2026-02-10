@@ -1,15 +1,19 @@
 /* Sruja docs – custom overrides for a polished docs-site look */
 
-/* ---- Sidebar logo ---- */
-.sruja-sidebar-logo {
-  display: block;
-  max-width: 100%;
-  width: 120px;
-  height: auto;
-  margin: 12px auto 16px;
-  padding: 0 8px;
+/* ---- Top nav: Sruja logo (links to home) ---- */
+.sruja-nav-logo {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-end: 4px;
 }
 
+.sruja-nav-logo-img {
+  display: block;
+  height: 28px;
+  width: auto;
+}
+
+/* ---- Home page content logo ---- */
 .sruja-home-logo {
   display: block;
   margin-block-end: 1em;
@@ -149,17 +153,6 @@ html {
     border-block-end-color: hsl(36, 15%, 90%);
 }
 
-/* Home icon in top nav: same size as other icon-button items */
-.sruja-nav-home {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.sruja-nav-home .fa-svg svg {
-    width: 1.25em;
-    height: 1.25em;
-}
 
 /* ---- Sidebar ---- */
 .chapter-item.active > .chapter-item-flex {
