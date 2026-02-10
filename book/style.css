@@ -149,6 +149,18 @@ html {
     border-block-end-color: hsl(36, 15%, 90%);
 }
 
+/* Home icon in top nav: same size as other icon-button items */
+.sruja-nav-home {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sruja-nav-home .fa-svg svg {
+    width: 1.25em;
+    height: 1.25em;
+}
+
 /* ---- Sidebar ---- */
 .chapter-item.active > .chapter-item-flex {
     font-weight: 600;
