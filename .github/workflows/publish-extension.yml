@@ -63,6 +63,9 @@ jobs:
       - name: Install wasm-pack
         run: cargo install wasm-pack
 
+      - name: Install wasm-opt (binaryen, for smaller extension WASM)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq binaryen
+
       - name: Install extension dependencies
         run: |
           cd extension

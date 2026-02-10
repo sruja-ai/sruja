@@ -19,6 +19,13 @@ if [ ! -f "$WASM_SRC/sruja_wasm.js" ] || [ ! -f "$WASM_SRC/sruja_wasm_bg.wasm" ]
   fi
   wasm-pack build --target nodejs --out-dir pkg-nodejs crates/sruja-wasm --release
 fi
+# Shrink WASM with wasm-opt if available (size reduction for extension)
+if command -v wasm-opt >/dev/null 2>&1; then
+  wasm-opt --enable-bulk-memory -Oz --strip-debug \
+    "$WASM_SRC/sruja_wasm_bg.wasm" -o "$WASM_SRC/sruja_wasm_bg.wasm.tmp" && \
+  mv "$WASM_SRC/sruja_wasm_bg.wasm.tmp" "$WASM_SRC/sruja_wasm_bg.wasm"
+  echo "  wasm-opt applied (size reduction)"
+fi
 mkdir -p "$EXT_DIR/wasm"
 cp "$WASM_SRC/sruja_wasm.js" "$WASM_SRC/sruja_wasm_bg.wasm" "$EXT_DIR/wasm/"
 echo "✅ Copied WASM shim to extension/wasm/"

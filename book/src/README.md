@@ -1,5 +1,7 @@
 # Sruja
 
+<img src="sruja-logo.png" alt="Sruja" class="sruja-home-logo" width="160" />
+
 **Architecture-as-code for the AI SDLC process.** Define architecture in `.sruja` files; validate, and export to Markdown and Mermaid diagrams. We're a backend tool for the SDLC lifecycle—not a diagramming product.
 
 ## Why Sruja?

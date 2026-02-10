@@ -1,5 +1,20 @@
 /* Sruja docs – custom overrides for a polished docs-site look */
 
+/* ---- Sidebar logo ---- */
+.sruja-sidebar-logo {
+  display: block;
+  max-width: 100%;
+  width: 120px;
+  height: auto;
+  margin: 12px auto 16px;
+  padding: 0 8px;
+}
+
+.sruja-home-logo {
+  display: block;
+  margin-block-end: 1em;
+}
+
 /* ---- Typography & layout ---- */
 :root {
     --content-max-width: 820px;

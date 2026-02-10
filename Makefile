@@ -90,7 +90,7 @@ wasm:
 		fi; \
 		wasm-pack build --target web --out-dir $(WASM_PKG) crates/sruja-wasm --release; \
 		if command -v wasm-opt >/dev/null 2>&1; then \
-			wasm-opt -O3 --strip-debug $(WASM_PKG)/sruja_wasm_bg.wasm -o $(WASM_PKG)/sruja_wasm_bg.wasm.tmp && mv $(WASM_PKG)/sruja_wasm_bg.wasm.tmp $(WASM_PKG)/sruja_wasm_bg.wasm; \
+			wasm-opt --enable-bulk-memory -Oz --strip-debug $(WASM_PKG)/sruja_wasm_bg.wasm -o $(WASM_PKG)/sruja_wasm_bg.wasm.tmp && mv $(WASM_PKG)/sruja_wasm_bg.wasm.tmp $(WASM_PKG)/sruja_wasm_bg.wasm; \
 		fi; \
 		echo "✅ WASM build complete ($(WASM_PKG)/)"; \
 	else \

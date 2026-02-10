@@ -45,7 +45,14 @@ if [ -n "$WASM_SRC" ]; then
   mkdir -p "$OUTPUT_DIR/wasm/rust"
   cp "$WASM_SRC/sruja_wasm.js" "$WASM_SRC/sruja_wasm_bg.wasm" "$OUTPUT_DIR/wasm/rust/"
   echo "Copied WASM into book output ($OUTPUT_DIR/wasm/rust/)"
-else
+fi
+# Copy Sruja logo into book output (for sidebar and pages)
+if [ -f "$BOOK_ROOT/sruja-logo.png" ]; then
+  mkdir -p "$OUTPUT_DIR"
+  cp "$BOOK_ROOT/sruja-logo.png" "$OUTPUT_DIR/sruja-logo.png"
+  echo "Copied sruja-logo.png into book output"
+fi
+if [ -z "$WASM_SRC" ]; then
   echo "WASM not found. Run from repo root: make wasm"
   echo "  Then rebuild/serve the book so wasm/rust/ is copied into the output."
   exit 1

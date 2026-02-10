@@ -51,6 +51,15 @@ jobs:
           fi
           echo "WASM artifacts OK: $PKG_DIR"
 
+      - name: Optimize WASM with wasm-opt (reduce size for book)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq binaryen
+          PKG_DIR="${{ github.workspace }}/crates/sruja-wasm/pkg"
+          wasm-opt --enable-bulk-memory -Oz --strip-debug \
+            "$PKG_DIR/sruja_wasm_bg.wasm" -o "$PKG_DIR/sruja_wasm_bg.wasm.tmp"
+          mv "$PKG_DIR/sruja_wasm_bg.wasm.tmp" "$PKG_DIR/sruja_wasm_bg.wasm"
+          echo "wasm-opt applied (smaller .wasm for deploy)"
+
       - name: Build book
         run: |
           export PATH="$PWD/target/release:$PATH"

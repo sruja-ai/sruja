@@ -24,4 +24,4 @@ console_error_panic_hook = "0.1"
 
 # wasm-pack: enable bulk memory so wasm-opt accepts LLVM-generated memory.copy etc.
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = ["--enable-bulk-memory", "-O"]
+wasm-opt = ["--enable-bulk-memory", "-Oz", "--strip-debug"]
