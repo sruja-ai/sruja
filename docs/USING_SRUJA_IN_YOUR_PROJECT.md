@@ -16,7 +16,7 @@ This guide is for **teams and organizations** that want to use Sruja in their ow
 **Option A – install script (downloads from [GitHub Releases](https://github.com/sruja-ai/sruja/releases)):**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
+curl -fsSL https://sruja.ai/install.sh | bash
 ```
 
 **Option B – from Git (requires Rust):**

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install the Sruja CLI from GitHub Releases.
-# Usage: curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
-#        curl -fsSL .../install.sh | bash -s -- sruja-v0.7.7   # or v0.6.1, or omit for latest
+# Usage: curl -fsSL https://sruja.ai/install.sh | bash
+#        curl -fsSL https://sruja.ai/install.sh | bash -s -- sruja-v0.7.7   # or v0.6.1, or omit for latest
 set -e
 
 REPO="${SRUJA_REPO:-sruja-ai/sruja}"

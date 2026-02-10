@@ -13,7 +13,7 @@
 | **release-please.yml** | push to main | Update CHANGELOG and create release PR from conventional commits. |
 | **publish-extension.yml** | push tag v* / manual / workflow_call | Build VS Code extension; publish to Open VSX and (if `AZURE_DEVOPS_PAT` set) Visual Studio Marketplace. |
 | **trigger-extension-publish.yml** | release published | Calls publish-extension with release version so extension publishes when a release is created (e.g. by Release Please). |
-| **release-cli.yml** | release published, **workflow_call** (from release-please), or **workflow_dispatch** (manual) | Build Sruja CLI for Linux (x86_64), macOS (aarch64), and Windows (x86_64); attach binaries to the GitHub Release. **release-please** calls this via `workflow_call` when it creates a release (GITHUB_TOKEN cannot trigger `workflow_dispatch`). Install script lives in repo; users run `curl .../scripts/install.sh | bash` from main. |
+| **release-cli.yml** | release published, **workflow_call** (from release-please), or **workflow_dispatch** (manual) | Build Sruja CLI for Linux (x86_64), macOS (aarch64), and Windows (x86_64); attach binaries to the GitHub Release. **release-please** calls this via `workflow_call` when it creates a release (GITHUB_TOKEN cannot trigger `workflow_dispatch`). Install script is served at https://sruja.ai/install.sh; users run `curl -fsSL https://sruja.ai/install.sh | bash`. |
 
 ## Standards defined in .sruja → CI checks
 
@@ -98,11 +98,11 @@ When a release is published, **release-cli.yml** runs. Because releases created 
 Users can install the CLI by running the install script from the repo (it downloads the appropriate binary from the release):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
+curl -fsSL https://sruja.ai/install.sh | bash
 ```
 
 Or a specific version (tag as shown on [Releases](https://github.com/sruja-ai/sruja/releases), e.g. `sruja-v0.7.7` or `v0.6.1`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash -s -- sruja-v0.7.7
+curl -fsSL https://sruja.ai/install.sh | bash -s -- sruja-v0.7.7
 ```

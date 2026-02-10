@@ -19,7 +19,7 @@ Install the Sruja CLI to compile, validate, and export your diagrams.
 ### Option A – install script (downloads from [GitHub Releases](https://github.com/sruja-ai/sruja/releases))
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
+curl -fsSL https://sruja.ai/install.sh | bash
 ```
 
 ### Option B – from Git (requires Rust)

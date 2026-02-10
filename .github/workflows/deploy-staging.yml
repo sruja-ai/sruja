@@ -13,6 +13,7 @@ on:
       - "crates/sruja-language/**"
       - "crates/sruja-engine/**"
       - "examples/**"
+      - "scripts/**"
       - ".github/workflows/deploy-staging.yml"
       - ".github/actions/deploy-to-github-pages/**"
   workflow_dispatch:
@@ -96,6 +97,9 @@ jobs:
           fi
           echo "WASM present in book output (will be deployed):"
           ls -la "$WASM_DIR"
+
+      - name: Copy install script into book output
+        run: cp scripts/install.sh book/book/install.sh
 
       - name: Deploy to staging-website
         uses: ./.github/actions/deploy-to-github-pages

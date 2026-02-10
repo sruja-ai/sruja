@@ -88,6 +88,9 @@ jobs:
           echo "WASM present in book output (will be deployed):"
           ls -la "$WASM_DIR"
 
+      - name: Copy install script into book output
+        run: cp scripts/install.sh book/book/install.sh
+
       - name: Deploy to production (prod-website)
         uses: ./.github/actions/deploy-to-github-pages
         with:

@@ -14,7 +14,7 @@ This tutorial teaches the essential Sruja CLI commands for day‑to‑day work.
 **Option A – install script (downloads from [GitHub Releases](https://github.com/sruja-ai/sruja/releases)):**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sruja-ai/sruja/main/scripts/install.sh | bash
+curl -fsSL https://sruja.ai/install.sh | bash
 sruja --version
 ```
 
