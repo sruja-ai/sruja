@@ -1,7 +1,7 @@
 /**
  * mdBook: add "Show diagram" / "Preview" button on code blocks.
  * - language-mermaid: button renders Mermaid diagram below the block.
- * - language-sruja: button runs WASM (dslToMermaid), then renders Mermaid; optional "Copy Mermaid" / "Copy Markdown".
+ * - language-sruja: button runs WASM (dslToMermaid), then renders Mermaid; optional "Copy Mermaid" / "Show Markdown".
  * Requires: Mermaid loaded (e.g. mdbook-mermaid). For Sruja, WASM at (path_to_root + "wasm/rust/") or SRUJA_WASM_BASE.
  */
 (function () {
@@ -204,12 +204,12 @@
     var copyMermaidBtn = document.createElement("button");
     copyMermaidBtn.textContent = "Copy Mermaid";
     addButtonStyles(copyMermaidBtn);
-    var copyMdBtn = document.createElement("button");
-    copyMdBtn.textContent = "Copy Markdown";
-    addButtonStyles(copyMdBtn);
+    var showMdBtn = document.createElement("button");
+    showMdBtn.textContent = "Show Markdown";
+    addButtonStyles(showMdBtn);
     toolbar.appendChild(showBtn);
     toolbar.appendChild(copyMermaidBtn);
-    toolbar.appendChild(copyMdBtn);
+    toolbar.appendChild(showMdBtn);
     wrapper.appendChild(toolbar);
 
     var preview = document.createElement("div");
@@ -243,49 +243,6 @@
       );
     }
 
-    showBtn.onclick = function () {
-      if (preview.style.display === "none") {
-        preview.style.display = "block";
-        preview.innerHTML = "<p>Loading WASM and rendering…</p>";
-        runWasm("mermaid")
-          .then(function (mermaidCode) {
-            preview.innerHTML = "";
-            renderMermaidInto(preview, mermaidCode, function (err) {
-              if (err) {
-                preview.innerHTML = "<p style='color:var(--blockquote-caution-color)'>" + (err.message || String(err)) + "</p>";
-              }
-            });
-          })
-          .catch(function (err) {
-            var msg = (err.message || String(err));
-            preview.innerHTML =
-              "<p style='color:var(--blockquote-caution-color)'>WASM not available: " + msg + ".</p>" +
-              "<p><strong>Fix:</strong> From the repo root run <code>make wasm</code>, then <code>make book-serve</code>. If you just started serve, wait a few seconds and click <strong>Retry</strong>.</p>" +
-              "<button type='button' class='sruja-retry-btn' style='padding:6px 12px;border-radius:6px;border:1px solid var(--table-border-color);background:var(--bg);color:var(--fg);cursor:pointer;'>Retry</button>";
-            var retryBtn = preview.querySelector(".sruja-retry-btn");
-            if (retryBtn) {
-              retryBtn.onclick = function () {
-                preview.innerHTML = "<p>Loading WASM…</p>";
-                runWasm("mermaid").then(function (mermaidCode) {
-                  preview.innerHTML = "";
-                  renderMermaidInto(preview, mermaidCode, function (e) {
-                    if (e) preview.innerHTML = "<p style='color:var(--blockquote-caution-color)'>" + (e.message || String(e)) + "</p>";
-                  });
-                }).catch(function (e) {
-                  preview.innerHTML = "<p style='color:var(--blockquote-caution-color)'>WASM not available: " + (e.message || String(e)) + ". <button type='button' class='sruja-retry-btn' style='padding:6px 12px;margin-left:8px;'>Retry</button></p>";
-                  var b = preview.querySelector(".sruja-retry-btn");
-                  if (b) b.onclick = retryBtn.onclick;
-                });
-              };
-            }
-          });
-        showBtn.textContent = "Hide diagram";
-      } else {
-        preview.style.display = "none";
-        showBtn.textContent = "Show diagram";
-      }
-    };
-
     copyMermaidBtn.onclick = function () {
       (lastMermaid ? Promise.resolve(lastMermaid) : runWasm("mermaid"))
         .then(function (text) {
@@ -299,17 +256,83 @@
         });
     };
 
-    copyMdBtn.onclick = function () {
-      (lastMarkdown ? Promise.resolve(lastMarkdown) : runWasm("markdown"))
-        .then(function (text) {
-          return navigator.clipboard.writeText(text || "").then(function () {
-            copyMdBtn.textContent = "Copied!";
-            setTimeout(function () { copyMdBtn.textContent = "Copy Markdown"; }, 1500);
+    function resetButtons() {
+      showBtn.textContent = "Show diagram";
+      showMdBtn.textContent = "Show Markdown";
+    }
+
+    showMdBtn.onclick = function () {
+      if (preview.style.display === "none" || preview.dataset.viewMode === "diagram") {
+        preview.style.display = "block";
+        preview.dataset.viewMode = "markdown";
+        preview.innerHTML = "<p>Loading Markdown...</p>";
+        (lastMarkdown ? Promise.resolve(lastMarkdown) : runWasm("markdown"))
+          .then(function (text) {
+            var pre = document.createElement("pre");
+            pre.style.cssText = "background:var(--bg);color:var(--fg);padding:12px;border-radius:6px;overflow:auto;max-height:500px;";
+            var code = document.createElement("code");
+            code.className = "language-markdown";
+            code.textContent = text || "";
+            pre.appendChild(code);
+            preview.innerHTML = "";
+            preview.appendChild(pre);
+            showMdBtn.textContent = "Hide Markdown";
+            showBtn.textContent = "Show diagram";
+          })
+          .catch(function (err) {
+            preview.innerHTML = "<p style='color:var(--blockquote-caution-color)'>" + (err.message || String(err)) + "</p>";
           });
-        })
-        .catch(function (err) {
-          alert("Failed: " + (err.message || String(err)));
-        });
+      } else {
+        preview.style.display = "none";
+        preview.dataset.viewMode = "";
+        resetButtons();
+      }
+    };
+
+    showBtn.onclick = function () {
+      if (preview.style.display === "none" || preview.dataset.viewMode === "markdown") {
+        preview.style.display = "block";
+        preview.dataset.viewMode = "diagram";
+        preview.innerHTML = "<p>Loading WASM and rendering...</p>";
+        runWasm("mermaid")
+          .then(function (mermaidCode) {
+            preview.innerHTML = "";
+            renderMermaidInto(preview, mermaidCode, function (err) {
+              if (err) {
+                preview.innerHTML = "<p style='color:var(--blockquote-caution-color)'>" + (err.message || String(err)) + "</p>";
+              }
+            });
+            showBtn.textContent = "Hide diagram";
+            showMdBtn.textContent = "Show Markdown";
+          })
+          .catch(function (err) {
+            var msg = (err.message || String(err));
+            preview.innerHTML =
+              "<p style='color:var(--blockquote-caution-color)'>WASM not available: " + msg + ".</p>" +
+              "<p><strong>Fix:</strong> From the repo root run <code>make wasm</code>, then <code>make book-serve</code>. If you just started serve, wait a few seconds and click <strong>Retry</strong>.</p>" +
+              "<button type='button' class='sruja-retry-btn' style='padding:6px 12px;border-radius:6px;border:1px solid var(--table-border-color);background:var(--bg);color:var(--fg);cursor:pointer;'>Retry</button>";
+            var retryBtn = preview.querySelector(".sruja-retry-btn");
+            if (retryBtn) {
+              retryBtn.onclick = function () {
+                preview.innerHTML = "<p>Loading WASM...</p>";
+                runWasm("mermaid").then(function (mermaidCode) {
+                  preview.innerHTML = "";
+                  renderMermaidInto(preview, mermaidCode, function (e) {
+                    if (e) preview.innerHTML = "<p style='color:var(--blockquote-caution-color)'>" + (e.message || String(e)) + "</p>";
+                  });
+                }).catch(function (e) {
+                  preview.innerHTML = "<p style='color:var(--blockquote-caution-color)'>WASM not available: " + (e.message || String(e)) + ". <button type='button' class='sruja-retry-btn' style='padding:6px 12px;margin-left:8px;'>Retry</button></p>";
+                  var b = preview.querySelector(".sruja-retry-btn");
+                  if (b) b.onclick = retryBtn.onclick;
+                });
+              };
+            }
+          });
+      } else {
+        preview.style.display = "none";
+        preview.dataset.viewMode = "";
+        resetButtons();
+      }
     };
   }
 
