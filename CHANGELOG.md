@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2](https://github.com/sruja-ai/sruja/compare/sruja-v0.7.1...sruja-v0.7.2) (2026-02-10)
+
+
+### Bug Fixes
+
+* **release:** use workflow_call instead of gh workflow run to avoid 403 ([09368b5](https://github.com/sruja-ai/sruja/commit/09368b5ea8f365e1c9272b0dd56f3fd48164962a))
+
 ## [0.7.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.7.0...sruja-v0.7.1) (2026-02-10)
 
 
