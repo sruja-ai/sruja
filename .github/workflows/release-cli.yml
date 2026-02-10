@@ -42,12 +42,12 @@ jobs:
           EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$EVENT_NAME" = "workflow_call" ]; then
+          # Prefer passed version (workflow_call/workflow_dispatch); caller's event_name may be push.
+          if [ -n "$INPUT_VERSION" ]; then
             TAG="$INPUT_VERSION"
-          else
+          elif [ -n "$EVENT_RELEASE_TAG" ]; then
             TAG="$EVENT_RELEASE_TAG"
-          fi
-          if [ -z "$TAG" ]; then
+          else
             echo "::error::No release tag. workflow_call/workflow_dispatch must pass version; release event must have tag. EVENT_NAME=$EVENT_NAME"
             exit 1
           fi

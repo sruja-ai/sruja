@@ -14,8 +14,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+      sruja: ${{ steps.filter.outputs.sruja }}
+      skills: ${{ steps.filter.outputs.skills }}
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            rust:
+              - 'crates/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            sruja:
+              - '**/*.sruja'
+              - '.github/actions/sruja-validate/**'
+            skills:
+              - 'skills/**'
+              - '.github/actions/skill-lint-validate/**'
+
   rust:
     name: Rust build, test, format, lint
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -37,6 +63,8 @@ jobs:
 
   sruja-files:
     name: Sruja files (lint)
+    needs: changes
+    if: needs.changes.outputs.sruja == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -49,6 +77,8 @@ jobs:
 
   skill-files:
     name: Skill files (validate)
+    needs: changes
+    if: needs.changes.outputs.skills == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
