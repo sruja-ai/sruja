@@ -44,15 +44,20 @@ jobs:
 
       - name: Set extension version
         run: |
-          if [ "${{ github.event_name }}" = "workflow_call" ] && [ -n "${{ inputs.version }}" ]; then
+          # Prefer explicit version from workflow_call/workflow_dispatch so we never use branch ref (e.g. main).
+          if [ -n "${{ inputs.version }}" ]; then
             RAW="${{ inputs.version }}"
-            echo "Using workflow_call version (raw): $RAW"
+            echo "Using input version (raw): $RAW"
           elif [ "${{ github.event_name }}" = "push" ] && [ -n "${{ github.ref_name }}" ]; then
-            RAW="${{ github.ref_name }}"
-            echo "Using pushed tag version (raw): $RAW"
-          elif [ -n "${{ inputs.version }}" ]; then
-            RAW="${{ inputs.version }}"
-            echo "Using manual version (raw): $RAW"
+            # Only use ref_name if it looks like a version tag (v* or sruja-v*); ignore branch names like main.
+            REF="${{ github.ref_name }}"
+            if [[ "$REF" =~ ^(v[0-9]|sruja-v) ]]; then
+              RAW="$REF"
+              echo "Using pushed tag version (raw): $RAW"
+            else
+              RAW=""
+              echo "Ref '$REF' is not a version tag; will use package.json if no other version set."
+            fi
           else
             RAW=""
           fi
