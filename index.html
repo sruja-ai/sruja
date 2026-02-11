@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Educational Activity Generator - MVP</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        h1 { 
+            font-size: 24px; 
+            margin-bottom: 8px; 
+            color: #333;
+        }
+        .subtitle { 
+            color: #666; 
+            margin-bottom: 24px; 
+            font-size: 14px;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #333;
+        }
+        
+        .input-group { margin-bottom: 16px; }
+        
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: #555;
+        }
+        
+        textarea, select, input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        
+        textarea { min-height: 120px; resize: vertical; }
+        
+        .btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .btn:hover { background: #1d4ed8; }
+        .btn:disabled { background: #9ca3af; cursor: not-allowed; }
+        .btn-secondary {
+            background: #6b7280;
+            margin-left: 8px;
+        }
+        .btn-secondary:hover { background: #4b5563; }
+        
+        .preview-frame {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+        
+        .status-panel {
+            background: #1f2937;
+            color: #10b981;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+        }
+        
+        .status-title {
+            color: #9ca3af;
+            margin-bottom: 8px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-log {
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .status-item {
+            padding: 4px 0;
+            border-bottom: 1px solid #374151;
+        }
+        
+        .status-item:last-child { border-bottom: none; }
+        
+        .status-time { color: #6b7280; margin-right: 8px; }
+        .status-started { color: #3b82f6; }
+        .status-completed { color: #10b981; }
+        .status-failed { color: #ef4444; }
+        .status-stuck { color: #f59e0b; }
+        
+        .examples {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .example-btn {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .example-btn:hover { background: #e5e7eb; }
+        
+        .activity-info {
+            background: #f0f9ff;
+            border-left: 3px solid #3b82f6;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+        
+        .activity-info strong { color: #1e40af; }
+        
+        .output-section {
+            display: none;
+            margin-top: 16px;
+        }
+        
+        .output-section.visible { display: block; }
+        
+        .code-display {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 16px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 Educational Activity Generator</h1>
+        <p class="subtitle">Convert blogs, LinkedIn posts, and concepts into interactive learning activities</p>
+        
+        <div class="main-grid">
+            <!-- Left Panel: Input -->
+            <div class="panel">
+                <h2 class="panel-title">Create Activity</h2>
+                
+                <div class="input-group">
+                    <label>Quick Examples:</label>
+                    <div class="examples">
+                        <button class="example-btn" onclick="loadExample('budget')">📊 Budget Simulator</button>
+                        <button class="example-btn" onclick="loadExample('timeblock')">⏱️ Time Blocking</button>
+                        <button class="example-btn" onclick="loadExample('compound')">💰 Compound Interest</button>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="contentType">Content Type:</label>
+                    <select id="contentType" onchange="updatePlaceholder()">
+                        <option value="blog">Blog Post / Article</option>
+                        <option value="linkedin">LinkedIn Post</option>
+                        <option value="concept">Concept / Explanation</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label for="inputContent">Paste your content or describe the concept:</label>
+                    <textarea id="inputContent" placeholder="Paste a blog post, LinkedIn post, or describe a learning concept..."></textarea>
+                </div>
+                
+                <button class="btn" onclick="generateActivity()">✨ Generate Activity</button>
+                <button class="btn btn-secondary" onclick="clearAll()">Clear</button>
+                
+                <div id="activityInfo" class="activity-info" style="display:none;"></div>
+                
+                <div id="outputSection" class="output-section">
+                    <label style="margin-top:16px;">Generated HTML Code:</label>
+                    <div class="code-display" id="codeDisplay"></div>
+                    <button class="btn" style="margin-top:8px;" onclick="copyCode()">📋 Copy HTML</button>
+                </div>
+            </div>
+            
+            <!-- Right Panel: Preview -->
+            <div class="panel">
+                <h2 class="panel-title">Live Preview</h2>
+                <iframe id="previewFrame" class="preview-frame" sandbox="allow-scripts allow-forms"></iframe>
+            </div>
+        </div>
+        
+        <!-- Status Monitor -->
+        <div class="status-panel">
+            <div class="status-title">📡 Activity Communication Monitor</div>
+            <div class="status-log" id="statusLog">
+                <div class="status-item">
+                    <span class="status-time">--:--:--</span>
+                    <span style="color:#9ca3af;">Waiting for activity to start...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Activity Templates (pre-built for demo)
+        const activities = {
+            budget: {
+                title: "Budget Simulator",
+                objective: "Learn to allocate a limited monthly income across essential expenses",
+                html: `<!DOCTYPE html><html><head><style>*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,sans-serif}body{padding:20px;background:#f9fafb;max-width:400px;margin:0 auto}.card{background:white;border-radius:8px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}h2{font-size:18px;margin-bottom:12px;color:#111827}.income{font-size:32px;font-weight:bold;color:#059669;margin:8px 0}.expense-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid#f3f4f6}input[type="range"]{width:100%;margin:8px 0}.total{font-size:14px;color:#dc2626;margin-top:8px}.btn{width:100%;padding:12px;background:#2563eb;color:white;border:none;border-radius:6px;font-size:16px;cursor:pointer;margin-top:16px}.btn:hover{background:#1d4ed8}.success{background:#d1fae5;color:#065f46;padding:12px;border-radius:6px;margin-top:12px;display:none}</style></head><body><div class="card"><h2>💰 Monthly Budget</h2><p>Monthly Income:<span class="income">$3,000</span></p></div><div class="card"><h3>Allocate Your Expenses</h3><div class="expense-item"><label>🏠 Housing</label><span id="housingVal">$1200</span></div><input type="range" id="housing" min="0" max="2000" value="1200" oninput="updateVals()"><div class="expense-item"><label>🍎 Food</label><span id="foodVal">$400</span></div><input type="range" id="food" min="0" max="1000" value="400" oninput="updateVals()"><div class="expense-item"><label>🚗 Transport</label><span id="transportVal">$200</span></div><input type="range" id="transport" min="0" max="600" value="200" oninput="updateVals()"><div class="expense-item"><label>🎮 Entertainment</label><span id="funVal">$100</span></div><input type="range" id="fun" min="0" max="500" value="100" oninput="updateVals()"><p class="total">Total Spent:<span id="total">$1900</span><br>Remaining:<span id="remaining">$1100</span></p></div><button class="btn" onclick="checkBudget()">Check My Budget</button><div id="result" class="success"></div><script>const income=3000;function updateVals(){const h=parseInt(document.getElementById('housing').value);const f=parseInt(document.getElementById('food').value);const t=parseInt(document.getElementById('transport').value);const u=parseInt(document.getElementById('fun').value);document.getElementById('housingVal').textContent='$'+h;document.getElementById('foodVal').textContent='$'+f;document.getElementById('transportVal').textContent='$'+t;document.getElementById('funVal').textContent='$'+u;const total=h+f+t+u;document.getElementById('total').textContent='$'+total;const rem=income-total;document.getElementById('remaining').textContent='$'+rem;document.getElementById('remaining').style.color=rem>=0?'#059669':'#dc2626'}function checkBudget(){const h=parseInt(document.getElementById('housing').value);const f=parseInt(document.getElementById('food').value);const t=parseInt(document.getElementById('transport').value);const u=parseInt(document.getElementById('fun').value);const total=h+f+t+u;if(total<=income){window.parent.postMessage({type:'activity-status',status:'completed',data:{budget:total,savings:income-total}},'*');document.getElementById('result').style.display='block';document.getElementById('result').innerHTML='✅ Great job! You have $'+(income-total)+' left to save!'}else{window.parent.postMessage({type:'activity-status',status:'stuck',data:{overspent:total-income}},'*');document.getElementById('result').style.display='block';document.getElementById('result').innerHTML='⚠️ You are $'+(total-income)+' over budget. Adjust your expenses.'}}updateVals();window.parent.postMessage({type:'activity-status',status:'started'},'*');</script></body></html>`
+            },
+            timeblock: {
+                title: "Time Blocking Practice",
+                objective: "Practice the Pomodoro technique by scheduling focused work sessions",
+                html: `<!DOCTYPE html><html><head><style>*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,sans-serif}body{padding:20px;background:#f9fafb;max-width:400px;margin:0 auto}.card{background:white;border-radius:8px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}h2{font-size:18px;margin-bottom:12px;color:#111827}.task-input{width:100%;padding:10px;border:1px solid#d1d5db;border-radius:6px;margin-bottom:8px}.btn{padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px}.btn:hover{background:#1d4ed8}.btn-block{width:100%;margin-top:8px}.task-list{margin-top:12px}.task-item{background:#f3f4f6;padding:10px;border-radius:6px;margin-bottom:8px;display:flex;align-items:center;gap:8px}.timer{font-size:36px;font-weight:bold;text-align:center;padding:16px;background:#fef3c7;border-radius:8px;margin:16px 0}.controls{display:flex;gap:8px;justify-content:center}.success{background:#d1fae5;color:#065f46;padding:12px;border-radius:6px;margin-top:12px;display:none;text-align:center}</style></head><body><div class="card"><h2>⏱️ Time Blocking Practice</h2><p>Add tasks and focus for 25 minutes on each</p></div><div class="card"><input type="text" id="taskInput" class="task-input" placeholder="Enter a task..."><button class="btn btn-block" onclick="addTask()">+ Add Task</button><div id="taskList" class="task-list"></div></div><div class="card"><div id="timer" class="timer">25:00</div><div class="controls"><button class="btn" onclick="startTimer()">▶️ Start</button><button class="btn" onclick="resetTimer()">🔄 Reset</button><button class="btn" onclick="completeTask()">✅ Complete</button></div></div><div id="result" class="success"></div><script>let timeLeft=1500;let timerId=null;let tasks=[];function addTask(){const input=document.getElementById('taskInput');if(input.value.trim()){tasks.push({name:input.value.trim(),done:false});renderTasks();input.value=''}}function renderTasks(){const list=document.getElementById('taskList');list.innerHTML=tasks.map((t,i)=>'<div class="task-item"><span>'+t.name+'</span></div>').join('')}function startTimer(){if(!timerId){window.parent.postMessage({type:'activity-status',status:'started',data:{action:'focus_session_started'}},'*');timerId=setInterval(()=>{timeLeft--;const m=Math.floor(timeLeft/60);const s=timeLeft%60;document.getElementById('timer').textContent=m+':'+(s<10?'0':'')+s;if(timeLeft<=0){clearInterval(timerId);timerId=null;window.parent.postMessage({type:'activity-status',status:'completed',data:{session_complete:true}},'*');alert('Focus session complete! Take a break.');timeLeft=1500;document.getElementById('timer').textContent='25:00'}},1000)}}function resetTimer(){clearInterval(timerId);timerId=null;timeLeft=1500;document.getElementById('timer').textContent='25:00'}function completeTask(){if(tasks.length>0){const completed=tasks.length;window.parent.postMessage({type:'activity-status',status:'completed',data:{tasks_completed:completed}},'*');document.getElementById('result').style.display='block';document.getElementById('result').innerHTML='🎉 Great! You planned '+completed+' task(s). Keep time-blocking!'}}</script></body></html>`
+            },
+            compound: {
+                title: "Compound Interest Calculator",
+                objective: "Understand how small, consistent investments grow over time through compound interest",
+                html: `<!DOCTYPE html><html><head><style>*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,sans-serif}body{padding:20px;background:#f9fafb;max-width:400px;margin:0 auto}.card{background:white;border-radius:8px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}h2{font-size:18px;margin-bottom:12px;color:#111827}.input-group{margin-bottom:12px}label{display:block;font-size:13px;font-weight:500;margin-bottom:4px;color:#374151}input[type="number"]{width:100%;padding:8px;border:1px solid#d1d5db;border-radius:4px}.result{background:#ecfdf5;padding:16px;border-radius:6px;text-align:center;margin-top:16px}.result h3{font-size:32px;color:#059669}button{width:100%;padding:12px;background:#2563eb;color:white;border:none;border-radius:6px;font-size:16px;cursor:pointer;margin-top:12px}button:hover{background:#1d4ed8}.explanation{font-size:13px;color:#6b7280;margin-top:12px;line-height:1.5}</style></head><body><div class="card"><h2>💰 Compound Interest</h2><p>See how your money grows over time</p></div><div class="card"><div class="input-group"><label>Monthly Investment ($)</label><input type="number" id="monthly" value="100" min="1"></div><div class="input-group"><label>Annual Return (%)</label><input type="number" id="rate" value="8" min="1" max="20"></div><div class="input-group"><label>Years to Grow</label><input type="number" id="years" value="20" min="1" max="50"></div><button onclick="calculate()">Calculate Growth</button></div><div id="result" class="result" style="display:none"><h3 id="totalValue">$0</h3><p id="contributed">Contributed: $0</p><p id="earnings">Earnings: $0</p></div><div id="explanation" class="explanation"></div><script>function calculate(){const monthly=parseFloat(document.getElementById('monthly').value);const rate=parseFloat(document.getElementById('rate').value)/100/12;const years=parseInt(document.getElementById('years').value);const months=years*12;let total=0;let contributed=0;for(let i=0;i<months;i++){total+=monthly;total*=1+rate;contributed+=monthly}const earnings=total-contributed;document.getElementById('totalValue').textContent='$'+Math.round(total).toLocaleString();document.getElementById('contributed').textContent='You contributed: $'+contributed.toLocaleString();document.getElementById('earnings').textContent='Interest earned: $'+Math.round(earnings).toLocaleString();document.getElementById('result').style.display='block';document.getElementById('explanation').innerHTML='<strong>Key Insight:</strong> By investing $'+monthly+'/month for '+years+' years at '+Math.round(rate*12*100)+'%, you earn <strong>$'+Math.round(earnings).toLocaleString()+'</strong> in interest - that\'s '+Math.round(earnings/contributed*100)+'% of your contributions!';window.parent.postMessage({type:'activity-status',status:'completed',data:{total:Math.round(total),contributed,earnings:Math.round(earnings)}},'*')}window.parent.postMessage({type:'activity-status',status:'started'},'*');</script></body></html>`
+            }
+        };
+
+        // Status log tracking
+        let statusCount = 0;
+        
+        function logStatus(status, data = {}) {
+            const log = document.getElementById('statusLog');
+            const time = new Date().toLocaleTimeString();
+            const statusClass = `status-${status}`;
+            
+            const item = document.createElement('div');
+            item.className = 'status-item';
+            item.innerHTML = `<span class="status-time">${time}</span><span class="${statusClass}">●</span> ${status.toUpperCase()}${Object.keys(data).length ? ': ' + JSON.stringify(data) : ''}`;
+            
+            log.insertBefore(item, log.firstChild);
+            statusCount++;
+            
+            // Keep only last 20 entries
+            while (log.children.length > 20) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        // Listen for messages from iframe
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'activity-status') {
+                logStatus(event.data.status, event.data.data || {});
+            }
+        });
+
+        // Load example
+        function loadExample(type) {
+            const activity = activities[type];
+            document.getElementById('inputContent').value = `[Example: ${activity.title}]\n\nLearning Objective: ${activity.objective}`;
+            
+            // Update info
+            const infoDiv = document.getElementById('activityInfo');
+            infoDiv.innerHTML = `<strong>${activity.title}</strong><br>Objective: ${activity.objective}`;
+            infoDiv.style.display = 'block';
+            
+            // Load into preview
+            loadActivityInFrame(activity.html);
+            
+            // Show code
+            document.getElementById('codeDisplay').textContent = activity.html;
+            document.getElementById('outputSection').classList.add('visible');
+            
+            logStatus('started', { example: type });
+        }
+
+        // Load activity into iframe
+        function loadActivityInFrame(html) {
+            const frame = document.getElementById('previewFrame');
+            frame.srcdoc = html;
+        }
+
+        // Generate activity (simulated)
+        function generateActivity() {
+            const content = document.getElementById('inputContent').value.trim();
+            const type = document.getElementById('contentType').value;
+            
+            if (!content) {
+                alert('Please enter content or select an example');
+                return;
+            }
+
+            // For demo, if content matches an example, use that
+            const matchedKey = Object.keys(activities).find(k => 
+                content.toLowerCase().includes(k) || 
+                content.toLowerCase().includes(activities[k].title.toLowerCase())
+            );
+            
+            if (matchedKey) {
+                loadExample(matchedKey);
+                logStatus('completed', { method: 'matched_template' });
+                return;
+            }
+            
+            // For other content, generate a simple reflection activity
+            const generatedHtml = generateSimpleActivity(content, type);
+            loadActivityInFrame(generatedHtml);
+            
+            document.getElementById('activityInfo').innerHTML = `<strong>Generated Activity</strong><br>Based on your ${type} content`;
+            document.getElementById('activityInfo').style.display = 'block';
+            
+            document.getElementById('codeDisplay').textContent = generatedHtml;
+            document.getElementById('outputSection').classList.add('visible');
+            
+            logStatus('started', { generated_from: type });
+        }
+
+        function generateSimpleActivity(content, type) {
+            const title = type === 'blog' ? 'Blog Reflection' : type === 'linkedin' ? 'Key Takeaway' : 'Concept Check';
+            return `<!DOCTYPE html><html><head><style>*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,sans-serif}body{padding:20px;background:#f9fafb;max-width:400px;margin:0 auto}.card{background:white;border-radius:8px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}h2{font-size:18px;margin-bottom:12px;color:#111827}textarea{width:100%;padding:10px;border:1px solid#d1d5db;border-radius:6px;min-height:80px;font-family:inherit}.btn{width:100%;padding:12px;background:#2563eb;color:white;border:none;border-radius:6px;font-size:16px;cursor:pointer;margin-top:12px}.btn:hover{background:#1d4ed8}.success{background:#d1fae5;color:#065f46;padding:12px;border-radius:6px;margin-top:12px;display:none;text-align:center}</style></head><body><div class="card"><h2>${title}</h2><p>Write your main takeaway:</p></div><div class="card"><textarea id="response" placeholder="Type your thoughts here..."></textarea><button class="btn" onclick="submit()">Save Takeaway</button><div id="result" class="success"></div></div><script>function submit(){const r=document.getElementById('response').value.trim();if(r){window.parent.postMessage({type:'activity-status',status:'completed',data:{response_length:r.length}},'*');document.getElementById('result').style.display='block';document.getElementById('result').innerHTML='✅ Takeaway saved! ('+r.length+' characters)'}else{window.parent.postMessage({type:'activity-status',status:'stuck',data:{reason:'empty_response'}},'*')}}window.parent.postMessage({type:'activity-status',status:'started'},'*');</script></body></html>`;
+        }
+
+        function updatePlaceholder() {
+            const type = document.getElementById('contentType').value;
+            const placeholders = {
+                blog: "Paste a blog post or article URL/text. Example: '5 tips for better financial planning...'",
+                linkedin: "Paste a LinkedIn post. Example: 'The secret to productivity isn't working harder, it's...'",
+                concept: "Describe a concept to turn into an activity. Example: 'Explain how supply and demand affects prices'"
+            };
+            document.getElementById('inputContent').placeholder = placeholders[type];
+        }
+
+        function clearAll() {
+            document.getElementById('inputContent').value = '';
+            document.getElementById('activityInfo').style.display = 'none';
+            document.getElementById('outputSection').classList.remove('visible');
+            document.getElementById('previewFrame').srcdoc = '';
+            logStatus('started', { action: 'cleared' });
+        }
+
+        function copyCode() {
+            const code = document.getElementById('codeDisplay').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('HTML code copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>

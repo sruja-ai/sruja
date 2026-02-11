@@ -291,3 +291,383 @@ impl HasLocation for ViewDef {
         &self.location
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Parser;
+
+    fn parse_test_input(input: &str) -> Program {
+        let parser = Parser::new("test.sruja".to_string());
+        parser.parse(input).expect("Should parse successfully")
+    }
+
+    #[test]
+    fn test_build_qualified_id_top_level() {
+        let result = build_qualified_id("", "SystemA");
+        assert_eq!(result, "SystemA");
+    }
+
+    #[test]
+    fn test_build_qualified_id_nested() {
+        let result = build_qualified_id("SystemA", "ContainerB");
+        assert_eq!(result, "SystemA.ContainerB");
+    }
+
+    #[test]
+    fn test_build_qualified_id_deeply_nested() {
+        let result = build_qualified_id("SystemA.ContainerB", "ComponentC");
+        assert_eq!(result, "SystemA.ContainerB.ComponentC");
+    }
+
+    #[test]
+    fn test_collect_elements_simple_system() {
+        let input = r#"
+A = system "System A" {
+    description "A test system"
+}
+"#;
+        let program = parse_test_input(input);
+        let (elements, relations) = collect_elements(&program);
+
+        assert_eq!(elements.len(), 1);
+        assert!(elements.contains_key("A"));
+        assert_eq!(relations.len(), 0);
+    }
+
+    #[test]
+    fn test_collect_elements_nested_elements() {
+        let input = r#"
+A = system "System A" {
+    B = container "Container B" {
+        C = component "Component C"
+    }
+}
+"#;
+        let program = parse_test_input(input);
+        let (elements, relations) = collect_elements(&program);
+
+        assert_eq!(elements.len(), 3);
+        assert!(elements.contains_key("A"));
+        assert!(elements.contains_key("A.B"));
+        assert!(elements.contains_key("A.B.C"));
+        assert_eq!(relations.len(), 0);
+    }
+
+    #[test]
+    fn test_collect_elements_with_relations() {
+        let input = r#"
+A = system "System A"
+B = system "System B"
+A -> B "calls"
+"#;
+        let program = parse_test_input(input);
+        let (elements, relations) = collect_elements(&program);
+
+        assert_eq!(elements.len(), 2);
+        assert_eq!(relations.len(), 1);
+        assert_eq!(relations[0].from.as_string(), "A");
+        assert_eq!(relations[0].to.as_string(), "B");
+    }
+
+    #[test]
+    fn test_collect_elements_nested_relations() {
+        let input = r#"
+A = system "System A" {
+    B = container "Container B" {
+        C = component "Component C"
+    }
+    D = container "Container D"
+    B -> D "calls"
+}
+"#;
+        let program = parse_test_input(input);
+        let (elements, relations) = collect_elements(&program);
+
+        assert_eq!(elements.len(), 4);
+        assert_eq!(relations.len(), 1);
+        assert_eq!(relations[0].from.as_string(), "A.B");
+        assert_eq!(relations[0].to.as_string(), "A.D");
+    }
+
+    #[test]
+    fn test_collect_elements_with_requirements() {
+        let input = r#"
+requirement REQ-001 "User Authentication" {
+    type "functional"
+}
+"#;
+        let program = parse_test_input(input);
+        let (elements, relations) = collect_elements(&program);
+
+        assert_eq!(elements.len(), 1);
+        assert!(elements.contains_key("REQ-001"));
+        assert_eq!(relations.len(), 0);
+    }
+
+    #[test]
+    fn test_collect_all_relations() {
+        let input = r#"
+system A "System A"
+system B "System B"
+A -> B "relation1"
+B -> A "relation2"
+"#;
+        let program = parse_test_input(input);
+        let relations = collect_all_relations(&program);
+
+        assert_eq!(relations.len(), 2);
+        assert_eq!(relations[0].label.as_deref(), Some("relation1"));
+        assert_eq!(relations[1].label.as_deref(), Some("relation2"));
+    }
+
+    #[test]
+    fn test_collect_relations_with_scope_top_level() {
+        let input = r#"
+A = system "System A"
+B = system "System B"
+A -> B "calls"
+"#;
+        let program = parse_test_input(input);
+        let relations_with_scope = collect_relations_with_scope(&program);
+
+        assert_eq!(relations_with_scope.len(), 1);
+        assert!(relations_with_scope[0].scope.is_empty());
+        assert_eq!(relations_with_scope[0].relation.from.as_string(), "A");
+        assert_eq!(relations_with_scope[0].relation.to.as_string(), "B");
+    }
+
+    #[test]
+    fn test_collect_relations_with_scope_nested() {
+        let input = r#"
+A = system "System A" {
+    B = container "Container B"
+    C = container "Container C"
+    B -> C "calls"
+}
+"#;
+        let program = parse_test_input(input);
+        let relations_with_scope = collect_relations_with_scope(&program);
+
+        assert_eq!(relations_with_scope.len(), 1);
+        assert_eq!(relations_with_scope[0].scope, "A");
+        assert_eq!(relations_with_scope[0].relation.from.as_string(), "B");
+        assert_eq!(relations_with_scope[0].relation.to.as_string(), "C");
+    }
+
+    #[test]
+    fn test_resolve_relation_fqns_simple() {
+        let input = r#"
+system A "System A"
+system B "System B"
+A -> B "calls"
+"#;
+        let program = parse_test_input(input);
+        let (elements, _) = collect_elements(&program);
+
+        let rel = Relation {
+            from: QualifiedIdent::simple("A".to_string()),
+            to: QualifiedIdent::simple("B".to_string()),
+            label: Some("calls".to_string()),
+            location: SourceLocation::new("test.sruja".to_string(), 1, 1),
+            description: None,
+            technology: None,
+            tags: vec![],
+        };
+
+        let resolved = resolve_relation_fqns(rel, "", &elements);
+
+        assert_eq!(resolved.from.as_string(), "A");
+        assert_eq!(resolved.to.as_string(), "B");
+    }
+
+    #[test]
+    fn test_resolve_relation_fqns_nested() {
+        let input = r#"
+A = system "System A" {
+    B = container "Container B"
+    C = container "Container C"
+}
+"#;
+        let program = parse_test_input(input);
+        let (elements, _) = collect_elements(&program);
+
+        let rel = Relation {
+            from: QualifiedIdent::simple("B".to_string()),
+            to: QualifiedIdent::simple("C".to_string()),
+            label: Some("calls".to_string()),
+            location: SourceLocation::new("test.sruja".to_string(), 1, 1),
+            description: None,
+            technology: None,
+            tags: vec![],
+        };
+
+        let resolved = resolve_relation_fqns(rel, "A", &elements);
+
+        assert_eq!(resolved.from.as_string(), "A.B");
+        assert_eq!(resolved.to.as_string(), "A.C");
+    }
+
+    #[test]
+    fn test_resolve_relation_fqns_external_reference() {
+        let input = r#"
+A = system "System A" {
+    B = container "Container B"
+}
+C = system "System C"
+"#;
+        let program = parse_test_input(input);
+        let (elements, _) = collect_elements(&program);
+
+        let rel = Relation {
+            from: QualifiedIdent::simple("B".to_string()),
+            to: QualifiedIdent::simple("C".to_string()),
+            label: Some("calls".to_string()),
+            location: SourceLocation::new("test.sruja".to_string(), 1, 1),
+            description: None,
+            technology: None,
+            tags: vec![],
+        };
+
+        let resolved = resolve_relation_fqns(rel, "A", &elements);
+
+        assert_eq!(resolved.from.as_string(), "A.B");
+        assert_eq!(resolved.to.as_string(), "C");
+    }
+
+    #[test]
+    fn test_resolve_relation_fqns_fully_qualified() {
+        let input = r#"
+A = system "System A" {
+    B = container "Container B"
+}
+C = system "System C"
+"#;
+        let program = parse_test_input(input);
+        let (elements, _) = collect_elements(&program);
+
+        let rel = Relation {
+            from: QualifiedIdent::simple("B".to_string()),
+            to: QualifiedIdent::qualified(vec!["C".to_string()]),
+            label: Some("calls".to_string()),
+            location: SourceLocation::new("test.sruja".to_string(), 1, 1),
+            description: None,
+            technology: None,
+            tags: vec![],
+        };
+
+        let resolved = resolve_relation_fqns(rel, "A", &elements);
+
+        assert_eq!(resolved.from.as_string(), "A.B");
+        assert_eq!(resolved.to.as_string(), "C");
+    }
+
+    #[test]
+    fn test_has_location_element_def() {
+        let location = SourceLocation::new("test.sruja".to_string(), 10, 5);
+        let elem = ElementDef {
+            location: location.clone(),
+            assignment: ElementAssignment {
+                location: location.clone(),
+                name: "Test".to_string(),
+                kind: ElementKind::System,
+                sub_kind: None,
+                title: None,
+                tag_refs: vec![],
+                body: None,
+            },
+        };
+
+        assert_eq!(elem.location(), &location);
+    }
+
+    #[test]
+    fn test_has_location_relation() {
+        let location = SourceLocation::new("test.sruja".to_string(), 15, 10);
+        let rel = Relation {
+            from: QualifiedIdent::simple("A".to_string()),
+            to: QualifiedIdent::simple("B".to_string()),
+            label: Some("calls".to_string()),
+            location: location.clone(),
+            description: None,
+            technology: None,
+            tags: vec![],
+        };
+
+        assert_eq!(rel.location(), &location);
+    }
+
+    #[test]
+    fn test_has_location_import() {
+        let location = SourceLocation::new("test.sruja".to_string(), 20, 1);
+        let import = ImportStatement {
+            location: location.clone(),
+            elements: vec![ImportElement::Ident("SystemA".to_string())],
+            from: "other.sruja".to_string(),
+        };
+
+        assert_eq!(import.location(), &location);
+    }
+
+    #[test]
+    fn test_collect_elements_with_metadata() {
+        let input = r#"
+A = system "System A" {
+    metadata {
+        tags ["production", "critical"]
+    }
+}
+"#;
+        let program = parse_test_input(input);
+        let (elements, relations) = collect_elements(&program);
+
+        assert_eq!(elements.len(), 1);
+        assert!(elements.contains_key("A"));
+        assert_eq!(relations.len(), 0);
+
+        let elem = &elements["A"];
+        if let Some(body) = &elem.assignment.body {
+            assert!(!body.metadata.is_empty(), "Element should have metadata");
+            assert!(
+                body.metadata.iter().any(|m| m.key == "tags"),
+                "Should have tags metadata"
+            );
+        }
+    }
+
+    #[test]
+    fn test_collect_elements_multiple_top_level() {
+        let input = r#"
+A = system "System A"
+B = system "System B"
+C = system "System C"
+"#;
+        let program = parse_test_input(input);
+        let (elements, relations) = collect_elements(&program);
+
+        assert_eq!(elements.len(), 3);
+        assert!(elements.contains_key("A"));
+        assert!(elements.contains_key("B"));
+        assert!(elements.contains_key("C"));
+        assert_eq!(relations.len(), 0);
+    }
+
+    #[test]
+    fn test_relation_with_scope_cross_system() {
+        let input = r#"
+A = system "System A" {
+    B = container "Container B"
+}
+C = system "System C" {
+    D = container "Container D"
+}
+A.B -> C.D "cross system call"
+"#;
+        let program = parse_test_input(input);
+        let relations = collect_all_relations(&program);
+
+        assert_eq!(relations.len(), 1);
+        assert_eq!(relations[0].from.as_string(), "A.B");
+        assert_eq!(relations[0].to.as_string(), "C.D");
+    }
+}
