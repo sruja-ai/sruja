@@ -85,3 +85,223 @@ pub fn convert_diagnostics_to_lsp(
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_diagnostics::{Diagnostic as SrujaDiagnostic, Severity, SourceLocation};
+
+    fn create_test_diagnostic(
+        severity: Severity,
+        line: u32,
+        column: u32,
+        message: &str,
+        code: &str,
+        context: Vec<String>,
+    ) -> SrujaDiagnostic {
+        SrujaDiagnostic::new(
+            code.to_string(),
+            severity,
+            message.to_string(),
+            SourceLocation::new("test.sruja".to_string(), line, column),
+        )
+        .with_context(context)
+    }
+
+    #[test]
+    fn test_convert_diagnostics_to_lsp_error() {
+        let diags = vec![create_test_diagnostic(
+            Severity::Error,
+            1,
+            5,
+            "Error message",
+            "E001",
+            vec!["line of code".to_string()],
+        )];
+
+        let lsp_diags = convert_diagnostics_to_lsp(&diags);
+        assert_eq!(lsp_diags.len(), 1);
+
+        let lsp_diag = &lsp_diags[0];
+        assert_eq!(lsp_diag.severity, Some(DiagnosticSeverity::ERROR));
+        assert_eq!(lsp_diag.message, "Error message");
+        assert_eq!(lsp_diag.range.start.line, 0);
+        assert_eq!(lsp_diag.range.start.character, 4);
+        assert_eq!(lsp_diag.source, Some("sruja".to_string()));
+    }
+
+    #[test]
+    fn test_convert_diagnostics_to_lsp_warning() {
+        let diags = vec![create_test_diagnostic(
+            Severity::Warning,
+            2,
+            10,
+            "Warning message",
+            "W001",
+            vec![],
+        )];
+
+        let lsp_diags = convert_diagnostics_to_lsp(&diags);
+        assert_eq!(lsp_diags.len(), 1);
+
+        let lsp_diag = &lsp_diags[0];
+        assert_eq!(lsp_diag.severity, Some(DiagnosticSeverity::WARNING));
+        assert_eq!(lsp_diag.message, "Warning message");
+        assert_eq!(lsp_diag.range.start.line, 1);
+        assert_eq!(lsp_diag.range.start.character, 9);
+    }
+
+    #[test]
+    fn test_convert_diagnostics_to_lsp_info() {
+        let diags = vec![create_test_diagnostic(
+            Severity::Info,
+            3,
+            0,
+            "Info message",
+            "I001",
+            vec![],
+        )];
+
+        let lsp_diags = convert_diagnostics_to_lsp(&diags);
+        assert_eq!(lsp_diags.len(), 1);
+
+        let lsp_diag = &lsp_diags[0];
+        assert_eq!(lsp_diag.severity, Some(DiagnosticSeverity::INFORMATION));
+        assert_eq!(lsp_diag.message, "Info message");
+        assert_eq!(lsp_diag.range.start.line, 2);
+        assert_eq!(lsp_diag.range.start.character, 0);
+    }
+
+    #[test]
+    fn test_convert_diagnostics_to_lsp_multiple() {
+        let diags = vec![
+            create_test_diagnostic(Severity::Error, 1, 5, "Error 1", "E001", vec![]),
+            create_test_diagnostic(Severity::Warning, 2, 10, "Warning 1", "W001", vec![]),
+            create_test_diagnostic(Severity::Info, 3, 0, "Info 1", "I001", vec![]),
+        ];
+
+        let lsp_diags = convert_diagnostics_to_lsp(&diags);
+        assert_eq!(lsp_diags.len(), 3);
+
+        assert_eq!(lsp_diags[0].severity, Some(DiagnosticSeverity::ERROR));
+        assert_eq!(lsp_diags[1].severity, Some(DiagnosticSeverity::WARNING));
+        assert_eq!(lsp_diags[2].severity, Some(DiagnosticSeverity::INFORMATION));
+    }
+
+    #[test]
+    fn test_convert_diagnostics_to_lsp_empty() {
+        let diags: Vec<SrujaDiagnostic> = vec![];
+        let lsp_diags = convert_diagnostics_to_lsp(&diags);
+        assert_eq!(lsp_diags.len(), 0);
+    }
+
+    #[test]
+    fn test_convert_diagnostics_to_lsp_with_context() {
+        let diags = vec![create_test_diagnostic(
+            Severity::Error,
+            1,
+            5,
+            "Invalid identifier",
+            "E001",
+            vec!["  app = system \"My App\" {}".to_string()],
+        )];
+
+        let lsp_diags = convert_diagnostics_to_lsp(&diags);
+        assert_eq!(lsp_diags.len(), 1);
+
+        let lsp_diag = &lsp_diags[0];
+        // With context, the end position should be calculated better
+        assert!(lsp_diag.range.end.character >= lsp_diag.range.start.character);
+    }
+
+    #[test]
+    fn test_convert_diagnostics_to_lsp_range_calculation() {
+        let diags = vec![create_test_diagnostic(
+            Severity::Error,
+            1,
+            5,
+            "Error",
+            "E001",
+            vec!["    variable_name = value".to_string()],
+        )];
+
+        let lsp_diags = convert_diagnostics_to_lsp(&diags);
+        assert_eq!(lsp_diags.len(), 1);
+
+        let lsp_diag = &lsp_diags[0];
+        // Range should be calculated to highlight the relevant token
+        assert!(lsp_diag.range.end.character > lsp_diag.range.start.character);
+    }
+
+    #[test]
+    fn test_convert_diagnostics_to_lsp_code() {
+        let diags = vec![create_test_diagnostic(
+            Severity::Error,
+            1,
+            0,
+            "Test",
+            "CUSTOM_CODE_123",
+            vec![],
+        )];
+
+        let lsp_diags = convert_diagnostics_to_lsp(&diags);
+        assert_eq!(lsp_diags.len(), 1);
+
+        let lsp_diag = &lsp_diags[0];
+        assert!(lsp_diag.code.is_some());
+        if let Some(NumberOrString::String(code)) = &lsp_diag.code {
+            assert_eq!(code, "CUSTOM_CODE_123");
+        } else {
+            panic!("Expected String code");
+        }
+    }
+
+    #[test]
+    fn test_convert_diagnostics_to_lsp_source() {
+        let diags = vec![create_test_diagnostic(
+            Severity::Error,
+            1,
+            0,
+            "Test",
+            "E001",
+            vec![],
+        )];
+
+        let lsp_diags = convert_diagnostics_to_lsp(&diags);
+        assert_eq!(lsp_diags[0].source, Some("sruja".to_string()));
+    }
+
+    #[test]
+    fn test_convert_diagnostics_edge_case_large_line_column() {
+        let diags = vec![create_test_diagnostic(
+            Severity::Error,
+            9999,
+            9999,
+            "Edge case",
+            "E001",
+            vec![],
+        )];
+
+        let lsp_diags = convert_diagnostics_to_lsp(&diags);
+        assert_eq!(lsp_diags.len(), 1);
+        assert_eq!(lsp_diags[0].range.start.line, 9998);
+        assert_eq!(lsp_diags[0].range.start.character, 9998);
+    }
+
+    #[test]
+    fn test_convert_diagnostics_zero_line_column() {
+        let diags = vec![create_test_diagnostic(
+            Severity::Error,
+            0,
+            0,
+            "Start",
+            "E001",
+            vec![],
+        )];
+
+        let lsp_diags = convert_diagnostics_to_lsp(&diags);
+        assert_eq!(lsp_diags.len(), 1);
+        assert_eq!(lsp_diags[0].range.start.line, 0);
+        assert_eq!(lsp_diags[0].range.start.character, 0);
+    }
+}
