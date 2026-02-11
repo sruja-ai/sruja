@@ -442,3 +442,143 @@ fn format_timestamp(timestamp: i64) -> String {
         format!("{} weeks ago", diff / 604800)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn context_analyzer_new_and_default() {
+        let a = ContextAnalyzer::new();
+        assert!(a.usage_stats.is_empty());
+        let b = ContextAnalyzer::default();
+        assert!(b.usage_stats.is_empty());
+    }
+
+    #[test]
+    fn record_rule_usage_and_get_all_stats() {
+        let mut a = ContextAnalyzer::new();
+        a.record_rule_usage("async-no-lock-await");
+        a.record_rule_usage("async-no-lock-await");
+        a.record_rule_usage("mem-smallvec");
+
+        let stats = a.get_all_stats();
+        assert_eq!(stats.len(), 2);
+        let counts: Vec<u32> = stats.iter().map(|s| s.count).collect();
+        assert!(counts.contains(&2));
+        assert!(counts.contains(&1));
+    }
+
+    #[test]
+    fn get_top_rules_returns_sorted_by_count() {
+        let mut a = ContextAnalyzer::new();
+        a.record_rule_usage("low");
+        a.record_rule_usage("high");
+        a.record_rule_usage("high");
+        a.record_rule_usage("high");
+
+        let top = a.get_top_rules(2);
+        assert_eq!(top.len(), 2);
+        assert_eq!(top[0].rule_id, "high");
+        assert_eq!(top[0].reasoning.iter().find(|s| s.contains("times")).map(|s| s.as_str()), Some("Used 3 times"));
+    }
+
+    #[test]
+    fn suggest_rules_with_async_project_context() {
+        let mut a = ContextAnalyzer::new();
+        let project = ProjectContext {
+            language: "rust".to_string(),
+            frameworks: vec!["web".to_string(), "cli".to_string()],
+            patterns: vec!["async".to_string()],
+            tech_stack: vec!["async".to_string()],
+            async_usage: true,
+            wasm_usage: false,
+            embedded_usage: false,
+        };
+
+        let suggestions = a.suggest_rules(&project, None).unwrap();
+        assert!(!suggestions.is_empty());
+        assert!(suggestions.len() <= 10);
+        assert!(suggestions.iter().any(|s| s.rule_id.starts_with("async-")));
+        assert!(suggestions.iter().all(|s| s.relevance_score >= 0.0 && s.relevance_score <= 1.0));
+        assert!(suggestions.iter().all(|s| !s.reasoning.is_empty()));
+    }
+
+    #[test]
+    fn suggest_rules_with_file_context() {
+        let mut a = ContextAnalyzer::new();
+        let project = ProjectContext {
+            language: "rust".to_string(),
+            frameworks: vec!["cli".to_string()],
+            patterns: vec!["async".to_string(), "unsafe".to_string()],
+            tech_stack: vec!["async".to_string()],
+            async_usage: true,
+            wasm_usage: false,
+            embedded_usage: false,
+        };
+        let file = FileContext {
+            path: PathBuf::from("/fake/file.rs"),
+            language: "rust".to_string(),
+            imports: vec!["std::io".to_string()],
+            has_async: true,
+            has_extern_crate: false,
+            has_unsafe: true,
+            has_macros: false,
+        };
+
+        let suggestions = a.suggest_rules(&project, Some(&file)).unwrap();
+        assert!(!suggestions.is_empty());
+    }
+
+    #[test]
+    fn analyze_project_with_temp_cargo_toml() {
+        let a = ContextAnalyzer::new();
+        let dir = tempfile::tempdir().unwrap();
+        let cargo_path = dir.path().join("Cargo.toml");
+        std::fs::write(
+            &cargo_path,
+            r#"[package]
+name = "test"
+version = "0.1.0"
+[dependencies]
+tokio = "1"
+serde = "1"
+wasm-bindgen = "0.2"
+"#,
+        )
+        .unwrap();
+
+        let project = a.analyze_project(dir.path()).unwrap();
+        assert_eq!(project.language, "rust");
+        assert!(project.frameworks.contains(&"serde".to_string()));
+        assert!(project.tech_stack.iter().any(|s| s.contains("async")));
+        assert!(project.tech_stack.iter().any(|s| s.contains("wasm")));
+        assert!(project.wasm_usage);
+        assert!(project.async_usage);
+    }
+
+    #[test]
+    fn analyze_file_extracts_imports_and_flags() {
+        let a = ContextAnalyzer::new();
+        let dir = tempfile::tempdir().unwrap();
+        let rs_path = dir.path().join("lib.rs");
+        std::fs::write(
+            &rs_path,
+            r#"use std::io;
+use tokio::sync::Mutex;
+async fn foo() {}
+unsafe fn bar() {}
+macro_rules! m { () => {}; }
+"#,
+        )
+        .unwrap();
+
+        let file_ctx = a.analyze_file(&rs_path).unwrap();
+        assert!(file_ctx.imports.contains(&"std::io".to_string()));
+        assert!(file_ctx.imports.contains(&"tokio::sync::Mutex".to_string()));
+        assert!(file_ctx.has_async);
+        assert!(file_ctx.has_unsafe);
+        assert!(file_ctx.has_macros);
+    }
+}

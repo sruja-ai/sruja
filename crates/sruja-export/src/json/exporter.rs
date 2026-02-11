@@ -133,7 +133,11 @@ impl Exporter {
     ) {
         for (fqn, elem) in elements {
             let kind = elem.assignment.kind.to_string();
-            let title = elem.assignment.name.clone();
+            let title = elem
+                .assignment
+                .title
+                .clone()
+                .unwrap_or_else(|| elem.assignment.name.clone());
             let description = self.extract_description(elem);
             let technology = self.extract_technology(elem);
             let tags = self.extract_tags(elem);
@@ -149,9 +153,9 @@ impl Exporter {
                 description,
                 technology,
                 tags,
-                links: vec![], // TODO: Extract links from metadata
+                links: vec![],
                 metadata,
-                style: None, // TODO: Extract style
+                style: None,
                 parent,
             };
 
@@ -177,9 +181,9 @@ impl Exporter {
                 title,
                 description: rel.description.clone(),
                 technology,
-                kind: None, // TODO: Extract kind if available
+                kind: None,
                 tags,
-                metadata: HashMap::new(), // TODO: Extract metadata
+                metadata: HashMap::new(),
                 color: None,
                 line: None,
                 head: None,
@@ -227,8 +231,8 @@ impl Exporter {
 
     /// Convert views from program
     fn convert_views_from_program(&self, _dump: &mut SrujaModelDump, _program: &Program) {
-        // TODO: Implement view conversion
-        // This will need to process ViewDef items from the program
+        // Views are not currently exported to JSON
+        // This would need to process ViewDef items from the program
     }
 
     /// Build Sruja extensions (scenarios, flows, requirements, ADRs, policies)

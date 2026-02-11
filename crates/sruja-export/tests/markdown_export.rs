@@ -182,7 +182,6 @@ scenario LoginFlow "User Login Flow" {
     }
 
     #[test]
-    #[ignore = "Markdown exporter does not yet emit Feedback Loops section; parser/AST may not support feedback blocks"]
     fn test_feedback_loop_export() {
         let input = r#"
 person = kind "Person"
@@ -191,7 +190,10 @@ system = kind "System"
 User = person "User"
 System = system "System"
 
-feedback FL-1 reinforcing "User Satisfaction Loop" "Increased usage improves satisfaction" {
+FL1 = feedback "User Satisfaction Loop" {
+    loop_type reinforcing
+    description "Increased usage improves satisfaction"
+
     User -> System "provides feedback"
     System -> User "improves experience"
 }
@@ -224,7 +226,6 @@ feedback FL-1 reinforcing "User Satisfaction Loop" "Increased usage improves sat
     }
 
     #[test]
-    #[ignore = "Markdown exporter does not yet emit Causal Loops section; parser/AST may not support causal_loop blocks"]
     fn test_causal_loop_export() {
         let input = r#"
 causal_loop CL-1 reinforcing "Market Dynamics" "Supply and demand balance" {

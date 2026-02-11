@@ -19,6 +19,8 @@ interface SrujaWasmModule {
   sruja_get_diagnostics(dsl: string, filename?: string | null): string;
   sruja_dsl_to_markdown(dsl: string): string;
   sruja_dsl_to_mermaid(dsl: string, config_json?: string | null): string;
+  sruja_get_elements(dsl: string, filename?: string | null): string;
+  sruja_get_document_symbols(dsl: string, filename?: string | null): string;
   init_panic_hook(): void;
 }
 
@@ -125,6 +127,65 @@ export async function getMermaidFromWasm(
 
   try {
     return mod.sruja_dsl_to_mermaid(dsl, configJson ?? null);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Element definition with location
+ */
+export interface SrujaElement {
+  id: string;
+  kind: string;
+  title: string | null;
+  range: { start: { line: number; character: number }; end: { line: number; character: number } };
+}
+
+/**
+ * Document symbol for outline view
+ */
+export interface SrujaDocumentSymbol {
+  kind: "element" | "view" | "scenario" | "flow" | "requirement" | "adr" | "policy";
+  name: string;
+  detail: string;
+  range: { start: { line: number; character: number }; end: { line: number; character: number } };
+  children: SrujaDocumentSymbol[];
+}
+
+/**
+ * Get element definitions from DSL using WASM. Returns empty list if WASM not ready or on error.
+ */
+export async function getElementsFromWasm(
+  context: vscode.ExtensionContext,
+  dsl: string,
+  filename?: string
+): Promise<SrujaElement[] | null> {
+  const mod = await initWasm(context);
+  if (!mod) return null;
+
+  try {
+    const json = mod.sruja_get_elements(dsl, filename ?? null);
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get document symbols for outline view using WASM. Returns empty list if WASM not ready or on error.
+ */
+export async function getDocumentSymbolsFromWasm(
+  context: vscode.ExtensionContext,
+  dsl: string,
+  filename?: string
+): Promise<SrujaDocumentSymbol[] | null> {
+  const mod = await initWasm(context);
+  if (!mod) return null;
+
+  try {
+    const json = mod.sruja_get_document_symbols(dsl, filename ?? null);
+    return JSON.parse(json);
   } catch {
     return null;
   }

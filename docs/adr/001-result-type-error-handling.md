@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted. The repo is now **Rust-first**; error handling in Rust uses `Result` natively. This ADR still applies to any TypeScript (e.g. VS Code extension) code.
 
 ## Context
 
@@ -60,7 +60,6 @@ All validation functions and operations that can fail will return `Result<T, Val
 
 ## References
 
-- Implementation: `packages/shared/src/utils/result.ts`
-- Usage examples in validation utilities
 - Rust Result type: https://doc.rust-lang.org/std/result/
+- In this repo: Rust crates use `Result`; extension/TypeScript should follow the same principle where applicable.
 

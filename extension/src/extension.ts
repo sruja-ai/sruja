@@ -7,6 +7,7 @@ import * as vscode from "vscode";
 
 import { getSkills, getSkillsRoot } from "./skills";
 import { SrujaSkillsTreeProvider } from "./skillsTree";
+import { SrujaDefinitionProvider, SrujaHoverProvider, SrujaDocumentSymbolProvider } from "./providers";
 import { exportMarkdownFromWasm, getDiagnosticsFromWasm, getMermaidFromWasm } from "./wasm";
 
 const execFileAsync = promisify(execFile);
@@ -219,6 +220,24 @@ export function activate(context: vscode.ExtensionContext): void {
   const skillsTreeProvider = new SrujaSkillsTreeProvider(context);
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("srujaSkillsView", skillsTreeProvider)
+  );
+
+  // Register definition provider for Go to Definition (F12)
+  const definitionProvider = new SrujaDefinitionProvider(context);
+  context.subscriptions.push(
+    vscode.languages.registerDefinitionProvider("sruja", definitionProvider)
+  );
+
+  // Register hover provider
+  const hoverProvider = new SrujaHoverProvider(context);
+  context.subscriptions.push(
+    vscode.languages.registerHoverProvider("sruja", hoverProvider)
+  );
+
+  // Register document symbol provider for outline view
+  const documentSymbolProvider = new SrujaDocumentSymbolProvider(context);
+  context.subscriptions.push(
+    vscode.languages.registerDocumentSymbolProvider("sruja", documentSymbolProvider)
   );
 
   context.subscriptions.push(

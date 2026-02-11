@@ -181,3 +181,90 @@ fn extract_desc_tech(elem: &ElementDef) -> (String, String) {
 
     (desc, tech)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_language::Parser;
+
+    fn validate_program(input: &str) -> Vec<Diagnostic> {
+        let parser = Parser::new("test.sruja".to_string());
+        let program = match parser.parse(input) {
+            Ok(p) => p,
+            Err(_) => return vec![],
+        };
+        let rule = PublicInterfaceDocumentationRule;
+        rule.validate(&program)
+    }
+
+    #[test]
+    fn empty_program_returns_no_diagnostics() {
+        let diags = validate_program("");
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn no_persons_returns_no_diagnostics() {
+        let input = r#"
+api = system "API"
+db = container "DB"
+api -> db "uses"
+"#;
+        let diags = validate_program(input);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn person_uses_system_with_description_passes() {
+        let input = r#"
+user = person "User"
+api = system "API" {
+    description "Main API"
+}
+user -> api "uses"
+"#;
+        let diags = validate_program(input);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn person_uses_system_without_description_warns() {
+        let input = r#"
+user = person "User"
+api = system "API"
+
+user -> api "uses"
+"#;
+        let diags = validate_program(input);
+        assert!(!diags.is_empty());
+        assert!(diags.iter().any(|d| d.message.contains("lacks a description")));
+    }
+
+    #[test]
+    fn person_uses_container_without_technology_warns() {
+        let input = r#"
+user = person "User"
+web = container "Web App" {
+    description "Frontend"
+}
+user -> web "uses"
+"#;
+        let diags = validate_program(input);
+        assert!(!diags.is_empty());
+        assert!(diags.iter().any(|d| d.message.contains("technology")));
+    }
+
+    #[test]
+    fn person_uses_container_with_tech_and_desc_passes() {
+        let input = r#"
+user = person "User"
+web = container "Web App" {
+    description "Frontend"
+    technology "React"
+}
+user -> web "uses"
+"#;
+        let diags = validate_program(input);
+        assert!(diags.is_empty());
+    }
+}

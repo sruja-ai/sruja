@@ -35,6 +35,17 @@ fn line_to_byte_offset(input: &str, line_index: usize) -> usize {
     input.len()
 }
 
+/// Calculate the 0-based line number from a byte position in the input.
+#[allow(dead_code)]
+fn byte_offset_to_line(input: &str, byte_offset: usize) -> usize {
+    let truncated = if byte_offset <= input.len() {
+        &input[..byte_offset]
+    } else {
+        input
+    };
+    truncated.matches('\n').count()
+}
+
 /// Parser for Sruja DSL
 pub struct Parser {
     filename: String,
@@ -46,6 +57,24 @@ impl Parser {
         Self {
             filename: filename.into(),
         }
+    }
+
+    /// Calculate the line number for a byte position in the input
+    #[allow(dead_code)]
+    fn line_number(&self, input: &str, pos: usize) -> u32 {
+        let truncated = if pos <= input.len() {
+            &input[..pos]
+        } else {
+            input
+        };
+        let line = truncated.matches('\n').count();
+        line.min(u32::MAX as usize) as u32
+    }
+
+    /// Create a SourceLocation for a position
+    #[allow(dead_code)]
+    fn location(&self, input: &str, pos: usize) -> SourceLocation {
+        SourceLocation::new(self.filename.clone(), self.line_number(input, pos), 0)
     }
 
     /// Parse source code into a Program AST
@@ -81,25 +110,31 @@ impl Parser {
             }
             Err(e) => {
                 // Try to extract more information from the nom error
-                let error_msg = match &e {
-                    nom::Err::Error(err) => format!(
-                        "Parse error at position {}: {:?}",
-                        err.input.len(),
-                        err.code
-                    ),
-                    nom::Err::Failure(err) => format!(
-                        "Parse failure at position {}: {:?}",
-                        err.input.len(),
-                        err.code
-                    ),
-                    nom::Err::Incomplete(_) => "Incomplete input".to_string(),
+                let (error_msg, error_pos) = match &e {
+                    nom::Err::Error(err) => {
+                        let pos = input.len() - err.input.len();
+                        let line = self.line_number(input, pos);
+                        (
+                            format!("Parse error at line {}: {:?}", line + 1, err.code),
+                            line,
+                        )
+                    }
+                    nom::Err::Failure(err) => {
+                        let pos = input.len() - err.input.len();
+                        let line = self.line_number(input, pos);
+                        (
+                            format!("Parse failure at line {}: {:?}", line + 1, err.code),
+                            line,
+                        )
+                    }
+                    nom::Err::Incomplete(_) => ("Incomplete input".to_string(), 0),
                 };
 
                 Err(vec![Diagnostic::new(
                     sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
                     Severity::Error,
                     error_msg,
-                    SourceLocation::new(self.filename.clone(), 0, 0),
+                    SourceLocation::new(self.filename.clone(), error_pos as u32, 0),
                 )])
             }
         }
@@ -167,32 +202,43 @@ impl Parser {
             }
             Err(e) => {
                 // Try to provide more context about the parse error
-                let error_msg = match &e {
+                let (error_msg, line_number) = match &e {
                     nom::Err::Error(err) => {
                         // Calculate line number within the context section
                         let context_line = context_section[..err.input.len()].matches('\n').count();
-                        format!(
-                            "Parse error in context section at line {}: {:?}",
-                            context_line + 1,
-                            err.code
+                        let absolute_line = context_start_line + context_line;
+                        (
+                            format!(
+                                "Parse error in context section at line {}: {:?}",
+                                absolute_line + 1,
+                                err.code
+                            ),
+                            absolute_line as u32,
                         )
                     }
                     nom::Err::Failure(err) => {
                         let context_line = context_section[..err.input.len()].matches('\n').count();
-                        format!(
-                            "Parse failure in context section at line {}: {:?}",
-                            context_line + 1,
-                            err.code
+                        let absolute_line = context_start_line + context_line;
+                        (
+                            format!(
+                                "Parse failure in context section at line {}: {:?}",
+                                absolute_line + 1,
+                                err.code
+                            ),
+                            absolute_line as u32,
                         )
                     }
-                    nom::Err::Incomplete(_) => "Incomplete input in context section".to_string(),
+                    nom::Err::Incomplete(_) => (
+                        "Incomplete input in context section".to_string(),
+                        context_start_line as u32,
+                    ),
                 };
 
                 Err(vec![Diagnostic::new(
                     sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
                     Severity::Error,
                     error_msg,
-                    SourceLocation::new(self.filename.clone(), 0, 0),
+                    SourceLocation::new(self.filename.clone(), line_number, 0),
                 )])
             }
         }
@@ -448,6 +494,8 @@ fn parse_top_level_item(input: &str) -> IResult<&str, TopLevelItem> {
         map(parse_adr_assignment, TopLevelItem::Adr),
         map(parse_policy_assignment, TopLevelItem::Policy),
         map(parse_overview_block, TopLevelItem::Overview),
+        map(parse_feedback_loop, TopLevelItem::FeedbackLoop),
+        map(parse_causal_loop, TopLevelItem::CausalLoop),
         map(parse_element_def, |e| TopLevelItem::ElementDef(Box::new(e))),
         map(parse_relation, TopLevelItem::Relation),
         map(parse_import, TopLevelItem::Import),
@@ -1322,23 +1370,35 @@ fn parse_adr(input: &str) -> IResult<&str, Adr> {
     let (input, _) = ws0(input)?;
     let (input, title) = opt(parse_string)(input)?;
     let (input, _) = ws0(input)?;
-    let (input, _body) = opt(parse_adr_body)(input)?;
 
-    Ok((
-        input,
-        Adr {
-            location: SourceLocation::new(String::new(), 0, 0),
-            id: id.clone(),
-            title: title.unwrap_or(id),
-            status: None,
-            context: None,
-            decision: None,
-            consequences: None,
-        },
-    ))
+    let (input, fields) = opt(parse_kv_string_block)(input)?;
+    let mut adr = Adr {
+        location: SourceLocation::new(String::new(), 0, 0),
+        id: id.clone(),
+        title: title.unwrap_or(id),
+        status: None,
+        context: None,
+        decision: None,
+        consequences: None,
+    };
+
+    if let Some(kvs) = fields {
+        for (k, v) in kvs {
+            match k.as_str() {
+                "status" => adr.status = Some(v),
+                "context" => adr.context = Some(v),
+                "decision" => adr.decision = Some(v),
+                "consequences" => adr.consequences = Some(v),
+                _ => {}
+            }
+        }
+    }
+
+    Ok((input, adr))
 }
 
 /// Parse ADR body
+#[allow(dead_code)]
 fn parse_adr_body(input: &str) -> IResult<&str, ()> {
     // Best-effort: consume arbitrary key/value entries inside `{ ... }`.
     // NOTE: This does not support nested braces; extend if ADRs start embedding blocks.
@@ -1377,19 +1437,29 @@ fn parse_policy(input: &str) -> IResult<&str, Policy> {
     let (input, _) = ws0(input)?;
     let (input, title) = opt(parse_string)(input)?;
     let (input, _) = ws0(input)?;
-    let (input, description) = opt(parse_string)(input)?;
 
-    Ok((
-        input,
-        Policy {
-            location: SourceLocation::new(String::new(), 0, 0),
-            id: id.clone(),
-            title: title.unwrap_or(id),
-            category: "general".to_string(),
-            enforcement: "warn".to_string(),
-            description,
-        },
-    ))
+    let (input, fields) = opt(parse_kv_string_block)(input)?;
+    let mut policy = Policy {
+        location: SourceLocation::new(String::new(), 0, 0),
+        id: id.clone(),
+        title: title.unwrap_or(id),
+        category: "general".to_string(),
+        enforcement: "warn".to_string(),
+        description: None,
+    };
+
+    if let Some(kvs) = fields {
+        for (k, v) in kvs {
+            match k.as_str() {
+                "category" => policy.category = v,
+                "enforcement" => policy.enforcement = v,
+                "description" => policy.description = Some(v),
+                _ => {}
+            }
+        }
+    }
+
+    Ok((input, policy))
 }
 
 /// Parse a view definition
@@ -1991,4 +2061,241 @@ mod tests {
             elapsed_ms
         );
     }
+}
+
+/// Parse feedback loop: Name = feedback "Title" { loop_type "..."; loop_id "..."; description "..."; relations... }
+fn parse_feedback_loop(input: &str) -> IResult<&str, FeedbackLoop> {
+    let (input, id) = parse_identifier(input)?;
+    let (input, _) = preceded(ws0, char('='))(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, _) = tag("feedback")(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, title) = parse_string(input)?;
+    let (input, _) = ws0(input)?;
+
+    // Parse body with loop_type, loop_id, description, and relationships
+    let (input, body_fields) = opt(delimited(
+        preceded(ws0, char('{')),
+        many0(preceded(ws, parse_feedback_loop_field)),
+        preceded(ws0, char('}')),
+    ))(input)?;
+
+    let mut loop_type = FeedbackLoopType::Reinforcing;
+    let mut loop_id = None;
+    let mut description = None;
+    let mut relationships = Vec::new();
+
+    if let Some(fields) = body_fields {
+        for field in fields {
+            match field {
+                FeedbackLoopField::LoopType(t) => loop_type = t,
+                FeedbackLoopField::LoopId(i) => loop_id = Some(i),
+                FeedbackLoopField::Description(d) => description = Some(d),
+                FeedbackLoopField::Relation(r) => relationships.push(r),
+            }
+        }
+    }
+
+    Ok((
+        input,
+        FeedbackLoop {
+            location: SourceLocation::new(String::new(), 0, 0), // TODO: track position
+            id,
+            loop_type,
+            loop_id,
+            title,
+            description,
+            relationships,
+        },
+    ))
+}
+
+enum FeedbackLoopField {
+    LoopType(FeedbackLoopType),
+    LoopId(String),
+    Description(String),
+    Relation(Relation),
+}
+
+fn parse_feedback_loop_field(input: &str) -> IResult<&str, FeedbackLoopField> {
+    alt((
+        map(
+            preceded(tag("loop_type"), preceded(ws1, parse_feedback_loop_type)),
+            FeedbackLoopField::LoopType,
+        ),
+        map(
+            preceded(tag("loop_id"), preceded(ws1, parse_string)),
+            FeedbackLoopField::LoopId,
+        ),
+        map(
+            preceded(tag("description"), preceded(ws1, parse_string)),
+            FeedbackLoopField::Description,
+        ),
+        map(parse_relation, FeedbackLoopField::Relation),
+    ))(input)
+}
+
+fn parse_feedback_loop_type(input: &str) -> IResult<&str, FeedbackLoopType> {
+    alt((
+        value(FeedbackLoopType::Reinforcing, tag("reinforcing")),
+        value(FeedbackLoopType::Balancing, tag("balancing")),
+    ))(input)
+}
+
+/// Parse causal loop: Name = causal_loop "Title" { loop_type "..."; loop_id "..."; description "..."; variables...; relationships... }
+fn parse_causal_loop(input: &str) -> IResult<&str, CausalLoop> {
+    let (input, id) = parse_identifier(input)?;
+    let (input, _) = preceded(ws0, char('='))(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, _) = tag("causal_loop")(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, title) = parse_string(input)?;
+    let (input, _) = ws0(input)?;
+
+    // Parse body with loop_type, loop_id, description, variables, and relationships
+    let (input, body_fields) = opt(delimited(
+        preceded(ws0, char('{')),
+        many0(preceded(ws, parse_causal_loop_field)),
+        preceded(ws0, char('}')),
+    ))(input)?;
+
+    let mut loop_type = FeedbackLoopType::Reinforcing;
+    let mut loop_id = None;
+    let mut description = None;
+    let mut variables = Vec::new();
+    let mut relationships = Vec::new();
+
+    if let Some(fields) = body_fields {
+        for field in fields {
+            match field {
+                CausalLoopField::LoopType(t) => loop_type = t,
+                CausalLoopField::LoopId(i) => loop_id = Some(i),
+                CausalLoopField::Description(d) => description = Some(d),
+                CausalLoopField::Variable(v) => variables.push(v),
+                CausalLoopField::Relationship(r) => relationships.push(r),
+            }
+        }
+    }
+
+    Ok((
+        input,
+        CausalLoop {
+            location: SourceLocation::new(String::new(), 0, 0), // TODO: track position
+            id,
+            loop_type,
+            loop_id,
+            title,
+            description,
+            variables,
+            relationships,
+        },
+    ))
+}
+
+enum CausalLoopField {
+    LoopType(FeedbackLoopType),
+    LoopId(String),
+    Description(String),
+    Variable(CausalLoopVariable),
+    Relationship(CausalRelationship),
+}
+
+fn parse_causal_loop_field(input: &str) -> IResult<&str, CausalLoopField> {
+    alt((
+        map(
+            preceded(tag("loop_type"), preceded(ws1, parse_feedback_loop_type)),
+            CausalLoopField::LoopType,
+        ),
+        map(
+            preceded(tag("loop_id"), preceded(ws1, parse_string)),
+            CausalLoopField::LoopId,
+        ),
+        map(
+            preceded(tag("description"), preceded(ws1, parse_string)),
+            CausalLoopField::Description,
+        ),
+        map(parse_causal_loop_variable, CausalLoopField::Variable),
+        map(parse_causal_loop_relationship, CausalLoopField::Relationship),
+    ))(input)
+}
+
+fn parse_causal_loop_variable(input: &str) -> IResult<&str, CausalLoopVariable> {
+    let (input, _) = tag("variable")(input)?;
+    let (input, _) = ws1(input)?;
+    let (input, id) = parse_identifier(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, label) = opt(parse_string)(input)?;
+
+    Ok((input, CausalLoopVariable { id, label }))
+}
+
+fn parse_causal_loop_relationship(input: &str) -> IResult<&str, CausalRelationship> {
+    let (input, from) = parse_identifier(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, _) = tag("->")(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, to) = parse_identifier(input)?;
+    let (input, _) = ws0(input)?;
+
+    // Parse optional body with effect, polarity, delay
+    let (input, body_fields) = opt(delimited(
+        preceded(ws0, char('{')),
+        many0(preceded(ws, parse_causal_rel_field)),
+        preceded(ws0, char('}')),
+    ))(input)?;
+
+    let mut effect = None;
+    let mut polarity = CausalPolarity::Positive;
+    let mut delay = None;
+
+    if let Some(fields) = body_fields {
+        for field in fields {
+            match field {
+                CausalRelField::Effect(e) => effect = Some(e),
+                CausalRelField::Polarity(p) => polarity = p,
+                CausalRelField::Delay(d) => delay = Some(d),
+            }
+        }
+    }
+
+    Ok((
+        input,
+        CausalRelationship {
+            from,
+            to,
+            effect,
+            polarity,
+            delay,
+        },
+    ))
+}
+
+enum CausalRelField {
+    Effect(String),
+    Polarity(CausalPolarity),
+    Delay(String),
+}
+
+fn parse_causal_rel_field(input: &str) -> IResult<&str, CausalRelField> {
+    alt((
+        map(
+            preceded(tag("effect"), preceded(ws1, parse_string)),
+            CausalRelField::Effect,
+        ),
+        map(
+            preceded(tag("polarity"), preceded(ws1, parse_causal_polarity)),
+            CausalRelField::Polarity,
+        ),
+        map(
+            preceded(tag("delay"), preceded(ws1, parse_string)),
+            CausalRelField::Delay,
+        ),
+    ))(input)
+}
+
+fn parse_causal_polarity(input: &str) -> IResult<&str, CausalPolarity> {
+    alt((
+        value(CausalPolarity::Positive, tag("+")),
+        value(CausalPolarity::Negative, tag("-")),
+    ))(input)
 }

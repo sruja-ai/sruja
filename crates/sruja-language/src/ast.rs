@@ -70,6 +70,10 @@ pub enum TopLevelItem {
     KindDef(ElementKindDef),
     /// Tag definition
     TagDef(TagDef),
+    /// Feedback loop definition
+    FeedbackLoop(FeedbackLoop),
+    /// Causal loop definition
+    CausalLoop(CausalLoop),
 }
 
 /// Element definition (person, system, container, component, database, queue)
@@ -537,6 +541,98 @@ pub struct SloThroughput {
     pub target: Option<String>,
     pub window: Option<String>,
     pub current: Option<String>,
+}
+
+/// Feedback loop type
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FeedbackLoopType {
+    Reinforcing,
+    Balancing,
+}
+
+impl FeedbackLoopType {
+    pub fn to_symbol(&self) -> &str {
+        match self {
+            FeedbackLoopType::Reinforcing => "+",
+            FeedbackLoopType::Balancing => "-",
+        }
+    }
+}
+
+impl std::fmt::Display for FeedbackLoopType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FeedbackLoopType::Reinforcing => write!(f, "reinforcing"),
+            FeedbackLoopType::Balancing => write!(f, "balancing"),
+        }
+    }
+}
+
+/// Causal polarity
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CausalPolarity {
+    Positive,
+    Negative,
+}
+
+impl CausalPolarity {
+    pub fn to_symbol(&self) -> &str {
+        match self {
+            CausalPolarity::Positive => "+",
+            CausalPolarity::Negative => "-",
+        }
+    }
+}
+
+impl std::fmt::Display for CausalPolarity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CausalPolarity::Positive => write!(f, "+"),
+            CausalPolarity::Negative => write!(f, "-"),
+        }
+    }
+}
+
+/// Feedback loop definition
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FeedbackLoop {
+    pub location: SourceLocation,
+    pub id: String,
+    pub loop_type: FeedbackLoopType,
+    pub loop_id: Option<String>,
+    pub title: String,
+    pub description: Option<String>,
+    pub relationships: Vec<Relation>,
+}
+
+/// Causal loop variable
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CausalLoopVariable {
+    pub id: String,
+    pub label: Option<String>,
+}
+
+/// Causal relationship
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CausalRelationship {
+    pub from: String,
+    pub to: String,
+    pub effect: Option<String>,
+    pub polarity: CausalPolarity,
+    pub delay: Option<String>,
+}
+
+/// Causal loop definition
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CausalLoop {
+    pub location: SourceLocation,
+    pub id: String,
+    pub loop_type: FeedbackLoopType,
+    pub loop_id: Option<String>,
+    pub title: String,
+    pub description: Option<String>,
+    pub variables: Vec<CausalLoopVariable>,
+    pub relationships: Vec<CausalRelationship>,
 }
 
 /// Result of an incremental parse: updated AST plus change metadata and timing.

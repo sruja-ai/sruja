@@ -22,17 +22,19 @@ Each ADR follows this structure:
 
 ## ADR Index
 
-| Number | Title                                                                     | Status   | Date |
-| ------ | ------------------------------------------------------------------------- | -------- | ---- |
-| 001    | [Use Result Type for Error Handling](./001-result-type-error-handling.md) | Accepted | 2024 |
-| 002    | [Monorepo Structure with Turbo](./002-monorepo-structure.md)              | Accepted | 2024 |
-| 003    | [WASM for Browser Integration](./003-wasm-browser-integration.md)         | Accepted | 2024 |
+| Number | Title                                                                     | Status    | Date |
+| ------ | ------------------------------------------------------------------------- | --------- | ---- |
+| 001    | [Use Result Type for Error Handling](./001-result-type-error-handling.md) | Accepted  | 2024 |
+| 002    | [Monorepo Structure with Turbo](./002-monorepo-structure.md)              | Superseded| 2024 |
+| 003    | [WASM for Browser Integration](./003-wasm-browser-integration.md)         | Accepted  | 2024 |
+| 004    | [Graphviz WASM for C4 Layouts](./004-graphviz-wasm-layout.md)              | Accepted  | 2024 |
 
-## Recent ADRs
+## Summary
 
-- **001**: Documents the decision to use Result types for functional error handling
-- **002**: Explains the monorepo structure and tooling choices
-- **003**: Describes WASM integration strategy for browser usage
+- **001**: Result types for error handling (Rust uses `Result` natively; applies to TS/extension where relevant).
+- **002**: Superseded—repo is no longer a Turbo monorepo; see ADR body for current layout (`crates/`, `extension/`).
+- **003**: WASM for browser/extension; implementation is Rust → WASM via `crates/sruja-wasm`.
+- **004**: Graphviz WASM as the layout engine for C4-style diagrams where needed.
 
 ## Creating a New ADR
 

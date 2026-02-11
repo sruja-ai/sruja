@@ -244,3 +244,205 @@ fn is_number(s: &str) -> bool {
     }
     seen_digit
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_diagnostics::SourceLocation;
+    use sruja_language::{
+        ElementAssignment, ElementDef, ElementDefBody, ElementKind, MetaEntry, Program,
+        TopLevelItem,
+    };
+
+    fn program_with_metadata(entries: Vec<MetaEntry>) -> Program {
+        let loc = SourceLocation::new(String::new(), 0, 0);
+        let body = ElementDefBody {
+            description: None,
+            technology: None,
+            metadata: entries,
+            constraints: vec![],
+            conventions: vec![],
+            style: None,
+            scale: None,
+            slo: None,
+            items: vec![],
+        };
+        let elem = ElementDef {
+            location: loc.clone(),
+            assignment: ElementAssignment {
+                location: loc.clone(),
+                name: "api".to_string(),
+                kind: ElementKind::Container,
+                sub_kind: None,
+                title: Some("API".to_string()),
+                tag_refs: vec![],
+                body: Some(body),
+            },
+        };
+        Program {
+            items: vec![TopLevelItem::ElementDef(Box::new(elem))],
+        }
+    }
+
+    #[test]
+    fn empty_program_returns_no_diagnostics() {
+        let program = Program { items: vec![] };
+        let diags = PropertiesValidationRule.validate(&program);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn valid_read_replicas_passes() {
+        let program = program_with_metadata(vec![MetaEntry {
+            key: "capacity.readReplicas".to_string(),
+            value: Some("3".to_string()),
+        }]);
+        let diags = PropertiesValidationRule.validate(&program);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn invalid_read_replicas_fails() {
+        let program = program_with_metadata(vec![MetaEntry {
+            key: "capacity.readReplicas".to_string(),
+            value: Some("three".to_string()),
+        }]);
+        let diags = PropertiesValidationRule.validate(&program);
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("capacity.readReplicas"));
+    }
+
+    #[test]
+    fn valid_percentage_obs_tracing_passes() {
+        let program = program_with_metadata(vec![MetaEntry {
+            key: "obs.tracing.sampleRate".to_string(),
+            value: Some("10%".to_string()),
+        }]);
+        let diags = PropertiesValidationRule.validate(&program);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn invalid_percentage_obs_tracing_fails() {
+        let program = program_with_metadata(vec![MetaEntry {
+            key: "obs.tracing.sampleRate".to_string(),
+            value: Some("ten".to_string()),
+        }]);
+        let diags = PropertiesValidationRule.validate(&program);
+        assert_eq!(diags.len(), 1);
+    }
+
+    #[test]
+    fn valid_compliance_pci_passes() {
+        let program = program_with_metadata(vec![MetaEntry {
+            key: "compliance.pci.level".to_string(),
+            value: Some("1".to_string()),
+        }]);
+        let diags = PropertiesValidationRule.validate(&program);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn invalid_compliance_pci_fails() {
+        let program = program_with_metadata(vec![MetaEntry {
+            key: "compliance.pci.level".to_string(),
+            value: Some("".to_string()),
+        }]);
+        let diags = PropertiesValidationRule.validate(&program);
+        assert_eq!(diags.len(), 1);
+    }
+
+    #[test]
+    fn valid_currency_cost_passes() {
+        let program = program_with_metadata(vec![MetaEntry {
+            key: "cost.monthly.total".to_string(),
+            value: Some("$1,000.50".to_string()),
+        }]);
+        let diags = PropertiesValidationRule.validate(&program);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn invalid_currency_cost_fails() {
+        let program = program_with_metadata(vec![MetaEntry {
+            key: "cost.monthly.total".to_string(),
+            value: Some("1000".to_string()),
+        }]);
+        let diags = PropertiesValidationRule.validate(&program);
+        assert_eq!(diags.len(), 1);
+    }
+
+    #[test]
+    fn valid_aws_instance_type_passes() {
+        let program = program_with_metadata(vec![
+            MetaEntry {
+                key: "capacity.instanceProvider".to_string(),
+                value: Some("aws".to_string()),
+            },
+            MetaEntry {
+                key: "capacity.instanceType".to_string(),
+                value: Some("t3.medium".to_string()),
+            },
+        ]);
+        let diags = PropertiesValidationRule.validate(&program);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn valid_gcp_instance_type_passes() {
+        let program = program_with_metadata(vec![
+            MetaEntry {
+                key: "capacity.instanceProvider".to_string(),
+                value: Some("gcp".to_string()),
+            },
+            MetaEntry {
+                key: "capacity.instanceType".to_string(),
+                value: Some("n1-standard-4".to_string()),
+            },
+        ]);
+        let diags = PropertiesValidationRule.validate(&program);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn valid_azure_instance_type_passes() {
+        let program = program_with_metadata(vec![
+            MetaEntry {
+                key: "capacity.instanceProvider".to_string(),
+                value: Some("azure".to_string()),
+            },
+            MetaEntry {
+                key: "capacity.instanceType".to_string(),
+                value: Some("Standard_D4s".to_string()),
+            },
+        ]);
+        let diags = PropertiesValidationRule.validate(&program);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn invalid_aws_instance_type_fails() {
+        let program = program_with_metadata(vec![
+            MetaEntry {
+                key: "capacity.instanceProvider".to_string(),
+                value: Some("aws".to_string()),
+            },
+            MetaEntry {
+                key: "capacity.instanceType".to_string(),
+                value: Some("invalid-type".to_string()),
+            },
+        ]);
+        let diags = PropertiesValidationRule.validate(&program);
+        assert_eq!(diags.len(), 1);
+    }
+
+    #[test]
+    fn unknown_property_ignored() {
+        let program = program_with_metadata(vec![MetaEntry {
+            key: "customKey".to_string(),
+            value: Some("anything".to_string()),
+        }]);
+        let diags = PropertiesValidationRule.validate(&program);
+        assert!(diags.is_empty(), "unknown properties are not validated");
+    }
+}

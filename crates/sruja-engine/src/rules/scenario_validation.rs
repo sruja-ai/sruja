@@ -201,3 +201,107 @@ fn has_tag(tags: &[String], target: &str) -> bool {
     let target = target.to_lowercase();
     tags.iter().any(|t| t.trim().to_lowercase() == target)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_language::Parser;
+
+    fn validate_program(input: &str) -> Vec<Diagnostic> {
+        let parser = Parser::new("test.sruja".to_string());
+        let program = match parser.parse(input) {
+            Ok(p) => p,
+            Err(_) => return vec![],
+        };
+        let rule = ScenarioValidationRule;
+        rule.validate(&program)
+    }
+
+    #[test]
+    fn empty_program_returns_no_diagnostics() {
+        let diags = validate_program("");
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn valid_scenario_steps_pass() {
+        let input = r#"
+user = person "User"
+api = system "API"
+db = datastore "DB"
+
+user -> api "calls"
+api -> db "queries"
+
+scenario LoginFlow "Login" {
+    step user -> api "submits"
+    step api -> db "validates"
+}
+"#;
+        let diags = validate_program(input);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn invalid_step_source_fails() {
+        let input = r#"
+api = system "API"
+db = datastore "DB"
+
+scenario Flow1 "Flow" {
+    step nonexistent -> api "calls"
+}
+"#;
+        let diags = validate_program(input);
+        assert!(!diags.is_empty());
+        assert!(diags.iter().any(|d| d.message.contains("source")));
+    }
+
+    #[test]
+    fn invalid_step_target_fails() {
+        let input = r#"
+user = person "User"
+api = system "API"
+
+scenario Flow1 "Flow" {
+    step user -> nonexistent "calls"
+}
+"#;
+        let diags = validate_program(input);
+        assert!(!diags.is_empty());
+        assert!(diags.iter().any(|d| d.message.contains("target")));
+    }
+
+    #[test]
+    fn external_to_database_policy_violation() {
+        let input = r#"
+ext = container "External" {
+    metadata { tags ["external"] }
+}
+db = datastore "DB" {
+    metadata { tags ["database"] }
+}
+
+scenario BadFlow "Bad Flow" {
+    step ext -> db "direct access"
+}
+"#;
+        let diags = validate_program(input);
+        assert!(!diags.is_empty());
+        assert!(diags.iter().any(|d| d.message.contains("Policy Violation")));
+    }
+
+    #[test]
+    fn flow_with_valid_steps_passes() {
+        let input = r#"
+user = person "User"
+api = system "API"
+
+LoginFlow = flow "Login" {
+    step user -> api "submits"
+}
+"#;
+        let diags = validate_program(input);
+        assert!(diags.is_empty());
+    }
+}

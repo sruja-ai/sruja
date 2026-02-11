@@ -6,7 +6,6 @@
 
 use serde_json::json;
 use sruja_engine::Validator;
-use sruja_export::dot::{DotConfig, DotExporter};
 use sruja_export::json::Exporter as JsonExporter;
 use sruja_export::markdown::{MarkdownExporter, MarkdownOptions};
 use sruja_export::mermaid::exporter::MermaidConfig;
@@ -130,159 +129,34 @@ pub fn sruja_dsl_to_mermaid(dsl: &str, config_json: Option<String>) -> Result<St
     Ok(exporter.export(&program))
 }
 
+/// DOT export was removed. Use Mermaid export instead.
 #[wasm_bindgen]
 pub fn sruja_dsl_to_dot(
-    dsl: &str,
-    view_level: Option<u8>,
-    target_id: Option<String>,
-    node_sizes_json: Option<String>,
-    view_id: Option<String>,
-    filename: Option<String>,
+    _dsl: &str,
+    _view_level: Option<u8>,
+    _target_id: Option<String>,
+    _node_sizes_json: Option<String>,
+    _view_id: Option<String>,
+    _filename: Option<String>,
 ) -> Result<String, JsValue> {
-    let filename = filename.unwrap_or_else(|| "input.sruja".to_string());
-    let parser = Parser::new(filename.clone());
-    let program = parser
-        .parse(dsl)
-        .map_err(|e| JsValue::from_str(&format!("Parse error: {:?}", e)))?;
-
-    // Parse node_sizes JSON if provided
-    let mut node_sizes = std::collections::HashMap::new();
-    if let Some(sizes_json) = node_sizes_json {
-        if let Ok(sizes) = serde_json::from_str::<serde_json::Value>(&sizes_json) {
-            if let Some(obj) = sizes.as_object() {
-                for (key, value) in obj {
-                    if let Some(arr) = value.as_array() {
-                        if arr.len() >= 2 {
-                            if let (Some(w), Some(h)) = (
-                                arr.first().and_then(|v| v.as_f64()),
-                                arr.get(1).and_then(|v| v.as_f64()),
-                            ) {
-                                node_sizes.insert(key.clone(), (w, h));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    let dot_config = DotConfig {
-        rank_dir: "TB".to_string(),
-        node_sep: 0.5,
-        rank_sep: 0.8,
-        view_level: view_level.unwrap_or(1),
-        target_id,
-        node_sizes,
-        view_id,
-        filename: Some(filename),
-    };
-
-    let exporter = DotExporter::new(dot_config);
-    Ok(exporter.export(&program))
+    Err(JsValue::from_str(
+        "DOT export is no longer available. Use sruja_dsl_to_mermaid instead.",
+    ))
 }
 
-/// Export DOT and return JSON with both DOT string and projected relations
+/// DOT export with relations was removed. Use Mermaid export instead.
 #[wasm_bindgen]
 pub fn sruja_dsl_to_dot_with_relations(
-    dsl: &str,
-    view_level: Option<u8>,
-    target_id: Option<String>,
-    node_sizes_json: Option<String>,
-    view_id: Option<String>,
-    filename: Option<String>,
+    _dsl: &str,
+    _view_level: Option<u8>,
+    _target_id: Option<String>,
+    _node_sizes_json: Option<String>,
+    _view_id: Option<String>,
+    _filename: Option<String>,
 ) -> Result<String, JsValue> {
-    let filename = filename.unwrap_or_else(|| "input.sruja".to_string());
-    let parser = Parser::new(filename.clone());
-    let program = parser
-        .parse(dsl)
-        .map_err(|e| JsValue::from_str(&format!("Parse error: {:?}", e)))?;
-
-    // Parse node_sizes JSON if provided
-    let mut node_sizes = std::collections::HashMap::new();
-    if let Some(sizes_json) = node_sizes_json {
-        if let Ok(sizes) = serde_json::from_str::<serde_json::Value>(&sizes_json) {
-            if let Some(obj) = sizes.as_object() {
-                for (key, value) in obj {
-                    if let Some(arr) = value.as_array() {
-                        if arr.len() >= 2 {
-                            if let (Some(w), Some(h)) = (
-                                arr.first().and_then(|v| v.as_f64()),
-                                arr.get(1).and_then(|v| v.as_f64()),
-                            ) {
-                                node_sizes.insert(key.clone(), (w, h));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    let dot_config = DotConfig {
-        rank_dir: "TB".to_string(),
-        node_sep: 0.5,
-        rank_sep: 0.8,
-        view_level: view_level.unwrap_or(1),
-        target_id,
-        node_sizes,
-        view_id,
-        filename: Some(filename),
-    };
-
-    let exporter = DotExporter::new(dot_config);
-    let (dot, view_elements, relations) = exporter.export_with_relations(&program);
-
-    // Convert relations to JSON format
-    let relations_json: Vec<serde_json::Value> = relations
-        .iter()
-        .map(|rel| {
-            serde_json::json!({
-                "from": rel.from.as_string(),
-                "to": rel.to.as_string(),
-                "label": rel.label.as_ref().or(rel.description.as_ref()),
-            })
-        })
-        .collect();
-
-    // Convert projected elements to JSON format
-    let elements_json: std::collections::HashMap<String, serde_json::Value> = view_elements
-        .iter()
-        .map(|(fqn, elem)| {
-            let kind = elem.assignment.kind.to_string();
-            let title = elem.assignment.name.clone();
-            let description = elem
-                .assignment
-                .body
-                .as_ref()
-                .and_then(|b| b.description.clone());
-            let technology = elem
-                .assignment
-                .body
-                .as_ref()
-                .and_then(|b| b.technology.clone());
-            let parent = fqn.rfind('.').map(|dot_idx| fqn[..dot_idx].to_string());
-
-            (
-                fqn.clone(),
-                serde_json::json!({
-                    "id": fqn,
-                    "kind": kind,
-                    "title": title,
-                    "description": description,
-                    "technology": technology,
-                    "parent": parent,
-                }),
-            )
-        })
-        .collect();
-
-    let result = serde_json::json!({
-        "dot": dot,
-        "elements": elements_json,
-        "relations": relations_json,
-    });
-
-    serde_json::to_string(&result).map_err(|e| JsValue::from_str(&format!("JSON error: {:?}", e)))
+    Err(JsValue::from_str(
+        "DOT export is no longer available. Use sruja_dsl_to_mermaid instead.",
+    ))
 }
 
 #[wasm_bindgen]
@@ -708,4 +582,147 @@ pub fn sruja_calculate_architecture_score(dsl: &str) -> Result<String, JsValue> 
     });
 
     serde_json::to_string(&result).map_err(|e| JsValue::from_str(&format!("JSON error: {:?}", e)))
+}
+
+#[wasm_bindgen]
+pub fn sruja_get_elements(dsl: &str, filename: Option<String>) -> Result<String, JsValue> {
+    let filename = filename.unwrap_or_else(|| "input.sruja".to_string());
+    let parser = Parser::new(filename.clone());
+    let program = match parser.parse(dsl) {
+        Ok(p) => p,
+        Err(_) => {
+            return Ok("[]".to_string());
+        }
+    };
+
+    let (elements, _) = sruja_language::collect_elements(&program);
+
+    let elements_json: Vec<serde_json::Value> = elements
+        .iter()
+        .map(|(fqn, elem)| {
+            json!({
+                "id": fqn,
+                "kind": elem.assignment.kind.to_string(),
+                "title": elem.assignment.title,
+                "range": {
+                    "start": {"line": elem.location.line, "character": elem.location.column},
+                    "end": {"line": elem.location.line, "character": elem.location.column}
+                }
+            })
+        })
+        .collect();
+
+    serde_json::to_string(&elements_json)
+        .map_err(|e| JsValue::from_str(&format!("JSON error: {:?}", e)))
+}
+
+#[wasm_bindgen]
+pub fn sruja_get_document_symbols(dsl: &str, filename: Option<String>) -> Result<String, JsValue> {
+    let filename = filename.unwrap_or_else(|| "input.sruja".to_string());
+    let parser = Parser::new(filename.clone());
+    let program = match parser.parse(dsl) {
+        Ok(p) => p,
+        Err(_) => {
+            return Ok("[]".to_string());
+        }
+    };
+
+    let (elements, _) = sruja_language::collect_elements(&program);
+
+    let mut symbols = Vec::new();
+
+    for (fqn, elem) in elements {
+        let kind = elem.assignment.kind.to_string();
+        symbols.push(json!({
+            "kind": "element",
+            "name": fqn,
+            "detail": kind,
+            "range": {
+                "start": {"line": elem.location.line, "character": elem.location.column},
+                "end": {"line": elem.location.line, "character": elem.location.column}
+            },
+            "children": []
+        }));
+    }
+
+    for item in &program.items {
+        match item {
+            sruja_language::TopLevelItem::View(view) => {
+                symbols.push(json!({
+                    "kind": "view",
+                    "name": view.id.clone(),
+                    "detail": "View",
+                    "range": {
+                        "start": {"line": view.location.line, "character": view.location.column},
+                        "end": {"line": view.location.line, "character": view.location.column}
+                    },
+                    "children": []
+                }));
+            }
+            sruja_language::TopLevelItem::Scenario(scenario) => {
+                symbols.push(json!({
+                    "kind": "scenario",
+                    "name": scenario.id.clone(),
+                    "detail": "Scenario",
+                    "range": {
+                        "start": {"line": scenario.location.line, "character": scenario.location.column},
+                        "end": {"line": scenario.location.line, "character": scenario.location.column}
+                    },
+                    "children": []
+                }));
+            }
+            sruja_language::TopLevelItem::Flow(flow) => {
+                symbols.push(json!({
+                    "kind": "flow",
+                    "name": flow.id.clone(),
+                    "detail": "Flow",
+                    "range": {
+                        "start": {"line": flow.location.line, "character": flow.location.column},
+                        "end": {"line": flow.location.line, "character": flow.location.column}
+                    },
+                    "children": []
+                }));
+            }
+            sruja_language::TopLevelItem::Requirement(req) => {
+                symbols.push(json!({
+                    "kind": "requirement",
+                    "name": req.id.clone(),
+                    "detail": req.r#type.clone(),
+                    "range": {
+                        "start": {"line": req.location.line, "character": req.location.column},
+                        "end": {"line": req.location.line, "character": req.location.column}
+                    },
+                    "children": []
+                }));
+            }
+            sruja_language::TopLevelItem::Adr(adr) => {
+                symbols.push(json!({
+                    "kind": "adr",
+                    "name": adr.id.clone(),
+                    "detail": "ADR",
+                    "range": {
+                        "start": {"line": adr.location.line, "character": adr.location.column},
+                        "end": {"line": adr.location.line, "character": adr.location.column}
+                    },
+                    "children": []
+                }));
+            }
+            sruja_language::TopLevelItem::Policy(policy) => {
+                symbols.push(json!({
+                    "kind": "policy",
+                    "name": policy.id.clone(),
+                    "detail": format!("{} ({})", policy.title, policy.category),
+                    "range": {
+                        "start": {"line": policy.location.line, "character": policy.location.column},
+                        "end": {"line": policy.location.line, "character": policy.location.column}
+                    },
+                    "children": []
+                }));
+            }
+            _ => {}
+        }
+    }
+
+    serde_json::to_string(&symbols)
+        .map_err(|e| JsValue::from_str(&format!("JSON error: {:?}", e)))
 }
