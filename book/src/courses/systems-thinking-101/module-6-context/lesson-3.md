@@ -1,344 +1,565 @@
-# Lesson 3: Dependencies and Constraints
+---
+title: "Lesson 3: Dependencies and Constraints"
+weight: 3
+summary: "The external service you didn't document will be the one that goes down at 3 AM"
+time: "8 min"
+---
+
+# The 3 AM Page: What Dependencies Really Cost
+
+It was 3:14 AM when my phone buzzed. The payment system was down. Customers couldn't check out. Revenue was bleeding.
+
+I stumbled to my laptop, pulled up the dashboards, and started debugging. Everything looked fine—our services were up, databases responding, APIs healthy. But payments kept failing.
+
+Two hours later, I discovered the problem: an external email verification service we used had changed their API. We'd added it as a quick fix six months earlier, never documented it as a critical dependency, and forgotten about it. When they deprecated the old API endpoint, our checkout flow silently broke.
+
+The cost? Four hours of downtime, thousands in lost sales, and a very uncomfortable conversation with the CEO at 6 AM.
+
+The root cause wasn't technical complexity. It was missing documentation. We'd never modeled our dependencies properly, so we didn't know what we depended on—or how to fix it when it broke.
+
+This lesson is about avoiding that 3 AM page. You'll learn how to document every external dependency, understand what constraints actually limit your choices, and define success criteria that prevent surprises.
 
 ## Learning Goals
 
-- Identify and document external dependencies
-- Define constraints and limitations
-- Capture success criteria and SLOs
-- Use Sruja features to model context
+By the end of this lesson, you'll be able to:
 
-## External Dependencies
+- Identify and categorize all external dependencies, not just the obvious ones
+- Document dependencies with the information you'll need at 3 AM
+- Recognize the four types of constraints and how they shape design
+- Define success criteria and SLOs that actually reflect what matters
+- Model complete context in Sruja so nothing gets forgotten
 
-### What Are Dependencies?
+## Dependencies: The Systems You Don't Control
 
-Dependencies are external systems, services, or resources your system relies on to function.
+Here's a question that took me too long to ask: **What happens when your dependencies fail?**
 
-```sruja
-// Your system
-Shop = system "Shop"
+Not if. When. Every external service goes down eventually. Every API changes. Every vendor has outages. The question isn't whether it will happen—it's whether you'll be prepared when it does.
 
-// External dependencies
-PaymentGateway = system "Payment Gateway"
-EmailService = system "Email Service"
-AnalyticsService = system "Analytics Service"
-CDN = system "Content Delivery Network"
-```
+Dependencies are external systems, services, or resources your system relies on to function. They're not part of your architecture, but they determine whether your architecture works.
 
-### Categorizing Dependencies
+Let me share three dependency failures that taught me why this matters.
 
-#### Critical Dependencies
+### The Payment Gateway Outage
 
-System cannot function without:
+A startup I worked with built their entire checkout flow around Stripe. Clean integration, well-tested, ready to launch. Two days before launch, Stripe had a three-hour outage.
 
-```sruja
-PaymentGateway = system "Payment Gateway" {
-  metadata {
-    tags ["external", "critical", "pci-compliant"]
-    sla "99.9% uptime"
-    impact "If down, checkout fails"
-  }
-}
-```
+They had no fallback. No backup payment processor. No way to process payments manually. The launch was delayed a week while they scrambled to add a second payment provider.
 
-#### Important Dependencies
+**The lesson:** Critical dependencies need fallbacks. If you can't function without it, you need a Plan B.
 
-System can function but degraded:
+### The Email Service Change
 
-```sruja
-EmailService = system "Email Service" {
-  metadata {
-    tags ["external", "important"]
-    sla "99.0% uptime"
-    impact "If down, notifications delayed but system works"
-  }
-}
-```
+I consulted for a company that used SendGrid for transactional emails—password resets, order confirmations, welcome emails. After a year, SendGrid changed their pricing model, and the company's email costs tripled overnight.
 
-#### Optional Dependencies
+They hadn't documented the dependency properly, so they didn't know how many emails they were sending or what alternatives existed. It took three months to migrate to a different provider because the email service was woven throughout the codebase.
 
-System works fine without:
+**The lesson:** Document what you depend on, including costs and alternatives. Vendor changes happen.
 
-```sruja
-AnalyticsService = system "Analytics Service" {
-  metadata {
-    tags ["external", "optional"]
-    sla "98.0% uptime"
-    impact "If down, analytics lost but core functionality works"
-  }
-}
-```
+### The Analytics Gap
 
-## Documenting Dependencies
+A team built a real-time dashboard that depended on an analytics API. The dashboard was beautiful—until the analytics provider had an outage. The dashboard didn't fail gracefully; it showed zeros everywhere, causing panic among business users who thought all their traffic had disappeared.
 
-### Using Metadata
+**The lesson:** Know what happens when dependencies fail. Design for graceful degradation.
+
+## Categorizing Dependencies (So You Know What Matters)
+
+Not all dependencies are equal. I've learned to sort them into three buckets:
+
+### Critical Dependencies: The System-Stoppers
+
+These are dependencies your system cannot function without. If they go down, you go down.
+
+**Examples:** Payment gateways, primary databases, authentication services, core APIs.
+
+**How to handle them:**
+- Document them as critical
+- Have fallbacks or backups
+- Monitor them closely
+- Know your SLA and theirs
 
 ```sruja
-PaymentGateway = system "Payment Gateway" {
-  metadata {
-    tags ["external", "vendor"]
-    owner "Stripe Inc."
-    sla "99.9% uptime"
-    mttr "4 hours"
-    contact "support@stripe.com"
-    fallback "Manual payment processing"
-    cost "$0.30 per transaction"
-    compliance ["PCI-DSS Level 1"]
-  }
-}
-```
-
-### Using Relationships
-
-```sruja
-// Shows dependency
-Shop.API -> PaymentGateway "Process payment" [critical]
-Shop.API -> EmailService "Send notifications" [important]
-Shop.API -> AnalyticsService "Track events" [optional]
-```
-
-### Using Fallbacks
-
-```sruja
-// Primary provider
-PrimaryPayment = system "Primary Payment Gateway"
-BackupPayment = system "Backup Payment Gateway"
-
-Shop.API -> PrimaryPayment "Process payment" [primary]
-Shop.API -> BackupPayment "Process payment" [fallback]
-```
-
-## Constraints
-
-### What Are Constraints?
-
-Constraints are limitations that affect your design and implementation choices.
-
-### Types of Constraints
-
-#### Technical Constraints
-
-```sruja
-Shop = system "Shop" {
-  metadata {
-    technical_constraints {
-      "Must use PostgreSQL for transactions",
-      "Must support 10k concurrent users",
-      "Maximum API response time: 2s",
-      "Must be deployable to AWS"
-    }
-  }
-}
-```
-
-#### Business Constraints
-
-```sruja
-Shop = system "Shop" {
-  metadata {
-    business_constraints {
-      "Launch date: Q4 2024",
-      "Budget: $500k/year infrastructure",
-      "Team size: 3 engineers",
-      "Must support multi-currency"
-    }
-  }
-}
-```
-
-#### Compliance Constraints
-
-```sruja
-Shop = system "Shop" {
-  metadata {
-    compliance_constraints {
-      "PCI-DSS Level 1 for payments",
-      "GDPR for EU customer data",
-      "CCPA for California customers",
-      "SOX compliance for financial reporting"
-    }
-  }
-}
-```
-
-#### Security Constraints
-
-```sruja
-Shop = system "Shop" {
-  metadata {
-    security_constraints {
-      "All data encrypted at rest",
-      "All API calls authenticated",
-      "No PII in logs",
-      "Minimum TLS 1.3"
-    }
-  }
-}
-```
-
-## Success Criteria
-
-### What Is Success?
-
-Define what "good" looks like for your system.
-
-### Using `overview` Block
-
-```sruja
-overview {
-  summary "E-commerce platform for online retail"
-  audience "Customers, administrators, business owners"
-
-  goals [
-    "Fast and reliable checkout",
-    "Easy product discovery",
-    "Real-time inventory tracking",
-    "Scalable to 10k concurrent users"
-  ]
-
-  non_goals [
-    "Social features",
-    "Mobile app (web-only)",
-    "Marketplace (first-party only)"
-  ]
-
-  success_criteria [
-    "Checkout completion rate > 80%",
-    "Average checkout time < 2 minutes",
-    "Page load time < 2s",
-    "Customer satisfaction > 4.5/5"
-  ]
-}
-```
-
-### Using `slo` Block
-
-```sruja
-Shop = system "Shop" {
-  slo {
-    availability {
-      target "99.9%"
-      window "30 days"
-    }
-
-    latency {
-      p95 "200ms"
-      p99 "500ms"
-      window "7 days"
-    }
-
-    errorRate {
-      target "0.1%"
-      window "7 days"
-    }
-
-    throughput {
-      target "10000 req/s"
-      window "peak hour"
-    }
-  }
-}
-```
-
-## Complete Context Example
-
-```sruja
-import { * } from 'sruja.ai/stdlib'
-
-// OVERVIEW
-overview {
-  summary "E-commerce platform for online retail"
-  audience "Customers, administrators, business owners"
-  scope "Shopping, checkout, order management, inventory"
-  goals [
-    "Fast and reliable checkout",
-    "Real-time inventory",
-    "Scalable architecture"
-  ]
-  non_goals [
-    "Social features",
-    "Marketplace"
-  ]
-  risks [
-    "Payment gateway downtime",
-    "Database scaling limits",
-    "High traffic surges"
-  ]
-}
-
-// STAKEHOLDERS
-Customer = person "Customer"
-Administrator = person "Administrator"
-BusinessOwner = person "Business Owner"
-SupportAgent = person "Support Agent"
-
-// SYSTEM
-Shop = system "Shop" {
-  metadata {
-    team ["platform-team"]
-    budget "$500k/year"
-    launch_date "2024-12-01"
-  }
-
-  WebApp = container "Web Application"
-  API = container "API Service"
-  Database = database "PostgreSQL"
-  Cache = database "Redis"
-
-  // CONSTRAINTS
-  constraints {
-    "Must support 10k concurrent users",
-    "Maximum response time: 2s",
-    "PCI-DSS Level 1 compliance",
-    "All data encrypted at rest"
-  }
-
-  // SUCCESS CRITERIA (SLOs)
-  slo {
-    availability {
-      target "99.9%"
-      window "30 days"
-    }
-
-    latency {
-      p95 "200ms"
-      p99 "500ms"
-    }
-  }
-}
-
-// DEPENDENCIES
 PaymentGateway = system "Payment Gateway" {
   metadata {
     tags ["external", "critical", "vendor"]
     owner "Stripe Inc."
     sla "99.9% uptime"
     mttr "4 hours"
-    cost "$0.30/transaction"
+    contact "support@stripe.com"
+    fallback "Backup payment processor configured"
+    fallback_activation "Manual switch, < 15 minutes"
+    cost "$0.30 per transaction"
     compliance ["PCI-DSS Level 1"]
+    
+    // Critical info for 3 AM debugging
+    monitoring "https://status.stripe.com"
+    last_incident "2024-01-15 (2 hour outage)"
   }
 }
+```
 
+Notice how much information I include. This isn't bureaucracy—it's the information you need at 3 AM when things break. Who owns it? What's the SLA? What's the fallback? How do you contact them? Where's the status page?
+
+### Important Dependencies: The Degraded-Experience Ones
+
+These are dependencies that cause problems when they fail, but the system still works in a degraded mode.
+
+**Examples:** Email services, analytics, CDNs, notification systems.
+
+**How to handle them:**
+- Document the degradation behavior
+- Queue work for later if possible
+- Don't block core functionality
+
+```sruja
 EmailService = system "Email Service" {
   metadata {
     tags ["external", "important", "vendor"]
     owner "SendGrid"
     sla "99.0% uptime"
-    fallback "Queue for later"
+    impact "Emails delayed but system works"
+    fallback "Queue emails locally, retry when service recovers"
+    degradation "Users won't receive notifications immediately"
+    
+    cost "$14.95/month base + $0.0010/email"
+    volume "50k emails/month"
   }
 }
+```
 
+The key question: What happens when this goes down? If the answer is "users are annoyed but can still use the system," it's important but not critical.
+
+### Optional Dependencies: The Nice-to-Haves
+
+These dependencies add value but aren't essential. If they fail, the system works normally, just with fewer features.
+
+**Examples:** Analytics services, A/B testing tools, non-essential integrations.
+
+**How to handle them:**
+- Don't let them block core functionality
+- Fail gracefully and silently
+- Monitor but don't alert at 3 AM
+
+```sruja
 AnalyticsService = system "Analytics Service" {
   metadata {
     tags ["external", "optional", "vendor"]
-    owner "Google"
-    sla "98.0% uptime"
+    owner "Google Analytics"
+    impact "Analytics data lost but core functionality works"
+    degradation "Dashboards show gaps in data"
+    fallback "None - data loss acceptable"
+    
+    // Don't wake me up for this
+    alerting "Business hours only"
+  }
+}
+```
+
+Optional doesn't mean unimportant. It means the system can function without it.
+
+## Constraints: The Real Design Limits
+
+Constraints are the limitations that shape your architecture. They're not suggestions—they're the boundaries you have to work within.
+
+After years of fighting constraints, I've learned to embrace them. Constraints aren't obstacles; they're design inputs. The best architectures work with constraints, not against them.
+
+### Technical Constraints: What's Technically Possible or Required
+
+These are the technical realities you can't ignore.
+
+**Examples:** "Must use PostgreSQL for ACID transactions," "Must deploy to AWS," "API response time under 200ms," "Support 10k concurrent users."
+
+```sruja
+Shop = system "Shop" {
+  metadata {
+    technical_constraints {
+      "PostgreSQL required for transactional integrity",
+      "Maximum API response time: 200ms (p95)",
+      "Must support 10,000 concurrent users",
+      "Deploy to AWS us-east-1 region",
+      "Real-time inventory updates required"
+    }
+    
+    // Why these constraints matter
+    rationale {
+      "PostgreSQL: Financial transactions require ACID",
+      "200ms: User research shows >200ms feels slow",
+      "10k users: Peak traffic from marketing campaigns"
+    }
+  }
+}
+```
+
+Technical constraints often feel limiting, but they actually clarify decisions. When you know you need ACID transactions, you stop considering NoSQL databases. That's not a limitation—it's focus.
+
+### Business Constraints: The Organizational Realities
+
+These are the business realities: budgets, timelines, team size, strategic goals.
+
+**Examples:** "Launch by Q4," "Budget is $500k/year," "Team of 3 engineers," "Must support international currencies."
+
+```sruja
+Shop = system "Shop" {
+  metadata {
+    business_constraints {
+      "Launch date: December 1, 2024",
+      "Infrastructure budget: $500k/year",
+      "Team size: 3 engineers (growing to 5)",
+      "Must support USD, EUR, GBP",
+      "Mobile-first: 70% of traffic from mobile"
+    }
+    
+    // These are as real as technical constraints
+    rationale {
+      "Dec 1 launch: Board commitment, marketing scheduled",
+      "$500k: Approved budget, no flexibility",
+      "3 engineers: Hiring takes 3 months per engineer"
+    }
+  }
+}
+```
+
+Business constraints often frustrate engineers. "Why can't we have more budget? Why is the deadline fixed?" But fighting them doesn't help. Better to understand them and design within them.
+
+### Compliance Constraints: The Rules You Must Follow
+
+These are regulatory and legal requirements. You don't get to choose them; they choose you.
+
+**Examples:** "PCI-DSS for payments," "GDPR for EU users," "HIPAA for health data," "SOC 2 for enterprise customers."
+
+```sruja
+Shop = system "Shop" {
+  metadata {
+    compliance_constraints {
+      "PCI-DSS Level 1 (processing > 6M transactions/year)",
+      "GDPR (EU customers)",
+      "CCPA (California customers)",
+      "SOC 2 Type II (enterprise customers require it)"
+    }
+    
+    // Compliance drives architecture decisions
+    implications {
+      "PCI-DSS: Cannot store credit card data, must use tokenization",
+      "GDPR: Right to deletion, data portability, consent management",
+      "SOC 2: Audit logging, access controls, encryption required"
+    }
+  }
+}
+```
+
+Compliance constraints are non-negotiable. You can't launch without them. Building them in from the start is far cheaper than adding them later.
+
+### Security Constraints: The Protection Requirements
+
+These are security requirements that shape how you build.
+
+**Examples:** "All data encrypted at rest," "All API calls authenticated," "No PII in logs," "Minimum TLS 1.3."
+
+```sruja
+Shop = system "Shop" {
+  metadata {
+    security_constraints {
+      "All data encrypted at rest (AES-256)",
+      "All API calls authenticated (JWT)",
+      "No PII in logs or error messages",
+      "Minimum TLS 1.3 for all connections",
+      "Secrets in vault, not in code"
+    }
+  }
+}
+```
+
+Security constraints feel like overhead until something goes wrong. Then they're the difference between "we had a security incident" and "we went out of business."
+
+## Success Criteria: How You Know You've Won
+
+Success criteria answer a simple question: **How do you know if your system is successful?**
+
+This seems obvious until you try to answer it. "It works"? Too vague. "Users like it"? Not measurable. "It makes money"? That's a business outcome, not a system property.
+
+I've learned to define success at two levels: business outcomes and system properties.
+
+### Business Outcomes (The "Why")
+
+These are the business reasons the system exists:
+
+```sruja
+overview {
+  summary "E-commerce platform for online retail"
+  
+  goals [
+    "Increase online revenue by 25%",
+    "Reduce abandoned carts by 15%",
+    "Enable international expansion (EU, UK)",
+    "Reduce support tickets by 30%"
+  ]
+  
+  success_criteria [
+    "Checkout completion rate > 80%",
+    "Average checkout time < 2 minutes",
+    "Customer satisfaction (NPS) > 50",
+    "Support tickets per 1000 orders < 5"
+  ]
+}
+```
+
+These criteria connect the system to business value. They answer "why are we building this?"
+
+### System Properties (The "How")
+
+These are measurable system behaviors that support business outcomes. I use SLOs (Service Level Objectives):
+
+```sruja
+Shop = system "Shop" {
+  slo {
+    availability {
+      target "99.9%"
+      window "30 days"
+      rationale "Less than 9 hours downtime per year"
+    }
+
+    latency {
+      p95 "200ms"
+      p99 "500ms"
+      window "7 days"
+      rationale "Research shows >200ms feels slow to users"
+    }
+
+    errorRate {
+      target "0.1%"
+      window "7 days"
+      rationale "< 1 error per 1000 requests"
+    }
+
+    throughput {
+      target "10000 req/s"
+      window "peak hour"
+      rationale "Peak traffic during marketing campaigns"
+    }
+  }
+}
+```
+
+SLOs give you concrete targets. Is the system performing well? Check the SLOs. Are we ready to launch? Check the SLOs. Is something wrong? Check the SLOs.
+
+### Non-Goals: What You're NOT Building
+
+I've also learned to document what we're NOT doing. This prevents scope creep and sets expectations:
+
+```sruja
+overview {
+  goals [
+    "Fast checkout",
+    "Mobile-first design",
+    "Real-time inventory"
+  ]
+  
+  non_goals [
+    "Social features (reviews, sharing)",
+    "Mobile app (web-only for now)",
+    "Marketplace (first-party sales only)",
+    "Subscription billing"
+  ]
+}
+```
+
+Non-goals are liberating. They let you say "that's a good idea, but it's out of scope" without feeling guilty.
+
+## A Complete Context Example
+
+Let me show you how everything in this module comes together. This is what a complete context model looks like—stakeholders, dependencies, constraints, and success criteria all in one place:
+
+```sruja
+import { * } from 'sruja.ai/stdlib'
+
+// ============ OVERVIEW ============
+// What are we building and why?
+
+overview {
+  summary "E-commerce platform for online retail"
+  audience "Customers, administrators, business owners"
+  scope "Shopping, checkout, order management, inventory"
+  
+  goals [
+    "Increase online revenue by 25%",
+    "Reduce abandoned carts by 15%",
+    "Support international customers (EU, UK)"
+  ]
+  
+  non_goals [
+    "Social features (reviews, sharing)",
+    "Mobile app (web-responsive only)",
+    "Marketplace (first-party sales only)"
+  ]
+  
+  risks [
+    "Payment gateway downtime (critical dependency)",
+    "Database scaling limits at peak traffic",
+    "GDPR compliance complexity"
+  ]
+  
+  success_criteria [
+    "Checkout completion rate > 80%",
+    "Average checkout time < 2 minutes",
+    "Support 99.9% availability",
+    "Page load time < 2s (p95)"
+  ]
+}
+
+// ============ STAKEHOLDERS ============
+// Who matters?
+
+// Primary users
+Customer = person "Customer" {
+  description "Shoppers purchasing products"
+  metadata {
+    needs ["Fast checkout", "Easy search", "Mobile-friendly"]
+    priority "critical"
   }
 }
 
-// RELATIONSHIPS
-Customer -> Shop.WebApp "Purchases products"
-Administrator -> Shop.WebApp "Manages system"
+Administrator = person "Administrator" {
+  description "Manages products, orders, inventory"
+  metadata {
+    needs ["Bulk operations", "Reporting", "Quick updates"]
+    priority "high"
+  }
+}
 
+// Secondary users
+SupportAgent = person "Support Agent" {
+  description "Helps customers with order issues"
+  metadata {
+    needs ["Customer lookup", "Order history", "Refund processing"]
+    priority "high"
+  }
+}
+
+// Business stakeholders
+BusinessOwner = person "Business Owner" {
+  description "Accountable for revenue and profit"
+  metadata {
+    needs ["Revenue reports", "Conversion metrics"]
+    priority "high"
+  }
+}
+
+// Compliance
+ComplianceOfficer = person "Compliance Officer" {
+  description "Ensures PCI-DSS and GDPR compliance"
+  metadata {
+    can_block_launch true
+  }
+}
+
+// ============ SYSTEM ============
+// What are we building?
+
+Shop = system "Shop" {
+  WebApp = container "Web Application" {
+    technology "React"
+  }
+  
+  API = container "API Service" {
+    technology "Node.js"
+  }
+  
+  Database = database "PostgreSQL" {
+    technology "PostgreSQL 15"
+  }
+  
+  Cache = database "Redis" {
+    technology "Redis 7"
+  }
+  
+  // Constraints
+  metadata {
+    team ["platform-team"]
+    budget "$500k/year infrastructure"
+    launch_date "2024-12-01"
+    
+    technical_constraints {
+      "PostgreSQL required for ACID transactions",
+      "Maximum API response time: 200ms (p95)",
+      "Support 10,000 concurrent users"
+    }
+    
+    business_constraints {
+      "Launch by December 1, 2024",
+      "Team of 3 engineers (growing to 5)",
+      "Must support USD, EUR, GBP"
+    }
+    
+    compliance_constraints {
+      "PCI-DSS Level 1",
+      "GDPR for EU customers",
+      "CCPA for California customers"
+    }
+  }
+  
+  // Success criteria
+  slo {
+    availability {
+      target "99.9%"
+      window "30 days"
+    }
+    latency {
+      p95 "200ms"
+      p99 "500ms"
+    }
+    errorRate {
+      target "0.1%"
+    }
+  }
+}
+
+// ============ DEPENDENCIES ============
+// What do we depend on?
+
+// Critical
+PaymentGateway = system "Payment Gateway" {
+  metadata {
+    tags ["external", "critical", "vendor"]
+    owner "Stripe Inc."
+    sla "99.9% uptime"
+    mttr "4 hours"
+    contact "support@stripe.com"
+    fallback "Backup payment processor (PayPal)"
+    cost "$0.30/transaction + $0.30% fee"
+    compliance ["PCI-DSS Level 1"]
+  }
+}
+
+// Important
+EmailService = system "Email Service" {
+  metadata {
+    tags ["external", "important", "vendor"]
+    owner "SendGrid"
+    sla "99.0% uptime"
+    fallback "Queue locally, retry when service recovers"
+    cost "$14.95/month + overage"
+  }
+}
+
+// Optional
+AnalyticsService = system "Analytics Service" {
+  metadata {
+    tags ["external", "optional", "vendor"]
+    owner "Google Analytics"
+    fallback "None - data loss acceptable"
+  }
+}
+
+// ============ RELATIONSHIPS ============
+// How does everything connect?
+
+// Stakeholder interactions
+Customer -> Shop.WebApp "Browses and purchases"
+Administrator -> Shop.WebApp "Manages products and orders"
+SupportAgent -> Shop.WebApp "Looks up customer info"
+BusinessOwner -> Shop "Reviews revenue"
+ComplianceOfficer -> Shop "Audits compliance"
+
+// Dependencies
 Shop.API -> PaymentGateway "Process payment" [critical]
 Shop.API -> EmailService "Send notifications" [important]
 Shop.API -> AnalyticsService "Track events" [optional]
@@ -348,114 +569,123 @@ view index {
 }
 ```
 
-## Requirements and Constraints
+This diagram tells a complete story. You can see:
+- **What** we're building (overview)
+- **Who** it's for (stakeholders)
+- **What** we're building (system)
+- **What** we depend on (dependencies)
+- **What** limits us (constraints)
+- **How** we measure success (SLOs)
 
-### Using `requirements`
+That's the power of complete context modeling. Nothing gets forgotten.
 
-```sruja
-// Functional requirements
-R1 = requirement functional "Must support multiple payment methods"
-R2 = requirement functional "Guest checkout available"
-R3 = requirement functional "Order tracking"
+## Documenting Decisions (And Why You Made Them)
 
-// Non-functional requirements
-R4 = requirement performance "Page load time < 2s"
-R5 = requirement availability "99.9% uptime"
-R6 = requirement scalability "Support 10k concurrent users"
+One more thing I've learned: document your decisions, not just your architecture.
 
-// Security requirements
-R7 = requirement security "All data encrypted at rest"
-R8 = requirement security "TLS 1.3 for all connections"
+When you choose PostgreSQL over MongoDB, write down why. When you choose Stripe over building payments in-house, write down why. These decisions seem obvious now, but six months from now, you'll forget.
 
-// Compliance requirements
-R9 = requirement constraint "PCI-DSS Level 1"
-R10 = requirement constraint "GDPR compliance for EU users"
-```
-
-### Using `constraints` Block
-
-```sruja
-constraints {
-  "All APIs must use HTTPS",
-  "Database must be encrypted at rest",
-  "No PII in logs",
-  "Maximum API response time: 2s",
-  "Must support 99.9% uptime",
-  "PCI-DSS compliance required"
-}
-```
-
-## Documenting Trade-offs
-
-### Decision Records (ADRs)
+I use Architecture Decision Records (ADRs):
 
 ```sruja
 ADR001 = adr "Use PostgreSQL for primary database" {
   status "accepted"
-  context "Need ACID transactions, strong consistency for orders"
-  decision "Use PostgreSQL over MongoDB"
+  date "2024-06-15"
+  
+  context "Need ACID transactions for orders and payments. Team has PostgreSQL experience. Must support complex queries for reporting."
+  
+  decision "Use PostgreSQL instead of MongoDB or MySQL"
+  
   consequences {
-    benefits "Strong consistency, ACID transactions",
-    tradeoffs "Scaling requires more effort than NoSQL"
+    benefits "Strong consistency, ACID transactions, team expertise, mature tooling"
+    tradeoffs "Horizontal scaling harder than NoSQL, requires careful schema design"
   }
+  
+  alternatives [
+    "MongoDB: Rejected - no ACID transactions",
+    "MySQL: Rejected - team less experienced, fewer advanced features"
+  ]
 }
 
 ADR002 = adr "Use Stripe for payments" {
   status "accepted"
-  context "Need PCI-compliant payment processing"
-  decision "Use Stripe over building in-house"
+  date "2024-06-20"
+  
+  context "Need PCI-compliant payment processing. Building in-house would take 6+ months and require PCI certification."
+  
+  decision "Use Stripe instead of building in-house or using multiple providers"
+  
   consequences {
-    benefits "PCI compliance, focus on core product",
-    tradeoffs "Per-transaction fee, vendor lock-in"
+    benefits "PCI compliance handled, fast integration, excellent documentation",
+    tradeoffs "Per-transaction fees, vendor lock-in, limited customization"
   }
 }
 ```
 
-## Exercise
+ADRs save you later when someone asks "Why did we do it this way?" or when you're considering a change and want to understand the original reasoning.
 
-Document context for a fitness tracking app:
+## What to Remember
 
-> "A fitness tracking app allows users to log workouts and view progress. Users can sync data from wearables. The app integrates with HealthKit and Google Fit. The app must work offline and sync when online. HIPAA compliance required for health data. Target 1 million users by year-end."
+**Dependencies will fail.** Document them before they do. Include criticality, SLAs, fallbacks, and 3 AM debugging information.
 
-**Document:**
+**Categorize dependencies:** Critical (need fallbacks), important (degrade gracefully), optional (fail silently).
 
-1. Stakeholders
-2. External dependencies (with criticality)
-3. Constraints (technical, business, compliance)
-4. Success criteria (SLOs)
+**Constraints are design inputs, not obstacles.** Technical, business, compliance, and security constraints all shape your architecture. Work with them, not against them.
 
-## Key Takeaways
+**Define success before you build.** Business outcomes connect to business value. SLOs give you measurable targets. Non-goals prevent scope creep.
 
-1. **Document dependencies**: External systems you rely on
-2. **Categorize by importance**: Critical, important, optional
-3. **Define constraints**: Limitations affecting design
-4. **Set success criteria**: What "good" looks like
-5. **Capture trade-offs**: ADRs for important decisions
+**Document decisions.** ADRs capture why you made choices. They're invaluable when revisiting decisions or onboarding new team members.
 
-## Module 6 Complete
+**Context prevents 3 AM pages.** The dependency you didn't document, the constraint you ignored, the success criteria you never defined—these are the things that break in production at the worst possible time.
 
-You've completed Context! You now understand:
+Modeling context isn't bureaucracy. It's survival.
 
-- What context is and why it matters
-- How to model stakeholders
-- How to document dependencies and constraints
+## What's Next
+
+Congratulations! You've completed **Module 6: Context** and the entire **Systems Thinking 101** course!
 
 ## 🎉 Course Complete!
 
-You've finished **Systems Thinking 101**! You now understand:
+You did it. You've made it through all six modules of Systems Thinking 101. That's no small achievement—this material fundamentally changes how you see software systems.
 
-- ✅ Fundamentals of systems thinking
-- ✅ Parts and relationships
-- ✅ Boundaries
-- ✅ Flows
-- ✅ Feedback loops
-- ✅ Context
+Let me recap what you've learned:
 
-## What's Next?
+**Module 1: Fundamentals** - You learned what systems thinking is, the iceberg model, and why seeing the whole system matters more than seeing individual parts.
 
-- Try the [System Design 101](../system-design-101/course-overview.md) course
-- Explore the [Systems Thinking tutorial](../../tutorials/basic/systems-thinking.md)
-- Review the [Beginner path](../../docs/beginner-path.md)
-- Build your own systems thinking architecture!
+**Module 2: Parts and Relationships** - You learned how to identify system components and model how they connect and interact.
 
-Congratulations on completing the course! 🚀
+**Module 3: Boundaries** - You learned where systems start and end, what's inside vs. outside, and how to draw meaningful boundaries.
+
+**Module 4: Flows** - You learned how data and control move through systems, and how to model the pathways that connect components.
+
+**Module 5: Feedback Loops** - You learned about positive and negative feedback, self-regulating systems, and why cycles aren't errors.
+
+**Module 6: Context** - You learned about the environment surrounding your system—stakeholders, dependencies, constraints, and success criteria.
+
+You now think differently about architecture. You don't just see code—you see systems. You don't just see features—you see stakeholders and their competing needs. You don't just see databases—you see dependencies and failure modes.
+
+This is the foundation. Everything else in architecture builds on this.
+
+## What's Next for You?
+
+You're ready for what comes next:
+
+- **Practice:** Take a system you're working on and model it in Sruja. Apply what you've learned. See what you discover.
+
+- **Go deeper:** The [System Design 101](../system-design-101/course-overview.md) course dives into specific patterns, trade-offs, and real-world architectures.
+
+- **Explore:** Check out the [tutorials](../../tutorials/README.md) for hands-on exercises building real architectures.
+
+- **Share:** Teach someone else what you've learned. The best way to solidify knowledge is to teach it.
+
+## A Final Thought
+
+I want to leave you with something that took me years to understand: **Great architecture isn't about being perfect. It's about being aware.**
+
+You won't always make the right decisions. You won't always anticipate every problem. You'll still have 3 AM pages. But with systems thinking, you'll understand WHY things break, WHAT to do about them, and HOW to prevent the same problems next time.
+
+That awareness—the ability to see systems holistically, to model their complexity, to anticipate their failures—that's what makes you an architect.
+
+Now go build something amazing. And when it breaks at 3 AM (and it will), you'll know what to do.
+
+**Congratulations on completing Systems Thinking 101!** 🚀

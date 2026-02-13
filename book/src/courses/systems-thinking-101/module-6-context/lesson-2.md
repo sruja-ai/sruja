@@ -1,127 +1,251 @@
-# Lesson 2: Stakeholders
+title: "Lesson 2: Stakeholders"
+weight: 2
+summary: "The people you forgot to ask are the ones who'll block your launch"
+time: "7 min"
+---
+
+# The Hidden Stakeholder Problem: Why Everyone Matters (Even People You've Never Met)
+
+We launched the new admin dashboard on a Tuesday. By Wednesday, the project was in crisis.
+
+The dashboard was beautiful—sleek, modern, exactly what the product team wanted. The developers had done great work. But within 24 hours, we had three critical problems:
+
+The support team couldn't find customer information quickly enough. The old dashboard had a search box right at the top; the new one buried it three levels deep. Support ticket resolution time doubled.
+
+The compliance team realized the new audit logs didn't capture user IP addresses, which was required for their quarterly reports. They couldn't sign off on the release.
+
+The finance team discovered that the revenue reports they'd been getting automatically every Monday morning were now manual—and nobody had told them.
+
+We'd spent three months building the perfect product for the product team. We'd forgotten that three other teams also depended on the system.
+
+The launch was delayed six weeks while we added features for stakeholders we'd never even talked to.
+
+This lesson is about avoiding that mistake. You'll learn how to identify every stakeholder who matters (including the hidden ones), understand their competing needs, and model them in a way that prevents surprises.
 
 ## Learning Goals
 
-- Identify key stakeholders for your system
-- Model different stakeholder types
-- Document stakeholder needs and concerns
+By the end of this lesson, you'll be able to:
 
-## Who Are Stakeholders?
+- Identify all stakeholder types, not just the obvious ones
+- Recognize why different stakeholders often have conflicting needs
+- Model stakeholder relationships and interactions in Sruja
+- Document stakeholder needs, pain points, and priorities
+- Avoid the "hidden stakeholder" problem that derails projects
 
-Stakeholders are people or groups who are affected by or can affect your system. They include users, customers, team members, and anyone else with an interest in the system.
+## Stakeholders: The Real System Owners
 
-## Stakeholder Categories
+Here's a truth that took me years to learn: **Users don't own systems. Stakeholders do.**
 
-### 1. Primary Users
+A user is someone who interacts with your system. A stakeholder is anyone affected by it or who can affect it. That's a much bigger group.
 
-Direct users of the system:
+Think about an e-commerce platform:
+
+- **Customers** use it to buy things (users AND stakeholders)
+- **Administrators** use it to manage products (users AND stakeholders)
+- **Business owners** never touch it but depend on its revenue (stakeholders, not users)
+- **Support agents** need data from it but might not log in directly (stakeholders, not necessarily users)
+- **Compliance officers** audit it but don't use it (stakeholders, not users)
+- **Developers** maintain it (stakeholders, users of a different kind)
+
+Miss any of these, and you're building an incomplete picture. Each has different needs, different priorities, different success criteria.
+
+## The Five Stakeholder Types (And Why They Conflict)
+
+After years of stakeholder surprises, I've learned to look for five specific groups. Each sees the system differently.
+
+### 1. Primary Users: The People You Think About
+
+These are the direct users—the ones product teams interview, the ones in user stories, the ones you're probably already thinking about.
+
+**Who they are:** Customers, administrators, anyone who logs in and clicks buttons.
+
+**What they want:** Speed, ease of use, features that help them do their job.
+
+**Example in Sruja:**
 
 ```sruja
 Customer = person "Customer" {
-  description "End users who purchase products"
+  description "Shoppers who purchase products"
   metadata {
-    needs ["Fast checkout", "Easy product search", "Order tracking"]
-    pain_points ["Complex checkout", "Slow search results"]
-  }
-}
-
-Administrator = person "Administrator" {
-  description "Manages products, orders, and users"
-  metadata {
-    needs ["Dashboard", "Bulk operations", "Reporting"]
+    needs ["Fast checkout", "Easy search", "Order tracking"]
+    pain_points ["Complex forms", "Slow page loads"]
+    usage "Daily, mostly mobile"
   }
 }
 ```
 
-### 2. Secondary Users
+**The trap:** It's easy to focus only on primary users and forget everyone else.
 
-Users who use the system indirectly:
+### 2. Secondary Users: The People Who Need Your Data
+
+These users don't interact with your system directly, but they depend on its outputs—reports, data exports, APIs.
+
+**Who they are:** Support teams, analysts, people who receive automated reports.
+
+**What they want:** Data access, clear reports, reliable exports.
+
+**Example:**
 
 ```sruja
 SupportAgent = person "Support Agent" {
-  description "Helps customers with orders"
+  description "Helps customers with order issues"
   metadata {
-    needs ["Order history", "Customer lookup", "Quick access"]
+    needs ["Quick customer lookup", "Order history", "Ability to modify orders"]
+    pain_points ["Can't find customer data", "Too many clicks to resolve issues"]
+    usage "Uses admin tools to look up information"
   }
 }
 ```
 
-### 3. Business Stakeholders
+**The trap:** These users are invisible until something breaks. I've seen launches delayed because the weekly report that "nobody uses" suddenly turns out to be critical for the CEO.
 
-Decision-makers and business owners:
+### 3. Business Stakeholders: The People Who Pay For It
+
+These are the decision-makers, budget-owners, and revenue-responsible people. They might never use your system, but they decide if it succeeds.
+
+**Who they are:** Product managers, business owners, executives, finance teams.
+
+**What they want:** Revenue, metrics, ROI, competitive advantage.
+
+**Example:**
 
 ```sruja
-ProductManager = person "Product Manager" {
-  description "Owns product strategy"
+BusinessOwner = person "Business Owner" {
+  description "Accountable for revenue and profit"
   metadata {
-    needs ["Analytics", "User feedback", "Feature usage"]
+    needs ["Revenue reports", "Conversion metrics", "Cost tracking"]
+    concerns ["Is the system making money?", "Are customers happy?", "What's the ROI?"]
+    success_criteria "10% increase in conversion rate"
   }
 }
 
-BusinessOwner = person "Business Owner" {
-  description "Responsible for revenue and profit"
+ProductManager = person "Product Manager" {
+  description "Owns product strategy and roadmap"
   metadata {
-    needs ["Sales reports", "Conversion metrics", "ROI data"]
+    needs ["User analytics", "Feature usage data", "A/B test results"]
+    concerns ["Are users adopting features?", "What should we build next?"]
   }
 }
 ```
 
-### 4. Technical Stakeholders
+**The trap:** Business stakeholders often have goals that conflict with user experience. Fast checkout might reduce revenue (fewer impulse buys). Easy returns might increase costs. You need to model these tensions explicitly.
 
-People who build and maintain the system:
+### 4. Technical Stakeholders: The People Who Build and Run It
+
+These are your teammates—the developers, DevOps engineers, DBAs, security teams. The system affects their daily work.
+
+**Who they are:** Developers, operations teams, security engineers, database administrators.
+
+**What they want:** Clear architecture, good documentation, easy deployment, monitoring.
+
+**Example:**
 
 ```sruja
 Developer = person "Developer" {
   description "Builds and maintains the system"
   metadata {
-    needs ["API documentation", "Clear architecture", "Debugging tools"]
+    needs ["Clear architecture docs", "API documentation", "Debugging tools"]
+    pain_points ["Unclear requirements", "Technical debt", "Poor test coverage"]
   }
 }
 
 DevOpsEngineer = person "DevOps Engineer" {
   description "Deploys and operates the system"
   metadata {
-    needs ["Monitoring", "Logs", "Health checks"]
+    needs ["Monitoring dashboards", "Easy deployment", "Clear logs"]
+    pain_points ["Manual deployments", "Poor observability"]
   }
 }
 ```
 
-### 5. Compliance & Governance
+**The trap:** Technical stakeholders often get ignored in architecture diagrams, but their needs are real. A system that's perfect for users but impossible to operate is a failed system.
 
-People ensuring rules are followed:
+### 5. Compliance and Governance: The People Who Can Say "No"
+
+These stakeholders can block your launch. They don't use the system, but they regulate it.
+
+**Who they are:** Compliance officers, security auditors, legal teams, data privacy officers.
+
+**What they want:** Audit trails, data protection, regulatory compliance.
+
+**Example:**
 
 ```sruja
 ComplianceOfficer = person "Compliance Officer" {
   description "Ensures regulatory compliance"
   metadata {
-    needs ["Audit logs", "Data privacy controls", "Access logs"]
+    needs ["Audit logs", "Data retention policies", "Access controls"]
+    requirements ["PCI-DSS", "GDPR", "SOX"]
+    can_block_launch true
   }
 }
 
 SecurityAuditor = person "Security Auditor" {
   description "Reviews security posture"
   metadata {
-    needs ["Security reports", "Vulnerability assessments", "Penetration test results"]
+    needs ["Vulnerability reports", "Penetration test results", "Access logs"]
+    concerns ["Data breaches", "Unauthorized access", "Injection attacks"]
   }
 }
 ```
 
-## Modeling Stakeholders in Sruja
+**The trap:** These stakeholders are invisible until they're not. I've seen projects delayed months because compliance requirements were discovered too late.
 
-### Basic Stakeholder
+## A Real Stakeholder Conflict (And How We Solved It)
+
+Let me share a specific example that taught me why stakeholder modeling matters.
+
+**The situation:** We were building a customer support dashboard. The product team wanted a clean, minimal interface—fewer buttons, more white space, "Apple-like" design.
+
+**The conflict:** Support agents needed dense information displays. They handled 50+ tickets per day and couldn't afford extra clicks. What product called "cluttered," support called "efficient."
+
+**The mistake:** We designed for product's vision first. Support hated it.
+
+**The solution:** We modeled both stakeholders explicitly:
+
+```sruja
+ProductManager = person "Product Manager" {
+  metadata {
+    vision "Clean, minimal, modern interface"
+    priority "User experience, simplicity"
+  }
+}
+
+SupportAgent = person "Support Agent" {
+  metadata {
+    needs ["Dense information display", "Minimal clicks", "Keyboard shortcuts"]
+    metric "50+ tickets per day"
+    priority "Speed over aesthetics"
+  }
+}
+
+// Make the conflict explicit
+ProductManager -> SupportDashboard "Wants clean interface"
+SupportAgent -> SupportDashboard "Needs dense information"
+```
+
+Making the conflict visible in the architecture forced a conversation. The solution was **modes**: a "standard" view for occasional users and a "power user" view for support agents. Both stakeholders got what they needed, but only because we'd modeled the conflict explicitly.
+
+## Documenting Stakeholders in Sruja
+
+Sruja gives you multiple ways to capture stakeholder information. Here's what works best for each situation.
+
+### Basic Stakeholder Declaration
 
 ```sruja
 Customer = person "Customer"
 ```
 
-### With Details
+Simple and clear. Use this when you just need to show that someone exists.
+
+### Detailed Stakeholder Profile
 
 ```sruja
 Customer = person "Customer" {
   description "End users who purchase products"
   metadata {
     tags ["primary-user", "external"]
-    priority "high"
+    priority "critical"
     needs [
       "Fast and easy checkout",
       "Product search and filtering",
@@ -132,225 +256,234 @@ Customer = person "Customer" {
       "Slow page loads",
       "Lack of mobile support"
     ]
+    context "Busy professionals, often shopping on mobile during commute"
   }
 }
 ```
 
-### With Relationships
+Use this for primary stakeholders where you need to capture their full context.
+
+### Stakeholder With Relationships
 
 ```sruja
 Customer = person "Customer"
 Shop = system "Shop"
 
-// Customer relationship shows interaction
 Customer -> Shop "Purchases products"
 Shop -> Customer "Sends order updates"
 ```
 
-## Stakeholder Interactions
+Relationships show how stakeholders interact with the system. Notice the bidirectional flow—customers buy, but the system also reaches out to customers.
 
-### Example: E-Commerce Platform
+### Stakeholder Personas (Advanced)
+
+For critical user types, create detailed personas:
+
+```sruja
+Sarah = person "Sarah (Customer Persona)" {
+  description "Busy professional, 35, shops on mobile during commute"
+  metadata {
+    demographics {
+      age "35"
+      occupation "Marketing manager"
+      device "iPhone 13"
+    }
+    goals [
+      "Find products quickly",
+      "Complete checkout in under 2 minutes",
+      "Track orders without logging into email"
+    ]
+    frustrations [
+      "Sites that aren't mobile-friendly",
+      "Long forms that don't autofill",
+      "Slow loading pages"
+    ]
+    scenario "Shopping on the train to work, 15 minutes before her stop"
+  }
+}
+```
+
+Personas bring stakeholders to life. They're especially useful when you need to make design trade-offs and want to ask "What would Sarah prefer?"
+
+## A Complete Example: E-Commerce Platform
+
+Let me show you how all this comes together in a real architecture:
 
 ```sruja
 import { * } from 'sruja.ai/stdlib'
 
-// Stakeholders
-Customer = person "Customer"
-Administrator = person "Administrator"
-SupportAgent = person "Support Agent"
-ProductManager = person "Product Manager"
-BusinessOwner = person "Business Owner"
+// =========== STAKEHOLDERS ===========
 
-// System
+// Primary users
+Customer = person "Customer" {
+  description "Shoppers who purchase products"
+  metadata {
+    needs ["Fast checkout", "Easy search", "Mobile-friendly"]
+    priority "critical"
+  }
+}
+
+Administrator = person "Administrator" {
+  description "Manages products, orders, and inventory"
+  metadata {
+    needs ["Bulk operations", "Reporting", "Quick updates"]
+    priority "high"
+  }
+}
+
+// Secondary users
+SupportAgent = person "Support Agent" {
+  description "Helps customers with order issues"
+  metadata {
+    needs ["Customer lookup", "Order history", "Refund processing"]
+    priority "high"
+  }
+}
+
+// Business stakeholders
+ProductManager = person "Product Manager" {
+  description "Owns product strategy"
+  metadata {
+    needs ["Analytics", "Feature usage", "User feedback"]
+    priority "medium"
+  }
+}
+
+BusinessOwner = person "Business Owner" {
+  description "Accountable for revenue"
+  metadata {
+    needs ["Revenue reports", "Conversion metrics", "Cost tracking"]
+    priority "high"
+  }
+}
+
+// Compliance
+ComplianceOfficer = person "Compliance Officer" {
+  description "Ensures PCI-DSS compliance"
+  metadata {
+    needs ["Audit logs", "Access controls", "Data encryption"]
+    can_block_launch true
+  }
+}
+
+// =========== SYSTEM ===========
+
 Shop = system "Shop" {
   WebApp = container "Web Application"
   API = container "API Service"
   Database = database "Database"
+  
+  metadata {
+    slo {
+      availability { target "99.9%" }
+      latency { p95 "200ms" }
+    }
+  }
 }
 
-// Stakeholder interactions
-Customer -> Shop.WebApp "Browses products"
-Customer -> Shop.WebApp "Purchases products"
-Customer -> Shop.WebApp "Tracks orders"
+// =========== STAKEHOLDER INTERACTIONS ===========
 
-Administrator -> Shop.WebApp "Manages products"
-Administrator -> Shop.WebApp "Views reports"
+// Primary user interactions
+Customer -> Shop.WebApp "Browses and purchases"
+Administrator -> Shop.WebApp "Manages products and orders"
 
-SupportAgent -> Shop.WebApp "Assists customers"
-SupportAgent -> Shop.WebApp "Views order history"
+// Secondary user interactions
+SupportAgent -> Shop.WebApp "Looks up customer info"
 
-ProductManager -> Shop.WebApp "Reviews analytics"
-ProductManager -> Shop.WebApp "Monitors user behavior"
+// Business stakeholder needs (indirect)
+ProductManager -> Shop "Reviews analytics"
+BusinessOwner -> Shop "Monitors revenue"
 
-BusinessOwner -> Shop.WebApp "Views revenue reports"
-BusinessOwner -> Shop.WebApp "Monitors KPIs"
+// Compliance oversight
+ComplianceOfficer -> Shop "Audits compliance"
 
 view index {
   include *
 }
 ```
 
-## Stakeholder Matrix
+This diagram tells a complete story. You can see who matters, what they need, and how they interact with the system. That's the power of explicit stakeholder modeling.
 
-| Stakeholder     | Role             | Needs                        | Concerns             |
-| --------------- | ---------------- | ---------------------------- | -------------------- |
-| Customer        | End user         | Fast checkout, easy search   | Privacy, reliability |
-| Administrator   | System admin     | Management tools, reports    | Ease of use          |
-| Support Agent   | Customer support | Customer data, order history | Quick access         |
-| Product Manager | Product owner    | Analytics, user feedback     | Feature adoption     |
-| Business Owner  | Decision maker   | Revenue, conversion, ROI     | Profitability, costs |
+## Prioritizing Stakeholders (When You Can't Please Everyone)
 
-## Prioritizing Stakeholders
+Here's the uncomfortable truth: **stakeholders have conflicting needs, and you can't satisfy everyone.**
 
-### MoSCoW Method
+The customer wants the cheapest price. The business owner wants the highest margin. Those are fundamentally in tension.
 
-```sruja
-// Must Have (Critical)
-Customer = person "Customer"
+The developer wants clean code. The product manager wants features fast. Also in tension.
 
-// Should Have (Important)
-Administrator = person "Administrator"
+I've learned to prioritize stakeholders using a simple framework:
 
-// Could Have (Nice to have)
-ProductManager = person "Product Manager"
+**Critical:** Primary users and anyone who can block launch (compliance, security)
+**High:** Business owners and secondary users
+**Medium:** Technical stakeholders and internal teams
+**Low:** Nice-to-have but not essential
 
-// Won't Have (Out of scope)
-MarketingAnalyst = person "Marketing Analyst"
-```
-
-### RICE Scoring (for Features)
+In Sruja:
 
 ```sruja
-// High impact, low effort
 Customer = person "Customer" {
   metadata {
-    rice_score {
-      reach "10000 users"
-      impact "High"
-      confidence "80%"
-      effort "2 weeks"
-    }
+    priority "critical"
+    rationale "Primary user, revenue source"
   }
 }
-```
 
-## Stakeholder Personas
-
-### Creating Personas
-
-```sruja
-// Persona 1: Primary user
-Sarah = person "Sarah (Customer)" {
-  description "Busy professional, 35, shops on mobile"
+ComplianceOfficer = person "Compliance Officer" {
   metadata {
-    goals ["Fast checkout", "Mobile-friendly", "Easy returns"]
-    frustrations ["Complex forms", "Slow loading"]
-    context ["Shops during commute", "Uses iPhone"]
+    priority "critical"
+    rationale "Can block launch"
   }
 }
 
-// Persona 2: Secondary user
-John = person "John (Administrator)" {
-  description "Operations manager, 45, manages inventory"
+MarketingAnalyst = person "Marketing Analyst" {
   metadata {
-    goals ["Quick updates", "Bulk operations", "Real-time data"]
-    frustrations ["Slow interface", "Lack of filters"]
-    context ["Desktop user", "Excel background"]
+    priority "low"
+    rationale "Nice to have, not essential for launch"
   }
 }
 ```
 
-## Stakeholder-System Relationships
+Making priorities explicit helps when you need to make trade-offs.
 
-### Direct Users
+## The Stakeholder Discovery Process
 
-```sruja
-// Interact directly with the system
-Customer -> Shop.WebApp "Uses"
-Administrator -> Shop.WebApp "Manages"
-```
+How do you find stakeholders you don't know about? I've learned to ask three questions:
 
-### Indirect Users
+1. **Who uses the system directly?** (Primary users)
+2. **Who receives data or reports from the system?** (Secondary users)
+3. **Who can say "no" to this launch?** (Compliance, business, security)
 
-```sruja
-// System serves their needs without direct interaction
-BusinessOwner -> Shop "Reviews revenue"
-// Business owner doesn't use the app directly
-```
+I also look for "zombie stakeholders"—people who used to matter but haven't been involved recently. They often resurface at the worst possible moment.
 
-### External Stakeholders
+## Common Stakeholder Mistakes
 
-```sruja
-// Affected by system but don't use it
-ComplianceOfficer = person "Compliance Officer"
-ComplianceOfficer -> Shop "Reviews audit logs"
-```
+After years of stakeholder surprises, I've seen these patterns repeat:
 
-## Documenting Stakeholder Needs
+**Mistake 1: Only modeling users.** You remember the customers and admins, but forget the compliance officer who can block your launch.
 
-### Using Requirements
+**Mistake 2: Not documenting conflicts.** Business wants speed, compliance wants audit trails. These tensions exist whether you document them or not. Documenting them makes them solvable.
 
-```sruja
-// Customer needs
-R1 = requirement functional "Guest checkout available"
-R2 = requirement performance "Page load < 2s"
+**Mistake 3: Assuming stakeholders agree.** Different stakeholders want different things. Don't assume alignment—verify it.
 
-// Administrator needs
-R3 = requirement functional "Bulk product upload"
-R4 = requirement usability "Intuitive dashboard"
+**Mistake 4: Invisible stakeholders.** The finance team getting automated reports, the support team needing data exports—these stakeholders are easy to miss until something breaks.
 
-// Business owner needs
-R5 = requirement reporting "Daily revenue reports"
-R6 = requirement analytics "Conversion funnel tracking"
-```
+## What to Remember
 
-### Using SLOs
+**Stakeholders are more than users.** Anyone affected by or affecting your system is a stakeholder, whether they log in or not.
 
-```sruja
-Shop = system "Shop" {
-  slo {
-    availability {
-      target "99.9%"
-    }
-    latency {
-      p95 "200ms"
-      p99 "500ms"
-    }
-    errorRate {
-      target "0.1%"
-    }
-  }
-}
-```
+**Five types to look for:** Primary users, secondary users, business stakeholders, technical stakeholders, and compliance/governance.
 
-## Exercise
+**Conflicts are normal.** Different stakeholders want different things. Model the conflicts explicitly so you can solve them.
 
-Identify stakeholders for a hospital appointment scheduling system:
+**Hidden stakeholders cause surprises.** Ask "Who can block this launch?" to find stakeholders you might have missed.
 
-> "The system allows patients to book appointments, doctors to view their schedules, and receptionists to manage appointments. Hospital administrators need reporting on utilization. The system integrates with insurance APIs and sends SMS reminders."
+**Document priorities.** When you can't satisfy everyone, know who matters most.
 
-**Identify:**
+**Use personas for critical stakeholders.** Detailed personas help you make design decisions when stakeholders aren't available to ask.
 
-1. Primary stakeholders: ******\_******
-2. Secondary stakeholders: ******\_******
-3. Business stakeholders: ******\_******
-4. Technical stakeholders: ******\_******
+Stakeholder modeling isn't about pleasing everyone—it's about understanding the full picture so you can make informed trade-offs. The time you spend identifying stakeholders pays back in avoided crises and smoother launches.
 
-**For each, document:**
+## What's Next
 
-- Their role
-- What they need from the system
-- Any concerns or pain points
-
-## Key Takeaways
-
-1. **Identify all stakeholders**: Users, business, technical, compliance
-2. **Categorize them**: Primary, secondary, business, technical
-3. **Document needs**: Goals, frustrations, context
-4. **Prioritize**: Focus on most important stakeholders
-5. **Model relationships**: Show how stakeholders interact with the system
-6. **Use personas**: Create detailed user profiles
-
-## Next Lesson
-
-In [Lesson 3](lesson-3.md), you'll learn how to document dependencies, constraints, and success criteria.
+Now that you understand who your stakeholders are, [Lesson 3](lesson-3.md) covers the other half of context: external dependencies, constraints, and success criteria. You'll learn how to document what your system depends on and what "success" actually means.
