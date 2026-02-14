@@ -383,3 +383,163 @@ fn is_number(s: &str) -> bool {
     }
     seen_digit
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_language::Parser;
+
+    fn validate_program(input: &str) -> Vec<Diagnostic> {
+        let parser = Parser::new("test.sruja".to_string());
+        let program = match parser.parse(input) {
+            Ok(p) => p,
+            Err(_) => return vec![],
+        };
+        let rule = SloValidationRule;
+        rule.validate(&program)
+    }
+
+    #[test]
+    fn empty_program_returns_no_diagnostics() {
+        let diags = validate_program("");
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn valid_slo_passes() {
+        let input = r#"
+api = container "API" {
+    slo { latency { p95 "200ms" p99 "500ms" } }
+}
+"#;
+        let diags = validate_program(input);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn empty_slo_block_warns() {
+        let input = r#"
+api = container "API" {
+    slo { }
+}
+"#;
+        let diags = validate_program(input);
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("at least one SLO type"));
+    }
+
+    #[test]
+    fn invalid_availability_target_fails() {
+        let input = r#"
+api = container "API" {
+    slo { availability { target "99" } }
+}
+"#;
+        let diags = validate_program(input);
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("Availability target"));
+    }
+
+    #[test]
+    fn valid_availability_target_passes() {
+        let input = r#"
+api = container "API" {
+    slo { availability { target "99.9%" } }
+}
+"#;
+        let diags = validate_program(input);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn invalid_latency_p95_fails() {
+        let input = r#"
+api = container "API" {
+    slo { latency { p95 "slow" } }
+}
+"#;
+        let diags = validate_program(input);
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("Latency p95"));
+    }
+
+    #[test]
+    fn valid_latency_passes() {
+        let input = r#"
+api = container "API" {
+    slo { latency { p95 "200ms" p99 "500ms" } }
+}
+"#;
+        let diags = validate_program(input);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn invalid_error_rate_target_fails() {
+        let input = r#"
+api = container "API" {
+    slo { errorRate { target "high" } }
+}
+"#;
+        let diags = validate_program(input);
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("Error rate target"));
+    }
+
+    #[test]
+    fn valid_error_rate_passes() {
+        let input = r#"
+api = container "API" {
+    slo { errorRate { target "0.1%" } }
+}
+"#;
+        let diags = validate_program(input);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn invalid_throughput_target_warns() {
+        let input = r#"
+api = container "API" {
+    slo { throughput { target "lots" } }
+}
+"#;
+        let diags = validate_program(input);
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("Throughput target"));
+    }
+
+    #[test]
+    fn valid_throughput_passes() {
+        let input = r#"
+api = container "API" {
+    slo { throughput { target "10000 req/s" } }
+}
+"#;
+        let diags = validate_program(input);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn invalid_time_window_warns() {
+        let input = r#"
+api = container "API" {
+    slo { availability { target "99.9%" window "bad" } }
+}
+"#;
+        let diags = validate_program(input);
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("window"));
+    }
+
+    #[test]
+    fn valid_time_window_passes() {
+        let input = r#"
+api = container "API" {
+    slo { availability { target "99.9%" window "30 days" } }
+}
+"#;
+        let diags = validate_program(input);
+        assert!(diags.is_empty());
+    }
+}

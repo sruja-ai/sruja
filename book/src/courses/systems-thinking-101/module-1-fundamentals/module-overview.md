@@ -15,9 +15,14 @@ By the end of this module, you'll be able to:
 
 ## Lessons
 
-- [Lesson 1: What is Systems Thinking?](lesson-1.md) - Introduction to systems thinking principles
-- [Lesson 2: The Five Core Concepts](lesson-2.md) - Overview of the key concepts you'll learn
-- [Lesson 3: Why Systems Thinking Matters](lesson-3.md) - Benefits and practical applications
+- [Lesson 1: Introduction to Systems Thinking](lesson-1.md) - What is systems thinking and why it matters for architecture (2 min)
+- [Lesson 2: The Iceberg Model](lesson-2.md) - Understanding events, patterns, structures, and mental models (2 min)
+- [Lesson 3: Systems in Software Architecture](lesson-3.md) - Every system is a system of systems (2 min)
+- [Lesson 4: Parts & Relationships](lesson-4.md) - Model components and their interactions (2 min)
+- [Lesson 5: Boundaries](lesson-5.md) - What's inside vs. outside your system (2 min)
+- [Lesson 6: Flows](lesson-6.md) - Visualize data and information movement (2 min)
+- [Lesson 7: Feedback Loops](lesson-7.md) - How systems respond, adapt, and self-regulate (2 min)
+- [Lesson 8: Context](lesson-8.md) - Capture environment, dependencies, and constraints (2 min)
 
 ## Prerequisites
 
@@ -26,7 +31,7 @@ By the end of this module, you'll be able to:
 
 ## Time Investment
 
-Approximately 1-1.5 hours to complete all lessons.
+Approximately 20-25 minutes to complete all lessons (8 lessons × 2-3 minutes each, including quizzes).
 
 ## What's Next
 

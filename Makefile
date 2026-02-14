@@ -29,12 +29,19 @@ build: build-rust
 test: test-rust
 	@echo "✅ Tests complete!"
 
-# Run tests with coverage
+# Run tests with coverage (requires: cargo install cargo-llvm-cov)
 test-coverage:
 	@echo "Running Rust tests with coverage..."
 	@if command -v cargo >/dev/null 2>&1; then \
-		cargo test --manifest-path Cargo.toml -- --nocapture; \
-		cargo test --manifest-path Cargo.toml --features test-coverage 2>/dev/null || echo "Note: Install cargo-llvm-cov for coverage reports"; \
+		if cargo llvm-cov --version >/dev/null 2>&1; then \
+			cargo llvm-cov --manifest-path Cargo.toml; \
+		else \
+			cargo test --manifest-path Cargo.toml; \
+			echo ""; \
+			echo "Note: Install cargo-llvm-cov for coverage reports:"; \
+			echo "  rustup component add llvm-tools-preview"; \
+			echo "  cargo install cargo-llvm-cov"; \
+		fi; \
 	else \
 		echo "❌ Cargo not found. Please install Rust: https://rustup.rs/"; \
 		exit 1; \

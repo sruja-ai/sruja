@@ -1,0 +1,270 @@
+# Quiz for System Design 101 - Module 1, Lesson 3: Availability & Reliability
+# Tests understanding of availability vs reliability, redundancy, failover, and SLAs
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "In system design, what term describes the percentage of time a system is operational and accessible (uptime)?"
+answer.answer = "Availability"
+answer.alternatives = ["availability", "uptime"]
+context = """
+Availability measures how often a system is up and accessible. It's about uptime percentage (e.g., 99.9%).
+"""
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "In system design, what term describes the probability that a system will function correctly without failure for a specified period (correctness)?"
+answer.answer = "Reliability"
+answer.alternatives = ["reliability", "correctness"]
+context = """
+Reliability measures how often a system functions correctly without errors. A system can be available (up) but unreliable (returning 500 errors).
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Which availability level allows approximately 8.76 hours of downtime per year?"
+prompt.distractors = [
+  "99% (Two nines) - 3.65 days/year",
+  "99.99% (Four nines) - 52.6 minutes/year",
+  "99.999% (Five nines) - 5.26 minutes/year"
+]
+answer.answer = "99.9% (Three nines) - 8.76 hours/year"
+context = """
+99.9% availability = 99.9% uptime = 0.1% downtime = 0.001 × 365 days × 24 hours = 8.76 hours/year.
+Each additional "9" reduces downtime by a factor of 10.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "AWS S3 provides 99.999999999% durability (11 nines). What does this mean in practical terms?"
+prompt.distractors = [
+  "S3 can be down for 5 minutes per year",
+  "If you store 10,000 objects, you'll lose one per year",
+  "S3 guarantees 11 nines availability (uptime)"
+]
+answer.answer = "If you store 10,000 objects, you'll lose one on average every 10,000,000 years"
+context = """
+99.999999999% durability means 0.000000001% chance of data loss. For 10,000 objects, that's a 0.01% chance per year = once every 10,000 years.
+Note: Durability ≠ Availability. S3's availability is 99.99% (52.6 minutes/year downtime).
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A system has a Single Point of Failure (SPOF). What happens if that component fails?"
+prompt.distractors = [
+  "The system continues operating normally with degraded performance",
+  "The load balancer automatically routes traffic to other components",
+  "The system fails gracefully with an error message"
+]
+answer.answer = "The entire system becomes unavailable or non-functional"
+context = """
+A Single Point of Failure is a component whose failure causes the entire system to fail. Redundancy is used to eliminate SPOFs by having backup components.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In an Active-Passive redundancy setup, what happens when the active server fails?"
+prompt.distractors = [
+  "Both servers were handling traffic, so traffic continues normally",
+  "The passive server automatically starts handling all traffic (failover)",
+  "The system sends an error to users until manual intervention"
+]
+answer.answer = "The passive server takes over (failover), but there's a brief interruption during switch"
+context = """
+Active-Passive: One server handles traffic, the other is on standby. Failover happens automatically, but there's typically a few seconds of interruption as the passive server comes online.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In an Active-Active redundancy setup, what happens when one server fails?"
+prompt.distractors = [
+  "The entire system goes down because both servers were critical",
+  "The other server takes 5 minutes to restart before accepting traffic",
+  "Users connected to the failed server experience errors until they reconnect"
+]
+answer.answer = "Traffic is redistributed to the remaining server(s) with minimal or no interruption"
+context = """
+Active-Active: Both servers handle traffic simultaneously. If one fails, the other continues handling its traffic plus takes over some traffic from the failed server.
+Minimal interruption if load balancer detects failure quickly.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "You're building a banking application that processes financial transactions. Which redundancy approach is most appropriate?"
+prompt.distractors = [
+  "Active-Active with no failover testing (cheaper)",
+  "Active-Passive with automatic failover (good balance)",
+  "No redundancy (transactions are rare, so SPOF is acceptable)"
+]
+answer.answer = "Active-Active with rigorous failover testing and synchronous replication"
+context = """
+Banking requires both high availability and strong consistency. Active-Active with synchronous replication ensures no data loss during failover.
+Regular chaos engineering tests (like Netflix's Chaos Monkey) ensure failover actually works when needed.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A content delivery network (CDN) has 100 edge servers worldwide. If 5 servers fail simultaneously, the CDN remains operational. This is an example of:"
+prompt.distractors = [
+  "Vertical scaling",
+  "Single Point of Failure",
+  "Active-Passive redundancy"
+]
+answer.answer = "Elimination of Single Points of Failure through redundancy"
+context = """
+With 100 servers, the failure of 5 has minimal impact because there's no single critical component. This is horizontal scaling providing both availability and resilience.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Your database server fails. You have a standby replica that can take over in 30 seconds. What's your Recovery Time Objective (RTO)?"
+prompt.distractors = [
+  "0 seconds (no data loss)",
+  "30 seconds (time to detect and switch)",
+  "1 minute (time to fully restore service)"
+]
+answer.answer = "30 seconds (time to detect failure and failover to standby)"
+context = """
+RTO (Recovery Time Objective) is the maximum acceptable time to restore service after a disruption.
+In this case, RTO = 30 seconds (detection + failover time).
+RPO (Recovery Point Objective) would be how much data is lost (depends on replication lag).
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Netflix uses Chaos Monkey, a tool that randomly terminates instances in production. What is the purpose of this?"
+prompt.distractors = [
+  "To save money by reducing server count",
+  "To test if the system can handle automatic failover and resilience",
+  "To identify which servers are underutilized"
+]
+answer.answer = "To proactively test that the system remains available when components fail"
+context = """
+Chaos Engineering is about intentionally causing failures to test resilience. If Chaos Monkey kills a server and Netflix users don't notice, the system is resilient.
+This practice transformed Netflix's availability from 99.9% to 99.99%+ by finding and fixing weaknesses before real outages occur.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Your e-commerce site's primary database fails. You have a standby replica with 5 minutes of replication lag (meaning it's missing the last 5 minutes of orders). What's your RPO?"
+prompt.distractors = [
+  "0 minutes (no data lost)",
+  "5 minutes (you lose up to 5 minutes of data)",
+  "Infinite (you can't recover the data)"
+]
+answer.answer = "5 minutes (you lose up to 5 minutes of transaction data)"
+context = """
+RPO (Recovery Point Objective) is the maximum acceptable data loss measured in time.
+With 5 minutes of replication lag, RPO = 5 minutes. Any orders placed in the last 5 minutes would need to be recovered from logs or customer records.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A system has 99.9% availability. How much downtime is this per month?"
+prompt.distractors = [
+  "8.76 hours (same as per year)",
+  "43.8 minutes (8.76 hours ÷ 12)",
+  "5 minutes (same as five nines per year)"
+]
+answer.answer = "43.8 minutes (8.76 hours ÷ 12 months)"
+context = """
+99.9% = 8.76 hours downtime/year ÷ 12 months = 0.73 hours = 43.8 minutes per month.
+This means the system can be down for ~43 minutes each month while maintaining 99.9% availability SLA.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "You're designing a global video streaming service. Users expect 99.99% availability. What's the maximum acceptable downtime per month?"
+prompt.distractors = [
+  "43.8 minutes (same as 99.9%)",
+  "5.26 minutes (same as five nines per year)",
+  "4.38 minutes (52.6 minutes/year ÷ 12)"
+]
+answer.answer = "4.38 minutes (52.6 minutes/year ÷ 12 months)"
+context = """
+99.99% = 52.6 minutes downtime/year ÷ 12 months = 4.38 minutes per month.
+Achieving this requires Active-Active setup across multiple regions with automatic failover, as any maintenance or failure costs precious minutes.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In Sruja, how would you model a database with a standby replica for high availability?"
+prompt.distractors = [
+  "Use a single database component with 'standby' in description",
+  "Create two databases and don't connect them (Sruja auto-discovers)",
+  "Use a load balancer with one database connection"
+]
+answer.answer = "Define two database components (Primary and Standby) with a replication relationship"
+context = """
+In Sruja, you explicitly model redundant components:
+
+```sruja
+PrimaryDB = database "Primary Database" { ... }
+StandbyDB = database "Standby Database" {
+    description "Replicates from PrimaryDB. Promoted to primary if PrimaryDB fails."
+}
+PrimaryDB -> StandbyDB "Replicates data"
+```
+
+This makes the redundancy strategy visible in your architecture diagrams.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Which scenario demonstrates the difference between availability and reliability?"
+prompt.distractors = [
+  "Server crashes and the site goes down (neither available nor reliable)",
+  "Site loads quickly and returns correct data (both available and reliable)",
+  "Site is accessible but returns random 500 errors to users"
+]
+answer.answer = "Site is accessible but returns random 500 errors to users"
+context = """
+This is AVAILABLE (site is up) but NOT RELIABLE (not functioning correctly).
+- Available = 100% uptime (never down)
+- Reliable = 100% correct (no errors)
+- Perfect = Both available and reliable
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Your company's SLA (Service Level Agreement) promises 99.9% uptime. In the last month, you had 1 hour of downtime. What's the penalty?"
+prompt.distractors = [
+  "No penalty (1 hour < 43.8 minutes allowed)",
+  "50% penalty for missing the SLA",
+  "Calculate the difference: (60 min - 43.8 min) × penalty rate"
+]
+answer.answer = "16.2 minutes exceeded (60 min - 43.8 min = 16.2 min beyond SLA)"
+context = """
+99.9% SLA = 43.8 minutes downtime/month allowed.
+Actual = 60 minutes downtime.
+Exceeded by 16.2 minutes.
+Penalty is typically calculated based on the exceeded minutes times a penalty rate (e.g., 1% credit per minute exceeded).
+This demonstrates why monitoring availability in real-time is critical for SLA compliance.
+"""
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What is the term for the process of switching from a failed primary component to a redundant standby component?"
+answer.answer = "Failover"
+answer.alternatives = ["failover", "fail-over", "switchover"]
+context = """
+Failover is the process of automatically or manually switching to a redundant system upon failure. This is critical for high availability systems.
+Failover can be automatic (system detects failure and switches) or manual (operator triggers switch).
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A healthcare application must be available 24/7 for emergency access. The database can only be down for maintenance 4 hours per year. What's the minimum availability required?"
+prompt.distractors = [
+  "99% (allows 3.65 days/year)",
+  "99.9% (allows 8.76 hours/year)",
+  "99.999% (allows 5.26 minutes/year)"
+]
+answer.answer = "99.95% (allows 4.38 hours/year, just under the 4-hour requirement)"
+context = """
+4 hours/year downtime tolerance:
+4 hours ÷ (365 days × 24 hours) = 4 ÷ 8760 = 0.0457% downtime
+Availability = 100% - 0.0457% = 99.954%
+
+Rounding to standard availability levels: 99.95% allows 4.38 hours/year, which meets the requirement.
+This requires careful planning: Active-Active setup, scheduled maintenance windows, and minimal unplanned outages.
+"""

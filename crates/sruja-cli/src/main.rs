@@ -44,6 +44,9 @@ enum Commands {
     Fmt {
         /// Path to .sruja file
         file: String,
+        /// Check if file would be reformatted (CI mode, exits with error if changes needed)
+        #[arg(long)]
+        check: bool,
     },
     /// List elements from a file
     List {
@@ -195,7 +198,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             view_level,
             target,
         } => commands::export(&format, &file, extended, view_level, target.as_deref()).await,
-        Commands::Fmt { file } => commands::fmt(&file).await,
+        Commands::Fmt { file, check } => commands::fmt(&file, check).await,
         Commands::Lsp { .. } => commands::lsp().await,
         Commands::Compile { file } => commands::compile(&file).await,
         Commands::Validate {

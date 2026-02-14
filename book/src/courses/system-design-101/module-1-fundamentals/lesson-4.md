@@ -57,3 +57,24 @@ view index {
 include *
 }
 ```
+
+## Quiz: Test Your Knowledge
+
+Ready to apply what you've learned? Take the interactive quiz for this lesson!
+
+{{#quiz ../../quizzes/system-design-101/module-1-fundamentals/lesson-4-quiz.toml}}
+
+This quiz covers:
+- CAP theorem definitions (Consistency, Availability, Partition Tolerance)
+- Why P is mandatory in distributed systems
+- CP vs AP systems
+- Real-world examples (PayPal, Netflix, Twitter)
+- Strong vs Eventual Consistency
+- Consistency levels in Cassandra (ONE, QUORUM, ALL)
+- Replication and quorum
+- Global distributed systems and latency
+- BASE vs ACID
+- Causal consistency
+- Network partitions and quorum
+- Latency vs consistency trade-offs
+- Sruja modeling for consistency

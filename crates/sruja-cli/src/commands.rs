@@ -6,7 +6,6 @@ use std::path::Path;
 use sruja_diagnostics::format_diagnostic;
 use sruja_engine::Validator;
 use sruja_export::context::ContextExporter;
-use sruja_export::dot::{DotConfig, DotExporter};
 use sruja_export::dsl::DslPrinter;
 use sruja_export::json::exporter::{ExportError as JsonExportError, Exporter as JsonExporter};
 use sruja_export::markdown::{MarkdownExporter, MarkdownOptions};
@@ -153,15 +152,6 @@ pub async fn export(
             let mmd = exporter.export(&program);
             println!("{}", mmd);
         }
-        "dot" => {
-            let exporter = DotExporter::new(DotConfig {
-                view_level,
-                target_id: target.map(|s| s.to_string()),
-                ..DotConfig::default()
-            });
-            let dot = exporter.export(&program);
-            println!("{}", dot);
-        }
         "markdown" => {
             let exporter = MarkdownExporter::new(MarkdownOptions::default());
             let md = exporter.export(&program);
@@ -189,9 +179,45 @@ pub async fn export(
 }
 
 /// Format a Sruja file
-pub async fn fmt(_file: &str) -> Result<(), CliError> {
-    // TODO: Implement formatting (pretty-print using DSL printer)
-    eprintln!("Formatting not yet implemented");
+pub async fn fmt(file: &str, check: bool) -> Result<(), CliError> {
+    let content = fs::read_to_string(file)?;
+    let parser = Parser::new(file.to_string());
+
+    let program = match parser.parse(&content) {
+        Ok(program) => program,
+        Err(mut diagnostics) => {
+            enrich_diagnostics_with_source(&content, &mut diagnostics);
+            for diag in &diagnostics {
+                eprintln!("{}", format_diagnostic(diag));
+            }
+            return Err(CliError::Parse(format!(
+                "Formatting failed: file has {} parse errors",
+                diagnostics.len()
+            )));
+        }
+    };
+
+    let printer = DslPrinter::new();
+    let formatted = printer.print(&program);
+
+    // Check if formatting would change the file
+    if formatted != content {
+        if check {
+            // In check mode, report but don't modify
+            println!("Would reformat {}", file);
+            return Err(CliError::Validation(format!(
+                "File {} needs formatting",
+                file
+            )));
+        } else {
+            // Normal mode: write the changes
+            fs::write(file, formatted)?;
+            println!("Formatted {}", file);
+        }
+    } else {
+        println!("{} is already formatted", file);
+    }
+
     Ok(())
 }
 

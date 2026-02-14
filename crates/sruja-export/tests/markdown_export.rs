@@ -19,11 +19,11 @@ User = person "User" {
 
 Shop = system "Shop" {
     description "Online shopping platform"
-    
+
     Web = container "Web Application" {
         technology "React"
     }
-    
+
     API = container "API Service" {
         technology "Rust"
     }
@@ -182,7 +182,6 @@ scenario LoginFlow "User Login Flow" {
     }
 
     #[test]
-    #[ignore = "Markdown exporter does not yet emit Feedback Loops section; parser/AST may not support feedback blocks"]
     fn test_feedback_loop_export() {
         let input = r#"
 person = kind "Person"
@@ -191,7 +190,10 @@ system = kind "System"
 User = person "User"
 System = system "System"
 
-feedback FL-1 reinforcing "User Satisfaction Loop" "Increased usage improves satisfaction" {
+FL1 = feedback "User Satisfaction Loop" {
+    loop_type reinforcing
+    description "Increased usage improves satisfaction"
+
     User -> System "provides feedback"
     System -> User "improves experience"
 }
@@ -224,15 +226,14 @@ feedback FL-1 reinforcing "User Satisfaction Loop" "Increased usage improves sat
     }
 
     #[test]
-    #[ignore = "Markdown exporter does not yet emit Causal Loops section; parser/AST may not support causal_loop blocks"]
+    #[ignore] // TODO: Fix causal_loop parsing/exporting - test fails due to parsing issue
     fn test_causal_loop_export() {
         let input = r#"
-causal_loop CL-1 reinforcing "Market Dynamics" "Supply and demand balance" {
-    variable demand "Demand"
-    variable price "Price"
-    
-    demand -> price effect "increases" polarity positive
-    price -> demand effect "decreases" polarity negative
+causal_loop Loop1 reinforcing "Test Loop" {
+    variable Stock "Stock Variable"
+    variable Flow "Flow Variable"
+    Stock -> Flow "increases" polarity +
+    Flow -> Stock "decreases" polarity -
 }
 "#;
 
@@ -255,9 +256,8 @@ causal_loop CL-1 reinforcing "Market Dynamics" "Supply and demand balance" {
         let markdown = exporter.export(&program);
 
         assert!(markdown.contains("## Causal Loops"));
-        assert!(markdown.contains("Market Dynamics"));
-        assert!(markdown.contains("**Type:** reinforcing (+)"));
-        assert!(markdown.contains("Supply and demand balance"));
+        assert!(markdown.contains("Test Loop"));
+        assert!(markdown.contains("**Type:** Reinforcing"));
         assert!(markdown.contains("```mermaid"));
         assert!(markdown.contains("graph LR"));
     }
@@ -272,20 +272,20 @@ component = kind "Component"
 Banking = system "Banking System" {
     description "Online banking platform"
     technology "Java"
-    
+
     API = container "API Gateway" {
         description "REST API endpoints"
         technology "Spring Boot"
-        
+
         Auth = component "Auth Service" {
             description "OAuth2 authentication"
         }
-        
+
         Accounts = component "Accounts Service" {
             description "Account management"
         }
     }
-    
+
     Web = container "Web App" {
         description "React SPA"
         technology "React"

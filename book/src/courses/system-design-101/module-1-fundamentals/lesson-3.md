@@ -71,4 +71,22 @@ Payments = system "Payment System" {
 view index {
 include *
 }
+
+## Quiz: Test Your Knowledge
+
+Ready to apply what you've learned? Take the interactive quiz for this lesson!
+
+{{#quiz ../../quizzes/system-design-101/module-1-fundamentals/lesson-3-quiz.toml}}
+
+This quiz covers:
+- Availability vs Reliability definitions
+- Availability levels and downtime calculations (nines)
+- Redundancy strategies (Active-Passive vs Active-Active)
+- Single Points of Failure (SPOF)
+- Failover mechanisms
+- Real-world examples (Netflix, AWS S3, CDN)
+- RTO and RPO
+- Chaos Engineering
+- SLA calculations
+- Sruja modeling for redundancy
 ```

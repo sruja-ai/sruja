@@ -5,7 +5,7 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Exporters for converting Sruja DSL AST to various formats (JSON, DOT, Mermaid, Markdown)"
+description = "Exporters for converting Sruja DSL AST to various formats (JSON, Mermaid, Markdown)"
 
 [dependencies]
 sruja-diagnostics = { path = "../sruja-diagnostics" }

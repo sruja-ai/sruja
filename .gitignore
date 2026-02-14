@@ -60,6 +60,7 @@ RESEARCH_FINDINGS.md
 *.wasm.gz
 crates/sruja-wasm/pkg/
 crates/sruja-wasm/pkg-nodejs/
+book/wasm/
 
 # Architecture documentation build outputs
 docs/architecture/*.json

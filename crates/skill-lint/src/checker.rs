@@ -68,6 +68,7 @@ impl std::fmt::Display for Level {
     }
 }
 
+#[derive(Debug)]
 pub struct SkillChecker {
     pub metadata_schema: serde_json::Value,
 }
@@ -157,5 +158,120 @@ impl SkillChecker {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn minimal_schema() -> &'static str {
+        include_str!("../skill-schema.json")
+    }
+
+    #[test]
+    fn checker_new_accepts_valid_schema() {
+        let schema = minimal_schema();
+        let checker = SkillChecker::new(schema).unwrap();
+        assert!(serde_json::from_str::<serde_json::Value>(schema).is_ok());
+        let _ = checker;
+    }
+
+    #[test]
+    fn checker_new_rejects_invalid_schema() {
+        let err = SkillChecker::new("not json").unwrap_err();
+        assert!(matches!(err, crate::error::SkillLintError::JsonParse(_)));
+    }
+
+    #[test]
+    fn check_file_missing_frontmatter() {
+        let checker = SkillChecker::new(minimal_schema()).unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("no_frontmatter.md");
+        std::fs::write(&path, "No frontmatter here\n").unwrap();
+
+        let diags = checker.check_file(&path).unwrap();
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].level, Level::Error);
+        assert!(diags[0].message.contains("Missing metadata"));
+    }
+
+    #[test]
+    fn check_file_invalid_yaml_frontmatter() {
+        let checker = SkillChecker::new(minimal_schema()).unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bad_yaml.md");
+        std::fs::write(
+            &path,
+            "---\nfoo: [unclosed\n---\n\n# Content\n",
+        ).unwrap();
+
+        let diags = checker.check_file(&path).unwrap();
+        assert!(!diags.is_empty());
+        assert!(diags.iter().any(|d| d.message.contains("YAML") || d.message.contains("metadata")));
+    }
+
+    #[test]
+    fn check_file_missing_metadata_key() {
+        let checker = SkillChecker::new(minimal_schema()).unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("no_metadata_key.md");
+        std::fs::write(
+            &path,
+            "---\nfoo: bar\n---\n\n# Content\n",
+        ).unwrap();
+
+        let diags = checker.check_file(&path).unwrap();
+        assert!(diags.iter().any(|d| d.message.contains("Missing 'metadata'")));
+    }
+
+    #[test]
+    fn check_file_valid_metadata_passes() {
+        let checker = SkillChecker::new(minimal_schema()).unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("valid.md");
+        let content = r#"---
+metadata:
+  complexity: 2
+  frequency: common
+  confidence: high
+  category: medium
+  level: intermediate
+---
+# Rule
+"#;
+        std::fs::write(&path, content).unwrap();
+
+        let diags = checker.check_file(&path).unwrap();
+        assert!(diags.is_empty(), "expected no diagnostics, got: {:?}", diags);
+    }
+
+    #[test]
+    fn check_file_schema_validation_fails() {
+        let checker = SkillChecker::new(minimal_schema()).unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("invalid_schema.md");
+        let content = r#"---
+metadata:
+  complexity: 99
+  frequency: common
+  confidence: high
+  category: medium
+  level: intermediate
+---
+# Rule
+"#;
+        std::fs::write(&path, content).unwrap();
+
+        let diags = checker.check_file(&path).unwrap();
+        assert!(!diags.is_empty());
+        assert!(diags.iter().any(|d| d.message.contains("Schema validation") || d.message.contains("validation")));
+    }
+
+    #[test]
+    fn level_display() {
+        assert_eq!(Level::Error.to_string(), "ERROR");
+        assert_eq!(Level::Warning.to_string(), "WARNING");
+        assert_eq!(Level::Info.to_string(), "INFO");
     }
 }

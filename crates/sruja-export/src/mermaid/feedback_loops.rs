@@ -232,7 +232,6 @@ mod tests {
                     description: None,
                     technology: None,
                     tags: vec![],
-                    body: None,
                 },
                 Relation {
                     location: sruja_diagnostics::SourceLocation::new(String::new(), 0, 0),
@@ -242,7 +241,6 @@ mod tests {
                     description: None,
                     technology: None,
                     tags: vec![],
-                    body: None,
                 },
             ],
         };

@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use sruja_language::{collect_elements, ElementKind, Program, TopLevelItem};
 
 use crate::mermaid::exporter::{MermaidConfig, MermaidExporter};
+use crate::mermaid::feedback_loops::{causal_loop_to_diagram, feedback_loop_to_diagram};
 use crate::mermaid::scenario_to_sequence_diagram;
 
 use super::options::MarkdownOptions;
@@ -57,6 +58,8 @@ impl MarkdownExporter {
         let mut requirements: Vec<_> = Vec::new();
         let mut adrs: Vec<_> = Vec::new();
         let mut scenario_items: Vec<(String, String, &[sruja_language::ScenarioStep])> = Vec::new();
+        let mut feedback_loops: Vec<_> = Vec::new();
+        let mut causal_loops: Vec<_> = Vec::new();
 
         for item in &program.items {
             match item {
@@ -68,6 +71,8 @@ impl MarkdownExporter {
                 TopLevelItem::Flow(f) => {
                     scenario_items.push((f.id.clone(), f.title.clone(), f.steps.as_slice()));
                 }
+                TopLevelItem::FeedbackLoop(fl) => feedback_loops.push(fl),
+                TopLevelItem::CausalLoop(cl) => causal_loops.push(cl),
                 _ => {}
             }
         }
@@ -81,6 +86,8 @@ impl MarkdownExporter {
                 &requirements,
                 &adrs,
                 !scenario_items.is_empty(),
+                !feedback_loops.is_empty(),
+                !causal_loops.is_empty(),
             );
         }
 
@@ -114,6 +121,16 @@ impl MarkdownExporter {
             self.write_scenarios(&mut out, &scenario_items);
         }
 
+        // Write feedback loops (with Mermaid diagrams)
+        if !feedback_loops.is_empty() {
+            self.write_feedback_loops(&mut out, &feedback_loops);
+        }
+
+        // Write causal loops (with Mermaid diagrams)
+        if !causal_loops.is_empty() {
+            self.write_causal_loops(&mut out, &causal_loops);
+        }
+
         out
     }
 
@@ -125,6 +142,8 @@ impl MarkdownExporter {
         _requirements: &[&sruja_language::Requirement],
         _adrs: &[&sruja_language::Adr],
         has_scenarios: bool,
+        has_feedback_loops: bool,
+        has_causal_loops: bool,
     ) {
         out.push_str("## Table of Contents\n\n");
         if self.options.include_overview {
@@ -144,6 +163,12 @@ impl MarkdownExporter {
         }
         if has_scenarios {
             out.push_str("- [Scenarios](#scenarios)\n");
+        }
+        if has_feedback_loops {
+            out.push_str("- [Feedback Loops](#feedback-loops)\n");
+        }
+        if has_causal_loops {
+            out.push_str("- [Causal Loops](#causal-loops)\n");
         }
         out.push('\n');
     }
@@ -344,6 +369,70 @@ impl MarkdownExporter {
                     }
                     out.push_str("```\n\n");
                 }
+            }
+        }
+    }
+
+    fn write_feedback_loops(
+        &self,
+        out: &mut String,
+        feedback_loops: &[&sruja_language::FeedbackLoop],
+    ) {
+        if feedback_loops.is_empty() {
+            return;
+        }
+        out.push_str("## Feedback Loops\n\n");
+        for fl in feedback_loops {
+            out.push_str(&format!("### {}\n\n", fl.title));
+            if let Some(ref loop_id) = fl.loop_id {
+                out.push_str(&format!("**Loop ID:** {}\n\n", loop_id));
+            }
+            out.push_str(&format!(
+                "**Type:** {} ({})\n\n",
+                fl.loop_type,
+                fl.loop_type.to_symbol()
+            ));
+            if let Some(ref description) = fl.description {
+                out.push_str(&format!("**Description:** {}\n\n", description));
+            }
+            if self.options.include_mermaid_diagrams && !fl.relationships.is_empty() {
+                let diagram = feedback_loop_to_diagram(fl);
+                out.push_str("```mermaid\n");
+                out.push_str(&diagram);
+                if !diagram.ends_with('\n') {
+                    out.push('\n');
+                }
+                out.push_str("```\n\n");
+            }
+        }
+    }
+
+    fn write_causal_loops(&self, out: &mut String, causal_loops: &[&sruja_language::CausalLoop]) {
+        if causal_loops.is_empty() {
+            return;
+        }
+        out.push_str("## Causal Loops\n\n");
+        for cl in causal_loops {
+            out.push_str(&format!("### {}\n\n", cl.title));
+            if let Some(ref loop_id) = cl.loop_id {
+                out.push_str(&format!("**Loop ID:** {}\n\n", loop_id));
+            }
+            out.push_str(&format!(
+                "**Type:** {} ({})\n\n",
+                cl.loop_type,
+                cl.loop_type.to_symbol()
+            ));
+            if let Some(ref description) = cl.description {
+                out.push_str(&format!("**Description:** {}\n\n", description));
+            }
+            if self.options.include_mermaid_diagrams && !cl.relationships.is_empty() {
+                let diagram = causal_loop_to_diagram(cl);
+                out.push_str("```mermaid\n");
+                out.push_str(&diagram);
+                if !diagram.ends_with('\n') {
+                    out.push('\n');
+                }
+                out.push_str("```\n\n");
             }
         }
     }

@@ -68,25 +68,25 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Validate { schema, path } => {
-            commands::validate::run(schema, path).await?;
+            skill_lint::commands::validate::run(schema, path).await?;
         }
         Commands::Check { path } => {
-            commands::check::run(path).await?;
+            skill_lint::commands::check::run(path).await?;
         }
         Commands::Test {
             generate_code,
             path,
         } => {
-            commands::test::run(path, generate_code).await?;
+            skill_lint::commands::test::run(path, generate_code).await?;
         }
         Commands::CheckLinks { path } => {
-            commands::check_links::run(path).await?;
+            skill_lint::commands::check_links::run(path).await?;
         }
         Commands::CheckXrefs { path } => {
-            commands::check_xrefs::run(path).await?;
+            skill_lint::commands::check_xrefs::run(path).await?;
         }
         Commands::Format { check, path } => {
-            commands::format::run(path, check).await?;
+            skill_lint::commands::format::run(path, check).await?;
         }
         Commands::Suggest {
             path,
@@ -95,14 +95,9 @@ async fn main() -> anyhow::Result<()> {
             top,
             limit,
         } => {
-            commands::suggest::run(path, project, file, top, limit, None).await?;
+            skill_lint::commands::suggest::run(path, project, file, top, limit, None).await?;
         }
     }
 
     Ok(())
 }
-
-pub mod checker;
-pub mod commands;
-pub mod context;
-pub mod error;

@@ -1,10 +1,10 @@
-# 1. Use Graphviz WASM for C4 Model Layouts
+# ADR 004: Use Graphviz WASM for C4 Model Layouts
 
 Date: 2024-12-23
 
 ## Status
 
-Accepted
+Accepted. Current extension uses **Rust WASM** for export (e.g. Mermaid/DOT); Graphviz WASM is the chosen approach for **layout** (positioning nodes) where a dedicated layout engine is needed (e.g. book tooling or future visual tooling).
 
 ## Context
 
@@ -33,4 +33,4 @@ We chose **Graphviz via WASM**.
 - **Performance**: Layout is fast enough for typical C4 diagrams (< 100 nodes), but initialization has a slight overhead for fetching WASM.
 - **Implementation**: We must handle async loading/projection.
 - **DX**: Debugging layouts involves inspecting generated DOT strings, which is a well-understood format.
-- **Asset Management**: We must ensure `graphvizlib.wasm` is correctly served from `public/wasm`.
+- **Asset Management**: Where Graphviz WASM is used, ensure the WASM binary is correctly served (e.g. `public/wasm` or equivalent).

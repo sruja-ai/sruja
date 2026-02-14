@@ -94,3 +94,55 @@ fn normalize_governance_kind(kind: &ElementKind) -> Option<&'static str> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_language::Parser;
+
+    fn validate_program(input: &str) -> Vec<Diagnostic> {
+        let parser = Parser::new("test.sruja".to_string());
+        let program = match parser.parse(input) {
+            Ok(p) => p,
+            Err(_) => return vec![],
+        };
+        let rule = GovernanceValidationRule;
+        rule.validate(&program)
+    }
+
+    #[test]
+    fn empty_program_returns_no_diagnostics() {
+        let diags = validate_program("");
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn unique_requirements_pass() {
+        let input = r#"
+R1 = requirement functional "Must support X"
+R2 = requirement functional "Must support Y"
+"#;
+        let diags = validate_program(input);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn unique_adrs_pass() {
+        let input = r#"
+ADR001 = adr "Use Rust" { status "Accepted" }
+ADR002 = adr "JSON Format" { status "Accepted" }
+"#;
+        let diags = validate_program(input);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn non_governance_elements_ignored() {
+        let input = r#"
+api = system "API"
+api = container "API"
+"#;
+        let diags = validate_program(input);
+        assert!(diags.is_empty(), "systems/containers don't require unique IDs for governance");
+    }
+}

@@ -1,0 +1,133 @@
+# Quiz for System Design 101 - Module 1, Lesson 1: The Mindset
+# Tests understanding of functional vs non-functional requirements and trade-offs
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "In system design, what do we call requirements that describe the features and functionality of a system (what it should do)?"
+answer.answer = "Functional"
+answer.alternatives = ["functional requirements"]
+context = """
+Functional requirements define the features and capabilities of the system. Examples: "User can post a tweet," "User can browse products."
+"""
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "In system design, what do we call requirements that describe how the system should perform (constraints like speed, scalability, reliability)?"
+answer.answer = "Non-functional"
+answer.alternatives = ["non-functional", "non functional", "NFR", "NFRs"]
+context = """
+Non-functional requirements define the quality attributes and constraints of the system. Examples: "Must handle 100M users," "Response time <200ms."
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A banking system must ensure that account balances are always accurate and transactions cannot be lost. Which trade-off would you prioritize?"
+prompt.distractors = [
+  "Prioritize availability over consistency (it's better to show wrong data than no data)",
+  "Prioritize development speed over performance (ship a MVP first)",
+  "Prioritize write speed over read speed (logging-focused optimization)"
+]
+answer.answer = "Prioritize consistency over availability (brief downtime is acceptable, but data must be correct)"
+context = """
+In banking, financial accuracy is critical. You would choose a CP system (Consistent, Partition-tolerant) over AP, accepting brief outages to ensure no incorrect transactions.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "You're building a real-time chat application like Discord. Users expect messages to appear instantly across all devices. What's the best architecture approach?"
+prompt.distractors = [
+  "Use relational database with strong consistency (PostgreSQL) for all message storage",
+  "Use HTTP polling where clients check for new messages every 5 seconds",
+  "Use eventual consistency with 24-hour delay synchronization"
+]
+answer.answer = "Use WebSockets for real-time push with eventual consistency for message storage"
+context = """
+Real-time chat requires low latency. WebSockets eliminate the overhead of polling (which generates 20K requests/second for 100K users). Eventual consistency is acceptable for message delivery.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Netflix experienced a major outage in 2008 when their single datacenter failed. What was their system design solution?"
+prompt.distractors = [
+  "Bought a bigger, more expensive datacenter with better hardware (Vertical scaling)",
+  "Hired more operations engineers to manually failover systems",
+  "Built a single, massive monolithic application on dedicated servers"
+]
+answer.answer = "Moved to cloud infrastructure with microservices and built Chaos Monkey to test resilience"
+context = """
+Netflix adopted horizontal scaling on AWS, microservices architecture, and Chaos Monkey (randomly kills services to test resilience). This transformed their availability from 99.9% to 99.99%+.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Healthcare.gov's initial launch in 2013 was a disaster. Which of these was NOT one of their system design mistakes?"
+prompt.distractors = [
+  "No load testing before launch",
+  "Tightly coupled architecture with no caching layer",
+  "Single database bottleneck with no sharding"
+]
+answer.answer = "Using cloud infrastructure instead of dedicated on-premise servers"
+context = """
+Healthcare.gov's actual mistakes were: no load testing, tight coupling, single database bottleneck, and no graceful degradation. Using cloud infrastructure itself wasn't the problem—it was the poor architecture.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "You're building a product search engine for an e-commerce site handling 10M products. The search feature generates 99% of traffic. What optimization should you prioritize?"
+prompt.distractors = [
+  "Optimize for write speed (since products are added frequently)",
+  "Use a single-node relational database for simplicity",
+  "Disable caching to ensure always-fresh search results"
+]
+answer.answer = "Use read replicas and a specialized search engine like Elasticsearch"
+context = """
+With a 99% read workload, you optimize for read performance. Read replicas distribute query load, and Elasticsearch provides full-text search capabilities that relational databases lack.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Instagram launched with 2 servers and grew to 10M users in one month. What was their key architectural change to handle this growth?"
+prompt.distractors = [
+  "Rewrote the entire application in a different programming language",
+  "Bought the biggest available server (vertical scaling)",
+  "Removed all features to reduce complexity"
+]
+answer.answer = "Implemented database sharding, CDN for images, and async processing for image handling"
+context = """
+Instagram used database sharding (split data across multiple DBs), CDN for global image delivery, and async processing for heavy operations. This scaled them from 2 servers to 500+ servers in 6 months.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Which of the following statements best describes the relationship between latency and throughput?"
+prompt.distractors = [
+  "Low latency always means high throughput",
+  "High latency always means high throughput",
+  "Latency and throughput are the same thing"
+]
+answer.answer = "A system can have low latency but low throughput, or high latency but high throughput"
+context = """
+Latency = time for ONE request. Throughput = number of concurrent requests. Example: A highway can have high latency (traffic jam) and high throughput (10 lanes), or low latency (empty road) and low throughput (1 lane).
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Your boss says \"We need to handle infinite users.\" What's the most appropriate response?"
+prompt.distractors = [
+  "Great! I'll immediately implement Kubernetes and distributed sharding",
+  "Impossible! Let's cap users at 1,000 and reject anyone else",
+  "Let's build the system assuming unlimited resources regardless of cost"
+]
+answer.answer = "Infinite is expensive. Let's define realistic targets for the next 12 months (e.g., 100K users) and design for that"
+context = """
+The best engineers clarify requirements first. The design for 1K users costs $50/month, while 100M users costs $50K/month. Always define realistic, time-boxed targets.
+"""
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What is the term for the system design principle that means every decision involves sacrificing one quality to gain another (e.g., choosing consistency means sacrificing availability)?"
+answer.answer = "Trade-off"
+answer.alternatives = ["trade-off", "tradeoff"]
+context = """
+Trade-offs are fundamental to system design. There are no perfect solutions—every architecture choice involves benefits and costs. "It depends" is the correct answer because it depends on which trade-offs you choose.
+"""
