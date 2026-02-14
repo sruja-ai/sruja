@@ -63,6 +63,11 @@ enum Commands {
         /// Project name (optional)
         name: Option<String>,
     },
+    /// Generate configuration files and templates
+    Generate {
+        #[command(subcommand)]
+        action: GenerateAction,
+    },
     /// Show differences between two architecture files
     Diff {
         /// First file
@@ -157,6 +162,19 @@ enum ChangeAction {
 }
 
 #[derive(Subcommand)]
+enum GenerateAction {
+    /// Generate AI editor integration files (.cursorrules, .copilot-instructions.md, .architecture-skill.md)
+    AiFiles {
+        /// Which AI tools to generate files for (cursor, copilot, all) [default: all]
+        #[arg(long)]
+        tools: Option<String>,
+        /// Force overwrite existing files
+        #[arg(long)]
+        force: bool,
+    },
+}
+
+#[derive(Subcommand)]
 enum SkillsAction {
     /// List filtered skills
     List {
@@ -219,6 +237,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::List { file } => commands::list_elements(&file).await,
         Commands::Tree { file } => commands::tree(&file).await,
         Commands::Init { name } => commands::init_project(name.as_deref()).await,
+        Commands::Generate { action } => match action {
+            GenerateAction::AiFiles { tools, force } => {
+                commands::generate_ai_files(tools.as_deref(), force).await
+            }
+        },
         Commands::Diff {
             file1,
             file2,

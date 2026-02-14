@@ -163,7 +163,10 @@ db = datastore "Database"
 svc_a -> db "uses"
 "#;
         let diags = validate_program(input);
-        assert!(diags.is_empty(), "single consumer should not trigger isolation warning");
+        assert!(
+            diags.is_empty(),
+            "single consumer should not trigger isolation warning"
+        );
     }
 
     #[test]
@@ -195,7 +198,10 @@ svc_a -> db "uses"
 svc_b -> db "uses"
 "#;
         let diags = validate_program(input);
-        assert!(diags.is_empty(), "shared metadata should exempt from isolation warning");
+        assert!(
+            diags.is_empty(),
+            "shared metadata should exempt from isolation warning"
+        );
     }
 
     #[test]

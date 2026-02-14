@@ -2215,7 +2215,10 @@ fn parse_causal_loop_field(input: &str) -> IResult<&str, CausalLoopField> {
             CausalLoopField::Description,
         ),
         map(parse_causal_loop_variable, CausalLoopField::Variable),
-        map(parse_causal_loop_relationship, CausalLoopField::Relationship),
+        map(
+            parse_causal_loop_relationship,
+            CausalLoopField::Relationship,
+        ),
     ))(input)
 }
 

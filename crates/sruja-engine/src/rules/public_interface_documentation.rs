@@ -237,7 +237,9 @@ user -> api "uses"
 "#;
         let diags = validate_program(input);
         assert!(!diags.is_empty());
-        assert!(diags.iter().any(|d| d.message.contains("lacks a description")));
+        assert!(diags
+            .iter()
+            .any(|d| d.message.contains("lacks a description")));
     }
 
     #[test]

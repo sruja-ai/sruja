@@ -723,6 +723,5 @@ pub fn sruja_get_document_symbols(dsl: &str, filename: Option<String>) -> Result
         }
     }
 
-    serde_json::to_string(&symbols)
-        .map_err(|e| JsValue::from_str(&format!("JSON error: {:?}", e)))
+    serde_json::to_string(&symbols).map_err(|e| JsValue::from_str(&format!("JSON error: {:?}", e)))
 }

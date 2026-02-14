@@ -481,7 +481,14 @@ mod tests {
         let top = a.get_top_rules(2);
         assert_eq!(top.len(), 2);
         assert_eq!(top[0].rule_id, "high");
-        assert_eq!(top[0].reasoning.iter().find(|s| s.contains("times")).map(|s| s.as_str()), Some("Used 3 times"));
+        assert_eq!(
+            top[0]
+                .reasoning
+                .iter()
+                .find(|s| s.contains("times"))
+                .map(|s| s.as_str()),
+            Some("Used 3 times")
+        );
     }
 
     #[test]
@@ -501,7 +508,9 @@ mod tests {
         assert!(!suggestions.is_empty());
         assert!(suggestions.len() <= 10);
         assert!(suggestions.iter().any(|s| s.rule_id.starts_with("async-")));
-        assert!(suggestions.iter().all(|s| s.relevance_score >= 0.0 && s.relevance_score <= 1.0));
+        assert!(suggestions
+            .iter()
+            .all(|s| s.relevance_score >= 0.0 && s.relevance_score <= 1.0));
         assert!(suggestions.iter().all(|s| !s.reasoning.is_empty()));
     }
 

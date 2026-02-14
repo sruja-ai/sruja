@@ -143,6 +143,9 @@ api = system "API"
 api = container "API"
 "#;
         let diags = validate_program(input);
-        assert!(diags.is_empty(), "systems/containers don't require unique IDs for governance");
+        assert!(
+            diags.is_empty(),
+            "systems/containers don't require unique IDs for governance"
+        );
     }
 }

@@ -86,8 +86,18 @@ A -> B "calls"
 
         assert_eq!(relations.len(), 2);
         let rel0 = relations[0].as_object().unwrap();
-        assert_eq!(rel0.get("source").and_then(|v| v.get("model")).and_then(|v| v.as_str()), Some("User"));
-        assert_eq!(rel0.get("target").and_then(|v| v.get("model")).and_then(|v| v.as_str()), Some("A"));
+        assert_eq!(
+            rel0.get("source")
+                .and_then(|v| v.get("model"))
+                .and_then(|v| v.as_str()),
+            Some("User")
+        );
+        assert_eq!(
+            rel0.get("target")
+                .and_then(|v| v.get("model"))
+                .and_then(|v| v.as_str()),
+            Some("A")
+        );
         assert_eq!(rel0.get("title").and_then(|v| v.as_str()), Some("uses"));
     }
 
@@ -99,7 +109,9 @@ A = system "System A"
 "#;
         let program = parse(input);
         let exporter = Exporter::new();
-        let compact = exporter.export_compact(&program).expect("export_compact failed");
+        let compact = exporter
+            .export_compact(&program)
+            .expect("export_compact failed");
 
         let as_str = String::from_utf8(compact).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&as_str).expect("invalid JSON");
@@ -142,7 +154,10 @@ ADR001 = adr "Use HTTPS" {
         let scenarios = sruja.get("scenarios").and_then(|v| v.as_array()).unwrap();
         assert!(!scenarios.is_empty());
 
-        let requirements = sruja.get("requirements").and_then(|v| v.as_array()).unwrap();
+        let requirements = sruja
+            .get("requirements")
+            .and_then(|v| v.as_array())
+            .unwrap();
         assert!(!requirements.is_empty());
 
         let adrs = sruja.get("adrs").and_then(|v| v.as_array()).unwrap();

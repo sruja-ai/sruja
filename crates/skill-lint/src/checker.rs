@@ -201,14 +201,13 @@ mod tests {
         let checker = SkillChecker::new(minimal_schema()).unwrap();
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("bad_yaml.md");
-        std::fs::write(
-            &path,
-            "---\nfoo: [unclosed\n---\n\n# Content\n",
-        ).unwrap();
+        std::fs::write(&path, "---\nfoo: [unclosed\n---\n\n# Content\n").unwrap();
 
         let diags = checker.check_file(&path).unwrap();
         assert!(!diags.is_empty());
-        assert!(diags.iter().any(|d| d.message.contains("YAML") || d.message.contains("metadata")));
+        assert!(diags
+            .iter()
+            .any(|d| d.message.contains("YAML") || d.message.contains("metadata")));
     }
 
     #[test]
@@ -216,13 +215,12 @@ mod tests {
         let checker = SkillChecker::new(minimal_schema()).unwrap();
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("no_metadata_key.md");
-        std::fs::write(
-            &path,
-            "---\nfoo: bar\n---\n\n# Content\n",
-        ).unwrap();
+        std::fs::write(&path, "---\nfoo: bar\n---\n\n# Content\n").unwrap();
 
         let diags = checker.check_file(&path).unwrap();
-        assert!(diags.iter().any(|d| d.message.contains("Missing 'metadata'")));
+        assert!(diags
+            .iter()
+            .any(|d| d.message.contains("Missing 'metadata'")));
     }
 
     #[test]
@@ -243,7 +241,11 @@ metadata:
         std::fs::write(&path, content).unwrap();
 
         let diags = checker.check_file(&path).unwrap();
-        assert!(diags.is_empty(), "expected no diagnostics, got: {:?}", diags);
+        assert!(
+            diags.is_empty(),
+            "expected no diagnostics, got: {:?}",
+            diags
+        );
     }
 
     #[test]
@@ -265,7 +267,9 @@ metadata:
 
         let diags = checker.check_file(&path).unwrap();
         assert!(!diags.is_empty());
-        assert!(diags.iter().any(|d| d.message.contains("Schema validation") || d.message.contains("validation")));
+        assert!(diags
+            .iter()
+            .any(|d| d.message.contains("Schema validation") || d.message.contains("validation")));
     }
 
     #[test]

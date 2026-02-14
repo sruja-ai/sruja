@@ -3,10 +3,8 @@
 use std::path::PathBuf;
 
 fn schema_content() -> String {
-    std::fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("skill-schema.json"),
-    )
-    .unwrap()
+    std::fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("skill-schema.json"))
+        .unwrap()
 }
 
 #[tokio::test]
@@ -42,7 +40,11 @@ async fn validate_run_with_invalid_file_returns_error() {
     std::fs::create_dir_all(&skills_dir).unwrap();
 
     std::fs::write(&schema_path, schema_content()).unwrap();
-    std::fs::write(skills_dir.join("bad.md"), "---\nno_metadata_key: true\n---\n").unwrap();
+    std::fs::write(
+        skills_dir.join("bad.md"),
+        "---\nno_metadata_key: true\n---\n",
+    )
+    .unwrap();
 
     let result = skill_lint::commands::validate::run(schema_path, skills_dir).await;
     assert!(result.is_err());

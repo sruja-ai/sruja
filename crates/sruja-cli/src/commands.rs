@@ -1101,3 +1101,87 @@ pub async fn skills_suggest(
     println!("{}", output);
     Ok(())
 }
+
+/// Generate AI editor integration files
+pub async fn generate_ai_files(tools: Option<&str>, force: bool) -> Result<(), CliError> {
+    let tools_str = tools.unwrap_or("all");
+    let generate_cursor = tools_str == "all" || tools_str == "cursor";
+    let generate_copilot = tools_str == "all" || tools_str == "copilot";
+
+    if !generate_cursor && !generate_copilot {
+        return Err(CliError::Parse(format!(
+            "Invalid tools option: '{}'. Use 'cursor', 'copilot', or 'all'",
+            tools_str
+        )));
+    }
+
+    let mut created = Vec::new();
+    let mut skipped = Vec::new();
+
+    if generate_cursor {
+        let cursor_path = Path::new(".cursorrules");
+        if cursor_path.exists() && !force {
+            skipped.push(".cursorrules");
+        } else {
+            fs::write(cursor_path, get_cursorrules_template())?;
+            created.push(".cursorrules");
+        }
+    }
+
+    if generate_copilot {
+        let copilot_path = Path::new(".copilot-instructions.md");
+        if copilot_path.exists() && !force {
+            skipped.push(".copilot-instructions.md");
+        } else {
+            fs::write(copilot_path, get_copilot_instructions_template())?;
+            created.push(".copilot-instructions.md");
+        }
+
+        // Also create the architecture-skill.md file
+        let skill_path = Path::new(".architecture-skill.md");
+        if skill_path.exists() && !force {
+            skipped.push(".architecture-skill.md");
+        } else {
+            fs::write(skill_path, get_architecture_skill_template())?;
+            created.push(".architecture-skill.md");
+        }
+    }
+
+    // Print results
+    if !created.is_empty() {
+        println!("✓ Created:");
+        for file in &created {
+            println!("  - {}", file);
+        }
+    }
+
+    if !skipped.is_empty() {
+        println!("\n⊘ Skipped (already exist):");
+        for file in &skipped {
+            println!("  - {}", file);
+        }
+        println!("\nUse --force to overwrite existing files");
+    }
+
+    if !created.is_empty() {
+        println!("\nNext steps:");
+        println!("  1. Commit these files to your repository");
+        println!("  2. AI assistants (Cursor, Copilot) will now follow Sruja DSL rules");
+        println!("  3. Generate architecture: Ask AI to create a .sruja file");
+        println!("  4. Validate: sruja lint <file.sruja>");
+    }
+
+    Ok(())
+}
+
+fn get_cursorrules_template() -> &'static str {
+    include_str!("../templates/.cursorrules")
+}
+
+fn get_copilot_instructions_template() -> &'static str {
+    include_str!("../templates/.copilot-instructions.md")
+}
+
+fn get_architecture_skill_template() -> &'static str {
+    include_str!("../templates/.architecture-skill.md")
+}
