@@ -25,6 +25,68 @@ You stop caring about the furniture in every room. Instead, you care about:
 - **Disaster recovery**: What happens if the power plant explodes? (Reliability)
 - **Expansion**: Can we add a new suburb next year? (Scalability)
 
+## Real-World Case Studies
+
+### Case Study 1: The Netflix Chaos Monkey (Success)
+
+In 2008-2011, Netflix faced a critical problem. They moved from DVD-by-mail to streaming, but their single datacenter in Virginia was a single point of failure. One morning, the datacenter experienced a major outage—**millions of customers couldn't watch anything**.
+
+**The System Design Decision**: Instead of buying bigger, better datacenters (Vertical Scaling), Netflix chose to:
+- Move everything to **cloud infrastructure (AWS)**
+- Adopt a **microservices architecture**
+- Build **Chaos Monkey**—a tool that randomly kills services to test resilience
+
+**The Result**: 
+- Netflix went from **99.9% uptime** to **99.99%+ uptime**
+- They handle **millions of concurrent streams** globally
+- When AWS has an outage in one region, Netflix users don't even notice
+
+### Case Study 2: Healthcare.gov Launch (Failure)
+
+In 2013, the US government launched Healthcare.gov with these requirements:
+- Handle **millions of users** trying to sign up simultaneously
+- Integrate with **dozens of legacy systems** (IRS, insurance companies, etc.)
+- **100% data accuracy** (no room for errors in health coverage)
+
+**The System Design Mistakes**:
+- No load testing before launch (assumed it would "just work")
+- Tightly coupled architecture with **no caching layer**
+- Single database bottleneck (no sharding)
+- No graceful degradation (the entire site crashed instead of showing partial results)
+
+**The Consequences**:
+- **Site crashed immediately**—only 6 people could sign up on day one
+- Cost **$1.7 billion** and took 2 years to fix
+- Public relations disaster and loss of trust
+
+**The Fix**:
+- Added a **caching layer** (Redis) to handle read-heavy traffic
+- Implemented **horizontal scaling** with auto-scaling groups
+- Added **circuit breakers** to prevent cascading failures
+- Built **queue-based architecture** for background processing
+
+### Case Study 3: Instagram's 2010 Growth Spike
+
+When Instagram launched in 2010, they had:
+- **2 servers** (one for the app, one for the database)
+- **50,000 users** on launch day
+- **Within a week**: 1 million users
+- **Within a month**: 10 million users
+
+**The Challenge**: Their architecture couldn't handle the exponential growth. The database was overwhelmed, and image uploads were timing out.
+
+**The System Design Solution**:
+1. **Database Sharding**: Split user data across multiple database servers by user ID
+2. **Content Delivery Network (CDN)**: Host images on edge servers globally
+3. **Read Replicas**: Created multiple read-only copies of the database
+4. **Async Processing**: Moved image processing to background queues
+
+**The Numbers**:
+- Before fix: **95% uptime**, 30-second image uploads
+- After fix: **99.9% uptime**, <1-second image uploads
+- They scaled from **2 servers to 500+ servers** in 6 months
+- Eventually acquired by Facebook for **$1 billion**
+
 > [!IMPORTANT]
 > **The golden rule**: In system design, there are no right answers, only **trade-offs**.
 
@@ -36,17 +98,85 @@ Every system has two sets of requirements. In an interview (and real life), 90% 
 
 These are the features. If the system doesn't do this, it's useless.
 
+**Basic Examples**:
 - User can post a tweet.
 - User can follow others.
 - User sees a news feed.
+
+**Real-World Examples by Industry**:
+
+| Industry | Functional Requirements | Real System Example |
+|----------|------------------------|---------------------|
+| **E-commerce** | Browse products, add to cart, checkout, track orders | Amazon, Shopify |
+| **Social Media** | Post content, follow users, like/comment, real-time notifications | Twitter, Instagram |
+| **Streaming** | Video playback, quality adjustment, search, watchlist | Netflix, YouTube |
+| **Banking** | Transfer money, view balance, pay bills, transaction history | Chase, Revolut |
+| **Healthcare** | Book appointments, view records, message doctors, prescription management | Teladoc, Epic |
+
+**Advanced Examples from Production Systems**:
+
+**Uber's Real-Time Requirements**:
+- Driver tracking updates every **4 seconds**
+- Passenger requests must be matched to drivers within **<5 seconds**
+- Surge pricing calculated dynamically based on **real-time supply/demand**
+- Payment processing within **<2 seconds** after ride completion
+
+**Spotify's Music Streaming Requirements**:
+- **<200ms latency** for track start (no buffering delay)
+- Support **offline playback** with 10,000+ songs cached
+- Real-time collaborative playlists with **<500ms sync**
+- Personalized recommendations with **50M+ tracks** in catalog
+
+**Airbnb's Booking Requirements**:
+- Support **concurrent bookings** for same property (prevent double-booking)
+- **24-hour hold** on bookings before payment
+- Real-time availability sync across **190+ countries**
+- **Instant book** feature (no host approval required)
 
 ### 2. Non-Functional Requirements (The "How")
 
 These are the constraints. If the system doesn't meet these, it will crash/fail/be too slow.
 
+**Basic Examples**:
 - **Scalability**: Must handle 100M daily active users.
 - **Latency**: Feed must load in < 200ms.
 - **Consistency**: A tweet must appear on followers' feeds within 5 seconds.
+
+**Real-World Production Requirements**:
+
+| System | Availability | Latency | Throughput | Data Size |
+|--------|-------------|---------|------------|-----------|
+| **Google Search** | 99.99% | <0.5 seconds | 63,000 queries/second | 100+ petabytes |
+| **Netflix Streaming** | 99.99% | <2 seconds (start) | 100M+ concurrent streams | 1+ petabytes/day |
+| **WhatsApp** | 99.9% | <100ms (message delivery) | 65B+ messages/day | 4+ petabytes/year |
+| **Twitter (X)** | 99.9% | <200ms (timeline) | 500M+ tweets/day | 500+ petabytes |
+| **AWS S3** | 99.999999999% (11 nines) | <100ms (GET) | 20M+ requests/second | 100+ exabytes |
+
+**Industry-Specific Requirements**:
+
+**Finance (Banking/Trading)**:
+- **Strong Consistency**: Account balances must be 100% accurate (no eventual consistency)
+- **Auditability**: Every transaction must be logged and traceable
+- **Compliance**: GDPR, PCI-DSS, SOX compliance required
+- **Low Latency**: Trading decisions in microseconds for high-frequency trading
+
+**Healthcare**:
+- **HIPAA Compliance**: All data encrypted at rest and in transit
+- **High Availability**: Patient data must be accessible 24/7
+- **Privacy**: Strict access controls and audit logs
+- **Disaster Recovery**: RPO (Recovery Point Objective) < 1 hour, RTO (Recovery Time Objective) < 4 hours
+
+**Gaming**:
+- **Real-Time**: <50ms latency for multiplayer gaming
+- **High Throughput**: Handle millions of concurrent players
+- **Scalable**: Auto-scale for game launches and events
+- **Anti-Cheat**: Prevent cheating and hacking
+
+**IoT (Internet of Things)**:
+- **High Ingest Rate**: Handle millions of devices sending data simultaneously
+- **Edge Computing**: Process data locally to reduce bandwidth
+- **Low Power**: Devices operate on battery for years
+- **Intermittent Connectivity**: Work with unstable network connections
 
 ```mermaid
 graph TD
@@ -75,6 +205,124 @@ Junior engineers search for the "best" database. Senior engineers ask "what are 
 | **Availability**      | **Consistency**     | Social Media (Better to show _old_ likes than an error page)         |
 | **Write Speed**       | **Read Speed**      | Logging (Write fast, read rarely)                                    |
 | **Development Speed** | **Performance**     | Startups (Ship Python/Ruby MVP fast, rewrite later)                  |
+
+## Practical Trade-Off Scenarios
+
+### Scenario 1: Building a Real-Time Chat App
+
+**Context**: You're building a chat app like Slack or Discord. Users expect messages to appear instantly.
+
+**The Trade-Off Decisions**:
+
+| Decision | Option A | Option B | What You Choose & Why |
+|----------|----------|----------|----------------------|
+| **Message Storage** | Relational DB (PostgreSQL) | NoSQL (Cassandra) | **NoSQL** - High write throughput, eventual consistency acceptable |
+| **Real-time Updates** | Polling (client asks server every 5s) | WebSockets (server pushes updates) | **WebSockets** - Lower latency, less server load |
+| **Message History** | Keep forever | 90-day retention | **90-day retention** - Reduce storage costs, most users don't need old messages |
+| **Online Status** | Check on every message | Heartbeat every 30s | **Heartbeat** - Scale better, less database load |
+
+**Performance Impact**:
+- Polling approach: 100K users × 1 request/5s = **20,000 requests/second** just for checking messages
+- WebSocket approach: **100-200 requests/second** (heartbeat only)
+
+### Scenario 2: Building an E-Commerce Platform
+
+**Context**: You're building Amazon-scale e-commerce. Need to handle Black Friday traffic spikes.
+
+**The Architecture Trade-Offs**:
+
+```sruja
+import { * } from 'sruja.ai/stdlib'
+
+ECommerce = system "E-Commerce Platform" {
+    description "High-volume retail platform with trade-off decisions documented"
+    
+    // TRADE-OFF 1: Read-heavy vs Write-heavy
+    ProductDB = database "Product Catalog Database" {
+        technology "PostgreSQL with Read Replicas"
+        description "Optimized for READ operations (99% of traffic is reads)"
+        
+        tradeoff {
+            decision "Use read replicas for product browsing"
+            sacrifice "Write latency (updates take longer to propagate)"
+            reason "Users browse products 100x more than they add products"
+            metric "Read:Write ratio = 100:1"
+        }
+    }
+    
+    // TRADE-OFF 2: Strong vs Eventual Consistency
+    CartService = container "Shopping Cart Service" {
+        technology "Redis"
+        description "In-memory cache for cart state"
+        
+        tradeoff {
+            decision "Use Redis (in-memory) for cart storage"
+            sacrifice "Durability (cart data lost if Redis crashes)"
+            reason "Cart data is temporary and can be recreated from product catalog"
+            mitigation "Periodic snapshots to persistent storage"
+        }
+    }
+    
+    // TRADE-OFF 3: Cost vs Performance
+    SearchEngine = container "Product Search" {
+        technology "Elasticsearch"
+        description "Full-text search with caching layer"
+        
+        tradeoff {
+            decision "Use expensive Elasticsearch cluster"
+            sacrifice "Infrastructure cost ($5K/month)"
+            reason "Search performance directly impacts conversion rates (1% latency = 1% revenue loss)"
+            metric "Search latency <200ms required for optimal UX"
+        }
+    }
+    
+    // TRADE-OFF 4: Availability vs Consistency
+    OrderService = container "Order Processing" {
+        technology "Kafka + Microservices"
+        description "Async order processing pipeline"
+        
+        tradeoff {
+            decision "Use async messaging (eventual consistency)"
+            sacrifice "Real-time inventory accuracy"
+            reason "Better availability and scalability during peak traffic"
+            mitigation "Compensating transactions to handle over-selling"
+        }
+    }
+}
+```
+
+### Scenario 3: CAP Theorem in Practice
+
+**Real-World Example: Netflix vs. PayPal**
+
+**Netflix (Choose Availability)**:
+- If a user can't watch a video, they might cancel subscription
+- **Trade-off**: Occasionally show stale content recommendations
+- **Architecture**: AP system (Available, Partition-tolerant, Eventually consistent)
+- **Data**: Video recommendations, watch history, user preferences
+
+**PayPal (Choose Consistency)**:
+- If a transaction is processed incorrectly, lawsuits happen
+- **Trade-off**: Brief service interruptions during network partitions
+- **Architecture**: CP system (Consistent, Partition-tolerant, Limited availability)
+- **Data**: Account balances, transaction records, payment processing
+
+**The Decision Matrix**:
+
+```
+Ask yourself:
+1. What happens if the data is wrong?
+   → If lawsuits/financial loss → Prioritize Consistency (PayPal model)
+   → If just bad UX → Prioritize Availability (Netflix model)
+
+2. What's the tolerance for downtime?
+   → Zero tolerance → Prioritize Availability (Instagram for celebrity photos)
+   → Some tolerance OK → Prioritize Consistency (Banking)
+
+3. Can you design around the trade-off?
+   → Yes: Use hybrid approach (read-optimized cache + write-optimized DB)
+   → No: Pick one and accept the consequences
+```
 
 ## Sruja Integration
 
@@ -168,6 +416,18 @@ include Twitter.TimelineAPI Twitter.TweetDB
 Because "fastest" depends on the workload. A database fast at reading (Cassandra) might be complex to manage. A database fast at relationships (Neo4j) might scale poorly for heavy writes. **Trade-offs.**
 
 </details>
+
+## Quiz: Test Your Knowledge
+
+Ready to apply what you've learned? Take the interactive quiz for this lesson!
+
+{{#quiz ../../quizzes/system-design-101/module-1-fundamentals/lesson-1-quiz.toml}}
+
+This quiz covers:
+- Functional vs Non-functional requirements
+- Real-world case studies (Netflix, Healthcare.gov, Instagram)
+- Trade-off decisions in system design
+- Practical scenarios and decision-making
 
 ## Next Steps
 

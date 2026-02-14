@@ -648,3 +648,274 @@ pub struct IncrementalParseResult {
     /// Parsing time in milliseconds (for metrics and adaptive debouncing).
     pub parsing_time_ms: u64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Program tests
+
+    #[test]
+    fn test_program_new_creates_empty_program() {
+        let program = Program::new();
+        assert!(program.items.is_empty());
+    }
+
+    #[test]
+    fn test_program_default_creates_empty_program() {
+        let program = Program::default();
+        assert!(program.items.is_empty());
+    }
+
+    #[test]
+    fn test_program_with_items() {
+        let items = vec![TopLevelItem::ElementDef(Box::new(ElementDef {
+            location: SourceLocation::new("test.sruja".to_string(), 1, 1),
+            assignment: ElementAssignment::new("test", ElementKind::System),
+        }))];
+        let program = Program::new().with_items(items.clone());
+        assert_eq!(program.items.len(), 1);
+        assert_eq!(program.items, items);
+    }
+
+    #[test]
+    fn test_program_push_item() {
+        let mut program = Program::new();
+        assert_eq!(program.items.len(), 0);
+
+        let item = TopLevelItem::ElementDef(Box::new(ElementDef {
+            location: SourceLocation::new("test.sruja".to_string(), 1, 1),
+            assignment: ElementAssignment::new("test", ElementKind::System),
+        }));
+        program.push_item(item.clone());
+
+        assert_eq!(program.items.len(), 1);
+        assert_eq!(program.items[0], item);
+    }
+
+    // ElementAssignment tests
+
+    #[test]
+    fn test_element_assignment_new_creates_with_defaults() {
+        let assignment = ElementAssignment::new("my_system", ElementKind::System);
+        assert_eq!(assignment.name, "my_system");
+        assert_eq!(assignment.kind, ElementKind::System);
+        assert!(assignment.sub_kind.is_none());
+        assert!(assignment.title.is_none());
+        assert!(assignment.tag_refs.is_empty());
+        assert!(assignment.body.is_none());
+        // Check default location
+        assert_eq!(assignment.location.file, "");
+        assert_eq!(assignment.location.line, 0);
+        assert_eq!(assignment.location.column, 0);
+    }
+
+    #[test]
+    fn test_element_assignment_new_with_different_kinds() {
+        let kinds = vec![
+            (ElementKind::Person, "user"),
+            (ElementKind::System, "system"),
+            (ElementKind::Container, "web"),
+            (ElementKind::Component, "auth"),
+            (ElementKind::Database, "db"),
+            (ElementKind::Queue, "queue"),
+            (ElementKind::ExternalSystem, "external"),
+            (ElementKind::DataStore, "datastore"),
+            (ElementKind::Policy, "policy"),
+            (ElementKind::Requirement, "req"),
+            (ElementKind::Adr, "adr"),
+            (ElementKind::Flow, "flow"),
+            (ElementKind::Scenario, "scenario"),
+            (ElementKind::Story, "story"),
+            (ElementKind::Custom("custom_kind".to_string()), "custom"),
+        ];
+
+        for (kind, name) in kinds {
+            let assignment = ElementAssignment::new(name, kind.clone());
+            assert_eq!(assignment.name, name);
+            assert_eq!(assignment.kind, kind);
+        }
+    }
+
+    // ElementKind Display tests
+
+    #[test]
+    fn test_element_kind_display_standard_kinds() {
+        assert_eq!(format!("{}", ElementKind::Person), "person");
+        assert_eq!(format!("{}", ElementKind::Role), "role");
+        assert_eq!(format!("{}", ElementKind::System), "system");
+        assert_eq!(format!("{}", ElementKind::Container), "container");
+        assert_eq!(format!("{}", ElementKind::Component), "component");
+        assert_eq!(format!("{}", ElementKind::Database), "database");
+        assert_eq!(format!("{}", ElementKind::Queue), "queue");
+        assert_eq!(format!("{}", ElementKind::ExternalSystem), "externalSystem");
+        assert_eq!(format!("{}", ElementKind::DataStore), "datastore");
+    }
+
+    #[test]
+    fn test_element_kind_display_governance_kinds() {
+        assert_eq!(format!("{}", ElementKind::Policy), "policy");
+        assert_eq!(format!("{}", ElementKind::Requirement), "requirement");
+        assert_eq!(format!("{}", ElementKind::Adr), "adr");
+        assert_eq!(format!("{}", ElementKind::Flow), "flow");
+        assert_eq!(format!("{}", ElementKind::Scenario), "scenario");
+        assert_eq!(format!("{}", ElementKind::Story), "story");
+    }
+
+    #[test]
+    fn test_element_kind_display_custom_kind() {
+        let custom_kind = ElementKind::Custom("MyCustomKind".to_string());
+        assert_eq!(format!("{}", custom_kind), "MyCustomKind");
+    }
+
+    // QualifiedIdent tests
+
+    #[test]
+    fn test_qualified_ident_simple() {
+        let ident = QualifiedIdent::simple("test".to_string());
+        assert_eq!(ident.parts, vec!["test"]);
+        assert_eq!(ident.as_string(), "test");
+    }
+
+    #[test]
+    fn test_qualified_ident_qualified() {
+        let ident = QualifiedIdent::qualified(vec![
+            "module".to_string(),
+            "submodule".to_string(),
+            "item".to_string(),
+        ]);
+        assert_eq!(ident.parts, vec!["module", "submodule", "item"]);
+        assert_eq!(ident.as_string(), "module.submodule.item");
+    }
+
+    #[test]
+    fn test_qualified_ident_as_string_single_part() {
+        let ident = QualifiedIdent::simple("single".to_string());
+        assert_eq!(ident.as_string(), "single");
+    }
+
+    #[test]
+    fn test_qualified_ident_as_string_multiple_parts() {
+        let ident =
+            QualifiedIdent::qualified(vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+        assert_eq!(ident.as_string(), "a.b.c");
+    }
+
+    #[test]
+    fn test_qualified_ident_display() {
+        let ident = QualifiedIdent::qualified(vec!["foo".to_string(), "bar".to_string()]);
+        assert_eq!(format!("{}", ident), "foo.bar");
+    }
+
+    // FeedbackLoopType tests
+
+    #[test]
+    fn test_feedback_loop_type_to_symbol_reinforcing() {
+        let loop_type = FeedbackLoopType::Reinforcing;
+        assert_eq!(loop_type.to_symbol(), "+");
+    }
+
+    #[test]
+    fn test_feedback_loop_type_to_symbol_balancing() {
+        let loop_type = FeedbackLoopType::Balancing;
+        assert_eq!(loop_type.to_symbol(), "-");
+    }
+
+    #[test]
+    fn test_feedback_loop_type_display_reinforcing() {
+        let loop_type = FeedbackLoopType::Reinforcing;
+        assert_eq!(format!("{}", loop_type), "reinforcing");
+    }
+
+    #[test]
+    fn test_feedback_loop_type_display_balancing() {
+        let loop_type = FeedbackLoopType::Balancing;
+        assert_eq!(format!("{}", loop_type), "balancing");
+    }
+
+    // CausalPolarity tests
+
+    #[test]
+    fn test_causal_polarity_to_symbol_positive() {
+        let polarity = CausalPolarity::Positive;
+        assert_eq!(polarity.to_symbol(), "+");
+    }
+
+    #[test]
+    fn test_causal_polarity_to_symbol_negative() {
+        let polarity = CausalPolarity::Negative;
+        assert_eq!(polarity.to_symbol(), "-");
+    }
+
+    #[test]
+    fn test_causal_polarity_display_positive() {
+        let polarity = CausalPolarity::Positive;
+        assert_eq!(format!("{}", polarity), "+");
+    }
+
+    #[test]
+    fn test_causal_polarity_display_negative() {
+        let polarity = CausalPolarity::Negative;
+        assert_eq!(format!("{}", polarity), "-");
+    }
+
+    // Comprehensive test combining multiple structures
+
+    #[test]
+    fn test_comprehensive_ast_construction() {
+        let mut program = Program::new();
+
+        // Add a system element
+        let system_elem = ElementDef {
+            location: SourceLocation::new("example.sruja".to_string(), 1, 1),
+            assignment: ElementAssignment::new("MyApp", ElementKind::System),
+        };
+        program.push_item(TopLevelItem::ElementDef(Box::new(system_elem)));
+
+        // Add a container element
+        let container_elem = ElementDef {
+            location: SourceLocation::new("example.sruja".to_string(), 5, 1),
+            assignment: ElementAssignment::new("WebServer", ElementKind::Container),
+        };
+        program.push_item(TopLevelItem::ElementDef(Box::new(container_elem)));
+
+        // Add a relation
+        let relation = TopLevelItem::Relation(Relation {
+            location: SourceLocation::new("example.sruja".to_string(), 10, 1),
+            from: QualifiedIdent::simple("MyApp".to_string()),
+            to: QualifiedIdent::simple("WebServer".to_string()),
+            label: Some("HTTPS".to_string()),
+            description: None,
+            technology: None,
+            tags: Vec::new(),
+        });
+        program.push_item(relation);
+
+        assert_eq!(program.items.len(), 3);
+    }
+
+    #[test]
+    fn test_element_assignment_cloning() {
+        let assignment = ElementAssignment::new("original", ElementKind::System);
+        let cloned = assignment.clone();
+
+        assert_eq!(assignment.name, cloned.name);
+        assert_eq!(assignment.kind, cloned.kind);
+    }
+
+    #[test]
+    fn test_program_builder_pattern() {
+        let program = Program::new().with_items(vec![
+            TopLevelItem::ElementDef(Box::new(ElementDef {
+                location: SourceLocation::new("test.sruja".to_string(), 1, 1),
+                assignment: ElementAssignment::new("A", ElementKind::System),
+            })),
+            TopLevelItem::ElementDef(Box::new(ElementDef {
+                location: SourceLocation::new("test.sruja".to_string(), 2, 1),
+                assignment: ElementAssignment::new("B", ElementKind::System),
+            })),
+        ]);
+
+        assert_eq!(program.items.len(), 2);
+    }
+}

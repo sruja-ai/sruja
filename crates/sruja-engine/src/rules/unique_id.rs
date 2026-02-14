@@ -115,21 +115,6 @@ mod tests {
         }
     }
 
-    fn create_nested_element(name: &str, line: u32, column: u32) -> ElementDefBodyItem {
-        ElementDefBodyItem::ElementDef(Box::new(ElementDef {
-            location: SourceLocation::new("test.sruja".to_string(), line, column),
-            assignment: ElementAssignment {
-                location: SourceLocation::new("test.sruja".to_string(), line, column),
-                name: name.to_string(),
-                kind: ElementKind::Container,
-                sub_kind: None,
-                title: None,
-                tag_refs: vec![],
-                body: None,
-            },
-        }))
-    }
-
     #[test]
     fn test_unique_id_no_duplicates() {
         let program = Program {

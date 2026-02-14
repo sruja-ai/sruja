@@ -1,0 +1,242 @@
+# Quiz for System Design 101 - Module 1, Lesson 2: The Vocabulary of Scale
+# Tests understanding of scaling strategies, latency vs throughput, and practical scaling decisions
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What type of scaling involves upgrading a single machine with more resources (more RAM, CPU, disk space)?"
+answer.answer = "Vertical"
+answer.alternatives = ["vertical scaling", "scale up", "scale-up"]
+context = """
+Vertical scaling (or scaling up) means making a single machine more powerful. Example: Upgrading from 4GB RAM to 64GB RAM on one server.
+"""
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What type of scaling involves adding more machines to distribute the load?"
+answer.answer = "Horizontal"
+answer.alternatives = ["horizontal scaling", "scale out", "scale-out"]
+context = """
+Horizontal scaling (or scaling out) means adding more machines to handle increased load. Example: Adding 10 servers instead of upgrading one server to be more powerful.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why don't we just vertically scale forever to handle all growth?"
+prompt.distractors = [
+  "Vertical scaling is always more expensive than horizontal scaling",
+  "Vertical scaling requires more maintenance and monitoring",
+  "Vertical scaling is only available on cloud platforms"
+]
+answer.answer = "There are physical limits to how powerful a single machine can be, and it's a single point of failure"
+context = """
+Physics limits how fast a single CPU can be. Also, if that one super-computer fails, your entire system goes down. Horizontal scaling provides both infinite growth potential and resilience.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Your application needs to handle 10x traffic during a holiday sale (from 100K to 1M users per hour). You have 2 weeks to prepare. What's the best approach?"
+prompt.distractors = [
+  "Vertically scale by buying the most powerful server available (it handles 2M users)",
+  "Rewrite the entire application to be microservices-based",
+  "Tell users the site will be slow during the sale"
+]
+answer.answer = "Implement horizontal scaling with auto-scaling groups that can add servers automatically based on load"
+context = """
+Auto-scaling allows you to start with minimal servers and automatically add more as traffic increases. This is cost-effective and can handle unpredictable traffic spikes during events like Black Friday.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A startup has a monolithic application running on a single server. They expect to grow from 100 to 10,000 users over the next year. What's their best scaling strategy?"
+prompt.distractors = [
+  "Immediately migrate to microservices architecture on Kubernetes",
+  "Start with 100 servers to prepare for future growth",
+  "Do nothing and hope the single server handles the load"
+]
+answer.answer = "Start with vertical scaling, then migrate to horizontal scaling when needed"
+context = """
+For early-stage startups, vertical scaling is simpler and requires no code changes. As you grow, gradually move to horizontal scaling. Don't over-engineer early—ship first, optimize later.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What's the main disadvantage of horizontal scaling?"
+prompt.distractors = [
+  "It's more expensive than vertical scaling",
+  "It has a finite limit to how much you can scale",
+  "It can't handle traffic spikes"
+]
+answer.answer = "It introduces complexity in data consistency, load balancing, and distributed systems management"
+context = """
+Horizontal scaling requires managing multiple servers, handling data consistency across them, implementing load balancers, and dealing with distributed systems challenges like network partitions and eventual consistency.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "You're designing a high-frequency trading system where every microsecond matters. Which scaling approach is most appropriate?"
+prompt.distractors = [
+  "Horizontal scaling across multiple datacenters worldwide",
+  "Caching everything and accepting stale data",
+  "No scaling needed, as HFT systems don't handle much traffic"
+]
+answer.answer = "Vertical scaling on a single machine in the same datacenter as the stock exchange"
+context = """
+In high-frequency trading, network latency matters more than processing capacity. Minimizing distance and hops (using a single, powerful server colocated with the exchange) provides the lowest possible latency.
+"""
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What term describes the time it takes for a single request to complete, measured in milliseconds?"
+answer.answer = "Latency"
+answer.alternatives = ["response time", "latency"]
+context = """
+Latency is the time from when a request is sent to when the response is received. Think of it as the time it takes to drive from point A to point B.
+"""
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What term describes how many requests a system can handle simultaneously, measured in requests per second (RPS)?"
+answer.answer = "Throughput"
+answer.alternatives = ["throughput", "capacity", "concurrent requests"]
+context = """
+Throughput is the volume of work a system can handle. Think of it as the width of a highway—how many cars can travel per hour.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Can a system have low latency but low throughput?"
+prompt.distractors = [
+  "No, low latency always means high throughput",
+  "No, these terms are synonyms",
+  "Only in distributed systems"
+]
+answer.answer = "Yes—a single-lane road has low latency (no traffic jam) but low throughput (few cars per hour)"
+context = """
+Latency and throughput are independent. A system can be fast for one user but crash if multiple users use it simultaneously. Conversely, a system can handle many users (high throughput) but be slow for each one (high latency).
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "YouTube must serve videos to millions of users simultaneously. What's the most important metric for their success?"
+prompt.distractors = [
+  "Low latency for video upload",
+  "High throughput for video streaming",
+  "Strong consistency for user preferences"
+]
+answer.answer = "High throughput for video streaming with acceptable latency for video start"
+context = """
+YouTube's primary challenge is serving millions of concurrent video streams. While latency matters (video shouldn't buffer), throughput is the bigger challenge—handling millions of requests per second.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A REST API averages 50ms latency but can only handle 100 requests/second before becoming unresponsive. You need to support 1,000 requests/second. What's the first step?"
+prompt.distractors = [
+  "Optimize code to reduce latency from 50ms to 5ms",
+  "Increase the timeout to handle more concurrent requests",
+  "Add caching for everything"
+]
+answer.answer = " horizontally scale by running multiple instances behind a load balancer"
+context = """
+The problem is throughput (100 RPS), not latency (50ms is good). Adding more instances in parallel increases throughput without changing latency. A load balancer distributes traffic across all instances.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Google Search needs to return results in under 500 milliseconds for 63,000 queries per second. What's their architectural approach?"
+prompt.distractors = [
+  "One supercomputer with infinite RAM",
+  "Caching everything for 24 hours",
+  "Accepting slower response times during peak hours"
+]
+answer.answer = "Horizontal scaling with distributed computing, pre-computed indexes, and edge caching"
+context = """
+Google uses thousands of servers working in parallel, pre-computed search indexes, and content delivery networks at the edge to achieve both low latency (<500ms) and high throughput (63K queries/sec).
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Your database has a read-to-write ratio of 1000:1 (users read data 1000x more than they write it). What scaling strategy is most effective?"
+prompt.distractors = [
+  "Add more powerful CPUs for write operations",
+  "Shard the database based on write patterns",
+  "Optimize write queries since they're the bottleneck"
+]
+answer.answer = "Use read replicas to distribute read load across multiple database copies"
+context = """
+With a 1000:1 read/write ratio, writes are rare. Read replicas allow you to scale read operations horizontally while writes go to a single primary database. This dramatically increases throughput for read-heavy workloads.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "When should you choose vertical scaling over horizontal scaling?"
+prompt.distractors = [
+  "When you need to handle millions of concurrent users",
+  "When your application has no shared state and is stateless",
+  "When cost and complexity are not concerns"
+]
+answer.answer = "When you need a quick solution, have low traffic, or your application has complex shared state"
+context = """
+Vertical scaling is ideal for: early-stage startups, applications with complex state management, databases with complex transactions, or when you need to scale quickly without architectural changes.
+"""
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What component distributes incoming network traffic across multiple servers to enable horizontal scaling?"
+answer.answer = "Load balancer"
+answer.alternatives = ["load balancer", "load balancers", "LB", "proxy"]
+context = """
+Load balancers are the "traffic cops" that distribute requests across multiple servers, enabling horizontal scaling and providing resilience by routing around failed servers.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In a horizontally scaled system, what happens if one server fails?"
+prompt.distractors = [
+  "The entire system crashes",
+  "All traffic stops until the server is repaired",
+  "The load balancer sends more traffic to the failed server"
+]
+answer.answer = "The load balancer stops sending traffic to the failed server and routes it to the remaining healthy servers"
+context = """
+One of the key benefits of horizontal scaling is resilience. If one server fails, the load balancer detects it and routes traffic to other servers, maintaining system availability.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Sruja allows you to define horizontal scaling explicitly. What does `min: 3, max: 100, metric: "cpu > 80%"` mean in a scale block?"
+prompt.distractors = [
+  "Always run exactly 3 servers, maximum CPU usage 80%",
+  "Scale vertically when CPU is under 80%",
+  "Never scale down below 3 servers regardless of CPU"
+]
+answer.answer = "Start with 3 servers, add more up to 100 when CPU exceeds 80%, remove servers when CPU is below threshold"
+context = """
+This defines auto-scaling behavior: minimum baseline of 3 servers, maximum capacity of 100 servers, and scaling trigger based on CPU usage. This is how cloud platforms like AWS and Kubernetes implement horizontal scaling.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Your e-commerce site's product catalog page loads in 2 seconds, but during a sale it slows to 10 seconds. Which metric degraded?"
+prompt.distractors = [
+  "Throughput decreased",
+  "The database ran out of storage",
+  "The page size increased"
+]
+answer.answer = "Latency increased (response time got worse) due to increased load on the system"
+context = """
+Latency degraded from 2s to 10s because the system was overloaded. This might be caused by insufficient throughput capacity—not enough servers to handle the concurrent users during the sale.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A system has 99.9% uptime, meaning it can be down for about 8.77 hours per year. If you want 99.99% uptime, how much downtime is acceptable per year?"
+prompt.distractors = [
+  "8.77 hours (same as 99.9%)",
+  "1 hour",
+  "1 minute"
+]
+answer.answer = "About 52.6 minutes (8.77 hours / 10)"
+context = """
+Each additional "9" in uptime reduces downtime by a factor of 10. 99.9% = 8.77 hours/year. 99.99% = 52.6 minutes/year. 99.999% = 5.26 minutes/year. Achieving higher uptime requires horizontal scaling and redundancy.
+"""

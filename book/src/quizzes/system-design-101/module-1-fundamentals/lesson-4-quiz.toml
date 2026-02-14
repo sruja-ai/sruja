@@ -1,0 +1,322 @@
+# Quiz for System Design 101 - Module 1, Lesson 4: CAP Theorem & Consistency
+# Tests understanding of CAP theorem, CP vs AP systems, and consistency models
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What term in the CAP theorem means every read receives the most recent write or an error (all nodes see the same data)?"
+answer.answer = "Consistency"
+answer.alternatives = ["consistency", "C"]
+context = """
+Consistency ensures all nodes see the same data at the same time. When a write is confirmed, any subsequent read returns that value.
+"""
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What term in the CAP theorem means every request receives a non-error response, without guaranteeing it contains the most recent write?"
+answer.answer = "Availability"
+answer.alternatives = ["availability", "A"]
+context = """
+Availability means the system is always responsive. Even if some nodes are out of sync, the system returns a response (possibly stale data) rather than an error.
+"""
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What term in the CAP theorem means the system continues to operate despite network failures or message loss between nodes?"
+answer.answer = "Partition Tolerance"
+answer.alternatives = ["partition tolerance", "partition-tolerance", "P"]
+context = """
+Partition Tolerance ensures the system works even when network communication between nodes fails. In distributed systems, partitions are inevitable, so P is mandatory.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In a distributed system, you must choose between CP and AP when a network partition occurs. Why?"
+prompt.distractors = [
+  "Because P is optional in most systems",
+  "Because you can only implement two of the three guarantees simultaneously",
+  "Because C and A are mutually exclusive by definition"
+]
+answer.answer = "Because network partitions (P) are inevitable in distributed systems"
+context = """
+The CAP theorem states you can only have 2 of 3. Since network partitions are inevitable in distributed systems, P is mandatory. You must choose between C (Consistency) or A (Availability) during partitions.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A banking system must ensure that account balances are always correct. During a network partition, the system rejects transactions if it can't confirm data consistency. This is what type of system?"
+prompt.distractors = [
+  "AP (Available) - better to allow transactions with possibly incorrect balances",
+  "CA (Consistent and Available) - possible in single-node systems only",
+  "P (Partition Tolerance) only - data consistency isn't important"
+]
+answer.answer = "CP (Consistent and Partition Tolerant)"
+context = """
+CP systems prioritize data correctness. During a partition, the system returns errors rather than allowing inconsistent operations.
+Banking uses CP because incorrect balances = financial disasters.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A social media feed shows posts from friends. If a partition occurs, users see slightly outdated posts rather than an error page. This is what type of system?"
+prompt.distractors = [
+  "CP (Consistent) - reject requests if data isn't perfectly synced",
+  "CA (Consistent and Available) - impossible in distributed systems",
+  "P (Partition Tolerance) only - doesn't describe the full trade-off"
+]
+answer.answer = "AP (Available and Partition Tolerant)"
+context = """
+AP systems prioritize availability. Users see stale data rather than errors.
+Social media uses AP because it's better to show slightly old posts than a broken feed.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Which system would prioritize CP (Consistency) over Availability?"
+prompt.distractors = [
+  "Instagram photo feed",
+  "YouTube video recommendations",
+  "E-commerce product catalog (non-critical)"
+]
+answer.answer = "PayPal payment processing"
+context = """
+Payment systems prioritize CP because incorrect transactions are unacceptable.
+Instagram, YouTube, and product catalogs can use AP (showing slightly stale content is acceptable).
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Which system would prioritize AP (Availability) over Consistency?"
+prompt.distractors = [
+  "Banking transaction system",
+  "Inventory management for critical medical supplies",
+  "Stock trading platform for high-frequency trading"
+]
+answer.answer = "Netflix video streaming recommendations"
+context = """
+Netflix recommendations can be slightly stale and still provide value. AP is acceptable.
+Banking, medical inventory, and HFT require strong consistency (CP) because errors are unacceptable.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What is the difference between Strong Consistency and Eventual Consistency?"
+prompt.distractors = [
+  "Strong Consistency is slower, Eventual is always faster",
+  "Strong Consistency allows stale reads, Eventual doesn't",
+  "There's no difference, they're synonyms"
+]
+answer.answer = "Strong Consistency: all nodes see same data immediately. Eventual: nodes eventually converge if no new writes occur."
+context = """
+Strong Consistency: Read after write always returns the latest value (e.g., banking).
+Eventual Consistency: Reads might return stale data, but eventually all nodes converge (e.g., social media).
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A user posts a tweet. The tweet immediately appears in their own timeline but takes up to 30 seconds to appear in followers' feeds. What consistency model is this?"
+prompt.distractors = [
+  "Strong Consistency (everyone sees the tweet immediately)",
+  "No consistency (data is randomly shown or hidden)",
+  "CP system (rejects posts during partitions)"
+]
+answer.answer = "Eventual Consistency (followers eventually see the tweet)"
+context = """
+Twitter uses Eventual Consistency for timeline delivery. The tweet is written immediately, but propagation to followers happens asynchronously.
+This is acceptable because users don't expect perfect real-time synchronization.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A database has a replication factor of 3 (3 copies of data). Writes are confirmed after writing to 2 nodes. If one node is down, what happens?"
+prompt.distractors = [
+  "Write fails because all 3 nodes must be available",
+  "Write succeeds because only 2 nodes are required (quorum)",
+  "System becomes completely unavailable"
+]
+answer.answer = "Write succeeds because quorum (2 out of 3 nodes) is available"
+context = """
+With a quorum-based approach, writes succeed if a majority of nodes acknowledge.
+This provides both consistency (majority agreement) and availability (tolerates 1 node failure).
+This is a practical implementation of CP with tunable consistency.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Cassandra is a distributed database designed for AP systems. If you need strong consistency in Cassandra, what configuration would you use?"
+prompt.distractors = [
+  "Replication factor of 1 (single node)",
+  "Read/write with QUORUM consistency level",
+  "Set consistency level to ONE (fast but weak)"
+]
+answer.answer = "Read/write with QUORUM consistency level (majority of replicas)"
+context = """
+Cassandra defaults to AP (ONE consistency), but you can tune it:
+- ONE: Fast, AP behavior (eventual consistency)
+- QUORUM: Slower, CP-like behavior (strong consistency from majority)
+- ALL: Slowest, strongest consistency (all replicas must acknowledge)
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "You're designing a global e-commerce platform with product catalogs, user sessions, and order processing. Which should use strong consistency?"
+prompt.distractors = [
+  "Product catalog (catalog changes are frequent)",
+  "User sessions (session data isn't critical)",
+  "Search results (stale results are acceptable)"
+]
+answer.answer = "Order processing and inventory management"
+context = """
+Order processing and inventory require strong consistency to prevent:
+- Double-selling the same item
+- Incorrect charge amounts
+- Lost or duplicate orders
+
+Product catalogs, user sessions, and search can use eventual consistency for performance.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In a globally distributed system, network latency between regions is 200ms. If you need strong consistency, what's the minimum write latency?"
+prompt.distractors = [
+  "0ms (write happens locally and asynchronously replicates)",
+  "50ms (compression reduces latency)",
+  "200ms (only need to write to one region)"
+]
+answer.answer = "400ms+ (must wait for acknowledgment from majority of regions)"
+context = """
+For strong consistency across regions:
+1. Write to primary region: ~0ms local
+2. Replicate to at least one other region: 200ms round-trip
+3. Wait for acknowledgment: 400ms+
+
+This is why global AP systems are faster - they write locally and replicate asynchronously.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What's the difference between BASE (Basically Available, Soft state, Eventual consistency) and ACID (Atomicity, Consistency, Isolation, Durability)?"
+prompt.distractors = [
+  "BASE is stricter than ACID, requiring perfect consistency",
+  "They're synonyms, just different names for the same concept",
+  "BASE is for distributed systems, ACID is only for single-node databases"
+]
+answer.answer = "BASE is an alternative to ACID that prioritizes availability over strong consistency"
+context = """
+ACID: Strict consistency, all-or-nothing transactions (e.g., PostgreSQL).
+BASE: Flexible, available, eventual consistency (e.g., Cassandra, DynamoDB).
+ACID = CP systems (banking, inventory)
+BASE = AP systems (social media, caching)
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A read-after-write consistency model ensures that a client always sees their own writes. What consistency level is this?"
+prompt.distractors = [
+  "Weak Consistency (writes might not be visible)",
+  "Strong Consistency (all clients see all writes immediately)",
+  "Eventual Consistency (eventually converges)"
+]
+answer.answer = "Causal Consistency (session consistency)"
+context = """
+Causal Consistency ensures that a client sees their own writes immediately (session-level consistency).
+This is stronger than eventual consistency but weaker than strong consistency.
+It's commonly used in distributed databases to provide a good balance of performance and correctness.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In Sruja, how would you document that a database uses eventual consistency for high availability?"
+prompt.distractors = [
+  "Use a 'relaxed' tag in the relationship",
+  "Don't model it - Sruja assumes strong consistency by default",
+  "Create two databases and say they're 'somewhat consistent'"
+]
+answer.answer = "Add tags like 'AP-System' and 'Eventual-Consistency' to the database definition"
+context = """
+In Sruja, you explicitly document consistency guarantees:
+
+```sruja
+UserDB = database "User Database" {
+    technology "Cassandra"
+    description "Replication factor 3, eventual consistency for high availability"
+    tags ["AP-System", "Eventual-Consistency"]
+}
+```
+
+This makes architectural trade-offs visible in your documentation.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A system needs 99.999% availability but can tolerate 5-second data staleness. What's the best approach?"
+prompt.distractors = [
+  "Strong consistency with synchronous replication across all nodes",
+  "Single-node database (simplest, no network issues)",
+  "Reject all writes during network partitions"
+]
+answer.answer = "Eventual consistency with asynchronous replication and caching"
+context = """
+99.999% availability requires AP design. 5-second staleness is acceptable for eventual consistency.
+Approach:
+- Write to local node immediately (low latency, always available)
+- Replicate asynchronously (eventual consistency)
+- Cache reads aggressively (reduce staleness perception)
+- Use read-your-writes consistency for critical user operations
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What happens when a CP system experiences a network partition?"
+prompt.distractors = [
+  "The system continues serving all requests with slightly stale data",
+  "The system becomes completely unavailable (no data can be read or written)",
+  "The system switches to AP mode automatically"
+]
+answer.answer = "The system rejects requests that can't be guaranteed to be consistent (returns errors)"
+context = """
+CP systems prioritize consistency. During a partition:
+- If a write can't be replicated to a majority, it's rejected
+- If a read can't get the latest data, it's rejected
+- Users see errors, but never incorrect data
+- This is acceptable in banking, inventory, and other correctness-critical systems
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A distributed database has 5 nodes. Network partition splits them: 3 nodes in group A, 2 nodes in group B. What happens in a CP system?"
+prompt.distractors = [
+  "Both groups accept writes (both available)",
+  "Group B accepts writes (it's smaller, so it's backup)",
+  "Neither group can operate (complete system failure)"
+]
+answer.answer = "Only group A (3 nodes, majority) can accept writes. Group B is read-only or unavailable."
+context = """
+In CP systems with majority consensus:
+- Group A (3 nodes) has quorum (majority): can accept writes and reads
+- Group B (2 nodes) lacks quorum: read-only or rejects writes
+- After partition heals, Group B syncs data from Group A
+- This ensures consistency (no conflicting writes) but reduces availability for Group B users
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What's the relationship between latency and consistency in distributed systems?"
+prompt.distractors = [
+  "Strong consistency always has lower latency than eventual consistency",
+  "Eventual consistency always has lower latency, regardless of design",
+  "Latency and consistency are independent - no relationship exists"
+]
+answer.answer = "Strong consistency typically requires more coordination, resulting in higher latency"
+context = """
+Strong consistency needs:
+- Synchronous replication across nodes
+- Distributed consensus protocols (Paxos, Raft)
+- Waiting for acknowledgments
+
+Eventual consistency:
+- Write locally, replicate asynchronously
+- No coordination overhead
+- Lower latency but risk of stale reads
+
+Trade-off: Stronger consistency = higher latency
+"""

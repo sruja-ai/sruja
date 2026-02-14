@@ -763,7 +763,7 @@ mod tests {
 
         let loc = SourceLocation::new("test.sruja".to_string(), 1, 1);
         let diag1 = Diagnostic::new(codes::CODE_SYNTAX_ERROR, Severity::Error, "Error", loc);
-        reporter.report(&diag1.clone());
+        reporter.report(diag1.clone());
 
         let diagnostics = reporter.diagnostics();
         assert_eq!(diagnostics.len(), 1);
@@ -881,11 +881,11 @@ mod tests {
     fn test_diagnostic_with_long_message() {
         let long_message = "This is a very long error message that should still be formatted correctly without any issues in the output format and should be displayed properly to the user".to_string();
         let loc = SourceLocation::new("test.sruja".to_string(), 1, 1);
-        let diag = Diagnostic::new("E001", Severity::Error, long_message, loc.clone());
+        let diag = Diagnostic::new("E001", Severity::Error, &long_message, loc.clone());
 
         let formatted = format_diagnostic(&diag);
         assert!(formatted.contains("[E001] Error:"));
-        assert!(formatted.contains(long_message));
+        assert!(formatted.contains(&long_message));
     }
 
     #[test]
@@ -953,7 +953,7 @@ mod tests {
                 &format!("Error {}", i),
                 SourceLocation::new("test.sruja".to_string(), i as u32, i as u32),
             );
-            reporter.report_owned(diag1);
+            reporter.report_owned(diag);
         }
         assert_eq!(reporter.len(), 20);
     }

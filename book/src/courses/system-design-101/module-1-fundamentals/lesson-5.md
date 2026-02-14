@@ -60,6 +60,34 @@ BuyTicket = scenario "User purchases a concert ticket" {
 view index {
 include *
 }
+
+## Quiz: Test Your Knowledge
+
+Ready to apply what you've learned? Take the interactive quiz for this lesson!
+
+{{#quiz ../../quizzes/system-design-101/module-1-fundamentals/lesson-5-quiz.toml}}
+
+This quiz covers:
+- User scenario definitions
+- Importance of modeling scenarios
+- Architecture diagrams vs scenarios
+- Sruja scenario keyword
+- Scenario validation
+- Complex scenarios (e.g., guest to authenticated user)
+- Fault tolerance in scenarios
+- Testing value of scenarios
+- Critical component identification
+- Multi-system scenarios
+- Scenario decomposition
+- Happy path vs error path
+- Error paths to model
+- Stakeholder communication
+- Microservices and scenarios
+- Asynchronous processing
+- Scenarios and API design
+- Sequence diagrams
+- Developer onboarding
+- Regulatory requirements
 ```
 
 By defining scenarios, you can automatically generate sequence diagrams or flowcharts that map directly to your code.

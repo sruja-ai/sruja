@@ -1,0 +1,82 @@
+# Quiz for Systems Thinking 101 - Module 1, Lesson 3: Systems in Software Architecture
+# Tests understanding of software systems as systems of systems with multiple layers
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "In systems thinking for software architecture, what term describes the concept that 'every software system is built from multiple interconnected systems'?"
+answer.answer = "System of systems"
+answer.alternatives = ["System-of-systems", "systems of systems"]
+context = """
+Software systems are never isolated. They're composed of and connected to multiple other systems including people, dependencies, processes, data systems, and infrastructure.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Which of the following is NOT one of the layers commonly found in software architecture?"
+prompt.distractors = [
+  "Application Layer (UI, Logic, Storage)",
+  "Infrastructure Layer (Compute, Network, Monitoring)",
+  "Organizational Layer (Teams, Workflows, Release processes)",
+  "Marketing Layer (Branding, Advertising, Sales)"
+]
+answer.answer = "Marketing Layer (Branding, Advertising, Sales)"
+context = """
+The main layers are: Application (your software), Infrastructure (computing resources), and Organizational (people and processes). Marketing is a business function, not an architecture layer.
+"""
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "In the application layer of software architecture, what three main components are typically included?"
+answer.answer = "User interfaces, business logic, data storage"
+answer.alternatives = ["UI, logic, storage", "User interfaces, APIs, databases", "Web app, API service, database"]
+context = """
+The application layer typically has three main components: User interfaces (Web, Mobile, CLI), Business logic (APIs, Services), and Data storage (Databases, Caches).
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Load balancers, CDNs (Content Delivery Networks), and monitoring systems like logs and metrics are examples of which architecture layer?"
+prompt.distractors = [
+  "Application Layer - because they're part of your code",
+  "Organizational Layer - because they involve operations teams",
+  "Data Layer - because they store information"
+]
+answer.answer = "Infrastructure Layer - because they provide computing and networking resources"
+context = """
+Infrastructure layer includes compute (servers, containers), network (load balancers, CDNs), and monitoring (logs, metrics, alerts). These are the foundational services your application runs on.
+"""
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "In the Sruja E-Commerce example, what Sruja element type is used to model external systems like 'Payment Gateway' and 'Email Service'?"
+answer.answer = "system"
+answer.alternatives = ["System", "external system"]
+context = """
+In Sruja, external systems are modeled using the `system` element type. For example: `PaymentGateway = system \"Payment Gateway\"` represents an external dependency.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why is it important to consider the 'Organizational Layer' when designing software architecture?"
+prompt.distractors = [
+  "Because organizational charts make good system diagrams",
+  "Because you need to list all employees in your documentation",
+  "Because organizational changes should be handled by HR, not engineers"
+]
+answer.answer = "Because teams, development workflows, and release processes directly impact how you build and operate the system"
+context = """
+The organizational layer includes teams and their responsibilities, development workflows, and release processes. These shape how you structure your code, choose technologies, and deploy your system.
+"""
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "When modeling dependencies in Sruja, what kind of arrow is used to show the relationship 'ECommerce.API → PaymentGateway'?"
+answer.answer = "relationship arrow"
+answer.alternatives = ["->", "arrow", "connection"]
+context = """
+In Sruja, relationships between components are shown using arrows (`->`). For example: `ECommerce.API -> PaymentGateway \"Process payment\"` shows that the API service depends on the payment gateway.
+"""
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt

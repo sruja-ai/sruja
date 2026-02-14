@@ -104,6 +104,20 @@ Because physics. There is a limit to how fast a single CPU can be. Also, if that
 
 </details>
 
+## Quiz: Test Your Knowledge
+
+Ready to apply what you've learned? Take the interactive quiz for this lesson!
+
+{{#quiz ../../quizzes/system-design-101/module-1-fundamentals/lesson-2-quiz.toml}}
+
+This quiz covers:
+- Vertical vs Horizontal scaling strategies
+- When to use each scaling approach
+- Latency vs Throughput concepts
+- Real-world scaling scenarios (YouTube, Google, HFT)
+- Load balancing and auto-scaling
+- Practical scaling decisions
+
 ## Next Steps
 
 We have the mindset, and we have the words. Now let's draw.

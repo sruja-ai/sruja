@@ -2,21 +2,21 @@
 
 /* ---- Top nav: Sruja logo (links to home) ---- */
 .sruja-nav-logo {
-  display: inline-flex;
-  align-items: center;
-  margin-inline-end: 4px;
+    display: inline-flex;
+    align-items: center;
+    margin-inline-end: 4px;
 }
 
 .sruja-nav-logo-img {
-  display: block;
-  height: 28px;
-  width: auto;
+    display: block;
+    height: 28px;
+    width: auto;
 }
 
 /* ---- Home page content logo ---- */
 .sruja-home-logo {
-  display: block;
-  margin-block-end: 1em;
+    display: block;
+    margin-block-end: 1em;
 }
 
 /* ---- Typography & layout ---- */
@@ -29,7 +29,9 @@
 
 /* System font stack: readable and fast */
 html {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+        Arial, sans-serif;
 }
 
 /* Content area: comfortable reading */
@@ -153,7 +155,6 @@ html {
     border-block-end-color: hsl(36, 15%, 90%);
 }
 
-
 /* ---- Sidebar ---- */
 .chapter-item.active > .chapter-item-flex {
     font-weight: 600;
@@ -176,7 +177,8 @@ html {
 }
 
 /* ---- Lists ---- */
-.content ul, .content ol {
+.content ul,
+.content ol {
     margin-block-end: 1.2em;
     padding-inline-start: 1.6em;
 }
@@ -214,9 +216,15 @@ html {
     font-weight: 600;
 }
 
-.sruja-preview.sruja-preview-rendered h1 { font-size: 1.4em; }
-.sruja-preview.sruja-preview-rendered h2 { font-size: 1.2em; }
-.sruja-preview.sruja-preview-rendered h3 { font-size: 1.1em; }
+.sruja-preview.sruja-preview-rendered h1 {
+    font-size: 1.4em;
+}
+.sruja-preview.sruja-preview-rendered h2 {
+    font-size: 1.2em;
+}
+.sruja-preview.sruja-preview-rendered h3 {
+    font-size: 1.1em;
+}
 
 .sruja-preview.sruja-preview-rendered p {
     margin-block-end: 0.8em;
@@ -244,4 +252,299 @@ html {
     background: var(--quote-bg);
     padding: 0.15em 0.4em;
     border-radius: 4px;
+}
+
+/* ---- Course Progress Tracking ---- */
+
+/* Progress container */
+#sruja-progress-container {
+    margin-block-end: 1.5em;
+    padding: 1em;
+    border-radius: 8px;
+    background: var(--quote-bg);
+    border: 1px solid var(--quote-border);
+}
+
+.light #sruja-progress-container {
+    background: hsl(36, 25%, 94%);
+    border-color: hsl(36, 20%, 85%);
+}
+
+.navy #sruja-progress-container {
+    background: hsl(224, 18%, 14%);
+    border-color: hsl(224, 18%, 22%);
+}
+
+/* Progress header with title and reset button */
+.sruja-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-block-end: 0.75em;
+}
+
+.sruja-progress-title {
+    font-size: 0.95em;
+    font-weight: 600;
+    color: var(--fg);
+}
+
+.sruja-reset-btn {
+    background: transparent;
+    border: 1px solid var(--inline-code-color);
+    border-radius: 4px;
+    padding: 0.25em 0.6em;
+    font-size: 0.85em;
+    cursor: pointer;
+    color: var(--fg);
+    transition: all 0.2s ease;
+}
+
+.sruja-reset-btn:hover {
+    background: var(--inline-code-color);
+    color: white;
+}
+
+/* Progress bar container */
+.sruja-progress-bar-container {
+    height: 8px;
+    background: var(--table-border-color);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-block-end: 0.5em;
+}
+
+.light .sruja-progress-bar-container {
+    background: hsl(36, 15%, 90%);
+}
+
+.navy .sruja-progress-bar-container {
+    background: hsl(224, 18%, 22%);
+}
+
+/* Progress bar */
+.sruja-progress-bar {
+    height: 100%;
+    transition:
+        width 0.3s ease,
+        background-color 0.3s ease;
+    border-radius: 4px;
+}
+
+/* Progress states */
+.sruja-progress-bar.sruja-progress-low {
+    background: hsl(25, 85%, 55%);
+}
+
+.sruja-progress-bar.sruja-progress-medium {
+    background: hsl(45, 90%, 55%);
+}
+
+.sruja-progress-bar.sruja-progress-high {
+    background: hsl(145, 65%, 45%);
+}
+
+/* Progress text */
+.sruja-progress-text {
+    font-size: 0.85em;
+    color: var(--sidebar-fg);
+    text-align: center;
+}
+
+/* Lesson indicators in sidebar */
+.sruja-lesson-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-inline-start: 0.5em;
+    font-size: 0.75em;
+    border-radius: 50%;
+    font-weight: 600;
+}
+
+.sruja-lesson-visited {
+    color: hsl(45, 90%, 55%);
+}
+
+.sruja-lesson-complete {
+    color: hsl(145, 65%, 45%);
+    font-size: 0.85em;
+}
+
+/* Hover effect on chapter items with progress */
+.chapter-item:hover .sruja-lesson-indicator {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+}
+
+/* ---- Interactive Quiz Styles (Markdown Checkboxes) ---- */
+
+/* Quiz question container */
+.quiz-question {
+    margin-block: 2em;
+    padding: 1.5em;
+    border-radius: 8px;
+    background: var(--quote-bg);
+    border: 1px solid var(--quote-border);
+}
+
+.light .quiz-question {
+    background: hsl(36, 25%, 94%);
+    border-color: hsl(36, 20%, 85%);
+}
+
+.navy .quiz-question {
+    background: hsl(224, 18%, 14%);
+    border-color: hsl(224, 18%, 22%);
+}
+
+/* Question text */
+.quiz-question strong:first-child {
+    display: block;
+    font-size: 1.1em;
+    margin-block-end: 1em;
+    font-weight: 600;
+}
+
+/* Quiz list (ul/ol with checkboxes) */
+.content ul:has(input[type="checkbox"]),
+.content ol:has(input[type="checkbox"]) {
+    list-style: none;
+    padding: 0;
+    margin-block-end: 1.5em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+}
+
+/* Quiz option li */
+.content ul li:has(input[type="checkbox"]),
+.content ol li:has(input[type="checkbox"]) {
+    padding: 0.75em 1em;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.light .content ul li:has(input[type="checkbox"]):hover,
+.light .content ol li:has(input[type="checkbox"]):hover {
+    background: hsl(36, 30%, 92%);
+}
+
+.navy .content ul li:has(input[type="checkbox"]):hover,
+.navy .content ol li:has(input[type="checkbox"]):hover {
+    background: hsl(224, 20%, 18%);
+}
+
+/* Checkbox input */
+input[type="checkbox"] {
+    cursor: pointer;
+    margin-inline-end: 0.75em;
+    transform: scale(1.2);
+}
+
+/* Correct option styling */
+li.correct-option {
+    border-color: hsl(145, 65%, 45%);
+    background: hsl(145, 65%, 97%, 0.3);
+}
+
+.navy li.correct-option {
+    background: hsl(145, 65%, 25%, 0.2);
+}
+
+/* Incorrect option styling */
+li.incorrect-option {
+    border-color: hsl(25, 85%, 55%);
+    background: hsl(25, 85%, 97%, 0.3);
+}
+
+.navy li.incorrect-option {
+    background: hsl(25, 85%, 25%, 0.2);
+}
+
+/* Check answer button */
+.check-answer-btn {
+    display: inline-block;
+    padding: 0.6em 1.2em;
+    background: hsl(220, 65%, 50%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-block-end: 1em;
+}
+
+.check-answer-btn:hover:not(:disabled) {
+    background: hsl(220, 65%, 40%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.check-answer-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Answer feedback container */
+.answer-feedback {
+    display: none;
+    padding: 1em;
+    border-radius: 6px;
+    margin-block-start: 1em;
+    animation: fadeIn 0.3s ease;
+}
+
+.light .answer-feedback {
+    background: hsl(220, 14%, 96%);
+}
+
+.navy .answer-feedback {
+    background: hsl(224, 18%, 18%);
+}
+
+/* Feedback text */
+.feedback-text {
+    font-size: 1em;
+    margin-block-end: 0.5em;
+    font-weight: 600;
+}
+
+.feedback-correct {
+    color: hsl(145, 65%, 45%);
+}
+
+.feedback-incorrect {
+    color: hsl(25, 85%, 55%);
+}
+
+/* Explanation text */
+.explanation {
+    display: none;
+    padding-top: 0.75em;
+    border-top: 1px solid var(--table-border-color);
+    font-size: 0.95em;
+    line-height: 1.6;
+    margin-block-start: 0.5em;
+    color: var(--fg);
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

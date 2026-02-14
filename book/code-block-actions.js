@@ -12,7 +12,8 @@
   var markedPromise = null;
 
   function loadMarked() {
-    if (typeof window.marked !== "undefined") return Promise.resolve(window.marked);
+    if (typeof window.marked !== "undefined")
+      return Promise.resolve(window.marked);
     if (markedPromise) return markedPromise;
     markedPromise = new Promise(function (resolve, reject) {
       var s = document.createElement("script");
@@ -24,7 +25,9 @@
           resolve(window.marked);
         } else reject(new Error("marked not found"));
       };
-      s.onerror = function () { reject(new Error("Failed to load marked")); };
+      s.onerror = function () {
+        reject(new Error("Failed to load marked"));
+      };
       document.head.appendChild(s);
     });
     return markedPromise;
@@ -33,12 +36,17 @@
   function renderMarkdownToHtml(md) {
     return loadMarked().then(function (marked) {
       var out = marked.parse(md || "", { async: false });
-      return typeof out === "string" ? Promise.resolve(out) : (out && out.then ? out : Promise.resolve(""));
+      return typeof out === "string"
+        ? Promise.resolve(out)
+        : out && out.then
+          ? out
+          : Promise.resolve("");
     });
   }
 
   function getWasmBase() {
-    if (typeof window.SRUJA_WASM_BASE !== "undefined") return window.SRUJA_WASM_BASE;
+    if (typeof window.SRUJA_WASM_BASE !== "undefined")
+      return window.SRUJA_WASM_BASE;
     var root = typeof path_to_root !== "undefined" ? path_to_root : "";
     var relative = (root || "").replace(/\/?$/, "/") + "wasm/rust/";
     try {
@@ -56,7 +64,9 @@
         if (r.ok) return r;
         if (attempt < maxAttempts - 1) {
           attempt++;
-          return new Promise(function (resolve) { setTimeout(resolve, 1000); }).then(doFetch);
+          return new Promise(function (resolve) {
+            setTimeout(resolve, 1000);
+          }).then(doFetch);
         }
         throw new Error("WASM JS not found: " + url);
       });
@@ -100,7 +110,9 @@
     var jsUrl = base + "sruja_wasm.js";
     var wasmUrl = base + "sruja_wasm_bg.wasm";
     wasmInitPromise = fetchWithRetry(jsUrl)
-      .then(function (r) { return r.text(); })
+      .then(function (r) {
+        return r.text();
+      })
       .then(function (code) {
         var blob = new Blob([code], { type: "application/javascript" });
         var blobUrl = URL.createObjectURL(blob);
@@ -112,8 +124,13 @@
                 ? WebAssembly.compile(wasmBytes)
                 : wasmUrl;
               var init = mod.default({ module_or_path: moduleOrPath });
-              return (init && typeof init.then === "function" ? init : Promise.resolve()).then(function () {
-                if (typeof mod.init_panic_hook === "function") mod.init_panic_hook();
+              return (
+                init && typeof init.then === "function"
+                  ? init
+                  : Promise.resolve()
+              ).then(function () {
+                if (typeof mod.init_panic_hook === "function")
+                  mod.init_panic_hook();
                 wasmModule = mod;
                 return mod;
               });
@@ -122,7 +139,7 @@
           function (e) {
             URL.revokeObjectURL(blobUrl);
             throw e;
-          }
+          },
         );
       });
     return wasmInitPromise;
@@ -135,7 +152,9 @@
       .replace(/[']/g, "'")
       .replace(/\u2013|\u2014/g, "-")
       .split(/\r?\n/)
-      .map(function (line) { return line.replace(/^\s*\d+\s*[→:.-]\s?/, ""); })
+      .map(function (line) {
+        return line.replace(/^\s*\d+\s*[→:.-]\s?/, "");
+      })
       .join("\n")
       .trim();
   }
@@ -145,21 +164,31 @@
       if (callback) callback(new Error("Mermaid not loaded"));
       return;
     }
-    var id = "mermaid-" + Math.random().toString(36).slice(2);
-    var div = document.createElement("div");
-    div.className = "mermaid";
-    div.id = id;
-    div.textContent = mermaidCode || "";
-    container.innerHTML = "";
-    container.appendChild(div);
-    window.mermaid
-      .run({ nodes: [div], suppressErrors: false })
-      .then(function () {
-        if (callback) callback(null);
-      })
-      .catch(function (err) {
-        if (callback) callback(err);
-      });
+    try {
+      var id = "mermaid-" + Math.random().toString(36).slice(2);
+      var div = document.createElement("div");
+      div.className = "mermaid";
+      div.id = id;
+      div.textContent = mermaidCode || "";
+      container.innerHTML = "";
+      container.appendChild(div);
+
+      // Mermaid v10 API
+      window.mermaid
+        .run({
+          nodes: [div],
+        })
+        .then(function (result) {
+          if (callback) callback(null);
+        })
+        .catch(function (err) {
+          console.error("Mermaid render error:", err);
+          if (callback) callback(err);
+        });
+    } catch (err) {
+      console.error("Mermaid render exception:", err);
+      if (callback) callback(err);
+    }
   }
 
   function addButtonStyles(btn) {
@@ -181,7 +210,8 @@
     wrapper.appendChild(pre);
 
     var toolbar = document.createElement("div");
-    toolbar.style.cssText = "position:absolute;top:8px;right:8px;z-index:10;display:flex;gap:6px;";
+    toolbar.style.cssText =
+      "position:absolute;top:8px;right:8px;z-index:10;display:flex;gap:6px;";
     var btn = document.createElement("button");
     btn.textContent = "Show diagram";
     addButtonStyles(btn);
@@ -200,7 +230,10 @@
         preview.innerHTML = "<p>Rendering…</p>";
         renderMermaidInto(preview, code, function (err) {
           if (err) {
-            preview.innerHTML = "<p style='color:var(--blockquote-caution-color)'>" + (err.message || String(err)) + "</p>";
+            preview.innerHTML =
+              "<p style='color:var(--blockquote-caution-color)'>" +
+              (err.message || String(err)) +
+              "</p>";
           }
         });
         btn.textContent = "Hide diagram";
@@ -224,7 +257,8 @@
     wrapper.appendChild(pre);
 
     var toolbar = document.createElement("div");
-    toolbar.style.cssText = "position:absolute;top:8px;right:8px;z-index:10;display:flex;gap:6px;flex-wrap:wrap;";
+    toolbar.style.cssText =
+      "position:absolute;top:8px;right:8px;z-index:10;display:flex;gap:6px;flex-wrap:wrap;";
     var showBtn = document.createElement("button");
     showBtn.textContent = "Show diagram";
     addButtonStyles(showBtn);
@@ -271,7 +305,7 @@
         },
         function (err) {
           return Promise.reject(err);
-        }
+        },
       );
     }
 
@@ -280,7 +314,9 @@
         .then(function (text) {
           return navigator.clipboard.writeText(text || "").then(function () {
             copyMermaidBtn.textContent = "Copied!";
-            setTimeout(function () { copyMermaidBtn.textContent = "Copy Mermaid"; }, 1500);
+            setTimeout(function () {
+              copyMermaidBtn.textContent = "Copy Mermaid";
+            }, 1500);
           });
         })
         .catch(function (err) {
@@ -293,7 +329,9 @@
         .then(function (text) {
           return navigator.clipboard.writeText(text || "").then(function () {
             copyMdBtn.textContent = "Copied!";
-            setTimeout(function () { copyMdBtn.textContent = "Copy Markdown"; }, 1500);
+            setTimeout(function () {
+              copyMdBtn.textContent = "Copy Markdown";
+            }, 1500);
           });
         })
         .catch(function (err) {
@@ -307,7 +345,10 @@
     }
 
     previewBtn.onclick = function () {
-      if (preview.style.display === "none" || preview.dataset.viewMode === "diagram") {
+      if (
+        preview.style.display === "none" ||
+        preview.dataset.viewMode === "diagram"
+      ) {
         preview.style.display = "block";
         preview.dataset.viewMode = "markdown";
         preview.innerHTML = "<p>Loading preview…</p>";
@@ -315,6 +356,25 @@
           .then(function (text) {
             return renderMarkdownToHtml(text).then(function (html) {
               preview.innerHTML = html || "";
+
+              // Render mermaid diagrams in the markdown preview
+              var mermaidElements =
+                preview.querySelectorAll(".language-mermaid");
+              if (mermaidElements.length > 0) {
+                // Add mermaid class to language-mermaid elements for mermaid.js to find them
+                mermaidElements.forEach(function (el) {
+                  el.classList.add("mermaid");
+                });
+                mermaid
+                  .run({ nodes: Array.from(mermaidElements) })
+                  .catch(function (err) {
+                    console.error(
+                      "Failed to render mermaid diagrams in markdown:",
+                      err,
+                    );
+                  });
+              }
+
               preview.classList.add("sruja-preview-rendered");
               previewBtn.textContent = "Hide preview";
               showBtn.textContent = "Show diagram";
@@ -322,7 +382,10 @@
           })
           .catch(function (err) {
             preview.classList.remove("sruja-preview-rendered");
-            preview.innerHTML = "<p style='color:var(--blockquote-caution-color)'>" + (err.message || String(err)) + "</p>";
+            preview.innerHTML =
+              "<p style='color:var(--blockquote-caution-color)'>" +
+              (err.message || String(err)) +
+              "</p>";
           });
       } else {
         preview.style.display = "none";
@@ -333,7 +396,10 @@
     };
 
     showBtn.onclick = function () {
-      if (preview.style.display === "none" || preview.dataset.viewMode === "markdown") {
+      if (
+        preview.style.display === "none" ||
+        preview.dataset.viewMode === "markdown"
+      ) {
         preview.style.display = "block";
         preview.dataset.viewMode = "diagram";
         preview.innerHTML = "<p>Loading WASM and rendering...</p>";
@@ -342,32 +408,46 @@
             preview.innerHTML = "";
             renderMermaidInto(preview, mermaidCode, function (err) {
               if (err) {
-                preview.innerHTML = "<p style='color:var(--blockquote-caution-color)'>" + (err.message || String(err)) + "</p>";
+                preview.innerHTML =
+                  "<p style='color:var(--blockquote-caution-color)'>" +
+                  (err.message || String(err)) +
+                  "</p>";
               }
             });
             showBtn.textContent = "Hide diagram";
             previewBtn.textContent = "Preview";
           })
           .catch(function (err) {
-            var msg = (err.message || String(err));
+            var msg = err.message || String(err);
             preview.innerHTML =
-              "<p style='color:var(--blockquote-caution-color)'>WASM not available: " + msg + ".</p>" +
+              "<p style='color:var(--blockquote-caution-color)'>WASM not available: " +
+              msg +
+              ".</p>" +
               "<p><strong>Fix:</strong> From the repo root run <code>make wasm</code>, then <code>make book-serve</code>. If you just started serve, wait a few seconds and click <strong>Retry</strong>.</p>" +
               "<button type='button' class='sruja-retry-btn' style='padding:6px 12px;border-radius:6px;border:1px solid var(--table-border-color);background:var(--bg);color:var(--fg);cursor:pointer;'>Retry</button>";
             var retryBtn = preview.querySelector(".sruja-retry-btn");
             if (retryBtn) {
               retryBtn.onclick = function () {
                 preview.innerHTML = "<p>Loading WASM...</p>";
-                runWasm("mermaid").then(function (mermaidCode) {
-                  preview.innerHTML = "";
-                  renderMermaidInto(preview, mermaidCode, function (e) {
-                    if (e) preview.innerHTML = "<p style='color:var(--blockquote-caution-color)'>" + (e.message || String(e)) + "</p>";
+                runWasm("mermaid")
+                  .then(function (mermaidCode) {
+                    preview.innerHTML = "";
+                    renderMermaidInto(preview, mermaidCode, function (e) {
+                      if (e)
+                        preview.innerHTML =
+                          "<p style='color:var(--blockquote-caution-color)'>" +
+                          (e.message || String(e)) +
+                          "</p>";
+                    });
+                  })
+                  .catch(function (e) {
+                    preview.innerHTML =
+                      "<p style='color:var(--blockquote-caution-color)'>WASM not available: " +
+                      (e.message || String(e)) +
+                      ". <button type='button' class='sruja-retry-btn' style='padding:6px 12px;margin-left:8px;'>Retry</button></p>";
+                    var b = preview.querySelector(".sruja-retry-btn");
+                    if (b) b.onclick = retryBtn.onclick;
                   });
-                }).catch(function (e) {
-                  preview.innerHTML = "<p style='color:var(--blockquote-caution-color)'>WASM not available: " + (e.message || String(e)) + ". <button type='button' class='sruja-retry-btn' style='padding:6px 12px;margin-left:8px;'>Retry</button></p>";
-                  var b = preview.querySelector(".sruja-retry-btn");
-                  if (b) b.onclick = retryBtn.onclick;
-                });
               };
             }
           });
