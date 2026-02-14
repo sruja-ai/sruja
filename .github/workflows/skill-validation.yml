@@ -99,7 +99,7 @@ jobs:
           if [ -f "crates/skill-lint/skill-schema.json" ]; then
             ./target/release/skill-lint validate \
               --schema crates/skill-lint/skill-schema.json \
-              --path skills/ || {
+              skills/ || {
               echo "::error::Schema validation failed - see details above"
               exit 1
             }
