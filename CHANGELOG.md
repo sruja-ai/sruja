@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.11](https://github.com/sruja-ai/sruja/compare/sruja-v0.7.10...sruja-v0.7.11) (2026-02-14)
+
+
+### Bug Fixes
+
+* skill cli args ([09fe5ae](https://github.com/sruja-ai/sruja/commit/09fe5aeacfcf76644bfda36d347a34b52fd0ad27))
+* skill files formatting ([4b4cdd4](https://github.com/sruja-ai/sruja/commit/4b4cdd4484693722ae817c34933ff378faca0117))
+
 ## [0.7.10](https://github.com/sruja-ai/sruja/compare/sruja-v0.7.9...sruja-v0.7.10) (2026-02-10)
 
 
