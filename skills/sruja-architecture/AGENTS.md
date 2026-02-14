@@ -110,9 +110,7 @@ Dependencies should point inward. Use dependency inversion: depend on abstractio
 - **High cohesion**: Related functionality grouped together
 - **Low coupling**: Minimal dependencies between components
 
----
-
-## Component Types
+---## Component Types
 
 ### Person (External Actors)
 

@@ -12,12 +12,12 @@ AI code editors (e.g. Cursor, Copilot) apply changes in iterations. If validatio
 
 ## Correct Approach
 
-1. **In VS Code / Cursor**  
+1. **In VS Code / Cursor**
    After each code iteration on a `.sruja` file:
    - Run the command **Sruja: Run validation (check after AI/edit)** (Command Palette or right-click → "Sruja: Run validation…"), **or**
    - Save the file (validation runs on save).
 
-2. **Result**  
+2. **Result**
    The editor runs `sruja lint` on the current document (including unsaved content), updates the Problems panel and inline diagnostics, and shows a brief status (e.g. "no issues" or "N errors, M warnings").
 
 3. **Fix any reported issues** before the next iteration.
