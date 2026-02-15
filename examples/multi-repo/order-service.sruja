@@ -1,0 +1,162 @@
+// Order Service Architecture
+// This file defines the architecture for the Order Service repository
+
+architecture "Order Service" {
+  version "2.0.0"
+  description "Order processing, cart management, and order lifecycle service"
+
+  dependencies {
+    "user-service" "github.com/org/user-service#v1.2.0"
+    "payment-service" "github.com/org/payment-service#v1.5.0"
+    "inventory-service" "github.com/org/inventory-service#v1.0.0"
+    "notification-service" "github.com/org/notification-service#v1.0.0"
+    "shipping-service" "github.com/org/shipping-service#v1.0.0"
+  }
+
+  tags = ["microservice", "orders", "e-commerce"]
+
+  view "Order Creation Flow" {
+    includes = [
+      "customer",
+      "order_service.api",
+      "order_service.cache",
+      "order_service.db",
+      "user_service",
+      "payment_service"
+    ]
+  }
+
+  view "Order Processing Flow" {
+    includes = [
+      "order_service.worker",
+      "order_service.queue",
+      "order_service.db",
+      "inventory_service",
+      "notification_service",
+      "shipping_service"
+    ]
+  }
+
+  view "Order Service Dependencies" {
+    includes = [
+      "order_service.api",
+      "user_service",
+      "payment_service",
+      "inventory_service",
+      "notification_service",
+      "shipping_service"
+    ]
+  }
+}
+
+order_service = system "Order Service" {
+  description "Order processing, cart management, and order lifecycle service"
+
+  api = container "Order API" {
+    technology "Python"
+    description "REST API for order creation, updates, and status tracking"
+  }
+
+  worker = container "Order Worker" {
+    technology "Python"
+    description "Background worker for order processing, inventory checks, and notifications"
+  }
+
+  db = datastore "Order Database" {
+    technology "PostgreSQL"
+    description "Order records, order items, and order history"
+  }
+
+  cache = datastore "Cart Cache" {
+    technology "Redis"
+    description "Shopping cart data and session-based cart storage"
+  }
+
+  queue = datastore "Message Queue" {
+    technology "RabbitMQ"
+    description "Event bus for order events (OrderCreated, OrderUpdated, OrderShipped)"
+  }
+
+  // Internal relationships
+  api -> db "SQL queries"
+  api -> cache "Redis protocol"
+  worker -> db "SQL queries"
+  worker -> queue "AMQP - consumes and publishes events"
+  api -> queue "AMQP - publishes order events"
+}
+
+// External Systems (defined in other repositories)
+user_service = external_system "User Service" {
+  description "User management and authentication service"
+  metadata {
+    location "github.com/org/user-service"
+    tags ["external", "microservice"]
+  }
+  api = container "User API" {
+    technology "Node.js"
+    description "REST API for user management and authentication"
+  }
+}
+
+payment_service = external_system "Payment Service" {
+  description "Payment processing and billing service"
+  metadata {
+    location "github.com/org/payment-service"
+    tags ["external", "microservice"]
+  }
+  api = container "Payment API" {
+    technology "Go"
+    description "gRPC API for payment operations"
+  }
+}
+
+inventory_service = external_system "Inventory Service" {
+  description "Product inventory and stock management service"
+  metadata {
+    location "github.com/org/inventory-service"
+    tags ["external", "microservice"]
+  }
+  api = container "Inventory API" {
+    technology "Java"
+    description "REST API for inventory management"
+  }
+}
+
+notification_service = external_system "Notification Service" {
+  description "Email and push notification service"
+  metadata {
+    location "github.com/org/notification-service"
+    tags ["external", "microservice"]
+  }
+  worker = container "Notification Worker" {
+    technology "Python"
+    description "Background worker for sending notifications"
+  }
+}
+
+shipping_service = external_system "Shipping Service" {
+  description "Shipping and fulfillment service"
+  metadata {
+    location "github.com/org/shipping-service"
+    tags ["external", "microservice"]
+  }
+  api = container "Shipping API" {
+    technology "Go"
+    description "REST API for shipping and fulfillment"
+  }
+}
+
+// External Relationships
+order_service.api -> user_service.api "REST API - validate user, get user details"
+order_service.api -> payment_service.api "gRPC - initiate payment, verify payment status"
+order_service.worker -> inventory_service.api "REST API - reserve inventory, check stock"
+order_service.queue -> notification_service.worker "AMQP - sends order confirmation emails"
+order_service.queue -> shipping_service.api "REST API - initiate shipping for fulfilled orders"
+
+// Users
+customer = person "Customer" {
+  description "End users who place orders through the application"
+}
+
+// User relationships to this service
+customer -> order_service.api "HTTPS - browse cart, place orders, track status"

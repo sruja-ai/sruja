@@ -1,0 +1,155 @@
+// Payment Service Architecture
+// This file defines the architecture for the Payment Service repository
+
+architecture "Payment Service" {
+  version "1.5.0"
+  description "Payment processing, billing, and payment method management service"
+
+  dependencies {
+    "user-service" "github.com/org/user-service#v1.2.0"
+    "order-service" "github.com/org/order-service#v2.0.0"
+    "notification-service" "github.com/org/notification-service#v1.0.0"
+  }
+
+  tags = ["microservice", "payments", "billing", "fintech"]
+
+  view "Payment Processing Flow" {
+    includes = [
+      "customer",
+      "payment_service.api",
+      "payment_service.cache",
+      "payment_service.db",
+      "order_service",
+      "stripe",
+      "paypal"
+    ]
+  }
+
+  view "Payment Reconciliation Flow" {
+    includes = [
+      "payment_service.worker",
+      "payment_service.db",
+      "order_service",
+      "notification_service"
+    ]
+  }
+
+  view "Payment Service Dependencies" {
+    includes = [
+      "payment_service.api",
+      "user_service",
+      "order_service",
+      "notification_service",
+      "stripe",
+      "paypal"
+    ]
+  }
+}
+
+payment_service = system "Payment Service" {
+  description "Payment processing, billing, and payment method management service"
+
+  api = container "Payment API" {
+    technology "Go"
+    description "gRPC and REST API for payment processing, refunds, and payment method management"
+  }
+
+  worker = container "Payment Worker" {
+    technology "Go"
+    description "Background worker for payment reconciliation, webhook processing, and retry logic"
+  }
+
+  db = datastore "Payment Database" {
+    technology "PostgreSQL"
+    description "Payment transactions, payment methods, and billing history"
+  }
+
+  cache = datastore "Payment Cache" {
+    technology "Redis"
+    description "Payment session data and temporary payment tokens"
+  }
+
+  // Internal relationships
+  api -> db "SQL queries"
+  api -> cache "Redis protocol"
+  worker -> db "SQL queries"
+  api -> worker "async job queue"
+}
+
+// External Systems (defined in other repositories)
+user_service = external_system "User Service" {
+  description "User management and authentication service"
+  metadata {
+    location "github.com/org/user-service"
+    tags ["external", "microservice"]
+  }
+  api = container "User API" {
+    technology "Node.js"
+    description "REST API for user management and authentication"
+  }
+}
+
+order_service = external_system "Order Service" {
+  description "Order processing and management service"
+  metadata {
+    location "github.com/org/order-service"
+    tags ["external", "microservice"]
+  }
+  api = container "Order API" {
+    technology "Python"
+    description "REST API for order operations"
+  }
+}
+
+notification_service = external_system "Notification Service" {
+  description "Email and push notification service"
+  metadata {
+    location "github.com/org/notification-service"
+    tags ["external", "microservice"]
+  }
+  worker = container "Notification Worker" {
+    technology "Python"
+    description "Background worker for sending notifications"
+  }
+}
+
+// External Payment Providers (third-party)
+stripe = external_system "Stripe" {
+  description "Third-party payment gateway for credit card processing"
+  metadata {
+    location "https://stripe.com"
+    tags ["external", "third-party", "payment-gateway"]
+  }
+  api = container "Payment API" {
+    technology "REST"
+    description "REST API for payment processing"
+  }
+}
+
+paypal = external_system "PayPal" {
+  description "Third-party payment gateway for PayPal payments"
+  metadata {
+    location "https://paypal.com"
+    tags ["external", "third-party", "payment-gateway"]
+  }
+  api = container "Payment API" {
+    technology "REST"
+    description "REST API for PayPal payment processing"
+  }
+}
+
+// External Relationships
+payment_service.api -> user_service.api "REST API - validate user, get payment methods"
+payment_service.api -> order_service.api "gRPC - link payments to orders"
+payment_service.api -> stripe.api "HTTPS - process credit card payments"
+payment_service.api -> paypal.api "HTTPS - process PayPal payments"
+payment_service.worker -> notification_service.worker "AMQP - send payment confirmation emails"
+payment_service.worker -> order_service.api "gRPC - update order payment status"
+
+// Users
+customer = person "Customer" {
+  description "End users who make payments through the application"
+}
+
+// User relationships to this service
+customer -> payment_service.api "HTTPS - add payment methods, view payment history"

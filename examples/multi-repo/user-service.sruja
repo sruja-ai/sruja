@@ -1,0 +1,118 @@
+// User Service Architecture
+// This file defines the architecture for the User Service repository
+
+architecture "User Service" {
+  version "1.2.0"
+  description "User management and authentication service"
+
+  dependencies {
+    "order-service" "github.com/org/order-service#v2.0.0"
+    "payment-service" "github.com/org/payment-service#v1.5.0"
+    "notification-service" "github.com/org/notification-service#v1.0.0"
+  }
+
+  tags = ["microservice", "authentication", "user-management"]
+
+  view "Authentication Flow" {
+    includes = [
+      "end_user",
+      "user_service.api",
+      "user_service.auth",
+      "user_service.cache"
+    ]
+  }
+
+  view "User Service Dependencies" {
+    includes = [
+      "user_service.api",
+      "order_service",
+      "payment_service",
+      "notification_service"
+    ]
+  }
+}
+
+user_service = system "User Service" {
+  description "User management and authentication service"
+
+  api = container "User API" {
+    technology "Node.js"
+    description "REST API for user management, authentication, and authorization"
+  }
+
+  auth = container "Auth Service" {
+    technology "Node.js"
+    description "JWT token generation and validation, OAuth integration"
+  }
+
+  db = datastore "User Database" {
+    technology "PostgreSQL"
+    description "User profiles, credentials, and preferences"
+  }
+
+  cache = datastore "Session Cache" {
+    technology "Redis"
+    description "Active session storage and token blacklist"
+  }
+
+  // Internal relationships
+  api -> auth "internal function call"
+  auth -> db "SQL queries"
+  auth -> cache "Redis protocol"
+  api -> db "SQL queries"
+}
+
+// External Systems (defined in other repositories)
+order_service = external_system "Order Service" {
+  description "Order processing and management service"
+  metadata {
+    location "github.com/org/order-service"
+    tags ["external", "microservice"]
+  }
+  api = container "Order API" {
+    technology "Python"
+    description "REST API for order operations"
+  }
+}
+
+payment_service = external_system "Payment Service" {
+  description "Payment processing and billing service"
+  metadata {
+    location "github.com/org/payment-service"
+    tags ["external", "microservice"]
+  }
+  api = container "Payment API" {
+    technology "Go"
+    description "gRPC API for payment operations"
+  }
+}
+
+notification_service = external_system "Notification Service" {
+  description "Email and push notification service"
+  metadata {
+    location "github.com/org/notification-service"
+    tags ["external", "microservice"]
+  }
+  worker = container "Notification Worker" {
+    technology "Python"
+    description "Background worker for sending notifications"
+  }
+}
+
+// External Relationships
+user_service.api -> order_service.api "REST API - user validation for orders"
+user_service.api -> payment_service.api "gRPC - user payment method validation"
+user_service.auth -> notification_service.worker "AMQP - send welcome emails"
+
+// Users
+end_user = person "End User" {
+  description "Application users who authenticate via the User Service"
+}
+
+admin_user = person "Admin User" {
+  description "Administrative users with elevated permissions"
+}
+
+// User relationships to this service
+end_user -> user_service.api "HTTPS - login, registration, profile management"
+admin_user -> user_service.api "HTTPS - user administration, role management"
