@@ -1,0 +1,46 @@
+// Example 1: Simple Web Service
+// This example demonstrates a basic Node.js API with PostgreSQL database
+
+user_api = system "User API" {
+  description "REST API for user management"
+
+  metadata {
+    repo "[from git remote]"
+    language "JavaScript"
+    framework "Express 4.18"
+  }
+
+  api = container "REST API" {
+    technology "Node.js"
+    description "Express.js REST API for user operations"
+
+    metadata {
+      port "3000"
+      framework "Express"
+      endpoints "GET /users, GET /users/:id, POST /users"
+    }
+  }
+
+  db = datastore "User Database" {
+    technology "PostgreSQL"
+    description "Primary data store for user information"
+
+    metadata {
+      host "postgres"
+      port "5432"
+      database "userdb"
+    }
+  }
+
+  api -> db "SQL - user queries and updates"
+}
+
+api_user = person "API User" {
+  description "Client applications consuming the API"
+
+  metadata {
+    type "api-client"
+  }
+}
+
+api_user -> user_api.api "HTTPS - REST API calls"

@@ -1,0 +1,69 @@
+// Example 3: Documentation-Based Analysis
+// This example demonstrates architecture derived from documentation rather than code
+// Note: Comments indicate information sources from documentation
+
+content_platform = system "Content Platform" {
+  description "Content management and delivery platform (from docs)"
+
+  metadata {
+    source "documentation"
+    last_updated "2024-01-15"
+  }
+
+  web = container "Web Application" {
+    technology "React"
+    description "User-facing web application (from docs)"
+  }
+
+  api = container "API Server" {
+    technology "Node.js"
+    description "Backend API for content management (from docs)"
+  }
+
+  db = datastore "Content Database" {
+    technology "PostgreSQL"
+    description "Content storage (from deployment docs)"
+  }
+
+  cache = datastore "CDN Cache" {
+    technology "CloudFront"
+    description "Content delivery network (from deployment docs)"
+  }
+
+  web -> api "HTTPS - API calls"
+  api -> db "SQL"
+  api -> cache "Invalidates cache on content update"
+}
+
+auth0 = external_system "Auth0" {
+  description "Authentication service (from architecture docs)"
+
+  auth_api = container "Auth API" {
+    technology "OAuth 2.0"
+    description "OAuth 2.0 authentication provider"
+  }
+}
+
+content_platform.web -> auth0.auth_api "OAuth - user authentication"
+
+content_editor = person "Content Editor" {
+  description "Content creators and editors (from user personas doc)"
+
+  metadata {
+    segment "internal"
+    behaviors "create content, edit articles, publish updates"
+  }
+}
+
+content_reader = person "Content Reader" {
+  description "End users consuming content (from user personas doc)"
+
+  metadata {
+    segment "public"
+    behaviors "read articles, search content, share articles"
+  }
+}
+
+content_editor -> content_platform.web "HTTPS - content management"
+content_reader -> content_platform.web "HTTPS - read content"
+content_reader -> content_platform.cache "HTTPS - cached content delivery"
