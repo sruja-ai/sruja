@@ -5,6 +5,20 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.7.11...sruja-v0.8.0) (2026-02-15)
+
+
+### Features
+
+* add architecture agent skill examples ([a98ce42](https://github.com/sruja-ai/sruja/commit/a98ce42bda511ff65d6a59f8e2b62bab5f160d4b))
+* fix multi-repo architecture examples and add version/dependencies ([dcfbf83](https://github.com/sruja-ai/sruja/commit/dcfbf83bd375827e65947741b5e5cb4c06b0c09b))
+
+
+### Bug Fixes
+
+* code formatting ([56af032](https://github.com/sruja-ai/sruja/commit/56af0325b74e282995650d514f974754cefc36b7))
+* skills formatting ([778ea2d](https://github.com/sruja-ai/sruja/commit/778ea2d854ff6e0c9271dd5cca426cdc416889ba))
+
 ## [0.7.11](https://github.com/sruja-ai/sruja/compare/sruja-v0.7.10...sruja-v0.7.11) (2026-02-14)
 
 
