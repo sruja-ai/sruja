@@ -1,112 +1,5 @@
----
-title: "Lesson 2: The Vocabulary of Scale"
-weight: 2
-summary: "Vertical vs. Horizontal Scaling, Latency vs. Throughput. The words you need to know."
-learning_objectives:
-  - Explain Vertical vs Horizontal scaling
-  - Understand why distributed systems are hard
-  - Master the difference between Latency and Throughput
-estimated_time: "15 minutes"
-difficulty: "beginner"
----
-
-# Lesson 2: The Vocabulary of Scale
-
-To design big systems, you need to speak the language.
-
-## 1. Scaling: Up vs Out
-
-When your website crashes because too many people are using it, you have two choices.
-
-### Vertical Scaling (Scaling Up)
-
-**"Get a bigger machine."**
-You upgrade from a 4GB RAM server to a 64GB RAM server.
-
-- **Pros**: Easy. No code changes.
-- **Cons**: Expensive. Finite limit (you can't buy a 100TB RAM server... easily). Single point of failure.
-
-### Horizontal Scaling (Scaling Out)
-
-**"Get more machines."**
-You buy 10 cheap servers and split the traffic between them.
-
-- **Pros**: Infinite scale (google has millions of servers). Resilient (if one dies, others take over).
-- **Cons**: Complex. You need load balancers and data consistency strategies.
-
-```mermaid
-graph TD
-    subgraph Vertical [Vertical Scaling]
-        Small[Server] -- Upgrade --> Big[SERVER]
-    end
-
-    subgraph Horizontal [Horizontal Scaling]
-        One[Server] -- Add More --> Many1[Server]
-        One -- Add More --> Many2[Server]
-        One -- Add More --> Many3[Server]
-    end
-```
-
-## 2. Speed: Latency vs Throughput
-
-In interviews, never just say "it needs to be fast". Be specific.
-
-- **Latency**: The time it takes for **one person** to get a result.
-  - _Metaphor_: The time it takes to drive from A to B.
-  - _Unit_: Milliseconds (ms).
-- **Throughput**: The number of people the system can serve **at the same time**.
-  - _Metaphor_: The width of the highway (how many cars per hour).
-  - _Unit_: Requests per Second (RPS).
-
-> [!TIP]
-> **Use the right word**: A system can have **low latency** (fast response) but **low throughput** (crashes if 5 people use it). A highway can have **high throughput** (10 lanes) but **high latency** (traffic jam).
-
-## 3. Sruja in Action
-
-Sruja allows you to define horizontal scaling requirements explicitly using the `scale` block.
-
-```sruja
-import { * } from 'sruja.ai/stdlib'
-
-
-ECommerce = system "E-Commerce System" {
-    WebServer = container "Web App" {
-        technology "Rust, Axum"
-
-        // Explicitly defining Horizontal Scaling
-        scale {
-            min 3            // Start with 3 servers
-            max 100          // Scale up to 100
-            metric "cpu > 80%"
-        }
-    }
-
-    Database = database "Primary DB" {
-        technology "PostgreSQL"
-        // Describing Vertical Scaling via comments/description
-        description "Running on a massive AWS r5.24xlarge instance (Vertical Scaling)"
-    }
-
-    WebServer -> Database "Reads/Writes"
-}
-
-view index {
-include *
-}
-```
-
-## Knowledge Check
-
-<details>
-<summary><strong>Q: Why don't we just vertically scale forever?</strong></summary>
-
-Because physics. There is a limit to how fast a single CPU can be. Also, if that one super-computer catches fire, your entire business is dead.
-
-</details>
-
-## Quiz: Test Your Knowledge
-
-Ready to apply what you've learned? Take the interactive quiz for this lesson!
+<!-- Auto-generated quiz from TOML -->
+<!-- Source: lesson-2-quiz.toml -->
 
 **1. What type of scaling involves upgrading a single machine with more resources (more RAM, CPU, disk space)?**
 
@@ -351,7 +244,7 @@ Throughput is the volume of work a system can handle. Think of it as the width o
 <div class="answer-feedback" style="display: none;">
   <p class="feedback-text"></p>
   <div class="explanation" style="display: none;">
-    Google uses thousands of servers working in parallel, pre-computed search indexes, and content delivery networks at the edge to achieve both low latency (&lt;500ms) and high throughput (63K queries/sec).
+    Google uses thousands of servers working in parallel, pre-computed search indexes, and content delivery networks at the edge to achieve both low latency (<500ms) and high throughput (63K queries/sec).
 
   </div>
 </div>
@@ -492,16 +385,3 @@ Load balancers are the "traffic cops" that distribute requests across multiple s
 </div>
 
 ---
-
-This quiz covers:
-- Vertical vs Horizontal scaling strategies
-- When to use each scaling approach
-- Latency vs Throughput concepts
-- Real-world scaling scenarios (YouTube, Google, HFT)
-- Load balancing and auto-scaling
-- Practical scaling decisions
-
-## Next Steps
-
-We have the mindset, and we have the words. Now let's draw.
-👉 **[Lesson 3: The C4 Model (Visualizing Architecture)](./lesson-3)**

@@ -1,80 +1,5 @@
----
-title: "Lesson 3: Availability & Reliability"
-weight: 3
-summary: "Redundancy, Failover, and SLAs."
----
-
-# Lesson 3: Availability & Reliability
-
-## Reliability vs. Availability
-
-- **Reliability:** The probability that a system will function correctly without failure for a specified period. It's about _correctness_.
-- **Availability:** The percentage of time a system is operational and accessible. It's about _uptime_.
-
-A system can be available but not reliable (e.g., it returns 500 errors but is "up").
-
-## Measuring Availability
-
-Availability is often measured in "nines":
-
-| Availability         | Downtime per Year |
-| :------------------- | :---------------- |
-| 99% (Two nines)      | 3.65 days         |
-| 99.9% (Three nines)  | 8.76 hours        |
-| 99.99% (Four nines)  | 52.6 minutes      |
-| 99.999% (Five nines) | 5.26 minutes      |
-
-## Achieving High Availability
-
-### Redundancy
-
-The key to availability is eliminating Single Points of Failure (SPOF). This is done via redundancy.
-
-- **Active-Passive:** One server handles traffic; the other is on standby.
-- **Active-Active:** Both servers handle traffic. If one fails, the other takes over the full load.
-
-### Failover
-
-The process of switching to a redundant system upon failure. This can be manual or automatic.
-
----
-
-## 🛠️ Sruja Perspective: Modeling Redundancy
-
-You can explicitly model redundant components in Sruja to visualize your high-availability strategy.
-
-```sruja
-import { * } from 'sruja.ai/stdlib'
-
-
-Payments = system "Payment System" {
-    PaymentService = container "Payment Service" {
-        technology "Java"
-    }
-
-    // Modeling a primary and standby database
-    PrimaryDB = database "Primary Database" {
-        technology "MySQL"
-        tags ["primary"]
-    }
-
-    StandbyDB = database "Standby Database" {
-        technology "MySQL"
-        tags ["standby"]
-        description "Replicates from PrimaryDB. Promoted to primary if PrimaryDB fails."
-    }
-
-    PaymentService -> PrimaryDB "Reads/Writes"
-    PrimaryDB -> StandbyDB "Replicates data"
-}
-
-view index {
-include *
-}
-
-## Quiz: Test Your Knowledge
-
-Ready to apply what you've learned? Take the interactive quiz for this lesson!
+<!-- Auto-generated quiz from TOML -->
+<!-- Source: lesson-3-quiz.toml -->
 
 **1. In system design, what term describes the percentage of time a system is operational and accessible (uptime)?**
 
@@ -127,7 +52,7 @@ Reliability measures how often a system functions correctly without errors. A sy
   <p class="feedback-text"></p>
   <div class="explanation" style="display: none;">
     99.9% availability = 99.9% uptime = 0.1% downtime = 0.001 × 365 days × 24 hours = 8.76 hours/year.
-    Each additional "9" reduces downtime by a factor of 10.
+Each additional "9" reduces downtime by a factor of 10.
 
   </div>
 </div>
@@ -147,7 +72,7 @@ Reliability measures how often a system functions correctly without errors. A sy
   <p class="feedback-text"></p>
   <div class="explanation" style="display: none;">
     99.999999999% durability means 0.000000001% chance of data loss. For 10,000 objects, that's a 0.01% chance per year = once every 10,000 years.
-    Note: Durability ≠ Availability. S3's availability is 99.99% (52.6 minutes/year downtime).
+Note: Durability ≠ Availability. S3's availability is 99.99% (52.6 minutes/year downtime).
 
   </div>
 </div>
@@ -205,7 +130,7 @@ Reliability measures how often a system functions correctly without errors. A sy
   <p class="feedback-text"></p>
   <div class="explanation" style="display: none;">
     Active-Active: Both servers handle traffic simultaneously. If one fails, the other continues handling its traffic plus takes over some traffic from the failed server.
-    Minimal interruption if load balancer detects failure quickly.
+Minimal interruption if load balancer detects failure quickly.
 
   </div>
 </div>
@@ -225,7 +150,7 @@ Reliability measures how often a system functions correctly without errors. A sy
   <p class="feedback-text"></p>
   <div class="explanation" style="display: none;">
     Banking requires both high availability and strong consistency. Active-Active with synchronous replication ensures no data loss during failover.
-    Regular chaos engineering tests (like Netflix's Chaos Monkey) ensure failover actually works when needed.
+Regular chaos engineering tests (like Netflix's Chaos Monkey) ensure failover actually works when needed.
 
   </div>
 </div>
@@ -264,8 +189,8 @@ Reliability measures how often a system functions correctly without errors. A sy
   <p class="feedback-text"></p>
   <div class="explanation" style="display: none;">
     RTO (Recovery Time Objective) is the maximum acceptable time to restore service after a disruption.
-    In this case, RTO = 30 seconds (detection + failover time).
-    RPO (Recovery Point Objective) would be how much data is lost (depends on replication lag).
+In this case, RTO = 30 seconds (detection + failover time).
+RPO (Recovery Point Objective) would be how much data is lost (depends on replication lag).
 
   </div>
 </div>
@@ -285,7 +210,7 @@ Reliability measures how often a system functions correctly without errors. A sy
   <p class="feedback-text"></p>
   <div class="explanation" style="display: none;">
     Chaos Engineering is about intentionally causing failures to test resilience. If Chaos Monkey kills a server and Netflix users don't notice, the system is resilient.
-    This practice transformed Netflix's availability from 99.9% to 99.99%+ by finding and fixing weaknesses before real outages occur.
+This practice transformed Netflix's availability from 99.9% to 99.99%+ by finding and fixing weaknesses before real outages occur.
 
   </div>
 </div>
@@ -305,7 +230,7 @@ Reliability measures how often a system functions correctly without errors. A sy
   <p class="feedback-text"></p>
   <div class="explanation" style="display: none;">
     RPO (Recovery Point Objective) is the maximum acceptable data loss measured in time.
-    With 5 minutes of replication lag, RPO = 5 minutes. Any orders placed in the last 5 minutes would need to be recovered from logs or customer records.
+With 5 minutes of replication lag, RPO = 5 minutes. Any orders placed in the last 5 minutes would need to be recovered from logs or customer records.
 
   </div>
 </div>
@@ -325,7 +250,7 @@ Reliability measures how often a system functions correctly without errors. A sy
   <p class="feedback-text"></p>
   <div class="explanation" style="display: none;">
     99.9% = 8.76 hours downtime/year ÷ 12 months = 0.73 hours = 43.8 minutes per month.
-    This means the system can be down for ~43 minutes each month while maintaining 99.9% availability SLA.
+This means the system can be down for ~43 minutes each month while maintaining 99.9% availability SLA.
 
   </div>
 </div>
@@ -345,7 +270,7 @@ Reliability measures how often a system functions correctly without errors. A sy
   <p class="feedback-text"></p>
   <div class="explanation" style="display: none;">
     99.99% = 52.6 minutes downtime/year ÷ 12 months = 4.38 minutes per month.
-    Achieving this requires Active-Active setup across multiple regions with automatic failover, as any maintenance or failure costs precious minutes.
+Achieving this requires Active-Active setup across multiple regions with automatic failover, as any maintenance or failure costs precious minutes.
 
   </div>
 </div>
@@ -366,15 +291,15 @@ Reliability measures how often a system functions correctly without errors. A sy
   <div class="explanation" style="display: none;">
     In Sruja, you explicitly model redundant components:
 
-    ```sruja
-    PrimaryDB = database "Primary Database" { ... }
-    StandbyDB = database "Standby Database" {
+```sruja
+PrimaryDB = database "Primary Database" { ... }
+StandbyDB = database "Standby Database" {
     description "Replicates from PrimaryDB. Promoted to primary if PrimaryDB fails."
-    }
-    PrimaryDB -> StandbyDB "Replicates data"
-    ```
+}
+PrimaryDB -> StandbyDB "Replicates data"
+```
 
-    This makes the redundancy strategy visible in your architecture diagrams.
+This makes the redundancy strategy visible in your architecture diagrams.
 
   </div>
 </div>
@@ -394,9 +319,9 @@ Reliability measures how often a system functions correctly without errors. A sy
   <p class="feedback-text"></p>
   <div class="explanation" style="display: none;">
     This is AVAILABLE (site is up) but NOT RELIABLE (not functioning correctly).
-    - Available = 100% uptime (never down)
-    - Reliable = 100% correct (no errors)
-    - Perfect = Both available and reliable
+- Available = 100% uptime (never down)
+- Reliable = 100% correct (no errors)
+- Perfect = Both available and reliable
 
   </div>
 </div>
@@ -405,7 +330,7 @@ Reliability measures how often a system functions correctly without errors. A sy
 
 **17. Your company's SLA (Service Level Agreement) promises 99.9% uptime. In the last month, you had 1 hour of downtime. What's the penalty?**
 
-- [ ] a) No penalty (1 hour &lt; 43.8 minutes allowed)
+- [ ] a) No penalty (1 hour < 43.8 minutes allowed)
 - [ ] b) 50% penalty for missing the SLA
 - [ ] c) Calculate the difference: (60 min - 43.8 min) × penalty rate
 - [ ] d) 16.2 minutes exceeded (60 min - 43.8 min = 16.2 min beyond SLA)
@@ -416,10 +341,10 @@ Reliability measures how often a system functions correctly without errors. A sy
   <p class="feedback-text"></p>
   <div class="explanation" style="display: none;">
     99.9% SLA = 43.8 minutes downtime/month allowed.
-    Actual = 60 minutes downtime.
-    Exceeded by 16.2 minutes.
-    Penalty is typically calculated based on the exceeded minutes times a penalty rate (e.g., 1% credit per minute exceeded).
-    This demonstrates why monitoring availability in real-time is critical for SLA compliance.
+Actual = 60 minutes downtime.
+Exceeded by 16.2 minutes.
+Penalty is typically calculated based on the exceeded minutes times a penalty rate (e.g., 1% credit per minute exceeded).
+This demonstrates why monitoring availability in real-time is critical for SLA compliance.
 
   </div>
 </div>
@@ -460,26 +385,13 @@ Failover can be automatic (system detects failure and switches) or manual (opera
   <p class="feedback-text"></p>
   <div class="explanation" style="display: none;">
     4 hours/year downtime tolerance:
-    4 hours ÷ (365 days × 24 hours) = 4 ÷ 8760 = 0.0457% downtime
-    Availability = 100% - 0.0457% = 99.954%
+4 hours ÷ (365 days × 24 hours) = 4 ÷ 8760 = 0.0457% downtime
+Availability = 100% - 0.0457% = 99.954%
 
-    Rounding to standard availability levels: 99.95% allows 4.38 hours/year, which meets the requirement.
-    This requires careful planning: Active-Active setup, scheduled maintenance windows, and minimal unplanned outages.
+Rounding to standard availability levels: 99.95% allows 4.38 hours/year, which meets the requirement.
+This requires careful planning: Active-Active setup, scheduled maintenance windows, and minimal unplanned outages.
 
   </div>
 </div>
 
 ---
-
-This quiz covers:
-- Availability vs Reliability definitions
-- Availability levels and downtime calculations (nines)
-- Redundancy strategies (Active-Passive vs Active-Active)
-- Single Points of Failure (SPOF)
-- Failover mechanisms
-- Real-world examples (Netflix, AWS S3, CDN)
-- RTO and RPO
-- Chaos Engineering
-- SLA calculations
-- Sruja modeling for redundancy
-```

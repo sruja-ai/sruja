@@ -76,7 +76,3 @@ answer.alternatives = ["->", "arrow", "connection"]
 context = """
 In Sruja, relationships between components are shown using arrows (`->`). For example: `ECommerce.API -> PaymentGateway \"Process payment\"` shows that the API service depends on the payment gateway.
 """
-
-[[questions]]
-type = "MultipleChoice"
-prompt.prompt

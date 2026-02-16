@@ -204,7 +204,7 @@ One of the key benefits of horizontal scaling is resilience. If one server fails
 
 [[questions]]
 type = "MultipleChoice"
-prompt.prompt = "Sruja allows you to define horizontal scaling explicitly. What does `min: 3, max: 100, metric: "cpu > 80%"` mean in a scale block?"
+prompt.prompt = "Sruja allows you to define horizontal scaling explicitly. What does `min: 3, max: 100, metric: \"cpu > 80%\"` mean in a scale block?"
 prompt.distractors = [
   "Always run exactly 3 servers, maximum CPU usage 80%",
   "Scale vertically when CPU is under 80%",
