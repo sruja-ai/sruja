@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.8.0...sruja-v0.9.0) (2026-02-16)
+
+
+### Features
+
+* **book:** convert quizzes to markdown format and integrate into lessons ([bc4d082](https://github.com/sruja-ai/sruja/commit/bc4d082f34eac7782cf1b484ffa18756ea048833))
+
 ## [0.8.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.7.11...sruja-v0.8.0) (2026-02-15)
 
 
