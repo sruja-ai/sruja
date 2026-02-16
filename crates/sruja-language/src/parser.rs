@@ -1465,12 +1465,17 @@ fn parse_policy(input: &str) -> IResult<&str, Policy> {
 /// Parse a view definition
 /// Supports both: `view id { title "..."; include ... }` and `view id of target { ... }`
 fn parse_view(input: &str) -> IResult<&str, ViewDef> {
-    let (input, _) = tag("view")(input)?;
-    let (input, _) = ws1(input)?;
+    // Parse consistent DSL syntax: id = view "title" of Scope? { ... }
     let (input, id) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
+    let (input, _) = tag("=")(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, _) = tag("view")(input)?;
+    let (input, _) = ws1(input)?;
+    let (input, title) = parse_string(input)?; // Title is now required
+    let (input, _) = ws0(input)?;
 
-    // Handle optional "of target" syntax: `view id of target`
+    // Handle optional "of target" syntax: `= view "title" of target`
     let (input, view_of) = opt(preceded(
         preceded(ws0, tag("of")),
         preceded(ws1, parse_qualified_ident),
@@ -1480,7 +1485,6 @@ fn parse_view(input: &str) -> IResult<&str, ViewDef> {
     // Parse body block if present
     let (input, body_fields) = opt(parse_view_body)(input)?;
 
-    let mut title = None;
     let mut includes = None;
     let mut excludes = None;
     let mut description = None;
@@ -1488,7 +1492,6 @@ fn parse_view(input: &str) -> IResult<&str, ViewDef> {
     if let Some(fields) = body_fields {
         for (k, v) in fields {
             match k.as_str() {
-                "title" => title = Some(v),
                 "include" => {
                     // Parse include expression from string
                     // Supports: "*", "Element", "Element.Element", "Element1 Element2"
@@ -1537,7 +1540,7 @@ fn parse_view(input: &str) -> IResult<&str, ViewDef> {
         ViewDef {
             location: SourceLocation::new(String::new(), 0, 0),
             id,
-            title,
+            title, // Title is now required (String, not Option)
             description,
             view_of,
             tags: Vec::new(),

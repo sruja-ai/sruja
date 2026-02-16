@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet};
 #[derive(Debug, Clone)]
 pub struct ResolvedView {
     pub view_id: String,
-    pub title: Option<String>,
+    pub title: String,
     pub description: Option<String>,
     pub elements: HashMap<String, ElementDef>,
     pub relations: Vec<Relation>,

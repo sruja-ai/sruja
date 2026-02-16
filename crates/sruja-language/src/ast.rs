@@ -356,7 +356,7 @@ pub struct Policy {
 pub struct ViewDef {
     pub location: SourceLocation,
     pub id: String,
-    pub title: Option<String>,
+    pub title: String,
     pub description: Option<String>,
     pub view_of: Option<QualifiedIdent>,
     pub tags: Vec<String>,

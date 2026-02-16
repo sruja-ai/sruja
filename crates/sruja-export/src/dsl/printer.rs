@@ -340,27 +340,40 @@ impl DslPrinter {
     }
 
     fn print_view(&self, out: &mut String, view: &sruja_language::ViewDef) {
-        out.push_str("view ");
+        // Consistent DSL syntax: id = view "title" of Scope? { ... }
         out.push_str(&view.id);
-        if let Some(title) = &view.title {
-            out.push_str(" \"");
-            out.push_str(title);
-            out.push('"');
+        out.push_str(" = view \"");
+        out.push_str(&view.title);
+        out.push('"');
+
+        // Add scope if present
+        if let Some(scope) = &view.view_of {
+            out.push_str(" of ");
+            out.push_str(&scope.as_string());
         }
-        if let Some(desc) = &view.description {
-            out.push_str(" \"");
-            out.push_str(desc);
-            out.push('"');
-        }
-        if !view.rules.is_empty() {
+
+        // Check if we need a body block
+        let has_description = view.description.is_some();
+        let has_rules = !view.rules.is_empty();
+
+        if has_description || has_rules {
             out.push_str(" {\n");
+
+            // Print description if present
+            if let Some(desc) = &view.description {
+                out.push_str("  description \"");
+                out.push_str(desc);
+                out.push_str("\"\n");
+            }
+
+            // Print rules
             for rule in &view.rules {
                 if let Some(include) = &rule.include {
-                    out.push_str("    include ");
+                    out.push_str("  include ");
                     if include.wildcard {
                         out.push('*');
                     } else {
-                        out.push_str(&include.elements.join(", "));
+                        out.push_str(&include.elements.join(" "));
                     }
                     if include.recursive {
                         out.push_str(" recursive");
@@ -368,11 +381,11 @@ impl DslPrinter {
                     out.push('\n');
                 }
                 if let Some(exclude) = &rule.exclude {
-                    out.push_str("    exclude ");
+                    out.push_str("  exclude ");
                     if exclude.wildcard {
                         out.push('*');
                     } else {
-                        out.push_str(&exclude.elements.join(", "));
+                        out.push_str(&exclude.elements.join(" "));
                     }
                     out.push('\n');
                 }
@@ -735,7 +748,7 @@ SecurityPolicy = policy "Security Rules" {
         let view = sruja_language::ViewDef {
             location: SourceLocation::new("test.sruja".to_string(), 1, 1),
             id: "SystemView".to_string(),
-            title: Some("System Architecture".to_string()),
+            title: "System Architecture".to_string(),
             description: None,
             view_of: None,
             tags: Vec::new(),
@@ -759,11 +772,11 @@ SecurityPolicy = policy "Security Rules" {
         let printer = DslPrinter::new();
         let out = printer.print(&program);
 
-        assert!(out.contains("view"));
-        assert!(out.contains("SystemView"));
+        // Check for new consistent syntax: SystemView = view "title"
+        assert!(out.contains("SystemView = view"));
         assert!(out.contains("System Architecture"));
-        assert!(out.contains("include System, Container"));
-        assert!(out.contains("recursive"));
+        // Check for space-separated elements (not comma-separated)
+        assert!(out.contains("include System Container recursive"));
         assert!(out.contains("exclude ExternalSystem"));
     }
 
