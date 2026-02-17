@@ -134,7 +134,7 @@ impl Parser {
                     sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
                     Severity::Error,
                     error_msg,
-                    SourceLocation::new(self.filename.clone(), error_pos as u32, 0),
+                    SourceLocation::new(self.filename.clone(), error_pos, 0),
                 )])
             }
         }
