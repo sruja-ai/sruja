@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.9.0...sruja-v0.9.1) (2026-02-17)
+
+
+### Bug Fixes
+
+* remove unnecessary u32 cast in parser.rs ([76e8e2b](https://github.com/sruja-ai/sruja/commit/76e8e2b859315ef0464c08922b1f345923fb4fec))
+
 ## [0.9.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.8.0...sruja-v0.9.0) (2026-02-16)
 
 
