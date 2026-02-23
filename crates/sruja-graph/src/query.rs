@@ -1,7 +1,47 @@
 //! Query interface for Knowledge Graph
+//!
+//! Evidence is produced deterministically from graph data (no LLM). Templates
+//! format nodes, edges, and decisions for consistent CLI output.
 
 use crate::*;
 use thiserror::Error;
+
+/// Deterministic evidence excerpt for a decision (ADR or similar).
+fn format_decision_evidence(d: &Decision) -> String {
+    let snippet = d.decision.trim();
+    let max_len = 200;
+    if snippet.len() <= max_len {
+        format!("[{}] {}", d.title, snippet)
+    } else {
+        format!("[{}] {}...", d.title, &snippet[..max_len])
+    }
+}
+
+/// Deterministic evidence excerpt for a node (component).
+fn format_node_evidence(node: &ArchitectureNode, tech: Option<&str>) -> String {
+    let kind = format!("{}", node.kind);
+    let tech_str = tech.or(node.technology.as_deref()).unwrap_or("(not set)");
+    format!(
+        "Component '{}' (kind={}, technology={})",
+        node.label, kind, tech_str
+    )
+}
+
+/// Deterministic evidence excerpt for an edge (relationship).
+fn format_edge_evidence(
+    src_label: &str,
+    kind: &EdgeKind,
+    tgt_label: &str,
+    label: Option<&str>,
+) -> String {
+    let kind_str = format!("{}", kind);
+    match label {
+        Some(l) if !l.is_empty() => {
+            format!("{} --[{}] {}--> {}", src_label, l, kind_str, tgt_label)
+        }
+        _ => format!("{} --{}--> {}", src_label, kind_str, tgt_label),
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum QueryError {
@@ -64,25 +104,27 @@ impl KnowledgeGraph {
 
                 if !decisions.is_empty() {
                     let decision = &decisions[0];
+                    let excerpt = format_decision_evidence(decision);
                     return Ok(QueryResult {
                         question: question.to_string(),
                         answer: format!("Based on {}: {}", decision.title, decision.decision),
                         evidence: vec![Evidence {
                             kind: EvidenceKind::Decision,
-                            reference: decision.id.clone(),
-                            excerpt: decision.decision.clone(),
+                            reference: decision.source.summary(),
+                            excerpt,
                         }],
                         confidence: 0.85,
                     });
                 }
 
+                let excerpt = format_node_evidence(node, Some(tech.as_str()));
                 return Ok(QueryResult {
                     question: question.to_string(),
                     answer: format!("{} uses {} technology.", node.label, tech),
                     evidence: vec![Evidence {
                         kind: EvidenceKind::Node,
-                        reference: node.id.clone(),
-                        excerpt: format!("Node {} uses technology {}", node.label, tech),
+                        reference: node.source.summary(),
+                        excerpt,
                     }],
                     confidence: 0.5,
                 });
@@ -122,8 +164,8 @@ impl KnowledgeGraph {
                             .take(5)
                             .map(|n| Evidence {
                                 kind: EvidenceKind::Node,
-                                reference: n.id.clone(),
-                                excerpt: n.label.clone(),
+                                reference: n.source.summary(),
+                                excerpt: format_node_evidence(n, None),
                             })
                             .collect(),
                         confidence: 0.9,
@@ -150,20 +192,33 @@ impl KnowledgeGraph {
             }
 
             if !connections.is_empty() {
-                return Ok(QueryResult {
-                    question: question.to_string(),
-                    answer: format!("Found {} connections", connections.len()),
-                    evidence: connections
-                        .iter()
-                        .take(10)
-                        .map(|c| Evidence {
+                let evidence: Vec<Evidence> = self
+                    .edges
+                    .iter()
+                    .take(10)
+                    .filter_map(|e| {
+                        let src = self.nodes.get(&e.source)?;
+                        let tgt = self.nodes.get(&e.target)?;
+                        Some(Evidence {
                             kind: EvidenceKind::Edge,
-                            reference: String::new(),
-                            excerpt: c.clone(),
+                            reference: e.source_ref.summary(),
+                            excerpt: format_edge_evidence(
+                                src.label.as_str(),
+                                &e.kind,
+                                tgt.label.as_str(),
+                                e.label.as_deref(),
+                            ),
                         })
-                        .collect(),
-                    confidence: 0.7,
-                });
+                    })
+                    .collect();
+                if !evidence.is_empty() {
+                    return Ok(QueryResult {
+                        question: question.to_string(),
+                        answer: format!("Found {} connections", connections.len()),
+                        evidence,
+                        confidence: 0.7,
+                    });
+                }
             }
         }
 
@@ -200,8 +255,8 @@ impl KnowledgeGraph {
                 .take(5)
                 .map(|d| Evidence {
                     kind: EvidenceKind::Decision,
-                    reference: d.id.clone(),
-                    excerpt: format!("{}: {}", d.title, d.decision),
+                    reference: d.source.summary(),
+                    excerpt: format_decision_evidence(d),
                 })
                 .collect(),
             confidence: 0.9,

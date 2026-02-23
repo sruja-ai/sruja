@@ -22,7 +22,7 @@
 
 ## Reference
 
-- **Try first** (no .sruja): `sruja quickstart -r .` – [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md)
+- **Try first** (no .sruja): `sruja quickstart -r .` – [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md) (includes current state: CLI vs desktop, config)
 - [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) – Sruja DSL reference
 - [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md) – Language design principles
 - [USING_SRUJA_IN_YOUR_PROJECT.md](USING_SRUJA_IN_YOUR_PROJECT.md) – Using Sruja in your repo

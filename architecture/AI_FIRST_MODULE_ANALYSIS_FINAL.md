@@ -26,7 +26,7 @@ The first value must **not** require:
 If users do not get value in the first minute, they will not adopt.
 
 So the product entry point is:
-1. `sruja quickstart -r .` (new command)
+1. `sruja quickstart -r .` (implemented)
 2. `sruja why ...` and `sruja drift ...` as immediate follow-up
 3. CI integration next
 4. Chat/LLM/MCP channels after trust is established
@@ -192,7 +192,7 @@ No API key prompts in this flow.
 ## 10. Execution Plan
 
 ### Phase 1 (2-3 weeks): Adoption Surface
-1. Implement `quickstart` command.
+1. ~~Implement `quickstart` command.~~ **Done.** See [docs/ARCHITECTURE_INTELLIGENCE.md](../docs/ARCHITECTURE_INTELLIGENCE.md) for current state.
 2. Improve deterministic `why` explanations with evidence templates.
 3. Unify drift logic with `sruja-diff`.
 4. Reorder README/docs around no-key first value.

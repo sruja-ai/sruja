@@ -21,6 +21,10 @@ sruja-lsp = { path = "../sruja-lsp" }
 sruja-scan = { path = "../sruja-scan" }
 sruja-diff = { path = "../sruja-diff" }
 sruja-graph = { path = "../sruja-graph" }
+sruja-semantic = { path = "../sruja-semantic" }
+sruja-runtime = { path = "../sruja-runtime" }
+sruja-intent = { path = "../sruja-intent" }
+sruja-report = { path = "../sruja-report" }
 clap = { workspace = true }
 tokio = { workspace = true }
 thiserror = { workspace = true }

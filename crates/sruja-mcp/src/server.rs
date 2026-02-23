@@ -1,21 +1,23 @@
 //! MCP HTTP Server
 
 use axum::{
-    extract::{Path, Query, State},
-    http::StatusCode,
+    extract::{Path, State},
+    http::HeaderValue,
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
 use serde::Deserialize;
-use std::sync::Arc;
+use std::{env, sync::Arc};
 use tokio::sync::RwLock;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 
 use sruja_graph::KnowledgeGraph;
 
+use crate::tools::{list_tools, SrujaTool};
 use crate::{
-    ApiResponse, ArchitectureSummary, DecisionResponse, PolicyViolationResponse, QueryResponse,
+    ApiResponse, ArchitectureSummary, DecisionResponse, McpError, PolicyViolationResponse,
+    QueryResponse,
 };
 
 #[derive(Clone)]
@@ -26,11 +28,22 @@ pub struct AppState {
 pub struct McpServer {
     graph: Arc<RwLock<KnowledgeGraph>>,
     port: u16,
+    cors_origins: Vec<String>,
 }
 
 impl McpServer {
     pub fn new(graph: Arc<RwLock<KnowledgeGraph>>) -> Self {
-        Self { graph, port: 3000 }
+        let cors_origins = env::var("SRUJA_CORS_ORIGINS")
+            .unwrap_or_else(|_| "http://localhost:3000,http://localhost:5173".to_string())
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .collect();
+
+        Self {
+            graph,
+            port: 3000,
+            cors_origins,
+        }
     }
 
     pub fn port(mut self, port: u16) -> Self {
@@ -38,8 +51,23 @@ impl McpServer {
         self
     }
 
-    pub async fn run(self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn cors_origins(mut self, origins: Vec<String>) -> Self {
+        self.cors_origins = origins;
+        self
+    }
+
+    pub async fn run(self) -> Result<(), McpError> {
         let state = AppState { graph: self.graph };
+
+        let cors = CorsLayer::new()
+            .allow_origin(
+                self.cors_origins
+                    .iter()
+                    .filter_map(|o| o.parse().ok())
+                    .collect::<Vec<HeaderValue>>(),
+            )
+            .allow_methods([axum::http::Method::GET, axum::http::Method::POST])
+            .allow_headers([axum::http::header::CONTENT_TYPE]);
 
         let app = Router::new()
             .route("/health", get(health))
@@ -50,13 +78,15 @@ impl McpServer {
             .route("/policy/conflicts", get(get_policy_conflicts))
             .route("/query", post(query))
             .route("/stats", get(get_stats))
+            .route("/tools", get(get_tools))
+            .route("/tools/execute", post(execute_tool))
             .with_state(state)
-            .layer(CorsLayer::new().allow_origin(Any).allow_methods(Any));
+            .layer(cors);
 
         let addr = format!("0.0.0.0:{}", self.port);
         let listener = tokio::net::TcpListener::bind(&addr).await?;
 
-        tracing::info!("MCP server listening on {}", addr);
+        tracing::info!("MCP server listening on {} (CORS: {:?})", addr, self.cors_origins);
         axum::serve(listener, app).await?;
 
         Ok(())
@@ -133,9 +163,22 @@ async fn get_stats(State(state): State<AppState>) -> impl IntoResponse {
     Json(ApiResponse::success(stats))
 }
 
+async fn get_tools() -> impl IntoResponse {
+    Json(ApiResponse::success(list_tools()))
+}
+
+async fn execute_tool(
+    State(state): State<AppState>,
+    Json(tool): Json<SrujaTool>,
+) -> impl IntoResponse {
+    let graph = state.graph.read().await;
+    let response = tool.execute(&*graph);
+    Json(ApiResponse::success(response))
+}
+
 pub async fn run_server(
     graph: Arc<RwLock<KnowledgeGraph>>,
     port: u16,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), McpError> {
     McpServer::new(graph).port(port).run().await
 }

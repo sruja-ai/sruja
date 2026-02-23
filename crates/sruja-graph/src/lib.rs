@@ -9,13 +9,29 @@ use std::collections::HashMap;
 use thiserror::Error;
 use uuid::Uuid;
 
+pub mod centrality;
+pub mod coupling;
 pub mod graph;
 pub mod query;
 pub mod scan_merge;
+pub mod scc;
+pub mod treewidth;
 
+pub use centrality::{
+    ArchitecturalHotspot, BridgeNode, CentralityAnalyzer, CentralityResult, HotspotRole, HubNode,
+};
+pub use coupling::{
+    CouplingAnalyzer, CouplingResult, CouplingSummary, CouplingViolation, CouplingViolationType,
+    ModuleCoupling, Zone,
+};
 pub use graph::KnowledgeGraph;
 pub use query::{PolicyViolation, QueryError, QueryResult};
 pub use scan_merge::merge_scan_into_graph;
+pub use scc::{CondensationEdge, Scc, SccAnalyzer, SccResult};
+pub use treewidth::{
+    ComplexityHotspot, ComplexityRating, RefactorPattern, RefactorSuggestion, TreeBag,
+    TreewidthAnalyzer, TreewidthResult,
+};
 
 #[derive(Debug, Error)]
 pub enum GraphError {
@@ -42,63 +58,8 @@ pub type RequirementId = String;
 pub type SessionId = String;
 pub type MessageId = String;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum NodeKind {
-    System,
-    Service,
-    Container,
-    Component,
-    Database,
-    Queue,
-    ExternalApi,
-    Frontend,
-    Module,
-}
-
-impl std::fmt::Display for NodeKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            NodeKind::System => write!(f, "system"),
-            NodeKind::Service => write!(f, "service"),
-            NodeKind::Container => write!(f, "container"),
-            NodeKind::Component => write!(f, "component"),
-            NodeKind::Database => write!(f, "database"),
-            NodeKind::Queue => write!(f, "queue"),
-            NodeKind::ExternalApi => write!(f, "external_api"),
-            NodeKind::Frontend => write!(f, "frontend"),
-            NodeKind::Module => write!(f, "module"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum EdgeKind {
-    DependsOn,
-    Calls,
-    ReadsFrom,
-    WritesTo,
-    PublishesTo,
-    SubscribesTo,
-    Owns,
-    Contains,
-    Uses,
-}
-
-impl std::fmt::Display for EdgeKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            EdgeKind::DependsOn => write!(f, "depends_on"),
-            EdgeKind::Calls => write!(f, "calls"),
-            EdgeKind::ReadsFrom => write!(f, "reads_from"),
-            EdgeKind::WritesTo => write!(f, "writes_to"),
-            EdgeKind::PublishesTo => write!(f, "publishes_to"),
-            EdgeKind::SubscribesTo => write!(f, "subscribes_to"),
-            EdgeKind::Owns => write!(f, "owns"),
-            EdgeKind::Contains => write!(f, "contains"),
-            EdgeKind::Uses => write!(f, "uses"),
-        }
-    }
-}
+/// Re-export shared node/edge kinds from sruja-types for a single source of truth.
+pub use sruja_types::{EdgeKind, NodeKind};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArchitectureNode {
@@ -255,6 +216,17 @@ impl SourceReference {
 
     pub fn manual() -> Self {
         SourceReference::Manual
+    }
+
+    /// Short summary for evidence display (deterministic, no LLM).
+    pub fn summary(&self) -> String {
+        match self {
+            SourceReference::ScannedRepo { path } => format!("scanned: {}", path),
+            SourceReference::AdrFile { path } => format!("ADR: {}", path),
+            SourceReference::DslFile { path, line } => format!("{}:{}", path, line),
+            SourceReference::Conversation { .. } => "conversation".to_string(),
+            SourceReference::Manual => "manual".to_string(),
+        }
     }
 }
 

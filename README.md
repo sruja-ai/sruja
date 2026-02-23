@@ -6,11 +6,19 @@
 
 > ⚠️ **Beta** – Sruja is under active development. APIs may change.
 
+**No API key or config needed for first value** – run `sruja quickstart -r .`, `sruja why "..." -r .`, or `sruja drift -r .` on any repo.
+
 ---
 
 ## Why Sruja?
 
-### 🔄 **Architecture-as-Code** – Version controlled, validated, exported
+### 🚀 **Zero-setup architecture intelligence first**
+
+- **Quickstart** – Scan any repo; get health score, findings, and evidence (no keys)
+- **Why** – Ask "why are we using Postgres?" with deterministic evidence from the graph
+- **Drift** – Detect cycles, orphans, layer violations from scanned code
+
+### 🔄 **Architecture-as-Code** (optional)
 
 - Define architecture in `.sruja` files – version-controlled in Git
 - Built-in validation – catch issues before they reach production
@@ -90,6 +98,34 @@ sruja quickstart --format json
   ███████████████░░░░░ ⚠ Fair
 ```
 
+### Architecture intelligence (four layers)
+
+The main entrypoint for full architecture intelligence is **`sruja analyze`**. It runs structural, semantic, intent, and optional runtime analysis and outputs an overall health score and recommendations.
+
+```bash
+# Full analysis (structural + semantic + intent; optional runtime with -t)
+sruja analyze -r .
+sruja analyze -r . -t traces.json -i docs/architecture -f json
+```
+
+**Drill-down commands** (no API key required):
+
+| Command | Purpose |
+|--------|--------|
+| `sruja quickstart -r .` | Fast health snapshot and top findings |
+| `sruja drift -r .` | Structural drift (cycles, orphans, layers); use `-a path/to/arch.sruja` to compare against a baseline |
+| `sruja complexity -r .` | Treewidth, SCC, centrality, coupling |
+| `sruja semantic -r .` | Semantic coupling, bounded contexts, vocabulary leakage |
+| `sruja intent check -r .` | Compare declared intent (ADRs, .sruja) vs scanned code |
+| `sruja runtime analyze -t traces.json` | Runtime traces, emergent cycles, hotspots |
+
+**Optional environment variables** (defaults when flags are omitted):
+
+- `SRUJA_INTENT_PATH` – Path to intent directory (ADRs, .sruja) for `sruja analyze` and `sruja intent check`. If unset, `sruja analyze` uses `repo/docs/architecture`.
+- `SRUJA_TRACES_PATH` – Path to traces JSON file for `sruja analyze -t`. Only used when `-t` is not passed.
+
+See [Architecture Intelligence](docs/ARCHITECTURE_INTELLIGENCE.md) for details.
+
 ### Define Architecture Manually (Optional)
 
 If you want to explicitly define your architecture in code, create `example.sruja`:
@@ -152,9 +188,9 @@ sruja export markdown example.sruja
 
 ### 🏗️ Architecture Intelligence (Beta)
 
-- **CLI first:** `sruja why`, `sruja drift`, `sruja scan` — zero API key for first value
+- **CLI first, no key required:** `sruja quickstart`, `sruja why "question" -r .`, `sruja drift -r .` — deterministic evidence from scan and graph
 - **sruja-app** (optional): Desktop app for chat, agents, extraction — requires LLM key
-- **Query:** Ask "Why did we choose Kafka?" with deterministic evidence; LLM enriches when available
+- **Query:** "Why are we using X?" uses graph + scan evidence only; optional LLM enrichment when configured
 
 **Strategy:** [architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md](architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md)
 

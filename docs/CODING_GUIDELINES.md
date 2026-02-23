@@ -2,6 +2,8 @@
 
 This document outlines coding standards and conventions for the Sruja codebase to ensure consistency, maintainability, and code quality.
 
+**Primary stack:** The Sruja CLI and core libraries are implemented in **Rust**. Rust modules live under `crates/`; CLI commands are split by domain in `crates/sruja-cli/src/commands/` (see `crates/sruja-cli/REFACTORING_PLAN.md`). The sections below also cover Go and TypeScript where relevant (e.g. other tooling or frontends).
+
 ## Table of Contents
 
 1. [CLI Commands](#cli-commands)

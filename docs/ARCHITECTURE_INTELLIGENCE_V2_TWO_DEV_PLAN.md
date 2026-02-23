@@ -23,8 +23,8 @@ Both tracks can start **immediately**; coordination is limited to agreed interfa
 
 | Week | Dev 1 (Structural & Intent) | Dev 2 (Semantic & Runtime) | Coordination |
 |------|-----------------------------|----------------------------|--------------|
-| **1** | Unify drift heuristics; cycle deduplication | `sruja why` evidence templates; README/docs reorder | None |
-| **2** | Build `Program → Graph` converter | New crate `sruja-semantic` scaffold; `EmbeddingProvider` trait | Agree on `Graph` / `NodeId` / `EdgeId` types (existing) |
+| **1** | Unify drift heuristics; cycle deduplication; god-module threshold configurable (ScanConfig/drift opts) | `sruja why` evidence templates; README/docs reorder | None |
+| **2** | Build `Program → Graph` converter | New crate `sruja-semantic` scaffold; `EmbeddingProvider` trait; import resolution `./dir` → `./dir/index.ts` (sruja-scan) | Agree on `Graph` / `NodeId` / `EdgeId` types (existing) |
 | **3** | Wire `sruja drift --baseline foo.sruja`; SCC module | Embedding implementations (OpenAI, local stub); vocabulary extractor | Dev 1: confirm `compare_graphs` contract for baseline |
 | **4** | Treewidth module; centrality module | Domain clustering; bounded context detector | None |
 
@@ -46,14 +46,9 @@ Both tracks can start **immediately**; coordination is limited to agreed interfa
 | **11** | Optional: semantic alignment (consumes Dev 2’s SemanticIntelligence) | Emergent cycle detector; `sruja runtime analyze` | **Handoff:** Dev 2 documents `SemanticIntelligence` API for Dev 1 |
 | **12** | Intent integration tests; drift report polish | Runtime analysis; hotspot detection | None |
 | **13** | — | Runtime report; OTLP integration tests | None |
-| **14** | Buffer / tech debt | Buffer / tech debt | — |
-
-### Phase 5 (Weeks 15–16)
-
-| Week | Dev 1 | Dev 2 | Coordination |
-|------|-------|-------|--------------|
-| **15** | `sruja analyze` structural + intent wiring | `sruja analyze` semantic + runtime wiring | **Joint:** Integrate into single `sruja analyze --all-layers`; agree on `ComprehensiveReport` schema |
-| **16** | Docs; AGENTS.md; example projects | Docs; AGENTS.md; performance tuning | Joint review and release prep |
+| **14** | **sruja-report** crate scaffold; `ComprehensiveReport` schema (structural, intent); unit tests for structural/intent | **sruja-report** contributions (semantic, runtime sections); **sruja-config** scaffold or agree `sruja.toml` schema | **Joint:** Agree ComprehensiveReport fields and `Recommendation` (priority, category, source_layer, effort); agree config owner |
+| **15** | `sruja analyze` structural + intent wiring; wire report from sruja-report | `sruja analyze` semantic + runtime wiring; load config (sruja-config or env) | **Joint:** Integrate into single `sruja analyze --all-layers`; implement report aggregation |
+| **16** | Docs; AGENTS.md; example projects; structural/intent integration tests | Docs; AGENTS.md; performance tuning; semantic/runtime integration tests | Joint review and release prep |
 
 ---
 
@@ -73,6 +68,8 @@ Both tracks can start **immediately**; coordination is limited to agreed interfa
 - `sruja-language` (Program → Graph converter)
 - `sruja-intent` (new crate)
 - `sruja-cli` (drift, complexity, intent commands)
+- `sruja-report` (lead: ComprehensiveReport schema, structural/intent sections; joint in Week 14–15)
+- `sruja-config` (lead: sruja.toml schema and load; both consume)
 
 ### Deliverables
 
@@ -102,6 +99,8 @@ Both tracks can start **immediately**; coordination is limited to agreed interfa
 - `sruja-semantic` (new crate)
 - `sruja-runtime` (new crate)
 - `sruja-cli` (why, semantic, runtime commands)
+- `sruja-report` (contribute semantic/runtime sections; joint in Week 14–15)
+- `sruja-config` (contribute if separate crate; both consume)
 - `docs/`, README
 
 ### Deliverables
@@ -132,15 +131,16 @@ Both tracks can start **immediately**; coordination is limited to agreed interfa
 
 ### 3. ComprehensiveReport (Phase 5)
 
-- **Owner:** Define schema in `sruja-report` or `sruja-config`.
+- **Owner:** `sruja-report` crate. Dev 1 leads schema and structural/intent sections; Dev 2 contributes semantic/runtime sections.
 - **Fields:** `structural`, `semantic`, `intent`, `runtime`, `overall_health`, `recommendations`.
-- **Agreement:** Week 14; implementation in Week 15.
+- **Recommendation type:** `priority`, `category`, `description`, `affected_components`, `source_layer`, `estimated_effort` (per main roadmap).
+- **Agreement:** Week 14; implementation Week 15.
 
 ### 4. SemanticIntelligence API (optional)
 
-- If Dev 1 adds semantic alignment to intent drift: Dev 2 exposes `SemanticIntelligence::analyze()`.
-- Contract: input `Graph`, output similarity/contexts for alignment.
-- Document by Week 10.
+- If Dev 1 adds semantic alignment to intent drift: Dev 2 exposes `sruja_semantic::analyze()`.
+- Contract: input components + structural_edges (from scan graph), output `SemanticReport` (contexts, coupling, summary).
+- **Document:** `docs/SEMANTIC_INTELLIGENCE_API.md` (Week 11 handoff).
 
 ---
 
@@ -150,7 +150,7 @@ Both tracks can start **immediately**; coordination is limited to agreed interfa
 |------|------|------------|
 | `sruja-cli` | Both add subcommands | Dev 1: drift, complexity, intent. Dev 2: why, semantic, runtime. Separate files/modules. |
 | `sruja-graph` | Dev 1 adds modules | Dev 2 does not modify sruja-graph. Semantic uses new crate. |
-| Config | Both need config | Introduce `sruja-config` in Phase 5 or agree on `sruja.toml` schema early. |
+| Config | Both need config | Dev 1 leads `sruja-config` (or agreed `sruja.toml` schema) in Week 14; both consume. |
 | Docs | Overlapping edits | Dev 1: architecture, drift, intent. Dev 2: adoption, semantic, runtime, getting-started. |
 
 ---
@@ -193,8 +193,39 @@ Both tracks can start **immediately**; coordination is limited to agreed interfa
 
 ---
 
+## Success Metrics (Product)
+
+Align with ARCHITECTURE_INTELLIGENCE_V2.md; measure after Phase 5.
+
+| Category | Metric | Target |
+|----------|--------|--------|
+| **Adoption** | Zero-key usage (quickstart, drift, why without API key) | Supported and documented |
+| **Adoption** | Time to first value | &lt; 5 min (scan + quickstart) |
+| **Quality** | Scan correctness (node/edge extraction) | Unit + integration tests; spot-checks on known repos |
+| **Quality** | Drift baseline accuracy | compare_graphs matches expected diff on fixture |
+| **Health** | ComprehensiveReport produced | `sruja analyze --all-layers` runs and outputs all four layers |
+
+---
+
+## Testing Expectations
+
+- **Dev 1:** Unit tests for treewidth, SCC, centrality, coupling; unit tests for Program→Graph and compare_graphs; integration tests for drift baseline and intent check (e.g. fixture repos).
+- **Dev 2:** Unit tests for embedding provider (stub), clustering, vocabulary; integration tests for `sruja semantic` and `sruja runtime analyze`; mock embedding for CI.
+- **Week 15–16:** Joint integration tests for `sruja analyze`; regression tests for ComprehensiveReport shape.
+- **Short-term:** Move duplicate cycle/orphan tests from sruja-scan into sruja-diff; add unit tests for `detect_architectural_drift`.
+
+---
+
+## Optional / Deferred
+
+- **Blast radius:** Listed in Track B scope; implement when capacity allows (post–Phase 5 or parallel).
+- **Design doc parser:** Week 8; can be minimal (e.g. extract intent from markdown headings) if ADR + .sruja cover most needs.
+
+---
+
 ## Document History
 
 | Date | Change |
 |------|--------|
 | 2026-02-23 | Initial plan based on ARCHITECTURE_INTELLIGENCE_V2.md |
+| 2026-02-23 | Assign sruja-report/sruja-config ownership; add short-term items to week plan (god-module threshold, import resolution); add Success Metrics and Testing expectations; clarify Recommendation type; optional/deferred (blast_radius, design doc parser). |

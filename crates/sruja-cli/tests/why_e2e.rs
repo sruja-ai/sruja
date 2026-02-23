@@ -39,21 +39,14 @@ fn merge_scan_into_graph(
 ) {
     use chrono::Utc;
     use sruja_graph::SourceReference;
-    use sruja_scan::{EdgeKind as ScanEdgeKind, NodeKind as ScanNodeKind};
 
     let now = Utc::now();
     let source = SourceReference::scanned_repo(repo_path);
 
     for node in &scan_graph.nodes {
-        let kind = match node.kind {
-            ScanNodeKind::Service => sruja_graph::NodeKind::Service,
-            ScanNodeKind::Module => sruja_graph::NodeKind::Module,
-            ScanNodeKind::Database => sruja_graph::NodeKind::Database,
-            ScanNodeKind::ExternalApi => sruja_graph::NodeKind::ExternalApi,
-        };
         let arch_node = sruja_graph::ArchitectureNode {
             id: node.id.clone(),
-            kind,
+            kind: node.kind,
             label: node.label.clone(),
             technology: node.technology.clone(),
             description: node.path.clone(),
@@ -66,17 +59,12 @@ fn merge_scan_into_graph(
     }
 
     for edge in &scan_graph.edges {
-        let kind = match edge.kind {
-            ScanEdgeKind::Calls => sruja_graph::EdgeKind::Calls,
-            ScanEdgeKind::ReadsFrom => sruja_graph::EdgeKind::ReadsFrom,
-            ScanEdgeKind::WritesTo => sruja_graph::EdgeKind::WritesTo,
-        };
         let edge_id = format!("{}-{}-{:?}", edge.source, edge.target, edge.kind);
         let arch_edge = sruja_graph::ArchitectureEdge {
             id: edge_id,
             source: edge.source.clone(),
             target: edge.target.clone(),
-            kind,
+            kind: edge.kind,
             label: None,
             description: None,
             source_ref: source.clone(),

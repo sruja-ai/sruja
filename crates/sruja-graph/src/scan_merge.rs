@@ -4,10 +4,10 @@
 //! into the KnowledgeGraph. This eliminates duplication between CLI and Chat modules.
 
 use crate::{
-    ArchitectureEdge, ArchitectureNode, EdgeKind, KnowledgeGraph, NodeKind, SourceReference,
+    ArchitectureEdge, ArchitectureNode, KnowledgeGraph, SourceReference,
 };
 use chrono::Utc;
-use sruja_scan::{EdgeKind as ScanEdgeKind, Graph, NodeKind as ScanNodeKind};
+use sruja_scan::Graph;
 
 /// Merge a scanned architecture graph into a KnowledgeGraph.
 ///
@@ -47,16 +47,9 @@ pub fn merge_scan_into_graph(
 
     // Merge nodes
     for node in &scan_graph.nodes {
-        let kind = match node.kind {
-            ScanNodeKind::Service => NodeKind::Service,
-            ScanNodeKind::Module => NodeKind::Module,
-            ScanNodeKind::Database => NodeKind::Database,
-            ScanNodeKind::ExternalApi => NodeKind::ExternalApi,
-        };
-
         let arch_node = ArchitectureNode {
             id: node.id.clone(),
-            kind,
+            kind: node.kind,
             label: node.label.clone(),
             technology: node.technology.clone(),
             description: node.path.clone(),
@@ -72,18 +65,12 @@ pub fn merge_scan_into_graph(
 
     // Merge edges
     for edge in &scan_graph.edges {
-        let kind = match edge.kind {
-            ScanEdgeKind::Calls => EdgeKind::Calls,
-            ScanEdgeKind::ReadsFrom => EdgeKind::ReadsFrom,
-            ScanEdgeKind::WritesTo => EdgeKind::WritesTo,
-        };
-
         let edge_id = format!("{}-{}-{:?}", edge.source, edge.target, edge.kind);
         let arch_edge = ArchitectureEdge {
             id: edge_id,
             source: edge.source.clone(),
             target: edge.target.clone(),
-            kind,
+            kind: edge.kind,
             label: None,
             description: None,
             source_ref: source.clone(),
@@ -99,7 +86,8 @@ pub fn merge_scan_into_graph(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sruja_scan::{Edge, EdgeEvidence, Node};
+    use crate::{EdgeKind, NodeKind};
+    use sruja_scan::{Edge, EdgeEvidence, Graph, Node};
     use std::collections::HashMap;
 
     fn create_test_scan_graph() -> Graph {
@@ -108,7 +96,7 @@ mod tests {
             nodes: vec![
                 Node {
                     id: "module.main".to_string(),
-                    kind: ScanNodeKind::Module,
+                    kind: NodeKind::Module,
                     label: "main".to_string(),
                     path: Some("src/main.ts".to_string()),
                     technology: Some("TypeScript".to_string()),
@@ -116,7 +104,7 @@ mod tests {
                 },
                 Node {
                     id: "module.utils".to_string(),
-                    kind: ScanNodeKind::Module,
+                    kind: NodeKind::Module,
                     label: "utils".to_string(),
                     path: Some("src/utils.ts".to_string()),
                     technology: Some("TypeScript".to_string()),
@@ -126,7 +114,7 @@ mod tests {
             edges: vec![Edge {
                 source: "module.main".to_string(),
                 target: "module.utils".to_string(),
-                kind: ScanEdgeKind::Calls,
+                kind: EdgeKind::Calls,
                 evidence: vec![EdgeEvidence {
                     rule: "import".to_string(),
                     file: Some("src/main.ts".to_string()),
@@ -202,18 +190,18 @@ mod tests {
 
         // Test all node kind conversions
         let test_cases = vec![
-            (ScanNodeKind::Service, NodeKind::Service),
-            (ScanNodeKind::Module, NodeKind::Module),
-            (ScanNodeKind::Database, NodeKind::Database),
-            (ScanNodeKind::ExternalApi, NodeKind::ExternalApi),
+            NodeKind::Service,
+            NodeKind::Module,
+            NodeKind::Database,
+            NodeKind::ExternalApi,
         ];
 
-        for (i, (scan_kind, expected_kind)) in test_cases.into_iter().enumerate() {
+        for (i, &kind) in test_cases.iter().enumerate() {
             let scan_graph = Graph {
                 metadata: HashMap::new(),
                 nodes: vec![Node {
                     id: format!("test.{}", i),
-                    kind: scan_kind,
+                    kind,
                     label: format!("test{}", i),
                     path: Some(format!("test{}.ts", i)),
                     technology: None,
@@ -229,7 +217,7 @@ mod tests {
                 .nodes
                 .get(&format!("test.{}", i))
                 .expect("node should exist");
-            assert_eq!(node.kind, expected_kind);
+            assert_eq!(node.kind, kind);
         }
     }
 
@@ -237,20 +225,15 @@ mod tests {
     fn test_edge_kind_conversion() {
         let mut kg = KnowledgeGraph::new();
 
-        // Test all edge kind conversions
-        let test_cases = vec![
-            (ScanEdgeKind::Calls, EdgeKind::Calls),
-            (ScanEdgeKind::ReadsFrom, EdgeKind::ReadsFrom),
-            (ScanEdgeKind::WritesTo, EdgeKind::WritesTo),
-        ];
+        let test_cases = vec![EdgeKind::Calls, EdgeKind::ReadsFrom, EdgeKind::WritesTo];
 
-        for (i, (scan_kind, expected_kind)) in test_cases.into_iter().enumerate() {
+        for (i, kind) in test_cases.into_iter().enumerate() {
             let scan_graph = Graph {
                 metadata: HashMap::new(),
                 nodes: vec![
                     Node {
                         id: format!("source.{}", i),
-                        kind: ScanNodeKind::Module,
+                        kind: NodeKind::Module,
                         label: format!("source{}", i),
                         path: Some(format!("source{}.ts", i)),
                         technology: None,
@@ -258,7 +241,7 @@ mod tests {
                     },
                     Node {
                         id: format!("target.{}", i),
-                        kind: ScanNodeKind::Module,
+                        kind: NodeKind::Module,
                         label: format!("target{}", i),
                         path: Some(format!("target{}.ts", i)),
                         technology: None,
@@ -268,7 +251,7 @@ mod tests {
                 edges: vec![Edge {
                     source: format!("source.{}", i),
                     target: format!("target.{}", i),
-                    kind: scan_kind,
+                    kind,
                     evidence: vec![],
                 }],
             };
@@ -281,7 +264,7 @@ mod tests {
                 .iter()
                 .find(|e| e.source == format!("source.{}", i))
                 .expect("edge should exist");
-            assert_eq!(edge.kind, expected_kind);
+            assert_eq!(edge.kind, kind);
         }
     }
 

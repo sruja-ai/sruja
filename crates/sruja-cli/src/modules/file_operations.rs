@@ -77,10 +77,10 @@ pub fn parse_file(file_path: &str) -> Result<ParseResult, CliError> {
                 eprintln!("{}", sruja_diagnostics::format_diagnostic(diag));
             }
 
-            return Err(CliError::Parse(format!(
-                "Parsing failed with {} error(s)",
-                diagnostics.len()
-            )));
+            return Err(CliError::Parse {
+                file: file_path.to_string(),
+                message: format!("Parsing failed with {} error(s)", diagnostics.len()),
+            });
         }
     };
 

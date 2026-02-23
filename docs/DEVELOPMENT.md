@@ -13,10 +13,18 @@ make fmt       # cargo fmt
 make lint      # cargo clippy
 ```
 
-## Validate .sruja files
+## First value (no .sruja)
 
 ```bash
 cargo build --release -p sruja-cli
+./target/release/sruja quickstart -r .
+```
+
+See [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md) for full flow and current state.
+
+## Validate .sruja files
+
+```bash
 ./target/release/sruja lint examples/
 ./target/release/sruja export markdown path/to/file.sruja
 ```

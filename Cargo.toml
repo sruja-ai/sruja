@@ -4,6 +4,7 @@
 default-members = ["crates/sruja-cli"]
 members = [
     # Core
+    "crates/sruja-types",
     "crates/sruja-diagnostics",
     "crates/sruja-language",
     "crates/sruja-engine",
@@ -20,6 +21,10 @@ members = [
     "crates/sruja-extract",
     "crates/sruja-chat",
     "crates/sruja-mcp",
+    "crates/sruja-semantic",
+    "crates/sruja-runtime",
+    "crates/sruja-intent",
+    "crates/sruja-report",
     # Desktop App
     "crates/sruja-app",
 ]

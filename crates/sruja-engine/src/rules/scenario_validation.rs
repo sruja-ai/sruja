@@ -125,14 +125,15 @@ impl<'a> ScenarioRunner<'a> {
     ) -> Vec<Diagnostic> {
         let mut diags: Vec<Diagnostic> = Vec::new();
 
-        let from_elem = self.find_element(from_fqn);
-        let to_elem = self.find_element(to_fqn);
-        if from_elem.is_none() || to_elem.is_none() {
+        let Some(from_elem) = self.find_element(from_fqn) else {
             return diags;
-        }
+        };
+        let Some(to_elem) = self.find_element(to_fqn) else {
+            return diags;
+        };
 
-        let from_tags = self.get_tags(from_elem.unwrap());
-        let to_tags = self.get_tags(to_elem.unwrap());
+        let from_tags = self.get_tags(from_elem);
+        let to_tags = self.get_tags(to_elem);
 
         if has_tag(&from_tags, "external") && has_tag(&to_tags, "database") {
             diags.push(

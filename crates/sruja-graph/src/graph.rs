@@ -100,15 +100,15 @@ impl KnowledgeGraph {
     /// Merge an edge into the graph. Skips if source/target nodes don't exist.
     /// Used when loading context from scanned code.
     pub fn merge_edge(&mut self, edge: ArchitectureEdge) {
-        if self.nodes.contains_key(&edge.source) && self.nodes.contains_key(&edge.target) {
-            if !self
+        if self.nodes.contains_key(&edge.source)
+            && self.nodes.contains_key(&edge.target)
+            && !self
                 .edges
                 .iter()
                 .any(|e| e.source == edge.source && e.target == edge.target && e.kind == edge.kind)
-            {
-                self.edges.push(edge);
-                self.touch();
-            }
+        {
+            self.edges.push(edge);
+            self.touch();
         }
     }
 

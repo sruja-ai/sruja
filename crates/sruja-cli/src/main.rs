@@ -12,7 +12,7 @@ use clap::{Parser, Subcommand};
 #[command(
     about = "Architecture-as-code and drift intelligence",
     long_about = None,
-    after_help = "Common: sruja quickstart -r .  |  sruja why \"...\" -r .  |  sruja drift -r ."
+    after_help = "Common: sruja analyze -r .  |  sruja quickstart -r .  |  sruja drift -r ."
 )]
 struct Cli {
     #[command(subcommand)]
@@ -159,6 +159,99 @@ enum Commands {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
+    /// Analyze structural complexity (treewidth, SCC, centrality, coupling)
+    Complexity {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (text, json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        /// Include treewidth analysis
+        #[arg(long)]
+        treewidth: bool,
+        /// Include SCC (strongly connected components) analysis
+        #[arg(long)]
+        scc: bool,
+        /// Include centrality metrics
+        #[arg(long)]
+        centrality: bool,
+        /// Include coupling metrics
+        #[arg(long)]
+        coupling: bool,
+    },
+    /// Analyze semantic coupling, bounded contexts, vocabulary leakage
+    Semantic {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (text, json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Comprehensive analysis (structural + semantic + intent + optional runtime)
+    Analyze {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to traces JSON (optional; adds runtime layer)
+        #[arg(long, short = 't')]
+        traces: Option<String>,
+        /// Path to intent directory (ADRs, .sruja files; defaults to repo/docs/architecture)
+        #[arg(long, short = 'i')]
+        intent: Option<String>,
+        /// Output format (text, json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Runtime trace analysis (agent execution trees, emergent cycles)
+    Runtime {
+        #[command(subcommand)]
+        cmd: RuntimeCommand,
+    },
+    /// Compare declared architectural intent vs actual implementation
+    Intent {
+        #[command(subcommand)]
+        cmd: IntentCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum RuntimeCommand {
+    /// Analyze traces from a JSON file
+    Analyze {
+        /// Path to traces JSON file (array of ExecutionTrace)
+        #[arg(long, short = 't')]
+        traces: String,
+        /// Output format (text, json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum IntentCommand {
+    /// Check intent vs reality and report drift
+    Check {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to intent directory (ADRs, .sruja files)
+        #[arg(long, short = 'i')]
+        intent: Option<String>,
+        /// Output format (text, json, markdown)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Propose ADR from detected drift
+    Propose {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to intent directory
+        #[arg(long, short = 'i')]
+        intent: Option<String>,
+    },
 }
 
 #[tokio::main]
@@ -220,6 +313,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await
         }
         Commands::Quickstart { path, format } => commands::quickstart(&path, &format).await,
+        Commands::Complexity {
+            repo,
+            format,
+            treewidth,
+            scc,
+            centrality,
+            coupling,
+        } => commands::complexity(&repo, &format, treewidth, scc, centrality, coupling).await,
+        Commands::Semantic { repo, format } => commands::semantic_analyze(&repo, &format).await,
+        Commands::Analyze {
+            repo,
+            traces,
+            intent,
+            format,
+        } => {
+            let intent_opt = intent.or_else(|| std::env::var("SRUJA_INTENT_PATH").ok());
+            let traces_opt = traces.or_else(|| std::env::var("SRUJA_TRACES_PATH").ok());
+            commands::analyze(
+                &repo,
+                traces_opt.as_deref(),
+                intent_opt.as_deref(),
+                &format,
+            )
+            .await
+        }
+        Commands::Runtime { cmd } => match cmd {
+            RuntimeCommand::Analyze { traces, format } => {
+                commands::runtime_analyze(&traces, &format).await
+            }
+        },
+        Commands::Intent { cmd } => match cmd {
+            IntentCommand::Check { repo, intent, format } => {
+                let intent_opt = intent.or_else(|| std::env::var("SRUJA_INTENT_PATH").ok());
+                commands::intent_check(&repo, intent_opt.as_deref(), &format).await
+            }
+            IntentCommand::Propose { repo, intent } => {
+                commands::intent_propose(&repo, intent.as_deref()).await
+            }
+        },
     };
 
     match result {

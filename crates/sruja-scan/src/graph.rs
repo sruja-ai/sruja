@@ -1,18 +1,12 @@
 //! Inferred architecture graph schema.
 //!
 //! This is the minimal, repo-scoped graph used for deterministic diffing and review grounding.
+//! NodeKind and EdgeKind are from sruja_types; scan only uses a subset of variants.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum NodeKind {
-    Service,
-    Module,
-    Database,
-    ExternalApi,
-}
+pub use sruja_types::{EdgeKind, NodeKind};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Node {
@@ -25,14 +19,6 @@ pub struct Node {
     pub path: Option<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub metadata: HashMap<String, String>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum EdgeKind {
-    Calls,
-    ReadsFrom,
-    WritesTo,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

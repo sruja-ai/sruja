@@ -8,6 +8,7 @@ repository.workspace = true
 description = "Repo scanner that infers an architecture graph from source code"
 
 [dependencies]
+sruja-types = { path = "../sruja-types" }
 log = "0.4"
 serde = { workspace = true }
 serde_json = { workspace = true }

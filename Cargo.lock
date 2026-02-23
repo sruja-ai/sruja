@@ -1018,6 +1018,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dashmap"
+version = "6.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5041cc499144891f3790297212f32a74fb938e5136a14943f338ef9e0ae276cf"
+dependencies = [
+ "cfg-if",
+ "crossbeam-utils",
+ "hashbrown 0.14.5",
+ "lock_api",
+ "once_cell",
+ "parking_lot_core",
+]
+
+[[package]]
 name = "data-encoding"
 version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5215,6 +5229,7 @@ name = "sruja-chat"
 version = "0.9.0"
 dependencies = [
  "chrono",
+ "dashmap 6.1.0",
  "dirs 5.0.1",
  "rig-core",
  "serde",
@@ -5244,9 +5259,13 @@ dependencies = [
  "sruja-engine",
  "sruja-export",
  "sruja-graph",
+ "sruja-intent",
  "sruja-language",
  "sruja-lsp",
+ "sruja-report",
+ "sruja-runtime",
  "sruja-scan",
+ "sruja-semantic",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
@@ -5275,6 +5294,7 @@ dependencies = [
 name = "sruja-engine"
 version = "0.9.0"
 dependencies = [
+ "log",
  "serde",
  "sruja-diagnostics",
  "sruja-language",
@@ -5317,9 +5337,25 @@ dependencies = [
  "serde",
  "serde_json",
  "sruja-scan",
+ "sruja-types",
  "thiserror 2.0.18",
  "tokio-test",
  "uuid",
+]
+
+[[package]]
+name = "sruja-intent"
+version = "0.9.0"
+dependencies = [
+ "chrono",
+ "regex",
+ "serde",
+ "serde_json",
+ "sruja-language",
+ "sruja-scan",
+ "tempfile",
+ "thiserror 2.0.18",
+ "walkdir",
 ]
 
 [[package]]
@@ -5359,7 +5395,12 @@ dependencies = [
  "serde_json",
  "sruja-diff",
  "sruja-graph",
+ "sruja-intent",
+ "sruja-language",
+ "sruja-report",
+ "sruja-runtime",
  "sruja-scan",
+ "sruja-semantic",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
@@ -5368,6 +5409,24 @@ dependencies = [
  "tower-http 0.5.2",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "sruja-report"
+version = "0.9.0"
+dependencies = [
+ "serde",
+ "sruja-diff",
+]
+
+[[package]]
+name = "sruja-runtime"
+version = "0.9.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
 ]
 
 [[package]]
@@ -5380,6 +5439,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sruja-diff",
+ "sruja-types",
  "tempfile",
  "thiserror 2.0.18",
  "tree-sitter",
@@ -5388,6 +5448,24 @@ dependencies = [
  "tree-sitter-python",
  "tree-sitter-rust",
  "tree-sitter-typescript",
+]
+
+[[package]]
+name = "sruja-semantic"
+version = "0.9.0"
+dependencies = [
+ "async-trait",
+ "rig-core",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
+name = "sruja-types"
+version = "0.9.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -5412,6 +5490,7 @@ version = "0.9.0"
 dependencies = [
  "notify",
  "notify-debouncer-mini",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -5984,7 +6063,7 @@ dependencies = [
  "async-trait",
  "auto_impl",
  "bytes",
- "dashmap",
+ "dashmap 5.5.3",
  "futures",
  "httparse",
  "lsp-types",

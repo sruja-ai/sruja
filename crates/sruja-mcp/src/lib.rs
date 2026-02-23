@@ -2,10 +2,12 @@
 //!
 //! Exposes architecture knowledge via HTTP API and MCP protocol.
 
+pub mod error;
 pub mod handlers;
 pub mod server;
 pub mod tools;
 
+pub use error::McpError;
 pub use server::McpServer;
 pub use tools::{SrujaTool, ToolResponse};
 

@@ -10,6 +10,88 @@ use sruja_scan::{Edge, EdgeEvidence, EdgeKind, Graph, Node, NodeKind};
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
+fn edge_evidence_to_source_refs(evidence: &[EdgeEvidence]) -> Vec<SourceRef> {
+    let mut refs = Vec::new();
+    for ev in evidence {
+        if ev.file.is_some() || ev.detail.is_some() {
+            refs.push(SourceRef {
+                file: ev.file.clone(),
+                line: ev.line,
+                detail: ev.detail.clone(),
+            });
+        }
+    }
+    refs
+}
+
+/// Collect unique source refs for edges that form a cycle (consecutive pairs in cycle).
+fn collect_cycle_sources(graph: &Graph, cycle: &[String]) -> Vec<SourceRef> {
+    let mut seen = HashSet::new();
+    let mut out = Vec::new();
+    for w in cycle.windows(2) {
+        let (a, b) = (&w[0], &w[1]);
+        for edge in &graph.edges {
+            if edge.source == *a && edge.target == *b {
+                for ev in &edge.evidence {
+                    let key = (ev.file.clone(), ev.line);
+                    if seen.insert(key) {
+                        out.push(SourceRef {
+                            file: ev.file.clone(),
+                            line: ev.line,
+                            detail: ev.detail.clone(),
+                        });
+                    }
+                }
+                break;
+            }
+        }
+    }
+    if cycle.len() > 1 {
+        let (last, first) = (cycle.last().unwrap(), cycle.first().unwrap());
+        for edge in &graph.edges {
+            if edge.source == *last && edge.target == *first {
+                for ev in &edge.evidence {
+                    let key = (ev.file.clone(), ev.line);
+                    if seen.insert(key) {
+                        out.push(SourceRef {
+                            file: ev.file.clone(),
+                            line: ev.line,
+                            detail: ev.detail.clone(),
+                        });
+                    }
+                }
+                break;
+            }
+        }
+    }
+    out
+}
+
+fn collect_edge_sources(graph: &Graph, source: &str, target: &str) -> Vec<SourceRef> {
+    for edge in &graph.edges {
+        if edge.source == source && edge.target == target {
+            return edge_evidence_to_source_refs(&edge.evidence);
+        }
+    }
+    Vec::new()
+}
+
+fn collect_node_path_source(graph: &Graph, node_id: &str) -> Vec<SourceRef> {
+    for node in &graph.nodes {
+        if node.id == node_id {
+            if let Some(ref path) = node.path {
+                return vec![SourceRef {
+                    file: Some(path.clone()),
+                    line: None,
+                    detail: None,
+                }];
+            }
+            return Vec::new();
+        }
+    }
+    Vec::new()
+}
+
 /// Convert a DSL Program to sruja_scan::Graph for comparison with scanned architecture.
 pub fn program_to_graph(program: &Program) -> Graph {
     let (elements, relations) = collect_elements(program);
@@ -141,6 +223,29 @@ pub struct DiffEdge {
     pub label: Option<String>,
 }
 
+/// Reference to a source location (file, line) for evidence in reports.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct SourceRef {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub line: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+}
+
+impl SourceRef {
+    /// Format as a short reference string, e.g. `path/to/file.ts:42` or `path/to/file.ts`.
+    #[must_use]
+    pub fn display_string(&self) -> String {
+        match (&self.file, self.line) {
+            (Some(f), Some(l)) => format!("{}:{}", f, l),
+            (Some(f), None) => f.clone(),
+            _ => self.detail.clone().unwrap_or_default(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Violation {
     pub kind: ViolationKind,
@@ -148,6 +253,9 @@ pub struct Violation {
     pub message: String,
     pub location: Option<String>,
     pub suggestion: Option<String>,
+    /// Source references (file, line) so findings can be traced back to code or docs.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sources: Vec<SourceRef>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -314,7 +422,7 @@ fn compare_edges(actual: &[Edge], proposed: &[Edge]) -> EdgeDiff {
 }
 
 fn detect_violations(
-    _actual: &Graph,
+    actual: &Graph,
     proposed: &Graph,
     node_diff: &NodeDiff,
     edge_diff: &EdgeDiff,
@@ -327,6 +435,7 @@ fn detect_violations(
 
         if let (Some(src), Some(tgt)) = (source, target) {
             if src.kind == NodeKind::Module && tgt.kind == NodeKind::Database {
+                let sources = collect_edge_sources(actual, &edge.source, &edge.target);
                 violations.push(Violation {
                     kind: ViolationKind::LayerViolation,
                     severity: Severity::Warning,
@@ -339,6 +448,7 @@ fn detect_violations(
                         "Add a data access service between {} and {}",
                         src.label, tgt.label
                     )),
+                    sources,
                 });
             }
         }
@@ -349,6 +459,7 @@ fn detect_violations(
         let has_outgoing = proposed.edges.iter().any(|e| e.source == node.id);
 
         if !has_incoming && !has_outgoing {
+            let sources = collect_node_path_source(actual, &node.id);
             violations.push(Violation {
                 kind: ViolationKind::OrphanComponent,
                 severity: Severity::Warning,
@@ -358,12 +469,14 @@ fn detect_violations(
                     "Define how '{}' interacts with other components",
                     node.label
                 )),
+                sources,
             });
         }
     }
 
     for node in &node_diff.added {
         if node.kind == NodeKind::Service && node.technology.is_none() {
+            let sources = collect_node_path_source(actual, &node.id);
             violations.push(Violation {
                 kind: ViolationKind::UndocumentedComponent,
                 severity: Severity::Info,
@@ -373,6 +486,7 @@ fn detect_violations(
                     "Specify the technology for '{}' (e.g., Node.js, Go, Python)",
                     node.label
                 )),
+                sources,
             });
         }
     }
@@ -481,7 +595,7 @@ pub fn calculate_health_score_from_violations(
             Severity::Info => score = score.saturating_sub(penalties.info),
         }
     }
-    score.max(0)
+    score
 }
 
 fn calculate_health_score(
@@ -503,7 +617,7 @@ fn calculate_health_score(
         .count() as u8;
     score = score.saturating_sub(orphan_penalty * 3);
 
-    score.max(0)
+    score
 }
 
 /// Configuration for architectural drift detection.
@@ -539,6 +653,7 @@ pub fn detect_architectural_drift_with_config(
     // Detect circular dependencies
     let circular = find_circular_dependencies(graph);
     for cycle in &circular {
+        let sources = collect_cycle_sources(graph, cycle);
         violations.push(Violation {
             kind: ViolationKind::CircularDependency,
             severity: Severity::Error,
@@ -548,12 +663,14 @@ pub fn detect_architectural_drift_with_config(
                 "Consider introducing an interface or event-based communication to break the cycle"
                     .to_string(),
             ),
+            sources,
         });
     }
 
     // Detect orphan modules
     let orphans = find_orphan_modules(graph);
     for orphan in &orphans {
+        let sources = collect_node_path_source(graph, orphan);
         violations.push(Violation {
             kind: ViolationKind::OrphanComponent,
             severity: Severity::Warning,
@@ -562,12 +679,14 @@ pub fn detect_architectural_drift_with_config(
             suggestion: Some(
                 "Consider if this module is still needed or if it should be connected to the rest of the system".to_string(),
             ),
+            sources,
         });
     }
 
     // Detect layer violations
     let layer_violations = find_layer_violations_advanced(graph);
     for violation in &layer_violations {
+        let sources = collect_edge_sources(graph, &violation.source, &violation.target);
         violations.push(Violation {
             kind: ViolationKind::LayerViolation,
             severity: Severity::Warning,
@@ -579,12 +698,14 @@ pub fn detect_architectural_drift_with_config(
             suggestion: Some(
                 "Consider adding a service layer to abstract this dependency".to_string(),
             ),
+            sources,
         });
     }
 
     // Detect god modules
     let god_modules = find_god_modules(graph, config.god_module_threshold);
     for module in &god_modules {
+        let sources = collect_node_path_source(graph, &module.name);
         violations.push(Violation {
             kind: ViolationKind::GodModule,
             severity: Severity::Info,
@@ -598,6 +719,7 @@ pub fn detect_architectural_drift_with_config(
             suggestion: Some(
                 "Consider splitting this module into smaller, focused components".to_string(),
             ),
+            sources,
         });
     }
 
@@ -934,5 +1056,29 @@ mod tests {
             .violations
             .iter()
             .any(|v| v.kind == ViolationKind::LayerViolation));
+    }
+
+    #[test]
+    fn test_detect_architectural_drift_cycle_and_orphan() {
+        let mut graph = Graph::new();
+        graph.nodes.push(make_node("a", NodeKind::Module, "A"));
+        graph.nodes.push(make_node("b", NodeKind::Module, "B"));
+        graph.nodes.push(make_node("c", NodeKind::Module, "C"));
+        graph.nodes.push(make_node("orphan", NodeKind::Module, "Orphan"));
+        graph.edges.push(make_edge("a", "b", EdgeKind::Calls));
+        graph.edges.push(make_edge("b", "c", EdgeKind::Calls));
+        graph.edges.push(make_edge("c", "a", EdgeKind::Calls));
+
+        let report = detect_architectural_drift(&graph);
+
+        assert!(report.violations.iter().any(|v| {
+            v.kind == ViolationKind::CircularDependency
+        }));
+        assert!(report.violations.iter().any(|v| {
+            v.kind == ViolationKind::OrphanComponent
+        }));
+        assert!(report.health_score <= 100);
+        assert_eq!(report.total_modules, 4);
+        assert!(!report.suggestions.is_empty());
     }
 }

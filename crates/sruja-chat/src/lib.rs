@@ -4,6 +4,7 @@
 //! with automatic extraction of decisions, requirements, and constraints.
 
 use chrono::{DateTime, Utc};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use sruja_extract::{ConversationMessage, Extraction, ExtractionEngine};
 use sruja_graph::{merge_scan_into_graph, KnowledgeGraph, SessionId};
@@ -28,6 +29,7 @@ pub use persistence::{PersistError, Persistence, WorkspaceState};
 pub use session::ChatSession;
 pub use store::MessageStore;
 
+/// Errors that can occur during chat operations.
 #[derive(Debug, Error)]
 pub enum ChatError {
     #[error("Session not found: {0}")]
@@ -139,15 +141,33 @@ fn default_model_from_env() -> String {
     std::env::var("SRUJA_DEFAULT_MODEL").unwrap_or_else(|_| "openai/gpt-4o-mini".to_string())
 }
 
+/// Multi-party chat server for architecture discussions.
+///
+/// Supports human and AI participants, agent definitions, and
+/// persistence of chat history.
+///
+/// # Example
+///
+/// ```no_run
+/// use sruja_chat::ChatServer;
+/// use std::sync::Arc;
+/// use tokio::sync::RwLock;
+/// use sruja_graph::KnowledgeGraph;
+///
+/// # #[tokio::main]
+/// # async fn main() {
+/// let graph = Arc::new(RwLock::new(KnowledgeGraph::new()));
+/// let server = ChatServer::with_graph(graph);
+/// let session_id = server.create_session("Architecture Review", "Alice").await;
+/// # }
+/// ```
 #[derive(Clone)]
 pub struct ChatServer {
-    sessions: Arc<RwLock<HashMap<SessionId, ChatSession>>>,
-    agent_definitions: Arc<RwLock<HashMap<String, AgentDefinition>>>,
+    sessions: Arc<DashMap<SessionId, ChatSession>>,
+    agent_definitions: Arc<DashMap<String, AgentDefinition>>,
     extraction_engine: ExtractionEngine,
     graph: Arc<RwLock<KnowledgeGraph>>,
-    /// Model used for self-brainstorming when no agents are in the session.
     default_model: String,
-    /// Optional persistence; when set, state is saved to disk after mutations.
     persistence: Option<Arc<persistence::Persistence>>,
 }
 
@@ -158,8 +178,8 @@ impl ChatServer {
 
     pub fn with_graph(graph: Arc<RwLock<KnowledgeGraph>>) -> Self {
         Self {
-            sessions: Arc::new(RwLock::new(HashMap::new())),
-            agent_definitions: Arc::new(RwLock::new(HashMap::new())),
+            sessions: Arc::new(DashMap::new()),
+            agent_definitions: Arc::new(DashMap::new()),
             extraction_engine: ExtractionEngine::new(),
             graph,
             default_model: default_model_from_env(),
@@ -174,13 +194,13 @@ impl ChatServer {
         let persist = persistence::Persistence::new(data_dir);
         persist.init().await?;
 
-        let sessions = Arc::new(RwLock::new(persist.load_sessions().await?));
-        let agent_definitions = Arc::new(RwLock::new(persist.load_agent_definitions().await?));
+        let sessions: HashMap<SessionId, ChatSession> = persist.load_sessions().await?;
+        let agent_definitions: HashMap<String, AgentDefinition> = persist.load_agent_definitions().await?;
         let graph = Arc::new(RwLock::new(persist.load_graph().await?));
 
         Ok(Self {
-            sessions,
-            agent_definitions,
+            sessions: Arc::new(sessions.into_iter().collect()),
+            agent_definitions: Arc::new(agent_definitions.into_iter().collect()),
             extraction_engine: ExtractionEngine::new(),
             graph,
             default_model: default_model_from_env(),
@@ -198,11 +218,9 @@ impl ChatServer {
         let graph = Arc::clone(&self.graph);
         let persist = Arc::clone(persist);
         tokio::spawn(async move {
-            let (s, a, g) = (
-                sessions.read().await.clone(),
-                agent_definitions.read().await.clone(),
-                graph.read().await.clone(),
-            );
+            let s: HashMap<_, _> = sessions.iter().map(|r| (r.key().clone(), r.value().clone())).collect();
+            let a: HashMap<_, _> = agent_definitions.iter().map(|r| (r.key().clone(), r.value().clone())).collect();
+            let g = graph.read().await.clone();
             let _ = persist.save_sessions(&s).await;
             let _ = persist.save_agent_definitions(&a).await;
             let _ = persist.save_graph(&g).await;
@@ -225,9 +243,7 @@ impl ChatServer {
 
         let session = ChatSession::new(&session_id, topic, owner);
 
-        let mut sessions = self.sessions.write().await;
-        sessions.insert(session_id.clone(), session);
-        drop(sessions);
+        self.sessions.insert(session_id.clone(), session);
         self.spawn_persist();
 
         session_id
@@ -238,9 +254,7 @@ impl ChatServer {
         session_id: &SessionId,
         name: impl Into<String>,
     ) -> Result<ParticipantId, ChatError> {
-        let mut sessions = self.sessions.write().await;
-        let session = sessions
-            .get_mut(session_id)
+        let mut session_ref = self.sessions.get_mut(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         let participant = Participant {
@@ -252,9 +266,9 @@ impl ChatServer {
         };
 
         let pid = participant.id.clone();
-        session.participants.push(participant);
-        session.updated_at = Utc::now();
-        drop(sessions);
+        session_ref.participants.push(participant);
+        session_ref.updated_at = Utc::now();
+        drop(session_ref);
         self.spawn_persist();
 
         Ok(pid)
@@ -278,21 +292,17 @@ impl ChatServer {
             created_at: now,
             updated_at: now,
         };
-        let mut defs = self.agent_definitions.write().await;
-        defs.insert(id, def.clone());
-        drop(defs);
+        self.agent_definitions.insert(id, def.clone());
         self.spawn_persist();
         Ok(def)
     }
 
     pub async fn list_agent_definitions(&self) -> Vec<AgentDefinition> {
-        let defs = self.agent_definitions.read().await;
-        defs.values().cloned().collect()
+        self.agent_definitions.iter().map(|r| r.value().clone()).collect()
     }
 
     pub async fn get_agent_definition(&self, id: &str) -> Option<AgentDefinition> {
-        let defs = self.agent_definitions.read().await;
-        defs.get(id).cloned()
+        self.agent_definitions.get(id).map(|r| r.value().clone())
     }
 
     /// Add an agent from the admin pool to a session.
@@ -351,9 +361,7 @@ impl ChatServer {
         name: impl Into<String>,
         config: AgentConfig,
     ) -> Result<ParticipantId, ChatError> {
-        let mut sessions = self.sessions.write().await;
-        let session = sessions
-            .get_mut(session_id)
+        let mut session_ref = self.sessions.get_mut(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         let participant = Participant {
@@ -365,9 +373,9 @@ impl ChatServer {
         };
 
         let pid = participant.id.clone();
-        session.participants.push(participant);
-        session.updated_at = Utc::now();
-        drop(sessions);
+        session_ref.participants.push(participant);
+        session_ref.updated_at = Utc::now();
+        drop(session_ref);
         self.spawn_persist();
 
         Ok(pid)
@@ -379,9 +387,7 @@ impl ChatServer {
         new_message: NewMessage,
     ) -> Result<Message, ChatError> {
         let (message, conv_message, author_is_human, agent_ids) = {
-            let mut sessions = self.sessions.write().await;
-            let session = sessions
-                .get_mut(session_id)
+            let mut session = self.sessions.get_mut(session_id)
                 .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
             let author = session
@@ -425,7 +431,6 @@ impl ChatServer {
                     .map(|p| p.id.clone())
                     .collect();
                 if agents.is_empty() {
-                    // Self-brainstorming: add default assistant so developer can chat without adding agents
                     let default_model = self.default_model.clone();
                     let brainstorm = Participant {
                         id: Uuid::new_v4().to_string(),
@@ -530,16 +535,14 @@ impl ChatServer {
     }
 
     async fn merge_extractions_impl(
-        sessions: &Arc<tokio::sync::RwLock<HashMap<SessionId, ChatSession>>>,
-        graph: &Arc<tokio::sync::RwLock<KnowledgeGraph>>,
+        sessions: &Arc<DashMap<SessionId, ChatSession>>,
+        graph: &Arc<RwLock<KnowledgeGraph>>,
         session_id: &SessionId,
         message_id: &MessageId,
         extractions: &[Extraction],
     ) -> Result<(), ChatError> {
         let thread_root = {
-            let sessions = sessions.read().await;
-            let session = sessions
-                .get(session_id)
+            let session = sessions.get(session_id)
                 .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
             session
                 .messages
@@ -561,9 +564,7 @@ impl ChatServer {
             .collect();
 
         {
-            let mut sessions = sessions.write().await;
-            let session = sessions
-                .get_mut(session_id)
+            let mut session = sessions.get_mut(session_id)
                 .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
             for extraction in extractions_with_thread {
@@ -589,9 +590,7 @@ impl ChatServer {
     }
 
     pub async fn get_history(&self, session_id: &SessionId) -> Result<Vec<Message>, ChatError> {
-        let sessions = self.sessions.read().await;
-        let session = sessions
-            .get(session_id)
+        let session = self.sessions.get(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         Ok(session.messages.clone())
@@ -599,9 +598,7 @@ impl ChatServer {
 
     /// Main thread only: top-level messages (no parent). Child threads hold the detailed discussion.
     pub async fn get_main_thread(&self, session_id: &SessionId) -> Result<Vec<Message>, ChatError> {
-        let sessions = self.sessions.read().await;
-        let session = sessions
-            .get(session_id)
+        let session = self.sessions.get(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         Ok(session
@@ -618,9 +615,7 @@ impl ChatServer {
         session_id: &SessionId,
         parent_message_id: &MessageId,
     ) -> Result<Vec<Message>, ChatError> {
-        let sessions = self.sessions.read().await;
-        let session = sessions
-            .get(session_id)
+        let session = self.sessions.get(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         Ok(session
@@ -647,9 +642,7 @@ impl ChatServer {
         &self,
         session_id: &SessionId,
     ) -> Result<Vec<Extraction>, ChatError> {
-        let sessions = self.sessions.read().await;
-        let session = sessions
-            .get(session_id)
+        let session = self.sessions.get(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         Ok(session.extractions.values().cloned().collect())
@@ -675,9 +668,7 @@ impl ChatServer {
         session_id: &SessionId,
         extraction_id: &str,
     ) -> Result<(), ChatError> {
-        let mut sessions = self.sessions.write().await;
-        let session = sessions
-            .get_mut(session_id)
+        let mut session = self.sessions.get_mut(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         if let Some(extraction) = session.extractions.get_mut(extraction_id) {
@@ -688,7 +679,7 @@ impl ChatServer {
                 let _ = graph.accept_decision(&decision.id);
             }
         }
-        drop(sessions);
+        drop(session);
         self.spawn_persist();
 
         Ok(())
@@ -699,15 +690,13 @@ impl ChatServer {
         session_id: &SessionId,
         extraction_id: &str,
     ) -> Result<(), ChatError> {
-        let mut sessions = self.sessions.write().await;
-        let session = sessions
-            .get_mut(session_id)
+        let mut session = self.sessions.get_mut(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         if let Some(extraction) = session.extractions.get_mut(extraction_id) {
             extraction.status = sruja_extract::ExtractionStatus::Rejected;
         }
-        drop(sessions);
+        drop(session);
         self.spawn_persist();
 
         Ok(())
@@ -717,17 +706,13 @@ impl ChatServer {
         &self,
         session_id: &SessionId,
     ) -> Result<Vec<Participant>, ChatError> {
-        let sessions = self.sessions.read().await;
-        let session = sessions
-            .get(session_id)
+        let session = self.sessions.get(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
         Ok(session.participants.clone())
     }
 
     pub async fn get_session_info(&self, session_id: &SessionId) -> Result<SessionInfo, ChatError> {
-        let sessions = self.sessions.read().await;
-        let session = sessions
-            .get(session_id)
+        let session = self.sessions.get(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         Ok(SessionInfo {
@@ -742,9 +727,8 @@ impl ChatServer {
     }
 
     pub async fn list_sessions(&self) -> Vec<SessionInfo> {
-        let sessions = self.sessions.read().await;
-        sessions
-            .values()
+        self.sessions
+            .iter()
             .map(|s| SessionInfo {
                 id: s.id.clone(),
                 topic: s.topic.clone(),
