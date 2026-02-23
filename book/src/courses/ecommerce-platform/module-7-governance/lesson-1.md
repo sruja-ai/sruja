@@ -21,7 +21,7 @@ import { * } from 'sruja.ai/stdlib'
 
 
 Shop = system "Shop" {
-  UserDB = datastore "User DB" {
+  UserDB = database "User DB" {
     tags ["pii", "encrypted"]
     metadata {
       retention "90d"

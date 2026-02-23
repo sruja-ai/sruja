@@ -7,7 +7,7 @@ This directory contains architecture-as-code files that describe Sruja's own arc
 These `.sruja` files serve as:
 
 - **Living documentation** - Architecture that stays in sync with code
-- **Visual diagrams** - Can be rendered and viewed in the Designer
+- **Visual diagrams** - Export to Mermaid/JSON for viewing
 - **Reference models** - Examples of using Sruja to document real systems
 - **Architecture decisions** - Document the structure and relationships
 
@@ -43,15 +43,6 @@ Data flow and processing:
 
 ## Usage
 
-### View in Designer
-
-```bash
-# Open in Designer
-cd apps/designer
-npm run dev
-# Then open sruja-platform.sruja
-```
-
 ### Export to JSON
 
 ```bash
@@ -79,22 +70,8 @@ sruja export json docs/architecture/sruja-platform.sruja --views
 
 ## Relationship to Other Docs
 
-- **ARCHITECTURE.md**: Text-based architecture overview (complements these files)
 - **ADRs**: Architecture Decision Records explain _why_ decisions were made
 - **These files**: Show _what_ the architecture looks like
-
-## Using stdlib
-
-All architecture files use `sruja.ai/stdlib` to import standard C4 element definitions:
-
-```sruja
-import { * } from 'sruja.ai/stdlib'
-
-// Standard elements (person, system, container, component, etc.)
-// are available from stdlib
-```
-
-This ensures consistency and avoids redefining standard elements. See [STDLIB_USAGE.md](./STDLIB_USAGE.md) for details.
 
 ## Best Practices
 
@@ -103,4 +80,4 @@ This ensures consistency and avoids redefining standard elements. See [STDLIB_US
 3. **Use relationships**: Show how components interact
 4. **Add metadata**: Include descriptions, technologies, tags
 5. **Create views**: Define views for different perspectives
-6. **Use stdlib**: Import standard elements from `sruja.ai/stdlib`
+6. **Use stdlib** (when available): Import standard elements from `sruja.ai/stdlib`

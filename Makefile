@@ -1,4 +1,4 @@
-.PHONY: build test test-coverage clean install lint fmt help build-rust test-rust wasm wasm-tiny book book-build book-wasm book-serve book-deps book-clean
+.PHONY: build test test-coverage clean install lint fmt help build-rust test-rust wasm wasm-tiny book book-build book-wasm book-serve book-deps book-clean assets
 
 # Build Rust libraries
 build-rust:
@@ -11,15 +11,22 @@ build-rust:
 		exit 1; \
 	fi
 
-# Test Rust code
+# Test Rust code (all workspace packages)
 test-rust:
 	@echo "Testing Rust code..."
 	@if command -v cargo >/dev/null 2>&1; then \
-		cargo test --manifest-path Cargo.toml; \
+		cargo test --workspace --manifest-path Cargo.toml; \
 	else \
 		echo "❌ Cargo not found. Please install Rust: https://rustup.rs/"; \
 		exit 1; \
 	fi
+
+# Test architecture intelligence layer (chat, graph, why)
+test-arch-intel:
+	@echo "Testing architecture intelligence layer..."
+	@cargo test -p sruja-chat --test architecture_intelligence_e2e && \
+	cargo test -p sruja-cli --test why_e2e && \
+	echo "✅ Architecture intelligence tests passed"
 
 # Build (default: Rust)
 build: build-rust
@@ -153,6 +160,27 @@ book-clean:
 	@rm -rf $(BOOK_DIR)/book
 	@echo "✅ Book output removed"
 
+book-lint-examples:
+	@echo "Linting book/valid-examples/*.sruja..."
+	@for f in $(BOOK_DIR)/valid-examples/*.sruja; do \
+		sruja lint "$$f" || exit 1; \
+	done
+	@echo "✅ All valid-examples pass sruja lint"
+
+# --- Assets ---
+# Copy assets to correct locations (logo, icons, etc.)
+assets:
+	@echo "Copying assets to correct locations..."
+	@mkdir -p crates/sruja-app/assets
+	@if [ -f "extension/sruja-logo.png" ]; then \
+		cp extension/sruja-logo.png crates/sruja-app/assets/; \
+		echo "  ✅ sruja-logo.png → crates/sruja-app/assets/"; \
+	fi
+	@if [ -f "extension/sruja-logo.png" ]; then \
+		cp extension/sruja-logo.png pkg/ 2>/dev/null || true; \
+	fi
+	@echo "✅ Assets copied"
+
 # Show help
 help:
 	@echo "Sruja - Build Commands"
@@ -163,6 +191,7 @@ help:
 	@echo "  make test-coverage      - Run tests with coverage (if available)"
 	@echo "  make clean              - Remove build artifacts"
 	@echo "  make install            - Install Rust dependencies"
+	@echo "  make assets             - Copy assets (logos, icons) to correct locations"
 	@echo ""
 	@echo "Book (mdBook):"
 	@echo "  make book-deps          - Install mdbook, mdbook-mermaid, copy Mermaid assets"
@@ -177,6 +206,9 @@ help:
 	@echo "Code Quality:"
 	@echo "  make lint               - Run Rust linter (clippy)"
 	@echo "  make fmt                - Format Rust code"
+	@echo ""
+	@echo "Architecture Intelligence:"
+	@echo "  make test-arch-intel    - Run architecture intelligence E2E tests (chat, why)"
 	@echo ""
 	@echo "Direct Cargo Commands:"
 	@echo "  cargo build --release   - Build release version"

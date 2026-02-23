@@ -99,7 +99,7 @@ ECommerce = system "E-Commerce Platform" {
   Database = database "PostgreSQL" {
     technology "PostgreSQL 14"
   }
-  Cache = queue "Redis" {
+  Cache = database "Redis Cache" {
     technology "Redis 7"
   }
 }

@@ -9,7 +9,11 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "sruja")]
-#[command(about = "Sruja DSL CLI", long_about = None)]
+#[command(
+    about = "Architecture-as-code and drift intelligence",
+    long_about = None,
+    after_help = "Common: sruja quickstart -r .  |  sruja why \"...\" -r .  |  sruja drift -r ."
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -19,6 +23,15 @@ struct Cli {
 enum Commands {
     /// Print version information
     Version,
+    /// Scan a repository and infer an architecture graph
+    Scan {
+        /// Path to repository root (defaults to current directory)
+        #[arg(default_value = ".")]
+        path: String,
+        /// Output path for inferred graph JSON (use "-" for stdout)
+        #[arg(long, default_value = "sruja.graph.json")]
+        output: String,
+    },
     /// Lint a Sruja file
     Lint {
         /// Path to .sruja file
@@ -58,16 +71,6 @@ enum Commands {
         /// Path to .sruja file
         file: String,
     },
-    /// Initialize a new Sruja project
-    Init {
-        /// Project name (optional)
-        name: Option<String>,
-    },
-    /// Generate configuration files and templates
-    Generate {
-        #[command(subcommand)]
-        action: GenerateAction,
-    },
     /// Show differences between two architecture files
     Diff {
         /// First file
@@ -96,11 +99,6 @@ enum Commands {
         /// File to import
         file: String,
     },
-    /// Calculate architecture health score
-    Score {
-        /// Path to .sruja file
-        file: Option<String>,
-    },
     /// Start LSP server (stdio)
     Lsp {
         /// Use stdio transport
@@ -126,88 +124,51 @@ enum Commands {
         #[arg(long)]
         format_json: bool,
     },
-    /// Change management
-    Change {
-        #[command(subcommand)]
-        action: ChangeAction,
-    },
-    /// Skills and rules management
-    Skills {
-        #[command(subcommand)]
-        action: SkillsAction,
-    },
-}
-
-#[derive(Subcommand)]
-enum ChangeAction {
-    /// Create a new change record
-    Create {
-        /// Title of change
-        title: String,
-        /// Description of change
-        #[arg(long, short = 'd')]
-        description: Option<String>,
-        /// Context/background
-        #[arg(long, short = 'c')]
-        context: Option<String>,
-        /// Status (proposed, approved, rejected, implemented)
-        #[arg(long, short = 's')]
-        status: Option<String>,
-    },
-    /// Validate a change record
-    Validate {
-        /// Path to change file
-        file: String,
-    },
-}
-
-#[derive(Subcommand)]
-enum GenerateAction {
-    /// Generate AI editor integration files (.cursorrules, .copilot-instructions.md, .architecture-skill.md)
-    AiFiles {
-        /// Which AI tools to generate files for (cursor, copilot, all) [default: all]
+    /// Ask "why" questions about architecture (requires repo scan context)
+    Why {
+        /// Question to answer (e.g., "Why did we choose Kafka?")
+        question: String,
+        /// Path to repository root for context
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to graph JSON from previous scan (optional, otherwise scans repo)
         #[arg(long)]
-        tools: Option<String>,
-        /// Force overwrite existing files
-        #[arg(long)]
-        force: bool,
+        graph: Option<String>,
     },
-}
-
-#[derive(Subcommand)]
-enum SkillsAction {
-    /// List filtered skills
-    List {
-        /// Path to skills directory
-        #[arg(short, long, default_value = "skills/sruja-architecture")]
-        path: String,
-        /// Limit number of results
-        #[arg(short, long)]
-        limit: Option<usize>,
-        /// Output format (markdown, json, concise)
-        #[arg(short, long, default_value = "markdown")]
+    /// Detect architectural drift in codebase
+    Drift {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to .sruja architecture file (optional)
+        #[arg(long, short = 'a')]
+        architecture: Option<String>,
+        /// Output format (text, json)
+        #[arg(long, short = 'f', default_value = "text")]
         format: String,
+        /// Only show violations, not suggestions
+        #[arg(long)]
+        violations_only: bool,
     },
-    /// Suggest rules for a project
-    Suggest {
-        /// Path to skills directory
-        #[arg(short, long, default_value = "skills/sruja-architecture")]
-        skills_path: String,
-        /// Path to project directory
-        #[arg(short, long, default_value = ".")]
-        project_path: String,
-        /// Number of rules to suggest
-        #[arg(short, long, default_value_t = 10)]
-        count: usize,
+    /// Quickstart: Get immediate architecture insights (zero-key, deterministic)
+    Quickstart {
+        /// Path to repository root (defaults to current directory)
+        #[arg(long, short = 'r', default_value = ".")]
+        path: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
     },
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::try_init().ok();
     let cli = Cli::parse();
 
     let result = match cli.command {
         Commands::Version => commands::version(),
+        Commands::Scan { path, output } => commands::scan(&path, &output).await,
         Commands::Lint { file } => commands::lint(&file).await,
         Commands::Export {
             format,
@@ -225,23 +186,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             fail_on_violations,
             format_json,
         } => commands::validate(&file, constraints, fail_on_violations, format_json).await,
-        Commands::Change { action } => match action {
-            ChangeAction::Create {
-                title,
-                description,
-                context,
-                status,
-            } => commands::change_create(&title, description, context, status).await,
-            ChangeAction::Validate { file } => commands::change_validate(&file).await,
-        },
         Commands::List { file } => commands::list_elements(&file).await,
         Commands::Tree { file } => commands::tree(&file).await,
-        Commands::Init { name } => commands::init_project(name.as_deref()).await,
-        Commands::Generate { action } => match action {
-            GenerateAction::AiFiles { tools, force } => {
-                commands::generate_ai_files(tools.as_deref(), force).await
-            }
-        },
         Commands::Diff {
             file1,
             file2,
@@ -253,19 +199,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             json,
         } => commands::explain(&element_id, file.as_deref(), json).await,
         Commands::Import { format, file } => commands::import(&format, &file).await,
-        Commands::Score { file } => commands::score(file.as_deref()).await,
-        Commands::Skills { action } => match action {
-            SkillsAction::List {
-                path,
-                limit,
-                format,
-            } => commands::skills_list(&path, limit, &format).await,
-            SkillsAction::Suggest {
-                skills_path,
-                project_path,
-                count,
-            } => commands::skills_suggest(&skills_path, &project_path, count).await,
-        },
+        Commands::Why {
+            question,
+            repo,
+            graph,
+        } => commands::why(&question, &repo, graph.as_deref()).await,
+        Commands::Drift {
+            repo,
+            architecture,
+            format,
+            violations_only,
+        } => {
+            commands::drift(
+                &repo,
+                architecture.as_deref(),
+                &format,
+                false,
+                violations_only,
+            )
+            .await
+        }
+        Commands::Quickstart { path, format } => commands::quickstart(&path, &format).await,
     };
 
     match result {

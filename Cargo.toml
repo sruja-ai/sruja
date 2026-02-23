@@ -1,13 +1,27 @@
 [workspace]
+# Default package for `cargo build`/`cargo test` at workspace root.
+# Use `cargo build --workspace` or `cargo test --workspace` for all packages.
+default-members = ["crates/sruja-cli"]
 members = [
+    # Core
     "crates/sruja-diagnostics",
     "crates/sruja-language",
     "crates/sruja-engine",
     "crates/sruja-export",
     "crates/sruja-lsp",
     "crates/sruja-cli",
+    "crates/sruja-scan",
+    "crates/sruja-diff",
     "crates/sruja-wasm",
     "crates/skill-lint",
+    # Chat/Product
+    "crates/sruja-graph",
+    "crates/sruja-watch",
+    "crates/sruja-extract",
+    "crates/sruja-chat",
+    "crates/sruja-mcp",
+    # Desktop App
+    "crates/sruja-app",
 ]
 resolver = "2"
 

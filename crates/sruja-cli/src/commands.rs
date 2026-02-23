@@ -10,8 +10,10 @@ use sruja_export::dsl::DslPrinter;
 use sruja_export::json::exporter::{ExportError as JsonExportError, Exporter as JsonExporter};
 use sruja_export::markdown::{MarkdownExporter, MarkdownOptions};
 use sruja_export::mermaid::exporter::{MermaidConfig, MermaidExporter};
+use sruja_graph::{merge_scan_into_graph, KnowledgeGraph};
 use sruja_language::Parser;
 use sruja_lsp::server::run_stdio;
+use sruja_scan::{scan_repo, Graph, NodeKind};
 use thiserror::Error;
 
 use crate::modules::collect_sruja_files;
@@ -29,6 +31,17 @@ pub enum CliError {
     Export(#[from] JsonExportError),
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
+    #[error("Scan error: {0}")]
+    Scan(String),
+    #[error("Drift error: {0}")]
+    #[allow(dead_code)]
+    Drift(String),
+}
+
+impl From<sruja_scan::ScanError> for CliError {
+    fn from(e: sruja_scan::ScanError) -> Self {
+        CliError::Scan(e.to_string())
+    }
 }
 
 /// Print version information
@@ -37,16 +50,93 @@ pub fn version() -> Result<(), CliError> {
     Ok(())
 }
 
+/// Scan a repository and emit an inferred architecture graph (JSON).
+pub async fn scan(repo_root: &str, output: &str) -> Result<(), CliError> {
+    let graph =
+        sruja_scan::scan_repo(Path::new(repo_root)).map_err(|e| CliError::Scan(e.to_string()))?;
+
+    let json = serde_json::to_string_pretty(&graph)?;
+
+    if output == "-" {
+        println!("{}", json);
+        return Ok(());
+    }
+
+    fs::write(output, json)?;
+    println!("Wrote {}", output);
+    Ok(())
+}
+
+/// Collect file references from scan graph edges for evidence display.
+fn collect_file_evidence_from_scan(scan_graph: &Graph) -> Vec<String> {
+    let mut files: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for edge in &scan_graph.edges {
+        for ev in &edge.evidence {
+            if let Some(ref f) = ev.file {
+                files.insert(f.clone());
+            }
+        }
+    }
+    let mut v: Vec<_> = files.into_iter().collect();
+    v.sort();
+    v
+}
+
+/// Ask "why" questions about architecture
+pub async fn why(question: &str, repo: &str, graph_file: Option<&str>) -> Result<(), CliError> {
+    let mut kg = KnowledgeGraph::new();
+    let scan_graph: Graph = if let Some(path) = graph_file {
+        let content = fs::read_to_string(path)?;
+        serde_json::from_str(&content).map_err(|e| CliError::Json(e))?
+    } else {
+        scan_repo(Path::new(repo))?
+    };
+
+    let repo_path = graph_file.unwrap_or(repo);
+    merge_scan_into_graph(&mut kg, &scan_graph, repo_path);
+
+    match kg.query(question) {
+        Ok(result) => {
+            println!("{}\n", result.answer);
+            println!("Confidence: {}%", (result.confidence * 100.0) as i32);
+            if !result.evidence.is_empty() {
+                println!("\nEvidence:");
+                for ev in &result.evidence {
+                    println!("  - {}", ev.excerpt);
+                }
+            }
+            let file_refs = collect_file_evidence_from_scan(&scan_graph);
+            if !file_refs.is_empty()
+                && (question.to_lowercase().contains("depend")
+                    || question.to_lowercase().contains("connect")
+                    || question.to_lowercase().contains("how")
+                    || question.to_lowercase().contains("why"))
+            {
+                println!("\nFile references (from scan):");
+                for f in file_refs.iter().take(10) {
+                    println!("  - {}", f);
+                }
+                if file_refs.len() > 10 {
+                    println!("  ... and {} more", file_refs.len() - 10);
+                }
+            }
+        }
+        Err(e) => {
+            return Err(CliError::Validation(format!("No answer found: {}", e)));
+        }
+    }
+
+    Ok(())
+}
+
 /// Lint a Sruja file
 pub async fn lint(file: &str) -> Result<(), CliError> {
     let content = fs::read_to_string(file)?;
     let parser = Parser::new(file.to_string());
 
-    // Parse the file
     let program = match parser.parse(&content) {
         Ok(program) => program,
         Err(mut diagnostics) => {
-            // Print parse diagnostics
             enrich_diagnostics_with_source(&content, &mut diagnostics);
             for diag in &diagnostics {
                 eprintln!("{}", format_diagnostic(diag));
@@ -58,7 +148,6 @@ pub async fn lint(file: &str) -> Result<(), CliError> {
         }
     };
 
-    // Validate
     let validator = Validator::with_default_rules();
     let mut diagnostics = validator.validate_sync(&program);
     enrich_diagnostics_with_source(&content, &mut diagnostics);
@@ -68,7 +157,6 @@ pub async fn lint(file: &str) -> Result<(), CliError> {
         return Ok(());
     }
 
-    // Separate errors and warnings
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
 
@@ -80,12 +168,10 @@ pub async fn lint(file: &str) -> Result<(), CliError> {
         }
     }
 
-    // Print warnings first
     for warning in &warnings {
         eprintln!("{}", format_diagnostic(warning));
     }
 
-    // Print errors
     for error in &errors {
         eprintln!("{}", format_diagnostic(error));
     }
@@ -122,7 +208,6 @@ pub async fn export(
     let content = fs::read_to_string(file)?;
     let parser = Parser::new(file.to_string());
 
-    // Parse the file
     let program = match parser.parse(&content) {
         Ok(program) => program,
         Err(mut diagnostics) => {
@@ -200,17 +285,14 @@ pub async fn fmt(file: &str, check: bool) -> Result<(), CliError> {
     let printer = DslPrinter::new();
     let formatted = printer.print(&program);
 
-    // Check if formatting would change the file
     if formatted != content {
         if check {
-            // In check mode, report but don't modify
             println!("Would reformat {}", file);
             return Err(CliError::Validation(format!(
                 "File {} needs formatting",
                 file
             )));
         } else {
-            // Normal mode: write the changes
             fs::write(file, formatted)?;
             println!("Formatted {}", file);
         }
@@ -277,7 +359,6 @@ pub async fn tree(file: &str) -> Result<(), CliError> {
 
     let (elements, _relations) = sruja_language::collect_elements(&program);
 
-    // Build parent->children map
     use std::collections::BTreeMap;
     let mut children: BTreeMap<String, Vec<String>> = BTreeMap::new();
     let mut roots: Vec<String> = Vec::new();
@@ -294,7 +375,6 @@ pub async fn tree(file: &str) -> Result<(), CliError> {
         }
     }
 
-    // Print tree
     for root in roots {
         print_tree_node(&root, &elements, &children, 0);
     }
@@ -328,28 +408,6 @@ fn print_tree_node(
             }
         }
     }
-}
-
-/// Initialize a new Sruja project
-pub async fn init_project(name: Option<&str>) -> Result<(), CliError> {
-    let project_name = name.unwrap_or("my-architecture");
-    let filename = format!("{}.sruja", project_name);
-
-    let template = format!(
-        r#"// {project_name} Architecture
-
-// Define your systems
-system {project_name} {{
-    description "Main system for {project_name}"
-}}
-
-// Add more elements, relations, scenarios, etc.
-"#
-    );
-
-    fs::write(&filename, template)?;
-    println!("Created {}", filename);
-    Ok(())
 }
 
 /// Show differences between two architecture files
@@ -401,28 +459,11 @@ pub async fn diff(file1: &str, file2: &str, format: &str) -> Result<(), CliError
     }
 
     if format == "json" {
-        println!("{{");
-        println!("  \"added\": [");
-        for (i, fqn) in added.iter().enumerate() {
-            print!("    \"{}\"", fqn);
-            if i < added.len() - 1 {
-                println!(",");
-            } else {
-                println!();
-            }
-        }
-        println!("  ],");
-        println!("  \"removed\": [");
-        for (i, fqn) in removed.iter().enumerate() {
-            print!("    \"{}\"", fqn);
-            if i < removed.len() - 1 {
-                println!(",");
-            } else {
-                println!();
-            }
-        }
-        println!("  ]");
-        println!("}}");
+        let output = serde_json::json!({
+            "added": added,
+            "removed": removed
+        });
+        println!("{}", serde_json::to_string_pretty(&output)?);
     } else {
         if !added.is_empty() {
             println!("Added elements:");
@@ -466,12 +507,10 @@ pub async fn explain(element_id: &str, file: Option<&str>, json: bool) -> Result
 
     let (elements, relations) = sruja_language::collect_elements(&program);
 
-    // Find element
     let elem = elements
         .get(element_id)
         .ok_or_else(|| CliError::Parse(format!("Element '{}' not found", element_id)))?;
 
-    // Count relations
     let incoming: Vec<_> = relations
         .iter()
         .filter(|r| r.to.as_string() == element_id)
@@ -489,15 +528,13 @@ pub async fn explain(element_id: &str, file: Option<&str>, json: bool) -> Result
             .and_then(|b| b.description.as_ref())
             .cloned()
             .unwrap_or_default();
-        println!("{{");
-        println!("  \"id\": \"{}\",", element_id);
-        println!("  \"description\": \"{}\",", desc.replace('"', "\\\""));
-        println!("  \"incoming_relations\": {},", incoming.len());
-        println!("  \"outgoing_relations\": {},", outgoing.len());
-        println!("  \"dependencies\": {},", outgoing.len());
-        println!("  \"adrs\": 0,");
-        println!("  \"scenarios\": 0");
-        println!("}}");
+        let output = serde_json::json!({
+            "id": element_id,
+            "description": desc,
+            "incoming_relations": incoming.len(),
+            "outgoing_relations": outgoing.len()
+        });
+        println!("{}", serde_json::to_string_pretty(&output)?);
     } else {
         println!("Element: {}", element_id);
         if let Some(body) = &elem.assignment.body {
@@ -533,7 +570,6 @@ pub async fn import(format: &str, file: &str) -> Result<(), CliError> {
     let content = fs::read_to_string(file)?;
     let json: serde_json::Value = serde_json::from_str(&content)?;
 
-    // Try to extract systems from various JSON formats
     if let Some(arch) = json.get("architecture") {
         if let Some(systems) = arch.get("systems").and_then(|s| s.as_array()) {
             for sys in systems {
@@ -548,7 +584,6 @@ pub async fn import(format: &str, file: &str) -> Result<(), CliError> {
         }
     }
 
-    // Try SrujaModelDump format
     if let Some(elements) = json.get("elements").and_then(|e| e.as_array()) {
         for elem in elements {
             if let (Some(kind), Some(id), Some(title)) = (
@@ -569,176 +604,6 @@ pub async fn import(format: &str, file: &str) -> Result<(), CliError> {
     ))
 }
 
-/// Calculate architecture health score
-pub async fn score(file: Option<&str>) -> Result<(), CliError> {
-    let file_path = file.unwrap_or("architecture.sruja");
-    let content = fs::read_to_string(file_path)?;
-    let parser = Parser::new(file_path.to_string());
-
-    let program = match parser.parse(&content) {
-        Ok(p) => p,
-        Err(mut diags) => {
-            enrich_diagnostics_with_source(&content, &mut diags);
-            for diag in &diags {
-                eprintln!("{}", format_diagnostic(diag));
-            }
-            return Err(CliError::Parse(format!(
-                "Parsing failed with {} errors",
-                diags.len()
-            )));
-        }
-    };
-
-    // Validate to get diagnostics
-    let validator = Validator::with_default_rules();
-    let diagnostics = validator.validate_sync(&program);
-
-    // Calculate score (100 - deductions)
-    let mut score: u32 = 100;
-    let mut deductions = Vec::new();
-
-    for diag in &diagnostics {
-        let points = match diag.severity {
-            sruja_diagnostics::Severity::Error => 5,
-            sruja_diagnostics::Severity::Warning => 2,
-            _ => 0,
-        };
-        if points > 0 {
-            score = score.saturating_sub(points);
-            deductions.push((diag.message.clone(), points, diag.code.clone()));
-        }
-    }
-
-    let grade = if score >= 90 {
-        "A"
-    } else if score >= 80 {
-        "B"
-    } else if score >= 70 {
-        "C"
-    } else if score >= 60 {
-        "D"
-    } else {
-        "F"
-    };
-
-    println!("Architecture Health Index: {} ({})", score, grade);
-    println!("Dimensions:");
-    println!("  - Structural Integrity: {}%", score);
-    println!("  - Documentation Depth:  {}%", score);
-    println!("  - Traceability:         {}%", score);
-    println!("  - Complexity Control:   {}%", score);
-    println!("  - Standardization:      {}%", score);
-    println!();
-
-    if !deductions.is_empty() {
-        println!("Deductions:");
-        for (msg, pts, code) in deductions {
-            println!("  -{} pts: {} ({})", pts, msg, code);
-        }
-    } else {
-        println!("Perfect Score! No deductions.");
-    }
-
-    Ok(())
-}
-
-/// Change management commands
-pub async fn change_create(
-    title: &str,
-    description: Option<String>,
-    context: Option<String>,
-    status: Option<String>,
-) -> Result<(), CliError> {
-    use chrono::Utc;
-
-    let timestamp = Utc::now().format("%Y%m%d%H%M%S");
-    let filename = format!("changes/change-{}.md", timestamp);
-
-    // Create changes directory if it doesn't exist
-    fs::create_dir_all("changes")?;
-
-    let status_value = status.as_deref().unwrap_or("proposed");
-    let desc_value = description.as_deref().unwrap_or("TODO: Add description");
-    let context_value = context.as_deref().unwrap_or("TODO: Add context");
-
-    let template = format!(
-        r#"# {title}
-
-**Status:** {status}
-**Date:** {date}
-**Author:** {author}
-
-## Description
-{description}
-
-## Context
-{context}
-
-## Decision
-<!-- Describe your architectural decision here -->
-
-## Consequences
-### Positive
--
-
-### Negative
--
-"#,
-        title = title,
-        status = status_value,
-        date = Utc::now().format("%Y-%m-%d"),
-        author = std::env::var("USER")
-            .or_else(|_| std::env::var("USERNAME"))
-            .unwrap_or_else(|_| "Unknown".to_string()),
-        description = desc_value,
-        context = context_value
-    );
-
-    fs::write(&filename, template)?;
-    println!("Created change record: {}", filename);
-    Ok(())
-}
-
-pub async fn change_validate(file: &str) -> Result<(), CliError> {
-    let content = fs::read_to_string(file)?;
-
-    // Basic validation of change record format
-    let mut issues = Vec::new();
-
-    if !content.contains("# ") {
-        issues.push("Missing title header (should be '# Title')");
-    }
-
-    if !content.contains("**Status:**") {
-        issues.push("Missing Status field");
-    }
-
-    if !content.contains("## Context") {
-        issues.push("Missing Context section");
-    }
-
-    if !content.contains("## Decision") {
-        issues.push("Missing Decision section");
-    }
-
-    if !content.contains("## Consequences") {
-        issues.push("Missing Consequences section");
-    }
-
-    if issues.is_empty() {
-        println!("✓ Change record is valid");
-        Ok(())
-    } else {
-        println!("✗ Change record has issues:");
-        for issue in &issues {
-            println!("  - {}", issue);
-        }
-        Err(CliError::Validation(
-            "Change record validation failed".to_string(),
-        ))
-    }
-}
-
 /// Start LSP server
 pub async fn lsp() -> Result<(), CliError> {
     run_stdio()
@@ -756,17 +621,14 @@ pub async fn validate(
 ) -> Result<(), CliError> {
     let file_path = Path::new(file);
 
-    // Check if it's a directory
     if file_path.is_dir() {
         let files = collect_sruja_files(file_path)?;
         return validate_files(&files, constraints, fail_on_violations, format_json).await;
     }
 
-    // Validate single file
     let content = fs::read_to_string(file)?;
     let parser = Parser::new(file.to_string());
 
-    // Parse file
     let program = match parser.parse(&content) {
         Ok(program) => program,
         Err(mut diagnostics) => {
@@ -783,18 +645,13 @@ pub async fn validate(
         }
     };
 
-    // Validate with default rules
     let validator = Validator::with_default_rules();
 
-    // Add constraints if provided
     for constraint_path in constraints {
         let constraint_content = fs::read_to_string(&constraint_path)?;
         let constraint_parser = Parser::new(constraint_path.clone());
 
         if let Ok(constraint_program) = constraint_parser.parse(&constraint_content) {
-            // Extract and apply constraint rules
-            // This would need to be implemented based on the constraint DSL
-            // For now, just validate the constraint file itself
             let constraint_diagnostics = validator.validate_sync(&constraint_program);
             if !constraint_diagnostics.is_empty() {
                 eprintln!("Errors in constraint file {}:", constraint_path);
@@ -838,7 +695,6 @@ pub async fn validate(
         return Ok(());
     }
 
-    // Separate errors and warnings
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
 
@@ -872,7 +728,6 @@ pub async fn validate(
     }
 }
 
-/// Validate a list of files and produce summary
 async fn validate_files(
     files: &[String],
     constraints: Vec<String>,
@@ -883,12 +738,8 @@ async fn validate_files(
 
     for file_path in files {
         match validate_single_file(file_path, &constraints).await {
-            Ok(()) => {
-                results.push((file_path.clone(), true));
-            }
-            Err(_) => {
-                results.push((file_path.clone(), false));
-            }
+            Ok(()) => results.push((file_path.clone(), true)),
+            Err(_) => results.push((file_path.clone(), false)),
         }
     }
 
@@ -916,12 +767,10 @@ async fn validate_files(
     Ok(())
 }
 
-/// Validate a single file without recursion
 async fn validate_single_file(file: &str, _constraints: &[String]) -> Result<(), CliError> {
     let content = fs::read_to_string(file)?;
     let parser = Parser::new(file.to_string());
 
-    // Parse file
     let program = match parser.parse(&content) {
         Ok(program) => program,
         Err(diagnostics) => {
@@ -935,49 +784,18 @@ async fn validate_single_file(file: &str, _constraints: &[String]) -> Result<(),
         }
     };
 
-    // Validate to get diagnostics
     let validator = Validator::with_default_rules();
     let diagnostics = validator.validate_sync(&program);
 
-    // Calculate score (100 - deductions)
-    let mut score: u32 = 100;
-    let mut deductions = Vec::new();
+    let error_count = diagnostics
+        .iter()
+        .filter(|d| d.severity == sruja_diagnostics::Severity::Error)
+        .count();
 
-    for diag in &diagnostics {
-        let points = match diag.severity {
-            sruja_diagnostics::Severity::Error => 5,
-            sruja_diagnostics::Severity::Warning => 2,
-            _ => 0,
-        };
-        if points > 0 {
-            score = score.saturating_sub(points);
-            deductions.push((diag.message.clone(), points, diag.code.clone()));
-        }
-    }
-
-    let grade = if score >= 90 {
-        "A"
-    } else if score >= 80 {
-        "B"
-    } else if score >= 70 {
-        "C"
-    } else if score >= 60 {
-        "D"
-    } else {
-        "F"
-    };
-
-    // Print summary
-    println!("{}: {}/100 ({})", file, score, grade);
-
-    for (msg, points, code) in &deductions {
-        println!("  - {} (-{} points) [{}]", msg, points, code);
-    }
-
-    if score < 60 {
+    if error_count > 0 {
         Err(CliError::Validation(format!(
-            "Architecture score is too low: {}/100",
-            score
+            "Validation failed with {} errors",
+            error_count
         )))
     } else {
         Ok(())
@@ -989,7 +807,6 @@ pub async fn compile(file: &str) -> Result<(), CliError> {
     let content = fs::read_to_string(file)?;
     let parser = Parser::new(file.to_string());
 
-    // Parse file
     let program = match parser.parse(&content) {
         Ok(program) => {
             println!("✓ Parsing successful");
@@ -1007,7 +824,6 @@ pub async fn compile(file: &str) -> Result<(), CliError> {
         }
     };
 
-    // Validate
     let validator = Validator::with_default_rules();
     let mut diagnostics = validator.validate_sync(&program);
     enrich_diagnostics_with_source(&content, &mut diagnostics);
@@ -1018,7 +834,6 @@ pub async fn compile(file: &str) -> Result<(), CliError> {
         return Ok(());
     }
 
-    // Print diagnostics
     for diag in &diagnostics {
         eprintln!("{}", format_diagnostic(diag));
     }
@@ -1042,146 +857,578 @@ pub async fn compile(file: &str) -> Result<(), CliError> {
     Ok(())
 }
 
-/// Skills commands
-pub async fn skills_list(path: &str, limit: Option<usize>, format: &str) -> Result<(), CliError> {
-    let skills_path = Path::new(path);
-
-    if !skills_path.exists() {
-        return Err(CliError::Parse(format!(
-            "Skills directory not found: {}",
-            path
-        )));
-    }
-
-    use crate::modules::skills::{load_filtered_skills, OutputFormat, SkillFilter};
-
-    let output_format = match format.to_lowercase().as_str() {
-        "json" => OutputFormat::Json,
-        "concise" => OutputFormat::Concise,
-        _ => OutputFormat::Markdown,
-    };
-
-    let mut filter = SkillFilter::new();
-    filter.output_format = output_format;
-    filter.limit = limit;
-
-    let output = load_filtered_skills(skills_path, &filter).map_err(CliError::Parse)?;
-
-    println!("{}", output);
-    Ok(())
-}
-
-/// Suggest rules for a project
-pub async fn skills_suggest(
-    skills_path: &str,
-    project_path: &str,
-    count: usize,
+/// Detect architectural drift in codebase.
+/// When architecture_path is provided, compares scanned repo against the DSL baseline.
+/// Otherwise, reports drift from structural analysis (cycles, orphans, etc.).
+pub async fn drift(
+    repo_root: &str,
+    architecture_path: Option<&str>,
+    format: &str,
+    _enrich: bool,
+    violations_only: bool,
 ) -> Result<(), CliError> {
-    use crate::modules::skills::suggest_rules;
+    let repo_path = Path::new(repo_root);
 
-    let skills_dir = Path::new(skills_path);
-    let project_dir = Path::new(project_path);
-
-    if !skills_dir.exists() {
-        return Err(CliError::Parse(format!(
-            "Skills directory not found: {}",
-            skills_path
+    if !repo_path.exists() {
+        return Err(CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {}", repo_root),
         )));
     }
 
-    if !project_dir.exists() {
-        return Err(CliError::Parse(format!(
-            "Project directory not found: {}",
-            project_path
-        )));
-    }
+    let actual_graph = scan_repo(repo_path)?;
 
-    let output = suggest_rules(skills_dir, project_dir, count, None).map_err(CliError::Parse)?;
-
-    println!("{}", output);
-    Ok(())
-}
-
-/// Generate AI editor integration files
-pub async fn generate_ai_files(tools: Option<&str>, force: bool) -> Result<(), CliError> {
-    let tools_str = tools.unwrap_or("all");
-    let generate_cursor = tools_str == "all" || tools_str == "cursor";
-    let generate_copilot = tools_str == "all" || tools_str == "copilot";
-
-    if !generate_cursor && !generate_copilot {
-        return Err(CliError::Parse(format!(
-            "Invalid tools option: '{}'. Use 'cursor', 'copilot', or 'all'",
-            tools_str
-        )));
-    }
-
-    let mut created = Vec::new();
-    let mut skipped = Vec::new();
-
-    if generate_cursor {
-        let cursor_path = Path::new(".cursorrules");
-        if cursor_path.exists() && !force {
-            skipped.push(".cursorrules");
-        } else {
-            fs::write(cursor_path, get_cursorrules_template())?;
-            created.push(".cursorrules");
+    if let Some(arch_path) = architecture_path {
+        // Baseline drift: compare scan (actual) vs DSL (proposed)
+        let arch_file = Path::new(arch_path);
+        if !arch_file.exists() {
+            return Err(CliError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Architecture file not found: {}", arch_path),
+            )));
         }
-    }
+        let content = fs::read_to_string(arch_file)?;
+        let parser = sruja_language::Parser::new(arch_path);
+        let program = parser.parse(&content).map_err(|diags| {
+            CliError::Parse(format!(
+                "Parse error in {}: {}",
+                arch_path,
+                diags.iter().map(|d| d.message.as_str()).collect::<Vec<_>>().join("; ")
+            ))
+        })?;
+        let proposed_graph = sruja_diff::program_to_graph(&program);
+        let diff_result = sruja_diff::compare_graphs(&actual_graph, &proposed_graph);
 
-    if generate_copilot {
-        let copilot_path = Path::new(".copilot-instructions.md");
-        if copilot_path.exists() && !force {
-            skipped.push(".copilot-instructions.md");
-        } else {
-            fs::write(copilot_path, get_copilot_instructions_template())?;
-            created.push(".copilot-instructions.md");
+        match format {
+            "json" => {
+                println!("{}", serde_json::to_string_pretty(&diff_result)?);
+            }
+            _ => {
+                print_diff_text(&diff_result, violations_only);
+            }
         }
 
-        // Also create the architecture-skill.md file
-        let skill_path = Path::new(".architecture-skill.md");
-        if skill_path.exists() && !force {
-            skipped.push(".architecture-skill.md");
-        } else {
-            fs::write(skill_path, get_architecture_skill_template())?;
-            created.push(".architecture-skill.md");
+        if diff_result
+            .violations
+            .iter()
+            .any(|v| matches!(v.severity, sruja_diff::Severity::Error))
+        {
+            std::process::exit(1);
         }
-    }
+    } else {
+        // Scan-only drift: structural analysis
+        let drift_result = sruja_diff::detect_architectural_drift(&actual_graph);
 
-    // Print results
-    if !created.is_empty() {
-        println!("✓ Created:");
-        for file in &created {
-            println!("  - {}", file);
+        match format {
+            "json" => {
+                println!("{}", serde_json::to_string_pretty(&drift_result)?);
+            }
+            _ => {
+                print_drift_text(&drift_result, violations_only);
+            }
         }
-    }
 
-    if !skipped.is_empty() {
-        println!("\n⊘ Skipped (already exist):");
-        for file in &skipped {
-            println!("  - {}", file);
+        if drift_result
+            .violations
+            .iter()
+            .any(|v| matches!(v.severity, sruja_diff::Severity::Error))
+        {
+            std::process::exit(1);
         }
-        println!("\nUse --force to overwrite existing files");
-    }
-
-    if !created.is_empty() {
-        println!("\nNext steps:");
-        println!("  1. Commit these files to your repository");
-        println!("  2. AI assistants (Cursor, Copilot) will now follow Sruja DSL rules");
-        println!("  3. Generate architecture: Ask AI to create a .sruja file");
-        println!("  4. Validate: sruja lint <file.sruja>");
     }
 
     Ok(())
 }
 
-fn get_cursorrules_template() -> &'static str {
-    include_str!("../templates/.cursorrules")
+/// Quickstart: Get immediate architecture insights (zero-key, deterministic)
+pub async fn quickstart(repo_root: &str, format: &str) -> Result<(), CliError> {
+    let repo_path = Path::new(repo_root);
+
+    if !repo_path.exists() {
+        return Err(CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {}", repo_root),
+        )));
+    }
+
+    eprintln!("{}", "═".repeat(70));
+    eprintln!("🚀 Sruja Quickstart - Architecture Intelligence");
+    eprintln!("{}", "═".repeat(70));
+    eprintln!();
+
+    // Step 1: Scan repository
+    eprintln!("📂 Scanning repository...");
+    let graph = scan_repo(repo_path)?;
+    eprintln!("   ✓ Found {} components", graph.nodes.len());
+    eprintln!();
+
+    // Step 2: Detect drift (consolidated sruja-diff)
+    eprintln!("🔍 Analyzing architecture health...");
+    let drift_report = sruja_diff::detect_architectural_drift(&graph);
+    eprintln!("   ✓ Analysis complete");
+    eprintln!();
+
+    match format {
+        "json" => {
+            let output = QuickstartResult::from_drift_report(&drift_report, &graph, repo_root);
+            println!("{}", serde_json::to_string_pretty(&output)?);
+        }
+        _ => {
+            print_quickstart_summary(&drift_report, &graph, repo_root);
+        }
+    }
+
+    Ok(())
 }
 
-fn get_copilot_instructions_template() -> &'static str {
-    include_str!("../templates/.copilot-instructions.md")
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct QuickstartResult {
+    pub repo: String,
+    pub health_score: u8,
+    pub inventory: InventorySummary,
+    pub top_findings: Vec<Finding>,
+    pub actionable_fixes: Vec<ActionableFix>,
 }
 
-fn get_architecture_skill_template() -> &'static str {
-    include_str!("../templates/.architecture-skill.md")
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct InventorySummary {
+    pub modules: usize,
+    pub services: usize,
+    pub databases: usize,
+    pub external_apis: usize,
+    pub total_dependencies: usize,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Finding {
+    pub severity: String,
+    pub kind: String,
+    pub message: String,
+    pub evidence: Vec<String>,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct ActionableFix {
+    pub priority: String,
+    pub description: String,
+    pub impact: String,
+    pub affected_components: Vec<String>,
+}
+
+impl QuickstartResult {
+    fn from_drift_report(report: &sruja_diff::DriftReport, graph: &Graph, repo: &str) -> Self {
+        let external_apis = graph
+            .nodes
+            .iter()
+            .filter(|n| n.kind == NodeKind::ExternalApi)
+            .count();
+
+        let mut all_violations: Vec<_> = report.violations.iter().collect();
+        all_violations.sort_by(|a, b| {
+            let severity_order = |s: &sruja_diff::Severity| match s {
+                sruja_diff::Severity::Error => 0,
+                sruja_diff::Severity::Warning => 1,
+                sruja_diff::Severity::Info => 2,
+            };
+            severity_order(&a.severity).cmp(&severity_order(&b.severity))
+        });
+
+        let top_findings: Vec<Finding> = all_violations
+            .iter()
+            .take(3)
+            .map(|v| Finding {
+                severity: match v.severity {
+                    sruja_diff::Severity::Error => "error".to_string(),
+                    sruja_diff::Severity::Warning => "warning".to_string(),
+                    sruja_diff::Severity::Info => "info".to_string(),
+                },
+                kind: format!("{:?}", v.kind),
+                message: v.message.clone(),
+                evidence: v
+                    .location
+                    .as_ref()
+                    .map(|s| vec![s.clone()])
+                    .unwrap_or_default(),
+            })
+            .collect();
+
+        let actionable_fixes = generate_actionable_fixes_from_violations(&report.violations);
+
+        QuickstartResult {
+            repo: repo.to_string(),
+            health_score: report.health_score,
+            inventory: InventorySummary {
+                modules: report.total_modules,
+                services: report.total_services,
+                databases: report.total_databases,
+                external_apis,
+                total_dependencies: report.total_dependencies,
+            },
+            top_findings,
+            actionable_fixes,
+        }
+    }
+}
+
+fn generate_actionable_fixes_from_violations(
+    violations: &[sruja_diff::Violation],
+) -> Vec<ActionableFix> {
+    use sruja_diff::ViolationKind;
+    let mut fixes = Vec::new();
+
+    let circular: Vec<_> = violations
+        .iter()
+        .filter(|v| matches!(v.kind, ViolationKind::CircularDependency))
+        .collect();
+    if !circular.is_empty() {
+        let affected: Vec<String> = circular.iter().filter_map(|v| v.location.clone()).collect();
+        fixes.push(ActionableFix {
+            priority: "high".to_string(),
+            description:
+                "Break circular dependencies by introducing interfaces or event-based communication"
+                    .to_string(),
+            impact: "Improves maintainability and reduces coupling".to_string(),
+            affected_components: affected,
+        });
+    }
+
+    let layer: Vec<_> = violations
+        .iter()
+        .filter(|v| matches!(v.kind, ViolationKind::LayerViolation))
+        .collect();
+    if !layer.is_empty() {
+        let affected: Vec<String> = layer.iter().filter_map(|v| v.location.clone()).collect();
+        fixes.push(ActionableFix {
+            priority: "medium".to_string(),
+            description: "Introduce proper service layers to abstract direct database access"
+                .to_string(),
+            impact: "Improves separation of concerns and testability".to_string(),
+            affected_components: affected,
+        });
+    }
+
+    let god: Vec<_> = violations
+        .iter()
+        .filter(|v| matches!(v.kind, ViolationKind::GodModule))
+        .collect();
+    if !god.is_empty() {
+        let affected: Vec<String> = god.iter().filter_map(|v| v.location.clone()).collect();
+        fixes.push(ActionableFix {
+            priority: "medium".to_string(),
+            description: "Refactor god modules into smaller, focused components".to_string(),
+            impact: "Improves code maintainability and reduces cognitive load".to_string(),
+            affected_components: affected,
+        });
+    }
+
+    let orphans: Vec<_> = violations
+        .iter()
+        .filter(|v| matches!(v.kind, ViolationKind::OrphanComponent))
+        .collect();
+    if !orphans.is_empty() {
+        let affected: Vec<String> = orphans.iter().filter_map(|v| v.location.clone()).collect();
+        fixes.push(ActionableFix {
+            priority: "low".to_string(),
+            description: "Review orphan modules - integrate or remove unused code".to_string(),
+            impact: "Reduces dead code and technical debt".to_string(),
+            affected_components: affected,
+        });
+    }
+
+    fixes.truncate(3);
+    fixes
+}
+
+fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, repo: &str) {
+    println!("{}", "─".repeat(70));
+    println!("📊 Architecture Inventory");
+    println!("{}", "─".repeat(70));
+    println!("  Repository: {}", repo);
+    println!();
+    println!("  Components detected:");
+    println!("    • {} modules", report.total_modules);
+    println!("    • {} services", report.total_services);
+    println!("    • {} databases", report.total_databases);
+    let external_apis = graph
+        .nodes
+        .iter()
+        .filter(|n| n.kind == NodeKind::ExternalApi)
+        .count();
+    println!("    • {} external APIs", external_apis);
+    println!("    • {} total dependencies", report.total_dependencies);
+    println!();
+
+    println!("{}", "─".repeat(70));
+    println!("💚 Architecture Health Score: {}/100", report.health_score);
+    println!("{}", "─".repeat(70));
+
+    let score_bar = match report.health_score {
+        80..=100 => "████████████████████ ✓ Good",
+        60..=79 => "██████████████░░░░░░ ⚠ Fair",
+        40..=59 => "██████████░░░░░░░░░░ ⚠ Needs Work",
+        _ => "████░░░░░░░░░░░░░░░░ ✗ Critical",
+    };
+    println!("  {}", score_bar);
+    println!();
+
+    println!("{}", "─".repeat(70));
+    println!("🔍 Top 3 Critical Findings");
+    println!("{}", "─".repeat(70));
+
+    let mut sorted: Vec<_> = report.violations.iter().collect();
+    sorted.sort_by(|a, b| {
+        let severity_order = |s: &sruja_diff::Severity| match s {
+            sruja_diff::Severity::Error => 0,
+            sruja_diff::Severity::Warning => 1,
+            sruja_diff::Severity::Info => 2,
+        };
+        severity_order(&a.severity).cmp(&severity_order(&b.severity))
+    });
+
+    for (i, v) in sorted.iter().take(3).enumerate() {
+        let icon = match v.severity {
+            sruja_diff::Severity::Error => "🚨",
+            sruja_diff::Severity::Warning => "⚠️",
+            sruja_diff::Severity::Info => "ℹ️",
+        };
+        println!();
+        println!("  {}. {} {}", i + 1, icon, v.message);
+        if let Some(ref loc) = v.location {
+            println!("     📍 Component: {}", loc);
+        }
+        if let Some(ref s) = v.suggestion {
+            println!("     💡 Suggestion: {}", s);
+        }
+    }
+
+    if sorted.is_empty() {
+        println!();
+        println!("  ✓ No critical issues found!");
+    }
+    println!();
+
+    let fixes = generate_actionable_fixes_from_violations(&report.violations);
+
+    if !fixes.is_empty() {
+        println!("{}", "─".repeat(70));
+        println!("🎯 Top 3 Actionable Fixes");
+        println!("{}", "─".repeat(70));
+
+        for (i, fix) in fixes.iter().enumerate() {
+            let priority_icon = match fix.priority.as_str() {
+                "high" => "🔴",
+                "medium" => "🟡",
+                _ => "🟢",
+            };
+
+            println!();
+            println!(
+                "  {}. {} [{}] {}",
+                i + 1,
+                priority_icon,
+                fix.priority.to_uppercase(),
+                fix.description
+            );
+            println!("     Impact: {}", fix.impact);
+            if !fix.affected_components.is_empty() {
+                println!("     Affected: {}", fix.affected_components.join(", "));
+            }
+        }
+        println!();
+    }
+
+    // Evidence Section
+    println!("{}", "─".repeat(70));
+    println!("📎 Evidence References");
+    println!("{}", "─".repeat(70));
+
+    let sample_nodes: Vec<_> = graph.nodes.iter().take(5).collect();
+    if !sample_nodes.is_empty() {
+        println!();
+        println!("  Sample components detected:");
+        for node in &sample_nodes {
+            println!(
+                "    • {} ({:?}) - {}",
+                node.id,
+                node.kind,
+                node.path.as_deref().unwrap_or("unknown")
+            );
+        }
+    }
+    println!();
+
+    // Next Steps
+    println!("{}", "─".repeat(70));
+    println!("🚀 Next Steps");
+    println!("{}", "─".repeat(70));
+    println!();
+    println!("  1. Review the findings above and prioritize fixes");
+    println!("  2. Run 'sruja drift -r . --format json' for detailed analysis");
+    println!("  3. Run 'sruja scan -r . -o architecture.json' to save the graph");
+    println!("  4. Run 'sruja why \"your question\" -r .' to explore architecture decisions");
+    println!();
+    println!("{}", "═".repeat(70));
+}
+
+fn print_diff_text(result: &sruja_diff::DiffResult, violations_only: bool) {
+    println!("{}", "═".repeat(60));
+    println!("Baseline Drift: Scan vs DSL");
+    println!("{}", "═".repeat(60));
+    println!();
+
+    if !violations_only {
+        println!("📊 Summary");
+        println!("{}", "-".repeat(40));
+        let s = &result.summary;
+        println!(
+            "  Proposed: {} | Actual (scan): {}",
+            s.proposed_components, s.existing_components
+        );
+        println!(
+            "  New: {} | Missing: {} | Edges +{} -{}",
+            s.new_components, s.missing_components,
+            s.new_dependencies, s.removed_dependencies
+        );
+        println!("  Health Score: {}/100", s.health_score);
+        println!();
+    }
+
+    let errors: Vec<_> = result
+        .violations
+        .iter()
+        .filter(|v| matches!(v.severity, sruja_diff::Severity::Error))
+        .collect();
+    let warnings: Vec<_> = result
+        .violations
+        .iter()
+        .filter(|v| matches!(v.severity, sruja_diff::Severity::Warning))
+        .collect();
+    let info: Vec<_> = result
+        .violations
+        .iter()
+        .filter(|v| matches!(v.severity, sruja_diff::Severity::Info))
+        .collect();
+
+    if !errors.is_empty() {
+        println!("🚨 Errors ({})", errors.len());
+        println!("{}", "-".repeat(40));
+        for v in &errors {
+            println!("  ✗ {}", v.message);
+            if let Some(ref suggestion) = v.suggestion {
+                println!("    → {}", suggestion);
+            }
+        }
+        println!();
+    }
+
+    if !warnings.is_empty() {
+        println!("⚠️  Warnings ({})", warnings.len());
+        println!("{}", "-".repeat(40));
+        for v in &warnings {
+            println!("  ⚠ {}", v.message);
+            if let Some(ref suggestion) = v.suggestion {
+                println!("    → {}", suggestion);
+            }
+        }
+        println!();
+    }
+
+    if !violations_only && !info.is_empty() {
+        println!("ℹ️  Info ({})", info.len());
+        println!("{}", "-".repeat(40));
+        for v in &info {
+            println!("  ℹ {}", v.message);
+        }
+        println!();
+    }
+
+    if !violations_only && !result.suggestions.is_empty() {
+        println!("💡 Suggestions");
+        println!("{}", "-".repeat(40));
+        for (i, s) in result.suggestions.iter().enumerate() {
+            println!("  {}. {}", i + 1, s);
+        }
+        println!();
+    }
+
+    println!("{}", "═".repeat(60));
+}
+
+fn print_drift_text(result: &sruja_diff::DriftReport, violations_only: bool) {
+    println!("{}", "═".repeat(60));
+    println!("Architecture Drift Detection");
+    println!("{}", "═".repeat(60));
+    println!();
+
+    if !violations_only {
+        println!("📊 Summary");
+        println!("{}", "-".repeat(40));
+        println!(
+            "  Modules: {} | Services: {} | Databases: {}",
+            result.total_modules, result.total_services, result.total_databases
+        );
+        println!("  Dependencies: {}", result.total_dependencies);
+        println!("  Health Score: {}/100", result.health_score);
+        println!();
+    }
+
+    let errors: Vec<_> = result
+        .violations
+        .iter()
+        .filter(|v| matches!(v.severity, sruja_diff::Severity::Error))
+        .collect();
+    let warnings: Vec<_> = result
+        .violations
+        .iter()
+        .filter(|v| matches!(v.severity, sruja_diff::Severity::Warning))
+        .collect();
+    let info: Vec<_> = result
+        .violations
+        .iter()
+        .filter(|v| matches!(v.severity, sruja_diff::Severity::Info))
+        .collect();
+
+    if !errors.is_empty() {
+        println!("🚨 Errors ({})", errors.len());
+        println!("{}", "-".repeat(40));
+        for v in &errors {
+            println!("  ✗ {}", v.message);
+            if let Some(ref suggestion) = v.suggestion {
+                println!("    → {}", suggestion);
+            }
+        }
+        println!();
+    }
+
+    if !warnings.is_empty() {
+        println!("⚠️  Warnings ({})", warnings.len());
+        println!("{}", "-".repeat(40));
+        for v in &warnings {
+            println!("  ⚠ {}", v.message);
+            if let Some(ref suggestion) = v.suggestion {
+                println!("    → {}", suggestion);
+            }
+        }
+        println!();
+    }
+
+    if !violations_only && !info.is_empty() {
+        println!("ℹ️  Info ({})", info.len());
+        println!("{}", "-".repeat(40));
+        for v in &info {
+            println!("  ℹ {}", v.message);
+        }
+        println!();
+    }
+
+    if !violations_only && !result.suggestions.is_empty() {
+        println!("💡 Suggestions");
+        println!("{}", "-".repeat(40));
+        for (i, s) in result.suggestions.iter().enumerate() {
+            println!("  {}. {}", i + 1, s);
+        }
+        println!();
+    }
+
+    println!("{}", "═".repeat(60));
 }

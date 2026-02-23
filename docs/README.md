@@ -12,7 +12,7 @@
 - [CONTRIBUTION_IDEAS.md](CONTRIBUTION_IDEAS.md) – Concrete tasks you can pick up
 
 **Development:**
-- [DEVELOPMENT.md](DEVELOPMENT.md) – Build, test, run (Rust crates, WASM, extension)
+- [DEVELOPMENT.md](DEVELOPMENT.md) – Build, test, run (Rust crates, WASM, extension, sruja-app)
 - [architecture/README.md](architecture/README.md) – Architecture overview and .sruja diagrams
 
 **Content (book/courses):**
@@ -22,9 +22,11 @@
 
 ## Reference
 
+- **Try first** (no .sruja): `sruja quickstart -r .` – [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md)
 - [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) – Sruja DSL reference
 - [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md) – Language design principles
 - [USING_SRUJA_IN_YOUR_PROJECT.md](USING_SRUJA_IN_YOUR_PROJECT.md) – Using Sruja in your repo
+- [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md) – CLI-first drift/why, zero-key; [Strategy](../architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md)
 
 ## AI integration
 
@@ -45,4 +47,3 @@
 - [CODING_GUIDELINES.md](CODING_GUIDELINES.md) – Coding standards for the repo
 - [adr/](adr/) – Architecture decision records
 - [sruja-guidelines/](sruja-guidelines/) – Rule and tradeoff templates for skills
-- [freshers.md](freshers.md) – Onboarding for new contributors

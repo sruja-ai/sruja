@@ -305,7 +305,7 @@ ECommerce = system "E-Commerce Platform" {
     description "Primary data store"
   }
 
-  Cache = queue "Redis" {
+  Cache = database "Redis Cache" {
     technology "Redis 7"
     description "Caching layer for performance"
   }

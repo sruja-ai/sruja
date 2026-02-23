@@ -69,6 +69,7 @@ docs/architecture/*.svg
 
 # mdbook: build output; Mermaid assets (run make book-deps to get mermaid.min.js)
 book/book/
+book/tmp_validate/
 book/mermaid.min.js
 book/mermaid-init.js
 

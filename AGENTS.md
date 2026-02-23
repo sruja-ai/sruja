@@ -56,4 +56,28 @@ For the complete guide with all rules expanded, examples, and Sruja DSL patterns
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
+## Additional Skills
+
+### sruja-architecture-agent
+
+For AI-powered architecture discovery from codebases:
+
+```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent
+```
+
+### sruja-architecture-collaboration
+
+For multi-agent collaborative architecture design:
+
+```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-collaboration
+```
+
+Enables:
+- Multi-agent team roles (Analyst, Architect, Reviewer, Validator)
+- Live architecture sessions
+- Pattern library and ADR management
+- CI/CD architecture review integration
+
 See also: `.cursorrules`, `docs/LANGUAGE_SPECIFICATION.md`, `examples/`.

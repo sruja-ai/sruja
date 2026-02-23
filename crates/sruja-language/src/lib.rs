@@ -19,8 +19,8 @@ mod tests {
     #[test]
     fn test_parse_simple_system() {
         let input = r#"
-system MySystem "My System" {
-    description "A test system"
+MySystem = system "My System" {
+  description "A test system"
 }
 "#;
         let parser = Parser::new("test.sruja".to_string());
@@ -31,8 +31,8 @@ system MySystem "My System" {
     #[test]
     fn test_parse_relation() {
         let input = r#"
-system A "System A"
-system B "System B"
+A = system "System A"
+B = system "System B"
 A -> B "calls"
 "#;
         let parser = Parser::new("test.sruja".to_string());
@@ -43,10 +43,10 @@ A -> B "calls"
     #[test]
     fn test_parse_nested_elements() {
         let input = r#"
-system MySystem "My System" {
-    container API "API Container" {
-        component Handler "Request Handler"
-    }
+MySystem = system "My System" {
+  API = container "API Container" {
+    Handler = component "Request Handler"
+  }
 }
 "#;
         let parser = Parser::new("test.sruja".to_string());

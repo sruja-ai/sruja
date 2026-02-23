@@ -17,6 +17,7 @@ Single entry point for Sruja's AI-related docs.
 
 ## Related
 
+- [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md) – CLI-first drift/why, zero-key deterministic mode; LLM optional.
 - [REVIEWING_AI_GENERATED_CODE.md](REVIEWING_AI_GENERATED_CODE.md) – Reviewing AI-generated .sruja and PR practices.
 - [.cursorrules](https://github.com/sruja-ai/sruja/blob/main/.cursorrules) (repo root) – DSL rules for AI code generation.
 - [skills/sruja-architecture/](../skills/sruja-architecture/) – Architecture skill (patterns, trade-offs) for agents.

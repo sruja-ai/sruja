@@ -135,6 +135,16 @@ difficulty: "beginner"
 - Add "Sruja Perspective" section when relevant
 - End with summary or key takeaways
 
+### DSL Examples: Runnable vs Illustrative
+
+Not all Sruja DSL code blocks (`` ```sruja ``) in the book are complete runnable programs:
+
+- **Runnable** – Full, self-contained examples that pass `sruja lint`. Canonical examples live in `book/valid-examples/`.
+- **Illustrative** – Partial snippets to show a single concept (e.g. one relationship); may omit import or definitions.
+- **Comparative** – Other notations (C4, DFD, data structures) in design-philosophy docs; not Sruja syntax.
+
+For new content, prefer runnable examples when teaching a full flow. Validate complete examples with `sruja lint` and add them to `book/valid-examples/` if they represent key patterns. Run `make book-lint-examples` to verify.
+
 **Tutorials:**
 - Use step-by-step format
 - Include code examples

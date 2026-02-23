@@ -61,26 +61,26 @@ Copy and paste this into your file:
 import { * } from 'sruja.ai/stdlib'
 
 // 1. Define the System
-webApp = system "My Cool Startup" {
-    description "The next big thing."
+WebApp = system "My Cool Startup" {
+  description "The next big thing."
 
-    frontend = container "React App"
-    api = container "Rust Service"
-    db = database "PostgreSQL"
+  Frontend = container "React App"
+  API = container "Rust Service"
+  DB = database "PostgreSQL"
 
-    // 2. Define Connections
-    frontend -> api "Requests Data"
-    api -> db "Reads/Writes"
+  // 2. Define Connections
+  Frontend -> API "Requests Data"
+  API -> DB "Reads/Writes"
 }
 
 // 3. Define Users
-user = person "Early Adopter"
+User = person "Early Adopter"
 
 // 4. Connect User to System
-user -> webApp.frontend "Visits Website"
+User -> WebApp.Frontend "Visits Website"
 
 view index {
-    include *
+  include *
 }
 ```
 

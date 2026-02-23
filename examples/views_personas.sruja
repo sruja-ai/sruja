@@ -1,0 +1,373 @@
+// examples/views_personas.sruja
+// Demonstrates persona-based views using the new consistent syntax
+// Each persona sees the architecture through their unique lens
+
+import { * } from 'sruja.ai/stdlib'
+
+// === ARCHITECTURE ===
+
+// Analytics Platform - A real-time data analytics system
+analyticsPlatform = system "Analytics Platform" {
+  description "Real-time data analytics and visualization platform"
+
+  metadata {
+    team "Data Platform Team"
+    owner "data-platform@company.com"
+    cost "$25k/month"
+    capacity "1M events/second"
+    status "production"
+  }
+
+  // Frontend Layer
+  dashboard = container "Dashboard" {
+    technology "React, D3.js"
+    description "Interactive analytics dashboard"
+    tags ["frontend", "customer-facing", "critical"]
+
+    metadata {
+      team "Frontend Team"
+      slo-tier "tier-1"
+    }
+  }
+
+  // API Layer
+  api = container "REST API" {
+    technology "Go, Gin"
+    description "Core API gateway"
+    tags ["backend", "api", "critical"]
+
+    slo {
+      availability {
+        target "99.9%"
+        window "30 days"
+        current "99.95%"
+      }
+      latency {
+        p95 "200ms"
+        p99 "500ms"
+        window "7 days"
+      }
+    }
+
+    scale {
+      min 5
+      max 20
+      metric "cpu > 75%"
+    }
+
+    metadata {
+      team "Backend Team"
+      owner "backend@company.com"
+    }
+  }
+
+  // Data Processing
+  streamProcessor = container "Stream Processor" {
+    technology "Apache Flink"
+    description "Real-time event processing"
+    tags ["backend", "processing", "critical"]
+
+    slo {
+      availability {
+        target "99.95%"
+        window "30 days"
+      }
+      throughput {
+        target "1M events/sec"
+        current "850k events/sec"
+      }
+    }
+
+    scale {
+      min 10
+      max 50
+      metric "lag > 1000"
+    }
+  }
+
+  // Data Storage
+  timeseriesDb = database "TimescaleDB" {
+    technology "TimescaleDB (PostgreSQL)"
+    description "Time-series data storage"
+    tags ["database", "timeseries", "pii"]
+
+    metadata {
+      retention "90 days"
+      encryption "AES-256"
+      compliance ["SOC2", "GDPR"]
+    }
+  }
+
+  userDb = database "User Database" {
+    technology "PostgreSQL"
+    description "User profiles and preferences"
+    tags ["database", "pii", "sensitive"]
+
+    metadata {
+      encryption "AES-256"
+      compliance ["SOC2", "GDPR", "CCPA"]
+    }
+  }
+
+  cache = database "Redis Cache" {
+    technology "Redis Cluster"
+    description "Session and query cache"
+    tags ["cache", "performance"]
+
+    scale {
+      min 3
+      max 10
+    }
+  }
+
+  // Message Queue
+  eventQueue = queue "Event Queue" {
+    technology "Apache Kafka"
+    description "Event streaming platform"
+    tags ["queue", "streaming", "critical"]
+
+    metadata {
+      partitions "100"
+      replication "3"
+      retention "7 days"
+    }
+  }
+
+  // Infrastructure
+  monitoring = container "Monitoring Stack" {
+    technology "Prometheus, Grafana"
+    description "System monitoring and alerting"
+    tags ["infrastructure", "monitoring", "sre"]
+  }
+
+  deployment = container "Deployment Pipeline" {
+    technology "ArgoCD, Kubernetes"
+    description "CI/CD and deployment automation"
+    tags ["infrastructure", "deployment", "devops"]
+  }
+}
+
+// External Systems
+paymentGateway = system "Payment Gateway" {
+  description "External payment processing"
+  tags ["external", "security", "pci"]
+
+  metadata {
+    vendor "Stripe"
+    compliance ["PCI-DSS"]
+  }
+}
+
+customerDataPlatform = system "Customer Data Platform" {
+  description "Third-party customer data"
+  tags ["external", "pii", "gdpr"]
+}
+
+// Actors
+endUser = person "End User" {
+  description "Business user viewing analytics"
+  tags ["external"]
+}
+
+dataAnalyst = person "Data Analyst" {
+  description "Power user creating reports"
+  tags ["internal"]
+}
+
+sreEngineer = person "SRE Engineer" {
+  description "Site reliability engineer"
+  tags ["internal", "operations"]
+}
+
+securityTeam = person "Security Team" {
+  description "Security and compliance team"
+  tags ["internal", "security"]
+}
+
+// Relationships
+endUser -> analyticsPlatform.dashboard "views dashboards"
+dataAnalyst -> analyticsPlatform.dashboard "creates reports"
+analyticsPlatform.dashboard -> analyticsPlatform.api "queries"
+analyticsPlatform.api -> analyticsPlatform.streamProcessor "submits jobs"
+analyticsPlatform.streamProcessor -> analyticsPlatform.eventQueue "consumes"
+analyticsPlatform.streamProcessor -> analyticsPlatform.timeseriesDb "writes"
+analyticsPlatform.api -> analyticsPlatform.timeseriesDb "reads"
+analyticsPlatform.api -> analyticsPlatform.userDb "reads user prefs"
+analyticsPlatform.api -> analyticsPlatform.cache "caches"
+analyticsPlatform.api -> paymentGateway "processes payments"
+customerDataPlatform -> analyticsPlatform.eventQueue "sends events"
+
+// === GOVERNANCE ===
+
+// Requirements
+R1 = requirement performance "Dashboard must load in < 2 seconds"
+R2 = requirement reliability "System must maintain 99.9% uptime"
+R3 = requirement security "All PII must be encrypted at rest and in transit"
+R4 = requirement scalability "Must handle 1M events/second"
+R5 = requirement compliance "Must be SOC2 and GDPR compliant"
+
+// Architecture Decision Records
+ADR001 = adr "Use TimescaleDB for time-series data" {
+  status "accepted"
+  context "Need efficient time-series queries and retention"
+  decision "Use TimescaleDB (PostgreSQL extension) for time-series storage"
+  consequences "Gain: Efficient time-based queries, PostgreSQL ecosystem. Trade-off: Additional complexity over vanilla PostgreSQL"
+}
+
+ADR002 = adr "Use Kafka for event streaming" {
+  status "accepted"
+  context "Need reliable, scalable event streaming"
+  decision "Use Apache Kafka for event queue"
+  consequences "Gain: High throughput, durability, replay capability. Trade-off: Operational complexity"
+}
+
+// Security Policies
+EncryptionPolicy = policy "Encrypt all data at rest" {
+  category "security"
+  enforcement "required"
+  description "All databases must use encryption at rest using AES-256"
+}
+
+DataRetentionPolicy = policy "Data retention limits" {
+  category "compliance"
+  enforcement "required"
+  description "User data retention limited to 90 days, financial data 7 years"
+}
+
+// === PERSONA-BASED VIEWS ===
+
+// SRE View - Focus on reliability and operations
+sreView = view "SRE Dashboard" {
+  description "Operational view focusing on reliability, monitoring, and scaling"
+
+  // Include elements with SLOs and scaling
+  include analyticsPlatform.api
+  include analyticsPlatform.streamProcessor
+  include analyticsPlatform.timeseriesDb
+  include analyticsPlatform.cache
+  include analyticsPlatform.eventQueue
+  include analyticsPlatform.monitoring
+
+  // Show operational context
+  include sreEngineer
+}
+
+// CTO View - Strategic overview
+ctoView = view "Strategic Overview" {
+  description "High-level strategic view for executive leadership"
+
+  // Just systems and key actors
+  include analyticsPlatform
+  include paymentGateway
+  include customerDataPlatform
+  include endUser
+  include dataAnalyst
+
+  // Show external dependencies
+  include analyticsPlatform.dashboard
+  include analyticsPlatform.api
+}
+
+// Security View - Threat model and compliance
+securityView = view "Security & Compliance" {
+  description "Security architecture, data flows, and compliance boundaries"
+
+  // All data stores
+  include analyticsPlatform.timeseriesDb
+  include analyticsPlatform.userDb
+  include analyticsPlatform.cache
+
+  // External systems (threat boundaries)
+  include paymentGateway
+  include customerDataPlatform
+
+  // Entry points
+  include analyticsPlatform.api
+  include analyticsPlatform.dashboard
+
+  // Security team
+  include securityTeam
+}
+
+// DevOps View - Deployment and infrastructure
+devopsView = view "DevOps Infrastructure" {
+  description "Deployment architecture and infrastructure dependencies"
+
+  // Infrastructure components
+  include analyticsPlatform.deployment
+  include analyticsPlatform.monitoring
+
+  // Scalable components
+  include analyticsPlatform.api
+  include analyticsPlatform.streamProcessor
+  include analyticsPlatform.cache
+  include analyticsPlatform.eventQueue
+
+  // Include SRE as stakeholder
+  include sreEngineer
+}
+
+// Developer View - Implementation details
+developerView = view "Implementation Details" {
+  description "Detailed view for developers implementing features"
+
+  // All internal components
+  include analyticsPlatform.*
+
+  // Show external integrations
+  include paymentGateway
+  include customerDataPlatform
+
+  // Show all actors
+  include endUser
+  include dataAnalyst
+}
+
+// Product Manager View - Features and user journeys
+productView = view "User Features" {
+  description "User-facing features and customer journey"
+
+  // User-facing components
+  include analyticsPlatform.dashboard
+  include analyticsPlatform.api
+
+  // External systems users care about
+  include paymentGateway
+
+  // All user types
+  include endUser
+  include dataAnalyst
+}
+
+// Database Admin View - Data architecture
+dbaView = view "Data Architecture" {
+  description "Data storage, flows, and retention policies"
+
+  // All data stores
+  include analyticsPlatform.timeseriesDb
+  include analyticsPlatform.userDb
+  include analyticsPlatform.cache
+  include analyticsPlatform.eventQueue
+
+  // Data processors
+  include analyticsPlatform.streamProcessor
+  include analyticsPlatform.api
+
+  // External data sources
+  include customerDataPlatform
+}
+
+// Cost Optimization View - For finance/operations
+costView = view "Cost Analysis" {
+  description "Components with significant cost implications"
+
+  // Most expensive components (typically data and processing)
+  include analyticsPlatform.streamProcessor
+  include analyticsPlatform.timeseriesDb
+  include analyticsPlatform.eventQueue
+  include analyticsPlatform.cache
+
+  // Include external paid services
+  include paymentGateway
+  include customerDataPlatform
+}

@@ -1,0 +1,19 @@
+[package]
+name = "sruja-graph"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Architecture Knowledge Graph for Sruja"
+
+[dependencies]
+sruja-scan = { path = "../sruja-scan" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+[dev-dependencies]
+tokio-test = "0.4"

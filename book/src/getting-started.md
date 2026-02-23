@@ -32,11 +32,11 @@ person = kind "Person"
 system = kind "System"
 container = kind "Container"
 
-user = person "User" {}
-app = system "My App" {
-  web = container "Web Server" { technology "Node.js" }
+User = person "User" {}
+App = system "My App" {
+  Web = container "Web Server" { technology "Node.js" }
 }
-user -> app.web "visits"
+User -> App.Web "visits"
 ```
 
 ## Validate and export

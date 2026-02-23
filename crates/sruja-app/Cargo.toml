@@ -1,0 +1,21 @@
+[package]
+name = "sruja-app"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Sruja desktop app - multi-party architecture chat"
+
+[dependencies]
+dotenvy = "0.15"
+sruja-graph = { path = "../sruja-graph" }
+sruja-extract = { path = "../sruja-extract" }
+sruja-chat = { path = "../sruja-chat" }
+dioxus = { version = "0.7", features = ["desktop"] }
+tokio = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rfd = "0.15"

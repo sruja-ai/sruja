@@ -30,20 +30,30 @@ make wasm-nodejs # nodejs target (for future LSP/extension)
 
 ## Project layout
 
-- **crates/sruja-cli** – CLI (lint, export, etc.)
-- **crates/sruja-language** – Parser and AST
-- **crates/sruja-engine** – Validation rules
-- **crates/sruja-export** – Markdown/Mermaid export
-- **crates/sruja-lsp** – LSP server (for future VS Code extension)
-- **crates/sruja-wasm** – WASM build for browser/Node
-- **crates/sruja-diagnostics** – Diagnostic types
-- **book/** – mdBook documentation
+| Crate | Purpose |
+|-------|---------|
+| **sruja-cli** | CLI: lint, export, scan, why, drift |
+| **sruja-language** | Parser and AST |
+| **sruja-engine** | Validation rules |
+| **sruja-export** | Markdown, Mermaid, JSON export |
+| **sruja-lsp** | LSP server (VS Code extension) |
+| **sruja-wasm** | WASM build for browser/Node |
+| **sruja-diagnostics** | Diagnostic types |
+| **sruja-app** | Desktop app (Dioxus) — architecture collaboration |
+| **sruja-chat** | Chat, agents, extraction |
+| **sruja-graph** | Knowledge graph for decisions |
+| **sruja-extract** | LLM extraction |
+| **sruja-scan** | Repo scanning (npm, cargo) |
+| **sruja-mcp** | MCP server |
+| **book/** | mdBook documentation |
 
-## VS Code extension (planned)
+## Run sruja-app
 
-The VS Code extension will be reimplemented to integrate with the Rust LSP (`sruja-lsp`) and provide:
+```bash
+export OPENROUTER_API_KEY="sk-or-v1-..."
+cargo run -p sruja-app
+```
 
-- Diagnostics, syntax highlighting, symbol navigation, go to definition
-- Markdown export and other editor features
+## VS Code extension
 
-No Node/TypeScript extension code remains in this repo until that implementation.
+The extension in `extension/` provides syntax highlighting and LSP integration for `.sruja` files.

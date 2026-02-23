@@ -254,7 +254,7 @@ system "User Service" {
     technology "Node.js"
   }
   
-  db = datastore "PostgreSQL" {
+  db = database "PostgreSQL" {
     technology "PostgreSQL"
   }
   

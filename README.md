@@ -43,7 +43,56 @@ git clone https://github.com/sruja-ai/sruja.git && cd sruja && make build
 
 Then ensure the install directory is on your `PATH` (install script uses `~/.local/bin` by default; Option B uses `~/.cargo/bin`; Option C uses `target/release`).
 
-**Create `example.sruja`:**
+### Get Immediate Architecture Insights (Zero Setup)
+
+**Scan any codebase and get architecture intelligence in seconds – no API keys, no configuration required:**
+
+```bash
+# Get immediate insights about your architecture
+sruja quickstart
+
+# Or specify a repository path
+sruja quickstart -r /path/to/your/repo
+
+# Get JSON output for programmatic use
+sruja quickstart --format json
+```
+
+**What you get:**
+- 📊 Architecture inventory (modules, services, databases, APIs)
+- 💚 Health score with visual indicator
+- 🔍 Top 3 critical findings with severity levels
+- 🎯 Top 3 actionable fixes with priority and impact
+- 📎 Evidence references from your code
+- 🚀 Clear next steps
+
+**Example output:**
+```
+══════════════════════════════════════════════════════════════════════
+🚀 Sruja Quickstart - Architecture Intelligence
+══════════════════════════════════════════════════════════════════════
+
+📂 Scanning repository...
+   ✓ Found 753 components
+
+──────────────────────────────────────────────────────────────────────
+📊 Architecture Inventory
+──────────────────────────────────────────────────────────────────────
+  Components detected:
+    • 750 modules
+    • 1 services
+    • 2 databases
+    • 1533 total dependencies
+
+──────────────────────────────────────────────────────────────────────
+💚 Architecture Health Score: 75/100
+──────────────────────────────────────────────────────────────────────
+  ███████████████░░░░░ ⚠ Fair
+```
+
+### Define Architecture Manually (Optional)
+
+If you want to explicitly define your architecture in code, create `example.sruja`:
 
 ```sruja
 person = kind "Person"
@@ -101,6 +150,14 @@ sruja export markdown example.sruja
 - **Tree View**: `sruja tree`
 - **CLI**: Full command-line interface
 
+### 🏗️ Architecture Intelligence (Beta)
+
+- **CLI first:** `sruja why`, `sruja drift`, `sruja scan` — zero API key for first value
+- **sruja-app** (optional): Desktop app for chat, agents, extraction — requires LLM key
+- **Query:** Ask "Why did we choose Kafka?" with deterministic evidence; LLM enriches when available
+
+**Strategy:** [architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md](architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md)
+
 ---
 
 ## Documentation
@@ -113,6 +170,7 @@ sruja export markdown example.sruja
 - [First Contribution](docs/FIRST_CONTRIBUTION.md) - Step-by-step guide
 - [Language Specification](docs/LANGUAGE_SPECIFICATION.md) - Complete DSL reference
 - [Design Philosophy](docs/DESIGN_PHILOSOPHY.md) - Language design principles
+- [Architecture Intelligence](docs/ARCHITECTURE_INTELLIGENCE.md) - CLI-first drift/why, zero-key; [Strategy](architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md)
 
 **Content Creation:**
 
@@ -126,10 +184,20 @@ sruja export markdown example.sruja
 ```
 sruja/
 ├── crates/               # Rust crates
-│   ├── sruja-core/       # Core parsing and validation engine
+│   ├── sruja-cli/        # CLI (lint, export, scan, why, drift)
+│   ├── sruja-language/   # Parser and AST
+│   ├── sruja-engine/     # Validation rules
+│   ├── sruja-export/     # Markdown, Mermaid, JSON export
+│   ├── sruja-lsp/        # Language Server Protocol
 │   ├── sruja-wasm/       # WebAssembly bindings
-│   └── sruja-lsp/        # Language Server Protocol
-├── extension/            # VS Code extension (syntax highlighting, diagnostics)
+│   ├── sruja-app/        # Desktop app (Slack-style architecture collaboration)
+│   ├── sruja-chat/       # Chat, agents, extraction (architecture intelligence)
+│   ├── sruja-graph/      # Knowledge graph for decisions
+│   ├── sruja-extract/    # LLM extraction (decisions, requirements)
+│   ├── sruja-scan/       # Repo scanning (npm, cargo)
+│   └── sruja-mcp/        # MCP server for AI tooling
+├── extension/            # VS Code extension (syntax highlighting, LSP)
+├── book/                 # mdBook documentation
 └── examples/             # Example .sruja files
 ```
 
