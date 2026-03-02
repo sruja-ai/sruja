@@ -1,0 +1,37 @@
+// Auto-generated architecture baseline from Sruja quickstart
+// Edit this file to match your intended architecture
+
+// Component kinds
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+// External actors
+user = person "User" {
+  description "End user of the application"
+}
+
+// System
+app = system "Application" {
+}
+
+// Databases
+schemas = database "schemas" {
+  technology "Rust"
+}
+
+// Key relationships (sample)
+modulesrc -> src_graph_store_rs "uses"
+src_graph_store_rs -> src_graph_store_rsload_or_build_graph "uses"
+src_graph_store_rs -> src_graph_store_rsload_graph "uses"
+src_graph_store_rs -> src_graph_store_rsbuild_and_save_graph "uses"
+src_graph_store_rs -> src_graph_store_rssave_graph "uses"
+modulesrc_ai -> src_ai_commit_select_rs "uses"
+src_ai_commit_select_rs -> src_ai_commit_select_rsCommitCandidate "uses"
+src_ai_commit_select_rs -> src_ai_commit_select_rsgit_log_commits "uses"
+src_ai_commit_select_rs -> src_ai_commit_select_rsscore_one "uses"
+src_ai_commit_select_rs -> src_ai_commit_select_rsscore_commits "uses"
+
+// Run 'sruja lint architecture.sruja' to validate
+// Run 'sruja drift -r . -a architecture.sruja' to compare code vs baseline
