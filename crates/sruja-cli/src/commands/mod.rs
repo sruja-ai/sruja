@@ -16,7 +16,7 @@ pub use version::version;
 pub use dsl::{
     compile, diff, explain, export, fmt, import, lint, list_elements, lsp, tree, validate,
 };
-pub use scan::{drift, quickstart, scan, why};
+pub use scan::{drift, drift_pr, quickstart, scan, why};
 pub use analyze::{analyze, complexity, semantic_analyze};
 pub use runtime::runtime_analyze;
 pub use intent::{intent_check, intent_propose};

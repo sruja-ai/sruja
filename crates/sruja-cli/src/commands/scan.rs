@@ -757,3 +757,235 @@ fn sanitize_id(s: &str) -> String {
      .trim_start_matches(|c: char| c.is_numeric())
      .to_string()
 }
+
+/// PR-scoped drift: compare base and head refs to find NEW violations
+pub async fn drift_pr(
+    repo_root: &str,
+    base_ref: Option<&str>,
+    head_ref: Option<&str>,
+    format: &str,
+) -> Result<(), CliError> {
+    let repo_path = Path::new(repo_root);
+    if !repo_path.exists() {
+        return Err(CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {}", repo_root),
+        )));
+    }
+
+    let base = base_ref.unwrap_or("origin/main");
+    let head = head_ref.unwrap_or("HEAD");
+
+    eprintln!("🔍 PR-Scoped Drift Detection");
+    eprintln!("   Base: {} | Head: {}", base, head);
+    eprintln!();
+
+    // Check if git is available
+    let git_check = std::process::Command::new("git")
+        .args(["rev-parse", "--is-inside-work-tree"])
+        .current_dir(repo_path)
+        .output();
+
+    
+    if !git_check.is_ok() || !git_check.unwrap().status.success() {
+        return Err(CliError::Validation(
+            "Not a git repository. PR-scoped drift requires git.".to_string(),
+        ));
+    }
+
+    // Get list of changed files between base and head
+    let changed_files_output = std::process::Command::new("git")
+        .args(["diff", "--name-only", &format!("{}...{}", base, head)])
+        .current_dir(repo_path)
+        .output()
+        .map_err(|e| CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Failed to get changed files: {}", e),
+        )) )?;
+    
+    let changed_files: Vec<String> = String::from_utf8_lossy(&changed_files_output.stdout)
+        .lines()
+        .map(|s| s.trim().to_string())
+        .collect();
+    
+    if changed_files.is_empty() {
+        eprintln!("✅ No changed files detected between {} in {}", base, head);
+        return Ok(());
+    }
+    
+    eprintln!("📝 Changed files: {}", changed_files.len());
+    
+    // Scan current (head) state
+    let head_graph = scan_repo(repo_path)?;
+    let head_drift = sruja_diff::detect_architectural_drift(&head_graph);
+    
+    // Try to get base graph from cache
+    let cache_path = repo_path.join(".sruja").join("cache").join(format!("{}.json", base.replace("/", "_").replace(".", "_")));
+    let base_graph = if cache_path.exists() {
+        let content = fs::read_to_string(cache_path)?;
+        serde_json::from_str(&content).map_err(CliError::Json)?
+    } else {
+        scan_repo(repo_path)?
+    };
+    
+    // Compare: what violations exist in head that don't exist in base
+    let base_drift = sruja_diff::detect_architectural_drift(&base_graph);
+    
+    let new_violations: Vec<_> = head_drift
+        .violations
+        .iter()
+        .filter(|hv| {
+            !base_drift.violations.iter().any(|bv| {
+                bv.kind == hv.kind && bv.message == hv.message && bv.location == hv.location
+            })
+        })
+        .collect();
+    
+    let result = PrDriftResult {
+        base_ref: base_ref.unwrap_or("origin/main").to_string(),
+        head_ref: head_ref.unwrap_or("HEAD").to_string(),
+        changed_files,
+        base_health: base_drift.health_score,
+        head_health: head_drift.health_score,
+        new_violations: new_violations.iter().map(|v| PrViolation {
+            severity: format!("{:?}", v.severity),
+            kind: format!("{:?}", v.kind),
+            message: v.message.clone(),
+            location: v.location.clone(),
+            suggestion: v.suggestion.clone(),
+        }).collect(),
+        base_violations_count: base_drift.violations.len(),
+        head_violations_count: head_drift.violations.len(),
+    };
+    
+    match format {
+        "json" => {
+            let output = serde_json::to_string_pretty(&result)?;
+            println!("{}", output);
+        }
+        "github-actions" => {
+            print_github_actions_output(&result);
+        }
+        _ => {
+            print_pr_drift_text(&result);
+        }
+    }
+    
+    // Exit with error if new violations found
+    if !result.new_violations.is_empty() {
+        std::process::exit(0);
+    }
+    
+    Ok(())
+}
+fn print_pr_drift_text(result: &PrDriftResult) {
+    println!("{}", "═".repeat(70));
+    println!("🔍 PR-Scoped Drift Detection");
+    println!("{}", "═".repeat(70));
+    println!();
+    println!("Base: {} → Head: {}", result.base_ref, result.head_ref);
+    println!("Changed files: {}", result.changed_files.len());
+    println!();
+    
+    println!("📊 Health Score Change");
+    println!("{}", "-".repeat(40));
+    if result.head_health < result.base_health {
+        println!(
+            "  {} → {} (⚠️ -{})",
+            result.base_health, result.head_health,
+            result.base_health - result.head_health
+        );
+    } else if result.head_health > result.base_health {
+        println!(
+            "  {} → {} (✓ +{})",
+            result.base_health, result.head_health,
+            result.head_health - result.base_health
+        );
+    } else {
+        println!("  {} → {} (no change)", result.base_health, result.head_health);
+    }
+    println!();
+    
+    if result.new_violations.is_empty() {
+        println!("{}", "-".repeat(40));
+        println!("✅ No NEW architectural violations introduced in this PR!");
+        println!("{}", "-".repeat(40));
+        println!();
+        println!("Existing violations: {} (base) → {} (head)", 
+            result.base_violations_count, result.head_violations_count);
+    } else {
+        println!("🚨 NEW Violations Introduced in This PR ({})", result.new_violations.len());
+        println!("{}", "-".repeat(40));
+        
+        for v in &result.new_violations {
+            let icon = match v.severity.as_str() {
+                "Error" => "❌",
+                "Warning" => "⚠️",
+                _ => "ℹ️",
+            };
+            println!();
+            println!("  {} [{}] {}", icon, v.severity.to_uppercase(), v.message);
+            if let Some(ref loc) = v.location {
+                println!("     📍 {}", loc);
+            }
+            if let Some(ref s) = v.suggestion {
+                println!("     💡 {}", s);
+            }
+        }
+        
+        if result.new_violations.len() > 3 {
+            println!();
+            println!("     ... and {} more", result.new_violations.len() - 3);
+        }
+        
+        println!();
+        println!(
+            "⚠️  This PR introduces {} new violation(s). Consider fixing before merge.",
+            result.new_violations.len()
+        );
+        println!();
+    }
+    
+    println!("{}", "═".repeat(70));
+}
+fn print_github_actions_output(result: &PrDriftResult) {
+    for v in &result.new_violations {
+        let level = match v.severity.as_str() {
+            "Error" => "error",
+            "Warning" => "warning",
+            _ => "notice",
+        };
+        if let Some(ref loc) = v.location {
+            println!("::{} file={},title=Sruja {}::{}", level, loc, v.kind, v.message);
+        } else {
+            println!("::{} title=Sruja {}::{}", level, v.kind, v.message);
+        }
+    }
+    
+    if result.new_violations.is_empty() {
+        println!("::notice title=Sruja::✅ No new architectural violations. Health: {} → {}", 
+            result.base_health, result.head_health);
+    } else {
+        println!("::error title=Sruja::🚨 {} new violation(s) introduced. Health: {} → {}", 
+            result.new_violations.len(), result.base_health, result.head_health);
+    }
+}
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct PrDriftResult {
+    base_ref: String,
+    head_ref: String,
+    changed_files: Vec<String>,
+    base_health: u8,
+    head_health: u8,
+    new_violations: Vec<PrViolation>,
+    base_violations_count: usize,
+    head_violations_count: usize,
+}
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct PrViolation {
+    severity: String,
+    kind: String,
+    message: String,
+    location: Option<String>,
+    suggestion: Option<String>,
+}

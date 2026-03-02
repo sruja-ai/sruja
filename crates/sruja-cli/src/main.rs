@@ -150,6 +150,21 @@ enum Commands {
         #[arg(long)]
         violations_only: bool,
     },
+    /// PR-scoped drift: detect only NEW violations in a PR
+    DriftPr {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Base ref (e.g. main, origin/main)
+        #[arg(long, short = 'b')]
+        base: Option<String>,
+        /// Head ref (defaults to HEAD)
+        #[arg(long, short = 'H')]
+        head: Option<String>,
+        /// Output format (text, json, github-actions)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
     /// Quickstart: Get immediate architecture insights (zero-key, deterministic)
     Quickstart {
         /// Path to repository root (defaults to current directory)
@@ -326,6 +341,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 violations_only,
             )
             .await
+        }
+        Commands::DriftPr {
+            repo,
+            base,
+            head,
+            format,
+        } => {
+            commands::drift_pr(&repo, base.as_deref(), head.as_deref(), &format).await
         }
         Commands::Quickstart { path, format, generate_baseline } => commands::quickstart(&path, &format, generate_baseline).await,
         Commands::Complexity {
