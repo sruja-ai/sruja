@@ -629,7 +629,11 @@ fn print_drift_text(result: &sruja_diff::DriftReport, violations_only: bool) {
     println!("{}", "═".repeat(60));
 }
 
-pub async fn quickstart(repo_root: &str, format: &str) -> Result<(), CliError> {
+pub async fn quickstart(
+    repo_root: &str,
+    format: &str,
+    generate_baseline: bool,
+) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
 
     if !repo_path.exists() {
@@ -654,6 +658,16 @@ pub async fn quickstart(repo_root: &str, format: &str) -> Result<(), CliError> {
     eprintln!("   ✓ Analysis complete");
     eprintln!();
 
+    if generate_baseline {
+        eprintln!("📝 Generating architecture baseline...");
+        let baseline = generate_baseline_from_graph(&graph);
+        let baseline_path = repo_path.join("architecture.sruja");
+        fs::write(&baseline_path, &baseline)?;
+        eprintln!("   ✓ Baseline written to {}", baseline_path.display());
+        eprintln!("   💡 Edit this file to match your intended architecture");
+        eprintln!();
+    }
+
     match format {
         "json" => {
             let output = QuickstartResult::from_drift_report(&drift_report, &graph, repo_root);
@@ -665,4 +679,81 @@ pub async fn quickstart(repo_root: &str, format: &str) -> Result<(), CliError> {
     }
 
     Ok(())
+}
+
+fn generate_baseline_from_graph(graph: &Graph) -> String {
+    let mut dsl = String::new();
+    dsl.push_str("// Auto-generated architecture baseline from Sruja quickstart\n");
+    dsl.push_str("// Edit this file to match your intended architecture\n\n");
+    
+    let services: Vec<_> = graph.nodes.iter().filter(|n| n.kind == NodeKind::Service).collect();
+    let databases: Vec<_> = graph.nodes.iter().filter(|n| n.kind == NodeKind::Database).collect();
+    let modules: Vec<_> = graph.nodes.iter().filter(|n| n.kind == NodeKind::Module).collect();
+    
+    dsl.push_str("// Component kinds\n");
+    dsl.push_str("person = kind \"Person\"\n");
+    dsl.push_str("system = kind \"System\"\n");
+    dsl.push_str("container = kind \"Container\"\n");
+    dsl.push_str("database = kind \"Database\"\n\n");
+    
+    dsl.push_str("// External actors\n");
+    dsl.push_str("user = person \"User\" {\n");
+    dsl.push_str("  description \"End user of the application\"\n");
+    dsl.push_str("}\n\n");
+    
+    if !services.is_empty() || !modules.is_empty() {
+        dsl.push_str("// System\n");
+        dsl.push_str("app = system \"Application\" {\n");
+        
+        for service in &services {
+            let name = sanitize_id(&service.label);
+            dsl.push_str(&format!("  {} = container \"{}\" {{\n", name, service.label));
+            if let Some(ref tech) = service.technology {
+                dsl.push_str(&format!("    technology \"{}\"\n", tech));
+            }
+            dsl.push_str("  }\n");
+        }
+        
+        dsl.push_str("}\n\n");
+    }
+    
+    if !databases.is_empty() {
+        dsl.push_str("// Databases\n");
+        for db in &databases {
+            let name = sanitize_id(&db.label);
+            dsl.push_str(&format!("{} = database \"{}\" {{\n", name, db.label));
+            if let Some(ref tech) = db.technology {
+                dsl.push_str(&format!("  technology \"{}\"\n", tech));
+            }
+            dsl.push_str("}\n");
+        }
+        dsl.push_str("\n");
+    }
+    
+    if !graph.edges.is_empty() {
+        dsl.push_str("// Key relationships (sample)\n");
+        for edge in graph.edges.iter().take(10) {
+            let source = sanitize_id(&edge.source);
+            let target = sanitize_id(&edge.target);
+            dsl.push_str(&format!("{} -> {} \"uses\"\n", source, target));
+        }
+        dsl.push_str("\n");
+    }
+    
+    dsl.push_str("// Run 'sruja lint architecture.sruja' to validate\n");
+    dsl.push_str("// Run 'sruja drift -r . -a architecture.sruja' to compare code vs baseline\n");
+    
+    dsl
+}
+
+fn sanitize_id(s: &str) -> String {
+    s.replace("-", "_")
+     .replace(" ", "_")
+     .replace(".", "_")
+     .replace("/", "_")
+     .chars()
+     .filter(|c| c.is_alphanumeric() || *c == '_')
+     .collect::<String>()
+     .trim_start_matches(|c: char| c.is_numeric())
+     .to_string()
 }

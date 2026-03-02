@@ -158,6 +158,9 @@ enum Commands {
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
+        /// Generate a draft architecture.sruja baseline from scan
+        #[arg(long)]
+        generate_baseline: bool,
     },
     /// Analyze structural complexity (treewidth, SCC, centrality, coupling)
     Complexity {
@@ -324,7 +327,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .await
         }
-        Commands::Quickstart { path, format } => commands::quickstart(&path, &format).await,
+        Commands::Quickstart { path, format, generate_baseline } => commands::quickstart(&path, &format, generate_baseline).await,
         Commands::Complexity {
             repo,
             format,
