@@ -50,9 +50,9 @@ fn validator_with_default_rules_runs_cycle_detection() {
     let validator = Validator::with_default_rules();
     let diagnostics = validator.validate_sync(&program);
 
-    let has_cycle_diag = diagnostics.iter().any(|d| {
-        d.message.contains("Circular") || d.message.to_lowercase().contains("cycle")
-    });
+    let has_cycle_diag = diagnostics
+        .iter()
+        .any(|d| d.message.contains("Circular") || d.message.to_lowercase().contains("cycle"));
     assert!(
         has_cycle_diag,
         "Cycle in DSL should produce a cycle-related diagnostic; got: {:?}",

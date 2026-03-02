@@ -1,0 +1,12 @@
+════════════════════════════════════════════════════════════
+Architecture diff (base → head)
+  Base: evaluation/real-world-test/timelines/express/graph_master.json  |  Head: evaluation/real-world-test/timelines/express/graph_HEAD.json
+════════════════════════════════════════════════════════════
+
+📊 Summary
+----------------------------------------
+  New at head: 0 components  |  Removed since base: 0 components
+  New edges: 0  |  Removed edges: 0
+  Health (head): 100/100
+
+════════════════════════════════════════════════════════════

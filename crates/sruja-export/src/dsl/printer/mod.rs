@@ -58,7 +58,9 @@ impl DslPrinter {
                 TopLevelItem::FeedbackLoop(loop_data) => {
                     loops::print_feedback_loop(&mut out, loop_data)
                 }
-                TopLevelItem::CausalLoop(loop_data) => loops::print_causal_loop(&mut out, loop_data),
+                TopLevelItem::CausalLoop(loop_data) => {
+                    loops::print_causal_loop(&mut out, loop_data)
+                }
             }
         }
 

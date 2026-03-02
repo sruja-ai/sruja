@@ -15,7 +15,8 @@ pub fn AdminPanel(
     let server = use_context::<ServerContext>();
     let mut name = use_signal(String::new);
     let mut role = use_signal(|| "Subsystem Expert".to_string());
-    let mut system_prompt = use_signal(|| "You are an architecture reviewer. Respond concisely.".to_string());
+    let mut system_prompt =
+        use_signal(|| "You are an architecture reviewer. Respond concisely.".to_string());
     let mut knowledge_context = use_signal(String::new);
     let mut model = use_signal(|| "openai/gpt-4o-mini".to_string());
     let create_status = use_signal(|| Option::<String>::None);

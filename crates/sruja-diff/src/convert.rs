@@ -14,16 +14,8 @@ pub fn program_to_graph(program: &Program) -> Graph {
     for (fqn, elem) in &elements {
         let a = &elem.assignment;
         let kind = element_kind_to_node_kind(&a.kind);
-        let label = a
-            .title
-            .as_deref()
-            .unwrap_or(&a.name)
-            .to_string();
-        let technology = a
-            .body
-            .as_ref()
-            .and_then(|b| b.technology.as_ref())
-            .cloned();
+        let label = a.title.as_deref().unwrap_or(&a.name).to_string();
+        let technology = a.body.as_ref().and_then(|b| b.technology.as_ref()).cloned();
 
         nodes.push(Node {
             id: fqn.clone(),

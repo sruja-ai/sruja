@@ -9,10 +9,7 @@ use rig::completion::{message::Message as RigMessage, Chat};
 use rig::providers::openrouter;
 
 /// Build system message from config: core prompt + optional knowledge context + optional graph RAG context.
-fn build_system_message(
-    cfg: &crate::AgentConfig,
-    graph_context: Option<&str>,
-) -> String {
+fn build_system_message(cfg: &crate::AgentConfig, graph_context: Option<&str>) -> String {
     let mut s = cfg.system_prompt.clone();
     if let Some(ref ctx) = cfg.knowledge_context {
         if !ctx.is_empty() {
@@ -81,10 +78,7 @@ pub async fn generate_agent_reply(
     }
 
     let client = openrouter::Client::from_env();
-    let rig_agent = client
-        .agent(&model)
-        .preamble(&system_message)
-        .build();
+    let rig_agent = client.agent(&model).preamble(&system_message).build();
 
     let response = rig_agent
         .chat(prompt, chat_history)

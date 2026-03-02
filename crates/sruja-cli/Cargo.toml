@@ -25,12 +25,14 @@ sruja-semantic = { path = "../sruja-semantic" }
 sruja-runtime = { path = "../sruja-runtime" }
 sruja-intent = { path = "../sruja-intent" }
 sruja-report = { path = "../sruja-report" }
+sruja-extract = { path = "../sruja-extract" }
 clap = { workspace = true }
 tokio = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
+rig = { package = "rig-core", version = "0.31", default-features = false, features = ["reqwest-rustls"] }
 
 [dev-dependencies]
 tempfile = "3.10"

@@ -110,10 +110,9 @@ pub async fn semantic_analyze(repo_root: &str, format: &str) -> Result<(), CliEr
         .collect();
 
     let provider = StubEmbeddingProvider::new();
-    let report =
-        run_semantic_analyze(&components, &structural_edges, &provider, None).await.map_err(
-            |e| CliError::Validation(format!("Semantic analysis failed: {}", e)),
-        )?;
+    let report = run_semantic_analyze(&components, &structural_edges, &provider, None)
+        .await
+        .map_err(|e| CliError::Validation(format!("Semantic analysis failed: {}", e)))?;
 
     match format {
         "json" => {
@@ -178,8 +177,14 @@ pub async fn semantic_analyze(repo_root: &str, format: &str) -> Result<(), CliEr
             eprintln!("📊 Summary");
             eprintln!("   Components: {}", report.summary.component_count);
             eprintln!("   Bounded contexts: {}", report.summary.context_count);
-            eprintln!("   Hidden couplings: {}", report.summary.hidden_coupling_count);
-            eprintln!("   Vocabulary leaks: {}", report.summary.vocabulary_leak_count);
+            eprintln!(
+                "   Hidden couplings: {}",
+                report.summary.hidden_coupling_count
+            );
+            eprintln!(
+                "   Vocabulary leaks: {}",
+                report.summary.vocabulary_leak_count
+            );
             eprintln!("   Health score: {}/100", report.summary.health_score);
             eprintln!();
             if !report.contexts.is_empty() {
@@ -242,17 +247,18 @@ pub async fn analyze(
         .collect();
 
     let provider = StubEmbeddingProvider::new();
-    let semantic_report =
-        run_semantic_analyze(&components, &structural_edges, &provider, None).await.map_err(
-            |e| CliError::Validation(format!("Semantic analysis failed: {}", e)),
-        )?;
+    let semantic_report = run_semantic_analyze(&components, &structural_edges, &provider, None)
+        .await
+        .map_err(|e| CliError::Validation(format!("Semantic analysis failed: {}", e)))?;
 
     let intent_report = {
         let intent_dir = intent_path
             .map(PathBuf::from)
             .unwrap_or_else(|| repo_path.join("docs").join("architecture"));
         let mut intelligence = IntentIntelligence::new();
-        let models = intelligence.load_from_directory(&intent_dir).unwrap_or_default();
+        let models = intelligence
+            .load_from_directory(&intent_dir)
+            .unwrap_or_default();
         if models.is_empty() {
             None
         } else {
@@ -269,7 +275,9 @@ pub async fn analyze(
     let runtime_report = traces_path.and_then(|p| {
         let path = Path::new(p);
         if path.exists() {
-            load_traces(path).ok().map(|traces| sruja_runtime::build_report(&traces))
+            load_traces(path)
+                .ok()
+                .map(|traces| sruja_runtime::build_report(&traces))
         } else {
             None
         }
@@ -360,12 +368,18 @@ pub async fn analyze(
     eprintln!();
     eprintln!("📊 Layer 2: Semantic");
     eprintln!("   Components: {}", semantic_report.summary.component_count);
-    eprintln!("   Bounded contexts: {}", semantic_report.summary.context_count);
+    eprintln!(
+        "   Bounded contexts: {}",
+        semantic_report.summary.context_count
+    );
     eprintln!(
         "   Hidden couplings: {}",
         semantic_report.summary.hidden_coupling_count
     );
-    eprintln!("   Health score: {}/100", semantic_report.summary.health_score);
+    eprintln!(
+        "   Health score: {}/100",
+        semantic_report.summary.health_score
+    );
     if let Some(ref ir) = intent_report {
         eprintln!();
         eprintln!("📋 Layer 3: Intent");
@@ -381,7 +395,10 @@ pub async fn analyze(
     if let Some(ref r) = runtime_report {
         eprintln!();
         eprintln!("⏱ Layer 4: Runtime");
-        eprintln!("   Root traces: {} | Total spans: {}", r.trace_count, r.total_spans);
+        eprintln!(
+            "   Root traces: {} | Total spans: {}",
+            r.trace_count, r.total_spans
+        );
         eprintln!(
             "   Hotspots: {} | Emergent cycles: {}",
             r.hotspots.len(),
@@ -504,7 +521,13 @@ fn print_scc_section(nodes: &[String], edges: &[(String, String)]) {
         if !cyclic.is_empty() {
             println!("  🔗 Cyclic Components:");
             for scc in cyclic.iter().take(5) {
-                let nodes_str = scc.nodes.iter().take(3).cloned().collect::<Vec<_>>().join(" → ");
+                let nodes_str = scc
+                    .nodes
+                    .iter()
+                    .take(3)
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(" → ");
                 let suffix = if scc.nodes.len() > 3 {
                     format!(" +{} more", scc.nodes.len() - 3)
                 } else {
@@ -532,23 +555,29 @@ fn print_treewidth_section(nodes: &[String], edges: &[(String, String)]) {
     let result = analyzer.analyze(nodes, edges);
 
     println!();
-    println!("  Treewidth: {} ({})", result.treewidth, result.complexity_rating);
+    println!(
+        "  Treewidth: {} ({})",
+        result.treewidth, result.complexity_rating
+    );
     println!();
 
     if !result.hotspots.is_empty() {
         println!("  🔥 Complexity Hotspots:");
         for hotspot in result.hotspots.iter().take(5) {
-            let nodes_str = hotspot.nodes.iter().take(3).cloned().collect::<Vec<_>>().join(", ");
+            let nodes_str = hotspot
+                .nodes
+                .iter()
+                .take(3)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(", ");
             let suffix = if hotspot.nodes.len() > 3 {
                 format!(" +{} more", hotspot.nodes.len() - 3)
             } else {
                 String::new()
             };
             println!();
-            println!(
-                "    • [tw={}] {}{}",
-                hotspot.treewidth, nodes_str, suffix
-            );
+            println!("    • [tw={}] {}{}", hotspot.treewidth, nodes_str, suffix);
             println!("      → {}", hotspot.suggested_refactor.description);
         }
         println!();
@@ -587,7 +616,11 @@ fn print_centrality_section(nodes: &[String], edges: &[(String, String)]) {
         println!();
     }
 
-    let hotspot_count = result.hotspots.iter().filter(|h| h.combined_score > 0.5).count();
+    let hotspot_count = result
+        .hotspots
+        .iter()
+        .filter(|h| h.combined_score > 0.5)
+        .count();
     if hotspot_count > 0 {
         println!(
             "  ⚠️  {} high-combined-score hotspots detected",

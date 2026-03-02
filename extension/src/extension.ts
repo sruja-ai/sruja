@@ -6,20 +6,89 @@ import { SrujaDefinitionProvider, SrujaHoverProvider, SrujaDocumentSymbolProvide
 import { SrujaSkillsTreeProvider } from "./skillsTree";
 
 const DIAGNOSTIC_COLLECTION_ID = "sruja";
-let diagnosticCollection: vscode.DiagnosticCollection | undefined;
+const LINT_DEBOUNCE_MS = 400;
 
-export function activate(context: vscode.ExtensionContext): void {
-  diagnosticCollection = vscode.languages.createDiagnosticCollection(DIAGNOSTIC_COLLECTION_ID);
-  context.subscriptions.push(diagnosticCollection);
+class SrujaExtension {
+  private diagnosticCollection: vscode.DiagnosticCollection;
+  private pendingLint = new Map<string, ReturnType<typeof setTimeout>>();
 
-  const pendingLint = new Map<string, ReturnType<typeof setTimeout>>();
+  constructor(private context: vscode.ExtensionContext) {
+    this.diagnosticCollection = vscode.languages.createDiagnosticCollection(DIAGNOSTIC_COLLECTION_ID);
+    context.subscriptions.push(this.diagnosticCollection);
+  }
 
-  const runLintForDoc = (doc: vscode.TextDocument) => {
-    if (doc.languageId !== "sruja") return;
-    if (!diagnosticCollection) return;
-    updateDiagnostics(context, doc, diagnosticCollection).catch((err) => {
-      if (diagnosticCollection && doc.uri) {
-        diagnosticCollection.set(doc.uri, [
+  activate(): void {
+    this.registerLintHandlers();
+    this.registerCommands();
+    this.registerProviders();
+    this.registerTreeView();
+    this.lintOpenDocuments();
+  }
+
+  deactivate(): void {
+    this.diagnosticCollection.dispose();
+  }
+
+  private registerLintHandlers(): void {
+    const { context, diagnosticCollection, pendingLint } = this;
+
+    context.subscriptions.push(
+      vscode.workspace.onDidOpenTextDocument((doc) => {
+        if (doc.languageId === "sruja") this.runLintForDoc(doc);
+      }),
+      vscode.workspace.onDidSaveTextDocument((doc) => {
+        if (doc.languageId === "sruja") this.runLintForDoc(doc);
+      }),
+      vscode.workspace.onDidChangeTextDocument((e) => {
+        if (e.document.languageId === "sruja") this.scheduleLint(e.document);
+      }),
+      vscode.workspace.onDidCloseTextDocument((doc) => {
+        if (doc.languageId === "sruja") {
+          this.clearPendingLint(doc.uri.toString());
+          diagnosticCollection.delete(doc.uri);
+        }
+      })
+    );
+  }
+
+  private registerCommands(): void {
+    registerRunValidation(this.context, {
+      diagnosticCollection: this.diagnosticCollection,
+      pendingLint: this.pendingLint,
+    });
+    registerSkillsCommands(this.context);
+    registerExportCommands(this.context);
+  }
+
+  private registerProviders(): void {
+    const { context } = this;
+
+    context.subscriptions.push(
+      vscode.languages.registerDefinitionProvider("sruja", new SrujaDefinitionProvider(context)),
+      vscode.languages.registerHoverProvider("sruja", new SrujaHoverProvider(context)),
+      vscode.languages.registerDocumentSymbolProvider("sruja", new SrujaDocumentSymbolProvider(context))
+    );
+  }
+
+  private registerTreeView(): void {
+    const skillsTreeProvider = new SrujaSkillsTreeProvider(this.context);
+    this.context.subscriptions.push(
+      vscode.window.registerTreeDataProvider("srujaSkillsView", skillsTreeProvider)
+    );
+  }
+
+  private lintOpenDocuments(): void {
+    for (const doc of vscode.workspace.textDocuments) {
+      if (doc.languageId === "sruja") this.runLintForDoc(doc);
+    }
+  }
+
+  private runLintForDoc(doc: vscode.TextDocument): void {
+    if (!this.diagnosticCollection) return;
+
+    updateDiagnostics(this.context, doc, this.diagnosticCollection).catch((err) => {
+      if (this.diagnosticCollection && doc.uri) {
+        this.diagnosticCollection.set(doc.uri, [
           new vscode.Diagnostic(
             new vscode.Range(0, 0, 0, 0),
             `Sruja lint failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -28,75 +97,37 @@ export function activate(context: vscode.ExtensionContext): void {
         ]);
       }
     });
-  };
-
-  const scheduleLint = (doc: vscode.TextDocument) => {
-    const key = doc.uri.toString();
-    const existing = pendingLint.get(key);
-    if (existing) clearTimeout(existing);
-    const t = setTimeout(() => {
-      pendingLint.delete(key);
-      runLintForDoc(doc);
-    }, 400);
-    pendingLint.set(key, t);
-  };
-
-  context.subscriptions.push(
-    vscode.workspace.onDidOpenTextDocument((doc) => {
-      if (doc.languageId === "sruja") runLintForDoc(doc);
-    }),
-    vscode.workspace.onDidSaveTextDocument((doc) => {
-      if (doc.languageId === "sruja") runLintForDoc(doc);
-    }),
-    vscode.workspace.onDidChangeTextDocument((e) => {
-      if (e.document.languageId === "sruja") scheduleLint(e.document);
-    }),
-    vscode.workspace.onDidCloseTextDocument((doc) => {
-      if (doc.languageId === "sruja") {
-        const key = doc.uri.toString();
-        const t = pendingLint.get(key);
-        if (t) {
-          clearTimeout(t);
-          pendingLint.delete(key);
-        }
-        diagnosticCollection?.delete(doc.uri);
-      }
-    })
-  );
-
-  for (const doc of vscode.workspace.textDocuments) {
-    if (doc.languageId === "sruja") runLintForDoc(doc);
   }
 
-  registerRunValidation(context, {
-    diagnosticCollection,
-    pendingLint,
-  });
-  registerSkillsCommands(context);
-  registerExportCommands(context);
+  private scheduleLint(doc: vscode.TextDocument): void {
+    const key = doc.uri.toString();
+    this.clearPendingLint(key);
 
-  const skillsTreeProvider = new SrujaSkillsTreeProvider(context);
-  context.subscriptions.push(
-    vscode.window.registerTreeDataProvider("srujaSkillsView", skillsTreeProvider)
-  );
+    const t = setTimeout(() => {
+      this.pendingLint.delete(key);
+      this.runLintForDoc(doc);
+    }, LINT_DEBOUNCE_MS);
 
-  const definitionProvider = new SrujaDefinitionProvider(context);
-  context.subscriptions.push(
-    vscode.languages.registerDefinitionProvider("sruja", definitionProvider)
-  );
+    this.pendingLint.set(key, t);
+  }
 
-  const hoverProvider = new SrujaHoverProvider(context);
-  context.subscriptions.push(
-    vscode.languages.registerHoverProvider("sruja", hoverProvider)
-  );
+  private clearPendingLint(key: string): void {
+    const existing = this.pendingLint.get(key);
+    if (existing) {
+      clearTimeout(existing);
+      this.pendingLint.delete(key);
+    }
+  }
+}
 
-  const documentSymbolProvider = new SrujaDocumentSymbolProvider(context);
-  context.subscriptions.push(
-    vscode.languages.registerDocumentSymbolProvider("sruja", documentSymbolProvider)
-  );
+let extension: SrujaExtension | undefined;
+
+export function activate(context: vscode.ExtensionContext): void {
+  extension = new SrujaExtension(context);
+  extension.activate();
 }
 
 export function deactivate(): void {
-  diagnosticCollection?.dispose();
-  diagnosticCollection = undefined;
+  extension?.deactivate();
+  extension = undefined;
 }

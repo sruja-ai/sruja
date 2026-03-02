@@ -1,60 +1,57 @@
 # Sruja Real-World Usefulness Test
 
+> **Preferred:** Use `./setup_repos.sh` and `./evaluate_architecture.sh` (shell + sruja CLI, no Python).
+
 ## Goal
 
 Test whether Sruja's AI skills can effectively generate useful architecture documentation from real-world codebases.
 
-## Test Repositories (5 Popular Projects)
+## Test Repositories
 
-Choose 5 diverse, well-known open-source projects:
+### Default set (this directory)
 
-### Recommended List:
+The scripts in this directory use a **default list** defined in `setup_repos.sh` and documented in `test-repos/MANIFEST.md`. To use it:
 
-1. **React** (Frontend Library)
-   - Repo: https://github.com/facebook/react
-   - Why: Large codebase, well-documented, complex architecture
-   - Expected: Component architecture, reconciliation, fiber
+```bash
+# From evaluation/real-world-test
+./setup_repos.sh
+```
 
-2. **Express.js** (Backend Framework)
-   - Repo: https://github.com/expressjs/express
-   - Why: Middleware pattern, routing system
-   - Expected: Request/response flow, middleware chain
+That clones: **express**, **fastapi**, **next.js**, **prometheus**, **django** into `test-repos/`. To evaluate: `./evaluate_architecture.sh express` (or any repo name under `test-repos/`). See [QUICKSTART.md](QUICKSTART.md) for the short path and [README.md](README.md) for the full process.
 
-3. **Next.js** (Full-Stack Framework)
-   - Repo: https://github.com/vercel/next.js
-   - Why: Complex with SSR, routing, build system
-   - Expected: Pages, API routes, build pipeline
+### Alternative / custom repositories
 
-4. **Kubernetes** (Container Orchestration)
-   - Repo: https://github.com/kubernetes/kubernetes
-   - Why: Massive scale, microservices architecture
-   - Expected: Control plane, scheduler, etcd integration
+You can use other repos by cloning them (or adding entries to `setup_repos.sh`). Below is an **alternative** list you can use for manual setup or as inspiration:
 
-5. **Stripe Node SDK** (API Client Library)
-   - Repo: https://github.com/stripe/stripe-node
-   - Why: API client pattern, well-structured
-   - Expected: HTTP client, resource management, auth flow
+1. **React** (Frontend Library) — https://github.com/facebook/react  
+   - Component architecture, reconciliation, fiber
 
-**Alternative options:** Vue.js, FastAPI, Django, MongoDB, PostgreSQL
+2. **Express.js** (Backend Framework) — https://github.com/expressjs/express  
+   - Request/response flow, middleware chain
+
+3. **Next.js** (Full-Stack Framework) — https://github.com/vercel/next.js  
+   - Pages, API routes, build pipeline
+
+4. **Kubernetes** (Container Orchestration) — https://github.com/kubernetes/kubernetes  
+   - Control plane, scheduler, etcd integration
+
+5. **Stripe Node SDK** (API Client Library) — https://github.com/stripe/stripe-node  
+   - HTTP client, resource management, auth flow
+
+**Other options:** Vue.js, FastAPI, Django, MongoDB, PostgreSQL
 
 ---
 
 ## Testing Process
 
-### Step 1: Setup
+### Step 1: Setup (default)
 
 ```bash
-# Create test directory
-mkdir -p sruja-evaluation/repos
-cd sruja-evaluation
-
-# Clone repositories
-git clone https://github.com/facebook/react.git repos/react --depth 1
-git clone https://github.com/expressjs/express.git repos/express --depth 1
-git clone https://github.com/vercel/next.js.git repos/nextjs --depth 1
-git clone https://github.com/kubernetes/kubernetes.git repos/kubernetes --depth 1
-git clone https://github.com/stripe/stripe-node.git repos/stripe-node --depth 1
+# From evaluation/real-world-test: clone default test repos into test-repos/
+./setup_repos.sh
 ```
+
+To use a different layout or repos, create your own directory and clone; then run `./evaluate_architecture.sh /path/to/repo` (repo must contain `architecture.sruja`).
 
 ### Step 2: Generate Architecture with Sruja AI Skills
 

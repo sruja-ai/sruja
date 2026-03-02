@@ -545,10 +545,7 @@ mod drift_correctness {
             .violations
             .iter()
             .any(|v| matches!(v.kind, ViolationKind::GodModule));
-        assert!(
-            has_god,
-            "Drift report should contain god module violation"
-        );
+        assert!(has_god, "Drift report should contain god module violation");
     }
 
     #[test]
@@ -628,13 +625,8 @@ mod cli_invocation {
         let repo = create_test_repo();
         write_file(repo.path(), "main.ts", r#"export const main = 1;"#);
 
-        let (success, stdout, stderr) = run_sruja(&[
-            "drift",
-            "-r",
-            repo.path().to_str().unwrap(),
-            "-f",
-            "json",
-        ]);
+        let (success, stdout, stderr) =
+            run_sruja(&["drift", "-r", repo.path().to_str().unwrap(), "-f", "json"]);
 
         assert!(success, "drift -f json should succeed: stderr={}", stderr);
 

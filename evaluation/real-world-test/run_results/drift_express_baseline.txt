@@ -1,0 +1,60 @@
+════════════════════════════════════════════════════════════
+Baseline Drift: Scan vs DSL
+════════════════════════════════════════════════════════════
+
+📊 Summary
+----------------------------------------
+  Proposed: 27 | Actual (scan): 85
+  New: 27 | Missing: 85 | Edges +8 -50
+  Health Score: 48/100
+
+⚠️  Warnings (14)
+----------------------------------------
+  ⚠ Component 'Cookie Parser' has no connections
+    → Define how 'Cookie Parser' interacts with other components
+  ⚠ Component 'Node.js Runtime' has no connections
+    → Define how 'Node.js Runtime' interacts with other components
+  ⚠ Component 'Framework must handle high request throughput' has no connections
+    → Define how 'Framework must handle high request throughput' interacts with other components
+  ⚠ Component 'NPM Ecosystem' has no connections
+    → Define how 'NPM Ecosystem' interacts with other components
+  ⚠ Component 'Query Parser' has no connections
+    → Define how 'Query Parser' interacts with other components
+  ⚠ Component 'Layer System' has no connections
+    → Define how 'Layer System' interacts with other components
+  ⚠ Component 'Routing Logic' has no connections
+    → Define how 'Routing Logic' interacts with other components
+  ⚠ Component 'metadata' has no connections
+    → Define how 'metadata' interacts with other components
+  ⚠ Component 'Framework must support middleware pattern' has no connections
+    → Define how 'Framework must support middleware pattern' interacts with other components
+  ⚠ Component 'Built-in Middleware' has no connections
+    → Define how 'Built-in Middleware' interacts with other components
+  ⚠ Component 'Framework must support HTTP routing' has no connections
+    → Define how 'Framework must support HTTP routing' interacts with other components
+  ⚠ Component 'Request Handler' has no connections
+    → Define how 'Request Handler' interacts with other components
+  ⚠ Component 'Middleware Chain' has no connections
+    → Define how 'Middleware Chain' interacts with other components
+  ⚠ Component 'Response Handler' has no connections
+    → Define how 'Response Handler' interacts with other components
+
+💡 Suggestions
+----------------------------------------
+  1. Add error handling and retry logic for new synchronous dependencies
+  2. Define how 'Built-in Middleware' interacts with other components
+  3. Define how 'Cookie Parser' interacts with other components
+  4. Define how 'Framework must handle high request throughput' interacts with other components
+  5. Define how 'Framework must support HTTP routing' interacts with other components
+  6. Define how 'Framework must support middleware pattern' interacts with other components
+  7. Define how 'Layer System' interacts with other components
+  8. Define how 'Middleware Chain' interacts with other components
+  9. Define how 'NPM Ecosystem' interacts with other components
+  10. Define how 'Node.js Runtime' interacts with other components
+  11. Define how 'Query Parser' interacts with other components
+  12. Define how 'Request Handler' interacts with other components
+  13. Define how 'Response Handler' interacts with other components
+  14. Define how 'Routing Logic' interacts with other components
+  15. Define how 'metadata' interacts with other components
+
+════════════════════════════════════════════════════════════

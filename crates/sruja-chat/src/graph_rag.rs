@@ -34,7 +34,12 @@ pub async fn retrieve_graph_context(
         parts.push(format!("Answer from graph: {}", query_result.answer));
     }
 
-    for (i, ev) in query_result.evidence.iter().take(max_evidence_items).enumerate() {
+    for (i, ev) in query_result
+        .evidence
+        .iter()
+        .take(max_evidence_items)
+        .enumerate()
+    {
         parts.push(format!(
             "[{}] {}: {}",
             i + 1,

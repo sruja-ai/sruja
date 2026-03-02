@@ -4,17 +4,20 @@
 //! semantic coupling, and vocabulary leakage. No API key required for structural
 //! analysis; embedding providers are optional for semantic features.
 
-pub mod embedding;
-pub mod cluster;
-pub mod vocabulary;
-pub mod similarity;
 pub mod analysis;
+pub mod cluster;
+pub mod embedding;
+pub mod similarity;
+pub mod vocabulary;
 
-pub use analysis::{SemanticCoupling, SemanticCouplingAnalyzer, SemanticCouplingReport, SemanticReport, SemanticSummary, VocabularyLeak};
-pub use embedding::{EmbeddingError, EmbeddingProvider, EmbeddingVector};
+pub use analysis::{
+    SemanticCoupling, SemanticCouplingAnalyzer, SemanticCouplingReport, SemanticReport,
+    SemanticSummary, VocabularyLeak,
+};
 pub use cluster::{BoundedContext, BoundedContextDetector, DomainCluster, DomainClusterer};
-pub use vocabulary::{ComponentVocabulary, VocabularyExtractor, VocabularyGraph};
+pub use embedding::{EmbeddingError, EmbeddingProvider, EmbeddingVector};
 pub use similarity::{cosine_similarity, pairwise_cosine};
+pub use vocabulary::{ComponentVocabulary, VocabularyExtractor, VocabularyGraph};
 
 /// Configuration for semantic analysis.
 #[derive(Debug, Clone)]
@@ -78,13 +81,19 @@ pub async fn analyze(
     let clusterer = DomainClusterer::new(config.min_context_size, config.coupling_threshold);
     let clusters = clusterer.cluster(&ids, &embeddings, &vocabulary);
 
-    let context_detector = BoundedContextDetector::new(config.min_context_size, config.coupling_threshold);
+    let context_detector =
+        BoundedContextDetector::new(config.min_context_size, config.coupling_threshold);
     let contexts = context_detector.detect(&clusters, &vocabulary);
 
     let coupling_analyzer = SemanticCouplingAnalyzer::new(config.coupling_threshold);
     let coupling = coupling_analyzer.analyze(&ids, &embeddings, &vocabulary, structural_edges);
 
-    Ok(SemanticReport::from_parts(contexts, clusters, coupling, &vocabulary))
+    Ok(SemanticReport::from_parts(
+        contexts,
+        clusters,
+        coupling,
+        &vocabulary,
+    ))
 }
 
 #[cfg(test)]
@@ -95,9 +104,18 @@ mod tests {
     #[tokio::test]
     async fn test_analyze_with_stub_provider() {
         let components: Vec<(String, String)> = vec![
-            ("order-service".to_string(), "order service process orders".to_string()),
-            ("payment-service".to_string(), "payment service handles payments".to_string()),
-            ("inventory".to_string(), "inventory stock warehouse".to_string()),
+            (
+                "order-service".to_string(),
+                "order service process orders".to_string(),
+            ),
+            (
+                "payment-service".to_string(),
+                "payment service handles payments".to_string(),
+            ),
+            (
+                "inventory".to_string(),
+                "inventory stock warehouse".to_string(),
+            ),
         ];
         let structural_edges: Vec<(String, String)> = vec![
             ("order-service".to_string(), "payment-service".to_string()),

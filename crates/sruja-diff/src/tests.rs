@@ -87,19 +87,23 @@ mod tests {
         graph.nodes.push(make_node("a", NodeKind::Module, "A"));
         graph.nodes.push(make_node("b", NodeKind::Module, "B"));
         graph.nodes.push(make_node("c", NodeKind::Module, "C"));
-        graph.nodes.push(make_node("orphan", NodeKind::Module, "Orphan"));
+        graph
+            .nodes
+            .push(make_node("orphan", NodeKind::Module, "Orphan"));
         graph.edges.push(make_edge("a", "b", EdgeKind::Calls));
         graph.edges.push(make_edge("b", "c", EdgeKind::Calls));
         graph.edges.push(make_edge("c", "a", EdgeKind::Calls));
 
         let report = detect_architectural_drift(&graph);
 
-        assert!(report.violations.iter().any(|v| {
-            v.kind == ViolationKind::CircularDependency
-        }));
-        assert!(report.violations.iter().any(|v| {
-            v.kind == ViolationKind::OrphanComponent
-        }));
+        assert!(report
+            .violations
+            .iter()
+            .any(|v| { v.kind == ViolationKind::CircularDependency }));
+        assert!(report
+            .violations
+            .iter()
+            .any(|v| { v.kind == ViolationKind::OrphanComponent }));
         assert!(report.health_score <= 100);
         assert_eq!(report.total_modules, 4);
         assert!(!report.suggestions.is_empty());

@@ -141,11 +141,7 @@ impl CentralityAnalyzer {
         betweenness
     }
 
-    fn brandes_bfs(
-        &self,
-        graph: &DirectedGraph,
-        source: &str,
-    ) -> BrandesBfsResult {
+    fn brandes_bfs(&self, graph: &DirectedGraph, source: &str) -> BrandesBfsResult {
         let mut stack: Vec<String> = Vec::new();
         let mut predecessors: HashMap<String, Vec<String>> = HashMap::new();
         let mut sigma: HashMap<String, f64> = HashMap::new();

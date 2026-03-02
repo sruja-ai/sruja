@@ -62,11 +62,7 @@ where
         if text.is_empty() {
             return Err(EmbeddingError::InvalidInput("empty text".to_string()));
         }
-        let rig_emb = self
-            .model
-            .embed_text(text)
-            .await
-            .map_err(map_rig_error)?;
+        let rig_emb = self.model.embed_text(text).await.map_err(map_rig_error)?;
         Ok(f64_to_f32(rig_emb.vec))
     }
 
@@ -75,15 +71,8 @@ where
             return Ok(vec![]);
         }
         let docs: Vec<String> = texts.iter().map(|s| s.to_string()).collect();
-        let rig_embs = self
-            .model
-            .embed_texts(docs)
-            .await
-            .map_err(map_rig_error)?;
-        Ok(rig_embs
-            .into_iter()
-            .map(|e| f64_to_f32(e.vec))
-            .collect())
+        let rig_embs = self.model.embed_texts(docs).await.map_err(map_rig_error)?;
+        Ok(rig_embs.into_iter().map(|e| f64_to_f32(e.vec)).collect())
     }
 
     fn dimension(&self) -> usize {

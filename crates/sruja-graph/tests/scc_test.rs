@@ -39,10 +39,7 @@ fn two_node_cycle_is_one_cyclic_scc() {
 
 #[test]
 fn dag_produces_no_cyclic_sccs() {
-    let result = analyze(
-        &["a", "b", "c"],
-        &[("a", "b"), ("b", "c"), ("a", "c")],
-    );
+    let result = analyze(&["a", "b", "c"], &[("a", "b"), ("b", "c"), ("a", "c")]);
     assert_eq!(result.cyclic_sccs, 0);
     assert_eq!(result.total_sccs, 3);
 }

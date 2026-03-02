@@ -5,8 +5,8 @@ mod architecture;
 mod scan;
 
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
 use sruja_graph::KnowledgeGraph;
+use std::path::{Path, PathBuf};
 
 pub(crate) fn validate_path(path_str: &str) -> Result<PathBuf, String> {
     let path = Path::new(path_str);
@@ -33,20 +33,34 @@ pub(crate) fn validate_path(path_str: &str) -> Result<PathBuf, String> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SrujaTool {
     GetArchitecture,
-    GetDecision { id: String },
+    GetDecision {
+        id: String,
+    },
     GetDecisions,
     GetPolicyConflicts,
-    Query { question: String },
-    GetComponent { id: String },
+    Query {
+        question: String,
+    },
+    GetComponent {
+        id: String,
+    },
     AddDecision {
         title: String,
         decision: String,
         context: String,
     },
-    ScanRepo { path: String },
-    DetectDrift { repo_path: String },
-    Quickstart { repo_path: String },
-    SemanticAnalyze { repo_path: String },
+    ScanRepo {
+        path: String,
+    },
+    DetectDrift {
+        repo_path: String,
+    },
+    Quickstart {
+        repo_path: String,
+    },
+    SemanticAnalyze {
+        repo_path: String,
+    },
     Complexity {
         repo_path: String,
         treewidth: bool,

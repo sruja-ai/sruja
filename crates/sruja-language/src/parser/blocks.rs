@@ -3,18 +3,20 @@
 use std::collections::HashMap;
 
 use nom::{
-    bytes::complete::tag,
-    character::complete::char,
-    combinator::map,
-    multi::many0,
-    sequence::preceded,
-    IResult,
+    bytes::complete::tag, character::complete::char, combinator::map, multi::many0,
+    sequence::preceded, IResult,
 };
 use sruja_diagnostics::SourceLocation;
 
-use crate::ast::{ConstraintEntry, ConstraintsBlock, ConventionEntry, ConventionsBlock, MetaEntry, MetadataBlock, StyleDecl};
+use crate::ast::{
+    ConstraintEntry, ConstraintsBlock, ConventionEntry, ConventionsBlock, MetaEntry, MetadataBlock,
+    StyleDecl,
+};
 
-use super::primitives::{parse_identifier, parse_kv_string, parse_string, parse_string_array, parse_tag_array, ws, ws0, ws1};
+use super::primitives::{
+    parse_identifier, parse_kv_string, parse_string, parse_string_array, parse_tag_array, ws, ws0,
+    ws1,
+};
 
 pub(crate) fn parse_kv_string_block(input: &str) -> IResult<&str, Vec<(String, String)>> {
     use nom::multi::many0 as many0_nom;

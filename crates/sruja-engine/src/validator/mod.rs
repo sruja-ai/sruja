@@ -26,8 +26,8 @@
 //! let diagnostics = validator.validate_sync(&program);
 //! ```
 
-mod config;
 mod builder;
+mod config;
 mod core;
 mod rule;
 

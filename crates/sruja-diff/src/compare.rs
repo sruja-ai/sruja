@@ -1,8 +1,8 @@
 //! Graph comparison: node/edge diffs, violations, and suggestions.
 
 use crate::health::calculate_health_score_from_violations;
-use crate::types::HealthScorePenalties;
 use crate::source_ref::{collect_edge_sources, collect_node_path_source};
+use crate::types::HealthScorePenalties;
 use crate::types::{
     DiffEdge, DiffNode, DiffResult, DiffSummary, EdgeDiff, NodeDiff, NodeMatch, Severity,
     Violation, ViolationKind,

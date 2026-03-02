@@ -311,8 +311,7 @@ impl DriftDetector {
 
                 if !allowed {
                     for rule in &boundary.rules {
-                        if rule.rule_type
-                            == crate::model::BoundaryRuleType::NoDirectDatabaseAccess
+                        if rule.rule_type == crate::model::BoundaryRuleType::NoDirectDatabaseAccess
                             && (edge.target.contains("database") || edge.target.contains("db"))
                         {
                             drifts.push(Drift {
@@ -325,10 +324,7 @@ impl DriftDetector {
                                 evidence: vec![Evidence {
                                     source: "scan".to_string(),
                                     location: None,
-                                    detail: format!(
-                                        "Edge {} -> {}",
-                                        edge.source, edge.target
-                                    ),
+                                    detail: format!("Edge {} -> {}", edge.source, edge.target),
                                 }],
                                 intent_ref: Some(boundary.source_ref.file.clone()),
                                 suggestion: Some(rule.description.clone()),
@@ -559,7 +555,10 @@ api = container "API" {
             .load_from_directory(temp_dir.path())
             .expect("load from directory");
 
-        assert!(!models.is_empty(), "should load at least one model from .sruja");
+        assert!(
+            !models.is_empty(),
+            "should load at least one model from .sruja"
+        );
 
         let mut merged = crate::IntentModel::default();
         for m in models {

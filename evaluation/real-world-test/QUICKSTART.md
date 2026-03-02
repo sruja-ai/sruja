@@ -2,26 +2,43 @@
 
 **Goal**: Test if Sruja AI skills can generate useful architecture documentation from real codebases.
 
-**Time needed**: ~2-3 hours (including evaluation)
+## Quick E2E Demo (~2 min, zero config)
 
-## Step 1: Setup (10 minutes)
+**Fast path first** – no API keys or config required:
+
+```bash
+cd evaluation/real-world-test
+./run_demo.sh
+```
+
+This clones Express.js (if needed), runs `sruja quickstart` and `sruja drift`, and shows immediate value.
+
+**Optional flags:**
+- `./run_demo.sh --baseline` – Add drift vs example architecture
+- `./run_demo.sh --llm` – Add LLM eval (requires any LLM API key in `.env`)
+- `./run_demo.sh --all` – Both baseline and LLM
+
+**LLM is optional.** Copy `.env.example` to `.env` and add any LLM API key (OpenAI, OpenRouter, Anthropic, Gemini, or Ollama) only if you want LLM evaluation.
+
+---
+
+## Full Evaluation (~2-3 hours)
+
+### Step 1: Setup (10 minutes)
 
 ```bash
 # Navigate to evaluation directory
 cd sruja/evaluation/real-world-test
 
-# Install dependencies (optional, for automated evaluation)
-pip install openai  # Only if you want LLM-based evaluation
-
-# Set API key (optional, for LLM evaluation)
-export OPENAI_API_KEY="sk-proj-..."
+# Ensure sruja CLI is installed (for validation)
+# curl -fsSL https://sruja.ai/install.sh | bash
 ```
 
 ## Step 2: Clone Test Repositories (15 minutes)
 
 ```bash
-# Run the setup script
-python setup_repos.py
+# Run the setup script (shell - no Python required)
+./setup_repos.sh
 
 # This will clone 5 popular repos:
 # - Express.js (Node.js web framework)
@@ -86,8 +103,8 @@ Save the output as architecture.sruja in the repository root.
 For each generated architecture:
 
 ```bash
-# Run evaluation script
-python evaluate_architecture.py express
+# Run evaluation script (uses sruja CLI - no Python required)
+./evaluate_architecture.sh express
 
 # This will:
 # 1. Show file statistics
@@ -105,11 +122,12 @@ python evaluate_architecture.py express
 ### Option B: LLM-Assisted Evaluation
 
 ```bash
-# Use GPT-4 to evaluate (requires OPENAI_API_KEY)
-python evaluate_architecture.py express --llm
+# Use sruja eval - requires any LLM API key
+export OPENAI_API_KEY="sk-..."   # or OPENROUTER, ANTHROPIC, GEMINI
+./evaluate_architecture.sh express --llm
 
-# This will automatically score the architecture
-# and identify strengths/weaknesses
+# Or run directly:
+sruja eval test-repos/express
 ```
 
 ## Step 5: Review Results
@@ -235,9 +253,9 @@ express = system "Express.js" {
 - Install Sruja CLI: `curl -fsSL https://sruja.ai/install.sh | bash`
 - Or skip validation (it's optional)
 
-**"OPENAI_API_KEY not set"**
-- Set the environment variable
-- Or use manual evaluation instead
+**"Want LLM evaluation?"**
+- Paste architecture.sruja into your AI assistant
+- Ask it to score completeness, accuracy, clarity, usefulness
 
 **"Generated architecture is wrong"**
 - This is valuable feedback! Document what went wrong
@@ -264,9 +282,9 @@ express = system "Express.js" {
 **Ready to test?**
 
 ```bash
-python setup_repos.py
+./setup_repos.sh
 # Then generate architectures for each repo
-# Then evaluate with: python evaluate_architecture.py <repo-name>
+# Then evaluate with: ./evaluate_architecture.sh <repo-name>
 ```
 
 **Time to answer**: Is Sruja actually useful for understanding real-world codebases? 🚀

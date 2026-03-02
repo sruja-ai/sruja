@@ -6,7 +6,7 @@
 use crate::app::ServerContext;
 use dioxus::prelude::*;
 use sruja_chat::{Message, NewMessage};
-use sruja_extract::{Extraction, ExtractedContent};
+use sruja_extract::{ExtractedContent, Extraction};
 use std::sync::Arc;
 
 fn avatar_initials(name: &str) -> String {

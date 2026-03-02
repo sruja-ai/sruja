@@ -214,6 +214,18 @@ enum Commands {
         #[command(subcommand)]
         cmd: IntentCommand,
     },
+    /// Export architecture context for AI tools (Cursor, Copilot, Claude)
+    Context {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (cursor-rules, copilot-instructions, markdown, json)
+        #[arg(long, short = 'f', default_value = "cursor-rules")]
+        format: String,
+        /// Output file (defaults to stdout)
+        #[arg(long, short = 'o')]
+        output: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -352,6 +364,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 commands::intent_propose(&repo, intent.as_deref()).await
             }
         },
+        Commands::Context { repo, format, output } => {
+            commands::context_export(&repo, &format, output.as_deref()).await
+        }
     };
 
     match result {

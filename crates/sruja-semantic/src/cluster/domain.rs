@@ -1,9 +1,9 @@
 //! Domain concept clustering from embeddings.
 
-use crate::EmbeddingVector;
+use super::dbscan;
 use crate::similarity::cosine_similarity;
 use crate::vocabulary::VocabularyGraph;
-use super::dbscan;
+use crate::EmbeddingVector;
 use std::collections::HashMap;
 
 /// A cluster of semantically similar components.
@@ -82,7 +82,11 @@ impl DomainClusterer {
             .collect()
     }
 
-    fn centroid_terms(&self, component_ids: &[String], vocabulary: &VocabularyGraph) -> Vec<String> {
+    fn centroid_terms(
+        &self,
+        component_ids: &[String],
+        vocabulary: &VocabularyGraph,
+    ) -> Vec<String> {
         let mut term_counts: HashMap<String, usize> = HashMap::new();
         for id in component_ids {
             for term in vocabulary.terms_for_component(id) {
@@ -118,7 +122,12 @@ impl DomainClusterer {
             "UnknownContext".to_string()
         } else {
             let first = &terms[0];
-            let mut s = first.chars().next().unwrap_or('X').to_uppercase().to_string();
+            let mut s = first
+                .chars()
+                .next()
+                .unwrap_or('X')
+                .to_uppercase()
+                .to_string();
             s.push_str(&first[1..]);
             s.push_str("Context");
             s

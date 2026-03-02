@@ -2,9 +2,12 @@
 
 use sruja_graph::KnowledgeGraph;
 
-use crate::tools::{ToolResponse, SrujaTool};
+use crate::tools::{SrujaTool, ToolResponse};
 
-pub(super) fn execute_architecture(tool: &SrujaTool, graph: &KnowledgeGraph) -> Option<ToolResponse> {
+pub(super) fn execute_architecture(
+    tool: &SrujaTool,
+    graph: &KnowledgeGraph,
+) -> Option<ToolResponse> {
     match tool {
         SrujaTool::GetArchitecture => {
             let summary = crate::ArchitectureSummary::from(graph);
@@ -74,9 +77,10 @@ pub(super) fn execute_architecture(tool: &SrujaTool, graph: &KnowledgeGraph) -> 
             )),
         },
 
-        SrujaTool::AddDecision { .. } => {
-            Some(ToolResponse::error("add_decision", "Use the chat API to add decisions"))
-        }
+        SrujaTool::AddDecision { .. } => Some(ToolResponse::error(
+            "add_decision",
+            "Use the chat API to add decisions",
+        )),
 
         _ => None,
     }

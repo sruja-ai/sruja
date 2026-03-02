@@ -43,7 +43,7 @@ Output includes architecture inventory, drift findings, evidence references. No 
 
 ```bash
 # Set API key only if you want LLM extraction and agents
-export OPENROUTER_API_KEY="sk-or-v1-..."
+export OPENAI_API_KEY="sk-..."   # or OPENROUTER, ANTHROPIC, GEMINI
 cargo run -p sruja-app
 ```
 
@@ -139,7 +139,7 @@ If key missing → deterministic mode remains fully useful.
 
 | Variable | Purpose |
 |----------|---------|
-| `OPENROUTER_API_KEY` | Optional — for LLM extraction and agents |
+| `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` | Optional — for LLM eval, extraction, agents. Or `SRUJA_LLM_PROVIDER=ollama` for local. |
 | `SRUJA_EXTRACTION_MODEL` | Model for extraction (default: openai/gpt-4o-mini) |
 | `SRUJA_DATA_DIR` | Override persistence directory (default: `~/.sruja/data`) |
 | `.env` | Loaded at app startup (see `.env.example`) |

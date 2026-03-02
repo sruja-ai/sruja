@@ -1,0 +1,1201 @@
+{
+  "nodes": [
+    {
+      "id": "index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/index.js"
+    },
+    {
+      "id": "examples_mvc_db_js",
+      "kind": "database",
+      "label": "db",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/mvc/db.js"
+    },
+    {
+      "id": "examples_mvc_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/mvc/index.js"
+    },
+    {
+      "id": "examples_mvc_lib_boot_js",
+      "kind": "module",
+      "label": "boot",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/mvc/lib/boot.js"
+    },
+    {
+      "id": "examples_mvc_controllers_user-pet_index_js",
+      "kind": "service",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/mvc/controllers/user-pet/index.js"
+    },
+    {
+      "id": "examples_mvc_controllers_user_index_js",
+      "kind": "service",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/mvc/controllers/user/index.js"
+    },
+    {
+      "id": "examples_mvc_controllers_pet_index_js",
+      "kind": "service",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/mvc/controllers/pet/index.js"
+    },
+    {
+      "id": "examples_mvc_controllers_main_index_js",
+      "kind": "service",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/mvc/controllers/main/index.js"
+    },
+    {
+      "id": "examples_auth_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/auth/index.js"
+    },
+    {
+      "id": "examples_markdown_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/markdown/index.js"
+    },
+    {
+      "id": "examples_multi-router_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/multi-router/index.js"
+    },
+    {
+      "id": "examples_multi-router_controllers_api_v2_js",
+      "kind": "service",
+      "label": "api_v2",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/multi-router/controllers/api_v2.js"
+    },
+    {
+      "id": "examples_multi-router_controllers_api_v1_js",
+      "kind": "service",
+      "label": "api_v1",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/multi-router/controllers/api_v1.js"
+    },
+    {
+      "id": "examples_view-locals_user_js",
+      "kind": "module",
+      "label": "user",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/view-locals/user.js"
+    },
+    {
+      "id": "examples_view-locals_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/view-locals/index.js"
+    },
+    {
+      "id": "examples_view-constructor_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/view-constructor/index.js"
+    },
+    {
+      "id": "examples_view-constructor_github-view_js",
+      "kind": "module",
+      "label": "github-view",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/view-constructor/github-view.js"
+    },
+    {
+      "id": "examples_route-separation_user_js",
+      "kind": "module",
+      "label": "user",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/route-separation/user.js"
+    },
+    {
+      "id": "examples_route-separation_post_js",
+      "kind": "module",
+      "label": "post",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/route-separation/post.js"
+    },
+    {
+      "id": "examples_route-separation_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/route-separation/index.js"
+    },
+    {
+      "id": "examples_route-separation_site_js",
+      "kind": "module",
+      "label": "site",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/route-separation/site.js"
+    },
+    {
+      "id": "examples_cookie-sessions_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/cookie-sessions/index.js"
+    },
+    {
+      "id": "examples_ejs_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/ejs/index.js"
+    },
+    {
+      "id": "examples_hello-world_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/hello-world/index.js"
+    },
+    {
+      "id": "examples_search_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/search/index.js"
+    },
+    {
+      "id": "examples_search_public_client_js",
+      "kind": "external_api",
+      "label": "client",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/search/public/client.js"
+    },
+    {
+      "id": "examples_web-service_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/web-service/index.js"
+    },
+    {
+      "id": "examples_error-pages_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/error-pages/index.js"
+    },
+    {
+      "id": "examples_vhost_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/vhost/index.js"
+    },
+    {
+      "id": "examples_params_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/params/index.js"
+    },
+    {
+      "id": "examples_route-map_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/route-map/index.js"
+    },
+    {
+      "id": "examples_static-files_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/static-files/index.js"
+    },
+    {
+      "id": "examples_static-files_public_js_app_js",
+      "kind": "module",
+      "label": "app",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/static-files/public/js/app.js"
+    },
+    {
+      "id": "examples_online_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/online/index.js"
+    },
+    {
+      "id": "examples_resource_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/resource/index.js"
+    },
+    {
+      "id": "examples_downloads_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/downloads/index.js"
+    },
+    {
+      "id": "examples_error_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/error/index.js"
+    },
+    {
+      "id": "examples_route-middleware_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/route-middleware/index.js"
+    },
+    {
+      "id": "examples_cookies_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/cookies/index.js"
+    },
+    {
+      "id": "examples_content-negotiation_db_js",
+      "kind": "database",
+      "label": "db",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/content-negotiation/db.js"
+    },
+    {
+      "id": "examples_content-negotiation_users_js",
+      "kind": "module",
+      "label": "users",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/content-negotiation/users.js"
+    },
+    {
+      "id": "examples_content-negotiation_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/content-negotiation/index.js"
+    },
+    {
+      "id": "examples_session_index_js",
+      "kind": "module",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/session/index.js"
+    },
+    {
+      "id": "examples_session_redis_js",
+      "kind": "module",
+      "label": "redis",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/examples/session/redis.js"
+    },
+    {
+      "id": "lib_response_js",
+      "kind": "module",
+      "label": "response",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/lib/response.js"
+    },
+    {
+      "id": "lib_request_js",
+      "kind": "module",
+      "label": "request",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/lib/request.js"
+    },
+    {
+      "id": "lib_express_js",
+      "kind": "module",
+      "label": "express",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/lib/express.js"
+    },
+    {
+      "id": "lib_utils_js",
+      "kind": "module",
+      "label": "utils",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/lib/utils.js"
+    },
+    {
+      "id": "lib_view_js",
+      "kind": "module",
+      "label": "view",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/lib/view.js"
+    },
+    {
+      "id": "lib_application_js",
+      "kind": "module",
+      "label": "application",
+      "technology": "JavaScript",
+      "path": "evaluation/real-world-test/test-repos/express/lib/application.js"
+    },
+    {
+      "id": "module:examples_auth",
+      "kind": "module",
+      "label": "examples_auth",
+      "technology": "JavaScript",
+      "path": "examples_auth"
+    },
+    {
+      "id": "module:examples_web-service",
+      "kind": "module",
+      "label": "examples_web-service",
+      "technology": "JavaScript",
+      "path": "examples_web-service"
+    },
+    {
+      "id": "module:examples_markdown",
+      "kind": "module",
+      "label": "examples_markdown",
+      "technology": "JavaScript",
+      "path": "examples_markdown"
+    },
+    {
+      "id": "module:examples_cookies",
+      "kind": "module",
+      "label": "examples_cookies",
+      "technology": "JavaScript",
+      "path": "examples_cookies"
+    },
+    {
+      "id": "module:examples_search_public",
+      "kind": "module",
+      "label": "examples_search_public",
+      "technology": "JavaScript",
+      "path": "examples_search_public"
+    },
+    {
+      "id": "module:",
+      "kind": "module",
+      "label": "",
+      "technology": "JavaScript",
+      "path": ""
+    },
+    {
+      "id": "module:examples_route-middleware",
+      "kind": "module",
+      "label": "examples_route-middleware",
+      "technology": "JavaScript",
+      "path": "examples_route-middleware"
+    },
+    {
+      "id": "module:examples_mvc",
+      "kind": "module",
+      "label": "examples_mvc",
+      "technology": "JavaScript",
+      "path": "examples_mvc"
+    },
+    {
+      "id": "module:examples_ejs",
+      "kind": "module",
+      "label": "examples_ejs",
+      "technology": "JavaScript",
+      "path": "examples_ejs"
+    },
+    {
+      "id": "module:examples_route-map",
+      "kind": "module",
+      "label": "examples_route-map",
+      "technology": "JavaScript",
+      "path": "examples_route-map"
+    },
+    {
+      "id": "module:examples_view-locals",
+      "kind": "module",
+      "label": "examples_view-locals",
+      "technology": "JavaScript",
+      "path": "examples_view-locals"
+    },
+    {
+      "id": "module:examples_hello-world",
+      "kind": "module",
+      "label": "examples_hello-world",
+      "technology": "JavaScript",
+      "path": "examples_hello-world"
+    },
+    {
+      "id": "module:examples_mvc_lib",
+      "kind": "module",
+      "label": "examples_mvc_lib",
+      "technology": "JavaScript",
+      "path": "examples_mvc_lib"
+    },
+    {
+      "id": "module:examples_multi-router",
+      "kind": "module",
+      "label": "examples_multi-router",
+      "technology": "JavaScript",
+      "path": "examples_multi-router"
+    },
+    {
+      "id": "module:examples_mvc_controllers_main",
+      "kind": "module",
+      "label": "examples_mvc_controllers_main",
+      "technology": "JavaScript",
+      "path": "examples_mvc_controllers_main"
+    },
+    {
+      "id": "module:examples_error-pages",
+      "kind": "module",
+      "label": "examples_error-pages",
+      "technology": "JavaScript",
+      "path": "examples_error-pages"
+    },
+    {
+      "id": "module:examples_mvc_controllers_user",
+      "kind": "module",
+      "label": "examples_mvc_controllers_user",
+      "technology": "JavaScript",
+      "path": "examples_mvc_controllers_user"
+    },
+    {
+      "id": "module:examples_online",
+      "kind": "module",
+      "label": "examples_online",
+      "technology": "JavaScript",
+      "path": "examples_online"
+    },
+    {
+      "id": "module:examples_error",
+      "kind": "module",
+      "label": "examples_error",
+      "technology": "JavaScript",
+      "path": "examples_error"
+    },
+    {
+      "id": "module:examples_mvc_controllers_user-pet",
+      "kind": "module",
+      "label": "examples_mvc_controllers_user-pet",
+      "technology": "JavaScript",
+      "path": "examples_mvc_controllers_user-pet"
+    },
+    {
+      "id": "module:examples_content-negotiation",
+      "kind": "module",
+      "label": "examples_content-negotiation",
+      "technology": "JavaScript",
+      "path": "examples_content-negotiation"
+    },
+    {
+      "id": "module:examples_cookie-sessions",
+      "kind": "module",
+      "label": "examples_cookie-sessions",
+      "technology": "JavaScript",
+      "path": "examples_cookie-sessions"
+    },
+    {
+      "id": "module:examples_static-files_public_js",
+      "kind": "module",
+      "label": "examples_static-files_public_js",
+      "technology": "JavaScript",
+      "path": "examples_static-files_public_js"
+    },
+    {
+      "id": "module:examples_resource",
+      "kind": "module",
+      "label": "examples_resource",
+      "technology": "JavaScript",
+      "path": "examples_resource"
+    },
+    {
+      "id": "module:examples_params",
+      "kind": "module",
+      "label": "examples_params",
+      "technology": "JavaScript",
+      "path": "examples_params"
+    },
+    {
+      "id": "module:examples_downloads",
+      "kind": "module",
+      "label": "examples_downloads",
+      "technology": "JavaScript",
+      "path": "examples_downloads"
+    },
+    {
+      "id": "module:examples_view-constructor",
+      "kind": "module",
+      "label": "examples_view-constructor",
+      "technology": "JavaScript",
+      "path": "examples_view-constructor"
+    },
+    {
+      "id": "module:lib",
+      "kind": "module",
+      "label": "lib",
+      "technology": "JavaScript",
+      "path": "lib"
+    },
+    {
+      "id": "module:examples_route-separation",
+      "kind": "module",
+      "label": "examples_route-separation",
+      "technology": "JavaScript",
+      "path": "examples_route-separation"
+    },
+    {
+      "id": "module:examples_vhost",
+      "kind": "module",
+      "label": "examples_vhost",
+      "technology": "JavaScript",
+      "path": "examples_vhost"
+    },
+    {
+      "id": "module:examples_session",
+      "kind": "module",
+      "label": "examples_session",
+      "technology": "JavaScript",
+      "path": "examples_session"
+    },
+    {
+      "id": "module:examples_static-files",
+      "kind": "module",
+      "label": "examples_static-files",
+      "technology": "JavaScript",
+      "path": "examples_static-files"
+    },
+    {
+      "id": "module:examples_mvc_controllers_pet",
+      "kind": "module",
+      "label": "examples_mvc_controllers_pet",
+      "technology": "JavaScript",
+      "path": "examples_mvc_controllers_pet"
+    },
+    {
+      "id": "module:examples_search",
+      "kind": "module",
+      "label": "examples_search",
+      "technology": "JavaScript",
+      "path": "examples_search"
+    },
+    {
+      "id": "module:examples_multi-router_controllers",
+      "kind": "module",
+      "label": "examples_multi-router_controllers",
+      "technology": "JavaScript",
+      "path": "examples_multi-router_controllers"
+    }
+  ],
+  "edges": [
+    {
+      "source": "module:",
+      "target": "index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_mvc",
+      "target": "examples_mvc_db_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/mvc/db.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_mvc",
+      "target": "examples_mvc_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/mvc/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_mvc_lib",
+      "target": "examples_mvc_lib_boot_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/mvc/lib/boot.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_mvc_controllers_user-pet",
+      "target": "examples_mvc_controllers_user-pet_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/mvc/controllers/user-pet/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_mvc_controllers_user",
+      "target": "examples_mvc_controllers_user_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/mvc/controllers/user/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_mvc_controllers_pet",
+      "target": "examples_mvc_controllers_pet_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/mvc/controllers/pet/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_mvc_controllers_main",
+      "target": "examples_mvc_controllers_main_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/mvc/controllers/main/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_auth",
+      "target": "examples_auth_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/auth/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_markdown",
+      "target": "examples_markdown_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/markdown/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_multi-router",
+      "target": "examples_multi-router_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/multi-router/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_multi-router_controllers",
+      "target": "examples_multi-router_controllers_api_v2_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/multi-router/controllers/api_v2.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_multi-router_controllers",
+      "target": "examples_multi-router_controllers_api_v1_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/multi-router/controllers/api_v1.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_view-locals",
+      "target": "examples_view-locals_user_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/view-locals/user.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_view-locals",
+      "target": "examples_view-locals_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/view-locals/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_view-constructor",
+      "target": "examples_view-constructor_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/view-constructor/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_view-constructor",
+      "target": "examples_view-constructor_github-view_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/view-constructor/github-view.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_route-separation",
+      "target": "examples_route-separation_user_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/route-separation/user.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_route-separation",
+      "target": "examples_route-separation_post_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/route-separation/post.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_route-separation",
+      "target": "examples_route-separation_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/route-separation/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_route-separation",
+      "target": "examples_route-separation_site_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/route-separation/site.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_cookie-sessions",
+      "target": "examples_cookie-sessions_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/cookie-sessions/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_ejs",
+      "target": "examples_ejs_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/ejs/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_hello-world",
+      "target": "examples_hello-world_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/hello-world/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_search",
+      "target": "examples_search_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/search/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_search_public",
+      "target": "examples_search_public_client_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/search/public/client.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_web-service",
+      "target": "examples_web-service_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/web-service/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_error-pages",
+      "target": "examples_error-pages_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/error-pages/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_vhost",
+      "target": "examples_vhost_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/vhost/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_params",
+      "target": "examples_params_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/params/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_route-map",
+      "target": "examples_route-map_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/route-map/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_static-files",
+      "target": "examples_static-files_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/static-files/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_static-files_public_js",
+      "target": "examples_static-files_public_js_app_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/static-files/public/js/app.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_online",
+      "target": "examples_online_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/online/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_resource",
+      "target": "examples_resource_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/resource/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_downloads",
+      "target": "examples_downloads_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/downloads/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_error",
+      "target": "examples_error_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/error/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_route-middleware",
+      "target": "examples_route-middleware_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/route-middleware/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_cookies",
+      "target": "examples_cookies_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/cookies/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_content-negotiation",
+      "target": "examples_content-negotiation_db_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/content-negotiation/db.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_content-negotiation",
+      "target": "examples_content-negotiation_users_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/content-negotiation/users.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_content-negotiation",
+      "target": "examples_content-negotiation_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/content-negotiation/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_session",
+      "target": "examples_session_index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/session/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:examples_session",
+      "target": "examples_session_redis_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/examples/session/redis.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:lib",
+      "target": "lib_response_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/lib/response.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:lib",
+      "target": "lib_request_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/lib/request.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:lib",
+      "target": "lib_express_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/lib/express.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:lib",
+      "target": "lib_utils_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/lib/utils.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:lib",
+      "target": "lib_view_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/lib/view.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:lib",
+      "target": "lib_application_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "evaluation/real-world-test/test-repos/express/lib/application.js",
+          "detail": "module contains this file"
+        }
+      ]
+    }
+  ]
+}

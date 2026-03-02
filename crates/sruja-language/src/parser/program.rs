@@ -1,10 +1,6 @@
 //! Program and top-level item parsing.
 
-use nom::{
-    branch::alt,
-    combinator::map,
-    IResult,
-};
+use nom::{branch::alt, combinator::map, IResult};
 
 use crate::ast::{ElementAssignment, ElementDef, ElementKind, Program, TopLevelItem};
 

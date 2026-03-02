@@ -39,11 +39,7 @@ pub(super) fn smart_merge_asts(
     merged_ast
 }
 
-fn update_existing_element(
-    ast: &mut Program,
-    new_elem: &ElementDef,
-    line_offset: usize,
-) {
+fn update_existing_element(ast: &mut Program, new_elem: &ElementDef, line_offset: usize) {
     let offset = line_offset as i32;
     for item in ast.items.iter_mut() {
         if let TopLevelItem::ElementDef(elem) = item {

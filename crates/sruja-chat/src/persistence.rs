@@ -24,12 +24,14 @@ pub enum PersistError {
 
 /// Default data directory: ~/.sruja/data or SRUJA_DATA_DIR env.
 pub fn default_data_dir() -> PathBuf {
-    std::env::var("SRUJA_DATA_DIR").map(PathBuf::from).unwrap_or_else(|_| {
-        dirs::home_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join(".sruja")
-            .join("data")
-    })
+    std::env::var("SRUJA_DATA_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            dirs::home_dir()
+                .unwrap_or_else(|| PathBuf::from("."))
+                .join(".sruja")
+                .join("data")
+        })
 }
 
 /// Ensure data directory exists.
@@ -105,7 +107,9 @@ impl Persistence {
     pub async fn save_graph(&self, graph: &KnowledgeGraph) -> Result<(), PersistError> {
         self.init().await?;
         let path = self.graph_path();
-        let json = graph.to_json().map_err(|e| PersistError::Graph(e.to_string()))?;
+        let json = graph
+            .to_json()
+            .map_err(|e| PersistError::Graph(e.to_string()))?;
         let mut f = fs::File::create(&path).await?;
         f.write_all(json.as_bytes()).await?;
         f.flush().await?;
@@ -120,7 +124,8 @@ impl Persistence {
         }
         let bytes = fs::read(&path).await?;
         let json = String::from_utf8_lossy(&bytes);
-        sruja_graph::KnowledgeGraph::from_json(&json).map_err(|e| PersistError::Graph(e.to_string()))
+        sruja_graph::KnowledgeGraph::from_json(&json)
+            .map_err(|e| PersistError::Graph(e.to_string()))
     }
 
     /// Save agent definitions to disk.

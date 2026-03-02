@@ -454,10 +454,7 @@ pub async fn import(format: &str, file: &str) -> Result<(), CliError> {
     if format != "json" {
         return Err(CliError::Parse {
             file: file.to_string(),
-            message: format!(
-                "Unsupported import format: {}. Supported: json",
-                format
-            ),
+            message: format!("Unsupported import format: {}. Supported: json", format),
         });
     }
 

@@ -203,6 +203,16 @@ pub fn build_recommendations(
             });
         }
     }
+
+    fn priority_order(p: Priority) -> u8 {
+        match p {
+            Priority::Critical => 0,
+            Priority::High => 1,
+            Priority::Medium => 2,
+            Priority::Low => 3,
+        }
+    }
+    out.sort_by(|a, b| priority_order(a.priority).cmp(&priority_order(b.priority)));
     out.truncate(limit);
     out
 }

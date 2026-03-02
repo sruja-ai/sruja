@@ -7,19 +7,19 @@ import * as vscode from "vscode";
 import { getDiagnosticsFromWasm } from "./wasm";
 import { getSrujaPath, useWasm } from "./config";
 
-/** Parse "sruja lint" stderr into VS Code diagnostics. Format:
- * [CODE] Error: message
- *   --> file:line:column
- */
-export function parseLintStderr(stderr: string, _docUri: string): vscode.Diagnostic[] {
+const LINT_TIMEOUT_MS = 15000;
+const LINT_MAX_BUFFER_BYTES = 2 * 1024 * 1024;
+const LINT_ERROR_REGEX = /^\[([^\]]+)\]\s+(Error|Warning|Info):\s+(.+)$/;
+const LINT_LOCATION_REGEX = /^\s+-->\s+(.+):(\d+):(\d+)$/;
+
+export function parseLintStderr(stderr: string): vscode.Diagnostic[] {
   const diagnostics: vscode.Diagnostic[] = [];
   const lines = stderr.split(/\r?\n/);
-  const msgRe = /^\[([^\]]+)\]\s+(Error|Warning|Info):\s+(.+)$/;
-  const locRe = /^\s+-->\s+(.+):(\d+):(\d+)$/;
 
   for (let i = 0; i < lines.length; i++) {
-    const locMatch = lines[i].match(locRe);
+    const locMatch = lines[i].match(LINT_LOCATION_REGEX);
     if (!locMatch) continue;
+
     const [, _filePart, lineStr, colStr] = locMatch;
     const line = Math.max(0, parseInt(lineStr, 10) - 1);
     const character = Math.max(0, parseInt(colStr, 10) - 1);
@@ -29,7 +29,7 @@ export function parseLintStderr(stderr: string, _docUri: string): vscode.Diagnos
     let message = "Validation error";
 
     if (i > 0) {
-      const msgMatch = lines[i - 1].match(msgRe);
+      const msgMatch = lines[i - 1].match(LINT_ERROR_REGEX);
       if (msgMatch) {
         code = msgMatch[1];
         const sev = msgMatch[2];
@@ -49,21 +49,28 @@ export function parseLintStderr(stderr: string, _docUri: string): vscode.Diagnos
   return diagnostics;
 }
 
-export async function runLint(
-  srujaPath: string,
-  filePath: string
-): Promise<{ stderr: string }> {
+export async function runLint(srujaPath: string, filePath: string): Promise<{ stderr: string }> {
   return new Promise((resolve) => {
     execFile(
       srujaPath,
       ["lint", filePath],
-      { encoding: "utf8", timeout: 15000, maxBuffer: 2 * 1024 * 1024 },
+      { encoding: "utf8", timeout: LINT_TIMEOUT_MS, maxBuffer: LINT_MAX_BUFFER_BYTES },
       (err: Error | null, _stdout: string, stderr: string) => {
         const out = typeof stderr === "string" ? stderr : err?.message ?? "";
         resolve({ stderr: out });
       }
     );
   });
+}
+
+async function withTempFile(content: string, baseName: string, fn: (tmpPath: string) => Promise<void>): Promise<void> {
+  const tmp = path.join(os.tmpdir(), `sruja-lint-${baseName}`);
+  await fs.promises.writeFile(tmp, content, "utf8");
+  try {
+    await fn(tmp);
+  } finally {
+    await fs.promises.unlink(tmp).catch(() => {});
+  }
 }
 
 export async function updateDiagnostics(
@@ -87,20 +94,15 @@ export async function updateDiagnostics(
   }
 
   const srujaPath = getSrujaPath(context);
+
   if (doc.isDirty) {
-    const tmp = path.join(os.tmpdir(), `sruja-lint-${path.basename(filename)}`);
-    await fs.promises.writeFile(tmp, doc.getText(), "utf8");
-    try {
+    await withTempFile(doc.getText(), path.basename(filename), async (tmp) => {
       const { stderr } = await runLint(srujaPath, tmp);
-      const diags = parseLintStderr(stderr, uri.toString());
-      diagnosticCollection.set(uri, diags);
-    } finally {
-      await fs.promises.unlink(tmp).catch(() => {});
-    }
+      diagnosticCollection.set(uri, parseLintStderr(stderr));
+    });
     return;
   }
 
   const { stderr } = await runLint(srujaPath, filename);
-  const diags = parseLintStderr(stderr, uri.toString());
-  diagnosticCollection.set(uri, diags);
+  diagnosticCollection.set(uri, parseLintStderr(stderr));
 }

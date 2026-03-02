@@ -42,7 +42,11 @@ mod analyze_command {
 
         assert!(success, "analyze should succeed: stderr={}", stderr);
         let out = format!("{} {}", stdout, stderr);
-        assert!(out.contains("Semantic") || out.contains("Architecture Intelligence"), "out={}", out);
+        assert!(
+            out.contains("Semantic") || out.contains("Architecture Intelligence"),
+            "out={}",
+            out
+        );
     }
 
     #[test]

@@ -236,9 +236,7 @@ fn find_common_prefix(nodes: &[String]) -> String {
         return String::new();
     }
 
-    let parts: Vec<&str> = nodes[0]
-        .split(['.', '/', '_'])
-        .collect();
+    let parts: Vec<&str> = nodes[0].split(['.', '/', '_']).collect();
 
     for prefix_len in (1..=parts.len()).rev() {
         let prefix = parts[..prefix_len].join("_");

@@ -2,10 +2,10 @@
 
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take_until},
+    bytes::complete::tag,
     character::complete::char,
     combinator::{map, opt},
-    multi::{many0, separated_list0},
+    multi::many0,
     sequence::preceded,
     IResult,
 };

@@ -51,7 +51,11 @@ impl ExecutionGraphProcessor {
 
         let edges: Vec<ExecutionEdge> = edge_counts
             .into_iter()
-            .map(|((caller, callee), count)| ExecutionEdge { caller, callee, count })
+            .map(|((caller, callee), count)| ExecutionEdge {
+                caller,
+                callee,
+                count,
+            })
             .collect();
 
         ExecutionGraph { edges }

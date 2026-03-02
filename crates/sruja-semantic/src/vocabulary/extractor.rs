@@ -37,9 +37,9 @@ pub struct ExtractorConfig {
 impl Default for ExtractorConfig {
     fn default() -> Self {
         let stopwords: HashSet<String> = [
-            "the", "a", "an", "of", "to", "in", "for", "on", "with", "at",
-            "by", "from", "is", "are", "was", "were", "be", "been", "and",
-            "or", "but", "if", "then", "else", "it", "its", "as", "this",
+            "the", "a", "an", "of", "to", "in", "for", "on", "with", "at", "by", "from", "is",
+            "are", "was", "were", "be", "been", "and", "or", "but", "if", "then", "else", "it",
+            "its", "as", "this",
         ]
         .iter()
         .map(|s| s.to_string())

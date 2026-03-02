@@ -13,7 +13,7 @@ use sruja_report::{
 use sruja_runtime::{build_report, ExecutionTrace};
 use sruja_semantic::{analyze as run_semantic_analyze, embedding::StubEmbeddingProvider};
 
-use crate::tools::{ToolResponse, SrujaTool};
+use crate::tools::{SrujaTool, ToolResponse};
 
 fn load_traces(path: &Path) -> Result<Vec<ExecutionTrace>, String> {
     let content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
@@ -146,8 +146,7 @@ pub(super) fn execute_analyze(
                         .map(|e| (e.source.clone(), e.target.clone()))
                         .collect();
                     let provider = StubEmbeddingProvider::new();
-                    let fut =
-                        run_semantic_analyze(&components, &structural_edges, &provider, None);
+                    let fut = run_semantic_analyze(&components, &structural_edges, &provider, None);
                     let report = match tokio::runtime::Handle::try_current() {
                         Ok(handle) => handle.block_on(fut),
                         Err(_) => {

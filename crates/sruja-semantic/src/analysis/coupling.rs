@@ -1,8 +1,8 @@
 //! Semantic coupling detection between components.
 
-use crate::EmbeddingVector;
 use crate::similarity::cosine_similarity;
 use crate::vocabulary::VocabularyGraph;
+use crate::EmbeddingVector;
 use std::collections::HashSet;
 
 /// A semantic coupling between two components.
@@ -169,15 +169,21 @@ impl SemanticCouplingAnalyzer {
 fn infer_coupling_type(shared: &[String]) -> SemanticCouplingType {
     let terms: HashSet<&str> = shared.iter().map(|s| s.as_str()).collect();
     if terms.iter().any(|t| {
-        ["error", "err", "exception", "fail", "panic"].iter().any(|x| t.contains(x))
+        ["error", "err", "exception", "fail", "panic"]
+            .iter()
+            .any(|x| t.contains(x))
     }) {
         SemanticCouplingType::ErrorHandling
     } else if terms.iter().any(|t| {
-        ["config", "env", "setting", "option"].iter().any(|x| t.contains(x))
+        ["config", "env", "setting", "option"]
+            .iter()
+            .any(|x| t.contains(x))
     }) {
         SemanticCouplingType::Configuration
     } else if terms.iter().any(|t| {
-        ["model", "entity", "schema", "record"].iter().any(|x| t.contains(x))
+        ["model", "entity", "schema", "record"]
+            .iter()
+            .any(|x| t.contains(x))
     }) {
         SemanticCouplingType::DataModel
     } else if !shared.is_empty() {

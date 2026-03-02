@@ -54,7 +54,11 @@ mod runtime_command {
 
         assert!(success, "runtime analyze should succeed: stderr={}", stderr);
         let out = format!("{} {}", stdout, stderr);
-        assert!(out.contains("Root traces") || out.contains("Total spans"), "out={}", out);
+        assert!(
+            out.contains("Root traces") || out.contains("Total spans"),
+            "out={}",
+            out
+        );
     }
 
     #[test]
@@ -72,7 +76,11 @@ mod runtime_command {
             "json",
         ]);
 
-        assert!(success, "runtime analyze -f json should succeed: stderr={}", stderr);
+        assert!(
+            success,
+            "runtime analyze -f json should succeed: stderr={}",
+            stderr
+        );
 
         let json: serde_json::Value =
             serde_json::from_str(&stdout).expect("Output should be valid JSON");
@@ -158,7 +166,10 @@ mod runtime_command {
         assert!(success, "runtime analyze should succeed: stderr={}", stderr);
 
         let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-        let cycles = json.get("emergent_cycles").and_then(|c| c.as_array()).unwrap();
+        let cycles = json
+            .get("emergent_cycles")
+            .and_then(|c| c.as_array())
+            .unwrap();
         assert!(!cycles.is_empty(), "Should detect emergent cycles");
         let pattern = cycles[0].get("pattern").and_then(|p| p.as_array()).unwrap();
         assert_eq!(pattern, &["planner", "executor", "planner"]);
@@ -166,10 +177,20 @@ mod runtime_command {
 
     #[test]
     fn runtime_analyze_missing_file_fails() {
-        let (success, _stdout, stderr) =
-            run_sruja(&["runtime", "analyze", "-t", "/nonexistent/traces.json", "-f", "text"]);
+        let (success, _stdout, stderr) = run_sruja(&[
+            "runtime",
+            "analyze",
+            "-t",
+            "/nonexistent/traces.json",
+            "-f",
+            "text",
+        ]);
 
         assert!(!success, "runtime analyze on missing file should fail");
-        assert!(stderr.contains("not found") || stderr.contains("NotFound"), "stderr={}", stderr);
+        assert!(
+            stderr.contains("not found") || stderr.contains("NotFound"),
+            "stderr={}",
+            stderr
+        );
     }
 }

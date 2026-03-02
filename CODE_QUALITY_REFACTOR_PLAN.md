@@ -4,15 +4,16 @@ This document tracks the code quality review (large files, test gaps, Clippy, TO
 
 ## Completed
 
-### Clippy (30 → 0 warnings)
+### Clippy (34 → 0 warnings)
 
 - **sruja-diff**: Removed redundant `score.max(0)` (u8 already ≥ 0 after `saturating_sub`).
 - **sruja-graph**: Collapsed nested `if` in `merge_edge`; `split(['.', '/', '_'])` instead of manual char comparison; introduced `BrandesBfsResult` type alias in centrality; `#[allow(clippy::too_many_arguments)]` on Tarjan `strongconnect` (stateful algorithm).
 - **sruja-intent**: `is_some_and` instead of `map_or(false, ...)`; regex moved out of loop in ADR title extraction; `match` replaced with `if` for single variant; collapsed nested `if`; removed unused `mut`/`let`; `#[allow(dead_code)]` on `DriftDetector::config` (reserved for future use).
 - **sruja-semantic**: `clamp(0.0, 1.0)` / `clamp(0.0, 100.0)` instead of `.max().min()`; removed needless borrow in `components_using_term(term)`.
-- **sruja-cli**: Removed redundant `use sruja_diff`; replaced closures with `CliError::Json` and `SourceRef::display_string`.
+- **sruja-cli**: Removed redundant `use sruja_diff`; replaced closures with `CliError::Json` and `SourceRef::display_string`; `is_none_or` instead of `map_or`; `CliError::Io` instead of redundant closure.
+- **sruja-export**: `#[allow(clippy::only_used_in_recursion)]` on `print_element` (recursive by design); `#[allow(clippy::too_many_arguments)]` on `write_toc`.
 
-Run: `cargo clippy -p sruja-intent -p sruja-graph -p sruja-semantic -p sruja-diff -p sruja-cli --no-deps` to confirm clean.
+Run: `cargo clippy --all-targets --all-features -- -W clippy::all` to confirm clean.
 
 ---
 

@@ -20,7 +20,10 @@ use crate::ast::{
 use super::blocks::{
     parse_constraints_block, parse_conventions_block, parse_metadata_block, parse_style_decl,
 };
-use super::primitives::{parse_identifier, parse_string, parse_string_array, parse_tag_array, parse_tag_ref, parse_kv_string, ws, ws0, ws1};
+use super::primitives::{
+    parse_identifier, parse_kv_string, parse_string, parse_string_array, parse_tag_array,
+    parse_tag_ref, ws, ws0, ws1,
+};
 use super::relations::parse_relation;
 
 /// Parse a kind definition: `identifier = kind "Title" ...`
@@ -230,7 +233,9 @@ fn parse_element_body_item(input: &str) -> IResult<&str, ElementDefBodyItem> {
         ),
         map(parse_metadata_block, ElementDefBodyItem::Metadata),
         map(parse_slo_block, |s| ElementDefBodyItem::Slo(Box::new(s))),
-        map(parse_element_def, |e| ElementDefBodyItem::ElementDef(Box::new(e))),
+        map(parse_element_def, |e| {
+            ElementDefBodyItem::ElementDef(Box::new(e))
+        }),
         map(parse_relation, ElementDefBodyItem::Relation),
         map(parse_constraints_block, ElementDefBodyItem::Constraints),
         map(parse_conventions_block, ElementDefBodyItem::Conventions),
@@ -382,7 +387,10 @@ fn parse_slo_current(input: &str) -> IResult<&str, SloCurrent> {
         preceded(ws0, char('}')),
     )(input)?;
 
-    let mut out = SloCurrent { p95: None, p99: None };
+    let mut out = SloCurrent {
+        p95: None,
+        p99: None,
+    };
     for (k, v) in entries {
         match k.as_str() {
             "p95" => out.p95 = Some(v),

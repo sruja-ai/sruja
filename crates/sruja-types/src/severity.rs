@@ -30,7 +30,6 @@ impl std::fmt::Display for Severity {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

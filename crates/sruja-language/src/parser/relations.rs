@@ -1,13 +1,8 @@
 //! Relation and qualified identifier parsers.
 
 use nom::{
-    branch::alt,
-    bytes::complete::tag,
-    character::complete::char,
-    combinator::opt,
-    multi::many0,
-    sequence::preceded,
-    IResult,
+    branch::alt, bytes::complete::tag, character::complete::char, combinator::opt, multi::many0,
+    sequence::preceded, IResult,
 };
 use sruja_diagnostics::SourceLocation;
 

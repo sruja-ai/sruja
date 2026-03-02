@@ -1,6 +1,6 @@
 //! Constraints, conventions, and extend block printing.
 
-use sruja_language::{ConventionsBlock, ConstraintsBlock, ExtendElement};
+use sruja_language::{ConstraintsBlock, ConventionsBlock, ExtendElement};
 
 pub fn print_constraints(out: &mut String, constraints: &ConstraintsBlock) {
     out.push_str("constraints {\n");

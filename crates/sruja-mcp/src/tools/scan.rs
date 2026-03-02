@@ -1,9 +1,9 @@
 //! Repo scan and drift tools: scan_repo, detect_drift, quickstart.
 
-use std::path::PathBuf;
 use sruja_graph::KnowledgeGraph;
+use std::path::PathBuf;
 
-use crate::tools::{ToolResponse, SrujaTool};
+use crate::tools::{SrujaTool, ToolResponse};
 
 pub(super) fn execute_scan(
     tool: &SrujaTool,

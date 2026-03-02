@@ -195,7 +195,8 @@ impl ChatServer {
         persist.init().await?;
 
         let sessions: HashMap<SessionId, ChatSession> = persist.load_sessions().await?;
-        let agent_definitions: HashMap<String, AgentDefinition> = persist.load_agent_definitions().await?;
+        let agent_definitions: HashMap<String, AgentDefinition> =
+            persist.load_agent_definitions().await?;
         let graph = Arc::new(RwLock::new(persist.load_graph().await?));
 
         Ok(Self {
@@ -218,8 +219,14 @@ impl ChatServer {
         let graph = Arc::clone(&self.graph);
         let persist = Arc::clone(persist);
         tokio::spawn(async move {
-            let s: HashMap<_, _> = sessions.iter().map(|r| (r.key().clone(), r.value().clone())).collect();
-            let a: HashMap<_, _> = agent_definitions.iter().map(|r| (r.key().clone(), r.value().clone())).collect();
+            let s: HashMap<_, _> = sessions
+                .iter()
+                .map(|r| (r.key().clone(), r.value().clone()))
+                .collect();
+            let a: HashMap<_, _> = agent_definitions
+                .iter()
+                .map(|r| (r.key().clone(), r.value().clone()))
+                .collect();
             let g = graph.read().await.clone();
             let _ = persist.save_sessions(&s).await;
             let _ = persist.save_agent_definitions(&a).await;
@@ -254,7 +261,9 @@ impl ChatServer {
         session_id: &SessionId,
         name: impl Into<String>,
     ) -> Result<ParticipantId, ChatError> {
-        let mut session_ref = self.sessions.get_mut(session_id)
+        let mut session_ref = self
+            .sessions
+            .get_mut(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         let participant = Participant {
@@ -298,7 +307,10 @@ impl ChatServer {
     }
 
     pub async fn list_agent_definitions(&self) -> Vec<AgentDefinition> {
-        self.agent_definitions.iter().map(|r| r.value().clone()).collect()
+        self.agent_definitions
+            .iter()
+            .map(|r| r.value().clone())
+            .collect()
     }
 
     pub async fn get_agent_definition(&self, id: &str) -> Option<AgentDefinition> {
@@ -361,7 +373,9 @@ impl ChatServer {
         name: impl Into<String>,
         config: AgentConfig,
     ) -> Result<ParticipantId, ChatError> {
-        let mut session_ref = self.sessions.get_mut(session_id)
+        let mut session_ref = self
+            .sessions
+            .get_mut(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         let participant = Participant {
@@ -387,7 +401,9 @@ impl ChatServer {
         new_message: NewMessage,
     ) -> Result<Message, ChatError> {
         let (message, conv_message, author_is_human, agent_ids) = {
-            let mut session = self.sessions.get_mut(session_id)
+            let mut session = self
+                .sessions
+                .get_mut(session_id)
                 .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
             let author = session
@@ -542,7 +558,8 @@ impl ChatServer {
         extractions: &[Extraction],
     ) -> Result<(), ChatError> {
         let thread_root = {
-            let session = sessions.get(session_id)
+            let session = sessions
+                .get(session_id)
                 .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
             session
                 .messages
@@ -564,7 +581,8 @@ impl ChatServer {
             .collect();
 
         {
-            let mut session = sessions.get_mut(session_id)
+            let mut session = sessions
+                .get_mut(session_id)
                 .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
             for extraction in extractions_with_thread {
@@ -590,7 +608,9 @@ impl ChatServer {
     }
 
     pub async fn get_history(&self, session_id: &SessionId) -> Result<Vec<Message>, ChatError> {
-        let session = self.sessions.get(session_id)
+        let session = self
+            .sessions
+            .get(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         Ok(session.messages.clone())
@@ -598,7 +618,9 @@ impl ChatServer {
 
     /// Main thread only: top-level messages (no parent). Child threads hold the detailed discussion.
     pub async fn get_main_thread(&self, session_id: &SessionId) -> Result<Vec<Message>, ChatError> {
-        let session = self.sessions.get(session_id)
+        let session = self
+            .sessions
+            .get(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         Ok(session
@@ -615,7 +637,9 @@ impl ChatServer {
         session_id: &SessionId,
         parent_message_id: &MessageId,
     ) -> Result<Vec<Message>, ChatError> {
-        let session = self.sessions.get(session_id)
+        let session = self
+            .sessions
+            .get(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         Ok(session
@@ -642,7 +666,9 @@ impl ChatServer {
         &self,
         session_id: &SessionId,
     ) -> Result<Vec<Extraction>, ChatError> {
-        let session = self.sessions.get(session_id)
+        let session = self
+            .sessions
+            .get(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         Ok(session.extractions.values().cloned().collect())
@@ -668,7 +694,9 @@ impl ChatServer {
         session_id: &SessionId,
         extraction_id: &str,
     ) -> Result<(), ChatError> {
-        let mut session = self.sessions.get_mut(session_id)
+        let mut session = self
+            .sessions
+            .get_mut(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         if let Some(extraction) = session.extractions.get_mut(extraction_id) {
@@ -690,7 +718,9 @@ impl ChatServer {
         session_id: &SessionId,
         extraction_id: &str,
     ) -> Result<(), ChatError> {
-        let mut session = self.sessions.get_mut(session_id)
+        let mut session = self
+            .sessions
+            .get_mut(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         if let Some(extraction) = session.extractions.get_mut(extraction_id) {
@@ -706,13 +736,17 @@ impl ChatServer {
         &self,
         session_id: &SessionId,
     ) -> Result<Vec<Participant>, ChatError> {
-        let session = self.sessions.get(session_id)
+        let session = self
+            .sessions
+            .get(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
         Ok(session.participants.clone())
     }
 
     pub async fn get_session_info(&self, session_id: &SessionId) -> Result<SessionInfo, ChatError> {
-        let session = self.sessions.get(session_id)
+        let session = self
+            .sessions
+            .get(session_id)
             .ok_or_else(|| ChatError::SessionNotFound(session_id.clone()))?;
 
         Ok(SessionInfo {

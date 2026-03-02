@@ -86,7 +86,11 @@ impl McpServer {
         let addr = format!("0.0.0.0:{}", self.port);
         let listener = tokio::net::TcpListener::bind(&addr).await?;
 
-        tracing::info!("MCP server listening on {} (CORS: {:?})", addr, self.cors_origins);
+        tracing::info!(
+            "MCP server listening on {} (CORS: {:?})",
+            addr,
+            self.cors_origins
+        );
         axum::serve(listener, app).await?;
 
         Ok(())
@@ -176,9 +180,6 @@ async fn execute_tool(
     Json(ApiResponse::success(response))
 }
 
-pub async fn run_server(
-    graph: Arc<RwLock<KnowledgeGraph>>,
-    port: u16,
-) -> Result<(), McpError> {
+pub async fn run_server(graph: Arc<RwLock<KnowledgeGraph>>, port: u16) -> Result<(), McpError> {
     McpServer::new(graph).port(port).run().await
 }

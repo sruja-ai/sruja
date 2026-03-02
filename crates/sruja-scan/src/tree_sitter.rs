@@ -60,81 +60,81 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
 
                 match parse_file(path, &content, language) {
                     Some(parsed) => {
-                    let file_id = file_to_id(repo_root, path);
+                        let file_id = file_to_id(repo_root, path);
 
-                    let parent_module = path
-                        .parent()
-                        .and_then(|p| p.strip_prefix(repo_root).ok())
-                        .map(|p| p.to_string_lossy().replace(['/', '\\'], "_"))
-                        .unwrap_or_else(|| "root".to_string());
+                        let parent_module = path
+                            .parent()
+                            .and_then(|p| p.strip_prefix(repo_root).ok())
+                            .map(|p| p.to_string_lossy().replace(['/', '\\'], "_"))
+                            .unwrap_or_else(|| "root".to_string());
 
-                    let module_id = format!("module:{}", parent_module);
-                    if !module_nodes.contains_key(&module_id) {
-                        module_nodes.insert(
-                            module_id.clone(),
-                            Node {
-                                id: module_id.clone(),
-                                kind: NodeKind::Module,
-                                label: parent_module.clone(),
-                                technology: Some(language.to_string()),
-                                path: Some(parent_module.clone()),
-                                metadata: HashMap::new(),
-                            },
-                        );
-                    }
+                        let module_id = format!("module:{}", parent_module);
+                        if !module_nodes.contains_key(&module_id) {
+                            module_nodes.insert(
+                                module_id.clone(),
+                                Node {
+                                    id: module_id.clone(),
+                                    kind: NodeKind::Module,
+                                    label: parent_module.clone(),
+                                    technology: Some(language.to_string()),
+                                    path: Some(parent_module.clone()),
+                                    metadata: HashMap::new(),
+                                },
+                            );
+                        }
 
-                    let node = Node {
-                        id: file_id.clone(),
-                        kind: infer_node_kind(&parsed, path),
-                        label: parsed.name.clone(),
-                        technology: Some(language.to_string()),
-                        path: Some(path.to_string_lossy().to_string()),
-                        metadata: HashMap::new(),
-                    };
-                    nodes.push(node);
-
-                    edges.push(Edge {
-                        source: module_id.clone(),
-                        target: file_id.clone(),
-                        kind: EdgeKind::Calls,
-                        evidence: vec![EdgeEvidence {
-                            rule: "contains".to_string(),
-                            file: Some(path.to_string_lossy().to_string()),
-                            line: None,
-                            detail: Some("module contains this file".to_string()),
-                        }],
-                    });
-
-                    for import in &parsed.imports {
-                        let target_id = resolve_import(repo_root, path, import);
-                        file_imports
-                            .entry(file_id.clone())
-                            .or_default()
-                            .push(target_id);
-                    }
-
-                    for export in &parsed.exports {
-                        let export_node_id = format!("{}#{}", file_id, export);
-                        nodes.push(Node {
-                            id: export_node_id.clone(),
-                            kind: NodeKind::Module,
-                            label: export.clone(),
+                        let node = Node {
+                            id: file_id.clone(),
+                            kind: infer_node_kind(&parsed, path),
+                            label: parsed.name.clone(),
                             technology: Some(language.to_string()),
                             path: Some(path.to_string_lossy().to_string()),
                             metadata: HashMap::new(),
-                        });
+                        };
+                        nodes.push(node);
+
                         edges.push(Edge {
-                            source: file_id.clone(),
-                            target: export_node_id,
+                            source: module_id.clone(),
+                            target: file_id.clone(),
                             kind: EdgeKind::Calls,
                             evidence: vec![EdgeEvidence {
-                                rule: "exports".to_string(),
+                                rule: "contains".to_string(),
                                 file: Some(path.to_string_lossy().to_string()),
                                 line: None,
-                                detail: Some(format!("exports {}", export)),
+                                detail: Some("module contains this file".to_string()),
                             }],
                         });
-                    }
+
+                        for import in &parsed.imports {
+                            let target_id = resolve_import(repo_root, path, import);
+                            file_imports
+                                .entry(file_id.clone())
+                                .or_default()
+                                .push(target_id);
+                        }
+
+                        for export in &parsed.exports {
+                            let export_node_id = format!("{}#{}", file_id, export);
+                            nodes.push(Node {
+                                id: export_node_id.clone(),
+                                kind: NodeKind::Module,
+                                label: export.clone(),
+                                technology: Some(language.to_string()),
+                                path: Some(path.to_string_lossy().to_string()),
+                                metadata: HashMap::new(),
+                            });
+                            edges.push(Edge {
+                                source: file_id.clone(),
+                                target: export_node_id,
+                                kind: EdgeKind::Calls,
+                                evidence: vec![EdgeEvidence {
+                                    rule: "exports".to_string(),
+                                    file: Some(path.to_string_lossy().to_string()),
+                                    line: None,
+                                    detail: Some(format!("exports {}", export)),
+                                }],
+                            });
+                        }
                     }
                     None => {
                         log::warn!("Parse failed: {} ({})", path.display(), language);
@@ -298,7 +298,13 @@ fn resolve_import(repo_root: &Path, from_file: &Path, import_path: &str) -> Stri
         }
 
         // Try directory index (e.g. './foo' -> './foo/index.ts')
-        const INDEX_FILES: &[&str] = &["index.ts", "index.tsx", "index.js", "index.jsx", "index.mjs"];
+        const INDEX_FILES: &[&str] = &[
+            "index.ts",
+            "index.tsx",
+            "index.js",
+            "index.jsx",
+            "index.mjs",
+        ];
         for index_file in INDEX_FILES {
             let candidate = base.join(index_file);
             if candidate.exists() {

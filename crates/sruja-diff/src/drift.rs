@@ -1,8 +1,8 @@
 //! Architectural drift detection: cycles, orphans, layer violations, god modules.
 
 use crate::health::calculate_health_score_from_violations;
-use crate::types::HealthScorePenalties;
 use crate::source_ref::{collect_cycle_sources, collect_edge_sources, collect_node_path_source};
+use crate::types::HealthScorePenalties;
 use crate::types::{DriftConfig, DriftReport, Severity, Violation, ViolationKind};
 use sruja_scan::{Graph, NodeKind};
 use std::collections::{HashMap, HashSet};
@@ -15,10 +15,7 @@ pub fn detect_architectural_drift(graph: &Graph) -> DriftReport {
 }
 
 /// Detect architectural drift with custom configuration.
-pub fn detect_architectural_drift_with_config(
-    graph: &Graph,
-    config: &DriftConfig,
-) -> DriftReport {
+pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfig) -> DriftReport {
     let mut violations = Vec::new();
     let mut suggestions = Vec::new();
 
@@ -79,9 +76,7 @@ pub fn detect_architectural_drift_with_config(
             severity: Severity::Info,
             message: format!(
                 "Module '{}' has {} dependencies (threshold: {})",
-                module.name,
-                module.dependency_count,
-                config.god_module_threshold
+                module.name, module.dependency_count, config.god_module_threshold
             ),
             location: Some(module.name.clone()),
             suggestion: Some(
@@ -138,7 +133,9 @@ pub fn detect_architectural_drift_with_config(
 pub fn find_circular_dependencies(graph: &Graph) -> Vec<Vec<String>> {
     let mut adj: HashMap<&str, Vec<&str>> = HashMap::new();
     for edge in &graph.edges {
-        adj.entry(edge.source.as_str()).or_default().push(edge.target.as_str());
+        adj.entry(edge.source.as_str())
+            .or_default()
+            .push(edge.target.as_str());
     }
 
     let mut raw_cycles: Vec<Vec<&str>> = Vec::new();
@@ -224,8 +221,69 @@ fn dfs_cycles<'a>(
     rec_stack.remove(node);
 }
 
+/// Path patterns that usually indicate doc, test, or tooling code rather than main product.
+/// Orphans and god modules in these paths are excluded so the score reflects product code only.
+fn is_likely_doc_or_tool_path(path: &str, id: &str) -> bool {
+    let p = path.replace('\\', "/").to_lowercase();
+    let id_lower = id.to_lowercase();
+    // Path-based: doc, tests, tools, vendor, examples (we look at source, not tests/examples)
+    p.ends_with("doc.go")
+        || p.contains("/doc/")
+        || p.contains("_test.go")
+        || p.contains("/test/")
+        || p.contains("/tests/")
+        || p.contains("__tests__")
+        || p.contains(".spec.")
+        || p.contains(".test.")
+        || p.contains("/tools/")
+        || p.contains("/vendor/")
+        || p.contains("/third_party/")
+        || p.contains("/examples/")
+        || p.contains("/fixtures/")
+        || p.contains("/sample")
+        // Id often encodes path (e.g. server_embed_doc_go)
+        || id_lower.contains("_doc_go")
+        || id_lower.ends_with("_test_go")
+}
+
+/// Paths that are commonly entry points or re-export hubs; reporting them as orphans
+/// is usually a false positive (scanner may not see dynamic requires or re-exports).
+fn is_likely_entry_point(path: &str, _id: &str) -> bool {
+    let p = path.replace('\\', "/");
+    let p_lower = p.to_lowercase();
+    // Common JS/TS entry file names (often no static imports in the file itself)
+    if p_lower.ends_with("index.js")
+        || p_lower.ends_with("index.ts")
+        || p_lower.ends_with("index.jsx")
+        || p_lower.ends_with("index.tsx")
+        || p_lower.ends_with("main.js")
+        || p_lower.ends_with("main.ts")
+        || p_lower.ends_with("app.js")
+        || p_lower.ends_with("app.ts")
+    {
+        return !p_lower.contains("/examples/")
+            && !p_lower.contains("/tests/")
+            && !p_lower.contains("/test/")
+            && !p_lower.contains("_test.");
+    }
+    // Node package core: top-level lib/*.js (e.g. Express lib/request.js) are often
+    // required via require() which the scanner may not extract; exclude to reduce noise.
+    if p_lower.ends_with(".js") && p_lower.contains("/lib/") {
+        let after_lib = p_lower.split("/lib/").last().unwrap_or("");
+        if !after_lib.contains('/') {
+            return true;
+        }
+    }
+    // Rust crate root lib.rs: often only re-exports, so few or no edges to other crates
+    if p_lower.ends_with("/src/lib.rs") {
+        return true;
+    }
+    false
+}
+
 /// Find modules with no incoming or outgoing dependency edges.
-/// Excludes containment edges (module:->file) so we detect truly disconnected modules.
+/// Excludes containment edges (module:->file) and nodes that look like doc/tools/tests
+/// so health score is not dominated by false positives in Go/JS/Python repos.
 pub fn find_orphan_modules(graph: &Graph) -> Vec<String> {
     let mut has_incoming: HashSet<&str> = HashSet::new();
     let mut has_outgoing: HashSet<&str> = HashSet::new();
@@ -243,6 +301,14 @@ pub fn find_orphan_modules(graph: &Graph) -> Vec<String> {
         .filter(|n| n.kind == NodeKind::Module)
         .filter(|n| !n.id.starts_with("module:") && !n.id.contains('#'))
         .filter(|n| !has_incoming.contains(n.id.as_str()) && !has_outgoing.contains(n.id.as_str()))
+        .filter(|n| {
+            let path = n.path.as_deref().unwrap_or("");
+            !is_likely_doc_or_tool_path(path, &n.id)
+        })
+        .filter(|n| {
+            let path = n.path.as_deref().unwrap_or("");
+            !is_likely_entry_point(path, &n.id)
+        })
         .map(|n| n.id.clone())
         .collect()
 }
@@ -300,6 +366,10 @@ fn find_god_modules(graph: &Graph, threshold: usize) -> Vec<GodModuleInfo> {
         .nodes
         .iter()
         .filter(|n| n.kind == NodeKind::Module)
+        .filter(|n| {
+            let path = n.path.as_deref().unwrap_or("");
+            !is_likely_doc_or_tool_path(path, &n.id)
+        })
         .filter_map(|n| {
             let count = dep_counts.get(n.id.as_str()).copied().unwrap_or(0);
             if count >= threshold {

@@ -12,6 +12,7 @@ result_log.txt
 lint_output.txt
 lint_final.txt
 tests/results/
+evaluation/real-world-test/results/
 
 # Environment variables
 .env

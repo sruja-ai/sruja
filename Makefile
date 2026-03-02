@@ -1,4 +1,4 @@
-.PHONY: build test test-coverage clean install lint fmt help build-rust test-rust wasm wasm-tiny book book-build book-wasm book-serve book-deps book-clean assets
+.PHONY: build test test-coverage clean install lint fmt help build-rust test-rust wasm wasm-tiny book book-build book-wasm book-serve book-deps book-clean assets demo
 
 # Build Rust libraries
 build-rust:
@@ -181,6 +181,15 @@ assets:
 	fi
 	@echo "✅ Assets copied"
 
+# Run E2E value demo (quickstart + drift on Express; optional --baseline, --llm)
+demo:
+	@echo "Running Sruja E2E demo..."
+	@if [ -f "evaluation/real-world-test/run_demo.sh" ]; then \
+		cd evaluation/real-world-test && ./run_demo.sh; \
+	else \
+		echo "❌ evaluation/real-world-test/run_demo.sh not found"; exit 1; \
+	fi
+
 # Show help
 help:
 	@echo "Sruja - Build Commands"
@@ -209,6 +218,7 @@ help:
 	@echo ""
 	@echo "Architecture Intelligence:"
 	@echo "  make test-arch-intel    - Run architecture intelligence E2E tests (chat, why)"
+	@echo "  make demo               - Run E2E value demo (quickstart + drift on sample repo)"
 	@echo ""
 	@echo "Direct Cargo Commands:"
 	@echo "  cargo build --release   - Build release version"

@@ -13,48 +13,49 @@ Test whether Sruja AI skills can effectively generate useful architecture docume
 
 ## Test Repositories
 
-We picked 5 diverse, popular open-source projects:
+The default set is defined in `setup_repos.sh` and documented in `test-repos/MANIFEST.md`. Run `./setup_repos.sh` to clone. Current default set:
 
 ### 1. **Express.js** (Node.js web framework)
 - **Why**: Simple, well-documented, middleware architecture
 - **GitHub**: https://github.com/expressjs/express
 - **Expected**: Clear layered architecture with middleware pipeline
 
-### 2. **Redis** (In-memory database)
-- **Why**: Complex C codebase, multiple subsystems
-- **GitHub**: https://github.com/redis/redis
-- **Expected**: Client-server architecture with data structures
+### 2. **FastAPI** (Python API framework)
+- **Why**: Modern async API framework, clear structure
+- **GitHub**: https://github.com/tiangolo/fastapi
+- **Expected**: Starlette-based layers, OpenAPI integration
 
-### 3. **React** (UI library)
-- **Why**: Component-based, complex state management
-- **GitHub**: https://github.com/facebook/react
-- **Expected**: Component tree, reconciliation, fiber architecture
+### 3. **Next.js** (React framework)
+- **Why**: Full-stack React, SSR, and tooling
+- **GitHub**: https://github.com/vercel/next.js
+- **Expected**: App/router, build pipeline, server/client boundaries
 
-### 4. **Kubernetes** (Container orchestration)
-- **Why**: Microservices, complex distributed system
-- **GitHub**: https://github.com/kubernetes/kubernetes
-- **Expected**: Control plane, worker nodes, API-driven
+### 4. **Prometheus** (Go monitoring system)
+- **Why**: Distributed system, time-series storage, scraping
+- **GitHub**: https://github.com/prometheus/prometheus
+- **Expected**: Scraper, storage, query layer, federation
 
-### 5. **VS Code** (Code editor)
-- **Why**: Extension-based architecture, Electron app
-- **GitHub**: https://github.com/microsoft/vscode
-- **Expected**: Extension host, main process, renderer process
+### 5. **Django** (Python web framework)
+- **Why**: Large, layered framework with ORM and admin
+- **GitHub**: https://github.com/django/django
+- **Expected**: Apps, middleware, ORM, request/response cycle
 
 ## Test Process
 
 ### Step 1: Clone Repositories
 
 ```bash
-# Create test directory
+# From evaluation/real-world-test: clone all default test repos
+./setup_repos.sh
+
+# Or clone manually (see setup_repos.sh for the current list)
 mkdir -p test-repos
 cd test-repos
-
-# Clone repositories (shallow clone to save time)
 git clone --depth 1 https://github.com/expressjs/express.git
-git clone --depth 1 https://github.com/redis/redis.git
-git clone --depth 1 https://github.com/facebook/react.git
-git clone --depth 1 https://github.com/kubernetes/kubernetes.git
-git clone --depth 1 https://github.com/microsoft/vscode.git
+git clone --depth 1 https://github.com/tiangolo/fastapi.git
+git clone --depth 1 https://github.com/vercel/next.js.git
+git clone --depth 1 https://github.com/prometheus/prometheus.git
+git clone --depth 1 https://github.com/django/django.git
 ```
 
 ### Step 2: Generate Architecture with Sruja AI Skills
@@ -90,13 +91,13 @@ Save the generated DSL as `architecture.sruja` in each repo's directory:
 test-repos/
 ├── express/
 │   └── architecture.sruja
-├── redis/
+├── fastapi/
 │   └── architecture.sruja
-├── react/
+├── next.js/
 │   └── architecture.sruja
-├── kubernetes/
+├── prometheus/
 │   └── architecture.sruja
-└── vscode/
+└── django/
     └── architecture.sruja
 ```
 
@@ -139,22 +140,14 @@ For each generated architecture, answer these questions:
 
 Time: ~30 minutes per repository
 
-### Option B: Simple LLM Check
+### Option B: LLM Check
 
-Use an LLM to quickly evaluate:
+Use `sruja eval` for automated LLM evaluation (any provider):
 
 ```bash
-# For each repository
-cat test-repos/express/architecture.sruja | llm-prompt "
-You are a software architect. Evaluate this generated architecture DSL for the Express.js codebase.
-
-Rate 1-10 on:
-1. Completeness (are main components captured?)
-2. Accuracy (does it match Express.js architecture?)
-3. Usefulness (would it help a new developer?)
-
-Provide brief justification for each score.
-"
+export OPENAI_API_KEY="sk-..."   # or OPENROUTER, ANTHROPIC, GEMINI
+./evaluate_architecture.sh express --llm
+# Or: sruja eval test-repos/express
 ```
 
 ### Option C: Team Review
@@ -170,7 +163,7 @@ Share generated architectures with your team:
 Sruja is **useful** if:
 
 ✅ **3/5 repositories** score **≥7/10** on average across all criteria
-✅ **At least 1 complex repository** (Kubernetes/VS Code) scores **≥6/10**
+✅ **At least 1 high-complexity repository** (e.g. next.js, prometheus, django) scores **≥6/10**
 ✅ **No generated architectures** are completely wrong (≤3/10)
 ✅ **Generated architectures** provide value over README alone
 
@@ -213,42 +206,25 @@ For each repository, record:
 [What did you learn about Sruja's capabilities?]
 ```
 
-## Quick Start Script
+## Quick Start
 
+**Fast path (zero config, ~2 min):**
 ```bash
-#!/bin/bash
-# setup-test.sh
-
-echo "Setting up Sruja real-world test..."
-
-# Create directories
-mkdir -p test-repos results
-
-# Clone repositories
-cd test-repos
-
-echo "Cloning repositories..."
-git clone --depth 1 https://github.com/expressjs/express.git &
-git clone --depth 1 https://github.com/redis/redis.git &
-git clone --depth 1 https://github.com/facebook/react.git &
-git clone --depth 1 https://github.com/kubernetes/kubernetes.git &
-git clone --depth 1 https://github.com/microsoft/vscode.git &
-
-wait
-echo "All repositories cloned!"
-
-echo ""
-echo "Next steps:"
-echo "1. Open each repository in your editor"
-echo "2. Use Sruja AI skills to generate architecture"
-echo "3. Save as architecture.sruja"
-echo "4. Run evaluation"
-echo ""
-echo "Example for Express:"
-echo "  cd test-repos/express"
-echo "  code .  # Open in VS Code"
-echo "  # In Copilot Chat: @sruja Generate architecture DSL for this codebase"
+./run_demo.sh
 ```
+
+**Full evaluation:**
+```bash
+# Clone test repositories (shell - no Python required)
+./setup_repos.sh
+
+# Generate architecture for each repo using Sruja AI skills, then evaluate:
+./evaluate_architecture.sh express
+```
+
+**Optional LLM eval:** Copy `.env.example` to `.env`, add any LLM API key, then `./run_demo.sh --llm` or `./evaluate_architecture.sh express --llm`.
+
+See [QUICKSTART.md](QUICKSTART.md) for the full guide.
 
 ## What This Tests
 
@@ -298,7 +274,7 @@ This evaluates **Sruja's core value proposition**:
 ## FAQ
 
 **Q: Why these 5 repositories?**
-A: Diverse architectures, popular/well-known, different languages, varying complexity.
+A: The default set (express, fastapi, next.js, prometheus, django) gives diverse architectures, languages, and complexity. You can change the list in `setup_repos.sh` and regenerate the manifest.
 
 **Q: Can I use different repositories?**
 A: Yes! Pick repositories relevant to your use case. Just ensure they have:

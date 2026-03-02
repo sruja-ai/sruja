@@ -84,7 +84,10 @@ impl BoundedContextDetector {
                     .iter()
                     .map(|s| s.as_str())
                     .collect();
-                let in_context = users.iter().filter(|u| context_components.contains(*u)).count();
+                let in_context = users
+                    .iter()
+                    .filter(|u| context_components.contains(*u))
+                    .count();
                 let out_context = users.len() - in_context;
 
                 if out_context > 0 {
@@ -106,7 +109,11 @@ impl BoundedContextDetector {
                 }
             }
         }
-        result.sort_by(|a, b| b.leakage_confidence.partial_cmp(&a.leakage_confidence).unwrap());
+        result.sort_by(|a, b| {
+            b.leakage_confidence
+                .partial_cmp(&a.leakage_confidence)
+                .unwrap()
+        });
         result.dedup_by(|a, b| a.term == b.term);
         result
     }

@@ -13,8 +13,8 @@ mod types;
 pub use compare::compare_graphs;
 pub use convert::program_to_graph;
 pub use drift::{
-    detect_architectural_drift, detect_architectural_drift_with_config,
-    find_circular_dependencies, find_orphan_modules,
+    detect_architectural_drift, detect_architectural_drift_with_config, find_circular_dependencies,
+    find_orphan_modules,
 };
 pub use health::calculate_health_score_from_violations;
 pub use types::{

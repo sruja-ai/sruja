@@ -16,9 +16,7 @@ impl VocabularyGraph {
         Self::default()
     }
 
-    pub fn from_component_vocabularies(
-        vocabs: &[super::ComponentVocabulary],
-    ) -> Self {
+    pub fn from_component_vocabularies(vocabs: &[super::ComponentVocabulary]) -> Self {
         let mut term_to_components: HashMap<String, Vec<String>> = HashMap::new();
         let mut component_to_terms: HashMap<String, Vec<String>> = HashMap::new();
 

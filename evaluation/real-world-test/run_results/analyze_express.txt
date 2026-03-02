@@ -1,0 +1,29 @@
+══════════════════════════════════════════════════════════════════════
+🏗️ Sruja Architecture Intelligence
+══════════════════════════════════════════════════════════════════════
+
+Repository: evaluation/real-world-test/test-repos/express
+
+📊 Layer 1: Structural
+   Modules: 76 | Services: 6 | Databases: 2
+   Dependencies: 50 | Violations: 7
+   Health score: 97/100
+
+📊 Layer 2: Semantic
+   Components: 85
+   Bounded contexts: 0
+   Hidden couplings: 0
+   Health score: 100/100
+
+──────────────────────────────────────────────────────────────────────
+💚 Overall Health: 98/100
+──────────────────────────────────────────────────────────────────────
+
+💡 Recommendations
+   - Module 'index_js' has no incoming or outgoing dependencies
+   - Module 'lib_response_js' has no incoming or outgoing dependencies
+   - Module 'lib_request_js' has no incoming or outgoing dependencies
+   - Module 'lib_express_js' has no incoming or outgoing dependencies
+   - Module 'lib_utils_js' has no incoming or outgoing dependencies
+
+══════════════════════════════════════════════════════════════════════

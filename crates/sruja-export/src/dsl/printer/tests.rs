@@ -176,8 +176,8 @@ fn test_print_view() {
         }],
     };
 
-    let program = sruja_language::Program::new()
-        .with_items(vec![sruja_language::TopLevelItem::View(view)]);
+    let program =
+        sruja_language::Program::new().with_items(vec![sruja_language::TopLevelItem::View(view)]);
 
     let printer = DslPrinter::new();
     let out = printer.print(&program);
@@ -322,9 +322,10 @@ fn test_print_element_with_all_fields() {
         },
     };
 
-    let program = sruja_language::Program::new().with_items(vec![
-        sruja_language::TopLevelItem::ElementDef(Box::new(element)),
-    ]);
+    let program =
+        sruja_language::Program::new().with_items(vec![sruja_language::TopLevelItem::ElementDef(
+            Box::new(element),
+        )]);
 
     let printer = DslPrinter::new();
     let out = printer.print(&program);
@@ -556,8 +557,8 @@ fn test_print_style() {
         ]),
     };
 
-    let program = sruja_language::Program::new()
-        .with_items(vec![sruja_language::TopLevelItem::Style(style)]);
+    let program =
+        sruja_language::Program::new().with_items(vec![sruja_language::TopLevelItem::Style(style)]);
 
     let printer = DslPrinter::new();
     let out = printer.print(&program);

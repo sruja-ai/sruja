@@ -3,9 +3,7 @@
 //! This module provides functionality to merge architecture graphs from code scans
 //! into the KnowledgeGraph. This eliminates duplication between CLI and Chat modules.
 
-use crate::{
-    ArchitectureEdge, ArchitectureNode, KnowledgeGraph, SourceReference,
-};
+use crate::{ArchitectureEdge, ArchitectureNode, KnowledgeGraph, SourceReference};
 use chrono::Utc;
 use sruja_scan::Graph;
 

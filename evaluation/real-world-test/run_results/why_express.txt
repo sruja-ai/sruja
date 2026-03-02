@@ -1,0 +1,16 @@
+The architecture has 85 components, 0 decisions, and 0 policies. Try asking about specific services, technologies, or decisions.
+
+Confidence: 30%
+
+File references (from scan):
+  - evaluation/real-world-test/test-repos/express/examples/auth/index.js
+  - evaluation/real-world-test/test-repos/express/examples/content-negotiation/db.js
+  - evaluation/real-world-test/test-repos/express/examples/content-negotiation/index.js
+  - evaluation/real-world-test/test-repos/express/examples/content-negotiation/users.js
+  - evaluation/real-world-test/test-repos/express/examples/cookie-sessions/index.js
+  - evaluation/real-world-test/test-repos/express/examples/cookies/index.js
+  - evaluation/real-world-test/test-repos/express/examples/downloads/index.js
+  - evaluation/real-world-test/test-repos/express/examples/ejs/index.js
+  - evaluation/real-world-test/test-repos/express/examples/error-pages/index.js
+  - evaluation/real-world-test/test-repos/express/examples/error/index.js
+  ... and 40 more

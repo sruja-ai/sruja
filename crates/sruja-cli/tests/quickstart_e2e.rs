@@ -554,9 +554,14 @@ import { hello } from './hello';
 export function app() { return hello(); }
 "#,
         );
-        write_file(repo.path(), "hello.ts", r#"export function hello() { return 'world'; }"#);
+        write_file(
+            repo.path(),
+            "hello.ts",
+            r#"export function hello() { return 'world'; }"#,
+        );
 
-        let (success, stdout, stderr) = run_sruja(&["quickstart", "-r", repo.path().to_str().unwrap()]);
+        let (success, stdout, stderr) =
+            run_sruja(&["quickstart", "-r", repo.path().to_str().unwrap()]);
 
         assert!(success, "quickstart should succeed: stderr={}", stderr);
         assert!(
@@ -585,15 +590,31 @@ export function app() { return hello(); }
             "json",
         ]);
 
-        assert!(success, "quickstart -f json should succeed: stderr={}", stderr);
+        assert!(
+            success,
+            "quickstart -f json should succeed: stderr={}",
+            stderr
+        );
 
         let json: serde_json::Value =
             serde_json::from_str(&stdout).expect("Output should be valid JSON");
         assert!(json.get("repo").is_some(), "JSON should have repo field");
-        assert!(json.get("health_score").is_some(), "JSON should have health_score");
-        assert!(json.get("inventory").is_some(), "JSON should have inventory");
-        assert!(json.get("top_findings").is_some(), "JSON should have top_findings");
-        assert!(json.get("actionable_fixes").is_some(), "JSON should have actionable_fixes");
+        assert!(
+            json.get("health_score").is_some(),
+            "JSON should have health_score"
+        );
+        assert!(
+            json.get("inventory").is_some(),
+            "JSON should have inventory"
+        );
+        assert!(
+            json.get("top_findings").is_some(),
+            "JSON should have top_findings"
+        );
+        assert!(
+            json.get("actionable_fixes").is_some(),
+            "JSON should have actionable_fixes"
+        );
 
         let inv = json.get("inventory").unwrap();
         assert!(inv.get("modules").is_some());
@@ -605,7 +626,8 @@ export function app() { return hello(); }
         let repo = create_test_repo();
         write_file(repo.path(), "main.ts", r#"export const main = 1;"#);
 
-        let (success, stdout, stderr) = run_sruja(&["quickstart", "-r", repo.path().to_str().unwrap()]);
+        let (success, stdout, stderr) =
+            run_sruja(&["quickstart", "-r", repo.path().to_str().unwrap()]);
 
         assert!(success, "quickstart should succeed: stderr={}", stderr);
         let out = format!("{} {}", stdout, stderr);
@@ -613,7 +635,10 @@ export function app() { return hello(); }
             out.contains("Architecture Inventory") || out.contains("Architecture Intelligence"),
             "Should show inventory section"
         );
-        assert!(out.contains("Health Score") || out.contains("Health"), "Should show health score");
+        assert!(
+            out.contains("Health Score") || out.contains("Health"),
+            "Should show health score"
+        );
         assert!(
             out.contains("Next Steps") || out.contains("modules") || out.contains("components"),
             "Should show results or next steps"
@@ -624,8 +649,13 @@ export function app() { return hello(); }
     fn quickstart_handles_empty_repo_via_cli() {
         let repo = create_test_repo();
 
-        let (success, _stdout, stderr) = run_sruja(&["quickstart", "-r", repo.path().to_str().unwrap()]);
+        let (success, _stdout, stderr) =
+            run_sruja(&["quickstart", "-r", repo.path().to_str().unwrap()]);
 
-        assert!(success, "quickstart on empty repo should succeed: stderr={}", stderr);
+        assert!(
+            success,
+            "quickstart on empty repo should succeed: stderr={}",
+            stderr
+        );
     }
 }

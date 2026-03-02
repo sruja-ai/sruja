@@ -148,17 +148,16 @@ mod tests {
         // A -> B -> A (two traces so occurrences >= 2)
         let trace = make_trace(
             "planner",
-            vec![make_trace(
-                "executor",
-                vec![make_trace("planner", vec![])],
-            )],
+            vec![make_trace("executor", vec![make_trace("planner", vec![])])],
         );
 
         let detector = EmergentCycleDetector::new();
         let cycles = detector.detect(&[trace.clone(), trace]);
 
         assert!(!cycles.is_empty());
-        assert!(cycles.iter().any(|c| c.pattern == ["planner", "executor", "planner"]));
+        assert!(cycles
+            .iter()
+            .any(|c| c.pattern == ["planner", "executor", "planner"]));
     }
 
     #[test]

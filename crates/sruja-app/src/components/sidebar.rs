@@ -44,7 +44,9 @@ pub fn Sidebar(
                         repo_signal.set(path.clone());
                         let path_buf = Path::new(path);
                         match srv.load_repo_context(path_buf).await {
-                            Ok(count) => status_signal.set(Some(format!("Auto-loaded {} items", count))),
+                            Ok(count) => {
+                                status_signal.set(Some(format!("Auto-loaded {} items", count)))
+                            }
                             Err(e) => status_signal.set(Some(format!("Auto-load error: {}", e))),
                         }
                     }

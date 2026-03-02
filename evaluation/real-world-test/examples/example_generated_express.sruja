@@ -8,25 +8,12 @@ import { * } from 'sruja.ai/stdlib'
 
 // Main Express system
 express = system "Express.js Framework" {
-  description "Fast, unopinionated, minimalist web framework for Node.js"
-
-  metadata {
-    version "4.18.x"
-    language "JavaScript"
-    license "MIT"
-    npm_package "express"
-    github "https://github.com/expressjs/express"
-  }
+  description "Fast, unopinionated, minimalist web framework for Node.js (v4.18.x, JavaScript, MIT). Main file lib/express.js."
 
   // Core Application
   app = container "Express Application" {
     technology "Node.js"
-    description "Main application instance that manages routing and middleware"
-
-    metadata {
-      entry_point "express()"
-      main_file "lib/express.js"
-    }
+    description "Main application instance that manages routing and middleware (entry express(), lib/express.js)"
   }
 
   // Router System
@@ -35,11 +22,7 @@ express = system "Express.js Framework" {
     description "Routes HTTP requests to appropriate handlers"
 
     routing = component "Routing Logic" {
-      description "Matches URLs to route handlers"
-      metadata {
-        file "lib/router/index.js"
-        methods ["GET", "POST", "PUT", "DELETE", "PATCH"]
-      }
+      description "Matches URLs to route handlers (lib/router/index.js, GET/POST/PUT/DELETE/PATCH)"
     }
 
     layer = component "Layer System" {
@@ -64,47 +47,32 @@ express = system "Express.js Framework" {
   // Request/Response Handling
   request = container "Request Handler" {
     technology "Node.js"
-    description "HTTP request abstraction"
-
-    metadata {
-      extends "http.IncomingMessage"
-      file "lib/request.js"
-    }
+    description "HTTP request abstraction (extends http.IncomingMessage, lib/request.js)"
   }
 
   response = container "Response Handler" {
     technology "Node.js"
-    description "HTTP response abstraction with helper methods"
-
-    metadata {
-      extends "http.ServerResponse"
-      file "lib/response.js"
-      methods ["send", "json", "render", "redirect"]
-    }
+    description "HTTP response abstraction with helper methods (extends http.ServerResponse, lib/response.js: send, json, render, redirect)"
   }
 
   // View System
   view = container "View System" {
     technology "Node.js"
-    description "Template rendering support"
-    metadata {
-      optional true
-      engines ["pug", "ejs", "hbs", "etc"]
-    }
+    description "Template rendering support (optional; engines: pug, ejs, hbs, etc)"
   }
 
   // Query Parser
   queryParser = component "Query Parser" {
-    description "Parses URL query strings"
-    metadata {
-      dependency "qs"
-    }
+    description "Parses URL query strings (dependency qs)"
   }
 
   // Internal relationships
   app -> router "delegates routing to"
   app -> middleware "processes requests through"
+  router.routing -> router.layer "uses layer stack"
+  router.layer -> middleware.pipeline "dispatches to"
   router.routing -> middleware.pipeline "routes to handlers via"
+  middleware.pipeline -> middleware.builtins "may use"
   middleware.pipeline -> request "modifies"
   middleware.pipeline -> response "modifies"
   app -> view "optional template rendering via"
@@ -131,19 +99,12 @@ npm = system "NPM Ecosystem" {
 
   bodyParser = container "Body Parser" {
     technology "body-parser package"
-    description "Parse incoming request bodies (deprecated in Express 4.16+)"
-    metadata {
-      deprecated true
-      replaced_by "express.json(), express.urlencoded()"
-    }
+    description "Parse incoming request bodies (deprecated in Express 4.16+; use express.json(), express.urlencoded())"
   }
 
   cookieParser = container "Cookie Parser" {
     technology "cookie-parser package"
-    description "Parse Cookie header and populate req.cookies"
-    metadata {
-      optional true
-    }
+    description "Parse Cookie header and populate req.cookies (optional)"
   }
 }
 
@@ -174,10 +135,15 @@ webApp = system "Web Application" {
 
 // Relationships
 developer -> express.app "creates application using"
+express -> nodejs "runs on"
 express -> nodejs.http "built on"
 express -> nodejs.events "uses event emitter pattern"
 express.app -> npm.bodyParser "optional integration with"
 express.app -> npm.cookieParser "optional integration with"
+express.app -> npm "optional integration with other packages"
+express.middleware -> REQ001 "implements"
+express.router -> REQ002 "implements"
+express.app -> REQ003 "addresses"
 webApp -> express "uses framework"
 webApp.customMiddleware -> express.middleware "extends"
 webApp.routes -> express.router "uses"
@@ -186,23 +152,14 @@ webApp.templates -> express.view "renders via"
 // Requirements captured from analysis
 REQ001 = requirement functional "Framework must support middleware pattern" {
   tags ["express.middleware"]
-  metadata {
-    source "package.json, lib/middleware/"
-  }
 }
 
 REQ002 = requirement functional "Framework must support HTTP routing" {
   tags ["express.router"]
-  metadata {
-    source "lib/router/"
-  }
 }
 
 REQ003 = requirement performance "Framework must handle high request throughput" {
   tags ["express.app"]
-  metadata {
-    source "benchmark tests"
-  }
 }
 
 // Architectural Decision Records
@@ -226,9 +183,6 @@ ADR002 = adr "Built-in body parsing deprecated in 4.16.0" {
 StyleGuide = policy "Express coding style guidelines" {
   category "development"
   enforcement "recommended"
-  metadata {
-    document "https://expressjs.com/en/4x/api.html"
-  }
 }
 
 // Confidence levels

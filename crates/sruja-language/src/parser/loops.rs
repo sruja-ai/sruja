@@ -11,7 +11,10 @@ use nom::{
 };
 use sruja_diagnostics::SourceLocation;
 
-use crate::ast::{CausalLoop, CausalLoopVariable, CausalPolarity, CausalRelationship, FeedbackLoop, FeedbackLoopType};
+use crate::ast::{
+    CausalLoop, CausalLoopVariable, CausalPolarity, CausalRelationship, FeedbackLoop,
+    FeedbackLoopType,
+};
 
 use super::primitives::{parse_identifier, parse_string, ws, ws0, ws1};
 use super::relations::parse_relation;
@@ -180,13 +183,7 @@ fn parse_causal_loop_variable(input: &str) -> IResult<&str, CausalLoopVariable> 
     let (input, _) = ws0(input)?;
     let (input, label) = opt(parse_string)(input)?;
 
-    Ok((
-        input,
-        CausalLoopVariable {
-            id,
-            label,
-        },
-    ))
+    Ok((input, CausalLoopVariable { id, label }))
 }
 
 enum CausalRelField {

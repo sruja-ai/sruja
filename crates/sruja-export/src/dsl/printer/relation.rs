@@ -23,6 +23,7 @@ pub fn print_relation(out: &mut String, rel: &Relation, indent: usize) {
 }
 
 /// Print an element definition (recursive; uses printer for nested elements and relations).
+#[allow(clippy::only_used_in_recursion)]
 pub fn print_element(
     printer: &super::DslPrinter,
     out: &mut String,
