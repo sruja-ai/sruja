@@ -1,9 +1,35 @@
 //! Language-specific parsers.
 
+pub mod c;
+pub mod cpp;
+pub mod csharp;
 pub mod go;
+pub mod java;
+pub mod kotlin;
+pub mod php;
 pub mod python;
+pub mod ruby;
 pub mod rust;
+pub mod scala;
 pub mod typescript;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
+pub enum Language {
+    TypeScript,
+    JavaScript,
+    Python,
+    Go,
+    Rust,
+    Java,
+    CSharp,
+    Ruby,
+    Php,
+    Kotlin,
+    Scala,
+    C,
+    Cpp,
+}
 
 use std::path::Path;
 

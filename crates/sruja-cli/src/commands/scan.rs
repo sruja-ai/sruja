@@ -2,6 +2,7 @@
 
 use std::fs;
 use std::path::Path;
+use colored::Colorize;
 
 use sruja_graph::{merge_scan_into_graph, KnowledgeGraph};
 use sruja_scan::{scan_repo, Graph, NodeKind};
@@ -267,9 +268,9 @@ fn generate_actionable_fixes_from_violations(
         fixes.push(ActionableFix {
             priority: "high".to_string(),
             description:
-                "Break circular dependencies by introducing interfaces or event-based communication"
+                "Break strong circular boundaries (Spaghetti Coupling) using Dependency Inversion or Event buses"
                     .to_string(),
-            impact: "Improves maintainability and reduces coupling".to_string(),
+            impact: "Cycles prevent modularity, cause cascading failures, and break independent testability/deployments.".to_string(),
             affected_components: affected,
         });
     }
@@ -296,9 +297,9 @@ fn generate_actionable_fixes_from_violations(
     if !god.is_empty() {
         let affected: Vec<String> = god.iter().filter_map(|v| v.location.clone()).collect();
         fixes.push(ActionableFix {
-            priority: "medium".to_string(),
-            description: "Refactor god modules into smaller, focused components".to_string(),
-            impact: "Improves code maintainability and reduces cognitive load".to_string(),
+            priority: "high".to_string(),
+            description: "Decouple Bottlenecks (God Modules) to reduce fan-in/fan-out gravity".to_string(),
+            impact: "High regression risk; modifying these components affects many distinct areas of the system, slowing down delivery.".to_string(),
             affected_components: affected,
         });
     }
@@ -322,40 +323,46 @@ fn generate_actionable_fixes_from_violations(
 }
 
 fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, repo: &str) {
-    println!("{}", "─".repeat(70));
-    println!("📊 Architecture Inventory");
-    println!("{}", "─".repeat(70));
-    println!("  Repository: {}", repo);
+    println!("{}", "─".repeat(70).truecolor(100, 100, 100));
+    println!("{}", "📊 Architecture Inventory".cyan().bold());
+    println!("{}", "─".repeat(70).truecolor(100, 100, 100));
+    println!("  Repository: {}", repo.green());
     println!();
     println!("  Components detected:");
-    println!("    • {} modules", report.total_modules);
-    println!("    • {} services", report.total_services);
-    println!("    • {} databases", report.total_databases);
+    println!("    • {} modules", report.total_modules.to_string().yellow());
+    println!("    • {} services", report.total_services.to_string().yellow());
+    println!("    • {} databases", report.total_databases.to_string().yellow());
     let external_apis = graph
         .nodes
         .iter()
         .filter(|n| n.kind == NodeKind::ExternalApi)
         .count();
-    println!("    • {} external APIs", external_apis);
-    println!("    • {} total dependencies", report.total_dependencies);
+    println!("    • {} external APIs", external_apis.to_string().yellow());
+    println!("    • {} total dependencies", report.total_dependencies.to_string().yellow());
     println!();
 
-    println!("{}", "─".repeat(70));
-    println!("💚 Architecture Health Score: {}/100", report.health_score);
-    println!("{}", "─".repeat(70));
+    println!("{}", "─".repeat(70).truecolor(100, 100, 100));
+    let score_str = format!("{}/100", report.health_score);
+    let colored_score = match report.health_score {
+        80..=100 => score_str.green().bold(),
+        60..=79 => score_str.yellow().bold(),
+        _ => score_str.red().bold(),
+    };
+    println!("💚 Architecture Health Score: {}", colored_score);
+    println!("{}", "─".repeat(70).truecolor(100, 100, 100));
 
     let score_bar = match report.health_score {
-        80..=100 => "████████████████████ ✓ Good",
-        60..=79 => "██████████████░░░░░░ ⚠ Fair",
-        40..=59 => "██████████░░░░░░░░░░ ⚠ Needs Work",
-        _ => "████░░░░░░░░░░░░░░░░ ✗ Critical",
+        80..=100 => "████████████████████ ✓ Good".green(),
+        60..=79 => "██████████████░░░░░░ ⚠ Fair".yellow(),
+        40..=59 => "██████████░░░░░░░░░░ ⚠ Needs Work".truecolor(255, 140, 0),
+        _ => "████░░░░░░░░░░░░░░░░ ✗ Critical".red(),
     };
     println!("  {}", score_bar);
     println!();
 
-    println!("{}", "─".repeat(70));
-    println!("🔍 Top 3 Critical Findings");
-    println!("{}", "─".repeat(70));
+    println!("{}", "─".repeat(70).truecolor(100, 100, 100));
+    println!("{}", "🔍 Top 3 Critical Findings".red().bold());
+    println!("{}", "─".repeat(70).truecolor(100, 100, 100));
 
     let mut sorted: Vec<_> = report.violations.iter().collect();
     sorted.sort_by(|a, b| {
@@ -368,18 +375,24 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
     });
 
     for (i, v) in sorted.iter().take(3).enumerate() {
-        let icon = match v.severity {
-            sruja_diff::Severity::Error => "🚨",
-            sruja_diff::Severity::Warning => "⚠️",
-            sruja_diff::Severity::Info => "ℹ️",
+        let (icon, msg) = match v.severity {
+            sruja_diff::Severity::Error => ("🚨", v.message.red().bold()),
+            sruja_diff::Severity::Warning => ("⚠️", v.message.yellow().bold()),
+            sruja_diff::Severity::Info => ("ℹ️", v.message.cyan().bold()),
         };
         println!();
-        println!("  {}. {} {}", i + 1, icon, v.message);
+        println!("  {}. {} {}", i + 1, icon, msg);
         if let Some(ref loc) = v.location {
-            println!("     📍 Component: {}", loc);
+            // Find actual path or sanitize ID to look like a path
+            let display_loc = graph.nodes.iter()
+                .find(|n| &n.id == loc)
+                .map(|n| n.path.as_deref().unwrap_or(loc))
+                .unwrap_or(loc)
+                .replace("_", "/");
+            println!("     📍 Component: {}", display_loc.truecolor(180, 180, 180));
         }
         if let Some(ref s) = v.suggestion {
-            println!("     💡 Suggestion: {}", s);
+            println!("     💡 Suggestion: {}", s.italic());
         }
     }
 
@@ -392,15 +405,15 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
     let fixes = generate_actionable_fixes_from_violations(&report.violations);
 
     if !fixes.is_empty() {
-        println!("{}", "─".repeat(70));
-        println!("🎯 Top 3 Actionable Fixes");
-        println!("{}", "─".repeat(70));
+        println!("{}", "─".repeat(70).truecolor(100, 100, 100));
+        println!("{}", "🎯 Top Actionable Fixes".green().bold());
+        println!("{}", "─".repeat(70).truecolor(100, 100, 100));
 
         for (i, fix) in fixes.iter().enumerate() {
-            let priority_icon = match fix.priority.as_str() {
-                "high" => "🔴",
-                "medium" => "🟡",
-                _ => "🟢",
+            let (priority_icon, priority_color) = match fix.priority.as_str() {
+                "high" => ("🔴", fix.priority.to_uppercase().red()),
+                "medium" => ("🟡", fix.priority.to_uppercase().yellow()),
+                _ => ("🟢", fix.priority.to_uppercase().cyan()),
             };
 
             println!();
@@ -408,46 +421,72 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
                 "  {}. {} [{}] {}",
                 i + 1,
                 priority_icon,
-                fix.priority.to_uppercase(),
-                fix.description
+                priority_color,
+                fix.description.bold()
             );
-            println!("     Impact: {}", fix.impact);
+            println!("     Impact: {}", fix.impact.italic());
             if !fix.affected_components.is_empty() {
-                println!("     Affected: {}", fix.affected_components.join(", "));
+                let display_affected: Vec<_> = fix.affected_components.iter().map(|c| c.replace("_", "/")).collect();
+                println!("     Affected: {}", display_affected.join(", ").truecolor(180, 180, 180));
             }
         }
         println!();
     }
 
-    println!("{}", "─".repeat(70));
-    println!("📎 Evidence References");
-    println!("{}", "─".repeat(70));
+    println!("{}", "─".repeat(70).truecolor(100, 100, 100));
+    println!("{}", "🗺️  High-Level Domain Map".magenta().bold());
+    println!("{}", "─".repeat(70).truecolor(100, 100, 100));
 
-    let sample_nodes: Vec<_> = graph.nodes.iter().take(5).collect();
-    if !sample_nodes.is_empty() {
+    let mut domains: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    for node in &graph.nodes {
+        let path_str = node.path.as_deref().unwrap_or(&node.id);
+        let normalized = path_str.replace(['\\', '_'], "/");
+        let parts: Vec<&str> = normalized.split('/').filter(|p| !p.is_empty() && *p != ".").collect();
+        if parts.is_empty() { continue; }
+        
+        let mut domain_name = parts[0].to_string();
+        if (parts[0] == "crates" || parts[0] == "packages" || parts[0] == "src" || parts[0] == "internal") && parts.len() > 1 {
+            domain_name = format!("{}/{}", parts[0], parts[1]);
+        }
+        *domains.entry(domain_name).or_insert(0) += 1;
+    }
+    
+    let mut sorted_domains: Vec<_> = domains.into_iter().collect();
+    sorted_domains.sort_by(|a, b| b.1.cmp(&a.1));
+
+    if sorted_domains.is_empty() {
+        println!("\n  No clear domains identified.");
+    } else {
         println!();
-        println!("  Sample components detected:");
-        for node in &sample_nodes {
+        let max_items = 10;
+        let total = sorted_domains.len();
+        for (i, (domain, count)) in sorted_domains.iter().take(max_items).enumerate() {
+            let is_last = i == max_items - 1 || i == sorted_domains.len() - 1;
+            let prefix = if is_last { "└──" } else { "├──" };
             println!(
-                "    • {} ({:?}) - {}",
-                node.id,
-                node.kind,
-                node.path.as_deref().unwrap_or("unknown")
+                "  {} 📂 {} ({} components)",
+                prefix.truecolor(100, 100, 100),
+                domain.cyan().bold(),
+                count.to_string().yellow()
             );
         }
+        if total > max_items {
+            println!("  {} ... and {} more", "└──".truecolor(100, 100, 100), (total - max_items).to_string().truecolor(100, 100, 100));
+        }
     }
+
     println!();
 
-    println!("{}", "─".repeat(70));
-    println!("🚀 Next Steps");
-    println!("{}", "─".repeat(70));
+    println!("{}", "─".repeat(70).truecolor(100, 100, 100));
+    println!("{}", "🚀 Next Steps".blue().bold());
+    println!("{}", "─".repeat(70).truecolor(100, 100, 100));
     println!();
-    println!("  1. Review the findings above and prioritize fixes");
-    println!("  2. Run 'sruja drift -r . --format json' for detailed analysis");
-    println!("  3. Run 'sruja scan -r . -o architecture.json' to save the graph");
-    println!("  4. Run 'sruja why \"your question\" -r .' to explore architecture decisions");
+    println!("  1. {}", "Review the findings above and prioritize fixes".white());
+    println!("  2. {}", "Run 'sruja drift -r . --format json' for detailed analysis".white());
+    println!("  3. {}", "Run 'sruja scan -r . -o architecture.json' to save the graph".white());
+    println!("  4. {}", "Run 'sruja why \"your question\" -r .' to explore architecture decisions".white());
     println!();
-    println!("{}", "═".repeat(70));
+    println!("{}", "═".repeat(70).truecolor(100, 100, 100));
 }
 
 fn print_diff_text(result: &sruja_diff::DiffResult, violations_only: bool) {
@@ -643,9 +682,9 @@ pub async fn quickstart(
         )));
     }
 
-    eprintln!("{}", "═".repeat(70));
-    eprintln!("🚀 Sruja Quickstart - Architecture Intelligence");
-    eprintln!("{}", "═".repeat(70));
+    eprintln!("{}", "═".repeat(70).truecolor(100, 100, 100));
+    eprintln!("{}", "🚀 Sruja Quickstart - Architecture Intelligence".green().bold());
+    eprintln!("{}", "═".repeat(70).truecolor(100, 100, 100));
     eprintln!();
 
     eprintln!("📂 Scanning repository...");
@@ -727,7 +766,7 @@ fn generate_baseline_from_graph(graph: &Graph) -> String {
             }
             dsl.push_str("}\n");
         }
-        dsl.push_str("\n");
+        dsl.push('\n');
     }
     
     if !graph.edges.is_empty() {
@@ -737,7 +776,7 @@ fn generate_baseline_from_graph(graph: &Graph) -> String {
             let target = sanitize_id(&edge.target);
             dsl.push_str(&format!("{} -> {} \"uses\"\n", source, target));
         }
-        dsl.push_str("\n");
+        dsl.push('\n');
     }
     
     dsl.push_str("// Run 'sruja lint architecture.sruja' to validate\n");
@@ -787,7 +826,7 @@ pub async fn drift_pr(
         .output();
 
     
-    if !git_check.is_ok() || !git_check.unwrap().status.success() {
+    if git_check.is_err() || !git_check.unwrap().status.success() {
         return Err(CliError::Validation(
             "Not a git repository. PR-scoped drift requires git.".to_string(),
         ));
@@ -798,8 +837,7 @@ pub async fn drift_pr(
         .args(["diff", "--name-only", &format!("{}...{}", base, head)])
         .current_dir(repo_path)
         .output()
-        .map_err(|e| CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        .map_err(|e| CliError::Io(std::io::Error::other(
             format!("Failed to get changed files: {}", e),
         )) )?;
     

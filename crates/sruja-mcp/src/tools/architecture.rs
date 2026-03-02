@@ -21,7 +21,7 @@ pub(super) fn execute_architecture(
             let decisions: Vec<_> = graph
                 .decisions
                 .values()
-                .map(|d| crate::DecisionResponse::from(d))
+                .map(crate::DecisionResponse::from)
                 .collect();
             Some(ToolResponse::success(
                 "get_decisions",

@@ -277,7 +277,6 @@ sruja export markdown example.sruja
 
 ### 🔍 Developer Tools
 
-- **LSP Support**: VS Code extension with autocomplete
 - **Code Formatter**: `sruja fmt`
 - **Tree View**: `sruja tree`
 - **CLI**: Full command-line interface
@@ -285,7 +284,6 @@ sruja export markdown example.sruja
 ### 🏗️ Architecture Intelligence (Beta)
 
 - **CLI first, no key required:** `sruja quickstart`, `sruja why "question" -r .`, `sruja drift -r .` — deterministic evidence from scan and graph
-- **sruja-app** (optional): Desktop app for chat, agents, extraction — requires LLM key
 - **Query:** "Why are we using X?" uses graph + scan evidence only; optional LLM enrichment when configured
 
 **Strategy:** [architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md](architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md)
@@ -321,15 +319,11 @@ sruja/
 │   ├── sruja-language/   # Parser and AST
 │   ├── sruja-engine/     # Validation rules
 │   ├── sruja-export/     # Markdown, Mermaid, JSON export
-│   ├── sruja-lsp/        # Language Server Protocol
-│   ├── sruja-wasm/       # WebAssembly bindings
-│   ├── sruja-app/        # Desktop app (Slack-style architecture collaboration)
 │   ├── sruja-chat/       # Chat, agents, extraction (architecture intelligence)
 │   ├── sruja-graph/      # Knowledge graph for decisions
 │   ├── sruja-extract/    # LLM extraction (decisions, requirements)
 │   ├── sruja-scan/       # Repo scanning (npm, cargo)
 │   └── sruja-mcp/        # MCP server for AI tooling
-├── extension/            # VS Code extension (syntax highlighting, LSP)
 ├── book/                 # mdBook documentation
 └── examples/             # Example .sruja files
 ```

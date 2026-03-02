@@ -1,18 +1,13 @@
 //! Analysis commands: complexity, semantic, comprehensive analyze.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use sruja_intent::{DriftDetector, IntentIntelligence, IntentModel, IntentReport};
-use sruja_report::{
-    build_recommendations, ComprehensiveReport, IntentSection as ReportIntentSection,
-    RuntimeSection, SemanticSection as ReportSemanticSection,
-    StructuralSection as ReportStructuralSection,
-};
 use sruja_scan::scan_repo;
 use sruja_semantic::{analyze as run_semantic_analyze, embedding::StubEmbeddingProvider};
 
-use super::runtime::load_traces;
 use super::CliError;
+use crate::config::SrujaConfig;
+use crate::views::{ViewContext, print_view_report};
 
 pub async fn complexity(
     repo_root: &str,
@@ -211,9 +206,11 @@ pub async fn semantic_analyze(repo_root: &str, format: &str) -> Result<(), CliEr
 
 pub async fn analyze(
     repo_root: &str,
-    traces_path: Option<&str>,
-    intent_path: Option<&str>,
+    view_name: &str,
+    _traces_path: Option<&str>,
+    _intent_path: Option<&str>,
     format: &str,
+    enable_llm: bool,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     if !repo_path.exists() {
@@ -223,201 +220,21 @@ pub async fn analyze(
         )));
     }
 
+    let mut config = SrujaConfig::load(repo_path).map_err(|e| {
+        CliError::Validation(format!("Failed to load config: {}", e))
+    })?;
+    
+    config.defaults.enable_llm = enable_llm || config.defaults.enable_llm;
+
     let graph = scan_repo(repo_path)?;
 
-    let structural_report = sruja_diff::detect_architectural_drift(&graph);
+    let view_context = ViewContext::new(view_name, graph.clone(), repo_path)
+        .map_err(CliError::Validation)?;
 
-    let components: Vec<(String, String)> = graph
-        .nodes
-        .iter()
-        .map(|n| {
-            let text = format!(
-                "{} {} {}",
-                n.label,
-                n.technology.as_deref().unwrap_or(""),
-                n.path.as_deref().unwrap_or("")
-            );
-            (n.id.clone(), text)
-        })
-        .collect();
-    let structural_edges: Vec<(String, String)> = graph
-        .edges
-        .iter()
-        .map(|e| (e.source.clone(), e.target.clone()))
-        .collect();
+    let view_report = view_context.analyze()
+        .map_err(CliError::Validation)?;
 
-    let provider = StubEmbeddingProvider::new();
-    let semantic_report = run_semantic_analyze(&components, &structural_edges, &provider, None)
-        .await
-        .map_err(|e| CliError::Validation(format!("Semantic analysis failed: {}", e)))?;
-
-    let intent_report = {
-        let intent_dir = intent_path
-            .map(PathBuf::from)
-            .unwrap_or_else(|| repo_path.join("docs").join("architecture"));
-        let mut intelligence = IntentIntelligence::new();
-        let models = intelligence
-            .load_from_directory(&intent_dir)
-            .unwrap_or_default();
-        if models.is_empty() {
-            None
-        } else {
-            let mut merged_model = IntentModel::default();
-            for model in models {
-                merged_model.merge(model);
-            }
-            let detector = DriftDetector::new();
-            let drift_report = detector.detect(&merged_model, &graph);
-            Some(IntentReport::from_drift_report(&drift_report))
-        }
-    };
-
-    let runtime_report = traces_path.and_then(|p| {
-        let path = Path::new(p);
-        if path.exists() {
-            load_traces(path)
-                .ok()
-                .map(|traces| sruja_runtime::build_report(&traces))
-        } else {
-            None
-        }
-    });
-
-    let mut scores: Vec<u8> = vec![
-        structural_report.health_score,
-        semantic_report.summary.health_score,
-    ];
-    if let Some(ref ir) = intent_report {
-        let intent_health = 100u8.saturating_sub(ir.drift_score);
-        scores.push(intent_health);
-    }
-    let overall_health = if scores.is_empty() {
-        0u8
-    } else {
-        (scores.iter().copied().map(u32::from).sum::<u32>() / scores.len() as u32) as u8
-    };
-
-    let recommendations = build_recommendations(
-        &structural_report,
-        &semantic_report.coupling.recommendations,
-        intent_report
-            .as_ref()
-            .map(|ir| ir.suggestions.as_slice())
-            .unwrap_or(&[]),
-        10,
-    );
-
-    let report = ComprehensiveReport {
-        structural: ReportStructuralSection {
-            modules: structural_report.total_modules,
-            services: structural_report.total_services,
-            databases: structural_report.total_databases,
-            dependencies: structural_report.total_dependencies,
-            health_score: structural_report.health_score,
-            violations_count: structural_report.violations.len(),
-        },
-        semantic: ReportSemanticSection {
-            component_count: semantic_report.summary.component_count,
-            context_count: semantic_report.summary.context_count,
-            hidden_coupling_count: semantic_report.summary.hidden_coupling_count,
-            vocabulary_leak_count: semantic_report.summary.vocabulary_leak_count,
-            health_score: semantic_report.summary.health_score,
-        },
-        intent: intent_report.as_ref().map(|ir| ReportIntentSection {
-            drift_score: ir.drift_score,
-            health: ir.health.clone(),
-            components_declared: ir.summary.components_declared,
-            components_discovered: ir.summary.components_discovered,
-            undocumented_count: ir.summary.undocumented_count,
-            missing_count: ir.summary.missing_count,
-        }),
-        runtime: runtime_report.as_ref().map(|r| RuntimeSection {
-            trace_count: r.trace_count,
-            total_spans: r.total_spans,
-            max_depth: r.max_depth,
-            total_duration_ms: r.total_duration_ms,
-            emergent_cycle_count: r.emergent_cycles.len(),
-            hotspot_count: r.hotspots.len(),
-        }),
-        overall_health,
-        recommendations: recommendations.clone(),
-    };
-
-    if format == "json" {
-        println!("{}", serde_json::to_string_pretty(&report)?);
-        return Ok(());
-    }
-
-    eprintln!("{}", "═".repeat(70));
-    eprintln!("🏗️ Sruja Architecture Intelligence");
-    eprintln!("{}", "═".repeat(70));
-    eprintln!();
-    eprintln!("📊 Layer 1: Structural");
-    eprintln!(
-        "   Modules: {} | Services: {} | Databases: {}",
-        structural_report.total_modules,
-        structural_report.total_services,
-        structural_report.total_databases
-    );
-    eprintln!(
-        "   Dependencies: {} | Violations: {}",
-        structural_report.total_dependencies,
-        structural_report.violations.len()
-    );
-    eprintln!("   Health score: {}/100", structural_report.health_score);
-    eprintln!();
-    eprintln!("📊 Layer 2: Semantic");
-    eprintln!("   Components: {}", semantic_report.summary.component_count);
-    eprintln!(
-        "   Bounded contexts: {}",
-        semantic_report.summary.context_count
-    );
-    eprintln!(
-        "   Hidden couplings: {}",
-        semantic_report.summary.hidden_coupling_count
-    );
-    eprintln!(
-        "   Health score: {}/100",
-        semantic_report.summary.health_score
-    );
-    if let Some(ref ir) = intent_report {
-        eprintln!();
-        eprintln!("📋 Layer 3: Intent");
-        eprintln!("   Drift score: {}/100 ({})", ir.drift_score, ir.health);
-        eprintln!(
-            "   Declared: {} | Discovered: {} | Undocumented: {} | Missing: {}",
-            ir.summary.components_declared,
-            ir.summary.components_discovered,
-            ir.summary.undocumented_count,
-            ir.summary.missing_count
-        );
-    }
-    if let Some(ref r) = runtime_report {
-        eprintln!();
-        eprintln!("⏱ Layer 4: Runtime");
-        eprintln!(
-            "   Root traces: {} | Total spans: {}",
-            r.trace_count, r.total_spans
-        );
-        eprintln!(
-            "   Hotspots: {} | Emergent cycles: {}",
-            r.hotspots.len(),
-            r.emergent_cycles.len()
-        );
-    }
-    eprintln!();
-    eprintln!("{}", "─".repeat(70));
-    eprintln!("💚 Overall Health: {}/100", overall_health);
-    eprintln!("{}", "─".repeat(70));
-    if !recommendations.is_empty() {
-        eprintln!();
-        eprintln!("💡 Recommendations");
-        for r in recommendations.iter().take(5) {
-            eprintln!("   - {}", r.description);
-        }
-    }
-    eprintln!();
-    eprintln!("{}", "═".repeat(70));
+    print_view_report(&view_report, format);
 
     Ok(())
 }

@@ -40,7 +40,7 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
         let sources = collect_node_path_source(graph, orphan);
         violations.push(Violation {
             kind: ViolationKind::OrphanComponent,
-            severity: Severity::Warning,
+            severity: Severity::Info,
             message: format!("Module '{}' has no incoming or outgoing dependencies", orphan),
             location: Some(orphan.clone()),
             suggestion: Some(
@@ -73,14 +73,14 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
         let sources = collect_node_path_source(graph, &module.name);
         violations.push(Violation {
             kind: ViolationKind::GodModule,
-            severity: Severity::Info,
+            severity: Severity::Warning,
             message: format!(
-                "Module '{}' has {} dependencies (threshold: {})",
+                "Bottleneck Detected: Module '{}' acts as a 'God Module' with {} dependencies (threshold: {})",
                 module.name, module.dependency_count, config.god_module_threshold
             ),
             location: Some(module.name.clone()),
             suggestion: Some(
-                "Consider splitting this module into smaller, focused components".to_string(),
+                "Consider splitting this module into smaller, focused components to reduce regression risk".to_string(),
             ),
             sources,
         });
@@ -226,7 +226,7 @@ fn dfs_cycles<'a>(
 fn is_likely_doc_or_tool_path(path: &str, id: &str) -> bool {
     let p = path.replace('\\', "/").to_lowercase();
     let id_lower = id.to_lowercase();
-    // Path-based: doc, tests, tools, vendor, examples (we look at source, not tests/examples)
+    // Path-based: doc, tests, tools, vendor, examples, configs, mocks, migrations
     p.ends_with("doc.go")
         || p.contains("/doc/")
         || p.contains("_test.go")
@@ -241,9 +241,25 @@ fn is_likely_doc_or_tool_path(path: &str, id: &str) -> bool {
         || p.contains("/examples/")
         || p.contains("/fixtures/")
         || p.contains("/sample")
+        || p.contains("/mocks/")
+        || p.contains("/mock/")
+        || p.contains(".config.")
+        || p.contains("config/")
+        || p.contains("/scripts/")
+        || p.contains("/build/")
+        || p.contains("/migrations/")
+        || p.contains("/setup/")
+        // Configuration files and typical non-product entry points
+        || p.ends_with("webpack.config.js")
+        || p.ends_with("vite.config.ts")
+        || p.ends_with("jest.config.js")
+        || p.ends_with(".eslintrc.js")
+        || p.ends_with("tailwind.config.js")
         // Id often encodes path (e.g. server_embed_doc_go)
         || id_lower.contains("_doc_go")
         || id_lower.ends_with("_test_go")
+        || id_lower.contains("_config_")
+        || id_lower.contains("_mock_")
 }
 
 /// Paths that are commonly entry points or re-export hubs; reporting them as orphans

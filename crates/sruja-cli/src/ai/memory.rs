@@ -71,8 +71,8 @@ fn append_jsonl(repo_root: &Path, filename: &str, line: &str) -> Result<(), CliE
         .create(true)
         .append(true)
         .open(&path)
-        .map_err(|e| CliError::Io(e))?;
-    writeln!(f, "{}", line).map_err(|e| CliError::Io(e))?;
+        .map_err(CliError::Io)?;
+    writeln!(f, "{}", line).map_err(CliError::Io)?;
     Ok(())
 }
 

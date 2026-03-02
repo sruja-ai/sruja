@@ -28,7 +28,7 @@ fn git_log_commits(repo_path: &Path, max: usize) -> Result<Vec<String>, CliError
         .arg(format!("-{}", max))
         .arg("--format=%h%x09%ci%x09%s")
         .output()
-        .map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+        .map_err(|e| CliError::Io(std::io::Error::other(e)))?;
 
     if !out.status.success() {
         return Err(CliError::Validation(format!(
@@ -115,8 +115,15 @@ pub async fn suggest_refs(repo_path: &str) -> Result<(), CliError> {
 const TIMELINE_EXPLAIN_WINDOW: usize = 200;
 const TIMELINE_EXPLAIN_TOP_K: usize = 30;
 
-const TIMELINE_EXPLAIN_SYSTEM: &str = r#"You are summarizing architecture evolution from a list of git commits.
-Given a chronological list (oldest first) of SHORT_SHA, DATE, SUBJECT, write 1-3 short paragraphs describing how the architecture or structure of the codebase evolved. Focus on refactors, new modules, migrations, and structural changes. Be concise."#;
+const TIMELINE_EXPLAIN_SYSTEM: &str = r#"You are an elite Staff Software Engineer summarizing architecture evolution from a list of git commits.
+Given a chronological list (oldest first) of SHORT_SHA, DATE, SUBJECT, write a rich "Architectural Journey" in markdown.
+Do NOT just list the commits.
+Instead, synthesize the evolution into 3-4 distinct phases or major architectural themes (e.g., "Initial Monolith", "Decomposition to Microservices", "Database Migration", "Refactoring and Tech Debt Reduction").
+For each phase:
+- Explain WHAT changed structurally.
+- Hypothesize WHY the team made this decision (scaling, decoupling, DX).
+- Mention key components involved.
+Use conversational but highly technical language. Keep it concise. Use emojis for phases."#;
 
 /// Explain architecture evolution across a smart subset of commits (deterministic scoring).
 pub async fn timeline_explain(
@@ -193,7 +200,7 @@ async fn build_timeline_summary(
         .collect::<Vec<_>>()
         .join("\n");
     let user = format!(
-        "Commits (oldest → newest):\n\n{}\n\nWrite a brief architecture evolution summary (1-3 paragraphs).",
+        "Commits (oldest → newest):\n\n{}\n\nWrite a smart architectural journey summary based on these commits. Format in clear Markdown.",
         list
     );
     match call_llm(TIMELINE_EXPLAIN_SYSTEM, &user).await {

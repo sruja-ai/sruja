@@ -27,7 +27,7 @@ pub fn git_log_commits(repo_path: &Path, max: usize) -> Result<Vec<String>, CliE
         .arg(format!("-{}", max))
         .arg("--format=%h%x09%ci%x09%s")
         .output()
-        .map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+        .map_err(|e| CliError::Io(std::io::Error::other(e)))?;
 
     if !out.status.success() {
         return Err(CliError::Validation(format!(

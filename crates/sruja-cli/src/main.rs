@@ -3,7 +3,10 @@
 //! Command-line interface for the Sruja DSL tool.
 
 mod commands;
+mod config;
+pub mod ai;
 mod modules;
+mod views;
 
 use clap::{Parser, Subcommand};
 
@@ -212,6 +215,9 @@ enum Commands {
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]
         repo: String,
+        /// Analysis view (cto, sre, devops, security, product, platform-engineer, tech-lead, or custom from .sruja.yaml)
+        #[arg(long, short = 'v', default_value = "cto")]
+        view: String,
         /// Path to traces JSON (optional; adds runtime layer)
         #[arg(long, short = 't')]
         traces: Option<String>,
@@ -221,6 +227,9 @@ enum Commands {
         /// Output format (text, json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
+        /// Enable LLM-powered insights
+        #[arg(long)]
+        llm: bool,
     },
     /// Runtime trace analysis (agent execution trees, emergent cycles)
     Runtime {
@@ -243,6 +252,72 @@ enum Commands {
         /// Output file (defaults to stdout)
         #[arg(long, short = 'o')]
         output: Option<String>,
+    },
+    /// Executive architecture report for CTOs and tech leaders
+    Cto {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// SRE reliability and incident analysis report
+    Sre {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// DevOps deployment readiness assessment
+    Devops {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Security analysis and vulnerability assessment
+    Security {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Product feature dependency and impact analysis
+    Product {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// AI-Powered Architecture Timeline evolution from git history
+    Timeline {
+        #[command(subcommand)]
+        cmd: TimelineCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum TimelineCommand {
+    /// Explain architectural evolution from commit history
+    Explain {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Maximum commits to scan
+        #[arg(long, short = 'm', default_value_t = 300)]
+        max_commits: usize,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
     },
 }
 
@@ -362,17 +437,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Semantic { repo, format } => commands::semantic_analyze(&repo, &format).await,
         Commands::Analyze {
             repo,
+            view,
             traces,
             intent,
             format,
+            llm,
         } => {
             let intent_opt = intent.or_else(|| std::env::var("SRUJA_INTENT_PATH").ok());
             let traces_opt = traces.or_else(|| std::env::var("SRUJA_TRACES_PATH").ok());
             commands::analyze(
                 &repo,
+                &view,
                 traces_opt.as_deref(),
                 intent_opt.as_deref(),
                 &format,
+                llm,
             )
             .await
         }
@@ -393,6 +472,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Context { repo, format, output } => {
             commands::context_export(&repo, &format, output.as_deref()).await
         }
+        Commands::Cto { repo, format } => {
+            commands::cto(&repo, &format).await
+        }
+        Commands::Sre { repo, format } => {
+            commands::sre(&repo, &format).await
+        }
+        Commands::Devops { repo, format } => {
+            commands::devops(&repo, &format).await
+        }
+        Commands::Security { repo, format } => {
+            commands::security(&repo, &format).await
+        }
+        Commands::Product { repo, format } => {
+            commands::product(&repo, &format).await
+        }
+        Commands::Timeline { cmd } => match cmd {
+            TimelineCommand::Explain { repo, max_commits, format } => {
+                commands::timeline::timeline_explain(&repo, max_commits, &format).await
+            }
+        },
     };
 
     match result {

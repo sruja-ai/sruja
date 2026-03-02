@@ -24,9 +24,9 @@ mod density_thresholds {
     pub const CYCLES_GOOD: f32 = 2.0;
     pub const CYCLES_FAIR: f32 = 5.0;
 
-    pub const ORPHANS_EXCELLENT: f32 = 1.0;
-    pub const ORPHANS_GOOD: f32 = 5.0;
-    pub const ORPHANS_FAIR: f32 = 10.0;
+    pub const ORPHANS_EXCELLENT: f32 = 5.0;
+    pub const ORPHANS_GOOD: f32 = 15.0;
+    pub const ORPHANS_FAIR: f32 = 30.0;
 
     pub const GOD_MODULES_EXCELLENT: f32 = 10.0;
     pub const GOD_MODULES_GOOD: f32 = 50.0;
@@ -87,8 +87,8 @@ pub fn calculate_health_score_from_violations(
     let layer_penalty = ((layer_count * 5) as u8).min(25);
     score = score.saturating_sub(layer_penalty);
 
-    // Orphans: -1 per 2 orphans, max 20. So 0–1=0, 2–3=1, … 40+=20. Creates spread.
-    let orphan_penalty = ((orphan_count / 2) as u8).min(20);
+    // Orphans: -1 per 10 orphans, max 5. Reduces penalty for informational loose ends.
+    let orphan_penalty = ((orphan_count / 10) as u8).min(5);
     score = score.saturating_sub(orphan_penalty);
 
     // God modules: -1 per 25, max 20. So 0–24=0, 25–49=1, … 500+=20.

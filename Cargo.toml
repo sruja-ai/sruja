@@ -9,15 +9,11 @@ members = [
     "crates/sruja-language",
     "crates/sruja-engine",
     "crates/sruja-export",
-    "crates/sruja-lsp",
     "crates/sruja-cli",
     "crates/sruja-scan",
     "crates/sruja-diff",
-    "crates/sruja-wasm",
-    "crates/skill-lint",
     # Chat/Product
     "crates/sruja-graph",
-    "crates/sruja-watch",
     "crates/sruja-extract",
     "crates/sruja-chat",
     "crates/sruja-mcp",
@@ -25,8 +21,6 @@ members = [
     "crates/sruja-runtime",
     "crates/sruja-intent",
     "crates/sruja-report",
-    # Desktop App
-    "crates/sruja-app",
 ]
 resolver = "2"
 

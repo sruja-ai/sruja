@@ -282,7 +282,7 @@ fn resolve_intent_dirs(repo_path: &Path, intent_paths: &[String]) -> Vec<PathBuf
     if !intent_paths.is_empty() {
         return intent_paths
             .iter()
-            .map(|p| PathBuf::from(p))
+            .map(PathBuf::from)
             .collect();
     }
     let candidates = [

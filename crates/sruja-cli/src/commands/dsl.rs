@@ -11,7 +11,6 @@ use sruja_export::json::exporter::{ExportError as JsonExportError, Exporter as J
 use sruja_export::markdown::{MarkdownExporter, MarkdownOptions};
 use sruja_export::mermaid::exporter::{MermaidConfig, MermaidExporter};
 use sruja_language::Parser;
-use sruja_lsp::server::run_stdio;
 
 use crate::modules::collect_sruja_files;
 use crate::modules::validation::enrich_diagnostics_with_source;
@@ -497,10 +496,9 @@ pub async fn import(format: &str, file: &str) -> Result<(), CliError> {
 }
 
 pub async fn lsp() -> Result<(), CliError> {
-    run_stdio()
-        .await
-        .map_err(|e| CliError::Validation(format!("LSP server error: {:?}", e)))?;
-    Ok(())
+    Err(CliError::Validation(
+        "LSP server is not available in this build".to_string()
+    ))
 }
 
 pub async fn validate(

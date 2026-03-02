@@ -212,6 +212,14 @@ fn parse_file(path: &Path, content: &str, language: Language) -> Option<ParsedFi
         Language::Python => languages::python::parse(path, content),
         Language::Go => languages::go::parse(path, content),
         Language::Rust => languages::rust::parse(path, content),
+        Language::Java => languages::java::parse(path, content),
+        Language::CSharp => languages::csharp::parse(path, content),
+        Language::Ruby => languages::ruby::parse(path, content),
+        Language::Php => languages::php::parse(path, content),
+        Language::Kotlin => languages::kotlin::parse(path, content),
+        Language::Scala => languages::scala::parse(path, content),
+        Language::C => languages::c::parse(path, content),
+        Language::Cpp => languages::cpp::parse(path, content),
     }
 }
 

@@ -72,16 +72,13 @@ pub enum ParticipantRole {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum ParticipantKind {
+    #[default]
     Human,
     Agent(AgentConfig),
 }
 
-impl Default for ParticipantKind {
-    fn default() -> Self {
-        ParticipantKind::Human
-    }
-}
 
 /// Per-participant agent config. Built from AgentDefinition or specified inline.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

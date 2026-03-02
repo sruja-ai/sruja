@@ -112,7 +112,7 @@ async fn get_decisions(State(state): State<AppState>) -> impl IntoResponse {
     let decisions: Vec<DecisionResponse> = graph
         .decisions
         .values()
-        .map(|d| DecisionResponse::from(d))
+        .map(DecisionResponse::from)
         .collect();
     Json(ApiResponse::success(decisions))
 }
@@ -176,7 +176,7 @@ async fn execute_tool(
     Json(tool): Json<SrujaTool>,
 ) -> impl IntoResponse {
     let graph = state.graph.read().await;
-    let response = tool.execute(&*graph);
+    let response = tool.execute(&graph);
     Json(ApiResponse::success(response))
 }
 

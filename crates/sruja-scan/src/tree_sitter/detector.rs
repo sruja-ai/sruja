@@ -9,6 +9,14 @@ pub enum Language {
     Python,
     Go,
     Rust,
+    Java,
+    CSharp,
+    Ruby,
+    Php,
+    Kotlin,
+    Scala,
+    C,
+    Cpp,
 }
 
 impl std::fmt::Display for Language {
@@ -19,6 +27,14 @@ impl std::fmt::Display for Language {
             Language::Python => write!(f, "Python"),
             Language::Go => write!(f, "Go"),
             Language::Rust => write!(f, "Rust"),
+            Language::Java => write!(f, "Java"),
+            Language::CSharp => write!(f, "C#"),
+            Language::Ruby => write!(f, "Ruby"),
+            Language::Php => write!(f, "PHP"),
+            Language::Kotlin => write!(f, "Kotlin"),
+            Language::Scala => write!(f, "Scala"),
+            Language::C => write!(f, "C"),
+            Language::Cpp => write!(f, "C++"),
         }
     }
 }
@@ -32,6 +48,14 @@ pub fn detect_language(path: &Path) -> Option<Language> {
         "py" => Some(Language::Python),
         "go" => Some(Language::Go),
         "rs" => Some(Language::Rust),
+        "java" => Some(Language::Java),
+        "cs" => Some(Language::CSharp),
+        "rb" => Some(Language::Ruby),
+        "php" => Some(Language::Php),
+        "kt" | "kts" => Some(Language::Kotlin),
+        "scala" | "sc" => Some(Language::Scala),
+        "c" | "h" => Some(Language::C),
+        "cpp" | "cc" | "cxx" | "hpp" | "hh" | "hxx" => Some(Language::Cpp),
         _ => None,
     }
 }

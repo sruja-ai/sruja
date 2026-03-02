@@ -1,6 +1,0 @@
-node_modules/
-out/
-*.vsix
-wasm/
-bin/
-LICENSE.txt

@@ -108,6 +108,80 @@ Enhance with git-ref-based caching
 
 ## Known Issues
 
+## ✅ Completed: Buyable Features (2026-03-02)
+
+### 1. Context Export for AI Tools
+```bash
+sruja context -f cursor-rules -r .                    # Cursor IDE
+sruja context -f copilot-instructions -r .            # GitHub Copilot
+sruja context -f json -o context.json                  # Custom tools
+```
+**Status**: ✅ Implemented, tested on Express/Gitea/Saleor  
+**File**: `crates/sruja-cli/src/commands/context.rs`
+
+### 2. One-Click Baseline Generation
+```bash
+sruja quickstart -r . --generate-baseline
+# Creates: architecture.sruja (editable DSL)
+```
+**Status**: ✅ Implemented, tested on Express/Sruja  
+**File**: `crates/sruja-cli/src/commands/scan.rs:686-759`
+
+### 3. PR-Scoped Drift Detection
+```bash
+sruja drift-pr -r . -b origin/main -f github-actions  # CI format
+sruja drift-pr -r . -b origin/main -f json            # JSON output
+```
+**Status**: ✅ Implemented, tested with 446 changed files  
+**File**: `crates/sruja-cli/src/commands/scan.rs:761-881`
+
+### 4. GitHub Action Integration
+**Status**: ✅ Implemented  
+**File**: `.github/workflows/sruja-drift.yml`
+
+### 5. Multi-Language Support
+**Status**: ✅ Implemented (12 languages)
+**File**: `crates/sruja-scan/src/tree_sitter/languages/`
+- TypeScript, JavaScript, Python, Go, Rust
+- Java, C#, Ruby, PHP, Kotlin, Scala, C, C++
+
+### 6. Stakeholder Reports
+**Status**: ✅ Implemented  
+**File**: `crates/sruja-cli/src/commands/stakeholder.rs`
+- `sruja cto` - Executive summary for tech leaders
+- `sruja sre` - Reliability and incident analysis
+- `sruja devops` - Deployment readiness assessment
+- `sruja security` - Security analysis and vulnerabilities
+- `sruja product` - Feature dependency and impact analysis
+
+---
+
+## Next Steps (Prioritized)
+
+### Priority 1: Security Analysis Enhancement (1-2 days)
+- [ ] Add dependency vulnerability scanning (npm audit, cargo audit, pip-audit)
+- [ ] Add architectural security pattern detection
+- [ ] Integrate with OWASP dependency-check
+
+### Priority 2: LLM Integration (2-3 days)
+- [ ] Add natural language architecture explanations
+- [ ] Implement ADR generation from code analysis
+- [ ] Add cost estimation for architecture changes
+
+### Priority 3: Performance (1-2 days)
+- [ ] Add incremental scanning with git diff support
+- [ ] Implement graph caching with git-ref-based invalidation
+- [ ] Add streaming for large repos
+
+### Priority 4: IDE Integration (2-3 days)
+- [ ] Add VS Code commands for stakeholder reports
+- [ ] Implement real-time drift feedback
+- [ ] Add architecture diagram preview
+
+---
+
+## Known Issues
+
 ### Issue 1: Duplicate IDs in Baseline
 **Location**: `crates/sruja-cli/src/commands/scan.rs:749`
 
