@@ -1,0 +1,131 @@
+name: Sruja Architecture Drift
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Sruja
+        run: |
+          curl -fsSL https://sruja.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Cache base graph
+        uses: actions/cache@v4
+        with:
+          path: .sruja/cache
+          key: sruja-graph-${{ github.base_ref || github.ref_name }}
+          restore-keys: |
+            sruja-graph-
+
+      - name: Scan base branch (for comparison)
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          git checkout origin/${{ github.base_ref }}
+          mkdir -p .sruja/cache
+          sruja scan -r . -o .sruja/cache/base_graph.json || true
+          git checkout ${{ github.sha }}
+
+      - name: Run PR-scoped drift check
+        id: drift
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            sruja drift-pr -r . --base origin/${{ github.base_ref }} --head HEAD -f github-actions
+          else
+            sruja drift -r . --format text
+          fi
+        continue-on-error: true
+
+      - name: Run full drift check
+        if: github.event_name != 'pull_request'
+        run: sruja drift -r . --violations-only
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            let output = '';
+            try {
+              output = execSync('sruja drift-pr -r . --base origin/${{ github.base_ref }} --head HEAD -f json', { encoding: 'utf8' });
+            } catch (e) {
+              output = e.stdout || e.message;
+            }
+            
+            try {
+              const result = JSON.parse(output);
+              const newViolations = result.new_violations || [];
+              
+              let body = '## 🏗️ Sruja Architecture Check\n\n';
+              body += `**Health Score:** ${result.base_health} → ${result.head_health}`;
+              if (result.head_health < result.base_health) {
+                body += ` ⚠️ (-${result.base_health - result.head_health})`;
+              } else if (result.head_health > result.base_health) {
+                body += ` ✅ (+${result.head_health - result.base_health})`;
+              }
+              body += '\n\n';
+              
+              if (newViolations.length === 0) {
+                body += '✅ **No new architectural violations introduced!**\n\n';
+                body += `Existing violations: ${result.total_base_violations} → ${result.total_head_violations}`;
+              } else {
+                body += `🚨 **${newViolations.length} new violation(s) introduced:**\n\n`;
+                for (const v of newViolations.slice(0, 5)) {
+                  const icon = v.severity === 'Error' ? '❌' : v.severity === 'Warning' ? '⚠️' : 'ℹ️';
+                  body += `${icon} **${v.kind}**: ${v.message}\n`;
+                  if (v.location) body += `   - 📍 ${v.location}\n`;
+                }
+                if (newViolations.length > 5) {
+                  body += `\n_...and ${newViolations.length - 5} more_\n`;
+                }
+              }
+              
+              body += '\n\n---\n';
+              body += '_Powered by [Sruja](https://sruja.ai) - Architecture-as-Code_';
+              
+              // Find existing comment
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+              });
+              
+              const botComment = comments.find(c => 
+                c.user.type === 'Bot' && c.body.includes('Sruja Architecture Check')
+              );
+              
+              if (botComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: botComment.id,
+                  body: body
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: body
+                });
+              }
+            } catch (e) {
+              console.log('Could not parse drift output:', e.message);
+            }
+
+      - name: Fail if new violations
+        if: steps.drift.outcome == 'failure'
+        run: exit 1
