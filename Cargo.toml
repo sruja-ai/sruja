@@ -21,6 +21,8 @@ members = [
     "crates/sruja-runtime",
     "crates/sruja-intent",
     "crates/sruja-report",
+    "crates/sruja-lsp",
+    "crates/sruja-wasm",
 ]
 resolver = "2"
 
