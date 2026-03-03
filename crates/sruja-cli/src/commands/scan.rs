@@ -682,6 +682,12 @@ pub async fn quickstart(
         )));
     }
 
+    let enable_llm = std::env::var("SRUJA_LLM_PROVIDER").is_ok() 
+        || std::env::var("OPENAI_API_KEY").is_ok() 
+        || std::env::var("ANTHROPIC_API_KEY").is_ok() 
+        || std::env::var("GEMINI_API_KEY").is_ok() 
+        || std::env::var("GOOGLE_API_KEY").is_ok();
+
     eprintln!("{}", "═".repeat(70).truecolor(100, 100, 100));
     eprintln!("{}", "🚀 Sruja Quickstart - Architecture Intelligence".green().bold());
     eprintln!("{}", "═".repeat(70).truecolor(100, 100, 100));
@@ -699,7 +705,10 @@ pub async fn quickstart(
 
     if generate_baseline {
         eprintln!("📝 Generating architecture baseline...");
-        let baseline = generate_baseline_from_graph(&graph);
+        if enable_llm {
+            eprintln!("   🧠 Using AI to distill architecture...");
+        }
+        let baseline = generate_baseline_from_graph(&graph, enable_llm, repo_path).await;
         let baseline_path = repo_path.join("architecture.sruja");
         fs::write(&baseline_path, &baseline)?;
         eprintln!("   ✓ Baseline written to {}", baseline_path.display());
@@ -720,47 +729,217 @@ pub async fn quickstart(
     Ok(())
 }
 
-fn generate_baseline_from_graph(graph: &Graph) -> String {
+async fn generate_baseline_from_graph(graph: &Graph, enable_llm: bool, repo_path: &Path) -> String {
+    let mut domains: std::collections::HashMap<String, (usize, String, Vec<String>)> = std::collections::HashMap::new();
+    let mut db_nodes = Vec::new();
+    let mut api_nodes = Vec::new();
+
+    // Canonicalize repo_path for consistent stripping (important for macOS /var vs /private/var)
+    let repo_canon = repo_path.canonicalize().unwrap_or_else(|_| repo_path.to_path_buf());
+
+    for node in &graph.nodes {
+        if node.kind == NodeKind::Database {
+            db_nodes.push(node);
+            continue;
+        }
+        if node.kind == NodeKind::ExternalApi {
+            api_nodes.push(node);
+            continue;
+        }
+
+        let mut path_str = node.path.clone().unwrap_or_else(|| node.id.clone());
+        
+        // Strip out the repo_root prefix if it exists to clean up domain grouping
+        if let Ok(p) = Path::new(&path_str).canonicalize() {
+            if let Ok(stripped) = p.strip_prefix(&repo_canon) {
+                path_str = stripped.to_string_lossy().to_string();
+            }
+        } else if let Ok(stripped) = Path::new(&path_str).strip_prefix(&repo_canon) {
+            path_str = stripped.to_string_lossy().to_string();
+        } else if let Ok(stripped) = Path::new(&path_str).strip_prefix(repo_path) {
+            path_str = stripped.to_string_lossy().to_string();
+        }
+
+        let normalized = path_str.replace(['\\', '_'], "/");
+        let parts: Vec<&str> = normalized.split('/').filter(|p| !p.is_empty() && *p != ".").collect();
+        if parts.is_empty() { continue; }
+
+        let mut domain_name = parts[0].to_string();
+        
+        let src_idx = parts.iter().position(|&x| x == "src" || x == "lib" || x == "internal" || x == "packages" || x == "crates");
+        
+        if let Some(idx) = src_idx {
+            if parts.len() >= idx + 3 {
+                // E.g. ["axum", "src", "routing", "mod.rs"] -> idx=1, idx+3=4, len=4 -> groups as "axum/src/routing"
+                domain_name = parts[0..=idx+1].join("/");
+            } else {
+                // E.g. ["axum", "src", "lib.rs"] -> groups as "axum/src"
+                domain_name = parts[0..=idx].join("/");
+            }
+        } else {
+            if parts.len() > 2 {
+                domain_name = parts[0..2].join("/");
+            } else {
+                domain_name = parts[0].to_string();
+            }
+        }
+
+        let entry = domains.entry(domain_name).or_insert((0, String::new(), Vec::new()));
+        entry.0 += 1;
+        if entry.1.is_empty() {
+            if let Some(tech) = &node.technology {
+                entry.1 = tech.clone();
+            }
+        }
+        
+        if entry.2.len() < 5 {
+            let name = std::path::Path::new(&node.label)
+                .file_stem()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_else(|| node.label.clone());
+            if name != "mod" && name != "lib" && name != "main" && !entry.2.contains(&name) {
+                entry.2.push(name);
+            }
+        }
+    }
+
+    if enable_llm {
+        // Build compressed summary for LLM
+        let mut summary = String::new();
+        summary.push_str("Top-Level Domains:\n");
+        let mut sorted_domains: Vec<_> = domains.iter().collect();
+        sorted_domains.sort_by(|a, b| b.1.0.cmp(&a.1.0));
+        
+        for (domain, (count, tech, samples)) in sorted_domains.iter().take(40) {
+            let sample_str = samples.join(", ");
+            summary.push_str(&format!("- {} ({} components, Primary Tech: {})\n  Sample modules: {}\n", domain, count, tech, sample_str));
+        }
+
+        if !db_nodes.is_empty() {
+            summary.push_str("\nDatabases:\n");
+            for db in db_nodes.iter().take(5) {
+                summary.push_str(&format!("- {}\n", db.path.as_deref().unwrap_or(&db.label)));
+            }
+        }
+
+        if !api_nodes.is_empty() {
+            summary.push_str("\nExternal APIs:\n");
+            for api in api_nodes.iter().take(5) {
+                summary.push_str(&format!("- {}\n", api.path.as_deref().unwrap_or(&api.label)));
+            }
+        }
+
+        let system_prompt = r#"You are an Expert Software Architect. Your job is to output a strictly valid and concise Sruja DSL `architecture.sruja` file based on a high-level summary of a codebase.
+
+Sruja syntax guidelines:
+```
+// Declarations
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+adr = kind "ADR"
+flow = kind "Flow"
+
+// Definitions
+app = system "My App" {
+  foo_domain = container "src/foo" {
+     technology "Rust"
+     description "Domain logic for foo (12 components)"
+     
+     // Core Modules / Sub-components
+     foo_auth = component "auth_module"
+     foo_utils = component "utils_module"
+  }
+}
+main_db = database "PostgreSQL" {}
+
+// Relationships
+foo_domain -> main_db "reads/writes"
+
+// Architectural Decisions
+ADR001 = adr "Use Microservices" {
+    status "Accepted"
+    description "Adopted microservices architecture to scale teams independently."
+}
+
+// Business Flows
+CheckoutFlow = flow "User Checkout" {
+    description "The standard flow for a user purchasing an item."
+    step foo_auth -> foo_utils "Validates session"
+    step foo_utils -> main_db "Saves order"
+}
+```
+
+Rules:
+1. Extract the primary domains and create `container` blocks for them inside an `app = system` block. 
+2. Inside each `container`, declare the "Sample modules" provided as `component` statements. Ensure component identifiers are unique (e.g., prefix them with the domain name).
+3. Write a highly meaningful architectural `description` summarizing what each domain likely does based on its components. Append the total component count at the end of the description.
+4. Ensure identifiers (the left side of `=`) only use alphanumeric chars and underscores, no spaces or paths.
+5. Add any databases or external APIs outside the system block if present.
+6. Guess 3-5 high-level directional relationships (`->`) between the domains based on common architectural patterns.
+7. Invent 1-2 realistic architectural `flow` blocks that trace a business scenario across the generated containers. Use `step Source -> Target "Action"` syntax.
+8. Invent 1-2 realistic `adr` (Architecture Decision Record) blocks that make sense for this specific technology stack and architecture. Include a `status` and `description`.
+9. Provide ONLY the raw Sruja DSL. No markdown formatting, no explanations. Do not wrap in ``` code blocks.
+"#;
+
+        if let Ok(raw_llm_response) = crate::commands::llm::call_llm(system_prompt, &summary).await {
+            let clean = raw_llm_response
+                .trim()
+                .strip_prefix("```sruja")
+                .or_else(|| raw_llm_response.trim().strip_prefix("```text"))
+                .or_else(|| raw_llm_response.trim().strip_prefix("```"))
+                .unwrap_or(raw_llm_response.trim())
+                .strip_suffix("```")
+                .unwrap_or(raw_llm_response.trim())
+                .trim()
+                .to_string();
+
+            if !clean.is_empty() {
+                return clean;
+            }
+        }
+    }
+
+    // Fallback deterministic logic (Domain aggregated)
     let mut dsl = String::new();
-    dsl.push_str("// Auto-generated architecture baseline from Sruja quickstart\n");
+    dsl.push_str("// Auto-generated high-level architecture baseline from Sruja quickstart\n");
     dsl.push_str("// Edit this file to match your intended architecture\n\n");
     
-    let services: Vec<_> = graph.nodes.iter().filter(|n| n.kind == NodeKind::Service).collect();
-    let databases: Vec<_> = graph.nodes.iter().filter(|n| n.kind == NodeKind::Database).collect();
-    let modules: Vec<_> = graph.nodes.iter().filter(|n| n.kind == NodeKind::Module).collect();
-    
-    dsl.push_str("// Component kinds\n");
     dsl.push_str("person = kind \"Person\"\n");
     dsl.push_str("system = kind \"System\"\n");
     dsl.push_str("container = kind \"Container\"\n");
-    dsl.push_str("database = kind \"Database\"\n\n");
+    dsl.push_str("database = kind \"Database\"\n");
+    dsl.push_str("external_api = kind \"External_Api\"\n\n");
     
-    dsl.push_str("// External actors\n");
     dsl.push_str("user = person \"User\" {\n");
     dsl.push_str("  description \"End user of the application\"\n");
     dsl.push_str("}\n\n");
     
-    if !services.is_empty() || !modules.is_empty() {
-        dsl.push_str("// System\n");
+    if !domains.is_empty() {
         dsl.push_str("app = system \"Application\" {\n");
+        let mut sorted_domains: Vec<_> = domains.iter().collect();
+        sorted_domains.sort_by(|a, b| b.1.0.cmp(&a.1.0));
         
-        for service in &services {
-            let name = sanitize_id(&service.label);
-            dsl.push_str(&format!("  {} = container \"{}\" {{\n", name, service.label));
-            if let Some(ref tech) = service.technology {
+        for (domain, (count, tech, _)) in sorted_domains.iter().take(40) {
+            let id = sanitize_id(domain);
+            dsl.push_str(&format!("  {} = container \"{}\" {{\n", id, domain));
+            if !tech.is_empty() {
                 dsl.push_str(&format!("    technology \"{}\"\n", tech));
             }
+            dsl.push_str(&format!("    description \"Contains {} components\"\n", count));
             dsl.push_str("  }\n");
         }
-        
         dsl.push_str("}\n\n");
     }
     
-    if !databases.is_empty() {
+    if !db_nodes.is_empty() {
         dsl.push_str("// Databases\n");
-        for db in &databases {
-            let name = sanitize_id(&db.label);
-            dsl.push_str(&format!("{} = database \"{}\" {{\n", name, db.label));
+        for db in db_nodes.iter().take(5) {
+            let id = sanitize_id(&db.id);
+            let display_name = db.path.as_deref().unwrap_or(&db.label);
+            dsl.push_str(&format!("{} = database \"{}\" {{\n", id, display_name));
             if let Some(ref tech) = db.technology {
                 dsl.push_str(&format!("  technology \"{}\"\n", tech));
             }
@@ -769,12 +948,16 @@ fn generate_baseline_from_graph(graph: &Graph) -> String {
         dsl.push('\n');
     }
     
-    if !graph.edges.is_empty() {
-        dsl.push_str("// Key relationships (sample)\n");
-        for edge in graph.edges.iter().take(10) {
-            let source = sanitize_id(&edge.source);
-            let target = sanitize_id(&edge.target);
-            dsl.push_str(&format!("{} -> {} \"uses\"\n", source, target));
+    if !api_nodes.is_empty() {
+        dsl.push_str("// External APIs\n");
+        for api in api_nodes.iter().take(5) {
+            let id = sanitize_id(&api.id);
+            let display_name = api.path.as_deref().unwrap_or(&api.label);
+            dsl.push_str(&format!("{} = external_api \"{}\" {{\n", id, display_name));
+            if let Some(ref tech) = api.technology {
+                dsl.push_str(&format!("  technology \"{}\"\n", tech));
+            }
+            dsl.push_str("}\n");
         }
         dsl.push('\n');
     }
