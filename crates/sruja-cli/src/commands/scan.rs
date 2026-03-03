@@ -841,6 +841,7 @@ component = kind "Component"
 database = kind "Database"
 adr = kind "ADR"
 flow = kind "Flow"
+external = kind "External"
 
 // Definitions
 app = system "My App" {
@@ -854,6 +855,7 @@ app = system "My App" {
   }
 }
 main_db = database "PostgreSQL" {}
+stripe_api = external "Stripe API" {}
 
 // Relationships
 foo_domain -> main_db "reads/writes"
@@ -866,7 +868,6 @@ ADR001 = adr "Use Microservices" {
 
 // Business Flows
 CheckoutFlow = flow "User Checkout" {
-    description "The standard flow for a user purchasing an item."
     step foo_auth -> foo_utils "Validates session"
     step foo_utils -> main_db "Saves order"
 }
@@ -875,12 +876,12 @@ CheckoutFlow = flow "User Checkout" {
 Rules:
 1. Extract the primary domains and create `container` blocks for them inside an `app = system` block. 
 2. Inside each `container`, declare the "Sample modules" provided as `component` statements. Ensure component identifiers are unique (e.g., prefix them with the domain name).
-3. Write a highly meaningful architectural `description` summarizing what each domain likely does based on its components. Append the total component count at the end of the description.
+3. Write a highly meaningful architectural `description` summarizing what each domain likely does. Append the total component count at the end of the description.
 4. Ensure identifiers (the left side of `=`) only use alphanumeric chars and underscores, no spaces or paths.
-5. Add any databases or external APIs outside the system block if present.
+5. Add any databases or external APIs outside the system block if present (using `database` and `external` declarations).
 6. Guess 3-5 high-level directional relationships (`->`) between the domains based on common architectural patterns.
-7. Invent 1-2 realistic architectural `flow` blocks that trace a business scenario across the generated containers. Use `step Source -> Target "Action"` syntax.
-8. Invent 1-2 realistic `adr` (Architecture Decision Record) blocks that make sense for this specific technology stack and architecture. Include a `status` and `description`.
+7. Invent 1-2 realistic architectural `flow` blocks that trace a business scenario across the generated containers. Use ONLY `step Source -> Target "Action"` inside the `{}`. DO NOT add `description` or anything else inside `flow` blocks.
+8. Invent 1-2 realistic `adr` (Architecture Decision Record) blocks that make sense for this specific technology stack and architecture. Include a `status` and `description` inside the `{}`.
 9. Provide ONLY the raw Sruja DSL. No markdown formatting, no explanations. Do not wrap in ``` code blocks.
 "#;
 

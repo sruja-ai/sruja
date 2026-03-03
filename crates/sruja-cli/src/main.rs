@@ -253,55 +253,56 @@ enum Commands {
         #[arg(long, short = 'o')]
         output: Option<String>,
     },
-    /// Executive architecture report for CTOs and tech leaders
-    Cto {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Output format (text or json)
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
-    },
-    /// SRE reliability and incident analysis report
-    Sre {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Output format (text or json)
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
-    },
-    /// DevOps deployment readiness assessment
-    Devops {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Output format (text or json)
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
-    },
-    /// Security analysis and vulnerability assessment
-    Security {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Output format (text or json)
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
-    },
-    /// Product feature dependency and impact analysis
-    Product {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Output format (text or json)
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
-    },
     /// AI-Powered Architecture Timeline evolution from git history
     Timeline {
         #[command(subcommand)]
         cmd: TimelineCommand,
+    },
+    /// AI queries and knowledge persistence
+    Ai {
+        #[command(subcommand)]
+        cmd: AiCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum AiCommand {
+    Explain {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long, short = 't')]
+        topic: String,
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        #[arg(long)]
+        graph: Option<String>,
+    },
+    Ask {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        question: String,
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        #[arg(long)]
+        graph: Option<String>,
+    },
+    Feedback {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long)]
+        answer_id: String,
+        #[arg(long)]
+        fact_id: String,
+        #[arg(long)]
+        verdict: String,
+        #[arg(long, short = 'c')]
+        comment: Option<String>,
+    },
+    Memory {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
     },
 }
 
@@ -472,24 +473,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Context { repo, format, output } => {
             commands::context_export(&repo, &format, output.as_deref()).await
         }
-        Commands::Cto { repo, format } => {
-            commands::cto(&repo, &format).await
-        }
-        Commands::Sre { repo, format } => {
-            commands::sre(&repo, &format).await
-        }
-        Commands::Devops { repo, format } => {
-            commands::devops(&repo, &format).await
-        }
-        Commands::Security { repo, format } => {
-            commands::security(&repo, &format).await
-        }
-        Commands::Product { repo, format } => {
-            commands::product(&repo, &format).await
-        }
         Commands::Timeline { cmd } => match cmd {
             TimelineCommand::Explain { repo, max_commits, format } => {
                 commands::timeline::timeline_explain(&repo, max_commits, &format).await
+            }
+        },
+        Commands::Ai { cmd } => match cmd {
+            AiCommand::Explain { repo, topic, format, graph } => {
+                commands::ai::ai_explain(&repo, &topic, &format, graph.as_deref()).await
+            }
+            AiCommand::Ask { repo, question, format, graph } => {
+                commands::ai::ai_ask(&repo, &question, &format, graph.as_deref()).await
+            }
+            AiCommand::Feedback { repo, answer_id, fact_id, verdict, comment } => {
+                commands::ai::ai_feedback(&repo, &answer_id, &fact_id, &verdict, comment.as_deref()).await
+            }
+            AiCommand::Memory { repo, format } => {
+                commands::ai::ai_memory(&repo, &format).await
             }
         },
     };

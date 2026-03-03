@@ -228,10 +228,10 @@ pub async fn analyze(
 
     let graph = scan_repo(repo_path)?;
 
-    let view_context = ViewContext::new(view_name, graph.clone(), repo_path)
+    let view_context = ViewContext::new(view_name, graph.clone(), repo_path, config)
         .map_err(CliError::Validation)?;
 
-    let view_report = view_context.analyze()
+    let view_report = view_context.analyze().await
         .map_err(CliError::Validation)?;
 
     print_view_report(&view_report, format);

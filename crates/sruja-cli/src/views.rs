@@ -49,9 +49,7 @@ pub struct ViewContext {
 }
 
 impl ViewContext {
-    pub fn new(view_name: &str, graph: Graph, repo_path: &Path) -> Result<Self, String> {
-        let config = SrujaConfig::load(repo_path).map_err(|e| e.to_string())?;
-
+    pub fn new(view_name: &str, graph: Graph, repo_path: &Path, config: SrujaConfig) -> Result<Self, String> {
         let view = if let Some(v) = config.get_view(view_name) {
             v
         } else {
@@ -69,7 +67,7 @@ impl ViewContext {
         })
     }
 
-    pub fn analyze(&self) -> Result<ViewReport, String> {
+    pub async fn analyze(&self) -> Result<ViewReport, String> {
         let summary = self.generate_summary();
         let mut sections = HashMap::new();
 
@@ -84,7 +82,7 @@ impl ViewContext {
 
         let health_score = self.calculate_health_score(&summary);
         let recommendations = self.generate_recommendations(&summary, &sections);
-        let llm_insights = self.get_llm_insights(&summary, &sections)?;
+        let llm_insights = self.get_llm_insights(&summary, &sections).await?;
 
         Ok(ViewReport {
             view_name: self.view.name.clone(),
@@ -702,7 +700,7 @@ impl ViewContext {
         recs
     }
 
-    fn get_llm_insights(
+    async fn get_llm_insights(
         &self,
         summary: &ViewSummary,
         sections: &HashMap<String, serde_json::Value>,
@@ -715,12 +713,18 @@ impl ViewContext {
             let context = self.build_llm_context(summary, sections);
             let full_prompt = format!("{}\n\n{}", prompt_template, context);
 
-            match self.view.analysis_depth {
-                AnalysisDepth::Quick => Ok(Some(self.generate_quick_insight(&full_prompt))),
-                AnalysisDepth::Standard => Ok(Some(self.generate_standard_insight(&full_prompt))),
-                AnalysisDepth::Deep => Ok(Some(self.generate_deep_insight(&full_prompt))),
-                AnalysisDepth::Comprehensive => {
-                    Ok(Some(self.generate_comprehensive_insight(&full_prompt)))
+            let system_prompt = "You are an expert Software Architect analyzing a codebase structure and providing insights tailored for specific stakeholder views. Produce a highly insightful and concise architectural summary, identifying real hotspots and structural bottlenecks based strictly on the metrics provided.";
+            match crate::commands::llm::call_llm(system_prompt, &full_prompt).await {
+                Ok(response) => Ok(Some(response)),
+                Err(_) => {
+                    match self.view.analysis_depth {
+                        AnalysisDepth::Quick => Ok(Some(self.generate_quick_insight(&full_prompt))),
+                        AnalysisDepth::Standard => Ok(Some(self.generate_standard_insight(&full_prompt))),
+                        AnalysisDepth::Deep => Ok(Some(self.generate_deep_insight(&full_prompt))),
+                        AnalysisDepth::Comprehensive => {
+                            Ok(Some(self.generate_comprehensive_insight(&full_prompt)))
+                        }
+                    }
                 }
             }
         } else {

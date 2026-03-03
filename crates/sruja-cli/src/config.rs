@@ -15,6 +15,7 @@ pub enum ConfigError {
     #[error("Failed to parse config YAML: {0}")]
     Yaml(#[from] serde_yaml::Error),
 
+    #[allow(dead_code)]
     #[error("Config file not found: {0}")]
     NotFound(PathBuf),
 }
@@ -222,9 +223,9 @@ pub fn get_builtin_views() -> HashMap<String, ViewDefinition> {
             "team_impact".to_string(),
         ],
         thresholds: ThresholdConfig {
-            max_coupling: 8.0,
+            max_coupling: 5.0,
             max_orphans: 3,
-            max_complexity: 12.0,
+            max_complexity: 8.0,
             min_health: 80.0,
             custom: HashMap::new(),
         },

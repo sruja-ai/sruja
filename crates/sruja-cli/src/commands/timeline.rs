@@ -1,4 +1,5 @@
 //! Timeline commands: suggest architecture-significant refs via LLM from git log.
+#![allow(dead_code)]
 //!
 //! Used by capture_timeline.sh when no refs are given. Reuses shared LLM module.
 

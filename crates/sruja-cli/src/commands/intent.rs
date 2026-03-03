@@ -1,4 +1,5 @@
 //! Intent commands: check, propose, adr-index.
+#![allow(dead_code)]
 
 use std::path::{Path, PathBuf};
 

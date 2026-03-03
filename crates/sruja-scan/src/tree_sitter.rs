@@ -23,6 +23,8 @@ pub use detector::detect_language;
 pub struct ScanConfig {
     pub include_tests: bool,
     pub include_node_modules: bool,
+    pub exclude_examples: bool,
+    pub exclude_benches: bool,
     pub max_file_size: usize,
 }
 
@@ -31,6 +33,8 @@ impl Default for ScanConfig {
         Self {
             include_tests: false,
             include_node_modules: false,
+            exclude_examples: true,
+            exclude_benches: true,
             max_file_size: 500 * 1024,
         }
     }
@@ -186,10 +190,27 @@ fn build_walker(repo_root: &Path, config: &ScanConfig) -> ignore::Walk {
         });
     }
 
+    let exclude_examples = config.exclude_examples;
+    let exclude_benches = config.exclude_benches;
+
     if !config.include_tests {
-        builder.filter_entry(|e| {
+        builder.filter_entry(move |e| {
             let name = e.file_name().to_string_lossy();
-            !name.contains("test") && !name.contains("spec") && name != "__tests__"
+            let path = e.path().to_string_lossy();
+            let is_test = name.contains("test") || name.contains("spec") || name == "__tests__" || path.contains("/tests/");
+            
+            let is_example = exclude_examples && (name.contains("example") || path.contains("/examples/"));
+            let is_bench = exclude_benches && (name.contains("bench") || path.contains("/benches/"));
+            
+            !is_test && !is_example && !is_bench
+        });
+    } else {
+        builder.filter_entry(move |e| {
+            let name = e.file_name().to_string_lossy();
+            let path = e.path().to_string_lossy();
+            let is_example = exclude_examples && (name.contains("example") || path.contains("/examples/"));
+            let is_bench = exclude_benches && (name.contains("bench") || path.contains("/benches/"));
+            !is_example && !is_bench
         });
     }
 
