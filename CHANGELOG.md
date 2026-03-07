@@ -5,6 +5,27 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.9.1...sruja-v0.10.0) (2026-03-07)
+
+
+### Features
+
+* add context export command for AI tools ([557d8e9](https://github.com/sruja-ai/sruja/commit/557d8e95280d886ab5e1f53290a5be00c5a2c61c))
+* add GitHub Action for architecture drift CI and update README with buyable features ([fd7680d](https://github.com/sruja-ai/sruja/commit/fd7680d29f49bd7afbe4a99a6d890ff750081db6))
+* add quickstart --generate-baseline flag ([9f42ee7](https://github.com/sruja-ai/sruja/commit/9f42ee7fc20961000b7d330434ced84e9a93c59c))
+* architecture intelligence, new crates, CLI refactor ([bef699f](https://github.com/sruja-ai/sruja/commit/bef699fb3fb0e941b172c4069cfae81aec80cdef))
+* **architecture:** restore sruja WASM, vscode extension and LSP for IDE architecture drafting ([c6b55e3](https://github.com/sruja-ai/sruja/commit/c6b55e391539170ea775eb3772414552d2971350))
+* **cli:** enhance advanced architecture insights and expose timeline ([d10f38b](https://github.com/sruja-ai/sruja/commit/d10f38b7a96361a1e097f181a1ec25425338fd2d))
+* **cli:** enhance architecture baseline generation with C4 components, flows, and ADRs ([f132324](https://github.com/sruja-ai/sruja/commit/f132324019a1a26c443898c04beb300f90f9a04f))
+* complete buyable features implementation ([b5d6af6](https://github.com/sruja-ai/sruja/commit/b5d6af613f1d6fb22c67495efe314e02dac56ff9))
+* implement PR-scoped drift and one-click baseline generation ([a38b3f8](https://github.com/sruja-ai/sruja/commit/a38b3f8e7951eff63ef15d79f98cecb862a5d8cb))
+
+
+### Bug Fixes
+
+* CI merge-ready — scoped causal/feedback loops, layer fixes, format & clippy ([647436d](https://github.com/sruja-ai/sruja/commit/647436d8ba66d38bc06799db15a2b38c7bc16f82))
+* **cli:** correct syntax rules for flow and external APIs in architecture prompt ([39a89a3](https://github.com/sruja-ai/sruja/commit/39a89a38a05d2d527874a150a6af9cc5306130f5))
+
 ## [0.9.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.9.0...sruja-v0.9.1) (2026-02-17)
 
 
