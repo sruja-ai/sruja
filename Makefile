@@ -21,11 +21,10 @@ test-rust:
 		exit 1; \
 	fi
 
-# Test architecture intelligence layer (chat, graph, why)
+# Test architecture intelligence (why command E2E)
 test-arch-intel:
-	@echo "Testing architecture intelligence layer..."
-	@cargo test -p sruja-chat --test architecture_intelligence_e2e && \
-	cargo test -p sruja-cli --test why_e2e && \
+	@echo "Testing architecture intelligence (why E2E)..."
+	@cargo test -p sruja-cli --test why_e2e && \
 	echo "✅ Architecture intelligence tests passed"
 
 # Build (default: Rust)
@@ -264,7 +263,7 @@ help:
 	@echo "  make fmt                - Format Rust code"
 	@echo ""
 	@echo "Architecture Intelligence:"
-	@echo "  make test-arch-intel    - Run architecture intelligence E2E tests (chat, why)"
+	@echo "  make test-arch-intel    - Run architecture intelligence E2E (why command)"
 	@echo "  make demo               - Run E2E value demo (quickstart + drift on sample repo)"
 	@echo ""
 	@echo "Direct Cargo Commands:"

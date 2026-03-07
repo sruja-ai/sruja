@@ -48,10 +48,10 @@ make wasm-nodejs # nodejs target (for future LSP/extension)
 | **sruja-wasm** | WASM build for browser/Node |
 | **sruja-diagnostics** | Diagnostic types |
 | **sruja-app** | Desktop app (Dioxus) — architecture collaboration |
-| **sruja-chat** | Chat, agents, extraction |
-| **sruja-graph** | Knowledge graph for decisions |
-| **sruja-extract** | LLM extraction |
-| **sruja-scan** | Repo scanning (npm, cargo) |
+| **sruja-graph** | Knowledge graph, centrality, coupling |
+| **sruja-scan** | Repo scanning (multi-language tree-sitter) |
+| **sruja-diff** | Drift detection |
+| **sruja-intent** | Intent vs. reality comparison |
 | **sruja-mcp** | MCP server |
 | **book/** | mdBook documentation |
 

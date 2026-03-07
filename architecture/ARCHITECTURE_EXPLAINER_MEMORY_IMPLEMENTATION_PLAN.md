@@ -174,8 +174,8 @@ For each selected pair `base -> head`:
 ## 7.2 Reuse/extend existing code
 
 1. Reuse LLM provider resolution from `commands/timeline.rs`.
-2. Reuse graph retrieval patterns from `sruja-chat/src/graph_rag.rs`.
-3. Reuse persistence style from `sruja-chat/src/persistence.rs` for repo-local `.sruja/memory`.
+2. Reuse graph retrieval and context building in `sruja-cli/src/ai/` (context, memory).
+3. Persistence for repo-local `.sruja/memory` is in `sruja-cli` (e.g. `ai/memory.rs`).
 
 ## 7.3 New library module (inside `sruja-cli` first)
 

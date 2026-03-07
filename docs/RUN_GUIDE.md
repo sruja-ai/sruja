@@ -180,7 +180,7 @@ Other targets:
 ```bash
 make fmt          # Format Rust code
 make lint         # Clippy
-make test-arch-intel   # Architecture intelligence E2E tests
+cargo test -p sruja-cli --test why_e2e   # Why command E2E (optional)
 ```
 
 ---
