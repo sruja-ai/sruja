@@ -60,6 +60,7 @@ order_service = system "Order Service" {
   worker = container "Order Worker" {
     technology "Python"
     description "Background worker for order processing, inventory checks, and notifications"
+    metadata { layer "api" }
   }
 
   db = datastore "Order Database" {
@@ -75,6 +76,7 @@ order_service = system "Order Service" {
   queue = datastore "Message Queue" {
     technology "RabbitMQ"
     description "Event bus for order events (OrderCreated, OrderUpdated, OrderShipped)"
+    metadata { layer "api" }
   }
 
   // Internal relationships

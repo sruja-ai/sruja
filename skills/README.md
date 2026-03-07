@@ -32,6 +32,47 @@ npx skills add sruja-ai/sruja --skill sruja-architecture
 5. Anti-Patterns (MEDIUM)
 6. Trade-offs & Decisions (MEDIUM)
 
+### sruja-architecture-agent
+
+AI-powered architecture discovery skill for analyzing codebases and generating Sruja DSL.
+
+**Install:**
+
+```bash
+npx skills add sruja-ai/sruja --skill sruja-architecture-agent
+```
+
+**Contents:**
+
+- Codebase analysis patterns
+- Technology detection
+- Dependency discovery
+- Sruja DSL generation
+- Multi-repo support
+
+### sruja-architecture-collaboration
+
+Collaborative architecture intelligence with multi-agent teams, knowledge graphs, and review workflows.
+
+**Install:**
+
+```bash
+npx skills add sruja-ai/sruja --skill sruja-architecture-collaboration
+```
+
+**Contents:**
+
+- Multi-agent team roles (Analyst, Architect, Reviewer, Validator, Facilitator)
+- Collaboration workflows (review cycles, live sessions)
+- Knowledge management (pattern library, ADRs, traceability)
+- CI/CD integration for architecture reviews
+
+**Categories:**
+
+1. Agent Roles (5 specialized roles)
+2. Collaboration Workflows (review, session)
+3. Knowledge Graph (patterns, decisions, traceability)
+
 ## Skill Structure
 
 Each skill follows the skills.sh format:
@@ -100,6 +141,18 @@ Planned skills for Sruja:
 - `sruja-validation` - Architecture validation rules and checks
 - `sruja-migration` - Patterns for architecture migrations
 - `sruja-security` - Security architecture patterns
+
+## Skill Dependencies
+
+Some skills depend on others for full functionality:
+
+```
+sruja-architecture-collaboration
+  ├── sruja-architecture (design principles)
+  └── sruja-architecture-agent (discovery)
+```
+
+Install dependencies first for best results.
 
 ## Resources
 

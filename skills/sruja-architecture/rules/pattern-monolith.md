@@ -45,12 +45,12 @@ architecture "Project Management System" {
     }
 
     # Shared Resources
-    database = datastore "Primary Database" {
+    database = database "Primary Database" {
       technology "PostgreSQL"
       description "Central database for all modules"
     }
 
-    cache = datastore "Cache Layer" {
+    cache = database "Cache Layer" {
       technology "Redis"
       description "Shared cache for performance"
     }
@@ -100,12 +100,12 @@ architecture "Web Application" {
     }
 
     # Infrastructure Layer
-    database = datastore "Database" {
+    database = database "Database" {
       technology "PostgreSQL"
       description "Data persistence"
     }
 
-    message_queue = datastore "Message Queue" {
+    message_queue = queue "Message Queue" {
       technology "RabbitMQ"
       description "Internal messaging"
     }

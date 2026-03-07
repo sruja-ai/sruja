@@ -29,12 +29,12 @@ architecture "Web Application" {
     description "RESTful API"
   }
 
-  database = datastore "Database" {
+  database = database "Database" {
     technology "PostgreSQL"
     description "Data storage"
   }
 
-  message_queue = datastore "Message Queue" {
+  message_queue = queue "Message Queue" {
     technology "RabbitMQ"
     description "Event streaming"
   }
@@ -91,7 +91,7 @@ architecture "Analytics System" {
     description "Processes and transforms data"
   }
 
-  database = datastore "Time Series DB" {
+  database = database "Time Series DB" {
     technology "InfluxDB"
     description "Stores time-series data"
   }

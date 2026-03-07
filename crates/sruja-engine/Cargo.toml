@@ -10,6 +10,7 @@ description = "Validation engine with rules for Sruja DSL architecture analysis"
 [dependencies]
 sruja-diagnostics = { path = "../sruja-diagnostics" }
 sruja-language = { path = "../sruja-language" }
+log = "0.4"
 serde = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true }

@@ -1,0 +1,12 @@
+[package]
+name = "sruja-report"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Canonical report schema for Sruja architecture intelligence (structural, semantic, intent, runtime)"
+
+[dependencies]
+serde = { workspace = true }
+sruja-diff = { path = "../sruja-diff" }

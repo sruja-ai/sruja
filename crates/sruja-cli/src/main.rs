@@ -2,14 +2,24 @@
 //!
 //! Command-line interface for the Sruja DSL tool.
 
+pub mod ai;
 mod commands;
+mod config;
+mod context_detection;
 mod modules;
+pub mod selection;
+mod utils;
+mod views;
 
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "sruja")]
-#[command(about = "Sruja DSL CLI", long_about = None)]
+#[command(
+    about = "Architecture-as-code and drift intelligence",
+    long_about = None,
+    after_help = "Common: sruja analyze -r .  |  sruja quickstart -r .  |  sruja drift -r ."
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -19,6 +29,15 @@ struct Cli {
 enum Commands {
     /// Print version information
     Version,
+    /// Scan a repository and infer an architecture graph
+    Scan {
+        /// Path to repository root (defaults to current directory)
+        #[arg(default_value = ".")]
+        path: String,
+        /// Output path for inferred graph JSON (use "-" for stdout)
+        #[arg(long, default_value = "sruja.graph.json")]
+        output: String,
+    },
     /// Lint a Sruja file
     Lint {
         /// Path to .sruja file
@@ -58,16 +77,6 @@ enum Commands {
         /// Path to .sruja file
         file: String,
     },
-    /// Initialize a new Sruja project
-    Init {
-        /// Project name (optional)
-        name: Option<String>,
-    },
-    /// Generate configuration files and templates
-    Generate {
-        #[command(subcommand)]
-        action: GenerateAction,
-    },
     /// Show differences between two architecture files
     Diff {
         /// First file
@@ -96,11 +105,6 @@ enum Commands {
         /// File to import
         file: String,
     },
-    /// Calculate architecture health score
-    Score {
-        /// Path to .sruja file
-        file: Option<String>,
-    },
     /// Start LSP server (stdio)
     Lsp {
         /// Use stdio transport
@@ -126,88 +130,262 @@ enum Commands {
         #[arg(long)]
         format_json: bool,
     },
-    /// Change management
-    Change {
-        #[command(subcommand)]
-        action: ChangeAction,
-    },
-    /// Skills and rules management
-    Skills {
-        #[command(subcommand)]
-        action: SkillsAction,
-    },
-}
-
-#[derive(Subcommand)]
-enum ChangeAction {
-    /// Create a new change record
-    Create {
-        /// Title of change
-        title: String,
-        /// Description of change
-        #[arg(long, short = 'd')]
-        description: Option<String>,
-        /// Context/background
-        #[arg(long, short = 'c')]
-        context: Option<String>,
-        /// Status (proposed, approved, rejected, implemented)
-        #[arg(long, short = 's')]
-        status: Option<String>,
-    },
-    /// Validate a change record
-    Validate {
-        /// Path to change file
-        file: String,
-    },
-}
-
-#[derive(Subcommand)]
-enum GenerateAction {
-    /// Generate AI editor integration files (.cursorrules, .copilot-instructions.md, .architecture-skill.md)
-    AiFiles {
-        /// Which AI tools to generate files for (cursor, copilot, all) [default: all]
+    /// Ask "why" questions about architecture (requires repo scan context)
+    Why {
+        /// Question to answer (e.g., "Why did we choose Kafka?")
+        question: String,
+        /// Path to repository root for context
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to graph JSON from previous scan (optional, otherwise scans repo)
         #[arg(long)]
-        tools: Option<String>,
-        /// Force overwrite existing files
-        #[arg(long)]
-        force: bool,
+        graph: Option<String>,
     },
-}
-
-#[derive(Subcommand)]
-enum SkillsAction {
-    /// List filtered skills
-    List {
-        /// Path to skills directory
-        #[arg(short, long, default_value = "skills/sruja-architecture")]
-        path: String,
-        /// Limit number of results
-        #[arg(short, long)]
-        limit: Option<usize>,
-        /// Output format (markdown, json, concise)
-        #[arg(short, long, default_value = "markdown")]
+    /// Detect architectural drift in codebase
+    Drift {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to .sruja architecture file (optional)
+        #[arg(long, short = 'a')]
+        architecture: Option<String>,
+        /// Output format (text, json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        /// Only show violations, not suggestions
+        #[arg(long)]
+        violations_only: bool,
+        /// Fail with exit code 1 if specified violations found (comma-separated: cycles,layer-violations,god-modules,orphans,all)
+        #[arg(long)]
+        fail_on: Option<String>,
+    },
+    /// PR-scoped drift: detect only NEW violations in a PR
+    DriftPr {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Base ref (e.g. main, origin/main)
+        #[arg(long, short = 'b')]
+        base: Option<String>,
+        /// Head ref (defaults to HEAD)
+        #[arg(long, short = 'H')]
+        head: Option<String>,
+        /// Output format (text, json, github-actions)
+        #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
-    /// Suggest rules for a project
-    Suggest {
-        /// Path to skills directory
-        #[arg(short, long, default_value = "skills/sruja-architecture")]
-        skills_path: String,
-        /// Path to project directory
-        #[arg(short, long, default_value = ".")]
-        project_path: String,
-        /// Number of rules to suggest
-        #[arg(short, long, default_value_t = 10)]
-        count: usize,
+    /// Quickstart: Get immediate architecture insights (zero-key, deterministic)
+    Quickstart {
+        /// Path to repository root (defaults to current directory)
+        #[arg(long, short = 'r', default_value = ".")]
+        path: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        /// Generate a draft architecture.sruja baseline from scan
+        #[arg(long)]
+        generate_baseline: bool,
+        /// Fail with exit code 1 if specified violations found (comma-separated: cycles,layer-violations,god-modules,orphans,all)
+        #[arg(long)]
+        fail_on: Option<String>,
+    },
+    /// Analyze structural complexity (treewidth, SCC, centrality, coupling)
+    Complexity {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (text, json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        /// Include treewidth analysis
+        #[arg(long)]
+        treewidth: bool,
+        /// Include SCC (strongly connected components) analysis
+        #[arg(long)]
+        scc: bool,
+        /// Include centrality metrics
+        #[arg(long)]
+        centrality: bool,
+        /// Include coupling metrics
+        #[arg(long)]
+        coupling: bool,
+    },
+    /// Analyze semantic coupling, bounded contexts, vocabulary leakage
+    Semantic {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (text, json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Smart component coverage selection (quality over quantity)
+    SmartCoverage {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (text, json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        /// Target compression ratio (0.1 = 10%, default: 0.15)
+        #[arg(long, short = 't')]
+        target_ratio: Option<f64>,
+    },
+    /// Comprehensive analysis (structural + semantic + intent)
+    Analyze {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Analysis view (cto, sre, devops, security, product, platform-engineer, tech-lead, or custom from .sruja.yaml)
+        #[arg(long, short = 'v', default_value = "cto")]
+        view: String,
+        /// Path to intent directory (ADRs, .sruja files; defaults to repo/docs/architecture)
+        #[arg(long, short = 'i')]
+        intent: Option<String>,
+        /// Output format (text, json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        /// Enable LLM-powered insights
+        #[arg(long)]
+        llm: bool,
+    },
+    /// Compare declared architectural intent vs actual implementation
+    Intent {
+        #[command(subcommand)]
+        cmd: IntentCommand,
+    },
+    /// Export architecture context for AI tools (Cursor, Copilot, Claude)
+    Context {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (cursor-rules, copilot-instructions, markdown, json)
+        #[arg(long, short = 'f', default_value = "cursor-rules")]
+        format: String,
+        /// Output file (defaults to stdout)
+        #[arg(long, short = 'o')]
+        output: Option<String>,
+    },
+    /// Analyze runtime traces (spans) for emergent cycles and hotspots
+    Runtime {
+        #[command(subcommand)]
+        cmd: RuntimeCommand,
+    },
+    /// AI-Powered Architecture Timeline evolution from git history
+    Timeline {
+        #[command(subcommand)]
+        cmd: TimelineCommand,
+    },
+    /// AI queries and knowledge persistence
+    Ai {
+        #[command(subcommand)]
+        cmd: AiCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum AiCommand {
+    Explain {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long, short = 't')]
+        topic: String,
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        #[arg(long)]
+        graph: Option<String>,
+    },
+    Ask {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        question: String,
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        #[arg(long)]
+        graph: Option<String>,
+    },
+    Feedback {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long)]
+        answer_id: String,
+        #[arg(long)]
+        fact_id: String,
+        #[arg(long)]
+        verdict: String,
+        #[arg(long, short = 'c')]
+        comment: Option<String>,
+    },
+    Memory {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum TimelineCommand {
+    /// Explain architectural evolution from commit history
+    Explain {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Maximum commits to scan
+        #[arg(long, short = 'm', default_value_t = 300)]
+        max_commits: usize,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum RuntimeCommand {
+    /// Analyze trace/span JSON for emergent cycles and hotspots
+    Analyze {
+        /// Path to traces JSON file (array of spans with id, name, start, end, children)
+        #[arg(long, short = 't')]
+        traces: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum IntentCommand {
+    /// Check intent vs reality and report drift
+    Check {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to intent directory (ADRs, .sruja files)
+        #[arg(long, short = 'i')]
+        intent: Option<String>,
+        /// Output format (text, json, markdown)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Propose ADR from detected drift
+    Propose {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to intent directory
+        #[arg(long, short = 'i')]
+        intent: Option<String>,
     },
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::try_init().ok();
     let cli = Cli::parse();
 
     let result = match cli.command {
         Commands::Version => commands::version(),
+        Commands::Scan { path, output } => commands::scan(&path, &output).await,
         Commands::Lint { file } => commands::lint(&file).await,
         Commands::Export {
             format,
@@ -225,23 +403,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             fail_on_violations,
             format_json,
         } => commands::validate(&file, constraints, fail_on_violations, format_json).await,
-        Commands::Change { action } => match action {
-            ChangeAction::Create {
-                title,
-                description,
-                context,
-                status,
-            } => commands::change_create(&title, description, context, status).await,
-            ChangeAction::Validate { file } => commands::change_validate(&file).await,
-        },
         Commands::List { file } => commands::list_elements(&file).await,
         Commands::Tree { file } => commands::tree(&file).await,
-        Commands::Init { name } => commands::init_project(name.as_deref()).await,
-        Commands::Generate { action } => match action {
-            GenerateAction::AiFiles { tools, force } => {
-                commands::generate_ai_files(tools.as_deref(), force).await
-            }
-        },
         Commands::Diff {
             file1,
             file2,
@@ -253,18 +416,118 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             json,
         } => commands::explain(&element_id, file.as_deref(), json).await,
         Commands::Import { format, file } => commands::import(&format, &file).await,
-        Commands::Score { file } => commands::score(file.as_deref()).await,
-        Commands::Skills { action } => match action {
-            SkillsAction::List {
-                path,
-                limit,
+        Commands::Why {
+            question,
+            repo,
+            graph,
+        } => commands::why(&question, &repo, graph.as_deref()).await,
+        Commands::Drift {
+            repo,
+            architecture,
+            format,
+            violations_only,
+            fail_on,
+        } => {
+            commands::drift(
+                &repo,
+                architecture.as_deref(),
+                &format,
+                false,
+                violations_only,
+                fail_on.as_deref(),
+            )
+            .await
+        }
+        Commands::DriftPr {
+            repo,
+            base,
+            head,
+            format,
+        } => commands::drift_pr(&repo, base.as_deref(), head.as_deref(), &format).await,
+        Commands::Quickstart {
+            path,
+            format,
+            generate_baseline,
+            fail_on,
+        } => commands::quickstart(&path, &format, generate_baseline, fail_on.as_deref()).await,
+        Commands::Complexity {
+            repo,
+            format,
+            treewidth,
+            scc,
+            centrality,
+            coupling,
+        } => commands::complexity(&repo, &format, treewidth, scc, centrality, coupling).await,
+        Commands::Semantic { repo, format } => commands::semantic_analyze(&repo, &format).await,
+        Commands::SmartCoverage {
+            repo,
+            format,
+            target_ratio,
+        } => commands::smart_coverage(&repo, &format, target_ratio).await,
+        Commands::Analyze {
+            repo,
+            view,
+            intent,
+            format,
+            llm,
+        } => {
+            let intent_opt = intent.or_else(|| std::env::var("SRUJA_INTENT_PATH").ok());
+            commands::analyze(&repo, &view, intent_opt.as_deref(), &format, llm).await
+        }
+        Commands::Intent { cmd } => match cmd {
+            IntentCommand::Check {
+                repo,
+                intent,
                 format,
-            } => commands::skills_list(&path, limit, &format).await,
-            SkillsAction::Suggest {
-                skills_path,
-                project_path,
-                count,
-            } => commands::skills_suggest(&skills_path, &project_path, count).await,
+            } => {
+                let intent_opt = intent.or_else(|| std::env::var("SRUJA_INTENT_PATH").ok());
+                commands::intent_check(&repo, intent_opt.as_deref(), &format).await
+            }
+            IntentCommand::Propose { repo, intent } => {
+                commands::intent_propose(&repo, intent.as_deref()).await
+            }
+        },
+        Commands::Context {
+            repo,
+            format,
+            output,
+        } => commands::context_export(&repo, &format, output.as_deref()).await,
+        Commands::Runtime { cmd } => match cmd {
+            RuntimeCommand::Analyze { traces, format } => {
+                commands::runtime_analyze(&traces, &format).await
+            }
+        },
+        Commands::Timeline { cmd } => match cmd {
+            TimelineCommand::Explain {
+                repo,
+                max_commits,
+                format,
+            } => commands::timeline::timeline_explain(&repo, max_commits, &format).await,
+        },
+        Commands::Ai { cmd } => match cmd {
+            AiCommand::Explain {
+                repo,
+                topic,
+                format,
+                graph,
+            } => commands::ai::ai_explain(&repo, &topic, &format, graph.as_deref()).await,
+            AiCommand::Ask {
+                repo,
+                question,
+                format,
+                graph,
+            } => commands::ai::ai_ask(&repo, &question, &format, graph.as_deref()).await,
+            AiCommand::Feedback {
+                repo,
+                answer_id,
+                fact_id,
+                verdict,
+                comment,
+            } => {
+                commands::ai::ai_feedback(&repo, &answer_id, &fact_id, &verdict, comment.as_deref())
+                    .await
+            }
+            AiCommand::Memory { repo, format } => commands::ai::ai_memory(&repo, &format).await,
         },
     };
 

@@ -8,14 +8,47 @@
 
 ---
 
+## Start here (about 2 minutes)
+
+No config. No API keys. No `.sruja` file needed to start.
+
+```bash
+# 1. Install
+curl -fsSL https://sruja.ai/install.sh | bash
+
+# 2. Verify (if "command not found", add ~/.local/bin to PATH)
+sruja --version
+
+# 3. Run on your repo
+sruja quickstart -r .
+```
+
+You get: architecture inventory, health score, top findings, and next steps.
+
+**New to Sruja?** Run the demo first: `make demo` (or `cd evaluation/real-world-test && ./run_demo.sh`).
+
+---
+
 ## Why Sruja?
 
-### 🔄 **Architecture-as-Code** – Version controlled, validated, exported
+### 🚀 **Zero-setup architecture intelligence first**
+
+- **Quickstart** – Scan any repo; get health score, findings, and evidence (no keys)
+- **Why** – Ask "why are we using Postgres?" with deterministic evidence from the graph
+- **Drift** – Detect cycles, orphans, layer violations from scanned code
+
+### 🔄 **Architecture-as-Code** (optional)
 
 - Define architecture in `.sruja` files – version-controlled in Git
 - Built-in validation – catch issues before they reach production
 - Export to Markdown and Mermaid – integrate into your docs
 - Works for developers and CI/CD pipelines
+
+### 🤖 **AI-Ready Features**
+
+- **Context for AI tools** – Export architecture context for Cursor, Copilot, and Claude
+- **One-click baseline** – Generate `architecture.sruja` from your repo in seconds
+- **PR-scoped drift** – Detect only NEW violations introduced in a PR
 
 ---
 
@@ -43,7 +76,157 @@ git clone https://github.com/sruja-ai/sruja.git && cd sruja && make build
 
 Then ensure the install directory is on your `PATH` (install script uses `~/.local/bin` by default; Option B uses `~/.cargo/bin`; Option C uses `target/release`).
 
-**Create `example.sruja`:**
+**Verify install:** Run `sruja --version`. If you get "command not found", add the install directory to your PATH (e.g. `export PATH="$HOME/.local/bin:$PATH"`).
+
+### Get Immediate Architecture Insights (Zero Setup)
+
+**Scan any codebase and get architecture intelligence in seconds – no API keys, no configuration required:**
+
+```bash
+# Get immediate insights about your architecture
+sruja quickstart
+
+# Or specify a repository path
+sruja quickstart -r /path/to/your/repo
+
+# Get JSON output for programmatic use
+sruja quickstart --format json
+```
+
+**What you get:**
+- 📊 Architecture inventory (modules, services, databases, APIs)
+- 💚 Health score with visual indicator
+- 🔍 Top 3 critical findings with severity levels
+- 🎯 Top 3 actionable fixes with priority and impact
+- 📎 Evidence references from your code
+- 🚀 Clear next steps
+
+**Example output:**
+```
+══════════════════════════════════════════════════════════════════════
+🚀 Sruja Quickstart - Architecture Intelligence
+══════════════════════════════════════════════════════════════════════
+
+📂 Scanning repository...
+   ✓ Found 753 components
+
+──────────────────────────────────────────────────────────────────────
+📊 Architecture Inventory
+──────────────────────────────────────────────────────────────────────
+  Components detected:
+    • 750 modules
+    • 1 services
+    • 2 databases
+    • 1533 total dependencies
+
+──────────────────────────────────────────────────────────────────────
+💚 Architecture Health Score: 75/100
+──────────────────────────────────────────────────────────────────────
+  ███████████████░░░░░ ⚠ Fair
+```
+
+### Architecture analysis
+
+**`sruja analyze`** provides structural architecture analysis and generates a CTO-level report with health scores, risks, and recommendations.
+
+```bash
+# Architecture analysis with health score and recommendations
+sruja analyze -r .
+sruja analyze -r . -f json
+```
+
+**Note:** Semantic, intent, and runtime analysis layers are in experimental preview. The current analyze command focuses on structural analysis.
+
+**Command tiers:**
+
+| Tier | Commands | When to use |
+|------|----------|-------------|
+| **First value** | `sruja quickstart -r .`, `sruja drift -r .` | Any repo, zero config. Start here. |
+| **Deeper analysis** | `sruja analyze -r .`, `sruja complexity -r .`, `sruja semantic -r .` | Full picture: structural + semantic + intent. |
+| **With a baseline** | `sruja drift -r . -a architecture.sruja`, `sruja lint`, `sruja export` | When you have (or create) a `.sruja` file. |
+| **Optional** | `sruja eval <path>` (LLM), `sruja intent check`, `sruja runtime analyze` | API keys or trace files. |
+
+**Drift modes:** `sruja drift -r .` runs **scan-only** (no `.sruja` needed). Use `sruja drift -r . -a architecture.sruja` to **compare code to a declared baseline**; create one with the [Architecture Agent](docs/ARCHITECTURE_AGENT.md) or manually.
+
+**Optional environment variables** (defaults when flags are omitted):
+
+- `SRUJA_INTENT_PATH` – Path to intent directory (ADRs, .sruja) for `sruja analyze` and `sruja intent check`. If unset, `sruja analyze` uses `repo/docs/architecture`.
+- `SRUJA_TRACES_PATH` – Path to traces JSON file for `sruja analyze -t`. Only used when `-t` is not passed.
+- `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GEMINI_API_KEY` – For `sruja eval` (LLM-based architecture evaluation). Or `SRUJA_LLM_PROVIDER=ollama` for local models.
+
+**Add drift to CI** – Gate on architecture health. Exits with code 1 when cycles, orphans, or layer violations (Error severity) are found:
+
+```yaml
+# .github/workflows/drift.yml (GitHub Actions)
+name: Architecture drift
+on: [push, pull_request]
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Sruja
+        run: curl -fsSL https://sruja.ai/install.sh | bash
+      - name: Check PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH && echo "$HOME/.local/bin" >> $GITHUB_ENV
+      - name: Run drift check
+        run: sruja drift -r .
+        # Fails the job if structural violations (cycles, orphans, layer violations) exist
+```
+
+### AI-Ready Architecture
+
+**Export context for AI coding assistants:**
+
+```bash
+# For Cursor IDE
+sruja context export -f cursor-rules -o .cursorrules
+
+# For GitHub Copilot
+sruja context export -f copilot-instructions -o .github/copilot-instructions.md
+
+# JSON format for custom tools
+sruja context export -f json -o architecture-context.json
+```
+
+**Generate a baseline from your repo:**
+
+```bash
+# One-click baseline generation
+sruja quickstart -r . --generate-baseline
+
+# Then compare code vs baseline
+sruja drift -r . -a architecture.sruja
+```
+
+### PR-Scoped Drift (Detect Only NEW Violations)
+
+```bash
+# Compare current branch against main
+sruja drift-pr -r . --base origin/main
+
+# GitHub Actions format for CI
+sruja drift-pr -r . --base origin/main -f github-actions
+
+# JSON output
+sruja drift-pr -r . --base origin/main -f json
+```
+
+See [Architecture Intelligence](docs/ARCHITECTURE_INTELLIGENCE.md) for details.
+
+### AI-Assisted Discovery (Optional)
+
+Use your AI assistant (Cursor, Claude, Copilot) to discover architecture from your codebase:
+
+```bash
+npx skills add sruja-ai/sruja --skill sruja-architecture-agent
+```
+
+Then ask: "Analyze the architecture of my repository." The AI will scan your code and generate `.sruja` files. See [Architecture Agent](docs/ARCHITECTURE_AGENT.md) for details.
+
+### Define Architecture Manually (Optional)
+
+If you want to explicitly define your architecture in code, create `example.sruja`:
 
 ```sruja
 person = kind "Person"
@@ -96,10 +279,16 @@ sruja export markdown example.sruja
 
 ### 🔍 Developer Tools
 
-- **LSP Support**: VS Code extension with autocomplete
 - **Code Formatter**: `sruja fmt`
 - **Tree View**: `sruja tree`
 - **CLI**: Full command-line interface
+
+### 🏗️ Architecture Intelligence (Beta)
+
+- **CLI first, no key required:** `sruja quickstart`, `sruja why "question" -r .`, `sruja drift -r .` — deterministic evidence from scan and graph
+- **Query:** "Why are we using X?" uses graph + scan evidence only; optional LLM enrichment when configured
+
+**Strategy:** [architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md](architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md)
 
 ---
 
@@ -113,6 +302,8 @@ sruja export markdown example.sruja
 - [First Contribution](docs/FIRST_CONTRIBUTION.md) - Step-by-step guide
 - [Language Specification](docs/LANGUAGE_SPECIFICATION.md) - Complete DSL reference
 - [Design Philosophy](docs/DESIGN_PHILOSOPHY.md) - Language design principles
+- [Architecture Intelligence](docs/ARCHITECTURE_INTELLIGENCE.md) - CLI-first drift/why, zero-key; [Strategy](architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md)
+- [Adoption Plan](docs/ADOPTION_PLAN.md) - Making Sruja easy for teams
 
 **Content Creation:**
 
@@ -126,10 +317,16 @@ sruja export markdown example.sruja
 ```
 sruja/
 ├── crates/               # Rust crates
-│   ├── sruja-core/       # Core parsing and validation engine
-│   ├── sruja-wasm/       # WebAssembly bindings
-│   └── sruja-lsp/        # Language Server Protocol
-├── extension/            # VS Code extension (syntax highlighting, diagnostics)
+│   ├── sruja-cli/        # CLI (lint, export, scan, why, drift)
+│   ├── sruja-language/   # Parser and AST
+│   ├── sruja-engine/     # Validation rules
+│   ├── sruja-export/     # Markdown, Mermaid, JSON export
+│   ├── sruja-chat/       # Chat, agents, extraction (architecture intelligence)
+│   ├── sruja-graph/      # Knowledge graph for decisions
+│   ├── sruja-extract/    # LLM extraction (decisions, requirements)
+│   ├── sruja-scan/       # Repo scanning (npm, cargo)
+│   └── sruja-mcp/        # MCP server for AI tooling
+├── book/                 # mdBook documentation
 └── examples/             # Example .sruja files
 ```
 

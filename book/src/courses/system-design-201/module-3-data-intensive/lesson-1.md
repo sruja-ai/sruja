@@ -58,65 +58,69 @@ import { * } from 'sruja.ai/stdlib'
 
 
 YouTube = system "Video Platform" {
-    WebApp = container "Web App"
-    API = container "API Server"
+  WebApp = container "Web App"
+  API = container "API Server"
 
-    Transcoder = container "Transcoding Service" {
-        description "Converts raw video to HLS format"
-        scale { min 50 }
-    }
+  Transcoder = container "Transcoding Service" {
+    description "Converts raw video to HLS format"
+    scale { min 50 }
+  }
 
-    S3 = database "Blob Storage" {
-        description "Stores raw and processed video files"
-    }
+  S3 = database "Blob Storage" {
+    description "Stores raw and processed video files"
+  }
 
-    MetadataDB = database "Metadata DB"
+  MetadataDB = database "Metadata DB"
 
-    WebApp -> API "HTTPS"
-    API -> MetadataDB "Reads/Writes"
-    API -> S3 "Uploads"
-    API -> Transcoder "Triggers"
-    Transcoder -> S3 "Reads/Writes"
-    Transcoder -> MetadataDB "Updates status"
+  CDNEdge = container "CDN Edge Cache" {
+    description "Edge cache serving video chunks"
+  }
+
+  WebApp -> API "HTTPS"
+  API -> MetadataDB "Reads/Writes"
+  API -> S3 "Uploads"
+  API -> Transcoder "Triggers"
+  Transcoder -> S3 "Reads/Writes"
+  Transcoder -> MetadataDB "Updates status"
 }
 
 // Deployment View
 deployment GlobalInfra "Global Infrastructure" {
-    node OriginDC "Origin Data Center" {
-        containerInstance WebApp
-        containerInstance API
-        containerInstance Transcoder
-        containerInstance S3
-    }
+  node OriginDC "Origin Data Center" {
+    containerInstance WebApp
+    containerInstance API
+    containerInstance Transcoder
+    containerInstance S3
+  }
 
-    node CDN "CDN (Edge Locations)" "Cloudflare / Akamai" {
-        // Represents cached content
-        node USEast "US-East Edge"
-        node Europe "Europe Edge"
-        node Asia "Asia Edge"
-    }
+  node CDN "CDN (Edge Locations)" "Cloudflare / Akamai" {
+    containerInstance CDNEdge
+    node USEast "US-East Edge"
+    node Europe "Europe Edge"
+    node Asia "Asia Edge"
+  }
 }
 
 User = person "Viewer"
 
 // Streaming Flow
 scenario WatchVideo "User watches a video" {
-    User -> WebApp "Get Video Page"
-    WebApp -> API "Get Metadata (Title, URL)"
-    API -> MetadataDB "Query"
-    API -> User "Return Video Manifest URL"
-    User -> CDN "Request Video Chunk (1080p)"
-    CDN -> User "Stream Chunk"
+  User -> WebApp "Get Video Page"
+  WebApp -> API "Get Metadata (Title, URL)"
+  API -> MetadataDB "Query"
+  API -> User "Return Video Manifest URL"
+  User -> CDNEdge "Request Video Chunk (1080p)"
+  CDNEdge -> User "Stream Chunk"
 }
 
 // Upload Flow
 scenario UploadVideo "Creator uploads a video" {
-    User -> YouTube.WebApp "Upload Raw Video"
-    YouTube.WebApp -> YouTube.API "POST /upload"
-    YouTube.API -> YouTube.S3 "Store Raw Video"
-    YouTube.API -> YouTube.Transcoder "Trigger Transcoding Job"
-    YouTube.Transcoder -> YouTube.S3 "Read Raw / Write HLS"
-    YouTube.Transcoder -> YouTube.MetadataDB "Update Video Status"
+  User -> YouTube.WebApp "Upload Raw Video"
+  YouTube.WebApp -> YouTube.API "POST /upload"
+  YouTube.API -> YouTube.S3 "Store Raw Video"
+  YouTube.API -> YouTube.Transcoder "Trigger Transcoding Job"
+  YouTube.Transcoder -> YouTube.S3 "Read Raw / Write HLS"
+  YouTube.Transcoder -> YouTube.MetadataDB "Update Video Status"
 }
 
 // Data flow: Video transcoding pipeline
@@ -129,10 +133,10 @@ flow TranscodingPipeline "Video Transcoding Data Flow" {
 
 // Data flow: Video delivery pipeline
 flow DeliveryPipeline "Video Delivery Data Flow" {
-    YouTube.S3 -> CDN "Replicates video chunks to edge"
-    CDN -> User "Streams chunks on demand"
-    User -> CDN "Requests next chunk based on bandwidth"
-    CDN -> YouTube.S3 "Cache miss: fetch from origin"
+    YouTube.S3 -> YouTube.CDNEdge "Replicates video chunks to edge"
+    YouTube.CDNEdge -> User "Streams chunks on demand"
+    User -> YouTube.CDNEdge "Requests next chunk based on bandwidth"
+    YouTube.CDNEdge -> YouTube.S3 "Cache miss: fetch from origin"
 }
 
 // Data flow: Analytics pipeline

@@ -12,7 +12,8 @@
 - [CONTRIBUTION_IDEAS.md](CONTRIBUTION_IDEAS.md) – Concrete tasks you can pick up
 
 **Development:**
-- [DEVELOPMENT.md](DEVELOPMENT.md) – Build, test, run (Rust crates, WASM, extension)
+- [DEVELOPMENT.md](DEVELOPMENT.md) – Build, test, run (Rust crates, WASM, extension, sruja-app)
+- [RUN_GUIDE.md](RUN_GUIDE.md) – Step-by-step: clone, build, CLI, app, extension, evaluation
 - [architecture/README.md](architecture/README.md) – Architecture overview and .sruja diagrams
 
 **Content (book/courses):**
@@ -22,6 +23,9 @@
 
 ## Reference
 
+- **Try first** (no .sruja): `sruja quickstart -r .` – [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md) (CLI vs desktop, config)
+- [ARCHITECTURE_AGENT.md](ARCHITECTURE_AGENT.md) – AI-powered architecture discovery and .sruja generation
+- [WHEN_WE_ANALYZE_A_REPO.md](WHEN_WE_ANALYZE_A_REPO.md) – What scan/drift/quickstart do under the hood
 - [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) – Sruja DSL reference
 - [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md) – Language design principles
 - [USING_SRUJA_IN_YOUR_PROJECT.md](USING_SRUJA_IN_YOUR_PROJECT.md) – Using Sruja in your repo
@@ -38,6 +42,7 @@
 
 - [DSL_ROADMAP.md](DSL_ROADMAP.md) – DSL/product direction and priorities
 - [SCOPE.md](SCOPE.md) – What we ship and what’s in scope
+- [ADOPTION_PLAN.md](ADOPTION_PLAN.md) – Plan for making Sruja easy to adopt (config, bootstrapping, IDE, CI)
 
 ## Other
 
@@ -45,4 +50,3 @@
 - [CODING_GUIDELINES.md](CODING_GUIDELINES.md) – Coding standards for the repo
 - [adr/](adr/) – Architecture decision records
 - [sruja-guidelines/](sruja-guidelines/) – Rule and tradeoff templates for skills
-- [freshers.md](freshers.md) – Onboarding for new contributors

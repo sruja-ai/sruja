@@ -15,8 +15,8 @@ import { * } from 'sruja.ai/stdlib'
 
 
 ID = person "Label" {
-description "Optional description"
-tags ["tag1", "tag2"]
+  description "Optional description"
+  tags ["tag1", "tag2"]
 }
 ```
 
@@ -27,10 +27,8 @@ import { * } from 'sruja.ai/stdlib'
 
 
 Customer = person "Bank Customer" {
-description "A customer of the bank with personal accounts."
+  description "A customer of the bank with personal accounts."
 }
-```
-
 ```
 
 ```

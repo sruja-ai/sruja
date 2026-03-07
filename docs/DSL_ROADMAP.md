@@ -164,4 +164,5 @@ These features are interesting but not currently aligned with priorities:
 
 - [Language Specification](LANGUAGE_SPECIFICATION.md)
 - [Design Philosophy](DESIGN_PHILOSOPHY.md)
+- [Architecture Intelligence Strategy](../architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md) – product direction, module decisions
 - [Examples](../examples/)

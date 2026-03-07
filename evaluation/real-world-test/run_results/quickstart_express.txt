@@ -1,0 +1,78 @@
+══════════════════════════════════════════════════════════════════════
+🚀 Sruja Quickstart - Architecture Intelligence
+══════════════════════════════════════════════════════════════════════
+
+📂 Scanning repository...
+   ✓ Found 85 components
+
+🔍 Analyzing architecture health...
+   ✓ Analysis complete
+
+──────────────────────────────────────────────────────────────────────
+📊 Architecture Inventory
+──────────────────────────────────────────────────────────────────────
+  Repository: evaluation/real-world-test/test-repos/express
+
+  Components detected:
+    • 76 modules
+    • 6 services
+    • 2 databases
+    • 1 external APIs
+    • 50 total dependencies
+
+──────────────────────────────────────────────────────────────────────
+🔍 Top 3 Critical Findings
+──────────────────────────────────────────────────────────────────────
+
+  1. ⚠️ Module 'index_js' has no incoming or outgoing dependencies
+     📍 Component: index_js
+     💡 Suggestion: Consider if this module is still needed or if it should be connected to the rest of the system
+
+  2. ⚠️ Module 'lib_response_js' has no incoming or outgoing dependencies
+     📍 Component: lib_response_js
+     💡 Suggestion: Consider if this module is still needed or if it should be connected to the rest of the system
+
+  3. ⚠️ Module 'lib_request_js' has no incoming or outgoing dependencies
+     📍 Component: lib_request_js
+     💡 Suggestion: Consider if this module is still needed or if it should be connected to the rest of the system
+
+──────────────────────────────────────────────────────────────────────
+💚 Architecture Health Score: 93/100
+──────────────────────────────────────────────────────────────────────
+  ████████████████████ Excellent
+
+  📊 Score Factors:
+     • Orphan modules: 7 found
+
+  💡 Insight: Architecture looks healthy overall
+
+──────────────────────────────────────────────────────────────────────
+🎯 Top 3 Actionable Fixes
+──────────────────────────────────────────────────────────────────────
+
+  1. 🟢 [LOW] Review orphan modules - integrate or remove unused code
+     Impact: Reduces dead code and technical debt
+     Affected: index_js, lib_response_js, lib_request_js, lib_express_js, lib_utils_js, lib_view_js, lib_application_js
+
+──────────────────────────────────────────────────────────────────────
+📎 Evidence References
+──────────────────────────────────────────────────────────────────────
+
+  Sample components detected:
+    • index_js (Module) - evaluation/real-world-test/test-repos/express/index.js
+    • examples_mvc_db_js (Database) - evaluation/real-world-test/test-repos/express/examples/mvc/db.js
+    • examples_mvc_index_js (Module) - evaluation/real-world-test/test-repos/express/examples/mvc/index.js
+    • examples_mvc_lib_boot_js (Module) - evaluation/real-world-test/test-repos/express/examples/mvc/lib/boot.js
+    • examples_mvc_controllers_user-pet_index_js (Service) - evaluation/real-world-test/test-repos/express/examples/mvc/controllers/user-pet/index.js
+
+──────────────────────────────────────────────────────────────────────
+🚀 Next Steps
+──────────────────────────────────────────────────────────────────────
+
+  1. Review the findings above; use drift and why for decisions (not the score alone)
+  2. Run 'sruja scan -r . -o sruja.graph.json' to save the graph
+  3. Run 'sruja drift -r . -a architecture.sruja' to compare code vs declared architecture
+  4. Run 'sruja why "your question" -r .' to ask questions about the architecture
+  5. Run 'sruja drift -r . --format json' for machine-readable drift output
+
+══════════════════════════════════════════════════════════════════════

@@ -1,0 +1,19 @@
+import { * } from 'sruja.ai/stdlib'
+
+Shop = system "Shop API" {
+  WebApp = container "Web" {
+    description "Gateway layer"
+  }
+  CatalogSvc = container "Catalog"
+  MainDB = database "Database"
+}
+
+User = person "User"
+
+User -> Shop.WebApp "Uses"
+Shop.WebApp -> Shop.CatalogSvc "Routes"
+Shop.CatalogSvc -> Shop.MainDB "Reads/Writes"
+
+view index {
+  include *
+}

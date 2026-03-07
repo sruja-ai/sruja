@@ -1,0 +1,23 @@
+// Minimal valid architecture baseline (used by tests / quickstart)
+// Replace or extend with real components; run 'sruja drift -r . -a architecture.sruja' to compare code vs baseline
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+user = person "User" {
+  description "End user of the application"
+}
+
+app = system "Application" {
+  description "Main application system"
+}
+
+schemas = database "schemas" {
+  technology "Rust"
+  description "Schema storage"
+}
+
+user -> app "uses"
+app -> schemas "reads from"

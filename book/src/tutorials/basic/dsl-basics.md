@@ -15,22 +15,22 @@ Sruja is an architecture DSL. This tutorial introduces its core elements.
 import { * } from 'sruja.ai/stdlib'
 
 
-shop = system "Shop API" {
-    webApp = container "Web" {
-        description "Gateway layer"
-    }
-    catalogSvc = container "Catalog"
-    mainDB = database "Database"
+Shop = system "Shop API" {
+  WebApp = container "Web" {
+    description "Gateway layer"
+  }
+  CatalogSvc = container "Catalog"
+  MainDB = database "Database"
 }
 
-user = person "User"
+User = person "User"
 
-user -> shop.webApp "Uses"
-shop.webApp -> shop.catalogSvc "Routes"
-shop.catalogSvc -> shop.mainDB "Reads/Writes"
+User -> Shop.WebApp "Uses"
+Shop.WebApp -> Shop.CatalogSvc "Routes"
+Shop.CatalogSvc -> Shop.MainDB "Reads/Writes"
 
 view index {
-include *
+  include *
 }
 ```
 
@@ -41,12 +41,12 @@ import { * } from 'sruja.ai/stdlib'
 
 
 Payments = system "Payments" {
-description "Handles payments and refunds"
-// metadata
-metadata {
-  team "FinTech"
-  tier "critical"
-}
+  description "Handles payments and refunds"
+  // metadata
+  metadata {
+    team "FinTech"
+    tier "critical"
+  }
 }
 ```
 
@@ -57,9 +57,9 @@ import { * } from 'sruja.ai/stdlib'
 
 
 App = system "App" {
-Web = container "Web" {
-  Cart = component "Cart"
-}
+  Web = container "Web" {
+    Cart = component "Cart"
+  }
 }
 ```
 

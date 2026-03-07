@@ -1,4 +1,4 @@
-.PHONY: build test test-coverage clean install lint fmt help build-rust test-rust wasm wasm-tiny book book-build book-wasm book-serve book-deps book-clean
+.PHONY: build test test-coverage clean install lint fmt help build-rust test-rust wasm wasm-tiny book book-build book-wasm book-serve book-deps book-clean assets demo build-extension install-extension
 
 # Build Rust libraries
 build-rust:
@@ -11,15 +11,22 @@ build-rust:
 		exit 1; \
 	fi
 
-# Test Rust code
+# Test Rust code (all workspace packages)
 test-rust:
 	@echo "Testing Rust code..."
 	@if command -v cargo >/dev/null 2>&1; then \
-		cargo test --manifest-path Cargo.toml; \
+		cargo test --workspace --manifest-path Cargo.toml; \
 	else \
 		echo "❌ Cargo not found. Please install Rust: https://rustup.rs/"; \
 		exit 1; \
 	fi
+
+# Test architecture intelligence layer (chat, graph, why)
+test-arch-intel:
+	@echo "Testing architecture intelligence layer..."
+	@cargo test -p sruja-chat --test architecture_intelligence_e2e && \
+	cargo test -p sruja-cli --test why_e2e && \
+	echo "✅ Architecture intelligence tests passed"
 
 # Build (default: Rust)
 build: build-rust
@@ -106,7 +113,7 @@ wasm:
 		echo "❌ Cargo not found. Please install Rust: https://rustup.rs/"; exit 1; \
 	fi
 
-# Build WASM for Node.js (for future VS Code extension / LSP integration)
+# Build WASM for Node.js (used by VS Code extension for in-editor lint and markdown export)
 wasm-nodejs:
 	@echo "Building Rust WASM (nodejs target)..."
 	@if command -v cargo >/dev/null 2>&1; then \
@@ -117,6 +124,49 @@ wasm-nodejs:
 		echo "✅ Node.js WASM build complete (crates/sruja-wasm/pkg-nodejs/)"; \
 	else \
 		echo "❌ Cargo not found."; exit 1; \
+	fi
+
+# Build VS Code extension VSIX package (WASM + TypeScript compile)
+# Output: extension/sruja-*.vsix
+build-extension:
+	@echo "Building Sruja VS Code extension..."
+	@if ! command -v npm >/dev/null 2>&1; then \
+		echo "❌ npm not found. Please install Node.js: https://nodejs.org/"; exit 1; \
+	fi
+	@echo "  📦 Installing extension npm deps..."
+	@cd extension && npm install --silent
+	@echo "  🔧 Building Node.js WASM + copying assets..."
+	@cd extension && npm run copy:assets
+	@echo "  🔨 Compiling TypeScript..."
+	@cd extension && npm run compile
+	@echo "  📦 Packaging VSIX..."
+	@cd extension && npx --yes @vscode/vsce package --no-dependencies
+	@echo "✅ Extension built: $$(ls extension/sruja-*.vsix 2>/dev/null | tail -1)"
+
+# Build and install VS Code extension into VS Code and/or Cursor
+# Detects available editors automatically.
+install-extension: build-extension
+	@VSIX="$$(ls extension/sruja-*.vsix 2>/dev/null | tail -1)"; \
+	if [ -z "$$VSIX" ]; then \
+		echo "❌ No .vsix found. Run 'make build-extension' first."; exit 1; \
+	fi; \
+	INSTALLED=0; \
+	if command -v cursor >/dev/null 2>&1; then \
+		echo "  🖱️  Installing into Cursor..."; \
+		cursor --install-extension "$$VSIX" && INSTALLED=1 && echo "  ✅ Installed in Cursor"; \
+	fi; \
+	if command -v code >/dev/null 2>&1; then \
+		echo "  💻 Installing into VS Code..."; \
+		code --install-extension "$$VSIX" && INSTALLED=1 && echo "  ✅ Installed in VS Code"; \
+	fi; \
+	if [ "$$INSTALLED" -eq 0 ]; then \
+		echo ""; \
+		echo "⚠️  Neither 'cursor' nor 'code' CLI found in PATH."; \
+		echo "   Install manually: Extensions → ⋯ → Install from VSIX → select $$VSIX"; \
+	else \
+		echo ""; \
+		echo "✅ Extension installed! Reload your editor window to activate it."; \
+		echo "   Open any .sruja file to see diagnostics, hover docs, and diagram preview."; \
 	fi
 
 # --- Book (mdBook) ---
@@ -153,6 +203,36 @@ book-clean:
 	@rm -rf $(BOOK_DIR)/book
 	@echo "✅ Book output removed"
 
+book-lint-examples:
+	@echo "Linting book/valid-examples/*.sruja..."
+	@for f in $(BOOK_DIR)/valid-examples/*.sruja; do \
+		sruja lint "$$f" || exit 1; \
+	done
+	@echo "✅ All valid-examples pass sruja lint"
+
+# --- Assets ---
+# Copy assets to correct locations (logo, icons, etc.)
+assets:
+	@echo "Copying assets to correct locations..."
+	@mkdir -p crates/sruja-app/assets
+	@if [ -f "extension/sruja-logo.png" ]; then \
+		cp extension/sruja-logo.png crates/sruja-app/assets/; \
+		echo "  ✅ sruja-logo.png → crates/sruja-app/assets/"; \
+	fi
+	@if [ -f "extension/sruja-logo.png" ]; then \
+		cp extension/sruja-logo.png pkg/ 2>/dev/null || true; \
+	fi
+	@echo "✅ Assets copied"
+
+# Run E2E value demo (quickstart + drift on Express; optional --baseline, --llm)
+demo:
+	@echo "Running Sruja E2E demo..."
+	@if [ -f "evaluation/real-world-test/run_demo.sh" ]; then \
+		cd evaluation/real-world-test && ./run_demo.sh; \
+	else \
+		echo "❌ evaluation/real-world-test/run_demo.sh not found"; exit 1; \
+	fi
+
 # Show help
 help:
 	@echo "Sruja - Build Commands"
@@ -163,6 +243,7 @@ help:
 	@echo "  make test-coverage      - Run tests with coverage (if available)"
 	@echo "  make clean              - Remove build artifacts"
 	@echo "  make install            - Install Rust dependencies"
+	@echo "  make assets             - Copy assets (logos, icons) to correct locations"
 	@echo ""
 	@echo "Book (mdBook):"
 	@echo "  make book-deps          - Install mdbook, mdbook-mermaid, copy Mermaid assets"
@@ -172,11 +253,19 @@ help:
 	@echo ""
 	@echo "WASM Build:"
 	@echo "  make wasm               - Build Rust WASM (web target, crates/sruja-wasm/pkg/)"
-	@echo "  make wasm-nodejs        - Build Rust WASM for Node (nodejs target, for future LSP/extension)"
+	@echo "  make wasm-nodejs        - Build Rust WASM for Node (nodejs target, used by extension)"
+	@echo ""
+	@echo "VS Code / Cursor Extension:"
+	@echo "  make build-extension    - Build WASM + compile TS + package .vsix"
+	@echo "  make install-extension  - Build and install into VS Code / Cursor (auto-detected)"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  make lint               - Run Rust linter (clippy)"
 	@echo "  make fmt                - Format Rust code"
+	@echo ""
+	@echo "Architecture Intelligence:"
+	@echo "  make test-arch-intel    - Run architecture intelligence E2E tests (chat, why)"
+	@echo "  make demo               - Run E2E value demo (quickstart + drift on sample repo)"
 	@echo ""
 	@echo "Direct Cargo Commands:"
 	@echo "  cargo build --release   - Build release version"

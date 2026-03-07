@@ -37,7 +37,7 @@ Ensure the install directory is on your `PATH` (install script uses `~/.local/bi
 
 ```bash
 sruja --help
-sruja lint --help
+sruja quickstart --help
 ```
 
 ### VS Code extension
@@ -46,25 +46,38 @@ Install **Sruja Language Support** from the [VS Code Marketplace](https://market
 
 ---
 
+## 0. Try Architecture Intelligence (no .sruja required)
+
+Get architecture insights in seconds—no API keys, no `.sruja` files, no configuration:
+
+```bash
+sruja quickstart -r .
+```
+
+You get: architecture inventory, health score, top findings, actionable fixes, and evidence references. From there:
+
+- `sruja why "why did we choose PostgreSQL?" -r .` — Ask questions with deterministic evidence
+- `sruja drift -r .` — Detect drift (circular deps, orphans, layer violations)
+
+See [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md) for details.
+
+---
+
 ## 2. Add Sruja to your repo (5 minutes)
+
+If you want to define architecture explicitly, add `.sruja` files:
 
 ### Step 1: Create or add architecture
 
-```bash
-# From your repo root
-sruja init my-service
-# Creates: my-service.sruja, .cursorrules, .copilot-instructions.md, .architecture-skill.md
-```
-
-Or add a single file, e.g. `architecture.sruja` or `docs/architecture.sruja`, and define your systems/containers/relationships (see [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) and [examples](https://github.com/sruja-ai/sruja/tree/main/examples)).
+Create `architecture.sruja` (or `docs/architecture.sruja`) and define your systems/containers/relationships. See [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) and [examples](https://github.com/sruja-ai/sruja/tree/main/examples).
 
 ### Step 2: AI editor integration (so AI-generated code follows rules)
 
-The files created by `sruja init` are enough for most teams:
+Copy into your project root:
 
-- **`.cursorrules`** – Cursor uses this for Sruja DSL rules.
+- **`.cursorrules`** – Cursor uses this for Sruja DSL rules (see repo root or [skills/sruja-architecture](../skills/sruja-architecture/)).
 - **`.copilot-instructions.md`** – GitHub Copilot uses this.
-- **`.architecture-skill.md`** – Short pointer; optional full skill: `npx skills add sruja-ai/sruja --skill sruja-architecture`.
+- **`.architecture-skill.md`** – Short pointer; optional full skill: `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture`.
 
 Commit these so everyone (and CI) has the same setup. See [AI_EDITOR_INTEGRATION.md](AI_EDITOR_INTEGRATION.md) for details.
 
@@ -107,6 +120,18 @@ jobs:
 
 Use `--locked` so the install matches the lockfile in the Sruja repo for reproducible CI.
 
+**Optional – architecture drift in CI:**
+
+```yaml
+      - name: Architecture drift check
+        run: sruja quickstart -r . -f json > sruja-report.json || true
+      - name: Upload drift report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sruja-drift-report
+          path: sruja-report.json
+```
+
 **Optional – export docs in CI:**
 
 ```yaml
@@ -147,6 +172,7 @@ Use `--locked` so the install matches the lockfile in the Sruja repo for reprodu
 
 ## 5. Where to go next
 
+- **Architecture Intelligence** – [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md) – quickstart, why, drift (no .sruja required)
 - **DSL reference** – [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md)
 - **AI editors and catching bugs** – [AI_EDITOR_INTEGRATION.md](AI_EDITOR_INTEGRATION.md)
 - **Reviewing AI-generated code** – [REVIEWING_AI_GENERATED_CODE.md](REVIEWING_AI_GENERATED_CODE.md)

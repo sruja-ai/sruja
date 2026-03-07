@@ -1,0 +1,15 @@
+import { * } from 'sruja.ai/stdlib'
+
+User = person "User"
+App = system "App" {
+  Web = container "Web"
+  API = container "API"
+  DB = database "DB"
+}
+User -> App.Web "Uses"
+App.Web -> App.API "Calls"
+App.API -> App.DB "Reads/Writes"
+
+view index {
+  include *
+}

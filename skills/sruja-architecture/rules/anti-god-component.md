@@ -62,7 +62,7 @@ architecture "Good E-Commerce" {
       description "Email, SMS, push notifications"
     }
 
-    database = datastore "Database" {
+    database = database "Database" {
       technology "PostgreSQL"
       description "Data persistence"
     }
@@ -115,12 +115,12 @@ architecture "Good Web App" {
       description "Data access and caching"
     }
 
-    cache = datastore "Cache" {
+    cache = database "Cache" {
       technology "Redis"
       description "Caching layer"
     }
 
-    database = datastore "Database" {
+    database = database "Database" {
       technology "PostgreSQL"
       description "Data persistence"
     }

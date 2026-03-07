@@ -6,8 +6,8 @@ Use Sruja with Cursor, GitHub Copilot, VS Code + Copilot, Continue.dev, or any L
 
 | Method | What you get |
 |--------|----------------|
-| **CLI** | `sruja init my-project` → creates `.cursorrules`, `.copilot-instructions.md`, `.architecture-skill.md` in project |
-| **VS Code** | Open/save a `.sruja` file → extension creates `.cursorrules` and `.copilot-instructions.md` in workspace root |
+| **Manual** | Copy `.cursorrules`, `.copilot-instructions.md`, `.architecture-skill.md` from repo root or [skills/sruja-architecture](../skills/sruja-architecture/) into your project |
+| **VS Code** | Extension provides LSP, syntax highlighting, and diagnostics for `.sruja` files |
 | **Skills (advanced)** | `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` → full architecture rules for agents |
 
 ## Files and what they do

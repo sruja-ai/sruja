@@ -1,0 +1,21 @@
+[package]
+name = "sruja-semantic"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Semantic architecture analysis: embeddings, domain clustering, bounded context detection"
+
+[features]
+default = []
+# Use rig for OpenAI, Ollama, and other embedding providers (recommended)
+rig = ["dep:rig"]
+
+[dependencies]
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+rig = { package = "rig-core", version = "0.31", optional = true, default-features = false, features = ["reqwest-rustls"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }

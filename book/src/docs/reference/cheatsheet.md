@@ -12,16 +12,16 @@ import { * } from 'sruja.ai/stdlib'
 
 User = person "User"
 App = system "App" {
-    Web = container "Web"
-    API = container "API"
-    DB = database "DB"
+  Web = container "Web"
+  API = container "API"
+  DB = database "DB"
 }
 User -> App.Web "Uses"
 App.Web -> App.API "Calls"
 App.API -> App.DB "Reads/Writes"
 
 view index {
-    include *
+  include *
 }
 ```
 
@@ -34,9 +34,9 @@ view index {
 import { * } from 'sruja.ai/stdlib'
 
 App = system "App" {
-    Web = container "Web" {
-        Cart = component "Cart"
-    }
+  Web = container "Web" {
+    Cart = component "Cart"
+  }
 }
 ```
 
@@ -48,15 +48,15 @@ import { * } from 'sruja.ai/stdlib'
 User = person "User"
 
 App = system "App" {
-    Web = container "Web"
-    API = container "API"
-    DB = database "Database"
+  Web = container "Web"
+  API = container "API"
+  DB = database "Database"
 }
 
 scenario Checkout "Checkout Flow" {
-    User -> App.Web "adds items"
-    App.Web -> App.API "validates"
-    App.API -> App.DB "stores order"
+  User -> App.Web "adds items"
+  App.Web -> App.API "validates"
+  App.API -> App.DB "stores order"
 }
 ```
 

@@ -6,27 +6,29 @@ When generating or modifying Sruja architecture DSL (.sruja files), follow these
 
 1. **Define before use** – Every referenced component must be defined before use in relationships.
 2. **Double quotes** – All string values: names, descriptions, technology labels.
-3. **Pattern** – `[kind] "[name]" { ... }` (e.g. `container "API" { ... }`).
+3. **Pattern** – `Id = kind "Label" { ... }` (e.g. `API = container "API" { ... }`).
 4. **Nesting** – Systems inside architecture, containers/datastores inside systems.
 5. **Relationships** – `source -> target "label"`; one per line; descriptive labels.
 
 ## Component kinds
 
+Use assignment form: `Id = kind "Label"`. Prefer `database` for data stores (`datastore` is an alias).
+
 ```sruja
-user = person "User" {
+User = person "User" {
   description "End user of the application"
 }
 
-app = system "My App" {
+App = system "My App" {
   description "Main application system"
 }
 
-web = container "Web Server" {
+Web = container "Web Server" {
   technology "Node.js"
   description "HTTP server handling requests"
 }
 
-db = datastore "Database" {
+DB = database "Database" {
   technology "PostgreSQL"
   description "Primary data store"
 }

@@ -75,7 +75,7 @@ data_service = container "Data Service" {
   description "Data access layer"
 }
 
-database = datastore "Database" {
+database = database "Database" {
   technology "PostgreSQL"
   description "Data persistence"
 }
@@ -186,17 +186,17 @@ Use for persistent storage or cache.
 **Example:**
 
 ```sruja
-database = datastore "Orders DB" {
+database = database "Orders DB" {
   technology "PostgreSQL"
   description "Primary database"
 }
 
-cache = datastore "Cache" {
+cache = database "Cache" {
   technology "Redis"
   description "Application cache"
 }
 
-queue = datastore "Message Queue" {
+queue = queue "Message Queue" {
   technology "RabbitMQ"
   description "Event streaming"
 }
@@ -237,7 +237,7 @@ architecture "Project Management" {
       description "Project management"
     }
 
-    database = datastore "Database" {
+    database = database "Database" {
       technology "PostgreSQL"
       description "Central database"
     }
@@ -281,7 +281,7 @@ architecture "E-Commerce" {
     description "Payment processing"
   }
 
-  event_store = datastore "Event Store" {
+  event_store = queue "Event Store" {
     technology "Kafka"
     description "Event streaming"
   }
@@ -306,7 +306,7 @@ Event producers and consumers with async messaging.
 **Example:**
 
 ```sruja
-event_store = datastore "Kafka" {
+event_store = queue "Kafka" {
   description "Central event stream"
 }
 
@@ -336,7 +336,7 @@ write_model = container "Write Service" {
   description "Handles commands"
 }
 
-write_db = datastore "Write Database" {
+write_db = database "Write Database" {
   technology "PostgreSQL"
   description "Normalized write model"
 }
@@ -346,7 +346,7 @@ read_model = container "Read Service" {
   description "Optimized for queries"
 }
 
-read_db = datastore "Read Database" {
+read_db = database "Read Database" {
   technology "Elasticsearch"
   description "Denormalized read model"
 }
@@ -651,17 +651,17 @@ architecture "E-Commerce" {
       description "Email, SMS, push"
     }
 
-    database = datastore "Database" {
+    database = database "Database" {
       technology "PostgreSQL"
       description "Primary database"
     }
 
-    cache = datastore "Cache" {
+    cache = database "Cache" {
       technology "Redis"
       description "Caching layer"
     }
 
-    event_store = datastore "Event Store" {
+    event_store = queue "Event Store" {
       technology "Kafka"
       description "Event streaming"
     }
@@ -709,7 +709,7 @@ architecture "Analytics Platform" {
       description "Real-time processing"
     }
 
-    database = datastore "Time Series DB" {
+    database = database "Time Series DB" {
       technology "InfluxDB"
       description "Stores metrics"
     }

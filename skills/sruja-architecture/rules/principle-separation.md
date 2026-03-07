@@ -56,7 +56,7 @@ backend = container "Business Service" {
   description "Core business logic and use cases"
 }
 
-database = datastore "Database" {
+database = database "Database" {
   technology "PostgreSQL"
   description "Data persistence and storage"
 }

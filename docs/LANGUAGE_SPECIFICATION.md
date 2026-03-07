@@ -97,11 +97,13 @@ import { * } from './shared-kinds.sruja'
 
 ### Elements
 
+**Element syntax:** `Id = kind "Label" { ... }`. IDs use PascalCase by convention. Indent with 2 spaces.
+
 #### Persons
 
 ```sruja
 User = person "User" {
-    description "End user of the system"
+  description "End user of the system"
 }
 ```
 
@@ -109,18 +111,18 @@ User = person "User" {
 
 ```sruja
 MySystem = system "My System" {
-    description "Optional description"
-    metadata {
-        key "value"
-        tags ["tag1", "tag2"]
+  description "Optional description"
+  metadata {
+    key "value"
+    tags ["tag1", "tag2"]
+  }
+  slo {
+    availability {
+      target "99.9%"
+      window "30d"
+      current "99.95%"
     }
-    slo {
-        availability {
-            target "99.9%"
-            window "30d"
-            current "99.95%"
-        }
-    }
+  }
 }
 ```
 
@@ -128,21 +130,21 @@ MySystem = system "My System" {
 
 ```sruja
 MyContainer = container "My Container" {
-    technology "Technology stack"
-    description "Optional description"
-    version "1.0.0"
-    tags ["api", "backend"]
-    scale {
-        min 3
-        max 10
-        metric "cpu > 80%"
+  technology "Technology stack"
+  description "Optional description"
+  version "1.0.0"
+  tags ["api", "backend"]
+  scale {
+    min 3
+    max 10
+    metric "cpu > 80%"
+  }
+  slo {
+    latency {
+      p95 "200ms"
+      p99 "500ms"
     }
-    slo {
-        latency {
-            p95 "200ms"
-            p99 "500ms"
-        }
-    }
+  }
 }
 ```
 
@@ -150,12 +152,12 @@ MyContainer = container "My Container" {
 
 ```sruja
 MyComponent = component "My Component" {
-    technology "Technology"
-    description "Optional description"
-    scale {
-        min 1
-        max 5
-    }
+  technology "Technology"
+  description "Optional description"
+  scale {
+    min 1
+    max 5
+  }
 }
 ```
 
@@ -163,8 +165,8 @@ MyComponent = component "My Component" {
 
 ```sruja
 MyDB = database "My Database" {
-    technology "PostgreSQL"
-    description "Optional description"
+  technology "PostgreSQL"
+  description "Optional description"
 }
 ```
 
@@ -172,8 +174,8 @@ MyDB = database "My Database" {
 
 ```sruja
 MyQueue = queue "My Queue" {
-    technology "RabbitMQ"
-    description "Optional description"
+  technology "RabbitMQ"
+  description "Optional description"
 }
 ```
 
@@ -256,9 +258,9 @@ OrderProcess = flow "Order Processing" {
 
 ```sruja
 metadata {
-    key "value"
-    anotherKey "another value"
-    tags ["tag1", "tag2"]
+  key "value"
+  anotherKey "another value"
+  tags ["tag1", "tag2"]
 }
 ```
 
@@ -266,12 +268,12 @@ metadata {
 
 ```sruja
 overview {
-    summary "High-level summary of the architecture"
-    audience "Target audience for this architecture"
-    scope "What is covered in this architecture"
-    goals ["Goal 1", "Goal 2"]
-    nonGoals ["What is explicitly out of scope"]
-    risks ["Risk 1", "Risk 2"]
+  summary "High-level summary of the architecture"
+  audience "Target audience for this architecture"
+  scope "What is covered in this architecture"
+  goals ["Goal 1", "Goal 2"]
+  nonGoals ["What is explicitly out of scope"]
+  risks ["Risk 1", "Risk 2"]
 }
 ```
 
@@ -279,30 +281,30 @@ overview {
 
 ```sruja
 slo {
-    availability {
-        target "99.9%"
-        window "30 days"
-        current "99.95%"
+  availability {
+    target "99.9%"
+    window "30 days"
+    current "99.95%"
+  }
+  latency {
+    p95 "200ms"
+    p99 "500ms"
+    window "7 days"
+    current {
+      p95 "180ms"
+      p99 "420ms"
     }
-    latency {
-        p95 "200ms"
-        p99 "500ms"
-        window "7 days"
-        current {
-            p95 "180ms"
-            p99 "420ms"
-        }
-    }
-    errorRate {
-        target "0.1%"
-        window "7 days"
-        current "0.08%"
-    }
-    throughput {
-        target "10000 req/s"
-        window "peak hour"
-        current "8500 req/s"
-    }
+  }
+  errorRate {
+    target "0.1%"
+    window "7 days"
+    current "0.08%"
+  }
+  throughput {
+    target "10000 req/s"
+    window "peak hour"
+    current "8500 req/s"
+  }
 }
 ```
 
@@ -316,9 +318,9 @@ SLO blocks can be defined at:
 
 ```sruja
 scale {
-    min 3
-    max 10
-    metric "cpu > 80%"
+  min 3
+  max 10
+  metric "cpu > 80%"
 }
 ```
 
@@ -331,12 +333,12 @@ Scale blocks can be defined at:
 
 ```sruja
 deployment Prod "Production" {
-    node AWS "AWS" {
-        node USEast1 "US-East-1" {
-            infrastructure LB "Load Balancer"
-            containerInstance Shop.API
-        }
+  node AWS "AWS" {
+    node USEast1 "US-East-1" {
+      infrastructure LB "Load Balancer"
+      containerInstance Shop.API
     }
+  }
 }
 ```
 
@@ -349,9 +351,9 @@ policy SecurityPolicy "Enforce TLS 1.3" category "security" enforcement "require
 
 // Or with body block
 policy DataRetentionPolicy "Retain data for 7 years" {
-    category "compliance"
-    enforcement "required"
-    description "Detailed policy description"
+  category "compliance"
+  enforcement "required"
+  description "Detailed policy description"
 }
 ```
 
@@ -359,8 +361,8 @@ policy DataRetentionPolicy "Retain data for 7 years" {
 
 ```sruja
 constraints {
-    "Constraint description"
-    "Another constraint"
+  "Constraint description"
+  "Another constraint"
 }
 ```
 
@@ -368,8 +370,8 @@ constraints {
 
 ```sruja
 conventions {
-    "Convention description"
-    "Another convention"
+  "Convention description"
+  "Another convention"
 }
 ```
 
@@ -379,22 +381,22 @@ Views are **optional** — if not specified, standard C4 views are automatically
 
 ```sruja
 view index {
-    title "System Context"
-    include *
+  title "System Context"
+  include *
 }
 
 view container_view of Shop {
-    title "Shop Containers"
-    include Shop.*
-    exclude Shop.WebApp
-    autolayout lr
+  title "Shop Containers"
+  include Shop.*
+  exclude Shop.WebApp
+  autolayout lr
 }
 
 styles {
-    element "Database" {
-        shape "cylinder"
-        color "#ff0000"
-    }
+  element "Database" {
+    shape "cylinder"
+    color "#ff0000"
+  }
 }
 ```
 

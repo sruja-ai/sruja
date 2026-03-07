@@ -16,7 +16,7 @@ We have our domains. Now we need to pick the tools to build them.
 
 ## Modeling in Sruja
 
-We define these choices in our `container` definitions.
+We define these choices in our `container` and `database` definitions.
 
 ```sruja
 import { * } from 'sruja.ai/stdlib'
@@ -33,7 +33,7 @@ API = container "Core API" {
   description "REST API handling business logic."
 }
 
-Database = container "Primary DB" {
+Database = database "Primary DB" {
   technology "PostgreSQL 15"
   description "Stores orders, products, and users."
 }

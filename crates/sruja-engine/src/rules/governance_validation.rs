@@ -51,7 +51,13 @@ impl Rule for GovernanceValidationRule {
             }
 
             let loc = elem.location.clone();
-            let entry = seen.get_mut(kind_key).expect("kind map exists");
+            let Some(entry) = seen.get_mut(kind_key) else {
+                log::warn!(
+                    "kind_key '{}' not in governance map - this is a bug",
+                    kind_key
+                );
+                continue;
+            };
             if let Some(existing) = entry.get(&id) {
                 diags.push(
                     Diagnostic::new(

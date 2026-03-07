@@ -1,0 +1,68 @@
+
+============================================================
+Evaluating: express
+============================================================
+
+📊 Gathering statistics...
+  Lines: 65
+  Components: 2 systems, 8 containers, 0 databases
+  Relationships: 9
+
+🔍 Running validation (sruja lint)...
+✓ No issues found
+✅ Validation passed
+
+╔══════════════════════════════════════════════════════════════╗
+║          Manual Evaluation Checklist for express
+╚══════════════════════════════════════════════════════════════╝
+
+Please review the generated architecture.sruja and answer:
+
+COMPLETENESS (Are main parts captured?)
+  [ ] Main entry points identified
+  [ ] Core modules/components documented
+  [ ] Key data flows shown
+  [ ] External dependencies included
+  [ ] Important subsystems represented
+  Score: ___/10
+
+ACCURACY (Does it match the codebase?)
+  [ ] Component names are correct
+  [ ] Relationships reflect actual dependencies
+  [ ] No fabricated/hallucinated components
+  [ ] Technology choices are accurate
+  [ ] Architecture patterns are correct
+  Score: ___/10
+
+CLARITY (Is it understandable?)
+  [ ] Easy to see high-level structure
+  [ ] Component purposes are clear
+  [ ] Relationships are well-labeled
+  [ ] Hierarchy makes sense
+  [ ] Not overly complex
+  Score: ___/10
+
+USEFULNESS (Would it help developers?)
+  [ ] Would speed up onboarding
+  [ ] Reveals important design decisions
+  [ ] Helps understand complexity
+  [ ] Better than README alone
+  [ ] Could guide architectural changes
+  Score: ___/10
+
+AVERAGE SCORE: ___/10
+
+VERDICT:
+  [ ] Useful (≥7/10)
+  [ ] Partially Useful (5-6/10)
+  [ ] Not Useful (<5/10)
+
+Tip: Run with --llm for LLM evaluation (requires any LLM API key)
+     ./evaluate_architecture.sh express --llm
+
+📄 Report saved to: /Users/dilipkola/Workspace/sruja/evaluation/real-world-test/results/evaluation_express_20260227_194359.md
+
+============================================================
+✅ Evaluation complete!
+============================================================
+

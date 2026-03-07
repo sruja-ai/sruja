@@ -1,0 +1,58 @@
+══════════════════════════════════════════════════════════════════════
+📊 Structural Complexity Analysis
+══════════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────
+🔄 SCC (Strongly Connected Components)
+──────────────────────────────────────────────────────────────────────
+
+  Total SCCs: 85
+  Cyclic SCCs: 0
+  Largest SCC size: 1
+
+──────────────────────────────────────────────────────────────────────
+🎯 Centrality Metrics
+──────────────────────────────────────────────────────────────────────
+
+  📌 Top Hub Nodes (high degree):
+    • module:lib (degree: 0.07, dependents: 0)
+    • module:examples_route-separation (degree: 0.05, dependents: 0)
+    • module:examples_content-negotiation (degree: 0.04, dependents: 0)
+    • module:examples_view-constructor (degree: 0.02, dependents: 0)
+    • module:examples_session (degree: 0.02, dependents: 0)
+
+  🌉 Top Bridge Nodes (high betweenness):
+    • examples_static-files_index_js (betweenness: 0.000)
+    • examples_route-separation_user_js (betweenness: 0.000)
+    • module:examples_web-service (betweenness: 0.000)
+    • index_js (betweenness: 0.000)
+    • module:examples_hello-world (betweenness: 0.000)
+
+──────────────────────────────────────────────────────────────────────
+🔗 Coupling Metrics
+──────────────────────────────────────────────────────────────────────
+
+  Average Instability:    0.41
+  Average Abstractness:   0.00
+  Avg Distance (ideal=0): 0.59
+
+  🚨 Zone of Pain: 50 modules (concrete + stable)
+
+  📋 Coupling Violations:
+
+    • examples_resource_index_js [ZoneOfPain]
+      → Module 'examples_resource_index_js' is in the Zone of Pain: concrete + stable. Consider making it more abstract or reducing its dependents.
+
+    • examples_search_index_js [ZoneOfPain]
+      → Module 'examples_search_index_js' is in the Zone of Pain: concrete + stable. Consider making it more abstract or reducing its dependents.
+
+    • lib_utils_js [ZoneOfPain]
+      → Module 'lib_utils_js' is in the Zone of Pain: concrete + stable. Consider making it more abstract or reducing its dependents.
+
+    • examples_content-negotiation_index_js [ZoneOfPain]
+      → Module 'examples_content-negotiation_index_js' is in the Zone of Pain: concrete + stable. Consider making it more abstract or reducing its dependents.
+
+    • examples_ejs_index_js [ZoneOfPain]
+      → Module 'examples_ejs_index_js' is in the Zone of Pain: concrete + stable. Consider making it more abstract or reducing its dependents.
+
+══════════════════════════════════════════════════════════════════════

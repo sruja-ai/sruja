@@ -134,6 +134,7 @@ impl MarkdownExporter {
         out
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn write_toc(
         &self,
         out: &mut String,

@@ -201,12 +201,12 @@ system "User Service" {
     }
   }
   
-  db = datastore "User Database" {
+  db = database "User Database" {
     technology "PostgreSQL"
     description "User profiles and authentication data"
   }
   
-  cache = datastore "Session Cache" {
+  cache = database "Session Cache" {
     technology "Redis"
     description "Active user sessions and JWT blacklist"
   }
