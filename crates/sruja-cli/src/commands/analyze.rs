@@ -467,10 +467,7 @@ fn print_scc_section(nodes: &[String], edges: &[(String, String)]) {
         let mut by_tech: HashMap<String, Vec<&sruja_scan::Node>> = HashMap::new();
         for db in &db_nodes {
             let tech = db.technology.as_deref().unwrap_or("Unknown");
-            by_tech
-                .entry(tech.to_string())
-                .or_default()
-                .push(db);
+            by_tech.entry(tech.to_string()).or_default().push(db);
         }
 
         let mut consolidation_targets = Vec::new();

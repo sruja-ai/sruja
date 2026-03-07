@@ -1,8 +1,8 @@
 # Reusable composite action: build skill-lint and run validation on skill files.
 # Use after actions/checkout.
 #
-# In this repo: build from workspace (cargo build -p skill-lint).
-# Elsewhere: document cargo install from git or use a published binary when available.
+# In this repo: build from workspace (cargo build -p skill-lint) when the package exists.
+# If skill-lint is not in the workspace (e.g. deferred to a separate repo), the job is skipped with success.
 
 name: "Skill-Lint Validate"
 description: "Build skill-lint CLI and run validation checks on skill files"
@@ -44,12 +44,19 @@ runs:
       uses: Swatinem/rust-cache@v2
       with:
         workspaces: ${{ inputs.working-directory }}
-    - name: Build skill-lint
+    - name: Build skill-lint (or skip if not in workspace)
+      id: skill_lint
       shell: bash
-      run: cargo build --release -p skill-lint
+      run: |
+        if ! cargo build --release -p skill-lint 2>/dev/null; then
+          echo "Package skill-lint is not in this workspace (e.g. in a separate repo). Skipping skill validation."
+          echo "present=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "present=true" >> "$GITHUB_OUTPUT"
+        fi
       working-directory: ${{ github.workspace }}/${{ inputs.working-directory }}
     - name: Check links
-      if: inputs.check-links == 'true'
+      if: steps.skill_lint.outputs.present == 'true' && inputs.check-links == 'true'
       shell: bash
       working-directory: ${{ github.workspace }}/${{ inputs.working-directory }}
       run: |
@@ -67,7 +74,7 @@ runs:
           echo "No skill files matched pattern: ${{ inputs.files }}"
         fi
     - name: Check cross-references
-      if: inputs.check-xrefs == 'true'
+      if: steps.skill_lint.outputs.present == 'true' && inputs.check-xrefs == 'true'
       shell: bash
       working-directory: ${{ github.workspace }}/${{ inputs.working-directory }}
       run: |
@@ -85,7 +92,7 @@ runs:
           echo "No skill files matched pattern: ${{ inputs.files }}"
         fi
     - name: Test code examples
-      if: inputs.test-code == 'true'
+      if: steps.skill_lint.outputs.present == 'true' && inputs.test-code == 'true'
       shell: bash
       working-directory: ${{ github.workspace }}/${{ inputs.working-directory }}
       run: |
@@ -103,7 +110,7 @@ runs:
           echo "No skill files matched pattern: ${{ inputs.files }}"
         fi
     - name: Check formatting
-      if: inputs.check-format == 'true'
+      if: steps.skill_lint.outputs.present == 'true' && inputs.check-format == 'true'
       shell: bash
       working-directory: ${{ github.workspace }}/${{ inputs.working-directory }}
       run: |

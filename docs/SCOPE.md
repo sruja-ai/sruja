@@ -9,7 +9,7 @@ Sruja is an **architecture-as-code tool for the AI SDLC process**—not a diagra
 3. **WASM** (`sruja-wasm`) – browser/Node export and parsing
 4. **mdBook** (`book/`) – **this is the website** (no separate Astro/React site)
 5. **VS Code extension** (`extension/`) – edit, preview, LSP
-6. **Architecture intelligence** – CLI: quickstart, drift, why, analyze; sruja-app (desktop: repo + query); sruja-chat, sruja-graph, sruja-extract, sruja-scan. See [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md) for current state.
+6. **Architecture intelligence** – CLI: quickstart, drift, why, analyze, context; sruja-app (desktop: repo + query); sruja-graph, sruja-scan, sruja-diff, sruja-intent. See [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md) for current state.
 
 Nothing else is in scope (no designer app, no storybook, no social-publish, no separate website app).
 
@@ -27,10 +27,10 @@ Nothing else is in scope (no designer app, no storybook, no social-publish, no s
 | **crates/sruja-lsp** | LSP server (used by VS Code extension) |
 | **crates/sruja-engine** | Validation rules |
 | **crates/sruja-app** | Desktop app (Dioxus) — architecture collaboration |
-| **crates/sruja-chat** | Chat, agents, extraction |
-| **crates/sruja-graph** | Knowledge graph for decisions |
-| **crates/sruja-extract** | LLM extraction |
-| **crates/sruja-scan** | Repo scanning (npm, cargo) |
+| **crates/sruja-graph** | Knowledge graph, centrality, coupling |
+| **crates/sruja-scan** | Repo scanning (multi-language tree-sitter) |
+| **crates/sruja-diff** | Drift detection (code vs. intent) |
+| **crates/sruja-intent** | Intent vs. reality comparison |
 | **crates/sruja-mcp** | MCP server |
 | **book/** | mdBook source; build output = deployed website |
 | **extension/** | VS Code extension (preview, LSP, snippets) |

@@ -317,14 +317,15 @@ sruja export markdown example.sruja
 ```
 sruja/
 ├── crates/               # Rust crates
-│   ├── sruja-cli/        # CLI (lint, export, scan, why, drift)
+│   ├── sruja-cli/        # CLI (lint, export, scan, quickstart, why, drift, analyze, context)
 │   ├── sruja-language/   # Parser and AST
 │   ├── sruja-engine/     # Validation rules
 │   ├── sruja-export/     # Markdown, Mermaid, JSON export
-│   ├── sruja-chat/       # Chat, agents, extraction (architecture intelligence)
-│   ├── sruja-graph/      # Knowledge graph for decisions
-│   ├── sruja-extract/    # LLM extraction (decisions, requirements)
-│   ├── sruja-scan/       # Repo scanning (npm, cargo)
+│   ├── sruja-graph/      # Knowledge graph, centrality, coupling
+│   ├── sruja-scan/       # Repo scanning (multi-language tree-sitter)
+│   ├── sruja-diff/       # Drift detection (code vs. intent)
+│   ├── sruja-intent/     # Intent vs. reality comparison
+│   ├── sruja-report/     # Report schema for analysis output
 │   └── sruja-mcp/        # MCP server for AI tooling
 ├── book/                 # mdBook documentation
 └── examples/             # Example .sruja files

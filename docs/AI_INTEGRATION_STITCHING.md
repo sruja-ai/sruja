@@ -2,6 +2,8 @@
 
 **Goal:** Transform Sruja from "tree-sitter + optional AI" to "AI-first architecture intelligence" by integrating existing AI components into the core workflow.
 
+> **Status (post-refactor):** The crates **sruja-chat** and **sruja-extract** have been removed. Architecture intelligence (quickstart, why, drift, analyze, context) now lives in **sruja-cli** (with sruja-graph, sruja-scan, sruja-diff, sruja-intent). This document remains as a historical/target plan; update component names when implementing.
+
 ---
 
 ## Current State: Fragmented AI
@@ -12,9 +14,7 @@
 |-----------|----------|-------------|---------|
 | **sruja-scan** | `crates/sruja-scan` | Tree-sitter structural analysis | No AI enhancement |
 | **sruja-semantic** | `crates/sruja-semantic` | Embeddings, bounded contexts | Stub provider by default, optional |
-| **sruja-graph** | `crates/sruja-graph` | Knowledge graph, decisions | Only in chat app, not CLI |
-| **sruja-extract** | `crates/sruja-extract` | LLM extraction from conversations | Only in chat app |
-| **sruja-chat** | `crates/sruja-chat` | Multi-party chat, agents | Desktop app only |
+| **sruja-graph** | `crates/sruja-graph` | Knowledge graph, decisions | Used by CLI (quickstart, analyze) |
 | **CLI AI commands** | `crates/sruja-cli/src/commands/ai.rs` | `sruja ai explain/ask` | Separate commands, not core workflow |
 | **MCP server** | `crates/sruja-mcp` | AI tooling interface | Not integrated with CLI |
 

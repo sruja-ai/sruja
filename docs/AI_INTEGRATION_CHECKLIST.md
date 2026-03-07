@@ -2,6 +2,8 @@
 
 Step-by-step changes to stitch AI components into core CLI workflow.
 
+> **Status (post-refactor):** **sruja-extract** and **sruja-chat** have been removed. The CLI already has quickstart, why, drift, analyze, context (see README and book CLI guide). Use this checklist for further AI stitching; skip steps that reference removed crates.
+
 ---
 
 ## Step 1: Add Missing Dependencies
@@ -11,7 +13,7 @@ Step-by-step changes to stitch AI components into core CLI workflow.
 ```toml
 [dependencies]
 # ... existing ...
-sruja-extract = { path = "../sruja-extract" }  # ADD THIS
+# sruja-extract was removed; LLM extraction lives in sruja-cli/ai if needed
 ```
 
 ---
@@ -550,7 +552,7 @@ ollama pull llama3.2
 5. `.cursorrules` (generated)
 
 ### Modified Files (6)
-1. `crates/sruja-cli/Cargo.toml` - Add sruja-extract
+1. `crates/sruja-cli/Cargo.toml` - (sruja-extract removed; add any new deps as needed)
 2. `crates/sruja-cli/src/main.rs` - Add mod declarations and commands
 3. `crates/sruja-cli/src/commands/mod.rs` - Add modules
 4. `crates/sruja-cli/src/commands/scan.rs` - Enhance quickstart/drift

@@ -60,10 +60,12 @@ pub async fn context_export(
         "copilot-instructions" => format_copilot_instructions(&context),
         "markdown" => format_markdown(&context),
         "json" | "for-ai" => serde_json::to_string_pretty(&context)?,
-        _ => return Err(CliError::Validation(format!(
+        _ => {
+            return Err(CliError::Validation(format!(
             "Unknown format: {}. Use: cursor-rules, copilot-instructions, markdown, json, for-ai",
             format
-        ))),
+        )))
+        }
     };
 
     if let Some(path) = output {

@@ -19,7 +19,7 @@ The Sruja architecture intelligence layer helps developers understand *why* thei
 | **sruja why** | Quick "why" queries against scanned repo; deterministic answers with evidence |
 | **sruja drift** | Detect architecture drift (circular deps, orphans, layer violations, god modules) |
 | **sruja scan** | Infer architecture graph from code |
-| **sruja-app** (optional) | Desktop UI for chat, agents, extraction — requires LLM key |
+| **sruja-app** (optional) | Desktop UI for repo + query — optional LLM key |
 
 The CLI is the hero surface. No model key, desktop app, or .sruja files are required to get value.
 
@@ -147,9 +147,6 @@ If key missing → deterministic mode remains fully useful.
 ## E2E Tests
 
 ```bash
-# Architecture intelligence flow (sruja-chat)
-cargo test -p sruja-chat --test architecture_intelligence_e2e
-
 # Why command flow (sruja-cli)
 cargo test -p sruja-cli --test why_e2e
 
