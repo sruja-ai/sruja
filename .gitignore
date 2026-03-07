@@ -82,3 +82,31 @@ book/mermaid-init.js
 .shared/
 .codacy/
 internal-docs
+
+# Sruja runtime state (memory, facts, interactions)
+.sruja/memory/
+
+# Demo and test results / output directories
+out_*/
+test_results*/
+sruja_demo_*
+
+# Generated outputs (when left in repo or demo)
+**/real.graph.json
+**/final_cto_report.txt
+demo/sruja.graph.json
+demo/traces.json
+
+# Ad-hoc test/validation scripts (optional; required scripts are in book/, evaluation/, extension/, scripts/, architecture/, demo/)
+comprehensive_test.sh
+quick_test.sh
+run_real_demo.sh
+validate_improvements.sh
+validate_improvements_simple.sh
+validate_improvements_v2.sh
+test_complex_systems.sh
+test_complex_systems_improved.sh
+test_new_complex_systems.sh
+test_new_complex_systems_v2.sh
+test_new_projects.sh
+test_service_detection.sh
