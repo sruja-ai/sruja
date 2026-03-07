@@ -7,46 +7,121 @@
 //!   with many issues score lower than clean ones. 90+ means "few issues."
 //! - Tests, examples, tools, and doc paths are excluded from violation counting
 //!   (see drift.rs is_likely_doc_or_tool_path).
-//! - Floor at 50 so no repo is branded "failed"; but 60–80 = needs work, 80–90 = good, 90+ = excellent.
+//! - Floor at 40 so truly problematic codebases can be identified;
+//!   40-60 = Critical, 60-75 = Poor, 75-85 = Fair, 85-95 = Good, 95+ = Excellent.
 
 use crate::types::{HealthScorePenalties, Severity, Violation, ViolationKind};
 
-/// Minimum health score - successful projects deserve respect.
-const MIN_SCORE: u8 = 50;
+const MIN_SCORE: u8 = 30;
 
-/// Scale factor for density calculation (issues per N modules).
 const DENSITY_SCALE: usize = 1000;
 
-/// Density thresholds for scoring (issues per 1000 modules).
-/// These are calibrated so that well-maintained projects score 70+.
 mod density_thresholds {
-    pub const CYCLES_EXCELLENT: f32 = 0.5;
-    pub const CYCLES_GOOD: f32 = 2.0;
-    pub const CYCLES_FAIR: f32 = 5.0;
+    pub const CYCLES_EXCELLENT: f32 = 1.0;
+    pub const CYCLES_GOOD: f32 = 5.0;
+    pub const CYCLES_FAIR: f32 = 10.0;
 
-    pub const ORPHANS_EXCELLENT: f32 = 5.0;
-    pub const ORPHANS_GOOD: f32 = 15.0;
-    pub const ORPHANS_FAIR: f32 = 30.0;
+    pub const ORPHANS_EXCELLENT: f32 = 10.0;
+    pub const ORPHANS_GOOD: f32 = 20.0;
+    pub const ORPHANS_FAIR: f32 = 40.0;
 
-    pub const GOD_MODULES_EXCELLENT: f32 = 10.0;
-    pub const GOD_MODULES_GOOD: f32 = 50.0;
-    pub const GOD_MODULES_FAIR: f32 = 100.0;
+    pub const GOD_MODULES_EXCELLENT: f32 = 20.0;
+    pub const GOD_MODULES_GOOD: f32 = 75.0;
+    pub const GOD_MODULES_FAIR: f32 = 150.0;
 
-    pub const LAYER_EXCELLENT: f32 = 0.0;
-    pub const LAYER_GOOD: f32 = 1.0;
-    pub const LAYER_FAIR: f32 = 5.0;
+    pub const LAYER_EXCELLENT: f32 = 0.5;
+    pub const LAYER_GOOD: f32 = 3.0;
+    pub const LAYER_FAIR: f32 = 10.0;
 }
 
-/// Compute health score using density-based approach.
-///
-/// Instead of penalizing absolute counts, we calculate issue density
-/// (issues per 1000 modules) and score based on how that compares
-/// to thresholds calibrated on real successful projects.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HealthGrade {
+    Critical,
+    Poor,
+    Fair,
+    Good,
+    Excellent,
+}
+
+impl HealthGrade {
+    pub fn from_score(score: u8) -> Self {
+        match score {
+            0..=30 => HealthGrade::Critical,
+            31..=50 => HealthGrade::Poor,
+            51..=65 => HealthGrade::Fair,
+            66..=80 => HealthGrade::Good,
+            _ => HealthGrade::Excellent,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn label(&self) -> &'static str {
+        match self {
+            HealthGrade::Critical => "Critical",
+            HealthGrade::Poor => "Poor",
+            HealthGrade::Fair => "Fair",
+            HealthGrade::Good => "Good",
+            HealthGrade::Excellent => "Excellent",
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn description(&self) -> &'static str {
+        match self {
+            HealthGrade::Critical => "Immediate attention required",
+            HealthGrade::Poor => "Significant issues found",
+            HealthGrade::Fair => "Some improvements needed",
+            HealthGrade::Good => "Minor issues",
+            HealthGrade::Excellent => "Well-architected",
+        }
+    }
+}
+
+#[allow(dead_code)]
+pub struct HealthScoreWeights {
+    pub god_modules: f64,
+    pub zone_of_pain: f64,
+    pub coupling: f64,
+    pub cycles: f64,
+    pub orphaned_modules: f64,
+}
+
+impl Default for HealthScoreWeights {
+    fn default() -> Self {
+        Self {
+            god_modules: 15.0,
+            zone_of_pain: 5.0,
+            coupling: 10.0,
+            cycles: 20.0,
+            orphaned_modules: 2.0,
+        }
+    }
+}
+
+#[allow(dead_code)]
+pub struct HealthScoreBreakdown {
+    pub score: u8,
+    pub grade: HealthGrade,
+    pub god_module_penalty: u8,
+    pub zone_of_pain_penalty: u8,
+    pub coupling_penalty: u8,
+    pub cycle_penalty: u8,
+    pub orphan_penalty: u8,
+    pub other_penalty: u8,
+}
+
 pub fn calculate_health_score_from_violations(
     violations: &[Violation],
     penalties: HealthScorePenalties,
 ) -> u8 {
-    // Count violations by kind
+    let breakdown = calculate_health_score_with_breakdown(violations, penalties);
+    breakdown.score
+}
+
+pub fn calculate_health_score_with_breakdown(
+    violations: &[Violation],
+    penalties: HealthScorePenalties,
+) -> HealthScoreBreakdown {
     let mut cycle_count: usize = 0;
     let mut orphan_count: usize = 0;
     let mut god_module_count: usize = 0;
@@ -70,36 +145,47 @@ pub fn calculate_health_score_from_violations(
         }
     }
 
-    // For small projects (< 100 modules), use simpler scoring
-    // We can't calculate meaningful density with few modules
     let total_issues = cycle_count + orphan_count + god_module_count + layer_count;
     if total_issues == 0 && other_penalty == 0 {
-        return 100;
+        return HealthScoreBreakdown {
+            score: 100,
+            grade: HealthGrade::Excellent,
+            god_module_penalty: 0,
+            zone_of_pain_penalty: 0,
+            coupling_penalty: 0,
+            cycle_penalty: 0,
+            orphan_penalty: 0,
+            other_penalty: 0,
+        };
     }
 
-    // Base 100. Deduct for all issue types so score has REAL SPREAD (not everything 90+).
+    let _weights = HealthScoreWeights::default();
 
-    // Red flags: cycles (real architectural debt)
-    let cycle_penalty = ((cycle_count * 6) as u8).min(30);
-    let mut score = 100u8.saturating_sub(cycle_penalty);
+    let cycle_penalty = (cycle_count as u8).saturating_mul(2).min(15);
+    let layer_penalty = (layer_count as u8).saturating_mul(1).min(10);
+    let god_penalty = ((god_module_count / 100) as u8).min(10);
+    let orphan_penalty = ((orphan_count / 100) as u8).min(5);
+    let other = other_penalty.min(8);
 
-    // Red flags: layer violations
-    let layer_penalty = ((layer_count * 5) as u8).min(25);
-    score = score.saturating_sub(layer_penalty);
+    let total_penalty = cycle_penalty
+        .saturating_add(layer_penalty)
+        .saturating_add(god_penalty)
+        .saturating_add(orphan_penalty)
+        .saturating_add(other);
 
-    // Orphans: -1 per 10 orphans, max 5. Reduces penalty for informational loose ends.
-    let orphan_penalty = ((orphan_count / 10) as u8).min(5);
-    score = score.saturating_sub(orphan_penalty);
+    let score = 100u8.saturating_sub(total_penalty).max(MIN_SCORE);
+    let grade = HealthGrade::from_score(score);
 
-    // God modules: -1 per 25, max 20. So 0–24=0, 25–49=1, … 500+=20.
-    let god_penalty = ((god_module_count / 25) as u8).min(20);
-    score = score.saturating_sub(god_penalty);
-
-    // Other
-    score = score.saturating_sub(other_penalty.min(10));
-
-    // Ensure minimum score - respect that this code exists and works
-    score.max(MIN_SCORE)
+    HealthScoreBreakdown {
+        score,
+        grade,
+        god_module_penalty: god_penalty,
+        zone_of_pain_penalty: layer_penalty,
+        coupling_penalty: 0,
+        cycle_penalty,
+        orphan_penalty,
+        other_penalty: other,
+    }
 }
 
 /// Calculate density (issues per 1000 modules).

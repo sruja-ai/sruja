@@ -14,7 +14,6 @@ sruja-diff = { path = "../sruja-diff" }
 sruja-semantic = { path = "../sruja-semantic" }
 sruja-report = { path = "../sruja-report" }
 sruja-intent = { path = "../sruja-intent" }
-sruja-runtime = { path = "../sruja-runtime" }
 sruja-language = { path = "../sruja-language" }
 serde = { workspace = true }
 serde_json = { workspace = true }

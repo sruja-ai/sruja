@@ -188,7 +188,7 @@ fn extract_global_var(node: &tree_sitter::Node, content: &str) -> Option<(String
             if child.kind() == "type_qualifier" {
                 if let Ok(text) = child.utf8_text(content.as_bytes()) {
                     if text == "const" {
-                       let _is_public = true;
+                        let _is_public = true;
                     }
                 }
             }

@@ -80,7 +80,7 @@ jobs:
               
               if (newViolations.length === 0) {
                 body += '✅ **No new architectural violations introduced!**\n\n';
-                body += `Existing violations: ${result.total_base_violations} → ${result.total_head_violations}`;
+                body += `Existing violations: ${result.base_violations_count} → ${result.head_violations_count}`;
               } else {
                 body += `🚨 **${newViolations.length} new violation(s) introduced:**\n\n`;
                 for (const v of newViolations.slice(0, 5)) {

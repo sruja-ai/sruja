@@ -1,6 +1,6 @@
 //! Analysis tools: semantic_analyze, complexity, run_analyze, intent_check, detect_drift_with_baseline.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use sruja_graph::KnowledgeGraph;
 use sruja_intent::{DriftDetector, IntentIntelligence, IntentModel};
@@ -10,33 +10,9 @@ use sruja_report::{
     RuntimeSection, SemanticSection as ReportSemanticSection,
     StructuralSection as ReportStructuralSection,
 };
-use sruja_runtime::{build_report, ExecutionTrace};
 use sruja_semantic::{analyze as run_semantic_analyze, embedding::StubEmbeddingProvider};
 
 use crate::tools::{SrujaTool, ToolResponse};
-
-fn load_traces(path: &Path) -> Result<Vec<ExecutionTrace>, String> {
-    let content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
-    let value: serde_json::Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-    let traces = match value {
-        serde_json::Value::Array(arr) => {
-            let mut out = Vec::with_capacity(arr.len());
-            for v in arr {
-                let t: ExecutionTrace =
-                    serde_json::from_value(v).map_err(|e| format!("Invalid trace: {}", e))?;
-                out.push(t);
-            }
-            out
-        }
-        serde_json::Value::Object(_) => {
-            let t: ExecutionTrace =
-                serde_json::from_value(value).map_err(|e| format!("Invalid trace: {}", e))?;
-            vec![t]
-        }
-        _ => return Err("Expected JSON array or object".to_string()),
-    };
-    Ok(traces)
-}
 
 fn build_complexity_json(
     nodes: &[String],
@@ -220,7 +196,7 @@ pub(super) fn execute_analyze(
 
         SrujaTool::RunAnalyze {
             repo_path,
-            traces_path,
+            traces_path: _,
             intent_path,
         } => {
             let validated_path = match validate_path(repo_path) {
@@ -294,14 +270,7 @@ pub(super) fn execute_analyze(
                 }
             };
 
-            let runtime_report = traces_path.as_ref().and_then(|p| {
-                let path = Path::new(p);
-                if path.exists() {
-                    load_traces(path).ok().map(|t| build_report(&t))
-                } else {
-                    None
-                }
-            });
+            let runtime_report: Option<RuntimeSection> = None;
 
             let mut scores: Vec<u8> = vec![
                 structural_report.health_score,
@@ -350,14 +319,7 @@ pub(super) fn execute_analyze(
                     undocumented_count: ir.summary.undocumented_count,
                     missing_count: ir.summary.missing_count,
                 }),
-                runtime: runtime_report.as_ref().map(|r| RuntimeSection {
-                    trace_count: r.trace_count,
-                    total_spans: r.total_spans,
-                    max_depth: r.max_depth,
-                    total_duration_ms: r.total_duration_ms,
-                    emergent_cycle_count: r.emergent_cycles.len(),
-                    hotspot_count: r.hotspots.len(),
-                }),
+                runtime: runtime_report,
                 overall_health,
                 recommendations,
             };

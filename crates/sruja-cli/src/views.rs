@@ -49,7 +49,12 @@ pub struct ViewContext {
 }
 
 impl ViewContext {
-    pub fn new(view_name: &str, graph: Graph, repo_path: &Path, config: SrujaConfig) -> Result<Self, String> {
+    pub fn new(
+        view_name: &str,
+        graph: Graph,
+        repo_path: &Path,
+        config: SrujaConfig,
+    ) -> Result<Self, String> {
         let view = if let Some(v) = config.get_view(view_name) {
             v
         } else {
@@ -196,7 +201,7 @@ impl ViewContext {
             score -= (summary.complexity_score - self.view.thresholds.max_complexity) * 2.0;
         }
 
-        score.max(0.0).min(100.0)
+        score.clamp(0.0, 100.0)
     }
 
     fn analyze_section(&self, section_name: &str) -> Result<serde_json::Value, String> {
@@ -317,6 +322,7 @@ impl ViewContext {
 
         let mut hotspots = Vec::new();
 
+        // Check coupling
         if coupling > self.view.thresholds.max_coupling {
             hotspots.push(serde_json::json!({
                 "area": "High Coupling",
@@ -326,6 +332,7 @@ impl ViewContext {
             }));
         }
 
+        // Check orphans
         if orphans > self.view.thresholds.max_orphans {
             hotspots.push(serde_json::json!({
                 "area": "Orphaned Code",
@@ -335,7 +342,49 @@ impl ViewContext {
             }));
         }
 
-        let debt_score = (orphans as f32 * 0.5 + coupling * 3.0).min(100.0);
+        // Detect god modules (high fan-in or fan-out)
+        let mut in_degree: std::collections::HashMap<&str, usize> =
+            std::collections::HashMap::new();
+        let mut out_degree: std::collections::HashMap<&str, usize> =
+            std::collections::HashMap::new();
+
+        for edge in &self.graph.edges {
+            *out_degree.entry(&edge.source).or_default() += 1;
+            *in_degree.entry(&edge.target).or_default() += 1;
+        }
+
+        // Find god modules (high fan-in OR high fan-out)
+        const GOD_MODULE_THRESHOLD: usize = 20;
+        for node in &self.graph.nodes {
+            let fan_in = in_degree.get(&node.id.as_str()).copied().unwrap_or(0);
+            let fan_out = out_degree.get(&node.id.as_str()).copied().unwrap_or(0);
+
+            if fan_in >= GOD_MODULE_THRESHOLD {
+                hotspots.push(serde_json::json!({
+                    "area": "God Module",
+                    "description": format!("{} has {} incoming dependencies", node.label, fan_in),
+                    "module": node.label,
+                    "score": fan_in,
+                    "threshold": GOD_MODULE_THRESHOLD,
+                }));
+            }
+
+            if fan_out >= GOD_MODULE_THRESHOLD {
+                hotspots.push(serde_json::json!({
+                    "area": "High Fan-Out",
+                    "description": format!("{} depends on {} modules", node.label, fan_out),
+                    "module": node.label,
+                    "score": fan_out,
+                    "threshold": GOD_MODULE_THRESHOLD,
+                }));
+            }
+        }
+
+        // Limit hotspots to most important ones
+        hotspots.truncate(20);
+
+        let debt_score =
+            (orphans as f32 * 0.5 + coupling * 3.0 + hotspots.len() as f32 * 2.0).min(100.0);
 
         Ok(serde_json::json!({
             "debt_score": debt_score,
@@ -661,27 +710,119 @@ impl ViewContext {
     ) -> Vec<ViewRecommendation> {
         let mut recs = Vec::new();
 
+        // Find god modules for specific recommendations
+        let mut in_degree: std::collections::HashMap<&str, usize> =
+            std::collections::HashMap::new();
+        let mut out_degree: std::collections::HashMap<&str, usize> =
+            std::collections::HashMap::new();
+
+        for edge in &self.graph.edges {
+            *out_degree.entry(&edge.source).or_default() += 1;
+            *in_degree.entry(&edge.target).or_default() += 1;
+        }
+
+        // Find top god modules
+        let mut god_modules: Vec<_> = self
+            .graph
+            .nodes
+            .iter()
+            .map(|n| {
+                let fan_in = in_degree.get(&n.id.as_str()).copied().unwrap_or(0);
+                let fan_out = out_degree.get(&n.id.as_str()).copied().unwrap_or(0);
+                (n, fan_in, fan_out)
+            })
+            .filter(|(_, fan_in, fan_out)| *fan_in >= 15 || *fan_out >= 15)
+            .collect();
+
+        god_modules.sort_by(|a, b| (b.1 + b.2).cmp(&(a.1 + a.2)));
+
+        // Add specific recommendation for top god module
+        if let Some((node, fan_in, fan_out)) = god_modules.first() {
+            recs.push(ViewRecommendation {
+                priority: "High".to_string(),
+                category: "Architecture".to_string(),
+                title: format!("Decouple '{}'", node.label),
+                description: format!(
+                    "Module has {} incoming and {} outgoing dependencies. Break into smaller, focused modules.",
+                    fan_in, fan_out
+                ),
+                impact: format!("Reduces coupling for {} dependent components", fan_in + fan_out),
+                effort: "2-3 weeks".to_string(),
+            });
+        }
+
+        // Add recommendation for database consolidation
+        if summary.databases_count > 5 {
+            recs.push(ViewRecommendation {
+                priority: "Medium".to_string(),
+                category: "Data Architecture".to_string(),
+                title: "Consolidate Databases".to_string(),
+                description: format!(
+                    "Found {} databases. Evaluate if data can be consolidated to reduce complexity.",
+                    summary.databases_count
+                ),
+                impact: "Reduces operational overhead and data silos".to_string(),
+                effort: "4-8 weeks".to_string(),
+            });
+        }
+
+        // Add recommendation for external dependencies
+        if summary.external_apis_count > 10 {
+            recs.push(ViewRecommendation {
+                priority: "Medium".to_string(),
+                category: "Reliability".to_string(),
+                title: "Reduce External Dependencies".to_string(),
+                description: format!(
+                    "System relies on {} external APIs. Consider caching or fallback mechanisms.",
+                    summary.external_apis_count
+                ),
+                impact: "Improves system resilience and reduces external risk".to_string(),
+                effort: "2-4 weeks".to_string(),
+            });
+        }
+
         if summary.orphan_count > self.view.thresholds.max_orphans {
             recs.push(ViewRecommendation {
                 priority: "High".to_string(),
                 category: "Code Quality".to_string(),
                 title: "Remove Orphaned Components".to_string(),
                 description: format!(
-                    "Review and remove {} unused components",
+                    "Review and remove {} unused components to reduce maintenance burden",
                     summary.orphan_count
                 ),
-                impact: "Reduces maintenance burden".to_string(),
+                impact: format!("Eliminates {} unused code paths", summary.orphan_count),
                 effort: "1-2 weeks".to_string(),
             });
         }
 
         if summary.coupling_score > self.view.thresholds.max_coupling {
+            // Find most coupled modules
+            let mut high_coupling: Vec<_> = self
+                .graph
+                .nodes
+                .iter()
+                .map(|n| {
+                    let fan_out = out_degree.get(&n.id.as_str()).copied().unwrap_or(0);
+                    (n, fan_out)
+                })
+                .filter(|(_, fan_out)| *fan_out > 10)
+                .collect();
+            high_coupling.sort_by(|a, b| b.1.cmp(&a.1));
+
+            let top_coupled = high_coupling
+                .first()
+                .map(|(n, _)| n.label.as_str())
+                .unwrap_or("core modules");
+
             recs.push(ViewRecommendation {
                 priority: "High".to_string(),
                 category: "Architecture".to_string(),
                 title: "Reduce Coupling".to_string(),
-                description: "Introduce abstraction layers to reduce tight coupling".to_string(),
-                impact: "Enables independent deployment".to_string(),
+                description: format!(
+                    "High coupling detected (score: {:.1}). Focus on '{}' - introduce abstraction layers.",
+                    summary.coupling_score, top_coupled
+                ),
+                impact: "Enables independent deployment and testing".to_string(),
                 effort: "3-6 weeks".to_string(),
             });
         }
@@ -691,8 +832,11 @@ impl ViewContext {
                 priority: "Medium".to_string(),
                 category: "Refactoring".to_string(),
                 title: "Simplify Complex Components".to_string(),
-                description: "Break down highly complex components".to_string(),
-                impact: "Improves maintainability".to_string(),
+                description: format!(
+                    "Break down highly complex components (complexity score: {:.1})",
+                    summary.complexity_score
+                ),
+                impact: "Improves maintainability and testability".to_string(),
                 effort: "2-4 weeks".to_string(),
             });
         }
@@ -716,16 +860,16 @@ impl ViewContext {
             let system_prompt = "You are an expert Software Architect analyzing a codebase structure and providing insights tailored for specific stakeholder views. Produce a highly insightful and concise architectural summary, identifying real hotspots and structural bottlenecks based strictly on the metrics provided.";
             match crate::commands::llm::call_llm(system_prompt, &full_prompt).await {
                 Ok(response) => Ok(Some(response)),
-                Err(_) => {
-                    match self.view.analysis_depth {
-                        AnalysisDepth::Quick => Ok(Some(self.generate_quick_insight(&full_prompt))),
-                        AnalysisDepth::Standard => Ok(Some(self.generate_standard_insight(&full_prompt))),
-                        AnalysisDepth::Deep => Ok(Some(self.generate_deep_insight(&full_prompt))),
-                        AnalysisDepth::Comprehensive => {
-                            Ok(Some(self.generate_comprehensive_insight(&full_prompt)))
-                        }
+                Err(_) => match self.view.analysis_depth {
+                    AnalysisDepth::Quick => Ok(Some(self.generate_quick_insight(&full_prompt))),
+                    AnalysisDepth::Standard => {
+                        Ok(Some(self.generate_standard_insight(&full_prompt)))
                     }
-                }
+                    AnalysisDepth::Deep => Ok(Some(self.generate_deep_insight(&full_prompt))),
+                    AnalysisDepth::Comprehensive => {
+                        Ok(Some(self.generate_comprehensive_insight(&full_prompt)))
+                    }
+                },
             }
         } else {
             Ok(None)
@@ -739,7 +883,7 @@ impl ViewContext {
     ) -> String {
         let mut context = String::new();
 
-        context.push_str(&"Architecture Summary:\n".to_string());
+        context.push_str("Architecture Summary:\n");
         context.push_str(&format!(
             "- Total components: {}\n",
             summary.total_components
@@ -1099,6 +1243,8 @@ fn print_text_report(report: &ViewReport) {
 }
 
 fn print_section_data(data: &serde_json::Value) {
+    const MAX_LINE_WIDTH: usize = 66; // Total table width minus borders
+
     if let Some(obj) = data.as_object() {
         for (key, value) in obj {
             match value {
@@ -1106,7 +1252,22 @@ fn print_section_data(data: &serde_json::Value) {
                     println!("│ {}: {:>48} │", to_title_case(key), n);
                 }
                 serde_json::Value::String(s) => {
-                    println!("│ {}: {:>48} │", to_title_case(key), s);
+                    // Wrap long strings instead of truncating
+                    let full_text = format!("{}: {}", to_title_case(key), s);
+                    if full_text.len() > MAX_LINE_WIDTH - 4 {
+                        let wrapped = wrap_text_to_width(&full_text, MAX_LINE_WIDTH - 4);
+                        for (i, line) in wrapped.iter().enumerate() {
+                            if i == 0 {
+                                let padding = MAX_LINE_WIDTH.saturating_sub(line.len() + 4);
+                                println!("│ {}{} │", line, " ".repeat(padding));
+                            } else {
+                                let padding = MAX_LINE_WIDTH.saturating_sub(line.len() + 4);
+                                println!("│   {}{} │", line, " ".repeat(padding.saturating_sub(2)));
+                            }
+                        }
+                    } else {
+                        println!("│ {}: {:>48} │", to_title_case(key), s);
+                    }
                 }
                 serde_json::Value::Bool(b) => {
                     println!(
@@ -1122,12 +1283,89 @@ fn print_section_data(data: &serde_json::Value) {
                         format!("{} items", arr.len())
                     );
                 }
+                serde_json::Value::Object(nested) => {
+                    // Render nested objects as "key: value | key: value" inline
+                    let inline: Vec<String> = nested
+                        .iter()
+                        .map(|(k, v)| {
+                            let val_str = match v {
+                                serde_json::Value::Number(n) => n.to_string(),
+                                serde_json::Value::String(s) => s.clone(),
+                                serde_json::Value::Bool(b) => {
+                                    if *b {
+                                        "yes".into()
+                                    } else {
+                                        "no".into()
+                                    }
+                                }
+                                serde_json::Value::Array(a) => format!("{}", a.len()),
+                                _ => "-".into(),
+                            };
+                            format!("{}: {}", to_title_case(k), val_str)
+                        })
+                        .collect();
+                    let display = inline.join(" | ");
+
+                    // Wrap instead of truncate
+                    if display.len() > MAX_LINE_WIDTH - 4 {
+                        let wrapped = wrap_text_to_width(&display, MAX_LINE_WIDTH - 4);
+                        for (i, line) in wrapped.iter().enumerate() {
+                            if i == 0 {
+                                let padding = MAX_LINE_WIDTH.saturating_sub(line.len() + 4);
+                                println!(
+                                    "│ {}: {}{} │",
+                                    to_title_case(key),
+                                    line,
+                                    " ".repeat(
+                                        padding.saturating_sub(to_title_case(key).len() + 2)
+                                    )
+                                );
+                            } else {
+                                let padding = MAX_LINE_WIDTH.saturating_sub(line.len() + 4);
+                                println!("│   {}{} │", line, " ".repeat(padding.saturating_sub(2)));
+                            }
+                        }
+                    } else {
+                        println!("│ {}: {:>48} │", to_title_case(key), display);
+                    }
+                }
                 _ => {
                     println!("│ {}: {:>48} │", to_title_case(key), "-");
                 }
             }
         }
     }
+}
+
+fn wrap_text_to_width(text: &str, max_width: usize) -> Vec<String> {
+    if max_width <= 4 {
+        return vec![text.to_string()];
+    }
+
+    let mut lines = Vec::new();
+    let mut current_line = String::new();
+
+    for word in text.split_whitespace() {
+        if current_line.is_empty() {
+            current_line = word.to_string();
+        } else if current_line.len() + 1 + word.len() <= max_width {
+            current_line.push(' ');
+            current_line.push_str(word);
+        } else {
+            lines.push(current_line);
+            current_line = word.to_string();
+        }
+    }
+
+    if !current_line.is_empty() {
+        lines.push(current_line);
+    }
+
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+
+    lines
 }
 
 fn to_title_case(s: &str) -> String {

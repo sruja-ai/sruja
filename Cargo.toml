@@ -12,13 +12,10 @@ members = [
     "crates/sruja-cli",
     "crates/sruja-scan",
     "crates/sruja-diff",
-    # Chat/Product
+    # Product
     "crates/sruja-graph",
-    "crates/sruja-extract",
-    "crates/sruja-chat",
     "crates/sruja-mcp",
     "crates/sruja-semantic",
-    "crates/sruja-runtime",
     "crates/sruja-intent",
     "crates/sruja-report",
     "crates/sruja-lsp",

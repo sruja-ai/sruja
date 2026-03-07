@@ -77,9 +77,7 @@ fn append_jsonl(repo_root: &Path, filename: &str, line: &str) -> Result<(), CliE
 }
 
 /// Read all non-empty lines from a JSONL file, parsed as T. Missing file => empty vec.
-fn read_jsonl<T: for<'de> Deserialize<'de>>(
-    path: &Path,
-) -> Result<Vec<T>, CliError> {
+fn read_jsonl<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<Vec<T>, CliError> {
     if !path.exists() {
         return Ok(Vec::new());
     }

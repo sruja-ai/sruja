@@ -14,9 +14,23 @@ pub struct CommitCandidate {
     pub score: f64,
 }
 
-const ARCH_PATHS: &[&str] = &["src/", "crates/", "services/", "api/", "infra/", "docs/adr/"];
+const ARCH_PATHS: &[&str] = &[
+    "src/",
+    "crates/",
+    "services/",
+    "api/",
+    "infra/",
+    "docs/adr/",
+];
 const ARCH_KEYWORDS: &[&str] = &[
-    "refactor", "architecture", "module", "service", "boundary", "migration", "split", "merge",
+    "refactor",
+    "architecture",
+    "module",
+    "service",
+    "boundary",
+    "migration",
+    "split",
+    "merge",
 ];
 const CODE_EXTENSIONS: &[&str] = &[".rs", ".go", ".ts", ".js", ".py"];
 
@@ -76,7 +90,14 @@ fn score_commit_subject(subject: &str) -> f64 {
 /// Score using number of changed files under ARCH_PATHS (requires git show --name-only).
 fn score_commit_files(repo_path: &Path, short_sha: &str) -> f64 {
     let out = Command::new("git")
-        .args(["-C", repo_path.as_os_str().to_str().unwrap_or("."), "show", "--name-only", "--format=", short_sha])
+        .args([
+            "-C",
+            repo_path.as_os_str().to_str().unwrap_or("."),
+            "show",
+            "--name-only",
+            "--format=",
+            short_sha,
+        ])
         .output();
     let out = match out {
         Ok(o) if o.status.success() => o,
@@ -133,7 +154,11 @@ pub fn score_commits(
         })
         .collect();
 
-    scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    scored.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     scored.truncate(top_k);
 
     // Diversity: prefer not adjacent same-minute/author; take up to max_final

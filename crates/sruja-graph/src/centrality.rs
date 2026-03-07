@@ -8,7 +8,12 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 pub struct CentralityAnalyzer {
     normalized: bool,
+    max_sample_size: usize,
 }
+
+const DEFAULT_MAX_SAMPLE_SIZE: usize = 1000;
+const LARGE_GRAPH_THRESHOLD: usize = 5000;
+const VERY_LARGE_GRAPH_THRESHOLD: usize = 50000;
 
 pub struct CentralityResult {
     pub betweenness: HashMap<String, f64>,
@@ -58,7 +63,10 @@ type BrandesBfsResult = (
 
 impl Default for CentralityAnalyzer {
     fn default() -> Self {
-        Self { normalized: true }
+        Self {
+            normalized: true,
+            max_sample_size: DEFAULT_MAX_SAMPLE_SIZE,
+        }
     }
 }
 
@@ -68,19 +76,45 @@ impl CentralityAnalyzer {
     }
 
     pub fn with_normalized(normalized: bool) -> Self {
-        Self { normalized }
+        Self {
+            normalized,
+            ..Self::default()
+        }
+    }
+
+    pub fn with_max_sample_size(max_sample_size: usize) -> Self {
+        Self {
+            max_sample_size,
+            ..Self::default()
+        }
     }
 
     pub fn analyze(&self, nodes: &[String], edges: &[(String, String)]) -> CentralityResult {
         let graph = DirectedGraph::from_edges(nodes, edges);
 
-        let betweenness = self.compute_betweenness(&graph);
+        let skip_betweenness = graph.nodes.len() > VERY_LARGE_GRAPH_THRESHOLD;
+
+        let betweenness = if skip_betweenness {
+            eprintln!(
+                "  ℹ️  Skipping betweenness centrality (graph too large: {} nodes)",
+                graph.nodes.len()
+            );
+            eprintln!("     Using degree centrality only for large graph analysis");
+            nodes.iter().map(|n| (n.clone(), 0.0)).collect()
+        } else {
+            self.compute_betweenness(&graph)
+        };
+
         let closeness = self.compute_closeness(&graph);
         let degree = self.compute_degree(&graph);
 
         let hotspots = self.identify_hotspots(&betweenness, &closeness, &degree);
         let top_hubs = self.identify_hubs(&degree, &graph);
-        let top_bridges = self.identify_bridges(&betweenness, &graph);
+        let top_bridges = if skip_betweenness {
+            vec![]
+        } else {
+            self.identify_bridges(&betweenness, &graph)
+        };
 
         CentralityResult {
             betweenness,
@@ -99,7 +133,29 @@ impl CentralityAnalyzer {
             betweenness.insert(node.clone(), 0.0);
         }
 
-        for source in &graph.nodes {
+        let sources: Vec<String> = if graph.nodes.len() > LARGE_GRAPH_THRESHOLD {
+            let degree = self.compute_degree(graph);
+            let mut nodes_with_degree: Vec<(String, f64)> = degree.into_iter().collect();
+            nodes_with_degree
+                .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+            nodes_with_degree
+                .into_iter()
+                .take(self.max_sample_size)
+                .map(|(node, _)| node)
+                .collect()
+        } else {
+            graph.nodes.clone()
+        };
+
+        let total_sources = sources.len();
+        for (idx, source) in sources.iter().enumerate() {
+            if total_sources > 100 && idx % 100 == 0 {
+                eprintln!(
+                    "  Computing betweenness: {}/{} sources processed",
+                    idx, total_sources
+                );
+            }
+
             let (mut stack, predecessors, sigma, _) = self.brandes_bfs(graph, source);
 
             let mut delta: HashMap<String, f64> = HashMap::new();
@@ -120,11 +176,18 @@ impl CentralityAnalyzer {
                     }
                 }
 
-                if &w != source {
+                if w != *source {
                     if let Some(bw) = betweenness.get_mut(&w) {
                         *bw += delta_w;
                     }
                 }
+            }
+        }
+
+        if graph.nodes.len() > LARGE_GRAPH_THRESHOLD {
+            let scale = graph.nodes.len() as f64 / sources.len() as f64;
+            for value in betweenness.values_mut() {
+                *value *= scale;
             }
         }
 
@@ -192,7 +255,21 @@ impl CentralityAnalyzer {
         let mut closeness: HashMap<String, f64> = HashMap::new();
         let n = graph.nodes.len();
 
-        for source in &graph.nodes {
+        let sources: Vec<String> = if graph.nodes.len() > LARGE_GRAPH_THRESHOLD {
+            let degree = self.compute_degree(graph);
+            let mut nodes_with_degree: Vec<(String, f64)> = degree.into_iter().collect();
+            nodes_with_degree
+                .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+            nodes_with_degree
+                .into_iter()
+                .take(self.max_sample_size)
+                .map(|(node, _)| node)
+                .collect()
+        } else {
+            graph.nodes.clone()
+        };
+
+        for source in &sources {
             let distances = self.bfs_distances(graph, source);
             let reachable: usize = distances.values().filter(|&&d| d < usize::MAX).count();
             let total_dist: usize = distances.values().filter(|&&d| d < usize::MAX).sum();
@@ -208,6 +285,12 @@ impl CentralityAnalyzer {
                 }
             } else {
                 closeness.insert(source.clone(), 0.0);
+            }
+        }
+
+        for node in &graph.nodes {
+            if !closeness.contains_key(node) {
+                closeness.insert(node.clone(), 0.0);
             }
         }
 

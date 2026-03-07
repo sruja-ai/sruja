@@ -280,8 +280,8 @@ fn calculate_health_score(
                 v.kind == ViolationKind::OrphanComponent && v.location.as_deref() == Some(&n.id)
             })
         })
-        .count() as u8;
-    score = score.saturating_sub(orphan_penalty * 3);
+        .count();
+    score = score.saturating_sub((orphan_penalty as u8).saturating_mul(3));
 
     score
 }

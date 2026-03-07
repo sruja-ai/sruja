@@ -1,13 +1,70 @@
 //! Scan and drift commands: scan, why, drift, quickstart.
 
-use std::fs;
-use std::path::Path;
 use colored::Colorize;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use sruja_graph::{merge_scan_into_graph, KnowledgeGraph};
 use sruja_scan::{scan_repo, Graph, NodeKind};
 
 use super::CliError;
+use crate::context_detection::{
+    build_repo_context, detect_architecture_style, detect_framework, detect_languages,
+};
+
+fn should_fail_on_violations(fail_on: Option<&str>, violations: &[sruja_diff::Violation]) -> bool {
+    if let Some(criteria) = fail_on {
+        let criteria_lower = criteria.to_lowercase();
+        let criteria_list: Vec<&str> = criteria_lower.split(',').map(|s| s.trim()).collect();
+
+        for criterion in criteria_list {
+            match criterion {
+                "all" => {
+                    if violations
+                        .iter()
+                        .any(|v| matches!(v.severity, sruja_diff::Severity::Error))
+                    {
+                        return true;
+                    }
+                }
+                "cycles" | "circular" => {
+                    if violations
+                        .iter()
+                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::CircularDependency))
+                    {
+                        return true;
+                    }
+                }
+                "layer-violations" | "layer" => {
+                    if violations
+                        .iter()
+                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::LayerViolation))
+                    {
+                        return true;
+                    }
+                }
+                "god-modules" | "god" => {
+                    if violations
+                        .iter()
+                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::GodModule))
+                    {
+                        return true;
+                    }
+                }
+                "orphans" => {
+                    if violations
+                        .iter()
+                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::OrphanComponent))
+                    {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    false
+}
 
 fn collect_file_evidence_from_scan(scan_graph: &Graph) -> Vec<String> {
     let mut files: std::collections::HashSet<String> = std::collections::HashSet::new();
@@ -24,7 +81,8 @@ fn collect_file_evidence_from_scan(scan_graph: &Graph) -> Vec<String> {
 }
 
 pub async fn scan(repo_root: &str, output: &str) -> Result<(), CliError> {
-    let graph = sruja_scan::scan_repo(Path::new(repo_root)).map_err(|e| CliError::Scan(e.to_string()))?;
+    let graph =
+        sruja_scan::scan_repo(Path::new(repo_root)).map_err(|e| CliError::Scan(e.to_string()))?;
 
     let json = serde_json::to_string_pretty(&graph)?;
 
@@ -89,6 +147,7 @@ pub async fn drift(
     format: &str,
     _enrich: bool,
     violations_only: bool,
+    fail_on: Option<&str>,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
 
@@ -113,7 +172,11 @@ pub async fn drift(
         let parser = sruja_language::Parser::new(arch_path);
         let program = parser.parse(&content).map_err(|diags| CliError::Parse {
             file: arch_path.to_string(),
-            message: diags.iter().map(|d| d.message.as_str()).collect::<Vec<_>>().join("; "),
+            message: diags
+                .iter()
+                .map(|d| d.message.as_str())
+                .collect::<Vec<_>>()
+                .join("; "),
         })?;
         let proposed_graph = sruja_diff::program_to_graph(&program);
         let diff_result = sruja_diff::compare_graphs(&actual_graph, &proposed_graph);
@@ -127,11 +190,7 @@ pub async fn drift(
             }
         }
 
-        if diff_result
-            .violations
-            .iter()
-            .any(|v| matches!(v.severity, sruja_diff::Severity::Error))
-        {
+        if should_fail_on_violations(fail_on, &diff_result.violations) {
             std::process::exit(1);
         }
     } else {
@@ -146,11 +205,7 @@ pub async fn drift(
             }
         }
 
-        if drift_result
-            .violations
-            .iter()
-            .any(|v| matches!(v.severity, sruja_diff::Severity::Error))
-        {
+        if should_fail_on_violations(fail_on, &drift_result.violations) {
             std::process::exit(1);
         }
     }
@@ -329,16 +384,28 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
     println!("  Repository: {}", repo.green());
     println!();
     println!("  Components detected:");
-    println!("    • {} modules", report.total_modules.to_string().yellow());
-    println!("    • {} services", report.total_services.to_string().yellow());
-    println!("    • {} databases", report.total_databases.to_string().yellow());
+    println!(
+        "    • {} modules",
+        report.total_modules.to_string().yellow()
+    );
+    println!(
+        "    • {} services",
+        report.total_services.to_string().yellow()
+    );
+    println!(
+        "    • {} databases",
+        report.total_databases.to_string().yellow()
+    );
     let external_apis = graph
         .nodes
         .iter()
         .filter(|n| n.kind == NodeKind::ExternalApi)
         .count();
     println!("    • {} external APIs", external_apis.to_string().yellow());
-    println!("    • {} total dependencies", report.total_dependencies.to_string().yellow());
+    println!(
+        "    • {} total dependencies",
+        report.total_dependencies.to_string().yellow()
+    );
     println!();
 
     println!("{}", "─".repeat(70).truecolor(100, 100, 100));
@@ -384,12 +451,17 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
         println!("  {}. {} {}", i + 1, icon, msg);
         if let Some(ref loc) = v.location {
             // Find actual path or sanitize ID to look like a path
-            let display_loc = graph.nodes.iter()
+            let display_loc = graph
+                .nodes
+                .iter()
                 .find(|n| &n.id == loc)
                 .map(|n| n.path.as_deref().unwrap_or(loc))
                 .unwrap_or(loc)
                 .replace("_", "/");
-            println!("     📍 Component: {}", display_loc.truecolor(180, 180, 180));
+            println!(
+                "     📍 Component: {}",
+                display_loc.truecolor(180, 180, 180)
+            );
         }
         if let Some(ref s) = v.suggestion {
             println!("     💡 Suggestion: {}", s.italic());
@@ -426,8 +498,15 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
             );
             println!("     Impact: {}", fix.impact.italic());
             if !fix.affected_components.is_empty() {
-                let display_affected: Vec<_> = fix.affected_components.iter().map(|c| c.replace("_", "/")).collect();
-                println!("     Affected: {}", display_affected.join(", ").truecolor(180, 180, 180));
+                let display_affected: Vec<_> = fix
+                    .affected_components
+                    .iter()
+                    .map(|c| c.replace("_", "/"))
+                    .collect();
+                println!(
+                    "     Affected: {}",
+                    display_affected.join(", ").truecolor(180, 180, 180)
+                );
             }
         }
         println!();
@@ -441,16 +520,26 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
     for node in &graph.nodes {
         let path_str = node.path.as_deref().unwrap_or(&node.id);
         let normalized = path_str.replace(['\\', '_'], "/");
-        let parts: Vec<&str> = normalized.split('/').filter(|p| !p.is_empty() && *p != ".").collect();
-        if parts.is_empty() { continue; }
-        
+        let parts: Vec<&str> = normalized
+            .split('/')
+            .filter(|p| !p.is_empty() && *p != ".")
+            .collect();
+        if parts.is_empty() {
+            continue;
+        }
+
         let mut domain_name = parts[0].to_string();
-        if (parts[0] == "crates" || parts[0] == "packages" || parts[0] == "src" || parts[0] == "internal") && parts.len() > 1 {
+        if (parts[0] == "crates"
+            || parts[0] == "packages"
+            || parts[0] == "src"
+            || parts[0] == "internal")
+            && parts.len() > 1
+        {
             domain_name = format!("{}/{}", parts[0], parts[1]);
         }
         *domains.entry(domain_name).or_insert(0) += 1;
     }
-    
+
     let mut sorted_domains: Vec<_> = domains.into_iter().collect();
     sorted_domains.sort_by(|a, b| b.1.cmp(&a.1));
 
@@ -471,7 +560,11 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
             );
         }
         if total > max_items {
-            println!("  {} ... and {} more", "└──".truecolor(100, 100, 100), (total - max_items).to_string().truecolor(100, 100, 100));
+            println!(
+                "  {} ... and {} more",
+                "└──".truecolor(100, 100, 100),
+                (total - max_items).to_string().truecolor(100, 100, 100)
+            );
         }
     }
 
@@ -481,10 +574,22 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
     println!("{}", "🚀 Next Steps".blue().bold());
     println!("{}", "─".repeat(70).truecolor(100, 100, 100));
     println!();
-    println!("  1. {}", "Review the findings above and prioritize fixes".white());
-    println!("  2. {}", "Run 'sruja drift -r . --format json' for detailed analysis".white());
-    println!("  3. {}", "Run 'sruja scan -r . -o architecture.json' to save the graph".white());
-    println!("  4. {}", "Run 'sruja why \"your question\" -r .' to explore architecture decisions".white());
+    println!(
+        "  1. {}",
+        "Review the findings above and prioritize fixes".white()
+    );
+    println!(
+        "  2. {}",
+        "Run 'sruja drift -r . --format json' for detailed analysis".white()
+    );
+    println!(
+        "  3. {}",
+        "Run 'sruja scan -r . -o architecture.json' to save the graph".white()
+    );
+    println!(
+        "  4. {}",
+        "Run 'sruja why \"your question\" -r .' to explore architecture decisions".white()
+    );
     println!();
     println!("{}", "═".repeat(70).truecolor(100, 100, 100));
 }
@@ -672,6 +777,7 @@ pub async fn quickstart(
     repo_root: &str,
     format: &str,
     generate_baseline: bool,
+    fail_on: Option<&str>,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
 
@@ -682,20 +788,49 @@ pub async fn quickstart(
         )));
     }
 
-    let enable_llm = std::env::var("SRUJA_LLM_PROVIDER").is_ok() 
-        || std::env::var("OPENAI_API_KEY").is_ok() 
-        || std::env::var("ANTHROPIC_API_KEY").is_ok() 
-        || std::env::var("GEMINI_API_KEY").is_ok() 
+    let enable_llm = std::env::var("SRUJA_LLM_PROVIDER").is_ok()
+        || std::env::var("OPENAI_API_KEY").is_ok()
+        || std::env::var("ANTHROPIC_API_KEY").is_ok()
+        || std::env::var("GEMINI_API_KEY").is_ok()
         || std::env::var("GOOGLE_API_KEY").is_ok();
 
     eprintln!("{}", "═".repeat(70).truecolor(100, 100, 100));
-    eprintln!("{}", "🚀 Sruja Quickstart - Architecture Intelligence".green().bold());
+    eprintln!(
+        "{}",
+        "🚀 Sruja Quickstart - Architecture Intelligence"
+            .green()
+            .bold()
+    );
     eprintln!("{}", "═".repeat(70).truecolor(100, 100, 100));
     eprintln!();
 
     eprintln!("📂 Scanning repository...");
     let graph = scan_repo(repo_path)?;
     eprintln!("   ✓ Found {} components", graph.nodes.len());
+
+    let languages = detect_languages(repo_path);
+    let primary_language = languages
+        .first()
+        .map(|(l, _)| l.as_str())
+        .unwrap_or("Unknown");
+    let framework = detect_framework(repo_path, primary_language);
+    let (is_monolith, is_microservices) = detect_architecture_style(&graph);
+    let context = build_repo_context(repo_path, &graph);
+
+    eprintln!();
+    eprintln!("📊 Repository Context");
+    eprintln!("   • Primary Language: {}", primary_language.cyan());
+    if let Some(ref fw) = framework {
+        eprintln!("   • Framework: {}", fw.cyan());
+    }
+    if is_microservices {
+        eprintln!("   • Architecture: {}", "Microservices".cyan());
+    } else if is_monolith {
+        eprintln!("   • Architecture: {}", "Monolith".cyan());
+    }
+    if let Some(ref domain) = context.domain {
+        eprintln!("   • Domain: {}", domain.cyan());
+    }
     eprintln!();
 
     eprintln!("🔍 Analyzing architecture health...");
@@ -726,16 +861,100 @@ pub async fn quickstart(
         }
     }
 
+    if should_fail_on_violations(fail_on, &drift_report.violations) {
+        std::process::exit(1);
+    }
+
+    Ok(())
+}
+
+pub async fn smart_coverage(
+    repo_root: &str,
+    format: &str,
+    target_ratio: Option<f64>,
+) -> Result<(), CliError> {
+    let repo_path = Path::new(repo_root);
+
+    if !repo_path.exists() {
+        return Err(CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {}", repo_root),
+        )));
+    }
+
+    let graph = scan_repo(repo_path)?;
+    let ratio = target_ratio.unwrap_or(0.15);
+
+    let total = graph.nodes.len();
+    let target_count = ((total as f64) * ratio).ceil() as usize;
+
+    let mut nodes_with_deps: Vec<_> = graph
+        .nodes
+        .iter()
+        .map(|n| {
+            let incoming = graph.edges.iter().filter(|e| e.target == n.id).count();
+            let outgoing = graph.edges.iter().filter(|e| e.source == n.id).count();
+            (n, incoming + outgoing)
+        })
+        .collect();
+    nodes_with_deps.sort_by(|a, b| b.1.cmp(&a.1));
+
+    let selected: Vec<_> = nodes_with_deps.into_iter().take(target_count).collect();
+
+    match format {
+        "json" => {
+            let result = serde_json::json!({
+                "total_components": total,
+                "target_ratio": ratio,
+                "selected_count": selected.len(),
+                "components": selected.iter().map(|(n, deps)| serde_json::json!({
+                    "id": n.id,
+                    "label": n.label,
+                    "path": n.path,
+                    "dependencies": deps,
+                })).collect::<Vec<_>>()
+            });
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        }
+        _ => {
+            println!("{}", "═".repeat(60));
+            println!("🎯 Smart Coverage Selection");
+            println!("{}", "═".repeat(60));
+            println!();
+            println!("  Total components: {}", total);
+            println!("  Target ratio: {:.0}%", ratio * 100.0);
+            println!("  Selected: {} components", selected.len());
+            println!();
+            println!("Top selected components by architectural importance:");
+            for (i, (n, deps)) in selected.iter().enumerate().take(20) {
+                println!(
+                    "  {}. {} ({} deps)",
+                    i + 1,
+                    n.label.cyan(),
+                    deps.to_string().yellow()
+                );
+            }
+            if selected.len() > 20 {
+                println!("  ... and {} more", selected.len() - 20);
+            }
+            println!();
+            println!("{}", "═".repeat(60));
+        }
+    }
+
     Ok(())
 }
 
 async fn generate_baseline_from_graph(graph: &Graph, enable_llm: bool, repo_path: &Path) -> String {
-    let mut domains: std::collections::HashMap<String, (usize, String, Vec<String>)> = std::collections::HashMap::new();
+    let mut domains: std::collections::HashMap<String, (usize, String, Vec<String>)> =
+        std::collections::HashMap::new();
     let mut db_nodes = Vec::new();
     let mut api_nodes = Vec::new();
 
     // Canonicalize repo_path for consistent stripping (important for macOS /var vs /private/var)
-    let repo_canon = repo_path.canonicalize().unwrap_or_else(|_| repo_path.to_path_buf());
+    let repo_canon = repo_path
+        .canonicalize()
+        .unwrap_or_else(|_| repo_path.to_path_buf());
 
     for node in &graph.nodes {
         if node.kind == NodeKind::Database {
@@ -748,7 +967,7 @@ async fn generate_baseline_from_graph(graph: &Graph, enable_llm: bool, repo_path
         }
 
         let mut path_str = node.path.clone().unwrap_or_else(|| node.id.clone());
-        
+
         // Strip out the repo_root prefix if it exists to clean up domain grouping
         if let Ok(p) = Path::new(&path_str).canonicalize() {
             if let Ok(stripped) = p.strip_prefix(&repo_canon) {
@@ -761,37 +980,42 @@ async fn generate_baseline_from_graph(graph: &Graph, enable_llm: bool, repo_path
         }
 
         let normalized = path_str.replace(['\\', '_'], "/");
-        let parts: Vec<&str> = normalized.split('/').filter(|p| !p.is_empty() && *p != ".").collect();
-        if parts.is_empty() { continue; }
-
-        let mut domain_name = parts[0].to_string();
-        
-        let src_idx = parts.iter().position(|&x| x == "src" || x == "lib" || x == "internal" || x == "packages" || x == "crates");
-        
-        if let Some(idx) = src_idx {
-            if parts.len() >= idx + 3 {
-                // E.g. ["axum", "src", "routing", "mod.rs"] -> idx=1, idx+3=4, len=4 -> groups as "axum/src/routing"
-                domain_name = parts[0..=idx+1].join("/");
-            } else {
-                // E.g. ["axum", "src", "lib.rs"] -> groups as "axum/src"
-                domain_name = parts[0..=idx].join("/");
-            }
-        } else {
-            if parts.len() > 2 {
-                domain_name = parts[0..2].join("/");
-            } else {
-                domain_name = parts[0].to_string();
-            }
+        let parts: Vec<&str> = normalized
+            .split('/')
+            .filter(|p| !p.is_empty() && *p != ".")
+            .collect();
+        if parts.is_empty() {
+            continue;
         }
 
-        let entry = domains.entry(domain_name).or_insert((0, String::new(), Vec::new()));
+        let src_idx = parts.iter().position(|&x| {
+            x == "src" || x == "lib" || x == "internal" || x == "packages" || x == "crates"
+        });
+
+        let domain_name = if let Some(idx) = src_idx {
+            if parts.len() >= idx + 3 {
+                // E.g. ["axum", "src", "routing", "mod.rs"] -> idx=1, idx+3=4, len=4 -> groups as "axum/src/routing"
+                parts[0..=idx + 1].join("/")
+            } else {
+                // E.g. ["axum", "src", "lib.rs"] -> groups as "axum/src"
+                parts[0..=idx].join("/")
+            }
+        } else if parts.len() > 2 {
+            parts[0..2].join("/")
+        } else {
+            parts[0].to_string()
+        };
+
+        let entry = domains
+            .entry(domain_name)
+            .or_insert((0, String::new(), Vec::new()));
         entry.0 += 1;
         if entry.1.is_empty() {
             if let Some(tech) = &node.technology {
                 entry.1 = tech.clone();
             }
         }
-        
+
         if entry.2.len() < 5 {
             let name = std::path::Path::new(&node.label)
                 .file_stem()
@@ -808,11 +1032,14 @@ async fn generate_baseline_from_graph(graph: &Graph, enable_llm: bool, repo_path
         let mut summary = String::new();
         summary.push_str("Top-Level Domains:\n");
         let mut sorted_domains: Vec<_> = domains.iter().collect();
-        sorted_domains.sort_by(|a, b| b.1.0.cmp(&a.1.0));
-        
+        sorted_domains.sort_by(|a, b| b.1 .0.cmp(&a.1 .0));
+
         for (domain, (count, tech, samples)) in sorted_domains.iter().take(40) {
             let sample_str = samples.join(", ");
-            summary.push_str(&format!("- {} ({} components, Primary Tech: {})\n  Sample modules: {}\n", domain, count, tech, sample_str));
+            summary.push_str(&format!(
+                "- {} ({} components, Primary Tech: {})\n  Sample modules: {}\n",
+                domain, count, tech, sample_str
+            ));
         }
 
         if !db_nodes.is_empty() {
@@ -825,7 +1052,10 @@ async fn generate_baseline_from_graph(graph: &Graph, enable_llm: bool, repo_path
         if !api_nodes.is_empty() {
             summary.push_str("\nExternal APIs:\n");
             for api in api_nodes.iter().take(5) {
-                summary.push_str(&format!("- {}\n", api.path.as_deref().unwrap_or(&api.label)));
+                summary.push_str(&format!(
+                    "- {}\n",
+                    api.path.as_deref().unwrap_or(&api.label)
+                ));
             }
         }
 
@@ -885,7 +1115,8 @@ Rules:
 9. Provide ONLY the raw Sruja DSL. No markdown formatting, no explanations. Do not wrap in ``` code blocks.
 "#;
 
-        if let Ok(raw_llm_response) = crate::commands::llm::call_llm(system_prompt, &summary).await {
+        if let Ok(raw_llm_response) = crate::commands::llm::call_llm(system_prompt, &summary).await
+        {
             let clean = raw_llm_response
                 .trim()
                 .strip_prefix("```sruja")
@@ -907,34 +1138,37 @@ Rules:
     let mut dsl = String::new();
     dsl.push_str("// Auto-generated high-level architecture baseline from Sruja quickstart\n");
     dsl.push_str("// Edit this file to match your intended architecture\n\n");
-    
+
     dsl.push_str("person = kind \"Person\"\n");
     dsl.push_str("system = kind \"System\"\n");
     dsl.push_str("container = kind \"Container\"\n");
     dsl.push_str("database = kind \"Database\"\n");
     dsl.push_str("external_api = kind \"External_Api\"\n\n");
-    
+
     dsl.push_str("user = person \"User\" {\n");
     dsl.push_str("  description \"End user of the application\"\n");
     dsl.push_str("}\n\n");
-    
+
     if !domains.is_empty() {
         dsl.push_str("app = system \"Application\" {\n");
         let mut sorted_domains: Vec<_> = domains.iter().collect();
-        sorted_domains.sort_by(|a, b| b.1.0.cmp(&a.1.0));
-        
+        sorted_domains.sort_by(|a, b| b.1 .0.cmp(&a.1 .0));
+
         for (domain, (count, tech, _)) in sorted_domains.iter().take(40) {
             let id = sanitize_id(domain);
             dsl.push_str(&format!("  {} = container \"{}\" {{\n", id, domain));
             if !tech.is_empty() {
                 dsl.push_str(&format!("    technology \"{}\"\n", tech));
             }
-            dsl.push_str(&format!("    description \"Contains {} components\"\n", count));
+            dsl.push_str(&format!(
+                "    description \"Contains {} components\"\n",
+                count
+            ));
             dsl.push_str("  }\n");
         }
         dsl.push_str("}\n\n");
     }
-    
+
     if !db_nodes.is_empty() {
         dsl.push_str("// Databases\n");
         for db in db_nodes.iter().take(5) {
@@ -948,7 +1182,7 @@ Rules:
         }
         dsl.push('\n');
     }
-    
+
     if !api_nodes.is_empty() {
         dsl.push_str("// External APIs\n");
         for api in api_nodes.iter().take(5) {
@@ -962,23 +1196,23 @@ Rules:
         }
         dsl.push('\n');
     }
-    
+
     dsl.push_str("// Run 'sruja lint architecture.sruja' to validate\n");
     dsl.push_str("// Run 'sruja drift -r . -a architecture.sruja' to compare code vs baseline\n");
-    
+
     dsl
 }
 
 fn sanitize_id(s: &str) -> String {
     s.replace("-", "_")
-     .replace(" ", "_")
-     .replace(".", "_")
-     .replace("/", "_")
-     .chars()
-     .filter(|c| c.is_alphanumeric() || *c == '_')
-     .collect::<String>()
-     .trim_start_matches(|c: char| c.is_numeric())
-     .to_string()
+        .replace(" ", "_")
+        .replace(".", "_")
+        .replace("/", "_")
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '_')
+        .collect::<String>()
+        .trim_start_matches(|c: char| c.is_numeric())
+        .to_string()
 }
 
 /// PR-scoped drift: compare base and head refs to find NEW violations
@@ -1009,7 +1243,6 @@ pub async fn drift_pr(
         .current_dir(repo_path)
         .output();
 
-    
     if git_check.is_err() || !git_check.unwrap().status.success() {
         return Err(CliError::Validation(
             "Not a git repository. PR-scoped drift requires git.".to_string(),
@@ -1021,38 +1254,125 @@ pub async fn drift_pr(
         .args(["diff", "--name-only", &format!("{}...{}", base, head)])
         .current_dir(repo_path)
         .output()
-        .map_err(|e| CliError::Io(std::io::Error::other(
-            format!("Failed to get changed files: {}", e),
-        )) )?;
-    
+        .map_err(|e| {
+            CliError::Io(std::io::Error::other(format!(
+                "Failed to get changed files: {}",
+                e
+            )))
+        })?;
+
     let changed_files: Vec<String> = String::from_utf8_lossy(&changed_files_output.stdout)
         .lines()
         .map(|s| s.trim().to_string())
         .collect();
-    
+
     if changed_files.is_empty() {
         eprintln!("✅ No changed files detected between {} in {}", base, head);
         return Ok(());
     }
-    
+
     eprintln!("📝 Changed files: {}", changed_files.len());
-    
-    // Scan current (head) state
-    let head_graph = scan_repo(repo_path)?;
-    let head_drift = sruja_diff::detect_architectural_drift(&head_graph);
-    
-    // Try to get base graph from cache
-    let cache_path = repo_path.join(".sruja").join("cache").join(format!("{}.json", base.replace("/", "_").replace(".", "_")));
-    let base_graph = if cache_path.exists() {
-        let content = fs::read_to_string(cache_path)?;
+
+    // Head graph: use cache by commit SHA if present (incremental / CI retry)
+    let head_sha_output = std::process::Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(repo_path)
+        .output()
+        .ok();
+    let head_sha = head_sha_output
+        .and_then(|o| {
+            o.status
+                .success()
+                .then(|| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        })
+        .unwrap_or_default();
+    let cache_dir = repo_path.join(".sruja").join("cache");
+    let _ = fs::create_dir_all(&cache_dir);
+    let head_cache_path = if !head_sha.is_empty() {
+        cache_dir.join(format!("head_{}.json", head_sha))
+    } else {
+        PathBuf::new() // sentinel: no cache
+    };
+    let head_graph = if !head_cache_path.as_os_str().is_empty() && head_cache_path.exists() {
+        eprintln!(
+            "📂 Using cached head graph ({})",
+            &head_sha[..head_sha.len().min(8)]
+        );
+        let content = fs::read_to_string(&head_cache_path)?;
         serde_json::from_str(&content).map_err(CliError::Json)?
     } else {
-        scan_repo(repo_path)?
+        let g = scan_repo(repo_path)?;
+        if !head_cache_path.as_os_str().is_empty() {
+            if let Ok(json) = serde_json::to_string_pretty(&g) {
+                let _ = fs::write(&head_cache_path, json);
+            }
+        }
+        g
     };
-    
+    let head_drift = sruja_diff::detect_architectural_drift(&head_graph);
+
+    // Base graph: from cache, or checkout base in a temp worktree and scan (so base != head)
+    let cache_filename = base.replace(['/', '.'], "_");
+    let cache_path = cache_dir.join(format!("{}.json", cache_filename));
+    let base_graph = if cache_path.exists() {
+        let content = fs::read_to_string(&cache_path)?;
+        serde_json::from_str(&content).map_err(CliError::Json)?
+    } else {
+        // No cache: checkout base ref in a temp worktree and scan there
+        let worktree_dir =
+            std::env::temp_dir().join(format!("sruja-drift-base-{}", std::process::id()));
+        if worktree_dir.exists() {
+            let _ = fs::remove_dir_all(&worktree_dir);
+        }
+        let status = std::process::Command::new("git")
+            .args([
+                "worktree",
+                "add",
+                "--detach",
+                worktree_dir.to_str().unwrap(),
+                base,
+            ])
+            .current_dir(repo_path)
+            .status()
+            .map_err(|e| {
+                CliError::Io(std::io::Error::other(format!(
+                    "git worktree add failed (is '{}' a valid ref?): {}",
+                    base, e
+                )))
+            })?;
+        if !status.success() {
+            return Err(CliError::Validation(format!(
+                "Could not checkout base ref '{}'. Run a full scan on base and save to .sruja/cache/{}.json, or ensure the ref exists.",
+                base, cache_filename
+            )));
+        }
+        let base_graph = scan_repo(&worktree_dir).map_err(|e| {
+            let _ = std::process::Command::new("git")
+                .args([
+                    "worktree",
+                    "remove",
+                    "--force",
+                    worktree_dir.to_str().unwrap(),
+                ])
+                .current_dir(repo_path)
+                .status();
+            CliError::Scan(e.to_string())
+        })?;
+        let _ = std::process::Command::new("git")
+            .args([
+                "worktree",
+                "remove",
+                "--force",
+                worktree_dir.to_str().unwrap(),
+            ])
+            .current_dir(repo_path)
+            .status();
+        base_graph
+    };
+
     // Compare: what violations exist in head that don't exist in base
     let base_drift = sruja_diff::detect_architectural_drift(&base_graph);
-    
+
     let new_violations: Vec<_> = head_drift
         .violations
         .iter()
@@ -1062,24 +1382,27 @@ pub async fn drift_pr(
             })
         })
         .collect();
-    
+
     let result = PrDriftResult {
         base_ref: base_ref.unwrap_or("origin/main").to_string(),
         head_ref: head_ref.unwrap_or("HEAD").to_string(),
         changed_files,
         base_health: base_drift.health_score,
         head_health: head_drift.health_score,
-        new_violations: new_violations.iter().map(|v| PrViolation {
-            severity: format!("{:?}", v.severity),
-            kind: format!("{:?}", v.kind),
-            message: v.message.clone(),
-            location: v.location.clone(),
-            suggestion: v.suggestion.clone(),
-        }).collect(),
+        new_violations: new_violations
+            .iter()
+            .map(|v| PrViolation {
+                severity: format!("{:?}", v.severity),
+                kind: format!("{:?}", v.kind),
+                message: v.message.clone(),
+                location: v.location.clone(),
+                suggestion: v.suggestion.clone(),
+            })
+            .collect(),
         base_violations_count: base_drift.violations.len(),
         head_violations_count: head_drift.violations.len(),
     };
-    
+
     match format {
         "json" => {
             let output = serde_json::to_string_pretty(&result)?;
@@ -1092,12 +1415,12 @@ pub async fn drift_pr(
             print_pr_drift_text(&result);
         }
     }
-    
-    // Exit with error if new violations found
+
+    // Exit with non-zero so CI fails when this PR introduces new violations
     if !result.new_violations.is_empty() {
-        std::process::exit(0);
+        std::process::exit(1);
     }
-    
+
     Ok(())
 }
 fn print_pr_drift_text(result: &PrDriftResult) {
@@ -1108,37 +1431,47 @@ fn print_pr_drift_text(result: &PrDriftResult) {
     println!("Base: {} → Head: {}", result.base_ref, result.head_ref);
     println!("Changed files: {}", result.changed_files.len());
     println!();
-    
+
     println!("📊 Health Score Change");
     println!("{}", "-".repeat(40));
     if result.head_health < result.base_health {
         println!(
             "  {} → {} (⚠️ -{})",
-            result.base_health, result.head_health,
+            result.base_health,
+            result.head_health,
             result.base_health - result.head_health
         );
     } else if result.head_health > result.base_health {
         println!(
             "  {} → {} (✓ +{})",
-            result.base_health, result.head_health,
+            result.base_health,
+            result.head_health,
             result.head_health - result.base_health
         );
     } else {
-        println!("  {} → {} (no change)", result.base_health, result.head_health);
+        println!(
+            "  {} → {} (no change)",
+            result.base_health, result.head_health
+        );
     }
     println!();
-    
+
     if result.new_violations.is_empty() {
         println!("{}", "-".repeat(40));
         println!("✅ No NEW architectural violations introduced in this PR!");
         println!("{}", "-".repeat(40));
         println!();
-        println!("Existing violations: {} (base) → {} (head)", 
-            result.base_violations_count, result.head_violations_count);
+        println!(
+            "Existing violations: {} (base) → {} (head)",
+            result.base_violations_count, result.head_violations_count
+        );
     } else {
-        println!("🚨 NEW Violations Introduced in This PR ({})", result.new_violations.len());
+        println!(
+            "🚨 NEW Violations Introduced in This PR ({})",
+            result.new_violations.len()
+        );
         println!("{}", "-".repeat(40));
-        
+
         for v in &result.new_violations {
             let icon = match v.severity.as_str() {
                 "Error" => "❌",
@@ -1154,12 +1487,12 @@ fn print_pr_drift_text(result: &PrDriftResult) {
                 println!("     💡 {}", s);
             }
         }
-        
+
         if result.new_violations.len() > 3 {
             println!();
             println!("     ... and {} more", result.new_violations.len() - 3);
         }
-        
+
         println!();
         println!(
             "⚠️  This PR introduces {} new violation(s). Consider fixing before merge.",
@@ -1167,7 +1500,7 @@ fn print_pr_drift_text(result: &PrDriftResult) {
         );
         println!();
     }
-    
+
     println!("{}", "═".repeat(70));
 }
 fn print_github_actions_output(result: &PrDriftResult) {
@@ -1178,18 +1511,27 @@ fn print_github_actions_output(result: &PrDriftResult) {
             _ => "notice",
         };
         if let Some(ref loc) = v.location {
-            println!("::{} file={},title=Sruja {}::{}", level, loc, v.kind, v.message);
+            println!(
+                "::{} file={},title=Sruja {}::{}",
+                level, loc, v.kind, v.message
+            );
         } else {
             println!("::{} title=Sruja {}::{}", level, v.kind, v.message);
         }
     }
-    
+
     if result.new_violations.is_empty() {
-        println!("::notice title=Sruja::✅ No new architectural violations. Health: {} → {}", 
-            result.base_health, result.head_health);
+        println!(
+            "::notice title=Sruja::✅ No new architectural violations. Health: {} → {}",
+            result.base_health, result.head_health
+        );
     } else {
-        println!("::error title=Sruja::🚨 {} new violation(s) introduced. Health: {} → {}", 
-            result.new_violations.len(), result.base_health, result.head_health);
+        println!(
+            "::error title=Sruja::🚨 {} new violation(s) introduced. Health: {} → {}",
+            result.new_violations.len(),
+            result.base_health,
+            result.head_health
+        );
     }
 }
 #[derive(Debug, serde::Serialize, serde::Deserialize)]

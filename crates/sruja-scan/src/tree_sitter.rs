@@ -45,6 +45,23 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
     let mut edges: Vec<Edge> = Vec::new();
     let mut module_nodes: HashMap<String, Node> = HashMap::new();
     let mut file_imports: HashMap<String, Vec<String>> = HashMap::new();
+    let mut module_imports: HashMap<String, Vec<String>> = HashMap::new();
+
+    let repo_canon = repo_root
+        .canonicalize()
+        .unwrap_or_else(|_| repo_root.to_path_buf());
+
+    let mut file_path_to_id: HashMap<String, String> = HashMap::new();
+    let mut go_module_path: Option<String> = None;
+
+    if let Ok(content) = std::fs::read_to_string(repo_root.join("go.mod")) {
+        for line in content.lines() {
+            if line.starts_with("module ") {
+                go_module_path = Some(line.trim_start_matches("module ").trim().to_string());
+                break;
+            }
+        }
+    }
 
     let walker = build_walker(repo_root, config);
 
@@ -89,13 +106,20 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
 
                         let node = Node {
                             id: file_id.clone(),
-                            kind: infer_node_kind(&parsed, path),
+                            kind: infer_node_kind(&parsed, path, &content),
                             label: parsed.name.clone(),
                             technology: Some(language.to_string()),
                             path: Some(path.to_string_lossy().to_string()),
                             metadata: HashMap::new(),
                         };
                         nodes.push(node);
+
+                        if let Ok(canon_path) = path.canonicalize() {
+                            if let Ok(rel) = canon_path.strip_prefix(&repo_canon) {
+                                file_path_to_id
+                                    .insert(rel.to_string_lossy().to_string(), file_id.clone());
+                            }
+                        }
 
                         edges.push(Edge {
                             source: module_id.clone(),
@@ -110,11 +134,27 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                         });
 
                         for import in &parsed.imports {
-                            let target_id = resolve_import(repo_root, path, import);
+                            let target_id = resolve_import_improved(
+                                repo_root,
+                                &repo_canon,
+                                path,
+                                import,
+                                &file_path_to_id,
+                                go_module_path.as_deref(),
+                                language,
+                            );
                             file_imports
                                 .entry(file_id.clone())
                                 .or_default()
-                                .push(target_id);
+                                .push(target_id.clone());
+
+                            let target_module = extract_module_from_id(&target_id);
+                            if target_module != parent_module {
+                                module_imports
+                                    .entry(parent_module.clone())
+                                    .or_default()
+                                    .push(target_module);
+                            }
                         }
 
                         for export in &parsed.exports {
@@ -168,6 +208,25 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
         }
     }
 
+    for (source_module, target_modules) in &module_imports {
+        let unique_targets: std::collections::HashSet<_> = target_modules.iter().cloned().collect();
+        for target_module in unique_targets {
+            let source_id = format!("module:{}", source_module);
+            let target_id = format!("module:{}", target_module);
+            edges.push(Edge {
+                source: source_id,
+                target: target_id,
+                kind: EdgeKind::Calls,
+                evidence: vec![EdgeEvidence {
+                    rule: "module_imports".to_string(),
+                    file: None,
+                    line: None,
+                    detail: Some(format!("module imports from {}", target_module)),
+                }],
+            });
+        }
+    }
+
     Ok(Graph {
         metadata: HashMap::new(),
         nodes,
@@ -186,7 +245,14 @@ fn build_walker(repo_root: &Path, config: &ScanConfig) -> ignore::Walk {
     if !config.include_node_modules {
         builder.filter_entry(|e| {
             let name = e.file_name().to_string_lossy();
-            name != "node_modules" && name != "target" && name != "dist" && name != "build"
+            let path = e.path().to_string_lossy();
+            name != "node_modules"
+                && name != "target"
+                && name != "dist"
+                && name != "build"
+                && name != "vendor"
+                && name != ".git"
+                && !path.contains("/vendor/")
         });
     }
 
@@ -197,20 +263,35 @@ fn build_walker(repo_root: &Path, config: &ScanConfig) -> ignore::Walk {
         builder.filter_entry(move |e| {
             let name = e.file_name().to_string_lossy();
             let path = e.path().to_string_lossy();
-            let is_test = name.contains("test") || name.contains("spec") || name == "__tests__" || path.contains("/tests/");
-            
-            let is_example = exclude_examples && (name.contains("example") || path.contains("/examples/"));
-            let is_bench = exclude_benches && (name.contains("bench") || path.contains("/benches/"));
-            
-            !is_test && !is_example && !is_bench
+            let is_test = name.contains("test")
+                || name.contains("spec")
+                || name == "__tests__"
+                || path.contains("/tests/");
+            let is_docs = name == "docs"
+                || name == "documentation"
+                || path.contains("/docs/")
+                || path.contains("/documentation/");
+
+            let is_example =
+                exclude_examples && (name.contains("example") || path.contains("/examples/"));
+            let is_bench =
+                exclude_benches && (name.contains("bench") || path.contains("/benches/"));
+
+            !is_test && !is_example && !is_bench && !is_docs
         });
     } else {
         builder.filter_entry(move |e| {
             let name = e.file_name().to_string_lossy();
             let path = e.path().to_string_lossy();
-            let is_example = exclude_examples && (name.contains("example") || path.contains("/examples/"));
-            let is_bench = exclude_benches && (name.contains("bench") || path.contains("/benches/"));
-            !is_example && !is_bench
+            let is_docs = name == "docs"
+                || name == "documentation"
+                || path.contains("/docs/")
+                || path.contains("/documentation/");
+            let is_example =
+                exclude_examples && (name.contains("example") || path.contains("/examples/"));
+            let is_bench =
+                exclude_benches && (name.contains("bench") || path.contains("/benches/"));
+            !is_example && !is_bench && !is_docs
         });
     }
 
@@ -244,77 +325,323 @@ fn parse_file(path: &Path, content: &str, language: Language) -> Option<ParsedFi
     }
 }
 
-fn infer_node_kind(parsed: &ParsedFile, path: &Path) -> NodeKind {
+fn infer_node_kind(parsed: &ParsedFile, path: &Path, content: &str) -> NodeKind {
     let path_str = path.to_string_lossy().to_lowercase();
     let name_lower = parsed.name.to_lowercase();
+    let content_lower = content.to_lowercase();
 
-    if path_str.contains("/api/")
-        || path_str.contains("/controller")
-        || path_str.contains("/handler")
-        || path_str.contains("/routes/")
-        || name_lower.contains("api")
-        || name_lower.contains("controller")
-        || name_lower.contains("handler")
-        || name_lower.contains("routes")
-    {
+    // Early exit: detect CLI tools and exclude from service detection
+    if is_cli_tool(&path_str, &content_lower) {
+        return NodeKind::Module;
+    }
+
+    // Check for deployment configs (highest confidence)
+    if is_deployment_config(&path_str) {
         return NodeKind::Service;
     }
 
-    if path_str.contains("/db/")
-        || path_str.contains("/database/")
-        || path_str.contains("/repository/")
-        || path_str.contains("/dao/")
-        || path_str.contains("/model/")
-        || path_str.contains("/entity/")
-        || name_lower.contains("repository")
-        || name_lower.contains("model")
-        || name_lower.contains("entity")
-        || name_lower.contains("db")
-        || name_lower.contains("schema")
-    {
+    // Check for Go cmd/*/main.go pattern (high confidence for Go services)
+    if is_go_service_entry_point(&path_str, &name_lower, &content_lower) {
+        return NodeKind::Service;
+    }
+
+    // Check for Java Spring Boot services
+    if is_java_service_entry_point(&content_lower, &path_str) {
+        return NodeKind::Service;
+    }
+
+    // Check for TypeScript/JavaScript server entry points
+    if is_js_service_entry_point(&content_lower, &path_str) {
+        return NodeKind::Service;
+    }
+
+    // Check for Python Flask/Django/FastAPI services
+    if is_python_service_entry_point(&content_lower, &path_str) {
+        return NodeKind::Service;
+    }
+
+    // Check for framework-specific server code (high confidence)
+    if has_framework_server_patterns(&content_lower) {
+        return NodeKind::Service;
+    }
+
+    // Check for main files with server initialization
+    if is_main_server_file(parsed, &path_str, &content_lower) {
+        return NodeKind::Service;
+    }
+
+    // Path/Name heuristics (conservative - require additional signals)
+    if is_service_directory(&path_str, &content_lower) {
+        return NodeKind::Service;
+    }
+
+    if is_database_directory(&path_str, &name_lower) {
         return NodeKind::Database;
     }
 
-    if path_str.contains("/external/")
-        || path_str.contains("/thirdparty/")
-        || path_str.contains("/vendor/")
-        || name_lower.contains("client")
-        || name_lower.contains("gateway")
-    {
+    if is_external_api_directory(&path_str, &name_lower) {
         return NodeKind::ExternalApi;
     }
 
     NodeKind::Module
 }
 
+fn is_go_service_entry_point(path_str: &str, name_lower: &str, content_lower: &str) -> bool {
+    if !path_str.ends_with(".go") {
+        return false;
+    }
+
+    if path_str.contains("/cmd/") && name_lower == "main" {
+        let http_indicators = [
+            "http.", "grpc.", "serve", "listen", "router", "mux", "handler",
+        ];
+        return http_indicators.iter().any(|i| content_lower.contains(i));
+    }
+
+    false
+}
+
+fn is_java_service_entry_point(content_lower: &str, path_str: &str) -> bool {
+    if !path_str.ends_with(".java") {
+        return false;
+    }
+
+    let spring_patterns = [
+        "@springbootapplication",
+        "@restcontroller",
+        "@controller",
+        "@service",
+        "extends springbootservletinitializer",
+        "@enablewebmvc",
+    ];
+
+    if spring_patterns.iter().any(|p| content_lower.contains(p)) {
+        return true;
+    }
+
+    if content_lower.contains("public static void main") {
+        let server_indicators = ["springapplication.run", "server", "tomcat", "jetty"];
+        return server_indicators.iter().any(|i| content_lower.contains(i));
+    }
+
+    false
+}
+
+fn is_js_service_entry_point(content_lower: &str, path_str: &str) -> bool {
+    let is_js_file = path_str.ends_with(".js")
+        || path_str.ends_with(".ts")
+        || path_str.ends_with(".mjs")
+        || path_str.ends_with(".cjs");
+
+    if !is_js_file {
+        return false;
+    }
+
+    let server_patterns = [
+        "express()",
+        "fastify(",
+        "fastify({",
+        "nestfactory.create",
+        "http.createserver",
+        "https.createserver",
+        "app.listen(",
+        "server.listen(",
+        "koa()",
+        "hapi.server",
+        "@nestjs/core",
+    ];
+
+    server_patterns.iter().any(|p| content_lower.contains(p))
+}
+
+fn is_python_service_entry_point(content_lower: &str, path_str: &str) -> bool {
+    if !path_str.ends_with(".py") {
+        return false;
+    }
+
+    let web_framework_patterns = [
+        "flask(__name__)",
+        "fastapi(",
+        "apirouter",
+        "django",
+        "tornado.web.application",
+        "aiohttp.web",
+        "sanic(",
+        "starlette(",
+        "quart(",
+        "bottle.run",
+    ];
+
+    web_framework_patterns
+        .iter()
+        .any(|p| content_lower.contains(p))
+}
+
+fn is_deployment_config(path_str: &str) -> bool {
+    (path_str.contains("deployment.") || path_str.contains("docker-compose."))
+        && (path_str.ends_with(".yaml") || path_str.ends_with(".yml"))
+        || path_str.ends_with("dockerfile")
+        || path_str.contains("serverless.yml")
+}
+
+fn has_framework_server_patterns(content_lower: &str) -> bool {
+    let patterns = [
+        "http.listenandserve",
+        "http.listenandservertls",
+        "gin.run(",
+        "echo.start(",
+        "fiber.listen(",
+        "app.listen(",
+        "server.listen(",
+        "express()",
+        "app.run(",
+        "uvicorn.run(",
+        "actix_web::httpserver",
+        "warp::serve",
+        "rocket::ignite",
+        "@springbootapplication",
+        "grpc.newserver",
+        "grpc.server",
+    ];
+
+    patterns.iter().any(|p| content_lower.contains(p))
+}
+
+fn is_main_server_file(parsed: &ParsedFile, _path_str: &str, content_lower: &str) -> bool {
+    if parsed.name.to_lowercase() != "main" {
+        return false;
+    }
+
+    let server_indicators = [
+        "http.listenandserve",
+        "listenandserve",
+        "app.listen",
+        "server.listen",
+        "gin.run",
+        "http.server",
+        "grpc.server",
+    ];
+
+    server_indicators
+        .iter()
+        .any(|indicator| content_lower.contains(indicator))
+}
+
+fn is_cli_tool(path_str: &str, content_lower: &str) -> bool {
+    // CLI framework patterns
+    let cli_patterns = [
+        "cobra.",
+        "urfave/cli",
+        "urfave/cli",
+        "cli.app",
+        "commander",
+        "yargs",
+        "argparse",
+        "click.command",
+        "cobra.command",
+        "flag.parse",
+    ];
+
+    // Check for CLI indicators in content
+    let has_cli_framework = cli_patterns.iter().any(|p| content_lower.contains(p));
+
+    // Check for CLI-specific paths
+    let is_cli_path = path_str.contains("/cmd/") && !path_str.contains("/cmd/server")
+        || path_str.contains("/cli/")
+        || path_str.ends_with("/main.go")
+            && (content_lower.contains("flag.") || content_lower.contains("args"));
+
+    has_cli_framework || is_cli_path
+}
+
+fn is_service_directory(path_str: &str, content_lower: &str) -> bool {
+    let patterns = ["/cmd/server", "/internal/server", "/pkg/server"];
+
+    // High-confidence server paths
+    if patterns.iter().any(|p| path_str.contains(p)) {
+        return true;
+    }
+
+    // Lower confidence paths - require additional HTTP/API indicators
+    let http_patterns = [
+        "http.",
+        "grpc.",
+        "rest",
+        "api",
+        "router",
+        "mux",
+        "handler",
+        "controller",
+        "endpoint",
+    ];
+
+    let has_http_indicator = http_patterns.iter().any(|p| content_lower.contains(p));
+
+    let service_paths = [
+        "/api/",
+        "/apis/",
+        "/controller",
+        "/controllers/",
+        "/handler",
+        "/handlers/",
+        "/routes/",
+    ];
+
+    service_paths.iter().any(|p| path_str.contains(p)) && has_http_indicator
+}
+
+fn is_database_directory(path_str: &str, name_lower: &str) -> bool {
+    path_str.contains("/db/")
+        || path_str.contains("/database/")
+        || path_str.contains("/dao/")
+        || (path_str.contains("/repository/") && !path_str.contains("/repositories/"))
+        || path_str.contains("/model/")
+        || path_str.contains("/entity/")
+        || (name_lower.ends_with("repository") && !name_lower.ends_with("services"))
+        || name_lower.ends_with("dao")
+        || name_lower.ends_with("schema")
+}
+
+fn is_external_api_directory(path_str: &str, name_lower: &str) -> bool {
+    path_str.contains("/external/")
+        || path_str.contains("/thirdparty/")
+        || path_str.contains("/vendor/")
+        || name_lower.ends_with("client")
+        || name_lower.ends_with("gateway")
+}
+
 /// Common extensions to try when resolving extensionless imports (TypeScript/JavaScript).
 const RESOLVE_EXTENSIONS: &[&str] = &[".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"];
 
-fn resolve_import(repo_root: &Path, from_file: &Path, import_path: &str) -> String {
+fn extract_module_from_id(id: &str) -> String {
+    id.rsplit('_').nth(1).unwrap_or(id).to_string()
+}
+
+fn resolve_import_improved(
+    repo_root: &Path,
+    repo_canon: &Path,
+    from_file: &Path,
+    import_path: &str,
+    file_path_to_id: &HashMap<String, String>,
+    go_module_path: Option<&str>,
+    language: Language,
+) -> String {
     if import_path.starts_with('.') || import_path.starts_with('/') {
         let from_dir = from_file.parent().unwrap_or(repo_root);
         let base = from_dir.join(import_path);
 
-        // Canonicalize repo_root for consistent strip_prefix (handles /var vs /private/var on macOS)
-        let repo_canon = match repo_root.canonicalize() {
-            Ok(p) => p,
-            Err(_) => repo_root.to_path_buf(),
-        };
-
         let to_id = |p: &Path| {
-            p.strip_prefix(&repo_canon)
+            p.strip_prefix(repo_canon)
                 .ok()
                 .map(|s| s.to_string_lossy().replace(['/', '\\', '.'], "_"))
         };
 
-        // Try exact path first
         if let Ok(resolved) = base.canonicalize() {
             if let Some(id) = to_id(&resolved) {
                 return id;
             }
         }
 
-        // Try with common extensions (e.g. './a' -> './a.ts')
         for ext in RESOLVE_EXTENSIONS {
             let candidate = base.with_extension(ext.trim_start_matches('.'));
             if candidate.exists() {
@@ -326,7 +653,6 @@ fn resolve_import(repo_root: &Path, from_file: &Path, import_path: &str) -> Stri
             }
         }
 
-        // Try directory index (e.g. './foo' -> './foo/index.ts')
         const INDEX_FILES: &[&str] = &[
             "index.ts",
             "index.tsx",
@@ -342,6 +668,56 @@ fn resolve_import(repo_root: &Path, from_file: &Path, import_path: &str) -> Stri
                         return id;
                     }
                 }
+            }
+        }
+    }
+
+    if language == Language::Go {
+        if let Some(module_path) = go_module_path {
+            if import_path.starts_with(module_path) {
+                let relative = import_path.strip_prefix(module_path).unwrap_or(import_path);
+                let relative = relative.trim_start_matches('/');
+
+                for ext in &[".go", ""] {
+                    let candidate = relative.to_string() + ext;
+                    if let Some(id) = file_path_to_id.get(&candidate) {
+                        return id.clone();
+                    }
+                }
+
+                for (path, id) in file_path_to_id {
+                    if path.starts_with(relative) || path.contains(&format!("/{}/", relative)) {
+                        return id.clone();
+                    }
+                }
+            }
+        }
+
+        for (path, id) in file_path_to_id {
+            let path_lower = path.to_lowercase();
+            let import_lower = import_path.to_lowercase();
+            let import_suffix = import_lower.rsplit('/').next().unwrap_or(&import_lower);
+            let path_suffix = path_lower.rsplit('/').next().unwrap_or(&path_lower);
+            let path_stem = path_suffix.trim_end_matches(".go");
+
+            if import_suffix == path_stem || import_lower.ends_with(&format!("/{}", path_stem)) {
+                return id.clone();
+            }
+        }
+    }
+
+    if language == Language::Java || language == Language::Kotlin || language == Language::Scala {
+        let java_path = import_path.replace('.', "/");
+        for (path, id) in file_path_to_id {
+            let path_normalized = path.replace('\\', "/");
+            if path_normalized.contains(&java_path)
+                || java_path.contains(
+                    path_normalized
+                        .trim_end_matches(".java")
+                        .trim_end_matches(".kt"),
+                )
+            {
+                return id.clone();
             }
         }
     }

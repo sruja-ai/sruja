@@ -108,4 +108,26 @@ mod tests {
         assert_eq!(report.total_modules, 4);
         assert!(!report.suggestions.is_empty());
     }
+
+    #[test]
+    fn test_health_score_no_overflow_with_many_orphans() {
+        let actual = Graph::new();
+        let mut proposed = Graph::new();
+
+        for i in 0..200 {
+            let id = format!("orphan_{}", i);
+            proposed
+                .nodes
+                .push(make_node(&id, NodeKind::Module, &format!("Orphan {}", i)));
+        }
+
+        let result = std::panic::catch_unwind(|| compare_graphs(&actual, &proposed));
+
+        assert!(
+            result.is_ok(),
+            "Health score calculation should not panic with many orphans"
+        );
+        let diff_result = result.unwrap();
+        assert!(diff_result.summary.health_score <= 100);
+    }
 }

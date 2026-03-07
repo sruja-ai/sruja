@@ -1,8 +1,38 @@
 # Making Sruja Buyable for Anyone: Features for AI-Era Fast Development
 
-**Goal:** Define the real features that make Sruja worth paying for by a broad set of teams—not just “architecture governance” niche—in a world where development is faster, more AI-assisted, and more chaotic.
+**OSS-first (current target):** We are targeting **pure open source users**—maintainers, contributors, small teams, self-hosted. Success = adoption, contributor experience, and “runs in my repo” with minimal friction. Value = fast feedback in PR + IDE, evidence for maintainers, and machine-readable context for AI—**without** requiring a paid product. “Buyable” and paid/hosted tiers remain future positioning.
+
+**Goal:** Define the real features that make Sruja valuable to a broad set of teams in a world where development is faster, more AI-assisted, and more chaotic.
 
 **Principle:** In AI-era fast dev, structure degrades faster, context is scarce, and “did we just break the architecture?” must be answered in seconds. Sruja should be the default tool that keeps structure and intent alive at that speed.
+
+---
+
+## Current state (OSS roadmap)
+
+| Priority | Feature | Status | Notes |
+|----------|---------|--------|-------|
+| P0 | PR / change-scoped drift | In progress | Base/head or changed-files; new violations only |
+| P0 | IDE real-time feedback | Not started | LSP or extension; depends on scan/graph APIs |
+| P1 | Machine-readable context for AI | In progress | `sruja context export` / for-ai JSON |
+| P1 | Incremental / fast analysis | Not started | Cache by ref; re-parse changed files + dependents |
+| P1 | “Why” and evidence as API | Partial | CLI JSON first; MCP/LSP later |
+| P2 | One-click baseline from quickstart | Not started | |
+| P2 | CI integration (GitHub Action) | Partial | Docs + example YAML |
+| P2 | Bounded context / tags + rules | Not started | |
+| P3 | Trends / dashboard | Future / optional | Out of scope for OSS-first phase |
+| P3 | More languages | Future | |
+
+**Incremental analysis:** Either treat as a **P0 dependency** with an MVP (drift on changed files + cache by git ref), or ship P0 with full-scan-on-PR first and add incremental when full scan is too slow for target repos.
+
+**Multi-repo:** **Out of scope for OSS v1.** Cross-repo graph and “which service can call which?” can be a future feature; single-repo PR gates and IDE feedback are the focus first.
+
+**Evidence API (minimal contract):** Structured “why” / evidence for tools and AI:
+
+- `Evidence { kind, id, file?, excerpt?, confidence?, rule_id? }`
+- Query types: “why this component?”, “what depends on X?”, “why is A→B allowed?” (e.g. ADR or rule).
+
+**Quality attributes (targets for OSS users):** PR-scoped drift should complete in a predictable time (e.g. &lt; 30s for medium repos with cache; full-scan fallback acceptable for small repos). IDE check budget: aim for &lt; 2s for current file + immediate deps when incremental is available. Results should be deterministic for the same base/head and config.
 
 ---
 

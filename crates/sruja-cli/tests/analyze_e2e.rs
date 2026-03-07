@@ -27,8 +27,6 @@ fn run_sruja(args: &[&str]) -> (bool, String, String) {
     (output.status.success(), stdout, stderr)
 }
 
-const SAMPLE_TRACES: &str = r#"[{"id":"1","name":"a","start":"2025-01-15T10:00:00Z","end":"2025-01-15T10:00:01Z","attributes":[],"children":[]}]"#;
-
 mod analyze_command {
     use super::*;
 
@@ -43,36 +41,23 @@ mod analyze_command {
         assert!(success, "analyze should succeed: stderr={}", stderr);
         let out = format!("{} {}", stdout, stderr);
         assert!(
-            out.contains("Semantic") || out.contains("Architecture Intelligence"),
+            out.contains("CTO Report") || out.contains("Health Score"),
             "out={}",
             out
         );
     }
 
     #[test]
-    fn analyze_json_has_semantic_and_runtime() {
+    fn analyze_json_output_succeeds() {
         let repo = create_test_repo();
         write_file(repo.path(), "m.ts", r#"export const m = 1;"#);
-        let traces_path = repo.path().join("traces.json");
-        fs::write(&traces_path, SAMPLE_TRACES).expect("write traces");
 
-        let (success, stdout, stderr) = run_sruja(&[
-            "analyze",
-            "-r",
-            repo.path().to_str().unwrap(),
-            "-t",
-            traces_path.to_str().unwrap(),
-            "-f",
-            "json",
-        ]);
+        let (success, stdout, stderr) =
+            run_sruja(&["analyze", "-r", repo.path().to_str().unwrap(), "-f", "json"]);
 
         assert!(success, "analyze -f json should succeed: stderr={}", stderr);
 
         let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-        assert!(json.get("semantic").is_some());
-        assert!(json.get("runtime").is_some());
-        let runtime = json.get("runtime").unwrap();
-        assert!(!runtime.is_null());
-        assert!(runtime.get("trace_count").is_some());
+        assert!(json.get("summary").is_some() || json.get("health_score").is_some());
     }
 }

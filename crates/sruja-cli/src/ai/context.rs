@@ -66,7 +66,10 @@ pub fn build_context(
             if !relevant.is_empty() {
                 parts.push("Stored facts (memory):".to_string());
                 for fact in relevant {
-                    parts.push(format!("  - [{}] {} (confidence: {})", fact.fact_id, fact.statement, fact.confidence));
+                    parts.push(format!(
+                        "  - [{}] {} (confidence: {})",
+                        fact.fact_id, fact.statement, fact.confidence
+                    ));
                 }
             }
             return Ok(BuildContextResult {

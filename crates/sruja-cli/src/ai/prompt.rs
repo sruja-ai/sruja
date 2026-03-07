@@ -47,7 +47,10 @@ pub fn parse_envelope(raw: &str) -> Result<Envelope, CliError> {
     let obj_str = &json_str[start..end];
 
     serde_json::from_str(obj_str).map_err(|e| {
-        CliError::Validation(format!("Could not parse LLM response as envelope JSON: {}", e))
+        CliError::Validation(format!(
+            "Could not parse LLM response as envelope JSON: {}",
+            e
+        ))
     })
 }
 
@@ -84,7 +87,8 @@ mod tests {
 
     #[test]
     fn parse_envelope_pure_json() {
-        let raw = r#"{"answer_markdown":"X","confidence":0.8,"facts":[],"assumptions":[],"gaps":[]}"#;
+        let raw =
+            r#"{"answer_markdown":"X","confidence":0.8,"facts":[],"assumptions":[],"gaps":[]}"#;
         let e = parse_envelope(raw).unwrap();
         assert_eq!(e.answer_markdown, "X");
         assert!((e.confidence - 0.8).abs() < 1e-9);
@@ -116,7 +120,10 @@ mod tests {
         assert_eq!(e.answer_markdown, "Requests enter via the API gateway.");
         assert!((e.confidence - 0.73).abs() < 1e-9);
         assert_eq!(e.facts.len(), 2);
-        assert_eq!(e.facts[0].statement, "HTTP requests enter through API gateway.");
+        assert_eq!(
+            e.facts[0].statement,
+            "HTTP requests enter through API gateway."
+        );
         assert_eq!(e.facts[0].fact_type, "flow");
         assert_eq!(e.facts[0].evidence_paths, &["crates/api/src/gateway.rs"]);
         assert_eq!(e.facts[1].fact_type, "boundary");

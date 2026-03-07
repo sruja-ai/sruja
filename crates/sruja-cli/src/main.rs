@@ -2,10 +2,13 @@
 //!
 //! Command-line interface for the Sruja DSL tool.
 
+pub mod ai;
 mod commands;
 mod config;
-pub mod ai;
+mod context_detection;
 mod modules;
+pub mod selection;
+mod utils;
 mod views;
 
 use clap::{Parser, Subcommand};
@@ -152,6 +155,9 @@ enum Commands {
         /// Only show violations, not suggestions
         #[arg(long)]
         violations_only: bool,
+        /// Fail with exit code 1 if specified violations found (comma-separated: cycles,layer-violations,god-modules,orphans,all)
+        #[arg(long)]
+        fail_on: Option<String>,
     },
     /// PR-scoped drift: detect only NEW violations in a PR
     DriftPr {
@@ -179,6 +185,9 @@ enum Commands {
         /// Generate a draft architecture.sruja baseline from scan
         #[arg(long)]
         generate_baseline: bool,
+        /// Fail with exit code 1 if specified violations found (comma-separated: cycles,layer-violations,god-modules,orphans,all)
+        #[arg(long)]
+        fail_on: Option<String>,
     },
     /// Analyze structural complexity (treewidth, SCC, centrality, coupling)
     Complexity {
@@ -210,7 +219,19 @@ enum Commands {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
-    /// Comprehensive analysis (structural + semantic + intent + optional runtime)
+    /// Smart component coverage selection (quality over quantity)
+    SmartCoverage {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (text, json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        /// Target compression ratio (0.1 = 10%, default: 0.15)
+        #[arg(long, short = 't')]
+        target_ratio: Option<f64>,
+    },
+    /// Comprehensive analysis (structural + semantic + intent)
     Analyze {
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]
@@ -218,9 +239,6 @@ enum Commands {
         /// Analysis view (cto, sre, devops, security, product, platform-engineer, tech-lead, or custom from .sruja.yaml)
         #[arg(long, short = 'v', default_value = "cto")]
         view: String,
-        /// Path to traces JSON (optional; adds runtime layer)
-        #[arg(long, short = 't')]
-        traces: Option<String>,
         /// Path to intent directory (ADRs, .sruja files; defaults to repo/docs/architecture)
         #[arg(long, short = 'i')]
         intent: Option<String>,
@@ -230,11 +248,6 @@ enum Commands {
         /// Enable LLM-powered insights
         #[arg(long)]
         llm: bool,
-    },
-    /// Runtime trace analysis (agent execution trees, emergent cycles)
-    Runtime {
-        #[command(subcommand)]
-        cmd: RuntimeCommand,
     },
     /// Compare declared architectural intent vs actual implementation
     Intent {
@@ -252,6 +265,11 @@ enum Commands {
         /// Output file (defaults to stdout)
         #[arg(long, short = 'o')]
         output: Option<String>,
+    },
+    /// Analyze runtime traces (spans) for emergent cycles and hotspots
+    Runtime {
+        #[command(subcommand)]
+        cmd: RuntimeCommand,
     },
     /// AI-Powered Architecture Timeline evolution from git history
     Timeline {
@@ -324,12 +342,12 @@ enum TimelineCommand {
 
 #[derive(Subcommand)]
 enum RuntimeCommand {
-    /// Analyze traces from a JSON file
+    /// Analyze trace/span JSON for emergent cycles and hotspots
     Analyze {
-        /// Path to traces JSON file (array of ExecutionTrace)
+        /// Path to traces JSON file (array of spans with id, name, start, end, children)
         #[arg(long, short = 't')]
         traces: String,
-        /// Output format (text, json)
+        /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
@@ -408,6 +426,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             architecture,
             format,
             violations_only,
+            fail_on,
         } => {
             commands::drift(
                 &repo,
@@ -415,6 +434,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &format,
                 false,
                 violations_only,
+                fail_on.as_deref(),
             )
             .await
         }
@@ -423,10 +443,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             base,
             head,
             format,
-        } => {
-            commands::drift_pr(&repo, base.as_deref(), head.as_deref(), &format).await
-        }
-        Commands::Quickstart { path, format, generate_baseline } => commands::quickstart(&path, &format, generate_baseline).await,
+        } => commands::drift_pr(&repo, base.as_deref(), head.as_deref(), &format).await,
+        Commands::Quickstart {
+            path,
+            format,
+            generate_baseline,
+            fail_on,
+        } => commands::quickstart(&path, &format, generate_baseline, fail_on.as_deref()).await,
         Commands::Complexity {
             repo,
             format,
@@ -436,33 +459,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             coupling,
         } => commands::complexity(&repo, &format, treewidth, scc, centrality, coupling).await,
         Commands::Semantic { repo, format } => commands::semantic_analyze(&repo, &format).await,
+        Commands::SmartCoverage {
+            repo,
+            format,
+            target_ratio,
+        } => commands::smart_coverage(&repo, &format, target_ratio).await,
         Commands::Analyze {
             repo,
             view,
-            traces,
             intent,
             format,
             llm,
         } => {
             let intent_opt = intent.or_else(|| std::env::var("SRUJA_INTENT_PATH").ok());
-            let traces_opt = traces.or_else(|| std::env::var("SRUJA_TRACES_PATH").ok());
-            commands::analyze(
-                &repo,
-                &view,
-                traces_opt.as_deref(),
-                intent_opt.as_deref(),
-                &format,
-                llm,
-            )
-            .await
+            commands::analyze(&repo, &view, intent_opt.as_deref(), &format, llm).await
         }
-        Commands::Runtime { cmd } => match cmd {
-            RuntimeCommand::Analyze { traces, format } => {
-                commands::runtime_analyze(&traces, &format).await
-            }
-        },
         Commands::Intent { cmd } => match cmd {
-            IntentCommand::Check { repo, intent, format } => {
+            IntentCommand::Check {
+                repo,
+                intent,
+                format,
+            } => {
                 let intent_opt = intent.or_else(|| std::env::var("SRUJA_INTENT_PATH").ok());
                 commands::intent_check(&repo, intent_opt.as_deref(), &format).await
             }
@@ -470,27 +487,47 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 commands::intent_propose(&repo, intent.as_deref()).await
             }
         },
-        Commands::Context { repo, format, output } => {
-            commands::context_export(&repo, &format, output.as_deref()).await
-        }
-        Commands::Timeline { cmd } => match cmd {
-            TimelineCommand::Explain { repo, max_commits, format } => {
-                commands::timeline::timeline_explain(&repo, max_commits, &format).await
+        Commands::Context {
+            repo,
+            format,
+            output,
+        } => commands::context_export(&repo, &format, output.as_deref()).await,
+        Commands::Runtime { cmd } => match cmd {
+            RuntimeCommand::Analyze { traces, format } => {
+                commands::runtime_analyze(&traces, &format).await
             }
         },
+        Commands::Timeline { cmd } => match cmd {
+            TimelineCommand::Explain {
+                repo,
+                max_commits,
+                format,
+            } => commands::timeline::timeline_explain(&repo, max_commits, &format).await,
+        },
         Commands::Ai { cmd } => match cmd {
-            AiCommand::Explain { repo, topic, format, graph } => {
-                commands::ai::ai_explain(&repo, &topic, &format, graph.as_deref()).await
+            AiCommand::Explain {
+                repo,
+                topic,
+                format,
+                graph,
+            } => commands::ai::ai_explain(&repo, &topic, &format, graph.as_deref()).await,
+            AiCommand::Ask {
+                repo,
+                question,
+                format,
+                graph,
+            } => commands::ai::ai_ask(&repo, &question, &format, graph.as_deref()).await,
+            AiCommand::Feedback {
+                repo,
+                answer_id,
+                fact_id,
+                verdict,
+                comment,
+            } => {
+                commands::ai::ai_feedback(&repo, &answer_id, &fact_id, &verdict, comment.as_deref())
+                    .await
             }
-            AiCommand::Ask { repo, question, format, graph } => {
-                commands::ai::ai_ask(&repo, &question, &format, graph.as_deref()).await
-            }
-            AiCommand::Feedback { repo, answer_id, fact_id, verdict, comment } => {
-                commands::ai::ai_feedback(&repo, &answer_id, &fact_id, &verdict, comment.as_deref()).await
-            }
-            AiCommand::Memory { repo, format } => {
-                commands::ai::ai_memory(&repo, &format).await
-            }
+            AiCommand::Memory { repo, format } => commands::ai::ai_memory(&repo, &format).await,
         },
     };
 

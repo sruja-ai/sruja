@@ -1,13 +1,79 @@
 //! Analysis commands: complexity, semantic, comprehensive analyze.
 
+use std::collections::HashMap;
 use std::path::Path;
 
-use sruja_scan::scan_repo;
+use sruja_scan::{scan_repo, Graph, NodeKind};
 use sruja_semantic::{analyze as run_semantic_analyze, embedding::StubEmbeddingProvider};
 
 use super::CliError;
 use crate::config::SrujaConfig;
-use crate::views::{ViewContext, print_view_report};
+use crate::views::{print_view_report, ViewContext};
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ActionableRecommendation {
+    pub title: String,
+    pub category: RecommendationCategory,
+    pub affected_components: Vec<ComponentReference>,
+    pub impact_metrics: ImpactMetrics,
+    pub effort_estimate: EffortEstimate,
+    pub priority: Priority,
+    pub rationale: String,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ComponentReference {
+    pub name: String,
+    pub file_path: String,
+    pub line_numbers: Option<Vec<usize>>,
+    pub centrality_score: f64,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ImpactMetrics {
+    pub services_affected: usize,
+    pub modules_impacted: usize,
+    pub databases_consolidated: Option<usize>,
+    pub coupling_reduction: Option<f64>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct EffortEstimate {
+    pub weeks: f64,
+    pub team_size: usize,
+    pub complexity: Complexity,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum RecommendationCategory {
+    DataConsolidation,
+    Decoupling,
+    Performance,
+    Maintainability,
+    Security,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum Priority {
+    Critical,
+    High,
+    Medium,
+    Low,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum Complexity {
+    Low,
+    Medium,
+    High,
+}
 
 pub async fn complexity(
     repo_root: &str,
@@ -207,7 +273,6 @@ pub async fn semantic_analyze(repo_root: &str, format: &str) -> Result<(), CliEr
 pub async fn analyze(
     repo_root: &str,
     view_name: &str,
-    _traces_path: Option<&str>,
     _intent_path: Option<&str>,
     format: &str,
     enable_llm: bool,
@@ -220,10 +285,9 @@ pub async fn analyze(
         )));
     }
 
-    let mut config = SrujaConfig::load(repo_path).map_err(|e| {
-        CliError::Validation(format!("Failed to load config: {}", e))
-    })?;
-    
+    let mut config = SrujaConfig::load(repo_path)
+        .map_err(|e| CliError::Validation(format!("Failed to load config: {}", e)))?;
+
     config.defaults.enable_llm = enable_llm || config.defaults.enable_llm;
 
     let graph = scan_repo(repo_path)?;
@@ -231,8 +295,7 @@ pub async fn analyze(
     let view_context = ViewContext::new(view_name, graph.clone(), repo_path, config)
         .map_err(CliError::Validation)?;
 
-    let view_report = view_context.analyze().await
-        .map_err(CliError::Validation)?;
+    let view_report = view_context.analyze().await.map_err(CliError::Validation)?;
 
     print_view_report(&view_report, format);
 
@@ -359,6 +422,319 @@ fn print_scc_section(nodes: &[String], edges: &[(String, String)]) {
                 println!("    ... and {} more cyclic SCCs", cyclic.len() - 5);
             }
             println!();
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn generate_specific_recommendations(
+        graph: &Graph,
+        violations: &[sruja_diff::Violation],
+    ) -> Vec<ActionableRecommendation> {
+        let mut recommendations = Vec::new();
+
+        if let Some(rec) = analyze_database_consolidation(graph) {
+            recommendations.push(rec);
+        }
+
+        for violation in violations
+            .iter()
+            .filter(|v| v.kind == sruja_diff::ViolationKind::GodModule)
+        {
+            if let Some(rec) = create_decoupling_recommendation(graph, violation) {
+                recommendations.push(rec);
+            }
+        }
+
+        if let Some(rec) = analyze_coupling_hotspots(graph) {
+            recommendations.push(rec);
+        }
+
+        recommendations
+    }
+
+    #[allow(dead_code)]
+    fn analyze_database_consolidation(graph: &Graph) -> Option<ActionableRecommendation> {
+        let db_nodes: Vec<_> = graph
+            .nodes
+            .iter()
+            .filter(|n| n.kind == NodeKind::Database)
+            .collect();
+
+        if db_nodes.len() < 5 {
+            return None;
+        }
+
+        let mut by_tech: HashMap<String, Vec<&sruja_scan::Node>> = HashMap::new();
+        for db in &db_nodes {
+            let tech = db.technology.as_deref().unwrap_or("Unknown");
+            by_tech
+                .entry(tech.to_string())
+                .or_default()
+                .push(db);
+        }
+
+        let mut consolidation_targets = Vec::new();
+        for dbs in by_tech.values() {
+            if dbs.len() > 3 {
+                consolidation_targets.extend(dbs.iter().take(3));
+            }
+        }
+
+        if consolidation_targets.is_empty() {
+            return None;
+        }
+
+        Some(ActionableRecommendation {
+        title: format!("Consolidate {} database instances", consolidation_targets.len()),
+        category: RecommendationCategory::DataConsolidation,
+        affected_components: consolidation_targets.iter().map(|db: &&sruja_scan::Node| ComponentReference {
+            name: db.label.clone(),
+            file_path: db.path.clone().unwrap_or_default(),
+            line_numbers: None,
+            centrality_score: 0.0,
+        }).collect(),
+        impact_metrics: ImpactMetrics {
+            services_affected: count_dependent_services(graph, &consolidation_targets),
+            modules_impacted: count_dependent_modules(graph, &consolidation_targets),
+            databases_consolidated: Some(consolidation_targets.len()),
+            coupling_reduction: Some(0.2),
+        },
+        effort_estimate: EffortEstimate {
+            weeks: 2.5,
+            team_size: 3,
+            complexity: Complexity::Medium,
+        },
+        priority: Priority::Medium,
+        rationale: format!(
+            "Multiple {} instances suggest data silos. Consolidation will improve data consistency and reduce operational overhead.",
+            by_tech.keys().next().unwrap_or(&"database".to_string())
+        ),
+    })
+    }
+
+    #[allow(dead_code)]
+    fn create_decoupling_recommendation(
+        graph: &Graph,
+        violation: &sruja_diff::Violation,
+    ) -> Option<ActionableRecommendation> {
+        let location = violation.location.as_ref()?;
+        let god_module = graph
+            .nodes
+            .iter()
+            .find(|n| &n.id == location || &n.label == location)?;
+
+        let dependents: Vec<_> = graph
+            .edges
+            .iter()
+            .filter(|e| e.target == god_module.id)
+            .collect();
+
+        Some(ActionableRecommendation {
+            title: format!("Decouple god module: {}", god_module.label),
+            category: RecommendationCategory::Decoupling,
+            affected_components: vec![ComponentReference {
+                name: god_module.label.clone(),
+                file_path: god_module.path.clone().unwrap_or_default(),
+                line_numbers: None,
+                centrality_score: calculate_centrality(graph, &god_module.id),
+            }],
+            impact_metrics: ImpactMetrics {
+                services_affected: count_services_in_path(&god_module.path),
+                modules_impacted: dependents.len(),
+                databases_consolidated: None,
+                coupling_reduction: Some(0.3),
+            },
+            effort_estimate: EffortEstimate {
+                weeks: 2.0,
+                team_size: 2,
+                complexity: Complexity::High,
+            },
+            priority: Priority::High,
+            rationale: format!(
+                "Module has {} dependencies (threshold: 10). Splitting reduces regression risk.",
+                dependents.len()
+            ),
+        })
+    }
+
+    #[allow(dead_code)]
+    fn analyze_coupling_hotspots(graph: &Graph) -> Option<ActionableRecommendation> {
+        let nodes: Vec<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
+        let edges: Vec<(String, String)> = graph
+            .edges
+            .iter()
+            .map(|e| (e.source.clone(), e.target.clone()))
+            .collect();
+
+        let analyzer = sruja_graph::CentralityAnalyzer::new();
+        let result = analyzer.analyze(&nodes, &edges);
+
+        let high_centrality_count = result
+            .top_hubs
+            .iter()
+            .filter(|h| h.degree_centrality > 0.1)
+            .count();
+
+        if high_centrality_count < 3 {
+            return None;
+        }
+
+        let hotspots: Vec<_> = result
+            .top_hubs
+            .iter()
+            .filter(|h| h.degree_centrality > 0.1)
+            .take(5)
+            .collect();
+
+        Some(ActionableRecommendation {
+        title: "Reduce coupling in high-centrality modules".to_string(),
+        category: RecommendationCategory::Maintainability,
+        affected_components: hotspots.iter().map(|h| ComponentReference {
+            name: h.node.clone(),
+            file_path: h.node.clone(),
+            line_numbers: None,
+            centrality_score: h.degree_centrality,
+        }).collect(),
+        impact_metrics: ImpactMetrics {
+            services_affected: hotspots.len(),
+            modules_impacted: hotspots.iter().map(|h| h.dependents).sum(),
+            databases_consolidated: None,
+            coupling_reduction: Some(0.25),
+        },
+        effort_estimate: EffortEstimate {
+            weeks: 3.0,
+            team_size: 3,
+            complexity: Complexity::High,
+        },
+        priority: Priority::High,
+        rationale: format!(
+            "{} modules have high centrality (>0.1). Reducing coupling improves maintainability and testability.",
+            high_centrality_count
+        ),
+    })
+    }
+
+    #[allow(dead_code)]
+    fn count_dependent_services(graph: &Graph, targets: &[&sruja_scan::Node]) -> usize {
+        let target_ids: Vec<_> = targets.iter().map(|t| t.id.clone()).collect();
+        graph
+            .edges
+            .iter()
+            .filter(|e| target_ids.contains(&e.target))
+            .map(|e| e.source.clone())
+            .collect::<std::collections::HashSet<_>>()
+            .len()
+    }
+
+    #[allow(dead_code)]
+    fn count_dependent_modules(graph: &Graph, targets: &[&sruja_scan::Node]) -> usize {
+        let target_ids: Vec<_> = targets.iter().map(|t| t.id.clone()).collect();
+        graph
+            .edges
+            .iter()
+            .filter(|e| target_ids.contains(&e.target))
+            .count()
+    }
+
+    #[allow(dead_code)]
+    fn calculate_centrality(graph: &Graph, node_id: &str) -> f64 {
+        let nodes: Vec<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
+        let edges: Vec<(String, String)> = graph
+            .edges
+            .iter()
+            .map(|e| (e.source.clone(), e.target.clone()))
+            .collect();
+
+        let analyzer = sruja_graph::CentralityAnalyzer::new();
+        let result = analyzer.analyze(&nodes, &edges);
+
+        result
+            .top_hubs
+            .iter()
+            .find(|h| h.node == node_id)
+            .map(|h| h.degree_centrality)
+            .unwrap_or(0.0)
+    }
+
+    #[allow(dead_code)]
+    fn count_services_in_path(path: &Option<String>) -> usize {
+        path.as_ref()
+            .map(|p| p.matches('/').count() + 1)
+            .unwrap_or(1)
+    }
+
+    #[allow(dead_code)]
+    fn format_recommendation_for_llm(rec: &ActionableRecommendation) -> String {
+        let mut output = String::new();
+
+        output.push_str(&format!("## {}\n\n", rec.title));
+
+        output.push_str("📍 **Affected Components:**\n");
+        for comp in &rec.affected_components {
+            output.push_str(&format!("  • {}\n", comp.file_path));
+            if comp.centrality_score > 0.05 {
+                output.push_str(&format!(
+                    "    Centrality: {:.2} (high)\n",
+                    comp.centrality_score
+                ));
+            }
+        }
+        output.push('\n');
+
+        output.push_str("📊 **Impact:**\n");
+        output.push_str(&format!(
+            "  • Services affected: {}\n",
+            rec.impact_metrics.services_affected
+        ));
+        output.push_str(&format!(
+            "  • Modules impacted: {}\n",
+            rec.impact_metrics.modules_impacted
+        ));
+        if let Some(dbs) = rec.impact_metrics.databases_consolidated {
+            output.push_str(&format!("  • Databases consolidated: {}\n", dbs));
+        }
+        if let Some(coupling) = rec.impact_metrics.coupling_reduction {
+            output.push_str(&format!(
+                "  • Coupling reduction: {:.0}%\n",
+                coupling * 100.0
+            ));
+        }
+        output.push('\n');
+
+        output.push_str("⏱️ **Effort:**\n");
+        output.push_str(&format!(
+            "  {} weeks ({} developers, {} complexity)\n\n",
+            rec.effort_estimate.weeks,
+            rec.effort_estimate.team_size,
+            format_complexity(&rec.effort_estimate.complexity)
+        ));
+
+        output.push_str(&format!(
+            "🎯 **Priority:** {}\n\n",
+            format_priority(&rec.priority)
+        ));
+
+        output.push_str(&format!("💡 **Rationale:** {}\n", rec.rationale));
+
+        output
+    }
+
+    #[allow(dead_code)]
+    fn format_complexity(complexity: &Complexity) -> &'static str {
+        match complexity {
+            Complexity::Low => "low",
+            Complexity::Medium => "medium",
+            Complexity::High => "high",
+        }
+    }
+
+    #[allow(dead_code)]
+    fn format_priority(priority: &Priority) -> &'static str {
+        match priority {
+            Priority::Critical => "Critical",
+            Priority::High => "High",
+            Priority::Medium => "Medium",
+            Priority::Low => "Low",
         }
     }
 }

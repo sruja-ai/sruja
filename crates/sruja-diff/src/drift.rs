@@ -128,7 +128,7 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
     }
 }
 
-/// Find circular dependencies in the graph using DFS.
+/// Find circular dependencies in the graph using Tarjan's SCC algorithm.
 /// Returns deduplicated cycles (canonicalized by lexicographically smallest rotation).
 pub fn find_circular_dependencies(graph: &Graph) -> Vec<Vec<String>> {
     let mut adj: HashMap<&str, Vec<&str>> = HashMap::new();
@@ -138,33 +138,160 @@ pub fn find_circular_dependencies(graph: &Graph) -> Vec<Vec<String>> {
             .push(edge.target.as_str());
     }
 
-    let mut raw_cycles: Vec<Vec<&str>> = Vec::new();
-    let mut visited: HashSet<&str> = HashSet::new();
-    let mut rec_stack: HashSet<&str> = HashSet::new();
-    let mut path: Vec<&str> = Vec::new();
+    // Find all strongly connected components (SCCs)
+    let sccs = tarjan_scc(&graph.nodes, &adj);
 
-    for node in &graph.nodes {
-        if !visited.contains(node.id.as_str()) {
-            dfs_cycles(
+    // Convert SCCs with more than 1 node to cycles
+    let mut result = Vec::new();
+    for scc in sccs {
+        if scc.len() > 1 {
+            // For SCCs, we need to find an actual cycle path
+            if let Some(cycle) = find_cycle_in_scc(&scc, &adj) {
+                let canonical = canonicalize_cycle(&cycle);
+                result.push(canonical);
+            }
+        }
+    }
+
+    result
+}
+
+/// Tarjan's algorithm for finding strongly connected components
+fn tarjan_scc<'a>(
+    nodes: &'a [sruja_scan::Node],
+    adj: &HashMap<&'a str, Vec<&'a str>>,
+) -> Vec<Vec<&'a str>> {
+    let mut index_counter = 0usize;
+    let mut stack: Vec<&'a str> = Vec::new();
+    let mut indices: HashMap<&'a str, usize> = HashMap::new();
+    let mut lowlinks: HashMap<&'a str, usize> = HashMap::new();
+    let mut on_stack: HashSet<&'a str> = HashSet::new();
+    let mut sccs: Vec<Vec<&'a str>> = Vec::new();
+
+    for node in nodes {
+        if !indices.contains_key(node.id.as_str()) {
+            tarjan_strongconnect(
                 node.id.as_str(),
-                &adj,
-                &mut visited,
-                &mut rec_stack,
-                &mut path,
-                &mut raw_cycles,
+                adj,
+                &mut index_counter,
+                &mut stack,
+                &mut indices,
+                &mut lowlinks,
+                &mut on_stack,
+                &mut sccs,
             );
         }
     }
 
-    let mut seen: HashSet<Vec<String>> = HashSet::new();
-    let mut result = Vec::new();
-    for cycle in raw_cycles {
-        let canonical = canonicalize_cycle(&cycle);
-        if seen.insert(canonical.clone()) {
-            result.push(canonical);
+    sccs
+}
+
+#[allow(clippy::too_many_arguments)]
+fn tarjan_strongconnect<'a>(
+    node: &'a str,
+    adj: &HashMap<&'a str, Vec<&'a str>>,
+    index_counter: &mut usize,
+    stack: &mut Vec<&'a str>,
+    indices: &mut HashMap<&'a str, usize>,
+    lowlinks: &mut HashMap<&'a str, usize>,
+    on_stack: &mut HashSet<&'a str>,
+    sccs: &mut Vec<Vec<&'a str>>,
+) {
+    indices.insert(node, *index_counter);
+    lowlinks.insert(node, *index_counter);
+    *index_counter += 1;
+    stack.push(node);
+    on_stack.insert(node);
+
+    if let Some(neighbors) = adj.get(node) {
+        for neighbor in neighbors {
+            if !indices.contains_key(neighbor) {
+                tarjan_strongconnect(
+                    neighbor,
+                    adj,
+                    index_counter,
+                    stack,
+                    indices,
+                    lowlinks,
+                    on_stack,
+                    sccs,
+                );
+                let node_lowlink = *lowlinks.get(node).unwrap_or(&usize::MAX);
+                let neighbor_lowlink = *lowlinks.get(neighbor).unwrap_or(&usize::MAX);
+                lowlinks.insert(node, node_lowlink.min(neighbor_lowlink));
+            } else if on_stack.contains(neighbor) {
+                let node_lowlink = *lowlinks.get(node).unwrap_or(&usize::MAX);
+                let neighbor_index = *indices.get(neighbor).unwrap_or(&usize::MAX);
+                lowlinks.insert(node, node_lowlink.min(neighbor_index));
+            }
         }
     }
-    result
+
+    if lowlinks.get(node) == indices.get(node) {
+        let mut scc = Vec::new();
+        loop {
+            let top = stack.pop().unwrap();
+            on_stack.remove(top);
+            scc.push(top);
+            if top == node {
+                break;
+            }
+        }
+        sccs.push(scc);
+    }
+}
+
+/// Find an actual cycle path within a strongly connected component
+fn find_cycle_in_scc<'a>(
+    scc: &[&'a str],
+    adj: &HashMap<&'a str, Vec<&'a str>>,
+) -> Option<Vec<&'a str>> {
+    if scc.is_empty() {
+        return None;
+    }
+
+    let scc_set: HashSet<&str> = scc.iter().copied().collect();
+
+    // Start from any node and do a DFS within the SCC to find a cycle
+    let start = scc[0];
+    let mut visited: HashSet<&str> = HashSet::new();
+    let mut path: Vec<&'a str> = Vec::new();
+
+    dfs_find_cycle(start, &scc_set, adj, &mut visited, &mut path)
+}
+
+fn dfs_find_cycle<'a>(
+    node: &'a str,
+    scc: &HashSet<&str>,
+    adj: &HashMap<&'a str, Vec<&'a str>>,
+    visited: &mut HashSet<&'a str>,
+    path: &mut Vec<&'a str>,
+) -> Option<Vec<&'a str>> {
+    visited.insert(node);
+    path.push(node);
+
+    if let Some(neighbors) = adj.get(node) {
+        for neighbor in neighbors {
+            // Only consider neighbors within the SCC
+            if !scc.contains(neighbor) {
+                continue;
+            }
+
+            if path.contains(neighbor) {
+                // Found a cycle
+                if let Some(cycle_start) = path.iter().position(|&n| n == *neighbor) {
+                    return Some(path[cycle_start..].to_vec());
+                }
+            } else if !visited.contains(neighbor) {
+                if let Some(cycle) = dfs_find_cycle(neighbor, scc, adj, visited, path) {
+                    return Some(cycle);
+                }
+            }
+        }
+    }
+
+    path.pop();
+    None
 }
 
 fn canonicalize_cycle(cycle: &[&str]) -> Vec<String> {
@@ -190,35 +317,6 @@ fn canonicalize_cycle(cycle: &[&str]) -> Vec<String> {
     (0..n)
         .map(|i| cycle[(best_start + i) % n].to_string())
         .collect()
-}
-
-fn dfs_cycles<'a>(
-    node: &'a str,
-    adj: &HashMap<&'a str, Vec<&'a str>>,
-    visited: &mut HashSet<&'a str>,
-    rec_stack: &mut HashSet<&'a str>,
-    path: &mut Vec<&'a str>,
-    cycles: &mut Vec<Vec<&'a str>>,
-) {
-    visited.insert(node);
-    rec_stack.insert(node);
-    path.push(node);
-
-    if let Some(neighbors) = adj.get(node) {
-        for neighbor in neighbors {
-            if !visited.contains(neighbor) {
-                dfs_cycles(neighbor, adj, visited, rec_stack, path, cycles);
-            } else if rec_stack.contains(neighbor) {
-                if let Some(cycle_start) = path.iter().position(|n| *n == *neighbor) {
-                    let cycle: Vec<&'a str> = path[cycle_start..].to_vec();
-                    cycles.push(cycle);
-                }
-            }
-        }
-    }
-
-    path.pop();
-    rec_stack.remove(node);
 }
 
 /// Path patterns that usually indicate doc, test, or tooling code rather than main product.

@@ -54,10 +54,16 @@ fn git_log_commits(repo_path: &Path, max: usize) -> Result<Vec<String>, CliError
 pub async fn suggest_refs(repo_path: &str) -> Result<(), CliError> {
     let path = Path::new(repo_path);
     if !path.exists() {
-        return Err(CliError::Validation(format!("Repository path does not exist: {}", repo_path)));
+        return Err(CliError::Validation(format!(
+            "Repository path does not exist: {}",
+            repo_path
+        )));
     }
     if !path.join(".git").exists() {
-        return Err(CliError::Validation(format!("Not a git repository: {}", repo_path)));
+        return Err(CliError::Validation(format!(
+            "Not a git repository: {}",
+            repo_path
+        )));
     }
 
     let mut lines = git_log_commits(path, MAX_COMMITS)?;
@@ -146,8 +152,12 @@ pub async fn timeline_explain(
         )));
     }
 
-    let candidates =
-        crate::ai::score_commits(path, TIMELINE_EXPLAIN_WINDOW, TIMELINE_EXPLAIN_TOP_K, max_commits)?;
+    let candidates = crate::ai::score_commits(
+        path,
+        TIMELINE_EXPLAIN_WINDOW,
+        TIMELINE_EXPLAIN_TOP_K,
+        max_commits,
+    )?;
     if candidates.is_empty() {
         println!("No commits selected.");
         return Ok(());
@@ -171,12 +181,21 @@ pub async fn timeline_explain(
             "commits": out,
             "summary_markdown": summary.as_deref().unwrap_or(""),
         });
-        println!("{}", serde_json::to_string_pretty(&json_out).map_err(CliError::Json)?);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&json_out).map_err(CliError::Json)?
+        );
     } else {
-        println!("Architecture-significant commits (oldest → newest, max {})", max_commits);
+        println!(
+            "Architecture-significant commits (oldest → newest, max {})",
+            max_commits
+        );
         println!("{}", "─".repeat(60));
         for c in &candidates {
-            println!("  {}  {}  (score: {:.1})  {}", c.date, c.short_sha, c.score, c.subject);
+            println!(
+                "  {}  {}  (score: {:.1})  {}",
+                c.date, c.short_sha, c.score, c.subject
+            );
         }
         println!("{}", "─".repeat(60));
         if let Some(ref s) = summary {
@@ -189,9 +208,7 @@ pub async fn timeline_explain(
 }
 
 /// Build a short LLM summary of architecture evolution for the given commits. Returns None on LLM failure.
-async fn build_timeline_summary(
-    candidates: &[crate::ai::CommitCandidate],
-) -> Option<String> {
+async fn build_timeline_summary(candidates: &[crate::ai::CommitCandidate]) -> Option<String> {
     if candidates.is_empty() {
         return None;
     }

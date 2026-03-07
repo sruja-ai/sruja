@@ -59,13 +59,11 @@ pub async fn context_export(
         "cursor-rules" => format_cursor_rules(&context),
         "copilot-instructions" => format_copilot_instructions(&context),
         "markdown" => format_markdown(&context),
-        "json" => serde_json::to_string_pretty(&context)?,
-        _ => {
-            return Err(CliError::Validation(format!(
-                "Unknown format: {}. Use: cursor-rules, copilot-instructions, markdown, json",
-                format
-            )))
-        }
+        "json" | "for-ai" => serde_json::to_string_pretty(&context)?,
+        _ => return Err(CliError::Validation(format!(
+            "Unknown format: {}. Use: cursor-rules, copilot-instructions, markdown, json, for-ai",
+            format
+        ))),
     };
 
     if let Some(path) = output {
@@ -79,10 +77,26 @@ pub async fn context_export(
 }
 
 fn build_ai_context(graph: &Graph, repo: &str) -> AiContext {
-    let modules = graph.nodes.iter().filter(|n| n.kind == NodeKind::Module).count();
-    let services = graph.nodes.iter().filter(|n| n.kind == NodeKind::Service).count();
-    let databases = graph.nodes.iter().filter(|n| n.kind == NodeKind::Database).count();
-    let external_apis = graph.nodes.iter().filter(|n| n.kind == NodeKind::ExternalApi).count();
+    let modules = graph
+        .nodes
+        .iter()
+        .filter(|n| n.kind == NodeKind::Module)
+        .count();
+    let services = graph
+        .nodes
+        .iter()
+        .filter(|n| n.kind == NodeKind::Service)
+        .count();
+    let databases = graph
+        .nodes
+        .iter()
+        .filter(|n| n.kind == NodeKind::Database)
+        .count();
+    let external_apis = graph
+        .nodes
+        .iter()
+        .filter(|n| n.kind == NodeKind::ExternalApi)
+        .count();
 
     let layers = infer_layers(graph);
     let boundaries = infer_boundaries(graph);
@@ -108,7 +122,8 @@ fn build_ai_context(graph: &Graph, repo: &str) -> AiContext {
 }
 
 fn infer_layers(graph: &Graph) -> Vec<LayerInfo> {
-    let mut layer_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut layer_counts: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
 
     for node in &graph.nodes {
         if node.kind == NodeKind::Module {
@@ -145,9 +160,13 @@ fn infer_layer_from_path(path: &str) -> String {
 
     for part in &parts {
         match *part {
-            "api" | "routes" | "handlers" | "controllers" | "endpoints" => return "api".to_string(),
+            "api" | "routes" | "handlers" | "controllers" | "endpoints" => {
+                return "api".to_string()
+            }
             "services" | "service" => return "services".to_string(),
-            "data" | "db" | "database" | "repository" | "repos" | "dal" => return "data".to_string(),
+            "data" | "db" | "database" | "repository" | "repos" | "dal" => {
+                return "data".to_string()
+            }
             "models" | "model" | "entities" | "entity" | "domain" => return "models".to_string(),
             "utils" | "lib" | "common" | "shared" | "helpers" => return "utils".to_string(),
             "components" | "ui" | "views" | "pages" => return "ui".to_string(),
@@ -161,7 +180,11 @@ fn infer_layer_from_path(path: &str) -> String {
 fn infer_boundaries(graph: &Graph) -> Vec<BoundaryRule> {
     let mut boundaries = Vec::new();
 
-    let services: Vec<_> = graph.nodes.iter().filter(|n| n.kind == NodeKind::Service).collect();
+    let services: Vec<_> = graph
+        .nodes
+        .iter()
+        .filter(|n| n.kind == NodeKind::Service)
+        .collect();
 
     if services.len() > 1 {
         for s1 in &services {
@@ -171,7 +194,8 @@ fn infer_boundaries(graph: &Graph) -> Vec<BoundaryRule> {
                         from: s1.id.clone(),
                         to: s2.id.clone(),
                         allowed: false,
-                        reason: "Services should communicate via APIs/events, not direct imports".to_string(),
+                        reason: "Services should communicate via APIs/events, not direct imports"
+                            .to_string(),
                     });
                 }
             }
@@ -204,10 +228,16 @@ fn format_cursor_rules(context: &AiContext) -> String {
     if !context.layers.is_empty() {
         rules.push_str("## Layers\n\n");
         for layer in &context.layers {
-            rules.push_str(&format!("### {} ({} modules)\n", 
-                layer.name.to_uppercase().replace("_", " "), layer.modules));
+            rules.push_str(&format!(
+                "### {} ({} modules)\n",
+                layer.name.to_uppercase().replace("_", " "),
+                layer.modules
+            ));
             if !layer.can_depend_on.is_empty() {
-                rules.push_str(&format!("Can depend on: {}\n\n", layer.can_depend_on.join(", ")));
+                rules.push_str(&format!(
+                    "Can depend on: {}\n\n",
+                    layer.can_depend_on.join(", ")
+                ));
             } else {
                 rules.push_str("No external dependencies allowed.\n\n");
             }
@@ -218,8 +248,10 @@ fn format_cursor_rules(context: &AiContext) -> String {
         rules.push_str("## Boundary Rules\n\n");
         for boundary in &context.boundaries {
             if !boundary.allowed {
-                rules.push_str(&format!("- **{} -> {}**: {}\n",
-                    boundary.from, boundary.to, boundary.reason));
+                rules.push_str(&format!(
+                    "- **{} -> {}**: {}\n",
+                    boundary.from, boundary.to, boundary.reason
+                ));
             }
         }
         rules.push('\n');
@@ -262,13 +294,17 @@ fn format_copilot_instructions(context: &AiContext) -> String {
         instructions.push_str(&format!("Layers found: {}\n", layer_names.join(", ")));
     }
 
-    instructions.push_str("2. **No cross-service imports**: Services should communicate via API/event\n");
+    instructions
+        .push_str("2. **No cross-service imports**: Services should communicate via API/event\n");
     instructions.push_str("3. **UI -> Services -> Data**: Follow this flow, never skip layers\n\n");
 
     if !context.boundaries.is_empty() {
         instructions.push_str("## Forbidden Dependencies\n");
         for boundary in context.boundaries.iter().filter(|b| !b.allowed).take(5) {
-            instructions.push_str(&format!("- {} -> {} is not allowed\n", boundary.from, boundary.to));
+            instructions.push_str(&format!(
+                "- {} -> {} is not allowed\n",
+                boundary.from, boundary.to
+            ));
         }
         instructions.push('\n');
     }
@@ -282,21 +318,41 @@ fn format_copilot_instructions(context: &AiContext) -> String {
 fn format_markdown(context: &AiContext) -> String {
     let mut md = String::new();
     md.push_str("# Architecture Context\n\n");
-    md.push_str(&format!("> Generated by `sruja context export -f markdown` for {}\n\n", context.repo));
+    md.push_str(&format!(
+        "> Generated by `sruja context export -f markdown` for {}\n\n",
+        context.repo
+    ));
 
     md.push_str("## Overview\n\n");
     md.push_str("| Type | Count |\n|------|-------|\n");
-    md.push_str(&format!("| Modules | {} |\n", context.summary.total_modules));
-    md.push_str(&format!("| Services | {} |\n", context.summary.total_services));
-    md.push_str(&format!("| Databases | {} |\n", context.summary.total_databases));
-    md.push_str(&format!("| External APIs | {} |\n\n", context.summary.total_external_apis));
+    md.push_str(&format!(
+        "| Modules | {} |\n",
+        context.summary.total_modules
+    ));
+    md.push_str(&format!(
+        "| Services | {} |\n",
+        context.summary.total_services
+    ));
+    md.push_str(&format!(
+        "| Databases | {} |\n",
+        context.summary.total_databases
+    ));
+    md.push_str(&format!(
+        "| External APIs | {} |\n\n",
+        context.summary.total_external_apis
+    ));
 
     if !context.layers.is_empty() {
         md.push_str("## Layers\n\n");
         for layer in &context.layers {
-            md.push_str(&format!("### {}\n\n**Can depend on:** {}\n\n**Modules:** {}\n\n",
+            md.push_str(&format!(
+                "### {}\n\n**Can depend on:** {}\n\n**Modules:** {}\n\n",
                 layer.name,
-                if layer.can_depend_on.is_empty() { "None".to_string() } else { layer.can_depend_on.join(", ") },
+                if layer.can_depend_on.is_empty() {
+                    "None".to_string()
+                } else {
+                    layer.can_depend_on.join(", ")
+                },
                 layer.modules
             ));
         }

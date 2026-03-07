@@ -51,13 +51,23 @@ fn parsed_adr_to_entry(adr: &ParsedAdr, full: bool) -> AdrIndexEntry {
         number: adr.number,
         title: adr.title.clone(),
         status: adr_status_string(&adr.status),
-        date: adr
-            .date
-            .map(|d| d.to_rfc3339()),
+        date: adr.date.map(|d| d.to_rfc3339()),
         tags: adr.tags.clone(),
-        context: if full { Some(adr.context.clone()) } else { None },
-        decision: if full { Some(adr.decision.clone()) } else { None },
-        consequences: if full { Some(adr.consequences.clone()) } else { None },
+        context: if full {
+            Some(adr.context.clone())
+        } else {
+            None
+        },
+        decision: if full {
+            Some(adr.decision.clone())
+        } else {
+            None
+        },
+        consequences: if full {
+            Some(adr.consequences.clone())
+        } else {
+            None
+        },
     }
 }
 
@@ -281,20 +291,14 @@ pub async fn intent_propose(repo_root: &str, intent_path: Option<&str>) -> Resul
 /// Build list of intent dirs: if given, use them; else auto-detect docs/architecture, docs/adr, doc/adr.
 fn resolve_intent_dirs(repo_path: &Path, intent_paths: &[String]) -> Vec<PathBuf> {
     if !intent_paths.is_empty() {
-        return intent_paths
-            .iter()
-            .map(PathBuf::from)
-            .collect();
+        return intent_paths.iter().map(PathBuf::from).collect();
     }
     let candidates = [
         repo_path.join("docs").join("architecture"),
         repo_path.join("docs").join("adr"),
         repo_path.join("doc").join("adr"),
     ];
-    candidates
-        .into_iter()
-        .filter(|p| p.exists())
-        .collect()
+    candidates.into_iter().filter(|p| p.exists()).collect()
 }
 
 /// Export ADR index JSON for timeline capture. Supports multiple intent dirs and auto-detect.
@@ -316,10 +320,7 @@ pub async fn adr_index(
     }
 
     let dirs = resolve_intent_dirs(repo_path, intent_paths);
-    let intent_dirs_tried: Vec<String> = dirs
-        .iter()
-        .map(|p| p.display().to_string())
-        .collect();
+    let intent_dirs_tried: Vec<String> = dirs.iter().map(|p| p.display().to_string()).collect();
 
     let parser = AdrParser::new();
     let mut all_adrs: Vec<ParsedAdr> = Vec::new();

@@ -497,7 +497,7 @@ pub async fn import(format: &str, file: &str) -> Result<(), CliError> {
 
 pub async fn lsp() -> Result<(), CliError> {
     Err(CliError::Validation(
-        "LSP server is not available in this build".to_string()
+        "LSP server is not available in this build".to_string(),
     ))
 }
 

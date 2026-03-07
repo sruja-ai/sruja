@@ -9,6 +9,217 @@
 
 use std::collections::HashMap;
 
+const EXCLUDED_PATTERNS: &[&str] = &[
+    "*_gen_*",
+    "*_generated_*",
+    "*.pb",
+    "*.pb.gw",
+    "*_mock*",
+    "mocks/*",
+    "mock/*",
+    "vendor/*",
+    "node_modules/*",
+    "third_party/*",
+    "Godeps/*",
+    "stdlib/*",
+    "internal/stdlib/*",
+];
+
+const STDLIB_WHITELIST: &[&str] = &[
+    // Go stdlib
+    "fmt",
+    "os",
+    "io",
+    "bufio",
+    "strings",
+    "strconv",
+    "net",
+    "net/http",
+    "net/url",
+    "math",
+    "math/rand",
+    "time",
+    "sync",
+    "context",
+    "encoding",
+    "encoding/json",
+    "encoding/xml",
+    "encoding/gob",
+    "encoding/binary",
+    "crypto",
+    "crypto/tls",
+    "crypto/md5",
+    "crypto/sha1",
+    "crypto/sha256",
+    "database",
+    "database/sql",
+    "path",
+    "path/filepath",
+    "regexp",
+    "runtime",
+    "unsafe",
+    "log",
+    "errors",
+    "bytes",
+    "unicode",
+    "reflect",
+    "syscall",
+    "testing",
+    "html",
+    "html/template",
+    "text",
+    "text/template",
+    "sort",
+    "container",
+    "container/list",
+    "container/heap",
+    "archive",
+    "archive/zip",
+    "compress",
+    "compress/gzip",
+    "compress/flate",
+    "debug",
+    "debug/pprof",
+    "go",
+    "go/ast",
+    "go/parser",
+    "go/token",
+    "go/types",
+    "go/build",
+    "plugin",
+    "embed",
+    // Java stdlib
+    "java.lang",
+    "java.util",
+    "java.io",
+    "java.net",
+    "java.nio",
+    "java.time",
+    "java.math",
+    "java.text",
+    "java.sql",
+    "java.security",
+    "java.concurrent",
+    "javax.",
+    "javax.servlet",
+    "javax.persistence",
+    "javax.validation",
+    // Kotlin stdlib
+    "kotlin.",
+    "kotlinx.",
+    "kotlin.coroutines",
+    // Scala stdlib
+    "scala.",
+    "scala.collection",
+    "scala.concurrent",
+    // JavaScript/TypeScript stdlib
+    "react",
+    "react-dom",
+    "lodash",
+    "rxjs",
+    "typescript",
+    "node:",
+    // Python stdlib
+    "os",
+    "sys",
+    "re",
+    "json",
+    "datetime",
+    "collections",
+    "itertools",
+    "functools",
+    "typing",
+    "pathlib",
+    "subprocess",
+    "threading",
+    "multiprocessing",
+    // Rust stdlib
+    "std::",
+    "core::",
+    "alloc::",
+];
+
+fn is_excluded_from_zone_of_pain(module_path: &str) -> bool {
+    let path_lower = module_path.to_lowercase();
+    let path_normalized = path_lower.replace('\\', "/");
+
+    for pattern in EXCLUDED_PATTERNS {
+        if glob_match(pattern, &path_normalized) {
+            return true;
+        }
+    }
+
+    // Check for generated code patterns
+    if path_normalized.contains("_pb.")
+        || path_normalized.contains(".pb.go")
+        || path_normalized.contains("_gen_")
+        || path_normalized.contains("generated")
+        || path_normalized.contains(".generated.")
+        || path_normalized.contains("_pb_gw")
+        || path_normalized.ends_with(".pb")
+        || path_normalized.ends_with("_test")
+        || path_normalized.contains("test_")
+    {
+        return true;
+    }
+
+    let base_module = path_normalized
+        .split('/')
+        .next()
+        .unwrap_or(&path_normalized);
+
+    // Check against stdlib whitelist
+    if STDLIB_WHITELIST.contains(&base_module)
+        || STDLIB_WHITELIST.iter().any(|prefix| {
+            path_normalized.starts_with(prefix)
+                || path_normalized.contains(&format!("/{}", prefix))
+                || path_normalized.contains(&format!("{}_", prefix))
+        })
+        || path_normalized.contains("node_modules/")
+        || path_normalized.contains("vendor/")
+        || path_normalized.contains("third_party/")
+        || path_normalized.starts_with("java.")
+        || path_normalized.starts_with("javax.")
+        || path_normalized.starts_with("kotlin.")
+        || path_normalized.starts_with("scala.")
+        || path_normalized.starts_with("std::")
+        || path_normalized.starts_with("core::")
+    {
+        return true;
+    }
+
+    false
+}
+
+fn glob_match(pattern: &str, text: &str) -> bool {
+    let pattern_parts: Vec<&str> = pattern.split('*').collect();
+    if pattern_parts.len() == 1 {
+        return text == pattern;
+    }
+
+    let mut text_pos = 0;
+    for (i, part) in pattern_parts.iter().enumerate() {
+        if part.is_empty() {
+            continue;
+        }
+        if i == 0 {
+            if !text.starts_with(part) {
+                return false;
+            }
+            text_pos = part.len();
+        } else if i == pattern_parts.len() - 1 {
+            if !text.ends_with(part) {
+                return false;
+            }
+        } else if let Some(pos) = text[text_pos..].find(part) {
+            text_pos += pos + part.len();
+        } else {
+            return false;
+        }
+    }
+    true
+}
+
 pub struct CouplingAnalyzer;
 
 pub struct CouplingResult {
@@ -236,6 +447,7 @@ impl CouplingAnalyzer {
     ) -> Vec<CouplingViolation> {
         instability
             .keys()
+            .filter(|module| !is_excluded_from_zone_of_pain(module.as_str()))
             .filter_map(|module| {
                 let i = instability.get(module).copied().unwrap_or(0.0);
                 let a = abstractness.get(module).copied().unwrap_or(0.0);

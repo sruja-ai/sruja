@@ -125,15 +125,17 @@ sruja quickstart --format json
   ███████████████░░░░░ ⚠ Fair
 ```
 
-### Architecture intelligence (four layers)
+### Architecture analysis
 
-The main entrypoint for full architecture intelligence is **`sruja analyze`**. It runs structural, semantic, intent, and optional runtime analysis and outputs an overall health score and recommendations.
+**`sruja analyze`** provides structural architecture analysis and generates a CTO-level report with health scores, risks, and recommendations.
 
 ```bash
-# Full analysis (structural + semantic + intent; optional runtime with -t)
+# Architecture analysis with health score and recommendations
 sruja analyze -r .
-sruja analyze -r . -t traces.json -i docs/architecture -f json
+sruja analyze -r . -f json
 ```
+
+**Note:** Semantic, intent, and runtime analysis layers are in experimental preview. The current analyze command focuses on structural analysis.
 
 **Command tiers:**
 

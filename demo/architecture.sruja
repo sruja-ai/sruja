@@ -1,0 +1,21 @@
+service Frontend {
+    match "frontend.*"
+    // Explicitly define what the frontend is allowed to do
+    // NOT defining `depends_on Database` means it's illegal
+    depends_on ApiGateway
+}
+
+service ApiGateway {
+    match "api_gateway.*"
+    depends_on UserService
+}
+
+service UserService {
+    match "user_service.*"
+    depends_on Database
+}
+
+database Database {
+    match "database.*"
+    technology "mysql"
+}

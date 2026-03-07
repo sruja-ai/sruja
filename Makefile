@@ -1,4 +1,4 @@
-.PHONY: build test test-coverage clean install lint fmt help build-rust test-rust wasm wasm-tiny book book-build book-wasm book-serve book-deps book-clean assets demo
+.PHONY: build test test-coverage clean install lint fmt help build-rust test-rust wasm wasm-tiny book book-build book-wasm book-serve book-deps book-clean assets demo build-extension install-extension
 
 # Build Rust libraries
 build-rust:
@@ -113,7 +113,7 @@ wasm:
 		echo "❌ Cargo not found. Please install Rust: https://rustup.rs/"; exit 1; \
 	fi
 
-# Build WASM for Node.js (for future VS Code extension / LSP integration)
+# Build WASM for Node.js (used by VS Code extension for in-editor lint and markdown export)
 wasm-nodejs:
 	@echo "Building Rust WASM (nodejs target)..."
 	@if command -v cargo >/dev/null 2>&1; then \
@@ -124,6 +124,49 @@ wasm-nodejs:
 		echo "✅ Node.js WASM build complete (crates/sruja-wasm/pkg-nodejs/)"; \
 	else \
 		echo "❌ Cargo not found."; exit 1; \
+	fi
+
+# Build VS Code extension VSIX package (WASM + TypeScript compile)
+# Output: extension/sruja-*.vsix
+build-extension:
+	@echo "Building Sruja VS Code extension..."
+	@if ! command -v npm >/dev/null 2>&1; then \
+		echo "❌ npm not found. Please install Node.js: https://nodejs.org/"; exit 1; \
+	fi
+	@echo "  📦 Installing extension npm deps..."
+	@cd extension && npm install --silent
+	@echo "  🔧 Building Node.js WASM + copying assets..."
+	@cd extension && npm run copy:assets
+	@echo "  🔨 Compiling TypeScript..."
+	@cd extension && npm run compile
+	@echo "  📦 Packaging VSIX..."
+	@cd extension && npx --yes @vscode/vsce package --no-dependencies
+	@echo "✅ Extension built: $$(ls extension/sruja-*.vsix 2>/dev/null | tail -1)"
+
+# Build and install VS Code extension into VS Code and/or Cursor
+# Detects available editors automatically.
+install-extension: build-extension
+	@VSIX="$$(ls extension/sruja-*.vsix 2>/dev/null | tail -1)"; \
+	if [ -z "$$VSIX" ]; then \
+		echo "❌ No .vsix found. Run 'make build-extension' first."; exit 1; \
+	fi; \
+	INSTALLED=0; \
+	if command -v cursor >/dev/null 2>&1; then \
+		echo "  🖱️  Installing into Cursor..."; \
+		cursor --install-extension "$$VSIX" && INSTALLED=1 && echo "  ✅ Installed in Cursor"; \
+	fi; \
+	if command -v code >/dev/null 2>&1; then \
+		echo "  💻 Installing into VS Code..."; \
+		code --install-extension "$$VSIX" && INSTALLED=1 && echo "  ✅ Installed in VS Code"; \
+	fi; \
+	if [ "$$INSTALLED" -eq 0 ]; then \
+		echo ""; \
+		echo "⚠️  Neither 'cursor' nor 'code' CLI found in PATH."; \
+		echo "   Install manually: Extensions → ⋯ → Install from VSIX → select $$VSIX"; \
+	else \
+		echo ""; \
+		echo "✅ Extension installed! Reload your editor window to activate it."; \
+		echo "   Open any .sruja file to see diagnostics, hover docs, and diagram preview."; \
 	fi
 
 # --- Book (mdBook) ---
@@ -210,7 +253,11 @@ help:
 	@echo ""
 	@echo "WASM Build:"
 	@echo "  make wasm               - Build Rust WASM (web target, crates/sruja-wasm/pkg/)"
-	@echo "  make wasm-nodejs        - Build Rust WASM for Node (nodejs target, for future LSP/extension)"
+	@echo "  make wasm-nodejs        - Build Rust WASM for Node (nodejs target, used by extension)"
+	@echo ""
+	@echo "VS Code / Cursor Extension:"
+	@echo "  make build-extension    - Build WASM + compile TS + package .vsix"
+	@echo "  make install-extension  - Build and install into VS Code / Cursor (auto-detected)"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  make lint               - Run Rust linter (clippy)"

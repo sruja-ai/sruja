@@ -97,6 +97,8 @@ sruja_demo_*
 **/final_cto_report.txt
 demo/sruja.graph.json
 demo/traces.json
+# Root-level architecture.sruja (tool-generated; intentional ones live in demo/, evaluation/, etc.)
+/architecture.sruja
 
 # Ad-hoc test/validation scripts (optional; required scripts are in book/, evaluation/, extension/, scripts/, architecture/, demo/)
 comprehensive_test.sh

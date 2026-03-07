@@ -104,7 +104,6 @@ pub enum AnalysisDepth {
     Comprehensive,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DefaultSettings {
     #[serde(default)]

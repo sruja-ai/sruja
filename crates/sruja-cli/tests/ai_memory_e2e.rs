@@ -49,8 +49,11 @@ fn seed_memory_dir() -> TempDir {
 
     // One interaction referencing that fact
     let interaction_line = r#"{"answer_id":"ans_demo1","question":"How does request flow work?","response_markdown":"...","used_fact_ids":["fact_demo1"],"new_fact_ids":[],"confidence":0.7,"commit_sha":"abc1234","created_at":"2026-01-01T00:00:00Z"}"#;
-    fs::write(memory_dir.join("interactions.jsonl"), format!("{}\n", interaction_line))
-        .expect("write interactions");
+    fs::write(
+        memory_dir.join("interactions.jsonl"),
+        format!("{}\n", interaction_line),
+    )
+    .expect("write interactions");
 
     dir
 }
@@ -74,7 +77,11 @@ fn feedback_updates_fact_confidence_and_status() {
         "--verdict",
         "wrong",
     ]);
-    assert!(ok, "feedback should succeed: stdout={} stderr={}", stdout, stderr);
+    assert!(
+        ok,
+        "feedback should succeed: stdout={} stderr={}",
+        stdout, stderr
+    );
 
     // Read facts.jsonl and assert confidence dropped (0.7 - 0.35 = 0.35), status = disputed
     let facts_path = root.join(".sruja").join("memory").join("facts.jsonl");
@@ -101,18 +108,18 @@ fn explain_fallback_when_no_llm() {
     std::fs::create_dir_all(root.join("src")).ok();
     std::fs::write(root.join("src/lib.rs"), "pub fn main() {}").ok();
 
-    let (ok, stdout, stderr) = run_sruja_no_llm(&[
-        "ai",
-        "explain",
-        "-r",
-        root_str,
-        "--topic",
-        "request flow",
-    ]);
-    assert!(ok, "explain without LLM should exit 0 (fallback): stderr={}", stderr);
+    let (ok, stdout, stderr) =
+        run_sruja_no_llm(&["ai", "explain", "-r", root_str, "--topic", "request flow"]);
+    assert!(
+        ok,
+        "explain without LLM should exit 0 (fallback): stderr={}",
+        stderr
+    );
     let out = stdout.to_lowercase();
     assert!(
-        out.contains("llm unavailable") || out.contains("evidence from scan") || out.contains("evidence (from repository"),
+        out.contains("llm unavailable")
+            || out.contains("evidence from scan")
+            || out.contains("evidence (from repository"),
         "output should contain fallback or evidence: {}",
         stdout
     );
@@ -173,7 +180,8 @@ fn feedback_invalid_verdict_fails() {
     assert!(!ok, "feedback with invalid verdict should fail");
     let err = format!("{}{}", stdout, stderr);
     assert!(
-        err.to_lowercase().contains("verdict") && (err.to_lowercase().contains("invalid") || err.to_lowercase().contains("correct")),
+        err.to_lowercase().contains("verdict")
+            && (err.to_lowercase().contains("invalid") || err.to_lowercase().contains("correct")),
         "error should mention verdict: {}",
         err
     );
@@ -188,7 +196,11 @@ fn memory_command_empty_when_no_memory_dir() {
     // Do not create .sruja/memory
 
     let (ok, stdout, stderr) = run_sruja(&["ai", "memory", "-r", root_str, "-f", "json"]);
-    assert!(ok, "ai memory with no memory dir should succeed: stderr={}", stderr);
+    assert!(
+        ok,
+        "ai memory with no memory dir should succeed: stderr={}",
+        stderr
+    );
     let out: serde_json::Value = serde_json::from_str(stdout.trim()).expect("parse memory json");
     assert_eq!(out["facts_count"].as_u64(), Some(0));
     assert_eq!(out["interactions_count"].as_u64(), Some(0));

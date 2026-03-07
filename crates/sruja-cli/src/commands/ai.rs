@@ -5,17 +5,15 @@
 use std::path::Path;
 use std::process::Command;
 
-use crate::ai::{
-    build_context, parse_envelope, explain_user_prompt, EXPLAIN_SYSTEM,
-    append_fact, append_feedback, append_interaction, load_facts, load_feedback, load_interactions,
-    load_state, save_state,
-    write_facts, apply_verdict, should_deprecate, Verdict,
-    Fact, FeedbackRecord, InteractionRecord,
-    EvidenceEntry,
-};
-use std::collections::HashSet;
-use crate::commands::llm::call_llm;
 use super::CliError;
+use crate::ai::{
+    append_fact, append_feedback, append_interaction, apply_verdict, build_context,
+    explain_user_prompt, load_facts, load_feedback, load_interactions, load_state, parse_envelope,
+    save_state, should_deprecate, write_facts, EvidenceEntry, Fact, FeedbackRecord,
+    InteractionRecord, Verdict, EXPLAIN_SYSTEM,
+};
+use crate::commands::llm::call_llm;
+use std::collections::HashSet;
 
 /// When LLM is unavailable, print evidence and hint instead of failing.
 fn fallback_no_llm(
@@ -33,7 +31,10 @@ fn fallback_no_llm(
             "evidence_preview": ctx_text.lines().take(20).collect::<Vec<_>>().join("\n"),
             "what_changed_since_validated": what_changed,
         });
-        println!("{}", serde_json::to_string_pretty(&out).map_err(CliError::Json)?);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&out).map_err(CliError::Json)?
+        );
     } else {
         println!("LLM unavailable. Set SRUJA_LLM_PROVIDER and an API key (e.g. OPENAI_API_KEY, or SRUJA_LLM_PROVIDER=ollama) for a full explanation.");
         println!("\nTopic: {}", topic);
@@ -58,14 +59,24 @@ const MAX_EVIDENCE_ITEMS: usize = 30;
 /// Get current commit short SHA in repo, or None if not a git repo.
 fn current_commit_sha(repo_root: &Path) -> Option<String> {
     let out = Command::new("git")
-        .args(["-C", repo_root.as_os_str().to_str().unwrap_or("."), "rev-parse", "--short=7", "HEAD"])
+        .args([
+            "-C",
+            repo_root.as_os_str().to_str().unwrap_or("."),
+            "rev-parse",
+            "--short=7",
+            "HEAD",
+        ])
         .output()
         .ok()?;
     if !out.status.success() {
         return None;
     }
     let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    if s.is_empty() { None } else { Some(s) }
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
 }
 
 /// Run `sruja ai explain -r <repo> --topic <topic>`.
@@ -77,12 +88,19 @@ pub async fn ai_explain(
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo);
     if !repo_path.exists() {
-        return Err(CliError::Validation(format!("Repository path does not exist: {}", repo)));
+        return Err(CliError::Validation(format!(
+            "Repository path does not exist: {}",
+            repo
+        )));
     }
 
     let state = load_state(repo_path).unwrap_or_default();
     let current_sha = current_commit_sha(repo_path);
-    let what_changed = build_what_changed_since_validated(repo_path, state.last_validated_sha.as_deref(), current_sha.as_deref());
+    let what_changed = build_what_changed_since_validated(
+        repo_path,
+        state.last_validated_sha.as_deref(),
+        current_sha.as_deref(),
+    );
 
     let ctx = build_context(
         repo_path,
@@ -103,13 +121,18 @@ pub async fn ai_explain(
     let envelope = match parse_envelope(&raw) {
         Ok(e) => e,
         Err(e) => {
-            eprintln!("LLM response could not be parsed as JSON envelope: {}. Using fallback.", e);
+            eprintln!(
+                "LLM response could not be parsed as JSON envelope: {}. Using fallback.",
+                e
+            );
             return fallback_no_llm(topic, &ctx.text, format, what_changed.as_deref());
         }
     };
 
     let commit_sha = current_commit_sha(repo_path);
-    let repo_abs = repo_path.canonicalize().unwrap_or_else(|_| repo_path.to_path_buf());
+    let repo_abs = repo_path
+        .canonicalize()
+        .unwrap_or_else(|_| repo_path.to_path_buf());
     let repo_str = repo_abs.to_string_lossy().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
@@ -194,7 +217,10 @@ pub async fn ai_explain(
             "gaps": envelope.gaps,
             "what_changed_since_validated": what_changed,
         });
-        println!("{}", serde_json::to_string_pretty(&out).map_err(CliError::Json)?);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&out).map_err(CliError::Json)?
+        );
     } else {
         println!("{}", envelope.answer_markdown);
         println!("\n---");
@@ -275,7 +301,10 @@ pub async fn ai_feedback(
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo);
     if !repo_path.exists() {
-        return Err(CliError::Validation(format!("Repository path does not exist: {}", repo)));
+        return Err(CliError::Validation(format!(
+            "Repository path does not exist: {}",
+            repo
+        )));
     }
 
     let verdict = match verdict_str.to_lowercase().as_str() {
@@ -296,8 +325,7 @@ pub async fn ai_feedback(
         .position(|f| f.fact_id == fact_id)
         .ok_or_else(|| CliError::Validation(format!("Fact not found: {}", fact_id)))?;
 
-    let (new_conf, new_status) =
-        apply_verdict(facts[pos].confidence, &facts[pos].status, verdict);
+    let (new_conf, new_status) = apply_verdict(facts[pos].confidence, &facts[pos].status, verdict);
     facts[pos].confidence = new_conf;
     facts[pos].status = new_status.clone();
     facts[pos].updated_at = chrono::Utc::now().to_rfc3339();
@@ -305,7 +333,12 @@ pub async fn ai_feedback(
     // Deprecate if two consecutive wrong verdicts and confidence < 0.25 (plan §10).
     let feedback_list = load_feedback(repo_path)?;
     let consecutive_wrong = count_consecutive_wrong_for_fact(&feedback_list, fact_id);
-    let wrong_after_this = consecutive_wrong + if matches!(verdict, Verdict::Wrong) { 1 } else { 0 };
+    let wrong_after_this = consecutive_wrong
+        + if matches!(verdict, Verdict::Wrong) {
+            1
+        } else {
+            0
+        };
     if should_deprecate(facts[pos].confidence, wrong_after_this) {
         facts[pos].status = "deprecated".to_string();
     }
@@ -332,10 +365,8 @@ pub async fn ai_feedback(
 
 /// Count consecutive "wrong" verdicts at the end of feedback history for this fact.
 fn count_consecutive_wrong_for_fact(feedback: &[FeedbackRecord], fact_id: &str) -> u32 {
-    let mut for_fact: Vec<&FeedbackRecord> = feedback
-        .iter()
-        .filter(|fb| fb.fact_id == fact_id)
-        .collect();
+    let mut for_fact: Vec<&FeedbackRecord> =
+        feedback.iter().filter(|fb| fb.fact_id == fact_id).collect();
     for_fact.sort_by(|a, b| a.created_at.cmp(&b.created_at));
     let mut count = 0u32;
     for fb in for_fact.iter().rev() {
@@ -352,7 +383,10 @@ fn count_consecutive_wrong_for_fact(feedback: &[FeedbackRecord], fact_id: &str) 
 pub async fn ai_memory(repo: &str, format: &str) -> Result<(), CliError> {
     let repo_path = Path::new(repo);
     if !repo_path.exists() {
-        return Err(CliError::Validation(format!("Repository path does not exist: {}", repo)));
+        return Err(CliError::Validation(format!(
+            "Repository path does not exist: {}",
+            repo
+        )));
     }
 
     let facts = load_facts(repo_path)?;
@@ -373,7 +407,10 @@ pub async fn ai_memory(repo: &str, format: &str) -> Result<(), CliError> {
             "facts": facts.iter().map(|f| serde_json::json!({ "fact_id": f.fact_id, "statement": f.statement, "status": f.status, "confidence": f.confidence })).collect::<Vec<_>>(),
             "recent_interactions": interactions.iter().rev().take(5).map(|i| serde_json::json!({ "answer_id": i.answer_id, "question": i.question, "confidence": i.confidence })).collect::<Vec<_>>(),
         });
-        println!("{}", serde_json::to_string_pretty(&out).map_err(CliError::Json)?);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&out).map_err(CliError::Json)?
+        );
     } else {
         println!("Memory summary (repo: {})", repo);
         println!("  Facts: {} total", facts.len());
@@ -386,7 +423,10 @@ pub async fn ai_memory(repo: &str, format: &str) -> Result<(), CliError> {
         if !facts.is_empty() {
             println!("\nRecent facts:");
             for f in facts.iter().rev().take(5) {
-                println!("  - [{}] {} ({}), conf={:.2}", f.fact_id, f.statement, f.status, f.confidence);
+                println!(
+                    "  - [{}] {} ({}), conf={:.2}",
+                    f.fact_id, f.statement, f.status, f.confidence
+                );
             }
         }
     }

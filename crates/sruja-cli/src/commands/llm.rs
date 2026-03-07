@@ -102,10 +102,8 @@ pub async fn call_llm(system: &str, user_prompt: &str) -> Result<String, CliErro
 
     let text: String = match provider.as_str() {
         "openrouter" => {
-            let client: openrouter::Client =
-                openrouter::Client::new(api_key.expect("key checked")).map_err(|e| {
-                    CliError::Validation(format!("OpenRouter client failed: {}", e))
-                })?;
+            let client: openrouter::Client = openrouter::Client::new(api_key.expect("key checked"))
+                .map_err(|e| CliError::Validation(format!("OpenRouter client failed: {}", e)))?;
             let agent = client.agent(&model).preamble(system).build();
             agent
                 .prompt(user_prompt)
@@ -113,10 +111,8 @@ pub async fn call_llm(system: &str, user_prompt: &str) -> Result<String, CliErro
                 .map_err(|e| CliError::Validation(format!("LLM request failed: {}", e)))?
         }
         "openai" => {
-            let client: openai::Client =
-                openai::Client::new(api_key.expect("key checked")).map_err(|e| {
-                    CliError::Validation(format!("OpenAI client failed: {}", e))
-                })?;
+            let client: openai::Client = openai::Client::new(api_key.expect("key checked"))
+                .map_err(|e| CliError::Validation(format!("OpenAI client failed: {}", e)))?;
             let agent = client.agent(&model).preamble(system).build();
             agent
                 .prompt(user_prompt)
@@ -125,9 +121,8 @@ pub async fn call_llm(system: &str, user_prompt: &str) -> Result<String, CliErro
         }
         "anthropic" => {
             let client: anthropic::Client =
-                anthropic::Client::new(api_key.expect("key checked")).map_err(|e| {
-                    CliError::Validation(format!("Anthropic client failed: {}", e))
-                })?;
+                anthropic::Client::new(api_key.expect("key checked"))
+                    .map_err(|e| CliError::Validation(format!("Anthropic client failed: {}", e)))?;
             let agent = client.agent(&model).preamble(system).build();
             agent
                 .prompt(user_prompt)
@@ -135,10 +130,8 @@ pub async fn call_llm(system: &str, user_prompt: &str) -> Result<String, CliErro
                 .map_err(|e| CliError::Validation(format!("LLM request failed: {}", e)))?
         }
         "gemini" => {
-            let client: gemini::Client =
-                gemini::Client::new(api_key.expect("key checked")).map_err(|e| {
-                    CliError::Validation(format!("Gemini client failed: {}", e))
-                })?;
+            let client: gemini::Client = gemini::Client::new(api_key.expect("key checked"))
+                .map_err(|e| CliError::Validation(format!("Gemini client failed: {}", e)))?;
             let agent = client.agent(&model).preamble(system).build();
             agent
                 .prompt(user_prompt)
@@ -146,17 +139,20 @@ pub async fn call_llm(system: &str, user_prompt: &str) -> Result<String, CliErro
                 .map_err(|e| CliError::Validation(format!("LLM request failed: {}", e)))?
         }
         "ollama" => {
-            let client: ollama::Client =
-                ollama::Client::new(Nothing).map_err(|e| {
-                    CliError::Validation(format!("Ollama client failed: {}", e))
-                })?;
+            let client: ollama::Client = ollama::Client::new(Nothing)
+                .map_err(|e| CliError::Validation(format!("Ollama client failed: {}", e)))?;
             let agent = client.agent(&model).preamble(system).build();
             agent
                 .prompt(user_prompt)
                 .await
                 .map_err(|e| CliError::Validation(format!("LLM request failed: {}", e)))?
         }
-        _ => return Err(CliError::Validation(format!("Unsupported provider: {}", provider))),
+        _ => {
+            return Err(CliError::Validation(format!(
+                "Unsupported provider: {}",
+                provider
+            )))
+        }
     };
 
     Ok(text)
