@@ -269,4 +269,42 @@ paymentProvider = system "Payment Provider" {
             );
         }
     }
+
+    #[test]
+    fn test_causal_loop_qualified_relation_scoped() {
+        // Relations with qualified idents (ecommerce.api -> admin) must stay inside the loop and get scope
+        let input = r#"
+admin = person "Admin"
+ecommerce = system "E" {
+  api = container "API" {}
+}
+AdminFeedback = causal_loop "Admin Feedback Loop" {
+  loop_type "balancing"
+  ecommerce.api -> admin "sends alert to"
+  admin -> ecommerce.api "adjusts via"
+}
+"#;
+        let parser = Parser::new("test.sruja".to_string());
+        let result = parser.parse(input);
+        assert!(result.is_ok(), "Should parse: {:?}", result);
+
+        let program = result.unwrap();
+        let with_scope = collect_relations_with_scope(&program);
+        let causal_scoped: Vec<_> = with_scope
+            .iter()
+            .filter(|rws| rws.scope == "AdminFeedback")
+            .collect();
+        assert!(
+            causal_scoped.len() >= 2,
+            "Causal loop relations should be scoped to AdminFeedback; got {:?}",
+            with_scope
+                .iter()
+                .map(|r| (
+                    r.scope.as_str(),
+                    r.relation.from.as_string(),
+                    r.relation.to.as_string()
+                ))
+                .collect::<Vec<_>>()
+        );
+    }
 }

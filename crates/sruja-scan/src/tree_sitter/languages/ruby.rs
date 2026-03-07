@@ -6,21 +6,31 @@ use std::path::Path;
 
 use super::{Definition, DefinitionKind, ParsedFile};
 
-pub fn parse(path: &Path, _content: &str) -> Option<ParsedFile> {
-    // Ruby tree-sitter has version compatibility issues
-    // Returning a basic parsed file without deep analysis
+pub fn parse(path: &Path, content: &str) -> Option<ParsedFile> {
+    let mut parser = tree_sitter::Parser::new();
+    parser.set_language(&tree_sitter_ruby::language()).ok()?;
+
+    let tree = parser.parse(content, None)?;
+    let root = tree.root_node();
+
     let name = path
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("unknown")
         .to_string();
 
+    let mut imports = Vec::new();
+    let mut exports = Vec::new();
+    let mut definitions = Vec::new();
+
+    extract_from_node(&root, content, &mut imports, &mut exports, &mut definitions);
+
     Some(ParsedFile {
         name,
         path: path.to_string_lossy().to_string(),
-        imports: Vec::new(),
-        exports: Vec::new(),
-        definitions: Vec::new(),
+        imports,
+        exports,
+        definitions,
     })
 }
 

@@ -65,6 +65,38 @@ pub fn collect_elements(program: &Program) -> (HashMap<String, ElementDef>, Vec<
                 let fqn = req.id.clone();
                 elements.insert(fqn, elem_def);
             }
+            TopLevelItem::CausalLoop(cl) => {
+                let loc = cl.location.clone();
+                let elem_def = ElementDef {
+                    location: loc.clone(),
+                    assignment: ElementAssignment {
+                        location: loc,
+                        name: cl.id.clone(),
+                        kind: ElementKind::Custom("causal_loop".to_string()),
+                        sub_kind: None,
+                        title: Some(cl.title.clone()),
+                        tag_refs: vec![],
+                        body: None,
+                    },
+                };
+                elements.insert(cl.id.clone(), elem_def);
+            }
+            TopLevelItem::FeedbackLoop(fl) => {
+                let loc = fl.location.clone();
+                let elem_def = ElementDef {
+                    location: loc.clone(),
+                    assignment: ElementAssignment {
+                        location: loc,
+                        name: fl.id.clone(),
+                        kind: ElementKind::Custom("feedback".to_string()),
+                        sub_kind: None,
+                        title: Some(fl.title.clone()),
+                        tag_refs: vec![],
+                        body: None,
+                    },
+                };
+                elements.insert(fl.id.clone(), elem_def);
+            }
             _ => {}
         }
     }
@@ -152,6 +184,32 @@ pub fn collect_relations_with_scope(program: &Program) -> Vec<RelationWithScope>
                 elem: (**elem).clone(),
                 parent: String::new(),
             }),
+            TopLevelItem::FeedbackLoop(fl) => {
+                for rel in &fl.relationships {
+                    out.push(RelationWithScope {
+                        relation: rel.clone(),
+                        scope: fl.id.clone(),
+                    });
+                }
+            }
+            TopLevelItem::CausalLoop(cl) => {
+                let loc = cl.location.clone();
+                for cr in &cl.relationships {
+                    let relation = Relation {
+                        location: loc.clone(),
+                        from: QualifiedIdent::simple(cr.from.clone()),
+                        to: QualifiedIdent::simple(cr.to.clone()),
+                        label: cr.effect.clone(),
+                        description: None,
+                        technology: None,
+                        tags: vec![],
+                    };
+                    out.push(RelationWithScope {
+                        relation,
+                        scope: cl.id.clone(),
+                    });
+                }
+            }
             _ => {}
         }
     }

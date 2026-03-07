@@ -57,6 +57,7 @@ payment_service = system "Payment Service" {
   worker = container "Payment Worker" {
     technology "Go"
     description "Background worker for payment reconciliation, webhook processing, and retry logic"
+    metadata { layer "api" }
   }
 
   db = datastore "Payment Database" {

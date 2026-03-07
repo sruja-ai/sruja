@@ -80,6 +80,16 @@ fn parse_feedback_loop_field(input: &str) -> IResult<&str, FeedbackLoopField> {
             FeedbackLoopField::LoopType,
         ),
         map(
+            preceded(tag("loop_type"), preceded(ws1, parse_string)),
+            |s| {
+                FeedbackLoopField::LoopType(if s.eq_ignore_ascii_case("balancing") {
+                    FeedbackLoopType::Balancing
+                } else {
+                    FeedbackLoopType::Reinforcing
+                })
+            },
+        ),
+        map(
             preceded(tag("loop_id"), preceded(ws1, parse_string)),
             FeedbackLoopField::LoopId,
         ),
@@ -161,6 +171,16 @@ fn parse_causal_loop_field(input: &str) -> IResult<&str, CausalLoopField> {
             CausalLoopField::LoopType,
         ),
         map(
+            preceded(tag("loop_type"), preceded(ws1, parse_string)),
+            |s| {
+                CausalLoopField::LoopType(if s.eq_ignore_ascii_case("balancing") {
+                    FeedbackLoopType::Balancing
+                } else {
+                    FeedbackLoopType::Reinforcing
+                })
+            },
+        ),
+        map(
             preceded(tag("loop_id"), preceded(ws1, parse_string)),
             CausalLoopField::LoopId,
         ),
@@ -169,6 +189,16 @@ fn parse_causal_loop_field(input: &str) -> IResult<&str, CausalLoopField> {
             CausalLoopField::Description,
         ),
         map(parse_causal_loop_variable, CausalLoopField::Variable),
+        // Accept relation syntax (qualified idents) so "ecommerce.api -> admin" stays inside the loop
+        map(parse_relation, |r| {
+            CausalLoopField::Relationship(CausalRelationship {
+                from: r.from.as_string(),
+                to: r.to.as_string(),
+                effect: r.label,
+                polarity: CausalPolarity::Positive,
+                delay: None,
+            })
+        }),
         map(
             parse_causal_loop_relationship,
             CausalLoopField::Relationship,

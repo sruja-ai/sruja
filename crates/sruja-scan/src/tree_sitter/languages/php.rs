@@ -6,9 +6,9 @@ use super::{Definition, DefinitionKind, ParsedFile};
 
 pub fn parse(path: &Path, content: &str) -> Option<ParsedFile> {
     let mut parser = tree_sitter::Parser::new();
-    let language: tree_sitter::Language =
-        unsafe { std::mem::transmute(tree_sitter_php::LANGUAGE_PHP) };
-    parser.set_language(&language).ok()?;
+    parser
+        .set_language(&tree_sitter_php::LANGUAGE_PHP.into())
+        .ok()?;
 
     let tree = parser.parse(content, None)?;
     let root = tree.root_node();

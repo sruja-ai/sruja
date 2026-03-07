@@ -6,21 +6,49 @@ use std::path::Path;
 
 use super::{Definition, DefinitionKind, ParsedFile};
 
-pub fn parse(path: &Path, _content: &str) -> Option<ParsedFile> {
-    // Kotlin tree-sitter has version compatibility issues
-    // Returning a basic parsed file without deep analysis
+pub fn parse(path: &Path, content: &str) -> Option<ParsedFile> {
+    // tree-sitter-kotlin 0.3 depends on tree-sitter 0.20; we use 0.24, so we cannot
+    // use the crate's Language with our Parser. Use a minimal line-based extraction instead.
     let name = path
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("unknown")
         .to_string();
 
+    let mut imports = Vec::new();
+    let mut definitions = Vec::new();
+
+    for line in content.lines() {
+        let line = line.trim();
+        if let Some(stripped) = line.strip_prefix("import ") {
+            let path_str = stripped.trim().trim_end_matches(';').trim();
+            if !path_str.is_empty() {
+                imports.push(path_str.to_string());
+            }
+        } else if let Some(rest) = line.strip_prefix("class ") {
+            let rest = rest.trim();
+            let class_name = rest
+                .split(|c: char| c.is_whitespace() || c == '(' || c == ':')
+                .next()
+                .unwrap_or("")
+                .trim();
+            if !class_name.is_empty() && class_name.chars().next().is_some_and(|c| c.is_uppercase())
+            {
+                definitions.push(Definition {
+                    name: class_name.to_string(),
+                    kind: DefinitionKind::Class,
+                    line: 0,
+                });
+            }
+        }
+    }
+
     Some(ParsedFile {
         name,
         path: path.to_string_lossy().to_string(),
-        imports: Vec::new(),
-        exports: Vec::new(),
-        definitions: Vec::new(),
+        imports,
+        exports: definitions.iter().map(|d| d.name.clone()).collect(),
+        definitions,
     })
 }
 
