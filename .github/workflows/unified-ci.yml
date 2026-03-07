@@ -55,11 +55,11 @@ jobs:
       - name: Build
         run: cargo build --release
       - name: Test
-        run: cargo test
+        run: cargo test --workspace
       - name: Format (code per standards in .sruja)
-        run: cargo fmt -- --check
+        run: cargo fmt --all -- --check
       - name: Lint
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --workspace -- -D warnings
 
   sruja-files:
     name: Sruja files (lint)
