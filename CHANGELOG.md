@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.10.0...sruja-v0.10.1) (2026-03-07)
+
+
+### Bug Fixes
+
+* **ci:** skip skill-lint steps when package not in workspace ([d31868d](https://github.com/sruja-ai/sruja/commit/d31868d97127cfd7c8c03fedb68e3c81bb230c1b))
+
 ## [0.10.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.9.1...sruja-v0.10.0) (2026-03-07)
 
 
