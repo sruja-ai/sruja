@@ -16,10 +16,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Sruja
-        run: |
-          curl -fsSL https://sruja.ai/install.sh | bash
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+      - name: Build Sruja CLI
+        run: cargo build --release -p sruja-cli
 
       - name: Cache base graph
         uses: actions/cache@v4
@@ -35,22 +37,22 @@ jobs:
           git fetch origin ${{ github.base_ref }}
           git checkout origin/${{ github.base_ref }}
           mkdir -p .sruja/cache
-          sruja scan -r . -o .sruja/cache/base_graph.json || true
+          ./target/release/sruja scan -r . -o .sruja/cache/base_graph.json || true
           git checkout ${{ github.sha }}
 
       - name: Run PR-scoped drift check
         id: drift
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            sruja drift-pr -r . --base origin/${{ github.base_ref }} --head HEAD -f github-actions
+            ./target/release/sruja drift-pr -r . --base origin/${{ github.base_ref }} --head HEAD -f github-actions
           else
-            sruja drift -r . --format text
+            ./target/release/sruja drift -r . --format text
           fi
         continue-on-error: true
 
       - name: Run full drift check
         if: github.event_name != 'pull_request'
-        run: sruja drift -r . --violations-only
+        run: ./target/release/sruja drift -r . --violations-only
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
@@ -60,7 +62,7 @@ jobs:
             const { execSync } = require('child_process');
             let output = '';
             try {
-              output = execSync('sruja drift-pr -r . --base origin/${{ github.base_ref }} --head HEAD -f json', { encoding: 'utf8' });
+              output = execSync('./target/release/sruja drift-pr -r . --base origin/${{ github.base_ref }} --head HEAD -f json', { encoding: 'utf8' });
             } catch (e) {
               output = e.stdout || e.message;
             }
