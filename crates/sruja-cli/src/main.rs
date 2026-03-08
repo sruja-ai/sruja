@@ -2,7 +2,6 @@
 //!
 //! Command-line interface for the Sruja DSL tool.
 
-pub mod ai;
 mod commands;
 mod config;
 mod context_detection;
@@ -245,9 +244,6 @@ enum Commands {
         /// Output format (text, json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
-        /// Enable LLM-powered insights
-        #[arg(long)]
-        llm: bool,
     },
     /// Compare declared architectural intent vs actual implementation
     Intent {
@@ -270,73 +266,6 @@ enum Commands {
     Runtime {
         #[command(subcommand)]
         cmd: RuntimeCommand,
-    },
-    /// AI-Powered Architecture Timeline evolution from git history
-    Timeline {
-        #[command(subcommand)]
-        cmd: TimelineCommand,
-    },
-    /// AI queries and knowledge persistence
-    Ai {
-        #[command(subcommand)]
-        cmd: AiCommand,
-    },
-}
-
-#[derive(Subcommand)]
-enum AiCommand {
-    Explain {
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        #[arg(long, short = 't')]
-        topic: String,
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
-        #[arg(long)]
-        graph: Option<String>,
-    },
-    Ask {
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        question: String,
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
-        #[arg(long)]
-        graph: Option<String>,
-    },
-    Feedback {
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        #[arg(long)]
-        answer_id: String,
-        #[arg(long)]
-        fact_id: String,
-        #[arg(long)]
-        verdict: String,
-        #[arg(long, short = 'c')]
-        comment: Option<String>,
-    },
-    Memory {
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
-    },
-}
-
-#[derive(Subcommand)]
-enum TimelineCommand {
-    /// Explain architectural evolution from commit history
-    Explain {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Maximum commits to scan
-        #[arg(long, short = 'm', default_value_t = 300)]
-        max_commits: usize,
-        /// Output format (text or json)
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
     },
 }
 
@@ -469,10 +398,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             view,
             intent,
             format,
-            llm,
         } => {
             let intent_opt = intent.or_else(|| std::env::var("SRUJA_INTENT_PATH").ok());
-            commands::analyze(&repo, &view, intent_opt.as_deref(), &format, llm).await
+            commands::analyze(&repo, &view, intent_opt.as_deref(), &format).await
         }
         Commands::Intent { cmd } => match cmd {
             IntentCommand::Check {
@@ -496,38 +424,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             RuntimeCommand::Analyze { traces, format } => {
                 commands::runtime_analyze(&traces, &format).await
             }
-        },
-        Commands::Timeline { cmd } => match cmd {
-            TimelineCommand::Explain {
-                repo,
-                max_commits,
-                format,
-            } => commands::timeline::timeline_explain(&repo, max_commits, &format).await,
-        },
-        Commands::Ai { cmd } => match cmd {
-            AiCommand::Explain {
-                repo,
-                topic,
-                format,
-                graph,
-            } => commands::ai::ai_explain(&repo, &topic, &format, graph.as_deref()).await,
-            AiCommand::Ask {
-                repo,
-                question,
-                format,
-                graph,
-            } => commands::ai::ai_ask(&repo, &question, &format, graph.as_deref()).await,
-            AiCommand::Feedback {
-                repo,
-                answer_id,
-                fact_id,
-                verdict,
-                comment,
-            } => {
-                commands::ai::ai_feedback(&repo, &answer_id, &fact_id, &verdict, comment.as_deref())
-                    .await
-            }
-            AiCommand::Memory { repo, format } => commands::ai::ai_memory(&repo, &format).await,
         },
     };
 

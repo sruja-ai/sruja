@@ -31,7 +31,6 @@ Nothing else is in scope (no designer app, no storybook, no social-publish, no s
 | **crates/sruja-scan** | Repo scanning (multi-language tree-sitter) |
 | **crates/sruja-diff** | Drift detection (code vs. intent) |
 | **crates/sruja-intent** | Intent vs. reality comparison |
-| **crates/sruja-mcp** | MCP server |
 | **book/** | mdBook source; build output = deployed website |
 | **extension/** | VS Code extension (preview, LSP, snippets) |
 | **examples/** | Example `.sruja` files (used by book and CLI). |

@@ -849,28 +849,17 @@ impl ViewContext {
         summary: &ViewSummary,
         sections: &HashMap<String, serde_json::Value>,
     ) -> Result<Option<String>, String> {
-        if !self.config.defaults.enable_llm {
-            return Ok(None);
-        }
-
         if let Some(ref prompt_template) = self.view.llm_prompt {
             let context = self.build_llm_context(summary, sections);
             let full_prompt = format!("{}\n\n{}", prompt_template, context);
 
-            let system_prompt = "You are an expert Software Architect analyzing a codebase structure and providing insights tailored for specific stakeholder views. Produce a highly insightful and concise architectural summary, identifying real hotspots and structural bottlenecks based strictly on the metrics provided.";
-            match crate::commands::llm::call_llm(system_prompt, &full_prompt).await {
-                Ok(response) => Ok(Some(response)),
-                Err(_) => match self.view.analysis_depth {
-                    AnalysisDepth::Quick => Ok(Some(self.generate_quick_insight(&full_prompt))),
-                    AnalysisDepth::Standard => {
-                        Ok(Some(self.generate_standard_insight(&full_prompt)))
-                    }
-                    AnalysisDepth::Deep => Ok(Some(self.generate_deep_insight(&full_prompt))),
-                    AnalysisDepth::Comprehensive => {
-                        Ok(Some(self.generate_comprehensive_insight(&full_prompt)))
-                    }
-                },
-            }
+            let insight = match self.view.analysis_depth {
+                AnalysisDepth::Quick => self.generate_quick_insight(&full_prompt),
+                AnalysisDepth::Standard => self.generate_standard_insight(&full_prompt),
+                AnalysisDepth::Deep => self.generate_deep_insight(&full_prompt),
+                AnalysisDepth::Comprehensive => self.generate_comprehensive_insight(&full_prompt),
+            };
+            Ok(Some(insight))
         } else {
             Ok(None)
         }

@@ -5,23 +5,18 @@
 # No API keys or config required for the fast path.
 #
 # Usage:
-#   ./run_demo.sh              # Fast path only (quickstart, drift, scan)
+#   ./run_demo.sh              # Fast path: quickstart + drift (no config required)
 #   ./run_demo.sh --baseline   # + drift vs example architecture
-#   ./run_demo.sh --llm        # + LLM eval (requires any LLM API key)
-#   ./run_demo.sh --all        # baseline + llm
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "${SCRIPT_DIR}/lib.sh"
-# Optional: load .env for LLM API keys (eval with --llm)
-[ -f "${SCRIPT_DIR}/.env" ] && set -a && . "${SCRIPT_DIR}/.env" && set +a
 REPOS_DIR="${SCRIPT_DIR}/test-repos"
 DEMO_REPO="express"  # Small, fast to clone and scan
 
 # Parse flags
 WITH_BASELINE=""
-WITH_LLM=""
 for arg in "$@"; do
   case "$arg" in
     -h|--help)
@@ -29,16 +24,12 @@ for arg in "$@"; do
       echo ""
       echo "  (none)       Fast path: quickstart + drift (no config required)"
       echo "  --baseline   Also run drift vs example architecture"
-      echo "  --llm        Also run LLM eval (requires any LLM API key in .env)"
-      echo "  --all        Same as --baseline + --llm"
       echo "  -h, --help   Show this help"
       echo ""
       echo "From this directory: ./run_demo.sh"
       exit 0
       ;;
     --baseline) WITH_BASELINE="1" ;;
-    --llm)      WITH_LLM="1" ;;
-    --all)      WITH_BASELINE="1"; WITH_LLM="1" ;;
   esac
 done
 
@@ -101,33 +92,6 @@ if [ -n "$WITH_BASELINE" ]; then
   echo ""
 fi
 
-# ─── Phase 5: Optional LLM eval ───
-if [ -n "$WITH_LLM" ]; then
-  echo "════════════════════════════════════════════════════════════════════"
-  echo "  4. LLM evaluation (optional - requires any LLM API key)"
-  echo "════════════════════════════════════════════════════════════════════"
-  if [ -n "$(has_llm_key)" ]; then
-    ARCH_FILE="${REPO_PATH}/architecture.sruja"
-    EXAMPLE_ARCH="${SCRIPT_DIR}/examples/example_generated_express.sruja"
-    if [ ! -f "$ARCH_FILE" ] && [ -f "$EXAMPLE_ARCH" ]; then
-      cp "$EXAMPLE_ARCH" "$ARCH_FILE"
-    fi
-    if [ -f "$ARCH_FILE" ]; then
-      $SRUJA eval "$REPO_PATH" 2>&1 || echo "   ⚠ LLM eval failed"
-    else
-      echo "   Example architecture not found. Run setup_repos.sh first."
-    fi
-  else
-    echo "   ⚠ No LLM API key found. Skipping LLM eval."
-    echo ""
-    echo "   To enable: copy .env.example to .env and add a key"
-    echo "   Or: export OPENAI_API_KEY=sk-...  (or OPENROUTER, ANTHROPIC, GEMINI)"
-    echo "   Or: SRUJA_LLM_PROVIDER=ollama for local models"
-    echo ""
-  fi
-  echo ""
-fi
-
 # ─── Summary ───
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║  ✅ Demo complete                                               ║"
@@ -138,9 +102,6 @@ echo "  • sruja quickstart -r .     # Try on your own repo"
 echo "  • sruja drift -r .           # Structural drift"
 echo "  • sruja analyze -r .         # Full analysis"
 echo ""
-if [ -z "$WITH_LLM" ]; then
-  echo "Optional: ./run_demo.sh --llm        # Add LLM eval (set any LLM API key)"
-fi
 if [ -z "$WITH_BASELINE" ]; then
   echo "Optional: ./run_demo.sh --baseline   # Drift vs example architecture"
 fi

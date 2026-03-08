@@ -1,4 +1,4 @@
-//! Question-based coverage evaluation using LLM.
+//! Question-based coverage evaluation (heuristic).
 //!
 //! Evaluates if selected components can answer key architecture questions.
 
@@ -28,7 +28,7 @@ pub struct QuestionCoverageResult {
 pub async fn evaluate_question_coverage(
     selection: &[Node],
     graph: &Graph,
-    llm_enabled: bool,
+    _llm_enabled: bool,
 ) -> Vec<QuestionCoverageResult> {
     let mut results = Vec::new();
 
@@ -44,14 +44,9 @@ pub async fn evaluate_question_coverage(
     }
 
     let selected_ids: HashSet<_> = selection.iter().map(|n| n.id.as_str()).collect();
-    let component_summary = build_component_summary(selection);
 
     for question in ARCHITECTURE_QUESTIONS {
-        let score = if llm_enabled {
-            evaluate_with_llm(question, &component_summary).await
-        } else {
-            evaluate_heuristically(question, selection, graph, &selected_ids)
-        };
+        let score = evaluate_heuristically(question, selection, graph, &selected_ids);
 
         let relevant = find_relevant_components(question, selection);
 
@@ -121,51 +116,6 @@ pub async fn refine_for_questions(
     }
 
     selection
-}
-
-fn build_component_summary(selection: &[Node]) -> String {
-    selection
-        .iter()
-        .take(50)
-        .map(|n| {
-            let path = n.path.as_deref().unwrap_or(&n.label);
-            let tech = n.technology.as_deref().unwrap_or("unknown");
-            format!("- {} ({})", path, tech)
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-async fn evaluate_with_llm(question: &str, component_summary: &str) -> f64 {
-    let prompt = format!(
-        r#"Evaluate if the following component selection can answer the architecture question.
-
-Question: {}
-
-Selected Components:
-{}
-
-Rate the coverage from 0.0 to 1.0:
-- 1.0: Can fully answer the question
-- 0.7: Can partially answer with some gaps
-- 0.5: Some relevant components but significant gaps
-- 0.3: Few relevant components
-- 0.0: Cannot answer at all
-
-Return ONLY a single number (0.0 to 1.0)."#,
-        question, component_summary
-    );
-
-    if let Ok(response) = crate::commands::llm::call_llm(
-        "You are an architecture evaluator. Rate component coverage for answering questions.",
-        &prompt,
-    )
-    .await
-    {
-        response.trim().parse::<f64>().unwrap_or(0.5)
-    } else {
-        0.5
-    }
 }
 
 fn evaluate_heuristically(

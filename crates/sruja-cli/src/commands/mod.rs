@@ -3,14 +3,11 @@
 //! Commands are split by domain: dsl, scan, analyze, runtime, intent.
 //! See REFACTORING_PLAN.md for the layout.
 
-pub mod ai;
 mod analyze;
 mod dsl;
 mod error;
 mod intent;
-pub mod llm;
 mod scan;
-pub mod timeline;
 mod version;
 
 pub use analyze::{analyze, complexity, semantic_analyze};

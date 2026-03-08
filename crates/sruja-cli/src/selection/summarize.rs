@@ -1,6 +1,6 @@
-//! Large component summarization using LLM.
+//! Large component summarization (truncation/placeholder).
 //!
-//! For components too large to include fully, generate LLM summaries.
+//! For components too large to include fully, use a size placeholder.
 
 use sruja_scan::Node;
 use std::fs;
@@ -49,72 +49,13 @@ pub async fn summarize_large_component(
         return ComponentSummary::Full { content };
     }
 
-    if !llm_enabled {
-        return ComponentSummary::Summarized {
-            summary: format!(
-                "[Large file: {} chars, {} lines. Enable LLM for summary.]",
-                content.len(),
-                content.lines().count()
-            ),
-        };
-    }
-
-    let summary = generate_llm_summary(&file_path, &content).await;
-    ComponentSummary::Summarized { summary }
-}
-
-async fn generate_llm_summary(file_path: &Path, content: &str) -> String {
-    let file_name = file_path
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| "unknown".to_string());
-
-    let preview = if content.len() > 3000 {
-        let start = &content[..1500];
-        let end = &content[content.len() - 1500..];
-        format!("{}\n\n... [content truncated] ...\n\n{}", start, end)
-    } else {
-        content.to_string()
-    };
-
-    let prompt = format!(
-        r#"Summarize this source file for architecture documentation.
-
-File: {}
-Size: {} characters
-
-Content:
-```
-{}
-```
-
-Provide a concise summary with {} bullet points:
-- Main purpose/responsibility
-- Key exports (functions, types, classes)
-- Important dependencies
-- Architectural role
-
-Return ONLY the bullet points, no preamble."#,
-        file_name,
-        content.len(),
-        preview,
-        SUMMARY_MAX_BULLETS
-    );
-
-    if let Ok(response) = crate::commands::llm::call_llm(
-        "You are a code summarizer. Create concise architecture-focused summaries.",
-        &prompt,
-    )
-    .await
-    {
-        response.trim().to_string()
-    } else {
-        format!(
-            "[{} - {} chars, {} lines. LLM summary failed.]",
-            file_name,
+    let _ = llm_enabled; // unused; LLM removed
+    ComponentSummary::Summarized {
+        summary: format!(
+            "[Large file: {} chars, {} lines.]",
             content.len(),
             content.lines().count()
-        )
+        ),
     }
 }
 

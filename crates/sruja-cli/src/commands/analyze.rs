@@ -275,7 +275,6 @@ pub async fn analyze(
     view_name: &str,
     _intent_path: Option<&str>,
     format: &str,
-    enable_llm: bool,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     if !repo_path.exists() {
@@ -288,7 +287,7 @@ pub async fn analyze(
     let mut config = SrujaConfig::load(repo_path)
         .map_err(|e| CliError::Validation(format!("Failed to load config: {}", e)))?;
 
-    config.defaults.enable_llm = enable_llm || config.defaults.enable_llm;
+    config.defaults.enable_llm = false;
 
     let graph = scan_repo(repo_path)?;
 

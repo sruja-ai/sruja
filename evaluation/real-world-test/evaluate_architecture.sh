@@ -6,34 +6,26 @@
 #   ./evaluate_architecture.sh <repo-name>
 #   ./evaluate_architecture.sh express
 #   ./evaluate_architecture.sh /path/to/repo
-#   ./evaluate_architecture.sh express --llm   # Add LLM evaluation (requires any LLM API key)
-
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "${SCRIPT_DIR}/lib.sh"
-# Load .env from this directory when present (for LLM keys; see .env.example)
-[ -f "${SCRIPT_DIR}/.env" ] && set -a && . "${SCRIPT_DIR}/.env" && set +a
 REPO_ARG=""
-USE_LLM=""
 
 for arg in "$@"; do
   case "$arg" in
     -h|--help)
-      echo "Usage: $0 <repo-name|path> [--llm]"
+      echo "Usage: $0 <repo-name|path>"
       echo ""
       echo "  repo-name   Name under test-repos/ (e.g. express)"
       echo "  path       Path to repo directory containing architecture.sruja"
-      echo "  --llm      Also run sruja eval (requires LLM API key in .env)"
       echo "  -h, --help Show this help"
       echo ""
       echo "Examples:"
       echo "  $0 express"
       echo "  $0 /path/to/repo"
-      echo "  $0 express --llm"
       exit 0
       ;;
-    --llm) USE_LLM="1" ;;
     *) [ -z "$REPO_ARG" ] && REPO_ARG="$arg" ;;
   esac
 done
@@ -173,32 +165,6 @@ echo "  [ ] Useful (≥7/10)"
 echo "  [ ] Partially Useful (5-6/10)"
 echo "  [ ] Not Useful (<5/10)"
 echo ""
-if [ -n "$USE_LLM" ]; then
-  echo "🤖 Running LLM evaluation (sruja eval)..."
-  SRUJA_CMD=$(find_sruja)
-  HAS_LLM_KEY=$(has_llm_key)
-  if [ -n "$HAS_LLM_KEY" ] && [ -n "$SRUJA_CMD" ]; then
-    if $SRUJA_CMD eval "$REPO_PATH" 2>&1; then
-      echo ""
-      echo "✅ LLM evaluation complete"
-    else
-      echo "⚠️  LLM evaluation failed (check API key or SRUJA_LLM_PROVIDER)"
-    fi
-  else
-    echo "⚠️  No LLM API key found. Skipping LLM eval."
-    echo ""
-    echo "   To enable: cp .env.example .env  (in this directory) and add a key"
-    echo "   Or: export OPENAI_API_KEY=sk-...  (or OPENROUTER, ANTHROPIC, GEMINI)"
-    echo "   Or: SRUJA_LLM_PROVIDER=ollama for local models"
-    echo ""
-  fi
-  echo ""
-else
-  echo "Tip: Run with --llm for LLM evaluation (requires any LLM API key)"
-  echo "     ./evaluate_architecture.sh $REPO_NAME --llm"
-  echo ""
-fi
-
 # Generate report
 REPORT_DIR="${SCRIPT_DIR}/results"
 mkdir -p "$REPORT_DIR"

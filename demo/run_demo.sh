@@ -1,41 +1,84 @@
-#!/bin/bash
-set -a
-source ../.env
-set +a
-export SRUJA_LLM_PROVIDER=openrouter
-source ../.env
+#!/usr/bin/env bash
+# Architecture Intelligence demo: intent → scan → drift → analyze → why (deterministic)
+# Run from repo root: make demo-intel   OR   cd demo && ./run_demo.sh
+set -e
 
-echo -e "\n\033[1;36m=====================================================\033[0m"
-echo -e "\033[1;36m         SRUJA ARCHITECTURE INTELLIGENCE DEMO        \033[0m"
-echo -e "\033[1;36m=====================================================\033[0m"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# Reuse E2E helper to find sruja binary (target/release, target/debug, or PATH)
+if [ -f "${REPO_ROOT}/evaluation/real-world-test/lib.sh" ]; then
+  . "${REPO_ROOT}/evaluation/real-world-test/lib.sh"
+else
+  find_sruja() {
+    [ -f "${REPO_ROOT}/target/release/sruja" ] && echo "${REPO_ROOT}/target/release/sruja" && return
+    [ -f "${REPO_ROOT}/target/debug/sruja" ] && echo "${REPO_ROOT}/target/debug/sruja" && return
+    command -v sruja >/dev/null 2>&1 && echo "sruja" && return
+    echo ""
+  }
+fi
 
-echo -e "\n\033[1;33m[1] THE RULEBOOK (INTENT)\033[0m"
-echo "We deliberately designed architecture.sruja to state that our"
-echo "Frontend should never talk to the Database."
-cat architecture.sruja | grep -v '^$'
+SRUJA=$(find_sruja)
+if [ -z "$SRUJA" ]; then
+  echo "❌ sruja CLI not found. From repo root run: make build"
+  echo "   Or: cargo build --release -p sruja-cli"
+  exit 1
+fi
 
-echo -e "\n\033[1;33m[2] THE REALITY (CODE SCAN)\033[0m"
-echo "Running Sruja's code analysis scanner over our 3 demo microservices (\`frontend.py\`, \`api_gateway.py\`, \`database.py\`) to parse their Abstract Syntax Trees and detect dependencies..."
-echo -e "\033[0;32m> cargo run -p sruja-cli -- scan --output sruja.graph.json\033[0m"
-cargo run -q -p sruja-cli -- scan --output sruja.graph.json
-echo "Graph generated successfully."
+cd "$SCRIPT_DIR"
 
-echo -e "\n\033[1;33m[3] DETECTING DRIFT (CODE VS. INTENT)\033[0m"
-echo "Let's ask Sruja to compare the codebase against our stated rules:"
-echo -e "\033[0;32m> cargo run -p sruja-cli -- drift -a architecture.sruja\033[0m"
-cargo run -q -p sruja-cli -- drift -a architecture.sruja
+echo ""
+echo "╔══════════════════════════════════════════════════════════════════╗"
+echo "║  Sruja Architecture Intelligence Demo                           ║"
+echo "║  Intent → Scan → Drift → Analyze → Why (deterministic)           ║"
+echo "╚══════════════════════════════════════════════════════════════════╝"
+echo ""
 
-echo -e "\n\033[1;33m[4] RUNTIME INTELLIGENCE (WITH DISTRIBUTED TRACES)\033[0m"
-echo "We have a traces.json spanning multiple repos showing Frontend calling ThirdPartyPaymentAPI."
-echo "Let's merge runtime behavior into the CTO stakeholder report."
-echo -e "\033[0;32m> cargo run -p sruja-cli -- analyze --view cto -t traces.json\033[0m"
-cargo run -q -p sruja-cli -- analyze --view cto -t traces.json
+echo "────────────────────────────────────────────────────────────────────"
+echo "  [1] The rulebook (intent)"
+echo "────────────────────────────────────────────────────────────────────"
+echo "architecture.sruja declares: Frontend must not talk to Database."
+echo ""
+grep -v '^$' architecture.sruja
+echo ""
 
-echo -e "\n\033[1;33m[5] ARCHITECTURAL INTELLIGENCE (LLM EXPLAINABILITY)\033[0m"
-echo -e "Let's ask Sruja's AI module to explain a specific design flaw in plain English:"
-echo -e "> cargo run -p sruja-cli -- ai ask \"Why does the Frontend directly access the database instead of using the API Gateway? What are the risks of this coupling?\" --graph sruja.graph.json"
-cargo run -q -p sruja-cli -- ai ask "Why does the Frontend directly access the database instead of using the API Gateway? What are the risks of this coupling?" --graph sruja.graph.json
+echo "────────────────────────────────────────────────────────────────────"
+echo "  [2] The reality (code scan)"
+echo "────────────────────────────────────────────────────────────────────"
+echo "Scanning demo Python services to build the dependency graph..."
+echo "  \$ $SRUJA scan --output sruja.graph.json"
+"$SRUJA" scan --output sruja.graph.json
+echo "  ✓ Graph written to sruja.graph.json"
+echo ""
 
-echo -e "\n\033[1;36m=====================================================\033[0m"
-echo -e "\033[1;36m                     DEMO COMPLETE                   \033[0m"
-echo -e "\033[1;36m=====================================================\033[0m"
+echo "────────────────────────────────────────────────────────────────────"
+echo "  [3] Detecting drift (code vs. intent)"
+echo "────────────────────────────────────────────────────────────────────"
+echo "Comparing code against architecture.sruja rules..."
+echo "  \$ $SRUJA drift -a architecture.sruja"
+"$SRUJA" drift -a architecture.sruja
+echo ""
+
+echo "────────────────────────────────────────────────────────────────────"
+echo "  [4] Runtime intelligence (distributed traces)"
+echo "────────────────────────────────────────────────────────────────────"
+echo "Merging traces.json into CTO view..."
+echo "  \$ $SRUJA analyze --view cto -t traces.json"
+"$SRUJA" analyze --view cto -t traces.json 2>/dev/null || echo "  (traces.json not found; step skipped)"
+echo ""
+
+echo "────────────────────────────────────────────────────────────────────"
+echo "  [5] Deterministic explainability (sruja why)"
+echo "────────────────────────────────────────────────────────────────────"
+echo "Asking: Why does the Frontend access the database?"
+echo "  \$ $SRUJA why \"Why does the Frontend access the database?\" -r . --graph sruja.graph.json"
+"$SRUJA" why "Why does the Frontend access the database?" -r . --graph sruja.graph.json 2>/dev/null || true
+echo ""
+echo "  For natural-language interpretation, use the Sruja skill in your editor (Cursor, Copilot, etc.)."
+echo ""
+
+echo "╔══════════════════════════════════════════════════════════════════╗"
+echo "║  ✅ Architecture Intelligence demo complete                      ║"
+echo "╚══════════════════════════════════════════════════════════════════╝"
+echo ""
+echo "Next: sruja quickstart -r .   sruja drift -r .   sruja analyze -r ."
+echo ""

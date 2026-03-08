@@ -25,7 +25,8 @@ sruja quickstart -r .
 
 You get: architecture inventory, health score, top findings, and next steps.
 
-**New to Sruja?** Run the demo first: `make demo` (or `cd evaluation/real-world-test && ./run_demo.sh`).
+**New to Sruja?** Run the demo first: `make demo` (or `cd evaluation/real-world-test && ./run_demo.sh`).  
+For the full **Architecture Intelligence** flow (intent → scan → drift → analyze → AI ask): `make demo-intel` (or `cd demo && ./run_demo.sh`).
 
 ---
 
@@ -144,7 +145,7 @@ sruja analyze -r . -f json
 | **First value** | `sruja quickstart -r .`, `sruja drift -r .` | Any repo, zero config. Start here. |
 | **Deeper analysis** | `sruja analyze -r .`, `sruja complexity -r .`, `sruja semantic -r .` | Full picture: structural + semantic + intent. |
 | **With a baseline** | `sruja drift -r . -a architecture.sruja`, `sruja lint`, `sruja export` | When you have (or create) a `.sruja` file. |
-| **Optional** | `sruja eval <path>` (LLM), `sruja intent check`, `sruja runtime analyze` | API keys or trace files. |
+| **Optional** | `sruja intent check`, `sruja runtime analyze` | Trace files or intent dir. |
 
 **Drift modes:** `sruja drift -r .` runs **scan-only** (no `.sruja` needed). Use `sruja drift -r . -a architecture.sruja` to **compare code to a declared baseline**; create one with the [Architecture Agent](docs/ARCHITECTURE_AGENT.md) or manually.
 
@@ -152,7 +153,7 @@ sruja analyze -r . -f json
 
 - `SRUJA_INTENT_PATH` – Path to intent directory (ADRs, .sruja) for `sruja analyze` and `sruja intent check`. If unset, `sruja analyze` uses `repo/docs/architecture`.
 - `SRUJA_TRACES_PATH` – Path to traces JSON file for `sruja analyze -t`. Only used when `-t` is not passed.
-- `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GEMINI_API_KEY` – For `sruja eval` (LLM-based architecture evaluation). Or `SRUJA_LLM_PROVIDER=ollama` for local models.
+- No LLM API keys required for core CLI. For natural-language interpretation, use the Sruja skill in your editor (Cursor, Copilot, etc.).
 
 **Add drift to CI** – Gate on architecture health. Exits with code 1 when cycles, orphans, or layer violations (Error severity) are found:
 
@@ -212,7 +213,7 @@ sruja drift-pr -r . --base origin/main -f github-actions
 sruja drift-pr -r . --base origin/main -f json
 ```
 
-See [Architecture Intelligence](docs/ARCHITECTURE_INTELLIGENCE.md) for details.
+See [Architecture Intelligence](docs/ARCHITECTURE_INTELLIGENCE.md) for details. For real output and a short “why use Sruja on my repo?” proof, see [Value proof](docs/VALUE_PROOF.md).
 
 ### AI-Assisted Discovery (Optional)
 
@@ -286,7 +287,7 @@ sruja export markdown example.sruja
 ### 🏗️ Architecture Intelligence (Beta)
 
 - **CLI first, no key required:** `sruja quickstart`, `sruja why "question" -r .`, `sruja drift -r .` — deterministic evidence from scan and graph
-- **Query:** "Why are we using X?" uses graph + scan evidence only; optional LLM enrichment when configured
+- **Query:** "Why are we using X?" uses graph + scan evidence (deterministic); use the Sruja skill in your editor for AI interpretation
 
 **Strategy:** [architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md](architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md)
 
@@ -325,8 +326,7 @@ sruja/
 │   ├── sruja-scan/       # Repo scanning (multi-language tree-sitter)
 │   ├── sruja-diff/       # Drift detection (code vs. intent)
 │   ├── sruja-intent/     # Intent vs. reality comparison
-│   ├── sruja-report/     # Report schema for analysis output
-│   └── sruja-mcp/        # MCP server for AI tooling
+│   └── sruja-report/     # Report schema for analysis output
 ├── book/                 # mdBook documentation
 └── examples/             # Example .sruja files
 ```

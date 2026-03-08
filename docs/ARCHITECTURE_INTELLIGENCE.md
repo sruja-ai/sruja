@@ -49,6 +49,16 @@ cargo run -p sruja-app
 
 When a key exists, the app adds conversational extraction, decision drafts, richer natural-language synthesis. If the key is missing, deterministic CLI mode remains fully useful.
 
+### Demos
+
+| Demo | Command | What it shows |
+|------|---------|----------------|
+| **E2E value** | `make demo` or `cd evaluation/real-world-test && ./run_demo.sh` | Quickstart + drift on a real repo (Express); optional baseline. |
+| **Architecture Intelligence** | `make demo-intel` or `cd demo && ./run_demo.sh` | Full flow: intent → scan → drift → analyze → why (deterministic). Use the Sruja skill in your editor for AI interpretation. |
+| **Commit-to-commit drift** | `demo/run_commit_drift_demo.sh [REPO] [BASELINE] [HEAD]` | Architecture Intelligence at baseline commit, then drift report (new violations only) from baseline to head. See [demo/COMMIT_DRIFT_DEMO.md](../demo/COMMIT_DRIFT_DEMO.md). |
+
+Run from the repo root after `make build`.
+
 ## Architecture
 
 ```
@@ -109,6 +119,10 @@ Path parameters (e.g. `repo_path`, `architecture_path`) are validated against th
 
 ## Key Concepts
 
+### Health score
+
+The 0–100 health score is derived from structural violations (cycles, layer violations, god modules, orphans) with fixed weights and caps. It is **meaningful for comparing refs and spotting structural regression**, but it is not size-normalized by default and does not capture other dimensions (tests, docs, coupling strength). See [Health score](HEALTH_SCORE.md) for the formula, uses, and limitations. For when the findings are **really useful** vs. noisy (e.g. cycles vs. god modules in stories/vendor), see [Insights usefulness](INSIGHTS_USEFULNESS.md).
+
 ### Zero-Key Deterministic Mode
 
 Without LLM, Sruja provides architecture intelligence via code evidence:
@@ -135,11 +149,10 @@ If key missing → deterministic mode remains fully useful.
 - **How** — Dependencies and connectivity
 - **Decisions** — List and explain ADRs (when extraction enabled)
 
-### Configuration (Optional for LLM)
+### Configuration
 
 | Variable | Purpose |
 |----------|---------|
-| `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` | Optional — for LLM eval, extraction, agents. Or `SRUJA_LLM_PROVIDER=ollama` for local. |
 | `SRUJA_EXTRACTION_MODEL` | Model for extraction (default: openai/gpt-4o-mini) |
 | `SRUJA_DATA_DIR` | Override persistence directory (default: `~/.sruja/data`) |
 | `.env` | Loaded at app startup (see `.env.example`) |

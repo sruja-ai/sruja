@@ -161,61 +161,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "axum"
-version = "0.7.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edca88bc138befd0323b20752846e6587272d3b03b0343c8ea28a6f819e6e71f"
-dependencies = [
- "async-trait",
- "axum-core",
- "bytes",
- "futures-util",
- "http",
- "http-body",
- "http-body-util",
- "hyper",
- "hyper-util",
- "itoa",
- "matchit",
- "memchr",
- "mime",
- "percent-encoding",
- "pin-project-lite",
- "rustversion",
- "serde",
- "serde_json",
- "serde_path_to_error",
- "serde_urlencoded",
- "sync_wrapper",
- "tokio",
- "tower 0.5.3",
- "tower-layer",
- "tower-service",
- "tracing",
-]
-
-[[package]]
-name = "axum-core"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09f2bd6146b97ae3359fa0cc6d6b376d9539582c7b4220f041a33ec24c226199"
-dependencies = [
- "async-trait",
- "bytes",
- "futures-util",
- "http",
- "http-body",
- "http-body-util",
- "mime",
- "pin-project-lite",
- "rustversion",
- "sync_wrapper",
- "tower-layer",
- "tower-service",
- "tracing",
-]
-
-[[package]]
 name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -818,12 +763,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
 
 [[package]]
-name = "httpdate"
-version = "1.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
-
-[[package]]
 name = "hyper"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -837,7 +776,6 @@ dependencies = [
  "http",
  "http-body",
  "httparse",
- "httpdate",
  "itoa",
  "pin-project-lite",
  "pin-utils",
@@ -1217,12 +1155,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "matchit"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
-
-[[package]]
 name = "memchr"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1278,15 +1210,6 @@ checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
 dependencies = [
  "memchr",
  "minimal-lexical",
-]
-
-[[package]]
-name = "nu-ansi-term"
-version = "0.50.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
-dependencies = [
- "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1667,7 +1590,7 @@ dependencies = [
  "tokio-rustls",
  "tokio-util",
  "tower 0.5.3",
- "tower-http 0.6.8",
+ "tower-http",
  "tower-service",
  "url",
  "wasm-bindgen",
@@ -1961,17 +1884,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_path_to_error"
-version = "0.1.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10a9ff822e371bb5403e391ecd83e182e0e77ba7f6fe0160b795797109d1b457"
-dependencies = [
- "itoa",
- "serde",
- "serde_core",
-]
-
-[[package]]
 name = "serde_repr"
 version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1980,18 +1892,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "serde_urlencoded"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3491c14715ca2294c4d6a88f15e84739788c1d030eed8c110436aafdaa2f3fd"
-dependencies = [
- "form_urlencoded",
- "itoa",
- "ryu",
- "serde",
 ]
 
 [[package]]
@@ -2005,15 +1905,6 @@ dependencies = [
  "ryu",
  "serde",
  "unsafe-libyaml",
-]
-
-[[package]]
-name = "sharded-slab"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
-dependencies = [
- "lazy_static",
 ]
 
 [[package]]
@@ -2056,14 +1947,13 @@ dependencies = [
 
 [[package]]
 name = "sruja-cli"
-version = "0.9.0"
+version = "0.10.1"
 dependencies = [
  "chrono",
  "clap",
  "colored",
  "env_logger",
  "indicatif",
- "rig-core",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -2084,7 +1974,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-diagnostics"
-version = "0.9.0"
+version = "0.10.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -2092,7 +1982,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-diff"
-version = "0.9.0"
+version = "0.10.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -2103,7 +1993,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-engine"
-version = "0.9.0"
+version = "0.10.1"
 dependencies = [
  "log",
  "serde",
@@ -2116,7 +2006,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-export"
-version = "0.9.0"
+version = "0.10.1"
 dependencies = [
  "js-sys",
  "serde",
@@ -2128,7 +2018,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-graph"
-version = "0.9.0"
+version = "0.10.1"
 dependencies = [
  "chrono",
  "serde",
@@ -2157,7 +2047,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-language"
-version = "0.9.0"
+version = "0.10.1"
 dependencies = [
  "nom",
  "serde",
@@ -2167,7 +2057,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-lsp"
-version = "0.9.0"
+version = "0.10.1"
 dependencies = [
  "async-trait",
  "rand 0.8.5",
@@ -2183,33 +2073,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "sruja-mcp"
-version = "0.9.0"
-dependencies = [
- "axum",
- "chrono",
- "serde",
- "serde_json",
- "sruja-diff",
- "sruja-graph",
- "sruja-intent",
- "sruja-language",
- "sruja-report",
- "sruja-scan",
- "sruja-semantic",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tokio-test",
- "tower 0.5.3",
- "tower-http 0.5.2",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "sruja-report"
-version = "0.9.0"
+version = "0.10.1"
 dependencies = [
  "serde",
  "sruja-diff",
@@ -2217,7 +2082,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-scan"
-version = "0.9.0"
+version = "0.10.1"
 dependencies = [
  "ignore",
  "log",
@@ -2246,7 +2111,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-semantic"
-version = "0.9.0"
+version = "0.10.1"
 dependencies = [
  "async-trait",
  "rig-core",
@@ -2256,7 +2121,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-types"
-version = "0.9.0"
+version = "0.10.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -2264,7 +2129,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-wasm"
-version = "0.9.0"
+version = "0.10.1"
 dependencies = [
  "console_error_panic_hook",
  "js-sys",
@@ -2384,15 +2249,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "thread_local"
-version = "1.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f60246a4944f24f6e018aa17cdeffb7818b76356965d03b07d6a9886e8962185"
-dependencies = [
- "cfg-if",
 ]
 
 [[package]]
@@ -2520,23 +2376,6 @@ dependencies = [
  "tokio",
  "tower-layer",
  "tower-service",
- "tracing",
-]
-
-[[package]]
-name = "tower-http"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e9cd434a998747dd2c4276bc96ee2e0c7a2eadf3cae88e52be55a05fa9053f5"
-dependencies = [
- "bitflags 2.10.0",
- "bytes",
- "http",
- "http-body",
- "http-body-util",
- "pin-project-lite",
- "tower-layer",
- "tower-service",
 ]
 
 [[package]]
@@ -2609,7 +2448,6 @@ version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63e71662fa4b2a2c3a26f570f037eb95bb1f85397f3cd8076caed2f026a6d100"
 dependencies = [
- "log",
  "pin-project-lite",
  "tracing-attributes",
  "tracing-core",
@@ -2633,7 +2471,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
 dependencies = [
  "once_cell",
- "valuable",
 ]
 
 [[package]]
@@ -2646,31 +2483,6 @@ dependencies = [
  "futures-task",
  "pin-project",
  "tracing",
-]
-
-[[package]]
-name = "tracing-log"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee855f1f400bd0e5c02d150ae5de3840039a3f54b025156404e34c23c03f47c3"
-dependencies = [
- "log",
- "once_cell",
- "tracing-core",
-]
-
-[[package]]
-name = "tracing-subscriber"
-version = "0.3.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f30143827ddab0d256fd843b7a66d164e9f271cfa0dde49142c5ca0ca291f1e"
-dependencies = [
- "nu-ansi-term",
- "sharded-slab",
- "smallvec",
- "thread_local",
- "tracing-core",
- "tracing-log",
 ]
 
 [[package]]
@@ -2910,12 +2722,6 @@ dependencies = [
  "serde_core",
  "wasm-bindgen",
 ]
-
-[[package]]
-name = "valuable"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "walkdir"

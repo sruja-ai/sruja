@@ -216,7 +216,10 @@ pub async fn drift(
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct QuickstartResult {
     pub repo: String,
+    /// Structural health only (cycles, layers, god modules, orphans).
     pub health_score: u8,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub health_breakdown: Option<sruja_diff::HealthScoreBreakdown>,
     pub inventory: InventorySummary,
     pub top_findings: Vec<Finding>,
     pub actionable_fixes: Vec<ActionableFix>,
@@ -295,6 +298,7 @@ impl QuickstartResult {
         QuickstartResult {
             repo: repo.to_string(),
             health_score: report.health_score,
+            health_breakdown: report.health_breakdown,
             inventory: InventorySummary {
                 modules: report.total_modules,
                 services: report.total_services,
@@ -415,7 +419,7 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
         60..=79 => score_str.yellow().bold(),
         _ => score_str.red().bold(),
     };
-    println!("💚 Architecture Health Score: {}", colored_score);
+    println!("💚 Architecture Health Score (structural only): {}", colored_score);
     println!("{}", "─".repeat(70).truecolor(100, 100, 100));
 
     let score_bar = match report.health_score {
@@ -705,7 +709,7 @@ fn print_drift_text(result: &sruja_diff::DriftReport, violations_only: bool) {
             result.total_modules, result.total_services, result.total_databases
         );
         println!("  Dependencies: {}", result.total_dependencies);
-        println!("  Health Score: {}/100", result.health_score);
+        println!("  Health Score (structural only): {}/100", result.health_score);
         println!();
     }
 
@@ -788,12 +792,6 @@ pub async fn quickstart(
         )));
     }
 
-    let enable_llm = std::env::var("SRUJA_LLM_PROVIDER").is_ok()
-        || std::env::var("OPENAI_API_KEY").is_ok()
-        || std::env::var("ANTHROPIC_API_KEY").is_ok()
-        || std::env::var("GEMINI_API_KEY").is_ok()
-        || std::env::var("GOOGLE_API_KEY").is_ok();
-
     eprintln!("{}", "═".repeat(70).truecolor(100, 100, 100));
     eprintln!(
         "{}",
@@ -840,10 +838,7 @@ pub async fn quickstart(
 
     if generate_baseline {
         eprintln!("📝 Generating architecture baseline...");
-        if enable_llm {
-            eprintln!("   🧠 Using AI to distill architecture...");
-        }
-        let baseline = generate_baseline_from_graph(&graph, enable_llm, repo_path).await;
+        let baseline = generate_baseline_from_graph(&graph, repo_path).await;
         let baseline_path = repo_path.join("architecture.sruja");
         fs::write(&baseline_path, &baseline)?;
         eprintln!("   ✓ Baseline written to {}", baseline_path.display());
@@ -945,7 +940,7 @@ pub async fn smart_coverage(
     Ok(())
 }
 
-async fn generate_baseline_from_graph(graph: &Graph, enable_llm: bool, repo_path: &Path) -> String {
+async fn generate_baseline_from_graph(graph: &Graph, repo_path: &Path) -> String {
     let mut domains: std::collections::HashMap<String, (usize, String, Vec<String>)> =
         std::collections::HashMap::new();
     let mut db_nodes = Vec::new();
@@ -1027,114 +1022,7 @@ async fn generate_baseline_from_graph(graph: &Graph, enable_llm: bool, repo_path
         }
     }
 
-    if enable_llm {
-        // Build compressed summary for LLM
-        let mut summary = String::new();
-        summary.push_str("Top-Level Domains:\n");
-        let mut sorted_domains: Vec<_> = domains.iter().collect();
-        sorted_domains.sort_by(|a, b| b.1 .0.cmp(&a.1 .0));
-
-        for (domain, (count, tech, samples)) in sorted_domains.iter().take(40) {
-            let sample_str = samples.join(", ");
-            summary.push_str(&format!(
-                "- {} ({} components, Primary Tech: {})\n  Sample modules: {}\n",
-                domain, count, tech, sample_str
-            ));
-        }
-
-        if !db_nodes.is_empty() {
-            summary.push_str("\nDatabases:\n");
-            for db in db_nodes.iter().take(5) {
-                summary.push_str(&format!("- {}\n", db.path.as_deref().unwrap_or(&db.label)));
-            }
-        }
-
-        if !api_nodes.is_empty() {
-            summary.push_str("\nExternal APIs:\n");
-            for api in api_nodes.iter().take(5) {
-                summary.push_str(&format!(
-                    "- {}\n",
-                    api.path.as_deref().unwrap_or(&api.label)
-                ));
-            }
-        }
-
-        let system_prompt = r#"You are an Expert Software Architect. Your job is to output a strictly valid and concise Sruja DSL `architecture.sruja` file based on a high-level summary of a codebase.
-
-Sruja syntax guidelines:
-```
-// Declarations
-person = kind "Person"
-system = kind "System"
-container = kind "Container"
-component = kind "Component"
-database = kind "Database"
-adr = kind "ADR"
-flow = kind "Flow"
-external = kind "External"
-
-// Definitions
-app = system "My App" {
-  foo_domain = container "src/foo" {
-     technology "Rust"
-     description "Domain logic for foo (12 components)"
-     
-     // Core Modules / Sub-components
-     foo_auth = component "auth_module"
-     foo_utils = component "utils_module"
-  }
-}
-main_db = database "PostgreSQL" {}
-stripe_api = external "Stripe API" {}
-
-// Relationships
-foo_domain -> main_db "reads/writes"
-
-// Architectural Decisions
-ADR001 = adr "Use Microservices" {
-    status "Accepted"
-    description "Adopted microservices architecture to scale teams independently."
-}
-
-// Business Flows
-CheckoutFlow = flow "User Checkout" {
-    step foo_auth -> foo_utils "Validates session"
-    step foo_utils -> main_db "Saves order"
-}
-```
-
-Rules:
-1. Extract the primary domains and create `container` blocks for them inside an `app = system` block. 
-2. Inside each `container`, declare the "Sample modules" provided as `component` statements. Ensure component identifiers are unique (e.g., prefix them with the domain name).
-3. Write a highly meaningful architectural `description` summarizing what each domain likely does. Append the total component count at the end of the description.
-4. Ensure identifiers (the left side of `=`) only use alphanumeric chars and underscores, no spaces or paths.
-5. Add any databases or external APIs outside the system block if present (using `database` and `external` declarations).
-6. Guess 3-5 high-level directional relationships (`->`) between the domains based on common architectural patterns.
-7. Invent 1-2 realistic architectural `flow` blocks that trace a business scenario across the generated containers. Use ONLY `step Source -> Target "Action"` inside the `{}`. DO NOT add `description` or anything else inside `flow` blocks.
-8. Invent 1-2 realistic `adr` (Architecture Decision Record) blocks that make sense for this specific technology stack and architecture. Include a `status` and `description` inside the `{}`.
-9. Provide ONLY the raw Sruja DSL. No markdown formatting, no explanations. Do not wrap in ``` code blocks.
-"#;
-
-        if let Ok(raw_llm_response) = crate::commands::llm::call_llm(system_prompt, &summary).await
-        {
-            let clean = raw_llm_response
-                .trim()
-                .strip_prefix("```sruja")
-                .or_else(|| raw_llm_response.trim().strip_prefix("```text"))
-                .or_else(|| raw_llm_response.trim().strip_prefix("```"))
-                .unwrap_or(raw_llm_response.trim())
-                .strip_suffix("```")
-                .unwrap_or(raw_llm_response.trim())
-                .trim()
-                .to_string();
-
-            if !clean.is_empty() {
-                return clean;
-            }
-        }
-    }
-
-    // Fallback deterministic logic (Domain aggregated)
+    // Deterministic baseline (domain aggregated)
     let mut dsl = String::new();
     dsl.push_str("// Auto-generated high-level architecture baseline from Sruja quickstart\n");
     dsl.push_str("// Edit this file to match your intended architecture\n\n");
