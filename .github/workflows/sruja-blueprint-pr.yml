@@ -1,0 +1,26 @@
+name: Sruja Blueprint (lint)
+
+on:
+  pull_request:
+    branches: [main, master, develop]
+    paths:
+      - "architecture/**/*.sruja"
+      - "docs/architecture/**/*.sruja"
+
+permissions:
+  contents: read
+
+jobs:
+  blueprint-lint:
+    name: Lint architecture blueprints
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate blueprint .sruja files
+        uses: ./.github/actions/sruja-validate
+        with:
+          working-directory: .
+          files: "architecture/**/*.sruja docs/architecture/**/*.sruja"
+

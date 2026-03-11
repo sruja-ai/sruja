@@ -1,0 +1,60 @@
+// templates/blueprints/event-driven-saas.sruja
+// Starter blueprint for an event-driven SaaS: API publishes events, worker consumes.
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+Customer = person "Customer" {
+  description "External user interacting with the product"
+}
+
+SaaS = system "SaaS Platform" {
+  description "API-driven product with asynchronous processing via an event stream"
+}
+
+Web = container "Web App" {
+  technology "Next.js"
+  description "Web UI for customers"
+}
+
+API = container "Public API" {
+  technology "Go"
+  description "Handles customer requests and publishes domain events"
+}
+
+Events = container "Event Stream" {
+  technology "Kafka"
+  description "Durable stream for domain events and async workflows"
+}
+
+Worker = container "Async Worker" {
+  technology "Python"
+  description "Consumes events and performs background processing"
+}
+
+API_DB = database "API Database" {
+  technology "PostgreSQL"
+  description "API-owned relational datastore"
+}
+
+Worker_DB = database "Worker Database" {
+  technology "PostgreSQL"
+  description "Worker-owned relational datastore (outbox, projections, job state)"
+}
+
+Customer -> SaaS "Uses"
+SaaS -> Web "Delivers UI"
+Customer -> Web "HTTPS"
+Web -> API "HTTPS (JSON)"
+API -> API_DB "Reads/writes"
+API -> Events "Publishes domain events"
+Worker -> Events "Consumes domain events"
+Worker -> Worker_DB "Reads/writes"
+
+view index {
+  title "SaaS Platform (event-driven starter)"
+  include *
+}
+

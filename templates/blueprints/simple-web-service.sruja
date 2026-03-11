@@ -1,0 +1,42 @@
+// templates/blueprints/simple-web-service.sruja
+// Minimal blueprint for a typical web + API + DB architecture.
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+User = person "User" {
+  description "End user of the product"
+}
+
+App = system "Example App" {
+  description "User-facing application with a web frontend and API"
+}
+
+Web = container "Web Frontend" {
+  technology "React"
+  description "Browser UI that calls the API over HTTPS"
+}
+
+API = container "API Service" {
+  technology "Node.js"
+  description "Backend API handling business logic and data access"
+}
+
+DB = database "Primary Database" {
+  technology "PostgreSQL"
+  description "Primary relational datastore"
+}
+
+User -> App "Uses"
+App -> Web "Delivers UI"
+User -> Web "HTTPS (browser)"
+Web -> API "HTTPS (JSON)"
+API -> DB "Reads/writes"
+
+view index {
+  title "Example App (starter blueprint)"
+  include *
+}
+

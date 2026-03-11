@@ -54,7 +54,7 @@ Can you help me write the Sruja code for this?
 
 1. **Language Grammar**: The complete syntax and structure
    - Location: `docs/LANGUAGE_SPECIFICATION.md`
-   - Also: `pkg/language/ast.go` (for detailed grammar)
+   - Also: `crates/sruja-language/src/ast.rs` (AST and parser-side structure)
 
 2. **Examples**: Real-world usage examples
    - Location: `examples/` directory
@@ -65,14 +65,12 @@ Can you help me write the Sruja code for this?
    - Contains: Tutorials, concepts, getting started guide
 
 ### Optional but Helpful
+4. **Language Server (LSP)**: For IDE integration (recommended)
+   - Provides: Diagnostics (lint-like feedback), completions, go-to-definition, hover
+   - Use: The Sruja VS Code extension (works in VS Code and Cursor) or any editor that can run the Sruja LSP
 
-4. **Language Server**: For IDE integration (future)
-   - Would provide: Autocomplete, syntax highlighting, validation
-   - Status: Not yet implemented
-
-5. **JSON Schema**: For structure validation (future)
-   - Would provide: Schema-based validation and autocomplete
-   - Status: Not yet implemented
+5. **JSON Schema**: For structure validation (optional)
+   - Useful for: Tooling that consumes exported JSON (not for authoring `.sruja`)
 
 ## Current Capabilities
 
@@ -87,31 +85,14 @@ Can you help me write the Sruja code for this?
 - Share example files as context
 - Reference the documentation site
 
-## Future Enhancements
+## IDE experience (recommended)
 
-### Language Server Protocol (LSP)
+For the best authoring loop, install the Sruja VS Code extension:
 
-A future LSP implementation would enable:
-- Real-time autocomplete in IDEs
-- Syntax validation as you type
-- Go-to-definition for elements
-- Hover documentation
-- Error highlighting
+- **Diagnostics while you type** (undefined refs, missing fields, cycles)
+- **Completions and navigation** (go-to-definition, hover)
 
-### JSON Schema
-
-A JSON Schema would enable:
-- Schema-based validation
-- Better autocomplete in JSON-aware editors
-- Integration with tools like JSON Schema validators
-
-### VS Code Extension
-
-A VS Code extension would provide:
-- Syntax highlighting
-- IntelliSense
-- Integrated validation
-- Quick fixes
+For setup details, see [AI Editor Integration](AI_EDITOR_INTEGRATION.md).
 
 ## Best Practices for AI-Assisted Development
 

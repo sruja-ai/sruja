@@ -2,14 +2,10 @@
 // Complete architecture of the Sruja platform
 // This file describes Sruja's own architecture using Sruja DSL
 //
-// NOTE: Element kind definitions and stdlib imports are planned features.
-// When fully supported, this should use: import { * } from 'sruja.ai/stdlib'
-// For now, element kinds are defined explicitly (though parser support is in progress).
-//
-// This file may not compile until kind definitions are fully supported in the parser.
-// It serves as comprehensive documentation of the architecture structure.
+// Note: This file is written as a comprehensive blueprint and is intended to be
+// validated with `sruja lint`.
 
-// Element kinds (parser support pending)
+// Element kinds
 person = kind "Person"
 system = kind "System"
 container = kind "Container"

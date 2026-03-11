@@ -2,6 +2,8 @@
 
 Use Sruja with Cursor, GitHub Copilot, VS Code + Copilot, Continue.dev, or any LSP-aware editor. This doc is the single reference for AI-assisted Sruja workflows (2026).
 
+If you want the fastest end-to-end proof in a real PR, start with [First PR with Sruja](FIRST_PR_WITH_SRUJA.md).
+
 ## Install Sruja as a skill (recommended)
 
 **One command** – Get full architecture rules (DSL syntax, patterns, anti-patterns, trade-offs) in your AI editor:

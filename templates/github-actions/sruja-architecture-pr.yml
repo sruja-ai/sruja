@@ -1,0 +1,44 @@
+name: Sruja Architecture PR Check
+
+on:
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  architecture:
+    name: Drift + blueprint lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Sruja CLI
+        run: |
+          curl -fsSL https://sruja.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: PR-scoped drift check (new violations only)
+        run: |
+          sruja drift-pr -r . --base origin/${{ github.base_ref }} --head HEAD -f github-actions
+
+      - name: Lint architecture blueprints (if present)
+        run: |
+          set -e
+          shopt -s globstar nullglob
+          files=(architecture/**/*.sruja docs/architecture/**/*.sruja)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No blueprint files found under architecture/ or docs/architecture/"
+            exit 0
+          fi
+          for f in "${files[@]}"; do
+            echo "Linting $f"
+            sruja lint "$f"
+          done
+

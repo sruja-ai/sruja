@@ -10,6 +10,7 @@ This directory contains reusable GitHub Actions workflows for Sruja.
 | `sruja-stakeholder.yml` | Multi-stakeholder reports | Manual, Schedule |
 | `sruja-security.yml` | Security analysis | Push, Schedule |
 | `sruja-pr.yml` | PR-scoped drift detection | Pull Request |
+| `sruja-architecture-pr.yml` | PR gate: drift + blueprint lint | Pull Request |
 | `sruja-release.yml` | Pre-release checks | Release |
 
 ## Quick Start
@@ -23,6 +24,13 @@ cp templates/github-actions/sruja-drift.yml .github/workflows/
 # Copy security scanning (runs daily at 6 AM UTC)
 cp templates/github-actions/sruja-security.yml .github/workflows/
 ```
+
+### Recommended for SDLC “auto architecture maintenance”
+
+- Add `templates/github-actions/sruja-architecture-pr.yml` to gate PRs on:
+  - `sruja drift-pr` (new violations only)
+  - `sruja lint` for blueprint files under `architecture/**/*.sruja` and/or `docs/architecture/**/*.sruja`
+- When CI fails, fix locally by updating your `.sruja` blueprint using the `sruja-architecture` (and optionally `sruja-architecture-agent`) skill, then re-run `sruja lint` before pushing.
 
 ## Configuration
 
