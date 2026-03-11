@@ -1,5 +1,7 @@
 # Install Sruja in Your AI Code Editor
 
+> **Product posture:** Integration is **skills + CLI** only. There is **no MCP server** and no `sruja mcp` command—use the skill in your editor and the CLI for scan/drift/intent/why. See [skills/README.md](../skills/README.md).
+
 Use Sruja as a **skill** (or rules) in your AI coding assistant so it generates valid Sruja DSL, follows architectural patterns, and can discover architecture from your codebase.
 
 **Single path (install → prompt → validate → optional drift):** [Getting started with the skill](GETTING_STARTED_SKILL.md).

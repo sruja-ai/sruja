@@ -47,6 +47,7 @@ For the full **Architecture Intelligence** flow (intent → scan → drift → a
 
 ### 🤖 **AI-Ready Features**
 
+- **Skills + CLI (no MCP)** – Editor integration uses **skills** (Cursor, Copilot, etc.) plus the **CLI** for deterministic output. There is no `sruja mcp` or MCP server in this repo.
 - **Install as skill** – One command to add Sruja to Cursor (or other AI editors): [Install guide](docs/INSTALL_AS_SKILL.md). For architecture discovery, use the [recommended prompt](docs/INSTALL_AS_SKILL.md#recommended-prompt-architecture-discovery) (copy-paste in IDE chat).
 - **Context for AI tools** – Export architecture context for Cursor, Copilot, and Claude
 - **One-click baseline** – Generate `architecture.sruja` from your repo in seconds

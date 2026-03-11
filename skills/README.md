@@ -2,6 +2,8 @@
 
 This directory contains skills for **AI code editors** (Cursor, Codex, and others) and the [skills.sh](https://skills.sh) ecosystem. Install a skill so your AI assistant generates valid Sruja DSL and applies architectural patterns.
 
+**No MCP server** — editor integration is **skills + CLI** only. There is no `sruja mcp` in this repo.
+
 ## Install in your editor
 
 **One command (Cursor, Codex, skills.sh):**

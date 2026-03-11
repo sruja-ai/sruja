@@ -433,51 +433,14 @@ pub mod context;
 
 ---
 
-## Step 7: Add MCP Integration
+## Step 7: Editor integration (skills + CLI — no MCP)
 
-**File:** `crates/sruja-cli/src/main.rs`
+**Do not add an MCP server.** The `sruja-mcp` crate and `sruja mcp` / `sruja ai` commands were **removed**. Editors integrate via:
 
-Add to `Commands` enum:
+1. **Skill** – `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` (and optionally `sruja-architecture-agent`).
+2. **CLI** – `sruja quickstart`, `sruja drift`, `sruja intent check`, `sruja why`, `sruja context export`.
 
-```rust
-/// Start MCP server for AI tooling (Cursor, Copilot integration)
-Mcp {
-    #[arg(long, default_value = "3000")]
-    port: u16,
-},
-```
-
-Add to match statement:
-
-```rust
-Commands::Mcp { port } => {
-    commands::mcp::start_mcp_server(port).await?;
-}
-```
-
-**File:** `crates/sruja-cli/src/commands/mcp.rs` (NEW FILE)
-
-```rust
-use super::CliError;
-
-pub async fn start_mcp_server(port: u16) -> Result<(), CliError> {
-    eprintln!("Starting Sruja MCP server on port {}", port);
-    eprintln!("Connect from Cursor/Copilot with:");
-    eprintln!(r#"  {{ "mcpServers": {{ "sruja": {{ "url": "http://localhost:{}" }} }} }}"#, port);
-    
-    // MCP removed; use skills + CLI for editor integration
-    // For now, show instructions
-    eprintln!("\nMCP server integration coming soon!");
-    eprintln!("For now, use: sruja context --for-ai > .cursorrules");
-    
-    Ok(())
-}
-```
-
-Add to `commands/mod.rs`:
-```rust
-pub mod mcp;
-```
+See [INSTALL_AS_SKILL.md](INSTALL_AS_SKILL.md) and [skills/README.md](../skills/README.md).
 
 ---
 
@@ -544,12 +507,13 @@ ollama pull llama3.2
 
 ## Summary of Changes
 
-### New Files (5)
-1. `crates/sruja-cli/src/graph_store.rs`
-2. `crates/sruja-cli/src/commands/context.rs`
-3. `crates/sruja-cli/src/commands/mcp.rs`
-4. `.sruja/graph.json` (generated)
-5. `.cursorrules` (generated)
+### New Files (4)
+1. `crates/sruja-cli/src/graph_store.rs` (if pursued)
+2. `crates/sruja-cli/src/commands/context.rs` (if pursued)
+3. `.sruja/graph.json` (generated)
+4. `.cursorrules` (generated)
+
+*(No `mcp.rs` — MCP not used; skills + CLI only.)*
 
 ### Modified Files (6)
 1. `crates/sruja-cli/Cargo.toml` - (sruja-extract removed; add any new deps as needed)
@@ -566,7 +530,7 @@ ollama pull llama3.2
 1. Implement these changes
 2. Test with real repos
 3. Add Ollama integration (Step 4 in main plan)
-4. Add MCP server integration (Step 5 in main plan)
+4. ~~Add MCP server integration~~ **Not applicable** — use skills + CLI (see Step 7)
 5. Update all documentation
 
 This checklist makes AI core to every command, not optional.
