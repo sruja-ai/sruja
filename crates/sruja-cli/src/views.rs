@@ -44,6 +44,7 @@ pub struct ViewRecommendation {
 pub struct ViewContext {
     pub view: ViewDefinition,
     pub graph: Graph,
+    #[allow(dead_code)] // reserved for future view config overrides
     pub config: SrujaConfig,
     pub repo_path: std::path::PathBuf,
 }

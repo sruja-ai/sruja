@@ -19,7 +19,8 @@ pub use drift::{
 pub use health::calculate_health_score_from_violations;
 pub use types::{
     DiffEdge, DiffError, DiffNode, DiffResult, DiffSummary, DriftConfig, DriftReport, EdgeDiff,
-    HealthScorePenalties, NodeDiff, NodeMatch, Severity, SourceRef, Violation, ViolationKind,
+    HealthScoreBreakdown, HealthScorePenalties, NodeDiff, NodeMatch, Severity, SourceRef,
+    Violation, ViolationKind,
 };
 
 #[cfg(test)]

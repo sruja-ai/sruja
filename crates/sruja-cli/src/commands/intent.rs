@@ -104,7 +104,13 @@ pub async fn intent_check(
     }
 
     let detector = DriftDetector::new();
-    let report = detector.detect(&merged_model, &graph);
+    let mut report = detector.detect(&merged_model, &graph);
+
+    let policy_drifts = crate::compliance::evaluate_policy_violations(&merged_model, &graph);
+    if !policy_drifts.is_empty() {
+        report.drifts.extend(policy_drifts);
+        report.recompute_summary_and_score();
+    }
 
     if format == "json" {
         let intent_report = IntentReport::from_drift_report(&report);

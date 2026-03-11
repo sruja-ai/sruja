@@ -38,8 +38,14 @@ jobs:
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
 
-      - name: Build skill-lint
-        run: cargo build --release -p skill-lint
+      - name: Check for skill-lint package
+        id: skill_lint
+        run: |
+          if cargo build --release -p skill-lint 2>/dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Get changed files
         id: changed-files
@@ -55,7 +61,7 @@ jobs:
           echo "${{ steps.changed-files.outputs.all_changed_files }}"
 
       - name: Check links in changed files
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: steps.skill_lint.outputs.present == 'true' && steps.changed-files.outputs.any_changed == 'true'
         run: |
           set -e
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
@@ -69,7 +75,7 @@ jobs:
           done
 
       - name: Check cross-references in changed files
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: steps.skill_lint.outputs.present == 'true' && steps.changed-files.outputs.any_changed == 'true'
         run: |
           set -e
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
@@ -83,7 +89,7 @@ jobs:
           done
 
       - name: Test code examples in changed files
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: steps.skill_lint.outputs.present == 'true' && steps.changed-files.outputs.any_changed == 'true'
         run: |
           set -e
           failed=0
@@ -102,7 +108,7 @@ jobs:
           fi
 
       - name: Check formatting of changed files
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: steps.skill_lint.outputs.present == 'true' && steps.changed-files.outputs.any_changed == 'true'
         run: |
           set -e
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do

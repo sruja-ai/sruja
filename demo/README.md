@@ -1,6 +1,6 @@
 # Architecture Intelligence Demo
 
-This demo shows the full **Architecture Intelligence** flow on a small, self-contained microservices example: intent (rulebook) → scan → drift → analyze → why (deterministic).
+This demo shows the full **Architecture Intelligence** flow on a small, self-contained microservices example: intent (rulebook) → scan → intent drift → analyze → why (deterministic).
 
 ## What’s in this folder
 
@@ -29,7 +29,7 @@ The script finds the `sruja` CLI from `target/release`, `target/debug`, or your 
 
 1. **The rulebook (intent)** – Prints `architecture.sruja` so you see the intended design.
 2. **The reality (code scan)** – `sruja scan` builds a dependency graph from the Python files.
-3. **Drift (code vs. intent)** – `sruja drift -a architecture.sruja` reports violations (e.g. Frontend → Database).
+3. **Intent drift (docs vs. code)** – `sruja intent check -r . -i . -f markdown` produces `intent_report.md` and highlights the key unexpected dependency (e.g. `frontend_py` → `database`).
 4. **Runtime intelligence** – `sruja analyze --view cto -t traces.json` (skipped if `traces.json` is missing).
 5. **Deterministic explainability** – `sruja why` answers "Why does the Frontend access the database?" using graph evidence. For richer natural-language interpretation, use the Sruja skill in your editor (Cursor, Copilot, etc.); the editor's AI runs quickstart/drift/why and interprets the output.
 

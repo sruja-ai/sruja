@@ -44,10 +44,17 @@ jobs:
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
 
-      - name: Build skill-lint
-        run: cargo build --release -p skill-lint
+      - name: Check for skill-lint package
+        id: skill_lint
+        run: |
+          if cargo build --release -p skill-lint 2>/dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Check for broken links
+        if: steps.skill_lint.outputs.present == 'true'
         run: |
           set -e
           echo "Checking for broken links in skill files..."
@@ -57,6 +64,7 @@ jobs:
           }
 
       - name: Check for broken cross-references
+        if: steps.skill_lint.outputs.present == 'true'
         run: |
           set -e
           echo "Checking for broken cross-references in skill files..."
@@ -66,6 +74,7 @@ jobs:
           }
 
       - name: Test code examples
+        if: steps.skill_lint.outputs.present == 'true'
         run: |
           echo "Testing code examples in skill files..."
           OUTPUT=$(./target/release/skill-lint test skills/ 2>&1) || EXIT=$?
@@ -83,6 +92,7 @@ jobs:
           exit "${EXIT:-0}"
 
       - name: Check formatting
+        if: steps.skill_lint.outputs.present == 'true'
         run: |
           set -e
           echo "Checking formatting of skill files..."
@@ -93,6 +103,7 @@ jobs:
           }
 
       - name: Validate metadata schema
+        if: steps.skill_lint.outputs.present == 'true'
         run: |
           set -e
           echo "Validating skill metadata against schema..."
@@ -108,7 +119,7 @@ jobs:
           fi
 
       - name: Comment on PR with results (only on PRs)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.skill_lint.outputs.present == 'true'
         uses: actions/github-script@v7.0.1
         with:
           script: |

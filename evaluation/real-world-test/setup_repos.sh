@@ -33,6 +33,14 @@ REPOS_COMPLEX=(
   "saleor|https://github.com/saleor/saleor.git|Headless ecommerce platform (Python/Django): GraphQL API, dashboard, checkout"
 )
 
+# Realistic applications: product-like apps (not frameworks or libraries). Full-stack, SaaS, or end-user products.
+REPOS_APPS=(
+  "gitea|https://github.com/go-gitea/gitea.git|Self-hosted Git service (Go): web UI, API, Git SSH/HTTP"
+  "saleor|https://github.com/saleor/saleor.git|Headless ecommerce platform (Python/Django): GraphQL API, dashboard, checkout"
+  "documenso|https://github.com/documenso/documenso.git|Open-source document signing (TypeScript/Next.js)"
+  "cal.com|https://github.com/calcom/cal.com.git|Scheduling and meetings (TypeScript/Next.js)"
+)
+
 # Parse flags
 MODE="quick"
 for arg in "$@"; do
@@ -42,11 +50,13 @@ for arg in "$@"; do
       echo ""
       echo "  (default)   Quick set: express, fastapi, next.js, prometheus, django (frameworks; fast clone)"
       echo "  --complex   Complex systems: gitea, etcd, caddy, temporal, minio, react-admin, saleor (admin, ecommerce, multi-component)"
+      echo "  --apps      Realistic applications: gitea, saleor, documenso, cal.com (product-like, not frameworks)"
       echo "  --all       Both quick and complex"
       echo "  -h, --help  Show this help"
       exit 0
       ;;
     --complex) MODE="complex" ;;
+    --apps)    MODE="apps" ;;
     --all)     MODE="all" ;;
   esac
 done
@@ -54,6 +64,7 @@ done
 case "$MODE" in
   quick)   REPOS=("${REPOS_QUICK[@]}")   ;;
   complex) REPOS=("${REPOS_COMPLEX[@]}") ;;
+  apps)    REPOS=("${REPOS_APPS[@]}")    ;;
   all)     REPOS=("${REPOS_QUICK[@]}" "${REPOS_COMPLEX[@]}") ;;
 esac
 
@@ -89,7 +100,7 @@ done
 declare -A REPO_META=(
   [express]="JavaScript|medium|backend-framework"
   [fastapi]="Python|medium|backend-framework"
-  [next.js]="TypeScript|high|fullstack-framework"
+  ["next.js"]="TypeScript|high|fullstack-framework"
   [prometheus]="Go|high|distributed-system"
   [django]="Python|high|fullstack-framework"
   [gitea]="Go|high|customer-facing-app"
@@ -99,6 +110,8 @@ declare -A REPO_META=(
   [minio]="Go|high|object-storage"
   [react-admin]="TypeScript|high|admin-dashboard"
   [saleor]="Python|high|ecommerce"
+  [documenso]="TypeScript|medium|saas-app"
+  ["cal.com"]="TypeScript|high|saas-app"
 )
 
 # Build manifest from all repos that exist under REPOS_DIR
@@ -138,6 +151,20 @@ MANIFEST="${REPOS_DIR}/MANIFEST.md"
     echo ""
     ((n++)) || true
   done
+  echo "## Realistic applications (product-like, not frameworks)"
+  echo ""
+  for entry in "${REPOS_APPS[@]}"; do
+    IFS='|' read -r name url desc <<< "$entry"
+    IFS='|' read -r lang complexity arch_type <<< "${REPO_META[$name]:-unknown|high|saas-app}"
+    echo "### $n. $name"
+    echo "- **Description**: $desc"
+    echo "- **Language**: $lang"
+    echo "- **Complexity**: $complexity"
+    echo "- **Architecture Type**: $arch_type"
+    echo "- **URL**: $url"
+    echo ""
+    ((n++)) || true
+  done
 } > "$MANIFEST"
 
 echo "📝 Created manifest at $MANIFEST"
@@ -153,7 +180,10 @@ echo "3. Review the generated .sruja file"
 echo "4. Run evaluation: ./evaluate_architecture.sh <repo-name>"
 echo ""
 if [ "$MODE" = "quick" ]; then
-  echo "Tip: Use ./setup_repos.sh --complex to add complex systems (gitea, etcd, caddy, temporal, minio, react-admin, saleor)"
+  echo "Tip: Use ./setup_repos.sh --complex for more systems; ./setup_repos.sh --apps for realistic applications (gitea, saleor, documenso, cal.com)"
+  echo ""
+elif [ "$MODE" = "apps" ]; then
+  echo "Tip: Run sruja quickstart -r test-repos/<name> on each app. See run_results/REALISTIC_APPS_RUN_SUMMARY.md for a sample run."
   echo ""
 fi
 echo "=================================================="

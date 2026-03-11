@@ -42,6 +42,40 @@ pub struct DriftReport {
     pub summary: DriftSummary,
 }
 
+impl DriftReport {
+    /// Recompute summary counts from drifts and update drift_score and health.
+    /// Call after appending additional drifts (e.g. policy violations).
+    pub fn recompute_summary_and_score(&mut self) {
+        self.summary.undocumented_components = self
+            .drifts
+            .iter()
+            .filter(|d| d.kind == DriftKind::UndocumentedComponent)
+            .count();
+        self.summary.missing_components = self
+            .drifts
+            .iter()
+            .filter(|d| d.kind == DriftKind::MissingComponent)
+            .count();
+        self.summary.undocumented_relationships = self
+            .drifts
+            .iter()
+            .filter(|d| d.kind == DriftKind::UndocumentedRelationship)
+            .count();
+        self.summary.boundary_violations = self
+            .drifts
+            .iter()
+            .filter(|d| d.kind == DriftKind::BoundaryViolation)
+            .count();
+        self.summary.policy_violations = self
+            .drifts
+            .iter()
+            .filter(|d| d.kind == DriftKind::PolicyViolation)
+            .count();
+        self.drift_score = DriftDetector::compute_drift_score(&self.summary, &self.drifts);
+        self.health = DriftDetector::classify_health(self.drift_score);
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DriftSummary {
     pub total_components_declared: usize,
@@ -278,8 +312,8 @@ impl DriftDetector {
                 .count(),
         };
 
-        let drift_score = self.compute_drift_score(&summary, &drifts);
-        let health = self.classify_health(drift_score);
+        let drift_score = Self::compute_drift_score(&summary, &drifts);
+        let health = Self::classify_health(drift_score);
 
         DriftReport {
             intent_source: intent.source.name.clone(),
@@ -288,6 +322,38 @@ impl DriftDetector {
             drift_score,
             health,
             summary,
+        }
+    }
+
+    pub(crate) fn compute_drift_score(summary: &DriftSummary, drifts: &[Drift]) -> u8 {
+        if summary.total_components_declared == 0 {
+            return 0;
+        }
+        let mut score: f32 = 0.0;
+        score += summary.undocumented_components as f32 * 5.0;
+        score += summary.missing_components as f32 * 10.0;
+        score += summary.undocumented_relationships as f32 * 2.0;
+        score += summary.boundary_violations as f32 * 15.0;
+        score += summary.policy_violations as f32 * 8.0;
+        for d in drifts {
+            score += match d.severity {
+                Severity::Critical => 15.0,
+                Severity::High => 10.0,
+                Severity::Medium => 5.0,
+                Severity::Low => 2.0,
+                Severity::Info => 0.0,
+            };
+        }
+        let max_score = (summary.total_components_declared.max(1) as f32) * 20.0;
+        ((score / max_score * 100.0).min(100.0)) as u8
+    }
+
+    pub(crate) fn classify_health(score: u8) -> DriftHealth {
+        match score {
+            0..=20 => DriftHealth::Healthy,
+            21..=50 => DriftHealth::MinorDrift,
+            51..=75 => DriftHealth::SignificantDrift,
+            _ => DriftHealth::CriticalDrift,
         }
     }
 
@@ -340,44 +406,6 @@ impl DriftDetector {
 
     fn detect_policy_violations(&self, _policy: &DeclaredPolicy, _reality: &Graph) -> Vec<Drift> {
         Vec::new()
-    }
-
-    fn compute_drift_score(&self, summary: &DriftSummary, drifts: &[Drift]) -> u8 {
-        if summary.total_components_declared == 0 {
-            return 0;
-        }
-
-        let mut score: f32 = 0.0;
-
-        score += summary.undocumented_components as f32 * 5.0;
-        score += summary.missing_components as f32 * 10.0;
-        score += summary.undocumented_relationships as f32 * 2.0;
-        score += summary.boundary_violations as f32 * 15.0;
-        score += summary.policy_violations as f32 * 8.0;
-
-        for drift in drifts {
-            score += match drift.severity {
-                Severity::Critical => 15.0,
-                Severity::High => 10.0,
-                Severity::Medium => 5.0,
-                Severity::Low => 2.0,
-                Severity::Info => 0.0,
-            };
-        }
-
-        let max_score = (summary.total_components_declared.max(1) as f32) * 20.0;
-        let normalized = (score / max_score * 100.0).min(100.0);
-
-        normalized as u8
-    }
-
-    fn classify_health(&self, score: u8) -> DriftHealth {
-        match score {
-            0..=20 => DriftHealth::Healthy,
-            21..=50 => DriftHealth::MinorDrift,
-            51..=75 => DriftHealth::SignificantDrift,
-            _ => DriftHealth::CriticalDrift,
-        }
     }
 }
 
@@ -532,10 +560,16 @@ mod tests {
     fn test_drift_health_classification() {
         let detector = DriftDetector::new();
 
-        assert_eq!(detector.classify_health(10), DriftHealth::Healthy);
-        assert_eq!(detector.classify_health(35), DriftHealth::MinorDrift);
-        assert_eq!(detector.classify_health(60), DriftHealth::SignificantDrift);
-        assert_eq!(detector.classify_health(80), DriftHealth::CriticalDrift);
+        assert_eq!(DriftDetector::classify_health(10), DriftHealth::Healthy);
+        assert_eq!(DriftDetector::classify_health(35), DriftHealth::MinorDrift);
+        assert_eq!(
+            DriftDetector::classify_health(60),
+            DriftHealth::SignificantDrift
+        );
+        assert_eq!(
+            DriftDetector::classify_health(80),
+            DriftHealth::CriticalDrift
+        );
     }
 
     #[test]

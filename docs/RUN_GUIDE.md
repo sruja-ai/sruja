@@ -109,6 +109,20 @@ cd evaluation/real-world-test
 
 If the script says “sruja CLI not found”, ensure `sruja` is on PATH or build from repo root first (`make build`) and add `target/release` to PATH.
 
+### Optional: Architecture Intelligence microservices demo (~2 min)
+
+This demo walks through the full intelligence flow: **intent (rulebook) → scan → drift → analyze → AI ask**, using the small Python microservices in `demo/`.
+
+```bash
+make demo-intel
+# or: cd demo && ./run_demo.sh
+```
+
+- **No API key** – Steps 1–4 run; step 5 (AI ask) is skipped with a hint, and `sruja why` is run as a deterministic fallback when possible.
+- **With API key** – Set `OPENROUTER_API_KEY` or `OPENAI_API_KEY` in repo root `.env` to enable the full AI ask step.
+
+See [Architecture Intelligence](ARCHITECTURE_INTELLIGENCE.md#demos) and `demo/README.md` for details.
+
 ---
 
 ## Step 6: Run the desktop app (optional)
@@ -204,7 +218,8 @@ make book-serve   # Serve at http://localhost:3000 (live reload)
 | 2 | `make install && make build` | Dependencies + CLI binary |
 | 3 | `./target/release/sruja --version` | Verify CLI |
 | 4 | `./target/release/sruja quickstart -r .` | First value (no config) |
-| 5 | `cd evaluation/real-world-test && ./run_demo.sh` | Optional demo |
+| 5a | `cd evaluation/real-world-test && ./run_demo.sh` | Optional: E2E demo (quickstart + drift) |
+| 5b | `make demo-intel` | Optional: Architecture Intelligence demo (intent → scan → drift → analyze → AI) |
 
 **Troubleshooting**
 

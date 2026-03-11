@@ -45,17 +45,19 @@ The default set is defined in `setup_repos.sh` and documented in `test-repos/MAN
 ### Step 1: Clone Repositories
 
 ```bash
-# From evaluation/real-world-test: clone all default test repos
+# From evaluation/real-world-test
+
+# Frameworks/libraries (quick, for demos)
 ./setup_repos.sh
+
+# Realistic applications (product-like: gitea, saleor, documenso, cal.com)
+./setup_repos.sh --apps
 
 # Or clone manually (see setup_repos.sh for the current list)
 mkdir -p test-repos
 cd test-repos
 git clone --depth 1 https://github.com/expressjs/express.git
-git clone --depth 1 https://github.com/tiangolo/fastapi.git
-git clone --depth 1 https://github.com/vercel/next.js.git
-git clone --depth 1 https://github.com/prometheus/prometheus.git
-git clone --depth 1 https://github.com/django/django.git
+# ...
 ```
 
 ### Step 2: Generate Architecture with Sruja AI Skills
@@ -140,15 +142,9 @@ For each generated architecture, answer these questions:
 
 Time: ~30 minutes per repository
 
-### Option B: LLM Check
+### Option B: Automated validation
 
-Use `sruja eval` for automated LLM evaluation (any provider):
-
-```bash
-export OPENAI_API_KEY="sk-..."   # or OPENROUTER, ANTHROPIC, GEMINI
-./evaluate_architecture.sh express --llm
-# Or: sruja eval test-repos/express
-```
+Run `./evaluate_architecture.sh express` for validation, stats, and checklist. Sruja CLI does not use LLM; for AI-assisted review, use the Sruja skill in your editor.
 
 ### Option C: Team Review
 
@@ -218,11 +214,32 @@ For each repository, record:
 # Clone test repositories (shell - no Python required)
 ./setup_repos.sh
 
-# Generate architecture for each repo using Sruja AI skills, then evaluate:
+# Option A: Run demo with baseline (copies example architecture into express), then evaluate
+./run_demo.sh --baseline
+./evaluate_architecture.sh express
+
+# Option B: One script to test and observe (demo + evaluate + quickstart fastapi), writes observations to run_results/
+./run_test_and_observe.sh          # with clone + prepare_skill
+./run_test_and_observe.sh --no-clone   # use existing test-repos only
+
+# Option C: Generate architecture via AI (Cursor/agent or editor), then evaluate
 ./evaluate_architecture.sh express
 ```
 
-**Optional LLM eval:** Copy `.env.example` to `.env`, add any LLM API key, then `./run_demo.sh --llm` or `./evaluate_architecture.sh express --llm`.
+**Test the Sruja skill on real projects:** Run `./prepare_skill_in_real_projects.sh`, then open a repo (e.g. `test-repos/express`) in Cursor or VS Code and use `/sruja-architecture` in chat. See [TEST_ON_REAL_PROJECTS.md](TEST_ON_REAL_PROJECTS.md#testing-the-sruja-skill-and-slash-command-on-real-projects) for the full checklist.
+
+**Test with Cursor CLI (`agent`) locally:** Cursor CLI runs only on your machine (no CI). To test skills on cloned repos using the terminal: clone with `./setup_repos.sh`, then run the agent inside a repo. See [LOCAL_CURSOR_CLI_TESTING.md](LOCAL_CURSOR_CLI_TESTING.md).
+
+**Test with OpenCode CLI (`opencode`) locally:** OpenCode CLI runs on your machine. To test Sruja skills on cloned repos using OpenCode: clone with `./setup_repos.sh`, then run `opencode` inside a repo to generate `architecture.sruja`, validate with `sruja lint`, and optionally run drift/evaluation. See [LOCAL_OPENCODE_CLI_TESTING.md](LOCAL_OPENCODE_CLI_TESTING.md).
+
+**Realistic applications:** Use product-like repos (not frameworks):  
+`./setup_repos.sh --apps` — clones gitea, saleor, documenso, cal.com. Then run quickstart/drift on them. See [run_results/REALISTIC_APPS_RUN_SUMMARY.md](run_results/REALISTIC_APPS_RUN_SUMMARY.md) for a run summary.
+
+**Multiple repos:** Run quickstart + drift on all test-repos and get a summary table:  
+`./run_test_and_observe.sh --no-clone --multi-repo`  
+See [SKILLS_VS_CLI_AND_DOES_IT_HELP.md](SKILLS_VS_CLI_AND_DOES_IT_HELP.md) for what uses skills vs CLI and how to tell if the skill helps.
+
+Integration is skills + CLI; no API keys required for evaluation.
 
 See [QUICKSTART.md](QUICKSTART.md) for the full guide.
 

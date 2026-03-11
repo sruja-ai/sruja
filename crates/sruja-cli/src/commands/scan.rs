@@ -419,7 +419,10 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
         60..=79 => score_str.yellow().bold(),
         _ => score_str.red().bold(),
     };
-    println!("💚 Architecture Health Score (structural only): {}", colored_score);
+    println!(
+        "💚 Architecture Health Score (structural only): {}",
+        colored_score
+    );
     println!("{}", "─".repeat(70).truecolor(100, 100, 100));
 
     let score_bar = match report.health_score {
@@ -709,7 +712,10 @@ fn print_drift_text(result: &sruja_diff::DriftReport, violations_only: bool) {
             result.total_modules, result.total_services, result.total_databases
         );
         println!("  Dependencies: {}", result.total_dependencies);
-        println!("  Health Score (structural only): {}/100", result.health_score);
+        println!(
+            "  Health Score (structural only): {}/100",
+            result.health_score
+        );
         println!();
     }
 
@@ -1126,12 +1132,15 @@ pub async fn drift_pr(
     eprintln!();
 
     // Check if git is available
-    let git_check = std::process::Command::new("git")
+    let git_ok = std::process::Command::new("git")
         .args(["rev-parse", "--is-inside-work-tree"])
         .current_dir(repo_path)
-        .output();
+        .output()
+        .ok()
+        .and_then(|o| o.status.success().then_some(()))
+        .is_some();
 
-    if git_check.is_err() || !git_check.unwrap().status.success() {
+    if !git_ok {
         return Err(CliError::Validation(
             "Not a git repository. PR-scoped drift requires git.".to_string(),
         ));
@@ -1213,13 +1222,11 @@ pub async fn drift_pr(
             let _ = fs::remove_dir_all(&worktree_dir);
         }
         let status = std::process::Command::new("git")
-            .args([
-                "worktree",
-                "add",
-                "--detach",
-                worktree_dir.to_str().unwrap(),
-                base,
-            ])
+            .arg("worktree")
+            .arg("add")
+            .arg("--detach")
+            .arg(worktree_dir.as_path())
+            .arg(base)
             .current_dir(repo_path)
             .status()
             .map_err(|e| {
@@ -1236,23 +1243,19 @@ pub async fn drift_pr(
         }
         let base_graph = scan_repo(&worktree_dir).map_err(|e| {
             let _ = std::process::Command::new("git")
-                .args([
-                    "worktree",
-                    "remove",
-                    "--force",
-                    worktree_dir.to_str().unwrap(),
-                ])
+                .arg("worktree")
+                .arg("remove")
+                .arg("--force")
+                .arg(worktree_dir.as_path())
                 .current_dir(repo_path)
                 .status();
             CliError::Scan(e.to_string())
         })?;
         let _ = std::process::Command::new("git")
-            .args([
-                "worktree",
-                "remove",
-                "--force",
-                worktree_dir.to_str().unwrap(),
-            ])
+            .arg("worktree")
+            .arg("remove")
+            .arg("--force")
+            .arg(worktree_dir.as_path())
             .current_dir(repo_path)
             .status();
         base_graph

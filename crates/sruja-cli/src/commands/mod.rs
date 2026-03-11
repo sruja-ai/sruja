@@ -4,6 +4,7 @@
 //! See REFACTORING_PLAN.md for the layout.
 
 mod analyze;
+mod compliance;
 mod dsl;
 mod error;
 mod intent;
@@ -11,6 +12,7 @@ mod scan;
 mod version;
 
 pub use analyze::{analyze, complexity, semantic_analyze};
+pub use compliance::compliance;
 pub use dsl::{
     compile, diff, explain, export, fmt, import, lint, list_elements, lsp, tree, validate,
 };

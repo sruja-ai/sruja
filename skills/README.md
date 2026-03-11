@@ -1,6 +1,18 @@
 # Sruja Skills
 
-This directory contains skills formatted for the [skills.sh](https://skills.sh) platform - an open agent skills ecosystem.
+This directory contains skills for **AI code editors** (Cursor, Codex, and others) and the [skills.sh](https://skills.sh) ecosystem. Install a skill so your AI assistant generates valid Sruja DSL and applies architectural patterns.
+
+## Install in your editor
+
+**One command (Cursor, Codex, skills.sh):**
+
+```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
+```
+
+**Full guide** – [docs/INSTALL_AS_SKILL.md](../docs/INSTALL_AS_SKILL.md) – editor-specific steps, Cursor options, and which skill to choose.
+
+**Repo pointer** – [.architecture-skill.md](../.architecture-skill.md) in the repo root has the same one-command install and links.
 
 ## Available Skills
 
@@ -73,6 +85,20 @@ npx skills add sruja-ai/sruja --skill sruja-architecture-collaboration
 2. Collaboration Workflows (review, session)
 3. Knowledge Graph (patterns, decisions, traceability)
 
+## Best practices (SKILL.md)
+
+Sruja skills follow the [SKILL.md / agent skills](https://www.mdskills.ai/specs/skill-md) and [skills.sh](https://skills.sh) conventions so agents discover and use them correctly:
+
+| Practice | How we apply it |
+|----------|------------------|
+| **YAML frontmatter** | Every `SKILL.md` has `name`, `description`, and optional `license` / `metadata`. Required for discovery. |
+| **Description** | Third-person; states **what** the skill does and **when** to use it (trigger terms: e.g. ".sruja", "architecture", "discover"). |
+| **Concise SKILL.md** | Main file under ~500 lines so activation stays within token limits. |
+| **Progressive disclosure** | Detail lives in referenced files: `AGENTS.md`, `rules/*.md`, or `REFERENCE.md`. Agent loads full SKILL.md on match, then references as needed. |
+| **One-level-deep references** | SKILL.md links to `rules/`, `AGENTS.md`, or `REFERENCE.md` directly; no deep nesting. |
+
+These align with Cursor’s [create-skill](https://cursor.com) guidance and the [agentskills.io](https://agentskills.io) specification.
+
 ## Skill Structure
 
 Each skill follows the skills.sh format:
@@ -114,14 +140,15 @@ Skills are **listed automatically** on [skills.sh](https://skills.sh): when user
 ## Publishing a new skill
 
 1. Create a directory under `skills/<skill-name>/`.
-2. Add `SKILL.md` with YAML frontmatter (`name`, `description`) and body.
-3. Add `AGENTS.md` (compiled guide) and optional `rules/*.md`.
+2. Add `SKILL.md` with YAML frontmatter (`name`, `description`) and a concise body (under ~500 lines). Use `REFERENCE.md` or `AGENTS.md` for long content.
+3. Add `AGENTS.md` (compiled guide) and optional `rules/*.md` or `REFERENCE.md`.
 4. Commit; users install with `npx skills add sruja-ai/sruja --skill <skill-name>`.
 
 ## Related documentation
 
+- [Install as skill](../docs/INSTALL_AS_SKILL.md) – one-page install guide for end users
 - [AI Editor Integration](../docs/AI_EDITOR_INTEGRATION.md)
-- [.architecture-skill.md](../.architecture-skill.md) (pointer file)
+- [.architecture-skill.md](../.architecture-skill.md) (pointer file in repo root)
 - [Language specification](../docs/LANGUAGE_SPECIFICATION.md)
 
 ## Contributing
@@ -153,6 +180,10 @@ sruja-architecture-collaboration
 ```
 
 Install dependencies first for best results.
+
+## Improving the skills
+
+See **[docs/SRUJA_SKILL_IMPROVEMENTS.md](../docs/SRUJA_SKILL_IMPROVEMENTS.md)** for a concrete list of improvements to make the Sruja skill "super awesome": canonical prompts, DSL consistency, lint→fix guidance, scope ladder, and UX.
 
 ## Resources
 

@@ -13,7 +13,9 @@ lint_output.txt
 lint_final.txt
 tests/results/
 evaluation/real-world-test/results/
+evaluation/real-world-test/run_results/
 evaluation/real-world-test/test-repos/
+evaluation/results/
 
 # Environment variables
 .env
@@ -86,6 +88,10 @@ internal-docs
 
 # Sruja runtime state (memory, facts, interactions)
 .sruja/memory/
+.sruja/cache/
+
+# Demo generated outputs
+demo/intent_report.md
 
 # Demo and test results / output directories
 out_*/
@@ -99,6 +105,25 @@ demo/sruja.graph.json
 demo/traces.json
 # Root-level architecture.sruja (tool-generated; intentional ones live in demo/, evaluation/, etc.)
 /architecture.sruja
+
+# Session / planning docs (local or one-off)
+AGENT_SKILL_TESTING_PLAN.md
+AI_CODING_EDITOR_WORKFLOW.md
+AUTOMATED_TESTING.md
+COMPARISON_TEST_RESULTS.md
+IMPROVEMENTS_COMPLETE.md
+NEXT_SESSION.md
+NEXT_TEST.md
+PROGRESS_CHECKLIST.md
+QUICKSTART_AGENT_TESTING.md
+READY_TO_USE.md
+SESSION_HANDOFF.md
+SRUJA_SKILLS_PROVEN.md
+START_HERE.md
+TEST_RESULTS_SUMMARY.md
+VALIDATION_SUMMARY.md
+test_agent_skills.sh
+validate_framework.sh
 
 # Ad-hoc test/validation scripts (optional; required scripts are in book/, evaluation/, extension/, scripts/, architecture/, demo/)
 comprehensive_test.sh

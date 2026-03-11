@@ -2,6 +2,9 @@
 
 AI-powered architecture discovery skill that helps you understand and document your software architecture.
 
+- **SKILL.md** – Entry point: when to use, capabilities, tools, high-level process. Kept under ~500 lines for agent discovery/activation.
+- **REFERENCE.md** – Full process, file patterns, DSL templates, detection guides, and examples. Load when executing discovery.
+
 ## What It Does
 
 The Sruja Architecture Agent skill enables AI assistants (Claude, Cursor, Copilot, etc.) to:
@@ -19,7 +22,7 @@ The Sruja Architecture Agent skill enables AI assistants (Claude, Cursor, Copilo
 ### Option 1: Using skills.sh (Recommended)
 
 ```bash
-npx skills add sruja-ai/sruja --skill sruja-architecture-agent
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent
 ```
 
 ### Option 2: Manual Installation
@@ -294,25 +297,8 @@ system "User Service" {
 "What's missing from this architecture?"
 ```
 
-## Contributing
+## Contributing / links
 
-Found an issue or have suggestions?
-
-1. Open an issue: https://github.com/sruja-ai/sruja/issues
-2. Submit improvements to the SKILL.md file
-3. Share example architectures
-
-## Learn More
-
-- **Sruja Documentation**: https://sruja.ai/docs
-- **Language Specification**: docs/LANGUAGE_SPECIFICATION.md
-- **Examples**: examples/ directory
-- **Discord**: https://discord.gg/VNrvHPV5
-
-## License
-
-Apache 2.0
-
----
-
-**Sruja Architecture Agent** - AI-native architecture discovery that works with your AI assistant.
+- GitHub issues: `https://github.com/sruja-ai/sruja/issues`
+- Skill entrypoint: `skills/sruja-architecture-agent/SKILL.md`
+- Full install guide: `docs/INSTALL_AS_SKILL.md`

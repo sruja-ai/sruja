@@ -4,6 +4,8 @@
 **Date:** 2026-02-22  
 **Goal:** Maximize adoption and perceived value immediately, while aggressively reducing long-term code maintenance risk.
 
+**Update (post MCP/LLM removal):** The sruja-mcp crate and Sruja-owned LLM integrations have been removed. Editor integration is **skills + CLI** only (e.g. Sruja skill in Cursor/Copilot); no MCP server.
+
 ---
 
 ## 1. Product Positioning (What Users Understand in 10 Seconds)

@@ -6,6 +6,7 @@ Single entry point for Sruja's AI-related docs.
 
 | Doc | Audience | Purpose |
 |-----|----------|---------|
+| [INSTALL_AS_SKILL.md](INSTALL_AS_SKILL.md) | End users | **Install in your AI editor.** One-page guide: Cursor, Copilot, one command, which skill to choose. |
 | [AI_EDITOR_INTEGRATION.md](AI_EDITOR_INTEGRATION.md) | Users, developers | **Primary guide.** Setup with Cursor, Copilot, VS Code, Continue.dev; LSP; CI validation; quick-start files and skills. |
 | [AI_ASSISTANT_GUIDE.md](AI_ASSISTANT_GUIDE.md) | AI users | Using AI assistants with Sruja (prompts, patterns). |
 

@@ -16,7 +16,7 @@
 | **sruja-semantic** | `crates/sruja-semantic` | Embeddings, bounded contexts | Stub provider by default, optional |
 | **sruja-graph** | `crates/sruja-graph` | Knowledge graph, decisions | Used by CLI (quickstart, analyze) |
 | **CLI AI commands** | `crates/sruja-cli/src/commands/ai.rs` | `sruja ai explain/ask` | Separate commands, not core workflow |
-| **MCP server** | `crates/sruja-mcp` | AI tooling interface | Not integrated with CLI |
+| **MCP server** | *(removed)* | — | Integration is **skills + CLI**; no MCP. |
 
 ### Current Workflow (AI is Optional)
 

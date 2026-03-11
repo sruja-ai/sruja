@@ -2,13 +2,23 @@
 
 Use Sruja with Cursor, GitHub Copilot, VS Code + Copilot, Continue.dev, or any LSP-aware editor. This doc is the single reference for AI-assisted Sruja workflows (2026).
 
-## Quick setup
+## Install Sruja as a skill (recommended)
+
+**One command** – Get full architecture rules (DSL syntax, patterns, anti-patterns, trade-offs) in your AI editor:
+
+```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
+```
+
+Works with **Cursor**, **Codex**, and any editor that uses the [skills.sh](https://skills.sh) ecosystem. For editor-specific steps and Cursor-only options, see **[Install as skill](INSTALL_AS_SKILL.md)**.
+
+## Quick setup (all methods)
 
 | Method | What you get |
 |--------|----------------|
-| **Manual** | Copy `.cursorrules`, `.copilot-instructions.md`, `.architecture-skill.md` from repo root or [skills/sruja-architecture](../skills/sruja-architecture/) into your project |
+| **Skill (recommended)** | `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` → full architecture rules for agents |
+| **Manual** | Copy `.cursorrules`, `.copilot-instructions.md`, or `.architecture-skill.md` from repo root or [skills/sruja-architecture](../skills/sruja-architecture/) into your project |
 | **VS Code** | Extension provides LSP, syntax highlighting, and diagnostics for `.sruja` files |
-| **Skills (advanced)** | `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` → full architecture rules for agents |
 
 ## Files and what they do
 
@@ -82,14 +92,15 @@ Preserve all relationships and add any new ones needed. Output valid .sruja.
 
 ## Editor-specific notes
 
-- **Cursor** – Picks up `.cursorrules` from project root. For deeper architecture guidance, install the sruja-architecture skill or point Cursor at `skills/sruja-architecture/AGENTS.md`.
+- **Cursor** – Best: run `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture`. Alternatively, put `.cursorrules` in project root for DSL syntax only, or point Cursor at `skills/sruja-architecture/AGENTS.md` for the full guide. See [Install as skill](INSTALL_AS_SKILL.md#cursor).
 - **GitHub Copilot** – Uses `.copilot-instructions.md`. Keep it in project root.
 - **Continue.dev** – Add to config: `"contextFiles": [".cursorrules", ".copilot-instructions.md"]`.
 - **Other LSP editors** – Use the Sruja VS Code extension if possible, or run the same LSP; ensure quick-start files are in the project so AI has DSL rules.
 
 ## References
 
-- **Language spec** – `docs/LANGUAGE_SPECIFICATION.md`
+- **Install as skill** – [INSTALL_AS_SKILL.md](INSTALL_AS_SKILL.md) – one-page guide for Cursor, Copilot, and other editors
+- **Language spec** – [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md)
 - **Examples** – `examples/` (40+ `.sruja` files)
 - **Docs** – https://sruja.ai/docs
 - **Skill install** – `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture`

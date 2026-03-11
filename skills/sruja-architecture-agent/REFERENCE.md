@@ -1,0 +1,1020 @@
+# Sruja Architecture Agent – Detailed Process
+
+Full process, file patterns, DSL templates, detection guides, and examples. Load this when executing architecture discovery.
+
+### Step 2: Collect Information
+
+Use your tools to gather information:
+
+#### 2.1 Clone Repositories
+
+```bash
+# Clone the repository to a temporary location
+git clone <repo-url> /tmp/architecture-analysis
+
+# If multiple repos, clone each one
+git clone <repo-url-1> /tmp/architecture-analysis/service-a
+git clone <repo-url-2> /tmp/architecture-analysis/service-b
+```
+
+#### 2.2 What to read first (read order)
+
+**Do not read the entire codebase.** Infer structure from entry points and dependencies. Priority:
+
+1. **README + package/manifest** – Stack, scripts, project overview.
+2. **Entry point(s)** – e.g. `index.js`, `main.py`, `Application.java`.
+3. **One level of imports or route registration** – Enough to see boundaries.
+4. **Config for DB/queues/external APIs** – Connection strings, env vars.
+
+#### 2.3 Find Key Files
+
+**Look for these file patterns:**
+
+**Package/Dependency Files:**
+- `package.json` - Node.js dependencies and scripts
+- `requirements.txt`, `pyproject.toml` - Python dependencies
+- `go.mod` - Go modules
+- `Cargo.toml` - Rust dependencies
+- `pom.xml`, `build.gradle` - Java dependencies
+- `Gemfile` - Ruby dependencies
+
+**Infrastructure Files:**
+- `docker-compose.yml` - Service definitions
+- `Dockerfile` - Container configuration
+- `kubernetes/**/*.yaml` - K8s manifests
+- `terraform/**/*.tf` - Infrastructure as code
+- `.github/workflows/*.yml` - CI/CD pipelines
+
+**Documentation Files:**
+- `README.md` - Project overview
+- `docs/architecture.md` - Architecture documentation
+- `docs/deployment.md` - Deployment guides
+- `docs/api.md` - API documentation
+- `ADRs/**/*.md` - Architecture Decision Records
+
+**Configuration Files:**
+- `.env.example` - Environment variables
+- `config/**/*` - Configuration files
+- `src/config/**/*` - Application config
+
+**Source Code:**
+- Entry points: `index.js`, `main.py`, `main.go`, `app.js`
+- Routes/APIs: `routes/**/*`, `controllers/**/*`, `api/**/*`
+- Models: `models/**/*`, `entities/**/*`
+- Services: `services/**/*`, `workers/**/*`
+
+#### 2.4 Analyze Code Structure
+
+**Read key files to understand:**
+
+1. **Technology Stack:**
+   - Languages and versions
+   - Frameworks (Express, Django, FastAPI, etc.)
+   - Libraries and their purpose
+
+2. **Databases & Storage:**
+   - Database connections (PostgreSQL, MongoDB, Redis, etc.)
+   - Connection strings in config
+   - ORM usage (Sequelize, TypeORM, SQLAlchemy, etc.)
+
+3. **External Dependencies:**
+   - API clients (Stripe, AWS SDK, Twilio, etc.)
+   - Environment variables pointing to external services
+   - HTTP client calls to external APIs
+
+4. **Service Communication:**
+   - REST API routes
+   - GraphQL schemas
+   - gRPC definitions
+   - Message queue usage (RabbitMQ, Kafka, etc.)
+
+5. **Architecture Patterns:**
+   - Monolith vs microservices
+   - Event-driven patterns
+   - API gateway pattern
+   - CQRS, event sourcing
+
+6. **Internal Abstractions (for DEEP scope):**
+   
+   **Wrapper/Decorator/Interceptor Patterns:**
+   - Look for classes/functions that wrap or intercept other components
+   - Generic searches:
+     - `class.*Wrapper`, `class.*Decorator`, `class.*Proxy`, `class.*Interceptor`
+     - `class.*Layer`, `class.*Chain`, `class.*Pipeline`
+     - `decorate`, `wrap`, `intercept`, `middleware`
+   - Language examples:
+     - Node.js: middleware functions with `(req, res, next)` signature
+     - Python: decorators (`@wrapper`), middleware classes
+     - Java: Filter, Interceptor, AOP classes
+     - Go: middleware functions wrapping `http.Handler`
+   
+   **Error Handling Paths:**
+   - Trace how errors flow from entry point to handlers
+   - Generic searches:
+     - `catch`, `except`, `try`, `throw`, `raise`
+     - `on('error')`, `onError`, `handleError`, `errorHandler`
+     - Files: `error.*`, `exception.*`, `handler.*`
+   - Language examples:
+     - Node.js: error middleware `(err, req, res, next)`, `finalhandler`
+     - Python: `try/except`, error handlers in Flask/FastAPI
+     - Java: `@ExceptionHandler`, `try/catch`, `ErrorHandler`
+     - Go: error returns, recovery middleware
+   
+   **Composition/Plugin/Mount Patterns:**
+   - Find where sub-systems attach to parent systems
+   - Generic searches:
+     - `register`, `attach`, `mount`, `plugin`, `extend`
+     - `parent`, `child`, `sub.*`, `compose`
+     - `use`, `add`, `install`, `load`
+   - Language examples:
+     - Node.js: `app.use()`, `app.mount()`, plugins
+     - Python: `app.include_router()`, Flask blueprints
+     - Java: `@Import`, `@ComponentScan`, plugin systems
+     - Go: middleware chaining, sub-routers
+   
+   **Environment-Specific/Conditional Behavior:**
+   - Look for conditional logic based on environment
+   - Generic searches:
+     - `ENV`, `environment`, `env`, `config`
+     - `production`, `staging`, `development`, `test`
+     - `debug`, `verbose`, `logging.*level`
+     - Feature flags: `feature.*flag`, `enable.*`, `disable.*`
+   - Common patterns:
+     - Caching enabled in production
+     - Debug logging in development
+     - Mock services in test
+     - Feature toggles
+   
+   **Generic search commands:**
+   ```bash
+   # Wrapper/decorator patterns (adjust for language)
+   grep -riE "class.*(Wrapper|Decorator|Layer|Interceptor|Proxy)" src/
+   grep -riE "(decorate|wrap|middleware|intercept)" src/
+   
+   # Error handling (language-agnostic)
+   grep -riE "(catch|except|error|exception|handle.*error)" src/
+   
+   # Composition/mount patterns
+   grep -riE "(mount|attach|register|plugin|parent|compose)" src/
+   
+   # Environment-specific behavior
+   grep -riE "(ENV|environment|production|staging|debug)" src/
+   grep -riE "(cache.*enable|feature.*flag)" src/
+   ```
+
+### Step 3: Generate Sruja DSL
+
+Use **canonical form** only: assignment `Id = kind "Label" { ... }`, `database` for data stores, relationships `SourceId -> TargetId "label"`. Every element needs `description`; every container needs `technology`.
+
+#### 3.1 Minimal valid template
+
+```sruja
+// Smallest valid architecture (passes sruja lint)
+User = person "User" { description "End user" }
+App = system "My App" {
+  description "Main application"
+  Web = container "Web" { technology "React"; description "UI" }
+  Api = container "API" { technology "Node.js"; description "REST API" }
+  Web -> Api "HTTPS"
+}
+User -> App "uses"
+```
+
+#### 3.2 System definition (canonical)
+
+```sruja
+MySystem = system "Service Name" {
+  description "What this service does - be specific"
+  Api = container "API" {
+    technology "Node.js"
+    description "What this component does"
+  }
+  DB = database "Database Name" {
+    technology "PostgreSQL"
+    description "What data it stores"
+  }
+  Api -> DB "SQL - reads and writes"
+}
+```
+
+#### 3.3 External systems
+
+Model external services as **systems** with description:
+
+```sruja
+Stripe = system "Stripe" {
+  description "External payment gateway"
+  PaymentApi = container "Payment API" {
+    technology "REST"
+    description "Charges and refunds"
+  }
+}
+MyApi -> Stripe.PaymentApi "HTTPS - payment processing"
+```
+
+#### 3.4 End users
+
+```sruja
+EndUser = person "End User" {
+  description "Customer using the platform"
+}
+EndUser -> MySystem.Api "HTTPS - browse, login"
+```
+
+#### 3.5 Relationship labels
+
+- **Good:** `"HTTPS - auth"`, `"gRPC - order validation"`, `"reads from"`, `"writes to"`, `"publishes events to"`, `"invokes"`.
+- **Bad:** `"uses"`, `"calls"` (too vague unless combined with protocol).
+
+#### 3.6 Multi-service (single file)
+
+For multiple systems in one file, define each with assignment form and use `SystemId.ContainerId` in relationships:
+
+```sruja
+UserSvc = system "User Service" {
+  description "User management and authentication"
+  Api = container "REST API" { technology "Node.js"; description "User API" }
+  DB = database "User Database" { technology "PostgreSQL"; description "User data" }
+  Api -> DB "SQL"
+}
+OrderSvc = system "Order Service" {
+  description "Order processing"
+  Api = container "Order API" { technology "Python"; description "Order API" }
+  DB = database "Order DB" { technology "MongoDB"; description "Orders" }
+  Api -> DB "MongoDB protocol"
+}
+OrderSvc.Api -> UserSvc.Api "REST - validate user"
+```
+
+#### 3.7 Modeling Internal Patterns (for DEEP scope)
+
+When using **deep scope**, capture internal abstractions as components. These patterns apply across languages/frameworks:
+
+**Wrapper/Interceptor/Chain Pattern:**
+
+Generic structure - applies to middleware, filters, interceptors, decorators:
+```sruja
+pipeline = container "Request Pipeline" {
+  technology "<framework>"
+  description "Sequential processing chain"
+  
+  interceptor = component "Interceptor" {
+    description "Wraps each handler with pre/post processing"
+  }
+  
+  chain = component "Chain" {
+    description "Ordered list of interceptors"
+  }
+  
+  interceptor -> chain "registered in"
+}
+```
+
+Examples by framework:
+- Express.js: `middleware` container with `layer` and `stack` components
+- Django: `middleware` container with `MiddlewareMixin` classes
+- Spring: `filterChain` container with `Filter` components
+- FastAPI: `middleware` container with `Middleware` components
+
+**Error Handling Pattern:**
+
+Generic error flow:
+```sruja
+handler = container "Request Handler" {
+  technology "<framework>"
+  
+  errorHandler = component "Error Handler" {
+    description "Catches unhandled errors and returns appropriate response"
+  }
+}
+
+app -> handler.errorHandler "passes unhandled errors to"
+handler.errorHandler -> logger "logs errors via"
+```
+
+Examples by framework:
+- Express.js: `finalhandler` package, error middleware `(err, req, res, next)`
+- Django: `MIDDLEWARE` with exception handling, custom error views
+- Spring: `@ExceptionHandler`, `@ControllerAdvice`, `ErrorController`
+- FastAPI: `@app.exception_handler()`, exception classes
+
+**Composition/Module/Plugin Pattern:**
+
+Generic modular structure:
+```sruja
+app = system "Application" {
+  description "Main application"
+  
+  mainModule = container "Main Module" {
+    technology "<framework>"
+    description "Primary application entry point"
+  }
+  
+  subModule = container "Sub-Module" {
+    technology "<framework>"
+    description "Mounted/registered submodule"
+  }
+  
+  mainModule -> subModule "registers at path"
+  subModule -> app "inherits configuration from"
+}
+```
+
+Examples by framework:
+- Express.js: `app.use(subapp)` for mounting sub-applications
+- Django: `include()` for URL patterns, apps in `INSTALLED_APPS`
+- Flask: Blueprints with `app.register_blueprint()`
+- Spring: `@Import`, `@ComponentScan`, modules
+- FastAPI: `app.include_router()` for sub-routers
+
+**Environment-Specific/Conditional Behavior:**
+
+Generic conditional configuration:
+```sruja
+service = container "Service" {
+  technology "<framework>"
+  
+  cache = component "Cache" {
+    description "Caches data. Enabled when env=production"
+  }
+  
+  debugLogger = component "Debug Logger" {
+    description "Verbose logging. Enabled when env=development"
+  }
+}
+
+cache -> config "reads environment from"
+```
+
+Examples:
+- Node.js: `NODE_ENV` environment variable
+- Python: `ENVIRONMENT`, `DEBUG` settings in Django/Flask
+- Java: Spring profiles (`@Profile("production")`)
+- Go: Environment variables via `os.Getenv()`
+
+**ADR for internal patterns:**
+```sruja
+ADR_Pattern = adr "Pattern name" {
+  status "Accepted"
+  context "Why this pattern is needed"
+  decision "What pattern was chosen and why"
+  consequences "Trade-offs and implications"
+}
+```
+
+### Step 4: Validate (mandatory) — fix until lint passes
+
+**Loop: run lint → if errors, apply fixes → re-run lint. Repeat until pass. Do not present until pass.**
+
+1. Run `sruja lint architecture.sruja`.
+2. If there are errors, apply the fix from the table below.
+3. Re-run `sruja lint`.
+4. Repeat until lint passes. Do not present a file that fails lint.
+
+```bash
+sruja lint architecture.sruja
+```
+
+#### Lint error → fix
+
+| Lint error / symptom | Fix |
+|----------------------|-----|
+| Missing description | Add `description "..."` to the element. |
+| Undefined reference | Define the referenced ID before use, or fix typo in relationship. |
+| Orphan component | Add at least one relationship `X -> Orphan "..."` or `Orphan -> Y "..."`. |
+| Circular dependency (E204) | Break the cycle: remove one relationship in the cycle (e.g. if `NodeHTTPServer -> Application` and `Application -> NodeHTTPServer` form a cycle, remove one of them, such as `NodeHTTPServer -> Application`). Re-run lint after the fix. |
+| Missing technology (container) | Add `technology "..."` to the container. |
+
+#### Example: fixing a circular dependency
+
+If lint reports: `E204 circular dependency between [NodeHTTPServer, Application]`:
+
+- Open the `.sruja` file and remove one edge in that cycle. For example, delete the line `NodeHTTPServer -> Application "request"` (or the reverse, depending on which direction is redundant).
+- Save and run `sruja lint` again. Repeat until pass.
+
+### Step 5: Present and Iterate
+
+Present the architecture to the user:
+
+```
+I've analyzed your codebase and generated the architecture:
+
+**Services detected:**
+- User Service (Node.js, PostgreSQL)
+- Order Service (Python, MongoDB)
+- Payment Service (Go, Redis)
+
+**External dependencies:**
+- Stripe (payment processing)
+- AWS S3 (file storage)
+
+**End users:**
+- E-commerce shoppers
+
+**End-to-end flow:**
+User → User Service → Order Service → Payment Service → Stripe
+
+[Show generated .sruja file]
+
+✓ Architecture validated successfully
+
+**Questions for refinement:**
+1. Did I identify all services correctly?
+2. Are there any external services I missed?
+3. Would you like to add deployment patterns?
+4. Any specific flows you want documented?
+```
+
+## Scope ladder
+
+| Scope | Systems | Components | Use when |
+|-------|---------|------------|----------|
+| **Minimal** | 1 | 3–7 containers | Quick sketch, entry points and main deps only. |
+| **Standard (recommended)** | 1–2 | 10–30 | All key relationships and technologies. |
+| **Deep** | Multiple | 30–50 | Internal components, key external systems. |
+
+Default to **Standard** unless the user asks for minimal or deep.
+
+## Per-language / framework hints
+
+Use these to infer **entry points**, **routes/services/data access**, and **technology** strings accurately.
+
+| Stack | Entry points | Routes / services / data | Technology string |
+|-------|--------------|---------------------------|--------------------|
+| **Express** | `index.js`, `app.js`, `lib/express.js` | `routes/*.js`, `app.get/post`, `services/` | "Node.js", "Express" |
+| **FastAPI** | `main.py`, `app.py` | `@app.get/post`, `routers/`, `services/` | "Python", "FastAPI" |
+| **Django** | `manage.py`, `*/wsgi.py`, `urls.py` | `views.py`, `urls.py`, `models.py` | "Python", "Django" |
+| **Spring Boot** | `*Application.java`, `src/main/java` | `@RestController`, `*Controller.java`, `*Repository` | "Java", "Spring Boot" |
+| **Next.js** | `pages/`, `app/`, `next.config.*` | `pages/api/`, `app/api/` | "Node.js", "Next.js" |
+| **Go Gin** | `main.go`, `cmd/*/main.go` | `router.GET/POST()`, `handlers/`, `*Handler` | "Go", "Gin" |
+| **NestJS** | `main.ts`, `src/main.ts` | `@Controller()`, `@Injectable()`, `modules/` | "Node.js", "NestJS" |
+
+Do not read the entire codebase; use entry points and one level of imports to infer structure.
+
+## Detection Guide
+
+### Technologies to Detect
+
+**Languages:**
+- JavaScript/TypeScript: `package.json`, `.js`, `.ts` files
+- Python: `requirements.txt`, `.py` files, `setup.py`
+- Go: `go.mod`, `.go` files
+- Java: `pom.xml`, `build.gradle`, `.java` files
+- Rust: `Cargo.toml`, `.rs` files
+- Ruby: `Gemfile`, `.rb` files
+- C#: `.csproj`, `.cs` files
+
+**Frameworks:**
+- Node.js: Express, NestJS, Fastify, Next.js
+- Python: Django, FastAPI, Flask, Tornado
+- Go: Gin, Echo, Fiber
+- Java: Spring Boot, Quarkus
+- Ruby: Rails, Sinatra
+
+**Databases:**
+- PostgreSQL: `pg`, `psycopg2`, connection strings with `postgres://`
+- MongoDB: `mongoose`, `pymongo`, `mongodb://`
+- MySQL: `mysql2`, `pymysql`, `mysql://`
+- Redis: `redis`, `ioredis`, `redis://`
+- Elasticsearch: `@elastic/elasticsearch`, `elasticsearch`
+
+**Message Queues:**
+- RabbitMQ: `amqplib`, `pika`, `amqp://`
+- Kafka: `kafkajs`, `confluent-kafka`
+- Redis Pub/Sub: redis client pub/sub methods
+- AWS SQS/SNS: `aws-sdk` SQS/SNS usage
+
+**External Services:**
+- Stripe: `stripe` package, `api.stripe.com`
+- AWS: `aws-sdk`, `boto3`
+- Twilio: `twilio` package
+- SendGrid: `@sendgrid/mail`
+- Google Cloud: `@google-cloud/*` packages
+
+### Analysis Patterns
+
+**Finding REST APIs:**
+```javascript
+// Express.js
+app.get('/users/:id', handler)
+router.post('/users', handler)
+
+// FastAPI (Python)
+@app.get("/users/{user_id}")
+@app.post("/users")
+
+// Go Gin
+router.GET("/users/:id", handler)
+router.POST("/users", handler)
+```
+
+**Finding Databases:**
+```javascript
+// Connection strings
+postgres://user:pass@host:5432/db
+mongodb://user:pass@host:27017/db
+redis://host:6379/0
+
+// ORM usage
+new Sequelize('postgres://...')
+mongoose.connect('mongodb://...')
+```
+
+**Finding External Services:**
+```javascript
+// Stripe
+const stripe = require('stripe')(key)
+stripe.charges.create(...)
+
+// AWS
+const s3 = new AWS.S3()
+s3.upload(...)
+
+// HTTP clients
+axios.post('https://api.example.com/...')
+fetch('https://external-service.com/api')
+```
+
+**Finding Message Queues:**
+```javascript
+// RabbitMQ
+channel.assertQueue('orders')
+channel.consume('orders', handler)
+
+// Kafka
+producer.send({ topic: 'orders', messages })
+consumer.subscribe({ topic: 'orders' })
+```
+
+### Documentation Analysis
+
+**Extract from README.md:**
+- Project description
+- Technology stack
+- Architecture overview
+- Deployment information
+
+**Extract from docs/deployment.md:**
+- Deployment patterns (self-hosted, cloud, hybrid)
+- Infrastructure requirements
+- Configuration options
+
+**Extract from docs/integration.md:**
+- Client integration patterns
+- API usage examples
+- Webhook endpoints
+
+**Extract from user personas:**
+- End user segments
+- User behaviors
+- Access patterns
+
+## Import from Specs
+
+Model imported APIs as **systems** with assignment form. Use `database` for data stores.
+
+### OpenAPI Import
+
+```sruja
+ImportedApi = system "Service Name" {
+  description "Imported from OpenAPI spec"
+  Api = container "API Name" {
+    technology "REST"
+    description "From info.description; key endpoints from paths"
+  }
+}
+MyApi -> ImportedApi.Api "HTTPS - [purpose]"
+```
+
+### GraphQL Import
+
+```sruja
+GraphQLService = system "Service Name" {
+  description "Imported from GraphQL schema"
+  Gql = container "GraphQL API" {
+    technology "GraphQL"
+    description "Queries and mutations from schema"
+  }
+}
+```
+
+### AsyncAPI Import
+
+```sruja
+EventSystem = system "Event System" {
+  description "Imported from AsyncAPI spec"
+  Stream = container "Event Stream" {
+    technology "Kafka"
+    description "Topics and channels from spec"
+  }
+}
+Producer -> EventSystem.Stream "publishes events to"
+```
+
+## Advanced Features
+
+### End-to-End Flow Tracing
+
+Trace complete flows from user to backend:
+
+```sruja
+// Generate a view showing complete flow
+view "Order Processing Flow" {
+  includes [
+    "end_user",
+    "web_app.frontend",
+    "order_service.api",
+    "payment_service.api",
+    "stripe.payment_api"
+  ]
+  
+  description "Complete flow from user placing order to payment processing"
+}
+```
+
+### Gap Detection
+
+Identify missing information:
+
+```
+**Architecture Completeness Analysis:**
+
+✓ Complete:
+- Service definitions
+- Technology stack
+- Database relationships
+
+⚠ Partial:
+- External services (API endpoints detected, but full specs missing)
+- Deployment patterns (mentioned in README, but not detailed)
+
+✗ Missing:
+- End user segments
+- Performance requirements
+- SLA definitions
+
+**Recommendations:**
+1. Define end user personas
+2. Document deployment patterns
+3. Add external service SLAs
+4. Specify performance constraints
+```
+
+### Architecture Improvements
+
+Suggest improvements based on analysis:
+
+```
+**Architecture Observations:**
+
+1. **Potential Bottleneck:** Order service is used by 5 other services
+   - Consider: Caching, rate limiting, or decomposition
+
+2. **Missing Redundancy:** Single database for user service
+   - Consider: Read replicas or multi-region setup
+
+3. **External Dependency:** Critical path depends on Stripe
+   - Consider: Circuit breaker, fallback mechanisms
+
+4. **Security:** No authentication layer detected
+   - Consider: API gateway with auth, JWT tokens
+```
+
+## Examples
+
+### Example 1: Simple Web Service
+
+**User request:** "Analyze my Node.js API"
+
+**Analysis:**
+1. Clone repository
+2. Read `package.json` - Express, PostgreSQL client
+3. Read `docker-compose.yml` - PostgreSQL service
+4. Read `src/index.js` - Express server on port 3000
+5. Read `src/routes/users.js` - GET /users, POST /users
+
+**Generated (canonical form):**
+```sruja
+UserApi = system "User API" {
+  description "REST API for user management"
+  Api = container "REST API" {
+    technology "Node.js"
+    description "Express.js REST API for user operations; GET/POST /users"
+  }
+  DB = database "User Database" {
+    technology "PostgreSQL"
+    description "Primary data store for user information"
+  }
+  Api -> DB "SQL - user queries and updates"
+}
+ApiUser = person "API User" {
+  description "Client applications consuming the API"
+}
+ApiUser -> UserApi.Api "HTTPS - REST API calls"
+```
+
+### Example 2: Microservices Platform
+
+**User request:** "Analyze my e-commerce platform with 3 services"
+
+**Analysis:**
+1. Clone user-service, order-service, payment-service
+2. Analyze each service's tech stack
+3. Detect cross-service communication
+4. Identify shared external dependencies
+
+**Generated:**
+
+**user-service.sruja (canonical):**
+```sruja
+UserSvc = system "User Service" {
+  description "User management and authentication"
+  Api = container "User API" {
+    technology "Node.js"
+    description "REST API for user operations"
+  }
+  DB = database "User Database" {
+    technology "PostgreSQL"
+    description "User profiles and credentials"
+  }
+  Cache = database "Session Cache" {
+    technology "Redis"
+    description "Active user sessions"
+  }
+  Api -> DB "SQL"
+  Api -> Cache "Redis protocol"
+}
+```
+
+**order-service.sruja (canonical):**
+```sruja
+OrderSvc = system "Order Service" {
+  description "Order processing and management"
+  Api = container "Order API" {
+    technology "Python"
+    description "REST API for order operations"
+  }
+  Worker = container "Order Worker" {
+    technology "Python"
+    description "Background order processing"
+  }
+  DB = database "Order Database" {
+    technology "MongoDB"
+    description "Order documents and history"
+  }
+  Queue = database "Message Queue" {
+    technology "RabbitMQ"
+    description "Order event stream"
+  }
+  Api -> DB "MongoDB protocol"
+  Worker -> DB "MongoDB protocol"
+  Api -> Queue "AMQP - publishes order events"
+  Queue -> Worker "AMQP - consumes order events"
+}
+```
+
+**architecture.sruja (single-file multi-system, canonical):**
+```sruja
+UserSvc = system "User Service" { ... }
+OrderSvc = system "Order Service" { ... }
+PaymentSvc = system "Payment Service" { ... }
+
+OrderSvc.Api -> UserSvc.Api "REST - validate user"
+OrderSvc.Api -> PaymentSvc.Api "gRPC - process payment"
+
+Stripe = system "Stripe" {
+  description "External payment gateway"
+  PaymentApi = container "Payment API" {
+    technology "REST"
+    description "Charge creation, refund processing"
+  }
+}
+PaymentSvc.Api -> Stripe.PaymentApi "HTTPS - payment processing"
+
+Shopper = person "Shopper" {
+  description "E-commerce customer browsing and purchasing"
+}
+Shopper -> UserSvc.Api "HTTPS - account management"
+Shopper -> OrderSvc.Api "HTTPS - place orders"
+```
+
+### Example 3: Documentation-Based Analysis
+
+**User request:** "Analyze architecture from docs, no code access"
+
+**Analysis:**
+1. Read `README.md` - Project overview
+2. Read `docs/architecture.md` - System design
+3. Read `docs/deployment.md` - Infrastructure
+4. Read `docs/api.md` - API documentation
+
+**Generated (canonical):**
+```sruja
+ContentPlatform = system "Content Platform" {
+  description "Content management and delivery platform (from docs)"
+  Web = container "Web Application" {
+    technology "React"
+    description "User-facing web application (from docs)"
+  }
+  Api = container "API Server" {
+    technology "Node.js"
+    description "Backend API for content management (from docs)"
+  }
+  DB = database "Content Database" {
+    technology "PostgreSQL"
+    description "Content storage (from deployment docs)"
+  }
+  Cache = database "CDN Cache" {
+    technology "CloudFront"
+    description "Content delivery network (from deployment docs)"
+  }
+  Web -> Api "HTTPS - API calls"
+  Api -> DB "SQL"
+  Api -> Cache "Invalidates cache on content update"
+}
+Auth0 = system "Auth0" {
+  description "External authentication service (from architecture docs)"
+  AuthApi = container "Auth API" {
+    technology "OAuth 2.0"
+    description "User authentication"
+  }
+}
+ContentPlatform.Web -> Auth0.AuthApi "OAuth - user authentication"
+ContentEditor = person "Content Editor" {
+  description "Content creators and editors (from user personas doc)"
+}
+ContentReader = person "Content Reader" {
+  description "End users consuming content (from user personas doc)"
+}
+ContentEditor -> ContentPlatform.Web "HTTPS - content management"
+ContentReader -> ContentPlatform.Web "HTTPS - read content"
+ContentReader -> ContentPlatform.Cache "HTTPS - cached content delivery"
+```
+
+## Best Practices
+
+### 1. Start Simple, Then Deepen
+
+- Begin with high-level overview
+- Ask if user wants more detail
+- Don't overwhelm with too much information
+
+### 2. Validate Assumptions
+
+When uncertain:
+- State your assumption
+- Provide confidence level
+- Ask for confirmation
+
+Example:
+```
+"I detected PostgreSQL based on the pg package in dependencies. 
+Is this the primary database, or do you also use MongoDB for analytics?"
+```
+
+### 3. Focus on What Matters
+
+- External dependencies over internal utilities
+- Service boundaries over individual functions
+- Data flows over code structure
+- End-to-end paths over isolated components
+
+### 4. Use Confidence Levels
+
+Label uncertain detections in the description:
+```sruja
+Analytics = system "Analytics Service" {
+  description "Detected from code (confidence: medium) - HTTP client calls to analytics.example.com; needs confirmation"
+  Api = container "Analytics API" {
+    technology "REST"
+    description "Inferred from client usage"
+  }
+}
+```
+
+### 5. Document Gaps
+
+Always highlight what's missing:
+```
+**Note:** I couldn't detect:
+- End user segments (no user documentation found)
+- Deployment patterns (no deployment docs)
+- SLA requirements (not documented)
+
+Would you like to add these manually?
+```
+
+### 6. Iterate Collaboratively
+
+Don't try to be perfect on first try:
+1. Generate initial architecture
+2. Ask for feedback
+3. Refine based on input
+4. Repeat until satisfied
+
+## Post-generate checklist (validation rules)
+
+Before presenting architecture, self-check:
+
+- [ ] Every `system`, `container`, `component`, `database`, `person` has `description`.
+- [ ] Every `container` has `technology`.
+- [ ] Every element appears in at least one relationship (no orphans).
+- [ ] Relationship labels are specific (protocol and/or purpose).
+- [ ] `sruja lint` passes (run it; do not present a file that fails).
+
+## Output Format
+
+Always present architecture in this format:
+
+```markdown
+## Architecture Analysis
+
+### Summary
+- **Services**: [number] services detected
+- **Technologies**: [list main technologies]
+- **External Dependencies**: [list external services]
+- **End Users**: [list user types]
+
+### Services
+
+#### [Service Name]
+- **Technology**: [language/framework]
+- **Description**: [what it does]
+- **Components**: [list containers/databases]
+
+### External Dependencies
+[List external services and their purpose]
+
+### End Users
+[List user types and their behaviors]
+
+### End-to-End Flow
+[Describe main user flow]
+
+### Generated Architecture
+
+```sruja
+[Full Sruja DSL]
+```
+
+### Validation
+✓ Architecture validated successfully
+[Or list any validation errors]
+
+### Questions for Refinement
+1. [Question about unclear aspect]
+2. [Question about missing information]
+3. [Question about accuracy]
+```
+
+## Remember
+
+- **You are an expert** at understanding code and architecture
+- **Use your tools** to gather information, don't guess
+- **Ask questions** when uncertain
+- **Validate** your output with `sruja lint`
+- **Iterate** with the user to refine
+- **Focus on what matters** - service boundaries, data flows, external dependencies
+- **Document gaps** - it's okay to not know everything
+- **Be collaborative** - architecture discovery is a dialogue
+
+## Quick Reference
+
+### Common Commands
+
+```bash
+# Clone repository
+git clone <url> /tmp/analysis
+
+# Read key files
+read package.json
+read docker-compose.yml
+read README.md
+
+# Validate architecture
+sruja lint architecture.sruja
+
+# Export to other formats
+sruja export markdown architecture.sruja
+sruja export mermaid architecture.sruja
+```
+
+### File priority (read order)
+
+1. **README + package/manifest** – Stack, scripts, overview.
+2. **Entry point(s)** – e.g. `index.js`, `main.py`, `Application.java`.
+3. **One level of imports or route registration** – Boundaries only.
+4. **Config for DB/queues/external APIs** – Env, connection strings.
+Do not read entire codebase.
+
+### Detection Confidence Levels
+
+- **High (90%+)**: Explicitly declared in config/code
+- **Medium (70-90%)**: Inferred from usage patterns
+- **Low (50-70%)**: Guessed from limited information
+
+Always state confidence level for uncertain detections.
+
+---
+
+*This skill empowers you to discover and document software architecture intelligently. Use your tools, ask questions, validate output, and iterate with users to create accurate and useful architecture documentation.*

@@ -465,7 +465,7 @@ pub async fn start_mcp_server(port: u16) -> Result<(), CliError> {
     eprintln!("Connect from Cursor/Copilot with:");
     eprintln!(r#"  {{ "mcpServers": {{ "sruja": {{ "url": "http://localhost:{}" }} }} }}"#, port);
     
-    // Would integrate with sruja-mcp crate
+    // MCP removed; use skills + CLI for editor integration
     // For now, show instructions
     eprintln!("\nMCP server integration coming soon!");
     eprintln!("For now, use: sruja context --for-ai > .cursorrules");

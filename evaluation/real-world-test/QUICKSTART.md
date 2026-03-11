@@ -15,10 +15,7 @@ This clones Express.js (if needed), runs `sruja quickstart` and `sruja drift`, a
 
 **Optional flags:**
 - `./run_demo.sh --baseline` – Add drift vs example architecture
-- `./run_demo.sh --llm` – Add LLM eval (requires any LLM API key in `.env`)
-- `./run_demo.sh --all` – Both baseline and LLM
-
-**LLM is optional.** Copy `.env.example` to `.env` and add any LLM API key (OpenAI, OpenRouter, Anthropic, Gemini, or Ollama) only if you want LLM evaluation.
+Sruja CLI does not use LLM; integration is **skills + CLI** (use the Sruja skill in your editor for AI interpretation).
 
 ---
 
@@ -122,12 +119,8 @@ For each generated architecture:
 ### Option B: LLM-Assisted Evaluation
 
 ```bash
-# Use sruja eval - requires any LLM API key
-export OPENAI_API_KEY="sk-..."   # or OPENROUTER, ANTHROPIC, GEMINI
-./evaluate_architecture.sh express --llm
-
-# Or run directly:
-sruja eval test-repos/express
+# Evaluation is validation + checklist (no LLM). Use Sruja skill in editor for AI-assisted review.
+./evaluate_architecture.sh express
 ```
 
 ## Step 5: Review Results
@@ -253,7 +246,7 @@ express = system "Express.js" {
 - Install Sruja CLI: `curl -fsSL https://sruja.ai/install.sh | bash`
 - Or skip validation (it's optional)
 
-**"Want LLM evaluation?"**
+**"Want AI-assisted evaluation?"**
 - Paste architecture.sruja into your AI assistant
 - Ask it to score completeness, accuracy, clarity, usefulness
 

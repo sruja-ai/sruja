@@ -1,9 +1,11 @@
 //! Architectural drift detection: cycles, orphans, layer violations, god modules.
 
-use crate::health::calculate_health_score_from_violations;
+use crate::health::calculate_health_score_with_breakdown;
 use crate::source_ref::{collect_cycle_sources, collect_edge_sources, collect_node_path_source};
 use crate::types::HealthScorePenalties;
-use crate::types::{DriftConfig, DriftReport, Severity, Violation, ViolationKind};
+use crate::types::{
+    DriftConfig, DriftReport, HealthScoreBreakdown, Severity, Violation, ViolationKind,
+};
 use sruja_scan::{Graph, NodeKind};
 use std::collections::{HashMap, HashSet};
 
@@ -100,7 +102,15 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
         suggestions.push("Refactor god modules into smaller components".to_string());
     }
 
-    let health_score = calculate_drift_health_score(&violations);
+    let penalties = HealthScorePenalties::default();
+    let breakdown = calculate_health_score_with_breakdown(&violations, penalties);
+    let health_breakdown = Some(HealthScoreBreakdown {
+        cycle_penalty: breakdown.cycle_penalty,
+        layer_penalty: breakdown.zone_of_pain_penalty,
+        god_module_penalty: breakdown.god_module_penalty,
+        orphan_penalty: breakdown.orphan_penalty,
+        other_penalty: breakdown.other_penalty,
+    });
 
     DriftReport {
         total_modules: graph
@@ -124,7 +134,8 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
         layer_violations: layer_violations.len(),
         violations,
         suggestions,
-        health_score,
+        health_score: breakdown.score,
+        health_breakdown,
     }
 }
 
@@ -336,6 +347,10 @@ fn is_likely_doc_or_tool_path(path: &str, id: &str) -> bool {
         || p.contains("/tools/")
         || p.contains("/vendor/")
         || p.contains("/third_party/")
+        || p.contains("/deps/")
+        || p.contains("node_modules/")
+        || p.contains("/stories/")
+        || p.contains(".stories.")
         || p.contains("/examples/")
         || p.contains("/fixtures/")
         || p.contains("/sample")
@@ -358,6 +373,7 @@ fn is_likely_doc_or_tool_path(path: &str, id: &str) -> bool {
         || id_lower.ends_with("_test_go")
         || id_lower.contains("_config_")
         || id_lower.contains("_mock_")
+        || id_lower.contains("_stories_")
 }
 
 /// Paths that are commonly entry points or re-export hubs; reporting them as orphans
@@ -496,8 +512,4 @@ fn find_god_modules(graph: &Graph, threshold: usize) -> Vec<GodModuleInfo> {
             }
         })
         .collect()
-}
-
-fn calculate_drift_health_score(violations: &[Violation]) -> u8 {
-    calculate_health_score_from_violations(violations, HealthScorePenalties::default())
 }

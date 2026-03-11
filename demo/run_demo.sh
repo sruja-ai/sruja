@@ -51,11 +51,18 @@ echo "  ✓ Graph written to sruja.graph.json"
 echo ""
 
 echo "────────────────────────────────────────────────────────────────────"
-echo "  [3] Detecting drift (code vs. intent)"
+echo "  [3] Intent drift (declared architecture vs. code)"
 echo "────────────────────────────────────────────────────────────────────"
-echo "Comparing code against architecture.sruja rules..."
-echo "  \$ $SRUJA drift -a architecture.sruja"
-"$SRUJA" drift -a architecture.sruja
+echo "Comparing declared intent (architecture.sruja) vs scanned reality..."
+echo "  \$ $SRUJA intent check -r . -i . -f markdown"
+INTENT_REPORT=$("$SRUJA" intent check -r . -i . -f markdown)
+echo "$INTENT_REPORT" > intent_report.md
+echo "  ✓ Wrote intent_report.md"
+echo ""
+echo "Key drift (demo focus):"
+echo "  - Frontend should not access the database directly"
+echo ""
+echo "$INTENT_REPORT" | grep -n "frontend_py' -> 'database" || true
 echo ""
 
 echo "────────────────────────────────────────────────────────────────────"
@@ -70,8 +77,8 @@ echo "────────────────────────�
 echo "  [5] Deterministic explainability (sruja why)"
 echo "────────────────────────────────────────────────────────────────────"
 echo "Asking: Why does the Frontend access the database?"
-echo "  \$ $SRUJA why \"Why does the Frontend access the database?\" -r . --graph sruja.graph.json"
-"$SRUJA" why "Why does the Frontend access the database?" -r . --graph sruja.graph.json 2>/dev/null || true
+echo "  \$ $SRUJA why \"Why does frontend_py access database?\" -r . --graph sruja.graph.json"
+"$SRUJA" why "Why does frontend_py access database?" -r . --graph sruja.graph.json 2>/dev/null || true
 echo ""
 echo "  For natural-language interpretation, use the Sruja skill in your editor (Cursor, Copilot, etc.)."
 echo ""

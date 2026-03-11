@@ -168,6 +168,16 @@ impl Default for DriftConfig {
     }
 }
 
+/// Per-category penalties for health score (structural only). Exposed so consumers can see why the score is what it is.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct HealthScoreBreakdown {
+    pub cycle_penalty: u8,
+    pub layer_penalty: u8,
+    pub god_module_penalty: u8,
+    pub orphan_penalty: u8,
+    pub other_penalty: u8,
+}
+
 /// Result of architectural drift detection
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DriftReport {
@@ -181,4 +191,7 @@ pub struct DriftReport {
     pub violations: Vec<Violation>,
     pub suggestions: Vec<String>,
     pub health_score: u8,
+    /// Why the health score is what it is (structural only: cycles, layers, god modules, orphans).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub health_breakdown: Option<HealthScoreBreakdown>,
 }

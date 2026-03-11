@@ -3,6 +3,7 @@
 //! Command-line interface for the Sruja DSL tool.
 
 mod commands;
+mod compliance;
 mod config;
 mod context_detection;
 mod modules;
@@ -250,6 +251,21 @@ enum Commands {
         #[command(subcommand)]
         cmd: IntentCommand,
     },
+    /// Compliance report: structural drift + intent + policy violations (exit 1 if non-compliant)
+    Compliance {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to baseline architecture (.sruja file)
+        #[arg(long, short = 'a')]
+        architecture: Option<String>,
+        /// Path to intent directory (ADRs, .sruja files)
+        #[arg(long, short = 'i')]
+        intent: Option<String>,
+        /// Output format (text, json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
     /// Export architecture context for AI tools (Cursor, Copilot, Claude)
     Context {
         /// Path to repository root
@@ -415,6 +431,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 commands::intent_propose(&repo, intent.as_deref()).await
             }
         },
+        Commands::Compliance {
+            repo,
+            architecture,
+            intent,
+            format,
+        } => commands::compliance(&repo, architecture.as_deref(), intent.as_deref(), &format).await,
         Commands::Context {
             repo,
             format,

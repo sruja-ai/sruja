@@ -295,9 +295,9 @@ Based on this evaluation:
 
 ## Automation (Optional)
 
-### Simple LLM Evaluation
+### Simple manual evaluation
 
-If you want automated evaluation, use this prompt with an LLM:
+If you want a consistent checklist, use this prompt (with your editor's AI or manually):
 
 ```
 I have a Sruja architecture DSL file for [repository name].

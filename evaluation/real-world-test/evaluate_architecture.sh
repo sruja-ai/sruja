@@ -102,10 +102,11 @@ echo "  Components: $SYSTEMS systems, $CONTAINERS containers, $DATABASES databas
 echo "  Relationships: $RELATIONSHIPS"
 echo ""
 
-# Run validation
+# Run validation (use find_sruja so repo-built CLI works without PATH)
 echo "🔍 Running validation (sruja lint)..."
-if command -v sruja >/dev/null 2>&1; then
-  if sruja lint "$ARCH_FILE" 2>&1; then
+SRUJA=$(find_sruja)
+if [ -n "$SRUJA" ]; then
+  if $SRUJA lint "$ARCH_FILE" 2>&1; then
     echo "✅ Validation passed"
     VALID="true"
   else
@@ -114,7 +115,7 @@ if command -v sruja >/dev/null 2>&1; then
   fi
 else
   echo "⚠️  sruja CLI not found, skipping validation"
-  echo "   Install with: curl -fsSL https://sruja.ai/install.sh | bash"
+  echo "   Build from repo: make build   or install: curl -fsSL https://sruja.ai/install.sh | bash"
   VALID="unknown"
 fi
 echo ""

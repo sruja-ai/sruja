@@ -267,6 +267,29 @@ impl IntentModel {
             });
         }
 
+        for item in &program.items {
+            if let sruja_language::TopLevelItem::Policy(p) = item {
+                let constraint_text = p
+                    .description
+                    .clone()
+                    .unwrap_or_else(|| format!("{} / {}", p.category, p.enforcement));
+                model.policies.push(DeclaredPolicy {
+                    name: p.id.clone(),
+                    description: p.title.clone(),
+                    scope: vec![],
+                    rules: vec![PolicyRule {
+                        description: p.title.clone(),
+                        constraint: constraint_text,
+                    }],
+                    source_ref: SourceReference {
+                        file: path.to_string_lossy().to_string(),
+                        line: Some(p.location.line),
+                        element: Some(p.id.clone()),
+                    },
+                });
+            }
+        }
+
         Ok(model)
     }
 

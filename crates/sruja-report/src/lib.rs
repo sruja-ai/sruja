@@ -5,8 +5,10 @@
 //! callers build these from sruja-diff, sruja-semantic, sruja-intent, and
 //! sruja-runtime results.
 
+pub mod compliance;
 pub mod comprehensive;
 
+pub use compliance::{ComplianceReport, ComplianceStatus, DriftEntry, PolicyViolationEntry};
 pub use comprehensive::{
     build_recommendations, ComprehensiveReport, Effort, IntentSection, Layer, Priority,
     Recommendation, RecommendationCategory, RuntimeSection, SemanticSection, StructuralSection,

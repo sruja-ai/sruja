@@ -1,10 +1,14 @@
 ---
 name: sruja-architecture
 description: Architecture-as-code with Sruja DSL. Use when generating or refactoring Sruja .sruja files, designing system architecture, or making trade-off decisions (monolith vs microservices, sync vs async). Covers C4-style components, relationships, patterns, and anti-patterns.
-license: MIT
----# Sruja Architecture DSL
+license: Apache-2.0
+---
+
+# Sruja Architecture DSL
 
 Comprehensive guide for software architecture design using Sruja DSL. Contains 50+ rules across 6 categories covering architectural principles, patterns, components, relationships, anti-patterns, and trade-offs. Designed to help AI assistants generate correct, well-architected Sruja DSL files.
+
+**Why Sruja:** Sruja gives you machine-readable architecture: every element has description and technology, relationships are explicit and labeled. So you can lint, diff, and run drift/baseline checks against code. Use it when you need architecture-as-data, not only diagrams.
 
 ## When to Apply
 

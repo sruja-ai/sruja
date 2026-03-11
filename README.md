@@ -47,6 +47,7 @@ For the full **Architecture Intelligence** flow (intent → scan → drift → a
 
 ### 🤖 **AI-Ready Features**
 
+- **Install as skill** – One command to add Sruja to Cursor (or other AI editors): [Install guide](docs/INSTALL_AS_SKILL.md). For architecture discovery, use the [recommended prompt](docs/INSTALL_AS_SKILL.md#recommended-prompt-architecture-discovery) (copy-paste in IDE chat).
 - **Context for AI tools** – Export architecture context for Cursor, Copilot, and Claude
 - **One-click baseline** – Generate `architecture.sruja` from your repo in seconds
 - **PR-scoped drift** – Detect only NEW violations introduced in a PR
@@ -220,7 +221,7 @@ See [Architecture Intelligence](docs/ARCHITECTURE_INTELLIGENCE.md) for details. 
 Use your AI assistant (Cursor, Claude, Copilot) to discover architecture from your codebase:
 
 ```bash
-npx skills add sruja-ai/sruja --skill sruja-architecture-agent
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent
 ```
 
 Then ask: "Analyze the architecture of my repository." The AI will scan your code and generate `.sruja` files. See [Architecture Agent](docs/ARCHITECTURE_AGENT.md) for details.
@@ -299,6 +300,7 @@ sruja export markdown example.sruja
 
 **Essential Guides:**
 
+- [Install Sruja in your AI editor](docs/INSTALL_AS_SKILL.md) - One-page skill install for Cursor, Copilot, etc.
 - [Contributing Guide](docs/CONTRIBUTING.md) - How to contribute
 - [First Contribution](docs/FIRST_CONTRIBUTION.md) - Step-by-step guide
 - [Language Specification](docs/LANGUAGE_SPECIFICATION.md) - Complete DSL reference

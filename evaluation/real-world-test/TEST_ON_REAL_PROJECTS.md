@@ -5,6 +5,8 @@ Sruja targets **general customer-facing systems** (web apps, APIs, services), **
 1. **Fast path (no architecture file)** – Run quickstart and drift on any repo. No `.sruja` file or AI generation.
 2. **Full evaluation** – Clone test repos, generate `architecture.sruja` (with AI or by hand), then run the evaluation script.
 
+**Cursor CLI (`agent`):** Testing with the Cursor CLI is **local only** (no CI). See [LOCAL_CURSOR_CLI_TESTING.md](LOCAL_CURSOR_CLI_TESTING.md) for using `agent` in the terminal on cloned repos.
+
 ## Testing the demo on real projects (skills + CLI)
 
 Integration is **skills + CLI** only (no MCP, no Sruja-owned LLM). To validate the demo on real projects:
@@ -12,7 +14,35 @@ Integration is **skills + CLI** only (no MCP, no Sruja-owned LLM). To validate t
 - **CLI:** From `evaluation/real-world-test`, run `./run_demo.sh` (quickstart + drift on Express) or `./run_demo.sh --baseline`. On other repos: `sruja quickstart -r <path>`, `sruja drift -r <path>`, optionally `sruja why "question" -r <path>` and `sruja context export -f cursor-rules -o /tmp/out.cursorrules`. No API keys required.
 - **Editor:** Install the Sruja skill in your editor (Cursor, Copilot, etc.); open a real repo; ask e.g. "What's the state of our architecture?" or "Where are the cycles?" and confirm the AI runs `sruja quickstart` or `sruja drift` and summarizes the output.
 
-Record results (repo, quickstart summary, drift result) in `run_results/` or extend [OSS_TEST_RESULTS.md](OSS_TEST_RESULTS.md).
+Record results (repo, quickstart summary, drift result) in `run_results/` or extend [OSS_TEST_RESULTS.md](OSS_TEST_RESULTS.md). Optional: run `./run_demo_real_projects.sh` to run quickstart + drift on each repo in `test-repos/` and append a one-line summary to a timestamped file in `run_results/`.
+
+### Testing the Sruja skill and slash command on real projects
+
+To validate that the Sruja skill (and slash command) work on real OSS projects:
+
+**Prerequisites**
+
+- Sruja CLI built: `make build` (from Sruja repo root).
+- One or more real repos present: run `./setup_repos.sh` or `./setup_repos.sh --complex` from `evaluation/real-world-test`.
+
+**Option A – Skill in repo (recommended for testing)**
+
+1. Run `./prepare_skill_in_real_projects.sh` from `evaluation/real-world-test`. This copies the Sruja architecture skill into each repo under `test-repos/` at `.agents/skills/sruja-architecture/`.
+2. Open a test repo in Cursor (or VS Code with Copilot), e.g. `test-repos/express`.
+3. In chat, type `/` and select **sruja-architecture**.
+4. Ask: “Run sruja quickstart and summarize the architecture state.”
+5. **Expected:** The agent runs `sruja quickstart -r .` (or equivalent) and summarizes the output (inventory, health, findings).
+
+**Option B – Global skill**
+
+1. Run `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` (choose **Copy** when prompted so the skill appears under Skills).
+2. Open any real repo (e.g. `test-repos/gitea`) in Cursor or VS Code.
+3. Same as steps 3–5 above: type `/`, select **sruja-architecture**, and ask for quickstart summary.
+4. **Expected:** Same as Option A.
+
+**Optional CLI smoke test**
+
+Before testing in the editor, confirm the CLI works on those repos: run `./run_demo.sh` or `./run_demo_real_projects.sh` from `evaluation/real-world-test`.
 
 ---
 
@@ -23,7 +53,7 @@ Record results (repo, quickstart summary, drift result) in `run_results/` or ext
 | Priority | What | How today | Future |
 |----------|------|-----------|--------|
 | **1. Capture architecture** | Infer structure from code (modules, deps, services). | `sruja scan -r . -o sruja.graph.json`; quickstart/drift run scan under the hood. | Same; optional persistence per repo. |
-| **2. Ask questions** | Explore why the system is structured the way it is. | `sruja why "your question" -r .` (uses scan + knowledge graph). | Richer queries, optional LLM. |
+| **2. Ask questions** | Explore why the system is structured the way it is. | `sruja why "your question" -r .` (deterministic). Use Sruja skill in editor for AI interpretation. | — |
 | **3. Drift** | Compare code vs declared architecture; catch violations. | `sruja drift -r .` (structural only) or `sruja drift -r . -a architecture.sruja` (vs baseline). | **GitHub/commit integration** (see below). |
 | **4. Commit / CI integration** | Run capture and drift in CI; tie results to commits; review in PRs. | Not yet. | Run drift on push or PR; report “new violations since base”; optional PR comments. |
 
@@ -225,34 +255,11 @@ For example after generating one (e.g. with AI) in `test-repos/gitea/architectur
 ./evaluate_architecture.sh gitea
 ```
 
-With LLM evaluation (needs `.env` with an API key):
-
-```bash
-./evaluate_architecture.sh gitea --llm
-```
+Evaluation is validation + checklist only (no LLM). For AI-assisted review, use the Sruja skill in your editor.
 
 ---
 
 **Summary:** 1) `make build` → 2) `./setup_repos.sh --complex` → 3) set `$SRUJA` → 4) quickstart on gitea, etcd, caddy → 5) drift on gitea, etcd, caddy → 6) optional analyze → 7) optional evaluate if you have a generated `.sruja`.
-
-### When to use the LLM
-
-**We did not use the LLM in the step-by-step E2E above.** Quickstart, drift, and analyze are deterministic (no API keys). The LLM is **optional** and is used only in these cases:
-
-| When | What to run | Purpose |
-|------|-------------|--------|
-| You have `architecture.sruja` in a repo and want an automated quality assessment | `./evaluate_architecture.sh <repo> --llm` | Runs `sruja eval` so an LLM scores/reviews the architecture. |
-| You want the demo to include LLM evaluation | `./run_demo.sh --llm` (or `--all`) | After quickstart/drift, runs `sruja eval` on the demo repo. |
-
-**Requirements for LLM:** Set one of `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` in `evaluation/real-world-test/.env` (copy from `.env.example`), or use `SRUJA_LLM_PROVIDER=ollama` for local models.
-
-**To add LLM to your E2E run:** After generating `architecture.sruja` in a repo (e.g. with AI), run:
-
-```bash
-cd evaluation/real-world-test
-# Ensure .env has one LLM API key
-./evaluate_architecture.sh gitea --llm
-```
 
 ---
 
@@ -490,8 +497,7 @@ From `evaluation/real-world-test`:
 # By path (any directory that contains architecture.sruja)
 ./evaluate_architecture.sh /path/to/repo
 
-# With LLM evaluation (needs .env with one API key; see .env.example)
-./evaluate_architecture.sh gitea --llm
+./evaluate_architecture.sh gitea
 ```
 
 The script will:
@@ -499,7 +505,7 @@ The script will:
 - Print file stats (lines, systems, containers, relationships).
 - Run `sruja lint` on `architecture.sruja`.
 - Show a manual checklist (completeness, accuracy, clarity, usefulness).
-- If `--llm`: run `sruja eval` (requires API key in `.env`).
+- Evaluation is validation + checklist (no LLM).
 - Write a report under `results/evaluation_<repo>_<timestamp>.md`.
 
 ### Step 4: Review reports
@@ -526,8 +532,7 @@ Flags:
 
 - `./run_demo.sh`          – quickstart + drift only.
 - `./run_demo.sh --baseline` – add drift vs example architecture.
-- `./run_demo.sh --llm`    – add LLM eval (set one key in `.env`).
-- `./run_demo.sh --all`   – baseline + LLM.
+- `./run_demo.sh --baseline` – drift vs example architecture.
 
 ---
 
@@ -549,7 +554,7 @@ sruja drift -r /path/to/other/repo
 3. Run:
    ```bash
    ./evaluate_architecture.sh /path/to/repo
-   ./evaluate_architecture.sh /path/to/repo --llm   # optional
+   ./evaluate_architecture.sh /path/to/repo
    ```
 
 ### Adding a repo to the setup list
@@ -567,7 +572,7 @@ Edit `setup_repos.sh`: add an entry to `REPOS_QUICK` (frameworks) or `REPOS_COMP
 | Scan your own project       | `sruja quickstart -r /path/to/your/repo` |
 | Run demo (no .sruja)        | `./run_demo.sh` (uses express from quick set) |
 | Evaluate generated .sruja   | Create `architecture.sruja` in repo, then `./evaluate_architecture.sh <repo-name-or-path>` |
-| LLM-assisted evaluation     | Set API key in `.env`, then `./evaluate_architecture.sh gitea --llm` (or any repo name) |
+| AI-assisted evaluation     | Use the Sruja skill in your editor (Cursor, Copilot, etc.) |
 
 ---
 
@@ -582,5 +587,4 @@ Edit `setup_repos.sh`: add an entry to `REPOS_QUICK` (frameworks) or `REPOS_COMP
 - **“Repository not found”**  
   For named repos, run `./setup_repos.sh` first. For custom paths, use the full path: `./evaluate_architecture.sh /full/path/to/repo`.
 
-- **LLM eval not running**  
-  Copy `.env.example` to `.env`, set one of `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or `SRUJA_LLM_PROVIDER=ollama`, then run with `--llm`.
+- **Evaluation:** Sruja CLI does not use LLM; run `./evaluate_architecture.sh <repo>` for validation and checklist.

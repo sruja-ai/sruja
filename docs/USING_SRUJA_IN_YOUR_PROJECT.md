@@ -73,7 +73,9 @@ Create `architecture.sruja` (or `docs/architecture.sruja`) and define your syste
 
 ### Step 2: AI editor integration (so AI-generated code follows rules)
 
-Copy into your project root:
+**Easiest:** Install Sruja as a skill in your AI editor (one command). See **[Install as skill](INSTALL_AS_SKILL.md)** for Cursor, Copilot, and others.
+
+**Or** copy into your project root:
 
 - **`.cursorrules`** – Cursor uses this for Sruja DSL rules (see repo root or [skills/sruja-architecture](../skills/sruja-architecture/)).
 - **`.copilot-instructions.md`** – GitHub Copilot uses this.

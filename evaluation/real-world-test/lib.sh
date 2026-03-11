@@ -13,7 +13,7 @@ find_sruja() {
 }
 
 # Returns "1" if any LLM API key or ollama is configured, else "".
-# Call after loading .env (e.g. [ -f "${SCRIPT_DIR}/.env" ] && set -a && . "${SCRIPT_DIR}/.env" && set +a).
+# Note: Sruja CLI no longer uses LLM; this is kept for scripts that may reference it (e.g. capture_timeline).
 has_llm_key() {
   [ -n "$OPENROUTER_API_KEY" ] && echo "1" && return
   [ -n "$OPENAI_API_KEY" ] && echo "1" && return

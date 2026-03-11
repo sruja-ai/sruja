@@ -232,6 +232,16 @@ demo:
 		echo "❌ evaluation/real-world-test/run_demo.sh not found"; exit 1; \
 	fi
 
+# Run Architecture Intelligence demo (intent → scan → drift → analyze → AI ask)
+# Uses demo/ microservices + architecture.sruja. Optional: set LLM key for AI step.
+demo-intel:
+	@echo "Running Architecture Intelligence demo..."
+	@if [ -f "demo/run_demo.sh" ]; then \
+		cd demo && ./run_demo.sh; \
+	else \
+		echo "❌ demo/run_demo.sh not found"; exit 1; \
+	fi
+
 # Show help
 help:
 	@echo "Sruja - Build Commands"
@@ -265,6 +275,7 @@ help:
 	@echo "Architecture Intelligence:"
 	@echo "  make test-arch-intel    - Run architecture intelligence E2E (why command)"
 	@echo "  make demo               - Run E2E value demo (quickstart + drift on sample repo)"
+	@echo "  make demo-intel         - Run Architecture Intelligence demo (intent → scan → drift → analyze → AI)"
 	@echo ""
 	@echo "Direct Cargo Commands:"
 	@echo "  cargo build --release   - Build release version"
