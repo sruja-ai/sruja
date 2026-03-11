@@ -15,8 +15,8 @@
 | **sruja-scan** | `crates/sruja-scan` | Tree-sitter structural analysis | No AI enhancement |
 | **sruja-semantic** | `crates/sruja-semantic` | Embeddings, bounded contexts | Stub provider by default, optional |
 | **sruja-graph** | `crates/sruja-graph` | Knowledge graph, decisions | Used by CLI (quickstart, analyze) |
-| **CLI AI commands** | `crates/sruja-cli/src/commands/ai.rs` | `sruja ai explain/ask` | Separate commands, not core workflow |
-| **MCP server** | *(removed)* | — | Integration is **skills + CLI**; no MCP. |
+| **CLI AI commands** | *(removed)* | — | **Skills + CLI only** — use `sruja quickstart`, `drift`, `intent check`, `why`; editor skill interprets output. |
+| **MCP server** | *(removed)* | — | **Not in repo** — integrate via skills + CLI; see [INSTALL_AS_SKILL](INSTALL_AS_SKILL.md). |
 
 ### Current Workflow (AI is Optional)
 
@@ -26,9 +26,8 @@ sruja quickstart -r .
 sruja drift -r .
 sruja analyze -r .
 
-# AI commands (separate, requires API key)
-sruja ai explain --topic "payment flow"
-sruja ai ask "why microservices?"
+# No separate `sruja ai` subcommands — use the skill in Cursor/Copilot and CLI for evidence
+# sruja quickstart -r . && sruja intent check -r . -i .
 
 # Desktop app (separate product)
 sruja-app  # Has chat, agents, extraction
@@ -377,84 +376,14 @@ pub fn get_embedding_provider() -> Box<dyn EmbeddingProvider> {
 
 ---
 
-### Phase 5: Connect MCP Server
+### Phase 5: MCP server (not pursued)
 
-#### 5.1 Expose CLI via MCP
+**Status:** The **sruja-mcp** crate and **sruja ai** / **sruja mcp** commands were **removed**. Integration is **skills + CLI** only:
 
-**Enhance:** `crates/sruja-mcp/src/tools.rs`
+- Install: `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent`
+- CLI: `sruja quickstart`, `sruja drift`, `sruja intent check`, `sruja why`, `sruja context export`
 
-```rust
-pub fn register_cli_tools(server: &mut McpServer) {
-    server.register_tool(SrujaTool {
-        name: "sruja_analyze".to_string(),
-        description: "Analyze repository architecture".to_string(),
-        handler: |args| {
-            let repo = args.get("repo").unwrap_or(".");
-            // Call CLI analyze command
-            analyze(repo, "json", None, None, "json")
-        },
-    });
-    
-    server.register_tool(SrujaTool {
-        name: "sruja_ask".to_string(),
-        description: "Ask architecture question".to_string(),
-        handler: |args| {
-            let question = args.get("question").unwrap();
-            let repo = args.get("repo").unwrap_or(".");
-            // Call CLI ask command
-            ask(repo, question, "json", None)
-        },
-    });
-    
-    server.register_tool(SrujaTool {
-        name: "sruja_context".to_string(),
-        description: "Get architecture context for AI".to_string(),
-        handler: |args| {
-            let repo = args.get("repo").unwrap_or(".");
-            export_context(repo, true)
-        },
-    });
-}
-```
-
-#### 5.2 Add MCP command to CLI
-
-```rust
-// In main.rs
-Commands {
-    // ... existing ...
-    
-    /// Start MCP server for AI tooling
-    Mcp {
-        /// Port for MCP server
-        #[arg(long, default_value = "3000")]
-        port: u16,
-    },
-}
-
-// Implementation
-pub async fn start_mcp_server(port: u16) -> Result<(), CliError> {
-    let server = McpServer::new(port);
-    register_cli_tools(&mut server);
-    server.start().await?;
-    Ok(())
-}
-```
-
-**Usage:**
-```bash
-# Start MCP server
-sruja mcp --port 3000
-
-# In Cursor/Copilot config
-{
-  "mcpServers": {
-    "sruja": {
-      "url": "http://localhost:3000"
-    }
-  }
-}
-```
+No MCP server or `sruja mcp` in this repo.
 
 ---
 
@@ -472,7 +401,7 @@ sruja mcp --port 3000
 7. ✅ Auto-detect and use local models (Ollama)
 
 ### P2: AI Tooling (Week 4)
-8. ✅ MCP server integration
+8. ~~MCP server integration~~ **Removed** — use skills + CLI
 9. ✅ Export for Cursor/Copilot rules
 10. ✅ Documentation and examples
 
@@ -485,14 +414,14 @@ sruja mcp --port 3000
 - `sruja drift`: 0% AI, structural only
 - `sruja ai explain`: Optional, requires API key
 - Knowledge graph: Desktop app only
-- MCP: Unused
+- MCP: **Removed** (use skills + CLI)
 
 ### After (AI-First)
 - `sruja quickstart`: 100% AI-enhanced (local model by default)
 - `sruja drift`: Semantic + AI explanation
 - `sruja ask`: Core command, always available
 - Knowledge graph: Core feature, persisted in CLI
-- MCP: Active integration with AI editors
+- MCP: **Not applicable** — skills + CLI
 
 ---
 
@@ -508,7 +437,7 @@ sruja mcp --port 3000
 - `crates/sruja-cli/src/main.rs` - Add unified commands
 - `crates/sruja-cli/src/commands/scan.rs` - Enhance quickstart/drift
 - `crates/sruja-cli/src/commands/analyze.rs` - Add graph integration
-- `crates/sruja-mcp/src/tools.rs` - Register CLI tools
+- ~~`crates/sruja-mcp/...`~~ **Removed**
 
 ### Configuration
 - `.sruja/graph.json` - Persisted knowledge graph

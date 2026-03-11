@@ -1,0 +1,10 @@
+# cargo audit configuration
+# https://github.com/rustsec/rustsec/blob/main/cargo-audit/README.md#configuration
+#
+# RUSTSEC-2025-0119: number_prefix unmaintained (transitive via indicatif).
+# No patched release in our dependency tree yet; not a CVE—informational only.
+
+[advisories]
+ignore = [
+    "RUSTSEC-2025-0119",
+]
