@@ -1,0 +1,40 @@
+%% FastAPI Architecture - NO SKILL
+%% Basic Mermaid flowchart
+
+flowchart TB
+    subgraph FastAPI["FastAPI Framework"]
+        direction TB
+        App["FastAPI App<br/>main class"]
+        Router["APIRouter<br/>routing"]
+        Request["Request<br/>req object"]
+        Response["Response<br/>res object"]
+        Dependencies["Dependencies<br/>injection"]
+        OpenAPI["OpenAPI<br/>docs"]
+    end
+    
+    subgraph Starlette["Starlette"]
+        ASGI["ASGI App"]
+        Middleware["Middleware"]
+        Routing["Routing"]
+    end
+    
+    subgraph Pydantic["Pydantic"]
+        Validation["Validation"]
+        Models["Models"]
+    end
+    
+    subgraph External["External"]
+        Developer["Developer"]
+        UserApp["User Application"]
+    end
+    
+    Developer -->|"creates"| App
+    App -->|"uses"| Router
+    App -->|"extends"| ASGI
+    App -->|"generates"| OpenAPI
+    Router -->|"uses"| Routing
+    Request -->|"validated by"| Validation
+    Response -->|"serialized by"| Validation
+    Dependencies -->|"injects"| Request
+    App -->|"uses"| Middleware
+    UserApp -->|"imports"| FastAPI

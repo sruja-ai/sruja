@@ -1,0 +1,107 @@
+// Express.js Architecture - Generated WITH Sruja skill
+// Follows sruja-architecture-agent conventions
+
+express = system "Express.js Framework" {
+  description "Fast, unopinionated, minimalist web framework for Node.js. Entry: lib/express.js createApplication()"
+  
+  app = container "Application" {
+    technology "Node.js"
+    description "Factory function creating Express instance. Mixes EventEmitter, exposes req/res prototypes."
+    
+    config = component "Configuration" {
+      description "Settings: env, etag, query parser, trust proxy, views path"
+    }
+  }
+  
+  router = container "Router" {
+    technology "router@2.2.0"
+    description "HTTP routing engine with lazy initialization. Handles middleware stack, route matching."
+  }
+  
+  request = container "Request" {
+    technology "Node.js"
+    description "HTTP request abstraction extending http.IncomingMessage. lib/request.js"
+  }
+  
+  response = container "Response" {
+    technology "Node.js"
+    description "HTTP response abstraction extending http.ServerResponse. lib/response.js"
+  }
+  
+  middleware = container "Middleware Pipeline" {
+    technology "Node.js"
+    description "Sequential request processing. Each middleware receives (req, res, next)"
+  }
+  
+  view = container "View System" {
+    technology "JavaScript"
+    description "Template rendering with pluggable engines. lib/view.js"
+  }
+  
+  app -> router "lazily initializes"
+  app -> request "attaches prototype"
+  app -> response "attaches prototype"
+  app -> view "renders via"
+  app -> middleware "processes requests through"
+  router -> middleware "dispatches to"
+  middleware -> request "modifies"
+  middleware -> response "modifies"
+}
+
+nodejs = system "Node.js Runtime" {
+  description "JavaScript runtime. Requires Node >= 18"
+  
+  http = container "HTTP Module" {
+    technology "node:http"
+    description "Built-in HTTP server"
+  }
+  
+  events = container "Events Module" {
+    technology "node:events"
+    description "EventEmitter for mount events"
+  }
+}
+
+npm = system "NPM Dependencies" {
+  description "External packages"
+  
+  bodyParser = container "Body Parser" {
+    technology "body-parser@2.2.1"
+    description "Parse request bodies. Exposed as express.json/urlencoded"
+  }
+  
+  serveStatic = container "Serve Static" {
+    technology "serve-static@2.2.0"
+    description "Static file serving. Exposed as express.static"
+  }
+  
+  routerPkg = container "Router Package" {
+    technology "router@2.2.0"
+    description "Core routing middleware"
+  }
+}
+
+developer = person "Developer" {
+  description "Developer building apps with Express"
+}
+
+webApp = system "Web Application" {
+  description "Application built using Express"
+  
+  customRoutes = container "Custom Routes" {
+    technology "JavaScript"
+    description "App-specific route handlers"
+  }
+}
+
+developer -> express.app "creates app"
+express.app -> nodejs "runs on"
+express.app.config -> express.app "stores settings for"
+express.app -> nodejs.http "creates server"
+express.app -> nodejs.events "extends"
+express -> npm "depends on packages from"
+express.app -> npm.bodyParser "uses"
+express.app -> npm.serveStatic "uses"
+express.router -> npm.routerPkg "uses"
+webApp -> express "imports"
+webApp.customRoutes -> express.router "registers with"

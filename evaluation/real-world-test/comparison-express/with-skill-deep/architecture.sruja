@@ -1,0 +1,305 @@
+// Express.js Architecture - DEEP scope WITH Sruja skill
+// Captures internal patterns: Layer, error handling, mount, view caching
+
+express = system "Express.js Framework" {
+  description "Fast, unopinionated, minimalist web framework for Node.js. Entry: lib/express.js createApplication()"
+  
+  app = container "Application" {
+    technology "Node.js"
+    description "Factory function creating Express instance. Mixes EventEmitter, exposes req/res prototypes. lib/express.js:36"
+    
+    config = component "Configuration" {
+      description "Settings: env, etag, query parser, trust proxy, views path. Accessed via app.set()/app.get()"
+    }
+    
+    locals = component "Locals" {
+      description "App-level local variables passed to templates. app.locals.settings points to config"
+    }
+    
+    mountHandler = component "Mount Handler" {
+      description "Handles sub-app mounting via app.use(subapp). Sets mountpath, parent, emits 'mount' event. lib/application.js:109"
+    }
+    
+    errorLogger = component "Error Logger" {
+      description "Logs unhandled errors to console.error when env != 'test'. lib/application.js:615"
+    }
+  }
+  
+  router = container "Router" {
+    technology "router@2.2.0"
+    description "HTTP routing engine with lazy initialization. Handles middleware stack, route matching. lib/application.js:69-82"
+    
+    layer = component "Layer" {
+      description "Wraps each middleware/handler with path matching. Each layer has handle(req, res, next). From router package"
+    }
+    
+    stack = component "Stack" {
+      description "Ordered array of Layer instances. Requests flow through stack via next()"
+    }
+    
+    params = component "Param Handlers" {
+      description "Route parameter pre-processing via app.param(). Stored in router._params"
+    }
+  }
+  
+  request = container "Request" {
+    technology "Node.js"
+    description "HTTP request abstraction extending http.IncomingMessage. lib/request.js"
+    
+    queryParser = component "Query Parser" {
+      description "Parses URL query string using 'qs' package. Configurable: simple | extended"
+    }
+    
+    contentNegotiation = component "Content Negotiation" {
+      description "Accepts content types, languages, charsets via 'accepts' package"
+    }
+  }
+  
+  response = container "Response" {
+    technology "Node.js"
+    description "HTTP response abstraction extending http.ServerResponse. lib/response.js"
+    
+    send = component "Send Methods" {
+      description "Response body helpers: res.send(), res.json(), res.jsonp(), res.sendFile()"
+    }
+    
+    errorCreator = component "Error Creator" {
+      description "Creates HTTP errors via http-errors package. res.status() validates range"
+    }
+    
+    send -> errorCreator "validates status before sending"
+  }
+  
+  middleware = container "Middleware Pipeline" {
+    technology "Node.js"
+    description "Sequential request processing chain. Each middleware receives (req, res, next). lib/application.js:152-178"
+    
+    builtin = component "Built-in Middleware" {
+      description "express.json(), express.urlencoded(), express.static(), express.raw(), express.text()"
+    }
+    
+    errorHandler = component "Error Handler" {
+      description "Final handler using finalhandler package. Catches errors that bubble through stack. lib/application.js:154"
+    }
+  }
+  
+  view = container "View System" {
+    technology "JavaScript"
+    description "Template rendering with pluggable engines. lib/view.js"
+    
+    engine = component "Template Engine" {
+      description "Engine registry via app.engine(ext, fn). Supports pug, ejs, hbs, etc."
+    }
+    
+    cache = component "View Cache" {
+      description "Template cache. Enabled when NODE_ENV=production via app.enable('view cache'). lib/application.js:138"
+    }
+    
+    resolver = component "View Resolver" {
+      description "Resolves template files from views directory. lib/view.js"
+    }
+  }
+  
+  // Internal relationships
+  app -> router "lazily initializes via getter"
+  app -> request "attaches prototype via Object.setPrototypeOf"
+  app -> response "attaches prototype via Object.setPrototypeOf"
+  app -> view "renders templates via app.render()"
+  app -> middleware "processes requests through app.handle()"
+  app.config -> express.app.locals "shares settings with"
+  app.mountHandler -> app "emits 'mount' event on sub-app"
+  
+  router.layer -> router.stack "registered in"
+  router.stack -> middleware "dispatches via next()"
+  router.params -> router.layer "pre-processes params for"
+  
+  middleware -> request "modifies req object"
+  middleware -> response "modifies res object"
+  middleware.builtin -> middleware.errorHandler "passes unhandled errors to"
+  middleware.errorHandler -> app.errorLogger "logs errors via"
+  
+  view.engine -> view.cache "caches compiled templates in"
+  view.cache -> app.config "reads 'view cache' setting from"
+  view.resolver -> view.engine "loads engine for extension"
+  
+  request.queryParser -> request "parses query into req.query"
+  request.contentNegotiation -> response "determines response type"
+  response.errorCreator -> middleware.errorHandler "creates errors for"
+}
+
+nodejs = system "Node.js Runtime" {
+  description "JavaScript runtime. Requires Node >= 18"
+  
+  http = container "HTTP Module" {
+    technology "node:http"
+    description "Built-in HTTP server. app.listen() creates http.Server"
+  }
+  
+  events = container "Events Module" {
+    technology "node:events"
+    description "EventEmitter pattern. Express app extends EventEmitter"
+  }
+  
+  path = container "Path Module" {
+    technology "node:path"
+    description "File path utilities for resolving views directory"
+  }
+}
+
+npm = system "NPM Dependencies" {
+  description "External packages from npm registry"
+  
+  bodyParser = container "Body Parser" {
+    technology "body-parser@2.2.1"
+    description "Parse request bodies. Exposed as express.json(), express.urlencoded()"
+  }
+  
+  serveStatic = container "Serve Static" {
+    technology "serve-static@2.2.0"
+    description "Static file serving. Exposed as express.static()"
+  }
+  
+  routerPkg = container "Router Package" {
+    technology "router@2.2.0"
+    description "Core routing with Layer, Route, Stack. Express wraps this"
+    
+    layer = component "Layer Class" {
+      description "Wraps middleware with path matching. handle(req, res, next) pattern"
+    }
+  }
+  
+  finalhandler = container "Final Handler" {
+    technology "finalhandler@2.1.0"
+    description "Final error handler for uncaught errors. Returns 500 or 404"
+  }
+  
+  httpErrors = container "HTTP Errors" {
+    technology "http-errors@2.0.0"
+    description "Create HTTP errors with status codes. Used by res.status()"
+  }
+}
+
+developer = person "Developer" {
+  description "Developer building web applications and APIs with Express"
+}
+
+webApp = system "Web Application" {
+  description "Application built using Express. Developer's custom code"
+  
+  mainApp = container "Main App" {
+    technology "Express"
+    description "Primary Express application instance"
+  }
+  
+  subApp = container "Sub-App" {
+    technology "Express"
+    description "Mounted sub-application (e.g., /admin, /api). Inherits parent settings"
+  }
+  
+  customMiddleware = container "Custom Middleware" {
+    technology "JavaScript"
+    description "Application-specific middleware added via app.use()"
+  }
+  
+  routes = container "Route Handlers" {
+    technology "JavaScript"
+    description "Application routes: app.get('/path', handler)"
+  }
+  
+  templates = container "Views" {
+    technology "Template Engine"
+    description "Templates (pug, ejs, hbs) rendered by view system"
+  }
+  
+  mainApp -> subApp "mounts via app.use() at path"
+  subApp -> express "inherits settings via on('mount')"
+}
+
+// External relationships
+developer -> express.app "creates app via express() factory"
+express.app -> nodejs "runs on"
+express.app -> nodejs.http "creates server via app.listen()"
+express.app -> nodejs.events "extends EventEmitter"
+express.app -> nodejs.path "resolves views path via"
+express -> npm "depends on packages from"
+express.app -> npm.bodyParser "delegates body parsing to"
+express.app -> npm.serveStatic "delegates static serving to"
+express.router -> npm.routerPkg "uses as core routing engine"
+npm.routerPkg.layer -> express.router.layer "provides Layer class"
+express.middleware.errorHandler -> npm.finalhandler "uses for error handling"
+express.response.errorCreator -> npm.httpErrors "creates errors via"
+
+webApp -> express "imports framework"
+webApp.mainApp -> express.app "creates instance"
+webApp.subApp -> express.app.mountHandler "triggers mount event"
+webApp.customMiddleware -> express.middleware "extends pipeline"
+webApp.routes -> express.router "registers handlers with"
+webApp.templates -> express.view "renders via"
+
+// Requirements
+REQ001 = requirement functional "Framework must support middleware pattern" {
+  tags ["express.middleware"]
+  description "Sequential middleware chain with (req, res, next) signature"
+}
+
+REQ002 = requirement functional "Framework must support HTTP routing" {
+  tags ["express.router"]
+  description "Route HTTP verbs to handler functions with path matching"
+}
+
+REQ003 = requirement performance "Framework must handle high throughput" {
+  tags ["express.app"]
+  description "Minimal overhead, lazy initialization, efficient routing"
+}
+
+REQ004 = requirement operational "Framework must support sub-app mounting" {
+  tags ["express.app.mountHandler"]
+  description "Mount sub-applications at paths, inherit settings from parent"
+}
+
+REQ005 = requirement operational "Framework must handle errors gracefully" {
+  tags ["express.middleware.errorHandler"]
+  description "Catch unhandled errors, log appropriately, return error response"
+}
+
+express.middleware -> REQ001 "implements"
+express.router -> REQ002 "implements"
+express.app -> REQ003 "optimizes for"
+express.app.mountHandler -> REQ004 "implements"
+express.middleware.errorHandler -> REQ005 "implements"
+
+// ADRs
+ADR001 = adr "Middleware pattern for extensibility" {
+  status "Accepted"
+  context "Express needs minimal core but extensible functionality"
+  decision "Implement middleware chain where each fn receives (req, res, next)"
+  consequences "Highly extensible, but middleware order matters"
+}
+
+ADR002 = adr "Lazy router initialization" {
+  status "Accepted"
+  context "Router setup has startup overhead"
+  decision "Initialize router on first access via Object.defineProperty getter"
+  consequences "Faster app startup, router only created when needed"
+}
+
+ADR003 = adr "Layer abstraction for middleware" {
+  status "Accepted"
+  context "Middleware needs path matching and ordered execution"
+  decision "Wrap each middleware in Layer class with path and handle()"
+  consequences "Clean stack management, enables route-specific middleware"
+}
+
+ADR004 = adr "Mount pattern for sub-apps" {
+  status "Accepted"
+  context "Complex apps need modular organization"
+  decision "Allow app.use(subapp) with mountpath, parent, 'mount' event"
+  consequences "Enables modular apps, settings inheritance, but adds complexity"
+}
+
+ADR005 = adr "View cache enabled in production" {
+  status "Accepted"
+  context "Template compilation is expensive"
+  decision "Auto-enable view cache when NODE_ENV=production"
+  consequences "Faster rendering in production, must restart to see template changes"
+}
