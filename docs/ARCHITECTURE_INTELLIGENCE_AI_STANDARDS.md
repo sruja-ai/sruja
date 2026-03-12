@@ -32,7 +32,7 @@ intent (optional)  →  scan  →  drift  →  analyze  →  why / context
 | Command | When to use | Output to use |
 |---------|-------------|---------------|
 | `sruja quickstart -r .` | First run; “what’s the state of this repo?” | Inventory, health score, top findings, next steps |
-| `sruja scan -r . -o sruja.graph.json` | Need raw graph for later steps or tooling | `sruja.graph.json` |
+| `sruja scan . --output sruja.graph.json` | Need raw graph for later steps or tooling | `sruja.graph.json` |
 | `sruja drift -r .` or `sruja drift -r . -a architecture.sruja` | “Is code aligned with intent?” or “what’s broken?” | Violations, health score, (with baseline: layer/cycle/god/orphan) |
 | `sruja drift-pr -r . --base main` | CI: “Did this PR make structure worse?” | New violations, health delta |
 | `sruja analyze -r . --view cto` | Deeper report: structure + optional traces/intent | Comprehensive report (structural, semantic, intent, runtime) |
@@ -98,6 +98,6 @@ This makes the tool “solid” for AI: one place that defines **how** to use Ar
 
 - **Solid** = evidence-first, deterministic-first, clear commands, and a **dedicated skill** so agents know exactly when and how to use quickstart, drift, analyze, why, and context export.
 - **Latest AI standards** = skills as the integration surface, structured JSON outputs, and optional LLM only where it adds value (e.g. tailored suggestions), without making it a prerequisite.
-- **Skills** = sruja-architecture (DSL), sruja-architecture-agent (discovery), sruja-architecture-collaboration (multi-agent), and **sruja-architecture-intelligence** (run and interpret the CLI workflow).
+- **Skills** = sruja-architecture (DSL), sruja-architecture-agent (discovery), sruja-architecture-collaboration (multi-agent). *Planned:* sruja-architecture-intelligence (run and interpret the CLI workflow).
 
 With this, the Architecture Intelligence tool is well-defined for both humans and AI agents, and remains maintainable and adoptable without mandating API keys or extra infra.

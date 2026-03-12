@@ -1,0 +1,10 @@
+Use the sruja-architecture-agent skill. Do both steps in order. **Do not guess**: ground everything in evidence; if uncertain, list **Open questions**.
+
+1) Context first: Run "sruja discover --context -r ." to get repo context. Then list 2-3 contextual questions you would ask the user (tailored to this repo: reference the suggested areas, language, and size you see). Output them under "Discovery questions I would ask:".
+
+2) Then generate (with depth): Create architecture.sruja with main systems, **containers (runnable units)**, and **components inside containers (main modules/classes)**, technologies, descriptions, and relationships with specific labels (protocol + purpose).
+
+- If the repo is a library/framework: use **one container** for the library/runtime, then **components** for the internal modules (Application, Router, Request, Response, etc.).
+- Ensure every element description is evidence-backed (mention key file/module names when possible).
+
+Run "sruja lint architecture.sruja" and fix until it passes. Do not present until lint passes.

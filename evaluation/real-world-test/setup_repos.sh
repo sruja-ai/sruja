@@ -41,6 +41,23 @@ REPOS_APPS=(
   "cal.com|https://github.com/calcom/cal.com.git|Scheduling and meetings (TypeScript/Next.js)"
 )
 
+# Production-grade / enterprise applications: ERP, CRM, commerce, collaboration, DevOps.
+# Large codebases, auth, APIs, DB models, UI. Good for testing Sruja on real customer-facing systems.
+# Note: Sruja scan supports JS/TS/Python/Go/Rust; PHP/Java/Ruby repos get manifest/heuristic context only.
+REPOS_PRODUCTION=(
+  "erpnext|https://github.com/frappe/erpnext.git|Full ERP: accounting, inventory, HR, workflow (Python, MariaDB, JS)"
+  "suitecrm|https://github.com/SuiteCRM/SuiteCRM.git|Enterprise CRM: leads, campaigns, workflows, reporting (PHP)"
+  "espocrm|https://github.com/espocrm/espocrm.git|CRM: contacts, sales, support, marketing (PHP + SPA)"
+  "ever-gauzy|https://github.com/ever-co/ever-gauzy.git|Business platform: ERP, CRM, HRM, time tracking (TypeScript, NestJS, Angular)"
+  "idurar-erp-crm|https://github.com/idurar/idurar-erp-crm.git|ERP/CRM: invoices, quotes, accounting (MERN: MongoDB, Express, React, Node)"
+  "saleor|https://github.com/saleor/saleor.git|Headless ecommerce: GraphQL, orders, payments, multi-channel (Python, React)"
+  "shopizer|https://github.com/shopizer-ecommerce/shopizer.git|E-commerce: marketplace, catalog, checkout (Java, Spring)"
+  "mattermost-server|https://github.com/mattermost/mattermost-server.git|Slack-like collaboration: messaging, channels, plugins (Go + React)"
+  "rocketchat|https://github.com/RocketChat/Rocket.Chat.git|Real-time chat: federation, bots, video (Node/JS)"
+  "sentry|https://github.com/getsentry/sentry.git|Error tracking SaaS: ingestion, alerting, dashboards (Python, JS/TS)"
+  "openmrs-core|https://github.com/openmrs/openmrs-core.git|Medical record system: patients, reporting, workflows (Java)"
+)
+
 # Parse flags
 MODE="quick"
 for arg in "$@"; do
@@ -48,24 +65,27 @@ for arg in "$@"; do
     -h|--help)
       echo "Usage: $0 [OPTIONS]"
       echo ""
-      echo "  (default)   Quick set: express, fastapi, next.js, prometheus, django (frameworks; fast clone)"
-      echo "  --complex   Complex systems: gitea, etcd, caddy, temporal, minio, react-admin, saleor (admin, ecommerce, multi-component)"
-      echo "  --apps      Realistic applications: gitea, saleor, documenso, cal.com (product-like, not frameworks)"
-      echo "  --all       Both quick and complex"
-      echo "  -h, --help  Show this help"
+      echo "  (default)     Quick set: express, fastapi, next.js, prometheus, django (frameworks; fast clone)"
+      echo "  --complex     Complex systems: gitea, etcd, caddy, temporal, minio, react-admin, saleor"
+      echo "  --apps        Realistic applications: gitea, saleor, documenso, cal.com"
+      echo "  --production  Production-grade apps: ERPNext, SuiteCRM, Ever Gauzy, Saleor, Mattermost, Sentry, etc."
+      echo "  --all         Both quick and complex"
+      echo "  -h, --help    Show this help"
       exit 0
       ;;
-    --complex) MODE="complex" ;;
-    --apps)    MODE="apps" ;;
-    --all)     MODE="all" ;;
+    --complex)    MODE="complex" ;;
+    --apps)       MODE="apps" ;;
+    --production) MODE="production" ;;
+    --all)        MODE="all" ;;
   esac
 done
 
 case "$MODE" in
-  quick)   REPOS=("${REPOS_QUICK[@]}")   ;;
-  complex) REPOS=("${REPOS_COMPLEX[@]}") ;;
-  apps)    REPOS=("${REPOS_APPS[@]}")    ;;
-  all)     REPOS=("${REPOS_QUICK[@]}" "${REPOS_COMPLEX[@]}") ;;
+  quick)      REPOS=("${REPOS_QUICK[@]}")   ;;
+  complex)    REPOS=("${REPOS_COMPLEX[@]}") ;;
+  apps)       REPOS=("${REPOS_APPS[@]}")    ;;
+  production) REPOS=("${REPOS_PRODUCTION[@]}") ;;
+  all)        REPOS=("${REPOS_QUICK[@]}" "${REPOS_COMPLEX[@]}") ;;
 esac
 
 echo "🚀 Sruja Real-World Test Setup"
@@ -112,6 +132,16 @@ declare -A REPO_META=(
   [saleor]="Python|high|ecommerce"
   [documenso]="TypeScript|medium|saas-app"
   ["cal.com"]="TypeScript|high|saas-app"
+  [erpnext]="Python|very-high|erp"
+  [suitecrm]="PHP|high|crm"
+  [espocrm]="PHP|high|crm"
+  [ever-gauzy]="TypeScript|high|business-platform"
+  [idurar-erp-crm]="JavaScript|high|erp-crm"
+  [shopizer]="Java|high|ecommerce"
+  [mattermost-server]="Go|high|collaboration"
+  [rocketchat]="JavaScript|high|messaging"
+  [sentry]="Python|high|devops-saas"
+  [openmrs-core]="Java|high|healthcare"
 )
 
 # Build manifest from all repos that exist under REPOS_DIR
@@ -156,6 +186,20 @@ MANIFEST="${REPOS_DIR}/MANIFEST.md"
   for entry in "${REPOS_APPS[@]}"; do
     IFS='|' read -r name url desc <<< "$entry"
     IFS='|' read -r lang complexity arch_type <<< "${REPO_META[$name]:-unknown|high|saas-app}"
+    echo "### $n. $name"
+    echo "- **Description**: $desc"
+    echo "- **Language**: $lang"
+    echo "- **Complexity**: $complexity"
+    echo "- **Architecture Type**: $arch_type"
+    echo "- **URL**: $url"
+    echo ""
+    ((n++)) || true
+  done
+  echo "## Production-grade / enterprise applications (ERP, CRM, commerce, collaboration)"
+  echo ""
+  for entry in "${REPOS_PRODUCTION[@]}"; do
+    IFS='|' read -r name url desc <<< "$entry"
+    IFS='|' read -r lang complexity arch_type <<< "${REPO_META[$name]:-unknown|high|enterprise}"
     echo "### $n. $name"
     echo "- **Description**: $desc"
     echo "- **Language**: $lang"

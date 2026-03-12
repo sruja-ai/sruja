@@ -1,0 +1,11 @@
+Use the sruja-architecture-agent skill. Create a detailed architecture for this repo.
+
+1) Context: Run "sruja discover --context -r ." to get repo context. List 2–3 contextual discovery questions you would ask (tailored to this repo). Output under "Discovery questions I would ask:".
+
+2) Intent extraction (no guessing): Before writing the DSL, scan repo docs/config for intent evidence (requirements, ADRs/decisions, key scenarios/flows). Output a short **Intent review** section listing candidate requirements/ADRs/flows with file references. If evidence is missing, list **Open questions** (do not invent).
+
+3) Generate a detailed architecture.sruja with real depth:
+   - Include systems, containers (runnable units; with technology), and components (main modules/classes inside containers). Do not flatten everything to containers—use components for internal structure (e.g. Router, Application, Request, Response as components inside one container).
+   - Capture essential things: entry points, main modules, request/data flow, key relationships between components, and extension points (middleware, plugins) if relevant.
+   - Every element: description and (for containers) technology. Relationships with clear labels (protocol + purpose).
+   - Use standard or deep scope (10–30 elements; prefer components inside containers for depth). Run "sruja lint architecture.sruja" and fix until it passes. Do not present until lint passes.

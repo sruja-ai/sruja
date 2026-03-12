@@ -18,7 +18,7 @@ In Cursor (or your IDE) chat, paste this **one prompt** (same as in [INSTALL_AS_
 
 *"Use the sruja-architecture-agent skill. Run \`sruja discover --context -r .\`, then generate \`architecture.sruja\` with systems, containers, components, and relationships (evidence-based; no guessing). If you find requirements, ADRs, or key flows in repo docs (README, docs/, adr/, SECURITY.md, etc.), add them to the file with citations; otherwise list 'Open questions' and do not invent. Run \`sruja lint architecture.sruja\` and fix until it passes."*
 
-The agent will discover context, generate `architecture.sruja` (and add requirements/ADRs/flows when it finds evidence in docs), and run `sruja lint` until the file passes.
+The agent will discover context, generate `architecture.sruja` (and add requirements/ADRs/flows when it finds evidence in docs), and run `sruja lint` until the file passes. **Tip:** If the agent asks 2–5 questions (e.g. scope, boundaries, externals), answering them yields more accurate architecture than letting it guess.
 
 ### Want the richest intent capture (with user confirmation)?
 

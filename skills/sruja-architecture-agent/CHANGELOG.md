@@ -4,6 +4,25 @@ All notable changes to the sruja-architecture-agent skill are documented here.
 
 **Versioning:** Skill version aligns with Sruja repo (workspace) version. Repo is at `0.10.x`; skill follows same.
 
+## [0.10.4] – 2026-03
+
+### Added
+
+- **Gather → Ask → Build** – Explicit three-step principle: (1) Gather evidence (discover + playbook), (2) Ask 2–5 targeted questions when scope/boundaries/externals/flows are ambiguous, (3) Build architecture only after answers or "proceed with defaults." Reduces guessing; improves accuracy.
+- **Question taxonomy** – In SKILL: table of question categories (Scope/area, Boundaries, Externals, Entry/flows, Intent) with "when to ask" and example questions. Agent picks by what's ambiguous.
+- **REFERENCE: Deriving the right questions from repo context** – Repo-signal → question-category table (multiple dirs, monorepo, env vars, multiple entry points, no deploy files, docs) with example questions and workflow: gather → pick 2–5 questions → ask → then generate.
+- **Recommended developer experience** – In SKILL "For end users": encourage answering the agent's questions for best results; single-prompt still supported.
+
+### Changed
+
+- **Core principle** – Skill intro now states "do not guess": gather evidence first, ask the right questions when information is missing or ambiguous, then build from confirmed information.
+- **Contextual discovery** – Added "Only after answers (or explicit 'proceed with defaults') should you generate the full architecture." Link to REFERENCE "Deriving the right questions."
+- **Evidence / question triggers** – Renamed "Good question triggers" to "Question triggers (ask instead of guessing)"; added vague request on large repo.
+
+### Documentation
+
+- **docs/ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md** – New §2.6 "Ask the right questions before building (do not guess)" with practice and REFERENCE link; new summary-table row. §2.7/2.8 renumbered.
+
 ## [0.10.3] – 2026-03
 
 ### Added

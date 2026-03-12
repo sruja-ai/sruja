@@ -30,7 +30,7 @@ The CLI is the hero surface. No model key, desktop app, or .sruja files are requ
 sruja why "why did we choose PostgreSQL?" -r .
 
 # Or use a pre-generated graph
-sruja scan . -o graph.json
+sruja scan . --output graph.json
 sruja why "what services do we have?" --graph graph.json
 
 # Full quickstart (inventory + drift + next steps)
@@ -184,3 +184,5 @@ Target flow: **two entry points (desktop app or CLI) → configure repos and doc
 
 For product direction, module decisions, and execution plan:  
 **[architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md](../architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md)**
+
+For current best practices in architecture intelligence (modelling, drift, evidence-based docs, AI-assisted discovery) and how Sruja aligns: **[ARCHITECTURE_INTELLIGENCE_BEST_PRACTICES.md](ARCHITECTURE_INTELLIGENCE_BEST_PRACTICES.md)**.

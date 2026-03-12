@@ -182,6 +182,17 @@ Use **canonical form** only: assignment `Id = kind "Label" { ... }`, `database` 
 
 **C4 levels (map correctly):** **System** = software system or deployable service boundary. **Container** = runnable/deployable unit (process, web app, API server, worker, database, queue)—something that runs. **Component** = logical grouping *inside* a container (module, controller, service class, middleware, repository)—not a separate process. Do not use container for in-process modules or component for an entire API server.
 
+### Framework vs application repos: scope presets
+
+Use different defaults for **framework/libraries** vs **full applications** so depth is consistent:
+
+| Repo type | Examples | Recommended scope | Containers | Components | Externals | Notes |
+|----------|----------|-------------------|-----------|------------|----------|-------|
+| **Framework / library** | express, fastapi, django, next.js | Standard | 1–2 (runtime + CLI/build) | 10–20 | 2–7 | Model the framework as one system; consumers as external systems (Node.js app, Python app, etc.). Components = main modules/classes (Application, Router, Request, Response, etc.). |
+| **Full application / product** | saleor, gitea, ever-gauzy | Standard/Deep | 3–8 (API, workers, frontend, DBs, queues, etc.) | 15–30 (standard), 30–50 (deep) | 3–10 | Model user-facing systems (web, API, workers) plus data stores and key externals (payments, auth, messaging). Components capture internal layers only where they clarify flows. |
+
+When the repo is clearly a **framework**, default to the first row; when it is a **product/app**, default to the second. If ambiguous, ask a scope/boundaries question before generating.
+
 #### 3.1 Minimal valid template
 
 ```sruja
@@ -956,6 +967,21 @@ Don't try to be perfect on first try:
 ## Discovery interview: ask questions to capture better
 
 Use the LLM to **ask the user intelligent questions** before or during discovery. This yields better scope, names, and boundaries than code-only inference.
+
+### Deriving the right questions from repo context
+
+After gathering evidence (`sruja discover --context -r .` and the phased playbook), map **repo signals** to **question categories**. Ask only what is still ambiguous; do not ask when evidence is sufficient.
+
+| Repo signal (what you observed) | What's ambiguous | Question category | Example question (adapt) |
+|----------------------------------|------------------|-------------------|---------------------------|
+| Multiple top-level dirs (e.g. `services/`, `apps/`, `packages/`) | Which area to capture first; one vs many systems | Scope / area | "Should we capture one area first (e.g. `services/auth`) or the whole repo? I can do one subpath at a time and stitch." |
+| Monorepo or many deployables (docker-compose with 5+ services) | System boundaries; deployable vs library | Boundaries | "Is this one system or several? Which directories are separate deployables?" |
+| Env vars or SDK usage (e.g. `STRIPE_KEY`, `SERVICE_X_URL`, `axios` to unknown host) | Identity of external systems; which to show | Externals | "I see SERVICE_X_URL / Stripe client. Which external systems must appear on the diagram?" |
+| Multiple entry points (e.g. `main.go`, `cmd/worker/main.go`, `cmd/api/main.go`) | Main user-facing entry; key flows | Entry / flows | "What's the main user-facing entry (web app, API, CLI)? Any key flows (e.g. checkout) to make explicit?" |
+| No Docker/K8s but many inferred services | What actually runs in production | Boundaries + Externals | "I don't see deployment manifests. Which of these (list) are real deployables? Any external services?" |
+| README or docs mention requirements/ADRs | Whether to encode into DSL; corrections | Intent | "I found candidate requirements in README/docs; should I encode them into the DSL? Any corrections?" |
+
+**Workflow:** (1) Run discovery and playbook. (2) From the table, pick 2–5 questions that match what you saw and what's still unclear. (3) Ask the user; use answers to set scope, subpath, names, externals, and intent. (4) Only then generate the full architecture. Do not guess missing answers.
 
 ### Choose two-step vs one-go from context
 

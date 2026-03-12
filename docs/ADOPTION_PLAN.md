@@ -57,7 +57,7 @@
 | **2.1 sruja.toml schema** | Add `sruja-config` crate with schema: `repo_path`, `intent_path`, `architecture_path`, `god_module_threshold`, optional semantic/runtime config. | Config |
 | **2.2 CLI auto-load config** | When `repo_path` not specified, look for `sruja.toml` in cwd or parent. Use config for defaults. | CLI |
 | **2.3 Quickstart → baseline** | Enhance `sruja quickstart` to optionally generate a minimal `.sruja` baseline from scan: heuristics (e.g. top-level dirs → systems, package.json → containers). | CLI + Scan |
-| **2.4 Architecture Agent skill** | Ensure skill is discoverable: "Install with `npx skills add sruja-ai/sruja --skill sruja-architecture-agent`" in README. Link to ARCHITECTURE_AGENT.md. | Docs |
+| **2.4 Architecture Agent skill** | Ensure skill is discoverable: "Install with `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent`" in README. Link to ARCHITECTURE_AGENT.md. | Docs |
 
 **Deliverables:** `sruja.toml` support, improved quickstart, agent skill visibility.
 

@@ -2,6 +2,8 @@
 
 Concrete improvements to the Sruja architecture skill so it produces better output, is easier to use, and feels "super awesome" to users and AI agents.
 
+**Status:** Many items below are **implemented** (see `skills/sruja-architecture-agent/SKILL.md` 0.10.x, `REFERENCE.md`, and [ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md](ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md)): canonical prompt, mandatory lint, scope ladder, minimal example, relationship patterns, discovery modes, phased playbook, CHANGELOG. This doc is kept for remaining ideas and historical context.
+
 ---
 
 ## 1. Prompt & Process (Agent Skill)

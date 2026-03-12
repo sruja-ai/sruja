@@ -215,7 +215,7 @@ import "github.com/org/payment-service/blob/main/architecture.sruja"
 // This file now contains all services and can be validated together
 ```
 
-Note: Import mechanism is planned but not yet implemented. For now, manually copy architecture files to a central location if needed.
+Note: Import mechanism is planned but not yet implemented. For now, manually copy architecture files to a central location if needed. See [Incremental Architecture Capture and Stitching](../../docs/INCREMENTAL_ARCHITECTURE_CAPTURE.md) for the full picture on capturing and stitching architecture over time.
 
 ### Option 2: Documentation Aggregation
 

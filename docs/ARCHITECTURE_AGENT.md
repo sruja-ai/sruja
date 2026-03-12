@@ -23,7 +23,7 @@ This approach is:
 ### 1. Install the Skill
 
 ```bash
-npx skills add sruja-ai/sruja --skill sruja-architecture-agent
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent
 ```
 
 ### 2. Ask Your AI Assistant
@@ -311,7 +311,7 @@ AI: Observations:
 
 ```bash
 # 1. Install the skill
-npx skills add sruja-ai/sruja --skill sruja-architecture-agent
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent
 
 # 2. In your AI assistant:
 "Analyze the architecture of github.com/myorg/my-service"

@@ -89,7 +89,32 @@ Use the same Sruja CLI from the Sruja repo if it’s on your PATH:
 `./evaluate_architecture.sh express`  
 (requires `architecture.sruja` in the repo; run `./run_demo.sh --baseline` first to copy an example into express.)
 
-## 5. Test and observe (automated flow)
+## 5. Test discovery flow (contextual questions, then generate)
+
+To verify the **contextual discovery** flow (agent gathers repo context, asks tailored questions, then generates architecture):
+
+1. **CLI (no agent):** From the Sruja repo, build and run:
+   ```bash
+   cargo build -p sruja-cli
+   ./target/debug/sruja discover                    # question bank
+   ./target/debug/sruja discover --context -r .     # repo context for current dir
+   ./target/debug/sruja discover --context -r test-repos/express   # context for a clone
+   ```
+2. **Agent test script:** From `evaluation/real-world-test` (run with bash):
+   ```bash
+   bash run_discovery_agent_test.sh --dry-run       # print prompt and repo path
+   bash run_discovery_agent_test.sh                 # run agent in test-repos/express (interactive)
+   # or, if executable: ./run_discovery_agent_test.sh
+   ```
+   The prompt tells the agent to run `sruja discover --context -r .` first, then list contextual questions, then generate `architecture.sruja` and run `sruja lint`. Ensure the sruja-architecture-agent skill is installed (`npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent`) and `sruja` is on PATH or the script will warn.
+
+3. **Manual on any GitHub clone:** `cd` into any cloned repo, then:
+   ```bash
+   sruja discover --context -r .
+   agent -p "Use sruja-architecture-agent. Run sruja discover --context -r . then list 2-3 contextual questions for this repo, then generate architecture.sruja and run sruja lint until it passes."
+   ```
+
+## 6. Test and observe (automated flow)
 
 To run the full local flow and capture results without the interactive agent:
 
@@ -111,6 +136,7 @@ Observations are written to `run_results/test_and_observe_<timestamp>.md`. Use t
 | Validate | `sruja lint architecture.sruja` (local) |
 | Evaluate | `./evaluate_architecture.sh express` (after architecture.sruja exists) |
 | Test & observe | `./run_test_and_observe.sh` (full flow, writes observations) |
+| Discovery flow | `sruja discover --context -r .`; `bash run_discovery_agent_test.sh` (see §5) |
 
 **No CI:** Cursor CLI does not run in GitHub Actions or other CI. All testing with `agent` is on your local machine.
 

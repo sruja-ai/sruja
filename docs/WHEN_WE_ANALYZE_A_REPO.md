@@ -37,7 +37,7 @@ A step-by-step explanation of what Sruja does when you run `sruja quickstart -r 
 - **Nodes:** We create one node per **file** (and, in the same pass, we ensure a **parent module** node per directory). Node kind (e.g. Module, Service, Database) is inferred from the parsed file (e.g. DB-like names, “api” paths).
 - **Edges:** For each import we add an edge **from the importer (file or module) to the imported target**. Targets are resolved to node IDs (same repo or external). So the graph is “who depends on whom.”
 
-Result: a **Graph** = `{ nodes: [...], edges: [...] }` with metadata. This is what `sruja scan -o out.json` writes.
+Result: a **Graph** = `{ nodes: [...], edges: [...] }` with metadata. This is what `sruja scan --output out.json` writes.
 
 **Where:** `sruja-scan/src/tree_sitter.rs` (aggregate `file_imports`, create `nodes` and `edges`), `sruja-scan/src/graph.rs` (Graph type).
 
@@ -113,7 +113,7 @@ Result: a **Graph** = `{ nodes: [...], edges: [...] }` with metadata. This is wh
 
 ## 4. How the CLI uses this (quickstart / scan / drift)
 
-- **`sruja scan -r <repo> -o out.json`**  
+- **`sruja scan <repo> --output out.json`**  
   Runs **Step 1** only: walk → parse → build graph → write JSON. No drift, no score.
 
 - **`sruja drift -r <repo>`**  

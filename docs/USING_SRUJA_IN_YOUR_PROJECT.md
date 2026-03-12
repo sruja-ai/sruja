@@ -168,12 +168,13 @@ Use `--locked` so the install matches the lockfile in the Sruja repo for reprodu
 
 - **Per-repo** – Each repository that owns a service or app can have its own `.sruja` file(s). Add the same CI job (install CLI from Git + `sruja lint`) and the same AI files (e.g. copy `.cursorrules` and `.copilot-instructions.md` from a template or run `sruja init` once and commit).
 - **Central docs repo** – Some teams keep a single “docs” or “architecture” repo with one or more `.sruja` files and run Sruja CI there; link to exported Markdown/JSON from other repos. Other repos don’t need the CLI unless they also own architecture files.
-- **Shared rules** – Use the same [sruja-architecture skill](https://github.com/sruja-ai/sruja/tree/main/skills/sruja-architecture) (`npx skills add sruja-ai/sruja --skill sruja-architecture`) across repos so AI and humans share the same patterns and trade-offs.
+- **Shared rules** – Use the same [sruja-architecture skill](https://github.com/sruja-ai/sruja/tree/main/skills/sruja-architecture) (`npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture`) across repos so AI and humans share the same patterns and trade-offs.
 
 ---
 
 ## 5. Where to go next
 
+- **Incremental capture and stitching** – [INCREMENTAL_ARCHITECTURE_CAPTURE.md](INCREMENTAL_ARCHITECTURE_CAPTURE.md) – capture architecture in pieces and combine into one model
 - **Architecture Intelligence** – [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md) – quickstart, why, drift (no .sruja required)
 - **DSL reference** – [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md)
 - **AI editors and catching bugs** – [AI_EDITOR_INTEGRATION.md](AI_EDITOR_INTEGRATION.md)
