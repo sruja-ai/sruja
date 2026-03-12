@@ -283,6 +283,30 @@ enum Commands {
         #[command(subcommand)]
         cmd: RuntimeCommand,
     },
+    /// Discovery: question bank or repo context for intelligent capture (use with sruja-architecture-agent skill)
+    Discover {
+        /// Print repo context summary (structure, technologies, suggested areas) for contextual questions
+        #[arg(long)]
+        context: bool,
+        /// Path to repository (for --context; default current dir)
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+    },
+    /// Generate a prompt (skill + repo context) for use with any LLM to produce architecture.sruja without Cursor CLI
+    Generate {
+        /// Path to repository
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to skill file (SKILL.md); else SRUJA_SKILL_PATH or ./SKILL.md or ./skills/sruja-architecture-agent/SKILL.md
+        #[arg(long)]
+        skill_path: Option<String>,
+        /// Emit prompt only (no LLM call); write to -o or stdout
+        #[arg(long)]
+        prompt_only: bool,
+        /// Output path for prompt (default: stdout if --prompt-only)
+        #[arg(short = 'o', long)]
+        output: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -447,6 +471,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 commands::runtime_analyze(&traces, &format).await
             }
         },
+        Commands::Discover { context, repo } => {
+            if context {
+                commands::discover_context(&repo).await
+            } else {
+                commands::discover_questions()
+            }
+        }
+        Commands::Generate {
+            repo,
+            skill_path,
+            prompt_only,
+            output,
+        } => {
+            if !prompt_only {
+                eprintln!("Only --prompt-only is supported. Use: sruja generate -r . --prompt-only -o prompt.txt");
+                eprintln!("Then use the prompt with any LLM; save output as architecture.sruja and run sruja lint.");
+                std::process::exit(1);
+            }
+            commands::generate_prompt(&repo, skill_path.as_deref(), output.as_deref())
+        }
     };
 
     match result {

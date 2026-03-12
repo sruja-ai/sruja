@@ -144,7 +144,7 @@ Time: ~30 minutes per repository
 
 ### Option B: Automated validation
 
-Run `./evaluate_architecture.sh express` for validation, stats, and checklist. Sruja CLI does not use LLM; for AI-assisted review, use the Sruja skill in your editor.
+Run `./evaluate_architecture.sh express` for validation, stats, and checklist. To compare a generated file to the golden reference: `./compare_architecture.sh test-repos/express/architecture.sruja run_results/generated_express.sruja`. For a batch report across repos: `./run_architecture_comparison_report.sh`. To build a **diff-and-refine** prompt (context + drift) for the AI: `./run_diff_refine_prompt.sh . architecture.sruja`. See [EVALUATION_METHODOLOGY.md](EVALUATION_METHODOLOGY.md) for metrics and how to improve the skill from results. Sruja CLI does not use LLM; for AI-assisted review, use the Sruja skill in your editor.
 
 ### Option C: Team Review
 

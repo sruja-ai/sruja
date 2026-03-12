@@ -154,10 +154,12 @@ Agent:
 ## Workflow
 
 1. **Ask** - Tell the AI what you want to analyze
-2. **Analyze** - AI uses the skill to examine your codebase
+2. **Analyze** - AI uses the skill to examine your codebase (discovery modes: overview / standard / deep-dive / diff; phased playbook: deployables → entry points → data stores → relationships)
 3. **Generate** - AI produces Sruja DSL architecture
 4. **Validate** - Architecture is validated automatically
 5. **Refine** - Collaborate to add missing details
+
+For more accurate capture, the skill follows research-backed practices: [ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md](../../docs/ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md).
 
 ## What You Get
 
@@ -302,3 +304,4 @@ system "User Service" {
 - GitHub issues: `https://github.com/sruja-ai/sruja/issues`
 - Skill entrypoint: `skills/sruja-architecture-agent/SKILL.md`
 - Full install guide: `docs/INSTALL_AS_SKILL.md`
+- Discovery research & practices: `docs/ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md`

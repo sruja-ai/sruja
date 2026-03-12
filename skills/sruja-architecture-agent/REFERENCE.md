@@ -4,7 +4,21 @@ Full process, file patterns, DSL templates, detection guides, and examples. Load
 
 ### Step 2: Collect Information
 
-Use your tools to gather information:
+Use your tools to gather information. **Follow the discovery playbook order** so entry points and dependency context drive accuracy (research: ArchAgent, static-analysis combination; see [ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md](../../docs/ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md)).
+
+#### 2.0 Discovery playbook (ordered phases)
+
+Do these in order; do not read the entire codebase.
+
+| Phase | What to find | Where to look | Map to DSL |
+|-------|--------------|---------------|------------|
+| **1. Deployables / runtime** | How many runnable units? Technologies? | Dockerfile(s), docker-compose*.yml, compose.yaml, kubernetes/**/*.yaml, Procfile, fly.toml, vercel.json, .github/workflows | Each image/service/pod → system or container; set `technology` from base image or manifest. |
+| **2. Entry points** | Main process entry files | package.json scripts, pyproject.toml, Cargo.toml, go.mod, pom.xml; then index.js, main.py, main.go, *Application.java, lib/express.js | One runnable entry = one container; internal modules/classes = components inside that container. |
+| **3. Data stores & queues** | DBs, caches, message queues | config/**/*, .env.example, connection strings, ORM imports (pg, mongoose, redis, kafkajs, amqplib) | database or queue container; relationships "SQL", "Redis protocol", "AMQP - publishes/consumes". |
+| **4. Service-to-service & externals** | HTTP/gRPC clients, SDKs, env URLs | Imports (axios, fetch, grpc), env vars (SERVICE_X_URL), docker-compose service names | Relationships with labels: "REST - auth", "gRPC - orders", "HTTPS - payment". |
+| **5. UI / frontend** | SPA or server-rendered app | Next.js/Vue/React config, pages/, app/, frontend/ | Container with technology "React", "Next.js", etc.; relationship to API/BFF. |
+
+After phase 1 you know how many containers/systems to create. After 2 you assign entry points to those containers and add internal components. After 3–4 you add databases and relationships. After 5 you add the frontend container and its link to the API.
 
 #### 2.1 Clone Repositories
 
@@ -165,6 +179,8 @@ git clone <repo-url-2> /tmp/architecture-analysis/service-b
 ### Step 3: Generate Sruja DSL
 
 Use **canonical form** only: assignment `Id = kind "Label" { ... }`, `database` for data stores, relationships `SourceId -> TargetId "label"`. Every element needs `description`; every container needs `technology`.
+
+**C4 levels (map correctly):** **System** = software system or deployable service boundary. **Container** = runnable/deployable unit (process, web app, API server, worker, database, queue)—something that runs. **Component** = logical grouping *inside* a container (module, controller, service class, middleware, repository)—not a separate process. Do not use container for in-process modules or component for an entire API server.
 
 #### 3.1 Minimal valid template
 
@@ -448,8 +464,26 @@ Use these to infer **entry points**, **routes/services/data access**, and **tech
 | **Next.js** | `pages/`, `app/`, `next.config.*` | `pages/api/`, `app/api/` | "Node.js", "Next.js" |
 | **Go Gin** | `main.go`, `cmd/*/main.go` | `router.GET/POST()`, `handlers/`, `*Handler` | "Go", "Gin" |
 | **NestJS** | `main.ts`, `src/main.ts` | `@Controller()`, `@Injectable()`, `modules/` | "Node.js", "NestJS" |
+| **Rails** | `config.ru`, `bin/rails`, `app/` | `routes.rb`, `controllers/`, `models/` | "Ruby", "Rails" |
+| **Flask** | `app.py`, `wsgi.py` | `@app.route`, `blueprints/` | "Python", "Flask" |
+| **Rust (Actix/Axum)** | `main.rs`, `src/main.rs` | route macros, handlers | "Rust", "Actix" / "Axum" |
 
 Do not read the entire codebase; use entry points and one level of imports to infer structure.
+
+### Deployable and runtime detection (playbook Phase 1)
+
+Use these to map **runnable units** to systems/containers before drilling into code.
+
+| Artifact | What it implies | Technology from |
+|----------|------------------|-----------------|
+| **Dockerfile** | One container per Dockerfile (or multi-stage single image) | Base image (node, python, openjdk, golang) + package manifest |
+| **docker-compose.yml / compose.yaml** | One service = one container; names = candidate system/container labels | service image or build context + package.json/pyproject.toml |
+| **kubernetes/** *.yaml | Deployments/StatefulSets = runnable units | container image; CronJobs = scheduled job container |
+| **Procfile** | One process type = one container (web, worker, etc.) | Process command (node, python, bundle exec) |
+| **fly.toml**, **vercel.json**, **netlify.toml** | Single deployable (serverless or PaaS app) | Config build command / runtime |
+| **.github/workflows** | CI only; use to infer deployables from build/job names if no Docker/K8s | Build matrix or job names |
+
+When multiple deployables exist (e.g. docker-compose with api, worker, frontend), create one container per deployable and set `technology` from the corresponding manifest or image.
 
 ## Detection Guide
 
@@ -892,6 +926,13 @@ Analytics = system "Analytics Service" {
 }
 ```
 
+### 4.1 Ask questions instead of guessing (preferred)
+
+When evidence is insufficient, **ask questions** rather than inventing architecture.
+
+- Prefer questions for: system boundaries, what is deployable, which external services matter, and which “areas” to model first.
+- If you must proceed non-interactively, keep scope conservative and clearly mark uncertainty in descriptions (confidence: low/medium) and list “Open questions”.
+
 ### 5. Document Gaps
 
 Always highlight what's missing:
@@ -911,6 +952,56 @@ Don't try to be perfect on first try:
 2. Ask for feedback
 3. Refine based on input
 4. Repeat until satisfied
+
+## Discovery interview: ask questions to capture better
+
+Use the LLM to **ask the user intelligent questions** before or during discovery. This yields better scope, names, and boundaries than code-only inference.
+
+### Choose two-step vs one-go from context
+
+After running `sruja discover --context -r .`: if the repo is **small and obvious** (e.g. &lt;15 components, one main dir, single framework), **skip questions** and generate in one go; if **large or ambiguous** (many components, multiple areas like services/ and apps/), use **two-step** (derive questions, then generate). When unclear, prefer two-step.
+
+### Divide analysis into multiple parts
+
+When scope is **too big for one pass** (e.g. 50+ components, many services, or one very large area), **split the analysis**: analyze by subpath (`sruja discover --context -r services/auth`, then `services/orders`), by bounded context, or by depth (high-level first, then expand one big container). Produce one fragment or section per part; use external systems for cross-refs; stitch or document the split (see incremental capture docs).
+
+### When to ask
+
+- **Before** diving into code when the request is vague ("document our architecture") or the repo is large.
+- **During** when you see multiple possible boundaries or external systems and need to choose.
+- **After** the first draft as refinement questions (see Output Format below).
+
+### Question bank (use 2–5 per session; adapt to context)
+
+**Context / shape**
+- "Is this a single service, a monolith with modules, or several microservices?"
+- "Should we capture one area first or the whole repo?"
+
+**Large repo**
+- "The repo is big. Should we focus on a specific area (e.g. `services/auth`, `apps/web`) or the whole codebase? I can capture by subpath and we can stitch later."
+- "Which directory or service should we start with?"
+
+**Scope**
+- "Do you want a minimal sketch (entry points + main deps), standard (10–30 components), or a deeper model (internal layers, error paths)?"
+
+**Boundaries**
+- "What are your main bounded contexts or team-owned areas?"
+- "Any external systems (payments, auth, notifications) that must appear in the diagram?"
+
+**Entry points and flows**
+- "What's the main user-facing entry (web app, public API, CLI)?"
+- "Any key flows (e.g. checkout, auth) I should make explicit?"
+
+**Refinement (after first draft)**
+- "Does this match how you think about the system? Any services or boundaries missing?"
+- "Prefer different names for systems or containers?"
+
+### How to use answers
+
+- **Scope** → Choose minimal / standard / deep; set target component count.
+- **Large repo / area** → Run quickstart with `-r <subpath>`; generate one fragment per area; mention stitch later.
+- **Boundaries / externals** → Include those systems and relationships in the DSL; name them as the user said.
+- **Entry points / flows** → Ensure those paths are visible (person → system → containers) and relationships are labeled.
 
 ## Post-generate checklist (validation rules)
 
@@ -962,9 +1053,7 @@ Always present architecture in this format:
 [Or list any validation errors]
 
 ### Questions for Refinement
-1. [Question about unclear aspect]
-2. [Question about missing information]
-3. [Question about accuracy]
+Ask 1–3 from the discovery interview (e.g. "Does this match how you think about the system? Any services or boundaries missing? Prefer different names?")
 ```
 
 ## Remember

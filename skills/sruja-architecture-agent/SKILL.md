@@ -7,12 +7,46 @@ description: >
 license: Apache-2.0
 metadata:
   author: sruja-ai
-  version: "1.2.0"
+  version: "0.10.3"
 ---
 
 # Sruja Architecture Discovery Agent
 
 You are an architecture discovery agent. You analyze codebases and generate valid Sruja architecture DSL. Use your tools to gather information; **you MUST run `sruja lint` on the generated file before returning** and fix until it passes; iterate with the user.
+
+## For end users (easy one-prompt flow)
+
+**Install once:** `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent`
+
+**Then in your repo:** Open your AI chat (Cursor, Copilot, etc.) and paste this. The agent will discover context, generate `architecture.sruja`, and optionally add requirements/ADRs/flows when it finds evidence in docs. One run; you review the result.
+
+**Prompt to paste:**
+
+*"Use the sruja-architecture-agent skill. Run \`sruja discover --context -r .\`, then generate \`architecture.sruja\` with systems, containers, components, and relationships (evidence-based; no guessing). If you find requirements, ADRs, or key flows in repo docs (README, docs/, adr/, SECURITY.md, etc.), add them to the file with citations; otherwise list 'Open questions' and do not invent. Run \`sruja lint architecture.sruja\` and fix until it passes."*
+
+That’s it. You get a single file and a short summary. To export to Markdown: `sruja export markdown architecture.sruja`.
+
+## Recommended for rich intent capture (confirm-first, structured)
+
+If you care about accurately capturing **requirements, ADRs, scenarios, and flows**, use this structured workflow so the user can confirm intent before it becomes “architecture truth”.
+
+### Pass 1 — C4 structure first (system/container/component)
+
+**Prompt:**
+
+*"Use the sruja-architecture-agent skill. Run \`sruja discover --context -r .\`. Generate \`architecture.sruja\` with C4 structure (systems/containers/components) and labeled relationships. Do not add requirements/ADRs/scenarios/flows yet. Run \`sruja lint architecture.sruja\` and fix until it passes. Then summarize the architecture in 5–10 bullets and list 5–10 open questions."*
+
+### Pass 2 — Extract intent artifacts (draft only, with citations)
+
+**Prompt:**
+
+*"Using the same repo evidence, extract candidate (a) requirements, (b) ADRs/decisions, (c) scenarios, and (d) flows from docs/specs/configs. Output an **Intent Review** list with citations to file paths for each item. Do not write anything into \`architecture.sruja\` yet. End with: 'Reply CONFIRM to encode these into the DSL, or EDIT with corrections'."*
+
+### Pass 3 — Encode confirmed intent into Sruja DSL (governance blocks)
+
+**Prompt (after user confirms/edits):**
+
+*"Update \`architecture.sruja\` by adding the confirmed requirements/ADRs/scenarios/flows as DSL blocks. Keep everything evidence-based and include citations in descriptions. Run \`sruja lint architecture.sruja\` and fix until it passes. Export Markdown with \`sruja export markdown architecture.sruja\` if available."*
 
 ## Why Sruja
 
@@ -25,6 +59,31 @@ Use this skill when the user:
 - Wants to generate or update `.sruja` files from code
 - Provides OpenAPI, GraphQL, or AsyncAPI specs to import
 - Asks "what's our architecture?" or "map our services/dependencies"
+
+## Discovery modes (choose one per run)
+
+Pick the mode that matches the user's intent or repo size. This yields more accurate, scoped output.
+
+| Mode | Purpose | Output focus |
+|------|---------|--------------|
+| **high-level-overview** | Quick map of systems and main containers | Persons, systems, top-level containers, key externals. No component-level detail. |
+| **standard** (default) | Full capture for one system or area | Systems, containers, components (10–30), relationships with evidence. Use scope ladder (minimal/standard/deep). |
+| **subsystem-deep-dive** | Deep detail for one subpath or bounded context | One area (e.g. `services/auth`): all containers and components inside it; other areas as external systems. |
+| **diff-and-refine** | Update existing architecture from current code | Compare repo to existing `architecture.sruja`; propose only additions, removals, or relationship fixes. Do not rewrite from scratch. |
+
+**How to use:** If the user says "quick overview" or "just the big picture" → high-level-overview. If they point to a subpath (e.g. "only services/billing") → subsystem-deep-dive with that path. If `architecture.sruja` already exists and they want it updated → diff-and-refine. Otherwise → standard.
+
+## Phased discovery playbook (follow this order)
+
+After running `sruja discover --context -r .` (or `-r <subpath>`), gather information in this order so dependency context and entry points drive accuracy (see [ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md](../../docs/ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md)):
+
+1. **Deployables and runtime** — From Dockerfile(s), docker-compose, K8s, Procfile, fly.toml, vercel.json: how many runnable units? Map each to a system or container and set `technology` from base image or manifest.
+2. **Entry points** — From manifest (package.json scripts, pyproject.toml, go.mod, Cargo.toml, pom.xml): find main entry files (index.js, main.py, main.go, *Application.java, etc.). One runnable entry = one container; internal modules = components.
+3. **Data stores and queues** — From config, env examples, and dependencies: DB clients (Postgres, Mongo, Redis), message queues (Kafka, RabbitMQ, SQS). Add `database` or queue containers and relationships (e.g. "SQL - reads/writes").
+4. **Service-to-service and externals** — From HTTP/gRPC clients, SDKs, env vars (e.g. SERVICE_X_URL): which internal or external services are called? Add relationships with specific labels (protocol + purpose).
+5. **UI/frontend** — If a frontend app exists (React, Vue, Next, etc.), add a container and its relationship to API/BFF (e.g. "HTTPS JSON").
+
+Do not read the entire codebase. Use read order in REFERENCE (README/manifest → entry points → one level of imports → config). For large repos, run the playbook per subpath and treat other areas as external systems until stitch.
 
 ## Canonical thorough-capture prompt
 
@@ -50,6 +109,22 @@ Do not produce 100+ components (noise) or 3 components with no relationships (un
 - Composition/mounting patterns  
 - Environment-specific behavior (caching, feature flags)
 
+## Depth: use components inside containers (capture essential internals)
+
+Do **not** flatten everything to containers. For depth and essential clarity:
+
+- **Containers** = runnable/deployable units (one process, one app, one API server, one DB). A library or monolith is often **one container** (e.g. "Express Library", "Backend API").
+- **Components** = main modules, layers, or key classes **inside** that container. Use **component** for: Router, Application (class), Request/Response (classes), MiddlewareStack, Route, View, Utils—when they are code inside the same process.
+
+**Essential things to capture (for standard/deep scope):**
+- **Entry point(s)** — what is invoked first (e.g. createApplication(), main(), index).
+- **Main modules/classes** — the 5–15 key files or classes that define structure (e.g. lib/application.js, lib/router/index.js).
+- **Request/data flow** — how a request moves (e.g. Application → Router → Route → handler; middleware pipeline).
+- **Key relationships** — who calls whom (Application → Router "delegates"; Router → Route "dispatches").
+- **Extension points** — middleware, plugins, hooks if they are part of the design.
+
+**Concrete rule for libraries/frameworks:** One **system**, one **container** (e.g. "Express Library", "Framework runtime"), then **components inside that container** for each main module or class: Application, Router, Request, Response, View, Utils, Route, MiddlewareStack, etc. Add relationships between these components (e.g. Application → Router "delegates", Router → Route "dispatches"). Do **not** model Application, Router, Request, Response as separate containers when they are modules inside the same library process—model them as **components** inside the single library container.
+
 ## Minimal valid example (template)
 
 Use this form; every element has `description`, containers have `technology`, and everyone is in at least one relationship:
@@ -68,18 +143,115 @@ User -> App "uses"
 
 Scale up from this. Use **assignment form**: `Id = kind "Label" { ... }`. Use `database` for data stores. Relationships: `SourceId -> TargetId "label"`.
 
+## C4 levels: system, container, component (map correctly, do not assign randomly)
+
+In C4, **system**, **container**, and **component** have specific meanings. Map from the repo using these rules so capture is correct:
+
+| C4 level | Meaning | Map from repo to this when |
+|----------|---------|----------------------------|
+| **System** | A software system that delivers value to users (person or other systems). Top-level boundary. | A product, a deployable service (microservice), or a major bounded context that has its own deployables. One repo can be one system or several (e.g. monorepo with services/auth, services/orders → one system per service). |
+| **Container** | A **runnable or deployable** unit inside a system: something that runs (process, app, API, worker) or is a data store. In C4, "container" is not Docker—it is "thing that must be running for the system to work." | Entry points that run (main process, web server, API server, worker process), frontend app, database, message queue, file store. Use **container** for: `main`/`index`/app server, REST/GraphQL API, React/Vue app, PostgreSQL/Redis, Kafka/RabbitMQ. |
+| **Component** | A **logical grouping inside a container**: cohesive code behind an interface. Not a separate process. Lives inside a container. | Modules, layers, controllers, services (classes), middleware, repositories, handlers that are *inside* one running process. Use **component** for: Router, AuthMiddleware, OrderService (class), UserRepository, RequestHandler—when they are part of one API/app container. |
+
+**Do not:** Put a class or module as a **container** unless it is actually a separate deployable/runnable. Do not put a whole API server as a **component**—it is a **container**. Use **database** (or datastore) for databases and caches; they are container-level. When in doubt: "Does it run as its own process or is it code inside a process?" → process = container; code inside = component.
+
+## Person vs external system (do not use person for software)
+
+In C4, **person** means a **human** actor (end user, admin, operator, developer when using the product). **Do not** use `person` for:
+
+- Another application, service, or process (e.g. "Node.js Application" that consumes your library)
+- An API client, consumer service, or external software system
+- Bots, cron jobs, or other software unless they represent a human role
+
+**Use `person` only for:** humans (User, Admin, Developer, Operator).  
+**Use `system` for:** any **external software system** that interacts with your system (e.g. "Node.js Application" that requires your library, "Mobile App", "Partner API", "Payment Gateway" as a system). Model them as a top-level `system` with a relationship to your system (e.g. `ConsumerApp -> MySystem "uses"`).
+
+**Bug to avoid:** If your repo is a **library** or **framework** consumed by other code, the consumer is an external **system**, not a person. Example: Express is a framework; applications that `require('express')` are **systems** (NodeApp = system "Node.js Application"), not persons.
+
+## Evidence, uncertainty, and questions (do not guess)
+
+Architecture discovery from code is inherently incomplete. **Prefer asking questions over guessing** whenever the repo does not provide strong evidence.
+
+Rules:
+
+- **Never invent** external systems, technologies, data stores, boundaries, or flows without evidence.
+- **No orphans:** Every element (system, container, component, person, external_system) must appear in at least one relationship; otherwise lint reports E205. Add a relation or remove the element.
+- **Evidence-first descriptions:** For every element you add, ensure the `description` is grounded in evidence you saw (a file path, module name, manifest, or config). When possible, include a short evidence hint like “(evidence: `src/server.ts`, `package.json` scripts)” in the description.
+- If something is uncertain, either:
+  - **Ask a question** (preferred), or
+  - Include it with an explicit **confidence marker** in `description` (e.g. “confidence: low; needs confirmation”) and list it under “Open questions”.
+- If the user cannot answer immediately (non-interactive runs), choose **safe defaults**:
+  - Keep scope smaller (minimal/standard), prefer fewer components, and avoid asserting production-grade externals.
+
+Good question triggers:
+
+- Multiple plausible boundaries (monorepo, many top-level dirs)
+- Unclear deployables (library vs app; multiple entry points)
+- Missing deployment files (Docker/K8s) but many services inferred
+- External calls detected but target/service identity unclear
+
+## Accuracy contract (make it useful, not speculative)
+
+When generating a `.sruja` file:
+
+- Prefer **fewer, correct** elements over many speculative ones.
+- Only include **external systems/datastores** if you saw evidence in code/config/docs (imports, env vars, SDK usage, docker-compose, Helm, Terraform, ADRs). Otherwise, list them as **Open questions**.
+- Ensure **relationship labels** reflect evidence (protocol/purpose). If you don't know protocol, label purpose only and mark confidence low.
+
 ## Relationship label patterns
 
 - **Good:** `"HTTPS - auth"`, `"gRPC - order validation"`, `"reads from"`, `"writes to"`, `"publishes events to"`, `"invokes"`.
 - **Bad:** `"uses"`, `"calls"` (too vague unless combined with protocol).
 
+## Choose approach from repo (two-step vs one-go)
+
+**Always run `sruja discover --context -r .` first.** Then decide:
+
+| Repo signal | Approach | Why |
+|-------------|----------|-----|
+| **Small, obvious** – e.g. &lt;15 components, one main dir (lib/, src/), single framework, clear entry | **One-go** – Skip asking questions; generate directly using context. | Fast; scope is unambiguous. |
+| **Large or ambiguous** – Many components, multiple top-level areas (services/, apps/, packages/), or monorepo | **Two-step** – Derive 2–5 contextual questions, get answers (or assume sensible defaults if non-interactive), then generate. | Avoids wrong scope or a useless giant diagram. |
+| **Very large** – Too big for one diagram (e.g. 50+ components, many services) | **Divide into parts** – Analyze one area/subpath or one bounded context per pass; one fragment per part; then stitch or document. See [Divide analysis into multiple parts](#divide-analysis-into-multiple-parts-when-scope-is-large). | Keeps each part manageable; combine or cross-reference later. |
+| **Unclear** | **Two-step** – Prefer asking when in doubt. | Safer; user can correct. |
+
+If the user already specified scope (e.g. "only services/auth") or "quick sketch", respect that and use one-go for that scope.
+
+## Divide analysis into multiple parts (when scope is large)
+
+**Not everything should be analyzed in one pass.** When the repo or a component is too big (e.g. many components, multiple services, or one very large area), **split the analysis**:
+
+- **By area/subpath** – Run `sruja discover --context -r services/auth`, then `-r services/orders`, etc. Generate one `.sruja` fragment per part (e.g. `architecture-auth.sruja`, `architecture-orders.sruja`) or one section at a time. Tell the user you are analyzing in parts and will combine or list the parts.
+- **By bounded context or service** – If context shows clear boundaries (e.g. packages/, apps/web, apps/api), analyze one boundary per pass; use **external systems** in each fragment for the others until stitched.
+- **By depth** – First pass: high-level systems and main containers. Second pass: expand one large container or system into sub-containers. Repeat for other big components.
+
+After multiple parts: either **stitch** (combine fragments into one file when the tool supports it), or **document** the split (e.g. "Part 1: auth service; Part 2: orders service; cross-refs as external systems"). See repo docs on incremental capture and stitching.
+
 ## Process (high level)
 
-1. **Understand** – Clarify single vs multi-repo, monolith vs microservices, entry points, and **scope** (minimal / standard / deep). Default to standard.
-2. **Collect** – Clone repos; find package files, config, docs, entry points; read key files in **read order** (README/manifest → entry points → one level of imports → config). See [REFERENCE.md](REFERENCE.md).
-3. **Generate** – Produce Sruja DSL in **canonical form** (assignment, `database`, specific relationship labels). Use templates in [REFERENCE.md](REFERENCE.md).
-4. **Validate (mandatory)** – **Loop until lint passes:** (1) Run `sruja lint` on the generated file. (2) If there are errors, apply fixes from the lint→fix table in [REFERENCE.md](REFERENCE.md). (3) Re-run `sruja lint`. (4) Repeat until pass. **Do not present until lint passes.** Example: if E204 (circular dependency), remove one edge in the cycle (e.g. `NodeHTTPServer -> Application`) and re-run lint. See [REFERENCE.md](REFERENCE.md) for the full table and cycle-fix example.
-5. **Present and iterate** – Show summary and generated `.sruja`; run post-generate checklist; ask refinement questions.
+1. **Gather repo context; then either ask contextual questions or go straight to generate** – Run `sruja discover --context -r .`. Use [Choose approach](#choose-approach-from-repo-two-step-vs-one-go): small/obvious → one-go; large/ambiguous → two-step (derive questions, then generate). For large scope, use [Divide analysis into multiple parts](#divide-analysis-into-multiple-parts-when-scope-is-large). See [Contextual discovery](#contextual-discovery-derive-questions-from-repo-context).
+2. **Choose discovery mode** – [Discovery modes](#discovery-modes-choose-one-per-run): high-level-overview, standard, subsystem-deep-dive, or diff-and-refine. Use mode to set scope and depth.
+3. **Understand** – From answers and repo: single vs multi-repo, monolith vs microservices, entry points, and **scope** (minimal / standard / deep). Default to standard.
+4. **Collect (phased playbook)** – Follow [Phased discovery playbook](#phased-discovery-playbook-follow-this-order): deployables → entry points → data stores/queues → service-to-service → UI. Read key files in **read order** (README/manifest → entry points → one level of imports → config). See [REFERENCE.md](REFERENCE.md) for file patterns and playbook detail.
+5. **Extract intent (requirements / ADRs / scenarios / flows) — evidence-first** – Before writing DSL governance blocks, scan for evidence in repo docs and configs (e.g. `README*`, `docs/**`, `adr/**`, `decisions/**`, `rfc/**`, `SECURITY.md`, `OPERATIONS.md`, `SLO*`, `OpenAPI`, `AsyncAPI`, `GraphQL schema`, `docker-compose.yml`, `helm/**`, `terraform/**`).
+   - Output a short **Intent Review** in plain language with **citations to files**: candidate requirements, decisions, and 2–5 critical scenarios/flows.
+   - **Ask the developer to review/correct** the intent list. Do not guess missing intent.
+   - After review (or if running non-interactively), encode only the confirmed items into DSL blocks:
+     - `R1 = requirement <type> "..." { description "... (evidence: ...)" }`
+     - `ADR001 = adr "..." { status "..."; context "..."; decision "..."; consequences "..." }`
+     - `Checkout = scenario "..." { step A -> B "..." }` and/or `flow "..." { step ... }`
+6. **Generate structure** – Produce Sruja DSL for systems/containers/components in **canonical form** (assignment, `database`, specific relationship labels). Use templates in [REFERENCE.md](REFERENCE.md). Use the user’s answers to name systems, choose scope, and include the right external systems.
+7. **Validate (mandatory)** – **Loop until lint passes:** (1) Run `sruja lint` on the generated file. (2) If there are errors, apply fixes from the lint→fix table in [REFERENCE.md](REFERENCE.md). (3) Re-run `sruja lint`. (4) Repeat until pass. **Do not present until lint passes.** Example: if E204 (circular dependency), remove one edge in the cycle (e.g. `NodeHTTPServer -> Application`) and re-run lint. See [REFERENCE.md](REFERENCE.md) for the full table and cycle-fix example.
+8. **Present and iterate** – Show summary and generated `.sruja`; run post-generate checklist; ask refinement questions (see [REFERENCE.md](REFERENCE.md) discovery interview).
+
+## Contextual discovery (derive questions from repo context)
+
+Use these questions **before or during** discovery so capture matches the user’s intent. Gather repo context first (e.g. run `sruja discover --context -r .`), then derive 2–5 questions tailored to what you see.
+
+**How to derive (do not copy verbatim):**
+- If context shows multiple dirs (e.g. services/auth, apps/web) → ask which area first or whole repo; mention subpath + stitch.
+- Single app/small graph → ask externals and scope. Monorepo → ask separate deployables vs one system; main entry. Phrase each question so it **references what you observed** (dirs, tech, size).
+
+Phrase naturally in conversation; use answers to set scope, subpath, names, and which externals to include.
 
 ## Post-generate checklist (self-check before presenting)
 
@@ -88,6 +260,24 @@ Scale up from this. Use **assignment form**: `Id = kind "Label" { ... }`. Use `d
 - [ ] Every element appears in at least one relationship (no orphans).
 - [ ] Relationship labels are specific (protocol and/or purpose).
 - [ ] `sruja lint` passes.
+
+## Diagnostics / confidence report (optional but recommended)
+
+When you have **low-confidence elements** or **open questions**, output a short **Diagnostics** section (markdown) after the generated DSL so the user can see quality at a glance without reading every description.
+
+**When to include:** Any element with "(confidence: low" or "(confidence: medium" in its description; any "Open questions" you listed; or when scope was ambiguous (e.g. you assumed one system but the repo could be multi-service).
+
+**Format (paste after the .sruja block):**
+
+```markdown
+### Diagnostics
+- **Lint:** pass / fail
+- **Low-confidence:** [list element IDs or labels that have confidence: low or medium in description]
+- **Open questions:** [bulleted list of what could not be confirmed from repo]
+- **Gaps:** [optional: not detected – e.g. end users, SLAs, deployment topology]
+```
+
+This makes it easy for the developer to correct or confirm before treating the architecture as authoritative.
 
 ## Tools
 
@@ -102,11 +292,11 @@ For detailed steps, file patterns, DSL templates, per-language hints, lint→fix
 
 ## User-facing super prompt
 
-For Cursor/IDE chat, users can paste:
+Same as [For end users](#for-end-users-easy-one-prompt-flow) — one prompt does the full flow (discover → generate structure + optional requirements/ADRs/flows from evidence → lint). For Cursor/IDE chat, users paste:
 
-**"Analyze this repo and generate a Sruja architecture file (architecture.sruja). Be thorough: main systems, containers, technologies, descriptions for every element, and relationships with clear labels. Run sruja lint and fix until it passes. Use the sruja-architecture-agent skill."**
+**"Use the sruja-architecture-agent skill. Run \`sruja discover --context -r .\`, then generate \`architecture.sruja\` with systems, containers, components, and relationships (evidence-based; no guessing). If you find requirements, ADRs, or key flows in repo docs (README, docs/, adr/, SECURITY.md, etc.), add them to the file with citations; otherwise list 'Open questions' and do not invent. Run \`sruja lint architecture.sruja\` and fix until it passes."**
 
-See [INSTALL_AS_SKILL.md](../../docs/INSTALL_AS_SKILL.md) for install and this prompt.
+See [INSTALL_AS_SKILL.md](../../docs/INSTALL_AS_SKILL.md) for install.
 
 ## Installation
 
