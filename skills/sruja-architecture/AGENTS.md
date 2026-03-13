@@ -2,6 +2,8 @@
 
 Comprehensive guide for software architecture design using Sruja DSL. This document is compiled from individual rules and contains all patterns, principles, and best practices for AI agents generating Sruja architectures.
 
+**Syntax:** Sruja uses **flat, top-level declarations** — no `architecture "Name" { }` wrapper. Declare kinds (or use `import { * } from 'sruja.ai/stdlib'`), then elements and relationships at the top level. Use PascalCase for element IDs.
+
 ## Quick Start
 
 When generating Sruja architecture DSL:
@@ -28,22 +30,22 @@ Split systems into logical components based on responsibility. Each component sh
 **Example:**
 
 ```sruja
-architecture "E-Commerce" {
-  system "Order Management" {
-    order_service = container "Order API" {
-      technology "Node.js"
-      description "Handles order lifecycle"
-    }
+OrderManagement = system "Order Management" {
+  description "Handles order lifecycle and payments"
 
-    payment_service = container "Payment Service" {
-      technology "Python"
-      description "Processes payments"
-    }
+  OrderAPI = container "Order API" {
+    technology "Node.js"
+    description "Handles order lifecycle"
+  }
 
-    inventory_service = container "Inventory Service" {
-      technology "Go"
-      description "Manages inventory"
-    }
+  PaymentService = container "Payment Service" {
+    technology "Python"
+    description "Processes payments"
+  }
+
+  InventoryService = container "Inventory Service" {
+    technology "Go"
+    description "Manages inventory"
   }
 }
 ```
@@ -55,27 +57,27 @@ Organize into clear layers: Presentation → Application → Domain → Infrastr
 **Example:**
 
 ```sruja
-web_frontend = container "Web Frontend" {
+WebFrontend = container "Web Frontend" {
   technology "React"
   description "User interface"
 }
 
-api_gateway = container "API Gateway" {
+APIGateway = container "API Gateway" {
   technology "Express"
   description "HTTP API endpoints"
 }
 
-business_service = container "Business Service" {
+BusinessService = container "Business Service" {
   technology "Node.js"
   description "Core business logic"
 }
 
-data_service = container "Data Service" {
+DataService = container "Data Service" {
   technology "Node.js"
   description "Data access layer"
 }
 
-database = database "Database" {
+Database = database "Database" {
   technology "PostgreSQL"
   description "Data persistence"
 }
@@ -88,16 +90,19 @@ Group related functionality into distinct contexts. Each context has its own dom
 **Example:**
 
 ```sruja
-system "User Management" {
-  user_service = container "User Service" { ... }
+UserManagement = system "User Management" {
+  description "User identity and profile"
+  UserService = container "User Service" { ... }
 }
 
-system "Order Processing" {
-  order_service = container "Order Service" { ... }
+OrderProcessing = system "Order Processing" {
+  description "Order lifecycle"
+  OrderService = container "Order Service" { ... }
 }
 
-system "Payments" {
-  payment_service = container "Payment Service" { ... }
+Payments = system "Payments" {
+  description "Payment processing"
+  PaymentService = container "Payment Service" { ... }
 }
 ```
 
@@ -125,15 +130,15 @@ Use for external entities that interact with the system.
 **Example:**
 
 ```sruja
-user = person "End User" {
+User = person "End User" {
   description "Customer using application"
 }
 
-admin = person "Administrator" {
+Admin = person "Administrator" {
   description "System administrator"
 }
 
-stripe = person "Stripe" {
+Stripe = person "Stripe" {
   description "External payment processing"
 }
 ```
@@ -145,11 +150,11 @@ Use for high-level system boundaries representing major domains.
 **Example:**
 
 ```sruja
-order_system = system "Order Management" {
+OrderSystem = system "Order Management" {
   description "Handles order lifecycle"
 }
 
-external_system = system "External Inventory" {
+ExternalSystem = system "External Inventory" {
   description "Third-party inventory system"
 }
 ```
@@ -168,12 +173,12 @@ Use for deployable units (processes, services, applications).
 **Example:**
 
 ```sruja
-api_service = container "Order API" {
+APIService = container "Order API" {
   technology "Node.js + Express"
   description "RESTful API for orders"
 }
 
-worker = container "Order Processor" {
+Worker = container "Order Processor" {
   technology "Python + Celery"
   description "Background worker"
 }
@@ -186,17 +191,17 @@ Use for persistent storage or cache.
 **Example:**
 
 ```sruja
-database = database "Orders DB" {
+Database = database "Orders DB" {
   technology "PostgreSQL"
   description "Primary database"
 }
 
-cache = database "Cache" {
+Cache = database "Cache" {
   technology "Redis"
   description "Application cache"
 }
 
-queue = queue "Message Queue" {
+Queue = queue "Message Queue" {
   technology "RabbitMQ"
   description "Event streaming"
 }
@@ -220,35 +225,34 @@ Single deployable unit with clear internal module boundaries.
 **Example:**
 
 ```sruja
-architecture "Project Management" {
-  system "Application" {
-    api_gateway = container "API Gateway" {
-      technology "Node.js"
-      description "Single entry point"
-    }
+Application = system "Application" {
+  description "Single deployable unit with clear module boundaries"
 
-    user_module = container "User Module" {
-      technology "Node.js"
-      description "User management"
-    }
-
-    project_module = container "Project Module" {
-      technology "Node.js"
-      description "Project management"
-    }
-
-    database = database "Database" {
-      technology "PostgreSQL"
-      description "Central database"
-    }
+  APIGateway = container "API Gateway" {
+    technology "Node.js"
+    description "Single entry point"
   }
 
-  api_gateway -> user_module "gRPC (internal)"
-  api_gateway -> project_module "gRPC (internal)"
+  UserModule = container "User Module" {
+    technology "Node.js"
+    description "User management"
+  }
 
-  user_module -> database "SQL"
-  project_module -> database "SQL"
+  ProjectModule = container "Project Module" {
+    technology "Node.js"
+    description "Project management"
+  }
+
+  Database = database "Database" {
+    technology "PostgreSQL"
+    description "Central database"
+  }
 }
+
+Application.APIGateway -> Application.UserModule "gRPC (internal)"
+Application.APIGateway -> Application.ProjectModule "gRPC (internal)"
+Application.UserModule -> Application.Database "SQL"
+Application.ProjectModule -> Application.Database "SQL"
 ```
 
 ### Microservices
@@ -265,32 +269,30 @@ Multiple independent services communicating via APIs/events.
 **Example:**
 
 ```sruja
-architecture "E-Commerce" {
-  user_service = container "User Service" {
-    technology "Go"
-    description "User management"
-  }
-
-  order_service = container "Order Service" {
-    technology "Node.js"
-    description "Order processing"
-  }
-
-  payment_service = container "Payment Service" {
-    technology "Python"
-    description "Payment processing"
-  }
-
-  event_store = queue "Event Store" {
-    technology "Kafka"
-    description "Event streaming"
-  }
-
-  user_service -> order_service "REST API"
-  order_service -> payment_service "REST API"
-  order_service -> event_store "publishes events"
-  payment_service -> event_store "publishes events"
+UserService = container "User Service" {
+  technology "Go"
+  description "User management"
 }
+
+OrderService = container "Order Service" {
+  technology "Node.js"
+  description "Order processing"
+}
+
+PaymentService = container "Payment Service" {
+  technology "Python"
+  description "Payment processing"
+}
+
+EventStore = queue "Event Store" {
+  technology "Kafka"
+  description "Event streaming"
+}
+
+UserService -> OrderService "REST API"
+OrderService -> PaymentService "REST API"
+OrderService -> EventStore "publishes events"
+PaymentService -> EventStore "publishes events"
 ```
 
 ### Event-Driven Architecture
@@ -306,22 +308,23 @@ Event producers and consumers with async messaging.
 **Example:**
 
 ```sruja
-event_store = queue "Kafka" {
+EventStore = queue "Kafka" {
+  technology "Kafka"
   description "Central event stream"
 }
 
-producer = container "Order Service" {
+OrderService = container "Order Service" {
   technology "Node.js"
   description "Publishes order events"
 }
 
-consumer = container "Analytics Service" {
+AnalyticsService = container "Analytics Service" {
   technology "Python"
   description "Consumes events for analytics"
 }
 
-producer -> event_store "publishes events"
-consumer -> event_store "consumes events"
+OrderService -> EventStore "publishes events"
+AnalyticsService -> EventStore "consumes events"
 ```
 
 ### CQRS (Command Query Responsibility Segregation)
@@ -331,30 +334,35 @@ Separate read and write models.
 **Example:**
 
 ```sruja
-write_model = container "Write Service" {
+EventStore = queue "Event Store" {
+  technology "Kafka"
+  description "Event stream"
+}
+
+WriteModel = container "Write Service" {
   technology "Node.js"
   description "Handles commands"
 }
 
-write_db = database "Write Database" {
+WriteDB = database "Write Database" {
   technology "PostgreSQL"
   description "Normalized write model"
 }
 
-read_model = container "Read Service" {
+ReadModel = container "Read Service" {
   technology "Go"
   description "Optimized for queries"
 }
 
-read_db = database "Read Database" {
+ReadDB = database "Read Database" {
   technology "Elasticsearch"
   description "Denormalized read model"
 }
 
-write_model -> write_db "writes"
-write_model -> event_store "publishes events"
-read_model -> event_store "subscribes"
-read_model -> read_db "reads"
+WriteModel -> WriteDB "writes"
+WriteModel -> EventStore "publishes events"
+ReadModel -> EventStore "subscribes"
+ReadModel -> ReadDB "reads"
 ```
 
 ### Hexagonal Architecture (Ports and Adapters)
@@ -364,23 +372,23 @@ Domain core with no external dependencies, ports as interfaces, adapters as impl
 **Example:**
 
 ```sruja
-domain_core = container "Domain Core" {
+DomainCore = container "Domain Core" {
   technology "Java"
   description "Business logic (no external deps)"
 }
 
-http_adapter = container "HTTP Adapter" {
+HTTPAdapter = container "HTTP Adapter" {
   technology "Spring Boot"
   description "REST API implementation"
 }
 
-db_adapter = container "Database Adapter" {
+DBAdapter = container "Database Adapter" {
   technology "Spring Data"
   description "PostgreSQL implementation"
 }
 
-http_adapter -> domain_core "uses"
-db_adapter -> domain_core "implements"
+HTTPAdapter -> DomainCore "uses"
+DBAdapter -> DomainCore "implements"
 ```
 
 ---
@@ -396,9 +404,9 @@ Use `->` for requests/responses requiring immediate feedback.
 **Example:**
 
 ```sruja
-web -> api "HTTPS"
-api -> database "PostgreSQL (JDBC)"
-api -> external_service "REST API"
+Web -> API "HTTPS"
+API -> Database "PostgreSQL (JDBC)"
+API -> ExternalService "REST API"
 ```
 
 ### Asynchronous Relationships
@@ -410,9 +418,9 @@ Use `->` with event labels for messaging.
 **Example:**
 
 ```sruja
-producer -> kafka "publishes events"
-consumer -> kafka "consumes events"
-worker -> queue "subscribes"
+Producer -> Kafka "publishes events"
+Consumer -> Kafka "consumes events"
+Worker -> Queue "subscribes"
 ```
 
 ### Relationship Labels
@@ -434,10 +442,10 @@ Be specific, include protocol and purpose.
 **Good Examples:**
 
 ```sruja
-frontend -> api "HTTPS"
-api -> database "reads/writes"
-api -> message_queue "publishes events"
-worker -> message_queue "consumes events"
+Frontend -> API "HTTPS"
+API -> Database "reads/writes"
+API -> MessageQueue "publishes events"
+Worker -> MessageQueue "consumes events"
 ```
 
 ---
@@ -451,7 +459,7 @@ Single container doing too many responsibilities.
 **❌ Wrong:**
 
 ```sruja
-god = container "Everything" {
+God = container "Everything" {
   technology "Node.js"
   description "Auth, orders, payments, inventory, notifications"
 }
@@ -460,9 +468,9 @@ god = container "Everything" {
 **✅ Correct:**
 
 ```sruja
-auth_service = container "Auth Service" { ... }
-order_service = container "Order Service" { ... }
-payment_service = container "Payment Service" { ... }
+AuthService = container "Auth Service" { ... }
+OrderService = container "Order Service" { ... }
+PaymentService = container "Payment Service" { ... }
 ```
 
 ### Direct Database Access from Multiple Layers
@@ -472,17 +480,17 @@ Frontend, worker, API all accessing database directly.
 **❌ Wrong:**
 
 ```sruja
-frontend -> database "SQL"
-worker -> database "SQL"
-api -> database "SQL"
+Frontend -> Database "SQL"
+Worker -> Database "SQL"
+API -> Database "SQL"
 ```
 
 **✅ Correct:**
 
 ```sruja
-frontend -> api "HTTPS"
-worker -> api "REST API"
-api -> database "SQL"
+Frontend -> API "HTTPS"
+Worker -> API "REST API"
+API -> Database "SQL"
 ```
 
 ### Circular Dependencies
@@ -492,15 +500,15 @@ Service A → Service B → Service A
 **❌ Wrong:**
 
 ```sruja
-service_a -> service_b "calls"
-service_b -> service_a "calls"
+ServiceA -> ServiceB "calls"
+ServiceB -> ServiceA "calls"
 ```
 
 **✅ Correct:**
 
 ```sruja
-service_a -> common_service "uses"
-service_b -> common_service "uses"
+ServiceA -> CommonService "uses"
+ServiceB -> CommonService "uses"
 ```
 
 ### Tight Coupling
@@ -510,14 +518,14 @@ Components calling specific implementations directly.
 **❌ Wrong:**
 
 ```sruja
-service -> postgresql_direct "uses"
+Service -> PostgreSQLDirect "uses"
 ```
 
 **✅ Correct:**
 
 ```sruja
-service -> data_layer "uses"
-data_layer -> postgresql "implements"
+Service -> DataLayer "uses"
+DataLayer -> PostgreSQL "implements"
 ```
 
 ### Orphan Components
@@ -527,7 +535,7 @@ Components with no relationships.
 **❌ Wrong:**
 
 ```sruja
-orphan = container "No Relationships" {
+Orphan = container "No Relationships" {
   description "Unused component"
 }
 ```
@@ -535,11 +543,11 @@ orphan = container "No Relationships" {
 **✅ Correct:**
 
 ```sruja
-active = container "Used Service" {
+Active = container "Used Service" {
   description "Has clear purpose and connections"
 }
 
-api -> active "REST API"
+API -> Active "REST API"
 ```
 
 ---
@@ -612,124 +620,121 @@ api -> active "REST API"
 ### E-Commerce Platform
 
 ```sruja
-architecture "E-Commerce" {
-  user = person "Customer"
-
-  system "Application" {
-    web_frontend = container "Web Frontend" {
-      technology "React"
-      description "User interface"
-    }
-
-    api_gateway = container "API Gateway" {
-      technology "Kong"
-      description "Routing and auth"
-    }
-
-    user_service = container "User Service" {
-      technology "Go"
-      description "User management"
-    }
-
-    order_service = container "Order Service" {
-      technology "Node.js"
-      description "Order processing"
-    }
-
-    payment_service = container "Payment Service" {
-      technology "Python"
-      description "Payment processing"
-    }
-
-    inventory_service = container "Inventory Service" {
-      technology "Java"
-      description "Inventory management"
-    }
-
-    notification_service = container "Notification Service" {
-      technology "Node.js"
-      description "Email, SMS, push"
-    }
-
-    database = database "Database" {
-      technology "PostgreSQL"
-      description "Primary database"
-    }
-
-    cache = database "Cache" {
-      technology "Redis"
-      description "Caching layer"
-    }
-
-    event_store = queue "Event Store" {
-      technology "Kafka"
-      description "Event streaming"
-    }
-  }
-
-  stripe = person "Stripe" {
-    description "External payment service"
-  }
-
-  user -> web_frontend "HTTPS"
-  web_frontend -> api_gateway "HTTPS"
-
-  api_gateway -> user_service "REST API"
-  api_gateway -> order_service "REST API"
-
-  order_service -> payment_service "REST API"
-  order_service -> inventory_service "REST API"
-  order_service -> notification_service "REST API"
-
-  user_service -> database "SQL"
-  order_service -> database "SQL"
-  payment_service -> database "SQL"
-
-  user_service -> cache "Redis"
-  order_service -> cache "Redis"
-
-  payment_service -> stripe "REST API"
-  payment_service -> event_store "publishes events"
-  notification_service -> event_store "consumes events"
+Customer = person "Customer" {
+  description "End user of the e-commerce platform"
 }
+
+Application = system "Application" {
+  description "Core e-commerce application"
+
+  WebFrontend = container "Web Frontend" {
+    technology "React"
+    description "User interface"
+  }
+
+  APIGateway = container "API Gateway" {
+    technology "Kong"
+    description "Routing and auth"
+  }
+
+  UserService = container "User Service" {
+    technology "Go"
+    description "User management"
+  }
+
+  OrderService = container "Order Service" {
+    technology "Node.js"
+    description "Order processing"
+  }
+
+  PaymentService = container "Payment Service" {
+    technology "Python"
+    description "Payment processing"
+  }
+
+  InventoryService = container "Inventory Service" {
+    technology "Java"
+    description "Inventory management"
+  }
+
+  NotificationService = container "Notification Service" {
+    technology "Node.js"
+    description "Email, SMS, push"
+  }
+
+  Database = database "Database" {
+    technology "PostgreSQL"
+    description "Primary database"
+  }
+
+  Cache = database "Cache" {
+    technology "Redis"
+    description "Caching layer"
+  }
+
+  EventStore = queue "Event Store" {
+    technology "Kafka"
+    description "Event streaming"
+  }
+}
+
+Stripe = person "Stripe" {
+  description "External payment service"
+}
+
+Customer -> Application.WebFrontend "HTTPS"
+Application.WebFrontend -> Application.APIGateway "HTTPS"
+Application.APIGateway -> Application.UserService "REST API"
+Application.APIGateway -> Application.OrderService "REST API"
+Application.OrderService -> Application.PaymentService "REST API"
+Application.OrderService -> Application.InventoryService "REST API"
+Application.OrderService -> Application.NotificationService "REST API"
+Application.UserService -> Application.Database "SQL"
+Application.OrderService -> Application.Database "SQL"
+Application.PaymentService -> Application.Database "SQL"
+Application.UserService -> Application.Cache "Redis"
+Application.OrderService -> Application.Cache "Redis"
+Application.PaymentService -> Stripe "REST API"
+Application.PaymentService -> Application.EventStore "publishes events"
+Application.NotificationService -> Application.EventStore "consumes events"
 ```
 
 ### Real-Time Analytics
 
 ```sruja
-architecture "Analytics Platform" {
-  system "Analytics" {
-    collector = container "Data Collector" {
-      technology "Python"
-      description "Ingests events from sources"
-    }
+Analytics = system "Analytics" {
+  description "Real-time analytics platform"
 
-    stream_processor = container "Stream Processor" {
-      technology "Kafka Streams"
-      description "Real-time processing"
-    }
-
-    database = database "Time Series DB" {
-      technology "InfluxDB"
-      description "Stores metrics"
-    }
-
-    api = container "Analytics API" {
-      technology "Go"
-      description "Query interface"
-    }
-
-    dashboard = container "Dashboard" {
-      technology "React"
-      description "Visualization"
-    }
+  Collector = container "Data Collector" {
+    technology "Python"
+    description "Ingests events from sources"
   }
 
-  collector -> stream_processor "publishes events"
-  stream_processor -> database "writes metrics"
-  api -> database "reads metrics"
-  dashboard -> api "GraphQL"
+  StreamProcessor = container "Stream Processor" {
+    technology "Kafka Streams"
+    description "Real-time processing"
+  }
+
+  Database = database "Time Series DB" {
+    technology "InfluxDB"
+    description "Stores metrics"
+  }
+
+  API = container "Analytics API" {
+    technology "Go"
+    description "Query interface"
+  }
+
+  Dashboard = container "Dashboard" {
+    technology "React"
+    description "Visualization"
+  }
 }
+
+Analytics.Collector -> Analytics.StreamProcessor "publishes events"
+Analytics.StreamProcessor -> Analytics.Database "writes metrics"
+Analytics.API -> Analytics.Database "reads metrics"
+Analytics.Dashboard -> Analytics.API "GraphQL"
 ```
 
 ---

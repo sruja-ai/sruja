@@ -15,14 +15,18 @@ VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architectur
 
 ## Architecture intelligence (CLI)
 
-**Quickstart, drift, why, and analyze** (inventory, health score, violations, evidence) run in the **Sruja CLI**, not in this extension. Use the CLI in a terminal or in CI:
+**Drift, why, and analyze** run via the Sruja CLI and are surfaced in the extension:
+
+- **Sruja: Run drift (architecture health)** – Runs `sruja drift -r .` in the workspace; output appears in the **Sruja** output channel. Detects structural drift (cycles, orphans, layer violations).
+- **Sruja: Analyze repository** – Runs `sruja analyze -r .`; full structural/semantic/intent report in the **Sruja** output channel.
+- **Sruja: Why (explain dependencies)** – Prompts for a component or question, then runs `sruja why "<query>" -r .`; explanation appears in the **Sruja** output channel.
+
+These commands require the **Sruja CLI** (on PATH or `sruja.lsp.path`). In CI or headless use, run the CLI directly:
 
 - `sruja quickstart -r .` – Architecture inventory and top findings (no .sruja required).
-- `sruja drift -r .` – Detect structural drift (cycles, orphans, layer violations).
-- `sruja why <component>` – Explain dependencies with evidence.
-- `sruja analyze -r .` – Full structural/semantic/intent report.
-
-This extension focuses on **editing and validating** `.sruja` files and on **skills/rules for AI**; the CLI delivers architecture intelligence from the codebase.
+- `sruja drift -r .` – Detect structural drift.
+- `sruja why "<question>" -r .` – Explain dependencies with evidence.
+- `sruja analyze -r .` – Full report.
 
 ## Requirements
 
@@ -40,6 +44,9 @@ This extension focuses on **editing and validating** `.sruja` files and on **ski
 | **Sruja: List Rules…** | Quick-pick list of all rules; open selected rule |
 | **Sruja: Copy Rule for AI** | Copy a rule’s markdown to clipboard for pasting into an AI chat |
 | **Sruja: Copy Agent Guide for AI** | Copy AGENTS.md content to clipboard |
+| **Sruja: Run drift (architecture health)** | Run `sruja drift -r .`; output in Sruja channel |
+| **Sruja: Analyze repository** | Run `sruja analyze -r .`; report in Sruja channel |
+| **Sruja: Why (explain dependencies)** | Run `sruja why "<query>" -r .`; answer in Sruja channel |
 
 ## Views
 

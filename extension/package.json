@@ -119,6 +119,18 @@
       {
         "command": "sruja.copyAgentGuideForAI",
         "title": "Sruja: Copy Agent Guide for AI"
+      },
+      {
+        "command": "sruja.runDrift",
+        "title": "Sruja: Run drift (architecture health)"
+      },
+      {
+        "command": "sruja.analyzeRepo",
+        "title": "Sruja: Analyze repository"
+      },
+      {
+        "command": "sruja.whyComponent",
+        "title": "Sruja: Why (explain dependencies)"
       }
     ],
     "menus": {

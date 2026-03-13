@@ -189,6 +189,46 @@ function getSrujaPath(context: vscode.ExtensionContext): string {
   return "sruja";
 }
 
+/** Output channel for architecture intelligence (drift, analyze, why). */
+let cliOutputChannel: vscode.OutputChannel | undefined;
+
+function getCliOutputChannel(): vscode.OutputChannel {
+  if (!cliOutputChannel) {
+    cliOutputChannel = vscode.window.createOutputChannel("Sruja");
+  }
+  return cliOutputChannel;
+}
+
+/**
+ * Run a Sruja CLI command in the workspace root. Architecture intelligence commands
+ * (drift, analyze, why) require the CLI; they have no WASM equivalent.
+ */
+async function runCliInWorkspace(
+  context: vscode.ExtensionContext,
+  args: string[]
+): Promise<{ stdout: string; stderr: string; code: number }> {
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  if (!folder) {
+    throw new Error("No workspace folder open. Open a folder to run architecture intelligence.");
+  }
+  const srujaPath = getSrujaPath(context);
+  const cwd = folder.uri.fsPath;
+  return new Promise((resolve) => {
+    execFile(
+      srujaPath,
+      args,
+      { encoding: "utf8", cwd, timeout: 120000, maxBuffer: 4 * 1024 * 1024 },
+      (err: Error | null, stdout: string, stderr: string) => {
+        resolve({
+          stdout: typeof stdout === "string" ? stdout : "",
+          stderr: typeof stderr === "string" ? stderr : "",
+          code: err ? 1 : 0,
+        });
+      }
+    );
+  });
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   diagnosticCollection = vscode.languages.createDiagnosticCollection(DIAGNOSTIC_COLLECTION_ID);
   context.subscriptions.push(diagnosticCollection);
@@ -501,6 +541,88 @@ export function activate(context: vscode.ExtensionContext): void {
         .replace(/\$/g, "\\$")
         .replace(/<\/script>/gi, "<\\/script>");
       panel.webview.html = getDiagramPreviewHtml(mermaidEscaped);
+    }),
+    vscode.commands.registerCommand("sruja.runDrift", async () => {
+      const channel = getCliOutputChannel();
+      channel.clear();
+      channel.show(true);
+      channel.appendLine("Running sruja drift -r . ...");
+      try {
+        const { stdout, stderr, code } = await runCliInWorkspace(context, ["drift", "-r", "."]);
+        channel.append(stdout);
+        if (stderr) channel.append(stderr);
+        channel.appendLine("");
+        if (code !== 0) {
+          channel.appendLine(`(exit code ${code})`);
+        }
+        channel.appendLine("--- Done ---");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        channel.appendLine(`Error: ${msg}`);
+        vscode.window.showErrorMessage(
+          "Sruja drift failed. Ensure the Sruja CLI is installed and on PATH, or set sruja.lsp.path."
+        );
+      }
+    }),
+    vscode.commands.registerCommand("sruja.analyzeRepo", async () => {
+      const channel = getCliOutputChannel();
+      channel.clear();
+      channel.show(true);
+      channel.appendLine("Running sruja analyze -r . ...");
+      try {
+        const { stdout, stderr, code } = await runCliInWorkspace(context, ["analyze", "-r", "."]);
+        channel.append(stdout);
+        if (stderr) channel.append(stderr);
+        channel.appendLine("");
+        if (code !== 0) {
+          channel.appendLine(`(exit code ${code})`);
+        }
+        channel.appendLine("--- Done ---");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        channel.appendLine(`Error: ${msg}`);
+        vscode.window.showErrorMessage(
+          "Sruja analyze failed. Ensure the Sruja CLI is installed and on PATH, or set sruja.lsp.path."
+        );
+      }
+    }),
+    vscode.commands.registerCommand("sruja.whyComponent", async () => {
+      const folder = vscode.workspace.workspaceFolders?.[0];
+      if (!folder) {
+        vscode.window.showWarningMessage("Open a workspace folder to run Sruja Why.");
+        return;
+      }
+      const question = await vscode.window.showInputBox({
+        title: "Sruja: Why",
+        prompt: "Ask about a component or dependency (e.g. component name or 'why does X depend on Y?')",
+        placeHolder: "e.g. api_gateway or why does order_service depend on payment_service?",
+      });
+      if (question === undefined || question.trim() === "") return;
+      const channel = getCliOutputChannel();
+      channel.clear();
+      channel.show(true);
+      channel.appendLine(`Running sruja why "${question.trim()}" -r . ...`);
+      try {
+        const { stdout, stderr, code } = await runCliInWorkspace(context, [
+          "why",
+          question.trim(),
+          "-r",
+          ".",
+        ]);
+        channel.append(stdout);
+        if (stderr) channel.append(stderr);
+        channel.appendLine("");
+        if (code !== 0) {
+          channel.appendLine(`(exit code ${code})`);
+        }
+        channel.appendLine("--- Done ---");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        channel.appendLine(`Error: ${msg}`);
+        vscode.window.showErrorMessage(
+          "Sruja why failed. Ensure the Sruja CLI is installed and on PATH, or set sruja.lsp.path."
+        );
+      }
     })
   );
 }
