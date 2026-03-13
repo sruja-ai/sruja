@@ -9,12 +9,27 @@ use std::collections::HashMap;
 use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct CompletionBreakdown {
+    /// Structural completeness of the architecture model (0–100).
+    pub structural: f32,
+    /// Operational coverage for running and debugging in production (0–100).
+    pub operational: f32,
+    /// Security coverage around trust boundaries and basic controls (0–100).
+    pub security: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ViewReport {
     pub view_name: String,
     pub view_display_name: String,
     pub summary: ViewSummary,
     pub sections: HashMap<String, serde_json::Value>,
+    /// View-specific structural health score (0–100).
     pub health_score: f32,
+    /// Cross-persona architecture completion score (0–100).
+    pub architecture_completion_score: f32,
+    /// Dimension breakdown backing the completion score.
+    pub completion_breakdown: CompletionBreakdown,
     pub recommendations: Vec<ViewRecommendation>,
     pub llm_insights: Option<String>,
 }
@@ -87,6 +102,8 @@ impl ViewContext {
         }
 
         let health_score = self.calculate_health_score(&summary);
+        let (architecture_completion_score, completion_breakdown) =
+            self.calculate_completion_score(&summary, &sections, health_score);
         let recommendations = self.generate_recommendations(&summary, &sections);
         let llm_insights = self.get_llm_insights(&summary, &sections).await?;
 
@@ -96,6 +113,8 @@ impl ViewContext {
             summary,
             sections,
             health_score,
+            architecture_completion_score,
+            completion_breakdown,
             recommendations,
             llm_insights,
         })
@@ -203,6 +222,131 @@ impl ViewContext {
         }
 
         score.clamp(0.0, 100.0)
+    }
+
+    /// Compute architecture completion score – how well the architecture model
+    /// covers production concerns for operating, debugging, and securing the system.
+    fn calculate_completion_score(
+        &self,
+        summary: &ViewSummary,
+        sections: &HashMap<String, serde_json::Value>,
+        structural_health: f32,
+    ) -> (f32, CompletionBreakdown) {
+        // Structural dimension: reuse the view's health score (0–100).
+        let structural = structural_health.clamp(0.0, 100.0);
+
+        // Operational dimension: deployment readiness, reliability, infrastructure, CI.
+        let mut operational = 0.0;
+
+        if let Some(infra) = sections.get("infrastructure") {
+            if infra
+                .get("containerization")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+            {
+                operational += 25.0;
+            }
+            if infra
+                .get("infrastructure_as_code")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+            {
+                operational += 15.0;
+            }
+        }
+
+        if let Some(dep) = sections.get("deployment_readiness") {
+            if let Some(score) = dep.get("readiness_score").and_then(|v| v.as_f64()) {
+                // Deployment readiness score is already on a 0–100 scale.
+                operational += (score as f32) * 0.4;
+            }
+        }
+
+        if let Some(rel) = sections.get("reliability") {
+            let spofs = rel
+                .get("single_points_of_failure")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            let availability_risk = rel
+                .get("availability_risk")
+                .and_then(|v| v.as_str())
+                .unwrap_or("medium");
+
+            operational += match availability_risk {
+                "low" => 20.0,
+                "medium" => 10.0,
+                _ => 0.0,
+            };
+
+            operational += if spofs == 0 {
+                10.0
+            } else if spofs <= 2 {
+                5.0
+            } else {
+                0.0
+            };
+        }
+
+        if let Some(cicd) = sections.get("cicd") {
+            if cicd
+                .get("has_ci")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+            {
+                operational += 10.0;
+            }
+        }
+
+        // Slight structural coupling penalty on operational dimension.
+        if summary.coupling_score > self.view.thresholds.max_coupling {
+            operational -=
+                ((summary.coupling_score - self.view.thresholds.max_coupling) * 2.0).min(15.0);
+        }
+
+        let operational = operational.clamp(0.0, 100.0);
+
+        // Security dimension: attack surface + basic auth/encryption signals via vulnerabilities.
+        let mut security: f32 = 0.0;
+
+        if let Some(attack) = sections.get("attack_surface") {
+            let risk_level = attack
+                .get("risk_level")
+                .and_then(|v| v.as_str())
+                .unwrap_or("medium");
+
+            security += match risk_level {
+                "low" => 40.0,
+                "medium" => 25.0,
+                _ => 10.0,
+            };
+        }
+
+        if let Some(vuln) = sections.get("vulnerabilities") {
+            let total = vuln
+                .get("total")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            security += match total {
+                0 => 60.0,
+                1..=2 => 40.0,
+                3..=5 => 20.0,
+                _ => 5.0,
+            };
+        }
+
+        let security = security.clamp(0.0, 100.0);
+
+        // Overall completion score – emphasise structural + operational, then security.
+        let architecture_completion_score =
+            (0.4 * structural) + (0.35 * operational) + (0.25 * security);
+
+        let breakdown = CompletionBreakdown {
+            structural,
+            operational,
+            security,
+        };
+
+        (architecture_completion_score.clamp(0.0, 100.0), breakdown)
     }
 
     fn analyze_section(&self, section_name: &str) -> Result<serde_json::Value, String> {
@@ -1195,6 +1339,10 @@ fn print_text_report(report: &ViewReport) {
         report.summary.coupling_score
     );
     println!("│ Health Score:      {:>43.0}% │", report.health_score);
+    println!(
+        "│ Architecture Completion: {:>35.0}% │",
+        report.architecture_completion_score
+    );
     println!("└──────────────────────────────────────────────────────────────────┘");
     println!();
 

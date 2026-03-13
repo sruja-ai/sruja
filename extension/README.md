@@ -18,7 +18,7 @@ VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architectur
 **Drift, why, and analyze** run via the Sruja CLI and are surfaced in the extension:
 
 - **Sruja: Run drift (architecture health)** – Runs `sruja drift -r .` in the workspace; output appears in the **Sruja** output channel. Detects structural drift (cycles, orphans, layer violations).
-- **Sruja: Analyze repository** – Runs `sruja analyze -r .`; full structural/semantic/intent report in the **Sruja** output channel.
+- **Sruja: Analyze repository** – Runs `sruja analyze -r .`; full structural/semantic/intent report in the **Sruja** output channel, including a **health score** and **architecture completion score** with a breakdown of structural/operational/security coverage.
 - **Sruja: Why (explain dependencies)** – Prompts for a component or question, then runs `sruja why "<query>" -r .`; explanation appears in the **Sruja** output channel.
 
 These commands require the **Sruja CLI** (on PATH or `sruja.lsp.path`). In CI or headless use, run the CLI directly:
@@ -26,7 +26,7 @@ These commands require the **Sruja CLI** (on PATH or `sruja.lsp.path`). In CI or
 - `sruja quickstart -r .` – Architecture inventory and top findings (no .sruja required).
 - `sruja drift -r .` – Detect structural drift.
 - `sruja why "<question>" -r .` – Explain dependencies with evidence.
-- `sruja analyze -r .` – Full report.
+- `sruja analyze -r .` – Full report (health + completion score + recommendations).
 
 ## Requirements
 

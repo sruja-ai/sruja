@@ -34,6 +34,20 @@ mod analyze_command {
         assert!(success, "analyze -f json should succeed: stderr={}", stderr);
 
         let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-        assert!(json.get("summary").is_some() || json.get("health_score").is_some());
+        assert!(
+            json.get("summary").is_some() || json.get("health_score").is_some()
+        );
+        // New fields from architecture completion scoring should be present.
+        if let Some(score) = json.get("architecture_completion_score") {
+            assert!(score.is_number(), "completion score should be numeric");
+        }
+        if let Some(breakdown) = json.get("completion_breakdown") {
+            assert!(
+                breakdown.get("structural").is_some()
+                    && breakdown.get("operational").is_some()
+                    && breakdown.get("security").is_some(),
+                "completion_breakdown should include structural/operational/security"
+            );
+        }
     }
 }

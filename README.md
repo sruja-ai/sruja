@@ -130,13 +130,22 @@ sruja quickstart --format json
 
 ### Architecture analysis
 
-**`sruja analyze`** provides structural architecture analysis and generates a CTO-level report with health scores, risks, and recommendations.
+**`sruja analyze`** provides structural architecture analysis and generates a CTO-level report with **health scores**, an **architecture completion score**, risks, and recommendations.
 
 ```bash
-# Architecture analysis with health score and recommendations
+# Architecture analysis with health, completion score, and recommendations
 sruja analyze -r .
 sruja analyze -r . -f json
 ```
+
+The JSON report from `sruja analyze -r . -f json` includes:
+
+- `health_score` – overall structural health (0–100)
+- `architecture_completion_score` – how well the current architecture model covers production concerns (0–100)
+- `completion_breakdown` – per-dimension coverage:
+  - `structural` – structural modeling and graph quality
+  - `operational` – signals for operating and debugging in production (deployment, reliability, CI/CD)
+  - `security` – basic attack-surface and vulnerability indicators
 
 **Note:** Semantic, intent, and runtime analysis layers are in experimental preview. The current analyze command focuses on structural analysis.
 
