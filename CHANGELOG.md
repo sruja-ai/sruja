@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.11.0...sruja-v0.12.0) (2026-03-13)
+
+
+### Features
+
+* **export,discover,skill:** enrich markdown export and selective capture ([fc1964b](https://github.com/sruja-ai/sruja/commit/fc1964b00bea34e30bcfa4e4cc929f299f32dfab))
+
 ## [0.11.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.10.2...sruja-v0.11.0) (2026-03-12)
 
 
