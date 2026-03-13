@@ -23,6 +23,17 @@ The `test-repos/` in this directory are only one option for testing; the same fl
 - **Sruja skills** available to the agent (see below)
 - **Sruja CLI** (optional but recommended for validation): `make build` in the Sruja repo, or `cargo install --path crates/sruja-cli`
 
+## Run tests (Sruja repo)
+
+Before or after using the Cursor CLI, ensure the Sruja codebase tests pass. From the **Sruja repo root**:
+
+```bash
+make test
+# or: cargo test --workspace
+```
+
+This runs all Rust unit and integration tests (language, export, CLI, scan, intent, etc.). Optional: `cargo test -p sruja-cli --test why_e2e` for the Why command E2E.
+
 ## 1. Clone test repos (local)
 
 From this directory (`evaluation/real-world-test`):
@@ -130,6 +141,7 @@ Observations are written to `run_results/test_and_observe_<timestamp>.md`. Use t
 
 | Step | What |
 |------|------|
+| **Run tests** | From Sruja repo root: `make test` or `cargo test --workspace` |
 | Clone | `./setup_repos.sh` (local only) |
 | Skills | Global: `npx skills add ...` or per-repo: `./prepare_skill_in_real_projects.sh` |
 | Run agent | `cd test-repos/<name>` then `agent` or `agent -p "..."` (local only) |

@@ -1,3 +1,12 @@
+overview {
+  summary "Demo architecture for Architecture Intelligence: intent (rulebook), scan, intent drift, and why."
+  audience "Developers and reviewers"
+  scope "Core services: frontend, API gateway, user service, database"
+  goals ["Lint and export", "Intent drift check", "Deterministic why"]
+  non_goals ["Full production topology"]
+  risks ["Scope creep if boundaries blur"]
+}
+
 frontend_py = container "frontend" {
   technology "Python"
   description "Client-facing layer that should route requests via the API gateway (and must not access the DB directly)."
@@ -21,6 +30,12 @@ database_py = database "database" {
 frontend_py -> api_gateway_py "Imports/calls"
 api_gateway_py -> user_service_py "Imports/calls"
 user_service_py -> database_py "Imports/calls"
+
+NoDirectDB = policy "No direct frontend–database access" {
+  category "architecture"
+  enforcement "required"
+  description "Frontend must not import or call the database; all data access goes via API gateway and user service."
+}
 
 view index {
   include *

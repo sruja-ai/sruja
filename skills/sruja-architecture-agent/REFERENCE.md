@@ -2,6 +2,8 @@
 
 Full process, file patterns, DSL templates, detection guides, and examples. Load this when executing architecture discovery.
 
+**Selective extraction and concise summary:** When the user asks to **extract** or **focus on** a specific area (e.g. one subpath, "just services/auth"), follow **SKILL.md** § "Interactive and selective capture" and "Concise extraction summary": run `sruja discover --context -r .` (or `-r <subpath>`), show suggested areas, let the user pick, then output only the concise summary (Area, Entry points, Main components, Outbound, Tech, Open questions). No full DSL unless requested; no long prose or full scan JSON.
+
 ### Step 2: Collect Information
 
 Use your tools to gather information. **Follow the discovery playbook order** so entry points and dependency context drive accuracy (research: ArchAgent, static-analysis combination; see [ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md](../../docs/ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md)).

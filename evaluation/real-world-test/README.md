@@ -77,6 +77,8 @@ cd express
 # sruja generate architecture . > architecture.sruja
 ```
 
+**Interactive/selective capture:** To extract or focus on a specific area (e.g. one subpath, concise summary only), use the **sruja-architecture-agent** skill as described in `skills/sruja-architecture-agent/SKILL.md` (suggested areas, pick scope, concise output). No separate script is used for this flow.
+
 **What to ask the AI:**
 1. "Analyze this codebase's structure and main components"
 2. "Generate a Sruja architecture DSL showing:"
@@ -234,6 +236,12 @@ For each repository, record:
 
 **Realistic applications:** Use product-like repos (not frameworks):  
 `./setup_repos.sh --apps` — clones gitea, saleor, documenso, cal.com. Then run quickstart/drift on them. See [run_results/REALISTIC_APPS_RUN_SUMMARY.md](run_results/REALISTIC_APPS_RUN_SUMMARY.md) for a run summary.
+
+**Test customer-facing applications (one script):** Run Sruja (quickstart + drift + discover) on a curated set of product-like apps (gitea, saleor, documenso, cal.com, react-admin). Clone then test:  
+`./run_customer_facing_apps_test.sh --setup`  
+Or, if repos already exist:  
+`./run_customer_facing_apps_test.sh`  
+Report: `run_results/CUSTOMER_FACING_APPS_TEST_<timestamp>.md`. See [CUSTOMER_FACING_APPS_TEST.md](CUSTOMER_FACING_APPS_TEST.md).
 
 **Multiple repos:** Run quickstart + drift on all test-repos and get a summary table:  
 `./run_test_and_observe.sh --no-clone --multi-repo`  

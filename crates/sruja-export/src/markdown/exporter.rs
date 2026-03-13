@@ -7,7 +7,10 @@
 
 use std::collections::HashMap;
 
-use sruja_language::{collect_elements, ElementKind, Program, TopLevelItem};
+use sruja_language::{
+    collect_elements, ConstraintsBlock, ConventionsBlock, ElementKind, OverviewBlock, Policy,
+    Program, TopLevelItem,
+};
 
 use crate::mermaid::exporter::{MermaidConfig, MermaidExporter};
 use crate::mermaid::feedback_loops::{causal_loop_to_diagram, feedback_loop_to_diagram};
@@ -57,14 +60,22 @@ impl MarkdownExporter {
 
         let mut requirements: Vec<_> = Vec::new();
         let mut adrs: Vec<_> = Vec::new();
+        let mut policies: Vec<&Policy> = Vec::new();
         let mut scenario_items: Vec<(String, String, &[sruja_language::ScenarioStep])> = Vec::new();
         let mut feedback_loops: Vec<_> = Vec::new();
         let mut causal_loops: Vec<_> = Vec::new();
+        let mut overview_block: Option<&OverviewBlock> = None;
+        let mut constraints_block: Option<&ConstraintsBlock> = None;
+        let mut conventions_block: Option<&ConventionsBlock> = None;
 
         for item in &program.items {
             match item {
                 TopLevelItem::Requirement(r) => requirements.push(r),
                 TopLevelItem::Adr(a) => adrs.push(a),
+                TopLevelItem::Policy(p) => policies.push(p),
+                TopLevelItem::Overview(o) => overview_block = Some(o),
+                TopLevelItem::Constraints(c) => constraints_block = Some(c),
+                TopLevelItem::Conventions(c) => conventions_block = Some(c),
                 TopLevelItem::Scenario(s) => {
                     scenario_items.push((s.id.clone(), s.title.clone(), s.steps.as_slice()));
                 }
@@ -85,15 +96,18 @@ impl MarkdownExporter {
                 &persons,
                 &requirements,
                 &adrs,
+                &policies,
+                constraints_block.is_some(),
+                conventions_block.is_some(),
                 !scenario_items.is_empty(),
                 !feedback_loops.is_empty(),
                 !causal_loops.is_empty(),
             );
         }
 
-        // Write overview
+        // Write overview (from overview block when present)
         if self.options.include_overview {
-            self.write_overview(&mut out, program);
+            self.write_overview(&mut out, program, overview_block);
         }
 
         // Write systems (with L2 per system, L3 per container)
@@ -114,6 +128,19 @@ impl MarkdownExporter {
         // Write ADRs
         if self.options.include_adrs {
             self.write_adrs(&mut out, &adrs);
+        }
+
+        // Write policies (governance)
+        if !policies.is_empty() {
+            self.write_policies(&mut out, &policies);
+        }
+
+        // Write constraints and conventions (governance)
+        if let Some(c) = constraints_block {
+            self.write_constraints(&mut out, c);
+        }
+        if let Some(c) = conventions_block {
+            self.write_conventions(&mut out, c);
         }
 
         // Write scenarios (with Mermaid sequence diagrams)
@@ -142,6 +169,9 @@ impl MarkdownExporter {
         _persons: &[&sruja_language::ElementDef],
         _requirements: &[&sruja_language::Requirement],
         _adrs: &[&sruja_language::Adr],
+        policies: &[&Policy],
+        has_constraints: bool,
+        has_conventions: bool,
         has_scenarios: bool,
         has_feedback_loops: bool,
         has_causal_loops: bool,
@@ -162,6 +192,15 @@ impl MarkdownExporter {
         if self.options.include_adrs {
             out.push_str("- [ADRs](#adrs)\n");
         }
+        if !policies.is_empty() {
+            out.push_str("- [Policies](#policies)\n");
+        }
+        if has_constraints {
+            out.push_str("- [Constraints](#constraints)\n");
+        }
+        if has_conventions {
+            out.push_str("- [Conventions](#conventions)\n");
+        }
         if has_scenarios {
             out.push_str("- [Scenarios](#scenarios)\n");
         }
@@ -174,8 +213,50 @@ impl MarkdownExporter {
         out.push('\n');
     }
 
-    fn write_overview(&self, out: &mut String, program: &Program) {
+    fn write_overview(
+        &self,
+        out: &mut String,
+        program: &Program,
+        overview_block: Option<&OverviewBlock>,
+    ) {
         out.push_str("## Overview\n\n");
+
+        if let Some(ov) = overview_block {
+            if let Some(summary) = &ov.summary {
+                out.push_str(&format!("{}\n\n", summary));
+            }
+            if let Some(audience) = &ov.audience {
+                out.push_str(&format!("**Audience:** {}\n\n", audience));
+            }
+            if let Some(scope) = &ov.scope {
+                out.push_str(&format!("**Scope:** {}\n\n", scope));
+            }
+            if !ov.goals.is_empty() {
+                out.push_str("**Goals:**\n\n");
+                for g in &ov.goals {
+                    out.push_str(&format!("- {}\n", g));
+                }
+                out.push_str("\n");
+            }
+            if !ov.non_goals.is_empty() {
+                out.push_str("**Non-goals:**\n\n");
+                for ng in &ov.non_goals {
+                    out.push_str(&format!("- {}\n", ng));
+                }
+                out.push_str("\n");
+            }
+            if !ov.risks.is_empty() {
+                out.push_str("**Risks:**\n\n");
+                for r in &ov.risks {
+                    out.push_str(&format!("- {}\n", r));
+                }
+                out.push_str("\n");
+            }
+        } else {
+            out.push_str(
+                "_Add an `overview { summary \"...\"; audience \"...\"; scope \"...\" }` block to populate this section._\n\n",
+            );
+        }
 
         if self.options.include_mermaid_diagrams {
             let config = MermaidConfig {
@@ -194,10 +275,6 @@ impl MarkdownExporter {
                 out.push_str("```\n\n");
             }
         }
-
-        out.push_str(
-            "_Architecture overview (descriptions) will be populated from overview blocks._\n\n",
-        );
     }
 
     fn write_systems(
@@ -347,6 +424,43 @@ impl MarkdownExporter {
                 out.push_str(&format!("**Consequences:** {}\n\n", consequences));
             }
         }
+    }
+
+    fn write_policies(&self, out: &mut String, policies: &[&Policy]) {
+        if policies.is_empty() {
+            return;
+        }
+        out.push_str("## Policies\n\n");
+        for policy in policies {
+            out.push_str(&format!("### {}\n\n", policy.title));
+            out.push_str(&format!("**Category:** {}\n\n", policy.category));
+            out.push_str(&format!("**Enforcement:** {}\n\n", policy.enforcement));
+            if let Some(desc) = &policy.description {
+                out.push_str(&format!("{}\n\n", desc));
+            }
+        }
+    }
+
+    fn write_constraints(&self, out: &mut String, constraints: &ConstraintsBlock) {
+        if constraints.entries.is_empty() {
+            return;
+        }
+        out.push_str("## Constraints\n\n");
+        for entry in &constraints.entries {
+            out.push_str(&format!("- {}\n", entry.value));
+        }
+        out.push('\n');
+    }
+
+    fn write_conventions(&self, out: &mut String, conventions: &ConventionsBlock) {
+        if conventions.entries.is_empty() {
+            return;
+        }
+        out.push_str("## Conventions\n\n");
+        for entry in &conventions.entries {
+            out.push_str(&format!("- {}\n", entry.value));
+        }
+        out.push('\n');
     }
 
     fn write_scenarios(

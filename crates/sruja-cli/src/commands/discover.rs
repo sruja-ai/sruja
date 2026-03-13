@@ -137,12 +137,15 @@ pub fn discover_context_string(repo: &str) -> Result<String, CliError> {
     if let Some(ref domain) = context.domain {
         out.push_str(&format!("**Domain (inferred):** {}\n", domain));
     }
-    if !areas.is_empty() {
-        out.push_str(&format!(
-            "**Suggested areas (from paths):** {}\n",
-            areas.join(", ")
-        ));
-    }
+    let areas_str = if areas.is_empty() {
+        "(none — single directory or flat structure)".to_string()
+    } else {
+        areas.join(", ")
+    };
+    out.push_str(&format!(
+        "**Suggested areas (from paths):** {}\n",
+        areas_str
+    ));
     out.push_str("\nUse this context to derive 2–5 questions tailored to this repo (see skill: contextual discovery).\n");
     Ok(out)
 }

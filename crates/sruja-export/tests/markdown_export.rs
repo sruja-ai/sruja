@@ -138,6 +138,58 @@ ADR-1 = adr "Use PostgreSQL as database" {
     }
 
     #[test]
+    fn test_overview_policies_export() {
+        let input = r#"
+overview {
+    summary "Demo architecture for intent and drift checks."
+    audience "Developers and reviewers"
+    scope "Core services and data flow"
+    goals ["Clarity", "Lint and export"]
+    non_goals ["Full production topology"]
+    risks ["Scope creep"]
+}
+
+SecurityPolicy = policy "Enforce TLS" {
+    category "security"
+    enforcement "required"
+    description "All traffic must use TLS 1.3."
+}
+"#;
+
+        let parser = Parser::new("test.sruja".to_string());
+        let program = parser.parse(input).expect("Failed to parse");
+
+        let options = MarkdownOptions {
+            include_toc: true,
+            include_overview: true,
+            include_systems: false,
+            include_persons: false,
+            include_requirements: false,
+            include_adrs: false,
+            include_scenarios: false,
+            include_mermaid_diagrams: false,
+            ..MarkdownOptions::default()
+        };
+
+        let exporter = MarkdownExporter::new(options);
+        let markdown = exporter.export(&program);
+
+        assert!(markdown.contains("## Overview"));
+        assert!(markdown.contains("Demo architecture for intent and drift checks"));
+        assert!(markdown.contains("**Audience:** Developers and reviewers"));
+        assert!(markdown.contains("**Scope:** Core services and data flow"));
+        assert!(markdown.contains("**Goals:**"));
+        assert!(markdown.contains("**Non-goals:**"));
+        assert!(markdown.contains("**Risks:**"));
+        assert!(markdown.contains("## Policies"));
+        assert!(markdown.contains("Enforce TLS"));
+        assert!(markdown.contains("**Category:** security"));
+        assert!(markdown.contains("**Enforcement:** required"));
+        assert!(markdown.contains("All traffic must use TLS 1.3"));
+        assert!(markdown.contains("- [Policies](#policies)"));
+    }
+
+    #[test]
     fn test_scenario_export_with_mermaid() {
         let input = r#"
 person = kind "Person"

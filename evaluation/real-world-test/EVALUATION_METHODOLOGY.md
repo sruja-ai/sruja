@@ -71,3 +71,5 @@ Score each dimension 1–10 and average. Track scores over time to see if skill 
 5. **Re-run** and compare again; iterate.
 
 See [ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md](../../docs/ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md) for research-backed practices (phased playbook, discovery modes, dependency context).
+
+**Capturing rich architecture for evaluation:** To persist a full snapshot per repo (scan graph, discover context, context export, intent/ADR report, optional DSL), use the [rich capture pipeline](../../docs/CAPTURING_RICH_ARCHITECTURE_FROM_REPOS.md) and run `./run_rich_architecture_capture.sh <repo_name>` (or `--list repo1 repo2`). Output: `run_results/rich_capture_<repo>_<timestamp>/` with `graph.json`, `discover_context.txt`, `context_export.json`, `intent_report.json`, and optional `architecture.sruja` / `prompt.txt`. Use the bundle to compare runs, tune the skill, and feed the agent with all available signals.

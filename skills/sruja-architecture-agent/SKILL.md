@@ -7,7 +7,7 @@ description: >
 license: Apache-2.0
 metadata:
   author: sruja-ai
-  version: "0.10.4"
+  version: "0.10.5"
 ---
 
 # Sruja Architecture Discovery Agent
@@ -71,6 +71,49 @@ Use this skill when the user:
 - Wants to generate or update `.sruja` files from code
 - Provides OpenAPI, GraphQL, or AsyncAPI specs to import
 - Asks "what's our architecture?" or "map our services/dependencies"
+- Asks to **extract** or **focus on** a specific area (e.g. "extract architecture for services/auth only")
+
+## Interactive and selective capture (use Sruja only)
+
+**All discovery and extraction must be done using the Sruja skill and CLI only** — no separate scripts or external tools. Be interactive and selective so the user gets relevant detail without verbosity.
+
+1. **Get suggested areas** — Run `sruja discover --context -r .`. The output includes **Suggested areas (from paths)** (e.g. `lib`, `services`, `apps`, `packages`). Use this list to offer choices. If the output has **one** area or the user already named a subpath, skip asking and use that scope.
+2. **Let the user select scope** — If the repo has **multiple** suggested areas, ask: *"I see areas: [list from discover]. Focus on (a) whole repo, (b) one area (which?), or (c) list a few areas and I’ll do one at a time."* Do not assume; use their answer to set the subpath(s).
+3. **Static extraction per area** — For the chosen scope (repo or subpath):
+   - **Whole repo:** `sruja discover --context -r .` (and optionally `sruja scan . --output /tmp/graph.json` if you need graph; do not paste full JSON).
+   - **One area:** `sruja discover --context -r <subpath>` e.g. `sruja discover --context -r services/auth`. Optionally `sruja scan <subpath> --output -` to get graph for that area only; use it to summarize, do not dump.
+4. **Output: concise and useful only** — Never paste full scan JSON or long logs. Produce a **short, useful** summary:
+   - **If extracting for one area:** 5–10 bullets: entry points (files), main components/modules, boundaries (what this area exposes or depends on), key relationships to other areas or externals. Add 1–2 sentences if a decision or risk matters.
+   - **If generating DSL:** Generate only the `.sruja` (and run `sruja lint`); add a brief "Summary" in 5–7 bullets. No verbose commentary.
+5. **Focus on different areas in turn** — If the user wants coverage of multiple areas, do one area at a time: run discover (and optionally scan) for that subpath, output the concise summary, then move to the next. Stitch or list parts as in [Divide analysis into multiple parts](#divide-analysis-into-multiple-parts-when-scope-is-large).
+
+**Rules:**
+- Use **only** `sruja discover --context -r <path>` and `sruja scan <path>` (and `sruja lint`, `sruja export`) for static extraction. Use your read/fetch tools for manifest, README, config, and docs when the playbook requires it.
+- **Not verbose:** No full graph dumps, no long prose. Bullet summaries and minimal DSL commentary.
+- **Relevant only:** Include only what is relevant to the chosen area or question (entry points, key deps, boundaries, technologies).
+
+**Concise extraction summary (when user asks to extract or focus on an area):**
+
+When the user asks to "extract relevant information", "focus on [area]", or "what’s in [subpath]", use static extraction (discover ± scan for that path) and reply in this shape — **not verbose, useful only**:
+
+- **Area:** &lt;subpath or "whole repo"&gt;
+- **Entry points:** &lt;file or module names, e.g. index.js, main.go&gt;
+- **Main components:** &lt;3–7 key modules or layers&gt;
+- **Outbound:** &lt;calls to other areas, DBs, or externals&gt;
+- **Tech:** &lt;language, framework if clear&gt;
+- **Open questions:** &lt;1–3 if something is unclear&gt;
+
+If generating DSL for that area, add the `.sruja` fragment and a one-line summary; run `sruja lint` before presenting.
+
+*Example (concise summary):* Area: `lib/`. Entry points: `index.js`, `router/index.js`. Main components: router, middleware, utils, view. Outbound: none (library). Tech: Node.js. Open questions: none.
+
+**Prompt to paste (interactive selective — extract one area, concise only):**
+
+*"Use the sruja-architecture-agent skill. Run \`sruja discover --context -r .\` and show me the suggested areas. Then pick [one area / the first area / area I name] and run \`sruja discover --context -r <that subpath>\`. Give me only the concise extraction summary (Area, Entry points, Main components, Outbound, Tech, Open questions). No full DSL unless I ask; no long prose."*
+
+**Prompt to paste (full architecture but selective by area):**
+
+*"Use the sruja-architecture-agent skill. Run \`sruja discover --context -r .\`, list the suggested areas, and ask me which one to capture first. For the area I choose, generate \`architecture-<area>.sruja\` (or a section in \`architecture.sruja\`) with systems/containers/components for that area only; other areas as external systems. Run \`sruja lint\` and fix. Output: short summary + the DSL fragment only."*
 
 ## Discovery modes (choose one per run)
 
@@ -83,7 +126,7 @@ Pick the mode that matches the user's intent or repo size. This yields more accu
 | **subsystem-deep-dive** | Deep detail for one subpath or bounded context | One area (e.g. `services/auth`): all containers and components inside it; other areas as external systems. |
 | **diff-and-refine** | Update existing architecture from current code | Compare repo to existing `architecture.sruja`; propose only additions, removals, or relationship fixes. Do not rewrite from scratch. |
 
-**How to use:** If the user says "quick overview" or "just the big picture" → high-level-overview. If they point to a subpath (e.g. "only services/billing") → subsystem-deep-dive with that path. If `architecture.sruja` already exists and they want it updated → diff-and-refine. Otherwise → standard.
+**How to use:** If the user says "quick overview" or "just the big picture" → high-level-overview. If they point to a subpath (e.g. "only services/billing") or ask to "extract for one area" → subsystem-deep-dive with that path; use the [Concise extraction summary](#concise-extraction-summary-when-user-asks-to-extract-or-focus-on-an-area) format for output (no full DSL unless they ask). If `architecture.sruja` already exists and they want it updated → diff-and-refine. Otherwise → standard.
 
 ## Phased discovery playbook (follow this order)
 
@@ -241,7 +284,7 @@ After multiple parts: either **stitch** (combine fragments into one file when th
 
 ## Process (high level)
 
-1. **Gather repo context; then either ask contextual questions or go straight to generate** – Run `sruja discover --context -r .`. Use [Choose approach](#choose-approach-from-repo-two-step-vs-one-go): small/obvious → one-go; large/ambiguous → two-step (derive questions, then generate). For large scope, use [Divide analysis into multiple parts](#divide-analysis-into-multiple-parts-when-scope-is-large). See [Contextual discovery](#contextual-discovery-derive-questions-from-repo-context).
+1. **Gather repo context; then either ask contextual questions or go straight to generate** – Run `sruja discover --context -r .` (or `-r <subpath>` if the user already chose an area). If the user asked for **selective extraction** or "focus on one area", use [Interactive and selective capture](#interactive-and-selective-capture-use-sruja-only): show suggested areas, let them pick (or use the only area), then run discover for that path and output the [concise summary](#concise-extraction-summary-when-user-asks-to-extract-or-focus-on-an-area) only. Otherwise use [Choose approach](#choose-approach-from-repo-two-step-vs-one-go): small/obvious → one-go; large/ambiguous → two-step (derive questions, then generate). For large scope, use [Divide analysis into multiple parts](#divide-analysis-into-multiple-parts-when-scope-is-large). See [Contextual discovery](#contextual-discovery-derive-questions-from-repo-context).
 2. **Choose discovery mode** – [Discovery modes](#discovery-modes-choose-one-per-run): high-level-overview, standard, subsystem-deep-dive, or diff-and-refine. Use mode to set scope and depth.
 3. **Understand** – From answers and repo: single vs multi-repo, monolith vs microservices, entry points, and **scope** (minimal / standard / deep). Default to standard.
 4. **Collect (phased playbook)** – Follow [Phased discovery playbook](#phased-discovery-playbook-follow-this-order): deployables → entry points → data stores/queues → service-to-service → UI. Read key files in **read order** (README/manifest → entry points → one level of imports → config). See [REFERENCE.md](REFERENCE.md) for file patterns and playbook detail.
@@ -331,7 +374,7 @@ This makes it easy for the developer to correct or confirm before treating the a
 - **git** – Clone repos, explore history
 - **read** – Read files from the filesystem
 - **fetch** – Fetch URLs (specs, docs)
-- **sruja** – `sruja lint`, `sruja export`
+- **sruja** – `sruja discover --context -r <path>`, `sruja scan <path>`, `sruja lint`, `sruja export`. Use discover and scan for static extraction; do not paste full scan JSON — summarize concisely.
 
 ## Full process and examples
 
