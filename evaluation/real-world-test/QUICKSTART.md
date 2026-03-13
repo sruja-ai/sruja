@@ -266,7 +266,7 @@ express = system "Express.js" {
 ## Need Help?
 
 - **Detailed guide**: See `EVALUATION_GUIDE.md`
-- **Examples**: Check `examples/` directory
+- **Examples**: Check `book/valid-examples/` (canonical in-repo examples)
 - **Issues**: Open a GitHub issue
 - **Community**: Join Discord
 

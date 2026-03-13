@@ -1,0 +1,64 @@
+// Canonical example for the book: feedback loops (reinforcing + balancing).
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+customer = person "Customer"
+manager = person "Product Manager"
+
+ecommerce = system "E-Commerce System" {
+  webApp = container "Web Application" {
+    technology "React"
+    description "Customer-facing storefront"
+  }
+
+  api = container "API Service" {
+    technology "Rust"
+    description "Business logic and data access"
+  }
+
+  database = database "PostgreSQL Database" {
+    technology "PostgreSQL 14"
+  }
+}
+
+analytics = system "Analytics Service" {
+  metadata {
+    tags ["external"]
+  }
+}
+
+customer -> ecommerce.webApp "uses"
+ecommerce.webApp -> ecommerce.api "calls"
+ecommerce.api -> ecommerce.database "stores data in"
+ecommerce.api -> analytics "sends events to"
+manager -> ecommerce.api "monitors"
+ecommerce.webApp -> ecommerce "part of"
+ecommerce.api -> ecommerce "part of"
+ecommerce.database -> ecommerce "part of"
+
+GrowthLoop = feedback "R1: Growth Loop" {
+  loop_type "reinforcing"
+  loop_id "R1"
+  description "Customer usage generates data, which improves personalization, driving more usage"
+
+  customer -> ecommerce.webApp "submits order"
+  ecommerce.webApp -> ecommerce.api "logs transaction"
+  ecommerce.api -> analytics "sends usage data"
+  analytics -> ecommerce.webApp "provides personalization"
+  ecommerce.webApp -> customer "receives personalized experience"
+}
+
+QualityControlLoop = feedback "B1: Quality Control Loop" {
+  loop_type "balancing"
+  loop_id "B1"
+  description "Manager monitoring detects quality issues and triggers corrective actions"
+
+  ecommerce.api -> ecommerce.database "updates inventory"
+  ecommerce.api -> manager "sends alerts to"
+  manager -> ecommerce.api "adjusts configuration"
+  ecommerce.api -> ecommerce.database "optimizes"
+}
+

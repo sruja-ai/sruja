@@ -20,7 +20,7 @@ header() { echo -e "${CYAN}${BOLD}$1${NC}"; }
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-RESULTS_DIR="${1:-$PROJECT_ROOT/evaluation/results}"
+RESULTS_DIR="${1:-$PROJECT_ROOT/evaluation/local-artifacts/testing}"
 
 if [ ! -d "$RESULTS_DIR" ]; then
   error "Results directory not found: $RESULTS_DIR"
@@ -39,7 +39,7 @@ if [ -z "$EVAL_FILES" ]; then
   error "No evaluation files found"
   echo ""
   echo "Run agent analysis and evaluation first:"
-  echo "  1. ./test_agent_skills.sh <tier>"
+  echo "  1. ./scripts/testing/agent_skill_benchmark.sh <tier>"
   echo "  2. Follow AGENT_INSTRUCTIONS.md for each project"
   echo "  3. ./scripts/evaluate_agent_output.sh <project_name>"
   exit 1

@@ -20,7 +20,7 @@ Share example Sruja files with the assistant:
 
 ```
 Here's an example Sruja file:
-[paste example from examples/ directory]
+[paste example from `book/valid-examples/`]
 ```
 
 ### 3. Point to Documentation
@@ -29,7 +29,7 @@ Reference the official documentation:
 
 ```
 Reference: https://sruja.ai/docs
-Examples: https://github.com/sruja-ai/sruja/tree/main/examples
+Examples: `book/valid-examples/` (canonical in-repo) and the mdBook “Examples Gallery”
 ```
 
 ## Recommended Prompt Template
@@ -57,7 +57,7 @@ Can you help me write the Sruja code for this?
    - Also: `crates/sruja-language/src/ast.rs` (AST and parser-side structure)
 
 2. **Examples**: Real-world usage examples
-   - Location: `examples/` directory
+   - Location: `book/valid-examples/`
    - Contains: 40+ example files covering all features
 
 3. **Documentation**: User-facing docs
@@ -124,7 +124,7 @@ sruja export svg my-architecture.sruja > my-architecture.svg
 ## Resources
 
 - **Language Spec**: `docs/LANGUAGE_SPECIFICATION.md`
-- **Examples**: `examples/` directory
+- **Examples**: `book/valid-examples/`
 - **Documentation**: https://sruja.ai
 - **GitHub Repo**: https://github.com/sruja-ai/sruja
 
@@ -132,7 +132,7 @@ sruja export svg my-architecture.sruja > my-architecture.svg
 
 If you find ways to improve AI assistant support, please:
 1. Update this guide
-2. Add examples to the `examples/` directory
+2. Add examples to `book/valid-examples/`
 3. Improve the language specification
 4. Open an issue or PR
 

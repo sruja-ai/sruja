@@ -247,9 +247,9 @@ Before starting Module 2, verify:
 - **Kafka:** Millions of messages per second
 
 ### Sruja Examples
-- Reference: `sruja/examples/` directory
-- Microservices pattern: `sruja/examples/pattern_microservices.sruja`
-- Demo: `sruja/examples/demo_*.sruja`
+- Reference: `book/valid-examples/` directory
+- Microservices pattern: `book/valid-examples/pattern-microservices.sruja`
+- Scenarios: `book/valid-examples/scenarios-basic.sruja`
 
 ---
 

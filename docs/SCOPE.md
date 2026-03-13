@@ -1,6 +1,6 @@
 # Product scope
 
-**Strategy:** For Architecture Intelligence direction, module decisions, and execution plan, see [architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md](../architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md).
+**Strategy:** For Architecture Intelligence direction, module decisions, and execution plan, see [docs/internal/architecture-lab/AI_FIRST_MODULE_ANALYSIS_FINAL.md](internal/architecture-lab/AI_FIRST_MODULE_ANALYSIS_FINAL.md).
 
 Sruja is an **architecture-as-code tool for the AI SDLC process**—not a diagramming product. We ship:
 
@@ -9,7 +9,7 @@ Sruja is an **architecture-as-code tool for the AI SDLC process**—not a diagra
 3. **WASM** (`sruja-wasm`) – browser/Node export and parsing
 4. **mdBook** (`book/`) – **this is the website** (no separate Astro/React site)
 5. **VS Code extension** (`extension/`) – edit, preview, LSP
-6. **Architecture intelligence** – CLI: quickstart, drift, why, analyze, context; sruja-app (desktop: repo + query); sruja-graph, sruja-scan, sruja-diff, sruja-intent. See [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md) for current state.
+6. **Architecture intelligence** – CLI: quickstart, drift, why, analyze, context; sruja-app (desktop: repo + query); sruja-graph, sruja-scan, sruja-diff, sruja-intent.
 
 Nothing else is in scope (no designer app, no storybook, no social-publish, no separate website app).
 
@@ -33,7 +33,7 @@ Nothing else is in scope (no designer app, no storybook, no social-publish, no s
 | **crates/sruja-intent** | Intent vs. reality comparison |
 | **book/** | mdBook source; build output = deployed website |
 | **extension/** | VS Code extension (preview, LSP, snippets) |
-| **examples/** | Example `.sruja` files (used by book and CLI). |
+| **book/valid-examples/** | Canonical example `.sruja` files (rendered in the book). |
 
 ## What is out of scope
 

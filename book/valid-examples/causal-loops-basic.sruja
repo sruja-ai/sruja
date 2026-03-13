@@ -1,0 +1,107 @@
+// Canonical example for the book: causal loops with polarity and delays.
+
+variable = kind "Variable"
+
+pressure = variable "Work Pressure"
+effort = variable "Effort"
+burnout = variable "Burnout"
+quality = variable "Work Quality"
+demand = variable "Demand"
+inventoryLevel = variable "Inventory Level"
+reorder = variable "Reorder"
+inTransit = variable "In Transit"
+customerDemand = variable "Customer Demand"
+systemQuality = variable "System Quality"
+marketDemand = variable "Market Demand"
+revenue = variable "Revenue"
+investment = variable "Investment"
+capacity = variable "Capacity"
+
+ProductivityLoop = causal_loop "Productivity Loop" {
+  loop_type "reinforcing"
+  loop_id "R1"
+  description "Work pressure creates a vicious cycle of burnout and reduced quality"
+
+  pressure -> effort {
+    effect "leads to"
+    polarity "+"
+  }
+
+  effort -> burnout {
+    effect "increases"
+    polarity "+"
+  }
+
+  burnout -> quality {
+    effect "decreases"
+    polarity "-"
+    delay "1-2 weeks"
+  }
+
+  quality -> pressure {
+    effect "increases"
+    polarity "+"
+  }
+}
+
+InventoryLoop = causal_loop "Inventory Management Loop" {
+  loop_type "balancing"
+  loop_id "B1"
+  description "Balancing loop for inventory management with delivery delays"
+
+  demand -> inventoryLevel {
+    effect "depletes"
+    polarity "-"
+  }
+
+  inventoryLevel -> reorder {
+    effect "triggers when low"
+    polarity "+"
+  }
+
+  reorder -> inTransit {
+    effect "ships"
+    polarity "+"
+    delay "2 weeks delivery"
+  }
+
+  inTransit -> inventoryLevel {
+    effect "restocks"
+    polarity "+"
+  }
+}
+
+GrowthUnderinvestment = causal_loop "Growth and Underinvestment" {
+  loop_type "reinforcing"
+  loop_id "R2"
+  description "Growth loop competes with underinvestment loop"
+
+  systemQuality -> marketDemand {
+    effect "attracts"
+    polarity "+"
+  }
+
+  marketDemand -> revenue {
+    effect "generates"
+    polarity "+"
+  }
+
+  revenue -> investment {
+    effect "enables"
+    polarity "+"
+  }
+
+  investment -> capacity {
+    effect "builds"
+    polarity "+"
+  }
+
+  capacity -> systemQuality {
+    effect "supports"
+    polarity "+"
+  }
+}
+
+customerDemand -> demand "drives"
+demand -> inventoryLevel "inventory depletion"
+

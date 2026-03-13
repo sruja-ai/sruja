@@ -1,0 +1,50 @@
+// Canonical example for the book: checkout saga architecture (orchestration + event bus).
+
+actor = kind "Actor"
+service = kind "Service"
+db = kind "Database"
+queue = kind "Message Queue"
+system = kind "System"
+
+customer = actor "Customer"
+
+checkout_system = system "Checkout Architecture" {
+  api_gateway = service "API Gateway"
+
+  order_service = service "Order Service" {
+    tech "Node.js"
+    order_db = db "Order DB"
+  }
+
+  payment_service = service "Payment Service" {
+    tech "Go"
+    payment_db = db "Payment DB"
+  }
+
+  inventory_service = service "Inventory Service" {
+    tech "Java"
+    inv_db = db "Inventory DB"
+  }
+
+  saga_orchestrator = service "Saga Orchestrator" {
+    tech "Temporal"
+    description "Manages the state of the checkout transaction"
+  }
+
+  event_bus = queue "Event Bus" {
+    tech "Kafka"
+  }
+}
+
+customer -> api_gateway "Submit Order"
+api_gateway -> order_service "Create Pending Order"
+order_service -> saga_orchestrator "Start Saga"
+order_service -> order_db "Stores"
+payment_service -> payment_db "Stores"
+inventory_service -> inv_db "Stores"
+api_gateway -> event_bus "Publishes Events"
+saga_orchestrator -> checkout_system "Part of"
+order_service -> checkout_system "Part of"
+payment_service -> checkout_system "Part of"
+inventory_service -> checkout_system "Part of"
+

@@ -66,7 +66,7 @@ Sruja is an open source project, and we welcome contributions of all sizes! Ther
 - Add test cases
 - Fix small bugs
 - Improve error messages
-- Add examples to the `examples/` directory
+- Add examples to `book/valid-examples/` and a matching page under `book/src/examples/`
 - Improve CLI help text
 
 **Documentation Code**
@@ -193,7 +193,7 @@ Ready to contribute? Here are some quick ways to get started:
 1. **Join Discord** and introduce yourself
 2. **Star the repository** on GitHub to show your support
 3. **Fix a typo** in the documentation
-4. **Add an example** to the `examples/` directory
+4. **Add an example** to `book/valid-examples/` and a matching page under `book/src/examples/`
 5. **Share your use case** in GitHub Discussions
 
 Every contribution, no matter how small, helps make Sruja better for everyone. Thank you for being part of the community!

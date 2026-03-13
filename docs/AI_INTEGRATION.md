@@ -340,7 +340,7 @@ jobs:
 
 - **Documentation**: https://sruja.ai
 - **Language Spec**: docs/LANGUAGE_SPECIFICATION.md
-- **Examples**: examples/
+- **Examples**: `book/valid-examples/` (canonical examples rendered in the mdBook)
 - **GitHub**: https://github.com/sruja-ai/sruja
 - **Discord**: https://discord.gg/VNrvHPV5
 
@@ -348,7 +348,7 @@ jobs:
 
 To improve AI integration:
 
-1. Add more examples to `examples/`
+1. Add more examples to `book/valid-examples/` (and a matching page under `book/src/examples/`)
 2. Document new patterns in this guide
 3. Create prompt templates for common scenarios
 4. Share successful prompts with the community

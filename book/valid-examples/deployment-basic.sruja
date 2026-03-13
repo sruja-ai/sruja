@@ -1,0 +1,60 @@
+// Canonical example for the book: deployment definitions and nodes.
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+customer = person "Customer"
+
+ecommerce = system "E-Commerce Platform" {
+  webApp = container "Web Application" {
+    technology "React"
+    description "Customer UI served behind the load balancer"
+  }
+
+  api = container "REST API" {
+    technology "Go"
+    description "Backend API for checkout and catalog"
+  }
+
+  db = database "PostgreSQL Database" {
+    technology "PostgreSQL 14"
+    description "Primary data store"
+  }
+}
+
+customer -> ecommerce.webApp "uses"
+ecommerce.webApp -> ecommerce.api "calls"
+ecommerce.api -> ecommerce.db "reads/writes"
+ecommerce.webApp -> ecommerce "part of"
+ecommerce.api -> ecommerce "part of"
+ecommerce.db -> ecommerce "part of"
+
+deployment Prod "Production" {
+  node AWS "AWS Cloud" {
+    node USEast1 "US-East-1" {
+      infrastructure LB "Application Load Balancer"
+      containerInstance webApp
+      containerInstance api
+    }
+
+    node USWest2 "US-West-2" {
+      infrastructure DB "RDS PostgreSQL"
+      containerInstance db
+    }
+  }
+}
+
+deployment Staging "Staging Environment" {
+  node AWS "AWS Cloud" {
+    node USEast1 "US-East-1" {
+      infrastructure LB "Application Load Balancer"
+      containerInstance webApp
+      containerInstance api
+      infrastructure DB "RDS PostgreSQL"
+      containerInstance db
+    }
+  }
+}
+

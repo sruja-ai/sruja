@@ -1,0 +1,307 @@
+// Canonical example for the book: microservices architecture with implied relationships.
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+queue = kind "Queue"
+
+customer = person "Customer" {
+  description "End user purchasing products"
+  metadata { tags ["R1", "R2"] }
+}
+
+merchant = person "Merchant" {
+  description "Seller managing inventory"
+  metadata { tags ["R1"] }
+}
+
+admin = person "Platform Administrator" {
+  description "Admin managing the platform"
+  metadata { tags ["R3"] }
+}
+
+ecommerce = system "E-Commerce Platform" {
+  description "A scalable microservices platform for online retail"
+  metadata { flags ["R1", "R4"] }
+
+  apiGateway = container "API Gateway" {
+    technology "Kong"
+    description "Entry point for all external traffic"
+    tags ["R1", "R2", "R4"]
+
+    routing = component "Routing" {
+      description "Routes requests to appropriate services based on path"
+      technology "Kong Plugin"
+    }
+    auth = component "Authentication" {
+      description "Handles JWT token validation"
+      technology "Kong Plugin"
+      tags ["R3"]
+    }
+    rateLimit = component "Rate Limiting" {
+      description "Prevents abuse by limiting req/s"
+      technology "Redis-backed"
+      tags ["R1", "R4"]
+    }
+  }
+
+  catalogService = container "Catalog Service" {
+    technology "Java, Spring Boot"
+    description "Manages product catalog information"
+
+    productApi = component "Product API" {
+      description "API for product retrieval"
+      technology "Spring MVC"
+      scale {
+        min 2
+        max 5
+        metric "request rate > 1000 req/s"
+      }
+      tags ["R1", "R2"]
+    }
+    searchApi = component "Search API" {
+      description "Full-text search for products"
+      technology "Elasticsearch Client"
+      tags ["R4"]
+    }
+    categoryApi = component "Category API" {
+      description "Manages product categories"
+      technology "Spring MVC"
+    }
+  }
+
+  inventoryService = container "Inventory Service" {
+    technology "Go"
+    description "Tracks product stock levels"
+
+    stockApi = component "Stock API" {
+      description "Real-time stock checking"
+      technology "Gin"
+      tags ["R1"]
+    }
+    reservationApi = component "Reservation API" {
+      description "Reserves stock during checkout"
+      technology "Gin"
+      tags ["R3"]
+    }
+  }
+
+  cartService = container "Cart Service" {
+    technology "Node.js"
+    description "Manages user shopping carts"
+
+    cartApi = component "Cart API" {
+      description "CRUD operations for cart"
+      technology "Express"
+    }
+    sessionManager = component "Session Manager" {
+      description "Manages user sessions"
+      technology "Express-Session"
+    }
+  }
+
+  orderService = container "Order Service" {
+    technology "Java, Spring Boot"
+    description "Orchestrates order processing"
+    tags ["R1"]
+
+    orderApi = component "Order API" {
+      description "Order placement endpoints"
+      technology "Spring MVC"
+    }
+    orderProcessor = component "Order Processor" {
+      description "Asynchronous order processing logic"
+      technology "Spring Batch"
+    }
+    fulfillmentCoordinator = component "Fulfillment Coordinator" {
+      description "Coordinates with shipping providers"
+      technology "Spring Integration"
+    }
+  }
+
+  paymentService = container "Payment Service" {
+    technology "Go"
+    description "Handles payment processing"
+    tags ["R3"]
+
+    paymentApi = component "Payment API" {
+      description "Payment gateway integration"
+      technology "Go Standard Lib"
+    }
+    refundProcessor = component "Refund Processor" {
+      description "Processes refunds asynchronously"
+      technology "Go Worker"
+    }
+  }
+
+  userService = container "User Service" {
+    technology "Python, FastAPI"
+    description "Manages user profiles and authentication"
+
+    authApi = component "Auth API" {
+      description "Login/Signup endpoints"
+      technology "FastAPI"
+      tags ["R3"]
+    }
+    profileApi = component "Profile API" {
+      description "User profile management"
+      technology "FastAPI"
+    }
+    preferenceApi = component "Preference API" {
+      description "User preferences"
+      technology "FastAPI"
+    }
+  }
+
+  notificationService = container "Notification Service" {
+    technology "Node.js"
+    description "Sends emails, SMS, and push notifications"
+
+    emailSender = component "Email Sender" {
+      description "SMTP Client"
+      technology "Nodemailer"
+    }
+    smsSender = component "SMS Sender" {
+      description "SMS Gateway Client"
+      technology "Twilio SDK"
+    }
+    pushNotifier = component "Push Notifier" {
+      description "Push Notification Service"
+      technology "Firebase Admin SDK"
+    }
+  }
+
+  catalogDb = database "Catalog Database" {
+    technology "PostgreSQL"
+    description "Stores product information"
+    metadata { tags ["R1"] }
+  }
+
+  inventoryDb = database "Inventory Database" {
+    technology "PostgreSQL"
+    description "Stores inventory stock"
+    metadata { tags ["R3"] }
+  }
+
+  cartDb = database "Cart Database" {
+    technology "Redis"
+    description "Stores temporary cart sessions"
+    metadata { tags ["R2"] }
+  }
+
+  orderDb = database "Order Database" {
+    technology "PostgreSQL"
+    description "Stores order history"
+    metadata { tags ["R1"] }
+  }
+
+  userDb = database "User Database" {
+    technology "MongoDB"
+    description "Stores user profiles"
+    metadata { tags ["R3"] }
+  }
+
+  orderEvents = queue "Order Events" {
+    technology "Kafka"
+    description "Order processing events"
+    metadata { tags ["R1"] }
+  }
+
+  notificationQueue = queue "Notification Queue" {
+    technology "RabbitMQ"
+    description "Async notification channel"
+    metadata { tags ["R3"] }
+  }
+}
+
+paymentProvider = system "Payment Provider" {
+  description "Third-party payment gateway"
+  metadata {
+    tags ["external", "R3"]
+  }
+}
+
+shippingProvider = system "Shipping Provider" {
+  description "Logistics partner API"
+  metadata {
+    tags ["external", "R1"]
+  }
+}
+
+emailService = system "Email Service" {
+  description "Transactional email provider"
+  metadata {
+    tags ["external", "R4"]
+  }
+}
+
+customer -> ecommerce.apiGateway "uses platform via"
+merchant -> ecommerce.apiGateway "manages store via"
+admin -> ecommerce.apiGateway "administers system via"
+
+ecommerce.apiGateway -> ecommerce.catalogService "routes catalog requests to"
+ecommerce.apiGateway -> ecommerce.cartService "routes cart requests to"
+ecommerce.apiGateway -> ecommerce.orderService "routes order requests to"
+ecommerce.apiGateway -> ecommerce.paymentService "routes payment requests to"
+ecommerce.apiGateway -> ecommerce.userService "routes user requests to"
+ecommerce.apiGateway -> ecommerce.inventoryService "routes inventory requests to"
+
+ecommerce.catalogService -> ecommerce.inventoryService "checks availability with"
+ecommerce.cartService -> ecommerce.inventoryService "reserves items in"
+ecommerce.orderService -> ecommerce.inventoryService "deducts stock from"
+ecommerce.orderService -> ecommerce.paymentService "processes payment via"
+ecommerce.orderService -> ecommerce.notificationService "sends notifications through"
+
+ecommerce.catalogService -> ecommerce.catalogDb "reads and writes to"
+ecommerce.inventoryService -> ecommerce.inventoryDb "reads and writes to"
+ecommerce.cartService -> ecommerce.cartDb "reads and writes to"
+ecommerce.orderService -> ecommerce.orderDb "reads and writes to"
+ecommerce.userService -> ecommerce.userDb "reads and writes to"
+
+ecommerce.orderService -> ecommerce.orderEvents "publishes order events to"
+ecommerce.notificationService -> ecommerce.notificationQueue "queues notifications to"
+
+ecommerce.apiGateway.auth -> ecommerce.apiGateway.rateLimit "verifies identity before"
+ecommerce.apiGateway.rateLimit -> ecommerce.apiGateway.routing "passed requests to"
+
+ecommerce.catalogService.productApi -> ecommerce.catalogDb "queries"
+ecommerce.catalogService.categoryApi -> ecommerce.catalogDb "queries"
+ecommerce.catalogService.searchApi -> ecommerce.catalogDb "indexes"
+
+ecommerce.inventoryService.stockApi -> ecommerce.inventoryDb "checks"
+ecommerce.inventoryService.reservationApi -> ecommerce.inventoryDb "locks"
+
+ecommerce.cartService.cartApi -> ecommerce.cartService.sessionManager "validates session with"
+ecommerce.cartService.cartApi -> ecommerce.cartDb "persists paths"
+
+ecommerce.orderService.orderApi -> ecommerce.orderService.orderProcessor "submits order to"
+ecommerce.orderService.orderProcessor -> ecommerce.orderService.fulfillmentCoordinator "triggers"
+ecommerce.orderService.orderProcessor -> ecommerce.orderDb "saves"
+
+ecommerce.paymentService.paymentApi -> paymentProvider "charges"
+ecommerce.paymentService.refundProcessor -> paymentProvider "refunds"
+
+ecommerce.userService.authApi -> ecommerce.userDb "authenticates against"
+ecommerce.userService.profileApi -> ecommerce.userDb "reads"
+ecommerce.userService.preferenceApi -> ecommerce.userDb "reads/writes preferences"
+
+ecommerce.notificationService.emailSender -> emailService "sends"
+ecommerce.notificationService.smsSender -> ecommerce.notificationQueue "enqueues SMS notifications"
+ecommerce.notificationService.pushNotifier -> ecommerce.notificationQueue "enqueues push notifications"
+
+ecommerce.paymentService -> paymentProvider "processes payments through"
+ecommerce.orderService -> shippingProvider "creates shipments via"
+ecommerce.notificationService -> emailService "sends emails through"
+
+ecommerce -> R1 "satisfies"
+ecommerce -> R2 "satisfies"
+ecommerce -> R3 "satisfies"
+ecommerce -> R4 "satisfies"
+
+R1 = requirement functional "Must handle 50k orders/day"
+R2 = requirement performance "API response time < 300ms (p95)"
+R3 = requirement availability "99.9% uptime"
+R4 = requirement scalability "Scale to 10x traffic during sales events"
+

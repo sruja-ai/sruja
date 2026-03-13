@@ -72,6 +72,6 @@ RAG.Generator -> AgentSystem.Executor "Produce answer"
 
 ## Next Steps
 
-- Explore `examples/pattern_agentic_ai.sruja` and `examples/pattern_rag_pipeline.sruja`
+- Explore `book/valid-examples/pattern-agentic-ai.sruja` and `book/valid-examples/pattern-rag-pipeline.sruja`
 - Add scenarios to capture common workflows
 - Use views to present developer vs. executive perspectives

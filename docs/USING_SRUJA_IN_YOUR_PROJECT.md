@@ -59,7 +59,7 @@ You get: architecture inventory, health score, top findings, actionable fixes, a
 - `sruja why "why did we choose PostgreSQL?" -r .` — Ask questions with deterministic evidence
 - `sruja drift -r .` — Detect drift (circular deps, orphans, layer violations)
 
-See [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md) for details.
+See [RUN_GUIDE.md](RUN_GUIDE.md) for running the CLI and demos.
 
 ---
 
@@ -174,12 +174,9 @@ Use `--locked` so the install matches the lockfile in the Sruja repo for reprodu
 
 ## 5. Where to go next
 
-- **Incremental capture and stitching** – [INCREMENTAL_ARCHITECTURE_CAPTURE.md](INCREMENTAL_ARCHITECTURE_CAPTURE.md) – capture architecture in pieces and combine into one model
-- **Architecture Intelligence** – [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md) – quickstart, why, drift (no .sruja required)
 - **DSL reference** – [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md)
 - **AI editors and catching bugs** – [AI_EDITOR_INTEGRATION.md](AI_EDITOR_INTEGRATION.md)
-- **Reviewing AI-generated code** – [REVIEWING_AI_GENERATED_CODE.md](REVIEWING_AI_GENERATED_CODE.md)
 - **Adoption and rollout** – [Adoption Guide](https://sruja.ai/docs/adoption-guide) and [Adoption Playbook](https://sruja.ai/docs/adoption-playbook) on the website
-- **Examples** – [examples/](https://github.com/sruja-ai/sruja/tree/main/examples) in the Sruja repo
+- **Examples** – The canonical examples live in `book/valid-examples/` and are rendered in the mdBook “Examples Gallery” at `sruja.ai`.
 
 Sruja is open source. To report issues or suggest improvements, use [GitHub Issues](https://github.com/sruja-ai/sruja/issues) or [Discussions](https://github.com/sruja-ai/sruja/discussions).

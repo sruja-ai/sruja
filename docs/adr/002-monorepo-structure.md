@@ -28,7 +28,7 @@ sruja/
 ├── pkg/          # Go packages (language, engine, export, etc.)
 ├── packages/     # TypeScript packages (shared, ui, layout, diagram)
 ├── apps/         # Applications (designer, website, vscode-extension)
-└── examples/     # Example .sruja files
+└── book/valid-examples/  # Canonical example .sruja files (rendered in the book)
 ```
 
 ## Consequences

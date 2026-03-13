@@ -20,12 +20,12 @@ cargo build --release -p sruja-cli
 ./target/release/sruja quickstart -r .
 ```
 
-See [ARCHITECTURE_INTELLIGENCE.md](ARCHITECTURE_INTELLIGENCE.md) for full flow and current state.
+See `docs/RUN_GUIDE.md` and `demo/README.md` for the end-to-end demo flow.
 
 ## Validate .sruja files
 
 ```bash
-./target/release/sruja lint examples/
+./target/release/sruja lint book/valid-examples/*.sruja
 ./target/release/sruja export markdown path/to/file.sruja
 ```
 

@@ -23,8 +23,8 @@ You don't need to write code to contribute! Here are easy ways to get started:
 - Verify documentation accuracy
 
 ### 3. 💡 Examples
-- Add new example `.sruja` files to `examples/`
-- Improve existing examples with comments
+- Add new example `.sruja` files to `book/valid-examples/`
+- Improve existing canonical examples and the matching book pages under `book/src/examples/`
 - Create example architectures for different domains
 
 ### 4. 🎨 Content
@@ -45,10 +45,9 @@ You don't need to write code to contribute! Here are easy ways to get started:
 
 **Option B: Pick from Contribution Ideas (no issue needed!)**
 Since the project is new, there may not be many issues yet. That's okay! Check out:
-- **[Contribution Ideas Guide](CONTRIBUTION_IDEAS.md)** - List of specific things you can work on
 - Common tasks that don't need issues:
   - Fix typos in documentation
-  - Add examples to `examples/` directory
+  - Add examples to `book/valid-examples/`
   - Improve error messages
   - Add test cases
   - Write tutorials or blog posts
@@ -171,9 +170,9 @@ git push origin fix/your-issue-name
 - Submit a PR with `docs: fix typo in [file]`
 
 ### 2. Add an Example
-- Create a new `.sruja` file in `examples/`
-- Add it to `examples/manifest.json`
-- Test it: `./bin/sruja compile examples/your-file.sruja`
+- Create a new `.sruja` file in `book/valid-examples/`
+- Add a matching page under `book/src/examples/` (and link it from the Examples Gallery)
+- Test it: `./bin/sruja compile book/valid-examples/your-file.sruja`
 - Submit a PR with `feat: add example for [architecture type]`
 
 ### 3. Improve Documentation

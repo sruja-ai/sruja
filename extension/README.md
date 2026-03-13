@@ -72,7 +72,7 @@ Run from VS Code (F5). Ensure the Sruja CLI is on PATH or set `sruja.lsp.path`. 
 
    | Check | How |
    |-------|-----|
-   | **Syntax highlighting** | Open a `.sruja` file (e.g. `examples/tutorial/01-basic-system.sruja`). Keywords, strings, `->` should be colored. |
+   | **Syntax highlighting** | Open a `.sruja` file (e.g. `book/valid-examples/getting-started.sruja`). Keywords, strings, `->` should be colored. |
    | **Diagnostics** | In a .sruja file, introduce an error (e.g. duplicate ID or invalid ref). After a short delay (or on save), Problems panel and red squiggles should show. |
    | **Run validation** | With a .sruja file active: Command Palette → “Sruja: Run validation”. Message should say “no issues” or “N error(s), M warning(s)”. |
    | **Export to Markdown** | With a .sruja file active: Command Palette → “Sruja: Export to Markdown” (or right‑click → same). A markdown preview tab opens; “Save” writes a `.md` next to the file. |

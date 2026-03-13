@@ -1,1 +1,0 @@
-This is a real codebase! Sruja parses these mock strings simply to demonstrate how the AST processing parses imports directly.

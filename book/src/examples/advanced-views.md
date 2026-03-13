@@ -14,4 +14,4 @@ Demonstrates custom view features with multiple perspectives on an e-commerce sy
 - **System Context** - External actors and system overview
 - **Data Layer** - Shows databases and their consumers
 
-<!-- sruja:export ../../examples/advanced_views.sruja --all-views -->
+<!-- sruja:export valid-examples/advanced-views.sruja --all-views -->

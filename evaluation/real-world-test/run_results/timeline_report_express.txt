@@ -1,2 +1,0 @@
-Wrote /Users/dilipkola/Workspace/sruja/evaluation/real-world-test/timelines/express/timeline_express.md
-Wrote /Users/dilipkola/Workspace/sruja/evaluation/real-world-test/timelines/express/timeline_express.json

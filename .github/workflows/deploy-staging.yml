@@ -12,7 +12,7 @@ on:
       - "crates/sruja-export/**"
       - "crates/sruja-language/**"
       - "crates/sruja-engine/**"
-      - "examples/**"
+      - "book/valid-examples/**"
       - "scripts/**"
       - ".github/workflows/deploy-staging.yml"
       - ".github/actions/deploy-to-github-pages/**"

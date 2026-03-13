@@ -87,7 +87,7 @@ Other useful commands:
 ```bash
 sruja drift -r .                    # Drift (cycles, orphans, layer violations)
 sruja analyze -r .                  # Full analysis (structural + semantic + intent)
-sruja lint examples/                # Validate .sruja files
+sruja lint book/valid-examples/*.sruja # Validate canonical book examples
 sruja export markdown file.sruja    # Export to Markdown
 ```
 
@@ -121,7 +121,7 @@ make demo-intel
 - **No API key** – Steps 1–4 run; step 5 (AI ask) is skipped with a hint, and `sruja why` is run as a deterministic fallback when possible.
 - **With API key** – Set `OPENROUTER_API_KEY` or `OPENAI_API_KEY` in repo root `.env` to enable the full AI ask step.
 
-See [Architecture Intelligence](ARCHITECTURE_INTELLIGENCE.md#demos) and `demo/README.md` for details.
+See `demo/README.md` for details.
 
 ---
 

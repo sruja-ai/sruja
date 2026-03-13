@@ -354,5 +354,5 @@ ECommerce -> EmailService "Sends notifications"
 
 ## Next Steps
 
-- Try the complete example: `examples/systems_thinking.sruja`
+- Try the complete example: `book/valid-examples/feedback-loops-basic.sruja` and `book/valid-examples/causal-loops-basic.sruja`
 - Learn [Deployment Modeling](tutorials/advanced/deployment-modeling.md) for infrastructure perspective

@@ -1,0 +1,24 @@
+// Canonical example for the book: ADRs, requirements, and policies.
+
+system = kind "System"
+
+shop = system "Shop" {
+  DB_Choice = adr "Database Selection" {
+    status "Accepted"
+    context "Choose between Postgres and Mongo"
+    decision "Use Postgres for relational needs"
+    consequences "Reliable ACID; more ops complexity"
+  }
+}
+
+R1 = requirement functional "System must process orders"
+R2 = requirement nonfunctional "System must be maintainable and extensible"
+R3 = requirement constraint "Must use PostgreSQL database"
+R4 = requirement performance "API must respond in under 200ms"
+R5 = requirement security "All data must be encrypted at rest"
+
+SecurityPolicy = policy "Encrypt data at rest" {
+  category "security"
+  enforcement "required"
+}
+

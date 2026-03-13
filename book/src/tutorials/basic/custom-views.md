@@ -156,14 +156,14 @@ You can auto-generate markdown diagrams in your mdBook by:
 
    ```bash
    # In Makefile or build script
-   sruja export markdown examples/advanced_views.sruja --all-views > book/src/generated/advanced_views.md
+   sruja export markdown book/valid-examples/advanced-views.sruja --all-views > book/src/generated/advanced_views.md
    ```
 
 3. **Manual inclusion**:
    Export once and include in your markdown:
 
    ```bash
-   sruja export markdown examples/advanced_views.sruja --all-views > book/src/generated/advanced_views.md
+   sruja export markdown book/valid-examples/advanced-views.sruja --all-views > book/src/generated/advanced_views.md
    ```
 
    Then in your `.md` files:

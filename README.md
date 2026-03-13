@@ -149,7 +149,7 @@ sruja analyze -r . -f json
 | **With a baseline** | `sruja drift -r . -a architecture.sruja`, `sruja lint`, `sruja export` | When you have (or create) a `.sruja` file. |
 | **Optional** | `sruja intent check`, `sruja runtime analyze` | Trace files or intent dir. |
 
-**Drift modes:** `sruja drift -r .` runs **scan-only** (no `.sruja` needed). Use `sruja drift -r . -a architecture.sruja` to **compare code to a declared baseline**; create one with the [Architecture Agent](docs/ARCHITECTURE_AGENT.md) or manually.
+**Drift modes:** `sruja drift -r .` runs **scan-only** (no `.sruja` needed). Use `sruja drift -r . -a architecture.sruja` to **compare code to a declared baseline**; create one with the agent skill (see `docs/INSTALL_AS_SKILL.md`) or manually.
 
 **Optional environment variables** (defaults when flags are omitted):
 
@@ -215,7 +215,7 @@ sruja drift-pr -r . --base origin/main -f github-actions
 sruja drift-pr -r . --base origin/main -f json
 ```
 
-See [Architecture Intelligence](docs/ARCHITECTURE_INTELLIGENCE.md) for details. For real output and a short “why use Sruja on my repo?” proof, see [Value proof](docs/VALUE_PROOF.md).
+See `docs/RUN_GUIDE.md` for how to run the CLI and demos.
 
 ### AI-Assisted Discovery (Optional)
 
@@ -225,7 +225,7 @@ Use your AI assistant (Cursor, Claude, Copilot) to discover architecture from yo
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent
 ```
 
-Then ask: "Analyze the architecture of my repository." The AI will scan your code and generate `.sruja` files. See [Architecture Agent](docs/ARCHITECTURE_AGENT.md) for details.
+Then ask: "Analyze the architecture of my repository." The AI will scan your code and generate `.sruja` files. See `docs/INSTALL_AS_SKILL.md` for the recommended prompt.
 
 ### Define Architecture Manually (Optional)
 
@@ -291,7 +291,7 @@ sruja export markdown example.sruja
 - **CLI first, no key required:** `sruja quickstart`, `sruja why "question" -r .`, `sruja drift -r .` — deterministic evidence from scan and graph
 - **Query:** "Why are we using X?" uses graph + scan evidence (deterministic); use the Sruja skill in your editor for AI interpretation
 
-**Strategy:** [architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md](architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md)
+**Strategy (internal):** [docs/internal/architecture-lab/AI_FIRST_MODULE_ANALYSIS_FINAL.md](docs/internal/architecture-lab/AI_FIRST_MODULE_ANALYSIS_FINAL.md)
 
 ---
 
@@ -306,13 +306,7 @@ sruja export markdown example.sruja
 - [First Contribution](docs/FIRST_CONTRIBUTION.md) - Step-by-step guide
 - [Language Specification](docs/LANGUAGE_SPECIFICATION.md) - Complete DSL reference
 - [Design Philosophy](docs/DESIGN_PHILOSOPHY.md) - Language design principles
-- [Architecture Intelligence](docs/ARCHITECTURE_INTELLIGENCE.md) - CLI-first drift/why, zero-key; [Strategy](architecture/AI_FIRST_MODULE_ANALYSIS_FINAL.md)
-- [Adoption Plan](docs/ADOPTION_PLAN.md) - Making Sruja easy for teams
-
-**Content Creation:**
-
-- [Content Contribution](docs/CONTENT_CONTRIBUTION_GUIDE.md) - Creating courses & tutorials
-- [Content Style Guide](docs/CONTENT_STYLE_GUIDE.md) - Writing best practices
+- [How to run Sruja](docs/RUN_GUIDE.md) - Clone, build, CLI, demos, extension
 
 ---
 
@@ -331,7 +325,7 @@ sruja/
 │   ├── sruja-intent/     # Intent vs. reality comparison
 │   └── sruja-report/     # Report schema for analysis output
 ├── book/                 # mdBook documentation
-└── examples/             # Example .sruja files
+└── book/valid-examples/  # Canonical example .sruja files (rendered in the book)
 ```
 
 ---
@@ -377,7 +371,6 @@ We welcome contributions of all sizes!
 
 ### Quick Links
 
-- 💡 [Contribution Ideas](docs/CONTRIBUTION_IDEAS.md)
 - 🐛 [Good First Issues](https://github.com/sruja-ai/sruja/labels/good%20first%20issue)
 - 📖 [Full Contribution Guide](docs/CONTRIBUTING.md)
 - 💬 [Discord](https://discord.gg/VNrvHPV5) | [Discussions](https://github.com/sruja-ai/sruja/discussions)

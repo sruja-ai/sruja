@@ -1,0 +1,35 @@
+// Canonical example for the book: scenarios (stories) and steps.
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+
+user = person "Customer"
+
+inventory = system "Inventory System"
+
+ecommerce = system "E-Commerce System" {
+  cartPage = container "Cart Page" {
+    technology "React"
+    description "Cart UI and checkout entrypoint"
+  }
+}
+
+user -> ecommerce.cartPage "browses and shops via"
+ecommerce -> inventory "checks stock in"
+
+Checkout = scenario "User Checkout Flow" {
+  step user -> ecommerce.cartPage "adds item to cart"
+  step ecommerce.cartPage -> ecommerce "clicks checkout"
+  step ecommerce -> inventory "checks stock in"
+}
+
+// 'story' is an alias for 'scenario' - both work the same way
+LoginStory = story "User Login Flow" {
+  step user -> ecommerce.cartPage "enters credentials"
+  step ecommerce.cartPage -> ecommerce "validates user"
+}
+
+Checkout -> ecommerce "describes"
+LoginStory -> ecommerce "describes"
+

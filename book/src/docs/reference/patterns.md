@@ -108,7 +108,7 @@ AIQA.Retriever -> AIQA.VectorDB "Searches"
 AIQA.Generator -> AIQA.Retriever "Fetches contexts"
 ```
 
-See `examples/pattern_rag_pipeline.sruja` for a production-ready model.
+See `book/valid-examples/pattern-rag-pipeline.sruja` for a production-ready model.
 
 ## Agentic Orchestration
 
@@ -134,4 +134,4 @@ include *
 }
 ```
 
-See `examples/pattern_agentic_ai.sruja` for a complete agent graph.
+See `book/valid-examples/pattern-agentic-ai.sruja` for a complete agent graph.

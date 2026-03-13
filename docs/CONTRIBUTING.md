@@ -10,10 +10,8 @@ This step-by-step guide walks you through making your first contribution, even i
 
 ## Quick Links
 
-- 💡 **Contribution Ideas**: [What Can I Contribute?](CONTRIBUTION_IDEAS.md)
 - 🐛 **Find Issues**: [Good First Issues](https://github.com/sruja-ai/sruja/labels/good%20first%20issue)
 - 📖 **Development Guide**: [Development Practices](DEVELOPMENT.md)
-- 📝 **Content Guide**: [Content Contribution Guide](CONTENT_CONTRIBUTION_GUIDE.md)
 - 📐 **Stack**: Rust (CLI, LSP, engine, export), mdBook (docs). VS Code extension connects to the Rust LSP.
 - 💬 **Get Help**: [Discord](https://discord.gg/VNrvHPV5) | [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
 
@@ -24,7 +22,7 @@ Sruja is a Rust-focused repo containing:
 - **Language and CLI**: Parser, validator, export; CLI via `crates/sruja-cli`
 - **LSP**: `crates/sruja-lsp` – Language Server (for future VS Code extension integration)
 - **Book**: mdBook documentation in `book/`
-- **Examples**: Real-world architecture examples in `examples/`
+- **Examples**: Canonical book-backed examples in `book/valid-examples/`
 
 The **VS Code extension** will be reimplemented to integrate with the Rust LSP (diagnostics, syntax highlighting, symbol navigation, go to definition, markdown export). No Node/TypeScript app code remains.
 
@@ -93,8 +91,8 @@ make lint
 make build
 
 # Try examples
-./bin/sruja compile examples/example.sruja
-./bin/sruja lint examples/example.sruja
+./bin/sruja compile book/valid-examples/getting-started.sruja
+./bin/sruja lint book/valid-examples/getting-started.sruja
 ```
 
 For more details, see [Development Guide](DEVELOPMENT.md).
@@ -116,18 +114,18 @@ cargo build --release -p sruja-cli
 
 ## Working With Examples
 
-Example `.sruja` models live under `examples/`. After building the CLI:
+Example `.sruja` models live under `book/valid-examples/`. After building the CLI:
 
 ```bash
 # Compile an example
-./bin/sruja compile examples/example.sruja
+./bin/sruja compile book/valid-examples/getting-started.sruja
 
 # Lint an example
-./bin/sruja lint examples/example.sruja
+./bin/sruja lint book/valid-examples/getting-started.sruja
 
 # Export to different formats
-./bin/sruja export json examples/example.sruja
-./bin/sruja export markdown examples/example.sruja
+./bin/sruja export json book/valid-examples/getting-started.sruja
+./bin/sruja export markdown book/valid-examples/getting-started.sruja
 ```
 
 CI compiles and lints selected examples to catch regressions.
@@ -203,7 +201,7 @@ Optional scope: `feat(language): …`
 
 - 📝 **Documentation**: Fix typos, improve clarity, add examples
 - 🐛 **Testing**: Test features and report bugs
-- 💡 **Examples**: Add example architectures to `examples/` directory
+- 💡 **Examples**: Add example architectures to `book/valid-examples/` (and the book gallery)
 - ✍️ **Content**: Write tutorials, blog posts, or courses
 - 🌐 **Translation**: Translate documentation
 
@@ -235,7 +233,7 @@ Optional scope: `feat(language): …`
 If there aren't many issues yet, check **[Contribution Ideas](CONTRIBUTION_IDEAS.md)** for specific tasks you can work on. Common tasks that don't need issues:
 
 - Fix typos in documentation
-- Add examples to `examples/` directory
+- Add examples to `book/valid-examples/`
 - Improve error messages
 - Add test cases
 - Write tutorials or blog posts

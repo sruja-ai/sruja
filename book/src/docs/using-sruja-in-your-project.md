@@ -151,6 +151,6 @@ Use `--locked` so the install matches the lockfile in the Sruja repo for reprodu
 - **AI editors and catching bugs** – [AI editor integration](https://github.com/sruja-ai/sruja/blob/main/docs/AI_EDITOR_INTEGRATION.md) in the repo
 - **Reviewing AI-generated code** – [Reviewing AI-generated code](https://github.com/sruja-ai/sruja/blob/main/docs/REVIEWING_AI_GENERATED_CODE.md) in the repo
 - **Adoption and rollout** – [Adoption guide](adoption-guide.md) and [Adoption playbook](adoption-playbook.md) in this book
-- **Examples** – [examples/](https://github.com/sruja-ai/sruja/tree/main/examples) in the Sruja repo
+- **Examples** – [Examples Gallery](../examples/index.md) (canonical book-backed examples)
 
 Sruja is open source. To report issues or suggest improvements, use [GitHub Issues](https://github.com/sruja-ai/sruja/issues) or [Discussions](https://github.com/sruja-ai/sruja/discussions).

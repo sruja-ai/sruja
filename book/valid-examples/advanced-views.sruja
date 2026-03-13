@@ -1,0 +1,45 @@
+// Canonical example for the book: advanced custom views.
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+database = kind "Database"
+
+// Elements
+Customer = person "Customer"
+Admin = person "Administrator"
+
+Shop = system "E-Commerce Shop" {
+  WebApp = container "Web Application" {
+    technology "React"
+    description "Customer-facing web UI"
+    Cart = component "Shopping Cart"
+    Checkout = component "Checkout Service"
+    Catalog = component "Product Catalog"
+  }
+
+  API = container "REST API" {
+    Auth = component "Authentication"
+    Orders = component "Order Handler"
+  }
+
+  DB = database "PostgreSQL"
+  Cache = database "Redis Cache"
+}
+
+// Relationships
+Customer -> Shop.WebApp "browses"
+Admin -> Shop.WebApp "manages"
+Shop.WebApp -> Shop "part of"
+Shop.API -> Shop "part of"
+Shop.DB -> Shop "part of"
+Shop.Cache -> Shop "part of"
+Shop.WebApp -> Shop.API "calls"
+Shop.API -> Shop.DB "reads/writes"
+Shop.API -> Shop.Cache "reads"
+Shop.WebApp.Cart -> Shop.API.Auth "validates"
+Shop.API.Auth -> Shop.API.Orders "authorizes"
+Shop.WebApp.Checkout -> Shop.API.Orders "creates orders"
+Shop.WebApp.Catalog -> Shop.API "browses catalog via"
+

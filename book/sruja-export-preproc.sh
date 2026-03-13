@@ -2,7 +2,7 @@
 # mdbook preprocessor: Run sruja export on .sruja files and embed output in markdown.
 #
 # Usage in markdown:
-#   <!-- sruja:export examples/advanced_views.sruja --all-views -->
+#   <!-- sruja:export valid-examples/advanced-views.sruja --all-views -->
 #
 # This gets replaced with the generated markdown output.
 

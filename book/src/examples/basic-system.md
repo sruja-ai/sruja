@@ -11,4 +11,4 @@ Simple architecture showing a single system with persons.
 
 Shows the overall system context.
 
-<!-- sruja:export ../../examples/01-basic-system.sruja -->
+<!-- sruja:export valid-examples/getting-started.sruja -->

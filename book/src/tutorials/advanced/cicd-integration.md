@@ -56,7 +56,7 @@ If your workflow runs inside the [sruja](https://github.com/sruja-ai/sruja) repo
 - uses: ./.github/actions/sruja-validate
   with:
     working-directory: .
-    files: "examples/**/*.sruja" # or '**/*.sruja'
+    files: "book/valid-examples/**/*.sruja" # or '**/*.sruja'
     run-export: "false"
 ```
 

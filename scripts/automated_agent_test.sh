@@ -16,10 +16,10 @@ echo "════════════════════════�
 
 # Step 1: Prepare test repository
 echo "[1/6] Preparing test repository..."
-./test_agent_skills.sh "$TIER" "$PROJECT_NAME"
+./scripts/testing/agent_skill_benchmark.sh "$TIER" "$PROJECT_NAME"
 
 # Find the results directory
-RESULTS_DIR=$(find evaluation/results -name "agent_skill_test_*" -type d | sort | tail -1)
+RESULTS_DIR=$(find evaluation/local-artifacts/testing -name "agent_skill_benchmark_*" -type d | sort | tail -1)
 PROJECT_DIR="$RESULTS_DIR/$PROJECT_NAME"
 REPO_DIR="/tmp/sruja_test_$PROJECT_NAME"
 
@@ -65,7 +65,7 @@ $REPO_DIR
 - Focus on SYSTEM and CONTAINER level abstraction
 - Do NOT create components for individual functions or files
 - Group related modules into logical containers
-- Use the Sruja DSL syntax (see examples in examples/ directory)
+- Use the Sruja DSL syntax (see `book/valid-examples/` for canonical models)
 - Be specific about technologies (e.g., "PostgreSQL" not just "Database")
 
 ## Expected Output

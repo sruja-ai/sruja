@@ -13,7 +13,7 @@ This page shows the **actual rendered output** from running Sruja view export co
 Running:
 
 ```bash
-sruja export mermaid examples/advanced_views.sruja --view api_focus
+sruja export mermaid book/valid-examples/advanced-views.sruja --view api_focus
 ```
 
 **Output:**
@@ -44,7 +44,7 @@ end
 Running:
 
 ```bash
-sruja export markdown examples/advanced_views.sruja --all-views
+sruja export markdown book/valid-examples/advanced-views.sruja --all-views
 ```
 
 **Output:**
@@ -161,7 +161,7 @@ view all_containers {
 Running:
 
 ```bash
-sruja export mermaid examples/advanced_views.sruja --view all_containers
+sruja export mermaid book/valid-examples/advanced-views.sruja --view all_containers
 ```
 
 **Output:**
@@ -210,10 +210,10 @@ end
 
 ```bash
 # Single view to mermaid
-sruja export mermaid examples/advanced_views.sruja --view api_focus
+sruja export mermaid book/valid-examples/advanced-views.sruja --view api_focus
 
 # All views to markdown
-sruja export markdown examples/advanced_views.sruja --all-views > output.md
+sruja export markdown book/valid-examples/advanced-views.sruja --all-views > output.md
 ```
 
 ### From mdBook (Auto-generation)
@@ -222,7 +222,7 @@ Add a build step to your `book.toml` preprocessor or Makefile:
 
 ```bash
 # Generate views as part of build
-sruja export markdown examples/advanced_views.sruja --all-views > book/src/generated/views.md
+sruja export markdown book/valid-examples/advanced-views.sruja --all-views > book/src/generated/views.md
 ```
 
 Then include in your markdown:

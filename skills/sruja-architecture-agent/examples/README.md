@@ -144,7 +144,7 @@ service_b = system "Service B" {
 service_a.api -> service_b.api "REST API"
 ```
 
-**Note:** Import functionality is planned but not yet implemented. For multi-repo setups, see the `examples/multi-repo/` directory for the distributed pattern using external_system references.
+**Note:** Import functionality is planned but not yet implemented. For multi-repo setups, see `book/valid-examples/` for canonical patterns, and model multi-repo boundaries using `external_system` references.
 
 ### Documentation Pattern
 ```

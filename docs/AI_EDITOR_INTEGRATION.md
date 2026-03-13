@@ -48,7 +48,7 @@ Any editor that can launch the Sruja LSP (or use the VS Code extension) gets the
 - **Local:** Run `sruja lint` on any changed `.sruja`; run `make test` (or `cargo test` / `npm run test`) for the stack you touched.
 - **CI (this repo):** On every push/PR, when **any** `**/*.sruja` file changes, the workflow runs `sruja lint` on **all** `.sruja` files in the repo (examples, docs, lib, test-examples, etc.). So AI-added or edited architecture is validated automatically.
 - **PR template:** Includes checklists for “AI-generated code” and “Architecture / .sruja review” so authors confirm they ran lint and basic checks before requesting review.
-- **Reviewers:** See [Reviewing AI-generated code](REVIEWING_AI_GENERATED_CODE.md) for Sruja, Rust, and TypeScript checklists and common AI slip-ups.
+- **Reviewers:** Treat `.sruja` as a contract: ensure `sruja lint` is green and relationship labels/technologies/descriptions are present and specific.
 
 ## Validation in pipelines
 
@@ -103,6 +103,6 @@ Preserve all relationships and add any new ones needed. Output valid .sruja.
 
 - **Install as skill** – [INSTALL_AS_SKILL.md](INSTALL_AS_SKILL.md) – one-page guide for Cursor, Copilot, and other editors
 - **Language spec** – [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md)
-- **Examples** – `examples/` (40+ `.sruja` files)
+- **Examples** – `book/valid-examples/` (canonical, rendered in the mdBook)
 - **Docs** – https://sruja.ai/docs
 - **Skill install** – `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture`

@@ -13,7 +13,7 @@ inputs:
     required: false
     default: "."
   files:
-    description: "Glob for .sruja files to validate (e.g. examples/**/*.sruja or **/*.sruja)"
+    description: "Glob for .sruja files to validate (e.g. book/valid-examples/**/*.sruja or **/*.sruja)"
     required: false
     default: "**/*.sruja"
   run-export:
