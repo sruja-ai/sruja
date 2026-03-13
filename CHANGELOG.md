@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.12.0...sruja-v0.13.0) (2026-03-13)
+
+
+### Features
+
+* **extension:** surface CLI drift/analyze/why in editor ([11e5981](https://github.com/sruja-ai/sruja/commit/11e598178f08a5d4a056cb8231ee118ac63d52fe))
+* lint/discover JSON, extraction tests, extension JSON diagnostics, skill docs ([1b28118](https://github.com/sruja-ai/sruja/commit/1b2811854f413895d6092a01d5d26047e9009cb8))
+
 ## [0.12.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.11.0...sruja-v0.12.0) (2026-03-13)
 
 
