@@ -42,6 +42,9 @@ enum Commands {
     Lint {
         /// Path to .sruja file
         file: String,
+        /// Output format: text (default) or json (machine-readable for IDE/CI)
+        #[arg(long, default_value = "text")]
+        format: String,
     },
     /// Export a Sruja file to various formats
     Export {
@@ -291,6 +294,9 @@ enum Commands {
         /// Path to repository (for --context; default current dir)
         #[arg(long, short = 'r', default_value = ".")]
         repo: String,
+        /// Output format for --context: text (default) or json (machine-readable for agents)
+        #[arg(long, default_value = "text")]
+        format: String,
     },
     /// Generate a prompt (skill + repo context) for use with any LLM to produce architecture.sruja without Cursor CLI
     Generate {
@@ -355,7 +361,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = match cli.command {
         Commands::Version => commands::version(),
         Commands::Scan { path, output } => commands::scan(&path, &output).await,
-        Commands::Lint { file } => commands::lint(&file).await,
+        Commands::Lint { file, format } => commands::lint(&file, &format).await,
         Commands::Export {
             format,
             file,
@@ -471,9 +477,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 commands::runtime_analyze(&traces, &format).await
             }
         },
-        Commands::Discover { context, repo } => {
+        Commands::Discover { context, repo, format } => {
             if context {
-                commands::discover_context(&repo).await
+                commands::discover_context(&repo, &format).await
             } else {
                 commands::discover_questions()
             }

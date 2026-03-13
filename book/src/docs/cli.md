@@ -95,6 +95,18 @@ Validates the Sruja file against rules and best practices.
 
 ```bash
 sruja lint [file]
+# Machine-readable output for CI/agents:
+sruja lint [file] --format json
+```
+
+See [LINT_JSON_OUTPUT.md](../../docs/LINT_JSON_OUTPUT.md) for the JSON schema and diagnostic codes.
+
+### Discovery (for skills and agents)
+
+```bash
+sruja discover --context -r .          # Human-readable repo context
+sruja discover --context -r . --format json   # Machine-readable (components, areas, framework)
+sruja discover                          # Question bank only
 ```
 
 ### Architecture intelligence (no .sruja required)

@@ -68,20 +68,23 @@ In this repo, use the reusable action `./.github/actions/sruja-validate` with `f
 
 ## Prompt templates (practical)
 
+Use **flat syntax**: top-level declarations only, no `architecture "Name" { }` wrapper. Declare kinds at the top (e.g. `person = kind "Person"`) or use `import { * } from 'sruja.ai/stdlib'`. See [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) and `book/valid-examples/getting-started.sruja`.
+
 **Generate from description**
 
 ```
 Generate Sruja architecture DSL for: [one paragraph].
 
-Rules: architecture block, define every component before relationships,
-double-quoted strings, technology for every container, descriptive relationship labels.
+Rules: flat top-level form (no architecture block); declare kinds or use stdlib import;
+define every component before relationships; double-quoted strings;
+technology for every container; descriptive relationship labels.
 Output valid .sruja only. I will run `sruja lint` to verify.
 ```
 
 **Fix errors**
 
 ```
-This .sruja file fails `sruja lint` with: [paste errors].
+This .sruja file fails `sruja lint` with: [paste errors or output of `sruja lint file.sruja --format json`]. Fix using the diagnostic code (E201, E204, etc.) and the lint→fix table in the skill REFERENCE.
 Fix only what’s needed so it passes. Keep the same architecture intent.
 ```
 
@@ -89,7 +92,8 @@ Fix only what’s needed so it passes. Keep the same architecture intent.
 
 ```
 Refactor this Sruja architecture to [goal, e.g. “split into microservices by bounded context”].
-Preserve all relationships and add any new ones needed. Output valid .sruja.
+Use flat syntax; preserve all relationships and add any new ones needed. Output valid .sruja.
+Run `sruja lint` to verify.
 ```
 
 ## Editor-specific notes

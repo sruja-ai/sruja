@@ -15,6 +15,23 @@ use crate::rules::{
 use super::config::ValidatorConfig;
 use super::rule::Rule;
 
+/// Rule profile: which set of validation rules to run.
+///
+/// - **Minimal:** Essential safety/correctness only (unique id, valid refs, orphans, cycles, layer violations).
+///   Use for fast feedback or when stricter rules are not desired.
+/// - **Default:** All registered rules (current full set).
+/// - **Strict:** Same as Default today; reserved for future additional opinionated rules.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum RuleProfile {
+    /// Safety and correctness only: UniqueId, ValidRef, Orphan, Cycle, LayerViolation.
+    Minimal,
+    /// All rules (full validation).
+    #[default]
+    Default,
+    /// All rules; reserved for future stricter checks.
+    Strict,
+}
+
 /// Main validator that orchestrates multiple validation rules against a program
 ///
 /// The validator manages a collection of validation rules and executes them
@@ -52,9 +69,31 @@ impl Validator {
         Self::new().with_registered_default_rules()
     }
 
+    /// Create a validator with the given rule profile (minimal, default, or strict).
+    pub fn with_profile(profile: RuleProfile) -> Self {
+        Self::new().with_registered_profile(profile)
+    }
+
     /// Create a validator builder for custom configuration
     pub fn builder() -> super::builder::ValidatorBuilder {
         super::builder::ValidatorBuilder::new()
+    }
+
+    /// Register rules for the given profile.
+    pub(crate) fn with_registered_profile(mut self, profile: RuleProfile) -> Self {
+        match profile {
+            RuleProfile::Minimal => {
+                self.register_rule(Arc::new(UniqueIdRule));
+                self.register_rule(Arc::new(ValidRefRule));
+                self.register_rule(Arc::new(OrphanDetectionRule));
+                self.register_rule(Arc::new(CycleDetectionRule));
+                self.register_rule(Arc::new(LayerViolationRule));
+            }
+            RuleProfile::Default | RuleProfile::Strict => {
+                self = self.with_registered_default_rules();
+            }
+        }
+        self
     }
 
     /// Register all default validation rules (used by builder and with_default_rules).

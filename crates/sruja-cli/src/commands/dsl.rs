@@ -17,7 +17,32 @@ use crate::modules::validation::enrich_diagnostics_with_source;
 
 use super::CliError;
 
-pub async fn lint(file: &str) -> Result<(), CliError> {
+/// Machine-readable diagnostic for JSON output.
+#[derive(serde::Serialize)]
+struct LintDiagnostic {
+    code: String,
+    severity: String,
+    message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    location: Option<LintLocation>,
+}
+
+#[derive(serde::Serialize)]
+struct LintLocation {
+    file: String,
+    line: u32,
+    column: u32,
+}
+
+#[derive(serde::Serialize)]
+struct LintOutput {
+    ok: bool,
+    error_count: usize,
+    warning_count: usize,
+    diagnostics: Vec<LintDiagnostic>,
+}
+
+pub async fn lint(file: &str, format: &str) -> Result<(), CliError> {
     let content = fs::read_to_string(file)?;
     let parser = Parser::new(file.to_string());
 
@@ -25,6 +50,14 @@ pub async fn lint(file: &str) -> Result<(), CliError> {
         Ok(program) => program,
         Err(mut diagnostics) => {
             enrich_diagnostics_with_source(&content, &mut diagnostics);
+            if format == "json" {
+                let out = lint_diagnostics_to_json(file, &diagnostics, false);
+                println!("{}", serde_json::to_string(&out).map_err(|e| CliError::Validation(e.to_string()))?);
+                return Err(CliError::Parse {
+                    file: file.to_string(),
+                    message: format!("Parsing failed with {} errors", diagnostics.len()),
+                });
+            }
             for diag in &diagnostics {
                 eprintln!("{}", format_diagnostic(diag));
             }
@@ -38,6 +71,17 @@ pub async fn lint(file: &str) -> Result<(), CliError> {
     let validator = Validator::with_default_rules();
     let mut diagnostics = validator.validate_sync(&program);
     enrich_diagnostics_with_source(&content, &mut diagnostics);
+
+    if format == "json" {
+        let error_count = diagnostics.iter().filter(|d| d.severity == sruja_diagnostics::Severity::Error).count();
+        let _warning_count = diagnostics.iter().filter(|d| d.severity == sruja_diagnostics::Severity::Warning).count();
+        let out = lint_diagnostics_to_json(file, &diagnostics, error_count == 0);
+        println!("{}", serde_json::to_string(&out).map_err(|e| CliError::Validation(e.to_string()))?);
+        if error_count > 0 {
+            return Err(CliError::Validation(format!("Linting failed with {} errors", error_count)));
+        }
+        return Ok(());
+    }
 
     if diagnostics.is_empty() {
         println!("✓ No issues found");
@@ -82,6 +126,39 @@ pub async fn lint(file: &str) -> Result<(), CliError> {
     }
 
     Ok(())
+}
+
+fn lint_diagnostics_to_json(_file: &str, diagnostics: &[sruja_diagnostics::Diagnostic], ok: bool) -> LintOutput {
+    let error_count = diagnostics.iter().filter(|d| d.severity == sruja_diagnostics::Severity::Error).count();
+    let warning_count = diagnostics.iter().filter(|d| d.severity == sruja_diagnostics::Severity::Warning).count();
+    let diagnostics: Vec<LintDiagnostic> = diagnostics
+        .iter()
+        .map(|d| {
+            let severity = match d.severity {
+                sruja_diagnostics::Severity::Error => "error",
+                sruja_diagnostics::Severity::Warning => "warning",
+                sruja_diagnostics::Severity::Info => "info",
+                _ => "info",
+            };
+            let location = LintLocation {
+                file: d.location.file.clone(),
+                line: d.location.line,
+                column: d.location.column,
+            };
+            LintDiagnostic {
+                code: d.code.clone(),
+                severity: severity.to_string(),
+                message: d.message.clone(),
+                location: Some(location),
+            }
+        })
+        .collect();
+    LintOutput {
+        ok,
+        error_count,
+        warning_count,
+        diagnostics,
+    }
 }
 
 pub async fn export(

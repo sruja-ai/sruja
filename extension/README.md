@@ -4,7 +4,7 @@ VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architectur
 
 ## Features
 
-- **Diagnostics** – Lint runs in the extension via bundled WASM (or `sruja lint` if `sruja.lsp.path` is set). Errors and warnings appear in the editor (Problems panel, underlines). Supports unsaved buffers. Debounced on type; pending lint is cancelled when the document is closed.
+- **Diagnostics** – Lint runs in the extension via bundled WASM (or the Sruja CLI if `sruja.lsp.path` is set). When using the CLI, the extension runs `sruja lint --format json` for reliable, machine-readable diagnostics (same codes as the skill’s lint→fix table). Errors and warnings appear in the editor (Problems panel, underlines). Supports unsaved buffers. Debounced on type; pending lint is cancelled when the document is closed.
 - **Syntax highlighting** – TextMate grammar for keywords, relations, strings, comments
 - **Language configuration** – Comment toggling (`//`), bracket matching and autoclosing, **word pattern** for double‑click selection, **indentation rules** for `{`/`}`, **folding** with `// #region` / `// #endregion` markers
 - **Snippets** – Kind declarations (person, system, container, database), elements, relations (`->`), views, description blocks
@@ -12,6 +12,17 @@ VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architectur
 - **Diagram preview** – Run **Sruja: Open Diagram Preview** (or the preview icon in the editor title when a .sruja file is active): renders the architecture as a Mermaid diagram in a side panel using bundled WASM.
 - **AI features (skills & rules)** – Browse skills, open SKILL.md / AGENTS.md, list and open rules, copy rule or agent guide to clipboard for use with AI assistants (e.g. Cursor, Copilot). **Multi‑root workspaces**: skills are collected from every folder that has a `skills` subfolder.
 - **Workspace support** – Extension runs in the workspace (remote/SSH); supports untrusted workspaces.
+
+## Architecture intelligence (CLI)
+
+**Quickstart, drift, why, and analyze** (inventory, health score, violations, evidence) run in the **Sruja CLI**, not in this extension. Use the CLI in a terminal or in CI:
+
+- `sruja quickstart -r .` – Architecture inventory and top findings (no .sruja required).
+- `sruja drift -r .` – Detect structural drift (cycles, orphans, layer violations).
+- `sruja why <component>` – Explain dependencies with evidence.
+- `sruja analyze -r .` – Full structural/semantic/intent report.
+
+This extension focuses on **editing and validating** `.sruja` files and on **skills/rules for AI**; the CLI delivers architecture intelligence from the codebase.
 
 ## Requirements
 

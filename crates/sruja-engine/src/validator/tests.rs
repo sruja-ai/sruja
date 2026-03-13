@@ -5,7 +5,7 @@ use std::sync::Arc;
 use sruja_diagnostics::Diagnostic;
 use sruja_language::{Parser, Program};
 
-use super::core::Validator;
+use super::core::{RuleProfile, Validator};
 use super::rule::Rule;
 use crate::rules::UniqueIdRule;
 
@@ -171,6 +171,25 @@ fn test_custom_rule() {
 
     assert!(validator.has_rule("Test Rule"));
     assert_eq!(validator.rule_count(), 1);
+}
+
+#[test]
+fn test_validator_with_profile_minimal() {
+    let validator = Validator::with_profile(RuleProfile::Minimal);
+    assert_eq!(validator.rule_count(), 5);
+    assert!(validator.has_rule("Unique IDs"));
+    assert!(validator.has_rule("Valid References"));
+    assert!(validator.has_rule("Orphan Detection"));
+    assert!(validator.has_rule("Cycle Detection"));
+    assert!(validator.has_rule("Layer Violation"));
+    assert!(!validator.has_rule("Simplicity"));
+}
+
+#[test]
+fn test_validator_with_profile_default() {
+    let validator = Validator::with_profile(RuleProfile::Default);
+    assert!(validator.rule_count() > 5);
+    assert!(validator.has_rule("SimplicityGuidance"));
 }
 
 #[test]

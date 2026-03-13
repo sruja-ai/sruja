@@ -27,6 +27,12 @@ test-arch-intel:
 	@cargo test -p sruja-cli --test why_e2e && \
 	echo "✅ Architecture intelligence tests passed"
 
+# Test extraction CLI (lint --format json, discover --format json)
+test-extraction:
+	@echo "Testing extraction CLI (lint/discover JSON)..."
+	@cargo test -p sruja-cli --test extraction_cli && \
+	echo "✅ Extraction CLI tests passed"
+
 # Build (default: Rust)
 build: build-rust
 	@echo "✅ Build complete!"

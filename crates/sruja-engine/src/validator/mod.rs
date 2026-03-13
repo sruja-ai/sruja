@@ -34,5 +34,5 @@ mod rule;
 #[cfg(test)]
 mod tests;
 
-pub use core::Validator;
+pub use core::{RuleProfile, Validator};
 pub use rule::Rule;

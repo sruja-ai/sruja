@@ -235,8 +235,8 @@ paymentProvider = system "Payment Provider" {
 
     #[test]
     fn test_parse_pattern_microservices_collects_nested_elements() {
-        let content = include_str!("../../../examples/pattern_microservices.sruja");
-        let parser = Parser::new("examples/pattern_microservices.sruja".to_string());
+        let content = include_str!("../../../book/valid-examples/pattern-microservices.sruja");
+        let parser = Parser::new("book/valid-examples/pattern-microservices.sruja".to_string());
         let result = parser.parse(content);
         assert!(result.is_ok(), "pattern_microservices.sruja should parse");
 

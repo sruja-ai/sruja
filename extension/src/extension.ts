@@ -57,21 +57,82 @@ function parseLintStderr(stderr: string, docUri: string): vscode.Diagnostic[] {
   return diagnostics;
 }
 
+/** Lint output when using --format json (see docs/LINT_JSON_OUTPUT.md). */
+interface LintJsonOutput {
+  ok: boolean;
+  error_count: number;
+  warning_count: number;
+  diagnostics: Array<{
+    code: string;
+    severity: string;
+    message: string;
+    location?: { file: string; line: number; column: number };
+  }>;
+}
+
 async function runLint(
   srujaPath: string,
   filePath: string
-): Promise<{ stderr: string }> {
+): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     execFile(
       srujaPath,
       ["lint", filePath],
       { encoding: "utf8", timeout: 15000, maxBuffer: 2 * 1024 * 1024 },
-      (err: Error | null, _stdout: string, stderr: string) => {
-        const out = typeof stderr === "string" ? stderr : err?.message ?? "";
-        resolve({ stderr: out });
+      (_err: Error | null, stdout: string, stderr: string) => {
+        resolve({
+          stdout: typeof stdout === "string" ? stdout : "",
+          stderr: typeof stderr === "string" ? stderr : "",
+        });
       }
     );
   });
+}
+
+/** Run lint with --format json for reliable diagnostics (DX + extraction quality). */
+async function runLintJson(
+  srujaPath: string,
+  filePath: string
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve) => {
+    execFile(
+      srujaPath,
+      ["lint", "--format", "json", filePath],
+      { encoding: "utf8", timeout: 15000, maxBuffer: 2 * 1024 * 1024 },
+      (_err: Error | null, stdout: string, stderr: string) => {
+        resolve({
+          stdout: typeof stdout === "string" ? stdout : "",
+          stderr: typeof stderr === "string" ? stderr : "",
+        });
+      }
+    );
+  });
+}
+
+function parseLintJson(stdout: string, docUri: string): vscode.Diagnostic[] | null {
+  try {
+    const out = JSON.parse(stdout) as LintJsonOutput;
+    if (!out.diagnostics || !Array.isArray(out.diagnostics)) return null;
+    const diagnostics: vscode.Diagnostic[] = [];
+    for (const d of out.diagnostics) {
+      const line = d.location ? Math.max(0, (d.location.line || 1) - 1) : 0;
+      const character = d.location ? Math.max(0, (d.location.column || 1) - 1) : 0;
+      const severity =
+        d.severity === "warning"
+          ? vscode.DiagnosticSeverity.Warning
+          : d.severity === "info"
+            ? vscode.DiagnosticSeverity.Information
+            : vscode.DiagnosticSeverity.Error;
+      const range = new vscode.Range(line, character, line, character);
+      const diag = new vscode.Diagnostic(range, d.message, severity);
+      if (d.code) diag.code = d.code;
+      diag.source = "sruja";
+      diagnostics.push(diag);
+    }
+    return diagnostics;
+  } catch {
+    return null;
+  }
 }
 
 /** Use WASM for lint/export unless user explicitly set sruja.lsp.path. WASM is always shipped with the extension. */
@@ -101,22 +162,25 @@ async function updateDiagnostics(
   }
 
   const srujaPath = getSrujaPath(context);
+  const targetPath = doc.isDirty
+    ? path.join(os.tmpdir(), `sruja-lint-${path.basename(filename)}`)
+    : filename;
   if (doc.isDirty) {
-    const tmp = path.join(os.tmpdir(), `sruja-lint-${path.basename(filename)}`);
-    await fs.promises.writeFile(tmp, doc.getText(), "utf8");
-    try {
-      const { stderr } = await runLint(srujaPath, tmp);
-      const diags = parseLintStderr(stderr, uri.toString());
-      diagnosticCollection.set(uri, diags);
-    } finally {
-      await fs.promises.unlink(tmp).catch(() => {});
-    }
-    return;
+    await fs.promises.writeFile(targetPath, doc.getText(), "utf8");
   }
-
-  const { stderr } = await runLint(srujaPath, filename);
-  const diags = parseLintStderr(stderr, uri.toString());
-  diagnosticCollection.set(uri, diags);
+  try {
+    const { stdout, stderr } = await runLintJson(srujaPath, targetPath);
+    const diagsFromJson = parseLintJson(stdout, uri.toString());
+    const diags =
+      diagsFromJson !== null
+        ? diagsFromJson
+        : parseLintStderr(stderr, uri.toString());
+    diagnosticCollection.set(uri, diags);
+  } finally {
+    if (doc.isDirty) {
+      await fs.promises.unlink(targetPath).catch(() => {});
+    }
+  }
 }
 
 function getSrujaPath(context: vscode.ExtensionContext): string {

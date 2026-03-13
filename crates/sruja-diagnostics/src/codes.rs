@@ -1,11 +1,17 @@
 //! Standard error codes for diagnostics.
 //!
-//! Codes follow a hierarchical naming scheme:
-//! - E1xx: Syntax errors
-//! - E2xx: Semantic errors
-//! - E3xx: Validation errors
-//! - E4xx: Policy errors
-//! - W001: Best practice warnings
+//! Codes follow a hierarchical naming scheme so that parse, validation, and
+//! architecture-intelligence findings do not collide:
+//!
+//! - **E1xx: Parse/syntax** – Parser and lexer (unexpected token, invalid string, etc.).
+//! - **E2xx: Semantic / structural** – Resolved AST (duplicate id, undefined ref, invalid relation).
+//!   E204 (cycle), E205 (orphan), E206 (layer violation) are also used for
+//!   architecture-intelligence drift findings when emitting diagnostics.
+//! - **E3xx: Validation rules** – Engine rule failures (missing field, property validation, timeouts).
+//! - **E4xx: Policy / governance** – Policy and constraint violations.
+//! - **W001+** – Warnings (best practice, style).
+//!
+//! When adding new codes, use the next free number in the reserved range (e.g. E107, E207).
 
 // Syntax Errors (E1xx)
 /// Generic syntax error

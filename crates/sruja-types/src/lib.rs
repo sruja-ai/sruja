@@ -2,6 +2,16 @@
 //!
 //! This crate provides common type definitions used across multiple Sruja crates
 //! to ensure consistency and reduce duplication.
+//!
+//! ## Node and edge kinds
+//!
+//! [`NodeKind`] and [`EdgeKind`] are the **inferred/graph** kind set: they describe
+//! nodes and edges as produced by [`sruja-scan`](https://docs.rs/sruja-scan) and
+//! stored in [`sruja-graph`](https://docs.rs/sruja-graph). The DSL (`.sruja`) allows
+//! user-defined kinds via `kind "Label"`; when converting from DSL to a graph (e.g.
+//! in sruja-diff's `program_to_graph`), DSL kinds are mapped to these enum values
+//! or to a suitable default. Consumers (scan, graph, diff, report) should use these
+//! types as the single source of truth for kind identity in architecture intelligence.
 
 use serde::{Deserialize, Serialize};
 

@@ -106,15 +106,27 @@ pub struct Recommendation {
     pub estimated_effort: Effort,
 }
 
+/// Schema version for report compatibility. Increment when the report shape changes in a breaking way.
+pub const REPORT_SCHEMA_VERSION: u16 = 1;
+
 /// Aggregated report across all layers.
+///
+/// When serializing (e.g. JSON), include `schema_version` so consumers can detect compatibility.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComprehensiveReport {
+    /// Report schema version; use for compatibility checks when parsing.
+    #[serde(default = "default_schema_version")]
+    pub schema_version: u16,
     pub structural: StructuralSection,
     pub semantic: SemanticSection,
     pub intent: Option<IntentSection>,
     pub runtime: Option<RuntimeSection>,
     pub overall_health: u8,
     pub recommendations: Vec<Recommendation>,
+}
+
+fn default_schema_version() -> u16 {
+    REPORT_SCHEMA_VERSION
 }
 
 /// Build recommendations from structural violations, semantic and intent suggestions,

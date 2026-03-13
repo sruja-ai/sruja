@@ -8,7 +8,7 @@ pub mod utils;
 pub mod validator;
 
 // Re-export key public types
-pub use validator::{Rule, Validator};
+pub use validator::{Rule, RuleProfile, Validator};
 
 // Re-export common utilities for convenience
 pub use utils::{

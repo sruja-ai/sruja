@@ -180,7 +180,7 @@ git clone <repo-url-2> /tmp/architecture-analysis/service-b
 
 ### Step 3: Generate Sruja DSL
 
-Use **canonical form** only: assignment `Id = kind "Label" { ... }`, `database` for data stores, relationships `SourceId -> TargetId "label"`. Every element needs `description`; every container needs `technology`.
+**Canonical form (required for parser):** Use **flat** top-level declarations only. Do **not** wrap content in `architecture "Name" { ... }` — the parser does not support that block. Declare kinds at the top (e.g. `person = kind "Person"`, `system = kind "System"`, `container = kind "Container"`, `database = kind "Database"`) or use `import { * } from 'sruja.ai/stdlib'`. Use assignment `Id = kind "Label" { ... }`, `database` for data stores, relationships `SourceId -> TargetId "label"`. Every element needs `description`; every container needs `technology`.
 
 **C4 levels (map correctly):** **System** = software system or deployable service boundary. **Container** = runnable/deployable unit (process, web app, API server, worker, database, queue)—something that runs. **Component** = logical grouping *inside* a container (module, controller, service class, middleware, repository)—not a separate process. Do not use container for in-process modules or component for an entire API server.
 
@@ -197,8 +197,14 @@ When the repo is clearly a **framework**, default to the first row; when it is a
 
 #### 3.1 Minimal valid template
 
+Use **flat** syntax with **kinds declared** (parser requirement). See `book/valid-examples/getting-started.sruja`.
+
 ```sruja
-// Smallest valid architecture (passes sruja lint)
+// Smallest valid architecture (passes sruja lint). Flat form; no architecture "Name" { } wrapper.
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+
 User = person "User" { description "End user" }
 App = system "My App" {
   description "Main application"
@@ -406,13 +412,24 @@ sruja lint architecture.sruja
 
 #### Lint error → fix
 
-| Lint error / symptom | Fix |
-|----------------------|-----|
-| Missing description | Add `description "..."` to the element. |
-| Undefined reference | Define the referenced ID before use, or fix typo in relationship. |
-| Orphan component | Add at least one relationship `X -> Orphan "..."` or `Orphan -> Y "..."`. |
-| Circular dependency (E204) | Break the cycle: remove one relationship in the cycle (e.g. if `NodeHTTPServer -> Application` and `Application -> NodeHTTPServer` form a cycle, remove one of them, such as `NodeHTTPServer -> Application`). Re-run lint after the fix. |
-| Missing technology (container) | Add `technology "..."` to the container. |
+Use `sruja lint --format json` to get machine-readable diagnostics with `code`; map code to fix below.
+
+| Code | Symptom | Fix |
+|------|---------|-----|
+| E101, E102, E103, E104 | Parse/syntax error | Fix the indicated line: check braces, strings, tokens. Ensure flat syntax; no `architecture "Name" { }` wrapper. |
+| E201 | Duplicate identifier | Use a unique ID for each element; rename or remove the duplicate. |
+| E202 | Undefined reference | Define the referenced ID before use, or fix typo in relationship (source or target). |
+| E203 | Invalid relationship | Fix relationship endpoints or labels per DSL rules. |
+| E204 | Circular dependency | Break the cycle: remove one relationship in the cycle (e.g. remove `A -> B` or `B -> A`). Re-run lint. |
+| E205 | Orphan component | Add at least one relationship `X -> Orphan "..."` or `Orphan -> Y "..."`, or remove the element. |
+| E206 | Layer violation | Fix dependency direction so higher layers do not depend on lower (e.g. service must not depend on web). Remove or reverse the violating edge. |
+| E301 | Invalid property | Correct the property value (e.g. valid enum, number range). |
+| E302 | Missing field | Add the required field (e.g. description, technology on container). |
+| E303 | Validation rule failed | Follow the rule message; common: add description, technology, or fix structure. |
+| E401 | Policy violation | Satisfy the policy (e.g. governance, scenario) or adjust the declaration. |
+| W001 | Best practice | Improve documentation or structure as suggested (optional but recommended). |
+| (no code) | Missing description | Add `description "..."` to the element. |
+| (no code) | Missing technology (container) | Add `technology "..."` to the container. |
 
 #### Example: fixing a circular dependency
 
@@ -1030,6 +1047,20 @@ When scope is **too big for one pass** (e.g. 50+ components, many services, or o
 - **Large repo / area** → Run quickstart with `-r <subpath>`; generate one fragment per area; mention stitch later.
 - **Boundaries / externals** → Include those systems and relationships in the DSL; name them as the user said.
 - **Entry points / flows** → Ensure those paths are visible (person → system → containers) and relationships are labeled.
+
+## Extraction quality checklist (static + LLM)
+
+Use this to improve both **developer experience** and **quality of architecture extraction** (static and LLM-assisted):
+
+| Step | Command / action | Quality check |
+|------|------------------|----------------|
+| 1. Context | `sruja discover --context -r .` (or `--format json` for agents) | Repo context, suggested areas, framework, and component count inform scope and naming. |
+| 2. Generate | Produce DSL in **canonical form** (flat, kinds declared; no `architecture "Name" { }`). | Matches parser; fewer parse errors. |
+| 3. Lint | `sruja lint architecture.sruja` or `sruja lint --format json` | Get diagnostic codes (E201, E204, …). |
+| 4. Fix | Use the [Lint error → fix](#lint-error--fix) table; re-run lint. | Fix until `ok: true` / no errors. |
+| 5. Export | `sruja export markdown architecture.sruja` (optional) | Human-readable doc for review. |
+
+**Static extraction:** Steps 1 and 3 use scan and lint only; no LLM required. **LLM extraction:** Steps 2 and 4 use the skill and the code→fix table so generated architecture passes validation. Doing all five steps raises both DX and extraction quality.
 
 ## Post-generate checklist (validation rules)
 

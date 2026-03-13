@@ -1,37 +1,30 @@
-# Testing tools (maintainers)
+# Testing
 
-These scripts are **maintainer utilities** for running Sruja against real-world repositories (mostly large OSS) to catch regressions and measure performance/accuracy. They are **not required** for end users.
+## Quick verify (CLI)
 
-All outputs go under `evaluation/local-artifacts/` (git-ignored).
-
-## Quick start
-
-Build the CLI once:
+From repo root, run:
 
 ```bash
-make build
+# Build and run all workspace tests
+cargo build --release -p sruja-cli
+cargo test --workspace
+
+# Extraction CLI contracts (lint JSON, discover JSON)
+cargo test -p sruja-cli --test extraction_cli
+
+# Optional: quickstart on this repo
+./target/release/sruja quickstart -r .
+./target/release/sruja lint book/valid-examples/getting-started.sruja --format json
+./target/release/sruja discover --context -r . --format json
 ```
 
-Run a deterministic smoke test on a curated set of large repos (quickstart + scan, writes metrics):
+## Make targets
 
-```bash
-./scripts/testing/smoke_complex_repos.sh
-```
+- `make test` or `make test-rust` – `cargo test --workspace`
+- `make test-extraction` – extraction_cli tests (lint/discover JSON schema)
+- `make test-arch-intel` – why_e2e tests
+- `make build` – release build of CLI
 
-## Scripts
+## Comprehensive test (external repos)
 
-- `smoke_complex_repos.sh`
-  - Deterministic, CI-friendly-ish smoke run for large repos.
-  - Runs: `sruja quickstart`, `sruja scan` and saves `metrics.json`.
-
-- `agent_skill_benchmark.sh`
-  - Runs the CLI analysis suite used for skill/agent evaluation harnesses and writes structured artifacts.
-
-- `service_detection_sanity.sh`
-  - Quick local check for service detection changes against already-cloned repos in `/tmp`.
-
-## Output locations
-
-- `evaluation/local-artifacts/testing/` for timestamped runs and logs.
-- Repos are cloned/updated under `/tmp/sruja_test_*` (local machine only).
-
+See [comprehensive_test.sh](comprehensive_test.sh). Clones sample repos and runs quickstart; requires network and time.
