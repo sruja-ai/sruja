@@ -75,10 +75,7 @@ pub async fn sync(repo_root: &str) -> Result<(), CliError> {
     }
 
     let drift = sruja_diff::detect_architectural_drift(&graph);
-    eprintln!(
-        "Truth: unknown ({} violation(s))",
-        drift.violations.len()
-    );
+    eprintln!("Truth: unknown ({} violation(s))", drift.violations.len());
     eprintln!("Health score: {}/100", drift.health_score);
     print_drift_text(&drift, false);
     Ok(())
