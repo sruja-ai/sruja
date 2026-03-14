@@ -35,13 +35,13 @@ Generate architecture with AI:
 In your AI editor (Cursor, Copilot, Claude), run:
 
 ```
-Use sruja-architecture. Run `sruja discover --context -r . --format json`, gather evidence, ask targeted questions if needed, generate architecture.sruja, then run `sruja lint` and fix until it passes.
+Use sruja-architecture. Run `sruja discover --context -r . --format json`, gather evidence, ask targeted questions if needed, generate repo.sruja, then run `sruja lint` and fix until it passes.
 ```
 
 Validate the generated architecture:
 
 ```bash
-sruja lint architecture.sruja
+sruja lint repo.sruja
 ```
 
 ---
@@ -55,9 +55,9 @@ sruja lint architecture.sruja
 1. **Install skill** – Add `sruja-architecture` to your AI editor
 2. **Collect evidence** – Run `sruja discover --context -r . --format json` for deterministic evidence
 3. **Ask questions** – AI asks targeted questions only when scope is unclear
-4. **Generate DSL** – AI produces minimal `architecture.sruja` based on evidence
+4. **Generate DSL** – AI produces minimal `repo.sruja` based on evidence
 5. **Validate** – Run `sruja lint` to catch errors
-6. **Refine** – Use `sruja drift -r . -a architecture.sruja` to detect changes
+6. **Refine** – Use `sruja drift -r .` to detect changes (auto-detects repo.sruja)
 
 ### Deterministic CLI Primitives
 
@@ -68,16 +68,16 @@ The CLI provides deterministic, machine-readable outputs that skills depend on:
 sruja discover --context -r . --format json
 
 # Validate DSL
-sruja lint --format json architecture.sruja
+sruja lint --format json repo.sruja
 
 # Format DSL
-sruja fmt architecture.sruja
+sruja fmt repo.sruja
 
 # Export for documentation
-sruja export markdown architecture.sruja
+sruja export markdown repo.sruja
 
-# Detect drift
-sruja drift --format json -r . -a architecture.sruja
+# Detect drift (auto-detects repo.sruja)
+sruja drift --format json -r .
 
 # Check intent
 sruja intent check --format json
@@ -90,7 +90,7 @@ sruja context -r .
 
 ### Architecture-as-Code
 
-Define your architecture in version-controlled `.sruja` files:
+Define your architecture in version-controlled `.sruja` files. The preferred filename is `repo.sruja` (placed in the repository root). `architecture.sruja` is still supported for backward compatibility but `repo.sruja` is recommended for new projects.
 
 ```sruja
 import { * } from 'sruja.ai/stdlib'
@@ -191,16 +191,16 @@ sruja quickstart -r .
 
 # 2. Use AI to generate architecture (in your editor)
 # Paste this prompt:
-# "Use sruja-architecture. Run `sruja discover --context -r . --format json`, gather evidence, ask targeted questions if needed, generate architecture.sruja, then run `sruja lint` and fix until it passes."
+# "Use sruja-architecture. Run `sruja discover --context -r . --format json`, gather evidence, ask targeted questions if needed, generate repo.sruja, then run `sruja lint` and fix until it passes."
 
 # 3. Validate the generated architecture
-sruja lint architecture.sruja
+sruja lint repo.sruja
 
 # 4. Export documentation
-sruja export markdown architecture.sruja > ARCHITECTURE.md
+sruja export markdown repo.sruja > ARCHITECTURE.md
 
-# 5. Add to CI
-sruja drift -r . -a architecture.sruja --fail-on all
+# 5. Add to CI (auto-detects repo.sruja)
+sruja drift -r . --fail-on all
 ```
 
 ---
@@ -279,7 +279,7 @@ jobs:
       - name: Lint
         run: find . -name '*.sruja' -exec sruja lint {} \;
       - name: Drift check
-        run: sruja drift -r . -a architecture.sruja --fail-on all
+        run: sruja drift -r . --fail-on all
 ```
 
 ### PR-Scoped Drift
@@ -300,7 +300,7 @@ sruja/
 │   ├── REFERENCE.md           # Discovery & modeling reference
 │   ├── PROMPTS.md            # Prompt patterns
 │   ├── AGENTS.md             # Compiled guide
-│   └── agents/openai.yaml    # Skill/agent metadata (prompts, no UI)
+│   └── agents/skill.yaml     # Skill manifest for agent platforms (prompts, refs)
 ├── crates/sruja-cli/         # CLI (engine primitives)
 ├── crates/sruja-language/    # Parser and AST
 ├── crates/sruja-engine/      # Validation rules

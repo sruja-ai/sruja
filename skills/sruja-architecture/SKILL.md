@@ -1,12 +1,12 @@
 ---
 name: sruja-architecture
-description: Architecture discovery and DSL authoring for Sruja. Use this skill to generate, validate, and maintain architecture.sruja files from codebases. This is the core skill for architecture-as-code with Sruja.
+description: Architecture discovery and DSL authoring for Sruja. Use this skill to generate, validate, and maintain repo.sruja files from codebases. This is the core skill for architecture-as-code with Sruja.
 license: Apache-2.0
 ---
 
 # Sruja Architecture Skill
 
-Core skill for architecture discovery and DSL authoring with Sruja. This skill provides a deterministic, evidence-first workflow for generating and maintaining architecture.sruja files.
+Core skill for architecture discovery and DSL authoring with Sruja. This skill provides a deterministic, evidence-first workflow for generating and maintaining repo.sruja files (architecture.sruja is also supported for backward compatibility).
 
 ## Core Principles
 
@@ -49,7 +49,7 @@ Never ask about information that's clear from evidence.
 
 ### 3. Generate Minimal DSL
 
-Generate a minimal `architecture.sruja` covering only what evidence supports. Start with C4 context and container levels. Add component level only when evidence justifies it.
+Generate a minimal `repo.sruja` covering only what evidence supports. Start with C4 context and container levels. Add component level only when evidence justifies it.
 
 Use this structure:
 
@@ -78,7 +78,7 @@ Person -> System.Container "Protocol"
 Always lint the generated DSL:
 
 ```bash
-sruja lint architecture.sruja
+sruja lint repo.sruja
 ```
 
 Fix all errors before proceeding. Common issues:
@@ -110,7 +110,7 @@ This skill supports three modes:
 
 Use this skill when:
 - Discovering architecture from a new codebase
-- Generating initial architecture.sruja from requirements
+- Generating initial repo.sruja from requirements
 - Refactoring existing architecture
 - Validating architecture against code
 - Maintaining architecture documentation
@@ -143,6 +143,28 @@ When information is missing or unclear, surface it explicitly:
 - **Modeling rules**: See rules/ directory
 - **Prompt patterns**: See AGENTS.md
 - **Refinement workflow**: See REFERENCE.md
+
+## Prerequisites
+
+The skill’s prompts run `sruja discover`, `sruja lint`, and `sruja drift`. Install the Sruja CLI first:
+
+```bash
+curl -fsSL https://sruja.ai/install.sh | bash
+```
+
+Alternatively: build from source: `cargo install sruja-cli`.
+
+### Extension (optional, recommended in VS Code / Cursor)
+
+Install the [Sruja extension](https://marketplace.visualstudio.com/items?itemName=SrujaAI.sruja) for a better in-editor experience:
+
+- **Syntax highlighting, diagnostics, snippets** for `.sruja` files
+- **Sruja: Run validation** — lint after each AI edit (same as `sruja lint`)
+- **Sruja: Open Diagram Preview** — Mermaid diagram from the current file
+- **Sruja: Export architecture to Markdown** — full architecture doc (TOC, systems, requirements, ADRs, diagrams)
+- **Sruja: Refresh repo context** — runs discovery and writes `.sruja/context.json`; the skill uses this file as evidence when present and recent, so you (or the AI) don’t need to run `sruja discover` in the terminal
+
+When the extension is installed, run **Sruja: Refresh repo context** once (or after big repo changes); the skill will prefer `.sruja/context.json` over re-running discover.
 
 ## Installation
 

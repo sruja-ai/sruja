@@ -17,7 +17,7 @@ sruja quickstart -r .
 # 4. Generate architecture (in AI editor)
 "Use sruja-architecture. Run `sruja discover --context -r . --format json`,
 gather evidence, ask targeted questions if needed,
-generate architecture.sruja, run `sruja lint` and fix."
+generate repo.sruja, run `sruja lint` and fix."
 ```
 
 ---
@@ -49,6 +49,8 @@ This ensures:
 | **Claude** | Install skills.sh, then run the command above |
 | **Continue.dev** | Add `.cursorrules` to `contextFiles` in config |
 | **Any (skills.sh)** | `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` |
+
+**Optional (VS Code / Cursor):** Install the [Sruja extension](https://marketplace.visualstudio.com/items?itemName=SrujaAI.sruja) for syntax highlighting, in-editor lint, diagram preview, export to Markdown, and **Sruja: Refresh repo context** (writes `.sruja/context.json` so the skill can use it as evidence without running `sruja discover` in the terminal).
 
 ---
 
@@ -119,7 +121,7 @@ The AI asks 2-5 questions only when evidence is ambiguous:
 
 ### Generate Minimal DSL
 
-The AI produces a minimal `architecture.sruja` based on evidence:
+The AI produces a minimal `repo.sruja` based on evidence: (architecture.sruja is also supported for backward compatibility):
 
 ```sruja
 import { * } from 'sruja.ai/stdlib'
@@ -149,7 +151,7 @@ app.api -> app.db "SQL"
 Always lint the generated architecture:
 
 ```bash
-sruja lint architecture.sruja
+sruja lint repo.sruja
 ```
 
 Fix all errors before considering complete.
@@ -161,8 +163,16 @@ Fix all errors before considering complete.
 ### Export Documentation
 
 ```bash
-sruja export markdown architecture.sruja > ARCHITECTURE.md
-sruja export mermaid architecture.sruja > ARCHITECTURE.mmd
+sruja export markdown repo.sruja > ARCHITECTURE.md
+sruja export mermaid repo.sruja > ARCHITECTURE.mmd
+```
+
+### Detect Drift
+
+When code changes, check for drift:
+
+```bash
+sruja drift -r .
 ```
 
 ### Detect Drift
@@ -209,14 +219,14 @@ These are the stable CLI commands used by the skill:
 ```
 Use sruja-architecture. Run `sruja discover --context -r . --format json`,
 gather evidence from the repo, ask targeted questions if scope or externals are unclear,
-generate architecture.sruja with C4 structure (systems/containers/components),
+generate repo.sruja with C4 structure (systems/containers/components),
 then run `sruja lint` and fix until it passes.
 ```
 
 ### Refine Existing Architecture
 
 ```
-Use sruja-architecture. Analyze this existing architecture.sruja,
+Use sruja-architecture. Analyze this existing repo.sruja,
 run `sruja discover --context -r . --format json` for current evidence,
 compare architecture against evidence, identify discrepancies,
 propose updates to align with current code,
@@ -226,7 +236,7 @@ then run `sruja lint` and fix all errors.
 ### Detect Drift
 
 ```
-Use sruja-architecture. Run `sruja drift -r . -a architecture.sruja --format json`,
+Use sruja-architecture. Run `sruja drift -r . --format json`,
 analyze drift results, propose updates to address drift,
 run `sruja lint` and fix all errors. List open questions for uncertainties.
 ```

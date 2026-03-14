@@ -817,5 +817,4 @@ Update architecture appropriately.
 - **GitHub:** https://github.com/sruja-ai/sruja
 ---
 
-**Version:** 1.0.0
-**Last Updated:** 2025-02-07
+**Version:** Aligns with Sruja repo release (see GitHub Releases).

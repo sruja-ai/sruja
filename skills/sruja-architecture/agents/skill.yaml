@@ -1,7 +1,9 @@
+# Skill manifest for agent platforms. Version aligns with Sruja repo release (see repo tag / GitHub Release).
 name: sruja-architecture
 description: Architecture discovery and DSL authoring for Sruja. This skill provides a deterministic, evidence-first workflow for generating and maintaining architecture.sruja files from codebases.
 
-version: 1.0.0
+# CLI required for prompts (discover, lint, drift). Not installed by the skill. Extension optional but recommended (lint, diagram, Refresh repo context → .sruja/context.json).
+prerequisites: "Install Sruja CLI: curl -fsSL https://sruja.ai/install.sh | bash. Optional: Sruja VS Code extension for in-editor lint, diagram preview, and Sruja: Refresh repo context (writes .sruja/context.json)."
 
 capabilities:
   - Architecture discovery from codebases
