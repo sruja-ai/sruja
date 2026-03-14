@@ -1,6 +1,6 @@
 [package]
 name = "sruja-intent"
-version = "0.9.0"
+version.workspace = true
 edition = "2021"
 license = "MIT"
 description = "Intent vs Reality comparison for Sruja architecture intelligence"

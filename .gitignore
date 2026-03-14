@@ -80,6 +80,8 @@ book/mermaid-init.js
 
 # Playwright MCP
 .playwright-mcp/
+playwright-report/
+test-results/
 
 # Agent and Shared folders
 .agent/

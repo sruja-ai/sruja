@@ -150,3 +150,23 @@ pub(crate) fn scan_cargo_repo(repo_root: &Path) -> Result<Graph, ScanError> {
 
     Ok(graph)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scan_cargo_repo_missing_cargo_toml_returns_error() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let result = scan_cargo_repo(temp.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn scan_cargo_repo_invalid_cargo_toml_returns_error() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        std::fs::write(temp.path().join("Cargo.toml"), "not valid toml").expect("write");
+        let result = scan_cargo_repo(temp.path());
+        assert!(result.is_err());
+    }
+}

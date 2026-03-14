@@ -116,3 +116,26 @@ impl ContextExporter {
         out
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_language::Parser;
+
+    #[test]
+    fn export_empty_program_returns_empty_string() {
+        let program = Program::default();
+        let exporter = ContextExporter::new("general");
+        assert!(exporter.export(&program).is_empty());
+    }
+
+    #[test]
+    fn unknown_template_uses_general_header() {
+        let program = Parser::new("test.sruja".to_string())
+            .parse("S = system \"X\" {}")
+            .expect("parse");
+        let exporter = ContextExporter::new("custom_template");
+        let out = exporter.export(&program);
+        assert!(out.starts_with("# System Architecture Context"), "unknown template should fall back to general");
+    }
+}

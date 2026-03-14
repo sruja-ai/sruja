@@ -20,7 +20,6 @@ Structured plan for adding missing unit and integration tests across the Sruja w
 | sruja-scan | npm.rs, cargo.rs | P1 | npm_smoke exists; add unit tests for resolve_workspace_globs etc. |
 | sruja-scan | tree_sitter/detector.rs | P2 | Language detection logic |
 | sruja-intent | parser/mod.rs, model/mod.rs | P2 | Parser has adr tests; module wiring |
-| sruja-semantic | analysis/*, vocabulary/graph.rs | P2 | Analysis and vocabulary |
 | sruja-language | parser/* (elements, primitives, etc.) | P2 | Parser tests.rs + example_files cover many paths |
 | sruja-cli | config.rs, views.rs, commands/* | P2 | E2E covers commands; config/views unit tests |
 | sruja-lsp | server.rs | P2 | server_integration tests; optional unit |
@@ -70,7 +69,6 @@ Structured plan for adding missing unit and integration tests across the Sruja w
 10. **sruja-export** context/exporter – **Done** (empty program, unknown template → general header).
 11. **sruja-cli** config – **Done** (get_builtin_views, empty yaml, get_view, AnalysisDepth, ThresholdConfig).
 12. **sruja-scan** cargo.rs – **Done** (missing Cargo.toml, invalid Cargo.toml → error).
-13. **sruja-semantic** analysis/coupling – **Done** (empty analyze, length mismatch, default threshold).
 14. **sruja-language** parser submodules – optional (parser/tests.rs, example_files).
 15. **sruja-lsp** server – optional unit tests for request handling.
 
@@ -94,7 +92,6 @@ Structured plan for adding missing unit and integration tests across the Sruja w
 11. sruja-export: context/exporter.rs — **Done** (empty program, unknown template).
 12. sruja-cli: config.rs — **Done** (builtin views, deserialize, get_view, AnalysisDepth, ThresholdConfig).
 13. sruja-scan: cargo.rs — **Done** (missing/invalid Cargo.toml error paths).
-14. sruja-semantic: analysis/coupling.rs — **Done** (empty analyze, mismatch, default).
 
 ---
 

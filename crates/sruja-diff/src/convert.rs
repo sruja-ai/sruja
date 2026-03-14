@@ -83,3 +83,47 @@ fn relation_label_to_edge_kind(label: &str) -> EdgeKind {
         EdgeKind::Calls
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_language::Parser;
+
+    fn parse_dsl(input: &str) -> Program {
+        Parser::new("test.sruja".to_string())
+            .parse(input)
+            .expect("parse failed")
+    }
+
+    #[test]
+    fn program_to_graph_empty_program_produces_empty_graph() {
+        let program = Program::default();
+        let graph = program_to_graph(&program);
+        assert!(graph.nodes.is_empty());
+        assert!(graph.edges.is_empty());
+    }
+
+    #[test]
+    fn program_to_graph_writes_label_maps_to_writes_to() {
+        let program = parse_dsl(
+            r#"
+A = system "Service A"
+DB = database "Database"
+A -> DB "writes to"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].kind, EdgeKind::WritesTo);
+    }
+
+    #[test]
+    fn program_to_graph_single_node() {
+        let program = parse_dsl(r#"S = system "My System" {}"#);
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.nodes.len(), 1);
+        assert_eq!(graph.nodes[0].id, "S");
+        assert_eq!(graph.nodes[0].kind, NodeKind::Module);
+        assert!(graph.edges.is_empty());
+    }
+}

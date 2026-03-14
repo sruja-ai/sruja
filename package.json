@@ -1,0 +1,12 @@
+{
+  "name": "sruja-e2e",
+  "private": true,
+  "description": "E2E tests for Sruja (book Show diagram). Run after starting the book server.",
+  "scripts": {
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

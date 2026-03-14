@@ -154,7 +154,7 @@ The JSON report from `sruja analyze -r . -f json` includes:
 | Tier | Commands | When to use |
 |------|----------|-------------|
 | **First value** | `sruja quickstart -r .`, `sruja drift -r .` | Any repo, zero config. Start here. |
-| **Deeper analysis** | `sruja analyze -r .`, `sruja complexity -r .`, `sruja semantic -r .` | Full picture: structural + semantic + intent. |
+| **Deeper analysis** | `sruja analyze -r .`, `sruja complexity -r .` | Full picture: structural + intent. |
 | **With a baseline** | `sruja drift -r . -a architecture.sruja`, `sruja lint`, `sruja export` | When you have (or create) a `.sruja` file. |
 | **Optional** | `sruja intent check`, `sruja runtime analyze` | Trace files or intent dir. |
 

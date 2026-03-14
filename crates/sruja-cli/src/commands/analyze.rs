@@ -1,10 +1,9 @@
-//! Analysis commands: complexity, semantic, comprehensive analyze.
+//! Analysis commands: complexity, comprehensive analyze.
 
 use std::collections::HashMap;
 use std::path::Path;
 
 use sruja_scan::{scan_repo, Graph, NodeKind};
-use sruja_semantic::{analyze as run_semantic_analyze, embedding::StubEmbeddingProvider};
 
 use super::CliError;
 use crate::config::SrujaConfig;
@@ -138,135 +137,6 @@ pub async fn complexity(
     }
 
     println!("{}", "═".repeat(70));
-    Ok(())
-}
-
-pub async fn semantic_analyze(repo_root: &str, format: &str) -> Result<(), CliError> {
-    let repo_path = Path::new(repo_root);
-    if !repo_path.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", repo_root),
-        )));
-    }
-
-    let graph = scan_repo(repo_path)?;
-    let components: Vec<(String, String)> = graph
-        .nodes
-        .iter()
-        .map(|n| {
-            let text = format!(
-                "{} {} {}",
-                n.label,
-                n.technology.as_deref().unwrap_or(""),
-                n.path.as_deref().unwrap_or("")
-            );
-            (n.id.clone(), text)
-        })
-        .collect();
-    let structural_edges: Vec<(String, String)> = graph
-        .edges
-        .iter()
-        .map(|e| (e.source.clone(), e.target.clone()))
-        .collect();
-
-    let provider = StubEmbeddingProvider::new();
-    let report = run_semantic_analyze(&components, &structural_edges, &provider, None)
-        .await
-        .map_err(|e| CliError::Validation(format!("Semantic analysis failed: {}", e)))?;
-
-    match format {
-        "json" => {
-            #[derive(serde::Serialize)]
-            struct SemanticOutput {
-                component_count: usize,
-                context_count: usize,
-                hidden_coupling_count: usize,
-                vocabulary_leak_count: usize,
-                health_score: u8,
-                contexts: Vec<ContextOut>,
-                hidden_couplings: Vec<HiddenCouplingOut>,
-                recommendations: Vec<String>,
-            }
-            #[derive(serde::Serialize)]
-            struct ContextOut {
-                name: String,
-                components: Vec<String>,
-            }
-            #[derive(serde::Serialize)]
-            struct HiddenCouplingOut {
-                source: String,
-                target: String,
-                similarity: f32,
-                shared_concepts: Vec<String>,
-            }
-            let out = SemanticOutput {
-                component_count: report.summary.component_count,
-                context_count: report.summary.context_count,
-                hidden_coupling_count: report.summary.hidden_coupling_count,
-                vocabulary_leak_count: report.summary.vocabulary_leak_count,
-                health_score: report.summary.health_score,
-                contexts: report
-                    .contexts
-                    .iter()
-                    .map(|c| ContextOut {
-                        name: c.name.clone(),
-                        components: c.components.clone(),
-                    })
-                    .collect(),
-                hidden_couplings: report
-                    .coupling
-                    .hidden_couplings
-                    .iter()
-                    .take(20)
-                    .map(|c| HiddenCouplingOut {
-                        source: c.source.clone(),
-                        target: c.target.clone(),
-                        similarity: c.similarity,
-                        shared_concepts: c.shared_concepts.clone(),
-                    })
-                    .collect(),
-                recommendations: report.coupling.recommendations.clone(),
-            };
-            println!("{}", serde_json::to_string_pretty(&out)?);
-        }
-        _ => {
-            eprintln!("{}", "═".repeat(70));
-            eprintln!("🔍 Sruja Semantic Analysis");
-            eprintln!("{}", "═".repeat(70));
-            eprintln!();
-            eprintln!("📊 Summary");
-            eprintln!("   Components: {}", report.summary.component_count);
-            eprintln!("   Bounded contexts: {}", report.summary.context_count);
-            eprintln!(
-                "   Hidden couplings: {}",
-                report.summary.hidden_coupling_count
-            );
-            eprintln!(
-                "   Vocabulary leaks: {}",
-                report.summary.vocabulary_leak_count
-            );
-            eprintln!("   Health score: {}/100", report.summary.health_score);
-            eprintln!();
-            if !report.contexts.is_empty() {
-                eprintln!("📦 Bounded Contexts");
-                for ctx in report.contexts.iter().take(5) {
-                    eprintln!("   {}: {} components", ctx.name, ctx.components.len());
-                }
-                if report.contexts.len() > 5 {
-                    eprintln!("   ... and {} more", report.contexts.len() - 5);
-                }
-                eprintln!();
-            }
-            if !report.coupling.recommendations.is_empty() {
-                eprintln!("💡 Recommendations");
-                for r in report.coupling.recommendations.iter().take(5) {
-                    eprintln!("   - {}", r);
-                }
-            }
-        }
-    }
-
     Ok(())
 }
 

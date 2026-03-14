@@ -13,7 +13,7 @@ mod intent;
 mod scan;
 mod version;
 
-pub use analyze::{analyze, complexity, semantic_analyze};
+pub use analyze::{analyze, complexity};
 pub use compliance::compliance;
 pub use discover::{discover_context, discover_questions};
 pub use dsl::{

@@ -368,3 +368,46 @@ fn timestamp() -> String {
         })
         .unwrap_or_else(|_| String::from("1970-01-01T00:00:00Z"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_language::Parser;
+
+    fn parse(input: &str) -> Program {
+        Parser::new("test.sruja".to_string())
+            .parse(input)
+            .expect("parse failed")
+    }
+
+    #[test]
+    fn export_empty_program_returns_empty_json_object() {
+        let program = Program::default();
+        let exporter = Exporter::new();
+        let json = exporter.export(&program).expect("export");
+        assert_eq!(json, "{}");
+    }
+
+    #[test]
+    fn export_compact_empty_program_returns_empty_object_bytes() {
+        let program = Program::default();
+        let exporter = Exporter::new();
+        let bytes = exporter.export_compact(&program).expect("export_compact");
+        assert_eq!(bytes, b"{}");
+    }
+
+    #[test]
+    fn export_compact_non_empty_program_returns_valid_json() {
+        let program = parse("S = system \"My System\" {}");
+        let exporter = Exporter::new();
+        let bytes = exporter.export_compact(&program).expect("export_compact");
+        let _: serde_json::Value =
+            serde_json::from_slice(&bytes).expect("export_compact must produce valid JSON");
+    }
+
+    #[test]
+    fn exporter_with_extended_constructs() {
+        let _ = Exporter::with_extended(true);
+        let _ = Exporter::with_extended(false);
+    }
+}

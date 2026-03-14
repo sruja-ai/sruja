@@ -172,3 +172,25 @@ pub(crate) fn scan_npm_repo(repo_root: &Path) -> Result<Graph, ScanError> {
 
     Ok(graph)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scan_npm_repo_invalid_json_returns_error() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let root = temp.path();
+        std::fs::write(root.join("package.json"), "not valid json").expect("write");
+        let result = scan_npm_repo(root);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn scan_npm_repo_missing_file_returns_error() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let root = temp.path();
+        let result = scan_npm_repo(root);
+        assert!(result.is_err());
+    }
+}

@@ -558,7 +558,7 @@ mod tests {
 
     #[test]
     fn test_drift_health_classification() {
-        let detector = DriftDetector::new();
+        let _detector = DriftDetector::new();
 
         assert_eq!(DriftDetector::classify_health(10), DriftHealth::Healthy);
         assert_eq!(DriftDetector::classify_health(35), DriftHealth::MinorDrift);

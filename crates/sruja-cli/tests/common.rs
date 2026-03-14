@@ -8,11 +8,13 @@ use std::process::Command;
 use tempfile::TempDir;
 
 /// Create a temporary directory for a test repo.
+#[allow(dead_code)] // used by extraction_cli and other e2e tests
 pub fn create_test_repo() -> TempDir {
     tempfile::tempdir().expect("Failed to create temp dir")
 }
 
 /// Write a file at `dir/name` with `content`; creates parent dirs if needed.
+#[allow(dead_code)] // used by extraction_cli and other e2e tests
 pub fn write_file(dir: &Path, name: &str, content: &str) {
     let path = dir.join(name);
     if let Some(parent) = path.parent() {

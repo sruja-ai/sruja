@@ -144,4 +144,84 @@ mod tests {
             _ => panic!("Expected Summarized content"),
         }
     }
+
+    #[tokio::test]
+    async fn test_no_path_returns_skipped() {
+        let temp = TempDir::new().unwrap();
+        let node = Node {
+            id: "test".into(),
+            label: "no-path".into(),
+            path: None,
+            kind: NodeKind::Module,
+            technology: None,
+            metadata: Default::default(),
+        };
+        let result = summarize_large_component(&node, temp.path(), false).await;
+        match result {
+            ComponentSummary::Skipped { reason } => assert!(reason.contains("No file path")),
+            _ => panic!("Expected Skipped"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_file_not_found_returns_skipped() {
+        let temp = TempDir::new().unwrap();
+        let node = Node {
+            id: "test".into(),
+            label: "missing".into(),
+            path: Some("nonexistent.rs".into()),
+            kind: NodeKind::Module,
+            technology: None,
+            metadata: Default::default(),
+        };
+        let result = summarize_large_component(&node, temp.path(), false).await;
+        match result {
+            ComponentSummary::Skipped { reason } => assert!(reason.contains("File not found")),
+            _ => panic!("Expected Skipped"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_boundary_at_max_full_content_size() {
+        let temp = TempDir::new().unwrap();
+        let file_path = temp.path().join("exact.rs");
+        let content = "x".repeat(MAX_FULL_CONTENT_SIZE);
+        fs::write(&file_path, &content).unwrap();
+        let node = Node {
+            id: "test".into(),
+            label: "exact".into(),
+            path: Some("exact.rs".into()),
+            kind: NodeKind::Module,
+            technology: None,
+            metadata: Default::default(),
+        };
+        let result = summarize_large_component(&node, temp.path(), false).await;
+        match result {
+            ComponentSummary::Full { content: c } => assert_eq!(c.len(), MAX_FULL_CONTENT_SIZE),
+            _ => panic!("Expected Full at boundary"),
+        }
+    }
+
+    #[test]
+    fn test_compute_summary_stats_empty() {
+        let stats = compute_summary_stats(&[]);
+        assert_eq!(stats.full_count, 0);
+        assert_eq!(stats.summarized_count, 0);
+        assert_eq!(stats.skipped_count, 0);
+        assert_eq!(stats.total_chars, 0);
+    }
+
+    #[test]
+    fn test_compute_summary_stats_mixed() {
+        let summaries = vec![
+            ComponentSummary::Full { content: "abc".to_string() },
+            ComponentSummary::Summarized { summary: "x".to_string() },
+            ComponentSummary::Skipped { reason: "nope".to_string() },
+        ];
+        let stats = compute_summary_stats(&summaries);
+        assert_eq!(stats.full_count, 1);
+        assert_eq!(stats.summarized_count, 1);
+        assert_eq!(stats.skipped_count, 1);
+        assert_eq!(stats.total_chars, 4);
+    }
 }

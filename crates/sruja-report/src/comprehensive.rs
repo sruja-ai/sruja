@@ -17,17 +17,7 @@ pub struct StructuralSection {
     pub violations_count: usize,
 }
 
-/// Layer 2: Semantic analysis summary.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SemanticSection {
-    pub component_count: usize,
-    pub context_count: usize,
-    pub hidden_coupling_count: usize,
-    pub vocabulary_leak_count: usize,
-    pub health_score: u8,
-}
-
-/// Layer 3: Intent vs reality summary.
+/// Layer 2: Intent vs reality summary.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntentSection {
     pub drift_score: u8,
@@ -54,7 +44,6 @@ pub struct RuntimeSection {
 #[serde(rename_all = "lowercase")]
 pub enum Layer {
     Structural,
-    Semantic,
     Intent,
     Runtime,
 }
@@ -77,8 +66,6 @@ pub enum RecommendationCategory {
     Orphan,
     LayerViolation,
     GodModule,
-    SemanticCoupling,
-    VocabularyLeak,
     IntentDrift,
     BoundaryViolation,
     RuntimeCycle,
@@ -118,7 +105,6 @@ pub struct ComprehensiveReport {
     #[serde(default = "default_schema_version")]
     pub schema_version: u16,
     pub structural: StructuralSection,
-    pub semantic: SemanticSection,
     pub intent: Option<IntentSection>,
     pub runtime: Option<RuntimeSection>,
     pub overall_health: u8,
@@ -129,11 +115,10 @@ fn default_schema_version() -> u16 {
     REPORT_SCHEMA_VERSION
 }
 
-/// Build recommendations from structural violations, semantic and intent suggestions,
+/// Build recommendations from structural violations and intent suggestions,
 /// with real category and source_layer. Deduplicates by description and caps at `limit`.
 pub fn build_recommendations(
     structural_report: &DriftReport,
-    semantic_recommendations: &[String],
     intent_suggestions: &[String],
     limit: usize,
 ) -> Vec<Recommendation> {
@@ -179,18 +164,6 @@ pub fn build_recommendations(
             });
         }
     }
-    for s in semantic_recommendations {
-        if seen.insert(s.clone()) {
-            out.push(Recommendation {
-                priority: Priority::Medium,
-                category: RecommendationCategory::SemanticCoupling,
-                description: s.clone(),
-                affected_components: vec![],
-                source_layer: Layer::Semantic,
-                estimated_effort: Effort::Medium,
-            });
-        }
-    }
     for s in intent_suggestions {
         if seen.insert(s.clone()) {
             out.push(Recommendation {
@@ -227,4 +200,90 @@ pub fn build_recommendations(
     out.sort_by(|a, b| priority_order(a.priority).cmp(&priority_order(b.priority)));
     out.truncate(limit);
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_diff::{DriftReport, Severity, Violation, ViolationKind};
+
+    #[test]
+    fn schema_version_constant() {
+        assert_eq!(REPORT_SCHEMA_VERSION, default_schema_version());
+    }
+
+    #[test]
+    fn build_recommendations_respects_limit() {
+        let report = DriftReport {
+            total_modules: 0,
+            total_services: 0,
+            total_databases: 0,
+            total_dependencies: 0,
+            circular_dependencies: 0,
+            orphan_modules: 0,
+            layer_violations: 0,
+            violations: (0..10)
+                .map(|i| Violation {
+                    kind: ViolationKind::OrphanComponent,
+                    severity: Severity::Warning,
+                    message: format!("Orphan {}", i),
+                    location: None,
+                    suggestion: None,
+                    sources: vec![],
+                })
+                .collect(),
+            suggestions: vec![],
+            health_score: 80,
+            health_breakdown: None,
+        };
+        let recs = build_recommendations(&report, &[], 3);
+        assert_eq!(recs.len(), 3);
+    }
+
+    #[test]
+    fn layer_serde_roundtrip() {
+        for layer in [Layer::Structural, Layer::Intent, Layer::Runtime] {
+            let j = serde_json::to_string(&layer).unwrap();
+            let back: Layer = serde_json::from_str(&j).unwrap();
+            assert_eq!(layer, back);
+        }
+    }
+
+    #[test]
+    fn priority_serde_roundtrip() {
+        for p in [
+            Priority::Low,
+            Priority::Medium,
+            Priority::High,
+            Priority::Critical,
+        ] {
+            let j = serde_json::to_string(&p).unwrap();
+            let back: Priority = serde_json::from_str(&j).unwrap();
+            assert_eq!(p, back);
+        }
+    }
+
+    #[test]
+    fn effort_serde_roundtrip() {
+        for e in [Effort::Low, Effort::Medium, Effort::High] {
+            let j = serde_json::to_string(&e).unwrap();
+            let back: Effort = serde_json::from_str(&j).unwrap();
+            assert_eq!(e, back);
+        }
+    }
+
+    #[test]
+    fn recommendation_category_serde_roundtrip() {
+        for c in [
+            RecommendationCategory::Cycle,
+            RecommendationCategory::Orphan,
+            RecommendationCategory::LayerViolation,
+            RecommendationCategory::IntentDrift,
+            RecommendationCategory::Other,
+        ] {
+            let j = serde_json::to_string(&c).unwrap();
+            let back: RecommendationCategory = serde_json::from_str(&j).unwrap();
+            assert_eq!(c, back);
+        }
+    }
 }

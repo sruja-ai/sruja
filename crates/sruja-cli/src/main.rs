@@ -213,15 +213,6 @@ enum Commands {
         #[arg(long)]
         coupling: bool,
     },
-    /// Analyze semantic coupling, bounded contexts, vocabulary leakage
-    Semantic {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Output format (text, json)
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
-    },
     /// Smart component coverage selection (quality over quantity)
     SmartCoverage {
         /// Path to repository root
@@ -234,7 +225,7 @@ enum Commands {
         #[arg(long, short = 't')]
         target_ratio: Option<f64>,
     },
-    /// Comprehensive analysis (structural + semantic + intent)
+    /// Comprehensive analysis (structural + intent)
     Analyze {
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]
@@ -433,7 +424,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             centrality,
             coupling,
         } => commands::complexity(&repo, &format, treewidth, scc, centrality, coupling).await,
-        Commands::Semantic { repo, format } => commands::semantic_analyze(&repo, &format).await,
         Commands::SmartCoverage {
             repo,
             format,

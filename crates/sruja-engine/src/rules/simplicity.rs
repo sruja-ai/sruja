@@ -25,3 +25,33 @@ impl Rule for SimplicityRule {
         vec![]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_language::Parser;
+
+    #[test]
+    fn simplicity_rule_name() {
+        let rule = SimplicityRule;
+        assert_eq!(rule.name(), "SimplicityGuidance");
+    }
+
+    #[test]
+    fn simplicity_rule_empty_program_returns_no_diagnostics() {
+        let rule = SimplicityRule;
+        let program = Program::default();
+        let diags = rule.validate(&program);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn simplicity_rule_non_empty_program_returns_empty_diagnostics_current_behavior() {
+        let rule = SimplicityRule;
+        let program = Parser::new("test.sruja".to_string())
+            .parse("S = system \"My System\" {}")
+            .expect("parse");
+        let diags = rule.validate(&program);
+        assert!(diags.is_empty(), "SimplicityRule currently defers DDD logic");
+    }
+}

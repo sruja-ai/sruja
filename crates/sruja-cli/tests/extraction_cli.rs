@@ -2,7 +2,7 @@
 //! Ensures machine-readable output contracts stay stable for DX and extraction quality.
 
 mod common;
-use common::run_sruja;
+use common::{create_test_repo, run_sruja, write_file};
 
 #[test]
 fn lint_format_json_returns_valid_schema() {
@@ -45,4 +45,24 @@ fn discover_context_format_json_returns_valid_schema() {
     assert!(obj.contains_key("edges"), "must have 'edges'");
     assert!(obj.contains_key("primary_language"), "must have 'primary_language'");
     assert!(obj.contains_key("suggested_areas"), "must have 'suggested_areas'");
+}
+
+#[test]
+fn lint_on_temp_sruja_file() {
+    let temp = create_test_repo();
+    let minimal = r#"person = kind "Person"
+container = kind "Container"
+system = kind "System"
+User = person "User" {}
+App = system "Temp" {
+  A = container "A" { technology "Rust" description "A" }
+  B = container "B" { technology "Rust" description "B" }
+}
+App.A -> App.B "calls"
+"#;
+    write_file(temp.path(), "arch.sruja", minimal);
+    let sruja_path = temp.path().join("arch.sruja");
+    let path_str = sruja_path.to_str().expect("path utf-8");
+    let (success, _, stderr) = run_sruja(&["lint", path_str]);
+    assert!(success, "lint on temp .sruja should succeed: stderr={}", stderr);
 }

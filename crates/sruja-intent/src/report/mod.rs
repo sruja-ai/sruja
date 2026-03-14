@@ -123,3 +123,87 @@ impl IntentReport {
         md
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::compare::{Drift, DriftHealth, DriftKind, DriftReport, DriftSummary, Evidence, Severity};
+
+    fn minimal_drift_report(drifts: Vec<Drift>, drift_score: u8, health: DriftHealth) -> DriftReport {
+        DriftReport {
+            intent_source: "arch.sruja".to_string(),
+            reality_source: "repo/".to_string(),
+            drifts,
+            drift_score,
+            health,
+            summary: DriftSummary {
+                total_components_declared: 2,
+                total_components_discovered: 3,
+                undocumented_components: 1,
+                missing_components: 0,
+                undocumented_relationships: 0,
+                boundary_violations: 0,
+                policy_violations: 0,
+            },
+        }
+    }
+
+    #[test]
+    fn from_drift_report_empty_drifts() {
+        let report = minimal_drift_report(vec![], 100, DriftHealth::Healthy);
+        let intent_report = IntentReport::from_drift_report(&report);
+        assert_eq!(intent_report.intent_source, "arch.sruja");
+        assert_eq!(intent_report.drift_score, 100);
+        assert!(intent_report.violations.is_empty());
+        assert_eq!(intent_report.summary.components_declared, 2);
+    }
+
+    #[test]
+    fn from_drift_report_with_violation() {
+        let drifts = vec![Drift {
+            kind: DriftKind::UndocumentedComponent,
+            severity: Severity::Medium,
+            description: "Component X not in docs".to_string(),
+            evidence: vec![Evidence {
+                source: "scan".to_string(),
+                location: Some("src/x.rs".to_string()),
+                detail: "Discovered node".to_string(),
+            }],
+            intent_ref: None,
+            suggestion: Some("Add to docs".to_string()),
+        }];
+        let report = minimal_drift_report(drifts, 80, DriftHealth::MinorDrift);
+        let intent_report = IntentReport::from_drift_report(&report);
+        assert_eq!(intent_report.violations.len(), 1);
+        assert!(intent_report.violations[0].kind.contains("Undocumented"));
+        assert_eq!(intent_report.suggestions.len(), 1);
+    }
+
+    #[test]
+    fn to_markdown_includes_sections() {
+        let report = minimal_drift_report(vec![], 90, DriftHealth::Healthy);
+        let intent_report = IntentReport::from_drift_report(&report);
+        let md = intent_report.to_markdown();
+        assert!(md.contains("# Intent vs Reality Report"));
+        assert!(md.contains("**Intent Source:**"));
+        assert!(md.contains("## Summary"));
+        assert!(md.contains("Components declared: 2"));
+    }
+
+    #[test]
+    fn to_markdown_includes_violations_and_suggestions() {
+        let drifts = vec![Drift {
+            kind: DriftKind::MissingComponent,
+            severity: Severity::High,
+            description: "Y missing in repo".to_string(),
+            evidence: vec![],
+            intent_ref: None,
+            suggestion: Some("Implement Y".to_string()),
+        }];
+        let report = minimal_drift_report(drifts, 70, DriftHealth::SignificantDrift);
+        let intent_report = IntentReport::from_drift_report(&report);
+        let md = intent_report.to_markdown();
+        assert!(md.contains("## Violations"));
+        assert!(md.contains("## Suggestions"));
+    }
+}

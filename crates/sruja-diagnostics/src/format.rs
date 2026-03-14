@@ -48,3 +48,64 @@ pub fn format_diagnostic(d: &Diagnostic) -> String {
 
     output
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{Diagnostic, Severity, SourceLocation};
+
+    #[test]
+    fn format_diagnostic_includes_code_severity_and_message() {
+        let diag = Diagnostic::new(
+            "E101",
+            Severity::Error,
+            "unexpected token",
+            SourceLocation::new("test.sruja".to_string(), 1, 1),
+        );
+        let formatted = format_diagnostic(&diag);
+        assert!(formatted.contains("[E101]"));
+        assert!(formatted.contains("Error:"));
+        assert!(formatted.contains("unexpected token"));
+    }
+
+    #[test]
+    fn format_diagnostic_includes_location() {
+        let diag = Diagnostic::new(
+            "E102",
+            Severity::Warning,
+            "missing brace",
+            SourceLocation::new("arch.sruja".to_string(), 5, 12),
+        );
+        let formatted = format_diagnostic(&diag);
+        assert!(formatted.contains("-->"));
+        assert!(formatted.contains("arch.sruja:5:12"));
+    }
+
+    #[test]
+    fn format_diagnostic_includes_context_when_present() {
+        let mut diag = Diagnostic::new(
+            "E103",
+            Severity::Error,
+            "invalid",
+            SourceLocation::new("x.sruja".to_string(), 2, 1),
+        );
+        diag.context = vec!["  A = system \"A\"".to_string(), "  B = container \"B\"".to_string()];
+        let formatted = format_diagnostic(&diag);
+        assert!(formatted.contains("  | "));
+        assert!(formatted.contains("A = system"));
+    }
+
+    #[test]
+    fn format_diagnostic_includes_suggestions_when_present() {
+        let mut diag = Diagnostic::new(
+            "E104",
+            Severity::Info,
+            "consider adding description",
+            SourceLocation::new("y.sruja".to_string(), 1, 1),
+        );
+        diag.suggestions = vec!["Add description \"...\"".to_string()];
+        let formatted = format_diagnostic(&diag);
+        assert!(formatted.contains("= Help:"));
+        assert!(formatted.contains("Add description"));
+    }
+}

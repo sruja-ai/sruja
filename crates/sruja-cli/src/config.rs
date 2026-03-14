@@ -450,3 +450,75 @@ pub fn get_builtin_views() -> HashMap<String, ViewDefinition> {
 
     views
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn get_builtin_views_contains_expected_keys() {
+        let views = get_builtin_views();
+        assert!(views.contains_key("cto"));
+        assert!(views.contains_key("sre"));
+        assert!(views.contains_key("devops"));
+        assert!(views.contains_key("security"));
+        assert!(views.contains_key("product"));
+        assert!(views.get("cto").unwrap().name == "CTO Report");
+    }
+
+    #[test]
+    fn config_deserialize_empty_yaml_gives_default() {
+        let config: SrujaConfig = serde_yaml::from_str("{}").expect("parse");
+        assert!(config.views.is_empty());
+    }
+
+    #[test]
+    fn config_get_view_returns_view_when_in_config() {
+        let mut config = SrujaConfig::default();
+        config.views.insert(
+            "myview".to_string(),
+            ViewDefinition {
+                extends: None,
+                name: "My View".to_string(),
+                description: None,
+                sections: vec![],
+                exclude: vec![],
+                thresholds: ThresholdConfig::default(),
+                terminology: HashMap::new(),
+                llm_prompt: None,
+                focus_areas: vec![],
+                analysis_depth: AnalysisDepth::Standard,
+            },
+        );
+        let view = config.get_view("myview");
+        assert!(view.is_some());
+        assert_eq!(view.unwrap().name, "My View");
+    }
+
+    #[test]
+    fn analysis_depth_default_is_standard() {
+        assert_eq!(AnalysisDepth::default(), AnalysisDepth::Standard);
+    }
+
+    #[test]
+    fn analysis_depth_serde_roundtrip() {
+        for depth in [
+            AnalysisDepth::Quick,
+            AnalysisDepth::Standard,
+            AnalysisDepth::Deep,
+            AnalysisDepth::Comprehensive,
+        ] {
+            let yaml = serde_yaml::to_string(&depth).expect("serialize");
+            let back: AnalysisDepth = serde_yaml::from_str(&yaml).expect("deserialize");
+            assert_eq!(depth, back);
+        }
+    }
+
+    #[test]
+    fn threshold_config_defaults() {
+        let t: ThresholdConfig = serde_yaml::from_str("{}").expect("parse");
+        assert_eq!(t.max_coupling, 10.0);
+        assert_eq!(t.max_orphans, 5);
+        assert_eq!(t.min_health, 70.0);
+    }
+}

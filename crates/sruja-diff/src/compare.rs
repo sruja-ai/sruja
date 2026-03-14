@@ -285,3 +285,153 @@ fn calculate_health_score(
 
     score
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_scan::{Edge, EdgeKind, Graph, Node, NodeKind};
+
+    fn node(id: &str, label: &str, kind: NodeKind) -> Node {
+        Node {
+            id: id.to_string(),
+            label: label.to_string(),
+            path: None,
+            kind,
+            technology: None,
+            metadata: Default::default(),
+        }
+    }
+
+    fn edge(source: &str, target: &str, kind: EdgeKind) -> Edge {
+        Edge {
+            source: source.to_string(),
+            target: target.to_string(),
+            kind,
+            evidence: vec![],
+        }
+    }
+
+    #[test]
+    fn compare_empty_graphs() {
+        let actual = Graph::default();
+        let proposed = Graph::default();
+        let result = compare_graphs(&actual, &proposed);
+        assert_eq!(result.node_diff.added.len(), 0);
+        assert_eq!(result.node_diff.removed.len(), 0);
+        assert_eq!(result.node_diff.matched.len(), 0);
+        assert_eq!(result.edge_diff.added.len(), 0);
+        assert_eq!(result.edge_diff.removed.len(), 0);
+        assert_eq!(result.summary.proposed_components, 0);
+        assert_eq!(result.summary.existing_components, 0);
+    }
+
+    #[test]
+    fn compare_added_node() {
+        let actual = Graph {
+            nodes: vec![node("a", "A", NodeKind::Module)],
+            edges: vec![],
+            ..Default::default()
+        };
+        let proposed = Graph {
+            nodes: vec![
+                node("a", "A", NodeKind::Module),
+                node("b", "B", NodeKind::Service),
+            ],
+            edges: vec![],
+            ..Default::default()
+        };
+        let result = compare_graphs(&actual, &proposed);
+        assert_eq!(result.node_diff.added.len(), 1);
+        assert_eq!(result.node_diff.added[0].id, "b");
+        assert_eq!(result.node_diff.removed.len(), 0);
+        assert_eq!(result.node_diff.matched.len(), 1);
+        assert_eq!(result.summary.new_components, 1);
+    }
+
+    #[test]
+    fn compare_removed_node() {
+        let actual = Graph {
+            nodes: vec![
+                node("a", "A", NodeKind::Module),
+                node("b", "B", NodeKind::Module),
+            ],
+            edges: vec![],
+            ..Default::default()
+        };
+        let proposed = Graph {
+            nodes: vec![node("a", "A", NodeKind::Module)],
+            edges: vec![],
+            ..Default::default()
+        };
+        let result = compare_graphs(&actual, &proposed);
+        assert_eq!(result.node_diff.added.len(), 0);
+        assert_eq!(result.node_diff.removed.len(), 1);
+        assert_eq!(result.node_diff.removed[0].id, "b");
+        assert_eq!(result.summary.missing_components, 1);
+    }
+
+    #[test]
+    fn compare_added_and_removed_edges() {
+        let actual = Graph {
+            nodes: vec![
+                node("a", "A", NodeKind::Module),
+                node("b", "B", NodeKind::Module),
+            ],
+            edges: vec![edge("a", "b", EdgeKind::Calls)],
+            ..Default::default()
+        };
+        let proposed = Graph {
+            nodes: vec![
+                node("a", "A", NodeKind::Module),
+                node("b", "B", NodeKind::Module),
+            ],
+            edges: vec![
+                edge("a", "b", EdgeKind::Calls),
+                edge("b", "a", EdgeKind::Calls),
+            ],
+            ..Default::default()
+        };
+        let result = compare_graphs(&actual, &proposed);
+        assert_eq!(result.edge_diff.added.len(), 1);
+        assert_eq!(result.edge_diff.added[0].source, "b");
+        assert_eq!(result.edge_diff.added[0].target, "a");
+        assert_eq!(result.edge_diff.removed.len(), 0);
+        assert_eq!(result.summary.new_dependencies, 1);
+    }
+
+    #[test]
+    fn compare_identical_graphs_matched_only() {
+        let g = Graph {
+            nodes: vec![
+                node("x", "X", NodeKind::Module),
+                node("y", "Y", NodeKind::Service),
+            ],
+            edges: vec![edge("x", "y", EdgeKind::Calls)],
+            ..Default::default()
+        };
+        let result = compare_graphs(&g, &g);
+        assert_eq!(result.node_diff.added.len(), 0);
+        assert_eq!(result.node_diff.removed.len(), 0);
+        assert_eq!(result.node_diff.matched.len(), 2);
+        assert_eq!(result.edge_diff.added.len(), 0);
+        assert_eq!(result.edge_diff.removed.len(), 0);
+    }
+
+    #[test]
+    fn compare_matched_similarity_same_label() {
+        let actual = Graph {
+            nodes: vec![node("id", "UserService", NodeKind::Service)],
+            edges: vec![],
+            ..Default::default()
+        };
+        let proposed = Graph {
+            nodes: vec![node("id", "UserService", NodeKind::Service)],
+            edges: vec![],
+            ..Default::default()
+        };
+        let result = compare_graphs(&actual, &proposed);
+        assert_eq!(result.node_diff.matched.len(), 1);
+        assert!((result.node_diff.matched[0].similarity - 1.0).abs() < 1e-5);
+        assert!(result.node_diff.matched[0].kind_match);
+    }
+}

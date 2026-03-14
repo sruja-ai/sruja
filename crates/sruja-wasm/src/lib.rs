@@ -725,3 +725,42 @@ pub fn sruja_get_document_symbols(dsl: &str, filename: Option<String>) -> Result
 
     serde_json::to_string(&symbols).map_err(|e| JsValue::from_str(&format!("JSON error: {:?}", e)))
 }
+
+#[cfg(test)]
+mod wasm_tests {
+    use super::*;
+    use wasm_bindgen_test::*;
+
+    // Default is Node; use wasm-pack test --node in CI.
+
+    #[wasm_bindgen_test]
+    fn dsl_to_model_valid() {
+        let dsl = r#"S = system "My System" { description "A system" }"#;
+        let out = sruja_dsl_to_model(dsl, None).unwrap();
+        assert!(out.contains("elements"));
+        assert!(out.contains("My System"));
+    }
+
+    #[wasm_bindgen_test]
+    fn dsl_to_model_invalid_returns_err() {
+        let dsl = "{{{";
+        let res = sruja_dsl_to_model(dsl, None);
+        assert!(res.is_err());
+    }
+
+    #[wasm_bindgen_test]
+    fn dsl_to_mermaid_valid() {
+        let dsl = r#"S = system "S" { description "S" }"#;
+        let out = sruja_dsl_to_mermaid(dsl, None).unwrap();
+        assert!(!out.is_empty());
+        assert!(out.contains("flowchart") || out.contains("graph"));
+    }
+
+    #[wasm_bindgen_test]
+    fn get_diagnostics_valid_dsl() {
+        let dsl = r#"S = system "S" { description "S" }"#;
+        let out = sruja_get_diagnostics(dsl, None).unwrap();
+        // Returns a JSON array of diagnostic objects
+        assert!(out.starts_with('['));
+    }
+}

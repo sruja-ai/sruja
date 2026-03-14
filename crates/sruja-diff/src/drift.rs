@@ -513,3 +513,70 @@ fn find_god_modules(graph: &Graph, threshold: usize) -> Vec<GodModuleInfo> {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{find_circular_dependencies, find_orphan_modules};
+    use sruja_scan::{Edge, EdgeKind, Graph, Node, NodeKind};
+    use std::collections::HashMap;
+
+    fn node(id: &str, kind: NodeKind, path: Option<&str>) -> Node {
+        Node {
+            id: id.to_string(),
+            kind,
+            label: id.to_string(),
+            path: path.map(String::from),
+            technology: None,
+            metadata: HashMap::new(),
+        }
+    }
+
+    fn edge(source: &str, target: &str) -> Edge {
+        Edge {
+            source: source.to_string(),
+            target: target.to_string(),
+            kind: EdgeKind::Calls,
+            evidence: vec![],
+        }
+    }
+
+    #[test]
+    fn find_circular_dependencies_detects_simple_cycle() {
+        let mut g = Graph::default();
+        g.nodes.push(node("a", NodeKind::Module, None));
+        g.nodes.push(node("b", NodeKind::Module, None));
+        g.edges.push(edge("a", "b"));
+        g.edges.push(edge("b", "a"));
+
+        let cycles = find_circular_dependencies(&g);
+        assert_eq!(cycles.len(), 1);
+        assert_eq!(cycles[0].len(), 2);
+    }
+
+    #[test]
+    fn find_circular_dependencies_no_cycle_returns_empty() {
+        let mut g = Graph::default();
+        g.nodes.push(node("a", NodeKind::Module, None));
+        g.nodes.push(node("b", NodeKind::Module, None));
+        g.edges.push(edge("a", "b"));
+
+        let cycles = find_circular_dependencies(&g);
+        assert!(cycles.is_empty());
+    }
+
+    #[test]
+    fn find_orphan_modules_detects_isolated_node() {
+        let mut g = Graph::default();
+        g.nodes.push(node("a", NodeKind::Module, Some("src/a.rs")));
+        g.nodes.push(node("b", NodeKind::Module, Some("src/b.rs")));
+        g.edges.push(edge("a", "b"));
+
+        let orphans = find_orphan_modules(&g);
+        assert!(orphans.is_empty(), "a and b are connected");
+
+        g.nodes.push(node("orphan", NodeKind::Module, Some("src/orphan.rs")));
+        let orphans = find_orphan_modules(&g);
+        assert_eq!(orphans.len(), 1);
+        assert_eq!(orphans[0], "orphan");
+    }
+}

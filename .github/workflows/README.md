@@ -15,6 +15,20 @@
 | **trigger-extension-publish.yml** | release published | Calls publish-extension with release version so extension publishes when a release is created (e.g. by Release Please). |
 | **release-cli.yml** | release published, **workflow_call** (from release-please), or **workflow_dispatch** (manual) | Build Sruja CLI for Linux (x86_64), macOS (aarch64), and Windows (x86_64); attach binaries to the GitHub Release. **release-please** calls this via `workflow_call` when it creates a release (GITHUB_TOKEN cannot trigger `workflow_dispatch`). Install script is served at https://sruja.ai/install.sh; users run `curl -fsSL https://sruja.ai/install.sh | bash`. |
 
+## Version consistency (release-please)
+
+All versioned artifacts use a **single source of truth** so release-please keeps them in sync.
+
+| Artifact | How it stays consistent |
+|----------|--------------------------|
+| **Crates** | Root `Cargo.toml` defines `[workspace.package] version = "X.Y.Z"`. Every workspace crate **must** use `version.workspace = true` (no hardcoded `version = "..."` in member `Cargo.toml`). Release-please updates the root only; members inherit at build time. |
+| **Extension** | `extension/package.json` and `extension/package-lock.json` are listed in `release-please-config.json` **extra-files**; release-please bumps them to the same version as the root when creating a release PR. |
+| **Skills** | Skills under `skills/` are content (SKILL.md, rules); they have no separate version field. They follow the **repo release version** (Git tag / GitHub Release). Skill CHANGELOGs (e.g. `skills/sruja-architecture-agent/CHANGELOG.md`) should note “aligns with Sruja repo version X.Y.Z” when updated. |
+
+**Config:** `release-please-config.json` has one package `"."` with `extra-files` for `Cargo.toml` (workspace.package.version), `extension/package.json`, and `extension/package-lock.json`. `.release-please-manifest.json` tracks the current version for that single package. When adding a new crate, use `version.workspace = true` in its `Cargo.toml`. Do not add a new release-please package for crates or skills; the monorepo uses one version.
+
+**CI check:** The **Version consistency** job in `unified-ci.yml` runs `scripts/verify-version-consistency.sh` on every push/PR. It asserts that the workspace version (from Cargo), `extension/package.json`, `extension/package-lock.json`, and `.release-please-manifest.json` all match, and that no crate uses a hardcoded `version = "..."` instead of `version.workspace = true`. So when the release-please action creates a release PR and updates all extra-files to the same new version, CI confirms they stay in sync; if someone edits one version by hand and forgets another, CI fails.
+
 ## Standards defined in .sruja → CI checks
 
 Policies and requirements in the repo’s .sruja files (e.g. `docs/architecture/sruja-platform.sruja`) are enforced in CI as follows:

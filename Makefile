@@ -1,4 +1,4 @@
-.PHONY: build test test-coverage clean install lint fmt help build-rust test-rust wasm wasm-tiny book book-build book-wasm book-serve book-deps book-clean assets demo build-extension install-extension
+.PHONY: build test test-coverage test-wasm test-e2e clean install lint fmt help build-rust test-rust wasm wasm-tiny book book-build book-wasm book-serve book-deps book-clean assets demo build-extension install-extension
 
 # Build Rust libraries
 build-rust:
@@ -40,6 +40,24 @@ build: build-rust
 # Run tests (default: Rust)
 test: test-rust
 	@echo "✅ Tests complete!"
+
+# Run WASM unit tests (requires: wasm-pack, rustup target add wasm32-unknown-unknown)
+test-wasm:
+	@echo "Testing WASM (sruja-wasm)..."
+	@if command -v wasm-pack >/dev/null 2>&1; then \
+		(cd crates/sruja-wasm && wasm-pack test --node) && echo "✅ WASM tests passed"; \
+	else \
+		echo "⚠️  wasm-pack not found. Install: cargo install wasm-pack"; exit 1; \
+	fi
+
+# Run Playwright E2E test (book Show diagram). Prerequisite: make book-serve in another terminal.
+test-e2e:
+	@echo "Running E2E (Playwright)..."
+	@if [ -f package.json ] && command -v npm >/dev/null 2>&1; then \
+		npm run e2e && echo "✅ E2E tests passed"; \
+	else \
+		echo "⚠️  Run from repo root with Node/npm installed. Start book first: make book-serve"; exit 1; \
+	fi
 
 # Run tests with coverage (requires: cargo install cargo-llvm-cov)
 test-coverage:
@@ -255,6 +273,8 @@ help:
 	@echo "Build & Development:"
 	@echo "  make build              - Build Rust libraries"
 	@echo "  make test               - Run Rust tests"
+	@echo "  make test-wasm          - Run WASM unit tests (wasm-pack test --node)"
+	@echo "  make test-e2e           - Run Playwright E2E (book Show diagram); start book-serve first"
 	@echo "  make test-coverage      - Run tests with coverage (if available)"
 	@echo "  make clean              - Remove build artifacts"
 	@echo "  make install            - Install Rust dependencies"

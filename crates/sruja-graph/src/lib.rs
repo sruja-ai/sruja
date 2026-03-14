@@ -233,3 +233,52 @@ impl SourceReference {
 pub fn generate_id() -> String {
     Uuid::new_v4().to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn source_reference_summary_scanned_repo() {
+        let r = SourceReference::scanned_repo("/path/to/repo");
+        assert_eq!(r.summary(), "scanned: /path/to/repo");
+    }
+
+    #[test]
+    fn source_reference_summary_adr_file() {
+        let r = SourceReference::adr_file("docs/adr/001.md");
+        assert_eq!(r.summary(), "ADR: docs/adr/001.md");
+    }
+
+    #[test]
+    fn source_reference_summary_dsl_file() {
+        let r = SourceReference::dsl_file("arch.sruja", 10);
+        assert_eq!(r.summary(), "arch.sruja:10");
+    }
+
+    #[test]
+    fn source_reference_summary_manual() {
+        let r = SourceReference::manual();
+        assert_eq!(r.summary(), "manual");
+    }
+
+    #[test]
+    fn source_reference_summary_conversation() {
+        let r = SourceReference::conversation("sess-1", vec!["msg-1".to_string()]);
+        assert_eq!(r.summary(), "conversation");
+    }
+
+    #[test]
+    fn generate_id_returns_non_empty_uuid_like() {
+        let id = generate_id();
+        assert!(!id.is_empty());
+        assert_eq!(id.len(), 36);
+        assert!(id.chars().all(|c| c.is_ascii_hexdigit() || c == '-'));
+    }
+
+    #[test]
+    fn decision_status_display() {
+        assert_eq!(DecisionStatus::Accepted.to_string(), "accepted");
+        assert_eq!(DecisionStatus::Proposed.to_string(), "proposed");
+    }
+}

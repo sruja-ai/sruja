@@ -34,6 +34,32 @@ mod tests {
         }
     }
 
+    fn make_edge_with_evidence(
+        source: &str,
+        target: &str,
+        kind: EdgeKind,
+        file: Option<&str>,
+        line: Option<u32>,
+    ) -> Edge {
+        use sruja_scan::EdgeEvidence;
+        let evidence = if file.is_some() || line.is_some() {
+            vec![EdgeEvidence {
+                rule: "test".to_string(),
+                file: file.map(String::from),
+                line,
+                detail: None,
+            }]
+        } else {
+            Vec::new()
+        };
+        Edge {
+            source: source.to_string(),
+            target: target.to_string(),
+            kind,
+            evidence,
+        }
+    }
+
     #[test]
     fn test_compare_empty_graphs() {
         let actual = Graph::new();
@@ -115,6 +141,35 @@ mod tests {
         assert!(report.health_score <= 100);
         assert_eq!(report.total_modules, 4);
         assert!(!report.suggestions.is_empty());
+    }
+
+    #[test]
+    fn test_drift_cycle_violation_includes_source_refs_when_edges_have_evidence() {
+        let mut graph = Graph::new();
+        graph.nodes.push(make_node("x", NodeKind::Module, "X"));
+        graph.nodes.push(make_node("y", NodeKind::Module, "Y"));
+        graph.edges.push(make_edge_with_evidence(
+            "x", "y", EdgeKind::Calls,
+            Some("src/x.rs"),
+            Some(10),
+        ));
+        graph.edges.push(make_edge_with_evidence(
+            "y", "x", EdgeKind::Calls,
+            Some("src/y.rs"),
+            Some(20),
+        ));
+
+        let report = detect_architectural_drift(&graph);
+
+        let cycle_violation = report
+            .violations
+            .iter()
+            .find(|v| v.kind == ViolationKind::CircularDependency)
+            .expect("cycle violation");
+        assert!(
+            !cycle_violation.sources.is_empty(),
+            "source_ref: cycle violation should have sources when edges have evidence"
+        );
     }
 
     #[test]

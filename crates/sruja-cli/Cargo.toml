@@ -20,7 +20,6 @@ sruja-export = { path = "../sruja-export" }
 sruja-scan = { path = "../sruja-scan" }
 sruja-diff = { path = "../sruja-diff" }
 sruja-graph = { path = "../sruja-graph" }
-sruja-semantic = { path = "../sruja-semantic" }
 sruja-intent = { path = "../sruja-intent" }
 sruja-report = { path = "../sruja-report" }
 clap = { workspace = true }

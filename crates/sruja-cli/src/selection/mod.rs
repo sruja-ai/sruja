@@ -8,7 +8,6 @@ pub mod question_coverage;
 mod risk;
 mod roles;
 mod score;
-pub mod semantic;
 pub mod summarize;
 
 pub use centrality::{compute_all_centrality, ComponentImportance};
@@ -16,11 +15,25 @@ pub use question_coverage::{evaluate_question_coverage, refine_for_questions};
 pub use risk::{compute_dependency_risk, DependencyRisk};
 pub use roles::{detect_architectural_role, ArchitecturalRole};
 pub use score::{compute_aqs, ArchitectureQualityScore};
-pub use semantic::compute_semantic_importance;
 pub use summarize::{summarize_large_component, ComponentSummary};
 
 use sruja_scan::{Graph, Node};
 use std::collections::{HashMap, HashSet};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn selection_config_default() {
+        let config = SelectionConfig::default();
+        assert_eq!(config.target_ratio, 0.15);
+        assert_eq!(config.target_question_coverage, 0.80);
+        assert!(config.critical_roles.len() >= 2);
+        assert!(config.include_high_risk);
+        assert!(!config.enable_llm);
+    }
+}
 
 /// Configuration for smart selection
 #[derive(Debug, Clone)]
@@ -238,72 +251,13 @@ impl<'a> Selector<'a> {
     }
 
     fn select_context_representatives(&mut self) {
-        if !self.config.include_context_boundaries {
-            return;
-        }
-
-        let node_texts: Vec<(String, String)> = self
-            .graph
-            .nodes
-            .iter()
-            .map(|n| {
-                let text = n.path.clone().unwrap_or_else(|| n.label.clone());
-                (n.id.clone(), text)
-            })
-            .collect();
-
-        let structural_edges: Vec<(String, String)> = self
-            .graph
-            .edges
-            .iter()
-            .map(|e| (e.source.clone(), e.target.clone()))
-            .collect();
-
-        let provider = sruja_semantic::embedding::StubEmbeddingProvider::new();
-
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let report = rt.block_on(async {
-            sruja_semantic::analyze(&node_texts, &structural_edges, &provider, None).await
-        });
-
-        if let Ok(report) = report {
-            let mut nodes_to_add: Vec<(String, SelectionReason)> = Vec::new();
-
-            for context in &report.contexts {
-                let context_node_ids: std::collections::HashSet<_> =
-                    context.components.iter().cloned().collect();
-
-                let context_nodes: Vec<Node> = self
-                    .graph
-                    .nodes
-                    .iter()
-                    .filter(|n| context_node_ids.contains(&n.id))
-                    .cloned()
-                    .collect();
-
-                let representative_ids = self.sample_by_centrality_ids(
-                    &context_nodes,
-                    self.config.min_context_representatives,
-                );
-
-                for id in representative_ids {
-                    nodes_to_add.push((id, SelectionReason::ContextBoundary));
-                }
-
-                let boundary_ids = self.find_boundary_node_ids(&context_node_ids);
-                for id in boundary_ids {
-                    nodes_to_add.push((id, SelectionReason::ContextBoundary));
-                }
-            }
-
-            for (id, reason) in nodes_to_add {
-                if let Some(node) = self.graph.nodes.iter().find(|n| n.id == id) {
-                    self.add_node(node, reason);
-                }
-            }
-        }
+        // Semantic analysis removed - context boundary detection disabled
+        // This feature previously used sruja-semantic (embedding-based clustering)
+        // but was experimental and had no production usage.
+        // To re-enable: add sruja-semantic back as optional dependency.
     }
 
+    #[allow(dead_code)]
     fn sample_by_centrality_ids(&self, nodes: &[Node], count: usize) -> Vec<String> {
         let mut scored: Vec<_> = nodes
             .iter()
@@ -321,6 +275,7 @@ impl<'a> Selector<'a> {
         scored.into_iter().take(count).map(|(id, _)| id).collect()
     }
 
+    #[allow(dead_code)]
     fn find_boundary_node_ids(
         &self,
         context_ids: &std::collections::HashSet<String>,

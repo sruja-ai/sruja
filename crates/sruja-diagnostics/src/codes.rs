@@ -60,3 +60,41 @@ pub const CODE_BEST_PRACTICE: &str = "W001";
 // Policy Errors (E4xx)
 /// Policy constraint violation
 pub const CODE_POLICY_VIOLATION: &str = "E401";
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn syntax_codes_are_e1xx() {
+        assert!(CODE_SYNTAX_ERROR.starts_with('E') && CODE_SYNTAX_ERROR.len() >= 4);
+        assert!(CODE_UNEXPECTED_TOKEN.starts_with('E'));
+        assert!(CODE_MISSING_BRACE.starts_with('E'));
+        assert!(CODE_INVALID_STRING.starts_with('E'));
+    }
+
+    #[test]
+    fn semantic_codes_are_e2xx() {
+        assert!(CODE_DUPLICATE_ID.starts_with('E'));
+        assert!(CODE_UNDEFINED_REF.starts_with('E'));
+        assert!(CODE_CYCLE_DETECTED.starts_with('E'));
+        assert!(CODE_ORPHAN_ELEMENT.starts_with('E'));
+        assert!(CODE_LAYER_VIOLATION.starts_with('E'));
+    }
+
+    #[test]
+    fn validation_codes_are_e3xx() {
+        assert!(CODE_INVALID_PROPERTY.starts_with('E'));
+        assert!(CODE_MISSING_FIELD.starts_with('E'));
+    }
+
+    #[test]
+    fn warning_code_is_w001() {
+        assert_eq!(CODE_BEST_PRACTICE, "W001");
+    }
+
+    #[test]
+    fn policy_code_is_e4xx() {
+        assert!(CODE_POLICY_VIOLATION.starts_with('E'));
+    }
+}
