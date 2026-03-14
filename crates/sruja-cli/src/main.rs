@@ -467,7 +467,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 commands::runtime_analyze(&traces, &format).await
             }
         },
-        Commands::Discover { context, repo, format } => {
+        Commands::Discover {
+            context,
+            repo,
+            format,
+        } => {
             if context {
                 commands::discover_context(&repo, &format).await
             } else {

@@ -34,9 +34,7 @@ mod analyze_command {
         assert!(success, "analyze -f json should succeed: stderr={}", stderr);
 
         let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-        assert!(
-            json.get("summary").is_some() || json.get("health_score").is_some()
-        );
+        assert!(json.get("summary").is_some() || json.get("health_score").is_some());
         // New fields from architecture completion scoring should be present.
         if let Some(score) = json.get("architecture_completion_score") {
             assert!(score.is_number(), "completion score should be numeric");

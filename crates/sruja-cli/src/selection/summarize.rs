@@ -214,9 +214,15 @@ mod tests {
     #[test]
     fn test_compute_summary_stats_mixed() {
         let summaries = vec![
-            ComponentSummary::Full { content: "abc".to_string() },
-            ComponentSummary::Summarized { summary: "x".to_string() },
-            ComponentSummary::Skipped { reason: "nope".to_string() },
+            ComponentSummary::Full {
+                content: "abc".to_string(),
+            },
+            ComponentSummary::Summarized {
+                summary: "x".to_string(),
+            },
+            ComponentSummary::Skipped {
+                reason: "nope".to_string(),
+            },
         ];
         let stats = compute_summary_stats(&summaries);
         assert_eq!(stats.full_count, 1);

@@ -325,7 +325,9 @@ mod tests {
         let mut graph = KnowledgeGraph::new();
         graph.add_node(test_node("api")).unwrap();
         graph.add_node(test_node("db")).unwrap();
-        graph.add_edge(test_edge("e1", "api", "db", EdgeKind::DependsOn)).unwrap();
+        graph
+            .add_edge(test_edge("e1", "api", "db", EdgeKind::DependsOn))
+            .unwrap();
 
         let removed = graph.remove_node("api").unwrap();
         assert_eq!(removed.id, "api");
@@ -377,7 +379,9 @@ mod tests {
         let mut graph = KnowledgeGraph::new();
         graph.add_node(test_node("a")).unwrap();
         graph.add_node(test_node("b")).unwrap();
-        graph.add_edge(test_edge("e1", "a", "b", EdgeKind::Calls)).unwrap();
+        graph
+            .add_edge(test_edge("e1", "a", "b", EdgeKind::Calls))
+            .unwrap();
 
         let stats = graph.stats();
         assert_eq!(stats.total_nodes, 2);
@@ -412,8 +416,12 @@ mod tests {
         graph.add_node(test_node("a")).unwrap();
         graph.add_node(test_node("b")).unwrap();
         graph.add_node(test_node("c")).unwrap();
-        graph.add_edge(test_edge("e1", "a", "b", EdgeKind::Calls)).unwrap();
-        graph.add_edge(test_edge("e2", "a", "c", EdgeKind::Calls)).unwrap();
+        graph
+            .add_edge(test_edge("e1", "a", "b", EdgeKind::Calls))
+            .unwrap();
+        graph
+            .add_edge(test_edge("e2", "a", "c", EdgeKind::Calls))
+            .unwrap();
 
         let from_a = graph.get_edges_from("a");
         let to_b = graph.get_edges_to("b");

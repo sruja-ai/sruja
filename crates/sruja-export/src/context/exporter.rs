@@ -136,6 +136,9 @@ mod tests {
             .expect("parse");
         let exporter = ContextExporter::new("custom_template");
         let out = exporter.export(&program);
-        assert!(out.starts_with("# System Architecture Context"), "unknown template should fall back to general");
+        assert!(
+            out.starts_with("# System Architecture Context"),
+            "unknown template should fall back to general"
+        );
     }
 }

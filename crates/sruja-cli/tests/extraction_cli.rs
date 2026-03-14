@@ -8,7 +8,12 @@ use common::{create_test_repo, run_sruja, write_file};
 fn lint_format_json_returns_valid_schema() {
     // Use repo's valid example (path relative to workspace root when run from crates/sruja-cli)
     let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let example = manifest_dir.join("..").join("..").join("book").join("valid-examples").join("getting-started.sruja");
+    let example = manifest_dir
+        .join("..")
+        .join("..")
+        .join("book")
+        .join("valid-examples")
+        .join("getting-started.sruja");
     if !example.exists() {
         eprintln!("Skipping lint_format_json: {} not found", example.display());
         return;
@@ -16,17 +21,31 @@ fn lint_format_json_returns_valid_schema() {
     let path_str = example.to_str().expect("path utf-8");
     let (success, stdout, stderr) = run_sruja(&["lint", "--format", "json", path_str]);
 
-    assert!(success || !stdout.is_empty(), "lint should produce output: stderr={}", stderr);
-    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("lint --format json must be valid JSON");
+    assert!(
+        success || !stdout.is_empty(),
+        "lint should produce output: stderr={}",
+        stderr
+    );
+    let parsed: serde_json::Value =
+        serde_json::from_str(stdout.trim()).expect("lint --format json must be valid JSON");
     let obj = parsed.as_object().expect("root must be object");
     assert!(obj.contains_key("ok"), "must have 'ok'");
     assert!(obj.contains_key("error_count"), "must have 'error_count'");
-    assert!(obj.contains_key("warning_count"), "must have 'warning_count'");
+    assert!(
+        obj.contains_key("warning_count"),
+        "must have 'warning_count'"
+    );
     assert!(obj.contains_key("diagnostics"), "must have 'diagnostics'");
-    let diags = obj.get("diagnostics").and_then(|d| d.as_array()).expect("diagnostics must be array");
+    let diags = obj
+        .get("diagnostics")
+        .and_then(|d| d.as_array())
+        .expect("diagnostics must be array");
     for d in diags {
         let d = d.as_object().expect("each diagnostic is object");
-        assert!(d.contains_key("code") || d.contains_key("message"), "diagnostic must have code or message");
+        assert!(
+            d.contains_key("code") || d.contains_key("message"),
+            "diagnostic must have code or message"
+        );
     }
 }
 
@@ -35,16 +54,28 @@ fn discover_context_format_json_returns_valid_schema() {
     let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let repo = manifest_dir.join("..").join("..");
     let repo_str = repo.to_str().expect("path utf-8");
-    let (success, stdout, stderr) = run_sruja(&["discover", "--context", "-r", repo_str, "--format", "json"]);
+    let (success, stdout, stderr) =
+        run_sruja(&["discover", "--context", "-r", repo_str, "--format", "json"]);
 
-    assert!(success, "discover --context --format json should succeed: stderr={}", stderr);
-    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("discover output must be valid JSON");
+    assert!(
+        success,
+        "discover --context --format json should succeed: stderr={}",
+        stderr
+    );
+    let parsed: serde_json::Value =
+        serde_json::from_str(stdout.trim()).expect("discover output must be valid JSON");
     let obj = parsed.as_object().expect("root must be object");
     assert!(obj.contains_key("repo"), "must have 'repo'");
     assert!(obj.contains_key("components"), "must have 'components'");
     assert!(obj.contains_key("edges"), "must have 'edges'");
-    assert!(obj.contains_key("primary_language"), "must have 'primary_language'");
-    assert!(obj.contains_key("suggested_areas"), "must have 'suggested_areas'");
+    assert!(
+        obj.contains_key("primary_language"),
+        "must have 'primary_language'"
+    );
+    assert!(
+        obj.contains_key("suggested_areas"),
+        "must have 'suggested_areas'"
+    );
 }
 
 #[test]
@@ -64,5 +95,9 @@ App.A -> App.B "calls"
     let sruja_path = temp.path().join("arch.sruja");
     let path_str = sruja_path.to_str().expect("path utf-8");
     let (success, _, stderr) = run_sruja(&["lint", path_str]);
-    assert!(success, "lint on temp .sruja should succeed: stderr={}", stderr);
+    assert!(
+        success,
+        "lint on temp .sruja should succeed: stderr={}",
+        stderr
+    );
 }

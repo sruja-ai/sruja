@@ -52,6 +52,9 @@ mod tests {
             .parse("S = system \"My System\" {}")
             .expect("parse");
         let diags = rule.validate(&program);
-        assert!(diags.is_empty(), "SimplicityRule currently defers DDD logic");
+        assert!(
+            diags.is_empty(),
+            "SimplicityRule currently defers DDD logic"
+        );
     }
 }

@@ -20,7 +20,10 @@ fn demo_dir() -> PathBuf {
 fn demo_intent_check_highlights_frontend_db_access() {
     let demo = demo_dir();
     if !demo.exists() {
-        eprintln!("Skipping demo_intel_e2e: demo dir not found at {}", demo.display());
+        eprintln!(
+            "Skipping demo_intel_e2e: demo dir not found at {}",
+            demo.display()
+        );
         return;
     }
 

@@ -322,10 +322,7 @@ impl ViewContext {
         }
 
         if let Some(vuln) = sections.get("vulnerabilities") {
-            let total = vuln
-                .get("total")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
+            let total = vuln.get("total").and_then(|v| v.as_u64()).unwrap_or(0);
             security += match total {
                 0 => 60.0,
                 1..=2 => 40.0,

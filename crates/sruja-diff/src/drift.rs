@@ -574,7 +574,8 @@ mod tests {
         let orphans = find_orphan_modules(&g);
         assert!(orphans.is_empty(), "a and b are connected");
 
-        g.nodes.push(node("orphan", NodeKind::Module, Some("src/orphan.rs")));
+        g.nodes
+            .push(node("orphan", NodeKind::Module, Some("src/orphan.rs")));
         let orphans = find_orphan_modules(&g);
         assert_eq!(orphans.len(), 1);
         assert_eq!(orphans[0], "orphan");

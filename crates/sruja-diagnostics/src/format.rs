@@ -89,7 +89,10 @@ mod tests {
             "invalid",
             SourceLocation::new("x.sruja".to_string(), 2, 1),
         );
-        diag.context = vec!["  A = system \"A\"".to_string(), "  B = container \"B\"".to_string()];
+        diag.context = vec![
+            "  A = system \"A\"".to_string(),
+            "  B = container \"B\"".to_string(),
+        ];
         let formatted = format_diagnostic(&diag);
         assert!(formatted.contains("  | "));
         assert!(formatted.contains("A = system"));

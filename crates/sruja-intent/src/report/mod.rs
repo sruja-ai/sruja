@@ -127,9 +127,15 @@ impl IntentReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compare::{Drift, DriftHealth, DriftKind, DriftReport, DriftSummary, Evidence, Severity};
+    use crate::compare::{
+        Drift, DriftHealth, DriftKind, DriftReport, DriftSummary, Evidence, Severity,
+    };
 
-    fn minimal_drift_report(drifts: Vec<Drift>, drift_score: u8, health: DriftHealth) -> DriftReport {
+    fn minimal_drift_report(
+        drifts: Vec<Drift>,
+        drift_score: u8,
+        health: DriftHealth,
+    ) -> DriftReport {
         DriftReport {
             intent_source: "arch.sruja".to_string(),
             reality_source: "repo/".to_string(),

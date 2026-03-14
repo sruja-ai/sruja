@@ -148,7 +148,10 @@ mod tests {
     fn test_nodekind_from_str() {
         assert_eq!("service".parse::<NodeKind>(), Ok(NodeKind::Service));
         assert_eq!("module".parse::<NodeKind>(), Ok(NodeKind::Module));
-        assert_eq!("external_api".parse::<NodeKind>(), Ok(NodeKind::ExternalApi));
+        assert_eq!(
+            "external_api".parse::<NodeKind>(),
+            Ok(NodeKind::ExternalApi)
+        );
         assert_eq!("externalapi".parse::<NodeKind>(), Ok(NodeKind::ExternalApi));
         assert!("unknown".parse::<NodeKind>().is_err());
     }
@@ -170,7 +173,10 @@ mod tests {
     fn test_edgekind_from_str() {
         assert_eq!("calls".parse::<EdgeKind>(), Ok(EdgeKind::Calls));
         assert_eq!("reads_from".parse::<EdgeKind>(), Ok(EdgeKind::ReadsFrom));
-        assert_eq!("publishes_to".parse::<EdgeKind>(), Ok(EdgeKind::PublishesTo));
+        assert_eq!(
+            "publishes_to".parse::<EdgeKind>(),
+            Ok(EdgeKind::PublishesTo)
+        );
         assert_eq!("owns".parse::<EdgeKind>(), Ok(EdgeKind::Owns));
         assert!("unknown".parse::<EdgeKind>().is_err());
     }

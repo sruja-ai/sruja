@@ -179,7 +179,11 @@ pub fn discover_context_json(repo: &str) -> Result<DiscoverContextJson, CliError
         .map(|(l, _)| l.as_str())
         .unwrap_or("Unknown")
         .to_string();
-    let framework = detect_framework(repo_path, languages.first().map(|(l, _)| l.as_str()).unwrap_or("")).map(String::from);
+    let framework = detect_framework(
+        repo_path,
+        languages.first().map(|(l, _)| l.as_str()).unwrap_or(""),
+    )
+    .map(String::from);
     let context = build_repo_context(repo_path, &graph);
     let (is_monolith, is_microservices) = detect_architecture_style(&graph);
     let architecture_style = if is_microservices {
@@ -245,7 +249,10 @@ pub fn discover_context_json(repo: &str) -> Result<DiscoverContextJson, CliError
 pub async fn discover_context(repo: &str, format: &str) -> Result<(), CliError> {
     if format == "json" {
         let json = discover_context_json(repo)?;
-        println!("{}", serde_json::to_string_pretty(&json).map_err(|e| CliError::Validation(e.to_string()))?);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&json).map_err(|e| CliError::Validation(e.to_string()))?
+        );
         return Ok(());
     }
     let s = discover_context_string(repo)?;

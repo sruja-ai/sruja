@@ -149,12 +149,16 @@ mod tests {
         graph.nodes.push(make_node("x", NodeKind::Module, "X"));
         graph.nodes.push(make_node("y", NodeKind::Module, "Y"));
         graph.edges.push(make_edge_with_evidence(
-            "x", "y", EdgeKind::Calls,
+            "x",
+            "y",
+            EdgeKind::Calls,
             Some("src/x.rs"),
             Some(10),
         ));
         graph.edges.push(make_edge_with_evidence(
-            "y", "x", EdgeKind::Calls,
+            "y",
+            "x",
+            EdgeKind::Calls,
             Some("src/y.rs"),
             Some(20),
         ));
