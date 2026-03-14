@@ -97,6 +97,13 @@ fn parse_overview_item(input: &str) -> IResult<&str, OverviewItem> {
 
 pub(crate) fn parse_view(input: &str) -> IResult<&str, ViewDef> {
     use nom::combinator::opt;
+
+    // First try new syntax: view id [of ElementName] { title "..."; include ...; }
+    if input.starts_with("view ") {
+        return parse_view_block_syntax(input);
+    }
+
+    // Fall back to old syntax: id = view "title" of ElementName { ... }
     let (input, id) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
     let (input, _) = tag("=")(input)?;
@@ -178,6 +185,105 @@ pub(crate) fn parse_view(input: &str) -> IResult<&str, ViewDef> {
             },
         },
     ))
+}
+
+fn parse_view_block_syntax(input: &str) -> IResult<&str, ViewDef> {
+    use nom::combinator::opt;
+    // Parse: view id [of ElementName] { title "..."; description "..."; include ...; exclude ...; }
+    let (input, _) = tag("view")(input)?;
+    let (input, _) = ws1(input)?;
+    let (input, id) = parse_identifier(input)?;
+    let (input, _) = ws0(input)?;
+
+    let (input, view_of) = opt(preceded(
+        preceded(ws0, tag("of")),
+        preceded(ws1, parse_qualified_ident),
+    ))(input)?;
+    let (input, _) = ws0(input)?;
+
+    let (input, body_items) = delimited(
+        char('{'),
+        many0(preceded(ws, parse_view_block_item)),
+        preceded(ws0, char('}')),
+    )(input)?;
+
+    let mut title = id.clone();
+    let mut description = None;
+    let mut includes = None;
+    let mut excludes = None;
+
+    for (key, value) in body_items {
+        match key.as_str() {
+            "title" => title = value,
+            "description" => description = Some(value),
+            "include" => {
+                if value.trim() == "*" {
+                    includes = Some(vec!["*".to_string()]);
+                } else {
+                    let elements = value
+                        .split(&[',', ' '][..])
+                        .map(|s| s.trim())
+                        .filter(|s| !s.is_empty())
+                        .map(|s| s.to_string())
+                        .collect();
+                    includes = Some(elements);
+                }
+            }
+            "exclude" => {
+                let elements = value
+                    .split(&[',', ' '][..])
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.to_string())
+                    .collect();
+                excludes = Some(elements);
+            }
+            _ => {}
+        }
+    }
+
+    let to_expr = |elements: Vec<String>| ViewRuleExpr {
+        wildcard: elements.len() == 1 && elements[0] == "*",
+        recursive: false,
+        elements: if elements.len() == 1 && elements[0] == "*" {
+            Vec::new()
+        } else {
+            elements
+        },
+    };
+
+    Ok((
+        input,
+        ViewDef {
+            location: SourceLocation::new(String::new(), 0, 0),
+            id,
+            title,
+            description,
+            view_of,
+            tags: Vec::new(),
+            rules: if includes.is_none() && excludes.is_none() {
+                Vec::new()
+            } else {
+                vec![ViewRule {
+                    include: includes.map(to_expr),
+                    exclude: excludes.map(to_expr),
+                }]
+            },
+        },
+    ))
+}
+
+fn parse_view_block_item(input: &str) -> IResult<&str, (String, String)> {
+    let (input, key) = parse_identifier(input)?;
+    let (input, _) = ws1(input)?;
+
+    let (input, value) = if input.starts_with('"') {
+        map(parse_string, |s| s)(input)?
+    } else {
+        map(parse_view_identifier_or_wildcard, |s| s)(input)?
+    };
+
+    Ok((input, (key, value)))
 }
 
 fn parse_view_body(input: &str) -> IResult<&str, Vec<(String, String)>> {

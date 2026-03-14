@@ -20,18 +20,16 @@ Use **person** only for human actors:
 ### Example 1: User Types (humans only)
 
 ```sruja
-architecture "Project Management App" {
-  end_user = person "End User" {
-    description "Team member using the application"
-  }
+EndUser = person "End User" {
+  description "Team member using the application"
+}
 
-  admin = person "Administrator" {
-    description "System administrator managing users and settings"
-  }
+Admin = person "Administrator" {
+  description "System administrator managing users and settings"
+}
 
-  viewer = person "Report Viewer" {
-    description "External stakeholder viewing reports"
-  }
+Viewer = person "Report Viewer" {
+  description "External stakeholder viewing reports"
 }
 ```
 
@@ -39,7 +37,7 @@ architecture "Project Management App" {
 
 ```sruja
 // Humans: use person
-customer = person "Customer" {
+Customer = person "Customer" {
   description "User making purchases"
 }
 

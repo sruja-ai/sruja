@@ -14,6 +14,8 @@ const execFileAsync = promisify(execFile);
 
 const DIAGNOSTIC_COLLECTION_ID = "sruja";
 let diagnosticCollection: vscode.DiagnosticCollection | undefined;
+let markdownPreviewPanel: vscode.WebviewPanel | undefined;
+let diagramPreviewPanel: vscode.WebviewPanel | undefined;
 
 /** Parse "sruja lint" stderr into VS Code diagnostics. Format:
  * [CODE] Error: message
@@ -485,13 +487,12 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       try {
-        const mdDoc = await vscode.workspace.openTextDocument({
-          content: stdout,
-          language: "markdown",
-        });
-        await vscode.window.showTextDocument(mdDoc, { preview: false });
-        // Open the Markdown preview so the user sees the full rendered document (not only the diagram).
-        await vscode.commands.executeCommand("markdown.showPreview", mdDoc.uri);
+        const tmpMdPath = path.join(os.tmpdir(), `sruja-preview-${Date.now()}.md`);
+        await fs.promises.writeFile(tmpMdPath, stdout, "utf8");
+        const mdUri = vscode.Uri.file(tmpMdPath);
+        const mdDoc = await vscode.workspace.openTextDocument(mdUri);
+        await vscode.window.showTextDocument(mdDoc, { preview: true });
+        await vscode.commands.executeCommand("markdown.showPreview", mdUri);
         const save = await vscode.window.showInformationMessage(
           "Markdown generated from DSL. Save to file?",
           "Save",
@@ -529,18 +530,24 @@ export function activate(context: vscode.ExtensionContext): void {
         );
         return;
       }
-      const panel = vscode.window.createWebviewPanel(
+      if (diagramPreviewPanel) {
+        diagramPreviewPanel.dispose();
+      }
+      diagramPreviewPanel = vscode.window.createWebviewPanel(
         "srujaDiagramPreview",
         "Sruja Diagram Preview",
         vscode.ViewColumn.Beside,
         { enableScripts: true }
       );
+      diagramPreviewPanel.onDidDispose(() => {
+        diagramPreviewPanel = undefined;
+      });
       const mermaidEscaped = mermaid
         .replace(/\\/g, "\\\\")
         .replace(/`/g, "\\`")
         .replace(/\$/g, "\\$")
         .replace(/<\/script>/gi, "<\\/script>");
-      panel.webview.html = getDiagramPreviewHtml(mermaidEscaped);
+      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(mermaidEscaped);
     }),
     vscode.commands.registerCommand("sruja.runDrift", async () => {
       const channel = getCliOutputChannel();

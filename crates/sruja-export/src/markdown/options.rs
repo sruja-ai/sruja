@@ -28,9 +28,10 @@ impl Scope {
 
 #[derive(Debug, Clone)]
 pub struct MarkdownOptions {
+    /// Top-level document title (e.g. "Architecture Overview"). When None, derived from overview summary or default.
+    pub document_title: Option<String>,
     pub include_toc: bool,
     pub include_overview: bool,
-    /// When true, embed Mermaid diagram code blocks (context + optional container/component views) so they render in Markdown viewers (e.g. GitHub, VS Code).
     pub include_mermaid_diagrams: bool,
     pub include_systems: bool,
     pub include_deployments: bool,
@@ -46,11 +47,14 @@ pub struct MarkdownOptions {
     pub scope: Scope,
     pub token_limit: usize,
     pub context: ContextType,
+    pub use_views: bool,
+    pub view_name: Option<String>,
 }
 
 impl Default for MarkdownOptions {
     fn default() -> Self {
         Self {
+            document_title: None,
             include_toc: true,
             include_overview: true,
             include_mermaid_diagrams: true,
@@ -68,6 +72,8 @@ impl Default for MarkdownOptions {
             scope: Scope::full(),
             token_limit: 0,
             context: ContextType::Default,
+            use_views: false,
+            view_name: None,
         }
     }
 }

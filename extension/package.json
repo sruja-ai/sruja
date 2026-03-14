@@ -178,15 +178,18 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
+    "test": "jest",
     "copy:assets": "bash scripts/copy-assets.sh",
     "package": "npm run copy:assets && npm run compile && vsce package --no-dependencies",
     "install:vsix": "npm run package && echo '\nInstall in Cursor/VS Code: Extensions → ⋯ → Install from VSIX... → select extension/*.vsix\n'"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^25.0.0",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^3.3.2",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.6",
     "typescript": "~5.9.0"
-  },
-  "dependencies": {}
+  }
 }

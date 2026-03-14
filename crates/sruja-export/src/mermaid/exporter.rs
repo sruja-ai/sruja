@@ -52,6 +52,15 @@ impl MermaidExporter {
         self.generate(&elements, &relations)
     }
 
+    /// Generate a Mermaid diagram from a resolved view (view-driven export).
+    /// Uses only the view's elements and relations, respecting include/exclude rules.
+    pub fn export_from_resolved_view(&self, resolved: &super::views::ResolvedView) -> String {
+        if resolved.elements.is_empty() {
+            return String::new();
+        }
+        self.generate(&resolved.elements, &resolved.relations)
+    }
+
     fn generate(
         &self,
         elements: &HashMap<String, sruja_language::ElementDef>,

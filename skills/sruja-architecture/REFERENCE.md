@@ -6,11 +6,12 @@ Detailed reference for discovery workflow, modeling rules, and refinement with t
 
 ### Phase 1: Evidence Collection
 
-Always start with deterministic evidence collection from the CLI:
+If `.sruja/context.json` exists and is recent (e.g. from **Sruja: Refresh repo context** or `sruja sync -r .`), use it for evidence first. Otherwise, run the CLI:
 
 ```bash
-sruja discover --context -r . --format json
+sruja sync -r .
 ```
+or JSON only: `sruja discover --context -r . --format json`
 
 **Output includes:**
 - Repository structure (directories, file patterns)
@@ -76,7 +77,7 @@ Ask only when evidence is ambiguous. Examples:
 
 ### Phase 4: Generate Minimal DSL
 
-Generate `architecture.sruja` covering only what evidence supports:
+Generate `repo.sruja` covering only what evidence supports:
 
 ```sruja
 // External actors
@@ -116,7 +117,7 @@ Application.API -> Application.Database "SQL"
 Always lint:
 
 ```bash
-sruja lint architecture.sruja
+sruja lint repo.sruja
 ```
 
 Fix all errors before considering complete.
@@ -241,7 +242,7 @@ ServiceB -> CommonService "uses"
 When a baseline exists, detect drift:
 
 ```bash
-sruja drift -r . -a architecture.sruja --format json
+sruja drift -r . -a repo.sruja --format json
 ```
 
 **Analyzes:**
@@ -258,8 +259,8 @@ sruja drift -r . -a architecture.sruja --format json
    - Intentional (architecture evolved)
    - Unintentional (technical debt)
    - False positive (scope change)
-3. **Update architecture.sruja**
-4. **Run `sruja lint`**
+3. **Update repo.sruja**
+4. **Run `sruja lint repo.sruja`**
 5. **Commit changes**
 
 ### When to Refine
@@ -280,6 +281,10 @@ Refine incrementally:
 - Keep descriptions accurate
 
 ## Evidence Fidelity
+
+### Static graph (Tree-sitter)
+
+Evidence comes from a **static analysis graph** produced by Tree-sitter parsing of source code. The CLI builds a nodes-and-edges graph (modules, imports, dependencies) from supported languages. This graph backs `sruja discover` and `sruja sync` (and `.sruja/context.json`). Use it to verify and assist the AI: stay evidence-first and avoid inventing components or relationships not present in the code.
 
 ### Trust the Evidence
 
@@ -350,24 +355,73 @@ sruja discover --context -r ./src --format json
 
 ### JSON Structure
 
-`discover --context --format json` returns:
+`discover --context --format json` returns (matches CLI `DiscoverContextJson`):
 
 ```json
 {
-  "structure": { ... },
-  "technologies": [ ... ],
-  "modules": [ ... ],
-  "entry_points": [ ... ],
-  "dependencies": [ ... ],
-  "scan_scope": {
-    "included": [ ... ],
-    "excluded": [ ... ],
-    "total_files": 1234
-  }
+  "repo": "<repo path>",
+  "scan_scope": { "included": [ ... ], "excluded": [ ... ], ... },
+  "components": 42,
+  "edges": 58,
+  "primary_language": "TypeScript",
+  "framework": "React",
+  "architecture_style": "monolith",
+  "domain": null,
+  "suggested_areas": [ "src", "lib", "apps" ]
 }
 ```
 
-**Use this as:** The single source of truth for what the CLI actually analyzed.
+From this you get: repository path, scan scope, graph size (components/edges), primary language, framework, inferred architecture style and domain, and suggested areas for scoping. **Use this as** the single source of truth for what the CLI actually analyzed.
+
+## Export Coverage
+
+The CLI and export crate support **DSL**, **Markdown**, and **Mermaid** output. Use `sruja export` (or the equivalent API) to produce documentation from `.sruja` files.
+
+### DSL (round-trip)
+
+The DSL printer pretty-prints the full AST back to Sruja source. All top-level constructs are covered:
+
+- **Elements**: person, system, container, component, database, queue (with body: description, technology, metadata, scale, slo, nested elements)
+- **Relations**: `From -> To "Label"` with optional tags
+- **Governance**: requirements, ADRs, policies, constraints, conventions
+- **Behavior**: scenarios, flows, feedback loops, causal loops
+- **Structure**: overview block, views (with include/exclude), deployment tree, styles, kind/tag definitions, imports, extend
+
+### Markdown
+
+Markdown export produces a structured document with optional sections (each can be toggled via options):
+
+| Section        | DSL source                    | Notes                                      |
+|----------------|--------------------------------|--------------------------------------------|
+| Overview       | `overview { ... }`             | Summary, audience, scope, goals, risks     |
+| Systems        | systems + containers/components| Per-system L2 diagram; per-container L3    |
+| Persons        | `person` elements             |                                            |
+| Deployments    | `deployment` nodes            | Nested deployment tree                    |
+| Requirements   | `requirement` items           | Type and description                       |
+| ADRs           | `adr` items                   | Status, context, decision, consequences    |
+| Policies       | `policy` items                | Category, enforcement                      |
+| Constraints    | `constraints { ... }`         |                                            |
+| Conventions    | `conventions { ... }`         |                                            |
+| Scenarios      | `scenario` / `flow`           | Mermaid sequence diagram per scenario/flow |
+| Feedback Loops | `feedbackLoop`                | Mermaid diagram                            |
+| Causal Loops   | `causalLoop`                  | Mermaid diagram                            |
+| Views          | `view` definitions            | When using view-driven export; diagram per view from resolved include/exclude |
+
+When **view-driven export** is enabled (`use_views` or `view_name`), the document is organized by named views; each view’s Mermaid diagram uses only that view’s resolved elements and relations.
+
+### Mermaid
+
+Mermaid export produces flowchart-style C4 diagrams:
+
+- **L1 (context)**: persons and systems only
+- **L2 (container)**: one system and its containers/datastores/queues (optionally focused via `target_id`)
+- **L3 (component)**: one container and its components
+
+Styles are applied by element kind (person, system, container, database, queue, component, external). Relation labels are rendered on edges.
+
+- **View-driven**: When exporting from a resolved view (e.g. from Markdown view-driven export), the diagram contains only the view’s elements and relations, respecting `include`/`exclude` and scope.
+
+Scenarios and flows can be exported as **sequence diagrams**; feedback and causal loops as dedicated Mermaid diagrams.
 
 ## Common Mistakes
 
@@ -407,13 +461,14 @@ Application = system "Application" {
 Always lint after generating or editing:
 
 ```bash
-sruja lint architecture.sruja
+sruja lint repo.sruja
 ```
 
 Fix errors before committing.
 
 ## Next Steps
 
+- **Core skill**: See SKILL.md
 - **Prompt patterns**: See PROMPTS.md
 - **Compiled guide**: See AGENTS.md
 - **Individual rules**: See rules/ directory

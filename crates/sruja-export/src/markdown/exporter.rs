@@ -18,6 +18,24 @@ use crate::mermaid::scenario_to_sequence_diagram;
 
 use super::options::MarkdownOptions;
 
+/// Write element metadata as Markdown key-value lines when options.include_metadata is true.
+fn write_element_metadata_if(
+    out: &mut String,
+    include_metadata: bool,
+    metadata: &[sruja_language::MetaEntry],
+) {
+    if !include_metadata || metadata.is_empty() {
+        return;
+    }
+    for entry in metadata {
+        if let Some(ref v) = entry.value {
+            if !v.is_empty() {
+                out.push_str(&format!("**{}:** {}\n\n", entry.key, v));
+            }
+        }
+    }
+}
+
 /// C4 container-level kinds: container, database, queue, datastore (L2 nodes under a system).
 fn is_container_level(kind: &ElementKind) -> bool {
     matches!(
@@ -61,12 +79,18 @@ impl MarkdownExporter {
         let mut requirements: Vec<_> = Vec::new();
         let mut adrs: Vec<_> = Vec::new();
         let mut policies: Vec<&Policy> = Vec::new();
-        let mut scenario_items: Vec<(String, String, &[sruja_language::ScenarioStep])> = Vec::new();
+        let mut scenario_items: Vec<(
+            String,
+            String,
+            Option<String>,
+            &[sruja_language::ScenarioStep],
+        )> = Vec::new();
         let mut feedback_loops: Vec<_> = Vec::new();
         let mut causal_loops: Vec<_> = Vec::new();
         let mut overview_block: Option<&OverviewBlock> = None;
         let mut constraints_block: Option<&ConstraintsBlock> = None;
         let mut conventions_block: Option<&ConventionsBlock> = None;
+        let mut deployments: Vec<&sruja_language::DeploymentNode> = Vec::new();
 
         for item in &program.items {
             match item {
@@ -76,11 +100,22 @@ impl MarkdownExporter {
                 TopLevelItem::Overview(o) => overview_block = Some(o),
                 TopLevelItem::Constraints(c) => constraints_block = Some(c),
                 TopLevelItem::Conventions(c) => conventions_block = Some(c),
+                TopLevelItem::Deployment(d) => deployments.push(d),
                 TopLevelItem::Scenario(s) => {
-                    scenario_items.push((s.id.clone(), s.title.clone(), s.steps.as_slice()));
+                    scenario_items.push((
+                        s.id.clone(),
+                        s.title.clone(),
+                        s.description.clone(),
+                        s.steps.as_slice(),
+                    ));
                 }
                 TopLevelItem::Flow(f) => {
-                    scenario_items.push((f.id.clone(), f.title.clone(), f.steps.as_slice()));
+                    scenario_items.push((
+                        f.id.clone(),
+                        f.title.clone(),
+                        f.description.clone(),
+                        f.steps.as_slice(),
+                    ));
                 }
                 TopLevelItem::FeedbackLoop(fl) => feedback_loops.push(fl),
                 TopLevelItem::CausalLoop(cl) => causal_loops.push(cl),
@@ -88,7 +123,22 @@ impl MarkdownExporter {
             }
         }
 
-        // Write TOC
+        // Document title (professional architecture docs start with a clear title)
+        let title = self
+            .options
+            .document_title
+            .clone()
+            .or_else(|| {
+                overview_block.and_then(|o| {
+                    o.summary
+                        .as_ref()
+                        .map(|s| s.lines().next().unwrap_or(s).trim().to_string())
+                })
+            })
+            .unwrap_or_else(|| "Architecture Overview".to_string());
+        out.push_str(&format!("# {}\n\n", title));
+
+        // Table of contents
         if self.options.include_toc {
             self.write_toc(
                 &mut out,
@@ -102,40 +152,46 @@ impl MarkdownExporter {
                 !scenario_items.is_empty(),
                 !feedback_loops.is_empty(),
                 !causal_loops.is_empty(),
+                self.options.include_deployments && !deployments.is_empty(),
             );
         }
 
-        // Write overview (from overview block when present)
+        // 1. Introduction & context (arc42-aligned)
         if self.options.include_overview {
             self.write_overview(&mut out, program, overview_block);
         }
 
-        // Write systems (with L2 per system, L3 per container)
+        if self.options.include_persons {
+            self.write_stakeholders(&mut out, &persons);
+        }
+
+        // 2. Building blocks (C4 systems / containers / components)
         if self.options.include_systems {
             self.write_systems(&mut out, program, &elements, &systems_with_fqn);
         }
 
-        // Write persons
-        if self.options.include_persons {
-            self.write_persons(&mut out, &persons);
+        // 3. Deployment view
+        if self.options.include_deployments && !deployments.is_empty() {
+            self.write_deployments(&mut out, &deployments);
         }
 
-        // Write requirements
+        // 4. Runtime view (scenarios and flows)
+        if self.options.include_scenarios {
+            self.write_scenarios(&mut out, &scenario_items);
+        }
+
+        // 5. Requirements & architectural decisions
         if self.options.include_requirements {
             self.write_requirements(&mut out, &requirements);
         }
-
-        // Write ADRs
         if self.options.include_adrs {
             self.write_adrs(&mut out, &adrs);
         }
 
-        // Write policies (governance)
+        // 6. Governance (policies, constraints, conventions)
         if !policies.is_empty() {
             self.write_policies(&mut out, &policies);
         }
-
-        // Write constraints and conventions (governance)
         if let Some(c) = constraints_block {
             self.write_constraints(&mut out, c);
         }
@@ -143,17 +199,10 @@ impl MarkdownExporter {
             self.write_conventions(&mut out, c);
         }
 
-        // Write scenarios (with Mermaid sequence diagrams)
-        if self.options.include_scenarios {
-            self.write_scenarios(&mut out, &scenario_items);
-        }
-
-        // Write feedback loops (with Mermaid diagrams)
+        // 7. Analysis (feedback and causal loops)
         if !feedback_loops.is_empty() {
             self.write_feedback_loops(&mut out, &feedback_loops);
         }
-
-        // Write causal loops (with Mermaid diagrams)
         if !causal_loops.is_empty() {
             self.write_causal_loops(&mut out, &causal_loops);
         }
@@ -175,22 +224,29 @@ impl MarkdownExporter {
         has_scenarios: bool,
         has_feedback_loops: bool,
         has_causal_loops: bool,
+        has_deployments: bool,
     ) {
         out.push_str("## Table of Contents\n\n");
         if self.options.include_overview {
             out.push_str("- [Overview](#overview)\n");
         }
+        if self.options.include_persons {
+            out.push_str("- [Stakeholders](#stakeholders)\n");
+        }
         if self.options.include_systems {
             out.push_str("- [Systems](#systems)\n");
         }
-        if self.options.include_persons {
-            out.push_str("- [Persons](#persons)\n");
+        if has_deployments {
+            out.push_str("- [Deployments](#deployments)\n");
+        }
+        if has_scenarios {
+            out.push_str("- [Scenarios](#scenarios)\n");
         }
         if self.options.include_requirements {
             out.push_str("- [Requirements](#requirements)\n");
         }
         if self.options.include_adrs {
-            out.push_str("- [ADRs](#adrs)\n");
+            out.push_str("- [Architecture Decision Records](#architecture-decision-records)\n");
         }
         if !policies.is_empty() {
             out.push_str("- [Policies](#policies)\n");
@@ -200,9 +256,6 @@ impl MarkdownExporter {
         }
         if has_conventions {
             out.push_str("- [Conventions](#conventions)\n");
-        }
-        if has_scenarios {
-            out.push_str("- [Scenarios](#scenarios)\n");
         }
         if has_feedback_loops {
             out.push_str("- [Feedback Loops](#feedback-loops)\n");
@@ -302,6 +355,7 @@ impl MarkdownExporter {
                 if let Some(tech) = &body.technology {
                     out.push_str(&format!("**Technology:** {}\n\n", tech));
                 }
+                write_element_metadata_if(out, self.options.include_metadata, &body.metadata);
             }
             // L2: system + its containers
             if self.options.include_mermaid_diagrams {
@@ -347,6 +401,7 @@ impl MarkdownExporter {
                     if let Some(tech) = &body.technology {
                         out.push_str(&format!("**Technology:** {}\n\n", tech));
                     }
+                    write_element_metadata_if(out, self.options.include_metadata, &body.metadata);
                 }
                 // L3: container + its components
                 if self.options.include_mermaid_diagrams {
@@ -370,11 +425,11 @@ impl MarkdownExporter {
         }
     }
 
-    fn write_persons(&self, out: &mut String, persons: &[&sruja_language::ElementDef]) {
+    fn write_stakeholders(&self, out: &mut String, persons: &[&sruja_language::ElementDef]) {
         if persons.is_empty() {
             return;
         }
-        out.push_str("## Persons\n\n");
+        out.push_str("## Stakeholders\n\n");
         for person in persons {
             let title = person
                 .assignment
@@ -386,6 +441,7 @@ impl MarkdownExporter {
                 if let Some(desc) = &body.description {
                     out.push_str(&format!("{}\n\n", desc));
                 }
+                write_element_metadata_if(out, self.options.include_metadata, &body.metadata);
             }
         }
     }
@@ -397,9 +453,15 @@ impl MarkdownExporter {
         out.push_str("## Requirements\n\n");
         for req in requirements {
             out.push_str(&format!("### {}\n\n", req.title));
+            if req.id != req.title && !req.id.is_empty() {
+                out.push_str(&format!("**ID:** {}\n\n", req.id));
+            }
             out.push_str(&format!("**Type:** {}\n\n", req.r#type));
             if let Some(desc) = &req.description {
                 out.push_str(&format!("{}\n\n", desc));
+            }
+            if !req.tags.is_empty() {
+                out.push_str(&format!("**Tags:** {}\n\n", req.tags.join(", ")));
             }
         }
     }
@@ -463,17 +525,56 @@ impl MarkdownExporter {
         out.push('\n');
     }
 
+    fn write_deployments(&self, out: &mut String, deployments: &[&sruja_language::DeploymentNode]) {
+        if deployments.is_empty() {
+            return;
+        }
+        out.push_str("## Deployments\n\n");
+        for dep in deployments {
+            self.write_deployment_node(out, dep, 0);
+        }
+    }
+
+    fn write_deployment_node(
+        &self,
+        out: &mut String,
+        node: &sruja_language::DeploymentNode,
+        depth: usize,
+    ) {
+        let heading = "#".repeat((3 + depth).min(6));
+        let title = node.label.as_deref().unwrap_or(node.id.as_str());
+        out.push_str(&format!("{} {}\n\n", heading, title));
+        if let Some(tech) = &node.technology {
+            out.push_str(&format!("**Technology:** {}\n\n", tech));
+        }
+        if !node.children.is_empty() {
+            for child in &node.children {
+                self.write_deployment_node(out, child, depth + 1);
+            }
+        }
+    }
+
     fn write_scenarios(
         &self,
         out: &mut String,
-        scenario_items: &[(String, String, &[sruja_language::ScenarioStep])],
+        scenario_items: &[(
+            String,
+            String,
+            Option<String>,
+            &[sruja_language::ScenarioStep],
+        )],
     ) {
         if scenario_items.is_empty() {
             return;
         }
         out.push_str("## Scenarios\n\n");
-        for (id, title, steps) in scenario_items {
+        for (id, title, description, steps) in scenario_items {
             out.push_str(&format!("### {}\n\n", title));
+            if let Some(ref desc) = description {
+                if !desc.is_empty() {
+                    out.push_str(&format!("{}\n\n", desc));
+                }
+            }
             if self.options.include_mermaid_diagrams && !steps.is_empty() {
                 let seq = scenario_to_sequence_diagram(id, title, steps);
                 if !seq.is_empty() {
@@ -539,6 +640,14 @@ impl MarkdownExporter {
             ));
             if let Some(ref description) = cl.description {
                 out.push_str(&format!("**Description:** {}\n\n", description));
+            }
+            if !cl.variables.is_empty() {
+                out.push_str("**Variables:**\n\n");
+                for v in &cl.variables {
+                    let label = v.label.as_deref().unwrap_or(v.id.as_str());
+                    out.push_str(&format!("- {} ({})\n", v.id, label));
+                }
+                out.push('\n');
             }
             if self.options.include_mermaid_diagrams && !cl.relationships.is_empty() {
                 let diagram = causal_loop_to_diagram(cl);

@@ -20,114 +20,98 @@ Choose a monolithic architecture when:
 ### Example 1: Modular Monolith
 
 ```sruja
-architecture "Project Management System" {
-  system "Application" {
-    # API Gateway / Entry Point
-    api_gateway = container "API Gateway" {
-      technology "Node.js + Express"
-      description "Single entry point with routing and authentication"
-    }
-
-    # Business Modules
-    user_module = container "User Module" {
-      technology "Node.js"
-      description "User management and authentication"
-    }
-
-    project_module = container "Project Module" {
-      technology "Node.js"
-      description "Project and workspace management"
-    }
-
-    task_module = container "Task Module" {
-      technology "Node.js"
-      description "Task creation and tracking"
-    }
-
-    # Shared Resources
-    database = database "Primary Database" {
-      technology "PostgreSQL"
-      description "Central database for all modules"
-    }
-
-    cache = database "Cache Layer" {
-      technology "Redis"
-      description "Shared cache for performance"
-    }
+Application = system "Application" {
+  ApiGateway = container "API Gateway" {
+    technology "Node.js + Express"
+    description "Single entry point with routing and authentication"
   }
 
-  # Clear module boundaries internally
-  api_gateway -> user_module "gRPC (internal)"
-  api_gateway -> project_module "gRPC (internal)"
-  api_gateway -> task_module "gRPC (internal)"
+  UserModule = container "User Module" {
+    technology "Node.js"
+    description "User management and authentication"
+  }
 
-  user_module -> database "SQL"
-  project_module -> database "SQL"
-  task_module -> database "SQL"
+  ProjectModule = container "Project Module" {
+    technology "Node.js"
+    description "Project and workspace management"
+  }
 
-  # All share the same cache
-  user_module -> cache "Redis"
-  project_module -> cache "Redis"
-  task_module -> cache "Redis"
+  TaskModule = container "Task Module" {
+    technology "Node.js"
+    description "Task creation and tracking"
+  }
+
+  Database = database "Primary Database" {
+    technology "PostgreSQL"
+    description "Central database for all modules"
+  }
+
+  Cache = database "Cache Layer" {
+    technology "Redis"
+    description "Shared cache for performance"
+  }
 }
+
+Application.ApiGateway -> Application.UserModule "gRPC (internal)"
+Application.ApiGateway -> Application.ProjectModule "gRPC (internal)"
+Application.ApiGateway -> Application.TaskModule "gRPC (internal)"
+Application.UserModule -> Application.Database "SQL"
+Application.ProjectModule -> Application.Database "SQL"
+Application.TaskModule -> Application.Database "SQL"
+Application.UserModule -> Application.Cache "Redis"
+Application.ProjectModule -> Application.Cache "Redis"
+Application.TaskModule -> Application.Cache "Redis"
 ```
 
 ### Example 2: Layered Monolith
 
 ```sruja
-architecture "Web Application" {
-  system "Monolith" {
-    # Presentation Layer
-    web_frontend = container "Web Frontend" {
-      technology "React + Vite"
-      description "User interface and presentation"
-    }
-
-    api_layer = container "API Layer" {
-      technology "Express.js"
-      description "HTTP API endpoints and routing"
-    }
-
-    # Application Layer
-    user_service = container "User Service" {
-      technology "Node.js"
-      description "User-related business logic"
-    }
-
-    order_service = container "Order Service" {
-      technology "Node.js"
-      description "Order processing business logic"
-    }
-
-    # Infrastructure Layer
-    database = database "Database" {
-      technology "PostgreSQL"
-      description "Data persistence"
-    }
-
-    message_queue = queue "Message Queue" {
-      technology "RabbitMQ"
-      description "Internal messaging"
-    }
+Monolith = system "Monolith" {
+  WebFrontend = container "Web Frontend" {
+    technology "React + Vite"
+    description "User interface and presentation"
   }
 
-  web_frontend -> api_layer "HTTPS"
-  api_layer -> user_service "HTTP"
-  api_layer -> order_service "HTTP"
+  ApiLayer = container "API Layer" {
+    technology "Express.js"
+    description "HTTP API endpoints and routing"
+  }
 
-  user_service -> database "SQL"
-  order_service -> database "SQL"
+  UserService = container "User Service" {
+    technology "Node.js"
+    description "User-related business logic"
+  }
 
-  user_service -> message_queue "publishes events"
-  order_service -> message_queue "consumes events"
+  OrderService = container "Order Service" {
+    technology "Node.js"
+    description "Order processing business logic"
+  }
+
+  Database = database "Database" {
+    technology "PostgreSQL"
+    description "Data persistence"
+  }
+
+  MessageQueue = queue "Message Queue" {
+    technology "RabbitMQ"
+    description "Internal messaging"
+  }
 }
+
+Monolith.WebFrontend -> Monolith.ApiLayer "HTTPS"
+Monolith.ApiLayer -> Monolith.UserService "HTTP"
+Monolith.ApiLayer -> Monolith.OrderService "HTTP"
+Monolith.UserService -> Monolith.Database "SQL"
+Monolith.OrderService -> Monolith.Database "SQL"
+Monolith.UserService -> Monolith.MessageQueue "publishes events"
+Monolith.OrderService -> Monolith.MessageQueue "consumes events"
 ```
 
 ## Incorrect Approach
 
 ```sruja
-# ❌ Everything in one container
-app = container "Everything" {
+// ❌ Everything in one container
+App = container "Everything" {
   technology "Node.js"
   description "Frontend, API, database, all in one"
 }

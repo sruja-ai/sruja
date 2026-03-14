@@ -2,9 +2,10 @@
 
 #[cfg(test)]
 mod tests {
+    use sruja_diagnostics::SourceLocation;
     use sruja_export::markdown::MarkdownOptions;
     use sruja_export::MarkdownExporter;
-    use sruja_language::Parser;
+    use sruja_language::{Parser, TopLevelItem};
 
     #[test]
     fn test_basic_system_export() {
@@ -53,7 +54,7 @@ User -> Shop.Web "uses"
         assert!(markdown.contains("# Table of Contents"));
         assert!(markdown.contains("## Overview"));
         assert!(markdown.contains("## Systems"));
-        assert!(markdown.contains("## Persons"));
+        assert!(markdown.contains("## Stakeholders"));
         assert!(markdown.contains("Shop"));
         assert!(markdown.contains("Online shopping platform"));
         assert!(markdown.contains("Web Application"));
@@ -278,14 +279,15 @@ FL1 = feedback "User Satisfaction Loop" {
     }
 
     #[test]
-    #[ignore] // TODO: Fix causal_loop parsing/exporting - test fails due to parsing issue
     fn test_causal_loop_export() {
+        // Parser expects: Id = causal_loop "Title" { loop_type, variable, From -> To "label" }
         let input = r#"
-causal_loop Loop1 reinforcing "Test Loop" {
+Loop1 = causal_loop "Test Loop" {
+    loop_type reinforcing
     variable Stock "Stock Variable"
     variable Flow "Flow Variable"
-    Stock -> Flow "increases" polarity +
-    Flow -> Stock "decreases" polarity -
+    Stock -> Flow "increases"
+    Flow -> Stock "decreases"
 }
 "#;
 
@@ -309,7 +311,7 @@ causal_loop Loop1 reinforcing "Test Loop" {
 
         assert!(markdown.contains("## Causal Loops"));
         assert!(markdown.contains("Test Loop"));
-        assert!(markdown.contains("**Type:** Reinforcing"));
+        assert!(markdown.contains("**Type:** reinforcing"));
         assert!(markdown.contains("```mermaid"));
         assert!(markdown.contains("graph LR"));
     }
@@ -445,9 +447,11 @@ ADR-1 = adr "Use PostgreSQL" {
         assert!(markdown.contains("# Table of Contents"));
         assert!(markdown.contains("- [Overview](#overview)"));
         assert!(markdown.contains("- [Systems](#systems)"));
-        assert!(markdown.contains("- [Persons](#persons)"));
+        assert!(markdown.contains("- [Stakeholders](#stakeholders)"));
         assert!(markdown.contains("- [Requirements](#requirements)"));
-        assert!(markdown.contains("- [ADRs](#adrs)"));
+        assert!(
+            markdown.contains("- [Architecture Decision Records](#architecture-decision-records)")
+        );
     }
 
     #[test]
@@ -534,10 +538,203 @@ scenario LoginFlow {
 
         assert!(!markdown.contains("## Overview"));
         assert!(!markdown.contains("## Systems"));
-        assert!(!markdown.contains("## Persons"));
+        assert!(!markdown.contains("## Stakeholders"));
         assert!(!markdown.contains("## Requirements"));
         assert!(!markdown.contains("## Architecture Decision Records"));
         assert!(!markdown.contains("## Scenarios"));
         assert!(!markdown.contains("```mermaid"));
+    }
+
+    #[test]
+    fn test_deployments_export() {
+        // Deployment nodes are not parsed from DSL yet; build program with deployment items
+        let input = r#"
+person = kind "Person"
+system = kind "System"
+User = person "User"
+App = system "App" {}
+"#;
+        let parser = Parser::new("test.sruja".to_string());
+        let mut program = parser.parse(input).expect("Failed to parse");
+        let loc = SourceLocation::new(String::new(), 0, 0);
+        let deployment = sruja_language::DeploymentNode {
+            location: loc.clone(),
+            id: "Prod".to_string(),
+            label: Some("Production".to_string()),
+            technology: Some("AWS".to_string()),
+            children: vec![sruja_language::DeploymentNode {
+                location: loc.clone(),
+                id: "US-East".to_string(),
+                label: Some("US East 1".to_string()),
+                technology: None,
+                children: vec![],
+            }],
+        };
+        program.push_item(TopLevelItem::Deployment(deployment));
+
+        let options = MarkdownOptions {
+            include_toc: true,
+            include_overview: false,
+            include_systems: true,
+            include_persons: true,
+            include_requirements: false,
+            include_adrs: false,
+            include_scenarios: false,
+            include_deployments: true,
+            include_mermaid_diagrams: false,
+            ..MarkdownOptions::default()
+        };
+
+        let exporter = MarkdownExporter::new(options);
+        let markdown = exporter.export(&program);
+
+        assert!(markdown.contains("## Deployments"));
+        assert!(markdown.contains("- [Deployments](#deployments)"));
+        assert!(markdown.contains("### Production"));
+        assert!(markdown.contains("**Technology:** AWS"));
+        assert!(markdown.contains("#### US East 1"));
+    }
+
+    #[test]
+    fn test_element_metadata_export() {
+        let input = r#"
+system = kind "System"
+container = kind "Container"
+
+Shop = system "Shop" {
+    description "E-commerce platform"
+    metadata {
+        owner "Platform Team"
+        tier "critical"
+    }
+    API = container "API" {
+        technology "Rust"
+        metadata { version "2.0" }
+    }
+}
+"#;
+        let parser = Parser::new("test.sruja".to_string());
+        let program = parser.parse(input).expect("Failed to parse");
+
+        let options = MarkdownOptions {
+            include_toc: false,
+            include_overview: false,
+            include_systems: true,
+            include_persons: false,
+            include_requirements: false,
+            include_adrs: false,
+            include_scenarios: false,
+            include_mermaid_diagrams: false,
+            include_metadata: true,
+            ..MarkdownOptions::default()
+        };
+
+        let exporter = MarkdownExporter::new(options);
+        let markdown = exporter.export(&program);
+
+        assert!(markdown.contains("**owner:** Platform Team"));
+        assert!(markdown.contains("**tier:** critical"));
+        assert!(markdown.contains("**version:** 2.0"));
+    }
+
+    #[test]
+    fn test_export_with_view_definitions_in_dsl() {
+        // Program with view definitions still exports (view-driven section when implemented)
+        let input = r#"
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+
+User = person "User"
+Shop = system "Shop" {
+    Web = container "Web App"
+    API = container "API Service"
+    DB = container "Database"
+}
+"#;
+        let parser = Parser::new("test.sruja".to_string());
+        let program = parser.parse(input).expect("Failed to parse");
+
+        let options = MarkdownOptions {
+            include_toc: false,
+            include_overview: false,
+            include_systems: true,
+            include_persons: true,
+            include_requirements: false,
+            include_adrs: false,
+            include_scenarios: false,
+            include_mermaid_diagrams: true,
+            ..MarkdownOptions::default()
+        };
+
+        let exporter = MarkdownExporter::new(options);
+        let markdown = exporter.export(&program);
+
+        assert!(markdown.contains("## Systems"));
+        assert!(markdown.contains("Shop"));
+        assert!(markdown.contains("Web App"));
+        assert!(markdown.contains("```mermaid"));
+    }
+
+    #[test]
+    fn test_export_captures_detail_fields() {
+        // Verify export includes: scenario/flow description, requirement ID/tags, causal loop variables
+        let input = r#"
+R1 = requirement functional "Users must be able to login"
+REQ2 = requirement security "Passwords must be hashed" {
+    description "All passwords hashed with bcrypt"
+    tags ["security", "auth"]
+}
+
+scenario Checkout "Checkout Flow" "User completes purchase from cart to payment" {
+    User -> Shop.Cart "adds items"
+    Shop.Cart -> Shop.Payment "submits order"
+}
+
+Loop1 = causal_loop "Stock and Flow" {
+    loop_type reinforcing
+    variable Inventory "Stock level"
+    variable Orders "Order rate"
+    Inventory -> Orders "increases"
+    Orders -> Inventory "decreases"
+}
+"#;
+        let parser = Parser::new("test.sruja".to_string());
+        let program = parser.parse(input).expect("Failed to parse");
+
+        let options = MarkdownOptions {
+            include_toc: false,
+            include_overview: false,
+            include_systems: false,
+            include_persons: false,
+            include_requirements: true,
+            include_adrs: false,
+            include_scenarios: true,
+            include_mermaid_diagrams: true,
+            ..MarkdownOptions::default()
+        };
+
+        let exporter = MarkdownExporter::new(options);
+        let markdown = exporter.export(&program);
+
+        // Requirement: ID when different from title (R1 vs "Users must...")
+        assert!(
+            markdown.contains("**ID:** R1"),
+            "expected requirement ID R1 in markdown"
+        );
+        // Scenario description
+        assert!(
+            markdown.contains("User completes purchase from cart to payment"),
+            "expected scenario description in markdown"
+        );
+        // Causal loop variables (id and label)
+        assert!(
+            markdown.contains("**Variables:**"),
+            "expected causal loop Variables section"
+        );
+        assert!(
+            markdown.contains("Inventory (Stock level)"),
+            "expected variable Inventory with label in causal loop"
+        );
     }
 }

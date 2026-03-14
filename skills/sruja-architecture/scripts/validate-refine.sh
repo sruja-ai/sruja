@@ -5,7 +5,7 @@
 set -e
 
 # Default values
-ARCH_FILE="${1:-architecture.sruja}"
+ARCH_FILE="${1:-repo.sruja}"
 REPO_PATH="${2:-.}"
 
 echo "🔍 Validating and refining architecture..."

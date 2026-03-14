@@ -213,46 +213,36 @@ Result:
 ### 1. Modular Monolith (First Step)
 
 ```sruja
-architecture "Modular Monolith" {
-  system "Application" {
-    # Clear module boundaries
-    user_module = container "User Module" { ... }
-    order_module = container "Order Module" { ... }
-    payment_module = container "Payment Module" { ... }
-  }
+Application = system "Application" {
+  UserModule = container "User Module" { ... }
+  OrderModule = container "Order Module" { ... }
+  PaymentModule = container "Payment Module" { ... }
 }
 ```
 
 ### 2. Extract Single Service
 
 ```sruja
-architecture "Hybrid" {
-  # Extracted microservice
-  payment_service = container "Payment Service" {
-    technology "Python"
-    description "Extracted from monolith"
-  }
-
-  # Remaining monolith
-  monolith = container "Core Application" {
-    technology "Node.js"
-    description "Remaining functionality"
-  }
-
-  monolith -> payment_service "REST API"
+PaymentService = container "Payment Service" {
+  technology "Python"
+  description "Extracted from monolith"
 }
+
+Monolith = container "Core Application" {
+  technology "Node.js"
+  description "Remaining functionality"
+}
+
+Monolith -> PaymentService "REST API"
 ```
 
 ### 3. Full Microservices
 
 ```sruja
-architecture "Microservices" {
-  # All services independent
-  user_service = container "User Service" { ... }
-  order_service = container "Order Service" { ... }
-  payment_service = container "Payment Service" { ... }
-  inventory_service = container "Inventory Service" { ... }
-}
+UserService = container "User Service" { ... }
+OrderService = container "Order Service" { ... }
+PaymentService = container "Payment Service" { ... }
+InventoryService = container "Inventory Service" { ... }
 ```
 
 ## Decision Checklist

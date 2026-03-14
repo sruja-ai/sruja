@@ -2,8 +2,8 @@
 name: sruja-architecture
 description: Architecture discovery and DSL authoring for Sruja. This skill provides a deterministic, evidence-first workflow for generating and maintaining repo.sruja files (architecture.sruja supported for backward compatibility) from codebases.
 
-# CLI required for prompts (sync, discover, lint, drift). Not installed by the skill. Extension optional but recommended (lint, diagram, Refresh repo context → .sruja/context.json).
-prerequisites: "Install Sruja CLI: curl -fsSL https://sruja.ai/install.sh | bash. Optional: Sruja VS Code extension for in-editor lint, diagram preview, and Sruja: Refresh repo context (writes .sruja/context.json)."
+# CLI required for prompts (sync, discover, lint, drift). Must include 'sync' and 'discover' subcommands; verify with sruja --help. Not installed by the skill. Extension optional but recommended (lint, diagram, Refresh repo context → .sruja/context.json).
+prerequisites: "Install Sruja CLI with sync and discover: curl -fsSL https://sruja.ai/install.sh | bash, or build from repo: cargo install --path crates/sruja-cli. If 'sruja --help' does not list sync and discover, upgrade the CLI (see SKILL.md Troubleshooting). Optional: Sruja VS Code extension for in-editor lint, diagram preview, and Sruja: Refresh repo context (writes .sruja/context.json)."
 
 capabilities:
   - Architecture discovery from codebases
@@ -16,9 +16,9 @@ prompts:
 
   discovery: "Use sruja-architecture skill. Run `sruja sync -r .` or `sruja discover --context -r . --format json`, gather evidence from the repo including structure, technologies, modules, entry points, and dependencies. Ask targeted questions only when evidence is ambiguous. Generate a minimal repo.sruja covering only what evidence supports. Run `sruja lint repo.sruja` and fix all errors."
 
-  refinement: "Use sruja-architecture skill. Analyze this existing repo.sruja (or architecture.sruja), run `sruja sync -r .` or `sruja discover --context -r . --format json` for current evidence, compare architecture against evidence, identify discrepancies, propose updates to align with current code, then run `sruja lint` and fix all errors."
+  refinement: "Use sruja-architecture skill. Analyze this existing repo.sruja (or architecture.sruja), run `sruja sync -r .` or `sruja discover --context -r . --format json` for current evidence, compare architecture against evidence, identify discrepancies, propose updates to align with current code, then run `sruja lint repo.sruja` and fix all errors."
 
-  drift: "Use sruja-architecture skill. Run `sruja drift -r .` (auto-detects repo.sruja / architecture.sruja) or `sruja drift -r . -a repo.sruja --format json` to detect drift. Analyze results, propose updates to repo.sruja to address drift, run `sruja lint` and fix all errors. List open questions for any uncertainties."
+  drift: "Use sruja-architecture skill. Run `sruja drift -r .` (auto-detects repo.sruja / architecture.sruja) or `sruja drift -r . -a repo.sruja --format json` to detect drift. Analyze results, propose updates to repo.sruja to address drift, run `sruja lint repo.sruja` and fix all errors. List open questions for any uncertainties."
 
 references:
   - SKILL.md

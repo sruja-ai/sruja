@@ -2,7 +2,7 @@
 
 Comprehensive guide for software architecture design using Sruja DSL. This document is compiled from individual rules and contains all patterns, principles, and best practices for AI agents generating Sruja architectures.
 
-**Syntax:** Sruja uses **flat, top-level declarations** — no `architecture "Name" { }` wrapper. Declare kinds (or use `import { * } from 'sruja.ai/stdlib'`), then elements and relationships at the top level. Use PascalCase for element IDs.
+**Syntax:** Sruja uses **flat, top-level declarations**. The legacy `architecture "Name" { }` wrapper has been removed from the DSL. Declare kinds (or use `import { * } from 'sruja.ai/stdlib'`), then elements and relationships at the top level. Use PascalCase for element IDs.
 
 ## Quick Start
 

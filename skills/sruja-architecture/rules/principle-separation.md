@@ -18,22 +18,20 @@ Always apply separation of concerns when:
 ### Example 1: Separated Responsibilities
 
 ```sruja
-architecture "E-Commerce System" {
-  system "Order Management" {
-    order_service = container "Order API" {
-      technology "Node.js"
-      description "Handles order lifecycle operations"
-    }
+OrderManagement = system "Order Management" {
+  OrderService = container "Order API" {
+    technology "Node.js"
+    description "Handles order lifecycle operations"
+  }
 
-    payment_service = container "Payment Service" {
-      technology "Python"
-      description "Processes payment transactions"
-    }
+  PaymentService = container "Payment Service" {
+    technology "Python"
+    description "Processes payment transactions"
+  }
 
-    inventory_service = container "Inventory Service" {
-      technology "Go"
-      description "Manages product inventory"
-    }
+  InventoryService = container "Inventory Service" {
+    technology "Go"
+    description "Manages product inventory"
   }
 }
 ```
@@ -41,22 +39,22 @@ architecture "E-Commerce System" {
 ### Example 2: Single Responsibility Components
 
 ```sruja
-frontend = container "Web Frontend" {
+Frontend = container "Web Frontend" {
   technology "React"
   description "User interface and presentation layer"
 }
 
-api = container "API Gateway" {
+API = container "API Gateway" {
   technology "Kong"
   description "Routing, authentication, rate limiting"
 }
 
-backend = container "Business Service" {
+Backend = container "Business Service" {
   technology "Java + Spring Boot"
   description "Core business logic and use cases"
 }
 
-database = database "Database" {
+Database = database "Database" {
   technology "PostgreSQL"
   description "Data persistence and storage"
 }
@@ -65,13 +63,13 @@ database = database "Database" {
 ## Incorrect Approach
 
 ```sruja
-# ❌ One container doing everything
-ecommerce = container "E-Commerce App" {
+// ❌ One container doing everything
+Ecommerce = container "E-Commerce App" {
   technology "Node.js"
   description "Frontend, backend, payments, inventory, all in one"
 }
 
-ecommerce -> database "everything"
+Ecommerce -> Database "everything"
 ```
 
 ## Common Mistakes

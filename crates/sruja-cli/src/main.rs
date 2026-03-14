@@ -59,6 +59,9 @@ enum Commands {
         /// Mermaid focus node ID for view levels 2/3
         #[arg(long)]
         target: Option<String>,
+        /// Named view to export (for markdown format - uses view-driven export)
+        #[arg(long)]
+        view: Option<String>,
     },
     /// Format a Sruja file
     Fmt {
@@ -363,7 +366,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             extended,
             view_level,
             target,
-        } => commands::export(&format, &file, extended, view_level, target.as_deref()).await,
+            view,
+        } => {
+            commands::export(
+                &format,
+                &file,
+                extended,
+                view_level,
+                target.as_deref(),
+                view.as_deref(),
+            )
+            .await
+        }
         Commands::Fmt { file, check } => commands::fmt(&file, check).await,
         Commands::Lsp { .. } => commands::lsp().await,
         Commands::Compile { file } => commands::compile(&file).await,

@@ -15,6 +15,15 @@ Core skill for architecture discovery and modeling with Sruja. This skill provid
 - **Minimal DSL**: Generate only what evidence supports
 - **Validation**: Always lint and fix errors before considering complete
 
+## Evidence source: static graph (Tree-sitter)
+
+Discovery and sync are backed by a **static analysis graph** built from **Tree-sitter** parsing of source code. The CLI parses supported languages (e.g. TypeScript, Python, Go, Rust, Java, C#, Ruby, and others) to extract modules, imports, and dependencies, producing a deterministic **nodes-and-edges graph**. This graph is used to:
+
+- **Verify** — Evidence is code-based and reproducible; drift compares the declared architecture to this graph.
+- **Assist the AI** — The skill uses this graph (via `sruja sync` / `sruja discover` or `.sruja/context.json`) so the AI can stay evidence-first and avoid inventing components or relationships not present in the code.
+
+When using the skill, prefer evidence from this pipeline (context file or discover output) over guessing; the static graph is the single source of truth for what the codebase contains.
+
 ## Workflow
 
 ### 1. Collect Evidence
@@ -88,6 +97,7 @@ Fix all errors before proceeding. Common issues:
 - E201: Invalid kind or type
 - E204: Circular dependencies
 - E205: Orphan elements (no relationships)
+- E206: Invalid references (target element missing or typo)
 
 ### 5. Refine (Optional)
 
@@ -103,7 +113,7 @@ Use drift results to identify areas needing refinement.
 
 ## Operating Modes
 
-This skill supports three modes:
+This skill supports four modes:
 
 1. **Local authoring** — Create or update `repo.sruja` (or `architecture.sruja`) in the repo. Use evidence + targeted questions, then generate minimal DSL and run `sruja lint`.
 2. **System context** — Use discover output or `.sruja/context.json` to get the right slice of the system for the current task. Prefer canonical element IDs and boundaries from the evidence.
@@ -155,7 +165,7 @@ See **docs/FEDERATION.md** for artifact schemas and Phase 4 retrieval behavior.
 
 - **Discovery workflow**: See REFERENCE.md
 - **Modeling rules**: See rules/ directory
-- **Prompt patterns**: See AGENTS.md
+- **Prompt patterns**: See PROMPTS.md and AGENTS.md
 - **Refinement workflow**: See REFERENCE.md
 - **Multi-repo federation**: See docs/FEDERATION.md
 

@@ -44,29 +44,29 @@ Collects deterministic evidence from a codebase for use with the sruja-architect
 
 **Next steps:**
 
-Use the generated evidence file with the sruja-architecture skill in your AI editor to generate architecture.sruja.
+Use the generated evidence file with the sruja-architecture skill in your AI editor to generate repo.sruja.
 
 ### validate-refine.sh
 
-Validates and refines an existing architecture.sruja file.
+Validates and refines an existing repo.sruja file.
 
 **Usage:**
 
 ```bash
-./validate-refine.sh [architecture_file] [repo_path]
+./validate-refine.sh [repo.sruja] [repo_path]
 ```
 
 **Examples:**
 
 ```bash
-# Validate architecture.sruja in current directory
+# Validate repo.sruja in current directory
 ./validate-refine.sh
 
 # Validate specific architecture file
 ./validate-refine.sh my-arch.sruja
 
 # Validate against specific repo path
-./validate-refine.sh architecture.sruja ./src
+./validate-refine.sh repo.sruja ./src
 ```
 
 **What it does:**
@@ -85,7 +85,7 @@ Validates and refines an existing architecture.sruja file.
 
 1. Review drift-results.json if drift was detected
 2. Use sruja-architecture skill to address drift
-3. Export documentation: `sruja export markdown architecture.sruja`
+3. Export documentation: `sruja export markdown repo.sruja`
 
 ## Requirements
 
@@ -104,7 +104,7 @@ curl -fsSL https://sruja.ai/install.sh | bash
 ./collect-evidence.sh
 
 # 2. In AI editor, run:
-# "Use sruja-architecture. Read evidence.json, generate architecture.sruja based on evidence, then run sruja lint and fix until it passes."
+# "Use sruja-architecture. Read evidence.json, generate repo.sruja based on evidence, then run sruja lint and fix until it passes."
 
 # 3. Validate
 ./validate-refine.sh
@@ -114,7 +114,7 @@ curl -fsSL https://sruja.ai/install.sh | bash
 
 ```bash
 # 1. In AI editor, run:
-# "Use sruja-architecture. Read evidence.json and existing architecture.sruja, compare, propose updates, then run sruja lint and fix."
+# "Use sruja-architecture. Read evidence.json and existing repo.sruja, compare, propose updates, then run sruja lint and fix."
 
 # 2. Validate
 ./validate-refine.sh
@@ -124,7 +124,7 @@ curl -fsSL https://sruja.ai/install.sh | bash
 
 ```bash
 # In CI pipeline:
-./validate-refine.sh architecture.sruja
+./validate-refine.sh repo.sruja
 
 # This will fail if:
 # - Linting errors exist

@@ -5,6 +5,32 @@
 import * as vscode from "vscode";
 import { getElementsFromWasm, getDocumentSymbolsFromWasm, SrujaElement, SrujaDocumentSymbol } from "./wasm";
 
+export interface ElementRange {
+  start: { line: number; character: number };
+  end: { line: number; character: number };
+}
+
+export interface DefinitionResult {
+  originSelectionRange: ElementRange;
+  targetRange: ElementRange;
+  targetSelectionRange: ElementRange;
+}
+
+export function buildDefinitionLinks(
+  word: string,
+  wordRange: ElementRange,
+  elements: SrujaElement[]
+): DefinitionResult[] | undefined {
+  const element = elements.find(e => e.id === word || e.id.endsWith(`.${word}`));
+  if (!element) return undefined;
+
+  return [{
+    originSelectionRange: wordRange,
+    targetRange: element.range,
+    targetSelectionRange: element.range,
+  }];
+}
+
 /**
  * Go to Definition Provider
  * Allows navigating from element references to their definitions
@@ -32,19 +58,27 @@ export class SrujaDefinitionProvider implements vscode.DefinitionProvider {
     const word = document.getText(wordRange).trim();
     if (!word) return undefined;
 
-    // Find element matching the word
-    const element = elements.find(e => e.id === word || e.id.endsWith(`.${word}`));
-    if (!element) return undefined;
+    const links = buildDefinitionLinks(
+      word,
+      { start: { line: wordRange.start.line, character: wordRange.start.character }, end: { line: wordRange.end.line, character: wordRange.end.character } },
+      elements
+    );
+    if (!links) return undefined;
 
-    const start = new vscode.Position(element.range.start.line, element.range.start.character);
-    const end = new vscode.Position(element.range.end.line, element.range.end.character);
-    const range = new vscode.Range(start, end);
+    return links.map(link => {
+      const start = new vscode.Position(link.targetRange.start.line, link.targetRange.start.character);
+      const end = new vscode.Position(link.targetRange.end.line, link.targetRange.end.character);
+      const range = new vscode.Range(start, end);
+      const originStart = new vscode.Position(link.originSelectionRange.start.line, link.originSelectionRange.start.character);
+      const originEnd = new vscode.Position(link.originSelectionRange.end.line, link.originSelectionRange.end.character);
 
-    return [{
-      originSelectionRange: wordRange,
-      targetUri: document.uri,
-      targetRange: range,
-    }];
+      return {
+        originSelectionRange: new vscode.Range(originStart, originEnd),
+        targetUri: document.uri,
+        targetRange: range,
+        targetSelectionRange: range,
+      };
+    });
   }
 }
 

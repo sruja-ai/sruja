@@ -7,7 +7,7 @@ When generating or modifying Sruja architecture DSL (.sruja files), follow these
 1. **Define before use** – Every referenced component must be defined before use in relationships.
 2. **Double quotes** – All string values: names, descriptions, technology labels.
 3. **Pattern** – `Id = kind "Label" { ... }` (e.g. `API = container "API" { ... }`).
-4. **Nesting** – Systems inside architecture, containers/datastores inside systems.
+4. **Nesting** – Flat top-level declarations only (no `architecture "Name" { }` wrapper). Containers/datastores nest inside systems.
 5. **Relationships** – `source -> target "label"`; one per line; descriptive labels.
 
 ## Component kinds
@@ -65,4 +65,4 @@ For patterns, trade-offs, and anti-patterns (e.g. monolith vs microservices, eve
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
-See also: `docs/AI_EDITOR_INTEGRATION.md`, `docs/LANGUAGE_SPECIFICATION.md`, `examples/`.
+See also: `docs/LANGUAGE_SPECIFICATION.md`, `examples/`. For editor validation and repo context, see the Sruja extension and skills/sruja-architecture/SKILL.md.

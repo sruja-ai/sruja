@@ -18,168 +18,162 @@ Always use specific, descriptive labels when:
 ### Example 1: Protocol-Specific Labels
 
 ```sruja
-architecture "Web Application" {
-  web = container "Web Frontend" {
-    technology "React"
-    description "User interface"
-  }
-
-  api = container "API Service" {
-    technology "Node.js + Express"
-    description "RESTful API"
-  }
-
-  database = database "Database" {
-    technology "PostgreSQL"
-    description "Data storage"
-  }
-
-  message_queue = queue "Message Queue" {
-    technology "RabbitMQ"
-    description "Event streaming"
-  }
+Web = container "Web Frontend" {
+  technology "React"
+  description "User interface"
 }
 
-# ✅ Specific, descriptive labels
-web -> api "HTTPS"
-api -> database "PostgreSQL (JDBC)"
-api -> message_queue "AMQP (publishes events)"
+API = container "API Service" {
+  technology "Node.js + Express"
+  description "RESTful API"
+}
+
+Database = database "Database" {
+  technology "PostgreSQL"
+  description "Data storage"
+}
+
+MessageQueue = queue "Message Queue" {
+  technology "RabbitMQ"
+  description "Event streaming"
+}
+
+// ✅ Specific, descriptive labels
+Web -> API "HTTPS"
+API -> Database "PostgreSQL (JDBC)"
+API -> MessageQueue "AMQP (publishes events)"
 ```
 
 ### Example 2: Purpose-Specific Labels
 
 ```sruja
-architecture "Order System" {
-  order_api = container "Order API" {
-    technology "Go"
-    description "Order processing"
-  }
-
-  payment_service = container "Payment Service" {
-    technology "Python"
-    description "Payment processing"
-  }
-
-  inventory_service = container "Inventory Service" {
-    technology "Java"
-    description "Inventory management"
-  }
-
-  notification_service = container "Notification Service" {
-    technology "Node.js"
-    description "Notifications"
-  }
+OrderAPI = container "Order API" {
+  technology "Go"
+  description "Order processing"
 }
 
-# ✅ Clear purpose in labels
-order_api -> payment_service "REST API (process payment)"
-order_api -> inventory_service "REST API (reserve stock)"
-payment_service -> notification_service "REST API (send receipt)"
+PaymentService = container "Payment Service" {
+  technology "Python"
+  description "Payment processing"
+}
+
+InventoryService = container "Inventory Service" {
+  technology "Java"
+  description "Inventory management"
+}
+
+NotificationService = container "Notification Service" {
+  technology "Node.js"
+  description "Notifications"
+}
+
+// ✅ Clear purpose in labels
+OrderAPI -> PaymentService "REST API (process payment)"
+OrderAPI -> InventoryService "REST API (reserve stock)"
+PaymentService -> NotificationService "REST API (send receipt)"
 ```
 
 ### Example 3: Data Flow Direction
 
 ```sruja
-architecture "Analytics System" {
-  collector = container "Data Collector" {
-    technology "Python"
-    description "Collects events from multiple sources"
-  }
-
-  processor = container "Stream Processor" {
-    technology "Kafka Streams"
-    description "Processes and transforms data"
-  }
-
-  database = database "Time Series DB" {
-    technology "InfluxDB"
-    description "Stores time-series data"
-  }
-
-  api = container "Analytics API" {
-    technology "Go"
-    description "Query interface for analytics"
-  }
+Collector = container "Data Collector" {
+  technology "Python"
+  description "Collects events from multiple sources"
 }
 
-# ✅ Clear data flow
-collector -> processor "publishes events"
-processor -> database "writes metrics"
-api -> database "reads time-series data"
+Processor = container "Stream Processor" {
+  technology "Kafka Streams"
+  description "Processes and transforms data"
+}
+
+TimeSeriesDB = database "Time Series DB" {
+  technology "InfluxDB"
+  description "Stores time-series data"
+}
+
+AnalyticsAPI = container "Analytics API" {
+  technology "Go"
+  description "Query interface for analytics"
+}
+
+// ✅ Clear data flow
+Collector -> Processor "publishes events"
+Processor -> TimeSeriesDB "writes metrics"
+AnalyticsAPI -> TimeSeriesDB "reads time-series data"
 ```
 
 ## Incorrect Approach
 
 ```sruja
-# ❌ Vague, non-descriptive labels
-web -> api "uses"
-api -> database "connects to"
-api -> message_queue "sends data"
+// ❌ Vague, non-descriptive labels
+Web -> API "uses"
+API -> Database "connects to"
+API -> MessageQueue "sends data"
 
-# ❌ Inconsistent naming
-web -> api "HTTP"
-api -> database "JDBC"
-api -> message_queue "publishes"
+// ❌ Inconsistent naming
+Web -> API "HTTP"
+API -> Database "JDBC"
+API -> MessageQueue "publishes"
 ```
 
 ## Common Mistakes
 
 1. **Vague Labels**: "uses", "connects to", "talks to"
-   - ❌ `web -> api "uses"`
-   - ✅ `web -> api "HTTPS"`
+   - ❌ `Web -> API "uses"`
+   - ✅ `Web -> API "HTTPS"`
 
 2. **Missing Protocol**: Not specifying communication protocol
-   - ❌ `api -> database "reads"`
-   - ✅ `api -> database "PostgreSQL (JDBC)"`
+   - ❌ `API -> Database "reads"`
+   - ✅ `API -> Database "PostgreSQL (JDBC)"`
 
 3. **Inconsistent Naming**: Mix of styles
    - ❌ "HTTPS", "connects", "API call", "publishes events"
    - ✅ "HTTPS", "REST API", "PostgreSQL", "AMQP"
 
 4. **Purpose Not Clear**: Labels don't explain what's happening
-   - ❌ `service_a -> service_b "API"`
-   - ✅ `service_a -> service_b "REST API (fetches orders)"`
+   - ❌ `ServiceA -> ServiceB "API"`
+   - ✅ `ServiceA -> ServiceB "REST API (fetches orders)"`
 
 ## Best Practices
 
 ### 1. Include Protocol
 
 ```sruja
-# ✅ Good
-frontend -> api "HTTPS"
-api -> database "PostgreSQL"
-worker -> queue "AMQP"
+// ✅ Good
+Frontend -> API "HTTPS"
+API -> Database "PostgreSQL"
+Worker -> Queue "AMQP"
 
-# ❌ Avoid
-frontend -> api "uses"
-api -> database "connects"
+// ❌ Avoid
+Frontend -> API "uses"
+API -> Database "connects"
 ```
 
 ### 2. Specify Purpose
 
 ```sruja
-# ✅ Good
-api -> payment_service "REST API (process payment)"
-api -> inventory_service "REST API (check stock)"
+// ✅ Good
+API -> PaymentService "REST API (process payment)"
+API -> InventoryService "REST API (check stock)"
 
-# ❌ Avoid
-api -> payment_service "API"
-api -> inventory_service "API"
+// ❌ Avoid
+API -> PaymentService "API"
+API -> InventoryService "API"
 ```
 
 ### 3. Show Data Flow Direction
 
 ```sruja
-# ✅ Good
-producer -> queue "publishes events"
-consumer -> queue "consumes events"
-api -> database "reads orders"
-database -> api "returns results"
+// ✅ Good
+Producer -> Queue "publishes events"
+Consumer -> Queue "consumes events"
+API -> Database "reads orders"
+Database -> API "returns results"
 
-# ❌ Avoid
-producer -> queue "uses"
-consumer -> queue "uses"
-api -> database "query"
+// ❌ Avoid
+Producer -> Queue "uses"
+Consumer -> Queue "uses"
+API -> Database "query"
 ```
 
 ### 4. Use Standard Protocol Names
@@ -206,15 +200,15 @@ api -> database "query"
 ### 5. Be Consistent
 
 ```sruja
-# ✅ Consistent style
-service_a -> service_b "REST API"
-service_b -> service_c "REST API"
-service_c -> database "PostgreSQL"
+// ✅ Consistent style
+ServiceA -> ServiceB "REST API"
+ServiceB -> ServiceC "REST API"
+ServiceC -> Database "PostgreSQL"
 
-# ❌ Inconsistent
-service_a -> service_b "HTTP"
-service_b -> service_c "REST API"
-service_c -> database "connects"
+// ❌ Inconsistent
+ServiceA -> ServiceB "HTTP"
+ServiceB -> ServiceC "REST API"
+ServiceC -> Database "connects"
 ```
 
 ## Label Templates

@@ -7,29 +7,29 @@ This file contains reusable prompt patterns for generating and refining Sruja ar
 ### Initial Discovery
 
 ```
-Use sruja-architecture skill. Run `sruja discover --context -r . --format json`, gather evidence from the repo including structure, technologies, modules, entry points, and dependencies. Ask targeted questions only when scope or externals are unclear. Generate a minimal architecture.sruja with evidence-based components and relationships using C4 context and container levels. Then run `sruja lint architecture.sruja` and fix all errors until it passes. Do not guess about missing information; list open questions instead.
+Use sruja-architecture skill. If .sruja/context.json exists and is recent, use it for evidence; otherwise run `sruja sync -r .` or `sruja discover --context -r . --format json`. Gather evidence from the repo (structure, technologies, modules, entry points, dependencies). Ask targeted questions only when scope or externals are unclear. Generate a minimal repo.sruja with evidence-based components and relationships using C4 context and container levels. Then run `sruja lint repo.sruja` and fix all errors until it passes. Do not guess about missing information; list open questions instead.
 ```
 
 ### Focused Scope Discovery
 
 ```
-Use sruja-architecture skill. Run `sruja discover --context -r <path> --format json` to gather evidence. Focus on <specific area>: <additional context>. Generate architecture.sruja covering only this scope with evidence-based components and relationships. Run `sruja lint` and fix all errors. List any open questions.
+Use sruja-architecture skill. Run `sruja discover --context -r <path> --format json` to gather evidence. Focus on <specific area>: <additional context>. Generate repo.sruja covering only this scope with evidence-based components and relationships. Run `sruja lint repo.sruja` and fix all errors. List any open questions.
 ```
 
 ### Refinement Discovery
 
 ```
-Use sruja-architecture skill. Analyze this existing architecture.sruja:
+Use sruja-architecture skill. Analyze this existing repo.sruja:
 
 [PASTE CONTENT]
 
-Run `sruja discover --context -r . --format json` to gather current evidence. Compare the architecture against the evidence. Identify:
+Use .sruja/context.json if recent, or run `sruja sync -r .` / `sruja discover --context -r . --format json` to gather current evidence. Compare the architecture against the evidence. Identify:
 1. Components that don't match code
 2. Missing relationships
 3. New components detected
 4. External dependencies not documented
 
-Propose updates to align architecture with current evidence. Run `sruja lint` and fix all errors. List open questions.
+Propose updates to align architecture with current evidence. Run `sruja lint repo.sruja` and fix all errors. List open questions.
 ```
 
 ## Modeling Prompts
@@ -37,7 +37,7 @@ Propose updates to align architecture with current evidence. Run `sruja lint` an
 ### Generate from Requirements
 
 ```
-Use sruja-architecture skill. Generate architecture.sruja for these requirements:
+Use sruja-architecture skill. Generate repo.sruja for these requirements:
 
 [PASTE REQUIREMENTS]
 
@@ -49,13 +49,13 @@ Follow these guidelines:
 - Apply architectural patterns appropriate to requirements
 - Check for anti-patterns
 
-Generate the DSL, then run `sruja lint` and fix all errors.
+Generate the DSL, then run `sruja lint repo.sruja` and fix all errors.
 ```
 
 ### Refactor Architecture
 
 ```
-Use sruja-architecture skill. Review and refactor this architecture.sruja:
+Use sruja-architecture skill. Review and refactor this repo.sruja:
 
 [PASTE CONTENT]
 
@@ -69,7 +69,7 @@ Refactor to:
 - Improve separation of concerns
 - Validate trade-offs
 
-Run `sruja lint` and fix all errors after each change.
+Run `sruja lint repo.sruja` and fix all errors after each change.
 ```
 
 ### Add Feature
@@ -88,7 +88,7 @@ Update architecture appropriately. Consider:
 - Impact on existing structure
 - Trade-offs
 
-Run `sruja lint` and fix all errors.
+Run `sruja lint repo.sruja` and fix all errors.
 ```
 
 ## Validation Prompts
@@ -108,7 +108,7 @@ Iterate until lint passes with zero errors.
 ### Review for Anti-Patterns
 
 ```
-Use sruja-architecture skill. Review this architecture.sruja for anti-patterns:
+Use sruja-architecture skill. Review this repo.sruja for anti-patterns:
 
 [PASTE CONTENT]
 
@@ -119,13 +119,13 @@ Check for:
 - Tight coupling
 - Orphan components
 
-Report any issues and suggest fixes. Apply fixes and run `sruja lint`.
+Report any issues and suggest fixes. Apply fixes and run `sruja lint repo.sruja`.
 ```
 
 ### Validate Trade-offs
 
 ```
-Use sruja-architecture skill. Review this architecture.sruja for trade-off validation:
+Use sruja-architecture skill. Review this repo.sruja for trade-off validation:
 
 [PASTE CONTENT]
 
@@ -143,30 +143,30 @@ Report concerns or missing considerations. Update architecture with rationale co
 ### Drift Detection
 
 ```
-Use sruja-architecture skill. Run `sruja drift -r . -a architecture.sruja --format json` to detect drift. Analyze the results:
+Use sruja-architecture skill. Run `sruja drift -r . -a repo.sruja --format json` to detect drift. Analyze the results:
 
 - New cycles detected
 - New orphan components
 - New layer violations
 - Suggested structural improvements
 
-Propose updates to architecture.sruja to address drift. Run `sruja lint` and fix all errors. List open questions.
+Propose updates to repo.sruja to address drift. Run `sruja lint repo.sruja` and fix all errors. List open questions.
 ```
 
 ### Baseline Update
 
 ```
-Use sruja-architecture skill. Update this architecture.sruja baseline:
+Use sruja-architecture skill. Update this repo.sruja baseline:
 
 [PASTE CONTENT]
 
-Run `sruja discover --context -r . --format json` for current evidence. Update architecture to reflect:
+Use .sruja/context.json if recent, or run `sruja sync -r .` / `sruja discover --context -r . --format json` for current evidence. Update repo.sruja to reflect:
 - New components
 - Changed technologies
 - New dependencies
 - Removed/renamed elements
 
-Maintain backward compatibility where possible. Run `sruja lint` and fix all errors.
+Maintain backward compatibility where possible. Run `sruja lint repo.sruja` and fix all errors.
 ```
 
 ## Open Question Handling
@@ -174,7 +174,7 @@ Maintain backward compatibility where possible. Run `sruja lint` and fix all err
 ### Surface Uncertainties
 
 ```
-Use sruja-architecture skill. When generating architecture.sruja, if evidence is insufficient for a decision:
+Use sruja-architecture skill. When generating repo.sruja, if evidence is insufficient for a decision:
 
 1. Do not guess
 2. Add a comment block with OPEN QUESTIONS
@@ -198,7 +198,7 @@ OPEN QUESTIONS:
 ```
 Use sruja-architecture skill. When modeling architecture:
 
-1. Always run `sruja discover --context -r . --format json` first
+1. Use .sruja/context.json for evidence if present and recent; otherwise run `sruja sync -r .` or `sruja discover --context -r . --format json`
 2. Base every component on evidence
 3. Every relationship must be traceable to code
 4. Technology tags must match what's actually used
@@ -227,7 +227,7 @@ For each lint error type:
 
 **E201 - Invalid kind or type:**
 ```
-Use sruja-architecture skill. Fix E201 error in architecture.sruja:
+Use sruja-architecture skill. Fix E201 error in repo.sruja:
 - Check that kind (person, system, container, database, queue) matches element purpose
 - Verify syntax: `kind "Name" { }` format is correct
 - Ensure all required fields are present

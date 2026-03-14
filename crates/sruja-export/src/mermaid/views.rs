@@ -28,14 +28,12 @@ pub fn resolve_view(
             all_elements,
             view.view_of.as_ref(),
         ));
+    } else if let Some(scope) = &view.view_of {
+        let scope_fqn = scope.as_string();
+        visible_elements.insert(scope_fqn.clone());
+        visible_elements.extend(get_descendants(&scope_fqn, all_elements));
     } else {
-        if let Some(scope) = &view.view_of {
-            let scope_fqn = scope.as_string();
-            visible_elements.insert(scope_fqn.clone());
-            visible_elements.extend(get_descendants(&scope_fqn, all_elements));
-        } else {
-            visible_elements.extend(all_elements.keys().cloned());
-        }
+        visible_elements.extend(all_elements.keys().cloned());
     }
 
     if let Some(exclude) = first_rule.and_then(|r| r.exclude.as_ref()) {
@@ -111,17 +109,14 @@ fn apply_exclude_rule(
 fn match_pattern(pattern: &str, all_elements: &HashMap<String, ElementDef>) -> HashSet<String> {
     let mut result = HashSet::new();
 
-    if pattern.ends_with(".*") {
-        let prefix = &pattern[..pattern.len() - 2];
+    if let Some(prefix) = pattern.strip_suffix(".*") {
         for fqn in all_elements.keys() {
             if fqn == prefix || fqn.starts_with(&format!("{}.", prefix)) {
                 result.insert(fqn.clone());
             }
         }
-    } else {
-        if all_elements.contains_key(pattern) {
-            result.insert(pattern.to_string());
-        }
+    } else if all_elements.contains_key(pattern) {
+        result.insert(pattern.to_string());
     }
 
     result
@@ -159,7 +154,7 @@ pub fn collect_views(program: &Program) -> Vec<ViewDef> {
         .items
         .iter()
         .filter_map(|item| {
-            if let TopLevelItem::ViewDef(view) = item {
+            if let TopLevelItem::View(view) = item {
                 Some(view.clone())
             } else {
                 None
@@ -171,6 +166,7 @@ pub fn collect_views(program: &Program) -> Vec<ViewDef> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::mermaid::exporter::{MermaidConfig, MermaidExporter};
     use sruja_diagnostics::SourceLocation;
     use sruja_language::{ElementAssignment, ElementKind, QualifiedIdent};
 
@@ -200,7 +196,7 @@ mod tests {
         let view = ViewDef {
             location: SourceLocation::new(String::new(), 0, 0),
             id: "test".to_string(),
-            title: None,
+            title: String::new(),
             description: None,
             view_of: None,
             tags: vec![],
@@ -237,7 +233,7 @@ mod tests {
         let view = ViewDef {
             location: SourceLocation::new(String::new(), 0, 0),
             id: "test".to_string(),
-            title: None,
+            title: String::new(),
             description: None,
             view_of: None,
             tags: vec![],
@@ -274,7 +270,7 @@ mod tests {
         let view = ViewDef {
             location: SourceLocation::new(String::new(), 0, 0),
             id: "test".to_string(),
-            title: None,
+            title: String::new(),
             description: None,
             view_of: None,
             tags: vec![],
@@ -313,7 +309,7 @@ mod tests {
         let view = ViewDef {
             location: SourceLocation::new(String::new(), 0, 0),
             id: "test".to_string(),
-            title: None,
+            title: String::new(),
             description: None,
             view_of: None,
             tags: vec![],
@@ -360,7 +356,7 @@ mod tests {
         let view = ViewDef {
             location: SourceLocation::new(String::new(), 0, 0),
             id: "test".to_string(),
-            title: None,
+            title: String::new(),
             description: None,
             view_of: Some(QualifiedIdent::qualified(vec!["Shop".to_string()])),
             tags: vec![],
@@ -377,5 +373,35 @@ mod tests {
         let resolved = resolve_view(&view, &elements, &[]);
         assert_eq!(resolved.elements.len(), 3);
         assert!(!resolved.elements.contains_key("User"));
+    }
+
+    #[test]
+    fn test_export_from_resolved_view_produces_mermaid() {
+        let mut elements = HashMap::new();
+        elements.insert(
+            "Shop".to_string(),
+            create_test_element("Shop", ElementKind::System),
+        );
+        elements.insert(
+            "Shop.Web".to_string(),
+            create_test_element("Shop.Web", ElementKind::Container),
+        );
+        let relations = vec![];
+
+        let resolved = ResolvedView {
+            view_id: "test".to_string(),
+            title: "Test View".to_string(),
+            description: None,
+            elements,
+            relations,
+        };
+
+        let config = MermaidConfig::default();
+        let exporter = MermaidExporter::new(config);
+        let mermaid = exporter.export_from_resolved_view(&resolved);
+
+        assert!(!mermaid.is_empty());
+        assert!(mermaid.contains("graph"));
+        assert!(mermaid.contains("Shop"));
     }
 }

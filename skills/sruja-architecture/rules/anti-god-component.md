@@ -19,119 +19,112 @@ Check for god components when:
 ### Example 1: Split by Responsibility
 
 ```sruja
-# ❌ Anti-pattern: God Component
-architecture "Bad E-Commerce" {
-  god_container = container "Everything" {
+// ❌ Anti-pattern: God Component
+GodContainer = container "Everything" {
+  technology "Node.js"
+  description "User auth, orders, payments, inventory, notifications, all in one"
+}
+
+Database = database "Database" {
+  technology "PostgreSQL"
+  description "Data persistence"
+}
+
+GodContainer -> Database "SQL"
+
+// ✅ Correct: Split into focused containers
+ECommerce = system "E-Commerce" {
+  ApiGateway = container "API Gateway" {
+    technology "Kong"
+    description "Routing, authentication, rate limiting"
+  }
+
+  UserService = container "User Service" {
     technology "Node.js"
-    description "User auth, orders, payments, inventory, notifications, all in one"
+    description "User management and authentication"
   }
 
-  god_container -> database "SQL"
-}
-
-# ✅ Correct: Split into focused containers
-architecture "Good E-Commerce" {
-  system "E-Commerce" {
-    api_gateway = container "API Gateway" {
-      technology "Kong"
-      description "Routing, authentication, rate limiting"
-    }
-
-    user_service = container "User Service" {
-      technology "Node.js"
-      description "User management and authentication"
-    }
-
-    order_service = container "Order Service" {
-      technology "Go"
-      description "Order processing and management"
-    }
-
-    payment_service = container "Payment Service" {
-      technology "Python"
-      description "Payment processing"
-    }
-
-    inventory_service = container "Inventory Service" {
-      technology "Java"
-      description "Inventory management"
-    }
-
-    notification_service = container "Notification Service" {
-      technology "Node.js"
-      description "Email, SMS, push notifications"
-    }
-
-    database = database "Database" {
-      technology "PostgreSQL"
-      description "Data persistence"
-    }
+  OrderService = container "Order Service" {
+    technology "Go"
+    description "Order processing and management"
   }
 
-  api_gateway -> user_service "REST API"
-  api_gateway -> order_service "REST API"
+  PaymentService = container "Payment Service" {
+    technology "Python"
+    description "Payment processing"
+  }
 
-  user_service -> database "SQL"
-  order_service -> database "SQL"
-  payment_service -> database "SQL"
-  inventory_service -> database "SQL"
+  InventoryService = container "Inventory Service" {
+    technology "Java"
+    description "Inventory management"
+  }
+
+  NotificationService = container "Notification Service" {
+    technology "Node.js"
+    description "Email, SMS, push notifications"
+  }
+
+  Database = database "Database" {
+    technology "PostgreSQL"
+    description "Data persistence"
+  }
 }
+
+ECommerce.ApiGateway -> ECommerce.UserService "REST API"
+ECommerce.ApiGateway -> ECommerce.OrderService "REST API"
+ECommerce.UserService -> ECommerce.Database "SQL"
+ECommerce.OrderService -> ECommerce.Database "SQL"
+ECommerce.PaymentService -> ECommerce.Database "SQL"
+ECommerce.InventoryService -> ECommerce.Database "SQL"
 ```
 
 ### Example 2: Split by Layer
 
 ```sruja
-# ❌ Anti-pattern: Everything in one layer
-architecture "Bad Web App" {
-  web_container = container "Web App" {
+// ❌ Anti-pattern: Everything in one layer
+WebContainer = container "Web App" {
+  technology "Node.js"
+  description "UI, API, business logic, data access, caching"
+}
+
+// ✅ Correct: Separate concerns into layers
+WebApplication = system "Web Application" {
+  WebFrontend = container "Web Frontend" {
+    technology "React"
+    description "User interface"
+  }
+
+  ApiGateway = container "API Gateway" {
+    technology "Express.js"
+    description "HTTP API endpoints"
+  }
+
+  BusinessService = container "Business Service" {
     technology "Node.js"
-    description "UI, API, business logic, data access, caching"
+    description "Business logic and use cases"
+  }
+
+  DataService = container "Data Service" {
+    technology "Node.js"
+    description "Data access and caching"
+  }
+
+  Cache = database "Cache" {
+    technology "Redis"
+    description "Caching layer"
+  }
+
+  Database = database "Database" {
+    technology "PostgreSQL"
+    description "Data persistence"
   }
 }
 
-# ✅ Correct: Separate concerns into layers
-architecture "Good Web App" {
-  system "Web Application" {
-    # Presentation Layer
-    web_frontend = container "Web Frontend" {
-      technology "React"
-      description "User interface"
-    }
-
-    api_gateway = container "API Gateway" {
-      technology "Express.js"
-      description "HTTP API endpoints"
-    }
-
-    # Application Layer
-    business_service = container "Business Service" {
-      technology "Node.js"
-      description "Business logic and use cases"
-    }
-
-    # Infrastructure Layer
-    data_service = container "Data Service" {
-      technology "Node.js"
-      description "Data access and caching"
-    }
-
-    cache = database "Cache" {
-      technology "Redis"
-      description "Caching layer"
-    }
-
-    database = database "Database" {
-      technology "PostgreSQL"
-      description "Data persistence"
-    }
-  }
-
-  web_frontend -> api_gateway "HTTPS"
-  api_gateway -> business_service "HTTP"
-  business_service -> data_service "HTTP"
-  data_service -> cache "Redis"
-  data_service -> database "SQL"
-}
+WebApplication.WebFrontend -> WebApplication.ApiGateway "HTTPS"
+WebApplication.ApiGateway -> WebApplication.BusinessService "HTTP"
+WebApplication.BusinessService -> WebApplication.DataService "HTTP"
+WebApplication.DataService -> WebApplication.Cache "Redis"
+WebApplication.DataService -> WebApplication.Database "SQL"
 ```
 
 ## Signs of God Components
@@ -166,8 +159,8 @@ architecture "Good Web App" {
 ### 1. Controller-As-God
 
 ```sruja
-# ❌ Controller doing everything
-controller = container "Main Controller" {
+// ❌ Controller doing everything
+Controller = container "Main Controller" {
   technology "Node.js"
   description "Handles all requests, business logic, data access, caching"
 }
@@ -176,8 +169,8 @@ controller = container "Main Controller" {
 ### 2. Service-As-God
 
 ```sruja
-# ❌ Service handling all business logic
-service = container "Business Service" {
+// ❌ Service handling all business logic
+Service = container "Business Service" {
   technology "Java"
   description "Users, orders, payments, inventory, all business logic"
 }
@@ -186,8 +179,8 @@ service = container "Business Service" {
 ### 3. API-As-God
 
 ```sruja
-# ❌ API gateway with too much logic
-gateway = container "API Gateway" {
+// ❌ API gateway with too much logic
+Gateway = container "API Gateway" {
   technology "Node.js"
   description "Routing, auth, rate limiting, validation, transformation, enrichment"
 }
