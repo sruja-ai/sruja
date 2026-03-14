@@ -32,8 +32,8 @@ This repository (`sruja-ai/sruja`) is the **main development repository** where 
 
 **Do not contribute to these deployment-only repositories:**
 
-- `sruja-ai/staging-website` - Staging deployment (auto-updated from `main` branch)
-- `sruja-ai/prod-website` - Production deployment (auto-updated from releases)
+- `sruja-ai/staging-website` - Staging deployment (auto-updated from `main` on push; or manual)
+- `sruja-ai/prod-website` - Production deployment (manual promote from `main`; see [Deploy to Production](../.github/workflows/README.md#deploy-to-production))
 
 These repositories are **automatically updated** by GitHub Actions workflows and contain only built static files for GitHub Pages hosting. They are **read-only** for contributors.
 
@@ -72,7 +72,7 @@ make install
 make build
 
 # 4. Verify it works
-./bin/sruja --help
+./target/release/sruja --help
 ```
 
 ### Common Commands
@@ -91,8 +91,8 @@ make lint
 make build
 
 # Try examples
-./bin/sruja compile book/valid-examples/getting-started.sruja
-./bin/sruja lint book/valid-examples/getting-started.sruja
+./target/release/sruja compile book/valid-examples/getting-started.sruja
+./target/release/sruja lint book/valid-examples/getting-started.sruja
 ```
 
 For more details, see [Development Guide](DEVELOPMENT.md).
@@ -118,14 +118,14 @@ Example `.sruja` models live under `book/valid-examples/`. After building the CL
 
 ```bash
 # Compile an example
-./bin/sruja compile book/valid-examples/getting-started.sruja
+./target/release/sruja compile book/valid-examples/getting-started.sruja
 
 # Lint an example
-./bin/sruja lint book/valid-examples/getting-started.sruja
+./target/release/sruja lint book/valid-examples/getting-started.sruja
 
 # Export to different formats
-./bin/sruja export json book/valid-examples/getting-started.sruja
-./bin/sruja export markdown book/valid-examples/getting-started.sruja
+./target/release/sruja export json book/valid-examples/getting-started.sruja
+./target/release/sruja export markdown book/valid-examples/getting-started.sruja
 ```
 
 CI compiles and lints selected examples to catch regressions.

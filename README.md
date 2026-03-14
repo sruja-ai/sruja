@@ -312,7 +312,7 @@ sruja export markdown example.sruja
 
 - [Install Sruja in your AI editor](docs/INSTALL_AS_SKILL.md) - One-page skill install for Cursor, Copilot, etc.
 - [Contributing Guide](docs/CONTRIBUTING.md) - How to contribute
-- [First Contribution](docs/FIRST_CONTRIBUTION.md) - Step-by-step guide
+- [Contributing](docs/CONTRIBUTING.md) - How to contribute and get started
 - [Language Specification](docs/LANGUAGE_SPECIFICATION.md) - Complete DSL reference
 - [Design Philosophy](docs/DESIGN_PHILOSOPHY.md) - Language design principles
 - [How to run Sruja](docs/RUN_GUIDE.md) - Clone, build, CLI, demos, extension
@@ -376,7 +376,7 @@ We welcome contributions of all sizes!
 
 ### 🎯 New Contributors
 
-**Start here**: [First Contribution Guide](docs/FIRST_CONTRIBUTION.md)
+**Start here**: [Contributing Guide](docs/CONTRIBUTING.md)
 
 ### Quick Links
 

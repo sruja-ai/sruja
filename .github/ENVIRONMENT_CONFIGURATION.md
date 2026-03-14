@@ -1,112 +1,45 @@
 # Environment-Specific Configuration
 
-This document outlines what should be environment-specific across staging and production.
+This document outlines staging and production deployment and any environment-specific behavior.
 
-## ✅ Already Configured
+## Current deployment (mdBook only)
 
-### 1. **PostHog Analytics**
-- ✅ Environment automatically tagged on all events
-- ✅ Single project with environment filtering
-- **Status**: Implemented - all events include `environment: "staging"` or `environment: "production"`
+The **website** is the **mdBook** build from this repo (`book/`). There is no separate Node/React website app in this repository.
 
-### 2. **Algolia Search**
-- ✅ Staging: `sruja_docs_staging` index
-- ✅ Production: `sruja_docs` index
-- ✅ Same Algolia project, different indices
-- **Status**: Correctly configured
+| Environment | Repo | Trigger | URL |
+|-------------|------|---------|-----|
+| **Staging** | `sruja-ai/staging-website` | Push to `main` (book/crates/valid-examples) or manual | https://staging.sruja.ai |
+| **Production** | `sruja-ai/prod-website` | Manual only (promote from `main`) | https://sruja.ai |
 
-### 3. **Site URLs**
-- ✅ Staging: `https://staging.sruja.ai`
-- ✅ Production: `https://sruja.ai`
-- **Status**: Correctly configured in workflows
+- Both workflows build the same artifact: mdBook + WASM + install script (see [.github/workflows/README.md](workflows/README.md#deploy-to-staging)).
+- Production is a **promote of what’s already on staging** (always builds from `main`).
+- Secrets: `SRUJA_WEBSITE_DEPLOY_APP_ID`, `SRUJA_WEBSITE_DEPLOY_APP_PRIVATE_KEY` (GitHub App with write access to both staging-website and prod-website).
 
-### 4. **Build Configuration**
-- ✅ `PUBLIC_ENV` set correctly in workflows
-- ✅ `NODE_ENV=production` for both staging and production
-- **Status**: Correctly configured
+No `apps/website`, `packages/shared`, or Node-based site exists in this repo; the public site is static mdBook + WASM.
 
-## 🔍 Should Be Environment-Specific (Recommendations)
+---
 
-### 1. **Console Logging** ⚠️
-**Current**: Console logs appear in all environments  
-**Recommendation**: 
-- Disable `console.log`, `console.debug`, `console.info` in production
-- Keep `console.warn` and `console.error` in all environments
-- Use environment-aware logger utility
+## Legacy / future: app-style environments
 
-**Files to update**:
-- `apps/website/src/config/env.ts` - Add logging configuration
-- `packages/shared/src/utils/logger.ts` - Already has some environment awareness
+The sections below describe environment-specific concerns for a **hypothetical or legacy** Node/React-style app (e.g. PostHog, Algolia, console logging). They do **not** apply to the current mdBook-only deploy. If we add a separate web app later, this can be updated.
 
-### 2. **Debug Information** ⚠️
-**Current**: Debug logs appear in production builds  
-**Recommendation**:
-- Disable debug logs in production
-- Keep debug logs in staging for troubleshooting
-- Use `envConfig.env === 'development'` checks
+### PostHog / Algolia (if applicable)
 
-**Files with debug logs**:
-- `apps/website/src/features/search/components/AlgoliaSearch.tsx` - Already checks for development
-- `apps/website/src/config/env.ts` - Already checks for development
+- **PostHog**: If used, tag events with `environment: "staging"` or `"production"`.
+- **Algolia**: If used, use separate indices per environment (e.g. `sruja_docs_staging` vs `sruja_docs`).
 
-### 3. **Error Tracking Verbosity** ✅
-**Current**: Errors are tracked to PostHog in all environments  
-**Recommendation**: 
-- Keep error tracking in all environments (current behavior is correct)
-- Environment is automatically included (already implemented)
+### Console logging (if applicable)
 
-### 4. **Performance Monitoring**
-**Current**: Not explicitly configured  
-**Recommendation**:
-- Same PostHog project (already using)
-- Environment automatically tagged (already implemented)
-- Consider different sampling rates if needed
+- Production: only errors/warnings.
+- Staging: all logs for debugging.
 
-### 5. **Feature Flags** (Future)
-**Current**: No feature flags system  
-**Recommendation**:
-- If implementing feature flags, use PostHog feature flags
-- Environment-specific flags can be set in PostHog dashboard
-- No code changes needed if using PostHog feature flags
+### Build configuration (if applicable)
 
-## 📋 Summary
+- `PUBLIC_ENV` or equivalent set in workflows; `NODE_ENV=production` for built assets if building a Node app.
 
-### What's Already Good ✅
-1. PostHog environment tagging - ✅ Implemented
-2. Algolia index separation - ✅ Correct
-3. Site URL configuration - ✅ Correct
-4. Build environment variables - ✅ Correct
+---
 
-### What Could Be Improved 🔧
-1. **Console logging** - Should be environment-aware
-   - Production: Only errors/warnings
-   - Staging: All logs (for debugging)
-   - Development: All logs
+## Summary
 
-2. **Debug information** - Mostly handled, but could be more consistent
-   - Most debug logs already check for development
-   - Some console.info could be environment-aware
-
-### Not Needed ❌
-- Separate PostHog projects (using single project with environment filtering)
-- Separate Algolia projects (using separate indices in same project)
-- Different API keys (same keys work for all environments)
-- Different error tracking (same PostHog project with environment tags)
-
-## 🎯 Action Items
-
-### High Priority
-1. ✅ **PostHog environment tagging** - DONE
-2. ⚠️ **Console logging** - Consider implementing environment-aware console wrapper
-
-### Low Priority
-1. **Performance monitoring** - Already handled via PostHog
-2. **Feature flags** - Can be added later using PostHog feature flags
-
-## Implementation Notes
-
-The current setup is **production-ready**. The main improvement would be to make console logging environment-aware, but this is not critical since:
-- Most console logs are already behind development checks
-- Production builds are minified, reducing console output impact
-- Error tracking works correctly in all environments
-
+- **Current**: Staging and production are mdBook static sites; deploy is via GitHub Actions to `staging-website` and `prod-website`. No app-specific env (PostHog, Algolia, etc.) in this repo.
+- **If you add a web app**: Use the “Legacy / future” section above and point to actual paths (e.g. `apps/website`, `packages/shared`) once they exist.
