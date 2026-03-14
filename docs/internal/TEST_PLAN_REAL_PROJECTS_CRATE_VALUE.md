@@ -17,9 +17,9 @@ We should lead with developer workflows, not crate count.
 | **Docs vs code** | "Does our declared architecture still match the code?" | `sruja drift -r <repo> -a architecture.sruja`, `sruja intent check -r <repo> -i <dir>` | Gaps between declared and actual structure are concrete and actionable. |
 | **CI / PR gate** | "Should this change pass architecture checks?" | `sruja drift --fail-on ...`, `sruja drift-pr -b <base> -H <head>`, `sruja compliance -f json` | The tool can fail correctly, report machine-readable results, and focus on new violations. |
 | **AI and editor context** | "Can I feed architecture context into Cursor/Copilot or edit .sruja with good DX?" | `sruja context -r <repo> -f <format>`, extension lint/export | Architecture data is reusable by AI tools and available in-editor without extra friction. |
-| **Hotspot explanation** | "Why is this repo hard to change, and where should we refactor first?" | `sruja analyze -r <repo> -f json`, `sruja why "..." -r <repo>` | Sruja identifies hotspots and can explain answers with evidence, not only a score. |
+| **Hotspot explanation** | "Why is this repo hard to change, and where should we refactor first?" | `sruja drift -r <repo> -f json` (for structural hotspots), `sruja runtime analyze -t <traces.json>` (for runtime hotspots) | Sruja identifies hotspots with evidence from structural drift and runtime trace analysis. |
 
-**Priority rule:** P0 value is `quickstart`, `drift`, baseline generation/comparison, `analyze`, `context`, and a CI-safe gate. P1 value is `intent check`, `why`, and extension-specific flows.
+**Priority rule:** P0 value is `quickstart`, `drift`, baseline generation/comparison, `context`, and a CI-safe gate. P1 value is `intent check`, `runtime analyze`, and extension-specific flows.
 
 ---
 
@@ -34,7 +34,7 @@ We still map work to architecture-maintenance dimensions, but each dimension mus
 | **Validate** | Catch structural problems | A developer sees cycles, orphans, layer problems, hotspots | drift report, fail-on exit |
 | **Compare** | Align code with declared architecture or ADRs | A developer can see what docs forgot or got wrong | drift vs baseline, intent report |
 | **Enforce** | Provide a single machine-readable gate | CI can fail or pass on architectural regressions | compliance JSON, drift-pr JSON |
-| **Explain** | Help teams understand hotspots and decisions | A developer gets evidence-backed rationale or recommendations | analyze JSON, why output |
+| **Explain** | Help teams understand hotspots and decisions | A developer gets evidence-backed rationale or recommendations | drift JSON, runtime analyze JSON |
 
 ---
 
@@ -47,9 +47,9 @@ We still map work to architecture-maintenance dimensions, but each dimension mus
 | **sruja-language** | Every `.sruja` workflow starts here | lint, export, drift with `-a`, and intent loading all parse the same file successfully |
 | **sruja-engine** | Rule-based DSL validation | lint catches invalid references or structural rule violations |
 | **sruja-export** | Diagrams and docs from `.sruja` | `sruja export json|mermaid|markdown <file>` produces reusable artifacts from declared architecture |
-| **sruja-scan** | Real code becomes graph data | quickstart, drift, analyze, why, context, intent, and compliance all scan the repo |
+| **sruja-scan** | Real code becomes graph data | quickstart, drift, context, intent, and compliance all scan the repo |
 | **sruja-diff** | Structural drift and declared-vs-actual comparison | `sruja drift`, `sruja drift -a ...`, `sruja drift-pr` |
-| **sruja-graph** | Explanation and hotspot analysis | `sruja analyze`, `sruja why`, and compliance policy evaluation |
+| **sruja-graph** | Explanation and hotspot analysis | `sruja drift` (structural hotspots), `sruja runtime analyze` (runtime hotspots), and compliance policy evaluation |
 | **sruja-intent** | Intent vs reality comparison | `sruja intent check`, `sruja compliance -i ...` |
 | **sruja-report** | Canonical compliance JSON for CI/tools | `sruja compliance -f json` emits `status`, `health_score`, `drift_entries`, `policy_violations`, `remediation_checklist` |
 | **sruja-cli** | All value is delivered through one binary | Every scenario below runs through the CLI |
@@ -69,7 +69,7 @@ Use real repos from `evaluation/real-world-test/test-repos/`, this repo, or any 
 | **TC-CORE-1** | First-value architecture snapshot | `sruja quickstart -r <repo> -f json` | JSON includes `health_score`, `inventory`, `top_findings`, and `actionable_fixes` with file evidence | quickstart JSON | sruja-scan, sruja-diff, sruja-cli |
 | **TC-CORE-2** | Structural drift and fail gate | `sruja drift -r <repo> -f json` and `sruja drift -r <repo> --fail-on cycles` | Drift report lists violations/suggestions; exit code flips when requested violation exists | drift JSON plus exit code | sruja-scan, sruja-diff, sruja-cli |
 | **TC-CORE-3** | Generate a baseline, then compare docs vs code | `sruja quickstart -r <repo> --generate-baseline`; `sruja lint <repo>/architecture.sruja --format json`; `sruja drift -r <repo> -a <repo>/architecture.sruja -f json` | Baseline file is created, lintable, and useful for declared-vs-actual drift | generated `architecture.sruja`, lint JSON, drift-vs-baseline JSON | sruja-scan, sruja-diff, sruja-language, sruja-engine, sruja-diagnostics, sruja-cli |
-| **TC-CORE-4** | Refactor hotspot analysis | `sruja analyze -r <repo> -f json` | Output includes `health_score`, `architecture_completion_score`, and at least one concrete recommendation or hotspot | analyze JSON | sruja-scan, sruja-graph, sruja-cli |
+| **TC-CORE-4** | Structural hotspot analysis | `sruja drift -r <repo> -f json` | Output includes structural violations, suggestions, and evidence for architectural hotspots (cycles, orphans, layer violations, god modules) | drift JSON | sruja-scan, sruja-diff, sruja-cli |
 | **TC-CORE-5** | AI-ready architecture context | `sruja context -r <repo> -f json` and `sruja context -r <repo> -f cursor-rules -o /tmp/out.cursorrules` | Context includes summary, layers, boundaries, and reusable output for AI tools | context JSON or generated rules file | sruja-scan, sruja-cli |
 | **TC-CORE-6** | CI-safe compliance gate | `sruja compliance -r <repo> -f json > /tmp/compliance.json` | JSON output has canonical report shape; non-zero exit is expected when repo is non-compliant | compliance JSON plus exit code | sruja-scan, sruja-diff, sruja-intent, sruja-graph, sruja-report, sruja-cli |
 | **TC-CORE-7** | PR-scoped regression detection | `sruja drift-pr -r <repo> -b <base-ref> -H <head-ref> -f json` | Report isolates new violations between refs instead of listing the full repo history | drift-pr JSON | sruja-scan, sruja-diff, sruja-cli |
@@ -81,7 +81,7 @@ Use real repos from `evaluation/real-world-test/test-repos/`, this repo, or any 
 | **TC-SUP-1** | Raw graph export | `sruja scan <repo> --output /tmp/graph.json` | Graph JSON has `nodes` and `edges`; downstream tools can reuse it | scan graph JSON | sruja-scan, sruja-types, sruja-cli |
 | **TC-SUP-2** | DSL validation and export | `sruja lint book/valid-examples/pattern-microservices.sruja --format json`; `sruja export json <file>`; `sruja export mermaid <file>`; `sruja export markdown <file>` | `.sruja` file is parseable, lintable, and exportable to multiple formats | lint JSON, exported Mermaid/Markdown/JSON | sruja-language, sruja-engine, sruja-diagnostics, sruja-export, sruja-cli |
 | **TC-SUP-3** | Intent check with ADRs or declared architecture | `sruja intent check -r <repo> -i <intent_dir> -f json` | Report shows drift score and missing/undocumented components or relationships | intent JSON | sruja-intent, sruja-language, sruja-scan, sruja-cli |
-| **TC-SUP-4** | Evidence-backed "why" answer | `sruja why "Why do we use <technology>?" -r <repo>` | Answer includes confidence plus graph/file evidence | saved why output | sruja-scan, sruja-graph, sruja-cli |
+| **TC-SUP-4** | Runtime hotspot analysis | `sruja runtime analyze -t <traces.json> -f json` | Output includes emergent cycles and hotspots from runtime trace data | runtime analyze JSON | sruja-graph, sruja-cli |
 | **TC-SUP-5** | LSP diagnostics in editor | Open a `.sruja` file in VS Code, introduce an error, confirm diagnostics | Editor reports location-aware validation without running commands manually | screenshot or short note | sruja-lsp, sruja-language, sruja-engine, sruja-diagnostics |
 | **TC-SUP-6** | WASM lint/export without CLI | In the extension, leave `sruja.lsp.path` unset and use lint or Mermaid export | Extension still validates and exports via WASM | screenshot or short note | sruja-wasm, sruja-export, sruja-language, sruja-engine |
 
@@ -93,7 +93,7 @@ Use real repos from `evaluation/real-world-test/test-repos/`, this repo, or any 
 |-----------|----------------|--------------|
 | **Fast smoke test** | `evaluation/real-world-test/test-repos/express` | Small, quick, good for `quickstart`, `drift`, and baseline comparison |
 | **Large real system** | `evaluation/real-world-test/test-repos/gitea` | Proves scale, hotspot detection, and report usefulness on a large codebase |
-| **Intent-rich repo** | `.` (this repo) or any repo with `docs/architecture` / `docs/adr` | Best for `intent check`, `compliance`, and `why` with stronger context |
+| **Intent-rich repo** | `.` (this repo) or any repo with `docs/architecture` / `docs/adr` | Best for `intent check` and `compliance` with stronger context |
 | **PR history test** | Any cloned git repo with multiple refs | Needed for `drift-pr` and commit-based proof |
 | **Admin / ecommerce realism** | `react-admin`, `saleor` from the complex set | Proves value on non-framework product repos, not only toy or framework repos |
 
@@ -108,9 +108,9 @@ Use real repos from `evaluation/real-world-test/test-repos/`, this repo, or any 
 | **We do not measure actionability or false positives yet** | A report can be "correct" but still not help a developer make a decision | For each repo, record the top 3 findings as `useful`, `expected`, or `noisy`, with one-line reviewer notes |
 | **CI / PR proof is weaker than local proof** | Real developer value is catching new regressions, not re-listing the whole repo state | Require at least one `drift-pr` run on a repo with real refs and save base/head/new violation evidence |
 | **Context-export ownership is muddy** | The user-facing `sruja context` flow currently proves CLI value more than `sruja-export` value | Either route `sruja context` through `sruja-export` or keep `sruja-export` proof limited to `sruja export ...` and update crate audits accordingly |
-| **`why` quality depends on intent richness** | On code-only repos, answers may be generic even when the graph path works | Run `why` on at least one repo with ADRs or an intent dir; otherwise mark the result as graph-path proof only |
+| **Context quality depends on intent richness** | On code-only repos, context exports may be generic even when the graph path works | Run `intent check` on at least one repo with ADRs or an intent dir; otherwise mark the result as structural proof only |
 | **Extension proof is still mostly manual** | Manual smoke tests are easy to skip and easy to regress | Keep manual LSP/WASM checks, but also rely on `wasm-pack test --node` and one extension smoke test in CI where possible |
-| **`analyze` needs outcome proof, not just score proof** | A score alone does not tell a team what to refactor | Require each analyze run to produce at least one concrete hotspot or recommendation with evidence |
+| **Drift needs actionability proof** | A violation list alone does not tell a team what to refactor | Require each drift run to produce at least one concrete hotspot or recommendation with evidence |
 | **Unsupported languages and dynamic imports can skew results** | False-positive orphans and missing edges reduce trust | Include repo diversity in the matrix and capture scanner limitations next to each run result |
 
 ---
@@ -143,14 +143,13 @@ Use real repos from `evaluation/real-world-test/test-repos/`, this repo, or any 
 4. `sruja quickstart -r <repo> --generate-baseline`
 5. `sruja lint <repo>/architecture.sruja --format json`
 6. `sruja drift -r <repo> -a <repo>/architecture.sruja -f json`
-7. `sruja analyze -r <repo> -f json`
-8. `sruja context -r <repo> -f json`
-9. `sruja context -r <repo> -f cursor-rules -o /tmp/out.cursorrules`
-10. `sruja intent check -r <repo> -i <intent_dir> -f json`
-11. `sruja compliance -r <repo> -f json > /tmp/compliance.json`
-12. `sruja drift-pr -r <repo> -b <base-ref> -H <head-ref> -f json`
-13. `sruja why "Why do we use <technology>?" -r <repo>`
-14. Optional extension proof: LSP and WASM smoke tests
+7. `sruja context -r <repo> -f json`
+8. `sruja context -r <repo> -f cursor-rules -o /tmp/out.cursorrules`
+9. `sruja intent check -r <repo> -i <intent_dir> -f json`
+10. `sruja compliance -r <repo> -f json > /tmp/compliance.json`
+11. `sruja drift-pr -r <repo> -b <base-ref> -H <head-ref> -f json`
+12. Optional: `sruja runtime analyze -t <traces.json> -f json` (if trace data available)
+13. Optional extension proof: LSP and WASM smoke tests
 
 **Important notes**
 
@@ -171,7 +170,7 @@ Use real repos from `evaluation/real-world-test/test-repos/`, this repo, or any 
 Create a small smoke script under `evaluation/real-world-test/` that:
 
 1. Validates documented command shapes against `sruja --help`
-2. Runs `quickstart`, `drift`, `analyze`, `context`, and `compliance` on one fast repo
+2. Runs `quickstart`, `drift`, `context`, and `compliance` on one fast repo
 3. Optionally runs `drift-pr` when git history is available
 4. Stores JSON outputs plus a short reviewer note in `run_results/`
 5. Fails if a documented P0 workflow no longer runs or no longer returns the expected output shape

@@ -124,6 +124,34 @@ app.api -> app.db "SQL"
 
 ---
 
+## Supported Languages
+
+Sruja uses Tree-sitter parsers for precise code analysis. Language support varies between full AST parsing and minimal line-based extraction.
+
+| Language | Parser Type | Notes |
+|----------|-------------|-------|
+| **TypeScript / JavaScript** | Full Tree-sitter | Best support for web frameworks and Node.js applications |
+| **Python** | Full Tree-sitter | Strong support for Django, Flask, FastAPI applications |
+| **Go** | Full Tree-sitter | Excellent for microservices and cloud-native applications |
+| **Rust** | Full Tree-sitter | Native language; comprehensive support for all Rust patterns |
+| **Java** | Full Tree-sitter | Good for enterprise applications and Spring Boot |
+| **C#** | Full Tree-sitter | Support for .NET applications |
+| **Ruby** | Full Tree-sitter | Rails and Ruby applications |
+| **PHP** | Full Tree-sitter | PHP web applications |
+| **Scala** | Full Tree-sitter | Scala applications |
+| **C / C++** | Full Tree-sitter | Systems programming |
+| **Kotlin** | Line-based extraction | Limited support due to Tree-sitter version compatibility; extracts imports and classes only |
+
+**Best Results:** JavaScript/TypeScript, Go, Python, and Rust repos provide the most accurate architectural insights with minimal false positives.
+
+**Known Limitations:**
+- Dynamic imports and reflection-based patterns may be missed
+- Entry points and test utilities may be flagged as orphans
+- Kotlin support is minimal (line-based) compared to other languages
+- Language-specific frameworks may require additional context
+
+---
+
 ## Stable CLI Commands
 
 These commands are the stable product surface:
@@ -226,6 +254,8 @@ npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 - [Language Specification](docs/LANGUAGE_SPECIFICATION.md) – DSL syntax and features
 - [Run Guide](docs/RUN_GUIDE.md) – CLI commands and demos
 - [Design Philosophy](docs/DESIGN_PHILOSOPHY.md) – Language design principles
+- [Known Limitations](docs/KNOWN_LIMITATIONS.md) – Scanner limitations, false positives, and scope constraints
+- [Support](docs/SUPPORT.md) – Community support options and enterprise considerations
 
 ---
 
@@ -268,7 +298,7 @@ sruja/
 │   ├── REFERENCE.md           # Discovery & modeling reference
 │   ├── PROMPTS.md            # Prompt patterns
 │   ├── AGENTS.md             # Compiled guide
-│   └── agents/openai.yaml    # Skill UI definition
+│   └── agents/openai.yaml    # Skill/agent metadata (prompts, no UI)
 ├── crates/sruja-cli/         # CLI (engine primitives)
 ├── crates/sruja-language/    # Parser and AST
 ├── crates/sruja-engine/      # Validation rules
@@ -280,15 +310,8 @@ sruja/
 
 ## Development
 
-### Prerequisites
-
-- **Rust >= 1.70**
-- **Node.js >= 18**
-
-### Setup
-
 ```bash
-# Install dependencies
+# Setup
 cargo fetch
 npm install
 
@@ -297,6 +320,16 @@ make build
 
 # Run tests
 make test
+```
+
+### VS Code Extension
+
+The VS Code extension is **supported and actively maintained**. Core features (syntax highlighting, diagnostics, snippets, export, diagram preview) are stable. See [extension/README.md](extension/README.md) for installation and usage details.
+
+To build and install the extension:
+```bash
+make build-extension
+make install-extension
 ```
 
 ---

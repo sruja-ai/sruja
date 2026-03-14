@@ -1,4 +1,4 @@
-.PHONY: build test test-coverage test-wasm test-e2e clean install lint fmt help build-rust test-rust wasm wasm-tiny book book-build book-wasm book-serve book-deps book-clean assets demo build-extension install-extension
+.PHONY: build test test-coverage test-wasm test-e2e clean install lint fmt help build-rust test-rust wasm wasm-tiny book book-build book-wasm book-serve book-deps book-clean assets demo build-extension install-extension test-cli-smoke
 
 # Build Rust libraries
 build-rust:
@@ -32,6 +32,11 @@ test-extraction:
 	@echo "Testing extraction CLI (lint/discover JSON)..."
 	@cargo test -p sruja-cli --test extraction_cli && \
 	echo "✅ Extraction CLI tests passed"
+
+# Test CLI smoke tests (validates documented command shapes)
+test-cli-smoke:
+	@echo "Running CLI smoke tests..."
+	@./scripts/test_cli_smoke.sh
 
 # Build (default: Rust)
 build: build-rust
@@ -300,6 +305,7 @@ help:
 	@echo ""
 	@echo "Architecture Intelligence:"
 	@echo "  make test-arch-intel    - Run architecture intelligence E2E (why command)"
+	@echo "  make test-cli-smoke     - Run CLI smoke tests (validates documented command shapes)"
 	@echo "  make demo               - Run E2E value demo (quickstart + drift on sample repo)"
 	@echo "  make demo-intel         - Run Architecture Intelligence demo (intent → scan → drift → analyze → AI)"
 	@echo ""

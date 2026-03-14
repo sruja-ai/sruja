@@ -2,6 +2,8 @@
 
 VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architecture DSL. **Lint and Markdown export run in-process using bundled WebAssembly** (no CLI required). You can optionally use the Sruja CLI by setting `sruja.lsp.path`.
 
+**Status:** The VS Code extension is **supported and actively maintained**. Core features (syntax highlighting, diagnostics, snippets, export, diagram preview) are stable. Features that depend on the CLI (drift detection) require the CLI to be installed.
+
 ## Features
 
 - **Diagnostics** – Lint runs in the extension via bundled WASM (or the Sruja CLI if `sruja.lsp.path` is set). When using the CLI, the extension runs `sruja lint --format json` for reliable, machine-readable diagnostics (same codes as the skill’s lint→fix table). Errors and warnings appear in the editor (Problems panel, underlines). Supports unsaved buffers. Debounced on type; pending lint is cancelled when the document is closed.
@@ -15,18 +17,15 @@ VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architectur
 
 ## Architecture intelligence (CLI)
 
-**Drift, why, and analyze** run via the Sruja CLI and are surfaced in the extension:
+**Drift detection** runs via the Sruja CLI and is surfaced in the extension:
 
 - **Sruja: Run drift (architecture health)** – Runs `sruja drift -r .` in the workspace; output appears in the **Sruja** output channel. Detects structural drift (cycles, orphans, layer violations).
-- **Sruja: Analyze repository** – Runs `sruja analyze -r .`; full structural/semantic/intent report in the **Sruja** output channel, including a **health score** and **architecture completion score** with a breakdown of structural/operational/security coverage.
-- **Sruja: Why (explain dependencies)** – Prompts for a component or question, then runs `sruja why "<query>" -r .`; explanation appears in the **Sruja** output channel.
 
-These commands require the **Sruja CLI** (on PATH or `sruja.lsp.path`). In CI or headless use, run the CLI directly:
+These commands require **Sruja CLI** (on PATH or `sruja.lsp.path`). In CI or headless use, run the CLI directly:
 
 - `sruja quickstart -r .` – Architecture inventory and top findings (no .sruja required).
 - `sruja drift -r .` – Detect structural drift.
-- `sruja why "<question>" -r .` – Explain dependencies with evidence.
-- `sruja analyze -r .` – Full report (health + completion score + recommendations).
+- `sruja lint` – Validate architecture files.
 
 ## Requirements
 
@@ -45,8 +44,6 @@ These commands require the **Sruja CLI** (on PATH or `sruja.lsp.path`). In CI or
 | **Sruja: Copy Rule for AI** | Copy a rule’s markdown to clipboard for pasting into an AI chat |
 | **Sruja: Copy Agent Guide for AI** | Copy AGENTS.md content to clipboard |
 | **Sruja: Run drift (architecture health)** | Run `sruja drift -r .`; output in Sruja channel |
-| **Sruja: Analyze repository** | Run `sruja analyze -r .`; report in Sruja channel |
-| **Sruja: Why (explain dependencies)** | Run `sruja why "<query>" -r .`; answer in Sruja channel |
 
 ## Views
 
