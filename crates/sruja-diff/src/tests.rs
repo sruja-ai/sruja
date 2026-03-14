@@ -2,7 +2,15 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::{compare_graphs, detect_architectural_drift, ViolationKind};
+    use crate::types::{
+        DiffResult, DiffSummary, EdgeDiff, HealthScorePenalties, NodeDiff, Severity, SourceRef,
+        Violation, ViolationKind,
+    };
+    use crate::{
+        calculate_health_score_from_violations, compare_graphs, detect_architectural_drift,
+        program_to_graph,
+    };
+    use sruja_language::Parser;
     use sruja_scan::{Edge, EdgeKind, Graph, Node, NodeKind};
     use std::collections::HashMap;
 
@@ -129,5 +137,243 @@ mod tests {
         );
         let diff_result = result.unwrap();
         assert!(diff_result.summary.health_score <= 100);
+    }
+
+    #[test]
+    fn test_calculate_health_score_empty_violations_returns_100() {
+        let violations: Vec<Violation> = vec![];
+        let penalties = HealthScorePenalties::default();
+        let score = calculate_health_score_from_violations(&violations, penalties);
+        assert_eq!(score, 100);
+    }
+
+    #[test]
+    fn test_calculate_health_score_with_cycle_deduction() {
+        let violations = vec![Violation {
+            kind: ViolationKind::CircularDependency,
+            severity: Severity::Error,
+            message: "Cycle A -> B -> A".to_string(),
+            location: None,
+            suggestion: None,
+            sources: vec![],
+        }];
+        let penalties = HealthScorePenalties::default();
+        let score = calculate_health_score_from_violations(&violations, penalties);
+        assert!(score < 100, "cycle should reduce health score");
+        assert!(score >= 30, "score should not go below minimum floor");
+    }
+
+    #[test]
+    fn test_source_ref_display_string() {
+        assert_eq!(
+            SourceRef {
+                file: Some("src/main.rs".to_string()),
+                line: Some(42),
+                detail: None,
+            }
+            .display_string(),
+            "src/main.rs:42"
+        );
+        assert_eq!(
+            SourceRef {
+                file: Some("lib.ts".to_string()),
+                line: None,
+                detail: None,
+            }
+            .display_string(),
+            "lib.ts"
+        );
+        assert_eq!(
+            SourceRef {
+                file: None,
+                line: None,
+                detail: Some("custom".to_string()),
+            }
+            .display_string(),
+            "custom"
+        );
+    }
+
+    #[test]
+    fn test_calculate_health_score_with_multiple_violation_kinds() {
+        let violations = vec![
+            Violation {
+                kind: ViolationKind::OrphanComponent,
+                severity: Severity::Warning,
+                message: "Orphan".to_string(),
+                location: Some("mod_x".to_string()),
+                suggestion: None,
+                sources: vec![],
+            },
+            Violation {
+                kind: ViolationKind::LayerViolation,
+                severity: Severity::Warning,
+                message: "Layer violation".to_string(),
+                location: None,
+                suggestion: None,
+                sources: vec![],
+            },
+        ];
+        let penalties = HealthScorePenalties::default();
+        let score = calculate_health_score_from_violations(&violations, penalties);
+        assert!(score < 100);
+    }
+
+    // --- program_to_graph (DSL -> scan graph) ---
+
+    fn parse_dsl(input: &str) -> sruja_language::Program {
+        Parser::new("test.sruja".to_string())
+            .parse(input)
+            .expect("parse should succeed")
+    }
+
+    #[test]
+    fn test_program_to_graph_empty_produces_empty_graph() {
+        let program = parse_dsl("");
+        let graph = program_to_graph(&program);
+        assert!(graph.nodes.is_empty());
+        assert!(graph.edges.is_empty());
+    }
+
+    #[test]
+    fn test_program_to_graph_systems_become_nodes() {
+        let program = parse_dsl(
+            r#"
+A = system "System A"
+B = system "System B"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.nodes.len(), 2);
+        let ids: Vec<_> = graph.nodes.iter().map(|n| n.id.as_str()).collect();
+        assert!(ids.contains(&"A"));
+        assert!(ids.contains(&"B"));
+    }
+
+    #[test]
+    fn test_program_to_graph_relation_becomes_edge() {
+        let program = parse_dsl(
+            r#"
+A = system "System A"
+B = system "System B"
+A -> B "calls"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].source, "A");
+        assert_eq!(graph.edges[0].target, "B");
+        assert_eq!(graph.edges[0].kind, EdgeKind::Calls);
+    }
+
+    #[test]
+    fn test_program_to_graph_reads_label_maps_to_reads_from() {
+        let program = parse_dsl(
+            r#"
+A = system "Service A"
+DB = database "Database"
+A -> DB "reads from"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].kind, EdgeKind::ReadsFrom);
+    }
+
+    #[test]
+    fn test_program_to_graph_database_kind() {
+        let program = parse_dsl(
+            r#"
+DB = database "Primary DB"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.nodes.len(), 1);
+        assert_eq!(graph.nodes[0].kind, NodeKind::Database);
+    }
+
+    #[test]
+    fn test_diff_result_is_empty() {
+        let empty = DiffResult {
+            proposal_title: "Proposal".to_string(),
+            node_diff: NodeDiff {
+                added: vec![],
+                removed: vec![],
+                matched: vec![],
+            },
+            edge_diff: EdgeDiff {
+                added: vec![],
+                removed: vec![],
+            },
+            violations: vec![],
+            suggestions: vec![],
+            summary: DiffSummary {
+                proposed_components: 0,
+                existing_components: 0,
+                new_components: 0,
+                missing_components: 0,
+                new_dependencies: 0,
+                removed_dependencies: 0,
+                health_score: 100,
+            },
+        };
+        assert!(empty.is_empty());
+
+        let with_added = DiffResult {
+            node_diff: NodeDiff {
+                added: vec![crate::types::DiffNode {
+                    id: "new".to_string(),
+                    kind: NodeKind::Module,
+                    label: "New".to_string(),
+                    technology: None,
+                    description: None,
+                }],
+                removed: vec![],
+                matched: vec![],
+            },
+            ..empty.clone()
+        };
+        assert!(!with_added.is_empty());
+    }
+
+    #[test]
+    fn test_diff_result_has_issues() {
+        let no_issues = DiffResult {
+            proposal_title: "P".to_string(),
+            node_diff: NodeDiff {
+                added: vec![],
+                removed: vec![],
+                matched: vec![],
+            },
+            edge_diff: EdgeDiff {
+                added: vec![],
+                removed: vec![],
+            },
+            violations: vec![],
+            suggestions: vec![],
+            summary: DiffSummary {
+                proposed_components: 0,
+                existing_components: 0,
+                new_components: 0,
+                missing_components: 0,
+                new_dependencies: 0,
+                removed_dependencies: 0,
+                health_score: 100,
+            },
+        };
+        assert!(!no_issues.has_issues());
+
+        let with_violation = DiffResult {
+            violations: vec![Violation {
+                kind: ViolationKind::OrphanComponent,
+                severity: Severity::Warning,
+                message: "Orphan".to_string(),
+                location: None,
+                suggestion: None,
+                sources: vec![],
+            }],
+            ..no_issues
+        };
+        assert!(with_violation.has_issues());
     }
 }

@@ -148,7 +148,16 @@ mod tests {
     fn test_nodekind_from_str() {
         assert_eq!("service".parse::<NodeKind>(), Ok(NodeKind::Service));
         assert_eq!("module".parse::<NodeKind>(), Ok(NodeKind::Module));
+        assert_eq!("external_api".parse::<NodeKind>(), Ok(NodeKind::ExternalApi));
+        assert_eq!("externalapi".parse::<NodeKind>(), Ok(NodeKind::ExternalApi));
         assert!("unknown".parse::<NodeKind>().is_err());
+    }
+
+    #[test]
+    fn test_nodekind_as_str() {
+        assert_eq!(NodeKind::System.as_str(), "system");
+        assert_eq!(NodeKind::ExternalApi.as_str(), "external_api");
+        assert_eq!(NodeKind::Queue.as_str(), "queue");
     }
 
     #[test]
@@ -161,7 +170,24 @@ mod tests {
     fn test_edgekind_from_str() {
         assert_eq!("calls".parse::<EdgeKind>(), Ok(EdgeKind::Calls));
         assert_eq!("reads_from".parse::<EdgeKind>(), Ok(EdgeKind::ReadsFrom));
+        assert_eq!("publishes_to".parse::<EdgeKind>(), Ok(EdgeKind::PublishesTo));
+        assert_eq!("owns".parse::<EdgeKind>(), Ok(EdgeKind::Owns));
         assert!("unknown".parse::<EdgeKind>().is_err());
+    }
+
+    #[test]
+    fn test_edgekind_serde() {
+        let kind = EdgeKind::ReadsFrom;
+        let json = serde_json::to_string(&kind).unwrap();
+        assert_eq!(json, "\"reads_from\"");
+        let parsed: EdgeKind = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, kind);
+    }
+
+    #[test]
+    fn test_edgekind_as_str() {
+        assert_eq!(EdgeKind::DependsOn.as_str(), "depends_on");
+        assert_eq!(EdgeKind::SubscribesTo.as_str(), "subscribes_to");
     }
 
     #[test]

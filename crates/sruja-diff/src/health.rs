@@ -277,3 +277,47 @@ pub fn calculate_health_score_with_density(
     // Ensure minimum
     total.max(MIN_SCORE)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{calculate_health_score_with_breakdown, HealthGrade};
+    use crate::types::{HealthScorePenalties, Violation};
+
+    #[test]
+    fn health_grade_from_score_boundaries() {
+        assert_eq!(HealthGrade::from_score(0), HealthGrade::Critical);
+        assert_eq!(HealthGrade::from_score(30), HealthGrade::Critical);
+        assert_eq!(HealthGrade::from_score(31), HealthGrade::Poor);
+        assert_eq!(HealthGrade::from_score(50), HealthGrade::Poor);
+        assert_eq!(HealthGrade::from_score(51), HealthGrade::Fair);
+        assert_eq!(HealthGrade::from_score(65), HealthGrade::Fair);
+        assert_eq!(HealthGrade::from_score(66), HealthGrade::Good);
+        assert_eq!(HealthGrade::from_score(80), HealthGrade::Good);
+        assert_eq!(HealthGrade::from_score(81), HealthGrade::Excellent);
+        assert_eq!(HealthGrade::from_score(100), HealthGrade::Excellent);
+    }
+
+    #[test]
+    fn health_grade_label_and_description() {
+        assert_eq!(HealthGrade::Critical.label(), "Critical");
+        assert_eq!(HealthGrade::Excellent.label(), "Excellent");
+        assert!(HealthGrade::Critical.description().len() > 0);
+    }
+
+    #[test]
+    fn calculate_health_score_with_breakdown_empty() {
+        let violations: Vec<Violation> = vec![];
+        let penalties = HealthScorePenalties::default();
+        let b = calculate_health_score_with_breakdown(&violations, penalties);
+        assert_eq!(b.score, 100);
+        assert_eq!(b.grade, HealthGrade::Excellent);
+    }
+
+    #[test]
+    fn calculate_health_score_with_density_small_project() {
+        let violations: Vec<Violation> = vec![];
+        let penalties = HealthScorePenalties::default();
+        let score = super::calculate_health_score_with_density(&violations, penalties, 50);
+        assert_eq!(score, 100);
+    }
+}

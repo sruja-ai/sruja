@@ -2077,6 +2077,7 @@ name = "sruja-report"
 version = "0.12.0"
 dependencies = [
  "serde",
+ "serde_json",
  "sruja-diff",
 ]
 

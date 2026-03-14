@@ -307,4 +307,118 @@ mod tests {
         let result = graph.add_edge(edge);
         assert!(result.is_err());
     }
+
+    fn test_edge(id: &str, source: &str, target: &str, kind: EdgeKind) -> ArchitectureEdge {
+        ArchitectureEdge {
+            id: id.to_string(),
+            source: source.to_string(),
+            target: target.to_string(),
+            kind,
+            label: None,
+            description: None,
+            source_ref: SourceReference::manual(),
+        }
+    }
+
+    #[test]
+    fn test_remove_node_removes_edges() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_node(test_node("api")).unwrap();
+        graph.add_node(test_node("db")).unwrap();
+        graph.add_edge(test_edge("e1", "api", "db", EdgeKind::DependsOn)).unwrap();
+
+        let removed = graph.remove_node("api").unwrap();
+        assert_eq!(removed.id, "api");
+        assert!(graph.get_node("api").is_none());
+        assert!(graph.edges.is_empty());
+    }
+
+    #[test]
+    fn test_remove_nonexistent_node_errors() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_node(test_node("api")).unwrap();
+        let result = graph.remove_node("missing");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_merge_node_inserts_or_updates() {
+        let mut graph = KnowledgeGraph::new();
+        let n1 = test_node("api");
+        graph.merge_node(n1);
+        assert_eq!(graph.nodes.len(), 1);
+
+        let mut n2 = test_node("api");
+        n2.label = "API v2".to_string();
+        graph.merge_node(n2);
+        assert_eq!(graph.nodes.len(), 1);
+        assert_eq!(graph.get_node("api").unwrap().label, "API v2");
+    }
+
+    #[test]
+    fn test_merge_edge_skips_if_nodes_missing() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_node(test_node("api")).unwrap();
+        graph.merge_edge(test_edge("e1", "api", "nonexistent", EdgeKind::Calls));
+        assert!(graph.edges.is_empty());
+    }
+
+    #[test]
+    fn test_merge_edge_adds_when_nodes_exist() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_node(test_node("api")).unwrap();
+        graph.add_node(test_node("db")).unwrap();
+        graph.merge_edge(test_edge("e1", "api", "db", EdgeKind::ReadsFrom));
+        assert_eq!(graph.edges.len(), 1);
+    }
+
+    #[test]
+    fn test_stats_counts_correctly() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_node(test_node("a")).unwrap();
+        graph.add_node(test_node("b")).unwrap();
+        graph.add_edge(test_edge("e1", "a", "b", EdgeKind::Calls)).unwrap();
+
+        let stats = graph.stats();
+        assert_eq!(stats.total_nodes, 2);
+        assert_eq!(stats.total_edges, 1);
+    }
+
+    #[test]
+    fn test_with_name_sets_metadata() {
+        let graph = KnowledgeGraph::with_name("My Architecture");
+        assert_eq!(graph.metadata.name, "My Architecture");
+    }
+
+    #[test]
+    fn test_find_nodes_by_kind() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_node(test_node("api")).unwrap();
+        let mut db_node = test_node("db");
+        db_node.kind = NodeKind::Database;
+        graph.add_node(db_node).unwrap();
+
+        let services = graph.find_nodes_by_kind(NodeKind::Service);
+        let dbs = graph.find_nodes_by_kind(NodeKind::Database);
+        assert_eq!(services.len(), 1);
+        assert_eq!(services[0].id, "api");
+        assert_eq!(dbs.len(), 1);
+        assert_eq!(dbs[0].id, "db");
+    }
+
+    #[test]
+    fn test_get_edges_from_and_to() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_node(test_node("a")).unwrap();
+        graph.add_node(test_node("b")).unwrap();
+        graph.add_node(test_node("c")).unwrap();
+        graph.add_edge(test_edge("e1", "a", "b", EdgeKind::Calls)).unwrap();
+        graph.add_edge(test_edge("e2", "a", "c", EdgeKind::Calls)).unwrap();
+
+        let from_a = graph.get_edges_from("a");
+        let to_b = graph.get_edges_to("b");
+        assert_eq!(from_a.len(), 2);
+        assert_eq!(to_b.len(), 1);
+        assert_eq!(to_b[0].source, "a");
+    }
 }
