@@ -66,7 +66,7 @@
 
 - **What:** Export of AST to JSON, Mermaid, Markdown, DOT; context exporter for AI (cursor-rules, etc.).
 - **Consumers:** sruja-cli (export, context export), sruja-lsp (e.g. export for preview), sruja-wasm (export in browser).
-- **User value:** `sruja export json|mermaid|markdown|dot`, `sruja context export`; extension preview/export. Enables diagrams, docs, and AI context.
+- **User value:** `sruja export json|mermaid|markdown|dot`, `sruja context -r .`; extension preview/export. Enables diagrams, docs, and AI context.
 - **Verdict:** **Essential.**
 
 ---
@@ -75,7 +75,7 @@
 
 - **What:** `scan_repo()` (Tree-sitter + manifest fallback); produces `Graph` (nodes, edges) from source and/or package manifests.
 - **Consumers:** sruja-cli (scan, quickstart, drift, why, analyze, discover, context, compliance, smart_coverage), sruja-diff (actual graph for drift), sruja-intent (reality for intent check), sruja-graph (merge_scan_into_graph).
-- **User value:** Every repo-scoped command: `sruja scan`, `sruja quickstart -r .`, `sruja drift -r .`, `sruja why -r .`, `sruja analyze -r .`, `sruja intent check -r .`, `sruja compliance -r .`, `sruja context export -r .`, `sruja discover`, `sruja smart-coverage`. The only way to get “reality” from code.
+- **User value:** Every repo-scoped command: `sruja scan`, `sruja quickstart -r .`, `sruja drift -r .`, `sruja why -r .`, `sruja drift -r . -a architecture.sruja`, `sruja intent check -r .`, `sruja compliance -r .`, `sruja context -r .`, `sruja discover`, `sruja smart-coverage`. The only way to get “reality” from code.
 - **Verdict:** **Essential.**
 
 ---
@@ -117,7 +117,7 @@
 - **Consumers:** sruja-cli: scan.rs (why, merge), analyze.rs (complexity, analyze), compliance.rs (KnowledgeGraph + policies for compliance), graph_store.rs (load/save graph).
 - **User value:**
   - **`sruja why "question" -r .`:** Deterministic Q&A from graph (tech, decisions, dependencies). Evidence-based; no LLM. Documented and used in docs/eval.
-  - **`sruja analyze -r .`:** View-based report (CTO, SRE, etc.) using structural + graph analyzers (SCC, treewidth, centrality, coupling). Delivers “complexity hotspots,” “zone of pain,” refactor suggestions.
+  - **`sruja drift -r . -a architecture.sruja`:** View-based report (CTO, SRE, etc.) using structural + graph analyzers (SCC, treewidth, centrality, coupling). Delivers “complexity hotspots,” “zone of pain,” refactor suggestions.
   - **`sruja complexity -r .`:** Explicit structural complexity (treewidth, SCC, centrality, coupling). More “academic” but gives concrete metrics.
   - **Compliance:** KG holds policies; compliance command merges scan into KG and checks policies (plus structural + intent).
 - **Risk:** “Analyze” and “complexity” are powerful but dense; value depends on whether teams actually act on SCC/treewidth/coupling. **Recommendation:** Keep for `why` + compliance; consider simplifying or making analyze views optional so the main path stays quickstart/drift.

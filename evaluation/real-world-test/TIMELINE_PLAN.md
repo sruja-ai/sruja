@@ -48,7 +48,7 @@
 
 | Component | Location | Behavior |
 |-----------|----------|----------|
-| Scan at one ref | `sruja scan -r . -o out.json` | Produces one graph JSON per run. |
+| Scan at one ref | `sruja scan . --output out.json` | Produces one graph JSON per run. |
 | Drift between two graphs | `sruja drift-diff -b base.json -h head.json` | Diffs two graph JSONs; output: new/removed components and edges, violations. |
 | Two-ref flow (commits) | `drift_by_commit.sh REPO [BASE] [HEAD]` | Checkout base → scan → checkout head → scan → drift-diff; restores branch. Does not persist graphs. |
 | Intent / ADR load | `sruja intent check -r . -i DIR` | Loads from `DIR` (default `repo/docs/architecture`): `DIR/adr/decisions/*.md` and any `*.sruja` under `DIR`. Parsed ADRs: title, status, date, context, decision, consequences, implications. |
@@ -212,7 +212,7 @@ Every place we might assume “user provides X” is listed below. We prefer: **
 - **Output directory:** All outputs go under `$SCRIPT_DIR/timelines/REPO/` (so from repo root: `evaluation/real-world-test/timelines/REPO/`). When running `sruja scan` the script is in `test-repos/REPO`, so pass **absolute path** for `-o`, e.g. `"$OUT_DIR/graph_<sanitized_ref>.json"` where `OUT_DIR="$(cd "$SCRIPT_DIR" && pwd)/timelines/$REPO_NAME"`.
 - **For each ref (in order):**
   1. `git checkout <ref>` (dirty-tree: abort with message if non-interactive or `--force`; only prompt “Continue anyway? [y/N]” when interactive and no `--force` — see Section 3.6).
-  2. `sruja scan -r . -o "$OUT_DIR/graph_<sanitized_ref>.json"`.
+   2. `sruja scan . --output "$OUT_DIR/graph_<sanitized_ref>.json"`.
   3. Optional (flag, e.g. `--adr`): run ADR capture for this ref (see 4.2) and write `"$OUT_DIR/adr_<sanitized_ref>.json"`.
   4. Record ref, sha, timestamp in manifest.
 - **After all refs:** Restore original branch/ref. Write or update `$OUT_DIR/manifest.json`.

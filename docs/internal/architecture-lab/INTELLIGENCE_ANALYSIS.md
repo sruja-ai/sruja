@@ -236,7 +236,7 @@ Level 1: Documented    [✓] "Architecture exists in files"
 | 1 | Documented | Architecture exists in `.sruja` files | `sruja lint`, `sruja export` |
 | 2 | Descriptive | Visualize and explore architecture | `sruja quickstart`, `sruja scan` |
 | 3 | Diagnostic | Detect issues (cycles, violations, drift) | `sruja drift`, `sruja why` |
-| 4 | Prescriptive | Suggest fixes with evidence | `sruja analyze --suggest` (planned) |
+| 4 | Prescriptive | Suggest fixes with evidence | `sruja drift -a architecture.sruja` (planned enhancements) |
 | 5 | Predictive | Forecast issues at scale | Future: ML-based prediction |
 
 ---
@@ -248,11 +248,11 @@ Level 1: Documented    [✓] "Architecture exists in files"
 | Command | Purpose | Output |
 |---------|---------|--------|
 | `sruja quickstart -r .` | Zero-setup first run | Inventory + top 3 issues + health score |
-| `sruja scan -r .` | Scan codebase structure | Components, dependencies, metrics |
+| `sruja scan .` | Scan codebase structure | Components, dependencies, metrics |
 | `sruja drift -r .` | Detect drift without baseline | Cycles, orphans, layer violations |
 | `sruja drift -r . -a architecture.sruja` | Detect drift vs declared architecture | Intent vs reality comparison |
 | `sruja why "question" -r .` | Explain with evidence | Deterministic evidence-based answer |
-| `sruja analyze -r .` | Full multi-layer analysis | Structural + semantic + intent |
+| `sruja drift -r . -a architecture.sruja` | Full analysis with baseline | Structural + semantic + intent (when baseline provided) |
 
 ### Typical Workflows
 
@@ -270,7 +270,7 @@ sruja why "Why does API depend on Cache?" -r .
 sruja drift -r . -a architecture.sruja
 
 # 5. Export context for AI editor
-sruja context -r . -o context.json
+sruja context -r . -f markdown -o context.md
 ```
 
 ---
@@ -353,7 +353,7 @@ Then leverage:
 | "What structural issues exist?" | `sruja drift -r .` | Cycles, orphans, violations |
 | "Why does X depend on Y?" | `sruja why "Why X -> Y?" -r .` | Evidence-based explanation |
 | "Is my code matching intent?" | `sruja drift -r . -a arch.sruja` | Intent vs reality delta |
-| "What's the full analysis?" | `sruja analyze -r .` | Multi-layer comprehensive report |
+| "What's the full analysis?" | `sruja drift -r . -a arch.sruja` | Multi-layer comprehensive report |
 
 ### Query Patterns by Use Case
 

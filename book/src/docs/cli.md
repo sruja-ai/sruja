@@ -101,17 +101,18 @@ These commands work on a repository path and do not require an existing `.sruja`
 | Command | Purpose |
 |---------|---------|
 | **`sruja quickstart -r <path>`** | Scan repo; get inventory, health score, top findings, and next steps |
-| **`sruja scan -r <path> -o graph.json`** | Infer architecture graph from code (outputs JSON) |
+| **`sruja scan <path> --output graph.json`** | Infer architecture graph from code (outputs JSON) |
 | **`sruja drift -r <path>`** | Detect drift: cycles, orphans, layer violations |
 | **`sruja why "question" -r <path>`** | Answer "why" questions with evidence from the graph |
-| **`sruja analyze -r <path>`** | Full analysis (structural, semantic, recommendations) |
+| **`sruja drift -r <path> -a architecture.sruja`** | Compare declared vs actual architecture; full analysis with baseline |
+| **`sruja runtime analyze -t <trace_file>`** | Analyze runtime traces (optional) |
 | **`sruja context -r <path>`** | Export architecture context for AI tools (Cursor, Copilot, etc.) |
 
 **Examples:**
 
 ```bash
 sruja quickstart -r .
-sruja scan -r . -o sruja.graph.json
+sruja scan . --output sruja.graph.json
 sruja drift -r . -a architecture.sruja
 sruja why "why did we choose PostgreSQL?" -r .
 sruja context -r . -f markdown -o .cursor/rules/architecture.md

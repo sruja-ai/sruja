@@ -9,7 +9,7 @@
 
 | Claim in plan | Code location | Verdict |
 |---------------|----------------|---------|
-| `sruja scan -r . -o out.json` produces one graph JSON per run | `sruja_scan::scan_repo` → `Graph` (serialized as JSON) | ✓ |
+| `sruja scan . --output out.json` produces one graph JSON per run | `sruja_scan::scan_repo` → `Graph` (serialized as JSON) | ✓ |
 | `sruja drift-diff -b base.json -h head.json` diffs two graph JSONs | `commands::drift_diff` in `crates/sruja-cli/src/commands/scan.rs`; `sruja_diff::compare_graphs(&head_graph, &base_graph)` | ✓ |
 | `drift_by_commit.sh REPO [BASE] [HEAD]`: checkout base → scan → checkout head → scan → drift-diff; restores branch; does not persist graphs | `drift_by_commit.sh`: temp files `.sruja_graph_base_$$.json` / `.sruja_graph_head_$$.json` in `SCRIPT_DIR`, trap EXIT rm | ✓ |
 | `sruja intent check -r . -i DIR`: loads from DIR, default `repo/docs/architecture`; ADRs from `DIR/adr/decisions/*.md` and `*.sruja` under DIR | `intent_check` in `commands/intent.rs`: `intent_dir = intent_path.unwrap_or_else(|| repo_path.join("docs").join("architecture"))`; `sruja_intent::IntentIntelligence::load_from_directory` uses `dir.join("adr").join("decisions")` for .md and walkdir for .sruja | ✓ |

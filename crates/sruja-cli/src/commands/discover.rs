@@ -7,6 +7,7 @@ use std::collections::HashSet;
 use std::path::Path;
 
 use sruja_scan::scan_repo;
+use sruja_scan::scan_scope::resolve_scan_scope;
 
 use super::CliError;
 use crate::context_detection::{
@@ -174,6 +175,7 @@ pub fn discover_context_json(repo: &str) -> Result<DiscoverContextJson, CliError
         )));
     }
     let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
+    let (_, scan_scope) = resolve_scan_scope(repo_path);
     let languages = detect_languages(repo_path);
     let primary_language = languages
         .first()
@@ -235,7 +237,7 @@ pub fn discover_context_json(repo: &str) -> Result<DiscoverContextJson, CliError
     suggested_areas.sort();
     Ok(DiscoverContextJson {
         repo: repo.to_string(),
-        scan_scope: sruja_scan::scan_scope::ScanScope::default(),
+        scan_scope,
         components: graph.nodes.len(),
         edges: graph.edges.len(),
         primary_language,

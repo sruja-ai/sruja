@@ -27,7 +27,6 @@ tokio = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_yaml = "0.9"
 chrono = { version = "0.4", features = ["serde"] }
 colored = "2.2.0"
 indicatif = "0.17"

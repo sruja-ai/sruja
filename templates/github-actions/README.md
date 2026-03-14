@@ -206,5 +206,5 @@ jobs:
       - name: Install Sruja
         run: curl -fsSL https://sruja.ai/install.sh | bash
       - name: Analyze
-        run: sruja analyze -r . -f json > report-${{ matrix.repo }}.json
+        run: sruja quickstart -r . -f json > report-${{ matrix.repo }}.json
 ```

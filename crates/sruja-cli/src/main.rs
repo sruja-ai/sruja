@@ -4,12 +4,10 @@
 
 mod commands;
 mod compliance;
-mod config;
 mod context_detection;
 mod modules;
 pub mod selection;
 mod utils;
-mod views;
 
 use clap::{Parser, Subcommand};
 

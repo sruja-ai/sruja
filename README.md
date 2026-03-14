@@ -150,6 +150,8 @@ Sruja uses Tree-sitter parsers for precise code analysis. Language support varie
 - Kotlin support is minimal (line-based) compared to other languages
 - Language-specific frameworks may require additional context
 
+See [Known Limitations](docs/KNOWN_LIMITATIONS.md) for scanner and analysis caveats.
+
 ---
 
 ## Stable CLI Commands

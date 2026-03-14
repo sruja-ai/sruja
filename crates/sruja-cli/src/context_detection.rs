@@ -49,16 +49,25 @@ fn extension_to_language(ext: &str) -> Option<&'static str> {
     }
 }
 
-/// Detect primary language from file extensions
+/// Detect primary language from file extensions.
+///
+/// When the repo has a Rust workspace root (`Cargo.toml` at root), only counts
+/// under `crates/` and `src/` so the main workspace language wins over ancillary
+/// code (e.g. a VS Code extension in `extension/`).
 pub fn detect_languages(repo_path: &Path) -> Vec<(String, usize)> {
     let mut lang_counts: HashMap<String, usize> = HashMap::new();
+    let rust_workspace_root = repo_path.join("Cargo.toml").exists();
 
-    fn count_files(dir: &Path, counts: &mut HashMap<String, usize>) {
+    fn count_files(
+        dir: &Path,
+        counts: &mut HashMap<String, usize>,
+        rust_workspace_root: bool,
+        repo_path: &Path,
+    ) {
         if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.filter_map(|e| e.ok()) {
                 let path = entry.path();
 
-                // Skip hidden directories and common exclusions
                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                     if name.starts_with('.')
                         || name == "node_modules"
@@ -76,7 +85,15 @@ pub fn detect_languages(repo_path: &Path) -> Vec<(String, usize)> {
                 }
 
                 if path.is_dir() {
-                    count_files(&path, counts);
+                    // For Rust workspaces, only descend into main source trees so
+                    // primary language is Rust, not e.g. TypeScript in extension/.
+                    if rust_workspace_root && dir == repo_path {
+                        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                        if name != "crates" && name != "src" {
+                            continue;
+                        }
+                    }
+                    count_files(&path, counts, rust_workspace_root, repo_path);
                 } else if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
                     if let Some(lang) = extension_to_language(ext) {
                         *counts.entry(lang.to_string()).or_default() += 1;
@@ -86,7 +103,12 @@ pub fn detect_languages(repo_path: &Path) -> Vec<(String, usize)> {
         }
     }
 
-    count_files(repo_path, &mut lang_counts);
+    count_files(
+        repo_path,
+        &mut lang_counts,
+        rust_workspace_root,
+        repo_path,
+    );
 
     let mut languages: Vec<_> = lang_counts.into_iter().collect();
     languages.sort_by(|a, b| b.1.cmp(&a.1));
@@ -418,7 +440,9 @@ pub fn infer_domain(repo_path: &Path, name: &str) -> Option<String> {
     // Count Dockerfiles
     let dockerfile_count = count_dockerfiles(repo_path);
 
-    if dockerfile_count > 3 || (has_docker_compose && dockerfile_count > 1) {
+    // Require stronger signals to avoid labeling e.g. a Rust workspace with
+    // a few Dockerfiles as "Microservices".
+    if dockerfile_count > 5 || (has_docker_compose && dockerfile_count > 2) {
         return Some("Microservices".to_string());
     }
 
@@ -429,6 +453,28 @@ pub fn infer_domain(repo_path: &Path, name: &str) -> Option<String> {
     None
 }
 
+/// Directories we skip when counting Dockerfiles for domain inference,
+/// so evaluation/local-artifacts, benchmarks, and docs don't pollute the count.
+const DOCKERFILE_COUNT_SKIP_DIRS: &[&str] = &[
+    "node_modules",
+    "target",
+    "dist",
+    "build",
+    ".git",
+    "vendor",
+    "venv",
+    "__pycache__",
+    "evaluation",
+    "benchmark",
+    "bench",
+    "perf",
+    "docs",
+    "documentation",
+    "fixtures",
+    "__mocks__",
+    "test_data",
+];
+
 fn count_dockerfiles(path: &Path) -> usize {
     let mut count = 0;
 
@@ -438,16 +484,17 @@ fn count_dockerfiles(path: &Path) -> usize {
                 let path = entry.path();
 
                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if name.starts_with('.') || name == "node_modules" || name == "target" {
+                    if name.starts_with('.') {
                         continue;
                     }
-                    if name == "Dockerfile" || name.starts_with("Dockerfile.") {
+                    if DOCKERFILE_COUNT_SKIP_DIRS.contains(&name) {
+                        continue;
+                    }
+                    if path.is_dir() {
+                        count_recursive(&path, cnt);
+                    } else if name == "Dockerfile" || name.starts_with("Dockerfile.") {
                         *cnt += 1;
                     }
-                }
-
-                if path.is_dir() {
-                    count_recursive(&path, cnt);
                 }
             }
         }

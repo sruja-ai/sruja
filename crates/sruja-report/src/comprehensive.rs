@@ -206,6 +206,7 @@ pub fn build_recommendations(
 mod tests {
     use super::*;
     use sruja_diff::{DriftReport, Severity, Violation, ViolationKind};
+    use sruja_scan::ScanScope;
 
     #[test]
     fn schema_version_constant() {
@@ -215,6 +216,7 @@ mod tests {
     #[test]
     fn build_recommendations_respects_limit() {
         let report = DriftReport {
+            scan_scope: ScanScope::default(),
             total_modules: 0,
             total_services: 0,
             total_databases: 0,

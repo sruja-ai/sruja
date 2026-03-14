@@ -5,6 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 
+use sruja_scan::scan_scope::resolve_scan_scope;
 use sruja_scan::{scan_repo, Graph, NodeKind};
 
 use super::CliError;
@@ -64,20 +65,6 @@ fn should_fail_on_violations(fail_on: Option<&str>, violations: &[sruja_diff::Vi
         }
     }
     false
-}
-
-fn collect_file_evidence_from_scan(scan_graph: &Graph) -> Vec<String> {
-    let mut files: std::collections::HashSet<String> = std::collections::HashSet::new();
-    for edge in &scan_graph.edges {
-        for ev in &edge.evidence {
-            if let Some(ref f) = ev.file {
-                files.insert(f.clone());
-            }
-        }
-    }
-    let mut v: Vec<_> = files.into_iter().collect();
-    v.sort();
-    v
 }
 
 pub async fn scan(repo_root: &str, output: &str) -> Result<(), CliError> {
@@ -208,7 +195,12 @@ pub struct ActionableFix {
 }
 
 impl QuickstartResult {
-    fn from_drift_report(report: &sruja_diff::DriftReport, graph: &Graph, repo: &str) -> Self {
+    fn from_drift_report(
+        report: &sruja_diff::DriftReport,
+        graph: &Graph,
+        repo: &str,
+        scan_scope: &sruja_scan::ScanScope,
+    ) -> Self {
         let external_apis = graph
             .nodes
             .iter()
@@ -254,7 +246,7 @@ impl QuickstartResult {
 
         QuickstartResult {
             repo: repo.to_string(),
-            scan_scope: sruja_scan::scan_scope::ScanScope::default(),
+            scan_scope: scan_scope.clone(),
             health_score: report.health_score,
             health_breakdown: report.health_breakdown,
             inventory: InventorySummary {
@@ -769,6 +761,7 @@ pub async fn quickstart(
     eprintln!("📂 Scanning repository...");
     let graph = scan_repo(repo_path)?;
     eprintln!("   ✓ Found {} components", graph.nodes.len());
+    let (_, scan_scope) = resolve_scan_scope(repo_path);
 
     let languages = detect_languages(repo_path);
     let primary_language = languages
@@ -809,7 +802,8 @@ pub async fn quickstart(
 
     match format {
         "json" => {
-            let output = QuickstartResult::from_drift_report(&drift_report, &graph, repo_root);
+            let output =
+                QuickstartResult::from_drift_report(&drift_report, &graph, repo_root, &scan_scope);
             println!("{}", serde_json::to_string_pretty(&output)?);
         }
         _ => {

@@ -13,3 +13,4 @@ sruja-diff = { path = "../sruja-diff" }
 
 [dev-dependencies]
 serde_json = "1.0"
+sruja-scan = { path = "../sruja-scan" }

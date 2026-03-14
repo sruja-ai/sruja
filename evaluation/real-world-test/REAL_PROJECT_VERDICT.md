@@ -22,7 +22,7 @@
 
 3. **Declared vs actual** — `sruja drift -r . -a architecture.sruja` compares the DSL to the scan. You see **gap (e.g. 27 vs 85)**, which DSL components are unconnected, and concrete suggestions (“Define how X interacts with…”). Very useful for keeping docs and code aligned.
 
-4. **Refactor guidance** — Complexity (SCC, centrality, Zone of Pain) and `sruja analyze` give interpretable metrics and named violations. Useful for prioritising refactors.
+4. **Refactor guidance** — Complexity (SCC, centrality, Zone of Pain) from `sruja drift` and `sruja quickstart` give interpretable metrics and named violations. Useful for prioritising refactors.
 
 5. **Evolution over refs** — Drift-diff and timeline report work across refs (e.g. master vs HEAD, tags). Valuable when you have multiple refs to compare.
 

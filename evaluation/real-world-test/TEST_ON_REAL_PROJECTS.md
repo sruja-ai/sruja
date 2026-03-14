@@ -52,7 +52,7 @@ Before testing in the editor, confirm the CLI works on those repos: run `./run_d
 
 | Priority | What | How today | Future |
 |----------|------|-----------|--------|
-| **1. Capture architecture** | Infer structure from code (modules, deps, services). | `sruja scan -r . -o sruja.graph.json`; quickstart/drift run scan under the hood. | Same; optional persistence per repo. |
+| **1. Capture architecture** | Infer structure from code (modules, deps, services). | `sruja scan . --output sruja.graph.json`; quickstart/drift run scan under the hood. | Same; optional persistence per repo. |
 | **2. Ask questions** | Explore why the system is structured the way it is. | `sruja why "your question" -r .` (deterministic). Use Sruja skill in editor for AI interpretation. | — |
 | **3. Drift** | Compare code vs declared architecture; catch violations. | `sruja drift -r .` (structural only) or `sruja drift -r . -a architecture.sruja` (vs baseline). | **GitHub/commit integration** (see below). |
 | **4. Commit / CI integration** | Run capture and drift in CI; tie results to commits; review in PRs. | Not yet. | Run drift on push or PR; report “new violations since base”; optional PR comments. |
@@ -86,9 +86,9 @@ Manual flow (same idea):
 ```bash
 cd test-repos/gitea
 git checkout main
-sruja scan -r . -o /tmp/gitea_base.json
+sruja scan . --output /tmp/gitea_base.json
 git checkout HEAD   # or your branch
-sruja scan -r . -o /tmp/gitea_head.json
+sruja scan . --output /tmp/gitea_head.json
 sruja drift-diff -b /tmp/gitea_base.json -h /tmp/gitea_head.json
 ```
 
@@ -112,13 +112,13 @@ Start with **(1) CI integration**; **(2)** is in place for using commits to calc
 | Goal | What it means | What exists today | What to add |
 |------|----------------|-------------------|-------------|
 | **Capture ADRs** | Discover and parse ADRs (and .sruja) at a given ref | `sruja intent check -r . -i docs/architecture` loads from `docs/architecture` (and `docs/architecture/adr/decisions` for .md ADRs). Parsed ADRs have title, status, date, context, decision, consequences, implications. | Run at **multiple refs**: checkout ref → load intent dir → export index (ref, path, title, status, date) so we have “ADRs at each point in time.” Optional: support more paths (e.g. `docs/adr/`) if OSS repos use them. |
-| **Architecture snapshots at different points** | Store a scan graph (and optionally intent) per ref (e.g. per tag or every N commits). | Single-ref scan and drift-diff between two refs (see above). | **Timeline capture**: for a list of refs (e.g. `main`, tags, or commit list), checkout each ref → `sruja scan -r . -o timelines/REPO/<ref>.json` (or `<tag>_<short-sha>.json`). Persist graphs so we don’t re-scan every time. |
+| **Architecture snapshots at different points** | Store a scan graph (and optionally intent) per ref (e.g. per tag or every N commits). | Single-ref scan and drift-diff between two refs (see above). | **Timeline capture**: for a list of refs (e.g. `main`, tags, or commit list), checkout each ref → `sruja scan . --output timelines/REPO/<ref>.json` (or `<tag>_<short-sha>.json`). Persist graphs so we don’t re-scan every time. |
 | **Play the timeline** | Show how architecture (and optionally ADRs) evolved: “at v1.0: N modules; at v2.0: +X, -Y; at v3.0: …” | `sruja drift-diff` between two graphs. | **Timeline report**: given a dir of snapshot JSONs (ordered by ref/date), run drift-diff between consecutive pairs and emit a single report (markdown or JSON): for each step, “ref A → ref B: new components …, removed …, new edges …, removed ….” Optional: simple “play” (print or export each step), or feed the report to a timeline UI later. |
 
 **Concrete approach on OSS repos**
 
 1. **Pick refs** — e.g. `main` + all tags, or `main` + last N commits, or a fixed list (e.g. `v1.0`, `v2.0`, `HEAD`).
-2. **Capture snapshots** — For each ref: checkout → `sruja scan -r . -o timelines/REPO/<ref>.json`. Optionally at each ref run intent load and save an ADR index (ref, list of ADR paths/titles/dates).
+2. **Capture snapshots** — For each ref: checkout → `sruja scan . --output timelines/REPO/<ref>.json`. Optionally at each ref run intent load and save an ADR index (ref, list of ADR paths/titles/dates).
 3. **Capture ADRs per ref** — At each ref, list/parse `docs/architecture` (and if we add: `docs/adr/`, `doc/adr/`). Save `timelines/REPO/adr_<ref>.json` (or a single index with ref → list of ADRs).
 4. **Play the timeline** — Script or CLI: for consecutive pairs in the ref list, run `sruja drift-diff -b timelines/REPO/ref1.json -h timelines/REPO/ref2.json` and append to a timeline report. Result: one document or JSON that describes “what changed” between each pair (and optionally “which ADRs existed at each ref”).
 
@@ -241,10 +241,10 @@ $SRUJA drift -r test-repos/etcd
 $SRUJA drift -r test-repos/caddy
 ```
 
-### 6. (Optional) Run full analyze on one system
+### 6. (Optional) Run drift vs baseline on one system
 
 ```bash
-$SRUJA analyze -r test-repos/gitea
+$SRUJA drift -r test-repos/gitea -a architecture.sruja
 ```
 
 ### 7. (Optional) If you have an `architecture.sruja` in a repo, evaluate it
@@ -379,7 +379,7 @@ sruja quickstart -r test-repos/etcd
 sruja quickstart -r test-repos/react-admin   # admin/dashboard
 sruja quickstart -r test-repos/saleor        # ecommerce
 sruja drift -r test-repos/gitea
-sruja analyze -r test-repos/caddy
+sruja drift -r test-repos/caddy
 ```
 
 If `sruja` is not on PATH, use the full path from repo root:
@@ -395,7 +395,8 @@ Point Sruja at any directory (your app, another OSS clone, etc.):
 ```bash
 sruja quickstart -r /path/to/any/repo
 sruja drift -r /path/to/any/repo
-sruja analyze -r /path/to/any/repo   # Full analysis (structural + semantic + intent)
+sruja drift -r /path/to/any/repo -a architecture.sruja   # Compare code vs declared architecture
+# For runtime analysis: sruja runtime analyze -t <trace_file>
 ```
 
 Example:
@@ -568,11 +569,11 @@ Edit `setup_repos.sh`: add an entry to `REPOS_QUICK` (frameworks) or `REPOS_COMP
 | Goal                         | Command / step |
 |-----------------------------|----------------|
 | Scan quick (framework) repo | `./setup_repos.sh` then `sruja quickstart -r test-repos/express` |
-| Scan complex system         | `./setup_repos.sh --complex` then `sruja quickstart -r test-repos/gitea` (or react-admin, saleor, etcd, caddy, …) |
-| Scan your own project       | `sruja quickstart -r /path/to/your/repo` |
-| Run demo (no .sruja)        | `./run_demo.sh` (uses express from quick set) |
-| Evaluate generated .sruja   | Create `architecture.sruja` in repo, then `./evaluate_architecture.sh <repo-name-or-path>` |
-| AI-assisted evaluation     | Use the Sruja skill in your editor (Cursor, Copilot, etc.) |
+| Scan complex system | `./setup_repos.sh --complex` then `sruja quickstart -r test-repos/gitea` (or react-admin, saleor, etcd, caddy, …) |
+| Scan your own project | `sruja quickstart -r /path/to/your/repo` |
+| Run demo (no .sruja) | `./run_demo.sh` (uses express from quick set) |
+| Compare to baseline | `sruja drift -r /path/to/repo -a architecture.sruja` |
+| AI-assisted evaluation | Use the Sruja skill in your editor (Cursor, Copilot, etc.) |
 
 ---
 

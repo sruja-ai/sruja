@@ -454,15 +454,15 @@ cargo build --release
 ./target/release/sruja quickstart -r . --format json | jq '.semantic'
 
 # Test knowledge graph persistence
-./target/release/sruja analyze -r .
-cat .sruja/graph.json | jq '.nodes | length'
+./target/release/sruja drift -r .
+# Note: .sruja/graph.json is generated when needed
 
 # Test unified ask command
-./target/release/sruja ask "What is the architecture?" -r .
+./target/release/sruja ask "What is architecture?" -r .
 
 # Test context (export for AI tools)
-./target/release/sruja context --for-ai -r . > .cursorrules
-cat .cursorrules
+./target/release/sruja context -r . -f markdown -o .cursor/rules/architecture.md
+cat .cursor/rules/architecture.md
 ```
 
 ---

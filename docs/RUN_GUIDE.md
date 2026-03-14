@@ -86,7 +86,8 @@ Other useful commands:
 
 ```bash
 sruja drift -r .                    # Drift (cycles, orphans, layer violations)
-sruja analyze -r .                  # Full analysis (structural + semantic + intent)
+sruja quickstart -r .                # Quick architecture overview (inventory, health score, findings)
+# For full analysis: sruja drift -r . -a architecture.sruja (vs baseline) or sruja runtime analyze -t <trace_file>
 sruja lint book/valid-examples/*.sruja # Validate canonical book examples
 sruja export markdown file.sruja    # Export to Markdown
 ```
