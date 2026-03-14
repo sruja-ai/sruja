@@ -32,7 +32,7 @@ sruja discover --context -r . --format json
 Based on evidence, determine the scope of your architecture:
 
 **C4 Context Level (Person + System):**
-- External actors (users, systems, services)
+- External actors: humans (person), external software (system, optional tags)
 - Major system boundaries
 
 **C4 Container Level:**
@@ -127,10 +127,10 @@ Fix all errors before considering complete.
 
 Use these types based on evidence:
 
-**Person:** External actors
+**Person:** Human actors only (do not use for external software)
 - Users (Admin, Customer, Guest)
-- External systems (Payment Gateway, SaaS)
-- Third-party services (Analytics, Monitoring)
+- Administrators, operators, stakeholders
+- Use **system** for external software (APIs, SaaS, control planes, destinations); optional `tags ["external"]`
 
 **System:** Major boundaries
 - High-level system boundaries representing major domains
@@ -311,7 +311,7 @@ OPEN QUESTIONS:
 
 Or add uncertainty markers:
 ```sruja
-ExternalService = person "External Service" {
+ExternalService = system "External Service" {
   description "External integration (evidence unclear)"
   // Add comment: "Need to verify service details"
 }

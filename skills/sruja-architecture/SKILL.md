@@ -58,8 +58,9 @@ Use this structure:
 // Import standard kinds (optional)
 import { * } from 'sruja.ai/stdlib'
 
-// Define external actors
+// External actors: person = humans only; external software = system (optional tags ["external"])
 Person = person "Person"
+ExternalAPI = system "External API" { description "Third-party or backend service" }
 
 // Define major systems
 System = system "System" {
@@ -72,6 +73,7 @@ System = system "System" {
 
 // Relationships
 Person -> System.Container "Protocol"
+System.Container -> ExternalAPI "HTTPS"
 ```
 
 ### 4. Validate and Repair
@@ -159,13 +161,19 @@ See **docs/FEDERATION.md** for artifact schemas and Phase 4 retrieval behavior.
 
 ## Prerequisites
 
-The skill’s prompts run `sruja discover`, `sruja lint`, and `sruja drift`. Install the Sruja CLI first:
+The skill’s prompts run `sruja sync`, `sruja discover`, `sruja lint`, and `sruja drift`. The CLI **must** include the `sync` and `discover` subcommands for evidence gathering. Install a recent Sruja CLI:
 
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
 ```
 
-Alternatively: build from source: `cargo install sruja-cli`.
+Or build from this repo (ensures `sync` and `discover` are present):
+
+```bash
+git clone https://github.com/sruja-ai/sruja && cd sruja && cargo install --path crates/sruja-cli
+```
+
+Verify: run `sruja --help` and confirm you see `sync` and `discover` in the command list. If not, you have an older or different binary; use one of the methods above.
 
 ### Extension (optional, recommended in VS Code / Cursor)
 
@@ -178,6 +186,17 @@ Install the [Sruja extension](https://marketplace.visualstudio.com/items?itemNam
 - **Sruja: Refresh repo context** — runs discovery and writes `.sruja/context.json`; the skill uses this file as evidence when present and recent, so you (or the AI) don’t need to run `sruja discover` in the terminal
 
 When the extension is installed, run **Sruja: Refresh repo context** once (or after big repo changes); the skill will prefer `.sruja/context.json` over re-running discover.
+
+### Troubleshooting: "CLI lacks sync/discover"
+
+If the AI says the installed Sruja CLI lacks `sync` or `discover`, the `sruja` on your PATH is likely an older release or a different build (e.g. an old `cargo install sruja-cli` from crates.io). The skill then falls back to gathering evidence from repository structure and codebase only.
+
+**Fix:** Install a CLI that includes these commands:
+
+1. **Install script (recommended):** `curl -fsSL https://sruja.ai/install.sh | bash`
+2. **Build from this repo:** `git clone https://github.com/sruja-ai/sruja && cd sruja && cargo install --path crates/sruja-cli`
+
+Then run `sruja --help` and confirm `sync` and `discover` appear. Ensure this binary is first on your PATH when using the skill.
 
 ## Installation
 

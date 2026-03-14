@@ -117,15 +117,16 @@ Dependencies should point inward. Use dependency inversion: depend on abstractio
 
 ---## Component Types
 
-### Person (External Actors)
+### Person (Human Actors Only)
 
-Use for external entities that interact with the system.
+Use **only for human** external actors that interact with the system. Do not use person for external software (APIs, SaaS, backends)—use **system** for those, with optional `tags ["external"]`.
 
 **When to Use:**
 
 - Users (Admin, Customer, Guest)
-- External systems (Payment Gateway, SaaS)
-- Third-party services (Analytics, Monitoring)
+- Administrators, operators, support
+- Stakeholders (report viewers, managers)
+- Developers or API consumers when they are human users
 
 **Example:**
 
@@ -138,14 +139,12 @@ Admin = person "Administrator" {
   description "System administrator"
 }
 
-Stripe = person "Stripe" {
-  description "External payment processing"
-}
+// External software: use system, not person (see System section)
 ```
 
 ### System (Major Boundaries)
 
-Use for high-level system boundaries representing major domains.
+Use for high-level system boundaries: your own systems and **external software** (APIs, SaaS, control planes, destinations, transformers). For external systems you don't own, add `tags ["external"]` or `tags ["vendor"]` when useful.
 
 **Example:**
 
@@ -156,6 +155,7 @@ OrderSystem = system "Order Management" {
 
 ExternalSystem = system "External Inventory" {
   description "Third-party inventory system"
+  tags ["external"]
 }
 ```
 
@@ -678,8 +678,9 @@ Application = system "Application" {
   }
 }
 
-Stripe = person "Stripe" {
+Stripe = system "Stripe" {
   description "External payment service"
+  tags ["external"]
 }
 
 Customer -> Application.WebFrontend "HTTPS"
