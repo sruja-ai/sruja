@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.15.1...sruja-v0.16.0) (2026-03-14)
+
+
+### Features
+
+* **export:** markdown/mermaid improvements, view block syntax, extension tests ([5ec53f2](https://github.com/sruja-ai/sruja/commit/5ec53f2a4d1d1414c41374567f75522eeec62d64))
+
 ## [0.15.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.15.0...sruja-v0.15.1) (2026-03-14)
 
 
