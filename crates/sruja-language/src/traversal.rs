@@ -291,6 +291,40 @@ pub fn resolve_relation_fqns(
     }
 }
 
+/// Returns true if the character is valid in a DSL identifier (alphanumeric, _, ., -).
+fn is_ident_char(c: char) -> bool {
+    c.is_alphanumeric() || c == '_' || c == '.' || c == '-'
+}
+
+/// Find the (0-based) line and character of the first definition of an identifier in source.
+/// A definition is a line where the identifier appears at word boundary followed by optional
+/// whitespace and '='. Used when the parser does not set source locations (e.g. all 0,0).
+pub fn find_definition_line(source: &str, identifier: &str) -> Option<(u32, u32)> {
+    if identifier.is_empty() {
+        return None;
+    }
+    for (line_idx, line) in source.lines().enumerate() {
+        let mut search_start = 0;
+        while let Some(rel_pos) = line[search_start..].find(identifier) {
+            let pos = search_start + rel_pos;
+            let before_ok = pos == 0
+                || !line
+                    .chars()
+                    .nth(pos.saturating_sub(1))
+                    .map_or(false, is_ident_char);
+            let after_end = pos + identifier.len();
+            let rest = line.get(after_end..).unwrap_or("");
+            let after_ok = rest.trim_start().starts_with('=')
+                && rest.chars().next().map_or(true, |c| !is_ident_char(c));
+            if before_ok && after_ok {
+                return Some((line_idx as u32, pos as u32));
+            }
+            search_start = pos + 1;
+        }
+    }
+    None
+}
+
 /// Get element location from various AST types
 pub trait HasLocation {
     fn location(&self) -> &SourceLocation;
@@ -358,6 +392,21 @@ mod tests {
     fn parse_test_input(input: &str) -> Program {
         let parser = Parser::new("test.sruja".to_string());
         parser.parse(input).expect("Should parse successfully")
+    }
+
+    #[test]
+    fn test_find_definition_line() {
+        let source = r#"
+A = system "System A"
+B = system "System B"
+A -> B "calls"
+"#;
+        assert_eq!(find_definition_line(source, "A"), Some((1, 0)));
+        assert_eq!(find_definition_line(source, "B"), Some((2, 0)));
+        assert_eq!(find_definition_line(source, "X"), None);
+        // Should not match "A" inside "A ->"
+        let src2 = "A = system \"A\"\nA -> B \"x\"\n";
+        assert_eq!(find_definition_line(src2, "A"), Some((0, 0)));
     }
 
     #[test]

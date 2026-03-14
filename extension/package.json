@@ -94,7 +94,7 @@
       },
       {
         "command": "sruja.exportMarkdown",
-        "title": "Sruja: Export to Markdown"
+        "title": "Sruja: Export architecture to Markdown"
       },
       {
         "command": "sruja.openDiagramPreview",
@@ -150,8 +150,14 @@
       ],
       "editor/title": [
         {
+          "command": "sruja.exportMarkdown",
+          "when": "editorLangId == sruja",
+          "group": "navigation"
+        },
+        {
           "command": "sruja.openDiagramPreview",
-          "when": "editorLangId == sruja"
+          "when": "editorLangId == sruja",
+          "group": "navigation"
         }
       ]
     },

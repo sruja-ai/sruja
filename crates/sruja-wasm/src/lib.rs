@@ -629,17 +629,34 @@ pub fn sruja_get_document_symbols(dsl: &str, filename: Option<String>) -> Result
 
     let (elements, _) = sruja_language::collect_elements(&program);
 
+    /// Resolve (line, character) for a symbol: use location if set, else find definition in source.
+    fn symbol_range(
+        dsl: &str,
+        location: &sruja_diagnostics::SourceLocation,
+        def_name: &str,
+    ) -> (u32, u32) {
+        if location.line > 0 || location.column > 0 {
+            (location.line, location.column)
+        } else if let Some((line, ch)) = sruja_language::find_definition_line(dsl, def_name) {
+            (line, ch)
+        } else {
+            (0, 0)
+        }
+    }
+
     let mut symbols = Vec::new();
 
     for (fqn, elem) in elements {
         let kind = elem.assignment.kind.to_string();
+        let short_name = fqn.rsplit('.').next().unwrap_or(fqn.as_str());
+        let (line, ch) = symbol_range(dsl, &elem.location, short_name);
         symbols.push(json!({
             "kind": "element",
             "name": fqn,
             "detail": kind,
             "range": {
-                "start": {"line": elem.location.line, "character": elem.location.column},
-                "end": {"line": elem.location.line, "character": elem.location.column}
+                "start": {"line": line, "character": ch},
+                "end": {"line": line, "character": ch}
             },
             "children": []
         }));
@@ -648,73 +665,79 @@ pub fn sruja_get_document_symbols(dsl: &str, filename: Option<String>) -> Result
     for item in &program.items {
         match item {
             sruja_language::TopLevelItem::View(view) => {
+                let (line, ch) = symbol_range(dsl, &view.location, &view.id);
                 symbols.push(json!({
                     "kind": "view",
                     "name": view.id.clone(),
                     "detail": "View",
                     "range": {
-                        "start": {"line": view.location.line, "character": view.location.column},
-                        "end": {"line": view.location.line, "character": view.location.column}
+                        "start": {"line": line, "character": ch},
+                        "end": {"line": line, "character": ch}
                     },
                     "children": []
                 }));
             }
             sruja_language::TopLevelItem::Scenario(scenario) => {
+                let (line, ch) = symbol_range(dsl, &scenario.location, &scenario.id);
                 symbols.push(json!({
                     "kind": "scenario",
                     "name": scenario.id.clone(),
                     "detail": "Scenario",
                     "range": {
-                        "start": {"line": scenario.location.line, "character": scenario.location.column},
-                        "end": {"line": scenario.location.line, "character": scenario.location.column}
+                        "start": {"line": line, "character": ch},
+                        "end": {"line": line, "character": ch}
                     },
                     "children": []
                 }));
             }
             sruja_language::TopLevelItem::Flow(flow) => {
+                let (line, ch) = symbol_range(dsl, &flow.location, &flow.id);
                 symbols.push(json!({
                     "kind": "flow",
                     "name": flow.id.clone(),
                     "detail": "Flow",
                     "range": {
-                        "start": {"line": flow.location.line, "character": flow.location.column},
-                        "end": {"line": flow.location.line, "character": flow.location.column}
+                        "start": {"line": line, "character": ch},
+                        "end": {"line": line, "character": ch}
                     },
                     "children": []
                 }));
             }
             sruja_language::TopLevelItem::Requirement(req) => {
+                let (line, ch) = symbol_range(dsl, &req.location, &req.id);
                 symbols.push(json!({
                     "kind": "requirement",
                     "name": req.id.clone(),
                     "detail": req.r#type.clone(),
                     "range": {
-                        "start": {"line": req.location.line, "character": req.location.column},
-                        "end": {"line": req.location.line, "character": req.location.column}
+                        "start": {"line": line, "character": ch},
+                        "end": {"line": line, "character": ch}
                     },
                     "children": []
                 }));
             }
             sruja_language::TopLevelItem::Adr(adr) => {
+                let (line, ch) = symbol_range(dsl, &adr.location, &adr.id);
                 symbols.push(json!({
                     "kind": "adr",
                     "name": adr.id.clone(),
                     "detail": "ADR",
                     "range": {
-                        "start": {"line": adr.location.line, "character": adr.location.column},
-                        "end": {"line": adr.location.line, "character": adr.location.column}
+                        "start": {"line": line, "character": ch},
+                        "end": {"line": line, "character": ch}
                     },
                     "children": []
                 }));
             }
             sruja_language::TopLevelItem::Policy(policy) => {
+                let (line, ch) = symbol_range(dsl, &policy.location, &policy.id);
                 symbols.push(json!({
                     "kind": "policy",
                     "name": policy.id.clone(),
                     "detail": format!("{} ({})", policy.title, policy.category),
                     "range": {
-                        "start": {"line": policy.location.line, "character": policy.location.column},
-                        "end": {"line": policy.location.line, "character": policy.location.column}
+                        "start": {"line": line, "character": ch},
+                        "end": {"line": line, "character": ch}
                     },
                     "children": []
                 }));

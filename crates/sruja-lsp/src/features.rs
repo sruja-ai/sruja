@@ -1,5 +1,6 @@
 use crate::workspace::Document;
 use sruja_language::ast::*;
+use sruja_language::find_definition_line;
 use tower_lsp::lsp_types::*;
 
 /// Find word boundaries at a position in a line
@@ -379,6 +380,7 @@ pub fn find_references(doc: &Document, _program: &Program, id: &str) -> Vec<Loca
 pub fn get_document_symbols(doc: &Document, program: &Program) -> Vec<DocumentSymbol> {
     let mut symbols = Vec::new();
     let (elements, _) = collect_elements(program);
+    let text = doc.text();
 
     for (fqn, elem) in &elements {
         let kind = match elem.assignment.kind {
@@ -397,14 +399,19 @@ pub fn get_document_symbols(doc: &Document, program: &Program) -> Vec<DocumentSy
             .clone()
             .unwrap_or_else(|| elem.assignment.name.clone());
 
-        // Find line number
-        let mut line = 0;
-        for (line_idx, line_text) in doc.lines().iter().enumerate() {
-            if line_text.contains(&elem.assignment.name) {
-                line = line_idx;
-                break;
-            }
-        }
+        let (line, character) = if elem.location.line > 0 || elem.location.column > 0 {
+            (elem.location.line, elem.location.column)
+        } else if let Some((ln, ch)) = find_definition_line(text, &elem.assignment.name) {
+            (ln, ch)
+        } else {
+            (0u32, 0u32)
+        };
+
+        let pos = Position {
+            line,
+            character,
+        };
+        let end_character = character + elem.assignment.name.len() as u32;
 
         #[allow(deprecated)]
         symbols.push(DocumentSymbol {
@@ -412,23 +419,17 @@ pub fn get_document_symbols(doc: &Document, program: &Program) -> Vec<DocumentSy
             detail: Some(title),
             kind,
             range: Range {
-                start: Position {
-                    line: line as u32,
-                    character: 0,
-                },
+                start: pos,
                 end: Position {
-                    line: line as u32,
-                    character: 0,
+                    line,
+                    character: end_character,
                 },
             },
             selection_range: Range {
-                start: Position {
-                    line: line as u32,
-                    character: 0,
-                },
+                start: pos,
                 end: Position {
-                    line: line as u32,
-                    character: 0,
+                    line,
+                    character: end_character,
                 },
             },
             children: None,
@@ -771,13 +772,14 @@ web = container "Web" {}
         assert!(!symbols.is_empty());
         assert_eq!(symbols.len(), 2);
 
-        let app_symbol = symbols.iter().find(|s| s.name == "app");
-        assert!(app_symbol.is_some());
-        assert_eq!(app_symbol.unwrap().kind, SymbolKind::CLASS);
+        let app_symbol = symbols.iter().find(|s| s.name == "app").unwrap();
+        assert_eq!(app_symbol.kind, SymbolKind::CLASS);
+        assert_eq!(app_symbol.range.start.line, 1, "Go to Symbol should jump to definition line");
+        assert_eq!(app_symbol.range.start.character, 0);
 
-        let web_symbol = symbols.iter().find(|s| s.name == "web");
-        assert!(web_symbol.is_some());
-        assert_eq!(web_symbol.unwrap().kind, SymbolKind::MODULE);
+        let web_symbol = symbols.iter().find(|s| s.name == "web").unwrap();
+        assert_eq!(web_symbol.kind, SymbolKind::MODULE);
+        assert_eq!(web_symbol.range.start.line, 4, "Go to Symbol should jump to definition line");
     }
 
     #[test]
