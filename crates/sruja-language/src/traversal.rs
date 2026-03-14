@@ -311,11 +311,11 @@ pub fn find_definition_line(source: &str, identifier: &str) -> Option<(u32, u32)
                 || !line
                     .chars()
                     .nth(pos.saturating_sub(1))
-                    .map_or(false, is_ident_char);
+                    .is_some_and(is_ident_char);
             let after_end = pos + identifier.len();
             let rest = line.get(after_end..).unwrap_or("");
             let after_ok = rest.trim_start().starts_with('=')
-                && rest.chars().next().map_or(true, |c| !is_ident_char(c));
+                && rest.chars().next().is_none_or(|c| !is_ident_char(c));
             if before_ok && after_ok {
                 return Some((line_idx as u32, pos as u32));
             }

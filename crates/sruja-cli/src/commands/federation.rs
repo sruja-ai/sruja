@@ -267,16 +267,15 @@ fn collect_bundle_paths(input: &str) -> Result<Vec<PathBuf>, CliError> {
             format!("Failed to read dir {}: {}", input, e),
         ))
     })? {
-        let e = e.map_err(|e| CliError::Io(e))?;
+        let e = e.map_err(CliError::Io)?;
         let path = e.path();
-        if path.is_file() {
-            if path
+        if path.is_file()
+            && path
                 .file_name()
                 .and_then(|n| n.to_str())
-                .map_or(false, is_bundle_filename)
-            {
-                out.push(path);
-            }
+                .is_some_and(is_bundle_filename)
+        {
+            out.push(path);
         }
     }
     out.sort(); // stable order for compose
