@@ -5,6 +5,18 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.14.1...sruja-v0.15.0) (2026-03-14)
+
+
+### Features
+
+* add check, federation, review commands and docs ([5283306](https://github.com/sruja-ai/sruja/commit/52833060f1a1ba47d7b1bc6f5494c04dc015ac07))
+
+
+### Bug Fixes
+
+* clippy unnecessary_map_or, redundant_closure, collapsible_if ([f26dd6b](https://github.com/sruja-ai/sruja/commit/f26dd6bfa8472d9c1c2c9f5a9c6cf6d5e013b687))
+
 ## [0.14.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.14.0...sruja-v0.14.1) (2026-03-14)
 
 
