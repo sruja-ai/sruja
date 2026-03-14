@@ -4,7 +4,6 @@ use colored::Colorize;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-
 use sruja_scan::scan_scope::resolve_scan_scope;
 use sruja_scan::{scan_repo, Graph, NodeKind};
 
@@ -122,8 +121,7 @@ pub async fn drift(
     let actual_graph = scan_repo(repo_path)?;
 
     let resolved = architecture_path::resolve_architecture_path(repo_path);
-    let effective_arch = architecture_path
-        .or_else(|| resolved.as_ref().and_then(|p| p.to_str()));
+    let effective_arch = architecture_path.or_else(|| resolved.as_ref().and_then(|p| p.to_str()));
 
     if let Some(arch_path) = effective_arch {
         let arch_file = Path::new(arch_path);
@@ -209,11 +207,13 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
     let context_updated_at = std::fs::read_to_string(repo_path.join(".sruja/context.json"))
         .ok()
         .and_then(|s| {
-            serde_json::from_str::<serde_json::Value>(&s).ok().and_then(|v| {
-                v.get("updated_at")
-                    .and_then(|t| t.as_str())
-                    .map(String::from)
-            })
+            serde_json::from_str::<serde_json::Value>(&s)
+                .ok()
+                .and_then(|v| {
+                    v.get("updated_at")
+                        .and_then(|t| t.as_str())
+                        .map(String::from)
+                })
         });
 
     let graph = scan_repo(repo_path)?;

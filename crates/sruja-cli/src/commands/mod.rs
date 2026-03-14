@@ -22,8 +22,8 @@ pub use dsl::{
 };
 pub use error::CliError;
 pub use generate::generate_prompt;
-pub use intent::{intent_check, intent_propose};
 pub use init::init;
+pub use intent::{intent_check, intent_propose};
 pub use scan::{drift, drift_pr, quickstart, scan};
 pub use status::status;
 pub use sync_cmd::sync;

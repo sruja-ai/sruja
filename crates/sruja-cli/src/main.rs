@@ -286,27 +286,27 @@ enum RuntimeCommand {
 
 #[derive(Subcommand)]
 enum IntentCommand {
-        /// Check intent vs reality and report drift
-        Check {
-            /// Path to repository root
-            #[arg(long, short = 'r', default_value = ".")]
-            repo: String,
-            /// Path to intent directory (ADRs, .sruja files)
-            #[arg(long, short = 'i', default_value = None)]
-            intent: Option<String>,
-            /// Output format (text, json, markdown)
-            #[arg(long, short = 'f', default_value = "text")]
-            format: String,
-        },
-        /// Propose ADR from detected drift
-        Propose {
-            /// Path to repository root
-            #[arg(long, short = 'r', default_value = ".")]
-            repo: String,
-            /// Path to intent directory
-            #[arg(long, short = 'i', default_value = None)]
-            intent: Option<String>,
-        },
+    /// Check intent vs reality and report drift
+    Check {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to intent directory (ADRs, .sruja files)
+        #[arg(long, short = 'i', default_value = None)]
+        intent: Option<String>,
+        /// Output format (text, json, markdown)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Propose ADR from detected drift
+    Propose {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to intent directory
+        #[arg(long, short = 'i', default_value = None)]
+        intent: Option<String>,
+    },
 }
 
 #[tokio::main]

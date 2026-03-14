@@ -3,9 +3,9 @@
 use std::fs;
 use std::path::Path;
 
-use super::CliError;
 use super::discover::discover_context_json_from_graph;
 use super::scan::{print_diff_text, print_drift_text};
+use super::CliError;
 use crate::utils::architecture_path;
 use sruja_scan::scan_repo;
 
@@ -69,11 +69,7 @@ pub async fn sync(repo_root: &str) -> Result<(), CliError> {
             sruja_diff::TruthStatus::Drifted => "drifted",
             sruja_diff::TruthStatus::Unknown => "unknown",
         };
-        eprintln!(
-            "Truth: {} ({} violation(s))",
-            truth,
-            diff.violations.len()
-        );
+        eprintln!("Truth: {} ({} violation(s))", truth, diff.violations.len());
         print_diff_text(&diff, false);
         return Ok(());
     }

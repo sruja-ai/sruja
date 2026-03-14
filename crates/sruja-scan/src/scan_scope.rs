@@ -118,10 +118,14 @@ fn build_scope_from_walk(repo_root: &Path) -> ScanScope {
         excluded_rel_paths: &mut HashSet<String>,
         total_files: &mut usize,
     ) {
-        let Ok(entries) = std::fs::read_dir(dir) else { return };
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();
-            let Some(name) = path.file_name().and_then(|n| n.to_str()) else { continue };
+            let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+                continue;
+            };
             if name.starts_with('.') {
                 continue;
             }
@@ -130,7 +134,9 @@ fn build_scope_from_walk(repo_root: &Path) -> ScanScope {
                 .strip_prefix(repo_root)
                 .ok()
                 .map(|p| p.to_string_lossy().replace('\\', "/"));
-            let first_seg = rel.as_ref().and_then(|r| r.split('/').next().map(String::from));
+            let first_seg = rel
+                .as_ref()
+                .and_then(|r| r.split('/').next().map(String::from));
 
             if path.is_dir() {
                 if should_exclude(&path) {

@@ -1,7 +1,7 @@
 //! Status command: show repo health, baseline, and truth status.
 
-use super::CliError;
 use super::scan::status_result;
+use super::CliError;
 
 /// Run status and print text or JSON.
 pub async fn status(repo_root: &str, format: &str) -> Result<(), CliError> {

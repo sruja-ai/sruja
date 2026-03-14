@@ -3,9 +3,9 @@
 use std::fs;
 use std::path::Path;
 
-use super::CliError;
-use super::scan::quickstart;
 use super::generate::generate_prompt;
+use super::scan::quickstart;
+use super::CliError;
 use crate::utils::architecture_path;
 
 /// Initialize Sruja in the given repo: ensure `.sruja/`, run quickstart, optionally generate prompt.
@@ -47,8 +47,13 @@ pub async fn init(repo_root: &str, generate_prompt_file: bool) -> Result<(), Cli
         generate_prompt(repo_root, None, Some(prompt_path.to_str().unwrap()))?;
         eprintln!();
         eprintln!("Next steps:");
-        eprintln!("  1. Use the sruja-architecture skill with the prompt in {}", prompt_path.display());
-        eprintln!("  2. Save the model output as repo.sruja (or architecture.sruja) in the repo root.");
+        eprintln!(
+            "  1. Use the sruja-architecture skill with the prompt in {}",
+            prompt_path.display()
+        );
+        eprintln!(
+            "  2. Save the model output as repo.sruja (or architecture.sruja) in the repo root."
+        );
         eprintln!("  3. Run: sruja lint repo.sruja");
     } else if baseline_path.is_none() {
         eprintln!();

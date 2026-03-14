@@ -103,12 +103,7 @@ pub fn detect_languages(repo_path: &Path) -> Vec<(String, usize)> {
         }
     }
 
-    count_files(
-        repo_path,
-        &mut lang_counts,
-        rust_workspace_root,
-        repo_path,
-    );
+    count_files(repo_path, &mut lang_counts, rust_workspace_root, repo_path);
 
     let mut languages: Vec<_> = lang_counts.into_iter().collect();
     languages.sort_by(|a, b| b.1.cmp(&a.1));
