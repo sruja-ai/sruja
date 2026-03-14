@@ -182,8 +182,7 @@ pub fn discover_context_json(repo: &str) -> Result<DiscoverContextJson, CliError
     let framework = detect_framework(
         repo_path,
         languages.first().map(|(l, _)| l.as_str()).unwrap_or(""),
-    )
-    .map(String::from);
+    );
     let context = build_repo_context(repo_path, &graph);
     let (is_monolith, is_microservices) = detect_architecture_style(&graph);
     let architecture_style = if is_microservices {

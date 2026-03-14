@@ -236,21 +236,21 @@ impl MarkdownExporter {
                 for g in &ov.goals {
                     out.push_str(&format!("- {}\n", g));
                 }
-                out.push_str("\n");
+                out.push('\n');
             }
             if !ov.non_goals.is_empty() {
                 out.push_str("**Non-goals:**\n\n");
                 for ng in &ov.non_goals {
                     out.push_str(&format!("- {}\n", ng));
                 }
-                out.push_str("\n");
+                out.push('\n');
             }
             if !ov.risks.is_empty() {
                 out.push_str("**Risks:**\n\n");
                 for r in &ov.risks {
                     out.push_str(&format!("- {}\n", r));
                 }
-                out.push_str("\n");
+                out.push('\n');
             }
         } else {
             out.push_str(
