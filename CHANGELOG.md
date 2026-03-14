@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.13.0...sruja-v0.14.0) (2026-03-14)
+
+
+### Features
+
+* **cli:** add architecture completion score to analyze ([8860029](https://github.com/sruja-ai/sruja/commit/8860029aaf910800d02c47a2fa87c020e8f8b47e))
+
 ## [0.13.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.12.0...sruja-v0.13.0) (2026-03-13)
 
 
