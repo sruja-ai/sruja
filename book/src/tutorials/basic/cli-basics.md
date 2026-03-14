@@ -71,11 +71,11 @@ sruja fmt example.sruja > example.formatted.sruja
 ## Tree View
 
 ```bash
-sruja tree --file example.sruja
+sruja tree example.sruja
 ```
 
-## Export to D2
+## Export to Mermaid
 
 ```bash
-sruja export d2 example.sruja > example.d2
+sruja export mermaid example.sruja > example.mmd
 ```

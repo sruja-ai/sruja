@@ -551,4 +551,4 @@ view container_view of Shop {
 
 - Official Documentation: https://sruja.ai
 - Examples: `book/valid-examples/` (canonical, rendered in the mdBook)
-- Grammar: Defined in `pkg/language/` package
+- Grammar: Defined in `crates/sruja-language/` (parser and AST)

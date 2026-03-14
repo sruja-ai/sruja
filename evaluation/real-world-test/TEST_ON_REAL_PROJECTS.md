@@ -11,7 +11,7 @@ Sruja targets **general customer-facing systems** (web apps, APIs, services), **
 
 Integration is **skills + CLI** only (no MCP, no Sruja-owned LLM). To validate the demo on real projects:
 
-- **CLI:** From `evaluation/real-world-test`, run `./run_demo.sh` (quickstart + drift on Express) or `./run_demo.sh --baseline`. On other repos: `sruja quickstart -r <path>`, `sruja drift -r <path>`, optionally `sruja why "question" -r <path>` and `sruja context export -f cursor-rules -o /tmp/out.cursorrules`. No API keys required.
+- **CLI:** From `evaluation/real-world-test`, run `./run_demo.sh` (quickstart + drift on Express) or `./run_demo.sh --baseline`. On other repos: `sruja quickstart -r <path>`, `sruja drift -r <path>`, optionally `sruja why "question" -r <path>` and `sruja context -r <path> -f cursor-rules -o /tmp/out.cursorrules`. No API keys required.
 - **Editor:** Install the Sruja skill in your editor (Cursor, Copilot, etc.); open a real repo; ask e.g. "What's the state of our architecture?" or "Where are the cycles?" and confirm the AI runs `sruja quickstart` or `sruja drift` and summarizes the output.
 
 Record results (repo, quickstart summary, drift result) in `run_results/` or extend [OSS_TEST_RESULTS.md](OSS_TEST_RESULTS.md). Optional: run `./run_demo_real_projects.sh` to run quickstart + drift on each repo in `test-repos/` and append a one-line summary to a timestamped file in `run_results/`.

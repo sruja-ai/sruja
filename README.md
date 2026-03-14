@@ -192,13 +192,13 @@ jobs:
 
 ```bash
 # For Cursor IDE
-sruja context export -f cursor-rules -o .cursorrules
+sruja context -r . -f cursor-rules -o .cursorrules
 
 # For GitHub Copilot
-sruja context export -f copilot-instructions -o .github/copilot-instructions.md
+sruja context -r . -f copilot-instructions -o .github/copilot-instructions.md
 
 # JSON format for custom tools
-sruja context export -f json -o architecture-context.json
+sruja context -r . -f json -o architecture-context.json
 ```
 
 **Generate a baseline from your repo:**

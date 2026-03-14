@@ -48,7 +48,7 @@ enum Commands {
     },
     /// Export a Sruja file to various formats
     Export {
-        /// Export format (json, mermaid, markdown, dot)
+        /// Export format (json, mermaid, markdown, context, dsl)
         format: String,
         /// Path to .sruja file
         file: String,

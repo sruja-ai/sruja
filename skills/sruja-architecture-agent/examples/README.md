@@ -107,9 +107,9 @@ sruja lint user-service.sruja
 # Validate consolidated architecture
 sruja lint architecture.sruja
 
-# Export to different formats
-sruja export architecture.sruja --format mermaid
-sruja export architecture.sruja --format markdown
+# Export to different formats (format then file)
+sruja export mermaid architecture.sruja
+sruja export markdown architecture.sruja
 ```
 
 **Note about warnings:** You may see warnings like "Element X is defined but not referenced by any relation" for top-level systems. These warnings are acceptable when the system's internal components (containers, datastores) are referenced in relationships. For example, if `user_service.api` is referenced but `user_service` itself shows a warning, that's expected behavior.

@@ -432,7 +432,7 @@ sruja drift -r . -a architecture.sruja
 # Should have minimal violations
 
 # 4. Export to review
-sruja export markdown architecture.sruja -o architecture.md
+sruja export markdown architecture.sruja > architecture.md
 # Review for clarity
 ```
 

@@ -87,7 +87,7 @@ Export to various formats:
 ```bash
 sruja export markdown architecture.sruja
 sruja export mermaid architecture.sruja
-sruja export svg architecture.sruja
+sruja export mermaid architecture.sruja
 ```
 
 **Outcome**: Living docs and diagrams generated from the model.

@@ -39,7 +39,7 @@ jobs:
           sruja lint architecture.sruja
       
       - name: Check Constraints
-        run: sruja validate --constraints architecture.sruja
+        run: sruja validate architecture.sruja
       
       - name: Export Documentation
         run: sruja export markdown architecture.sruja > architecture.md
@@ -58,7 +58,7 @@ architecture-validation:
   script:
     - sruja fmt architecture.sruja
     - sruja lint architecture.sruja
-    - sruja validate --constraints architecture.sruja
+    - sruja validate architecture.sruja
   only:
     - merge_requests
     - main
@@ -71,8 +71,8 @@ Generate compliance reports in CI/CD:
 ```yaml
 - name: Generate Compliance Report
   run: |
-    sruja validate --constraints architecture.sruja --format json > violations.json
-    sruja score architecture.sruja > score.json
+    sruja validate architecture.sruja --format-json > violations.json
+    sruja compliance -r . -a architecture.sruja -f json > compliance.json
   
 - name: Upload Reports
   uses: actions/upload-artifact@v3
@@ -80,7 +80,7 @@ Generate compliance reports in CI/CD:
     name: architecture-reports
     path: |
       violations.json
-      score.json
+      compliance.json
       architecture.md
 ```
 
@@ -95,10 +95,8 @@ For organizations with multiple repositories, create a shared policy file:
     # Fetch shared policies from central repo
     git clone https://github.com/your-org/architecture-policies.git /tmp/policies
     
-    # Validate against shared constraints
-    sruja validate \
-      --constraints /tmp/policies/global-constraints.sruja \
-      --constraints architecture.sruja
+    # Validate architecture and optional external constraint files
+    sruja validate architecture.sruja -c /tmp/policies/global-constraints.sruja
 ```
 
 ## Pre-commit Hooks
@@ -122,7 +120,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-sruja validate --constraints architecture.sruja
+sruja validate architecture.sruja
 if [ $? -ne 0 ]; then
   echo "❌ Constraint violations found. Fix before committing."
   exit 1
@@ -139,7 +137,7 @@ Add architecture validation as a required check:
 ```yaml
 - name: Architecture Gate
   run: |
-    sruja validate --constraints architecture.sruja --fail-on-violations
+    sruja validate architecture.sruja --fail-on-violations
 ```
 
 **Result:** PRs can't be merged until architecture is valid.
@@ -151,7 +149,7 @@ Track compliance over time:
 ```yaml
 - name: Track Compliance Metrics
   run: |
-    sruja score architecture.sruja --format json > compliance-metrics.json
+    sruja compliance -r . -a architecture.sruja -f json > compliance-metrics.json
     
     # Send to monitoring system
     curl -X POST https://your-monitoring-system/api/metrics \

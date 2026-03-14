@@ -268,7 +268,7 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 
 1. **Complete Self-Assessment** (above)
 2. **Calculate Value** (Step 2)
-3. **Try Sruja** (see [Getting Started](docs/getting-started))
+3. **Try Sruja** (see [Getting Started](getting-started.md))
 4. **Join Community** (GitHub Discussions, Discord, etc.)
 
 ### Decision Timeline
@@ -280,9 +280,9 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 
 ## Resources
 
-- **Getting Started**: [Getting Started Guide](docs/getting-started)
+- **Getting Started**: [Getting Started Guide](getting-started.md)
 - **Executive Overview**: [Executive Overview](/investors/executive-overview)
-- **Adoption Playbook**: [Adoption Playbook](docs/adoption-playbook)
+- **Adoption Playbook**: [Adoption Playbook](adoption-playbook.md)
 - **Decision Framework**: [Quick Decision Framework](docs/decision-framework)
 
 ## Open Source & Community Support

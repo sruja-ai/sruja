@@ -205,7 +205,7 @@ jobs:
       - name: Validate Architecture
         run: sruja lint architecture.sruja
       - name: Check Constraints
-        run: sruja validate --constraints architecture.sruja
+        run: sruja validate architecture.sruja
 ```
 
 **Result:** Violations block merges automatically.

@@ -270,7 +270,7 @@ sruja why "Why does API depend on Cache?" -r .
 sruja drift -r . -a architecture.sruja
 
 # 5. Export context for AI editor
-sruja context export -r . -o context.json
+sruja context -r . -o context.json
 ```
 
 ---

@@ -438,7 +438,7 @@ pub mod context;
 **Do not add an MCP server.** The `sruja-mcp` crate and `sruja mcp` / `sruja ai` commands were **removed**. Editors integrate via:
 
 1. **Skill** – `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` (and optionally `sruja-architecture-agent`).
-2. **CLI** – `sruja quickstart`, `sruja drift`, `sruja intent check`, `sruja why`, `sruja context export`.
+2. **CLI** – `sruja quickstart`, `sruja drift`, `sruja intent check`, `sruja why`, `sruja context`.
 
 See [INSTALL_AS_SKILL.md](INSTALL_AS_SKILL.md) and [skills/README.md](../skills/README.md).
 
@@ -460,7 +460,7 @@ cat .sruja/graph.json | jq '.nodes | length'
 # Test unified ask command
 ./target/release/sruja ask "What is the architecture?" -r .
 
-# Test context export
+# Test context (export for AI tools)
 ./target/release/sruja context --for-ai -r . > .cursorrules
 cat .cursorrules
 ```

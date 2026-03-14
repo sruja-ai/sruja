@@ -1056,7 +1056,7 @@ Use this to improve both **developer experience** and **quality of architecture 
 |------|------------------|----------------|
 | 1. Context | `sruja discover --context -r .` (or `--format json` for agents) | Repo context, suggested areas, framework, and component count inform scope and naming. |
 | 2. Generate | Produce DSL in **canonical form** (flat, kinds declared; no `architecture "Name" { }`). | Matches parser; fewer parse errors. |
-| 3. Lint | `sruja lint architecture.sruja` or `sruja lint --format json` | Get diagnostic codes (E201, E204, …). |
+| 3. Lint | `sruja lint architecture.sruja` or `sruja lint architecture.sruja --format json` | Get diagnostic codes (E201, E204, …). |
 | 4. Fix | Use the [Lint error → fix](#lint-error--fix) table; re-run lint. | Fix until `ok: true` / no errors. |
 | 5. Export | `sruja export markdown architecture.sruja` (optional) | Human-readable doc for review. |
 

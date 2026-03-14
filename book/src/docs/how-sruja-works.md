@@ -200,4 +200,4 @@ The `sruja` CLI ([`sruja-cli`](https://github.com/sruja-ai/sruja/tree/main/crate
 
 - **Local development**: `sruja fmt`, `sruja lint`, `sruja export`.
 - **CI/CD**: Validate and export architecture in pipelines.
-- **Export**: `sruja export json`, `sruja export markdown`, `sruja export dot`, and more.
+- **Export**: `sruja export json`, `sruja export mermaid`, `sruja export markdown`, `sruja export context`, `sruja export dsl`.

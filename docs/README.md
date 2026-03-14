@@ -28,6 +28,7 @@ sruja quickstart -r .
 | [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) | **Primary entry** - Install, use, workflows |
 | [USING_SRUJA_IN_YOUR_PROJECT.md](USING_SRUJA_IN_YOUR_PROJECT.md) | CI integration, team workflows |
 | [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) | DSL reference |
+| [LINT_JSON_OUTPUT.md](LINT_JSON_OUTPUT.md) | Lint `--format json` schema and diagnostic codes |
 | [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md) | Language design principles |
 | [RUN_GUIDE.md](RUN_GUIDE.md) | Build, run, demo |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
