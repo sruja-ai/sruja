@@ -6,6 +6,9 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[lib]
+doctest = false
+
 [dependencies]
 sruja-language = { path = "../sruja-language" }
 sruja-scan = { path = "../sruja-scan" }

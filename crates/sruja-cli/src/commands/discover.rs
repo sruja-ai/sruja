@@ -8,6 +8,7 @@ use std::path::Path;
 
 use sruja_scan::scan_repo;
 use sruja_scan::scan_scope::resolve_scan_scope;
+use sruja_scan::Graph;
 
 use super::CliError;
 use crate::context_detection::{
@@ -175,6 +176,15 @@ pub fn discover_context_json(repo: &str) -> Result<DiscoverContextJson, CliError
         )));
     }
     let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
+    discover_context_json_from_graph(repo, repo_path, &graph)
+}
+
+/// Build repo context as JSON from a pre-scanned graph (avoids rescanning).
+pub fn discover_context_json_from_graph(
+    repo: &str,
+    repo_path: &Path,
+    graph: &Graph,
+) -> Result<DiscoverContextJson, CliError> {
     let (_, scan_scope) = resolve_scan_scope(repo_path);
     let languages = detect_languages(repo_path);
     let primary_language = languages
@@ -186,8 +196,8 @@ pub fn discover_context_json(repo: &str) -> Result<DiscoverContextJson, CliError
         repo_path,
         languages.first().map(|(l, _)| l.as_str()).unwrap_or(""),
     );
-    let context = build_repo_context(repo_path, &graph);
-    let (is_monolith, is_microservices) = detect_architecture_style(&graph);
+    let context = build_repo_context(repo_path, graph);
+    let (is_monolith, is_microservices) = detect_architecture_style(graph);
     let architecture_style = if is_microservices {
         "microservices"
     } else if is_monolith {

@@ -180,7 +180,30 @@ enum Commands {
         #[arg(long)]
         fail_on: Option<String>,
     },
-
+    /// Initialize Sruja in a repo: create .sruja/, run quickstart, optionally generate prompt for baseline
+    Init {
+        /// Path to repository root (defaults to current directory)
+        #[arg(long, short = 'r', default_value = ".")]
+        path: String,
+        /// Generate .sruja/init_prompt.txt for use with sruja-architecture skill
+        #[arg(long)]
+        prompt: bool,
+    },
+    /// Show repo health, baseline, and truth status (reviewed / drifted / unknown)
+    Status {
+        /// Path to repository root (defaults to current directory)
+        #[arg(long, short = 'r', default_value = ".")]
+        path: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Refresh evidence (write .sruja/context.json) and run drift
+    Sync {
+        /// Path to repository root (defaults to current directory)
+        #[arg(long, short = 'r', default_value = ".")]
+        path: String,
+    },
 
     /// Compare declared architectural intent vs actual implementation
     Intent {
@@ -353,6 +376,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             generate_baseline,
             fail_on,
         } => commands::quickstart(&path, &format, generate_baseline, fail_on.as_deref()).await,
+        Commands::Init { path, prompt } => commands::init(&path, prompt).await,
+        Commands::Status { path, format } => commands::status(&path, &format).await,
+        Commands::Sync { path } => commands::sync(&path).await,
         Commands::Intent { cmd } => match cmd {
             IntentCommand::Check {
                 repo,

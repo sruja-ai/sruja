@@ -20,7 +20,7 @@ pub use health::calculate_health_score_from_violations;
 pub use types::{
     DiffEdge, DiffError, DiffNode, DiffResult, DiffSummary, DriftConfig, DriftReport, EdgeDiff,
     HealthScoreBreakdown, HealthScorePenalties, NodeDiff, NodeMatch, Severity, SourceRef,
-    Violation, ViolationKind,
+    TruthStatus, Violation, ViolationKind,
 };
 
 #[cfg(test)]

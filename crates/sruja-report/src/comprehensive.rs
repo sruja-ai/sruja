@@ -205,7 +205,7 @@ pub fn build_recommendations(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sruja_diff::{DriftReport, Severity, Violation, ViolationKind};
+    use sruja_diff::{DriftReport, Severity, TruthStatus, Violation, ViolationKind};
     use sruja_scan::ScanScope;
 
     #[test]
@@ -237,6 +237,7 @@ mod tests {
             suggestions: vec![],
             health_score: 80,
             health_breakdown: None,
+            truth_status: TruthStatus::Unknown,
         };
         let recs = build_recommendations(&report, &[], 3);
         assert_eq!(recs.len(), 3);

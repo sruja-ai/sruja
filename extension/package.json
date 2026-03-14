@@ -125,12 +125,12 @@
         "title": "Sruja: Run drift (architecture health)"
       },
       {
-        "command": "sruja.analyzeRepo",
-        "title": "Sruja: Analyze repository"
+        "command": "sruja.refreshContext",
+        "title": "Sruja: Refresh repo context"
       },
       {
-        "command": "sruja.whyComponent",
-        "title": "Sruja: Why (explain dependencies)"
+        "command": "sruja.status",
+        "title": "Sruja: Status"
       }
     ],
     "menus": {

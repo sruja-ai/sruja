@@ -4,7 +4,7 @@ use crate::health::calculate_health_score_with_breakdown;
 use crate::source_ref::{collect_cycle_sources, collect_edge_sources, collect_node_path_source};
 use crate::types::HealthScorePenalties;
 use crate::types::{
-    DriftConfig, DriftReport, HealthScoreBreakdown, Severity, Violation, ViolationKind,
+    DriftConfig, DriftReport, HealthScoreBreakdown, Severity, TruthStatus, Violation, ViolationKind,
 };
 use sruja_scan::{Graph, NodeKind};
 use std::collections::{HashMap, HashSet};
@@ -114,6 +114,7 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
 
     DriftReport {
         scan_scope: sruja_scan::scan_scope::ScanScope::default(),
+        truth_status: TruthStatus::Unknown,
         total_modules: graph
             .nodes
             .iter()

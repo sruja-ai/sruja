@@ -21,9 +21,3 @@ pub fn resolve_architecture_path(repo_root: &Path) -> Option<PathBuf> {
     }
     None
 }
-
-/// Returns the path to use when creating a new architecture file (e.g. in init).
-/// Prefers repo.sruja at repo root.
-pub fn default_architecture_path_for_create(repo_root: &Path) -> PathBuf {
-    repo_root.join(REPO_SURUJA)
-}

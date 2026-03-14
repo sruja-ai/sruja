@@ -12,6 +12,7 @@ use super::CliError;
 use crate::context_detection::{
     build_repo_context, detect_architecture_style, detect_framework, detect_languages,
 };
+use crate::utils::architecture_path;
 
 fn should_fail_on_violations(fail_on: Option<&str>, violations: &[sruja_diff::Violation]) -> bool {
     if let Some(criteria) = fail_on {
@@ -67,6 +68,24 @@ fn should_fail_on_violations(fail_on: Option<&str>, violations: &[sruja_diff::Vi
     false
 }
 
+fn truth_status_from_baseline_compare(
+    scanned: &Graph,
+    baseline_path: &Path,
+) -> Result<sruja_diff::TruthStatus, CliError> {
+    let content = fs::read_to_string(baseline_path)?;
+    let parser = sruja_language::Parser::new(baseline_path.to_string_lossy().as_ref());
+    let program = parser.parse(&content).map_err(|diags| CliError::Parse {
+        file: baseline_path.to_string_lossy().to_string(),
+        message: diags
+            .iter()
+            .map(|d| d.message.as_str())
+            .collect::<Vec<_>>()
+            .join("; "),
+    })?;
+    let proposed_graph = sruja_diff::program_to_graph(&program);
+    Ok(sruja_diff::compare_graphs(scanned, &proposed_graph).truth_status)
+}
+
 pub async fn scan(repo_root: &str, output: &str) -> Result<(), CliError> {
     let graph =
         sruja_scan::scan_repo(Path::new(repo_root)).map_err(|e| CliError::Scan(e.to_string()))?;
@@ -102,7 +121,11 @@ pub async fn drift(
 
     let actual_graph = scan_repo(repo_path)?;
 
-    if let Some(arch_path) = architecture_path {
+    let resolved = architecture_path::resolve_architecture_path(repo_path);
+    let effective_arch = architecture_path
+        .or_else(|| resolved.as_ref().and_then(|p| p.to_str()));
+
+    if let Some(arch_path) = effective_arch {
         let arch_file = Path::new(arch_path);
         if !arch_file.exists() {
             return Err(CliError::Io(std::io::Error::new(
@@ -155,6 +178,88 @@ pub async fn drift(
     Ok(())
 }
 
+/// Result of `sruja status`: baseline path, truth status, and counts for extension/CI.
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct StatusOutput {
+    /// Resolved architecture file path, or null if none found.
+    pub baseline: Option<String>,
+    /// "reviewed" | "drifted" | "unknown"
+    pub truth_status: String,
+    pub violations_count: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub health_score: Option<u8>,
+    /// ISO8601 timestamp from .sruja/context.json if present.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_updated_at: Option<String>,
+}
+
+/// Compute status without printing: resolve baseline, run drift, return summary.
+pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
+    let repo_path = Path::new(repo_root);
+    if !repo_path.exists() {
+        return Err(CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {}", repo_root),
+        )));
+    }
+
+    let baseline = architecture_path::resolve_architecture_path(repo_path)
+        .and_then(|p| p.to_str().map(String::from));
+
+    let context_updated_at = std::fs::read_to_string(repo_path.join(".sruja/context.json"))
+        .ok()
+        .and_then(|s| {
+            serde_json::from_str::<serde_json::Value>(&s).ok().and_then(|v| {
+                v.get("updated_at")
+                    .and_then(|t| t.as_str())
+                    .map(String::from)
+            })
+        });
+
+    let graph = scan_repo(repo_path)?;
+
+    if let Some(ref arch_path) = baseline {
+        let content = fs::read_to_string(arch_path)?;
+        let parser = sruja_language::Parser::new(arch_path);
+        let program = parser.parse(&content).map_err(|diags| CliError::Parse {
+            file: arch_path.clone(),
+            message: diags
+                .iter()
+                .map(|d| d.message.as_str())
+                .collect::<Vec<_>>()
+                .join("; "),
+        })?;
+        let proposed = sruja_diff::program_to_graph(&program);
+        let diff = sruja_diff::compare_graphs(&graph, &proposed);
+        let truth_status = match diff.truth_status {
+            sruja_diff::TruthStatus::Reviewed => "reviewed",
+            sruja_diff::TruthStatus::Drifted => "drifted",
+            sruja_diff::TruthStatus::Unknown => "unknown",
+        };
+        return Ok(StatusOutput {
+            baseline: Some(arch_path.clone()),
+            truth_status: truth_status.to_string(),
+            violations_count: diff.violations.len(),
+            health_score: Some(diff.summary.health_score),
+            context_updated_at,
+        });
+    }
+
+    let drift = sruja_diff::detect_architectural_drift(&graph);
+    let truth_status = match drift.truth_status {
+        sruja_diff::TruthStatus::Reviewed => "reviewed",
+        sruja_diff::TruthStatus::Drifted => "drifted",
+        sruja_diff::TruthStatus::Unknown => "unknown",
+    };
+    Ok(StatusOutput {
+        baseline: None,
+        truth_status: truth_status.to_string(),
+        violations_count: drift.violations.len(),
+        health_score: Some(drift.health_score),
+        context_updated_at,
+    })
+}
+
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct QuickstartResult {
     pub repo: String,
@@ -167,6 +272,8 @@ pub struct QuickstartResult {
     pub inventory: InventorySummary,
     pub top_findings: Vec<Finding>,
     pub actionable_fixes: Vec<ActionableFix>,
+    /// No DSL baseline in quickstart: always "unknown".
+    pub truth_status: String,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -258,6 +365,7 @@ impl QuickstartResult {
             },
             top_findings,
             actionable_fixes,
+            truth_status: "unknown".to_string(),
         }
     }
 }
@@ -551,7 +659,7 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
     println!("{}", "═".repeat(70).truecolor(100, 100, 100));
 }
 
-fn print_diff_text(result: &sruja_diff::DiffResult, violations_only: bool) {
+pub(crate) fn print_diff_text(result: &sruja_diff::DiffResult, violations_only: bool) {
     println!("{}", "═".repeat(60));
     println!("Baseline Drift: Scan vs DSL");
     println!("{}", "═".repeat(60));
@@ -648,7 +756,7 @@ fn print_violation_sources(v: &sruja_diff::Violation) {
     }
 }
 
-fn print_drift_text(result: &sruja_diff::DriftReport, violations_only: bool) {
+pub(crate) fn print_drift_text(result: &sruja_diff::DriftReport, violations_only: bool) {
     println!("{}", "═".repeat(60));
     println!("Architecture Drift Detection");
     println!("{}", "═".repeat(60));
@@ -793,6 +901,22 @@ pub async fn quickstart(
     eprintln!("   ✓ Analysis complete");
     eprintln!();
 
+    // If a baseline exists, compute truth_status from scan vs DSL.
+    let baseline_path = architecture_path::resolve_architecture_path(repo_path);
+    let truth_status = if let Some(ref p) = baseline_path {
+        match truth_status_from_baseline_compare(&graph, p) {
+            Ok(s) => match s {
+                sruja_diff::TruthStatus::Reviewed => "reviewed",
+                sruja_diff::TruthStatus::Drifted => "drifted",
+                sruja_diff::TruthStatus::Unknown => "unknown",
+            }
+            .to_string(),
+            Err(_) => "unknown".to_string(),
+        }
+    } else {
+        "unknown".to_string()
+    };
+
     if generate_baseline {
         eprintln!("📝 Generate baseline using sruja-architecture skill:");
         eprintln!("   'Use sruja-architecture. Run `sruja discover --context -r . --format json`,");
@@ -802,11 +926,16 @@ pub async fn quickstart(
 
     match format {
         "json" => {
-            let output =
+            let mut output =
                 QuickstartResult::from_drift_report(&drift_report, &graph, repo_root, &scan_scope);
+            output.truth_status = truth_status;
             println!("{}", serde_json::to_string_pretty(&output)?);
         }
         _ => {
+            if baseline_path.is_some() {
+                eprintln!("🧭 Truth (baseline present): {}", truth_status.cyan());
+                eprintln!();
+            }
             print_quickstart_summary(&drift_report, &graph, repo_root);
         }
     }

@@ -19,13 +19,15 @@ Core skill for architecture discovery and DSL authoring with Sruja. This skill p
 
 ### 1. Collect Evidence
 
-Run discovery to gather deterministic evidence from the codebase:
+**Editor integration:** If the user has run **Sruja: Refresh repo context** in the editor (or `.sruja/context.json` exists), use that file for evidence first. If the file has an `updated_at` timestamp older than about 1 hour, treat it as stale and run discovery again or suggest refreshing.
+
+Otherwise, run discovery to gather deterministic evidence:
 
 ```bash
 sruja discover --context -r . --format json
 ```
 
-This returns:
+Evidence (from file or command) returns:
 - Repository structure
 - Detected technologies
 - Module boundaries
@@ -89,10 +91,20 @@ Fix all errors before proceeding. Common issues:
 Once a baseline exists, run drift detection to find new violations:
 
 ```bash
-sruja drift -r . -a architecture.sruja --format json
+sruja drift -r .
 ```
 
+(If no `repo.sruja` or `architecture.sruja` exists, drift runs structural-only analysis; use `-a path` to specify a different file.)
+
 Use drift results to identify areas needing refinement.
+
+## Operating Modes
+
+This skill supports three modes:
+
+1. **Local authoring** — Create or update `repo.sruja` (or `architecture.sruja`) in the repo. Use evidence + targeted questions, then generate minimal DSL and run `sruja lint`.
+2. **System context** — Use discover output or `.sruja/context.json` to get the right slice of the system for the current task. Prefer canonical element IDs and boundaries from the evidence.
+3. **Drift refinement** — After code or intent changes, use `sruja drift -r .` (and optionally `sruja intent propose`) to turn evidence deltas into DSL updates or open questions. Do not invent changes without evidence.
 
 ## When to Apply
 
@@ -143,5 +155,7 @@ npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 Copy-paste this into your AI assistant:
 
 ```
-Use sruja-architecture skill. Run `sruja discover --context -r . --format json`, gather evidence from the repo, ask targeted questions only if scope or externals are unclear, generate a minimal architecture.sruja with evidence-based components and relationships, then run `sruja lint architecture.sruja` and fix all errors until it passes. Do not guess about missing information; list open questions instead.
+Use sruja-architecture skill. If .sruja/context.json exists and is recent (e.g. updated_at within the last hour), use it for evidence; otherwise run `sruja discover --context -r . --format json`. Gather evidence, ask targeted questions only if scope or externals are unclear, generate a minimal repo.sruja (or architecture.sruja) with evidence-based components and relationships, then run `sruja lint` and fix all errors until it passes. Do not guess about missing information; list open questions instead.
 ```
+
+**Cursor/.cursorrules:** For architecture tasks, you can add: "Use `.sruja/context.json` when present and recent; else run `sruja discover --context -r . --format json`."

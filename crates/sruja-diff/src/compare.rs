@@ -5,7 +5,7 @@ use crate::source_ref::{collect_edge_sources, collect_node_path_source};
 use crate::types::HealthScorePenalties;
 use crate::types::{
     DiffEdge, DiffNode, DiffResult, DiffSummary, EdgeDiff, NodeDiff, NodeMatch, Severity,
-    Violation, ViolationKind,
+    TruthStatus, Violation, ViolationKind,
 };
 use sruja_scan::{Edge, EdgeKind, Graph, Node, NodeKind};
 use std::collections::HashSet;
@@ -26,6 +26,12 @@ pub fn compare_graphs(actual: &Graph, proposed: &Graph) -> DiffResult {
         health_score: calculate_health_score(&node_diff, &edge_diff, &violations),
     };
 
+    let truth_status = if violations.is_empty() {
+        TruthStatus::Reviewed
+    } else {
+        TruthStatus::Drifted
+    };
+
     DiffResult {
         proposal_title: "Architecture Comparison".to_string(),
         node_diff,
@@ -33,6 +39,7 @@ pub fn compare_graphs(actual: &Graph, proposed: &Graph) -> DiffResult {
         violations,
         suggestions,
         summary,
+        truth_status,
     }
 }
 

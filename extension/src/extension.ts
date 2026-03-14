@@ -564,6 +564,85 @@ export function activate(context: vscode.ExtensionContext): void {
         );
       }
     }),
+    vscode.commands.registerCommand("sruja.refreshContext", async () => {
+      const folder = vscode.workspace.workspaceFolders?.[0];
+      if (!folder) {
+        vscode.window.showWarningMessage("Open a workspace folder to refresh repo context.");
+        return;
+      }
+      const channel = getCliOutputChannel();
+      channel.show(true);
+      channel.appendLine("Refreshing repo context (sruja discover --context -r . --format json) ...");
+      try {
+        const { stdout, stderr, code } = await runCliInWorkspace(context, [
+          "discover",
+          "--context",
+          "-r",
+          ".",
+          "--format",
+          "json",
+        ]);
+        if (code !== 0) {
+          channel.append(stdout);
+          if (stderr) channel.append(stderr);
+          vscode.window.showErrorMessage("Sruja discover failed. Is the CLI on PATH or set sruja.lsp.path?");
+          return;
+        }
+        const contextPath = path.join(folder.uri.fsPath, ".sruja", "context.json");
+        const dir = path.dirname(contextPath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        let obj: Record<string, unknown> = JSON.parse(stdout);
+        obj.updated_at = new Date().toISOString();
+        fs.writeFileSync(contextPath, JSON.stringify(obj, null, 2), "utf8");
+        channel.appendLine(`Wrote ${contextPath}`);
+        vscode.window.showInformationMessage("Sruja: Repo context updated.");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        channel.appendLine(`Error: ${msg}`);
+        vscode.window.showErrorMessage("Sruja refresh context failed: " + msg);
+      }
+    }),
+    vscode.commands.registerCommand("sruja.status", async () => {
+      const channel = getCliOutputChannel();
+      channel.show(true);
+      channel.appendLine("Running sruja status -r . --format json ...");
+      try {
+        const { stdout, stderr, code } = await runCliInWorkspace(context, [
+          "status",
+          "-r",
+          ".",
+          "--format",
+          "json",
+        ]);
+        if (stderr) channel.append(stderr);
+        if (code !== 0) {
+          channel.append(stdout);
+          channel.appendLine("--- Status failed ---");
+          return;
+        }
+        const status = JSON.parse(stdout) as {
+          baseline?: string | null;
+          truth_status?: string;
+          violations_count?: number;
+          health_score?: number;
+          context_updated_at?: string;
+        };
+        const base = status.baseline ?? "(none)";
+        const truth = status.truth_status ?? "unknown";
+        const violations = status.violations_count ?? 0;
+        const score = status.health_score != null ? ` ${status.health_score}/100` : "";
+        const ctxAt = status.context_updated_at ? ` | Context: ${status.context_updated_at}` : "";
+        channel.appendLine(`Baseline: ${base}`);
+        channel.appendLine(`Truth: ${truth} (${violations} violation(s))${score}${ctxAt}`);
+        channel.appendLine("--- Done ---");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        channel.appendLine(`Error: ${msg}`);
+        vscode.window.showErrorMessage("Sruja status failed. Is the CLI on PATH or set sruja.lsp.path?");
+      }
+    }),
   );
 }
 
@@ -586,3 +665,10 @@ function getDiagramPreviewHtml(mermaidCodeEscaped: string): string {
       mermaid.initialize({ startOnLoad: false });
       mermaid.run({ nodes: [el] }).catch(function(err) {
         el.innerHTML = '<p style="color:#c00;font-family:sans-serif;">' + (err.message || String(err)) + '</p>';
+      });
+    })();
+  </script>
+</body>
+</html>
+`;
+}

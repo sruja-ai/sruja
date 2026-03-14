@@ -89,9 +89,8 @@ test-results/
 .codacy/
 internal-docs
 
-# Sruja runtime state (memory, facts, interactions)
-.sruja/memory/
-.sruja/cache/
+# Sruja runtime state (memory, cache, local context)
+.sruja/
 
 # Demo generated outputs
 demo/intent_report.md

@@ -101,6 +101,15 @@ pub enum Severity {
     Info,
 }
 
+/// Truth state for architecture vs evidence: reviewed (DSL matches), drifted (violations), unknown (no baseline).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TruthStatus {
+    Reviewed,
+    Drifted,
+    Unknown,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DiffResult {
     pub proposal_title: String,
@@ -109,6 +118,8 @@ pub struct DiffResult {
     pub violations: Vec<Violation>,
     pub suggestions: Vec<String>,
     pub summary: DiffSummary,
+    /// reviewed = no violations; drifted = has violations.
+    pub truth_status: TruthStatus,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -178,7 +189,7 @@ pub struct HealthScoreBreakdown {
     pub other_penalty: u8,
 }
 
-/// Result of architectural drift detection
+/// Result of architectural drift detection (no DSL baseline: structural-only analysis).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DriftReport {
     /// Scan scope metadata (what was included/excluded).
@@ -196,4 +207,6 @@ pub struct DriftReport {
     /// Why the health score is what it is (structural only: cycles, layers, god modules, orphans).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub health_breakdown: Option<HealthScoreBreakdown>,
+    /// No baseline: truth_status is always unknown for structural-only drift.
+    pub truth_status: TruthStatus,
 }

@@ -4,7 +4,7 @@
 mod tests {
     use crate::types::{
         DiffResult, DiffSummary, EdgeDiff, HealthScorePenalties, NodeDiff, Severity, SourceRef,
-        Violation, ViolationKind,
+        TruthStatus, Violation, ViolationKind,
     };
     use crate::{
         calculate_health_score_from_violations, compare_graphs, detect_architectural_drift,
@@ -375,6 +375,7 @@ DB = database "Primary DB"
                 removed_dependencies: 0,
                 health_score: 100,
             },
+            truth_status: TruthStatus::Reviewed,
         };
         assert!(empty.is_empty());
 
@@ -419,6 +420,7 @@ DB = database "Primary DB"
                 removed_dependencies: 0,
                 health_score: 100,
             },
+            truth_status: TruthStatus::Reviewed,
         };
         assert!(!no_issues.has_issues());
 
@@ -431,6 +433,7 @@ DB = database "Primary DB"
                 suggestion: None,
                 sources: vec![],
             }],
+            truth_status: TruthStatus::Drifted,
             ..no_issues
         };
         assert!(with_violation.has_issues());
