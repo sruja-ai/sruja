@@ -14,7 +14,7 @@ Goal: run an LLM-driven architecture analysis on **real cloned repos**, generate
 
 Optional (recommended):
 - **Sruja skills present in the repo you analyze** (so the agent sees the DSL conventions):
-  - Copy `skills/sruja-architecture-agent` into the target repo under `.agents/skills/` (or equivalent), or
+  - Copy `skills/sruja-architecture` into the target repo under `.agents/skills/` (or equivalent), or
   - Embed the rules/prompt in your OpenCode prompt (shown below).
 
 ## 1. Clone test repos (local)
@@ -74,10 +74,10 @@ If OpenCode can read local skill files, copy the agent skill into the repo:
 ```bash
 cd evaluation/real-world-test/test-repos/express
 mkdir -p .agents/skills
-cp -r /Users/dilipkola/Workspace/sruja/skills/sruja-architecture-agent .agents/skills/
+cp -r /Users/dilipkola/Workspace/sruja/skills/sruja-architecture .agents/skills/
 ```
 
-Then run OpenCode (Option A or B) and reference the skill’s guidance in your prompt (e.g. “use sruja-architecture-agent rules”).
+Then run OpenCode (Option A or B) and reference the skill’s guidance in your prompt (e.g. “use sruja-architecture rules”).
 
 ## 3. Validate output (mandatory)
 
@@ -143,4 +143,3 @@ if you save outputs into a comparison directory shaped like:
 
 - Some repo scripts under `scripts/` were originally written for the Cursor/Codex `task` tool. For OpenCode, prefer `scripts/run_opencode_in_repo.sh` and manual prompts.
 - If OpenCode can’t write files directly, copy/paste the generated DSL into `architecture.sruja` and then run `sruja lint`.
-

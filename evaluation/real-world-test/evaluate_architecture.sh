@@ -74,7 +74,7 @@ if [ ! -f "$ARCH_FILE" ]; then
   echo ""
   echo "To generate one:"
   echo "  cd $REPO_PATH"
-  echo "  # Use Sruja AI skills: npx skills add sruja-ai/sruja --skill sruja-architecture-agent"
+  echo "  # Use Sruja AI skills: npx skills add sruja-ai/sruja --skill sruja-architecture"
   echo "  # Then ask your AI: 'Analyze this codebase and create a Sruja architecture DSL'"
   exit 1
 fi

@@ -158,7 +158,7 @@ The JSON report from `sruja analyze -r . -f json` includes:
 | **With a baseline** | `sruja drift -r . -a architecture.sruja`, `sruja lint`, `sruja export` | When you have (or create) a `.sruja` file. |
 | **Optional** | `sruja intent check`, `sruja runtime analyze` | Trace files or intent dir. |
 
-**Drift modes:** `sruja drift -r .` runs **scan-only** (no `.sruja` needed). Use `sruja drift -r . -a architecture.sruja` to **compare code to a declared baseline**; create one with the agent skill (see `docs/INSTALL_AS_SKILL.md`) or manually.
+**Drift modes:** `sruja drift -r .` runs **scan-only** (no `.sruja` needed). Use `sruja drift -r . -a architecture.sruja` to **compare code to a declared baseline**; create one with the core Sruja skill (see `docs/INSTALL_AS_SKILL.md`) or manually.
 
 **Optional environment variables** (defaults when flags are omitted):
 
@@ -231,7 +231,7 @@ See `docs/RUN_GUIDE.md` for how to run the CLI and demos.
 Use your AI assistant (Cursor, Claude, Copilot) to discover architecture from your codebase:
 
 ```bash
-npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
 Then ask: "Analyze the architecture of my repository." The AI will scan your code and generate `.sruja` files. See `docs/INSTALL_AS_SKILL.md` for the recommended prompt.

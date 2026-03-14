@@ -453,7 +453,7 @@ For each repo you want to evaluate, create a file **`architecture.sruja`** in th
 
 1. Add the Sruja architecture skill (if not already):
    ```bash
-   npx skills add sruja-ai/sruja --skill sruja-architecture-agent
+   npx skills add sruja-ai/sruja --skill sruja-architecture
    ```
 2. Open the repo:
    ```bash

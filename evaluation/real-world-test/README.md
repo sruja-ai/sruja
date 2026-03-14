@@ -77,7 +77,7 @@ cd express
 # sruja generate architecture . > architecture.sruja
 ```
 
-**Interactive/selective capture:** To extract or focus on a specific area (e.g. one subpath, concise summary only), use the **sruja-architecture-agent** skill as described in `skills/sruja-architecture-agent/SKILL.md` (suggested areas, pick scope, concise output). No separate script is used for this flow.
+**Interactive/selective capture:** To extract or focus on a specific area (e.g. one subpath, concise summary only), use the **sruja-architecture** skill as described in `skills/sruja-architecture/REFERENCE.md` (suggested areas, pick scope, concise output). No separate script is used for this flow.
 
 **What to ask the AI:**
 1. "Analyze this codebase's structure and main components"

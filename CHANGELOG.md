@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-* **architecture-agent,evaluation,docs:** app-focused discovery loop and CLI tests ([8c7e7d4](https://github.com/sruja-ai/sruja/commit/8c7e7d48f6beb6e19b843c2a6f298f79637c86ac))
+* **architecture,evaluation,docs:** app-focused discovery loop and CLI tests ([8c7e7d4](https://github.com/sruja-ai/sruja/commit/8c7e7d48f6beb6e19b843c2a6f298f79637c86ac))
 * **docs,skill,eval:** architecture discovery best practices, evaluation, and diff-and-refine ([919685e](https://github.com/sruja-ai/sruja/commit/919685ec8c18fd1f32d19d724fdf7ac067720414))
 
 ## [0.10.2](https://github.com/sruja-ai/sruja/compare/sruja-v0.10.1...sruja-v0.10.2) (2026-03-11)

@@ -3,7 +3,7 @@
 #
 # Prerequisites:
 #   - Cursor CLI installed: agent in PATH (curl https://cursor.com/install -fsS | bash)
-#   - Sruja skill: npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent
+#   - Sruja skill: npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 #   - Optional: sruja CLI for lint (make build from sruja repo, or in PATH)
 #
 # Usage (run with bash):
@@ -34,7 +34,7 @@ for arg in "$@"; do
       echo "  --dry-run     Print prompt and repo path, do not run agent"
       echo "  -h, --help    Show this help"
       echo ""
-      echo "Prerequisites: agent (Cursor CLI), sruja-architecture-agent skill, optional: sruja CLI"
+      echo "Prerequisites: agent (Cursor CLI), sruja-architecture skill, optional: sruja CLI"
       exit 0
       ;;
     --repo)
@@ -102,16 +102,16 @@ echo "╚═══════════════════════�
 echo ""
 echo "The agent will: (1) list discovery questions, (2) generate architecture.sruja, (3) run sruja lint."
 
-echo "After it finishes: open architecture.sruja, read the \"Discovery questions I would ask\" section, answer them, and then run a refinement pass using the refinement prompt in skills/sruja-architecture-agent/SKILL.md (Gather → Ask → Build)."
+echo "After it finishes: open architecture.sruja, read the \"Discovery questions I would ask\" section, answer them, and then run a refinement pass using the refinement guidance in skills/sruja-architecture/REFERENCE.md (Gather → Ask → Build)."
 [ -n "$AGENT_FORCE" ] && echo "Running non-interactive (--force)." || echo "Approve any commands the agent proposes."
 echo ""
 
 # Ensure the skill is available inside the repo for the agent (in addition to any global install).
 # This avoids ambiguous agent behavior when global skills are not configured.
-SKILL_SRC="${SCRIPT_DIR}/../../skills/sruja-architecture-agent"
+SKILL_SRC="${SCRIPT_DIR}/../../skills/sruja-architecture"
 if [ -d "$SKILL_SRC" ]; then
   mkdir -p "${REPO_PATH}/.agents/skills"
-  rm -rf "${REPO_PATH}/.agents/skills/sruja-architecture-agent" 2>/dev/null || true
+  rm -rf "${REPO_PATH}/.agents/skills/sruja-architecture" 2>/dev/null || true
   cp -R "$SKILL_SRC" "${REPO_PATH}/.agents/skills/" 2>/dev/null || true
 fi
 

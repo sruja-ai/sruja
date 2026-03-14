@@ -8,7 +8,7 @@
 #   ./run_diff_refine_prompt.sh test-repos/express test-repos/express/architecture.sruja
 #
 # Output: run_results/DIFF_REFINE_PROMPT_<timestamp>.txt (or stdout with -)
-# Paste the output into your AI chat (Cursor, Claude, etc.) with the sruja-architecture-agent skill.
+# Paste the output into your AI chat (Cursor, Claude, etc.) with the sruja-architecture skill.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -59,9 +59,9 @@ build_prompt() {
   local sruja
   sruja=$(find_sruja)
 
-  echo "--- DIFF-AND-REFINE PROMPT (paste into AI chat with sruja-architecture-agent skill) ---"
+  echo "--- DIFF-AND-REFINE PROMPT (paste into AI chat with sruja-architecture skill) ---"
   echo ""
-  echo "Use the sruja-architecture-agent skill in **diff-and-refine** mode. I have an existing architecture file and want you to propose only changes (additions, removals, relationship fixes) so it stays in sync with the codebase. Do not rewrite from scratch."
+  echo "Use the sruja-architecture skill in **diff-and-refine** mode. I have an existing architecture file and want you to propose only changes (additions, removals, relationship fixes) so it stays in sync with the codebase. Do not rewrite from scratch."
   echo ""
   echo "Repo path: $repo"
   echo "Current architecture file: $arch"
@@ -101,5 +101,5 @@ if [ "$OUTPUT" = "-" ]; then
 else
   build_prompt "$REPO_PATH" "$ARCH_FILE" > "$OUTPUT"
   echo "📄 Diff-and-refine prompt written to: $OUTPUT"
-  echo "   Paste its contents into your AI chat (with sruja-architecture-agent skill) to get proposed changes."
+  echo "   Paste its contents into your AI chat (with sruja-architecture skill) to get proposed changes."
 fi

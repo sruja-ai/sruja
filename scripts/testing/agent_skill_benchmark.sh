@@ -191,7 +191,7 @@ generate_agent_instructions() {
 
 ## Context
 
-You are analyzing the **$name** repository using the sruja-architecture-agent skill.
+You are analyzing the **$name** repository using the sruja-architecture skill.
 
 ## Files Available
 
@@ -203,7 +203,7 @@ You are analyzing the **$name** repository using the sruja-architecture-agent sk
 
 ## Your Task
 
-Use the \`@sruja-architecture-agent\` skill to:
+Use the \`@sruja-architecture\` skill to:
 
 1. **Analyze the codebase**
    - Read README.md and key documentation

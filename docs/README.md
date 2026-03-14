@@ -10,8 +10,8 @@
 # 1. Install CLI
 curl -fsSL https://sruja.ai/install.sh | bash
 
-# 2. Install skill
-npx skills add sruja-ai/sruja --skill sruja-architecture-agent
+# 2. Install core skill
+npx skills add sruja-ai/sruja --skill sruja-architecture
 
 # 3. Get intelligence
 sruja quickstart -r .

@@ -51,8 +51,7 @@ fi
 if [ -d "$OLDPWD/skills" ]; then
   mkdir -p .sruja/skills
   cp -r "$OLDPWD/skills/sruja-architecture" .sruja/skills/ 2>/dev/null || true
-  cp -r "$OLDPWD/skills/sruja-architecture-agent" .sruja/skills/ 2>/dev/null || true
-  echo "✓ Installed sruja skills"
+  echo "✓ Installed the core sruja skill"
 fi
 
 # Create AGENTS.md in the repo

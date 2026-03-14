@@ -322,20 +322,18 @@ sruja context -r . -o context.json
 
 1. **Keep DSL + Graph hybrid** ✅
 2. **Add drift detection** between declared (DSL) and discovered (scan)
-3. **Leverage AI skills** for discovery, review, and knowledge management
+3. **Leverage AI skills** for discovery and review
 4. **Enhance CLI + skills integration** for CI/CD workflows
-5. **Build pattern library** via sruja-architecture-collaboration skill
+5. **Build pattern library** in the core architecture guidance
 6. **Add temporal/versioning** to graph
 
 ### Skill-First Approach
 
-For maximum architecture intelligence, use the skill stack:
+For maximum architecture intelligence, use the core architecture skill:
 
 ```bash
-# Install all skills
+# Install the skill
 npx skills add sruja-ai/sruja --skill sruja-architecture
-npx skills add sruja-ai/sruja --skill sruja-architecture-agent  
-npx skills add sruja-ai/sruja --skill sruja-architecture-collaboration
 ```
 
 Then leverage:
@@ -441,9 +439,9 @@ Skills provide the AI intelligence layer that multiplies CLI and Knowledge Graph
 | Intelligence Layer | CLI Commands | AI Skill Enhancement |
 |-------------------|--------------|---------------------|
 | **Syntactic** | `sruja lint` | `sruja-architecture` rules for correct DSL |
-| **Structural** | `sruja scan`, `sruja quickstart` | `sruja-architecture-agent` discovery from code |
-| **Semantic** | `sruja analyze` | `sruja-architecture` patterns + `sruja-architecture-collaboration` knowledge |
-| **Intent** | `sruja drift -a`, `sruja why` | `sruja-architecture-agent` + `sruja-architecture-collaboration` review |
+| **Structural** | `sruja scan`, `sruja quickstart` | `sruja-architecture` discovery from code |
+| **Semantic** | `sruja analyze` | `sruja-architecture` patterns and trade-offs |
+| **Intent** | `sruja drift -a`, `sruja why` | `sruja-architecture` review guidance |
 
 ### Skill-Driven Intelligence Maturity
 

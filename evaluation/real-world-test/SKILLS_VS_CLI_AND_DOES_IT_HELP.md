@@ -14,7 +14,7 @@ Yes. Use **`./run_test_and_observe.sh --no-clone --multi-repo`** to run quicksta
 1. **With skill**  
    - Ensure the skill is present in the repo (e.g. run `./prepare_skill_in_real_projects.sh` so each `test-repos/<name>/` has `.agents/skills/sruja-architecture/`).
    - Open that repo in Cursor (or `cd` there and run Cursor CLI).
-   - Ask the agent to generate architecture: e.g. *“Analyze this codebase and generate architecture.sruja using Sruja DSL. Use the sruja-architecture-agent skill. Run sruja lint on the result.”*
+   - Ask the agent to generate architecture: e.g. *“Analyze this codebase and generate architecture.sruja using Sruja DSL. Use the sruja-architecture skill. Run sruja lint on the result.”*
    - Note: did it produce valid DSL? Did `sruja lint architecture.sruja` pass? Is the structure and level of detail reasonable?
 
 2. **Quality comparison (automated)**  

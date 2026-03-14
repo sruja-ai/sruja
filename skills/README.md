@@ -14,7 +14,7 @@ This directory contains skills for **AI code editors** (Cursor, Codex, and other
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
-**Full guide** – [docs/INSTALL_AS_SKILL.md](../docs/INSTALL_AS_SKILL.md) – editor-specific steps, Cursor options, and which skill to choose.
+**Full guide** – [docs/GETTING_STARTED_SKILL.md](../docs/GETTING_STARTED_SKILL.md) – editor-specific steps and recommended prompts.
 
 **Repo pointer** – [.architecture-skill.md](../.architecture-skill.md) in the repo root has the same one-command install and links.
 
@@ -22,7 +22,7 @@ npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 
 ### sruja-architecture
 
-Comprehensive guide for software architecture design using Sruja DSL.
+Primary skill for 90% of users. Covers architecture design, repo discovery, and `.sruja` generation with one install.
 
 **Install (appears on [skills.sh](https://skills.sh) leaderboard via install telemetry):**
 
@@ -33,6 +33,8 @@ npx skills add sruja-ai/sruja --skill sruja-architecture
 **Contents:**
 
 - 50+ rules across 6 categories
+- Evidence-based discovery from code and specs
+- `.sruja` generation and update workflow
 - Architectural principles and patterns
 - Component types and guidelines
 - Relationship best practices
@@ -47,47 +49,6 @@ npx skills add sruja-ai/sruja --skill sruja-architecture
 4. Relationship Guidelines (HIGH)
 5. Anti-Patterns (MEDIUM)
 6. Trade-offs & Decisions (MEDIUM)
-
-### sruja-architecture-agent
-
-AI-powered architecture discovery skill for analyzing codebases and generating Sruja DSL.
-
-**Install:**
-
-```bash
-npx skills add sruja-ai/sruja --skill sruja-architecture-agent
-```
-
-**Contents:**
-
-- Codebase analysis patterns
-- Technology detection
-- Dependency discovery
-- Sruja DSL generation
-- Multi-repo support
-
-### sruja-architecture-collaboration
-
-Collaborative architecture intelligence with multi-agent teams, knowledge graphs, and review workflows.
-
-**Install:**
-
-```bash
-npx skills add sruja-ai/sruja --skill sruja-architecture-collaboration
-```
-
-**Contents:**
-
-- Multi-agent team roles (Analyst, Architect, Reviewer, Validator, Facilitator)
-- Collaboration workflows (review cycles, live sessions)
-- Knowledge management (pattern library, ADRs, traceability)
-- CI/CD integration for architecture reviews
-
-**Categories:**
-
-1. Agent Roles (5 specialized roles)
-2. Collaboration Workflows (review, session)
-3. Knowledge Graph (patterns, decisions, traceability)
 
 ## Best practices (SKILL.md)
 
@@ -150,7 +111,7 @@ Skills are **listed automatically** on [skills.sh](https://skills.sh): when user
 
 ## Related documentation
 
-- [Install as skill](../docs/INSTALL_AS_SKILL.md) – one-page install guide for end users
+- [Getting started with skills](../docs/GETTING_STARTED_SKILL.md) – one-page install guide for end users
 - [AI Editor Integration](../docs/AI_EDITOR_INTEGRATION.md)
 - [.architecture-skill.md](../.architecture-skill.md) (pointer file in repo root)
 - [Language specification](../docs/LANGUAGE_SPECIFICATION.md)
@@ -172,18 +133,6 @@ Planned skills for Sruja:
 - `sruja-validation` - Architecture validation rules and checks
 - `sruja-migration` - Patterns for architecture migrations
 - `sruja-security` - Security architecture patterns
-
-## Skill Dependencies
-
-Some skills depend on others for full functionality:
-
-```
-sruja-architecture-collaboration
-  ├── sruja-architecture (design principles)
-  └── sruja-architecture-agent (discovery)
-```
-
-Install dependencies first for best results.
 
 ## Improving the skills
 

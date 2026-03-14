@@ -1,4 +1,4 @@
-//! Generate a prompt that combines the Sruja architecture-agent skill and repo context
+//! Generate a prompt that combines the Sruja architecture skill and repo context
 //! so any LLM can produce architecture.sruja without Cursor CLI. See docs/SKILLS_WITHOUT_CURSOR_CLI.md.
 
 use std::path::Path;
@@ -32,8 +32,8 @@ fn resolve_skill_path(skill_path: Option<&str>) -> Option<std::path::PathBuf> {
             return Some(path.to_path_buf());
         }
     }
-    // Defaults: ./SKILL.md, then ./skills/sruja-architecture-agent/SKILL.md
-    for default in ["./SKILL.md", "./skills/sruja-architecture-agent/SKILL.md"] {
+    // Defaults: ./SKILL.md, then ./skills/sruja-architecture/SKILL.md
+    for default in ["./SKILL.md", "./skills/sruja-architecture/SKILL.md"] {
         let path = Path::new(default);
         if path.exists() {
             return Some(path.canonicalize().unwrap_or_else(|_| path.to_path_buf()));
@@ -51,7 +51,7 @@ pub fn generate_prompt(
     let skill_path_buf = resolve_skill_path(skill_path).ok_or_else(|| {
         CliError::Io(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            "Skill file not found. Set --skill-path or SRUJA_SKILL_PATH to the path to sruja-architecture-agent/SKILL.md (e.g. /path/to/sruja/skills/sruja-architecture-agent/SKILL.md), or put SKILL.md in the current directory.",
+            "Skill file not found. Set --skill-path or SRUJA_SKILL_PATH to the path to sruja-architecture/SKILL.md (e.g. /path/to/sruja/skills/sruja-architecture/SKILL.md), or put SKILL.md in the current directory.",
         ))
     })?;
 

@@ -1,7 +1,7 @@
 //! Discovery commands: question bank for intelligent architecture capture.
 //!
-//! Use with the sruja-architecture-agent skill so the AI asks users these questions
-//! before or during discovery. See skills/sruja-architecture-agent/SKILL.md.
+//! Use with the sruja-architecture skill so the AI asks users these questions
+//! before or during discovery. See skills/sruja-architecture/REFERENCE.md.
 
 use std::collections::HashSet;
 use std::path::Path;
@@ -41,11 +41,11 @@ Ask the user 2–5 of these (adapt to context). Use answers to set scope, subpat
 - Prefer different names for systems or containers?
 
 ---
-Use with: npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent
+Use with: npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 Then in Cursor: run the agent and ask it to discover architecture; it will use this question bank.
 "#;
 
-/// Print the discovery question bank for use with the sruja-architecture-agent skill.
+/// Print the discovery question bank for use with the sruja-architecture skill.
 pub fn discover_questions() -> Result<(), CliError> {
     println!("{}", QUESTION_BANK);
     Ok(())

@@ -37,7 +37,6 @@ for project_info in "${PROJECTS[@]}"; do
   # Setup
   mkdir -p "$REPO_DIR/.sruja"
   cp -r skills/sruja-architecture "$REPO_DIR/.sruja/" 2>/dev/null || true
-  cp -r skills/sruja-architecture-agent "$REPO_DIR/.sruja/" 2>/dev/null || true
   
   # Create task instructions
   cat > "$REPO_DIR/AGENTS.md" << EOF
@@ -65,7 +64,7 @@ Analyze this codebase and generate architecture.sruja.
 - Relationships
 EOF
   
-  echo "✓ Repository prepared: $REPO_DIR"
+  echo "✓ Repository prepared with the core Sruja skill: $REPO_DIR"
   echo ""
   echo "Next: Run opencode analysis"
   echo "  cd $REPO_DIR"

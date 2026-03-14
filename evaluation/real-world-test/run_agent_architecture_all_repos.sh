@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run Cursor agent on each repo to generate a detailed architecture.sruja.
 #
-# Prerequisites: Cursor CLI (agent), sruja-architecture-agent skill, sruja in PATH.
+# Prerequisites: Cursor CLI (agent), sruja-architecture skill, sruja in PATH.
 #
 # Usage:
 #   bash run_agent_architecture_all_repos.sh           # Run on REPOS_LIST below
@@ -101,10 +101,10 @@ for name in "${FINAL_REPOS[@]}"; do
   echo "▶ $name ..."
 
   # Ensure the skill is available inside the repo for the agent (in addition to any global install).
-  SKILL_SRC="${SCRIPT_DIR}/../../skills/sruja-architecture-agent"
+  SKILL_SRC="${SCRIPT_DIR}/../../skills/sruja-architecture"
   if [ -d "$SKILL_SRC" ]; then
     mkdir -p "${repo_path}/.agents/skills"
-    rm -rf "${repo_path}/.agents/skills/sruja-architecture-agent" 2>/dev/null || true
+    rm -rf "${repo_path}/.agents/skills/sruja-architecture" 2>/dev/null || true
     cp -R "$SKILL_SRC" "${repo_path}/.agents/skills/" 2>/dev/null || true
   fi
 

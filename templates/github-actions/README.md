@@ -30,7 +30,7 @@ cp templates/github-actions/sruja-security.yml .github/workflows/
 - Add `templates/github-actions/sruja-architecture-pr.yml` to gate PRs on:
   - `sruja drift-pr` (new violations only)
   - `sruja lint` for blueprint files under `architecture/**/*.sruja` and/or `docs/architecture/**/*.sruja`
-- When CI fails, fix locally by updating your `.sruja` blueprint using the `sruja-architecture` (and optionally `sruja-architecture-agent`) skill, then re-run `sruja lint` before pushing.
+- When CI fails, fix locally by updating your `.sruja` blueprint using the `sruja-architecture` skill, then re-run `sruja lint` before pushing.
 
 ## Configuration
 

@@ -1,12 +1,12 @@
 ---
 name: sruja-architecture
-description: Architecture-as-code with Sruja DSL. Use when generating or refactoring Sruja .sruja files, designing system architecture, or making trade-off decisions (monolith vs microservices, sync vs async). Covers C4-style components, relationships, patterns, and anti-patterns.
+description: Architecture-as-code with Sruja DSL. Use when discovering or documenting architecture from a repo, generating or refactoring .sruja files, designing system architecture, or making trade-off decisions (monolith vs microservices, sync vs async). Covers C4-style components, relationships, patterns, anti-patterns, and evidence-based architecture capture from code or specs.
 license: Apache-2.0
 ---
 
 # Sruja Architecture DSL
 
-Comprehensive guide for software architecture design using Sruja DSL. Contains 50+ rules across 6 categories covering architectural principles, patterns, components, relationships, anti-patterns, and trade-offs. Designed to help AI assistants generate correct, well-architected Sruja DSL files.
+Core Sruja skill for architecture design and architecture discovery. Contains 50+ rules across 6 categories covering architectural principles, patterns, components, relationships, anti-patterns, trade-offs, and evidence-based capture from code or specs. Designed to help AI assistants generate correct, well-architected Sruja DSL files.
 
 **Why Sruja:** Sruja gives you machine-readable architecture: every element has description and technology, relationships are explicit and labeled. So you can lint, diff, and run drift/baseline checks against code. Use it when you need architecture-as-data, not only diagrams.
 
@@ -14,11 +14,30 @@ Comprehensive guide for software architecture design using Sruja DSL. Contains 5
 
 Reference these guidelines when:
 
+- Discovering or documenting architecture from a repo
 - Generating Sruja architecture DSL from requirements
+- Generating or updating `.sruja` from code, OpenAPI, GraphQL, or AsyncAPI specs
 - Refactoring existing Sruja architectures
 - Designing new software architectures
 - Reviewing Sruja DSL files
 - Making architectural decisions
+
+## Common Workflows
+
+### 1. Discover architecture from code
+
+- Run `sruja discover --context -r .` (or `-r <subpath>`) first.
+- Gather evidence from manifests, entry points, config, and docs before modeling.
+- Ask 2-5 targeted questions only when scope, boundaries, or externals are ambiguous.
+- Generate or update `architecture.sruja`, then run `sruja lint` and fix until it passes.
+
+For the full discovery and generation workflow, read `REFERENCE.md`.
+
+### 2. Design or refactor `.sruja` directly
+
+- Use the rule categories below to choose the right C4 level, labels, and relationships.
+- Prefer fewer, correct elements over speculative detail.
+- Run `sruja lint` after each iteration.
 
 ## Rule Categories by Priority
 
@@ -98,6 +117,8 @@ Each rule file contains:
 - Sruja DSL code examples
 - Common mistakes to avoid
 - Related rules
+
+For discovery, scope selection, prompts, and evidence-first generation from code or specs: `REFERENCE.md`
 
 ## Full Compiled Document
 

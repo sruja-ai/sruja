@@ -1,4 +1,4 @@
-Use the sruja-architecture-agent skill. Create a detailed architecture for this repo.
+Use the sruja-architecture skill. Create a detailed architecture for this repo.
 
 1) Context: Run "sruja discover --context -r ." to get repo context. List 2–3 contextual discovery questions you would ask (tailored to this repo). Output under "Discovery questions I would ask:".
 

@@ -277,7 +277,7 @@ enum Commands {
         #[command(subcommand)]
         cmd: RuntimeCommand,
     },
-    /// Discovery: question bank or repo context for intelligent capture (use with sruja-architecture-agent skill)
+    /// Discovery: question bank or repo context for intelligent capture (use with sruja-architecture skill)
     Discover {
         /// Print repo context summary (structure, technologies, suggested areas) for contextual questions
         #[arg(long)]
@@ -294,7 +294,7 @@ enum Commands {
         /// Path to repository
         #[arg(long, short = 'r', default_value = ".")]
         repo: String,
-        /// Path to skill file (SKILL.md); else SRUJA_SKILL_PATH or ./SKILL.md or ./skills/sruja-architecture-agent/SKILL.md
+        /// Path to skill file (SKILL.md); else SRUJA_SKILL_PATH or ./SKILL.md or ./skills/sruja-architecture/SKILL.md
         #[arg(long)]
         skill_path: Option<String>,
         /// Emit prompt only (no LLM call); write to -o or stdout

@@ -1,5 +1,5 @@
 // Express.js Architecture - Generated WITH Sruja skill
-// Follows sruja-architecture-agent conventions
+// Follows sruja-architecture conventions
 
 express = system "Express.js Framework" {
   description "Fast, unopinionated, minimalist web framework for Node.js. Entry: lib/express.js createApplication()"

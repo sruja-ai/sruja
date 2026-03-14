@@ -1,6 +1,6 @@
 # Getting Started with Sruja
 
-**5 minutes to architecture intelligence** using AI-powered discovery, validation, and review.
+**5 minutes to architecture intelligence** using one core skill for design and discovery.
 
 ## TL;DR
 
@@ -8,14 +8,15 @@
 # 1. Install CLI
 curl -fsSL https://sruja.ai/install.sh | bash
 
-# 2. Install skills (in your project)
-npx skills add sruja-ai/sruja --skill sruja-architecture-agent
+# 2. Install the core skill
+npx skills add sruja-ai/sruja --skill sruja-architecture
 
 # 3. Get instant intelligence
 sruja quickstart -r .
 
 # 4. Generate architecture (in AI editor)
-"Use sruja-architecture-agent. Run `sruja discover --context -r .`, 
+"Use sruja-architecture. Run `sruja discover --context -r .`,
+gather evidence, ask targeted questions if needed,
 generate architecture.sruja, run `sruja lint` and fix."
 ```
 
@@ -25,10 +26,10 @@ generate architecture.sruja, run `sruja lint` and fix."
 
 | Editor | Install |
 |--------|---------|
-| **Cursor** | `npx skills add sruja-ai/sruja --skill sruja-architecture-agent` |
+| **Cursor** | `npx skills add sruja-ai/sruja --skill sruja-architecture` |
 | **GitHub Copilot** | Copy [.copilot-instructions.md](../.copilot-instructions.md) to repo root |
 | **Continue.dev** | Add `.cursorrules` to `contextFiles` in config |
-| **Any (skills.sh)** | `npx skills add sruja-ai/sruja --skill sruja-architecture-agent` |
+| **Any (skills.sh)** | `npx skills add sruja-ai/sruja --skill sruja-architecture` |
 
 ---
 
@@ -36,15 +37,11 @@ generate architecture.sruja, run `sruja lint` and fix."
 
 | Skill | Purpose |
 |-------|---------|
-| `sruja-architecture` | DSL syntax, patterns, trade-offs |
-| `sruja-architecture-agent` | **Primary** - Discover architecture from code |
-| `sruja-architecture-collaboration` | Multi-agent review, knowledge graphs |
+| `sruja-architecture` | **Primary** - Design, discover, and generate Sruja architecture |
 
 ```bash
-# Install all
+# Install the skill
 npx skills add sruja-ai/sruja --skill sruja-architecture
-npx skills add sruja-ai/sruja --skill sruja-architecture-agent
-npx skills add sruja-ai/sruja --skill sruja-architecture-collaboration
 ```
 
 ---
@@ -62,8 +59,9 @@ Output: architecture inventory, health score, top findings.
 ### Step 2: Generate Architecture (in AI editor)
 
 ```
-Use sruja-architecture-agent. Run `sruja discover --context -r .`, 
+Use sruja-architecture. Run `sruja discover --context -r .`,
 generate architecture.sruja with C4 structure (systems/containers/components),
+ask targeted questions if scope or externals are unclear,
 run `sruja lint` and fix until it passes.
 ```
 
@@ -72,17 +70,6 @@ run `sruja lint` and fix until it passes.
 ```bash
 sruja lint architecture.sruja
 ```
-
-### Step 4: Review (optional)
-
-```
-Use sruja-architecture-collaboration. Review architecture.sruja:
-- @reviewer: anti-patterns, risks
-- @validator: completeness, lint
-Output review report with recommendation.
-```
-
----
 
 ## CLI Commands
 

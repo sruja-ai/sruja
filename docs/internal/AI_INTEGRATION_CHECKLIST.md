@@ -437,7 +437,7 @@ pub mod context;
 
 **Do not add an MCP server.** The `sruja-mcp` crate and `sruja mcp` / `sruja ai` commands were **removed**. Editors integrate via:
 
-1. **Skill** – `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` (and optionally `sruja-architecture-agent`).
+1. **Skill** – `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture`.
 2. **CLI** – `sruja quickstart`, `sruja drift`, `sruja intent check`, `sruja why`, `sruja context`.
 
 See [INSTALL_AS_SKILL.md](INSTALL_AS_SKILL.md) and [skills/README.md](../skills/README.md).

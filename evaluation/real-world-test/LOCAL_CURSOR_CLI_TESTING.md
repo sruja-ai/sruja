@@ -8,10 +8,10 @@ You can run the Cursor CLI with Sruja skills on **any repo in a completely diffe
 
 - **Global skill (recommended):** Run once:  
   `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture`  
-  (or `sruja-architecture-agent`). After that, the agent has the skill no matter which directory you're in. So you can:
+  After that, the agent has the skill no matter which directory you're in. So you can:
   ```bash
   cd ~/projects/my-app    # or any path
-  agent -p "Analyze this codebase and generate architecture.sruja using Sruja DSL. Use sruja-architecture-agent. Run sruja lint on the result."
+  agent -p "Analyze this codebase and generate architecture.sruja using Sruja DSL. Use sruja-architecture. Run sruja lint on the result."
   ```
 - **Per-repo skill:** If you don't use the global install, copy the Sruja skill into that other repo (e.g. `cp -r /path/to/sruja/skills/sruja-architecture /path/to/your-repo/.agents/skills/`), then `cd` to that repo and run the agent. The agent will see the skill when run in that folder.
 
@@ -51,7 +51,7 @@ Repos are cloned under `test-repos/<name>/`.
 The Cursor CLI uses the same skills/rules as Cursor IDE. Ensure the agent can see Sruja:
 
 **Option A – Global skill (simplest)**  
-If you already ran `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` (or `sruja-architecture-agent`), the agent will have the skill in scope when you run it from any directory.
+If you already ran `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture`, the agent will have the skill in scope when you run it from any directory.
 
 **Option B – Per-repo rules**  
 Copy Sruja rules into the clone so the agent gets DSL context when you run it inside that repo:
@@ -71,14 +71,14 @@ That script copies the Sruja architecture skill into each `test-repos/<name>/` s
 cd test-repos/express
 agent
 # Then in the agent prompt type, for example:
-# "Analyze this codebase and generate architecture.sruja using Sruja DSL. Use the sruja-architecture-agent skill. Run sruja lint on the result."
+# "Analyze this codebase and generate architecture.sruja using Sruja DSL. Use the sruja-architecture skill. Run sruja lint on the result."
 ```
 
 **Single prompt (non-interactive)** — good for a quick local test:
 
 ```bash
 cd test-repos/express
-agent -p "Analyze this codebase and generate a Sruja architecture DSL file (architecture.sruja). Use the sruja-architecture-agent skill: identify main systems, containers, and relationships; then run 'sruja lint architecture.sruja' to validate."
+agent -p "Analyze this codebase and generate a Sruja architecture DSL file (architecture.sruja). Use the sruja-architecture skill: identify main systems, containers, and relationships; then run 'sruja lint architecture.sruja' to validate."
 ```
 
 The agent will read the repo, use the skill, and (if approved) run commands. Output and any generated `architecture.sruja` stay on your machine.
@@ -117,12 +117,12 @@ To verify the **contextual discovery** flow (agent gathers repo context, asks ta
    bash run_discovery_agent_test.sh                 # run agent in test-repos/express (interactive)
    # or, if executable: ./run_discovery_agent_test.sh
    ```
-   The prompt tells the agent to run `sruja discover --context -r .` first, then list contextual questions, then generate `architecture.sruja` and run `sruja lint`. Ensure the sruja-architecture-agent skill is installed (`npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent`) and `sruja` is on PATH or the script will warn.
+   The prompt tells the agent to run `sruja discover --context -r .` first, then list contextual questions, then generate `architecture.sruja` and run `sruja lint`. Ensure the sruja-architecture skill is installed (`npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture`) and `sruja` is on PATH or the script will warn.
 
 3. **Manual on any GitHub clone:** `cd` into any cloned repo, then:
    ```bash
    sruja discover --context -r .
-   agent -p "Use sruja-architecture-agent. Run sruja discover --context -r . then list 2-3 contextual questions for this repo, then generate architecture.sruja and run sruja lint until it passes."
+   agent -p "Use sruja-architecture. Run sruja discover --context -r . then list 2-3 contextual questions for this repo, then generate architecture.sruja and run sruja lint until it passes."
    ```
 
 ## 6. Test and observe (automated flow)

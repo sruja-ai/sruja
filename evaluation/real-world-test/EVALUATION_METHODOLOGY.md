@@ -1,6 +1,6 @@
 # Architecture Discovery Evaluation Methodology
 
-How we measure and improve the accuracy of Sruja-generated architecture (from the sruja-architecture-agent skill or `sruja generate`). Use this to score runs, compare golden vs generated files, and tune the skill.
+How we measure and improve the accuracy of Sruja-generated architecture (from the sruja-architecture skill or `sruja generate`). Use this to score runs, compare golden vs generated files, and tune the skill.
 
 ## Goals
 
@@ -40,7 +40,7 @@ We use **structure-only** metrics that don’t require semantic matching (IDs ca
 | **evaluate_architecture.sh** | Single file: stats, lint, manual checklist. `./evaluate_architecture.sh express` |
 | **compare_architecture.sh** | Two files: structural diff (counts, lint). `./compare_architecture.sh test-repos/express/architecture.sruja run_results/generated_express.sruja` |
 | **run_architecture_comparison_report.sh** | Batch: for each test-repo with golden `architecture.sruja`, report stats and (if present) comparison vs `run_results/generated_<repo>.sruja`. Output: `run_results/ARCHITECTURE_COMPARISON_REPORT_<timestamp>.md` |
-| **run_diff_refine_prompt.sh** | Build a diff-and-refine prompt for the AI: repo context + drift + current elements. Paste output into chat with sruja-architecture-agent to get proposed changes only. `./run_diff_refine_prompt.sh [repo_path] [architecture.sruja]`; use `-` as last arg for stdout. |
+| **run_diff_refine_prompt.sh** | Build a diff-and-refine prompt for the AI: repo context + drift + current elements. Paste output into chat with sruja-architecture to get proposed changes only. `./run_diff_refine_prompt.sh [repo_path] [architecture.sruja]`; use `-` as last arg for stdout. |
 
 ## Running a comparison
 
