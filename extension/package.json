@@ -2,7 +2,7 @@
   "name": "sruja",
   "displayName": "Sruja",
   "description": "Sruja: diagnostics, syntax highlighting, snippets, markdown export, and AI features (skills, rules)",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "publisher": "SrujaAI",
   "icon": "sruja-logo.png",
   "license": "Apache-2.0",

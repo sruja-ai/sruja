@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.15.0...sruja-v0.15.1) (2026-03-14)
+
+
+### Bug Fixes
+
+* remove duplicate FAQ entry in book SUMMARY.md ([5b2f3bf](https://github.com/sruja-ai/sruja/commit/5b2f3bf4b4f3033de40f5e69337455dc9a08e03d))
+* **skill:** use person only for humans, system for external software ([35cd541](https://github.com/sruja-ai/sruja/commit/35cd5416b3ea70a719dd77312d30fe0fa8942526))
+
 ## [0.15.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.14.1...sruja-v0.15.0) (2026-03-14)
 
 
