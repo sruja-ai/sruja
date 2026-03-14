@@ -73,7 +73,7 @@ Create `architecture.sruja` (or `docs/architecture.sruja`) and define your syste
 
 ### Step 2: AI editor integration (so AI-generated code follows rules)
 
-**Easiest:** Install Sruja as a skill in your AI editor (one command). See **[Install as skill](INSTALL_AS_SKILL.md)** for Cursor, Copilot, and others.
+**Easiest:** Install Sruja as a skill in your AI editor (one command). See **[GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md)**.
 
 **Or** copy into your project root:
 
@@ -81,7 +81,7 @@ Create `architecture.sruja` (or `docs/architecture.sruja`) and define your syste
 - **`.copilot-instructions.md`** – GitHub Copilot uses this.
 - **`.architecture-skill.md`** – Short pointer; optional full skill: `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture`.
 
-Commit these so everyone (and CI) has the same setup. See [AI_EDITOR_INTEGRATION.md](AI_EDITOR_INTEGRATION.md) for details.
+Commit these so everyone (and CI) has the same setup. See **[GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md)** for editor setup.
 
 ### Step 3: Validate in CI
 
@@ -175,7 +175,7 @@ Use `--locked` so the install matches the lockfile in the Sruja repo for reprodu
 ## 5. Where to go next
 
 - **DSL reference** – [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md)
-- **AI editors and catching bugs** – [AI_EDITOR_INTEGRATION.md](AI_EDITOR_INTEGRATION.md)
+- **AI editors and catching bugs** – [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md)
 - **Adoption and rollout** – [Adoption Guide](https://sruja.ai/docs/adoption-guide) and [Adoption Playbook](https://sruja.ai/docs/adoption-playbook) on the website
 - **Examples** – The canonical examples live in `book/valid-examples/` and are rendered in the mdBook “Examples Gallery” at `sruja.ai`.
 

@@ -4,6 +4,8 @@ This directory contains skills for **AI code editors** (Cursor, Codex, and other
 
 **No MCP server** — editor integration is **skills + CLI** only. There is no `sruja mcp` in this repo.
 
+**Versioning:** Skills do not have a separate version field. They follow the **Sruja repo release version** (Git tag / GitHub Release). When updating a skill CHANGELOG, note that it aligns with repo version X.Y.Z. See [.github/workflows/README.md](../.github/workflows/README.md#version-consistency-release-please) for how crates, extension, and skills stay consistent.
+
 ## Install in your editor
 
 **One command (Cursor, Codex, skills.sh):**

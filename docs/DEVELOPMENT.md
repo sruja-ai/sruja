@@ -69,4 +69,3 @@ The extension in `extension/` provides syntax highlighting and LSP integration f
 
 - **Skills:** `skills/` — sruja-architecture, sruja-architecture-agent; install with `npx skills add ... --skill sruja-architecture-agent`.
 - **Comparison (Mermaid vs Sruja):** `scripts/run_comparison_test.sh [project] [url]`; results in `evaluation/results/comparison_*`.
-- **Improvement plan:** [docs/NEXT_STEPS_IMPROVEMENTS.md](NEXT_STEPS_IMPROVEMENTS.md) — next-phase plan for skill, testing, and docs.

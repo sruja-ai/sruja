@@ -1,41 +1,48 @@
 # Documentation (docs/)
 
-**Policy:** This directory contains only **implemented** features and **high-level roadmaps**. Task lists, status, and implementation details are not kept here so users and contributors aren’t confused.
+**Policy:** This directory contains only **implemented** features.
 
 ---
 
-## For Contributors
+## Start Here
 
-**Start here:**
-- [CONTRIBUTING.md](CONTRIBUTING.md) – Main contribution guide
-- [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md) – Step-by-step first contribution
+```bash
+# 1. Install CLI
+curl -fsSL https://sruja.ai/install.sh | bash
 
-**Development:**
-- [DEVELOPMENT.md](DEVELOPMENT.md) – Build, test, run (Rust crates, WASM, extension, sruja-app)
-- [RUN_GUIDE.md](RUN_GUIDE.md) – Step-by-step: clone, build, CLI, app, extension, evaluation
-- [architecture/README.md](architecture/README.md) – Architecture overview and .sruja diagrams
+# 2. Install skill
+npx skills add sruja-ai/sruja --skill sruja-architecture-agent
 
-## Reference
+# 3. Get intelligence
+sruja quickstart -r .
+```
 
-- **Try first** (no .sruja): `sruja quickstart -r .` – see [RUN_GUIDE.md](RUN_GUIDE.md) for CLI usage.
-- [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) – Sruja DSL reference
-- [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md) – Language design principles
-- [USING_SRUJA_IN_YOUR_PROJECT.md](USING_SRUJA_IN_YOUR_PROJECT.md) – Using Sruja in your repo
+**Full guide:** [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md)
 
-## AI integration
+---
 
-- [AI_DOCS_INDEX.md](AI_DOCS_INDEX.md) – Index (start here)
-- [AI_EDITOR_INTEGRATION.md](AI_EDITOR_INTEGRATION.md) – Setup with Cursor, Copilot, VS Code, etc.
-- [AI_ASSISTANT_GUIDE.md](AI_ASSISTANT_GUIDE.md) – Using AI assistants with Sruja
-- [AI_INTEGRATION.md](AI_INTEGRATION.md) – Full integration guide (prompts, tool schemas)
+## Docs
 
-## High-level roadmap and scope
+| Doc | Purpose |
+|-----|---------|
+| [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) | **Primary entry** - Install, use, workflows |
+| [USING_SRUJA_IN_YOUR_PROJECT.md](USING_SRUJA_IN_YOUR_PROJECT.md) | CI integration, team workflows |
+| [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) | DSL reference |
+| [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md) | Language design principles |
+| [RUN_GUIDE.md](RUN_GUIDE.md) | Build, run, demo |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
+| [DEVELOPMENT.md](DEVELOPMENT.md) | Development guide |
+| [CODING_GUIDELINES.md](CODING_GUIDELINES.md) | Coding standards |
+| [SCOPE.md](SCOPE.md) | Product scope |
+| [SECURITY.md](SECURITY.md) | Security policy |
+| [adr/](adr/) | Architecture decision records |
+| [internal/](internal/) | Internal docs |
 
-- [SCOPE.md](SCOPE.md) – What we ship and what’s in scope
+---
 
-## Other
+## By Role
 
-- [SECURITY.md](SECURITY.md) – Security policy
-- [CODING_GUIDELINES.md](CODING_GUIDELINES.md) – Coding standards for the repo
-- [adr/](adr/) – Architecture decision records
-- [sruja-guidelines/](sruja-guidelines/) – Rule and tradeoff templates for skills
+| You Are | Start With |
+|---------|------------|
+| **User** | [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) |
+| **Contributor** | [CONTRIBUTING.md](CONTRIBUTING.md) |

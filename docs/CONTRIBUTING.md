@@ -4,7 +4,7 @@ Welcome! This guide will help you get started contributing to Sruja. Whether you
 
 ## 🎯 New to Contributing?
 
-**Start here:** [First Contribution Guide](FIRST_CONTRIBUTION.md)
+**Start here:** [Getting Started](GETTING_STARTED_SKILL.md)
 
 This step-by-step guide walks you through making your first contribution, even if you're new to the project.
 
@@ -230,7 +230,7 @@ Optional scope: `feat(language): …`
 
 ### Contribution Ideas
 
-If there aren't many issues yet, check **[Contribution Ideas](CONTRIBUTION_IDEAS.md)** for specific tasks you can work on. Common tasks that don't need issues:
+If there aren't many issues yet, here are common tasks that don't need issues:
 
 - Fix typos in documentation
 - Add examples to `book/valid-examples/`
@@ -262,11 +262,11 @@ You can start working on these right away! Open a draft PR to show what you're w
 
 ## Contributing Content
 
-To add or edit docs, courses, and tutorials (mdBook in `book/`), see:
+To add or edit docs, courses, and tutorials (mdBook in `book/`):
 
-**📖 [Content Contribution Guide](CONTENT_CONTRIBUTION_GUIDE.md)**
-
-Covers content structure, validation, and workflow.
+- **Book content**: Add/edit files in `book/src/`
+- **Examples**: Add to `book/valid-examples/`
+- **Validate**: Run `make book` to build and verify
 
 ## Reporting Issues
 

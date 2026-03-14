@@ -1,65 +1,134 @@
-# Getting started with the Sruja architecture skill
+# Getting Started with Sruja
 
-One path from zero to a validated architecture file using the Sruja agent skill.
+**5 minutes to architecture intelligence** using AI-powered discovery, validation, and review.
 
-## 1. Install the skill
-
-In your project (or any folder), run:
+## TL;DR
 
 ```bash
-npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent
+# 1. Install CLI
+curl -fsSL https://sruja.ai/install.sh | bash
+
+# 2. Install skills (in your project)
+npx skills add sruja-ai/sruja --skill sruja-architecture-agent
+
+# 3. Get instant intelligence
+sruja quickstart -r .
+
+# 4. Generate architecture (in AI editor)
+"Use sruja-architecture-agent. Run `sruja discover --context -r .`, 
+generate architecture.sruja, run `sruja lint` and fix."
 ```
 
-This installs the **sruja-architecture-agent** skill so your AI assistant can discover architecture from your codebase and produce valid Sruja DSL. The skill uses **discovery modes** (overview, standard, deep-dive, diff) and a **phased playbook** for more accurate capture; see [ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md](ARCHITECTURE_DISCOVERY_RESEARCH_AND_PRACTICES.md).
+---
 
-## 2. Run one prompt
+## Install by Editor
 
-In Cursor (or your IDE) chat, paste this **one prompt** (same as in [INSTALL_AS_SKILL](INSTALL_AS_SKILL.md#recommended-prompt-architecture-discovery---one-prompt-easy)):
+| Editor | Install |
+|--------|---------|
+| **Cursor** | `npx skills add sruja-ai/sruja --skill sruja-architecture-agent` |
+| **GitHub Copilot** | Copy [.copilot-instructions.md](../.copilot-instructions.md) to repo root |
+| **Continue.dev** | Add `.cursorrules` to `contextFiles` in config |
+| **Any (skills.sh)** | `npx skills add sruja-ai/sruja --skill sruja-architecture-agent` |
 
-*"Use the sruja-architecture-agent skill. Run \`sruja discover --context -r .\`, then generate \`architecture.sruja\` with systems, containers, components, and relationships (evidence-based; no guessing). If you find requirements, ADRs, or key flows in repo docs (README, docs/, adr/, SECURITY.md, etc.), add them to the file with citations; otherwise list 'Open questions' and do not invent. Run \`sruja lint architecture.sruja\` and fix until it passes."*
+---
 
-The agent will discover context, generate `architecture.sruja` (and add requirements/ADRs/flows when it finds evidence in docs), and run `sruja lint` until the file passes. **Tip:** If the agent asks 2–5 questions (e.g. scope, boundaries, externals), answering them yields more accurate architecture than letting it guess.
+## Available Skills
 
-### Want the richest intent capture (with user confirmation)?
+| Skill | Purpose |
+|-------|---------|
+| `sruja-architecture` | DSL syntax, patterns, trade-offs |
+| `sruja-architecture-agent` | **Primary** - Discover architecture from code |
+| `sruja-architecture-collaboration` | Multi-agent review, knowledge graphs |
 
-Use the **confirm-first 3-pass workflow** in [INSTALL_AS_SKILL](INSTALL_AS_SKILL.md#recommended-workflow-confirm-first-richest-output). It generates C4 structure first, then drafts an “Intent Review” with citations, then encodes requirements/ADRs/scenarios/flows only after the user confirms.
+```bash
+# Install all
+npx skills add sruja-ai/sruja --skill sruja-architecture
+npx skills add sruja-ai/sruja --skill sruja-architecture-agent
+npx skills add sruja-ai/sruja --skill sruja-architecture-collaboration
+```
 
-## 3. Validate (if you edit by hand)
+---
 
-After any change to a `.sruja` file, run:
+## Workflow
+
+### Step 1: Instant Intelligence
+
+```bash
+sruja quickstart -r .
+```
+
+Output: architecture inventory, health score, top findings.
+
+### Step 2: Generate Architecture (in AI editor)
+
+```
+Use sruja-architecture-agent. Run `sruja discover --context -r .`, 
+generate architecture.sruja with C4 structure (systems/containers/components),
+run `sruja lint` and fix until it passes.
+```
+
+### Step 3: Validate
 
 ```bash
 sruja lint architecture.sruja
 ```
 
-If you don’t have the CLI yet: [Install the Sruja CLI](https://sruja.ai) (`curl -fsSL https://sruja.ai/install.sh | bash`) or build from source: `make build` in the Sruja repo.
+### Step 4: Review (optional)
 
-## 4. Optional: check drift
-
-Compare the generated architecture to the current codebase:
-
-```bash
-sruja drift -a architecture.sruja -r .
 ```
-
-This highlights where the code has diverged from the documented architecture.
-
-## 5. Optional: export to diagram or docs
-
-**Mermaid diagram:** `sruja export mermaid architecture.sruja` (use `--view-level 2` or `3` for container/component views).
-
-**Markdown doc:** `sruja export markdown architecture.sruja` — generates `architecture.md` with a context diagram and sections.
+Use sruja-architecture-collaboration. Review architecture.sruja:
+- @reviewer: anti-patterns, risks
+- @validator: completeness, lint
+Output review report with recommendation.
+```
 
 ---
 
-## Summary
+## CLI Commands
 
-| Step | Action |
-|------|--------|
-| 1 | `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture-agent` |
-| 2 | Paste the [one-prompt](INSTALL_AS_SKILL.md#recommended-prompt-architecture-discovery---one-prompt-easy) in IDE chat |
-| 3 | Run `sruja lint architecture.sruja` after edits |
-| 4 | (Optional) Run `sruja drift -a architecture.sruja -r .` |
-| 5 | (Optional) Run `sruja export mermaid` or `sruja export markdown` for diagram/docs |
+| Command | Purpose |
+|---------|---------|
+| `sruja quickstart -r .` | Instant architecture inventory |
+| `sruja drift -r .` | Detect structural issues |
+| `sruja why "question" -r .` | Evidence-based answers |
+| `sruja analyze -r .` | Full analysis |
+| `sruja lint file.sruja` | Validate DSL |
 
-For more options (other skills, editors, prompts), see [Install Sruja as a skill](INSTALL_AS_SKILL.md).
+---
+
+## CI/CD Integration
+
+```yaml
+# .github/workflows/architecture.yml
+- name: Install Sruja
+  run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja --locked
+- name: Lint
+  run: find . -name '*.sruja' -exec sruja lint {} \;
+- name: Drift check
+  run: sruja drift -r . -a architecture.sruja
+```
+
+See [USING_SRUJA_IN_YOUR_PROJECT.md](USING_SRUJA_IN_YOUR_PROJECT.md).
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| `sruja: command not found` | `curl -fsSL https://sruja.ai/install.sh \| bash` |
+| Skill not loading | Check editor supports skills.sh |
+| Agent guesses | Add: "Do not guess. List open questions." |
+| Lint E204 (circular) | Remove one edge in the cycle |
+| Lint E205 (orphan) | Add relationship or remove element |
+
+---
+
+## Next Steps
+
+| Want to... | Go to |
+|------------|-------|
+| CLI deep dive | [RUN_GUIDE.md](RUN_GUIDE.md) |
+| Use in your project | [USING_SRUJA_IN_YOUR_PROJECT.md](USING_SRUJA_IN_YOUR_PROJECT.md) |
+| DSL reference | [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) |
+| Architecture intelligence | [internal/architecture-lab/INTELLIGENCE_ANALYSIS.md](internal/architecture-lab/INTELLIGENCE_ANALYSIS.md) |
