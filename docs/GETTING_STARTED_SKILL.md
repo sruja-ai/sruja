@@ -1,294 +1,246 @@
-# Getting Started with Sruja
+# Getting Started with Sruja Skills
 
-**5 minutes to architecture intelligence** using one core skill for evidence-first architecture discovery.
+**Architecture from your code in 5 minutes—no DSL learning required.**
 
-## TL;DR
+Your AI analyzes your code, generates architecture files, and keeps them in sync. You just need to know what to ask for.
+
+---
+
+## What You'll Need
+
+1. **Sruja CLI** – Analyzes code and validates files
+2. **AI editor with skill** – Generates architecture (Cursor, Copilot, Claude, etc.)
+3. **A codebase** – Any project you want to document
+
+---
+
+## The Workflow (Plain English)
+
+Here's what happens, step by step:
+
+```
+You → Tell AI to analyze your code
+  ↓
+AI → Runs sruja commands to understand your project
+  ↓
+AI → Asks you 2-3 questions if anything is unclear
+  ↓
+AI → Generates a repo.sruja file
+  ↓
+AI → Validates it automatically
+  ↓
+You → Review the result (make changes if needed)
+  ↓
+CLI → Keeps it in sync as your code changes
+```
+
+**You don't write syntax. You guide the process.**
+
+---
+
+## Quick Start (Copy These Steps)
+
+### Step 1: Install CLI
 
 ```bash
-# 1. Install CLI
 curl -fsSL https://sruja.ai/install.sh | bash
+```
 
-# 2. Install the core skill
+### Step 2: Install the skill
+
+```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
+```
 
-# 3. Get instant structural intelligence
+### Step 3: Get instant insights
+
+```bash
+cd your-project
 sruja quickstart -r .
+```
 
-# 4. Generate architecture (in AI editor)
-"Use sruja-architecture. Run `sruja discover --context -r . --format json`,
+This shows you what Sruja found in your code—no AI needed yet.
+
+### Step 4: Generate architecture
+
+In your AI editor, run:
+
+```
+Use sruja-architecture. Run `sruja discover --context -r . --format json`,
 gather evidence, ask targeted questions if needed,
-generate repo.sruja, run `sruja lint` and fix."
+generate repo.sruja (architecture.sruja is also supported),
+then run `sruja lint` and fix.
 ```
 
----
-
-## Core Concept
-
-**The skill is the product**, not the CLI narrative reports.
-
-The workflow:
-1. CLI collects deterministic evidence
-2. AI skill interprets evidence and generates DSL
-3. CLI validates DSL
-4. You review and refine
-
-This ensures:
-- Evidence-based architecture (no guessing)
-- Machine-readable DSL for version control
-- Linting and drift detection
-- AI assistance for modeling decisions
-
----
-
-## Install by Editor
-
-| Editor | Install |
-|--------|---------|
-| **Cursor** | `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` |
-| **GitHub Copilot** | Install skills.sh, then run the command above |
-| **Claude** | Install skills.sh, then run the command above |
-| **Continue.dev** | Add `.cursorrules` to `contextFiles` in config |
-| **Any (skills.sh)** | `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` |
-
-**Optional (VS Code / Cursor):** Install the [Sruja extension](https://marketplace.visualstudio.com/items?itemName=SrujaAI.sruja) for syntax highlighting, in-editor lint, diagram preview, export to Markdown, and **Sruja: Refresh repo context** (writes `.sruja/context.json` so the skill can use it as evidence without running `sruja discover` in the terminal).
-
----
-
-## Step 1: Instant Structural Intelligence
-
-Get immediate insights about your architecture (no AI required):
-
-```bash
-sruja quickstart -r .
-```
-
-**Output includes:**
-- 📊 Architecture inventory (modules, services, databases, APIs)
-- 💚 Health score with visual indicator
-- 🔍 Top findings with severity levels
-- 📎 Evidence references from your code
-- 🎯 Scan scope (what was analyzed)
-
-**Example:**
-```
-══════════════════════════════════════════════════════════════════════
-🚀 Sruja Quickstart - Structural Analysis
-══════════════════════════════════════════════════════════════════════
-
-📂 Scanning repository...
-   ✓ Found 753 components
-
-───────────────────────────────────────────────────────────────────────────────
-📊 Architecture Inventory
-───────────────────────────────────────────────────────────────────────────────
-  Components detected:
-    • 750 modules
-    • 1 services
-    • 2 databases
-    • 1533 total dependencies
-
-───────────────────────────────────────────────────────────────────────────────
-💚 Architecture Health Score: 75/100
-───────────────────────────────────────────────────────────────────────────────
-```
-
----
-
-## Step 2: Generate Architecture with AI
-
-### Collect Evidence
-
-The AI skill starts by running the CLI to gather deterministic evidence:
-
-```bash
-sruja discover --context -r . --format json
-```
-
-**Returns:**
-- Repository structure
-- Detected technologies
-- Module boundaries
-- Entry points
-- Dependencies
-- Scan scope
-
-### Ask Targeted Questions
-
-The AI asks 2-5 questions only when evidence is ambiguous:
-- "What are the main system boundaries?"
-- "What external services do you integrate with?"
-- "How are components deployed?"
-
-### Generate Minimal DSL
-
-The AI produces a minimal `repo.sruja` based on evidence: (architecture.sruja is also supported for backward compatibility):
-
-```sruja
-import { * } from 'sruja.ai/stdlib'
-
-user = person "User" {
-  description "End user"
-}
-
-app = system "My App" {
-  api = container "API" {
-    technology "Node.js"
-    description "REST API"
-  }
-
-  db = database "Database" {
-    technology "PostgreSQL"
-    description "Data storage"
-  }
-}
-
-user -> app.api "HTTPS"
-app.api -> app.db "SQL"
-```
-
-### Validate
-
-Always lint the generated architecture:
+### Step 5: Validate
 
 ```bash
 sruja lint repo.sruja
 ```
 
-Fix all errors before considering complete.
-
----
-
-## Step 3: Use the Architecture
-
-### Export Documentation
+### Step 6: Export (optional)
 
 ```bash
+# For documentation
 sruja export markdown repo.sruja > ARCHITECTURE.md
+
+# For diagrams
 sruja export mermaid repo.sruja > ARCHITECTURE.mmd
 ```
 
-### Detect Drift
+---
 
-When code changes, check for drift:
+## Understanding the Commands
 
-```bash
-sruja drift -r .
-```
+### sruja quickstart
 
-### Detect Drift
+**What it does:** Analyzes your code and shows you a summary.
 
-When code changes, check for drift:
+**Why use it:** Get instant insights without generating any files.
 
-```bash
-sruja drift -r . -a architecture.sruja --format json
-```
+**Output:**
+- What services, databases, APIs are in your code
+- A health score (0-100)
+- Top issues to fix
 
-### Add to CI
+**When to use it:**
+- First time seeing a codebase
+- Checking if Sruja understands your project
+- Getting an architecture health check
 
-```yaml
-# .github/workflows/architecture.yml
-- name: Lint
-  run: find . -name '*.sruja' -exec sruja lint {} \;
-- name: Drift check
-  run: sruja drift -r . -a architecture.sruja --fail-on all
-```
+### sruja discover
+
+**What it does:** Detailed analysis in JSON format.
+
+**Why use it:** The AI needs this to generate architecture.
+
+**Output:** Code structure, technologies, dependencies, boundaries
+
+**When to use it:**
+- When generating `repo.sruja` files (via AI)
+- When checking what evidence is available
+
+### sruja lint
+
+**What it does:** Validates a `repo.sruja` file.
+
+**Why use it:** Catches errors before they become problems.
+
+**Output:** Errors or "All checks passed"
+
+**Common errors:**
+- `E204: Circular dependency` – Service A depends on B, B depends on A
+- `E205: Orphan element` – Something with no connections
+- `E201: Invalid kind` – Unknown element type
+
+**When to use it:**
+- After AI generates a file
+- After you make changes
+- In CI/CD pipelines
+
+### sruja drift
+
+**What it does:** Compares your code to your `repo.sruja` file.
+
+**Why use it:** Keep architecture in sync as code changes.
+
+**Output:** What's new, missing, or different
+
+**When to use it:**
+- After making code changes
+- Before a release
+- Regular maintenance checks
 
 ---
 
-## Stable CLI Commands
+## Example Session
 
-These are the stable CLI commands used by the skill:
+**You:** "I want to document my Node.js API project."
 
-| Command | Purpose | Output |
-|---------|---------|--------|
-| `discover --context` | Collect evidence | `--format json` |
-| `lint` | Validate DSL | `--format json` |
-| `fmt` | Format DSL | default |
-| `export` | Export documentation | default |
-| `drift` | Detect drift | `--format json` |
-| `intent check` | Check intent | `--format json` |
-| `context` | Export AI context | default |
-| `quickstart` | Structural analysis | default or `--format json` |
+**AI:** "Sure! Running `sruja discover --context -r . --format json`..."
+
+*(analyzes code)*
+
+**AI:** "I found:
+- Express API server
+- PostgreSQL database
+- Redis cache
+- 3 modules (auth, orders, users)
+
+A few questions:
+1. What's the external system that calls this API? (You: 'Mobile app')
+2. Do you have any message queues? (You: 'No')
+
+Generating `repo.sruja`..."
+
+*(creates file)*
+
+**AI:** "Running `sruja lint repo.sruja`..."
+
+*(validates)*
+
+**AI:** "✅ All checks passed! Here's your architecture:
+[shows diagram]
+
+I also exported a Markdown document you can share with your team."
 
 ---
 
-## Common Workflows
+## Common Patterns
 
-### Discovery from New Codebase
-
-```
-Use sruja-architecture. Run `sruja discover --context -r . --format json`,
-gather evidence from the repo, ask targeted questions if scope or externals are unclear,
-generate repo.sruja with C4 structure (systems/containers/components),
-then run `sruja lint` and fix until it passes.
-```
-
-### Refine Existing Architecture
+### "Add a component to my architecture"
 
 ```
-Use sruja-architecture. Analyze this existing repo.sruja,
-run `sruja discover --context -r . --format json` for current evidence,
-compare architecture against evidence, identify discrepancies,
-propose updates to align with current code,
-then run `sruja lint` and fix all errors.
+Use sruja-architecture. Read repo.sruja and add a [Payment Service]
+container to handle Stripe integration. Connect it to the existing API container.
+Then run sruja lint and fix any errors.
 ```
 
-### Detect Drift
+### "My code changed—update architecture"
 
 ```
 Use sruja-architecture. Run `sruja drift -r . --format json`,
-analyze drift results, propose updates to address drift,
-run `sruja lint` and fix all errors. List open questions for uncertainties.
+analyze what changed, and update repo.sruja to match the current code.
 ```
+
+### "Explain this architecture"
+
+```
+Read repo.sruja and explain:
+1. What systems are defined?
+2. How do they connect?
+3. What technologies are used?
+```
+
+---
+
+## Tips for Success
+
+**Be specific:** Instead of "Improve architecture," try "Add error handling to the API container."
+
+**Validate often:** Run `sruja lint` after each AI edit—catch mistakes early.
+
+**Start simple:** Get context + container levels working first, add components later if needed.
+
+**Ask questions:** If you don't understand something, ask the AI "Why did you model it this way?"
+
+**Trust the evidence:** If `sruja discover` doesn't find something, tell your AI—don't let it guess.
 
 ---
 
 ## Troubleshooting
 
 | Problem | Solution |
-|---------|----------|
-| `sruja: command not found` | `curl -fsSL https://sruja.ai/install.sh \| bash` |
-| Skill not loading | Check editor supports skills.sh |
-| Agent guesses | Add: "Do not guess. List open questions." |
-| Lint E204 (circular) | Remove one edge in the cycle |
-| Lint E205 (orphan) | Add relationship or remove element |
-| Evidence unclear | Use open questions instead of guessing |
+|----------|----------|
+| `sruja: command not found` | Add to PATH: `export PATH="$HOME/.local/bin:$PATH"` |
+| Skill not loading | Restart your editor after installing |
+| AI generates invalid code | Run `sruja lint repo.sruja` and paste errors to AI |
+| Discovery misses components | Check language support at `sruja.ai` |
 
 ---
 
-## Principles
+## What's Next?
 
-### Evidence-First
-
-- Trust what the CLI actually finds
-- Don't invent components or relationships
-- Surface uncertainties as open questions
-- Validate with linting
-
-### Minimal Modeling
-
-- Start with C4 context + container levels
-- Add component level only when needed
-- Prefer fewer, correct elements over speculative detail
-- Don't model for completeness
-
-### Validation
-
-- Always lint after generating or editing
-- Fix all errors before committing
-- Use drift detection for maintenance
-- Add to CI for ongoing validation
-
----
-
-## Next Steps
-
-| Want to... | Go to |
-|------------|-------|
-| Skill reference | [SKILL.md](../skills/sruja-architecture/SKILL.md) |
-| Detailed workflow | [REFERENCE.md](../skills/sruja-architecture/REFERENCE.md) |
-| Prompt patterns | [PROMPTS.md](../skills/sruja-architecture/PROMPTS.md) |
-| DSL reference | [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) |
-| CLI commands | [RUN_GUIDE.md](RUN_GUIDE.md) |
-| CI/CD setup | [USING_SRUJA_IN_YOUR_PROJECT.md](USING_SRUJA_IN_YOUR_PROJECT.md) |
-| Architecture intelligence | [internal/architecture-lab/](internal/architecture-lab/) |
+- **Deep dive:** [Skill Reference](../skills/sruja-architecture/SKILL.md)
+- **Prompt patterns:** [Prompt Library](../skills/sruja-architecture/PROMPTS.md)
+- **Complete guide:** [Skill Workflow Reference](../skills/sruja-architecture/REFERENCE.md)

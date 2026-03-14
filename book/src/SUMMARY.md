@@ -15,6 +15,8 @@
 - [How Sruja works](docs/how-sruja-works.md)
 - [Examples](docs/examples.md)
 - [Beginner path](docs/beginner-path.md)
+- [FAQ](docs/faq.md)
+- [FAQ](docs/faq.md)
 - [Concepts](docs/concepts/overview.md)
   - [Architecture](docs/concepts/architecture.md)
   - [C4 model](docs/concepts/c4-model.md)

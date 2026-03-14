@@ -131,6 +131,10 @@
       {
         "command": "sruja.status",
         "title": "Sruja: Status"
+      },
+      {
+        "command": "sruja.review",
+        "title": "Sruja: Review architecture update"
       }
     ],
     "menus": {

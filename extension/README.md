@@ -17,13 +17,18 @@ VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architectur
 
 ## Architecture intelligence (CLI)
 
-**Drift detection** runs via the Sruja CLI and is surfaced in the extension:
+The following commands run via the Sruja CLI and are surfaced in the extension. They require **Sruja CLI** (on PATH or `sruja.lsp.path`).
 
-- **Sruja: Run drift (architecture health)** – Runs `sruja drift -r .` in the workspace; output appears in the **Sruja** output channel. Detects structural drift (cycles, orphans, layer violations).
+- **Sruja: Refresh repo context** – Runs `sruja sync -r .`; writes `.sruja/context.json` with evidence, truth status, and baseline path. Use before status/review or so the sruja-architecture skill can use cached context.
+- **Sruja: Status** – Runs `sruja status -r . --format json`; shows baseline, truth status (reviewed | drifted | unknown), and violation count in the Sruja output channel.
+- **Sruja: Review architecture update** – Runs `sruja review -r . --format json`; shows drift summary, new/missing components, and suggestions for updating `repo.sruja`.
+- **Sruja: Run drift (architecture health)** – Runs `sruja drift -r .`; output in the Sruja channel. Detects structural drift (cycles, orphans, layer violations).
 
-These commands require **Sruja CLI** (on PATH or `sruja.lsp.path`). In CI or headless use, run the CLI directly:
+In CI or headless use, run the CLI directly:
 
 - `sruja quickstart -r .` – Architecture inventory and top findings (no .sruja required).
+- `sruja status -r . --format json` – Machine-readable repo health and truth status.
+- `sruja sync -r .` – Refresh evidence and write `.sruja/context.json`; supports `--format json`.
 - `sruja drift -r .` – Detect structural drift.
 - `sruja lint` – Validate architecture files.
 
@@ -43,6 +48,9 @@ These commands require **Sruja CLI** (on PATH or `sruja.lsp.path`). In CI or hea
 | **Sruja: List Rules…** | Quick-pick list of all rules; open selected rule |
 | **Sruja: Copy Rule for AI** | Copy a rule’s markdown to clipboard for pasting into an AI chat |
 | **Sruja: Copy Agent Guide for AI** | Copy AGENTS.md content to clipboard |
+| **Sruja: Refresh repo context** | Run `sruja sync -r .`; writes `.sruja/context.json` (evidence + truth status) |
+| **Sruja: Status** | Run `sruja status -r . --format json`; show baseline and truth status in Sruja channel |
+| **Sruja: Review architecture update** | Run `sruja review -r . --format json`; show drift and update suggestions in Sruja channel |
 | **Sruja: Run drift (architecture health)** | Run `sruja drift -r .`; output in Sruja channel |
 
 ## Views

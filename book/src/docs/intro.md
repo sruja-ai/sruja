@@ -5,30 +5,73 @@ weight: 0
 
 # Introduction
 
-Sruja is an **open source** architecture-as-code tool for the **AI SDLC process**.
+**Stop diagramming. Start version-controlling your architecture.**
 
-> **New here?** Do [Quick start](../getting-started.md) (about 5 min), then the [Beginner path](beginner-path.md) (2–3 hours). It helps teams define, validate, and evolve software architecture in code—so architecture stays in sync with design, review, CI, and docs. We are **not** a diagramming tool; diagrams are one output, not the product.
+Sruja uses AI to analyze your code and generate architecture as code—so it never drifts from reality.
 
-## Why Sruja?
+> **New here?** Do [Quick start](../getting-started.md) (about 5 min), then the [Beginner path](beginner-path.md) (2–3 hours). You don't write `.sruja` files manually—your AI does it for you.
 
-Most teams document architecture in static diagrams (Miro, LucidChart, Visio) or inconsistent Wiki pages. These suffer from:
+## The Problem
 
-1.  **Drift:** The code changes, but the diagram doesn't.
-2.  **Inconsistency:** Every architect draws "boxes and arrows" differently.
-3.  **No Validation:** You can't "test" a PNG image for broken dependencies.
+How do you document architecture today?
 
-**Sruja treats Architecture like Code:**
+| Your approach | Problems |
+|--------------|------------|
+| **Drawings in Miro/LucidChart** | Manual updates, easy to forget, drifts from code |
+| **Wiki pages** | Inconsistent, hard to maintain, no validation |
+| **PNG/PDF diagrams** | Can't version control diff, outdated quickly |
 
-- **Version Control:** Commit your architecture to Git.
-- **Validation:** CI/CD checks for circular dependencies and rule violations.
-- **Consistency:** Based on the **[C4 Model](docs/concepts/c4-model.md)** for clear, hierarchical abstractions. (See [Glossary](docs/glossary.md) for definitions of key terms.)
+Sound familiar? You're not alone. Most teams struggle with this.
+
+## The Solution
+
+**Architecture as code.**
+
+With Sruja:
+
+- AI analyzes your codebase automatically
+- You get a `repo.sruja` file (architecture definition)
+- Validate it automatically in CI/CD
+- Export diagrams when needed (not as the source)
+
+**You don't learn a new language.** You ask your AI to generate the file, and it handles the syntax.
+
+## How This Helps
+
+| Before Sruja | With Sruja |
+|----------------|-------------|
+| Update diagrams manually | AI generates from code |
+| Diagram drifts from reality | Always in sync |
+| Can't catch errors | Validation catches issues |
+| Hard to review changes | Git diff shows everything |
+| Scattered tools | Single source of truth |
+
+---
+
+## Key Concepts
+
+**Architecture as Code:** Instead of drawing boxes, you define structure in code. AI writes it, you validate it, and everyone uses the same source.
+
+**Validation:** Like `lint` for code, `sruja lint` checks for:
+- Circular dependencies
+- Orphaned components
+- Missing connections
+- Rule violations
+
+**C4 Model:** Sruja uses the C4 approach, which organizes architecture into levels:
+- **Person:** Users, external systems
+- **System:** Major boundaries (e.g., "Order System")
+- **Container:** Deployable units (e.g., "API Service")
+- **Component:** Internal parts (e.g., "Payment Module")
+
+This hierarchy makes architecture clear and understandable.
 
 ## Who is Sruja For?
 
 ### Students & Learners
 
-- **Learn system design** with production-ready examples from fintech, healthcare, and e-commerce
-- **Hands-on courses** covering fundamentals to advanced patterns
+- **Understand system design** through production-ready examples from fintech, healthcare, and e-commerce
+- **Use AI skills** to generate architecture and explore patterns without manual DSL writing
 - **Real-world scenarios** that prepare you for interviews and real projects
 
 ### Software Architects
@@ -84,6 +127,6 @@ For **production-ready examples** with real-world patterns, see our [Examples](d
 ## Next Steps
 
 - **New to Sruja?** Start with [Getting Started](docs/getting-started.md)
-- **Want to learn?** Explore [Courses](courses/system-design-101/course-overview.md) and [Tutorials](tutorials/basic/cli-basics.md)
+- **Use AI:** Install the skill in your editor and let AI generate architecture from your codebase
 - **Need examples?** Check out [Real-World Examples](docs/examples.md)
 - **Ready to build?** Use the [VS Code extension](../vscode.md) for diagram preview

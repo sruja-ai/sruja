@@ -1,119 +1,164 @@
 # Install Sruja as a Skill
 
-The core Sruja product is the `sruja-architecture` skill – use it for architecture discovery, DSL generation, and modeling with AI assistance.
+**Teach your AI editor to generate architecture—no DSL learning required.**
 
-## Install
+The `sruja-architecture` skill analyzes your code and generates `repo.sruja` files. Your AI handles the syntax, you just guide the process.
 
-```bash
-npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
-```
+---
 
-Supported editors: Cursor, GitHub Copilot, Claude, Continue.dev, and any AI editor with skills.sh support.
+## What This Does
 
-## Quick Start
+| Without Skill | With Skill |
+|---------------|-------------|
+| You write `.sruja` by hand | AI generates it from code |
+| You must learn the language | You just know what to ask for |
+| Easy to make syntax errors | Validation catches mistakes |
+| Manual updates | AI keeps it in sync |
 
-### 1. Install CLI
+---
 
-```bash
-curl -fsSL https://sruja.ai/install.sh | bash
-```
-
-Verify: `sruja --version`
-
-### 2. Install the skill
+## Installation (One Command)
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
-### 3. Generate architecture
+That's it! Your AI editor now knows how to generate Sruja architecture.
 
-In your AI editor, run:
+**Supported editors:** Cursor, GitHub Copilot, Claude, Continue.dev, and any editor with [skills.sh](https://skills.sh) support.
 
-```
-Use sruja-architecture. Run `sruja discover --context -r . --format json`, gather evidence, ask targeted questions if scope or externals are unclear, generate architecture.sruja, then run `sruja lint` and fix until it passes.
-```
+---
 
-### 4. Validate
+## Verify It Works
 
-```bash
-sruja lint architecture.sruja
-```
+1. Restart your AI editor (if it's open)
+2. Open your project folder
+3. In the AI chat, type: "Use sruja-architecture"
 
-## Recommended Prompt: Architecture Discovery
+If the skill loaded, your AI should acknowledge it and be ready to generate architecture.
 
-This is the primary workflow for discovering architecture from code:
+---
 
-```
-Use sruja-architecture. Run `sruja discover --context -r . --format json`, gather evidence from the repo, ask targeted questions only if scope or externals are unclear, generate a minimal architecture.sruja with evidence-based components and relationships using C4 context and container levels, then run `sruja lint architecture.sruja` and fix all errors until it passes. Do not guess about missing information; list open questions instead.
-```
+## Your First Use
 
-## What the Skill Does
-
-### Evidence-First Discovery
-
-1. Runs `sruja discover --context -r . --format json` to collect:
-   - Repository structure
-   - Detected technologies
-   - Module boundaries
-   - Entry points
-   - Dependencies
-   - Scan scope
-
-2. Asks targeted questions only when evidence is ambiguous:
-   - System boundaries
-   - External integrations
-   - Datastores
-   - Deployment model
-   - Data flows
-
-3. Generates minimal `architecture.sruja` based on evidence:
-   - Uses C4 modeling (person, system, container, database)
-   - Includes only what evidence supports
-   - Adds open questions for missing information
-
-4. Validates with `sruja lint`:
-   - Fixes all errors before completion
-   - Ensures DSL is valid
-
-### No Guessing
-
-The skill follows these principles:
-
-- **Never guess** about missing information
-- **Surface open questions** instead of fabricating answers
-- **Generate minimal DSL** covering only what evidence supports
-- **Validate thoroughly** before considering complete
-
-## CLI Commands Used by the Skill
-
-The skill depends on these stable CLI commands:
+Now try it! In your project folder:
 
 ```bash
-# Collect evidence (primary contract)
+cd your-project
+```
+
+In your AI editor:
+
+```
+Use sruja-architecture. Run `sruja discover --context -r . --format json`,
+gather evidence from my code, ask targeted questions if needed,
+generate repo.sruja, then run `sruja lint` and fix until it passes.
+```
+
+**What happens:**
+
+1. AI runs `sruja discover` to analyze your code
+2. AI asks you 2-3 questions if anything is unclear
+3. AI generates `repo.sruja` with your architecture
+4. AI validates it with `sruja lint`
+5. You review and make changes if needed
+
+**Result:** A `repo.sruja` file in your project root!
+
+---
+
+## What the Skill Needs
+
+The skill relies on these commands from the CLI:
+
+### Collect evidence
+
+```bash
 sruja discover --context -r . --format json
-
-# Validate DSL
-sruja lint --format json architecture.sruja
-
-# Detect drift (when baseline exists)
-sruja drift --format json -r . -a architecture.sruja
 ```
 
-## Documentation
+**What this does:** Analyzes your code and returns a detailed JSON.
 
-- [Getting Started with Skill](GETTING_STARTED_SKILL.md) – Full workflow with examples
-- [Skill Reference](../skills/sruja-architecture/SKILL.md) – Core orchestration guide
-- [Skill Workflow Reference](../skills/sruja-architecture/REFERENCE.md) – Detailed discovery and modeling
-- [Prompt Patterns](../skills/sruja-architecture/PROMPTS.md) – Reusable AI prompts
-- [Compiled Guide](../skills/sruja-architecture/AGENTS.md) – Complete guide with all rules
+**When it's used:** Every time you generate or update architecture.
 
-## Skill Catalog
+### Validate
 
-Currently, only one skill is supported:
+```bash
+sruja lint repo.sruja
+```
 
-| Skill | Purpose |
-|-------|---------|
-| `sruja-architecture` | **Primary** – Design, discover, and generate Sruja architecture |
+**What this does:** Checks your `repo.sruja` file for errors.
 
-Additional skills will be added after the core workflow proves out.
+**When it's used:** After the AI generates or edits a file.
+
+### Detect drift
+
+```bash
+sruja drift -r . -a repo.sruja
+```
+
+**What this does:** Compares your code to your `repo.sruja` file.
+
+**When it's used:** When you've changed code and want to update architecture.
+
+---
+
+## Common Workflows
+
+### New project: Generate from scratch
+
+```
+Use sruja-architecture. Analyze this codebase with
+`sruja discover --context -r . --format json`,
+identify the main systems, containers, and their relationships,
+generate repo.sruja using C4 context and container levels,
+then run `sruja lint` and fix until it passes.
+```
+
+### Update existing: Keep in sync
+
+```
+Use sruja-architecture. I've made code changes.
+Run `sruja drift -r . --format json`,
+analyze what changed, and update repo.sruja to match.
+```
+
+### Add feature: Extend architecture
+
+```
+Use sruja-architecture. Read repo.sruja and add a
+[Payment Gateway] container for processing Stripe webhooks.
+Connect it to the existing API service and database.
+Run `sruja lint` and fix any errors.
+```
+
+---
+
+## Troubleshooting
+
+| Issue | Solution |
+|--------|----------|
+| **"Skill not found"** | Make sure you ran the install command and restarted your editor |
+| **"sruja: command not found"** | Install CLI: `curl -fsSL https://sruja.ai/install.sh | bash` |
+| **AI makes syntax errors** | Run `sruja lint repo.sruja` and paste errors to AI |
+| **Editor doesn't support skills** | Use Cursor or install [skills.sh](https://skills.sh) to add support |
+
+---
+
+## Why Install the Skill?
+
+**Faster generation:** AI writes `.sruja` files in seconds vs manual work.
+
+**Fewer errors:** AI knows the syntax and best practices.
+
+**Better patterns:** The skill includes architecture patterns and trade-offs.
+
+**Continuous updates:** As code changes, AI can update architecture automatically.
+
+---
+
+## Next Steps
+
+- **Complete guide:** [Getting Started](GETTING_STARTED_SKILL.md) – Full walkthrough
+- **Skill reference:** [Skill Documentation](../skills/sruja-architecture/SKILL.md) – What the skill knows
+- **Prompt examples:** [Prompt Library](../skills/sruja-architecture/PROMPTS.md) – Reusable prompts

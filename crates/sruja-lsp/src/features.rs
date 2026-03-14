@@ -407,10 +407,7 @@ pub fn get_document_symbols(doc: &Document, program: &Program) -> Vec<DocumentSy
             (0u32, 0u32)
         };
 
-        let pos = Position {
-            line,
-            character,
-        };
+        let pos = Position { line, character };
         let end_character = character + elem.assignment.name.len() as u32;
 
         #[allow(deprecated)]
@@ -774,12 +771,18 @@ web = container "Web" {}
 
         let app_symbol = symbols.iter().find(|s| s.name == "app").unwrap();
         assert_eq!(app_symbol.kind, SymbolKind::CLASS);
-        assert_eq!(app_symbol.range.start.line, 1, "Go to Symbol should jump to definition line");
+        assert_eq!(
+            app_symbol.range.start.line, 1,
+            "Go to Symbol should jump to definition line"
+        );
         assert_eq!(app_symbol.range.start.character, 0);
 
         let web_symbol = symbols.iter().find(|s| s.name == "web").unwrap();
         assert_eq!(web_symbol.kind, SymbolKind::MODULE);
-        assert_eq!(web_symbol.range.start.line, 4, "Go to Symbol should jump to definition line");
+        assert_eq!(
+            web_symbol.range.start.line, 4,
+            "Go to Symbol should jump to definition line"
+        );
     }
 
     #[test]

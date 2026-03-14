@@ -189,7 +189,7 @@ function getSrujaPath(context: vscode.ExtensionContext): string {
   return "sruja";
 }
 
-/** Output channel for architecture intelligence (drift, analyze, why). */
+/** Output channel for architecture intelligence (drift, sync, status, review). */
 let cliOutputChannel: vscode.OutputChannel | undefined;
 
 function getCliOutputChannel(): vscode.OutputChannel {
@@ -201,7 +201,7 @@ function getCliOutputChannel(): vscode.OutputChannel {
 
 /**
  * Run a Sruja CLI command in the workspace root. Architecture intelligence commands
- * (drift, analyze, why) require the CLI; they have no WASM equivalent.
+ * (drift, sync, status, review) require the CLI; they have no WASM equivalent.
  */
 async function runCliInWorkspace(
   context: vscode.ExtensionContext,
@@ -572,31 +572,32 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       const channel = getCliOutputChannel();
       channel.show(true);
-      channel.appendLine("Refreshing repo context (sruja discover --context -r . --format json) ...");
+      channel.appendLine("Refreshing repo context (sruja sync -r . -f json) ...");
       try {
         const { stdout, stderr, code } = await runCliInWorkspace(context, [
-          "discover",
-          "--context",
+          "sync",
           "-r",
           ".",
-          "--format",
+          "-f",
           "json",
         ]);
+        if (stderr) channel.append(stderr);
         if (code !== 0) {
           channel.append(stdout);
-          if (stderr) channel.append(stderr);
-          vscode.window.showErrorMessage("Sruja discover failed. Is the CLI on PATH or set sruja.lsp.path?");
+          vscode.window.showErrorMessage("Sruja sync failed. Is the CLI on PATH or set sruja.lsp.path?");
           return;
         }
         const contextPath = path.join(folder.uri.fsPath, ".sruja", "context.json");
-        const dir = path.dirname(contextPath);
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
+        channel.appendLine(`Context written to ${contextPath}`);
+        try {
+          const parsed = JSON.parse(stdout) as { context_path?: string; truth_status?: string };
+          if (parsed.context_path) {
+            channel.appendLine(`Baseline/truth: ${parsed.truth_status ?? "unknown"}`);
+          }
+        } catch {
+          // ignore parse for display
         }
-        let obj: Record<string, unknown> = JSON.parse(stdout);
-        obj.updated_at = new Date().toISOString();
-        fs.writeFileSync(contextPath, JSON.stringify(obj, null, 2), "utf8");
-        channel.appendLine(`Wrote ${contextPath}`);
+        channel.appendLine("--- Done ---");
         vscode.window.showInformationMessage("Sruja: Repo context updated.");
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -641,6 +642,86 @@ export function activate(context: vscode.ExtensionContext): void {
         const msg = err instanceof Error ? err.message : String(err);
         channel.appendLine(`Error: ${msg}`);
         vscode.window.showErrorMessage("Sruja status failed. Is the CLI on PATH or set sruja.lsp.path?");
+      }
+    }),
+    vscode.commands.registerCommand("sruja.review", async () => {
+      const channel = getCliOutputChannel();
+      channel.show(true);
+      channel.appendLine("Running sruja review -r . --format json ...");
+      try {
+        const { stdout, stderr, code } = await runCliInWorkspace(context, [
+          "review",
+          "-r",
+          ".",
+          "--format",
+          "json",
+        ]);
+        if (stderr) channel.append(stderr);
+        if (code !== 0) {
+          channel.append(stdout);
+          channel.appendLine("--- Review failed ---");
+          return;
+        }
+        const review = JSON.parse(stdout) as {
+          truth_status: string;
+          baseline?: string | null;
+          has_drift: boolean;
+          violations_count: number;
+          health_score?: number;
+          new_components: string[];
+          missing_components: string[];
+          drifted_dependencies: string[];
+          open_questions: string[];
+          suggestions: string[];
+        };
+        const base = review.baseline ?? "(none)";
+        const truth = review.truth_status ?? "unknown";
+        const violations = review.violations_count ?? 0;
+        const score = review.health_score != null ? ` ${review.health_score}/100` : "";
+        channel.appendLine(`Baseline: ${base}`);
+        channel.appendLine(`Truth: ${truth} (${violations} violation(s))${score}`);
+        channel.appendLine(`Has drift: ${review.has_drift}`);
+        channel.appendLine("");
+        if (review.new_components.length > 0) {
+          channel.appendLine("New components:");
+          for (const c of review.new_components) {
+            channel.appendLine(`  + ${c}`);
+          }
+          channel.appendLine("");
+        }
+        if (review.missing_components.length > 0) {
+          channel.appendLine("Missing components:");
+          for (const c of review.missing_components) {
+            channel.appendLine(`  - ${c}`);
+          }
+          channel.appendLine("");
+        }
+        if (review.drifted_dependencies.length > 0) {
+          channel.appendLine("Drifted dependencies:");
+          for (const d of review.drifted_dependencies) {
+            channel.appendLine(`  ~ ${d}`);
+          }
+          channel.appendLine("");
+        }
+        if (review.open_questions.length > 0) {
+          channel.appendLine("Open questions:");
+          for (const q of review.open_questions) {
+            channel.appendLine(`  ? ${q}`);
+          }
+          channel.appendLine("");
+        }
+        if (review.suggestions.length > 0) {
+          channel.appendLine("Suggestions:");
+          for (const s of review.suggestions) {
+            channel.appendLine(`  > ${s}`);
+          }
+          channel.appendLine("");
+        }
+        channel.appendLine("--- Done ---");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        channel.appendLine(`Error: ${msg}`);
+        vscode.window.showErrorMessage("Sruja review failed. Is the CLI on PATH or set sruja.lsp.path?");
       }
     }),
   );

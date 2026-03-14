@@ -69,7 +69,7 @@ If you want to define architecture explicitly, add `.sruja` files:
 
 ### Step 1: Create or add architecture
 
-Create `architecture.sruja` (or `docs/architecture.sruja`) and define your systems/containers/relationships. See [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) and [examples](https://github.com/sruja-ai/sruja/tree/main/examples).
+Create `repo.sruja` (or `docs/repo.sruja`; `architecture.sruja` is also supported for backward compatibility) and define your systems/containers/relationships. See [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) and [examples](https://github.com/sruja-ai/sruja/tree/main/examples).
 
 ### Step 2: AI editor integration (so AI-generated code follows rules)
 
@@ -160,7 +160,7 @@ Use `--locked` so the install matches the lockfile in the Sruja repo for reprodu
 | **Onboarding** | New devs read `.sruja` and exported docs instead of hunting for “the” diagram. |
 | **AI-generated code** | `.cursorrules` and Copilot instructions steer AI to valid DSL; `sruja lint` catches mistakes. |
 | **Compliance / governance** | Policies and constraints in the DSL; lint enforces structure; export for auditors. |
-| **Multi-repo** | Each repo can have its own `architecture.sruja` (or one per service); same CLI and CI pattern. |
+| **Multi-repo** | Each repo can have its own `repo.sruja` (or one per service; `architecture.sruja` is also supported); same CLI and CI pattern. |
 
 ---
 
@@ -176,7 +176,7 @@ Use `--locked` so the install matches the lockfile in the Sruja repo for reprodu
 
 - **DSL reference** – [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md)
 - **AI editors and catching bugs** – [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md)
-- **Adoption and rollout** – [Adoption Guide](https://sruja.ai/docs/adoption-guide) and [Adoption Playbook](https://sruja.ai/docs/adoption-playbook) on the website
+- **Adoption and rollout** – [Adoption Guide](../book/src/docs/adoption-guide.md) and [Adoption Playbook](../book/src/docs/adoption-playbook.md)
 - **Examples** – The canonical examples live in `book/valid-examples/` and are rendered in the mdBook “Examples Gallery” at `sruja.ai`.
 
 Sruja is open source. To report issues or suggest improvements, use [GitHub Issues](https://github.com/sruja-ai/sruja/issues) or [Discussions](https://github.com/sruja-ai/sruja/discussions).

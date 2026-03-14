@@ -1,0 +1,10 @@
+name: Sruja Check
+on:
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: cargo install --path crates/sruja-cli
+      - run: sruja check -r . --format github-actions

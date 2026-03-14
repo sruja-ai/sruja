@@ -16,7 +16,7 @@ use clap::{Parser, Subcommand};
 #[command(
     about = "Architecture-as-code tool with deterministic CLI primitives for skill-driven discovery",
     long_about = None,
-    after_help = "Stable: sruja quickstart -r .  |  sruja discover --context -r .  |  sruja lint  |  sruja drift -r ."
+    after_help = "Stable: sruja quickstart -r .  |  sruja sync -r .  |  sruja status -r .  |  sruja lint  |  sruja drift -r .  |  sruja publish -r . -o repo.bundle.json  |  sruja compose -i <dir> -o system.index.json"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -203,6 +203,45 @@ enum Commands {
         /// Path to repository root (defaults to current directory)
         #[arg(long, short = 'r', default_value = ".")]
         path: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Review: refresh evidence, detect drift, propose updates or open questions
+    Review {
+        /// Path to repository root (defaults to current directory)
+        #[arg(long, short = 'r', default_value = ".")]
+        path: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Check: CI-focused drift check (always exits 0, outputs github-actions format)
+    Check {
+        /// Path to repository root (defaults to current directory)
+        #[arg(long, short = 'r', default_value = ".")]
+        path: String,
+        /// Output format (text, json, github-actions)
+        #[arg(long, short = 'f', default_value = "github-actions")]
+        format: String,
+    },
+    /// Publish repo truth + evidence to repo.bundle.json (multi-repo federation)
+    Publish {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output path for bundle (default: repo.bundle.json)
+        #[arg(long, short = 'o', default_value = "repo.bundle.json")]
+        output: String,
+    },
+    /// Compose one or more repo bundles into system.index.json
+    Compose {
+        /// Input: path to a repo.bundle.json file or directory containing repo.bundle.json files
+        #[arg(long, short = 'i')]
+        input: String,
+        /// Output path for system index (default: system.index.json)
+        #[arg(long, short = 'o', default_value = "system.index.json")]
+        output: String,
     },
 
     /// Compare declared architectural intent vs actual implementation
@@ -378,7 +417,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         } => commands::quickstart(&path, &format, generate_baseline, fail_on.as_deref()).await,
         Commands::Init { path, prompt } => commands::init(&path, prompt).await,
         Commands::Status { path, format } => commands::status(&path, &format).await,
-        Commands::Sync { path } => commands::sync(&path).await,
+        Commands::Sync { path, format } => commands::sync(&path, &format).await,
+        Commands::Review { path, format } => commands::review(&path, &format).await,
+        Commands::Check { path, format } => commands::check(&path, &format).await,
+        Commands::Publish { repo, output } => commands::publish(&repo, &output).await,
+        Commands::Compose { input, output } => commands::compose(&input, &output).await,
         Commands::Intent { cmd } => match cmd {
             IntentCommand::Check {
                 repo,

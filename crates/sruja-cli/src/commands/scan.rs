@@ -919,8 +919,10 @@ pub async fn quickstart(
 
     if generate_baseline {
         eprintln!("📝 Generate baseline using sruja-architecture skill:");
-        eprintln!("   'Use sruja-architecture. Run `sruja discover --context -r . --format json`,");
-        eprintln!("   generate architecture.sruja, then run `sruja lint` and fix.'");
+        eprintln!("   'Use sruja-architecture. Run `sruja sync -r .` (or `sruja discover --context -r . --format json`),");
+        eprintln!(
+            "   generate repo.sruja (or architecture.sruja), then run `sruja lint` and fix.'"
+        );
         eprintln!();
     }
 

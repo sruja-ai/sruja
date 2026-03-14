@@ -52,7 +52,7 @@ npx skills add sruja-ai/sruja --skill sruja-architecture
 
 ## Best practices (SKILL.md)
 
-Sruja skills follow the [SKILL.md / agent skills](https://www.mdskills.ai/specs/skill-md) and [skills.sh](https://skills.sh) conventions so agents discover and use them correctly:
+Sruja skills follow the [SKILL.md specification](https://www.mdskills.ai/specs/skill-md) and [skills.sh](https://skills.sh) conventions so AI agents discover and use them correctly:
 
 | Practice | How we apply it |
 |----------|------------------|

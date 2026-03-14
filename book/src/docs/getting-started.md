@@ -1,136 +1,248 @@
 ---
 title: "Getting Started"
 weight: 1
-summary: "From zero to architecture in 5 minutes. Install Sruja and deploy your first diagram."
+summary: "Generate architecture with AI in 5 minutes."
 difficulty: "beginner"
 estimatedTime: "5 minutes"
 ---
 
-# Your First Architecture
+# Getting Started
 
-Welcome to the future of system design.
+**Architecture from your code—no DSL learning required.**
 
-Sruja allows you to define your software architecture as code. No more dragging boxes around. No more outdated PNGs on a wiki. **You write code, Sruja draws the maps.**
+Your AI writes and maintains `.sruja` files. You just need to know what to ask for.
 
-## 1. Installation
+---
 
-Install the Sruja CLI to compile, validate, and export your diagrams.
+## Prerequisites
 
-### Option A – install script (downloads from [GitHub Releases](https://github.com/sruja-ai/sruja/releases))
+- **Sruja CLI** – See [Quick Start](../getting-started.md) to install
+- **AI editor** – Cursor, Copilot, Claude, Continue.dev, etc.
+- **AI skill** – See [Install as a Skill](../../docs/INSTALL_AS_SKILL.md)
+
+---
+
+## Step 1: Analyze Your Codebase
+
+Run this in your project folder:
 
 ```bash
-curl -fsSL https://sruja.ai/install.sh | bash
+cd your-project
+sruja discover --context -r . --format json
 ```
 
-### Option B – from Git (requires Rust)
+**What this does:** Analyzes your code and returns detailed information.
 
-```bash
-cargo install sruja-cli --git https://github.com/sruja-ai/sruja
-```
+**Output includes:**
+- Repository structure
+- Detected technologies (Node.js, Python, Go, etc.)
+- Module boundaries
+- Entry points
+- Dependencies
 
-### Option C – build from source
+**Example output:**
 
-```bash
-git clone https://github.com/sruja-ai/sruja.git && cd sruja
-make build
-```
-
-Ensure the `sruja` binary is on your `PATH` (install script uses `~/.local/bin` by default).
-
-_Verify installation:_
-
-```bash
-sruja --version
-# Should output something like: sruja version v0.2.0
+```json
+{
+  "repo": "my-app",
+  "technologies": ["Node.js", "PostgreSQL", "Redis"],
+  "modules": [
+    {"name": "api", "type": "service"},
+    {"name": "worker", "type": "service"}
+  ],
+  "databases": [
+    {"name": "postgres", "technology": "PostgreSQL"}
+  ]
+}
 ```
 
 ---
 
-## 2. Hello, World!
+## Step 2: Generate Architecture with AI
 
-Let's model a simple web application. Create a file named `hello.sruja`.
+In your AI editor, run:
 
-This page uses **stdlib import** (same style as the rest of the book). The [Quick start](../getting-started.md) uses explicit kinds (`person = kind "Person"`, etc.) with no import — both are valid; use whichever you prefer.
+```
+Use sruja-architecture. Analyze the discovery output:
+[JSON from step 1],
+identify systems, containers, and their relationships,
+generate repo.sruja using C4 context and container levels,
+then run `sruja lint` and fix until it passes.
+```
 
-### The Code
+**What your AI will do:**
 
-Copy and paste this into your file:
+1. **Analyze** the JSON output from discovery
+2. **Ask questions** if scope is unclear (e.g., "What's this service for?")
+3. **Generate** `repo.sruja` with your architecture
+4. **Validate** it with `sruja lint`
+5. **Fix** any errors automatically
+
+---
+
+## What repo.sruja Looks Like
 
 ```sruja
-// hello.sruja
 import { * } from 'sruja.ai/stdlib'
 
-// 1. Define the System
-WebApp = system "My Cool Startup" {
-  description "The next big thing."
-
-  Frontend = container "React App"
-  API = container "Rust Service"
-  DB = database "PostgreSQL"
-
-  // 2. Define Connections
-  Frontend -> API "Requests Data"
-  API -> DB "Reads/Writes"
+// External actors
+MobileApp = person "Mobile App" {
+  description "Customer-facing mobile application"
 }
 
-// 3. Define Users
-User = person "Early Adopter"
+// Main system
+MyApp = system "My Application" {
+  description "Handles user requests and processing"
 
-// 4. Connect User to System
-User -> WebApp.Frontend "Visits Website"
+  // Containers (deployable units)
+  API = container "API Service" {
+    technology "Node.js + Express"
+    description "RESTful API for mobile and web clients"
+  }
 
-view index {
-  include *
+  Worker = container "Background Worker" {
+    technology "Node.js + Bull"
+    description "Processes async jobs (emails, reports)"
+  }
+
+  // Datastores
+  Database = database "Primary DB" {
+    technology "PostgreSQL"
+    description "Stores user data and transactions"
+  }
+
+  Cache = database "Redis Cache" {
+    technology "Redis"
+    description "Caches frequently accessed data"
+  }
 }
+
+// Relationships (how things connect)
+MobileApp -> MyApp.API "HTTPS requests"
+MyApp.API -> MyApp.Database "SQL queries"
+MyApp.API -> MyApp.Cache "Redis get/set"
+MyApp.Worker -> MyApp.Database "SQL queries"
 ```
 
-> [!TIP]
-> **Using stdlib imports**: The `import { * } from 'sruja.ai/stdlib'` line provides all standard kinds (person, system, container, database, etc.) so you don't declare them manually. For the minimal style with explicit kinds, see [Quick start](../getting-started.md).
+**Key concepts:**
 
-### 3. Generate the Diagram
+- **person** – External actors (users, systems calling you)
+- **system** – Major boundary (your entire application)
+- **container** – Deployable unit (API, worker, web frontend)
+- **database** – Data storage or cache
+- **->** – Relationship with protocol description
 
-Run this command in your terminal:
+---
+
+## Step 3: Validate
+
+After the AI generates `repo.sruja`, validate it:
 
 ```bash
-sruja export mermaid hello.sruja > diagram.mmd
+sruja lint repo.sruja
 ```
 
-You have just created a **Diagram-as-Code** artifact! You can paste the content of `diagram.mmd` into [Mermaid Live Editor](https://mermaid.live) to see it, or use the VS Code extension to preview it instantly.
+**What this checks:**
 
-**What you'll get:** A beautiful C4 diagram showing:
+- **Syntax errors** – Invalid structure or keywords
+- **Circular dependencies** – A depends on B, B depends on A
+- **Orphan elements** – Something with no connections
+- **Missing fields** – Required information not provided
 
-- The user (person) on the left
-- Your system with containers (Web, API, DB) in the middle
-- Relationships (arrows) showing how they connect
-
-> [!TIP]
-> **Want to see it visually?**
->
-> - **VS Code User?** Install the [Sruja VS Code Extension](https://marketplace.visualstudio.com/) for real-time preview, autocomplete, and syntax highlighting.
-> - **Preview in editor:** Use the [VS Code extension](../vscode.md) for syntax and diagram preview.
+**Fix errors:** Paste the lint output to your AI and say: "Fix these errors."
 
 ---
 
-## 4. Understanding the Basics
+## Step 4: Export for Documentation
 
-Let's break down what just happened.
+### Export Markdown
 
-1.  **Import Standard Kinds**: The `import { * } from 'sruja.ai/stdlib'` line gives you all standard element types (person, system, container, database, etc.) without needing to declare them manually.
-2.  **Element Creation**: You create elements using the `=` operator (e.g., `webApp = system "My Cool Startup"`).
-3.  **Nested Elements**: Containers and components can be defined inside a system block `{ ... }`, or referred to using dot notation (e.g., `webApp.frontend`).
-4.  **Relationships**: The `->` operator defines how things connect. Relationships can be defined anywhere in the file.
-5.  **Views**: The `view index { include * }` block tells Sruja to generate a diagram showing all elements. Sruja automatically generates C4 diagrams for you.
-6.  **Flat Syntax**: Sruja uses a flat syntax where all declarations are top-level. There are no wrapper blocks required.
+```bash
+sruja export markdown repo.sruja > ARCHITECTURE.md
+```
 
-> [!NOTE]
-> **Custom Kinds**: If you need custom element types (like `microservice` or `serverless`), you can declare them manually: `microservice = kind "Microservice"`. For most use cases, the standard kinds from stdlib are sufficient.
+Creates a readable document you can share with your team.
+
+### Export Mermaid Diagram
+
+```bash
+sruja export mermaid repo.sruja > ARCHITECTURE.mmd
+```
+
+Creates a diagram you can:
+- Open in [Mermaid Live Editor](https://mermaid.live)
+- Import into VS Code with the extension
+- Add to documentation
+
+### Export JSON
+
+```bash
+sruja export json repo.sruja > ARCHITECTURE.json
+```
+
+Machine-readable format for tools and automation.
 
 ---
 
-## What Now?
+## Understanding C4 Levels
 
-You have the tools. Now get the skills.
+Sruja uses the C4 Model, which organizes architecture into levels:
 
-- 🎓 **Learn the Core**: Take the **[System Design 101](courses/system-design-101/course-overview.md)** course to move beyond "Hello World".
-- 🏗 **See Real Patterns**: Copy production-ready code from **[Examples](docs/examples.md)**.
-- 🛠 **Master the CLI**: Learn how to validate constraints in **[CLI Basics](tutorials/basic/cli-basics.md)**.
+| Level | What It Is | Example |
+|--------|--------------|----------|
+| **Person** | External actors | Users, external systems, third-party APIs |
+| **System** | High-level boundary | "Order System", "User Management System" |
+| **Container** | Deployable unit | "API Service", "Web App", "Worker" |
+| **Component** | Internal part | "Payment Module", "Auth Controller" |
+
+**Recommended:** Start with Person + System + Container levels. Add components only when you need more detail.
+
+---
+
+## Common Questions
+
+**"When should I use stdlib imports?"**
+
+Always. It saves time by providing standard types (person, system, container, etc.) so you don't define them manually.
+
+**"What if discovery doesn't find my code?"**
+
+1. Check your language is supported (JavaScript, Python, Go, Rust, Java)
+2. Make sure you're in the correct directory
+3. Try `sruja quickstart -r .` to see what's detected
+
+**"How detailed should repo.sruja be?"**
+
+**Start minimal.** Only model what you actually need:
+- External actors calling your system
+- Major containers (services, apps)
+- Key datastores
+
+Add more detail only when it provides value.
+
+**"Can I edit repo.sruja manually?"**
+
+Yes, but it's easier to let AI do it. If you do edit manually:
+- Run `sruja lint` before committing
+- Validate syntax with the extension
+
+---
+
+## Next Steps
+
+- **Beginner Path:** [Beginner Path](./beginner-path.md) – 7 steps to go deeper
+- **Examples:** [Examples Gallery](../examples/index.md) – Real-world architectures
+- **Language Reference:** [Language Specification](../reference/language-spec.md) – Complete DSL guide
+
+---
+
+## Quick Reference
+
+| Want to | Command |
+|----------|----------|
+| **Analyze code** | `sruja discover --context -r . --format json` |
+| **Validate** | `sruja lint repo.sruja` |
+| **Export Markdown** | `sruja export markdown repo.sruja > doc.md` |
+| **Export Mermaid** | `sruja export mermaid repo.sruja > diagram.mmd` |
+| **Export JSON** | `sruja export json repo.sruja > arch.json` |
+| **Check drift** | `sruja drift -r . --format json` |

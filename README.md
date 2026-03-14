@@ -1,338 +1,339 @@
-# Sruja – Architecture-as-Code with AI Skills
+# Sruja – Keep Your Architecture in Sync with AI
 
 [![TypeScript Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg?flag=typescript)](https://codecov.io/gh/sruja-ai/sruja)
 
-**Architecture-as-code powered by AI skills** – define architecture in `.sruja` files; validate with deterministic CLI tools; use AI skills for discovery and modeling.
+**Stop outdated diagrams.** Use AI to generate and maintain architecture that stays in sync with your code.
 
 > ⚠️ **Beta** – Sruja is under active development. APIs may change.
 
 ---
 
+## What is this?
+
+**Problem:** Your code changes, but your architecture diagrams don't. They're in Miro, LucidChart, or old PDFs—drifting from reality.
+
+**Solution:** Sruja uses AI to analyze your codebase and generate architecture as code (`.sruja` files). You can validate, version-control, and export it—keeping it always up-to-date.
+
+**How it works:**
+1. Run a command to analyze your code
+2. Tell your AI editor to generate architecture
+3. Validate it automatically
+4. Export diagrams and docs when you need them
+
+**You don't write `.sruja` files manually.** Your AI does it for you.
+
+---
+
 ## Quick Start (3 minutes)
 
-### 1. Install the CLI
+### Step 1: Install CLI
 
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
 ```
 
-### 2. Install the core skill
+This installs the `sruja` command. You can check it worked:
+
+```bash
+sruja --version
+```
+
+### Step 2: Install the AI skill
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
-### 3. Get architecture intelligence
+This teaches your AI editor (Cursor, Copilot, Claude, etc.) how to generate Sruja architecture.
 
-Run instant structural analysis:
+**Supported editors:** Cursor, GitHub Copilot, Claude, Continue.dev, and any editor with [skills.sh](https://skills.sh) support.
+
+### Step 3: Get instant insights
+
+Jump into your project folder and run:
+
+```bash
+cd your-project
+sruja quickstart -r .
+```
+
+This shows you:
+- What's in your codebase (services, databases, APIs)
+- A health score
+- Top issues to fix
+
+**No AI required for this step**—it's just code analysis.
+
+### Step 4: Generate architecture with AI
+
+In your AI editor, paste this prompt:
+
+```
+Use sruja-architecture. Run `sruja discover --context -r . --format json`,
+gather evidence from my code, ask targeted questions if needed,
+generate repo.sruja, then run `sruja lint` and fix until it passes.
+```
+
+Your AI will:
+1. Run the discovery command to understand your code
+2. Ask you a few questions if anything is unclear
+3. Generate a `repo.sruja` file
+4. Fix any validation errors
+
+### Step 5: Validate and export
+
+```bash
+# Check for errors
+sruja lint repo.sruja
+
+# Export a diagram (for docs, presentations, etc.)
+sruja export mermaid repo.sruja > diagram.mmd
+```
+
+You can open `diagram.mmd` in [Mermaid Live Editor](https://mermaid.live) or use the VS Code extension for preview.
+
+---
+
+## Why use Sruja?
+
+| Before Sruja | After Sruja |
+|----------------|--------------|
+| Diagrams drift from code | Architecture always in sync |
+| Manual updates in drawing tools | AI generates from code |
+| Can't validate architecture | Linting catches errors |
+| Hard to see what changed | Version control shows everything |
+| Scattered across tools | Single source of truth |
+
+### Who is this for?
+
+**Developers and Teams:**
+- Keep architecture documentation accurate
+- Catch architectural issues before they cause problems
+- Onboard new team members faster
+
+**Students and Learners:**
+- Understand real-world architecture patterns
+- See how production systems are designed
+- Practice with actual codebases
+
+**Software Architects:**
+- Enforce standards across teams
+- Detect drift automatically
+- Scale architecture governance
+
+---
+
+## Common Questions
+
+**Do I need to learn the Sruja language?**
+
+No. Your AI writes the `.sruja` files for you. You just need to know what to ask for, which we provide in prompts.
+
+**What if I don't have an AI editor?**
+
+You can still use Sruja! The CLI works standalone:
+- `sruja quickstart` – Get architecture insights
+- `sruja discover` – Export code structure
+- `sruja lint` – Validate `.sruja` files
+- `sruja export` – Generate diagrams and docs
+
+However, an AI editor makes it much easier to generate and update architecture files.
+
+**Can I use this with my existing project?**
+
+Yes. Sruja supports many languages out of the box:
+
+| Language | Support Level |
+|----------|--------------|
+| **JavaScript / TypeScript** | Excellent |
+| **Python** | Excellent |
+| **Go** | Excellent |
+| **Rust** | Excellent (native) |
+| **Java** | Good |
+| **C#** | Good |
+| **Ruby** | Good |
+| **PHP** | Good |
+
+Other languages may have partial support. Run `sruja quickstart -r .` to see what gets detected.
+
+**How is this different from diagramming tools?**
+
+Diagramming tools (Miro, LucidChart, Visio) are for drawing. Sruja is for defining architecture as code.
+
+**Diagramming tools:**
+- Manual updates required
+- Drifts from reality
+- No validation
+
+**Sruja:**
+- AI generates from code
+- Always in sync
+- Validates structure
+- Version-controlled
+
+You can still export diagrams from Sruja—just treat diagrams as output, not the source.
+
+**What if the AI makes a mistake?**
+
+Run `sruja lint repo.sruja` to catch errors. Tell your AI: "Fix these lint errors" and paste the output.
+
+---
+
+## What can I do?
+
+### Get instant insights
 
 ```bash
 sruja quickstart -r .
 ```
 
-Generate architecture with AI:
+Shows architecture inventory, health score, and top findings—no `.sruja` file required.
 
-In your AI editor (Cursor, Copilot, Claude), run:
-
-```
-Use sruja-architecture. Run `sruja discover --context -r . --format json`, gather evidence, ask targeted questions if needed, generate repo.sruja, then run `sruja lint` and fix until it passes.
-```
-
-Validate the generated architecture:
+### Generate and maintain architecture
 
 ```bash
-sruja lint repo.sruja
-```
-
----
-
-## How Sruja Works
-
-### Skill-First Architecture Discovery
-
-**The core product is the AI skill**, not the CLI narrative reports. The workflow:
-
-1. **Install skill** – Add `sruja-architecture` to your AI editor
-2. **Collect evidence** – Run `sruja discover --context -r . --format json` for deterministic evidence
-3. **Ask questions** – AI asks targeted questions only when scope is unclear
-4. **Generate DSL** – AI produces minimal `repo.sruja` based on evidence
-5. **Validate** – Run `sruja lint` to catch errors
-6. **Refine** – Use `sruja drift -r .` to detect changes (auto-detects repo.sruja)
-
-### Deterministic CLI Primitives
-
-The CLI provides deterministic, machine-readable outputs that skills depend on:
-
-```bash
-# Collect evidence (primary machine-facing contract)
+# Let AI discover and generate
 sruja discover --context -r . --format json
 
-# Validate DSL
-sruja lint --format json repo.sruja
-
-# Format DSL
-sruja fmt repo.sruja
-
-# Export for documentation
-sruja export markdown repo.sruja
-
-# Detect drift (auto-detects repo.sruja)
-sruja drift --format json -r .
-
-# Check intent
-sruja intent check --format json
-
-# Export context
-sruja context -r .
-```
-
-**No guessing, no heuristics** – The CLI returns what it actually finds in your code.
-
-### Architecture-as-Code
-
-Define your architecture in version-controlled `.sruja` files. The preferred filename is `repo.sruja` (placed in the repository root). `architecture.sruja` is still supported for backward compatibility but `repo.sruja` is recommended for new projects.
-
-```sruja
-import { * } from 'sruja.ai/stdlib'
-
-user = person "User" {
-  description "End user"
-}
-
-app = system "My App" {
-  api = container "API" {
-    technology "Node.js"
-    description "REST API"
-  }
-
-  db = database "Database" {
-    technology "PostgreSQL"
-    description "Data storage"
-  }
-}
-
-user -> app.api "HTTPS"
-app.api -> app.db "SQL"
-```
-
-**Benefits:**
-- Version-controlled architecture documentation
-- Catch issues before production with `sruja lint`
-- Detect drift with `sruja drift`
-- Export to Markdown and Mermaid diagrams
-- Works with Git, CI/CD, and AI tools
-
----
-
-## Supported Languages
-
-Sruja uses Tree-sitter parsers for precise code analysis. Language support varies between full AST parsing and minimal line-based extraction.
-
-| Language | Parser Type | Notes |
-|----------|-------------|-------|
-| **TypeScript / JavaScript** | Full Tree-sitter | Best support for web frameworks and Node.js applications |
-| **Python** | Full Tree-sitter | Strong support for Django, Flask, FastAPI applications |
-| **Go** | Full Tree-sitter | Excellent for microservices and cloud-native applications |
-| **Rust** | Full Tree-sitter | Native language; comprehensive support for all Rust patterns |
-| **Java** | Full Tree-sitter | Good for enterprise applications and Spring Boot |
-| **C#** | Full Tree-sitter | Support for .NET applications |
-| **Ruby** | Full Tree-sitter | Rails and Ruby applications |
-| **PHP** | Full Tree-sitter | PHP web applications |
-| **Scala** | Full Tree-sitter | Scala applications |
-| **C / C++** | Full Tree-sitter | Systems programming |
-| **Kotlin** | Line-based extraction | Limited support due to Tree-sitter version compatibility; extracts imports and classes only |
-
-**Best Results:** JavaScript/TypeScript, Go, Python, and Rust repos provide the most accurate architectural insights with minimal false positives.
-
-**Known Limitations:**
-- Dynamic imports and reflection-based patterns may be missed
-- Entry points and test utilities may be flagged as orphans
-- Kotlin support is minimal (line-based) compared to other languages
-- Language-specific frameworks may require additional context
-
-See [Known Limitations](docs/KNOWN_LIMITATIONS.md) for scanner and analysis caveats.
-
----
-
-## Stable CLI Commands
-
-These commands are the stable product surface:
-
-| Command | Purpose | Format |
-|---------|---------|--------|
-| `lint` | Validate DSL | `--format json` |
-| `fmt` | Format DSL | default |
-| `export` | Export to formats | default |
-| `discover --context` | Collect evidence | `--format json` |
-| `drift` | Detect drift | `--format json` |
-| `intent check` | Check intent | `--format json` |
-| `context` | Export context | default |
-
-### Quickstart
-
-**Structural output only** – no framework/domain/security narratives unless backed by evidence:
-
-```bash
-sruja quickstart -r .
-```
-
-Returns:
-- Architecture inventory
-- Health score
-- Top findings
-- Evidence references
-- Scan scope
-
-### Example Workflow
-
-```bash
-# 1. Get instant structural analysis
-sruja quickstart -r .
-
-# 2. Use AI to generate architecture (in your editor)
-# Paste this prompt:
-# "Use sruja-architecture. Run `sruja discover --context -r . --format json`, gather evidence, ask targeted questions if needed, generate repo.sruja, then run `sruja lint` and fix until it passes."
-
-# 3. Validate the generated architecture
+# Validate
 sruja lint repo.sruja
 
-# 4. Export documentation
+# Detect changes over time
+sruja drift -r .
+```
+
+### Export for documentation
+
+```bash
+# Markdown (readable docs)
 sruja export markdown repo.sruja > ARCHITECTURE.md
 
-# 5. Add to CI (auto-detects repo.sruja)
-sruja drift -r . --fail-on all
+# Mermaid (diagrams)
+sruja export mermaid repo.sruja > ARCHITECTURE.mmd
+
+# JSON (machine-readable)
+sruja export json repo.sruja > ARCHITECTURE.json
+```
+
+### Use in CI/CD
+
+```yaml
+# .github/workflows/architecture.yml
+name: Validate Architecture
+on: [push, pull_request]
+
+jobs:
+  validate:
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Sruja
+        run: curl -fsSL https://sruja.ai/install.sh | bash
+      - name: Lint
+        run: sruja lint repo.sruja
 ```
 
 ---
 
 ## Installation
 
-### CLI
+### CLI (required)
 
-**Option A – install script (downloads binary from GitHub Releases):**
+**Option A – Install script (recommended):**
 
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
 ```
 
-**Option B – from Git (requires Rust):**
+Downloads the latest binary from GitHub Releases. Adds to `~/.local/bin` by default.
+
+**Option B – Install via cargo (requires Rust):**
 
 ```bash
 cargo install sruja-cli --git https://github.com/sruja-ai/sruja
 ```
 
-**Option C – build from source:**
+**Option C – Build from source:**
 
 ```bash
-git clone https://github.com/sruja-ai/sruja.git && cd sruja && make build
+git clone https://github.com/sruja-ai/sruja.git
+cd sruja
+make build
 ```
 
-Verify install: `sruja --version`
+**Verify installation:**
 
-### Skill
+```bash
+sruja --version
+```
 
-Install the core architecture skill:
+### AI Skill (recommended but optional)
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
-**For Cursor, Copilot, Claude, Continue.dev, or any AI editor with skills.sh support.**
+### VS Code Extension (optional)
+
+Install from [VS Code Marketplace](https://marketplace.visualstudio.com/) for:
+- Syntax highlighting
+- Diagnostics
+- Diagram preview
+- Export commands
 
 ---
 
 ## Documentation
 
-**Primary Getting Started Guides:**
+**Getting Started:**
 
-- [Install Sruja as a Skill](docs/INSTALL_AS_SKILL.md) – Skill installation and discovery workflow
-- [Getting Started with Skill](docs/GETTING_STARTED_SKILL.md) – Core workflow with examples
-- [Skill Reference](skills/sruja-architecture/SKILL.md) – Core skill orchestration guide
-- [Skill Workflow Reference](skills/sruja-architecture/REFERENCE.md) – Detailed discovery and modeling guide
-- [Prompt Patterns](skills/sruja-architecture/PROMPTS.md) – Reusable AI prompts
+- [Install as a Skill](docs/INSTALL_AS_SKILL.md) – Editor-specific setup
+- [Getting Started with Skills](docs/GETTING_STARTED_SKILL.md) – Complete workflow guide
+- [Skill Reference](skills/sruja-architecture/SKILL.md) – What the skill does
 
-**CLI Engine Documentation:**
+**Language & CLI:**
 
-- [Language Specification](docs/LANGUAGE_SPECIFICATION.md) – DSL syntax and features
-- [Run Guide](docs/RUN_GUIDE.md) – CLI commands and demos
-- [Design Philosophy](docs/DESIGN_PHILOSOPHY.md) – Language design principles
-- [Known Limitations](docs/KNOWN_LIMITATIONS.md) – Scanner limitations, false positives, and scope constraints
-- [Support](docs/SUPPORT.md) – Community support options and enterprise considerations
+- [Language Specification](docs/LANGUAGE_SPECIFICATION.md) – Complete DSL reference
+- [Run Guide](docs/RUN_GUIDE.md) – CLI commands and examples
+- [Known Limitations](docs/KNOWN_LIMITATIONS.md) – What Sruja can/can't do
 
----
+**Advanced Topics:**
 
-## CI/CD Integration
-
-### Lint and Drift Check
-
-```yaml
-# .github/workflows/architecture.yml
-name: Architecture validation
-on: [push, pull_request]
-jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Sruja
-        run: curl -fsSL https://sruja.ai/install.sh | bash
-      - name: Lint
-        run: find . -name '*.sruja' -exec sruja lint {} \;
-      - name: Drift check
-        run: sruja drift -r . --fail-on all
-```
-
-### PR-Scoped Drift
-
-```bash
-# Detect only NEW violations in a PR
-sruja drift-pr -r . --base origin/main -f github-actions
-```
+- [Multi-Repo Federation](docs/FEDERATION.md) – Managing multiple repos
+- [Design Philosophy](docs/DESIGN_PHILOSOPHY.md) – Why Sruja works this way
 
 ---
 
-## Project Structure
+## Troubleshooting
 
-```
-sruja/
-├── skills/sruja-architecture/  # Core AI skill
-│   ├── SKILL.md               # Orchestration guide
-│   ├── REFERENCE.md           # Discovery & modeling reference
-│   ├── PROMPTS.md            # Prompt patterns
-│   ├── AGENTS.md             # Compiled guide
-│   └── agents/skill.yaml     # Skill manifest for agent platforms (prompts, refs)
-├── crates/sruja-cli/         # CLI (engine primitives)
-├── crates/sruja-language/    # Parser and AST
-├── crates/sruja-engine/      # Validation rules
-├── crates/sruja-scan/        # Repo scanning
-└── crates/sruja-diff/        # Drift detection
-```
+**"sruja: command not found"**
 
----
-
-## Development
+The CLI isn't on your PATH. Try:
 
 ```bash
-# Setup
-cargo fetch
-npm install
+# Add to PATH (if using install script)
+export PATH="$HOME/.local/bin:$PATH"
 
-# Build CLI
-make build
-
-# Run tests
-make test
+# Or re-open your terminal
 ```
 
-### VS Code Extension
+**Skill isn't loading in my editor**
 
-The VS Code extension is **supported and actively maintained**. Core features (syntax highlighting, diagnostics, snippets, export, diagram preview) are stable. See [extension/README.md](extension/README.md) for installation and usage details.
+1. Make sure you ran: `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture`
+2. Check your editor supports [skills.sh](https://skills.sh)
+3. Restart your editor
 
-To build and install the extension:
-```bash
-make build-extension
-make install-extension
-```
+**AI generates invalid Sruja code**
+
+Run: `sruja lint repo.sruja --format json`
+
+Copy the error output and paste it to your AI with: "Fix these lint errors."
+
+**Discovery doesn't find my components**
+
+- Check your language is supported (see table above)
+- Make sure you're in the correct directory
+- Try: `sruja quickstart -r .` to see what's being detected
+- Open an issue if something obvious is missing
 
 ---
 
@@ -353,5 +354,6 @@ Apache 2.0
 
 ## Links
 
-- **Website**: https://sruja.ai
-- **GitHub**: https://github.com/sruja-ai/sruja
+- **Website:** https://sruja.ai
+- **GitHub:** https://github.com/sruja-ai/sruja
+- **Discussions:** https://github.com/sruja-ai/sruja/discussions
