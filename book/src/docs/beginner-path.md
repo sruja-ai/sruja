@@ -74,7 +74,7 @@ If you just did [Quick start](../getting-started.md), you already have your firs
 - Visible outcomes: run a command or export a diagram every step
 - One concept at a time: model, then lint, then export
 - Use checklists: follow the repo docs style when writing
-- Ask for help: Discord and Discussions links in README
+- Ask for help: Discussions links in README
 
 ## What’s Next
 
@@ -83,4 +83,4 @@ If you just did [Quick start](../getting-started.md), you already have your firs
 
 ---
 
-**Note**: Sruja is **free and open source** (Apache 2.0 licensed). Join the community on [Discord](https://discord.gg/VNrvHPV5) or [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions) for help and to contribute.
+**Note**: Sruja is **free and open source** (Apache 2.0 licensed). Join the community on [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions) for help and to contribute.

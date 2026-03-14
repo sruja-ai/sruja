@@ -55,6 +55,7 @@ pub fn discover_questions() -> Result<(), CliError> {
 #[derive(serde::Serialize)]
 pub struct DiscoverContextJson {
     pub repo: String,
+    pub scan_scope: sruja_scan::scan_scope::ScanScope,
     pub components: usize,
     pub edges: usize,
     pub primary_language: String,
@@ -234,6 +235,7 @@ pub fn discover_context_json(repo: &str) -> Result<DiscoverContextJson, CliError
     suggested_areas.sort();
     Ok(DiscoverContextJson {
         repo: repo.to_string(),
+        scan_scope: sruja_scan::scan_scope::ScanScope::default(),
         components: graph.nodes.len(),
         edges: graph.edges.len(),
         primary_language,

@@ -268,8 +268,7 @@ express = system "Express.js" {
 - **Detailed guide**: See `EVALUATION_GUIDE.md`
 - **Examples**: Check `book/valid-examples/` (canonical in-repo examples)
 - **Issues**: Open a GitHub issue
-- **Community**: Join Discord
-
+- **Community**: Join Github Discussions
 ---
 
 **Ready to test?**

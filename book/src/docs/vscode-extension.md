@@ -215,7 +215,7 @@ The LSP implementation is powered by the same Rust codebase that runs the CLI, c
 
 - **Learn the DSL**: Check out the [Syntax Reference](docs/reference/syntax.md)
 - **See Examples**: Browse [Example Architectures](docs/examples.md)
-- **Get Help**: Join [Discord](https://discord.gg/VNrvHPV5) or [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
+- **Get Help**: Join [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
 
 ## Contributing
 

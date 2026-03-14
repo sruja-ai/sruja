@@ -269,7 +269,7 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 1. **Complete Self-Assessment** (above)
 2. **Calculate Value** (Step 2)
 3. **Try Sruja** (see [Getting Started](getting-started.md))
-4. **Join Community** (GitHub Discussions, Discord, etc.)
+4. **Join Community** (GitHub Discussions)
 
 ### Decision Timeline
 

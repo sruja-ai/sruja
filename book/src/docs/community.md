@@ -10,17 +10,6 @@ Welcome to the Sruja community! Sruja is an open source project built by and for
 
 ## Join the Conversation
 
-### 💬 Discord
-Join our Discord server for real-time chat, quick questions, and community discussions:
-
-**[Join Discord](https://discord.gg/VNrvHPV5)**
-
-Discord is great for:
-- Getting quick help with questions
-- Discussing ideas and use cases
-- Sharing your Sruja projects
-- Connecting with other community members
-
 ### 💬 GitHub Discussions
 For longer-form discussions, feature requests, and Q&A:
 
@@ -56,7 +45,7 @@ Sruja is an open source project, and we welcome contributions of all sizes! Ther
 - Help improve error messages
 
 **Community**
-- Answer questions in Discord or Discussions
+- Answer questions in Discussions
 - Help newcomers get started
 - Share your Sruja projects and experiences
 
@@ -182,7 +171,6 @@ Contact the team through [GitHub Discussions](https://github.com/sruja-ai/sruja/
 - **[Repository](https://github.com/sruja-ai/sruja)**: Code, issues, and discussions
 
 ### Community
-- **[Discord](https://discord.gg/VNrvHPV5)**: Real-time chat
 - **[GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)**: Longer-form discussions
 - **[GitHub Issues](https://github.com/sruja-ai/sruja/issues)**: Bug reports and feature requests
 
@@ -190,7 +178,7 @@ Contact the team through [GitHub Discussions](https://github.com/sruja-ai/sruja/
 
 Ready to contribute? Here are some quick ways to get started:
 
-1. **Join Discord** and introduce yourself
+1. **Join Discussions** and introduce yourself
 2. **Star the repository** on GitHub to show your support
 3. **Fix a typo** in the documentation
 4. **Add an example** to `book/valid-examples/` and a matching page under `book/src/examples/`
@@ -200,4 +188,4 @@ Every contribution, no matter how small, helps make Sruja better for everyone. T
 
 ---
 
-**Questions?** Reach out on [Discord](https://discord.gg/VNrvHPV5) or [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions). We're here to help!
+**Questions?** Reach out on [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions). We're here to help!

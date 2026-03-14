@@ -1,88 +1,420 @@
-# Sruja Architecture Discovery Reference
+# Sruja Architecture Reference
 
-Use this reference when the request starts from a repo or spec, not from an existing `.sruja` file.
+Detailed reference for discovery workflow, modeling rules, and refinement with the Sruja architecture skill.
 
-## Core workflow
+## Discovery Workflow
 
-1. **Gather evidence first**
-   - Run `sruja discover --context -r .` or `sruja discover --context -r <subpath>`.
-   - Read manifests, entry points, config, docs, ADRs, and specs before modeling.
-   - Prefer evidence over inference. Do not invent externals, technologies, or deployables.
-2. **Ask targeted questions when needed**
-   - Ask 2-5 questions only when scope, boundaries, or key flows are unclear.
-   - Good questions: which area first, what the deployables are, which externals must appear, which flows matter most.
-3. **Build the DSL**
-   - Model only what is evidenced or confirmed.
-   - Prefer fewer, correct elements over a large speculative diagram.
-   - Mark uncertainty as open questions instead of guessing.
-4. **Validate before returning**
-   - Run `sruja lint <file>.sruja`.
-   - Fix until it passes.
+### Phase 1: Evidence Collection
 
-## When to ask instead of guess
+Always start with deterministic evidence collection from the CLI:
 
-- The repo looks like a monorepo or has several plausible boundaries
-- It is unclear whether something is a library, app, worker, or service
-- External calls exist but the target system is not identifiable
-- The user asks for "the architecture" of a large repo without naming a scope
-- Several entry points exist and it is unclear which are production-relevant
+```bash
+sruja discover --context -r . --format json
+```
 
-## Discovery modes
+**Output includes:**
+- Repository structure (directories, file patterns)
+- Detected technologies (languages, frameworks, libraries)
+- Module boundaries (code organization)
+- Entry points (main functions, API routes, etc.)
+- External dependencies (package.json, requirements.txt, go.mod, etc.)
+- Scan scope (what was included/excluded from analysis)
 
-| Mode | Use when | Output |
-|------|----------|--------|
-| `high-level-overview` | User wants the big picture only | Systems, top containers, key externals |
-| `standard` | Default for one repo or one area | Systems, containers, main components, labeled relationships |
-| `subsystem-deep-dive` | User points to a subpath or bounded context | One area in detail; other areas as external systems |
-| `diff-and-refine` | `architecture.sruja` already exists | Proposed additions/removals/fixes only |
+**What this tells you:**
+- What programming languages are used
+- What frameworks and libraries are present
+- How the codebase is organized
+- What external services are dependencies
+- What files/directories were analyzed
 
-## Discovery playbook
+### Phase 2: Scope Selection
 
-Follow this order:
+Based on evidence, determine the scope of your architecture:
 
-1. Deployables and runtime: Docker, compose, K8s, Procfile, `package.json` scripts, `pyproject.toml`, `go.mod`, `Cargo.toml`
-2. Entry points: `main`, `index`, app boot files, route registration, workers, CLIs
-3. Data stores and queues: Postgres, MySQL, MongoDB, Redis, Kafka, RabbitMQ, SQS
-4. Service relationships: HTTP/gRPC clients, SDKs, env vars, webhooks, event publishers/consumers
-5. Frontend or public entry: web app, mobile backend, BFF, API gateway
-6. Docs and intent: `README`, `docs/`, `adr/`, `SECURITY.md`, specs
+**C4 Context Level (Person + System):**
+- External actors (users, systems, services)
+- Major system boundaries
 
-If `sruja discover` is unavailable, follow the same order manually.
+**C4 Container Level:**
+- Deployable units (APIs, workers, apps)
+- Datastores (databases, caches, queues)
 
-## Output shapes
+**C4 Component Level:**
+- Internal modules within containers
+- Detailed data flows
 
-### Concise extraction
+**When to use each level:**
+- Start with Context + Container for most projects
+- Add Component level only for complex subsystems
+- Don't add Component level globally just for completeness
 
-Use this when the user wants "just the relevant area" or "extract the architecture for X":
+### Phase 3: Ask Targeted Questions
 
-- Area
-- Entry points
-- Main components
-- Outbound
-- Tech
-- Open questions
+Ask only when evidence is ambiguous. Examples:
 
-Keep it to 5-10 bullets. No graph dumps.
+**Scope Unclear:**
+- "What are the main system boundaries? Are these services separate systems or containers?"
+- "Is this a monolith or microservices architecture?"
 
-### Full DSL generation
+**External Dependencies:**
+- "What external services do you integrate with beyond what's in package.json?"
+- "Are there manual deployments or infrastructure dependencies?"
 
-Use this when the user wants `architecture.sruja`:
+**Datastores:**
+- "What databases or caches are used?"
+- "Is there a message queue for async operations?"
 
-- Generate the DSL only or DSL plus a short summary
-- Use systems, containers, components, and labeled relationships
-- Keep other uncertain areas as open questions or external systems
-- Run `sruja lint` before returning
+**Deployment:**
+- "How are these components deployed?"
+- "Are there separate services or a single deployable?"
 
-## Prompt patterns
+**Data Flows:**
+- "What are the main data flows between components?"
+- "How does authentication work?"
 
-### Whole repo baseline
+**Stop asking when:** You have enough evidence to generate a minimal architecture.
 
-`Use sruja-architecture. Run sruja discover --context -r ., gather evidence, ask targeted questions if scope or externals are unclear, generate architecture.sruja, then run sruja lint and fix until it passes.`
+### Phase 4: Generate Minimal DSL
 
-### One area first
+Generate `architecture.sruja` covering only what evidence supports:
 
-`Use sruja-architecture. Run sruja discover --context -r ., list suggested areas, ask me which one to capture first, then generate architecture-<area>.sruja for that area only and treat other areas as external systems. Run sruja lint before returning.`
+```sruja
+// External actors
+User = person "User" {
+  description "End user of the application"
+}
 
-### Diff and refine
+// Main system
+Application = system "Application" {
+  description "Main application system"
 
-`Use sruja-architecture in diff-and-refine mode. Compare the repo to the existing architecture.sruja and propose only additions, removals, or relationship fixes. Do not rewrite the file from scratch. Run sruja lint on the updated file.`
+  // Containers (deployable units)
+  API = container "API Service" {
+    technology "Node.js + Express"
+    description "REST API backend"
+  }
+
+  Frontend = container "Web Frontend" {
+    technology "React"
+    description "User interface"
+  }
+
+  Database = database "Database" {
+    technology "PostgreSQL"
+    description "Primary data storage"
+  }
+}
+
+// Relationships
+User -> Application.Frontend "HTTPS"
+Application.Frontend -> Application.API "REST API"
+Application.API -> Application.Database "SQL"
+```
+
+### Phase 5: Validate
+
+Always lint:
+
+```bash
+sruja lint architecture.sruja
+```
+
+Fix all errors before considering complete.
+
+## Modeling Rules
+
+### Component Types
+
+Use these types based on evidence:
+
+**Person:** External actors
+- Users (Admin, Customer, Guest)
+- External systems (Payment Gateway, SaaS)
+- Third-party services (Analytics, Monitoring)
+
+**System:** Major boundaries
+- High-level system boundaries representing major domains
+- Separates your system from external systems
+- Contains containers
+
+**Container:** Deployable units
+- APIs (REST, GraphQL, gRPC)
+- Background workers/job processors
+- Message consumers/producers
+- Web applications
+- Mobile apps
+
+**Database:** Datastores
+- Primary databases (PostgreSQL, MySQL)
+- Caches (Redis)
+- Queues (Kafka, RabbitMQ)
+- Search indexes (Elasticsearch)
+
+### Relationships
+
+Be specific with relationships:
+
+```sruja
+// Good - specific protocol and purpose
+Frontend -> API "HTTPS (REST API)"
+API -> Database "PostgreSQL (JDBC)"
+API -> Queue "publishes events"
+
+// Bad - vague
+Frontend -> API "uses"
+API -> Database "connects"
+```
+
+Include:
+- Protocol (HTTPS, gRPC, SQL, etc.)
+- Purpose (reads, writes, publishes, etc.)
+- Data flow direction
+
+### Architectural Patterns
+
+Choose patterns based on evidence:
+
+**Monolith:** Single deployable unit
+- Small teams (1-10 developers)
+- Simple domain
+- Fast time-to-market
+
+**Microservices:** Multiple independent services
+- Large teams
+- Complex domain
+- Independent scaling needs
+
+**Event-Driven:** Async messaging
+- Real-time processing
+- Loose coupling
+- Eventual consistency acceptable
+
+**CQRS:** Separate read/write models
+- Complex queries
+- High throughput
+- Different data models for read vs write
+
+### Anti-Patterns to Avoid
+
+**God Component:**
+```sruja
+// Don't do this
+Everything = container "Everything" {
+  technology "Node.js"
+  description "Does auth, orders, payments, inventory, notifications"
+}
+
+// Do this instead
+AuthService = container "Auth Service" { ... }
+OrderService = container "Order Service" { ... }
+PaymentService = container "Payment Service" { ... }
+```
+
+**Direct Database Access:**
+```sruja
+// Don't do this
+Frontend -> Database "SQL"
+Worker -> Database "SQL"
+API -> Database "SQL"
+
+// Do this instead
+Frontend -> API "HTTPS"
+Worker -> API "REST API"
+API -> Database "SQL"
+```
+
+**Circular Dependencies:**
+```sruja
+// Don't do this
+ServiceA -> ServiceB "calls"
+ServiceB -> ServiceA "calls"
+
+// Do this instead
+ServiceA -> CommonService "uses"
+ServiceB -> CommonService "uses"
+```
+
+## Refinement Workflow
+
+### Drift Detection
+
+When a baseline exists, detect drift:
+
+```bash
+sruja drift -r . -a architecture.sruja --format json
+```
+
+**Analyzes:**
+- New circular dependencies
+- New orphan components
+- Layer violations
+- Structural changes
+- Suggested improvements
+
+### Refinement Steps
+
+1. **Review drift findings**
+2. **Determine if drift is:**
+   - Intentional (architecture evolved)
+   - Unintentional (technical debt)
+   - False positive (scope change)
+3. **Update architecture.sruja**
+4. **Run `sruja lint`**
+5. **Commit changes**
+
+### When to Refine
+
+- After significant code changes
+- When adding new features
+- When refactoring code
+- On a regular schedule (weekly/monthly)
+- Before releases
+
+### Minimal Updates
+
+Refine incrementally:
+- Fix errors first
+- Add new components only if needed
+- Remove outdated components
+- Update relationships to match code
+- Keep descriptions accurate
+
+## Evidence Fidelity
+
+### Trust the Evidence
+
+**Always trust:**
+- File structure (what exists)
+- Technology detection (what's actually used)
+- Dependencies (what's imported)
+- Entry points (where execution starts)
+
+**Never trust:**
+- Heuristics about "this looks like X"
+- Assumptions about deployment
+- Guesses about external integrations
+- Narratives without code backing
+
+### Surface Uncertainty
+
+When evidence is insufficient:
+
+```sruja
+/*
+OPEN QUESTIONS:
+- Authentication mechanism not clear from code
+- Message queue purpose not documented
+- External API endpoints not fully discovered
+- Deployment model unknown
+*/
+```
+
+Or add uncertainty markers:
+```sruja
+ExternalService = person "External Service" {
+  description "External integration (evidence unclear)"
+  // Add comment: "Need to verify service details"
+}
+```
+
+## Scan Scope
+
+### Default Excludes
+
+The CLI excludes these by default to focus on production code:
+- Generated code (node_modules, target, build, dist)
+- Vendor directories (vendor, third_party)
+- Fixtures and test data (fixtures, __mocks__)
+- Documentation (docs, README, examples)
+- Evaluation and benchmarks (evaluation, benchmark, perf)
+
+### Why This Matters
+
+- Keeps evidence focused on production-relevant code
+- Avoids pollution from dependencies
+- Ensures scan scope is reproducible
+- Makes skill output more trustworthy
+
+### Custom Scope
+
+If you need custom scope:
+
+```bash
+# Scan specific directory
+sruja discover --context -r ./src --format json
+
+# Or configure in .sruja.yaml (if supported)
+```
+
+## Output Format
+
+### JSON Structure
+
+`discover --context --format json` returns:
+
+```json
+{
+  "structure": { ... },
+  "technologies": [ ... ],
+  "modules": [ ... ],
+  "entry_points": [ ... ],
+  "dependencies": [ ... ],
+  "scan_scope": {
+    "included": [ ... ],
+    "excluded": [ ... ],
+    "total_files": 1234
+  }
+}
+```
+
+**Use this as:** The single source of truth for what the CLI actually analyzed.
+
+## Common Mistakes
+
+### Don't Guess
+
+```
+// Don't do this
+Cache = database "Redis Cache" {
+  description "Used for caching (assumed)"
+}
+
+// Do this instead
+// Add to OPEN QUESTIONS:
+// - Is there a cache layer? What caching strategy?
+```
+
+### Don't Over-Model
+
+```
+// Don't add components just for completeness
+UserService = container "User Service" { ... }
+OrderService = container "Order Service" { ... }
+PaymentService = container "Payment Service" { ... }
+NotificationService = container "Notification Service" { ... }
+// ... 20 more containers
+
+// Do this: Start minimal, add as needed
+Application = system "Application" {
+  API = container "API" { ... }
+  Frontend = container "Frontend" { ... }
+  Database = database "Database" { ... }
+}
+```
+
+### Don't Skip Linting
+
+Always lint after generating or editing:
+
+```bash
+sruja lint architecture.sruja
+```
+
+Fix errors before committing.
+
+## Next Steps
+
+- **Prompt patterns**: See PROMPTS.md
+- **Compiled guide**: See AGENTS.md
+- **Individual rules**: See rules/ directory
+- **Install skill**: `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture`

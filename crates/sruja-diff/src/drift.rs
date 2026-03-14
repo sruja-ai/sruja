@@ -113,6 +113,7 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
     });
 
     DriftReport {
+        scan_scope: sruja_scan::scan_scope::ScanScope::default(),
         total_modules: graph
             .nodes
             .iter()

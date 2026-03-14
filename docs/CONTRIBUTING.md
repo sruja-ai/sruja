@@ -13,7 +13,7 @@ This step-by-step guide walks you through making your first contribution, even i
 - 🐛 **Find Issues**: [Good First Issues](https://github.com/sruja-ai/sruja/labels/good%20first%20issue)
 - 📖 **Development Guide**: [Development Practices](DEVELOPMENT.md)
 - 📐 **Stack**: Rust (CLI, LSP, engine, export), mdBook (docs). VS Code extension connects to the Rust LSP.
-- 💬 **Get Help**: [Discord](https://discord.gg/VNrvHPV5) | [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
+- 💬 **Get Help**:[GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
 
 ## Project Overview
 
@@ -241,8 +241,6 @@ If there aren't many issues yet, here are common tasks that don't need issues:
 You can start working on these right away! Open a draft PR to show what you're working on.
 
 ## Getting Help
-
-- 💬 **Discord**: https://discord.gg/VNrvHPV5
 - 💬 **GitHub Discussions**: Ask questions and share ideas
 - 📝 **GitHub Issues**: Report bugs or request features
 - 💬 **PR Comments**: Ask for help on your pull request
@@ -258,7 +256,6 @@ You can start working on these right away! Open a draft PR to show what you're w
 ## Get in Touch
 
 - GitHub Discussions
-- Discord: https://discord.gg/VNrvHPV5
 
 ## Contributing Content
 

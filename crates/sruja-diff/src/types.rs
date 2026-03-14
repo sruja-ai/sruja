@@ -181,6 +181,8 @@ pub struct HealthScoreBreakdown {
 /// Result of architectural drift detection
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DriftReport {
+    /// Scan scope metadata (what was included/excluded).
+    pub scan_scope: sruja_scan::scan_scope::ScanScope,
     pub total_modules: usize,
     pub total_services: usize,
     pub total_databases: usize,

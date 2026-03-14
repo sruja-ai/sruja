@@ -5,7 +5,8 @@
 
 mod cargo;
 pub mod graph;
-mod npm;
+pub mod npm;
+pub mod scan_scope;
 pub mod tree_sitter;
 
 use std::path::Path;
@@ -13,6 +14,7 @@ use std::path::Path;
 use thiserror::Error;
 
 pub use graph::{Edge, EdgeEvidence, EdgeKind, Graph, Node, NodeKind};
+pub use scan_scope::{ScanScope, DEFAULT_EXCLUDE_PATTERNS};
 pub use tree_sitter::{scan_with_tree_sitter, ScanConfig};
 
 #[derive(Debug, Error)]

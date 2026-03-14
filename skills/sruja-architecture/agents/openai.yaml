@@ -1,0 +1,36 @@
+name: sruja-architecture
+description: Architecture discovery and DSL authoring for Sruja. This skill provides a deterministic, evidence-first workflow for generating and maintaining architecture.sruja files from codebases.
+
+version: 1.0.0
+
+capabilities:
+  - Architecture discovery from codebases
+  - DSL authoring and validation
+  - Evidence-first modeling
+  - Drift detection and refinement
+
+prompts:
+  default: "Use sruja-architecture skill. Run `sruja discover --context -r . --format json`, gather evidence from the repo, ask targeted questions only if scope or externals are unclear, generate a minimal architecture.sruja with evidence-based components and relationships using C4 context and container levels, then run `sruja lint architecture.sruja` and fix all errors until it passes. Do not guess about missing information; list open questions instead."
+
+  discovery: "Use sruja-architecture skill. Run `sruja discover --context -r . --format json`, gather evidence from the repo including structure, technologies, modules, entry points, and dependencies. Ask targeted questions only when evidence is ambiguous. Generate a minimal architecture.sruja covering only what evidence supports. Run `sruja lint` and fix all errors."
+
+  refinement: "Use sruja-architecture skill. Analyze this existing architecture.sruja, run `sruja discover --context -r . --format json` for current evidence, compare architecture against evidence, identify discrepancies, propose updates to align with current code, then run `sruja lint` and fix all errors."
+
+  drift: "Use sruja-architecture skill. Run `sruja drift -r . -a architecture.sruja --format json` to detect drift. Analyze results, propose updates to architecture.sruja to address drift, run `sruja lint` and fix all errors. List open questions for any uncertainties."
+
+references:
+  - SKILL.md
+  - REFERENCE.md
+  - PROMPTS.md
+  - AGENTS.md
+
+installation: "npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture"
+
+category: architecture
+tags:
+  - architecture
+  - dsl
+  - c4
+  - modeling
+  - discovery
+  - validation

@@ -1,9 +1,8 @@
 //! CLI commands module.
 //!
-//! Commands are split by domain: dsl, scan, analyze, runtime, intent.
+//! Commands are split by domain: dsl, scan, runtime, intent.
 //! See REFACTORING_PLAN.md for the layout.
 
-mod analyze;
 mod compliance;
 mod discover;
 mod dsl;
@@ -13,7 +12,6 @@ mod intent;
 mod scan;
 mod version;
 
-pub use analyze::{analyze, complexity};
 pub use compliance::compliance;
 pub use discover::{discover_context, discover_questions};
 pub use dsl::{
@@ -22,7 +20,7 @@ pub use dsl::{
 pub use error::CliError;
 pub use generate::generate_prompt;
 pub use intent::{intent_check, intent_propose};
-pub use scan::{drift, drift_pr, quickstart, scan, smart_coverage, why};
+pub use scan::{drift, drift_pr, quickstart, scan};
 pub use version::version;
 mod context;
 mod runtime;

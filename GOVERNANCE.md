@@ -15,7 +15,7 @@ How Sruja is maintained and how decisions are made.
 
 ## Becoming a maintainer
 
-Maintainers are added by existing maintainers based on sustained, high-quality contributions and alignment with project principles. There is no formal application; if you are interested, contribute regularly and discuss with current maintainers in Discussions or Discord.
+Maintainers are added by existing maintainers based on sustained, high-quality contributions and alignment with project principles. There is no formal application; if you are interested, contribute regularly and discuss with current maintainers in Discussions.
 
 ## Transparency
 

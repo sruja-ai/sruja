@@ -16,9 +16,9 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(name = "sruja")]
 #[command(
-    about = "Architecture-as-code and drift intelligence",
+    about = "Architecture-as-code tool with deterministic CLI primitives for skill-driven discovery",
     long_about = None,
-    after_help = "Common: sruja analyze -r .  |  sruja quickstart -r .  |  sruja drift -r ."
+    after_help = "Stable: sruja quickstart -r .  |  sruja discover --context -r .  |  sruja lint  |  sruja drift -r ."
 )]
 struct Cli {
     #[command(subcommand)]
@@ -133,17 +133,7 @@ enum Commands {
         #[arg(long)]
         format_json: bool,
     },
-    /// Ask "why" questions about architecture (requires repo scan context)
-    Why {
-        /// Question to answer (e.g., "Why did we choose Kafka?")
-        question: String,
-        /// Path to repository root for context
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Path to graph JSON from previous scan (optional, otherwise scans repo)
-        #[arg(long)]
-        graph: Option<String>,
-    },
+
     /// Detect architectural drift in codebase
     Drift {
         /// Path to repository root
@@ -192,54 +182,8 @@ enum Commands {
         #[arg(long)]
         fail_on: Option<String>,
     },
-    /// Analyze structural complexity (treewidth, SCC, centrality, coupling)
-    Complexity {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Output format (text, json)
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
-        /// Include treewidth analysis
-        #[arg(long)]
-        treewidth: bool,
-        /// Include SCC (strongly connected components) analysis
-        #[arg(long)]
-        scc: bool,
-        /// Include centrality metrics
-        #[arg(long)]
-        centrality: bool,
-        /// Include coupling metrics
-        #[arg(long)]
-        coupling: bool,
-    },
-    /// Smart component coverage selection (quality over quantity)
-    SmartCoverage {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Output format (text, json)
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
-        /// Target compression ratio (0.1 = 10%, default: 0.15)
-        #[arg(long, short = 't')]
-        target_ratio: Option<f64>,
-    },
-    /// Comprehensive analysis (structural + intent)
-    Analyze {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Analysis view (cto, sre, devops, security, product, platform-engineer, tech-lead, or custom from .sruja.yaml)
-        #[arg(long, short = 'v', default_value = "cto")]
-        view: String,
-        /// Path to intent directory (ADRs, .sruja files; defaults to repo/docs/architecture)
-        #[arg(long, short = 'i')]
-        intent: Option<String>,
-        /// Output format (text, json)
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
-    },
+
+
     /// Compare declared architectural intent vs actual implementation
     Intent {
         #[command(subcommand)]
@@ -321,27 +265,27 @@ enum RuntimeCommand {
 
 #[derive(Subcommand)]
 enum IntentCommand {
-    /// Check intent vs reality and report drift
-    Check {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Path to intent directory (ADRs, .sruja files)
-        #[arg(long, short = 'i')]
-        intent: Option<String>,
-        /// Output format (text, json, markdown)
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
-    },
-    /// Propose ADR from detected drift
-    Propose {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Path to intent directory
-        #[arg(long, short = 'i')]
-        intent: Option<String>,
-    },
+        /// Check intent vs reality and report drift
+        Check {
+            /// Path to repository root
+            #[arg(long, short = 'r', default_value = ".")]
+            repo: String,
+            /// Path to intent directory (ADRs, .sruja files)
+            #[arg(long, short = 'i', default_value = None)]
+            intent: Option<String>,
+            /// Output format (text, json, markdown)
+            #[arg(long, short = 'f', default_value = "text")]
+            format: String,
+        },
+        /// Propose ADR from detected drift
+        Propose {
+            /// Path to repository root
+            #[arg(long, short = 'r', default_value = ".")]
+            repo: String,
+            /// Path to intent directory
+            #[arg(long, short = 'i', default_value = None)]
+            intent: Option<String>,
+        },
 }
 
 #[tokio::main]
@@ -382,11 +326,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             json,
         } => commands::explain(&element_id, file.as_deref(), json).await,
         Commands::Import { format, file } => commands::import(&format, &file).await,
-        Commands::Why {
-            question,
-            repo,
-            graph,
-        } => commands::why(&question, &repo, graph.as_deref()).await,
         Commands::Drift {
             repo,
             architecture,
@@ -416,28 +355,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             generate_baseline,
             fail_on,
         } => commands::quickstart(&path, &format, generate_baseline, fail_on.as_deref()).await,
-        Commands::Complexity {
-            repo,
-            format,
-            treewidth,
-            scc,
-            centrality,
-            coupling,
-        } => commands::complexity(&repo, &format, treewidth, scc, centrality, coupling).await,
-        Commands::SmartCoverage {
-            repo,
-            format,
-            target_ratio,
-        } => commands::smart_coverage(&repo, &format, target_ratio).await,
-        Commands::Analyze {
-            repo,
-            view,
-            intent,
-            format,
-        } => {
-            let intent_opt = intent.or_else(|| std::env::var("SRUJA_INTENT_PATH").ok());
-            commands::analyze(&repo, &view, intent_opt.as_deref(), &format).await
-        }
         Commands::Intent { cmd } => match cmd {
             IntentCommand::Check {
                 repo,

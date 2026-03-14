@@ -25,6 +25,8 @@ pub struct ScanConfig {
     pub include_node_modules: bool,
     pub exclude_examples: bool,
     pub exclude_benches: bool,
+    pub exclude_fixtures: bool,
+    pub exclude_docs: bool,
     pub max_file_size: usize,
 }
 
@@ -35,6 +37,8 @@ impl Default for ScanConfig {
             include_node_modules: false,
             exclude_examples: true,
             exclude_benches: true,
+            exclude_fixtures: true,
+            exclude_docs: true,
             max_file_size: 500 * 1024,
         }
     }
@@ -258,6 +262,8 @@ fn build_walker(repo_root: &Path, config: &ScanConfig) -> ignore::Walk {
 
     let exclude_examples = config.exclude_examples;
     let exclude_benches = config.exclude_benches;
+    let exclude_fixtures = config.exclude_fixtures;
+    let exclude_docs = config.exclude_docs;
 
     if !config.include_tests {
         builder.filter_entry(move |e| {
@@ -267,31 +273,41 @@ fn build_walker(repo_root: &Path, config: &ScanConfig) -> ignore::Walk {
                 || name.contains("spec")
                 || name == "__tests__"
                 || path.contains("/tests/");
-            let is_docs = name == "docs"
-                || name == "documentation"
-                || path.contains("/docs/")
-                || path.contains("/documentation/");
+            let is_docs = exclude_docs
+                && (name == "docs"
+                    || name == "documentation"
+                    || path.contains("/docs/")
+                    || path.contains("/documentation/"));
 
             let is_example =
                 exclude_examples && (name.contains("example") || path.contains("/examples/"));
             let is_bench =
                 exclude_benches && (name.contains("bench") || path.contains("/benches/"));
+            let is_fixtures = exclude_fixtures
+                && (name.contains("fixture")
+                    || path.contains("/fixtures/")
+                    || path.contains("/__mocks__/"));
 
-            !is_test && !is_example && !is_bench && !is_docs
+            !is_test && !is_example && !is_bench && !is_fixtures && !is_docs
         });
     } else {
         builder.filter_entry(move |e| {
             let name = e.file_name().to_string_lossy();
             let path = e.path().to_string_lossy();
-            let is_docs = name == "docs"
-                || name == "documentation"
-                || path.contains("/docs/")
-                || path.contains("/documentation/");
+            let is_docs = exclude_docs
+                && (name == "docs"
+                    || name == "documentation"
+                    || path.contains("/docs/")
+                    || path.contains("/documentation/"));
             let is_example =
                 exclude_examples && (name.contains("example") || path.contains("/examples/"));
             let is_bench =
                 exclude_benches && (name.contains("bench") || path.contains("/benches/"));
-            !is_example && !is_bench && !is_docs
+            let is_fixtures = exclude_fixtures
+                && (name.contains("fixture")
+                    || path.contains("/fixtures/")
+                    || path.contains("/__mocks__/"));
+            !is_example && !is_bench && !is_fixtures && !is_docs
         });
     }
 

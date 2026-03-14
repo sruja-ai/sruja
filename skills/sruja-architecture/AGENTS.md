@@ -815,8 +815,6 @@ Update architecture appropriately.
 - **Language Spec:** docs/LANGUAGE_SPECIFICATION.md
 - **Examples:** examples/
 - **GitHub:** https://github.com/sruja-ai/sruja
-- **Discord:** https://discord.gg/VNrvHPV5
-
 ---
 
 **Version:** 1.0.0

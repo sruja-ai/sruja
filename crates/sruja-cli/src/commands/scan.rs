@@ -1,10 +1,10 @@
-//! Scan and drift commands: scan, why, drift, quickstart.
+//! Scan and drift commands: scan, drift, quickstart.
 
 use colored::Colorize;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use sruja_graph::{merge_scan_into_graph, KnowledgeGraph};
+
 use sruja_scan::{scan_repo, Graph, NodeKind};
 
 use super::CliError;
@@ -96,51 +96,6 @@ pub async fn scan(repo_root: &str, output: &str) -> Result<(), CliError> {
     Ok(())
 }
 
-pub async fn why(question: &str, repo: &str, graph_file: Option<&str>) -> Result<(), CliError> {
-    let mut kg = KnowledgeGraph::new();
-    let scan_graph: Graph = if let Some(path) = graph_file {
-        let content = fs::read_to_string(path)?;
-        serde_json::from_str(&content).map_err(CliError::Json)?
-    } else {
-        scan_repo(Path::new(repo))?
-    };
-
-    let repo_path = graph_file.unwrap_or(repo);
-    merge_scan_into_graph(&mut kg, &scan_graph, repo_path);
-
-    match kg.query(question) {
-        Ok(result) => {
-            println!("{}\n", result.answer);
-            println!("Confidence: {}%", (result.confidence * 100.0) as i32);
-            if !result.evidence.is_empty() {
-                println!("\nEvidence (from graph):");
-                for ev in &result.evidence {
-                    if ev.reference.is_empty() {
-                        println!("  - {}", ev.excerpt);
-                    } else {
-                        println!("  - [{}] {}", ev.reference, ev.excerpt);
-                    }
-                }
-            }
-            let file_refs = collect_file_evidence_from_scan(&scan_graph);
-            if !file_refs.is_empty() {
-                println!("\nFile references (from scan):");
-                for f in file_refs.iter().take(10) {
-                    println!("  - {}", f);
-                }
-                if file_refs.len() > 10 {
-                    println!("  ... and {} more", file_refs.len() - 10);
-                }
-            }
-        }
-        Err(e) => {
-            return Err(CliError::Validation(format!("No answer found: {}", e)));
-        }
-    }
-
-    Ok(())
-}
-
 pub async fn drift(
     repo_root: &str,
     architecture_path: Option<&str>,
@@ -216,6 +171,8 @@ pub async fn drift(
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct QuickstartResult {
     pub repo: String,
+    /// Scan scope metadata (what was included/excluded).
+    pub scan_scope: sruja_scan::scan_scope::ScanScope,
     /// Structural health only (cycles, layers, god modules, orphans).
     pub health_score: u8,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -297,6 +254,7 @@ impl QuickstartResult {
 
         QuickstartResult {
             repo: repo.to_string(),
+            scan_scope: sruja_scan::scan_scope::ScanScope::default(),
             health_score: report.health_score,
             health_breakdown: report.health_breakdown,
             inventory: InventorySummary {
@@ -843,12 +801,9 @@ pub async fn quickstart(
     eprintln!();
 
     if generate_baseline {
-        eprintln!("📝 Generating architecture baseline...");
-        let baseline = generate_baseline_from_graph(&graph, repo_path).await;
-        let baseline_path = repo_path.join("architecture.sruja");
-        fs::write(&baseline_path, &baseline)?;
-        eprintln!("   ✓ Baseline written to {}", baseline_path.display());
-        eprintln!("   💡 Edit this file to match your intended architecture");
+        eprintln!("📝 Generate baseline using sruja-architecture skill:");
+        eprintln!("   'Use sruja-architecture. Run `sruja discover --context -r . --format json`,");
+        eprintln!("   generate architecture.sruja, then run `sruja lint` and fix.'");
         eprintln!();
     }
 
@@ -867,246 +822,6 @@ pub async fn quickstart(
     }
 
     Ok(())
-}
-
-pub async fn smart_coverage(
-    repo_root: &str,
-    format: &str,
-    target_ratio: Option<f64>,
-) -> Result<(), CliError> {
-    let repo_path = Path::new(repo_root);
-
-    if !repo_path.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", repo_root),
-        )));
-    }
-
-    let graph = scan_repo(repo_path)?;
-    let ratio = target_ratio.unwrap_or(0.15);
-
-    let total = graph.nodes.len();
-    let target_count = ((total as f64) * ratio).ceil() as usize;
-
-    let mut nodes_with_deps: Vec<_> = graph
-        .nodes
-        .iter()
-        .map(|n| {
-            let incoming = graph.edges.iter().filter(|e| e.target == n.id).count();
-            let outgoing = graph.edges.iter().filter(|e| e.source == n.id).count();
-            (n, incoming + outgoing)
-        })
-        .collect();
-    nodes_with_deps.sort_by(|a, b| b.1.cmp(&a.1));
-
-    let selected: Vec<_> = nodes_with_deps.into_iter().take(target_count).collect();
-
-    match format {
-        "json" => {
-            let result = serde_json::json!({
-                "total_components": total,
-                "target_ratio": ratio,
-                "selected_count": selected.len(),
-                "components": selected.iter().map(|(n, deps)| serde_json::json!({
-                    "id": n.id,
-                    "label": n.label,
-                    "path": n.path,
-                    "dependencies": deps,
-                })).collect::<Vec<_>>()
-            });
-            println!("{}", serde_json::to_string_pretty(&result)?);
-        }
-        _ => {
-            println!("{}", "═".repeat(60));
-            println!("🎯 Smart Coverage Selection");
-            println!("{}", "═".repeat(60));
-            println!();
-            println!("  Total components: {}", total);
-            println!("  Target ratio: {:.0}%", ratio * 100.0);
-            println!("  Selected: {} components", selected.len());
-            println!();
-            println!("Top selected components by architectural importance:");
-            for (i, (n, deps)) in selected.iter().enumerate().take(20) {
-                println!(
-                    "  {}. {} ({} deps)",
-                    i + 1,
-                    n.label.cyan(),
-                    deps.to_string().yellow()
-                );
-            }
-            if selected.len() > 20 {
-                println!("  ... and {} more", selected.len() - 20);
-            }
-            println!();
-            println!("{}", "═".repeat(60));
-        }
-    }
-
-    Ok(())
-}
-
-async fn generate_baseline_from_graph(graph: &Graph, repo_path: &Path) -> String {
-    let mut domains: std::collections::HashMap<String, (usize, String, Vec<String>)> =
-        std::collections::HashMap::new();
-    let mut db_nodes = Vec::new();
-    let mut api_nodes = Vec::new();
-
-    // Canonicalize repo_path for consistent stripping (important for macOS /var vs /private/var)
-    let repo_canon = repo_path
-        .canonicalize()
-        .unwrap_or_else(|_| repo_path.to_path_buf());
-
-    for node in &graph.nodes {
-        if node.kind == NodeKind::Database {
-            db_nodes.push(node);
-            continue;
-        }
-        if node.kind == NodeKind::ExternalApi {
-            api_nodes.push(node);
-            continue;
-        }
-
-        let mut path_str = node.path.clone().unwrap_or_else(|| node.id.clone());
-
-        // Strip out the repo_root prefix if it exists to clean up domain grouping
-        if let Ok(p) = Path::new(&path_str).canonicalize() {
-            if let Ok(stripped) = p.strip_prefix(&repo_canon) {
-                path_str = stripped.to_string_lossy().to_string();
-            }
-        } else if let Ok(stripped) = Path::new(&path_str).strip_prefix(&repo_canon) {
-            path_str = stripped.to_string_lossy().to_string();
-        } else if let Ok(stripped) = Path::new(&path_str).strip_prefix(repo_path) {
-            path_str = stripped.to_string_lossy().to_string();
-        }
-
-        let normalized = path_str.replace(['\\', '_'], "/");
-        let parts: Vec<&str> = normalized
-            .split('/')
-            .filter(|p| !p.is_empty() && *p != ".")
-            .collect();
-        if parts.is_empty() {
-            continue;
-        }
-
-        let src_idx = parts.iter().position(|&x| {
-            x == "src" || x == "lib" || x == "internal" || x == "packages" || x == "crates"
-        });
-
-        let domain_name = if let Some(idx) = src_idx {
-            if parts.len() >= idx + 3 {
-                // E.g. ["axum", "src", "routing", "mod.rs"] -> idx=1, idx+3=4, len=4 -> groups as "axum/src/routing"
-                parts[0..=idx + 1].join("/")
-            } else {
-                // E.g. ["axum", "src", "lib.rs"] -> groups as "axum/src"
-                parts[0..=idx].join("/")
-            }
-        } else if parts.len() > 2 {
-            parts[0..2].join("/")
-        } else {
-            parts[0].to_string()
-        };
-
-        let entry = domains
-            .entry(domain_name)
-            .or_insert((0, String::new(), Vec::new()));
-        entry.0 += 1;
-        if entry.1.is_empty() {
-            if let Some(tech) = &node.technology {
-                entry.1 = tech.clone();
-            }
-        }
-
-        if entry.2.len() < 5 {
-            let name = std::path::Path::new(&node.label)
-                .file_stem()
-                .map(|s| s.to_string_lossy().to_string())
-                .unwrap_or_else(|| node.label.clone());
-            if name != "mod" && name != "lib" && name != "main" && !entry.2.contains(&name) {
-                entry.2.push(name);
-            }
-        }
-    }
-
-    // Deterministic baseline (domain aggregated)
-    let mut dsl = String::new();
-    dsl.push_str("// Auto-generated high-level architecture baseline from Sruja quickstart\n");
-    dsl.push_str("// Edit this file to match your intended architecture\n\n");
-
-    dsl.push_str("person = kind \"Person\"\n");
-    dsl.push_str("system = kind \"System\"\n");
-    dsl.push_str("container = kind \"Container\"\n");
-    dsl.push_str("database = kind \"Database\"\n");
-    dsl.push_str("external_api = kind \"External_Api\"\n\n");
-
-    dsl.push_str("user = person \"User\" {\n");
-    dsl.push_str("  description \"End user of the application\"\n");
-    dsl.push_str("}\n\n");
-
-    if !domains.is_empty() {
-        dsl.push_str("app = system \"Application\" {\n");
-        let mut sorted_domains: Vec<_> = domains.iter().collect();
-        sorted_domains.sort_by(|a, b| b.1 .0.cmp(&a.1 .0));
-
-        for (domain, (count, tech, _)) in sorted_domains.iter().take(40) {
-            let id = sanitize_id(domain);
-            dsl.push_str(&format!("  {} = container \"{}\" {{\n", id, domain));
-            if !tech.is_empty() {
-                dsl.push_str(&format!("    technology \"{}\"\n", tech));
-            }
-            dsl.push_str(&format!(
-                "    description \"Contains {} components\"\n",
-                count
-            ));
-            dsl.push_str("  }\n");
-        }
-        dsl.push_str("}\n\n");
-    }
-
-    if !db_nodes.is_empty() {
-        dsl.push_str("// Databases\n");
-        for db in db_nodes.iter().take(5) {
-            let id = sanitize_id(&db.id);
-            let display_name = db.path.as_deref().unwrap_or(&db.label);
-            dsl.push_str(&format!("{} = database \"{}\" {{\n", id, display_name));
-            if let Some(ref tech) = db.technology {
-                dsl.push_str(&format!("  technology \"{}\"\n", tech));
-            }
-            dsl.push_str("}\n");
-        }
-        dsl.push('\n');
-    }
-
-    if !api_nodes.is_empty() {
-        dsl.push_str("// External APIs\n");
-        for api in api_nodes.iter().take(5) {
-            let id = sanitize_id(&api.id);
-            let display_name = api.path.as_deref().unwrap_or(&api.label);
-            dsl.push_str(&format!("{} = external_api \"{}\" {{\n", id, display_name));
-            if let Some(ref tech) = api.technology {
-                dsl.push_str(&format!("  technology \"{}\"\n", tech));
-            }
-            dsl.push_str("}\n");
-        }
-        dsl.push('\n');
-    }
-
-    dsl.push_str("// Run 'sruja lint architecture.sruja' to validate\n");
-    dsl.push_str("// Run 'sruja drift -r . -a architecture.sruja' to compare code vs baseline\n");
-
-    dsl
-}
-
-fn sanitize_id(s: &str) -> String {
-    s.replace("-", "_")
-        .replace(" ", "_")
-        .replace(".", "_")
-        .replace("/", "_")
-        .chars()
-        .filter(|c| c.is_alphanumeric() || *c == '_')
-        .collect::<String>()
-        .trim_start_matches(|c: char| c.is_numeric())
-        .to_string()
 }
 
 /// PR-scoped drift: compare base and head refs to find NEW violations

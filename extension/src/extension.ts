@@ -564,66 +564,6 @@ export function activate(context: vscode.ExtensionContext): void {
         );
       }
     }),
-    vscode.commands.registerCommand("sruja.analyzeRepo", async () => {
-      const channel = getCliOutputChannel();
-      channel.clear();
-      channel.show(true);
-      channel.appendLine("Running sruja analyze -r . ...");
-      try {
-        const { stdout, stderr, code } = await runCliInWorkspace(context, ["analyze", "-r", "."]);
-        channel.append(stdout);
-        if (stderr) channel.append(stderr);
-        channel.appendLine("");
-        if (code !== 0) {
-          channel.appendLine(`(exit code ${code})`);
-        }
-        channel.appendLine("--- Done ---");
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        channel.appendLine(`Error: ${msg}`);
-        vscode.window.showErrorMessage(
-          "Sruja analyze failed. Ensure the Sruja CLI is installed and on PATH, or set sruja.lsp.path."
-        );
-      }
-    }),
-    vscode.commands.registerCommand("sruja.whyComponent", async () => {
-      const folder = vscode.workspace.workspaceFolders?.[0];
-      if (!folder) {
-        vscode.window.showWarningMessage("Open a workspace folder to run Sruja Why.");
-        return;
-      }
-      const question = await vscode.window.showInputBox({
-        title: "Sruja: Why",
-        prompt: "Ask about a component or dependency (e.g. component name or 'why does X depend on Y?')",
-        placeHolder: "e.g. api_gateway or why does order_service depend on payment_service?",
-      });
-      if (question === undefined || question.trim() === "") return;
-      const channel = getCliOutputChannel();
-      channel.clear();
-      channel.show(true);
-      channel.appendLine(`Running sruja why "${question.trim()}" -r . ...`);
-      try {
-        const { stdout, stderr, code } = await runCliInWorkspace(context, [
-          "why",
-          question.trim(),
-          "-r",
-          ".",
-        ]);
-        channel.append(stdout);
-        if (stderr) channel.append(stderr);
-        channel.appendLine("");
-        if (code !== 0) {
-          channel.appendLine(`(exit code ${code})`);
-        }
-        channel.appendLine("--- Done ---");
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        channel.appendLine(`Error: ${msg}`);
-        vscode.window.showErrorMessage(
-          "Sruja why failed. Ensure the Sruja CLI is installed and on PATH, or set sruja.lsp.path."
-        );
-      }
-    })
   );
 }
 
@@ -646,14 +586,3 @@ function getDiagramPreviewHtml(mermaidCodeEscaped: string): string {
       mermaid.initialize({ startOnLoad: false });
       mermaid.run({ nodes: [el] }).catch(function(err) {
         el.innerHTML = '<p style="color:#c00;font-family:sans-serif;">' + (err.message || String(err)) + '</p>';
-      });
-    })();
-  </script>
-</body>
-</html>`;
-}
-
-export function deactivate(): void {
-  diagnosticCollection?.dispose();
-  diagnosticCollection = undefined;
-}
