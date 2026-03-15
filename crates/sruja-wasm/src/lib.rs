@@ -786,4 +786,20 @@ mod wasm_tests {
         // Returns a JSON array of diagnostic objects
         assert!(out.starts_with('['));
     }
+
+    #[wasm_bindgen_test]
+    fn get_diagnostics_invalid_dsl_returns_diagnostics_array() {
+        let dsl = "broken {{{";
+        let out = sruja_get_diagnostics(dsl, None).unwrap();
+        assert!(out.starts_with('['));
+        let arr: Vec<serde_json::Value> = serde_json::from_str(&out).expect("valid JSON array");
+        assert!(
+            !arr.is_empty(),
+            "invalid DSL should produce at least one diagnostic"
+        );
+    }
+
+    // sruja_incremental_parse is not tested here: it uses std::time::Instant::now(),
+    // which panics on wasm32-unknown-unknown ("time not implemented on this platform").
+    // The API is covered indirectly by sruja_dsl_to_model; full incremental tests would need a WASM-safe timing shim.
 }
