@@ -10,8 +10,9 @@ mod detector;
 mod languages;
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use rayon::prelude::*;
 use crate::graph::{Edge, EdgeEvidence, EdgeKind, Graph, Node, NodeKind};
 use crate::ScanError;
 
@@ -45,150 +46,161 @@ impl Default for ScanConfig {
 }
 
 pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Graph, ScanError> {
+    let repo_canon = repo_root
+        .canonicalize()
+        .unwrap_or_else(|_| repo_root.to_path_buf());
+
+    let go_module_path: Option<String> = std::fs::read_to_string(repo_root.join("go.mod"))
+        .ok()
+        .and_then(|content| {
+            content
+                .lines()
+                .find(|l| l.starts_with("module "))
+                .map(|l| l.trim_start_matches("module ").trim().to_string())
+        });
+
+    // 1. Walk and collect eligible (path, content, language).
+    let collected: Vec<(PathBuf, String, Language)> = {
+        let walker = build_walker(repo_root, config);
+        let mut out = Vec::new();
+        for entry in walker {
+            let entry = entry.map_err(|e| ScanError::Walk(e.to_string()))?;
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+            if let Some(language) = detect_language(path) {
+                if let Ok(content) = std::fs::read_to_string(path) {
+                    if content.len() <= config.max_file_size {
+                        out.push((path.to_path_buf(), content, language));
+                    }
+                }
+            }
+        }
+        out
+    };
+
+    // 2. Build file_path_to_id from paths so resolve_import_improved works in merge.
+    let file_path_to_id: HashMap<String, String> = collected
+        .iter()
+        .filter_map(|(path, _, _)| {
+            let file_id = file_to_id(repo_root, path);
+            path.canonicalize().ok().and_then(|canon_path| {
+                canon_path
+                    .strip_prefix(&repo_canon)
+                    .ok()
+                    .map(|rel| (rel.to_string_lossy().to_string(), file_id))
+            })
+        })
+        .collect();
+
+    // 3. Parallel parse; keep content for merge (infer_node_kind needs it).
+    let parsed: Vec<(PathBuf, String, Language, ParsedFile)> = collected
+        .par_iter()
+        .filter_map(|(path, content, language)| {
+            parse_file(path.as_path(), content, *language)
+                .map(|p| (path.clone(), content.clone(), *language, p))
+        })
+        .collect();
+
+    // 4. Single-threaded merge: same logic as before.
     let mut nodes: Vec<Node> = Vec::new();
     let mut edges: Vec<Edge> = Vec::new();
     let mut module_nodes: HashMap<String, Node> = HashMap::new();
     let mut file_imports: HashMap<String, Vec<String>> = HashMap::new();
     let mut module_imports: HashMap<String, Vec<String>> = HashMap::new();
 
-    let repo_canon = repo_root
-        .canonicalize()
-        .unwrap_or_else(|_| repo_root.to_path_buf());
+    for (path, content, language, parsed) in &parsed {
+        let file_id = file_to_id(repo_root, path);
 
-    let mut file_path_to_id: HashMap<String, String> = HashMap::new();
-    let mut go_module_path: Option<String> = None;
+        let parent_module = path
+            .parent()
+            .and_then(|p| p.strip_prefix(repo_root).ok())
+            .map(|p| p.to_string_lossy().replace(['/', '\\'], "_"))
+            .unwrap_or_else(|| "root".to_string());
 
-    if let Ok(content) = std::fs::read_to_string(repo_root.join("go.mod")) {
-        for line in content.lines() {
-            if line.starts_with("module ") {
-                go_module_path = Some(line.trim_start_matches("module ").trim().to_string());
-                break;
-            }
-        }
-    }
-
-    let walker = build_walker(repo_root, config);
-
-    for entry in walker {
-        let entry = entry.map_err(|e| ScanError::Walk(e.to_string()))?;
-        let path = entry.path();
-
-        if !path.is_file() {
-            continue;
+        let module_id = format!("module:{}", parent_module);
+        if !module_nodes.contains_key(&module_id) {
+            module_nodes.insert(
+                module_id.clone(),
+                Node {
+                    id: module_id.clone(),
+                    kind: NodeKind::Module,
+                    label: parent_module.clone(),
+                    technology: Some(language.to_string()),
+                    path: Some(parent_module.clone()),
+                    metadata: HashMap::new(),
+                },
+            );
         }
 
-        if let Some(language) = detect_language(path) {
-            if let Ok(content) = std::fs::read_to_string(path) {
-                if content.len() > config.max_file_size {
-                    continue;
-                }
+        let node = Node {
+            id: file_id.clone(),
+            kind: infer_node_kind(parsed, path, content.as_str()),
+            label: parsed.name.clone(),
+            technology: Some(language.to_string()),
+            path: Some(path.to_string_lossy().to_string()),
+            metadata: HashMap::new(),
+        };
+        nodes.push(node);
 
-                match parse_file(path, &content, language) {
-                    Some(parsed) => {
-                        let file_id = file_to_id(repo_root, path);
+        edges.push(Edge {
+            source: module_id.clone(),
+            target: file_id.clone(),
+            kind: EdgeKind::Calls,
+            evidence: vec![EdgeEvidence {
+                rule: "contains".to_string(),
+                file: Some(path.to_string_lossy().to_string()),
+                line: None,
+                detail: Some("module contains this file".to_string()),
+            }],
+        });
 
-                        let parent_module = path
-                            .parent()
-                            .and_then(|p| p.strip_prefix(repo_root).ok())
-                            .map(|p| p.to_string_lossy().replace(['/', '\\'], "_"))
-                            .unwrap_or_else(|| "root".to_string());
+        for import in &parsed.imports {
+            let target_id = resolve_import_improved(
+                repo_root,
+                &repo_canon,
+                path,
+                import,
+                &file_path_to_id,
+                go_module_path.as_deref(),
+                *language,
+            );
+            file_imports
+                .entry(file_id.clone())
+                .or_default()
+                .push(target_id.clone());
 
-                        let module_id = format!("module:{}", parent_module);
-                        if !module_nodes.contains_key(&module_id) {
-                            module_nodes.insert(
-                                module_id.clone(),
-                                Node {
-                                    id: module_id.clone(),
-                                    kind: NodeKind::Module,
-                                    label: parent_module.clone(),
-                                    technology: Some(language.to_string()),
-                                    path: Some(parent_module.clone()),
-                                    metadata: HashMap::new(),
-                                },
-                            );
-                        }
-
-                        let node = Node {
-                            id: file_id.clone(),
-                            kind: infer_node_kind(&parsed, path, &content),
-                            label: parsed.name.clone(),
-                            technology: Some(language.to_string()),
-                            path: Some(path.to_string_lossy().to_string()),
-                            metadata: HashMap::new(),
-                        };
-                        nodes.push(node);
-
-                        if let Ok(canon_path) = path.canonicalize() {
-                            if let Ok(rel) = canon_path.strip_prefix(&repo_canon) {
-                                file_path_to_id
-                                    .insert(rel.to_string_lossy().to_string(), file_id.clone());
-                            }
-                        }
-
-                        edges.push(Edge {
-                            source: module_id.clone(),
-                            target: file_id.clone(),
-                            kind: EdgeKind::Calls,
-                            evidence: vec![EdgeEvidence {
-                                rule: "contains".to_string(),
-                                file: Some(path.to_string_lossy().to_string()),
-                                line: None,
-                                detail: Some("module contains this file".to_string()),
-                            }],
-                        });
-
-                        for import in &parsed.imports {
-                            let target_id = resolve_import_improved(
-                                repo_root,
-                                &repo_canon,
-                                path,
-                                import,
-                                &file_path_to_id,
-                                go_module_path.as_deref(),
-                                language,
-                            );
-                            file_imports
-                                .entry(file_id.clone())
-                                .or_default()
-                                .push(target_id.clone());
-
-                            let target_module = extract_module_from_id(&target_id);
-                            if target_module != parent_module {
-                                module_imports
-                                    .entry(parent_module.clone())
-                                    .or_default()
-                                    .push(target_module);
-                            }
-                        }
-
-                        for export in &parsed.exports {
-                            let export_node_id = format!("{}#{}", file_id, export);
-                            nodes.push(Node {
-                                id: export_node_id.clone(),
-                                kind: NodeKind::Module,
-                                label: export.clone(),
-                                technology: Some(language.to_string()),
-                                path: Some(path.to_string_lossy().to_string()),
-                                metadata: HashMap::new(),
-                            });
-                            edges.push(Edge {
-                                source: file_id.clone(),
-                                target: export_node_id,
-                                kind: EdgeKind::Calls,
-                                evidence: vec![EdgeEvidence {
-                                    rule: "exports".to_string(),
-                                    file: Some(path.to_string_lossy().to_string()),
-                                    line: None,
-                                    detail: Some(format!("exports {}", export)),
-                                }],
-                            });
-                        }
-                    }
-                    None => {
-                        log::warn!("Parse failed: {} ({})", path.display(), language);
-                    }
-                }
+            let target_module = extract_module_from_id(&target_id);
+            if target_module != parent_module {
+                module_imports
+                    .entry(parent_module.clone())
+                    .or_default()
+                    .push(target_module);
             }
+        }
+
+        for export in &parsed.exports {
+            let export_node_id = format!("{}#{}", file_id, export);
+            nodes.push(Node {
+                id: export_node_id.clone(),
+                kind: NodeKind::Module,
+                label: export.clone(),
+                technology: Some(language.to_string()),
+                path: Some(path.to_string_lossy().to_string()),
+                metadata: HashMap::new(),
+            });
+            edges.push(Edge {
+                source: file_id.clone(),
+                target: export_node_id,
+                kind: EdgeKind::Calls,
+                evidence: vec![EdgeEvidence {
+                    rule: "exports".to_string(),
+                    file: Some(path.to_string_lossy().to_string()),
+                    line: None,
+                    detail: Some(format!("exports {}", export)),
+                }],
+            });
         }
     }
 
@@ -230,6 +242,10 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             });
         }
     }
+
+    // 5. Deterministic output: sort nodes by id, edges by (source, target).
+    nodes.sort_by(|a, b| a.id.cmp(&b.id));
+    edges.sort_by(|a, b| (a.source.as_str(), a.target.as_str()).cmp(&(b.source.as_str(), b.target.as_str())));
 
     Ok(Graph {
         metadata: HashMap::new(),

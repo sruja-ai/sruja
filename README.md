@@ -1,6 +1,6 @@
 # Sruja – Architecture intelligence for the AI era.
 
-[![TypeScript Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg?flag=typescript)](https://codecov.io/gh/sruja-ai/sruja)
+[![Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg)](https://codecov.io/gh/sruja-ai/sruja)
 
 Sruja brings architecture intelligence to the AI era—use AI to generate and maintain architecture as code so it stays in sync with your codebase.
 
@@ -15,10 +15,9 @@ Sruja brings architecture intelligence to the AI era—use AI to generate and ma
 **Solution:** Sruja uses AI to analyze your codebase and generate architecture as code (`.sruja` files). You can validate, version-control, and export it—keeping it always up-to-date.
 
 **How it works:**
-1. Run a command to analyze your code
-2. Tell your AI editor to generate architecture
-3. Validate it automatically
-4. Export diagrams and docs when you need them
+1. Install the CLI and the sruja-architecture skill
+2. In your AI editor, ask the skill to generate architecture from your code (it runs structural analysis under the hood)
+3. Validate with `sruja lint` and export diagrams when you need them
 
 **You don't write `.sruja` files manually.** Your AI does it for you.
 
@@ -26,45 +25,25 @@ Sruja brings architecture intelligence to the AI era—use AI to generate and ma
 
 ## Quick Start (3 minutes)
 
-### Step 1: Install CLI
-
-```bash
-curl -fsSL https://sruja.ai/install.sh | bash
-```
-
-This installs the `sruja` command. You can check it worked:
-
-```bash
-sruja --version
-```
-
-### Step 2: Install the AI skill
+### Step 1: Install the AI skill
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
-This teaches your AI editor (Cursor, Copilot, Claude, etc.) how to generate Sruja architecture.
+This teaches your AI editor (Cursor, Copilot, Claude, etc.) how to generate Sruja architecture. The skill uses structural analysis (discover, sync, drift) under the hood—and will guide you to install the Sruja CLI when you first use it if needed.
 
 **Supported editors:** Cursor, GitHub Copilot, Claude, Continue.dev, and any editor with [skills.sh](https://skills.sh) support.
 
-### Step 3: Get instant insights
+### Step 2: Install the CLI (when the skill needs it)
 
-Jump into your project folder and run:
+The skill runs `sruja discover`, `sruja lint`, and `sruja drift` for you. When you use the skill, it will ask you to install the CLI if it’s not present. You can also install it now:
 
 ```bash
-cd your-project
-sruja quickstart -r .
+curl -fsSL https://sruja.ai/install.sh | bash
 ```
 
-This shows you:
-- What's in your codebase (services, databases, APIs)
-- A health score
-- Top issues to fix
-
-**No AI required for this step**—it's just code analysis.
-
-### Step 4: Generate architecture with AI
+### Step 3: Generate architecture with AI
 
 In your AI editor, paste this prompt:
 
@@ -75,12 +54,12 @@ generate repo.sruja, then run `sruja lint` and fix until it passes.
 ```
 
 Your AI will:
-1. Run the discovery command to understand your code
+1. Run discovery (structural analysis) to understand your code
 2. Ask you a few questions if anything is unclear
 3. Generate a `repo.sruja` file
 4. Fix any validation errors
 
-### Step 5: Validate and export
+### Step 4: Validate and export
 
 ```bash
 # Check for errors
@@ -131,13 +110,7 @@ No. Your AI writes the `.sruja` files for you. You just need to know what to ask
 
 **What if I don't have an AI editor?**
 
-You can still use Sruja! The CLI works standalone:
-- `sruja quickstart` – Get architecture insights
-- `sruja discover` – Export code structure
-- `sruja lint` – Validate `.sruja` files
-- `sruja export` – Generate diagrams and docs
-
-However, an AI editor makes it much easier to generate and update architecture files.
+You can still use the CLI: `sruja lint` to validate `.sruja` files and `sruja export` to generate diagrams and docs. The main value (generate and maintain architecture from code) is designed around the **sruja-architecture skill** in an AI editor; structural analysis (discover, sync, drift) backs the skill and is also used in CI. We don’t promote running quickstart or drift as a standalone first step—use the skill for the full workflow.
 
 **Can I use this with my existing project?**
 
@@ -154,7 +127,7 @@ Yes. Sruja supports many languages out of the box:
 | **Ruby** | Good |
 | **PHP** | Good |
 
-Other languages may have partial support. Run `sruja quickstart -r .` to see what gets detected.
+Other languages may have partial support. The skill runs discovery for you; it will report what it detects in your codebase.
 
 **How is this different from diagramming tools?**
 
@@ -181,25 +154,19 @@ Run `sruja lint repo.sruja` to catch errors. Tell your AI: "Fix these lint error
 
 ## What can I do?
 
-### Get instant insights
+### Generate and maintain architecture (use the skill)
+
+In your AI editor, use the **sruja-architecture skill**. It runs discovery and drift under the hood. You can also run these yourself for CI or scripting:
 
 ```bash
-sruja quickstart -r .
-```
-
-Shows architecture inventory, health score, and top findings—no `.sruja` file required.
-
-### Generate and maintain architecture
-
-```bash
-# Let AI discover and generate
+# Evidence for the skill (or CI)
 sruja discover --context -r . --format json
 
 # Validate
 sruja lint repo.sruja
 
-# Detect changes over time
-sruja drift -r .
+# Drift (when you have a baseline; the skill uses this too)
+sruja drift -r . -a repo.sruja
 ```
 
 ### Export for documentation

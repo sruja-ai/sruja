@@ -69,7 +69,9 @@ generate repo.sruja, then run `sruja lint` and fix until it passes.
 
 ## What the Skill Needs
 
-The skill relies on these commands from the CLI:
+When you use the skill, it runs Sruja CLI commands. If the CLI isn’t installed yet, the skill (or your AI) will guide you to install it (`curl -fsSL https://sruja.ai/install.sh | bash`). Install the **skill** first; install the **CLI** when the skill needs it.
+
+The skill relies on these commands:
 
 ### Collect evidence
 

@@ -94,26 +94,26 @@ sruja discover --context -r . --format json   # Machine-readable (components, ar
 sruja discover                          # Question bank only
 ```
 
-### Architecture intelligence (no .sruja required)
+### Commands that back the AI skill (and CI)
 
-These commands work on a repository path and do not require an existing `.sruja` file or API keys.
+The **sruja-architecture skill** is the primary way to get value; it runs discovery and drift under the hood. These CLI commands power the skill and are also used in CI or scripting. We do not promote running them as the main user entry point.
 
 | Command | Purpose |
 |---------|---------|
-| **`sruja quickstart -r <path>`** | Scan repo; get inventory, health score, top findings, and next steps |
-| **`sruja scan <path> --output graph.json`** | Infer architecture graph from code (outputs JSON) |
-| **`sruja drift -r <path>`** | Detect drift: cycles, orphans, layer violations |
+| **`sruja discover --context -r <path> --format json`** | Evidence for the skill: repo structure, technologies, modules (skill runs this) |
+| **`sruja sync -r <path>`** | Refresh `.sruja/context.json`; skill uses this for evidence |
+| **`sruja drift -r <path> -a repo.sruja`** | Declared vs actual; skill uses for refinement; CI for gates |
 | **`sruja why "question" -r <path>`** | Answer "why" questions with evidence from the graph |
-| **`sruja drift -r <path> -a architecture.sruja`** | Compare declared vs actual architecture; full analysis with baseline |
-| **`sruja runtime analyze -t <trace_file>`** | Analyze runtime traces (optional) |
-| **`sruja context -r <path>`** | Export architecture context for AI tools (Cursor, Copilot, etc.) |
+| **`sruja context -r <path>`** | Export architecture context for AI tools |
+| **`sruja quickstart -r <path>`** | Structural overview (optional; used by skill/CI, not promoted as primary) |
+| **`sruja scan <path> --output graph.json`** | Raw graph JSON (scripting / advanced) |
+| **`sruja runtime analyze -t <trace_file>`** | Runtime traces (optional) |
 
-**Examples:**
+**Examples (skill workflow / CI):**
 
 ```bash
-sruja quickstart -r .
-sruja scan . --output sruja.graph.json
-sruja drift -r . -a architecture.sruja
+sruja discover --context -r . --format json
+sruja drift -r . -a repo.sruja
 sruja why "why did we choose PostgreSQL?" -r .
 sruja context -r . -f markdown -o .cursor/rules/architecture.md
 ```

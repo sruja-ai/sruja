@@ -7,14 +7,11 @@
 ## Start Here
 
 ```bash
-# 1. Install CLI
-curl -fsSL https://sruja.ai/install.sh | bash
-
-# 2. Install core skill
+# 1. Install the skill (CLI when the skill needs it—it will guide you)
 npx skills add sruja-ai/sruja --skill sruja-architecture
 
-# 3. Get intelligence
-sruja quickstart -r .
+# 2. In your AI editor: "Use sruja-architecture. Run sruja discover..."
+# 3. Install CLI if prompted: curl -fsSL https://sruja.ai/install.sh | bash
 ```
 
 **Full guide:** [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md)

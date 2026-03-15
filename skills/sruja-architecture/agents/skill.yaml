@@ -2,8 +2,8 @@
 name: sruja-architecture
 description: Architecture discovery and DSL authoring for Sruja. This skill provides a deterministic, evidence-first workflow for generating and maintaining repo.sruja files (architecture.sruja supported for backward compatibility) from codebases.
 
-# CLI required for prompts (sync, discover, lint, drift). Must include 'sync' and 'discover' subcommands; verify with sruja --help. Not installed by the skill. Extension optional but recommended (lint, diagram, Refresh repo context → .sruja/context.json).
-prerequisites: "Install Sruja CLI with sync and discover: curl -fsSL https://sruja.ai/install.sh | bash, or build from repo: cargo install --path crates/sruja-cli. If 'sruja --help' does not list sync and discover, upgrade the CLI (see SKILL.md Troubleshooting). Optional: Sruja VS Code extension for in-editor lint, diagram preview, and Sruja: Refresh repo context (writes .sruja/context.json)."
+# When the skill runs, it invokes sruja discover/sync/lint/drift. The user needs the Sruja CLI for that; the skill can guide them to install it (curl -fsSL https://sruja.ai/install.sh | bash) if missing. Not a prerequisite before adding the skill—install skill first, then CLI when needed. Extension optional.
+prerequisites: "When you use the skill, it runs sruja discover, sync, lint, and drift. Have the Sruja CLI installed (the skill will tell you how if it's missing): curl -fsSL https://sruja.ai/install.sh | bash. Prefer .sruja/context.json when present; when not, the skill runs discover/sync behind the scenes. If 'sruja --help' does not list sync and discover, upgrade the CLI (see SKILL.md Troubleshooting). Optional: Sruja VS Code extension for in-editor lint and diagram preview."
 
 capabilities:
   - Architecture discovery from codebases

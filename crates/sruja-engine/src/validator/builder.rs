@@ -30,6 +30,12 @@ pub struct ValidatorBuilder {
     validator: Validator,
 }
 
+impl Default for ValidatorBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ValidatorBuilder {
     /// Create a new validator builder
     ///

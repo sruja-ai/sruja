@@ -6,7 +6,7 @@ Detailed reference for discovery workflow, modeling rules, and refinement with t
 
 ### Phase 1: Evidence Collection
 
-If `.sruja/context.json` exists and is recent (e.g. from **Sruja: Refresh repo context** or `sruja sync -r .`), use it for evidence first. Otherwise, run the CLI:
+Prefer `.sruja/context.json` when present and not stale (e.g. from **Sruja: Refresh repo context** or `sruja sync -r .`). If it is missing or stale, **run** the CLI yourself to get evidence—do not ask the user to run a command first. Optionally suggest Refresh repo context for faster results next time.
 
 ```bash
 sruja sync -r .
@@ -372,6 +372,15 @@ sruja discover --context -r ./src --format json
 ```
 
 From this you get: repository path, scan scope, graph size (components/edges), primary language, framework, inferred architecture style and domain, and suggested areas for scoping. **Use this as** the single source of truth for what the CLI actually analyzed.
+
+### Progressive discovery: summary and full graph
+
+After `sruja sync -r .`, two artifacts are written:
+
+- **`.sruja/context.json`** — Summary (Tier 1): the DiscoverContextJson fields above plus `updated_at`, `truth_status`, `baseline_path`, `git_commit`. Use this first for fast, small context.
+- **`.sruja/graph.json`** — Full graph (Tier 2/3): complete `nodes` and `edges` from the scan. No information is dropped. When you need to reason about a specific area or module, read this file and use only the slice (e.g. filter nodes/edges by suggested_areas or path). For very large repos, prefer scoped access (filter by area) rather than loading the entire file into context at once.
+
+Use summary first; when reasoning about a specific area or module, request that slice from `.sruja/graph.json` or run discover. This keeps large and multi-repo fully representable without blowing context limits.
 
 ## Export Coverage
 

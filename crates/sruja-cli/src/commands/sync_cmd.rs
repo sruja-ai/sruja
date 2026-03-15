@@ -124,6 +124,19 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         ))
     })?;
 
+    // Store full graph for progressive discovery (Tier 2/3); no information loss for large or multi-repo.
+    let graph_path = dot_sruja.join("graph.json");
+    fs::write(
+        &graph_path,
+        serde_json::to_string_pretty(&graph).map_err(|e| CliError::Validation(e.to_string()))?,
+    )
+    .map_err(|e| {
+        CliError::Io(std::io::Error::new(
+            e.kind(),
+            format!("Failed to write {}: {}", graph_path.display(), e),
+        ))
+    })?;
+
     let output = SyncOutput {
         truth_status: truth_status.clone(),
         baseline: baseline.clone(),
@@ -142,6 +155,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         }
         _ => {
             eprintln!("Wrote {}", context_path);
+            eprintln!("Wrote {}", graph_path.display());
             if let Some(ref base) = baseline {
                 eprintln!("Baseline: {}", base);
             } else {

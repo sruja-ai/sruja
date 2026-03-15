@@ -248,6 +248,33 @@ You can use both: Sruja documents your Spring-based microservices architecture.
 
 ---
 
+## AI and Architecture
+
+### Why do I need the Sruja skill when I can just ask AI for architecture?
+
+**AI proposes; Sruja grounds, validates, and persists.**
+
+Without Sruja, AI can suggest architecture, but it's:
+
+- **Ungrounded:** AI may invent components or dependencies that don't exist in your code
+- **Ephemeral:** You get ad-hoc text or diagrams with no single source of truth
+
+The Sruja skill gives AI:
+
+- **Real evidence** (from your codebase) to reason about
+- **Validation** (lint, drift) to ensure accuracy
+- **Persistence** (`repo.sruja` as a first-class artifact in your repo)
+
+**Three pillars:**
+
+1. **Grounding** — The skill feeds the model real data (discover, context, graph) so it reasons on what's actually in the codebase, not on guesses. Without Sruja, the model can hallucinate modules and edges.
+2. **Validation and sync** — The skill uses `sruja lint` (valid DSL), `sruja drift` (declared vs actual), and intent check. So you get architecture that is valid and stays in sync with code, not a one-off diagram.
+3. **Persistence and reuse** — Architecture lives as `repo.sruja` in the repo: versionable, exportable, comparable over time. The model without Sruja gives ad-hoc text or Mermaid; with Sruja, the output is a first-class artifact the whole team and CI can use.
+
+**Think of it this way:** AI is the architect proposing designs. Sruja is the structural engineer providing real data, validating plans, and making sure the blueprint is saved in your repo.
+
+---
+
 ## Language Support
 
 ### What programming languages does Sruja support?

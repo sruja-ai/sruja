@@ -16,45 +16,48 @@ Your AI writes and maintains `.sruja` files. You just need to know what to ask f
 
 ## Prerequisites
 
-- **Sruja CLI** – See [Quick Start](../getting-started.md) to install
 - **AI editor** – Cursor, Copilot, Claude, Continue.dev, etc.
-- **AI skill** – See [Install as a Skill](../../docs/INSTALL_AS_SKILL.md)
+- **AI skill** – Install first: `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` (see [Install as a Skill](../../docs/INSTALL_AS_SKILL.md))
+- **Sruja CLI** – Needed when the skill runs discover/lint/drift; the skill will guide you to install it if missing (`curl -fsSL https://sruja.ai/install.sh | bash`)
 
 ---
 
-## Step 1: Analyze Your Codebase
+## Step 1: Gather evidence (or let the skill do it)
 
-Run this in your project folder:
+When you use the **sruja-architecture skill**, it runs discovery for you. Discovery is **not** just a file list—under the hood the CLI runs **Tree-sitter** on your code to build a **graph of components and their dependency relations** (who imports whom, which modules call which). That graph is the evidence the skill uses.
+
+If you want to run discovery yourself (e.g. to inspect the summary), run:
 
 ```bash
 cd your-project
 sruja discover --context -r . --format json
 ```
 
-**What this does:** Analyzes your code and returns detailed information.
+**What this does:** Scans your repo with Tree-sitter, builds the component/dependency graph, then outputs a **summary** of that graph (so the AI can scope and ask targeted questions). The full graph is used internally; for the actual list of nodes and edges (structural relations), use `sruja scan -r . -o graph.json`.
 
-**Output includes:**
-- Repository structure
-- Detected technologies (Node.js, Python, Go, etc.)
-- Module boundaries
-- Entry points
-- Dependencies
+**Summary output includes:**
+- Component and edge **counts** (from the Tree-sitter graph)
+- Primary language and framework
+- Inferred architecture style (monolith / microservices)
+- Suggested areas (top-level path segments for scoping)
 
-**Example output:**
+**Example summary (actual schema):**
 
 ```json
 {
   "repo": "my-app",
-  "technologies": ["Node.js", "PostgreSQL", "Redis"],
-  "modules": [
-    {"name": "api", "type": "service"},
-    {"name": "worker", "type": "service"}
-  ],
-  "databases": [
-    {"name": "postgres", "technology": "PostgreSQL"}
-  ]
+  "scan_scope": { "included": [], "excluded": [] },
+  "components": 42,
+  "edges": 58,
+  "primary_language": "TypeScript",
+  "framework": "React",
+  "architecture_style": "monolith",
+  "domain": null,
+  "suggested_areas": ["src", "lib", "apps"]
 }
 ```
+
+To get the **full graph** (every component and its relations) for the skill or tooling: `sruja scan -r . -o graph.json`.
 
 ---
 

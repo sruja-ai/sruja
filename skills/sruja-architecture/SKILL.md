@@ -15,6 +15,10 @@ Core skill for architecture discovery and modeling with Sruja. This skill provid
 - **Minimal DSL**: Generate only what evidence supports
 - **Validation**: Always lint and fix errors before considering complete
 
+## Why this skill
+
+The Sruja skill exists to **ground the AI in real evidence** and to **validate and persist output**. Without Sruja, AI can propose architecture, but it's ungrounded (may invent components and dependencies) and ephemeral (no single source of truth in the repo). The skill gives the AI deterministic evidence from your actual code (scan/graph) and structure (architecture as code: lint, drift, version control). So: AI proposes and reasons; Sruja grounds, validates, and persists. As models get smarter, we don't replace them—we give them better evidence and tools so their output is accurate and maintainable.
+
 ## Evidence source: static graph (Tree-sitter)
 
 Discovery and sync are backed by a **static analysis graph** built from **Tree-sitter** parsing of source code. The CLI parses supported languages (e.g. TypeScript, Python, Go, Rust, Java, C#, Ruby, and others) to extract modules, imports, and dependencies, producing a deterministic **nodes-and-edges graph**. This graph is used to:
@@ -24,13 +28,21 @@ Discovery and sync are backed by a **static analysis graph** built from **Tree-s
 
 When using the skill, prefer evidence from this pipeline (context file or discover output) over guessing; the static graph is the single source of truth for what the codebase contains.
 
+## Progressive discovery (large repos, multi-repo)
+
+Use **summary first**, then **scoped or full detail** as needed so we never lose information for large or multi-repo; we stage access.
+
+- **Tier 1 (default):** `.sruja/context.json` holds a summary (counts, suggested_areas, language, architecture style). Use it for "what areas exist?" and "how big is this?" Keep the first response small and fast.
+- **Tier 2 (on demand):** When reasoning about a specific area or module (e.g. "dependencies of auth", "graph for repo X"), read `.sruja/graph.json` and use only the slice relevant to that area or module. The full graph is written by `sruja sync` to `.sruja/graph.json`; filter by `suggested_areas` or node paths as needed.
+- **Tier 3 (when needed):** For a deep task (e.g. full dependency list, export), read the full `.sruja/graph.json` or run `sruja scan -r . -o -` to get the complete graph. No information is lost; it is accessed progressively.
+
 ## Workflow
 
 ### 1. Collect Evidence
 
-**Editor integration:** If the user has run **Sruja: Refresh repo context** in the editor (or `.sruja/context.json` exists), use that file for evidence first. The file includes `updated_at`, `truth_status`, `baseline_path`, and `git_commit` when produced by `sruja sync`. If the file has an `updated_at` timestamp older than about 1 hour, treat it as stale and suggest refreshing ( **Sruja: Refresh repo context** or `sruja sync -r .`).
+**Prefer context when present.** If `.sruja/context.json` exists and is recent (e.g. `updated_at` within the last hour), use it for evidence first. The file includes `updated_at`, `truth_status`, `baseline_path`, and `git_commit` when produced by `sruja sync`. If the file is missing or stale, **run** discover or sync yourself to get evidence—do not ask the user to run a command first. Optionally after generating, suggest **Sruja: Refresh repo context** or `sruja sync -r .` for faster results next time.
 
-Otherwise, run discovery to gather deterministic evidence:
+When you need evidence and context is missing or stale, run:
 
 ```bash
 sruja sync -r .

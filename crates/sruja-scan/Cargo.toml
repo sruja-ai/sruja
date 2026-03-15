@@ -29,6 +29,7 @@ tree-sitter-scala = "0.23"
 tree-sitter-c = "0.23"
 tree-sitter-cpp = "0.23"
 regex = "1.10"
+rayon = "1.10"
 
 [dev-dependencies]
 sruja-diff = { path = "../sruja-diff" }

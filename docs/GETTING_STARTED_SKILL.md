@@ -40,28 +40,21 @@ CLI → Keeps it in sync as your code changes
 
 ## Quick Start (Copy These Steps)
 
-### Step 1: Install CLI
-
-```bash
-curl -fsSL https://sruja.ai/install.sh | bash
-```
-
-### Step 2: Install the skill
+### Step 1: Install the skill
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
-### Step 3: Get instant insights
+### Step 2: Install the CLI when the skill needs it
+
+When you use the skill, it runs `sruja discover`, `sruja lint`, and `sruja drift`. If the CLI isn’t installed, the skill will guide you. You can also install now:
 
 ```bash
-cd your-project
-sruja quickstart -r .
+curl -fsSL https://sruja.ai/install.sh | bash
 ```
 
-This shows you what Sruja found in your code—no AI needed yet.
-
-### Step 4: Generate architecture
+### Step 3: Generate architecture
 
 In your AI editor, run:
 
@@ -72,13 +65,13 @@ generate repo.sruja (architecture.sruja is also supported),
 then run `sruja lint` and fix.
 ```
 
-### Step 5: Validate
+### Step 4: Validate
 
 ```bash
 sruja lint repo.sruja
 ```
 
-### Step 6: Export (optional)
+### Step 5: Export (optional)
 
 ```bash
 # For documentation

@@ -493,8 +493,14 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
     println!();
 
     println!("{}", "─".repeat(70).truecolor(100, 100, 100));
-    println!("{}", "🔍 Top 3 Critical Findings".red().bold());
+    println!("{}", "🔍 Top 3 Structural Findings".red().bold());
     println!("{}", "─".repeat(70).truecolor(100, 100, 100));
+    println!(
+        "  {}",
+        "(Heuristic; no baseline. For actionable insights, add repo.sruja and run drift, or use the sruja-architecture skill.)"
+            .truecolor(120, 120, 120)
+    );
+    println!();
 
     let mut sorted: Vec<_> = report.violations.iter().collect();
     sorted.sort_by(|a, b| {
@@ -641,11 +647,11 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
     println!();
     println!(
         "  1. {}",
-        "Review the findings above and prioritize fixes".white()
+        "Add a baseline for actionable drift: generate repo.sruja (e.g. use sruja-architecture skill), then run 'sruja drift -r . -a repo.sruja'".white()
     );
     println!(
         "  2. {}",
-        "Run 'sruja drift -r . --format json' for detailed analysis".white()
+        "Run 'sruja drift -r . --format json' for full structural analysis (no baseline)".white()
     );
     println!(
         "  3. {}",
