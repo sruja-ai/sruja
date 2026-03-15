@@ -17,4 +17,4 @@ sruja-scan = { path = "../sruja-scan" }
 sruja-language = { path = "../sruja-language" }
 
 [dev-dependencies]
-tempfile = "3.10"
+tempfile = "3.27"
