@@ -274,7 +274,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Sruja
         run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja --locked

@@ -52,7 +52,7 @@ Sruja’s CLI is written in Rust. In CI you can either build from source in this
 If your workflow runs inside the [sruja](https://github.com/sruja-ai/sruja) repo, use the composite action so the CLI is built once and lint/export run on your files:
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v6
 - uses: ./.github/actions/sruja-validate
   with:
     working-directory: .
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -113,7 +113,7 @@ jobs:
   enforce-architecture:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Full history for diff
 
@@ -172,7 +172,7 @@ jobs:
           - services/order-service.sruja
           - services/user-service.sruja
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -342,7 +342,7 @@ jobs:
   update-docs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -381,7 +381,7 @@ jobs:
   track-changes:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -434,7 +434,7 @@ jobs:
           - user-service
           - inventory-service
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -451,7 +451,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: validate-architecture
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable

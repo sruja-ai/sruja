@@ -223,7 +223,7 @@ on: [push, pull_request]
 jobs:
   validate:
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Sruja
         run: curl -fsSL https://sruja.ai/install.sh | bash
       - name: Lint

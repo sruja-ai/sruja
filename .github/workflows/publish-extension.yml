@@ -38,9 +38,9 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Set extension version
         run: |
@@ -88,7 +88,7 @@ jobs:
           echo "Set extension version to $VERSION"
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
         with:
           targets: wasm32-unknown-unknown
       - name: Install wasm-pack

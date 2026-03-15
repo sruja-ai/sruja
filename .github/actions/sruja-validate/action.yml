@@ -25,11 +25,11 @@ runs:
   using: "composite"
   steps:
     - name: Set up Rust
-      uses: dtolnay/rust-toolchain@stable
+      uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
       with:
         components: ""
     - name: Cache Rust
-      uses: Swatinem/rust-cache@v2
+      uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
       with:
         workspaces: ${{ inputs.working-directory }}
     - name: Build Sruja CLI

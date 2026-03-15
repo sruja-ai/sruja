@@ -14,7 +14,7 @@ In your GitHub Actions or Jenkins pipeline, add a step to install and run Sruja.
 ```yaml
 steps:
   - name: Checkout
-    uses: actions/checkout@v3
+    uses: actions/checkout@v6
 
   - name: Install Sruja
     run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja --locked
