@@ -62,6 +62,9 @@ enum Commands {
         /// Named view to export (for markdown format - uses view-driven export)
         #[arg(long)]
         view: Option<String>,
+        /// Export all defined custom views in markdown (adds Custom views section)
+        #[arg(long)]
+        all_views: bool,
     },
     /// Format a Sruja file
     Fmt {
@@ -367,6 +370,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             view_level,
             target,
             view,
+            all_views,
         } => {
             commands::export(
                 &format,
@@ -375,6 +379,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 view_level,
                 target.as_deref(),
                 view.as_deref(),
+                all_views,
             )
             .await
         }

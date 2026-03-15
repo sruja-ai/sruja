@@ -37,13 +37,10 @@ pub fn resolve_view(
     }
 
     if let Some(exclude) = first_rule.and_then(|r| r.exclude.as_ref()) {
-        eprintln!("Applying exclude rule: {:?}", exclude);
         let excluded = apply_exclude_rule(exclude, all_elements, view.view_of.as_ref());
-        eprintln!("Elements to exclude: {:?}", excluded);
         for elem_id in excluded {
             visible_elements.remove(&elem_id);
         }
-        eprintln!("After exclusion, visible: {:?}", visible_elements);
     }
 
     let filtered_relations: Vec<Relation> = all_relations

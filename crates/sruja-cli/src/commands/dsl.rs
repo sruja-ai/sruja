@@ -193,6 +193,7 @@ pub async fn export(
     view_level: u8,
     target: Option<&str>,
     view_name: Option<&str>,
+    all_views: bool,
 ) -> Result<(), CliError> {
     let content = fs::read_to_string(file)?;
     let parser = Parser::new(file.to_string());
@@ -231,6 +232,9 @@ pub async fn export(
             if let Some(name) = view_name {
                 options.use_views = true;
                 options.view_name = Some(name.to_string());
+            } else if all_views {
+                options.use_views = true;
+                options.include_all_views = true;
             }
             let exporter = MarkdownExporter::new(options);
             let md = exporter.export(&program);

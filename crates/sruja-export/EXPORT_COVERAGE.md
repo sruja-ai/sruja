@@ -13,15 +13,25 @@ The export order and section names follow a **context → building blocks → de
    - **Stakeholders** – Persons and their descriptions (replaces legacy "Persons" heading).
 4. **Building blocks** – **Systems** with per-system L2 container diagrams and per-container L3 component diagrams.
 5. **Deployment view** – **Deployments** (nested deployment tree).
-6. **Runtime view** – **Scenarios** (and flows) with Mermaid sequence diagrams.
-7. **Requirements & decisions**
+6. **Relations** – Optional (when `include_relations` is true): list of relations as `from → to "label"`.
+7. **Runtime view** – **Scenarios** (and flows) with Mermaid sequence diagrams.
+8. **Requirements & decisions**
    - **Requirements** – Functional/non-functional/constraint requirements with ID, type, description, tags.
-   - **Architecture Decision Records** – ADRs with status, context, decision, consequences.
-8. **Governance**
-   - **Policies** – Category, enforcement, description.
+   - **Architecture Decision Records** – ADRs with ID, status, context, decision, consequences.
+9. **Governance**
+   - **Policies** – ID, category, enforcement, description.
    - **Constraints** – List of constraints.
    - **Conventions** – List of conventions.
-9. **Analysis** – **Feedback Loops** and **Causal Loops** with Mermaid diagrams and variables (causal).
+10. **Analysis** – **Feedback Loops** and **Causal Loops** with ID, Mermaid diagrams and variables (causal).
+11. **Glossary** / **Recommendations** – Optional stub sections when `include_glossary` / `include_recommendations` are true (no AST yet).
+12. **Custom views** – When `use_views` and `include_all_views`: one subsection per defined view (title, description, Mermaid from resolved view).
+
+User-controlled text (titles, descriptions, labels) is escaped for Markdown (backslash, backtick, square brackets, and `#` in headings) so output is safe for edge-case content.
+
+### View-driven export
+
+- **Single view** (`use_views` true, `view_name` set): document contains only the chosen view (title, view heading, description, one Mermaid diagram, optional “Elements in this view” list). If the named view is not found, export falls back to the full document.
+- **All views** (`use_views` true, `include_all_views` true, no `view_name`): full document as above, plus a **Custom views** section at the end with one subsection per defined view (view title, description, Mermaid from `export_from_resolved_view`).
 
 This order helps readers understand context first, then structure, deployment, behaviour, and finally requirements, decisions, and governance.
 
@@ -68,7 +78,7 @@ This order helps readers understand context first, then structure, deployment, b
 
 | AST field    | Exported | Notes |
 |--------------|----------|-------|
-| id           | ❌       | Not written |
+| id           | ✅       | **ID:** when non-empty |
 | title        | ✅       | ### heading |
 | status       | ✅       | **Status:** |
 | context      | ✅       | **Context:** |
@@ -79,7 +89,7 @@ This order helps readers understand context first, then structure, deployment, b
 
 | AST field    | Exported | Notes |
 |--------------|----------|-------|
-| id           | ❌       | Not written |
+| id           | ✅       | **ID:** when non-empty |
 | title        | ✅       | ### heading |
 | category     | ✅       | **Category:** |
 | enforcement  | ✅       | **Enforcement:** |
@@ -114,7 +124,7 @@ This order helps readers understand context first, then structure, deployment, b
 
 | AST field      | Exported | Notes |
 |----------------|----------|-------|
-| id             | ❌       | Not written |
+| id             | ✅       | **ID:** when non-empty |
 | title          | ✅       | ### heading |
 | loop_id        | ✅       | **Loop ID:** |
 | loop_type      | ✅       | **Type:** and symbol |
@@ -125,13 +135,23 @@ This order helps readers understand context first, then structure, deployment, b
 
 | AST field      | Exported | Notes |
 |----------------|----------|-------|
-| id             | ❌       | Not written |
+| id             | ✅       | **ID:** when non-empty |
 | title          | ✅       | ### heading |
 | loop_id        | ✅       | **Loop ID:** |
 | loop_type      | ✅       | **Type:** and symbol |
 | description    | ✅       | **Description:** |
 | variables      | ✅       | **Variables:** list (id and label) |
 | relationships  | ✅       | Mermaid diagram (from, to, effect, polarity) |
+
+### Relations (when `include_relations` is true)
+
+| AST field   | Exported | Notes |
+|-------------|----------|-------|
+| from        | ✅       | Source FQN in list item |
+| to          | ✅       | Target FQN in list item |
+| label       | ✅       | Quoted in list item |
+| description | ❌       | Not in Relations section |
+| technology  | ❌       | Not in Relations section |
 
 ---
 
@@ -170,10 +190,8 @@ This order helps readers understand context first, then structure, deployment, b
 ## Not exported (by design or future work)
 
 - **Element:** scale, slo, per-element constraints/conventions, style, tag_refs.
-- **ADR / Policy:** id (could add for traceability).
-- **View definitions:** no dedicated “Views” section in current Markdown path (view-driven path exists in options but may not be wired in all code paths).
 - **KindDef / TagDef / Style / Extend:** DSL-only; not rendered as Markdown sections.
-- **Relation tags/technology:** relation metadata not shown in Markdown (only in Mermaid as edge label).
+- **Relation description/technology:** in optional Relations section only from/to/label are shown; description and technology are not written there (they appear in Mermaid as edge label where applicable).
 
 ---
 
@@ -181,5 +199,5 @@ This order helps readers understand context first, then structure, deployment, b
 
 To confirm export behaviour:
 
-1. **Unit/integration tests** in `tests/markdown_export.rs` cover: overview, systems, persons, deployments, requirements (with id/tags), ADRs, policies, constraints, conventions, scenarios (with description), feedback loops, causal loops (with variables), and element metadata.
+1. **Unit/integration tests** in `tests/markdown_export.rs` cover: overview, systems, persons, deployments, requirements (with id/tags), ADRs (with id), policies (with id), constraints, conventions, scenarios (with description), feedback loops (with id), causal loops (with id, variables), element metadata, escaping of special characters in headings/body, view-driven single view and all-views, and optional Relations section when `include_relations` is true.
 2. **This doc** is the single place that lists what is and isn’t exported; update it when adding or changing exported fields.

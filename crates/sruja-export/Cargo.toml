@@ -14,5 +14,8 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 
+[dev-dependencies]
+sruja-language = { path = "../sruja-language" }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = { workspace = true }

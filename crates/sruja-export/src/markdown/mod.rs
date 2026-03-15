@@ -1,5 +1,6 @@
 //! Markdown exporter
 
+pub mod escape;
 pub mod exporter;
 pub mod options;
 

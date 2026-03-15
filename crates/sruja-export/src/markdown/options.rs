@@ -42,6 +42,8 @@ pub struct MarkdownOptions {
     pub include_metadata: bool,
     pub include_glossary: bool,
     pub include_recommendations: bool,
+    /// When true, add a "Relations" section listing all relations (from → to "label").
+    pub include_relations: bool,
     pub mermaid_config: MermaidConfig,
     pub heading_level: u32,
     pub scope: Scope,
@@ -49,6 +51,8 @@ pub struct MarkdownOptions {
     pub context: ContextType,
     pub use_views: bool,
     pub view_name: Option<String>,
+    /// When true and use_views is true (and view_name is None), emit a "Custom views" section with all defined views.
+    pub include_all_views: bool,
 }
 
 impl Default for MarkdownOptions {
@@ -67,6 +71,7 @@ impl Default for MarkdownOptions {
             include_metadata: true,
             include_glossary: true,
             include_recommendations: true,
+            include_relations: false,
             mermaid_config: MermaidConfig::default(),
             heading_level: 1,
             scope: Scope::full(),
@@ -74,6 +79,7 @@ impl Default for MarkdownOptions {
             context: ContextType::Default,
             use_views: false,
             view_name: None,
+            include_all_views: false,
         }
     }
 }

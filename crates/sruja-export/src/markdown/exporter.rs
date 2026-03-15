@@ -15,7 +15,9 @@ use sruja_language::{
 use crate::mermaid::exporter::{MermaidConfig, MermaidExporter};
 use crate::mermaid::feedback_loops::{causal_loop_to_diagram, feedback_loop_to_diagram};
 use crate::mermaid::scenario_to_sequence_diagram;
+use crate::mermaid::views::{collect_views, resolve_view, ResolvedView};
 
+use super::escape::{escape_heading, escape_inline};
 use super::options::MarkdownOptions;
 
 /// Write element metadata as Markdown key-value lines when options.include_metadata is true.
@@ -30,7 +32,11 @@ fn write_element_metadata_if(
     for entry in metadata {
         if let Some(ref v) = entry.value {
             if !v.is_empty() {
-                out.push_str(&format!("**{}:** {}\n\n", entry.key, v));
+                out.push_str(&format!(
+                    "**{}:** {}\n\n",
+                    escape_inline(&entry.key),
+                    escape_inline(v)
+                ));
             }
         }
     }
@@ -61,8 +67,7 @@ impl MarkdownExporter {
             return String::new();
         }
 
-        let (elements, _relations) = collect_elements(program);
-        let mut out = String::new();
+        let (elements, relations) = collect_elements(program);
 
         // Systems with FQN for L2/L3 diagram targeting
         let systems_with_fqn: Vec<(String, &sruja_language::ElementDef)> = elements
@@ -136,10 +141,28 @@ impl MarkdownExporter {
                 })
             })
             .unwrap_or_else(|| "Architecture Overview".to_string());
-        out.push_str(&format!("# {}\n\n", title));
+
+        // View-driven: single named view
+        if self.options.use_views {
+            if let Some(ref name) = self.options.view_name {
+                let views = collect_views(program);
+                if let Some(view) = views.iter().find(|v| v.id == *name) {
+                    let resolved = resolve_view(view, &elements, &relations);
+                    return self.export_single_view(&title, &resolved);
+                }
+                // View not found: fall back to full document below
+            }
+        }
+
+        let mut out = String::new();
+        out.push_str(&format!("# {}\n\n", escape_heading(&title)));
 
         // Table of contents
         if self.options.include_toc {
+            let has_custom_views = self.options.use_views
+                && self.options.include_all_views
+                && !collect_views(program).is_empty();
+            let has_relations = self.options.include_relations && !relations.is_empty();
             self.write_toc(
                 &mut out,
                 &systems,
@@ -153,6 +176,8 @@ impl MarkdownExporter {
                 !feedback_loops.is_empty(),
                 !causal_loops.is_empty(),
                 self.options.include_deployments && !deployments.is_empty(),
+                has_relations,
+                has_custom_views,
             );
         }
 
@@ -173,6 +198,11 @@ impl MarkdownExporter {
         // 3. Deployment view
         if self.options.include_deployments && !deployments.is_empty() {
             self.write_deployments(&mut out, &deployments);
+        }
+
+        // Optional relations list
+        if self.options.include_relations && !relations.is_empty() {
+            self.write_relations(&mut out, &relations);
         }
 
         // 4. Runtime view (scenarios and flows)
@@ -207,7 +237,110 @@ impl MarkdownExporter {
             self.write_causal_loops(&mut out, &causal_loops);
         }
 
+        // Glossary and Recommendations (stub sections when options set)
+        if self.options.include_glossary {
+            out.push_str("## Glossary\n\n_To be populated._\n\n");
+        }
+        if self.options.include_recommendations {
+            out.push_str("## Recommendations\n\n_To be populated._\n\n");
+        }
+
+        // 8. Custom views (when use_views and include_all_views)
+        if self.options.use_views && self.options.include_all_views {
+            self.write_custom_views_section(&mut out, program, &elements, &relations);
+        }
+
         out
+    }
+
+    /// Emit a reduced document for a single resolved view: title, optional TOC, view title/description, one Mermaid diagram, optional element list.
+    fn export_single_view(&self, title: &str, resolved: &ResolvedView) -> String {
+        let mut out = String::new();
+        out.push_str(&format!("# {}\n\n", escape_heading(title)));
+        if self.options.include_toc {
+            out.push_str("- [View](#view)\n\n");
+        }
+        out.push_str("## View\n\n");
+        out.push_str(&format!(
+            "### {}\n\n",
+            escape_heading(&resolved.title)
+        ));
+        if let Some(ref desc) = resolved.description {
+            if !desc.is_empty() {
+                out.push_str(&format!("{}\n\n", escape_inline(desc)));
+            }
+        }
+        if self.options.include_mermaid_diagrams && !resolved.elements.is_empty() {
+            let mermaid =
+                MermaidExporter::new(self.options.mermaid_config.clone())
+                    .export_from_resolved_view(resolved);
+            if !mermaid.is_empty() {
+                out.push_str("```mermaid\n");
+                out.push_str(&mermaid);
+                if !mermaid.ends_with('\n') {
+                    out.push('\n');
+                }
+                out.push_str("```\n\n");
+            }
+        }
+        if self.options.include_metadata && !resolved.elements.is_empty() {
+            out.push_str("#### Elements in this view\n\n");
+            let mut fqns: Vec<_> = resolved.elements.keys().collect();
+            fqns.sort();
+            for fqn in fqns {
+                let elem = &resolved.elements[fqn];
+                let label = elem
+                    .assignment
+                    .title
+                    .clone()
+                    .unwrap_or_else(|| elem.assignment.name.clone());
+                out.push_str(&format!("- {} ({})\n", escape_inline(&label), fqn));
+            }
+            out.push('\n');
+        }
+        out
+    }
+
+    /// Append a "Custom views" section with one subsection per defined view (title, description, Mermaid).
+    fn write_custom_views_section(
+        &self,
+        out: &mut String,
+        program: &Program,
+        elements: &HashMap<String, sruja_language::ElementDef>,
+        relations: &[sruja_language::Relation],
+    ) {
+        let views = collect_views(program);
+        if views.is_empty() {
+            return;
+        }
+        out.push_str("## Custom views\n\n");
+        for view in &views {
+            let resolved = resolve_view(view, elements, relations);
+            if resolved.elements.is_empty() {
+                continue;
+            }
+            out.push_str(&format!(
+                "### {}\n\n",
+                escape_heading(&resolved.title)
+            ));
+            if let Some(ref desc) = resolved.description {
+                if !desc.is_empty() {
+                    out.push_str(&format!("{}\n\n", escape_inline(desc)));
+                }
+            }
+            if self.options.include_mermaid_diagrams {
+                let mermaid = MermaidExporter::new(self.options.mermaid_config.clone())
+                    .export_from_resolved_view(&resolved);
+                if !mermaid.is_empty() {
+                    out.push_str("```mermaid\n");
+                    out.push_str(&mermaid);
+                    if !mermaid.ends_with('\n') {
+                        out.push('\n');
+                    }
+                    out.push_str("```\n\n");
+                }
+            }
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -225,6 +358,8 @@ impl MarkdownExporter {
         has_feedback_loops: bool,
         has_causal_loops: bool,
         has_deployments: bool,
+        has_relations: bool,
+        has_custom_views: bool,
     ) {
         out.push_str("## Table of Contents\n\n");
         if self.options.include_overview {
@@ -238,6 +373,9 @@ impl MarkdownExporter {
         }
         if has_deployments {
             out.push_str("- [Deployments](#deployments)\n");
+        }
+        if has_relations {
+            out.push_str("- [Relations](#relations)\n");
         }
         if has_scenarios {
             out.push_str("- [Scenarios](#scenarios)\n");
@@ -263,6 +401,15 @@ impl MarkdownExporter {
         if has_causal_loops {
             out.push_str("- [Causal Loops](#causal-loops)\n");
         }
+        if self.options.include_glossary {
+            out.push_str("- [Glossary](#glossary)\n");
+        }
+        if self.options.include_recommendations {
+            out.push_str("- [Recommendations](#recommendations)\n");
+        }
+        if has_custom_views {
+            out.push_str("- [Custom views](#custom-views)\n");
+        }
         out.push('\n');
     }
 
@@ -276,32 +423,32 @@ impl MarkdownExporter {
 
         if let Some(ov) = overview_block {
             if let Some(summary) = &ov.summary {
-                out.push_str(&format!("{}\n\n", summary));
+                out.push_str(&format!("{}\n\n", escape_inline(summary)));
             }
             if let Some(audience) = &ov.audience {
-                out.push_str(&format!("**Audience:** {}\n\n", audience));
+                out.push_str(&format!("**Audience:** {}\n\n", escape_inline(audience)));
             }
             if let Some(scope) = &ov.scope {
-                out.push_str(&format!("**Scope:** {}\n\n", scope));
+                out.push_str(&format!("**Scope:** {}\n\n", escape_inline(scope)));
             }
             if !ov.goals.is_empty() {
                 out.push_str("**Goals:**\n\n");
                 for g in &ov.goals {
-                    out.push_str(&format!("- {}\n", g));
+                    out.push_str(&format!("- {}\n", escape_inline(g)));
                 }
                 out.push('\n');
             }
             if !ov.non_goals.is_empty() {
                 out.push_str("**Non-goals:**\n\n");
                 for ng in &ov.non_goals {
-                    out.push_str(&format!("- {}\n", ng));
+                    out.push_str(&format!("- {}\n", escape_inline(ng)));
                 }
                 out.push('\n');
             }
             if !ov.risks.is_empty() {
                 out.push_str("**Risks:**\n\n");
                 for r in &ov.risks {
-                    out.push_str(&format!("- {}\n", r));
+                    out.push_str(&format!("- {}\n", escape_inline(r)));
                 }
                 out.push('\n');
             }
@@ -347,13 +494,13 @@ impl MarkdownExporter {
                 .title
                 .clone()
                 .unwrap_or_else(|| sys.assignment.name.clone());
-            out.push_str(&format!("### {}\n\n", title));
+            out.push_str(&format!("### {}\n\n", escape_heading(&title)));
             if let Some(body) = &sys.assignment.body {
                 if let Some(desc) = &body.description {
-                    out.push_str(&format!("{}\n\n", desc));
+                    out.push_str(&format!("{}\n\n", escape_inline(desc)));
                 }
                 if let Some(tech) = &body.technology {
-                    out.push_str(&format!("**Technology:** {}\n\n", tech));
+                    out.push_str(&format!("**Technology:** {}\n\n", escape_inline(tech)));
                 }
                 write_element_metadata_if(out, self.options.include_metadata, &body.metadata);
             }
@@ -393,13 +540,13 @@ impl MarkdownExporter {
                     .title
                     .clone()
                     .unwrap_or_else(|| container_elem.assignment.name.clone());
-                out.push_str(&format!("##### {}\n\n", container_title));
+                out.push_str(&format!("##### {}\n\n", escape_heading(&container_title)));
                 if let Some(body) = &container_elem.assignment.body {
                     if let Some(desc) = &body.description {
-                        out.push_str(&format!("{}\n\n", desc));
+                        out.push_str(&format!("{}\n\n", escape_inline(desc)));
                     }
                     if let Some(tech) = &body.technology {
-                        out.push_str(&format!("**Technology:** {}\n\n", tech));
+                        out.push_str(&format!("**Technology:** {}\n\n", escape_inline(tech)));
                     }
                     write_element_metadata_if(out, self.options.include_metadata, &body.metadata);
                 }
@@ -436,10 +583,10 @@ impl MarkdownExporter {
                 .title
                 .clone()
                 .unwrap_or_else(|| person.assignment.name.clone());
-            out.push_str(&format!("### {}\n\n", title));
+            out.push_str(&format!("### {}\n\n", escape_heading(&title)));
             if let Some(body) = &person.assignment.body {
                 if let Some(desc) = &body.description {
-                    out.push_str(&format!("{}\n\n", desc));
+                    out.push_str(&format!("{}\n\n", escape_inline(desc)));
                 }
                 write_element_metadata_if(out, self.options.include_metadata, &body.metadata);
             }
@@ -452,16 +599,19 @@ impl MarkdownExporter {
         }
         out.push_str("## Requirements\n\n");
         for req in requirements {
-            out.push_str(&format!("### {}\n\n", req.title));
+            out.push_str(&format!("### {}\n\n", escape_heading(&req.title)));
             if req.id != req.title && !req.id.is_empty() {
-                out.push_str(&format!("**ID:** {}\n\n", req.id));
+                out.push_str(&format!("**ID:** {}\n\n", escape_inline(&req.id)));
             }
-            out.push_str(&format!("**Type:** {}\n\n", req.r#type));
+            out.push_str(&format!("**Type:** {}\n\n", escape_inline(&req.r#type)));
             if let Some(desc) = &req.description {
-                out.push_str(&format!("{}\n\n", desc));
+                out.push_str(&format!("{}\n\n", escape_inline(desc)));
             }
             if !req.tags.is_empty() {
-                out.push_str(&format!("**Tags:** {}\n\n", req.tags.join(", ")));
+                out.push_str(&format!(
+                    "**Tags:** {}\n\n",
+                    escape_inline(&req.tags.join(", "))
+                ));
             }
         }
     }
@@ -472,18 +622,24 @@ impl MarkdownExporter {
         }
         out.push_str("## Architecture Decision Records\n\n");
         for adr in adrs {
-            out.push_str(&format!("### {}\n\n", adr.title));
+            out.push_str(&format!("### {}\n\n", escape_heading(&adr.title)));
+            if !adr.id.is_empty() {
+                out.push_str(&format!("**ID:** {}\n\n", escape_inline(&adr.id)));
+            }
             if let Some(status) = &adr.status {
-                out.push_str(&format!("**Status:** {}\n\n", status));
+                out.push_str(&format!("**Status:** {}\n\n", escape_inline(status)));
             }
             if let Some(context) = &adr.context {
-                out.push_str(&format!("**Context:** {}\n\n", context));
+                out.push_str(&format!("**Context:** {}\n\n", escape_inline(context)));
             }
             if let Some(decision) = &adr.decision {
-                out.push_str(&format!("**Decision:** {}\n\n", decision));
+                out.push_str(&format!("**Decision:** {}\n\n", escape_inline(decision)));
             }
             if let Some(consequences) = &adr.consequences {
-                out.push_str(&format!("**Consequences:** {}\n\n", consequences));
+                out.push_str(&format!(
+                    "**Consequences:** {}\n\n",
+                    escape_inline(consequences)
+                ));
             }
         }
     }
@@ -494,11 +650,20 @@ impl MarkdownExporter {
         }
         out.push_str("## Policies\n\n");
         for policy in policies {
-            out.push_str(&format!("### {}\n\n", policy.title));
-            out.push_str(&format!("**Category:** {}\n\n", policy.category));
-            out.push_str(&format!("**Enforcement:** {}\n\n", policy.enforcement));
+            out.push_str(&format!("### {}\n\n", escape_heading(&policy.title)));
+            if !policy.id.is_empty() {
+                out.push_str(&format!("**ID:** {}\n\n", escape_inline(&policy.id)));
+            }
+            out.push_str(&format!(
+                "**Category:** {}\n\n",
+                escape_inline(&policy.category)
+            ));
+            out.push_str(&format!(
+                "**Enforcement:** {}\n\n",
+                escape_inline(&policy.enforcement)
+            ));
             if let Some(desc) = &policy.description {
-                out.push_str(&format!("{}\n\n", desc));
+                out.push_str(&format!("{}\n\n", escape_inline(desc)));
             }
         }
     }
@@ -509,7 +674,7 @@ impl MarkdownExporter {
         }
         out.push_str("## Constraints\n\n");
         for entry in &constraints.entries {
-            out.push_str(&format!("- {}\n", entry.value));
+            out.push_str(&format!("- {}\n", escape_inline(&entry.value)));
         }
         out.push('\n');
     }
@@ -520,7 +685,7 @@ impl MarkdownExporter {
         }
         out.push_str("## Conventions\n\n");
         for entry in &conventions.entries {
-            out.push_str(&format!("- {}\n", entry.value));
+            out.push_str(&format!("- {}\n", escape_inline(&entry.value)));
         }
         out.push('\n');
     }
@@ -543,15 +708,34 @@ impl MarkdownExporter {
     ) {
         let heading = "#".repeat((3 + depth).min(6));
         let title = node.label.as_deref().unwrap_or(node.id.as_str());
-        out.push_str(&format!("{} {}\n\n", heading, title));
+        out.push_str(&format!("{} {}\n\n", heading, escape_heading(title)));
         if let Some(tech) = &node.technology {
-            out.push_str(&format!("**Technology:** {}\n\n", tech));
+            out.push_str(&format!("**Technology:** {}\n\n", escape_inline(tech)));
         }
         if !node.children.is_empty() {
             for child in &node.children {
                 self.write_deployment_node(out, child, depth + 1);
             }
         }
+    }
+
+    fn write_relations(&self, out: &mut String, relations: &[sruja_language::Relation]) {
+        if relations.is_empty() {
+            return;
+        }
+        out.push_str("## Relations\n\n");
+        for rel in relations {
+            let from_s = rel.from.as_string();
+            let to_s = rel.to.as_string();
+            let label = rel.label.as_deref().unwrap_or("");
+            out.push_str(&format!(
+                "- {} → {} \"{}\"\n",
+                escape_inline(&from_s),
+                escape_inline(&to_s),
+                escape_inline(label)
+            ));
+        }
+        out.push('\n');
     }
 
     fn write_scenarios(
@@ -569,10 +753,10 @@ impl MarkdownExporter {
         }
         out.push_str("## Scenarios\n\n");
         for (id, title, description, steps) in scenario_items {
-            out.push_str(&format!("### {}\n\n", title));
+            out.push_str(&format!("### {}\n\n", escape_heading(title)));
             if let Some(ref desc) = description {
                 if !desc.is_empty() {
-                    out.push_str(&format!("{}\n\n", desc));
+                    out.push_str(&format!("{}\n\n", escape_inline(desc)));
                 }
             }
             if self.options.include_mermaid_diagrams && !steps.is_empty() {
@@ -599,17 +783,23 @@ impl MarkdownExporter {
         }
         out.push_str("## Feedback Loops\n\n");
         for fl in feedback_loops {
-            out.push_str(&format!("### {}\n\n", fl.title));
+            out.push_str(&format!("### {}\n\n", escape_heading(&fl.title)));
+            if !fl.id.is_empty() {
+                out.push_str(&format!("**ID:** {}\n\n", escape_inline(&fl.id)));
+            }
             if let Some(ref loop_id) = fl.loop_id {
-                out.push_str(&format!("**Loop ID:** {}\n\n", loop_id));
+                out.push_str(&format!("**Loop ID:** {}\n\n", escape_inline(loop_id)));
             }
             out.push_str(&format!(
                 "**Type:** {} ({})\n\n",
-                fl.loop_type,
+                escape_inline(&fl.loop_type.to_string()),
                 fl.loop_type.to_symbol()
             ));
             if let Some(ref description) = fl.description {
-                out.push_str(&format!("**Description:** {}\n\n", description));
+                out.push_str(&format!(
+                    "**Description:** {}\n\n",
+                    escape_inline(description)
+                ));
             }
             if self.options.include_mermaid_diagrams && !fl.relationships.is_empty() {
                 let diagram = feedback_loop_to_diagram(fl);
@@ -629,23 +819,33 @@ impl MarkdownExporter {
         }
         out.push_str("## Causal Loops\n\n");
         for cl in causal_loops {
-            out.push_str(&format!("### {}\n\n", cl.title));
+            out.push_str(&format!("### {}\n\n", escape_heading(&cl.title)));
+            if !cl.id.is_empty() {
+                out.push_str(&format!("**ID:** {}\n\n", escape_inline(&cl.id)));
+            }
             if let Some(ref loop_id) = cl.loop_id {
-                out.push_str(&format!("**Loop ID:** {}\n\n", loop_id));
+                out.push_str(&format!("**Loop ID:** {}\n\n", escape_inline(loop_id)));
             }
             out.push_str(&format!(
                 "**Type:** {} ({})\n\n",
-                cl.loop_type,
+                escape_inline(&cl.loop_type.to_string()),
                 cl.loop_type.to_symbol()
             ));
             if let Some(ref description) = cl.description {
-                out.push_str(&format!("**Description:** {}\n\n", description));
+                out.push_str(&format!(
+                    "**Description:** {}\n\n",
+                    escape_inline(description)
+                ));
             }
             if !cl.variables.is_empty() {
                 out.push_str("**Variables:**\n\n");
                 for v in &cl.variables {
                     let label = v.label.as_deref().unwrap_or(v.id.as_str());
-                    out.push_str(&format!("- {} ({})\n", v.id, label));
+                    out.push_str(&format!(
+                        "- {} ({})\n",
+                        escape_inline(&v.id),
+                        escape_inline(label)
+                    ));
                 }
                 out.push('\n');
             }

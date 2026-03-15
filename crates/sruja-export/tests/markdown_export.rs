@@ -737,4 +737,149 @@ Loop1 = causal_loop "Stock and Flow" {
             "expected variable Inventory with label in causal loop"
         );
     }
+
+    #[test]
+    fn test_escaping_special_chars_in_headings() {
+        let input = r#"
+person = kind "Person"
+system = kind "System"
+
+User = person "User"
+Shop = system "C# API [v2]" {
+    description "System with special chars in title"
+}
+"#;
+        let parser = Parser::new("test.sruja".to_string());
+        let program = parser.parse(input).expect("Failed to parse");
+        let options = MarkdownOptions {
+            include_overview: false,
+            include_systems: true,
+            include_persons: true,
+            ..MarkdownOptions::default()
+        };
+        let exporter = MarkdownExporter::new(options);
+        let markdown = exporter.export(&program);
+        // Escaped: # → \#, [ → \[, ] → \]
+        assert!(
+            markdown.contains("C\\# API \\[v2\\]"),
+            "expected escaped heading for system title"
+        );
+    }
+
+    #[test]
+    fn test_export_single_view() {
+        let input = r#"
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+
+User = person "User"
+Shop = system "Shop" {
+    Web = container "Web App"
+    API = container "API"
+}
+
+view api_focus {
+    title "API Focus"
+    description "Only API container"
+    include Shop.API
+}
+
+User -> Shop.Web "uses"
+Shop.Web -> Shop.API "calls"
+"#;
+        let parser = Parser::new("test.sruja".to_string());
+        let program = parser.parse(input).expect("Failed to parse");
+        let options = MarkdownOptions {
+            use_views: true,
+            view_name: Some("api_focus".to_string()),
+            include_toc: true,
+            include_mermaid_diagrams: true,
+            include_metadata: true,
+            ..MarkdownOptions::default()
+        };
+        let exporter = MarkdownExporter::new(options);
+        let markdown = exporter.export(&program);
+        assert!(markdown.contains("## View"), "expected View section in single-view export");
+        assert!(markdown.contains("### API Focus"), "expected view title");
+        assert!(markdown.contains("```mermaid"), "expected Mermaid diagram");
+        assert!(markdown.contains("Shop_API") || markdown.contains("Shop"), "expected view elements in diagram");
+    }
+
+    #[test]
+    fn test_export_all_views() {
+        let input = r#"
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+
+Shop = system "Shop" {
+    Web = container "Web"
+    API = container "API"
+}
+
+view api_view {
+    title "API View"
+    include Shop.API
+}
+"#;
+        let parser = Parser::new("test.sruja".to_string());
+        let program = parser.parse(input).expect("Failed to parse");
+        let options = MarkdownOptions {
+            use_views: true,
+            view_name: None,
+            include_all_views: true,
+            include_mermaid_diagrams: true,
+            ..MarkdownOptions::default()
+        };
+        let exporter = MarkdownExporter::new(options);
+        let markdown = exporter.export(&program);
+        assert!(markdown.contains("## Custom views"), "expected Custom views section");
+        assert!(markdown.contains("### API View"), "expected view title in Custom views");
+    }
+
+    #[test]
+    fn test_export_view_not_found_falls_back_to_full_doc() {
+        let input = r#"
+system = kind "System"
+Shop = system "Shop" {}
+"#;
+        let parser = Parser::new("test.sruja".to_string());
+        let program = parser.parse(input).expect("Failed to parse");
+        let options = MarkdownOptions {
+            use_views: true,
+            view_name: Some("nonexistent_view".to_string()),
+            include_systems: true,
+            ..MarkdownOptions::default()
+        };
+        let exporter = MarkdownExporter::new(options);
+        let markdown = exporter.export(&program);
+        assert!(markdown.contains("## Systems"), "expected fallback to full doc with Systems");
+        assert!(markdown.contains("Shop"), "expected Shop in full doc");
+    }
+
+    #[test]
+    fn test_relations_section_when_include_relations() {
+        let input = r#"
+system = kind "System"
+container = kind "Container"
+
+A = system "System A" {}
+B = system "System B" {}
+
+A -> B "calls"
+"#;
+        let parser = Parser::new("test.sruja".to_string());
+        let program = parser.parse(input).expect("Failed to parse");
+        let options = MarkdownOptions {
+            include_relations: true,
+            include_systems: true,
+            ..MarkdownOptions::default()
+        };
+        let exporter = MarkdownExporter::new(options);
+        let markdown = exporter.export(&program);
+        assert!(markdown.contains("## Relations"), "expected Relations section");
+        assert!(markdown.contains("A") && markdown.contains("B"), "expected from/to in relations");
+        assert!(markdown.contains("calls"), "expected relation label");
+    }
 }
