@@ -26,7 +26,7 @@
     "snippets"
   ],
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.110.0"
   },
   "categories": [
     "Programming Languages",
@@ -232,5 +232,8 @@
     "jest": "^30.3.0",
     "ts-jest": "^29.4.6",
     "typescript": "~5.9.0"
+  },
+  "overrides": {
+    "yauzl": "3.2.1"
   }
 }
