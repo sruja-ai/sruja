@@ -302,6 +302,7 @@ fn test_print_element_with_all_fields() {
             body: Some(sruja_language::ElementDefBody {
                 description: Some("Test system".to_string()),
                 technology: Some("Rust".to_string()),
+                doc: None,
                 metadata: vec![
                     sruja_language::MetaEntry {
                         key: "owner".to_string(),
@@ -510,6 +511,7 @@ fn test_print_extend() {
             body: Some(sruja_language::ElementDefBody {
                 description: None,
                 technology: None,
+                doc: None,
                 metadata: vec![],
                 constraints: vec![],
                 conventions: vec![],

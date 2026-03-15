@@ -24,23 +24,28 @@ fn export_json_succeeds_on_valid_file() {
     let path = repo.path().join("arch.sruja");
     let path_str = path.to_str().expect("utf-8");
 
-    let (success, stdout, stderr) =
-        run_sruja(&["export", "json", path_str]);
+    let (success, stdout, stderr) = run_sruja(&["export", "json", path_str]);
 
     assert!(success, "export json should succeed: stderr={}", stderr);
-    let parsed: serde_json::Value =
-        serde_json::from_str(stdout.trim()).expect("valid JSON");
-    assert!(parsed.get("elements").is_some(), "export should have elements");
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    assert!(
+        parsed.get("elements").is_some(),
+        "export should have elements"
+    );
 }
 
 #[test]
 fn export_mermaid_succeeds_on_valid_file() {
     let repo = create_test_repo();
     write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);
-    let path_str = repo.path().join("arch.sruja").to_str().expect("utf-8").to_string();
+    let path_str = repo
+        .path()
+        .join("arch.sruja")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
 
-    let (success, stdout, stderr) =
-        run_sruja(&["export", "mermaid", &path_str]);
+    let (success, stdout, stderr) = run_sruja(&["export", "mermaid", &path_str]);
 
     assert!(success, "export mermaid should succeed: stderr={}", stderr);
     assert!(
@@ -53,7 +58,12 @@ fn export_mermaid_succeeds_on_valid_file() {
 fn fmt_succeeds_on_valid_file() {
     let repo = create_test_repo();
     write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);
-    let path_str = repo.path().join("arch.sruja").to_str().expect("utf-8").to_string();
+    let path_str = repo
+        .path()
+        .join("arch.sruja")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
 
     let (success, _stdout, stderr) = run_sruja(&["fmt", &path_str]);
 
@@ -64,8 +74,17 @@ fn fmt_succeeds_on_valid_file() {
 fn fmt_check_exits_nonzero_when_changes_needed() {
     let repo = create_test_repo();
     // Intentionally badly formatted (extra spaces, no newline at end)
-    write_file(repo.path(), "arch.sruja", "S   =   system \"S\" { description \"x\" }   ");
-    let path_str = repo.path().join("arch.sruja").to_str().expect("utf-8").to_string();
+    write_file(
+        repo.path(),
+        "arch.sruja",
+        "S   =   system \"S\" { description \"x\" }   ",
+    );
+    let path_str = repo
+        .path()
+        .join("arch.sruja")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
 
     let (success, _stdout, _stderr) = run_sruja(&["fmt", "--check", &path_str]);
 
@@ -77,19 +96,32 @@ fn fmt_check_exits_nonzero_when_changes_needed() {
 fn list_succeeds_on_valid_file() {
     let repo = create_test_repo();
     write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);
-    let path_str = repo.path().join("arch.sruja").to_str().expect("utf-8").to_string();
+    let path_str = repo
+        .path()
+        .join("arch.sruja")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
 
     let (success, stdout, stderr) = run_sruja(&["list", &path_str]);
 
     assert!(success, "list should succeed: stderr={}", stderr);
-    assert!(stdout.contains("User") || stdout.contains("App"), "list should show elements");
+    assert!(
+        stdout.contains("User") || stdout.contains("App"),
+        "list should show elements"
+    );
 }
 
 #[test]
 fn tree_succeeds_on_valid_file() {
     let repo = create_test_repo();
     write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);
-    let path_str = repo.path().join("arch.sruja").to_str().expect("utf-8").to_string();
+    let path_str = repo
+        .path()
+        .join("arch.sruja")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
 
     let (success, stdout, stderr) = run_sruja(&["tree", &path_str]);
 
@@ -101,7 +133,12 @@ fn tree_succeeds_on_valid_file() {
 fn validate_succeeds_on_valid_file() {
     let repo = create_test_repo();
     write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);
-    let path_str = repo.path().join("arch.sruja").to_str().expect("utf-8").to_string();
+    let path_str = repo
+        .path()
+        .join("arch.sruja")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
 
     let (success, _stdout, stderr) = run_sruja(&["validate", &path_str]);
 
@@ -123,14 +160,17 @@ edition = "2021"
     write_file(repo.path(), "src/lib.rs", "pub fn foo() {}");
     let path_str = repo.path().to_str().expect("utf-8");
 
-    let (success, stdout, stderr) =
-        run_sruja(&["scan", path_str, "--output", "-"]);
+    let (success, stdout, stderr) = run_sruja(&["scan", path_str, "--output", "-"]);
 
-    assert!(success, "scan should succeed on Cargo repo: stderr={}", stderr);
-    let parsed: serde_json::Value =
-        serde_json::from_str(stdout.trim()).expect("scan outputs JSON");
     assert!(
-        parsed.get("nodes").is_some() || parsed.get("elements").is_some()
+        success,
+        "scan should succeed on Cargo repo: stderr={}",
+        stderr
+    );
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("scan outputs JSON");
+    assert!(
+        parsed.get("nodes").is_some()
+            || parsed.get("elements").is_some()
             || stdout.contains("\"nodes\""),
         "scan output should contain graph structure"
     );

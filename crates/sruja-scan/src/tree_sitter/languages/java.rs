@@ -99,7 +99,7 @@ fn extract_from_node(
     }
 
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             extract_from_node(&child, content, imports, exports, definitions);
         }
     }
@@ -107,7 +107,7 @@ fn extract_from_node(
 
 fn extract_import(node: &tree_sitter::Node, content: &str, imports: &mut Vec<String>) {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "scoped_identifier" || child.kind() == "identifier" {
                 if let Ok(path) = child.utf8_text(content.as_bytes()) {
                     imports.push(path.replace("static ", ""));
@@ -119,7 +119,7 @@ fn extract_import(node: &tree_sitter::Node, content: &str, imports: &mut Vec<Str
 
 fn extract_name(node: &tree_sitter::Node, content: &str, target_kind: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == target_kind {
                 return child
                     .utf8_text(content.as_bytes())
@@ -136,10 +136,10 @@ fn extract_name(node: &tree_sitter::Node, content: &str, target_kind: &str) -> O
 
 fn has_modifier(node: &tree_sitter::Node, content: &str, modifier: &str) -> bool {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "modifiers" {
                 for j in 0..child.child_count() {
-                    if let Some(mod_child) = child.child(j) {
+                    if let Some(mod_child) = child.child(j as u32) {
                         if let Ok(text) = mod_child.utf8_text(content.as_bytes()) {
                             if text == modifier {
                                 return true;

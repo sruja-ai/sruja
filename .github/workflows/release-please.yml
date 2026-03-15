@@ -1,6 +1,4 @@
 # Release Please: CHANGELOG and release PR from conventional commits.
-# Note: "Node.js 20 actions are deprecated" warning comes from release-please-action (it uses runs.using: node20).
-# It will disappear when upstream updates to node24: https://github.com/googleapis/release-please-action
 name: Release Please
 
 on:
@@ -12,6 +10,9 @@ permissions:
   contents: write
   pull-requests: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   release-please:
     runs-on: ubuntu-latest
@@ -20,7 +21,12 @@ jobs:
       tag_name: ${{ steps.release.outputs.tag_name }}
       release_created: ${{ steps.release.outputs.release_created }}
     steps:
+      # Full history + tags required so release-please can find the last release tag
+      # (e.g. sruja-v0.17.2) and only include commits since then in the changelog.
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
         id: release

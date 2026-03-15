@@ -15,6 +15,7 @@ A **Deployment Node** is something like physical hardware, a virtual machine, a 
 ### Syntax
 
 ```sruja
+<!-- partial -->
 deployment "Environment" {
     node "Node Name" {
         // ...
@@ -29,6 +30,7 @@ An **Infrastructure Node** represents infrastructure software that isn't one of 
 ### Syntax
 
 ```sruja
+<!-- partial -->
 node "App Server" {
     containerInstance WebApp
 }
@@ -41,6 +43,7 @@ A **Container Instance** represents a runtime instance of one of your defined Co
 ### Syntax
 
 ```sruja
+<!-- partial -->
 containerInstance ContainerID {
     instanceId 1 // Optional
 }
@@ -49,6 +52,7 @@ containerInstance ContainerID {
 ## Example
 
 ```sruja
+<!-- partial -->
 deployment "Production" {
     node "AWS" {
         node "US-East-1" {

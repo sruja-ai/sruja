@@ -12,6 +12,9 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   cargo-audit:
     name: Cargo Security Audit
@@ -52,7 +55,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run TruffleHog (PR diff)
-        uses: trufflesecurity/trufflehog@ef6e76c3c4023279497fab4721ffa071a722fd05 # v3.92.4
+        uses: trufflesecurity/trufflehog@6c05c4a00b91aa542267d8e32a8254774799d68d # v3.93.8
         continue-on-error: true
         with:
           path: ./

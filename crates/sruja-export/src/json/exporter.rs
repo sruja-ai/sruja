@@ -140,6 +140,7 @@ impl Exporter {
                 .unwrap_or_else(|| elem.assignment.name.clone());
             let description = self.extract_description(elem);
             let technology = self.extract_technology(elem);
+            let doc = self.extract_doc(elem);
             let tags = self.extract_tags(elem);
             let metadata = self.extract_metadata(elem);
 
@@ -152,6 +153,7 @@ impl Exporter {
                 title,
                 description,
                 technology,
+                doc,
                 tags,
                 links: vec![],
                 metadata,
@@ -208,6 +210,14 @@ impl Exporter {
             .body
             .as_ref()
             .and_then(|body| body.technology.clone())
+    }
+
+    /// Extract doc path (component knowledge file) from element body
+    fn extract_doc(&self, elem: &sruja_language::ElementDef) -> Option<String> {
+        elem.assignment
+            .body
+            .as_ref()
+            .and_then(|body| body.doc.clone())
     }
 
     /// Extract tags from element body

@@ -29,6 +29,7 @@ include *
 ## Event-Driven
 
 ```sruja
+<!-- partial -->
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -48,6 +49,7 @@ include *
 ## Saga
 
 ```sruja
+<!-- partial -->
 import { * } from 'sruja.ai/stdlib'
 
 

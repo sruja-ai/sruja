@@ -11,6 +11,7 @@ Policies define architectural rules, standards, and constraints that your system
 ## Syntax
 
 ```sruja
+<!-- partial -->
 PolicyID = policy "Description" {
   category "category-name"
   enforcement "required" // "required" | "recommended" | "optional"

@@ -18,6 +18,7 @@ suite("Extension (e2e)", () => {
       "sruja.runValidation",
       "sruja.exportMarkdown",
       "sruja.openDiagramPreview",
+      "sruja.openComponentKnowledge",
       "sruja.openMarkdownPreview",
       "sruja.openSkillsOverview",
       "sruja.openAgentGuide",
@@ -162,6 +163,71 @@ suite("Extension (e2e)", () => {
     );
     await sleep(1000);
     
+    await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+  }).timeout(15_000);
+
+  test("component knowledge: hover over element with doc includes Documentation", async () => {
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    assert.ok(folder, "Test workspace should be open");
+    const srujaUri = vscode.Uri.joinPath(folder.uri, "knowledge-doc.sruja");
+    const doc = await vscode.workspace.openTextDocument(srujaUri);
+    await vscode.window.showTextDocument(doc);
+    await sleep(1500); // allow WASM to load
+    // Position inside "PaymentService" (0-based line 5, column 2)
+    const position = new vscode.Position(5, 2);
+    const hover = await vscode.commands.executeCommand<vscode.Hover[]>(
+      "vscode.executeHoverProvider",
+      srujaUri,
+      position
+    );
+    assert.ok(Array.isArray(hover) && hover.length > 0, "Hover should return at least one result");
+    const content = hover[0].contents;
+    const value = Array.isArray(content) ? content.map((c) => (c as { value: string }).value).join("") : (content as { value: string }).value;
+    assert.ok(value.includes("Documentation") || value.includes("Open in split"), "Hover over element with doc should mention Documentation or Open in split");
+  }).timeout(15_000);
+
+  test("component knowledge: definition over element with doc returns two locations", async () => {
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    assert.ok(folder, "Test workspace should be open");
+    const srujaUri = vscode.Uri.joinPath(folder.uri, "knowledge-doc.sruja");
+    const doc = await vscode.workspace.openTextDocument(srujaUri);
+    await vscode.window.showTextDocument(doc);
+    await sleep(1500);
+    const position = new vscode.Position(5, 2);
+    const definitions = await vscode.commands.executeCommand<vscode.LocationLink[] | vscode.Location[]>(
+      "vscode.executeDefinitionProvider",
+      srujaUri,
+      position
+    );
+    assert.ok(Array.isArray(definitions) && definitions.length >= 2, "Definition over element with doc should return at least two targets (DSL + knowledge file)");
+    const uris = definitions.map((d: vscode.LocationLink | vscode.Location) => {
+      const loc = d as vscode.LocationLink & { uri?: vscode.Uri };
+      return loc.targetUri ?? loc.uri!;
+    });
+    const hasDocUri = uris.some((u: vscode.Uri) => u.fsPath.endsWith("PaymentService.md") || u.path.endsWith("PaymentService.md"));
+    assert.ok(hasDocUri, "One definition target should be the knowledge file PaymentService.md");
+  }).timeout(15_000);
+
+  test("component knowledge: openComponentKnowledge opens doc in split", async () => {
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    assert.ok(folder, "Test workspace should be open");
+    const srujaUri = vscode.Uri.joinPath(folder.uri, "knowledge-doc.sruja");
+    const doc = await vscode.workspace.openTextDocument(srujaUri);
+    await vscode.window.showTextDocument(doc);
+    await sleep(1500);
+    // Place cursor on PaymentService (0-based line 5)
+    const editor = vscode.window.activeTextEditor;
+    assert.ok(editor, "Editor should be active");
+    const position = new vscode.Position(5, 2);
+    editor.selection = new vscode.Selection(position, position);
+    await assert.doesNotReject(
+      async () => vscode.commands.executeCommand("sruja.openComponentKnowledge"),
+      "openComponentKnowledge should not throw"
+    );
+    await sleep(1500);
+    const tabs = vscode.window.tabGroups.all.flatMap((g) => g.tabs);
+    const hasKnowledgeTab = tabs.some((t) => (t.label?.includes("PaymentService") ?? false));
+    assert.ok(hasKnowledgeTab, "Knowledge file should be opened (tab with PaymentService)");
     await vscode.commands.executeCommand("workbench.action.closeAllEditors");
   }).timeout(15_000);
 

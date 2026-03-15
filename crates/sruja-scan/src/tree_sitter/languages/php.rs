@@ -113,7 +113,7 @@ fn extract_from_node(
     }
 
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             extract_from_node(&child, content, imports, exports, definitions);
         }
     }
@@ -121,7 +121,7 @@ fn extract_from_node(
 
 fn extract_use(node: &tree_sitter::Node, content: &str, imports: &mut Vec<String>) {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "namespace_use_clause" || child.kind() == "namespace_use_clause_list"
             {
                 extract_use_clause(&child, content, imports);
@@ -133,7 +133,7 @@ fn extract_use(node: &tree_sitter::Node, content: &str, imports: &mut Vec<String
 fn extract_use_clause(node: &tree_sitter::Node, content: &str, imports: &mut Vec<String>) {
     if node.kind() == "namespace_use_clause_list" {
         for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
+            if let Some(child) = node.child(i as u32) {
                 extract_use_clause(&child, content, imports);
             }
         }
@@ -141,7 +141,7 @@ fn extract_use_clause(node: &tree_sitter::Node, content: &str, imports: &mut Vec
     }
 
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "name" || child.kind() == "qualified_name" {
                 if let Ok(path) = child.utf8_text(content.as_bytes()) {
                     imports.push(path.to_string());
@@ -153,7 +153,7 @@ fn extract_use_clause(node: &tree_sitter::Node, content: &str, imports: &mut Vec
 
 fn extract_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "name" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -167,7 +167,7 @@ fn extract_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
 
 fn extract_function_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "name" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -181,12 +181,12 @@ fn extract_function_name(node: &tree_sitter::Node, content: &str) -> Option<Stri
 
 fn extract_const_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "const_element_list" {
                 for j in 0..child.child_count() {
-                    if let Some(const_elem) = child.child(j) {
+                    if let Some(const_elem) = child.child(j as u32) {
                         for k in 0..const_elem.child_count() {
-                            if let Some(name_node) = const_elem.child(k) {
+                            if let Some(name_node) = const_elem.child(k as u32) {
                                 if name_node.kind() == "name" {
                                     return name_node
                                         .utf8_text(content.as_bytes())
@@ -205,7 +205,7 @@ fn extract_const_name(node: &tree_sitter::Node, content: &str) -> Option<String>
 
 fn has_visibility(node: &tree_sitter::Node, content: &str, visibility: &str) -> bool {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "visibility_modifier" {
                 if let Ok(text) = child.utf8_text(content.as_bytes()) {
                     return text == visibility;

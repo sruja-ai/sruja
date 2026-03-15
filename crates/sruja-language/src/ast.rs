@@ -162,6 +162,8 @@ impl std::fmt::Display for ElementKind {
 pub struct ElementDefBody {
     pub description: Option<String>,
     pub technology: Option<String>,
+    /// Path to component knowledge markdown (relative to workspace root).
+    pub doc: Option<String>,
     pub metadata: Vec<MetaEntry>,
     pub constraints: Vec<ConstraintEntry>,
     pub conventions: Vec<ConventionEntry>,
@@ -178,6 +180,8 @@ pub enum ElementDefBodyItem {
     Relation(Relation),
     Description(String),
     Technology(String),
+    /// Doc path to component knowledge file (e.g. ".sruja/knowledge/<id>.md").
+    Doc(String),
     Metadata(MetadataBlock),
     Constraints(ConstraintsBlock),
     Conventions(ConventionsBlock),

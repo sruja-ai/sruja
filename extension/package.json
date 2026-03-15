@@ -2,7 +2,7 @@
   "name": "sruja",
   "displayName": "Sruja – Architecture intelligence for the AI era.",
   "description": "Sruja – Architecture intelligence for the AI era.: diagnostics, syntax highlighting, snippets, markdown export, and AI features (skills, rules)",
-  "version": "0.17.2",
+  "version": "0.18.1",
   "publisher": "SrujaAI",
   "icon": "sruja-logo.png",
   "license": "Apache-2.0",
@@ -103,6 +103,10 @@
         "title": "Sruja: Open Diagram Preview"
       },
       {
+        "command": "sruja.openComponentKnowledge",
+        "title": "Sruja: Open component knowledge"
+      },
+      {
         "command": "sruja.openSkillsOverview",
         "title": "Sruja: Open Skills Overview"
       },
@@ -156,6 +160,10 @@
         {
           "command": "sruja.openDiagramPreview",
           "when": "editorLangId == sruja"
+        },
+        {
+          "command": "sruja.openComponentKnowledge",
+          "when": "editorLangId == sruja"
         }
       ],
       "editor/title": [
@@ -166,6 +174,11 @@
         },
         {
           "command": "sruja.openDiagramPreview",
+          "when": "editorLangId == sruja",
+          "group": "navigation"
+        },
+        {
+          "command": "sruja.openComponentKnowledge",
           "when": "editorLangId == sruja",
           "group": "navigation"
         },
@@ -212,13 +225,13 @@
     "@types/glob": "^8.1.0",
     "@types/jest": "^30.0.0",
     "@types/mocha": "^10.0.0",
-    "@types/node": "^25.0.0",
-    "@types/vscode": "^1.85.0",
+    "@types/node": "^25.5.0",
+    "@types/vscode": "^1.110.0",
     "@vscode/test-electron": "^2.5.0",
     "@vscode/vsce": "^3.3.2",
-    "glob": "^10.3.0",
+    "glob": "^13.0.6",
     "jest": "^30.3.0",
-    "mocha": "^10.2.0",
+    "mocha": "^11.7.5",
     "ts-jest": "^29.4.6",
     "typescript": "~5.9.0"
   }

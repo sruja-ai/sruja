@@ -299,6 +299,11 @@ enum Commands {
         #[arg(long, default_value = "text")]
         format: String,
     },
+    /// Component knowledge: list doc links, show doc for an element, or find gaps
+    Knowledge {
+        #[command(subcommand)]
+        cmd: KnowledgeCommand,
+    },
     /// Generate a prompt (skill + repo context) for use with any LLM to produce architecture.sruja without Cursor CLI
     Generate {
         /// Path to repository
@@ -313,6 +318,39 @@ enum Commands {
         /// Output path for prompt (default: stdout if --prompt-only)
         #[arg(short = 'o', long)]
         output: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum KnowledgeCommand {
+    /// List elements that have a doc link
+    List {
+        /// Path to repository root (for resolving default architecture file)
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to .sruja architecture file (optional; default: repo.sruja / architecture.sruja)
+        #[arg(long, short = 'a')]
+        architecture: Option<String>,
+    },
+    /// Show knowledge file content for an element
+    Show {
+        /// Element ID (e.g. PaymentService or Backend.API)
+        element_id: String,
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to .sruja architecture file
+        #[arg(long, short = 'a')]
+        architecture: Option<String>,
+    },
+    /// List elements that have no doc link (gaps)
+    Gaps {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to .sruja architecture file
+        #[arg(long, short = 'a')]
+        architecture: Option<String>,
     },
 }
 
@@ -481,6 +519,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 commands::discover_questions()
             }
         }
+        Commands::Knowledge { cmd } => commands::knowledge(cmd).await,
         Commands::Generate {
             repo,
             skill_path,

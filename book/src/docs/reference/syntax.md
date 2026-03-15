@@ -9,6 +9,7 @@ summary: "Core constructs and fields for Sruja DSL."
 ## Elements
 
 ```sruja
+<!-- partial -->
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -23,6 +24,7 @@ ID = component "Label" { ... }
 ## Relations
 
 ```sruja
+<!-- partial -->
 Source -> Target "Label"
 // Use fully qualified names when referring to nested elements:
 System.Container -> System.API "Label"
@@ -47,6 +49,7 @@ MySystem = system "MySystem" {
 ## Deployment
 
 ```sruja
+<!-- partial -->
 deployment Prod {
   node Cloud {
     node Region {
