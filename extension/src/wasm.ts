@@ -68,6 +68,12 @@ interface SrujaWasmModule {
 let wasmModule: SrujaWasmModule | null = null;
 let wasmInitPromise: Promise<SrujaWasmModule | null> | null = null;
 
+/** Reset module state for tests. Only use in test code. */
+export function resetWasmForTesting(): void {
+  wasmModule = null;
+  wasmInitPromise = null;
+}
+
 function wasmDir(context: vscode.ExtensionContext): string {
   return path.join(context.extensionPath, "wasm");
 }

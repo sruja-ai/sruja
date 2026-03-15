@@ -80,6 +80,32 @@ describe("SrujaSkillsTreeProvider", () => {
     }
   });
 
+  it("getChildren returns only SKILL.md and rules when skill has no AGENTS.md", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sruja-tree-no-agents-"));
+    try {
+      const skillsDir = path.join(tmpDir, "skills");
+      const skillDir = path.join(skillsDir, "no-agents");
+      const rulesDir = path.join(skillDir, "rules");
+      fs.mkdirSync(rulesDir, { recursive: true });
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "# No Agents", "utf8");
+      fs.writeFileSync(path.join(rulesDir, "only.md"), "# Only", "utf8");
+      (vscode.workspace as { workspaceFolders?: { uri: vscode.Uri }[] }).workspaceFolders = [
+        { uri: vscode.Uri.file(tmpDir) },
+      ];
+      const context = new ExtensionContext();
+      context.extensionUri = vscode.Uri.file("/nonexistent");
+      const provider = new SrujaSkillsTreeProvider(asContext(context));
+      const topChildren = await provider.getChildren();
+      const skillItem = topChildren[0];
+      const fileChildren = await provider.getChildren(skillItem);
+      expect(fileChildren.map((c) => c.label)).toContain("SKILL.md");
+      expect(fileChildren.map((c) => c.label)).not.toContain("AGENTS.md");
+      expect(fileChildren.some((c) => String(c.label).includes("only"))).toBe(true);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it("getChildren returns empty array for file item (no skillInfo)", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sruja-tree-file-"));
     try {

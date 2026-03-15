@@ -16,10 +16,10 @@ module.exports = {
   // extension.ts is 0% under Jest (exercised by test:vscode e2e).
   coverageThreshold: {
     global: {
-      branches: 48,
-      functions: 56,
-      lines: 47,
-      statements: 49,
+      branches: 52,
+      functions: 57,
+      lines: 51,
+      statements: 52,
     },
   },
 };

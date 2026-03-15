@@ -1,3 +1,6 @@
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 import * as vscode from "vscode";
 import { ExtensionContext } from "./__mocks__/vscode";
 import {
@@ -8,6 +11,8 @@ import {
   getMermaidFromWasm,
   getElementsFromWasm,
   getDocumentSymbolsFromWasm,
+  initWasm,
+  resetWasmForTesting,
 } from "./wasm";
 
 function asContext(ctx: ExtensionContext): vscode.ExtensionContext {
@@ -116,5 +121,187 @@ describe("wasmRangeToVscodeRange", () => {
     expect(range.start.line).toBe(0);
     expect(range.start.character).toBe(0);
     expect(range.end.character).toBe(2);
+  });
+});
+
+describe("wasm with fake module", () => {
+  const fakeWasmJs = `
+    module.exports = async function() {
+      return {
+        init_panic_hook: function() {},
+        sruja_get_diagnostics: function() { return '[]'; },
+        sruja_dsl_to_markdown: function(dsl) { return dsl; },
+        sruja_dsl_to_mermaid: function() { return 'graph TD'; },
+        sruja_get_elements: function() { return '[]'; },
+        sruja_get_document_symbols: function() { return '[]'; }
+      };
+    };
+  `;
+
+  it("initWasm loads fake module and get* functions succeed", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sruja-wasm-test-"));
+    const wasmDir = path.join(tmpDir, "wasm");
+    fs.mkdirSync(wasmDir, { recursive: true });
+    fs.writeFileSync(path.join(wasmDir, "sruja_wasm.js"), fakeWasmJs, "utf8");
+    fs.writeFileSync(path.join(wasmDir, "sruja_wasm_bg.wasm"), "", "utf8");
+    const ctx = new ExtensionContext();
+    ctx.extensionPath = tmpDir;
+    const context = asContext(ctx);
+    resetWasmForTesting();
+    try {
+      const mod = await initWasm(context);
+      expect(mod).not.toBeNull();
+      const diags = await getDiagnosticsFromWasm(context, "system A {}", "a.sruja");
+      expect(diags).toEqual([]);
+      const md = await exportMarkdownFromWasm(context, "system A {}");
+      expect(md).toBe("system A {}");
+      const mermaid = await getMermaidFromWasm(context, "x");
+      expect(mermaid).toBe("graph TD");
+      const elements = await getElementsFromWasm(context, "x", "f.sruja");
+      expect(elements).toEqual([]);
+      const symbols = await getDocumentSymbolsFromWasm(context, "x");
+      expect(symbols).toEqual([]);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("getDiagnosticsFromWasm returns [] when module throws", async () => {
+    const throwJs = `
+      module.exports = async function() {
+        return {
+          init_panic_hook: function() {},
+          sruja_get_diagnostics: function() { throw new Error('wasm error'); },
+          sruja_dsl_to_markdown: function() { return ''; },
+          sruja_dsl_to_mermaid: function() { return ''; },
+          sruja_get_elements: function() { return '[]'; },
+          sruja_get_document_symbols: function() { return '[]'; }
+        };
+      };
+    `;
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sruja-wasm-throw-"));
+    const wasmDir = path.join(tmpDir, "wasm");
+    fs.mkdirSync(wasmDir, { recursive: true });
+    fs.writeFileSync(path.join(wasmDir, "sruja_wasm.js"), throwJs, "utf8");
+    fs.writeFileSync(path.join(wasmDir, "sruja_wasm_bg.wasm"), "", "utf8");
+    const ctx = new ExtensionContext();
+    ctx.extensionPath = tmpDir;
+    const context = asContext(ctx);
+    resetWasmForTesting();
+    try {
+      const diags = await getDiagnosticsFromWasm(context, "x", "f.sruja");
+      expect(diags).toEqual([]);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("exportMarkdownFromWasm returns null when module throws", async () => {
+    const throwMdJs = `
+      module.exports = async function() {
+        return {
+          init_panic_hook: function() {},
+          sruja_get_diagnostics: function() { return '[]'; },
+          sruja_dsl_to_markdown: function() { throw new Error('export error'); },
+          sruja_dsl_to_mermaid: function() { return ''; },
+          sruja_get_elements: function() { return '[]'; },
+          sruja_get_document_symbols: function() { return '[]'; }
+        };
+      };
+    `;
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sruja-wasm-throw-md-"));
+    const wasmDir = path.join(tmpDir, "wasm");
+    fs.mkdirSync(wasmDir, { recursive: true });
+    fs.writeFileSync(path.join(wasmDir, "sruja_wasm.js"), throwMdJs, "utf8");
+    fs.writeFileSync(path.join(wasmDir, "sruja_wasm_bg.wasm"), "", "utf8");
+    const ctx = new ExtensionContext();
+    ctx.extensionPath = tmpDir;
+    const context = asContext(ctx);
+    resetWasmForTesting();
+    try {
+      const md = await exportMarkdownFromWasm(context, "x");
+      expect(md).toBeNull();
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("initWasm returns null when init throws", async () => {
+    const throwInitJs = `module.exports = async function() { throw new Error('init failed'); };`;
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sruja-wasm-init-throw-"));
+    const wasmDir = path.join(tmpDir, "wasm");
+    fs.mkdirSync(wasmDir, { recursive: true });
+    fs.writeFileSync(path.join(wasmDir, "sruja_wasm.js"), throwInitJs, "utf8");
+    fs.writeFileSync(path.join(wasmDir, "sruja_wasm_bg.wasm"), "", "utf8");
+    const ctx = new ExtensionContext();
+    ctx.extensionPath = tmpDir;
+    const context = asContext(ctx);
+    resetWasmForTesting();
+    try {
+      const mod = await initWasm(context);
+      expect(mod).toBeNull();
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("getElementsFromWasm returns null when module returns invalid JSON", async () => {
+    const badJsonJs = `
+      module.exports = async function() {
+        return {
+          init_panic_hook: function() {},
+          sruja_get_diagnostics: function() { return '[]'; },
+          sruja_dsl_to_markdown: function(dsl) { return dsl; },
+          sruja_dsl_to_mermaid: function() { return ''; },
+          sruja_get_elements: function() { return 'not json'; },
+          sruja_get_document_symbols: function() { return '[]'; }
+        };
+      };
+    `;
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sruja-wasm-badjson-"));
+    const wasmDir = path.join(tmpDir, "wasm");
+    fs.mkdirSync(wasmDir, { recursive: true });
+    fs.writeFileSync(path.join(wasmDir, "sruja_wasm.js"), badJsonJs, "utf8");
+    fs.writeFileSync(path.join(wasmDir, "sruja_wasm_bg.wasm"), "", "utf8");
+    const ctx = new ExtensionContext();
+    ctx.extensionPath = tmpDir;
+    const context = asContext(ctx);
+    resetWasmForTesting();
+    try {
+      const elements = await getElementsFromWasm(context, "x");
+      expect(elements).toBeNull();
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("getMermaidFromWasm passes configJson", async () => {
+    const withConfigJs = `
+      module.exports = async function() {
+        return {
+          init_panic_hook: function() {},
+          sruja_get_diagnostics: function() { return '[]'; },
+          sruja_dsl_to_markdown: function(dsl) { return dsl; },
+          sruja_dsl_to_mermaid: function(dsl, config) { return config ? 'graph LR' : 'graph TD'; },
+          sruja_get_elements: function() { return '[]'; },
+          sruja_get_document_symbols: function() { return '[]'; }
+        };
+      };
+    `;
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sruja-wasm-config-"));
+    const wasmDir = path.join(tmpDir, "wasm");
+    fs.mkdirSync(wasmDir, { recursive: true });
+    fs.writeFileSync(path.join(wasmDir, "sruja_wasm.js"), withConfigJs, "utf8");
+    fs.writeFileSync(path.join(wasmDir, "sruja_wasm_bg.wasm"), "", "utf8");
+    const ctx = new ExtensionContext();
+    ctx.extensionPath = tmpDir;
+    const context = asContext(ctx);
+    resetWasmForTesting();
+    try {
+      const mermaid = await getMermaidFromWasm(context, "x", "{}");
+      expect(mermaid).toBe("graph LR");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });

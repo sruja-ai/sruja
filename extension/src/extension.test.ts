@@ -38,6 +38,15 @@ describe("parseLintStderr", () => {
     expect(diags).toHaveLength(1);
     expect(diags[0].message).toBe("Validation error");
   });
+
+  it("uses default message when location is first line (no preceding message line)", () => {
+    const stderr = "  --> file.sruja:1:0";
+    const diags = parseLintStderr(stderr, "file:///file.sruja");
+    expect(diags).toHaveLength(1);
+    expect(diags[0].message).toBe("Validation error");
+    expect(diags[0].severity).toBe(vscode.DiagnosticSeverity.Error);
+    expect(diags[0].code).toBeUndefined();
+  });
 });
 
 describe("parseLintJson", () => {
@@ -47,6 +56,11 @@ describe("parseLintJson", () => {
 
   it("returns null when diagnostics is missing", () => {
     expect(parseLintJson('{"ok": true}', "file:///a.sruja")).toBeNull();
+  });
+
+  it("returns null when diagnostics is not an array", () => {
+    expect(parseLintJson('{"ok": false, "diagnostics": {}}', "file:///a.sruja")).toBeNull();
+    expect(parseLintJson('{"ok": false, "diagnostics": null}', "file:///a.sruja")).toBeNull();
   });
 
   it("parses valid JSON diagnostics", () => {
@@ -157,5 +171,11 @@ describe("escapeMermaidForScript", () => {
   it("escapes backticks and backslash", () => {
     expect(escapeMermaidForScript("`code`")).toContain("\\`");
     expect(escapeMermaidForScript("a\\b")).toContain("\\\\");
+  });
+
+  it("escapes $ and </script> for safe script embedding", () => {
+    expect(escapeMermaidForScript("cost $100")).toContain("\\$");
+    expect(escapeMermaidForScript("</script>")).toContain("<\\/script>");
+    expect(escapeMermaidForScript("</SCRIPT>")).toContain("<\\/script>");
   });
 });

@@ -104,5 +104,22 @@ describe("cliOutput", () => {
     const lines = formatReviewLines(review);
     expect(lines[lines.length - 1]).toBe("--- Done ---");
   });
+
+  it("treats non-array new_components/missing_components etc. as empty", () => {
+    const review = {
+      truth_status: "ok",
+      has_drift: false,
+      violations_count: 0,
+      new_components: "not-an-array" as unknown,
+      missing_components: { foo: 1 } as unknown,
+      drifted_dependencies: 123 as unknown,
+      open_questions: null as unknown,
+      suggestions: undefined as unknown,
+    } as unknown as ReviewJson;
+    const lines = formatReviewLines(review);
+    expect(lines).not.toContain("New components:");
+    expect(lines).not.toContain("Missing components:");
+    expect(lines[lines.length - 1]).toBe("--- Done ---");
+  });
 });
 });
