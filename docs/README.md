@@ -32,6 +32,7 @@ npx skills add sruja-ai/sruja --skill sruja-architecture
 | [CODING_GUIDELINES.md](CODING_GUIDELINES.md) | Coding standards |
 | [SCOPE.md](SCOPE.md) | Product scope |
 | [SECURITY.md](SECURITY.md) | Security policy |
+| [DOCS_CONSISTENCY_REPORT.md](DOCS_CONSISTENCY_REPORT.md) | Docs consistency check and fixes |
 | [adr/](adr/) | Architecture decision records |
 | [internal/](internal/) | Internal docs |
 

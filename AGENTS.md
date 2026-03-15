@@ -194,6 +194,7 @@ When working on Sruja:
 3. Use `cargo clippy -- -D warnings` for strict linting
 4. Build extension with `make build-extension`
 5. Test CLI commands with `make test-cli-smoke`
+6. For Rust coverage gaps (CLI handlers, LSP, WASM, tree-sitter) and infrastructure needs, see `docs/internal/TEST_COVERAGE_PLAN.md`
 
 ## Common Patterns
 

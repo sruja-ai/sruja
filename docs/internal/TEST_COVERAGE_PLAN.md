@@ -101,3 +101,29 @@ Structured plan for adding missing unit and integration tests across the Sruja w
 - Use existing test helpers (e.g. sruja_diff::tests, sruja_scan::Graph::new).
 - Integration tests stay in `crates/*/tests/*.rs`.
 - Run after each batch: `cargo test -p <crate> --no-fail-fast`.
+
+---
+
+## Remaining Coverage Gap (Infrastructure-Heavy)
+
+The remaining ~10% gap is in areas that require significant test infrastructure. Addressing them would take several hours each and is deferred unless explicitly prioritized.
+
+| Area | Current coverage | Blocker | Infrastructure / effort |
+|------|------------------|--------|-------------------------|
+| **CLI command handlers** | ~0% | Many handlers have no dedicated tests | **Integration tests**: temp repos, `Command::cargo_bin("sruja")`, stdout/stderr capture, golden or snapshot output. Some E2E exist (e.g. `lint_e2e`, `drift_e2e`, `quickstart_e2e`); extend pattern to all commands. |
+| **LSP server** | 0% | Async LSP protocol | **Async test harness**: mock `ClientSocket` / LSP client, tokio runtime, message builders, document lifecycle. See `crates/sruja-lsp/tests/server_integration.rs` (placeholder). |
+| **WASM bindings** | 0% in `cargo test` | Different target | **wasm-pack test**: `wasm32-unknown-unknown`, `wasm-bindgen-test` in `sruja-wasm`, `wasm-pack test --node`. Already documented in `docs/WASM_TESTING.md`; CI job to run it. Excluded from `cargo llvm-cov` by design. |
+| **Tree-sitter language parsers** | 30–40% | Language-specific ASTs | **Fixtures**: per-language sample files (Rust, Go, Java, Python, etc.) in `sruja-scan` tests, and tests that parse them and assert on key nodes. Detector and language modules in `crates/sruja-scan/src/tree_sitter/`. |
+
+### Recommendations
+
+- **CLI**: Add integration tests incrementally per command (e.g. one test per `sruja <cmd>`), reusing existing E2E helpers and temp dirs.
+- **LSP**: Introduce a small async test util (e.g. in-tree mock client or use of `tower-lsp` test patterns) before adding request/response tests.
+- **WASM**: Run `wasm-pack test --node` in CI; keep excluding from main coverage report (see `scripts/coverage.sh` and `docs/WASM_TESTING.md`).
+- **Tree-sitter**: Add `tests/fixtures/<lang>/` with minimal valid files and tests that exercise `detector` and each language parser.
+
+### Implemented improvements (coverage increases)
+
+- **CLI**: `crates/sruja-cli/tests/commands_integration.rs` – 9 integration tests for `export` (json, mermaid), `fmt` (and `--check`), `list`, `tree`, `validate`, `scan` (Cargo repo), `version`. Reuses `common::run_sruja` and temp repos.
+- **Tree-sitter**: `sruja-scan/src/tree_sitter/detector.rs` – 6 unit tests for `detect_language` (Rust, TS/JS, Go/Python/Java, unknown) and `is_source_file`. `crates/sruja-scan/tests/tree_sitter_integration.rs` – 1 test that scans a minimal Rust repo (Cargo.toml + src/lib.rs) and asserts a non-empty graph.
+- **WASM**: One additional `#[wasm_bindgen_test]` in `sruja-wasm/src/lib.rs`: `get_diagnostics_invalid_dsl_returns_diagnostics_array` (invalid DSL returns JSON array of diagnostics). `sruja_incremental_parse` is not tested under WASM because it uses `std::time::Instant::now()`, which panics on wasm32-unknown-unknown.

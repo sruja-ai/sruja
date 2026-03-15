@@ -69,7 +69,7 @@ If you want to define architecture explicitly, add `.sruja` files:
 
 ### Step 1: Create or add architecture
 
-Create `repo.sruja` (or `docs/repo.sruja`; `architecture.sruja` is also supported for backward compatibility) and define your systems/containers/relationships. See [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) and [examples](https://github.com/sruja-ai/sruja/tree/main/examples).
+Create `repo.sruja` (or `docs/repo.sruja`; `architecture.sruja` is also supported for backward compatibility) and define your systems/containers/relationships. See [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) and the canonical examples in `book/valid-examples/` (rendered in the [book Examples Gallery](https://sruja.ai) when built).
 
 ### Step 2: AI editor integration (so AI-generated code follows rules)
 
