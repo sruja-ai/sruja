@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.16.0...sruja-v0.17.0) (2026-03-15)
+
+
+### Features
+
+* add Rust coverage to Codecov, simplify sruja-report, improve ValidatorBuilder ([a167b24](https://github.com/sruja-ai/sruja/commit/a167b2401dc3153bc9015cdfa5fe8759cfe211cb))
+
 ## [0.16.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.15.1...sruja-v0.16.0) (2026-03-14)
 
 
