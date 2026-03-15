@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.18.0...sruja-v0.18.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* cast child indices to u32 for tree-sitter 0.26.7 compatibility ([87f628f](https://github.com/sruja-ai/sruja/commit/87f628f2063add6efc2854e7ce1f3d34c290b840))
+* upgrade tree-sitter to 0.26.7 with API compatibility ([#69](https://github.com/sruja-ai/sruja/issues/69)) ([6643c3f](https://github.com/sruja-ai/sruja/commit/6643c3fdcf90a5336c03ad198455bea318491a99))
+
 ## [0.18.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.17.2...sruja-v0.18.0) (2026-03-15)
 
 
