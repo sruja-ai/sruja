@@ -116,7 +116,7 @@ fn extract_from_node(
     }
 
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             extract_from_node(&child, content, imports, exports, definitions);
         }
     }
@@ -124,7 +124,7 @@ fn extract_from_node(
 
 fn extract_use(node: &tree_sitter::Node, content: &str, imports: &mut Vec<String>) {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "use_clause"
                 || child.kind() == "scoped_use_list"
                 || child.kind() == "use_list"
@@ -140,7 +140,7 @@ fn extract_use_path(node: &tree_sitter::Node, content: &str, imports: &mut Vec<S
 
     if kind == "use_list" {
         for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
+            if let Some(child) = node.child(i as u32) {
                 extract_use_path(&child, content, imports);
             }
         }
@@ -159,7 +159,7 @@ fn extract_use_path(node: &tree_sitter::Node, content: &str, imports: &mut Vec<S
         }
 
         for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
+            if let Some(child) = node.child(i as u32) {
                 extract_use_path(&child, content, imports);
             }
         }
@@ -168,7 +168,7 @@ fn extract_use_path(node: &tree_sitter::Node, content: &str, imports: &mut Vec<S
 
 fn extract_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "identifier" || child.kind() == "type_identifier" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -182,7 +182,7 @@ fn extract_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
 
 fn is_public(node: &tree_sitter::Node, content: &str) -> bool {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "visibility_modifier" {
                 if let Ok(text) = child.utf8_text(content.as_bytes()) {
                     return text.contains("pub");
@@ -193,9 +193,9 @@ fn is_public(node: &tree_sitter::Node, content: &str) -> bool {
 
     if let Some(parent) = node.parent() {
         for i in 0..parent.child_count() {
-            if let Some(sibling) = parent.child(i) {
+            if let Some(sibling) = parent.child(i as u32) {
                 if sibling.id() == node.id() && i > 0 {
-                    if let Some(prev) = parent.child(i - 1) {
+                    if let Some(prev) = parent.child((i - 1) as u32) {
                         if prev.kind() == "visibility_modifier" {
                             if let Ok(text) = prev.utf8_text(content.as_bytes()) {
                                 return text.contains("pub");

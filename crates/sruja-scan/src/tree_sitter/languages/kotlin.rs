@@ -122,7 +122,7 @@ fn extract_from_node(
     }
 
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             extract_from_node(&child, content, imports, exports, definitions);
         }
     }
@@ -130,7 +130,7 @@ fn extract_from_node(
 
 fn extract_import(node: &tree_sitter::Node, content: &str, imports: &mut Vec<String>) {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "identifier" || child.kind() == "package_header" {
                 if let Ok(path) = child.utf8_text(content.as_bytes()) {
                     imports.push(path.to_string());
@@ -143,7 +143,7 @@ fn extract_import(node: &tree_sitter::Node, content: &str, imports: &mut Vec<Str
 
 fn extract_type_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "type_identifier" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -157,7 +157,7 @@ fn extract_type_name(node: &tree_sitter::Node, content: &str) -> Option<String> 
 
 fn extract_function_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "simple_identifier" || child.kind() == "identifier" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -171,10 +171,10 @@ fn extract_function_name(node: &tree_sitter::Node, content: &str) -> Option<Stri
 
 fn extract_property_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "variable_declaration" {
                 for j in 0..child.child_count() {
-                    if let Some(var_child) = child.child(j) {
+                    if let Some(var_child) = child.child(j as u32) {
                         if var_child.kind() == "simple_identifier" {
                             return var_child
                                 .utf8_text(content.as_bytes())
@@ -191,10 +191,10 @@ fn extract_property_name(node: &tree_sitter::Node, content: &str) -> Option<Stri
 
 fn has_modifier(node: &tree_sitter::Node, content: &str, modifier: &str) -> bool {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "modifiers" {
                 for j in 0..child.child_count() {
-                    if let Some(mod_child) = child.child(j) {
+                    if let Some(mod_child) = child.child(j as u32) {
                         if let Ok(text) = mod_child.utf8_text(content.as_bytes()) {
                             if text == modifier {
                                 return true;
