@@ -7,8 +7,8 @@ import * as vscode from "vscode";
 
 import { getSkills, getSkillsRoot } from "./skills";
 import { SrujaSkillsTreeProvider } from "./skillsTree";
-import { SrujaDefinitionProvider, SrujaHoverProvider, SrujaDocumentSymbolProvider } from "./providers";
-import { exportMarkdownFromWasm, getDiagnosticsFromWasm, getMermaidFromWasm } from "./wasm";
+import { SrujaDefinitionProvider, SrujaHoverProvider, SrujaDocumentSymbolProvider, resolveDocUri, docUriExists } from "./providers";
+import { exportMarkdownFromWasm, getDiagnosticsFromWasm, getMermaidFromWasm, getElementsFromWasm } from "./wasm";
 import { parseLintOutput } from "./lintParser";
 import { getSrujaLspPath, useWasmFromLspPath } from "./config";
 import { runLintJson, runCli } from "./cliRunner";
@@ -386,6 +386,48 @@ export function activate(context: vscode.ExtensionContext): void {
         const msg = err instanceof Error ? err.message : String(err);
         vscode.window.showErrorMessage(`Export to Markdown failed: ${msg}`);
       }
+    }),
+    vscode.commands.registerCommand("sruja.openComponentKnowledge", async (docUriArg?: string) => {
+      if (docUriArg) {
+        try {
+          const uri = vscode.Uri.parse(docUriArg);
+          const doc = await vscode.workspace.openTextDocument(uri);
+          await vscode.window.showTextDocument(doc, {
+            viewColumn: vscode.ViewColumn.Beside,
+            preserveFocus: false,
+          });
+        } catch {
+          vscode.window.showWarningMessage("Could not open component knowledge file.");
+        }
+        return;
+      }
+      const editor = vscode.window.activeTextEditor;
+      const doc = editor?.document;
+      if (!doc || doc.languageId !== "sruja") {
+        vscode.window.showWarningMessage("Place the cursor on an element in a .sruja file, or use the hover link to open documentation.");
+        return;
+      }
+      const position = editor.selection.active;
+      const elements = await getElementsFromWasm(context, doc.getText(), doc.uri.fsPath);
+      if (!elements?.length) return;
+      const wordRange = doc.getWordRangeAtPosition(position);
+      const word = wordRange ? doc.getText(wordRange).trim() : "";
+      if (!word) return;
+      const element = elements.find((e) => e.id === word || e.id.endsWith(`.${word}`));
+      if (!element?.doc) {
+        vscode.window.showInformationMessage(`Element "${word}" has no doc link. Add doc ".sruja/knowledge/..." to the element in the DSL.`);
+        return;
+      }
+      const docUri = resolveDocUri(element.doc, doc);
+      if (!docUri || !(await docUriExists(docUri))) {
+        vscode.window.showWarningMessage(`Knowledge file not found: ${element.doc}`);
+        return;
+      }
+      const knowledgeDoc = await vscode.workspace.openTextDocument(docUri);
+      await vscode.window.showTextDocument(knowledgeDoc, {
+        viewColumn: vscode.ViewColumn.Beside,
+        preserveFocus: false,
+      });
     }),
     vscode.commands.registerCommand("sruja.openDiagramPreview", async () => {
       const editor = vscode.window.activeTextEditor;

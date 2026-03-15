@@ -2,6 +2,7 @@
  * VS Code providers for Sruja DSL
  */
 
+import * as path from "path";
 import * as vscode from "vscode";
 import {
   getElementsFromWasm,
@@ -20,6 +21,33 @@ export interface DefinitionResult {
   originSelectionRange: ElementRange;
   targetRange: ElementRange;
   targetSelectionRange: ElementRange;
+}
+
+/**
+ * Resolve a doc path (relative to workspace root) to a file URI.
+ * Returns undefined if no workspace folder or path is empty.
+ */
+export function resolveDocUri(
+  docPath: string | null | undefined,
+  document: vscode.TextDocument
+): vscode.Uri | undefined {
+  if (!docPath || !docPath.trim()) return undefined;
+  const folder = vscode.workspace.getWorkspaceFolder(document.uri);
+  if (!folder) return undefined;
+  const absolute = path.resolve(folder.uri.fsPath, docPath.trim());
+  return vscode.Uri.file(absolute);
+}
+
+/**
+ * Check if a file URI exists in the workspace.
+ */
+export async function docUriExists(uri: vscode.Uri): Promise<boolean> {
+  try {
+    await vscode.workspace.fs.stat(uri);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function buildDefinitionLinks(
@@ -71,25 +99,35 @@ export class SrujaDefinitionProvider implements vscode.DefinitionProvider {
     );
     if (!links) return undefined;
 
-    return links.map((link) => {
-      // WASM returns 1-based line/character; convert to 0-based for VS Code
-      const targetRange = wasmRangeToVscodeRange(link.targetRange);
-      const originStart = new vscode.Position(
-        link.originSelectionRange.start.line,
-        link.originSelectionRange.start.character
-      );
-      const originEnd = new vscode.Position(
-        link.originSelectionRange.end.line,
-        link.originSelectionRange.end.character
-      );
+    const element = elements.find((e) => e.id === word || e.id.endsWith(`.${word}`));
+    const originStart = new vscode.Position(wordRange.start.line, wordRange.start.character);
+    const originEnd = new vscode.Position(wordRange.end.line, wordRange.end.character);
+    const originRange = new vscode.Range(originStart, originEnd);
 
+    const result: vscode.LocationLink[] = links.map((link) => {
+      const targetRange = wasmRangeToVscodeRange(link.targetRange);
       return {
-        originSelectionRange: new vscode.Range(originStart, originEnd),
+        originSelectionRange: originRange,
         targetUri: document.uri,
         targetRange,
         targetSelectionRange: targetRange,
       };
     });
+
+    // When element has doc, add a second definition target (knowledge file) if it exists
+    if (element?.doc) {
+      const docUri = resolveDocUri(element.doc, document);
+      if (docUri && (await docUriExists(docUri))) {
+        result.push({
+          originSelectionRange: originRange,
+          targetUri: docUri,
+          targetRange: new vscode.Range(0, 0, 0, 0),
+          targetSelectionRange: new vscode.Range(0, 0, 0, 0),
+        });
+      }
+    }
+
+    return result;
   }
 }
 
@@ -137,6 +175,19 @@ export class SrujaHoverProvider implements vscode.HoverProvider {
     if (dotIndex !== -1) {
       const parentId = element.id.substring(0, dotIndex);
       markdown.appendMarkdown(`*Parent:* \`${parentId}\`\n\n`);
+    }
+
+    // When element has doc, add link to open knowledge file in split
+    if (element.doc) {
+      const docUri = resolveDocUri(element.doc, document);
+      if (docUri) {
+        const args = [docUri.toString()];
+        const cmdUri = vscode.Uri.parse(
+          `command:sruja.openComponentKnowledge?${encodeURIComponent(JSON.stringify(args))}`
+        );
+        markdown.appendMarkdown(`*Documentation:* [Open in split](${cmdUri})\n\n`);
+        markdown.isTrusted = true;
+      }
     }
 
     return new vscode.Hover(markdown, wordRange);

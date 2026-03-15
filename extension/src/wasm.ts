@@ -172,6 +172,8 @@ export interface SrujaElement {
   id: string;
   kind: string;
   title: string | null;
+  /** Path to component knowledge markdown (relative to workspace root). */
+  doc?: string | null;
   range: { start: { line: number; character: number }; end: { line: number; character: number } };
 }
 

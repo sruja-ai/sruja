@@ -59,9 +59,22 @@ pub fn last_token(s: &str) -> String {
     s[j..i].trim().to_string()
 }
 
-/// Find element information for hover
-pub fn find_element_hover(program: &Program, id: &str) -> Option<(String, String)> {
-    let (elements, _) = collect_elements(program);
+/// Resolve doc path (relative to workspace root) to a file URL.
+/// Uses the document's directory as workspace root.
+fn resolve_doc_uri(doc_uri: &Url, doc_path: &str) -> Option<Url> {
+    let doc_path = doc_path.trim();
+    if doc_path.is_empty() {
+        return None;
+    }
+    let path = doc_uri.to_file_path().ok()?;
+    let parent = path.parent()?;
+    let full = parent.join(doc_path);
+    Url::from_file_path(full).ok()
+}
+
+/// Find element information for hover (kind, title, optional doc path).
+pub fn find_element_hover(program: &Program, id: &str) -> Option<(String, String, Option<String>)> {
+    let (elements, _) = sruja_language::collect_elements(program);
 
     // Try exact match first
     if let Some(elem) = elements.get(id) {
@@ -71,7 +84,8 @@ pub fn find_element_hover(program: &Program, id: &str) -> Option<(String, String
             .title
             .clone()
             .unwrap_or_else(|| elem.assignment.name.clone());
-        return Some((kind, title));
+        let doc = elem.assignment.body.as_ref().and_then(|b| b.doc.clone());
+        return Some((kind, title, doc));
     }
 
     // Try partial match (short name)
@@ -83,7 +97,8 @@ pub fn find_element_hover(program: &Program, id: &str) -> Option<(String, String
                 .title
                 .clone()
                 .unwrap_or_else(|| elem.assignment.name.clone());
-            return Some((kind, title));
+            let doc = elem.assignment.body.as_ref().and_then(|b| b.doc.clone());
+            return Some((kind, title, doc));
         }
     }
 
@@ -127,8 +142,11 @@ pub fn get_hover(
 
     // Check if hovering over an element
     if !word.is_empty() {
-        if let Some((kind, title)) = find_element_hover(program, word) {
-            let content = format!("**{}** `{}`\n{}", kind, word, title);
+        if let Some((kind, title, doc_path)) = find_element_hover(program, word) {
+            let mut content = format!("**{}** `{}`\n{}", kind, word, title);
+            if let Some(ref path) = doc_path {
+                content.push_str(&format!("\n*Documentation:* `{}`", path));
+            }
             return Some(Hover {
                 contents: HoverContents::Markup(MarkupContent {
                     kind: MarkupKind::Markdown,
@@ -298,20 +316,31 @@ pub fn get_completion(
     items
 }
 
-/// Find definition location for an identifier
-pub fn find_definition(doc: &Document, program: &Program, id: &str) -> Option<Location> {
-    let (elements, _) = collect_elements(program);
+/// Find definition location(s) for an identifier. Returns DSL location first, then doc file location if present.
+pub fn find_definition(doc: &Document, program: &Program, id: &str) -> Vec<Location> {
+    let (elements, _) = sruja_language::collect_elements(program);
 
-    // Try to find the element
-    if elements.contains_key(id) {
-        // Find the line where this element is declared
-        for (line_idx, line) in doc.lines().iter().enumerate() {
+    let mut locations = Vec::new();
+
+    // Find element (exact or suffix match)
+    let elem = elements.get(id).or_else(|| {
+        elements
+            .iter()
+            .find(|(fqn, _)| *fqn == id || fqn.ends_with(&format!(".{}", id)))
+            .map(|(_, e)| e)
+    });
+
+    // DSL location: find the line where this element is declared
+    let has_id = elem.is_some() || elements.contains_key(id);
+    if has_id {
+        'line: for (line_idx, line) in doc.lines().iter().enumerate() {
             let trimmed = line.trim();
             let keywords = vec![
                 "system",
                 "container",
                 "component",
                 "datastore",
+                "database",
                 "queue",
                 "person",
             ];
@@ -320,7 +349,7 @@ pub fn find_definition(doc: &Document, program: &Program, id: &str) -> Option<Lo
                     let rest = stripped.trim();
                     if rest.starts_with(id) {
                         if let Some(col) = line.find(id) {
-                            return Some(Location {
+                            locations.push(Location {
                                 uri: doc.uri().clone(),
                                 range: Range {
                                     start: Position {
@@ -333,6 +362,7 @@ pub fn find_definition(doc: &Document, program: &Program, id: &str) -> Option<Lo
                                     },
                                 },
                             });
+                            break 'line;
                         }
                     }
                 }
@@ -340,7 +370,70 @@ pub fn find_definition(doc: &Document, program: &Program, id: &str) -> Option<Lo
         }
     }
 
-    None
+    // Doc location: when element has doc path, add second target
+    if let Some(elem) = elem {
+        if let Some(ref doc_path) = elem.assignment.body.as_ref().and_then(|b| b.doc.clone()) {
+            if let Some(doc_uri) = resolve_doc_uri(doc.uri(), doc_path) {
+                locations.push(Location {
+                    uri: doc_uri,
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                });
+            }
+        }
+    }
+
+    if locations.is_empty() {
+        // Fallback: try local collect_elements for top-level only
+        let (top_level, _) = collect_elements(program);
+        if top_level.contains_key(id) {
+            'fallback: for (line_idx, line) in doc.lines().iter().enumerate() {
+                let trimmed = line.trim();
+                let keywords = vec![
+                    "system",
+                    "container",
+                    "component",
+                    "datastore",
+                    "database",
+                    "queue",
+                    "person",
+                ];
+                for keyword in keywords {
+                    if let Some(stripped) = trimmed.strip_prefix(keyword) {
+                        let rest = stripped.trim();
+                        if rest.starts_with(id) {
+                            if let Some(col) = line.find(id) {
+                                locations.push(Location {
+                                    uri: doc.uri().clone(),
+                                    range: Range {
+                                        start: Position {
+                                            line: line_idx as u32,
+                                            character: col as u32,
+                                        },
+                                        end: Position {
+                                            line: line_idx as u32,
+                                            character: (col + id.len()) as u32,
+                                        },
+                                    },
+                                });
+                                break 'fallback;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    locations
 }
 
 /// Find all references to an identifier
@@ -550,7 +643,7 @@ app = system "My App" {
 
         let hover = find_element_hover(&program, "app");
         assert!(hover.is_some());
-        let (kind, title) = hover.unwrap();
+        let (kind, title, _doc) = hover.unwrap();
         // ElementKind string representation is lowercase
         assert_eq!(kind, "system");
         assert_eq!(title, "My App");
@@ -700,17 +793,13 @@ app -> web "HTTP"
         let program = create_test_program(text);
 
         // Test finding a definition that exists
-        // Note: The find_definition implementation searches for lines starting
-        // with element kind keywords (system, container, etc.), which doesn't
-        // match the actual DSL syntax (variable name comes first).
-        // This is a known limitation, but we test that the function
-        // handles the input correctly and doesn't panic.
-        let location = find_definition(&doc, &program, "app");
-        let _ = location; // Verify it returns Option without panicking
+        // find_definition returns Vec<Location> (DSL location, optionally doc location).
+        let locations = find_definition(&doc, &program, "app");
+        let _ = locations; // Verify it returns Vec without panicking
 
         // Test finding a non-existent definition
         let nonexistent = find_definition(&doc, &program, "nonexistent");
-        assert!(nonexistent.is_none());
+        assert!(nonexistent.is_empty());
     }
 
     #[test]
@@ -721,8 +810,8 @@ app = system "My App" {}
         let doc = create_test_document(text);
         let program = create_test_program(text);
 
-        let location = find_definition(&doc, &program, "nonexistent");
-        assert!(location.is_none());
+        let locations = find_definition(&doc, &program, "nonexistent");
+        assert!(locations.is_empty());
     }
 
     #[test]

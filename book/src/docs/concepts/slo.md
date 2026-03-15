@@ -13,6 +13,7 @@ Service Level Objectives (SLOs) define measurable targets for system performance
 SLOs are defined at the system or container level using a `slo` block:
 
 ```sruja
+<!-- partial -->
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -51,6 +52,7 @@ API = system "API Service" {
 ## Example
 
 ```sruja
+<!-- partial -->
 import { * } from 'sruja.ai/stdlib'
 
 

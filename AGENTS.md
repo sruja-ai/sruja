@@ -76,6 +76,15 @@ make test-e2e
 npm run e2e
 ```
 
+**Extension (VS Code test-electron):**
+
+```bash
+cd extension
+# If WASM or language crate changed, copy fresh WASM first:
+# (from repo root) bash extension/scripts/copy-assets.sh
+npm run test:vscode
+```
+
 ## Code Style Guidelines
 
 ### Rust

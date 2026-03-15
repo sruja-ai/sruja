@@ -800,10 +800,16 @@ Shop.Web -> Shop.API "calls"
         };
         let exporter = MarkdownExporter::new(options);
         let markdown = exporter.export(&program);
-        assert!(markdown.contains("## View"), "expected View section in single-view export");
+        assert!(
+            markdown.contains("## View"),
+            "expected View section in single-view export"
+        );
         assert!(markdown.contains("### API Focus"), "expected view title");
         assert!(markdown.contains("```mermaid"), "expected Mermaid diagram");
-        assert!(markdown.contains("Shop_API") || markdown.contains("Shop"), "expected view elements in diagram");
+        assert!(
+            markdown.contains("Shop_API") || markdown.contains("Shop"),
+            "expected view elements in diagram"
+        );
     }
 
     #[test]
@@ -834,8 +840,14 @@ view api_view {
         };
         let exporter = MarkdownExporter::new(options);
         let markdown = exporter.export(&program);
-        assert!(markdown.contains("## Custom views"), "expected Custom views section");
-        assert!(markdown.contains("### API View"), "expected view title in Custom views");
+        assert!(
+            markdown.contains("## Custom views"),
+            "expected Custom views section"
+        );
+        assert!(
+            markdown.contains("### API View"),
+            "expected view title in Custom views"
+        );
     }
 
     #[test]
@@ -854,7 +866,10 @@ Shop = system "Shop" {}
         };
         let exporter = MarkdownExporter::new(options);
         let markdown = exporter.export(&program);
-        assert!(markdown.contains("## Systems"), "expected fallback to full doc with Systems");
+        assert!(
+            markdown.contains("## Systems"),
+            "expected fallback to full doc with Systems"
+        );
         assert!(markdown.contains("Shop"), "expected Shop in full doc");
     }
 
@@ -878,8 +893,14 @@ A -> B "calls"
         };
         let exporter = MarkdownExporter::new(options);
         let markdown = exporter.export(&program);
-        assert!(markdown.contains("## Relations"), "expected Relations section");
-        assert!(markdown.contains("A") && markdown.contains("B"), "expected from/to in relations");
+        assert!(
+            markdown.contains("## Relations"),
+            "expected Relations section"
+        );
+        assert!(
+            markdown.contains("A") && markdown.contains("B"),
+            "expected from/to in relations"
+        );
         assert!(markdown.contains("calls"), "expected relation label");
     }
 }

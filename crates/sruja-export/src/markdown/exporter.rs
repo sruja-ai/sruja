@@ -261,19 +261,15 @@ impl MarkdownExporter {
             out.push_str("- [View](#view)\n\n");
         }
         out.push_str("## View\n\n");
-        out.push_str(&format!(
-            "### {}\n\n",
-            escape_heading(&resolved.title)
-        ));
+        out.push_str(&format!("### {}\n\n", escape_heading(&resolved.title)));
         if let Some(ref desc) = resolved.description {
             if !desc.is_empty() {
                 out.push_str(&format!("{}\n\n", escape_inline(desc)));
             }
         }
         if self.options.include_mermaid_diagrams && !resolved.elements.is_empty() {
-            let mermaid =
-                MermaidExporter::new(self.options.mermaid_config.clone())
-                    .export_from_resolved_view(resolved);
+            let mermaid = MermaidExporter::new(self.options.mermaid_config.clone())
+                .export_from_resolved_view(resolved);
             if !mermaid.is_empty() {
                 out.push_str("```mermaid\n");
                 out.push_str(&mermaid);
@@ -319,10 +315,7 @@ impl MarkdownExporter {
             if resolved.elements.is_empty() {
                 continue;
             }
-            out.push_str(&format!(
-                "### {}\n\n",
-                escape_heading(&resolved.title)
-            ));
+            out.push_str(&format!("### {}\n\n", escape_heading(&resolved.title)));
             if let Some(ref desc) = resolved.description {
                 if !desc.is_empty() {
                     out.push_str(&format!("{}\n\n", escape_inline(desc)));

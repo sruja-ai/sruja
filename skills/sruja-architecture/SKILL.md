@@ -97,6 +97,27 @@ Person -> System.Container "Protocol"
 System.Container -> ExternalAPI "HTTPS"
 ```
 
+#### Component knowledge (optional)
+
+When creating or refining `repo.sruja`, you can add **component knowledge** so each element links to a markdown file with purpose, risks, improvements, and code locations. This helps users and tools get deeper context without bloating the DSL.
+
+- **Where:** Create one markdown file per component under **`.sruja/knowledge/`**, e.g. `.sruja/knowledge/PaymentService.md`. Use the element’s **id** (PascalCase) for the filename.
+- **DSL:** Add a `doc` field to the element pointing at that path (relative to workspace root), e.g. `doc ".sruja/knowledge/PaymentService.md"`. You can use `doc` or `documentation`; both accept a single string path.
+- **Content:** Use the template in **references/KNOWLEDGE_TEMPLATE.md**. Fill Purpose, Responsibilities, Dependencies, and Code Locations from evidence (e.g. `.sruja/context.json`, `.sruja/graph.json`, or code). Leave placeholders where evidence is missing. Add Known Risks and Suggested Improvements when you can infer them.
+- **Scope:** Generate knowledge for **containers and key systems** that are in scope for the current task. You do not need to create a knowledge file for every nested component; prefer quality over coverage.
+
+Example element with doc:
+
+```sruja
+PaymentService = container "Payment Service" {
+  technology "Node.js"
+  description "Handles payment processing"
+  doc ".sruja/knowledge/PaymentService.md"
+}
+```
+
+After generating knowledge files, ensure the paths in `doc` match the files you created (e.g. `.sruja/knowledge/<ElementId>.md`).
+
 ### 4. Validate and Repair
 
 Always lint the generated DSL:
@@ -180,6 +201,7 @@ See **docs/FEDERATION.md** for artifact schemas and Phase 4 retrieval behavior.
 | Task | Load only these files |
 |------|------------------------|
 | **Creating baseline / discovery** | rules/sdlc/create-phase.md, references/PROMPTS.md (Discovery section) |
+| **Creating component knowledge** | references/KNOWLEDGE_TEMPLATE.md (use when generating `.sruja/knowledge/*.md` and `doc "..."` on elements) |
 | **Updating / drift** | rules/sdlc/update-phase.md, references/REFERENCE.md (SDLC update workflow section) |
 | **Impact analysis** | rules/query/impact-analysis.md |
 | **Requirement traceability** | rules/requirements/capture-requirements.md, rules/requirements/link-requirements.md; references/PROMPTS.md if needed |
@@ -221,6 +243,7 @@ Install the [Sruja extension](https://marketplace.visualstudio.com/items?itemNam
 - **Sruja: Run validation** — lint after each AI edit (same as `sruja lint`)
 - **Sruja: Open Diagram Preview** — Mermaid diagram from the current file
 - **Sruja: Export architecture to Markdown** — full architecture doc (TOC, systems, requirements, ADRs, diagrams)
+- **Sruja: Open component knowledge** — opens the knowledge file for the element under the cursor in a split window (when the element has a `doc` field)
 - **Sruja: Refresh repo context** — runs discovery and writes `.sruja/context.json`; the skill uses this file as evidence when present and recent, so you (or the AI) don’t need to run `sruja discover` in the terminal
 
 When the extension is installed, run **Sruja: Refresh repo context** once (or after big repo changes); the skill will prefer `.sruja/context.json` over re-running discover.

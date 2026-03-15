@@ -1,0 +1,10 @@
+person = kind "Person"
+container = kind "Container"
+
+User = person "User"
+
+PaymentService = container "Payment Service" {
+  technology "Node.js"
+  description "Handles payment processing"
+  doc ".sruja/knowledge/PaymentService.md"
+}

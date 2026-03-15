@@ -50,6 +50,29 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_element_def_with_doc() {
+        let input = r#"PaymentService = container "Payment Service" {
+  technology "Node.js"
+  description "Handles payment processing"
+  doc ".sruja/knowledge/payment-service.md"
+}"#;
+        let result = parse_element_def(input);
+        assert!(result.is_ok());
+        let (_, elem) = result.unwrap();
+        assert_eq!(elem.assignment.name, "PaymentService");
+        let body = elem.assignment.body.as_ref().expect("body present");
+        assert_eq!(
+            body.description.as_deref(),
+            Some("Handles payment processing")
+        );
+        assert_eq!(body.technology.as_deref(), Some("Node.js"));
+        assert_eq!(
+            body.doc.as_deref(),
+            Some(".sruja/knowledge/payment-service.md")
+        );
+    }
+
+    #[test]
     fn test_parse_relation() {
         let input = r#"SystemA -> SystemB "Uses" "SystemA uses SystemB""#;
         let result = parse_relation(input);

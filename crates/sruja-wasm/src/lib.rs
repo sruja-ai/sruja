@@ -600,10 +600,12 @@ pub fn sruja_get_elements(dsl: &str, filename: Option<String>) -> Result<String,
     let elements_json: Vec<serde_json::Value> = elements
         .iter()
         .map(|(fqn, elem)| {
+            let doc = elem.assignment.body.as_ref().and_then(|b| b.doc.clone());
             json!({
                 "id": fqn,
                 "kind": elem.assignment.kind.to_string(),
                 "title": elem.assignment.title,
+                "doc": doc,
                 "range": {
                     "start": {"line": elem.location.line, "character": elem.location.column},
                     "end": {"line": elem.location.line, "character": elem.location.column}

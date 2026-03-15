@@ -13,6 +13,7 @@ Use these blocks to formalize architectural limits and team agreements.
 Sruja uses **flat syntax** - all declarations are top-level, no wrapper blocks needed:
 
 ```sruja
+<!-- partial -->
 import { * } from 'sruja.ai/stdlib'
 
 

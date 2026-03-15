@@ -22,6 +22,7 @@ The platform consists of several key components working together:
 Explore the Sruja architecture itself using the interactive viewer below. This diagram is defined in Sruja DSL!
 
 ```sruja
+<!-- partial -->
 import { * } from 'sruja.ai/stdlib'
 
 

@@ -100,7 +100,10 @@ mod tests {
     #[test]
     fn detect_language_go_python_java() {
         assert_eq!(detect_language(Path::new("main.go")), Some(Language::Go));
-        assert_eq!(detect_language(Path::new("script.py")), Some(Language::Python));
+        assert_eq!(
+            detect_language(Path::new("script.py")),
+            Some(Language::Python)
+        );
         assert_eq!(
             detect_language(Path::new("Main.java")),
             Some(Language::Java)

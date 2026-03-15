@@ -126,12 +126,27 @@ MySystem = system "My System" {
 }
 ```
 
+#### Component knowledge (doc)
+
+Elements can link to a **component knowledge** markdown file for deeper context (purpose, risks, improvements, code locations). The path is relative to the workspace root. Generated knowledge is often placed under `.sruja/knowledge/<id>.md`.
+
+```sruja
+PaymentService = container "Payment Service" {
+  technology "Node.js"
+  description "Handles payment processing"
+  doc ".sruja/knowledge/PaymentService.md"
+}
+```
+
+You can use `doc` or `documentation`; both accept a single string path.
+
 #### Containers
 
 ```sruja
 MyContainer = container "My Container" {
   technology "Technology stack"
   description "Optional description"
+  doc ".sruja/knowledge/MyContainer.md"
   version "1.0.0"
   tags ["api", "backend"]
   scale {

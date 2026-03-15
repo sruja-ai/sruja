@@ -168,6 +168,7 @@ A connection between two elements, showing how they interact. Relations are defi
 **Example:**
 
 ```sruja
+<!-- partial -->
 User -> App.Web "Visits"
 App.Web -> App.API "Calls"
 ```
@@ -194,6 +195,7 @@ A sequence of interactions that describe how users or systems interact to accomp
 **Example:**
 
 ```sruja
+<!-- partial -->
 scenario Checkout "Checkout Flow" {
   User -> App.Web "adds items to cart"
   App.Web -> App.API "validates cart"
