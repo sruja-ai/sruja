@@ -201,3 +201,51 @@ The `sruja` CLI ([`sruja-cli`](https://github.com/sruja-ai/sruja/tree/main/crate
 - **Local development**: `sruja fmt`, `sruja lint`, `sruja export`.
 - **CI/CD**: Validate and export architecture in pipelines.
 - **Export**: `sruja export json`, `sruja export mermaid`, `sruja export markdown`, `sruja export context`, `sruja export dsl`.
+
+## Architecture Intelligence
+
+Sruja provides **architecture intelligence** across four progressive layers:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 4: Intent                                            │
+│  "What did we intend vs what exists?"                       │
+│  Commands: sruja drift -a, sruja intent check               │
+├─────────────────────────────────────────────────────────────┤
+│  Layer 3: Semantic                                          │
+│  "What does this mean? (vocabulary, patterns)"              │
+│  Commands: sruja analyze --semantic                         │
+├─────────────────────────────────────────────────────────────┤
+│  Layer 2: Structural                                        │
+│  "What exists? (components, deps, metrics)"                 │
+│  Commands: sruja scan, sruja quickstart, sruja discover    │
+├─────────────────────────────────────────────────────────────┤
+│  Layer 1: Syntactic                                         │
+│  "Is the DSL valid?"                                        │
+│  Commands: sruja lint                                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Each layer builds on the previous:
+
+- **Syntactic**: Is the `.sruja` file valid? (lint)
+- **Structural**: What components and dependencies exist? (scan, discover)
+- **Semantic**: What patterns and relationships mean? (analyze)
+- **Intent**: Does reality match declared architecture? (drift, intent check)
+
+### AI Skill Multiplies Intelligence
+
+The **sruja-architecture skill** enhances all four layers:
+
+| Layer | CLI Only | CLI + Skill |
+|-------|----------|-------------|
+| Syntactic | `sruja lint` | Pattern-aware DSL generation |
+| Structural | `sruja scan` | Evidence-based discovery |
+| Semantic | `sruja analyze` | Patterns and trade-offs |
+| Intent | `sruja drift` | Multi-perspective review |
+
+Install the skill to unlock AI-powered architecture intelligence:
+
+```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
+```

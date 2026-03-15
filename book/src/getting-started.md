@@ -6,29 +6,9 @@ You don't write `.sruja` files. Your AI does it for you. Here's how:
 
 ---
 
-## Step 1: Install the CLI (2 minutes)
+## Step 1: Install the AI skill (1 minute)
 
-The CLI is what analyzes your code and validates architecture files.
-
-```bash
-curl -fsSL https://sruja.ai/install.sh | bash
-```
-
-**What this does:** Downloads the latest Sruja binary and adds it to your system path.
-
-**Check it worked:**
-
-```bash
-sruja --version
-```
-
-You should see something like: `sruja version v0.2.0`
-
----
-
-## Step 2: Install the AI skill (1 minute)
-
-This teaches your AI editor how to generate Sruja files.
+This teaches your AI editor how to generate Sruja files. The skill will guide you to install the CLI when needed.
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
@@ -38,57 +18,30 @@ npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 
 ---
 
-## Step 3: See what's in your codebase (1 minute)
+## Step 2: Generate your architecture file (2 minutes)
 
-Run this in your project folder:
-
-```bash
-cd your-project
-sruja quickstart -r .
-```
-
-**What you'll see:**
+Open your AI editor and ask it to generate your architecture:
 
 ```
-📊 Architecture Inventory
-  • 5 services detected
-  • 2 databases
-  • 12 modules
-
-💚 Architecture Health Score: 75/100
-
-🔍 Top Findings
-  • Missing: Payment module not connected
-  • Orphan: Analytics service has no consumers
+Use sruja-architecture skill. Analyze my codebase, generate a repo.sruja file, 
+then run sruja lint and fix any errors until it passes.
 ```
 
-**No AI needed yet**—this is just code analysis.
+**What happens:**
 
----
-
-## Step 4: Generate your architecture file (1 minute)
-
-Open your AI editor and paste this prompt:
-
-```
-Use sruja-architecture. Run `sruja discover --context -r . --format json`,
-gather evidence from my code, ask targeted questions if needed,
-generate repo.sruja, then run `sruja lint` and fix until it passes.
-```
-
-**What your AI will do:**
-
-1. Run `sruja discover` to understand your code structure
-2. Ask you 2-3 questions if anything is unclear (e.g., "What's this service for?")
-3. Generate a `repo.sruja` file with your architecture
-4. Run `sruja lint` to check for errors
-5. Fix any errors automatically
+1. The skill runs `sruja discover` to understand your code structure (installs CLI if needed)
+2. Asks you 2-3 questions if anything is unclear (e.g., "What's this service for?")
+3. Generates a `repo.sruja` file with your architecture
+4. Runs `sruja lint` to check for errors
+5. Fixes any errors automatically
 
 **Result:** You now have a `repo.sruja` file in your project root!
 
 ---
 
-## Step 5: Validate it (optional but recommended)
+## Step 3: Validate it (optional)
+
+The skill already validated your file, but you can check manually:
 
 ```bash
 sruja lint repo.sruja
@@ -96,7 +49,7 @@ sruja lint repo.sruja
 
 If it says "✅ All checks passed", you're good!
 
-If you see errors, just paste the output to your AI: "Fix these errors."
+If you see errors, just ask your AI: "Fix these errors."
 
 ---
 
@@ -133,10 +86,8 @@ This shows you what changed and if your architecture needs updating.
 
 | What you want | Command |
 |---------------|----------|
-| **Install** | `curl -fsSL https://sruja.ai/install.sh \| bash` |
 | **Install skill** | `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` |
-| **Analyze code** | `sruja quickstart -r .` |
-| **Generate with AI** | See Step 4 above |
+| **Generate with AI** | Ask your AI: "Use sruja-architecture skill to generate my architecture" |
 | **Validate** | `sruja lint repo.sruja` |
 | **Export diagram** | `sruja export mermaid repo.sruja > diagram.mmd` |
 | **Check for drift** | `sruja drift -r .` |

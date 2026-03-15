@@ -48,8 +48,8 @@ We're **ultra simple** – minimal surface area, no unnecessary apps or framewor
 - **VS Code extension** – Edit `.sruja` files with syntax highlighting and diagnostics
 - **Docs** – This book (mdBook, Rust-based; no TypeScript/Node)
 
-> **New here?** Do [Quick start](getting-started.md) (about 5 min), then the [Beginner path](docs/beginner-path.md) (2–3 hours).
+> **New here?** Install the [sruja-architecture skill](getting-started.md) first (1 minute), then let your AI generate architecture for you. For a single entry point to **docs**, **tutorials**, and **courses**, use [Navigate](navigate.md). The **left sidebar** lists everything; press **`/`** or **`S`** to search.
 
-See [Quick start](getting-started.md) to install the CLI and create your first `.sruja` file. For a single entry point to **docs**, **tutorials**, and **courses**, use [Navigate](navigate.md). The **left sidebar** lists everything; press **`/`** or **`S`** to search.
+See [Quick start](getting-started.md) to install the AI skill and create your first `.sruja` file. For a single entry point to **docs**, **tutorials**, and **courses**, use [Navigate](navigate.md). The **left sidebar** lists everything; press **`/`** or **`S`** to search.
 
 > **Sruja "Show diagram" in code blocks:** Run `make wasm` from the repo root once, then run `make book-serve` (or `./serve.sh` from the book directory) so the WASM files are copied into the book output.
