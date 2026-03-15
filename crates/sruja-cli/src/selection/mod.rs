@@ -23,6 +23,19 @@ use std::collections::{HashMap, HashSet};
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sruja_scan::NodeKind;
+    use std::collections::HashMap;
+
+    fn create_test_node(id: &str, path: Option<&str>) -> Node {
+        Node {
+            id: id.to_string(),
+            kind: NodeKind::Module,
+            label: id.to_string(),
+            technology: None,
+            path: path.map(|p| p.to_string()),
+            metadata: HashMap::new(),
+        }
+    }
 
     #[test]
     fn selection_config_default() {
@@ -32,6 +45,129 @@ mod tests {
         assert!(config.critical_roles.len() >= 2);
         assert!(config.include_high_risk);
         assert!(!config.enable_llm);
+    }
+
+    #[test]
+    fn selection_config_custom() {
+        let config = SelectionConfig {
+            target_ratio: 0.25,
+            target_question_coverage: 0.90,
+            critical_roles: vec![ArchitecturalRole::EntryPoint],
+            include_high_risk: false,
+            min_centrality_percentile: 80.0,
+            enable_llm: true,
+            include_context_boundaries: false,
+            min_context_representatives: 5,
+        };
+        assert_eq!(config.target_ratio, 0.25);
+        assert_eq!(config.target_question_coverage, 0.90);
+        assert_eq!(config.critical_roles.len(), 1);
+        assert!(!config.include_high_risk);
+        assert!(config.enable_llm);
+    }
+
+    #[test]
+    fn is_excluded_test_paths() {
+        let node = create_test_node("test_node", Some("src/test/module.rs"));
+        assert!(is_excluded(&node));
+
+        let node_tests = create_test_node("tests_node", Some("src/tests/module.rs"));
+        assert!(is_excluded(&node_tests));
+    }
+
+    #[test]
+    fn is_excluded_spec_paths() {
+        let node = create_test_node("spec_node", Some("src/spec/module.rs"));
+        assert!(is_excluded(&node));
+    }
+
+    #[test]
+    fn is_excluded_example_paths() {
+        let node = create_test_node("example_node", Some("src/example/demo.rs"));
+        assert!(is_excluded(&node));
+    }
+
+    #[test]
+    fn is_excluded_docs_paths() {
+        let node = create_test_node("docs_node", Some("src/docs/guide.md"));
+        assert!(is_excluded(&node));
+    }
+
+    #[test]
+    fn is_excluded_node_modules() {
+        let node = create_test_node("npm_node", Some("src/node_modules/package/index.js"));
+        assert!(is_excluded(&node));
+    }
+
+    #[test]
+    fn is_excluded_github() {
+        let node = create_test_node("github_node", Some("src/.github/workflows/ci.yml"));
+        assert!(is_excluded(&node));
+    }
+
+    #[test]
+    fn is_not_excluded_source() {
+        let node = create_test_node("source_node", Some("src/lib.rs"));
+        assert!(!is_excluded(&node));
+    }
+
+    #[test]
+    fn is_excluded_no_path() {
+        let node = create_test_node("no_path_node", None);
+        assert!(!is_excluded(&node));
+    }
+
+    #[test]
+    fn smart_select_empty_graph() {
+        let graph = Graph::new();
+        let config = SelectionConfig::default();
+        let result = smart_select(&graph, &config);
+        assert!(result.nodes.is_empty());
+    }
+
+    #[test]
+    fn smart_select_single_node() {
+        let mut graph = Graph::new();
+        graph.nodes.push(create_test_node("main", Some("src/main.rs")));
+        let config = SelectionConfig::default();
+        let result = smart_select(&graph, &config);
+        assert!(!result.nodes.is_empty());
+    }
+
+    #[test]
+    fn smart_select_includes_selection_reasons() {
+        let mut graph = Graph::new();
+        graph.nodes.push(create_test_node("api", Some("src/api.rs")));
+        graph.nodes.push(create_test_node("db", Some("src/db.rs")));
+        graph.nodes.push(create_test_node("ui", Some("src/ui.rs")));
+        let config = SelectionConfig {
+            target_ratio: 0.5,
+            ..SelectionConfig::default()
+        };
+        let result = smart_select(&graph, &config);
+        assert!(!result.nodes.is_empty());
+    }
+
+    #[test]
+    fn smart_select_includes_role_coverage() {
+        let mut graph = Graph::new();
+        graph.nodes.push(create_test_node("db", Some("src/db.rs")));
+        let config = SelectionConfig::default();
+        let result = smart_select(&graph, &config);
+        assert!(!result.role_coverage.is_empty());
+    }
+
+    #[test]
+    fn selection_reason_variants() {
+        assert_eq!(SelectionReason::CriticalRole, SelectionReason::CriticalRole);
+        assert_ne!(SelectionReason::CriticalRole, SelectionReason::HighRisk);
+    }
+
+    #[test]
+    fn role_coverage_counts() {
+        let coverage = RoleCoverage { total: 10, selected: 3 };
+        assert_eq!(coverage.total, 10);
+        assert_eq!(coverage.selected, 3);
     }
 }
 

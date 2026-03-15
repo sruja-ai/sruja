@@ -422,4 +422,173 @@ mod tests {
         let result = graph.query("why are we using Node.js?").unwrap();
         assert!(result.answer.to_lowercase().contains("node") || result.confidence > 0.0);
     }
+
+    #[test]
+    fn test_query_what_databases() {
+        let graph = create_test_graph();
+        let result = graph.query("what databases do we have?").unwrap();
+        assert!(result.answer.to_lowercase().contains("database"));
+    }
+
+    #[test]
+    fn test_query_how_connected() {
+        let graph = create_test_graph();
+        let result = graph.query("how are components connected?").unwrap();
+        assert!(!result.answer.is_empty());
+    }
+
+    #[test]
+    fn test_query_decisions() {
+        let graph = create_test_graph();
+        let result = graph.query("show me all decisions").unwrap();
+        assert!(result.answer.contains("decisions"));
+    }
+
+    #[test]
+    fn test_query_generic() {
+        let graph = create_test_graph();
+        let result = graph.query("tell me about the architecture").unwrap();
+        assert!(result.answer.contains("components"));
+    }
+
+    #[test]
+    fn test_format_decision_evidence_short() {
+        let decision = Decision {
+            id: "adr-001".to_string(),
+            title: "Use PostgreSQL".to_string(),
+            status: DecisionStatus::Accepted,
+            decision: "We chose PostgreSQL for its reliability.".to_string(),
+            context: String::new(),
+            consequences: String::new(),
+            alternatives: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            ratified_at: None,
+            author: None,
+            source: SourceReference::manual(),
+            affects: vec![],
+        };
+        let evidence = format_decision_evidence(&decision);
+        assert!(evidence.contains("Use PostgreSQL"));
+    }
+
+    #[test]
+    fn test_format_decision_evidence_long() {
+        let long_decision = "x".repeat(300);
+        let decision = Decision {
+            id: "adr-002".to_string(),
+            title: "Long Decision".to_string(),
+            status: DecisionStatus::Proposed,
+            decision: long_decision.clone(),
+            context: String::new(),
+            consequences: String::new(),
+            alternatives: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            ratified_at: None,
+            author: None,
+            source: SourceReference::manual(),
+            affects: vec![],
+        };
+        let evidence = format_decision_evidence(&decision);
+        assert!(evidence.contains("..."));
+        assert!(evidence.len() < long_decision.len() + 50);
+    }
+
+    #[test]
+    fn test_format_node_evidence() {
+        let node = ArchitectureNode {
+            id: "svc".to_string(),
+            kind: NodeKind::Service,
+            label: "My Service".to_string(),
+            technology: Some("Rust".to_string()),
+            description: None,
+            metadata: HashMap::new(),
+            source: SourceReference::manual(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+        let evidence = format_node_evidence(&node, None);
+        assert!(evidence.contains("My Service"));
+        assert!(evidence.contains("Rust"));
+    }
+
+    #[test]
+    fn test_format_node_evidence_no_tech() {
+        let node = ArchitectureNode {
+            id: "svc".to_string(),
+            kind: NodeKind::Service,
+            label: "No Tech Service".to_string(),
+            technology: None,
+            description: None,
+            metadata: HashMap::new(),
+            source: SourceReference::manual(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+        let evidence = format_node_evidence(&node, None);
+        assert!(evidence.contains("(not set)"));
+    }
+
+    #[test]
+    fn test_format_edge_evidence_with_label() {
+        let evidence = format_edge_evidence("Source", &EdgeKind::Calls, "Target", Some("HTTP"));
+        assert!(evidence.contains("Source"));
+        assert!(evidence.contains("Target"));
+        assert!(evidence.contains("HTTP"));
+    }
+
+    #[test]
+    fn test_format_edge_evidence_without_label() {
+        let evidence = format_edge_evidence("A", &EdgeKind::ReadsFrom, "B", None);
+        assert!(evidence.contains("A"));
+        assert!(evidence.contains("B"));
+    }
+
+    #[test]
+    fn test_query_result_serialization() {
+        let result = QueryResult {
+            question: "test?".to_string(),
+            answer: "answer".to_string(),
+            evidence: vec![],
+            confidence: 0.5,
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        assert!(json.contains("test?"));
+    }
+
+    #[test]
+    fn test_evidence_kind_variants() {
+        let kinds = vec![
+            EvidenceKind::Decision,
+            EvidenceKind::Policy,
+            EvidenceKind::Requirement,
+            EvidenceKind::Node,
+            EvidenceKind::Edge,
+        ];
+        for kind in kinds {
+            let evidence = Evidence {
+                kind: kind.clone(),
+                reference: "ref".to_string(),
+                excerpt: "excerpt".to_string(),
+            };
+            let json = serde_json::to_string(&evidence).unwrap();
+            assert!(!json.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_extract_tech_patterns() {
+        let graph = create_test_graph();
+        let patterns = graph.extract_tech_patterns("why use postgresql and redis?");
+        assert!(patterns.contains(&"postgresql".to_string()));
+        assert!(patterns.contains(&"redis".to_string()));
+    }
+
+    #[test]
+    fn test_find_policy_violations_empty() {
+        let graph = create_test_graph();
+        let violations = graph.find_policy_violations();
+        assert!(violations.is_empty());
+    }
 }

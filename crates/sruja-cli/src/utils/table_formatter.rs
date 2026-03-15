@@ -125,3 +125,108 @@ impl TableFormatter {
         Self::new(Self::detect_width())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_wrap_text_short_text() {
+        let formatter = TableFormatter::new(40);
+        let result = formatter.wrap_text("Hello world");
+        assert_eq!(result, vec!["Hello world"]);
+    }
+
+    #[test]
+    fn test_wrap_text_long_text() {
+        let formatter = TableFormatter::new(20);
+        let result = formatter.wrap_text("This is a very long text that should wrap");
+        assert!(result.len() > 1);
+    }
+
+    #[test]
+    fn test_wrap_text_empty() {
+        let formatter = TableFormatter::new(40);
+        let result = formatter.wrap_text("");
+        assert_eq!(result, vec![""]);
+    }
+
+    #[test]
+    fn test_wrap_text_small_width() {
+        let formatter = TableFormatter::new(4);
+        let result = formatter.wrap_text("Hello world");
+        assert_eq!(result, vec!["Hello world"]);
+    }
+
+    #[test]
+    fn test_format_section() {
+        let formatter = TableFormatter::new(40);
+        let result = formatter.format_section("Header", &[("Key", "Value")]);
+        assert!(result.contains("Header"));
+        assert!(result.contains("Key: Value"));
+        assert!(result.contains("┌"));
+        assert!(result.contains("└"));
+    }
+
+    #[test]
+    fn test_format_section_empty_content() {
+        let formatter = TableFormatter::new(40);
+        let result = formatter.format_section("Header", &[]);
+        assert!(result.contains("Header"));
+    }
+
+    #[test]
+    fn test_format_list_section() {
+        let formatter = TableFormatter::new(40);
+        let result =
+            formatter.format_list_section("Items", &["Item 1".to_string(), "Item 2".to_string()]);
+        assert!(result.contains("Items"));
+        assert!(result.contains("Item 1"));
+        assert!(result.contains("Item 2"));
+    }
+
+    #[test]
+    fn test_format_list_section_empty() {
+        let formatter = TableFormatter::new(40);
+        let result = formatter.format_list_section("Items", &[]);
+        assert!(result.contains("Items"));
+    }
+
+    #[test]
+    fn test_format_key_value_pairs() {
+        let formatter = TableFormatter::new(40);
+        let result = formatter.format_key_value_pairs(&[("Key1", "Value1"), ("Key2", "Value2")]);
+        assert!(result.contains("Key1: Value1"));
+        assert!(result.contains("Key2: Value2"));
+    }
+
+    #[test]
+    fn test_format_key_value_pairs_empty() {
+        let formatter = TableFormatter::new(40);
+        let result = formatter.format_key_value_pairs(&[]);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_detect_width_default() {
+        std::env::remove_var("COLUMNS");
+        let width = TableFormatter::detect_width();
+        assert_eq!(width, 80);
+    }
+
+    #[test]
+    fn test_auto_creates_formatter() {
+        let formatter = TableFormatter::auto();
+        assert!(formatter.max_width >= 60);
+        assert!(formatter.max_width <= 120);
+    }
+
+    #[test]
+    fn test_wrap_text_preserves_words() {
+        let formatter = TableFormatter::new(20);
+        let result = formatter.wrap_text("word1 word2 word3");
+        for line in &result {
+            assert!(!line.contains("word1word2"));
+        }
+    }
+}

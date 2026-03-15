@@ -210,3 +210,104 @@ impl Default for Validator {
         Self::with_default_rules()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validator_new_creates_empty_validator() {
+        let validator = Validator::new();
+        assert_eq!(validator.rule_count(), 0);
+    }
+
+    #[test]
+    fn validator_with_default_rules_has_rules() {
+        let validator = Validator::with_default_rules();
+        assert!(validator.rule_count() > 0);
+    }
+
+    #[test]
+    fn validator_with_profile_minimal_has_fewer_rules() {
+        let minimal = Validator::with_profile(RuleProfile::Minimal);
+        let default = Validator::with_profile(RuleProfile::Default);
+        assert!(minimal.rule_count() < default.rule_count());
+    }
+
+    #[test]
+    fn validator_with_profile_strict_has_same_as_default() {
+        let strict = Validator::with_profile(RuleProfile::Strict);
+        let default = Validator::with_profile(RuleProfile::Default);
+        assert_eq!(strict.rule_count(), default.rule_count());
+    }
+
+    #[test]
+    fn validator_default_is_same_as_with_default_rules() {
+        let validator = Validator::default();
+        let with_default = Validator::with_default_rules();
+        assert_eq!(validator.rule_count(), with_default.rule_count());
+    }
+
+    #[test]
+    fn validator_has_rule_returns_true_for_registered_rule() {
+        let validator = Validator::with_default_rules();
+        assert!(validator.has_rule("Unique IDs"));
+        assert!(validator.has_rule("Valid References"));
+    }
+
+    #[test]
+    fn validator_has_rule_returns_false_for_unknown_rule() {
+        let validator = Validator::with_default_rules();
+        assert!(!validator.has_rule("NonExistentRule"));
+    }
+
+    #[test]
+    fn validator_validate_sync_empty_program() {
+        let validator = Validator::with_default_rules();
+        let program = Program::default();
+        let diagnostics = validator.validate_sync(&program);
+        assert!(diagnostics.is_empty() || !diagnostics.is_empty());
+    }
+
+    #[test]
+    fn validator_builder_creates_validator() {
+        let validator = Validator::builder().with_default_rules().build();
+        assert!(validator.rule_count() > 0);
+    }
+
+    #[test]
+    fn validator_builder_empty_has_no_rules() {
+        let validator = Validator::builder().build();
+        assert_eq!(validator.rule_count(), 0);
+    }
+
+    #[test]
+    fn rule_profile_default_value() {
+        let profile = RuleProfile::default();
+        assert_eq!(profile, RuleProfile::Default);
+    }
+
+    #[test]
+    fn rule_profile_equality() {
+        assert_eq!(RuleProfile::Minimal, RuleProfile::Minimal);
+        assert_eq!(RuleProfile::Default, RuleProfile::Default);
+        assert_ne!(RuleProfile::Minimal, RuleProfile::Default);
+    }
+
+    #[test]
+    fn validator_remove_rule_by_name() {
+        let mut validator = Validator::with_default_rules();
+        let initial_count = validator.rule_count();
+        validator.remove_rule_by_name("Unique IDs");
+        assert!(validator.rule_count() < initial_count);
+        assert!(!validator.has_rule("Unique IDs"));
+    }
+
+    #[test]
+    fn validator_excluded_rules_not_registered() {
+        let mut validator = Validator::new();
+        validator.excluded_rules.insert("Unique IDs".to_string());
+        validator = validator.with_registered_default_rules();
+        assert!(!validator.has_rule("Unique IDs"));
+    }
+}

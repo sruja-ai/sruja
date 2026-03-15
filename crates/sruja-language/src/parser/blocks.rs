@@ -135,3 +135,123 @@ pub(crate) fn parse_style_decl(input: &str) -> IResult<&str, StyleDecl> {
         },
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_kv_string_block_empty() {
+        let result = parse_kv_string_block("{}");
+        assert!(result.is_ok());
+        let (_, entries) = result.unwrap();
+        assert!(entries.is_empty());
+    }
+
+    #[test]
+    fn test_parse_kv_string_block_single() {
+        let result = parse_kv_string_block("{ key \"value\" }");
+        assert!(result.is_ok());
+        let (_, entries) = result.unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].0, "key");
+        assert_eq!(entries[0].1, "value");
+    }
+
+    #[test]
+    fn test_parse_kv_string_block_multiple() {
+        let result = parse_kv_string_block("{ key1 \"val1\" key2 \"val2\" }");
+        assert!(result.is_ok());
+        let (_, entries) = result.unwrap();
+        assert_eq!(entries.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_metadata_block_empty() {
+        let result = parse_metadata_block("metadata {}");
+        assert!(result.is_ok());
+        let (_, block) = result.unwrap();
+        assert!(block.entries.is_empty());
+    }
+
+    #[test]
+    fn test_parse_metadata_block_with_string() {
+        let result = parse_metadata_block("metadata { author \"John\" }");
+        assert!(result.is_ok());
+        let (_, block) = result.unwrap();
+        assert_eq!(block.entries.len(), 1);
+        assert_eq!(block.entries[0].key, "author");
+        assert_eq!(block.entries[0].value, Some("John".to_string()));
+    }
+
+    #[test]
+    fn test_parse_constraints_block_empty() {
+        let result = parse_constraints_block("constraints {}");
+        assert!(result.is_ok());
+        let (_, block) = result.unwrap();
+        assert!(block.entries.is_empty());
+    }
+
+    #[test]
+    fn test_parse_constraints_block_with_entries() {
+        let result = parse_constraints_block("constraints { max_connections \"100\" }");
+        assert!(result.is_ok());
+        let (_, block) = result.unwrap();
+        assert_eq!(block.entries.len(), 1);
+        assert_eq!(block.entries[0].key, "max_connections");
+        assert_eq!(block.entries[0].value, "100");
+    }
+
+    #[test]
+    fn test_parse_conventions_block_empty() {
+        let result = parse_conventions_block("conventions {}");
+        assert!(result.is_ok());
+        let (_, block) = result.unwrap();
+        assert!(block.entries.is_empty());
+    }
+
+    #[test]
+    fn test_parse_conventions_block_with_entries() {
+        let result = parse_conventions_block("conventions { naming \"camelCase\" }");
+        assert!(result.is_ok());
+        let (_, block) = result.unwrap();
+        assert_eq!(block.entries.len(), 1);
+        assert_eq!(block.entries[0].key, "naming");
+        assert_eq!(block.entries[0].value, "camelCase");
+    }
+
+    #[test]
+    fn test_parse_style_decl_basic() {
+        let result = parse_style_decl("style button { color \"blue\" }");
+        assert!(result.is_ok());
+        let (_, style) = result.unwrap();
+        assert_eq!(style.selector, "button");
+        assert_eq!(style.properties.get("color"), Some(&"blue".to_string()));
+    }
+
+    #[test]
+    fn test_parse_style_decl_multiple_props() {
+        let result = parse_style_decl("style container { color \"red\" size \"large\" }");
+        assert!(result.is_ok());
+        let (_, style) = result.unwrap();
+        assert_eq!(style.properties.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_constraint_entry() {
+        let result = parse_constraint_entry("timeout \"30s\"");
+        assert!(result.is_ok());
+        let (_, entry) = result.unwrap();
+        assert_eq!(entry.key, "timeout");
+        assert_eq!(entry.value, "30s");
+    }
+
+    #[test]
+    fn test_parse_convention_entry() {
+        let result = parse_convention_entry("format \"json\"");
+        assert!(result.is_ok());
+        let (_, entry) = result.unwrap();
+        assert_eq!(entry.key, "format");
+        assert_eq!(entry.value, "json");
+    }
+}

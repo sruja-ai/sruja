@@ -81,3 +81,138 @@ pub fn print_flow(out: &mut String, flow: &Flow) {
         out.push('\n');
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_diagnostics::SourceLocation;
+    use sruja_language::{QualifiedIdent, ScenarioStep};
+
+    fn create_scenario(id: &str, title: &str, steps: Vec<ScenarioStep>) -> Scenario {
+        Scenario {
+            location: SourceLocation::new(String::new(), 0, 0),
+            id: id.to_string(),
+            title: title.to_string(),
+            description: None,
+            steps,
+        }
+    }
+
+    fn create_flow(id: &str, title: &str, steps: Vec<ScenarioStep>) -> Flow {
+        Flow {
+            location: SourceLocation::new(String::new(), 0, 0),
+            id: id.to_string(),
+            title: title.to_string(),
+            description: None,
+            steps,
+        }
+    }
+
+    fn create_step(from: &str, to: &str, desc: Option<&str>) -> ScenarioStep {
+        ScenarioStep {
+            from: Some(QualifiedIdent::simple(from.to_string())),
+            to: Some(QualifiedIdent::simple(to.to_string())),
+            description: desc.map(|s| s.to_string()),
+            tags: vec![],
+            order: None,
+        }
+    }
+
+    #[test]
+    fn test_print_scenario_empty() {
+        let mut out = String::new();
+        let scenario = create_scenario("", "", vec![]);
+        print_scenario(&mut out, &scenario);
+        assert!(out.starts_with("scenario"));
+    }
+
+    #[test]
+    fn test_print_scenario_with_id() {
+        let mut out = String::new();
+        let scenario = create_scenario("login_flow", "", vec![]);
+        print_scenario(&mut out, &scenario);
+        assert!(out.contains("login_flow"));
+    }
+
+    #[test]
+    fn test_print_scenario_with_title() {
+        let mut out = String::new();
+        let scenario = create_scenario("id", "User Login", vec![]);
+        print_scenario(&mut out, &scenario);
+        assert!(out.contains("\"User Login\""));
+    }
+
+    #[test]
+    fn test_print_scenario_with_steps() {
+        let mut out = String::new();
+        let scenario = create_scenario(
+            "id",
+            "Test",
+            vec![
+                create_step("User", "API", Some("requests")),
+                create_step("API", "DB", None),
+            ],
+        );
+        print_scenario(&mut out, &scenario);
+        assert!(out.contains("User -> API"));
+        assert!(out.contains("API -> DB"));
+        assert!(out.contains("requests"));
+        assert!(out.contains("{"));
+        assert!(out.contains("}"));
+    }
+
+    #[test]
+    fn test_print_scenario_step_with_description() {
+        let mut out = String::new();
+        let scenario =
+            create_scenario("id", "Test", vec![create_step("A", "B", Some("test desc"))]);
+        print_scenario(&mut out, &scenario);
+        assert!(out.contains("\"test desc\""));
+    }
+
+    #[test]
+    fn test_print_flow_empty() {
+        let mut out = String::new();
+        let flow = create_flow("", "", vec![]);
+        print_flow(&mut out, &flow);
+        assert!(out.starts_with("flow"));
+    }
+
+    #[test]
+    fn test_print_flow_with_id() {
+        let mut out = String::new();
+        let flow = create_flow("checkout", "", vec![]);
+        print_flow(&mut out, &flow);
+        assert!(out.contains("checkout"));
+    }
+
+    #[test]
+    fn test_print_flow_with_title() {
+        let mut out = String::new();
+        let flow = create_flow("id", "Checkout Flow", vec![]);
+        print_flow(&mut out, &flow);
+        assert!(out.contains("\"Checkout Flow\""));
+    }
+
+    #[test]
+    fn test_print_flow_with_steps() {
+        let mut out = String::new();
+        let flow = create_flow(
+            "id",
+            "Test",
+            vec![create_step("Cart", "Payment", Some("process"))],
+        );
+        print_flow(&mut out, &flow);
+        assert!(out.contains("Cart -> Payment"));
+        assert!(out.contains("process"));
+    }
+
+    #[test]
+    fn test_print_flow_step_no_description() {
+        let mut out = String::new();
+        let flow = create_flow("id", "Test", vec![create_step("A", "B", None)]);
+        print_flow(&mut out, &flow);
+        assert!(out.contains("A -> B"));
+        assert!(!out.contains("\"\""));
+    }
+}
