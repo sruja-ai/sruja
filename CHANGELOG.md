@@ -5,6 +5,17 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.2](https://github.com/sruja-ai/sruja/compare/sruja-v0.18.1...sruja-v0.18.2) (2026-03-15)
+
+
+### Bug Fixes
+
+* ruby tree sitter ([38f7c9a](https://github.com/sruja-ai/sruja/commit/38f7c9a119a74619720ba13d63c19e6e1c6d7304))
+* **security:** remove mocha to resolve diff DoS vulnerability (GHSA-73rr-hh4g-fpgx) ([21eaa77](https://github.com/sruja-ai/sruja/commit/21eaa77230c2adc8c6e720d401ca37393fb4a7db))
+* **security:** resolve code scanning alerts ([6c67d40](https://github.com/sruja-ai/sruja/commit/6c67d40ba879da5fe7dac1efe014d3aa98ff7082))
+* **security:** update package-lock.json to remove serialize-javascript ([1163620](https://github.com/sruja-ai/sruja/commit/1163620c2f8c61243557e2da5c3ffa3a5da63cec))
+* **sruja-scan:** use tree_sitter_ruby::LANGUAGE for 0.23 API ([92ecec6](https://github.com/sruja-ai/sruja/commit/92ecec6f89cc60df72f315ae8b074f648fc7256c))
+
 ## [0.18.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.18.0...sruja-v0.18.1) (2026-03-15)
 
 
