@@ -7,12 +7,53 @@ import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 
-interface WasmDiagnostic {
+/** WASM diagnostic shape (severity: 1=Error, 2=Warning, 3=Info). Exported for tests. */
+export interface WasmDiagnostic {
   range: { start: { line: number; character: number }; end: { line: number; character: number } };
   severity: number;
   code?: string;
   message: string;
   source?: string;
+}
+
+/** WASM/Sruja use 1-based line and column; VS Code uses 0-based. Convert to VS Code Range. */
+export function wasmRangeToVscodeRange(r: {
+  start: { line: number; character: number };
+  end: { line: number; character: number };
+}): vscode.Range {
+  const start = new vscode.Position(
+    Math.max(0, r.start.line - 1),
+    Math.max(0, r.start.character - 1)
+  );
+  const end = new vscode.Position(
+    Math.max(0, r.end.line - 1),
+    Math.max(0, r.end.character - 1)
+  );
+  return new vscode.Range(start, end);
+}
+
+/**
+ * Map JSON string from sruja_get_diagnostics to VS Code diagnostics. Pure and testable.
+ */
+export function mapWasmDiagnosticsJsonToVscode(json: string): vscode.Diagnostic[] {
+  try {
+    const raw: WasmDiagnostic[] = JSON.parse(json);
+    return raw.map((d) => {
+      const range = wasmRangeToVscodeRange(d.range);
+      const severity =
+        d.severity === 1
+          ? vscode.DiagnosticSeverity.Error
+          : d.severity === 2
+            ? vscode.DiagnosticSeverity.Warning
+            : vscode.DiagnosticSeverity.Information;
+      const diag = new vscode.Diagnostic(range, d.message, severity);
+      if (d.code) diag.code = d.code;
+      diag.source = d.source ?? "sruja";
+      return diag;
+    });
+  } catch {
+    return [];
+  }
 }
 
 interface SrujaWasmModule {
@@ -77,21 +118,7 @@ export async function getDiagnosticsFromWasm(
 
   try {
     const json = mod.sruja_get_diagnostics(dsl, filename);
-    const raw: WasmDiagnostic[] = JSON.parse(json);
-    return raw.map((d) => {
-      const start = new vscode.Position(d.range.start.line, d.range.start.character);
-      const end = new vscode.Position(d.range.end.line, d.range.end.character);
-      const severity =
-        d.severity === 1
-          ? vscode.DiagnosticSeverity.Error
-          : d.severity === 2
-            ? vscode.DiagnosticSeverity.Warning
-            : vscode.DiagnosticSeverity.Information;
-      const diag = new vscode.Diagnostic(new vscode.Range(start, end), d.message, severity);
-      if (d.code) diag.code = d.code;
-      diag.source = d.source ?? "sruja";
-      return diag;
-    });
+    return mapWasmDiagnosticsJsonToVscode(json);
   } catch {
     return [];
   }

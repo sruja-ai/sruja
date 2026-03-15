@@ -1,0 +1,14 @@
+# Codecov configuration for sruja-ai/sruja
+# https://docs.codecov.com/docs/codecov-yaml
+coverage:
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 1%
+    patch: off
+  flags:
+    typescript:
+      paths:
+        - extension/src/
+      carryforward: true

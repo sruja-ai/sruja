@@ -25,7 +25,11 @@ evaluation/local-artifacts/
 
 # IDE and editor files
 .vscode/
+.vscode-test/
 .idea/
+
+# Extension test coverage (Jest)
+extension/coverage/
 *.swp
 *.swo
 *~

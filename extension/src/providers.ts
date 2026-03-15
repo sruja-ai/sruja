@@ -3,7 +3,13 @@
  */
 
 import * as vscode from "vscode";
-import { getElementsFromWasm, getDocumentSymbolsFromWasm, SrujaElement, SrujaDocumentSymbol } from "./wasm";
+import {
+  getElementsFromWasm,
+  getDocumentSymbolsFromWasm,
+  wasmRangeToVscodeRange,
+  SrujaElement,
+  SrujaDocumentSymbol,
+} from "./wasm";
 
 export interface ElementRange {
   start: { line: number; character: number };
@@ -65,18 +71,23 @@ export class SrujaDefinitionProvider implements vscode.DefinitionProvider {
     );
     if (!links) return undefined;
 
-    return links.map(link => {
-      const start = new vscode.Position(link.targetRange.start.line, link.targetRange.start.character);
-      const end = new vscode.Position(link.targetRange.end.line, link.targetRange.end.character);
-      const range = new vscode.Range(start, end);
-      const originStart = new vscode.Position(link.originSelectionRange.start.line, link.originSelectionRange.start.character);
-      const originEnd = new vscode.Position(link.originSelectionRange.end.line, link.originSelectionRange.end.character);
+    return links.map((link) => {
+      // WASM returns 1-based line/character; convert to 0-based for VS Code
+      const targetRange = wasmRangeToVscodeRange(link.targetRange);
+      const originStart = new vscode.Position(
+        link.originSelectionRange.start.line,
+        link.originSelectionRange.start.character
+      );
+      const originEnd = new vscode.Position(
+        link.originSelectionRange.end.line,
+        link.originSelectionRange.end.character
+      );
 
       return {
         originSelectionRange: new vscode.Range(originStart, originEnd),
         targetUri: document.uri,
-        targetRange: range,
-        targetSelectionRange: range,
+        targetRange,
+        targetSelectionRange: targetRange,
       };
     });
   }
@@ -151,12 +162,10 @@ export class SrujaDocumentSymbolProvider implements vscode.DocumentSymbolProvide
     const symbols = await getDocumentSymbolsFromWasm(this.context, document.getText(), document.uri.fsPath);
     if (!symbols) return undefined;
 
-    // Convert Sruja symbols to VS Code document symbols
-    const documentSymbols: vscode.DocumentSymbol[] = symbols.map(symbol => {
+    // Convert Sruja symbols to VS Code document symbols (WASM uses 1-based line/character)
+    const documentSymbols: vscode.DocumentSymbol[] = symbols.map((symbol) => {
       const kind = this.kindToSymbolKind(symbol.kind);
-      const start = new vscode.Position(symbol.range.start.line, symbol.range.start.character);
-      const end = new vscode.Position(symbol.range.end.line, symbol.range.end.character);
-      const range = new vscode.Range(start, end);
+      const range = wasmRangeToVscodeRange(symbol.range);
 
       return new vscode.DocumentSymbol(
         symbol.name,

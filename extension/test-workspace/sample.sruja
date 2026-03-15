@@ -1,0 +1,2 @@
+person = kind "Person"
+User = person "User"

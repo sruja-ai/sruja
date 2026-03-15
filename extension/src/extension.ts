@@ -9,6 +9,12 @@ import { getSkills, getSkillsRoot } from "./skills";
 import { SrujaSkillsTreeProvider } from "./skillsTree";
 import { SrujaDefinitionProvider, SrujaHoverProvider, SrujaDocumentSymbolProvider } from "./providers";
 import { exportMarkdownFromWasm, getDiagnosticsFromWasm, getMermaidFromWasm } from "./wasm";
+import { parseLintOutput } from "./lintParser";
+import { getSrujaLspPath, useWasmFromLspPath } from "./config";
+import { runLintJson, runCli } from "./cliRunner";
+import { parseJsonSafe } from "./safeJson";
+import { formatStatusLines, formatReviewLines, type StatusJson, type ReviewJson } from "./cliOutput";
+import { getDiagramPreviewHtml, escapeMermaidForScript } from "./diagramPreview";
 
 const execFileAsync = promisify(execFile);
 
@@ -17,130 +23,16 @@ let diagnosticCollection: vscode.DiagnosticCollection | undefined;
 let markdownPreviewPanel: vscode.WebviewPanel | undefined;
 let diagramPreviewPanel: vscode.WebviewPanel | undefined;
 
-/** Parse "sruja lint" stderr into VS Code diagnostics. Format:
- * [CODE] Error: message
- *   --> file:line:column
- */
-export function parseLintStderr(stderr: string, _docUri: string): vscode.Diagnostic[] {
-  const diagnostics: vscode.Diagnostic[] = [];
-  const lines = stderr.split(/\r?\n/);
-  const msgRe = /^\[([^\]]+)\]\s+(Error|Warning|Info):\s+(.+)$/;
-  const locRe = /^\s+-->\s+(.+):(\d+):(\d+)$/;
-
-  for (let i = 0; i < lines.length; i++) {
-    const locMatch = lines[i].match(locRe);
-    if (!locMatch) continue;
-    const [, filePart, lineStr, colStr] = locMatch;
-    const line = Math.max(0, parseInt(lineStr, 10) - 1);
-    const character = Math.max(0, parseInt(colStr, 10) - 1);
-
-    let code: string | undefined;
-    let severity: vscode.DiagnosticSeverity = vscode.DiagnosticSeverity.Error;
-    let message = "Validation error";
-
-    if (i > 0) {
-      const msgMatch = lines[i - 1].match(msgRe);
-      if (msgMatch) {
-        code = msgMatch[1];
-        const sev = msgMatch[2];
-        message = msgMatch[3].trim();
-        if (sev === "Warning") severity = vscode.DiagnosticSeverity.Warning;
-        else if (sev === "Info") severity = vscode.DiagnosticSeverity.Information;
-      }
-    }
-
-    const range = new vscode.Range(line, character, line, character);
-    const diag = new vscode.Diagnostic(range, message, severity);
-    if (code) diag.code = code;
-    diag.source = "sruja";
-    diagnostics.push(diag);
-  }
-
-  return diagnostics;
+function getLspPath(): string | undefined {
+  return vscode.workspace.getConfiguration("sruja").get<string>("lsp.path");
 }
 
-/** Lint output when using --format json (see docs/LINT_JSON_OUTPUT.md). */
-export interface LintJsonOutput {
-  ok: boolean;
-  error_count: number;
-  warning_count: number;
-  diagnostics: Array<{
-    code: string;
-    severity: string;
-    message: string;
-    location?: { file: string; line: number; column: number };
-  }>;
+function useWasm(): boolean {
+  return useWasmFromLspPath(getLspPath());
 }
 
-async function runLint(
-  srujaPath: string,
-  filePath: string
-): Promise<{ stdout: string; stderr: string }> {
-  return new Promise((resolve) => {
-    execFile(
-      srujaPath,
-      ["lint", filePath],
-      { encoding: "utf8", timeout: 15000, maxBuffer: 2 * 1024 * 1024 },
-      (_err: Error | null, stdout: string, stderr: string) => {
-        resolve({
-          stdout: typeof stdout === "string" ? stdout : "",
-          stderr: typeof stderr === "string" ? stderr : "",
-        });
-      }
-    );
-  });
-}
-
-/** Run lint with --format json for reliable diagnostics (DX + extraction quality). */
-async function runLintJson(
-  srujaPath: string,
-  filePath: string
-): Promise<{ stdout: string; stderr: string }> {
-  return new Promise((resolve) => {
-    execFile(
-      srujaPath,
-      ["lint", "--format", "json", filePath],
-      { encoding: "utf8", timeout: 15000, maxBuffer: 2 * 1024 * 1024 },
-      (_err: Error | null, stdout: string, stderr: string) => {
-        resolve({
-          stdout: typeof stdout === "string" ? stdout : "",
-          stderr: typeof stderr === "string" ? stderr : "",
-        });
-      }
-    );
-  });
-}
-
-export function parseLintJson(stdout: string, _docUri: string): vscode.Diagnostic[] | null {
-  try {
-    const out = JSON.parse(stdout) as LintJsonOutput;
-    if (!out.diagnostics || !Array.isArray(out.diagnostics)) return null;
-    const diagnostics: vscode.Diagnostic[] = [];
-    for (const d of out.diagnostics) {
-      const line = d.location ? Math.max(0, (d.location.line || 1) - 1) : 0;
-      const character = d.location ? Math.max(0, (d.location.column || 1) - 1) : 0;
-      const severity =
-        d.severity === "warning"
-          ? vscode.DiagnosticSeverity.Warning
-          : d.severity === "info"
-            ? vscode.DiagnosticSeverity.Information
-            : vscode.DiagnosticSeverity.Error;
-      const range = new vscode.Range(line, character, line, character);
-      const diag = new vscode.Diagnostic(range, d.message, severity);
-      if (d.code) diag.code = d.code;
-      diag.source = "sruja";
-      diagnostics.push(diag);
-    }
-    return diagnostics;
-  } catch {
-    return null;
-  }
-}
-
-/** Use WASM for lint/export unless user explicitly set sruja.lsp.path. WASM is always shipped with the extension. */
-function useWasm(context: vscode.ExtensionContext): boolean {
-  const config = vscode.workspace.getConfiguration("sruja").get<string>("lsp.path");
-  return !config?.trim();
+function getSrujaPath(): string {
+  return getSrujaLspPath(getLspPath());
 }
 
 async function updateDiagnostics(
@@ -153,17 +45,24 @@ async function updateDiagnostics(
   const uri = doc.uri;
   const filename = doc.uri.fsPath;
 
-  if (useWasm(context)) {
+  if (useWasm()) {
     try {
       const diags = await getDiagnosticsFromWasm(context, doc.getText(), filename);
       diagnosticCollection.set(uri, diags);
-    } catch {
-      diagnosticCollection.set(uri, []);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      diagnosticCollection.set(uri, [
+        new vscode.Diagnostic(
+          new vscode.Range(0, 0, 0, 0),
+          `Sruja WASM lint failed: ${message}`,
+          vscode.DiagnosticSeverity.Warning
+        ),
+      ]);
     }
     return;
   }
 
-  const srujaPath = getSrujaPath(context);
+  const srujaPath = getSrujaPath();
   const targetPath = doc.isDirty
     ? path.join(os.tmpdir(), `sruja-lint-${path.basename(filename)}`)
     : filename;
@@ -172,23 +71,13 @@ async function updateDiagnostics(
   }
   try {
     const { stdout, stderr } = await runLintJson(srujaPath, targetPath);
-    const diagsFromJson = parseLintJson(stdout, uri.toString());
-    const diags =
-      diagsFromJson !== null
-        ? diagsFromJson
-        : parseLintStderr(stderr, uri.toString());
+    const diags = parseLintOutput(stdout, stderr, uri.toString());
     diagnosticCollection.set(uri, diags);
   } finally {
     if (doc.isDirty) {
       await fs.promises.unlink(targetPath).catch(() => {});
     }
   }
-}
-
-function getSrujaPath(context: vscode.ExtensionContext): string {
-  const config = vscode.workspace.getConfiguration("sruja").get<string>("lsp.path");
-  if (config?.trim()) return config.trim();
-  return "sruja";
 }
 
 /** Output channel for architecture intelligence (drift, sync, status, review). */
@@ -201,34 +90,13 @@ function getCliOutputChannel(): vscode.OutputChannel {
   return cliOutputChannel;
 }
 
-/**
- * Run a Sruja CLI command in the workspace root. Architecture intelligence commands
- * (drift, sync, status, review) require the CLI; they have no WASM equivalent.
- */
-async function runCliInWorkspace(
-  context: vscode.ExtensionContext,
-  args: string[]
-): Promise<{ stdout: string; stderr: string; code: number }> {
+/** Run a Sruja CLI command in the workspace root. Throws if no folder open. */
+async function runCliInWorkspace(args: string[]): Promise<{ stdout: string; stderr: string; code: number }> {
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
     throw new Error("No workspace folder open. Open a folder to run architecture intelligence.");
   }
-  const srujaPath = getSrujaPath(context);
-  const cwd = folder.uri.fsPath;
-  return new Promise((resolve) => {
-    execFile(
-      srujaPath,
-      args,
-      { encoding: "utf8", cwd, timeout: 120000, maxBuffer: 4 * 1024 * 1024 },
-      (err: Error | null, stdout: string, stderr: string) => {
-        resolve({
-          stdout: typeof stdout === "string" ? stdout : "",
-          stderr: typeof stderr === "string" ? stderr : "",
-          code: err ? 1 : 0,
-        });
-      }
-    );
-  });
+  return runCli(getSrujaPath(), args, folder.uri.fsPath);
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -454,7 +322,7 @@ export function activate(context: vscode.ExtensionContext): void {
       const outPath = filePath.replace(/\.sruja$/i, ".md");
 
       let stdout: string | null = null;
-      if (useWasm(context)) {
+      if (useWasm()) {
         stdout = await exportMarkdownFromWasm(context, dsl);
         if (stdout === null) {
           vscode.window.showErrorMessage(
@@ -463,7 +331,7 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
       } else {
-        const cliPath = getSrujaPath(context);
+        const cliPath = getSrujaPath();
         let inputPath = filePath;
         let tmpPath: string | null = null;
         if (doc.isDirty || doc.uri.scheme !== "file") {
@@ -517,7 +385,7 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       const dsl = doc.getText();
-      if (!useWasm(context)) {
+      if (!useWasm()) {
         vscode.window.showInformationMessage(
           "Diagram preview uses bundled WASM. Clear sruja.lsp.path to use it, or use Sruja: Export to Markdown."
         );
@@ -542,12 +410,7 @@ export function activate(context: vscode.ExtensionContext): void {
       diagramPreviewPanel.onDidDispose(() => {
         diagramPreviewPanel = undefined;
       });
-      const mermaidEscaped = mermaid
-        .replace(/\\/g, "\\\\")
-        .replace(/`/g, "\\`")
-        .replace(/\$/g, "\\$")
-        .replace(/<\/script>/gi, "<\\/script>");
-      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(mermaidEscaped);
+      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapeMermaidForScript(mermaid));
     }),
     vscode.commands.registerCommand("sruja.runDrift", async () => {
       const channel = getCliOutputChannel();
@@ -555,7 +418,7 @@ export function activate(context: vscode.ExtensionContext): void {
       channel.show(true);
       channel.appendLine("Running sruja drift -r . ...");
       try {
-        const { stdout, stderr, code } = await runCliInWorkspace(context, ["drift", "-r", "."]);
+        const { stdout, stderr, code } = await runCliInWorkspace(["drift", "-r", "."]);
         channel.append(stdout);
         if (stderr) channel.append(stderr);
         channel.appendLine("");
@@ -581,7 +444,7 @@ export function activate(context: vscode.ExtensionContext): void {
       channel.show(true);
       channel.appendLine("Refreshing repo context (sruja sync -r . -f json) ...");
       try {
-        const { stdout, stderr, code } = await runCliInWorkspace(context, [
+        const { stdout, stderr, code } = await runCliInWorkspace([
           "sync",
           "-r",
           ".",
@@ -596,13 +459,9 @@ export function activate(context: vscode.ExtensionContext): void {
         }
         const contextPath = path.join(folder.uri.fsPath, ".sruja", "context.json");
         channel.appendLine(`Context written to ${contextPath}`);
-        try {
-          const parsed = JSON.parse(stdout) as { context_path?: string; truth_status?: string };
-          if (parsed.context_path) {
-            channel.appendLine(`Baseline/truth: ${parsed.truth_status ?? "unknown"}`);
-          }
-        } catch {
-          // ignore parse for display
+        const parsed = parseJsonSafe<{ context_path?: string; truth_status?: string }>(stdout);
+        if (parsed.ok && parsed.value.context_path) {
+          channel.appendLine(`Baseline/truth: ${parsed.value.truth_status ?? "unknown"}`);
         }
         channel.appendLine("--- Done ---");
         vscode.window.showInformationMessage("Sruja: Repo context updated.");
@@ -617,7 +476,7 @@ export function activate(context: vscode.ExtensionContext): void {
       channel.show(true);
       channel.appendLine("Running sruja status -r . --format json ...");
       try {
-        const { stdout, stderr, code } = await runCliInWorkspace(context, [
+        const { stdout, stderr, code } = await runCliInWorkspace([
           "status",
           "-r",
           ".",
@@ -630,21 +489,14 @@ export function activate(context: vscode.ExtensionContext): void {
           channel.appendLine("--- Status failed ---");
           return;
         }
-        const status = JSON.parse(stdout) as {
-          baseline?: string | null;
-          truth_status?: string;
-          violations_count?: number;
-          health_score?: number;
-          context_updated_at?: string;
-        };
-        const base = status.baseline ?? "(none)";
-        const truth = status.truth_status ?? "unknown";
-        const violations = status.violations_count ?? 0;
-        const score = status.health_score != null ? ` ${status.health_score}/100` : "";
-        const ctxAt = status.context_updated_at ? ` | Context: ${status.context_updated_at}` : "";
-        channel.appendLine(`Baseline: ${base}`);
-        channel.appendLine(`Truth: ${truth} (${violations} violation(s))${score}${ctxAt}`);
-        channel.appendLine("--- Done ---");
+        const parsed = parseJsonSafe<StatusJson>(stdout);
+        if (!parsed.ok) {
+          channel.appendLine(`Parse error: ${parsed.error}`);
+          return;
+        }
+        for (const line of formatStatusLines(parsed.value)) {
+          channel.appendLine(line);
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         channel.appendLine(`Error: ${msg}`);
@@ -656,7 +508,7 @@ export function activate(context: vscode.ExtensionContext): void {
       channel.show(true);
       channel.appendLine("Running sruja review -r . --format json ...");
       try {
-        const { stdout, stderr, code } = await runCliInWorkspace(context, [
+        const { stdout, stderr, code } = await runCliInWorkspace([
           "review",
           "-r",
           ".",
@@ -669,62 +521,14 @@ export function activate(context: vscode.ExtensionContext): void {
           channel.appendLine("--- Review failed ---");
           return;
         }
-        const review = JSON.parse(stdout) as {
-          truth_status: string;
-          baseline?: string | null;
-          has_drift: boolean;
-          violations_count: number;
-          health_score?: number;
-          new_components: string[];
-          missing_components: string[];
-          drifted_dependencies: string[];
-          open_questions: string[];
-          suggestions: string[];
-        };
-        const base = review.baseline ?? "(none)";
-        const truth = review.truth_status ?? "unknown";
-        const violations = review.violations_count ?? 0;
-        const score = review.health_score != null ? ` ${review.health_score}/100` : "";
-        channel.appendLine(`Baseline: ${base}`);
-        channel.appendLine(`Truth: ${truth} (${violations} violation(s))${score}`);
-        channel.appendLine(`Has drift: ${review.has_drift}`);
-        channel.appendLine("");
-        if (review.new_components.length > 0) {
-          channel.appendLine("New components:");
-          for (const c of review.new_components) {
-            channel.appendLine(`  + ${c}`);
-          }
-          channel.appendLine("");
+        const parsed = parseJsonSafe<ReviewJson>(stdout);
+        if (!parsed.ok) {
+          channel.appendLine(`Parse error: ${parsed.error}`);
+          return;
         }
-        if (review.missing_components.length > 0) {
-          channel.appendLine("Missing components:");
-          for (const c of review.missing_components) {
-            channel.appendLine(`  - ${c}`);
-          }
-          channel.appendLine("");
+        for (const line of formatReviewLines(parsed.value)) {
+          channel.appendLine(line);
         }
-        if (review.drifted_dependencies.length > 0) {
-          channel.appendLine("Drifted dependencies:");
-          for (const d of review.drifted_dependencies) {
-            channel.appendLine(`  ~ ${d}`);
-          }
-          channel.appendLine("");
-        }
-        if (review.open_questions.length > 0) {
-          channel.appendLine("Open questions:");
-          for (const q of review.open_questions) {
-            channel.appendLine(`  ? ${q}`);
-          }
-          channel.appendLine("");
-        }
-        if (review.suggestions.length > 0) {
-          channel.appendLine("Suggestions:");
-          for (const s of review.suggestions) {
-            channel.appendLine(`  > ${s}`);
-          }
-          channel.appendLine("");
-        }
-        channel.appendLine("--- Done ---");
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         channel.appendLine(`Error: ${msg}`);
@@ -732,31 +536,4 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }),
   );
-}
-
-export function getDiagramPreviewHtml(mermaidCodeEscaped: string): string {
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net;">
-   <title>Sruja – Architecture intelligence for the AI era. – Diagram Preview</title>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-</head>
-<body>
-  <div id="diagram" class="mermaid"></div>
-  <script>
-    (function() {
-      var code = \`${mermaidCodeEscaped}\`;
-      var el = document.getElementById('diagram');
-      el.textContent = code;
-      mermaid.initialize({ startOnLoad: false });
-      mermaid.run({ nodes: [el] }).catch(function(err) {
-        el.innerHTML = '<p style="color:#c00;font-family:sans-serif;">' + (err.message || String(err)) + '</p>';
-      });
-    })();
-  </script>
-</body>
-</html>
-`;
 }

@@ -181,16 +181,22 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "test": "jest",
+    "test:vscode": "npm run compile && node out/test/runTest.js",
     "copy:assets": "bash scripts/copy-assets.sh",
     "package": "npm run copy:assets && npm run compile && vsce package --no-dependencies",
     "install:vsix": "npm run package && echo '\nInstall in Cursor/VS Code: Extensions → ⋯ → Install from VSIX... → select extension/*.vsix\n'"
   },
   "devDependencies": {
+    "@types/glob": "^8.1.0",
     "@types/jest": "^30.0.0",
+    "@types/mocha": "^10.0.0",
     "@types/node": "^25.0.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.5.0",
     "@vscode/vsce": "^3.3.2",
+    "glob": "^10.3.0",
     "jest": "^30.3.0",
+    "mocha": "^10.2.0",
     "ts-jest": "^29.4.6",
     "typescript": "~5.9.0"
   }

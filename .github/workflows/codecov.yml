@@ -1,0 +1,42 @@
+# Run extension tests with coverage and upload to Codecov.
+# Badge: README uses ?flag=typescript for TypeScript (extension) coverage.
+name: Codecov (TypeScript)
+
+on:
+  push:
+    branches: [main, develop, simplify]
+  pull_request:
+    branches: [main, develop, simplify]
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: Extension coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: extension/package-lock.json
+
+      - name: Install extension dependencies
+        run: npm ci
+        working-directory: extension
+
+      - name: Run tests with coverage
+        run: npm test -- --coverage --coverageReporters=lcov --coverageReporters=text-summary
+        working-directory: extension
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: extension/coverage
+          flags: typescript
+          fail_ci_if_error: false
