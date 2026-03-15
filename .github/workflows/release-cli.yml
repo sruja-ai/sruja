@@ -21,6 +21,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 # Avoid this run being cancelled when another release is triggered (e.g. two merges to main).
 # Each release tag gets its own group; we never cancel a run in progress.
 concurrency:
