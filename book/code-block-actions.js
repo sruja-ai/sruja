@@ -149,7 +149,7 @@
     return (s || "")
       .replace(/\u2192/g, "->")
       .replace(/[""]/g, '"')
-      .replace(/[']/g, "'")
+      .replace(/['']/g, "'")
       .replace(/\u2013|\u2014/g, "-")
       .split(/\r?\n/)
       .map(function (line) {
