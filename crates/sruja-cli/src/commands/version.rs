@@ -3,6 +3,6 @@
 use super::CliError;
 
 pub fn version() -> Result<(), CliError> {
-    println!("sruja version 2.0.0");
+    println!("sruja version {}", env!("CARGO_PKG_VERSION"));
     Ok(())
 }
