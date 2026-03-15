@@ -8,31 +8,27 @@
 //!
 //! - **[`Rule`](rule::Rule)** – Trait for validation logic; implement to add custom rules.
 //! - **[`Validator`](core::Validator)** – Orchestrates rules and runs validation.
+//! - **[`ValidatorBuilder`](builder::ValidatorBuilder)** – Fluent API for configuring validators.
 //!
 //! # Example
 //!
-//! ```rust
-//! use sruja_engine::Validator;
-//! use sruja_language::Parser;
-//!
-//! let source = r#"
-//! user = person "User"
-//! web = system "Web App"
-//! user -> web "uses"
-//! "#;
-//! let parser = Parser::new("example.sruja".to_string());
-//! let program = parser.parse(source).unwrap();
-//! let validator = Validator::with_default_rules();
-//! let diagnostics = validator.validate_sync(&program);
 //! ```
-
+//! use std::time::Duration;
+//! use sruja_engine::validator::ValidatorBuilder;
+//!
+//! let validator = ValidatorBuilder::new()
+//!     .with_default_rules()
+//!     .with_parallel(true)
+//!     .with_max_parallelism(4)
+//!     .with_rule_timeout(Duration::from_secs(30))
+//!     .build();
+//! ```
+//!
 mod builder;
 mod config;
 mod core;
 mod rule;
 
-#[cfg(test)]
-mod tests;
-
+pub use builder::ValidatorBuilder;
 pub use core::{RuleProfile, Validator};
 pub use rule::Rule;

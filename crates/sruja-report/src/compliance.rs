@@ -3,10 +3,16 @@
 use serde::{Deserialize, Serialize};
 use sruja_diff::Violation;
 
+/// Compliance status indicating whether the architecture conforms to expectations.
+///
+/// - `Compliant`: No structural, policy, or boundary violations detected
+/// - `NonCompliant`: One or more violations were found
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ComplianceStatus {
+    /// The architecture is fully compliant with no violations
     Compliant,
+    /// The architecture has one or more violations (structural, policy, or boundary)
     NonCompliant,
 }
 

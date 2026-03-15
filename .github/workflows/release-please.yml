@@ -1,3 +1,6 @@
+# Release Please: CHANGELOG and release PR from conventional commits.
+# Note: "Node.js 20 actions are deprecated" warning comes from release-please-action (it uses runs.using: node20).
+# It will disappear when upstream updates to node22: https://github.com/googleapis/release-please-action
 name: Release Please
 
 on:

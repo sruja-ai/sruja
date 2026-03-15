@@ -19,22 +19,38 @@ pub mod severity;
 
 pub use severity::Severity;
 
+/// Unique identifier for a node in the architecture graph.
 pub type NodeId = String;
+
+/// Unique identifier for a decision in the architecture.
 pub type DecisionId = String;
+
+/// Unique identifier for a policy in the architecture.
 pub type PolicyId = String;
+
+/// Unique identifier for a requirement in the architecture.
 pub type RequirementId = String;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NodeKind {
+    /// A top-level system or subsystem that groups related services.
     System,
+    /// A deployable unit of functionality that can run independently.
     Service,
+    /// A grouping of components within a service.
     Container,
+    /// A modular unit of code with a specific responsibility.
     Component,
+    /// A data storage system.
     Database,
+    /// A message queue or streaming platform.
     Queue,
+    /// An external API or service outside the system boundary.
     ExternalApi,
+    /// A user-facing application or interface.
     Frontend,
+    /// A generic module or package.
     Module,
 }
 
@@ -82,14 +98,23 @@ impl std::str::FromStr for NodeKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EdgeKind {
+    /// Indicates that the source node depends on the target node for functionality.
     DependsOn,
+    /// Indicates that the source node makes calls to the target node.
     Calls,
+    /// Indicates that the source node reads data from the target node.
     ReadsFrom,
+    /// Indicates that the source node writes data to the target node.
     WritesTo,
+    /// Indicates that the source node publishes events to the target node.
     PublishesTo,
+    /// Indicates that the source node subscribes to events from the target node.
     SubscribesTo,
+    /// Indicates that the source node owns or manages the target node.
     Owns,
+    /// Indicates that the source node contains or encompasses the target node.
     Contains,
+    /// Indicates that the source node uses the target node in some way.
     Uses,
 }
 
@@ -203,5 +228,33 @@ mod tests {
         assert_eq!(json, "\"external_api\"");
         let parsed: NodeKind = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed, kind);
+    }
+
+    // Tests for type aliases
+    #[test]
+    fn test_type_aliases() {
+        let node_id: NodeId = "node123".to_string();
+        let decision_id: DecisionId = "dec456".to_string();
+        let policy_id: PolicyId = "pol789".to_string();
+        let requirement_id: RequirementId = "req000".to_string();
+
+        assert_eq!(node_id, "node123");
+        assert_eq!(decision_id, "dec456");
+        assert_eq!(policy_id, "pol789");
+        assert_eq!(requirement_id, "req000");
+    }
+
+    // Add FromStr test for Severity (missing implementation)
+    #[test]
+    fn test_severity_from_str() {
+        assert_eq!("error".parse::<Severity>(), Ok(Severity::Error));
+        assert_eq!("warning".parse::<Severity>(), Ok(Severity::Warning));
+        assert_eq!("info".parse::<Severity>(), Ok(Severity::Info));
+        assert_eq!("hint".parse::<Severity>(), Ok(Severity::Hint));
+        assert_eq!("ERROR".parse::<Severity>(), Ok(Severity::Error)); // Case insensitive
+        assert_eq!("WARNING".parse::<Severity>(), Ok(Severity::Warning));
+        assert_eq!("INFO".parse::<Severity>(), Ok(Severity::Info));
+        assert_eq!("HINT".parse::<Severity>(), Ok(Severity::Hint));
+        assert!("unknown".parse::<Severity>().is_err());
     }
 }

@@ -22,7 +22,7 @@
 | **sruja-cli** | User | The binary; orchestrates everything | **Essential** |
 | **sruja-graph** | cli | `why`, analyze (complexity), compliance (KG), merge_scan | **Useful** (why/analyze); **Review** (complexity depth) |
 | **sruja-intent** | cli | `sruja intent check`, compliance (intent drift) | **Useful** |
-| **sruja-report** | cli | ComplianceReport DTO for `sruja compliance` | **Thin** (DTO only; comprehensive half unused) |
+| **sruja-report** | cli | ComplianceReport DTO for `sruja compliance` | **Thin** (DTO only) |
 
 ---
 
@@ -151,7 +151,7 @@
 1. **Keep as-is (essential):** sruja-types, sruja-diagnostics, sruja-language, sruja-engine, sruja-export, sruja-scan, sruja-diff, sruja-cli, sruja-lsp (if extension is shipped).
 2. **Keep, prove or simplify:** sruja-graph — keep for `why` and compliance; validate that `sruja analyze` / `sruja complexity` are used in practice; if not, trim or make optional.
 3. **Keep:** sruja-intent (clear intent-vs-reality value), sruja-wasm (extension value).
-4. **Simplify or inline:** sruja-report — either remove unused ComprehensiveReport/build_recommendations/SemanticSection, or inline compliance DTOs into CLI and retire the crate.
+4. **Simplify:** sruja-report — kept as minimal compliance schema crate.
 5. **Document:** Add a short “when to use which command” (e.g. quickstart vs drift vs intent check vs compliance) in README or book so value is obvious to users.
 
 ---

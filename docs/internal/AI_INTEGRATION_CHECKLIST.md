@@ -2,7 +2,7 @@
 
 Step-by-step changes to stitch AI components into core CLI workflow.
 
-> **Status (post-refactor):** **sruja-extract** and **sruja-chat** have been removed. The CLI already has quickstart, why, drift, analyze, context (see README and book CLI guide). Use this checklist for further AI stitching; skip steps that reference removed crates.
+> **Status (post-refactor):** **sruja-extract**, **sruja-chat**, and **sruja-semantic** have been removed. The CLI already has quickstart, why, drift, analyze, context (see README and book CLI guide). **ComprehensiveReport** and **build_recommendations** from sruja-report have been removed. Use this checklist for further AI stitching; skip steps that reference removed crates or types.
 
 ---
 

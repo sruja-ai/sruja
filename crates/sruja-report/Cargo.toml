@@ -5,12 +5,11 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Canonical report schema for Sruja architecture intelligence (structural, semantic, intent, runtime)"
+description = "Compliance report schema for Sruja"
 
 [dependencies]
 serde = { workspace = true }
 sruja-diff = { path = "../sruja-diff" }
 
 [dev-dependencies]
-serde_json = "1.0"
-sruja-scan = { path = "../sruja-scan" }
+serde_json = { workspace = true }

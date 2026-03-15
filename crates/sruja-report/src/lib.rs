@@ -1,14 +1,7 @@
-//! Canonical report schema for Sruja architecture intelligence.
+//! Compliance report schema for Sruja.
 //!
-//! This crate defines shared report types (ComprehensiveReport, Recommendation,
-//! and layer sections) so CLI and MCP emit the same JSON shape. It is DTO-only;
-//! callers build these from sruja-diff, sruja-intent, and sruja-runtime results.
+//! This crate defines compliance DTOs used by CLI for JSON output.
 
 pub mod compliance;
-pub mod comprehensive;
 
 pub use compliance::{ComplianceReport, ComplianceStatus, DriftEntry, PolicyViolationEntry};
-pub use comprehensive::{
-    build_recommendations, ComprehensiveReport, Effort, IntentSection, Layer, Priority,
-    Recommendation, RecommendationCategory, RuntimeSection, StructuralSection,
-};
