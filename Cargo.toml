@@ -37,13 +37,13 @@ nom = { version = "7", features = ["std"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "full"] }
 tower-lsp = "0.20"
 async-trait = "0.1"
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.6", features = ["derive"] }
 wasm-bindgen = "0.2"
 js-sys = "0.3"
 web-sys = "0.3"
 proptest = "1.5"
 chrono = { version = "0.4", features = ["serde"] }
-uuid = { version = "1.0", features = ["v4", "serde"] }
+uuid = { version = "1.22", features = ["v4", "serde"] }
 
 [profile.release]
 opt-level = "z"
