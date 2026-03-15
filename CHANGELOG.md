@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.2](https://github.com/sruja-ai/sruja/compare/sruja-v0.17.1...sruja-v0.17.2) (2026-03-15)
+
+
+### Bug Fixes
+
+* configure Codecov permissions and settings for coverage uploads ([859b493](https://github.com/sruja-ai/sruja/commit/859b493a5ec14c27f347989e7b5cbfc5d8ca0302))
+
 ## [0.17.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.17.0...sruja-v0.17.1) (2026-03-15)
 
 
