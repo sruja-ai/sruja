@@ -4,7 +4,7 @@
     "target": "ES2022",
     "outDir": "out",
     "lib": ["ES2022"],
-    "types": ["node", "jest", "mocha"],
+    "types": ["node", "jest"],
     "sourceMap": true,
     "rootDir": "src",
     "strict": true,
