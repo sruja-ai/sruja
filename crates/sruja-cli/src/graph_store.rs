@@ -139,7 +139,6 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let repo_path = temp_dir.path();
 
-        // Create a simple JS file
         std::fs::create_dir_all(repo_path.join("src")).unwrap();
         std::fs::write(
             repo_path.join("src/index.js"),
@@ -154,7 +153,6 @@ mod tests {
         let graph = result.unwrap();
         assert!(!graph.nodes.is_empty());
 
-        // Check file was created
         assert!(repo_path.join(".sruja/graph.json").exists());
     }
 
@@ -163,14 +161,189 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let repo_path = temp_dir.path();
 
-        // Build and save first
         std::fs::create_dir_all(repo_path.join("src")).unwrap();
         std::fs::write(repo_path.join("src/index.js"), "").unwrap();
 
         build_and_save_graph(repo_path).unwrap();
 
-        // Then load
         let loaded = load_graph(repo_path);
         assert!(loaded.is_ok());
+    }
+
+    #[test]
+    fn test_load_graph_missing_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let result = load_graph(temp_dir.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_graph_invalid_json() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+        std::fs::create_dir_all(repo_path.join(".sruja")).unwrap();
+        std::fs::write(repo_path.join(".sruja/graph.json"), "not valid json").unwrap();
+
+        let result = load_graph(repo_path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_save_graph_creates_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+        let graph = KnowledgeGraph::new();
+
+        let result = save_graph(repo_path, &graph);
+        assert!(result.is_ok());
+        assert!(repo_path.join(".sruja/graph.json").exists());
+    }
+
+    #[test]
+    fn test_save_graph_pretty_json() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+        let mut graph = KnowledgeGraph::with_name("TestGraph");
+
+        let node = sruja_graph::ArchitectureNode {
+            id: "test_node".to_string(),
+            kind: sruja_graph::NodeKind::Service,
+            label: "Test".to_string(),
+            technology: Some("Rust".to_string()),
+            description: Some("Test node".to_string()),
+            metadata: std::collections::HashMap::new(),
+            source: sruja_graph::SourceReference::manual(),
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+        graph.add_node(node).unwrap();
+
+        save_graph(repo_path, &graph).unwrap();
+
+        let json = std::fs::read_to_string(repo_path.join(".sruja/graph.json")).unwrap();
+        assert!(json.contains("\"TestGraph\""));
+        assert!(json.contains("test_node"));
+    }
+
+    #[test]
+    fn test_load_or_build_graph_creates_new_when_missing() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        std::fs::create_dir_all(repo_path.join("src")).unwrap();
+        std::fs::write(repo_path.join("src/app.js"), "console.log('hello')").unwrap();
+
+        let result = load_or_build_graph(repo_path);
+        assert!(result.is_ok());
+        assert!(repo_path.join(".sruja/graph.json").exists());
+    }
+
+    #[test]
+    fn test_load_or_build_graph_loads_existing() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        std::fs::create_dir_all(repo_path.join("src")).unwrap();
+        std::fs::write(repo_path.join("src/app.js"), "console.log('hello')").unwrap();
+
+        let first = build_and_save_graph(repo_path).unwrap();
+        let second = load_or_build_graph(repo_path);
+
+        assert!(second.is_ok());
+    }
+
+    #[test]
+    fn test_load_or_build_graph_rebuilds_on_corruption() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        std::fs::create_dir_all(repo_path.join(".sruja")).unwrap();
+        std::fs::write(repo_path.join(".sruja/graph.json"), "corrupted").unwrap();
+
+        std::fs::create_dir_all(repo_path.join("src")).unwrap();
+        std::fs::write(repo_path.join("src/app.js"), "console.log('hello')").unwrap();
+
+        let result = load_or_build_graph(repo_path);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_get_current_commit_sha_in_git_repo() {
+        let sha = get_current_commit_sha(std::path::Path::new("."));
+        if std::path::Path::new(".git").exists() {
+            assert!(sha.is_some());
+            let sha = sha.unwrap();
+            assert_eq!(sha.len(), 7);
+            assert!(sha.chars().all(|c| c.is_ascii_hexdigit()));
+        }
+    }
+
+    #[test]
+    fn test_get_current_commit_sha_outside_git() {
+        let temp_dir = TempDir::new().unwrap();
+        let sha = get_current_commit_sha(temp_dir.path());
+        assert!(sha.is_none());
+    }
+
+    #[test]
+    fn test_is_graph_stale_no_graph_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let graph = KnowledgeGraph::new();
+        let result = is_graph_stale(temp_dir.path(), &graph);
+        assert!(result.is_ok());
+        assert!(result.unwrap());
+    }
+
+    #[test]
+    fn test_build_and_save_graph_empty_repo() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        let result = build_and_save_graph(repo_path);
+        assert!(result.is_ok());
+
+        let graph = result.unwrap();
+        assert!(graph.nodes.is_empty());
+    }
+
+    #[test]
+    fn test_save_graph_overwrites_existing() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        let graph1 = KnowledgeGraph::with_name("First");
+        save_graph(repo_path, &graph1).unwrap();
+
+        let graph2 = KnowledgeGraph::with_name("Second");
+        save_graph(repo_path, &graph2).unwrap();
+
+        let loaded = load_graph(repo_path).unwrap();
+        assert_eq!(loaded.metadata.name, "Second");
+    }
+
+    #[test]
+    fn test_load_graph_roundtrip_preserves_data() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        let mut original = KnowledgeGraph::with_name("TestArchitecture");
+        let node = sruja_graph::ArchitectureNode {
+            id: "svc_api".to_string(),
+            kind: sruja_graph::NodeKind::Service,
+            label: "API Service".to_string(),
+            technology: Some("Node.js".to_string()),
+            description: Some("Main API".to_string()),
+            metadata: std::collections::HashMap::new(),
+            source: sruja_graph::SourceReference::manual(),
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+        original.add_node(node).unwrap();
+
+        save_graph(repo_path, &original).unwrap();
+        let loaded = load_graph(repo_path).unwrap();
+
+        assert_eq!(loaded.metadata.name, "TestArchitecture");
+        assert!(loaded.get_node("svc_api").is_some());
     }
 }
