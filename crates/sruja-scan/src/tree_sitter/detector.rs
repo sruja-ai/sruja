@@ -64,3 +64,64 @@ pub fn detect_language(path: &Path) -> Option<Language> {
 pub fn is_source_file(path: &Path) -> bool {
     detect_language(path).is_some()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detect_language_rust() {
+        assert_eq!(
+            detect_language(Path::new("src/lib.rs")),
+            Some(Language::Rust)
+        );
+    }
+
+    #[test]
+    fn detect_language_typescript_and_js() {
+        assert_eq!(
+            detect_language(Path::new("app.ts")),
+            Some(Language::TypeScript)
+        );
+        assert_eq!(
+            detect_language(Path::new("app.tsx")),
+            Some(Language::TypeScript)
+        );
+        assert_eq!(
+            detect_language(Path::new("index.mjs")),
+            Some(Language::JavaScript)
+        );
+        assert_eq!(
+            detect_language(Path::new("index.cjs")),
+            Some(Language::JavaScript)
+        );
+    }
+
+    #[test]
+    fn detect_language_go_python_java() {
+        assert_eq!(detect_language(Path::new("main.go")), Some(Language::Go));
+        assert_eq!(detect_language(Path::new("script.py")), Some(Language::Python));
+        assert_eq!(
+            detect_language(Path::new("Main.java")),
+            Some(Language::Java)
+        );
+    }
+
+    #[test]
+    fn detect_language_unknown_returns_none() {
+        assert_eq!(detect_language(Path::new("file.txt")), None);
+        assert_eq!(detect_language(Path::new("README")), None);
+        assert_eq!(detect_language(Path::new("noext")), None);
+    }
+
+    #[test]
+    fn is_source_file_true_for_known_extensions() {
+        assert!(is_source_file(Path::new("lib.rs")));
+        assert!(is_source_file(Path::new("main.go")));
+    }
+
+    #[test]
+    fn is_source_file_false_for_unknown() {
+        assert!(!is_source_file(Path::new("data.json")));
+    }
+}

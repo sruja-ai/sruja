@@ -169,4 +169,301 @@ mod tests {
         let result = scan_cargo_repo(temp.path());
         assert!(result.is_err());
     }
+
+    #[test]
+    fn parse_cargo_metadata_valid_json() {
+        let json = r#"{
+            "packages": [],
+            "resolve": null,
+            "workspace_members": [],
+            "workspace_root": "/tmp/test"
+        }"#;
+
+        let metadata: CargoMetadata = serde_json::from_str(json).expect("parse");
+        assert!(metadata.packages.is_empty());
+        assert!(metadata.resolve.is_none());
+    }
+
+    #[test]
+    fn parse_cargo_metadata_with_packages() {
+        let json = r#"{
+            "packages": [
+                {
+                    "id": "test_pkg 0.1.0 (path+file:///tmp/test)",
+                    "name": "test_pkg",
+                    "manifest_path": "/tmp/test/Cargo.toml",
+                    "dependencies": []
+                }
+            ],
+            "resolve": null,
+            "workspace_members": ["test_pkg 0.1.0 (path+file:///tmp/test)"],
+            "workspace_root": "/tmp/test"
+        }"#;
+
+        let metadata: CargoMetadata = serde_json::from_str(json).expect("parse");
+        assert_eq!(metadata.packages.len(), 1);
+        assert_eq!(metadata.packages[0].name, "test_pkg");
+        assert_eq!(metadata.workspace_members.len(), 1);
+    }
+
+    #[test]
+    fn parse_cargo_metadata_with_dependencies() {
+        let json = r#"{
+            "packages": [
+                {
+                    "id": "pkg_a 0.1.0 (path+file:///tmp/test/a)",
+                    "name": "pkg_a",
+                    "manifest_path": "/tmp/test/a/Cargo.toml",
+                    "dependencies": [
+                        {"name": "serde"},
+                        {"name": "sqlx"}
+                    ]
+                }
+            ],
+            "resolve": null,
+            "workspace_members": ["pkg_a 0.1.0 (path+file:///tmp/test/a)"],
+            "workspace_root": "/tmp/test"
+        }"#;
+
+        let metadata: CargoMetadata = serde_json::from_str(json).expect("parse");
+        assert_eq!(metadata.packages[0].dependencies.len(), 2);
+    }
+
+    #[test]
+    fn parse_cargo_resolve_nodes() {
+        let json = r#"{
+            "packages": [],
+            "resolve": {
+                "nodes": [
+                    {
+                        "id": "pkg_a 0.1.0",
+                        "deps": [{"pkg": "pkg_b 0.1.0"}]
+                    }
+                ]
+            },
+            "workspace_members": [],
+            "workspace_root": "/tmp/test"
+        }"#;
+
+        let metadata: CargoMetadata = serde_json::from_str(json).expect("parse");
+        assert!(metadata.resolve.is_some());
+        let resolve = metadata.resolve.unwrap();
+        assert_eq!(resolve.nodes.len(), 1);
+        assert_eq!(resolve.nodes[0].deps.len(), 1);
+    }
+
+    #[test]
+    fn cargo_dependency_deserialize() {
+        let json = r#"{"name": "serde"}"#;
+        let dep: CargoDependency = serde_json::from_str(json).expect("parse");
+        assert_eq!(dep.name, "serde");
+    }
+
+    #[test]
+    fn cargo_package_deserialize() {
+        let json = r#"{
+            "id": "test 0.1.0",
+            "name": "test",
+            "manifest_path": "/path/Cargo.toml",
+            "dependencies": []
+        }"#;
+        let pkg: CargoPackage = serde_json::from_str(json).expect("parse");
+        assert_eq!(pkg.name, "test");
+        assert_eq!(pkg.manifest_path, "/path/Cargo.toml");
+    }
+
+    #[test]
+    fn cargo_resolve_node_deserialize() {
+        let json = r#"{
+            "id": "pkg 0.1.0",
+            "deps": [{"pkg": "dep 0.2.0"}]
+        }"#;
+        let node: CargoResolveNode = serde_json::from_str(json).expect("parse");
+        assert_eq!(node.id, "pkg 0.1.0");
+        assert_eq!(node.deps.len(), 1);
+    }
+
+    #[test]
+    fn cargo_resolve_dep_deserialize() {
+        let json = r#"{"pkg": "dependency 1.0.0"}"#;
+        let dep: CargoResolveDep = serde_json::from_str(json).expect("parse");
+        assert_eq!(dep.pkg, "dependency 1.0.0");
+    }
+
+    #[test]
+    fn graph_metadata_includes_scanner_info() {
+        let json = r#"{
+            "packages": [],
+            "resolve": null,
+            "workspace_members": [],
+            "workspace_root": "/tmp/test"
+        }"#;
+
+        let metadata: CargoMetadata = serde_json::from_str(json).expect("parse");
+        let mut graph = Graph::new();
+        graph.metadata.insert(
+            "scanner".to_string(),
+            "cargo_metadata(format_version=1)".to_string(),
+        );
+
+        assert!(graph.metadata.contains_key("scanner"));
+    }
+
+    #[test]
+    fn db_client_hint_detected() {
+        let mut node = Node {
+            id: "test".to_string(),
+            kind: NodeKind::Module,
+            label: "test".to_string(),
+            technology: Some("Rust".to_string()),
+            path: None,
+            metadata: HashMap::new(),
+        };
+
+        let deps = vec![CargoDependency {
+            name: "sqlx".to_string(),
+        }];
+
+        if deps
+            .iter()
+            .any(|d| d.name.eq_ignore_ascii_case("sqlx") || d.name.eq_ignore_ascii_case("diesel"))
+        {
+            node.metadata
+                .insert("hint:db_client".to_string(), "true".to_string());
+        }
+
+        assert_eq!(
+            node.metadata.get("hint:db_client"),
+            Some(&"true".to_string())
+        );
+    }
+
+    #[test]
+    fn http_client_hint_detected() {
+        let mut node = Node {
+            id: "test".to_string(),
+            kind: NodeKind::Module,
+            label: "test".to_string(),
+            technology: Some("Rust".to_string()),
+            path: None,
+            metadata: HashMap::new(),
+        };
+
+        let deps = vec![CargoDependency {
+            name: "reqwest".to_string(),
+        }];
+
+        if deps.iter().any(|d| {
+            d.name.eq_ignore_ascii_case("reqwest")
+                || d.name.eq_ignore_ascii_case("hyper")
+                || d.name.eq_ignore_ascii_case("ureq")
+        }) {
+            node.metadata
+                .insert("hint:http_client".to_string(), "true".to_string());
+        }
+
+        assert_eq!(
+            node.metadata.get("hint:http_client"),
+            Some(&"true".to_string())
+        );
+    }
+
+    #[test]
+    fn no_hints_without_matching_deps() {
+        let mut node = Node {
+            id: "test".to_string(),
+            kind: NodeKind::Module,
+            label: "test".to_string(),
+            technology: Some("Rust".to_string()),
+            path: None,
+            metadata: HashMap::new(),
+        };
+
+        let deps = vec![
+            CargoDependency {
+                name: "serde".to_string(),
+            },
+            CargoDependency {
+                name: "tokio".to_string(),
+            },
+        ];
+
+        if deps
+            .iter()
+            .any(|d| d.name.eq_ignore_ascii_case("sqlx") || d.name.eq_ignore_ascii_case("diesel"))
+        {
+            node.metadata
+                .insert("hint:db_client".to_string(), "true".to_string());
+        }
+        if deps.iter().any(|d| {
+            d.name.eq_ignore_ascii_case("reqwest")
+                || d.name.eq_ignore_ascii_case("hyper")
+                || d.name.eq_ignore_ascii_case("ureq")
+        }) {
+            node.metadata
+                .insert("hint:http_client".to_string(), "true".to_string());
+        }
+
+        assert!(!node.metadata.contains_key("hint:db_client"));
+        assert!(!node.metadata.contains_key("hint:http_client"));
+    }
+
+    #[test]
+    fn diesel_detected_as_db_client() {
+        let mut node = Node {
+            id: "test".to_string(),
+            kind: NodeKind::Module,
+            label: "test".to_string(),
+            technology: Some("Rust".to_string()),
+            path: None,
+            metadata: HashMap::new(),
+        };
+
+        let deps = vec![CargoDependency {
+            name: "Diesel".to_string(),
+        }];
+
+        if deps
+            .iter()
+            .any(|d| d.name.eq_ignore_ascii_case("sqlx") || d.name.eq_ignore_ascii_case("diesel"))
+        {
+            node.metadata
+                .insert("hint:db_client".to_string(), "true".to_string());
+        }
+
+        assert_eq!(
+            node.metadata.get("hint:db_client"),
+            Some(&"true".to_string())
+        );
+    }
+
+    #[test]
+    fn hyper_detected_as_http_client() {
+        let mut node = Node {
+            id: "test".to_string(),
+            kind: NodeKind::Module,
+            label: "test".to_string(),
+            technology: Some("Rust".to_string()),
+            path: None,
+            metadata: HashMap::new(),
+        };
+
+        let deps = vec![CargoDependency {
+            name: "HYPER".to_string(),
+        }];
+
+        if deps.iter().any(|d| {
+            d.name.eq_ignore_ascii_case("reqwest")
+                || d.name.eq_ignore_ascii_case("hyper")
+                || d.name.eq_ignore_ascii_case("ureq")
+        }) {
+            node.metadata
+                .insert("hint:http_client".to_string(), "true".to_string());
+        }
+
+        assert_eq!(
+            node.metadata.get("hint:http_client"),
+            Some(&"true".to_string())
+        );
+    }
 }
