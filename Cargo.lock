@@ -1302,6 +1302,7 @@ version = "1.0.149"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83fc039473c5595ace860d8c4fafa220ff474b3fc6bfdb4293327f1a37e94d86"
 dependencies = [
+ "indexmap",
  "itoa",
  "memchr",
  "serde",
@@ -1360,7 +1361,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-cli"
-version = "0.17.2"
+version = "0.18.0"
 dependencies = [
  "chrono",
  "clap",
@@ -1385,7 +1386,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-diagnostics"
-version = "0.17.2"
+version = "0.18.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -1393,7 +1394,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-diff"
-version = "0.17.2"
+version = "0.18.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -1404,7 +1405,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-engine"
-version = "0.17.2"
+version = "0.18.0"
 dependencies = [
  "log",
  "serde",
@@ -1417,7 +1418,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-export"
-version = "0.17.2"
+version = "0.18.0"
 dependencies = [
  "js-sys",
  "serde",
@@ -1429,7 +1430,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-graph"
-version = "0.17.2"
+version = "0.18.0"
 dependencies = [
  "chrono",
  "proptest",
@@ -1444,7 +1445,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-intent"
-version = "0.17.2"
+version = "0.18.0"
 dependencies = [
  "chrono",
  "regex",
@@ -1459,7 +1460,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-language"
-version = "0.17.2"
+version = "0.18.0"
 dependencies = [
  "nom",
  "serde",
@@ -1469,7 +1470,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-lsp"
-version = "0.17.2"
+version = "0.18.0"
 dependencies = [
  "async-trait",
  "rand 0.8.5",
@@ -1486,7 +1487,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-report"
-version = "0.17.2"
+version = "0.18.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -1495,7 +1496,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-scan"
-version = "0.17.2"
+version = "0.18.0"
 dependencies = [
  "ignore",
  "log",
@@ -1507,7 +1508,7 @@ dependencies = [
  "sruja-types",
  "tempfile",
  "thiserror",
- "tree-sitter 0.24.7",
+ "tree-sitter 0.26.7",
  "tree-sitter-c",
  "tree-sitter-c-sharp",
  "tree-sitter-cpp",
@@ -1525,7 +1526,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-types"
-version = "0.17.2"
+version = "0.18.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -1533,7 +1534,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-wasm"
-version = "0.17.2"
+version = "0.18.0"
 dependencies = [
  "console_error_panic_hook",
  "js-sys",
@@ -1797,13 +1798,14 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter"
-version = "0.24.7"
+version = "0.26.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5387dffa7ffc7d2dae12b50c6f7aab8ff79d6210147c6613561fc3d474c6f75"
+checksum = "e7a6592b1aec0109df37b6bafea77eb4e61466e37b0a5a98bef4f89bfb81b7a2"
 dependencies = [
  "cc",
  "regex",
  "regex-syntax",
+ "serde_json",
  "streaming-iterator",
  "tree-sitter-language",
 ]
@@ -1911,7 +1913,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c0031f687c0772f2dad7b77104c43428611099a1804c81244ada21560f41f0b1"
 dependencies = [
  "cc",
- "tree-sitter 0.24.7",
+ "tree-sitter 0.26.7",
 ]
 
 [[package]]
