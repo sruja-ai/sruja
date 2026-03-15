@@ -4,11 +4,11 @@
 # Serve (live): mdbook serve
 
 [book]
-title = "Sruja (beta)"
+title = "Sruja – Architecture intelligence for AI Era"
 authors = ["Sruja contributors"]
 language = "en"
 src = "src"
-description = "Architecture as code. Define, validate, export, and preview with CLI and VS Code."
+description = "Architecture intelligence for the AI era. Define, validate, and export architecture as code with CLI and VS Code."
 
 [build]
 build-dir = "book"

@@ -535,7 +535,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       diagramPreviewPanel = vscode.window.createWebviewPanel(
         "srujaDiagramPreview",
-        "Sruja Diagram Preview",
+        "Sruja – Architecture intelligence for AI Era – Diagram Preview",
         vscode.ViewColumn.Beside,
         { enableScripts: true }
       );
@@ -740,7 +740,7 @@ function getDiagramPreviewHtml(mermaidCodeEscaped: string): string {
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net;">
-  <title>Sruja Diagram Preview</title>
+  <title>Sruja – Architecture intelligence for AI Era – Diagram Preview</title>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>

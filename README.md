@@ -1,10 +1,8 @@
-# Sruja – Keep Your Architecture in Sync with AI
+# Sruja – Architecture intelligence for AI Era
 
 [![TypeScript Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg?flag=typescript)](https://codecov.io/gh/sruja-ai/sruja)
 
-**Stop outdated diagrams.** Use AI to generate and maintain architecture that stays in sync with your code.
-
-> ⚠️ **Beta** – Sruja is under active development. APIs may change.
+**Architecture intelligence for the AI era.** Use AI to generate and maintain architecture as code—so it stays in sync with your codebase.
 
 ---
 
