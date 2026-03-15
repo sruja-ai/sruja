@@ -96,7 +96,7 @@ fn extract_from_node(
     }
 
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             extract_from_node(&child, content, imports, _exports, definitions);
         }
     }
@@ -107,14 +107,14 @@ fn extract_require(node: &tree_sitter::Node, content: &str, imports: &mut Vec<St
     let mut arg = None;
 
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             match child.kind() {
                 "identifier" => {
                     method_name = child.utf8_text(content.as_bytes()).ok();
                 }
                 "argument_list" => {
                     for j in 0..child.child_count() {
-                        if let Some(arg_node) = child.child(j) {
+                        if let Some(arg_node) = child.child(j as u32) {
                             if arg_node.kind() == "string" {
                                 arg = extract_string_content(&arg_node, content);
                             }
@@ -138,7 +138,7 @@ fn extract_require(node: &tree_sitter::Node, content: &str, imports: &mut Vec<St
 
 fn extract_string_content(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "string_content" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -154,7 +154,7 @@ fn extract_string_content(node: &tree_sitter::Node, content: &str) -> Option<Str
 
 fn extract_class_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "constant" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -174,7 +174,7 @@ fn extract_class_name(node: &tree_sitter::Node, content: &str) -> Option<String>
 
 fn extract_module_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "constant" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -188,7 +188,7 @@ fn extract_module_name(node: &tree_sitter::Node, content: &str) -> Option<String
 
 fn extract_method_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "identifier" || child.kind() == "setter" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -203,7 +203,7 @@ fn extract_method_name(node: &tree_sitter::Node, content: &str) -> Option<String
 fn extract_singleton_method_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     let mut found_target = false;
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "identifier" && !found_target {
                 if let Ok(text) = child.utf8_text(content.as_bytes()) {
                     if text == "self" {

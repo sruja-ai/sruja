@@ -100,7 +100,7 @@ fn extract_from_node(
     }
 
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             extract_from_node(&child, content, imports, exports, definitions);
         }
     }
@@ -108,7 +108,7 @@ fn extract_from_node(
 
 fn extract_using(node: &tree_sitter::Node, content: &str, imports: &mut Vec<String>) {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "qualified_name" || child.kind() == "identifier" {
                 if let Ok(path) = child.utf8_text(content.as_bytes()) {
                     imports.push(path.to_string());
@@ -121,7 +121,7 @@ fn extract_using(node: &tree_sitter::Node, content: &str, imports: &mut Vec<Stri
 
 fn extract_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "identifier" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -135,7 +135,7 @@ fn extract_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
 
 fn extract_name_from_method(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "explicit_interface_specifier" {
                 continue;
             }
@@ -152,13 +152,13 @@ fn extract_name_from_method(node: &tree_sitter::Node, content: &str) -> Option<S
 
 fn extract_field_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "variable_declaration" {
                 for j in 0..child.child_count() {
-                    if let Some(var_declarator) = child.child(j) {
+                    if let Some(var_declarator) = child.child(j as u32) {
                         if var_declarator.kind() == "variable_declarator" {
                             for k in 0..var_declarator.child_count() {
-                                if let Some(id) = var_declarator.child(k) {
+                                if let Some(id) = var_declarator.child(k as u32) {
                                     if id.kind() == "identifier" {
                                         return id
                                             .utf8_text(content.as_bytes())
@@ -178,10 +178,10 @@ fn extract_field_name(node: &tree_sitter::Node, content: &str) -> Option<String>
 
 fn has_modifier(node: &tree_sitter::Node, content: &str, modifier: &str) -> bool {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "modifier_list" {
                 for j in 0..child.child_count() {
-                    if let Some(mod_child) = child.child(j) {
+                    if let Some(mod_child) = child.child(j as u32) {
                         if let Ok(text) = mod_child.utf8_text(content.as_bytes()) {
                             if text == modifier {
                                 return true;

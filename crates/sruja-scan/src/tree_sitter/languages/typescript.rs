@@ -113,7 +113,7 @@ fn extract_from_node(
     }
 
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             extract_from_node(&child, content, imports, exports, definitions);
         }
     }
@@ -121,7 +121,7 @@ fn extract_from_node(
 
 fn extract_import_source(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "string" || child.kind() == "string_fragment" {
                 let text = child.utf8_text(content.as_bytes()).ok()?;
                 let cleaned = text.trim_matches('"').trim_matches('\'').to_string();
@@ -142,7 +142,7 @@ fn extract_exports(
     definitions: &mut Vec<Definition>,
 ) {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             match child.kind() {
                 "function_declaration" => {
                     if let Some(name) = extract_function_name(&child, content) {
@@ -190,7 +190,7 @@ fn extract_exports(
 
 fn extract_function_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "identifier" || child.kind() == "property_identifier" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -204,7 +204,7 @@ fn extract_function_name(node: &tree_sitter::Node, content: &str) -> Option<Stri
 
 fn extract_class_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "type_identifier" || child.kind() == "identifier" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -218,7 +218,7 @@ fn extract_class_name(node: &tree_sitter::Node, content: &str) -> Option<String>
 
 fn extract_interface_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "type_identifier" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -232,7 +232,7 @@ fn extract_interface_name(node: &tree_sitter::Node, content: &str) -> Option<Str
 
 fn extract_enum_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "identifier" || child.kind() == "type_identifier" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -250,10 +250,10 @@ fn extract_variable_declarations(
     definitions: &mut Vec<Definition>,
 ) {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "variable_declarator" {
                 for j in 0..child.child_count() {
-                    if let Some(ident) = child.child(j) {
+                    if let Some(ident) = child.child(j as u32) {
                         if ident.kind() == "identifier" {
                             if let Ok(name) = ident.utf8_text(content.as_bytes()) {
                                 definitions.push(Definition {

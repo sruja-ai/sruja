@@ -35,6 +35,15 @@ jobs:
         run: npm ci
         working-directory: extension
 
+      - name: Build WASM (Node.js target)
+        run: |
+          curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+          cd crates/sruja-wasm && wasm-pack build --target nodejs --out-dir pkg --release
+          mkdir -p ../extension/wasm
+          cp pkg/sruja_wasm.js pkg/sruja_wasm_bg.wasm ../extension/wasm/
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
       - name: Run tests with coverage
         run: npm test -- --coverage --coverageReporters=lcov --coverageReporters=text-summary
         working-directory: extension

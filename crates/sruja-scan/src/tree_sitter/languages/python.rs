@@ -78,7 +78,7 @@ fn extract_from_node(
     }
 
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             extract_from_node(&child, content, imports, exports, definitions);
         }
     }
@@ -86,7 +86,7 @@ fn extract_from_node(
 
 fn extract_import(node: &tree_sitter::Node, content: &str, imports: &mut Vec<String>) {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "dotted_name" || child.kind() == "aliased_import" {
                 if let Ok(name) = child.utf8_text(content.as_bytes()) {
                     let module = name.split_whitespace().last().unwrap_or(name);
@@ -100,7 +100,7 @@ fn extract_import(node: &tree_sitter::Node, content: &str, imports: &mut Vec<Str
 fn extract_from_import(node: &tree_sitter::Node, content: &str, imports: &mut Vec<String>) {
     let mut found_from = false;
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "from" {
                 found_from = true;
             } else if child.kind() == "dotted_name" && found_from {
@@ -115,7 +115,7 @@ fn extract_from_import(node: &tree_sitter::Node, content: &str, imports: &mut Ve
 
 fn extract_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "identifier" {
                 return child
                     .utf8_text(content.as_bytes())

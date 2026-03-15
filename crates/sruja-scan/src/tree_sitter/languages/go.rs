@@ -69,7 +69,7 @@ fn extract_from_node(
     }
 
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             extract_from_node(&child, content, imports, exports, definitions);
         }
     }
@@ -77,7 +77,7 @@ fn extract_from_node(
 
 fn extract_import(node: &tree_sitter::Node, content: &str, imports: &mut Vec<String>) {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             match child.kind() {
                 "import_spec" => {
                     if let Some(path) = extract_import_path(&child, content) {
@@ -86,7 +86,7 @@ fn extract_import(node: &tree_sitter::Node, content: &str, imports: &mut Vec<Str
                 }
                 "import_spec_list" => {
                     for j in 0..child.child_count() {
-                        if let Some(spec) = child.child(j) {
+                        if let Some(spec) = child.child(j as u32) {
                             if spec.kind() == "import_spec" {
                                 if let Some(path) = extract_import_path(&spec, content) {
                                     imports.push(path);
@@ -103,7 +103,7 @@ fn extract_import(node: &tree_sitter::Node, content: &str, imports: &mut Vec<Str
 
 fn extract_import_path(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "interpreted_string_literal" {
                 let text = child.utf8_text(content.as_bytes()).ok()?;
                 return Some(text.trim_matches('"').to_string());
@@ -115,7 +115,7 @@ fn extract_import_path(node: &tree_sitter::Node, content: &str) -> Option<String
 
 fn extract_function_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "identifier" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -140,10 +140,10 @@ fn extract_type_declaration(
     definitions: &mut Vec<Definition>,
 ) {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "type_spec" {
                 for j in 0..child.child_count() {
-                    if let Some(type_node) = child.child(j) {
+                    if let Some(type_node) = child.child(j as u32) {
                         match type_node.kind() {
                             "type_identifier" => {
                                 if let Ok(name) = type_node.utf8_text(content.as_bytes()) {
@@ -164,7 +164,7 @@ fn extract_type_declaration(
                             }
                             "struct_type" | "interface_type" => {
                                 if j > 0 {
-                                    if let Some(prev) = child.child(j - 1) {
+                                    if let Some(prev) = child.child((j - 1) as u32) {
                                         if prev.kind() == "type_identifier" {
                                             if let Ok(name) = prev.utf8_text(content.as_bytes()) {
                                                 let is_exported = name
