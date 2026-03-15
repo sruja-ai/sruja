@@ -97,9 +97,11 @@ Person -> System.Container "Protocol"
 System.Container -> ExternalAPI "HTTPS"
 ```
 
-#### Component knowledge (optional)
+#### Component knowledge (optional, ask first)
 
-When creating or refining `repo.sruja`, you can add **component knowledge** so each element links to a markdown file with purpose, risks, improvements, and code locations. This helps users and tools get deeper context without bloating the DSL.
+When creating or refining `repo.sruja`, **ask the user** if they want **component knowledge**: one markdown file per component (or key system) linked via `doc`, with purpose, risks, improvements, and code locations. If they say yes, add it; if they decline or don’t care, generate only the minimal DSL. Asking keeps this feature visible so users can opt in instead of it being silently skipped.
+
+When they opt in:
 
 - **Where:** Create one markdown file per component under **`.sruja/knowledge/`**, e.g. `.sruja/knowledge/PaymentService.md`. Use the element’s **id** (PascalCase) for the filename.
 - **DSL:** Add a `doc` field to the element pointing at that path (relative to workspace root), e.g. `doc ".sruja/knowledge/PaymentService.md"`. You can use `doc` or `documentation`; both accept a single string path.
