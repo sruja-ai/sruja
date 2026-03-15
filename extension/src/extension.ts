@@ -1,5 +1,3 @@
-import { execFile } from "child_process";
-import { promisify } from "util";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -9,15 +7,12 @@ import { getSkills, getSkillsRoot } from "./skills";
 import { SrujaSkillsTreeProvider } from "./skillsTree";
 import { SrujaDefinitionProvider, SrujaHoverProvider, SrujaDocumentSymbolProvider, resolveDocUri, docUriExists } from "./providers";
 import { exportMarkdownFromWasm, getDiagnosticsFromWasm, getMermaidFromWasm, getElementsFromWasm } from "./wasm";
-import { parseLintOutput } from "./lintParser";
-import { getSrujaLspPath, useWasmFromLspPath } from "./config";
-import { runLintJson, runCli } from "./cliRunner";
+import { getSrujaLspPath } from "./config";
+import { runCli } from "./cliRunner";
 import { parseJsonSafe } from "./safeJson";
 import { formatStatusLines, formatReviewLines, type StatusJson, type ReviewJson } from "./cliOutput";
 import { getDiagramPreviewHtml, escapeMermaidForScript } from "./diagramPreview";
 import { SrujaMarkdownPreviewEditorProvider } from "./markdownPreviewEditor";
-
-const execFileAsync = promisify(execFile);
 
 const DIAGNOSTIC_COLLECTION_ID = "sruja";
 let diagnosticCollection: vscode.DiagnosticCollection | undefined;
@@ -28,12 +23,13 @@ function getLspPath(): string | undefined {
   return vscode.workspace.getConfiguration("sruja").get<string>("lsp.path");
 }
 
-function useWasm(): boolean {
-  return useWasmFromLspPath(getLspPath());
-}
-
 function getSrujaPath(): string {
   return getSrujaLspPath(getLspPath());
+}
+
+/** Return true if the document is still open in the workspace. */
+function isDocumentStillOpen(uri: vscode.Uri): boolean {
+  return vscode.workspace.textDocuments.some((d) => d.uri.toString() === uri.toString());
 }
 
 async function updateDiagnostics(
@@ -46,38 +42,22 @@ async function updateDiagnostics(
   const uri = doc.uri;
   const filename = doc.uri.fsPath;
 
-  if (useWasm()) {
-    try {
-      const diags = await getDiagnosticsFromWasm(context, doc.getText(), filename);
-      diagnosticCollection.set(uri, diags);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      diagnosticCollection.set(uri, [
-        new vscode.Diagnostic(
-          new vscode.Range(0, 0, 0, 0),
-          `Sruja WASM lint failed: ${message}`,
-          vscode.DiagnosticSeverity.Warning
-        ),
-      ]);
-    }
-    return;
-  }
+  const setDiagsIfDocOpen = (diags: vscode.Diagnostic[]) => {
+    if (isDocumentStillOpen(uri)) diagnosticCollection?.set(uri, diags);
+  };
 
-  const srujaPath = getSrujaPath();
-  const targetPath = doc.isDirty
-    ? path.join(os.tmpdir(), `sruja-lint-${path.basename(filename)}`)
-    : filename;
-  if (doc.isDirty) {
-    await fs.promises.writeFile(targetPath, doc.getText(), "utf8");
-  }
   try {
-    const { stdout, stderr } = await runLintJson(srujaPath, targetPath);
-    const diags = parseLintOutput(stdout, stderr, uri.toString());
-    diagnosticCollection.set(uri, diags);
-  } finally {
-    if (doc.isDirty) {
-      await fs.promises.unlink(targetPath).catch(() => {});
-    }
+    const diags = await getDiagnosticsFromWasm(context, doc.getText(), filename);
+    setDiagsIfDocOpen(diags);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    setDiagsIfDocOpen([
+      new vscode.Diagnostic(
+        new vscode.Range(0, 0, 0, 0),
+        `Sruja lint failed: ${message}`,
+        vscode.DiagnosticSeverity.Warning
+      ),
+    ]);
   }
 }
 
@@ -107,7 +87,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const runLintForDoc = (doc: vscode.TextDocument) => {
     if (doc.languageId !== "sruja") return;
     updateDiagnostics(context, doc).catch((err) => {
-      if (diagnosticCollection && doc.uri) {
+      if (diagnosticCollection && isDocumentStillOpen(doc.uri)) {
         diagnosticCollection.set(doc.uri, [
           new vscode.Diagnostic(
             new vscode.Range(0, 0, 0, 0),
@@ -331,37 +311,11 @@ export function activate(context: vscode.ExtensionContext): void {
       const filePath = doc.uri.scheme === "file" ? doc.uri.fsPath : path.join(os.tmpdir(), "document.sruja");
       const outPath = filePath.replace(/\.sruja$/i, ".md");
 
-      let stdout: string | null = null;
-      if (useWasm()) {
-        stdout = await exportMarkdownFromWasm(context, dsl);
-        if (stdout === null) {
-          vscode.window.showErrorMessage(
-            "Sruja WASM could not load. Reinstall the extension or set sruja.lsp.path to use the Sruja CLI."
-          );
-          return;
-        }
-      } else {
-        const cliPath = getSrujaPath();
-        let inputPath = filePath;
-        let tmpPath: string | null = null;
-        if (doc.isDirty || doc.uri.scheme !== "file") {
-          tmpPath = path.join(os.tmpdir(), `sruja-export-${path.basename(filePath)}`);
-          await fs.promises.writeFile(tmpPath, dsl, "utf8");
-          inputPath = tmpPath;
-        }
-        try {
-          const result = await execFileAsync(cliPath, ["export", "markdown", inputPath], {
-            encoding: "utf8",
-          });
-          const out = Array.isArray(result) ? result[0] : (result as { stdout?: string }).stdout;
-          stdout = out ?? "";
-        } finally {
-          if (tmpPath) await fs.promises.unlink(tmpPath).catch(() => {});
-        }
-      }
-
+      const stdout = await exportMarkdownFromWasm(context, dsl);
       if (stdout === null || stdout === undefined) {
-        vscode.window.showErrorMessage("Export to Markdown failed.");
+        vscode.window.showErrorMessage(
+          "Sruja WASM could not load. Run npm run copy:assets if developing, or reinstall the extension."
+        );
         return;
       }
       try {
@@ -409,7 +363,12 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       const position = editor.selection.active;
       const elements = await getElementsFromWasm(context, doc.getText(), doc.uri.fsPath);
-      if (!elements?.length) return;
+      if (!elements?.length) {
+        if (elements === null) {
+          vscode.window.showWarningMessage("Sruja WASM is not available for component lookup. Reinstall the extension or run npm run copy:assets if developing.");
+        }
+        return;
+      }
       const wordRange = doc.getWordRangeAtPosition(position);
       const word = wordRange ? doc.getText(wordRange).trim() : "";
       if (!word) return;
@@ -436,14 +395,7 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showWarningMessage("Open a .sruja file to open diagram preview.");
         return;
       }
-      const dsl = doc.getText();
-      if (!useWasm()) {
-        vscode.window.showInformationMessage(
-          "Diagram preview uses bundled WASM. Clear sruja.lsp.path to use it, or use Sruja: Export to Markdown."
-        );
-        return;
-      }
-      const mermaid = await getMermaidFromWasm(context, dsl);
+      const mermaid = await getMermaidFromWasm(context, doc.getText());
       if (mermaid === null || mermaid.trim() === "") {
         vscode.window.showErrorMessage(
           "Sruja WASM could not load or diagram is empty. Run npm run copy:assets if developing, or reinstall the extension."
@@ -469,12 +421,6 @@ export function activate(context: vscode.ExtensionContext): void {
       const doc = editor?.document;
       if (!doc || doc.languageId !== "sruja") {
         vscode.window.showWarningMessage("Open a .sruja file to open markdown preview.");
-        return;
-      }
-      if (!useWasm()) {
-        vscode.window.showInformationMessage(
-          "Markdown preview uses bundled WASM. Clear sruja.lsp.path to use it."
-        );
         return;
       }
       await vscode.commands.executeCommand("vscode.openWith", doc.uri, "sruja.markdownPreview", vscode.ViewColumn.Beside);

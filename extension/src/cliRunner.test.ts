@@ -1,4 +1,4 @@
-import { runLintJson, runCli, type ExecFileFn } from "./cliRunner";
+import { runLintJson, runCli, CliExecError, type ExecFileFn } from "./cliRunner";
 
 describe("cliRunner", () => {
   describe("runLintJson", () => {
@@ -30,6 +30,15 @@ describe("cliRunner", () => {
       expect(captured.cmd).toBe("/bin/sruja");
       expect(captured.args).toEqual(["lint", "--format", "json", "/f.sruja"]);
     });
+
+    it("rejects with CliExecError when spawn fails", async () => {
+      const execFn: ExecFileFn = (_cmd, _args, _opts, cb) => {
+        const err = new Error("spawn ENOENT") as NodeJS.ErrnoException;
+        err.code = "ENOENT";
+        cb(err, "", "");
+      };
+      await expect(runLintJson("/bin/sruja", "/f.sruja", execFn)).rejects.toThrow(CliExecError);
+    });
   });
 
   describe("runCli", () => {
@@ -41,12 +50,24 @@ describe("cliRunner", () => {
       expect(result.stderr).toBe("");
     });
 
-    it("returns code 1 when exec fails", async () => {
-      const execFn: ExecFileFn = (_cmd, _args, _opts, cb) => cb(new Error("fail"), "out", "err");
+    it("returns actual exit code when process exits non-zero", async () => {
+      const execFn: ExecFileFn = (_cmd, _args, _opts, cb) => {
+        const err = Object.assign(new Error("Command failed"), { code: 2 }) as unknown as NodeJS.ErrnoException;
+        cb(err, "out", "err");
+      };
       const result = await runCli("/bin/sruja", ["status"], "/cwd", execFn);
-      expect(result.code).toBe(1);
+      expect(result.code).toBe(2);
       expect(result.stdout).toBe("out");
       expect(result.stderr).toBe("err");
+    });
+
+    it("rejects with CliExecError when spawn fails", async () => {
+      const execFn: ExecFileFn = (_cmd, _args, _opts, cb) => {
+        const err = new Error("spawn ENOENT") as NodeJS.ErrnoException;
+        err.code = "ENOENT";
+        cb(err, "", "");
+      };
+      await expect(runCli("/bin/sruja", ["status"], "/cwd", execFn)).rejects.toThrow(CliExecError);
     });
   });
 });

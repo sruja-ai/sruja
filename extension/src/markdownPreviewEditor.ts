@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
 import { exportMarkdownFromWasm, initWasm } from "./wasm";
-import { useWasmFromLspPath } from "./config";
 
 interface SrujaMarkdownDocument extends vscode.CustomDocument {
   uri: vscode.Uri;
@@ -34,16 +33,6 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
   ): Promise<void> {
     webviewPanel.webview.options = { enableScripts: true };
 
-    const lspPath = vscode.workspace.getConfiguration("sruja").get<string>("lsp.path");
-    const useWasm = useWasmFromLspPath(lspPath);
-
-    if (!useWasm) {
-      webviewPanel.webview.html = this.getErrorHtml(
-        "Markdown preview requires WASM. Clear sruja.lsp.path setting."
-      );
-      return;
-    }
-
     const mod = await initWasm(this.context);
     if (!mod) {
       webviewPanel.webview.html = this.getErrorHtml(
@@ -52,7 +41,9 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
       return;
     }
 
-    const updatePreview = async () => {
+    let disposed = false;
+    const updatePreview = async (): Promise<void> => {
+      if (disposed) return;
       try {
         const editor = vscode.window.visibleTextEditors.find(
           (e) => e.document.uri.toString() === document.uri.toString()
@@ -61,12 +52,14 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
         if (!dsl) return;
 
         const md = await exportMarkdownFromWasm(this.context, dsl);
+        if (disposed) return;
         if (md) {
           webviewPanel.webview.html = this.getMarkdownHtml(md);
         } else {
           webviewPanel.webview.html = this.getErrorHtml("Failed to generate markdown.");
         }
       } catch (err) {
+        if (disposed) return;
         const msg = err instanceof Error ? err.message : String(err);
         webviewPanel.webview.html = this.getErrorHtml(`Error: ${msg}`);
       }
@@ -89,6 +82,7 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
     });
 
     webviewPanel.onDidDispose(() => {
+      disposed = true;
       changeSub.dispose();
       saveSub.dispose();
       if (debounceTimer) clearTimeout(debounceTimer);

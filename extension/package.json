@@ -80,7 +80,7 @@
         "sruja.lsp.path": {
           "type": "string",
           "default": "",
-          "description": "Path to the Sruja CLI binary. If set, lint and export use the CLI; otherwise bundled WASM is used."
+          "description": "Path to the Sruja CLI binary. Editor features (lint, export, diagram) use bundled WASM. This path is used only for workspace commands: drift, status, review, refresh context."
         },
         "sruja.skills.path": {
           "type": "string",

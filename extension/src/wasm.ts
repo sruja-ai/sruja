@@ -188,8 +188,26 @@ export interface SrujaDocumentSymbol {
   children: SrujaDocumentSymbol[];
 }
 
+function parseJsonArray<T>(json: string, guard?: (item: unknown) => item is T): T[] | null {
+  try {
+    const value: unknown = JSON.parse(json);
+    if (!Array.isArray(value)) return null;
+    if (guard) {
+      const out: T[] = [];
+      for (const item of value) {
+        if (guard(item)) out.push(item);
+      }
+      return out;
+    }
+    return value as T[];
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Get element definitions from DSL using WASM. Returns empty list if WASM not ready or on error.
+ * Get element definitions from DSL using WASM. Returns null if WASM not ready, parse error, or on error.
+ * Returns empty array when valid JSON has no elements; malformed entries are filtered out.
  */
 export async function getElementsFromWasm(
   context: vscode.ExtensionContext,
@@ -201,14 +219,18 @@ export async function getElementsFromWasm(
 
   try {
     const json = mod.sruja_get_elements(dsl, filename ?? null);
-    return JSON.parse(json);
+    const arr = parseJsonArray<SrujaElement>(json, (item): item is SrujaElement =>
+      typeof item === "object" && item !== null && "id" in item && typeof (item as SrujaElement).id === "string"
+    );
+    return arr;
   } catch {
     return null;
   }
 }
 
 /**
- * Get document symbols for outline view using WASM. Returns empty list if WASM not ready or on error.
+ * Get document symbols for outline view using WASM. Returns null if WASM not ready, parse error, or on error.
+ * Returns empty array when valid JSON has no symbols; malformed entries are filtered out.
  */
 export async function getDocumentSymbolsFromWasm(
   context: vscode.ExtensionContext,
@@ -220,7 +242,10 @@ export async function getDocumentSymbolsFromWasm(
 
   try {
     const json = mod.sruja_get_document_symbols(dsl, filename ?? null);
-    return JSON.parse(json);
+    const arr = parseJsonArray<SrujaDocumentSymbol>(json, (item): item is SrujaDocumentSymbol =>
+      typeof item === "object" && item !== null && "name" in item && "range" in item && typeof (item as SrujaDocumentSymbol).name === "string"
+    );
+    return arr;
   } catch {
     return null;
   }

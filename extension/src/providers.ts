@@ -84,7 +84,7 @@ export class SrujaDefinitionProvider implements vscode.DefinitionProvider {
     if (document.languageId !== "sruja") return undefined;
 
     const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath);
-    if (!elements) return undefined;
+    if (token.isCancellationRequested || !elements) return undefined;
 
     const wordRange = document.getWordRangeAtPosition(position);
     if (!wordRange) return undefined;
@@ -149,7 +149,7 @@ export class SrujaHoverProvider implements vscode.HoverProvider {
     if (document.languageId !== "sruja") return undefined;
 
     const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath);
-    if (!elements) return undefined;
+    if (token.isCancellationRequested || !elements) return undefined;
 
     const wordRange = document.getWordRangeAtPosition(position);
     if (!wordRange) return undefined;
@@ -211,7 +211,7 @@ export class SrujaDocumentSymbolProvider implements vscode.DocumentSymbolProvide
     if (document.languageId !== "sruja") return undefined;
 
     const symbols = await getDocumentSymbolsFromWasm(this.context, document.getText(), document.uri.fsPath);
-    if (!symbols) return undefined;
+    if (token.isCancellationRequested || !symbols) return undefined;
 
     // Convert Sruja symbols to VS Code document symbols (WASM uses 1-based line/character)
     const documentSymbols: vscode.DocumentSymbol[] = symbols.map((symbol) => {
