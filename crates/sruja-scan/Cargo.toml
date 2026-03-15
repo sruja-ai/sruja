@@ -14,23 +14,23 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 ignore = "0.4"
-tree-sitter = "0.24"
+tree-sitter = "0.26"
 tree-sitter-typescript = "0.23"
 tree-sitter-javascript = "0.23"
-tree-sitter-python = "0.23"
-tree-sitter-go = "0.23"
-tree-sitter-rust = "0.23"
+tree-sitter-python = "0.25"
+tree-sitter-go = "0.25"
+tree-sitter-rust = "0.24"
 tree-sitter-java = "0.23"
 tree-sitter-c-sharp = "0.23"
 tree-sitter-ruby = "0.21"
 tree-sitter-php = "0.23"
 tree-sitter-kotlin = "0.3"
 tree-sitter-scala = "0.23"
-tree-sitter-c = "0.23"
+tree-sitter-c = "0.24"
 tree-sitter-cpp = "0.23"
 regex = "1.10"
 rayon = "1.10"
 
 [dev-dependencies]
 sruja-diff = { path = "../sruja-diff" }
-tempfile = "3.10"
+tempfile = "3.27"

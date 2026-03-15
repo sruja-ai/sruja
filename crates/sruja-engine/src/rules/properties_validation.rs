@@ -259,6 +259,7 @@ mod tests {
         let body = ElementDefBody {
             description: None,
             technology: None,
+            doc: None,
             metadata: entries,
             constraints: vec![],
             conventions: vec![],

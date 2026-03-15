@@ -298,6 +298,7 @@ The same keyword (`data`) means different things in different contexts:
 ### From C4 to Sruja:
 
 ```sruja
+<!-- partial -->
 // C4: System Context
 system "E-Commerce System" {
     // C4: Container
@@ -311,6 +312,7 @@ system "E-Commerce System" {
 ### From Data Modeling to Sruja:
 
 ```sruja
+<!-- partial -->
 // Data structures
 module Orders {
     data Order {
@@ -333,6 +335,7 @@ module Orders {
 ### From ER to Sruja:
 
 ```sruja
+<!-- partial -->
 datastore Database {
     data User {
         id string
@@ -365,6 +368,7 @@ Systems thinking is about understanding:
 **1. Parts and Relationships** (Already Built-In)
 
 ```sruja
+<!-- partial -->
 system ShopAPI {
     container WebApp
     container Database
@@ -378,6 +382,7 @@ ShopAPI.WebApp -> ShopAPI.Database "Reads/Writes"
 **2. Boundaries** (Natural in Sruja)
 
 ```sruja
+<!-- partial -->
 system ShopAPI {  // Inside boundary
     container WebApp
 }
@@ -391,6 +396,7 @@ User -> ShopAPI "Uses"
 **3. Flows** (Built-In Flow Syntax)
 
 ```sruja
+<!-- partial -->
 // Data Flow Diagram (DFD) style — use scenario
 scenario OrderProcess "Order Processing" {
     Customer -> Shop.WebApp "Order Details"
@@ -416,6 +422,7 @@ Shop.OrderService -> Shop.PaymentService "Charges"
 **4. Feedback Loops** (Cycles in Relationships)
 
 ```sruja
+<!-- partial -->
 // Simple feedback: User action triggers system response
 User -> System "Requests"
 System -> User "Responds"
@@ -445,6 +452,7 @@ PaymentService -> OrderService "Confirms Payment"
 **5. Context** (Persons and External Systems)
 
 ```sruja
+<!-- partial -->
 person Customer "End User"
 person Admin "System Administrator"
 
@@ -480,12 +488,15 @@ myApp.frontend -> myApp.backend "Calls"
 **Intermediate**: Add flows and events
 
 ```sruja
+<!-- partial -->
 // Simple qualified relationships
 user -> myApp.frontend "Clicks"
 myApp.frontend -> myApp.backend "Sends request"
 myApp.backend -> myApp.database "Saves"
 
 // DFD-style — use scenario
+```sruja
+<!-- partial -->
 scenario OrderFlow "Order Processing" {
     user -> myApp.frontend "Submits"
     myApp.frontend -> myApp.backend "Processes"
@@ -496,6 +507,7 @@ scenario OrderFlow "Order Processing" {
 **Advanced**: Model feedback loops and system behavior
 
 ```sruja
+<!-- partial -->
 // Feedback loop: User action -> System response -> User sees result
 story CompleteOrder "Order Completion Flow" {
     user -> shop.system "Submits"

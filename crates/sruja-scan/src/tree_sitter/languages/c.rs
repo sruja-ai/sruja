@@ -99,7 +99,7 @@ fn extract_from_node(
     }
 
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             extract_from_node(&child, content, imports, exports, definitions);
         }
     }
@@ -107,7 +107,7 @@ fn extract_from_node(
 
 fn extract_include(node: &tree_sitter::Node, content: &str, imports: &mut Vec<String>) {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "string_literal" || child.kind() == "system_lib_string" {
                 if let Ok(text) = child.utf8_text(content.as_bytes()) {
                     let path = text.trim_matches('"').trim_matches('<').trim_matches('>');
@@ -120,10 +120,10 @@ fn extract_include(node: &tree_sitter::Node, content: &str, imports: &mut Vec<St
 
 fn extract_function_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "function_declarator" {
                 for j in 0..child.child_count() {
-                    if let Some(declarator) = child.child(j) {
+                    if let Some(declarator) = child.child(j as u32) {
                         if declarator.kind() == "identifier" {
                             return declarator
                                 .utf8_text(content.as_bytes())
@@ -140,7 +140,7 @@ fn extract_function_name(node: &tree_sitter::Node, content: &str) -> Option<Stri
 
 fn extract_struct_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "type_identifier" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -154,7 +154,7 @@ fn extract_struct_name(node: &tree_sitter::Node, content: &str) -> Option<String
 
 fn extract_enum_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "type_identifier" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -169,7 +169,7 @@ fn extract_enum_name(node: &tree_sitter::Node, content: &str) -> Option<String> 
 fn extract_typedef_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     let mut last_identifier = None;
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "type_identifier" {
                 last_identifier = child
                     .utf8_text(content.as_bytes())
@@ -184,7 +184,7 @@ fn extract_typedef_name(node: &tree_sitter::Node, content: &str) -> Option<Strin
 fn extract_global_var(node: &tree_sitter::Node, content: &str) -> Option<(String, bool)> {
     let mut _is_const = false;
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "type_qualifier" {
                 if let Ok(text) = child.utf8_text(content.as_bytes()) {
                     if text == "const" {

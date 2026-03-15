@@ -11,6 +11,7 @@ summary: "Relations describe how elements interact with each other."
 ## Syntax
 
 ```sruja
+<!-- partial -->
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -23,6 +24,7 @@ System.Container -> System.Container.Component "Label"
 Or with a technology/protocol:
 
 ```sruja
+<!-- partial -->
 Source -> Destination "Label" {
 technology "HTTPS/JSON"
 }

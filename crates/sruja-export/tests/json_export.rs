@@ -184,4 +184,33 @@ A = system "System A" {
         assert_eq!(elem.description, Some("Test system".to_string()));
         assert_eq!(elem.technology, Some("Rust".to_string()));
     }
+
+    #[test]
+    fn test_export_element_with_doc() {
+        let input = r#"
+container = kind "Container"
+PaymentService = container "Payment Service" {
+  technology "Node.js"
+  description "Handles payment processing"
+  doc ".sruja/knowledge/PaymentService.md"
+}
+"#;
+        let program = parse(input);
+        let exporter = Exporter::new();
+        let json = exporter.export(&program).expect("export failed");
+
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("invalid JSON");
+        let elements = parsed
+            .get("elements")
+            .and_then(|v| v.as_object())
+            .expect("elements object missing");
+        let elem = elements
+            .get("PaymentService")
+            .and_then(|v| v.as_object())
+            .expect("PaymentService element missing");
+        assert_eq!(
+            elem.get("doc").and_then(|v| v.as_str()),
+            Some(".sruja/knowledge/PaymentService.md")
+        );
+    }
 }

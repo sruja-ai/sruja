@@ -27,6 +27,8 @@ All versioned artifacts use a **single source of truth** so release-please keeps
 
 **Config:** `release-please-config.json` has one package `"."` with `extra-files` for `Cargo.toml` (workspace.package.version), `extension/package.json`, and `extension/package-lock.json`. `.release-please-manifest.json` tracks the current version for that single package. When adding a new crate, use `version.workspace = true` in its `Cargo.toml`. Do not add a new release-please package for crates or skills; the monorepo uses one version.
 
+**Checkout:** The release-please workflow uses `fetch-depth: 0` and `fetch-tags: true` so the action can resolve the last release tag (e.g. `sruja-v0.17.2`) and include only commits since that tag in the release PR changelog. A shallow clone would miss tags and cause the changelog to list commits from all releases.
+
 **CI check:** The **Version consistency** job in `unified-ci.yml` runs `scripts/verify-version-consistency.sh` on every push/PR. It asserts that the workspace version (from Cargo), `extension/package.json`, `extension/package-lock.json`, and `.release-please-manifest.json` all match, and that no crate uses a hardcoded `version = "..."` instead of `version.workspace = true`. So when the release-please action creates a release PR and updates all extra-files to the same new version, CI confirms they stay in sync; if someone edits one version by hand and forgets another, CI fails.
 
 ## Standards defined in .sruja → CI checks

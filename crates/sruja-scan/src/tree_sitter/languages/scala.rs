@@ -96,7 +96,7 @@ fn extract_from_node(
     }
 
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             extract_from_node(&child, content, imports, exports, definitions);
         }
     }
@@ -104,10 +104,10 @@ fn extract_from_node(
 
 fn extract_import(node: &tree_sitter::Node, content: &str, imports: &mut Vec<String>) {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "import_selectors" {
                 for j in 0..child.child_count() {
-                    if let Some(selector) = child.child(j) {
+                    if let Some(selector) = child.child(j as u32) {
                         extract_import_selector(&selector, content, imports);
                     }
                 }
@@ -124,7 +124,7 @@ fn extract_import(node: &tree_sitter::Node, content: &str, imports: &mut Vec<Str
 fn extract_import_selector(node: &tree_sitter::Node, content: &str, imports: &mut Vec<String>) {
     if node.kind() == "import_selector" {
         for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
+            if let Some(child) = node.child(i as u32) {
                 if child.kind() == "identifier" {
                     if let Ok(name) = child.utf8_text(content.as_bytes()) {
                         imports.push(name.to_string());
@@ -137,7 +137,7 @@ fn extract_import_selector(node: &tree_sitter::Node, content: &str, imports: &mu
 
 fn extract_definition_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "identifier" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -151,7 +151,7 @@ fn extract_definition_name(node: &tree_sitter::Node, content: &str) -> Option<St
 
 fn extract_function_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "identifier" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -165,7 +165,7 @@ fn extract_function_name(node: &tree_sitter::Node, content: &str) -> Option<Stri
 
 fn extract_val_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "identifier" {
                 return child
                     .utf8_text(content.as_bytes())
@@ -179,10 +179,10 @@ fn extract_val_name(node: &tree_sitter::Node, content: &str) -> Option<String> {
 
 fn has_modifier(node: &tree_sitter::Node, content: &str, modifier: &str) -> bool {
     for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
+        if let Some(child) = node.child(i as u32) {
             if child.kind() == "modifiers" {
                 for j in 0..child.child_count() {
-                    if let Some(mod_child) = child.child(j) {
+                    if let Some(mod_child) = child.child(j as u32) {
                         if let Ok(text) = mod_child.utf8_text(content.as_bytes()) {
                             if text == modifier {
                                 return true;

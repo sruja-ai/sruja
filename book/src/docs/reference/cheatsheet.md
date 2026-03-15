@@ -63,6 +63,7 @@ scenario Checkout "Checkout Flow" {
 ## Deployment
 
 ```sruja
+<!-- partial -->
 deployment Prod {
   node Cloud {
     node Region {

@@ -29,7 +29,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
 colored = "3.1.1"
-indicatif = "0.17"
+indicatif = "0.18"
 
 [dev-dependencies]
-tempfile = "3.10"
+tempfile = "3.27"
