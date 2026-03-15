@@ -21,7 +21,7 @@ let diagramPreviewPanel: vscode.WebviewPanel | undefined;
  * [CODE] Error: message
  *   --> file:line:column
  */
-function parseLintStderr(stderr: string, docUri: string): vscode.Diagnostic[] {
+export function parseLintStderr(stderr: string, _docUri: string): vscode.Diagnostic[] {
   const diagnostics: vscode.Diagnostic[] = [];
   const lines = stderr.split(/\r?\n/);
   const msgRe = /^\[([^\]]+)\]\s+(Error|Warning|Info):\s+(.+)$/;
@@ -60,7 +60,7 @@ function parseLintStderr(stderr: string, docUri: string): vscode.Diagnostic[] {
 }
 
 /** Lint output when using --format json (see docs/LINT_JSON_OUTPUT.md). */
-interface LintJsonOutput {
+export interface LintJsonOutput {
   ok: boolean;
   error_count: number;
   warning_count: number;
@@ -111,7 +111,7 @@ async function runLintJson(
   });
 }
 
-function parseLintJson(stdout: string, docUri: string): vscode.Diagnostic[] | null {
+export function parseLintJson(stdout: string, _docUri: string): vscode.Diagnostic[] | null {
   try {
     const out = JSON.parse(stdout) as LintJsonOutput;
     if (!out.diagnostics || !Array.isArray(out.diagnostics)) return null;
@@ -535,7 +535,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       diagramPreviewPanel = vscode.window.createWebviewPanel(
         "srujaDiagramPreview",
-        "Sruja – Architecture intelligence for AI Era – Diagram Preview",
+         "Sruja – Architecture intelligence for the AI era. – Diagram Preview",
         vscode.ViewColumn.Beside,
         { enableScripts: true }
       );
@@ -734,13 +734,13 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 }
 
-function getDiagramPreviewHtml(mermaidCodeEscaped: string): string {
+export function getDiagramPreviewHtml(mermaidCodeEscaped: string): string {
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net;">
-  <title>Sruja – Architecture intelligence for AI Era – Diagram Preview</title>
+   <title>Sruja – Architecture intelligence for the AI era. – Diagram Preview</title>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>

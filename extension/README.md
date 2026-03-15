@@ -1,4 +1,4 @@
-# Sruja – Architecture intelligence for AI Era
+# Sruja – Architecture intelligence for the AI era.
 
 VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architecture DSL. **Lint and Markdown export run in-process using bundled WebAssembly** (no CLI required). You can optionally use the Sruja CLI by setting `sruja.lsp.path`.
 

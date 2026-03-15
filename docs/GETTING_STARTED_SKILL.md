@@ -1,6 +1,6 @@
 # Getting Started with Sruja Skills
 
-**Architecture from your code in 5 minutes—no DSL learning required.**
+**Architecture intelligence for the AI era—no DSL learning required.**
 
 Your AI analyzes your code, generates architecture files, and keeps them in sync. You just need to know what to ask for.
 

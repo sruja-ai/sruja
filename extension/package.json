@@ -1,7 +1,7 @@
 {
   "name": "sruja",
-  "displayName": "Sruja – Architecture intelligence for AI Era",
-  "description": "Sruja – Architecture intelligence for AI Era: diagnostics, syntax highlighting, snippets, markdown export, and AI features (skills, rules)",
+  "displayName": "Sruja – Architecture intelligence for the AI era.",
+  "description": "Sruja – Architecture intelligence for the AI era.: diagnostics, syntax highlighting, snippets, markdown export, and AI features (skills, rules)",
   "version": "0.16.0",
   "publisher": "SrujaAI",
   "icon": "sruja-logo.png",
@@ -75,7 +75,7 @@
       }
     ],
     "configuration": {
-      "title": "Sruja – Architecture intelligence for AI Era",
+       "title": "Sruja – Architecture intelligence for the AI era.",
       "properties": {
         "sruja.lsp.path": {
           "type": "string",

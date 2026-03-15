@@ -4,7 +4,7 @@
 # Serve (live): mdbook serve
 
 [book]
-title = "Sruja – Architecture intelligence for AI Era"
+title = "Sruja – Architecture intelligence for the AI era."
 authors = ["Sruja contributors"]
 language = "en"
 src = "src"

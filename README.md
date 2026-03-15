@@ -1,8 +1,10 @@
-# Sruja – Architecture intelligence for AI Era
+# Sruja – Architecture intelligence for the AI era.
 
 [![TypeScript Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg?flag=typescript)](https://codecov.io/gh/sruja-ai/sruja)
 
-**Architecture intelligence for the AI era.** Use AI to generate and maintain architecture as code—so it stays in sync with your codebase.
+Sruja brings architecture intelligence to the AI era—use AI to generate and maintain architecture as code so it stays in sync with your codebase.
+
+*(Official positioning: [docs/MESSAGING.md](docs/MESSAGING.md).)*
 
 ---
 

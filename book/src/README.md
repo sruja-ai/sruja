@@ -1,8 +1,8 @@
-# Sruja – Architecture intelligence for AI Era
+# Sruja – Architecture intelligence for the AI era.
 
 <img src="sruja-logo.png" alt="Sruja" class="sruja-home-logo" width="160" />
 
-**Architecture intelligence for the AI era.** Define architecture in `.sruja` files; validate, and export to Markdown and Mermaid diagrams. A backend tool for the SDLC lifecycle—not a diagramming product.
+**Architecture intelligence for the AI era.** Use AI to generate and maintain architecture as code; validate and export to Markdown and Mermaid. A backend tool for the SDLC—not a diagramming product.
 
 ## Why Sruja?
 
