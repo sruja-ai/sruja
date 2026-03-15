@@ -33,4 +33,4 @@ rayon = "1.10"
 
 [dev-dependencies]
 sruja-diff = { path = "../sruja-diff" }
-tempfile = "3.10"
+tempfile = "3.27"
