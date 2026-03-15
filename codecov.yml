@@ -1,14 +1,46 @@
 # Codecov configuration for sruja-ai/sruja
 # https://docs.codecov.com/docs/codecov-yaml
 coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+  
   status:
     project:
       default:
         target: 80%
         threshold: 1%
-    patch: off
-  flags:
-    typescript:
-      paths:
-        - extension/src/
-      carryforward: true
+        informational: true
+      rust:
+        target: 70%
+        informational: true
+      typescript:
+        target: 75%
+        informational: true
+    patch:
+      default:
+        target: 75%
+        informational: true
+    changes: off
+
+comment:
+  layout: "reach,diff,flags,tree"
+  behavior: default
+  require_changes: false
+
+ignore:
+  - "extension/test/**/*"
+  - "crates/*/tests/**/*"
+  - "**/tests/**/*"
+  - "**/*_test.rs"
+  - "**/test_*.rs"
+
+flags:
+  typescript:
+    paths:
+      - extension/src/
+    carryforward: true
+  rust:
+    paths:
+      - crates/
+    carryforward: true

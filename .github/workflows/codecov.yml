@@ -11,6 +11,8 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
+  statuses: write
 
 jobs:
   typescript:
@@ -41,6 +43,8 @@ jobs:
           directory: extension/coverage
           flags: typescript
           fail_ci_if_error: false
+          name: codecov-typescript
+          verbose: true
 
   rust:
     name: Rust coverage
@@ -69,3 +73,5 @@ jobs:
           files: lcov.info
           flags: rust
           fail_ci_if_error: false
+          name: codecov-rust
+          verbose: true
