@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.17.0...sruja-v0.17.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* use CARGO_PKG_VERSION instead of hardcoded version string ([59aaddc](https://github.com/sruja-ai/sruja/commit/59aaddce0af95ff7aab5e5612f624d20e827271e))
+
 ## [0.17.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.16.0...sruja-v0.17.0) (2026-03-15)
 
 
