@@ -1,0 +1,90 @@
+# OpenSSF Security Insights
+# https://github.com/ossf/security-insights-spec
+
+schema-version: 1.0.0
+
+project:
+  name: Sruja
+  display-name: Sruja
+  description: Architecture intelligence for the AI era - use AI to generate and maintain architecture as code
+  homepage: https://sruja.ai
+  repository: https://github.com/sruja-ai/sruja
+  license:
+    - SPDX-ID: Apache-2.0
+    - SPDX-ID: MIT
+
+security:
+  assessments:
+    self:
+      evidence:
+        - description: Security policy with vulnerability reporting process
+          reference: https://github.com/sruja-ai/sruja/blob/main/docs/SECURITY.md
+        - description: Automated security scanning in CI
+          reference: https://github.com/sruja-ai/sruja/blob/main/.github/workflows/security.yml
+  contacts:
+    - type: email
+      value: security@sruja.ai
+      primary: true
+
+repository:
+  url: https://github.com/sruja-ai/sruja
+  status: active
+  accepts-change-request: true
+  accepts-automated-change-request: true
+  license:
+    expression: MIT OR Apache-2.0
+  documentation: https://sruja.ai
+
+distribution:
+  - name: CLI Binaries
+    format: binary
+    url: https://github.com/sruja-ai/sruja/releases
+  - name: VS Code Extension
+    format: vsix
+    url: https://marketplace.visualstudio.com/items?itemName=srujaai.sruja
+  - name: WASM Package
+    format: npm
+    url: https://www.npmjs.com/package/@sruja/wasm
+
+vulnerability-reporting:
+  accepts-vulnerability-reports: true
+  email-contact: security@sruja.ai
+  comment: |
+    Please report security vulnerabilities via email to security@sruja.ai.
+    Do not open public issues for security vulnerabilities.
+    We will respond within 48 hours.
+  security-policy: https://github.com/sruja-ai/sruja/blob/main/docs/SECURITY.md
+
+dependencies:
+  third-party-packages: true
+  dependencies-lists:
+    - Cargo.toml
+    - extension/package.json
+  registries:
+    - type: crates-io
+      url: https://crates.io
+    - type: npm
+      url: https://npmjs.com
+  sbom:
+    - sbom-file: Cargo.lock
+      sbom-format: Cargo.lock
+    - sbom-file: extension/package-lock.json
+      sbom-format: npm-lockfile
+
+security-testing:
+  - type: static
+    tool-name: cargo-audit
+    tool-url: https://github.com/rustsec/rustsec
+    comment: Runs in CI security workflow
+  - type: static
+    tool-name: npm audit
+    tool-url: https://docs.npmjs.com/cli/v8/commands/npm-audit
+    comment: Runs in CI security workflow
+  - type: secret-scanning
+    tool-name: TruffleHog
+    tool-url: https://github.com/trufflesecurity/trufflehog
+    comment: Scans for accidentally committed secrets
+  - type: dependency-review
+    tool-name: dependency-review-action
+    tool-url: https://github.com/actions/dependency-review-action
+    comment: Reviews dependency changes in PRs

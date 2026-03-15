@@ -1,0 +1,101 @@
+{
+  "$schema": "https://raw.githubusercontent.com/all-contributors/all-contributors-cli/1.1.0/schema.json",
+  "files": ["README.md"],
+  "imageSize": 100,
+  "contributorsPerLine": 7,
+  "contributorsSortAlphabetically": false,
+  "badgeTemplate": "[![All Contributors](https://img.shields.io/badge/all_contributors-<%= contributors.length %>-orange.svg)](#contributors)",
+  "contributorTemplate": "<a href=\"<%= contributor.profile %>\"><img src=\"<%= contributor.avatar_url %>\" width=\"<%= options.imageSize %>px;\" alt=\"\"/><br /><sub><b><%= contributor.name %></b></sub></a>",
+  "types": {
+    "code": {
+      "symbol": "💻",
+      "description": "Code"
+    },
+    "doc": {
+      "symbol": "📖",
+      "description": "Documentation"
+    },
+    "design": {
+      "symbol": "🎨",
+      "description": "Design"
+    },
+    "bug": {
+      "symbol": "🐛",
+      "description": "Bug reports"
+    },
+    "maintenance": {
+      "symbol": "🚧",
+      "description": "Maintenance"
+    },
+    "review": {
+      "symbol": "👀",
+      "description": "Reviewed Pull Requests"
+    },
+    "test": {
+      "symbol": "⚠️",
+      "description": "Tests"
+    },
+    "tool": {
+      "symbol": "🔧",
+      "description": "Tools"
+    },
+    "ideas": {
+      "symbol": "🤔",
+      "description": "Ideas, Planning, & Feedback"
+    },
+    "infra": {
+      "symbol": "🚇",
+      "description": "Infrastructure (CI, build tools, etc.)"
+    },
+    "content": {
+      "symbol": "🖋",
+      "description": "Content"
+    },
+    "tutorial": {
+      "symbol": "✅",
+      "description": "Tutorials"
+    },
+    "talk": {
+      "symbol": "📢",
+      "description": "Talks"
+    },
+    "question": {
+      "symbol": "🗣",
+      "description": "Answering Questions"
+    },
+    "example": {
+      "symbol": "💡",
+      "description": "Examples"
+    },
+    "translation": {
+      "symbol": "🌍",
+      "description": "Translation"
+    },
+    "financial": {
+      "symbol": "💰",
+      "description": "Financial"
+    },
+    "projectManagement": {
+      "symbol": "📆",
+      "description": "Project Management"
+    }
+  },
+  "skipCi": true,
+  "contributors": [
+    {
+      "login": "koladilip",
+      "name": "Dilip Kola",
+      "avatar_url": "https://avatars.githubusercontent.com/u/364342?v=4",
+      "profile": "https://github.com/koladilip",
+      "contributions": [
+        "code",
+        "doc",
+        "design",
+        "maintenance",
+        "infra",
+        "test",
+        "projectManagement"
+      ]
+    }
+  ]
+}

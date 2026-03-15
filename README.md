@@ -313,9 +313,18 @@ We welcome contributions!
 
 ---
 
+## Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind are welcome!
+
+---
+
 ## License
 
-Apache 2.0
+Apache 2.0 or MIT (dual-licensed)
 
 ---
 
@@ -324,3 +333,6 @@ Apache 2.0
 - **Website:** https://sruja.ai
 - **GitHub:** https://github.com/sruja-ai/sruja
 - **Discussions:** https://github.com/sruja-ai/sruja/discussions
+- **Roadmap:** [ROADMAP.md](ROADMAP.md)
+- **Contributing:** [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)
+- **Security:** [docs/SECURITY.md](docs/SECURITY.md)
